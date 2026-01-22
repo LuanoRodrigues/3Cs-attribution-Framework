@@ -1,0 +1,1 @@
+Get-Clipboard | Set-Content -NoNewline .\.codex_payloads\payload.b64

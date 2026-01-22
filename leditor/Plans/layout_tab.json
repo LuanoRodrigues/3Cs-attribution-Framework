@@ -1,0 +1,209 @@
+{
+  "tabId": "layout",
+  "label": "Layout",
+  "groups": [
+    {
+      "groupId": "pageSetup.heightTest",
+      "label": "Height Test",
+      "priority": 86,
+      "clusters": [
+        {
+          "clusterId": "pageSetup.heightTest.primary",
+          "layout": "row",
+          "controls": [
+            {
+              "controlId": "pageSetup.heightTest.dec",
+              "label": "Height -",
+              "type": "button",
+              "size": "small",
+              "iconKey": "icon.zoomOut",
+              "command": { "id": "ContentFrameHeightDec" }
+            },
+            {
+              "controlId": "pageSetup.heightTest.inc",
+              "label": "Height +",
+              "type": "button",
+              "size": "small",
+              "iconKey": "icon.zoomIn",
+              "command": { "id": "ContentFrameHeightInc" }
+            },
+            {
+              "controlId": "pageSetup.heightTest.reset",
+              "label": "Reset Auto",
+              "type": "button",
+              "size": "small",
+              "iconKey": "icon.refresh",
+              "command": { "id": "ContentFrameHeightReset" }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "groupId": "pageSetup",
+      "label": "Page Setup",
+      "priority": 85,
+      "clusters": [
+        {
+          "clusterId": "pageSetup.primary",
+          "layout": "row",
+          "controls": [
+            {
+              "controlId": "pageSetup.margins",
+              "label": "Margins",
+              "type": "dropdown",
+              "size": "medium",
+              "iconKey": "icon.margin",
+              "menu": [
+                {
+                  "controlId": "pageSetup.margins.normal",
+                  "label": "Normal",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "SetPageMargins",
+                    "args": { "presetId": "normal", "margins": { "top": "1in", "right": "1in", "bottom": "1in", "left": "1in" } }
+                  }
+                },
+                {
+                  "controlId": "pageSetup.margins.narrow",
+                  "label": "Narrow",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "SetPageMargins",
+                    "args": { "presetId": "narrow", "margins": { "top": "0.5in", "right": "0.5in", "bottom": "0.5in", "left": "0.5in" } }
+                  }
+                },
+                {
+                  "controlId": "pageSetup.margins.moderate",
+                  "label": "Moderate",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "SetPageMargins",
+                    "args": { "presetId": "moderate", "margins": { "top": "1in", "right": "0.75in", "bottom": "1in", "left": "0.75in" } }
+                  }
+                },
+                {
+                  "controlId": "pageSetup.margins.wide",
+                  "label": "Wide",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "SetPageMargins",
+                    "args": { "presetId": "wide", "margins": { "top": "1in", "right": "1.5in", "bottom": "1in", "left": "1.5in" } }
+                  }
+                }
+              ],
+              "collapse": { "A": "visible", "B": "iconOnly", "C": "inFlyout" }
+            },
+            {
+              "controlId": "pageSetup.orientation",
+              "label": "Orientation",
+              "type": "dropdown",
+              "size": "medium",
+              "iconKey": "icon.orientation",
+              "menu": [
+                {
+                  "controlId": "pageSetup.orientation.portrait",
+                  "label": "Portrait",
+                  "type": "menuItem",
+                  "command": { "id": "SetPageOrientation", "args": { "orientation": "portrait" } }
+                },
+                {
+                  "controlId": "pageSetup.orientation.landscape",
+                  "label": "Landscape",
+                  "type": "menuItem",
+                  "command": { "id": "SetPageOrientation", "args": { "orientation": "landscape" } }
+                }
+              ],
+              "collapse": { "A": "visible", "B": "iconOnly", "C": "inFlyout" }
+            },
+            {
+              "controlId": "pageSetup.size",
+              "label": "Size",
+              "type": "dropdown",
+              "size": "medium",
+              "iconKey": "icon.pageSize",
+              "menu": [
+                { "controlId": "pageSetup.size.a4", "label": "A4", "type": "menuItem", "command": { "id": "SetPageSize", "args": { "id": "a4" } } },
+                { "controlId": "pageSetup.size.letter", "label": "Letter", "type": "menuItem", "command": { "id": "SetPageSize", "args": { "id": "letter" } } },
+                { "controlId": "pageSetup.size.legal", "label": "Legal", "type": "menuItem", "command": { "id": "SetPageSize", "args": { "id": "legal" } } }
+              ],
+              "collapse": { "A": "visible", "B": "iconOnly", "C": "inFlyout" }
+            },
+            {
+              "controlId": "pageSetup.gutter",
+              "label": "Gutter",
+              "type": "dropdown",
+              "size": "medium",
+              "iconKey": "icon.margin",
+              "menu": [
+                {
+                  "controlId": "pageSetup.gutter.none",
+                  "label": "None",
+                  "type": "menuItem",
+                  "command": { "id": "SetPageGutter", "args": { "enabled": false } }
+                },
+                {
+                  "controlId": "pageSetup.gutter.left",
+                  "label": "Left (0.5 in)",
+                  "type": "menuItem",
+                  "command": { "id": "SetPageGutter", "args": { "enabled": true, "valueIn": 0.5, "positionId": "left" } }
+                },
+                {
+                  "controlId": "pageSetup.gutter.top",
+                  "label": "Top (0.5 in)",
+                  "type": "menuItem",
+                  "command": { "id": "SetPageGutter", "args": { "enabled": true, "valueIn": 0.5, "positionId": "top" } }
+                }
+              ],
+              "collapse": { "A": "visible", "B": "iconOnly", "C": "inFlyout" }
+            },
+            {
+              "controlId": "pageSetup.headerDistance",
+              "label": "Header",
+              "type": "dropdown",
+              "size": "medium",
+              "iconKey": "icon.header",
+              "menu": [
+                { "controlId": "pageSetup.headerDistance.05", "label": "0.5 in", "type": "menuItem", "command": { "id": "SetHeaderDistance", "args": { "valueIn": 0.5 } } },
+                { "controlId": "pageSetup.headerDistance.075", "label": "0.75 in", "type": "menuItem", "command": { "id": "SetHeaderDistance", "args": { "valueIn": 0.75 } } },
+                { "controlId": "pageSetup.headerDistance.1", "label": "1 in", "type": "menuItem", "command": { "id": "SetHeaderDistance", "args": { "valueIn": 1 } } }
+              ],
+              "collapse": { "A": "visible", "B": "iconOnly", "C": "inFlyout" }
+            },
+            {
+              "controlId": "pageSetup.footerDistance",
+              "label": "Footer",
+              "type": "dropdown",
+              "size": "medium",
+              "iconKey": "icon.footer",
+              "menu": [
+                { "controlId": "pageSetup.footerDistance.05", "label": "0.5 in", "type": "menuItem", "command": { "id": "SetFooterDistance", "args": { "valueIn": 0.5 } } },
+                { "controlId": "pageSetup.footerDistance.075", "label": "0.75 in", "type": "menuItem", "command": { "id": "SetFooterDistance", "args": { "valueIn": 0.75 } } },
+                { "controlId": "pageSetup.footerDistance.1", "label": "1 in", "type": "menuItem", "command": { "id": "SetFooterDistance", "args": { "valueIn": 1 } } }
+              ],
+              "collapse": { "A": "visible", "B": "iconOnly", "C": "inFlyout" }
+            },
+            {
+              "controlId": "pageSetup.contentHeight",
+              "label": "Body Height",
+              "type": "spinnerDropdown",
+              "size": "medium",
+              "iconKey": "icon.pageSize",
+              "command": { "id": "SetContentFrameHeight", "payloadSchema": { "value": "number" } },
+              "presets": [400, 500, 600, 700],
+              "menu": [
+                {
+                  "controlId": "pageSetup.contentHeight.reset",
+                  "label": "Reset Auto",
+                  "type": "menuItem",
+                  "command": { "id": "ContentFrameHeightReset" }
+                }
+              ],
+              "collapse": { "A": "visible", "B": "iconOnly", "C": "inFlyout" }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

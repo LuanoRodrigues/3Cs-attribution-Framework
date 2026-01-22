@@ -1,0 +1,207 @@
+/* insert.css — Insert tab styling (full replacement)
+   Matches Insert.json structures you provided:
+   Groups: pages, tables, illustrations, media, links, addins, symbols
+   Control patterns: large split buttons, table grid picker, galleries, mixed row/column clusters
+*/
+
+/* =========================
+   Insert tab scoping
+   ========================= */
+.leditor-ribbon-panel[data-tab-id="insert"] {
+  --insert-cluster-gap: 8px;
+  --insert-grid-gap: 8px;
+}
+
+/* Insert tends to be wide; allow smooth horizontal scan without breaking layout */
+.leditor-ribbon-panel[data-tab-id="insert"] .leditor-ribbon-groups {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+
+/* Keep Insert group bodies a bit roomier than Home */
+.leditor-ribbon-panel[data-tab-id="insert"] .leditor-ribbon-group-body {
+  gap: 10px;
+}
+
+/* =========================
+   Pages group
+   ========================= */
+/* Pages.primary is a column of large controls */
+.leditor-ribbon-panel[data-tab-id="insert"] [data-group-id="pages"] [data-cluster-id="pages.primary"],
+.leditor-ribbon-panel[data-tab-id="insert"] [data-cluster-id="pages.primary"] {
+  display: grid;
+  grid-auto-flow: row;
+  gap: var(--insert-cluster-gap);
+  align-content: start;
+}
+
+.leditor-ribbon-panel[data-tab-id="insert"] [data-group-id="pages"] .leditor-split-button,
+.leditor-ribbon-panel[data-tab-id="insert"] [data-group-id="pages"] .leditor-ribbon-button--large {
+  width: 110px;
+}
+
+/* =========================
+   Tables group
+   ========================= */
+/* Tables.primary is a column; main control is splitButton(Table) large, plus an optional quickTablesStandalone */
+.leditor-ribbon-panel[data-tab-id="insert"] [data-cluster-id="tables.primary"] {
+  display: grid;
+  grid-auto-flow: row;
+  gap: var(--insert-cluster-gap);
+  align-content: start;
+}
+
+.leditor-ribbon-panel[data-tab-id="insert"] [data-control-id="tables.insertTable"],
+.leditor-ribbon-panel[data-tab-id="insert"] [data-group-id="tables"] .leditor-split-button {
+  width: 110px;
+}
+
+/* Table grid picker widget (menu surface) — aligns with ribbon.css pickers */
+.leditor-ribbon-panel[data-tab-id="insert"] .rtablePicker {
+  width: 260px;
+}
+
+/* Ensure custom widget entry looks like a menu row */
+.leditor-ribbon-panel[data-tab-id="insert"] [data-control-id="tables.gridPicker"] {
+  padding: 6px 8px;
+}
+
+/* =========================
+   Illustrations group
+   ========================= */
+/* Wide row of large controls; keep nowrap but allow scroll */
+.leditor-ribbon-panel[data-tab-id="insert"] [data-cluster-id="illustrations.primary"] {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--insert-cluster-gap);
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+/* Harmonize large tiles */
+.leditor-ribbon-panel[data-tab-id="insert"] [data-group-id="illustrations"] .leditor-ribbon-button--large,
+.leditor-ribbon-panel[data-tab-id="insert"] [data-group-id="illustrations"] .leditor-split-button {
+  width: 118px;
+}
+
+/* =========================
+   Media group
+   ========================= */
+.leditor-ribbon-panel[data-tab-id="insert"] [data-cluster-id="media.primary"] {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--insert-cluster-gap);
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+/* Media has a mix of large and medium. Keep mediums slightly narrower. */
+.leditor-ribbon-panel[data-tab-id="insert"] [data-group-id="media"] .leditor-ribbon-button--large,
+.leditor-ribbon-panel[data-tab-id="insert"] [data-group-id="media"] .leditor-split-button[data-size="large"] {
+  width: 118px;
+}
+
+.leditor-ribbon-panel[data-tab-id="insert"] [data-group-id="media"] .leditor-ribbon-button--medium,
+.leditor-ribbon-panel[data-tab-id="insert"] [data-group-id="media"] .leditor-split-button[data-size="medium"] {
+  width: 108px;
+}
+
+/* Embed dialog textarea styling compatibility (from ribbon.css: .rembed) */
+.leditor-ribbon-panel[data-tab-id="insert"] .rembed {
+  width: 520px;
+}
+
+/* =========================
+   Links group
+   ========================= */
+.leditor-ribbon-panel[data-tab-id="insert"] [data-cluster-id="links.primary"] {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--insert-cluster-gap);
+  flex-wrap: nowrap;
+}
+
+.leditor-ribbon-panel[data-tab-id="insert"] [data-group-id="links"] .leditor-ribbon-button--medium,
+.leditor-ribbon-panel[data-tab-id="insert"] [data-group-id="links"] .leditor-split-button {
+  width: 120px;
+}
+
+/* When collapsed into menus, keep split buttons from shrinking too much */
+.leditor-ribbon-panel[data-tab-id="insert"] [data-group-id="links"] .leditor-split-button {
+  min-width: 108px;
+}
+
+/* =========================
+   Add-ins group
+   ========================= */
+.leditor-ribbon-panel[data-tab-id="insert"] [data-cluster-id="addins.primary"] {
+  display: flex;
+  gap: var(--insert-cluster-gap);
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+/* Medium controls */
+.leditor-ribbon-panel[data-tab-id="insert"] [data-group-id="addins"] .leditor-ribbon-button--medium,
+.leditor-ribbon-panel[data-tab-id="insert"] [data-group-id="addins"] .ribbon-dropdown-button {
+  min-width: 130px;
+}
+
+/* =========================
+   Symbols group
+   ========================= */
+.leditor-ribbon-panel[data-tab-id="insert"] [data-cluster-id="symbols.primary"] {
+  display: flex;
+  gap: var(--insert-cluster-gap);
+  align-items: flex-start;
+  flex-wrap: nowrap;
+}
+
+.leditor-ribbon-panel[data-tab-id="insert"] [data-group-id="symbols"] .leditor-ribbon-button--large,
+.leditor-ribbon-panel[data-tab-id="insert"] [data-group-id="symbols"] .leditor-split-button {
+  width: 118px;
+}
+
+.leditor-ribbon-panel[data-tab-id="insert"] [data-control-id="symbols.emoji"] {
+  min-width: 96px;
+}
+
+/* =========================
+   Galleries used by Insert
+   ========================= */
+/* Cover pages / Shapes / Equations galleries — reuse existing rgallery styles but ensure sizing */
+.leditor-ribbon-panel[data-tab-id="insert"] .rgallery {
+  width: 360px;
+}
+
+.leditor-ribbon-panel[data-tab-id="insert"] .rgallery__grid {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+/* Make gallery items look “template-like” */
+.leditor-ribbon-panel[data-tab-id="insert"] .rgallery__item {
+  min-height: 78px;
+}
+
+/* =========================
+   Stage B/C behavior
+   ========================= */
+/* Insert already uses nowrap + overflow; Stage B adds more consolidation but keep it usable */
+.leditor-ribbon-stage-b .leditor-ribbon-panel[data-tab-id="insert"] .leditor-ribbon-group {
+  min-width: 180px;
+}
+
+.leditor-ribbon-stage-c .leditor-ribbon-panel[data-tab-id="insert"] .leditor-ribbon-group-body {
+  overflow: hidden;
+}
+
+/* =========================
+   Optional: data-attribute fallbacks
+   If your renderer does not set data-group-id/data-cluster-id, these class hooks
+   help align with earlier ribbon.css conventions.
+   ========================= */
+.leditor-ribbon-panel[data-tab-id="insert"] .ribbon-page-setup {
+  height: 100%;
+}

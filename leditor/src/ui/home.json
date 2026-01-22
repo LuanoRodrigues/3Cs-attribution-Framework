@@ -1,0 +1,2122 @@
+{
+  "$schema": "leditor.ribbon.schema.v1",
+  "ribbonId": "main.ribbon",
+  "version": 1,
+  "tabId": "home",
+  "label": "Home",
+  "accessibility": {
+    "ariaLabel": "Ribbon tab: Home",
+    "keyboard": {
+      "keyTips": true,
+      "keyTipModeKey": "Alt",
+      "focusRing": "system"
+    }
+  },
+  "layout": {
+    "stages": [
+      "A",
+      "B",
+      "C"
+    ],
+    "stageMeaning": {
+      "A": "Full layout",
+      "B": "Compact layout with overflow/menu consolidation",
+      "C": "Collapsed group flyouts"
+    },
+    "stageDefaults": {
+      "A": {
+        "maxGroups": 6,
+        "allowTabScroll": false
+      },
+      "B": {
+        "maxGroups": 6,
+        "allowTabScroll": true
+      },
+      "C": {
+        "maxGroups": 6,
+        "allowTabScroll": true
+      }
+    }
+  },
+  "groups": [
+    {
+      "groupId": "clipboard",
+      "label": "Clipboard",
+      "priority": 95,
+      "a11y": {
+        "ariaLabel": "Clipboard group"
+      },
+      "dialogLauncher": {
+        "controlId": "clipboard.dialogLauncher",
+        "type": "dialogLauncher",
+        "label": "Clipboard Options",
+        "iconKey": "icon.dialogLauncher",
+        "command": {
+          "id": "clipboard.options.openDialog"
+        },
+        "keyTip": "FO"
+      },
+      "clusters": [
+        {
+          "clusterId": "clipboard.paste",
+          "layout": "column",
+          "controls": [
+            {
+              "controlId": "clipboard.paste",
+              "label": "Paste",
+              "type": "splitButton",
+              "size": "large",
+              "iconKey": "icon.paste",
+              "command": {
+                "id": "paste.default"
+              },
+              "keyTip": "V",
+              "tooltip": {
+                "title": "Paste",
+                "description": "Paste the contents of the Clipboard.",
+                "shortcut": "Ctrl+V"
+              },
+              "menu": [
+                {
+                  "controlId": "clipboard.paste.keepSource",
+                  "label": "Keep Source Formatting",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "paste.keepSource"
+                  },
+                  "tooltip": {
+                    "title": "Keep Source Formatting"
+                  }
+                },
+                {
+                  "controlId": "clipboard.paste.mergeFormatting",
+                  "label": "Merge Formatting",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "paste.mergeFormatting"
+                  }
+                },
+                {
+                  "controlId": "clipboard.paste.keepTextOnly",
+                  "label": "Keep Text Only",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "paste.textOnly"
+                  }
+                },
+                {
+                  "type": "separator"
+                },
+                {
+                  "controlId": "clipboard.paste.special",
+                  "label": "Paste Special\u2026",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "paste.special.openDialog"
+                  }
+                },
+                {
+                  "type": "separator"
+                },
+                {
+                  "controlId": "clipboard.paste.plainText",
+                  "label": "Paste as Plain Text",
+                  "type": "menuItem",
+                  "iconKey": "icon.cleanPaste",
+                  "command": {
+                    "id": "paste.plainText"
+                  }
+                },
+                {
+                  "controlId": "clipboard.paste.fromWord",
+                  "label": "Paste from Word (Cleanup)",
+                  "type": "menuItem",
+                  "iconKey": "icon.cleanPaste",
+                  "command": {
+                    "id": "paste.fromWordCleanup"
+                  }
+                },
+                {
+                  "controlId": "clipboard.paste.autoCleanToggle",
+                  "label": "Auto-clean on paste",
+                  "type": "menuToggle",
+                  "command": {
+                    "id": "paste.autoClean.toggle"
+                  },
+                  "state": {
+                    "binding": "pasteAutoClean",
+                    "kind": "boolean"
+                  }
+                },
+                {
+                  "controlId": "clipboard.paste.cleanupRules",
+                  "label": "Paste Cleanup Rules\u2026",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "paste.cleanupRules.openDialog"
+                  }
+                },
+                {
+                  "type": "separator"
+                },
+                {
+                  "controlId": "clipboard.paste.setDefault",
+                  "label": "Set Default Paste\u2026",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "paste.defaults.openDialog"
+                  }
+                }
+              ],
+              "collapse": {
+                "A": "visible",
+                "B": "medium",
+                "C": "inFlyout"
+              }
+            }
+          ]
+        },
+        {
+          "clusterId": "clipboard.actions",
+          "layout": "grid",
+          "controls": [
+            {
+              "controlId": "clipboard.cut",
+              "label": "Cut",
+              "type": "button",
+              "size": "small",
+              "iconKey": "icon.cut",
+              "command": {
+                "id": "clipboard.cut"
+              },
+              "keyTip": "X",
+              "tooltip": {
+                "title": "Cut",
+                "shortcut": "Ctrl+X"
+              },
+              "collapse": {
+                "A": "visible",
+                "B": "visible",
+                "C": "inFlyout"
+              }
+            },
+            {
+              "controlId": "clipboard.copy",
+              "label": "Copy",
+              "type": "button",
+              "size": "small",
+              "iconKey": "icon.copy",
+              "command": {
+                "id": "clipboard.copy"
+              },
+              "keyTip": "C",
+              "tooltip": {
+                "title": "Copy",
+                "shortcut": "Ctrl+C"
+              },
+              "collapse": {
+                "A": "visible",
+                "B": "visible",
+                "C": "inFlyout"
+              }
+            },
+            {
+              "controlId": "clipboard.formatPainter",
+              "label": "Format Painter",
+              "type": "toggleButton",
+              "size": "small",
+              "iconKey": "icon.formatPainter",
+              "command": {
+                "id": "clipboard.formatPainter.toggle"
+              },
+              "state": {
+                "binding": "formatPainter",
+                "kind": "boolean"
+              },
+              "tooltip": {
+                "title": "Format Painter"
+              },
+              "collapse": {
+                "A": "visible",
+                "B": "iconOnly",
+                "C": "inFlyout"
+              }
+            }
+          ]
+        },
+        {
+          "clusterId": "clipboard.history",
+          "layout": "row",
+          "controls": [
+            {
+              "controlId": "clipboard.undo",
+              "label": "Undo",
+              "type": "button",
+              "size": "small",
+              "iconKey": "icon.undo",
+              "command": {
+                "id": "history.undo"
+              },
+              "enabledWhen": "canUndo",
+              "tooltip": {
+                "title": "Undo",
+                "shortcut": "Ctrl+Z"
+              },
+              "collapse": {
+                "A": "visible",
+                "B": "inOverflowOf:clipboard.paste",
+                "C": "inFlyout"
+              }
+            },
+            {
+              "controlId": "clipboard.redo",
+              "label": "Redo",
+              "type": "button",
+              "size": "small",
+              "iconKey": "icon.redo",
+              "command": {
+                "id": "history.redo"
+              },
+              "enabledWhen": "canRedo",
+              "tooltip": {
+                "title": "Redo",
+                "shortcut": "Ctrl+Y"
+              },
+              "collapse": {
+                "A": "visible",
+                "B": "inOverflowOf:clipboard.paste",
+                "C": "inFlyout"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "groupId": "font",
+      "label": "Font",
+      "priority": 92,
+      "a11y": {
+        "ariaLabel": "Font group"
+      },
+      "dialogLauncher": {
+        "controlId": "font.dialogLauncher",
+        "type": "dialogLauncher",
+        "label": "Font Options",
+        "iconKey": "icon.dialogLauncher",
+        "command": {
+          "id": "font.options.openDialog"
+        },
+        "keyTip": "FN"
+      },
+      "clusters": [
+        {
+          "clusterId": "font.styles",
+          "layout": "row",
+          "controls": [
+            {
+              "controlId": "font.style",
+              "label": "Style",
+              "type": "dropdown",
+              "size": "mediumWide",
+              "iconKey": "icon.paragraphStyle",
+              "command": {
+                "id": "NormalStyle"
+              },
+              "keyTip": "S",
+              "menu": [
+                {
+                  "controlId": "font.style.normal",
+                  "label": "Normal",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "NormalStyle"
+                  }
+                },
+                {
+                  "controlId": "font.style.title",
+                  "label": "Title",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "Heading1"
+                  }
+                },
+                {
+                  "controlId": "font.style.subtitle",
+                  "label": "Subtitle",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "Heading2"
+                  }
+                },
+                {
+                  "type": "separator"
+                },
+                {
+                  "controlId": "font.style.heading1",
+                  "label": "Heading 1",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "Heading1"
+                  }
+                },
+                {
+                  "controlId": "font.style.heading2",
+                  "label": "Heading 2",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "Heading2"
+                  }
+                },
+                {
+                  "controlId": "font.style.heading3",
+                  "label": "Heading 3",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "Heading3"
+                  }
+                },
+                {
+                  "controlId": "font.style.heading4",
+                  "label": "Heading 4",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "Heading4"
+                  }
+                },
+                {
+                  "controlId": "font.style.heading5",
+                  "label": "Heading 5",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "Heading5"
+                  }
+                },
+                {
+                  "controlId": "font.style.heading6",
+                  "label": "Heading 6",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "Heading6"
+                  }
+                }
+              ],
+              "collapse": {
+                "A": "visible",
+                "B": "visible",
+                "C": "inFlyout"
+              }
+            },
+            {
+              "controlId": "font.family",
+              "label": "Font",
+              "type": "combobox",
+              "size": "mediumWide",
+              "iconKey": "icon.font",
+              "command": {
+                "id": "FontFamily",
+                "payloadSchema": {
+                  "value": "string"
+                }
+              },
+              "state": {
+                "binding": "fontFamily",
+                "kind": "string|mixed"
+              },
+              "suggestions": {
+                "kind": "static",
+                "items": [
+                  "Calibri",
+                  "Calibri Light",
+                  "Segoe UI",
+                  "Arial",
+                  "Times New Roman",
+                  "Cambria",
+                  "Georgia",
+                  "Consolas"
+                ]
+              },
+              "collapse": {
+                "A": "visible",
+                "B": "narrow",
+                "C": "inFlyout"
+              }
+            },
+            {
+              "controlId": "font.size",
+              "label": "Font Size",
+              "type": "spinnerDropdown",
+              "size": "medium",
+              "iconKey": "icon.fontSize",
+              "command": {
+                "id": "FontSize",
+                "payloadSchema": {
+                  "valuePx": "number"
+                }
+              },
+              "state": {
+                "binding": "fontSize",
+                "kind": "number|mixed"
+              },
+              "presets": [
+                10,
+                11,
+                12,
+                14,
+                16,
+                18,
+                20,
+                22,
+                24,
+                28,
+                32,
+                40,
+                48,
+                60,
+                72
+              ],
+              "steppers": {
+                "step": 1,
+                "min": 1,
+                "max": 400
+              },
+              "collapse": {
+                "A": "visible",
+                "B": "dropdownOnly",
+                "C": "inFlyout"
+              }
+            },
+            {
+              "controlId": "font.grow",
+              "label": "Increase Font Size",
+              "type": "button",
+              "size": "small",
+              "iconKey": "icon.growFont",
+              "command": {
+                "id": "font.size.grow"
+              },
+              "collapse": {
+                "A": "optional",
+                "B": "inOverflow",
+                "C": "inFlyout"
+              }
+            },
+            {
+              "controlId": "font.shrink",
+              "label": "Decrease Font Size",
+              "type": "button",
+              "size": "small",
+              "iconKey": "icon.shrinkFont",
+              "command": {
+                "id": "font.size.shrink"
+              },
+              "collapse": {
+                "A": "optional",
+                "B": "inOverflow",
+                "C": "inFlyout"
+              }
+            }
+          ]
+        },
+        {
+          "clusterId": "font.toggles",
+          "layout": "grid",
+          "controls": [
+            {
+              "controlId": "font.bold",
+              "label": "Bold",
+              "type": "toggleButton",
+              "size": "small",
+              "iconKey": "icon.bold",
+              "command": {
+                "id": "font.bold.toggle"
+              },
+              "state": {
+                "binding": "bold",
+                "kind": "boolean|mixed"
+              },
+              "shortcut": "Ctrl+B",
+              "collapse": {
+                "A": "visible",
+                "B": "visible",
+                "C": "inFlyout"
+              }
+            },
+            {
+              "controlId": "font.italic",
+              "label": "Italic",
+              "type": "toggleButton",
+              "size": "small",
+              "iconKey": "icon.italic",
+              "command": {
+                "id": "font.italic.toggle"
+              },
+              "state": {
+                "binding": "italic",
+                "kind": "boolean|mixed"
+              },
+              "shortcut": "Ctrl+I",
+              "collapse": {
+                "A": "visible",
+                "B": "visible",
+                "C": "inFlyout"
+              }
+            },
+            {
+              "controlId": "font.underline",
+              "label": "Underline",
+              "type": "splitToggleButton",
+              "size": "small",
+              "iconKey": "icon.underline",
+              "command": {
+                "id": "font.underline.toggle"
+              },
+              "state": {
+                "binding": "underline",
+                "kind": "boolean|mixed"
+              },
+              "shortcut": "Ctrl+U",
+              "menu": [
+                {
+                  "controlId": "font.underline.single",
+                  "label": "Single Underline",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "font.underline.set",
+                    "payloadSchema": {
+                      "style": "single"
+                    }
+                  }
+                },
+                {
+                  "controlId": "font.underline.double",
+                  "label": "Double Underline",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "font.underline.set",
+                    "payloadSchema": {
+                      "style": "double"
+                    }
+                  }
+                },
+                {
+                  "controlId": "font.underline.dotted",
+                  "label": "Dotted Underline",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "font.underline.set",
+                    "payloadSchema": {
+                      "style": "dotted"
+                    }
+                  }
+                },
+                {
+                  "controlId": "font.underline.dashed",
+                  "label": "Dashed Underline",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "font.underline.set",
+                    "payloadSchema": {
+                      "style": "dashed"
+                    }
+                  }
+                },
+                {
+                  "type": "separator"
+                },
+                {
+                  "controlId": "font.underline.color",
+                  "label": "Underline Color\u2026",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "font.underlineColor.openPicker"
+                  }
+                }
+              ],
+              "collapse": {
+                "A": "visible",
+                "B": "visible",
+                "C": "inFlyout"
+              }
+            },
+            {
+              "controlId": "font.strikethrough",
+              "label": "Strikethrough",
+              "type": "toggleButton",
+              "size": "small",
+              "iconKey": "icon.strikethrough",
+              "command": {
+                "id": "font.strikethrough.toggle"
+              },
+              "state": {
+                "binding": "strikethrough",
+                "kind": "boolean|mixed"
+              },
+              "collapse": {
+                "A": "visible",
+                "B": "visible",
+                "C": "inFlyout"
+              }
+            },
+            {
+              "controlId": "font.subscript",
+              "label": "Subscript",
+              "type": "toggleButton",
+              "size": "small",
+              "iconKey": "icon.subscript",
+              "command": {
+                "id": "font.subscript.toggle"
+              },
+              "state": {
+                "binding": "subscript",
+                "kind": "boolean|mixed"
+              },
+              "collapse": {
+                "A": "visible",
+                "B": "iconOnly",
+                "C": "inFlyout"
+              }
+            },
+            {
+              "controlId": "font.superscript",
+              "label": "Superscript",
+              "type": "toggleButton",
+              "size": "small",
+              "iconKey": "icon.superscript",
+              "command": {
+                "id": "font.superscript.toggle"
+              },
+              "state": {
+                "binding": "superscript",
+                "kind": "boolean|mixed"
+              },
+              "collapse": {
+                "A": "visible",
+                "B": "iconOnly",
+                "C": "inFlyout"
+              }
+            },
+            {
+              "controlId": "font.inlineCode",
+              "label": "Inline Code",
+              "type": "toggleButton",
+              "size": "small",
+              "iconKey": "icon.inlineCode",
+              "command": {
+                "id": "font.inlineCode.toggle"
+              },
+              "state": {
+                "binding": "inlineCode",
+                "kind": "boolean|mixed"
+              },
+              "collapse": {
+                "A": "visible",
+                "B": "iconOnly",
+                "C": "inFlyout"
+              }
+            }
+          ]
+        },
+        {
+          "clusterId": "font.colorAndClear",
+          "layout": "row",
+          "controls": [
+            {
+              "controlId": "font.color",
+              "label": "Font Color",
+              "type": "colorSplitButton",
+              "size": "small",
+              "iconKey": "icon.fontColor",
+              "command": {
+                "id": "TextColor"
+              },
+              "state": {
+                "binding": "fontColor",
+                "kind": "color|mixed"
+              },
+              "menu": [
+                {
+                  "type": "colorPalette",
+                  "controlId": "font.color.palette",
+                  "label": "Theme Colors",
+                  "palette": {
+                    "kind": "static",
+                    "rows": [
+                      [
+                        "#000000",
+                        "#1f2937",
+                        "#4b5563",
+                        "#6b7280",
+                        "#9ca3af"
+                      ],
+                      [
+                        "#ffffff",
+                        "#f3f4f6",
+                        "#e5e7eb",
+                        "#d1d5db",
+                        "#9ca3af"
+                      ],
+                      [
+                        "#0f172a",
+                        "#1e3a8a",
+                        "#1d4ed8",
+                        "#2563eb",
+                        "#60a5fa"
+                      ],
+                      [
+                        "#14532d",
+                        "#166534",
+                        "#16a34a",
+                        "#4ade80",
+                        "#86efac"
+                      ],
+                      [
+                        "#7c2d12",
+                        "#9a3412",
+                        "#ea580c",
+                        "#fb923c",
+                        "#fdba74"
+                      ],
+                      [
+                        "#701a75",
+                        "#86198f",
+                        "#c026d3",
+                        "#e879f9",
+                        "#f5d0fe"
+                      ]
+                    ]
+                  },
+                  "command": {
+                    "id": "TextColor",
+                    "payloadSchema": {
+                      "value": "string"
+                    }
+                  }
+                },
+                {
+                  "type": "separator"
+                },
+                {
+                  "controlId": "font.color.more",
+                  "label": "More Colors\u2026",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "TextColor"
+                  }
+                }
+              ],
+              "collapse": {
+                "A": "visible",
+                "B": "visible",
+                "C": "inFlyout"
+              }
+            },
+            {
+              "controlId": "font.highlight",
+              "label": "Text Highlight Color",
+              "type": "colorSplitButton",
+              "size": "small",
+              "iconKey": "icon.highlight",
+              "command": {
+                "id": "HighlightColor"
+              },
+              "state": {
+                "binding": "highlightColor",
+                "kind": "color|mixed"
+              },
+              "menu": [
+                {
+                  "type": "colorPalette",
+                  "controlId": "font.highlight.palette",
+                  "label": "Highlighter",
+                  "palette": {
+                    "kind": "static",
+                    "rows": [
+                      [
+                        "#ffff00",
+                        "#ffeb3b",
+                        "#c6ff00",
+                        "#00e676",
+                        "#00b0ff"
+                      ],
+                      [
+                        "#ff8a80",
+                        "#ffd180",
+                        "#ffff8d",
+                        "#ccff90",
+                        "#80d8ff"
+                      ],
+                      [
+                        "#ea80fc",
+                        "#b388ff",
+                        "#8c9eff",
+                        "#80d8ff",
+                        "#a7ffeb"
+                      ]
+                    ]
+                  },
+                  "command": {
+                    "id": "HighlightColor",
+                    "payloadSchema": {
+                      "value": "string|null"
+                    }
+                  }
+                },
+                {
+                  "type": "separator"
+                },
+                {
+                  "controlId": "font.highlight.none",
+                  "label": "No Color",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "HighlightColor",
+                    "payloadSchema": {
+                      "value": null
+                    }
+                  }
+                }
+              ],
+              "collapse": {
+                "A": "visible",
+                "B": "visible",
+                "C": "inFlyout"
+              }
+            },
+            {
+              "controlId": "font.clearFormatting",
+              "label": "Clear All Formatting",
+              "type": "button",
+              "size": "small",
+              "iconKey": "icon.clearFormatting",
+              "command": {
+                "id": "font.clearFormatting"
+              },
+              "collapse": {
+                "A": "visible",
+                "B": "inOverflow",
+                "C": "inFlyout"
+              }
+            },
+            {
+              "controlId": "font.changeCase",
+              "label": "Change Case",
+              "type": "dropdown",
+              "size": "small",
+              "iconKey": "icon.changeCase",
+              "command": {
+                "id": "font.case.openMenu"
+              },
+              "menu": [
+                {
+                  "controlId": "font.case.sentence",
+                  "label": "Sentence case",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "font.case.set",
+                    "payloadSchema": {
+                      "mode": "sentence"
+                    }
+                  }
+                },
+                {
+                  "controlId": "font.case.lower",
+                  "label": "lowercase",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "font.case.set",
+                    "payloadSchema": {
+                      "mode": "lower"
+                    }
+                  }
+                },
+                {
+                  "controlId": "font.case.upper",
+                  "label": "UPPERCASE",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "font.case.set",
+                    "payloadSchema": {
+                      "mode": "upper"
+                    }
+                  }
+                },
+                {
+                  "controlId": "font.case.title",
+                  "label": "Capitalize Each Word",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "font.case.set",
+                    "payloadSchema": {
+                      "mode": "title"
+                    }
+                  }
+                },
+                {
+                  "controlId": "font.case.toggle",
+                  "label": "tOGGLE cASE",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "font.case.set",
+                    "payloadSchema": {
+                      "mode": "toggle"
+                    }
+                  }
+                }
+              ],
+              "collapse": {
+                "A": "visible",
+                "B": "inOverflow",
+                "C": "inFlyout"
+              }
+            },
+            {
+              "controlId": "font.textEffects",
+              "label": "Text Effects and Typography",
+              "type": "dropdown",
+              "size": "small",
+              "iconKey": "icon.textEffects",
+              "command": {
+                "id": "font.effects.openMenu"
+              },
+              "menu": [
+                {
+                  "controlId": "font.effects.shadow",
+                  "label": "Shadow",
+                  "type": "menuToggle",
+                  "command": {
+                    "id": "font.effects.shadow.toggle"
+                  },
+                  "state": {
+                    "binding": "textShadow",
+                    "kind": "boolean"
+                  }
+                },
+                {
+                  "controlId": "font.effects.outline",
+                  "label": "Outline",
+                  "type": "menuToggle",
+                  "command": {
+                    "id": "font.effects.outline.toggle"
+                  },
+                  "state": {
+                    "binding": "textOutline",
+                    "kind": "boolean"
+                  }
+                },
+                {
+                  "type": "separator"
+                },
+                {
+                  "controlId": "font.effects.more",
+                  "label": "More Text Effects\u2026",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "font.effects.openDialog"
+                  }
+                }
+              ],
+              "collapse": {
+                "A": "optional",
+                "B": "inOverflow",
+                "C": "inFlyout"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "groupId": "paragraph",
+      "label": "Paragraph",
+      "priority": 90,
+      "a11y": {
+        "ariaLabel": "Paragraph group"
+      },
+      "dialogLauncher": {
+        "controlId": "paragraph.dialogLauncher",
+        "type": "dialogLauncher",
+        "label": "Paragraph Options",
+        "iconKey": "icon.dialogLauncher",
+        "command": {
+          "id": "paragraph.options.openDialog"
+        },
+        "keyTip": "PG"
+      },
+      "clusters": [
+        {
+          "clusterId": "paragraph.lists",
+          "layout": "grid",
+          "controls": [
+            {
+              "controlId": "paragraph.bullets",
+              "label": "Bullets",
+              "type": "splitButton",
+              "size": "small",
+              "iconKey": "icon.bullets",
+              "command": {
+                "id": "list.bullet.toggle"
+              },
+              "state": {
+                "binding": "listType",
+                "kind": "enum|mixed"
+              },
+              "menu": [
+                {
+                  "type": "gallery",
+                  "controlId": "paragraph.bullets.gallery",
+                  "label": "Bullet Library",
+                  "command": {
+                    "id": "list.bullet.setStyle",
+                    "payloadSchema": {
+                      "styleId": "string"
+                    }
+                  },
+                  "data": {
+                    "binding": "bulletStyles"
+                  }
+                }
+              ],
+              "collapse": {
+                "A": "visible",
+                "B": "visible",
+                "C": "inFlyout"
+              }
+            },
+            {
+              "controlId": "paragraph.numbering",
+              "label": "Numbering",
+              "type": "splitButton",
+              "size": "small",
+              "iconKey": "icon.numbering",
+              "command": {
+                "id": "list.ordered.toggle"
+              },
+              "state": {
+                "binding": "listType",
+                "kind": "enum|mixed"
+              },
+              "menu": [
+                {
+                  "type": "gallery",
+                  "controlId": "paragraph.numbering.gallery",
+                  "label": "Numbering Library",
+                  "command": {
+                    "id": "list.ordered.setStyle",
+                    "payloadSchema": {
+                      "styleId": "string"
+                    }
+                  },
+                  "data": {
+                    "binding": "numberingStyles"
+                  }
+                }
+              ],
+              "collapse": {
+                "A": "visible",
+                "B": "visible",
+                "C": "inFlyout"
+              }
+            },
+            {
+              "controlId": "paragraph.multilevel",
+              "label": "Multilevel List",
+              "type": "dropdown",
+              "size": "small",
+              "iconKey": "icon.multilevelList",
+              "command": {
+                "id": "list.multilevel.openMenu"
+              },
+              "menu": [
+                {
+                  "type": "gallery",
+                  "controlId": "paragraph.multilevel.gallery",
+                  "label": "List Library",
+                  "command": {
+                    "id": "list.multilevel.apply",
+                    "payloadSchema": {
+                      "templateId": "string"
+                    }
+                  },
+                  "data": {
+                    "binding": "multilevelListTemplates"
+                  }
+                }
+              ],
+              "collapse": {
+                "A": "visible",
+                "B": "inOverflow",
+                "C": "inFlyout"
+              }
+            },
+            {
+              "controlId": "paragraph.taskList",
+              "label": "Task List",
+              "type": "toggleButton",
+              "size": "small",
+              "iconKey": "icon.taskList",
+              "command": {
+                "id": "list.task.toggle"
+              },
+              "state": {
+                "binding": "listType",
+                "kind": "enum|mixed"
+              },
+              "collapse": {
+                "A": "optional",
+                "B": "inOverflow",
+                "C": "inFlyout"
+              }
+            }
+          ]
+        },
+        {
+          "clusterId": "paragraph.indentAndMarks",
+          "layout": "grid",
+          "controls": [
+            {
+              "controlId": "paragraph.outdent",
+              "label": "Decrease Indent",
+              "type": "button",
+              "size": "small",
+              "iconKey": "icon.outdent",
+              "command": {
+                "id": "paragraph.outdent"
+              },
+              "collapse": {
+                "A": "visible",
+                "B": "visible",
+                "C": "inFlyout"
+              }
+            },
+            {
+              "controlId": "paragraph.indent",
+              "label": "Increase Indent",
+              "type": "button",
+              "size": "small",
+              "iconKey": "icon.indent",
+              "command": {
+                "id": "paragraph.indent"
+              },
+              "collapse": {
+                "A": "visible",
+                "B": "visible",
+                "C": "inFlyout"
+              }
+            },
+            {
+              "controlId": "paragraph.sort",
+              "label": "Sort",
+              "type": "button",
+              "size": "small",
+              "iconKey": "icon.sort",
+              "command": {
+                "id": "paragraph.sort.openDialog"
+              },
+              "collapse": {
+                "A": "optional",
+                "B": "inOverflow",
+                "C": "inFlyout"
+              }
+            },
+            {
+              "controlId": "paragraph.showMarks",
+              "label": "Show/Hide \u00b6",
+              "type": "toggleButton",
+              "size": "small",
+              "iconKey": "icon.showMarks",
+              "command": {
+                "id": "view.formattingMarks.toggle"
+              },
+              "state": {
+                "binding": "showFormattingMarks",
+                "kind": "boolean"
+              },
+              "collapse": {
+                "A": "optional",
+                "B": "inOverflow",
+                "C": "inFlyout"
+              }
+            }
+          ]
+        },
+        {
+          "clusterId": "paragraph.alignment",
+          "layout": "segmented",
+          "controls": [
+            {
+              "controlId": "paragraph.alignLeft",
+              "label": "Align Left",
+              "type": "toggleButton",
+              "size": "small",
+              "iconKey": "icon.alignLeft",
+              "command": {
+                "id": "paragraph.align.set",
+                "payloadSchema": {
+                  "mode": "left"
+                }
+              },
+              "state": {
+                "binding": "alignment",
+                "kind": "enum|mixed"
+              },
+              "collapse": {
+                "A": "visible",
+                "B": "visible",
+                "C": "inFlyout"
+              }
+            },
+            {
+              "controlId": "paragraph.alignCenter",
+              "label": "Center",
+              "type": "toggleButton",
+              "size": "small",
+              "iconKey": "icon.alignCenter",
+              "command": {
+                "id": "paragraph.align.set",
+                "payloadSchema": {
+                  "mode": "center"
+                }
+              },
+              "state": {
+                "binding": "alignment",
+                "kind": "enum|mixed"
+              },
+              "collapse": {
+                "A": "visible",
+                "B": "visible",
+                "C": "inFlyout"
+              }
+            },
+            {
+              "controlId": "paragraph.alignRight",
+              "label": "Align Right",
+              "type": "toggleButton",
+              "size": "small",
+              "iconKey": "icon.alignRight",
+              "command": {
+                "id": "paragraph.align.set",
+                "payloadSchema": {
+                  "mode": "right"
+                }
+              },
+              "state": {
+                "binding": "alignment",
+                "kind": "enum|mixed"
+              },
+              "collapse": {
+                "A": "visible",
+                "B": "visible",
+                "C": "inFlyout"
+              }
+            },
+            {
+              "controlId": "paragraph.alignJustify",
+              "label": "Justify",
+              "type": "toggleButton",
+              "size": "small",
+              "iconKey": "icon.alignJustify",
+              "command": {
+                "id": "paragraph.align.set",
+                "payloadSchema": {
+                  "mode": "justify"
+                }
+              },
+              "state": {
+                "binding": "alignment",
+                "kind": "enum|mixed"
+              },
+              "collapse": {
+                "A": "visible",
+                "B": "visible",
+                "C": "inFlyout"
+              }
+            }
+          ]
+        },
+        {
+          "clusterId": "paragraph.spacingAndBorders",
+          "layout": "row",
+          "controls": [
+            {
+              "controlId": "paragraph.spacing",
+              "label": "Line and Paragraph Spacing",
+              "type": "dropdown",
+              "size": "small",
+              "iconKey": "icon.lineSpacing",
+              "command": {
+                "id": "paragraph.spacing.openMenu"
+              },
+              "state": {
+                "binding": "lineSpacing",
+                "kind": "number|mixed"
+              },
+              "menu": [
+                {
+                  "controlId": "paragraph.spacing.1_0",
+                  "label": "1.0",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "paragraph.lineSpacing.set",
+                    "payloadSchema": {
+                      "value": 1.0
+                    }
+                  }
+                },
+                {
+                  "controlId": "paragraph.spacing.1_15",
+                  "label": "1.15",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "paragraph.lineSpacing.set",
+                    "payloadSchema": {
+                      "value": 1.15
+                    }
+                  }
+                },
+                {
+                  "controlId": "paragraph.spacing.1_5",
+                  "label": "1.5",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "paragraph.lineSpacing.set",
+                    "payloadSchema": {
+                      "value": 1.5
+                    }
+                  }
+                },
+                {
+                  "controlId": "paragraph.spacing.2_0",
+                  "label": "2.0",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "paragraph.lineSpacing.set",
+                    "payloadSchema": {
+                      "value": 2.0
+                    }
+                  }
+                },
+                {
+                  "type": "separator"
+                },
+                {
+                  "controlId": "paragraph.spaceBefore.add",
+                  "label": "Add Space Before Paragraph",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "paragraph.spaceBefore.add"
+                  }
+                },
+                {
+                  "controlId": "paragraph.spaceBefore.remove",
+                  "label": "Remove Space Before Paragraph",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "paragraph.spaceBefore.remove"
+                  }
+                },
+                {
+                  "controlId": "paragraph.spaceAfter.add",
+                  "label": "Add Space After Paragraph",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "paragraph.spaceAfter.add"
+                  }
+                },
+                {
+                  "controlId": "paragraph.spaceAfter.remove",
+                  "label": "Remove Space After Paragraph",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "paragraph.spaceAfter.remove"
+                  }
+                },
+                {
+                  "type": "separator"
+                },
+                {
+                  "controlId": "paragraph.spacing.options",
+                  "label": "Line Spacing Options\u2026",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "paragraph.spacing.openDialog"
+                  }
+                }
+              ],
+              "collapse": {
+                "A": "visible",
+                "B": "visible",
+                "C": "inFlyout"
+              }
+            },
+            {
+              "controlId": "paragraph.borders",
+              "label": "Borders",
+              "type": "dropdown",
+              "size": "small",
+              "iconKey": "icon.borders",
+              "command": {
+                "id": "paragraph.borders.openMenu"
+              },
+              "state": {
+                "binding": "borders",
+                "kind": "enum|mixed"
+              },
+              "menu": [
+                {
+                  "controlId": "paragraph.borders.none",
+                  "label": "No Border",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "paragraph.borders.set",
+                    "payloadSchema": {
+                      "preset": "none"
+                    }
+                  }
+                },
+                {
+                  "controlId": "paragraph.borders.bottom",
+                  "label": "Bottom Border",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "paragraph.borders.set",
+                    "payloadSchema": {
+                      "preset": "bottom"
+                    }
+                  }
+                },
+                {
+                  "controlId": "paragraph.borders.top",
+                  "label": "Top Border",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "paragraph.borders.set",
+                    "payloadSchema": {
+                      "preset": "top"
+                    }
+                  }
+                },
+                {
+                  "controlId": "paragraph.borders.left",
+                  "label": "Left Border",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "paragraph.borders.set",
+                    "payloadSchema": {
+                      "preset": "left"
+                    }
+                  }
+                },
+                {
+                  "controlId": "paragraph.borders.right",
+                  "label": "Right Border",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "paragraph.borders.set",
+                    "payloadSchema": {
+                      "preset": "right"
+                    }
+                  }
+                },
+                {
+                  "controlId": "paragraph.borders.all",
+                  "label": "All Borders",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "paragraph.borders.set",
+                    "payloadSchema": {
+                      "preset": "all"
+                    }
+                  }
+                },
+                {
+                  "controlId": "paragraph.borders.outside",
+                  "label": "Outside Borders",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "paragraph.borders.set",
+                    "payloadSchema": {
+                      "preset": "outside"
+                    }
+                  }
+                },
+                {
+                  "controlId": "paragraph.borders.inside",
+                  "label": "Inside Borders",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "paragraph.borders.set",
+                    "payloadSchema": {
+                      "preset": "inside"
+                    }
+                  }
+                },
+                {
+                  "type": "separator"
+                },
+                {
+                  "controlId": "paragraph.borders.dialog",
+                  "label": "Borders and Shading\u2026",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "paragraph.borders.openDialog"
+                  }
+                }
+              ],
+              "collapse": {
+                "A": "visible",
+                "B": "compact",
+                "C": "inFlyout"
+              }
+            },
+            {
+              "controlId": "paragraph.shading",
+              "label": "Shading",
+              "type": "colorPicker",
+              "size": "small",
+              "iconKey": "icon.shading",
+              "command": {
+                "id": "paragraph.shading.set",
+                "payloadSchema": {
+                  "color": "string|null"
+                }
+              },
+              "state": {
+                "binding": "shading",
+                "kind": "color|mixed"
+              },
+              "collapse": {
+                "A": "visible",
+                "B": "inOverflow",
+                "C": "inFlyout"
+              }
+            },
+            {
+              "controlId": "paragraph.blockquote",
+              "label": "Blockquote",
+              "type": "toggleButton",
+              "size": "small",
+              "iconKey": "icon.blockquote",
+              "command": {
+                "id": "paragraph.blockquote.toggle"
+              },
+              "state": {
+                "binding": "blockquote",
+                "kind": "boolean|mixed"
+              },
+              "collapse": {
+                "A": "optional",
+                "B": "inOverflow",
+                "C": "inFlyout"
+              }
+            },
+            {
+              "controlId": "paragraph.horizontalRule",
+              "label": "Horizontal Line",
+              "type": "button",
+              "size": "small",
+              "iconKey": "icon.horizontalRule",
+              "command": {
+                "id": "insert.horizontalRule"
+              },
+              "collapse": {
+                "A": "optional",
+                "B": "inOverflow",
+                "C": "inFlyout"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "groupId": "styles",
+      "label": "Styles",
+      "priority": 80,
+      "a11y": {
+        "ariaLabel": "Styles group"
+      },
+      "dialogLauncher": {
+        "controlId": "styles.dialogLauncher",
+        "type": "dialogLauncher",
+        "label": "Styles Options",
+        "iconKey": "icon.dialogLauncher",
+        "command": {
+          "id": "styles.options.openDialog"
+        },
+        "keyTip": "SL"
+      },
+      "clusters": [
+        {
+          "clusterId": "styles.gallery",
+          "layout": "row",
+          "controls": [
+            {
+              "controlId": "styles.gallery",
+              "label": "Quick Styles",
+              "type": "gallery",
+              "size": "gallery",
+              "iconKey": "icon.styles",
+              "command": {
+                "id": "styles.apply",
+                "payloadSchema": {
+                  "styleId": "string"
+                }
+              },
+              "state": {
+                "binding": "activeStyle",
+                "kind": "string|mixed"
+              },
+              "data": {
+                "binding": "availableStyles"
+              },
+              "pinnedItems": [
+                "style.normal",
+                "style.noSpacing",
+                "style.heading1",
+                "style.heading2",
+                "style.heading3",
+                "style.title",
+                "style.subtitle",
+                "style.quote",
+                "style.intenseQuote",
+                "style.codeBlock",
+                "style.calloutInfo",
+                "style.calloutWarning",
+                "style.calloutSuccess",
+                "style.calloutDanger"
+              ],
+              "gallery": {
+                "columns": 5,
+                "itemMinWidth": 120,
+                "itemHeight": 40,
+                "showMoreButton": true,
+                "moreButtonLabel": "More",
+                "preview": {
+                  "enabled": true,
+                  "mode": "hover"
+                }
+              },
+              "collapse": {
+                "A": "visible",
+                "B": "narrow",
+                "C": "inFlyout"
+              }
+            },
+            {
+              "controlId": "styles.pane",
+              "label": "Styles Pane",
+              "type": "button",
+              "size": "small",
+              "iconKey": "icon.stylesPane",
+              "command": {
+                "id": "styles.pane.open"
+              },
+              "collapse": {
+                "A": "visible",
+                "B": "inOverflow",
+                "C": "inFlyout"
+              }
+            },
+            {
+              "controlId": "styles.manage",
+              "label": "Manage Styles",
+              "type": "dropdown",
+              "size": "small",
+              "iconKey": "icon.manageStyles",
+              "command": {
+                "id": "styles.manage.openMenu"
+              },
+              "menu": [
+                {
+                  "controlId": "styles.create",
+                  "label": "New Style\u2026",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "styles.create.openDialog"
+                  }
+                },
+                {
+                  "controlId": "styles.modify",
+                  "label": "Modify Style\u2026",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "styles.modify.openDialog"
+                  }
+                },
+                {
+                  "controlId": "styles.clear",
+                  "label": "Clear Style",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "styles.clear"
+                  }
+                },
+                {
+                  "type": "separator"
+                },
+                {
+                  "controlId": "styles.importExport",
+                  "label": "Import/Export\u2026",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "styles.io.openDialog"
+                  }
+                }
+              ],
+              "collapse": {
+                "A": "optional",
+                "B": "inOverflow",
+                "C": "inFlyout"
+              }
+            },
+            {
+              "controlId": "styles.styleSet",
+              "label": "Style Set",
+              "type": "dropdown",
+              "size": "small",
+              "iconKey": "icon.styleSet",
+              "command": {
+                "id": "styles.styleSet.openMenu"
+              },
+              "state": {
+                "binding": "styleSet",
+                "kind": "string|mixed"
+              },
+              "menu": [
+                {
+                  "controlId": "styles.set.default",
+                  "label": "Default",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "styles.styleSet.set",
+                    "payloadSchema": {
+                      "setId": "default"
+                    }
+                  }
+                },
+                {
+                  "controlId": "styles.set.modern",
+                  "label": "Modern",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "styles.styleSet.set",
+                    "payloadSchema": {
+                      "setId": "modern"
+                    }
+                  }
+                },
+                {
+                  "controlId": "styles.set.classic",
+                  "label": "Classic",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "styles.styleSet.set",
+                    "payloadSchema": {
+                      "setId": "classic"
+                    }
+                  }
+                }
+              ],
+              "collapse": {
+                "A": "optional",
+                "B": "inOverflow",
+                "C": "inFlyout"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "groupId": "editing",
+      "label": "Editing",
+      "priority": 70,
+      "a11y": {
+        "ariaLabel": "Editing group"
+      },
+      "dialogLauncher": null,
+      "clusters": [
+        {
+          "clusterId": "editing.primary",
+          "layout": "row",
+          "controls": [
+            {
+              "controlId": "editing.find",
+              "label": "Find",
+              "type": "splitButton",
+              "size": "medium",
+              "iconKey": "icon.find",
+              "command": {
+                "id": "editing.find.open"
+              },
+              "keyTip": "FD",
+              "menu": [
+                {
+                  "controlId": "editing.find.basic",
+                  "label": "Find\u2026",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "editing.find.open"
+                  }
+                },
+                {
+                  "controlId": "editing.find.advanced",
+                  "label": "Advanced Find\u2026",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "editing.find.advanced.openDialog"
+                  }
+                },
+                {
+                  "controlId": "editing.goto",
+                  "label": "Go To\u2026",
+                  "type": "menuItem",
+                  "iconKey": "icon.goto",
+                  "command": {
+                    "id": "editing.goto.openDialog"
+                  }
+                },
+                {
+                  "type": "separator"
+                },
+                {
+                  "controlId": "editing.find.regex",
+                  "label": "Use Regular Expressions",
+                  "type": "menuToggle",
+                  "iconKey": "icon.regex",
+                  "command": {
+                    "id": "editing.find.regex.toggle"
+                  },
+                  "state": {
+                    "binding": "findRegex",
+                    "kind": "boolean"
+                  }
+                },
+                {
+                  "controlId": "editing.find.matchCase",
+                  "label": "Match Case",
+                  "type": "menuToggle",
+                  "command": {
+                    "id": "editing.find.matchCase.toggle"
+                  },
+                  "state": {
+                    "binding": "findMatchCase",
+                    "kind": "boolean"
+                  }
+                },
+                {
+                  "controlId": "editing.find.wholeWords",
+                  "label": "Find Whole Words Only",
+                  "type": "menuToggle",
+                  "command": {
+                    "id": "editing.find.wholeWords.toggle"
+                  },
+                  "state": {
+                    "binding": "findWholeWords",
+                    "kind": "boolean"
+                  }
+                }
+              ],
+              "collapse": {
+                "A": "visible",
+                "B": "visible",
+                "C": "inFlyout"
+              }
+            },
+            {
+              "controlId": "editing.replace",
+              "label": "Replace",
+              "type": "button",
+              "size": "medium",
+              "iconKey": "icon.replace",
+              "command": {
+                "id": "editing.replace.open"
+              },
+              "collapse": {
+                "A": "visible",
+                "B": "inMenuOf:editing.find",
+                "C": "inFlyout"
+              }
+            },
+            {
+              "controlId": "editing.select",
+              "label": "Select",
+              "type": "dropdown",
+              "size": "medium",
+              "iconKey": "icon.select",
+              "command": {
+                "id": "selection.openMenu"
+              },
+              "menu": [
+                {
+                  "controlId": "selection.selectAll",
+                  "label": "Select All",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "selection.selectAll"
+                  }
+                },
+                {
+                  "controlId": "selection.selectObjects",
+                  "label": "Select Objects",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "selection.selectObjects"
+                  }
+                },
+                {
+                  "controlId": "selection.selectSimilar",
+                  "label": "Select Similar Formatting",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "selection.selectSimilarFormatting"
+                  }
+                }
+              ],
+              "collapse": {
+                "A": "visible",
+                "B": "visible",
+                "C": "inFlyout"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "stateContract": {
+    "canUndo": "boolean",
+    "canRedo": "boolean",
+    "pasteAutoClean": "boolean",
+    "formatPainter": "boolean",
+    "fontFamily": "string|mixed",
+    "fontSize": "number|mixed",
+    "bold": "boolean|mixed",
+    "italic": "boolean|mixed",
+    "underline": "boolean|mixed",
+    "strikethrough": "boolean|mixed",
+    "subscript": "boolean|mixed",
+    "superscript": "boolean|mixed",
+    "inlineCode": "boolean|mixed",
+    "fontColor": "color|mixed",
+    "highlightColor": "color|mixed",
+    "textShadow": "boolean",
+    "textOutline": "boolean",
+    "listType": "enum|mixed",
+    "alignment": "enum|mixed",
+    "lineSpacing": "number|mixed",
+    "borders": "enum|mixed",
+    "shading": "color|mixed",
+    "blockquote": "boolean|mixed",
+    "showFormattingMarks": "boolean",
+    "activeStyle": "string|mixed",
+    "availableStyles": "list",
+    "styleSet": "string|mixed",
+    "bulletStyles": "list",
+    "numberingStyles": "list",
+    "multilevelListTemplates": "list",
+    "findRegex": "boolean",
+    "findMatchCase": "boolean",
+    "findWholeWords": "boolean"
+  },
+  "iconKeys": [
+    "icon.paste",
+    "icon.cleanPaste",
+    "icon.cut",
+    "icon.copy",
+    "icon.formatPainter",
+    "icon.undo",
+    "icon.redo",
+    "icon.font",
+    "icon.fontSize",
+    "icon.growFont",
+    "icon.shrinkFont",
+    "icon.bold",
+    "icon.italic",
+    "icon.underline",
+    "icon.strikethrough",
+    "icon.subscript",
+    "icon.superscript",
+    "icon.inlineCode",
+    "icon.fontColor",
+    "icon.highlight",
+    "icon.clearFormatting",
+    "icon.changeCase",
+    "icon.textEffects",
+    "icon.bullets",
+    "icon.numbering",
+    "icon.multilevelList",
+    "icon.taskList",
+    "icon.outdent",
+    "icon.indent",
+    "icon.sort",
+    "icon.showMarks",
+    "icon.alignLeft",
+    "icon.alignCenter",
+    "icon.alignRight",
+    "icon.alignJustify",
+    "icon.lineSpacing",
+    "icon.borders",
+    "icon.shading",
+    "icon.blockquote",
+    "icon.horizontalRule",
+    "icon.styles",
+    "icon.stylesPane",
+    "icon.manageStyles",
+    "icon.styleSet",
+    "icon.find",
+    "icon.replace",
+    "icon.select",
+    "icon.goto",
+    "icon.regex",
+    "icon.dialogLauncher",
+    "icon.paragraphStyle"
+  ],
+  "collapsePolicy": {
+    "stages": [
+      "A",
+      "B",
+      "C"
+    ],
+    "stageMeaning": {
+      "A": "Full layout",
+      "B": "Compact layout with overflow/menu consolidation",
+      "C": "Collapsed group flyouts"
+    },
+    "overflow": {
+      "mode": "perGroup",
+      "maxInlineControlsStageB": 10,
+      "maxInlineControlsStageC": 0,
+      "presentation": {
+        "type": "overflowMenu",
+        "label": "More",
+        "iconKey": "icon.more"
+      }
+    }
+  },
+  "validation": {
+    "rules": [
+      {
+        "id": "uniqueControlIds",
+        "severity": "error"
+      },
+      {
+        "id": "uniqueGroupIds",
+        "severity": "error"
+      },
+      {
+        "id": "uniqueClusterIds",
+        "severity": "error"
+      },
+      {
+        "id": "knownIconKeys",
+        "severity": "warning"
+      },
+      {
+        "id": "stateBindingsExist",
+        "severity": "error"
+      }
+    ]
+  }
+}

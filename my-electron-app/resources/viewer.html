@@ -1,0 +1,3332 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>PDF Reader</title>
+  <style>
+    :root{
+      --bg0:#0A0E14;
+      --bg1:#0F1420;
+      --bg2:#0C1220;
+      --panel:#0E1422;
+      --panel2:#0B101B;
+      --stroke:#1B2233;
+      --stroke2:#24304A;
+      --txt:#E7ECF3;
+      --muted:#B8C2D0;
+      --muted2:#8F9BAE;
+      --accent:#9CB8FF;
+      --danger:#FF6B6B;
+      --shadow: 0 20px 60px rgba(0,0,0,0.55);
+      --shadow2: 0 12px 30px rgba(0,0,0,0.42);
+      --page-bg:#FFFFFF;
+
+      /* Highlight palette (Zotero-like defaults) */
+      --hl-yellow: rgba(255, 246, 140, 0.38);
+      --hl-green:  rgba(169, 255, 189, 0.32);
+      --hl-blue:   rgba(156, 184, 255, 0.30);
+      --hl-red:    rgba(255, 107, 107, 0.26);
+      --hl-purple: rgba(211, 170, 255, 0.28);
+      --hl-outline: rgba(0,0,0,0.10);
+
+      --sel-bg: rgba(156,184,255,0.30);
+      --sel-fg: rgba(255,255,255,0.0);
+    }
+
+    html, body{
+      height:100%;
+      margin:0;
+      background:var(--bg0);
+      color:var(--txt);
+      font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow:hidden;
+      touch-action: manipulation;
+    }
+
+    #app{
+      height:100%;
+      display:grid;
+      grid-template-columns: 300px 1fr;
+      grid-template-rows: 52px 1fr;
+      grid-template-areas:
+        "toolbar toolbar"
+        "sidebar main";
+    }
+      .ctxMenu{
+    position: fixed;
+    z-index: 90;
+    min-width: 240px;
+    border-radius: 14px;
+    border: 1px solid var(--stroke);
+    background: rgba(14,20,34,0.96);
+    backdrop-filter: blur(12px);
+    box-shadow: var(--shadow2);
+    padding: 6px;
+    display: none;
+  }
+  .ctxMenu.open{ display:block; }
+  .ctxItem{
+    font-size: 12px;
+    color: var(--txt);
+    padding: 9px 10px;
+    border-radius: 10px;
+    cursor: pointer;
+    user-select:none;
+    white-space:nowrap;
+  }
+  .ctxItem:hover{
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .ctxItem.danger{ color: var(--danger); }
+    .ctxSep{
+    height:1px;
+    background: var(--stroke);
+    margin: 6px 6px;
+    opacity: 0.9;
+  }
+
+  .ctxColors{
+    display:flex;
+    gap:8px;
+    padding: 6px 10px 10px 10px;
+    align-items:center;
+    user-select:none;
+  }
+  .ctxColorDot{
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.22);
+    box-shadow: 0 6px 14px rgba(0,0,0,0.25);
+    cursor: pointer;
+    flex: 0 0 auto;
+  }
+  .ctxColorDot[data-color="yellow"]{ background: var(--hl-yellow); }
+  .ctxColorDot[data-color="green"] { background: var(--hl-green); }
+  .ctxColorDot[data-color="blue"]  { background: var(--hl-blue); }
+  .ctxColorDot[data-color="red"]   { background: var(--hl-red); }
+  .ctxColorDot[data-color="purple"]{ background: var(--hl-purple); }
+  .ctxColorDot.active{
+    outline: 2px solid rgba(156,184,255,0.55);
+    outline-offset: 2px;
+  }
+
+
+/* --- Find bar (Zotero-like: hidden until Ctrl+F) --- */
+.findWrap{
+  display:none;
+  align-items:center;
+  gap:8px;
+}
+.findWrap.open{
+  display:flex;
+}
+#findWrap[aria-hidden="true"]{
+  display:none;
+}
+
+/* --- Dropdowns --- */
+.dd{
+  position:relative;
+  display:flex;
+  align-items:center;
+}
+.ddMenu{
+  position:absolute;
+  top: 42px;
+  left: 0;
+  min-width: 210px;
+  border-radius: 14px;
+  border: 1px solid var(--stroke);
+  background: rgba(14,20,34,0.96);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow2);
+  padding: 6px;
+  display:none;
+  z-index: 30;
+}
+.ddMenu.open{
+  display:block;
+}
+.ddItem{
+  font-size: 12px;
+  color: var(--txt);
+  padding: 9px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  user-select:none;
+}
+.ddItem:hover{
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.ddItem.danger{
+  color: var(--danger);
+}
+.ddSep{
+  height:1px;
+  background: var(--stroke);
+  margin: 6px 6px;
+  opacity: 0.9;
+}
+
+.page{
+  will-change: transform;
+}
+
+    #toolbar{
+      grid-area:toolbar;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--stroke);
+      background: linear-gradient(to bottom, var(--bg1) 0%, var(--bg2) 100%);
+      box-sizing:border-box;
+      z-index: 10;
+    }
+
+    #sidebar{
+      grid-area:sidebar;
+      background: linear-gradient(to bottom, var(--panel) 0%, var(--panel2) 100%);
+      border-right: 1px solid var(--stroke);
+      box-sizing:border-box;
+      display:flex;
+      flex-direction:column;
+      overflow:hidden;
+    }
+
+    #main{
+      grid-area:main;
+      position:relative;
+      overflow:hidden;
+      background: radial-gradient(1200px 700px at 30% 10%, rgba(156,184,255,0.08), transparent 60%),
+                  radial-gradient(900px 600px at 80% 40%, rgba(125,211,252,0.06), transparent 60%),
+                  var(--bg0);
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .btn{
+      height:30px;
+      padding:0 10px;
+      border-radius: 10px;
+      border: 1px solid var(--stroke);
+      background: rgba(255,255,255,0.04);
+      color: var(--txt);
+      font-size: 12px;
+      line-height: 30px;
+      cursor: pointer;
+      user-select:none;
+      box-shadow: 0 6px 14px rgba(0,0,0,0.25);
+      white-space:nowrap;
+      min-width: 40px;
+      touch-action: manipulation;
+    }
+    .btn:hover{
+      border-color: var(--stroke2);
+      background: rgba(255,255,255,0.06);
+    }
+    .btn:active{
+      transform: translateY(1px);
+    }
+    .btn.primary{
+      border-color: rgba(156,184,255,0.35);
+      background: rgba(156,184,255,0.10);
+    }
+    .btn.danger{
+      border-color: rgba(255,107,107,0.35);
+      background: rgba(255,107,107,0.10);
+    }
+    .findHit{
+      background: rgba(255, 209, 102, 0.55);
+      border-radius: 3px;
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.08) inset;
+    }
+
+    .field{
+      height:30px;
+      border-radius:10px;
+      border: 1px solid var(--stroke);
+      background: rgba(255,255,255,0.03);
+      color: var(--txt);
+      padding: 0 10px;
+      font-size: 12px;
+      outline:none;
+      box-sizing:border-box;
+      min-width: 60px;
+    }
+    .field:focus{
+      border-color: rgba(156,184,255,0.45);
+      box-shadow: 0 0 0 3px rgba(156,184,255,0.12);
+    }
+
+    #findBox{ width: 320px; }
+
+    .sep{
+      width:1px;
+      height:26px;
+      background: var(--stroke);
+      opacity:0.9;
+      margin:0 4px;
+    }
+
+    #status{
+      margin-left:auto;
+      font-size:12px;
+      color: var(--muted);
+      max-width: 45%;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    #sideTabs{
+      display:flex;
+      gap:6px;
+      padding: 10px 10px 8px 10px;
+      border-bottom: 1px solid var(--stroke);
+      box-sizing:border-box;
+    }
+    .tab{
+      flex:1;
+      text-align:center;
+      height:30px;
+      line-height:30px;
+      border-radius: 10px;
+      border: 1px solid var(--stroke);
+      background: rgba(255,255,255,0.03);
+      color: var(--muted);
+      font-size: 12px;
+      cursor:pointer;
+      user-select:none;
+      touch-action: manipulation;
+    }
+    .tab.active{
+      color: var(--txt);
+      border-color: rgba(156,184,255,0.35);
+      background: rgba(156,184,255,0.10);
+    }
+
+    #sidePane{
+      flex:1;
+      overflow:auto;
+      padding: 10px;
+      box-sizing:border-box;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .thumb{
+      display:flex;
+      gap:10px;
+      padding: 8px;
+      border-radius: 12px;
+      border: 1px solid transparent;
+      cursor:pointer;
+      user-select:none;
+      margin-bottom: 8px;
+      touch-action: manipulation;
+    }
+    .thumb:hover{
+      border-color: var(--stroke);
+      background: rgba(255,255,255,0.03);
+    }
+    .thumb.active{
+      border-color: rgba(156,184,255,0.35);
+      background: rgba(156,184,255,0.08);
+    }
+    .thumb canvas{
+      width: 64px;
+      height: 86px;
+      border-radius: 8px;
+      background:#fff;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+      flex: 0 0 auto;
+    }
+    .thumb .meta{
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+      min-width:0;
+    }
+    .thumb .meta .t{
+      font-size: 12px;
+      color: var(--txt);
+    }
+    .thumb .meta .s{
+      font-size: 11px;
+      color: var(--muted2);
+    }
+
+    .ol-item{
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      cursor:pointer;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 6px;
+      touch-action: manipulation;
+    }
+    .ol-item:hover{
+      border-color: var(--stroke);
+      background: rgba(255,255,255,0.03);
+      color: var(--txt);
+    }
+
+   #viewer{
+  position:absolute;
+  inset:0;
+  overflow:auto;
+  padding: 18px 0 26px 0;
+  box-sizing:border-box;
+  outline:none;
+  user-select:text;
+  -webkit-user-select:text;
+  -webkit-overflow-scrolling: touch;
+
+  /* Avoid QtWebEngine black-flash under heavy compositing */
+  contain: layout;
+}
+
+    #viewer:focus{ outline:none; }
+
+    #doc{
+      width: 100%;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap: 18px;
+      padding-bottom: 40px;
+    }
+
+    .page{
+      position:relative;
+      background: var(--page-bg);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      contain: content;
+    }
+
+    .page canvas{
+      position:absolute;
+      left:0;
+      top:0;
+      z-index: 1;
+      display:block;
+      background:#fff;
+      pointer-events:none;
+      user-select:none;
+    }
+
+    .textLayer{
+      position:absolute;
+      left:0;
+      top:0;
+      z-index: 2;
+      pointer-events:auto;
+      opacity: 1;
+      user-select:text;
+      -webkit-user-select:text;
+    }
+
+    .textLayer span{
+      position:absolute;
+      white-space:pre;
+      transform-origin:0% 0%;
+      color: transparent;
+      user-select:text;
+      -webkit-user-select:text;
+      pointer-events:auto;
+    }
+
+    .textLayer ::selection{
+      background: var(--sel-bg);
+      color: var(--sel-fg);
+    }
+
+    .annoLayer{
+  position:absolute;
+  left:0;
+  top:0;
+  z-index: 3;
+  pointer-events:auto;
+}
+.hl{ pointer-events:auto; }
+
+
+    .hl{
+      position:absolute;
+      border-radius: 4px;
+      box-shadow: 0 0 0 1px var(--hl-outline) inset;
+      background: var(--hl-yellow);
+    }
+    .hl[data-color="yellow"]{ background: var(--hl-yellow); }
+    .hl[data-color="green"] { background: var(--hl-green); }
+    .hl[data-color="blue"]  { background: var(--hl-blue); }
+    .hl[data-color="red"]   { background: var(--hl-red); }
+    .hl[data-color="purple"]{ background: var(--hl-purple); }
+
+    #selBar{
+      position: fixed;
+      z-index: 50;
+      display:none;
+      gap:8px;
+      align-items:center;
+      padding: 10px 10px;
+      border-radius: 14px;
+      border: 1px solid var(--stroke);
+      background: rgba(14,20,34,0.92);
+      backdrop-filter: blur(10px);
+      box-shadow: var(--shadow2);
+      max-width: 760px;
+      touch-action: manipulation;
+    }
+    #selText{
+      font-size:12px;
+      color: var(--muted);
+      max-width: 240px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    #hlPalette{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      padding: 0 2px;
+    }
+    .hlDot{
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.22);
+      box-shadow: 0 6px 14px rgba(0,0,0,0.25);
+      cursor: pointer;
+      user-select:none;
+      flex: 0 0 auto;
+    }
+    .hlDot.active{
+      outline: 2px solid rgba(156,184,255,0.55);
+      outline-offset: 2px;
+    }
+    .hlDot[data-color="yellow"]{ background: var(--hl-yellow); }
+    .hlDot[data-color="green"] { background: var(--hl-green); }
+    .hlDot[data-color="blue"]  { background: var(--hl-blue); }
+    .hlDot[data-color="red"]   { background: var(--hl-red); }
+    .hlDot[data-color="purple"]{ background: var(--hl-purple); }
+
+    #modal{
+      position: fixed;
+      inset:0;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index: 60;
+      background: rgba(0,0,0,0.55);
+      pointer-events:auto;
+    }
+    #modalCard{
+      width: 520px;
+      border-radius: 16px;
+      border: 1px solid var(--stroke);
+      background: linear-gradient(to bottom, rgba(15,20,32,0.98) 0%, rgba(10,14,20,0.98) 100%);
+      box-shadow: var(--shadow);
+      padding: 14px;
+      box-sizing:border-box;
+      pointer-events:auto;
+    }
+    #modalTitle{
+      font-size: 13px;
+      color: var(--txt);
+      margin: 2px 0 10px 2px;
+      font-weight: 600;
+    }
+    #noteBox{
+      width:100%;
+      height: 120px;
+      resize:none;
+      padding: 10px;
+      border-radius: 12px;
+      border: 1px solid var(--stroke);
+      background: rgba(255,255,255,0.03);
+      color: var(--txt);
+      outline:none;
+      font-size: 12px;
+      line-height: 1.5;
+      box-sizing:border-box;
+    }
+.findLayer{
+  position:absolute;
+  left:0;
+  top:0;
+  z-index: 4;
+  pointer-events:none;
+}
+
+.findBox{
+  position:absolute;
+  border-radius: 3px;
+  background: rgba(255, 209, 102, 0.40);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.10) inset;
+}
+.findBox.active{
+  background: rgba(255, 209, 102, 0.70);
+}
+
+    #modalActions{
+      display:flex;
+      justify-content:flex-end;
+      gap:10px;
+      margin-top: 10px;
+    }
+
+    #logBox{
+      position: fixed;
+      right: 12px;
+      bottom: 12px;
+      width: 460px;
+      max-width: calc(100vw - 24px);
+      max-height: 220px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      border-radius: 14px;
+      border: 1px solid var(--stroke);
+      background: rgba(10,14,20,0.92);
+      backdrop-filter: blur(10px);
+      box-shadow: var(--shadow2);
+      padding: 10px;
+      z-index: 80;
+      font-size: 12px;
+    }
+    #logHdr{
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    #logTitle{
+      font-weight:600;
+      color: var(--txt);
+    }
+    #logBtns{
+      margin-left:auto;
+      display:flex;
+      gap:8px;
+      align-items:center;
+    }
+    .logBtn{
+      height:26px;
+      line-height:26px;
+      padding:0 10px;
+      border-radius:10px;
+      border: 1px solid var(--stroke);
+      background: rgba(255,255,255,0.04);
+      color: var(--muted);
+      cursor:pointer;
+      user-select:none;
+      font-size:12px;
+      touch-action: manipulation;
+    }
+    .logBtn:hover{
+      border-color: var(--stroke2);
+      color: var(--txt);
+    }
+    #logBody{
+      overflow:auto;
+      padding-right: 4px;
+      line-height: 1.45;
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 170px;
+      border-top: 1px solid rgba(27,34,51,0.65);
+      padding-top: 8px;
+    }
+    .logLine{ margin: 0 0 6px 0; }
+    .logLine .lvl{ font-weight: 700; }
+    .lvlI{ color: #9CB8FF; }
+    .lvlW{ color: #FFD166; }
+    .lvlE{ color: #FF6B6B; }
+    .lvlD{ color: #B8C2D0; }
+    /* -------- Theme System -------- */
+:root{
+  --ui-bg: #0A0E14;
+  --ui-panel: rgba(255,255,255,0.03);
+  --ui-text: #d1d5db;
+  --ui-muted: rgba(209,213,219,0.75);
+
+  /* PDF visual treatment */
+  --pdf-filter: none;        /* applied to canvas only */
+  --pdf-blend: normal;       /* optional */
+}
+
+/* Apply to your existing UI variables if you have them */
+#app{
+  background: var(--ui-bg);
+  color: var(--ui-text);
+}
+
+/* Canvas-only theme treatment (keeps text selection + overlays untouched) */
+.page canvas{
+  filter: var(--pdf-filter);
+  mix-blend-mode: var(--pdf-blend);
+}
+
+/* Themes */
+#app[data-theme="midnight"]{
+  --ui-bg: #0A0E14;
+  --ui-panel: rgba(255,255,255,0.03);
+  --ui-text: #d1d5db;
+  --ui-muted: rgba(209,213,219,0.75);
+  --pdf-filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(1.05);
+}
+
+#app[data-theme="dim"]{
+  --ui-bg: #0A0E14;
+  --ui-panel: rgba(255,255,255,0.03);
+  --ui-text: #d1d5db;
+  --ui-muted: rgba(209,213,219,0.75);
+  --pdf-filter: brightness(0.78) contrast(1.05);
+}
+
+#app[data-theme="paper"]{
+  --ui-bg: #F3F4F6;
+  --ui-panel: rgba(0,0,0,0.04);
+  --ui-text: #111827;
+  --ui-muted: rgba(17,24,39,0.70);
+  --pdf-filter: none;
+}
+
+#app[data-theme="sepia"]{
+  --ui-bg: #15110C;
+  --ui-panel: rgba(255,255,255,0.04);
+  --ui-text: #E7DCCB;
+  --ui-muted: rgba(231,220,203,0.72);
+  --pdf-filter: sepia(0.65) brightness(0.88) contrast(1.05);
+}
+
+#app[data-theme="highcontrast"]{
+  --ui-bg: #000000;
+  --ui-panel: rgba(255,255,255,0.06);
+  --ui-text: #FFFFFF;
+  --ui-muted: rgba(255,255,255,0.72);
+  --pdf-filter: contrast(1.35) brightness(1.05);
+}
+
+
+    @media (max-width: 980px){
+      #app{ grid-template-columns: 0 1fr; }
+      #sidebar{ display:none; }
+      #logBox{ width: 96vw; }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app">
+ <div id="toolbar">
+  <div class="btn" id="btnSide">Sidebar</div>
+
+  <div class="sep"></div>
+
+  <!-- Find UI is Zotero-like: only opened via Ctrl+F -->
+  <div id="findWrap" class="findWrap" aria-hidden="true">
+    <input class="field" id="findBox" placeholder="Find in document" />
+    <div class="btn" id="btnFindPrev" title="Previous">↑</div>
+    <div class="btn" id="btnFindNext" title="Next">↓</div>
+    <div class="btn" id="btnFindClose" title="Close">✕</div>
+  </div>
+
+  <div class="sep"></div>
+
+  <!-- Annotations dropdown -->
+  <div class="dd" id="ddAnnots">
+    <div class="btn primary ddBtn" id="btnAnnotsMenu">Annotations ▾</div>
+    <div class="ddMenu" id="menuAnnots" role="menu" aria-label="Annotations menu">
+      <div class="ddItem" id="miExport">Export to clipboard</div>
+      <div class="ddItem" id="miImport">Import from clipboard</div>
+      <div class="ddSep"></div>
+      <div class="ddItem danger" id="miClear">Clear annotations</div>
+
+    </div>
+  </div>
+
+  <!-- Theme dropdown (PDF-only theme) -->
+  <div class="dd" id="ddTheme">
+    <div class="btn ddBtn" id="btnThemeMenu" title="Theme">Theme ▾</div>
+    <div class="ddMenu" id="menuTheme" role="menu" aria-label="Theme menu">
+      <div class="ddItem" data-theme="midnight">Midnight</div>
+      <div class="ddItem" data-theme="dim">Dim</div>
+      <div class="ddItem" data-theme="paper">Paper</div>
+      <div class="ddItem" data-theme="sepia">Sepia</div>
+      <div class="ddItem" data-theme="highcontrast">High Contrast</div>
+    </div>
+  </div>
+
+
+  <div class="sep"></div>
+
+  <!-- Navigation -->
+  <div class="btn" id="btnPrev">Prev</div>
+  <input class="field" id="pageNum" value="1" />
+  <div class="btn" id="btnNext">Next</div>
+
+  <div class="sep"></div>
+
+  <!-- View dropdown: Fit width + Zoom +/- moved here -->
+  <div class="dd" id="ddView">
+    <div class="btn ddBtn" id="btnViewMenu">View ▾</div>
+    <div class="ddMenu" id="menuView" role="menu" aria-label="View menu">
+      <div class="ddItem" id="miFitWidth">Fit width</div>
+      <div class="ddSep"></div>
+      <div class="ddItem" id="miZoomIn">Zoom in</div>
+      <div class="ddItem" id="miZoomOut">Zoom out</div>
+      <div class="ddItem" id="miZoom100">Actual size (100%)</div>
+    </div>
+  </div>
+
+  <div id="status"></div>
+</div>
+
+
+
+    <div id="sidebar">
+      <div id="sideTabs">
+        <div class="tab active" id="tabThumbs">Pages</div>
+        <div class="tab" id="tabOutline">Outline</div>
+        <div class="tab" id="tabAnnots">Notes</div>
+      </div>
+      <div id="sidePane"></div>
+    </div>
+
+    <div id="main">
+      <div id="viewer" tabindex="0">
+        <div id="doc"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="selBar">
+    <div id="selText">Selection</div>
+
+    <div id="hlPalette" aria-label="Highlight colour">
+      <div class="hlDot active" data-color="yellow" title="Yellow"></div>
+      <div class="hlDot" data-color="green" title="Green"></div>
+      <div class="hlDot" data-color="blue" title="Blue"></div>
+      <div class="hlDot" data-color="red" title="Red"></div>
+      <div class="hlDot" data-color="purple" title="Purple"></div>
+    </div>
+
+    <div class="btn primary" id="btnHighlight">Highlight</div>
+    <div class="btn" id="btnNote">Note</div>
+    <div class="btn" id="btnCancelSel">Cancel</div>
+  </div>
+
+  <div id="modal">
+    <div id="modalCard">
+      <div id="modalTitle">Add note</div>
+      <textarea id="noteBox" placeholder="Write a note for this highlight…"></textarea>
+      <div id="modalActions">
+        <div class="btn" id="btnNoteCancel">Cancel</div>
+        <div class="btn primary" id="btnNoteSave">Save</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="logBox">
+    <div id="logHdr">
+      <div id="logTitle">Viewer log</div>
+      <div id="logBtns">
+        <div class="logBtn" id="btnLogCopy">Copy</div>
+        <div class="logBtn" id="btnLogClear">Clear</div>
+        <div class="logBtn" id="btnLogHide">Hide</div>
+      </div>
+    </div>
+    <div id="logBody"></div>
+  </div>
+
+<script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+<script>
+  (function(){
+    window.__ANN_BRIDGE_READY = new Promise((resolve) => {
+      if (typeof QWebChannel === "undefined") {
+        console.warn("QWebChannel is undefined (qwebchannel.js not loaded)");
+        window.ANNOTATIONS_BRIDGE = null;
+        resolve("NO_QWEBCHANNEL");
+        return;
+      }
+      if (!window.qt || !qt.webChannelTransport) {
+        console.warn("qt.webChannelTransport missing");
+        window.ANNOTATIONS_BRIDGE = null;
+        resolve("NO_TRANSPORT");
+        return;
+      }
+
+      new QWebChannel(qt.webChannelTransport, function(channel) {
+        const keys = Object.keys(channel.objects || {});
+        console.log("WebChannel objects =", keys.join(", "));
+
+        window.ANNOTATIONS_BRIDGE = channel.objects.ANNOTATIONS_BRIDGE || null;
+
+        if (!window.ANNOTATIONS_BRIDGE) {
+          console.warn("ANNOTATIONS_BRIDGE missing; available objects =", keys.join(", "));
+          resolve("MISSING_OBJECT");
+          return;
+        }
+
+        console.log("ANNOTATIONS_BRIDGE ready = true");
+        resolve("OK");
+      });
+    });
+  })();
+</script>
+
+
+
+
+<script src="./build/pdf.js"></script>
+
+
+  <script>
+    window.addEventListener("DOMContentLoaded", () => {
+      const statusEl    = document.getElementById("status");
+      const viewerEl    = document.getElementById("viewer");
+      const docEl       = document.getElementById("doc");
+
+      const btnSide     = document.getElementById("btnSide");
+      const btnThemeMenu = document.getElementById("btnThemeMenu");
+      const menuTheme    = document.getElementById("menuTheme");
+
+
+    const findWrap    = document.getElementById("findWrap");
+    const findBox     = document.getElementById("findBox");
+    const btnFindPrev = document.getElementById("btnFindPrev");
+    const btnFindNext = document.getElementById("btnFindNext");
+    const btnFindClose= document.getElementById("btnFindClose");
+
+    const btnPrev     = document.getElementById("btnPrev");
+    const btnNext     = document.getElementById("btnNext");
+    const pageNum     = document.getElementById("pageNum");
+
+    /* Annotations dropdown */
+    const btnAnnotsMenu = document.getElementById("btnAnnotsMenu");
+    const menuAnnots    = document.getElementById("menuAnnots");
+    const miExport      = document.getElementById("miExport");
+    const miImport      = document.getElementById("miImport");
+    const miClear       = document.getElementById("miClear");
+
+    /* View dropdown */
+    const btnViewMenu = document.getElementById("btnViewMenu");
+    const menuView    = document.getElementById("menuView");
+    const miFitWidth  = document.getElementById("miFitWidth");
+    const miZoomIn    = document.getElementById("miZoomIn");
+    const miZoomOut   = document.getElementById("miZoomOut");
+    const miZoom100   = document.getElementById("miZoom100");
+
+
+
+      const tabThumbs   = document.getElementById("tabThumbs");
+      const tabOutline  = document.getElementById("tabOutline");
+      const tabAnnots   = document.getElementById("tabAnnots");
+      const sidePane    = document.getElementById("sidePane");
+
+      const selBar      = document.getElementById("selBar");
+      const selText     = document.getElementById("selText");
+      const btnHighlight= document.getElementById("btnHighlight");
+      const btnNote     = document.getElementById("btnNote");
+      const btnCancelSel= document.getElementById("btnCancelSel");
+
+      const modal       = document.getElementById("modal");
+      const noteBox     = document.getElementById("noteBox");
+      const btnNoteCancel = document.getElementById("btnNoteCancel");
+      const btnNoteSave   = document.getElementById("btnNoteSave");
+
+      const logBox      = document.getElementById("logBox");
+      const logBody     = document.getElementById("logBody");
+      const btnLogCopy  = document.getElementById("btnLogCopy");
+      const btnLogClear = document.getElementById("btnLogClear");
+      const btnLogHide  = document.getElementById("btnLogHide");
+
+      const hlDots      = Array.from(document.querySelectorAll(".hlDot"));
+
+      if (typeof window.pdfjsLib === "undefined") {
+        statusEl.textContent = "pdf.js failed to load: expected ./build/pdf.js";
+        console.error("pdf.js failed to load: expected ./build/pdf.js");
+        return;
+      }
+     window.pdfjsLib.GlobalWorkerOptions.workerSrc = "./build/pdf.worker.js";
+
+function setStatus(msg) { statusEl.textContent = msg || ""; }
+
+// ---------------- Qt WebChannel bridge readiness ----------------
+// Contract: viewer.html must load qwebchannel.js and create window.__ANN_BRIDGE_READY + window.ANNOTATIONS_BRIDGE.
+// If not present, we create a readiness promise that resolves immediately (and will log why the bridge is absent).
+function ensureAnnotationsBridgeReady(){
+  if (window.__ANN_BRIDGE_READY) return window.__ANN_BRIDGE_READY;
+
+  window.__ANN_BRIDGE_READY = new Promise((resolve) => {
+    const hasQWebChannel = (typeof QWebChannel !== "undefined");
+    const hasTransport = !!(window.qt && qt.webChannelTransport);
+
+    if (!hasQWebChannel) {
+      logWarn("QWebChannel is undefined (qwebchannel.js not loaded)");
+      window.ANNOTATIONS_BRIDGE = null;
+      resolve("NO_QWEBCHANNEL");
+      return;
+    }
+    if (!hasTransport) {
+      logWarn("qt.webChannelTransport missing (WebChannel not available)");
+      window.ANNOTATIONS_BRIDGE = null;
+      resolve("NO_TRANSPORT");
+      return;
+    }
+
+    new QWebChannel(qt.webChannelTransport, function(channel){
+      window.ANNOTATIONS_BRIDGE = channel.objects.ANNOTATIONS_BRIDGE || null;
+      logDebug("ANNOTATIONS_BRIDGE ready", String(!!window.ANNOTATIONS_BRIDGE));
+      resolve(window.ANNOTATIONS_BRIDGE ? "OK" : "MISSING_OBJECT");
+    });
+  });
+
+  return window.__ANN_BRIDGE_READY;
+}
+
+
+
+      // ---------------- Logging ----------------
+      const __LOG_LINES = [];
+      const __LOG_MAX = 400;
+
+      function nowStamp(){
+        const d = new Date();
+        const hh = String(d.getHours()).padStart(2,"0");
+        const mm = String(d.getMinutes()).padStart(2,"0");
+        const ss = String(d.getSeconds()).padStart(2,"0");
+        return `${hh}:${mm}:${ss}`;
+      }
+
+      function escapeHtml(s){
+        return String(s).replace(/[&<>"']/g, c => ({
+          "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+        }[c]));
+      }
+
+      function logLine(level, msg, extra){
+        const lvl = String(level || "I").toUpperCase();
+        const text = String(msg || "");
+        const more = (extra === undefined || extra === null) ? "" : (" " + String(extra));
+        const line = `[${nowStamp()}] ${lvl} ${text}${more}`;
+        __LOG_LINES.push(line);
+        while (__LOG_LINES.length > __LOG_MAX) __LOG_LINES.shift();
+
+        const div = document.createElement("div");
+        div.className = "logLine";
+        const cls = (lvl === "E") ? "lvlE" : (lvl === "W") ? "lvlW" : (lvl === "D") ? "lvlD" : "lvlI";
+        div.innerHTML = `<span class="lvl ${cls}">${lvl}</span> ${escapeHtml(text + more)}`;
+        logBody.appendChild(div);
+        logBody.scrollTop = logBody.scrollHeight;
+
+        if (lvl === "E") console.error(line);
+        else if (lvl === "W") console.warn(line);
+        else console.log(line);
+      }
+
+      function logInfo(msg, extra){ logLine("I", msg, extra); }
+      function logWarn(msg, extra){ logLine("W", msg, extra); }
+      function logError(msg, extra){ logLine("E", msg, extra); }
+      function logDebug(msg, extra){ logLine("D", msg, extra); }
+
+      // ---------------- Query params ----------------
+          // ---------------- Query params ----------------
+      const qs = new URLSearchParams(window.location.search);
+      const fileParam = qs.get("file") || "";
+      const pageParam = qs.get("page") || "";
+      let pageJump = parseInt(pageParam || "1", 10) || 1;
+
+      let fileUrl = fileParam ? String(fileParam) : "";
+
+
+      // ---------------- State ----------------
+       // ---------------- State ----------------
+      let pdfDoc      = null;
+      let pageCount   = 0;
+      let renderScale = 1.25;
+      let fitMode     = "width";
+
+      let annotations = [];
+      const pageViews  = new Map();
+      const thumbViews = new Map();
+
+      let findQuery   = "";
+      let findMatches = [];
+      let findIndex   = -1;
+
+      let lastSelection = null;
+      let pendingNote   = false;
+
+      let globalRenderEpoch = 0;
+      let lazyQueueTimer = null;
+      let lazyQueue = [];
+      const pageRenderState = new Map();
+
+      let activeHlColor = "yellow";
+
+      // ---------------- PDF Theme (canvas-only palette) ----------------
+      // Contract:
+      // - We do NOT theme the application chrome.
+      // - We apply filter only to ".page canvas" elements.
+      // - We keep this state local and persist to localStorage.
+      let pdfTheme = "midnight"; // midnight | dim | paper | sepia | highcontrast
+
+      function _pdfThemeFilter(name){
+        const n = String(name || "midnight");
+        if (n === "midnight")     return "invert(1) hue-rotate(180deg) brightness(0.95) contrast(1.05)";
+        if (n === "dim")          return "brightness(0.78) contrast(1.05)";
+        if (n === "paper")        return "none";
+        if (n === "sepia")        return "sepia(0.65) brightness(0.88) contrast(1.05)";
+        if (n === "highcontrast") return "contrast(1.35) brightness(1.05)";
+        return "invert(1) hue-rotate(180deg) brightness(0.95) contrast(1.05)";
+      }
+
+      function applyPdfTheme(name){
+        pdfTheme = String(name || "midnight");
+
+        const f = _pdfThemeFilter(pdfTheme);
+        const canvases = docEl.querySelectorAll(".page canvas");
+        for (const c of canvases) c.style.filter = f;
+
+        setStatus(`PDF theme: ${pdfTheme}`);
+        logInfo("pdfTheme", pdfTheme);
+      }
+
+      function loadPdfTheme(){
+        const raw = localStorage.getItem("pdf_theme") || "midnight";
+        applyPdfTheme(raw);
+      }
+
+      function savePdfTheme(){
+        localStorage.setItem("pdf_theme", pdfTheme);
+      }
+
+      // ---------------- Payload (Zotero-style citation metadata) ----------------
+      let currentPayload = null;
+      let pendingPayloadFocus = null;
+
+
+      function toFileUrlFromWindowsPath(p){
+        const s = String(p);
+        const norm = s.replace(/\\/g, "/");
+        const enc = encodeURI(norm);
+        return "file:///" + enc;
+      }
+
+      function payloadDqid(pl){
+        return String(pl.item_key) + "::" + String(pl.page) + "::" + String(pl.theme);
+      }
+
+      function payloadCitationText(pl){
+        const a = String(pl.first_author_last || pl.author_summary || "");
+        const y = String(pl.year || "");
+        const pg = String(pl.page || "");
+        return `${a} (${y}), p. ${pg}`;
+      }
+
+
+
+function pageTextForPage(p){
+  const v = pageViews.get(p);
+  if (!v || !v._textDivs) return "";
+  return v._textDivs
+    .map(d => (d && d.dataset && d.dataset.srcText !== undefined) ? d.dataset.srcText : (d.textContent || ""))
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function _normTextForSearch(s){
+  let t = String(s || "");
+
+  // NBSP
+  t = t.replace(/\u00A0/g, " ");
+
+  // soft hyphen
+  t = t.replace(/\u00AD/g, "");
+
+  // ligatures
+  t = t.replace(/ﬁ/g, "fi")
+       .replace(/ﬂ/g, "fl")
+       .replace(/ﬀ/g, "ff")
+       .replace(/ﬃ/g, "ffi")
+       .replace(/ﬄ/g, "ffl");
+
+  // normalise quotes
+  t = t.replace(/[\u2018\u2019\u201B\u2032]/g, "'")
+       .replace(/[\u201C\u201D\u201F\u2033]/g, '"');
+
+  // normalise dashes to hyphen first
+  t = t.replace(/[\u2010\u2011\u2012\u2013\u2014\u2015\u2212]/g, "-");
+
+  // critical: fix PDF line-break hyphenation: "dif- ferent" -> "different"
+  t = t.replace(/([A-Za-z])-\s+([A-Za-z])/g, "$1$2");
+
+  // drop remaining punctuation to spaces
+  t = t.toLowerCase();
+  t = t.replace(/[^a-z0-9\s]/g, " ");
+
+  // collapse whitespace
+  t = t.replace(/\s+/g, " ").trim();
+  return t;
+}
+
+function _tokeniseNorm(s){
+  const n = _normTextForSearch(s);
+  if (!n) return [];
+  return n.split(" ").filter(x => x.length);
+}
+
+function _debugQuoteNotFound(p, qRaw){
+  const pageTxtRaw = pageTextForPage(p);
+  const pageTxtNorm = _normTextForSearch(pageTxtRaw);
+  const qNorm = _normTextForSearch(qRaw);
+
+  const qTokens = _tokeniseNorm(qRaw);
+  const pageTokens = _tokeniseNorm(pageTxtRaw);
+
+  const pageTokSet = new Set(pageTokens);
+  const missing = [];
+  for (const t of qTokens) {
+    if (!pageTokSet.has(t)) missing.push(t);
+  }
+
+  logWarn("payload focus: quote (RAW)", qRaw);
+  logWarn("payload focus: quote (NORM)", qNorm);
+
+  logWarn("payload focus: pageText (RAW)", pageTxtRaw);
+
+  logWarn("payload focus: pageText (NORM len)", String(pageTxtNorm.length));
+  logWarn("payload focus: pageText (NORM sample)", pageTxtNorm.slice(0, 900));
+
+  logWarn("payload focus: quoteTokens", String(qTokens.length));
+  logWarn("payload focus: missingTokens", missing.slice(0, 80).join(" "));
+}
+
+async function highlightDirectQuoteOnPage(pageNum, quote){
+  const p = clamp(parseInt(String(pageNum), 10) || 1, 1, pageCount);
+  const qRaw = String(quote || "").trim();
+  if (!qRaw) return "NO_QUOTE";
+
+  await renderPage(p);
+
+  const v = pageViews.get(p);
+
+  findMatches = [];
+  findIndex = -1;
+  _clearFindOverlay();
+
+  const parts = [];
+  for (let i = 0; i < v._textDivs.length; i++) {
+    const d = v._textDivs[i];
+    const src = (d && d.dataset && d.dataset.srcText !== undefined) ? d.dataset.srcText : (d.textContent || "");
+    parts.push({ divIndex: i, text: String(src || "") });
+  }
+  const joinedRaw = parts.map(x => x.text).join(" ");
+  const joinedNorm = _normTextForSearch(joinedRaw);
+  const needleNorm = _normTextForSearch(qRaw);
+
+  const hayWordsAll = joinedNorm.split(" ").filter(x => x.length);
+  const needleWordsAll = needleNorm.split(" ").filter(x => x.length);
+
+  scrollToPage(p);
+
+  let hitStart = -1;
+  let hitEnd = -1;
+
+  // 1) Exact match path (fast)
+  const at = joinedNorm.indexOf(needleNorm);
+  if (at !== -1) {
+    const prefixNorm = joinedNorm.slice(0, at);
+    const prefixWords = prefixNorm ? prefixNorm.split(" ").filter(x => x.length) : [];
+    hitStart = prefixWords.length;
+    hitEnd = prefixWords.length + needleWordsAll.length;
+  } else {
+    // 2) Relaxed match path (token subsequence), ignoring minimal stopwords that commonly vary
+    const stop = new Set(["the"]);
+    const needleWords = needleWordsAll.filter(w => !stop.has(w));
+
+    let foundAt = -1;
+    for (let i = 0; i <= hayWordsAll.length - needleWords.length; i++) {
+      let ok = true;
+      for (let j = 0; j < needleWords.length; j++) {
+        if (hayWordsAll[i + j] !== needleWords[j]) { ok = false; break; }
+      }
+      if (ok) { foundAt = i; break; }
+    }
+
+    if (foundAt === -1) {
+      setStatus(`Target not found on p. ${p}`);
+      logWarn("payload focus: quote not found", `page=${p}`);
+      _debugQuoteNotFound(p, qRaw);
+      return "NOT_FOUND";
+    }
+
+    hitStart = foundAt;
+    hitEnd = foundAt + needleWords.length;
+
+    setStatus(`Target highlighted (relaxed) · p. ${p}`);
+    logInfo("payload focus: relaxed match", `page=${p} startWord=${hitStart} endWord=${hitEnd}`);
+  }
+
+  let globalWordIndex = 0;
+
+  for (let i = 0; i < parts.length; i++) {
+    const divNorm = _normTextForSearch(parts[i].text);
+    const w = divNorm ? divNorm.split(" ").filter(x => x.length) : [];
+    const startWord = globalWordIndex;
+    const endWord = globalWordIndex + w.length;
+
+    const overlap = !(endWord <= hitStart || startWord >= hitEnd);
+    if (overlap) {
+      const rawLen = parts[i].text.length;
+      findMatches.push({ page: p, divIndex: parts[i].divIndex, start: 0, end: rawLen });
+    }
+
+    globalWordIndex = endWord;
+  }
+
+
+  if (!findMatches.length) {
+    setStatus(`Target located but could not map to spans · p. ${p}`);
+    logWarn("payload focus: found in joined text but no span overlap", `page=${p}`);
+  logWarn("payload focus: hitWords", `start=${hitStart} end=${hitEnd} hitLen=${hitEnd - hitStart}`);
+    return "NOT_FOUND";
+  }
+
+  findIndex = 0;
+
+  _renderFindOverlayForPage(p);
+  _setActiveFindBox();
+
+  const m = findMatches[0];
+  const div = v._textDivs[m.divIndex];
+  div.scrollIntoView({ behavior: "auto", block: "center" });
+
+  setStatus(`Target highlighted · p. ${p}`);
+  logInfo("payload focus: highlighted", `page=${p} matches=${findMatches.length}`);
+
+  return "FOUND";
+}
+
+
+
+
+
+
+      // ---------------- Utilities ----------------      // ---------------- Utilities ----------------
+      function clamp(n, lo, hi) { return Math.min(Math.max(n, lo), hi); }
+      function el(tag, cls) { const x = document.createElement(tag); if (cls) x.className = cls; return x; }
+
+      function newId(){
+        // Deterministic-enough for local annotation ids (no crypto requirement here).
+        return String(Date.now()) + "-" + String(Math.floor(Math.random() * 1e9));
+      }
+
+
+      function parseInitialPageFromHash(){
+        const h = String(window.location.hash || "");
+        const m = h.match(/page=(\d+)/);
+        return m ? (Number(m[1] || "1") || 1) : 1;
+      }
+
+      function updateHashPage(p){ window.location.hash = "page=" + String(p); }
+
+      function sleep0(){ return new Promise(res => setTimeout(res, 0)); }
+
+      function debounce(fn, ms){
+        let t = null;
+        return (...args) => {
+          if (t) clearTimeout(t);
+          t = setTimeout(() => fn(...args), ms);
+        };
+      }
+
+      // ---------------- Focus rules ----------------
+       // ---------------- Focus rules ----------------
+      // Key point: do NOT blur/refocus the viewer during selection drag.
+      function focusViewerIfSafe(){
+        if (modal.style.display === "flex") return;
+        if (document.activeElement === noteBox) return;
+        viewerEl.focus({ preventScroll: true });
+      }
+
+      // Only wire focus for toolbar/sidebar controls (not the viewer, not the modal)
+      function wireControlFocus(node){
+        node.addEventListener("mousedown", () => focusViewerIfSafe(), { passive: true });
+        node.addEventListener("pointerdown", () => focusViewerIfSafe(), { passive: true });
+      }
+
+      const __controls = [
+        btnSide,
+        btnAnnotsMenu, menuAnnots,
+        btnViewMenu, menuView,
+        btnPrev, pageNum, btnNext,
+        findBox, btnFindPrev, btnFindNext, btnFindClose,
+        tabThumbs, tabOutline, tabAnnots, sidePane,
+        btnLogCopy, btnLogClear, btnLogHide
+      ];
+
+      for (const n of __controls) wireControlFocus(n);
+
+      // ---------------- Menus + Find UI helpers ----------------
+      // ---------------- Menus + Find UI helpers ----------------
+      function closeAllMenus(){
+        menuAnnots.classList.remove("open");
+        menuView.classList.remove("open");
+        menuTheme.classList.remove("open");
+      }
+
+      function toggleMenu(menuEl){
+        const willOpen = !menuEl.classList.contains("open");
+        closeAllMenus();
+        if (willOpen) menuEl.classList.add("open");
+      }
+
+
+      function openFindUI(){
+        findWrap.classList.add("open");
+        findWrap.setAttribute("aria-hidden", "false");
+        closeAllMenus();
+        findBox.focus({ preventScroll: true });
+      }
+
+      function closeFindUI(){
+        findWrap.classList.remove("open");
+        findWrap.setAttribute("aria-hidden", "true");
+        focusViewerIfSafe();
+      }
+
+      // ---------------- Render control ----------------
+      function _getPRS(p){
+        let s = pageRenderState.get(p);
+        if (!s) {
+          s = { task: null, token: 0, busy: false };
+          pageRenderState.set(p, s);
+        }
+        return s;
+      }
+
+      function cancelAllRenders(reason = "") {
+        globalRenderEpoch++;
+        for (const [p, s] of pageRenderState.entries()) {
+          if (s.task) {
+            s.task.cancel();
+            s.task = null;
+          }
+          s.busy = false;
+          s.token++;
+        }
+        if (lazyQueueTimer) {
+          clearTimeout(lazyQueueTimer);
+          lazyQueueTimer = null;
+        }
+        lazyQueue = [];
+        if (reason) logWarn("cancelAllRenders", reason);
+      }
+
+      function scrollToPage(p) {
+        const v = pageViews.get(p);
+        if (!v) return;
+        v.pageDiv.scrollIntoView({ behavior: "auto", block: "start" });
+        updateHashPage(p);
+        for (const [k, tv] of thumbViews.entries()) {
+          tv.thumbDiv.classList.toggle("active", k === p);
+        }
+        focusViewerIfSafe();
+      }
+
+      function currentPageFromScroll() {
+        const top = viewerEl.scrollTop;
+        let bestP = 1;
+        let bestDist = Infinity;
+        for (const [p, v] of pageViews.entries()) {
+          const y = v.pageDiv.offsetTop;
+          const d = Math.abs(y - top);
+          if (d < bestDist) { bestDist = d; bestP = p; }
+        }
+        return bestP;
+      }
+
+      async function ensureScale() {
+        if (!pdfDoc || fitMode !== "width") return;
+        const v = pageViews.get(1);
+        if (!v) return;
+        const unscaled = v.pdfPage.getViewport({ scale: 1 });
+        const avail = viewerEl.clientWidth - 60;
+        renderScale = avail / unscaled.width;
+      }
+
+async function renderTextLayer(p) {
+  const v = pageViews.get(p);
+  const page = v.pdfPage;
+  const vp = v.viewport;
+
+  v.textLayer.innerHTML = "";
+  v._textDivs = [];
+
+  const textContent = await page.getTextContent();
+
+  const textLayerTask = pdfjsLib.renderTextLayer({
+    textContentSource: textContent,   // pdf.js newer API
+    container: v.textLayer,
+    viewport: vp,
+    textDivs: v._textDivs,
+    enhanceTextSelection: true
+  });
+
+  await textLayerTask.promise;
+
+  for (const d of v._textDivs) {
+    if (d.dataset && d.dataset.srcText === undefined) {
+      d.dataset.srcText = d.textContent || "";
+    }
+  }
+}
+
+
+      function renderAnnoLayer(p) {
+        const v = pageViews.get(p);
+        v.annoLayer.innerHTML = "";
+
+        const list = annotations.filter(a => a.page === p);
+        for (const a of list) {
+          for (const r of a.rects) {
+            const d = document.createElement("div");
+            d.className = "hl";
+            d.style.left   = r.x + "px";
+            d.style.top    = r.y + "px";
+            d.style.width  = r.w + "px";
+            d.style.height = r.h + "px";
+           d.dataset.annoId = a.id;
+d.dataset.color = a.color || "yellow";
+
+// Allow right-click on highlight blocks even though annoLayer itself is pointer-events:none
+d.style.pointerEvents = "auto";
+
+v.annoLayer.appendChild(d);
+
+          }
+        }
+      }
+      async function renderPage(p) {
+  await sleep0();
+  const v = pageViews.get(p);
+  if (!v || !v.pdfPage) return;
+
+  const scaleKey = Number(renderScale).toFixed(4);
+  if (v._renderedScaleKey === scaleKey && v._renderedEpoch === globalRenderEpoch) {
+    return;
+  }
+
+  const prs = _getPRS(p);
+  if (prs.busy) return;
+  prs.busy = true;
+
+  const myEpoch = globalRenderEpoch;
+  const myToken = ++prs.token;
+
+  if (prs.task) {
+    prs.task.cancel();
+    prs.task = null;
+  }
+
+  const page = v.pdfPage;
+  const vp = page.getViewport({ scale: renderScale });
+  v.viewport = vp;
+
+  v.canvas.width  = Math.floor(vp.width);
+  v.canvas.height = Math.floor(vp.height);
+
+  v.pageDiv.style.width  = Math.floor(vp.width) + "px";
+  v.pageDiv.style.height = Math.floor(vp.height) + "px";
+
+  v.textLayer.style.width  = Math.floor(vp.width) + "px";
+  v.textLayer.style.height = Math.floor(vp.height) + "px";
+  v.annoLayer.style.width  = Math.floor(vp.width) + "px";
+  v.annoLayer.style.height = Math.floor(vp.height) + "px";
+
+  v.findLayer.style.width  = Math.floor(vp.width) + "px";
+  v.findLayer.style.height = Math.floor(vp.height) + "px";
+
+  v.textLayer.style.setProperty("--scale-factor", String(vp.scale));
+
+  const ctx = v.canvas.getContext("2d", { alpha: false });
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.clearRect(0,0,v.canvas.width,v.canvas.height);
+
+  const task = page.render({ canvasContext: ctx, viewport: vp });
+  prs.task = task;
+
+  try {
+    await task.promise;
+    if (myEpoch !== globalRenderEpoch) return;
+    if (prs.token !== myToken) return;
+
+    await renderTextLayer(p);
+    renderAnnoLayer(p);
+
+    // Apply PDF theme to this canvas only (do NOT theme app chrome)
+    v.canvas.style.filter = _pdfThemeFilter(pdfTheme);
+
+    v._renderedScaleKey = scaleKey;
+    v._renderedEpoch = globalRenderEpoch;
+  } catch (err) {
+    const msg = (err && (err.message || String(err))) || "render error";
+    if (!/cancel/i.test(msg)) logError("renderPage(" + String(p) + ")", msg);
+  } finally {
+    const s2 = _getPRS(p);
+    if (s2.token === myToken) {
+      s2.busy = false;
+      s2.task = null;
+    }
+  }
+}
+
+
+
+      function getVisiblePages() {
+        const top = viewerEl.scrollTop;
+        const bottom = top + viewerEl.clientHeight;
+        const visible = [];
+        for (const [p, v] of pageViews.entries()) {
+          const y = v.pageDiv.offsetTop;
+          const h = v.pageDiv.offsetHeight;
+          if (y + h >= top && y <= bottom) visible.push(p);
+        }
+        return visible;
+      }
+
+      async function pumpLazyQueue() {
+        if (lazyQueueTimer) return;
+        const tick = async () => {
+          lazyQueueTimer = null;
+          if (!pdfDoc) return;
+          if (!lazyQueue.length) return;
+
+          const p = lazyQueue.shift();
+          await renderPage(p);
+          await sleep0();
+
+          if (lazyQueue.length) {
+            lazyQueueTimer = setTimeout(tick, 30);
+          }
+        };
+        lazyQueueTimer = setTimeout(tick, 30);
+      }
+
+      // ---------------- Side panes ----------------
+      function setActiveTab(which) {
+        tabThumbs.classList.toggle("active", which === "thumbs");
+        tabOutline.classList.toggle("active", which === "outline");
+        tabAnnots.classList.toggle("active", which === "annots");
+      }
+
+      async function buildPagesLazy(startPage = 1) {
+  docEl.innerHTML = "";
+  pageViews.clear();
+  pageRenderState.clear();
+
+  for (let p = 1; p <= pageCount; p++) {
+    const page = await pdfDoc.getPage(p);
+
+    const pageDiv  = el("div", "page");
+    pageDiv.dataset.pageNumber = String(p);
+
+    const canvas    = document.createElement("canvas");
+const textLayer = el("div", "textLayer");
+const annoLayer = el("div", "annoLayer");
+const findLayer = el("div", "findLayer");
+
+// Pointer events: let text selection work; overlays should not block it.
+// Highlights themselves will opt-in to pointer events.
+textLayer.style.pointerEvents = "auto";
+annoLayer.style.pointerEvents = "none";
+findLayer.style.pointerEvents = "none";
+
+pageDiv.appendChild(canvas);
+pageDiv.appendChild(textLayer);
+pageDiv.appendChild(annoLayer);
+pageDiv.appendChild(findLayer);
+
+
+    docEl.appendChild(pageDiv);
+
+    pageViews.set(p, {
+      pageDiv,
+      canvas,
+      textLayer,
+      annoLayer,
+      findLayer,
+      viewport: null,
+      pdfPage: page
+    });
+  }
+
+  await ensureScale();
+
+  const p0 = clamp(startPage, 1, pageCount);
+  const immediate = [p0, clamp(p0 + 1, 1, pageCount)].filter((x, i, a) => a.indexOf(x) === i);
+
+  for (const p of immediate) {
+    await renderPage(p);
+    await sleep0();
+  }
+
+  lazyQueue = [];
+  for (let p = 1; p <= pageCount; p++) {
+    if (immediate.includes(p)) continue;
+    lazyQueue.push(p);
+  }
+
+  pumpLazyQueue();
+}
+
+
+      async function buildThumbs() {
+        thumbViews.clear();
+        sidePane.innerHTML = "";
+
+        for (let p = 1; p <= pageCount; p++) {
+          const t  = el("div","thumb");
+          const c  = document.createElement("canvas");
+          const meta = el("div","meta");
+
+          const title = el("div","t");
+          title.textContent = "Page " + String(p);
+
+          const sub = el("div","s");
+          sub.textContent = "Click to jump";
+
+          meta.appendChild(title);
+          meta.appendChild(sub);
+
+          t.appendChild(c);
+          t.appendChild(meta);
+
+          t.addEventListener("click", () => scrollToPage(p));
+
+          sidePane.appendChild(t);
+          thumbViews.set(p, { thumbDiv: t, canvas: c });
+
+          const page = await pdfDoc.getPage(p);
+          const vp   = page.getViewport({ scale: 0.18 });
+
+          c.width  = Math.floor(vp.width);
+          c.height = Math.floor(vp.height);
+
+          const ctx = c.getContext("2d");
+          ctx.setTransform(1,0,0,1,0,0);
+          ctx.clearRect(0,0,c.width,c.height);
+
+          await page.render({ canvasContext: ctx, viewport: vp }).promise;
+          await sleep0();
+        }
+
+        const startP = clamp(parseInitialPageFromHash(), 1, pageCount);
+        for (const [k, tv] of thumbViews.entries()) {
+          tv.thumbDiv.classList.toggle("active", k === startP);
+        }
+      }
+
+      async function buildOutline() {
+        sidePane.innerHTML = "";
+        const outline = await pdfDoc.getOutline();
+
+        if (!outline || !outline.length) {
+          const p = el("div");
+          p.style.color = "var(--muted)";
+          p.style.fontSize = "12px";
+          p.textContent = "No outline in this PDF.";
+          sidePane.appendChild(p);
+          return;
+        }
+
+        async function addItems(items, depth) {
+          for (const it of items) {
+            const row = el("div","ol-item");
+            row.style.paddingLeft = (10 + depth * 14) + "px";
+            row.textContent = it.title || "(untitled)";
+            row.addEventListener("click", async () => {
+              const dest = await pdfDoc.getDestination(it.dest);
+              const ref = dest && dest[0];
+              if (!ref) return;
+              const pageIndex = await pdfDoc.getPageIndex(ref);
+              scrollToPage(pageIndex + 1);
+            });
+            sidePane.appendChild(row);
+
+            if (it.items && it.items.length) {
+              await addItems(it.items, depth + 1);
+            }
+          }
+        }
+
+        await addItems(outline, 0);
+      }
+
+    function updateAnnotsSidebar() {
+  if (!tabAnnots.classList.contains("active")) return;
+  sidePane.innerHTML = "";
+
+  if (!annotations.length) {
+    const p = el("div");
+    p.style.color = "var(--muted)";
+    p.style.fontSize = "12px";
+    p.textContent = "No highlights yet.";
+    sidePane.appendChild(p);
+    return;
+  }
+
+  const sorted = [...annotations].sort((a,b) => (a.page - b.page) || (a.createdAt - b.createdAt));
+  for (const a of sorted) {
+    const card = el("div");
+    card.style.border = "1px solid var(--stroke)";
+    card.style.borderRadius = "14px";
+    card.style.background = "rgba(255,255,255,0.03)";
+    card.style.padding = "10px";
+    card.style.marginBottom = "10px";
+    card.style.cursor = "pointer";
+
+    const top = el("div");
+    top.style.display = "flex";
+    top.style.alignItems = "center";
+    top.style.gap = "8px";
+
+    const sw = el("div");
+    sw.style.width = "10px";
+    sw.style.height = "10px";
+    sw.style.borderRadius = "999px";
+    sw.style.border = "1px solid rgba(255,255,255,0.18)";
+    sw.style.background =
+      (a.color === "green") ? "var(--hl-green)" :
+      (a.color === "blue") ? "var(--hl-blue)" :
+      (a.color === "red") ? "var(--hl-red)" :
+      (a.color === "purple") ? "var(--hl-purple)" :
+      "var(--hl-yellow)";
+
+    const tag = el("div");
+    tag.style.fontSize = "11px";
+    tag.style.color = "var(--muted)";
+    tag.textContent = "Page " + String(a.page);
+
+    const del = el("div");
+    del.style.marginLeft = "auto";
+    del.style.fontSize = "11px";
+    del.style.color = "var(--danger)";
+    del.style.userSelect = "none";
+    del.textContent = "Delete";
+
+    top.appendChild(sw);
+    top.appendChild(tag);
+    top.appendChild(del);
+    card.appendChild(top);
+
+    // ---- Context blockquote (selected text + cite) ----
+    const ctxText = String(a.context_text || a.text || "").trim();
+    const ctxCite = String(a.context_cite || "").trim();
+
+    if (ctxText) {
+      const bq = document.createElement("blockquote");
+      bq.style.margin = "10px 0 0 0";
+      bq.style.padding = "10px 12px";
+      bq.style.borderLeft = "3px solid rgba(255,255,255,0.18)";
+      bq.style.borderRadius = "10px";
+      bq.style.background = "rgba(0,0,0,0.18)";
+      bq.style.color = "var(--txt)";
+      bq.style.fontSize = "12px";
+      bq.style.lineHeight = "1.45";
+      bq.style.whiteSpace = "pre-wrap";
+
+      const ctxSpan = el("div");
+      ctxSpan.textContent = ctxText;
+
+      bq.appendChild(ctxSpan);
+
+      if (ctxCite) {
+        const cite = el("div");
+        cite.style.marginTop = "6px";
+        cite.style.color = "var(--muted)";
+        cite.style.fontSize = "11px";
+        cite.textContent = ctxCite;
+        bq.appendChild(cite);
+      }
+
+      card.appendChild(bq);
+    }
+
+    // ---- Comment (note) with contrasting style ----
+    const comment = String(a.comment || a.note || "").trim();
+    if (comment) {
+      const c = el("div");
+      c.style.marginTop = "10px";
+      c.style.padding = "10px 12px";
+      c.style.border = "1px solid rgba(255,255,255,0.10)";
+      c.style.borderRadius = "12px";
+      c.style.background = "rgba(255,255,255,0.04)";
+      c.style.color = "var(--txt)";
+      c.style.fontSize = "12px";
+      c.style.whiteSpace = "pre-wrap";
+      c.textContent = comment;
+      card.appendChild(c);
+    }
+
+    card.addEventListener("click", () => scrollToPage(a.page));
+    del.addEventListener("click", ev => {
+      ev.stopPropagation();
+      annotations = annotations.filter(x => x.id !== a.id);
+      saveAnnots();
+      for (const p of pageViews.keys()) renderAnnoLayer(p);
+      updateAnnotsSidebar();
+    });
+
+    sidePane.appendChild(card);
+  }
+}
+
+
+      function showThumbs() {
+        setActiveTab("thumbs");
+        buildThumbs().catch(e => logWarn("buildThumbs failed", e && (e.message || String(e))));
+      }
+
+      async function showOutline() {
+        setActiveTab("outline");
+        await buildOutline();
+      }
+
+      function showAnnots() {
+        setActiveTab("annots");
+        updateAnnotsSidebar();
+      }
+
+      // ---------------- Storage ----------------
+ // ---------------- Storage (single annotations.json via Qt bridge) ----------------
+// ---------------- Storage (single annotations.json via Qt bridge) ----------------
+let __ANN_STORE = null;
+let __ANN_SAVE_T = null;
+
+function docKeyFromFileUrl(u){
+  return String(u || "");
+}
+
+function _emptyStore(){
+  return { version: 1, updated_at: Date.now(), documents: {} };
+}
+
+function _ensureDocNode(store, docKey){
+  const docs = store.documents;
+  if (!docs[docKey]) docs[docKey] = { updated_at: Date.now(), annotations: [] };
+  return docs[docKey];
+}
+
+function loadAnnotsFromStoreForCurrentDoc(){
+  if (!__ANN_STORE) __ANN_STORE = _emptyStore();
+  const dk = docKeyFromFileUrl(fileUrl);
+  const node = _ensureDocNode(__ANN_STORE, dk);
+  return node.annotations || [];
+}
+
+function _writeAnnotsToStoreForCurrentDoc(list){
+  if (!__ANN_STORE) __ANN_STORE = _emptyStore();
+  const dk = docKeyFromFileUrl(fileUrl);
+  const node = _ensureDocNode(__ANN_STORE, dk);
+  node.annotations = list || [];
+  node.updated_at = Date.now();
+  __ANN_STORE.updated_at = node.updated_at;
+}
+
+function _persistStoreNow(){
+  const payload = JSON.stringify(__ANN_STORE);
+
+  const ready = ensureAnnotationsBridgeReady();
+  ready.then(() => {
+    if (window.ANNOTATIONS_BRIDGE && window.ANNOTATIONS_BRIDGE.save_all) {
+      window.ANNOTATIONS_BRIDGE.save_all(payload);
+      logDebug("annotations persisted", "bytes=" + String(payload.length));
+      return;
+    }
+    logWarn("ANNOTATIONS_BRIDGE missing; cannot persist annotations.json");
+  });
+}
+
+function _persistStoreDebounced(){
+  if (__ANN_SAVE_T) clearTimeout(__ANN_SAVE_T);
+  __ANN_SAVE_T = setTimeout(() => {
+    __ANN_SAVE_T = null;
+    _persistStoreNow();
+  }, 200);
+}
+
+async function loadAllStoreFromHost(){
+  await ensureAnnotationsBridgeReady();
+
+  if (window.ANNOTATIONS_BRIDGE && window.ANNOTATIONS_BRIDGE.load_all) {
+    const raw = await window.ANNOTATIONS_BRIDGE.load_all();
+    __ANN_STORE = raw ? JSON.parse(String(raw)) : _emptyStore();
+
+    if (!__ANN_STORE.documents) __ANN_STORE = _emptyStore();
+    if (__ANN_STORE.version === undefined) __ANN_STORE.version = 1;
+
+    logDebug("annotations store loaded", raw ? ("bytes=" + String(String(raw).length)) : "empty");
+    return;
+  }
+
+  __ANN_STORE = _emptyStore();
+  logWarn("ANNOTATIONS_BRIDGE missing; using in-memory store only");
+}
+
+function loadAnnots(){
+  return loadAnnotsFromStoreForCurrentDoc();
+}
+
+function saveAnnots(){
+  _writeAnnotsToStoreForCurrentDoc(annotations);
+  _persistStoreDebounced();
+}
+
+
+      // ---------------- Selection + highlights ----------------
+   let pdfSelectionDispatchKey = "";
+
+   function notifyParentPdfSelection(payload) {
+     if (!window.parent || window.parent === window) return;
+     window.parent.postMessage({ type: "pdf-selection", payload }, "*");
+   }
+
+   function postPdfSelection(payload) {
+     if (!payload) {
+       notifyParentPdfSelection(null);
+       return;
+     }
+
+     const page = (payload.ranges && payload.ranges.length) ? payload.ranges[0].page : 0;
+     const citation = payload.citation || "";
+     const text = payload.text || "";
+     const key = `${payload.dqid || ""}|${text}|${citation}|${page}`;
+     if (pdfSelectionDispatchKey === key) return;
+     pdfSelectionDispatchKey = key;
+     notifyParentPdfSelection({ text, citation, page, dqid: payload.dqid });
+   }
+
+   function publishSelectionToParent(selection) {
+     if (!selection || !currentPayload) return;
+     const citation = selectionPlainForClipboard();
+     const html = selectionHtmlForClipboard();
+     const payload = {
+       text: selection.text,
+       citation,
+       citationHtml: html,
+       dqid: payloadDqid(currentPayload),
+       ranges: selection.ranges
+     };
+     postPdfSelection(payload);
+   }
+
+   function clearParentSelection() {
+     pdfSelectionDispatchKey = "CLEARED";
+     notifyParentPdfSelection(null);
+   }
+
+   function selectionToRects() {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return null;
+
+  const text = (sel.toString() || "").trim();
+  if (!text) return null;
+
+  const rectsByPage = new Map();
+
+  function mergeRects(rects){
+    const xs = rects.slice().sort((a,b) => (a.y - b.y) || (a.x - b.x));
+
+    const out = [];
+    const sameLineY = 3;      // px tolerance for line grouping
+    const sameLineH = 6;      // px tolerance for height variance (superscripts differ)
+    const gapMax = 3;         // px max gap to merge
+    const minW = 1;           // allow tiny superscripts
+    const minH = 1;
+
+    for (const r of xs) {
+      if (r.w < minW || r.h < minH) continue;
+
+      const last = out.length ? out[out.length - 1] : null;
+      if (!last) {
+        out.push({ x: r.x, y: r.y, w: r.w, h: r.h });
+        continue;
+      }
+
+      const yClose = Math.abs(r.y - last.y) <= sameLineY;
+      const hClose = Math.abs(r.h - last.h) <= sameLineH;
+
+      const lastRight = last.x + last.w;
+      const gap = r.x - lastRight;
+
+      if (yClose && hClose && gap >= -1 && gap <= gapMax) {
+        const newRight = Math.max(lastRight, r.x + r.w);
+        const newBottom = Math.max(last.y + last.h, r.y + r.h);
+        last.x = Math.min(last.x, r.x);
+        last.y = Math.min(last.y, r.y);
+        last.w = newRight - last.x;
+        last.h = newBottom - last.y;
+        continue;
+      }
+
+      out.push({ x: r.x, y: r.y, w: r.w, h: r.h });
+    }
+
+    // Optional: remove “micro-fragments” that are likely stray caret/selection noise
+    const filtered = [];
+    for (const r of out) {
+      if (r.w <= 2 && r.h <= 6) continue;
+      filtered.push(r);
+    }
+    return filtered;
+  }
+
+  for (let i = 0; i < sel.rangeCount; i++) {
+    const range = sel.getRangeAt(i);
+    const rects = range.getClientRects();
+
+    for (const cr of rects) {
+      // Keep superscripts: accept small rects, but skip true noise
+      if (cr.width < 0.8 || cr.height < 0.8) continue;
+
+      let node = range.commonAncestorContainer;
+      if (node && node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+
+      const pageDiv = node && node.closest ? node.closest(".page") : null;
+      if (!pageDiv) continue;
+
+      const pageNum = parseInt(pageDiv.dataset.pageNumber || "0", 10) || 0;
+      if (!pageNum) continue;
+
+      const pageRect = pageDiv.getBoundingClientRect();
+
+      // Slight padding: makes tiny superscripts actually visible in highlight overlay
+      const pad = 1.2;
+
+      const x = (cr.left - pageRect.left) - pad;
+      const y = (cr.top  - pageRect.top)  - pad;
+      const w = cr.width  + (pad * 2);
+      const h = cr.height + (pad * 2);
+
+      const list = rectsByPage.get(pageNum) || [];
+      list.push({ x, y, w, h });
+      rectsByPage.set(pageNum, list);
+    }
+  }
+
+  if (!rectsByPage.size) return null;
+
+  const ranges = [];
+  for (const [page, rects] of rectsByPage.entries()) {
+    const merged = mergeRects(rects);
+    if (merged.length) ranges.push({ page, rects: merged });
+  }
+  ranges.sort((a,b) => a.page - b.page);
+
+  if (!ranges.length) return null;
+  return { text, ranges };
+}
+
+
+      function hideSelBar() {
+        selBar.style.display = "none";
+        lastSelection = null;
+        pendingNote = false;
+        clearParentSelection();
+      }
+
+      function showSelBar(x,y,txt) {
+        selText.textContent = txt;
+        selBar.style.left = Math.max(12, Math.floor(x)) + "px";
+        selBar.style.top  = Math.max(12, Math.floor(y)) + "px";
+        selBar.style.display = "flex";
+      }
+
+     function addHighlight(noteText) {
+  if (!lastSelection) return;
+
+  const created = Date.now();
+
+  const ctxText = String(lastSelection.text || "").trim();
+  let ctxCite = "";
+  if (currentPayload) {
+    // Use your existing citation format helper (author/year/page)
+    const pl = currentPayload;
+    const author = String(pl.first_author_last || pl.author_summary || "").trim();
+    const year = String(pl.year || "").trim();
+    const page = String(pl.page || "").trim();
+
+    if (author && year && page) ctxCite = `(${author}, ${year}, p. ${page})`;
+    else if (author && year) ctxCite = `(${author}, ${year})`;
+    else if (author && page) ctxCite = `(${author}, p. ${page})`;
+    else if (author) ctxCite = `(${author})`;
+    else if (year && page) ctxCite = `(${year}, p. ${page})`;
+    else if (year) ctxCite = `(${year})`;
+    else if (page) ctxCite = `(p. ${page})`;
+  }
+
+  for (const part of lastSelection.ranges) {
+    const a = {
+      id: newId(),
+      createdAt: created,
+      page: part.page,
+      rects: part.rects,
+      text: ctxText,              // keep for backward compatibility
+      context_text: ctxText,      // new
+      context_cite: ctxCite,      // new
+      comment: (noteText || "").trim(), // new (user’s note)
+      note: (noteText || "").trim(),    // keep for backward compatibility
+      color: activeHlColor
+    };
+    annotations.push(a);
+    renderAnnoLayer(part.page);
+  }
+
+  saveAnnots();
+  updateAnnotsSidebar();
+  hideSelBar();
+}
+
+
+      // ---------------- Find ----------------
+ function resetFindState(){
+  findMatches = [];
+  findIndex = -1;
+}
+
+
+// ---------------- Selection UX: show selBar on left-drag selection ----------------
+function selectionInTextLayer(){
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return false;
+
+  const r = sel.getRangeAt(0);
+  let node = r.commonAncestorContainer;
+  if (node && node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+
+  return !!(node && node.closest && node.closest(".textLayer"));
+}
+
+function updateSelectionUIFromEvent(ev){
+  if (modal.style.display === "flex") return;
+
+  const sel = window.getSelection();
+  const txt = (sel && sel.toString ? (sel.toString() || "") : "").trim();
+
+  if (!txt) {
+    hideSelBar();
+    return;
+  }
+
+  if (!selectionInTextLayer()) return;
+
+  const s = selectionToRects();
+  if (!s) return;
+
+  lastSelection = s;
+
+  const x = ev && ev.clientX !== undefined ? ev.clientX : 24;
+  const y = ev && ev.clientY !== undefined ? ev.clientY : 24;
+
+  showSelBar(x + 10, y + 12, `Selected · ${s.text.length} chars`);
+  publishSelectionToParent(s);
+}
+
+viewerEl.addEventListener("mouseup", (ev) => {
+  updateSelectionUIFromEvent(ev);
+}, { passive: true });
+
+viewerEl.addEventListener("keyup", (ev) => {
+  updateSelectionUIFromEvent(ev);
+}, { passive: true });
+
+viewerEl.addEventListener("mousedown", (ev) => {
+  if (selBar.style.display === "flex") hideSelBar();
+}, { passive: true });
+
+
+
+function _clearFindOverlay(){
+  for (let p = 1; p <= pageCount; p++) {
+    const v = pageViews.get(p);
+    if (!v || !v.findLayer) continue;
+    v.findLayer.innerHTML = "";
+  }
+}
+
+function _renderFindOverlayForPage(p){
+  const v = pageViews.get(p);
+  if (!v || !v.findLayer) return;
+
+  v.findLayer.innerHTML = "";
+
+  const pageDivRect = v.pageDiv.getBoundingClientRect();
+  const matches = findMatches.filter(m => m.page === p);
+
+  for (let i = 0; i < matches.length; i++) {
+    const m = matches[i];
+    const div = v._textDivs[m.divIndex];
+
+    const tn = div && div.firstChild;
+    if (!tn) continue;
+
+    const r = document.createRange();
+    r.setStart(tn, m.start);
+    r.setEnd(tn, m.end);
+
+    const rects = r.getClientRects();
+    for (const cr of rects) {
+      if (cr.width < 1 || cr.height < 1) continue;
+      const box = document.createElement("div");
+      box.className = "findBox";
+      box.style.left = (cr.left - pageDivRect.left) + "px";
+      box.style.top  = (cr.top  - pageDivRect.top) + "px";
+      box.style.width  = cr.width + "px";
+      box.style.height = cr.height + "px";
+      v.findLayer.appendChild(box);
+    }
+  }
+}
+
+function _setActiveFindBox(){
+  for (let p = 1; p <= pageCount; p++) {
+    const v = pageViews.get(p);
+    if (!v || !v.findLayer) continue;
+    const boxes = v.findLayer.querySelectorAll(".findBox");
+    for (const b of boxes) b.classList.remove("active");
+  }
+
+  if (findIndex < 0 || findIndex >= findMatches.length) return;
+  const m = findMatches[findIndex];
+  const v = pageViews.get(m.page);
+  if (!v || !v.findLayer) return;
+
+  const boxes = v.findLayer.querySelectorAll(".findBox");
+  if (!boxes.length) return;
+
+  /* Heuristic: boxes are appended in match order for the page */
+  const pageMatches = findMatches.filter(x => x.page === m.page);
+  let localIndex = 0;
+  for (let i = 0; i < pageMatches.length; i++) {
+    if (pageMatches[i] === m) { localIndex = i; break; }
+  }
+  if (boxes[localIndex]) boxes[localIndex].classList.add("active");
+}
+
+async function runFind(query) {
+  resetFindState();
+  _clearFindOverlay();
+
+  findQuery = (query || "").trim();
+  if (!findQuery) {
+    setStatus("");
+    return;
+  }
+  if (!pdfDoc) {
+    setStatus("Find: PDF not loaded yet.");
+    return;
+  }
+
+  const needle = findQuery;
+  const needleLower = needle.toLowerCase();
+
+  setStatus("Finding…");
+
+  for (let p = 1; p <= pageCount; p++) {
+    const v = pageViews.get(p);
+
+    if (!v._textDivs || !v._textDivs.length) {
+      await renderPage(p);
+    }
+
+    for (let i = 0; i < v._textDivs.length; i++) {
+      const d = v._textDivs[i];
+      const src = d.dataset.srcText || (d.textContent || "");
+      const hay = src.toLowerCase();
+
+      let idx = 0;
+      while (true) {
+        const at = hay.indexOf(needleLower, idx);
+        if (at === -1) break;
+        findMatches.push({ page: p, divIndex: i, start: at, end: at + needle.length });
+        idx = at + needle.length;
+      }
+    }
+
+    await sleep0();
+  }
+
+  if (!findMatches.length) {
+    setStatus(`No matches for “${findQuery}”.`);
+    return;
+  }
+
+  /* Render overlay only for pages that currently exist (they all do) but keep it cheap:
+     only render for the first match page + its neighbours immediately. */
+  const firstPage = findMatches[0].page;
+  _renderFindOverlayForPage(firstPage);
+  _renderFindOverlayForPage(clamp(firstPage + 1, 1, pageCount));
+  _renderFindOverlayForPage(clamp(firstPage - 1, 1, pageCount));
+
+  findIndex = 0;
+  scrollToPage(firstPage);
+
+/* Scroll precisely to the match */
+const m = findMatches[0];
+const v = pageViews.get(m.page);
+const div = v._textDivs[m.divIndex];
+div.scrollIntoView({ behavior: "auto", block: "center" });
+
+_renderFindOverlayForPage(firstPage);
+_setActiveFindBox();
+
+
+  setStatus(`Match 1 / ${findMatches.length}`);
+}
+
+function stepFind(dir) {
+  if (!findMatches.length) return;
+
+  findIndex = clamp(findIndex + dir, 0, findMatches.length - 1);
+  const m = findMatches[findIndex];
+
+  scrollToPage(m.page);
+
+const v = pageViews.get(m.page);
+const div = v._textDivs[m.divIndex];
+div.scrollIntoView({ behavior: "auto", block: "center" });
+
+_renderFindOverlayForPage(m.page);
+_setActiveFindBox();
+
+
+  setStatus(`Match ${findIndex + 1} / ${findMatches.length}`);
+}
+
+
+
+      // ---------------- Public API (Qt) ----------------
+      window.ANNO = {
+        exportJSON: () => JSON.stringify({ fileUrl, annotations }, null, 2),
+        importJSON: (jsonString) => {
+          const obj = JSON.parse(String(jsonString || ""));
+          annotations = obj.annotations || [];
+          saveAnnots();
+          for (const p of pageViews.keys()) renderAnnoLayer(p);
+          updateAnnotsSidebar();
+        },
+        clear: () => {
+          annotations = [];
+          saveAnnots();
+          for (const p of pageViews.keys()) renderAnnoLayer(p);
+          updateAnnotsSidebar();
+        }
+      };
+            window.PDF_APP = {
+        dumpPageText: (page) => {
+          const p = clamp(parseInt(String(page || "1"), 10) || 1, 1, pageCount || 1);
+          const txt = pageTextForPage(p);
+          logInfo("dumpPageText", `page=${p}`);
+          logInfo("dumpPageText.text", txt);
+          return txt;
+        },
+
+        loadFromUrl: (url, page = 1) => {
+          fileUrl = String(url || "");
+          pageJump = parseInt(page || 1, 10) || 1;
+          pendingPayloadFocus = null;
+          currentPayload = null;
+          boot();
+          return "OK_URL";
+        },
+
+
+        loadFromPayload: (payload) => {
+          currentPayload = payload;
+
+          const winPath = String(payload.pdf_path);
+          fileUrl = winPath.startsWith("file:///") ? winPath : toFileUrlFromWindowsPath(winPath);
+
+          pageJump = parseInt(String(payload.page || 1), 10) || 1;
+
+          const quote = String(payload.direct_quote_clean || payload.direct_quote || "");
+          pendingPayloadFocus = { page: pageJump, quote };
+
+          boot();
+          return "OK_PAYLOAD";
+        },
+
+        scrollToPage: (page) => {
+          const p = clamp(parseInt(String(page || "1"), 10) || 1, 1, pageCount || 1);
+          scrollToPage(p);
+          pageNum.value = String(p);
+          return "OK_SCROLL";
+        }
+      };
+
+
+function selectionHtmlForClipboard(){
+  function normaliseHyphenation(s){
+    const t0 = String(s || "");
+    const t1 = t0.replace(/\u00AD/g, "");               // soft hyphen
+    const t2 = t1.replace(/([A-Za-z])-\s+([A-Za-z])/g, "$1$2"); // hyphen + whitespace between letters
+    return t2.trim();
+  }
+
+  function citationParen(pl){
+    const author = String(pl.first_author_last || pl.author_summary || "").trim();
+    const year = String(pl.year || "").trim();
+    const page = String(pl.page || "").trim();
+
+    if (author !== "" && year !== "" && page !== "") return `(${author}, ${year}, p. ${page})`;
+    if (author !== "" && year !== "") return `(${author}, ${year})`;
+    if (author !== "" && page !== "") return `(${author}, p. ${page})`;
+    if (author !== "") return `(${author})`;
+    if (year !== "" && page !== "") return `(${year}, p. ${page})`;
+    if (year !== "") return `(${year})`;
+    if (page !== "") return `(p. ${page})`;
+    return "";
+  }
+
+  const sel = window.getSelection();
+  const rawTxt = (sel && sel.toString ? (sel.toString() || "") : "");
+  const txt = normaliseHyphenation(rawTxt);
+
+  const pl = currentPayload;
+
+  const dqid = payloadDqid(pl);
+  const cite = citationParen(pl);
+
+  const theme = String(pl.theme || "");
+  const route = String(pl.route || "");
+  const evType = String(pl.evidence_type || "");
+  const itemKey = String(pl.item_key || "");
+
+  const quoteRaw = String(pl.direct_quote_clean || pl.direct_quote || "");
+  const quote = normaliseHyphenation(quoteRaw);
+
+  const url = String(pl.url || ""); // IMPORTANT: use the real URL, not pdf_path
+
+  const safeTxt = escapeHtml(txt);
+  const safeCite = escapeHtml(cite);
+  const safeQuote = escapeHtml(quote);
+  const safeUrl = escapeHtml(url);
+
+  return (
+    `<p>` +
+      `<span data-dqid="${escapeHtml(dqid)}" ` +
+            `data-item-key="${escapeHtml(itemKey)}" ` +
+            `data-theme="${escapeHtml(theme)}" ` +
+            `data-route="${escapeHtml(route)}" ` +
+            `data-evidence-type="${escapeHtml(evType)}">` +
+        `${safeTxt}` +
+      `</span>` +
+      ` ` +
+      `<a href="${safeUrl}" ` +
+         `title="${safeQuote}" ` +
+         `data-theme="${escapeHtml(theme)}" ` +
+         `data-dqid="${escapeHtml(dqid)}" ` +
+         `data-item-key="${escapeHtml(itemKey)}" ` +
+         `data-route="${escapeHtml(route)}" ` +
+         `data-evidence-type="${escapeHtml(evType)}">` +
+        `${safeCite}` +
+      `</a>` +
+    `</p>`
+  );
+}
+
+
+function selectionPlainForClipboard(){
+  const sel = window.getSelection();
+  const txt = (sel && sel.toString ? (sel.toString() || "") : "").trim();
+  const pl = currentPayload;
+  const cite = payloadCitationText(pl);
+  return `${txt} (${cite})`;
+}
+
+document.addEventListener("copy", (ev) => {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return;
+
+  const r = sel.getRangeAt(0);
+  let node = r.commonAncestorContainer;
+  if (node && node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+
+  const inTextLayer = node && node.closest && node.closest(".textLayer");
+  if (!inTextLayer) return;
+
+  if (!currentPayload) return;
+
+  const html = selectionHtmlForClipboard();
+  const plain = selectionPlainForClipboard();
+
+  ev.preventDefault();
+  ev.clipboardData.setData("text/html", html);
+  ev.clipboardData.setData("text/plain", plain);
+
+  logInfo("copy: exported zotero-like html", `dqid=${payloadDqid(currentPayload)}`);
+});
+
+document.addEventListener("dragstart", (ev) => {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return;
+
+  const r = sel.getRangeAt(0);
+  let node = r.commonAncestorContainer;
+  if (node && node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+
+  const inTextLayer = node && node.closest && node.closest(".textLayer");
+  if (!inTextLayer) return;
+
+  if (!currentPayload) return;
+
+  const html = selectionHtmlForClipboard();
+  const plain = selectionPlainForClipboard();
+
+  ev.dataTransfer.setData("text/html", html);
+  ev.dataTransfer.setData("text/plain", plain);
+
+  logInfo("drag: exported zotero-like html", `dqid=${payloadDqid(currentPayload)}`);
+});
+
+// Keep page hash and lazy render on scroll; do NOT alter selection behaviour.
+viewerEl.addEventListener("scroll", () => {
+  const p = currentPageFromScroll();
+  updateHashPage(p);
+  for (const [k,tv] of thumbViews.entries()) {
+    tv.thumbDiv.classList.toggle("active", k === p);
+  }
+
+  const scaleKey = Number(renderScale).toFixed(4);
+
+  const visible = getVisiblePages();
+  for (const vp of visible) {
+    const v = pageViews.get(vp);
+    const st = pageRenderState.get(vp);
+
+    if (v._renderedScaleKey === scaleKey && v._renderedEpoch === globalRenderEpoch) continue;
+    if (st && st.busy) continue;
+
+    lazyQueue.unshift(vp);
+  }
+
+  pumpLazyQueue();
+}, { passive: true });
+
+
+window.addEventListener("resize", debounce(async () => {
+  if (!pdfDoc) return;
+  if (fitMode !== "width") return;
+
+  cancelAllRenders("resize");
+  await ensureScale();
+
+  const p = currentPageFromScroll();
+  await renderPage(p);
+  await renderPage(clamp(p + 1, 1, pageCount));
+
+  lazyQueue = [];
+  for (let i = 1; i <= pageCount; i++) {
+    if (i === p || i === p + 1) continue;
+    lazyQueue.push(i);
+  }
+  pumpLazyQueue();
+}, 200));
+
+// Palette
+for (const d of hlDots) {
+  d.addEventListener("click", () => {
+    const c = d.dataset.color || "yellow";
+    activeHlColor = c;
+    for (const k of hlDots) k.classList.toggle("active", k === d);
+    focusViewerIfSafe();
+  });
+}
+
+// ---------------- Context menu (right click) ----------------
+// IMPORTANT: requires #ctxMenu element in HTML and .ctxMenu CSS.
+// Also ensure .annoLayer allows pointer-events so .hl can be right-clicked.
+
+const ctxMenu = document.getElementById("ctxMenu");
+let ctxState = { mode: "none", page: 0, annoId: "", clientX: 0, clientY: 0 };
+
+function closeCtx(){
+  ctxMenu.classList.remove("open");
+  ctxMenu.setAttribute("aria-hidden", "true");
+  ctxState = { mode: "none", page: 0, annoId: "", clientX: 0, clientY: 0 };
+}
+function openCtx(x, y, mode){
+  ctxState.clientX = x;
+  ctxState.clientY = y;
+  ctxState.mode = mode;
+
+  const annoItems = ctxMenu.querySelectorAll(".ctxForAnno");
+  for (const it of annoItems) it.style.display = (mode === "anno") ? "" : "none";
+
+  const want =
+    (mode === "anno" && ctxState.annoId && annoById(ctxState.annoId)) ? (annoById(ctxState.annoId).color || "yellow")
+    : (mode === "sel") ? String(activeHlColor || "yellow")
+    : "yellow";
+
+  const dots = ctxMenu.querySelectorAll(".ctxColorDot");
+  for (const d of dots) d.classList.toggle("active", String(d.dataset.color || "") === want);
+
+  const pad = 10;
+  const w = 260;
+  const h = 260;
+  const left = Math.min(x, window.innerWidth - w - pad);
+  const top  = Math.min(y, window.innerHeight - h - pad);
+
+  ctxMenu.style.left = Math.max(pad, Math.floor(left)) + "px";
+  ctxMenu.style.top  = Math.max(pad, Math.floor(top)) + "px";
+
+  ctxMenu.classList.add("open");
+  ctxMenu.setAttribute("aria-hidden", "false");
+}
+
+
+function annoById(id){
+  for (const a of annotations) if (a.id === id) return a;
+  return null;
+}
+
+function deleteAnnoById(id){
+  annotations = annotations.filter(x => x.id !== id);
+  saveAnnots();
+  for (const p of pageViews.keys()) renderAnnoLayer(p);
+  updateAnnotsSidebar();
+}
+
+function changeAnnoColor(id, color){
+ for (const a of annotations) {
+  if (a.id === ctxState.annoId) {
+    a.comment = note;
+    a.note = note; // keep backward compatibility
+  }
+}
+
+  saveAnnots();
+  for (const p of pageViews.keys()) renderAnnoLayer(p);
+  updateAnnotsSidebar();
+}
+
+function editAnnoNote(id){
+  const a = annoById(id);
+  if (!a) return;
+
+  pendingNote = true;
+  modal.style.display = "flex";
+  noteBox.value = a.note || "";
+  noteBox.focus();
+
+  ctxState.mode = "editNote";
+  ctxState.annoId = id;
+}
+
+async function copyPlainFromSelection(){
+  const sel = window.getSelection();
+  const txt = (sel && sel.toString ? (sel.toString() || "") : "").trim();
+  await navigator.clipboard.writeText(txt);
+  setStatus("Copied selection.");
+  logInfo("copy: plain selection");
+}
+
+async function copyHtmlFromSelection(){
+  if (!currentPayload) return;
+  const html = selectionHtmlForClipboard();
+  const plain = selectionPlainForClipboard();
+  const item = new ClipboardItem({
+    "text/html": new Blob([html], { type: "text/html" }),
+    "text/plain": new Blob([plain], { type: "text/plain" })
+  });
+  await navigator.clipboard.write([item]);
+  setStatus("Copied selection (HTML + cite).");
+  logInfo("copy: html selection", `dqid=${payloadDqid(currentPayload)}`);
+}
+
+viewerEl.addEventListener("contextmenu", (ev) => {
+  ev.preventDefault();
+
+  const t = ev.target;
+
+  if (t && t.classList && t.classList.contains("hl")) {
+    const id = String(t.dataset.annoId || "");
+    if (id) {
+      ctxState.annoId = id;
+
+      const pageDiv = t.closest ? t.closest(".page") : null;
+      const pn = pageDiv ? (parseInt(pageDiv.dataset.pageNumber || "0", 10) || 0) : 0;
+      ctxState.page = pn;
+
+      openCtx(ev.clientX, ev.clientY, "anno");
+      return;
+    }
+  }
+
+  const sel = window.getSelection();
+  const txt = (sel && sel.toString ? (sel.toString() || "") : "").trim();
+  if (txt) {
+    const s = selectionToRects();
+    if (s) lastSelection = s;
+
+    openCtx(ev.clientX, ev.clientY, "sel");
+    return;
+  }
+
+  closeCtx();
+});
+
+document.addEventListener("mousedown", () => closeCtx(), true);
+window.addEventListener("blur", () => closeCtx());
+
+ctxMenu.addEventListener("mousedown", (ev) => ev.stopPropagation());
+
+ctxMenu.addEventListener("click", async (ev) => {
+  const dot = ev.target.closest ? ev.target.closest(".ctxColorDot") : null;
+  if (dot) {
+    const c = String(dot.dataset.color || "yellow");
+
+    const dots = ctxMenu.querySelectorAll(".ctxColorDot");
+    for (const d of dots) d.classList.remove("active");
+    dot.classList.add("active");
+
+    if (ctxState.mode === "anno" && ctxState.annoId) {
+      changeAnnoColor(ctxState.annoId, c);
+      setStatus(`Colour: ${c}`);
+      logInfo("anno: colour", `${ctxState.annoId} -> ${c}`);
+      closeCtx();
+      focusViewerIfSafe();
+      return;
+    }
+
+    if (ctxState.mode === "sel") {
+      activeHlColor = c;
+      addHighlight("");
+      closeCtx();
+      focusViewerIfSafe();
+      return;
+    }
+
+    return;
+  }
+
+  const it = ev.target.closest ? ev.target.closest(".ctxItem") : null;
+  if (!it) return;
+
+  const act = it.dataset.act || "";
+  if (act === "noop") return;
+
+  if (act === "hl") {
+    addHighlight("");
+    closeCtx();
+    focusViewerIfSafe();
+    return;
+  }
+
+  if (act === "note") {
+    pendingNote = true;
+    modal.style.display = "flex";
+    noteBox.value = "";
+    noteBox.focus();
+    closeCtx();
+    return;
+  }
+
+  if (act === "copyPlain") {
+    await copyPlainFromSelection();
+    closeCtx();
+    focusViewerIfSafe();
+    return;
+  }
+
+  if (act === "copyHtml") {
+    await copyHtmlFromSelection();
+    closeCtx();
+    focusViewerIfSafe();
+    return;
+  }
+
+  if (act === "del") {
+    deleteAnnoById(ctxState.annoId);
+    setStatus("Highlight deleted.");
+    logInfo("anno: deleted", ctxState.annoId);
+    closeCtx();
+    focusViewerIfSafe();
+    return;
+  }
+
+  if (act === "editNote") {
+    editAnnoNote(ctxState.annoId);
+    closeCtx();
+    return;
+  }
+});
+
+
+// Note Save: unified (new note highlight OR edit existing note)
+btnNoteSave.addEventListener("click", () => {
+  const note = (noteBox.value || "").trim();
+  modal.style.display = "none";
+
+  if (ctxState.mode === "editNote" && ctxState.annoId) {
+    for (const a of annotations) {
+      if (a.id === ctxState.annoId) a.note = note;
+    }
+    saveAnnots();
+    for (const p of pageViews.keys()) renderAnnoLayer(p);
+    updateAnnotsSidebar();
+    setStatus("Note updated.");
+    logInfo("anno: note updated", ctxState.annoId);
+    closeCtx();
+    focusViewerIfSafe();
+    return;
+  }
+
+  addHighlight(note);
+  focusViewerIfSafe();
+});
+
+
+// Note modal: do NOT refocus viewer while typing.
+btnNote.addEventListener("click", () => {
+  pendingNote = true;
+  modal.style.display = "flex";
+  noteBox.value = "";
+  noteBox.focus();
+});
+
+btnNoteCancel.addEventListener("click", () => {
+  pendingNote = false;
+  modal.style.display = "none";
+  focusViewerIfSafe();
+});
+
+// NOTE: btnNoteSave handler is defined in the Context menu block (unified Save).
+
+btnCancelSel.addEventListener("click", () => hideSelBar());
+
+btnHighlight.addEventListener("click", () => {
+  pendingNote = false;
+  addHighlight("");
+  focusViewerIfSafe();
+});
+
+
+/* Find (Zotero-like)
+   - Ctrl+F opens the find UI and focuses input
+   - Enter runs search
+   - Esc closes the find UI
+*/
+findBox.addEventListener("keydown", async (ev) => {
+  if (ev.key === "Enter") {
+    await runFind(findBox.value);
+    return;
+  }
+  if (ev.key === "Escape") {
+    closeFindUI();
+    return;
+  }
+});
+btnFindNext.addEventListener("click", () => stepFind(+1));
+btnFindPrev.addEventListener("click", () => stepFind(-1));
+btnFindClose.addEventListener("click", () => closeFindUI());
+
+// Sidebar
+function updatePageNumBoxFromScroll(){
+  const p = currentPageFromScroll();
+  pageNum.value = String(p);
+}
+
+function setPage(p){
+  const pp = clamp(parseInt(String(p || "1"), 10) || 1, 1, pageCount || 1);
+  scrollToPage(pp);
+  pageNum.value = String(pp);
+}
+
+async function applyZoom(newScale, mode){
+  if (!pdfDoc) return;
+
+  cancelAllRenders("zoom");
+  fitMode = mode || "manual";
+  renderScale = clamp(Number(newScale || renderScale), 0.35, 4.0);
+
+  const p = currentPageFromScroll();
+  await renderPage(p);
+  await renderPage(clamp(p + 1, 1, pageCount));
+
+  lazyQueue = [];
+  for (let i = 1; i <= pageCount; i++) {
+    if (i === p || i === p + 1) continue;
+    lazyQueue.push(i);
+  }
+  pumpLazyQueue();
+
+  updatePageNumBoxFromScroll();
+  setStatus(`Zoom ${(renderScale * 100).toFixed(0)}%`);
+  logInfo("Zoom", `scale=${renderScale.toFixed(3)} mode=${fitMode}`);
+}
+
+btnPrev.addEventListener("click", () => {
+  const p = currentPageFromScroll();
+  setPage(p - 1);
+  focusViewerIfSafe();
+});
+
+btnNext.addEventListener("click", () => {
+  const p = currentPageFromScroll();
+  setPage(p + 1);
+  focusViewerIfSafe();
+});
+
+pageNum.addEventListener("keydown", (ev) => {
+  if (ev.key !== "Enter") return;
+  setPage(pageNum.value);
+  focusViewerIfSafe();
+});
+
+/* View menu zoom controls */
+miZoomOut.addEventListener("click", async () => {
+  await applyZoom(renderScale / 1.12, "manual");
+  closeAllMenus();
+  focusViewerIfSafe();
+});
+
+miZoomIn.addEventListener("click", async () => {
+  await applyZoom(renderScale * 1.12, "manual");
+  closeAllMenus();
+  focusViewerIfSafe();
+});
+
+miZoom100.addEventListener("click", async () => {
+  await applyZoom(1.0, "manual");
+  closeAllMenus();
+  focusViewerIfSafe();
+});
+
+miFitWidth.addEventListener("click", async () => {
+  if (!pdfDoc) return;
+  cancelAllRenders("fitWidth");
+  fitMode = "width";
+  await ensureScale();
+  await applyZoom(renderScale, "width");
+  closeAllMenus();
+  focusViewerIfSafe();
+});
+
+// Sidebar (collapse the grid column, not only the element)
+btnSide.addEventListener("click", () => {
+  const app = document.getElementById("app");
+  const sb  = document.getElementById("sidebar");
+
+  const isHidden = sb.dataset.hidden === "1";
+  if (isHidden) {
+    sb.dataset.hidden = "0";
+    sb.style.display = "";
+    app.style.gridTemplateColumns = "300px 1fr";
+  } else {
+    sb.dataset.hidden = "1";
+    sb.style.display = "none";
+    app.style.gridTemplateColumns = "0 1fr";
+  }
+
+  if (fitMode === "width") {
+    window.dispatchEvent(new Event("resize"));
+  }
+
+  focusViewerIfSafe();
+});
+
+/* Tabs */
+tabThumbs.addEventListener("click", () => showThumbs());
+tabOutline.addEventListener("click", () =>
+  showOutline().catch(e => logWarn("buildOutline failed", e && (e.message || String(e))))
+);
+tabAnnots.addEventListener("click", () => showAnnots());
+
+/* Annotations menu actions */
+miExport.addEventListener("click", async () => {
+  const txt = window.ANNO.exportJSON();
+  try {
+    await navigator.clipboard.writeText(txt);
+    setStatus("Annotations copied to clipboard.");
+    logInfo("Annotations copied to clipboard.");
+  } catch (e) {
+    setStatus("Clipboard write blocked.");
+    logWarn("Clipboard write blocked", e && (e.message || String(e)));
+  }
+  closeAllMenus();
+  focusViewerIfSafe();
+});
+
+miImport.addEventListener("click", () => {
+  navigator.clipboard.readText().then(txt => {
+    window.ANNO.importJSON(txt);
+    setStatus("Annotations imported from clipboard.");
+    logInfo("Annotations imported from clipboard.");
+    closeAllMenus();
+    focusViewerIfSafe();
+  }).catch(e => {
+    setStatus("Clipboard read blocked.");
+    logWarn("Clipboard read blocked", e && (e.message || String(e)));
+    closeAllMenus();
+    focusViewerIfSafe();
+  });
+});
+
+miClear.addEventListener("click", () => {
+  window.ANNO.clear();
+  setStatus("Annotations cleared.");
+  logInfo("Annotations cleared.");
+  closeAllMenus();
+  focusViewerIfSafe();
+});
+
+/* Dropdown toggles + click-away close */
+/* Dropdown toggles + click-away close */
+btnAnnotsMenu.addEventListener("click", (ev) => {
+  ev.stopPropagation();
+  toggleMenu(menuAnnots);
+  focusViewerIfSafe();
+});
+
+btnViewMenu.addEventListener("click", (ev) => {
+  ev.stopPropagation();
+  toggleMenu(menuView);
+  focusViewerIfSafe();
+});
+
+btnThemeMenu.addEventListener("click", (ev) => {
+  ev.stopPropagation();
+  toggleMenu(menuTheme);
+  focusViewerIfSafe();
+});
+
+menuAnnots.addEventListener("click", (ev) => ev.stopPropagation());
+menuView.addEventListener("click", (ev) => ev.stopPropagation());
+menuTheme.addEventListener("click", (ev) => {
+  ev.stopPropagation();
+
+  const it = ev.target.closest ? ev.target.closest(".ddItem") : null;
+  if (!it) return;
+
+  const th = String(it.dataset.theme || "midnight");
+  applyPdfTheme(th);
+  savePdfTheme();
+  closeAllMenus();
+  focusViewerIfSafe();
+});
+
+document.addEventListener("click", () => {
+  closeAllMenus();
+});
+
+
+/* Keyboard: Ctrl+F opens find; Ctrl± zooms PDF only; Esc closes modal/find/menus */
+document.addEventListener("keydown", async (ev) => {
+  const ctrl = ev.ctrlKey || ev.metaKey;
+
+  if (ctrl && (ev.key === "f" || ev.key === "F")) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    openFindUI();
+    return;
+  }
+
+  if (ctrl && (ev.key === "+" || ev.key === "=")) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    await applyZoom(renderScale * 1.12, "manual");
+    return;
+  }
+
+  if (ctrl && (ev.key === "-" || ev.key === "_")) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    await applyZoom(renderScale / 1.12, "manual");
+    return;
+  }
+
+  if (ev.key === "Escape") {
+    if (modal.style.display === "flex") {
+      pendingNote = false;
+      modal.style.display = "none";
+      focusViewerIfSafe();
+      return;
+    }
+
+    closeAllMenus();
+
+    if (findWrap.classList.contains("open")) {
+      closeFindUI();
+      return;
+    }
+  }
+}, true);
+
+// Log box
+btnLogClear.addEventListener("click", () => {
+  __LOG_LINES.length = 0;
+  logBody.innerHTML = "";
+  logInfo("Log cleared.");
+  focusViewerIfSafe();
+});
+
+btnLogCopy.addEventListener("click", async () => {
+  await navigator.clipboard.writeText(__LOG_LINES.join("\n"));
+  logInfo("Log copied to clipboard.");
+  focusViewerIfSafe();
+});
+
+btnLogHide.addEventListener("click", () => {
+  const hidden = logBox.style.display === "none";
+  logBox.style.display = hidden ? "" : "none";
+  focusViewerIfSafe();
+});
+
+      // ---------------- Boot ----------------
+      function resetStateForNewDocument() {
+        hideSelBar();
+        modal.style.display = "none";
+
+        pdfDoc = null;
+        pageCount = 0;
+
+        docEl.innerHTML = "";
+        sidePane.innerHTML = "";
+
+        pageViews.clear();
+        thumbViews.clear();
+
+        annotations = [];
+        resetFindState();
+
+        fitMode = "width";
+        renderScale = 1.25;
+
+        setStatus("");
+        viewerEl.scrollTop = 0;
+
+        logDebug("resetStateForNewDocument()");
+      }
+     async function boot() {
+        resetStateForNewDocument();
+        logInfo("boot()");
+        logInfo("fileUrl", fileUrl || "(empty)");
+
+        // Load persisted PDF theme (canvas-only)
+        loadPdfTheme();
+
+        if (!fileUrl) {
+          setStatus("Ready (no file)");
+          logWarn("No ?file= provided.");
+          return;
+        }
+
+        setStatus("Loading…");
+
+        const loadingTask = pdfjsLib.getDocument({
+          url: fileUrl,
+          disableRange: true,
+          disableStream: true,
+          disableAutoFetch: true,
+        });
+
+        pdfDoc = await loadingTask.promise;
+
+        pageCount = pdfDoc.numPages;
+        logInfo("PDF loaded", "pages=" + String(pageCount));
+
+        await loadAllStoreFromHost();
+        annotations = loadAnnots();
+        logDebug("annotations loaded", "count=" + String(annotations.length));
+
+        await buildPagesLazy(pageJump);
+
+        // Ensure canvases created during build also receive the current theme
+        applyPdfTheme(pdfTheme);
+
+        const hashStart = parseInitialPageFromHash();
+        const start = clamp((hashStart && hashStart !== 1) ? hashStart : pageJump, 1, pageCount);
+        scrollToPage(start);
+
+        showThumbs();
+
+        setStatus(`Ready · ${pageCount} pages`);
+        logInfo("Ready", "pages=" + String(pageCount));
+
+        if (pendingPayloadFocus) {
+          const pf = pendingPayloadFocus;
+          pendingPayloadFocus = null;
+          await highlightDirectQuoteOnPage(pf.page, pf.quote);
+        }
+
+        viewerEl.focus({ preventScroll: true });
+      }
+
+
+      boot().catch(err => {
+        const msg = (err && (err.message || String(err))) || "Unknown error";
+        setStatus("Viewer error: " + msg);
+        logError("Viewer error", msg);
+        console.error(err);
+      });
+    });
+  </script>
+
+  <!-- Context menu -->
+   <!-- Context menu -->
+  <div id="ctxMenu" class="ctxMenu" aria-hidden="true">
+    <div class="ctxItem" data-act="hl">Highlight</div>
+
+    <div class="ctxItem" style="cursor:default; color: var(--muted); padding-bottom: 6px;" data-act="noop">
+      Highlight colour
+    </div>
+    <div class="ctxColors" data-act="noop">
+      <div class="ctxColorDot" data-color="yellow" title="Yellow"></div>
+      <div class="ctxColorDot" data-color="green"  title="Green"></div>
+      <div class="ctxColorDot" data-color="blue"   title="Blue"></div>
+      <div class="ctxColorDot" data-color="red"    title="Red"></div>
+      <div class="ctxColorDot" data-color="purple" title="Purple"></div>
+    </div>
+
+    <div class="ctxItem" data-act="note">Add note…</div>
+    <div class="ctxSep"></div>
+    <div class="ctxItem" data-act="copyPlain">Copy selection (plain)</div>
+    <div class="ctxItem" data-act="copyHtml">Copy selection (HTML + cite)</div>
+
+    <div class="ctxSep ctxForAnno"></div>
+    <div class="ctxItem ctxForAnno" data-act="editNote">Edit note…</div>
+
+    <div class="ctxItem ctxForAnno" style="cursor:default; color: var(--muted); padding-bottom: 6px;" data-act="noop">
+      Change highlight colour
+    </div>
+    <div class="ctxColors ctxForAnno" data-act="noop">
+      <div class="ctxColorDot" data-color="yellow" title="Yellow"></div>
+      <div class="ctxColorDot" data-color="green"  title="Green"></div>
+      <div class="ctxColorDot" data-color="blue"   title="Blue"></div>
+      <div class="ctxColorDot" data-color="red"    title="Red"></div>
+      <div class="ctxColorDot" data-color="purple" title="Purple"></div>
+    </div>
+
+    <div class="ctxItem ctxForAnno danger" data-act="del">Delete highlight</div>
+  </div>
+
+</body>
+</html>

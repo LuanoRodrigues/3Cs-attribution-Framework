@@ -1,0 +1,22 @@
+﻿{
+  "type": "doc",
+  "content": [
+    {"type": "heading", "attrs": {"level": 1}, "content": [{"type": "text", "text": "Integration Test Document"}]},
+    {"type": "paragraph", "content": [{"type": "text", "text": "Use this document to validate layout: margins, pagination, footnotes, tables, page numbers."}]},
+    {"type": "table", "content": [
+      {"type": "tableRow", "content": [
+        {"type": "tableCell", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Header 1"}]}]},
+        {"type": "tableCell", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Header 2"}]}]}
+      ]},
+      {"type": "tableRow", "content": [
+        {"type": "tableCell", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Row 1"}]}]},
+        {"type": "tableCell", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Row 1 col 2"}]}]}
+      ]}
+    ]},
+    {"type": "paragraph", "content": [{"type": "text", "text": "Insert an image below to test break-inside avoidance."}]},
+    {"type": "page_break", "attrs": {"kind": "page"}},
+    {"type": "heading", "attrs": {"level": 2}, "content": [{"type": "text", "text": "Second Section"}]},
+    {"type": "paragraph", "content": [{"type": "text", "text": "Use this page to test header/footer continuity and page numbering after a break."}]}
+  ]
+}
+

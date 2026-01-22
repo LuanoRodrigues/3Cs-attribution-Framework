@@ -1,0 +1,1102 @@
+{
+
+  "tabId": "insert",
+  "label": "Insert",
+  "groups": [
+    {
+      "groupId": "pages",
+      "label": "Pages",
+      "priority": 90,
+      "dialogLauncher": {
+        "controlId": "pages.dialogLauncher",
+        "type": "dialogLauncher",
+        "label": "Pages Options",
+        "iconKey": "icon.dialogLauncher",
+        "command": {
+          "id": "insert.breaks.openDialog"
+        }
+      },
+      "clusters": [
+        {
+          "clusterId": "pages.primary",
+          "layout": "column",
+          "controls": [
+            {
+              "controlId": "pages.coverPage",
+              "label": "Cover Page",
+              "type": "splitButton",
+              "size": "large",
+              "iconKey": "icon.coverPage",
+              "command": {
+                "id": "insert.coverPage.default"
+              },
+              "menu": [
+                {
+                  "type": "gallery",
+                  "controlId": "pages.coverPage.gallery",
+                  "label": "Cover Pages",
+                  "command": {
+                    "id": "insert.coverPage.apply",
+                    "payloadSchema": {
+                      "templateId": "string"
+                    }
+                  }
+                },
+                {
+                  "type": "separator"
+                },
+                {
+                  "controlId": "pages.coverPage.remove",
+                  "label": "Remove Cover Page",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "insert.coverPage.remove"
+                  }
+                }
+              ],
+              "collapse": {
+                "A": "visible",
+                "B": "inMenuOf:pages.pageBreak",
+                "C": "inFlyout"
+              },
+              "priority": 60
+            },
+            {
+              "controlId": "pages.blankPage",
+              "label": "Blank Page",
+              "type": "button",
+              "size": "large",
+              "iconKey": "icon.blankPage",
+              "command": {
+                "id": "insert.blankPage"
+              },
+              "collapse": {
+                "A": "visible",
+                "B": "inOverflow",
+                "C": "inFlyout"
+              },
+              "priority": 90
+            },
+            {
+              "controlId": "pages.pageBreak",
+              "label": "Page Break",
+              "type": "splitButton",
+              "size": "large",
+              "iconKey": "icon.pageBreak",
+              "command": {
+                "id": "insert.pageBreak"
+              },
+              "menu": [
+                {
+                  "controlId": "pages.pageBreak.page",
+                  "label": "Page Break",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "insert.pageBreak"
+                  }
+                },
+                {
+                  "controlId": "pages.pageBreak.column",
+                  "label": "Column Break",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "insert.columnBreak"
+                  }
+                },
+                {
+                  "type": "separator"
+                },
+                {
+                  "controlId": "pages.sectionBreak.nextPage",
+                  "label": "Section Break (Next Page)",
+                  "type": "menuItem",
+                  "iconKey": "icon.sectionBreak",
+                  "command": {
+                    "id": "insert.sectionBreak",
+                    "args": {
+                      "kind": "nextPage"
+                    }
+                  }
+                },
+                {
+                  "controlId": "pages.sectionBreak.continuous",
+                  "label": "Section Break (Continuous)",
+                  "type": "menuItem",
+                  "iconKey": "icon.sectionBreak",
+                  "command": {
+                    "id": "insert.sectionBreak",
+                    "args": {
+                      "kind": "continuous"
+                    }
+                  }
+                },
+                {
+                  "controlId": "pages.sectionBreak.evenPage",
+                  "label": "Section Break (Even Page)",
+                  "type": "menuItem",
+                  "iconKey": "icon.sectionBreak",
+                  "command": {
+                    "id": "insert.sectionBreak",
+                    "args": {
+                      "kind": "evenPage"
+                    }
+                  }
+                },
+                {
+                  "controlId": "pages.sectionBreak.oddPage",
+                  "label": "Section Break (Odd Page)",
+                  "type": "menuItem",
+                  "iconKey": "icon.sectionBreak",
+                  "command": {
+                    "id": "insert.sectionBreak",
+                    "args": {
+                      "kind": "oddPage"
+                    }
+                  }
+                }
+              ],
+              "collapse": {
+                "A": "visible",
+                "B": "dropdownOnly",
+                "C": "inFlyout"
+              },
+              "priority": 95
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "groupId": "tables",
+      "label": "Tables",
+      "priority": 85,
+      "dialogLauncher": {
+        "controlId": "tables.dialogLauncher",
+        "type": "dialogLauncher",
+        "label": "Table Options",
+        "iconKey": "icon.dialogLauncher",
+        "command": {
+          "id": "insert.table.openDialog"
+        }
+      },
+      "clusters": [
+        {
+          "clusterId": "tables.primary",
+          "layout": "column",
+          "controls": [
+            {
+              "controlId": "tables.insertTable",
+              "label": "Table",
+              "type": "splitButton",
+              "size": "large",
+              "iconKey": "icon.table",
+              "command": {
+                "id": "insert.table.apply",
+                "args": {
+                  "rows": 2,
+                  "cols": 2
+                }
+              },
+              "menu": [
+                {
+                  "type": "custom",
+                  "controlId": "tables.gridPicker",
+                  "label": "Insert Table",
+                  "widget": "tableGridPicker",
+                  "command": {
+                    "id": "insert.table.apply",
+                    "payloadSchema": {
+                      "rows": "number",
+                      "cols": "number"
+                    }
+                  }
+                },
+                {
+                  "type": "separator"
+                },
+                {
+                  "controlId": "tables.insertTable.dialog",
+                  "label": "Insert Table\u2026",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "insert.table.openDialog",
+                    "payloadSchema": {
+                      "rows": "number",
+                      "cols": "number"
+                    }
+                  }
+                },
+                {
+                  "controlId": "tables.drawTable",
+                  "label": "Draw Table",
+                  "type": "menuItem",
+                  "iconKey": "icon.drawTable",
+                  "command": {
+                    "id": "insert.table.drawMode.toggle"
+                  },
+                  "state": {
+                    "binding": "tableDrawMode",
+                    "kind": "boolean"
+                  }
+                },
+                {
+                  "controlId": "tables.convertText",
+                  "label": "Convert Text to Table\u2026",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "insert.table.convertText.openDialog"
+                  }
+                },
+                {
+                  "controlId": "tables.excelSpreadsheet",
+                  "label": "Excel Spreadsheet",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "insert.table.excelEmbed"
+                  }
+                },
+                {
+                  "controlId": "tables.quickTables",
+                  "label": "Quick Tables",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "insert.table.quickTables.openGallery"
+                  }
+                },
+                {
+                  "type": "separator"
+                },
+                {
+                  "controlId": "tables.responsiveDefault",
+                  "label": "Responsive Table (Default)",
+                  "type": "menuToggle",
+                  "iconKey": "icon.responsiveTable",
+                  "command": {
+                    "id": "insert.table.responsiveDefault.toggle"
+                  },
+                  "state": {
+                    "binding": "responsiveTableDefault",
+                    "kind": "boolean"
+                  }
+                },
+                {
+                  "controlId": "tables.accessibility",
+                  "label": "Table Accessibility Options\u2026",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "table.accessibility.openDialog"
+                  }
+                }
+              ],
+              "collapse": {
+                "A": "visible",
+                "B": "dropdownOnly",
+                "C": "inFlyout"
+              },
+              "priority": 95
+            },
+            {
+              "controlId": "tables.quickTablesStandalone",
+              "label": "Quick Tables",
+              "type": "dropdown",
+              "size": "small",
+              "iconKey": "icon.quickTables",
+              "command": {
+                "id": "insert.table.quickTables.openGallery"
+              },
+              "collapse": {
+                "A": "optional",
+                "B": "iconOnly",
+                "C": "inFlyout"
+              },
+              "priority": 50
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "groupId": "illustrations",
+      "label": "Illustrations",
+      "priority": 80,
+      "dialogLauncher": null,
+      "clusters": [
+        {
+          "clusterId": "illustrations.primary",
+          "layout": "row",
+          "controls": [
+            {
+              "controlId": "illustrations.pictures",
+              "label": "Pictures",
+              "type": "splitButton",
+              "size": "large",
+              "iconKey": "icon.pictures",
+              "command": {
+                "id": "insert.image.upload.openPicker"
+              },
+              "menu": [
+                {
+                  "controlId": "illustrations.pictures.device",
+                  "label": "This Device\u2026",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "insert.image.upload.openPicker"
+                  }
+                },
+                {
+                  "controlId": "illustrations.pictures.stock",
+                  "label": "Stock Images\u2026",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "insert.image.stock.open"
+                  }
+                },
+                {
+                  "controlId": "illustrations.pictures.online",
+                  "label": "Online Pictures\u2026",
+                  "type": "menuItem",
+                  "iconKey": "icon.onlinePictures",
+                  "command": {
+                    "id": "insert.image.online.open"
+                  }
+                },
+                {
+                  "controlId": "illustrations.pictures.url",
+                  "label": "From URL\u2026",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "insert.image.url.openDialog"
+                  }
+                }
+              ],
+              "collapse": {
+                "A": "visible",
+                "B": "visible",
+                "C": "inFlyout"
+              },
+              "priority": 95
+            },
+            {
+              "controlId": "illustrations.shapes",
+              "label": "Shapes",
+              "type": "splitButton",
+              "size": "large",
+              "iconKey": "icon.shapes",
+              "command": {
+                "id": "insert.shape.openGallery"
+              },
+              "menu": [
+                {
+                  "type": "gallery",
+                  "controlId": "illustrations.shapes.gallery",
+                  "label": "Shapes",
+                  "command": {
+                    "id": "insert.shape.apply",
+                    "payloadSchema": {
+                      "shapeId": "string"
+                    }
+                  }
+                }
+              ],
+              "collapse": {
+                "A": "visible",
+                "B": "dropdownOnly",
+                "C": "inFlyout"
+              },
+              "priority": 80
+            },
+            {
+              "controlId": "illustrations.icons",
+              "label": "Icons",
+              "type": "button",
+              "size": "large",
+              "iconKey": "icon.icons",
+              "command": {
+                "id": "insert.icon.openPicker"
+              },
+              "collapse": {
+                "A": "visible",
+                "B": "inOverflow",
+                "C": "inFlyout"
+              },
+              "priority": 55
+            },
+            {
+              "controlId": "illustrations.smartArt",
+              "label": "SmartArt",
+              "type": "button",
+              "size": "large",
+              "iconKey": "icon.smartArt",
+              "command": {
+                "id": "insert.smartArt.openPicker"
+              },
+              "collapse": {
+                "A": "optional",
+                "B": "inOverflow",
+                "C": "inFlyout"
+              },
+              "priority": 35
+            },
+            {
+              "controlId": "illustrations.chart",
+              "label": "Chart",
+              "type": "splitButton",
+              "size": "large",
+              "iconKey": "icon.chart",
+              "command": {
+                "id": "insert.chart.openPicker"
+              },
+              "menu": [
+                {
+                  "controlId": "illustrations.chart.column",
+                  "label": "Column",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "insert.chart.apply",
+                    "payloadSchema": {
+                      "type": "column"
+                    }
+                  }
+                },
+                {
+                  "controlId": "illustrations.chart.line",
+                  "label": "Line",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "insert.chart.apply",
+                    "payloadSchema": {
+                      "type": "line"
+                    }
+                  }
+                },
+                {
+                  "controlId": "illustrations.chart.pie",
+                  "label": "Pie",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "insert.chart.apply",
+                    "payloadSchema": {
+                      "type": "pie"
+                    }
+                  }
+                },
+                {
+                  "controlId": "illustrations.chart.bar",
+                  "label": "Bar",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "insert.chart.apply",
+                    "payloadSchema": {
+                      "type": "bar"
+                    }
+                  }
+                },
+                {
+                  "controlId": "illustrations.chart.area",
+                  "label": "Area",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "insert.chart.apply",
+                    "payloadSchema": {
+                      "type": "area"
+                    }
+                  }
+                },
+                {
+                  "controlId": "illustrations.chart.scatter",
+                  "label": "Scatter",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "insert.chart.apply",
+                    "payloadSchema": {
+                      "type": "scatter"
+                    }
+                  }
+                }
+              ],
+              "collapse": {
+                "A": "visible",
+                "B": "dropdownOnly",
+                "C": "inFlyout"
+              },
+              "priority": 70
+            },
+            {
+              "controlId": "illustrations.screenshot",
+              "label": "Screenshot",
+              "type": "button",
+              "size": "large",
+              "iconKey": "icon.screenshot",
+              "command": {
+                "id": "insert.screenshot.open"
+              },
+              "collapse": {
+                "A": "optional",
+                "B": "inOverflow",
+                "C": "inFlyout"
+              },
+              "priority": 30
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "groupId": "addins",
+      "label": "Add-ins",
+      "priority": 60,
+      "dialogLauncher": null,
+      "clusters": [
+        {
+          "clusterId": "addins.primary",
+          "layout": "row",
+          "controls": [
+            {
+              "controlId": "addins.get",
+              "label": "Get Add-ins",
+              "type": "button",
+              "size": "medium",
+              "iconKey": "icon.marketplace",
+              "command": {
+                "id": "addins.marketplace.open"
+              },
+              "collapse": {
+                "A": "visible",
+                "B": "iconOnly",
+                "C": "inFlyout"
+              },
+              "priority": 60
+            },
+            {
+              "controlId": "addins.my",
+              "label": "My Add-ins",
+              "type": "dropdown",
+              "size": "medium",
+              "iconKey": "icon.myAddins",
+              "command": {
+                "id": "addins.list.openMenu"
+              },
+              "menu": [
+                {
+                  "type": "dynamic",
+                  "controlId": "addins.my.dynamicList",
+                  "label": "Installed Add-ins",
+                  "source": "installedAddins",
+                  "command": {
+                    "id": "addins.open",
+                    "payloadSchema": {
+                      "id": "string"
+                    }
+                  }
+                }
+              ],
+              "collapse": {
+                "A": "visible",
+                "B": "iconOnly",
+                "C": "inFlyout"
+              },
+              "priority": 50
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "groupId": "media",
+      "label": "Media",
+      "priority": 75,
+      "dialogLauncher": null,
+      "clusters": [
+        {
+          "clusterId": "media.primary",
+          "layout": "row",
+          "controls": [
+            {
+              "controlId": "media.onlineVideo",
+              "label": "Online Video",
+              "type": "button",
+              "size": "large",
+              "iconKey": "icon.video",
+              "command": {
+                "id": "insert.video.online.openDialog"
+              },
+              "collapse": {
+                "A": "visible",
+                "B": "iconOnly",
+                "C": "inFlyout"
+              },
+              "priority": 65
+            },
+            {
+              "controlId": "media.embed",
+              "label": "Embed",
+              "type": "splitButton",
+              "size": "large",
+              "iconKey": "icon.embed",
+              "command": {
+                "id": "insert.embed.openDialog"
+              },
+              "menu": [
+                {
+                  "controlId": "media.embed.code",
+                  "label": "Embed Code (HTML/iframe)\u2026",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "insert.embed.code.openDialog"
+                  }
+                },
+                {
+                  "controlId": "media.embed.oembed",
+                  "label": "Paste URL (oEmbed)\u2026",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "insert.embed.oembed.openDialog"
+                  }
+                },
+                {
+                  "type": "separator"
+                },
+                {
+                  "controlId": "media.embed.settings",
+                  "label": "Embed Settings\u2026",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "insert.embed.settings.openDialog"
+                  }
+                }
+              ],
+              "collapse": {
+                "A": "visible",
+                "B": "visible",
+                "C": "inFlyout"
+              },
+              "priority": 80
+            },
+            {
+              "controlId": "media.audio",
+              "label": "Audio",
+              "type": "splitButton",
+              "size": "medium",
+              "iconKey": "icon.audio",
+              "command": {
+                "id": "insert.audio.upload.openPicker"
+              },
+              "menu": [
+                {
+                  "controlId": "media.audio.upload",
+                  "label": "Upload Audio\u2026",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "insert.audio.upload.openPicker"
+                  }
+                },
+                {
+                  "controlId": "media.audio.url",
+                  "label": "From URL\u2026",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "insert.audio.url.openDialog"
+                  }
+                }
+              ],
+              "collapse": {
+                "A": "visible",
+                "B": "inMenuOf:media.embed",
+                "C": "inFlyout"
+              },
+              "priority": 40
+            },
+            {
+              "controlId": "media.file",
+              "label": "File",
+              "type": "splitButton",
+              "size": "medium",
+              "iconKey": "icon.file",
+              "command": {
+                "id": "insert.file.attach.openPicker"
+              },
+              "menu": [
+                {
+                  "controlId": "media.file.upload",
+                  "label": "Upload File\u2026",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "insert.file.attach.openPicker"
+                  }
+                },
+                {
+                  "controlId": "media.file.link",
+                  "label": "Link to File\u2026",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "insert.file.link.openDialog"
+                  }
+                },
+                {
+                  "controlId": "media.file.pdfEmbed",
+                  "label": "Embed PDF\u2026",
+                  "type": "menuItem",
+                  "iconKey": "icon.pdf",
+                  "command": {
+                    "id": "insert.pdf.embed.openPicker"
+                  }
+                },
+                {
+                  "type": "separator"
+                },
+                {
+                  "controlId": "media.file.manage",
+                  "label": "Manage Attachments\u2026",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "insert.file.manage.openDialog"
+                  }
+                }
+              ],
+              "collapse": {
+                "A": "visible",
+                "B": "inMenuOf:media.embed",
+                "C": "inFlyout"
+              },
+              "priority": 35
+            }
+          ]
+        }
+      ]
+     },
+    {
+
+  "groupId": "links",
+  "label": "Links",
+  "priority": 70,
+  "dialogLauncher": null,
+  "clusters": [
+    {
+      "clusterId": "links.primary",
+      "layout": "row",
+      "controls": [
+        {
+          "controlId": "links.link",
+          "label": "Link",
+          "type": "splitButton",
+          "size": "medium",
+          "iconKey": "icon.link",
+          "command": {
+            "id": "link.insert.openDialog"
+          },
+          "state": {
+            "binding": "linkActive",
+            "kind": "boolean|mixed"
+          },
+          "menu": [
+            {
+              "controlId": "links.link.insert",
+              "label": "Insert Link\u2026",
+              "type": "menuItem",
+              "command": {
+                "id": "link.insert.openDialog"
+              }
+            },
+            {
+              "controlId": "links.link.edit",
+              "label": "Edit Link\u2026",
+              "type": "menuItem",
+              "command": {
+                "id": "link.edit.openDialog"
+              },
+              "enabledWhen": "linkActive"
+            },
+            {
+              "controlId": "links.link.remove",
+              "label": "Remove Link",
+              "type": "menuItem",
+              "iconKey": "icon.unlink",
+              "command": {
+                "id": "link.remove"
+              },
+              "enabledWhen": "linkActive"
+            },
+            {
+              "type": "separator"
+            },
+            {
+              "controlId": "links.link.copy",
+              "label": "Copy Link",
+              "type": "menuItem",
+              "iconKey": "icon.link",
+              "command": {
+                "id": "link.copy"
+              },
+              "enabledWhen": "linkActive"
+            },
+            {
+              "controlId": "links.link.open",
+              "label": "Open Link",
+              "type": "menuItem",
+              "iconKey": "icon.link",
+              "command": {
+                "id": "link.open"
+              },
+              "enabledWhen": "linkActive"
+            },
+            {
+              "type": "separator"
+            },
+            {
+              "controlId": "links.link.auto",
+              "label": "Auto-link",
+              "type": "menuToggle",
+              "command": {
+                "id": "link.auto.toggle"
+              },
+              "state": {
+                "binding": "autoLink",
+                "kind": "boolean"
+              }
+            }
+          ],
+          "collapse": {
+            "A": "visible",
+            "B": "dropdownOnly",
+            "C": "inFlyout"
+          },
+          "priority": 90
+        },
+        {
+          "controlId": "links.bookmark",
+          "label": "Bookmark",
+          "type": "splitButton",
+          "size": "medium",
+          "iconKey": "icon.bookmark",
+          "command": {
+            "id": "insert.bookmark.openDialog"
+          },
+          "menu": [
+            {
+              "controlId": "links.bookmark.add",
+              "label": "Add Bookmark\u2026",
+              "type": "menuItem",
+              "command": {
+                "id": "insert.bookmark.openDialog"
+              }
+            },
+            {
+              "controlId": "links.bookmark.manage",
+              "label": "Manage Bookmarks\u2026",
+              "type": "menuItem",
+              "command": {
+                "id": "insert.bookmark.manage.openDialog"
+              }
+            }
+          ],
+          "collapse": {
+            "A": "visible",
+            "B": "inMenuOf:links.link",
+            "C": "inFlyout"
+          },
+          "priority": 45
+        },
+        {
+          "controlId": "links.crossReference",
+          "label": "Cross-reference",
+          "type": "splitButton",
+          "size": "medium",
+          "iconKey": "icon.crossReference",
+          "command": {
+            "id": "insert.crossReference.openDialog"
+          },
+          "menu": [
+            {
+              "controlId": "links.crossReference.insert",
+              "label": "Insert Cross-reference\u2026",
+              "type": "menuItem",
+              "command": {
+                "id": "insert.crossReference.openDialog"
+              }
+            },
+            {
+              "controlId": "links.crossReference.update",
+              "label": "Update Cross-references",
+              "type": "menuItem",
+              "command": {
+                "id": "insert.crossReference.updateAll"
+              }
+            }
+          ],
+          "collapse": {
+            "A": "optional",
+            "B": "inMenuOf:links.link",
+            "C": "inFlyout"
+          },
+          "priority": 30
+        }
+      ]
+    }
+  ]
+},
+{
+  "groupId": "symbols",
+  "label": "Symbols",
+  "priority": 50,
+  "dialogLauncher": null,
+  "clusters": [
+    {
+      "clusterId": "symbols.primary",
+      "layout": "row",
+      "controls": [
+        {
+          "controlId": "symbols.equation",
+          "label": "Equation",
+          "type": "splitButton",
+          "size": "large",
+          "iconKey": "icon.equation",
+          "command": {
+            "id": "insert.equation.openEditor"
+          },
+          "menu": [
+            {
+              "type": "gallery",
+              "controlId": "symbols.equation.gallery",
+              "label": "Equations",
+              "command": {
+                "id": "insert.equation.apply",
+                "payloadSchema": {
+                  "templateId": "string"
+                }
+              }
+            },
+            {
+              "type": "separator"
+            },
+            {
+              "controlId": "symbols.equation.new",
+              "label": "Insert New Equation",
+              "type": "menuItem",
+              "command": {
+                "id": "insert.equation.openEditor"
+              }
+            },
+            {
+              "controlId": "symbols.equation.inline",
+              "label": "Insert Inline Equation",
+              "type": "menuItem",
+              "command": {
+                "id": "insert.equation.insertInline"
+              }
+            },
+            {
+              "controlId": "symbols.equation.display",
+              "label": "Insert Display Equation",
+              "type": "menuItem",
+              "command": {
+                "id": "insert.equation.insertDisplay"
+              }
+            }
+          ],
+          "collapse": {
+            "A": "visible",
+            "B": "visible",
+            "C": "inFlyout"
+          },
+          "priority": 75
+        },
+        {
+          "controlId": "symbols.symbol",
+          "label": "Symbol",
+          "type": "splitButton",
+          "size": "large",
+          "iconKey": "icon.symbol",
+          "command": {
+            "id": "insert.symbol.openPicker"
+          },
+          "menu": [
+            {
+              "type": "dynamic",
+              "controlId": "symbols.symbol.recent",
+              "label": "Recent Symbols",
+              "source": "recentSymbols",
+              "command": {
+                "id": "insert.symbol.apply",
+                "payloadSchema": {
+                  "codepoint": "string"
+                }
+              }
+            },
+            {
+              "type": "separator"
+            },
+            {
+              "controlId": "symbols.symbol.more",
+              "label": "More Symbols\u2026",
+              "type": "menuItem",
+              "command": {
+                "id": "insert.symbol.openPicker"
+              }
+            },
+            {
+              "type": "separator"
+            },
+            {
+              "controlId": "symbols.symbol.copyright",
+              "label": "Copyright \u00a9",
+              "type": "menuItem",
+              "command": {
+                "id": "insert.symbol.insert",
+                "args": {
+                  "codepoint": "00A9"
+                }
+              }
+            },
+            {
+              "controlId": "symbols.symbol.registered",
+              "label": "Registered \u00ae",
+              "type": "menuItem",
+              "command": {
+                "id": "insert.symbol.insert",
+                "args": {
+                  "codepoint": "00AE"
+                }
+              }
+            },
+            {
+              "controlId": "symbols.symbol.trademark",
+              "label": "Trademark \u2122",
+              "type": "menuItem",
+              "command": {
+                "id": "insert.symbol.insert",
+                "args": {
+                  "codepoint": "2122"
+                }
+              }
+            }
+          ],
+          "collapse": {
+            "A": "visible",
+            "B": "visible",
+            "C": "inFlyout"
+          },
+          "priority": 80
+        },
+        {
+          "controlId": "symbols.emoji",
+          "label": "Emoji",
+          "type": "button",
+          "size": "medium",
+          "iconKey": "icon.emoji",
+          "command": {
+            "id": "insert.emoji.openPicker"
+          },
+          "collapse": {
+            "A": "optional",
+            "B": "inMenuOf:symbols.symbol",
+            "C": "inFlyout"
+          },
+          "priority": 40
+        }
+      ]
+    }
+  ]
+  }
+
+]
+}

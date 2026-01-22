@@ -1,0 +1,15 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ptToCss = exports.cmToCss = exports.ptToPx = exports.mmToPx = exports.cmToPx = void 0;
+const CM_PER_INCH = 2.54;
+const DPI = 96;
+const cmToPx = (cm, dpi = DPI) => (cm / CM_PER_INCH) * dpi;
+exports.cmToPx = cmToPx;
+const mmToPx = (mm, dpi = DPI) => (0, exports.cmToPx)(mm / 10, dpi);
+exports.mmToPx = mmToPx;
+const ptToPx = (pt, dpi = DPI) => (pt / 72) * dpi;
+exports.ptToPx = ptToPx;
+const cmToCss = (cm) => `${cm}cm`;
+exports.cmToCss = cmToCss;
+const ptToCss = (pt) => `${pt}pt`;
+exports.ptToCss = ptToCss;

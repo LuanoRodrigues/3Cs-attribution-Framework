@@ -1,0 +1,66 @@
+body {
+  margin: 0;
+  font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  background: #040714;
+  color: #e5e7eb;
+}
+
+.citations-root {
+  min-height: 100vh;
+  padding: 24px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.citations-root header h1 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.citations-root header p {
+  margin: 4px 0 0;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.citation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.citation-card {
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #0f172a;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.citation-card.active {
+  border-color: #22d3ee;
+  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.4);
+}
+
+.citation-card h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.citation-card p {
+  margin: 0;
+  color: #cbd5f5;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.citation-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #94a3b8;
+}

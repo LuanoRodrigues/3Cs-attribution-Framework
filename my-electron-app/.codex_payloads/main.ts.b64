@@ -1,0 +1,1 @@
+mkdir .codex_payloads -ErrorAction SilentlyContinueGet-Clipboard | Set-Content -NoNewline .\.codex_payloads\main.ts.b64python -c "import base64,sys;open(sys.argv[2],'wb').write(base64.b64decode(open(sys.argv[1],'rb').read()))" .\.codex_payloads\main.ts.b64 .\src\main.tsgit diff -- .\src\main.tsnpm run build

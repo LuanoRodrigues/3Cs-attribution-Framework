@@ -1,0 +1,1120 @@
+/* ribbon.css — Office/Word-like ribbon styling (full replacement) */
+
+/* =========================
+   Design tokens (Office-like)
+   ========================= */
+:root {
+  /* Typography */
+  --r-font-family: "Segoe UI", "Segoe UI Variable", system-ui, -apple-system, Roboto, Arial, sans-serif;
+  --r-font-size: 12px;
+  --r-font-size-sm: 11px;
+  --r-line-height: 1.2;
+
+  /* Layout */
+  --r-tabstrip-height: 34px;
+  --r-panel-height: 122px;
+
+  --r-panel-pad-x: 10px;
+  --r-panel-pad-y: 8px;
+
+  --r-group-gap: 10px;
+  --r-group-pad: 8px;
+
+  --r-group-min: 112px;
+  --r-group-max: 420px;
+
+  --r-ctl-h-sm: 24px;
+  --r-ctl-h-md: 28px;
+  --r-ctl-h-lg: 56px;
+
+  --r-ctl-radius: 3px;
+  --r-ctl-gap: 6px;
+
+  --r-icon: 16px;
+  --r-icon-lg: 20px;
+
+  /* Stage widths */
+  --r-stage-width-a: 1360px;
+  --r-stage-width-b: 1120px;
+
+  /* Ribbon surfaces */
+  --r-bg: #f3f4f6;      /* app background */
+  --r-ribbon: #f6f6f6;  /* ribbon tray */
+  --r-surface: #ffffff; /* menus/pickers */
+  --r-surface-2: #f0f2f5;
+
+  /* Text */
+  --r-text: #1f2937;
+  --r-muted: #6b7280;
+  --r-disabled: #9ca3af;
+
+  /* Office blues */
+  --r-accent: #2b579a;
+  --r-focus: #2b72f7;
+
+  /* Borders/dividers */
+  --r-border-color: #c6cfde;
+  --r-border-soft: #d6dbe6;
+  --r-divider-color: #d0d7e2;
+
+  --r-border: 1px solid var(--r-border-color);
+  --r-divider: 1px solid var(--r-divider-color);
+
+  /* Control chrome */
+  --r-ctl-bg: linear-gradient(180deg, #ffffff 0%, #f5f7fb 100%);
+  --r-ctl-bg-hover: linear-gradient(180deg, #eef3ff 0%, #dfe8ff 100%);
+  --r-ctl-bg-pressed: linear-gradient(180deg, #dfe8ff 0%, #cfd9f2 100%);
+
+  --r-ctl-shadow: 0 1px 0 rgba(255, 255, 255, 1), 0 1px 3px rgba(0, 0, 0, 0.08);
+  --r-ctl-shadow-hover: 0 1px 0 rgba(255, 255, 255, 1), 0 2px 6px rgba(37, 100, 208, 0.18);
+  --r-ctl-shadow-pressed: inset 0 1px 2px rgba(0, 0, 0, 0.14);
+
+  --r-hover: rgba(43, 114, 247, 0.10);
+  --r-pressed: rgba(43, 114, 247, 0.18);
+  --r-selected: rgba(43, 114, 247, 0.16);
+
+  /* Popup shadows */
+  --r-shadow: 0 8px 24px rgba(0, 0, 0, 0.14), 0 1px 0 rgba(255, 255, 255, 0.7);
+
+  /* Motion */
+  --r-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --r-d1: 120ms;
+  --r-d2: 180ms;
+}
+
+/* =========================
+   Base resets / utility
+   ========================= */
+.leditor-ribbon * {
+  box-sizing: border-box;
+}
+
+.ProseMirror a,
+.ProseMirror a * {
+  color: #5dd5ff;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.ProseMirror a.leditor-citation-anchor {
+  background: rgba(93, 213, 255, 0.14);
+  border: 1px solid rgba(93, 213, 255, 0.35);
+  border-radius: 6px;
+  padding: 1px 4px;
+}
+
+.leditor-ribbon button {
+  font-family: var(--r-font-family);
+  color: var(--r-text);
+}
+
+.leditor-ribbon :where(button, [role="button"]) {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.leditor-ribbon :where(button:disabled, [aria-disabled="true"]) {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+/* =========================
+   Ribbon shell & stages
+   ========================= */
+.leditor-ribbon-host {
+  background: var(--r-bg);
+}
+
+.leditor-ribbon-shell {
+  background: var(--r-ribbon);
+  border-bottom: 1px solid var(--r-divider-color);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  transition: box-shadow var(--r-d1) var(--r-ease), border-color var(--r-d1) var(--r-ease);
+}
+
+/* Stage variants - keep subtle changes */
+.leditor-ribbon-stage-a .leditor-ribbon-shell,
+.leditor-ribbon-stage-b .leditor-ribbon-shell,
+.leditor-ribbon-stage-c .leditor-ribbon-shell {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 1px 0 rgba(0, 0, 0, 0.04);
+  border-color: var(--r-divider-color);
+}
+
+/* =========================
+   Tabs (Word-like)
+   ========================= */
+.leditor-ribbon-tabs {
+  display: flex;
+  gap: 2px;
+  align-items: flex-end;
+  height: var(--r-tabstrip-height);
+  padding: 0 8px;
+  overflow: hidden;
+  border-bottom: 1px solid var(--r-divider-color);
+  background: linear-gradient(180deg, #fafafa 0%, #f1f1f1 100%);
+}
+
+.leditor-ribbon[data-ribbon-tab-scroll="enabled"] .leditor-ribbon-tabs {
+  overflow-x: auto;
+}
+
+/*
+  Tabs may be implemented with different selectors in your app.
+  This targets common patterns:
+  - .leditor-ribbon-tab
+  - [role="tab"]
+  - .ribbonTab
+*/
+.leditor-ribbon :where(.leditor-ribbon-tab, .ribbonTab, [role="tab"]) {
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 4px 4px 0 0;
+  background: transparent;
+  color: #374151;
+  font-size: var(--r-font-size);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  user-select: none;
+  transition: background var(--r-d1) var(--r-ease), border-color var(--r-d1) var(--r-ease),
+    color var(--r-d1) var(--r-ease);
+}
+
+.leditor-ribbon :where(.leditor-ribbon-tab, .ribbonTab, [role="tab"]):hover {
+  background: rgba(255, 255, 255, 0.65);
+  border-color: rgba(198, 207, 222, 0.95);
+}
+
+.leditor-ribbon :where(.leditor-ribbon-tab, .ribbonTab, [role="tab"]).is-selected,
+.leditor-ribbon :where(.leditor-ribbon-tab, .ribbonTab, [role="tab"])[aria-selected="true"] {
+  background: #ffffff;
+  border-color: var(--r-border-color);
+  color: #111827;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+/* Optional: subtle accent underline for active tab */
+.leditor-ribbon :where(.leditor-ribbon-tab, .ribbonTab, [role="tab"]).is-selected::after,
+.leditor-ribbon :where(.leditor-ribbon-tab, .ribbonTab, [role="tab"])[aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  height: 2px;
+  left: 8px;
+  right: 8px;
+  bottom: -1px;
+  background: var(--r-accent);
+  border-radius: 2px;
+}
+
+/* Ensure pseudo underline positions correctly */
+.leditor-ribbon :where(.leditor-ribbon-tab, .ribbonTab, [role="tab"]) {
+  position: relative;
+}
+
+/* =========================
+   Panel sizing (fixed height mode)
+   ========================= */
+.leditor-ribbon-panel {
+  padding: var(--r-panel-pad-y) var(--r-panel-pad-x);
+  box-sizing: border-box;
+}
+
+.leditor-ribbon-host[data-ribbon-fixed-height="true"] .leditor-ribbon-panel {
+  min-height: var(--r-panel-height);
+  height: var(--r-panel-height);
+  overflow: hidden;
+}
+
+.leditor-ribbon-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--r-panel-pad-y);
+}
+
+.leditor-ribbon-grid-row {
+  display: flex;
+  gap: var(--r-group-gap);
+  align-items: flex-start;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.leditor-ribbon-home-row {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+
+.leditor-ribbon-home-row .leditor-ribbon-group,
+.leditor-ribbon-home-row .ribbonGroup {
+  flex: 0 0 auto;
+  min-width: 180px;
+}
+
+.leditor-ribbon-home-overflow {
+  display: none;
+  margin-left: var(--r-group-gap);
+  height: 32px;
+  width: 32px;
+  border: 1px dashed var(--r-border-color);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--r-muted);
+  font-size: 1.5rem;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+@media (max-width: 1100px) {
+  .leditor-ribbon-home-overflow {
+    display: inline-flex;
+  }
+  .leditor-ribbon-grid[data-home-rows-expanded="false"]
+    .leditor-ribbon-home-row:not(.home-row-primary) {
+    display: none;
+  }
+  .leditor-ribbon-grid[data-home-rows-expanded="true"] .leditor-ribbon-home-row {
+    display: flex;
+  }
+}
+
+/* =========================
+   Groups (Word-like frames)
+   ========================= */
+.leditor-ribbon-groups {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: var(--r-group-gap);
+  align-items: stretch;
+  min-height: 0;
+}
+
+.leditor-ribbon-host[data-ribbon-fixed-height="true"] .leditor-ribbon-groups {
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 4px;
+}
+
+.ribbonGroup {
+  position: relative;
+}
+
+.ribbonGroup::after {
+  content: "";
+  position: absolute;
+  top: var(--r-panel-pad-y);
+  right: calc(-1 * (var(--r-group-gap) / 2));
+  width: 1px;
+  height: calc(100% - (var(--r-panel-pad-y) * 2));
+  background: rgba(0, 0, 0, 0.10);
+}
+
+.ribbonGroup:last-child::after {
+  display: none;
+}
+
+.leditor-ribbon-group {
+  min-width: var(--r-group-min);
+  max-width: var(--r-group-max);
+  border: 1px solid var(--r-border-soft);
+  border-radius: 3px;
+  background: linear-gradient(180deg, #fafafa 0%, #f2f2f2 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  display: grid;
+  grid-template-rows: 1fr auto;
+  padding: var(--r-group-pad);
+}
+
+.leditor-ribbon-host[data-ribbon-fixed-height="true"] .leditor-ribbon-group {
+  height: 100%;
+  min-height: 0;
+  align-self: stretch;
+  max-height: 100%;
+}
+
+.leditor-ribbon-group-body {
+  display: grid;
+  gap: var(--r-group-pad);
+  align-content: start;
+  justify-items: start;
+  grid-auto-flow: column dense;
+  grid-auto-columns: minmax(120px, max-content);
+  grid-template-rows: repeat(var(--r-group-max-rows, 3), minmax(0, auto));
+  max-height: calc((var(--r-ctl-h-lg) + var(--r-group-pad)) * var(--r-group-max-rows, 3));
+  overflow: hidden;
+}
+
+.leditor-ribbon-host[data-ribbon-fixed-height="true"] .leditor-ribbon-group-body {
+  min-height: 0;
+  max-height: 100%;
+  overflow-y: hidden;
+}
+
+.leditor-ribbon-group-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  font-size: var(--r-font-size-sm);
+  color: var(--r-muted);
+}
+
+.leditor-ribbon-group-title {
+  text-transform: none;
+  letter-spacing: 0.01em;
+  font-size: 11px;
+}
+
+.leditor-ribbon-panel[data-tab-id="insert"] .ribbon-cluster {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  row-gap: 0;
+}
+
+.leditor-ribbon-panel[data-tab-id="insert"] .leditor-ribbon-group-body {
+  grid-auto-columns: minmax(140px, max-content);
+}
+
+/* Dialog launcher - tiny Office-like corner button */
+.ribbon-dialog-launcher-btn {
+  border: 1px solid transparent;
+  background: transparent;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ribbon-dialog-launcher-btn:hover {
+  background: rgba(255, 255, 255, 0.7);
+  border-color: rgba(198, 207, 222, 0.9);
+}
+
+.ribbon-dialog-launcher-btn:active {
+  background: rgba(43, 114, 247, 0.10);
+  border-color: rgba(43, 114, 247, 0.35);
+}
+
+/* =========================
+   Clusters / layouts
+   ========================= */
+.ribbon-cluster {
+  display: flex;
+  gap: var(--r-ctl-gap);
+  align-items: center;
+  flex-wrap: nowrap;
+  min-height: 0;
+}
+
+.ribbon-cluster--column {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.ribbon-cluster:not(.ribbon-cluster--grid) {
+  overflow-x: auto;
+}
+
+.ribbon-cluster--grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(32px, 1fr));
+  gap: var(--r-ctl-gap);
+}
+
+.ribbon-cluster--segmented {
+  display: grid;
+  grid-auto-flow: column;
+  gap: 2px;
+}
+
+.ribbon-cluster--gallery {
+  display: grid;
+  gap: 4px;
+}
+
+/* =========================
+   Canonical Office control chrome
+   (apply consistently)
+   ========================= */
+.leditor-ribbon-button,
+.leditor-ribbon-icon-btn,
+.ribbon-dropdown-button,
+.leditor-split-button,
+.leditor-split-primary,
+.leditor-split-caret,
+.ribbon-overflow-button,
+.ribbon-group-button,
+.leditor-ribbon-spinner-step,
+.leditor-ribbon-segmented,
+.leditor-ribbon-combobox,
+.ribbon-spinner-dropdown,
+.ribbon-indent-spinner,
+.ribbon-indent-stepper {
+  background: var(--r-ctl-bg);
+  border: var(--r-border);
+  border-radius: var(--r-ctl-radius);
+  box-shadow: var(--r-ctl-shadow);
+  transition: background var(--r-d1) var(--r-ease), border-color var(--r-d1) var(--r-ease),
+    box-shadow var(--r-d1) var(--r-ease), transform 60ms ease;
+  font-family: var(--r-font-family);
+  color: var(--r-text);
+}
+
+.leditor-ribbon-button:hover,
+.leditor-ribbon-icon-btn:hover,
+.ribbon-dropdown-button:hover,
+.leditor-split-button:hover,
+.leditor-split-primary:hover,
+.leditor-split-caret:hover,
+.ribbon-overflow-button:hover,
+.ribbon-group-button:hover,
+.leditor-ribbon-spinner-step:hover,
+.ribbon-spinner-dropdown:hover,
+.ribbon-indent-stepper:hover {
+  background: var(--r-ctl-bg-hover);
+  border-color: #9cb5e7;
+  box-shadow: var(--r-ctl-shadow-hover);
+}
+
+.leditor-ribbon-button:active,
+.leditor-ribbon-icon-btn:active,
+.ribbon-dropdown-button:active,
+.leditor-split-button:active,
+.leditor-split-primary:active,
+.leditor-split-caret:active,
+.ribbon-overflow-button:active,
+.ribbon-group-button:active,
+.leditor-ribbon-spinner-step:active,
+.ribbon-indent-stepper:active {
+  background: var(--r-ctl-bg-pressed);
+  border-color: #7a9be0;
+  box-shadow: var(--r-ctl-shadow-pressed);
+  transform: translateY(0.5px);
+}
+
+.leditor-ribbon-button:focus-visible,
+.leditor-ribbon-icon-btn:focus-visible,
+.ribbon-dropdown-button:focus-visible,
+.leditor-split-button:focus-visible,
+.leditor-split-primary:focus-visible,
+.leditor-split-caret:focus-visible,
+.ribbon-overflow-button:focus-visible,
+.ribbon-group-button:focus-visible {
+  outline: 2px solid var(--r-focus);
+  outline-offset: 1px;
+}
+
+.leditor-ribbon-button.is-selected,
+.ribbon-dropdown-button.is-selected,
+.leditor-ribbon-segmented-btn.is-selected {
+  background: linear-gradient(180deg, #eef3ff 0%, #d9e6ff 100%);
+  border-color: rgba(43, 114, 247, 0.55);
+}
+
+/* =========================
+   Buttons
+   ========================= */
+.leditor-ribbon-button {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--r-ctl-gap);
+  cursor: pointer;
+  user-select: none;
+}
+
+.leditor-ribbon-button .leditor-ribbon-icon,
+.ribbon-dropdown-button .leditor-ribbon-icon,
+.leditor-split-primary .leditor-ribbon-icon,
+.leditor-split-button .leditor-ribbon-icon {
+  width: var(--r-icon);
+  height: var(--r-icon);
+}
+
+.leditor-ribbon-button--large .leditor-ribbon-icon,
+.ribbon-dropdown-button--large .leditor-ribbon-icon {
+  width: var(--r-icon-lg);
+  height: var(--r-icon-lg);
+}
+
+.leditor-ribbon-button--small {
+  height: var(--r-ctl-h-sm);
+  padding: 0 6px;
+}
+
+.leditor-ribbon-button--medium {
+  height: var(--r-ctl-h-md);
+  padding: 0 8px;
+}
+
+.leditor-ribbon-button--large {
+  height: var(--r-ctl-h-lg);
+  padding: 6px 10px;
+  flex-direction: column;
+}
+
+.ribbon-button-icon {
+  width: var(--r-icon);
+  height: var(--r-icon);
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.is-icon-only .ribbon-button-label {
+  display: none;
+}
+
+.is-dropdown-only .leditor-split-primary {
+  display: none;
+}
+
+/* =========================
+   Dropdown buttons
+   ========================= */
+.ribbon-dropdown-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  min-height: 32px;
+  border-radius: 3px;
+  background: var(--r-ctl-bg);
+}
+
+.ribbon-dropdown-button.is-selected,
+.ribbon-dropdown-button:focus-visible {
+  outline: 2px solid var(--r-focus);
+  outline-offset: 1px;
+}
+
+.ribbon-dropdown--big {
+  width: 150px;
+  justify-content: space-between;
+}
+
+.ribbon-dropdown--small {
+  padding: 4px 8px;
+  font-size: 10px;
+}
+
+.ribbon-dropdown-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  font-size: var(--r-font-size);
+  line-height: var(--r-line-height);
+}
+
+.ribbon-dropdown-title {
+  font-size: var(--r-font-size);
+  font-weight: 600;
+}
+
+.ribbon-dropdown-value {
+  color: #4b5563;
+  font-size: var(--r-font-size-sm);
+}
+
+.ribbon-dropdown-chevron {
+  margin-left: auto;
+  font-size: 10px;
+  color: #4b5563;
+}
+
+/* =========================
+   Overflow & group flyouts
+   ========================= */
+.ribbon-overflow-button {
+  width: 24px;
+  height: 24px;
+  border-radius: 3px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ribbon-group-button {
+  height: 32px;
+  padding: 0 10px;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+
+.ribbon-group-flyout {
+  position: fixed;
+  background: var(--r-surface);
+  border: 1px solid var(--r-border-color);
+  box-shadow: var(--r-shadow);
+  padding: var(--r-group-pad);
+  border-radius: 4px;
+  min-width: 240px;
+  z-index: 2100;
+}
+
+/* =========================
+   Galleries / pickers / popups
+   ========================= */
+.rgallery {
+  width: 320px;
+  background: var(--r-surface);
+  border: 1px solid var(--r-border-color);
+  border-radius: 4px;
+  box-shadow: var(--r-shadow);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rgallery__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.rgallery__item {
+  border: 1px solid var(--r-border-color);
+  border-radius: 3px;
+  background: linear-gradient(180deg, #ffffff 0%, #f7f8fb 100%);
+  min-height: 72px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  align-items: flex-start;
+  text-align: left;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.rgallery__item:hover {
+  background: var(--r-ctl-bg-hover);
+  border-color: #9cb5e7;
+}
+
+.rgallery__item:active {
+  background: var(--r-ctl-bg-pressed);
+  border-color: #7a9be0;
+}
+
+.rgallery__title {
+  font-weight: 600;
+  color: var(--r-text);
+}
+
+.rgallery__description {
+  font-size: 11px;
+  color: var(--r-muted);
+}
+
+.rgallery__empty {
+  color: var(--r-muted);
+  text-align: center;
+  font-size: 12px;
+}
+
+.leditor-menu-section-header {
+  padding: 8px 12px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--r-muted);
+  background: linear-gradient(180deg, #ffffff 0%, #f6f7f9 100%);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.rtablePicker {
+  width: 260px;
+  background: var(--r-surface);
+  border: 1px solid var(--r-border-color);
+  padding: 10px;
+  border-radius: 4px;
+  box-shadow: var(--r-shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rtablePicker__grid {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 4px;
+}
+
+.rtablePicker__cell {
+  width: 18px;
+  height: 18px;
+  border-radius: 2px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  background: linear-gradient(180deg, #ffffff 0%, #f5f7fb 100%);
+  cursor: pointer;
+}
+
+.rtablePicker__cell[data-active="true"] {
+  background: linear-gradient(180deg, #eef3ff 0%, #d9e6ff 100%);
+  border-color: rgba(43, 114, 247, 0.55);
+}
+
+.rtablePicker__cell:hover,
+.rtablePicker__cell:focus-visible {
+  border-color: rgba(43, 114, 247, 0.8);
+}
+
+.rtablePicker__status {
+  font-size: 13px;
+  color: var(--r-muted);
+  text-align: center;
+}
+
+.rembed {
+  width: 520px;
+  background: var(--r-surface);
+  border: 1px solid var(--r-border-color);
+  border-radius: 4px;
+  box-shadow: var(--r-shadow);
+  padding: 12px;
+}
+
+.rembed textarea {
+  width: 100%;
+  height: 160px;
+  border: 1px solid var(--r-border-color);
+  border-radius: 3px;
+  padding: 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  background: #ffffff;
+  color: var(--r-text);
+}
+
+/* Portal overlay (menus) */
+.ribbon-portal {
+  position: relative;
+  z-index: 2100;
+}
+
+/* =========================
+   ComboBox
+   ========================= */
+.leditor-ribbon-combobox {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  gap: 6px;
+  background: var(--r-ctl-bg);
+}
+
+.leditor-ribbon-combobox-input {
+  border: none;
+  font-size: var(--r-font-size-sm);
+  font-family: var(--r-font-family);
+  outline: none;
+  width: 110px;
+  background: transparent;
+  color: var(--r-text);
+}
+
+.leditor-ribbon-combobox-input::placeholder {
+  color: var(--r-muted);
+}
+
+/* =========================
+   Spinner
+   ========================= */
+.leditor-ribbon-spinner {
+  display: inline-flex;
+  align-items: center;
+  border: var(--r-border);
+  border-radius: var(--r-ctl-radius);
+  overflow: hidden;
+  background: var(--r-ctl-bg);
+  box-shadow: var(--r-ctl-shadow);
+}
+
+.leditor-ribbon-spinner-step {
+  border: none;
+  width: 24px;
+  height: var(--r-ctl-h-sm);
+  font-size: var(--r-font-size-sm);
+  cursor: pointer;
+  background: transparent;
+}
+
+.leditor-ribbon-spinner-step:hover {
+  background: rgba(43, 114, 247, 0.10);
+}
+
+.leditor-ribbon-spinner-step:active {
+  background: rgba(43, 114, 247, 0.18);
+}
+
+/* =========================
+   Segmented control
+   ========================= */
+.leditor-ribbon-segmented {
+  display: inline-flex;
+  border: var(--r-border);
+  border-radius: var(--r-ctl-radius);
+  overflow: hidden;
+  background: var(--r-ctl-bg);
+}
+
+.leditor-ribbon-segmented-btn {
+  background: transparent;
+  border: none;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: var(--r-font-size-sm);
+  color: var(--r-text);
+}
+
+.leditor-ribbon-segmented-btn:hover {
+  background: rgba(43, 114, 247, 0.10);
+}
+
+.leditor-ribbon-segmented-btn.is-selected {
+  background: linear-gradient(180deg, #eef3ff 0%, #d9e6ff 100%);
+}
+
+/* =========================
+   Color picker
+   ========================= */
+.leditor-ribbon-color-picker {
+  position: relative;
+  border: var(--r-border);
+  border-radius: var(--r-ctl-radius);
+  padding: 4px;
+  background: var(--r-ctl-bg);
+  box-shadow: var(--r-ctl-shadow);
+}
+
+.leditor-color-picker-palette {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  display: grid;
+  grid-template-columns: repeat(5, 20px);
+  gap: 4px;
+  padding: 8px;
+  background: var(--r-surface);
+  border: 1px solid var(--r-border-color);
+  border-radius: 4px;
+  box-shadow: var(--r-shadow);
+  z-index: 2100;
+}
+
+.leditor-color-picker-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 2px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+}
+
+.leditor-color-picker-swatch:hover {
+  border-color: rgba(43, 114, 247, 0.8);
+}
+
+.leditor-ribbon-gallery {
+  display: flex;
+  gap: var(--r-ctl-gap);
+  overflow-x: auto;
+  padding: 4px;
+}
+
+/* =========================
+   Tooltip
+   ========================= */
+.leditor-ribbon-tooltip {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.86);
+  color: #fff;
+  padding: 5px 8px;
+  border-radius: 3px;
+  font-size: var(--r-font-size-sm);
+  pointer-events: none;
+  z-index: 2200;
+}
+
+/* =========================
+   Page setup layouts
+   ========================= */
+.ribbon-page-setup {
+  display: grid;
+  grid-template-rows: 3fr 1fr;
+  gap: var(--r-group-gap);
+  height: 100%;
+}
+
+.ribbon-page-setup__big-row,
+.ribbon-page-setup__small-row {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: var(--r-group-gap);
+}
+
+.ribbon-page-setup__big-row > .ribbon-dropdown-button {
+  height: 100%;
+}
+
+/* =========================
+   Paragraph group controls
+   ========================= */
+.ribbon-paragraph-group {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: var(--r-group-gap);
+  align-items: start;
+}
+
+.ribbon-paragraph-block {
+  display: grid;
+  gap: 4px;
+}
+
+.ribbon-paragraph-label {
+  font-size: var(--r-font-size-sm);
+  color: #6b7280;
+}
+
+.ribbon-indent-grid,
+.ribbon-spacing-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.ribbon-indent-spinner {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+}
+
+.ribbon-indent-input {
+  width: 60px;
+  padding: 2px 4px;
+  font-size: 11px;
+  border: 1px solid #c6cfde;
+  border-radius: 2px;
+  background: #ffffff;
+}
+
+.ribbon-indent-steppers {
+  display: grid;
+  gap: 2px;
+}
+
+.ribbon-indent-stepper {
+  width: 18px;
+  height: 16px;
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* =========================
+   Clipboard layout
+   ========================= */
+.clipboard-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--r-group-gap);
+  align-items: stretch;
+}
+
+.clipboard-left .leditor-split-button {
+  height: 100%;
+}
+
+.clipboard-right {
+  display: grid;
+  grid-auto-flow: row;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+/* =========================
+   Styles gallery / footer
+   ========================= */
+.styles-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 6px;
+}
+
+.styles-gallery__item {
+  justify-content: flex-start;
+  padding: 6px 10px;
+}
+
+.styles-footer {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+/* =========================
+   Editing row
+   ========================= */
+.editing-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--r-group-gap);
+}
+
+/* =========================
+   Spinner dropdown
+   ========================= */
+.ribbon-spinner-dropdown {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  background: var(--r-ctl-bg);
+}
+
+.ribbon-spinner-dropdown .leditor-ribbon-spinner {
+  margin-left: 4px;
+}
+
+.ribbon-spinner-input {
+  width: 60px;
+  border: none;
+  font-size: var(--r-font-size-sm);
+  text-align: center;
+  outline: none;
+  background: transparent;
+  color: var(--r-text);
+}
+
+/* =========================
+   Missing classes from original snippet
+   (keep compatibility)
+   ========================= */
+.ribbon-cluster--grid .leditor-ribbon-button,
+.ribbon-cluster--grid .ribbon-overflow-button {
+  width: 100%;
+}
+
+.ribbon-spacing-grid button {
+  min-height: 26px;
+}

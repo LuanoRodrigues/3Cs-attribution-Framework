@@ -1,0 +1,404 @@
+/* layout.css — Ribbon layout + document layout primitives (full replacement)
+   Derived from layout.json (layoutId: ribbonLayout, v3)
+
+   Goals:
+   - Deterministic, config-driven ribbon DOM/CSS contracts
+   - Stage A/B/C collapse support via data attributes
+   - Portal layering + z-index plan
+   - Density + theme token overrides (CSS-variable driven)
+   - Document layout tokens for true pagination (inches->px via dpi)
+*/
+
+/* =========================
+   Token plumbing (maps layout.json tokens -> CSS vars used by ribbon.css)
+   ========================= */
+:root {
+  /* Typography */
+  --r-font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --r-font-size: 12px;
+  --r-font-size-sm: 11px;
+  --r-line-height: 1.2;
+
+  /* Ribbon layout */
+  --r-tabstrip-height: 36px;
+  --r-panel-height: 120px;
+  --r-panel-pad-x: 10px;
+  --r-panel-pad-y: 8px;
+  --r-group-gap: 10px;
+  --r-group-pad: 8px;
+  --r-group-min: 108px;
+  --r-group-max: 380px;
+  --r-ctl-h-sm: 24px;
+  --r-ctl-h-md: 28px;
+  --r-ctl-h-lg: 54px;
+  --r-ctl-radius: 6px;
+  --r-ctl-gap: 6px;
+  --r-icon: 16px;
+  --r-icon-lg: 20px;
+
+  /* Chrome */
+  --r-tab-active-underline-h: 3px;
+  --r-tab-corner-radius: 6px;
+  --r-group-corner-radius: 8px;
+  --r-separator-thickness: 1px;
+  --r-separator-inset-y: 8px;
+  --r-panel-top-inset: 0px;
+
+  /* Surfaces + colors */
+  --r-bg: #f6f7f9;
+  --r-ribbon: #f6f7f9;
+  --r-surface: #ffffff;
+  --r-surface-2: #f1f3f6;
+
+  --r-text: rgba(0, 0, 0, 0.88);
+  --r-muted: rgba(0, 0, 0, 0.60);
+  --r-disabled: rgba(0, 0, 0, 0.35);
+
+  --r-hover: rgba(0, 0, 0, 0.06);
+  --r-pressed: rgba(0, 0, 0, 0.10);
+
+  --r-accent: #2563eb;
+  --r-selected: rgba(37, 99, 235, 0.14);
+  --r-focus: #2563eb;
+
+  /* Borders / dividers / shadows */
+  --r-border: 1px solid rgba(0, 0, 0, 0.10);
+  --r-divider: 1px solid rgba(0, 0, 0, 0.08);
+  --r-shadow: 0 1px 2px rgba(0, 0, 0, 0.10), 0 8px 24px rgba(0, 0, 0, 0.08);
+
+  /* Motion */
+  --r-ease: cubic-bezier(.2,.8,.2,1);
+  --r-d1: 120ms;
+  --r-d2: 180ms;
+
+  /* Document tokens (pagination/print metrics) */
+  --doc-unit: in;
+  --doc-dpi: 96;
+  --doc-page-gap: 18px;
+  --doc-page-outer-shadow: 0 1px 2px rgba(0,0,0,0.10), 0 10px 28px rgba(0,0,0,0.12);
+  --doc-page-border: 1px solid rgba(0,0,0,0.10);
+  --doc-canvas-bg: #f3f4f6;
+  --doc-content-bg: #ffffff;
+
+  /* Pagination-derived vars (set by app state) */
+  --doc-page-width: 816px;   /* example default (8.5in * 96dpi) */
+  --doc-page-height: 1056px; /* example default (11in * 96dpi) */
+  --doc-content-width: 624px;
+  --doc-content-height: 864px;
+  --doc-margin-top: 96px;
+  --doc-margin-right: 96px;
+  --doc-margin-bottom: 96px;
+  --doc-margin-left: 96px;
+  --doc-gutter: 0px;
+}
+
+/* =========================
+   Density modes (data-density on host)
+   ========================= */
+.leditor-ribbon-host[data-density="compact"] {
+  --r-tabstrip-height: 32px;
+  --r-panel-height: 112px;
+  --r-panel-pad-x: 8px;
+  --r-panel-pad-y: 6px;
+  --r-group-gap: 8px;
+  --r-group-pad: 6px;
+
+  --r-ctl-h-sm: 22px;
+  --r-ctl-h-md: 26px;
+  --r-ctl-h-lg: 50px;
+
+  --r-icon: 16px;
+  --r-icon-lg: 18px;
+
+  --r-tab-active-underline-h: 3px;
+  --r-tab-corner-radius: 6px;
+  --r-group-corner-radius: 8px;
+  --r-separator-thickness: 1px;
+  --r-separator-inset-y: 6px;
+  --r-panel-top-inset: 0px;
+}
+
+/* =========================
+   Theme modes (data-theme on host)
+   ========================= */
+.leditor-ribbon-host[data-theme="dark"] {
+  --r-bg: rgba(25, 27, 33, 0.96);
+  --r-ribbon: rgba(25, 27, 33, 0.96);
+  --r-surface: rgba(18, 18, 20, 0.95);
+  --r-surface-2: rgba(255, 255, 255, 0.05);
+
+  --r-text: rgba(255, 255, 255, 0.92);
+  --r-muted: rgba(255, 255, 255, 0.68);
+  --r-disabled: rgba(255, 255, 255, 0.38);
+
+  --r-hover: rgba(255, 255, 255, 0.06);
+  --r-pressed: rgba(255, 255, 255, 0.10);
+
+  --r-accent: #7aa6ff;
+  --r-selected: rgba(122, 166, 255, 0.18);
+  --r-focus: #7aa6ff;
+
+  --r-border: 1px solid rgba(255, 255, 255, 0.12);
+  --r-divider: 1px solid rgba(255, 255, 255, 0.10);
+  --r-shadow: 0 1px 2px rgba(0,0,0,0.40), 0 12px 32px rgba(0,0,0,0.60);
+}
+
+/* =========================
+   Region shell: ribbon host and structure
+   domContracts.classNames:
+   host/shell/tabStrip/tab/panels/panel/groupsStrip/group/...
+   ========================= */
+.leditor-ribbon-host {
+  background: var(--r-bg);
+  color: var(--r-text);
+  font-family: var(--r-font-family);
+  font-size: var(--r-font-size);
+  line-height: var(--r-line-height);
+}
+
+/* Ribbon tray */
+.leditor-ribbon-shell {
+  position: relative;
+  z-index: 10; /* zIndexPlan.ribbonSurface */
+  background: var(--r-ribbon);
+  border-bottom: var(--r-divider);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.70);
+}
+
+/* Ensure panels don’t get covered by editor, but also don’t trap portal menus */
+.leditor-ribbon-panels {
+  position: relative;
+  z-index: 10;
+}
+
+/* Active panel selection is controlled by data-active-tab + per-panel visibility */
+.leditor-ribbon-panel {
+  padding: calc(var(--r-panel-top-inset) + var(--r-panel-pad-y)) var(--r-panel-pad-x) var(--r-panel-pad-y);
+}
+
+/* Fixed height enforcement (layout.panel.fixedHeight = true) */
+.leditor-ribbon-host[data-ribbon-fixed-height="true"] .leditor-ribbon-panel {
+  height: var(--r-panel-height);
+  min-height: var(--r-panel-height);
+  overflow: hidden;
+}
+
+/* Tabstrip keyboard focus policy expects no CSS reordering */
+.leditor-ribbon-tabs {
+  height: var(--r-tabstrip-height);
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  padding: 0 8px;
+  border-bottom: var(--r-divider);
+  user-select: none;
+}
+
+/* Tab appearance (kept minimal here; ribbon.css provides detailed styling) */
+.leditor-ribbon-tab {
+  position: relative;
+  border-radius: var(--r-tab-corner-radius) var(--r-tab-corner-radius) 0 0;
+}
+
+/* Active underline thickness controlled by token */
+.leditor-ribbon-tab[aria-selected="true"]::after,
+.leditor-ribbon-tab.is-selected::after {
+  height: var(--r-tab-active-underline-h);
+}
+
+/* Enable tab scrolling when requested (layout.regions.tabstrip.scrollFallback) */
+.leditor-ribbon[data-ribbon-tab-scroll="enabled"] .leditor-ribbon-tabs,
+.leditor-ribbon-host[data-ribbon-tab-scroll="enabled"] .leditor-ribbon-tabs {
+  overflow-x: auto;
+}
+
+/* =========================
+   Groups strip + separators (deterministic DOM separators)
+   separators.strategies.defaultGroupSeparators.className = ribbonSeparator
+   ========================= */
+.leditor-ribbon-groups {
+  display: flex;
+  gap: var(--r-group-gap);
+  align-items: stretch;
+  overflow-x: auto;
+  overflow-y: hidden;
+  min-height: 0;
+}
+
+/* Group container */
+.leditor-ribbon-group {
+  min-width: var(--r-group-min);
+  max-width: var(--r-group-max);
+  border: var(--r-border);
+  border-radius: var(--r-group-corner-radius);
+  background: var(--r-surface-2);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.60);
+  display: grid;
+  grid-template-rows: 1fr auto;
+  padding: var(--r-group-pad);
+}
+
+/* Grid body is required (notes: do not override to flex) */
+.leditor-ribbon-group-body {
+  display: grid;
+  gap: var(--r-group-pad);
+  align-content: start;
+  justify-items: start;
+  grid-auto-flow: column dense;
+  grid-auto-columns: minmax(120px, max-content);
+  grid-template-rows: repeat(var(--r-group-max-rows, 3), minmax(0, auto));
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Group footer / title formatting (uppercaseTitle=true, letterSpacingEm=0.04) */
+.leditor-ribbon-group-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: var(--r-divider);
+  color: var(--r-muted);
+  font-size: var(--r-font-size-sm);
+}
+
+.leditor-ribbon-group-title {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* DOM separator inserted between groups */
+.ribbonSeparator {
+  align-self: stretch;
+  width: var(--r-separator-thickness);
+  background: currentColor;
+  color: rgba(0, 0, 0, 0.12);
+  margin: var(--r-separator-inset-y) 0;
+}
+
+/* Dark theme separator tone */
+.leditor-ribbon-host[data-theme="dark"] .ribbonSeparator {
+  color: rgba(255, 255, 255, 0.14);
+}
+
+/* =========================
+   Collapse stages (data-collapse-stage = A|B|C)
+   Stage C collapses groups into group buttons + flyouts
+   ========================= */
+.leditor-ribbon-host[data-collapse-stage="A"] { }
+.leditor-ribbon-host[data-collapse-stage="B"] { }
+.leditor-ribbon-host[data-collapse-stage="C"] { }
+
+/* Stage C: groups are rendered as buttons; if your renderer keeps the group node,
+   hide the body/footer and show the collapsed button. */
+.leditor-ribbon-host[data-collapse-stage="C"] .leditor-ribbon-group-body,
+.leditor-ribbon-host[data-collapse-stage="C"] .leditor-ribbon-group-footer {
+  display: none;
+}
+
+/* Collapsed group button contract */
+.ribbon-group-button {
+  width: 100%;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0 10px;
+  cursor: pointer;
+  border-radius: var(--r-ctl-radius);
+  border: var(--r-border);
+  background: var(--r-surface);
+  box-shadow: var(--r-shadow);
+}
+
+/* Flyout contract (portal/fixed positioning; zIndexPlan.menusAndPickers=2100) */
+.ribbon-group-flyout {
+  position: fixed;
+  z-index: 2100;
+  background: var(--r-surface);
+  border: var(--r-border);
+  border-radius: 8px;
+  box-shadow: var(--r-shadow);
+  padding: var(--r-group-pad);
+  min-width: 240px;
+}
+
+/* =========================
+   Portal root (zIndexPlan.portalElementId = ribbon-portal)
+   ========================= */
+#ribbon-portal {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2100;
+}
+
+#ribbon-portal > * {
+  pointer-events: auto;
+}
+
+/* =========================
+   Document layout surface primitives (pagination canvas + pages)
+   These class names are intentionally generic; your editor shell can map to them.
+   ========================= */
+.leditor-doc-canvas {
+  background: var(--doc-canvas-bg);
+  min-height: 100%;
+  padding: 24px 0;
+}
+
+.leditor-doc-page {
+  width: var(--doc-page-width);
+  height: var(--doc-page-height);
+  margin: 0 auto var(--doc-page-gap);
+  background: var(--doc-content-bg);
+  border: var(--doc-page-border);
+  box-shadow: var(--doc-page-outer-shadow);
+  position: relative;
+}
+
+/* Content rect is controlled by derived vars (set by paginator) */
+.leditor-doc-content {
+  position: absolute;
+  top: var(--doc-margin-top);
+  right: var(--doc-margin-right);
+  bottom: var(--doc-margin-bottom);
+  left: calc(var(--doc-margin-left) + var(--doc-gutter));
+  width: var(--doc-content-width);
+  height: var(--doc-content-height);
+  overflow: hidden;
+}
+
+/* Optional visual margin guides (debug only; gate via attribute) */
+.leditor-doc-page[data-show-margins="true"]::before {
+  content: "";
+  position: absolute;
+  top: var(--doc-margin-top);
+  left: calc(var(--doc-margin-left) + var(--doc-gutter));
+  right: var(--doc-margin-right);
+  bottom: var(--doc-margin-bottom);
+  border: 1px dashed rgba(0,0,0,0.18);
+  pointer-events: none;
+}
+
+.leditor-ribbon-host[data-theme="dark"] .leditor-doc-page[data-show-margins="true"]::before {
+  border-color: rgba(255,255,255,0.18);
+}
+
+/* =========================
+   DPI scaling / crisp lines for Electron
+   ========================= */
+.leditor-ribbon-host,
+.leditor-doc-canvas {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Avoid accidental clipping that would break portal menus/flyouts */
+.leditor-ribbon-shell,
+.leditor-ribbon-panels,
+.leditor-ribbon-panel {
+  overflow: visible;
+}

@@ -1,0 +1,2657 @@
+{
+  "type": "doc",
+  "content": [
+    {
+      "type": "heading",
+      "attrs": {
+        "level": 1
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "Reflective Integration Sample"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Critical check 1 sets the tone for this multi-section verification. "
+        },
+        {
+          "type": "footnote",
+          "attrs": {
+            "id": "fn-1",
+            "kind": "footnote"
+          },
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Document start comment about the new paged workflow."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": " Continue past the margin guides."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Critical check 2 sets the tone for this multi-section verification. "
+        },
+        {
+          "type": "footnote",
+          "attrs": {
+            "id": "fn-2",
+            "kind": "footnote"
+          },
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Clarifies margin constraints and header/footer mirroring."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": " Continue past the margin guides."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Critical check 3 sets the tone for this multi-section verification. "
+        },
+        {
+          "type": "footnote",
+          "attrs": {
+            "id": "fn-3",
+            "kind": "footnote"
+          },
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Explains how pagination replicates modern word processors' break rules."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": " Continue past the margin guides."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Critical check 4 sets the tone for this multi-section verification. "
+        },
+        {
+          "type": "footnote",
+          "attrs": {
+            "id": "fn-4",
+            "kind": "footnote"
+          },
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Notes the interplay between columns and page gutters."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": " Continue past the margin guides."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Critical check 5 sets the tone for this multi-section verification. "
+        },
+        {
+          "type": "footnote",
+          "attrs": {
+            "id": "fn-5",
+            "kind": "footnote"
+          },
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Mentions the ruler and measurement tokens in the layout engine."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": " Continue past the margin guides."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Critical check 6 sets the tone for this multi-section verification. "
+        },
+        {
+          "type": "footnote",
+          "attrs": {
+            "id": "fn-6",
+            "kind": "footnote"
+          },
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Highlights footnote stacking when the reserved area fills up."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": " Continue past the margin guides."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Critical check 7 sets the tone for this multi-section verification. "
+        },
+        {
+          "type": "footnote",
+          "attrs": {
+            "id": "fn-7",
+            "kind": "footnote"
+          },
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Confirms section breaks honor mirrored gutters for binding."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": " Continue past the margin guides."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Critical check 8 sets the tone for this multi-section verification. "
+        },
+        {
+          "type": "footnote",
+          "attrs": {
+            "id": "fn-8",
+            "kind": "footnote"
+          },
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Reminds to keep headers/footers linked unless unlocked per section."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": " Continue past the margin guides."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Critical check 9 sets the tone for this multi-section verification. "
+        },
+        {
+          "type": "footnote",
+          "attrs": {
+            "id": "fn-9",
+            "kind": "footnote"
+          },
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Details zoom grid thresholds for 1/2/4/9 pages visibility."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": " Continue past the margin guides."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Critical check 10 sets the tone for this multi-section verification. "
+        },
+        {
+          "type": "footnote",
+          "attrs": {
+            "id": "fn-10",
+            "kind": "footnote"
+          },
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Describes the inspector commands for controlling dark/light surfaces."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": " Continue past the margin guides."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Critical check 11 sets the tone for this multi-section verification. "
+        },
+        {
+          "type": "footnote",
+          "attrs": {
+            "id": "fn-11",
+            "kind": "footnote"
+          },
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Summarizes the integration checklist for QA sign-off."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": " Continue past the margin guides."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Critical check 12 sets the tone for this multi-section verification. "
+        },
+        {
+          "type": "footnote",
+          "attrs": {
+            "id": "fn-12",
+            "kind": "footnote"
+          },
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Captures the edge case where a table spans two sections and avoids splits."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": " Continue past the margin guides."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Capture context for endnote 1 "
+        },
+        {
+          "type": "footnote",
+          "attrs": {
+            "id": "en-1",
+            "kind": "endnote"
+          },
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Endnotes appear sequentially at the very end of the document."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": " before the appendix."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Capture context for endnote 2 "
+        },
+        {
+          "type": "footnote",
+          "attrs": {
+            "id": "en-2",
+            "kind": "endnote"
+          },
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "They use the dedicated panel and respect the same numbering as footnotes."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": " before the appendix."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Capture context for endnote 3 "
+        },
+        {
+          "type": "footnote",
+          "attrs": {
+            "id": "en-3",
+            "kind": "endnote"
+          },
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Use them to collect citations you want grouped after the sections."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": " before the appendix."
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "content": [
+        {
+          "type": "tableRow",
+          "content": [
+            {
+              "type": "tableCell",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Benchmark"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableCell",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Status"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableCell",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Notes"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "tableRow",
+          "content": [
+            {
+              "type": "tableCell",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Headers"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableCell",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Linked"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableCell",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Maintains page numbers"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "tableRow",
+          "content": [
+            {
+              "type": "tableCell",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Footnotes"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableCell",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Rendered"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableCell",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Paged, scoped, renumbered"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "image",
+      "attrs": {
+        "src": "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22400%22%20height%3D%22180%22%3E%3Crect%20width%3D%22400%22%20height%3D%22180%22%20fill%3D%22%23d6eaf8%22/%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20fill%3D%22%231c2833%22%20font-size%3D%2220%22%3EPaged%20Layout%3C/text%3E%3C/svg%3E",
+        "alt": "Sample layout diagram",
+        "width": 400,
+        "height": 180
+      }
+    },
+    {
+      "type": "page_break",
+      "attrs": {
+        "kind": "page"
+      }
+    },
+    {
+      "type": "page_break",
+      "attrs": {
+        "kind": "section_next",
+        "sectionSettings": "{\"orientation\": \"landscape\", \"columns\": 2, \"mirrored\": true}"
+      }
+    },
+    {
+      "type": "heading",
+      "attrs": {
+        "level": 2
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "Landscape Column Section"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "This section proves the layout respects columns, mirrored margins, and the header/footer link."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 1. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 2. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 3. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 4. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 5. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 6. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 7. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 8. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 9. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 10. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 11. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 12. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 13. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 14. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 15. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 16. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 17. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 18. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 19. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 20. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 21. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 22. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 23. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 24. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 25. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 26. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 27. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 28. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 29. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 30. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 31. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 32. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 33. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 34. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 35. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 36. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 37. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 38. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 39. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 40. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 41. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 42. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 43. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 44. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 45. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 46. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 47. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 48. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 49. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 50. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 51. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 52. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 53. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 54. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 55. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 56. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 57. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 58. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 59. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 60. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 61. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 62. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 63. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 64. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 65. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 66. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 67. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 68. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 69. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 70. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 71. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 72. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 73. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 74. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 75. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 76. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 77. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 78. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 79. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 80. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 81. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 82. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 83. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 84. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 85. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 86. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 87. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 88. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 89. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 90. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 91. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 92. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 93. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 94. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 95. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 96. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 97. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 98. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 99. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 100. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 101. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 102. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 103. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 104. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 105. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 106. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 107. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 108. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 109. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 110. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 111. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 112. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 113. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 114. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 115. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 116. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 117. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 118. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 119. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 120. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 121. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 122. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 123. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 124. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 125. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 126. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 127. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 128. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 129. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 130. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 131. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 132. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 133. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 134. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 135. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 136. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 137. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 138. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 139. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 140. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 141. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 142. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 143. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 144. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 145. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 146. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 147. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 148. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 149. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 150. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 151. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 152. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 153. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 154. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 155. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 156. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 157. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 158. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 159. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 160. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 161. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 162. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 163. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 164. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 165. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 166. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 167. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 168. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 169. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 170. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 171. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 172. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 173. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 174. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 175. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 176. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 177. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 178. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 179. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 180. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 181. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 182. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 183. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 184. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 185. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 186. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 187. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 188. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 189. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 190. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 191. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 192. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 193. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 194. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 195. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 196. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 197. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 198. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 199. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 200. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 201. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 202. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 203. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 204. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 205. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 206. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 207. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 208. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 209. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 210. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 211. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 212. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 213. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 214. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 215. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 216. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 217. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 218. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 219. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Performance paragraph 220. Scroll to confirm pagination over 100 pages."
+        }
+      ]
+    },
+    {
+      "type": "page_break",
+      "attrs": {
+        "kind": "page"
+      }
+    }
+  ]
+}

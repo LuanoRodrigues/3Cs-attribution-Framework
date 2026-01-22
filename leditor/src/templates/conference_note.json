@@ -1,0 +1,43 @@
+{
+  "type": "doc",
+  "content": [
+    {
+      "type": "heading",
+      "attrs": {
+        "level": 1
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "Conference Summary"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Date: "
+        },
+        {
+          "type": "merge_tag",
+          "attrs": {
+            "key": "EVENT_DATE"
+          }
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "merge_tag",
+          "attrs": {
+            "key": "EVENT_DETAILS"
+          }
+        }
+      ]
+    }
+  ]
+}

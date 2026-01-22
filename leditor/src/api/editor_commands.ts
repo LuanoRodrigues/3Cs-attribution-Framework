@@ -1,0 +1,197 @@
+import type { EditorHandle } from "./leditor.js";
+
+export type EditorCommandId =
+  | "Bold"
+  | "Italic"
+  | "Underline"
+  | "Strikethrough"
+  | "Undo"
+  | "Redo"
+  | "AlignLeft"
+  | "AlignCenter"
+  | "AlignRight"
+  | "JustifyFull"
+  | "BulletList"
+  | "NumberList"
+  | "RemoveFontStyle"
+  | "FontFamily"
+  | "FontSize"
+  | "TextColor"
+  | "HighlightColor"
+  | "RemoveTextColor"
+  | "RemoveHighlightColor"
+  | "NormalStyle"
+  | "ClearFormatting"
+  | "ChangeCase"
+  | "Link"
+  | "Heading1"
+  | "Heading2"
+  | "Heading3"
+  | "Heading4"
+  | "Heading5"
+  | "Heading6"
+  | "Superscript"
+  | "Subscript"
+  | "LineSpacing"
+  | "SpaceBefore"
+  | "SpaceAfter"
+  | "Outdent"
+  | "Indent"
+  | "SetIndent"
+  | "TableInsert"
+  | "InsertImage"
+  | "InsertPageBreak"
+  | "InsertColumnBreak"
+  | "InsertTextWrappingBreak"
+  | "InsertSectionBreakNextPage"
+  | "InsertSectionBreakContinuous"
+  | "InsertSectionBreakEven"
+  | "InsertSectionBreakOdd"
+  | "InsertTemplate"
+  | "InsertFootnote"
+  | "InsertEndnote"
+  | "NextFootnote"
+  | "PreviousFootnote"
+  | "InsertBookmark"
+  | "InsertCrossReference"
+  | "InsertTOC"
+  | "UpdateTOC"
+  | "InsertTocHeading"
+  | "InsertCitation"
+  | "UpdateCitations"
+  | "SetCitationStyle"
+  | "SetCitationSources"
+  | "UpsertCitationSource"
+  | "InsertBibliography"
+  | "UpdateBibliography"
+  | "WordCount"
+  | "Spelling"
+  | "Thesaurus"
+  | "ReadAloud"
+  | "ProofingPanel"
+  | "CommentsNew"
+  | "CommentsDelete"
+  | "CommentsPrev"
+  | "CommentsNext"
+  | "ToggleTrackChanges"
+  | "AcceptChange"
+  | "RejectChange"
+  | "PrevChange"
+  | "NextChange"
+  | "Preview"
+  | "SourceView"
+  | "Fullscreen"
+  | "VisualBlocks"
+  | "VisualChars"
+  | "InsertComment"
+  | "DirectionLTR"
+  | "DirectionRTL"
+  | "SetReadMode"
+  | "SetPrintLayout"
+  | "SetScrollDirectionVertical"
+  | "SetScrollDirectionHorizontal"
+  | "ZoomIn"
+  | "ZoomOut"
+  | "ZoomReset"
+  | "ViewSinglePage"
+  | "ViewTwoPage"
+  | "ViewFitWidth"
+  | "SetPageMargins"
+  | "SetPageOrientation"
+  | "SetPageSize"
+  | "SetContentFrameHeight"
+  | "ContentFrameHeightInc"
+  | "ContentFrameHeightDec"
+  | "ContentFrameHeightReset"
+  | "SetHeaderDistance"
+  | "SetFooterDistance"
+  | "SetPageGutter"
+  | "SetSectionColumns"
+  | "view.printPreview.open"
+  | "SetLineNumbering"
+  | "SetHyphenation"
+  | "SetParagraphIndent"
+  | "SetParagraphSpacing"
+  | "MarkupAll"
+  | "MarkupNone"
+  | "MarkupOriginal"
+  | "EditHeader"
+  | "EditFooter"
+  | "ExitHeaderFooterEdit"
+  | "FootnotePanel"
+  | "RemoveColor"
+  | "Cut"
+  | "Copy"
+  | "Paste"
+  | "PastePlain"
+  | "SearchReplace"
+  | "ExportDOCX"
+  | "ImportDOCX"
+  | "PasteClean"
+  | "ImportDocx"
+  | "ExportDocx"
+  | "ExportPdf"
+  | "OpenRevisionHistory"
+  | "SaveRevision"
+  | "RestoreRevision"
+  | "ToggleSpellcheck"
+  | "AddToDictionary"
+  | "ReplaceWithSuggestion"
+  | "AiSummarizeSelection"
+  | "AiRewriteSelection"
+  | "AiContinue"
+  | "SelectAll"
+  | "SelectObjects"
+  | "SelectSimilarFormatting"
+  | "ClipboardOptionsDialog"
+  | "FontOptionsDialog"
+  | "FontEffectsMenu"
+  | "FontEffectsDialog"
+  | "FontEffectsOutline"
+  | "FontEffectsShadow"
+  | "UnderlineColorPicker"
+  | "ParagraphOptionsDialog"
+  | "ParagraphSpacingDialog"
+  | "ParagraphSpacingMenu"
+  | "ParagraphBordersDialog"
+  | "ParagraphBordersMenu"
+  | "ParagraphBordersSet"
+  | "BlockquoteToggle";
+
+export const MINIMAL_EDITOR_COMMANDS: EditorCommandId[] = [
+  "Bold",
+  "Italic",
+  "Underline",
+  "Undo",
+  "Redo",
+  "AlignLeft",
+  "AlignCenter",
+  "AlignRight",
+  "JustifyFull",
+  "BulletList",
+  "NumberList"
+];
+
+declare global {
+  interface Window {
+    codexLog?: {
+      write: (line: string) => void;
+    };
+  }
+}
+
+export const dispatchCommand = (
+  editorHandle: EditorHandle,
+  commandId: EditorCommandId,
+  payload?: unknown
+) => {
+  window.codexLog?.write(`[RIBBON_COMMAND] ${commandId}`);
+  editorHandle.execCommand(commandId, payload);
+  const tiptap = (editorHandle as any)?.getEditor?.();
+  if (tiptap?.commands?.focus) {
+    tiptap.commands.focus();
+  } else if ((editorHandle as any)?.focus) {
+    (editorHandle as any).focus();
+  }
+};
+

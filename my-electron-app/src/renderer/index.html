@@ -1,0 +1,76 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; frame-src 'self' file:; child-src 'self' file:;"
+  >
+  <title>Annotarium Panels</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div id="app-shell">
+    <header id="app-ribbon">
+      <div id="app-tab-header"></div>
+      <div id="app-tab-actions"></div>
+    </header>
+    <div id="app-ribbon-separator" aria-hidden="true"></div>
+    <div id="workspace-shell">
+      <main id="workspace-main">
+        <div id="panels-wrapper">
+          <div id="panel-grid-container"></div>
+        </div>
+      </main>
+      <div id="session-overlay" class="session-overlay">
+        <div class="session-card">
+          <h1>Annotarium Projects</h1>
+          <p>Open an existing workspace or start a new project to unlock your saved sessions.</p>
+          <div class="session-columns">
+            <section class="session-block">
+              <h2>Create a new project</h2>
+              <label class="session-input-label">
+                Project name
+                <input id="session-new-name" type="text" value="Untitled project" maxlength="64" />
+              </label>
+              <div class="session-control-row">
+                <button id="session-choose-dir" class="ribbon-button">Choose location</button>
+                <button id="session-create" class="ribbon-button">Create project</button>
+              </div>
+              <p class="session-hint">Workspace root</p>
+              <p class="session-location">
+                Default location:
+                <span id="session-location-value">Not selected</span>
+              </p>
+            </section>
+            <section class="session-block">
+              <h2>Open a workspace</h2>
+              <button id="session-open-existing" class="ribbon-button">Open folder</button>
+              <div class="session-recent">
+                <h3>Recent projects</h3>
+                <ul id="session-recent-list"></ul>
+              </div>
+            </section>
+            <section class="session-block">
+              <h2>Import / Export</h2>
+              <div class="session-control-row">
+                <button id="session-export-project" class="ribbon-button">Export current</button>
+              </div>
+              <div class="session-control-row">
+                <button id="session-choose-archive" class="ribbon-button">Choose archive</button>
+                <button id="session-import-archive" class="ribbon-button">Import archive</button>
+              </div>
+              <p class="session-hint">Selected archive</p>
+              <p class="session-location">
+                <span id="session-archive-value">None</span>
+              </p>
+            </section>
+          </div>
+          <div id="session-status" class="status-bar"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="./renderer.js"></script>
+</body>
+</html>

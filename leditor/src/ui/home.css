@@ -1,0 +1,370 @@
+/* home.css — Home tab styling (full replacement)
+   Targets the Home tab plan structures:
+   - Groups: clipboard, font, paragraph, styles, editing
+   - Cluster layouts: row / grid / segmented / column
+   - Control types: splitButton, dropdown, combobox, spinnerDropdown, gallery, colorSplitButton, colorPicker
+*/
+
+/* =========================
+   Home tab panel scoping
+   ========================= */
+.leditor-ribbon-panel[data-tab-id="home"] {
+  /* Keep Home dense but readable */
+  --home-cluster-gap: 6px;
+  --home-grid-gap: 6px;
+}
+
+/* Ensure Home groups don’t balloon */
+.leditor-ribbon-panel[data-tab-id="home"] .leditor-ribbon-group {
+  max-width: 520px;
+}
+
+/* Default cluster spacing within Home groups */
+.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster,
+.leditor-ribbon-panel[data-tab-id="home"] .leditor-ribbon-format-actions {
+  gap: var(--home-cluster-gap);
+}
+
+/* =========================
+   Clipboard group
+   ========================= */
+.leditor-ribbon-panel[data-tab-id="home"] [data-group-id="clipboard"] .ribbon-cluster,
+.leditor-ribbon-panel[data-tab-id="home"] .clipboard-row {
+  align-items: stretch;
+}
+
+/* Large Paste split button column */
+.leditor-ribbon-panel[data-tab-id="home"] [data-control-id="clipboard.paste"],
+.leditor-ribbon-panel[data-tab-id="home"] .clipboard-left .leditor-split-button {
+  min-width: 92px;
+}
+
+/* Clipboard right-side grid (Cut/Copy/FP + Undo/Redo) */
+.leditor-ribbon-panel[data-tab-id="home"] .clipboard-right {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-content: start;
+}
+
+/* Make tiny clipboard buttons consistent */
+.leditor-ribbon-panel[data-tab-id="home"] .clipboard-right .leditor-ribbon-icon-btn,
+.leditor-ribbon-panel[data-tab-id="home"] .clipboard-right .leditor-ribbon-button {
+  min-width: 34px;
+}
+
+/* =========================
+   Font group
+   ========================= */
+.leditor-ribbon-panel[data-tab-id="home"] [data-group-id="font"] .leditor-ribbon-group-body {
+  /* Font group is usually 3 “bands”: styles row, toggles grid, color row */
+  grid-auto-flow: row;
+  grid-template-rows: auto auto auto;
+  grid-auto-columns: unset;
+}
+
+/* Font: style/family/size row */
+.leditor-ribbon-panel[data-tab-id="home"] [data-cluster-id="font.styles"],
+.leditor-ribbon-panel[data-tab-id="home"] .home-header-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: var(--home-cluster-gap);
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+/* Ensure “mediumWide” dropdown/combobox gets enough width */
+.leditor-ribbon-panel[data-tab-id="home"] .ribbon-dropdown-button,
+.leditor-ribbon-panel[data-tab-id="home"] .leditor-ribbon-combobox {
+  min-height: 28px;
+}
+
+.leditor-ribbon-panel[data-tab-id="home"] [data-control-id="font.style"] {
+  min-width: 150px;
+}
+
+.leditor-ribbon-panel[data-tab-id="home"] [data-control-id="font.family"] {
+  min-width: 180px;
+}
+
+.leditor-ribbon-panel[data-tab-id="home"] [data-control-id="font.size"] {
+  min-width: 120px;
+}
+
+/* Font: toggles grid (Bold/Italic/Underline/...) */
+.leditor-ribbon-panel[data-tab-id="home"] [data-cluster-id="font.toggles"] {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(30px, 1fr));
+  gap: var(--home-grid-gap);
+  align-items: center;
+  justify-items: start;
+}
+
+/* Underline split toggle: ensure caret is visible if your renderer uses it */
+.leditor-ribbon-panel[data-tab-id="home"] [data-control-id="font.underline"] {
+  position: relative;
+}
+
+/* Font: color/clear row */
+.leditor-ribbon-panel[data-tab-id="home"] [data-cluster-id="font.colorAndClear"] {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--home-cluster-gap);
+}
+
+/* Make “Clear All Formatting” visually secondary */
+.leditor-ribbon-panel[data-tab-id="home"] [data-control-id="font.clearFormatting"] {
+  filter: saturate(0.95);
+}
+
+/* =========================
+   Paragraph group
+   ========================= */
+.leditor-ribbon-panel[data-tab-id="home"] [data-group-id="paragraph"] .leditor-ribbon-group-body {
+  grid-auto-flow: row;
+  grid-template-rows: auto auto auto auto;
+}
+
+/* Paragraph: lists grid */
+.leditor-ribbon-panel[data-tab-id="home"] [data-cluster-id="paragraph.lists"] {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(30px, 1fr));
+  gap: var(--home-grid-gap);
+  align-items: center;
+}
+
+/* Paragraph: indent + marks grid */
+.leditor-ribbon-panel[data-tab-id="home"] [data-cluster-id="paragraph.indentAndMarks"] {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(30px, 1fr));
+  gap: var(--home-grid-gap);
+  align-items: center;
+}
+
+/* Paragraph: alignment segmented */
+.leditor-ribbon-panel[data-tab-id="home"] [data-cluster-id="paragraph.alignment"],
+.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster--segmented {
+  display: inline-flex;
+  gap: 2px;
+  border: var(--r-border);
+  border-radius: var(--r-ctl-radius);
+  overflow: hidden;
+  background: var(--r-ctl-bg);
+  box-shadow: var(--r-ctl-shadow);
+}
+
+.leditor-ribbon-panel[data-tab-id="home"] [data-cluster-id="paragraph.alignment"] > * {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.leditor-ribbon-panel[data-tab-id="home"] [data-cluster-id="paragraph.alignment"] > *:hover {
+  background: rgba(43, 114, 247, 0.10);
+}
+
+.leditor-ribbon-panel[data-tab-id="home"] [data-cluster-id="paragraph.alignment"] > *.is-selected,
+.leditor-ribbon-panel[data-tab-id="home"] [data-cluster-id="paragraph.alignment"] > *[aria-pressed="true"] {
+  background: linear-gradient(180deg, #eef3ff 0%, #d9e6ff 100%);
+}
+
+/* Paragraph: spacing + borders row */
+.leditor-ribbon-panel[data-tab-id="home"] [data-cluster-id="paragraph.spacingAndBorders"] {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--home-cluster-gap);
+}
+
+/* Make borders dropdown slightly wider */
+.leditor-ribbon-panel[data-tab-id="home"] [data-control-id="paragraph.borders"] {
+  min-width: 110px;
+}
+
+/* =========================
+   Styles group
+   ========================= */
+.leditor-ribbon-panel[data-tab-id="home"] [data-group-id="styles"] .leditor-ribbon-group-body {
+  grid-auto-flow: row;
+  grid-template-rows: auto;
+}
+
+/* Styles: gallery row container */
+.leditor-ribbon-panel[data-tab-id="home"] [data-cluster-id="styles.gallery"] {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--home-cluster-gap);
+  overflow: hidden;
+}
+
+/* Styles gallery: pinboard layout */
+.leditor-ribbon-panel[data-tab-id="home"] [data-control-id="styles.gallery"],
+.leditor-ribbon-panel[data-tab-id="home"] .leditor-ribbon-gallery,
+.leditor-ribbon-panel[data-tab-id="home"] .styles-gallery {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(120px, 1fr));
+  gap: 6px;
+  align-content: start;
+}
+
+/* Style tile */
+.leditor-ribbon-panel[data-tab-id="home"] .styles-gallery__item,
+.leditor-ribbon-panel[data-tab-id="home"] [data-control-type="styleTile"] {
+  justify-content: flex-start;
+  padding: 6px 10px;
+  height: 32px;
+}
+
+/* When space is tight (Stage B/C), keep it scrollable if your renderer narrows it */
+.leditor-ribbon-panel[data-tab-id="home"] .styles-gallery {
+  max-width: 680px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+/* Styles: pane/manage controls align to right side if present */
+.leditor-ribbon-panel[data-tab-id="home"] [data-control-id="styles.pane"],
+.leditor-ribbon-panel[data-tab-id="home"] [data-control-id="styles.manage"],
+.leditor-ribbon-panel[data-tab-id="home"] [data-control-id="styles.styleSet"] {
+  white-space: nowrap;
+}
+
+/* =========================
+   Editing group
+   ========================= */
+.leditor-ribbon-panel[data-tab-id="home"] [data-group-id="editing"] .leditor-ribbon-group-body {
+  grid-auto-flow: row;
+  grid-template-rows: auto;
+}
+
+/* Editing: three columns (Find / Replace / Select) */
+.leditor-ribbon-panel[data-tab-id="home"] [data-cluster-id="editing.primary"],
+.leditor-ribbon-panel[data-tab-id="home"] .editing-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(140px, 1fr));
+  gap: var(--r-group-gap);
+  align-items: start;
+}
+
+/* Make Find split button full-height in its cell */
+.leditor-ribbon-panel[data-tab-id="home"] [data-control-id="editing.find"] {
+  width: 100%;
+}
+
+/* =========================
+   Control types used by Home plan
+   ========================= */
+
+/* ---- ComboBox (font family) ---- */
+.leditor-ribbon-panel[data-tab-id="home"] .leditor-ribbon-combobox {
+  min-width: 160px;
+}
+
+.leditor-ribbon-panel[data-tab-id="home"] .leditor-ribbon-combobox-input {
+  width: 140px;
+}
+
+/* ---- SpinnerDropdown (font size) ---- */
+.leditor-ribbon-panel[data-tab-id="home"] .ribbon-spinner-dropdown,
+.leditor-ribbon-panel[data-tab-id="home"] [data-control-type="spinnerDropdown"] {
+  min-width: 112px;
+  justify-content: space-between;
+}
+
+/* ---- SplitButton (Paste/Find/Underline) ---- */
+/* If your implementation uses these classes from earlier code */
+.leditor-split-button {
+  display: inline-flex;
+  align-items: stretch;
+  overflow: hidden;
+}
+
+.leditor-split-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.leditor-split-caret {
+  width: 24px;
+  border-left: 1px solid rgba(0, 0, 0, 0.10);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  cursor: pointer;
+}
+
+/* Large split button (Paste) should stack icon+label if your renderer does that */
+.leditor-ribbon-button--large.leditor-split-primary,
+.leditor-ribbon-panel[data-tab-id="home"] .leditor-split-button .leditor-ribbon-button--large {
+  flex-direction: column;
+  padding: 6px 10px;
+}
+
+/* ---- Menu palettes for colorSplitButton / colorPicker ---- */
+.leditor-ribbon-panel[data-tab-id="home"] .leditor-color-picker-palette,
+.leditor-ribbon-panel[data-tab-id="home"] [data-control-type="colorPalette"] {
+  grid-template-columns: repeat(5, 20px);
+}
+
+/* A simple swatch preview for split color buttons, if you expose it via CSS var */
+.leditor-ribbon-panel[data-tab-id="home"] [data-control-id="font.color"],
+.leditor-ribbon-panel[data-tab-id="home"] [data-control-id="font.highlight"] {
+  position: relative;
+}
+
+.leditor-ribbon-panel[data-tab-id="home"] [data-control-id="font.color"]::after,
+.leditor-ribbon-panel[data-tab-id="home"] [data-control-id="font.highlight"]::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 4px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--ribbon-swatch-color, transparent);
+  opacity: 0.9;
+}
+
+/* =========================
+   Stage B/C compaction helpers
+   ========================= */
+.leditor-ribbon-stage-b .leditor-ribbon-panel[data-tab-id="home"] [data-cluster-id="font.styles"],
+.leditor-ribbon-stage-b .leditor-ribbon-panel[data-tab-id="home"] [data-cluster-id="paragraph.spacingAndBorders"] {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+
+.leditor-ribbon-stage-c .leditor-ribbon-panel[data-tab-id="home"] .leditor-ribbon-group-body {
+  /* Stage C tends to use flyouts; keep inline body minimal */
+  max-height: 100%;
+  overflow: hidden;
+}
+
+/* =========================
+   KeyTip / accessibility polish
+   ========================= */
+.leditor-ribbon-panel[data-tab-id="home"] [data-keytip] {
+  position: relative;
+}
+
+/* If your keytip renderer injects an element, keep it on top of controls */
+.leditor-ribbon-panel[data-tab-id="home"] .ribbon-keytip {
+  position: absolute;
+  top: -10px;
+  left: 6px;
+  z-index: 2201;
+  font-size: 10px;
+  padding: 2px 5px;
+  border-radius: 3px;
+  background: #111827;
+  color: #fff;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+}

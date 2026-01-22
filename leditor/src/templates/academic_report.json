@@ -1,0 +1,47 @@
+{
+  "type": "doc",
+  "content": [
+    {
+      "type": "heading",
+      "attrs": {
+        "level": 1
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "Academic Report"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Prepared by "
+        },
+        {
+          "type": "merge_tag",
+          "attrs": {
+            "key": "AUTHOR"
+          }
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Department: "
+        },
+        {
+          "type": "merge_tag",
+          "attrs": {
+            "key": "DEPARTMENT"
+          }
+        }
+      ]
+    }
+  ]
+}

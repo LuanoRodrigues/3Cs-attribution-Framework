@@ -1,0 +1,71 @@
+{
+  "name": "my-electron-app",
+  "version": "1.0.0",
+  "main": "dist/main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "tsc --noEmit",
+    "build": "npm run build:main && npm run build:renderer && npm run build:settings && npm run validate:leditor-assets && npm run copy-static",
+    "smoke:analyse": "node scripts/analyse-smoke.js",
+    "validate:settings": "node scripts/validate-settings.js",
+    "validate:secrets": "node scripts/validate-secrets.js",
+    "validate:bundle": "node scripts/validate-bundle.js",
+    "build:main": "tsc -p tsconfig.json",
+    "build:renderer": "esbuild src/renderer/index.ts --bundle --outfile=dist/renderer/renderer.js --platform=browser --format=iife --target=es2020 --loader:.css=text",
+    "build:settings": "esbuild src/windows/settingsRenderer.ts --bundle --outfile=dist/windows/settings.js --platform=browser --format=iife --target=es2020",
+    "copy-static": "node scripts/copy-static.js",
+    "validate:leditor-assets": "node scripts/validate-leditor-assets.js",
+    "start": "node scripts/start.js",
+    "prepare-packaging": "node scripts/prepare-packaging.js",
+    "dist": "npm run prepare-packaging && npm run build"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@types/adm-zip": "^0.5.7",
+    "@types/jszip": "^3.4.0",
+    "@types/node": "^25.0.9",
+    "electron": "^40.0.0",
+    "esbuild": "^0.24.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  },
+  "overrides": {
+    "prosemirror-pagination": {
+      "prosemirror-tables": "^1.8.5"
+    }
+  },
+  "dependencies": {
+    "@tiptap/core": "^3.15.3",
+    "@tiptap/extension-document": "^3.15.3",
+    "@tiptap/starter-kit": "^3.15.3",
+    "adm-zip": "^0.5.16",
+    "argon2": "^0.44.0",
+    "better-sqlite3": "^8.0.1",
+    "electron-store": "^11.0.2",
+    "fuse.js": "^7.1.0",
+    "jsondiffpatch": "^0.7.3",
+    "jszip": "^3.10.1",
+    "keytar": "^7.9.0",
+    "marked": "^11.1.1",
+    "orderedmap": "^2.1.1",
+    "plotly.js-dist-min": "^3.3.1",
+    "prosemirror-commands": "^1.7.1",
+    "prosemirror-dropcursor": "^1.8.2",
+    "prosemirror-gapcursor": "^1.4.0",
+    "prosemirror-history": "^1.5.0",
+    "prosemirror-keymap": "^1.2.3",
+    "prosemirror-markdown": "^1.13.2",
+    "prosemirror-model": "^1.25.4",
+    "prosemirror-pagination": "^0.1.5",
+    "prosemirror-schema-basic": "^1.2.4",
+    "prosemirror-schema-list": "^1.5.1",
+    "prosemirror-state": "^1.4.4",
+    "prosemirror-tables": "^1.8.5",
+    "prosemirror-view": "^1.41.5",
+    "tiptap-footnotes": "^3.0.1",
+    "zod": "^4.3.5"
+  }
+}

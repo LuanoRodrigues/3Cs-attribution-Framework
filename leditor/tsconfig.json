@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "allowImportingTsExtensions": true,
+    "moduleDetection": "force",
+    "types": ["node"],
+    "noEmit": true,
+    "strict": true
+  },
+  "include": ["src/**/*", "scripts/**/*", "Plans/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
