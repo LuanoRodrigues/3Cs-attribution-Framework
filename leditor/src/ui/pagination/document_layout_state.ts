@@ -29,7 +29,7 @@ if (!spec.headerFooter.default) {
 const state: LayoutState = {
   spec,
   pageSizePresetId: spec.page.defaultSizePresetId,
-  orientation: spec.page.defaultOrientation,
+  orientation: spec.page.defaultOrientation as "portrait" | "landscape",
   marginsPresetId: spec.margins.defaultPresetId,
   marginsCustomIn: null,
   gutterIn: spec.margins.gutter.defaultIn,
@@ -188,4 +188,14 @@ export const applyDocumentLayoutTokens = (root: HTMLElement): void => {
   root.style.setProperty(spec.cssTokens.vars.footerDistance, `${computePx(state.footerDistanceIn)}px`);
   root.style.setProperty("--header-height", `${computePx(state.headerDistanceIn)}px`);
   root.style.setProperty("--footer-height", `${computePx(state.footerDistanceIn)}px`);
+  root.style.setProperty("--page-width", `${computePx(widthIn)}px`);
+  root.style.setProperty("--page-height", `${computePx(heightIn)}px`);
+  root.style.setProperty("--page-width-landscape", `${computePx(state.orientation === "portrait" ? heightIn : widthIn)}px`);
+  root.style.setProperty("--page-height-landscape", `${computePx(state.orientation === "portrait" ? widthIn : heightIn)}px`);
+  root.style.setProperty("--page-margin-top", `${computePx(marginTop)}px`);
+  root.style.setProperty("--page-margin-right", `${computePx(marginRight)}px`);
+  root.style.setProperty("--page-margin-bottom", `${computePx(marginBottom)}px`);
+  root.style.setProperty("--page-margin-left", `${computePx(marginLeft)}px`);
+  root.style.setProperty("--page-margin-inside", `${computePx(marginLeft)}px`);
+  root.style.setProperty("--page-margin-outside", `${computePx(marginRight)}px`);
 };

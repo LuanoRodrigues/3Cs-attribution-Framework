@@ -1,5 +1,59 @@
 # Codex Implementation Plan: True On-Screen Pagination + Layout Tab Wiring (Word-like Pages)
 
+## Goal
+Restore the Word-like multi-page layout so each page enforces the header > editable main content > footnote > footer order, attaches the TipTap view directly to the page content, and keeps pagination deterministic via the Document Layout spec while remaining runnable in the Electron renderer.
+
+## Success criteria
+- Every page DOM contains a top header, a continuously focusable main content area that consumes the majority of the height, the footnote region immediately below, and a footer at the bottom that only becomes editable when double-clicked.
+- The `.ProseMirror` root lives inside `.leditor-page-content`, so editing, caret movement, and selection happen without another overlay layer intercepting events.
+- Pagination actually generates multiple `.leditor-page` elements instead of a single oversized block; `PaginationDebug` logs report the page count, overlay status, editor scroll height, and page dimensions when debugging is enabled.
+- Document Layout tokens (page size, margins, header/footer distances, gutter) drive the CSS variables used by the layout components so page geometry matches the spec and layout tab commands continue to work.
+- No hidden overlay (e.g., `.leditor-content-layer`) covers the pages, keeping input secure and pointer events flowing to the actual page content.
+
+## Constraints
+- Keep all work within the Electron renderer; do not introduce remote scripts or runtime `eval` (per AGENTS.md security chapter).
+- Editing must go through the existing schema-based TipTap/ProseMirror engine; do not build a new raw `contenteditable` editor.
+- The application is offline-first/desktop-only; no cloud storage or network dependencies.
+- Header/footer should only accept input while in double-click edit mode; the main content area must remain perpetually editable.
+- Preserve existing pagination instrumentation (`PaginationDebug`, Document Layout state updates) and avoid removing ribbon command wiring.
+
+## Scope
+- `Plans/Document_layout.md`
+- `src/ui/a4_layout.ts`
+- `src/ui/a4_layout.js`
+- `src/ui/renderer.ts`
+- `src/ui/layout_engine.ts`
+- `src/ui/pagination/document_layout_state.ts`
+- `src/ui/pagination/index.ts`
+- `src/ui/pagination/page_host.ts`
+- `src/ui/pagination/paginator.ts`
+
+## Steps
+1. **Rebuild the page DOM/CSS** – Update `src/ui/a4_layout.ts`/`src/ui/a4_layout.js` (`buildPageShell`, `ensureStyles`) so that every page presents header, main content, footnote, and footer in the correct order, removes the `.leditor-content-layer`, sizes `.leditor-page-content` to a Word-like height, and enforces header/footer editability rules (double-click only for header/footer, always focusable for the main content).
+2. **Attach the TipTap editor to the page content** – In `src/ui/renderer.ts`’s layout bootstrapping, relocate the existing `editorEl` so it scans for `.leditor-page-content` containers produced by the layout and keeps the `.ProseMirror` root inside them, ensuring focus/caret behavior continues without overlay interference.
+3. **Rewire pagination instrumentation** – Pair `src/ui/pagination/page_host.ts` with the new `.leditor-page-stack`, adjust `src/ui/pagination/paginator.ts` to work with the regenerated pages, and expand `src/ui/a4_layout.ts:updatePagination`/`src/ui/a4_layout.js:updatePagination` so `PaginationDebug` logs page counts, overlay metrics, and content heights whenever `__leditorPaginationDebug` is toggled.
+4. **Align Document Layout tokens** – Refresh `src/ui/pagination/document_layout_state.ts` (and the `index.ts` exports) plus `src/ui/layout_engine.ts` so CSS token values (content area width/height, margins, header/footer distances) are reapplied after layout commands, keeping the layout geometry synchronized with ribbon controls.
+
+## Risk notes
+- Moving the existing `editorEl` into new DOM containers risks breaking selection/caret if the editor is reinitialized; keep the same instance and reapply focus/bookmarks during pagination.
+- Removing overlays may surface header/footer controls that previously relied on separate elements; ensure double-click edit activation remains deterministic and footnotes render inside the page itself.
+- Updating pagination DOM might affect ribbon commands or measurement code expecting overlay-based layout; retain `PaginationDebug` logs and layout controller APIs while adapting the DOM.
+
+## Validation
+- `npm run build`
+- `npm run ribbon:validate`
+
+## Rollback
+- `git checkout -- Plans/Document_layout.md src/ui/a4_layout.ts src/ui/renderer.ts src/ui/layout_engine.ts src/ui/pagination/page_host.ts src/ui/pagination/paginator.ts src/ui/pagination/document_layout_state.ts`
+
+## Progress
+1. Rebuild DOM/CSS layout – PASS
+2. Attach TipTap editor – PASS
+3. Rewire pagination instrumentation – PASS
+4. Align Document Layout tokens – PASS
+
+---
+
 ## Objective
 Implement live, interactive pagination where content **physically flows into the next page container** (Word-like), honoring:
 - Page size presets (A4/Letter/Legal)
