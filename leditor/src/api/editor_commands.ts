@@ -172,14 +172,6 @@ export const MINIMAL_EDITOR_COMMANDS: EditorCommandId[] = [
   "NumberList"
 ];
 
-declare global {
-  interface Window {
-    codexLog?: {
-      write: (line: string) => void;
-    };
-  }
-}
-
 export const dispatchCommand = (
   editorHandle: EditorHandle,
   commandId: EditorCommandId,

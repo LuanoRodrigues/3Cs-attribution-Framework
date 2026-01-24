@@ -1,12 +1,6 @@
 import { registerPlugin } from "../api/plugin_registry.js";
 import type { EditorHandle } from "../api/leditor.js";
-import type { ExportPdfOptions } from "../api/export_pdf.js";
-
-declare global {
-  interface Window {
-    __leditorAutoExportPDF?: (options?: ExportPdfOptions) => Promise<ExportPdfResult>;
-  }
-}
+import type { ExportPdfOptions, ExportPdfResult } from "../api/export_pdf.js";
 
 const log = (line: string) => window.codexLog?.write(`[EXPORT_PDF] ${line}`);
 

@@ -120,11 +120,11 @@ const buildStylesList = (styles: StyleSpec): HTMLElement => {
       return;
     }
     const list = document.createElement("ul");
-    for (const [prop, regexes] of ruleEntries) {
-      const li = document.createElement("li");
-      li.innerHTML = `<strong>${prop}</strong>: ${regexes.map((pattern) => pattern.toString()).join(", ")}`;
-      list.appendChild(li);
-    }
+      for (const [prop, regexes] of ruleEntries) {
+        const li = document.createElement("li");
+        li.innerHTML = `<strong>${prop}</strong>: ${regexes.map((pattern: RegExp) => pattern.toString()).join(", ")}`;
+        list.appendChild(li);
+      }
     row.innerHTML = `<strong>${name}</strong>:`;
     wrapper.appendChild(row);
     wrapper.appendChild(list);
@@ -197,7 +197,7 @@ export const showAllowedElementsInspector = (spec: PasteCleanerOptions): void =>
       }
     });
     document.body.appendChild(overlay);
-    document.addEventListener("keydown", (event) => {
+    document.addEventListener("keydown", (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         hideAllowedElementsInspector();
       }

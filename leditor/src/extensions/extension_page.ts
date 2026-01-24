@@ -25,6 +25,23 @@ const logDebug = (message: string, detail?: Record<string, unknown>) => {
   console.info(`[PaginationDebug] ${message}`);
 };
 
+const logPaginationStats = (view: any, label: string) => {
+  if (!debugEnabled()) return;
+  const domPages = Array.from(view.dom.querySelectorAll(`.${PAGE_CLASS}`)).filter(
+    (node): node is HTMLElement => node instanceof HTMLElement
+  );
+  const overlays = Array.from(view.dom.querySelectorAll(`.${PAGE_INNER_CLASS}`)).filter(
+    (node): node is HTMLElement => node instanceof HTMLElement
+  );
+  console.info(`[PaginationDebug] ${label}`, {
+    domPageCount: domPages.length,
+    docPageCount: view.state.doc.childCount,
+    overlayPageCount: overlays.length,
+    pageContentHeight: domPages[0]?.querySelector(`.${PAGE_CONTENT_CLASS}`)?.clientHeight ?? null,
+    editorScrollHeight: view.dom.scrollHeight
+  });
+};
+
 const hasOnlyPages = (doc: any, pageType: any): boolean => {
   if (!doc || doc.childCount === 0) return false;
   for (let i = 0; i < doc.childCount; i += 1) {
@@ -60,11 +77,13 @@ const shouldSplitAfter = (el: HTMLElement): boolean => {
 };
 
 const findSplitTarget = (content: HTMLElement, tolerance = 1): { target: HTMLElement; after: boolean } | null => {
-  const contentHeight = content.clientHeight;
+  const contentRect = content.getBoundingClientRect();
+  const contentHeight = contentRect.height;
   if (contentHeight <= 0) {
-    logDebug("page content height is non-positive", { contentHeight });
+    logDebug("page content rect height is non-positive", { contentHeight });
     return null;
   }
+  const bottomLimit = contentRect.top + contentHeight + tolerance;
   const children = Array.from(content.children).filter(
     (node): node is HTMLElement => node instanceof HTMLElement
   );
@@ -74,18 +93,23 @@ const findSplitTarget = (content: HTMLElement, tolerance = 1): { target: HTMLEle
       logDebug("manual break forces split", { tag: child.tagName, index: i });
       return { target: child, after: true };
     }
-    const bottom = child.offsetTop + child.offsetHeight;
-    if (bottom > contentHeight + tolerance) {
+    const childRect = child.getBoundingClientRect();
+    if (childRect.bottom > bottomLimit) {
       if (i === 0) {
         logDebug("overflow on first block; skipping split", {
           tag: child.tagName,
-          bottom,
+          bottom: childRect.bottom,
           contentHeight,
           tolerance
         });
         return null;
       }
-      logDebug("overflow split target", { tag: child.tagName, index: i, bottom, contentHeight });
+      logDebug("overflow split target", {
+        tag: child.tagName,
+        index: i,
+        bottom: childRect.bottom,
+        contentHeight
+      });
       return { target: child, after: false };
     }
   }
@@ -93,13 +117,15 @@ const findSplitTarget = (content: HTMLElement, tolerance = 1): { target: HTMLEle
 };
 
 const findJoinBoundary = (view: any, pageType: any, tolerance = 1): number | null => {
-  const pages = Array.from(view.dom.querySelectorAll<HTMLElement>(`.${PAGE_CLASS}`));
+  const pages = Array.from(view.dom.querySelectorAll(`.${PAGE_CLASS}`)).filter(
+    (node): node is HTMLElement => node instanceof HTMLElement
+  );
   if (pages.length < 2) return null;
   for (let i = 0; i < pages.length - 1; i += 1) {
     const page = pages[i];
     const nextPage = pages[i + 1];
-    const content = page.querySelector<HTMLElement>(`.${PAGE_CONTENT_CLASS}`);
-    const nextContent = nextPage.querySelector<HTMLElement>(`.${PAGE_CONTENT_CLASS}`);
+    const content = page.querySelector(`.${PAGE_CONTENT_CLASS}`) as HTMLElement | null;
+    const nextContent = nextPage.querySelector(`.${PAGE_CONTENT_CLASS}`) as HTMLElement | null;
     if (!content || !nextContent) continue;
     const nextFirst = nextContent.firstElementChild as HTMLElement | null;
     if (!nextFirst) continue;
@@ -147,6 +173,7 @@ const paginateView = (view: any, runningRef: { value: boolean }) => {
     pageCount: view.state.doc.childCount,
     selectionIndex
   });
+  logPaginationStats(view, "paginate start");
   runningRef.value = true;
   try {
     const trWrap = wrapDocInPage(view.state);
@@ -155,9 +182,16 @@ const paginateView = (view: any, runningRef: { value: boolean }) => {
       view.dispatch(trWrap);
       return;
     }
-    const pages = Array.from(view.dom.querySelectorAll<HTMLElement>(`.${PAGE_CLASS}`));
+    const pages = Array.from(view.dom.querySelectorAll(`.${PAGE_CLASS}`)).filter(
+      (node): node is HTMLElement => node instanceof HTMLElement
+    );
+    logDebug("page nodes before split", {
+      domPageCount: pages.length,
+      docPageCount: view.state.doc.childCount,
+      overlayPages: view.dom.querySelectorAll(`.${PAGE_INNER_CLASS}`).length
+    });
     for (const page of pages) {
-      const content = page.querySelector<HTMLElement>(`.${PAGE_CONTENT_CLASS}`);
+      const content = page.querySelector(`.${PAGE_CONTENT_CLASS}`) as HTMLElement | null;
       if (!content) continue;
       const split = findSplitTarget(content);
       if (!split) continue;
@@ -270,12 +304,17 @@ export const PagePagination = Extension.create({
           const running = { value: false };
           const scheduler = new PaginationScheduler({
             root: editorView.dom as HTMLElement,
-            onRun: () => paginateView(editorView, running)
+            onRun: () => {
+              logPaginationStats(editorView, "scheduler run");
+              paginateView(editorView, running);
+            }
           });
+          logPaginationStats(editorView, "scheduler mounted");
           scheduler.request();
           return {
             update(view, prevState) {
               if (view.state.doc.eq(prevState.doc)) return;
+              logPaginationStats(view, "scheduler queue");
               scheduler.request();
             },
             destroy() {

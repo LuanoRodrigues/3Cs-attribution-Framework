@@ -9,12 +9,6 @@ import type {
   SectionOptions
 } from "../api/export_docx.js";
 
-declare global {
-  interface Window {
-    __leditorAutoExportDOCX?: (options?: ExportDocxOptions) => Promise<ExportDocxResult>;
-  }
-}
-
 const triggerExport = (docJson: object, options?: ExportDocxOptions) => {
   const handler = window.leditorHost?.exportDOCX;
   if (!handler) {

@@ -33,28 +33,23 @@ import { resetFootnoteState, getFootnoteIds } from "../editor/footnote_state.js"
 import { createFootnoteManager } from "./footnote_manager.js";
 import { getCurrentPageSize, getMarginValues } from "./layout_settings.js";
 import { registerLibrarySmokeChecks } from "../plugins/librarySmokeChecks.js";
+import { getHostContract } from "./host_contract.ts";
+import { ensureReferencesLibrary } from "./references/library.ts";
 
 const ensureProcessEnv = (): Record<string, string | undefined> | undefined => {
   if (typeof globalThis === "undefined") {
     return undefined;
   }
-  const g = globalThis as typeof globalThis & Record<string, unknown>;
-  if (typeof g["process"] === "undefined") {
-    g["process"] = { env: {} };
-    return (g["process"] as { env: Record<string, string | undefined> }).env;
+  const g = globalThis as typeof globalThis & { process?: NodeJS.Process };
+  if (typeof g.process === "undefined") {
+    g.process = { env: {} } as NodeJS.Process;
+    return g.process.env;
   }
-  return (g["process"] as { env?: Record<string, string | undefined> }).env;
+  if (!g.process.env) {
+    g.process.env = {};
+  }
+  return g.process.env;
 };
-declare global {
-  interface Window {
-    codexLog?: {
-      write: (line: string) => void;
-    };
-    __leditorCoderStatePath?: string;
-    __logCoderNode?: () => void;
-  }
-}
-
 let handle: EditorHandle | null = null;
 const DEFAULT_CODER_STATE_PATH =
   "\\\\wsl$\\Ubuntu-20.04\\home\\pantera\\annotarium\\coder\\0-13_cyber_attribution_corpus_records_total_included\\coder_state.json";
@@ -435,6 +430,15 @@ const CURRENT_PHASE: number = 0;
 const RENDERER_BUNDLE_ID = "renderer-src-2026-01-20";
 
 export const mountEditor = async () => {
+  let hostContractInfo: ReturnType<typeof getHostContract> | null = null;
+  try {
+    hostContractInfo = getHostContract();
+    console.info("[HostContract] loaded host payload", hostContractInfo);
+    await ensureReferencesLibrary();
+  } catch (error) {
+    console.error("[HostContract] initialization failed", error);
+    throw error;
+  }
   console.info("[RibbonDebug] renderer mount", { bundle: RENDERER_BUNDLE_ID });
   if (featureFlags.paginationDebugEnabled) {
     const win = window as typeof window & { __leditorPaginationDebug?: boolean };
@@ -468,7 +472,14 @@ export const mountEditor = async () => {
     (window as typeof window & { __coderStateLoaded?: boolean }).__coderStateLoaded = true;
   }
   const hasInitialContent = Boolean(coderStateResult?.html);
-  const config = {
+  type RendererConfig = {
+    elementId: string;
+    toolbar: string;
+    plugins: string[];
+    autosave: { enabled: boolean; intervalMs: number };
+    initialContent?: { format: "html"; value: string };
+  };
+  const config: RendererConfig = {
     elementId: "editor",
     toolbar: defaultToolbar,
     plugins: [
@@ -518,8 +529,12 @@ export const mountEditor = async () => {
   appRoot.id = "leditor-app";
   appRoot.className = "leditor-app";
   parent.insertBefore(appRoot, editorEl);
+  const ribbonHost = document.createElement("div");
+  ribbonHost.id = "leditor-ribbon";
+  ribbonHost.className = "leditor-ribbon-host";
   const docShell = document.createElement("div");
   docShell.className = "leditor-doc-shell";
+  appRoot.appendChild(ribbonHost);
   appRoot.appendChild(docShell);
   initViewState(appRoot);
   const ribbonEnabled = featureFlags.ribbonEnabled;

@@ -1,5 +1,5 @@
 import { mergeAttributes } from "@tiptap/core";
-import Link from "@tiptap/extension-link";
+import Link, { type LinkOptions } from "@tiptap/extension-link";
 
 const ALLOWED_PROTOCOLS = new Set(["dq", "cite", "citegrp", "http", "https", "mailto", "file"]);
 
@@ -14,14 +14,19 @@ const isAllowedCitationHref = (href: string | null): boolean => {
 
 const CitationLink = Link.extend({
   addOptions() {
+    const parentOptions = (this.parent?.() ?? {}) as Partial<LinkOptions>;
     return {
-      ...this.parent?.(),
+      ...parentOptions,
       autolink: false,
       linkOnPaste: false,
       openOnClick: false,
+      defaultProtocol: "http",
       protocols: ["dq", "http", "https", "mailto", "file", "cite", "citegrp"],
+      enableClickSelection: false,
       validate: () => true,
-      isAllowedUri: (href) => isAllowedCitationHref(href)
+      isAllowedUri: (href) => isAllowedCitationHref(href),
+      shouldAutoLink: parentOptions.shouldAutoLink ?? (() => true),
+      HTMLAttributes: parentOptions.HTMLAttributes ?? {}
     };
   },
   parseHTML() {

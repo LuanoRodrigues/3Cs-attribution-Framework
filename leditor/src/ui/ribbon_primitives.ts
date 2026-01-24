@@ -16,17 +16,6 @@ export interface RibbonRootOptions {
 const TAB_ID_PREFIX = "ribbon-tab-";
 const PANEL_ID_PREFIX = "ribbon-panel-";
 
-declare global {
-  interface Window {
-    codexLog?: {
-      write: (line: string) => void;
-    };
-    leditor?: {
-      focus?: () => void;
-    };
-  }
-}
-
 const ACTIVE_TAB_STORAGE_KEY = "leditor.ribbon.activeTab";
 let lastActiveTabId: string | null = null;
 

@@ -21,14 +21,14 @@ export const getFootnoteRegistry = () => footnoteRegistry;
 type FootnoteNodeViewProps = {
   node: ProseMirrorNode;
   view: EditorView;
-  getPos: () => number;
+  getPos: () => number | null | undefined;
 };
 
 class FootnoteNodeView implements FootnoteNodeViewAPI {
   readonly id: string;
   private node: ProseMirrorNode;
   private readonly view: EditorView;
-  private readonly getPos: () => number;
+  private readonly getPos: () => number | null | undefined;
   private readonly root: HTMLElement;
   private readonly marker: HTMLElement;
   private readonly popover: HTMLDivElement;
@@ -41,7 +41,7 @@ class FootnoteNodeView implements FootnoteNodeViewAPI {
   private readonly documentClickHandler: (event: MouseEvent) => void;
 
   constructor({ node, view, getPos }: FootnoteNodeViewProps) {
-      this.node = node;
+    this.node = node;
     this.view = view;
     this.getPos = getPos;
     this.id = String(node.attrs.id ?? `footnote-${Math.random().toString(36).slice(2)}`);
@@ -123,7 +123,7 @@ class FootnoteNodeView implements FootnoteNodeViewAPI {
   private setupInnerEditor() {
     this.innerEditor = new Editor({
       element: this.editorHost,
-      extensions: [StarterKit.configure({ history: false }), Link],
+      extensions: [StarterKit, Link],
       content: this.createDocFromNode(this.node),
       editable: true,
       editorProps: {
@@ -315,10 +315,6 @@ const FootnoteExtension = TiptapNode.create({
 });
 
 export default FootnoteExtension;
-
-
-
-
 
 
 

@@ -303,6 +303,7 @@ export class AnalyseWorkspace {
   }
 
   private renderPdf(body: HTMLElement, payload: AnalysePayload): void {
+    const rawPayload = (payload as any).raw || payload;
     const preferredPanel =
       (rawPayload as any)?.preferredPanel ??
       (rawPayload as any)?.meta?.preferredPanel ??
@@ -313,7 +314,6 @@ export class AnalyseWorkspace {
     info.className = "status-bar";
     info.textContent = `Opening PDF in Panel ${preferredPanel}…`;
     body.appendChild(info);
-    const rawPayload = (payload as any).raw || payload;
     console.info("[analyse][pdf][raw-payload]", rawPayload);
     document.dispatchEvent(
       new CustomEvent("analyse-render-pdf", {

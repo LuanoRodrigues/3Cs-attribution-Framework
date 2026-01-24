@@ -3,7 +3,7 @@ import type { PageHost } from "./page_host.js";
 import { derivePageMetrics } from "./page_metrics.js";
 import { saveSelectionBookmark, restoreSelectionBookmark } from "./selection_bookmark.js";
 import { splitBlockInline, type InlineSplitResult } from "./inline_split.js";
-import { allocateSectionId, parseSectionMeta, type SectionMeta } from "../editor/section_state.js";
+import { allocateSectionId, parseSectionMeta, type SectionMeta } from "../../editor/section_state";
 
 type PaginatorOptions = {
   root: HTMLElement;

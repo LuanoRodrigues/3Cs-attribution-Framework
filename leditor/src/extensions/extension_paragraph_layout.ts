@@ -1,4 +1,4 @@
-import { Extension } from "@tiptap/core";
+import { Extension, type CommandProps } from "@tiptap/core";
 import { cmToPx, ptToPx } from "../utils/pageUnits.js";
 
 type ParagraphLayoutAttrs = {
@@ -57,8 +57,9 @@ const ParagraphLayoutExtension = Extension.create({
     return {
       setParagraphIndent:
         (attrs: ParagraphLayoutAttrs) =>
-        ({ chain }) =>
-          chain
+        ({ editor }: CommandProps) =>
+          editor
+            .chain()
             .updateAttributes("paragraph", {
               indentLeftCm: attrs.indentLeftCm,
               indentRightCm: attrs.indentRightCm
@@ -70,8 +71,9 @@ const ParagraphLayoutExtension = Extension.create({
             .run(),
       setParagraphSpacing:
         (attrs: ParagraphLayoutAttrs) =>
-        ({ chain }) =>
-          chain
+        ({ editor }: CommandProps) =>
+          editor
+            .chain()
             .updateAttributes("paragraph", {
               spaceBeforePt: attrs.spaceBeforePt,
               spaceAfterPt: attrs.spaceAfterPt
@@ -81,8 +83,17 @@ const ParagraphLayoutExtension = Extension.create({
               spaceAfterPt: attrs.spaceAfterPt
             })
             .run()
-    } as any;
+    };
   }
 });
 
 export default ParagraphLayoutExtension;
+
+declare module "@tiptap/core" {
+  interface Commands<ReturnType> {
+    paragraphLayout: {
+      setParagraphIndent: (attrs: ParagraphLayoutAttrs) => ReturnType;
+      setParagraphSpacing: (attrs: ParagraphLayoutAttrs) => ReturnType;
+    };
+  }
+}

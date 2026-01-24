@@ -3,7 +3,10 @@ import homeTabRaw from "./home.json";
 import insertTabRaw from "./insert.json";
 import layoutTabRaw from "./layout_tab.json";
 import reviewTabRaw from "./review.json";
+import referencesTabRaw from "./references.json";
 import viewTabRaw from "./view.json";
+import { commandMap } from "../api/command_map.ts";
+import { getReferencesCommandIds } from "./references_command_contract.ts";
 
 export type ControlType =
   | "button"
@@ -117,7 +120,8 @@ const TAB_SOURCES: TabSourceMap = {
   "home.json": homeTabRaw as TabConfig,
   "insert.json": insertTabRaw as TabConfig,
   "layout_tab.json": layoutTabRaw as TabConfig,
-  "review.json": reviewTabRaw as TabConfig,
+  "review.json": reviewTabRaw as unknown as TabConfig,
+  "references.json": referencesTabRaw as unknown as TabConfig,
   "view.json": viewTabRaw as TabConfig
 };
 
@@ -149,6 +153,17 @@ const collectNestedControls = (control: ControlConfig): ControlConfig[] => {
     nested.push(...control.gallery.controls);
   }
   return nested;
+};
+
+const validateReferencesCommands = (tab: TabConfig): void => {
+  const ids = getReferencesCommandIds(tab);
+  const missing = Array.from(ids).filter((id) => !(id in commandMap));
+  if (missing.length > 0) {
+    console.warn(
+      "[Ribbon] references.json includes commands without implementation (will be added later):",
+      missing
+    );
+  }
 };
 
 const traverseControls = (
@@ -197,6 +212,15 @@ export const loadRibbonModel = (): RibbonModel => {
   }
   const registry = loadRibbonRegistry();
   const descriptors = registry.tabs ?? [];
+  const referencesDescriptor = descriptors.find((descriptor) => descriptor.tabId === "references");
+  if (!referencesDescriptor) {
+    throw new Error("Ribbon registry is missing the references tab descriptor");
+  }
+  if (referencesDescriptor.source !== "references.json") {
+    throw new Error(
+      `References tab descriptor must point to references.json; found "${referencesDescriptor.source}"`
+    );
+  }
   if (!Array.isArray(descriptors) || descriptors.length === 0) {
     throw new Error("Ribbon registry must declare at least one tab");
   }
@@ -256,6 +280,12 @@ export const loadRibbonModel = (): RibbonModel => {
   if (initialTabId && !tabsById.has(initialTabId)) {
     throw new Error(`Ribbon defaults reference unknown initialTabId: ${initialTabId}`);
   }
+
+  const referencesTab = tabsById.get("references");
+  if (!referencesTab) {
+    throw new Error("References tab configuration failed to load");
+  }
+  validateReferencesCommands(referencesTab);
 
   cachedModel = { registry, tabsById, orderedTabs };
   return cachedModel;

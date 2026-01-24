@@ -1,12 +1,6 @@
 import { registerPlugin } from "../api/plugin_registry.ts";
 import { createSourceViewModal, type SourceViewTab } from "../ui/source_view.ts";
 
-declare global {
-  interface Window {
-    __leditorAutoSourceView?: () => void;
-  }
-}
-
 let controller: ReturnType<typeof createSourceViewModal> | null = null;
 
 const ensureController = (editorHandle: Parameters<typeof createSourceViewModal>[0]) => {

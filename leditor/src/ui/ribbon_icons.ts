@@ -84,13 +84,8 @@ const createColorSwatchIcon = (variant: "highlight" | "textColor"): HTMLElement 
   return container;
 };
 
-const createInlineIcon = (glyph: string, extraClass?: string): HTMLElement => createTypographyIcon(glyph, extraClass);
-
-const createPlaceholderIcon = (): HTMLElement => {
-  const el = document.createElement("span");
-  el.className = "leditor-ribbon-icon-placeholder";
-  return el;
-};
+const createInlineIcon = (glyph: string, extraClass?: string): HTMLElement =>
+  createTypographyIcon(glyph, extraClass);
 
 const ICON_CREATORS = {
   style: () => createTypographyIcon("¶"),
@@ -242,7 +237,16 @@ const ICON_CREATORS = {
 } as const;
 
 type IconCreators = typeof ICON_CREATORS;
+
 export type RibbonIconName = keyof IconCreators;
+export type RibbonIconKey = RibbonIconName | `icon.${RibbonIconName}`;
+
+const normalizeIconKey = (key: RibbonIconKey): RibbonIconName => {
+  if (key.startsWith("icon.")) {
+    return key.slice(5) as RibbonIconName;
+  }
+  return key as RibbonIconName;
+};
 
 const createLucideIcon = (lucideName: string): HTMLElement | null => {
   const factory = (lucide as Record<string, any>)[lucideName];
@@ -376,7 +380,9 @@ const LUCIDE_ICON_MAP: Partial<Record<RibbonIconName, string>> = {
   aiAssistant: "Sparkles"
 } as const;
 
-export const createRibbonIcon = (name: RibbonIconName): HTMLElement => {
+export const createRibbonIcon = (key: RibbonIconKey): HTMLElement => {
+  const name = normalizeIconKey(key);
+
   const lucideName = LUCIDE_ICON_MAP[name];
   if (lucideName) {
     const lucideIcon = createLucideIcon(lucideName);
@@ -385,8 +391,22 @@ export const createRibbonIcon = (name: RibbonIconName): HTMLElement => {
       return lucideIcon;
     }
   }
+
   const creator = ICON_CREATORS[name];
-  const icon = creator ? creator() : createPlaceholderIcon();
+  const icon = creator();
   icon.classList.add("leditor-ribbon-icon");
   return icon;
+};
+
+export const assertRibbonIconKeysExist = (keys: readonly string[]): void => {
+  for (const raw of keys) {
+    const key = raw as RibbonIconKey;
+    const name = normalizeIconKey(key);
+
+    const hasLucide = Boolean(LUCIDE_ICON_MAP[name]);
+    const hasCreator = Boolean(ICON_CREATORS[name]);
+    if (!hasLucide && !hasCreator) {
+      throw new Error(`Unknown iconKey: ${raw}`);
+    }
+  }
 };

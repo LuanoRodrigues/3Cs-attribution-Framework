@@ -8,13 +8,18 @@
   },
   "main": "dist/electron/electron/main.js",
   "scripts": {
+    "prestart": "npm run build",
     "start": "GTK_USE_PORTAL=0 electron --gtk-use-portal=0 --disable-features=UsePortal .",
+    "prestart:dev": "npm run build",
     "start:dev": "GTK_USE_PORTAL=0 electron --gtk-use-portal=0 --disable-features=UsePortal . --dev-unbundled",
     "test:docx-roundtrip": "node scripts/round_trip_docx_test.js",
     "generate:round-trip-fixture": "node scripts/create_round_trip_docx_fixture.js",
     "test:print-pdf-headless": "electron scripts/print_pdf_check.mjs",
     "typecheck": "tsc --project tsconfig.json --pretty",
-    "build": "npx esbuild scripts/renderer-entry.ts --bundle --platform=browser --format=esm --sourcemap --outfile=dist/renderer/bootstrap.bundle.js --loader:.ttf=dataurl --loader:.woff=dataurl --loader:.woff2=dataurl --alias:node:fs/promises=./scripts/shims/fs-promises.js --external:@simonwep/pickr/dist/pickr.min.css",
+    "build:renderer": "npx esbuild scripts/renderer-entry.ts --bundle --platform=browser --format=esm --sourcemap --outfile=dist/renderer/bootstrap.bundle.js --loader:.ttf=dataurl --loader:.woff=dataurl --loader:.woff2=dataurl --loader:.html=text --alias:node:fs/promises=./scripts/shims/fs-promises.js --external:@simonwep/pickr/dist/pickr.min.css",
+    "build:public": "node scripts/copy-public.js",
+    "build:electron": "tsc --project tsconfig.electron.json",
+    "build": "npm run build:renderer && npm run build:public && npm run build:electron",
     "ribbon:validate": "node scripts/ribbon-validate.js"
   },
   "devDependencies": {

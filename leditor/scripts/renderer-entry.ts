@@ -1,7 +1,7 @@
 if (typeof globalThis !== "undefined") {
-  const g = globalThis as typeof globalThis & { process?: { env?: Record<string, string | undefined> } };
+  const g = globalThis as typeof globalThis & { process?: NodeJS.Process };
   if (!g.process) {
-    g.process = { env: {} };
+    g.process = { env: {} } as NodeJS.Process;
   } else if (!g.process.env) {
     g.process.env = {};
   }

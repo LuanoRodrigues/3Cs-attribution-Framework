@@ -2,12 +2,6 @@ import { registerPlugin } from "../api/plugin_registry.js";
 import type { EditorHandle } from "../api/leditor.js";
 import type { ImportDocxOptions, ImportDocxResult } from "../api/import_docx.js";
 
-declare global {
-  interface Window {
-    __leditorAutoImportDOCX?: (options?: ImportDocxOptions) => Promise<ImportDocxResult>;
-  }
-}
-
 const triggerImport = (options?: ImportDocxOptions) => {
   const handler = window.leditorHost?.importDOCX;
   if (!handler) {

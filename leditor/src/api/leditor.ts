@@ -43,6 +43,8 @@ import StrikethroughMark from "../extensions/extension_strikethrough.ts";
 import SuperscriptMark from "../extensions/extension_superscript.ts";
 import SubscriptMark from "../extensions/extension_subscript.ts";
 import CitationLink from "../extensions/extension_citation_link.ts";
+import CitationNode from "../extensions/extension_citation.ts";
+import AnchorMark from "../extensions/extension_anchor.ts";
 import AnchorMarker from "../extensions/extension_anchor_marker.ts";
 import FootnoteExtension from "../extensions/extension_footnote.ts";
 import PageBreakExtension from "../extensions/extension_page_break.ts";
@@ -51,7 +53,6 @@ import MergeTagExtension from "../extensions/extension_merge_tag.ts";
 import BookmarkExtension from "../extensions/extension_bookmark.ts";
 import CrossReferenceExtension from "../extensions/extension_cross_reference.ts";
 import TocExtension from "../extensions/extension_toc.ts";
-import CitationExtension from "../extensions/extension_citation.ts";
 import CitationSourcesExtension from "../extensions/extension_citation_sources.ts";
 import BibliographyExtension from "../extensions/extension_bibliography.ts";
 import WordShortcutsExtension from "../extensions/extension_word_shortcuts.ts";
@@ -59,6 +60,7 @@ import CommentMark from "../extensions/extension_comment.ts";
 import PageLayoutExtension from "../extensions/extension_page_layout.ts";
 import ParagraphLayoutExtension from "../extensions/extension_paragraph_layout.ts";
 import { PageDocument, PageNode, PagePagination } from "../extensions/extension_page.ts";
+import StyleStoreExtension from "../extensions/extension_style_store.ts";
 
 type ContentFormat = "json" | "html" | "markdown";
 type EditorEventName = "change" | "focus" | "blur" | "selectionChange";
@@ -314,7 +316,9 @@ export const LEditor = {
         StrikethroughMark,
         SuperscriptMark,
         SubscriptMark,
+        AnchorMark,
         AnchorMarker,
+        CitationNode,
         CitationLink.configure({
           openOnClick: false,
           autolink: false,
@@ -329,12 +333,12 @@ export const LEditor = {
         BookmarkExtension,
         CrossReferenceExtension,
         TocExtension,
-        CitationExtension,
         CitationSourcesExtension,
         BibliographyExtension,
         PageLayoutExtension,
         ParagraphLayoutExtension,
         WordShortcutsExtension,
+        StyleStoreExtension,
         CommentMark,
         Table.configure({ resizable: false }),
         TableRow,
@@ -469,7 +473,7 @@ export const LEditor = {
             console.warn("[LEditor][setContent][html][parsed] failed", err);
           }
 
-          editor.commands.setContent(content, false, { parseOptions: { preserveWhitespace: "full" } });
+          editor.commands.setContent(content, { parseOptions: { preserveWhitespace: "full" } });
 
           const rehydrateLinksByText = (seeds: AnchorSeed[]) => {
             if (!seeds.length) return;

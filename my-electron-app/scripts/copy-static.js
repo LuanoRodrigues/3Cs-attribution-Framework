@@ -93,4 +93,8 @@ if (fs.existsSync(pdfAssetsSrc)) {
   copyDir(pdfAssetsSrc, pdfAssetsDest);
 }
 
+const leditorResourcesSrc = path.join(projectRoot, "resources", "leditor");
+const leditorResourcesDest = path.join(projectRoot, "dist", "resources", "leditor");
+copyDir(leditorResourcesSrc, leditorResourcesDest);
+
 copyLeditorAssets(projectRoot);

@@ -335,16 +335,24 @@
   max-height: 100%;
 }
 
-.leditor-ribbon-group-body {
+ .leditor-ribbon-group-body {
   display: grid;
   gap: var(--r-group-pad);
   align-content: start;
   justify-items: start;
-  grid-auto-flow: column dense;
-  grid-auto-columns: minmax(120px, max-content);
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, max-content);
   grid-template-rows: repeat(var(--r-group-max-rows, 3), minmax(0, auto));
-  max-height: calc((var(--r-ctl-h-lg) + var(--r-group-pad)) * var(--r-group-max-rows, 3));
+  min-width: 0;
+  min-height: 0;
   overflow: hidden;
+}
+
+.leditor-ribbon-group-body > .ribbon-cluster{
+  min-width: 0;
+  max-width: 100%;
+  overflow: clip;
+  contain: layout paint;
 }
 
 .leditor-ribbon-host[data-ribbon-fixed-height="true"] .leditor-ribbon-group-body {
@@ -420,7 +428,7 @@
 }
 
 .ribbon-cluster:not(.ribbon-cluster--grid) {
-  overflow-x: auto;
+  overflow: visible;
 }
 
 .ribbon-cluster--grid {
@@ -806,6 +814,37 @@
   z-index: 2100;
 }
 
+.references-picker-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 7, 14, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2200;
+  pointer-events: auto;
+}
+
+.references-picker-panel {
+  width: min(1100px, calc(100% - 32px));
+  max-height: min(90vh, 840px);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: transparent;
+  position: relative;
+}
+
+.references-picker-iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: inherit;
+  display: block;
+  background: transparent;
+}
+
 /* =========================
    ComboBox
    ========================= */
@@ -1117,4 +1156,71 @@
 
 .ribbon-spacing-grid button {
   min-height: 26px;
+}
+.references-sources-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2205;
+  pointer-events: auto;
+}
+
+.references-sources-panel {
+  width: min(520px, calc(100% - 32px));
+  max-height: 70vh;
+  background: var(--r-surface);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.references-sources-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.references-panel-close {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--r-muted);
+}
+
+.references-sources-list {
+  overflow-y: auto;
+  max-height: 320px;
+  display: grid;
+  gap: 8px;
+}
+
+.references-sources-list div {
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--r-divider);
+}
+
+.references-sources-list strong {
+  display: block;
+}
+
+.references-sources-list small,
+.references-sources-list em {
+  font-size: 0.75rem;
+  color: var(--r-muted);
+  display: block;
+}
+
+.references-sources-list .key {
+  font-size: 0.75rem;
+  color: #5a5a5a;
+  margin-right: 6px;
 }

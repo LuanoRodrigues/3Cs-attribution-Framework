@@ -1,8 +1,27 @@
 import { contextBridge, ipcRenderer } from "electron";
+import type { IpcRendererEvent } from "electron";
 import type { SectionLevel } from "./analyse/types";
 import type { SessionData, SessionMenuAction } from "./session/sessionTypes";
 import type { RetrievePaperSnapshot } from "./shared/types/retrieve";
 import type { CoderState } from "./panels/coder/coderTypes";
+
+const LEDITOR_HOST_FLAG = "--leditor-host=";
+const encodedHostArg = process.argv.find((value) => value?.startsWith?.(LEDITOR_HOST_FLAG));
+const decodeHostContract = (): { [key: string]: unknown } | null => {
+  if (!encodedHostArg) {
+    return null;
+  }
+  try {
+    const payload = encodedHostArg.slice(LEDITOR_HOST_FLAG.length);
+    return JSON.parse(decodeURIComponent(payload));
+  } catch {
+    return null;
+  }
+};
+const hostContract = decodeHostContract();
+if (hostContract) {
+  contextBridge.exposeInMainWorld("__leditorHost", hostContract);
+}
 
 contextBridge.exposeInMainWorld("appBridge", {
   ping: () => "pong"
@@ -94,6 +113,14 @@ contextBridge.exposeInMainWorld("coderBridge", {
 
 let footnoteHandlers: { open?: () => void; toggle?: () => void; close?: () => void } | null = null;
 
+const readFile = async (request: { sourcePath: string }) => {
+  return ipcRenderer.invoke("leditor:read-file", request);
+};
+
+const writeFile = async (request: { targetPath: string; data: string }) => {
+  return ipcRenderer.invoke("leditor:write-file", request);
+};
+
 contextBridge.exposeInMainWorld("leditorHost", {
   exportDOCX: (request: { docJson: object; options?: Record<string, unknown> }) =>
     ipcRenderer.invoke("leditor:export-docx", request),
@@ -102,5 +129,7 @@ contextBridge.exposeInMainWorld("leditorHost", {
   },
   openFootnotePanel: () => footnoteHandlers?.open?.(),
   toggleFootnotePanel: () => footnoteHandlers?.toggle?.(),
-  closeFootnotePanel: () => footnoteHandlers?.close?.()
+  closeFootnotePanel: () => footnoteHandlers?.close?.(),
+  readFile,
+  writeFile
 });

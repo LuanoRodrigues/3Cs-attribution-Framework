@@ -1,3 +1,10 @@
+import {
+  setPageSizePreset as docSetPageSizePreset,
+  setOrientation as docSetOrientation,
+  setMarginsPreset as docSetMarginsPreset,
+  setMarginsCustom as docSetMarginsCustom
+} from "./pagination/document_layout_state.js";
+
 export type Orientation = "portrait" | "landscape";
 
 export type MarginValues = {
@@ -46,6 +53,7 @@ const MARGIN_PRESETS: Record<
 
 const cmToCss = (value: number): string => `${value}cm`;
 const mmFromCm = (cm: number): number => cm * 10;
+const cmToInches = (cm: number): number => cm / 2.54;
 
 const parseToCm = (value: number | string | undefined, fallback: number): number => {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -180,6 +188,7 @@ export const getLayoutColumns = (): number => layoutState.columns.count;
 export const getColumnMode = (): ColumnMode => layoutState.columns.mode;
 
 export const setPageSize = (sizeId?: string, overrides?: { widthMm?: number; heightMm?: number }): void => {
+  let docPresetId = layoutState.pageSize.id;
   withLayoutUpdate(() => {
     const target = sizeId ? PAGE_SIZE_DEFINITIONS.find((entry) => entry.id === sizeId) : undefined;
     const base = target ?? layoutState.pageSize;
@@ -197,16 +206,20 @@ export const setPageSize = (sizeId?: string, overrides?: { widthMm?: number; hei
       widthCm,
       heightCm
     };
+    docPresetId = target?.id ?? base.id;
   });
+  docSetPageSizePreset(docPresetId);
 };
 
 export const setPageOrientation = (orientation: Orientation): void => {
   withLayoutUpdate(() => {
     layoutState.orientation = orientation;
   });
+  docSetOrientation(orientation);
 };
 
 export const setPageMargins = (margins: Partial<MarginValues | MarginValuesCm>): void => {
+  let docMargins: MarginValuesCm | null = null;
   withLayoutUpdate(() => {
     const current = layoutState.marginsCm;
     const next: MarginValuesCm = {
@@ -214,17 +227,31 @@ export const setPageMargins = (margins: Partial<MarginValues | MarginValuesCm>):
       right: parseToCm((margins as any)?.right, current.right),
       bottom: parseToCm((margins as any)?.bottom, current.bottom),
       left: parseToCm((margins as any)?.left, current.left),
-      inside: margins?.inside !== undefined ? parseToCm((margins as any).inside, current.inside ?? current.left) : current.inside,
-      outside: margins?.outside !== undefined ? parseToCm((margins as any).outside, current.outside ?? current.right) : current.outside
+      inside:
+        margins?.inside !== undefined ? parseToCm((margins as any).inside, current.inside ?? current.left) : current.inside,
+      outside:
+        margins?.outside !== undefined ? parseToCm((margins as any).outside, current.outside ?? current.right) : current.outside
     };
     layoutState.marginsCm = next;
+    docMargins = next;
   });
+  if (docMargins) {
+    docSetMarginsCustom({
+      top: cmToInches(docMargins.top),
+      right: cmToInches(docMargins.right),
+      bottom: cmToInches(docMargins.bottom),
+      left: cmToInches(docMargins.left),
+      inside: docMargins.inside !== undefined ? cmToInches(docMargins.inside) : undefined,
+      outside: docMargins.outside !== undefined ? cmToInches(docMargins.outside) : undefined
+    });
+  }
 };
 
 export const setMarginsPreset = (preset: keyof typeof MARGIN_PRESETS): void => {
   withLayoutUpdate(() => {
     layoutState.marginsCm = { ...MARGIN_PRESETS[preset].margins };
   });
+  docSetMarginsPreset(preset);
 };
 
 export const resetMargins = (): void => {

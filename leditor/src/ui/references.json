@@ -14,7 +14,9 @@
         "type": "dialogLauncher",
         "label": "Table of Contents Options",
         "iconKey": "icon.dialogLauncher",
-        "command": { "id": "toc.options.openDialog" }
+        "command": {
+          "id": "toc.options.openDialog"
+        }
       },
       "layout": {
         "type": "columns",
@@ -22,126 +24,210 @@
           {
             "type": "column",
             "width": "auto",
-            "items": ["toc.tableOfContents"]
+            "items": [
+              "toc.tableOfContents"
+            ]
           },
           {
             "type": "column",
             "width": "auto",
-            "items": ["toc.addText", "toc.updateTable"]
+            "items": [
+              "toc.addText",
+              "toc.updateTable"
+            ]
           }
         ]
       },
-      "controls": [
+      "clusters": [
         {
-          "controlId": "toc.tableOfContents",
-          "label": "Table of Contents",
-          "type": "splitButton",
-          "size": "large",
-          "iconKey": "icon.toc",
-          "command": { "id": "toc.insert.default" },
-          "menu": [
+          "clusterId": "references.tableOfContents.primary",
+          "layout": "row",
+          "controls": [
             {
-              "type": "menuItem",
-              "controlId": "toc.tableOfContents.auto1",
-              "label": "Automatic Table 1",
-              "iconKey": "icon.tocAuto",
-              "command": { "id": "toc.insert.template", "args": { "id": "auto1" } }
+              "controlId": "toc.tableOfContents",
+              "label": "Table of Contents",
+              "type": "splitButton",
+              "size": "large",
+              "iconKey": "icon.toc",
+              "command": {
+                "id": "toc.insert.default"
+              },
+              "menu": [
+                {
+                  "type": "menuItem",
+                  "controlId": "toc.tableOfContents.auto1",
+                  "label": "Automatic Table 1",
+                  "iconKey": "icon.tocAuto",
+                  "command": {
+                    "id": "toc.insert.template",
+                    "args": {
+                      "id": "auto1"
+                    }
+                  }
+                },
+                {
+                  "type": "menuItem",
+                  "controlId": "toc.tableOfContents.auto2",
+                  "label": "Automatic Table 2",
+                  "iconKey": "icon.tocAuto",
+                  "command": {
+                    "id": "toc.insert.template",
+                    "args": {
+                      "id": "auto2"
+                    }
+                  }
+                },
+                {
+                  "type": "separator"
+                },
+                {
+                  "type": "menuItem",
+                  "controlId": "toc.tableOfContents.custom",
+                  "label": "Custom Table of Contents…",
+                  "iconKey": "icon.tocCustom",
+                  "command": {
+                    "id": "toc.insert.custom.openDialog"
+                  }
+                },
+                {
+                  "type": "separator"
+                },
+                {
+                  "type": "menuItem",
+                  "controlId": "toc.tableOfContents.remove",
+                  "label": "Remove Table of Contents",
+                  "iconKey": "icon.remove",
+                  "command": {
+                    "id": "toc.remove"
+                  }
+                }
+              ],
+              "collapse": {
+                "A": {
+                  "mode": "full"
+                },
+                "B": {
+                  "mode": "full"
+                },
+                "C": {
+                  "mode": "inGroupFlyout"
+                }
+              }
             },
             {
-              "type": "menuItem",
-              "controlId": "toc.tableOfContents.auto2",
-              "label": "Automatic Table 2",
-              "iconKey": "icon.tocAuto",
-              "command": { "id": "toc.insert.template", "args": { "id": "auto2" } }
+              "controlId": "toc.addText",
+              "label": "Add Text",
+              "type": "dropdown",
+              "size": "medium",
+              "iconKey": "icon.addText",
+              "command": {
+                "id": "toc.addText.openMenu"
+              },
+              "menu": [
+                {
+                  "type": "menuItem",
+                  "controlId": "toc.addText.none",
+                  "label": "Do Not Show in TOC",
+                  "command": {
+                    "id": "toc.addText.setLevel",
+                    "args": {
+                      "level": 0
+                    }
+                  }
+                },
+                {
+                  "type": "menuItem",
+                  "controlId": "toc.addText.level1",
+                  "label": "Level 1",
+                  "command": {
+                    "id": "toc.addText.setLevel",
+                    "args": {
+                      "level": 1
+                    }
+                  }
+                },
+                {
+                  "type": "menuItem",
+                  "controlId": "toc.addText.level2",
+                  "label": "Level 2",
+                  "command": {
+                    "id": "toc.addText.setLevel",
+                    "args": {
+                      "level": 2
+                    }
+                  }
+                },
+                {
+                  "type": "menuItem",
+                  "controlId": "toc.addText.level3",
+                  "label": "Level 3",
+                  "command": {
+                    "id": "toc.addText.setLevel",
+                    "args": {
+                      "level": 3
+                    }
+                  }
+                }
+              ],
+              "collapse": {
+                "A": {
+                  "mode": "full"
+                },
+                "B": {
+                  "mode": "inMenuOf",
+                  "targetId": "toc.tableOfContents"
+                },
+                "C": {
+                  "mode": "inGroupFlyout"
+                }
+              }
             },
-            { "type": "separator" },
             {
-              "type": "menuItem",
-              "controlId": "toc.tableOfContents.custom",
-              "label": "Custom Table of Contents…",
-              "iconKey": "icon.tocCustom",
-              "command": { "id": "toc.insert.custom.openDialog" }
-            },
-            { "type": "separator" },
-            {
-              "type": "menuItem",
-              "controlId": "toc.tableOfContents.remove",
-              "label": "Remove Table of Contents",
-              "iconKey": "icon.remove",
-              "command": { "id": "toc.remove" }
+              "controlId": "toc.updateTable",
+              "label": "Update Table",
+              "type": "splitButton",
+              "size": "medium",
+              "iconKey": "icon.updateToc",
+              "command": {
+                "id": "toc.update.default"
+              },
+              "menu": [
+                {
+                  "type": "menuItem",
+                  "controlId": "toc.updateTable.pageNumbers",
+                  "label": "Update page numbers only",
+                  "command": {
+                    "id": "toc.update",
+                    "args": {
+                      "mode": "pageNumbers"
+                    }
+                  }
+                },
+                {
+                  "type": "menuItem",
+                  "controlId": "toc.updateTable.all",
+                  "label": "Update entire table",
+                  "command": {
+                    "id": "toc.update",
+                    "args": {
+                      "mode": "all"
+                    }
+                  }
+                }
+              ],
+              "collapse": {
+                "A": {
+                  "mode": "full"
+                },
+                "B": {
+                  "mode": "iconOnly"
+                },
+                "C": {
+                  "mode": "inGroupFlyout"
+                }
+              }
             }
-          ],
-          "collapse": {
-            "A": { "mode": "full" },
-            "B": { "mode": "full" },
-            "C": { "mode": "inGroupFlyout" }
-          }
-        },
-        {
-          "controlId": "toc.addText",
-          "label": "Add Text",
-          "type": "dropdown",
-          "size": "medium",
-          "iconKey": "icon.addText",
-          "command": { "id": "toc.addText.openMenu" },
-          "menu": [
-            {
-              "type": "menuItem",
-              "controlId": "toc.addText.none",
-              "label": "Do Not Show in TOC",
-              "command": { "id": "toc.addText.setLevel", "args": { "level": 0 } }
-            },
-            {
-              "type": "menuItem",
-              "controlId": "toc.addText.level1",
-              "label": "Level 1",
-              "command": { "id": "toc.addText.setLevel", "args": { "level": 1 } }
-            },
-            {
-              "type": "menuItem",
-              "controlId": "toc.addText.level2",
-              "label": "Level 2",
-              "command": { "id": "toc.addText.setLevel", "args": { "level": 2 } }
-            },
-            {
-              "type": "menuItem",
-              "controlId": "toc.addText.level3",
-              "label": "Level 3",
-              "command": { "id": "toc.addText.setLevel", "args": { "level": 3 } }
-            }
-          ],
-          "collapse": {
-            "A": { "mode": "full" },
-            "B": { "mode": "inMenuOf", "targetId": "toc.tableOfContents" },
-            "C": { "mode": "inGroupFlyout" }
-          }
-        },
-        {
-          "controlId": "toc.updateTable",
-          "label": "Update Table",
-          "type": "splitButton",
-          "size": "medium",
-          "iconKey": "icon.updateToc",
-          "command": { "id": "toc.update.default" },
-          "menu": [
-            {
-              "type": "menuItem",
-              "controlId": "toc.updateTable.pageNumbers",
-              "label": "Update page numbers only",
-              "command": { "id": "toc.update", "args": { "mode": "pageNumbers" } }
-            },
-            {
-              "type": "menuItem",
-              "controlId": "toc.updateTable.all",
-              "label": "Update entire table",
-              "command": { "id": "toc.update", "args": { "mode": "all" } }
-            }
-          ],
-          "collapse": {
-            "A": { "mode": "full" },
-            "B": { "mode": "iconOnly" },
-            "C": { "mode": "inGroupFlyout" }
-          }
+          ]
         }
       ]
     },
@@ -154,7 +240,9 @@
         "type": "dialogLauncher",
         "label": "Footnotes Options",
         "iconKey": "icon.dialogLauncher",
-        "command": { "id": "footnote.options.openDialog" }
+        "command": {
+          "id": "footnote.options.openDialog"
+        }
       },
       "layout": {
         "type": "grid",
@@ -167,73 +255,124 @@
           "footnotes.showNotes"
         ]
       },
-      "controls": [
+      "clusters": [
         {
-          "controlId": "footnotes.insertFootnote",
-          "label": "Insert Footnote",
-          "type": "button",
-          "size": "medium",
-          "iconKey": "icon.footnote",
-          "command": { "id": "footnote.insert" },
-          "collapse": {
-            "A": { "mode": "full" },
-            "B": { "mode": "full" },
-            "C": { "mode": "inGroupFlyout" }
-          }
-        },
-        {
-          "controlId": "footnotes.insertEndnote",
-          "label": "Insert Endnote",
-          "type": "button",
-          "size": "medium",
-          "iconKey": "icon.endnote",
-          "command": { "id": "endnote.insert" },
-          "collapse": {
-            "A": { "mode": "full" },
-            "B": { "mode": "full" },
-            "C": { "mode": "inGroupFlyout" }
-          }
-        },
-        {
-          "controlId": "footnotes.nextFootnote",
-          "label": "Next Footnote",
-          "type": "dropdown",
-          "size": "medium",
-          "iconKey": "icon.nextFootnote",
-          "command": { "id": "footnote.navigate.openMenu" },
-          "menu": [
+          "clusterId": "references.footnotes.primary",
+          "layout": "grid",
+          "controls": [
             {
-              "type": "menuItem",
-              "controlId": "footnotes.nextFootnote.next",
-              "label": "Next Footnote",
-              "command": { "id": "footnote.navigate", "args": { "dir": "next" } }
+              "controlId": "footnotes.insertFootnote",
+              "label": "Insert Footnote",
+              "type": "button",
+              "size": "medium",
+              "iconKey": "icon.footnote",
+              "command": {
+                "id": "footnote.insert"
+              },
+              "collapse": {
+                "A": {
+                  "mode": "full"
+                },
+                "B": {
+                  "mode": "full"
+                },
+                "C": {
+                  "mode": "inGroupFlyout"
+                }
+              }
             },
             {
-              "type": "menuItem",
-              "controlId": "footnotes.nextFootnote.prev",
-              "label": "Previous Footnote",
-              "command": { "id": "footnote.navigate", "args": { "dir": "prev" } }
+              "controlId": "footnotes.insertEndnote",
+              "label": "Insert Endnote",
+              "type": "button",
+              "size": "medium",
+              "iconKey": "icon.endnote",
+              "command": {
+                "id": "endnote.insert"
+              },
+              "collapse": {
+                "A": {
+                  "mode": "full"
+                },
+                "B": {
+                  "mode": "full"
+                },
+                "C": {
+                  "mode": "inGroupFlyout"
+                }
+              }
+            },
+            {
+              "controlId": "footnotes.nextFootnote",
+              "label": "Next Footnote",
+              "type": "dropdown",
+              "size": "medium",
+              "iconKey": "icon.nextFootnote",
+              "command": {
+                "id": "footnote.navigate.openMenu"
+              },
+              "menu": [
+                {
+                  "type": "menuItem",
+                  "controlId": "footnotes.nextFootnote.next",
+                  "label": "Next Footnote",
+                  "command": {
+                    "id": "footnote.navigate",
+                    "args": {
+                      "dir": "next"
+                    }
+                  }
+                },
+                {
+                  "type": "menuItem",
+                  "controlId": "footnotes.nextFootnote.prev",
+                  "label": "Previous Footnote",
+                  "command": {
+                    "id": "footnote.navigate",
+                    "args": {
+                      "dir": "prev"
+                    }
+                  }
+                }
+              ],
+              "collapse": {
+                "A": {
+                  "mode": "full"
+                },
+                "B": {
+                  "mode": "inMenuOf",
+                  "targetId": "footnotes.insertFootnote"
+                },
+                "C": {
+                  "mode": "inGroupFlyout"
+                }
+              }
+            },
+            {
+              "controlId": "footnotes.showNotes",
+              "label": "Show Notes",
+              "type": "toggleButton",
+              "size": "medium",
+              "iconKey": "icon.showNotes",
+              "command": {
+                "id": "footnote.showNotes.toggle"
+              },
+              "state": {
+                "binding": "notesPaneOpen"
+              },
+              "collapse": {
+                "A": {
+                  "mode": "full"
+                },
+                "B": {
+                  "mode": "iconOnly"
+                },
+                "C": {
+                  "mode": "inGroupFlyout"
+                }
+              }
             }
-          ],
-          "collapse": {
-            "A": { "mode": "full" },
-            "B": { "mode": "inMenuOf", "targetId": "footnotes.insertFootnote" },
-            "C": { "mode": "inGroupFlyout" }
-          }
-        },
-        {
-          "controlId": "footnotes.showNotes",
-          "label": "Show Notes",
-          "type": "toggleButton",
-          "size": "medium",
-          "iconKey": "icon.showNotes",
-          "command": { "id": "footnote.showNotes.toggle" },
-          "state": { "binding": "notesPaneOpen" },
-          "collapse": {
-            "A": { "mode": "full" },
-            "B": { "mode": "iconOnly" },
-            "C": { "mode": "inGroupFlyout" }
-          }
+          ]
         }
       ]
     },
@@ -243,68 +382,112 @@
       "priority": 80,
       "layout": {
         "type": "column",
-        "items": ["research.smartLookup", "research.doiLookup", "research.librarySearch"]
+        "items": [
+          "research.smartLookup",
+          "research.doiLookup",
+          "research.librarySearch"
+        ]
       },
-      "controls": [
+      "clusters": [
         {
-          "controlId": "research.smartLookup",
-          "label": "Smart Lookup",
-          "type": "button",
-          "size": "medium",
-          "iconKey": "icon.smartLookup",
-          "command": { "id": "research.smartLookup.open" },
-          "collapse": {
-            "A": { "mode": "full" },
-            "B": { "mode": "full" },
-            "C": { "mode": "inGroupFlyout" }
-          }
-        },
-        {
-          "controlId": "research.doiLookup",
-          "label": "DOI / URL",
-          "type": "splitButton",
-          "size": "medium",
-          "iconKey": "icon.doi",
-          "command": { "id": "research.doi.openDialog" },
-          "menu": [
+          "clusterId": "references.research.primary",
+          "layout": "column",
+          "controls": [
             {
-              "type": "menuItem",
-              "controlId": "research.doiLookup.doi",
-              "label": "Lookup DOI…",
-              "command": { "id": "research.doi.openDialog" }
+              "controlId": "research.smartLookup",
+              "label": "Smart Lookup",
+              "type": "button",
+              "size": "medium",
+              "iconKey": "icon.smartLookup",
+              "command": {
+                "id": "research.smartLookup.open"
+              },
+              "collapse": {
+                "A": {
+                  "mode": "full"
+                },
+                "B": {
+                  "mode": "full"
+                },
+                "C": {
+                  "mode": "inGroupFlyout"
+                }
+              }
             },
             {
-              "type": "menuItem",
-              "controlId": "research.doiLookup.url",
-              "label": "Open URL…",
-              "command": { "id": "research.url.openDialog" }
+              "controlId": "research.doiLookup",
+              "label": "DOI / URL",
+              "type": "splitButton",
+              "size": "medium",
+              "iconKey": "icon.doi",
+              "command": {
+                "id": "research.doi.openDialog"
+              },
+              "menu": [
+                {
+                  "type": "menuItem",
+                  "controlId": "research.doiLookup.doi",
+                  "label": "Lookup DOI…",
+                  "command": {
+                    "id": "research.doi.openDialog"
+                  }
+                },
+                {
+                  "type": "menuItem",
+                  "controlId": "research.doiLookup.url",
+                  "label": "Open URL…",
+                  "command": {
+                    "id": "research.url.openDialog"
+                  }
+                },
+                {
+                  "type": "separator"
+                },
+                {
+                  "type": "menuItem",
+                  "controlId": "research.doiLookup.resolveCitation",
+                  "label": "Paste and resolve citation…",
+                  "command": {
+                    "id": "research.resolveCitation.openDialog"
+                  }
+                }
+              ],
+              "collapse": {
+                "A": {
+                  "mode": "full"
+                },
+                "B": {
+                  "mode": "inMenuOf",
+                  "targetId": "research.smartLookup"
+                },
+                "C": {
+                  "mode": "inGroupFlyout"
+                }
+              }
             },
-            { "type": "separator" },
             {
-              "type": "menuItem",
-              "controlId": "research.doiLookup.resolveCitation",
-              "label": "Paste and resolve citation…",
-              "command": { "id": "research.resolveCitation.openDialog" }
+              "controlId": "research.librarySearch",
+              "label": "Library",
+              "type": "button",
+              "size": "medium",
+              "iconKey": "icon.library",
+              "command": {
+                "id": "research.library.search.open"
+              },
+              "collapse": {
+                "A": {
+                  "mode": "full"
+                },
+                "B": {
+                  "mode": "inMenuOf",
+                  "targetId": "research.smartLookup"
+                },
+                "C": {
+                  "mode": "inGroupFlyout"
+                }
+              }
             }
-          ],
-          "collapse": {
-            "A": { "mode": "full" },
-            "B": { "mode": "inMenuOf", "targetId": "research.smartLookup" },
-            "C": { "mode": "inGroupFlyout" }
-          }
-        },
-        {
-          "controlId": "research.librarySearch",
-          "label": "Library",
-          "type": "button",
-          "size": "medium",
-          "iconKey": "icon.library",
-          "command": { "id": "research.library.search.open" },
-          "collapse": {
-            "A": { "mode": "full" },
-            "B": { "mode": "inMenuOf", "targetId": "research.smartLookup" },
-            "C": { "mode": "inGroupFlyout" }
-          }
+          ]
         }
       ]
     },
@@ -317,7 +500,9 @@
         "type": "dialogLauncher",
         "label": "Citations Options",
         "iconKey": "icon.dialogLauncher",
-        "command": { "id": "citation.options.openDialog" }
+        "command": {
+          "id": "citation.options.openDialog"
+        }
       },
       "layout": {
         "type": "columns",
@@ -325,17 +510,26 @@
           {
             "type": "column",
             "width": "auto",
-            "items": ["cite.insertCitation", "cite.manageSources"]
+            "items": [
+              "cite.insertCitation",
+              "cite.manageSources"
+            ]
           },
           {
             "type": "column",
             "width": "auto",
-            "items": ["cite.style", "cite.bibliography"]
+            "items": [
+              "cite.style",
+              "cite.bibliography"
+            ]
           },
           {
             "type": "column",
             "width": "auto",
-            "items": ["cite.citeKey", "cite.importBibtex"]
+            "items": [
+              "cite.citeKey",
+              "cite.importBibtex"
+            ]
           }
         ]
       },
@@ -346,32 +540,48 @@
           "type": "splitButton",
           "size": "medium",
           "iconKey": "icon.insertCitation",
-          "command": { "id": "citation.insert.openDialog" },
+          "command": {
+            "id": "citation.insert.openDialog"
+          },
           "menu": [
             {
               "type": "menuItem",
               "controlId": "cite.insertCitation.addSource",
               "label": "Add New Source…",
-              "command": { "id": "citation.source.add.openDialog" }
+              "command": {
+                "id": "citation.source.add.openDialog"
+              }
             },
             {
               "type": "menuItem",
               "controlId": "cite.insertCitation.addPlaceholder",
               "label": "Add New Placeholder…",
-              "command": { "id": "citation.placeholder.add.openDialog" }
+              "command": {
+                "id": "citation.placeholder.add.openDialog"
+              }
             },
-            { "type": "separator" },
+            {
+              "type": "separator"
+            },
             {
               "type": "menuItem",
               "controlId": "cite.insertCitation.manageSources",
               "label": "Manage Sources…",
-              "command": { "id": "citation.sources.manage.openDialog" }
+              "command": {
+                "id": "citation.sources.manage.openDialog"
+              }
             }
           ],
           "collapse": {
-            "A": { "mode": "full" },
-            "B": { "mode": "full" },
-            "C": { "mode": "inGroupFlyout" }
+            "A": {
+              "mode": "full"
+            },
+            "B": {
+              "mode": "full"
+            },
+            "C": {
+              "mode": "inGroupFlyout"
+            }
           }
         },
         {
@@ -380,11 +590,20 @@
           "type": "button",
           "size": "medium",
           "iconKey": "icon.manageSources",
-          "command": { "id": "citation.sources.manage.openDialog" },
+          "command": {
+            "id": "citation.sources.manage.openDialog"
+          },
           "collapse": {
-            "A": { "mode": "full" },
-            "B": { "mode": "inMenuOf", "targetId": "cite.insertCitation" },
-            "C": { "mode": "inGroupFlyout" }
+            "A": {
+              "mode": "full"
+            },
+            "B": {
+              "mode": "inMenuOf",
+              "targetId": "cite.insertCitation"
+            },
+            "C": {
+              "mode": "inGroupFlyout"
+            }
           }
         },
         {
@@ -393,23 +612,110 @@
           "type": "dropdown",
           "size": "medium",
           "iconKey": "icon.citationStyle",
-          "command": { "id": "citation.style.openMenu" },
-          "state": { "binding": "citationStyle" },
+          "command": {
+            "id": "citation.style.openMenu"
+          },
+          "state": {
+            "binding": "citationStyle"
+          },
           "menu": [
-            { "type": "menuItem", "controlId": "cite.style.apa", "label": "APA", "command": { "id": "citation.style.set", "args": { "id": "apa" } } },
-            { "type": "menuItem", "controlId": "cite.style.mla", "label": "MLA", "command": { "id": "citation.style.set", "args": { "id": "mla" } } },
-            { "type": "menuItem", "controlId": "cite.style.chicago", "label": "Chicago", "command": { "id": "citation.style.set", "args": { "id": "chicago" } } },
-            { "type": "menuItem", "controlId": "cite.style.ieee", "label": "IEEE", "command": { "id": "citation.style.set", "args": { "id": "ieee" } } },
-            { "type": "menuItem", "controlId": "cite.style.harvard", "label": "Harvard", "command": { "id": "citation.style.set", "args": { "id": "harvard" } } },
-            { "type": "menuItem", "controlId": "cite.style.vancouver", "label": "Vancouver", "command": { "id": "citation.style.set", "args": { "id": "vancouver" } } },
-            { "type": "separator" },
-            { "type": "menuItem", "controlId": "cite.style.cslImport", "label": "CSL: Import style…", "command": { "id": "citation.csl.import.openDialog" } },
-            { "type": "menuItem", "controlId": "cite.style.cslManage", "label": "CSL: Manage styles…", "command": { "id": "citation.csl.manage.openDialog" } }
+            {
+              "type": "menuItem",
+              "controlId": "cite.style.apa",
+              "label": "APA",
+              "command": {
+                "id": "citation.style.set",
+                "args": {
+                  "id": "apa"
+                }
+              }
+            },
+            {
+              "type": "menuItem",
+              "controlId": "cite.style.mla",
+              "label": "MLA",
+              "command": {
+                "id": "citation.style.set",
+                "args": {
+                  "id": "mla"
+                }
+              }
+            },
+            {
+              "type": "menuItem",
+              "controlId": "cite.style.chicago",
+              "label": "Chicago",
+              "command": {
+                "id": "citation.style.set",
+                "args": {
+                  "id": "chicago"
+                }
+              }
+            },
+            {
+              "type": "menuItem",
+              "controlId": "cite.style.ieee",
+              "label": "IEEE",
+              "command": {
+                "id": "citation.style.set",
+                "args": {
+                  "id": "ieee"
+                }
+              }
+            },
+            {
+              "type": "menuItem",
+              "controlId": "cite.style.harvard",
+              "label": "Harvard",
+              "command": {
+                "id": "citation.style.set",
+                "args": {
+                  "id": "harvard"
+                }
+              }
+            },
+            {
+              "type": "menuItem",
+              "controlId": "cite.style.vancouver",
+              "label": "Vancouver",
+              "command": {
+                "id": "citation.style.set",
+                "args": {
+                  "id": "vancouver"
+                }
+              }
+            },
+            {
+              "type": "separator"
+            },
+            {
+              "type": "menuItem",
+              "controlId": "cite.style.cslImport",
+              "label": "CSL: Import style…",
+              "command": {
+                "id": "citation.csl.import.openDialog"
+              }
+            },
+            {
+              "type": "menuItem",
+              "controlId": "cite.style.cslManage",
+              "label": "CSL: Manage styles…",
+              "command": {
+                "id": "citation.csl.manage.openDialog"
+              }
+            }
           ],
           "collapse": {
-            "A": { "mode": "full" },
-            "B": { "mode": "inMenuOf", "targetId": "cite.insertCitation" },
-            "C": { "mode": "inGroupFlyout" }
+            "A": {
+              "mode": "full"
+            },
+            "B": {
+              "mode": "inMenuOf",
+              "targetId": "cite.insertCitation"
+            },
+            "C": {
+              "mode": "inGroupFlyout"
+            }
           }
         },
         {
@@ -418,21 +724,84 @@
           "type": "splitButton",
           "size": "medium",
           "iconKey": "icon.bibliography",
-          "command": { "id": "bibliography.insert.default" },
+          "command": {
+            "id": "bibliography.insert.default"
+          },
           "menu": [
-            { "type": "menuItem", "controlId": "cite.bibliography.bibliography", "label": "Bibliography", "command": { "id": "bibliography.insert", "args": { "template": "bibliography" } } },
-            { "type": "menuItem", "controlId": "cite.bibliography.worksCited", "label": "Works Cited", "command": { "id": "bibliography.insert", "args": { "template": "worksCited" } } },
-            { "type": "menuItem", "controlId": "cite.bibliography.references", "label": "References", "command": { "id": "bibliography.insert", "args": { "template": "references" } } },
-            { "type": "separator" },
-            { "type": "menuItem", "controlId": "cite.bibliography.field", "label": "Insert Bibliography Field…", "command": { "id": "bibliography.insert.field" } },
-            { "type": "separator" },
-            { "type": "menuItem", "controlId": "cite.bibliography.exportBibtex", "label": "Export bibliography (BibTeX)…", "command": { "id": "bibliography.export.bibtex.openDialog" } },
-            { "type": "menuItem", "controlId": "cite.bibliography.exportJson", "label": "Export bibliography (JSON)…", "command": { "id": "bibliography.export.json.openDialog" } }
+            {
+              "type": "menuItem",
+              "controlId": "cite.bibliography.bibliography",
+              "label": "Bibliography",
+              "command": {
+                "id": "bibliography.insert",
+                "args": {
+                  "template": "bibliography"
+                }
+              }
+            },
+            {
+              "type": "menuItem",
+              "controlId": "cite.bibliography.worksCited",
+              "label": "Works Cited",
+              "command": {
+                "id": "bibliography.insert",
+                "args": {
+                  "template": "worksCited"
+                }
+              }
+            },
+            {
+              "type": "menuItem",
+              "controlId": "cite.bibliography.references",
+              "label": "References",
+              "command": {
+                "id": "bibliography.insert",
+                "args": {
+                  "template": "references"
+                }
+              }
+            },
+            {
+              "type": "separator"
+            },
+            {
+              "type": "menuItem",
+              "controlId": "cite.bibliography.field",
+              "label": "Insert Bibliography Field…",
+              "command": {
+                "id": "bibliography.insert.field"
+              }
+            },
+            {
+              "type": "separator"
+            },
+            {
+              "type": "menuItem",
+              "controlId": "cite.bibliography.exportBibtex",
+              "label": "Export bibliography (BibTeX)…",
+              "command": {
+                "id": "bibliography.export.bibtex.openDialog"
+              }
+            },
+            {
+              "type": "menuItem",
+              "controlId": "cite.bibliography.exportJson",
+              "label": "Export bibliography (JSON)…",
+              "command": {
+                "id": "bibliography.export.json.openDialog"
+              }
+            }
           ],
           "collapse": {
-            "A": { "mode": "full" },
-            "B": { "mode": "full" },
-            "C": { "mode": "inGroupFlyout" }
+            "A": {
+              "mode": "full"
+            },
+            "B": {
+              "mode": "full"
+            },
+            "C": {
+              "mode": "inGroupFlyout"
+            }
           }
         },
         {
@@ -441,17 +810,49 @@
           "type": "splitButton",
           "size": "medium",
           "iconKey": "icon.citeKey",
-          "command": { "id": "citation.citeKey.insert.openDialog" },
+          "command": {
+            "id": "citation.citeKey.insert.openDialog"
+          },
           "menu": [
-            { "type": "menuItem", "controlId": "cite.citeKey.insert", "label": "Insert citekey…", "command": { "id": "citation.citeKey.insert.openDialog" } },
-            { "type": "menuItem", "controlId": "cite.citeKey.resolveAll", "label": "Resolve citekeys in document", "command": { "id": "citation.citeKey.resolveAll" } },
-            { "type": "separator" },
-            { "type": "menuItem", "controlId": "cite.citeKey.inspect", "label": "Citation Inspector…", "command": { "id": "citation.inspect.openPane" } }
+            {
+              "type": "menuItem",
+              "controlId": "cite.citeKey.insert",
+              "label": "Insert citekey…",
+              "command": {
+                "id": "citation.citeKey.insert.openDialog"
+              }
+            },
+            {
+              "type": "menuItem",
+              "controlId": "cite.citeKey.resolveAll",
+              "label": "Resolve citekeys in document",
+              "command": {
+                "id": "citation.citeKey.resolveAll"
+              }
+            },
+            {
+              "type": "separator"
+            },
+            {
+              "type": "menuItem",
+              "controlId": "cite.citeKey.inspect",
+              "label": "Citation Inspector…",
+              "command": {
+                "id": "citation.inspect.openPane"
+              }
+            }
           ],
           "collapse": {
-            "A": { "mode": "full" },
-            "B": { "mode": "inMenuOf", "targetId": "cite.insertCitation" },
-            "C": { "mode": "inGroupFlyout" }
+            "A": {
+              "mode": "full"
+            },
+            "B": {
+              "mode": "inMenuOf",
+              "targetId": "cite.insertCitation"
+            },
+            "C": {
+              "mode": "inGroupFlyout"
+            }
           }
         },
         {
@@ -460,17 +861,424 @@
           "type": "dropdown",
           "size": "medium",
           "iconKey": "icon.import",
-          "command": { "id": "citation.import.openMenu" },
+          "command": {
+            "id": "citation.import.openMenu"
+          },
           "menu": [
-            { "type": "menuItem", "controlId": "cite.importBibtex.bibtex", "label": "Import BibTeX…", "command": { "id": "citation.import.bibtex.openDialog" } },
-            { "type": "menuItem", "controlId": "cite.importBibtex.ris", "label": "Import RIS…", "command": { "id": "citation.import.ris.openDialog" } },
-            { "type": "menuItem", "controlId": "cite.importBibtex.csljson", "label": "Import CSL JSON…", "command": { "id": "citation.import.csljson.openDialog" } }
+            {
+              "type": "menuItem",
+              "controlId": "cite.importBibtex.bibtex",
+              "label": "Import BibTeX…",
+              "command": {
+                "id": "citation.import.bibtex.openDialog"
+              }
+            },
+            {
+              "type": "menuItem",
+              "controlId": "cite.importBibtex.ris",
+              "label": "Import RIS…",
+              "command": {
+                "id": "citation.import.ris.openDialog"
+              }
+            },
+            {
+              "type": "menuItem",
+              "controlId": "cite.importBibtex.csljson",
+              "label": "Import CSL JSON…",
+              "command": {
+                "id": "citation.import.csljson.openDialog"
+              }
+            }
           ],
           "collapse": {
-            "A": { "mode": "full" },
-            "B": { "mode": "inMenuOf", "targetId": "cite.insertCitation" },
-            "C": { "mode": "inGroupFlyout" }
+            "A": {
+              "mode": "full"
+            },
+            "B": {
+              "mode": "inMenuOf",
+              "targetId": "cite.insertCitation"
+            },
+            "C": {
+              "mode": "inGroupFlyout"
+            }
           }
+        }
+      ],
+      "clusters": [
+        {
+          "clusterId": "references.citationsBibliography.primary",
+          "layout": "row",
+          "controls": [
+            {
+              "controlId": "cite.insertCitation",
+              "label": "Insert Citation",
+              "type": "splitButton",
+              "size": "medium",
+              "iconKey": "icon.insertCitation",
+              "command": {
+                "id": "citation.insert.openDialog"
+              },
+              "menu": [
+                {
+                  "type": "menuItem",
+                  "controlId": "cite.insertCitation.addSource",
+                  "label": "Add New Source…",
+                  "command": {
+                    "id": "citation.source.add.openDialog"
+                  }
+                },
+                {
+                  "type": "menuItem",
+                  "controlId": "cite.insertCitation.addPlaceholder",
+                  "label": "Add New Placeholder…",
+                  "command": {
+                    "id": "citation.placeholder.add.openDialog"
+                  }
+                },
+                {
+                  "type": "separator"
+                },
+                {
+                  "type": "menuItem",
+                  "controlId": "cite.insertCitation.manageSources",
+                  "label": "Manage Sources…",
+                  "command": {
+                    "id": "citation.sources.manage.openDialog"
+                  }
+                }
+              ],
+              "collapse": {
+                "A": {
+                  "mode": "full"
+                },
+                "B": {
+                  "mode": "full"
+                },
+                "C": {
+                  "mode": "inGroupFlyout"
+                }
+              }
+            },
+            {
+              "controlId": "cite.manageSources",
+              "label": "Manage Sources",
+              "type": "button",
+              "size": "medium",
+              "iconKey": "icon.manageSources",
+              "command": {
+                "id": "citation.sources.manage.openDialog"
+              },
+              "collapse": {
+                "A": {
+                  "mode": "full"
+                },
+                "B": {
+                  "mode": "inMenuOf",
+                  "targetId": "cite.insertCitation"
+                },
+                "C": {
+                  "mode": "inGroupFlyout"
+                }
+              }
+            },
+            {
+              "controlId": "cite.style",
+              "label": "Style",
+              "type": "dropdown",
+              "size": "medium",
+              "iconKey": "icon.citationStyle",
+              "command": {
+                "id": "citation.style.openMenu"
+              },
+              "state": {
+                "binding": "citationStyle"
+              },
+              "menu": [
+                {
+                  "type": "menuItem",
+                  "controlId": "cite.style.apa",
+                  "label": "APA",
+                  "command": {
+                    "id": "citation.style.set",
+                    "args": {
+                      "id": "apa"
+                    }
+                  }
+                },
+                {
+                  "type": "menuItem",
+                  "controlId": "cite.style.mla",
+                  "label": "MLA",
+                  "command": {
+                    "id": "citation.style.set",
+                    "args": {
+                      "id": "mla"
+                    }
+                  }
+                },
+                {
+                  "type": "menuItem",
+                  "controlId": "cite.style.chicago",
+                  "label": "Chicago",
+                  "command": {
+                    "id": "citation.style.set",
+                    "args": {
+                      "id": "chicago"
+                    }
+                  }
+                },
+                {
+                  "type": "menuItem",
+                  "controlId": "cite.style.ieee",
+                  "label": "IEEE",
+                  "command": {
+                    "id": "citation.style.set",
+                    "args": {
+                      "id": "ieee"
+                    }
+                  }
+                },
+                {
+                  "type": "menuItem",
+                  "controlId": "cite.style.harvard",
+                  "label": "Harvard",
+                  "command": {
+                    "id": "citation.style.set",
+                    "args": {
+                      "id": "harvard"
+                    }
+                  }
+                },
+                {
+                  "type": "menuItem",
+                  "controlId": "cite.style.vancouver",
+                  "label": "Vancouver",
+                  "command": {
+                    "id": "citation.style.set",
+                    "args": {
+                      "id": "vancouver"
+                    }
+                  }
+                },
+                {
+                  "type": "separator"
+                },
+                {
+                  "type": "menuItem",
+                  "controlId": "cite.style.cslImport",
+                  "label": "CSL: Import style…",
+                  "command": {
+                    "id": "citation.csl.import.openDialog"
+                  }
+                },
+                {
+                  "type": "menuItem",
+                  "controlId": "cite.style.cslManage",
+                  "label": "CSL: Manage styles…",
+                  "command": {
+                    "id": "citation.csl.manage.openDialog"
+                  }
+                }
+              ],
+              "collapse": {
+                "A": {
+                  "mode": "full"
+                },
+                "B": {
+                  "mode": "inMenuOf",
+                  "targetId": "cite.insertCitation"
+                },
+                "C": {
+                  "mode": "inGroupFlyout"
+                }
+              }
+            },
+            {
+              "controlId": "cite.bibliography",
+              "label": "Bibliography",
+              "type": "splitButton",
+              "size": "medium",
+              "iconKey": "icon.bibliography",
+              "command": {
+                "id": "bibliography.insert.default"
+              },
+              "menu": [
+                {
+                  "type": "menuItem",
+                  "controlId": "cite.bibliography.bibliography",
+                  "label": "Bibliography",
+                  "command": {
+                    "id": "bibliography.insert",
+                    "args": {
+                      "template": "bibliography"
+                    }
+                  }
+                },
+                {
+                  "type": "menuItem",
+                  "controlId": "cite.bibliography.worksCited",
+                  "label": "Works Cited",
+                  "command": {
+                    "id": "bibliography.insert",
+                    "args": {
+                      "template": "worksCited"
+                    }
+                  }
+                },
+                {
+                  "type": "menuItem",
+                  "controlId": "cite.bibliography.references",
+                  "label": "References",
+                  "command": {
+                    "id": "bibliography.insert",
+                    "args": {
+                      "template": "references"
+                    }
+                  }
+                },
+                {
+                  "type": "separator"
+                },
+                {
+                  "type": "menuItem",
+                  "controlId": "cite.bibliography.field",
+                  "label": "Insert Bibliography Field…",
+                  "command": {
+                    "id": "bibliography.insert.field"
+                  }
+                },
+                {
+                  "type": "separator"
+                },
+                {
+                  "type": "menuItem",
+                  "controlId": "cite.bibliography.exportBibtex",
+                  "label": "Export bibliography (BibTeX)…",
+                  "command": {
+                    "id": "bibliography.export.bibtex.openDialog"
+                  }
+                },
+                {
+                  "type": "menuItem",
+                  "controlId": "cite.bibliography.exportJson",
+                  "label": "Export bibliography (JSON)…",
+                  "command": {
+                    "id": "bibliography.export.json.openDialog"
+                  }
+                }
+              ],
+              "collapse": {
+                "A": {
+                  "mode": "full"
+                },
+                "B": {
+                  "mode": "full"
+                },
+                "C": {
+                  "mode": "inGroupFlyout"
+                }
+              }
+            },
+            {
+              "controlId": "cite.citeKey",
+              "label": "Citekey",
+              "type": "splitButton",
+              "size": "medium",
+              "iconKey": "icon.citeKey",
+              "command": {
+                "id": "citation.citeKey.insert.openDialog"
+              },
+              "menu": [
+                {
+                  "type": "menuItem",
+                  "controlId": "cite.citeKey.insert",
+                  "label": "Insert citekey…",
+                  "command": {
+                    "id": "citation.citeKey.insert.openDialog"
+                  }
+                },
+                {
+                  "type": "menuItem",
+                  "controlId": "cite.citeKey.resolveAll",
+                  "label": "Resolve citekeys in document",
+                  "command": {
+                    "id": "citation.citeKey.resolveAll"
+                  }
+                },
+                {
+                  "type": "separator"
+                },
+                {
+                  "type": "menuItem",
+                  "controlId": "cite.citeKey.inspect",
+                  "label": "Citation Inspector…",
+                  "command": {
+                    "id": "citation.inspect.openPane"
+                  }
+                }
+              ],
+              "collapse": {
+                "A": {
+                  "mode": "full"
+                },
+                "B": {
+                  "mode": "inMenuOf",
+                  "targetId": "cite.insertCitation"
+                },
+                "C": {
+                  "mode": "inGroupFlyout"
+                }
+              }
+            },
+            {
+              "controlId": "cite.importBibtex",
+              "label": "Import",
+              "type": "dropdown",
+              "size": "medium",
+              "iconKey": "icon.import",
+              "command": {
+                "id": "citation.import.openMenu"
+              },
+              "menu": [
+                {
+                  "type": "menuItem",
+                  "controlId": "cite.importBibtex.bibtex",
+                  "label": "Import BibTeX…",
+                  "command": {
+                    "id": "citation.import.bibtex.openDialog"
+                  }
+                },
+                {
+                  "type": "menuItem",
+                  "controlId": "cite.importBibtex.ris",
+                  "label": "Import RIS…",
+                  "command": {
+                    "id": "citation.import.ris.openDialog"
+                  }
+                },
+                {
+                  "type": "menuItem",
+                  "controlId": "cite.importBibtex.csljson",
+                  "label": "Import CSL JSON…",
+                  "command": {
+                    "id": "citation.import.csljson.openDialog"
+                  }
+                }
+              ],
+              "collapse": {
+                "A": {
+                  "mode": "full"
+                },
+                "B": {
+                  "mode": "inMenuOf",
+                  "targetId": "cite.insertCitation"
+                },
+                "C": {
+                  "mode": "inGroupFlyout"
+                }
+              }
+            }
+          ]
         }
       ]
     },
@@ -483,7 +1291,9 @@
         "type": "dialogLauncher",
         "label": "Captions Options",
         "iconKey": "icon.dialogLauncher",
-        "command": { "id": "caption.options.openDialog" }
+        "command": {
+          "id": "caption.options.openDialog"
+        }
       },
       "layout": {
         "type": "grid",
@@ -503,8 +1313,20 @@
           "type": "button",
           "size": "medium",
           "iconKey": "icon.caption",
-          "command": { "id": "caption.insert.openDialog" },
-          "collapse": { "A": { "mode": "full" }, "B": { "mode": "full" }, "C": { "mode": "inGroupFlyout" } }
+          "command": {
+            "id": "caption.insert.openDialog"
+          },
+          "collapse": {
+            "A": {
+              "mode": "full"
+            },
+            "B": {
+              "mode": "full"
+            },
+            "C": {
+              "mode": "inGroupFlyout"
+            }
+          }
         },
         {
           "controlId": "captions.insertTableOfFigures",
@@ -512,8 +1334,20 @@
           "type": "button",
           "size": "medium",
           "iconKey": "icon.tableOfFigures",
-          "command": { "id": "caption.tableOfFigures.insert.openDialog" },
-          "collapse": { "A": { "mode": "full" }, "B": { "mode": "full" }, "C": { "mode": "inGroupFlyout" } }
+          "command": {
+            "id": "caption.tableOfFigures.insert.openDialog"
+          },
+          "collapse": {
+            "A": {
+              "mode": "full"
+            },
+            "B": {
+              "mode": "full"
+            },
+            "C": {
+              "mode": "inGroupFlyout"
+            }
+          }
         },
         {
           "controlId": "captions.updateTableOfFigures",
@@ -521,8 +1355,21 @@
           "type": "button",
           "size": "medium",
           "iconKey": "icon.updateTable",
-          "command": { "id": "caption.tableOfFigures.update" },
-          "collapse": { "A": { "mode": "full" }, "B": { "mode": "inMenuOf", "targetId": "captions.insertTableOfFigures" }, "C": { "mode": "inGroupFlyout" } }
+          "command": {
+            "id": "caption.tableOfFigures.update"
+          },
+          "collapse": {
+            "A": {
+              "mode": "full"
+            },
+            "B": {
+              "mode": "inMenuOf",
+              "targetId": "captions.insertTableOfFigures"
+            },
+            "C": {
+              "mode": "inGroupFlyout"
+            }
+          }
         },
         {
           "controlId": "captions.crossReference",
@@ -530,8 +1377,20 @@
           "type": "button",
           "size": "medium",
           "iconKey": "icon.crossReference",
-          "command": { "id": "caption.crossReference.openDialog" },
-          "collapse": { "A": { "mode": "full" }, "B": { "mode": "full" }, "C": { "mode": "inGroupFlyout" } }
+          "command": {
+            "id": "caption.crossReference.openDialog"
+          },
+          "collapse": {
+            "A": {
+              "mode": "full"
+            },
+            "B": {
+              "mode": "full"
+            },
+            "C": {
+              "mode": "inGroupFlyout"
+            }
+          }
         },
         {
           "controlId": "captions.labelPresets",
@@ -539,15 +1398,250 @@
           "type": "dropdown",
           "size": "small",
           "iconKey": "icon.labels",
-          "command": { "id": "caption.labels.openMenu" },
+          "command": {
+            "id": "caption.labels.openMenu"
+          },
           "menu": [
-            { "type": "menuItem", "controlId": "captions.label.figure", "label": "Figure", "command": { "id": "caption.label.setDefault", "args": { "id": "figure" } } },
-            { "type": "menuItem", "controlId": "captions.label.table", "label": "Table", "command": { "id": "caption.label.setDefault", "args": { "id": "table" } } },
-            { "type": "menuItem", "controlId": "captions.label.equation", "label": "Equation", "command": { "id": "caption.label.setDefault", "args": { "id": "equation" } } },
-            { "type": "menuItem", "controlId": "captions.label.code", "label": "Code", "command": { "id": "caption.label.setDefault", "args": { "id": "code" } } },
-            { "type": "menuItem", "controlId": "captions.label.listing", "label": "Listing", "command": { "id": "caption.label.setDefault", "args": { "id": "listing" } } }
+            {
+              "type": "menuItem",
+              "controlId": "captions.label.figure",
+              "label": "Figure",
+              "command": {
+                "id": "caption.label.setDefault",
+                "args": {
+                  "id": "figure"
+                }
+              }
+            },
+            {
+              "type": "menuItem",
+              "controlId": "captions.label.table",
+              "label": "Table",
+              "command": {
+                "id": "caption.label.setDefault",
+                "args": {
+                  "id": "table"
+                }
+              }
+            },
+            {
+              "type": "menuItem",
+              "controlId": "captions.label.equation",
+              "label": "Equation",
+              "command": {
+                "id": "caption.label.setDefault",
+                "args": {
+                  "id": "equation"
+                }
+              }
+            },
+            {
+              "type": "menuItem",
+              "controlId": "captions.label.code",
+              "label": "Code",
+              "command": {
+                "id": "caption.label.setDefault",
+                "args": {
+                  "id": "code"
+                }
+              }
+            },
+            {
+              "type": "menuItem",
+              "controlId": "captions.label.listing",
+              "label": "Listing",
+              "command": {
+                "id": "caption.label.setDefault",
+                "args": {
+                  "id": "listing"
+                }
+              }
+            }
           ],
-          "collapse": { "A": { "mode": "full" }, "B": { "mode": "inMenuOf", "targetId": "captions.insertCaption" }, "C": { "mode": "inGroupFlyout" } }
+          "collapse": {
+            "A": {
+              "mode": "full"
+            },
+            "B": {
+              "mode": "inMenuOf",
+              "targetId": "captions.insertCaption"
+            },
+            "C": {
+              "mode": "inGroupFlyout"
+            }
+          }
+        }
+      ],
+      "clusters": [
+        {
+          "clusterId": "references.captions.primary",
+          "layout": "grid",
+          "controls": [
+            {
+              "controlId": "captions.insertCaption",
+              "label": "Insert Caption",
+              "type": "button",
+              "size": "medium",
+              "iconKey": "icon.caption",
+              "command": {
+                "id": "caption.insert.openDialog"
+              },
+              "collapse": {
+                "A": {
+                  "mode": "full"
+                },
+                "B": {
+                  "mode": "full"
+                },
+                "C": {
+                  "mode": "inGroupFlyout"
+                }
+              }
+            },
+            {
+              "controlId": "captions.insertTableOfFigures",
+              "label": "Table of Figures",
+              "type": "button",
+              "size": "medium",
+              "iconKey": "icon.tableOfFigures",
+              "command": {
+                "id": "caption.tableOfFigures.insert.openDialog"
+              },
+              "collapse": {
+                "A": {
+                  "mode": "full"
+                },
+                "B": {
+                  "mode": "full"
+                },
+                "C": {
+                  "mode": "inGroupFlyout"
+                }
+              }
+            },
+            {
+              "controlId": "captions.updateTableOfFigures",
+              "label": "Update Table",
+              "type": "button",
+              "size": "medium",
+              "iconKey": "icon.updateTable",
+              "command": {
+                "id": "caption.tableOfFigures.update"
+              },
+              "collapse": {
+                "A": {
+                  "mode": "full"
+                },
+                "B": {
+                  "mode": "inMenuOf",
+                  "targetId": "captions.insertTableOfFigures"
+                },
+                "C": {
+                  "mode": "inGroupFlyout"
+                }
+              }
+            },
+            {
+              "controlId": "captions.crossReference",
+              "label": "Cross-reference",
+              "type": "button",
+              "size": "medium",
+              "iconKey": "icon.crossReference",
+              "command": {
+                "id": "caption.crossReference.openDialog"
+              },
+              "collapse": {
+                "A": {
+                  "mode": "full"
+                },
+                "B": {
+                  "mode": "full"
+                },
+                "C": {
+                  "mode": "inGroupFlyout"
+                }
+              }
+            },
+            {
+              "controlId": "captions.labelPresets",
+              "label": "Labels",
+              "type": "dropdown",
+              "size": "small",
+              "iconKey": "icon.labels",
+              "command": {
+                "id": "caption.labels.openMenu"
+              },
+              "menu": [
+                {
+                  "type": "menuItem",
+                  "controlId": "captions.label.figure",
+                  "label": "Figure",
+                  "command": {
+                    "id": "caption.label.setDefault",
+                    "args": {
+                      "id": "figure"
+                    }
+                  }
+                },
+                {
+                  "type": "menuItem",
+                  "controlId": "captions.label.table",
+                  "label": "Table",
+                  "command": {
+                    "id": "caption.label.setDefault",
+                    "args": {
+                      "id": "table"
+                    }
+                  }
+                },
+                {
+                  "type": "menuItem",
+                  "controlId": "captions.label.equation",
+                  "label": "Equation",
+                  "command": {
+                    "id": "caption.label.setDefault",
+                    "args": {
+                      "id": "equation"
+                    }
+                  }
+                },
+                {
+                  "type": "menuItem",
+                  "controlId": "captions.label.code",
+                  "label": "Code",
+                  "command": {
+                    "id": "caption.label.setDefault",
+                    "args": {
+                      "id": "code"
+                    }
+                  }
+                },
+                {
+                  "type": "menuItem",
+                  "controlId": "captions.label.listing",
+                  "label": "Listing",
+                  "command": {
+                    "id": "caption.label.setDefault",
+                    "args": {
+                      "id": "listing"
+                    }
+                  }
+                }
+              ],
+              "collapse": {
+                "A": {
+                  "mode": "full"
+                },
+                "B": {
+                  "mode": "inMenuOf",
+                  "targetId": "captions.insertCaption"
+                },
+                "C": {
+                  "mode": "inGroupFlyout"
+                }
+              }
+            }
+          ]
         }
       ]
     },
@@ -558,8 +1652,20 @@
       "layout": {
         "type": "columns",
         "columns": [
-          { "type": "column", "items": ["index.markEntry", "index.insertIndex"] },
-          { "type": "column", "items": ["index.autoMark", "index.preview"] }
+          {
+            "type": "column",
+            "items": [
+              "index.markEntry",
+              "index.insertIndex"
+            ]
+          },
+          {
+            "type": "column",
+            "items": [
+              "index.autoMark",
+              "index.preview"
+            ]
+          }
         ]
       },
       "controls": [
@@ -569,8 +1675,20 @@
           "type": "button",
           "size": "medium",
           "iconKey": "icon.markEntry",
-          "command": { "id": "index.mark.openDialog" },
-          "collapse": { "A": { "mode": "full" }, "B": { "mode": "full" }, "C": { "mode": "inGroupFlyout" } }
+          "command": {
+            "id": "index.mark.openDialog"
+          },
+          "collapse": {
+            "A": {
+              "mode": "full"
+            },
+            "B": {
+              "mode": "full"
+            },
+            "C": {
+              "mode": "inGroupFlyout"
+            }
+          }
         },
         {
           "controlId": "index.insertIndex",
@@ -578,8 +1696,20 @@
           "type": "button",
           "size": "medium",
           "iconKey": "icon.insertIndex",
-          "command": { "id": "index.insert.openDialog" },
-          "collapse": { "A": { "mode": "full" }, "B": { "mode": "full" }, "C": { "mode": "inGroupFlyout" } }
+          "command": {
+            "id": "index.insert.openDialog"
+          },
+          "collapse": {
+            "A": {
+              "mode": "full"
+            },
+            "B": {
+              "mode": "full"
+            },
+            "C": {
+              "mode": "inGroupFlyout"
+            }
+          }
         },
         {
           "controlId": "index.autoMark",
@@ -587,8 +1717,21 @@
           "type": "button",
           "size": "small",
           "iconKey": "icon.autoMark",
-          "command": { "id": "index.automark.openDialog" },
-          "collapse": { "A": { "mode": "full" }, "B": { "mode": "inMenuOf", "targetId": "index.insertIndex" }, "C": { "mode": "inGroupFlyout" } }
+          "command": {
+            "id": "index.automark.openDialog"
+          },
+          "collapse": {
+            "A": {
+              "mode": "full"
+            },
+            "B": {
+              "mode": "inMenuOf",
+              "targetId": "index.insertIndex"
+            },
+            "C": {
+              "mode": "inGroupFlyout"
+            }
+          }
         },
         {
           "controlId": "index.preview",
@@ -596,9 +1739,121 @@
           "type": "toggleButton",
           "size": "small",
           "iconKey": "icon.preview",
-          "command": { "id": "index.preview.toggle" },
-          "state": { "binding": "indexPreviewOpen" },
-          "collapse": { "A": { "mode": "full" }, "B": { "mode": "inMenuOf", "targetId": "index.insertIndex" }, "C": { "mode": "inGroupFlyout" } }
+          "command": {
+            "id": "index.preview.toggle"
+          },
+          "state": {
+            "binding": "indexPreviewOpen"
+          },
+          "collapse": {
+            "A": {
+              "mode": "full"
+            },
+            "B": {
+              "mode": "inMenuOf",
+              "targetId": "index.insertIndex"
+            },
+            "C": {
+              "mode": "inGroupFlyout"
+            }
+          }
+        }
+      ],
+      "clusters": [
+        {
+          "clusterId": "references.index.primary",
+          "layout": "row",
+          "controls": [
+            {
+              "controlId": "index.markEntry",
+              "label": "Mark Entry",
+              "type": "button",
+              "size": "medium",
+              "iconKey": "icon.markEntry",
+              "command": {
+                "id": "index.mark.openDialog"
+              },
+              "collapse": {
+                "A": {
+                  "mode": "full"
+                },
+                "B": {
+                  "mode": "full"
+                },
+                "C": {
+                  "mode": "inGroupFlyout"
+                }
+              }
+            },
+            {
+              "controlId": "index.insertIndex",
+              "label": "Insert Index",
+              "type": "button",
+              "size": "medium",
+              "iconKey": "icon.insertIndex",
+              "command": {
+                "id": "index.insert.openDialog"
+              },
+              "collapse": {
+                "A": {
+                  "mode": "full"
+                },
+                "B": {
+                  "mode": "full"
+                },
+                "C": {
+                  "mode": "inGroupFlyout"
+                }
+              }
+            },
+            {
+              "controlId": "index.autoMark",
+              "label": "AutoMark",
+              "type": "button",
+              "size": "small",
+              "iconKey": "icon.autoMark",
+              "command": {
+                "id": "index.automark.openDialog"
+              },
+              "collapse": {
+                "A": {
+                  "mode": "full"
+                },
+                "B": {
+                  "mode": "inMenuOf",
+                  "targetId": "index.insertIndex"
+                },
+                "C": {
+                  "mode": "inGroupFlyout"
+                }
+              }
+            },
+            {
+              "controlId": "index.preview",
+              "label": "Preview",
+              "type": "toggleButton",
+              "size": "small",
+              "iconKey": "icon.preview",
+              "command": {
+                "id": "index.preview.toggle"
+              },
+              "state": {
+                "binding": "indexPreviewOpen"
+              },
+              "collapse": {
+                "A": {
+                  "mode": "full"
+                },
+                "B": {
+                  "mode": "inMenuOf",
+                  "targetId": "index.insertIndex"
+                },
+                "C": {
+                  "mode": "inGroupFlyout"
+                }
+              }
+            }
+          ]
         }
       ]
     },
@@ -609,8 +1864,20 @@
       "layout": {
         "type": "columns",
         "columns": [
-          { "type": "column", "items": ["toa.markCitation", "toa.insertTable"] },
-          { "type": "column", "items": ["toa.updateTable", "toa.export"] }
+          {
+            "type": "column",
+            "items": [
+              "toa.markCitation",
+              "toa.insertTable"
+            ]
+          },
+          {
+            "type": "column",
+            "items": [
+              "toa.updateTable",
+              "toa.export"
+            ]
+          }
         ]
       },
       "controls": [
@@ -620,8 +1887,20 @@
           "type": "button",
           "size": "medium",
           "iconKey": "icon.markCitation",
-          "command": { "id": "toa.mark.openDialog" },
-          "collapse": { "A": { "mode": "full" }, "B": { "mode": "full" }, "C": { "mode": "inGroupFlyout" } }
+          "command": {
+            "id": "toa.mark.openDialog"
+          },
+          "collapse": {
+            "A": {
+              "mode": "full"
+            },
+            "B": {
+              "mode": "full"
+            },
+            "C": {
+              "mode": "inGroupFlyout"
+            }
+          }
         },
         {
           "controlId": "toa.insertTable",
@@ -629,8 +1908,20 @@
           "type": "button",
           "size": "medium",
           "iconKey": "icon.tableOfAuthorities",
-          "command": { "id": "toa.insert.openDialog" },
-          "collapse": { "A": { "mode": "full" }, "B": { "mode": "full" }, "C": { "mode": "inGroupFlyout" } }
+          "command": {
+            "id": "toa.insert.openDialog"
+          },
+          "collapse": {
+            "A": {
+              "mode": "full"
+            },
+            "B": {
+              "mode": "full"
+            },
+            "C": {
+              "mode": "inGroupFlyout"
+            }
+          }
         },
         {
           "controlId": "toa.updateTable",
@@ -638,8 +1929,21 @@
           "type": "button",
           "size": "medium",
           "iconKey": "icon.updateTable",
-          "command": { "id": "toa.update" },
-          "collapse": { "A": { "mode": "full" }, "B": { "mode": "inMenuOf", "targetId": "toa.insertTable" }, "C": { "mode": "inGroupFlyout" } }
+          "command": {
+            "id": "toa.update"
+          },
+          "collapse": {
+            "A": {
+              "mode": "full"
+            },
+            "B": {
+              "mode": "inMenuOf",
+              "targetId": "toa.insertTable"
+            },
+            "C": {
+              "mode": "inGroupFlyout"
+            }
+          }
         },
         {
           "controlId": "toa.export",
@@ -647,27 +1951,211 @@
           "type": "dropdown",
           "size": "small",
           "iconKey": "icon.export",
-          "command": { "id": "toa.export.openMenu" },
+          "command": {
+            "id": "toa.export.openMenu"
+          },
           "menu": [
-            { "type": "menuItem", "controlId": "toa.export.json", "label": "Export (JSON)…", "command": { "id": "toa.export.json.openDialog" } },
-            { "type": "menuItem", "controlId": "toa.export.csv", "label": "Export (CSV)…", "command": { "id": "toa.export.csv.openDialog" } }
+            {
+              "type": "menuItem",
+              "controlId": "toa.export.json",
+              "label": "Export (JSON)…",
+              "command": {
+                "id": "toa.export.json.openDialog"
+              }
+            },
+            {
+              "type": "menuItem",
+              "controlId": "toa.export.csv",
+              "label": "Export (CSV)…",
+              "command": {
+                "id": "toa.export.csv.openDialog"
+              }
+            }
           ],
-          "collapse": { "A": { "mode": "full" }, "B": { "mode": "inMenuOf", "targetId": "toa.insertTable" }, "C": { "mode": "inGroupFlyout" } }
+          "collapse": {
+            "A": {
+              "mode": "full"
+            },
+            "B": {
+              "mode": "inMenuOf",
+              "targetId": "toa.insertTable"
+            },
+            "C": {
+              "mode": "inGroupFlyout"
+            }
+          }
+        }
+      ],
+      "clusters": [
+        {
+          "clusterId": "references.tableOfAuthorities.primary",
+          "layout": "row",
+          "controls": [
+            {
+              "controlId": "toa.markCitation",
+              "label": "Mark Citation",
+              "type": "button",
+              "size": "medium",
+              "iconKey": "icon.markCitation",
+              "command": {
+                "id": "toa.mark.openDialog"
+              },
+              "collapse": {
+                "A": {
+                  "mode": "full"
+                },
+                "B": {
+                  "mode": "full"
+                },
+                "C": {
+                  "mode": "inGroupFlyout"
+                }
+              }
+            },
+            {
+              "controlId": "toa.insertTable",
+              "label": "Table of Authorities",
+              "type": "button",
+              "size": "medium",
+              "iconKey": "icon.tableOfAuthorities",
+              "command": {
+                "id": "toa.insert.openDialog"
+              },
+              "collapse": {
+                "A": {
+                  "mode": "full"
+                },
+                "B": {
+                  "mode": "full"
+                },
+                "C": {
+                  "mode": "inGroupFlyout"
+                }
+              }
+            },
+            {
+              "controlId": "toa.updateTable",
+              "label": "Update Table",
+              "type": "button",
+              "size": "medium",
+              "iconKey": "icon.updateTable",
+              "command": {
+                "id": "toa.update"
+              },
+              "collapse": {
+                "A": {
+                  "mode": "full"
+                },
+                "B": {
+                  "mode": "inMenuOf",
+                  "targetId": "toa.insertTable"
+                },
+                "C": {
+                  "mode": "inGroupFlyout"
+                }
+              }
+            },
+            {
+              "controlId": "toa.export",
+              "label": "Export",
+              "type": "dropdown",
+              "size": "small",
+              "iconKey": "icon.export",
+              "command": {
+                "id": "toa.export.openMenu"
+              },
+              "menu": [
+                {
+                  "type": "menuItem",
+                  "controlId": "toa.export.json",
+                  "label": "Export (JSON)…",
+                  "command": {
+                    "id": "toa.export.json.openDialog"
+                  }
+                },
+                {
+                  "type": "menuItem",
+                  "controlId": "toa.export.csv",
+                  "label": "Export (CSV)…",
+                  "command": {
+                    "id": "toa.export.csv.openDialog"
+                  }
+                }
+              ],
+              "collapse": {
+                "A": {
+                  "mode": "full"
+                },
+                "B": {
+                  "mode": "inMenuOf",
+                  "targetId": "toa.insertTable"
+                },
+                "C": {
+                  "mode": "inGroupFlyout"
+                }
+              }
+            }
+          ]
         }
       ]
     }
   ],
   "stateContract": {
-    "required": ["canInsert", "selectionContext", "citationStyle", "linkActive"],
-    "recommended": ["notesPaneOpen", "indexPreviewOpen"]
+    "required": [
+      "canInsert",
+      "selectionContext",
+      "citationStyle",
+      "linkActive"
+    ],
+    "recommended": [
+      "notesPaneOpen",
+      "indexPreviewOpen"
+    ]
   },
   "collapsePriority": {
-    "tableOfContents": { "toc.addText": 40, "toc.updateTable": 70, "toc.tableOfContents": 95 },
-    "footnotes": { "footnotes.showNotes": 40, "footnotes.nextFootnote": 55, "footnotes.insertEndnote": 75, "footnotes.insertFootnote": 85 },
-    "research": { "research.librarySearch": 40, "research.doiLookup": 55, "research.researcher": 60, "research.smartLookup": 85 },
-    "citationsBibliography": { "cite.importBibtex": 35, "cite.citeKey": 45, "cite.style": 60, "cite.manageSources": 65, "cite.bibliography": 80, "cite.insertCitation": 90 },
-    "captions": { "captions.labelPresets": 35, "captions.updateTableOfFigures": 45, "captions.insertTableOfFigures": 60, "captions.crossReference": 70, "captions.insertCaption": 85 },
-    "index": { "index.preview": 30, "index.autoMark": 40, "index.insertIndex": 75, "index.markEntry": 80 },
-    "tableOfAuthorities": { "toa.export": 35, "toa.updateTable": 55, "toa.insertTable": 75, "toa.markCitation": 80 }
+    "tableOfContents": {
+      "toc.addText": 40,
+      "toc.updateTable": 70,
+      "toc.tableOfContents": 95
+    },
+    "footnotes": {
+      "footnotes.showNotes": 40,
+      "footnotes.nextFootnote": 55,
+      "footnotes.insertEndnote": 75,
+      "footnotes.insertFootnote": 85
+    },
+    "research": {
+      "research.librarySearch": 40,
+      "research.doiLookup": 55,
+      "research.researcher": 60,
+      "research.smartLookup": 85
+    },
+    "citationsBibliography": {
+      "cite.importBibtex": 35,
+      "cite.citeKey": 45,
+      "cite.style": 60,
+      "cite.manageSources": 65,
+      "cite.bibliography": 80,
+      "cite.insertCitation": 90
+    },
+    "captions": {
+      "captions.labelPresets": 35,
+      "captions.updateTableOfFigures": 45,
+      "captions.insertTableOfFigures": 60,
+      "captions.crossReference": 70,
+      "captions.insertCaption": 85
+    },
+    "index": {
+      "index.preview": 30,
+      "index.autoMark": 40,
+      "index.insertIndex": 75,
+      "index.markEntry": 80
+    },
+    "tableOfAuthorities": {
+      "toa.export": 35,
+      "toa.updateTable": 55,
+      "toa.insertTable": 75,
+      "toa.markCitation": 80
+    }
   }
 }

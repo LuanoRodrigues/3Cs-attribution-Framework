@@ -22,6 +22,9 @@ import { featureFlags } from "./feature_flags.js";
 
 type A4ViewMode = "single" | "fit-width" | "two-page";
 type GridMode = "stack" | "grid-2" | "grid-4" | "grid-9";
+type InteractDragEvent = {
+  pageX: number;
+};
 
 type A4LayoutController = {
   updatePagination: () => void;
@@ -132,6 +135,7 @@ const ensureStyles = () => {
   --header-offset: 0;
   --footer-offset: 0;
   --footnote-area-height: 0.55in;
+  --page-footnote-height: 0px;
   --footnote-separator-height: 1px;
   --footnote-separator-color: rgba(0, 0, 0, 0.25);
   --footnote-spacing: 6px;
@@ -293,10 +297,9 @@ const ensureStyles = () => {
   top: var(--local-page-margin-top, var(--page-margin-top));
   left: var(--local-page-margin-left, var(--page-margin-left));
   right: var(--local-page-margin-right, var(--page-margin-right));
-  bottom: calc(var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-height) + var(--footnote-area-height));
+  bottom: calc(var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-height) + var(--page-footnote-height, 0px));
   column-count: var(--page-columns, 1);
   column-gap: 24px;
-  pointer-events: auto;
   overflow: hidden;
 }
 
@@ -337,11 +340,14 @@ const ensureStyles = () => {
   left: var(--local-page-margin-left, var(--page-margin-left));
   right: var(--local-page-margin-right, var(--page-margin-right));
   bottom: calc(var(--footer-height) + var(--local-page-margin-bottom, var(--page-margin-bottom)));
-  height: var(--footnote-area-height);
-  border-top: var(--footnote-separator-height) solid var(--footnote-separator-color);
-  padding-top: var(--footnote-spacing);
+  min-height: 0;
+  overflow: hidden;
   font-size: var(--footnote-font-size);
   color: var(--page-footnote-color);
+}
+.leditor-page-footnotes.leditor-page-footnotes--active {
+  border-top: var(--footnote-separator-height) solid var(--footnote-separator-color);
+  padding-top: var(--footnote-spacing);
 }
 
 .leditor-footnote-list,
@@ -522,11 +528,18 @@ const ensureStyles = () => {
 }
 
 .leditor-page-footnotes {
-  min-height: var(--footnote-area-height);
-  border-top: var(--footnote-separator-height) solid var(--footnote-separator-color);
-  padding-top: var(--footnote-spacing);
+  position: absolute;
+  left: var(--local-page-margin-left, var(--page-margin-left));
+  right: var(--local-page-margin-right, var(--page-margin-right));
+  bottom: calc(var(--footer-height) + var(--local-page-margin-bottom, var(--page-margin-bottom)));
+  min-height: 0;
+  overflow: hidden;
   font-size: var(--footnote-font-size);
   color: #262626;
+}
+.leditor-page-footnotes.leditor-page-footnotes--active {
+  border-top: var(--footnote-separator-height) solid var(--footnote-separator-color);
+  padding-top: var(--footnote-spacing);
 }
 
 .leditor-page-footer .leditor-page-number {
@@ -622,11 +635,18 @@ const ensureStyles = () => {
 }
 
 .leditor-page-footnotes {
-  min-height: var(--footnote-area-height);
-  border-top: var(--footnote-separator-height) solid var(--footnote-separator-color);
-  padding-top: var(--footnote-spacing);
+  position: absolute;
+  left: var(--local-page-margin-left, var(--page-margin-left));
+  right: var(--local-page-margin-right, var(--page-margin-right));
+  bottom: calc(var(--footer-height) + var(--local-page-margin-bottom, var(--page-margin-bottom)));
+  min-height: 0;
+  overflow: hidden;
   font-size: var(--footnote-font-size);
   color: #262626;
+}
+.leditor-page-footnotes.leditor-page-footnotes--active {
+  border-top: var(--footnote-separator-height) solid var(--footnote-separator-color);
+  padding-top: var(--footnote-spacing);
 }
 
 .leditor-page-footer .leditor-page-number {
@@ -698,7 +718,7 @@ const ensureStyles = () => {
   transform: translateX(-50%);
   width: var(--page-width);
   z-index: 2;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .leditor-page-overlay {
@@ -786,7 +806,14 @@ const ensureStyles = () => {
   left: var(--current-margin-left, var(--page-margin-left));
   right: var(--current-margin-right, var(--page-margin-right));
   bottom: var(--current-margin-bottom, var(--page-margin-bottom));
-  height: var(--footnote-area-height);
+  min-height: 0;
+  overflow: hidden;
+  font-size: var(--footnote-font-size);
+  color: var(--page-footnote-color);
+}
+.leditor-page-overlay .leditor-page-footnotes.leditor-page-footnotes--active {
+  border-top: var(--footnote-separator-height) solid var(--footnote-separator-color);
+  padding-top: var(--footnote-spacing);
 }
 
 #editor {
@@ -1121,25 +1148,11 @@ const ensureStyles = () => {
 }
 `;
   style.textContent += `
-/* Pagination layout overrides */
 .leditor-page-inner {
   position: absolute;
   inset: 0;
   padding: 0;
-  display: block;
   box-sizing: border-box;
-}
-
-.leditor-page-content {
-  position: absolute;
-  top: var(--local-page-margin-top, var(--page-margin-top));
-  left: var(--local-page-margin-left, var(--page-margin-left));
-  right: var(--local-page-margin-right, var(--page-margin-right));
-  bottom: calc(var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-height) + var(--footnote-area-height));
-  column-count: var(--page-columns, 1);
-  column-gap: 24px;
-  pointer-events: auto;
-  overflow: hidden;
 }
 
 .leditor-page-header,
@@ -1147,16 +1160,50 @@ const ensureStyles = () => {
   position: absolute;
   left: var(--local-page-margin-left, var(--page-margin-left));
   right: var(--local-page-margin-right, var(--page-margin-right));
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 12px;
+  font-size: 10pt;
+  font-weight: bold;
+  text-transform: uppercase;
+  font-family: var(--page-font-family);
+  color: transparent;
+  opacity: 0;
+  pointer-events: auto;
+  box-sizing: border-box;
 }
 
 .leditor-page-header {
-  top: var(--header-offset);
-  margin-top: 0;
+  top: calc(var(--local-page-margin-top, var(--page-margin-top)) + var(--header-offset));
+  height: var(--header-height);
 }
 
 .leditor-page-footer {
-  bottom: var(--footer-offset);
-  margin-bottom: 0;
+  bottom: calc(var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset));
+  height: var(--footer-height);
+  text-transform: none;
+}
+
+.leditor-page-content {
+  position: absolute;
+  top: calc(
+    var(--local-page-margin-top, var(--page-margin-top)) +
+      var(--header-offset) +
+      var(--header-height)
+  );
+  left: var(--local-page-margin-left, var(--page-margin-left));
+  right: var(--local-page-margin-right, var(--page-margin-right));
+  bottom: calc(
+    var(--local-page-margin-bottom, var(--page-margin-bottom)) +
+      var(--footer-offset) +
+      var(--footer-height) +
+      var(--page-footnote-height, var(--footnote-area-height))
+  );
+  column-count: var(--page-columns, 1);
+  column-gap: 24px;
+  overflow: hidden;
+  pointer-events: auto;
 }
 
 .leditor-page-footnotes {
@@ -1164,7 +1211,14 @@ const ensureStyles = () => {
   left: var(--local-page-margin-left, var(--page-margin-left));
   right: var(--local-page-margin-right, var(--page-margin-right));
   bottom: calc(var(--footer-height) + var(--local-page-margin-bottom, var(--page-margin-bottom)));
-  height: var(--footnote-area-height);
+  min-height: 0;
+  overflow: hidden;
+  font-size: var(--footnote-font-size);
+  color: var(--page-footnote-color);
+}
+.leditor-page-footnotes.leditor-page-footnotes--active {
+  border-top: var(--footnote-separator-height) solid var(--footnote-separator-color);
+  padding-top: var(--footnote-spacing);
 }
 
 .leditor-page-stack {
@@ -1172,7 +1226,7 @@ const ensureStyles = () => {
 }
 
 .leditor-page-overlays {
-  pointer-events: none;
+  pointer-events: auto;
 }
 `;
   document.head.appendChild(style);
@@ -1281,22 +1335,8 @@ export const mountA4Layout = (
   const overlayLayer = document.createElement("div");
   overlayLayer.className = "leditor-page-overlays";
 
-  const contentLayer = document.createElement("div");
-  contentLayer.className = "leditor-content-layer";
-  const contentInset = document.createElement("div");
-  contentInset.className = "leditor-content-inset";
-  const marginFrame = document.createElement("div");
-  marginFrame.className = "leditor-margins-frame margins_frame_editor";
-  const contentFrame = document.createElement("div");
-  contentFrame.className = "leditor-content-frame";
-  contentFrame.appendChild(editorEl);
-  marginFrame.appendChild(contentFrame);
-  contentInset.appendChild(marginFrame);
-  contentLayer.appendChild(contentInset);
-
   zoomLayer.appendChild(pageStack);
   zoomLayer.appendChild(overlayLayer);
-  zoomLayer.appendChild(contentLayer);
 
   canvas.appendChild(ruler);
   canvas.appendChild(zoomLayer);
@@ -1347,14 +1387,14 @@ export const mountA4Layout = (
     left: string,
     right: string
   ) => {
-    contentLayer.style.setProperty("--current-margin-top", top);
-    contentLayer.style.setProperty("--current-margin-bottom", bottom);
-    contentLayer.style.setProperty("--current-margin-left", left);
-    contentLayer.style.setProperty("--current-margin-right", right);
     zoomLayer.style.setProperty("--current-margin-top", top);
     zoomLayer.style.setProperty("--current-margin-bottom", bottom);
     zoomLayer.style.setProperty("--current-margin-left", left);
     zoomLayer.style.setProperty("--current-margin-right", right);
+    pageStack.style.setProperty("--current-margin-top", top);
+    pageStack.style.setProperty("--current-margin-bottom", bottom);
+    pageStack.style.setProperty("--current-margin-left", left);
+    pageStack.style.setProperty("--current-margin-right", right);
   };
 
   const marginHandlesElements = {
@@ -1435,7 +1475,7 @@ export const mountA4Layout = (
   };
 
   const bindSlider = (instance: nouislider.API, key: keyof MarginValues) => {
-    instance.on("update", (values) => {
+    instance.on("update", (values: Array<string | number>) => {
       if (sliderSuppress) return;
       const numeric = Number(values[0]);
       if (!Number.isFinite(numeric)) return;
@@ -1504,7 +1544,7 @@ export const mountA4Layout = (
         })
       ],
       listeners: {
-        move(event) {
+      move(event: InteractDragEvent) {
           const trackRect = rulerTrack.getBoundingClientRect();
           if (trackRect.width <= 0) return;
           const position = clamp(event.pageX - trackRect.left, 0, trackRect.width);
@@ -1756,8 +1796,10 @@ export const mountA4Layout = (
       const parent = container.closest<HTMLElement>(".leditor-page, .leditor-page-overlay");
       const pageIndex = Number(parent?.dataset.pageIndex ?? "0");
       container.innerHTML = "";
-      const pageEntries = footnoteMap.get(pageIndex);
-      if (!pageEntries || pageEntries.length === 0) {
+      const pageEntries = footnoteMap.get(pageIndex) ?? [];
+      const hasEntries = pageEntries.length > 0;
+      container.classList.toggle("leditor-page-footnotes--active", hasEntries);
+      if (!hasEntries) {
         return;
       }
       const list = document.createElement("ol");
@@ -1778,7 +1820,31 @@ export const mountA4Layout = (
       container.appendChild(list);
     });
     renderEndnotes(endnoteEntries);
+    scheduleFootnoteHeightMeasurement();
   };
+
+  let footnoteHeightHandle = 0;
+  function scheduleFootnoteHeightMeasurement() {
+    if (footnoteHeightHandle) return;
+    footnoteHeightHandle = window.requestAnimationFrame(() => {
+      footnoteHeightHandle = 0;
+      const footnoteContainers = Array.from(appRoot.querySelectorAll<HTMLElement>(".leditor-page-footnotes"));
+      let maxHeight = 0;
+      footnoteContainers.forEach((container) => {
+        const host =
+          container.closest<HTMLElement>(".leditor-page") ?? container.closest<HTMLElement>(".leditor-page-overlay");
+        const height = Math.max(0, Math.round(container.getBoundingClientRect().height));
+        container.style.setProperty("--page-footnote-height", `${height}px`);
+        if (host) {
+          host.style.setProperty("--page-footnote-height", `${height}px`);
+        }
+        if (height > maxHeight) {
+          maxHeight = height;
+        }
+      });
+      zoomLayer.style.setProperty("--page-footnote-height", `${maxHeight}px`);
+    });
+  }
 
   let footnoteUpdateHandle = 0;
   const scheduleFootnoteUpdate = () => {
@@ -2019,8 +2085,8 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
     const resolvedRightMargin = computedStyle.getPropertyValue("--local-page-margin-right").trim() || rightMargin;
 
     if (index === 0) {
-      contentLayer.style.setProperty("--local-page-width", width);
-      contentLayer.style.setProperty("--local-page-height", height);
+      zoomLayer.style.setProperty("--local-page-width", width);
+      zoomLayer.style.setProperty("--local-page-height", height);
       syncCurrentMargins(resolvedTopMargin, resolvedBottomMargin, resolvedLeftMargin, resolvedRightMargin);
     }
 
@@ -2074,11 +2140,16 @@ const renderPages = (count: number) => {
   if (paginationEnabled) {
     pageStack.innerHTML = "";
     overlayLayer.innerHTML = "";
+    console.info("[PaginationDebug] renderPages start (paginationEnabled)", {
+      requestedCount: count,
+      editorPages: editorEl.querySelectorAll(".leditor-page").length
+    });
     attachEditorForMode();
     const pageCount = Math.max(1, editorEl.querySelectorAll(".leditor-page").length);
     for (let i = 0; i < pageCount; i += 1) {
       overlayLayer.appendChild(buildOverlayPage(i));
     }
+    console.info("[PaginationDebug] renderPages pages appended", { overlayCount: overlayLayer.children.length });
     applySectionLayouts(pageCount);
     syncHeaderFooter();
     updatePageNumbers();
@@ -2099,30 +2170,19 @@ const renderPages = (count: number) => {
     updateHeaderFooterEditability();
   };
 
-const attachEditorForMode = () => {
-  if (paginationEnabled) {
+  const attachEditorForMode = () => {
     if (editorEl.parentElement !== pageStack) {
       pageStack.appendChild(editorEl);
     }
     editorEl.style.width = "100%";
-    contentLayer.style.display = "none";
-    contentFrame.style.display = "none";
     overlayLayer.style.display = "";
-  } else {
-    if (editorEl.parentElement !== contentFrame) {
-      contentFrame.appendChild(editorEl);
+    const prose = editorEl.querySelector<HTMLElement>(".ProseMirror");
+    if (!prose) {
+      throw new Error("ProseMirror root missing after attach.");
     }
-    editorEl.style.width = "100%";
-    contentLayer.style.display = "";
-    contentFrame.style.display = "";
-    overlayLayer.style.display = "";
-  }
-  const prose = editorEl.querySelector<HTMLElement>(".ProseMirror");
-  if (!prose) {
-    throw new Error("ProseMirror root missing after attach.");
-  }
-  prose.focus();
-};
+    prose.focus();
+    setEditorEditable(true);
+  };
 
   const measurePageHeight = () => {
     const page = pageStack.querySelector(".leditor-page") as HTMLElement | null;
@@ -2136,76 +2196,6 @@ const attachEditorForMode = () => {
     return Number.isFinite(gap) ? gap : 0;
   };
 
-  let lastContentMetrics: {
-    pageHeight: number;
-    bodyHeightPerPage: number;
-    total: number;
-    marginTopPx: number;
-    marginBottomPx: number;
-    headerHeightPx: number;
-    headerOffsetPx: number;
-    footerHeightPx: number;
-    footerOffsetPx: number;
-    footnoteHeightPx: number;
-    pageCount: number;
-    gap: number;
-  } | null = null;
-
-  const CONTENT_FRAME_MAX_PX = 700;
-  const CONTENT_FRAME_MIN_PX = 200;
-  let manualContentFrameHeight: number | null = null;
-
-  const clampContentFrameHeight = (value: number): number =>
-    Math.max(CONTENT_FRAME_MIN_PX, Math.min(CONTENT_FRAME_MAX_PX, Math.round(value)));
-
-  const updateContentHeight = () => {
-    if (paginationEnabled) return;
-    const pageHeight = measurePageHeight();
-    const gap = measurePageGap();
-    if (pageHeight <= 0) return;
-    const styles = getComputedStyle(contentLayer);
-    const marginTop = styles.getPropertyValue("--current-margin-top").trim() || styles.getPropertyValue("--page-margin-top").trim();
-    const marginBottom =
-      styles.getPropertyValue("--current-margin-bottom").trim() || styles.getPropertyValue("--page-margin-bottom").trim();
-    const headerHeight = styles.getPropertyValue("--header-height").trim();
-    const headerOffset = styles.getPropertyValue("--header-offset").trim();
-    const footerHeight = styles.getPropertyValue("--footer-height").trim();
-    const footerOffset = styles.getPropertyValue("--footer-offset").trim();
-    const footnoteHeight = styles.getPropertyValue("--footnote-area-height").trim();
-    const marginTopPx = measureCssLength(marginTop, contentLayer);
-    const marginBottomPx = measureCssLength(marginBottom, contentLayer);
-    const headerHeightPx = measureCssLength(headerHeight, contentLayer);
-    const headerOffsetPx = measureCssLength(headerOffset, contentLayer);
-    const footerHeightPx = measureCssLength(footerHeight, contentLayer);
-    const footerOffsetPx = measureCssLength(footerOffset, contentLayer);
-    const footnoteHeightPx = measureCssLength(footnoteHeight, contentLayer);
-    const bodyHeightPerPage =
-      pageHeight -
-      (marginTopPx + marginBottomPx + headerHeightPx + headerOffsetPx + footerHeightPx + footerOffsetPx + footnoteHeightPx);
-    if (!Number.isFinite(bodyHeightPerPage) || bodyHeightPerPage <= 0) {
-      throw new Error("Body height per page is non-positive after applying margins.");
-    }
-    const total = pageCount * bodyHeightPerPage + Math.max(0, pageCount - 1) * gap;
-    const nextHeight = manualContentFrameHeight ?? Math.ceil(total);
-    const clamped = clampContentFrameHeight(nextHeight);
-    contentFrame.style.minHeight = `${clamped}px`;
-    contentLayer.style.minHeight = `${clamped}px`;
-    lastContentMetrics = {
-      pageHeight,
-      bodyHeightPerPage,
-      total,
-      marginTopPx,
-      marginBottomPx,
-      headerHeightPx,
-      headerOffsetPx,
-      footerHeightPx,
-      footerOffsetPx,
-      footnoteHeightPx,
-      pageCount,
-      gap
-    };
-  };
-
   const computeHeightPages = () => {
     const pageHeight = measurePageHeight();
     if (pageHeight <= 0) return 1;
@@ -2215,9 +2205,47 @@ const attachEditorForMode = () => {
     return Math.max(1, Math.ceil((contentHeight + gap) / total));
   };
 
-const updatePagination = () => {
+  const updatePagination = () => {
+    const overlayPageCount = overlayLayer.children.length;
+    const editorPageCount = editorEl.querySelectorAll(".leditor-page").length;
+    const firstOverlay = overlayLayer.querySelector<HTMLElement>(".leditor-page-overlay");
+    const overlayInfo = {
+      overlayPageCount,
+      overlayChildCount: overlayLayer.children.length,
+      overlayVisible: overlayLayer.style.display || window.getComputedStyle(overlayLayer).display,
+      overlayHeight: firstOverlay?.offsetHeight ?? null,
+      overlayWidth: firstOverlay?.offsetWidth ?? null
+    };
+    const pageStackInfo = {
+      stackChildCount: pageStack.children.length,
+      stackDisplay: pageStack.style.display || window.getComputedStyle(pageStack).display,
+      stackPointerEvents: pageStack.style.pointerEvents
+    };
+    const pageStackRect = pageStack.getBoundingClientRect();
+    console.info("[PaginationDebug] pagination state", {
+      paginationEnabled,
+      pageCount,
+      editorPageCount,
+      editorScrollHeight: editorEl.scrollHeight,
+      overlayInfo,
+      pageStackInfo,
+      pageStackVisible: pageStackInfo.stackDisplay,
+      pageStackHeight: pageStackRect.height,
+      editorPageHeight: measurePageHeight()
+    });
+  const ensureOverlayPages = (count: number): boolean => {
+    if (overlayLayer.children.length === 0) {
+      renderPages(count);
+      return true;
+    }
+    return false;
+  };
+
   if (paginationEnabled) {
     const nextCount = Math.max(1, editorEl.querySelectorAll(".leditor-page").length);
+    if (ensureOverlayPages(nextCount)) {
+      return;
+    }
     if (nextCount !== pageCount) {
       pageCount = nextCount;
       renderPages(pageCount);
@@ -2264,7 +2292,10 @@ const updatePagination = () => {
     if (!Number.isFinite(delta)) {
       throw new Error("Content frame height delta must be finite.");
     }
-    const base = manualContentFrameHeight ?? CONTENT_FRAME_MAX_PX;
+    const base =
+      manualContentFrameHeight ??
+      lastContentMetrics?.total ??
+      measurePageHeight() * Math.max(1, pageCount);
     manualContentFrameHeight = clampContentFrameHeight(base + delta);
     updateContentHeight();
     requestPagination();
@@ -2346,6 +2377,7 @@ const updatePagination = () => {
   };
 
   const handleOverlayDblClick = (event: MouseEvent) => {
+    if (headerFooterMode) return;
     const target = event.target as HTMLElement | null;
     if (!target) return;
     if (target.classList.contains("leditor-page-header")) {
@@ -2353,6 +2385,23 @@ const updatePagination = () => {
       return;
     }
     if (target.classList.contains("leditor-page-footer")) {
+      enterHeaderFooterMode("footer");
+    }
+  };
+
+  const handlePageHeaderFooterDblClick = (event: MouseEvent) => {
+    if (headerFooterMode) return;
+    const target = event.target as HTMLElement | null;
+    if (!target) return;
+    const header = target.closest<HTMLElement>(".leditor-page-header");
+    if (header && pageStack.contains(header)) {
+      event.preventDefault();
+      enterHeaderFooterMode("header");
+      return;
+    }
+    const footer = target.closest<HTMLElement>(".leditor-page-footer");
+    if (footer && pageStack.contains(footer)) {
+      event.preventDefault();
       enterHeaderFooterMode("footer");
     }
   };
@@ -2384,65 +2433,105 @@ const updatePagination = () => {
     }
   };
 
+  const logLayoutDiagnostics = () => {
+    const page = pageStack.querySelector<HTMLElement>(".leditor-page");
+    const content = page?.querySelector<HTMLElement>(".leditor-page-content");
+    const header = page?.querySelector<HTMLElement>(".leditor-page-header");
+    const footer = page?.querySelector<HTMLElement>(".leditor-page-footer");
+    const footnotes = page?.querySelector<HTMLElement>(".leditor-page-footnotes");
+    const overlay = overlayLayer.querySelector<HTMLElement>(".leditor-page-overlay");
+    const pageRect = page?.getBoundingClientRect() ?? null;
+    const contentRect = content?.getBoundingClientRect() ?? null;
+    const headerRect = header?.getBoundingClientRect() ?? null;
+    const footerRect = footer?.getBoundingClientRect() ?? null;
+    const footnoteRect = footnotes?.getBoundingClientRect() ?? null;
+    const overlayRect = overlay?.getBoundingClientRect() ?? null;
+    const editorPageCount = editorEl.querySelectorAll(".leditor-page").length;
+    const overlayPageCount = overlayLayer.querySelectorAll(".leditor-page-overlay").length;
+    const pageStackDisplay =
+      pageStack.style.display || window.getComputedStyle(pageStack).display;
+    const overlayLayerDisplay =
+      overlayLayer.style.display || window.getComputedStyle(overlayLayer).display;
+    const pageStackRect = pageStack.getBoundingClientRect();
+    const metrics = {
+      pageHeight: pageRect?.height ?? null,
+      pageWidth: pageRect?.width ?? null,
+      contentHeight: contentRect?.height ?? null,
+      contentInsetTop:
+        pageRect && contentRect ? contentRect.top - pageRect.top : null,
+      contentInsetBottom:
+        pageRect && contentRect ? pageRect.bottom - contentRect.bottom : null,
+      headerHeight: headerRect?.height ?? null,
+      footerHeight: footerRect?.height ?? null,
+      footnoteHeight: footnoteRect?.height ?? null,
+      overlayHeight: overlayRect?.height ?? null,
+      editorPageCount,
+      overlayPageCount,
+      paginationEnabled,
+      pageStackChildCount: pageStack.children.length,
+      pageStackDisplay,
+      overlayLayerDisplay,
+      headerFooterMode,
+      editorScrollHeight: editorEl.scrollHeight,
+      pageStackHeight: pageStackRect.height,
+      pageStackScroll: pageStack.scrollHeight
+    };
+    console.info("[A4 layout debug]", metrics);
+  };
+
   const handleKeydown = (event: KeyboardEvent) => {
     if (event.ctrlKey && event.shiftKey && (event.key === "R" || event.key === "r")) {
       event.preventDefault();
-      const win = window as typeof window & { __leditorPaginationDebug?: boolean };
-      win.__leditorPaginationDebug = !win.__leditorPaginationDebug;
-      console.info("[PaginationDebug] toggled", { enabled: win.__leditorPaginationDebug });
+      logLayoutDiagnostics();
+    const win = window as typeof window & { __leditorPaginationDebug?: boolean };
+    win.__leditorPaginationDebug = !win.__leditorPaginationDebug;
+    console.info("[PaginationDebug] toggled", { enabled: win.__leditorPaginationDebug });
+    return;
+  }
+  if (event.ctrlKey && event.shiftKey && (event.key === "M" || event.key === "m")) {
+    event.preventDefault();
+    const editorHandle = (window as typeof window & { leditor?: { execCommand: (name: string, args?: any) => void } })
+      .leditor;
+    editorHandle?.execCommand("SetPageMargins", {
+      margins: { top: 2.5, right: 2.5, bottom: 2.5, left: 2.5 }
+    });
+    const next = !appRoot.classList.contains("leditor-debug-margins");
+    appRoot.classList.toggle("leditor-debug-margins", next);
+    const proseMirror = editorEl.querySelector<HTMLElement>(".ProseMirror");
+    if (!proseMirror) {
       return;
     }
-    if (event.ctrlKey && event.shiftKey && (event.key === "M" || event.key === "m")) {
-      event.preventDefault();
-      const editorHandle = (window as typeof window & { leditor?: { execCommand: (name: string, args?: any) => void } })
-        .leditor;
-      editorHandle?.execCommand("SetPageMargins", {
-        margins: { top: 2.5, right: 2.5, bottom: 2.5, left: 2.5 }
+    proseMirror.focus();
+    const proseRect = proseMirror.getBoundingClientRect();
+    if (next) {
+      const root = getComputedStyle(document.documentElement);
+      const info = {
+        pageWidth: root.getPropertyValue("--page-width").trim(),
+        pageHeight: root.getPropertyValue("--page-height").trim(),
+        marginTop: root.getPropertyValue("--page-margin-top").trim(),
+        marginRight: root.getPropertyValue("--page-margin-right").trim(),
+        marginBottom: root.getPropertyValue("--page-margin-bottom").trim(),
+        marginLeft: root.getPropertyValue("--page-margin-left").trim()
+      };
+      const overlay = overlayLayer.querySelector<HTMLElement>(".leditor-page-overlay");
+      const guide = overlay?.querySelector<HTMLElement>(".leditor-margin-guide");
+      const guideRect = guide?.getBoundingClientRect();
+      const pageRect = overlay?.getBoundingClientRect();
+      console.info("[A4 margins]", {
+        info,
+        pageRect,
+        guideRect,
+        proseRect,
+        debugMargins: next
       });
-      const next = !appRoot.classList.contains("leditor-debug-margins");
-      appRoot.classList.toggle("leditor-debug-margins", next);
-      const proseMirror = editorEl.querySelector<HTMLElement>(".ProseMirror");
-      proseMirror.focus();
-      const proseRect = proseMirror.getBoundingClientRect();
-      if (next) {
-        const root = getComputedStyle(document.documentElement);
-        const info = {
-          pageWidth: root.getPropertyValue("--page-width").trim(),
-          pageHeight: root.getPropertyValue("--page-height").trim(),
-          marginTop: root.getPropertyValue("--page-margin-top").trim(),
-          marginRight: root.getPropertyValue("--page-margin-right").trim(),
-          marginBottom: root.getPropertyValue("--page-margin-bottom").trim(),
-          marginLeft: root.getPropertyValue("--page-margin-left").trim()
-        };
-        const overlay = overlayLayer.querySelector<HTMLElement>(".leditor-page-overlay");
-        const guide = overlay?.querySelector<HTMLElement>(".leditor-margin-guide");
-        const guideRect = guide?.getBoundingClientRect();
-        const pageRect = overlay?.getBoundingClientRect();
-        const frameRect = contentFrame.getBoundingClientRect();
-        const marginRect = contentLayer.querySelector<HTMLElement>(".leditor-margins-frame")?.getBoundingClientRect();
-        console.info("[A4 margins]", {
-          info,
-          pageRect,
-          guideRect,
-          proseRect,
-          contentFrame: frameRect,
-          marginFrame: marginRect,
-          debugMargins: next,
-          contentMetrics: lastContentMetrics
-        });
-      }
-      if (!next) {
-        const frameRect = contentFrame.getBoundingClientRect();
-        const marginRect = contentLayer.querySelector<HTMLElement>(".leditor-margins-frame")?.getBoundingClientRect();
-        console.info("[A4 margins] shortcut focus", {
-          proseRect,
-          contentFrame: frameRect,
-          marginFrame: marginRect,
-          debugMargins: next,
-          contentMetrics: lastContentMetrics
-        });
-      }
-      return;
+    }
+    if (!next) {
+      console.info("[A4 margins] shortcut focus", {
+        proseRect,
+        debugMargins: next
+      });
+    }
+    return;
     }
     if (event.ctrlKey && event.shiftKey && (event.key === "D" || event.key === "d")) {
       event.preventDefault();
@@ -2459,7 +2548,57 @@ const updatePagination = () => {
     }
   };
 
+  const shouldForwardOverlayEvent = (target: HTMLElement | null): boolean => {
+    if (!target) return false;
+    return (
+      !target.closest(".leditor-page-header") &&
+      !target.closest(".leditor-page-footer") &&
+      !target.closest(".leditor-page-footnotes") &&
+      !target.closest(".leditor-margin-guide")
+    );
+  };
+
+  const forwardOverlayInteraction = (event: MouseEvent | PointerEvent) => {
+    if (!shouldForwardOverlayEvent(event.target as HTMLElement | null)) return;
+    const prose = editorEl.querySelector<HTMLElement>(".ProseMirror");
+    if (!prose) return;
+    const hit = document.elementFromPoint(event.clientX, event.clientY) as HTMLElement | null;
+    const dispatchTarget = hit && prose.contains(hit) ? hit : prose;
+    const mouseInit: MouseEventInit = {
+      bubbles: true,
+      cancelable: true,
+      clientX: event.clientX,
+      clientY: event.clientY,
+      button: "button" in event ? event.button : 0,
+      buttons: "buttons" in event ? event.buttons : 1,
+      ctrlKey: event.ctrlKey,
+      shiftKey: event.shiftKey,
+      altKey: event.altKey,
+      metaKey: event.metaKey
+    };
+    const forwarded =
+      event instanceof PointerEvent
+        ? new PointerEvent(event.type, {
+            ...mouseInit,
+            pointerId: event.pointerId,
+            pointerType: event.pointerType,
+            pressure: event.pressure,
+            tiltX: event.tiltX,
+            tiltY: event.tiltY,
+            width: event.width,
+            height: event.height,
+            tangentialPressure: event.tangentialPressure
+          })
+        : new MouseEvent(event.type, mouseInit);
+    dispatchTarget.dispatchEvent(forwarded);
+    event.preventDefault();
+    event.stopPropagation();
+  };
+
+  overlayLayer.addEventListener("pointerdown", forwardOverlayInteraction);
+  overlayLayer.addEventListener("contextmenu", forwardOverlayInteraction);
   overlayLayer.addEventListener("dblclick", handleOverlayDblClick);
+  pageStack.addEventListener("dblclick", handlePageHeaderFooterDblClick);
   overlayLayer.addEventListener("input", handleOverlayInput, true);
   overlayLayer.addEventListener("click", handleOverlayClick);
   document.addEventListener("keydown", handleKeydown);
@@ -2472,6 +2611,9 @@ const updatePagination = () => {
 
   const footnoteObserver = new MutationObserver(() => scheduleFootnoteUpdate());
   footnoteObserver.observe(editorEl, { childList: true, subtree: true, characterData: true });
+
+  const pageObserver = new MutationObserver(() => requestPagination());
+  pageObserver.observe(editorEl, { childList: true, subtree: true });
 
   const marginDebug = {
     log() {
@@ -2488,9 +2630,7 @@ const updatePagination = () => {
       const guide = overlay?.querySelector<HTMLElement>(".leditor-margin-guide");
       const guideRect = guide?.getBoundingClientRect();
       const pageRect = overlay?.getBoundingClientRect();
-      const marginFrame = contentLayer.querySelector<HTMLElement>(".leditor-margins-frame");
-      const marginRect = marginFrame.getBoundingClientRect();
-      console.info("[A4 margins]", { info, pageRect, guideRect, marginRect });
+      console.info("[A4 margins]", { info, pageRect, guideRect });
     },
     toggle(force?: boolean) {
       const next = force === undefined ? !appRoot.classList.contains("leditor-debug-margins") : !!force;
@@ -2519,7 +2659,7 @@ const updatePagination = () => {
     requestPagination();
     updateZoomForViewMode();
   });
-  resizeObserver.observe(contentFrame);
+  resizeObserver.observe(pageStack);
   resizeObserver.observe(canvas);
 
   return {
@@ -2527,6 +2667,7 @@ const updatePagination = () => {
     destroy() {
       resizeObserver.disconnect();
       footnoteObserver.disconnect();
+      pageObserver.disconnect();
       if (footnoteUpdateHandle) {
         window.cancelAnimationFrame(footnoteUpdateHandle);
         footnoteUpdateHandle = 0;
@@ -2537,6 +2678,7 @@ const updatePagination = () => {
       bottomSliderInstance?.destroy();
       unsubscribeMarginControls();
       overlayLayer.removeEventListener("dblclick", handleOverlayDblClick);
+      pageStack.removeEventListener("dblclick", handlePageHeaderFooterDblClick);
       overlayLayer.removeEventListener("input", handleOverlayInput, true);
       overlayLayer.removeEventListener("click", handleOverlayClick);
       document.removeEventListener("keydown", handleKeydown);

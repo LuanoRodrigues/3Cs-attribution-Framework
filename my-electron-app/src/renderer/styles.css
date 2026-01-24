@@ -64,13 +64,13 @@ body {
   position: relative;
   min-height: calc(100vh / var(--app-scale));
   width: calc(100% / var(--app-scale));
-  padding-top: var(--ribbon-height);
   transform: scale(var(--app-scale));
   transform-origin: top left;
 }
 
 #workspace-shell {
-  height: calc((100vh / var(--app-scale)) - var(--ribbon-height));
+  margin-top: var(--ribbon-height);
+  height: calc(100% - var(--ribbon-height));
   display: flex;
   flex-direction: column;
   overflow: hidden;

@@ -10,7 +10,10 @@ function isThemeId(value: unknown): value is ThemeId {
 }
 
 function isHexColor(value: unknown): value is string {
-  return typeof value === "string" && /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(value.trim());
+  return (
+    typeof value === "string" &&
+    /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(value.trim())
+  );
 }
 
 function normalizeTheme(theme: unknown): ThemeId {
@@ -36,9 +39,8 @@ function normalizeScale(value: unknown): number {
       : typeof value === "string"
         ? parseFloat(value)
         : Number.NaN;
-  if (!Number.isFinite(parsed)) {
-    return 1;
-  }
+
+  if (!Number.isFinite(parsed)) return 1;
   return Math.min(1.4, Math.max(0.8, parsed));
 }
 
@@ -59,39 +61,72 @@ function buildThemeCss(
 ): { vars: Record<string, string>; resolvedTheme: ThemeId } {
   const systemPref = getSystemPreference();
   const base = resolveThemeTokens(themeId, systemPref);
-  const accentOverride = isHexColor(snapshot[APPEARANCE_KEYS.accent]) ? String(snapshot[APPEARANCE_KEYS.accent]) : null;
+
+  const accentOverride = isHexColor(snapshot[APPEARANCE_KEYS.accent])
+    ? String(snapshot[APPEARANCE_KEYS.accent])
+    : null;
+
   const accent = accentOverride ?? base.accent;
 
+  const resolvedTheme: ThemeId =
+    themeId === "system" ? (systemPref === "dark" ? "dark" : "light") : themeId;
+
   const vars: Record<string, string> = {
+    // Core surfaces
     "--bg": base.bg,
     "--panel": base.panel,
     "--panel-2": base.panel2,
     "--surface": base.surface,
     "--surface-muted": base.surfaceMuted,
+
+    // Typography
     "--text": base.text,
     "--muted": base.muted,
+
+    // Lines
     "--border": base.border,
     "--border-soft": base.borderSoft,
+    "--card-border": base.cardBorder,
+
+    // Brand / emphasis
     "--accent": accent,
     "--accent-2": base.accent2,
-    "--card-border": base.cardBorder,
+
+    // Effects
     "--shadow": base.shadow,
     "--gradient-1": base.gradient1,
     "--gradient-2": base.gradient2,
     "--ribbon": base.ribbon,
     "--focus": base.focus,
+
+    // Common semantic aliases used by the app
     "--highlight": base.accent2,
     "--link": accent,
     "--link-hover": base.accent2,
+
+    // App-specific mappings
     "--sidebar-bg": base.panel2,
     "--paper-border": base.border,
     "--paper-text": base.text,
     "--paper-muted": base.muted,
-    "--danger": "#f87171",
-    "--success": "#34d399"
+
+    // Theme-derived spectrum (for charts, tags, code highlighting, etc.)
+    "--red": base.red,
+    "--orange": base.orange,
+    "--yellow": base.yellow,
+    "--green": base.green,
+    "--cyan": base.cyan,
+    "--blue": base.blue,
+    "--purple": base.purple,
+
+    // Theme-derived semantic status colors
+    "--danger": base.danger,
+    "--warning": base.warning,
+    "--success": base.success,
+    "--info": base.info
   };
 
-  return { vars, resolvedTheme: themeId === "system" ? (systemPref === "dark" ? "dark" : "light") : themeId };
+  return { vars, resolvedTheme };
 }
 
 function buildDensityCss(snapshot: SettingsSnapshot): Record<string, string> {
@@ -101,12 +136,7 @@ function buildDensityCss(snapshot: SettingsSnapshot): Record<string, string> {
 }
 
 async function loadSettingsSnapshot(): Promise<SettingsSnapshot> {
-  try {
-    return await settingsClient.getAll();
-  } catch (err) {
-    console.error("[theme] failed to load settings", err);
-    return {};
-  }
+  return await settingsClient.getAll();
 }
 
 async function applyFromSettings(snapshot: SettingsSnapshot): Promise<void> {
@@ -114,10 +144,13 @@ async function applyFromSettings(snapshot: SettingsSnapshot): Promise<void> {
   const themeCss = buildThemeCss(themeId, snapshot);
   const densityCss = buildDensityCss(snapshot);
   const scale = normalizeScale(snapshot[APPEARANCE_KEYS.uiScale]);
+
   applyCssVars({ ...themeCss.vars, ...densityCss, "--app-scale": String(scale) });
+
   document.documentElement.dataset.theme = themeCss.resolvedTheme;
   document.documentElement.dataset.density = normalizeDensity(snapshot[APPEARANCE_KEYS.density]);
   document.documentElement.dataset.effects = normalizeEffects(snapshot[APPEARANCE_KEYS.effects]);
+
   const leditorMode = themeCss.resolvedTheme === "light" ? "light" : "dark";
   document.dispatchEvent(
     new CustomEvent("leditor:theme-change", { detail: { mode: leditorMode, surface: leditorMode } })
@@ -125,23 +158,28 @@ async function applyFromSettings(snapshot: SettingsSnapshot): Promise<void> {
 }
 
 export async function initThemeManager(): Promise<void> {
-  const initial = await loadSettingsSnapshot();
-  await applyFromSettings(initial);
+  let latestSnapshot = await loadSettingsSnapshot();
+  await applyFromSettings(latestSnapshot);
 
   const media = window.matchMedia("(prefers-color-scheme: dark)");
-  const systemListener = () => {
-    const snapshot = { ...initial, [APPEARANCE_KEYS.theme]: initial[APPEARANCE_KEYS.theme] ?? "system" };
-    void applyFromSettings(snapshot);
+  const systemListener = async () => {
+    const themeId = normalizeTheme(latestSnapshot[APPEARANCE_KEYS.theme]);
+    if (themeId !== "system") return;
+    await applyFromSettings(latestSnapshot);
   };
-  media.addEventListener("change", systemListener);
+  media.addEventListener("change", () => {
+    void systemListener();
+  });
 
   window.addEventListener("settings:updated", async (event: Event) => {
     const detail = (event as CustomEvent<{ key?: string; value?: unknown }>).detail;
     const k = detail?.key;
+
     if (k && k !== "appearance" && !Object.values(APPEARANCE_KEYS).includes(k as any)) {
       return;
     }
-    const fresh = await loadSettingsSnapshot();
-    await applyFromSettings(fresh);
+
+    latestSnapshot = await loadSettingsSnapshot();
+    await applyFromSettings(latestSnapshot);
   });
 }

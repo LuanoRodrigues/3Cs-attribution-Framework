@@ -155,7 +155,7 @@ const ensureStyles = () => {
 }
 
 .leditor-page-stack {
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 
@@ -180,11 +180,24 @@ const ensureStyles = () => {
 .leditor-page-inner {
   position: absolute;
   inset: 0;
-  padding: var(--local-page-margin-top, var(--page-margin-top)) var(--local-page-margin-right, var(--page-margin-right)) var(--local-page-margin-bottom, var(--page-margin-bottom)) var(--local-page-margin-left, var(--page-margin-left));
+  padding: var(--local-page-margin-top, var(--page-margin-top)) var(--local-page-margin-right, var(--page-margin-right))
+    var(--local-page-margin-bottom, var(--page-margin-bottom)) var(--local-page-margin-left, var(--page-margin-left));
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 12px;
   box-sizing: border-box;
+}
+
+.leditor-page-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  column-count: var(--page-columns, 1);
+  column-gap: 24px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: block;
+  pointer-events: auto;
 }
 
 .leditor-page-header,
@@ -193,87 +206,50 @@ const ensureStyles = () => {
   font-size: 10pt;
   text-transform: uppercase;
   font-weight: bold;
-  color: #222222;
+  color: var(--page-header-color);
   min-height: var(--header-height);
   display: flex;
   align-items: center;
   justify-content: flex-end;
   padding: 0 12px;
   box-sizing: border-box;
+  flex: 0 0 auto;
 }
 
 .leditor-page-header {
-  margin-top: var(--header-offset);
-  opacity: 0;
-  color: transparent;
-  pointer-events: auto;
+  margin-top: 0;
 }
 
 .leditor-page-footer {
-  margin-bottom: var(--footer-offset);
-  justify-content: flex-end;
+  margin-top: auto;
+  color: var(--page-footer-color);
   text-transform: none;
 }
 
 .leditor-page-footnotes {
-  min-height: var(--footnote-area-height);
+  flex: 0 0 auto;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
+  font-size: var(--footnote-font-size);
+  color: var(--page-footnote-color);
+}
+.leditor-page-footnotes.leditor-page-footnotes--active {
   border-top: var(--footnote-separator-height) solid var(--footnote-separator-color);
   padding-top: var(--footnote-spacing);
-  font-size: var(--footnote-font-size);
-  color: #262626;
 }
 
 .leditor-page-footer .leditor-page-number {
   margin-left: auto;
   font-variant-numeric: tabular-nums;
   font-size: 10pt;
-  color: #222222;
+  color: var(--page-footer-color);
 }
 
 .leditor-page-number {
   display: inline-flex;
   gap: 4px;
   align-items: baseline;
-}
-
-.leditor-content-layer {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: var(--local-page-width, var(--page-width));
-  height: var(--local-page-height, var(--page-height));
-  z-index: 3;
-  box-sizing: border-box;
-  padding: 0;
-  overflow: hidden;
-}
-
-.leditor-content-inset {
-  position: relative;
-  width: 100%;
-  min-height: 100%;
-  box-sizing: border-box;
-  padding: 0;
-  overflow: hidden;
-}
-
-.leditor-margins-frame {
-  position: absolute;
-  top: calc(var(--current-margin-top, var(--page-margin-top)) + var(--header-height) + var(--header-offset));
-  left: var(--current-margin-left, var(--page-margin-left));
-  right: var(--current-margin-right, var(--page-margin-right));
-  bottom: calc(var(--current-margin-bottom, var(--page-margin-bottom)) + var(--footer-height) + var(--footer-offset) + var(--footnote-area-height));
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-.leditor-content-frame {
-  width: 100%;
-  min-height: 100%;
-  padding: 0;
-  box-sizing: border-box;
-  overflow: hidden;
 }
 
 .leditor-page-overlays {
@@ -336,11 +312,6 @@ const ensureStyles = () => {
   background: rgba(255, 255, 255, 0.85);
 }
 
-.leditor-header-footer-editing .leditor-content-layer {
-  pointer-events: none;
-  opacity: 0.5;
-}
-
 .leditor-page-overlay .leditor-page-header,
 .leditor-page-overlay .leditor-page-footer {
   position: absolute;
@@ -354,7 +325,9 @@ const ensureStyles = () => {
 }
 
 .leditor-page-overlay .leditor-page-footer {
-  bottom: calc(var(--current-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset) + var(--footnote-area-height));
+  bottom: calc(
+    var(--current-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset)
+  );
   height: var(--footer-height);
 }
 
@@ -362,8 +335,19 @@ const ensureStyles = () => {
   position: absolute;
   left: var(--current-margin-left, var(--page-margin-left));
   right: var(--current-margin-right, var(--page-margin-right));
-  bottom: var(--current-margin-bottom, var(--page-margin-bottom));
-  height: var(--footnote-area-height);
+  bottom: calc(
+    var(--current-margin-bottom, var(--page-margin-bottom)) +
+      var(--footer-offset) +
+      var(--footer-height)
+  );
+  min-height: 0;
+  overflow: hidden;
+  font-size: var(--footnote-font-size);
+  color: var(--page-footnote-color);
+}
+.leditor-page-overlay .leditor-page-footnotes.leditor-page-footnotes--active {
+  border-top: var(--footnote-separator-height) solid var(--footnote-separator-color);
+  padding-top: var(--footnote-spacing);
 }
 
 #editor {
@@ -594,21 +578,8 @@ const mountA4Layout = (appRoot, editorEl, options = {}) => {
     pageStack.className = "leditor-page-stack";
     const overlayLayer = document.createElement("div");
     overlayLayer.className = "leditor-page-overlays";
-    const contentLayer = document.createElement("div");
-    contentLayer.className = "leditor-content-layer";
-    const contentInset = document.createElement("div");
-    contentInset.className = "leditor-content-inset";
-    const marginFrame = document.createElement("div");
-    marginFrame.className = "leditor-margins-frame margins_frame_editor";
-    const contentFrame = document.createElement("div");
-    contentFrame.className = "leditor-content-frame";
-    contentFrame.appendChild(editorEl);
-    marginFrame.appendChild(contentFrame);
-    contentInset.appendChild(marginFrame);
-    contentLayer.appendChild(contentInset);
     zoomLayer.appendChild(pageStack);
     zoomLayer.appendChild(overlayLayer);
-    zoomLayer.appendChild(contentLayer);
     canvas.appendChild(ruler);
     canvas.appendChild(zoomLayer);
     appRoot.appendChild(canvas);
@@ -626,6 +597,19 @@ const mountA4Layout = (appRoot, editorEl, options = {}) => {
     let paginationQueued = false;
     const paginationEnabled = feature_flags_js_1.featureFlags.paginationEnabled;
     const normalizeHeaderFooterHtml = (html) => html.replace(/\{pageNumber\}/gi, '<span class="leditor-page-number"></span>');
+    const setRegionEditable = (element, editable) => {
+        element.contentEditable = editable ? "true" : "false";
+        element.tabIndex = editable ? 0 : -1;
+        element.setAttribute("aria-disabled", editable ? "false" : "true");
+    };
+    const setEditorEditable = (editable) => {
+        const prose = editorEl.querySelector(".ProseMirror");
+        if (!prose) {
+            throw new Error("ProseMirror root missing when updating editability.");
+        }
+        prose.contentEditable = editable ? "true" : "false";
+        prose.setAttribute("aria-disabled", editable ? "false" : "true");
+    };
     const getSectionHeaderContent = (sectionId) => sectionHeaderContent.get(sectionId) ?? headerHtml;
     const getSectionFooterContent = (sectionId) => sectionFooterContent.get(sectionId) ?? footerHtml;
     const syncHeaderFooter = () => {
@@ -899,12 +883,12 @@ const mountA4Layout = (appRoot, editorEl, options = {}) => {
         const resolvedLeftMargin = computedStyle.getPropertyValue("--local-page-margin-left").trim() || leftMargin;
         const resolvedRightMargin = computedStyle.getPropertyValue("--local-page-margin-right").trim() || rightMargin;
         if (index === 0) {
-            contentLayer.style.setProperty("--local-page-width", width);
-            contentLayer.style.setProperty("--local-page-height", height);
-            contentLayer.style.setProperty("--current-margin-top", resolvedTopMargin || PAGE_MARGIN_TOP_VAR);
-            contentLayer.style.setProperty("--current-margin-bottom", resolvedBottomMargin || PAGE_MARGIN_BOTTOM_VAR);
-            contentLayer.style.setProperty("--current-margin-left", resolvedLeftMargin || leftMargin);
-            contentLayer.style.setProperty("--current-margin-right", resolvedRightMargin || rightMargin);
+            pageStack.style.setProperty("--local-page-width", width);
+            pageStack.style.setProperty("--local-page-height", height);
+            pageStack.style.setProperty("--current-margin-top", resolvedTopMargin || PAGE_MARGIN_TOP_VAR);
+            pageStack.style.setProperty("--current-margin-bottom", resolvedBottomMargin || PAGE_MARGIN_BOTTOM_VAR);
+            pageStack.style.setProperty("--current-margin-left", resolvedLeftMargin || leftMargin);
+            pageStack.style.setProperty("--current-margin-right", resolvedRightMargin || rightMargin);
         }
         const columns = Math.max(1, info.meta.columns ?? 1);
         updateColumnGuide(page, columns);
@@ -944,24 +928,11 @@ const mountA4Layout = (appRoot, editorEl, options = {}) => {
         });
     };
     const attachEditorForMode = () => {
-        if (paginationEnabled) {
-            if (editorEl.parentElement !== pageStack) {
-                pageStack.appendChild(editorEl);
-            }
-            editorEl.style.width = "100%";
-            contentLayer.style.display = "none";
-            contentFrame.style.display = "none";
-            overlayLayer.style.display = "none";
+        if (editorEl.parentElement !== pageStack) {
+            pageStack.appendChild(editorEl);
         }
-        else {
-            if (editorEl.parentElement !== contentFrame) {
-                contentFrame.appendChild(editorEl);
-            }
-            editorEl.style.width = "100%";
-            contentLayer.style.display = "";
-            contentFrame.style.display = "";
-            overlayLayer.style.display = "";
-        }
+        editorEl.style.width = "100%";
+        overlayLayer.style.display = "";
         const prose = editorEl.querySelector(".ProseMirror");
         if (!prose) {
             throw new Error("ProseMirror root missing after attach.");
@@ -1009,7 +980,7 @@ const mountA4Layout = (appRoot, editorEl, options = {}) => {
         const total = pageCount * pageHeight + Math.max(0, pageCount - 1) * gap;
         const nextHeight = manualContentFrameHeight ?? Math.ceil(total);
         const clamped = clampContentFrameHeight(nextHeight);
-        contentFrame.style.minHeight = `px`;
+        pageStack.style.minHeight = `${clamped}px`;
     };
     const computeHeightPages = () => {
         const pageHeight = measurePageHeight();
@@ -1020,23 +991,72 @@ const mountA4Layout = (appRoot, editorEl, options = {}) => {
         const total = pageHeight + gap;
         return Math.max(1, Math.ceil((contentHeight + gap) / total));
     };
-    const updatePagination = () => {
-        if (paginationEnabled) {
-            return;
-        }
-        const heightCount = computeHeightPages();
-        const manualCount = countManualPageBreaks(editorEl) + 1;
-        const nextCount = Math.max(heightCount, manualCount);
-        if (nextCount !== pageCount) {
-            pageCount = nextCount;
-            renderPages(pageCount);
-        }
-        else {
-            applySectionLayouts(pageCount);
-            syncHeaderFooter();
-        }
-        updateContentHeight();
+  const updatePagination = () => {
+    const overlayPageCount = overlayLayer.children.length;
+    const editorPageCount = editorEl.querySelectorAll(".leditor-page").length;
+    const firstOverlay = overlayLayer.querySelector(".leditor-page-overlay");
+    const overlayInfo = {
+      overlayPageCount,
+      overlayVisible: overlayLayer.style.display || window.getComputedStyle(overlayLayer).display,
+      overlayHeight: (firstOverlay === null || firstOverlay === void 0 ? void 0 : firstOverlay.offsetHeight) ?? null,
+      overlayWidth: (firstOverlay === null || firstOverlay === void 0 ? void 0 : firstOverlay.offsetWidth) ?? null
     };
+    const pageStackInfo = {
+      stackChildCount: pageStack.children.length,
+      stackDisplay: pageStack.style.display || window.getComputedStyle(pageStack).display,
+      stackPointerEvents: pageStack.style.pointerEvents
+    };
+    const pageStackRect = pageStack.getBoundingClientRect();
+    const editorRect = editorEl.getBoundingClientRect();
+    console.info("[PaginationDebug] pagination state", {
+      paginationEnabled,
+      pageCount,
+      editorPageCount,
+      overlayInfo,
+      pageStackInfo,
+      pageStackHeight: pageStackRect.height,
+      pageStackWidth: pageStackRect.width,
+      editorHeight: editorRect.height,
+      editorWidth: editorRect.width,
+      editorScrollHeight: editorEl.scrollHeight,
+      editorScrollWidth: editorEl.scrollWidth
+    });
+    const ensureOverlayPages = (count) => {
+      if (overlayLayer.children.length === 0) {
+        renderPages(count);
+        return true;
+      }
+      return false;
+    };
+    if (paginationEnabled) {
+      const nextCount = Math.max(1, editorEl.querySelectorAll(".leditor-page").length);
+      if (ensureOverlayPages(nextCount)) {
+        return;
+      }
+      if (nextCount !== pageCount) {
+        pageCount = nextCount;
+        renderPages(pageCount);
+      }
+      else {
+        applySectionLayouts(pageCount);
+        syncHeaderFooter();
+        updatePageNumbers();
+      }
+      return;
+    }
+    const heightCount = computeHeightPages();
+    const manualCount = countManualPageBreaks(editorEl) + 1;
+    const nextCount = Math.max(heightCount, manualCount);
+    if (nextCount !== pageCount) {
+      pageCount = nextCount;
+      renderPages(pageCount);
+    }
+    else {
+      applySectionLayouts(pageCount);
+      syncHeaderFooter();
+    }
+    updateContentHeight();
+  };
     const requestPagination = () => {
         if (paginationQueued)
             return;
@@ -1151,9 +1171,41 @@ const mountA4Layout = (appRoot, editorEl, options = {}) => {
             exitHeaderFooterMode();
         }
     };
+    const logLayoutDiagnostics = () => {
+        const page = pageStack.querySelector(".leditor-page");
+        const content = page?.querySelector(".leditor-page-content");
+        const header = page?.querySelector(".leditor-page-header");
+        const footer = page?.querySelector(".leditor-page-footer");
+        const footnotes = page?.querySelector(".leditor-page-footnotes");
+        const overlay = overlayLayer.querySelector(".leditor-page-overlay");
+        const pageRect = page?.getBoundingClientRect() ?? null;
+        const contentRect = content?.getBoundingClientRect() ?? null;
+        const headerRect = header?.getBoundingClientRect() ?? null;
+        const footerRect = footer?.getBoundingClientRect() ?? null;
+        const footnoteRect = footnotes?.getBoundingClientRect() ?? null;
+        const overlayRect = overlay?.getBoundingClientRect() ?? null;
+        const pageStackRect = pageStack.getBoundingClientRect();
+        const metrics = {
+            pageHeight: pageRect?.height ?? null,
+            pageWidth: pageRect?.width ?? null,
+            contentHeight: contentRect?.height ?? null,
+            contentInsetTop: pageRect && contentRect ? contentRect.top - pageRect.top : null,
+            contentInsetBottom: pageRect && contentRect ? pageRect.bottom - contentRect.bottom : null,
+            headerHeight: headerRect?.height ?? null,
+            footerHeight: footerRect?.height ?? null,
+            footnoteHeight: footnoteRect?.height ?? null,
+            overlayHeight: overlayRect?.height ?? null,
+            headerFooterMode,
+            editorScrollHeight: editorEl.scrollHeight,
+            pageStackHeight: pageStackRect.height,
+            pageStackScrollHeight: pageStack.scrollHeight
+        };
+        console.info("[A4 layout debug]", metrics);
+    };
     const handleKeydown = (event) => {
         if (event.ctrlKey && event.shiftKey && (event.key === "R" || event.key === "r")) {
             event.preventDefault();
+            logLayoutDiagnostics();
             const win = window;
             win.__leditorPaginationDebug = !win.__leditorPaginationDebug;
             console.info("[PaginationDebug] toggled", { enabled: win.__leditorPaginationDebug });
@@ -1211,6 +1263,8 @@ const mountA4Layout = (appRoot, editorEl, options = {}) => {
     scheduleFootnoteUpdate();
     const footnoteObserver = new MutationObserver(() => scheduleFootnoteUpdate());
     footnoteObserver.observe(editorEl, { childList: true, subtree: true, characterData: true });
+    const pageObserver = new MutationObserver(() => requestPagination());
+    pageObserver.observe(editorEl, { childList: true, subtree: true });
     const marginDebug = {
         log() {
             const root = getComputedStyle(document.documentElement);
@@ -1226,9 +1280,8 @@ const mountA4Layout = (appRoot, editorEl, options = {}) => {
             const guide = overlay?.querySelector(".leditor-margin-guide");
             const guideRect = guide?.getBoundingClientRect();
             const pageRect = overlay?.getBoundingClientRect();
-            const marginFrame = contentLayer.querySelector(".leditor-margins-frame");
-            const marginRect = marginFrame.getBoundingClientRect();
-            console.info("[A4 margins]", { info, pageRect, guideRect, marginRect });
+            const stackRect = pageStack.getBoundingClientRect();
+            console.info("[A4 margins]", { info, pageRect, guideRect, stackRect });
         },
         toggle(force) {
             const next = force === undefined ? !appRoot.classList.contains("leditor-debug-margins") : !!force;
@@ -1255,13 +1308,14 @@ const mountA4Layout = (appRoot, editorEl, options = {}) => {
         requestPagination();
         updateZoomForViewMode();
     });
-    resizeObserver.observe(contentFrame);
+    resizeObserver.observe(pageStack);
     resizeObserver.observe(canvas);
     return {
         updatePagination,
         destroy() {
             resizeObserver.disconnect();
-            footnoteObserver.disconnect();
+          footnoteObserver.disconnect();
+          pageObserver.disconnect();
             if (footnoteUpdateHandle) {
                 window.cancelAnimationFrame(footnoteUpdateHandle);
                 footnoteUpdateHandle = 0;

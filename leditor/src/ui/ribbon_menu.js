@@ -1,6 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.GalleryGrid = exports.ColorPalette = exports.MenuSubmenu = exports.MenuSeparator = exports.MenuItem = exports.Menu = void 0;
+exports.GalleryGrid = exports.ColorPalette = exports.MenuSubmenu = exports.MenuSeparator = exports.MenuItem = exports.Menu = exports.setMenuPortal = void 0;
+let menuPortal = null;
+const setMenuPortal = (portal) => {
+  menuPortal = portal;
+};
+exports.setMenuPortal = setMenuPortal;
 const submenuRegistry = new WeakMap();
 class Menu {
     element;
@@ -20,7 +25,8 @@ class Menu {
         this.isOpen = true;
         this.anchor = anchor ?? null;
         if (!this.element.isConnected) {
-            document.body.appendChild(this.element);
+            const container = menuPortal ?? document.body;
+            container.appendChild(this.element);
         }
         this.element.style.display = "block";
         this.position(anchor ?? null);

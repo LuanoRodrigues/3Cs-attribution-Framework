@@ -1,14 +1,7 @@
 import { registerPlugin } from "../api/plugin_registry.js";
 import type { EditorHandle } from "../api/leditor.js";
-import type { ImportDocxOptions } from "../api/import_docx.js";
-import type { ExportDocxOptions } from "../api/export_docx.js";
-
-declare global {
-  interface Window {
-    __leditorAutoImportDOCX?: (options?: ImportDocxOptions) => Promise<ImportDocxResult>;
-    __leditorAutoExportDOCX?: (options?: ExportDocxOptions) => Promise<ExportDocxResult>;
-  }
-}
+import type { ImportDocxOptions, ImportDocxResult } from "../api/import_docx.js";
+import type { ExportDocxOptions, ExportDocxResult } from "../api/export_docx.js";
 
 const writeLog = (line: string) => window.codexLog?.write(`[DOCX] ${line}`);
 

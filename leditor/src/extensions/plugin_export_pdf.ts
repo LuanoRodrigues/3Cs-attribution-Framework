@@ -2,12 +2,6 @@
 import type { EditorHandle } from "../api/leditor.js";
 import type { ExportPdfOptions, ExportPdfRequest, ExportPdfResult } from "../api/export_pdf.js";
 
-declare global {
-  interface Window {
-    __leditorAutoExportPDF?: (options?: ExportPdfOptions) => Promise<ExportPdfResult>;
-  }
-}
-
 const triggerExport = (html: string, options?: ExportPdfOptions) => {
   const handler = window.leditorHost?.exportPDF;
   if (!handler) {

@@ -495,6 +495,26 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
     return { success: true };
   });
 
+  const normalizeError = (error: unknown): string => (error instanceof Error ? error.message : String(error));
+  ipcMain.handle("leditor:read-file", async (_event, request: { sourcePath: string }) => {
+    try {
+      const data = await fs.promises.readFile(request.sourcePath, "utf-8");
+      return { success: true, data, filePath: request.sourcePath };
+    } catch (error) {
+      return { success: false, error: normalizeError(error) };
+    }
+  });
+
+  ipcMain.handle("leditor:write-file", async (_event, request: { targetPath: string; data: string }) => {
+    try {
+      await fs.promises.mkdir(path.dirname(request.targetPath), { recursive: true });
+      await fs.promises.writeFile(request.targetPath, request.data, "utf-8");
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: normalizeError(error) };
+    }
+  });
+
   registerProjectIpcHandlers(projectManager);
 }
 
@@ -505,6 +525,25 @@ function createWindow(): void {
 
   const rendererPath = path.join(__dirname, "renderer", "index.html");
   const preloadScript = path.join(__dirname, "preload.js");
+  const leditorResourcesPath = path.join(app.getAppPath(), "dist", "resources", "leditor");
+  const hostContract = {
+    version: 1,
+    sessionId: "annotarium-session",
+    documentId: "annotarium-document",
+    documentTitle: "Annotarium Document",
+    paths: {
+      contentDir: path.join(leditorResourcesPath, "content"),
+      bibliographyDir: path.join(leditorResourcesPath, "bibliography"),
+      tempDir: path.join(leditorResourcesPath, "temp")
+    },
+    inputs: {
+      directQuoteJsonPath: path.join(leditorResourcesPath, "direct_quote_lookup.json")
+    },
+    policy: {
+      allowDiskWrites: true
+    }
+  };
+  const leditorHostArg = `--leditor-host=${encodeURIComponent(JSON.stringify(hostContract))}`;
 
   const window = new BrowserWindow({
     width: 1280,
@@ -516,7 +555,8 @@ function createWindow(): void {
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
-      preload: preloadScript
+      preload: preloadScript,
+      additionalArguments: [leditorHostArg]
     }
   });
 

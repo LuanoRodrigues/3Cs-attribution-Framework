@@ -1,12 +1,6 @@
 ﻿import { registerPlugin } from "../api/plugin_registry.js";
 import { createPreviewModal } from "../ui/preview.js";
 
-declare global {
-  interface Window {
-    __leditorAutoPreview?: () => void;
-  }
-}
-
 let previewController: ReturnType<typeof createPreviewModal> | null = null;
 
 const ensurePreview = (editorHandle: Parameters<typeof createPreviewModal>[0]) => {

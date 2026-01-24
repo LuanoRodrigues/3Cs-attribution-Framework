@@ -9,6 +9,7 @@ const STYLE_ENTRY = "renderer/bootstrap.bundle.css";
 const SCRIPT_ENTRY = "renderer/bootstrap.bundle.js";
 const SCRIPT_PRELUDE = "renderer/prelude.js";
 const SCRIPT_VENDOR = "renderer/vendor-leditor.js";
+let writePanelScopeId: string | null = null;
 
 type HostPackage = {
   host: HTMLElement;
@@ -112,7 +113,14 @@ function ensureScriptLoaded(): Promise<void> {
     return Promise.reject(error);
   }
   const base = new URL("../leditor/", window.location.href);
+  const resourceBase = new URL("../resources/leditor/", window.location.href);
   const styleUrl = new URL(STYLE_ENTRY, base).href;
+  try {
+    localStorage.setItem("leditor.coderStatePath", new URL("content/coder_state.json", resourceBase).pathname);
+    localStorage.setItem("leditor.scopeId", writePanelScopeId ?? getDefaultCoderScope());
+  } catch {
+    // best-effort; ignore storage failures
+  }
   ensureStyleLoaded(styleUrl);
   const vendorUrl = new URL(SCRIPT_VENDOR, new URL("../leditor/", window.location.href)).href;
   const preludeUrl = new URL(SCRIPT_PRELUDE, new URL("../leditor/", window.location.href)).href;
@@ -145,8 +153,10 @@ export class WritePage {
     mount.appendChild(this.container);
     this.hostPackage = getProjectBase().hostRoot;
     this.attachHost();
+    const panelScope = getDefaultCoderScope();
+    writePanelScopeId = panelScope;
     const ready = ensureScriptLoaded();
-    this.sync = new WritePanel({ scopeId: getDefaultCoderScope(), scriptReady: ready });
+    this.sync = new WritePanel({ scopeId: panelScope, scriptReady: ready });
     void this.sync.init();
   }
 

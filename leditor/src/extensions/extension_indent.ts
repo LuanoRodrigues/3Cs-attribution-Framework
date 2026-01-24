@@ -1,4 +1,4 @@
-import { Extension, type Editor } from "@tiptap/core";
+import { Extension, type CommandProps, type Editor } from "@tiptap/core";
 import { CellSelection } from "@tiptap/pm/tables";
 
 const MIN_INDENT_LEVEL = 0;
@@ -122,32 +122,48 @@ const IndentExtension = Extension.create({
     }
   };
 },
-addCommands() {
-  return {
-    indentIncrease: () => {
-      this.editor.commands.focus();
-      return adjustIndent(this.editor, 1);
-    },
-    indentDecrease: () => {
-      this.editor.commands.focus();
-      return adjustIndent(this.editor, -1);
-    },
-    setIndent: (attrs?: { level?: number | string }) => {
-      const raw = attrs?.level;
-      const level =
-        typeof raw === "number"
-          ? raw
-          : typeof raw === "string"
-            ? Number.parseFloat(raw)
-            : undefined;
-      if (!Number.isFinite(level ?? NaN)) {
-        return false;
-      }
-      this.editor.commands.focus();
-      return setIndentLevel(this.editor, level ?? 0);
-    }
-  };
-}
+  addCommands() {
+    return {
+      indentIncrease:
+        () =>
+        ({ commands }: CommandProps) => {
+          this.editor.commands.focus();
+          return adjustIndent(this.editor, 1);
+        },
+      indentDecrease:
+        () =>
+        ({ commands }: CommandProps) => {
+          this.editor.commands.focus();
+          return adjustIndent(this.editor, -1);
+        },
+      setIndent:
+        (attrs?: { level?: number | string }) =>
+        ({ commands }: CommandProps) => {
+          const raw = attrs?.level;
+          const level =
+            typeof raw === "number"
+              ? raw
+              : typeof raw === "string"
+                ? Number.parseFloat(raw)
+                : undefined;
+          if (!Number.isFinite(level ?? NaN)) {
+            return false;
+          }
+          this.editor.commands.focus();
+          return setIndentLevel(this.editor, level ?? 0);
+        }
+    };
+  }
 });
 
 export default IndentExtension;
+
+declare module "@tiptap/core" {
+  interface Commands<ReturnType> {
+    indent: {
+      indentIncrease: () => ReturnType;
+      indentDecrease: () => ReturnType;
+      setIndent: (attrs?: { level?: number | string }) => ReturnType;
+    };
+  }
+}

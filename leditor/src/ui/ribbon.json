@@ -106,10 +106,22 @@
       "priority": 80
     },
     {
+      "tabId": "references",
+      "label": "References",
+      "source": "references.json",
+      "priority": 70
+    },
+    {
+      "tabId": "review",
+      "label": "Review",
+      "source": "review.json",
+      "priority": 60
+    },
+    {
       "tabId": "view",
       "label": "View",
       "source": "view.json",
-      "priority": 75
+      "priority": 50
     }
   ],
 

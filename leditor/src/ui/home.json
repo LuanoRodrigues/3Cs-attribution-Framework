@@ -1702,7 +1702,25 @@
                 "B": "narrow",
                 "C": "inFlyout"
               }
-            },
+            }
+          ]
+        },
+        {
+          "clusterId": "styles.quickTemplates",
+          "layout": "row",
+          "controls": [
+            {
+              "controlId": "styles.quickTemplates",
+              "label": "Quick templates",
+              "type": "custom",
+              "widget": "styleTemplateGallery"
+            }
+          ],
+          "priority": 70
+        },
+        {
+          "clusterId": "styles.pane",
+          "controls": [
             {
               "controlId": "styles.pane",
               "label": "Styles Pane",
@@ -1717,7 +1735,12 @@
                 "B": "inOverflow",
                 "C": "inFlyout"
               }
-            },
+            }
+          ]
+        },
+        {
+          "clusterId": "styles.manage",
+          "controls": [
             {
               "controlId": "styles.manage",
               "label": "Manage Styles",
@@ -1769,7 +1792,12 @@
                 "B": "inOverflow",
                 "C": "inFlyout"
               }
-            },
+            }
+          ]
+        },
+        {
+          "clusterId": "styles.styleSet",
+          "controls": [
             {
               "controlId": "styles.styleSet",
               "label": "Style Set",

@@ -1,5 +1,6 @@
 import { Extension } from "@tiptap/core";
 import { keymap } from "@tiptap/pm/keymap";
+import type { Level } from "@tiptap/extension-heading";
 
 const ALIGN_SHORTCUTS: Record<string, "left" | "center" | "right" | "justify"> = {
   "Mod-Shift-L": "left",
@@ -22,22 +23,26 @@ const WordShortcutsExtension = Extension.create({
       keymap({
         ...Object.fromEntries(
           Object.entries(ALIGN_SHORTCUTS).map(([key, align]) => [
-            key,
-            () => {
-              editor.commands.focus();
-              editor.commands.setTextAlign(align);
-              return true;
-            }
+      key,
+      () => {
+        editor.commands.focus();
+        editor
+          .chain()
+          .updateAttributes("paragraph", { textAlign: align })
+          .updateAttributes("heading", { textAlign: align })
+          .run();
+        return true;
+      }
           ])
         ),
         ...Object.fromEntries(
           Object.entries(HEADING_SHORTCUTS).map(([key, level]) => [
-            key,
-            () => {
-              editor.commands.focus();
-              editor.commands.toggleHeading({ level });
-              return true;
-            }
+      key,
+      () => {
+        editor.commands.focus();
+        editor.commands.toggleHeading({ level: level as Level });
+        return true;
+      }
           ])
         ),
         "Mod-Alt-T": () => {
@@ -47,7 +52,10 @@ const WordShortcutsExtension = Extension.create({
         },
         "Mod-Alt+F": () => {
           editor.commands.focus();
-          editor.commands.insertFootnote?.();
+          const footnoteCommand = (editor.commands as Record<string, unknown>)["insertFootnote"];
+          if (typeof footnoteCommand === "function") {
+            (footnoteCommand as () => boolean)();
+          }
           return true;
         }
       })

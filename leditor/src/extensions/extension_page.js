@@ -162,6 +162,11 @@ const paginateView = (view, runningRef) => {
             return;
         }
         const pages = Array.from(view.dom.querySelectorAll(`.${PAGE_CLASS}`));
+        logDebug("page nodes before split", {
+            domPageCount: pages.length,
+            docPageCount: view.state.doc.childCount,
+            overlayPages: view.dom.querySelectorAll(`.${PAGE_INNER_CLASS}`).length
+        });
         for (const page of pages) {
             const content = page.querySelector(`.${PAGE_CONTENT_CLASS}`);
             if (!content)

@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const esbuild = require("esbuild");
 
 function resolvePaths() {
   const projectRoot = path.resolve(__dirname, "..");
@@ -59,6 +60,7 @@ function copyLeditorAssets() {
   copyDirectory(path.join(leditorDist, "public"), path.join(targetRoot, "public"));
   copyDirectory(path.join(leditorDist, "renderer"), path.join(targetRoot, "renderer"));
   ensureVendorShim(targetRoot);
+  buildLeditorPrelude(targetRoot);
   return targetRoot;
 }
 
@@ -100,7 +102,6 @@ function ensureVendorShim(targetRoot) {
 `;
   fs.writeFileSync(entryPath, entrySource, "utf-8");
   try {
-    const esbuild = require("esbuild");
     esbuild.buildSync({
       entryPoints: [entryPath],
       bundle: true,
@@ -114,6 +115,29 @@ function ensureVendorShim(targetRoot) {
     });
   } catch (error) {
     throw new Error(`Failed to build leditor vendor shim: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+function buildLeditorPrelude(targetRoot) {
+  const { projectRoot } = resolvePaths();
+  const entryPath = path.join(projectRoot, "src", "leditorPrelude.ts");
+  ensurePathExists(entryPath);
+  const rendererDir = path.join(targetRoot, "renderer");
+  ensureDirectory(rendererDir);
+  const outputPath = path.join(rendererDir, "prelude.js");
+  try {
+    esbuild.buildSync({
+      entryPoints: [entryPath],
+      bundle: true,
+      platform: "browser",
+      format: "iife",
+      target: "es2020",
+      outfile: outputPath,
+      allowOverwrite: true,
+      logLevel: "silent"
+    });
+  } catch (error) {
+    throw new Error(`Failed to build leditor prelude: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 

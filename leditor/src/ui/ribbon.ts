@@ -1,5 +1,6 @@
 import type { EditorHandle } from "../api/leditor.js";
 import { dispatchCommand, type EditorCommandId } from "../api/editor_commands.js";
+import { readCitationStyle } from "../api/command_map.js";
 import { RibbonControl, RibbonGroup } from "./ribbon_primitives.js";
 import { Menu, MenuItem, MenuSeparator } from "./ribbon_menu.js";
 import { getTemplates } from "../templates/index.js";
@@ -12,7 +13,7 @@ import {
   watchRibbonSelectionStateLegacy,
   type RibbonSelectionTargets
 } from "./ribbon_selection.ts";
-import { setReadMode, setScrollDirection, setRulerVisible, setGridlinesVisible, toggleNavigationPanel, isReadMode, getScrollDirection, isRulerVisible, isGridlinesVisible, isNavigationVisible } from "./view_state.js";
+import { setReadMode, setScrollDirection, setRulerVisible, setGridlinesVisible, toggleNavigationPanel, isReadMode, getScrollDirection, isRulerVisible, isGridlinesVisible, isNavigationVisible, syncViewToggles } from "./view_state.js";
 import { SplitButton } from "./ribbon_split_button.js";
 import Pickr from "@simonwep/pickr";
 import "@simonwep/pickr/dist/themes/classic.min.css";
@@ -106,8 +107,8 @@ const CASE_MODES = [
 ];
 
 type RibbonHooks = {
-  registerToggle?: (commandId: EditorCommandId, element: HTMLButtonElement) => void;
-  registerAlignment?: (variant: AlignmentVariant, element: HTMLButtonElement) => void;
+  registerToggle?: (commandId: string, element: HTMLButtonElement) => void;
+  registerAlignment?: (variant: string, element: HTMLButtonElement) => void;
 };
 
 function openTrackChangesPopover(anchor: HTMLElement, editorHandle: EditorHandle, heading: string): void {
@@ -928,12 +929,11 @@ const createPickrColorButton = (
         input: true,
         save: true,
         clear: true,
-        cancel: true,
-        close: true
+        cancel: true
       }
     }
   });
-  pickr.on("save", (color) => {
+  pickr.on("save", (color: Pickr.HSVaColor) => {
     const str = color.toHEXA().toString();
     dispatchCommand(editorHandle, commandId, { value: str });
     applyColor(str);
@@ -1176,10 +1176,10 @@ const createParagraphGroup = (editorHandle: EditorHandle, hooks?: RibbonHooks, r
   });
   multiListMenu.element.append(bulletItem, numberItem, multilevelItem);
   primaryRow.append(
-    createAlignButton("Align left", "AlignLeft", "alignLeft", editorHandle, hooks?.registerAlignment),
-    createAlignButton("Center", "AlignCenter", "alignCenter", editorHandle, hooks?.registerAlignment),
-    createAlignButton("Align right", "AlignRight", "alignRight", editorHandle, hooks?.registerAlignment),
-    createAlignButton("Justify", "JustifyFull", "alignJustify", editorHandle, hooks?.registerAlignment),
+    createAlignButton("Align left", "AlignLeft", "left", editorHandle, hooks?.registerAlignment),
+    createAlignButton("Center", "AlignCenter", "center", editorHandle, hooks?.registerAlignment),
+    createAlignButton("Align right", "AlignRight", "right", editorHandle, hooks?.registerAlignment),
+    createAlignButton("Justify", "JustifyFull", "justify", editorHandle, hooks?.registerAlignment),
     bulletButton,
     numberButton,
     multiListButton,
@@ -2382,11 +2382,11 @@ export const renderRibbon = (host: HTMLElement, editorHandle: EditorHandle): voi
     toggles: [],
     alignmentButtons: {}
   };
-  const registerToggle = (commandId: EditorCommandId, element: HTMLButtonElement) => {
-    selectionTargets.toggles.push({ commandId, element });
+  const registerToggle = (commandId: string, element: HTMLButtonElement) => {
+    selectionTargets.toggles.push({ commandId: commandId as EditorCommandId, element });
   };
-  const registerAlignment = (variant: AlignmentVariant, element: HTMLButtonElement) => {
-    selectionTargets.alignmentButtons[variant] = element;
+  const registerAlignment = (variant: string, element: HTMLButtonElement) => {
+    selectionTargets.alignmentButtons[variant as AlignmentVariant] = element;
   };
   const hooks: RibbonHooks = {
     registerToggle,

@@ -13,6 +13,7 @@ import { createRibbonIcon, type RibbonIconName } from "./ribbon_icons.js";
 import { Menu, MenuItem, MenuSeparator, setMenuPortal } from "./ribbon_menu.js";
 import { SplitButton } from "./ribbon_split_button.js";
 import { getTemplates } from "../templates/index.js";
+import { getStyleTemplates, openStyleMiniApp } from "./style_mini_app.js";
 import type { RibbonStateBus, RibbonStateKey, RibbonStateSnapshot } from "./ribbon_state.js";
 import type {
   ClusterConfig,
@@ -469,6 +470,18 @@ const ensurePortal = (): HTMLElement => {
   return portal;
 };
 
+const ensurePortalStyle = (portal: HTMLElement): void => {
+  const expectedId = layoutPlan.zIndexPlan.portalElementId ?? "ribbon-portal";
+  const expectedZIndex = String(layoutPlan.zIndexPlan.menusAndPickers ?? 2100);
+  if (portal.id !== expectedId) {
+    console.warn(`[Ribbon] Expected portal id "${expectedId}", found "${portal.id}"`);
+  }
+  if (portal.style.zIndex !== expectedZIndex) {
+    console.warn(`[Ribbon] Portal z-index ${portal.style.zIndex} differs from expected ${expectedZIndex}; enforcing value.`);
+    portal.style.zIndex = expectedZIndex;
+  }
+};
+ 
 const createOverflowButton = (label: string, menu: Menu): HTMLButtonElement => {
   const button = document.createElement("button");
   button.type = "button";
@@ -770,6 +783,9 @@ const createCustomWidget = (menu: Menu, ctx: BuildContext, item: ControlConfig):
   if (item.widget === "tableGridPicker") {
     return createTableGridPicker(menu, ctx, item);
   }
+  if (item.widget === "styleTemplateGallery") {
+    return createStyleTemplateGallery(ctx);
+  }
   return null;
 };
 
@@ -804,6 +820,62 @@ const createColorPalette = (menu: Menu, ctx: BuildContext, item: ControlConfig):
     palette.appendChild(swatch);
   });
   return palette;
+};
+
+const createStyleTemplateGallery = (ctx: BuildContext): HTMLElement => {
+  const templates = getStyleTemplates();
+  const gallery = document.createElement("div");
+  gallery.className = "home-quick-style-gallery";
+  const appState = { editorHandle: ctx.editorHandle };
+  templates.forEach((template) => {
+    const card = document.createElement("div");
+    card.className = "home-quick-style-card";
+    card.setAttribute("data-template-id", template.templateId);
+    card.setAttribute("role", "button");
+    card.tabIndex = 0;
+    const label = document.createElement("div");
+    label.className = "home-quick-style-card__label";
+    label.textContent = template.label;
+    const description = document.createElement("p");
+    description.className = "home-quick-style-card__description";
+    description.textContent = template.description;
+
+    const openMiniApp = () => {
+      openStyleMiniApp(card, appState, { templateId: template.templateId });
+    };
+
+    card.addEventListener("click", openMiniApp);
+    card.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openMiniApp();
+      }
+    });
+
+    const menuButton = document.createElement("button");
+    menuButton.type = "button";
+    menuButton.className = "home-quick-style-card__menu";
+    menuButton.setAttribute("aria-label", `Configure ${template.label}`);
+    menuButton.textContent = "⋯";
+    menuButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const menu = new Menu([]);
+      menu.element.appendChild(
+        MenuItem({
+          label: "Configure style template",
+          onSelect: () => {
+            openStyleMiniApp(menuButton, appState, { templateId: template.templateId });
+            menu.close();
+          }
+        })
+      );
+      menu.open(menuButton);
+    });
+
+    card.append(label, description, menuButton);
+    gallery.appendChild(card);
+  });
+  return gallery;
 };
 
 const buildMenu = (items: ControlConfig[] | undefined, ctx: BuildContext): Menu => {
@@ -1129,6 +1201,17 @@ if (control.type === "splitButton" || control.type === "splitToggleButton" || co
     return { element: gal, collapse: collapseMeta };
   }
 
+  if (control.type === "custom") {
+    if (control.widget === "styleTemplateGallery") {
+      const gallery = createStyleTemplateGallery(ctx);
+      gallery.dataset.controlId = id ?? "";
+      collapseMeta.element = gallery;
+      recordParent(meta, gallery);
+      return { element: gallery, collapse: collapseMeta };
+    }
+    throw new Error(`Unsupported custom control widget: ${control.widget}`);
+  }
+
   if (control.type === "dialogLauncher") {
     const btn = document.createElement("button");
     btn.type = "button";
@@ -1444,6 +1527,7 @@ export const renderRibbonLayout = (
   applyTokens();
   const portal = ensurePortal();
   setMenuPortal(portal);
+  ensurePortalStyle(portal);
 
   host.dataset.ribbonFixedHeight = "true";
   const defaults = model.registry.defaults ?? {};

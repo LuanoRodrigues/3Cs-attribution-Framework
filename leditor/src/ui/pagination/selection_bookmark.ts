@@ -24,11 +24,11 @@ const getNodePath = (base: Node, target: Node): NodePath => {
   const path: number[] = [];
   let current: Node | null = target;
   while (current && current !== base) {
-    const parent = current.parentNode;
+    const parent: ParentNode | null = current.parentNode;
     if (!parent) {
       throw new Error("Selection path cannot be resolved to base node.");
     }
-    const index = Array.from(parent.childNodes).indexOf(current);
+    const index = Array.from(parent.childNodes).indexOf(current as ChildNode);
     if (index < 0) {
       throw new Error("Selection node index not found.");
     }

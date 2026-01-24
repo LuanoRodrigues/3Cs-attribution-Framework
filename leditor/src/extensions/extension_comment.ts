@@ -1,4 +1,5 @@
 import { Mark, mergeAttributes } from "@tiptap/core";
+import type { CommandProps } from "@tiptap/core";
 
 const CommentMark = Mark.create({
   name: "comment",
@@ -43,17 +44,30 @@ const CommentMark = Mark.create({
   addCommands() {
     return {
       setComment:
-        (attributes: Record<string, any>) =>
-        ({ commands }) => {
-          return commands.setMark(this.name, attributes);
+        (attributes: Record<string, unknown>) =>
+        ({ commands }: CommandProps) => {
+          this.editor.commands.focus();
+          commands.setMark(this.name, attributes);
+          return true;
         },
       unsetComment:
         () =>
-        ({ commands }) => {
-          return commands.unsetMark(this.name);
+        ({ commands }: CommandProps) => {
+          this.editor.commands.focus();
+          commands.unsetMark(this.name);
+          return true;
         }
     };
   }
 });
 
 export default CommentMark;
+
+declare module "@tiptap/core" {
+  interface Commands<ReturnType> {
+    comment: {
+      setComment: (attributes: Record<string, unknown>) => ReturnType;
+      unsetComment: () => ReturnType;
+    };
+  }
+}

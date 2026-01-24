@@ -77,8 +77,9 @@ export class DirtyTracker {
   private findBlockAncestor(element: HTMLElement): HTMLElement | null {
     let current: HTMLElement | null = element;
     while (current) {
-      if (this.options.blockSelectors.some((selector) => current.matches(selector))) {
-        return current;
+      const candidate = current;
+      if (this.options.blockSelectors.some((selector) => candidate.matches(selector))) {
+        return candidate;
       }
       current = current.parentElement;
     }
