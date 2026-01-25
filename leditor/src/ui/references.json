@@ -566,7 +566,7 @@
             {
               "type": "menuItem",
               "controlId": "cite.insertCitation.manageSources",
-              "label": "Manage Sources…",
+              "label": "Update…",
               "command": {
                 "id": "citation.sources.manage.openDialog"
               }
@@ -586,7 +586,7 @@
         },
         {
           "controlId": "cite.manageSources",
-          "label": "Manage Sources",
+          "label": "Update",
           "type": "button",
           "size": "medium",
           "iconKey": "icon.manageSources",
@@ -941,7 +941,7 @@
                 {
                   "type": "menuItem",
                   "controlId": "cite.insertCitation.manageSources",
-                  "label": "Manage Sources…",
+                  "label": "Update…",
                   "command": {
                     "id": "citation.sources.manage.openDialog"
                   }
@@ -961,7 +961,7 @@
             },
             {
               "controlId": "cite.manageSources",
-              "label": "Manage Sources",
+              "label": "Update",
               "type": "button",
               "size": "medium",
               "iconKey": "icon.manageSources",

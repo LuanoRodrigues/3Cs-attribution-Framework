@@ -154,15 +154,19 @@
   font-family: var(--r-font-family);
   font-size: var(--r-font-size);
   line-height: var(--r-line-height);
+  position: sticky;
+  top: 0;
+  z-index: 20;
 }
 
 /* Ribbon tray */
 .leditor-ribbon-shell {
-  position: relative;
-  z-index: 10; /* zIndexPlan.ribbonSurface */
+  position: sticky;
+  top: 0;
+  z-index: 30; /* keep above document surface while scrolling */
   background: var(--r-ribbon);
   border-bottom: var(--r-divider);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.70);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.70), 0 6px 12px rgba(0,0,0,0.06);
 }
 
 /* Ensure panels don’t get covered by editor, but also don’t trap portal menus */

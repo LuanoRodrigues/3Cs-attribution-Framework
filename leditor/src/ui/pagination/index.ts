@@ -7,6 +7,7 @@ export {
   setOrientation,
   setMarginsPreset,
   setMarginsCustom,
+  setColumns,
   setGutter,
   setHeaderDistance,
   setFooterDistance

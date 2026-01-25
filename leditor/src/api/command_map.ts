@@ -1,5 +1,5 @@
 import type { Editor } from "@tiptap/core";
-import { TextSelection } from "@tiptap/pm/state";
+import { NodeSelection, TextSelection } from "@tiptap/pm/state";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { getFootnoteRegistry } from "../extensions/extension_footnote.ts";
 import {
@@ -17,7 +17,13 @@ import { openCitationPicker, type CitationPickerResult } from "../ui/references/
 import { openSourcesPanel } from "../ui/references/sources_panel.ts";
 import { ensureReferencesLibrary, getReferenceItem } from "../ui/references/library.ts";
 import { getHostContract } from "../ui/host_contract.ts";
-import { exportBibliographyBibtex, exportBibliographyJson } from "../ui/references/bibliography.ts";
+import {
+  exportBibliographyBibtex,
+  exportBibliographyJson,
+  getLibraryPath,
+  buildBibliographyEntries,
+  writeUsedBibliography
+} from "../ui/references/bibliography.ts";
 import referencesTabRaw from "../ui/references.json";
 import type { TabConfig } from "../ui/ribbon_config.ts";
 import { getReferencesCommandIds } from "../ui/references_command_contract.ts";
@@ -52,9 +58,33 @@ type CitationSelectionInfo = {
 };
 
 const findCitationInSelection = (editor: Editor): CitationSelectionInfo | null => {
+  const citationNode = editor.schema.nodes.citation;
+  if (!citationNode) return null;
+
+  const { selection, doc } = editor.state;
+  const { from, to, $from } = selection;
+
+  // Exact node selection
+  if (selection instanceof NodeSelection && selection.node.type === citationNode) {
+    return { node: selection.node, pos: selection.from };
+  }
+
+  // Cursor immediately before or after the citation atom
+  const after = $from.nodeAfter;
+  if (after?.type === citationNode) {
+    return { node: after, pos: from };
+  }
+  const before = $from.nodeBefore;
+  if (before?.type === citationNode) {
+    return { node: before, pos: from - before.nodeSize };
+  }
+
+  // Fallback: scan a small window around the selection
   let found: CitationSelectionInfo | null = null;
-  editor.state.doc.nodesBetween(editor.state.selection.from, editor.state.selection.to, (node, pos) => {
-    if (node.type.name === "citation") {
+  const searchFrom = Math.max(0, from - 1);
+  const searchTo = Math.min(doc.content.size, to + 1);
+  doc.nodesBetween(searchFrom, searchTo, (node, pos) => {
+    if (node.type === citationNode) {
       found = { node, pos };
       return false;
     }
@@ -108,11 +138,18 @@ const handleInsertCitationCommand = (editor: Editor) => {
     activeCitationId
   })
     .then((result) => {
-      if (!result) {
+      if (!result) return;
+      if (result.templateId === "bibliography") {
+        commandMap.InsertBibliography(editor);
+        return;
+      }
+      if (result.templateId === "update") {
+        commandMap.UpdateBibliography(editor);
         return;
       }
       const citationId = (existing?.node.attrs?.citationId as string | null) ?? generateCitationId();
       insertCitationNode(editor, result, citationId, existing);
+      void refreshUsedBibliography(editor);
     })
     .catch((error) => {
       console.error("[References] picker failed", error);
@@ -472,6 +509,18 @@ const collectDocumentCitationKeys = (editor: Editor): string[] => {
   return Array.from(keys);
 };
 
+const buildBibliographyFromDoc = async (editor: Editor) => {
+  const keys = collectDocumentCitationKeys(editor);
+  await writeUsedBibliography(keys);
+  const entries = await buildBibliographyEntries(keys);
+  return entries;
+};
+
+const refreshUsedBibliography = async (editor: Editor) => {
+  const keys = collectDocumentCitationKeys(editor);
+  await writeUsedBibliography(keys);
+};
+
 const ensureBibliographyStore = (): void => {
   void ensureReferencesLibrary()
     .then((library) => {
@@ -485,7 +534,7 @@ const ensureBibliographyStore = (): void => {
     });
 };
 
-const insertBibliographyNode = (editor: Editor, entries: CitationSource[]): void => {
+const insertBibliographyNode = (editor: Editor, entries: { id: string; label: string }[]): void => {
   if (entries.length === 0) {
     window.alert("No sources available to create a bibliography.");
     return;
@@ -498,7 +547,7 @@ const insertBibliographyNode = (editor: Editor, entries: CitationSource[]): void
   editor.chain().focus().insertContent({ type: "bibliography", attrs: { entries } }).run();
 };
 
-const updateBibliographyNodes = (editor: Editor, entries: CitationSource[]): boolean => {
+const updateBibliographyNodes = (editor: Editor, entries: { id: string; label: string }[]): boolean => {
   const bibliographyNode = editor.schema.nodes.bibliography;
   if (!bibliographyNode) {
     return false;
@@ -1356,18 +1405,25 @@ export const commandMap: Record<string, CommandHandler> = {
   "citation.insert.openDialog": handleInsertCitationCommand,
 
   UpdateCitations(editor) {
-    const sources = getCitationSources(editor);
-    if (!updateCitationNodes(editor, sources)) {
-      window.alert('No citations to update.');
-    }
+    void (async () => {
+      const sources = getCitationSources(editor);
+      if (!updateCitationNodes(editor, sources)) {
+        window.alert('No citations to update.');
+      }
+      await refreshUsedBibliography(editor);
+    })();
   },
 
   SetCitationStyle(editor, args) {
     const payload = typeof args?.id === 'string' ? args.id : typeof args?.style === 'string' ? args.style : '';
     const style = CITATION_STYLES.includes(payload) ? payload : CITATION_STYLE_DEFAULT;
     saveCitationStyle(style);
-    updateCitationNodes(editor, getCitationSources(editor));
-    updateBibliographyNodes(editor, collectBibliographyEntries(editor));
+    const sources = getCitationSources(editor);
+    updateCitationNodes(editor, sources);
+    void (async () => {
+      const entries = await buildBibliographyFromDoc(editor);
+      updateBibliographyNodes(editor, entries);
+    })();
   },
 
   'citation.style.set'(editor, args) {
@@ -1411,20 +1467,26 @@ export const commandMap: Record<string, CommandHandler> = {
   },
 
   InsertBibliography(editor) {
-    const keys = collectDocumentCitationKeys(editor);
-    if (!keys.length) {
-      window.alert("Insert citations before generating a bibliography.");
-      return;
-    }
-    console.info("[References] insert bibliography", { itemKeys: keys });
-    ensureBibliographyStore();
-    insertBibliographyNode(editor, collectBibliographyEntries(editor));
+    void (async () => {
+      const keys = collectDocumentCitationKeys(editor);
+      if (!keys.length) {
+        window.alert("Insert citations before generating a bibliography.");
+        return;
+      }
+      console.info("[References] insert bibliography", { itemKeys: keys });
+      ensureBibliographyStore();
+      const entries = await buildBibliographyFromDoc(editor);
+      insertBibliographyNode(editor, entries);
+    })();
   },
 
   UpdateBibliography(editor) {
-    if (!updateBibliographyNodes(editor, collectBibliographyEntries(editor))) {
-      window.alert('No bibliography found to update.');
-    }
+    void (async () => {
+      const entries = await buildBibliographyFromDoc(editor);
+      if (!updateBibliographyNodes(editor, entries)) {
+        window.alert('No bibliography found to update.');
+      }
+    })();
   },
   "citation.sources.manage.openDialog"(editor) {
     console.info("[References] manage sources invoked");
@@ -1812,7 +1874,7 @@ const createReferencePlaceholder = (id: string): CommandHandler => {
 };
 
 const registerReferenceCommandPlaceholders = (): void => {
-  const tab = referencesTabRaw as TabConfig;
+  const tab = referencesTabRaw as unknown as TabConfig;
   const ids = getReferencesCommandIds(tab);
   ids.forEach((id) => {
     if (id in commandMap) return;

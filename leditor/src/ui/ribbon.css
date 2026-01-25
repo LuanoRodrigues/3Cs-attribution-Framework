@@ -826,8 +826,10 @@
 }
 
 .references-picker-panel {
-  width: min(1100px, calc(100% - 32px));
-  max-height: min(90vh, 840px);
+  width: min(1180px, calc(100% - 48px));
+  min-width: 760px;
+  height: min(92vh, 900px);
+  min-height: 620px;
   border-radius: 18px;
   overflow: hidden;
   box-shadow: 0 30px 70px rgba(0, 0, 0, 0.35);

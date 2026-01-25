@@ -63,6 +63,8 @@ const shouldSplitAfter = (el) => {
     }
     return false;
 };
+// Require extra slack before joining to avoid split/join oscillation at boundaries.
+const JOIN_BUFFER_PX = 12;
 const findSplitTarget = (content, tolerance = 1) => {
     const contentHeight = content.clientHeight;
     if (contentHeight <= 0) {
@@ -111,9 +113,12 @@ const findJoinBoundary = (view, pageType, tolerance = 1) => {
         if (last && shouldSplitAfter(last)) {
             continue;
         }
-        const used = last ? last.offsetTop + last.offsetHeight : 0;
+        const lastMarginBottom = last ? parseFloat(getComputedStyle(last).marginBottom || "0") || 0 : 0;
+        const used = last ? last.offsetTop + last.offsetHeight + lastMarginBottom : 0;
         const remaining = content.clientHeight - used;
-        if (remaining + tolerance >= nextFirst.offsetHeight) {
+        const nextMarginTop = parseFloat(getComputedStyle(nextFirst).marginTop || "0") || 0;
+        const nextHeight = nextMarginTop + nextFirst.offsetHeight;
+        if (remaining + tolerance >= nextHeight + JOIN_BUFFER_PX) {
             let pos = 0;
             for (let idx = 0; idx <= i; idx += 1) {
                 const child = view.state.doc.child(idx);

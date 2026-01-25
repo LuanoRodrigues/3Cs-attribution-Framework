@@ -1,8 +1,10 @@
 import {
+  applyDocumentLayoutTokens,
   setPageSizePreset as docSetPageSizePreset,
   setOrientation as docSetOrientation,
   setMarginsPreset as docSetMarginsPreset,
-  setMarginsCustom as docSetMarginsCustom
+  setMarginsCustom as docSetMarginsCustom,
+  setColumns as docSetColumns
 } from "./pagination/document_layout_state.js";
 
 export type Orientation = "portrait" | "landscape";
@@ -95,25 +97,7 @@ const layoutListeners = new Set<LayoutChangeListener>();
 
 const applyLayoutStyles = (): void => {
   if (typeof document === "undefined") return;
-  const root = document.documentElement;
-  const { orientation, pageSize, marginsCm, columns } = layoutState;
-  const widthCm = orientation === "portrait" ? pageSize.widthCm : pageSize.heightCm;
-  const heightCm = orientation === "portrait" ? pageSize.heightCm : pageSize.widthCm;
-  root.style.setProperty("--page-width-mm", `${mmFromCm(widthCm)}`);
-  root.style.setProperty("--page-height-mm", `${mmFromCm(heightCm)}`);
-  root.style.setProperty("--page-margin-top", cmToCss(marginsCm.top));
-  root.style.setProperty("--page-margin-right", cmToCss(marginsCm.right));
-  root.style.setProperty("--page-margin-bottom", cmToCss(marginsCm.bottom));
-  root.style.setProperty("--page-margin-left", cmToCss(marginsCm.left));
-  root.style.setProperty(
-    "--page-margin-inside",
-    cmToCss(marginsCm.inside ?? marginsCm.left)
-  );
-  root.style.setProperty(
-    "--page-margin-outside",
-    cmToCss(marginsCm.outside ?? marginsCm.right)
-  );
-  root.style.setProperty("--page-columns", `${columns.count}`);
+  applyDocumentLayoutTokens(document.documentElement);
 };
 
 const snapshotStateForListeners = (): {
@@ -188,7 +172,6 @@ export const getLayoutColumns = (): number => layoutState.columns.count;
 export const getColumnMode = (): ColumnMode => layoutState.columns.mode;
 
 export const setPageSize = (sizeId?: string, overrides?: { widthMm?: number; heightMm?: number }): void => {
-  let docPresetId = layoutState.pageSize.id;
   withLayoutUpdate(() => {
     const target = sizeId ? PAGE_SIZE_DEFINITIONS.find((entry) => entry.id === sizeId) : undefined;
     const base = target ?? layoutState.pageSize;
@@ -206,52 +189,45 @@ export const setPageSize = (sizeId?: string, overrides?: { widthMm?: number; hei
       widthCm,
       heightCm
     };
-    docPresetId = target?.id ?? base.id;
+    docSetPageSizePreset(target?.id ?? base.id);
   });
-  docSetPageSizePreset(docPresetId);
 };
 
 export const setPageOrientation = (orientation: Orientation): void => {
   withLayoutUpdate(() => {
     layoutState.orientation = orientation;
+    docSetOrientation(orientation);
   });
-  docSetOrientation(orientation);
 };
 
 export const setPageMargins = (margins: Partial<MarginValues | MarginValuesCm>): void => {
-  let docMargins: MarginValuesCm | null = null;
+  const current = layoutState.marginsCm;
+  const next: MarginValuesCm = {
+    top: parseToCm((margins as any)?.top, current.top),
+    right: parseToCm((margins as any)?.right, current.right),
+    bottom: parseToCm((margins as any)?.bottom, current.bottom),
+    left: parseToCm((margins as any)?.left, current.left),
+    inside:
+      margins?.inside !== undefined ? parseToCm((margins as any).inside, current.inside ?? current.left) : current.inside,
+    outside:
+      margins?.outside !== undefined ? parseToCm((margins as any).outside, current.outside ?? current.right) : current.outside
+  };
   withLayoutUpdate(() => {
-    const current = layoutState.marginsCm;
-    const next: MarginValuesCm = {
-      top: parseToCm((margins as any)?.top, current.top),
-      right: parseToCm((margins as any)?.right, current.right),
-      bottom: parseToCm((margins as any)?.bottom, current.bottom),
-      left: parseToCm((margins as any)?.left, current.left),
-      inside:
-        margins?.inside !== undefined ? parseToCm((margins as any).inside, current.inside ?? current.left) : current.inside,
-      outside:
-        margins?.outside !== undefined ? parseToCm((margins as any).outside, current.outside ?? current.right) : current.outside
-    };
     layoutState.marginsCm = next;
-    docMargins = next;
-  });
-  if (docMargins) {
     docSetMarginsCustom({
-      top: cmToInches(docMargins.top),
-      right: cmToInches(docMargins.right),
-      bottom: cmToInches(docMargins.bottom),
-      left: cmToInches(docMargins.left),
-      inside: docMargins.inside !== undefined ? cmToInches(docMargins.inside) : undefined,
-      outside: docMargins.outside !== undefined ? cmToInches(docMargins.outside) : undefined
+      top: cmToInches(next.top),
+      right: cmToInches(next.right),
+      bottom: cmToInches(next.bottom),
+      left: cmToInches(next.left)
     });
-  }
+  });
 };
 
 export const setMarginsPreset = (preset: keyof typeof MARGIN_PRESETS): void => {
   withLayoutUpdate(() => {
     layoutState.marginsCm = { ...MARGIN_PRESETS[preset].margins };
+    docSetMarginsPreset(preset);
   });
-  docSetMarginsPreset(preset);
 };
 
 export const resetMargins = (): void => {
@@ -264,6 +240,7 @@ export const setSectionColumns = (count: number): void => {
     normalized === 1 ? "one" : normalized === 2 ? "two" : normalized === 3 ? "three" : "three";
   withLayoutUpdate(() => {
     layoutState.columns = { count: normalized, mode };
+    docSetColumns(normalized);
   });
 };
 
@@ -271,6 +248,7 @@ export const setColumnMode = (mode: ColumnMode): void => {
   const count = mode === "one" ? 1 : mode === "two" ? 2 : mode === "three" ? 3 : 2;
   withLayoutUpdate(() => {
     layoutState.columns = { count, mode };
+    docSetColumns(count);
   });
 };
 
@@ -282,4 +260,17 @@ export const subscribeToLayoutChanges = (listener: LayoutChangeListener): (() =>
   };
 };
 
+const initializeDocumentLayoutState = (): void => {
+  docSetPageSizePreset(layoutState.pageSize.id);
+  docSetOrientation(layoutState.orientation);
+  docSetMarginsCustom({
+    top: cmToInches(layoutState.marginsCm.top),
+    right: cmToInches(layoutState.marginsCm.right),
+    bottom: cmToInches(layoutState.marginsCm.bottom),
+    left: cmToInches(layoutState.marginsCm.left)
+  });
+  docSetColumns(layoutState.columns.count);
+};
+
+initializeDocumentLayoutState();
 notifyLayoutChange();

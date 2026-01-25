@@ -61,6 +61,9 @@ export class WritePanel {
   private changeListener: (() => void) | null = null;
   private externalListener: ((ev: Event) => void) | null = null;
   private anchorListener: ((ev: MouseEvent) => void) | null = null;
+  private leditorAnchorListener: ((ev: Event) => void) | null = null;
+  private anchorDomListener: ((ev: MouseEvent) => void) | null = null;
+  private anchorDomTarget: HTMLElement | null = null;
   private citationGuardListener: (() => void) | null = null;
   private contextActionListener: ((ev: Event) => void) | null = null;
   private dqLookup: Record<string, unknown> = {};
@@ -69,6 +72,7 @@ export class WritePanel {
   private refIndexRunPath: string | null = null;
   private refIndex: Map<string, RefRecord> | null = null;
   private lastSavedHtml = "";
+  private lastAnchorOpen: { key: string; ts: number } | null = null;
 
   constructor(options?: WritePanelOptions) {
     this.scopeId = options?.scopeId ?? getDefaultCoderScope();
@@ -78,6 +82,7 @@ export class WritePanel {
 
   async init(): Promise<void> {
     await Promise.all([this.scriptReady, this.store.loadFromDisk()]);
+    console.info("[write][init] starting");
     const state = this.store.snapshot();
     this.currentFolderId = this.pickFolderId(state);
     await this.pushContentToEditor(state);
@@ -101,6 +106,12 @@ export class WritePanel {
     }
     if (this.anchorListener) {
       document.removeEventListener("click", this.anchorListener, true);
+    }
+    if (this.leditorAnchorListener) {
+      window.removeEventListener("leditor-anchor-click", this.leditorAnchorListener as EventListener);
+    }
+    if (this.anchorDomListener && this.anchorDomTarget) {
+      this.anchorDomTarget.removeEventListener("click", this.anchorDomListener, true);
     }
     if (this.citationGuardListener) {
       this.citationGuardListener();
@@ -401,19 +412,21 @@ export class WritePanel {
     return this.dqLookup;
   }
 
-  private extractDqid(href: string, node: HTMLElement): string | undefined {
+  private extractDqid(href: string, node?: HTMLElement | null): string | undefined {
     const pick = (val?: string | null) => {
       const t = (val || "").trim().toLowerCase();
       return t || undefined;
     };
 
-    const attr =
-      pick(node.getAttribute("data-dqid")) ||
-      pick(node.getAttribute("data-quote_id")) ||
-      pick(node.getAttribute("data-quote-id")) ||
-      pick((node as HTMLAnchorElement).dataset?.dqid) ||
-      pick((node as HTMLAnchorElement).dataset?.quoteId);
-    if (attr) return attr;
+    if (node) {
+      const attr =
+        pick(node.getAttribute("data-dqid")) ||
+        pick(node.getAttribute("data-quote_id")) ||
+        pick(node.getAttribute("data-quote-id")) ||
+        pick((node as HTMLAnchorElement).dataset?.dqid) ||
+        pick((node as HTMLAnchorElement).dataset?.quoteId);
+      if (attr) return attr;
+    }
 
     const hrefStr = href || "";
     if (hrefStr.startsWith("dq://") || hrefStr.startsWith("dq:")) {
@@ -445,8 +458,92 @@ export class WritePanel {
     return undefined;
   }
 
+  private shouldSkipAnchorOpen(key: string): boolean {
+    const now = Date.now();
+    const last = this.lastAnchorOpen;
+    if (last && last.key === key && now - last.ts < 400) {
+      return true;
+    }
+    this.lastAnchorOpen = { key, ts: now };
+    return false;
+  }
+
+  private handleNonDqidHref(href: string): void {
+    if (!href) return;
+    const safeHref = href.trim();
+    if (!safeHref) return;
+    const hashIndex = safeHref.indexOf("#");
+    if (hashIndex >= 0) {
+      const hash = safeHref.slice(hashIndex + 1);
+      if (hash) {
+        const safeHash =
+          typeof CSS !== "undefined" && typeof CSS.escape === "function"
+            ? CSS.escape(hash)
+            : hash.replace(/\"/g, "\\\"");
+        const target =
+          document.getElementById(hash) ||
+          document.querySelector(`[name="${safeHash}"]`);
+        target?.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+    }
+    window.open(safeHref, "_blank", "noopener");
+  }
+
+  private async openPdfForAnchor(options: {
+    href: string;
+    anchor?: HTMLAnchorElement | null;
+    explicitDqid?: string;
+    anchorText?: string;
+  }): Promise<void> {
+    const dqid = (options.explicitDqid || "").trim().toLowerCase() || this.extractDqid(options.href, options.anchor);
+    if (!dqid) {
+      this.handleNonDqidHref(options.href);
+      return;
+    }
+
+    const dedupeKey = dqid || options.href;
+    if (this.shouldSkipAnchorOpen(dedupeKey)) {
+      return;
+    }
+
+    const runPath = await this.resolveRunPath("anchor-click");
+    if (!runPath) {
+      console.warn("[write][anchor-click] missing active run path");
+      return;
+    }
+
+    const lookup = await this.ensureDqLookup(runPath);
+    const payload = (lookup[dqid] as Record<string, unknown> | undefined) || undefined;
+    const pdfPath =
+      (payload as any)?.pdf_path ||
+      (payload as any)?.pdf ||
+      (payload as any)?.meta?.pdf_path ||
+      (payload as any)?.meta?.pdf;
+    const detail = {
+      href: options.href,
+      dqid,
+      payload,
+      lookupPath: this.dqLookupPath,
+      title: (payload as any)?.title || options.anchorText || "",
+      anchorText: options.anchorText || "",
+      source: "write",
+      preferredPanel: 3,
+      meta: {
+        ...(payload as any)?.meta,
+        pdf_path: pdfPath
+      }
+    };
+    console.info("[write][anchor-text]", options.anchorText || "");
+    console.info("[write][anchor-click]", detail);
+    document.dispatchEvent(new CustomEvent("analyse-open-pdf", { bubbles: true, detail }));
+  }
+
   private attachAnchorListener(): void {
     const handler = async (ev: MouseEvent): Promise<void> => {
+      const alreadyHandled = (ev as any).__writeAnchorHandled;
+      if (alreadyHandled) return;
+      (ev as any).__writeAnchorHandled = true;
       const target = ev.target as HTMLElement | null;
       if (!target) return;
       const host = target.closest("#write-leditor-host");
@@ -468,66 +565,45 @@ export class WritePanel {
         dataQuoteId: anchor.getAttribute("data-quote-id"),
         text: (anchor.textContent || "").slice(0, 120)
       });
-      const dqid = this.extractDqid(href, anchor);
-      if (!dqid) {
-        if (!href) return;
-        const safeHref = href.trim();
-        if (!safeHref) return;
-        ev.preventDefault();
-        ev.stopPropagation();
-        const hashIndex = safeHref.indexOf("#");
-        if (hashIndex >= 0) {
-          const hash = safeHref.slice(hashIndex + 1);
-          if (hash) {
-            const safeHash =
-              typeof CSS !== "undefined" && typeof CSS.escape === "function"
-                ? CSS.escape(hash)
-                : hash.replace(/\"/g, "\\\"");
-            const target =
-              document.getElementById(hash) ||
-              document.querySelector(`[name="${safeHash}"]`);
-            target?.scrollIntoView({ behavior: "smooth", block: "start" });
-            return;
-          }
-        }
-        window.open(safeHref, "_blank", "noopener");
-        return;
-      }
-
-      const runPath = await this.resolveRunPath("anchor-click");
-      if (!runPath) {
-        console.warn("[write][anchor-click] missing active run path");
-        return;
-      }
-
       ev.preventDefault();
-      const lookup = await this.ensureDqLookup(runPath);
-      const payload = (lookup[dqid] as Record<string, unknown> | undefined) || undefined;
-      const pdfPath =
-        (payload as any)?.pdf_path ||
-        (payload as any)?.pdf ||
-        (payload as any)?.meta?.pdf_path ||
-        (payload as any)?.meta?.pdf;
-      const detail = {
+      ev.stopPropagation();
+      await this.openPdfForAnchor({
         href,
-        dqid,
-        payload,
-        lookupPath: this.dqLookupPath,
-        title: (payload as any)?.title || anchor.textContent || "",
-        anchorText: anchor.textContent || "",
-        source: "write",
-        preferredPanel: 3,
-        meta: {
-          ...(payload as any)?.meta,
-          pdf_path: pdfPath
-        }
-      };
-      console.info("[write][anchor-text]", anchor.textContent || "");
-      console.info("[write][anchor-click]", detail);
-      document.dispatchEvent(new CustomEvent("analyse-open-pdf", { bubbles: true, detail }));
+        anchor,
+        anchorText: anchor.textContent || ""
+      });
+    };
+    const leditorHandler = async (ev: Event): Promise<void> => {
+      const detail = (ev as CustomEvent<any>).detail || {};
+      const href: string = (detail.href || "").trim();
+      if (!href) return;
+      const host = document.getElementById("write-leditor-host");
+      if (!host) return;
+      const explicitDqid =
+        (detail.dqid || detail.dataQuoteId || detail.dataQuoteIdAlt || "").toString();
+      await this.openPdfForAnchor({
+        href,
+        explicitDqid,
+        anchorText: detail.text || ""
+      });
     };
     this.anchorListener = handler;
+    this.leditorAnchorListener = leditorHandler;
+    this.anchorDomListener = handler;
     document.addEventListener("click", handler, true);
+    window.addEventListener("leditor-anchor-click", leditorHandler as EventListener);
+    void this.waitForEditor()
+      .then((handle) => {
+        const editor = (handle as any).getEditor?.();
+        const dom = editor?.view?.dom as HTMLElement | undefined;
+        if (!dom) return;
+        this.anchorDomTarget = dom;
+        dom.addEventListener("click", handler, true);
+        console.info("[write][anchor-listener] attached");
+      })
+      .catch((err) => {
+        console.warn("[write][anchor-listener] failed to attach", err);
+      });
   }
 
   private logAnchorState(): void {

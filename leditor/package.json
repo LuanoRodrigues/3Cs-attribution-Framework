@@ -20,7 +20,8 @@
     "build:public": "node scripts/copy-public.js",
     "build:electron": "tsc --project tsconfig.electron.json",
     "build": "npm run build:renderer && npm run build:public && npm run build:electron",
-    "ribbon:validate": "node scripts/ribbon-validate.js"
+    "ribbon:validate": "node scripts/ribbon-validate.js",
+    "test:pagination": "node scripts/pagination_fixture.mjs"
   },
   "devDependencies": {
     "@types/node": "^20.10.6",

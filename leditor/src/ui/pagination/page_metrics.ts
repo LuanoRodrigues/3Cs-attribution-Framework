@@ -76,15 +76,10 @@ export const derivePageMetrics = ({ page, pageContent, pageStack }: PageMetricsI
   if (contentWidthPx <= 0 || contentHeightPx <= 0) {
     throw new Error("Page content has non-positive dimensions.");
   }
-  const inner = page.querySelector<HTMLElement>(".leditor-page-inner");
-  if (!inner) {
-    throw new Error("Page inner container missing for margin measurement.");
-  }
-  const innerStyles = getComputedStyle(inner);
-  const marginTopPx = readPx(innerStyles.paddingTop, "marginTop");
-  const marginRightPx = readPx(innerStyles.paddingRight, "marginRight");
-  const marginBottomPx = readPx(innerStyles.paddingBottom, "marginBottom");
-  const marginLeftPx = readPx(innerStyles.paddingLeft, "marginLeft");
+  const marginTopPx = Math.max(0, contentRect.top - pageRect.top);
+  const marginRightPx = Math.max(0, pageRect.right - contentRect.right);
+  const marginBottomPx = Math.max(0, pageRect.bottom - contentRect.bottom);
+  const marginLeftPx = Math.max(0, contentRect.left - pageRect.left);
   const rootStyle = getComputedStyle(document.documentElement);
   const headerDistanceValue = rootStyle.getPropertyValue("--header-height").trim();
   const footerDistanceValue = rootStyle.getPropertyValue("--footer-height").trim();

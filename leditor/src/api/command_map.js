@@ -31,6 +31,35 @@ const getBlockAtSelection = (editor) => {
     }
     return null;
 };
+const findCitationInSelection = (editor) => {
+    const citationNode = editor.schema.nodes.citation;
+    if (!citationNode)
+        return null;
+    const { selection, doc } = editor.state;
+    const { from, to, $from } = selection;
+    if (selection instanceof state_1.NodeSelection && selection.node.type === citationNode) {
+        return { node: selection.node, pos: selection.from };
+    }
+    const after = $from.nodeAfter;
+    if ((after === null || after === void 0 ? void 0 : after.type) === citationNode) {
+        return { node: after, pos: from };
+    }
+    const before = $from.nodeBefore;
+    if ((before === null || before === void 0 ? void 0 : before.type) === citationNode) {
+        return { node: before, pos: from - before.nodeSize };
+    }
+    let found = null;
+    const searchFrom = Math.max(0, from - 1);
+    const searchTo = Math.min(doc.content.size, to + 1);
+    doc.nodesBetween(searchFrom, searchTo, (node, pos) => {
+        if (node.type === citationNode) {
+            found = { node, pos };
+            return false;
+        }
+        return true;
+    });
+    return found;
+};
 const parseToCm = (value, fallback) => {
     if (typeof value === "number" && Number.isFinite(value))
         return value;

@@ -1,405 +1,403 @@
-/* home.css — Home tab styling (FULL REPLACEMENT)
-   Targets the actual DOM you pasted:
-   - .leditor-ribbon-panel[data-tab-id="home"]
-   - group ids: clipboard/font/paragraph/styles/editing
-   - cluster modifiers: .ribbon-cluster--row/.--grid/.--column/.--segmented/.--undefined
-   - cluster names: .ribbon-cluster-<group>-<name> (e.g., ribbon-cluster-font-toggles)
+/* home.css — Home tab foundation (refactored)
+   We keep the ribbon's semantic classes but switch to a declarative grid-driven layout
+   per-group so clusters no longer compete for the same space. The focus is clarity and
+   stable alignment rather than one-off overrides.
 */
 
-/* =========================================================
-   HOME PATCH: prevent blank buttons when icons are placeholders
-   ========================================================= */
+.leditor-ribbon-panel[data-tab-id="home"] {
+  --home-gap: 12px;
+  --home-gap-tight: 8px;
+  --home-ctl-h: var(--r-ctl-h-md);
+  --home-border: 1px solid rgba(0, 0, 0, 0.16);
+  --home-divider: 1px solid rgba(0, 0, 0, 0.12);
+  --home-ctl-bg: #fff;
+  --home-ctl-active: rgba(59, 130, 246, 0.2);
+  --home-surface: #ffffff;
+  font-family: "Segoe UI", "Segoe UI Semilight", system-ui, sans-serif;
+}
 
-/* 1) Re-enable labels for small buttons that have ONLY placeholder icons
-      (these would otherwise render blank inside grid/segmented clusters). */
-.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster--grid
-  .leditor-ribbon-button--small:has(.leditor-ribbon-icon-placeholder) .ribbon-button-label,
-.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster--segmented
-  .leditor-ribbon-button--small:has(.leditor-ribbon-icon-placeholder) .ribbon-button-label{
+.leditor-ribbon-panel[data-tab-id="home"] .leditor-ribbon-group {
+  min-width: 240px;
+  max-width: 540px;
+  display: flex;
+  flex-direction: column;
+}
+
+.leditor-ribbon-panel[data-tab-id="home"] .leditor-ribbon-group-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--home-gap);
+  align-content: start;
+}
+
+.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--home-gap-tight);
+}
+
+.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster--row {
+  justify-content: flex-start;
+}
+
+.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster--grid {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(36px, auto);
+  justify-items: center;
+}
+
+.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster--segmented {
+  display: inline-flex;
+  gap: 0;
+  border: var(--home-border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--home-ctl-bg);
+}
+
+.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster--segmented > button {
+  border: 0;
+  border-radius: 0;
+  margin: 0;
+  box-shadow: none;
+}
+
+.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster--segmented > button[aria-pressed="true"] {
+  background: var(--home-ctl-active);
+}
+
+/* -------------------------------------------------------------------------- */
+/* per-group tuning — these grid patterns keep each section aligned independently */
+
+.leditor-ribbon-panel[data-tab-id="home"] .ribbonGroup[data-group-id="clipboard"] .leditor-ribbon-group-body {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.leditor-ribbon-panel[data-tab-id="home"] .ribbonGroup[data-group-id="font"] .leditor-ribbon-group-body {
+  grid-template-columns: repeat(4, minmax(90px, 1fr));
+}
+
+.leditor-ribbon-panel[data-tab-id="home"] .ribbonGroup[data-group-id="paragraph"] .leditor-ribbon-group-body {
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+
+.leditor-ribbon-panel[data-tab-id="home"] .ribbonGroup[data-group-id="styles"] .leditor-ribbon-group-body {
+  grid-template-columns: repeat(3, minmax(140px, 1fr));
+  grid-auto-rows: auto;
+}
+
+.leditor-ribbon-panel[data-tab-id="home"] .ribbonGroup[data-group-id="editing"] .leditor-ribbon-group-body {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+/* -------------------------------------------------------------------------- */
+/* Precise Word-like grids to stop overlap/stacking                           */
+
+/* Clipboard: 2x2 with Paste spanning both rows */
+.leditor-ribbon-panel[data-tab-id="home"] [data-group-id="clipboard"] .leditor-ribbon-group-body {
+  grid-template-columns: 140px 1fr;
+  grid-template-rows: auto auto;
+  grid-template-areas:
+    "paste actions"
+    "paste history";
+}
+.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster-clipboard-paste { grid-area: paste; }
+.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster-clipboard-actions {
+  grid-area: actions;
+  display: grid;
+  grid-template-columns: repeat(3, 40px);
+  justify-items: center;
+}
+.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster-clipboard-history { grid-area: history; }
+
+/* Font: three columns (styles | toggles | color/clear) */
+.leditor-ribbon-panel[data-tab-id="home"] [data-group-id="font"] .leditor-ribbon-group-body {
+  grid-template-columns: minmax(320px, 2fr) minmax(200px, 1fr) minmax(200px, 1fr);
+  grid-template-rows: repeat(3, auto);
+  grid-template-areas:
+    "styles toggles color"
+    "styles toggles color"
+    "styles toggles color";
+}
+.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster-font-styles {
+  grid-area: styles;
+  display: grid;
+  grid-template-columns: minmax(160px, 1.1fr) minmax(150px, 1fr) auto auto;
+  gap: var(--home-gap-tight);
+  align-items: center;
+  min-width: 340px;
+}
+.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster-font-toggles {
+  grid-area: toggles;
+  display: grid;
+  grid-template-columns: repeat(5, 34px);
+  grid-auto-rows: var(--home-ctl-h);
+  justify-items: center;
+  align-items: center;
+}
+.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster-font-colorAndClear {
+  grid-area: color;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--home-gap-tight);
+  align-items: center;
+  min-width: 200px;
+}
+
+/* Paragraph: 2 x 2 grid (lists|indent / alignment|spacing) */
+.leditor-ribbon-panel[data-tab-id="home"] [data-group-id="paragraph"] .leditor-ribbon-group-body {
+  grid-template-columns: minmax(240px, 1.1fr) minmax(260px, 1fr);
+  grid-template-rows: auto auto;
+  grid-template-areas:
+    "lists indent"
+    "align spacing";
+}
+.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster-paragraph-lists {
+  grid-area: lists;
+  display: grid;
+  grid-template-columns: repeat(4, 38px);
+  justify-items: center;
+}
+.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster-paragraph-indentAndMarks {
+  grid-area: indent;
+  display: grid;
+  grid-template-columns: repeat(4, 36px);
+  justify-items: center;
+}
+.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster-paragraph-alignment {
+  grid-area: align;
+  display: inline-flex;
+  gap: 2px;
+}
+.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster-paragraph-spacingAndBorders {
+  grid-area: spacing;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--home-gap-tight);
+  align-items: center;
+}
+
+/* Styles: gallery row + actions on the side */
+.leditor-ribbon-panel[data-tab-id="home"] [data-group-id="styles"] .leditor-ribbon-group-body {
+  grid-template-columns: minmax(320px, 2fr) auto auto;
+  grid-template-rows: auto auto;
+  grid-template-areas:
+    "gallery pane manage"
+    "templates templates templates";
+  column-gap: var(--home-gap);
+  row-gap: var(--home-gap-tight);
+  align-items: start;
+}
+.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster-styles-gallery { grid-area: gallery; }
+.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster-styles-pane { grid-area: pane; justify-content: flex-end; }
+.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster-styles-manage { grid-area: manage; justify-content: flex-end; }
+.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster-styles-quickTemplates { grid-area: templates; }
+
+/* Editing: single row, wrap if needed but keep spacing */
+.leditor-ribbon-panel[data-tab-id="home"] [data-group-id="editing"] .leditor-ribbon-group-body {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-auto-flow: row;
+}
+.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster-editing-primary {
+  display: flex;
+  gap: var(--home-gap);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Button fallbacks and split controls (copied from previous theme) */
+
+.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster--grid .leditor-ribbon-button--small:has(.leditor-ribbon-icon-placeholder) .ribbon-button-label,
+.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster--segmented .leditor-ribbon-button--small:has(.leditor-ribbon-icon-placeholder) .ribbon-button-label {
   display: inline;
   font-size: 11px;
   line-height: 1;
 }
 
-/* If your Chromium target does NOT support :has(), you must use the fallback block below.
-   Leave BOTH blocks; modern Chromium will use :has(), older will use the fallback. */
 @supports not selector(:has(*)) {
-  /* Fallback: show labels in grid/segmented, but keep them visually compact.
-     This avoids blank controls at the cost of slightly denser rows. */
   .leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster--grid .leditor-ribbon-button--small .ribbon-button-label,
-  .leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster--segmented .leditor-ribbon-button--small .ribbon-button-label{
+  .leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster--segmented .leditor-ribbon-button--small .ribbon-button-label {
     display: inline;
     font-size: 11px;
     line-height: 1;
   }
   .leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster--grid .leditor-ribbon-button--small,
-  .leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster--segmented .leditor-ribbon-button--small{
-    width: auto;
+  .leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster--segmented .leditor-ribbon-button--small {
     min-width: 0;
     padding: 0 8px;
     justify-content: center;
   }
 }
 
-/* 2) Provide a deterministic fallback “icon” when an icon placeholder is empty.
-      This prevents medium dropdown-only buttons (no label) from being invisible. */
-.leditor-ribbon-panel[data-tab-id="home"] .leditor-ribbon-icon-placeholder{
+.leditor-ribbon-panel[data-tab-id="home"] .leditor-ribbon-icon-placeholder {
   position: relative;
 }
 
-/* Default fallback glyph */
-.leditor-ribbon-panel[data-tab-id="home"] .leditor-ribbon-icon-placeholder::before{
+.leditor-ribbon-panel[data-tab-id="home"] .leditor-ribbon-icon-placeholder::before {
   content: "•";
   font-size: 14px;
   line-height: 1;
   opacity: 0.65;
 }
 
-/* Better fallback for dropdown-only controls: show a chevron */
-.leditor-ribbon-panel[data-tab-id="home"] button.ribbon-dropdown-button .leditor-ribbon-icon-placeholder::before{
+.leditor-ribbon-panel[data-tab-id="home"] button.ribbon-dropdown-button .leditor-ribbon-icon-placeholder::before {
   content: "▾";
   font-size: 14px;
   opacity: 0.75;
 }
 
-/* Split-button caret: show chevron instead of "?" */
-.leditor-ribbon-panel[data-tab-id="home"] .leditor-split-caret{
-  position: relative;
+.leditor-ribbon-panel[data-tab-id="home"] .leditor-split-caret {
+  font-size: 0;
 }
-.leditor-ribbon-panel[data-tab-id="home"] .leditor-split-caret{
-  font-size: 0; /* hide literal "?" text if present */
-}
-.leditor-ribbon-panel[data-tab-id="home"] .leditor-split-caret::before{
+
+.leditor-ribbon-panel[data-tab-id="home"] .leditor-split-caret::before {
   content: "▾";
   font-size: 14px;
   line-height: 1;
   opacity: 0.85;
 }
 
-/* 3) For dropdown-only buttons with no label span, enforce minimum width
-      so the glyph is not clipped. */
-.leditor-ribbon-panel[data-tab-id="home"] button.ribbon-dropdown-button{
+.leditor-ribbon-panel[data-tab-id="home"] button.ribbon-dropdown-button {
   min-width: 34px;
   padding: 0 8px;
   justify-content: center;
 }
 
-/* 4) Keep icon+label compact when label is visible in dense grids */
-.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster--grid .leditor-ribbon-button--small,
-.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster--segmented .leditor-ribbon-button--small{
-  gap: 6px;
-}
-
-
-/* =========================================================
-   Split button styling (Paste, Underline, Bullets, Numbering, Find)
-   ========================================================= */
-.leditor-ribbon-panel[data-tab-id="home"] .leditor-split-button{
+.leditor-ribbon-panel[data-tab-id="home"] .leditor-split-button {
   display: inline-flex;
   border: var(--home-border);
-  border-radius: 7px;
-  overflow: hidden;
+  border-radius: 8px;
   background: var(--home-ctl-bg);
+  overflow: hidden;
   height: var(--home-ctl-h);
 }
 
-.leditor-ribbon-panel[data-tab-id="home"] .leditor-split-button .leditor-split-primary{
+.leditor-ribbon-panel[data-tab-id="home"] .leditor-split-button .leditor-split-primary {
   border: 0;
   background: transparent;
   padding: 0 10px;
-  height: var(--home-ctl-h);
   display: inline-flex;
   align-items: center;
-  cursor: pointer;
+  height: 100%;
 }
 
-.leditor-ribbon-panel[data-tab-id="home"] .leditor-split-button .leditor-split-caret{
+.leditor-ribbon-panel[data-tab-id="home"] .leditor-split-button .leditor-split-caret {
   border: 0;
   border-left: var(--home-divider);
-  background: transparent;
   width: 26px;
-  height: var(--home-ctl-h);
-  display: inline-grid;
+  height: 100%;
+  background: transparent;
+  display: grid;
   place-items: center;
   cursor: pointer;
 }
 
-/* =========================================================
-   COMBOBOX + SPINNER sizing
-   ========================================================= */
-.leditor-ribbon-panel[data-tab-id="home"] .leditor-ribbon-combobox{
-  display: inline-flex;
-  align-items: center;
-  border: var(--home-border);
-  border-radius: 7px;
-  background: var(--home-ctl-bg);
-  padding: 0 8px;
-  height: var(--home-ctl-h);
-  min-width: 180px;
-}
-
-.leditor-ribbon-panel[data-tab-id="home"] .leditor-ribbon-combobox-input{
-  border: 0;
-  outline: none;
-  background: transparent;
-  width: 170px;
-  font-size: 12px;
-}
-
-.leditor-ribbon-panel[data-tab-id="home"] .ribbon-spinner-dropdown{
+.leditor-ribbon-panel[data-tab-id="home"] .ribbon-spinner-dropdown {
   display: inline-grid;
   grid-template-columns: 1fr auto auto;
   align-items: center;
-  gap: 6px;
-  border: var(--home-border);
-  border-radius: 7px;
-  background: var(--home-ctl-bg);
-  padding: 0 6px;
-  height: var(--home-ctl-h);
-  min-width: 110px;
 }
 
-.leditor-ribbon-panel[data-tab-id="home"] .ribbon-spinner-input{
-  border: 0;
-  outline: none;
+.leditor-ribbon-panel[data-tab-id="home"] .ribbon-spinner-dropdown input {
+  border: none;
   background: transparent;
   width: 60px;
   font-size: 12px;
 }
 
-.leditor-ribbon-panel[data-tab-id="home"] .ribbon-spinner-steps{
-  display: inline-flex;
-  gap: 4px;
-}
-
-.leditor-ribbon-panel[data-tab-id="home"] .leditor-ribbon-spinner-step{
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
-  border: var(--home-border);
-  background: var(--home-ctl-bg);
-  cursor: pointer;
-}
-
-/* =========================================================
-   GROUP LAYOUTS (this is what stops the “mess”)
-   ========================================================= */
-
-/* -------- Clipboard: 2x2 grid with Paste spanning rows -------- */
-.leditor-ribbon-panel[data-tab-id="home"] [data-group-id="clipboard"] .leditor-ribbon-group-body{
-  grid-template-columns: auto 1fr;
-  grid-template-rows: auto auto;
-  grid-template-areas:
-    "paste actions"
-    "paste history";
-  column-gap: var(--home-gap);
-  row-gap: var(--home-gap-tight);
-}
-
-.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster-clipboard-paste{ grid-area: paste; }
-.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster-clipboard-actions{
-  grid-area: actions;
-  grid-template-columns: repeat(3, 32px);
-}
-.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster-clipboard-history{ grid-area: history; }
-
-/* -------- Font: three stacked rows -------- */
-.leditor-ribbon-panel[data-tab-id="home"] [data-group-id="font"] .leditor-ribbon-group-body{
-  grid-template-rows: auto auto auto;
-  row-gap: var(--home-gap-tight);
-}
-
-/* styles row should not wrap into chaos */
-.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster-font-styles{
-  overflow: hidden;
-}
-
-/* toggles: enforce a compact grid so it never overlaps */
-.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster-font-toggles{
-  grid-template-columns: repeat(4, 32px);
-}
-
-/* color row: allow horizontal scroll instead of wrap-overlap */
-.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster-font-colorAndClear{
-  overflow-x: auto;
-  padding-bottom: 2px;
-}
-
-/* -------- Paragraph: 2x2 grid (lists | indent) / (alignment | spacing) -------- */
-.leditor-ribbon-panel[data-tab-id="home"] [data-group-id="paragraph"] .leditor-ribbon-group-body{
-  grid-template-columns: auto auto;
-  grid-template-rows: auto auto;
-  grid-template-areas:
-    "lists indent"
-    "align spacing";
-  column-gap: var(--home-gap);
-  row-gap: var(--home-gap-tight);
-}
-
-.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster-paragraph-lists{
-  grid-area: lists;
-  grid-template-columns: repeat(4, auto);
-}
-.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster-paragraph-indentAndMarks{
-  grid-area: indent;
-  grid-template-columns: repeat(4, 32px);
-}
-.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster-paragraph-alignment{
-  grid-area: align;
-}
-.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster-paragraph-spacingAndBorders{
-  grid-area: spacing;
-  overflow: hidden;
-}
-
-/* Segmented look for alignment cluster */
-.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster--segmented{
-  display: inline-flex;
-  gap: 0;
-  border: var(--home-border);
-  border-radius: 7px;
-  overflow: hidden;
-  background: var(--home-ctl-bg);
-}
-
-.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster--segmented > button{
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-}
-
-/* Selected toggle state (Word-like) */
-.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster--segmented > button[aria-pressed="true"]{
-  background: var(--home-ctl-active);
-}
-
-/* -------- Styles: explicit 4-column grid + 2nd row for template cards -------- */
-.leditor-ribbon-panel[data-tab-id="home"] [data-group-id="styles"] .leditor-ribbon-group-body{
-  grid-template-columns: 1fr auto auto auto;
-  grid-template-rows: auto auto;
-  grid-template-areas:
-    "gallery pane manage styleset"
-    "templates templates templates templates";
-  column-gap: var(--home-gap);
-  row-gap: var(--home-gap-tight);
-  align-items: start;
-}
-
-.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster-styles-gallery{ grid-area: gallery; }
-.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster-styles-pane{ grid-area: pane; justify-content: flex-end; }
-.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster-styles-manage{ grid-area: manage; justify-content: flex-end; }
-.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster-styles-styleSet{ grid-area: styleset; justify-content: flex-end; }
-.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster-styles-quickTemplates{ grid-area: templates; }
-
-/* “Quick Styles” placeholder block must have a stable width/height */
-.leditor-ribbon-panel[data-tab-id="home"] .ribbon-gallery[data-control-id="styles.gallery"]{
-  border: var(--home-border);
-  border-radius: 7px;
-  background: var(--home-ctl-bg);
-  padding: 6px 10px;
-  min-width: 320px;
-  height: var(--home-ctl-h);
+.leditor-ribbon-panel[data-tab-id="home"] .leditor-ribbon-combobox {
   display: inline-flex;
   align-items: center;
-  color: rgba(0,0,0,0.72);
+  border: var(--home-border);
+  border-radius: 6px;
+  padding: 0 8px;
+  background: #f6f7fb;
+  height: var(--home-ctl-h);
+  min-width: 160px;
 }
 
-/* Your cards already exist; make them true “Word-like squares” (no overlap) */
-.leditor-ribbon-panel[data-tab-id="home"] .home-quick-style-gallery{
+.leditor-ribbon-panel[data-tab-id="home"] .leditor-ribbon-combobox-input {
+  border: 0;
+  outline: none;
+  background: transparent;
+  width: 100%;
+  font-size: 12px;
+}
+
+/* Styles gallery quick templates */
+.leditor-ribbon-panel[data-tab-id="home"] .home-quick-style-gallery {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: var(--home-gap);
   align-items: stretch;
 }
 
-.leditor-ribbon-panel[data-tab-id="home"] .home-quick-style-card{
+.leditor-ribbon-panel[data-tab-id="home"] .home-quick-style-card {
   border: var(--home-border);
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--home-surface);
-  padding: 10px 10px 28px;
-  min-height: 92px;
+  padding: 16px;
+  min-height: 136px;
   position: relative;
   display: grid;
-  gap: 6px;
+  gap: 0.35rem;
   cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.leditor-ribbon-panel[data-tab-id="home"] .home-quick-style-card:hover{
-  box-shadow: 0 1px 0 rgba(0,0,0,0.02), 0 10px 22px rgba(0,0,0,0.10);
-  border-color: rgba(37,99,235,0.35);
+.leditor-ribbon-panel[data-tab-id="home"] .home-quick-style-card.is-selected {
+  border-color: #1d4ed8;
+  box-shadow: 0 15px 35px rgba(15, 23, 42, 0.15);
 }
 
-.leditor-ribbon-panel[data-tab-id="home"] .home-quick-style-card__label{
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.leditor-ribbon-panel[data-tab-id="home"] .home-quick-style-card__label {
+  font-size: 0.95rem;
+  font-weight: 600;
 }
 
-.leditor-ribbon-panel[data-tab-id="home"] .home-quick-style-card__description{
-  margin: 0;
-  font-size: 11px;
-  color: rgba(0,0,0,0.62);
-  line-height: 1.25;
+.leditor-ribbon-panel[data-tab-id="home"] .home-quick-style-card__description {
+  font-size: 0.8rem;
+  color: #475569;
+  line-height: 1.3;
+  min-height: 2rem;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
-.leditor-ribbon-panel[data-tab-id="home"] .home-quick-style-card__menu{
+.leditor-ribbon-panel[data-tab-id="home"] .home-quick-style-card__menu {
   position: absolute;
   right: 8px;
-  top: 6px;
+  top: 8px;
   border: 0;
   background: transparent;
-  cursor: pointer;
   font-size: 18px;
-  line-height: 1;
-  color: rgba(0,0,0,0.55);
-}
-.leditor-ribbon-panel[data-tab-id="home"] .home-quick-style-card__menu:hover{
-  color: rgba(37,99,235,0.9);
+  cursor: pointer;
 }
 
-/* -------- Editing: single row, no wrapping -------- */
-.leditor-ribbon-panel[data-tab-id="home"] [data-group-id="editing"] .leditor-ribbon-group-body{
-  grid-template-rows: auto;
+/* Stage B/C compaction (keep minimum widths consistent) */
+.leditor-ribbon-panel[data-tab-id="home"][data-collapse-stage="B"] .leditor-ribbon-combobox,
+.leditor-ribbon-panel[data-tab-id="home"][data-collapse-stage="C"] .leditor-ribbon-combobox {
+  min-width: 120px;
 }
 
-.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster-editing-primary{
-  overflow: hidden;
+.leditor-ribbon-panel[data-tab-id="home"][data-collapse-stage="B"] button,
+.leditor-ribbon-panel[data-tab-id="home"][data-collapse-stage="C"] button {
+  min-width: 28px;
 }
 
-.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster-editing-primary > *{
-  flex: 0 0 auto;
-}
-
-/* =========================================================
-   Stage B/C: deterministic compaction (reduce widths, keep no overlap)
-   ========================================================= */
-.leditor-ribbon-panel[data-tab-id="home"][data-collapse-stage="B"] .ribbon-gallery[data-control-id="styles.gallery"],
-.leditor-ribbon-panel[data-tab-id="home"][data-collapse-stage="C"] .ribbon-gallery[data-control-id="styles.gallery"]{
-  min-width: 240px;
-}
-
-.leditor-ribbon-panel[data-tab-id="home"][data-collapse-stage="B"] .leditor-ribbon-combobox{
-  min-width: 150px;
-}
-.leditor-ribbon-panel[data-tab-id="home"][data-collapse-stage="C"] .leditor-ribbon-combobox{
-  min-width: 130px;
-}
-
-/* If narrow: allow Styles templates to become 2 columns instead of overlapping */
-@media (max-width: 1100px){
-  .leditor-ribbon-panel[data-tab-id="home"] .home-quick-style-gallery{
+@media (max-width: 1100px) {
+  .leditor-ribbon-panel[data-tab-id="home"] .home-quick-style-gallery {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
-@media (max-width: 900px){
-  .leditor-ribbon-panel[data-tab-id="home"] .home-quick-style-gallery{
+
+@media (max-width: 900px) {
+  .leditor-ribbon-panel[data-tab-id="home"] .home-quick-style-gallery {
     grid-template-columns: 1fr;
   }
 }

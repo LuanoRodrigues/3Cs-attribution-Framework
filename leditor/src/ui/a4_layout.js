@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.mountA4Layout = void 0;
 const extension_footnote_js_1 = require("../extensions/extension_footnote.js");
 const section_state_js_1 = require("../editor/section_state.js");
+const layout_settings_js_1 = require("./layout_settings.js");
 const feature_flags_js_1 = require("./feature_flags.js");
 const STYLE_ID = "leditor-a4-layout-styles";
 const PAGE_BOUNDARY_KINDS = new Set(["page", "section_next", "section_even", "section_odd"]);
@@ -180,23 +181,28 @@ const ensureStyles = () => {
 .leditor-page-inner {
   position: absolute;
   inset: 0;
-  padding: var(--local-page-margin-top, var(--page-margin-top)) var(--local-page-margin-right, var(--page-margin-right))
-    var(--local-page-margin-bottom, var(--page-margin-bottom)) var(--local-page-margin-left, var(--page-margin-left));
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  padding: 0;
+  display: block;
   box-sizing: border-box;
 }
 
 .leditor-page-content {
-  flex: 1 1 auto;
-  min-height: 0;
-  width: 100%;
-  column-count: var(--page-columns, 1);
-  column-gap: 24px;
-  overflow-y: auto;
-  overflow-x: hidden;
-  display: block;
+  position: absolute;
+  top: var(--local-page-margin-top, var(--page-margin-top));
+  left: var(--local-page-margin-left, var(--page-margin-left));
+  width: calc(
+    var(--local-page-width, var(--page-width)) -
+      (var(--local-page-margin-left, var(--page-margin-left)) +
+        var(--local-page-margin-right, var(--page-margin-right)))
+  );
+  height: calc(
+    var(--local-page-height, var(--page-height)) -
+      (var(--local-page-margin-top, var(--page-margin-top)) +
+        var(--local-page-margin-bottom, var(--page-margin-bottom)) +
+        var(--page-footnote-height, 0px))
+  );
+  padding: 0;
+  overflow: hidden;
   pointer-events: auto;
 }
 
@@ -208,27 +214,30 @@ const ensureStyles = () => {
   font-weight: bold;
   color: var(--page-header-color);
   min-height: var(--header-height);
+  position: absolute;
+  left: var(--local-page-margin-left, var(--page-margin-left));
+  right: var(--local-page-margin-right, var(--page-margin-right));
   display: flex;
   align-items: center;
   justify-content: flex-end;
   padding: 0 12px;
   box-sizing: border-box;
-  flex: 0 0 auto;
 }
 
 .leditor-page-header {
-  margin-top: 0;
+  top: var(--header-offset);
 }
 
 .leditor-page-footer {
-  margin-top: auto;
-  color: var(--page-footer-color);
+  bottom: var(--footer-offset);
   text-transform: none;
 }
 
 .leditor-page-footnotes {
-  flex: 0 0 auto;
-  width: 100%;
+  position: absolute;
+  left: var(--local-page-margin-left, var(--page-margin-left));
+  right: var(--local-page-margin-right, var(--page-margin-right));
+  bottom: calc(var(--footer-height) + var(--local-page-margin-bottom, var(--page-margin-bottom)));
   min-height: 0;
   overflow: hidden;
   font-size: var(--footnote-font-size);
@@ -307,7 +316,7 @@ const ensureStyles = () => {
 .leditor-header-footer-editing .leditor-page-overlay .leditor-page-footer {
   pointer-events: auto;
   opacity: 1;
-  color: #222222;
+  color: var(--page-header-color);
   outline: 1px dashed rgba(69, 82, 107, 0.6);
   background: rgba(255, 255, 255, 0.85);
 }
@@ -596,6 +605,27 @@ const mountA4Layout = (appRoot, editorEl, options = {}) => {
     const PAGE_SURFACE_STORAGE_KEY = "leditor:page-surface";
     let paginationQueued = false;
     const paginationEnabled = feature_flags_js_1.featureFlags.paginationEnabled;
+    let suspendPageObserver = false;
+    let lastUserScrollAt = 0;
+    canvas.addEventListener("scroll", () => {
+        lastUserScrollAt = performance.now();
+    });
+    const determineGridMode = (zoom) => {
+        if (zoom > 2.5)
+            return "grid-9";
+        if (zoom > 1.8)
+            return "grid-4";
+        if (zoom > 1.2)
+            return "grid-2";
+        return "stack";
+    };
+    let gridMode = "stack";
+    const getTargetGridMode = () => (viewMode === "two-page" ? "grid-2" : determineGridMode(zoomValue));
+    const applyGridMode = () => {
+        gridMode = getTargetGridMode();
+        pageStack.dataset.gridMode = gridMode;
+        overlayLayer.dataset.gridMode = gridMode;
+    };
     const normalizeHeaderFooterHtml = (html) => html.replace(/\{pageNumber\}/gi, '<span class="leditor-page-number"></span>');
     const setRegionEditable = (element, editable) => {
         element.contentEditable = editable ? "true" : "false";
@@ -937,14 +967,37 @@ const mountA4Layout = (appRoot, editorEl, options = {}) => {
         if (!prose) {
             throw new Error("ProseMirror root missing after attach.");
         }
-        prose.focus();
+        const activeEl = document.activeElement;
+        if (!activeEl || !editorEl.contains(activeEl)) {
+            prose.focus({ preventScroll: true });
+        }
         setEditorEditable(true);
     };
     const renderPages = (count) => {
         if (paginationEnabled) {
-            pageStack.innerHTML = "";
+            Array.from(pageStack.children).forEach((child) => {
+                if (child !== editorEl)
+                    child.remove();
+            });
             overlayLayer.innerHTML = "";
+            if (window.__leditorPaginationDebug) {
+                console.info("[PaginationDebug] renderPages start (paginationEnabled)", {
+                    requestedCount: count,
+                    editorPages: editorEl.querySelectorAll(".leditor-page").length
+                });
+            }
             attachEditorForMode();
+            const pageCount = Math.max(1, editorEl.querySelectorAll(".leditor-page").length);
+            for (let i = 0; i < pageCount; i += 1) {
+                overlayLayer.appendChild(buildOverlayPage(i));
+            }
+            if (window.__leditorPaginationDebug) {
+                console.info("[PaginationDebug] renderPages pages appended", { overlayCount: overlayLayer.children.length });
+            }
+            applySectionLayouts(pageCount);
+            syncHeaderFooter();
+            updatePageNumbers();
+            applyGridMode();
             return;
         }
         pageStack.innerHTML = "";
@@ -956,6 +1009,7 @@ const mountA4Layout = (appRoot, editorEl, options = {}) => {
         applySectionLayouts(count);
         syncHeaderFooter();
         updatePageNumbers();
+        applyGridMode();
     };
     const measurePageHeight = () => {
         const page = pageStack.querySelector(".leditor-page");
@@ -992,47 +1046,108 @@ const mountA4Layout = (appRoot, editorEl, options = {}) => {
         return Math.max(1, Math.ceil((contentHeight + gap) / total));
     };
   const updatePagination = () => {
-    const overlayPageCount = overlayLayer.children.length;
-    const editorPageCount = editorEl.querySelectorAll(".leditor-page").length;
-    const firstOverlay = overlayLayer.querySelector(".leditor-page-overlay");
-    const overlayInfo = {
-      overlayPageCount,
-      overlayVisible: overlayLayer.style.display || window.getComputedStyle(overlayLayer).display,
-      overlayHeight: (firstOverlay === null || firstOverlay === void 0 ? void 0 : firstOverlay.offsetHeight) ?? null,
-      overlayWidth: (firstOverlay === null || firstOverlay === void 0 ? void 0 : firstOverlay.offsetWidth) ?? null
-    };
-    const pageStackInfo = {
-      stackChildCount: pageStack.children.length,
-      stackDisplay: pageStack.style.display || window.getComputedStyle(pageStack).display,
-      stackPointerEvents: pageStack.style.pointerEvents
-    };
-    const pageStackRect = pageStack.getBoundingClientRect();
-    const editorRect = editorEl.getBoundingClientRect();
-    console.info("[PaginationDebug] pagination state", {
-      paginationEnabled,
-      pageCount,
-      editorPageCount,
-      overlayInfo,
-      pageStackInfo,
-      pageStackHeight: pageStackRect.height,
-      pageStackWidth: pageStackRect.width,
-      editorHeight: editorRect.height,
-      editorWidth: editorRect.width,
-      editorScrollHeight: editorEl.scrollHeight,
-      editorScrollWidth: editorEl.scrollWidth
-    });
-    const ensureOverlayPages = (count) => {
-      if (overlayLayer.children.length === 0) {
-        renderPages(count);
-        return true;
-      }
-      return false;
-    };
-    if (paginationEnabled) {
-      const nextCount = Math.max(1, editorEl.querySelectorAll(".leditor-page").length);
-      if (ensureOverlayPages(nextCount)) {
+    suspendPageObserver = true;
+    const scrollTopBefore = canvas.scrollTop;
+    const scrollLeftBefore = canvas.scrollLeft;
+    try {
+      const rootStyle = getComputedStyle(document.documentElement);
+      const pageColumns = rootStyle.getPropertyValue("--page-columns").trim();
+      if (pageColumns && pageColumns !== "1") {
+        console.warn("[PaginationDebug] forcing page columns to 1", { pageColumns });
+        (0, layout_settings_js_1.setSectionColumns)(1);
         return;
       }
+      if (window.__leditorPaginationDebug) {
+        console.info("[PaginationDebug] css tokens", {
+          pageWidth: rootStyle.getPropertyValue("--page-width").trim(),
+          pageHeight: rootStyle.getPropertyValue("--page-height").trim(),
+          marginTop: rootStyle.getPropertyValue("--page-margin-top").trim(),
+          marginRight: rootStyle.getPropertyValue("--page-margin-right").trim(),
+          marginBottom: rootStyle.getPropertyValue("--page-margin-bottom").trim(),
+          marginLeft: rootStyle.getPropertyValue("--page-margin-left").trim(),
+          docPageWidth: rootStyle.getPropertyValue("--doc-page-width").trim(),
+          docPageHeight: rootStyle.getPropertyValue("--doc-page-height").trim(),
+          docMarginTop: rootStyle.getPropertyValue("--doc-margin-top").trim(),
+          docMarginRight: rootStyle.getPropertyValue("--doc-margin-right").trim(),
+          docMarginBottom: rootStyle.getPropertyValue("--doc-margin-bottom").trim(),
+          docMarginLeft: rootStyle.getPropertyValue("--doc-margin-left").trim(),
+          pageColumns
+        });
+        const sampleContent = editorEl.querySelector(".leditor-page-content");
+        if (sampleContent) {
+          const rect = sampleContent.getBoundingClientRect();
+          const contentStyle = getComputedStyle(sampleContent);
+          console.info("[PaginationDebug] content rect", {
+            width: rect.width,
+            height: rect.height,
+            top: rect.top,
+            left: rect.left,
+            columnCount: contentStyle.columnCount,
+            columnGap: contentStyle.columnGap
+          });
+        }
+      }
+      const overlayPageCount = overlayLayer.children.length;
+      const editorPageCount = editorEl.querySelectorAll(".leditor-page").length;
+      const firstOverlay = overlayLayer.querySelector(".leditor-page-overlay");
+      const overlayInfo = {
+        overlayPageCount,
+        overlayVisible: overlayLayer.style.display || window.getComputedStyle(overlayLayer).display,
+        overlayHeight: (firstOverlay === null || firstOverlay === void 0 ? void 0 : firstOverlay.offsetHeight) ?? null,
+        overlayWidth: (firstOverlay === null || firstOverlay === void 0 ? void 0 : firstOverlay.offsetWidth) ?? null
+      };
+      const pageStackInfo = {
+        stackChildCount: pageStack.children.length,
+        stackDisplay: pageStack.style.display || window.getComputedStyle(pageStack).display,
+        stackPointerEvents: pageStack.style.pointerEvents
+      };
+      if (window.__leditorPaginationDebug) {
+        const pageStackRect = pageStack.getBoundingClientRect();
+        const editorRect = editorEl.getBoundingClientRect();
+        console.info("[PaginationDebug] pagination state", {
+          paginationEnabled,
+          pageCount,
+          editorPageCount,
+          overlayInfo,
+          pageStackInfo,
+          pageStackHeight: pageStackRect.height,
+          pageStackWidth: pageStackRect.width,
+          editorHeight: editorRect.height,
+          editorWidth: editorRect.width,
+          editorScrollHeight: editorEl.scrollHeight,
+          editorScrollWidth: editorEl.scrollWidth
+        });
+      }
+      const ensureOverlayPages = (count) => {
+        const current = overlayLayer.children.length;
+        if (current !== count) {
+          renderPages(count);
+          return true;
+        }
+        return false;
+      };
+      if (paginationEnabled) {
+        const nextCount = Math.max(1, editorEl.querySelectorAll(".leditor-page").length);
+        if (ensureOverlayPages(nextCount)) {
+          applySectionLayouts(nextCount);
+          syncHeaderFooter();
+          updatePageNumbers();
+          return;
+        }
+        if (nextCount !== pageCount) {
+          pageCount = nextCount;
+          renderPages(pageCount);
+        }
+        else {
+          applySectionLayouts(pageCount);
+          syncHeaderFooter();
+          updatePageNumbers();
+        }
+        return;
+      }
+      const heightCount = computeHeightPages();
+      const manualCount = countManualPageBreaks(editorEl) + 1;
+      const nextCount = Math.max(heightCount, manualCount);
       if (nextCount !== pageCount) {
         pageCount = nextCount;
         renderPages(pageCount);
@@ -1040,22 +1155,17 @@ const mountA4Layout = (appRoot, editorEl, options = {}) => {
       else {
         applySectionLayouts(pageCount);
         syncHeaderFooter();
-        updatePageNumbers();
       }
-      return;
+      updateContentHeight();
     }
-    const heightCount = computeHeightPages();
-    const manualCount = countManualPageBreaks(editorEl) + 1;
-    const nextCount = Math.max(heightCount, manualCount);
-    if (nextCount !== pageCount) {
-      pageCount = nextCount;
-      renderPages(pageCount);
+    finally {
+      const now = performance.now();
+      if (now - lastUserScrollAt < 250) {
+        canvas.scrollTop = scrollTopBefore;
+        canvas.scrollLeft = scrollLeftBefore;
+      }
+      suspendPageObserver = false;
     }
-    else {
-      applySectionLayouts(pageCount);
-      syncHeaderFooter();
-    }
-    updateContentHeight();
   };
     const requestPagination = () => {
         if (paginationQueued)
@@ -1105,6 +1215,7 @@ const mountA4Layout = (appRoot, editorEl, options = {}) => {
         const nextZoom = clamp(containerWidth / targetWidth, minZoom, maxZoom);
         zoomValue = nextZoom;
         canvas.style.setProperty("--page-zoom", String(zoomValue));
+        applyGridMode();
     };
     const setZoom = (value) => {
         const minZoom = getCssNumber(canvas, "--min-zoom", 0.3);
@@ -1112,6 +1223,7 @@ const mountA4Layout = (appRoot, editorEl, options = {}) => {
         zoomValue = clamp(value, minZoom, maxZoom);
         viewMode = "single";
         canvas.style.setProperty("--page-zoom", String(zoomValue));
+        applyGridMode();
     };
     const setViewMode = (mode) => {
         viewMode = mode;
@@ -1119,6 +1231,7 @@ const mountA4Layout = (appRoot, editorEl, options = {}) => {
         overlayLayer.classList.toggle("is-two-page", mode === "two-page");
         if (mode === "single") {
             canvas.style.setProperty("--page-zoom", String(zoomValue));
+            applyGridMode();
             return;
         }
         updateZoomForViewMode();
@@ -1263,7 +1376,11 @@ const mountA4Layout = (appRoot, editorEl, options = {}) => {
     scheduleFootnoteUpdate();
     const footnoteObserver = new MutationObserver(() => scheduleFootnoteUpdate());
     footnoteObserver.observe(editorEl, { childList: true, subtree: true, characterData: true });
-    const pageObserver = new MutationObserver(() => requestPagination());
+    const pageObserver = new MutationObserver(() => {
+        if (suspendPageObserver)
+            return;
+        requestPagination();
+    });
     pageObserver.observe(editorEl, { childList: true, subtree: true });
     const marginDebug = {
         log() {
@@ -1308,7 +1425,6 @@ const mountA4Layout = (appRoot, editorEl, options = {}) => {
         requestPagination();
         updateZoomForViewMode();
     });
-    resizeObserver.observe(pageStack);
     resizeObserver.observe(canvas);
     return {
         updatePagination,

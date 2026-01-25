@@ -317,7 +317,7 @@
             {
               "controlId": "font.style",
               "label": "Style",
-              "type": "dropdown",
+              "type": "button",
               "size": "mediumWide",
               "iconKey": "icon.paragraphStyle",
               "command": {
@@ -1653,7 +1653,7 @@
           "controls": [
             {
               "controlId": "styles.gallery",
-              "label": "Quick Styles",
+              "label": "",
               "type": "gallery",
               "size": "gallery",
               "iconKey": "icon.styles",
@@ -1744,108 +1744,12 @@
             {
               "controlId": "styles.manage",
               "label": "Manage Styles",
-              "type": "dropdown",
+              "type": "button",
               "size": "small",
               "iconKey": "icon.manageStyles",
               "command": {
                 "id": "styles.manage.openMenu"
               },
-              "menu": [
-                {
-                  "controlId": "styles.create",
-                  "label": "New Style\u2026",
-                  "type": "menuItem",
-                  "command": {
-                    "id": "styles.create.openDialog"
-                  }
-                },
-                {
-                  "controlId": "styles.modify",
-                  "label": "Modify Style\u2026",
-                  "type": "menuItem",
-                  "command": {
-                    "id": "styles.modify.openDialog"
-                  }
-                },
-                {
-                  "controlId": "styles.clear",
-                  "label": "Clear Style",
-                  "type": "menuItem",
-                  "command": {
-                    "id": "styles.clear"
-                  }
-                },
-                {
-                  "type": "separator"
-                },
-                {
-                  "controlId": "styles.importExport",
-                  "label": "Import/Export\u2026",
-                  "type": "menuItem",
-                  "command": {
-                    "id": "styles.io.openDialog"
-                  }
-                }
-              ],
-              "collapse": {
-                "A": "optional",
-                "B": "inOverflow",
-                "C": "inFlyout"
-              }
-            }
-          ]
-        },
-        {
-          "clusterId": "styles.styleSet",
-          "controls": [
-            {
-              "controlId": "styles.styleSet",
-              "label": "Style Set",
-              "type": "dropdown",
-              "size": "small",
-              "iconKey": "icon.styleSet",
-              "command": {
-                "id": "styles.styleSet.openMenu"
-              },
-              "state": {
-                "binding": "styleSet",
-                "kind": "string|mixed"
-              },
-              "menu": [
-                {
-                  "controlId": "styles.set.default",
-                  "label": "Default",
-                  "type": "menuItem",
-                  "command": {
-                    "id": "styles.styleSet.set",
-                    "payloadSchema": {
-                      "setId": "default"
-                    }
-                  }
-                },
-                {
-                  "controlId": "styles.set.modern",
-                  "label": "Modern",
-                  "type": "menuItem",
-                  "command": {
-                    "id": "styles.styleSet.set",
-                    "payloadSchema": {
-                      "setId": "modern"
-                    }
-                  }
-                },
-                {
-                  "controlId": "styles.set.classic",
-                  "label": "Classic",
-                  "type": "menuItem",
-                  "command": {
-                    "id": "styles.styleSet.set",
-                    "payloadSchema": {
-                      "setId": "classic"
-                    }
-                  }
-                }
-              ],
               "collapse": {
                 "A": "optional",
                 "B": "inOverflow",

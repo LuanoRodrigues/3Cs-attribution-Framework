@@ -13,6 +13,8 @@
   "page": {
     "sizePresets": [
       { "id": "a4", "label": "A4", "widthIn": 8.27, "heightIn": 11.69 },
+      { "id": "a5", "label": "A5", "widthIn": 5.83, "heightIn": 8.27 },
+      { "id": "a3", "label": "A3", "widthIn": 11.69, "heightIn": 16.54 },
       { "id": "letter", "label": "Letter", "widthIn": 8.5, "heightIn": 11 },
       { "id": "legal", "label": "Legal", "widthIn": 8.5, "heightIn": 14 }
     ],

@@ -76,29 +76,33 @@ const shouldSplitAfter = (el: HTMLElement): boolean => {
   return false;
 };
 
+// Require extra slack before joining to avoid split/join oscillation at boundaries.
+const JOIN_BUFFER_PX = 12;
+
 const findSplitTarget = (content: HTMLElement, tolerance = 1): { target: HTMLElement; after: boolean } | null => {
-  const contentRect = content.getBoundingClientRect();
-  const contentHeight = contentRect.height;
+  const contentHeight = content.clientHeight;
   if (contentHeight <= 0) {
-    logDebug("page content rect height is non-positive", { contentHeight });
+    logDebug("page content height is non-positive", { contentHeight });
     return null;
   }
-  const bottomLimit = contentRect.top + contentHeight + tolerance;
   const children = Array.from(content.children).filter(
     (node): node is HTMLElement => node instanceof HTMLElement
   );
+  let lastBottom = 0;
   for (let i = 0; i < children.length; i += 1) {
     const child = children[i];
     if (shouldSplitAfter(child)) {
       logDebug("manual break forces split", { tag: child.tagName, index: i });
       return { target: child, after: true };
     }
-    const childRect = child.getBoundingClientRect();
-    if (childRect.bottom > bottomLimit) {
+    const marginBottom = parseFloat(getComputedStyle(child).marginBottom || "0") || 0;
+    const bottom = child.offsetTop + child.offsetHeight + marginBottom;
+    lastBottom = Math.max(lastBottom, bottom);
+    if (bottom > contentHeight + tolerance) {
       if (i === 0) {
         logDebug("overflow on first block; skipping split", {
           tag: child.tagName,
-          bottom: childRect.bottom,
+          bottom,
           contentHeight,
           tolerance
         });
@@ -107,11 +111,18 @@ const findSplitTarget = (content: HTMLElement, tolerance = 1): { target: HTMLEle
       logDebug("overflow split target", {
         tag: child.tagName,
         index: i,
-        bottom: childRect.bottom,
+        bottom,
         contentHeight
       });
       return { target: child, after: false };
     }
+  }
+  if (debugEnabled()) {
+    logDebug("no split target", {
+      contentHeight,
+      scrollHeight: content.scrollHeight,
+      lastBottom
+    });
   }
   return null;
 };
@@ -133,9 +144,12 @@ const findJoinBoundary = (view: any, pageType: any, tolerance = 1): number | nul
     if (last && shouldSplitAfter(last)) {
       continue;
     }
-    const used = last ? last.offsetTop + last.offsetHeight : 0;
+    const lastMarginBottom = last ? parseFloat(getComputedStyle(last).marginBottom || "0") || 0 : 0;
+    const used = last ? last.offsetTop + last.offsetHeight + lastMarginBottom : 0;
     const remaining = content.clientHeight - used;
-    if (remaining + tolerance >= nextFirst.offsetHeight) {
+    const nextMarginTop = parseFloat(getComputedStyle(nextFirst).marginTop || "0") || 0;
+    const nextHeight = nextMarginTop + nextFirst.offsetHeight;
+    if (remaining + tolerance >= nextHeight + JOIN_BUFFER_PX) {
       let pos = 0;
       for (let idx = 0; idx <= i; idx += 1) {
         const child = view.state.doc.child(idx);

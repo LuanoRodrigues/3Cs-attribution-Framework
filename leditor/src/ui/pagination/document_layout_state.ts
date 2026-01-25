@@ -8,6 +8,7 @@ type LayoutState = {
   orientation: "portrait" | "landscape";
   marginsPresetId: string;
   marginsCustomIn: { top: number; right: number; bottom: number; left: number } | null;
+  columnsCount: number;
   gutterIn: number;
   gutterPositionId: "left" | "top";
   headerDistanceIn: number;
@@ -32,6 +33,7 @@ const state: LayoutState = {
   orientation: spec.page.defaultOrientation as "portrait" | "landscape",
   marginsPresetId: spec.margins.defaultPresetId,
   marginsCustomIn: null,
+  columnsCount: 1,
   gutterIn: spec.margins.gutter.defaultIn,
   gutterPositionId: spec.margins.gutter.defaultPositionId as "left" | "top",
   headerDistanceIn: spec.headerFooter.default.headerDistanceIn,
@@ -111,6 +113,16 @@ export const setMarginsCustom = (values: {
     left: parseLengthIn(values.left)
   };
   state.marginsPresetId = "custom";
+};
+
+export const setColumns = (count: number): void => {
+  if (!Number.isFinite(count) || !Number.isInteger(count)) {
+    throw new Error("Column count must be a finite integer.");
+  }
+  if (count < 1) {
+    throw new Error("Column count must be at least 1.");
+  }
+  state.columnsCount = count;
 };
 
 export const setGutter = (values: {
@@ -198,4 +210,5 @@ export const applyDocumentLayoutTokens = (root: HTMLElement): void => {
   root.style.setProperty("--page-margin-left", `${computePx(marginLeft)}px`);
   root.style.setProperty("--page-margin-inside", `${computePx(marginLeft)}px`);
   root.style.setProperty("--page-margin-outside", `${computePx(marginRight)}px`);
+  root.style.setProperty("--page-columns", String(state.columnsCount));
 };

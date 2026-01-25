@@ -822,6 +822,64 @@ const createColorPalette = (menu: Menu, ctx: BuildContext, item: ControlConfig):
   return palette;
 };
 
+const openStylesContextMenu = (anchor: HTMLElement, ctx: BuildContext): void => {
+  const menu = new Menu([]);
+  const appState = { editorHandle: ctx.editorHandle };
+  menu.element.append(
+    MenuItem({
+      label: "New Style…",
+      onSelect: () => {
+        openStyleMiniApp(anchor, appState, { mode: "create" });
+        menu.close();
+      }
+    }),
+    MenuItem({
+      label: "Modify Style…",
+      onSelect: () => {
+        openStyleMiniApp(anchor, appState, { mode: "modify" });
+        menu.close();
+      }
+    }),
+    MenuSeparator(),
+    MenuItem({
+      label: "Clear Style",
+      onSelect: () => {
+        dispatchCommand(ctx.editorHandle, "ClearFormatting");
+        menu.close();
+      }
+    })
+  );
+  menu.open(anchor);
+};
+
+const attachStylesContextMenu = (
+  element: HTMLElement,
+  ctx: BuildContext,
+  options: { openOnClick?: boolean; suppressDefault?: boolean } = {}
+): void => {
+  const handleOpen = (event: MouseEvent) => {
+    if (options.suppressDefault) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
+    openStylesContextMenu(element, ctx);
+  };
+  element.addEventListener("contextmenu", (event) => {
+    event.preventDefault();
+    handleOpen(event);
+  });
+  if (options.openOnClick) {
+    element.addEventListener(
+      "click",
+      (event) => {
+        if (event.button !== 0) return;
+        handleOpen(event);
+      },
+      { capture: !!options.suppressDefault }
+    );
+  }
+};
+
 const createStyleTemplateGallery = (ctx: BuildContext): HTMLElement => {
   const templates = getStyleTemplates();
   const gallery = document.createElement("div");
@@ -875,6 +933,7 @@ const createStyleTemplateGallery = (ctx: BuildContext): HTMLElement => {
     card.append(label, description, menuButton);
     gallery.appendChild(card);
   });
+  attachStylesContextMenu(gallery, ctx);
   return gallery;
 };
 
@@ -1041,6 +1100,9 @@ const buildControl = (
     if (control.type === "toggleButton") {
       ctx.hooks.registerToggle?.(targetId as any, button);
     }
+    if (id === "styles.manage" || id === "styles.pane") {
+      attachStylesContextMenu(button, ctx, { openOnClick: true, suppressDefault: true });
+    }
     collapseMeta.element = button;
     recordParent(meta, button);
     return { element: button, collapse: collapseMeta };
@@ -1196,6 +1258,9 @@ if (control.type === "splitButton" || control.type === "splitToggleButton" || co
     gal.className = "ribbon-gallery";
     gal.textContent = control.label ?? "Gallery";
     gal.dataset.controlId = id ?? "";
+    if (id === "styles.gallery") {
+      attachStylesContextMenu(gal, ctx);
+    }
     collapseMeta.element = gal;
     recordParent(meta, gal);
     return { element: gal, collapse: collapseMeta };

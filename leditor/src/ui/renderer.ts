@@ -34,7 +34,7 @@ import { createFootnoteManager } from "./footnote_manager.js";
 import { getCurrentPageSize, getMarginValues } from "./layout_settings.js";
 import { registerLibrarySmokeChecks } from "../plugins/librarySmokeChecks.js";
 import { getHostContract } from "./host_contract.ts";
-import { ensureReferencesLibrary } from "./references/library.ts";
+import { ensureReferencesLibrary, resolveCitationTitle } from "./references/library.ts";
 
 const ensureProcessEnv = (): Record<string, string | undefined> | undefined => {
   if (typeof globalThis === "undefined") {
@@ -571,13 +571,19 @@ export const mountEditor = async () => {
       return "";
     };
 
-    const ensureTitle = (el: HTMLElement) => {
+    const ensureTitle = (el: HTMLElement, hrefHint?: string) => {
       if (el.getAttribute("title")) return;
-      const title =
-        pickAttr(el, "data-quote-id") ||
-        pickAttr(el, "data-key") ||
-        pickAttr(el, "data-orig-href") ||
-        (el.textContent || "").trim();
+      const href = (hrefHint ?? pickAttr(el, "href")).trim();
+      const dqid = href ? extractDqid(el, href) : "";
+      const itemKey =
+        pickAttr(el, "data-key") || pickAttr(el, "item-key") || pickAttr(el, "data-item-key");
+      const fallbackText = (el.textContent || "").trim();
+      const resolvedTitle = resolveCitationTitle({
+        dqid: dqid || null,
+        itemKey: itemKey || null,
+        fallbackText: fallbackText || null
+      });
+      const title = resolvedTitle || pickAttr(el, "data-orig-href");
       if (title) {
         el.setAttribute("title", title);
       }
@@ -594,7 +600,7 @@ export const mountEditor = async () => {
         if (!href) return;
         ev.preventDefault();
         ev.stopPropagation();
-        ensureTitle(anchor);
+        ensureTitle(anchor, href);
         anchor.classList.add("leditor-citation-anchor");
         const dqid = extractDqid(anchor, href);
         const detail = {
@@ -619,7 +625,8 @@ export const mountEditor = async () => {
         if (!target) return;
         const anchor = target.closest("a") as HTMLAnchorElement | null;
         if (!anchor) return;
-        ensureTitle(anchor);
+        const href = (anchor.getAttribute("href") || "").trim();
+        ensureTitle(anchor, href);
         anchor.classList.add("leditor-citation-anchor");
       },
       true

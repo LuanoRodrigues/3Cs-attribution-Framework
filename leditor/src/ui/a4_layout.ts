@@ -10,6 +10,7 @@ import {
   getMarginValues,
   getCurrentPageSize,
   setPageMargins,
+  setSectionColumns,
   subscribeToLayoutChanges
 } from "./layout_settings.js";
 import type { MarginValues } from "./layout_settings.js";
@@ -296,10 +297,18 @@ const ensureStyles = () => {
   position: absolute;
   top: var(--local-page-margin-top, var(--page-margin-top));
   left: var(--local-page-margin-left, var(--page-margin-left));
-  right: var(--local-page-margin-right, var(--page-margin-right));
-  bottom: calc(var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-height) + var(--page-footnote-height, 0px));
-  column-count: var(--page-columns, 1);
-  column-gap: 24px;
+  width: calc(
+    var(--local-page-width, var(--page-width)) -
+      (var(--local-page-margin-left, var(--page-margin-left)) +
+        var(--local-page-margin-right, var(--page-margin-right)))
+  );
+  height: calc(
+    var(--local-page-height, var(--page-height)) -
+      (var(--local-page-margin-top, var(--page-margin-top)) +
+        var(--local-page-margin-bottom, var(--page-margin-bottom)) +
+        var(--page-footnote-height, 0px))
+  );
+  padding: 0;
   overflow: hidden;
 }
 
@@ -323,8 +332,7 @@ const ensureStyles = () => {
 
 .leditor-page-header {
   top: var(--header-offset);
-  opacity: 0;
-  color: transparent;
+  opacity: 1;
   pointer-events: auto;
 }
 
@@ -400,54 +408,7 @@ const ensureStyles = () => {
   align-items: baseline;
 }
 
-.leditor-content-layer {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: var(--local-page-width, var(--page-width));
-  min-height: 100%;
-  height: auto;
-  z-index: 3;
-  box-sizing: border-box;
-  padding: 0;
-  overflow: hidden;
-}
-
-.leditor-content-inset {
-  position: relative;
-  width: 100%;
-  min-height: 100%;
-  box-sizing: border-box;
-  padding: 0;
-  overflow: hidden;
-}
-
-.leditor-margins-frame {
-  position: absolute;
-  top: calc(var(--current-margin-top, var(--page-margin-top)) + var(--header-height) + var(--header-offset));
-  left: var(--current-margin-left, var(--page-margin-left));
-  right: var(--current-margin-right, var(--page-margin-right));
-  bottom: calc(var(--current-margin-bottom, var(--page-margin-bottom)) + var(--footer-height) + var(--footer-offset) + var(--footnote-area-height));
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-.leditor-content-frame {
-  width: 100%;
-  min-height: calc(
-    var(--local-page-height, var(--page-height)) -
-      (var(--current-margin-top, var(--page-margin-top)) +
-        var(--current-margin-bottom, var(--page-margin-bottom)) +
-        var(--header-height) +
-        var(--header-offset) +
-        var(--footer-height) +
-        var(--footer-offset) +
-        var(--footnote-area-height))
-  );
-  box-sizing: border-box;
-  position: relative;
-}
+/* legacy overlay/content frame styles removed */
 .leditor-page-overlays {
   display: flex;
   flex-direction: column;
@@ -492,10 +453,8 @@ const ensureStyles = () => {
 .leditor-page-inner {
   position: absolute;
   inset: 0;
-  padding: var(--local-page-margin-top, var(--page-margin-top)) var(--local-page-margin-right, var(--page-margin-right)) var(--local-page-margin-bottom, var(--page-margin-bottom)) var(--local-page-margin-left, var(--page-margin-left));
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  padding: 0;
+  display: block;
   box-sizing: border-box;
 }
 
@@ -505,8 +464,11 @@ const ensureStyles = () => {
   font-size: 10pt;
   text-transform: uppercase;
   font-weight: bold;
-  color: #222222;
+  color: var(--page-header-color);
   min-height: var(--header-height);
+  position: absolute;
+  left: var(--local-page-margin-left, var(--page-margin-left));
+  right: var(--local-page-margin-right, var(--page-margin-right));
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -515,14 +477,13 @@ const ensureStyles = () => {
 }
 
 .leditor-page-header {
-  margin-top: var(--header-offset);
-  opacity: 0;
-  color: transparent;
+  top: var(--header-offset);
+  opacity: 1;
   pointer-events: auto;
 }
 
 .leditor-page-footer {
-  margin-bottom: var(--footer-offset);
+  bottom: var(--footer-offset);
   justify-content: flex-end;
   text-transform: none;
 }
@@ -546,7 +507,7 @@ const ensureStyles = () => {
   margin-left: auto;
   font-variant-numeric: tabular-nums;
   font-size: 10pt;
-  color: #222222;
+  color: var(--page-footer-color);
 }
 
 .leditor-page-number {
@@ -599,10 +560,8 @@ const ensureStyles = () => {
 .leditor-page-inner {
   position: absolute;
   inset: 0;
-  padding: var(--local-page-margin-top, var(--page-margin-top)) var(--local-page-margin-right, var(--page-margin-right)) var(--local-page-margin-bottom, var(--page-margin-bottom)) var(--local-page-margin-left, var(--page-margin-left));
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  padding: 0;
+  display: block;
   box-sizing: border-box;
 }
 
@@ -612,8 +571,11 @@ const ensureStyles = () => {
   font-size: 10pt;
   text-transform: uppercase;
   font-weight: bold;
-  color: #222222;
+  color: var(--page-header-color);
   min-height: var(--header-height);
+  position: absolute;
+  left: var(--local-page-margin-left, var(--page-margin-left));
+  right: var(--local-page-margin-right, var(--page-margin-right));
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -622,16 +584,16 @@ const ensureStyles = () => {
 }
 
 .leditor-page-header {
-  margin-top: var(--header-offset);
-  opacity: 0;
-  color: transparent;
+  top: var(--header-offset);
+  opacity: 1;
   pointer-events: auto;
 }
 
 .leditor-page-footer {
-  margin-bottom: var(--footer-offset);
+  bottom: var(--footer-offset);
   justify-content: flex-end;
   text-transform: none;
+  color: var(--page-footer-color);
 }
 
 .leditor-page-footnotes {
@@ -653,7 +615,7 @@ const ensureStyles = () => {
   margin-left: auto;
   font-variant-numeric: tabular-nums;
   font-size: 10pt;
-  color: #222222;
+  color: var(--page-footer-color);
 }
 
 .leditor-page-number {
@@ -662,54 +624,7 @@ const ensureStyles = () => {
   align-items: baseline;
 }
 
-.leditor-content-layer {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: var(--local-page-width, var(--page-width));
-  height: var(--local-page-height, var(--page-height));
-  z-index: 3;
-  box-sizing: border-box;
-  padding: 0;
-  overflow: hidden;
-}
-
-.leditor-content-inset {
-  position: relative;
-  width: 100%;
-  min-height: 100%;
-  box-sizing: border-box;
-  padding: 0;
-  overflow: hidden;
-}
-
-.leditor-margins-frame {
-  position: absolute;
-  top: calc(var(--current-margin-top, var(--page-margin-top)) + var(--header-height) + var(--header-offset));
-  left: var(--current-margin-left, var(--page-margin-left));
-  right: var(--current-margin-right, var(--page-margin-right));
-  bottom: calc(var(--current-margin-bottom, var(--page-margin-bottom)) + var(--footer-height) + var(--footer-offset) + var(--footnote-area-height));
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-.leditor-content-frame {
-  width: 100%;
-  min-height: calc(
-    var(--local-page-height, var(--page-height)) -
-      (var(--current-margin-top, var(--page-margin-top)) +
-        var(--current-margin-bottom, var(--page-margin-bottom)) +
-        var(--header-height) +
-        var(--header-offset) +
-        var(--footer-height) +
-        var(--footer-offset) +
-        var(--footnote-area-height))
-  );
-  padding: 0;
-  box-sizing: border-box;
-  overflow: hidden;
-}
+/* legacy overlay/content layer removed – real content lives inside .leditor-page-content */
 
 .leditor-page-overlays {
   position: absolute;
@@ -766,14 +681,9 @@ const ensureStyles = () => {
 .leditor-header-footer-editing .leditor-page-overlay .leditor-page-footer {
   pointer-events: auto;
   opacity: 1;
-  color: #222222;
+  color: var(--page-header-color);
   outline: 1px dashed rgba(69, 82, 107, 0.6);
   background: rgba(255, 255, 255, 0.85);
-}
-
-.leditor-header-footer-editing .leditor-content-layer {
-  pointer-events: none;
-  opacity: 0.5;
 }
 
 .leditor-header-footer-editing .leditor-page-content {
@@ -1168,8 +1078,7 @@ const ensureStyles = () => {
   font-weight: bold;
   text-transform: uppercase;
   font-family: var(--page-font-family);
-  color: transparent;
-  opacity: 0;
+  opacity: 1;
   pointer-events: auto;
   box-sizing: border-box;
 }
@@ -1187,21 +1096,20 @@ const ensureStyles = () => {
 
 .leditor-page-content {
   position: absolute;
-  top: calc(
-    var(--local-page-margin-top, var(--page-margin-top)) +
-      var(--header-offset) +
-      var(--header-height)
-  );
+  top: var(--local-page-margin-top, var(--page-margin-top));
   left: var(--local-page-margin-left, var(--page-margin-left));
-  right: var(--local-page-margin-right, var(--page-margin-right));
-  bottom: calc(
-    var(--local-page-margin-bottom, var(--page-margin-bottom)) +
-      var(--footer-offset) +
-      var(--footer-height) +
-      var(--page-footnote-height, var(--footnote-area-height))
+  width: calc(
+    var(--local-page-width, var(--page-width)) -
+      (var(--local-page-margin-left, var(--page-margin-left)) +
+        var(--local-page-margin-right, var(--page-margin-right)))
   );
-  column-count: var(--page-columns, 1);
-  column-gap: 24px;
+  height: calc(
+    var(--local-page-height, var(--page-height)) -
+      (var(--local-page-margin-top, var(--page-margin-top)) +
+        var(--local-page-margin-bottom, var(--page-margin-bottom)) +
+        var(--page-footnote-height, var(--footnote-area-height)))
+  );
+  padding: 0;
   overflow: hidden;
   pointer-events: auto;
 }
@@ -1372,6 +1280,11 @@ export const mountA4Layout = (
   let paginationQueued = false;
   let gridMode: GridMode = "stack";
   const paginationEnabled = featureFlags.paginationEnabled;
+  let suspendPageObserver = false;
+  let lastUserScrollAt = 0;
+  canvas.addEventListener("scroll", () => {
+    lastUserScrollAt = performance.now();
+  });
 
   const getTargetGridMode = () => (viewMode === "two-page" ? "grid-2" : determineGridMode(zoomValue));
 
@@ -1654,6 +1567,19 @@ export const mountA4Layout = (
       const sectionId = overlay.dataset.sectionId ?? DEFAULT_SECTION_ID;
       const header = overlay.querySelector(".leditor-page-header");
       const footer = overlay.querySelector(".leditor-page-footer");
+      if (header) {
+        header.innerHTML = normalizeHeaderFooterHtml(getSectionHeaderContent(sectionId));
+      }
+      if (footer) {
+        footer.innerHTML = normalizeHeaderFooterHtml(getSectionFooterContent(sectionId));
+      }
+    });
+    const pageNodes = editorEl.querySelectorAll<HTMLElement>(".leditor-page");
+    pageNodes.forEach((page, index) => {
+      const sectionInfo = pageSections[index] ?? null;
+      const sectionId = sectionInfo?.sectionId ?? DEFAULT_SECTION_ID;
+      const header = page.querySelector(".leditor-page-header");
+      const footer = page.querySelector(".leditor-page-footer");
       if (header) {
         header.innerHTML = normalizeHeaderFooterHtml(getSectionHeaderContent(sectionId));
       }
@@ -2138,18 +2064,24 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
 
 const renderPages = (count: number) => {
   if (paginationEnabled) {
-    pageStack.innerHTML = "";
-    overlayLayer.innerHTML = "";
-    console.info("[PaginationDebug] renderPages start (paginationEnabled)", {
-      requestedCount: count,
-      editorPages: editorEl.querySelectorAll(".leditor-page").length
+    Array.from(pageStack.children).forEach((child) => {
+      if (child !== editorEl) child.remove();
     });
+    overlayLayer.innerHTML = "";
+    if (window.__leditorPaginationDebug) {
+      console.info("[PaginationDebug] renderPages start (paginationEnabled)", {
+        requestedCount: count,
+        editorPages: editorEl.querySelectorAll(".leditor-page").length
+      });
+    }
     attachEditorForMode();
     const pageCount = Math.max(1, editorEl.querySelectorAll(".leditor-page").length);
     for (let i = 0; i < pageCount; i += 1) {
       overlayLayer.appendChild(buildOverlayPage(i));
     }
-    console.info("[PaginationDebug] renderPages pages appended", { overlayCount: overlayLayer.children.length });
+    if (window.__leditorPaginationDebug) {
+      console.info("[PaginationDebug] renderPages pages appended", { overlayCount: overlayLayer.children.length });
+    }
     applySectionLayouts(pageCount);
     syncHeaderFooter();
     updatePageNumbers();
@@ -2180,7 +2112,10 @@ const renderPages = (count: number) => {
     if (!prose) {
       throw new Error("ProseMirror root missing after attach.");
     }
-    prose.focus();
+    const activeEl = document.activeElement as HTMLElement | null;
+    if (!activeEl || !editorEl.contains(activeEl)) {
+      prose.focus({ preventScroll: true });
+    }
     setEditorEditable(true);
   };
 
@@ -2196,6 +2131,21 @@ const renderPages = (count: number) => {
     return Number.isFinite(gap) ? gap : 0;
   };
 
+  const CONTENT_FRAME_MAX_PX = 700;
+  const CONTENT_FRAME_MIN_PX = 200;
+  let manualContentFrameHeight: number | null = null;
+  const clampContentFrameHeight = (value: number) =>
+    Math.max(CONTENT_FRAME_MIN_PX, Math.min(CONTENT_FRAME_MAX_PX, Math.round(value)));
+  const updateContentHeight = () => {
+    const pageHeight = measurePageHeight();
+    const gap = measurePageGap();
+    if (pageHeight <= 0) return;
+    const total = pageCount * pageHeight + Math.max(0, pageCount - 1) * gap;
+    const nextHeight = manualContentFrameHeight ?? Math.ceil(total);
+    const clamped = clampContentFrameHeight(nextHeight);
+    pageStack.style.minHeight = `${clamped}px`;
+  };
+
   const computeHeightPages = () => {
     const pageHeight = measurePageHeight();
     if (pageHeight <= 0) return 1;
@@ -2206,68 +2156,124 @@ const renderPages = (count: number) => {
   };
 
   const updatePagination = () => {
-    const overlayPageCount = overlayLayer.children.length;
-    const editorPageCount = editorEl.querySelectorAll(".leditor-page").length;
-    const firstOverlay = overlayLayer.querySelector<HTMLElement>(".leditor-page-overlay");
-    const overlayInfo = {
-      overlayPageCount,
-      overlayChildCount: overlayLayer.children.length,
-      overlayVisible: overlayLayer.style.display || window.getComputedStyle(overlayLayer).display,
-      overlayHeight: firstOverlay?.offsetHeight ?? null,
-      overlayWidth: firstOverlay?.offsetWidth ?? null
-    };
-    const pageStackInfo = {
-      stackChildCount: pageStack.children.length,
-      stackDisplay: pageStack.style.display || window.getComputedStyle(pageStack).display,
-      stackPointerEvents: pageStack.style.pointerEvents
-    };
-    const pageStackRect = pageStack.getBoundingClientRect();
-    console.info("[PaginationDebug] pagination state", {
-      paginationEnabled,
-      pageCount,
-      editorPageCount,
-      editorScrollHeight: editorEl.scrollHeight,
-      overlayInfo,
-      pageStackInfo,
-      pageStackVisible: pageStackInfo.stackDisplay,
-      pageStackHeight: pageStackRect.height,
-      editorPageHeight: measurePageHeight()
-    });
-  const ensureOverlayPages = (count: number): boolean => {
-    if (overlayLayer.children.length === 0) {
-      renderPages(count);
-      return true;
-    }
-    return false;
-  };
+    suspendPageObserver = true;
+    const scrollTopBefore = canvas.scrollTop;
+    const scrollLeftBefore = canvas.scrollLeft;
+    try {
+      const rootStyle = getComputedStyle(document.documentElement);
+      const pageColumns = rootStyle.getPropertyValue("--page-columns").trim();
+      if (pageColumns && pageColumns !== "1") {
+        console.warn("[PaginationDebug] forcing page columns to 1", { pageColumns });
+        setSectionColumns(1);
+        return;
+      }
+      if (window.__leditorPaginationDebug) {
+        console.info("[PaginationDebug] css tokens", {
+          pageWidth: rootStyle.getPropertyValue("--page-width").trim(),
+          pageHeight: rootStyle.getPropertyValue("--page-height").trim(),
+          marginTop: rootStyle.getPropertyValue("--page-margin-top").trim(),
+          marginRight: rootStyle.getPropertyValue("--page-margin-right").trim(),
+          marginBottom: rootStyle.getPropertyValue("--page-margin-bottom").trim(),
+          marginLeft: rootStyle.getPropertyValue("--page-margin-left").trim(),
+          docPageWidth: rootStyle.getPropertyValue("--doc-page-width").trim(),
+          docPageHeight: rootStyle.getPropertyValue("--doc-page-height").trim(),
+          docMarginTop: rootStyle.getPropertyValue("--doc-margin-top").trim(),
+          docMarginRight: rootStyle.getPropertyValue("--doc-margin-right").trim(),
+          docMarginBottom: rootStyle.getPropertyValue("--doc-margin-bottom").trim(),
+          docMarginLeft: rootStyle.getPropertyValue("--doc-margin-left").trim(),
+          pageColumns
+        });
+        const sampleContent = editorEl.querySelector<HTMLElement>(".leditor-page-content");
+        if (sampleContent) {
+          const rect = sampleContent.getBoundingClientRect();
+          const contentStyle = getComputedStyle(sampleContent);
+          console.info("[PaginationDebug] content rect", {
+            width: rect.width,
+            height: rect.height,
+            top: rect.top,
+            left: rect.left,
+            columnCount: contentStyle.columnCount,
+            columnGap: contentStyle.columnGap
+          });
+        }
+      }
+      const overlayPageCount = overlayLayer.children.length;
+      const editorPageCount = editorEl.querySelectorAll(".leditor-page").length;
+      const firstOverlay = overlayLayer.querySelector<HTMLElement>(".leditor-page-overlay");
+      const overlayInfo = {
+        overlayPageCount,
+        overlayChildCount: overlayLayer.children.length,
+        overlayVisible: overlayLayer.style.display || window.getComputedStyle(overlayLayer).display,
+        overlayHeight: firstOverlay?.offsetHeight ?? null,
+        overlayWidth: firstOverlay?.offsetWidth ?? null
+      };
+      const pageStackInfo = {
+        stackChildCount: pageStack.children.length,
+        stackDisplay: pageStack.style.display || window.getComputedStyle(pageStack).display,
+        stackPointerEvents: pageStack.style.pointerEvents
+      };
+      if (window.__leditorPaginationDebug) {
+        const pageStackRect = pageStack.getBoundingClientRect();
+        console.info("[PaginationDebug] pagination state", {
+          paginationEnabled,
+          pageCount,
+          editorPageCount,
+          editorScrollHeight: editorEl.scrollHeight,
+          overlayInfo,
+          pageStackInfo,
+          pageStackVisible: pageStackInfo.stackDisplay,
+          pageStackHeight: pageStackRect.height,
+          editorPageHeight: measurePageHeight()
+        });
+      }
+      const ensureOverlayPages = (count: number): boolean => {
+        const current = overlayLayer.children.length;
+        if (current !== count) {
+          renderPages(count);
+          return true;
+        }
+        return false;
+      };
 
-  if (paginationEnabled) {
-    const nextCount = Math.max(1, editorEl.querySelectorAll(".leditor-page").length);
-    if (ensureOverlayPages(nextCount)) {
-      return;
+      if (paginationEnabled) {
+        const nextCount = Math.max(1, editorEl.querySelectorAll(".leditor-page").length);
+        if (ensureOverlayPages(nextCount)) {
+          applySectionLayouts(nextCount);
+          syncHeaderFooter();
+          updatePageNumbers();
+          return;
+        }
+        if (nextCount !== pageCount) {
+          pageCount = nextCount;
+          renderPages(pageCount);
+        } else {
+          applySectionLayouts(pageCount);
+          syncHeaderFooter();
+          updatePageNumbers();
+        }
+        return;
+      }
+
+      const heightCount = computeHeightPages();
+      const manualCount = countManualPageBreaks(editorEl) + 1;
+      const nextCount = Math.max(heightCount, manualCount);
+      if (nextCount !== pageCount) {
+        pageCount = nextCount;
+        renderPages(pageCount);
+        attachEditorForMode();
+      } else {
+        applySectionLayouts(pageCount);
+        syncHeaderFooter();
+      }
+      updateContentHeight();
+    } finally {
+      const now = performance.now();
+      if (now - lastUserScrollAt < 250) {
+        canvas.scrollTop = scrollTopBefore;
+        canvas.scrollLeft = scrollLeftBefore;
+      }
+      suspendPageObserver = false;
     }
-    if (nextCount !== pageCount) {
-      pageCount = nextCount;
-      renderPages(pageCount);
-    } else {
-      applySectionLayouts(pageCount);
-      syncHeaderFooter();
-      updatePageNumbers();
-    }
-    return;
-  }
-    const heightCount = computeHeightPages();
-    const manualCount = countManualPageBreaks(editorEl) + 1;
-    const nextCount = Math.max(heightCount, manualCount);
-    if (nextCount !== pageCount) {
-      pageCount = nextCount;
-      renderPages(pageCount);
-      attachEditorForMode();
-    } else {
-      applySectionLayouts(pageCount);
-      syncHeaderFooter();
-    }
-    updateContentHeight();
   };
 
   const requestPagination = () => {
@@ -2294,8 +2300,7 @@ const renderPages = (count: number) => {
     }
     const base =
       manualContentFrameHeight ??
-      lastContentMetrics?.total ??
-      measurePageHeight() * Math.max(1, pageCount);
+      CONTENT_FRAME_MAX_PX;
     manualContentFrameHeight = clampContentFrameHeight(base + delta);
     updateContentHeight();
     requestPagination();
@@ -2612,7 +2617,10 @@ const renderPages = (count: number) => {
   const footnoteObserver = new MutationObserver(() => scheduleFootnoteUpdate());
   footnoteObserver.observe(editorEl, { childList: true, subtree: true, characterData: true });
 
-  const pageObserver = new MutationObserver(() => requestPagination());
+  const pageObserver = new MutationObserver(() => {
+    if (suspendPageObserver) return;
+    requestPagination();
+  });
   pageObserver.observe(editorEl, { childList: true, subtree: true });
 
   const marginDebug = {
@@ -2659,7 +2667,6 @@ const renderPages = (count: number) => {
     requestPagination();
     updateZoomForViewMode();
   });
-  resizeObserver.observe(pageStack);
   resizeObserver.observe(canvas);
 
   return {
