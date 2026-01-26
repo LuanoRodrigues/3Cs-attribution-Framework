@@ -217,7 +217,7 @@ export class PanelLayoutRoot {
       button.draggable = true;
       button.addEventListener("dragstart", (event) => {
         if (!event.dataTransfer) return;
-        const payload = JSON.stringify({ toolId: state.id, panelId: this.panelId });
+        const payload = JSON.stringify({ toolId: state.id, panelId: this.panelId, toolType: state.toolType });
         event.dataTransfer.setData("application/x-annotarium-tool-tab", payload);
         event.dataTransfer.setData("text/plain", payload);
         event.dataTransfer.effectAllowed = "move";

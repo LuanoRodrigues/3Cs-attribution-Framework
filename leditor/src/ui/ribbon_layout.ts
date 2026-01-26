@@ -14,6 +14,7 @@ import { Menu, MenuItem, MenuSeparator, setMenuPortal } from "./ribbon_menu.js";
 import { SplitButton } from "./ribbon_split_button.js";
 import { getTemplates } from "../templates/index.js";
 import { getStyleTemplates, openStyleMiniApp } from "./style_mini_app.js";
+import { tabLayouts } from "./tab_layouts.js";
 import type { RibbonStateBus, RibbonStateKey, RibbonStateSnapshot } from "./ribbon_state.js";
 import type {
   ClusterConfig,
@@ -61,6 +62,18 @@ const MAX_ROWS_BY_GROUP: Record<string, number> = {
   paragraph: 3,
   styles: 2,
   editing: 2
+};
+
+const applyGroupLayoutConfig = (body: HTMLDivElement, tabId: string, groupId: string): void => {
+  const layout = tabLayouts[tabId]?.[groupId];
+  if (!layout) return;
+  const { gridTemplateColumns, gridTemplateRows, gridAutoFlow, gridAutoColumns, columnGap, rowGap } = layout;
+  if (gridTemplateColumns) body.style.gridTemplateColumns = gridTemplateColumns;
+  if (gridTemplateRows) body.style.gridTemplateRows = gridTemplateRows;
+  if (gridAutoFlow) body.style.gridAutoFlow = gridAutoFlow;
+  if (gridAutoColumns) body.style.gridAutoColumns = gridAutoColumns;
+  if (columnGap) body.style.columnGap = columnGap;
+  if (rowGap) body.style.rowGap = rowGap;
 };
 
 const resolveCommandId = (
@@ -1312,13 +1325,14 @@ const buildCluster = (
   return container;
 };
 
-const buildGroup = (group: GroupConfig, ctx: BuildContext): GroupMeta => {
+const buildGroup = (group: GroupConfig, ctx: BuildContext, tabId: string): GroupMeta => {
   const element = document.createElement("div");
   element.className = "leditor-ribbon-group ribbonGroup";
   element.classList.add(`ribbon-group-${group.groupId.replace(/\./g, "-")}`);
   element.dataset.groupId = group.groupId;
   const body = document.createElement("div");
   body.className = "leditor-ribbon-group-body";
+  applyGroupLayoutConfig(body, tabId, group.groupId);
   const footer = document.createElement("div");
   footer.className = "leditor-ribbon-group-footer";
   const title = document.createElement("span");
@@ -1570,7 +1584,7 @@ const buildTab = (
   groupsStrip.className = "leditor-ribbon-groups";
   panel.appendChild(groupsStrip);
 
-  const groupMetas = tab.groups.map((g) => buildGroup(g, ctx));
+  const groupMetas = tab.groups.map((g) => buildGroup(g, ctx, tab.tabId));
   groupMetas.forEach((gm) => groupsStrip.appendChild(gm.element));
 
   const collapse = () => {

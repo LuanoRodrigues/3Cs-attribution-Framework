@@ -70,6 +70,11 @@ const CitationLink = Link.extend({
           (element as HTMLElement).getAttribute("data-quote_id"),
         renderHTML: (attrs) => (attrs.dataQuoteId ? { "data-quote-id": attrs.dataQuoteId } : {})
       },
+      dataQuoteText: {
+        default: null,
+        parseHTML: (element) => (element as HTMLElement).getAttribute("data-quote-text"),
+        renderHTML: (attrs) => (attrs.dataQuoteText ? { "data-quote-text": attrs.dataQuoteText } : {})
+      },
       dataDqid: {
         default: null,
         parseHTML: (element) => (element as HTMLElement).getAttribute("data-dqid"),
@@ -89,12 +94,24 @@ const CitationLink = Link.extend({
   },
   renderHTML({ HTMLAttributes }) {
     const attrs = mergeAttributes(this.options.HTMLAttributes, HTMLAttributes);
+    const dqid =
+      (typeof attrs["data-dqid"] === "string" && attrs["data-dqid"]) ||
+      (typeof attrs["data-quote-id"] === "string" && attrs["data-quote-id"]) ||
+      (typeof attrs["data-quote_id"] === "string" && attrs["data-quote_id"]) ||
+      "";
+    if (!attrs.href && dqid) {
+      attrs.href = `dq://${dqid}`;
+    }
+    if (!attrs.title && typeof attrs["data-quote-text"] === "string" && attrs["data-quote-text"]) {
+      attrs.title = attrs["data-quote-text"];
+    }
     const isCitationAnchor = Boolean(
       HTMLAttributes.dataKey ||
         HTMLAttributes.itemKey ||
         HTMLAttributes.dataItemKey ||
         HTMLAttributes.dataDqid ||
-        HTMLAttributes.dataQuoteId
+        HTMLAttributes.dataQuoteId ||
+        HTMLAttributes.dataQuoteText
     );
     const className = typeof attrs.class === "string" ? attrs.class : "";
     if (isCitationAnchor) {

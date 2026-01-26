@@ -17,8 +17,10 @@ export interface PanelToolManagerOptions {
 const TOOL_TAB_MIME = "application/x-annotarium-tool-tab";
 
 type DragPayload = {
-  toolId: string;
+  toolId?: string;
   panelId?: PanelId;
+  toolType?: string;
+  metadata?: Record<string, unknown>;
 };
 
 const parseDragPayload = (dataTransfer: DataTransfer | null): DragPayload | null => {
@@ -31,8 +33,8 @@ const parseDragPayload = (dataTransfer: DataTransfer | null): DragPayload | null
   }
   try {
     const parsed = JSON.parse(raw) as DragPayload;
-    if (!parsed?.toolId) return null;
-    return parsed;
+    if (parsed?.toolId || parsed?.toolType) return parsed;
+    return null;
   } catch {
     return null;
   }
@@ -174,13 +176,19 @@ export class PanelToolManager {
         const payload = parseDragPayload(event.dataTransfer);
         if (!payload) return;
         event.preventDefault();
-        event.dataTransfer!.dropEffect = "move";
+        event.dataTransfer!.dropEffect = payload.toolType && !payload.toolId ? "copy" : "move";
       });
       target.addEventListener("drop", (event) => {
         const payload = parseDragPayload(event.dataTransfer);
         if (!payload) return;
         event.preventDefault();
-        this.moveTool(payload.toolId, panelId);
+        if (payload.toolId) {
+          this.moveTool(payload.toolId, panelId);
+          return;
+        }
+        if (payload.toolType) {
+          this.spawnTool(payload.toolType, { panelId, metadata: payload.metadata });
+        }
       });
     });
   }

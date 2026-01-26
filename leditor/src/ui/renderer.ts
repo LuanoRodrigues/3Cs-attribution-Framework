@@ -573,6 +573,11 @@ export const mountEditor = async () => {
 
     const ensureTitle = (el: HTMLElement, hrefHint?: string) => {
       if (el.getAttribute("title")) return;
+      const quoteText = pickAttr(el, "data-quote-text");
+      if (quoteText) {
+        el.setAttribute("title", quoteText);
+        return;
+      }
       const href = (hrefHint ?? pickAttr(el, "href")).trim();
       const dqid = href ? extractDqid(el, href) : "";
       const itemKey =
@@ -594,15 +599,22 @@ export const mountEditor = async () => {
       (ev) => {
         const target = ev.target as HTMLElement | null;
         if (!target) return;
+        console.info("[leditor][click][capture]", {
+          tag: target.tagName,
+          className: target.className,
+          text: (target.textContent || "").slice(0, 80)
+        });
         const anchor = target.closest("a") as HTMLAnchorElement | null;
         if (!anchor) return;
-        const href = (anchor.getAttribute("href") || "").trim();
+        const rawHref = (anchor.getAttribute("href") || "").trim();
+        const dqidFallback = extractDqid(anchor, rawHref);
+        const href = rawHref || (dqidFallback ? `dq://${dqidFallback}` : "");
         if (!href) return;
         ev.preventDefault();
         ev.stopPropagation();
         ensureTitle(anchor, href);
         anchor.classList.add("leditor-citation-anchor");
-        const dqid = extractDqid(anchor, href);
+        const dqid = extractDqid(anchor, href) || dqidFallback;
         const detail = {
           href,
           dqid,
@@ -610,7 +622,8 @@ export const mountEditor = async () => {
           text: (anchor.textContent || "").trim(),
           dataKey: pickAttr(anchor, "data-key"),
           dataQuoteId: pickAttr(anchor, "data-quote-id"),
-          dataQuoteIdAlt: pickAttr(anchor, "data-quote_id")
+          dataQuoteIdAlt: pickAttr(anchor, "data-quote_id"),
+          dataQuoteText: pickAttr(anchor, "data-quote-text")
         };
         console.info("[leditor][anchor-click]", detail);
         window.dispatchEvent(new CustomEvent("leditor-anchor-click", { detail, bubbles: true }));

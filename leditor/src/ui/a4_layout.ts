@@ -2241,6 +2241,7 @@ const renderPages = (count: number) => {
           applySectionLayouts(nextCount);
           syncHeaderFooter();
           updatePageNumbers();
+          scheduleFootnoteUpdate();
           return;
         }
         if (nextCount !== pageCount) {
@@ -2251,6 +2252,7 @@ const renderPages = (count: number) => {
           syncHeaderFooter();
           updatePageNumbers();
         }
+        scheduleFootnoteUpdate();
         return;
       }
 

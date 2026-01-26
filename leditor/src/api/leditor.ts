@@ -424,6 +424,7 @@ export const LEditor = {
             dataOrigHref?: string;
             dataQuoteId?: string;
             dataDqid?: string;
+            dataQuoteText?: string;
             itemKey?: string;
             dataItemKey?: string;
           };
@@ -448,6 +449,7 @@ export const LEditor = {
                     dataQuoteId:
                       (a.getAttribute("data-quote-id") || a.getAttribute("data-quote_id") || "").trim() || undefined,
                     dataDqid: (a.getAttribute("data-dqid") || "").trim() || undefined,
+                    dataQuoteText: (a.getAttribute("data-quote-text") || "").trim() || undefined,
                     itemKey: (a.getAttribute("item-key") || "").trim() || undefined,
                     dataItemKey: (a.getAttribute("data-item-key") || "").trim() || undefined
                   } as AnchorSeed;
@@ -499,6 +501,7 @@ export const LEditor = {
                 dataOrigHref: seed.dataOrigHref,
                 dataQuoteId: seed.dataQuoteId,
                 dataDqid: seed.dataDqid,
+                dataQuoteText: seed.dataQuoteText,
                 itemKey: seed.itemKey,
                 dataItemKey: seed.dataItemKey
               } as Record<string, unknown>;

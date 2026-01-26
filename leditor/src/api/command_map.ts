@@ -42,14 +42,42 @@ const clampIndentLevel = (value: number) => Math.max(MIN_INDENT_LEVEL, Math.min(
 let citationIdCounter = 0;
 const generateCitationId = () => `c-${Date.now().toString(36)}-${(citationIdCounter++).toString(36)}`;
 
-const buildRenderedLabel = (keys: string[]): string => {
+const buildRenderedLabel = (keys: string[], options?: { locator?: string | null; label?: string | null; prefix?: string | null; suffix?: string | null; suppressAuthor?: boolean; authorOnly?: boolean }): string => {
+  const parts: string[] = [];
+  const locatorText = (() => {
+    const loc = (options?.locator || "").trim();
+    if (!loc) return "";
+    const lbl = (options?.label || "").trim();
+    return lbl ? `${lbl} ${loc}` : loc;
+  })();
   for (const key of keys) {
-    const reference = getReferenceItem(key);
-    if (reference?.authorsYear) {
-      return reference.authorsYear;
+    const ref = getReferenceItem(key);
+    const authors = ref?.authors ?? "";
+    const year = (ref?.year || "").trim();
+    const ayRaw = ref?.authorsYear || authors || key;
+    const authorYear = ayRaw.includes("(") && ayRaw.includes(")")
+      ? ayRaw.replace(/[()]/g, "").replace(/\s+\b/, ", ").replace(/\s*,\s*$/, "")
+      : ayRaw;
+    let body = authorYear;
+    if (options?.suppressAuthor) {
+      const y = year || authorYear;
+      body = locatorText ? `${y}, ${locatorText}` : y;
+    } else if (options?.authorOnly) {
+      body = authors || authorYear;
+    } else if (locatorText) {
+      body = `${authorYear}, ${locatorText}`;
     }
+    const prefix = (options?.prefix || "").trim();
+    const suffix = (options?.suffix || "").trim();
+    if (prefix) {
+      body = `${prefix}${prefix.endsWith(" ") ? "" : " "}${body}`;
+    }
+    if (suffix) {
+      body = `${body}${suffix.startsWith(" ") ? "" : " "}${suffix}`;
+    }
+    parts.push(body);
   }
-  return keys.join(", ");
+  return parts.join("; ");
 };
 
 type CitationSelectionInfo = {
@@ -113,7 +141,7 @@ const insertCitationNode = (
     suffix: result.options.suffix ?? null,
     suppressAuthor: result.options.suppressAuthor,
     authorOnly: result.options.authorOnly,
-    rendered: buildRenderedLabel(result.itemKeys)
+    rendered: buildRenderedLabel(result.itemKeys, result.options)
   };
   let tr = editor.state.tr;
   if (existing) {
@@ -144,6 +172,7 @@ const handleInsertCitationCommand = (editor: Editor) => {
         return;
       }
       if (result.templateId === "update") {
+        commandMap.UpdateCitations(editor);
         commandMap.UpdateBibliography(editor);
         return;
       }

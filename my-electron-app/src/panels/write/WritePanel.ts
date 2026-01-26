@@ -61,6 +61,7 @@ export class WritePanel {
   private changeListener: (() => void) | null = null;
   private externalListener: ((ev: Event) => void) | null = null;
   private anchorListener: ((ev: MouseEvent) => void) | null = null;
+  private anchorWindowListener: ((ev: MouseEvent) => void) | null = null;
   private leditorAnchorListener: ((ev: Event) => void) | null = null;
   private anchorDomListener: ((ev: MouseEvent) => void) | null = null;
   private anchorDomTarget: HTMLElement | null = null;
@@ -107,6 +108,9 @@ export class WritePanel {
     if (this.anchorListener) {
       document.removeEventListener("click", this.anchorListener, true);
     }
+    if (this.anchorWindowListener) {
+      window.removeEventListener("click", this.anchorWindowListener, true);
+    }
     if (this.leditorAnchorListener) {
       window.removeEventListener("leditor-anchor-click", this.leditorAnchorListener as EventListener);
     }
@@ -134,6 +138,10 @@ export class WritePanel {
       const candidate = (window as any).leditor as LEditorHandle | undefined;
       if (candidate && typeof candidate.setContent === "function" && typeof candidate.getContent === "function") {
         this.editorHandle = candidate;
+        console.info("[write][editor] ready", {
+          hasEditor: Boolean((candidate as any).getEditor),
+          hasSetContent: typeof candidate.setContent === "function"
+        });
         break;
       }
       if (Date.now() - start > EDITOR_READY_TIMEOUT_MS) {
@@ -472,6 +480,10 @@ export class WritePanel {
     if (!href) return;
     const safeHref = href.trim();
     if (!safeHref) return;
+    if (safeHref === "#") {
+      console.info("[write][anchor-click][non-dqid] ignoring bare hash href");
+      return;
+    }
     const hashIndex = safeHref.indexOf("#");
     if (hashIndex >= 0) {
       const hash = safeHref.slice(hashIndex + 1);
@@ -495,7 +507,13 @@ export class WritePanel {
     anchor?: HTMLAnchorElement | null;
     explicitDqid?: string;
     anchorText?: string;
+    dataQuoteText?: string;
   }): Promise<void> {
+    console.info("[write][anchor-open][request]", {
+      href: options.href,
+      explicitDqid: options.explicitDqid || "",
+      anchorText: (options.anchorText || "").slice(0, 120)
+    });
     const dqid = (options.explicitDqid || "").trim().toLowerCase() || this.extractDqid(options.href, options.anchor);
     if (!dqid) {
       this.handleNonDqidHref(options.href);
@@ -525,7 +543,7 @@ export class WritePanel {
       dqid,
       payload,
       lookupPath: this.dqLookupPath,
-      title: (payload as any)?.title || options.anchorText || "",
+      title: (payload as any)?.title || options.dataQuoteText || options.anchorText || "",
       anchorText: options.anchorText || "",
       source: "write",
       preferredPanel: 3,
@@ -563,6 +581,8 @@ export class WritePanel {
         dataKey: anchor.getAttribute("data-key"),
         dataDqid: anchor.getAttribute("data-dqid"),
         dataQuoteId: anchor.getAttribute("data-quote-id"),
+        dataQuoteText: anchor.getAttribute("data-quote-text"),
+        title: anchor.getAttribute("title"),
         text: (anchor.textContent || "").slice(0, 120)
       });
       ev.preventDefault();
@@ -570,11 +590,13 @@ export class WritePanel {
       await this.openPdfForAnchor({
         href,
         anchor,
-        anchorText: anchor.textContent || ""
+        anchorText: anchor.textContent || "",
+        dataQuoteText: anchor.getAttribute("data-quote-text") || anchor.getAttribute("title") || ""
       });
     };
     const leditorHandler = async (ev: Event): Promise<void> => {
       const detail = (ev as CustomEvent<any>).detail || {};
+      console.info("[write][anchor-open][event]", detail);
       const href: string = (detail.href || "").trim();
       if (!href) return;
       const host = document.getElementById("write-leditor-host");
@@ -584,13 +606,16 @@ export class WritePanel {
       await this.openPdfForAnchor({
         href,
         explicitDqid,
-        anchorText: detail.text || ""
+        anchorText: detail.text || "",
+        dataQuoteText: detail.dataQuoteText || detail.title || ""
       });
     };
     this.anchorListener = handler;
+    this.anchorWindowListener = handler;
     this.leditorAnchorListener = leditorHandler;
     this.anchorDomListener = handler;
     document.addEventListener("click", handler, true);
+    window.addEventListener("click", handler, true);
     window.addEventListener("leditor-anchor-click", leditorHandler as EventListener);
     void this.waitForEditor()
       .then((handle) => {
@@ -618,6 +643,8 @@ export class WritePanel {
         dataDqid: sample.getAttribute("data-dqid"),
         dataQuoteId: sample.getAttribute("data-quote-id"),
         dataQuoteIdAlt: sample.getAttribute("data-quote_id"),
+        dataQuoteText: sample.getAttribute("data-quote-text"),
+        title: sample.getAttribute("title"),
         text: sample.textContent || ""
       });
     }

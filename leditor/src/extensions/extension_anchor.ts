@@ -15,6 +15,7 @@ const AnchorMark = Mark.create({
       dataOrigHref: { default: null },
       dataQuoteId: { default: null },
       dataDqid: { default: null },
+      dataQuoteText: { default: null },
       itemKey: { default: null },
       dataItemKey: { default: null }
     };
@@ -54,6 +55,7 @@ const AnchorMark = Mark.create({
             dataOrigHref: node.getAttribute("data-orig-href"),
             dataQuoteId: node.getAttribute("data-quote-id") || node.getAttribute("data-quote_id"),
             dataDqid: dqid,
+            dataQuoteText: node.getAttribute("data-quote-text"),
             itemKey: node.getAttribute("item-key"),
             dataItemKey: node.getAttribute("data-item-key")
           };
@@ -78,6 +80,7 @@ const AnchorMark = Mark.create({
     if (HTMLAttributes.dataOrigHref) attrs["data-orig-href"] = HTMLAttributes.dataOrigHref;
     if (HTMLAttributes.dataQuoteId) attrs["data-quote-id"] = HTMLAttributes.dataQuoteId;
     if (HTMLAttributes.dataDqid) attrs["data-dqid"] = HTMLAttributes.dataDqid;
+    if (HTMLAttributes.dataQuoteText) attrs["data-quote-text"] = HTMLAttributes.dataQuoteText;
     if (HTMLAttributes.itemKey) attrs["item-key"] = HTMLAttributes.itemKey;
     if (HTMLAttributes.dataItemKey) attrs["data-item-key"] = HTMLAttributes.dataItemKey;
 
@@ -86,7 +89,8 @@ const AnchorMark = Mark.create({
         HTMLAttributes.itemKey ||
         HTMLAttributes.dataItemKey ||
         HTMLAttributes.dataDqid ||
-        HTMLAttributes.dataQuoteId
+        HTMLAttributes.dataQuoteId ||
+        HTMLAttributes.dataQuoteText
     );
     const className = typeof HTMLAttributes.class === "string" ? HTMLAttributes.class : "";
     if (isCitationAnchor) {

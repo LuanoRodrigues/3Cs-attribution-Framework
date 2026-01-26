@@ -302,6 +302,8 @@ export class RibbonRoot {
   private panelsContainer: HTMLDivElement;
   private tabPanels = new Map<string, RibbonTabPanel>();
   private tabStrip: RibbonTabStrip;
+  private collapseToggle: HTMLButtonElement;
+  private collapsed = false;
   private activeTabId: string | null = null;
   private collapseStages: string[];
   private contextualTabsEnabled: boolean;
@@ -312,6 +314,7 @@ export class RibbonRoot {
     host.innerHTML = "";
     this.shell = document.createElement("div");
     this.shell.className = "leditor-ribbon-shell";
+    this.collapseToggle = this.createCollapseToggle(host);
     this.tabStrip = new RibbonTabStrip((tabId) => this.activateTab(tabId));
     this.panelsContainer = document.createElement("div");
     this.panelsContainer.className = "leditor-ribbon-panels";
@@ -344,6 +347,8 @@ export class RibbonRoot {
       button.setAttribute("aria-controls", panel.element.id);
     });
 
+    // Keep structure flat: shell -> tabs (+ toggle) -> panels
+    this.tabStrip.element.appendChild(this.collapseToggle);
     this.shell.append(this.tabStrip.element, this.panelsContainer);
     host.appendChild(this.shell);
 
@@ -351,6 +356,27 @@ export class RibbonRoot {
     if (defaultTab) {
       this.activateTab(defaultTab);
     }
+  }
+
+  private createCollapseToggle(host: HTMLElement): HTMLButtonElement {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "ribbon-collapse-toggle";
+    button.setAttribute("aria-pressed", "false");
+    button.title = "Hide ribbon";
+    button.textContent = "Hide ribbon";
+    button.addEventListener("click", () => {
+      this.setCollapsed(!this.collapsed, host);
+    });
+    return button;
+  }
+
+  private setCollapsed(value: boolean, host: HTMLElement): void {
+    this.collapsed = value;
+    host.dataset.ribbonCollapsed = String(value);
+    this.collapseToggle.setAttribute("aria-pressed", String(value));
+    this.collapseToggle.title = value ? "Show ribbon" : "Hide ribbon";
+    this.collapseToggle.textContent = value ? "Show ribbon" : "Hide ribbon";
   }
 
   private resolveActiveTab(tabs: RibbonTabDefinition[], preferred?: string): string | null {

@@ -77,7 +77,25 @@ const shouldSplitAfter = (el: HTMLElement): boolean => {
 };
 
 // Require extra slack before joining to avoid split/join oscillation at boundaries.
-const JOIN_BUFFER_PX = 12;
+const DEFAULT_JOIN_BUFFER_PX = 12;
+const DELETE_JOIN_BUFFER_PX = 0;
+
+const isDeleteStep = (step: any): boolean => {
+  if (!step || typeof step.from !== "number" || typeof step.to !== "number") return false;
+  if (step.to <= step.from) return false;
+  const sliceSize =
+    typeof step.slice?.size === "number"
+      ? step.slice.size
+      : typeof step.slice?.content?.size === "number"
+        ? step.slice.content.size
+        : null;
+  return sliceSize === 0;
+};
+
+const isDeleteTransaction = (tr: any): boolean => {
+  if (!tr || !Array.isArray(tr.steps)) return false;
+  return tr.steps.some((step: any) => isDeleteStep(step));
+};
 
 const findSplitTarget = (content: HTMLElement, tolerance = 1): { target: HTMLElement; after: boolean } | null => {
   const contentHeight = content.clientHeight;
@@ -127,7 +145,12 @@ const findSplitTarget = (content: HTMLElement, tolerance = 1): { target: HTMLEle
   return null;
 };
 
-const findJoinBoundary = (view: any, pageType: any, tolerance = 1): number | null => {
+const findJoinBoundary = (
+  view: any,
+  pageType: any,
+  tolerance = 1,
+  joinBufferPx = DEFAULT_JOIN_BUFFER_PX
+): number | null => {
   const pages = Array.from(view.dom.querySelectorAll(`.${PAGE_CLASS}`)).filter(
     (node): node is HTMLElement => node instanceof HTMLElement
   );
@@ -149,7 +172,7 @@ const findJoinBoundary = (view: any, pageType: any, tolerance = 1): number | nul
     const remaining = content.clientHeight - used;
     const nextMarginTop = parseFloat(getComputedStyle(nextFirst).marginTop || "0") || 0;
     const nextHeight = nextMarginTop + nextFirst.offsetHeight;
-    if (remaining + tolerance >= nextHeight + JOIN_BUFFER_PX) {
+    if (remaining + tolerance >= nextHeight + joinBufferPx) {
       let pos = 0;
       for (let idx = 0; idx <= i; idx += 1) {
         const child = view.state.doc.child(idx);
@@ -177,7 +200,11 @@ const findEmptyPageRange = (doc: any, pageType: any): { from: number; to: number
   return null;
 };
 
-const paginateView = (view: any, runningRef: { value: boolean }) => {
+const paginateView = (
+  view: any,
+  runningRef: { value: boolean },
+  options?: { preferJoin?: boolean }
+) => {
   if (runningRef.value) return;
   const pageType = view.state.schema.nodes.page;
   if (!pageType) return;
@@ -239,7 +266,8 @@ const paginateView = (view: any, runningRef: { value: boolean }) => {
       view.dispatch(tr);
       return;
     }
-    const joinPos = findJoinBoundary(view, pageType);
+    const joinBufferPx = options?.preferJoin ? DELETE_JOIN_BUFFER_PX : DEFAULT_JOIN_BUFFER_PX;
+    const joinPos = findJoinBoundary(view, pageType, 1, joinBufferPx);
     if (joinPos !== null) {
       logDebug("joining pages", { joinPos });
       const tr = view.state.tr.join(joinPos);
@@ -307,10 +335,12 @@ export const PageNode = Node.create({
 export const PagePagination = Extension.create({
   name: "pagePagination",
   addProseMirrorPlugins() {
+    let lastMutationWasDelete = false;
     return [
       new Plugin({
         key: paginationKey,
-        appendTransaction(_transactions, _oldState, newState) {
+        appendTransaction(transactions, _oldState, newState) {
+          lastMutationWasDelete = transactions.some((tr) => isDeleteTransaction(tr));
           return wrapDocInPage(newState);
         },
         view(editorView) {
@@ -320,7 +350,8 @@ export const PagePagination = Extension.create({
             root: editorView.dom as HTMLElement,
             onRun: () => {
               logPaginationStats(editorView, "scheduler run");
-              paginateView(editorView, running);
+              paginateView(editorView, running, { preferJoin: lastMutationWasDelete });
+              lastMutationWasDelete = false;
             }
           });
           logPaginationStats(editorView, "scheduler mounted");

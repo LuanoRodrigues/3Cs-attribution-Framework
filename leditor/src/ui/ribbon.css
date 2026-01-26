@@ -151,6 +151,41 @@
   overflow: hidden;
   border-bottom: 1px solid var(--r-divider-color);
   background: linear-gradient(180deg, #fafafa 0%, #f1f1f1 100%);
+  position: relative;
+}
+
+.ribbon-collapse-toggle {
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: 1px solid var(--r-border-color);
+  background: var(--r-ctl-bg);
+  color: var(--r-text);
+  cursor: pointer;
+  font-size: var(--r-font-size);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: var(--r-ctl-shadow);
+  margin-left: auto;
+}
+
+.ribbon-collapse-toggle:hover {
+  background: var(--r-ctl-bg-hover);
+  border-color: #9cb5e7;
+}
+
+.ribbon-collapse-toggle:active {
+  background: var(--r-ctl-bg-pressed);
+  border-color: #7a9be0;
+}
+
+.leditor-ribbon-host[data-ribbon-collapsed="true"] .leditor-ribbon-panels {
+  display: none;
+}
+
+.leditor-ribbon-host[data-ribbon-collapsed="true"] .ribbon-collapse-toggle::after {
+  content: " (show)";
 }
 
 .leditor-ribbon[data-ribbon-tab-scroll="enabled"] .leditor-ribbon-tabs {

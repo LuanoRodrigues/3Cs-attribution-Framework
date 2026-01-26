@@ -1132,6 +1132,7 @@ const mountA4Layout = (appRoot, editorEl, options = {}) => {
           applySectionLayouts(nextCount);
           syncHeaderFooter();
           updatePageNumbers();
+          scheduleFootnoteUpdate();
           return;
         }
         if (nextCount !== pageCount) {
@@ -1143,6 +1144,7 @@ const mountA4Layout = (appRoot, editorEl, options = {}) => {
           syncHeaderFooter();
           updatePageNumbers();
         }
+        scheduleFootnoteUpdate();
         return;
       }
       const heightCount = computeHeightPages();

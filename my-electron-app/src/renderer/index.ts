@@ -922,6 +922,22 @@ function createActionButton(action: RibbonAction): HTMLButtonElement {
   btn.title = action.hint;
   btn.dataset.phase = action.command.phase;
   btn.dataset.action = action.command.action;
+  const payload = action.command.payload as { toolType?: string; panelId?: string; metadata?: Record<string, unknown> } | undefined;
+  const isToolOpenAction = action.command.phase === "tools" && action.command.action === "open_tool" && payload?.toolType;
+  if (isToolOpenAction) {
+    btn.draggable = true;
+    btn.dataset.toolType = String(payload!.toolType);
+    btn.addEventListener("dragstart", (event) => {
+      if (!event.dataTransfer) return;
+      const dragPayload = JSON.stringify({
+        toolType: payload!.toolType,
+        metadata: payload?.metadata
+      });
+      event.dataTransfer.setData("application/x-annotarium-tool-tab", dragPayload);
+      event.dataTransfer.setData("text/plain", dragPayload);
+      event.dataTransfer.effectAllowed = "copy";
+    });
+  }
   btn.addEventListener("click", () => handleAction(action));
   return btn;
 }

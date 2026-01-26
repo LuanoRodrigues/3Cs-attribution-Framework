@@ -64,7 +64,25 @@ const shouldSplitAfter = (el) => {
     return false;
 };
 // Require extra slack before joining to avoid split/join oscillation at boundaries.
-const JOIN_BUFFER_PX = 12;
+const DEFAULT_JOIN_BUFFER_PX = 12;
+const DELETE_JOIN_BUFFER_PX = 0;
+const isDeleteStep = (step) => {
+    if (!step || typeof step.from !== "number" || typeof step.to !== "number")
+        return false;
+    if (step.to <= step.from)
+        return false;
+    const sliceSize = typeof step.slice?.size === "number"
+        ? step.slice.size
+        : typeof step.slice?.content?.size === "number"
+            ? step.slice.content.size
+            : null;
+    return sliceSize === 0;
+};
+const isDeleteTransaction = (tr) => {
+    if (!tr || !Array.isArray(tr.steps))
+        return false;
+    return tr.steps.some((step) => isDeleteStep(step));
+};
 const findSplitTarget = (content, tolerance = 1) => {
     const contentHeight = content.clientHeight;
     if (contentHeight <= 0) {
@@ -95,7 +113,7 @@ const findSplitTarget = (content, tolerance = 1) => {
     }
     return null;
 };
-const findJoinBoundary = (view, pageType, tolerance = 1) => {
+const findJoinBoundary = (view, pageType, tolerance = 1, joinBufferPx = DEFAULT_JOIN_BUFFER_PX) => {
     const pages = Array.from(view.dom.querySelectorAll(`.${PAGE_CLASS}`));
     if (pages.length < 2)
         return null;
@@ -118,7 +136,7 @@ const findJoinBoundary = (view, pageType, tolerance = 1) => {
         const remaining = content.clientHeight - used;
         const nextMarginTop = parseFloat(getComputedStyle(nextFirst).marginTop || "0") || 0;
         const nextHeight = nextMarginTop + nextFirst.offsetHeight;
-        if (remaining + tolerance >= nextHeight + JOIN_BUFFER_PX) {
+        if (remaining + tolerance >= nextHeight + joinBufferPx) {
             let pos = 0;
             for (let idx = 0; idx <= i; idx += 1) {
                 const child = view.state.doc.child(idx);
@@ -146,7 +164,7 @@ const findEmptyPageRange = (doc, pageType) => {
     }
     return null;
 };
-const paginateView = (view, runningRef) => {
+const paginateView = (view, runningRef, options) => {
     if (runningRef.value)
         return;
     const pageType = view.state.schema.nodes.page;
@@ -211,7 +229,8 @@ const paginateView = (view, runningRef) => {
             view.dispatch(tr);
             return;
         }
-        const joinPos = findJoinBoundary(view, pageType);
+        const joinBufferPx = options?.preferJoin ? DELETE_JOIN_BUFFER_PX : DEFAULT_JOIN_BUFFER_PX;
+        const joinPos = findJoinBoundary(view, pageType, 1, joinBufferPx);
         if (joinPos !== null) {
             logDebug("joining pages", { joinPos });
             const tr = view.state.tr.join(joinPos);
@@ -277,10 +296,12 @@ exports.PageNode = core_1.Node.create({
 exports.PagePagination = core_1.Extension.create({
     name: "pagePagination",
     addProseMirrorPlugins() {
+        let lastMutationWasDelete = false;
         return [
             new state_1.Plugin({
                 key: paginationKey,
-                appendTransaction(_transactions, _oldState, newState) {
+                appendTransaction(transactions, _oldState, newState) {
+                    lastMutationWasDelete = transactions.some((tr) => isDeleteTransaction(tr));
                     return wrapDocInPage(newState);
                 },
                 view(editorView) {
@@ -288,7 +309,10 @@ exports.PagePagination = core_1.Extension.create({
                     const running = { value: false };
                     const scheduler = new scheduler_js_1.PaginationScheduler({
                         root: editorView.dom,
-                        onRun: () => paginateView(editorView, running)
+                        onRun: () => {
+                            paginateView(editorView, running, { preferJoin: lastMutationWasDelete });
+                            lastMutationWasDelete = false;
+                        }
                     });
                     scheduler.request();
                     return {

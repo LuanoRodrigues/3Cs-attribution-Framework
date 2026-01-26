@@ -59,6 +59,7 @@ html.ribbon-panels-v2 header#app-ribbon {
   box-shadow: none;
   backdrop-filter: blur(8px);
   overflow: hidden;
+  z-index: 5000;
 }
 
 html.ribbon-panels-v2 #app-ribbon-separator {
@@ -66,6 +67,7 @@ html.ribbon-panels-v2 #app-ribbon-separator {
   height: 6px;
   background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 70%, transparent), transparent);
   box-shadow: none;
+  z-index: 4900;
 }
 
 html.ribbon-panels-v2 #app-tab-header {
