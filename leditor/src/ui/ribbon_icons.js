@@ -1,6 +1,21 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createRibbonIcon = void 0;
+const fluent_svg_js_1 = require("./fluent_svg.js");
+const fluent = (name) => {
+    const registry = typeof window !== "undefined" ? window.FluentIcons ?? window.fluentIcons : undefined;
+    const entry = registry?.[name];
+    if (typeof entry === "function") {
+        const maybeSvg = entry();
+        if (maybeSvg instanceof SVGElement) {
+            return maybeSvg;
+        }
+    }
+    if (entry instanceof SVGElement) {
+        return entry;
+    }
+    return null;
+};
 const createTypographyIcon = (text, extraClass) => {
     const icon = document.createElement("span");
     icon.className = "leditor-ribbon-icon-typography" + (extraClass ? ` ${extraClass}` : "");
@@ -72,21 +87,22 @@ const createPlaceholderIcon = () => {
     el.className = "leditor-ribbon-icon-placeholder";
     return el;
 };
+const fluentSvg = (name) => (0, fluent_svg_js_1.createFluentSvgIcon)(name) ?? fluent(name);
 const ICON_CREATORS = {
-    style: () => createTypographyIcon("¶"),
-    fontFamily: () => createTypographyIcon("A"),
-    fontSize: () => createTypographyIcon("A", "size"),
-    bold: () => createTypographyIcon("B", "bold"),
-    italic: () => createTypographyIcon("I", "italic"),
-    underline: () => createTypographyIcon("U", "underline"),
-    strikethrough: () => createTypographyIcon("S", "strikethrough"),
-    superscript: () => createTypographyIcon("x²", "superscript"),
-    subscript: () => createTypographyIcon("x₂", "subscript"),
-    changeCase: () => createTypographyIcon("Aa", "change-case"),
-    highlight: () => createColorSwatchIcon("highlight"),
-    textColor: () => createColorSwatchIcon("textColor"),
+    style: () => fluentSvg("TextGrammarSettings20Filled") ?? createTypographyIcon("¶"),
+    fontFamily: () => fluentSvg("TextFont20Filled") ?? createTypographyIcon("A"),
+    fontSize: () => fluentSvg("TextFontSize20Filled") ?? createTypographyIcon("A", "size"),
+    bold: () => fluentSvg("TextBold20Filled") ?? createTypographyIcon("B", "bold"),
+    italic: () => fluentSvg("TextItalic20Filled") ?? createTypographyIcon("I", "italic"),
+    underline: () => fluentSvg("TextUnderline20Filled") ?? createTypographyIcon("U", "underline"),
+    strikethrough: () => fluentSvg("TextStrikethrough20Filled") ?? createTypographyIcon("S", "strikethrough"),
+    superscript: () => fluentSvg("TextSuperscript20Filled") ?? createTypographyIcon("x²", "superscript"),
+    subscript: () => fluentSvg("TextSubscript20Filled") ?? createTypographyIcon("x₂", "subscript"),
+    changeCase: () => fluentSvg("TextCaseTitle20Filled") ?? createTypographyIcon("Aa", "change-case"),
+    highlight: () => fluentSvg("HighlightAccent20Filled") ?? createColorSwatchIcon("highlight"),
+    textColor: () => fluentSvg("TextColor20Filled") ?? createColorSwatchIcon("textColor"),
     link: () => createInlineIcon("∞", "link"),
-    clear: () => createInlineIcon("×", "clear"),
+    clear: () => fluentSvg("TextClearFormatting20Filled") ?? createInlineIcon("×", "clear"),
     cover: () => createInlineIcon("⌂", "cover"),
     pageBreak: () => createInlineIcon("⎚", "page-break"),
     pageSize: () => createInlineIcon("⧉", "page-size"),
@@ -117,6 +133,8 @@ const ICON_CREATORS = {
     ruler: () => createInlineIcon("=", "ruler"),
     gridlines: () => createInlineIcon("?", "gridlines"),
     navigation: () => createInlineIcon("?", "navigation"),
+    growFont: () => fluentSvg("Add20Filled") ?? createInlineIcon("+", "grow-font"),
+    shrinkFont: () => fluentSvg("Subtract20Filled") ?? createInlineIcon("−", "shrink-font"),
     zoomOut: () => createInlineIcon("-", "zoom-out"),
     zoomIn: () => createInlineIcon("+", "zoom-in"),
     zoomReset: () => createTypographyIcon("100%", "zoom-reset"),
@@ -137,25 +155,37 @@ const ICON_CREATORS = {
     refresh: () => createInlineIcon("⟳", "refresh"),
     footnotePrev: () => createInlineIcon("⇠", "footnote-prev"),
     footnoteNext: () => createInlineIcon("⇢", "footnote-next"),
-    alignLeft: () => createAlignIcon("left"),
-    alignCenter: () => createAlignIcon("center"),
-    alignRight: () => createAlignIcon("right"),
-    alignJustify: () => createAlignIcon("justify"),
-    bulletList: () => createListIcon("bullet"),
-    numberList: () => createListIcon("number"),
-    multiList: () => createListIcon("multilevel"),
-    indentDecrease: () => createInlineIcon("←", "indent"),
-    indentIncrease: () => createInlineIcon("→", "indent"),
-    lineSpacing: () => createSpacingIcon("line"),
+    alignLeft: () => fluentSvg("TextAlignLeft20Filled") ?? createAlignIcon("left"),
+    alignCenter: () => fluentSvg("TextAlignCenter20Filled") ?? createAlignIcon("center"),
+    alignRight: () => fluentSvg("TextAlignRight20Filled") ?? createAlignIcon("right"),
+    alignJustify: () => fluentSvg("TextAlignJustifyLow20Filled") ?? createAlignIcon("justify"),
+    bulletList: () => fluentSvg("TextBulletListLtr20Filled") ?? createListIcon("bullet"),
+    numberList: () => fluentSvg("TextNumberListLtr20Filled") ?? createListIcon("number"),
+    multiList: () => fluentSvg("TextBulletListTree20Filled") ?? createListIcon("multilevel"),
+    indentDecrease: () => fluentSvg("TextIndentDecreaseLtr20Filled") ?? createInlineIcon("←", "indent"),
+    indentIncrease: () => fluentSvg("TextIndentIncreaseLtr20Filled") ?? createInlineIcon("→", "indent"),
+    lineSpacing: () => fluentSvg("TextLineSpacing20Filled") ?? createSpacingIcon("line"),
     spacingBefore: () => createSpacingIcon("before"),
     spacingAfter: () => createSpacingIcon("after"),
-    find: () => createInlineIcon("🔍", "search"),
-    replace: () => createInlineIcon("↔", "replace"),
-    paste: () => createInlineIcon("📋", "paste"),
-    copy: () => createInlineIcon("📄", "copy"),
-    cut: () => createInlineIcon("✂", "cut"),
-    undo: () => createInlineIcon("↺", "undo"),
-    redo: () => createInlineIcon("↻", "redo")
+    sort: () => fluentSvg("ArrowSort20Filled") ?? createInlineIcon("⇅", "sort"),
+    find: () => fluentSvg("Search20Filled") ?? createInlineIcon("🔍", "search"),
+    replace: () => fluentSvg("ArrowSwap20Filled") ?? createInlineIcon("↔", "replace"),
+    paste: () => fluentSvg("ClipboardPaste20Filled") ?? createInlineIcon("📋", "paste"),
+    copy: () => fluentSvg("Copy20Filled") ?? createInlineIcon("📄", "copy"),
+    cut: () => fluentSvg("Cut20Filled") ?? createInlineIcon("✂", "cut"),
+    formatPainter: () => fluentSvg("PaintBrush20Filled") ?? createInlineIcon("🎨", "format-painter"),
+    select: () => fluentSvg("SelectObject20Filled") ?? createInlineIcon("⯈", "select"),
+    regex: () => fluentSvg("SearchSettings20Filled") ?? createInlineIcon(".*", "regex"),
+    undo: () => fluentSvg("ArrowUndo20Filled") ?? createInlineIcon("↺", "undo"),
+    redo: () => fluentSvg("ArrowRedo20Filled") ?? createInlineIcon("↻", "redo"),
+    taskList: () => fluentSvg("TextBulletListSquare20Filled") ?? createListIcon("multilevel"),
+    visualChars: () => fluentSvg("TextParagraphDirectionRight20Filled") ?? createTypographyIcon("¶", "visual-chars"),
+    borders: () => fluentSvg("BorderAll20Filled") ?? createInlineIcon("▭", "borders"),
+    shading: () => fluentSvg("PaintBucket20Filled") ?? createInlineIcon("▨", "shading"),
+    blockquote: () => fluentSvg("TextQuote20Filled") ?? createInlineIcon("❝", "blockquote"),
+    horizontalRule: () => fluentSvg("LineHorizontal320Filled") ?? createInlineIcon("―", "horizontal-rule"),
+    textEffects: () => fluentSvg("TextEffects20Filled") ?? createInlineIcon("Fx", "text-effects"),
+    code: () => fluentSvg("Code20Filled") ?? createInlineIcon("{}", "code")
 };
 const createRibbonIcon = (name) => {
     const creator = ICON_CREATORS[name];

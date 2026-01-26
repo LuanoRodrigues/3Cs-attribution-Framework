@@ -1,5 +1,5 @@
 import type { EditorHandle } from "../api/leditor.js";
-import type { A4LayoutController, A4ViewMode } from "./a4_layout.js";
+import type { A4LayoutController, A4ViewMode } from "./a4_layout.ts";
 import { computeStats } from "../editor/stats.js";
 
 declare global {
@@ -46,6 +46,15 @@ const ensureStatusBarStyles = () => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  box-sizing: border-box;
+}
+
+.leditor-status-bar--embedded {
+  position: absolute;
+  border-radius: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
 }
 
 .leditor-status-group {
@@ -86,10 +95,24 @@ const ensureStatusBarStyles = () => {
   document.head.appendChild(style);
 };
 
-export const mountStatusBar = (editorHandle: EditorHandle, layout?: A4LayoutController | null) => {
+export type MountStatusBarOptions = {
+  parent?: HTMLElement | null;
+};
+
+export const mountStatusBar = (
+  editorHandle: EditorHandle,
+  layout?: A4LayoutController | null,
+  options?: MountStatusBarOptions
+) => {
   ensureStatusBarStyles();
   const bar = document.createElement("div");
   bar.className = "leditor-status-bar";
+
+  const parent = options?.parent ?? document.body;
+  const embedded = Boolean(options?.parent && options.parent !== document.body);
+  if (embedded) {
+    bar.classList.add("leditor-status-bar--embedded");
+  }
 
   const statsGroup = document.createElement("div");
   statsGroup.className = "leditor-status-group";
@@ -150,7 +173,7 @@ export const mountStatusBar = (editorHandle: EditorHandle, layout?: A4LayoutCont
 
   bar.appendChild(statsGroup);
   bar.appendChild(zoomGroup);
-  document.body.appendChild(bar);
+  parent.appendChild(bar);
 
   let last = "";
   let changeCount = 0;

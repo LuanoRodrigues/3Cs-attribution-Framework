@@ -1,66 +1,48 @@
 import { Node, type NodeViewRenderer } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 
-export type BibliographyEntry = {
-  id: string;
-  label: string;
-};
-
-const normalizeEntries = (value: unknown): BibliographyEntry[] => {
-  if (!Array.isArray(value)) return [];
-  const entries: BibliographyEntry[] = [];
-  for (const item of value) {
-    if (!item || typeof item !== "object") continue;
-    const id = typeof (item as BibliographyEntry).id === "string" ? (item as BibliographyEntry).id : "";
-    const label = typeof (item as BibliographyEntry).label === "string" ? (item as BibliographyEntry).label : "";
-    if (!id) continue;
-    entries.push({ id, label: label.trim() || id });
-  }
-  return entries;
-};
-
 class BibliographyNodeView {
   private node: ProseMirrorNode;
   private readonly root: HTMLElement;
-  private readonly list: HTMLOListElement;
+  private readonly content: HTMLElement;
 
   constructor(node: ProseMirrorNode) {
     this.node = node;
     this.root = document.createElement("section");
     this.root.className = "leditor-bibliography";
     this.root.dataset.bibliography = "true";
-    const title = document.createElement("div");
-    title.className = "leditor-bibliography-title";
-    title.textContent = "Bibliography";
-    this.list = document.createElement("ol");
-    this.list.className = "leditor-bibliography-list";
-    this.root.appendChild(title);
-    this.root.appendChild(this.list);
-    this.renderEntries(normalizeEntries(node.attrs?.entries));
+    this.content = document.createElement("div");
+    this.content.className = "leditor-bibliography-content";
+    this.root.appendChild(this.content);
+    this.applyNode(node);
   }
 
-  private renderEntries(entries: BibliographyEntry[]) {
-    this.list.innerHTML = "";
-    if (entries.length === 0) {
-      const empty = document.createElement("div");
-      empty.className = "leditor-bibliography-empty";
-      empty.textContent = "No sources cited.";
-      this.list.appendChild(empty);
+  private applyNode(node: ProseMirrorNode) {
+    const attrs = node.attrs ?? {};
+    if (typeof attrs.bibId === "string" && attrs.bibId.trim().length > 0) {
+      this.root.dataset.bibliographyId = attrs.bibId;
+    } else {
+      delete this.root.dataset.bibliographyId;
+    }
+    this.renderContent(typeof attrs.renderedHtml === "string" ? attrs.renderedHtml : "");
+  }
+
+  private renderContent(renderedHtml: string) {
+    this.content.innerHTML = "";
+    if (typeof renderedHtml === "string" && renderedHtml.trim().length > 0) {
+      this.content.innerHTML = renderedHtml;
       return;
     }
-    for (const entry of entries) {
-      const item = document.createElement("li");
-      item.className = "leditor-bibliography-entry";
-      item.dataset.sourceId = entry.id;
-      item.textContent = entry.label;
-      this.list.appendChild(item);
-    }
+    const empty = document.createElement("div");
+    empty.className = "leditor-bibliography-empty";
+    empty.textContent = "No sources cited.";
+    this.content.appendChild(empty);
   }
 
   update(node: ProseMirrorNode) {
     if (node.type !== this.node.type) return false;
     this.node = node;
-    this.renderEntries(normalizeEntries(node.attrs?.entries));
+    this.applyNode(node);
     return true;
   }
 
@@ -85,9 +67,8 @@ const BibliographyExtension = Node.create({
   draggable: false,
   addAttributes() {
     return {
-      entries: {
-        default: []
-      }
+      bibId: { default: null },
+      renderedHtml: { default: "" }
     };
   },
   parseHTML() {
@@ -96,25 +77,21 @@ const BibliographyExtension = Node.create({
         tag: "section[data-bibliography]",
         getAttrs: (node) => {
           if (!(node instanceof HTMLElement)) return {};
-          const raw = node.getAttribute("data-bibliography-entries");
-          if (!raw) return {};
-          try {
-            const parsed = JSON.parse(raw);
-            return { entries: normalizeEntries(parsed) };
-          } catch {
-            return {};
-          }
+          return {
+            bibId: node.getAttribute("data-bibliography-id") || null,
+            renderedHtml: node.getAttribute("data-bibliography-html") || node.innerHTML || ""
+          };
         }
       }
     ];
   },
   renderHTML({ HTMLAttributes }) {
-    const entries = normalizeEntries(HTMLAttributes.entries);
     return [
       "section",
       {
         "data-bibliography": "true",
-        "data-bibliography-entries": JSON.stringify(entries),
+        "data-bibliography-id": HTMLAttributes.bibId ?? undefined,
+        "data-bibliography-html": typeof HTMLAttributes.renderedHtml === "string" ? HTMLAttributes.renderedHtml : "",
         class: "leditor-bibliography"
       },
       0

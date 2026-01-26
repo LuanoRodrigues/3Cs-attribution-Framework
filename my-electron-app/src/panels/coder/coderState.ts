@@ -246,11 +246,30 @@ export class CoderStore {
     this.commit(next);
   }
 
+  deleteWithSnapshot(nodeId: string): { node: CoderNode; parentId: string | null; index: number } | null {
+    const next = cloneState(this.state);
+    const path = findPath(next.nodes, nodeId);
+    if (!path) return null;
+    const parentId = path.parent ? path.parent.id : null;
+    const index = path.index;
+    const { removed } = removeNode(next.nodes, nodeId);
+    if (!removed) return null;
+    ensureRootFolder(next);
+    this.commit(next);
+    return { node: removed, parentId, index };
+  }
+
   move(spec: MoveSpec): void {
     const next = cloneState(this.state);
     const { removed: node } = removeNode(next.nodes, spec.nodeId);
     if (!node) return;
     insertNode(next.nodes, node, spec.targetParentId ?? null, spec.targetIndex);
+    this.commit(next);
+  }
+
+  restoreNode(node: CoderNode, parentId: string | null, index: number): void {
+    const next = cloneState(this.state);
+    insertNode(next.nodes, node, parentId ?? null, index);
     this.commit(next);
   }
 

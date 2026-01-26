@@ -45,6 +45,7 @@ export class PanelToolManager {
   private hosts = new Map<PanelId, HTMLElement>();
   private toolToPanel = new Map<string, PanelId>();
   private panelIds: PanelId[];
+  private dragActive = false;
 
   constructor(private readonly options: PanelToolManagerOptions) {
     this.panelIds = options.panelIds;
@@ -70,7 +71,24 @@ export class PanelToolManager {
       this.attachHost(panelId, content);
       this.attachDropTargets(panelId, content);
     });
+    document.addEventListener("dragstart", this.handleGlobalDragStart);
+    document.addEventListener("dragend", this.handleGlobalDragEnd);
+    document.addEventListener("drop", this.handleGlobalDragEnd);
   }
+
+  private handleGlobalDragStart = (event: DragEvent): void => {
+    const payload = parseDragPayload(event.dataTransfer);
+    if (!payload) return;
+    if (this.dragActive) return;
+    this.dragActive = true;
+    document.body.classList.add("panel-drop-active");
+  };
+
+  private handleGlobalDragEnd = (): void => {
+    if (!this.dragActive) return;
+    this.dragActive = false;
+    document.body.classList.remove("panel-drop-active");
+  };
 
   getRoot(panelId: PanelId): PanelLayoutRoot {
     const root = this.roots.get(panelId);
@@ -112,6 +130,22 @@ export class PanelToolManager {
     return id;
   }
 
+  ensureToolHost(panelId: PanelId, options?: { replaceContent?: boolean }): void {
+    const host = this.hosts.get(panelId);
+    const content = this.getPanelContent(panelId);
+    if (!host || !content) return;
+    if (options?.replaceContent && panelId !== "panel2") {
+      Array.from(content.children).forEach((child) => {
+        if (child !== host) {
+          child.remove();
+        }
+      });
+    }
+    if (!content.contains(host)) {
+      content.appendChild(host);
+    }
+  }
+
   focusTool(toolId: string): void {
     const panelId = this.toolToPanel.get(toolId);
     if (!panelId) return;
@@ -137,6 +171,16 @@ export class PanelToolManager {
     if (!state) return;
     target.insertToolState(state, { focus: true });
     this.toolToPanel.set(toolId, targetPanelId);
+  }
+
+  clearPanelTools(panelId: PanelId): void {
+    const root = this.roots.get(panelId);
+    if (!root) return;
+    const snapshot = root.serialize();
+    snapshot.tabs.forEach((tab) => {
+      root.closeTool(tab.id);
+      this.toolToPanel.delete(tab.id);
+    });
   }
 
   private createHost(panelId: PanelId): HTMLElement {
@@ -172,24 +216,36 @@ export class PanelToolManager {
     targets.forEach((target) => {
       if (target.dataset.toolDropBound === "true") return;
       target.dataset.toolDropBound = "true";
-      target.addEventListener("dragover", (event) => {
-        const payload = parseDragPayload(event.dataTransfer);
-        if (!payload) return;
-        event.preventDefault();
-        event.dataTransfer!.dropEffect = payload.toolType && !payload.toolId ? "copy" : "move";
-      });
-      target.addEventListener("drop", (event) => {
-        const payload = parseDragPayload(event.dataTransfer);
-        if (!payload) return;
-        event.preventDefault();
-        if (payload.toolId) {
-          this.moveTool(payload.toolId, panelId);
-          return;
-        }
-        if (payload.toolType) {
-          this.spawnTool(payload.toolType, { panelId, metadata: payload.metadata });
-        }
-      });
+      target.addEventListener(
+        "dragover",
+        (event) => {
+          const payload = parseDragPayload(event.dataTransfer);
+          if (!payload) return;
+          event.preventDefault();
+          event.dataTransfer!.dropEffect = payload.toolType && !payload.toolId ? "copy" : "move";
+        },
+        true
+      );
+      target.addEventListener(
+        "drop",
+        (event) => {
+          const payload = parseDragPayload(event.dataTransfer);
+          if (!payload) return;
+          event.preventDefault();
+          if (payload.toolId) {
+            this.ensureToolHost(panelId, { replaceContent: true });
+            this.moveTool(payload.toolId, panelId);
+            return;
+          }
+          if (payload.toolType) {
+            this.ensureToolHost(panelId, { replaceContent: true });
+            this.clearPanelTools(panelId);
+            const id = this.spawnTool(payload.toolType, { panelId, metadata: payload.metadata });
+            this.focusTool(id);
+          }
+        },
+        true
+      );
     });
   }
 

@@ -16,10 +16,10 @@ export const AnalyseTab: RibbonTab = {
     {
       id: "analyse-corpus",
       label: "Corpus",
-      hint: "Open the corpus workspace with filters and batch cards.",
+      hint: "Open corpus batches with filters and cards.",
       iconId: "analyse-corpus",
       group: "Data",
-      command: { phase: "analyse", action: "analyse/open_phases" }
+      command: { phase: "analyse", action: "analyse/open_corpus" }
     },
     {
       id: "analyse-round-1",

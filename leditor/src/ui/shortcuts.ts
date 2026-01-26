@@ -44,6 +44,34 @@ export const initGlobalShortcuts = (editorHandle: EditorHandle): (() => void) =>
     },
     "ctrl+shift+r": () => {
       window.__logCoderNode?.();
+      const controls = Array.from(document.querySelectorAll<HTMLElement>(".leditor-ribbon [data-control-id]"));
+      const supported = new Set([
+        "button",
+        "toggleButton",
+        "splitButton",
+        "splitToggleButton",
+        "colorSplitButton",
+        "dropdown",
+        "colorPicker",
+        "dialogLauncher"
+      ]);
+      const emptyControls = controls
+        .filter((el) => {
+          const type = el.dataset.controlType;
+          return type && supported.has(type);
+        })
+        .map((el) => {
+          const icon = el.querySelector(".leditor-ribbon-icon");
+          const hasIcon = icon && !icon.classList.contains("leditor-ribbon-icon-placeholder");
+          return { controlId: el.dataset.controlId ?? "", controlType: el.dataset.controlType ?? "", hasIcon };
+        })
+        .filter((entry) => !entry.hasIcon);
+      if (emptyControls.length) {
+        console.info("[Ribbon] Controls missing icons:", emptyControls.map((entry) => entry.controlId));
+        console.table(emptyControls);
+      } else {
+        console.info("[Ribbon] All icon-capable controls have icons.");
+      }
       return true;
     }
   });

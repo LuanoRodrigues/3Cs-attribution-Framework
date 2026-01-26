@@ -12,10 +12,7 @@ const createPlaceholderPanel = (text) => {
 const renderRibbonPlaceholder = (host, options) => {
     (0, toolbar_styles_js_1.ensureToolbarStyles)();
     const tabIds = (options.tabs ?? []).map((t) => t.id);
-    console.info("[RibbonDebug] renderRibbonPlaceholder", {
-        tabs: tabIds,
-        hasPanelContentKeys: Object.keys(options.panelContent ?? {})
-    });
+    // Debug: silenced noisy ribbon logs.
     const tabs = options.tabs ?? [];
     if (tabs.length === 0) {
         return;
@@ -24,7 +21,7 @@ const renderRibbonPlaceholder = (host, options) => {
         const panelContent = options.panelContent?.[tab.id];
         const panel = panelContent ?? createPlaceholderPanel(tab.placeholder ?? `${tab.label} tools coming soon.`);
         if (!panelContent) {
-            console.info("[RibbonDebug] placeholder used for tab", { tab: tab.id, label: tab.label });
+    // Debug: silenced noisy ribbon logs.
         }
         return { id: tab.id, label: tab.label, panel };
     });

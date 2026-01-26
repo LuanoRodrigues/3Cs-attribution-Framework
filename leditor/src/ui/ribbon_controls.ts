@@ -52,6 +52,9 @@ export const createRibbonButton = (options: RibbonButtonOptions): HTMLButtonElem
     button.disabled = true;
     button.setAttribute("aria-disabled", "true");
     button.classList.add("is-disabled");
+    button.dataset.disabled = "true";
+  } else {
+    button.dataset.disabled = "false";
   }
   button.addEventListener("click", () => {
     if (options.disabled) return;
@@ -67,6 +70,7 @@ export const createRibbonButton = (options: RibbonButtonOptions): HTMLButtonElem
 export const setPressedState = (button: HTMLButtonElement, state: boolean | "mixed"): void => {
   button.setAttribute("aria-pressed", state === "mixed" ? "mixed" : String(Boolean(state)));
   button.classList.toggle("is-selected", state === true);
+  button.dataset.state = state === "mixed" ? "mixed" : state ? "on" : "off";
   if (state === "mixed") {
     button.classList.add("is-mixed");
   } else {

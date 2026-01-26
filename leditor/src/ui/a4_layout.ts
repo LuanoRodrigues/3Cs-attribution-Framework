@@ -1,4 +1,4 @@
-import { getFootnoteRegistry } from "../extensions/extension_footnote.js";
+import { getFootnoteRegistry } from "../extensions/extension_footnote.ts";
 import { allocateSectionId, defaultSectionMeta, parseSectionMeta, type SectionMeta } from "../editor/section_state.js";
 import interact from "interactjs";
 import nouislider from "nouislider";
@@ -71,6 +71,7 @@ const sectionFooterContent = new Map<string, string>();
 let pageSections: PageSectionInfo[] = [];
 const SECTION_KINDS = new Set(["section_next", "section_continuous", "section_even", "section_odd"]);
 const A4_BUNDLE_ID = "a4-layout-src-2026-01-20";
+let didLogLayoutDebug = false;
 
 const createGlyphEntry = (unicode: number, advanceWidth: number) =>
   new opentype.Glyph({
@@ -179,9 +180,15 @@ const ensureStyles = () => {
   --ui-text-inverse: #f7f7f7;
   --ui-scale: 1.15;
 }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
 .leditor-app {
   position: relative;
   min-height: 100vh;
+  height: 100vh;
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -192,6 +199,35 @@ const ensureStyles = () => {
   transform: scale(var(--ui-scale));
   transform-origin: top center;
   width: calc(100% / var(--ui-scale));
+}
+
+.leditor-app-header {
+  flex: 0 0 auto;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+.leditor-doc-shell {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.leditor-app .ProseMirror a,
+.leditor-app .ProseMirror a * {
+  color: #5dd5ff;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.leditor-app .ProseMirror a.leditor-citation-anchor {
+  background: rgba(93, 213, 255, 0.14);
+  border: 1px solid rgba(93, 213, 255, 0.35);
+  border-radius: 6px;
+  padding: 1px 4px;
 }
 
 .leditor-app.theme-dark {
@@ -250,6 +286,9 @@ const ensureStyles = () => {
   gap: var(--page-gap);
   width: fit-content;
   margin: 0 auto;
+}
+
+.leditor-page-overlays {
   pointer-events: none;
 }
 
@@ -263,6 +302,8 @@ const ensureStyles = () => {
 }
 
 .leditor-page-stack {
+  position: relative;
+  z-index: 2;
   pointer-events: auto;
 }
 
@@ -337,21 +378,25 @@ const ensureStyles = () => {
 }
 
 .leditor-page-footer {
-  bottom: var(--footer-offset);
+  bottom: calc(var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset));
   justify-content: flex-end;
   text-transform: none;
   color: var(--page-footer-color);
+  z-index: 2;
 }
 
 .leditor-page-footnotes {
   position: absolute;
   left: var(--local-page-margin-left, var(--page-margin-left));
   right: var(--local-page-margin-right, var(--page-margin-right));
-  bottom: calc(var(--footer-height) + var(--local-page-margin-bottom, var(--page-margin-bottom)));
+  bottom: calc(
+    var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset) + var(--footer-height)
+  );
   min-height: 0;
   overflow: hidden;
   font-size: var(--footnote-font-size);
   color: var(--page-footnote-color);
+  z-index: 3;
 }
 .leditor-page-footnotes.leditor-page-footnotes--active {
   border-top: var(--footnote-separator-height) solid var(--footnote-separator-color);
@@ -381,6 +426,27 @@ const ensureStyles = () => {
 .leditor-endnote-entry-number {
   font-weight: 600;
   min-width: 1.5em;
+}
+
+.leditor-footnote {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+}
+
+.leditor-footnote-marker {
+  font-size: 0.7em;
+  line-height: 1;
+  vertical-align: super;
+  cursor: pointer;
+}
+
+.leditor-footnote-popover {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  left: 0;
+  display: none;
 }
 
 .leditor-footnote-entry-text,
@@ -416,6 +482,7 @@ const ensureStyles = () => {
   gap: var(--page-gap);
   width: fit-content;
   margin: 0 auto;
+  pointer-events: none;
 }
 
 .leditor-page-stack.is-two-page,
@@ -428,6 +495,8 @@ const ensureStyles = () => {
 }
 
 .leditor-page-stack {
+  position: relative;
+  z-index: 2;
   pointer-events: auto;
 }
 
@@ -483,7 +552,7 @@ const ensureStyles = () => {
 }
 
 .leditor-page-footer {
-  bottom: var(--footer-offset);
+  bottom: calc(var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset));
   justify-content: flex-end;
   text-transform: none;
 }
@@ -492,7 +561,9 @@ const ensureStyles = () => {
   position: absolute;
   left: var(--local-page-margin-left, var(--page-margin-left));
   right: var(--local-page-margin-right, var(--page-margin-right));
-  bottom: calc(var(--footer-height) + var(--local-page-margin-bottom, var(--page-margin-bottom)));
+  bottom: calc(
+    var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset) + var(--footer-height)
+  );
   min-height: 0;
   overflow: hidden;
   font-size: var(--footnote-font-size);
@@ -534,9 +605,6 @@ const ensureStyles = () => {
   margin: 0 auto;
 }
 
-.leditor-page-stack {
-  pointer-events: none;
-}
 
 
 .leditor-page {
@@ -590,7 +658,7 @@ const ensureStyles = () => {
 }
 
 .leditor-page-footer {
-  bottom: var(--footer-offset);
+  bottom: calc(var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset));
   justify-content: flex-end;
   text-transform: none;
   color: var(--page-footer-color);
@@ -600,7 +668,9 @@ const ensureStyles = () => {
   position: absolute;
   left: var(--local-page-margin-left, var(--page-margin-left));
   right: var(--local-page-margin-right, var(--page-margin-right));
-  bottom: calc(var(--footer-height) + var(--local-page-margin-bottom, var(--page-margin-bottom)));
+  bottom: calc(
+    var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset) + var(--footer-height)
+  );
   min-height: 0;
   overflow: hidden;
   font-size: var(--footnote-font-size);
@@ -629,11 +699,12 @@ const ensureStyles = () => {
 .leditor-page-overlays {
   position: absolute;
   top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: var(--page-width);
-  z-index: 2;
-  pointer-events: auto;
+  left: 0;
+  right: 0;
+  transform: none;
+  width: fit-content;
+  z-index: 1;
+  pointer-events: none;
 }
 
 .leditor-page-overlay {
@@ -707,7 +778,7 @@ const ensureStyles = () => {
 }
 
 .leditor-page-overlay .leditor-page-footer {
-  bottom: calc(var(--current-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset) + var(--footnote-area-height));
+  bottom: calc(var(--current-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset));
   height: var(--footer-height);
 }
 
@@ -715,7 +786,9 @@ const ensureStyles = () => {
   position: absolute;
   left: var(--current-margin-left, var(--page-margin-left));
   right: var(--current-margin-right, var(--page-margin-right));
-  bottom: var(--current-margin-bottom, var(--page-margin-bottom));
+  bottom: calc(
+    var(--current-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset) + var(--footer-height)
+  );
   min-height: 0;
   overflow: hidden;
   font-size: var(--footnote-font-size);
@@ -1118,7 +1191,9 @@ const ensureStyles = () => {
   position: absolute;
   left: var(--local-page-margin-left, var(--page-margin-left));
   right: var(--local-page-margin-right, var(--page-margin-right));
-  bottom: calc(var(--footer-height) + var(--local-page-margin-bottom, var(--page-margin-bottom)));
+  bottom: calc(
+    var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset) + var(--footer-height)
+  );
   min-height: 0;
   overflow: hidden;
   font-size: var(--footnote-font-size);
@@ -1130,11 +1205,84 @@ const ensureStyles = () => {
 }
 
 .leditor-page-stack {
+  position: relative;
+  z-index: 2;
   pointer-events: auto;
 }
 
 .leditor-page-overlays {
-  pointer-events: auto;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+.leditor-a4-zoom {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+.leditor-a4-zoom > .leditor-page-stack,
+.leditor-a4-zoom > .leditor-page-overlays {
+  width: fit-content;
+  margin: 0 auto;
+}
+.leditor-a4-zoom > .leditor-page-overlays {
+  inset: 0;
+  left: 0;
+  right: 0;
+  transform: none;
+}
+.leditor-page-inner > .leditor-page-header {
+  top: calc(var(--local-page-margin-top, var(--page-margin-top)) + var(--header-offset));
+  height: var(--header-height);
+}
+.leditor-page-inner > .leditor-page-footer {
+  bottom: calc(var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset));
+  height: var(--footer-height);
+  z-index: 2;
+}
+.leditor-page-inner > .leditor-page-footnotes {
+  bottom: calc(
+    var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset) + var(--footer-height)
+  );
+  z-index: 3;
+}
+.leditor-page-overlay > .leditor-page-header {
+  top: calc(var(--current-margin-top, var(--page-margin-top)) + var(--header-offset));
+  height: var(--header-height);
+}
+.leditor-page-overlay > .leditor-page-footer {
+  bottom: calc(var(--current-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset));
+  height: var(--footer-height);
+  z-index: 2;
+}
+.leditor-page-overlay > .leditor-page-footnotes {
+  bottom: calc(
+    var(--current-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset) + var(--footer-height)
+  );
+  z-index: 3;
+}
+.leditor-page-overlay .leditor-page-header {
+  top: calc(var(--current-margin-top, var(--page-margin-top)) + var(--header-offset));
+  height: var(--header-height);
+}
+
+.leditor-page-overlay .leditor-page-footer {
+  bottom: calc(var(--current-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset));
+  height: var(--footer-height);
+}
+
+.leditor-page-overlay .leditor-page-footnotes {
+  position: absolute;
+  left: var(--current-margin-left, var(--page-margin-left));
+  right: var(--current-margin-right, var(--page-margin-right));
+  bottom: calc(
+    var(--current-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset) + var(--footer-height)
+  );
+  min-height: 0;
+  overflow: hidden;
+  font-size: var(--footnote-font-size);
+  color: var(--page-footnote-color);
 }
 `;
   document.head.appendChild(style);
@@ -1239,9 +1387,15 @@ export const mountA4Layout = (
 
   const pageStack = document.createElement("div");
   pageStack.className = "leditor-page-stack";
+  pageStack.style.pointerEvents = "auto";
+  pageStack.style.zIndex = "2";
+  pageStack.style.position = "relative";
 
   const overlayLayer = document.createElement("div");
   overlayLayer.className = "leditor-page-overlays";
+  overlayLayer.style.pointerEvents = "none";
+  overlayLayer.style.zIndex = "1";
+  overlayLayer.style.position = "absolute";
 
   zoomLayer.appendChild(pageStack);
   zoomLayer.appendChild(overlayLayer);
@@ -1705,7 +1859,9 @@ export const mountA4Layout = (
   };
 
   const renderFootnoteSections = () => {
-    const containers = Array.from(appRoot.querySelectorAll<HTMLElement>(".leditor-page-footnotes"));
+    const containers = Array.from(
+      appRoot.querySelectorAll<HTMLElement>(".leditor-page .leditor-page-footnotes")
+    );
     const entries = collectFootnoteEntries();
     const footnoteMap = new Map<number, FootnoteEntry[]>();
     const endnoteEntries: FootnoteEntry[] = [];
@@ -1719,7 +1875,7 @@ export const mountA4Layout = (
       footnoteMap.set(entry.pageIndex, pageList);
     });
     containers.forEach((container) => {
-      const parent = container.closest<HTMLElement>(".leditor-page, .leditor-page-overlay");
+      const parent = container.closest<HTMLElement>(".leditor-page");
       const pageIndex = Number(parent?.dataset.pageIndex ?? "0");
       container.innerHTML = "";
       const pageEntries = footnoteMap.get(pageIndex) ?? [];
@@ -1754,7 +1910,9 @@ export const mountA4Layout = (
     if (footnoteHeightHandle) return;
     footnoteHeightHandle = window.requestAnimationFrame(() => {
       footnoteHeightHandle = 0;
-      const footnoteContainers = Array.from(appRoot.querySelectorAll<HTMLElement>(".leditor-page-footnotes"));
+      const footnoteContainers = Array.from(
+        appRoot.querySelectorAll<HTMLElement>(".leditor-page .leditor-page-footnotes")
+      );
       let maxHeight = 0;
       footnoteContainers.forEach((container) => {
         const host =
@@ -1796,13 +1954,27 @@ export const mountA4Layout = (
     const footnotes = document.createElement("div");
     footnotes.className = "leditor-page-footnotes";
     footnotes.textContent = "";
+    footnotes.setAttribute("aria-hidden", "true");
+    footnotes.contentEditable = "false";
     const marginGuide = document.createElement("div");
     marginGuide.className = "leditor-margin-guide";
     overlay.appendChild(header);
-    overlay.appendChild(footer);
     overlay.appendChild(footnotes);
+    overlay.appendChild(footer);
     overlay.appendChild(marginGuide);
     return overlay;
+  };
+
+  const normalizePageInnerOrder = (inner: HTMLElement) => {
+    const header = inner.querySelector<HTMLElement>(".leditor-page-header");
+    const content = inner.querySelector<HTMLElement>(".leditor-page-content");
+    const footnotes = inner.querySelector<HTMLElement>(".leditor-page-footnotes");
+    const footer = inner.querySelector<HTMLElement>(".leditor-page-footer");
+    if (!header || !content || !footnotes || !footer) return;
+    inner.appendChild(header);
+    inner.appendChild(content);
+    inner.appendChild(footnotes);
+    inner.appendChild(footer);
   };
 
   const buildPageShell = (index: number) => {
@@ -1814,11 +1986,17 @@ export const mountA4Layout = (
     const header = document.createElement("div");
     header.className = "leditor-page-header";
     header.innerHTML = normalizeHeaderFooterHtml(headerHtml);
+    header.setAttribute("aria-hidden", "true");
+    header.contentEditable = "false";
     const footer = document.createElement("div");
     footer.className = "leditor-page-footer";
     footer.innerHTML = normalizeHeaderFooterHtml(footerHtml);
+    footer.setAttribute("aria-hidden", "true");
+    footer.contentEditable = "false";
     const footnotes = document.createElement("div");
     footnotes.className = "leditor-page-footnotes";
+    footnotes.setAttribute("aria-hidden", "true");
+    footnotes.contentEditable = "false";
     const content = document.createElement("div");
     content.className = "leditor-page-content";
     content.contentEditable = "true";
@@ -1828,6 +2006,7 @@ export const mountA4Layout = (
     inner.appendChild(content);
     inner.appendChild(footnotes);
     inner.appendChild(footer);
+    normalizePageInnerOrder(inner);
     page.appendChild(inner);
     const columnGuide = document.createElement("div");
     columnGuide.className = "leditor-page-column-guide";
@@ -2108,6 +2287,13 @@ const renderPages = (count: number) => {
     }
     editorEl.style.width = "100%";
     overlayLayer.style.display = "";
+    pageStack.style.pointerEvents = "auto";
+    pageStack.style.zIndex = "2";
+    overlayLayer.style.pointerEvents = "none";
+    overlayLayer.style.zIndex = "1";
+    headerFooterMode = false;
+    activeRegion = null;
+    appRoot.classList.remove("leditor-header-footer-editing");
     const prose = editorEl.querySelector<HTMLElement>(".ProseMirror");
     if (!prose) {
       throw new Error("ProseMirror root missing after attach.");
@@ -2116,7 +2302,25 @@ const renderPages = (count: number) => {
     if (!activeEl || !editorEl.contains(activeEl)) {
       prose.focus({ preventScroll: true });
     }
+    updateHeaderFooterEditability();
     setEditorEditable(true);
+    if (!didLogLayoutDebug) {
+      didLogLayoutDebug = true;
+      console.info("[Footnote][debug] attachEditorForMode", {
+        pageStackPointerEvents: getComputedStyle(pageStack).pointerEvents,
+        overlayPointerEvents: getComputedStyle(overlayLayer).pointerEvents,
+        pageStackZIndex: getComputedStyle(pageStack).zIndex,
+        overlayZIndex: getComputedStyle(overlayLayer).zIndex,
+        zoomPointerEvents: getComputedStyle(zoomLayer).pointerEvents,
+        appRootPointerEvents: getComputedStyle(appRoot).pointerEvents,
+        headerFooterClassActive: appRoot.classList.contains("leditor-header-footer-editing"),
+        pageStackPointerEventsInline: pageStack.style.pointerEvents || "",
+        overlayPointerEventsInline: overlayLayer.style.pointerEvents || "",
+        editorPointerEvents: getComputedStyle(prose).pointerEvents,
+        editorEditable: prose.contentEditable,
+        headerFooterMode
+      });
+    }
   };
 
   const measurePageHeight = () => {
@@ -2369,6 +2573,7 @@ const renderPages = (count: number) => {
     }
     activeRegion = target;
     appRoot.classList.add("leditor-header-footer-editing");
+    overlayLayer.style.pointerEvents = "auto";
     updateHeaderFooterEditability();
     setEditorEditable(false);
     focusHeaderFooterRegion(target);
@@ -2378,6 +2583,7 @@ const renderPages = (count: number) => {
     headerFooterMode = false;
     activeRegion = null;
     appRoot.classList.remove("leditor-header-footer-editing");
+    overlayLayer.style.pointerEvents = "none";
     updateHeaderFooterEditability();
     setEditorEditable(true);
     focusBody();
@@ -2486,59 +2692,100 @@ const renderPages = (count: number) => {
     console.info("[A4 layout debug]", metrics);
   };
 
+  const logMissingRibbonIcons = () => {
+    const controls = Array.from(
+      document.querySelectorAll<HTMLElement>(".leditor-ribbon [data-control-id]")
+    );
+    const supported = new Set([
+      "button",
+      "toggleButton",
+      "splitButton",
+      "splitToggleButton",
+      "colorSplitButton",
+      "dropdown",
+      "colorPicker",
+      "dialogLauncher"
+    ]);
+    const emptyControls = controls
+      .filter((el) => {
+        const type = el.dataset.controlType;
+        return type && supported.has(type);
+      })
+      .map((el) => {
+        const icon = el.querySelector(".leditor-ribbon-icon");
+        const hasIcon = icon && !icon.classList.contains("leditor-ribbon-icon-placeholder");
+        return {
+          controlId: el.dataset.controlId ?? "",
+          controlType: el.dataset.controlType ?? "",
+          hasIcon
+        };
+      })
+      .filter((entry) => !entry.hasIcon);
+    if (emptyControls.length) {
+      console.info(
+        "[Ribbon] Controls missing icons:",
+        emptyControls.map((entry) => entry.controlId)
+      );
+      console.table(emptyControls);
+    } else {
+      console.info("[Ribbon] All icon-capable controls have icons.");
+    }
+  };
+
   const handleKeydown = (event: KeyboardEvent) => {
     if (event.ctrlKey && event.shiftKey && (event.key === "R" || event.key === "r")) {
       event.preventDefault();
       logLayoutDiagnostics();
-    const win = window as typeof window & { __leditorPaginationDebug?: boolean };
-    win.__leditorPaginationDebug = !win.__leditorPaginationDebug;
-    console.info("[PaginationDebug] toggled", { enabled: win.__leditorPaginationDebug });
-    return;
-  }
-  if (event.ctrlKey && event.shiftKey && (event.key === "M" || event.key === "m")) {
-    event.preventDefault();
-    const editorHandle = (window as typeof window & { leditor?: { execCommand: (name: string, args?: any) => void } })
-      .leditor;
-    editorHandle?.execCommand("SetPageMargins", {
-      margins: { top: 2.5, right: 2.5, bottom: 2.5, left: 2.5 }
-    });
-    const next = !appRoot.classList.contains("leditor-debug-margins");
-    appRoot.classList.toggle("leditor-debug-margins", next);
-    const proseMirror = editorEl.querySelector<HTMLElement>(".ProseMirror");
-    if (!proseMirror) {
+      logMissingRibbonIcons();
+      const win = window as typeof window & { __leditorPaginationDebug?: boolean };
+      win.__leditorPaginationDebug = !win.__leditorPaginationDebug;
+      console.info("[PaginationDebug] toggled", { enabled: win.__leditorPaginationDebug });
       return;
     }
-    proseMirror.focus();
-    const proseRect = proseMirror.getBoundingClientRect();
-    if (next) {
-      const root = getComputedStyle(document.documentElement);
-      const info = {
-        pageWidth: root.getPropertyValue("--page-width").trim(),
-        pageHeight: root.getPropertyValue("--page-height").trim(),
-        marginTop: root.getPropertyValue("--page-margin-top").trim(),
-        marginRight: root.getPropertyValue("--page-margin-right").trim(),
-        marginBottom: root.getPropertyValue("--page-margin-bottom").trim(),
-        marginLeft: root.getPropertyValue("--page-margin-left").trim()
-      };
-      const overlay = overlayLayer.querySelector<HTMLElement>(".leditor-page-overlay");
-      const guide = overlay?.querySelector<HTMLElement>(".leditor-margin-guide");
-      const guideRect = guide?.getBoundingClientRect();
-      const pageRect = overlay?.getBoundingClientRect();
-      console.info("[A4 margins]", {
-        info,
-        pageRect,
-        guideRect,
-        proseRect,
-        debugMargins: next
+    if (event.ctrlKey && event.shiftKey && (event.key === "M" || event.key === "m")) {
+      event.preventDefault();
+      const editorHandle = (
+        window as typeof window & { leditor?: { execCommand: (name: string, args?: any) => void } }
+      ).leditor;
+      editorHandle?.execCommand("SetPageMargins", {
+        margins: { top: 2.5, right: 2.5, bottom: 2.5, left: 2.5 }
       });
-    }
-    if (!next) {
-      console.info("[A4 margins] shortcut focus", {
-        proseRect,
-        debugMargins: next
-      });
-    }
-    return;
+      const next = !appRoot.classList.contains("leditor-debug-margins");
+      appRoot.classList.toggle("leditor-debug-margins", next);
+      const proseMirror = editorEl.querySelector<HTMLElement>(".ProseMirror");
+      if (!proseMirror) {
+        return;
+      }
+      proseMirror.focus();
+      const proseRect = proseMirror.getBoundingClientRect();
+      if (next) {
+        const root = getComputedStyle(document.documentElement);
+        const info = {
+          pageWidth: root.getPropertyValue("--page-width").trim(),
+          pageHeight: root.getPropertyValue("--page-height").trim(),
+          marginTop: root.getPropertyValue("--page-margin-top").trim(),
+          marginRight: root.getPropertyValue("--page-margin-right").trim(),
+          marginBottom: root.getPropertyValue("--page-margin-bottom").trim(),
+          marginLeft: root.getPropertyValue("--page-margin-left").trim()
+        };
+        const overlay = overlayLayer.querySelector<HTMLElement>(".leditor-page-overlay");
+        const guide = overlay?.querySelector<HTMLElement>(".leditor-margin-guide");
+        const guideRect = guide?.getBoundingClientRect();
+        const pageRect = overlay?.getBoundingClientRect();
+        console.info("[A4 margins]", {
+          info,
+          pageRect,
+          guideRect,
+          proseRect,
+          debugMargins: next
+        });
+      } else {
+        console.info("[A4 margins] shortcut focus", {
+          proseRect,
+          debugMargins: next
+        });
+      }
+      return;
     }
     if (event.ctrlKey && event.shiftKey && (event.key === "D" || event.key === "d")) {
       event.preventDefault();

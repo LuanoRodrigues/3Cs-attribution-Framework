@@ -65,7 +65,7 @@ export class AnalyseRibbon {
 
   private getDataActions(): ActionMeta[] {
     return [
-      { id: "analyse-corpus", label: "Corpus", action: "analyse/open_corpus", tooltip: "Open corpus overview" },
+      { id: "analyse-corpus", label: "Corpus", action: "analyse/open_corpus", tooltip: "Open corpus batches view" },
       { id: "analyse-batches", label: "Batches", action: "analyse/open_batches", tooltip: "Review batches" },
       {
         id: "analyse-phases",

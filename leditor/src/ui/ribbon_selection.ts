@@ -35,7 +35,7 @@ export const watchRibbonSelectionState = (
   const editorHandle: any = (stateBus as any)?.editorHandle;
   const editor = editorHandle?.getEditor?.();
   if (!editor) {
-    console.warn("[RibbonDebug] watchRibbonSelectionState: missing getEditor, skipping selection sync");
+    // Debug: silenced noisy ribbon logs.
     return () => {};
   }
   const update = (state: RibbonStateSnapshot): void => {

@@ -249,6 +249,7 @@ const FootnoteExtension = core_1.Node.create({
     group: "inline",
     atom: true,
     selectable: true,
+    content: "inline*",
     addAttributes() {
         return {
             id: {
@@ -256,6 +257,9 @@ const FootnoteExtension = core_1.Node.create({
             },
             kind: {
                 default: "footnote"
+            },
+            citationId: {
+                default: null
             }
         };
     },
@@ -267,7 +271,8 @@ const FootnoteExtension = core_1.Node.create({
                     if (!(node instanceof HTMLElement))
                         return {};
                     return {
-                        kind: node.getAttribute("data-footnote-kind") ?? "footnote"
+                        kind: node.getAttribute("data-footnote-kind") ?? "footnote",
+                        citationId: node.getAttribute("data-citation-id") || null
                     };
                 }
             }
@@ -275,7 +280,15 @@ const FootnoteExtension = core_1.Node.create({
     },
     renderHTML({ HTMLAttributes }) {
         const kind = HTMLAttributes.kind ?? "footnote";
-        return ["span", { "data-footnote": "true", "data-footnote-kind": kind, ...HTMLAttributes }, 0];
+        const attrs = {
+            "data-footnote": "true",
+            "data-footnote-kind": kind,
+            ...HTMLAttributes
+        };
+        if (HTMLAttributes.citationId) {
+            attrs["data-citation-id"] = HTMLAttributes.citationId;
+        }
+        return ["span", attrs, 0];
     },
     addNodeView() {
         return footnoteNodeView;

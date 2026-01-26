@@ -1,4 +1,5 @@
 import { Extension } from "@tiptap/core";
+import type { Transaction } from "prosemirror-state";
 
 type Orientation = "portrait" | "landscape";
 type ColumnsMode = "one" | "two" | "three" | "left" | "right";
@@ -82,12 +83,13 @@ const PageLayoutExtension = Extension.create({
   },
   addCommands() {
     const updateDocAttrs = (updater: (attrs: PageLayoutAttrs) => PageLayoutAttrs) =>
-      ({ editor }: { editor: any }) => {
-        const { state, view } = editor;
-        const current = (state.doc.attrs ?? {}) as Partial<PageLayoutAttrs>;
+      ({ editor, tr, dispatch }: { editor: any; tr: Transaction; dispatch?: (tr: Transaction) => void }) => {
+        const current = (editor.state.doc.attrs ?? {}) as Partial<PageLayoutAttrs>;
         const next = updater(current as PageLayoutAttrs);
-        const tr = state.tr.setNodeMarkup(0, undefined, next);
-        view.dispatch(tr);
+        Object.entries(next).forEach(([key, value]) => {
+          tr.setDocAttribute(key, value as PageLayoutAttrs[keyof PageLayoutAttrs]);
+        });
+        if (dispatch) dispatch(tr);
         return true;
       };
 

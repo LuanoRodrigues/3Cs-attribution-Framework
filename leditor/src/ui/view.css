@@ -95,22 +95,6 @@
 }
 
 /* =========================
-   Stage C flyout readability for View
-   ========================= */
-.leditor-ribbon-host[data-collapse-stage="C"] .ribbon-group-flyout [data-group-id^="view."] {
-  /* flyout width so dropdowns and labels don’t truncate */
-  min-width: 320px;
-}
-
-/* Keep “Show” grid inside flyout from becoming too wide */
-.leditor-ribbon-host[data-collapse-stage="C"]
-  .ribbon-group-flyout
-  [data-group-id="view.show"]
-  .ribbon-cluster--grid {
-  grid-template-columns: repeat(2, minmax(160px, 1fr));
-}
-
-/* =========================
    Compatibility selectors (in case groupId is applied as attribute vs class)
    ========================= */
 .leditor-ribbon-panel[data-tab-id="view"] .leditor-ribbon-group.view-document {

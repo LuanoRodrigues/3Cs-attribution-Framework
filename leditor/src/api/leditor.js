@@ -213,11 +213,11 @@ exports.LEditor = {
     starterKitOptions.image = false;
     starterKitOptions.heading = { levels: [1, 2, 3, 4, 5, 6] };
     starterKitOptions.underline = false;
-    console.info("[RibbonDebug] StarterKit typeof", typeof starter_kit_1.default);
-    console.info("[RibbonDebug] Table typeof", typeof Table, Table);
-    console.info("[RibbonDebug] TableRow typeof", typeof extension_table_row_1.default, extension_table_row_1.default);
-    console.info("[RibbonDebug] TableHeader typeof", typeof extension_table_header_1.default, extension_table_header_1.default);
-    console.info("[RibbonDebug] TableCell typeof", typeof extension_table_cell_1.default, extension_table_cell_1.default);
+    // Debug: silenced noisy ribbon logs.
+    // Debug: silenced noisy ribbon logs.
+    // Debug: silenced noisy ribbon logs.
+    // Debug: silenced noisy ribbon logs.
+    // Debug: silenced noisy ribbon logs.
         const editor = new core_1.Editor({
             element: mountEl,
             extensions: [

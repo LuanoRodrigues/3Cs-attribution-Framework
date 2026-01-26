@@ -525,8 +525,10 @@ const tabRibbon = new TabRibbon({
     analyseHost.style.display = showAnalyse ? "flex" : "none";
     panelRoot.style.overflow = showAnalyse ? "auto" : "hidden";
     activeTab = tabId;
-    panelGrid.ensurePanelVisible(2);
-    if (!showAnalyse) {
+    if (tabId !== "tools") {
+      panelGrid.ensurePanelVisible(2);
+    }
+    if (!showAnalyse && tabId !== "tools") {
       handleSectionTool(tabId);
     }
     if (tabId === "settings") {
@@ -619,6 +621,16 @@ function renderAnalyseRibbon(mount: HTMLElement): void {
     dashboardRow.style.flexWrap = "wrap";
     dashboardRow.style.gap = "10px";
 
+    const corpusBtn = document.createElement("button");
+    corpusBtn.type = "button";
+    corpusBtn.className = "ribbon-button ribbon-button--compact";
+    corpusBtn.textContent = "Corpus";
+    corpusBtn.addEventListener("click", () => {
+      console.info("[analyse][ui][corpus-button]", analyseStore.getState());
+      emitAnalyseAction("analyse/open_corpus");
+    });
+    dashboardRow.appendChild(corpusBtn);
+
     const dashLabel = document.createElement("span");
     dashLabel.textContent = "Dashboard";
     dashLabel.className = "status-bar";
@@ -666,21 +678,6 @@ function renderAnalyseRibbon(mount: HTMLElement): void {
 
     dataBody.appendChild(dashboardRow);
 
-    const corpusRow = document.createElement("div");
-    corpusRow.style.display = "flex";
-    corpusRow.style.alignItems = "center";
-    corpusRow.style.gap = "10px";
-    const corpusBtn = document.createElement("button");
-    corpusBtn.type = "button";
-    corpusBtn.className = "ribbon-button";
-    corpusBtn.textContent = "Corpus";
-    corpusBtn.addEventListener("click", () => {
-      console.info("[analyse][ui][corpus-button]", analyseStore.getState());
-      emitAnalyseAction("analyse/open_phases");
-    });
-    corpusRow.appendChild(corpusBtn);
-    dataBody.appendChild(corpusRow);
-
     dataGroup.appendChild(dataBody);
 
     const roundsGroup = document.createElement("div");
@@ -707,8 +704,157 @@ function renderAnalyseRibbon(mount: HTMLElement): void {
     });
     roundsGroup.appendChild(roundsBody);
 
+    const audioGroup = document.createElement("div");
+    audioGroup.className = "ribbon-group";
+    const audioTitle = document.createElement("h3");
+    audioTitle.textContent = "Audio";
+    audioGroup.appendChild(audioTitle);
+
+    const audioPlaceholder = document.createElement("div");
+    audioPlaceholder.className = "audio-placeholder";
+    audioGroup.appendChild(audioPlaceholder);
+
+    const audioWidget = document.createElement("div");
+    audioWidget.className = "audio-widget audio-widget--floating";
+
+    const audioHeader = document.createElement("div");
+    audioHeader.className = "audio-widget__header";
+    const grip = document.createElement("button");
+    grip.type = "button";
+    grip.className = "audio-grip";
+    grip.textContent = "⠿";
+    grip.title = "Drag audio panel";
+    audioHeader.appendChild(grip);
+    audioWidget.appendChild(audioHeader);
+
+    const row1 = document.createElement("div");
+    row1.className = "audio-widget__row";
+    const playBtn = document.createElement("button");
+    playBtn.type = "button";
+    playBtn.className = "audio-btn play";
+    playBtn.textContent = "▶";
+    playBtn.addEventListener("click", () => emitAnalyseAction("analyse/audio_read_current"));
+    const stopBtn = document.createElement("button");
+    stopBtn.type = "button";
+    stopBtn.className = "audio-btn stop";
+    stopBtn.textContent = "■";
+    stopBtn.addEventListener("click", () => emitAnalyseAction("analyse/audio_stop"));
+    const cacheBtn = document.createElement("button");
+    cacheBtn.type = "button";
+    cacheBtn.className = "audio-cache";
+    cacheBtn.textContent = "Cache";
+    cacheBtn.addEventListener("click", () => emitAnalyseAction("analyse/audio_cache_status"));
+    const voice = document.createElement("select");
+    voice.className = "audio-select";
+    ["alloy", "ash", "ballad", "coral", "echo", "fable", "nova", "onyx", "sage", "shimmer", "verse"].forEach((v) => {
+      const opt = document.createElement("option");
+      opt.value = v;
+      opt.textContent = v;
+      voice.appendChild(opt);
+    });
+    const refs = document.createElement("label");
+    refs.className = "audio-widget__row";
+    const refsBox = document.createElement("input");
+    refsBox.type = "checkbox";
+    const refsText = document.createElement("span");
+    refsText.textContent = "Refs";
+    refs.appendChild(refsBox);
+    refs.appendChild(refsText);
+    const rateBtn = document.createElement("button");
+    rateBtn.type = "button";
+    rateBtn.className = "audio-rate";
+    rateBtn.textContent = "1.2x";
+    row1.append(playBtn, stopBtn, cacheBtn, voice, refs, rateBtn);
+    audioWidget.appendChild(row1);
+
+    const row2 = document.createElement("div");
+    row2.className = "audio-widget__row";
+    const slider = document.createElement("input");
+    slider.type = "range";
+    slider.className = "audio-slider";
+    slider.min = "0";
+    slider.max = "0";
+    slider.value = "0";
+    row2.appendChild(slider);
+    audioWidget.appendChild(row2);
+
+    const timeRow = document.createElement("div");
+    timeRow.className = "audio-time";
+    const pos = document.createElement("span");
+    pos.textContent = "0:00";
+    const dur = document.createElement("span");
+    dur.textContent = "/ 0:00";
+    timeRow.append(pos, dur);
+    audioWidget.appendChild(timeRow);
+
+    audioPlaceholder.appendChild(audioWidget);
+
+    // Simple draggable widget that can move outside the ribbon area.
+    let dragActive = false;
+    let startX = 0;
+    let startY = 0;
+    let offsetX = 0;
+    let offsetY = 0;
+
+    const syncAudioWidget = () => {
+      const anchorRect = audioPlaceholder.getBoundingClientRect();
+      const activeTab =
+        (document.querySelector("[data-active-tab]") as HTMLElement | null) ||
+        (document.querySelector(".data-active-tab") as HTMLElement | null) ||
+        ribbonActions;
+      const actionsRect = activeTab.getBoundingClientRect();
+      const height = Math.max(0, Math.floor(actionsRect.height));
+      audioWidget.style.height = `${height}px`;
+      audioWidget.style.setProperty("--audio-control-height", `${Math.max(22, Math.floor(height / 4))}px`);
+      if (!dragActive) {
+        audioWidget.style.left = "";
+        audioWidget.style.top = "";
+        audioWidget.style.position = "relative";
+      }
+      if (audioWidget.parentElement !== document.body) {
+        audioWidget.style.width = "100%";
+      }
+    };
+
+    syncAudioWidget();
+    window.addEventListener("resize", syncAudioWidget);
+
+    const onPointerMove = (ev: PointerEvent) => {
+      if (!dragActive) return;
+      const nextX = offsetX + (ev.clientX - startX);
+      const nextY = offsetY + (ev.clientY - startY);
+      audioWidget.style.left = `${nextX}px`;
+      audioWidget.style.top = `${nextY}px`;
+    };
+
+    const onPointerUp = () => {
+      dragActive = false;
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+    };
+
+    grip.addEventListener("pointerdown", (ev) => {
+      if (!(ev instanceof PointerEvent)) return;
+      dragActive = true;
+      if (audioWidget.parentElement !== document.body) {
+        const rect = audioWidget.getBoundingClientRect();
+        audioWidget.style.position = "fixed";
+        audioWidget.style.left = `${Math.round(rect.left)}px`;
+        audioWidget.style.top = `${Math.round(rect.top)}px`;
+        audioWidget.style.width = `${Math.round(rect.width)}px`;
+        document.body.appendChild(audioWidget);
+      }
+      startX = ev.clientX;
+      startY = ev.clientY;
+      offsetX = audioWidget.offsetLeft;
+      offsetY = audioWidget.offsetTop;
+      window.addEventListener("pointermove", onPointerMove);
+      window.addEventListener("pointerup", onPointerUp);
+    });
+
     analyseRibbonMount.appendChild(dataGroup);
     analyseRibbonMount.appendChild(roundsGroup);
+    analyseRibbonMount.appendChild(audioGroup);
   };
 
   if (!unsubscribeAnalyseRibbon) {
@@ -950,7 +1096,10 @@ function handleAction(action: RibbonAction): void {
     const payload = action.command.payload as { toolType?: string; panelId?: string; metadata?: Record<string, unknown> } | undefined;
     if (payload?.toolType) {
       const panelId = (payload.panelId as PanelId | undefined) ?? "panel2";
-      panelTools.spawnTool(payload.toolType, { panelId, metadata: payload.metadata });
+      panelTools.ensureToolHost(panelId, { replaceContent: true });
+      panelTools.clearPanelTools(panelId);
+      const id = panelTools.spawnTool(payload.toolType, { panelId, metadata: payload.metadata });
+      panelTools.focusTool(id);
       const index = PANEL_INDEX_BY_ID[panelId];
       if (index) {
         panelGrid.ensurePanelVisible(index);
@@ -1704,6 +1853,9 @@ function sectionToolConfig(
     return { toolType: "panel-shell", metadata: { title: "Export", description: "Export workspace" } };
   }
   if (tabId === "settings") {
+    return null;
+  }
+  if (tabId === "tools") {
     return null;
   }
   return null;

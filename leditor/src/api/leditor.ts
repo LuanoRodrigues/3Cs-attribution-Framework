@@ -213,10 +213,12 @@ const createMarkdownSerializer = () => {
     state.closeBlock(node);
   };
   nodes.citation = (state: any, node: any) => {
-    const label = typeof node.attrs?.label === "string" && node.attrs.label.trim().length > 0
-      ? node.attrs.label.trim()
-      : (node.attrs?.sourceId ?? "citation");
-    state.text(`[${label}]`);
+    const rendered = typeof node.attrs?.renderedHtml === "string" ? node.attrs.renderedHtml : "";
+    const text = rendered.replace(/<[^>]*>/g, "").trim();
+    const fallback = Array.isArray(node.attrs?.items)
+      ? node.attrs.items.map((item: any) => item?.itemKey).filter(Boolean).join(", ")
+      : "citation";
+    state.text(`[${text || fallback}]`);
   };
   nodes.citation_sources = (state: any, node: any) => {
     state.closeBlock(node);
@@ -224,11 +226,10 @@ const createMarkdownSerializer = () => {
   nodes.bibliography = (state: any, node: any) => {
     state.write("## Bibliography");
     state.ensureNewLine();
-    const entries = Array.isArray(node.attrs?.entries) ? node.attrs.entries : [];
-    for (const entry of entries) {
-      const label = typeof entry?.label === "string" && entry.label.trim().length > 0 ? entry.label.trim() : entry?.id;
-      if (!label) continue;
-      state.write(`- ${label}`);
+    const rendered = typeof node.attrs?.renderedHtml === "string" ? node.attrs.renderedHtml : "";
+    const text = rendered.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+    if (text) {
+      state.write(text);
       state.ensureNewLine();
     }
     state.closeBlock(node);
@@ -290,11 +291,7 @@ export const LEditor = {
     starterKitOptions.underline = false;
     starterKitOptions.link = false;
     starterKitOptions.document = false;
-    console.info("[RibbonDebug] StarterKit typeof", typeof StarterKit);
-    console.info("[RibbonDebug] Table typeof", typeof Table, Table);
-    console.info("[RibbonDebug] TableRow typeof", typeof TableRow, TableRow);
-    console.info("[RibbonDebug] TableHeader typeof", typeof TableHeader, TableHeader);
-    console.info("[RibbonDebug] TableCell typeof", typeof TableCell, TableCell);
+    // Debug: silenced noisy ribbon logs.
 
     const editor = new Editor({
       element: mountEl,

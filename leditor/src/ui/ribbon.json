@@ -56,6 +56,8 @@
     "availableStyles": "list",
     "styleSet": "string|mixed",
 
+    "citationStyle": "string|mixed",
+
     "findRegex": "boolean",
     "findMatchCase": "boolean",
     "findWholeWords": "boolean",

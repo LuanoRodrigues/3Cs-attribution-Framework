@@ -63,8 +63,8 @@ export class WritePanel {
   private anchorListener: ((ev: MouseEvent) => void) | null = null;
   private anchorWindowListener: ((ev: MouseEvent) => void) | null = null;
   private leditorAnchorListener: ((ev: Event) => void) | null = null;
-  private anchorDomListener: ((ev: MouseEvent) => void) | null = null;
-  private anchorDomTarget: HTMLElement | null = null;
+  private anchorDomListener: ((ev: Event) => void) | null = null;
+  private anchorDomTarget: EventTarget | null = null;
   private citationGuardListener: (() => void) | null = null;
   private contextActionListener: ((ev: Event) => void) | null = null;
   private dqLookup: Record<string, unknown> = {};
@@ -90,6 +90,7 @@ export class WritePanel {
     this.attachAutosave();
     this.attachExternalListener();
     this.attachAnchorListener();
+    this.attachAnchorDomLogger();
     this.attachCitationGuard();
     this.attachContextActionListener();
   }
@@ -116,6 +117,8 @@ export class WritePanel {
     }
     if (this.anchorDomListener && this.anchorDomTarget) {
       this.anchorDomTarget.removeEventListener("click", this.anchorDomListener, true);
+      this.anchorDomListener = null;
+      this.anchorDomTarget = null;
     }
     if (this.citationGuardListener) {
       this.citationGuardListener();
@@ -558,44 +561,11 @@ export class WritePanel {
   }
 
   private attachAnchorListener(): void {
-    const handler = async (ev: MouseEvent): Promise<void> => {
-      const alreadyHandled = (ev as any).__writeAnchorHandled;
-      if (alreadyHandled) return;
-      (ev as any).__writeAnchorHandled = true;
-      const target = ev.target as HTMLElement | null;
-      if (!target) return;
-      const host = target.closest("#write-leditor-host");
-      if (!host) return;
-      console.info("[write][click]", {
-        tag: target.tagName,
-        className: target.className,
-        text: (target.textContent || "").slice(0, 120)
-      });
-
-      const anchor = target.closest("a") as HTMLAnchorElement | null;
-      if (!anchor) return;
-
-      const href = anchor.href || "";
-      console.info("[write][anchor-click][raw]", {
-        href: anchor.getAttribute("href"),
-        dataKey: anchor.getAttribute("data-key"),
-        dataDqid: anchor.getAttribute("data-dqid"),
-        dataQuoteId: anchor.getAttribute("data-quote-id"),
-        dataQuoteText: anchor.getAttribute("data-quote-text"),
-        title: anchor.getAttribute("title"),
-        text: (anchor.textContent || "").slice(0, 120)
-      });
-      ev.preventDefault();
-      ev.stopPropagation();
-      await this.openPdfForAnchor({
-        href,
-        anchor,
-        anchorText: anchor.textContent || "",
-        dataQuoteText: anchor.getAttribute("data-quote-text") || anchor.getAttribute("title") || ""
-      });
-    };
     const leditorHandler = async (ev: Event): Promise<void> => {
       const detail = (ev as CustomEvent<any>).detail || {};
+      if (detail.anchorId) {
+        console.info("[write][anchor-id]", detail.anchorId);
+      }
       console.info("[write][anchor-open][event]", detail);
       const href: string = (detail.href || "").trim();
       if (!href) return;
@@ -610,25 +580,50 @@ export class WritePanel {
         dataQuoteText: detail.dataQuoteText || detail.title || ""
       });
     };
-    this.anchorListener = handler;
-    this.anchorWindowListener = handler;
     this.leditorAnchorListener = leditorHandler;
-    this.anchorDomListener = handler;
-    document.addEventListener("click", handler, true);
-    window.addEventListener("click", handler, true);
     window.addEventListener("leditor-anchor-click", leditorHandler as EventListener);
-    void this.waitForEditor()
-      .then((handle) => {
-        const editor = (handle as any).getEditor?.();
-        const dom = editor?.view?.dom as HTMLElement | undefined;
-        if (!dom) return;
-        this.anchorDomTarget = dom;
-        dom.addEventListener("click", handler, true);
-        console.info("[write][anchor-listener] attached");
-      })
-      .catch((err) => {
-        console.warn("[write][anchor-listener] failed to attach", err);
+    console.info("[write][anchor-listener] listening for leditor-anchor-click");
+  }
+
+  private attachAnchorDomLogger(): void {
+    const handler = (ev: Event): void => {
+      const target = ev.target as HTMLElement | null;
+      if (!target) return;
+      const anchor = target.closest("a") as HTMLAnchorElement | null;
+      if (!anchor) return;
+      const host = document.getElementById("write-leditor-host");
+      if (!host || !host.contains(anchor)) return;
+      const href = (anchor.getAttribute("href") || "").trim();
+      if (!href) return;
+      const dqid = this.extractDqid(href, anchor);
+      const anchorId = this.computeAnchorId(anchor, dqid || undefined);
+      console.info("[write][anchor-dom-click]", {
+        anchorId,
+        href,
+        dqid,
+        text: (anchor.textContent || "").trim()
       });
+    };
+    this.anchorDomListener = handler;
+    this.anchorDomTarget = document;
+    document.addEventListener("click", handler, true);
+  }
+
+  private computeAnchorId(anchor: HTMLAnchorElement, fallback?: string): string {
+    const pick = (value?: string | null): string | undefined => {
+      const trimmed = (value || "").trim();
+      return trimmed ? trimmed : undefined;
+    };
+    return (
+      pick(anchor.id) ||
+      pick(anchor.getAttribute("data-key")) ||
+      pick(anchor.getAttribute("item-key")) ||
+      pick(anchor.getAttribute("data-item-key")) ||
+      pick(anchor.getAttribute("data-quote-id")) ||
+      pick(anchor.getAttribute("data-quote_id")) ||
+      fallback ||
+      ""
+    );
   }
 
   private logAnchorState(): void {

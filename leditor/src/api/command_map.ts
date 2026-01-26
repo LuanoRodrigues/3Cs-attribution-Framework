@@ -3,27 +3,30 @@ import { NodeSelection, TextSelection } from "@tiptap/pm/state";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { getFootnoteRegistry } from "../extensions/extension_footnote.ts";
 import {
-  getCitationSources,
-  getCitationSourceById,
   normalizeCitationId,
   setCitationSources,
   upsertCitationSource
 } from "../editor/citation_state.ts";
 import type { CitationSource } from "../editor/citation_state.ts";
-import { CITATION_STYLE_STORAGE_KEY, CITATION_STYLES } from "../constants.ts";
+import { CITATION_STYLES } from "../constants.ts";
 import { showAllowedElementsInspector } from "../ui/allowed_elements_inspector.ts";
 import { SANITIZE_OPTIONS } from "../plugins/pasteCleaner.ts";
 import { openCitationPicker, type CitationPickerResult } from "../ui/references/picker.ts";
 import { openSourcesPanel } from "../ui/references/sources_panel.ts";
-import { ensureReferencesLibrary, getReferenceItem } from "../ui/references/library.ts";
+import { ensureReferencesLibrary } from "../ui/references/library.ts";
 import { getHostContract } from "../ui/host_contract.ts";
 import {
   exportBibliographyBibtex,
   exportBibliographyJson,
   getLibraryPath,
-  buildBibliographyEntries,
-  writeUsedBibliography
+  writeUsedBibliography,
+  ensureBibliographyNode
 } from "../ui/references/bibliography.ts";
+import {
+  buildCitationItems,
+  updateAllCitationsAndBibliography
+} from "../csl/update.ts";
+import type { BibliographyNode as CslBibliographyNode, CitationNode as CslCitationNode, DocCitationMeta } from "../csl/types.ts";
 import referencesTabRaw from "../ui/references.json";
 import type { TabConfig } from "../ui/ribbon_config.ts";
 import { getReferencesCommandIds } from "../ui/references_command_contract.ts";
@@ -42,43 +45,8 @@ const clampIndentLevel = (value: number) => Math.max(MIN_INDENT_LEVEL, Math.min(
 let citationIdCounter = 0;
 const generateCitationId = () => `c-${Date.now().toString(36)}-${(citationIdCounter++).toString(36)}`;
 
-const buildRenderedLabel = (keys: string[], options?: { locator?: string | null; label?: string | null; prefix?: string | null; suffix?: string | null; suppressAuthor?: boolean; authorOnly?: boolean }): string => {
-  const parts: string[] = [];
-  const locatorText = (() => {
-    const loc = (options?.locator || "").trim();
-    if (!loc) return "";
-    const lbl = (options?.label || "").trim();
-    return lbl ? `${lbl} ${loc}` : loc;
-  })();
-  for (const key of keys) {
-    const ref = getReferenceItem(key);
-    const authors = ref?.authors ?? "";
-    const year = (ref?.year || "").trim();
-    const ayRaw = ref?.authorsYear || authors || key;
-    const authorYear = ayRaw.includes("(") && ayRaw.includes(")")
-      ? ayRaw.replace(/[()]/g, "").replace(/\s+\b/, ", ").replace(/\s*,\s*$/, "")
-      : ayRaw;
-    let body = authorYear;
-    if (options?.suppressAuthor) {
-      const y = year || authorYear;
-      body = locatorText ? `${y}, ${locatorText}` : y;
-    } else if (options?.authorOnly) {
-      body = authors || authorYear;
-    } else if (locatorText) {
-      body = `${authorYear}, ${locatorText}`;
-    }
-    const prefix = (options?.prefix || "").trim();
-    const suffix = (options?.suffix || "").trim();
-    if (prefix) {
-      body = `${prefix}${prefix.endsWith(" ") ? "" : " "}${body}`;
-    }
-    if (suffix) {
-      body = `${body}${suffix.startsWith(" ") ? "" : " "}${suffix}`;
-    }
-    parts.push(body);
-  }
-  return parts.join("; ");
-};
+type CitationNodeRecord = CslCitationNode & { pos: number; pmNode: ProseMirrorNode };
+type BibliographyNodeRecord = CslBibliographyNode & { pos: number; pmNode: ProseMirrorNode };
 
 type CitationSelectionInfo = {
   node: ProseMirrorNode;
@@ -132,16 +100,18 @@ const insertCitationNode = (
     window.alert("Citations are not supported in this schema.");
     return;
   }
-  const attrs = {
-    citationId,
-    itemKeys: result.itemKeys,
+  const items = buildCitationItems(result.itemKeys, {
+    prefix: result.options.prefix ?? null,
     locator: result.options.locator ?? null,
     label: result.options.label ?? null,
-    prefix: result.options.prefix ?? null,
     suffix: result.options.suffix ?? null,
-    suppressAuthor: result.options.suppressAuthor,
-    authorOnly: result.options.authorOnly,
-    rendered: buildRenderedLabel(result.itemKeys, result.options)
+    suppressAuthor: Boolean(result.options.suppressAuthor),
+    authorOnly: Boolean(result.options.authorOnly)
+  });
+  const attrs = {
+    citationId,
+    items,
+    renderedHtml: ""
   };
   let tr = editor.state.tr;
   if (existing) {
@@ -157,9 +127,18 @@ const insertCitationNode = (
 
 const handleInsertCitationCommand = (editor: Editor) => {
   const existing = findCitationInSelection(editor);
-  const preselectKeys = existing ? (existing.node.attrs.itemKeys as string[]) : undefined;
+  const preselectKeys = existing
+    ? (Array.isArray(existing.node.attrs.items)
+        ? (existing.node.attrs.items as Array<{ itemKey: string }>).map((item) => item.itemKey)
+        : undefined)
+    : undefined;
   const activeCitationId = existing ? (existing.node.attrs.citationId as string | null) : null;
-  console.info("[References] insert citation", { mode: existing ? "edit" : "insert", preselectKeys, activeCitationId });
+  console.info("[References] insert citation", {
+    mode: existing ? "edit" : "insert",
+    preselectKeys,
+    activeCitationId,
+    styleId: editor.state.doc.attrs?.citationStyleId
+  });
   openCitationPicker({
     mode: existing ? "edit" : "insert",
     preselectItemKeys: preselectKeys,
@@ -178,11 +157,263 @@ const handleInsertCitationCommand = (editor: Editor) => {
       }
       const citationId = (existing?.node.attrs?.citationId as string | null) ?? generateCitationId();
       insertCitationNode(editor, result, citationId, existing);
-      void refreshUsedBibliography(editor);
+      void refreshCitationsAndBibliography(editor);
     })
     .catch((error) => {
       console.error("[References] picker failed", error);
     });
+};
+
+const getDocCitationMeta = (doc: ProseMirrorNode): DocCitationMeta => {
+  const styleId = doc.attrs?.citationStyleId;
+  if (typeof styleId !== "string" || styleId.trim().length === 0) {
+    throw new Error("Document citationStyleId is missing");
+  }
+  const locale = doc.attrs?.citationLocale;
+  if (typeof locale !== "string" || locale.trim().length === 0) {
+    throw new Error("Document citationLocale is missing");
+  }
+  return { styleId, locale };
+};
+
+const extractCitationNodes = (doc: ProseMirrorNode): CitationNodeRecord[] => {
+  const nodes: CitationNodeRecord[] = [];
+  const citationNode = doc.type.schema.nodes.citation;
+  if (!citationNode) {
+    throw new Error("Citation node is not registered in schema");
+  }
+  const styleId = typeof doc.attrs?.citationStyleId === "string" ? doc.attrs.citationStyleId : "";
+  const noteKind =
+    styleId === "chicago-note-bibliography"
+      ? "footnote"
+      : styleId === "chicago-note-bibliography-endnote"
+        ? "endnote"
+        : null;
+  const noteIndexByCitationId = new Map<string, number>();
+  if (noteKind) {
+    let noteIndex = 0;
+    doc.descendants((node) => {
+      if (node.type.name === "footnote") {
+        const nodeKind = typeof node.attrs?.kind === "string" ? node.attrs.kind : "footnote";
+        if (nodeKind !== noteKind) return true;
+        const citationId = typeof node.attrs?.citationId === "string" ? node.attrs.citationId : "";
+        if (citationId) {
+          noteIndex += 1;
+          noteIndexByCitationId.set(citationId, noteIndex);
+        }
+      }
+      return true;
+    });
+  }
+  doc.descendants((node, pos) => {
+    if (node.type === citationNode) {
+      const citationId = node.attrs?.citationId;
+      if (typeof citationId !== "string" || citationId.trim().length === 0) {
+        throw new Error("Citation node missing citationId");
+      }
+      const items = node.attrs?.items;
+      if (!Array.isArray(items)) {
+        throw new Error("Citation node missing items array");
+      }
+      const noteIndex = noteIndexByCitationId.get(citationId);
+      nodes.push({
+        type: "citation",
+        citationId,
+        items,
+        renderedHtml: typeof node.attrs?.renderedHtml === "string" ? node.attrs.renderedHtml : "",
+        noteIndex,
+        pos,
+        pmNode: node
+      });
+    }
+    return true;
+  });
+  return nodes;
+};
+
+const findBibliographyNode = (doc: ProseMirrorNode): BibliographyNodeRecord | null => {
+  const bibliographyNode = doc.type.schema.nodes.bibliography;
+  if (!bibliographyNode) {
+    throw new Error("Bibliography node is not registered in schema");
+  }
+  let found: BibliographyNodeRecord | null = null;
+  doc.descendants((node, pos) => {
+    if (node.type === bibliographyNode) {
+      const bibId = node.attrs?.bibId;
+      if (typeof bibId !== "string" || bibId.trim().length === 0) {
+        throw new Error("Bibliography node missing bibId");
+      }
+      found = {
+        type: "bibliography",
+        bibId,
+        renderedHtml: typeof node.attrs?.renderedHtml === "string" ? node.attrs.renderedHtml : "",
+        pos,
+        pmNode: node
+      };
+      return false;
+    }
+    return true;
+  });
+  return found;
+};
+
+const resolveNoteKind = (styleId: string): "footnote" | "endnote" | null => {
+  if (styleId === "chicago-note-bibliography") return "footnote";
+  if (styleId === "chicago-note-bibliography-endnote") return "endnote";
+  return null;
+};
+
+const stripHtml = (value: string): string => value.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+
+const collectFootnoteNodesByCitationId = (
+  doc: ProseMirrorNode,
+  kind: "footnote" | "endnote"
+): Array<{ citationId: string; pos: number; node: ProseMirrorNode }> => {
+  const matches: Array<{ citationId: string; pos: number; node: ProseMirrorNode }> = [];
+  doc.descendants((node, pos) => {
+    if (node.type.name === "footnote") {
+      const nodeKind = typeof node.attrs?.kind === "string" ? node.attrs.kind : "footnote";
+      if (nodeKind !== kind) return true;
+      const citationId = typeof node.attrs?.citationId === "string" ? node.attrs.citationId : "";
+      if (citationId) {
+        matches.push({ citationId, pos, node });
+      }
+    }
+    return true;
+  });
+  return matches;
+};
+
+const applyCitationStyleToDoc = (editor: Editor, styleId: string): void => {
+  const nextStyle = styleId.trim().toLowerCase();
+  if (!CITATION_STYLES.includes(nextStyle)) {
+    throw new Error(`Unsupported citation style: ${styleId}`);
+  }
+  const currentAttrs = editor.state.doc.attrs;
+  if (!currentAttrs || typeof currentAttrs !== "object") {
+    throw new Error("Document attributes are missing");
+  }
+  console.info("[References] citation style change", { from: currentAttrs.citationStyleId, to: nextStyle });
+  const tr = editor.state.tr.setDocAttribute("citationStyleId", nextStyle);
+  editor.view.dispatch(tr);
+};
+
+const setCitationStyleCommand: CommandHandler = (editor, args) => {
+  const payloadRaw = typeof args?.id === "string" ? args.id : typeof args?.style === "string" ? args.style : "";
+  const payload = payloadRaw.trim().toLowerCase();
+  const style = CITATION_STYLES.includes(payload) ? payload : CITATION_STYLE_DEFAULT;
+  applyCitationStyleToDoc(editor, style);
+  void refreshCitationsAndBibliography(editor);
+};
+
+const runCslUpdate = (editor: Editor): void => {
+  const citationNode = editor.schema.nodes.citation;
+  const bibliographyNode = editor.schema.nodes.bibliography;
+  if (!citationNode) {
+    throw new Error("Citation node is not registered in schema");
+  }
+  if (!bibliographyNode) {
+    throw new Error("Bibliography node is not registered in schema");
+  }
+  const styleId = getDocCitationMeta(editor.state.doc).styleId;
+  const noteKind = resolveNoteKind(styleId);
+  const trPrelude = editor.state.tr;
+
+  if (noteKind) {
+    const existingNotes = collectFootnoteNodesByCitationId(editor.state.doc, noteKind);
+    const noteMap = new Map(existingNotes.map((entry) => [entry.citationId, entry]));
+    const existingIds = new Set(noteMap.keys());
+    editor.state.doc.descendants((node, pos) => {
+      if (node.type === citationNode) {
+        const citationId = typeof node.attrs?.citationId === "string" ? node.attrs.citationId : "";
+        if (!citationId) return true;
+        if (!node.attrs?.hidden) {
+          trPrelude.setNodeMarkup(pos, citationNode, { ...node.attrs, hidden: true });
+        }
+        if (!existingIds.has(citationId)) {
+          const footnoteNode = editor.schema.nodes.footnote;
+          if (!footnoteNode) {
+            throw new Error("Footnote node is not registered in schema");
+          }
+          const footnoteId = `fn-${citationId}`;
+          const footnote = footnoteNode.create(
+            { id: footnoteId, kind: noteKind, citationId },
+            editor.schema.text("Citation")
+          );
+          trPrelude.insert(pos + node.nodeSize, footnote);
+          existingIds.add(citationId);
+        }
+      }
+      return true;
+    });
+    editor.state.doc.descendants((node, pos) => {
+      if (node.type === bibliographyNode) {
+        trPrelude.delete(pos, pos + node.nodeSize);
+      }
+      return true;
+    });
+  } else {
+    editor.state.doc.descendants((node, pos) => {
+      if (node.type === citationNode && node.attrs?.hidden) {
+        trPrelude.setNodeMarkup(pos, citationNode, { ...node.attrs, hidden: false });
+      }
+      if (node.type.name === "footnote" && typeof node.attrs?.citationId === "string") {
+        trPrelude.delete(pos, pos + node.nodeSize);
+      }
+      return true;
+    });
+  }
+
+  if (trPrelude.docChanged) {
+    editor.view.dispatch(trPrelude);
+  }
+
+  const tr = editor.state.tr;
+  updateAllCitationsAndBibliography({
+    doc: editor.state.doc,
+    getDocCitationMeta: (doc) => getDocCitationMeta(doc as ProseMirrorNode),
+    extractCitationNodes: (doc) => extractCitationNodes(doc as ProseMirrorNode),
+    findBibliographyNode: (doc) => (noteKind ? null : findBibliographyNode(doc as ProseMirrorNode)),
+    setCitationNodeRenderedHtml: (node, html) => {
+      const record = node as CitationNodeRecord;
+      if (record.pmNode.attrs?.renderedHtml === html) return;
+      tr.setNodeMarkup(record.pos, citationNode, { ...record.pmNode.attrs, renderedHtml: html });
+    },
+    setBibliographyRenderedHtml: (node, html) => {
+      const record = node as BibliographyNodeRecord;
+      if (record.pmNode.attrs?.renderedHtml === html) return;
+      tr.setNodeMarkup(record.pos, bibliographyNode, { ...record.pmNode.attrs, renderedHtml: html });
+    }
+  });
+  if (tr.docChanged) {
+    editor.view.dispatch(tr);
+  }
+
+  if (noteKind) {
+    const rendered = new Map<string, string>();
+    const citationNodes = extractCitationNodes(editor.state.doc);
+    citationNodes.forEach((node) => rendered.set(node.citationId, node.renderedHtml));
+    const footnoteNodes = collectFootnoteNodesByCitationId(editor.state.doc, noteKind);
+    if (footnoteNodes.length) {
+      const trNotes = editor.state.tr;
+      footnoteNodes.forEach((entry) => {
+        const text = stripHtml(rendered.get(entry.citationId) ?? "");
+        const contentText = text.length > 0 ? text : "Citation";
+        const content = editor.schema.text(contentText);
+        const newNode = entry.node.type.create(entry.node.attrs, content);
+        trNotes.replaceWith(entry.pos, entry.pos + entry.node.nodeSize, newNode);
+      });
+      if (trNotes.docChanged) {
+        editor.view.dispatch(trNotes);
+      }
+    }
+  }
+};
+
+const refreshCitationsAndBibliography = async (editor: Editor): Promise<void> => {
+  await ensureReferencesLibrary();
+  runCslUpdate(editor);
+  await refreshUsedBibliography(editor);
 };
 
 const applyStyleById = (editor: Editor, styleId: string): void => {
@@ -452,24 +683,12 @@ type TocEntry = {
 
 const CITATION_STYLE_DEFAULT = CITATION_STYLES[0];
 
-export const readCitationStyle = (): string => {
-  try {
-    const stored = localStorage.getItem(CITATION_STYLE_STORAGE_KEY);
-    if (stored && CITATION_STYLES.includes(stored)) {
-      return stored;
-    }
-  } catch {
-    // ignore storage failures
+export const readCitationStyle = (editor?: Editor): string => {
+  const styleId = editor?.state?.doc?.attrs?.citationStyleId;
+  if (typeof styleId === "string" && styleId.trim().length > 0) {
+    return styleId;
   }
   return CITATION_STYLE_DEFAULT;
-};
-
-const saveCitationStyle = (style: string): void => {
-  try {
-    localStorage.setItem(CITATION_STYLE_STORAGE_KEY, style);
-  } catch {
-    // ignore
-  }
 };
 
 const collectHeadingEntries = (editor: Editor): TocEntry[] => {
@@ -525,24 +744,19 @@ const updateTocNodes = (editor: Editor, entries: TocEntry[]): boolean => {
   return updated;
 };
 
-const collectBibliographyEntries = (editor: Editor): CitationSource[] => getCitationSources(editor);
-
 const collectDocumentCitationKeys = (editor: Editor): string[] => {
   const keys = new Set<string>();
   editor.state.doc.descendants((node) => {
-    if (node.type.name === "citation" && Array.isArray(node.attrs?.itemKeys)) {
-      (node.attrs.itemKeys as string[]).forEach((key) => keys.add(key));
+    if (node.type.name === "citation" && Array.isArray(node.attrs?.items)) {
+      (node.attrs.items as Array<{ itemKey: string }>).forEach((item) => {
+        if (item && typeof item.itemKey === "string" && item.itemKey.trim().length > 0) {
+          keys.add(item.itemKey.trim());
+        }
+      });
     }
     return true;
   });
   return Array.from(keys);
-};
-
-const buildBibliographyFromDoc = async (editor: Editor) => {
-  const keys = collectDocumentCitationKeys(editor);
-  await writeUsedBibliography(keys);
-  const entries = await buildBibliographyEntries(keys);
-  return entries;
 };
 
 const refreshUsedBibliography = async (editor: Editor) => {
@@ -563,62 +777,28 @@ const ensureBibliographyStore = (): void => {
     });
 };
 
-const insertBibliographyNode = (editor: Editor, entries: { id: string; label: string }[]): void => {
-  if (entries.length === 0) {
-    window.alert("No sources available to create a bibliography.");
-    return;
-  }
-  const bibliographyNode = editor.schema.nodes.bibliography;
-  if (!bibliographyNode) {
-    window.alert("Bibliography support is not available in this schema.");
-    return;
-  }
-  editor.chain().focus().insertContent({ type: "bibliography", attrs: { entries } }).run();
-};
-
-const updateBibliographyNodes = (editor: Editor, entries: { id: string; label: string }[]): boolean => {
-  const bibliographyNode = editor.schema.nodes.bibliography;
-  if (!bibliographyNode) {
-    return false;
-  }
-  const tr = editor.state.tr;
-  let updated = false;
-  editor.state.doc.descendants((node, pos) => {
-    if (node.type === bibliographyNode) {
-      tr.setNodeMarkup(pos, bibliographyNode, { ...node.attrs, entries });
-      updated = true;
+const hasCitationNodes = (editor: Editor): boolean => {
+  let found = false;
+  editor.state.doc.descendants((node) => {
+    if (node.type.name === "citation") {
+      found = true;
+      return false;
     }
     return true;
   });
-  if (updated) {
-    editor.view.dispatch(tr);
-  }
-  return updated;
+  return found;
 };
 
-const updateCitationNodes = (editor: Editor, sources: CitationSource[]): boolean => {
-  const citationNode = editor.schema.nodes.citation;
-  if (!citationNode) {
-    return false;
-  }
-  const tr = editor.state.tr;
-  let updated = false;
-  editor.state.doc.descendants((node, pos) => {
-    if (node.type === citationNode) {
-      const targetId = typeof node.attrs?.sourceId === "string" ? node.attrs.sourceId : "";
-      const source = sources.find((entry) => entry.id === targetId);
-      const desiredLabel = source?.label || targetId;
-      if (desiredLabel && node.attrs?.label !== desiredLabel) {
-        tr.setNodeMarkup(pos, citationNode, { ...node.attrs, label: desiredLabel });
-        updated = true;
-      }
+const hasBibliographyNode = (editor: Editor): boolean => {
+  let found = false;
+  editor.state.doc.descendants((node) => {
+    if (node.type.name === "bibliography") {
+      found = true;
+      return false;
     }
     return true;
   });
-  if (updated) {
-    editor.view.dispatch(tr);
-  }
-  return updated;
+  return found;
 };
 
 const insertBreakNode = (editor: Editor, kind: BreakKind): void => {
@@ -1321,9 +1501,12 @@ export const commandMap: Record<string, CommandHandler> = {
       throw new Error("Footnote node is not available on the schema");
     }
     const id = allocateFootnoteId();
-    const textNode = editor.schema.text("Footnote text");
+    const textNode = editor.schema.text(" ");
     const footnote = footnoteNode.create({ id }, textNode);
     editor.chain().focus().insertContent(footnote).insertContent(" ").run();
+  },
+  "footnote.insert"(editor) {
+    commandMap.InsertFootnote(editor);
   },
   InsertEndnote(editor) {
     const footnoteNode = editor.schema.nodes.footnote;
@@ -1331,9 +1514,12 @@ export const commandMap: Record<string, CommandHandler> = {
       throw new Error('Footnote node is not available on the schema');
     }
     const id = allocateFootnoteId();
-    const textNode = editor.schema.text('Endnote text');
+    const textNode = editor.schema.text(" ");
     const footnote = footnoteNode.create({ id, kind: 'endnote' }, textNode);
     editor.chain().focus().insertContent(footnote).insertContent(' ').run();
+  },
+  "endnote.insert"(editor) {
+    commandMap.InsertEndnote(editor);
   },
 
 
@@ -1343,6 +1529,10 @@ export const commandMap: Record<string, CommandHandler> = {
 
   PreviousFootnote(editor) {
     navigateFootnote(editor, 'previous');
+  },
+  "footnote.navigate"(editor, args) {
+    const dir = typeof args?.dir === "string" ? args.dir : "next";
+    navigateFootnote(editor, dir === "prev" ? "previous" : "next");
   },
 
   InsertBookmark(editor, args) {
@@ -1435,29 +1625,17 @@ export const commandMap: Record<string, CommandHandler> = {
 
   UpdateCitations(editor) {
     void (async () => {
-      const sources = getCitationSources(editor);
-      if (!updateCitationNodes(editor, sources)) {
-        window.alert('No citations to update.');
+      if (!hasCitationNodes(editor)) {
+        window.alert("No citations to update.");
+        return;
       }
-      await refreshUsedBibliography(editor);
+      await refreshCitationsAndBibliography(editor);
     })();
   },
 
-  SetCitationStyle(editor, args) {
-    const payload = typeof args?.id === 'string' ? args.id : typeof args?.style === 'string' ? args.style : '';
-    const style = CITATION_STYLES.includes(payload) ? payload : CITATION_STYLE_DEFAULT;
-    saveCitationStyle(style);
-    const sources = getCitationSources(editor);
-    updateCitationNodes(editor, sources);
-    void (async () => {
-      const entries = await buildBibliographyFromDoc(editor);
-      updateBibliographyNodes(editor, entries);
-    })();
-  },
+  SetCitationStyle: setCitationStyleCommand,
 
-  'citation.style.set'(editor, args) {
-    return this.SetCitationStyle(editor, args);
-  },
+  "citation.style.set": setCitationStyleCommand,
   'citation.csl.import.openDialog'() {
     console.warn('[References] citation.csl.import.openDialog stub invoked');
   },
@@ -1497,6 +1675,11 @@ export const commandMap: Record<string, CommandHandler> = {
 
   InsertBibliography(editor) {
     void (async () => {
+      console.info("[References] insert bibliography", { styleId: editor.state.doc.attrs?.citationStyleId });
+      const styleId = getDocCitationMeta(editor.state.doc).styleId;
+      if (resolveNoteKind(styleId)) {
+        return;
+      }
       const keys = collectDocumentCitationKeys(editor);
       if (!keys.length) {
         window.alert("Insert citations before generating a bibliography.");
@@ -1504,17 +1687,22 @@ export const commandMap: Record<string, CommandHandler> = {
       }
       console.info("[References] insert bibliography", { itemKeys: keys });
       ensureBibliographyStore();
-      const entries = await buildBibliographyFromDoc(editor);
-      insertBibliographyNode(editor, entries);
+      ensureBibliographyNode(editor);
+      await refreshCitationsAndBibliography(editor);
     })();
   },
 
   UpdateBibliography(editor) {
     void (async () => {
-      const entries = await buildBibliographyFromDoc(editor);
-      if (!updateBibliographyNodes(editor, entries)) {
-        window.alert('No bibliography found to update.');
+      const styleId = getDocCitationMeta(editor.state.doc).styleId;
+      if (resolveNoteKind(styleId)) {
+        return;
       }
+      if (!hasBibliographyNode(editor)) {
+        window.alert("No bibliography found to update.");
+        return;
+      }
+      await refreshCitationsAndBibliography(editor);
     })();
   },
   "citation.sources.manage.openDialog"(editor) {
@@ -1666,7 +1854,7 @@ Paragraphs: ${stats.paragraphs}`);
       bottom: parseToCm((margins as any).bottom, 2.5),
       left: parseToCm((margins as any).left, 2.5)
     };
-    console.info("[RibbonDebug] SetPageMargins dispatch", payload);
+    // Debug: silenced noisy ribbon logs.
     tiptap.commands.setPageMargins(payload);
     if (typeof args?.presetId === "string") {
       setMarginsPreset(args.presetId);
@@ -1689,11 +1877,11 @@ Paragraphs: ${stats.paragraphs}`);
     }
     const tiptap = getTiptap(editor);
     if (!tiptap?.commands?.setPageOrientation) {
-      console.info("[RibbonDebug] SetPageOrientation missing command", { orientation });
+      // Debug: silenced noisy ribbon logs.
       throw new Error("TipTap setPageOrientation command unavailable");
     }
     const ok = tiptap.commands.setPageOrientation(orientation);
-    console.info("[RibbonDebug] SetPageOrientation result", { orientation, ok });
+    // Debug: silenced noisy ribbon logs.
     if (!ok) {
       throw new Error("setPageOrientation command failed");
     }
@@ -1708,11 +1896,11 @@ Paragraphs: ${stats.paragraphs}`);
     const overrides = typeof args?.overrides === "object" && args?.overrides !== null ? args.overrides : undefined;
     const tiptap = getTiptap(editor);
     if (!tiptap?.commands?.setPageSize) {
-      console.info("[RibbonDebug] SetPageSize missing command", { id, overrides });
+      // Debug: silenced noisy ribbon logs.
       throw new Error("TipTap setPageSize command unavailable");
     }
     const ok = tiptap.commands.setPageSize(id ?? "a4", overrides);
-    console.info("[RibbonDebug] SetPageSize result", { id: id ?? "a4", ok, overrides });
+    // Debug: silenced noisy ribbon logs.
     if (!ok) {
       throw new Error("setPageSize command failed");
     }
@@ -1893,6 +2081,15 @@ Paragraphs: ${stats.paragraphs}`);
 
   FootnotePanel() {
     window.leditorHost?.toggleFootnotePanel?.();
+  },
+  "footnote.showNotes.toggle"() {
+    window.leditorHost?.toggleFootnotePanel?.();
+  },
+  "footnote.navigate.openMenu"() {
+    // Menu-only control; no action needed here.
+  },
+  "footnote.options.openDialog"() {
+    // Placeholder until options UI exists.
   }
 };
 

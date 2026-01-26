@@ -304,6 +304,69 @@ function extractTitleFromHtml(html: string): string {
   return "";
 }
 
+function decodeHtmlEntities(value: string): string {
+  if (!value) return "";
+  return value
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, "\"")
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
+}
+
+function extractTagsFromHtml(html: string): string[] {
+  if (!html) return [];
+  const tags: string[] = [];
+  const regex = /data-tags="([^"]*)"/gi;
+  let match: RegExpExecArray | null = null;
+  while ((match = regex.exec(html))) {
+    const raw = decodeHtmlEntities(match[1] || "");
+    raw
+      .split(/[;|,/]/)
+      .map((t) => t.trim())
+      .filter(Boolean)
+      .forEach((t) => tags.push(t));
+  }
+  return Array.from(new Set(tags));
+}
+
+function tokenizePotentialTheme(value: string): string[] {
+  if (!value) return [];
+  const cleaned = value.replace(/^mixed:\s*/i, "");
+  return Array.from(
+    new Set(
+      cleaned
+        .split(/[|,;/]/)
+        .map((t) => t.trim())
+        .filter(Boolean)
+    )
+  );
+}
+
+function normalizeTagList(value: unknown): string[] {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return Array.from(
+      new Set(
+        value
+          .map((v) => (typeof v === "string" ? v.trim() : ""))
+          .filter(Boolean)
+      )
+    );
+  }
+  if (typeof value === "string") {
+    return Array.from(
+      new Set(
+        value
+          .split(/[;|,/]/)
+          .map((t) => t.trim())
+          .filter(Boolean)
+      )
+    );
+  }
+  return [];
+}
+
 export function resolveSectionsRoot(baseDir?: string): string | null {
   const normalized = normalizeBaseDir(baseDir);
   const candidateBase = normalized ? path.resolve(normalized) : getDefaultBaseDir();
@@ -430,13 +493,6 @@ export function buildDatasetHandles(runPath: string): AnalyseDatasets {
 export async function loadBatches(runPath: string): Promise<BatchRecord[]> {
   if (!runPath) return [];
   let datasetPath = findFirstExistingFile(runPath, BATCH_FILE_CANDIDATES);
-  if (!datasetPath) {
-    const ancestor = path.resolve(runPath, "..", "..", "..");
-    datasetPath = findFirstExistingFile(ancestor, BATCH_FILE_CANDIDATES);
-    if (datasetPath) {
-      console.info("[analyse][loadBatches][ancestor]", { runPath, ancestor, datasetPath });
-    }
-  }
   if (!datasetPath) return [];
   console.info("[analyse][loadBatches]", { runPath, datasetPath });
 
@@ -502,7 +558,7 @@ export async function loadSections(runPath: string, level: SectionLevel): Promis
   if (level === "r1") {
     const batchPath = findFirstExistingFile(runPath, BATCH_FILE_CANDIDATES);
     if (batchPath) {
-      console.info("[analyse][loadSections][r1-fallback:batches]", { runPath, batchPath });
+      console.info("[analyse][loadSections][r1-batches]", { runPath, batchPath });
       const batches = await loadBatches(runPath);
       if (!batches.length) return [];
       const derived: SectionRecord[] = [];
@@ -510,15 +566,28 @@ export async function loadSections(runPath: string, level: SectionLevel): Promis
       for (let bIdx = 0; bIdx < batches.length; bIdx++) {
         const batch = batches[bIdx];
         for (let pIdx = 0; pIdx < batch.payloads.length; pIdx++) {
-          const p = batch.payloads[pIdx] as any;
+          const p = batch.payloads[pIdx] as Record<string, unknown>;
           const meta = asRecord(p.meta) || {};
-          const rq = safeString(p.rq_question ?? p.rq);
-          const gold = safeString(p.overarching_theme ?? p.gold_theme ?? p.payload_theme ?? p.theme);
-          const ev = safeString(p.evidence_type ?? p.evidence_type_norm);
-          const routeVal = safeString(p.route ?? gold ?? p.theme);
-          const html = safeString(p.section_text) || `<p>${safeString(p.paraphrase ?? p.direct_quote ?? "")}</p>`;
-          const customId = safeString(p.direct_quote_id ?? p.custom_id ?? `${bIdx}_${pIdx}`);
-          const title = safeString(p.section_title) || safeString(p.potential_theme ?? p.theme) || safeString(p.rq_question) || customId;
+          const rq = safeString(p.rq_question ?? p.rq ?? meta.rq);
+          const gold = safeString(p.overarching_theme ?? p.gold_theme ?? p.payload_theme ?? p.theme ?? meta.gold_theme);
+          const ev = safeString(p.evidence_type ?? p.evidence_type_norm ?? meta.evidence_type);
+          const routeVal = safeString(p.route_value ?? p.route ?? meta.route_value ?? meta.route ?? gold);
+          const potentialTheme = safeString(p.potential_theme ?? meta.potential_theme);
+          const potentialTokens = tokenizePotentialTheme(potentialTheme);
+          const html = safeString(p.section_html ?? p.section_text) || `<p>${safeString(p.paraphrase ?? p.direct_quote ?? "")}</p>`;
+          const customId = safeString(p.direct_quote_id ?? p.custom_id ?? meta.custom_id ?? `${bIdx}_${pIdx}`);
+          const title =
+            safeString(p.section_title) ||
+            extractTitleFromHtml(html) ||
+            safeString(p.potential_theme ?? p.theme ?? p.payload_theme) ||
+            safeString(p.rq_question ?? p.rq) ||
+            customId;
+          const tags = Array.from(
+            new Set([
+              ...normalizeTagList(p.tags ?? p.tag_cluster ?? p.section_tags ?? meta.tags ?? meta.tag_cluster ?? meta.section_tags),
+              ...extractTagsFromHtml(html),
+            ])
+          );
           derived.push({
             id: customId || `r1_payload_${bIdx}_${pIdx}`,
             html,
@@ -528,16 +597,38 @@ export async function loadSections(runPath: string, level: SectionLevel): Promis
               gold_theme: gold,
               evidence_type: ev,
               route: routeVal,
+              route_value: routeVal,
+              potential_theme: potentialTheme,
+              tags,
             },
             route: routeVal || undefined,
+            routeValue: routeVal || undefined,
             title: title || customId,
+            rq: rq || undefined,
+            goldTheme: gold || undefined,
+            evidenceType: ev || undefined,
+            potentialTheme: potentialTheme || undefined,
+            potentialTokens: potentialTokens.length ? potentialTokens : undefined,
+            tags,
+            paraphrase: safeString(p.paraphrase ?? meta.paraphrase) || undefined,
+            directQuote: safeString(p.direct_quote ?? meta.direct_quote) || undefined,
+            researcherComment: safeString(p.researcher_comment ?? meta.researcher_comment) || undefined,
+            firstAuthorLast: safeString(p.first_author_last ?? meta.first_author_last) || undefined,
+            authorSummary: safeString(p.author_summary ?? meta.author_summary) || undefined,
+            author: safeString(p.author ?? meta.author) || undefined,
+            year: safeString(p.year ?? meta.year) || undefined,
+            source: safeString(p.source ?? meta.source) || undefined,
+            titleText: safeString(p.title ?? meta.title) || undefined,
+            url: safeString(p.url ?? meta.url) || undefined,
+            itemKey: safeString(p.item_key ?? meta.item_key) || undefined,
+            page: safeNumber(p.page ?? meta.page),
           });
           if (derived.length % yieldEvery === 0) {
             await new Promise((resolve) => setImmediate(resolve));
           }
         }
       }
-      console.info("[analyse][loadSections][r1-fallback:batches][built]", { runPath, count: derived.length });
+      console.info("[analyse][loadSections][r1-batches][built]", { runPath, count: derived.length });
       return derived;
     }
   }
@@ -572,13 +663,43 @@ export async function loadSections(runPath: string, level: SectionLevel): Promis
     const html = safeString(obj.section_html ?? obj.html);
     const customId = safeString(obj.custom_id ?? meta.custom_id ?? `section_${entryIdx + 1}`);
     const routeValue = safeString(obj.route_value ?? meta.route_value ?? meta.route);
-    const title = extractTitleFromHtml(html) || safeString(meta.title) || customId;
+    const rq = safeString(obj.rq ?? meta.rq);
+    const gold = safeString(obj.gold_theme ?? meta.gold_theme);
+    const ev = safeString(obj.evidence_type ?? meta.evidence_type);
+    const potentialTheme = safeString(obj.potential_theme ?? meta.potential_theme);
+    const potentialTokens = tokenizePotentialTheme(potentialTheme);
+    const tags = Array.from(
+      new Set([
+        ...normalizeTagList(obj.tags ?? obj.tag_cluster ?? meta.tags ?? meta.tag_cluster),
+        ...extractTagsFromHtml(html),
+      ])
+    );
+    const title = extractTitleFromHtml(html) || safeString(obj.title ?? meta.title) || customId;
     acc.push({
       id: customId,
       html,
       meta,
       route: routeValue || undefined,
+      routeValue: routeValue || undefined,
       title,
+      rq: rq || undefined,
+      goldTheme: gold || undefined,
+      evidenceType: ev || undefined,
+      potentialTheme: potentialTheme || undefined,
+      potentialTokens: potentialTokens.length ? potentialTokens : undefined,
+      tags,
+      paraphrase: safeString(obj.paraphrase ?? meta.paraphrase) || undefined,
+      directQuote: safeString(obj.direct_quote ?? meta.direct_quote) || undefined,
+      researcherComment: safeString(obj.researcher_comment ?? meta.researcher_comment) || undefined,
+      firstAuthorLast: safeString(obj.first_author_last ?? meta.first_author_last) || undefined,
+      authorSummary: safeString(obj.author_summary ?? meta.author_summary) || undefined,
+      author: safeString(obj.author ?? meta.author) || undefined,
+      year: safeString(obj.year ?? meta.year) || undefined,
+      source: safeString(obj.source ?? meta.source) || undefined,
+      titleText: safeString(obj.title ?? meta.title) || undefined,
+      url: safeString(obj.url ?? meta.url) || undefined,
+      itemKey: safeString(obj.item_key ?? meta.item_key) || undefined,
+      page: safeNumber(obj.page ?? meta.page),
     });
     return acc;
   }, []);

@@ -914,6 +914,7 @@ export class PanelGrid {
     }
     this.ensurePanelRatio(targetId);
     this.focusPanel(index);
+    this.ensureFloatingOnscreen(targetId);
   }
 
   ensurePanelVisibleById(panelId: PanelId): void {
@@ -926,6 +927,7 @@ export class PanelGrid {
     }
     this.ensurePanelRatio(panelId);
     this.focusPanel(record.definition.index);
+    this.ensureFloatingOnscreen(panelId);
   }
 
   private ensurePanelRatio(panelId: PanelId): void {
@@ -954,6 +956,33 @@ export class PanelGrid {
       return;
     }
     record.shell.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }
+
+  private ensureFloatingOnscreen(panelId: PanelId): void {
+    if (!this.state.undocked[panelId]) {
+      return;
+    }
+    const record = this.panels.get(panelId);
+    if (!record) {
+      return;
+    }
+    const shell = record.shell;
+    const rect = shell.getBoundingClientRect();
+    if (!rect.width || !rect.height) {
+      return;
+    }
+    const margin = 12;
+    const maxLeft = Math.max(margin, window.innerWidth - rect.width - margin);
+    const maxTop = Math.max(margin, window.innerHeight - rect.height - margin);
+    const nextLeft = Math.min(Math.max(margin, rect.left), maxLeft);
+    const nextTop = Math.min(Math.max(margin, rect.top), maxTop);
+    if (nextLeft === rect.left && nextTop === rect.top) {
+      return;
+    }
+    shell.style.left = `${nextLeft}px`;
+    shell.style.top = `${nextTop}px`;
+    this.state.floatingPositions[panelId] = { left: nextLeft, top: nextTop };
+    this.persistState();
   }
 
   private getPanelByIndex(index: number): PanelRecord | undefined {

@@ -318,6 +318,8 @@ export const PageNode = Node.create({
       content.className = PAGE_CONTENT_CLASS;
       const footnotes = document.createElement("div");
       footnotes.className = PAGE_FOOTNOTES_CLASS;
+      footnotes.setAttribute("aria-hidden", "true");
+      footnotes.contentEditable = "false";
       const footer = document.createElement("div");
       footer.className = PAGE_FOOTER_CLASS;
       footer.setAttribute("aria-hidden", "true");

@@ -1,5 +1,4 @@
 import type { AnalysePageId, AnalyseAction, AnalyseRoundId, AnalyseState, AnalysePageAction, AnalysePageContext } from "./types";
-import { renderCorpusPage } from "../pages/analyse/corpus";
 import { renderBatchesPage } from "../pages/analyse/batches";
 import { renderPhasesPage } from "../pages/analyse/phases";
 import { renderDashboardPage } from "../pages/analyse/dashboard";
@@ -45,8 +44,8 @@ export const analysePageRegistry: AnalysePageDefinition[] = [
     id: "corpus",
     action: "analyse/open_corpus",
     label: "Corpus",
-    description: "Corpus overview and active run selector",
-    render: (container, state, ctx) => renderCorpusPage(container, state, ctx)
+    description: "Corpus batches with filters and batch cards",
+    render: (container, state, ctx) => renderSectionsPage(container, state, "r1", ctx, { source: "corpus" })
   },
   {
     id: "batches",

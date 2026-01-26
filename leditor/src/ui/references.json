@@ -622,7 +622,7 @@
             {
               "type": "menuItem",
               "controlId": "cite.style.apa",
-              "label": "APA",
+              "label": "Author-Year (APA)",
               "command": {
                 "id": "citation.style.set",
                 "args": {
@@ -632,56 +632,34 @@
             },
             {
               "type": "menuItem",
-              "controlId": "cite.style.mla",
-              "label": "MLA",
-              "command": {
-                "id": "citation.style.set",
-                "args": {
-                  "id": "mla"
-                }
-              }
-            },
-            {
-              "type": "menuItem",
-              "controlId": "cite.style.chicago",
-              "label": "Chicago",
-              "command": {
-                "id": "citation.style.set",
-                "args": {
-                  "id": "chicago"
-                }
-              }
-            },
-            {
-              "type": "menuItem",
-              "controlId": "cite.style.ieee",
-              "label": "IEEE",
-              "command": {
-                "id": "citation.style.set",
-                "args": {
-                  "id": "ieee"
-                }
-              }
-            },
-            {
-              "type": "menuItem",
-              "controlId": "cite.style.harvard",
-              "label": "Harvard",
-              "command": {
-                "id": "citation.style.set",
-                "args": {
-                  "id": "harvard"
-                }
-              }
-            },
-            {
-              "type": "menuItem",
               "controlId": "cite.style.vancouver",
-              "label": "Vancouver",
+              "label": "Numeric (Vancouver)",
               "command": {
                 "id": "citation.style.set",
                 "args": {
                   "id": "vancouver"
+                }
+              }
+            },
+            {
+              "type": "menuItem",
+              "controlId": "cite.style.footnote",
+              "label": "Footnote (Chicago Notes)",
+              "command": {
+                "id": "citation.style.set",
+                "args": {
+                  "id": "chicago-note-bibliography"
+                }
+              }
+            },
+            {
+              "type": "menuItem",
+              "controlId": "cite.style.endnote",
+              "label": "Endnote (Chicago Notes)",
+              "command": {
+                "id": "citation.style.set",
+                "args": {
+                  "id": "chicago-note-bibliography-endnote"
                 }
               }
             },
@@ -994,75 +972,53 @@
                 "binding": "citationStyle"
               },
               "menu": [
-                {
-                  "type": "menuItem",
-                  "controlId": "cite.style.apa",
-                  "label": "APA",
-                  "command": {
-                    "id": "citation.style.set",
-                    "args": {
-                      "id": "apa"
-                    }
-                  }
-                },
-                {
-                  "type": "menuItem",
-                  "controlId": "cite.style.mla",
-                  "label": "MLA",
-                  "command": {
-                    "id": "citation.style.set",
-                    "args": {
-                      "id": "mla"
-                    }
-                  }
-                },
-                {
-                  "type": "menuItem",
-                  "controlId": "cite.style.chicago",
-                  "label": "Chicago",
-                  "command": {
-                    "id": "citation.style.set",
-                    "args": {
-                      "id": "chicago"
-                    }
-                  }
-                },
-                {
-                  "type": "menuItem",
-                  "controlId": "cite.style.ieee",
-                  "label": "IEEE",
-                  "command": {
-                    "id": "citation.style.set",
-                    "args": {
-                      "id": "ieee"
-                    }
-                  }
-                },
-                {
-                  "type": "menuItem",
-                  "controlId": "cite.style.harvard",
-                  "label": "Harvard",
-                  "command": {
-                    "id": "citation.style.set",
-                    "args": {
-                      "id": "harvard"
-                    }
-                  }
-                },
-                {
-                  "type": "menuItem",
-                  "controlId": "cite.style.vancouver",
-                  "label": "Vancouver",
-                  "command": {
-                    "id": "citation.style.set",
-                    "args": {
-                      "id": "vancouver"
-                    }
-                  }
-                },
-                {
-                  "type": "separator"
-                },
+                    {
+                      "type": "menuItem",
+                      "controlId": "cite.style.apa",
+                      "label": "Author-Year (APA)",
+                      "command": {
+                        "id": "citation.style.set",
+                        "args": {
+                          "id": "apa"
+                        }
+                      }
+                    },
+                    {
+                      "type": "menuItem",
+                      "controlId": "cite.style.vancouver",
+                      "label": "Numeric (Vancouver)",
+                      "command": {
+                        "id": "citation.style.set",
+                        "args": {
+                          "id": "vancouver"
+                        }
+                      }
+                    },
+                    {
+                      "type": "menuItem",
+                      "controlId": "cite.style.footnote",
+                      "label": "Footnote (Chicago Notes)",
+                      "command": {
+                        "id": "citation.style.set",
+                        "args": {
+                          "id": "chicago-note-bibliography"
+                        }
+                      }
+                    },
+                    {
+                      "type": "menuItem",
+                      "controlId": "cite.style.endnote",
+                      "label": "Endnote (Chicago Notes)",
+                      "command": {
+                        "id": "citation.style.set",
+                        "args": {
+                          "id": "chicago-note-bibliography-endnote"
+                        }
+                      }
+                    },
+                    {
+                      "type": "separator"
+                    },
                 {
                   "type": "menuItem",
                   "controlId": "cite.style.cslImport",
@@ -1272,369 +1228,6 @@
                 "B": {
                   "mode": "inMenuOf",
                   "targetId": "cite.insertCitation"
-                },
-                "C": {
-                  "mode": "inGroupFlyout"
-                }
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "groupId": "captions",
-      "label": "Captions",
-      "priority": 60,
-      "dialogLauncher": {
-        "controlId": "captions.dialogLauncher",
-        "type": "dialogLauncher",
-        "label": "Captions Options",
-        "iconKey": "icon.dialogLauncher",
-        "command": {
-          "id": "caption.options.openDialog"
-        }
-      },
-      "layout": {
-        "type": "grid",
-        "rows": 2,
-        "columns": 2,
-        "items": [
-          "captions.insertCaption",
-          "captions.insertTableOfFigures",
-          "captions.updateTableOfFigures",
-          "captions.crossReference"
-        ]
-      },
-      "controls": [
-        {
-          "controlId": "captions.insertCaption",
-          "label": "Insert Caption",
-          "type": "button",
-          "size": "medium",
-          "iconKey": "icon.caption",
-          "command": {
-            "id": "caption.insert.openDialog"
-          },
-          "collapse": {
-            "A": {
-              "mode": "full"
-            },
-            "B": {
-              "mode": "full"
-            },
-            "C": {
-              "mode": "inGroupFlyout"
-            }
-          }
-        },
-        {
-          "controlId": "captions.insertTableOfFigures",
-          "label": "Table of Figures",
-          "type": "button",
-          "size": "medium",
-          "iconKey": "icon.tableOfFigures",
-          "command": {
-            "id": "caption.tableOfFigures.insert.openDialog"
-          },
-          "collapse": {
-            "A": {
-              "mode": "full"
-            },
-            "B": {
-              "mode": "full"
-            },
-            "C": {
-              "mode": "inGroupFlyout"
-            }
-          }
-        },
-        {
-          "controlId": "captions.updateTableOfFigures",
-          "label": "Update Table",
-          "type": "button",
-          "size": "medium",
-          "iconKey": "icon.updateTable",
-          "command": {
-            "id": "caption.tableOfFigures.update"
-          },
-          "collapse": {
-            "A": {
-              "mode": "full"
-            },
-            "B": {
-              "mode": "inMenuOf",
-              "targetId": "captions.insertTableOfFigures"
-            },
-            "C": {
-              "mode": "inGroupFlyout"
-            }
-          }
-        },
-        {
-          "controlId": "captions.crossReference",
-          "label": "Cross-reference",
-          "type": "button",
-          "size": "medium",
-          "iconKey": "icon.crossReference",
-          "command": {
-            "id": "caption.crossReference.openDialog"
-          },
-          "collapse": {
-            "A": {
-              "mode": "full"
-            },
-            "B": {
-              "mode": "full"
-            },
-            "C": {
-              "mode": "inGroupFlyout"
-            }
-          }
-        },
-        {
-          "controlId": "captions.labelPresets",
-          "label": "Labels",
-          "type": "dropdown",
-          "size": "small",
-          "iconKey": "icon.labels",
-          "command": {
-            "id": "caption.labels.openMenu"
-          },
-          "menu": [
-            {
-              "type": "menuItem",
-              "controlId": "captions.label.figure",
-              "label": "Figure",
-              "command": {
-                "id": "caption.label.setDefault",
-                "args": {
-                  "id": "figure"
-                }
-              }
-            },
-            {
-              "type": "menuItem",
-              "controlId": "captions.label.table",
-              "label": "Table",
-              "command": {
-                "id": "caption.label.setDefault",
-                "args": {
-                  "id": "table"
-                }
-              }
-            },
-            {
-              "type": "menuItem",
-              "controlId": "captions.label.equation",
-              "label": "Equation",
-              "command": {
-                "id": "caption.label.setDefault",
-                "args": {
-                  "id": "equation"
-                }
-              }
-            },
-            {
-              "type": "menuItem",
-              "controlId": "captions.label.code",
-              "label": "Code",
-              "command": {
-                "id": "caption.label.setDefault",
-                "args": {
-                  "id": "code"
-                }
-              }
-            },
-            {
-              "type": "menuItem",
-              "controlId": "captions.label.listing",
-              "label": "Listing",
-              "command": {
-                "id": "caption.label.setDefault",
-                "args": {
-                  "id": "listing"
-                }
-              }
-            }
-          ],
-          "collapse": {
-            "A": {
-              "mode": "full"
-            },
-            "B": {
-              "mode": "inMenuOf",
-              "targetId": "captions.insertCaption"
-            },
-            "C": {
-              "mode": "inGroupFlyout"
-            }
-          }
-        }
-      ],
-      "clusters": [
-        {
-          "clusterId": "references.captions.primary",
-          "layout": "grid",
-          "controls": [
-            {
-              "controlId": "captions.insertCaption",
-              "label": "Insert Caption",
-              "type": "button",
-              "size": "medium",
-              "iconKey": "icon.caption",
-              "command": {
-                "id": "caption.insert.openDialog"
-              },
-              "collapse": {
-                "A": {
-                  "mode": "full"
-                },
-                "B": {
-                  "mode": "full"
-                },
-                "C": {
-                  "mode": "inGroupFlyout"
-                }
-              }
-            },
-            {
-              "controlId": "captions.insertTableOfFigures",
-              "label": "Table of Figures",
-              "type": "button",
-              "size": "medium",
-              "iconKey": "icon.tableOfFigures",
-              "command": {
-                "id": "caption.tableOfFigures.insert.openDialog"
-              },
-              "collapse": {
-                "A": {
-                  "mode": "full"
-                },
-                "B": {
-                  "mode": "full"
-                },
-                "C": {
-                  "mode": "inGroupFlyout"
-                }
-              }
-            },
-            {
-              "controlId": "captions.updateTableOfFigures",
-              "label": "Update Table",
-              "type": "button",
-              "size": "medium",
-              "iconKey": "icon.updateTable",
-              "command": {
-                "id": "caption.tableOfFigures.update"
-              },
-              "collapse": {
-                "A": {
-                  "mode": "full"
-                },
-                "B": {
-                  "mode": "inMenuOf",
-                  "targetId": "captions.insertTableOfFigures"
-                },
-                "C": {
-                  "mode": "inGroupFlyout"
-                }
-              }
-            },
-            {
-              "controlId": "captions.crossReference",
-              "label": "Cross-reference",
-              "type": "button",
-              "size": "medium",
-              "iconKey": "icon.crossReference",
-              "command": {
-                "id": "caption.crossReference.openDialog"
-              },
-              "collapse": {
-                "A": {
-                  "mode": "full"
-                },
-                "B": {
-                  "mode": "full"
-                },
-                "C": {
-                  "mode": "inGroupFlyout"
-                }
-              }
-            },
-            {
-              "controlId": "captions.labelPresets",
-              "label": "Labels",
-              "type": "dropdown",
-              "size": "small",
-              "iconKey": "icon.labels",
-              "command": {
-                "id": "caption.labels.openMenu"
-              },
-              "menu": [
-                {
-                  "type": "menuItem",
-                  "controlId": "captions.label.figure",
-                  "label": "Figure",
-                  "command": {
-                    "id": "caption.label.setDefault",
-                    "args": {
-                      "id": "figure"
-                    }
-                  }
-                },
-                {
-                  "type": "menuItem",
-                  "controlId": "captions.label.table",
-                  "label": "Table",
-                  "command": {
-                    "id": "caption.label.setDefault",
-                    "args": {
-                      "id": "table"
-                    }
-                  }
-                },
-                {
-                  "type": "menuItem",
-                  "controlId": "captions.label.equation",
-                  "label": "Equation",
-                  "command": {
-                    "id": "caption.label.setDefault",
-                    "args": {
-                      "id": "equation"
-                    }
-                  }
-                },
-                {
-                  "type": "menuItem",
-                  "controlId": "captions.label.code",
-                  "label": "Code",
-                  "command": {
-                    "id": "caption.label.setDefault",
-                    "args": {
-                      "id": "code"
-                    }
-                  }
-                },
-                {
-                  "type": "menuItem",
-                  "controlId": "captions.label.listing",
-                  "label": "Listing",
-                  "command": {
-                    "id": "caption.label.setDefault",
-                    "args": {
-                      "id": "listing"
-                    }
-                  }
-                }
-              ],
-              "collapse": {
-                "A": {
-                  "mode": "full"
-                },
-                "B": {
-                  "mode": "inMenuOf",
-                  "targetId": "captions.insertCaption"
                 },
                 "C": {
                   "mode": "inGroupFlyout"
@@ -2137,13 +1730,6 @@
       "cite.manageSources": 65,
       "cite.bibliography": 80,
       "cite.insertCitation": 90
-    },
-    "captions": {
-      "captions.labelPresets": 35,
-      "captions.updateTableOfFigures": 45,
-      "captions.insertTableOfFigures": 60,
-      "captions.crossReference": 70,
-      "captions.insertCaption": 85
     },
     "index": {
       "index.preview": 30,

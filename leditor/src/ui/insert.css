@@ -23,6 +23,16 @@
   gap: 10px;
 }
 
+.leditor-ribbon-panel[data-tab-id="insert"] .ribbon-cluster {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  row-gap: 0;
+}
+
+.leditor-ribbon-panel[data-tab-id="insert"] .leditor-ribbon-group-body {
+  grid-auto-columns: minmax(140px, max-content);
+}
+
 /* =========================
    Pages group
    ========================= */
@@ -111,6 +121,23 @@
 /* Embed dialog textarea styling compatibility (from ribbon.css: .rembed) */
 .leditor-ribbon-panel[data-tab-id="insert"] .rembed {
   width: 520px;
+  background: var(--r-surface);
+  border: 1px solid var(--r-border-color);
+  border-radius: 4px;
+  box-shadow: var(--r-shadow);
+  padding: 12px;
+}
+
+.leditor-ribbon-panel[data-tab-id="insert"] .rembed textarea {
+  width: 100%;
+  height: 160px;
+  border: 1px solid var(--r-border-color);
+  border-radius: 3px;
+  padding: 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  background: #ffffff;
+  color: var(--r-text);
 }
 
 /* =========================
@@ -189,11 +216,11 @@
    Stage B/C behavior
    ========================= */
 /* Insert already uses nowrap + overflow; Stage B adds more consolidation but keep it usable */
-.leditor-ribbon-stage-b .leditor-ribbon-panel[data-tab-id="insert"] .leditor-ribbon-group {
+.leditor-ribbon-panel[data-tab-id="insert"][data-stage="B"] .leditor-ribbon-group {
   min-width: 180px;
 }
 
-.leditor-ribbon-stage-c .leditor-ribbon-panel[data-tab-id="insert"] .leditor-ribbon-group-body {
+.leditor-ribbon-panel[data-tab-id="insert"][data-stage="C"] .leditor-ribbon-group-body {
   overflow: hidden;
 }
 

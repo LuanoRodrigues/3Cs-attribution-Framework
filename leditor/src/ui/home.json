@@ -726,7 +726,7 @@
               "label": "Font Color",
               "type": "colorSplitButton",
               "size": "small",
-              "iconKey": "icon.fontColor",
+              "iconKey": "icon.textColor",
               "command": {
                 "id": "TextColor"
               },
@@ -1053,7 +1053,7 @@
               "label": "Bullets",
               "type": "splitButton",
               "size": "small",
-              "iconKey": "icon.bullets",
+              "iconKey": "icon.bulletList",
               "command": {
                 "id": "list.bullet.toggle"
               },
@@ -1088,7 +1088,7 @@
               "label": "Numbering",
               "type": "splitButton",
               "size": "small",
-              "iconKey": "icon.numbering",
+              "iconKey": "icon.numberList",
               "command": {
                 "id": "list.ordered.toggle"
               },
@@ -1123,7 +1123,7 @@
               "label": "Multilevel List",
               "type": "dropdown",
               "size": "small",
-              "iconKey": "icon.multilevelList",
+              "iconKey": "icon.multiList",
               "command": {
                 "id": "list.multilevel.openMenu"
               },
@@ -1179,7 +1179,7 @@
               "label": "Decrease Indent",
               "type": "button",
               "size": "small",
-              "iconKey": "icon.outdent",
+              "iconKey": "icon.indentDecrease",
               "command": {
                 "id": "paragraph.outdent"
               },
@@ -1194,7 +1194,7 @@
               "label": "Increase Indent",
               "type": "button",
               "size": "small",
-              "iconKey": "icon.indent",
+              "iconKey": "icon.indentIncrease",
               "command": {
                 "id": "paragraph.indent"
               },
@@ -1224,7 +1224,7 @@
               "label": "Show/Hide \u00b6",
               "type": "toggleButton",
               "size": "small",
-              "iconKey": "icon.showMarks",
+              "iconKey": "icon.visualChars",
               "command": {
                 "id": "view.formattingMarks.toggle"
               },
@@ -1971,19 +1971,19 @@
     "icon.subscript",
     "icon.superscript",
     "icon.inlineCode",
-    "icon.fontColor",
+    "icon.textColor",
     "icon.highlight",
     "icon.clearFormatting",
     "icon.changeCase",
     "icon.textEffects",
-    "icon.bullets",
-    "icon.numbering",
-    "icon.multilevelList",
+    "icon.bulletList",
+    "icon.numberList",
+    "icon.multiList",
     "icon.taskList",
-    "icon.outdent",
-    "icon.indent",
+    "icon.indentDecrease",
+    "icon.indentIncrease",
     "icon.sort",
-    "icon.showMarks",
+    "icon.visualChars",
     "icon.alignLeft",
     "icon.alignCenter",
     "icon.alignRight",

@@ -17,7 +17,7 @@ import { setReadMode, setScrollDirection, setRulerVisible, setGridlinesVisible, 
 import { SplitButton } from "./ribbon_split_button.js";
 import Pickr from "@simonwep/pickr";
 import "@simonwep/pickr/dist/themes/classic.min.css";
-import { CITATION_STYLE_STORAGE_KEY, CITATION_STYLES } from "../constants.js";
+import { CITATION_STYLES } from "../constants.js";
 import type { Editor } from "@tiptap/core";
 import { getLayoutController } from "./layout_context.js";
 import { THEME_CHANGE_EVENT } from "./theme_events.js";
@@ -1353,13 +1353,27 @@ const createFootnotesGroup = (editorHandle: EditorHandle): HTMLDivElement => {
 const createCitationStyleDropdown = (editorHandle: EditorHandle): HTMLButtonElement => {
   const menu = new Menu([]);
   const button = createDropdownButton({ icon: "citation", label: "Citation style", menu });
+  const formatLabel = (styleId: string): string => {
+    switch (styleId) {
+      case "apa":
+        return "APA";
+      case "vancouver":
+        return "Numeric (Vancouver)";
+      case "chicago-note-bibliography":
+        return "Footnote (Chicago Notes)";
+      case "chicago-note-bibliography-endnote":
+        return "Endnote (Chicago Notes)";
+      default:
+        return styleId;
+    }
+  };
   const applyStyle = (style: string) => {
     button.dataset.value = style;
   };
-  applyStyle(readCitationStyle());
+  applyStyle(readCitationStyle(editorHandle.getEditor?.()));
   CITATION_STYLES.forEach((style) => {
     const item = MenuItem({
-      label: style,
+      label: formatLabel(style),
       onSelect: () => {
         dispatchCommand(editorHandle, "SetCitationStyle", { style });
         applyStyle(style);
@@ -2393,10 +2407,7 @@ export const renderRibbon = (host: HTMLElement, editorHandle: EditorHandle): voi
     registerAlignment
   };
   const model = loadRibbonModel();
-  console.info("[RibbonDebug] renderRibbon start — layout renderer engaged", {
-    bundle: RIBBON_BUNDLE_ID,
-    planVersion: model.registry.version
-  });
+  // Debug: silenced noisy ribbon logs.
   const stateBus = new RibbonStateBus(editorHandle);
 
   renderRibbonLayout(host, editorHandle, hooks, stateBus, model);

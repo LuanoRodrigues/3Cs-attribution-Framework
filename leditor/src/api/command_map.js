@@ -1092,7 +1092,7 @@ Paragraphs: ${stats.paragraphs}`);
             bottom: parseToCm(margins.bottom, 2.5),
             left: parseToCm(margins.left, 2.5)
         };
-        console.info("[RibbonDebug] SetPageMargins dispatch", payload);
+    // Debug: silenced noisy ribbon logs.
         tiptap.commands.setPageMargins(payload);
         if (typeof args?.presetId === "string") {
             (0, pagination_index_js_1.setMarginsPreset)(args.presetId);
@@ -1116,11 +1116,11 @@ Paragraphs: ${stats.paragraphs}`);
         }
         const tiptap = getTiptap(editor);
         if (!tiptap?.commands?.setPageOrientation) {
-            console.info("[RibbonDebug] SetPageOrientation missing command", { orientation });
+    // Debug: silenced noisy ribbon logs.
             throw new Error("TipTap setPageOrientation command unavailable");
         }
         const ok = tiptap.commands.setPageOrientation(orientation);
-        console.info("[RibbonDebug] SetPageOrientation result", { orientation, ok });
+    // Debug: silenced noisy ribbon logs.
         if (!ok) {
             throw new Error("setPageOrientation command failed");
         }
@@ -1135,11 +1135,11 @@ Paragraphs: ${stats.paragraphs}`);
         const overrides = typeof args?.overrides === "object" && args?.overrides !== null ? args.overrides : undefined;
         const tiptap = getTiptap(editor);
         if (!tiptap?.commands?.setPageSize) {
-            console.info("[RibbonDebug] SetPageSize missing command", { id, overrides });
+    // Debug: silenced noisy ribbon logs.
             throw new Error("TipTap setPageSize command unavailable");
         }
         const ok = tiptap.commands.setPageSize(id ?? "a4", overrides);
-        console.info("[RibbonDebug] SetPageSize result", { id: id ?? "a4", ok, overrides });
+    // Debug: silenced noisy ribbon logs.
         if (!ok) {
             throw new Error("setPageSize command failed");
         }

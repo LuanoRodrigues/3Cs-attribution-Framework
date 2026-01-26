@@ -2,6 +2,7 @@ import type { Menu } from "./ribbon_menu.js";
 
 type SplitButtonOptions = {
   label: string;
+  iconElement?: HTMLElement | null;
   onPrimary: () => void;
   menu: Menu;
   logLabel?: string;
@@ -23,8 +24,16 @@ export class SplitButton {
     this.primaryButton = document.createElement("button");
     this.primaryButton.type = "button";
     this.primaryButton.className = "leditor-split-primary";
-    this.primaryButton.textContent = options.label;
+    this.primaryButton.setAttribute("aria-label", options.label);
     this.primaryButton.dataset.tooltip = options.label;
+    if (options.iconElement) {
+      this.primaryButton.appendChild(options.iconElement);
+    } else {
+      const labelSpan = document.createElement("span");
+      labelSpan.className = "ribbon-button-label";
+      labelSpan.textContent = options.label;
+      this.primaryButton.appendChild(labelSpan);
+    }
     this.primaryButton.addEventListener("click", () => {
       options.onPrimary();
       if (options.logLabel) {

@@ -18,9 +18,13 @@ import "./ribbon.css";
 import "./home.css";
 import "./insert.css";
 import "./layout.css";
+import "./layout_tab.css";
 import "./review.css";
+import "./review_surfaces.css";
+import "./references.css";
+import "./references_overlay.css";
 import "./view.css";
-import { mountA4Layout, type A4LayoutController } from "./a4_layout.js";
+import { mountA4Layout, type A4LayoutController } from "./a4_layout.ts";
 import { initViewState } from "./view_state.ts";
 import { setLayoutController } from "./layout_context.ts";
 import { subscribeToLayoutChanges } from "./layout_settings.js";
@@ -30,7 +34,7 @@ import type { Editor as TiptapEditor } from "@tiptap/core";
 import { DOMParser as ProseMirrorDOMParser } from "prosemirror-model";
 import { getFootnoteRegistry, type FootnoteNodeViewAPI } from "../extensions/extension_footnote.ts";
 import { resetFootnoteState, getFootnoteIds } from "../editor/footnote_state.js";
-import { createFootnoteManager } from "./footnote_manager.js";
+import { createFootnoteManager } from "./footnote_manager.ts";
 import { getCurrentPageSize, getMarginValues } from "./layout_settings.js";
 import { registerLibrarySmokeChecks } from "../plugins/librarySmokeChecks.js";
 import { getHostContract } from "./host_contract.ts";
@@ -429,6 +433,52 @@ const writeCoderStateHtml = async (html: string): Promise<void> => {
 const CURRENT_PHASE: number = 0;
 const RENDERER_BUNDLE_ID = "renderer-src-2026-01-20";
 
+declare global {
+  interface Window {
+    __writeEditorHost?: HTMLElement;
+  }
+}
+
+const getWriteEditorHost = (): HTMLElement | null => {
+  const host = window.__writeEditorHost;
+  if (host) {
+    return host;
+  }
+  return document.getElementById("write-leditor-host");
+};
+
+const findEditorElement = (elementId: string): HTMLElement | null => {
+  const host = getWriteEditorHost();
+  if (host) {
+    const found = host.querySelector(`#${elementId}`) as HTMLElement | null;
+    if (found?.isConnected) {
+      return found;
+    }
+  }
+  const docFind = document.getElementById(elementId) as HTMLElement | null;
+  if (docFind?.isConnected) {
+    return docFind;
+  }
+  return null;
+};
+
+const ensureEditorElement = (elementId: string): HTMLElement => {
+  const existing = findEditorElement(elementId);
+  if (existing) {
+    return existing;
+  }
+  const host = getWriteEditorHost();
+  const mount = document.createElement("div");
+  mount.id = elementId;
+  mount.className = "leditor-mount";
+  if (host) {
+    host.appendChild(mount);
+  } else {
+    document.body.appendChild(mount);
+  }
+  return mount;
+};
+
 export const mountEditor = async () => {
   let hostContractInfo: ReturnType<typeof getHostContract> | null = null;
   try {
@@ -439,7 +489,7 @@ export const mountEditor = async () => {
     console.error("[HostContract] initialization failed", error);
     throw error;
   }
-  console.info("[RibbonDebug] renderer mount", { bundle: RENDERER_BUNDLE_ID });
+  // Debug: silenced noisy ribbon logs.
   if (featureFlags.paginationDebugEnabled) {
     const win = window as typeof window & { __leditorPaginationDebug?: boolean };
     win.__leditorPaginationDebug = true;
@@ -506,6 +556,33 @@ export const mountEditor = async () => {
     console.info("[text][preview]", { path: coderStateResult.sourcePath, snippet });
   }
 
+  const waitForEditorElement = (elementId: string, timeoutMs: number): Promise<HTMLElement> => {
+    const existing = findEditorElement(elementId);
+    if (existing) {
+      return Promise.resolve(existing);
+    }
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const timeout = window.setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        observer.disconnect();
+        reject(new Error(`LEditor: elementId "${elementId}" not found`));
+      }, timeoutMs);
+      const observer = new MutationObserver(() => {
+        const found = findEditorElement(elementId);
+        if (!found || settled) return;
+        settled = true;
+        window.clearTimeout(timeout);
+        observer.disconnect();
+        resolve(found);
+      });
+      observer.observe(document.body ?? document.documentElement, { childList: true, subtree: true });
+    });
+  };
+
+  ensureEditorElement(config.elementId);
+  await waitForEditorElement(config.elementId, 5000);
   handle = LEditor.init(config);
   (window as typeof window & { leditor?: EditorHandle }).leditor = handle;
   if (coderStateResult?.html) {
@@ -532,18 +609,17 @@ export const mountEditor = async () => {
   const ribbonHost = document.createElement("div");
   ribbonHost.id = "leditor-ribbon";
   ribbonHost.className = "leditor-ribbon-host";
+  const appHeader = document.createElement("div");
+  appHeader.className = "leditor-app-header";
+  appHeader.appendChild(ribbonHost);
   const docShell = document.createElement("div");
   docShell.className = "leditor-doc-shell";
-  appRoot.appendChild(ribbonHost);
+  appRoot.appendChild(appHeader);
   appRoot.appendChild(docShell);
   initViewState(appRoot);
   const ribbonEnabled = featureFlags.ribbonEnabled;
   if (ribbonEnabled) {
-    const ribbonHost = document.createElement("div");
-    ribbonHost.id = "leditor-ribbon";
-    ribbonHost.className = "leditor-ribbon-host";
-    docShell.appendChild(ribbonHost);
-    console.info("[RibbonDebug] invoking renderRibbon", { bundle: RENDERER_BUNDLE_ID });
+    // Debug: silenced noisy ribbon logs.
     renderRibbon(ribbonHost, handle);
   }
   const layout: A4LayoutController | null = mountA4Layout(docShell, editorEl);
@@ -615,9 +691,18 @@ export const mountEditor = async () => {
         ensureTitle(anchor, href);
         anchor.classList.add("leditor-citation-anchor");
         const dqid = extractDqid(anchor, href) || dqidFallback;
+        const anchorId =
+          anchor.id ||
+          pickAttr(anchor, "data-key") ||
+          pickAttr(anchor, "item-key") ||
+          pickAttr(anchor, "data-item-key") ||
+          pickAttr(anchor, "data-quote-id") ||
+          pickAttr(anchor, "data-quote_id") ||
+          dqid;
         const detail = {
           href,
           dqid,
+          anchorId,
           title: anchor.getAttribute("title") || "",
           text: (anchor.textContent || "").trim(),
           dataKey: pickAttr(anchor, "data-key"),
@@ -688,7 +773,7 @@ export const mountEditor = async () => {
     };
   }
   window.codexLog?.write("[PHASE3_OK]");
-  mountStatusBar(handle, layout);
+  mountStatusBar(handle, layout, { parent: appRoot });
   attachContextMenu(handle, tiptapEditor.view.dom, tiptapEditor);
   createQuickToolbar(handle, tiptapEditor);
 

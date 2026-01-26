@@ -116,7 +116,12 @@ const stateSelectors: Partial<
   findMatchCase: () => false,
   findWholeWords: () => false,
   borders: () => null,
-  shading: () => null
+  shading: () => null,
+  citationStyle: (editor) => {
+    const styleId = editor.state.doc.attrs?.citationStyleId;
+    if (typeof styleId === "string") return styleId;
+    return null;
+  }
 };
 
 export class RibbonStateBus {

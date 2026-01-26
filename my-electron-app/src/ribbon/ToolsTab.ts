@@ -15,10 +15,10 @@ export const ToolsTab: RibbonTab = {
     {
       id: "test-coder",
       label: "Coder",
-      hint: "Open the coder workspace in Panel 1 (drag the tab to move it).",
+      hint: "Open the coder workspace in Panel 4 (drag the tab to move it).",
       iconId: "test-coder",
       group: "Tools",
-      command: { phase: "tools", action: "open_tool", payload: { toolType: "coder-panel", panelId: "panel1" } }
+      command: { phase: "tools", action: "open_tool", payload: { toolType: "coder-panel", panelId: "panel4" } }
     }
   ]
 };

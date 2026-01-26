@@ -45,6 +45,7 @@ interface CollapseMeta {
 }
 
 interface GroupMeta {
+  tabId: string;
   groupId: string;
   priority: number;
   element: HTMLDivElement;
@@ -58,8 +59,8 @@ interface GroupMeta {
 
 const MAX_ROWS_BY_GROUP: Record<string, number> = {
   clipboard: 2,
-  font: 3,
-  paragraph: 3,
+  font: 2,
+  paragraph: 2,
   styles: 2,
   editing: 2
 };
@@ -390,15 +391,19 @@ const iconFromKey = (key?: string): RibbonIconName | undefined => {
     cleanPaste: "pasteClean",
     undo: "undo",
     redo: "redo",
+    growFont: "growFont",
+    shrinkFont: "shrinkFont",
     bold: "bold",
     italic: "italic",
     underline: "underline",
     strikethrough: "strikethrough",
     subscript: "subscript",
     superscript: "superscript",
-    inlineCode: "clear",
+    inlineCode: "code",
     fontColor: "textColor",
     highlight: "highlight",
+    changeCase: "changeCase",
+    textEffects: "textEffects",
     bulletList: "bulletList",
     numberList: "numberList",
     multiList: "multiList",
@@ -421,10 +426,50 @@ const iconFromKey = (key?: string): RibbonIconName | undefined => {
     select: "select",
     regex: "regex",
     taskList: "taskList",
+    paragraphStyle: "style",
     dialogLauncher: "dialogLauncher",
     print: "printLayout"
   } as const;
   return (map[simple] ?? (simple as RibbonIconName)) as RibbonIconName;
+};
+
+const resolveIconForControl = (control: ControlConfig): RibbonIconName | undefined => {
+  const direct = iconFromKey(control.iconKey);
+  if (direct) return direct;
+  const map: Record<string, RibbonIconName> = {
+    "font.underline": "underline",
+    "font.color": "textColor",
+    "font.highlight": "highlight",
+    "paragraph.bullets": "bulletList",
+    "paragraph.numbering": "numberList",
+    "paragraph.multilevel": "multiList",
+    "paragraph.taskList": "taskList",
+    "paragraph.outdent": "indentDecrease",
+    "paragraph.indent": "indentIncrease",
+    "paragraph.showMarks": "visualChars",
+    "paragraph.sort": "sort",
+    "paragraph.spacing": "lineSpacing",
+    "paragraph.borders": "borders",
+    "paragraph.shading": "shading",
+    "paragraph.blockquote": "blockquote",
+    "paragraph.horizontalRule": "horizontalRule"
+  };
+  if (control.controlId && map[control.controlId]) return map[control.controlId];
+  return undefined;
+};
+
+const ensureControlIcon = (element: HTMLElement, iconName?: RibbonIconName): void => {
+  if (!iconName) return;
+  const existing = element.querySelector(".leditor-ribbon-icon");
+  if (existing && !existing.classList.contains("leditor-ribbon-icon-placeholder")) {
+    return;
+  }
+  if (existing) {
+    existing.remove();
+  }
+  const icon = createRibbonIcon(iconName);
+  icon.classList.add("ribbon-button-icon");
+  element.prepend(icon);
 };
 
 const applyTokens = (): void => {
@@ -470,15 +515,44 @@ const applyTokens = (): void => {
   root.style.setProperty("--r-d2", tokens.motion.d2);
 };
 
+const resolveControlId = (control: ControlConfig): string => {
+  if (control.controlId) return control.controlId;
+  if (control.command?.id) return control.command.id;
+  if (control.label) return control.label;
+  return control.type;
+};
+
+const applyControlDataAttributes = (
+  element: HTMLElement,
+  control: ControlConfig,
+  sizeOverride?: string
+): void => {
+  element.dataset.controlId = resolveControlId(control);
+  element.dataset.controlType = control.type;
+  element.dataset.size = sizeOverride ?? control.size ?? "auto";
+  if (control.state?.binding) {
+    element.dataset.stateBinding = control.state.binding;
+  }
+  if (control.command?.args && typeof control.command.args === "object") {
+    const args = control.command.args as Record<string, unknown>;
+    const value = args.id ?? args.style ?? args.value;
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+      element.dataset.stateValue = String(value);
+    }
+  }
+};
+
 const ensurePortal = (): HTMLElement => {
   const id = layoutPlan.zIndexPlan.portalElementId ?? "ribbon-portal";
   let portal = document.getElementById(id);
   if (!portal) {
     portal = document.createElement("div");
     portal.id = id;
-    portal.className = "ribbon-portal";
+    portal.className = "ribbon-portal leditor-ribbon";
     portal.style.zIndex = String(layoutPlan.zIndexPlan.menusAndPickers ?? 1000);
     document.body.appendChild(portal);
+  } else {
+    portal.classList.add("ribbon-portal", "leditor-ribbon");
   }
   return portal;
 };
@@ -501,6 +575,10 @@ const createOverflowButton = (label: string, menu: Menu): HTMLButtonElement => {
   button.className = "ribbon-overflow-button";
   button.setAttribute("aria-label", `${label} overflow`);
   button.textContent = "⋯";
+  button.dataset.controlId = `${label}.overflow`;
+  button.dataset.controlType = "overflow";
+  button.dataset.groupId = label;
+  button.dataset.size = "small";
   button.addEventListener("click", (event) => {
     event.stopPropagation();
     menu.open(button);
@@ -726,6 +804,7 @@ const createGalleryMenu = (menu: Menu, ctx: BuildContext, item: ControlConfig): 
 const renderDynamicMenu = (menu: Menu, ctx: BuildContext, item: ControlConfig): void => {
   const container = document.createElement("div");
   container.className = "leditor-menu-dynamic";
+  applyControlDataAttributes(container, item);
   menu.element.appendChild(container);
   const source = item.source ?? "";
   const provider = dynamicSources[source];
@@ -747,6 +826,7 @@ const renderDynamicMenu = (menu: Menu, ctx: BuildContext, item: ControlConfig): 
             menu.close();
           }
         });
+        applyControlDataAttributes(button, { ...item, type: "menuItem" });
         button.textContent = "";
         const title = document.createElement("span");
         title.className = "leditor-menu-item-title";
@@ -788,6 +868,7 @@ const createMenuItemButton = (menu: Menu, ctx: BuildContext, item: ControlConfig
     button.setAttribute("aria-checked", "false");
     button.dataset.toggle = "true";
   }
+  applyControlDataAttributes(button, { ...item, type: toggle ? "menuToggle" : "menuItem" });
   menu.element.appendChild(button);
   return button;
 };
@@ -805,6 +886,7 @@ const createCustomWidget = (menu: Menu, ctx: BuildContext, item: ControlConfig):
 const createColorPalette = (menu: Menu, ctx: BuildContext, item: ControlConfig): HTMLElement => {
   const palette = document.createElement("div");
   palette.className = "leditor-color-picker-palette";
+  applyControlDataAttributes(palette, item);
   const colors =
     (item as any).colors ??
     (Array.isArray(item.palette?.rows)
@@ -1017,7 +1099,7 @@ const buildControl = (
 ): { element: HTMLElement; collapse: CollapseMeta | null } => {
   const id = control.controlId;
   const size = control.size ?? "small";
-  const icon = iconFromKey(control.iconKey);
+  const icon = resolveIconForControl(control);
   const collapseDirectives = control.collapse ?? {};
   const collapseMeta: CollapseMeta = {
     controlId: id,
@@ -1063,7 +1145,8 @@ const buildControl = (
         toggle: false,
         onClick: () => runFontSizeStep(1)
       });
-      button.dataset.controlId = id ?? "";
+      ensureControlIcon(button, icon);
+      applyControlDataAttributes(button, control, size);
       if (control.label) {
         const labelSpan = document.createElement("span");
         labelSpan.className = "ribbon-button-label";
@@ -1082,7 +1165,8 @@ const buildControl = (
         toggle: false,
         onClick: () => runFontSizeStep(-1)
       });
-      button.dataset.controlId = id ?? "";
+      ensureControlIcon(button, icon);
+      applyControlDataAttributes(button, control, size);
       if (control.label) {
         const labelSpan = document.createElement("span");
         labelSpan.className = "ribbon-button-label";
@@ -1103,7 +1187,8 @@ const buildControl = (
       onClick: commandHandler,
       commandId: targetId as any
     });
-    button.dataset.controlId = id ?? "";
+    ensureControlIcon(button, icon);
+    applyControlDataAttributes(button, control, size);
     if (control.label) {
       const labelSpan = document.createElement("span");
       labelSpan.className = "ribbon-button-label";
@@ -1121,16 +1206,74 @@ const buildControl = (
     return { element: button, collapse: collapseMeta };
   }
 
-if (control.type === "splitButton" || control.type === "splitToggleButton" || control.type === "colorSplitButton") {
-  const menu = buildMenu(control.menu, ctx);
-  ctx.menuRegistry.set(id ?? "", menu);
-  const split = new SplitButton({
-    label: control.label ?? "",
-    onPrimary: control.type === "colorSplitButton" ? runColorSplitPrimary : commandHandler,
-    menu,
-    logLabel: id
-  });
-    split.element.dataset.controlId = id ?? "";
+  if (
+    control.controlId === "font.underline" &&
+    (control.type === "splitButton" || control.type === "splitToggleButton" || control.type === "colorSplitButton")
+  ) {
+    const menu = buildMenu(control.menu, ctx);
+    ctx.menuRegistry.set(id ?? "", menu);
+    const targetArgs = control.command ? buildCommandArgs(control.command) : undefined;
+    const targetId = control.command ? resolveCommandId(control.command as any, targetArgs) : undefined;
+    const button = createRibbonButton({
+      icon: icon ?? "underline",
+      label: control.label ?? "",
+      size,
+      toggle: true,
+      onClick: () => {
+        menu.open(button);
+        button.setAttribute("aria-expanded", "true");
+      },
+      commandId: targetId as any
+    });
+    button.setAttribute("aria-haspopup", "menu");
+    button.setAttribute("aria-expanded", "false");
+    menu.onClose(() => {
+      button.setAttribute("aria-expanded", "false");
+    });
+    ensureControlIcon(button, icon ?? "underline");
+    applyControlDataAttributes(button, control, size);
+    if (targetId) {
+      ctx.hooks.registerToggle?.(targetId as any, button);
+    }
+    collapseMeta.element = button;
+    recordParent(meta, button);
+    return { element: button, collapse: collapseMeta };
+  }
+
+  if (control.type === "splitButton" || control.type === "splitToggleButton" || control.type === "colorSplitButton") {
+    const menu = buildMenu(control.menu, ctx);
+    ctx.menuRegistry.set(id ?? "", menu);
+    const iconEl = icon ? createRibbonIcon(icon) : null;
+    if (iconEl) {
+      iconEl.classList.add("ribbon-button-icon");
+    }
+    const split = new SplitButton({
+      label: control.label ?? "",
+      iconElement: iconEl,
+      onPrimary: control.type === "colorSplitButton" ? runColorSplitPrimary : commandHandler,
+      menu,
+      logLabel: id
+    });
+    if (iconEl) {
+      const primary = split.element.querySelector(".leditor-split-primary");
+      if (primary) {
+        if (!primary.querySelector(".leditor-ribbon-icon")) {
+          const iconClone = iconEl.cloneNode(true) as HTMLElement;
+          primary.prepend(iconClone);
+        }
+        Array.from(primary.childNodes).forEach((node) => {
+          if (node.nodeType === Node.TEXT_NODE) {
+            node.textContent = "";
+          }
+        });
+        primary.querySelectorAll(".ribbon-button-label").forEach((label) => label.remove());
+      }
+    }
+    const primary = split.element.querySelector(".leditor-split-primary");
+    if (primary instanceof HTMLElement) {
+      ensureControlIcon(primary, icon);
+    }
+    applyControlDataAttributes(split.element, control, control.size ?? "medium");
     collapseMeta.element = split.element;
     recordParent(meta, split.element);
     return { element: split.element, collapse: collapseMeta };
@@ -1144,7 +1287,8 @@ if (control.type === "splitButton" || control.type === "splitToggleButton" || co
       label: control.label ?? "",
       menu
     });
-    button.dataset.controlId = id ?? "";
+    ensureControlIcon(button, icon ?? "clear");
+    applyControlDataAttributes(button, control, control.size ?? "medium");
     collapseMeta.element = button;
     recordParent(meta, button);
     return { element: button, collapse: collapseMeta };
@@ -1161,7 +1305,7 @@ if (control.type === "splitButton" || control.type === "splitToggleButton" || co
       input.value = "Times New Roman";
     }
     box.appendChild(input);
-    box.dataset.controlId = id ?? "";
+    applyControlDataAttributes(box, control, control.size ?? "medium");
     collapseMeta.element = box;
     recordParent(meta, box);
     return { element: box, collapse: collapseMeta };
@@ -1207,6 +1351,7 @@ if (control.type === "splitButton" || control.type === "splitToggleButton" || co
           label: `${preset}`,
           onSelect: () => runSpinnerCommand(preset)
         });
+        applyControlDataAttributes(item, { ...control, type: "menuItem" });
         menu.element.appendChild(item);
       });
     } else {
@@ -1219,6 +1364,7 @@ if (control.type === "splitButton" || control.type === "splitToggleButton" || co
           }
         }
       });
+      applyControlDataAttributes(item, { ...control, type: "menuItem" });
       menu.element.appendChild(item);
     }
 
@@ -1227,6 +1373,7 @@ if (control.type === "splitButton" || control.type === "splitToggleButton" || co
       label: control.label ?? "",
       menu
     });
+    ensureControlIcon(dropdownButton, icon ?? "clear");
     spinnerContainer.appendChild(dropdownButton);
 
     const parseCurrentValue = (): number => {
@@ -1260,7 +1407,7 @@ if (control.type === "splitButton" || control.type === "splitToggleButton" || co
       runSpinnerCommand(parseCurrentValue());
     });
 
-    spinnerContainer.dataset.controlId = id ?? "";
+    applyControlDataAttributes(spinnerContainer, control, control.size ?? "medium");
     collapseMeta.element = spinnerContainer;
     recordParent(meta, spinnerContainer);
     return { element: spinnerContainer, collapse: collapseMeta };
@@ -1270,7 +1417,7 @@ if (control.type === "splitButton" || control.type === "splitToggleButton" || co
     const gal = document.createElement("div");
     gal.className = "ribbon-gallery";
     gal.textContent = control.label ?? "Gallery";
-    gal.dataset.controlId = id ?? "";
+    applyControlDataAttributes(gal, control, control.size ?? "medium");
     if (id === "styles.gallery") {
       attachStylesContextMenu(gal, ctx);
     }
@@ -1282,7 +1429,7 @@ if (control.type === "splitButton" || control.type === "splitToggleButton" || co
   if (control.type === "custom") {
     if (control.widget === "styleTemplateGallery") {
       const gallery = createStyleTemplateGallery(ctx);
-      gallery.dataset.controlId = id ?? "";
+      applyControlDataAttributes(gallery, control, control.size ?? "medium");
       collapseMeta.element = gallery;
       recordParent(meta, gallery);
       return { element: gallery, collapse: collapseMeta };
@@ -1298,7 +1445,7 @@ if (control.type === "splitButton" || control.type === "splitToggleButton" || co
     const iconEl = createRibbonIcon(icon ?? "clear");
     btn.appendChild(iconEl);
     btn.addEventListener("click", commandHandler);
-    btn.dataset.controlId = id ?? "";
+    applyControlDataAttributes(btn, control, control.size ?? "small");
     collapseMeta.element = btn;
     recordParent(meta, btn);
     return { element: btn, collapse: collapseMeta };
@@ -1315,6 +1462,7 @@ const buildCluster = (
   const container = document.createElement("div");
   container.className = `ribbon-cluster ribbon-cluster--${cluster.layout}`;
   container.classList.add(`ribbon-cluster-${cluster.clusterId.replace(/\./g, "-")}`);
+  container.dataset.clusterId = cluster.clusterId;
   cluster.controls.forEach((control: ControlConfig) => {
     const { element, collapse } = buildControl(control, meta, ctx);
     container.appendChild(element);
@@ -1332,7 +1480,10 @@ const buildGroup = (group: GroupConfig, ctx: BuildContext, tabId: string): Group
   element.dataset.groupId = group.groupId;
   const body = document.createElement("div");
   body.className = "leditor-ribbon-group-body";
-  applyGroupLayoutConfig(body, tabId, group.groupId);
+  body.dataset.groupId = group.groupId;
+  if (tabId !== "home") {
+    applyGroupLayoutConfig(body, tabId, group.groupId);
+  }
   const footer = document.createElement("div");
   footer.className = "leditor-ribbon-group-footer";
   const title = document.createElement("span");
@@ -1341,6 +1492,7 @@ const buildGroup = (group: GroupConfig, ctx: BuildContext, tabId: string): Group
   footer.appendChild(title);
 
   const meta: GroupMeta = {
+    tabId,
     groupId: group.groupId,
     priority: group.priority ?? 50,
     element,
@@ -1356,10 +1508,38 @@ const buildGroup = (group: GroupConfig, ctx: BuildContext, tabId: string): Group
   body.style.setProperty("--r-group-max-rows", String(maxRows));
   body.dataset.maxRows = String(maxRows);
 
-  (group.clusters ?? []).forEach((cluster) => {
-    const clusterEl = buildCluster(cluster, meta, ctx);
-    body.appendChild(clusterEl);
-  });
+  if (tabId === "home") {
+    const clusters = group.clusters ?? [];
+    const minPerRow = 4;
+    const maxPerRow = 20;
+    const rowCount = Math.max(1, Math.min(2, Math.ceil(clusters.length / maxPerRow)));
+    const perRow = Math.min(maxPerRow, Math.max(minPerRow, Math.ceil(clusters.length / rowCount)));
+    body.dataset.rowCount = String(rowCount);
+    const rows: HTMLDivElement[] = [];
+    for (let i = 0; i < rowCount; i += 1) {
+      const row = document.createElement("div");
+      row.className = "leditor-ribbon-group-row";
+      row.dataset.rowIndex = String(i + 1);
+      rows.push(row);
+      body.appendChild(row);
+    }
+    let rowIndex = 0;
+    let inRow = 0;
+    clusters.forEach((cluster) => {
+      const clusterEl = buildCluster(cluster, meta, ctx);
+      rows[rowIndex].appendChild(clusterEl);
+      inRow += 1;
+      if (inRow >= perRow && rowIndex < rows.length - 1) {
+        rowIndex += 1;
+        inRow = 0;
+      }
+    });
+  } else {
+    (group.clusters ?? []).forEach((cluster) => {
+      const clusterEl = buildCluster(cluster, meta, ctx);
+      body.appendChild(clusterEl);
+    });
+  }
 
   if (group.dialogLauncher) {
     const { element: dl } = buildControl(group.dialogLauncher, meta, ctx);
@@ -1444,6 +1624,7 @@ const applyStageB = (meta: GroupMeta, ctx: BuildContext) => {
               dispatchCommand(ctx.editorHandle, c.config.command.id as any, c.config.command.args);
             }
           });
+          applyControlDataAttributes(mi, { ...c.config, type: "menuItem" });
           menu.element.appendChild(mi);
           c.element.style.display = "none";
           return;
@@ -1457,6 +1638,7 @@ const applyStageB = (meta: GroupMeta, ctx: BuildContext) => {
               dispatchCommand(ctx.editorHandle, c.config.command.id as any, c.config.command.args);
             }
           });
+          applyControlDataAttributes(mi, { ...c.config, type: "menuItem" });
           menu.element.appendChild(mi);
           c.element.style.display = "none";
           return;
@@ -1472,6 +1654,7 @@ const applyStageB = (meta: GroupMeta, ctx: BuildContext) => {
               dispatchCommand(ctx.editorHandle, c.config.command.id as any, c.config.command.args);
             }
           });
+          applyControlDataAttributes(mi, { ...c.config, type: "menuItem" });
           targetMenu.element.appendChild(mi);
           c.element.style.display = "none";
           return;
@@ -1484,6 +1667,8 @@ const applyStageB = (meta: GroupMeta, ctx: BuildContext) => {
 const createGroupFlyout = (meta: GroupMeta, portal: HTMLElement) => {
   const flyout = document.createElement("div");
   flyout.className = "ribbon-group-flyout";
+  flyout.dataset.tabId = meta.tabId;
+  flyout.dataset.groupId = meta.groupId;
   flyout.appendChild(meta.body);
   portal.appendChild(flyout);
   return flyout;
@@ -1502,6 +1687,11 @@ const collapseToStageC = (
     button.type = "button";
     button.className = "ribbon-group-button";
     button.textContent = meta.groupId;
+    button.dataset.controlId = `${meta.groupId}.collapse`;
+    button.dataset.controlType = "groupCollapse";
+    button.dataset.groupId = meta.groupId;
+    button.dataset.tabId = meta.tabId;
+    button.dataset.size = "medium";
     button.addEventListener("click", (event) => {
       event.stopPropagation();
       const placeholder = document.createComment("group-body-placeholder");
@@ -1550,16 +1740,19 @@ const applyCollapseStages = (
   const total = groups.reduce((sum, g) => sum + g.element.offsetWidth, 0);
   if (total <= available) {
     panelEl.dataset.collapseStage = "A";
+    panelEl.dataset.stage = "A";
     return;
   }
   groups.forEach((g) => applyStageB(g, ctx));
   const afterB = groups.reduce((sum, g) => sum + g.element.offsetWidth, 0);
   if (afterB <= available) {
     panelEl.dataset.collapseStage = "B";
+    panelEl.dataset.stage = "B";
     return;
   }
   collapseToStageC(groups, portal, available);
   panelEl.dataset.collapseStage = "C";
+  panelEl.dataset.stage = "C";
 };
 
 type TabBuildResult = {
@@ -1604,6 +1797,7 @@ export const renderRibbonLayout = (
 ): void => {
   if (typeof document === "undefined") return;
   applyTokens();
+  host.classList.add("leditor-ribbon");
   const portal = ensurePortal();
   setMenuPortal(portal);
   ensurePortalStyle(portal);
@@ -1617,6 +1811,7 @@ export const renderRibbonLayout = (
   const updateStage = (stage?: string) => {
     const normalized = stage ?? defaultStage;
     host.dataset.ribbonCollapseStage = normalized;
+    host.dataset.stage = normalized;
     host.dataset.ribbonTabScroll = normalized === lastStage ? "enabled" : "disabled";
   };
   updateStage(defaultStage);
@@ -1653,6 +1848,24 @@ export const renderRibbonLayout = (
 
   const shell = document.createElement("div");
   shell.className = "leditor-ribbon-shell";
+  host.dataset.ribbonCollapsed = "false";
+  const collapseToggle = document.createElement("button");
+  collapseToggle.type = "button";
+  collapseToggle.className = "ribbon-collapse-toggle";
+  collapseToggle.setAttribute("aria-pressed", "false");
+  collapseToggle.title = "Hide ribbon";
+  collapseToggle.textContent = "Hide ribbon";
+  collapseToggle.dataset.controlId = "ribbon.collapse.toggle";
+  collapseToggle.dataset.controlType = "collapseToggle";
+  collapseToggle.dataset.size = "small";
+  collapseToggle.addEventListener("click", () => {
+    const next = host.dataset.ribbonCollapsed !== "true";
+    host.dataset.ribbonCollapsed = String(next);
+    collapseToggle.setAttribute("aria-pressed", String(next));
+    collapseToggle.title = next ? "Show ribbon" : "Hide ribbon";
+    collapseToggle.textContent = next ? "Show ribbon" : "Hide ribbon";
+  });
+  tabStrip.element.appendChild(collapseToggle);
   shell.append(tabStrip.element, panelsContainer);
   host.innerHTML = "";
   host.appendChild(shell);
@@ -1677,6 +1890,38 @@ export const renderRibbonLayout = (
 
   const initial = defaults.initialTabId ?? tabs[0].tabId;
   activate(initial);
+
+  if (stateBus) {
+    const syncBindings = (state: RibbonStateSnapshot): void => {
+      const bindingTargets = host.querySelectorAll<HTMLElement>("[data-state-binding]");
+      bindingTargets.forEach((element) => {
+        const binding = element.dataset.stateBinding as RibbonStateKey | undefined;
+        if (!binding) return;
+        const value = state[binding];
+        if (element.dataset.controlType === "dropdown") {
+          if (typeof value === "string") {
+            element.dataset.value = value;
+          }
+          const controlId = element.dataset.controlId ?? "";
+          if (controlId) {
+            const menu = menuRegistry.get(controlId);
+            if (menu) {
+              const matchValue = typeof value === "string" ? value : null;
+              menu.element
+                .querySelectorAll<HTMLElement>("[data-state-value]")
+                .forEach((item) => item.classList.toggle("is-selected", matchValue === item.dataset.stateValue));
+              if (matchValue) {
+                menu.element.dataset.selectedValue = matchValue;
+              }
+            }
+          }
+        }
+      });
+    };
+    const unsubscribe = stateBus.subscribe(syncBindings);
+    syncBindings(stateBus.getState());
+    host.addEventListener("ribbon-dispose", () => unsubscribe(), { once: true });
+  }
 
   const disposeEvent = () => dispose();
   host.addEventListener("ribbon-dispose", disposeEvent, { once: true });

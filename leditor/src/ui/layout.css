@@ -21,7 +21,7 @@
 
   /* Ribbon layout */
   --r-tabstrip-height: 36px;
-  --r-panel-height: 120px;
+  --r-panel-height: 220px;
   --r-panel-pad-x: 10px;
   --r-panel-pad-y: 8px;
   --r-group-gap: 10px;
@@ -35,6 +35,10 @@
   --r-ctl-gap: 6px;
   --r-icon: 16px;
   --r-icon-lg: 20px;
+
+  /* Stage widths */
+  --r-stage-width-a: 1360px;
+  --r-stage-width-b: 1120px;
 
   /* Chrome */
   --r-tab-active-underline-h: 3px;
@@ -62,9 +66,20 @@
   --r-focus: #2563eb;
 
   /* Borders / dividers / shadows */
-  --r-border: 1px solid rgba(0, 0, 0, 0.10);
-  --r-divider: 1px solid rgba(0, 0, 0, 0.08);
+  --r-border-color: #c6cfde;
+  --r-border-soft: #d6dbe6;
+  --r-divider-color: #d0d7e2;
+  --r-border: 1px solid var(--r-border-color);
+  --r-divider: 1px solid var(--r-divider-color);
   --r-shadow: 0 1px 2px rgba(0, 0, 0, 0.10), 0 8px 24px rgba(0, 0, 0, 0.08);
+
+  /* Control chrome */
+  --r-ctl-bg: linear-gradient(180deg, #ffffff 0%, #f5f7fb 100%);
+  --r-ctl-bg-hover: linear-gradient(180deg, #eef3ff 0%, #dfe8ff 100%);
+  --r-ctl-bg-pressed: linear-gradient(180deg, #dfe8ff 0%, #cfd9f2 100%);
+  --r-ctl-shadow: 0 1px 0 rgba(255, 255, 255, 1), 0 1px 3px rgba(0, 0, 0, 0.08);
+  --r-ctl-shadow-hover: 0 1px 0 rgba(255, 255, 255, 1), 0 2px 6px rgba(37, 100, 208, 0.18);
+  --r-ctl-shadow-pressed: inset 0 1px 2px rgba(0, 0, 0, 0.14);
 
   /* Motion */
   --r-ease: cubic-bezier(.2,.8,.2,1);

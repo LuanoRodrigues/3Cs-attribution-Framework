@@ -40,10 +40,7 @@ export const renderRibbonPlaceholder = (
   options: RibbonPlaceholderOptions
 ): void => {
   const tabIds = (options.tabs ?? []).map((t) => t.id);
-  console.info("[RibbonDebug] renderRibbonPlaceholder", {
-    tabs: tabIds,
-    hasPanelContentKeys: Object.keys(options.panelContent ?? {})
-  });
+  // Debug: silenced noisy ribbon logs.
   const tabs = options.tabs ?? [];
   if (tabs.length === 0) {
     return;
@@ -64,7 +61,7 @@ export const renderRibbonPlaceholder = (
     const panel =
       panelContent ?? createPlaceholderPanel(placeholderText, tab.source);
     if (!panelContent) {
-      console.info("[RibbonDebug] placeholder used for tab", { tab: tab.id, label: tab.label });
+      // Debug: silenced noisy ribbon logs.
     }
     if (tab.source) {
       panel.dataset.ribbonSource = tab.source;

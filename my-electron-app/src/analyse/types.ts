@@ -39,6 +39,25 @@ export interface SectionRecord {
   meta: Record<string, unknown>;
   route?: string;
   title: string;
+  rq?: string;
+  goldTheme?: string;
+  evidenceType?: string;
+  routeValue?: string;
+  potentialTheme?: string;
+  potentialTokens?: string[];
+  tags?: string[];
+  paraphrase?: string;
+  directQuote?: string;
+  researcherComment?: string;
+  firstAuthorLast?: string;
+  authorSummary?: string;
+  author?: string;
+  year?: string;
+  source?: string;
+  titleText?: string;
+  url?: string;
+  itemKey?: string;
+  page?: number;
 }
 
 export interface RunMetrics {

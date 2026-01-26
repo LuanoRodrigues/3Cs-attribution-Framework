@@ -10,6 +10,7 @@ const SCRIPT_ENTRY = "renderer/bootstrap.bundle.js";
 const SCRIPT_PRELUDE = "renderer/prelude.js";
 const SCRIPT_VENDOR = "renderer/vendor-leditor.js";
 let writePanelScopeId: string | null = null;
+const BODY_WRITE_CLASS = "write-leditor-active";
 
 type HostPackage = {
   host: HTMLElement;
@@ -70,6 +71,23 @@ function waitForConnection(element: HTMLElement): Promise<void> {
   });
 }
 
+function waitForMountPoint(mountId: string, host: HTMLElement): Promise<void> {
+  const existing = document.getElementById(mountId) as HTMLElement | null;
+  if (existing?.isConnected) {
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => {
+    const observer = new MutationObserver(() => {
+      const next = document.getElementById(mountId) as HTMLElement | null;
+      if (next?.isConnected && host.contains(next)) {
+        observer.disconnect();
+        resolve();
+      }
+    });
+    observer.observe(host, { childList: true, subtree: true });
+  });
+}
+
 function appendScript(scriptUrl: string, asModule = false): Promise<void> {
   const script = document.createElement("script");
   script.type = asModule ? "module" : "text/javascript";
@@ -100,18 +118,33 @@ function ensureStyleLoaded(styleUrl: string): void {
   document.head.appendChild(link);
 }
 
+function ensureMountPoint(packageRef: HostPackage): HTMLElement {
+  let mount = packageRef.host.querySelector(`#${LEDITOR_MOUNT_ID}`) as HTMLElement | null;
+  if (!mount) {
+    mount = document.createElement("div");
+    mount.id = LEDITOR_MOUNT_ID;
+    mount.className = "write-leditor-mount";
+  }
+  if (mount.parentElement !== packageRef.host) {
+    packageRef.host.appendChild(mount);
+  }
+  packageRef.mountPoint = mount;
+  return mount;
+}
+
 function ensureScriptLoaded(): Promise<void> {
   if (scriptPromise) {
     return scriptPromise;
   }
   const { scriptUrl } = getProjectBase();
   setHostStatus("Loading Write editor…", false);
-  const host = sharedHost?.host;
-  if (!host) {
+  const hostPackage = sharedHost;
+  if (!hostPackage) {
     const error = new Error("Write host missing");
     setHostStatus(error.message, true);
     return Promise.reject(error);
   }
+  const host = hostPackage.host;
   const base = new URL("../leditor/", window.location.href);
   const resourceBase = new URL("../resources/leditor/", window.location.href);
   const styleUrl = new URL(STYLE_ENTRY, base).href;
@@ -125,6 +158,11 @@ function ensureScriptLoaded(): Promise<void> {
   const vendorUrl = new URL(SCRIPT_VENDOR, new URL("../leditor/", window.location.href)).href;
   const preludeUrl = new URL(SCRIPT_PRELUDE, new URL("../leditor/", window.location.href)).href;
   const ready = waitForConnection(host)
+    .then(() => ensureMountPoint(hostPackage))
+    .then(() => waitForMountPoint(LEDITOR_MOUNT_ID, host))
+    .then(() => {
+      console.info("[write][mount-check]", { hasEditor: Boolean(document.getElementById(LEDITOR_MOUNT_ID)) });
+    })
     .then(() => appendScript(preludeUrl, false))
     .then(() => appendScript(vendorUrl, false))
     .then(() => appendScript(scriptUrl, true));
@@ -138,6 +176,7 @@ function ensureScriptLoaded(): Promise<void> {
 declare global {
   interface Window {
     leditor?: { focus?: () => void };
+    __writeEditorHost?: HTMLElement;
   }
 }
 
@@ -153,6 +192,8 @@ export class WritePage {
     mount.appendChild(this.container);
     this.hostPackage = getProjectBase().hostRoot;
     this.attachHost();
+    window.__writeEditorHost = this.hostPackage.host;
+    this.addWriteBodyClass();
     const panelScope = getDefaultCoderScope();
     writePanelScopeId = panelScope;
     const ready = ensureScriptLoaded();
@@ -170,6 +211,7 @@ export class WritePage {
     if (host.parentElement === this.container) {
       this.container.removeChild(host);
     }
+    this.removeWriteBodyClass();
   }
 
   private attachHost(): void {
@@ -177,5 +219,15 @@ export class WritePage {
     if (host.parentElement !== this.container) {
       this.container.appendChild(host);
     }
+  }
+
+  private addWriteBodyClass(): void {
+    document.documentElement?.classList.add(BODY_WRITE_CLASS);
+    document.body?.classList.add(BODY_WRITE_CLASS);
+  }
+
+  private removeWriteBodyClass(): void {
+    document.documentElement?.classList.remove(BODY_WRITE_CLASS);
+    document.body?.classList.remove(BODY_WRITE_CLASS);
   }
 }

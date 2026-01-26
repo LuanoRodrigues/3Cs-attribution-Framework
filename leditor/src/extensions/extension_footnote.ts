@@ -1,7 +1,7 @@
 import { Editor, Node as TiptapNode, type NodeViewRenderer } from "@tiptap/core";
 import Link from "@tiptap/extension-link";
 import StarterKit from "@tiptap/starter-kit";
-import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
+import type { Mark, Node as ProseMirrorNode } from "@tiptap/pm/model";
 import type { EditorView } from "@tiptap/pm/view";
 
 export type FootnoteNodeViewAPI = {
@@ -62,6 +62,8 @@ class FootnoteNodeView implements FootnoteNodeViewAPI {
 
     this.popover = document.createElement("div");
     this.popover.className = "leditor-footnote-popover";
+    this.popover.style.display = "none";
+    this.popover.setAttribute("aria-hidden", "true");
     this.root.appendChild(this.popover);
 
     this.toolbar = document.createElement("div");
@@ -123,7 +125,7 @@ class FootnoteNodeView implements FootnoteNodeViewAPI {
   private setupInnerEditor() {
     this.innerEditor = new Editor({
       element: this.editorHost,
-      extensions: [StarterKit, Link],
+      extensions: [StarterKit.configure({ link: false }), Link],
       content: this.createDocFromNode(this.node),
       editable: true,
       editorProps: {
@@ -149,8 +151,16 @@ class FootnoteNodeView implements FootnoteNodeViewAPI {
 
   private createDocFromNode(node: ProseMirrorNode) {
     const content = node.content.toJSON();
-    const normalized = Array.isArray(content) && content.length > 0 ? content : [{ type: "text", text: "" }];
-    return { type: "doc", content: normalized };
+    const normalized = Array.isArray(content) ? content : [];
+    return {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: normalized.length ? normalized : []
+        }
+      ]
+    };
   }
 
   private syncFromInnerEditor() {
@@ -163,12 +173,62 @@ class FootnoteNodeView implements FootnoteNodeViewAPI {
   }
 
   private applyInnerContent(content: any[]) {
-    const doc = this.view.state.schema.nodeFromJSON({ type: "doc", content });
-    const newNode = this.node.type.create(this.node.attrs, doc.content, this.node.marks);
+    const inlineNodes = this.extractInlineNodes(content);
+    const newNode = this.node.type.create(this.node.attrs, inlineNodes, this.node.marks);
     const pos = this.getPos();
     if (typeof pos !== "number") return;
     const tr = this.view.state.tr.replaceWith(pos, pos + this.node.nodeSize, newNode);
     this.view.dispatch(tr);
+  }
+
+  private extractInlineNodes(content: any[]): ProseMirrorNode[] {
+    const schema = this.view.state.schema;
+    const nodes: ProseMirrorNode[] = [];
+    const hardBreakType = schema.nodes.hardBreak;
+    const paragraphType = schema.nodes.paragraph;
+    const resolveMarks = (marks: any[] | undefined): Mark[] =>
+      (marks ?? [])
+        .map((mark) => {
+          const type = schema.marks[mark.type];
+          return type ? type.create(mark.attrs ?? {}) : null;
+        })
+        .filter((mark): mark is Mark => Boolean(mark));
+    const pushInline = (node: any) => {
+      if (!node || typeof node !== "object") return;
+      if (node.type === "text") {
+        if (typeof node.text !== "string" || node.text.length === 0) return;
+        nodes.push(schema.text(node.text, resolveMarks(node.marks)));
+        return;
+      }
+      if (node.type === "hardBreak" && hardBreakType) {
+        nodes.push(hardBreakType.create());
+        return;
+      }
+      const inlineType = schema.nodes[node.type];
+      if (inlineType && inlineType.isInline) {
+        nodes.push(inlineType.create(node.attrs ?? {}, node.content ?? [], resolveMarks(node.marks)));
+      }
+    };
+    const pushParagraphContent = (block: any) => {
+      const inline = Array.isArray(block?.content) ? block.content : [];
+      inline.forEach(pushInline);
+    };
+    content.forEach((block: any, index: number) => {
+      if (block?.type === "paragraph") {
+        pushParagraphContent(block);
+      } else {
+        const blockType = paragraphType && block?.type && schema.nodes[block.type];
+        if (blockType && blockType.isBlock && Array.isArray(block.content)) {
+          block.content.forEach(pushInline);
+        } else {
+          pushInline(block);
+        }
+      }
+      if (index < content.length - 1 && hardBreakType) {
+        nodes.push(hardBreakType.create());
+      }
+    });
+    return nodes;
   }
 
   private toggleMark(mark: string) {
@@ -187,6 +247,7 @@ class FootnoteNodeView implements FootnoteNodeViewAPI {
     if (this.isOpen) return;
     this.isOpen = true;
     this.popover.style.display = "block";
+    this.popover.setAttribute("aria-hidden", "false");
     this.innerEditor?.commands.focus();
   }
 
@@ -194,6 +255,7 @@ class FootnoteNodeView implements FootnoteNodeViewAPI {
     if (!this.isOpen) return;
     this.isOpen = false;
     this.popover.style.display = "none";
+    this.popover.setAttribute("aria-hidden", "true");
     this.view.focus();
   }
 
@@ -282,6 +344,7 @@ const FootnoteExtension = TiptapNode.create({
   group: "inline",
   atom: true,
   selectable: true,
+  content: "inline*",
   addAttributes() {
     return {
       id: {
@@ -289,6 +352,9 @@ const FootnoteExtension = TiptapNode.create({
       },
       kind: {
         default: "footnote"
+      },
+      citationId: {
+        default: null
       }
     };
   },
@@ -299,7 +365,8 @@ const FootnoteExtension = TiptapNode.create({
         getAttrs: (node) => {
           if (!(node instanceof HTMLElement)) return {};
           return {
-            kind: node.getAttribute("data-footnote-kind") ?? "footnote"
+            kind: node.getAttribute("data-footnote-kind") ?? "footnote",
+            citationId: node.getAttribute("data-citation-id") || null
           };
         }
       }
@@ -307,7 +374,15 @@ const FootnoteExtension = TiptapNode.create({
   },
   renderHTML({ HTMLAttributes }) {
     const kind = HTMLAttributes.kind ?? "footnote";
-    return ["span", { "data-footnote": "true", "data-footnote-kind": kind, ...HTMLAttributes }, 0];
+    const attrs: Record<string, any> = {
+      "data-footnote": "true",
+      "data-footnote-kind": kind,
+      ...HTMLAttributes
+    };
+    if (HTMLAttributes.citationId) {
+      attrs["data-citation-id"] = HTMLAttributes.citationId;
+    }
+    return ["span", attrs, 0];
   },
   addNodeView() {
     return footnoteNodeView;
@@ -315,6 +390,3 @@ const FootnoteExtension = TiptapNode.create({
 });
 
 export default FootnoteExtension;
-
-
-

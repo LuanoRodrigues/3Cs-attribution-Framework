@@ -1,4 +1,4 @@
-import type { A4LayoutController } from "./a4_layout.js";
+import type { A4LayoutController } from "./a4_layout.ts";
 
 let layoutController: A4LayoutController | null = null;
 

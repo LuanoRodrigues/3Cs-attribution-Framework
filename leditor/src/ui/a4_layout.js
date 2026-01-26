@@ -13,6 +13,7 @@ const sectionFooterContent = new Map();
 let pageSections = [];
 const SECTION_KINDS = new Set(["section_next", "section_continuous", "section_even", "section_odd"]);
 const A4_BUNDLE_ID = "a4-layout-src-2026-01-20";
+let didLogLayoutDebug = false;
 const ensureStyles = () => {
     if (document.getElementById(STYLE_ID))
         return;
@@ -146,6 +147,26 @@ const ensureStyles = () => {
   margin: 0 auto;
 }
 
+.leditor-page-overlays {
+  pointer-events: none;
+}
+.leditor-a4-zoom {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+.leditor-a4-zoom > .leditor-page-stack,
+.leditor-a4-zoom > .leditor-page-overlays {
+  width: fit-content;
+  margin: 0 auto;
+}
+.leditor-a4-zoom > .leditor-page-overlays {
+  inset: 0;
+  left: 0;
+  right: 0;
+  transform: none;
+}
+
 .leditor-page-stack.is-two-page,
 .leditor-page-overlays.is-two-page {
   display: grid;
@@ -156,6 +177,8 @@ const ensureStyles = () => {
 }
 
 .leditor-page-stack {
+  position: relative;
+  z-index: 2;
   pointer-events: auto;
 }
 
@@ -229,19 +252,23 @@ const ensureStyles = () => {
 }
 
 .leditor-page-footer {
-  bottom: var(--footer-offset);
+  bottom: calc(var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset));
   text-transform: none;
+  z-index: 2;
 }
 
 .leditor-page-footnotes {
   position: absolute;
   left: var(--local-page-margin-left, var(--page-margin-left));
   right: var(--local-page-margin-right, var(--page-margin-right));
-  bottom: calc(var(--footer-height) + var(--local-page-margin-bottom, var(--page-margin-bottom)));
+  bottom: calc(
+    var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset) + var(--footer-height)
+  );
   min-height: 0;
   overflow: hidden;
   font-size: var(--footnote-font-size);
   color: var(--page-footnote-color);
+  z-index: 3;
 }
 .leditor-page-footnotes.leditor-page-footnotes--active {
   border-top: var(--footnote-separator-height) solid var(--footnote-separator-color);
@@ -264,10 +291,11 @@ const ensureStyles = () => {
 .leditor-page-overlays {
   position: absolute;
   top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: var(--page-width);
-  z-index: 2;
+  left: 0;
+  right: 0;
+  transform: none;
+  width: fit-content;
+  z-index: 1;
   pointer-events: none;
 }
 
@@ -334,9 +362,7 @@ const ensureStyles = () => {
 }
 
 .leditor-page-overlay .leditor-page-footer {
-  bottom: calc(
-    var(--current-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset)
-  );
+  bottom: calc(var(--current-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset));
   height: var(--footer-height);
 }
 
@@ -345,9 +371,7 @@ const ensureStyles = () => {
   left: var(--current-margin-left, var(--page-margin-left));
   right: var(--current-margin-right, var(--page-margin-right));
   bottom: calc(
-    var(--current-margin-bottom, var(--page-margin-bottom)) +
-      var(--footer-offset) +
-      var(--footer-height)
+    var(--current-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset) + var(--footer-height)
   );
   min-height: 0;
   overflow: hidden;
@@ -544,6 +568,98 @@ const ensureStyles = () => {
   border-left-color: rgba(255, 255, 255, 0.2);
 }
 `;
+    style.textContent += `
+.leditor-page-footer {
+  bottom: calc(var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset));
+  height: var(--footer-height);
+  text-transform: none;
+}
+
+.leditor-page-footnotes {
+  position: absolute;
+  left: var(--local-page-margin-left, var(--page-margin-left));
+  right: var(--local-page-margin-right, var(--page-margin-right));
+  bottom: calc(
+    var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset) + var(--footer-height)
+  );
+  min-height: 0;
+  overflow: hidden;
+  font-size: var(--footnote-font-size);
+  color: var(--page-footnote-color);
+}
+.leditor-page-footnotes.leditor-page-footnotes--active {
+  border-top: var(--footnote-separator-height) solid var(--footnote-separator-color);
+  padding-top: var(--footnote-spacing);
+}
+
+.leditor-page-stack {
+  position: relative;
+  z-index: 2;
+  pointer-events: auto;
+}
+
+.leditor-page-overlays {
+  pointer-events: none;
+}
+
+.leditor-page-inner > .leditor-page-header {
+  top: calc(var(--local-page-margin-top, var(--page-margin-top)) + var(--header-offset));
+  height: var(--header-height);
+}
+.leditor-page-inner > .leditor-page-footer {
+  bottom: calc(var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset));
+  height: var(--footer-height);
+  z-index: 2;
+}
+.leditor-page-inner > .leditor-page-footnotes {
+  bottom: calc(
+    var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset) + var(--footer-height)
+  );
+  z-index: 3;
+}
+.leditor-page-overlay > .leditor-page-header {
+  top: calc(var(--current-margin-top, var(--page-margin-top)) + var(--header-offset));
+  height: var(--header-height);
+}
+.leditor-page-overlay > .leditor-page-footer {
+  bottom: calc(var(--current-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset));
+  height: var(--footer-height);
+  z-index: 2;
+}
+.leditor-page-overlay > .leditor-page-footnotes {
+  bottom: calc(
+    var(--current-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset) + var(--footer-height)
+  );
+  z-index: 3;
+}
+
+.leditor-page-overlay .leditor-page-header {
+  top: calc(var(--current-margin-top, var(--page-margin-top)) + var(--header-offset));
+  height: var(--header-height);
+}
+
+.leditor-page-overlay .leditor-page-footer {
+  bottom: calc(var(--current-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset));
+  height: var(--footer-height);
+}
+
+.leditor-page-overlay .leditor-page-footnotes {
+  position: absolute;
+  left: var(--current-margin-left, var(--page-margin-left));
+  right: var(--current-margin-right, var(--page-margin-right));
+  bottom: calc(
+    var(--current-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset) + var(--footer-height)
+  );
+  min-height: 0;
+  overflow: hidden;
+  font-size: var(--footnote-font-size);
+  color: var(--page-footnote-color);
+}
+.leditor-page-overlay .leditor-page-footnotes.leditor-page-footnotes--active {
+  border-top: var(--footnote-separator-height) solid var(--footnote-separator-color);
+  padding-top: var(--footnote-spacing);
+}
+`;
     document.head.appendChild(style);
 };
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
@@ -585,12 +701,28 @@ const mountA4Layout = (appRoot, editorEl, options = {}) => {
     zoomLayer.className = "leditor-a4-zoom";
     const pageStack = document.createElement("div");
     pageStack.className = "leditor-page-stack";
+    pageStack.style.pointerEvents = "auto";
+    pageStack.style.zIndex = "2";
+    pageStack.style.position = "relative";
     const overlayLayer = document.createElement("div");
     overlayLayer.className = "leditor-page-overlays";
+    overlayLayer.style.pointerEvents = "none";
+    overlayLayer.style.zIndex = "1";
+    overlayLayer.style.position = "absolute";
     zoomLayer.appendChild(pageStack);
     zoomLayer.appendChild(overlayLayer);
     canvas.appendChild(ruler);
     canvas.appendChild(zoomLayer);
+    const endnotesPanel = document.createElement("div");
+    endnotesPanel.className = "leditor-endnotes-panel";
+    const endnotesTitle = document.createElement("div");
+    endnotesTitle.className = "leditor-endnotes-title";
+    endnotesTitle.textContent = "Endnotes";
+    const endnotesList = document.createElement("div");
+    endnotesList.className = "leditor-endnotes-list";
+    endnotesPanel.appendChild(endnotesTitle);
+    endnotesPanel.appendChild(endnotesList);
+    canvas.appendChild(endnotesPanel);
     appRoot.appendChild(canvas);
     let pageCount = 1;
     let viewMode = "single";
@@ -639,6 +771,41 @@ const mountA4Layout = (appRoot, editorEl, options = {}) => {
         }
         prose.contentEditable = editable ? "true" : "false";
         prose.setAttribute("aria-disabled", editable ? "false" : "true");
+    };
+    const updateHeaderFooterEditability = () => {
+        const overlays = overlayLayer.querySelectorAll(".leditor-page-overlay");
+        overlays.forEach((overlay) => {
+            const header = overlay.querySelector(".leditor-page-header");
+            const footer = overlay.querySelector(".leditor-page-footer");
+            if (header)
+                setRegionEditable(header, headerFooterMode && activeRegion === "header");
+            if (footer)
+                setRegionEditable(footer, headerFooterMode && activeRegion === "footer");
+        });
+    };
+    const focusHeaderFooterRegion = (region) => {
+        const overlay = overlayLayer.querySelector(".leditor-page-overlay");
+        if (!overlay) {
+            throw new Error("Header/footer overlay missing for focus.");
+        }
+        const target = overlay.querySelector(region === "header" ? ".leditor-page-header" : ".leditor-page-footer");
+        if (!target) {
+            throw new Error(`Header/footer region "${region}" missing.`);
+        }
+        const range = document.createRange();
+        range.selectNodeContents(target);
+        range.collapse(true);
+        const sel = window.getSelection();
+        sel?.removeAllRanges();
+        sel?.addRange(range);
+        target.focus();
+    };
+    const focusBody = () => {
+        const prose = editorEl.querySelector(".ProseMirror");
+        if (!prose) {
+            throw new Error("ProseMirror root missing for body focus.");
+        }
+        prose.focus();
     };
     const getSectionHeaderContent = (sectionId) => sectionHeaderContent.get(sectionId) ?? headerHtml;
     const getSectionFooterContent = (sectionId) => sectionFooterContent.get(sectionId) ?? footerHtml;
@@ -697,34 +864,91 @@ const mountA4Layout = (appRoot, editorEl, options = {}) => {
             }
         });
     };
+    const determineFootnotePageIndex = (node, pageHeight, editorRect) => {
+        if (pageHeight <= 0)
+            return 0;
+        const markerRect = node.getBoundingClientRect();
+        const relativeTop = Math.max(0, markerRect.top - editorRect.top);
+        const rawIndex = Math.floor(relativeTop / pageHeight);
+        return clamp(rawIndex, 0, Math.max(0, pageCount - 1));
+    };
+    const renderEndnotes = (entries) => {
+        endnotesList.innerHTML = "";
+        if (entries.length === 0) {
+            const placeholder = document.createElement("div");
+            placeholder.className = "leditor-endnote-empty";
+            placeholder.textContent = "No endnotes yet.";
+            endnotesList.appendChild(placeholder);
+            return;
+        }
+        const list = document.createElement("ol");
+        list.className = "leditor-endnotes-entries";
+        entries.forEach((entry) => {
+            const item = document.createElement("li");
+            item.className = "leditor-endnote-entry";
+            const number = document.createElement("span");
+            number.className = "leditor-endnote-entry-number";
+            number.textContent = entry.number;
+            const text = document.createElement("span");
+            text.className = "leditor-endnote-entry-text";
+            text.textContent = entry.text.trim().length > 0 ? entry.text : "Empty endnote";
+            item.appendChild(number);
+            item.appendChild(text);
+            list.appendChild(item);
+        });
+        endnotesList.appendChild(list);
+    };
     const collectFootnoteEntries = () => {
         const registry = (0, extension_footnote_js_1.getFootnoteRegistry)();
         const nodes = Array.from(editorEl.querySelectorAll(".leditor-footnote"));
         const entries = [];
         let fallbackCounter = 0;
+        const pageHeight = measurePageHeight();
+        const editorRect = editorEl.getBoundingClientRect();
         for (const node of nodes) {
             const id = node.dataset.footnoteId;
             const view = id ? registry.get(id) : null;
             const number = view?.getNumber() || node.dataset.footnoteNumber || "";
             const text = view?.getPlainText() || "";
+            const kind = (node.dataset.footnoteKind ?? "footnote").toLowerCase();
             fallbackCounter += 1;
-            entries.push({ number: number || String(fallbackCounter), text });
+            const pageIndex = kind === "footnote" ? determineFootnotePageIndex(node, pageHeight, editorRect) : 0;
+            entries.push({
+                number: number || String(fallbackCounter),
+                text,
+                kind,
+                pageIndex
+            });
         }
         return entries;
     };
     const renderFootnoteSections = () => {
-        const containers = Array.from(appRoot.querySelectorAll(".leditor-page-footnotes"));
+        const containers = Array.from(appRoot.querySelectorAll(".leditor-page .leditor-page-footnotes"));
         const entries = collectFootnoteEntries();
-        for (const container of containers) {
-            const parent = container.closest(".leditor-page, .leditor-page-overlay");
-            const pageIndex = parent?.dataset.pageIndex ?? "0";
+        const footnoteMap = new Map();
+        const endnoteEntries = [];
+        entries.forEach((entry) => {
+            if (entry.kind === "endnote") {
+                endnoteEntries.push(entry);
+                return;
+            }
+            const pageList = footnoteMap.get(entry.pageIndex) ?? [];
+            pageList.push(entry);
+            footnoteMap.set(entry.pageIndex, pageList);
+        });
+        containers.forEach((container) => {
+            const parent = container.closest(".leditor-page");
+            const pageIndex = Number(parent?.dataset.pageIndex ?? "0");
             container.innerHTML = "";
-            if (pageIndex !== "0" || entries.length === 0) {
-                continue;
+            const pageEntries = footnoteMap.get(pageIndex) ?? [];
+            const hasEntries = pageEntries.length > 0;
+            container.classList.toggle("leditor-page-footnotes--active", hasEntries);
+            if (!hasEntries) {
+                return;
             }
             const list = document.createElement("ol");
             list.className = "leditor-footnote-list";
-            entries.forEach((entry) => {
+            pageEntries.forEach((entry) => {
                 const item = document.createElement("li");
                 item.className = "leditor-footnote-entry";
                 const number = document.createElement("span");
@@ -738,8 +962,32 @@ const mountA4Layout = (appRoot, editorEl, options = {}) => {
                 list.appendChild(item);
             });
             container.appendChild(list);
-        }
+        });
+        renderEndnotes(endnoteEntries);
+        scheduleFootnoteHeightMeasurement();
     };
+    let footnoteHeightHandle = 0;
+    function scheduleFootnoteHeightMeasurement() {
+        if (footnoteHeightHandle)
+            return;
+        footnoteHeightHandle = window.requestAnimationFrame(() => {
+            footnoteHeightHandle = 0;
+            const footnoteContainers = Array.from(appRoot.querySelectorAll(".leditor-page .leditor-page-footnotes"));
+            let maxHeight = 0;
+            footnoteContainers.forEach((container) => {
+                const host = container.closest(".leditor-page") ?? container.closest(".leditor-page-overlay");
+                const height = Math.max(0, Math.round(container.getBoundingClientRect().height));
+                container.style.setProperty("--page-footnote-height", `${height}px`);
+                if (host) {
+                    host.style.setProperty("--page-footnote-height", `${height}px`);
+                }
+                if (height > maxHeight) {
+                    maxHeight = height;
+                }
+            });
+            zoomLayer.style.setProperty("--page-footnote-height", `${maxHeight}px`);
+        });
+    }
     let footnoteUpdateHandle = 0;
     const scheduleFootnoteUpdate = () => {
         if (footnoteUpdateHandle)
@@ -755,22 +1003,36 @@ const mountA4Layout = (appRoot, editorEl, options = {}) => {
         overlay.dataset.pageIndex = String(index);
         const header = document.createElement("div");
         header.className = "leditor-page-header";
-        header.contentEditable = "true";
+        header.contentEditable = "false";
         header.innerHTML = normalizeHeaderFooterHtml(headerHtml);
         const footer = document.createElement("div");
         footer.className = "leditor-page-footer";
-        footer.contentEditable = "true";
+        footer.contentEditable = "false";
         footer.innerHTML = normalizeHeaderFooterHtml(footerHtml);
         const footnotes = document.createElement("div");
         footnotes.className = "leditor-page-footnotes";
         footnotes.textContent = "";
+        footnotes.setAttribute("aria-hidden", "true");
+        footnotes.contentEditable = "false";
         const marginGuide = document.createElement("div");
         marginGuide.className = "leditor-margin-guide";
         overlay.appendChild(header);
-        overlay.appendChild(footer);
         overlay.appendChild(footnotes);
+        overlay.appendChild(footer);
         overlay.appendChild(marginGuide);
         return overlay;
+    };
+    const normalizePageInnerOrder = (inner) => {
+        const header = inner.querySelector(".leditor-page-header");
+        const content = inner.querySelector(".leditor-page-content");
+        const footnotes = inner.querySelector(".leditor-page-footnotes");
+        const footer = inner.querySelector(".leditor-page-footer");
+        if (!header || !content || !footnotes || !footer)
+            return;
+        inner.appendChild(header);
+        inner.appendChild(content);
+        inner.appendChild(footnotes);
+        inner.appendChild(footer);
     };
     const buildPageShell = (index) => {
         const page = document.createElement("div");
@@ -781,11 +1043,17 @@ const mountA4Layout = (appRoot, editorEl, options = {}) => {
         const header = document.createElement("div");
         header.className = "leditor-page-header";
         header.innerHTML = normalizeHeaderFooterHtml(headerHtml);
+        header.setAttribute("aria-hidden", "true");
+        header.contentEditable = "false";
         const footer = document.createElement("div");
         footer.className = "leditor-page-footer";
         footer.innerHTML = normalizeHeaderFooterHtml(footerHtml);
+        footer.setAttribute("aria-hidden", "true");
+        footer.contentEditable = "false";
         const footnotes = document.createElement("div");
         footnotes.className = "leditor-page-footnotes";
+        footnotes.setAttribute("aria-hidden", "true");
+        footnotes.contentEditable = "false";
         const content = document.createElement("div");
         content.className = "leditor-page-content";
         content.contentEditable = "true";
@@ -795,6 +1063,7 @@ const mountA4Layout = (appRoot, editorEl, options = {}) => {
         inner.appendChild(content);
         inner.appendChild(footnotes);
         inner.appendChild(footer);
+        normalizePageInnerOrder(inner);
         page.appendChild(inner);
         const columnGuide = document.createElement("div");
         columnGuide.className = "leditor-page-column-guide";
@@ -963,6 +1232,13 @@ const mountA4Layout = (appRoot, editorEl, options = {}) => {
         }
         editorEl.style.width = "100%";
         overlayLayer.style.display = "";
+        pageStack.style.pointerEvents = "auto";
+        pageStack.style.zIndex = "2";
+        overlayLayer.style.pointerEvents = "none";
+        overlayLayer.style.zIndex = "1";
+        headerFooterMode = false;
+        activeRegion = null;
+        appRoot.classList.remove("leditor-header-footer-editing");
         const prose = editorEl.querySelector(".ProseMirror");
         if (!prose) {
             throw new Error("ProseMirror root missing after attach.");
@@ -971,7 +1247,25 @@ const mountA4Layout = (appRoot, editorEl, options = {}) => {
         if (!activeEl || !editorEl.contains(activeEl)) {
             prose.focus({ preventScroll: true });
         }
+        updateHeaderFooterEditability();
         setEditorEditable(true);
+        if (!didLogLayoutDebug) {
+            didLogLayoutDebug = true;
+            console.info("[Footnote][debug] attachEditorForMode", {
+                pageStackPointerEvents: getComputedStyle(pageStack).pointerEvents,
+                overlayPointerEvents: getComputedStyle(overlayLayer).pointerEvents,
+                pageStackZIndex: getComputedStyle(pageStack).zIndex,
+                overlayZIndex: getComputedStyle(overlayLayer).zIndex,
+                zoomPointerEvents: getComputedStyle(zoomLayer).pointerEvents,
+                appRootPointerEvents: getComputedStyle(appRoot).pointerEvents,
+                headerFooterClassActive: appRoot.classList.contains("leditor-header-footer-editing"),
+                pageStackPointerEventsInline: pageStack.style.pointerEvents || "",
+                overlayPointerEventsInline: overlayLayer.style.pointerEvents || "",
+                editorPointerEvents: getComputedStyle(prose).pointerEvents,
+                editorEditable: prose.contentEditable,
+                headerFooterMode
+            });
+        }
     };
     const renderPages = (count) => {
         if (paginationEnabled) {
@@ -1240,26 +1534,37 @@ const mountA4Layout = (appRoot, editorEl, options = {}) => {
     };
     const enterHeaderFooterMode = (target) => {
         headerFooterMode = true;
-        activeRegion = target ?? null;
+        if (!target) {
+            throw new Error("Header/footer edit mode requires an active region.");
+        }
+        activeRegion = target;
         appRoot.classList.add("leditor-header-footer-editing");
+        overlayLayer.style.pointerEvents = "auto";
+        updateHeaderFooterEditability();
+        setEditorEditable(false);
+        focusHeaderFooterRegion(target);
     };
     const exitHeaderFooterMode = () => {
         headerFooterMode = false;
         activeRegion = null;
         appRoot.classList.remove("leditor-header-footer-editing");
+        overlayLayer.style.pointerEvents = "none";
+        updateHeaderFooterEditability();
+        setEditorEditable(true);
+        focusBody();
     };
     const handleOverlayDblClick = (event) => {
+        if (headerFooterMode)
+            return;
         const target = event.target;
         if (!target)
             return;
         if (target.classList.contains("leditor-page-header")) {
             enterHeaderFooterMode("header");
-            target.focus();
             return;
         }
         if (target.classList.contains("leditor-page-footer")) {
             enterHeaderFooterMode("footer");
-            target.focus();
         }
     };
     const handleOverlayInput = (event) => {
