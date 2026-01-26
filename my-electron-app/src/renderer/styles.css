@@ -1,13 +1,5 @@
 @import "./ribbon-panels.v2.css";
 
-html.write-leditor-active,
-body.write-leditor-active {
-  min-height: 0;
-  height: auto !important;
-  max-height: none !important;
-  overflow: auto !important;
-}
-
 :root {
   --bg: #030712;
   --panel: #070b16;
@@ -38,6 +30,8 @@ body.write-leditor-active {
   --chip-gap: 10px;
   --shadow-level-1: 0 20px 48px rgba(0, 0, 0, 0.35);
   --shadow-level-2: 0 30px 80px rgba(0, 0, 0, 0.5);
+  --app-shell-height: calc(100vh / var(--app-scale));
+  --workspace-shell-height: calc(var(--app-shell-height) - var(--ribbon-height));
   --blur-soft: 12px;
   --blur-strong: 24px;
   --glow-strength: 1;
@@ -58,14 +52,42 @@ body.write-leditor-active {
               var(--bg);
 }
 
+html,
+body {
+  min-height: var(--app-shell-height);
+}
+
+html.write-leditor-active,
+body.write-leditor-active {
+  min-height: var(--app-shell-height);
+  overflow: hidden;
+}
+
+html.write-leditor-active #app-shell,
+body.write-leditor-active #app-shell {
+  min-height: var(--app-shell-height);
+}
+
+html.write-leditor-active #workspace-shell,
+body.write-leditor-active #workspace-shell,
+html.write-leditor-active #workspace-main,
+body.write-leditor-active #workspace-main,
+html.write-leditor-active #panels-wrapper,
+body.write-leditor-active #panels-wrapper,
+html.write-leditor-active #panel-grid-container,
+body.write-leditor-active #panel-grid-container {
+  height: var(--workspace-shell-height);
+  max-height: var(--workspace-shell-height);
+}
+
 * {
   box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  min-height: 100vh;
-  height: 100vh;
+  min-height: var(--app-shell-height);
+  height: auto;
   background: var(--bg);
   overflow: hidden;
 }
@@ -77,15 +99,18 @@ body.panel-drop-active iframe {
 #app-shell {
   position: relative;
   isolation: isolate; /* prevent later full-window widgets from sitting above the ribbon */
-  min-height: calc(100vh / var(--app-scale));
-  height: calc(100vh / var(--app-scale));
+  min-height: var(--app-shell-height);
+  height: var(--app-shell-height);
   width: calc(100% / var(--app-scale));
   transform: scale(var(--app-scale));
   transform-origin: top left;
 }
 
 #workspace-shell {
-  display: contents;
+  display: flex;
+  flex-direction: column;
+  height: var(--workspace-shell-height);
+  min-height: 0;
 }
 
 .session-overlay {
@@ -708,6 +733,14 @@ body.panel-drop-active iframe {
   height: 100%;
   min-height: 0;
   overflow: auto;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.tool-surface.visualiser-tool-surface {
+  overflow: hidden;
+  padding: 0; /* let the visualiser add its own spacing */
 }
 
 .notes-editor, .timeline, .viz-grid {
@@ -982,6 +1015,10 @@ kbd { background: color-mix(in srgb, var(--surface) 10%, transparent); }
   min-height: 140px;
 }
 
+#app-tab-actions[data-active-tab="analyse"] {
+  min-height: 220px;
+}
+
 @media (max-width: 1280px) {
   #app-tab-actions {
     max-width: 100%;
@@ -995,6 +1032,9 @@ kbd { background: color-mix(in srgb, var(--surface) 10%, transparent); }
     font-size: 14px;
     padding: 8px 12px;
   }
+  #app-tab-actions[data-active-tab="analyse"] {
+    min-height: 200px;
+  }
 }
 
 @media (max-width: 900px) {
@@ -1004,6 +1044,9 @@ kbd { background: color-mix(in srgb, var(--surface) 10%, transparent); }
   .tab-button {
     font-size: 13px;
     padding: 7px 10px;
+  }
+  #app-tab-actions[data-active-tab="analyse"] {
+    min-height: 180px;
   }
 }
 
@@ -1015,8 +1058,9 @@ kbd { background: color-mix(in srgb, var(--surface) 10%, transparent); }
   text-transform: uppercase;
 }
 #workspace-main {
-  height: calc(var(--panel-maxHeight) / 2);
-  max-height: calc(var(--panel-maxHeight) / 2);
+  flex: 1;
+  height: var(--workspace-shell-height);
+  max-height: var(--workspace-shell-height);
   min-height: 0;
   padding: 0;
   position: relative;
@@ -1035,8 +1079,8 @@ kbd { background: color-mix(in srgb, var(--surface) 10%, transparent); }
   display: flex;
   overflow: hidden;
   min-height: 0;
-  height: 100%;
-  max-height: 100%;
+  height: var(--workspace-shell-height);
+  max-height: var(--workspace-shell-height);
 }
 
 #panel-grid-container {
@@ -1044,12 +1088,11 @@ kbd { background: color-mix(in srgb, var(--surface) 10%, transparent); }
   position: relative;
   overflow: hidden;
   margin-top: 0;
-  height: 100%;
+  height: var(--workspace-shell-height);
   min-height: 0;
   z-index: 0;
-  border-bottom: 1px solid var(--border);
   border-radius: 0 0 var(--panel-radius) var(--panel-radius);
-  max-height: 100%;
+  max-height: var(--workspace-shell-height);
   display: flex;
   flex-direction: column;
   padding: 12px;
@@ -1159,12 +1202,19 @@ kbd { background: color-mix(in srgb, var(--surface) 10%, transparent); }
   width: 100%;
 }
 
+.panel-shell[data-panel-id="panel4"] .panel-content,
+.panel-shell[data-panel-id="panel4"] .panel-pane,
+.panel-shell[data-panel-id="panel4"] .panel-tool-host {
+  overflow: visible;
+}
+
 #panel-root .tool-surface {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
   width: 100%;
+  overflow: auto;
 }
 
 .panel-tool-host {
@@ -1190,6 +1240,7 @@ kbd { background: color-mix(in srgb, var(--surface) 10%, transparent); }
   width: 100%;
   gap: 0;
   align-items: stretch;
+  overflow: auto;
 }
 
 .center-panel {
@@ -1875,23 +1926,9 @@ kbd { background: color-mix(in srgb, var(--surface) 10%, transparent); }
   --audio-control-height: 24px;
 }
 
-.audio-widget--floating {
-  position: fixed;
-  z-index: 1200;
-  max-width: 420px;
-  width: 360px;
-}
-
 .audio-placeholder {
-  height: 100%;
-  min-height: 0;
-  position: relative;
-}
-
-.audio-placeholder .audio-widget {
-  position: relative;
-  width: 100%;
-  max-width: none;
+  flex: 1;
+  min-width: 0;
 }
 
 .audio-widget__header {
@@ -1909,11 +1946,7 @@ kbd { background: color-mix(in srgb, var(--surface) 10%, transparent); }
   padding: 0 6px;
   height: var(--audio-control-height);
   min-width: var(--audio-control-height);
-  cursor: grab;
-}
-
-.audio-grip:active {
-  cursor: grabbing;
+  cursor: default;
 }
 
 .audio-widget__row {

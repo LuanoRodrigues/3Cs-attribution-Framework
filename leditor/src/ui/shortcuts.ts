@@ -1,7 +1,7 @@
 import { tinykeys } from "tinykeys";
-import { dispatchCommand } from "../api/editor_commands.js";
-import type { EditorHandle } from "../api/leditor.js";
-import { getOrientation } from "./layout_settings.js";
+import { dispatchCommand } from "../legacy/api/editor_commands.js";
+import type { EditorHandle } from "../legacy/api/leditor.js";
+import { getOrientation } from "../legacy/ui/layout_settings.js";
 
 export const initGlobalShortcuts = (editorHandle: EditorHandle): (() => void) => {
   const handler = tinykeys(window, {

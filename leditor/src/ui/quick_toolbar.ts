@@ -1,6 +1,6 @@
 import type { Editor } from "@tiptap/core";
 import { NodeSelection, TextSelection } from "prosemirror-state";
-import type { EditorHandle } from "../api/leditor.js";
+import type { EditorHandle } from "../legacy/api/leditor.js";
 
 declare global {
   interface Window {

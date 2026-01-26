@@ -710,20 +710,19 @@ function renderAnalyseRibbon(mount: HTMLElement): void {
     audioTitle.textContent = "Audio";
     audioGroup.appendChild(audioTitle);
 
-    const audioPlaceholder = document.createElement("div");
-    audioPlaceholder.className = "audio-placeholder";
-    audioGroup.appendChild(audioPlaceholder);
-
     const audioWidget = document.createElement("div");
-    audioWidget.className = "audio-widget audio-widget--floating";
+    audioWidget.className = "audio-widget";
 
     const audioHeader = document.createElement("div");
     audioHeader.className = "audio-widget__header";
+    const audioPlaceholder = document.createElement("div");
+    audioPlaceholder.className = "audio-placeholder";
+    audioHeader.appendChild(audioPlaceholder);
     const grip = document.createElement("button");
     grip.type = "button";
     grip.className = "audio-grip";
     grip.textContent = "⠿";
-    grip.title = "Drag audio panel";
+    grip.title = "Audio panel";
     audioHeader.appendChild(grip);
     audioWidget.appendChild(audioHeader);
 
@@ -787,17 +786,9 @@ function renderAnalyseRibbon(mount: HTMLElement): void {
     timeRow.append(pos, dur);
     audioWidget.appendChild(timeRow);
 
-    audioPlaceholder.appendChild(audioWidget);
-
-    // Simple draggable widget that can move outside the ribbon area.
-    let dragActive = false;
-    let startX = 0;
-    let startY = 0;
-    let offsetX = 0;
-    let offsetY = 0;
+    audioGroup.appendChild(audioWidget);
 
     const syncAudioWidget = () => {
-      const anchorRect = audioPlaceholder.getBoundingClientRect();
       const activeTab =
         (document.querySelector("[data-active-tab]") as HTMLElement | null) ||
         (document.querySelector(".data-active-tab") as HTMLElement | null) ||
@@ -806,51 +797,11 @@ function renderAnalyseRibbon(mount: HTMLElement): void {
       const height = Math.max(0, Math.floor(actionsRect.height));
       audioWidget.style.height = `${height}px`;
       audioWidget.style.setProperty("--audio-control-height", `${Math.max(22, Math.floor(height / 4))}px`);
-      if (!dragActive) {
-        audioWidget.style.left = "";
-        audioWidget.style.top = "";
-        audioWidget.style.position = "relative";
-      }
-      if (audioWidget.parentElement !== document.body) {
-        audioWidget.style.width = "100%";
-      }
+      audioWidget.style.width = "100%";
     };
 
     syncAudioWidget();
     window.addEventListener("resize", syncAudioWidget);
-
-    const onPointerMove = (ev: PointerEvent) => {
-      if (!dragActive) return;
-      const nextX = offsetX + (ev.clientX - startX);
-      const nextY = offsetY + (ev.clientY - startY);
-      audioWidget.style.left = `${nextX}px`;
-      audioWidget.style.top = `${nextY}px`;
-    };
-
-    const onPointerUp = () => {
-      dragActive = false;
-      window.removeEventListener("pointermove", onPointerMove);
-      window.removeEventListener("pointerup", onPointerUp);
-    };
-
-    grip.addEventListener("pointerdown", (ev) => {
-      if (!(ev instanceof PointerEvent)) return;
-      dragActive = true;
-      if (audioWidget.parentElement !== document.body) {
-        const rect = audioWidget.getBoundingClientRect();
-        audioWidget.style.position = "fixed";
-        audioWidget.style.left = `${Math.round(rect.left)}px`;
-        audioWidget.style.top = `${Math.round(rect.top)}px`;
-        audioWidget.style.width = `${Math.round(rect.width)}px`;
-        document.body.appendChild(audioWidget);
-      }
-      startX = ev.clientX;
-      startY = ev.clientY;
-      offsetX = audioWidget.offsetLeft;
-      offsetY = audioWidget.offsetTop;
-      window.addEventListener("pointermove", onPointerMove);
-      window.addEventListener("pointerup", onPointerUp);
-    });
 
     analyseRibbonMount.appendChild(dataGroup);
     analyseRibbonMount.appendChild(roundsGroup);

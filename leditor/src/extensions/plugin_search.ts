@@ -1,6 +1,6 @@
-import { registerPlugin } from "../api/plugin_registry.js";
-import { searchExtension } from "../editor/search.js";
-import { createSearchPanel } from "../ui/search_panel.js";
+import { registerPlugin } from "../legacy/api/plugin_registry.js";
+import { searchExtension } from "../legacy/editor/search.js";
+import { createSearchPanel } from "../legacy/ui/search_panel.js";
 import {
   nextMatch,
   prevMatch,

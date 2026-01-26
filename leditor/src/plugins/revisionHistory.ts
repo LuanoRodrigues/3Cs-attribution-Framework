@@ -1,5 +1,5 @@
-import { registerPlugin } from "../api/plugin_registry.js";
-import type { EditorHandle } from "../api/leditor.js";
+import { registerPlugin } from "../legacy/api/plugin_registry.js";
+import type { EditorHandle } from "../legacy/api/leditor.js";
 
 type RevisionEntry = {
   id: string;

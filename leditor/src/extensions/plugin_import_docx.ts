@@ -1,5 +1,5 @@
-import { registerPlugin } from "../api/plugin_registry.js";
-import type { EditorHandle } from "../api/leditor.js";
+import { registerPlugin } from "../legacy/api/plugin_registry.js";
+import type { EditorHandle } from "../legacy/api/leditor.js";
 import type { ImportDocxOptions, ImportDocxResult } from "../api/import_docx.js";
 
 const triggerImport = (options?: ImportDocxOptions) => {

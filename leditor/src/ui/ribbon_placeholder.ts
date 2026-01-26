@@ -3,7 +3,7 @@ import {
   type RibbonTabDefinition,
   type RibbonRootOptions,
   type RibbonCollapseManifest
-} from "./ribbon_primitives.js";
+} from "../legacy/ui/ribbon_primitives.js";
 
 export type RibbonPlaceholderTab = {
   id: string;

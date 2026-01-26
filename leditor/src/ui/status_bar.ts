@@ -1,6 +1,6 @@
-import type { EditorHandle } from "../api/leditor.js";
+import type { EditorHandle } from "../legacy/api/leditor.js";
 import type { A4LayoutController, A4ViewMode } from "./a4_layout.ts";
-import { computeStats } from "../editor/stats.js";
+import { computeStats } from "../legacy/editor/stats.js";
 
 declare global {
   interface Window {

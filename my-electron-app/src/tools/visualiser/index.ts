@@ -8,6 +8,7 @@ export function createVisualiserTool(): ToolDefinition {
     create: (): ToolHandle => {
       const container = document.createElement("div");
       container.className = "tool-surface";
+      container.classList.add("visualiser-tool-surface");
       const page = new VisualiserPage(container);
       return {
         element: container,

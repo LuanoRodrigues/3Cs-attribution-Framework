@@ -1717,46 +1717,6 @@
             }
           ],
           "priority": 70
-        },
-        {
-          "clusterId": "styles.pane",
-          "controls": [
-            {
-              "controlId": "styles.pane",
-              "label": "Styles Pane",
-              "type": "button",
-              "size": "small",
-              "iconKey": "icon.stylesPane",
-              "command": {
-                "id": "styles.pane.open"
-              },
-              "collapse": {
-                "A": "visible",
-                "B": "inOverflow",
-                "C": "inFlyout"
-              }
-            }
-          ]
-        },
-        {
-          "clusterId": "styles.manage",
-          "controls": [
-            {
-              "controlId": "styles.manage",
-              "label": "Manage Styles",
-              "type": "button",
-              "size": "small",
-              "iconKey": "icon.manageStyles",
-              "command": {
-                "id": "styles.manage.openMenu"
-              },
-              "collapse": {
-                "A": "optional",
-                "B": "inOverflow",
-                "C": "inFlyout"
-              }
-            }
-          ]
         }
       ]
     },

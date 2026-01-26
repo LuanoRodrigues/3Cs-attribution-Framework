@@ -1,4 +1,4 @@
-import { getLayoutController } from "./layout_context.js";
+import { getLayoutController } from "../legacy/ui/layout_context.js";
 import { applyDocumentLayoutTokens } from "./pagination/index.js";
 
 export const refreshLayoutView = (): void => {

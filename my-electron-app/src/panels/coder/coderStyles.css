@@ -3,6 +3,10 @@
   flex-direction: column;
   gap: 10px;
   width: 100%;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  max-height: 100%;
   position: relative;
   color: var(--text, #e5e7eb);
   background: var(--panel, #0b1224);
@@ -111,6 +115,10 @@
   border-radius: 12px;
   padding: 8px;
   min-height: 160px;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 100%;
+  overflow: auto;
 }
 
 .coder-node {

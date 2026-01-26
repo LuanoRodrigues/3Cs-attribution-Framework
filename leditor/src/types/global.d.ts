@@ -1,5 +1,5 @@
-import type { EditorHandle } from "../api/leditor.js";
-import type { ExportPdfOptions, ExportPdfRequest, ExportPdfResult } from "../api/export_pdf.js";
+import type { EditorHandle } from "../legacy/api/leditor.js";
+import type { ExportPdfOptions, ExportPdfRequest, ExportPdfResult } from "../legacy/api/export_pdf.js";
 import type { ExportDocxOptions, ExportDocxRequest, ExportDocxResult } from "../api/export_docx.js";
 import type { ImportDocxOptions, ImportDocxRequest, ImportDocxResult } from "../api/import_docx.js";
 

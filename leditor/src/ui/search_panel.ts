@@ -1,4 +1,4 @@
-import type { EditorHandle } from "../api/leditor.js";
+import type { EditorHandle } from "../legacy/api/leditor.js";
 import {
   clearSearch,
   markSearchPanelOpened,

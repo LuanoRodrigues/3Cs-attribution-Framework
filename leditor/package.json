@@ -6,7 +6,7 @@
   "browser": {
     "node:fs/promises": "./scripts/shims/fs-promises.js"
   },
-  "main": "dist/electron/electron/main.js",
+  "main": "dist/electron/electron/electron/main.js",
   "scripts": {
     "prestart": "npm run build",
     "start": "GTK_USE_PORTAL=0 electron --gtk-use-portal=0 --disable-features=UsePortal .",

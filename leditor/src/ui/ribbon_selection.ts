@@ -1,4 +1,4 @@
-import type { EditorCommandId } from "../api/editor_commands.js";
+import type { EditorCommandId } from "../legacy/api/editor_commands.js";
 import { setPressedState } from "./ribbon_controls.js";
 import {
   RibbonStateBus,

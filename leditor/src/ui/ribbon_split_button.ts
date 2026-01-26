@@ -1,4 +1,4 @@
-import type { Menu } from "./ribbon_menu.js";
+import type { Menu } from "../legacy/ui/ribbon_menu.js";
 
 type SplitButtonOptions = {
   label: string;

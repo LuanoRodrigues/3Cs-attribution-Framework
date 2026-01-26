@@ -1,5 +1,5 @@
 import { getFootnoteRegistry } from "../extensions/extension_footnote.ts";
-import { allocateSectionId, defaultSectionMeta, parseSectionMeta, type SectionMeta } from "../editor/section_state.js";
+import { allocateSectionId, defaultSectionMeta, parseSectionMeta, type SectionMeta } from "../legacy/editor/section_state.js";
 import interact from "interactjs";
 import nouislider from "nouislider";
 import "nouislider/dist/nouislider.css";
@@ -12,14 +12,14 @@ import {
   setPageMargins,
   setSectionColumns,
   subscribeToLayoutChanges
-} from "./layout_settings.js";
-import type { MarginValues } from "./layout_settings.js";
+} from "../legacy/ui/layout_settings.js";
+import type { MarginValues } from "../legacy/ui/layout_settings.js";
 import { THEME_CHANGE_EVENT } from "./theme_events.js";
 import {
   applyDocumentLayoutTokenDefaults,
   applyDocumentLayoutTokens
 } from "./pagination/index.js";
-import { featureFlags } from "./feature_flags.js";
+import { featureFlags } from "../legacy/ui/feature_flags.js";
 
 type A4ViewMode = "single" | "fit-width" | "two-page";
 type GridMode = "stack" | "grid-2" | "grid-4" | "grid-9";
@@ -197,7 +197,7 @@ html, body {
   overflow: hidden;
   color: var(--ui-text);
   transform: scale(var(--ui-scale));
-  transform-origin: top center;
+  transform-origin: top left;
   width: calc(100% / var(--ui-scale));
 }
 

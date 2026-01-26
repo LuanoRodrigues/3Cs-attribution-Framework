@@ -55,37 +55,31 @@ function setHostStatus(message: string, isError = false): void {
   packageRef.host.classList.toggle(`${HOST_CLASS}--ready`, !message && !isError);
 }
 
-function waitForConnection(element: HTMLElement): Promise<void> {
-  if (element.isConnected) {
-    return Promise.resolve();
+const HOST_READY_CHECK_INTERVAL_MS = 40;
+const HOST_READY_TIMEOUT_MS = 5000;
+
+async function waitForHostReady(host: HTMLElement): Promise<void> {
+  const start = Date.now();
+  while (!host.isConnected) {
+    if (Date.now() - start > HOST_READY_TIMEOUT_MS) {
+      throw new Error("Write host did not connect to the DOM in time");
+    }
+    await new Promise((resolve) => window.setTimeout(resolve, HOST_READY_CHECK_INTERVAL_MS));
   }
-  const root = document.body ?? document.documentElement;
-  return new Promise((resolve) => {
-    const observer = new MutationObserver(() => {
-      if (element.isConnected) {
-        observer.disconnect();
-        resolve();
-      }
-    });
-    observer.observe(root, { childList: true, subtree: true });
-  });
 }
 
-function waitForMountPoint(mountId: string, host: HTMLElement): Promise<void> {
-  const existing = document.getElementById(mountId) as HTMLElement | null;
-  if (existing?.isConnected) {
-    return Promise.resolve();
+async function waitForEditorMount(mountId: string): Promise<HTMLElement> {
+  const start = Date.now();
+  while (true) {
+    const mount = document.getElementById(mountId) as HTMLElement | null;
+    if (mount?.isConnected) {
+      return mount;
+    }
+    if (Date.now() - start > HOST_READY_TIMEOUT_MS) {
+      throw new Error(`LEditor mount "${mountId}" never appeared`);
+    }
+    await new Promise((resolve) => window.setTimeout(resolve, HOST_READY_CHECK_INTERVAL_MS));
   }
-  return new Promise((resolve) => {
-    const observer = new MutationObserver(() => {
-      const next = document.getElementById(mountId) as HTMLElement | null;
-      if (next?.isConnected && host.contains(next)) {
-        observer.disconnect();
-        resolve();
-      }
-    });
-    observer.observe(host, { childList: true, subtree: true });
-  });
 }
 
 function appendScript(scriptUrl: string, asModule = false): Promise<void> {
@@ -157,15 +151,15 @@ function ensureScriptLoaded(): Promise<void> {
   ensureStyleLoaded(styleUrl);
   const vendorUrl = new URL(SCRIPT_VENDOR, new URL("../leditor/", window.location.href)).href;
   const preludeUrl = new URL(SCRIPT_PRELUDE, new URL("../leditor/", window.location.href)).href;
-  const ready = waitForConnection(host)
-    .then(() => ensureMountPoint(hostPackage))
-    .then(() => waitForMountPoint(LEDITOR_MOUNT_ID, host))
-    .then(() => {
-      console.info("[write][mount-check]", { hasEditor: Boolean(document.getElementById(LEDITOR_MOUNT_ID)) });
-    })
-    .then(() => appendScript(preludeUrl, false))
-    .then(() => appendScript(vendorUrl, false))
-    .then(() => appendScript(scriptUrl, true));
+  const ready = (async () => {
+    await waitForHostReady(host);
+    const mount = ensureMountPoint(hostPackage);
+    await waitForEditorMount(mount.id);
+    console.info("[write][mount-check]", { hasEditor: Boolean(mount.isConnected) });
+    await appendScript(preludeUrl, false);
+    await appendScript(vendorUrl, false);
+    await appendScript(scriptUrl, true);
+  })();
   scriptPromise = ready;
   ready.catch(() => {
     scriptPromise = undefined;

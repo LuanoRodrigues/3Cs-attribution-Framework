@@ -75,7 +75,7 @@ When a plan is provided:
 ## Repo map (fill in as you confirm structure)
 Prefer referencing concrete entry points and subsystems by path once known.
 Typical areas to document here:
-- Electron main process entry (points to `dist/electron/electron/main.js` at runtime)
+- Electron main process entry (points to `dist/electron/electron/electron/main.js` at runtime)
 - Renderer UI entry
 - Editor schema/extensions
 - Storage layer (local persistence)

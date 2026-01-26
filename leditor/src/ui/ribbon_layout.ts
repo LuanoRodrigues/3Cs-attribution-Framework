@@ -65,6 +65,15 @@ const MAX_ROWS_BY_GROUP: Record<string, number> = {
   editing: 2
 };
 
+const ROWED_TABS = new Set(["home", "insert"]);
+const ROWED_TAB_ROW_COUNT = 2;
+const ROWED_TAB_ROW_COUNTS: Record<string, number> = {
+  home: 1,
+  insert: 2
+};
+const ROWED_TAB_MIN_PER_ROW = 4;
+const ROWED_TAB_MAX_PER_ROW = 20;
+
 const applyGroupLayoutConfig = (body: HTMLDivElement, tabId: string, groupId: string): void => {
   const layout = tabLayouts[tabId]?.[groupId];
   if (!layout) return;
@@ -1504,16 +1513,27 @@ const buildGroup = (group: GroupConfig, ctx: BuildContext, tabId: string): Group
     originalParents: new Map()
   };
 
-  const maxRows = MAX_ROWS_BY_GROUP[group.groupId] ?? 5;
+  const baseMaxRows = MAX_ROWS_BY_GROUP[group.groupId] ?? 5;
+  const maxRows = ROWED_TABS.has(tabId) ? Math.min(baseMaxRows, ROWED_TAB_ROW_COUNT) : baseMaxRows;
   body.style.setProperty("--r-group-max-rows", String(maxRows));
   body.dataset.maxRows = String(maxRows);
 
-  if (tabId === "home") {
+  const rowCount = ROWED_TAB_ROW_COUNTS[tabId] ?? ROWED_TAB_ROW_COUNT;
+  if (rowCount > 1) {
+    body.dataset.rowCount = String(rowCount);
+  } else {
+    body.dataset.rowCount = String(rowCount);
+  }
+  if (ROWED_TAB_ROW_COUNTS[tabId] !== undefined) {
     const clusters = group.clusters ?? [];
-    const minPerRow = 4;
-    const maxPerRow = 20;
-    const rowCount = Math.max(1, Math.min(2, Math.ceil(clusters.length / maxPerRow)));
-    const perRow = Math.min(maxPerRow, Math.max(minPerRow, Math.ceil(clusters.length / rowCount)));
+    const perRow = Math.min(
+      ROWED_TAB_MAX_PER_ROW,
+      Math.max(ROWED_TAB_MIN_PER_ROW, Math.ceil(clusters.length / rowCount))
+    );
+    const perRow = Math.min(
+      ROWED_TAB_MAX_PER_ROW,
+      Math.max(ROWED_TAB_MIN_PER_ROW, Math.ceil(clusters.length / rowCount))
+    );
     body.dataset.rowCount = String(rowCount);
     const rows: HTMLDivElement[] = [];
     for (let i = 0; i < rowCount; i += 1) {
@@ -1524,14 +1544,14 @@ const buildGroup = (group: GroupConfig, ctx: BuildContext, tabId: string): Group
       body.appendChild(row);
     }
     let rowIndex = 0;
-    let inRow = 0;
-    clusters.forEach((cluster) => {
+    let rowItemCount = 0;
+    clusters.forEach((cluster, index) => {
       const clusterEl = buildCluster(cluster, meta, ctx);
       rows[rowIndex].appendChild(clusterEl);
-      inRow += 1;
-      if (inRow >= perRow && rowIndex < rows.length - 1) {
+      rowItemCount += 1;
+      if (rowItemCount >= perRow && rowIndex < rows.length - 1) {
         rowIndex += 1;
-        inRow = 0;
+        rowItemCount = 0;
       }
     });
   } else {

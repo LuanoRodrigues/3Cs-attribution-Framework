@@ -30,6 +30,13 @@ import type { BibliographyNode as CslBibliographyNode, CitationNode as CslCitati
 import referencesTabRaw from "../ui/references.json";
 import type { TabConfig } from "../ui/ribbon_config.ts";
 import { getReferencesCommandIds } from "../ui/references_command_contract.ts";
+import {
+  applySnapshotToTransaction,
+  consumeRibbonSelection,
+  restoreSelectionFromSnapshot,
+  snapshotFromSelection,
+  StoredSelection
+} from "../utils/selection_snapshot";
 const findListItemDepth = (editor: Editor) => {
   const { $from } = editor.state.selection;
   for (let depth = $from.depth; depth > 0; depth -= 1) {
@@ -93,7 +100,8 @@ const insertCitationNode = (
   editor: Editor,
   result: CitationPickerResult,
   citationId: string,
-  existing: CitationSelectionInfo | null
+  existing: CitationSelectionInfo | null,
+  storedSelection?: StoredSelection
 ) => {
   const citationNode = editor.schema.nodes.citation;
   if (!citationNode) {
@@ -114,6 +122,9 @@ const insertCitationNode = (
     renderedHtml: ""
   };
   let tr = editor.state.tr;
+  if (!existing) {
+    tr = applySnapshotToTransaction(tr, storedSelection);
+  }
   if (existing) {
     tr = tr.setNodeMarkup(existing.pos, citationNode, attrs);
   } else {
@@ -125,6 +136,61 @@ const insertCitationNode = (
   editor.view.dispatch(tr.scrollIntoView());
 };
 
+const scrollFootnoteAreaIntoView = (footnoteId: string) => {
+  if (typeof window === "undefined" || typeof document === "undefined") return;
+  window.requestAnimationFrame(() => {
+    const marker = document.querySelector<HTMLElement>(`.leditor-footnote[data-footnote-id="${footnoteId}"]`);
+    if (!marker) return;
+    const kind = (marker.dataset.footnoteKind ?? "footnote").toLowerCase();
+    if (kind === "endnote") {
+      document
+        .querySelector<HTMLElement>(".leditor-endnotes-panel")
+        ?.scrollIntoView({ block: "center", behavior: "smooth" });
+      return;
+    }
+    const container = marker.closest<HTMLElement>(".leditor-page")?.querySelector<HTMLElement>(".leditor-page-footnotes");
+    if (container) {
+      container.scrollIntoView({ block: "center", behavior: "smooth" });
+      return;
+    }
+    marker.scrollIntoView({ block: "center", behavior: "smooth" });
+  });
+};
+
+const focusFootnoteById = (id: string, attempt = 0) => {
+  const view = getFootnoteRegistry().get(id);
+  if (view) {
+    view.open();
+    scrollFootnoteAreaIntoView(id);
+    return;
+  }
+  if (attempt >= 5) return;
+  window.requestAnimationFrame(() => focusFootnoteById(id, attempt + 1));
+};
+
+const insertFootnoteAtSelection = (
+  editor: Editor,
+  attrs: Record<string, unknown>,
+  storedSelection?: StoredSelection
+) => {
+  const footnoteNode = editor.schema.nodes.footnote;
+  if (!footnoteNode) {
+    throw new Error("Footnote node is not available on the schema");
+  }
+  const insertPos = editor.state.selection.from;
+  const textNode = editor.schema.text(" ");
+  const footnote = footnoteNode.create(attrs, textNode);
+  let tr = editor.state.tr;
+  tr = applySnapshotToTransaction(tr, storedSelection);
+  tr = tr.replaceSelectionWith(footnote);
+  const mappedPos = tr.mapping.map(insertPos);
+  const afterPos = mappedPos + footnote.nodeSize;
+  const boundedPos = Math.min(afterPos, tr.doc.content.size);
+  const selection = TextSelection.create(tr.doc, boundedPos);
+  tr.setSelection(selection);
+  editor.view.dispatch(tr.scrollIntoView());
+};
+
 const handleInsertCitationCommand = (editor: Editor) => {
   const existing = findCitationInSelection(editor);
   const preselectKeys = existing
@@ -132,6 +198,9 @@ const handleInsertCitationCommand = (editor: Editor) => {
         ? (existing.node.attrs.items as Array<{ itemKey: string }>).map((item) => item.itemKey)
         : undefined)
     : undefined;
+  const selectionBeforePicker = editor.state.selection;
+  const selectionSnapshot =
+    consumeRibbonSelection() ?? snapshotFromSelection(selectionBeforePicker);
   const activeCitationId = existing ? (existing.node.attrs.citationId as string | null) : null;
   console.info("[References] insert citation", {
     mode: existing ? "edit" : "insert",
@@ -146,6 +215,8 @@ const handleInsertCitationCommand = (editor: Editor) => {
   })
     .then((result) => {
       if (!result) return;
+      editor.view.focus();
+      restoreSelectionFromSnapshot(editor, selectionSnapshot);
       if (result.templateId === "bibliography") {
         commandMap.InsertBibliography(editor);
         return;
@@ -156,8 +227,14 @@ const handleInsertCitationCommand = (editor: Editor) => {
         return;
       }
       const citationId = (existing?.node.attrs?.citationId as string | null) ?? generateCitationId();
-      insertCitationNode(editor, result, citationId, existing);
-      void refreshCitationsAndBibliography(editor);
+      insertCitationNode(editor, result, citationId, existing, selectionSnapshot);
+      const styleId = editor.state.doc.attrs?.citationStyleId;
+      const noteKind = typeof styleId === "string" ? resolveNoteKind(styleId) : null;
+      void refreshCitationsAndBibliography(editor).then(() => {
+        if (noteKind === "footnote" && !existing) {
+          focusFootnoteById(`fn-${citationId}`);
+        }
+      });
     })
     .catch((error) => {
       console.error("[References] picker failed", error);
@@ -328,7 +405,8 @@ const runCslUpdate = (editor: Editor): void => {
         const citationId = typeof node.attrs?.citationId === "string" ? node.attrs.citationId : "";
         if (!citationId) return true;
         if (!node.attrs?.hidden) {
-          trPrelude.setNodeMarkup(pos, citationNode, { ...node.attrs, hidden: true });
+          const mappedPos = trPrelude.mapping.map(pos);
+          trPrelude.setNodeMarkup(mappedPos, citationNode, { ...node.attrs, hidden: true });
         }
         if (!existingIds.has(citationId)) {
           const footnoteNode = editor.schema.nodes.footnote;
@@ -340,7 +418,8 @@ const runCslUpdate = (editor: Editor): void => {
             { id: footnoteId, kind: noteKind, citationId },
             editor.schema.text("Citation")
           );
-          trPrelude.insert(pos + node.nodeSize, footnote);
+          const mappedInsertPos = trPrelude.mapping.map(pos + node.nodeSize);
+          trPrelude.insert(mappedInsertPos, footnote);
           existingIds.add(citationId);
         }
       }
@@ -348,17 +427,20 @@ const runCslUpdate = (editor: Editor): void => {
     });
     editor.state.doc.descendants((node, pos) => {
       if (node.type === bibliographyNode) {
-        trPrelude.delete(pos, pos + node.nodeSize);
+        const mappedPos = trPrelude.mapping.map(pos);
+        trPrelude.delete(mappedPos, mappedPos + node.nodeSize);
       }
       return true;
     });
   } else {
     editor.state.doc.descendants((node, pos) => {
       if (node.type === citationNode && node.attrs?.hidden) {
-        trPrelude.setNodeMarkup(pos, citationNode, { ...node.attrs, hidden: false });
+        const mappedPos = trPrelude.mapping.map(pos);
+        trPrelude.setNodeMarkup(mappedPos, citationNode, { ...node.attrs, hidden: false });
       }
       if (node.type.name === "footnote" && typeof node.attrs?.citationId === "string") {
-        trPrelude.delete(pos, pos + node.nodeSize);
+        const mappedPos = trPrelude.mapping.map(pos);
+        trPrelude.delete(mappedPos, mappedPos + node.nodeSize);
       }
       return true;
     });
@@ -640,10 +722,10 @@ const ensureUniqueBookmarkId = (base: string, taken: Set<string>): string => {
   return candidate;
 };
 
-import { notifySearchUndo } from "../editor/search.js";
-import { notifyAutosaveUndoRedo } from "../editor/autosave.js";
+import { notifySearchUndo } from "../legacy/editor/search.js";
+import { notifyAutosaveUndoRedo } from "../legacy/editor/autosave.js";
 import { toggleVisualBlocks, toggleVisualChars } from "../editor/visual.ts";
-import { applyBlockDirection, notifyDirectionUndo } from "../editor/direction.js";
+import { applyBlockDirection, notifyDirectionUndo } from "../legacy/editor/direction.js";
 import { toggleFullscreen } from "../ui/fullscreen.ts";
 import {
   isPageBoundariesVisible,
@@ -656,10 +738,10 @@ import {
   setRulerVisible,
   setScrollDirection
 } from "../ui/view_state.ts";
-import { allocateFootnoteId } from "../editor/footnote_state.js";
+import { allocateFootnoteId } from "../legacy/editor/footnote_state.js";
 import { getLayoutController } from "../ui/layout_context.ts";
-import { getTemplateById } from "../templates/index.js";
-import { setPageMargins, setPageOrientation, setPageSize, setSectionColumns } from "../ui/layout_settings.js";
+import { getTemplateById } from "../legacy/templates/index.js";
+import { setPageMargins, setPageOrientation, setPageSize, setSectionColumns } from "../legacy/ui/layout_settings.js";
 import {
   applyDocumentLayoutTokens,
   setFooterDistance,
@@ -670,7 +752,7 @@ import {
   setPageSizePreset,
   setMarginsPreset
 } from "../ui/pagination/index.js";
-import type { BreakKind } from "../extensions/extension_page_break.js";
+import type { BreakKind } from "../legacy/extensions/extension_page_break.js";
 
 
 export type CommandHandler = (editor: Editor, args?: any) => void;
@@ -1496,27 +1578,19 @@ export const commandMap: Record<string, CommandHandler> = {
     editor.chain().focus().setTextSelection(0).run();
   },
   InsertFootnote(editor) {
-    const footnoteNode = editor.schema.nodes.footnote;
-    if (!footnoteNode) {
-      throw new Error("Footnote node is not available on the schema");
-    }
     const id = allocateFootnoteId();
-    const textNode = editor.schema.text(" ");
-    const footnote = footnoteNode.create({ id }, textNode);
-    editor.chain().focus().insertContent(footnote).insertContent(" ").run();
+    const selectionSnapshot = consumeRibbonSelection() ?? snapshotFromSelection(editor.state.selection);
+    insertFootnoteAtSelection(editor, { id, kind: "footnote" }, selectionSnapshot);
+    focusFootnoteById(id);
   },
   "footnote.insert"(editor) {
     commandMap.InsertFootnote(editor);
   },
   InsertEndnote(editor) {
-    const footnoteNode = editor.schema.nodes.footnote;
-    if (!footnoteNode) {
-      throw new Error('Footnote node is not available on the schema');
-    }
     const id = allocateFootnoteId();
-    const textNode = editor.schema.text(" ");
-    const footnote = footnoteNode.create({ id, kind: 'endnote' }, textNode);
-    editor.chain().focus().insertContent(footnote).insertContent(' ').run();
+    const selectionSnapshot = consumeRibbonSelection() ?? snapshotFromSelection(editor.state.selection);
+    insertFootnoteAtSelection(editor, { id, kind: "endnote" }, selectionSnapshot);
+    focusFootnoteById(id);
   },
   "endnote.insert"(editor) {
     commandMap.InsertEndnote(editor);

@@ -1,7 +1,7 @@
-import type { EditorCommandId } from "../api/editor_commands.js";
-import { createRibbonIcon, type RibbonIconName } from "./ribbon_icons.js";
-import { RibbonControl } from "./ribbon_primitives.js";
-import { Menu } from "./ribbon_menu.js";
+import type { EditorCommandId } from "../legacy/api/editor_commands.js";
+import { createRibbonIcon, type RibbonIconName } from "../legacy/ui/ribbon_icons.js";
+import { RibbonControl } from "../legacy/ui/ribbon_primitives.js";
+import { Menu } from "../legacy/ui/ribbon_menu.js";
 
 export type RibbonButtonSize = "small" | "medium" | "large";
 

@@ -1,7 +1,7 @@
 import type { Editor } from "@tiptap/core";
-import type { EditorHandle } from "../api/leditor.js";
+import type { EditorHandle } from "../legacy/api/leditor.js";
 import { getFootnoteRegistry, type FootnoteNodeViewAPI } from "../extensions/extension_footnote.ts";
-import { getFootnoteIds } from "../editor/footnote_state.js";
+import { getFootnoteIds } from "../legacy/editor/footnote_state.js";
 
 type FootnotePanelController = {
   open(): void;

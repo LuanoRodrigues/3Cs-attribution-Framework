@@ -489,6 +489,12 @@ export function renderSectionsPage(
   options?: { source?: "corpus" }
 ): void {
   container.innerHTML = "";
+  container.style.display = "flex";
+  container.style.flexDirection = "column";
+  container.style.gap = "12px";
+  container.style.height = "100%";
+  container.style.minHeight = "0";
+  container.style.overflow = "hidden";
   const isCorpus = options?.source === "corpus";
   const isBatchMode = isCorpus || round === "r1";
 
@@ -561,6 +567,9 @@ export function renderSectionsPage(
   list.style.flexDirection = isBatchMode ? "column" : "";
   list.style.gridTemplateColumns = isBatchMode ? "" : "repeat(auto-fit, minmax(320px, 1fr))";
   list.style.gap = "12px";
+  list.style.flex = "1";
+  list.style.minHeight = "0";
+  list.style.overflow = "auto";
   container.appendChild(list);
 
   if (!isBatchMode && panel3Host) {
@@ -573,6 +582,9 @@ export function renderSectionsPage(
     previewPanel.className = "panel";
     previewPanel.style.border = "1px solid var(--border)";
     previewPanel.style.borderRadius = "12px";
+    previewPanel.style.flex = "1";
+    previewPanel.style.minHeight = "0";
+    previewPanel.style.overflow = "auto";
     panel3Host.appendChild(previewPanel);
   }
 

@@ -1,4 +1,4 @@
-import type { EditorHandle } from "./leditor.js";
+import type { EditorHandle } from "../legacy/api/leditor.js";
 
 export type EditorCommandId =
   | "Bold"

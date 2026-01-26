@@ -44,7 +44,7 @@ html.ribbon-panels-v2 #app-shell {
 }
 
 html.ribbon-panels-v2 #workspace-shell {
-  height: calc(100vh - var(--ribbon-height));
+  height: var(--workspace-shell-height);
 }
 
 html.ribbon-panels-v2 header#app-ribbon {

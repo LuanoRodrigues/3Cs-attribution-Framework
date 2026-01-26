@@ -1,25 +1,25 @@
-import type { EditorHandle } from "../api/leditor.js";
-import { dispatchCommand, type EditorCommandId } from "../api/editor_commands.js";
-import { readCitationStyle } from "../api/command_map.js";
-import { RibbonControl, RibbonGroup } from "./ribbon_primitives.js";
-import { Menu, MenuItem, MenuSeparator } from "./ribbon_menu.js";
-import { getTemplates } from "../templates/index.js";
-import { getMarginValues, getOrientation, getPageSizeDefinitions, getCurrentPageSize, getLayoutColumns, subscribeToLayoutChanges } from "./layout_settings.js";
-import type { MarginValues } from "./layout_settings.js";
-import { createRibbonIcon, type RibbonIconName } from "./ribbon_icons.js";
+import type { EditorHandle } from "../legacy/api/leditor.js";
+import { dispatchCommand, type EditorCommandId } from "../legacy/api/editor_commands.js";
+import { readCitationStyle } from "../legacy/api/command_map.js";
+import { RibbonControl, RibbonGroup } from "../legacy/ui/ribbon_primitives.js";
+import { Menu, MenuItem, MenuSeparator } from "../legacy/ui/ribbon_menu.js";
+import { getTemplates } from "../legacy/templates/index.js";
+import { getMarginValues, getOrientation, getPageSizeDefinitions, getCurrentPageSize, getLayoutColumns, subscribeToLayoutChanges } from "../legacy/ui/layout_settings.js";
+import type { MarginValues } from "../legacy/ui/layout_settings.js";
+import { createRibbonIcon, type RibbonIconName } from "../legacy/ui/ribbon_icons.js";
 import { createRibbonButton, createRibbonDropdownButton } from "./ribbon_controls.js";
 import {
   watchRibbonSelectionState,
   watchRibbonSelectionStateLegacy,
   type RibbonSelectionTargets
 } from "./ribbon_selection.ts";
-import { setReadMode, setScrollDirection, setRulerVisible, setGridlinesVisible, toggleNavigationPanel, isReadMode, getScrollDirection, isRulerVisible, isGridlinesVisible, isNavigationVisible, syncViewToggles } from "./view_state.js";
-import { SplitButton } from "./ribbon_split_button.js";
+import { setReadMode, setScrollDirection, setRulerVisible, setGridlinesVisible, toggleNavigationPanel, isReadMode, getScrollDirection, isRulerVisible, isGridlinesVisible, isNavigationVisible, syncViewToggles } from "../legacy/ui/view_state.js";
+import { SplitButton } from "../legacy/ui/ribbon_split_button.js";
 import Pickr from "@simonwep/pickr";
 import "@simonwep/pickr/dist/themes/classic.min.css";
-import { CITATION_STYLES } from "../constants.js";
+import { CITATION_STYLES } from "../legacy/constants.js";
 import type { Editor } from "@tiptap/core";
-import { getLayoutController } from "./layout_context.js";
+import { getLayoutController } from "../legacy/ui/layout_context.js";
 import { THEME_CHANGE_EVENT } from "./theme_events.js";
 import { showReviewCard } from "./review_popovers.js";
 import { loadRibbonModel } from "./ribbon_config.js";

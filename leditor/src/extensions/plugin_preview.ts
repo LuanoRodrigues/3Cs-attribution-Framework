@@ -1,5 +1,5 @@
-﻿import { registerPlugin } from "../api/plugin_registry.js";
-import { createPreviewModal } from "../ui/preview.js";
+﻿import { registerPlugin } from "../legacy/api/plugin_registry.js";
+import { createPreviewModal } from "../legacy/ui/preview.js";
 
 let previewController: ReturnType<typeof createPreviewModal> | null = null;
 

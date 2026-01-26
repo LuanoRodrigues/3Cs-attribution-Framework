@@ -1,5 +1,5 @@
 import { Extension, type CommandProps } from "@tiptap/core";
-import { cmToPx, ptToPx } from "../utils/pageUnits.js";
+import { cmToPx, ptToPx } from "../legacy/utils/pageUnits.js";
 
 type ParagraphLayoutAttrs = {
   indentLeftCm?: number;
