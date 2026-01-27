@@ -20,6 +20,10 @@ import {
   applyDocumentLayoutTokens
 } from "./pagination/index.js";
 import { featureFlags } from "../legacy/ui/feature_flags.js";
+import type { EditorHandle } from "../api/leditor.ts";
+import { reconcileFootnotes } from "../uipagination/footnotes/registry.ts";
+import { paginateWithFootnotes, type PageFootnoteState } from "../uipagination/footnotes/paginate_with_footnotes.ts";
+import type { FootnoteRenderEntry, FootnoteKind } from "../uipagination/footnotes/model.ts";
 
 type A4ViewMode = "single" | "fit-width" | "two-page";
 type GridMode = "stack" | "grid-2" | "grid-4" | "grid-9";
@@ -1290,13 +1294,6 @@ html, body {
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
-type FootnoteEntry = {
-  number: string;
-  text: string;
-  kind: string;
-  pageIndex: number;
-};
-
 const determineGridMode = (zoom: number): GridMode => {
   if (zoom > 2.5) return "grid-9";
   if (zoom > 1.8) return "grid-4";
@@ -1326,12 +1323,21 @@ const countManualPageBreaks = (editorEl: HTMLElement) => {
 export const mountA4Layout = (
   appRoot: HTMLElement,
   editorEl: HTMLElement,
+  editorHandle?: EditorHandle | null,
   options: A4LayoutOptions = {}
 ): A4LayoutController => {
   console.info("[A4Debug] mountA4Layout", { bundle: A4_BUNDLE_ID });
   ensureStyles();
   applyDocumentLayoutTokenDefaults(document.documentElement);
   applyDocumentLayoutTokens(document.documentElement);
+
+  const attachedEditorHandle = editorHandle ?? null;
+  const getFootnoteNumbering = (): Map<string, number> => {
+    if (!attachedEditorHandle) return new Map();
+    const editorInstance = attachedEditorHandle.getEditor();
+    if (!editorInstance) return new Map();
+    return reconcileFootnotes(editorInstance.state.doc).numbering;
+  };
 
   const canvas = document.createElement("div");
   canvas.className = "leditor-a4-canvas";
@@ -1837,19 +1843,30 @@ export const mountA4Layout = (
     const registry = getFootnoteRegistry();
     const nodes = Array.from(editorEl.querySelectorAll<HTMLElement>(".leditor-footnote"));
     const entries: FootnoteEntry[] = [];
+    const numbering = getFootnoteNumbering();
     let fallbackCounter = 0;
     const pageHeight = measurePageHeight();
     const editorRect = editorEl.getBoundingClientRect();
     for (const node of nodes) {
-      const id = node.dataset.footnoteId;
+      const id = node.dataset.footnoteId ?? "";
       const view = id ? registry.get(id) : null;
-      const number = view?.getNumber() || node.dataset.footnoteNumber || "";
+      let numberLabel = "";
+      const mappedNumber = numbering.get(id);
+      if (mappedNumber) {
+        numberLabel = String(mappedNumber);
+      } else if (view?.getNumber()) {
+        numberLabel = view.getNumber();
+      } else if (node.dataset.footnoteNumber) {
+        numberLabel = node.dataset.footnoteNumber;
+      } else {
+        fallbackCounter += 1;
+        numberLabel = String(fallbackCounter);
+      }
       const text = view?.getPlainText() || "";
       const kind = (node.dataset.footnoteKind ?? "footnote").toLowerCase();
-      fallbackCounter += 1;
       const pageIndex = kind === "footnote" ? determineFootnotePageIndex(node, pageHeight, editorRect) : 0;
       entries.push({
-        number: number || String(fallbackCounter),
+        number: numberLabel,
         text,
         kind,
         pageIndex

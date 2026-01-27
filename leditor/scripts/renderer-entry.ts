@@ -7,8 +7,26 @@ if (typeof globalThis !== "undefined") {
   }
 }
 
+declare global {
+  interface Window {
+    __leditorMountEditor?: () => void;
+    __leditorAutoMount?: boolean;
+  }
+}
+
 import("../src/ui/renderer.ts")
-  .then(({ mountEditor }) => mountEditor())
+  .then(({ mountEditor }) => {
+    let hasMounted = false;
+    const mountOnce = () => {
+      if (hasMounted) return;
+      hasMounted = true;
+      mountEditor();
+    };
+    window.__leditorMountEditor = mountOnce;
+    if (window.__leditorAutoMount !== false) {
+      mountOnce();
+    }
+  })
   .catch((error) => {
     console.error("[renderer-entry] mount failed", error);
   });

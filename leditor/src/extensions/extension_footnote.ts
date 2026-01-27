@@ -25,7 +25,7 @@ type FootnoteNodeViewProps = {
 };
 
 class FootnoteNodeView implements FootnoteNodeViewAPI {
-  readonly id: string;
+  readonly footnoteId: string;
   private node: ProseMirrorNode;
   private readonly view: EditorView;
   private readonly getPos: () => number | null | undefined;
@@ -44,11 +44,11 @@ class FootnoteNodeView implements FootnoteNodeViewAPI {
     this.node = node;
     this.view = view;
     this.getPos = getPos;
-    this.id = String(node.attrs.id ?? `footnote-${Math.random().toString(36).slice(2)}`);
+    this.footnoteId = String(node.attrs?.footnoteId ?? `footnote-${Math.random().toString(36).slice(2)}`);
 
     this.root = document.createElement("span");
     this.root.className = "leditor-footnote";
-    this.root.dataset.footnoteId = this.id;
+    this.root.dataset.footnoteId = this.footnoteId;
     this.root.dataset.footnoteKind = String(node.attrs.kind ?? "footnote");
 
     this.marker = document.createElement("sup");
@@ -119,7 +119,7 @@ class FootnoteNodeView implements FootnoteNodeViewAPI {
     };
     document.addEventListener("click", this.documentClickHandler);
 
-    footnoteRegistry.set(this.id, this);
+    footnoteRegistry.set(this.footnoteId, this);
   }
 
   private setupInnerEditor() {
@@ -315,7 +315,7 @@ class FootnoteNodeView implements FootnoteNodeViewAPI {
   }
 
   destroy() {
-    footnoteRegistry.delete(this.id);
+    footnoteRegistry.delete(this.footnoteId);
     document.removeEventListener("click", this.documentClickHandler);
     this.innerEditor?.destroy();
   }
@@ -347,7 +347,7 @@ const FootnoteExtension = TiptapNode.create({
   content: "inline*",
   addAttributes() {
     return {
-      id: {
+      footnoteId: {
         default: null
       },
       kind: {
@@ -365,6 +365,7 @@ const FootnoteExtension = TiptapNode.create({
         getAttrs: (node) => {
           if (!(node instanceof HTMLElement)) return {};
           return {
+            footnoteId: node.getAttribute("data-footnote-id") || null,
             kind: node.getAttribute("data-footnote-kind") ?? "footnote",
             citationId: node.getAttribute("data-citation-id") || null
           };
@@ -381,6 +382,9 @@ const FootnoteExtension = TiptapNode.create({
     };
     if (HTMLAttributes.citationId) {
       attrs["data-citation-id"] = HTMLAttributes.citationId;
+    }
+    if (HTMLAttributes.footnoteId) {
+      attrs["data-footnote-id"] = HTMLAttributes.footnoteId;
     }
     return ["span", attrs, 0];
   },

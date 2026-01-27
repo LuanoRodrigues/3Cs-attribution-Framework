@@ -1518,25 +1518,16 @@ const buildGroup = (group: GroupConfig, ctx: BuildContext, tabId: string): Group
   body.style.setProperty("--r-group-max-rows", String(maxRows));
   body.dataset.maxRows = String(maxRows);
 
-  const rowCount = ROWED_TAB_ROW_COUNTS[tabId] ?? ROWED_TAB_ROW_COUNT;
-  if (rowCount > 1) {
-    body.dataset.rowCount = String(rowCount);
-  } else {
-    body.dataset.rowCount = String(rowCount);
-  }
-  if (ROWED_TAB_ROW_COUNTS[tabId] !== undefined) {
+  const customRowCount = ROWED_TAB_ROW_COUNTS[tabId];
+  if (customRowCount !== undefined) {
+    body.dataset.rowCount = String(customRowCount);
     const clusters = group.clusters ?? [];
     const perRow = Math.min(
       ROWED_TAB_MAX_PER_ROW,
-      Math.max(ROWED_TAB_MIN_PER_ROW, Math.ceil(clusters.length / rowCount))
+      Math.max(ROWED_TAB_MIN_PER_ROW, Math.ceil(clusters.length / customRowCount))
     );
-    const perRow = Math.min(
-      ROWED_TAB_MAX_PER_ROW,
-      Math.max(ROWED_TAB_MIN_PER_ROW, Math.ceil(clusters.length / rowCount))
-    );
-    body.dataset.rowCount = String(rowCount);
     const rows: HTMLDivElement[] = [];
-    for (let i = 0; i < rowCount; i += 1) {
+    for (let i = 0; i < customRowCount; i += 1) {
       const row = document.createElement("div");
       row.className = "leditor-ribbon-group-row";
       row.dataset.rowIndex = String(i + 1);
@@ -1545,13 +1536,17 @@ const buildGroup = (group: GroupConfig, ctx: BuildContext, tabId: string): Group
     }
     let rowIndex = 0;
     let rowItemCount = 0;
-    clusters.forEach((cluster, index) => {
+    clusters.forEach((cluster) => {
       const clusterEl = buildCluster(cluster, meta, ctx);
-      rows[rowIndex].appendChild(clusterEl);
-      rowItemCount += 1;
-      if (rowItemCount >= perRow && rowIndex < rows.length - 1) {
-        rowIndex += 1;
-        rowItemCount = 0;
+      const pinFirstRow = tabId === "home" && cluster.clusterId === "styles.quickTemplates";
+      const targetRow = pinFirstRow ? 0 : rowIndex;
+      rows[targetRow].appendChild(clusterEl);
+      if (!pinFirstRow) {
+        rowItemCount += 1;
+        if (rowItemCount >= perRow && rowIndex < rows.length - 1) {
+          rowIndex += 1;
+          rowItemCount = 0;
+        }
       }
     });
   } else {

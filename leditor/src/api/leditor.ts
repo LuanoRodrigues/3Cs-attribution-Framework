@@ -61,6 +61,11 @@ import PageLayoutExtension from "../extensions/extension_page_layout.ts";
 import ParagraphLayoutExtension from "../extensions/extension_paragraph_layout.ts";
 import { PageDocument, PageNode, PagePagination } from "../extensions/extension_page.ts";
 import StyleStoreExtension from "../extensions/extension_style_store.ts";
+import {
+  FootnotesContainerExtension,
+  FootnoteBodyExtension,
+  FootnoteBodyManagementExtension
+} from "../extensions/extension_footnote_body.ts";
 
 type ContentFormat = "json" | "html" | "markdown";
 type EditorEventName = "change" | "focus" | "blur" | "selectionChange";
@@ -324,6 +329,9 @@ export const LEditor = {
           protocols: ["dq", "http", "https", "mailto", "file", "cite", "citegrp"]
         }),
         FootnoteExtension,
+        FootnoteBodyExtension,
+        FootnotesContainerExtension,
+        FootnoteBodyManagementExtension,
         PageBreakExtension,
         ImageExtension,
         MergeTagExtension,

@@ -623,7 +623,7 @@ export const mountEditor = async () => {
     // Debug: silenced noisy ribbon logs.
     renderRibbon(ribbonHost, handle);
   }
-  const layout: A4LayoutController | null = mountA4Layout(docShell, editorEl);
+  const layout: A4LayoutController | null = mountA4Layout(docShell, editorEl, handle);
   setLayoutController(layout);
   refreshLayoutView();
   subscribeToLayoutChanges(() => refreshLayoutView());

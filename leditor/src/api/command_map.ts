@@ -37,6 +37,7 @@ import {
   snapshotFromSelection,
   StoredSelection
 } from "../utils/selection_snapshot";
+import { insertFootnoteAtSelection as insertManagedFootnote } from "../uipagination/footnotes/commands";
 const findListItemDepth = (editor: Editor) => {
   const { $from } = editor.state.selection;
   for (let depth = $from.depth; depth > 0; depth -= 1) {
@@ -166,29 +167,6 @@ const focusFootnoteById = (id: string, attempt = 0) => {
   }
   if (attempt >= 5) return;
   window.requestAnimationFrame(() => focusFootnoteById(id, attempt + 1));
-};
-
-const insertFootnoteAtSelection = (
-  editor: Editor,
-  attrs: Record<string, unknown>,
-  storedSelection?: StoredSelection
-) => {
-  const footnoteNode = editor.schema.nodes.footnote;
-  if (!footnoteNode) {
-    throw new Error("Footnote node is not available on the schema");
-  }
-  const insertPos = editor.state.selection.from;
-  const textNode = editor.schema.text(" ");
-  const footnote = footnoteNode.create(attrs, textNode);
-  let tr = editor.state.tr;
-  tr = applySnapshotToTransaction(tr, storedSelection);
-  tr = tr.replaceSelectionWith(footnote);
-  const mappedPos = tr.mapping.map(insertPos);
-  const afterPos = mappedPos + footnote.nodeSize;
-  const boundedPos = Math.min(afterPos, tr.doc.content.size);
-  const selection = TextSelection.create(tr.doc, boundedPos);
-  tr.setSelection(selection);
-  editor.view.dispatch(tr.scrollIntoView());
 };
 
 const handleInsertCitationCommand = (editor: Editor) => {
@@ -738,7 +716,6 @@ import {
   setRulerVisible,
   setScrollDirection
 } from "../ui/view_state.ts";
-import { allocateFootnoteId } from "../legacy/editor/footnote_state.js";
 import { getLayoutController } from "../ui/layout_context.ts";
 import { getTemplateById } from "../legacy/templates/index.js";
 import { setPageMargins, setPageOrientation, setPageSize, setSectionColumns } from "../legacy/ui/layout_settings.js";
@@ -1578,18 +1555,18 @@ export const commandMap: Record<string, CommandHandler> = {
     editor.chain().focus().setTextSelection(0).run();
   },
   InsertFootnote(editor) {
-    const id = allocateFootnoteId();
     const selectionSnapshot = consumeRibbonSelection() ?? snapshotFromSelection(editor.state.selection);
-    insertFootnoteAtSelection(editor, { id, kind: "footnote" }, selectionSnapshot);
+    restoreSelectionFromSnapshot(editor, selectionSnapshot);
+    const id = insertManagedFootnote(editor, "footnote");
     focusFootnoteById(id);
   },
   "footnote.insert"(editor) {
     commandMap.InsertFootnote(editor);
   },
   InsertEndnote(editor) {
-    const id = allocateFootnoteId();
     const selectionSnapshot = consumeRibbonSelection() ?? snapshotFromSelection(editor.state.selection);
-    insertFootnoteAtSelection(editor, { id, kind: "endnote" }, selectionSnapshot);
+    restoreSelectionFromSnapshot(editor, selectionSnapshot);
+    const id = insertManagedFootnote(editor, "endnote");
     focusFootnoteById(id);
   },
   "endnote.insert"(editor) {

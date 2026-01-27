@@ -43,6 +43,10 @@
   flex: 1;
 }
 
+.leditor-ribbon-panel[data-tab-id="insert"] .leditor-ribbon-group-body[data-row-count="2"] {
+  min-height: calc(var(--insert-row-height) * 2 + var(--insert-cluster-gap));
+}
+
 .leditor-ribbon-panel[data-tab-id="insert"] .leditor-ribbon-group-row {
   display: grid;
   grid-auto-flow: column;
@@ -64,6 +68,9 @@
   border-top: 1px solid rgba(15, 23, 42, 0.08);
   font-size: var(--r-font-size-sm);
   color: var(--r-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
 }
 
 .leditor-ribbon-panel[data-tab-id="insert"] .leditor-ribbon-group-title {
@@ -143,30 +150,6 @@
   width: 118px;
 }
 
-/* =========================
-   Media group
-   ========================= */
-.leditor-ribbon-panel[data-tab-id="insert"] [data-cluster-id="media.primary"] {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--insert-cluster-gap);
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  padding-bottom: 2px;
-}
-
-/* Media has a mix of large and medium. Keep mediums slightly narrower. */
-.leditor-ribbon-panel[data-tab-id="insert"] [data-group-id="media"] .leditor-ribbon-button--large,
-.leditor-ribbon-panel[data-tab-id="insert"] [data-group-id="media"] .leditor-split-button[data-size="large"] {
-  width: 118px;
-}
-
-.leditor-ribbon-panel[data-tab-id="insert"] [data-group-id="media"] .leditor-ribbon-button--medium,
-.leditor-ribbon-panel[data-tab-id="insert"] [data-group-id="media"] .leditor-split-button[data-size="medium"] {
-  width: 108px;
-}
-
-/* Embed dialog textarea styling compatibility (from ribbon.css: .rembed) */
 .leditor-ribbon-panel[data-tab-id="insert"] .rembed {
   width: 520px;
   background: var(--r-surface);
@@ -209,23 +192,7 @@
 }
 
 /* =========================
-   Add-ins group
-   ========================= */
-.leditor-ribbon-panel[data-tab-id="insert"] [data-cluster-id="addins.primary"] {
-  display: flex;
-  gap: var(--insert-cluster-gap);
-  align-items: center;
-  flex-wrap: nowrap;
-}
-
-/* Medium controls */
-.leditor-ribbon-panel[data-tab-id="insert"] [data-group-id="addins"] .leditor-ribbon-button--medium,
-.leditor-ribbon-panel[data-tab-id="insert"] [data-group-id="addins"] .ribbon-dropdown-button {
-  min-width: 130px;
-}
-
-/* =========================
-   Symbols group
+  Symbols group
    ========================= */
 .leditor-ribbon-panel[data-tab-id="insert"] [data-cluster-id="symbols.primary"] {
   display: flex;
