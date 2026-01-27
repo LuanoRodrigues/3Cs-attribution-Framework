@@ -49,6 +49,7 @@
     "jsondiffpatch": "^0.7.3",
     "jszip": "^3.10.1",
     "keytar": "^7.9.0",
+    "mammoth": "^1.11.0",
     "marked": "^11.1.1",
     "orderedmap": "^2.1.1",
     "plotly.js-dist-min": "^3.3.1",

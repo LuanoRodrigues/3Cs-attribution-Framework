@@ -124,12 +124,17 @@ const writeFile = async (request: { targetPath: string; data: string }) => {
 contextBridge.exposeInMainWorld("leditorHost", {
   exportDOCX: (request: { docJson: object; options?: Record<string, unknown> }) =>
     ipcRenderer.invoke("leditor:export-docx", request),
+  exportPDF: (request: { html: string; options?: { suggestedPath?: string; prompt?: boolean } }) =>
+    ipcRenderer.invoke("leditor:export-pdf", request),
   registerFootnoteHandlers: (handlers: { open?: () => void; toggle?: () => void; close?: () => void }) => {
     footnoteHandlers = handlers;
   },
   openFootnotePanel: () => footnoteHandlers?.open?.(),
   toggleFootnotePanel: () => footnoteHandlers?.toggle?.(),
   closeFootnotePanel: () => footnoteHandlers?.close?.(),
+  importDOCX: (request?: { options?: { sourcePath?: string; prompt?: boolean } }) =>
+    ipcRenderer.invoke("leditor:import-docx", request ?? {}),
+  insertImage: () => ipcRenderer.invoke("leditor:insert-image"),
   readFile,
   writeFile
 });

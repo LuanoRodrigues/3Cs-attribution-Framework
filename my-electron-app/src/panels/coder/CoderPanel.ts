@@ -9,7 +9,7 @@ import {
   getFolderEditedHtml
 } from "./coderState";
 import type { CoderScopeId, CoderState } from "./coderTypes";
-import { CoderNode, CoderPayload, CoderStatus, FolderNode, ItemNode } from "./coderTypes";
+import { CODER_STATUSES, CoderNode, CoderPayload, CoderStatus, FolderNode, ItemNode } from "./coderTypes";
 
 const NODE_MIME = "application/x-annotarium-coder-node";
 
@@ -29,6 +29,7 @@ export class CoderPanel {
   private savedPill!: HTMLElement;
   private syncPill!: HTMLElement;
   private selectionPill!: HTMLElement;
+  private filterPill!: HTMLElement;
   private filterInput!: HTMLInputElement;
   private filterStatus!: HTMLElement;
   private noteBox: HTMLDivElement;
@@ -38,6 +39,11 @@ export class CoderPanel {
   private anchorSelection: string | null = null;
   private onPayloadSelected?: (payload: CoderPayload) => void;
   private previewOverlay?: HTMLElement;
+  private previewTooltip?: HTMLDivElement;
+  private previewTitle?: HTMLDivElement;
+  private previewSnippet?: HTMLDivElement;
+  private previewPinned = false;
+  private previewPinnedId: string | null = null;
   private readonly scopeId?: CoderScopeId;
   private contextMenu?: HTMLElement;
   private contextMenuTarget?: CoderNode | null;
@@ -59,6 +65,16 @@ export class CoderPanel {
   private settingsMenu?: HTMLDivElement;
   private showDropHints = true;
   private showRowActions = true;
+  private showOnlyMatches = true;
+  private compactMode = false;
+  private pinPreviewOnClick = false;
+  private statusFilter = new Set<CoderStatus>();
+  private matchedIds: string[] = [];
+  private hoveredPathIds: string[] = [];
+  private hoveredRowId: string | null = null;
+  private filterChips?: HTMLDivElement;
+  private onlyMatchesBtn?: HTMLButtonElement;
+  private nextMatchBtn?: HTMLButtonElement;
   private dragGhost?: HTMLElement;
 
   private fallbackTree?: CoderNode[];
@@ -71,6 +87,10 @@ export class CoderPanel {
     this.confirmDelete = this.readConfirmDelete();
     this.showDropHints = this.readBoolSetting("coder.showDropHints", true);
     this.showRowActions = this.readBoolSetting("coder.showRowActions", true);
+    this.showOnlyMatches = this.readBoolSetting("coder.showOnlyMatches", true);
+    this.compactMode = this.readBoolSetting("coder.compactMode", false);
+    this.pinPreviewOnClick = this.readBoolSetting("coder.pinPreviewOnClick", false);
+    this.statusFilter = this.readStatusFilter();
     if (options?.initialTree && options.initialTree.length) {
       this.fallbackTree = options.initialTree;
     }
@@ -100,6 +120,16 @@ export class CoderPanel {
         this.clearDropTarget();
       }
     });
+    this.treeHost.addEventListener("scroll", () => this.refreshPinnedPreviewPosition());
+
+    this.previewTooltip = document.createElement("div");
+    this.previewTooltip.className = "coder-preview-tooltip";
+    this.previewTitle = document.createElement("div");
+    this.previewTitle.className = "coder-preview-title";
+    this.previewSnippet = document.createElement("div");
+    this.previewSnippet.className = "coder-preview-snippet";
+    this.previewTooltip.append(this.previewTitle, this.previewSnippet);
+    document.body.append(this.previewTooltip);
 
     this.noteBox = document.createElement("div");
     this.noteBox.className = "coder-note-box";
@@ -181,6 +211,7 @@ export class CoderPanel {
     this.unsubscribeStore?.();
     this.contextMenu?.remove();
     this.previewOverlay?.remove();
+    this.previewTooltip?.remove();
     this.dropHint?.remove();
     this.toast?.remove();
     this.settingsMenu?.remove();
@@ -208,7 +239,12 @@ export class CoderPanel {
     this.selectionPill.textContent = "0 selected";
     this.selectionPill.style.display = "none";
 
-    heading.append(this.savedPill, this.syncPill, this.selectionPill);
+    this.filterPill = document.createElement("span");
+    this.filterPill.className = "coder-pill coder-pill-filter";
+    this.filterPill.textContent = "Status: I ? ×";
+    this.filterPill.style.display = "none";
+
+    heading.append(this.savedPill, this.syncPill, this.selectionPill, this.filterPill);
     const settings = document.createElement("button");
     settings.type = "button";
     settings.className = "coder-gear";
@@ -231,11 +267,106 @@ export class CoderPanel {
     this.filterInput.type = "search";
     this.filterInput.placeholder = "Filter…";
     this.filterInput.addEventListener("input", () => this.render(this.store.snapshot()));
+
+    this.filterChips = document.createElement("div");
+    this.filterChips.className = "coder-filter-chips";
+    const mkChip = (label: string, title: string, status?: CoderStatus) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "coder-chip";
+      btn.textContent = label;
+      btn.title = title;
+      if (status) {
+        btn.dataset.status = status;
+        btn.addEventListener("click", () => {
+          if (this.statusFilter.has(status)) {
+            this.statusFilter.delete(status);
+          } else {
+            this.statusFilter.add(status);
+          }
+          if (this.statusFilter.size === 0) {
+            this.statusFilter = new Set([status]);
+          }
+          this.writeStatusFilter(this.statusFilter);
+          this.updateFilterChips();
+          this.render(this.store.snapshot());
+        });
+      } else {
+        btn.dataset.role = "all";
+        btn.addEventListener("click", () => {
+          this.statusFilter = new Set(CODER_STATUSES);
+          this.writeStatusFilter(this.statusFilter);
+          this.updateFilterChips();
+          this.render(this.store.snapshot());
+        });
+      }
+      return btn;
+    };
+
+    const allChip = mkChip("All", "Show all statuses");
+    const incChip = mkChip("I", "Included status", "Included");
+    const maybeChip = mkChip("?", "Maybe status", "Maybe");
+    const exclChip = mkChip("×", "Excluded status", "Excluded");
+    this.filterChips.append(allChip, incChip, maybeChip, exclChip);
+
+    this.onlyMatchesBtn = document.createElement("button");
+    this.onlyMatchesBtn.type = "button";
+    this.onlyMatchesBtn.className = "coder-toggle-btn";
+    this.onlyMatchesBtn.textContent = "Only matches";
+    this.onlyMatchesBtn.addEventListener("click", () => {
+      this.showOnlyMatches = !this.showOnlyMatches;
+      this.writeBoolSetting("coder.showOnlyMatches", this.showOnlyMatches);
+      this.updateFilterChips();
+      this.render(this.store.snapshot());
+    });
+
+    this.nextMatchBtn = document.createElement("button");
+    this.nextMatchBtn.type = "button";
+    this.nextMatchBtn.className = "coder-filter-btn";
+    this.nextMatchBtn.textContent = "Next match";
+    this.nextMatchBtn.addEventListener("click", () => this.jumpToNextMatch());
+
     this.filterStatus = document.createElement("span");
     this.filterStatus.className = "coder-sync";
     this.filterStatus.textContent = "Type to filter";
-    row.append(this.filterInput, this.filterStatus);
+    row.append(this.filterInput, this.filterChips, this.onlyMatchesBtn, this.nextMatchBtn, this.filterStatus);
+    this.updateFilterChips();
     return row;
+  }
+
+  private updateFilterChips(): void {
+    if (!this.filterChips) return;
+    const statusButtons = Array.from(this.filterChips.querySelectorAll("button[data-status]")) as HTMLButtonElement[];
+    statusButtons.forEach((btn) => {
+      const status = btn.dataset.status as CoderStatus | undefined;
+      const active = status ? this.statusFilter.has(status) : false;
+      btn.classList.toggle("is-active", active);
+      btn.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+    const allBtn = this.filterChips.querySelector("button[data-role='all']") as HTMLButtonElement | null;
+    if (allBtn) {
+      const active = this.statusFilter.size === CODER_STATUSES.length;
+      allBtn.classList.toggle("is-active", active);
+      allBtn.setAttribute("aria-pressed", active ? "true" : "false");
+    }
+    if (this.onlyMatchesBtn) {
+      this.onlyMatchesBtn.classList.toggle("is-active", this.showOnlyMatches);
+      this.onlyMatchesBtn.setAttribute("aria-pressed", this.showOnlyMatches ? "true" : "false");
+    }
+    this.refreshFilterPill();
+  }
+
+  private refreshFilterPill(): void {
+    if (!this.filterPill) return;
+    if (this.statusFilter.size === CODER_STATUSES.length) {
+      this.filterPill.style.display = "none";
+      return;
+    }
+    const order: CoderStatus[] = ["Included", "Maybe", "Excluded"];
+    const map: Record<CoderStatus, string> = { Included: "I", Maybe: "?", Excluded: "×" };
+    const text = order.filter((status) => this.statusFilter.has(status)).map((status) => map[status]).join(" ");
+    this.filterPill.textContent = `Status: ${text || "None"}`;
+    this.filterPill.style.display = "";
   }
 
   private buildActions(): HTMLElement {
@@ -315,8 +446,12 @@ export class CoderPanel {
 
   private render(state: CoderState): void {
     const filter = (this.filterInput?.value || "").trim().toLowerCase();
+    this.hidePreviewTooltip();
+    this.clearHoverClasses();
+    this.hoveredPathIds = [];
+    this.hoveredRowId = null;
     this.treeHost.innerHTML = "";
-    const matches = { total: 0, shown: 0 };
+    const stats = { totalNodes: 0, matched: 0, matchedVisible: 0, matchedIds: [] as string[] };
     const root = document.createDocumentFragment();
     if (state.nodes.length === 0) {
       const empty = document.createElement("div");
@@ -324,20 +459,35 @@ export class CoderPanel {
       empty.textContent = "No sections yet. Add a folder to begin.";
       root.append(empty);
     } else {
-      state.nodes.forEach((node) => root.append(this.renderNode(node, 0, filter, matches)));
+      state.nodes.forEach((node) => root.append(this.renderNode(node, 0, filter, stats, [])));
     }
     this.treeHost.append(root);
-    this.updateFilterStatus(matches, filter);
+    this.matchedIds = stats.matchedIds;
+    if (this.nextMatchBtn) {
+      this.nextMatchBtn.disabled = this.matchedIds.length === 0;
+    }
+    this.updateFilterStatus(stats, filter);
+    this.updateFilterChips();
     this.refreshNotePanel();
     this.refreshSavedPill();
     this.refreshSelectionPill();
+    this.refreshPinnedPreviewPosition();
   }
 
-  private renderNode(node: CoderNode, depth: number, filter: string, matches: { total: number; shown: number }): HTMLElement {
+  private renderNode(
+    node: CoderNode,
+    depth: number,
+    filter: string,
+    stats: { totalNodes: number; matched: number; matchedVisible: number; matchedIds: string[] },
+    parentPath: string[]
+  ): HTMLElement {
     const row = document.createElement("div");
     row.className = "coder-node";
     row.dataset.id = node.id;
     row.dataset.type = node.type;
+    row.dataset.depth = String(depth);
+    row.dataset.path = parentPath.join("/");
+    if (depth === 0) row.classList.add("is-root");
     row.draggable = true;
 
     const rowInner = document.createElement("div");
@@ -345,14 +495,15 @@ export class CoderPanel {
 
     const expander = document.createElement("span");
     expander.className = "coder-expander";
-    expander.textContent = node.type === "folder" ? "▿" : "";
+    const collapsed = node.type === "folder" ? this.isFolderCollapsed(node.id) : false;
+    expander.textContent = node.type === "folder" ? (collapsed ? "▸" : "▿") : "";
     expander.addEventListener("click", (ev) => {
       ev.stopPropagation();
       if (node.type === "folder") {
         const childrenEl = row.querySelector(".coder-children") as HTMLElement | null;
         if (childrenEl) {
-          const collapsed = childrenEl.getAttribute("data-collapsed") === "true";
-          this.toggleFolderExpansion(node, collapsed);
+          const isCollapsed = childrenEl.getAttribute("data-collapsed") === "true";
+          this.toggleFolderExpansion(node, isCollapsed);
         }
       }
     });
@@ -407,6 +558,8 @@ export class CoderPanel {
       pill.textContent = node.status;
       actions.append(pill);
     } else {
+      const rollup = this.buildFolderRollup(node);
+      actions.append(rollup);
       const count = document.createElement("span");
       count.className = "coder-sync";
       count.textContent = `${node.children.length} child${node.children.length === 1 ? "" : "ren"}`;
@@ -424,28 +577,42 @@ export class CoderPanel {
     row.append(rowInner);
 
     const matchHit = this.matchesFilter(node, filter);
-    let visible = matchHit;
+    const hasActiveFilter = this.hasActiveFilter(filter);
+    let visible = !hasActiveFilter || !this.showOnlyMatches ? true : matchHit;
     if (node.type === "folder") {
       const childrenWrap = document.createElement("div");
       childrenWrap.className = "coder-children";
       let anyChildVisible = false;
       node.children.forEach((child) => {
-        const childEl = this.renderNode(child, depth + 1, filter, matches);
+        const childEl = this.renderNode(child, depth + 1, filter, stats, [...parentPath, node.id]);
         if (!childEl.classList.contains("is-hidden")) anyChildVisible = true;
         childrenWrap.append(childEl);
       });
-      if (filter && anyChildVisible) visible = true;
-      childrenWrap.setAttribute("data-collapsed", "false");
-      childrenWrap.style.display = "";
+      if (hasActiveFilter && anyChildVisible) {
+        visible = true;
+      }
+      const collapsed = this.isFolderCollapsed(node.id);
+      childrenWrap.setAttribute("data-collapsed", collapsed ? "true" : "false");
+      childrenWrap.style.display = collapsed ? "none" : "";
       row.append(childrenWrap);
     }
 
-    matches.total += matchHit ? 1 : 0;
+    stats.totalNodes += 1;
+    if (matchHit && hasActiveFilter) {
+      stats.matched += 1;
+      stats.matchedIds.push(node.id);
+    }
     if (!visible) {
       row.classList.add("is-hidden");
       row.style.display = "none";
-    } else {
-      matches.shown += 1;
+    } else if (matchHit && hasActiveFilter) {
+      stats.matchedVisible += 1;
+    }
+    if (hasActiveFilter && matchHit) {
+      row.classList.add("is-match");
+    }
+    if (hasActiveFilter && !matchHit) {
+      row.classList.add("is-filtered-out");
     }
 
     row.addEventListener("click", (ev) => {
@@ -463,6 +630,11 @@ export class CoderPanel {
       }
       if (node.type === "item" && this.onPayloadSelected && this.selection.size === 1) {
         this.onPayloadSelected(node.payload);
+      }
+      if (node.type === "item" && this.selection.size === 1 && this.pinPreviewOnClick && !meta && !shift) {
+        this.setPinnedPreview(node, row);
+      } else if (node.type !== "item" && this.previewPinned) {
+        this.clearPinnedPreview();
       }
     });
 
@@ -483,6 +655,20 @@ export class CoderPanel {
       this.handleDrop(ev, node);
     });
 
+    row.addEventListener("mouseenter", () => {
+      this.applyHoverPath(row, node.id);
+      if (node.type === "item") {
+        if (this.previewPinned && this.previewPinnedId !== node.id) return;
+        this.showPreviewTooltip(node, row);
+      }
+    });
+    row.addEventListener("mouseleave", () => {
+      this.clearHoverPath(node.id);
+      if (node.type === "item") {
+        this.hidePreviewTooltip();
+      }
+    });
+
     if (this.selection.has(node.id)) {
       row.classList.add("selected");
       if (this.primarySelection === node.id) {
@@ -498,26 +684,179 @@ export class CoderPanel {
   }
 
   private matchesFilter(node: CoderNode, needle: string): boolean {
-    if (!needle) return true;
+    if (!this.hasActiveFilter(needle)) return false;
     const match = (value: unknown): boolean =>
       typeof value === "string" && value.toLowerCase().includes(needle.toLowerCase());
-    if (match(node.name)) return true;
     if (node.type === "item") {
-      return match(node.payload.title) || match(node.payload.text) || match(node.payload.direct_quote);
+      if (!this.statusFilter.has(node.status)) return false;
+      if (!needle) return true;
+      return match(node.name) || match(node.payload.title) || match(node.payload.text) || match(node.payload.direct_quote);
     }
-    return false;
+    if (!needle) return false;
+    return match(node.name);
   }
 
-  private updateFilterStatus(matches: { total: number; shown: number }, needle: string): void {
-    if (!needle) {
-      this.filterStatus.textContent = matches.shown ? `${matches.shown} entries` : "No entries";
+  private updateFilterStatus(
+    stats: { totalNodes: number; matched: number; matchedVisible: number },
+    needle: string
+  ): void {
+    const hasActiveFilter = this.hasActiveFilter(needle);
+    if (!hasActiveFilter) {
+      this.filterStatus.textContent = stats.totalNodes ? `${stats.totalNodes} entries` : "No entries";
       return;
     }
-    if (matches.shown === 0) {
+    if (stats.matched === 0) {
       this.filterStatus.textContent = "No matches";
       return;
     }
-    this.filterStatus.textContent = `${matches.shown} match${matches.shown === 1 ? "" : "es"}`;
+    const matchLabel = `${stats.matched} match${stats.matched === 1 ? "" : "es"}`;
+    const detail = this.showOnlyMatches ? "" : " highlighted";
+    const statusLabel = this.statusFilter.size === CODER_STATUSES.length ? "" : ` • ${this.statusFilter.size} status`;
+    this.filterStatus.textContent = `${matchLabel}${detail}${statusLabel}`;
+  }
+
+  private countFolderStatuses(folder: FolderNode): Record<CoderStatus, number> {
+    const counts: Record<CoderStatus, number> = { Included: 0, Maybe: 0, Excluded: 0 };
+    const walk = (nodes: CoderNode[]) => {
+      nodes.forEach((node) => {
+        if (node.type === "item") {
+          counts[node.status] += 1;
+        } else {
+          walk(node.children);
+        }
+      });
+    };
+    walk(folder.children);
+    return counts;
+  }
+
+  private buildFolderRollup(folder: FolderNode): HTMLElement {
+    const counts = this.countFolderStatuses(folder);
+    const total = counts.Included + counts.Maybe + counts.Excluded;
+    const wrap = document.createElement("span");
+    wrap.className = "coder-status-rollup";
+    wrap.title = `Included: ${counts.Included} • Maybe: ${counts.Maybe} • Excluded: ${counts.Excluded}`;
+    if (total === 0) {
+      wrap.textContent = "No items";
+      return wrap;
+    }
+    const build = (status: CoderStatus, label: string) => {
+      const item = document.createElement("span");
+      item.className = `coder-rollup-item coder-rollup-${status.toLowerCase()}`;
+      const dot = document.createElement("span");
+      dot.className = "coder-rollup-dot";
+      const count = document.createElement("span");
+      count.textContent = String(counts[status]);
+      item.append(dot, count);
+      item.setAttribute("aria-label", `${label}: ${counts[status]}`);
+      return item;
+    };
+    wrap.append(build("Included", "Included"), build("Maybe", "Maybe"), build("Excluded", "Excluded"));
+    return wrap;
+  }
+
+  private applyHoverPath(row: HTMLElement, nodeId: string): void {
+    const rawPath = row.dataset.path ? row.dataset.path.split("/").filter(Boolean) : [];
+    const ids = [...rawPath, nodeId];
+    this.clearHoverClasses();
+    this.hoveredPathIds = ids;
+    this.hoveredRowId = nodeId;
+    ids.forEach((id, index) => {
+      const target = this.treeHost.querySelector(`[data-id="${id}"]`) as HTMLElement | null;
+      if (!target) return;
+      if (index === ids.length - 1) {
+        target.classList.add("is-hovered");
+      } else {
+        target.classList.add("is-ancestor");
+      }
+    });
+  }
+
+  private clearHoverPath(nodeId: string): void {
+    if (this.hoveredRowId !== nodeId) return;
+    this.clearHoverClasses();
+    this.hoveredPathIds = [];
+    this.hoveredRowId = null;
+  }
+
+  private clearHoverClasses(): void {
+    if (!this.hoveredPathIds.length) return;
+    this.hoveredPathIds.forEach((id) => {
+      const target = this.treeHost.querySelector(`[data-id="${id}"]`) as HTMLElement | null;
+      if (!target) return;
+      target.classList.remove("is-hovered", "is-ancestor");
+    });
+  }
+
+  private showPreviewTooltip(node: ItemNode, row: HTMLElement): void {
+    if (!this.previewTooltip || !this.previewTitle || !this.previewSnippet) return;
+    const rawTitle =
+      (node.payload.title as string | undefined) ||
+      (node.payload.direct_quote as string | undefined) ||
+      node.name ||
+      "Selection";
+    const rawText =
+      (node.payload.text as string | undefined) ||
+      (node.payload.direct_quote as string | undefined) ||
+      (node.payload.html as string | undefined) ||
+      "";
+    const title = this.normalizePreviewText(rawTitle, 64);
+    const snippet = this.normalizePreviewText(rawText, 220);
+    this.previewTitle.textContent = title;
+    this.previewSnippet.textContent = snippet || "No preview text.";
+    const rect = row.getBoundingClientRect();
+    const maxWidth = 320;
+    const left = Math.min(rect.right + 12 + window.scrollX, window.scrollX + window.innerWidth - maxWidth - 12);
+    const top = rect.top + window.scrollY;
+    this.previewTooltip.style.left = `${Math.max(12 + window.scrollX, left)}px`;
+    this.previewTooltip.style.top = `${Math.max(12 + window.scrollY, top)}px`;
+    this.previewTooltip.classList.add("is-visible");
+    if (this.previewPinned) {
+      this.previewTooltip.classList.add("is-pinned");
+    } else {
+      this.previewTooltip.classList.remove("is-pinned");
+    }
+  }
+
+  private hidePreviewTooltip(force = false): void {
+    if (this.previewPinned && !force) return;
+    this.previewTooltip?.classList.remove("is-visible", "is-pinned");
+  }
+
+  private setPinnedPreview(node: ItemNode, row: HTMLElement): void {
+    this.previewPinned = true;
+    this.previewPinnedId = node.id;
+    this.showPreviewTooltip(node, row);
+  }
+
+  private clearPinnedPreview(): void {
+    this.previewPinned = false;
+    this.previewPinnedId = null;
+    this.hidePreviewTooltip(true);
+  }
+
+  private refreshPinnedPreviewPosition(): void {
+    if (!this.previewPinned || !this.previewPinnedId) {
+      this.hidePreviewTooltip();
+      return;
+    }
+    const row = this.treeHost.querySelector(`[data-id="${this.previewPinnedId}"]`) as HTMLElement | null;
+    const node = row ? this.nodeById(this.previewPinnedId) : null;
+    if (!row || !node || node.type !== "item") {
+      this.clearPinnedPreview();
+      return;
+    }
+    this.showPreviewTooltip(node, row);
+  }
+
+  private normalizePreviewText(value: string, maxLength: number): string {
+    const text = String(value || "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!text) return "";
+    if (text.length <= maxLength) return text;
+    return `${text.slice(0, maxLength).trimEnd()}…`;
   }
 
   private beginRename(row?: HTMLElement, node?: CoderNode): void {
@@ -758,39 +1097,27 @@ export class CoderPanel {
   }
 
   private toggleFolderExpansion(node: FolderNode, expand: boolean): void {
-    const row = this.treeHost.querySelector(`[data-id="${node.id}"]`) as HTMLElement | null;
-    if (!row) return;
-    const children = row.querySelector(".coder-children") as HTMLElement | null;
-    if (!children) return;
-    const expander = row.querySelector(".coder-expander");
-    if (expand) {
-      children.style.display = "";
-      children.removeAttribute("data-collapsed");
-      if (expander) expander.textContent = "▿";
-    } else {
-      children.style.display = "none";
-      children.setAttribute("data-collapsed", "true");
-      if (expander) expander.textContent = "▸";
-    }
+    this.store.setFolderCollapsed(node.id, !expand);
   }
 
-  private isFolderCollapsed(nodeId: string): boolean {
-    const row = this.treeHost.querySelector(`[data-id="${nodeId}"]`) as HTMLElement | null;
-    const children = row?.querySelector(".coder-children") as HTMLElement | null;
-    return children?.getAttribute("data-collapsed") === "true";
+  private isFolderCollapsed(nodeId: string, state: CoderState = this.store.snapshot()): boolean {
+    const collapsed = new Set((state.collapsedIds || []).map(String));
+    return collapsed.has(nodeId);
   }
 
   private toggleAllFolders(expand: boolean): void {
     const state = this.store.snapshot();
+    const ids: string[] = [];
     const walk = (nodes: CoderNode[]) => {
       nodes.forEach((node) => {
         if (node.type === "folder") {
-          this.toggleFolderExpansion(node, expand);
+          ids.push(node.id);
           walk(node.children);
         }
       });
     };
     walk(state.nodes);
+    this.store.setCollapsedFolders(ids, !expand);
   }
 
   private handleGlobalKeyDown(ev: KeyboardEvent): void {
@@ -910,6 +1237,11 @@ export class CoderPanel {
     if (meta && ev.key.toLowerCase() === "f") {
       ev.preventDefault();
       this.focusFilterInput();
+      return;
+    }
+    if ((meta && ev.key.toLowerCase() === "g") || ev.key === "F3") {
+      ev.preventDefault();
+      this.jumpToNextMatch();
       return;
     }
     if (ev.altKey && ev.key.toLowerCase() === "n") {
@@ -1063,9 +1395,25 @@ export class CoderPanel {
   private getVisibleNodeIds(): string[] {
     const nodes = Array.from(this.treeHost.querySelectorAll(".coder-node")) as HTMLElement[];
     return nodes
-      .filter((node) => !node.classList.contains("is-hidden"))
+      .filter((node) => !node.classList.contains("is-hidden") && node.offsetParent !== null)
       .map((node) => node.dataset.id)
       .filter((id): id is string => Boolean(id));
+  }
+
+  private jumpToNextMatch(): void {
+    if (!this.matchedIds.length) return;
+    const current = this.primarySelection ? this.matchedIds.indexOf(this.primarySelection) : -1;
+    const nextIndex = current >= 0 ? (current + 1) % this.matchedIds.length : 0;
+    const nextId = this.matchedIds[nextIndex];
+    if (!nextId) return;
+    this.setSelectionSingle(nextId);
+    this.scrollNodeIntoView(nextId);
+  }
+
+  private scrollNodeIntoView(nodeId: string): void {
+    const target = this.treeHost.querySelector(`[data-id="${nodeId}"]`) as HTMLElement | null;
+    if (!target) return;
+    target.scrollIntoView({ block: "nearest" });
   }
 
   private getTopLevelSelected(): string[] {
@@ -1074,10 +1422,19 @@ export class CoderPanel {
   }
 
   private handleGlobalClick(event: MouseEvent): void {
-    if (!this.contextMenu) return;
     const target = event.target as HTMLElement | null;
-    if (target && this.contextMenu.contains(target)) return;
-    this.hideContextMenu();
+    if (this.contextMenu) {
+      if (target && this.contextMenu.contains(target)) return;
+      this.hideContextMenu();
+    }
+    if (this.previewPinned) {
+      const withinTooltip = target ? this.previewTooltip?.contains(target) : false;
+      const withinSurface = target ? this.element.contains(target) : false;
+      const withinNode = target ? Boolean(target.closest(".coder-node")) : false;
+      if (!withinTooltip && (!withinSurface || !withinNode)) {
+        this.clearPinnedPreview();
+      }
+    }
   }
 
   private handleTreeContextMenu(ev: MouseEvent): void {
@@ -1124,6 +1481,8 @@ export class CoderPanel {
     if (node.type === "folder") {
       buildAction("New subfolder", () => this.addFolderShortcut(node.id));
     }
+    buildAction("Expand all sections", () => this.toggleAllFolders(true));
+    buildAction("Collapse all sections", () => this.toggleAllFolders(false));
     buildAction("Delete (Del)", () => this.deleteSelected());
     buildAction("Move Up (↑)", () => this.moveSelected(-1));
     buildAction("Move Down (↓)", () => this.moveSelected(1));
@@ -1341,8 +1700,36 @@ export class CoderPanel {
     }
   }
 
+  private readStatusFilter(): Set<CoderStatus> {
+    try {
+      const raw = localStorage.getItem("coder.statusFilter");
+      if (!raw) return new Set(CODER_STATUSES);
+      const parsed = raw
+        .split(",")
+        .map((value) => value.trim())
+        .filter((value): value is CoderStatus => CODER_STATUSES.includes(value as CoderStatus));
+      return parsed.length ? new Set(parsed) : new Set(CODER_STATUSES);
+    } catch {
+      return new Set(CODER_STATUSES);
+    }
+  }
+
+  private writeStatusFilter(filter: Set<CoderStatus>): void {
+    try {
+      const next = Array.from(filter);
+      localStorage.setItem("coder.statusFilter", next.join(","));
+    } catch {
+      // ignore storage errors
+    }
+  }
+
+  private hasActiveFilter(needle: string): boolean {
+    return Boolean(needle) || this.statusFilter.size !== CODER_STATUSES.length;
+  }
+
   private updateSurfaceClasses(): void {
     this.element.classList.toggle("coder-hide-row-actions", !this.showRowActions);
+    this.element.classList.toggle("coder-compact", this.compactMode);
   }
 
   private toggleSettingsMenu(anchor: HTMLElement): void {
@@ -1365,6 +1752,18 @@ export class CoderPanel {
       row.append(checkbox, text);
       menu.append(row);
     };
+    const addAction = (labelText: string, onClick: () => void) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "coder-settings-action";
+      btn.textContent = labelText;
+      btn.addEventListener("click", () => {
+        onClick();
+        this.settingsMenu?.remove();
+        this.settingsMenu = undefined;
+      });
+      menu.append(btn);
+    };
 
     addToggle("Confirm deletes", this.confirmDelete, (value) => this.writeConfirmDelete(value));
     addToggle("Show drop hints", this.showDropHints, (value) => {
@@ -1377,6 +1776,18 @@ export class CoderPanel {
       this.writeBoolSetting("coder.showRowActions", value);
       this.updateSurfaceClasses();
     });
+    addToggle("Pin previews on click", this.pinPreviewOnClick, (value) => {
+      this.pinPreviewOnClick = value;
+      this.writeBoolSetting("coder.pinPreviewOnClick", value);
+      if (!value) this.clearPinnedPreview();
+    });
+    addToggle("Compact mode", this.compactMode, (value) => {
+      this.compactMode = value;
+      this.writeBoolSetting("coder.compactMode", value);
+      this.updateSurfaceClasses();
+    });
+    addAction("Expand all sections", () => this.toggleAllFolders(true));
+    addAction("Collapse all sections", () => this.toggleAllFolders(false));
     const rect = anchor.getBoundingClientRect();
     menu.style.left = `${rect.right - 220}px`;
     menu.style.top = `${rect.bottom + 6}px`;

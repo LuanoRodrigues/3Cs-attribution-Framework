@@ -16,7 +16,7 @@ import {
   PersistentCoderState
 } from "./coderTypes";
 
-const STATE_VERSION = 2;
+const STATE_VERSION = 3;
 
 function nowUtc(): string {
   return new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
@@ -90,20 +90,28 @@ export function loadState(scopeId?: CoderScopeId): CoderState {
     const scopedKey = storageKeyForScope(scopeId);
     const parsed = readStateFromStorage(scopedKey);
     if (parsed && Array.isArray(parsed.nodes)) {
-      return { version: parsed.version ?? STATE_VERSION, nodes: parsed.nodes };
+      return {
+        version: parsed.version ?? STATE_VERSION,
+        nodes: parsed.nodes,
+        collapsedIds: Array.isArray(parsed.collapsedIds) ? parsed.collapsedIds.map(String) : []
+      };
     }
 
     if (scopeId) {
       const fallback = readStateFromStorage(CODER_STORAGE_KEY);
       if (fallback && Array.isArray(fallback.nodes)) {
-        return { version: fallback.version ?? STATE_VERSION, nodes: fallback.nodes };
+        return {
+          version: fallback.version ?? STATE_VERSION,
+          nodes: fallback.nodes,
+          collapsedIds: Array.isArray(fallback.collapsedIds) ? fallback.collapsedIds.map(String) : []
+        };
       }
     }
   } catch {
     // ignore parse/storage issues and fall back to default state
   }
   const root = createFolder("My collection");
-  return { version: STATE_VERSION, nodes: [root] };
+  return { version: STATE_VERSION, nodes: [root], collapsedIds: [] };
 }
 
 export function saveState(state: CoderState, scopeId?: CoderScopeId): void {
@@ -161,6 +169,9 @@ function insertNode(
 }
 
 function ensureRootFolder(state: CoderState): void {
+  if (!Array.isArray(state.collapsedIds)) {
+    state.collapsedIds = [];
+  }
   if (state.nodes.length === 0 || state.nodes[0].type !== "folder") {
     const fallback = createFolder("My collection");
     state.nodes.unshift(fallback);
@@ -238,6 +249,34 @@ export class CoderStore {
     this.commit(next);
   }
 
+  setFolderCollapsed(folderId: string, collapsed: boolean): void {
+    const next = cloneState(this.state);
+    const path = findPath(next.nodes, folderId);
+    if (!path || path.node.type !== "folder") return;
+    const existing = new Set((next.collapsedIds || []).map(String));
+    if (collapsed) {
+      existing.add(folderId);
+    } else {
+      existing.delete(folderId);
+    }
+    next.collapsedIds = Array.from(existing);
+    this.commit(next, { skipEditedHtml: true });
+  }
+
+  setCollapsedFolders(folderIds: string[], collapsed: boolean): void {
+    const next = cloneState(this.state);
+    const existing = new Set((next.collapsedIds || []).map(String));
+    folderIds.forEach((id) => {
+      if (collapsed) {
+        existing.add(id);
+      } else {
+        existing.delete(id);
+      }
+    });
+    next.collapsedIds = Array.from(existing);
+    this.commit(next, { skipEditedHtml: true });
+  }
+
   delete(nodeId: string): void {
     const next = cloneState(this.state);
     const { removed } = removeNode(next.nodes, nodeId);
@@ -273,8 +312,15 @@ export class CoderStore {
     this.commit(next);
   }
 
-  replaceTree(nodes: CoderNode[], options: { source?: string; skipPersist?: boolean; skipEditedHtml?: boolean } = {}): void {
-    const next: CoderState = { version: STATE_VERSION, nodes: cloneState({ version: STATE_VERSION, nodes }).nodes };
+  replaceTree(
+    nodes: CoderNode[],
+    options: { source?: string; skipPersist?: boolean; skipEditedHtml?: boolean; collapsedIds?: string[] } = {}
+  ): void {
+    const next: CoderState = {
+      version: STATE_VERSION,
+      nodes: cloneState({ version: STATE_VERSION, nodes }).nodes,
+      collapsedIds: Array.isArray(options.collapsedIds) ? options.collapsedIds.map(String) : this.state.collapsedIds ?? []
+    };
     ensureRootFolder(next);
     this.commit(next, {
       source: options.source,
@@ -297,7 +343,11 @@ export class CoderStore {
     if (!result) return null;
     this.lastBaseDir = result.baseDir;
     this.lastStatePath = result.statePath;
-    this.replaceTree(result.state.nodes, { source: "loadFromDisk", skipPersist: true });
+    this.replaceTree(result.state.nodes, {
+      source: "loadFromDisk",
+      skipPersist: true,
+      collapsedIds: result.state.collapsedIds
+    });
     return result;
   }
 
@@ -493,7 +543,7 @@ function syncEditedHtmlForState(state: CoderState): void {
 }
 
 function createRootState(): CoderState {
-  return { version: STATE_VERSION, nodes: [createFolder("My collection")] };
+  return { version: STATE_VERSION, nodes: [createFolder("My collection")], collapsedIds: [] };
 }
 
 function normalizeSavedNodes(rawNodes: unknown[]): CoderNode[] {
@@ -545,12 +595,13 @@ export function treeToLines(nodes: CoderNode[], depth = 0): string[] {
 
 function ensureStateStructure(candidate: unknown): CoderState {
   if (candidate && typeof candidate === "object") {
-    const typed = candidate as { version?: number; nodes?: unknown[] };
+    const typed = candidate as { version?: number; nodes?: unknown[]; collapsedIds?: unknown[] };
     if (Array.isArray(typed.nodes) && typed.nodes.length > 0) {
       const version = typeof typed.version === "number" ? typed.version : STATE_VERSION;
       const normalized: CoderState = {
         version,
-        nodes: normalizeSavedNodes(typed.nodes)
+        nodes: normalizeSavedNodes(typed.nodes),
+        collapsedIds: Array.isArray(typed.collapsedIds) ? typed.collapsedIds.map(String) : []
       };
       ensureRootFolder(normalized);
       return normalized;

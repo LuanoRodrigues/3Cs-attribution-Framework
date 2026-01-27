@@ -2,6 +2,9 @@ import fs from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
 import { app, BrowserWindow, ipcMain, Menu, MenuItemConstructorOptions, shell, dialog } from "electron";
+import { pathToFileURL } from "url";
+import type { ConvertResult } from "mammoth";
+import mammoth from "mammoth";
 
 import type { SectionLevel } from "./analyse/types";
 import {
@@ -324,6 +327,100 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
       return { success: true, filePath, bytes: stats.size };
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  });
+
+  ipcMain.handle("leditor:insert-image", async () => {
+    try {
+      const result = await dialog.showOpenDialog({
+        title: "Insert Image",
+        properties: ["openFile"],
+        filters: [
+          { name: "Images", extensions: ["png", "jpg", "jpeg", "gif", "webp", "svg"] },
+          { name: "All files", extensions: ["*"] }
+        ]
+      });
+      if (result.canceled || result.filePaths.length === 0 || !result.filePaths[0]) {
+        return { success: false, error: "Image selection canceled" };
+      }
+      const filePath = result.filePaths[0];
+      const url = pathToFileURL(path.resolve(filePath)).href;
+      return { success: true, url };
+    } catch (error) {
+      return { success: false, error: normalizeError(error) };
+    }
+  });
+
+  ipcMain.handle("leditor:export-pdf", async (_event, request: { html?: string; options?: { suggestedPath?: string; prompt?: boolean } }) => {
+    const repoRoot = resolveRepoRoot();
+    const html = (request?.html || "").trim();
+    if (!html) {
+      return { success: false, error: "No HTML payload provided" };
+    }
+    const options = request?.options ?? {};
+    const promptUser = options.prompt ?? true;
+    let filePath = options.suggestedPath as string | undefined;
+    if (!filePath || promptUser) {
+      const result = await dialog.showSaveDialog({
+        title: "Export to PDF",
+        defaultPath: filePath || path.join(repoRoot, ".codex_logs", `document-${Date.now()}.pdf`),
+        filters: [{ name: "PDF Document", extensions: ["pdf"] }]
+      });
+      if (result.canceled || !result.filePath) {
+        return { success: false, error: "Export canceled" };
+      }
+      filePath = result.filePath;
+    }
+    if (!filePath) {
+      return { success: false, error: "No path provided" };
+    }
+    const pdfWindow = new BrowserWindow({
+      show: false,
+      webPreferences: {
+        offscreen: true,
+        sandbox: true
+      }
+    });
+    try {
+      await pdfWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+      const data = await pdfWindow.webContents.printToPDF({
+        printBackground: true,
+        pageSize: "A4"
+      });
+      await fs.promises.writeFile(filePath, data);
+      return { success: true, filePath, bytes: data.length };
+    } catch (error) {
+      return { success: false, error: normalizeError(error) };
+    } finally {
+      if (!pdfWindow.isDestroyed()) {
+        pdfWindow.destroy();
+      }
+    }
+  });
+
+  ipcMain.handle("leditor:import-docx", async (_event, request: { options?: { sourcePath?: string; prompt?: boolean } }) => {
+    const options = request?.options ?? {};
+    let sourcePath = options.sourcePath;
+    if (!sourcePath || (options.prompt ?? true)) {
+      const result = await dialog.showOpenDialog({
+        title: "Import DOCX",
+        properties: ["openFile"],
+        filters: [{ name: "Word Document", extensions: ["docx"] }]
+      });
+      if (result.canceled || result.filePaths.length === 0 || !result.filePaths[0]) {
+        return { success: false, error: "Import canceled" };
+      }
+      sourcePath = result.filePaths[0];
+    }
+    if (!sourcePath) {
+      return { success: false, error: "No document selected" };
+    }
+    try {
+      const buffer = await fs.promises.readFile(sourcePath);
+      const result: ConvertResult = await mammoth.convertToHtml({ buffer });
+      return { success: true, html: result.value, filePath: sourcePath };
+    } catch (error) {
+      return { success: false, error: normalizeError(error) };
     }
   });
 

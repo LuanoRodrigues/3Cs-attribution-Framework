@@ -1842,7 +1842,7 @@ export const mountA4Layout = (
   const collectFootnoteEntries = () => {
     const registry = getFootnoteRegistry();
     const nodes = Array.from(editorEl.querySelectorAll<HTMLElement>(".leditor-footnote"));
-    const entries: FootnoteEntry[] = [];
+  const entries: FootnoteRenderEntry[] = [];
     const numbering = getFootnoteNumbering();
     let fallbackCounter = 0;
     const pageHeight = measurePageHeight();
@@ -1863,12 +1863,14 @@ export const mountA4Layout = (
         numberLabel = String(fallbackCounter);
       }
       const text = view?.getPlainText() || "";
-      const kind = (node.dataset.footnoteKind ?? "footnote").toLowerCase();
-      const pageIndex = kind === "footnote" ? determineFootnotePageIndex(node, pageHeight, editorRect) : 0;
+      const rawKind = (node.dataset.footnoteKind ?? "footnote").toLowerCase();
+      const pageIndex = rawKind === "footnote" ? determineFootnotePageIndex(node, pageHeight, editorRect) : 0;
+      const normalizedKind: FootnoteKind = rawKind === "endnote" ? "endnote" : "footnote";
       entries.push({
+        footnoteId: id || `fn-${numberLabel}-${pageIndex}`,
         number: numberLabel,
         text,
-        kind,
+        kind: normalizedKind,
         pageIndex
       });
     }

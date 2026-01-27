@@ -158,7 +158,9 @@ function ensureScriptLoaded(): Promise<void> {
     console.info("[write][mount-check]", { hasEditor: Boolean(mount.isConnected) });
     await appendScript(preludeUrl, false);
     await appendScript(vendorUrl, false);
+    window.__leditorAutoMount = false;
     await appendScript(scriptUrl, true);
+    window.__leditorMountEditor?.();
   })();
   scriptPromise = ready;
   ready.catch(() => {
@@ -171,6 +173,8 @@ declare global {
   interface Window {
     leditor?: { focus?: () => void };
     __writeEditorHost?: HTMLElement;
+    __leditorMountEditor?: () => void;
+    __leditorAutoMount?: boolean;
   }
 }
 

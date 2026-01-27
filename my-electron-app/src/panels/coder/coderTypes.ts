@@ -32,6 +32,7 @@ export type CoderNode = FolderNode | ItemNode;
 export interface CoderState {
   version: number;
   nodes: CoderNode[];
+  collapsedIds?: string[];
 }
 
 export interface PersistentCoderState {

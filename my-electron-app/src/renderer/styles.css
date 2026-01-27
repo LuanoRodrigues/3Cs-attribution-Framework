@@ -483,6 +483,15 @@ body.panel-drop-active iframe {
   padding: 1px 4px;
 }
 
+.write-page-shell .leditor-status-bar,
+.write-page-shell .leditor-status-bar--embedded {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 4;
+}
+
 .write-page-shell .ProseMirror a.leditor-citation-anchor {
   background: color-mix(in srgb, var(--accent) 22%, transparent);
   border-color: color-mix(in srgb, var(--accent) 55%, transparent);

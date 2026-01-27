@@ -124,6 +124,7 @@ const ICON_CREATORS = {
   image: () => createInlineIcon("🖼", "image"),
   pictures: () => createInlineIcon("🖼", "pictures"),
   onlinePictures: () => createInlineIcon("🌐", "online-pictures"),
+  openPicker: () => fluentSvg("SelectObject20Filled") ?? createInlineIcon("⌄", "open-picker"),
   shape: () => createInlineIcon("⬢", "shape"),
   shapes: () => createInlineIcon("⬢", "shapes"),
   icons: () => createInlineIcon("✦", "icons"),
