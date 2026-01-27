@@ -152,6 +152,10 @@ export class PanelToolManager {
     this.roots.get(panelId)?.focusTool(toolId);
   }
 
+  getToolPanel(toolId: string): PanelId | undefined {
+    return this.toolToPanel.get(toolId);
+  }
+
   closeTool(toolId: string): void {
     const panelId = this.toolToPanel.get(toolId);
     if (!panelId) return;

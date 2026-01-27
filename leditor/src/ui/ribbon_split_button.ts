@@ -1,10 +1,12 @@
-import type { Menu } from "../legacy/ui/ribbon_menu.js";
+type LegacyMenuInstance = {
+  open(anchor: HTMLElement): void;
+};
 
 type SplitButtonOptions = {
   label: string;
   iconElement?: HTMLElement | null;
   onPrimary: () => void;
-  menu: Menu;
+  menu: LegacyMenuInstance;
   logLabel?: string;
 };
 

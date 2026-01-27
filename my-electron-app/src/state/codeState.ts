@@ -1,8 +1,13 @@
 import { loadCodeState as loadSessionCodeState, persistCodeState } from "../session/sessionStorage";
 
 export interface CodeStateSnapshot {
+  themesDir: string;
+  collection: string;
+  batchSize: string;
   rqs: string[];
   model: string;
+  lens: string;
+  additionalPrompt: string;
 }
 
 type Listener = (state: CodeStateSnapshot) => void;
@@ -13,18 +18,25 @@ const listeners: Listener[] = [];
 function loadInitial(): CodeStateSnapshot {
   const sessionState = loadSessionCodeState();
   if (sessionState) {
-    return sessionState;
+    return normalizeState(sessionState);
   }
   return createDefaultCodeState();
 }
 
 export function getCodeState(): CodeStateSnapshot {
-  return { rqs: [...snapshot.rqs], model: snapshot.model };
+  return {
+    themesDir: snapshot.themesDir,
+    collection: snapshot.collection,
+    batchSize: snapshot.batchSize,
+    rqs: [...snapshot.rqs],
+    model: snapshot.model,
+    lens: snapshot.lens,
+    additionalPrompt: snapshot.additionalPrompt
+  };
 }
 
 export function addResearchQuestion(): CodeStateSnapshot {
-  const nextLabel = `RQ ${snapshot.rqs.length + 1}`;
-  snapshot = { ...snapshot, rqs: [...snapshot.rqs, nextLabel] };
+  snapshot = { ...snapshot, rqs: [...snapshot.rqs, ""] };
   persist();
   notify();
   return getCodeState();
@@ -39,8 +51,43 @@ export function updateResearchQuestion(index: number, text: string): CodeStateSn
   return getCodeState();
 }
 
+export function updateThemesDir(themesDir: string): CodeStateSnapshot {
+  snapshot = { ...snapshot, themesDir };
+  persist();
+  notify();
+  return getCodeState();
+}
+
+export function updateCollection(collection: string): CodeStateSnapshot {
+  snapshot = { ...snapshot, collection };
+  persist();
+  notify();
+  return getCodeState();
+}
+
+export function updateBatchSize(batchSize: string): CodeStateSnapshot {
+  snapshot = { ...snapshot, batchSize };
+  persist();
+  notify();
+  return getCodeState();
+}
+
 export function updateModel(model: string): CodeStateSnapshot {
   snapshot = { ...snapshot, model };
+  persist();
+  notify();
+  return getCodeState();
+}
+
+export function updateLens(lens: string): CodeStateSnapshot {
+  snapshot = { ...snapshot, lens };
+  persist();
+  notify();
+  return getCodeState();
+}
+
+export function updateAdditionalPrompt(additionalPrompt: string): CodeStateSnapshot {
+  snapshot = { ...snapshot, additionalPrompt };
   persist();
   notify();
   return getCodeState();
@@ -69,5 +116,22 @@ function persist(): void {
 }
 
 export function createDefaultCodeState(): CodeStateSnapshot {
-  return { rqs: [], model: "gpt-4.1" };
+  return {
+    themesDir: "",
+    collection: "",
+    batchSize: "",
+    rqs: [],
+    model: "gpt-5-thinking",
+    lens: "constructivist (social meaning / norms)",
+    additionalPrompt: ""
+  };
+}
+
+function normalizeState(state: CodeStateSnapshot): CodeStateSnapshot {
+  const defaults = createDefaultCodeState();
+  return {
+    ...defaults,
+    ...state,
+    rqs: Array.isArray(state.rqs) ? state.rqs : []
+  };
 }

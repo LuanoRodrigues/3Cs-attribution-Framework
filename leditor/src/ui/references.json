@@ -644,11 +644,11 @@
             {
               "type": "menuItem",
               "controlId": "cite.style.footnote",
-              "label": "Footnote (Chicago Notes)",
+              "label": "Footnote (Chicago Footnotes)",
               "command": {
                 "id": "citation.style.set",
                 "args": {
-                  "id": "chicago-note-bibliography"
+                  "id": "chicago-footnotes"
                 }
               }
             },
@@ -997,11 +997,11 @@
                     {
                       "type": "menuItem",
                       "controlId": "cite.style.footnote",
-                      "label": "Footnote (Chicago Notes)",
+                      "label": "Footnote (Chicago Footnotes)",
                       "command": {
                         "id": "citation.style.set",
                         "args": {
-                          "id": "chicago-note-bibliography"
+                          "id": "chicago-footnotes"
                         }
                       }
                     },

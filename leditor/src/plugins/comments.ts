@@ -1,5 +1,6 @@
 import { registerPlugin } from "../legacy/api/plugin_registry.js";
 import type { EditorHandle } from "../legacy/api/leditor.js";
+import type { Node as ProseMirrorNode, Mark } from "@tiptap/pm/model";
 
 const makeCommentId = (): string => `c-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 
@@ -21,9 +22,9 @@ const getCommentEntries = (editorHandle: EditorHandle) => {
     return [] as Array<{ pos: number; size: number; id: string; text: string }>;
   }
   const entries: Array<{ pos: number; size: number; id: string; text: string }> = [];
-  editor.state.doc.descendants((node, pos) => {
+  editor.state.doc.descendants((node: ProseMirrorNode, pos: number) => {
     if (!node.marks.length) return;
-    node.marks.forEach((mark) => {
+    node.marks.forEach((mark: Mark) => {
       if (mark.type !== commentMark) return;
       entries.push({
         pos,

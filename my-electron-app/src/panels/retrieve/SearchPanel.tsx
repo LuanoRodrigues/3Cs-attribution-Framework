@@ -7,6 +7,7 @@ import type {
   RetrieveRecord,
   RetrieveSort
 } from "../../shared/types/retrieve";
+import { DataHubPanel } from "./DataHubPanel";
 
 const PROVIDERS: Array<{ id: RetrieveProviderId; label: string }> = [
   { id: "semantic_scholar", label: "Semantic Scholar" },
@@ -41,6 +42,7 @@ export class SearchPanel {
   private lastProvider?: RetrieveProviderId;
   private isLoading = false;
   private selectedRecordId?: string;
+  private dataHubPanel: DataHubPanel;
 
   constructor(initial?: Partial<RetrieveQuery>) {
     this.element = document.createElement("div");
@@ -137,7 +139,8 @@ export class SearchPanel {
     resultsWrapper.className = "retrieve-results";
     resultsWrapper.append(this.statusLine, this.resultsList, loadMoreRow);
 
-    this.element.append(header, searchBlock, dbBlock, resultsWrapper);
+    this.dataHubPanel = new DataHubPanel();
+    this.element.append(header, searchBlock, dbBlock, resultsWrapper, this.dataHubPanel.element);
 
     [
       this.queryInput,
@@ -150,6 +153,10 @@ export class SearchPanel {
       el.addEventListener("change", () => this.emitChange());
       el.addEventListener("input", () => this.emitChange());
     });
+  }
+
+  destroy(): void {
+    this.dataHubPanel.destroy();
   }
 
   getQuery(): RetrieveQuery {

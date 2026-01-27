@@ -15,6 +15,7 @@ import { createCodeTool } from "../tools/code";
 import { createVisualiserTool } from "../tools/visualiser";
 import { createWriteTool } from "../tools/write";
 import { createCoderTool } from "../tools/coder";
+import { createScreenWidget } from "../tools/screen";
 import { dispatchAnalyseCommand } from "../analyse/commandDispatcher";
 import { AnalyseWorkspace } from "../analyse/workspace";
 import { AnalyseStore } from "../analyse/store";
@@ -28,6 +29,7 @@ import { CoderPanel } from "../panels/coder/CoderPanel";
 import { attachGlobalCoderDragSources } from "../panels/coder/coderDragSource";
 import type { CoderNode } from "../panels/coder/coderTypes";
 import { getDefaultCoderScope } from "../analyse/collectionScope";
+import { initAnalyseAudioController } from "./analyseAudio";
 
 interface PdfSelectionNotification {
   text: string;
@@ -66,6 +68,7 @@ registry.register(createCodeTool());
 registry.register(createWriteTool());
 registry.register(createVisualiserTool());
 registry.register(createCoderTool());
+registry.register(createScreenWidget());
 void initThemeManager();
 
 const ribbonHeader = document.getElementById("app-tab-header") as HTMLElement;
@@ -253,6 +256,7 @@ const analyseStore = new AnalyseStore();
 let analyseWorkspace: AnalyseWorkspace;
 let unsubscribeAnalyseRibbon: (() => void) | null = null;
 let analyseRibbonMount: HTMLElement | null = null;
+let analyseAudioController: ReturnType<typeof initAnalyseAudioController> | null = null;
 
 let lastRoundWideLayout = false;
 const setRatiosForRound = (action: AnalyseAction) => {
@@ -280,6 +284,7 @@ const emitAnalyseAction = (action: AnalyseAction, payload?: Record<string, unkno
   const targetPanel = action === "analyse/open_pdf_viewer" ? 4 : 2;
   panelGrid.ensurePanelVisible(targetPanel);
   setRatiosForRound(action);
+  analyseAudioController?.handleAction(action, payload);
   analyseWorkspace?.route(action, payload);
   dispatchAnalyseCommand("analyse", action, payload).catch((err) => console.error(err));
 };
@@ -528,8 +533,8 @@ const tabRibbon = new TabRibbon({
     if (tabId !== "tools") {
       panelGrid.ensurePanelVisible(2);
     }
-    if (!showAnalyse && tabId !== "tools") {
-      handleSectionTool(tabId);
+  if (!showAnalyse && tabId !== "tools") {
+      ensureSectionTool(tabId, { replace: true });
     }
     if (tabId === "settings") {
       openSettingsWindow();
@@ -540,6 +545,16 @@ const tabRibbon = new TabRibbon({
   }
 });
 tabRibbon.registerTabChangeListener(() => syncRibbonHeightDebounced());
+
+ribbonHeader.addEventListener("click", (event) => {
+  const target = event.target as HTMLElement | null;
+  const button = target?.closest<HTMLElement>(".tab-button");
+  if (!button) return;
+  if (button.dataset.tabId === "retrieve") {
+    panelGrid.ensurePanelVisible(2);
+    ensureSectionTool("retrieve", { replace: true });
+  }
+});
 window.addEventListener("resize", syncRibbonHeightDebounced);
 window.addEventListener("load", syncRibbonHeightDebounced);
 syncRibbonHeightDebounced();
@@ -572,7 +587,30 @@ if (savedLayouts) {
   panelTools.loadLayouts(sanitizedLayouts);
 }
 ensureWriteToolTab();
-handleSectionTool("retrieve");
+ensureSectionTool("retrieve", { replace: true });
+
+document.addEventListener("retrieve:ensure-panel2", () => {
+  panelGrid.ensurePanelVisible(2);
+  ensureSectionTool("retrieve", { replace: true });
+});
+
+document.addEventListener("ribbon:action", (event) => {
+  const phase = (event as CustomEvent<{ phase?: string }>).detail?.phase;
+  if (!phase) return;
+  const map: Partial<Record<string, TabId>> = {
+    retrieve: "retrieve",
+    screen: "screen",
+    code: "code",
+    visualiser: "visualiser",
+    analyse: "analyse",
+    write: "write",
+    export: "export",
+    settings: "settings",
+    tools: "tools"
+  };
+  const tabId = map[phase] ?? activeTab;
+  ensureSectionTool(tabId, { replace: true });
+});
 
 window.addEventListener("keydown", (ev) => {
   if (ev.ctrlKey && ev.key.toLowerCase() === "tab") {
@@ -604,6 +642,10 @@ function renderAnalyseRibbon(mount: HTMLElement): void {
   const render = (runs: AnalyseRun[], activeRunId?: string): void => {
     if (!analyseRibbonMount) return;
     analyseRibbonMount.innerHTML = "";
+    if (analyseAudioController) {
+      analyseAudioController.dispose?.();
+      analyseAudioController = null;
+    }
     const dataGroup = document.createElement("div");
     dataGroup.className = "ribbon-group";
     const dataTitle = document.createElement("h3");
@@ -713,19 +755,6 @@ function renderAnalyseRibbon(mount: HTMLElement): void {
     const audioWidget = document.createElement("div");
     audioWidget.className = "audio-widget";
 
-    const audioHeader = document.createElement("div");
-    audioHeader.className = "audio-widget__header";
-    const audioPlaceholder = document.createElement("div");
-    audioPlaceholder.className = "audio-placeholder";
-    audioHeader.appendChild(audioPlaceholder);
-    const grip = document.createElement("button");
-    grip.type = "button";
-    grip.className = "audio-grip";
-    grip.textContent = "⠿";
-    grip.title = "Audio panel";
-    audioHeader.appendChild(grip);
-    audioWidget.appendChild(audioHeader);
-
     const row1 = document.createElement("div");
     row1.className = "audio-widget__row";
     const playBtn = document.createElement("button");
@@ -752,7 +781,6 @@ function renderAnalyseRibbon(mount: HTMLElement): void {
       voice.appendChild(opt);
     });
     const refs = document.createElement("label");
-    refs.className = "audio-widget__row";
     const refsBox = document.createElement("input");
     refsBox.type = "checkbox";
     const refsText = document.createElement("span");
@@ -764,6 +792,14 @@ function renderAnalyseRibbon(mount: HTMLElement): void {
     rateBtn.className = "audio-rate";
     rateBtn.textContent = "1.2x";
     row1.append(playBtn, stopBtn, cacheBtn, voice, refs, rateBtn);
+
+    const grip = document.createElement("button");
+    grip.type = "button";
+    grip.className = "audio-grip";
+    grip.textContent = "⠿";
+    grip.title = "Audio panel";
+    row1.append(grip);
+
     audioWidget.appendChild(row1);
 
     const row2 = document.createElement("div");
@@ -780,8 +816,10 @@ function renderAnalyseRibbon(mount: HTMLElement): void {
     const timeRow = document.createElement("div");
     timeRow.className = "audio-time";
     const pos = document.createElement("span");
+    pos.className = "audio-time__pos";
     pos.textContent = "0:00";
     const dur = document.createElement("span");
+    dur.className = "audio-time__dur";
     dur.textContent = "/ 0:00";
     timeRow.append(pos, dur);
     audioWidget.appendChild(timeRow);
@@ -806,6 +844,14 @@ function renderAnalyseRibbon(mount: HTMLElement): void {
     analyseRibbonMount.appendChild(dataGroup);
     analyseRibbonMount.appendChild(roundsGroup);
     analyseRibbonMount.appendChild(audioGroup);
+
+    analyseAudioController = initAnalyseAudioController({
+      widget: audioWidget,
+      getState: () => analyseStore.getState(),
+      onCacheUpdate: (detail) => {
+        document.dispatchEvent(new CustomEvent("analyse-tts-cache-updated", { detail, bubbles: true }));
+      }
+    });
   };
 
   if (!unsubscribeAnalyseRibbon) {
@@ -1042,6 +1088,18 @@ function createActionButton(action: RibbonAction): HTMLButtonElement {
 function handleAction(action: RibbonAction): void {
   if (action.opensPanel) {
     openPanelShell(action);
+  }
+  if (
+    action.command.phase === "retrieve" &&
+    typeof action.command.action === "string" &&
+    action.command.action.startsWith("datahub_")
+  ) {
+    document.dispatchEvent(
+      new CustomEvent("retrieve-datahub-command", {
+        detail: { action: action.command.action, payload: action.command.payload ?? undefined }
+      })
+    );
+    return;
   }
   if (action.command.phase === "tools" && action.command.action === "open_tool") {
     const payload = action.command.payload as { toolType?: string; panelId?: string; metadata?: Record<string, unknown> } | undefined;
@@ -1758,10 +1816,19 @@ function createTestPanelMessage(text: string): HTMLElement {
   return label;
 }
 
-function handleSectionTool(tabId: TabId): void {
+function ensureSectionTool(tabId: TabId, options?: { replace?: boolean }): void {
   const config = sectionToolConfig(tabId);
   if (!config) {
     return;
+  }
+  if (options?.replace) {
+    panelTools.clearPanelTools("panel2");
+    Object.entries(sectionToolIds).forEach(([key, toolId]) => {
+      if (!toolId) return;
+      if (!panelTools.getToolPanel(toolId)) {
+        delete sectionToolIds[key as TabId];
+      }
+    });
   }
   if (tabId === "write") {
     console.info("[WRITE][NAV] clicked Write tab; ensuring editor in panel 2");
@@ -1771,6 +1838,12 @@ function handleSectionTool(tabId: TabId): void {
   }
   const existing = sectionToolIds[tabId];
   if (existing) {
+    if (tabId === "retrieve") {
+      const currentPanel = panelTools.getToolPanel(existing);
+      if (currentPanel && currentPanel !== "panel2") {
+        panelTools.moveTool(existing, "panel2");
+      }
+    }
     panelTools.focusTool(existing);
     return;
   }
@@ -1798,7 +1871,7 @@ function sectionToolConfig(
     return { toolType: "visualiser" };
   }
   if (tabId === "screen") {
-    return { toolType: "panel-shell", metadata: { title: "Screen", description: "Screening workspace" } };
+    return { toolType: "screen-widget" };
   }
   if (tabId === "export") {
     return { toolType: "panel-shell", metadata: { title: "Export", description: "Export workspace" } };

@@ -3,5 +3,6 @@ export const CITATION_STYLES = [
   "apa",
   "vancouver",
   "chicago-note-bibliography",
+  "chicago-footnotes",
   "chicago-note-bibliography-endnote"
 ];

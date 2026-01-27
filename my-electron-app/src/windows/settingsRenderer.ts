@@ -32,6 +32,7 @@ import {
   const fieldInputs: Record<string, SettingInput> = {};
   const secretInputs: Record<string, HTMLInputElement> = {};
   const secretToggles: Record<string, HTMLButtonElement> = {};
+  const vaultHints: HTMLElement[] = [];
   const pathCodes: Record<string, HTMLElement> = {};
   const PATH_ENTRIES = [
     { key: "appDataPath", label: "App data" },
@@ -79,6 +80,8 @@ import {
     DATABASE_KEYS.springerKey,
     DATABASE_KEYS.semanticScholarKey
   ];
+
+  const DEFAULT_VAULT_PASSPHRASE = "1234";
 
   let secretsUnlocked = false;
   let jsonViewElement: HTMLElement;
@@ -237,6 +240,7 @@ import {
 
   async function init() {
     try {
+      await attemptDefaultVaultUnlock();
       await reloadAll();
       setStatus("Settings ready");
     } catch (error) {
@@ -392,6 +396,24 @@ import {
     secretInputs[key] = input;
     secretToggles[key] = toggle;
     return block;
+  }
+
+  function createVaultHint() {
+    const hint = document.createElement("div");
+    hint.className = "vault-hint";
+    const text = document.createElement("span");
+    text.textContent = "Secrets vault is locked. Unlock to edit API keys.";
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "action-button";
+    button.textContent = "Unlock vault";
+    button.addEventListener("click", () => {
+      setActiveSection("vault");
+      requestAnimationFrame(() => passphraseField?.focus());
+    });
+    hint.append(text, button);
+    vaultHints.push(hint);
+    return hint;
   }
 
   function buildAuthorPanel(panel: HTMLElement) {
@@ -592,6 +614,7 @@ import {
 
   function buildZoteroApiPanel(panel: HTMLElement) {
     const card = createPanelCard("Zotero API key", "Stored securely in the secrets vault.");
+    card.appendChild(createVaultHint());
     card.appendChild(createSecretField(ZOTERO_KEYS.apiKey, "Zotero API key", "Paste your API key"));
     panel.appendChild(card);
   }
@@ -625,6 +648,7 @@ import {
   }
 
   function buildModelProvidersPanel(panel: HTMLElement) {
+    panel.appendChild(createVaultHint());
     const providers = [
       {
         id: "openai",
@@ -675,6 +699,7 @@ import {
 
   function buildDatabasePanel(panel: HTMLElement) {
     const card = createPanelCard("Academic database keys", "Stored securely in the secrets vault.");
+    card.appendChild(createVaultHint());
     const row = document.createElement("div");
     row.className = "control-row";
     row.appendChild(createSecretField(DATABASE_KEYS.wosKey, "Web of Science API key"));
@@ -794,6 +819,25 @@ import {
     }
   }
 
+  async function attemptDefaultVaultUnlock() {
+    if (secretsUnlocked) {
+      return;
+    }
+    try {
+      const result = await bridge.unlockSecrets(DEFAULT_VAULT_PASSPHRASE);
+      secretsUnlocked = result?.success === true;
+      if (!secretsUnlocked) {
+        return;
+      }
+      secretsStatusElement.textContent = "Secrets vault is unlocked";
+      setStatus("Secrets vault unlocked by default");
+      updateSecretControls();
+      await refreshSecretInputs();
+    } catch {
+      // ignore auto-unlock failures
+    }
+  }
+
   function updateSecretControls() {
     Object.keys(secretInputs).forEach((key) => {
       const input = secretInputs[key];
@@ -805,6 +849,9 @@ import {
       if (toggle) {
         toggle.disabled = !secretsUnlocked;
       }
+    });
+    vaultHints.forEach((hint) => {
+      hint.classList.toggle("hidden", secretsUnlocked);
     });
   }
 

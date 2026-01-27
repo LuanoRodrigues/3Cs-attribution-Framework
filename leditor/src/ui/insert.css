@@ -8,7 +8,7 @@
    ========================= */
 .leditor-ribbon-panel[data-tab-id="insert"] {
   --insert-cluster-gap: 10px;
-  --insert-row-height: 34px;
+  --insert-row-height: var(--home-row-height, 34px);
   --insert-group-pad-y: 8px;
   --insert-group-pad-x: 12px;
   --insert-group-bg: linear-gradient(180deg, #ffffff 0%, #f5f5f7 100%);
@@ -30,33 +30,30 @@
   flex-direction: column;
   gap: var(--insert-cluster-gap);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  min-height: calc(var(--insert-row-height) * 2 + var(--insert-group-pad-y));
 }
 
 .leditor-ribbon-panel[data-tab-id="insert"] .leditor-ribbon-group-body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--insert-cluster-gap);
-  align-items: flex-start;
-  justify-content: flex-start;
+  display: grid;
+  grid-template-rows: var(--insert-row-height) var(--insert-row-height);
+  row-gap: 0;
   overflow: visible;
   max-height: none;
   flex: 1;
-}
-
-.leditor-ribbon-panel[data-tab-id="insert"] .leditor-ribbon-group-body[data-row-count="2"] {
-  min-height: calc(var(--insert-row-height) * 2 + var(--insert-cluster-gap));
+  padding-bottom: 0;
 }
 
 .leditor-ribbon-panel[data-tab-id="insert"] .leditor-ribbon-group-row {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(36px, max-content);
+  grid-auto-columns: var(--insert-row-height);
   gap: var(--insert-cluster-gap);
   align-items: center;
   justify-content: flex-start;
   overflow: visible;
   height: var(--insert-row-height);
   min-height: var(--insert-row-height);
+  grid-row: 1;
 }
 
 .leditor-ribbon-panel[data-tab-id="insert"] .leditor-ribbon-group-footer {
@@ -79,6 +76,20 @@
   letter-spacing: 0.01em;
 }
 
+.leditor-ribbon-panel[data-tab-id="insert"] .leditor-ribbon-group-footer {
+  position: relative;
+  justify-content: center;
+}
+
+.leditor-ribbon-panel[data-tab-id="insert"] .ribbon-dialog-launcher-btn {
+  position: absolute;
+  right: 4px;
+  top: 2px;
+  border: none;
+  background: none;
+  padding: 0;
+}
+
 .leditor-ribbon-panel[data-tab-id="insert"] .ribbon-cluster {
   display: inline-flex;
   flex-wrap: nowrap;
@@ -86,6 +97,26 @@
   align-items: center;
   justify-content: flex-start;
   min-width: 0;
+}
+
+.leditor-ribbon-panel[data-tab-id="insert"] .ribbon-button-label {
+  display: none;
+}
+
+.leditor-ribbon-panel[data-tab-id="insert"] .ribbon-cluster > .leditor-ribbon-button,
+.leditor-ribbon-panel[data-tab-id="insert"] .ribbon-cluster > .leditor-ribbon-icon-btn {
+  width: var(--insert-row-height);
+  height: var(--insert-row-height);
+  min-width: var(--insert-row-height);
+  line-height: 1;
+  border-radius: 6px;
+  background: transparent;
+  border: none;
+  color: var(--r-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--fluent-icon-font);
 }
 
 /* =========================

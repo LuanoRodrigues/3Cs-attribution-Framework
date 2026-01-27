@@ -252,6 +252,19 @@ function statusCycle(current: ReadStatus): ReadStatus {
   return order[(idx + 1) % order.length] || "";
 }
 
+function statusLabel(status: ReadStatus): string {
+  switch (status) {
+    case "reading":
+      return "Reading";
+    case "read":
+      return "Read";
+    case "not_to_read":
+      return "Not to read";
+    default:
+      return "Mark";
+  }
+}
+
 function readStatusKey(round: AnalyseRoundId, runId?: string): string {
   const safeRun = runId || "default";
   return `analyse.readStatus.${round}.${safeRun}`;
@@ -517,6 +530,8 @@ export function renderSectionsPage(
   let dqLookupPath: string | null = null;
   const selectedSectionIds = new Set<string>();
   const readStatus = loadReadStatus(round, state.activeRunId);
+  let cachedSectionIds = new Set<string>();
+  let filteredViews: SectionView[] = [];
 
   const sectionFilters: SectionFilters = {
     search: "",
@@ -543,6 +558,30 @@ export function renderSectionsPage(
   const panel1Host = document.querySelector<HTMLElement>('[data-panel-id="panel1"] .panel-content');
   const panel3Host = document.querySelector<HTMLElement>('[data-panel-id="panel3"] .panel-content');
   let previewPanel: HTMLElement | null = null;
+
+  const emitSectionsState = (detail: { all?: SectionRecord[]; filtered?: SectionRecord[]; selectedIds?: string[] }) => {
+    container.dispatchEvent(
+      new CustomEvent("analyse-sections-state", {
+        detail: { round, runId: state.activeRunId, ...detail },
+        bubbles: true
+      })
+    );
+  };
+
+  const cacheListenerKey = "__ttsCacheListenerBound";
+  const docAny = document as any;
+  if (!docAny[cacheListenerKey]) {
+    docAny[cacheListenerKey] = true;
+    document.addEventListener("analyse-tts-cache-updated", (event) => {
+      const detail = (event as CustomEvent<{ cachedIds?: string[]; round?: string; runId?: string }>).detail || {};
+      if (detail.round && detail.round !== round) return;
+      if (detail.runId && detail.runId !== state.activeRunId) return;
+      cachedSectionIds = new Set(detail.cachedIds || []);
+      if (filteredViews.length) {
+        renderSectionList(filteredViews);
+      }
+    });
+  }
 
   const filtersPanel = document.createElement("div");
   filtersPanel.className = "panel";
@@ -820,7 +859,9 @@ export function renderSectionsPage(
       card.style.cursor = "pointer";
       const sectionId = view.section.id;
       const status = readStatus[sectionId] || "";
+      const cached = cachedSectionIds.has(sectionId) || Boolean((view.section.meta as any)?.tts_cached);
       card.dataset.status = status;
+      card.dataset.cached = cached ? "true" : "false";
 
       const header = document.createElement("div");
       header.className = "section-card__head";
@@ -832,6 +873,7 @@ export function renderSectionsPage(
       checkbox.addEventListener("change", () => {
         if (checkbox.checked) selectedSectionIds.add(sectionId);
         else selectedSectionIds.delete(sectionId);
+        emitSectionsState({ selectedIds: Array.from(selectedSectionIds) });
       });
       header.appendChild(checkbox);
 
@@ -853,24 +895,25 @@ export function renderSectionsPage(
       const statusBtn = document.createElement("button");
       statusBtn.type = "button";
       statusBtn.className = "section-status";
-      statusBtn.textContent = "●";
+      statusBtn.textContent = statusLabel(status as ReadStatus);
       statusBtn.title = "Toggle reading status";
+      const cachedLabel = document.createElement("div");
+      cachedLabel.className = "section-cached";
+      cachedLabel.textContent = "✓ Cached";
+      cachedLabel.style.display = cached ? "block" : "none";
+      const info = document.createElement("div");
+      info.className = "section-info";
+      info.textContent = `${statusLabel(status as ReadStatus)} • ${cached ? "Cached" : "Not cached"}`;
       statusBtn.addEventListener("click", (ev) => {
         ev.stopPropagation();
         const next = statusCycle(card.dataset.status as ReadStatus);
         card.dataset.status = next;
         readStatus[sectionId] = next;
         saveReadStatus(round, state.activeRunId, readStatus);
+        statusBtn.textContent = statusLabel(next);
+        info.textContent = `${statusLabel(next)} • ${cached ? "Cached" : "Not cached"}`;
       });
-      statusCol.appendChild(statusBtn);
-
-      const cached = Boolean((view.section.meta as any)?.tts_cached);
-      if (cached) {
-        const cachedLabel = document.createElement("div");
-        cachedLabel.className = "section-cached";
-        cachedLabel.textContent = "✓ Cached";
-        statusCol.appendChild(cachedLabel);
-      }
+      statusCol.append(statusBtn, cachedLabel, info);
       header.appendChild(statusCol);
 
       card.appendChild(header);
@@ -1050,8 +1093,10 @@ export function renderSectionsPage(
       potential: countValues(filtered.flatMap((v) => v.potentialTokens)),
     };
 
+    filteredViews = filtered;
     renderSectionFilters(facets);
     renderSectionList(filtered);
+    emitSectionsState({ filtered: filtered.map((v) => v.section) });
   };
 
   const applyBatchFilters = () => {
@@ -1126,6 +1171,7 @@ export function renderSectionsPage(
         console.info("[analyse][sections][dq-lookup]", { count: Object.keys(dqLookup || {}).length, path: dqLookupPath });
         renderSectionFilters({});
         applySectionFilters();
+        emitSectionsState({ all: sections, filtered: filteredViews.map((v) => v.section) });
         status.textContent = `${sections.length} sections loaded`;
       }
     } catch (error) {

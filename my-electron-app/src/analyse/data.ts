@@ -4,7 +4,8 @@
   BatchRecord,
   SectionRecord,
   SectionLevel,
-  RunMetrics
+  RunMetrics,
+  AudioCacheEntry
 } from "./types";
 
 interface DiscoverResult {
@@ -108,9 +109,38 @@ export async function loadDirectQuoteLookup(runPath: string): Promise<{ data: Re
     return { data: {}, path: null };
   }
   try {
-    // @ts-expect-error preload bridge includes loadDqLookup
     return (await bridge.loadDqLookup(runPath)) ?? { data: {}, path: null };
   } catch {
     return { data: {}, path: null };
+  }
+}
+
+export async function getAudioCacheStatus(
+  runId: string | undefined,
+  keys: string[]
+): Promise<{ cachedKeys: string[] }> {
+  const bridge = getBridge();
+  if (!bridge || !keys.length) {
+    return { cachedKeys: [] };
+  }
+  try {
+    return (await bridge.getAudioCacheStatus(runId, keys)) ?? { cachedKeys: [] };
+  } catch {
+    return { cachedKeys: [] };
+  }
+}
+
+export async function addAudioCacheEntries(
+  runId: string | undefined,
+  entries: AudioCacheEntry[]
+): Promise<{ cachedKeys: string[] }> {
+  const bridge = getBridge();
+  if (!bridge || !entries.length) {
+    return { cachedKeys: [] };
+  }
+  try {
+    return (await bridge.addAudioCacheEntries(runId, entries)) ?? { cachedKeys: [] };
+  } catch {
+    return { cachedKeys: [] };
   }
 }

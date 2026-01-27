@@ -50,7 +50,11 @@ contextBridge.exposeInMainWorld("analyseBridge", {
     loadSections: (runPath: string, level: SectionLevel) => ipcRenderer.invoke("analyse:loadSections", runPath, level),
     loadDqLookup: (runPath: string) => ipcRenderer.invoke("analyse:loadDqLookup", runPath),
     summariseRun: (runPath: string) => ipcRenderer.invoke("analyse:summariseRun", runPath),
-    getDefaultBaseDir: () => ipcRenderer.invoke("analyse:getDefaultBaseDir")
+    getDefaultBaseDir: () => ipcRenderer.invoke("analyse:getDefaultBaseDir"),
+    getAudioCacheStatus: (runId: string | undefined, keys: string[]) =>
+      ipcRenderer.invoke("analyse:audioCacheStatus", runId, keys),
+    addAudioCacheEntries: (runId: string | undefined, entries: unknown[]) =>
+      ipcRenderer.invoke("analyse:audioCacheAdd", runId, entries)
   }
 });
 

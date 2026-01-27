@@ -26,6 +26,7 @@ export async function command(
   action: string,
   payload?: CommandPayload
 ): Promise<RibbonCommandResponse | undefined> {
+  document.dispatchEvent(new CustomEvent("ribbon:action", { detail: { phase } }));
   const envelope: RibbonCommand = {
     phase,
     action,

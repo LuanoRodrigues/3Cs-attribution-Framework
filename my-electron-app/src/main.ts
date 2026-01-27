@@ -17,6 +17,7 @@ import {
   loadDirectQuoteLookup,
   getDefaultBaseDir
 } from "./analyse/backend";
+import { addAudioCacheEntries, getAudioCacheStatus } from "./analyse/audioCache";
 import { exportConfigBundle, importConfigBundle } from "./config/bundle";
 import { SettingsService } from "./config/settingsService";
 import {
@@ -25,7 +26,7 @@ import {
   getSettingsFilePath,
   initializeSettingsFacade
 } from "./config/settingsFacade";
-import { SecretsVault } from "./config/secretsVault";
+import { getSecretsVault, initializeSecretsVault } from "./config/secretsVaultInstance";
 import { handleRetrieveCommand, registerRetrieveIpcHandlers } from "./main/ipc/retrieve_ipc";
 import { registerProjectIpcHandlers } from "./main/ipc/project_ipc";
 import { ProjectManager } from "./main/services/projectManager";
@@ -35,7 +36,7 @@ import type { SessionMenuAction } from "./session/sessionTypes";
 import { openSettingsWindow } from "./windows/settingsWindow";
 
 let mainWindow: BrowserWindow | null = null;
-let secretsVault: SecretsVault | null = null;
+let secretsVault: ReturnType<typeof getSecretsVault> | null = null;
 let userDataPath = "";
 let handlersRegistered = false;
 let projectManagerInstance: ProjectManager | null = null;
@@ -522,6 +523,12 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
   ipcMain.handle("analyse:loadDqLookup", async (_event, runPath: string) => loadDirectQuoteLookup(runPath));
   ipcMain.handle("analyse:summariseRun", async (_event, runPath: string) => summariseRun(runPath));
   ipcMain.handle("analyse:getDefaultBaseDir", () => getDefaultBaseDir());
+  ipcMain.handle("analyse:audioCacheStatus", (_event, runId: string | undefined, keys: string[]) =>
+    getAudioCacheStatus(runId, keys)
+  );
+  ipcMain.handle("analyse:audioCacheAdd", (_event, runId: string | undefined, entries: any[]) =>
+    addAudioCacheEntries(runId, entries)
+  );
 
   ipcMain.handle("settings:getAll", () => settingsService.getAllSettings());
   ipcMain.handle("settings:getValue", (_event, key: string, defaultValue?: unknown) =>
@@ -704,7 +711,7 @@ function initializeApp(): void {
       const baseUserData = app.getPath("userData");
       initializeSettingsFacade(baseUserData);
       userDataPath = getAppDataPath();
-      secretsVault = new SecretsVault(userDataPath);
+      secretsVault = initializeSecretsVault(userDataPath);
       projectManagerInstance = new ProjectManager(baseUserData, {
         onRecentChange: refreshApplicationMenu
       });

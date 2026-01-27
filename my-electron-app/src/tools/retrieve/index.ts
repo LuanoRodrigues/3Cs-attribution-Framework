@@ -16,6 +16,7 @@ export function createRetrieveTool(): ToolDefinition {
       }
       return {
         element: panel.element,
+        destroy: () => panel.destroy(),
         getMetadata: () => ({ query: panel.getQuery() })
       };
     }

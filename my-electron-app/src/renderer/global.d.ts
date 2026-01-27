@@ -21,8 +21,11 @@ declare global {
         buildDatasetHandles: (runPath: string) => Promise<AnalyseDatasets>;
         loadBatches: (runPath: string) => Promise<BatchRecord[]>;
         loadSections: (runPath: string, level: SectionLevel) => Promise<SectionRecord[]>;
+        loadDqLookup: (runPath: string) => Promise<{ data: Record<string, unknown>; path: string | null }>;
         summariseRun: (runPath: string) => Promise<RunMetrics>;
         getDefaultBaseDir: () => Promise<string>;
+        getAudioCacheStatus: (runId: string | undefined, keys: string[]) => Promise<{ cachedKeys: string[] }>;
+        addAudioCacheEntries: (runId: string | undefined, entries: unknown[]) => Promise<{ cachedKeys: string[] }>;
       };
     };
     commandBridge?: {

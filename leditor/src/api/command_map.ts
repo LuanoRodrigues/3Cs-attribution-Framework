@@ -15,6 +15,8 @@ import { openCitationPicker, type CitationPickerResult } from "../ui/references/
 import { openSourcesPanel } from "../ui/references/sources_panel.ts";
 import { ensureReferencesLibrary } from "../ui/references/library.ts";
 import { getHostContract } from "../ui/host_contract.ts";
+import { createSearchPanel } from "../ui/search_panel.ts";
+import { nextMatch, prevMatch, replaceAll, replaceCurrent, setQuery } from "../editor/search.ts";
 import {
   exportBibliographyBibtex,
   exportBibliographyJson,
@@ -137,7 +139,7 @@ const insertCitationNode = (
   editor.view.dispatch(tr.scrollIntoView());
 };
 
-const scrollFootnoteAreaIntoView = (footnoteId: string) => {
+const scrollFootnoteAreaIntoView = (footnoteId: string, attempt = 0) => {
   if (typeof window === "undefined" || typeof document === "undefined") return;
   window.requestAnimationFrame(() => {
     const marker = document.querySelector<HTMLElement>(`.leditor-footnote[data-footnote-id="${footnoteId}"]`);
@@ -152,6 +154,19 @@ const scrollFootnoteAreaIntoView = (footnoteId: string) => {
     const container = marker.closest<HTMLElement>(".leditor-page")?.querySelector<HTMLElement>(".leditor-page-footnotes");
     if (container) {
       container.scrollIntoView({ block: "center", behavior: "smooth" });
+      const entry = container.querySelector<HTMLElement>(
+        `.leditor-footnote-entry[data-footnote-id="${footnoteId}"]`
+      );
+      if (entry) {
+        entry.classList.add("leditor-footnote-entry--active");
+        window.setTimeout(() => entry.classList.remove("leditor-footnote-entry--active"), 900);
+        const text = entry.querySelector<HTMLElement>(".leditor-footnote-entry-text");
+        text?.focus();
+        return;
+      }
+      if (attempt < 5) {
+        scrollFootnoteAreaIntoView(footnoteId, attempt + 1);
+      }
       return;
     }
     marker.scrollIntoView({ block: "center", behavior: "smooth" });
@@ -167,6 +182,14 @@ const focusFootnoteById = (id: string, attempt = 0) => {
   }
   if (attempt >= 5) return;
   window.requestAnimationFrame(() => focusFootnoteById(id, attempt + 1));
+};
+
+let searchPanelController: ReturnType<typeof createSearchPanel> | null = null;
+const ensureSearchPanel = (editorHandle: EditorHandle) => {
+  if (!searchPanelController) {
+    searchPanelController = createSearchPanel(editorHandle);
+  }
+  return searchPanelController;
 };
 
 const handleInsertCitationCommand = (editor: Editor) => {
@@ -239,7 +262,7 @@ const extractCitationNodes = (doc: ProseMirrorNode): CitationNodeRecord[] => {
   }
   const styleId = typeof doc.attrs?.citationStyleId === "string" ? doc.attrs.citationStyleId : "";
   const noteKind =
-    styleId === "chicago-note-bibliography"
+    styleId === "chicago-note-bibliography" || styleId === "chicago-footnotes"
       ? "footnote"
       : styleId === "chicago-note-bibliography-endnote"
         ? "endnote"
@@ -313,7 +336,7 @@ const findBibliographyNode = (doc: ProseMirrorNode): BibliographyNodeRecord | nu
 };
 
 const resolveNoteKind = (styleId: string): "footnote" | "endnote" | null => {
-  if (styleId === "chicago-note-bibliography") return "footnote";
+  if (styleId === "chicago-note-bibliography" || styleId === "chicago-footnotes") return "footnote";
   if (styleId === "chicago-note-bibliography-endnote") return "endnote";
   return null;
 };
@@ -393,7 +416,7 @@ const runCslUpdate = (editor: Editor): void => {
           }
           const footnoteId = `fn-${citationId}`;
           const footnote = footnoteNode.create(
-            { id: footnoteId, kind: noteKind, citationId },
+            { footnoteId, kind: noteKind, citationId },
             editor.schema.text("Citation")
           );
           const mappedInsertPos = trPrelude.mapping.map(pos + node.nodeSize);
@@ -872,7 +895,7 @@ const collectFootnoteTargets = (editor: Editor) => {
   const results: Array<{ pos: number; id?: string }> = [];
   editor.state.doc.descendants((node, pos) => {
     if (node.type.name === "footnote") {
-      const id = typeof node.attrs?.id === "string" ? node.attrs.id : undefined;
+      const id = typeof node.attrs?.footnoteId === "string" ? node.attrs.footnoteId : undefined;
       results.push({ pos, id });
     }
     return true;
@@ -1554,19 +1577,21 @@ export const commandMap: Record<string, CommandHandler> = {
   SelectStart(editor) {
     editor.chain().focus().setTextSelection(0).run();
   },
-  InsertFootnote(editor) {
+  InsertFootnote(editor, args) {
     const selectionSnapshot = consumeRibbonSelection() ?? snapshotFromSelection(editor.state.selection);
     restoreSelectionFromSnapshot(editor, selectionSnapshot);
-    const id = insertManagedFootnote(editor, "footnote");
+    const text = typeof args?.text === "string" ? args.text : undefined;
+    const id = insertManagedFootnote(editor, "footnote", text);
     focusFootnoteById(id);
   },
   "footnote.insert"(editor) {
     commandMap.InsertFootnote(editor);
   },
-  InsertEndnote(editor) {
+  InsertEndnote(editor, args) {
     const selectionSnapshot = consumeRibbonSelection() ?? snapshotFromSelection(editor.state.selection);
     restoreSelectionFromSnapshot(editor, selectionSnapshot);
-    const id = insertManagedFootnote(editor, "endnote");
+    const text = typeof args?.text === "string" ? args.text : undefined;
+    const id = insertManagedFootnote(editor, "endnote", text);
     focusFootnoteById(id);
   },
   "endnote.insert"(editor) {

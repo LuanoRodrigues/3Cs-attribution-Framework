@@ -1,4 +1,5 @@
 import { dispatchCommand } from "../api/editor_commands.js";
+import type { EditorCommandId } from "../api/editor_commands.js";
 import type { EditorHandle } from "../api/leditor.js";
 import ribbonPlan from "./ribbon.json";
 import homeTab from "./home.json";
@@ -24,10 +25,11 @@ import type {
   RibbonModel,
   TabConfig
 } from "./ribbon_config.js";
+import type { AlignmentVariant } from "./ribbon_selection_helpers.js";
 
 type RibbonHooks = {
-  registerToggle?: (commandId: string, element: HTMLButtonElement) => void;
-  registerAlignment?: (variant: string, element: HTMLButtonElement) => void;
+  registerToggle?: (commandId: EditorCommandId, element: HTMLButtonElement) => void;
+  registerAlignment?: (variant: AlignmentVariant, element: HTMLButtonElement) => void;
 };
 
 type InstalledAddin = {
@@ -1014,27 +1016,7 @@ const createStyleTemplateGallery = (ctx: BuildContext): HTMLElement => {
       }
     });
 
-    const menuButton = document.createElement("button");
-    menuButton.type = "button";
-    menuButton.className = "home-quick-style-card__menu";
-    menuButton.setAttribute("aria-label", `Configure ${template.label}`);
-    menuButton.textContent = "⋯";
-    menuButton.addEventListener("click", (event) => {
-      event.stopPropagation();
-      const menu = new Menu([]);
-      menu.element.appendChild(
-        MenuItem({
-          label: "Configure style template",
-          onSelect: () => {
-            openStyleMiniApp(menuButton, appState, { templateId: template.templateId });
-            menu.close();
-          }
-        })
-      );
-      menu.open(menuButton);
-    });
-
-    card.append(label, description, menuButton);
+    card.append(label, description);
     gallery.appendChild(card);
   });
   attachStylesContextMenu(gallery, ctx);

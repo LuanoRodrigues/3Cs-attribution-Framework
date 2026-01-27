@@ -82,6 +82,16 @@ export interface AudioSettings {
   volume: number;
 }
 
+export interface AudioCacheEntry {
+  key: string;
+  sectionId: string;
+  round?: AnalyseRoundId;
+  voice: string;
+  includeRefs: boolean;
+  textHash: string;
+  updatedAt?: string;
+}
+
 export type AnalysePageId =
   | "corpus"
   | "batches"

@@ -6,33 +6,41 @@ export const RetrieveTab: RibbonTab = {
   description: "Shape search queries, collect records, and import new files.",
   actions: [
     {
-      id: "retrieve-query-builder",
-      label: "Query Builder",
-      hint: "Launch a shell to compose keywords, filters, and sources.",
-      iconId: "retrieve-query",
-      group: "Search",
+      id: "retrieve-search",
+      label: "Search",
+      hint: "Open the query builder to search academic databases.",
+      iconId: "retrieve-fetch",
+      group: "Academic Databases",
       command: { phase: "retrieve", action: "open_query_builder" },
       opensPanel: true,
       panel: {
-        title: "Query Builder",
-        description: "Build or edit queries before sending them to a source."
+        title: "Academic Search",
+        description: "Search academic databases and collect records."
       }
     },
     {
-      id: "retrieve-fetch-source",
-      label: "Fetch from Source",
-      hint: "Pull the latest results for the active query.",
-      iconId: "retrieve-fetch",
-      group: "Search",
-      command: { phase: "retrieve", action: "fetch_from_source" }
+      id: "retrieve-load-zotero",
+      label: "Zotero",
+      hint: "Load records from Zotero.",
+      iconId: "retrieve-import",
+      group: "Data Loader",
+      command: { phase: "retrieve", action: "datahub_load_zotero" }
     },
     {
-      id: "retrieve-import-file",
-      label: "Import File",
-      hint: "Bring in a PDF or dataset for screening.",
+      id: "retrieve-load-local",
+      label: "Local",
+      hint: "Load a local CSV or Excel file.",
       iconId: "retrieve-import",
-      group: "Import",
-      command: { phase: "retrieve", action: "import_file" }
+      group: "Data Loader",
+      command: { phase: "retrieve", action: "datahub_load_file" }
+    },
+    {
+      id: "retrieve-load-excel",
+      label: "Excel",
+      hint: "Load an Excel file from disk.",
+      iconId: "retrieve-import",
+      group: "Data Loader",
+      command: { phase: "retrieve", action: "datahub_load_excel" }
     }
   ]
 };

@@ -1,4 +1,5 @@
 import { registerPlugin } from "../legacy/api/plugin_registry.js";
+import type { EditorHandle } from "../legacy/api/leditor.js";
 import { searchExtension } from "../legacy/editor/search.js";
 import { createSearchPanel } from "../legacy/ui/search_panel.js";
 import {
@@ -18,11 +19,16 @@ const ensurePanel = (editorHandle: Parameters<typeof createSearchPanel>[0]) => {
   return panelController;
 };
 
+type SearchPanelArgs = {
+  query?: string;
+  replacement?: string;
+};
+
 registerPlugin({
   id: "search",
   tiptapExtensions: [searchExtension],
   commands: {
-    SearchReplace(editorHandle) {
+    SearchReplace(editorHandle: EditorHandle) {
       const panel = ensurePanel(editorHandle);
       panel.toggle();
     },
@@ -32,21 +38,21 @@ registerPlugin({
     SearchPrev() {
       prevMatch();
     },
-    ReplaceCurrent(_editorHandle, args) {
+    ReplaceCurrent(_editorHandle: EditorHandle, args?: SearchPanelArgs) {
       const replacement = typeof args?.replacement === "string" ? args.replacement : "";
       replaceCurrent(replacement);
     },
-    ReplaceAll(_editorHandle, args) {
+    ReplaceAll(_editorHandle: EditorHandle, args?: SearchPanelArgs) {
       const query = typeof args?.query === "string" ? args.query : "";
       const replacement = typeof args?.replacement === "string" ? args.replacement : "";
       replaceAll(query, replacement);
     },
-    SetSearchQuery(_editorHandle, args) {
+    SetSearchQuery(_editorHandle: EditorHandle, args?: SearchPanelArgs) {
       const query = typeof args?.query === "string" ? args.query : "";
       setQuery(query);
     }
   },
-  onInit(editorHandle) {
+  onInit(editorHandle: EditorHandle) {
     ensurePanel(editorHandle);
   }
 });

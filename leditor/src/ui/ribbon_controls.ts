@@ -3,6 +3,8 @@ import { createRibbonIcon, type RibbonIconName } from "../legacy/ui/ribbon_icons
 import { RibbonControl } from "../legacy/ui/ribbon_primitives.js";
 import { Menu } from "../legacy/ui/ribbon_menu.js";
 
+type LegacyMenuInstance = InstanceType<typeof Menu>;
+
 export type RibbonButtonSize = "small" | "medium" | "large";
 
 type IconOrElement = RibbonIconName | HTMLElement;
@@ -62,7 +64,7 @@ export const createRibbonButton = (options: RibbonButtonOptions): HTMLButtonElem
   });
   new RibbonControl(button);
   if (options.commandId) {
-    button.dataset.commandId = options.commandId;
+    button.dataset.commandId = String(options.commandId);
   }
   return button;
 };
@@ -81,7 +83,7 @@ export const setPressedState = (button: HTMLButtonElement, state: boolean | "mix
 type RibbonDropdownOptions = {
   icon: IconOrElement;
   label: string;
-  menu: Menu;
+  menu: LegacyMenuInstance;
 };
 
 export const createRibbonDropdownButton = (options: RibbonDropdownOptions): HTMLButtonElement => {

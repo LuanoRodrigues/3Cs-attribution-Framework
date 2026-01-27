@@ -23,6 +23,7 @@ import { featureFlags } from "../legacy/ui/feature_flags.js";
 import type { EditorHandle } from "../api/leditor.ts";
 import { reconcileFootnotes } from "../uipagination/footnotes/registry.ts";
 import { paginateWithFootnotes, type PageFootnoteState } from "../uipagination/footnotes/paginate_with_footnotes.ts";
+import { TextSelection } from "@tiptap/pm/state";
 import type { FootnoteRenderEntry, FootnoteKind } from "../uipagination/footnotes/model.ts";
 
 type A4ViewMode = "single" | "fit-width" | "two-page";
@@ -217,7 +218,8 @@ html, body {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: auto;
+  scrollbar-gutter: stable both-edges;
 }
 
 .leditor-app .ProseMirror a,
@@ -271,7 +273,7 @@ html, body {
   align-items: center;
   padding: 32px 24px 80px;
   background: var(--page-canvas-bg);
-  overflow: auto;
+  overflow: visible;
 }
 
 .leditor-a4-zoom {
@@ -424,12 +426,14 @@ html, body {
   align-items: flex-start;
   font-size: var(--footnote-font-size);
   line-height: 1.4;
+  cursor: text;
 }
 
 .leditor-footnote-entry-number,
 .leditor-endnote-entry-number {
   font-weight: 600;
   min-width: 1.5em;
+  user-select: none;
 }
 
 .leditor-footnote {
@@ -442,7 +446,15 @@ html, body {
   font-size: 0.7em;
   line-height: 1;
   vertical-align: super;
+  font-variant-position: super;
+  position: relative;
+  top: -0.35em;
   cursor: pointer;
+}
+
+.leditor-footnote-entry.leditor-footnote-entry--active {
+  background: rgba(255, 228, 140, 0.35);
+  border-radius: 4px;
 }
 
 .leditor-footnote-popover {
@@ -457,6 +469,7 @@ html, body {
 .leditor-endnote-entry-text {
   flex: 1;
   white-space: pre-wrap;
+  outline: none;
 }
 
 .leditor-endnote-empty {
@@ -715,6 +728,7 @@ html, body {
   width: var(--page-width);
   height: var(--page-height);
   position: relative;
+  pointer-events: none;
 }
 
 .leditor-page-overlay .leditor-page-header,
@@ -749,6 +763,10 @@ html, body {
 }
 
 .leditor-header-footer-editing .leditor-page-overlays {
+  pointer-events: auto;
+}
+
+.leditor-header-footer-editing .leditor-page-overlay {
   pointer-events: auto;
 }
 
@@ -1206,6 +1224,28 @@ html, body {
 .leditor-page-footnotes.leditor-page-footnotes--active {
   border-top: var(--footnote-separator-height) solid var(--footnote-separator-color);
   padding-top: var(--footnote-spacing);
+}
+
+.leditor-footnote-continuation {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--footnote-font-size);
+  color: var(--page-footnote-color);
+  justify-content: flex-end;
+}
+.leditor-footnote-continuation--active {
+  display: flex;
+}
+.leditor-footnote-continuation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .leditor-page-stack {
@@ -1703,6 +1743,26 @@ export const mountA4Layout = (
     prose.focus();
   };
 
+  const ensurePointerSelection = (event: PointerEvent) => {
+    if (headerFooterMode) return;
+    if (!attachedEditorHandle) return;
+    const prose = editorEl.querySelector<HTMLElement>(".ProseMirror");
+    if (!prose) return;
+    const target = event.target as HTMLElement | null;
+    if (!target || !prose.contains(target)) return;
+    const editorInstance = attachedEditorHandle.getEditor();
+    if (!editorInstance?.view) return;
+    const view = editorInstance.view;
+    const coords = view.posAtCoords({ left: event.clientX, top: event.clientY });
+    if (!coords || typeof coords.pos !== "number") return;
+    const docSize = view.state.doc.content.size;
+    const safePos = Math.min(Math.max(0, coords.pos), docSize);
+    const selection = TextSelection.create(view.state.doc, safePos);
+    const tr = view.state.tr.setSelection(selection);
+    view.dispatch(tr);
+    view.focus();
+  };
+
   const measureCssLength = (value: string, anchor: HTMLElement): number => {
     const probe = document.createElement("div");
     probe.style.position = "absolute";
@@ -1795,24 +1855,41 @@ export const mountA4Layout = (
   };
 
   const updatePageNumbers = () => {
-    const footers = overlayLayer.querySelectorAll(".leditor-page-footer");
-    footers.forEach((footer, index) => {
-      const pageNumber = footer.querySelector(".leditor-page-number");
-      if (pageNumber) {
-        pageNumber.textContent = String(index + 1);
+    const overlays = overlayLayer.querySelectorAll<HTMLElement>(".leditor-page-overlay");
+    overlays.forEach((overlay, index) => {
+      const label = String(index + 1);
+      const footerNumber = overlay.querySelector(".leditor-page-footer .leditor-page-number");
+      if (footerNumber) {
+        footerNumber.textContent = label;
+      }
+      const headerNumber = overlay.querySelector(".leditor-page-header .leditor-page-number");
+      if (headerNumber) {
+        headerNumber.textContent = label;
       }
     });
   };
 
-  const determineFootnotePageIndex = (node: HTMLElement, pageHeight: number, editorRect: DOMRect) => {
+  const determineFootnotePageIndex = (
+    node: HTMLElement,
+    pageElements: HTMLElement[],
+    pageHeight: number,
+    editorRect: DOMRect
+  ) => {
+    const maxPageIndex = Math.max(0, pageCount - 1);
+    if (pageElements.length > 0) {
+      const pageIndex = pageElements.findIndex((page) => page.contains(node));
+      if (pageIndex >= 0) {
+        return clamp(pageIndex, 0, maxPageIndex);
+      }
+    }
     if (pageHeight <= 0) return 0;
     const markerRect = node.getBoundingClientRect();
     const relativeTop = Math.max(0, markerRect.top - editorRect.top);
     const rawIndex = Math.floor(relativeTop / pageHeight);
-    return clamp(rawIndex, 0, Math.max(0, pageCount - 1));
+    return clamp(rawIndex, 0, maxPageIndex);
   };
 
-  const renderEndnotes = (entries: FootnoteEntry[]) => {
+  const renderEndnotes = (entries: FootnoteRenderEntry[]) => {
     endnotesList.innerHTML = "";
     if (entries.length === 0) {
       const placeholder = document.createElement("div");
@@ -1842,9 +1919,10 @@ export const mountA4Layout = (
   const collectFootnoteEntries = () => {
     const registry = getFootnoteRegistry();
     const nodes = Array.from(editorEl.querySelectorAll<HTMLElement>(".leditor-footnote"));
-  const entries: FootnoteRenderEntry[] = [];
+    const entries: FootnoteRenderEntry[] = [];
     const numbering = getFootnoteNumbering();
     let fallbackCounter = 0;
+    const pageElements = Array.from(editorEl.querySelectorAll<HTMLElement>(".leditor-page"));
     const pageHeight = measurePageHeight();
     const editorRect = editorEl.getBoundingClientRect();
     for (const node of nodes) {
@@ -1864,7 +1942,10 @@ export const mountA4Layout = (
       }
       const text = view?.getPlainText() || "";
       const rawKind = (node.dataset.footnoteKind ?? "footnote").toLowerCase();
-      const pageIndex = rawKind === "footnote" ? determineFootnotePageIndex(node, pageHeight, editorRect) : 0;
+      const pageIndex =
+        rawKind === "footnote"
+          ? determineFootnotePageIndex(node, pageElements, pageHeight, editorRect)
+          : 0;
       const normalizedKind: FootnoteKind = rawKind === "endnote" ? "endnote" : "footnote";
       entries.push({
         footnoteId: id || `fn-${numberLabel}-${pageIndex}`,
@@ -1877,54 +1958,72 @@ export const mountA4Layout = (
     return entries;
   };
 
+  const buildFootnotePageStates = (): PageFootnoteState[] => {
+    const pages = Array.from(appRoot.querySelectorAll<HTMLElement>(".leditor-page"));
+    return pages
+      .map((page, index) => {
+        const container = page.querySelector<HTMLElement>(".leditor-page-footnotes");
+        const continuation = page.querySelector<HTMLElement>(".leditor-footnote-continuation");
+        if (!container || !continuation) return null;
+        const content = page.querySelector<HTMLElement>(".leditor-page-content");
+        return {
+          pageIndex: Number(page.dataset.pageIndex ?? String(index)),
+          pageElement: page,
+          contentElement: content,
+          footnoteContainer: container,
+          continuationContainer: continuation
+        };
+      })
+      .filter((state): state is PageFootnoteState => Boolean(state));
+  };
+
   const renderFootnoteSections = () => {
-    const containers = Array.from(
-      appRoot.querySelectorAll<HTMLElement>(".leditor-page .leditor-page-footnotes")
-    );
     const entries = collectFootnoteEntries();
-    const footnoteMap = new Map<number, FootnoteEntry[]>();
-    const endnoteEntries: FootnoteEntry[] = [];
-    entries.forEach((entry) => {
-      if (entry.kind === "endnote") {
-        endnoteEntries.push(entry);
-        return;
-      }
-      const pageList = footnoteMap.get(entry.pageIndex) ?? [];
-      pageList.push(entry);
-      footnoteMap.set(entry.pageIndex, pageList);
+    paginateWithFootnotes({
+      entries: entries.filter((entry) => entry.kind === "footnote"),
+      pageStates: buildFootnotePageStates()
     });
-    containers.forEach((container) => {
-      const parent = container.closest<HTMLElement>(".leditor-page");
-      const pageIndex = Number(parent?.dataset.pageIndex ?? "0");
-      container.innerHTML = "";
-      const pageEntries = footnoteMap.get(pageIndex) ?? [];
-      const hasEntries = pageEntries.length > 0;
-      container.classList.toggle("leditor-page-footnotes--active", hasEntries);
-      if (!hasEntries) {
-        return;
-      }
-      const list = document.createElement("ol");
-      list.className = "leditor-footnote-list";
-      pageEntries.forEach((entry) => {
-        const item = document.createElement("li");
-        item.className = "leditor-footnote-entry";
-        const number = document.createElement("span");
-        number.className = "leditor-footnote-entry-number";
-        number.textContent = entry.number;
-        const text = document.createElement("span");
-        text.className = "leditor-footnote-entry-text";
-        text.textContent = entry.text.trim().length > 0 ? entry.text : "Empty footnote";
-        item.appendChild(number);
-        item.appendChild(text);
-        list.appendChild(item);
-      });
-      container.appendChild(list);
-    });
-    renderEndnotes(endnoteEntries);
+    renderEndnotes(entries.filter((entry) => entry.kind === "endnote"));
     scheduleFootnoteHeightMeasurement();
   };
 
+  const focusFootnoteEntry = (footnoteId: string) => {
+    const entry = appRoot.querySelector<HTMLElement>(
+      `.leditor-footnote-entry[data-footnote-id="${footnoteId}"]`
+    );
+    if (!entry) return;
+    entry.classList.add("leditor-footnote-entry--active");
+    window.setTimeout(() => entry.classList.remove("leditor-footnote-entry--active"), 900);
+    const text = entry.querySelector<HTMLElement>(".leditor-footnote-entry-text");
+    text?.focus();
+  };
+
+  const handleFootnoteEntryClick = (event: MouseEvent) => {
+    const target = (event.target as HTMLElement | null)?.closest<HTMLElement>(".leditor-footnote-entry");
+    if (!target) return;
+    const footnoteId = target.dataset.footnoteId;
+    if (!footnoteId) return;
+    const view = getFootnoteRegistry().get(footnoteId);
+    if (view) {
+      view.open();
+      focusFootnoteEntry(footnoteId);
+    }
+  };
+
+  const handleFootnoteEntryInput = (event: Event) => {
+    const target = (event.target as HTMLElement | null)?.closest<HTMLElement>(".leditor-footnote-entry-text");
+    if (!target) return;
+    const footnoteId = target.dataset.footnoteId;
+    if (!footnoteId) return;
+    const view = getFootnoteRegistry().get(footnoteId);
+    if (!view) return;
+    const text = target.textContent ?? "";
+    view.setPlainText(text);
+  };
+
   let footnoteHeightHandle = 0;
+  const footnoteHeightCache = new Map<number, number>();
+  const FOOTNOTE_HEIGHT_DIRTY_THRESHOLD = 0.75;
   function scheduleFootnoteHeightMeasurement() {
     if (footnoteHeightHandle) return;
     footnoteHeightHandle = window.requestAnimationFrame(() => {
@@ -1933,6 +2032,7 @@ export const mountA4Layout = (
         appRoot.querySelectorAll<HTMLElement>(".leditor-page .leditor-page-footnotes")
       );
       let maxHeight = 0;
+      let earliestDirtyPage: number | null = null;
       footnoteContainers.forEach((container) => {
         const host =
           container.closest<HTMLElement>(".leditor-page") ?? container.closest<HTMLElement>(".leditor-page-overlay");
@@ -1940,12 +2040,24 @@ export const mountA4Layout = (
         container.style.setProperty("--page-footnote-height", `${height}px`);
         if (host) {
           host.style.setProperty("--page-footnote-height", `${height}px`);
+          const pageIndex = Number(host.dataset.pageIndex ?? "-1");
+          if (pageIndex >= 0) {
+            const prevHeight = footnoteHeightCache.get(pageIndex);
+            if (prevHeight === undefined || Math.abs(height - prevHeight) >= FOOTNOTE_HEIGHT_DIRTY_THRESHOLD) {
+              footnoteHeightCache.set(pageIndex, height);
+              earliestDirtyPage =
+                earliestDirtyPage === null ? pageIndex : Math.min(earliestDirtyPage, pageIndex);
+            }
+          }
         }
         if (height > maxHeight) {
           maxHeight = height;
         }
       });
       zoomLayer.style.setProperty("--page-footnote-height", `${maxHeight}px`);
+      if (earliestDirtyPage !== null) {
+        requestPagination();
+      }
     });
   }
 
@@ -1987,11 +2099,13 @@ export const mountA4Layout = (
   const normalizePageInnerOrder = (inner: HTMLElement) => {
     const header = inner.querySelector<HTMLElement>(".leditor-page-header");
     const content = inner.querySelector<HTMLElement>(".leditor-page-content");
+    const continuation = inner.querySelector<HTMLElement>(".leditor-footnote-continuation");
     const footnotes = inner.querySelector<HTMLElement>(".leditor-page-footnotes");
     const footer = inner.querySelector<HTMLElement>(".leditor-page-footer");
-    if (!header || !content || !footnotes || !footer) return;
+    if (!header || !content || !footnotes || !footer || !continuation) return;
     inner.appendChild(header);
     inner.appendChild(content);
+    inner.appendChild(continuation);
     inner.appendChild(footnotes);
     inner.appendChild(footer);
   };
@@ -2021,8 +2135,13 @@ export const mountA4Layout = (
     content.contentEditable = "true";
     content.setAttribute("role", "textbox");
     content.setAttribute("translate", "no");
+    const continuation = document.createElement("div");
+    continuation.className = "leditor-footnote-continuation";
+    continuation.setAttribute("aria-hidden", "true");
+    continuation.contentEditable = "false";
     inner.appendChild(header);
     inner.appendChild(content);
+    inner.appendChild(continuation);
     inner.appendChild(footnotes);
     inner.appendChild(footer);
     normalizePageInnerOrder(inner);
@@ -2501,14 +2620,14 @@ const renderPages = (count: number) => {
     }
   };
 
-  const requestPagination = () => {
+  function requestPagination() {
     if (paginationQueued) return;
     paginationQueued = true;
     window.requestAnimationFrame(() => {
       paginationQueued = false;
       updatePagination();
     });
-  };
+  }
 
   const setContentFrameHeight = (value: number) => {
     if (!Number.isFinite(value)) {
@@ -2821,59 +2940,13 @@ const renderPages = (count: number) => {
     }
   };
 
-  const shouldForwardOverlayEvent = (target: HTMLElement | null): boolean => {
-    if (!target) return false;
-    return (
-      !target.closest(".leditor-page-header") &&
-      !target.closest(".leditor-page-footer") &&
-      !target.closest(".leditor-page-footnotes") &&
-      !target.closest(".leditor-margin-guide")
-    );
-  };
-
-  const forwardOverlayInteraction = (event: MouseEvent | PointerEvent) => {
-    if (!shouldForwardOverlayEvent(event.target as HTMLElement | null)) return;
-    const prose = editorEl.querySelector<HTMLElement>(".ProseMirror");
-    if (!prose) return;
-    const hit = document.elementFromPoint(event.clientX, event.clientY) as HTMLElement | null;
-    const dispatchTarget = hit && prose.contains(hit) ? hit : prose;
-    const mouseInit: MouseEventInit = {
-      bubbles: true,
-      cancelable: true,
-      clientX: event.clientX,
-      clientY: event.clientY,
-      button: "button" in event ? event.button : 0,
-      buttons: "buttons" in event ? event.buttons : 1,
-      ctrlKey: event.ctrlKey,
-      shiftKey: event.shiftKey,
-      altKey: event.altKey,
-      metaKey: event.metaKey
-    };
-    const forwarded =
-      event instanceof PointerEvent
-        ? new PointerEvent(event.type, {
-            ...mouseInit,
-            pointerId: event.pointerId,
-            pointerType: event.pointerType,
-            pressure: event.pressure,
-            tiltX: event.tiltX,
-            tiltY: event.tiltY,
-            width: event.width,
-            height: event.height,
-            tangentialPressure: event.tangentialPressure
-          })
-        : new MouseEvent(event.type, mouseInit);
-    dispatchTarget.dispatchEvent(forwarded);
-    event.preventDefault();
-    event.stopPropagation();
-  };
-
-  overlayLayer.addEventListener("pointerdown", forwardOverlayInteraction);
-  overlayLayer.addEventListener("contextmenu", forwardOverlayInteraction);
+  canvas.addEventListener("pointerdown", ensurePointerSelection, true);
   overlayLayer.addEventListener("dblclick", handleOverlayDblClick);
   pageStack.addEventListener("dblclick", handlePageHeaderFooterDblClick);
   overlayLayer.addEventListener("input", handleOverlayInput, true);
   overlayLayer.addEventListener("click", handleOverlayClick);
+  appRoot.addEventListener("click", handleFootnoteEntryClick);
+  appRoot.addEventListener("input", handleFootnoteEntryInput);
   document.addEventListener("keydown", handleKeydown);
 
   initTheme();
@@ -2952,10 +3025,13 @@ const renderPages = (count: number) => {
       topSliderInstance?.destroy();
       bottomSliderInstance?.destroy();
       unsubscribeMarginControls();
+      canvas.removeEventListener("pointerdown", ensurePointerSelection, true);
       overlayLayer.removeEventListener("dblclick", handleOverlayDblClick);
       pageStack.removeEventListener("dblclick", handlePageHeaderFooterDblClick);
       overlayLayer.removeEventListener("input", handleOverlayInput, true);
       overlayLayer.removeEventListener("click", handleOverlayClick);
+      appRoot.removeEventListener("click", handleFootnoteEntryClick);
+      appRoot.removeEventListener("input", handleFootnoteEntryInput);
       document.removeEventListener("keydown", handleKeydown);
     },
     setZoom,

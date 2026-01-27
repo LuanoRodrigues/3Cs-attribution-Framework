@@ -1,7 +1,7 @@
 import type { Editor } from "@tiptap/core";
 import type { EditorHandle } from "../legacy/api/leditor.js";
 import { getFootnoteRegistry, type FootnoteNodeViewAPI } from "../extensions/extension_footnote.ts";
-import { getFootnoteIds } from "../legacy/editor/footnote_state.js";
+import { reconcileFootnotes } from "../uipagination/footnotes/registry.ts";
 
 type FootnotePanelController = {
   open(): void;
@@ -12,16 +12,15 @@ type FootnotePanelController = {
 
 const syncFootnoteNumbers = (editor: Editor) => {
   const registry = getFootnoteRegistry();
-  let counter = 0;
-  editor.state.doc.descendants((node) => {
-    if (node.type.name !== "footnote") return true;
-    counter += 1;
-    const id = node.attrs?.id;
-    if (typeof id === "string") {
-      registry.get(id)?.setNumber(counter);
+  const numbering = reconcileFootnotes(editor.state.doc).numbering;
+  for (const [id, view] of registry.entries()) {
+    const number = numbering.get(id);
+    if (number) {
+      view.setNumber(number);
+    } else {
+      view.setNumber(Number.NaN);
     }
-    return true;
-  });
+  }
 };
 
 const ensureFootnoteStyles = () => {
@@ -128,9 +127,17 @@ export const createFootnoteManager = (
   editor: Editor
 ): FootnotePanelController => {
   ensureFootnoteStyles();
-  const handleEditorUpdate = () => syncFootnoteNumbers(editor);
+  let syncHandle = 0;
+  const scheduleSync = () => {
+    if (syncHandle) return;
+    syncHandle = window.requestAnimationFrame(() => {
+      syncHandle = 0;
+      syncFootnoteNumbers(editor);
+    });
+  };
+  const handleEditorUpdate = () => scheduleSync();
   editor.on("update", handleEditorUpdate);
-  syncFootnoteNumbers(editor);
+  scheduleSync();
   const overlay = document.createElement("div");
   overlay.className = "leditor-footnote-panel-overlay";
   const panel = document.createElement("div");
@@ -216,10 +223,6 @@ export const createFootnoteManager = (
     const defaultText = snippet.length > 0 ? snippet : "Footnote text";
     editorHandle.execCommand("InsertFootnote", { text: defaultText });
     requestAnimationFrame(() => {
-      const ids = getFootnoteIds();
-      const id = ids[ids.length - 1];
-      const view = getFootnoteRegistry().get(id);
-      view?.open();
       refreshList();
     });
   };

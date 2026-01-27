@@ -182,6 +182,9 @@ export class WritePage {
   private container: HTMLElement;
   private hostPackage: HostPackage;
   private sync?: WritePanel;
+  private hostConnectionPromise: Promise<void> | null = null;
+  private hostConnectionObserver: MutationObserver | null = null;
+  private hostConnectionTimeout: number | null = null;
 
   constructor(mount: HTMLElement) {
     this.container = document.createElement("div");
@@ -194,7 +197,7 @@ export class WritePage {
     this.addWriteBodyClass();
     const panelScope = getDefaultCoderScope();
     writePanelScopeId = panelScope;
-    const ready = ensureScriptLoaded();
+    const ready = this.waitForHostConnection().then(() => ensureScriptLoaded());
     this.sync = new WritePanel({ scopeId: panelScope, scriptReady: ready });
     void this.sync.init();
   }
@@ -204,6 +207,7 @@ export class WritePage {
   }
 
   destroy(): void {
+    this.cleanupHostConnectionWatcher();
     this.sync?.destroy();
     const host = this.hostPackage.host;
     if (host.parentElement === this.container) {
@@ -227,5 +231,49 @@ export class WritePage {
   private removeWriteBodyClass(): void {
     document.documentElement?.classList.remove(BODY_WRITE_CLASS);
     document.body?.classList.remove(BODY_WRITE_CLASS);
+  }
+
+  private waitForHostConnection(): Promise<void> {
+    if (this.hostConnectionPromise) {
+      return this.hostConnectionPromise;
+    }
+    const host = this.hostPackage.host;
+    if (host.isConnected) {
+      this.hostConnectionPromise = Promise.resolve();
+      return this.hostConnectionPromise;
+    }
+    this.hostConnectionPromise = new Promise((resolve) => {
+      const root = document.body ?? document.documentElement;
+      if (!root) {
+        resolve();
+        return;
+      }
+      const settle = (): void => {
+        this.cleanupHostConnectionWatcher();
+        resolve();
+      };
+      this.hostConnectionObserver = new MutationObserver(() => {
+        if (host.isConnected) {
+          settle();
+        }
+      });
+      this.hostConnectionObserver.observe(root, { childList: true, subtree: true });
+      this.hostConnectionTimeout = window.setTimeout(() => {
+        console.warn("[write][host] host attachment wait timed out");
+        settle();
+      }, HOST_READY_TIMEOUT_MS);
+    });
+    return this.hostConnectionPromise;
+  }
+
+  private cleanupHostConnectionWatcher(): void {
+    if (this.hostConnectionObserver) {
+      this.hostConnectionObserver.disconnect();
+      this.hostConnectionObserver = null;
+    }
+    if (this.hostConnectionTimeout !== null) {
+      window.clearTimeout(this.hostConnectionTimeout);
+      this.hostConnectionTimeout = null;
+    }
   }
 }

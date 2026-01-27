@@ -106,9 +106,11 @@ const CASE_MODES = [
   { label: "Capitalize Each Word", value: "title" }
 ];
 
+type LegacyMenuInstance = InstanceType<typeof Menu>;
+
 type RibbonHooks = {
-  registerToggle?: (commandId: string, element: HTMLButtonElement) => void;
-  registerAlignment?: (variant: string, element: HTMLButtonElement) => void;
+  registerToggle?: (commandId: EditorCommandId, element: HTMLButtonElement) => void;
+  registerAlignment?: (variant: AlignmentVariant, element: HTMLButtonElement) => void;
 };
 
 function openTrackChangesPopover(anchor: HTMLElement, editorHandle: EditorHandle, heading: string): void {
@@ -247,7 +249,8 @@ function openAiPopover(
   });
 })();
 
-const createRibbonGroup = (label: string, elements: HTMLElement[]): HTMLDivElement => new RibbonGroup(label, elements).element;
+const createRibbonGroup = (label: string, elements: HTMLElement[]): HTMLDivElement =>
+  new RibbonGroup(label, elements).element as HTMLDivElement;
 
 const createRibbonSeparator = (): HTMLDivElement => {
   const separator = document.createElement("div");
@@ -488,7 +491,8 @@ const createModeToggleButton = ({
 const MARKUP_STORAGE_KEY = "leditor:markup-mode";
 const MARKUP_OPTIONS = ["All", "None", "Original"] as const;
 type MarkupMode = (typeof MARKUP_OPTIONS)[number];
-const MARKUP_COMMANDS: Record<MarkupMode, Extract<EditorCommandId, "MarkupAll" | "MarkupNone" | "MarkupOriginal">> = {
+type MarkupCommandId = "MarkupAll" | "MarkupNone" | "MarkupOriginal";
+const MARKUP_COMMANDS: Record<MarkupMode, MarkupCommandId> = {
   All: "MarkupAll",
   None: "MarkupNone",
   Original: "MarkupOriginal"
@@ -525,7 +529,7 @@ const createToggleIconButton = (
 type RibbonDropdownButtonOptions = {
   icon: RibbonIconName;
   label: string;
-  menu: Menu;
+  menu: LegacyMenuInstance;
 };
 
 const createDropdownButton = (options: RibbonDropdownButtonOptions): HTMLButtonElement =>
@@ -873,9 +877,11 @@ const ALIGN_ICON_MAP: Record<AlignmentVariant, RibbonIconName> = {
   justify: "alignJustify"
 };
 
+type AlignCommandId = "AlignLeft" | "AlignCenter" | "AlignRight" | "JustifyFull";
+
 const createAlignButton = (
   label: string,
-  commandId: Extract<EditorCommandId, "AlignLeft" | "AlignCenter" | "AlignRight" | "JustifyFull">,
+  commandId: AlignCommandId,
   variant: AlignmentVariant,
   editorHandle: EditorHandle,
   registerAlignment?: (variant: AlignmentVariant, element: HTMLButtonElement) => void
@@ -892,10 +898,13 @@ const createAlignButton = (
   return button;
 };
 
+type PickrColorCommandId = "TextColor" | "HighlightColor";
+type PickrClearCommandId = "RemoveTextColor" | "RemoveHighlightColor";
+
 const createPickrColorButton = (
   editorHandle: EditorHandle,
-  commandId: Extract<EditorCommandId, "TextColor" | "HighlightColor">,
-  clearCommandId: Extract<EditorCommandId, "RemoveTextColor" | "RemoveHighlightColor">,
+  commandId: PickrColorCommandId,
+  clearCommandId: PickrClearCommandId,
   icon: RibbonIconName,
   label: string,
   colors: string[]
@@ -1361,6 +1370,8 @@ const createCitationStyleDropdown = (editorHandle: EditorHandle): HTMLButtonElem
         return "Numeric (Vancouver)";
       case "chicago-note-bibliography":
         return "Footnote (Chicago Notes)";
+      case "chicago-footnotes":
+        return "Footnote (Chicago Footnotes)";
       case "chicago-note-bibliography-endnote":
         return "Endnote (Chicago Notes)";
       default:
@@ -1371,7 +1382,7 @@ const createCitationStyleDropdown = (editorHandle: EditorHandle): HTMLButtonElem
     button.dataset.value = style;
   };
   applyStyle(readCitationStyle(editorHandle.getEditor?.()));
-  CITATION_STYLES.forEach((style) => {
+  CITATION_STYLES.forEach((style: (typeof CITATION_STYLES)[number]) => {
     const item = MenuItem({
       label: formatLabel(style),
       onSelect: () => {
@@ -1771,8 +1782,13 @@ const createViewPanel = (editorHandle: EditorHandle): HTMLElement => {
 const TABLE_GRID_ROWS = 8;
 const TABLE_GRID_COLS = 10;
 
+type TemplateDefinition = {
+  id?: string;
+  label?: string;
+};
+
 const createCoverTemplateDropdown = (editorHandle: EditorHandle): HTMLButtonElement => {
-  const templates = getTemplates();
+  const templates = getTemplates() as TemplateDefinition[];
   const menu = new Menu([]);
   const button = createDropdownButton({
     icon: "cover",
@@ -1784,11 +1800,15 @@ const createCoverTemplateDropdown = (editorHandle: EditorHandle): HTMLButtonElem
     menu.element.appendChild(empty);
     return button;
   }
-  templates.forEach((template) => {
+  templates.forEach((template: TemplateDefinition) => {
+    const templateId = template.id;
+    if (!templateId) {
+      return;
+    }
     const item = MenuItem({
-      label: template.label,
+      label: template.label ?? "Template",
       onSelect: () => {
-        dispatchCommand(editorHandle, "InsertTemplate", { id: template.id });
+        dispatchCommand(editorHandle, "InsertTemplate", { id: templateId });
         menu.close();
       }
     });
@@ -2396,11 +2416,11 @@ export const renderRibbon = (host: HTMLElement, editorHandle: EditorHandle): voi
     toggles: [],
     alignmentButtons: {}
   };
-  const registerToggle = (commandId: string, element: HTMLButtonElement) => {
-    selectionTargets.toggles.push({ commandId: commandId as EditorCommandId, element });
+  const registerToggle = (commandId: EditorCommandId, element: HTMLButtonElement) => {
+    selectionTargets.toggles.push({ commandId, element });
   };
-  const registerAlignment = (variant: string, element: HTMLButtonElement) => {
-    selectionTargets.alignmentButtons[variant as AlignmentVariant] = element;
+  const registerAlignment = (variant: AlignmentVariant, element: HTMLButtonElement) => {
+    selectionTargets.alignmentButtons[variant] = element;
   };
   const hooks: RibbonHooks = {
     registerToggle,

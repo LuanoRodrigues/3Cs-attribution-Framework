@@ -3,6 +3,7 @@ import Link from "@tiptap/extension-link";
 import StarterKit from "@tiptap/starter-kit";
 import type { Mark, Node as ProseMirrorNode } from "@tiptap/pm/model";
 import type { EditorView } from "@tiptap/pm/view";
+import { reconcileFootnotes } from "../uipagination/footnotes/registry.ts";
 
 export type FootnoteNodeViewAPI = {
   id: string;
@@ -25,6 +26,7 @@ type FootnoteNodeViewProps = {
 };
 
 class FootnoteNodeView implements FootnoteNodeViewAPI {
+  readonly id: string;
   readonly footnoteId: string;
   private node: ProseMirrorNode;
   private readonly view: EditorView;
@@ -45,6 +47,7 @@ class FootnoteNodeView implements FootnoteNodeViewAPI {
     this.view = view;
     this.getPos = getPos;
     this.footnoteId = String(node.attrs?.footnoteId ?? `footnote-${Math.random().toString(36).slice(2)}`);
+    this.id = this.footnoteId;
 
     this.root = document.createElement("span");
     this.root.className = "leditor-footnote";
@@ -120,6 +123,7 @@ class FootnoteNodeView implements FootnoteNodeViewAPI {
     document.addEventListener("click", this.documentClickHandler);
 
     footnoteRegistry.set(this.footnoteId, this);
+    this.syncNumberFromDoc();
   }
 
   private setupInnerEditor() {
@@ -235,6 +239,16 @@ class FootnoteNodeView implements FootnoteNodeViewAPI {
     this.innerEditor?.chain().focus().toggleMark(mark as any).run();
   }
 
+  private syncNumberFromDoc() {
+    const numbering = reconcileFootnotes(this.view.state.doc).numbering;
+    const number = numbering.get(this.footnoteId);
+    if (number) {
+      this.setNumber(number);
+    } else {
+      this.setNumber(Number.NaN);
+    }
+  }
+
   private toggle() {
     if (this.isOpen) {
       this.close();
@@ -295,6 +309,7 @@ class FootnoteNodeView implements FootnoteNodeViewAPI {
     this.syncingFromNode = true;
     this.lastInnerContent = serialized;
     this.innerEditor?.commands.setContent(target);
+    this.syncNumberFromDoc();
     return true;
   }
 
