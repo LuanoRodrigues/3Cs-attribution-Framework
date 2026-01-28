@@ -40,6 +40,7 @@ import {
   StoredSelection
 } from "../utils/selection_snapshot";
 import { insertFootnoteAtSelection as insertManagedFootnote } from "../uipagination/footnotes/commands";
+import type { EditorHandle } from "./leditor.ts";
 const findListItemDepth = (editor: Editor) => {
   const { $from } = editor.state.selection;
   for (let depth = $from.depth; depth > 0; depth -= 1) {

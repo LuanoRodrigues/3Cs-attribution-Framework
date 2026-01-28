@@ -469,6 +469,11 @@ const resolveIconForControl = (control: ControlConfig): RibbonIconName | undefin
   return undefined;
 };
 
+const resolveRequiredIcon = (control: ControlConfig): RibbonIconName => {
+  const resolved = resolveIconForControl(control);
+  return requireIcon(control, resolved);
+};
+
 const requireIcon = (control: ControlConfig, icon?: RibbonIconName): RibbonIconName => {
   if (icon) return icon;
   const id = control.controlId || control.command?.id || control.label || control.type;
@@ -615,6 +620,7 @@ type BuildContext = {
   fontSizePresets: number[];
   onStageUpdate?: (stage: string) => void;
   defaultStage?: string;
+  disableCollapse?: boolean;
 };
 
 type GalleryEntry = {
@@ -1614,7 +1620,17 @@ const applyStageB = (meta: GroupMeta, ctx: BuildContext) => {
       case "narrow":
       case "medium":
       case "optional":
-        c.element.classList.add("is-icon-only");
+        {
+          const iconName = resolveIconForControl(c.config);
+          if (!iconName) {
+            console.warn("[Ribbon] Skipping iconOnly for control without iconKey", {
+              controlId: c.config.controlId ?? c.config.command?.id ?? c.config.label ?? c.config.type
+            });
+            return;
+          }
+          c.element.classList.add("is-icon-only");
+          ensureControlIcon(c.element, iconName);
+        }
         return;
       case "dropdownOnly":
         c.element.classList.add("is-dropdown-only");
@@ -1734,12 +1750,31 @@ const collapseToStageC = (
   }
 };
 
+const auditIconOnlyControls = (panelEl: HTMLElement): void => {
+  const iconOnly = Array.from(panelEl.querySelectorAll<HTMLElement>(".is-icon-only"));
+  const missing = iconOnly.filter((el) => {
+    const icon = el.querySelector<HTMLElement>(".leditor-ribbon-icon, .ribbon-button-icon, svg");
+    return !(icon instanceof SVGElement) || !icon.querySelector("path");
+  });
+  if (missing.length) {
+    console.warn("[Ribbon][CollapseAudit] icon-only controls missing SVG icons", {
+      count: missing.length,
+      controls: missing.map((el) => el.dataset.controlId ?? el.className)
+    });
+  }
+};
+
 const applyCollapseStages = (
   panelEl: HTMLElement,
   groups: GroupMeta[],
   portal: HTMLElement,
   ctx: BuildContext
 ) => {
+  if (ctx.disableCollapse) {
+    panelEl.dataset.collapseStage = "A";
+    panelEl.dataset.stage = "A";
+    return;
+  }
   groups.forEach(resetGroup);
   const strip = panelEl.querySelector<HTMLElement>(".leditor-ribbon-groups");
   if (!strip) return;
@@ -1748,6 +1783,7 @@ const applyCollapseStages = (
   if (total <= available) {
     panelEl.dataset.collapseStage = "A";
     panelEl.dataset.stage = "A";
+    auditIconOnlyControls(panelEl);
     return;
   }
   groups.forEach((g) => applyStageB(g, ctx));
@@ -1755,11 +1791,13 @@ const applyCollapseStages = (
   if (afterB <= available) {
     panelEl.dataset.collapseStage = "B";
     panelEl.dataset.stage = "B";
+    auditIconOnlyControls(panelEl);
     return;
   }
   collapseToStageC(groups, portal, available);
   panelEl.dataset.collapseStage = "C";
   panelEl.dataset.stage = "C";
+  auditIconOnlyControls(panelEl);
 };
 
 type TabBuildResult = {
@@ -1803,6 +1841,16 @@ export const renderRibbonLayout = (
   model: RibbonModel
 ): void => {
   if (typeof document === "undefined") return;
+  const g = globalThis as typeof globalThis & { __leditorRibbonRenderCount?: number };
+  g.__leditorRibbonRenderCount = (g.__leditorRibbonRenderCount ?? 0) + 1;
+  if (g.__leditorRibbonRenderCount > 1) {
+    console.warn("[Ribbon] renderRibbonLayout called multiple times", {
+      count: g.__leditorRibbonRenderCount
+    });
+    console.trace("[Ribbon] renderRibbonLayout trace");
+  } else {
+    console.info("[Ribbon] renderRibbonLayout start");
+  }
   applyTokens();
   host.classList.add("leditor-ribbon");
   const portal = ensurePortal();
@@ -1814,6 +1862,7 @@ export const renderRibbonLayout = (
   const collapseStages = defaults.collapseStages ?? ["A", "B", "C"];
   const defaultStage = collapseStages[0] ?? "A";
   const lastStage = collapseStages[collapseStages.length - 1] ?? defaultStage;
+  const disableCollapse = collapseStages.length <= 1;
   host.dataset.ribbonCollapseStages = collapseStages.join(",");
   const updateStage = (stage?: string) => {
     const normalized = stage ?? defaultStage;
@@ -1834,7 +1883,8 @@ export const renderRibbonLayout = (
     stateBus,
     fontSizePresets,
     onStageUpdate: updateStage,
-    defaultStage
+    defaultStage,
+    disableCollapse
   };
   const tabs = tabConfigs.map((tab) => buildTab(tab, buildCtx, portal));
 

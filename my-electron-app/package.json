@@ -7,6 +7,7 @@
     "lint": "tsc --noEmit",
     "build": "npm run build:main && npm run build:renderer && npm run build:settings && npm run validate:leditor-assets && npm run copy-static",
     "smoke:analyse": "node scripts/analyse-smoke.js",
+    "perf:analyse": "node scripts/perf-smoke.js",
     "validate:settings": "node scripts/validate-settings.js",
     "validate:secrets": "node scripts/validate-secrets.js",
     "validate:bundle": "node scripts/validate-bundle.js",
@@ -67,6 +68,7 @@
     "prosemirror-tables": "^1.8.5",
     "prosemirror-view": "^1.41.5",
     "tiptap-footnotes": "^3.0.1",
+    "typecheck": "^0.1.2",
     "zod": "^4.3.5"
   }
 }

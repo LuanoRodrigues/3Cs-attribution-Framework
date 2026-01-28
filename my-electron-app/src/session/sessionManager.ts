@@ -46,6 +46,7 @@ export class SessionManager {
         return;
       }
       this.session.retrieve = { ...(this.session.retrieve ?? {}), dataHub: detail.state };
+      (window as unknown as { __retrieveDataHubState?: RetrieveDataHubState }).__retrieveDataHubState = detail.state;
       this.schedulePersist();
     });
   }

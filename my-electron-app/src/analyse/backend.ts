@@ -1,5 +1,6 @@
 ﻿import fs from "fs";
 import path from "path";
+import crypto from "crypto";
 
 import type {
   AnalyseDatasets,
@@ -16,8 +17,12 @@ import { GENERAL_KEYS, ZOTERO_KEYS } from "../config/settingsKeys";
 import { getAnalyseRoot } from "../session/sessionPaths";
 
 export const ANALYSE_DIR = getAnalyseRoot();
+const ANALYSE_CACHE_DIR = path.join(ANALYSE_DIR, ".cache");
 const LEGACY_ANALYSE_DIR = path.join(process.env.HOME ?? "", ".annotarium", "analyse");
 const LEGACY_EVIDENCE_DIR = path.join(process.env.HOME ?? "", "annotarium", "evidence_coding_outputs");
+const CACHE_VERSION = "v1";
+const MAX_CACHE_SOURCE_BYTES = 120 * 1024 * 1024;
+const MAX_CACHE_WRITE_BYTES = 150 * 1024 * 1024;
 
 function normalizeAnalysePath(candidate?: string): string | undefined {
   if (!candidate) return undefined;
@@ -57,6 +62,7 @@ function migrateLegacyAnalyseDir(): void {
 
 try {
   fs.mkdirSync(ANALYSE_DIR, { recursive: true });
+  fs.mkdirSync(ANALYSE_CACHE_DIR, { recursive: true });
   migrateLegacyAnalyseDir();
 } catch {
   // best effort: throw on collision but swallow other fs errors to keep startup predictable.
@@ -111,6 +117,35 @@ function fileExists(target: string): boolean {
     return fs.existsSync(target);
   } catch {
     return false;
+  }
+}
+
+function buildCachePath(sourcePath: string, stat: fs.Stats, kind: string): string {
+  const hash = crypto
+    .createHash("sha1")
+    .update(`${CACHE_VERSION}|${kind}|${sourcePath}|${stat.mtimeMs}|${stat.size}`)
+    .digest("hex");
+  return path.join(ANALYSE_CACHE_DIR, `${kind}_${hash}.json`);
+}
+
+function readCache<T>(cachePath: string): T | null {
+  try {
+    const raw = fs.readFileSync(cachePath, { encoding: "utf8" });
+    const parsed = JSON.parse(raw) as { version?: string; data?: T };
+    if (parsed?.version !== CACHE_VERSION) return null;
+    return parsed.data ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(cachePath: string, data: unknown): void {
+  try {
+    const payload = JSON.stringify({ version: CACHE_VERSION, createdAt: new Date().toISOString(), data });
+    if (payload.length > MAX_CACHE_WRITE_BYTES) return;
+    fs.writeFileSync(cachePath, payload, { encoding: "utf8" });
+  } catch {
+    // ignore cache write errors
   }
 }
 
@@ -367,6 +402,90 @@ function normalizeTagList(value: unknown): string[] {
   return [];
 }
 
+function pickMetaFields(meta: Record<string, unknown>): Record<string, unknown> {
+  const keep = [
+    "rq",
+    "rq_question",
+    "gold_theme",
+    "potential_theme",
+    "theme",
+    "evidence_type",
+    "route",
+    "route_value",
+    "tags",
+    "tag_cluster",
+    "section_tags",
+    "direct_quote_id",
+    "dqid",
+    "dq_id",
+    "custom_id",
+    "pdf",
+    "pdf_path",
+    "pdf_page",
+    "page",
+    "source",
+    "title",
+    "url",
+    "item_key",
+    "tts_cached"
+  ];
+  const out: Record<string, unknown> = {};
+  keep.forEach((key) => {
+    if (meta[key] !== undefined) out[key] = meta[key];
+  });
+  return out;
+}
+
+function pickPayloadFields(entry: Record<string, unknown>): Record<string, unknown> {
+  const keep = [
+    "id",
+    "text",
+    "paraphrase",
+    "direct_quote",
+    "section_text",
+    "section_html",
+    "payload_theme",
+    "potential_theme",
+    "overarching_theme",
+    "gold_theme",
+    "theme",
+    "rq_question",
+    "rq",
+    "evidence_type",
+    "evidence_type_norm",
+    "route",
+    "route_value",
+    "tags",
+    "tag_cluster",
+    "section_tags",
+    "researcher_comment",
+    "first_author_last",
+    "author_summary",
+    "author",
+    "year",
+    "source",
+    "title",
+    "url",
+    "item_key",
+    "direct_quote_id",
+    "custom_id",
+    "pdf",
+    "pdf_path",
+    "pdf_page",
+    "page",
+  ];
+  const out: Record<string, unknown> = {};
+  keep.forEach((key) => {
+    if (entry[key] !== undefined) out[key] = entry[key];
+  });
+  const meta = asRecord(entry.meta) || {};
+  const trimmedMeta = pickMetaFields(meta);
+  if (Object.keys(trimmedMeta).length) {
+    out.meta = trimmedMeta;
+  }
+  return out;
+}
+
 export function resolveSectionsRoot(baseDir?: string): string | null {
   const normalized = normalizeBaseDir(baseDir);
   const candidateBase = normalized ? path.resolve(normalized) : getDefaultBaseDir();
@@ -496,6 +615,21 @@ export async function loadBatches(runPath: string): Promise<BatchRecord[]> {
   if (!datasetPath) return [];
   console.info("[analyse][loadBatches]", { runPath, datasetPath });
 
+  let stat: fs.Stats | null = null;
+  try {
+    stat = fs.statSync(datasetPath);
+  } catch {
+    stat = null;
+  }
+
+  if (stat && stat.size <= MAX_CACHE_SOURCE_BYTES) {
+    const cachePath = buildCachePath(datasetPath, stat, "batches");
+    const cached = readCache<BatchRecord[]>(cachePath);
+    if (cached && Array.isArray(cached)) {
+      return cached;
+    }
+  }
+
   let raw = readJsonFile<unknown[]>(datasetPath);
   if (!raw || !Array.isArray(raw)) {
     try {
@@ -517,12 +651,16 @@ export async function loadBatches(runPath: string): Promise<BatchRecord[]> {
         ""
     );
     const page = safeNumber(entry.page);
-    return {
+    const payload = {
       id: safeString(entry.item_key ?? entry.direct_quote_id ?? `p_${idx + 1}`),
       text,
       page,
-      ...entry
+      ...pickPayloadFields(entry)
     } as BatchPayload;
+    if (!payload.page && page !== undefined) {
+      payload.page = page;
+    }
+    return payload;
   };
 
   raw.forEach((entry, idx) => {
@@ -538,7 +676,7 @@ export async function loadBatches(runPath: string): Promise<BatchRecord[]> {
   });
 
   let batchIndex = 1;
-  return Object.entries(buckets).map(([key, payloads]) => {
+  const result = Object.entries(buckets).map(([key, payloads]) => {
     const [rq, over] = key.split("::");
     return {
       id: safeString(key || `batch_${batchIndex++}`),
@@ -551,6 +689,11 @@ export async function loadBatches(runPath: string): Promise<BatchRecord[]> {
       rqQuestion: safeString(rq)
     };
   });
+  if (stat && stat.size <= MAX_CACHE_SOURCE_BYTES) {
+    const cachePath = buildCachePath(datasetPath, stat, "batches");
+    writeCache(cachePath, result);
+  }
+  return result;
 }
 
 export async function loadSections(runPath: string, level: SectionLevel): Promise<SectionRecord[]> {
@@ -567,7 +710,7 @@ export async function loadSections(runPath: string, level: SectionLevel): Promis
         const batch = batches[bIdx];
         for (let pIdx = 0; pIdx < batch.payloads.length; pIdx++) {
           const p = batch.payloads[pIdx] as Record<string, unknown>;
-          const meta = asRecord(p.meta) || {};
+          const meta = pickMetaFields(asRecord(p.meta) || {});
           const rq = safeString(p.rq_question ?? p.rq ?? meta.rq);
           const gold = safeString(p.overarching_theme ?? p.gold_theme ?? p.payload_theme ?? p.theme ?? meta.gold_theme);
           const ev = safeString(p.evidence_type ?? p.evidence_type_norm ?? meta.evidence_type);
@@ -640,21 +783,36 @@ export async function loadSections(runPath: string, level: SectionLevel): Promis
   }
   console.info("[analyse][loadSections]", { runPath, level, datasetPath });
 
+  let stat: fs.Stats | null = null;
+  try {
+    stat = fs.statSync(datasetPath);
+  } catch {
+    stat = null;
+  }
+
+  if (stat && stat.size <= MAX_CACHE_SOURCE_BYTES) {
+    const cachePath = buildCachePath(datasetPath, stat, `sections_${level}`);
+    const cached = readCache<SectionRecord[]>(cachePath);
+    if (cached && Array.isArray(cached)) {
+      return cached;
+    }
+  }
+
   const raw = readJsonFile<unknown[]>(datasetPath);
   if (!raw || !Array.isArray(raw)) return [];
 
-  return raw.reduce<SectionRecord[]>((acc, entry, entryIdx) => {
+  const result = raw.reduce<SectionRecord[]>((acc, entry, entryIdx) => {
     const obj = asRecord(entry);
     if (!obj) {
       return acc;
     }
-    let meta = asRecord(obj.meta) || {};
+    let meta = pickMetaFields(asRecord(obj.meta) || {});
     if (!Object.keys(meta).length && typeof obj.meta_json === "string") {
       try {
         const parsed = JSON.parse(obj.meta_json);
         const parsedMeta = asRecord(parsed);
         if (parsedMeta) {
-          meta = parsedMeta;
+          meta = pickMetaFields(parsedMeta);
         }
       } catch {
         // ignore invalid JSON
@@ -703,6 +861,11 @@ export async function loadSections(runPath: string, level: SectionLevel): Promis
     });
     return acc;
   }, []);
+  if (stat && stat.size <= MAX_CACHE_SOURCE_BYTES) {
+    const cachePath = buildCachePath(datasetPath, stat, `sections_${level}`);
+    writeCache(cachePath, result);
+  }
+  return result;
 }
 
 export async function summariseRun(runPath: string): Promise<RunMetrics> {

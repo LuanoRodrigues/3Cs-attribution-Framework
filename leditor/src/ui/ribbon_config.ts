@@ -182,6 +182,31 @@ const traverseControls = (
   collectNestedControls(control).forEach((nested) => traverseControls(nested, descriptor, controlIds));
 };
 
+const validateIconOnlyControls = (tab: TabConfig): void => {
+  const visit = (control: ControlConfig, path: string) => {
+    const collapse = control.collapse as any;
+    const isIconOnly =
+      collapse === "iconOnly" ||
+      collapse?.B === "iconOnly" ||
+      collapse?.B?.mode === "iconOnly" ||
+      collapse?.A === "iconOnly" ||
+      collapse?.A?.mode === "iconOnly";
+    if (isIconOnly && !control.iconKey) {
+      throw new Error(`Icon-only control missing iconKey at ${path}`);
+    }
+    collectNestedControls(control).forEach((nested, index) => {
+      visit(nested, `${path}/${nested.controlId ?? nested.type ?? index}`);
+    });
+  };
+  tab.groups.forEach((group) => {
+    group.clusters.forEach((cluster) => {
+      cluster.controls.forEach((control, index) => {
+        visit(control, `${tab.tabId}/${group.groupId}/${cluster.clusterId}/${control.controlId ?? index}`);
+      });
+    });
+  });
+};
+
 export const loadRibbonRegistry = (): RibbonRegistry => {
   if (cachedRegistry) {
     return cachedRegistry;
@@ -203,6 +228,7 @@ export const loadTabConfig = (source: string): TabConfig => {
   if (!Array.isArray(config.groups) || config.groups.length === 0) {
     throw new Error(`Tab ${config.tabId ?? source} must expose a non-empty groups array`);
   }
+  validateIconOnlyControls(config);
   return config;
 };
 

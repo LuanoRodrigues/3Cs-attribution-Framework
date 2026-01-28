@@ -11,6 +11,7 @@ import { createNotesTool } from "../tools/notes";
 import { createTimelineTool } from "../tools/timeline";
 import { createVizTool } from "../tools/viz";
 import { createRetrieveTool } from "../tools/retrieve";
+import { createRetrieveDataHubTool } from "../tools/retrieveDataHub";
 import { createCodeTool } from "../tools/code";
 import { createVisualiserTool } from "../tools/visualiser";
 import { createWriteTool } from "../tools/write";
@@ -30,6 +31,9 @@ import { attachGlobalCoderDragSources } from "../panels/coder/coderDragSource";
 import type { CoderNode } from "../panels/coder/coderTypes";
 import { getDefaultCoderScope } from "../analyse/collectionScope";
 import { initAnalyseAudioController } from "./analyseAudio";
+import { initPerfOverlay } from "./perfOverlay";
+import { readRetrieveQueryDefaults, writeRetrieveQueryDefaults } from "../state/retrieveQueryDefaults";
+import type { RetrieveProviderId, RetrieveSort } from "../shared/types/retrieve";
 
 interface PdfSelectionNotification {
   text: string;
@@ -63,6 +67,7 @@ registry.register(createNotesTool());
 registry.register(createTimelineTool());
 registry.register(createVizTool());
 registry.register(createRetrieveTool());
+registry.register(createRetrieveDataHubTool());
 registry.register(createPanelShellTool());
 registry.register(createCodeTool());
 registry.register(createWriteTool());
@@ -83,6 +88,8 @@ const PANEL_INDEX_BY_ID: Record<PanelId, number> = {
 };
 const htmlElement = document.documentElement;
 let teardownRibbonMenu: () => void = () => {};
+let retrieveDataHubToolId: string | undefined;
+let retrieveQueryToolId: string | undefined;
 
 function syncRibbonHeight(): void {
   if (!ribbonElement) return;
@@ -240,6 +247,15 @@ const layoutRoot = panelTools.getRoot("panel2");
 
 attachGlobalCoderDragSources();
 
+const scheduleIdle = (task: () => void, timeout = 120): void => {
+  const anyWindow = window as any;
+  if (typeof anyWindow.requestIdleCallback === "function") {
+    anyWindow.requestIdleCallback(task, { timeout });
+  } else {
+    window.setTimeout(task, 0);
+  }
+};
+
 function ensureWriteToolTab(): void {
   const existing = layoutRoot.serialize().tabs.find((t) => t.toolType === "write-leditor");
   if (!existing) {
@@ -251,6 +267,9 @@ function ensureWriteToolTab(): void {
 }
 
 ensureWriteToolTab();
+scheduleIdle(() => {
+  initPerfOverlay();
+});
 
 const analyseStore = new AnalyseStore();
 let analyseWorkspace: AnalyseWorkspace;
@@ -552,7 +571,7 @@ ribbonHeader.addEventListener("click", (event) => {
   if (!button) return;
   if (button.dataset.tabId === "retrieve") {
     panelGrid.ensurePanelVisible(2);
-    ensureSectionTool("retrieve", { replace: true });
+    ensureRetrieveDataHubTool({ replace: true });
   }
 });
 window.addEventListener("resize", syncRibbonHeightDebounced);
@@ -587,11 +606,11 @@ if (savedLayouts) {
   panelTools.loadLayouts(sanitizedLayouts);
 }
 ensureWriteToolTab();
-ensureSectionTool("retrieve", { replace: true });
+ensureRetrieveDataHubTool({ replace: true });
 
 document.addEventListener("retrieve:ensure-panel2", () => {
   panelGrid.ensurePanelVisible(2);
-  ensureSectionTool("retrieve", { replace: true });
+  ensureRetrieveDataHubTool({ replace: true });
 });
 
 document.addEventListener("ribbon:action", (event) => {
@@ -845,12 +864,14 @@ function renderAnalyseRibbon(mount: HTMLElement): void {
     analyseRibbonMount.appendChild(roundsGroup);
     analyseRibbonMount.appendChild(audioGroup);
 
-    analyseAudioController = initAnalyseAudioController({
-      widget: audioWidget,
-      getState: () => analyseStore.getState(),
-      onCacheUpdate: (detail: { scope: string; cached: number; total: number; cachedKeys: string[] }) => {
-        document.dispatchEvent(new CustomEvent("analyse-tts-cache-updated", { detail, bubbles: true }));
-      }
+    scheduleIdle(() => {
+      analyseAudioController = initAnalyseAudioController({
+        widget: audioWidget,
+        getState: () => analyseStore.getState(),
+        onCacheUpdate: (detail: { scope: string; cached: number; total: number; cachedKeys: string[] }) => {
+          document.dispatchEvent(new CustomEvent("analyse-tts-cache-updated", { detail, bubbles: true }));
+        }
+      });
     });
   };
 
@@ -862,7 +883,9 @@ function renderAnalyseRibbon(mount: HTMLElement): void {
 
   render(state.runs || [], state.activeRunId);
   if (!state.runs?.length) {
-    void refreshAnalyseRuns();
+    scheduleIdle(() => {
+      void refreshAnalyseRuns();
+    });
   }
 }
 
@@ -1086,19 +1109,81 @@ function createActionButton(action: RibbonAction): HTMLButtonElement {
 }
 
 function handleAction(action: RibbonAction): void {
-  if (action.opensPanel) {
-    openPanelShell(action);
-  }
   if (
     action.command.phase === "retrieve" &&
     typeof action.command.action === "string" &&
     action.command.action.startsWith("datahub_")
   ) {
-    document.dispatchEvent(
-      new CustomEvent("retrieve-datahub-command", {
-        detail: { action: action.command.action, payload: action.command.payload ?? undefined }
-      })
+    // DataHub actions always target the dedicated DataHub tool in panel 2.
+    panelGrid.ensurePanelVisible(2);
+    ensureRetrieveDataHubTool({ replace: !retrieveDataHubToolId });
+    window.setTimeout(() => {
+      document.dispatchEvent(
+        new CustomEvent("retrieve-datahub-command", {
+          detail: { action: action.command.action, payload: action.command.payload ?? undefined }
+        })
+      );
+    }, 0);
+    return;
+  }
+  if (action.command.phase === "retrieve" && action.command.action === "retrieve_open_query_builder") {
+    panelGrid.ensurePanelVisible(2);
+    ensureRetrieveQueryBuilderTool({ replace: true });
+    return;
+  }
+  if (action.command.phase === "retrieve" && action.command.action === "retrieve_set_provider") {
+    const defaults = readRetrieveQueryDefaults();
+    const raw = window.prompt(
+      `Provider (semantic_scholar, crossref, openalex, elsevier, wos, unpaywall, cos)\n\nCurrent: ${defaults.provider}`,
+      String(defaults.provider)
     );
+    if (raw === null) return;
+    writeRetrieveQueryDefaults({ provider: raw.trim() as RetrieveProviderId });
+    panelGrid.ensurePanelVisible(2);
+    ensureRetrieveQueryBuilderTool({ replace: true });
+    return;
+  }
+  if (action.command.phase === "retrieve" && action.command.action === "retrieve_set_sort") {
+    const defaults = readRetrieveQueryDefaults();
+    const raw = window.prompt(`Sort (relevance, year)\n\nCurrent: ${defaults.sort}`, String(defaults.sort));
+    if (raw === null) return;
+    writeRetrieveQueryDefaults({ sort: raw.trim() as RetrieveSort });
+    panelGrid.ensurePanelVisible(2);
+    ensureRetrieveQueryBuilderTool({ replace: true });
+    return;
+  }
+  if (action.command.phase === "retrieve" && action.command.action === "retrieve_set_year_range") {
+    const defaults = readRetrieveQueryDefaults();
+    const raw = window.prompt(
+      `Year range as "from,to" (example: 2015,2024). Leave blank to clear.\n\nCurrent: ${defaults.year_from ?? ""},${defaults.year_to ?? ""}`,
+      `${defaults.year_from ?? ""},${defaults.year_to ?? ""}`
+    );
+    if (raw === null) return;
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      writeRetrieveQueryDefaults({ year_from: undefined, year_to: undefined });
+    } else {
+      const parts = trimmed.split(",").map((p) => p.trim());
+      const yf = parts[0] ? Number(parts[0]) : undefined;
+      const yt = parts[1] ? Number(parts[1]) : undefined;
+      writeRetrieveQueryDefaults({
+        year_from: Number.isFinite(yf as number) ? (yf as number) : undefined,
+        year_to: Number.isFinite(yt as number) ? (yt as number) : undefined
+      });
+    }
+    panelGrid.ensurePanelVisible(2);
+    ensureRetrieveQueryBuilderTool({ replace: true });
+    return;
+  }
+  if (action.command.phase === "retrieve" && action.command.action === "retrieve_set_limit") {
+    const defaults = readRetrieveQueryDefaults();
+    const raw = window.prompt(`Limit (positive integer)\n\nCurrent: ${defaults.limit}`, String(defaults.limit));
+    if (raw === null) return;
+    const n = Number(raw.trim());
+    if (!Number.isFinite(n) || n <= 0) return;
+    writeRetrieveQueryDefaults({ limit: Math.floor(n) });
+    panelGrid.ensurePanelVisible(2);
+    ensureRetrieveQueryBuilderTool({ replace: true });
     return;
   }
   if (action.command.phase === "tools" && action.command.action === "open_tool") {
@@ -1115,6 +1200,9 @@ function handleAction(action: RibbonAction): void {
       }
     }
     return;
+  }
+  if (action.opensPanel) {
+    openPanelShell(action);
   }
   if (action.command.phase === "test") {
     prepareTestPanel(action.command.action);
@@ -1855,11 +1943,43 @@ function ensureSectionTool(tabId: TabId, options?: { replace?: boolean }): void 
   }
 }
 
+function ensureRetrieveDataHubTool(options?: { replace?: boolean }): void {
+  if (options?.replace) {
+    panelTools.clearPanelTools("panel2");
+    retrieveDataHubToolId = undefined;
+    retrieveQueryToolId = undefined;
+    delete sectionToolIds["retrieve"];
+  }
+  if (retrieveDataHubToolId) {
+    panelTools.focusTool(retrieveDataHubToolId);
+    return;
+  }
+  const id = panelTools.spawnTool("retrieve-datahub", { panelId: "panel2" });
+  retrieveDataHubToolId = id;
+  panelTools.focusTool(id);
+}
+
+function ensureRetrieveQueryBuilderTool(options?: { replace?: boolean }): void {
+  if (options?.replace) {
+    panelTools.clearPanelTools("panel2");
+    retrieveDataHubToolId = undefined;
+    retrieveQueryToolId = undefined;
+    delete sectionToolIds["retrieve"];
+  }
+  if (retrieveQueryToolId) {
+    panelTools.focusTool(retrieveQueryToolId);
+    return;
+  }
+  const id = panelTools.spawnTool("retrieve", { panelId: "panel2" });
+  retrieveQueryToolId = id;
+  panelTools.focusTool(id);
+}
+
 function sectionToolConfig(
   tabId: TabId
 ): { toolType: string; metadata?: Record<string, unknown> } | null {
   if (tabId === "retrieve") {
-    return { toolType: "retrieve" };
+    return { toolType: "retrieve-datahub" };
   }
   if (tabId === "write") {
     return { toolType: "write-leditor" };

@@ -6,6 +6,7 @@ import { Menu, MenuItem, MenuSeparator } from "../ui/ribbon_menu.ts";
 import { getTemplates } from "../templates/index.ts";
 import { getMarginValues, getOrientation, getPageSizeDefinitions, getCurrentPageSize, getLayoutColumns, subscribeToLayoutChanges } from "../ui/layout_settings.ts";
 import type { MarginValues } from "../ui/layout_settings.ts";
+import { FLUENT_ICON_PATHS } from "../ui/fluent_icon_paths.ts";
 import { createRibbonIcon, type RibbonIconName } from "../ui/ribbon_icons.ts";
 import { createRibbonButton, createRibbonDropdownButton } from "./ribbon_controls.ts";
 import {
@@ -917,13 +918,7 @@ const createPickrColorButton = (
     extraClasses: ["leditor-ribbon-icon-btn"]
   });
   const applyColor = (color?: string) => {
-    if (color) {
-      button.dataset.value = color;
-      button.style.setProperty("--ribbon-swatch-color", color);
-      return;
-    }
-    button.dataset.value = "";
-    button.style.removeProperty("--ribbon-swatch-color");
+    button.dataset.value = color ?? "";
   };
   applyColor(colors[0]);
   const pickr = Pickr.create({
@@ -2415,6 +2410,11 @@ const createLayoutPanel = (editorHandle: EditorHandle): HTMLElement => {
 const RIBBON_BUNDLE_ID = "ribbon-src-2026-01-20";
 
 export const renderRibbon = (host: HTMLElement, editorHandle: EditorHandle): void => {
+  if (host.dataset.ribbonRendered === "true") {
+    console.warn("[Ribbon] renderRibbon called twice; skipping duplicate render.");
+    return;
+  }
+  host.dataset.ribbonRendered = "true";
   const selectionTargets: RibbonSelectionTargets = {
     toggles: [],
     alignmentButtons: {}
@@ -2434,6 +2434,219 @@ export const renderRibbon = (host: HTMLElement, editorHandle: EditorHandle): voi
   const stateBus = new RibbonStateBus(editorHandle);
 
   renderRibbonLayout(host, editorHandle, hooks, stateBus, model);
+  const stripRibbonOverlays = (): void => {
+    const controls = Array.from(
+      host.querySelectorAll<HTMLElement>(
+        ".leditor-ribbon-button, .leditor-ribbon-icon-btn, .ribbon-dropdown-button, .leditor-split-primary"
+      )
+    );
+    const allowed = new Set([
+      "SVG",
+      "SPAN"
+    ]);
+    controls.forEach((control) => {
+      Array.from(control.children).forEach((child) => {
+        const el = child as HTMLElement;
+        if (el.classList.contains("ribbon-button-label")) return;
+        if (el.classList.contains("ribbon-dropdown-chevron")) return;
+        if (el.classList.contains("leditor-ribbon-icon")) return;
+        if (el.classList.contains("ribbon-button-icon")) return;
+        if (el.classList.contains("leditor-color-picker-palette")) {
+          el.remove();
+          return;
+        }
+        if (!allowed.has(el.tagName)) {
+          const style = getComputedStyle(el);
+          if (style.position === "absolute" || style.position === "fixed") {
+            el.remove();
+          }
+        }
+      });
+    });
+  };
+  stripRibbonOverlays();
+  const auditRibbonIcons = (context: string): void => {
+    const icons = Array.from(host.querySelectorAll<HTMLElement>(".leditor-ribbon-icon"));
+    const buttonIcons = Array.from(host.querySelectorAll<HTMLElement>(".ribbon-button-icon"));
+    const nonSvg = icons.filter((icon) => !(icon instanceof SVGElement));
+    const missingKey = icons.filter((icon) => !icon.dataset.iconKey);
+    const missingPath = icons.filter((icon) => !icon.querySelector("path"));
+    const buttonNonSvg = buttonIcons.filter((icon) => !(icon instanceof SVGElement));
+    if (nonSvg.length || missingKey.length || missingPath.length || buttonNonSvg.length) {
+      console.warn("[Ribbon][IconAudit]", {
+        context,
+        total: icons.length,
+        ribbonIconNonSvg: nonSvg.length,
+        ribbonIconMissingKey: missingKey.length,
+        ribbonIconMissingPath: missingPath.length,
+        buttonIconTotal: buttonIcons.length,
+        buttonIconNonSvg: buttonNonSvg.length
+      });
+      console.trace("[Ribbon][IconAudit] trace");
+    }
+  };
+  const attachRibbonIconWatcher = (): void => {
+    if (host.dataset.ribbonIconWatch === "true") return;
+    host.dataset.ribbonIconWatch = "true";
+    let scheduled = false;
+    let lastLog = 0;
+    let lastAuditHash = "";
+    const logIssues = () => {
+      if (scheduled) return;
+      scheduled = true;
+      requestAnimationFrame(() => {
+        scheduled = false;
+        const now = Date.now();
+        if (now - lastLog < 250) return;
+        lastLog = now;
+        const icons = Array.from(host.querySelectorAll<HTMLElement>(".leditor-ribbon-icon"));
+        const nonSvg = icons.filter((icon) => !(icon instanceof SVGElement));
+        const missingKey = icons.filter((icon) => !icon.dataset.iconKey);
+        const mismatch = icons.filter((icon) => {
+          const key = icon.dataset.iconKey;
+          if (!key) return false;
+          const expected = FLUENT_ICON_PATHS[key];
+          if (!expected || expected.length === 0) return false;
+          const path = icon.querySelector("path");
+          if (!path) return false;
+          const actual = path.getAttribute("d");
+          return actual !== expected[0];
+        });
+        const buttonIcons = Array.from(host.querySelectorAll<HTMLElement>(".ribbon-button-icon"));
+        const buttonNonSvg = buttonIcons.filter((icon) => !(icon instanceof SVGElement));
+        const emptyButtons = Array.from(
+          host.querySelectorAll<HTMLElement>(".leditor-ribbon-button, .leditor-ribbon-icon-btn, .ribbon-dropdown-button")
+        ).filter((btn) => !btn.querySelector("svg"));
+        const hash = `${icons.length}:${nonSvg.length}:${missingKey.length}:${buttonNonSvg.length}:${emptyButtons.length}`;
+        if (hash !== lastAuditHash) {
+          lastAuditHash = hash;
+        } else {
+          return;
+        }
+        if (
+          nonSvg.length ||
+          missingKey.length ||
+          buttonNonSvg.length ||
+          emptyButtons.length ||
+          mismatch.length
+        ) {
+          console.warn("[Ribbon][IconWatch] icon anomalies detected", {
+            total: icons.length,
+            nonSvg: nonSvg.length,
+            missingKey: missingKey.length,
+            mismatch: mismatch.length,
+            buttonNonSvg: buttonNonSvg.length,
+            emptyButtons: emptyButtons.length
+          });
+          console.trace("[Ribbon][IconWatch] trace");
+        }
+      });
+    };
+    const observer = new MutationObserver((mutations) => {
+      const hasChange = mutations.some((m) => m.addedNodes.length || m.removedNodes.length);
+      if (hasChange) {
+        console.warn("[Ribbon][IconWatch] DOM mutation", {
+          added: mutations.reduce((sum, m) => sum + m.addedNodes.length, 0),
+          removed: mutations.reduce((sum, m) => sum + m.removedNodes.length, 0)
+        });
+        logIssues();
+      }
+    });
+    observer.observe(host, { childList: true, subtree: true });
+    const interval = window.setInterval(() => {
+      const buttons = Array.from(
+        host.querySelectorAll<HTMLElement>(".leditor-ribbon-button, .leditor-ribbon-icon-btn, .ribbon-dropdown-button")
+      );
+      const missing = buttons.filter((btn) => !btn.querySelector("svg"));
+      if (missing.length) {
+        const sample = missing.slice(0, 6).map((btn) => ({
+          controlId: btn.dataset.controlId ?? "",
+          controlType: btn.dataset.controlType ?? "",
+          className: btn.className,
+          text: (btn.textContent ?? "").trim().slice(0, 40)
+        }));
+        console.warn("[Ribbon][IconSweep] buttons missing SVG icons", {
+          count: missing.length,
+          sample
+        });
+      }
+      const sampleMismatch = Array.from(
+        host.querySelectorAll<HTMLElement>(".leditor-ribbon-icon")
+      ).find((icon) => {
+        const key = icon.dataset.iconKey;
+        if (!key) return false;
+        const expected = FLUENT_ICON_PATHS[key];
+        if (!expected || expected.length === 0) return false;
+        const path = icon.querySelector("path");
+        if (!path) return false;
+        const actual = path.getAttribute("d");
+        return actual !== expected[0];
+      });
+      if (sampleMismatch) {
+        const key = sampleMismatch.dataset.iconKey ?? "";
+        const path = sampleMismatch.querySelector("path")?.getAttribute("d") ?? "";
+        console.warn("[Ribbon][IconSweep] icon path mismatch", {
+          iconKey: key,
+          expected: FLUENT_ICON_PATHS[key]?.[0]?.slice(0, 120) ?? "",
+          actual: path.slice(0, 120)
+        });
+      }
+    }, 1000);
+    host.addEventListener(
+      "ribbon-dispose",
+      () => {
+        window.clearInterval(interval);
+        observer.disconnect();
+      },
+      { once: true }
+    );
+    const logged = new WeakSet<HTMLElement>();
+    const logElement = (label: string, el: HTMLElement) => {
+      if (logged.has(el)) return;
+      logged.add(el);
+      const style = getComputedStyle(el);
+      console.warn(label, {
+        tag: el.tagName,
+        className: el.className,
+        id: el.id,
+        role: el.getAttribute("role"),
+        dataControlId: el.dataset.controlId ?? "",
+        dataControlType: el.dataset.controlType ?? "",
+        width: style.width,
+        height: style.height,
+        background: style.background,
+        color: style.color,
+        content: el.textContent?.trim().slice(0, 80) ?? "",
+        html: el.outerHTML.slice(0, 200)
+      });
+    };
+    host.addEventListener("pointerenter", () => auditRibbonIcons("pointerenter"), { passive: true });
+    host.addEventListener(
+      "pointerover",
+      (event) => {
+        const target = event.target as HTMLElement | null;
+        if (!target) return;
+        const tab = target.closest<HTMLElement>(".leditor-ribbon-tab, .ribbonTab, [role='tab']");
+        if (tab && host.contains(tab)) {
+          const hasSvg = Boolean(tab.querySelector("svg"));
+          if (!hasSvg) logElement("[Ribbon][HoverTab]", tab);
+          return;
+        }
+        const control = target.closest<HTMLElement>("[data-control-id], .leditor-ribbon-button, .leditor-ribbon-icon-btn, .ribbon-dropdown-button");
+        if (!control || !host.contains(control)) return;
+        if (!control.closest(".leditor-ribbon-groups")) return;
+        const icon = control.querySelector<HTMLElement>(".leditor-ribbon-icon, .ribbon-button-icon, svg");
+        if (icon instanceof SVGElement && icon.querySelector("path")) return;
+        logElement("[Ribbon][HoverControl]", control);
+        if (icon && !(icon instanceof SVGElement)) {
+          logElement("[Ribbon][HoverControlIcon]", icon);
+        }
+      },
+      { passive: true }
+    );
+    auditRibbonIcons("post-render");
+  };
+  attachRibbonIconWatcher();
   watchRibbonSelectionState(stateBus, selectionTargets);
   watchRibbonSelectionStateLegacy(editorHandle as any, selectionTargets);
   const handleFindShortcut = (event: KeyboardEvent) => {

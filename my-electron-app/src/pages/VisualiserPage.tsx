@@ -1,5 +1,6 @@
 import Plotly from "plotly.js-dist-min";
 import { APPEARANCE_KEYS } from "../config/settingsKeys";
+import type { DataHubTable } from "../shared/types/dataHub";
 
 declare global {
   interface Window {
@@ -213,6 +214,20 @@ export class VisualiserPage {
   private plotHost: HTMLElement | null = null;
   private slideIndex = 0;
   private readonly totalSlides = DEFAULT_SLIDE_COUNT;
+  private deck: Array<Record<string, unknown>> = [];
+  private currentTable?: DataHubTable;
+  private sections: Array<{ id: string; label: string; hint?: string }> = [];
+  private schema: Array<{
+    type: string;
+    key: string;
+    label: string;
+    default?: string | number;
+    min?: number;
+    max?: number;
+    options?: Array<{ label: string; value: string }>;
+  }> = [];
+  private selectedSections = new Set<string>();
+  private dataHubListener: ((event: Event) => void) | null = null;
   private eventHandlers: Array<{ element: HTMLElement; type: string; listener: EventListener }> = [];
   private globalListeners: Array<{
     target: Document | Window;
@@ -239,6 +254,9 @@ export class VisualiserPage {
     this.renderCenterPanel();
     this.installGlobalListeners();
     this.startHitTestLoop();
+    this.installDataHubListener();
+    void this.loadVisualiserSchema();
+    this.hydrateTableFromRestore();
   }
 
   private static findPanelContent(panelId: "panel1" | "panel3"): HTMLElement | null {
@@ -254,6 +272,7 @@ export class VisualiserPage {
       return;
     }
     this.sectionsHost.innerHTML = SECTIONS_PANEL_HTML;
+    this.renderSectionsList();
   }
 
   private renderExportPanel(): void {
@@ -262,6 +281,7 @@ export class VisualiserPage {
     }
     this.exportHost.innerHTML = EXPORT_PANEL_HTML;
     this.attachExportPanelHooks();
+    this.renderOptions();
   }
 
   private renderCenterPanel(): void {
@@ -269,8 +289,207 @@ export class VisualiserPage {
     this.attachControlHooks();
     this.setTab("slide");
     this.renderThumbs();
-    this.drawExampleFigure();
+    this.clearPlotPlaceholder();
     this.updateSummary();
+  }
+
+  private installDataHubListener(): void {
+    this.dataHubListener = (event: Event) => {
+      const detail = (event as CustomEvent<{ state?: { table?: DataHubTable } }>).detail;
+      const table = detail?.state?.table;
+      if (table) {
+        this.currentTable = {
+          columns: table.columns.slice(),
+          rows: table.rows.map((row) => row.slice())
+        };
+        this.logDfLoaded("event", this.currentTable);
+        this.setStatus(`Loaded ${this.currentTable.rows.length} rows from Retrieve`);
+        this.appendExportLog("Retrieve data synced to Visualiser.");
+        if (this.schema.length) {
+          const params = this.readParams();
+          const include = this.orderedInclude();
+          const cacheKey = this.buildCacheKey(this.currentTable, include, params);
+          const cached = this.readDeckCache(cacheKey);
+          if (cached && cached.length) {
+            this.deck = cached;
+            this.slideIndex = 0;
+            this.renderThumbs();
+            this.renderSlide();
+            this.updateSummary();
+            this.setStatus("Visualiser ready (cache)");
+          } else if (!this.deck.length) {
+            void this.runVisualiser();
+          }
+        }
+      }
+    };
+    document.addEventListener("retrieve:datahub-updated", this.dataHubListener);
+  }
+
+  private hydrateTableFromRestore(): void {
+    const restore = (window as unknown as { __retrieveDataHubState?: { table?: DataHubTable } }).__retrieveDataHubState;
+    if (restore?.table) {
+      this.currentTable = {
+        columns: restore.table.columns.slice(),
+        rows: restore.table.rows.map((row) => row.slice())
+      };
+      this.logDfLoaded("restore", this.currentTable);
+    }
+  }
+
+  private async loadVisualiserSchema(): Promise<void> {
+    const response = await this.sendVisualiserCommand("get_sections");
+    if (!response || response.status !== "ok") {
+      this.appendExportLog("Unable to load Visualiser sections.");
+      return;
+    }
+    const payload = response as unknown as { sections?: any[]; schema?: any[] };
+    this.sections = Array.isArray(payload.sections) ? payload.sections : [];
+    this.schema = Array.isArray(payload.schema) ? payload.schema : [];
+    this.selectedSections = new Set(this.sections.map((s) => s.id));
+    this.renderSectionsList();
+    this.renderOptions();
+    if (this.currentTable) {
+      const params = this.readParams();
+      const include = this.orderedInclude();
+      const cacheKey = this.buildCacheKey(this.currentTable, include, params);
+      const cached = this.readDeckCache(cacheKey);
+      if (cached && cached.length) {
+        this.deck = cached;
+        this.slideIndex = 0;
+        this.renderThumbs();
+        this.renderSlide();
+      } else {
+        const lastDeck = this.readLastDeckCache();
+        if (lastDeck && lastDeck.length) {
+          this.deck = lastDeck;
+          this.slideIndex = 0;
+          this.renderThumbs();
+          this.renderSlide();
+        } else if (!this.deck.length) {
+          void this.runVisualiser();
+        }
+      }
+    }
+    this.updateSummary();
+  }
+
+  private renderSectionsList(): void {
+    const host = this.sectionsHost?.querySelector<HTMLElement>("#includeHost");
+    if (!host) {
+      return;
+    }
+    host.innerHTML = "";
+    if (!this.sections.length) {
+      host.innerHTML = `<div class="muted" style="font-size:12px;color:var(--muted);">No sections available.</div>`;
+      return;
+    }
+    this.sections.forEach((section) => {
+      const row = document.createElement("label");
+      row.style.display = "flex";
+      row.style.alignItems = "center";
+      row.style.gap = "8px";
+      row.style.marginBottom = "6px";
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = this.selectedSections.has(section.id);
+      cb.addEventListener("change", () => {
+        if (cb.checked) this.selectedSections.add(section.id);
+        else this.selectedSections.delete(section.id);
+        this.updateSummary();
+      });
+      const text = document.createElement("div");
+      text.innerHTML = `<strong>${section.label}</strong><div style="font-size:11px;color:var(--muted);">${section.hint ?? ""}</div>`;
+      row.append(cb, text);
+      host.appendChild(row);
+    });
+    this.updateSummary();
+  }
+
+  private renderOptions(): void {
+    const host = this.exportHost?.querySelector<HTMLElement>("#optionsHost");
+    if (!host) return;
+    const row = host.querySelector<HTMLElement>(".row");
+    if (row) row.remove();
+    if (!this.schema.length) {
+      return;
+    }
+    const form = document.createElement("div");
+    form.style.display = "grid";
+    form.style.gridTemplateColumns = "repeat(auto-fit, minmax(160px, 1fr))";
+    form.style.gap = "8px";
+    this.schema.forEach((field) => {
+      const wrap = document.createElement("label");
+      wrap.style.display = "flex";
+      wrap.style.flexDirection = "column";
+      wrap.style.gap = "4px";
+      const title = document.createElement("span");
+      title.textContent = field.label;
+      title.style.fontSize = "12px";
+      title.style.color = "var(--muted)";
+      let input: HTMLElement;
+      if (field.type === "select" && field.options) {
+        const sel = document.createElement("select");
+        field.options.forEach((opt) => {
+          const option = document.createElement("option");
+          option.value = opt.value;
+          option.textContent = opt.label;
+          sel.appendChild(option);
+        });
+        if (field.default !== undefined) sel.value = String(field.default);
+        input = sel;
+      } else {
+        const inp = document.createElement("input");
+        inp.type = field.type === "number" ? "number" : "text";
+        if (field.min !== undefined) inp.min = String(field.min);
+        if (field.max !== undefined) inp.max = String(field.max);
+        if (field.default !== undefined) inp.value = String(field.default);
+        input = inp;
+      }
+      input.setAttribute("data-param-key", field.key);
+      input.style.padding = "6px 8px";
+      input.style.borderRadius = "8px";
+      input.style.border = "1px solid var(--border)";
+      input.style.background = "var(--panel)";
+      input.style.color = "var(--text)";
+      wrap.append(title, input);
+      form.appendChild(wrap);
+    });
+    host.appendChild(form);
+    const rowWrap = document.createElement("div");
+    rowWrap.className = "row";
+    rowWrap.style.marginTop = "10px";
+    rowWrap.style.display = "flex";
+    rowWrap.style.gap = "6px";
+    const run = document.createElement("button");
+    run.className = "btn";
+    run.type = "button";
+    run.textContent = "Run";
+    run.addEventListener("click", this.handleRunInputs);
+    rowWrap.appendChild(run);
+    host.appendChild(rowWrap);
+  }
+
+  private readParams(): Record<string, unknown> {
+    const host = this.exportHost?.querySelector<HTMLElement>("#optionsHost");
+    if (!host) return {};
+    const inputs = host.querySelectorAll<HTMLElement>("[data-param-key]");
+    const params: Record<string, unknown> = {};
+    inputs.forEach((node) => {
+      const key = node.getAttribute("data-param-key") || "";
+      if (!key) return;
+      if (node instanceof HTMLInputElement) {
+        if (node.type === "number") {
+          const v = node.value.trim();
+          params[key] = v === "" ? undefined : Number(v);
+        } else {
+          params[key] = node.value;
+        }
+      } else if (node instanceof HTMLSelectElement) {
+        params[key] = node.value;
+      }
+    });
+    return params;
   }
 
   private attachControlHooks(): void {
@@ -308,15 +527,19 @@ export class VisualiserPage {
       return;
     }
     host.innerHTML = "";
-    for (let index = 0; index < this.totalSlides; index += 1) {
+    const count = this.deck.length || this.totalSlides;
+    for (let index = 0; index < count; index += 1) {
       const thumb = document.createElement("button");
       thumb.type = "button";
       thumb.className = "thumb";
       if (index === this.slideIndex) {
         thumb.classList.add("active");
       }
+      const title =
+        (this.deck[index] as { title?: string } | undefined)?.title ||
+        `Slide ${index + 1}`;
       thumb.innerHTML = `
-        <div class="thumb-label">Slide ${index + 1}</div>
+        <div class="thumb-label">${title}</div>
         <div class="thumb-sub">Preview</div>
       `;
       thumb.setAttribute("data-idx", String(index));
@@ -331,6 +554,7 @@ export class VisualiserPage {
 
   private applySlideChange(): void {
     this.renderThumbs();
+    this.renderSlide();
     this.updateSummary();
     this.logLine(`Slide selected: ${this.slideIndex + 1}`);
   }
@@ -340,7 +564,7 @@ export class VisualiserPage {
     if (!counter) {
       return;
     }
-    const total = this.totalSlides || 0;
+    const total = this.deck.length || this.totalSlides || 0;
     const current = total ? String(this.slideIndex + 1) : "0";
     counter.textContent = `${current} / ${total}`;
   }
@@ -480,19 +704,19 @@ export class VisualiserPage {
     const summarySlides = this.exportHost?.querySelector<HTMLElement>("#summarySlides");
     const summaryActive = this.exportHost?.querySelector<HTMLElement>("#summaryActive");
     if (summaryCount) {
-      summaryCount.textContent = "1";
+      summaryCount.textContent = String(this.selectedSections.size);
     }
     if (summarySlides) {
-      summarySlides.textContent = String(this.totalSlides);
+      summarySlides.textContent = String(this.deck.length || this.totalSlides);
     }
     if (summaryActive) {
       summaryActive.textContent = `Slide ${this.slideIndex + 1}`;
     }
     const slideCount = this.mount.querySelector<HTMLElement>("#slideCount");
     if (slideCount) {
-      slideCount.textContent = `${this.slideIndex + 1} / ${this.totalSlides}`;
+      slideCount.textContent = `${this.slideIndex + 1} / ${this.deck.length || this.totalSlides}`;
     }
-    this.setStatus(this.totalSlides ? `Slides: ${this.totalSlides}` : "No slides");
+    this.setStatus(this.deck.length ? `Slides: ${this.deck.length}` : "No slides");
   }
 
   private logLine(message: string): void {
@@ -530,13 +754,14 @@ export class VisualiserPage {
 
   private goToSlide(direction: -1 | 1): void {
     const next = this.slideIndex + direction;
+    const total = this.deck.length || this.totalSlides;
     if (next < 0) {
       this.slideIndex = 0;
       this.applySlideChange();
       return;
     }
-    if (next >= this.totalSlides) {
-      this.slideIndex = this.totalSlides - 1;
+    if (next >= total) {
+      this.slideIndex = total - 1;
       this.applySlideChange();
       return;
     }
@@ -549,7 +774,8 @@ export class VisualiserPage {
     if (!host) {
       return;
     }
-    host.textContent = "Table placeholder (coming soon).";
+    const slide = this.deck[this.slideIndex] as any;
+    host.innerHTML = slide?.table_html || "<div>No table available.</div>";
   }
 
   private setTab(tab: "slide" | "table"): void {
@@ -588,16 +814,120 @@ export class VisualiserPage {
   }
 
   private handleRunInputs = (): void => {
-    this.logLine("Run inputs triggered.");
-    this.appendExportLog("Run inputs triggered.");
-    this.setStatus("Inputs run");
+    void this.runVisualiser();
   };
 
   private handleBuild = (): void => {
-    this.logLine("Build requested.");
-    this.appendExportLog("Build requested.");
-    this.setStatus("Build requested");
+    void this.runVisualiser(true);
   };
+
+  private async runVisualiser(isBuild = false): Promise<void> {
+    if (!this.currentTable) {
+      this.setStatus("Load data in Retrieve first.");
+      this.appendExportLog("No data available. Load data in Retrieve.");
+      return;
+    }
+    const include = this.orderedInclude();
+    if (!include.length) {
+      this.setStatus("Select at least one section.");
+      this.appendExportLog("No sections selected.");
+      return;
+    }
+    this.setStatus("Running visualiser...");
+    this.appendExportLog(isBuild ? "Build requested." : "Running preview...");
+    const params = this.readParams();
+    const cacheKey = this.buildCacheKey(this.currentTable, include, params);
+    const cached = this.readDeckCache(cacheKey);
+    if (cached && cached.length) {
+      this.deck = cached;
+      this.slideIndex = 0;
+      this.renderThumbs();
+      this.renderSlide();
+      this.updateSummary();
+      this.setStatus("Visualiser ready (cache)");
+      return;
+    }
+    const response = await this.sendVisualiserCommand(isBuild ? "build_deck" : "run_inputs", {
+      table: this.currentTable,
+      include,
+      params
+    });
+    if (!response || response.status !== "ok") {
+      this.setStatus("Visualiser failed.");
+      this.appendExportLog(`Visualiser failed to return results.`);
+      if (response && (response as any).message) {
+        this.appendExportLog(String((response as any).message));
+      }
+      return;
+    }
+    const logs = (response as any).logs;
+    if (Array.isArray(logs)) {
+      logs.forEach((line) => {
+        if (typeof line === "string" && line.trim()) {
+          this.appendExportLog(line);
+          this.setStatus(line);
+        }
+      });
+    }
+    const deck = (response as any).deck?.slides || [];
+    this.deck = Array.isArray(deck) ? deck : [];
+    this.writeLastDeckCache(this.deck);
+    this.writeDeckCache(cacheKey, this.deck);
+    this.slideIndex = 0;
+    this.renderThumbs();
+    this.renderSlide();
+    this.updateSummary();
+    this.setStatus("Visualiser ready");
+  }
+
+  private orderedInclude(): string[] {
+    if (!this.sections.length) {
+      return Array.from(this.selectedSections);
+    }
+    return this.sections.map((s) => s.id).filter((id) => this.selectedSections.has(id));
+  }
+
+  private clearPlotPlaceholder(): void {
+    this.plotHost = this.mount.querySelector<HTMLElement>("#plot");
+    if (!this.plotHost) return;
+    this.plotHost.innerHTML = `<div style="padding:12px;color:var(--muted);">Run Visualiser to generate plots.</div>`;
+  }
+
+  private renderSlide(): void {
+    if (!this.plotHost) return;
+    const slide = this.deck[this.slideIndex] as any;
+    if (!slide) {
+      this.setStatus("No slide to render.");
+      return;
+    }
+    const figJson = slide.fig_json;
+    const tableHtml = slide.table_html;
+    const title = slide.title;
+    if (figJson && this.plotHost) {
+      Plotly.purge(this.plotHost);
+      void Plotly.newPlot(this.plotHost, figJson.data || figJson, figJson.layout || {}, { responsive: true })
+        .then(() => {
+          this.setStatus(title || "Rendered");
+          this.resizePlot();
+        })
+        .catch(() => {
+          this.setStatus("Plot render failed.");
+        });
+    } else {
+      this.plotHost.innerHTML = `<div style="padding:12px;color:var(--muted);">No figure on this slide.</div>`;
+    }
+    const tableHost = this.mount.querySelector<HTMLElement>("#tableHost");
+    if (tableHost) {
+      tableHost.innerHTML = tableHtml || "<div>No table available.</div>";
+    }
+  }
+
+  private async sendVisualiserCommand(action: string, payload?: Record<string, unknown>): Promise<any> {
+    if (window.commandBridge?.dispatch) {
+      return window.commandBridge.dispatch({ phase: "visualiser", action, payload });
+    }
+    return undefined;
+  }
 
   private handleCopyStatus = (): void => {
     const host = this.exportHost?.querySelector<HTMLElement>("#exportLog");
@@ -620,7 +950,7 @@ export class VisualiserPage {
   };
 
   private handleTestClick = (): void => {
-    this.drawExampleFigure();
+    void this.runVisualiser();
   };
 
   private handleDiagClick = (): void => {
@@ -826,6 +1156,10 @@ export class VisualiserPage {
       element.removeEventListener(type, listener);
     });
     this.eventHandlers = [];
+    if (this.dataHubListener) {
+      document.removeEventListener("retrieve:datahub-updated", this.dataHubListener);
+      this.dataHubListener = null;
+    }
     this.cleanupGlobalListeners();
     this.stopHitTestLoop();
     if (this.resizeObserver) {
@@ -841,5 +1175,73 @@ export class VisualiserPage {
       this.exportHost.innerHTML = this.exportPlaceholder;
     }
     VisualiserPage.activeInstance = null;
+  }
+
+  private buildCacheKey(
+    table: DataHubTable,
+    include: string[],
+    params: Record<string, unknown>
+  ): string {
+    const head = table.rows.slice(0, 5);
+    const payload = {
+      columns: table.columns,
+      rows: table.rows.length,
+      head,
+      include,
+      params
+    };
+    return JSON.stringify(payload);
+  }
+
+  private readDeckCache(key: string): Array<Record<string, unknown>> | null {
+    try {
+      const raw = window.localStorage.getItem("visualiser.deck.cache");
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as Record<string, Array<Record<string, unknown>>>;
+      return parsed[key] || null;
+    } catch {
+      return null;
+    }
+  }
+
+  private writeDeckCache(key: string, deck: Array<Record<string, unknown>>): void {
+    try {
+      const raw = window.localStorage.getItem("visualiser.deck.cache");
+      const parsed = raw ? (JSON.parse(raw) as Record<string, Array<Record<string, unknown>>>) : {};
+      parsed[key] = deck;
+      window.localStorage.setItem("visualiser.deck.cache", JSON.stringify(parsed));
+    } catch {
+      // ignore cache errors
+    }
+  }
+
+  private readLastDeckCache(): Array<Record<string, unknown>> | null {
+    try {
+      const raw = window.localStorage.getItem("visualiser.deck.last");
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as Array<Record<string, unknown>>;
+      return Array.isArray(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private writeLastDeckCache(deck: Array<Record<string, unknown>>): void {
+    try {
+      window.localStorage.setItem("visualiser.deck.last", JSON.stringify(deck));
+    } catch {
+      // ignore cache errors
+    }
+  }
+
+  private logDfLoaded(source: "restore" | "event", table: DataHubTable): void {
+    const first = table.rows[0];
+    const row: Record<string, unknown> = {};
+    if (first) {
+      table.columns.forEach((col, idx) => {
+        row[col] = first[idx];
+      });
+    }
+    console.info("[visualise][df_loaded]", { source, columns: table.columns, firstRow: row });
   }
 }

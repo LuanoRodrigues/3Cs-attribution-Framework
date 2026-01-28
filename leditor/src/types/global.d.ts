@@ -95,4 +95,3 @@ declare global {
 export {};
 
 declare module "*.css";
-declare module "*.html";

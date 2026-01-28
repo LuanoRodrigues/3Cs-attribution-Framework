@@ -1,5 +1,5 @@
 ﻿import type { AnalysePageContext, AnalyseState, AnalyseRun } from "../../analyse/types";
-import { buildDatasetHandles, discoverRuns, getDefaultBaseDir } from "../../analyse/data";
+import { buildDatasetHandles, discoverRuns, getDefaultBaseDir, warmAnalyseRun } from "../../analyse/data";
 
 const BASE_DIR_KEY = "analyse.baseDir";
 const LEGACY_BASE_PREFIX = "/home/pantera/.annotarium/analyse";
@@ -201,6 +201,7 @@ export function renderCorpusPage(container: HTMLElement, state: AnalyseState, ct
       themesDir: run.path,
       datasets
     });
+    warmAnalyseRun(run.path);
     renderMetadataCards();
     updateStatus(`Active run set to ${run.label}`);
   };

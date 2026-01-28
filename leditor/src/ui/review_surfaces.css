@@ -1,0 +1,14 @@
+.leditor-review-surface {
+  border: 1px solid #cfc3a4;
+  background: #fffdf7;
+  padding: 10px 12px;
+  border-radius: 6px;
+}
+
+.leditor-review-surface .leditor-review-title {
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b5b3b;
+}

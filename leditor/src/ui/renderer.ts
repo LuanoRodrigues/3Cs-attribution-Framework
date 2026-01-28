@@ -480,7 +480,32 @@ const ensureEditorElement = (elementId: string): HTMLElement => {
   return mount;
 };
 
+type MountGuard = { mounted: boolean; inFlight: Promise<void> | null };
+
+const getMountGuard = (): MountGuard => {
+  const g = globalThis as typeof globalThis & { __leditorMountGuard?: MountGuard };
+  if (!g.__leditorMountGuard) {
+    g.__leditorMountGuard = { mounted: false, inFlight: null };
+  }
+  return g.__leditorMountGuard;
+};
+
 export const mountEditor = async () => {
+  const guard = getMountGuard();
+  if (guard.mounted) {
+    console.warn("[Renderer] mountEditor called after mount; ignoring.");
+    return;
+  }
+  if (guard.inFlight) {
+    console.warn("[Renderer] mountEditor already in progress; waiting.");
+    return guard.inFlight;
+  }
+  guard.inFlight = (async () => {
+    if (document.getElementById("leditor-app")) {
+      console.warn("[Renderer] mountEditor found existing app root; skipping mount.");
+      guard.mounted = true;
+      return;
+    }
   let hostContractInfo: ReturnType<typeof getHostContract> | null = null;
   try {
     hostContractInfo = getHostContract();
@@ -1040,6 +1065,18 @@ export const mountEditor = async () => {
   } else {
     console.info("[Phase23] Skipping DOCX auto-export (host export handler unavailable)");
   }
+  })()
+    .then(() => {
+      guard.mounted = true;
+    })
+    .catch((error) => {
+      console.error("[Renderer] mountEditor failed", error);
+      throw error;
+    })
+    .finally(() => {
+      guard.inFlight = null;
+    });
+  return guard.inFlight;
 };
 
 const runPhase21Validation = (editorHandle: EditorHandle, editorInstance: TiptapEditor) => {

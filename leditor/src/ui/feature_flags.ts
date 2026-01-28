@@ -17,5 +17,5 @@ export const featureFlags: FeatureFlags = {
   paginationEnabled: true,
   paginationIncrementalEnabled: true,
   paginationDebugOverlayEnabled: false,
-  paginationDebugEnabled: true
+  paginationDebugEnabled: false
 };

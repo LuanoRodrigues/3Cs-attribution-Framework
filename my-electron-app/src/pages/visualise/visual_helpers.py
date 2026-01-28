@@ -22,7 +22,6 @@ from pptx.enum.text import PP_ALIGN  # <-- Correct name
 from pptx.util import Emu, Inches, Pt
 from wordcloud import WordCloud
 
-from bibliometric_analysis_tool.core.app_constants import THEME, MAIN_APP_CACHE_DIR
 from bibliometric_analysis_tool.utils.data_processing import get_text_corpus_from_df, preprocess_text, _country_counts, \
     _make_world_map, _centroid, _split_institutions, _set_notes, _calculate_all_author_stats, get_document_type, \
     _geocode, _get_ngrams_from_text, _choose_corpus_text, _scan_text_for_keywords, _normalise_and_strip_html, \

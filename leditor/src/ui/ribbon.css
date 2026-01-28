@@ -22,7 +22,6 @@
 }
 
 :root {
-  --fluent-icon-font: "Lucide", "Segoe MDL2 Assets", var(--r-font-family);
   --fluent-icon-bg: linear-gradient(180deg, #ffffff 0%, #f3f4f6 100%);
   --fluent-icon-border: 1px solid rgba(15, 23, 42, 0.12);
   --fluent-icon-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 1px 3px rgba(0, 0, 0, 0.15);
@@ -33,7 +32,6 @@
   border: var(--fluent-icon-border);
   box-shadow: var(--fluent-icon-shadow);
   border-radius: var(--r-ctl-radius);
-  font-family: var(--fluent-icon-font);
   color: var(--r-text);
   line-height: 1;
   text-transform: none;
@@ -1156,7 +1154,6 @@
 
 .leditor-ribbon-panel[data-tab-id="insert"] .leditor-ribbon-button,
 .leditor-ribbon-panel[data-tab-id="insert"] .leditor-ribbon-icon-btn {
-  font-family: "Segoe MDL2 Assets", "Lucide", system-ui, sans-serif;
   border-radius: var(--r-ctl-radius);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 1px 3px rgba(0, 0, 0, 0.15);
   text-transform: none;

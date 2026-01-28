@@ -30,6 +30,7 @@ import { getSecretsVault, initializeSecretsVault } from "./config/secretsVaultIn
 import { handleRetrieveCommand, registerRetrieveIpcHandlers } from "./main/ipc/retrieve_ipc";
 import { registerProjectIpcHandlers } from "./main/ipc/project_ipc";
 import { ProjectManager } from "./main/services/projectManager";
+import { invokeVisualisePreview, invokeVisualiseSections } from "./main/services/visualiseBridge";
 import { createCoderTestTree, createPdfTestPayload } from "./test/testFixtures";
 import { getCoderCacheDir } from "./session/sessionPaths";
 import type { SessionMenuAction } from "./session/sessionTypes";
@@ -52,6 +53,12 @@ type CommandEnvelope = {
 };
 
 const isDevelopment = process.env.NODE_ENV !== "production";
+
+app.commandLine.appendSwitch("disable-renderer-backgrounding");
+app.commandLine.appendSwitch("disable-background-timer-throttling");
+app.commandLine.appendSwitch("disable-backgrounding-occluded-windows");
+app.commandLine.appendSwitch("enable-gpu-rasterization");
+app.commandLine.appendSwitch("enable-zero-copy");
 
 function getLogPath(): string {
   const targetDir = app.isPackaged ? app.getPath("userData") : path.join(app.getAppPath(), "..");
@@ -321,6 +328,27 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
       } catch (error) {
         console.error("Retrieve command failed", error);
         return { status: "error", message: error instanceof Error ? error.message : "retrieve command failed" };
+      }
+    }
+    if (payload?.phase === "visualiser" && payload.action) {
+      try {
+        if (payload.action === "run_inputs" || payload.action === "refresh_preview" || payload.action === "build_deck") {
+          const body = (payload.payload as Record<string, unknown>) || {};
+          const response = await invokeVisualisePreview({
+            table: body.table as any,
+            include: (body.include as string[]) || [],
+            params: (body.params as Record<string, unknown>) || {},
+            collectionName: body.collectionName as string | undefined
+          });
+          return response;
+        }
+        if (payload.action === "get_sections") {
+          return await invokeVisualiseSections();
+        }
+        return { status: "ok" };
+      } catch (error) {
+        console.error("Visualiser command failed", error);
+        return { status: "error", message: error instanceof Error ? error.message : "visualiser command failed" };
       }
     }
     if (payload?.phase === "screen" && payload.action) {
@@ -680,6 +708,12 @@ function createWindow(): void {
   const rendererPath = path.join(__dirname, "renderer", "index.html");
   const preloadScript = path.join(__dirname, "preload.js");
   const leditorResourcesPath = path.join(app.getAppPath(), "dist", "resources", "leditor");
+  const dataHubCacheDir = path.join(app.getPath("userData"), "data-hub-cache");
+  try {
+    fs.mkdirSync(dataHubCacheDir, { recursive: true });
+  } catch {
+    // Ignore filesystem errors; downstream reads/writes will surface issues.
+  }
   const hostContract = {
     version: 1,
     sessionId: "annotarium-session",
@@ -687,7 +721,7 @@ function createWindow(): void {
     documentTitle: "Annotarium Document",
     paths: {
       contentDir: path.join(leditorResourcesPath, "content"),
-      bibliographyDir: path.join(leditorResourcesPath, "bibliography"),
+      bibliographyDir: dataHubCacheDir,
       tempDir: path.join(leditorResourcesPath, "temp")
     },
     inputs: {
@@ -717,6 +751,8 @@ function createWindow(): void {
   window.once("ready-to-show", () => {
     window.show();
   });
+
+  window.webContents.setBackgroundThrottling(false);
 
   window.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);

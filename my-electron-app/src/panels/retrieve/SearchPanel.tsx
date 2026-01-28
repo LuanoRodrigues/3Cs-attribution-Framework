@@ -7,7 +7,7 @@ import type {
   RetrieveRecord,
   RetrieveSort
 } from "../../shared/types/retrieve";
-import { DataHubPanel } from "./DataHubPanel";
+import { readRetrieveQueryDefaults } from "../../state/retrieveQueryDefaults";
 
 const PROVIDERS: Array<{ id: RetrieveProviderId; label: string }> = [
   { id: "semantic_scholar", label: "Semantic Scholar" },
@@ -42,9 +42,10 @@ export class SearchPanel {
   private lastProvider?: RetrieveProviderId;
   private isLoading = false;
   private selectedRecordId?: string;
-  private dataHubPanel: DataHubPanel;
+  private defaultsHandler: (event: Event) => void;
 
   constructor(initial?: Partial<RetrieveQuery>) {
+    const defaults = readRetrieveQueryDefaults();
     this.element = document.createElement("div");
     this.element.className = "tool-surface";
 
@@ -63,7 +64,7 @@ export class SearchPanel {
     this.providerSelect = document.createElement("select");
     this.providerSelect.ariaLabel = "Provider";
     this.providerSelect.style.minWidth = "160px";
-    this.populateProviders(initial?.provider ?? "semantic_scholar");
+    this.populateProviders(initial?.provider ?? defaults.provider);
 
     this.sortSelect = document.createElement("select");
     this.sortSelect.ariaLabel = "Sort";
@@ -73,25 +74,25 @@ export class SearchPanel {
       opt.textContent = option.label;
       this.sortSelect.appendChild(opt);
     });
-    this.sortSelect.value = initial?.sort ?? "relevance";
+    this.sortSelect.value = initial?.sort ?? defaults.sort;
 
     this.yearFromInput = document.createElement("input");
     this.yearFromInput.type = "number";
     this.yearFromInput.placeholder = "Year from";
     this.yearFromInput.style.width = "110px";
-    this.yearFromInput.value = initial?.year_from?.toString() ?? "";
+    this.yearFromInput.value = initial?.year_from?.toString() ?? (defaults.year_from?.toString() ?? "");
 
     this.yearToInput = document.createElement("input");
     this.yearToInput.type = "number";
     this.yearToInput.placeholder = "Year to";
     this.yearToInput.style.width = "110px";
-    this.yearToInput.value = initial?.year_to?.toString() ?? "";
+    this.yearToInput.value = initial?.year_to?.toString() ?? (defaults.year_to?.toString() ?? "");
 
     this.limitInput = document.createElement("input");
     this.limitInput.type = "number";
     this.limitInput.placeholder = "Limit";
     this.limitInput.style.width = "90px";
-    this.limitInput.value = initial?.limit?.toString() ?? "25";
+    this.limitInput.value = initial?.limit?.toString() ?? String(defaults.limit ?? 25);
 
     const searchBtn = document.createElement("button");
     searchBtn.className = "ribbon-button";
@@ -139,8 +140,7 @@ export class SearchPanel {
     resultsWrapper.className = "retrieve-results";
     resultsWrapper.append(this.statusLine, this.resultsList, loadMoreRow);
 
-    this.dataHubPanel = new DataHubPanel();
-    this.element.append(header, searchBlock, dbBlock, resultsWrapper, this.dataHubPanel.element);
+    this.element.append(header, searchBlock, dbBlock, resultsWrapper);
 
     [
       this.queryInput,
@@ -153,10 +153,23 @@ export class SearchPanel {
       el.addEventListener("change", () => this.emitChange());
       el.addEventListener("input", () => this.emitChange());
     });
+
+    this.defaultsHandler = (event: Event) => {
+      const detail = (event as CustomEvent<{ defaults?: ReturnType<typeof readRetrieveQueryDefaults> }>).detail;
+      if (!detail?.defaults) return;
+      const next = detail.defaults;
+      this.providerSelect.value = next.provider;
+      this.sortSelect.value = next.sort;
+      this.yearFromInput.value = next.year_from?.toString() ?? "";
+      this.yearToInput.value = next.year_to?.toString() ?? "";
+      this.limitInput.value = String(next.limit ?? 25);
+      this.emitChange();
+    };
+    document.addEventListener("retrieve:query-defaults-updated", this.defaultsHandler);
   }
 
   destroy(): void {
-    this.dataHubPanel.destroy();
+    document.removeEventListener("retrieve:query-defaults-updated", this.defaultsHandler);
   }
 
   getQuery(): RetrieveQuery {

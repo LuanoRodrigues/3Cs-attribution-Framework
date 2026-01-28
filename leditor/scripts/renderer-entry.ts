@@ -14,19 +14,25 @@ declare global {
   }
 }
 
-import("../src/ui/renderer.ts")
-  .then(({ mountEditor }) => {
-    let hasMounted = false;
-    const mountOnce = () => {
-      if (hasMounted) return;
-      hasMounted = true;
-      mountEditor();
-    };
-    window.__leditorMountEditor = mountOnce;
-    if (window.__leditorAutoMount !== false) {
-      mountOnce();
-    }
-  })
-  .catch((error) => {
-    console.error("[renderer-entry] mount failed", error);
-  });
+const g = globalThis as typeof globalThis & { __leditorRendererEntryLoaded?: boolean };
+if (g.__leditorRendererEntryLoaded) {
+  console.warn("[renderer-entry] already loaded; skipping duplicate entry.");
+} else {
+  g.__leditorRendererEntryLoaded = true;
+  import("../src/ui/renderer.ts")
+    .then(({ mountEditor }) => {
+      let hasMounted = false;
+      const mountOnce = () => {
+        if (hasMounted) return;
+        hasMounted = true;
+        mountEditor();
+      };
+      window.__leditorMountEditor = mountOnce;
+      if (window.__leditorAutoMount !== false) {
+        mountOnce();
+      }
+    })
+    .catch((error) => {
+      console.error("[renderer-entry] mount failed", error);
+    });
+}

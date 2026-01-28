@@ -1867,6 +1867,8 @@ kbd { background: color-mix(in srgb, var(--surface) 10%, transparent); }
   display: flex;
   flex-direction: column;
   gap: 10px;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .retrieve-datahub-header {
@@ -1928,6 +1930,164 @@ kbd { background: color-mix(in srgb, var(--surface) 10%, transparent); }
 
 .retrieve-datahub-table tbody tr.selected {
   background: color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.retrieve-grid {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+  overflow: hidden;
+  outline: none;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.retrieve-grid:focus {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.retrieve-grid-header {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  align-items: stretch;
+  background: var(--surface-muted);
+  border-bottom: 1px solid var(--border);
+}
+
+.retrieve-grid-header-corner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  border-right: 1px solid var(--border);
+  user-select: none;
+}
+
+.retrieve-grid-header-row {
+  display: grid;
+  overflow: hidden;
+}
+
+.retrieve-grid-header-cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px;
+  border-right: 1px solid var(--border);
+  user-select: none;
+  cursor: pointer;
+}
+
+.retrieve-grid-header-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.retrieve-grid-header-sort {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.retrieve-grid-col-resizer {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+}
+
+.retrieve-grid-body {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  background: var(--panel);
+}
+
+.retrieve-grid-spacer {
+  width: 1px;
+}
+
+.retrieve-grid-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  will-change: transform;
+}
+
+.retrieve-grid-row {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  align-items: stretch;
+  border-bottom: 1px solid var(--border);
+}
+
+.retrieve-grid-row.alt {
+  background: color-mix(in srgb, var(--surface-muted) 40%, transparent);
+}
+
+.retrieve-grid-row-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--muted);
+  border-right: 1px solid var(--border);
+  user-select: none;
+  background: color-mix(in srgb, var(--surface-muted) 70%, transparent);
+}
+
+.retrieve-grid-row-cells {
+  display: grid;
+}
+
+.retrieve-grid-cell {
+  padding: 4px 10px;
+  font-size: 12px;
+  line-height: 18px;
+  border-right: 1px solid var(--border);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: none;
+}
+
+.retrieve-grid-cell.selected {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.retrieve-grid-cell.active {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 65%, transparent);
+}
+
+.retrieve-grid-cell.na-flag {
+  background: color-mix(in srgb, var(--danger) 22%, transparent);
+}
+
+.retrieve-grid-editor {
+  z-index: 50;
+  resize: none;
+  border: 1px solid color-mix(in srgb, var(--accent) 70%, var(--border));
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--text);
+  background: var(--panel);
+  outline: none;
 }
 
 .ribbon-group .ribbon-hint {
@@ -2327,6 +2487,9 @@ kbd { background: color-mix(in srgb, var(--surface) 10%, transparent); }
   display: flex;
   flex-direction: column;
   gap: 6px;
+  content-visibility: auto;
+  contain: content;
+  contain-intrinsic-size: 120px;
 }
 
 .section-card h4 {
@@ -2587,6 +2750,9 @@ kbd { background: color-mix(in srgb, var(--surface) 10%, transparent); }
   display: flex;
   flex-direction: column;
   gap: 10px;
+  content-visibility: auto;
+  contain: content;
+  contain-intrinsic-size: 260px;
 }
 
 .batch-card__head {

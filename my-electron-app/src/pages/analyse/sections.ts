@@ -135,6 +135,179 @@ function countValues(values: string[]): Record<string, number> {
   }, {});
 }
 
+function debounce<T extends (...args: any[]) => void>(fn: T, delay = 200): T {
+  let handle: number | null = null;
+  return ((...args: any[]) => {
+    if (handle !== null) window.clearTimeout(handle);
+    handle = window.setTimeout(() => fn(...args), delay);
+  }) as T;
+}
+
+function scheduleIdle(task: () => void, timeout = 120): void {
+  const anyWindow = window as any;
+  if (typeof anyWindow.requestIdleCallback === "function") {
+    anyWindow.requestIdleCallback(task, { timeout });
+  } else {
+    window.setTimeout(task, 0);
+  }
+}
+
+function createFilterWorker(): Worker | null {
+  try {
+    const source = `
+      const countValues = (values) => {
+        const out = {};
+        for (const value of values) {
+          if (!value) continue;
+          out[value] = (out[value] || 0) + 1;
+        }
+        return out;
+      };
+      let sections = [];
+      let batches = [];
+      const buildSectionCache = (items) => items.map((item) => {
+        const searchText = [
+          item.title, item.route, item.rq, item.gold, item.evidence,
+          ...(item.potentialTokens || []),
+          ...(item.tags || []),
+          item.text
+        ].filter(Boolean).join(" \\n ").toLowerCase();
+        const tagsLower = (item.tags || []).map((t) => String(t).toLowerCase());
+        return { ...item, searchText, tagsLower };
+      });
+      const buildBatchCache = (items) => items.map((item) => {
+        const searchText = [
+          item.rq, item.theme, item.evidence, item.author, item.year,
+          ...(item.tags || []),
+          item.text
+        ].filter(Boolean).join(" \\n ").toLowerCase();
+        const tagsLower = (item.tags || []).map((t) => String(t).toLowerCase());
+        return { ...item, searchText, tagsLower };
+      });
+      const filterSections = (filters) => {
+        const term = (filters.search || "").trim().toLowerCase();
+        const tagTerm = (filters.tagContains || "").trim().toLowerCase();
+        const tags = new Set(filters.tags || []);
+        const gold = new Set(filters.gold || []);
+        const rq = new Set(filters.rq || []);
+        const route = new Set(filters.route || []);
+        const evidence = new Set(filters.evidence || []);
+        const potential = new Set(filters.potential || []);
+        const indices = [];
+        const facetTags = [];
+        const facetGold = [];
+        const facetRq = [];
+        const facetRoute = [];
+        const facetEvidence = [];
+        const facetPotential = [];
+        for (const item of sections) {
+          if (tags.size && !item.tags.some((t) => tags.has(t))) continue;
+          if (gold.size && !gold.has(item.gold)) continue;
+          if (rq.size && !rq.has(item.rq)) continue;
+          if (route.size && !route.has(item.route)) continue;
+          if (evidence.size && !evidence.has(item.evidence)) continue;
+          if (potential.size && !item.potentialTokens.some((t) => potential.has(t))) continue;
+          if (tagTerm && !item.tagsLower.some((t) => t.includes(tagTerm))) continue;
+          if (term && !item.searchText.includes(term)) continue;
+          indices.push(item.idx);
+          facetTags.push(...(item.tags || []));
+          if (item.gold) facetGold.push(item.gold);
+          if (item.rq) facetRq.push(item.rq);
+          if (item.route) facetRoute.push(item.route);
+          if (item.evidence) facetEvidence.push(item.evidence);
+          facetPotential.push(...(item.potentialTokens || []));
+        }
+        return {
+          indices,
+          facets: {
+            tags: countValues(facetTags),
+            gold: countValues(facetGold),
+            rq: countValues(facetRq),
+            route: countValues(facetRoute),
+            evidence: countValues(facetEvidence),
+            potential: countValues(facetPotential)
+          }
+        };
+      };
+      const filterBatches = (filters) => {
+        const term = (filters.search || "").trim().toLowerCase();
+        const rq = new Set(filters.rq || []);
+        const evidence = new Set(filters.evidence || []);
+        const theme = new Set(filters.theme || []);
+        const tags = new Set(filters.tags || []);
+        const authors = new Set(filters.authors || []);
+        const years = new Set(filters.years || []);
+        const score = new Set(filters.score || []);
+        const indices = [];
+        const facetRq = [];
+        const facetEvidence = [];
+        const facetTheme = [];
+        const facetTags = [];
+        const facetAuthors = [];
+        const facetYears = [];
+        const facetScore = [];
+        for (const item of batches) {
+          if (rq.size && !rq.has(item.rq)) continue;
+          if (evidence.size && !evidence.has(item.evidence)) continue;
+          if (theme.size && !theme.has(item.theme)) continue;
+          if (tags.size && !item.tags.some((t) => tags.has(t))) continue;
+          if (authors.size && !authors.has(item.author)) continue;
+          if (years.size && !years.has(item.year)) continue;
+          if (score.size && !score.has(item.score)) continue;
+          if (term && !item.searchText.includes(term)) continue;
+          indices.push(item.idx);
+          if (item.rq) facetRq.push(item.rq);
+          if (item.evidence) facetEvidence.push(item.evidence);
+          if (item.theme) facetTheme.push(item.theme);
+          facetTags.push(...(item.tags || []));
+          if (item.author) facetAuthors.push(item.author);
+          if (item.year) facetYears.push(item.year);
+          if (item.score) facetScore.push(item.score);
+        }
+        return {
+          indices,
+          facets: {
+            rq: countValues(facetRq),
+            evidence: countValues(facetEvidence),
+            theme: countValues(facetTheme),
+            tags: countValues(facetTags),
+            authors: countValues(facetAuthors),
+            years: countValues(facetYears),
+            score: countValues(facetScore)
+          }
+        };
+      };
+      self.onmessage = (event) => {
+        const msg = event.data || {};
+        if (msg.type === "init_sections") {
+          sections = buildSectionCache(msg.items || []);
+          return;
+        }
+        if (msg.type === "init_batches") {
+          batches = buildBatchCache(msg.items || []);
+          return;
+        }
+        if (msg.type === "filter_sections") {
+          const result = filterSections(msg.filters || {});
+          self.postMessage({ type: "sections_result", sessionId: msg.sessionId, requestId: msg.requestId, ...result });
+          return;
+        }
+        if (msg.type === "filter_batches") {
+          const result = filterBatches(msg.filters || {});
+          self.postMessage({ type: "batches_result", sessionId: msg.sessionId, requestId: msg.requestId, ...result });
+        }
+      };
+    `;
+    const blob = new Blob([source], { type: "text/javascript" });
+    const url = URL.createObjectURL(blob);
+    const worker = new Worker(url);
+    worker.addEventListener("error", () => URL.revokeObjectURL(url));
+    return worker;
+  } catch {
+    return null;
+  }
+}
+
 function resolveCorpusRunPath(state: AnalyseState): string {
   const baseDir = (state.baseDir || "").trim();
   if (baseDir) return baseDir;
@@ -542,6 +715,11 @@ export function renderSectionsPage(
   let cachedSectionIds = new Set<string>();
   let filteredViews: SectionView[] = [];
 
+  const workerSessionId = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  const filterWorker = createFilterWorker();
+  let sectionRequestId = 0;
+  let batchRequestId = 0;
+
   const sectionFilters: SectionFilters = {
     search: "",
     tagContains: "",
@@ -618,6 +796,7 @@ export function renderSectionsPage(
   list.style.flex = "1";
   list.style.minHeight = "0";
   list.style.overflow = "auto";
+  list.style.contain = "strict";
   container.appendChild(list);
 
   if (!isBatchMode && panel3Host) {
@@ -640,6 +819,40 @@ export function renderSectionsPage(
   status.className = "status-bar";
   container.appendChild(status);
 
+  if (filterWorker) {
+    filterWorker.onmessage = (event: MessageEvent) => {
+      const msg = event.data as any;
+      if (!msg || msg.sessionId !== workerSessionId) return;
+      if (msg.type === "sections_result" && msg.requestId === sectionRequestId) {
+        const indices = (msg.indices || []) as number[];
+        const facets = (msg.facets || {}) as Record<string, Record<string, number>>;
+        filteredViews = indices.map((i) => sectionViews[i]).filter(Boolean);
+        renderSectionFilters(facets);
+        renderSectionList(filteredViews);
+        emitSectionsState({ filtered: filteredViews.map((v) => v.section) });
+      }
+      if (msg.type === "batches_result" && msg.requestId === batchRequestId) {
+        const indices = (msg.indices || []) as number[];
+        const facets = (msg.facets || {}) as Record<string, Record<string, number>>;
+        const filteredPayloads = indices.map((i) => batchViews[i]).filter(Boolean);
+
+        const byBatch = new Map<string, BatchPayloadView[]>();
+        filteredPayloads.forEach((view) => {
+          const list = byBatch.get(view.batch.id) || [];
+          list.push(view);
+          byBatch.set(view.batch.id, list);
+        });
+
+        const filteredBatches = batches
+          .map((batch) => ({ batch, payloads: byBatch.get(batch.id) || [] }))
+          .filter((entry) => entry.payloads.length > 0);
+
+        renderBatchFilters(facets);
+        renderBatchList(filteredBatches);
+      }
+    };
+  }
+
   const renderSectionFilters = (facets: Record<string, Record<string, number>>) => {
     filtersPanel.innerHTML = "";
 
@@ -649,9 +862,11 @@ export function renderSectionsPage(
     search.type = "search";
     search.placeholder = "Search in text, citations & tags…";
     search.value = sectionFilters.search;
-    search.addEventListener("input", () => {
+    const onSearch = debounce(() => {
       sectionFilters.search = search.value;
-    });
+      applySectionFilters();
+    }, 180);
+    search.addEventListener("input", onSearch);
     controls.appendChild(search);
     filtersPanel.appendChild(controls);
 
@@ -659,9 +874,11 @@ export function renderSectionsPage(
     contains.type = "search";
     contains.placeholder = "Tag contains…";
     contains.value = sectionFilters.tagContains;
-    contains.addEventListener("input", () => {
+    const onContains = debounce(() => {
       sectionFilters.tagContains = contains.value;
-    });
+      applySectionFilters();
+    }, 180);
+    contains.addEventListener("input", onContains);
     filtersPanel.appendChild(contains);
 
     const actions = document.createElement("div");
@@ -713,9 +930,11 @@ export function renderSectionsPage(
     search.type = "search";
     search.placeholder = "Search in text, citations & tags…";
     search.value = batchFilters.search;
-    search.addEventListener("input", () => {
+    const onSearch = debounce(() => {
       batchFilters.search = search.value;
-    });
+      applyBatchFilters();
+    }, 180);
+    search.addEventListener("input", onSearch);
     controls.appendChild(search);
     filtersPanel.appendChild(controls);
 
@@ -849,7 +1068,9 @@ export function renderSectionsPage(
     return pick((meta as any).direct_quote_id || (meta as any).dqid || (meta as any).dq_id || (meta as any).custom_id);
   };
 
+  let renderToken = 0;
   const renderSectionList = (views: SectionView[]) => {
+    const token = (renderToken += 1);
     list.innerHTML = "";
     if (previewPanel) previewPanel.innerHTML = "";
 
@@ -862,7 +1083,23 @@ export function renderSectionsPage(
       return;
     }
 
-    views.forEach((view) => {
+    const chunkSize = 40;
+    let idx = 0;
+    const sentinel = document.createElement("div");
+    sentinel.style.height = "1px";
+    const sentinelObserver = "IntersectionObserver" in window
+      ? new IntersectionObserver(
+          (entries) => {
+            if (token !== renderToken) return;
+            if (entries.some((entry) => entry.isIntersecting)) {
+              renderChunk();
+            }
+          },
+          { root: list, rootMargin: "600px 0px", threshold: 0.01 }
+        )
+      : null;
+
+    const buildCard = (view: SectionView) => {
       const card = document.createElement("div");
       card.className = "section-card";
       card.style.cursor = "pointer";
@@ -936,11 +1173,31 @@ export function renderSectionsPage(
           renderPreview(previewPanel, view.section);
         }
       });
-      list.appendChild(card);
-    });
+      return card;
+    };
+
+    const renderChunk = () => {
+      if (token !== renderToken) return;
+      const frag = document.createDocumentFragment();
+      const end = Math.min(idx + chunkSize, views.length);
+      for (; idx < end; idx += 1) {
+        frag.appendChild(buildCard(views[idx]));
+      }
+      list.appendChild(frag);
+      if (idx < views.length) {
+        if (!sentinel.isConnected) list.appendChild(sentinel);
+        if (sentinelObserver) sentinelObserver.observe(sentinel);
+        else scheduleIdle(renderChunk);
+      } else if (sentinel.isConnected) {
+        sentinel.remove();
+      }
+    };
+
+    renderChunk();
   };
 
   const renderBatchList = (records: Array<{ batch: BatchRecord; payloads: BatchPayloadView[] }>) => {
+    const token = (renderToken += 1);
     list.innerHTML = "";
     status.textContent = `${records.length} batches`;
     if (records.length === 0) {
@@ -951,7 +1208,29 @@ export function renderSectionsPage(
       return;
     }
 
-    records.forEach(({ batch, payloads }) => {
+    let observer: IntersectionObserver | null = null;
+    if ("IntersectionObserver" in window) {
+      observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            const target = entry.target as HTMLElement;
+            const render = (target as any).__renderPayloads as (() => void) | undefined;
+            if (render) {
+              render();
+              (target as any).__renderPayloads = null;
+              observer?.unobserve(target);
+            }
+          });
+        },
+        { root: list, rootMargin: "400px 0px", threshold: 0.01 }
+      );
+    }
+
+    const chunkSize = 10;
+    let idx = 0;
+
+    const buildCard = (batch: BatchRecord, payloads: BatchPayloadView[]) => {
       const card = document.createElement("div");
       card.className = "batch-card";
 
@@ -971,217 +1250,347 @@ export function renderSectionsPage(
       meta.textContent = [batch.evidenceType, batch.rqQuestion].filter(Boolean).join(" · ");
       card.appendChild(meta);
 
-      payloads.forEach((view) => {
-        const payload = view.payload;
-        const block = document.createElement("div");
-        block.className = "batch-payload";
+      const payloadContainer = document.createElement("div");
+      card.appendChild(payloadContainer);
 
-        const top = document.createElement("div");
-        top.className = "batch-payload__top";
+      const renderPayloads = () => {
+        if (payloadContainer.childElementCount) return;
+        payloads.forEach((view) => {
+          const payload = view.payload;
+          const block = document.createElement("div");
+          block.className = "batch-payload";
 
-        const checkbox = document.createElement("input");
-        checkbox.type = "checkbox";
-        checkbox.className = "batch-payload__check";
-        top.appendChild(checkbox);
+          const top = document.createElement("div");
+          top.className = "batch-payload__top";
 
-        const pill = document.createElement("span");
-        pill.className = "batch-pill";
-        const theme = view.theme || "—";
-        pill.textContent = theme;
-        pill.style.background = `hsla(${hashHue(theme)}, 70%, 50%, 0.18)`;
-        pill.style.borderColor = `hsla(${hashHue(theme)}, 70%, 60%, 0.5)`;
-        top.appendChild(pill);
+          const checkbox = document.createElement("input");
+          checkbox.type = "checkbox";
+          checkbox.className = "batch-payload__check";
+          top.appendChild(checkbox);
 
-        const spacer = document.createElement("div");
-        spacer.style.flex = "1";
-        top.appendChild(spacer);
+          const pill = document.createElement("span");
+          pill.className = "batch-pill";
+          const theme = view.theme || "—";
+          pill.textContent = theme;
+          pill.style.background = `hsla(${hashHue(theme)}, 70%, 50%, 0.18)`;
+          pill.style.borderColor = `hsla(${hashHue(theme)}, 70%, 60%, 0.5)`;
+          top.appendChild(pill);
 
-        const notes = cleanField(payload.researcher_comment);
-        const notesBtn = document.createElement("button");
-        notesBtn.type = "button";
-        notesBtn.className = "batch-notes";
-        notesBtn.textContent = "Notes ▸";
-        notesBtn.disabled = !notes;
-        top.appendChild(notesBtn);
+          const spacer = document.createElement("div");
+          spacer.style.flex = "1";
+          top.appendChild(spacer);
 
-        block.appendChild(top);
+          const notes = cleanField(payload.researcher_comment);
+          const notesBtn = document.createElement("button");
+          notesBtn.type = "button";
+          notesBtn.className = "batch-notes";
+          notesBtn.textContent = "Notes ▸";
+          notesBtn.disabled = !notes;
+          top.appendChild(notesBtn);
 
-        if (notes) {
-          const notesBody = document.createElement("div");
-          notesBody.className = "batch-notes__body";
-          notesBody.textContent = notes;
-          notesBody.style.display = "none";
-          notesBtn.addEventListener("click", (ev) => {
-            ev.stopPropagation();
-            notesBody.style.display = notesBody.style.display === "none" ? "block" : "none";
+          block.appendChild(top);
+
+          if (notes) {
+            const notesBody = document.createElement("div");
+            notesBody.className = "batch-notes__body";
+            notesBody.textContent = notes;
+            notesBody.style.display = "none";
+            notesBtn.addEventListener("click", (ev) => {
+              ev.stopPropagation();
+              notesBody.style.display = notesBody.style.display === "none" ? "block" : "none";
+            });
+            block.appendChild(notesBody);
+          }
+
+          const para = cleanField(payload.paraphrase);
+          if (para) {
+            const paraEl = document.createElement("div");
+            paraEl.className = "batch-paraphrase";
+            paraEl.textContent = para;
+            block.appendChild(paraEl);
+          }
+
+          const quote = cleanField(payload.direct_quote);
+          if (quote) {
+            const quoteEl = document.createElement("div");
+            quoteEl.className = "batch-quote";
+            quoteEl.textContent = `“${quote}”`;
+            block.appendChild(quoteEl);
+          }
+
+          const metaLine = buildMetaLine(payload);
+          if (metaLine) {
+            const metaEl = document.createElement("div");
+            metaEl.className = "batch-meta";
+            metaEl.innerHTML = metaLine;
+            block.appendChild(metaEl);
+          }
+
+          block.addEventListener("click", (ev) => {
+            const target = ev.target as HTMLElement | null;
+            if (!target) return;
+            if (target.tagName === "A" || target.tagName === "INPUT" || target.classList.contains("batch-notes")) return;
+            emitBatchPayload(container, payload, state.activeRunId);
           });
-          block.appendChild(notesBody);
-        }
 
-        const para = cleanField(payload.paraphrase);
-        if (para) {
-          const paraEl = document.createElement("div");
-          paraEl.className = "batch-paraphrase";
-          paraEl.textContent = para;
-          block.appendChild(paraEl);
-        }
-
-        const quote = cleanField(payload.direct_quote);
-        if (quote) {
-          const quoteEl = document.createElement("div");
-          quoteEl.className = "batch-quote";
-          quoteEl.textContent = `“${quote}”`;
-          block.appendChild(quoteEl);
-        }
-
-        const metaLine = buildMetaLine(payload);
-        if (metaLine) {
-          const metaEl = document.createElement("div");
-          metaEl.className = "batch-meta";
-          metaEl.innerHTML = metaLine;
-          block.appendChild(metaEl);
-        }
-
-        block.addEventListener("click", (ev) => {
-          const target = ev.target as HTMLElement | null;
-          if (!target) return;
-          if (target.tagName === "A" || target.tagName === "INPUT" || target.classList.contains("batch-notes")) return;
-          emitBatchPayload(container, payload, state.activeRunId);
+          payloadContainer.appendChild(block);
         });
+      };
 
-        card.appendChild(block);
-      });
+      (card as any).__renderPayloads = renderPayloads;
+      if (observer) {
+        observer.observe(card);
+      } else {
+        renderPayloads();
+      }
 
-      list.appendChild(card);
-    });
+      return card;
+    };
+
+    const renderChunk = () => {
+      if (token !== renderToken) return;
+      const frag = document.createDocumentFragment();
+      const end = Math.min(idx + chunkSize, records.length);
+      for (; idx < end; idx += 1) {
+        const record = records[idx];
+        frag.appendChild(buildCard(record.batch, record.payloads));
+      }
+      list.appendChild(frag);
+      if (idx < records.length) {
+        scheduleIdle(renderChunk);
+      }
+    };
+
+    scheduleIdle(renderChunk);
   };
 
   const applySectionFilters = () => {
     const term = sectionFilters.search.trim().toLowerCase();
     const tagTerm = sectionFilters.tagContains.trim().toLowerCase();
 
-    const filtered = sectionViews.filter((view) => {
-      if (sectionFilters.tags.size && !view.tags.some((t) => sectionFilters.tags.has(t))) return false;
-      if (sectionFilters.gold.size && !sectionFilters.gold.has(view.gold)) return false;
-      if (sectionFilters.rq.size && !sectionFilters.rq.has(view.rq)) return false;
-      if (sectionFilters.route.size && !sectionFilters.route.has(view.route)) return false;
-      if (sectionFilters.evidence.size && !sectionFilters.evidence.has(view.evidence)) return false;
-      if (sectionFilters.potential.size && !view.potentialTokens.some((t) => sectionFilters.potential.has(t))) return false;
+    if (filterWorker) {
+      sectionRequestId += 1;
+      filterWorker.postMessage({
+        type: "filter_sections",
+        sessionId: workerSessionId,
+        requestId: sectionRequestId,
+        filters: {
+          search: term,
+          tagContains: tagTerm,
+          tags: Array.from(sectionFilters.tags),
+          gold: Array.from(sectionFilters.gold),
+          rq: Array.from(sectionFilters.rq),
+          route: Array.from(sectionFilters.route),
+          evidence: Array.from(sectionFilters.evidence),
+          potential: Array.from(sectionFilters.potential),
+        },
+      });
+      return;
+    }
 
-      if (tagTerm) {
-        const hit = view.tags.some((t) => t.toLowerCase().includes(tagTerm));
-        if (!hit) return false;
-      }
+    scheduleIdle(() => {
+      const filtered = sectionViews.filter((view) => {
+        if (sectionFilters.tags.size && !view.tags.some((t) => sectionFilters.tags.has(t))) return false;
+        if (sectionFilters.gold.size && !sectionFilters.gold.has(view.gold)) return false;
+        if (sectionFilters.rq.size && !sectionFilters.rq.has(view.rq)) return false;
+        if (sectionFilters.route.size && !sectionFilters.route.has(view.route)) return false;
+        if (sectionFilters.evidence.size && !sectionFilters.evidence.has(view.evidence)) return false;
+        if (sectionFilters.potential.size && !view.potentialTokens.some((t) => sectionFilters.potential.has(t))) return false;
 
-      if (term) {
-        const hay = [
-          view.title,
-          view.route,
-          view.rq,
-          view.gold,
-          view.evidence,
-          ...view.potentialTokens,
-          ...view.tags,
-          view.text,
-        ]
-          .filter(Boolean)
-          .join(" \n ")
-          .toLowerCase();
-        if (!hay.includes(term)) return false;
-      }
+        if (tagTerm) {
+          const hit = view.tags.some((t) => t.toLowerCase().includes(tagTerm));
+          if (!hit) return false;
+        }
 
-      return true;
+        if (term) {
+          const hay = [
+            view.title,
+            view.route,
+            view.rq,
+            view.gold,
+            view.evidence,
+            ...view.potentialTokens,
+            ...view.tags,
+            view.text,
+          ]
+            .filter(Boolean)
+            .join(" \n ")
+            .toLowerCase();
+          if (!hay.includes(term)) return false;
+        }
+
+        return true;
+      });
+
+      const facets = {
+        tags: countValues(filtered.flatMap((v) => v.tags)),
+        gold: countValues(filtered.map((v) => v.gold).filter(Boolean)),
+        rq: countValues(filtered.map((v) => v.rq).filter(Boolean)),
+        route: countValues(filtered.map((v) => v.route).filter(Boolean)),
+        evidence: countValues(filtered.map((v) => v.evidence).filter(Boolean)),
+        potential: countValues(filtered.flatMap((v) => v.potentialTokens)),
+      };
+
+      filteredViews = filtered;
+      renderSectionFilters(facets);
+      renderSectionList(filtered);
+      emitSectionsState({ filtered: filtered.map((v) => v.section) });
     });
-
-    const facets = {
-      tags: countValues(filtered.flatMap((v) => v.tags)),
-      gold: countValues(filtered.map((v) => v.gold).filter(Boolean)),
-      rq: countValues(filtered.map((v) => v.rq).filter(Boolean)),
-      route: countValues(filtered.map((v) => v.route).filter(Boolean)),
-      evidence: countValues(filtered.map((v) => v.evidence).filter(Boolean)),
-      potential: countValues(filtered.flatMap((v) => v.potentialTokens)),
-    };
-
-    filteredViews = filtered;
-    renderSectionFilters(facets);
-    renderSectionList(filtered);
-    emitSectionsState({ filtered: filtered.map((v) => v.section) });
   };
 
   const applyBatchFilters = () => {
     const term = batchFilters.search.trim().toLowerCase();
-    const filteredPayloads = batchViews.filter((view) => {
-      if (batchFilters.rq.size && !batchFilters.rq.has(view.rq)) return false;
-      if (batchFilters.evidence.size && !batchFilters.evidence.has(view.evidence)) return false;
-      if (batchFilters.theme.size && !batchFilters.theme.has(view.theme)) return false;
-      if (batchFilters.tags.size && !view.tags.some((t) => batchFilters.tags.has(t))) return false;
-      if (batchFilters.authors.size && !batchFilters.authors.has(view.author)) return false;
-      if (batchFilters.years.size && !batchFilters.years.has(view.year)) return false;
-      if (batchFilters.score.size && !batchFilters.score.has(view.score)) return false;
+    if (filterWorker) {
+      batchRequestId += 1;
+      filterWorker.postMessage({
+        type: "filter_batches",
+        sessionId: workerSessionId,
+        requestId: batchRequestId,
+        filters: {
+          search: term,
+          rq: Array.from(batchFilters.rq),
+          evidence: Array.from(batchFilters.evidence),
+          theme: Array.from(batchFilters.theme),
+          tags: Array.from(batchFilters.tags),
+          authors: Array.from(batchFilters.authors),
+          years: Array.from(batchFilters.years),
+          score: Array.from(batchFilters.score),
+        },
+      });
+      return;
+    }
+    scheduleIdle(() => {
+      const filteredPayloads = batchViews.filter((view) => {
+        if (batchFilters.rq.size && !batchFilters.rq.has(view.rq)) return false;
+        if (batchFilters.evidence.size && !batchFilters.evidence.has(view.evidence)) return false;
+        if (batchFilters.theme.size && !batchFilters.theme.has(view.theme)) return false;
+        if (batchFilters.tags.size && !view.tags.some((t) => batchFilters.tags.has(t))) return false;
+        if (batchFilters.authors.size && !batchFilters.authors.has(view.author)) return false;
+        if (batchFilters.years.size && !batchFilters.years.has(view.year)) return false;
+        if (batchFilters.score.size && !batchFilters.score.has(view.score)) return false;
 
-      if (term) {
-        const hay = [
-          view.rq,
-          view.theme,
-          view.evidence,
-          view.author,
-          view.year,
-          ...view.tags,
-          view.text,
-        ]
-          .filter(Boolean)
-          .join(" \n ")
-          .toLowerCase();
-        if (!hay.includes(term)) return false;
-      }
-      return true;
+        if (term) {
+          const hay = [
+            view.rq,
+            view.theme,
+            view.evidence,
+            view.author,
+            view.year,
+            ...view.tags,
+            view.text,
+          ]
+            .filter(Boolean)
+            .join(" \n ")
+            .toLowerCase();
+          if (!hay.includes(term)) return false;
+        }
+        return true;
+      });
+
+      const facets = {
+        rq: countValues(filteredPayloads.map((v) => v.rq).filter(Boolean)),
+        evidence: countValues(filteredPayloads.map((v) => v.evidence).filter(Boolean)),
+        theme: countValues(filteredPayloads.map((v) => v.theme).filter(Boolean)),
+        tags: countValues(filteredPayloads.flatMap((v) => v.tags)),
+        authors: countValues(filteredPayloads.map((v) => v.author).filter(Boolean)),
+        years: countValues(filteredPayloads.map((v) => v.year).filter(Boolean)),
+        score: countValues(filteredPayloads.map((v) => v.score).filter(Boolean)),
+      };
+
+      const byBatch = new Map<string, BatchPayloadView[]>();
+      filteredPayloads.forEach((view) => {
+        const list = byBatch.get(view.batch.id) || [];
+        list.push(view);
+        byBatch.set(view.batch.id, list);
+      });
+
+      const filteredBatches = batches
+        .map((batch) => ({ batch, payloads: byBatch.get(batch.id) || [] }))
+        .filter((entry) => entry.payloads.length > 0);
+
+      renderBatchFilters(facets);
+      renderBatchList(filteredBatches);
     });
-
-    const facets = {
-      rq: countValues(filteredPayloads.map((v) => v.rq).filter(Boolean)),
-      evidence: countValues(filteredPayloads.map((v) => v.evidence).filter(Boolean)),
-      theme: countValues(filteredPayloads.map((v) => v.theme).filter(Boolean)),
-      tags: countValues(filteredPayloads.flatMap((v) => v.tags)),
-      authors: countValues(filteredPayloads.map((v) => v.author).filter(Boolean)),
-      years: countValues(filteredPayloads.map((v) => v.year).filter(Boolean)),
-      score: countValues(filteredPayloads.map((v) => v.score).filter(Boolean)),
-    };
-
-    const byBatch = new Map<string, BatchPayloadView[]>();
-    filteredPayloads.forEach((view) => {
-      const list = byBatch.get(view.batch.id) || [];
-      list.push(view);
-      byBatch.set(view.batch.id, list);
-    });
-
-    const filteredBatches = batches
-      .map((batch) => ({ batch, payloads: byBatch.get(batch.id) || [] }))
-      .filter((entry) => entry.payloads.length > 0);
-
-    renderBatchFilters(facets);
-    renderBatchList(filteredBatches);
   };
 
   const loadData = async () => {
     status.textContent = isBatchMode ? "Loading batches..." : "Loading sections...";
     try {
       if (isBatchMode) {
+        const t0 = performance.now();
         batches = await loadBatches(runPath);
         batchViews = buildBatchPayloadViews(batches);
+        if (filterWorker) {
+          filterWorker.postMessage({
+            type: "init_batches",
+            sessionId: workerSessionId,
+            items: batchViews.map((view, idx) => ({
+              idx,
+              batchId: view.batch.id,
+              rq: view.rq,
+              theme: view.theme,
+              evidence: view.evidence,
+              tags: view.tags,
+              author: view.author,
+              year: view.year,
+              score: view.score,
+              text: view.text,
+            })),
+          });
+        }
         renderBatchFilters({});
         applyBatchFilters();
         status.textContent = `${batches.length} batches loaded`;
+        const elapsed = Math.round(performance.now() - t0);
+        console.info("[analyse][perf][batches-load]", { ms: elapsed, count: batches.length });
+        if (elapsed > 2000) {
+          console.warn("[analyse][perf][batches-load][slow]", { ms: elapsed, count: batches.length });
+        }
+        scheduleIdle(() => {
+          void loadSections(runPath, "r2");
+          void loadSections(runPath, "r3");
+        });
       } else {
-        const [secData, dqData] = await Promise.all([loadSections(runPath, round), loadDirectQuoteLookup(runPath)]);
+        const t0 = performance.now();
+        const secData = await loadSections(runPath, round);
         sections = secData;
         sectionViews = buildSectionViews(sections);
-        dqLookup = dqData?.data || {};
-        dqLookupPath = dqData?.path || null;
-        console.info("[analyse][sections][dq-lookup]", { count: Object.keys(dqLookup || {}).length, path: dqLookupPath });
+        if (filterWorker) {
+          filterWorker.postMessage({
+            type: "init_sections",
+            sessionId: workerSessionId,
+            items: sectionViews.map((view, idx) => ({
+              idx,
+              title: view.title,
+              rq: view.rq,
+              gold: view.gold,
+              route: view.route,
+              evidence: view.evidence,
+              potentialTokens: view.potentialTokens,
+              tags: view.tags,
+              text: view.text,
+            })),
+          });
+        }
         renderSectionFilters({});
         applySectionFilters();
         emitSectionsState({ all: sections, filtered: filteredViews.map((v) => v.section) });
         status.textContent = `${sections.length} sections loaded`;
+        const elapsed = Math.round(performance.now() - t0);
+        console.info("[analyse][perf][sections-load]", { round, ms: elapsed, count: sections.length });
+        if (elapsed > 2000) {
+          console.warn("[analyse][perf][sections-load][slow]", { round, ms: elapsed, count: sections.length });
+        }
+        scheduleIdle(async () => {
+          const dqData = await loadDirectQuoteLookup(runPath);
+          dqLookup = dqData?.data || {};
+          dqLookupPath = dqData?.path || null;
+          console.info("[analyse][sections][dq-lookup]", { count: Object.keys(dqLookup || {}).length, path: dqLookupPath });
+        });
+        scheduleIdle(() => {
+          if (round !== "r2") void loadSections(runPath, "r2");
+          if (round !== "r3") void loadSections(runPath, "r3");
+        });
       }
     } catch (error) {
       console.error(error);

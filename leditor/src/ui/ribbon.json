@@ -4,7 +4,7 @@
   "label": "Ribbon",
 
   "defaults": {
-    "collapseStages": ["A", "B", "C"],
+    "collapseStages": ["A"],
     "initialTabId": "home",
     "contextualTabsEnabled": true
   },
