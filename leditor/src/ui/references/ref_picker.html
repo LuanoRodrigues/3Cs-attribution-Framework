@@ -1,0 +1,1851 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tiny Ref</title>
+
+  <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+
+  <style>
+    :root{
+      --bg0:#f4f5f7;
+      --bg1:#ffffff;
+      --bg2:#edf0f3;
+
+      --panelA:#ffffff;
+      --panelB:#f7f8fa;
+
+      --stroke:#cfcfcf;
+      --stroke2:#d9d9d9;
+
+      --text:#1c1c1c;
+      --muted:#5c5c5c;
+
+      --a1:#0f6cbd;
+      --a2:#4f9cf0;
+
+      --ok:#107c10;
+      --warn:#b05e00;
+      --bad:#c50f1f;
+
+      --shadow-lg: 0 18px 48px rgba(0,0,0,.18);
+      --shadow-md: 0 8px 22px rgba(0,0,0,.14);
+
+      --r-xl: 12px;
+      --r-lg: 10px;
+      --r-md: 8px;
+      --r-sm: 6px;
+
+      --top-h: 54px;
+      --pad: 12px;
+    }
+
+    html, body {
+      height: 100%;
+      margin: 0;
+      color: var(--text);
+      font-family: "Segoe UI Variable", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow: hidden;
+      background: linear-gradient(180deg, var(--bg0), var(--bg2));
+    }
+
+    #app{
+      height: 100%;
+      display:flex;
+      flex-direction: column;
+      padding: var(--pad);
+      box-sizing: border-box;
+      gap: 12px;
+    }
+
+    #header{
+      height: var(--top-h);
+      flex: 0 0 var(--top-h);
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      padding: 10px 10px;
+      border-radius: var(--r-xl);
+      border: 1px solid var(--stroke);
+      background: var(--panelA);
+      box-shadow: var(--shadow-md);
+      user-select: none;
+      overflow:hidden;
+    }
+
+    .dot{
+      width: 10px; height: 10px; border-radius: 3px;
+      background: linear-gradient(135deg, var(--a1), var(--a2));
+      box-shadow: 0 0 0 2px rgba(15,108,189,.20);
+      flex: 0 0 auto;
+    }
+
+    .ttl{
+      display:flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 160px;
+      max-width: 260px;
+    }
+    .ttl .t1{
+      font-size: 13px;
+      font-weight: 760;
+      color: var(--text);
+      line-height: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .ttl .t2{
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .field{
+      flex: 1;
+      display:flex;
+      align-items:center;
+      gap: 8px;
+      padding: 7px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--stroke2);
+      background: #fff;
+      min-width: 220px;
+    }
+
+    .chip{
+      font-size: 11px;
+      padding: 5px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--stroke2);
+      background: #f4f6f8;
+      color: var(--muted);
+      white-space: nowrap;
+      user-select:none;
+    }
+
+    .field input{
+      width: 100%;
+      border: 0;
+      outline: none;
+      background: transparent;
+      color: var(--text);
+      font-size: 12px;
+    }
+
+    .btn{
+      appearance:none;
+      border: 1px solid var(--stroke2);
+      background: linear-gradient(180deg, #ffffff, #f1f1f1);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      user-select:none;
+      box-shadow: 0 2px 6px rgba(0,0,0,.08);
+      transition: transform .10s ease, background .10s ease, border-color .10s ease;
+      white-space: nowrap;
+    }
+    .btn:hover{ background: linear-gradient(180deg, #ffffff, #ececec); border-color: #c3c3c3; transform: translateY(-1px); }
+    .btn:active{ transform: translateY(0px); }
+    .btn.primary{
+      border-color: #0f6cbd;
+      background: linear-gradient(180deg, #2b7cd3, #0f6cbd);
+      color: #fff;
+    }
+    .btn.primary:hover{ border-color: #0b5ea5; background: linear-gradient(180deg, #2f82da, #0d61ad); }
+    .btn.danger{ border-color: #c50f1f; background: linear-gradient(180deg, #f8d7da, #f3c2c7); }
+
+    .pill{
+      font-size: 12px;
+      color: var(--muted);
+      border: 1px solid var(--stroke2);
+      background: #f6f7f9;
+      padding: 6px 10px;
+      border-radius: 999px;
+      user-select: none;
+      white-space: nowrap;
+    }
+    .pill.ok{ border-color: rgba(16,124,16,.25); background: rgba(16,124,16,.10); color: #0b5d0b; }
+    .pill.warn{ border-color: rgba(176,94,0,.25); background: rgba(176,94,0,.10); color: #7a3f00; }
+    .pill.bad{ border-color: rgba(197,15,31,.28); background: rgba(197,15,31,.10); color: #8b0a16; }
+
+    .menuWrap{ position: relative; display:inline-flex; }
+    .menu{
+      position:absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      min-width: 220px;
+      border-radius: 10px;
+      border: 1px solid var(--stroke2);
+      background: #ffffff;
+      box-shadow: 0 18px 48px rgba(0,0,0,.20);
+      display:none;
+      overflow:hidden;
+      z-index: 50;
+    }
+    .menu.open{ display:block; }
+    .menuHead{
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--stroke2);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 650;
+      background: #f4f6f8;
+      user-select:none;
+    }
+    .menuItem{
+      padding: 10px 12px;
+      font-size: 12px;
+      color: var(--text);
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      border-bottom: 1px solid var(--stroke2);
+      user-select:none;
+    }
+    .menuItem:last-child{ border-bottom:0; }
+    .menuItem:hover{ background: #eef6ff; }
+    .menuItem.active{ background: #dbe9ff; }
+    .radio{
+      width: 12px; height: 12px;
+      border-radius: 999px;
+      border: 1px solid var(--stroke2);
+      background: #ffffff;
+      box-shadow: inset 0 0 0 2px #ffffff;
+      position: relative;
+    }
+    .menuItem.active .radio::after{
+      content:"";
+      position:absolute;
+      inset: 2px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--a1), var(--a2));
+    }
+
+
+    .pane{
+      min-height: 0;
+      border-radius: 12px;
+      border: 1px solid var(--stroke);
+      background: var(--panelA);
+      overflow: hidden;
+      display:flex;
+      flex-direction: column;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .paneHead{
+      padding: 10px 10px;
+      border-bottom: 1px solid var(--stroke2);
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      background: #f4f6f8;
+      user-select: none;
+    }
+
+    .grow{ flex: 1; }
+
+    .list{
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+    }
+
+    .row{
+      padding: 10px 10px;
+      border-bottom: 1px solid var(--stroke2);
+      cursor:pointer;
+      user-select:none;
+      display:flex;
+      gap: 10px;
+      align-items:flex-start;
+    }
+    .row:hover{ background: #eef6ff; }
+    .row.active{ background: #dbe9ff; }
+
+    .row .meta{ flex: 1; min-width: 0; }
+    .row .line1{ font-size: 12px; color: var(--text); font-weight: 600; white-space: nowrap; overflow:hidden; text-overflow: ellipsis; }
+    .row .line2{ font-size: 12px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow:hidden; text-overflow: ellipsis; }
+
+    .row .tag{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 11px;
+      color: #2f3b44;
+      background: #eef1f4;
+      border: 1px solid var(--stroke2);
+      border-radius: 999px;
+      padding: 4px 8px;
+      white-space: nowrap;
+      margin-top: 1px;
+    }
+
+    .ghostNote{
+      font-size: 12px;
+      color: var(--muted);
+      padding: 12px;
+      line-height: 1.6;
+    }
+
+  /* Main 3-pane grid */
+#main{
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1.10fr 1.00fr 0.78fr;
+  gap: 12px;
+}
+
+/* Citation options pane (Zotero-like) */
+#optPane{
+  min-height: 0;
+  border-radius: 12px;
+  border: 1px solid var(--stroke);
+  background: var(--panelA);
+  overflow: hidden;
+  display:flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-lg);
+}
+
+#optPane .paneHead{
+  padding: 10px 10px;
+  border-bottom: 1px solid var(--stroke2);
+  display:flex;
+  align-items:center;
+  gap: 10px;
+  background: #f4f6f8;
+  user-select: none;
+}
+
+#optPaneBody{
+  padding: 12px;
+  display:flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  overflow: auto;
+}
+
+#optPaneHint{
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+#optCard{
+  border-radius: 10px;
+  border: 1px solid var(--stroke2);
+  background: #ffffff;
+  padding: 12px;
+  display:flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 8px 20px rgba(0,0,0,.10);
+}
+
+.optHead{
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.optRow{
+  display:flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.optLabel{
+  font-size: 12px;
+  color: var(--muted);
+  user-select:none;
+}
+
+.optCtrl{
+  display:flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.optSelect,
+.optInput,
+.optText{
+  border-radius: 8px;
+  border: 1px solid var(--stroke2);
+  background: #ffffff;
+  color: var(--text);
+  font-size: 13px;
+  padding: 9px 10px;
+  outline: none;
+  box-sizing: border-box;
+  width: clamp(220px, 22vw, 380px);
+  max-width: 100%;
+}
+
+.optInput.small{
+  width: clamp(140px, 14vw, 220px);
+}
+
+.optSelect{
+  appearance: none;
+  padding-right: 30px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #5c5c5c 50%),
+    linear-gradient(135deg, #5c5c5c 50%, transparent 50%);
+  background-position:
+    calc(100% - 16px) calc(50% - 3px),
+    calc(100% - 11px) calc(50% - 3px);
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+
+.optText{
+  min-height: 42px;
+  max-height: 120px;
+  resize: vertical;
+  line-height: 1.35;
+}
+
+.optCheck{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+  padding: 10px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--stroke2);
+  background: #f7f8fa;
+  user-select:none;
+  cursor: pointer;
+  width: fit-content;
+}
+
+.optCheck input{
+  width: 16px;
+  height: 16px;
+  accent-color: #0f6cbd;
+  cursor: pointer;
+}
+
+
+    @media (max-width: 1180px){
+      #main{ grid-template-columns: 1fr; }
+      .ttl{ display:none; }
+    }
+
+    .list::-webkit-scrollbar { width: 12px; height: 12px; }
+    .list::-webkit-scrollbar-thumb{
+      background: rgba(120,120,120,.35);
+      border-radius: 999px;
+      border: 3px solid rgba(0,0,0,0);
+      background-clip: padding-box;
+    }
+    .list::-webkit-scrollbar-thumb:hover{ background: rgba(120,120,120,.55); }
+    .list::-webkit-scrollbar-track{ background: rgba(0,0,0,0); }
+  </style>
+
+<script>
+  /******************************************************************
+   * [1] Global state
+   ******************************************************************/
+  window.__py = null;
+
+  window.__db = [];
+  window.__db_filtered = [];
+  window.__db_selected_i = -1;
+
+  window.__selected = [];
+  window.__selected_i = -1;
+
+  window.__style = "apa";
+  window.__store_key = "annotarium_biblio_store_v1";
+
+  window.__busy = false;
+  window.__closing = false;
+  window.__close_after_insert = false;
+
+  /******************************************************************
+   * [2] Small UI helpers
+   ******************************************************************/
+  function setPill(text, cls){
+    var p = document.getElementById("pill");
+    if (!p) return;
+    p.textContent = String(text || "");
+    p.classList.remove("ok","warn","bad");
+    if (cls) p.classList.add(cls);
+  }
+
+  function esc(s){
+    return String(s || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function safeJsonParse(raw, fallback){
+    var txt = String(raw || "");
+    if (!txt) return fallback;
+    return JSON.parse(txt);
+  }
+
+  function _setUiBusy(on){
+    var bAdd = document.getElementById("btnAdd");
+    var bIns = document.getElementById("btnInsert");
+    var bRem = document.getElementById("btnRemove");
+    var bBib = document.getElementById("btnBiblio");
+    var bUpd = document.getElementById("btnUpdate");
+    var q = document.getElementById("dbQuery");
+    var bSet = document.getElementById("btnSettings");
+
+    var opPage = document.getElementById("optPage");
+    var opPre  = document.getElementById("optPrefix");
+    var opSuf  = document.getElementById("optSuffix");
+    var opOmit = document.getElementById("optOmitAuthor");
+
+    if (bAdd) bAdd.disabled = !!on;
+    if (bIns) bIns.disabled = !!on;
+    if (bRem) bRem.disabled = !!on;
+    if (bBib) bBib.disabled = !!on;
+    if (bUpd) bUpd.disabled = !!on;
+    if (q) q.disabled = !!on;
+    if (bSet) bSet.disabled = !!on;
+
+    if (opPage) opPage.disabled = !!on;
+    if (opPre)  opPre.disabled = !!on;
+    if (opSuf)  opSuf.disabled = !!on;
+    if (opOmit) opOmit.disabled = !!on;
+  }
+
+  function _refreshButtons(){
+    if (window.__busy){
+      _setUiBusy(true);
+      return;
+    }
+
+    var bIns = document.getElementById("btnInsert");
+    var bRem = document.getElementById("btnRemove");
+
+    var hasDbSel = !!dbSelectedPayload();
+    var hasSelPane = !!selectedItem();
+
+    if (bIns) bIns.disabled = !(hasSelPane || hasDbSel);
+    if (bRem) bRem.disabled = !hasSelPane;
+
+    _setUiBusy(false);
+  }
+
+  /******************************************************************
+   * [3] Bridge bootstrap
+   ******************************************************************/
+  function bootBridge(onReady){
+    new QWebChannel(qt.webChannelTransport, function(channel){
+      window.__py = (channel && channel.objects) ? (channel.objects.pyBridge || null) : null;
+
+      if (!window.__py){
+        console.log("[TinyRef][JS] pyBridge missing");
+        setPill("Bridge missing", "bad");
+        return;
+      }
+
+      console.log("[TinyRef][JS] Bridge ready");
+      setPill("Bridge ready", "ok");
+
+      if (onReady) onReady();
+    });
+  }
+
+  /******************************************************************
+   * [4] Store (localStorage + optional persist to Python)
+   ******************************************************************/
+  function storeLoad(){
+    var raw = localStorage.getItem(window.__store_key);
+    if (!raw) return { items: [], numeric_map: {}, numeric_next: 1, style: "apa" };
+    return safeJsonParse(raw, { items: [], numeric_map: {}, numeric_next: 1, style: "apa" });
+  }
+
+  function storeSave(obj){
+    localStorage.setItem(window.__store_key, JSON.stringify(obj));
+    if (window.__py && window.__py.saveBibliographyStoreJson){
+      window.__py.saveBibliographyStoreJson(JSON.stringify(obj));
+    }
+  }
+
+  function storeEnsure(){
+    var st = storeLoad();
+    if (!st.items) st.items = [];
+    if (!st.numeric_map) st.numeric_map = {};
+    if (!st.numeric_next) st.numeric_next = 1;
+    if (!st.style) st.style = "apa";
+    window.__style = String(st.style || "apa");
+    setStyleUI();
+    return st;
+  }
+
+  function storeAddItem(item_key, page){
+    var st = storeLoad();
+    var found = false;
+    var i = 0;
+    while (i < st.items.length){
+      var it = st.items[i];
+      if (String(it.item_key || "") === String(item_key || "")){
+        it.page = String(page || "");
+        found = true;
+        break;
+      }
+      i += 1;
+    }
+    if (!found){
+      st.items.push({ item_key: String(item_key || ""), page: String(page || "") });
+    }
+    st.style = window.__style;
+    storeSave(st);
+  }
+
+  function storeGetPage(item_key){
+    var st = storeLoad();
+    var i = 0;
+    while (i < st.items.length){
+      var it = st.items[i];
+      if (String(it.item_key || "") === String(item_key || "")){
+        return String(it.page || "");
+      }
+      i += 1;
+    }
+    return "";
+  }
+
+
+  function storeClear(){
+    var st = storeLoad();
+    st.items = [];
+    st.numeric_map = {};
+    st.numeric_next = 1;
+    st.style = window.__style;
+    storeSave(st);
+  }
+
+  /******************************************************************
+   * [5] Database filter + render
+   ******************************************************************/
+  function dbMatches(pl, q){
+    var qq = String(q || "").toLowerCase().trim();
+    if (!qq) return true;
+
+    var a = String(pl.author_summary || pl.first_author_last || "").toLowerCase();
+    var t = String(pl.title || "").toLowerCase();
+    var s = String(pl.source || "").toLowerCase();
+    var id = String(pl.item_key || "").toLowerCase();
+    var dq = String(pl.dqid || "").toLowerCase();
+
+    return (a.indexOf(qq) !== -1) ||
+           (t.indexOf(qq) !== -1) ||
+           (s.indexOf(qq) !== -1) ||
+           (id.indexOf(qq) !== -1) ||
+           (dq.indexOf(qq) !== -1);
+  }
+
+  function dbFilter(q){
+    var out = [];
+    var i = 0;
+    while (i < window.__db.length){
+      var pl = window.__db[i];
+      if (dbMatches(pl, q)) out.push(pl);
+      i += 1;
+    }
+    window.__db_filtered = out;
+    document.getElementById("dbCount").textContent = String(out.length) + " matches";
+    renderDbList();
+    selectDbIndex(0);
+    _refreshButtons();
+    refreshOptionsPanel();
+  }
+
+ function dbRowText(pl){
+  var author = String(pl.author_summary || pl.first_author_last || "").trim();
+  var year = String(pl.year || "").trim();
+  var title = String(pl.title || "").trim();
+  var item_key = String(pl.item_key || "").trim();
+  var dqid = String(pl.dqid || "").trim();
+
+  var l1 = author ? author : "(no author)";
+  if (year) l1 += " (" + year + ")";
+  var l2 = title ? title : "(no title)";
+  return { l1: l1, l2: l2, item_key: item_key, dqid: dqid };
+}
+
+  function renderDbList(){
+    var list = document.getElementById("dbList");
+    list.innerHTML = "";
+
+    var out = window.__db_filtered;
+    var j = 0;
+    while (j < out.length){
+      (function(){
+        var pl = out[j];
+        var t = dbRowText(pl);
+
+        var row = document.createElement("div");
+        row.className = "row";
+        row.draggable = true;
+        row.dataset.i = String(j);
+
+        row.innerHTML =
+          "<div class='meta'>" +
+            "<div class='line1'>" + esc(t.l1) + "</div>" +
+            "<div class='line2'>" + esc(t.l2) + "</div>" +
+          "</div>" +
+          "<div class='tag'>" + esc(t.item_key || t.dqid || "") + "</div>";
+
+        row.addEventListener("click", function(){
+          selectDbIndex(parseInt(String(row.dataset.i || "0"), 10));
+          _refreshButtons();
+          refreshOptionsPanel();
+        });
+
+        row.addEventListener("dblclick", function(){
+          selectDbIndex(parseInt(String(row.dataset.i || "0"), 10));
+          addToSelected();
+          _refreshButtons();
+          refreshOptionsPanel();
+        });
+
+        row.addEventListener("dragstart", function(ev){
+          ev.dataTransfer.setData("text/plain", String(pl.item_key || ""));
+          ev.dataTransfer.effectAllowed = "copy";
+        });
+
+        list.appendChild(row);
+      })();
+      j += 1;
+    }
+
+    if (out.length === 0){
+      var empty = document.createElement("div");
+      empty.className = "ghostNote";
+      empty.textContent = "No matches.";
+      list.appendChild(empty);
+    }
+  }
+
+
+  function selectDbIndex(i){
+    var idx = i;
+    if (idx < 0) idx = 0;
+    if (idx >= window.__db_filtered.length) idx = window.__db_filtered.length - 1;
+    window.__db_selected_i = window.__db_filtered.length ? idx : -1;
+
+    var list = document.getElementById("dbList");
+    var rows = list.querySelectorAll(".row");
+    var k = 0;
+    while (k < rows.length){
+      rows[k].classList.remove("active");
+      k += 1;
+    }
+    if (window.__db_selected_i >= 0){
+      var active = list.querySelector(".row[data-i='" + String(window.__db_selected_i) + "']");
+      if (active){
+        active.classList.add("active");
+        active.scrollIntoView({ block: "nearest" });
+      }
+    }
+  }
+
+  function dbSelectedPayload(){
+    var i = window.__db_selected_i;
+    if (i < 0) return null;
+    if (i >= window.__db_filtered.length) return null;
+    return window.__db_filtered[i];
+  }
+
+  /******************************************************************
+   * [6] Selected pane
+   ******************************************************************/
+   // ------------------------------------------------------------
+// Preselect -> Selected (auto-populate right panel)
+// ------------------------------------------------------------
+
+function _dbIndexByItemKey(){
+  // cache map: item_key -> payload
+  var map = {};
+  var arr = window.__db || [];
+  var i = 0;
+  while (i < arr.length){
+    var pl = arr[i] || {};
+    var k = String(pl.item_key || "").trim();
+    if (k) map[k] = pl;
+    i += 1;
+  }
+  return map;
+}
+
+function _dbIndexByDqid(){
+  // optional: allow dqid resolution if you ever pass dqids
+  var map = {};
+  var arr = window.__db || [];
+  var i = 0;
+  while (i < arr.length){
+    var pl = arr[i] || {};
+    var k = String(pl.dqid || "").trim();
+    if (k) map[k] = pl;
+    i += 1;
+  }
+  return map;
+}
+
+function _selectedIndexByKey(){
+  // cache map: item_key -> index in __selected
+  var map = {};
+  var arr = window.__selected || [];
+  var i = 0;
+  while (i < arr.length){
+    var it = arr[i] || {};
+    var k = String(it.item_key || "").trim();
+    if (k) map[k] = i;
+    i += 1;
+  }
+  return map;
+}
+
+function _pushSelectedItem(item_key, payload){
+  // Keep the same shape your code already expects: { item_key, payload, options? }
+  var it = {
+    item_key: String(item_key || "").trim(),
+    payload: payload || {}
+  };
+  window.__selected.push(it);
+}
+
+function seedSelectedFromKeys(keys, opts){
+  // opts = { replace: true|false, keep_existing: true|false }
+  opts = opts || {};
+  var replace = (opts.replace !== undefined) ? !!opts.replace : true;
+
+  var ks = keys || [];
+  if (!Array.isArray(ks)) ks = [];
+
+  // Normalise / de-dup input
+  var seen = {};
+  var ordered = [];
+  var i = 0;
+  while (i < ks.length){
+    var k = String(ks[i] || "").trim();
+    if (k && !seen[k]){
+      seen[k] = 1;
+      ordered.push(k);
+    }
+    i += 1;
+  }
+
+  if (replace){
+    window.__selected = [];
+  } else {
+    if (!window.__selected) window.__selected = [];
+  }
+
+  var byKey = _dbIndexByItemKey();
+  var byDq  = _dbIndexByDqid();
+  var selIx = _selectedIndexByKey();
+
+  var added = 0;
+  var missing = [];
+
+  i = 0;
+  while (i < ordered.length){
+    var key = ordered[i];
+
+    // already present (when replace=false)
+    if (!replace && selIx[key] !== undefined){
+      i += 1;
+      continue;
+    }
+
+    // Resolve: prefer item_key match; allow dqid match if needed
+    var pl = byKey[key] || byDq[key] || null;
+
+    if (pl){
+      _pushSelectedItem(key, pl);
+      added += 1;
+    } else {
+      missing.push(key);
+      // still add a placeholder row if you want the user to see it;
+      // keeping it "silent" is usually cleaner.
+      // _pushSelectedItem(key, { item_key: key, title: "(not found in DB)" });
+    }
+
+    i += 1;
+  }
+
+  renderSelectedList();
+  _refreshButtons();
+  refreshOptionsPanel();
+
+  // Optional: focus first selected item if any
+  if ((window.__selected || []).length){
+    selectSelectedIndex(0);
+  }
+
+  return { added: added, missing: missing };
+}
+
+  function renderSelectedList(){
+    var list = document.getElementById("selList");
+    list.innerHTML = "";
+
+    var arr = window.__selected;
+    var i = 0;
+    while (i < arr.length){
+      (function(){
+        var it = arr[i];
+        var pl = it.payload;
+        var t = dbRowText(pl);
+
+        var row = document.createElement("div");
+        row.className = "row";
+        row.dataset.i = String(i);
+
+        row.innerHTML =
+          "<div class='meta'>" +
+            "<div class='line1'>" + esc(t.l1) + "</div>" +
+            "<div class='line2'>" + esc(t.l2) + "</div>" +
+          "</div>" +
+          "<div class='tag'>" + esc(String(it.item_key || t.item_key || "")) + "</div>";
+
+        row.addEventListener("click", function(){
+          selectSelectedIndex(parseInt(String(row.dataset.i || "0"), 10));
+          _refreshButtons();
+          refreshOptionsPanel();
+        });
+
+        list.appendChild(row);
+      })();
+      i += 1;
+    }
+
+    if (arr.length === 0){
+      var empty = document.createElement("div");
+      empty.className = "ghostNote";
+      empty.textContent = "Selected is empty. Drag from Database, or select and press Add.";
+      list.appendChild(empty);
+    }
+  }
+
+
+  function selectSelectedIndex(i){
+    var idx = i;
+    if (idx < 0) idx = 0;
+    if (idx >= window.__selected.length) idx = window.__selected.length - 1;
+    window.__selected_i = window.__selected.length ? idx : -1;
+
+    var list = document.getElementById("selList");
+    var rows = list.querySelectorAll(".row");
+    var k = 0;
+    while (k < rows.length){
+      rows[k].classList.remove("active");
+      k += 1;
+    }
+    if (window.__selected_i >= 0){
+      var active = list.querySelector(".row[data-i='" + String(window.__selected_i) + "']");
+      if (active){
+        active.classList.add("active");
+        active.scrollIntoView({ block: "nearest" });
+      }
+    }
+  }
+
+  function selectedItem(){
+    var i = window.__selected_i;
+    if (i < 0) return null;
+    if (i >= window.__selected.length) return null;
+    return window.__selected[i];
+  }
+
+  function addToSelectedByPayload(pl){
+    var item_key = String(pl.item_key || "");
+    var i = 0;
+    while (i < window.__selected.length){
+      if (String(window.__selected[i].item_key || "") === item_key){
+        window.__selected_i = i;
+        renderSelectedList();
+        selectSelectedIndex(i);
+        refreshOptionsPanel();
+        return;
+      }
+      i += 1;
+    }
+    window.__selected.push({ item_key: item_key, page: "", payload: pl, prefix: "", suffix: "", omit_author: false });
+    window.__selected_i = window.__selected.length - 1;
+    renderSelectedList();
+    selectSelectedIndex(window.__selected_i);
+    refreshOptionsPanel();
+  }
+
+
+  function addToSelected(){
+    var pl = dbSelectedPayload();
+    if (!pl) return;
+    addToSelectedByPayload(pl);
+  }
+
+  function removeSelected(){
+    var it = selectedItem();
+    if (!it) return;
+    window.__selected.splice(window.__selected_i, 1);
+    if (window.__selected_i >= window.__selected.length) window.__selected_i = window.__selected.length - 1;
+    renderSelectedList();
+    selectSelectedIndex(window.__selected_i);
+    refreshOptionsPanel();
+  }
+
+  function wireSelectedDrop(){
+    var sel = document.getElementById("selList");
+    sel.addEventListener("dragover", function(ev){
+      ev.preventDefault();
+      ev.dataTransfer.dropEffect = "copy";
+    });
+    sel.addEventListener("drop", function(ev){
+      ev.preventDefault();
+      var item_key = String(ev.dataTransfer.getData("text/plain") || "").trim();
+      if (!item_key) return;
+
+      var pl = null;
+      var i = 0;
+      while (i < window.__db.length){
+        if (String(window.__db[i].item_key || "") === item_key){
+          pl = window.__db[i];
+          break;
+        }
+        i += 1;
+      }
+      if (!pl) return;
+      addToSelectedByPayload(pl);
+      _refreshButtons();
+      refreshOptionsPanel();
+    });
+  }
+
+
+  /******************************************************************
+   * [6.5] Options panel (page / prefix / suffix / omit author)
+   ******************************************************************/
+  function activePayloadForOptions(){
+    var it = selectedItem();
+    if (it && it.payload) return { mode: "selected", item: it, payload: it.payload };
+    var pl = dbSelectedPayload();
+    if (pl) return { mode: "db", item: null, payload: pl };
+    return null;
+  }
+
+function refreshOptionsPanel(){
+  var ctx = activePayloadForOptions();
+
+  var head = document.getElementById("optHead");
+  var chip = document.getElementById("optModeChip");
+
+  var opLoc = document.getElementById("optLocator");
+  var opPage = document.getElementById("optPage");
+  var opPre  = document.getElementById("optPrefix");
+  var opSuf  = document.getElementById("optSuffix");
+  var opOmit = document.getElementById("optOmitAuthor");
+
+  if (!ctx){
+    if (head) head.textContent = "(no selection)";
+    if (chip) chip.textContent = "Auto";
+    if (opLoc) opLoc.value = "page";
+    if (opPage) opPage.value = "";
+    if (opPre) opPre.value = "";
+    if (opSuf) opSuf.value = "";
+    if (opOmit) opOmit.checked = false;
+    return;
+  }
+
+  var item_key = String(ctx.payload.item_key || "");
+  var page = "";
+  var prefix = "";
+  var suffix = "";
+  var omit_author = false;
+  var locator = "page";
+
+  if (ctx.mode === "selected"){
+    page = String(ctx.item.page || "");
+    prefix = String(ctx.item.prefix || "");
+    suffix = String(ctx.item.suffix || "");
+    omit_author = !!ctx.item.omit_author;
+    locator = String(ctx.item.locator || "page");
+    if (chip) chip.textContent = "Selected";
+  } else {
+    page = storeGetPage(item_key);
+    prefix = "";
+    suffix = "";
+    omit_author = false;
+    locator = "page";
+    if (chip) chip.textContent = "Database";
+  }
+
+  if (opLoc) opLoc.value = locator;
+  if (opPage) opPage.value = page;
+  if (opPre) opPre.value = prefix;
+  if (opSuf) opSuf.value = suffix;
+  if (opOmit) opOmit.checked = omit_author;
+
+  if (head){
+    var t = dbRowText(ctx.payload);
+    head.textContent = String(t.l1 || "") + " — " + String(item_key || "");
+  }
+}
+
+function writeOptionsBack(){
+  var ctx = activePayloadForOptions();
+  if (!ctx) return;
+
+  var opLoc = document.getElementById("optLocator");
+  var opPage = document.getElementById("optPage");
+  var opPre  = document.getElementById("optPrefix");
+  var opSuf  = document.getElementById("optSuffix");
+  var opOmit = document.getElementById("optOmitAuthor");
+
+  var locator = opLoc ? String(opLoc.value || "page") : "page";
+  var page = opPage ? String(opPage.value || "").trim() : "";
+  var prefix = opPre ? String(opPre.value || "") : "";
+  var suffix = opSuf ? String(opSuf.value || "") : "";
+  var omit_author = opOmit ? !!opOmit.checked : false;
+
+  if (ctx.mode === "selected"){
+    ctx.item.locator = locator;
+    ctx.item.page = page;
+    ctx.item.prefix = prefix;
+    ctx.item.suffix = suffix;
+    ctx.item.omit_author = omit_author;
+  } else {
+    storeAddItem(String(ctx.payload.item_key || ""), page);
+  }
+}
+
+
+  /******************************************************************
+   * [7] Insert / bibliography / update
+   ******************************************************************/
+  function _safeCloseDialogSoon(){
+    if (window.__closing) return;
+    window.__closing = true;
+
+    setTimeout(function(){
+      if (window.__py && window.__py.closeDialog){
+        window.__py.closeDialog();
+      }
+    }, 0);
+  }
+
+
+  /******************************************************************
+   * [8] Style + Settings menu
+   ******************************************************************/
+  function setStyleUI(){
+    var items = document.querySelectorAll(".menuItem[data-style]");
+    var i = 0;
+    while (i < items.length){
+      items[i].classList.remove("active");
+      i += 1;
+    }
+    var active = document.querySelector(".menuItem[data-style='" + String(window.__style) + "']");
+    if (active) active.classList.add("active");
+  }
+
+  function setStyle(style){
+    window.__style = String(style || "apa");
+    setStyleUI();
+
+    var st = storeLoad();
+    st.style = window.__style;
+    storeSave(st);
+
+    if (window.__py && window.__py.setBibliographyStyle){
+      window.__py.setBibliographyStyle(window.__style);
+    }
+  }
+
+  function setStyleFromPy(style){
+    window.__style = String(style || "apa");
+    var st = storeLoad();
+    st.style = window.__style;
+    storeSave(st);
+    setStyleUI();
+  }
+
+  function toggleMenu(){
+    document.getElementById("settingsMenu").classList.toggle("open");
+  }
+
+  function closeMenu(){
+    document.getElementById("settingsMenu").classList.remove("open");
+  }
+
+  /******************************************************************
+   * [9] Load DB from Python bridge
+   ******************************************************************/
+
+
+function _dedupeCitationItems(items){
+  // 1) Remove exact duplicates (same signature)
+  // 2) Remove "dominated" duplicates for same item_key:
+  //    drop the one with fewer details when another has everything it has + more (e.g., page).
+  function norm(s){ return String(s || "").trim(); }
+
+  function sig(it){
+    return [
+      norm(it.item_key),
+      norm(it.locator || "page"),
+      norm(it.page),
+      norm(it.prefix),
+      norm(it.suffix),
+      it.omit_author ? "1" : "0"
+    ].join("|");
+  }
+
+  function score(it){
+    var sc = 0;
+    if (norm(it.page)) sc += 10;       // page is the main disambiguator
+    if (norm(it.prefix)) sc += 2;
+    if (norm(it.suffix)) sc += 2;
+    if (it.omit_author) sc += 1;
+    // locator differences matter: keep both if locator differs
+    return sc;
+  }
+
+  function dominates(a, b){
+    // a dominates b if:
+    // - same item_key AND same locator
+    // - for each field, b is empty or equal to a
+    // - and at least one field is strictly "more informative" in a
+    if (norm(a.item_key) !== norm(b.item_key)) return false;
+    if (norm(a.locator || "page") !== norm(b.locator || "page")) return false;
+
+    var aPage = norm(a.page),   bPage = norm(b.page);
+    var aPre  = norm(a.prefix), bPre  = norm(b.prefix);
+    var aSuf  = norm(a.suffix), bSuf  = norm(b.suffix);
+
+    // b must not contain info that a doesn't match
+    if (bPage && bPage !== aPage) return false;
+    if (bPre  && bPre  !== aPre)  return false;
+    if (bSuf  && bSuf  !== aSuf)  return false;
+    if (b.omit_author && !a.omit_author) return false;
+
+    // and a must be strictly richer in at least one dimension
+    var richer =
+      (!!aPage && !bPage) ||
+      (!!aPre  && !bPre)  ||
+      (!!aSuf  && !bSuf)  ||
+      (a.omit_author && !b.omit_author);
+
+    return richer;
+  }
+
+  // Phase 1: exact signature de-dup, preserving order
+  var out = [];
+  var seen = {};
+  for (var i = 0; i < (items || []).length; i++){
+    var it = items[i];
+    var s = sig(it);
+    if (seen[s]) continue;
+    seen[s] = 1;
+    out.push(it);
+  }
+
+  // Phase 2: remove dominated items per item_key/locator group
+  var kept = [];
+  for (var j = 0; j < out.length; j++){
+    kept.push(out[j]);
+  }
+
+  var finalOut = [];
+  for (var a = 0; a < kept.length; a++){
+    var drop = false;
+    for (var b = 0; b < kept.length; b++){
+      if (a === b) continue;
+      if (dominates(kept[b], kept[a])){
+        drop = true;
+        break;
+      }
+    }
+    if (!drop) finalOut.push(kept[a]);
+  }
+
+  // Optional: for same item_key+locator+page etc, keep the higher score first (stable-ish)
+  // (We do not sort globally; only stable output)
+  return finalOut;
+}
+
+function insertCitation(){
+  if (window.__busy) return;
+
+  writeOptionsBack();
+
+  if (!window.__py || !window.__py.insertCitationJson){
+    setPill("Bridge missing: cannot insert", "bad");
+    return;
+  }
+
+  var items = [];
+
+  if (window.__selected && window.__selected.length){
+    var i = 0;
+    while (i < window.__selected.length){
+      var it = window.__selected[i];
+      var k = String(it.item_key || (it.payload && it.payload.item_key) || "").trim();
+      if (k){
+        items.push({
+          item_key: k,
+          page: String(it.page || "").trim(),
+          locator: String(it.page || "").trim(),
+          label: String(it.locator || "page"),
+          prefix: String(it.prefix || ""),
+          suffix: String(it.suffix || ""),
+          omit_author: !!it.omit_author
+        });
+      }
+      i += 1;
+    }
+  } else {
+    var pl0 = dbSelectedPayload();
+    if (!pl0){
+      setPill("Nothing selected", "warn");
+      return;
+    }
+    var k0 = String(pl0.item_key || "").trim();
+    items.push({
+      item_key: k0,
+      page: storeGetPage(k0),
+      locator: storeGetPage(k0),
+      label: "page",
+      prefix: "",
+      suffix: "",
+      omit_author: false
+    });
+  }
+
+  window.__busy = true;
+  _setUiBusy(true);
+  setPill("Inserting…", "warn");
+
+items = _dedupeCitationItems(items);
+
+var payload = JSON.stringify({
+  style: window.__style,
+  items: items
+});
+
+
+  setTimeout(function(){
+    window.__py.insertCitationJson(payload);
+
+    var j = 0;
+    while (j < items.length){
+      storeAddItem(String(items[j].item_key || ""), String(items[j].page || ""));
+      j += 1;
+    }
+
+    setPill("Inserted", "ok");
+
+    window.__busy = false;
+    _setUiBusy(false);
+    _refreshButtons();
+
+    if (window.__close_after_insert){
+      _safeCloseDialogSoon();
+    }
+  }, 0);
+}
+function loadDbFromPy(){
+  if (!window.__py || !window.__py.getRefIndexJson){
+    console.log("[TinyRef][JS] Bridge missing or getRefIndexJson missing");
+    setPill("Bridge missing: cannot load DB", "bad");
+    return;
+  }
+
+  setPill("Loading DB…", "warn");
+  console.log("[TinyRef][JS] Requesting index…");
+
+  window.__py.getRefIndexJson(function(raw){
+    var arr = safeJsonParse(String(raw || "[]"), []);
+
+    window.__db = arr;
+    window.__db_filtered = arr;
+
+    document.getElementById("dbCount").textContent = String(arr.length) + " records";
+    renderDbList();
+    selectDbIndex(0);
+
+    // --- NEW: auto-seed Selected from preselect keys (if any) ---
+    try {
+      var ks = (window.__preselect_item_keys && window.__preselect_item_keys.length)
+        ? window.__preselect_item_keys
+        : [];
+
+      if (ks.length){
+        seedSelectedFromKeys(ks, { replace: true });
+      } else {
+        renderSelectedList();
+      }
+    } catch (e) {
+      console.log("[TinyRef][JS] preselect seed failed:", e);
+      renderSelectedList();
+    }
+
+    setPill("Ready (" + String(arr.length) + ")", "ok");
+
+    _refreshButtons();
+    refreshOptionsPanel();
+  });
+}
+
+
+  /******************************************************************
+   * [10] DOM wiring
+   ******************************************************************/
+  document.addEventListener("DOMContentLoaded", function(){
+    setPill("Loading…", "warn");
+
+  bootBridge(function(){
+  storeEnsure();
+  if (window.__py && window.__py.getBibliographyStyle){
+    window.__py.getBibliographyStyle(function(style){
+      var s = String(style || "apa");
+      window.__style = s;
+      var st = storeLoad();
+      st.style = s;
+      storeSave(st);
+      setStyleUI();
+    });
+  } else {
+    setStyleUI();
+  }
+  wireSelectedDrop();
+
+  // ------------------------------------------------------------
+  // NEW: fetch preselect keys from Python bridge (if provided)
+  // and only then load DB (so Selected pane can be seeded).
+  // ------------------------------------------------------------
+  function _afterPreselect(){
+    loadDbFromPy();
+  }
+
+  window.__preselect_item_keys = []; // always define
+
+  if (window.__py && window.__py.getPreselectItemKeysJson){
+    try {
+      window.__py.getPreselectItemKeysJson(function(raw){
+        try {
+          var arr = safeJsonParse(String(raw || "[]"), []);
+          if (!Array.isArray(arr)) arr = [];
+          window.__preselect_item_keys = arr;
+          console.log("[TinyRef][JS] preselect keys:", window.__preselect_item_keys.length, window.__preselect_item_keys);
+        } catch (e2) {
+          console.log("[TinyRef][JS] preselect parse failed:", e2);
+          window.__preselect_item_keys = [];
+        }
+        _afterPreselect();
+      });
+      return; // async path: loadDbFromPy() will be called in callback
+    } catch (e) {
+      console.log("[TinyRef][JS] getPreselectItemKeysJson call failed:", e);
+      window.__preselect_item_keys = [];
+    }
+  } else {
+    console.log("[TinyRef][JS] getPreselectItemKeysJson not available");
+  }
+
+  // fallback path
+  _afterPreselect();
+});
+
+    document.getElementById("btnUpdate").addEventListener("click", function(){
+      updateFromEditor();
+    });
+
+    document.getElementById("dbQuery").addEventListener("input", function(){
+      dbFilter(this.value || "");
+    });
+
+    document.getElementById("btnAdd").addEventListener("click", function(){
+      if (window.__busy) return;
+      addToSelected();
+      _refreshButtons();
+      refreshOptionsPanel();
+    });
+
+    document.getElementById("btnInsert").addEventListener("click", function(){
+      if (window.__busy) return;
+      window.__close_after_insert = true;
+      insertCitation();
+    });
+
+    document.getElementById("btnRemove").addEventListener("click", function(){
+      if (window.__busy) return;
+      removeSelected();
+      _refreshButtons();
+      refreshOptionsPanel();
+    });
+
+    document.getElementById("btnBiblio").addEventListener("click", function(){
+      if (window.__busy) return;
+
+      if (window.__py && window.__py.insertBibliography){
+        setPill("Inserting bibliography…", "warn");
+        setTimeout(function(){
+          window.__py.insertBibliography();
+          setPill("Bibliography inserted", "ok");
+        }, 0);
+      } else {
+        setPill("Bridge missing: cannot insert bibliography", "bad");
+      }
+    });
+
+   function extractItemKeysFromHtml(html){
+  var s = String(html || "");
+  var keys = [];
+  var seen = {};
+
+  function pushKey(k){
+    var kk = String(k || "").trim();
+    if (!kk) return;
+    if (!seen[kk]){
+      seen[kk] = 1;
+      keys.push(kk);
+    }
+  }
+
+  function pushKeyGroup(groupText){
+    var raw = String(groupText || "");
+    var parts = raw.split(";");
+    var i = 0;
+    while (i < parts.length){
+      pushKey(parts[i]);
+      i += 1;
+    }
+  }
+
+  var m;
+
+  var reDataKeysDq = /data-item-keys\s*=\s*"([^"]+)"/g;
+  while ((m = reDataKeysDq.exec(s)) !== null){
+    pushKeyGroup(m[1]);
+  }
+  var reDataKey = /data-key\s*=\s*"([^"]+)"/g;
+while ((m = reDataKey.exec(s)) !== null) pushKey(m[1]);
+
+var reDataKeySq2 = /data-key\s*=\s*'([^']+)'/g;
+while ((m = reDataKeySq2.exec(s)) !== null) pushKey(m[1]);
+
+
+  var reDataKeysSq = /data-item-keys\s*=\s*'([^']+)'/g;
+  while ((m = reDataKeysSq.exec(s)) !== null){
+    pushKeyGroup(m[1]);
+  }
+
+  var reDataKeyDq = /data-item-key\s*=\s*"([^"]+)"/g;
+  while ((m = reDataKeyDq.exec(s)) !== null){
+    pushKey(m[1]);
+  }
+
+  var reDataKeySq = /data-item-key\s*=\s*'([^']+)'/g;
+  while ((m = reDataKeySq.exec(s)) !== null){
+    pushKey(m[1]);
+  }
+
+  var reItemKeyDq = /item-key\s*=\s*"([^"]+)"/g;
+  while ((m = reItemKeyDq.exec(s)) !== null){
+    pushKey(m[1]);
+  }
+
+  var reItemKeySq = /item-key\s*=\s*'([^']+)'/g;
+  while ((m = reItemKeySq.exec(s)) !== null){
+    pushKey(m[1]);
+  }
+
+  var reHrefGrpDq = /href\s*=\s*"citegrp:\/\/([^"]+)"/g;
+  while ((m = reHrefGrpDq.exec(s)) !== null){
+    pushKeyGroup(m[1]);
+  }
+
+  var reHrefGrpSq = /href\s*=\s*'citegrp:\/\/([^']+)'/g;
+  while ((m = reHrefGrpSq.exec(s)) !== null){
+    pushKeyGroup(m[1]);
+  }
+
+  var reHrefOneDq = /href\s*=\s*"cite:\/\/([^"]+)"/g;
+  while ((m = reHrefOneDq.exec(s)) !== null){
+    pushKey(m[1]);
+  }
+
+  var reHrefOneSq = /href\s*=\s*'cite:\/\/([^']+)'/g;
+  while ((m = reHrefOneSq.exec(s)) !== null){
+    pushKey(m[1]);
+  }
+
+  return keys;
+}
+function updateFromEditor(){
+  if (window.__busy) return;
+
+  if (!window.__py || !window.__py.updateFromEditor){
+    setPill("Bridge missing: cannot update", "bad");
+    return;
+  }
+
+  window.__busy = true;
+  _setUiBusy(true);
+  setPill("Updating…", "warn");
+
+  window.__py.updateFromEditor(function(msg){
+    var s = String(msg || "");
+    setPill(s || "Updated", "ok");
+    window.__busy = false;
+    _setUiBusy(false);
+    _refreshButtons();
+    refreshOptionsPanel();
+  });
+}
+
+
+
+    document.getElementById("btnSettings").addEventListener("click", function(ev){
+      ev.stopPropagation();
+      toggleMenu();
+    });
+
+    document.getElementById("miApa").addEventListener("click", function(ev){
+      ev.stopPropagation();
+      closeMenu();
+      setStyle("apa");
+    });
+
+    document.getElementById("miNum").addEventListener("click", function(ev){
+      ev.stopPropagation();
+      closeMenu();
+      setStyle("numeric");
+    });
+
+    document.getElementById("miFoot").addEventListener("click", function(ev){
+      ev.stopPropagation();
+      closeMenu();
+      setStyle("footnote");
+    });
+
+    document.getElementById("miClear").addEventListener("click", function(ev){
+      ev.stopPropagation();
+      closeMenu();
+      storeClear();
+      setPill("Store cleared", "ok");
+      refreshOptionsPanel();
+    });
+
+document.getElementById("optLocator").addEventListener("change", function(){
+  writeOptionsBack();
+});
+
+document.getElementById("optPage").addEventListener("input", function(){
+  writeOptionsBack();
+});
+document.getElementById("optPrefix").addEventListener("input", function(){
+  writeOptionsBack();
+});
+document.getElementById("optSuffix").addEventListener("input", function(){
+  writeOptionsBack();
+});
+document.getElementById("optOmitAuthor").addEventListener("change", function(){
+  writeOptionsBack();
+});
+
+
+    document.addEventListener("keydown", function(e){
+      var k = String(e.key || "");
+      var tgt = e.target;
+      var tag = tgt ? String(tgt.tagName || "").toUpperCase() : "";
+
+      if (k === "Escape"){
+        closeMenu();
+        if (window.__busy) return;
+        if (window.__py && window.__py.closeDialog){
+          setTimeout(function(){ window.__py.closeDialog(); }, 0);
+        }
+        return;
+      }
+
+      if (window.__busy) return;
+
+      if (k === "ArrowDown" && tag !== "INPUT"){
+        e.preventDefault();
+        selectDbIndex(window.__db_selected_i + 1);
+        _refreshButtons();
+        refreshOptionsPanel();
+        return;
+      }
+
+      if (k === "ArrowUp" && tag !== "INPUT"){
+        e.preventDefault();
+        selectDbIndex(window.__db_selected_i - 1);
+        _refreshButtons();
+        refreshOptionsPanel();
+        return;
+      }
+
+      if (k === "Enter"){
+        if (tag === "INPUT") return;
+        e.preventDefault();
+        addToSelected();
+        _refreshButtons();
+        refreshOptionsPanel();
+        return;
+      }
+
+      if (k === "Delete"){
+        e.preventDefault();
+        removeSelected();
+        _refreshButtons();
+        refreshOptionsPanel();
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && k === "Enter"){
+        e.preventDefault();
+        window.__close_after_insert = true;
+        insertCitation();
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && (k === "u" || k === "U")){
+        e.preventDefault();
+        updateFromEditor();
+        return;
+      }
+    });
+
+    document.addEventListener("click", function(){ closeMenu(); });
+    document.getElementById("settingsMenu").addEventListener("click", function(ev){ ev.stopPropagation(); });
+  });
+</script>
+
+</head>
+<body>
+  <div id="app">
+    <div id="header">
+      <div class="dot"></div>
+      <div class="ttl">
+        <div class="t1">Tiny Ref</div>
+        <div class="t2" id="dbCount">0 records</div>
+      </div>
+
+      <div class="field">
+        <span class="chip">Filter</span>
+        <input id="dbQuery" placeholder="Type author, title, source, item key, or dqid…" />
+      </div>
+
+      <button class="btn" id="btnAdd">Add</button>
+      <button class="btn primary" id="btnInsert" disabled>Insert</button>
+      <button class="btn" id="btnRemove" disabled>Remove</button>
+
+      <button class="btn" id="btnBiblio">Biblio</button>
+      <button class="btn" id="btnUpdate">Update</button>
+
+      <div class="menuWrap">
+        <button class="btn" id="btnSettings">Settings</button>
+        <div class="menu" id="settingsMenu">
+          <div class="menuHead">Citation style</div>
+          <div class="menuItem" id="miApa" data-style="apa"><span class="radio"></span><span>APA</span></div>
+          <div class="menuItem" id="miNum" data-style="numeric"><span class="radio"></span><span>Numeric</span></div>
+          <div class="menuItem" id="miFoot" data-style="footnote"><span class="radio"></span><span>Footnote</span></div>
+          <div class="menuHead">Store</div>
+          <div class="menuItem" id="miClear"><span class="radio" style="border-radius:4px;"></span><span>Clear store</span></div>
+        </div>
+      </div>
+
+      <div id="pill" class="pill warn">Loading…</div>
+    </div>
+
+    <div id="main">
+      <div class="pane">
+        <div class="paneHead">
+          <span class="chip">Database</span>
+          <div class="grow"></div>
+          <span class="chip">Double-click adds</span>
+          <span class="chip">Drag → Selected</span>
+        </div>
+        <div class="list" id="dbList"></div>
+      </div>
+
+      <div class="pane">
+        <div class="paneHead">
+          <span class="chip">Selected</span>
+          <div class="grow"></div>
+          <span class="chip">Drag from left</span>
+        </div>
+        <div class="list" id="selList"></div>
+      </div>
+
+      <div id="optPane">
+        <div class="paneHead">
+          <span class="chip">Citation options</span>
+          <div class="grow"></div>
+          <span class="chip" id="optModeChip">Auto</span>
+        </div>
+
+        <div id="optPaneBody">
+          <div id="optPaneHint">Select a record (Database or Selected) to edit locator, prefix/suffix, and author omission.</div>
+
+          <div id="optCard">
+            <div class="optHead" id="optHead">(no selection)</div>
+
+            <div class="optRow">
+              <div class="optLabel">Locator</div>
+              <div class="optCtrl">
+                <select class="optSelect" id="optLocator">
+                  <option value="page" selected>Page</option>
+                  <option value="paragraph">Paragraph</option>
+                  <option value="chapter">Chapter</option>
+                  <option value="section">Section</option>
+                  <option value="figure">Figure</option>
+                  <option value="table">Table</option>
+                  <option value="line">Line</option>
+                </select>
+                <input class="optInput small" id="optPage" placeholder="e.g., 12" />
+              </div>
+            </div>
+
+            <div class="optRow">
+              <div class="optLabel">Prefix</div>
+              <input class="optInput" id="optPrefix" placeholder="e.g., see also" />
+            </div>
+
+            <div class="optRow">
+              <div class="optLabel">Suffix</div>
+              <input class="optInput" id="optSuffix" placeholder="e.g., for discussion" />
+            </div>
+
+            <label class="optCheck">
+              <input type="checkbox" id="optOmitAuthor" />
+              <span class="optLabel">Omit author</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>

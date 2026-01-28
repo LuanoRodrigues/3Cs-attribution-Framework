@@ -9,6 +9,7 @@ import type { CodeStateSnapshot } from "../state/codeState";
 import { StartScreen, type StartScreenHandlers } from "./startScreen";
 import type { SessionMenuAction } from "../session/sessionTypes";
 import type { PanelId } from "../layout/panelRegistry";
+import type { RetrieveDataHubState } from "./sessionTypes";
 
 const SAVE_DEBOUNCE_MS = 550;
 
@@ -39,6 +40,14 @@ export class SessionManager {
       setCodeState: (code) => this.updateCodeState(code)
     });
     this.options.tabRibbon.registerTabChangeListener((tabId) => this.recordActiveTab(tabId));
+    document.addEventListener("retrieve:datahub-updated", (event) => {
+      const detail = (event as CustomEvent<{ state?: RetrieveDataHubState }>).detail;
+      if (!detail?.state || !this.session) {
+        return;
+      }
+      this.session.retrieve = { ...(this.session.retrieve ?? {}), dataHub: detail.state };
+      this.schedulePersist();
+    });
   }
 
   async initialize(): Promise<void> {
@@ -236,6 +245,11 @@ export class SessionManager {
     const targetTab: TabId = this.session.activeRibbonTab ?? "retrieve";
     this.options.tabRibbon.selectTab(targetTab);
     this.startScreen.hide();
+    const retrieveState = this.session.retrieve?.dataHub;
+    if (retrieveState) {
+      (window as unknown as { __retrieveDataHubState?: RetrieveDataHubState }).__retrieveDataHubState = retrieveState;
+      document.dispatchEvent(new CustomEvent("retrieve:datahub-restore", { detail: { state: retrieveState } }));
+    }
   }
 
   private ensurePanelLayouts(session: SessionData): Record<PanelId, LayoutSnapshot> {

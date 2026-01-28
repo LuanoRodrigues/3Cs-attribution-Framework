@@ -45,6 +45,11 @@ backendFiles.forEach((file) => {
   }
 });
 
+const retrieveBackendSrc = path.join(projectRoot, "src", "pages", "retrieve", "datahub_host.py");
+if (fs.existsSync(retrieveBackendSrc)) {
+  copyFile(retrieveBackendSrc, path.join(backendDest, "datahub_host.py"));
+}
+
 const settingsTemplate = path.join(sharedResourcesDir, "app_settings_view.html");
 if (fs.existsSync(settingsTemplate)) {
   const settingsDest = path.join(projectRoot, "dist", "resources", "app_settings_view.html");

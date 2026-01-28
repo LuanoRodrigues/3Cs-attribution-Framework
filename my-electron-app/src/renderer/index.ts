@@ -848,7 +848,7 @@ function renderAnalyseRibbon(mount: HTMLElement): void {
     analyseAudioController = initAnalyseAudioController({
       widget: audioWidget,
       getState: () => analyseStore.getState(),
-      onCacheUpdate: (detail) => {
+      onCacheUpdate: (detail: { scope: string; cached: number; total: number; cachedKeys: string[] }) => {
         document.dispatchEvent(new CustomEvent("analyse-tts-cache-updated", { detail, bubbles: true }));
       }
     });

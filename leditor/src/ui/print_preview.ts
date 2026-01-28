@@ -1,6 +1,6 @@
-import type { EditorHandle } from "../legacy/api/leditor.js";
-import type { BreakKind } from "../legacy/extensions/extension_page_break.js";
-import { BREAK_KIND_LABELS } from "../legacy/extensions/extension_page_break.js";
+import type { EditorHandle } from "../api/leditor.ts";
+import type { BreakKind } from "../extensions/extension_page_break.ts";
+import { BREAK_KIND_LABELS } from "../extensions/extension_page_break.ts";
 
 type PrintPreviewController = {
   open(): void;

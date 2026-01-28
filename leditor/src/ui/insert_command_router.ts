@@ -1,7 +1,7 @@
-import type { EditorHandle } from "../legacy/api/leditor.js";
-import { getLayoutController } from "../legacy/ui/layout_context.js";
-import { refreshLayoutView } from "./layout_engine.js";
-import { getTemplateById, getTemplates } from "../legacy/templates/index.js";
+import type { EditorHandle } from "../api/leditor.ts";
+import { getLayoutController } from "../ui/layout_context.ts";
+import { refreshLayoutView } from "./layout_engine.ts";
+import { getTemplateById, getTemplates } from "../templates/index.ts";
 
 const execute = (handle: EditorHandle, commandId: string, args?: unknown) => {
   handle.execCommand(commandId, args);

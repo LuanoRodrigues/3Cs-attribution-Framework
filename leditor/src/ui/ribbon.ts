@@ -1,32 +1,32 @@
-import type { EditorHandle } from "../legacy/api/leditor.js";
-import { dispatchCommand, type EditorCommandId } from "../legacy/api/editor_commands.js";
-import { readCitationStyle } from "../legacy/api/command_map.js";
-import { RibbonControl, RibbonGroup } from "../legacy/ui/ribbon_primitives.js";
-import { Menu, MenuItem, MenuSeparator } from "../legacy/ui/ribbon_menu.js";
-import { getTemplates } from "../legacy/templates/index.js";
-import { getMarginValues, getOrientation, getPageSizeDefinitions, getCurrentPageSize, getLayoutColumns, subscribeToLayoutChanges } from "../legacy/ui/layout_settings.js";
-import type { MarginValues } from "../legacy/ui/layout_settings.js";
-import { createRibbonIcon, type RibbonIconName } from "../legacy/ui/ribbon_icons.js";
-import { createRibbonButton, createRibbonDropdownButton } from "./ribbon_controls.js";
+import type { EditorHandle } from "../api/leditor.ts";
+import { dispatchCommand, type EditorCommandId } from "../api/editor_commands.ts";
+import { readCitationStyle } from "../api/command_map.ts";
+import { RibbonControl, RibbonGroup } from "../ui/ribbon_primitives.ts";
+import { Menu, MenuItem, MenuSeparator } from "../ui/ribbon_menu.ts";
+import { getTemplates } from "../templates/index.ts";
+import { getMarginValues, getOrientation, getPageSizeDefinitions, getCurrentPageSize, getLayoutColumns, subscribeToLayoutChanges } from "../ui/layout_settings.ts";
+import type { MarginValues } from "../ui/layout_settings.ts";
+import { createRibbonIcon, type RibbonIconName } from "../ui/ribbon_icons.ts";
+import { createRibbonButton, createRibbonDropdownButton } from "./ribbon_controls.ts";
 import {
   watchRibbonSelectionState,
   watchRibbonSelectionStateLegacy,
   type RibbonSelectionTargets
 } from "./ribbon_selection.ts";
-import { setReadMode, setScrollDirection, setRulerVisible, setGridlinesVisible, toggleNavigationPanel, isReadMode, getScrollDirection, isRulerVisible, isGridlinesVisible, isNavigationVisible, syncViewToggles } from "../legacy/ui/view_state.js";
-import { SplitButton } from "../legacy/ui/ribbon_split_button.js";
+import { setReadMode, setScrollDirection, setRulerVisible, setGridlinesVisible, toggleNavigationPanel, isReadMode, getScrollDirection, isRulerVisible, isGridlinesVisible, isNavigationVisible, syncViewToggles } from "../ui/view_state.ts";
+import { SplitButton } from "../ui/ribbon_split_button.ts";
 import Pickr from "@simonwep/pickr";
 import "@simonwep/pickr/dist/themes/classic.min.css";
-import { CITATION_STYLES } from "../legacy/constants.js";
+import { CITATION_STYLES } from "../constants.ts";
 import type { Editor } from "@tiptap/core";
-import { getLayoutController } from "../legacy/ui/layout_context.js";
-import { THEME_CHANGE_EVENT } from "./theme_events.js";
-import { showReviewCard } from "./review_popovers.js";
-import { loadRibbonModel } from "./ribbon_config.js";
+import { getLayoutController } from "../ui/layout_context.ts";
+import { THEME_CHANGE_EVENT } from "./theme_events.ts";
+import { showReviewCard } from "./review_popovers.ts";
+import { loadRibbonModel } from "./ribbon_config.ts";
 
-import { RibbonStateBus } from "./ribbon_state.js";
-import type { AlignmentVariant } from "./ribbon_selection_helpers.js";
-import { renderRibbonLayout } from "./ribbon_layout.js";
+import { RibbonStateBus } from "./ribbon_state.ts";
+import type { AlignmentVariant } from "./ribbon_selection_helpers.ts";
+import { renderRibbonLayout } from "./ribbon_layout.ts";
 
 
 const FONT_FAMILIES = [
@@ -327,7 +327,7 @@ const createHomeOverflowButton = (grid: HTMLDivElement): HTMLButtonElement => {
   button.className = "leditor-ribbon-home-overflow";
   button.setAttribute("aria-expanded", "false");
   button.title = "Show more Home controls";
-  button.textContent = "⋯";
+  button.appendChild(createRibbonIcon("more"));
   button.addEventListener("click", () => {
     const expanded = grid.dataset.homeRowsExpanded === "true";
     const nextState = (!expanded).toString();
@@ -566,7 +566,7 @@ const createStackedDropdownButton = (options: StackedDropdownButtonOptions): HTM
 
   const chevron = document.createElement("span");
   chevron.className = "ribbon-dropdown-chevron";
-  chevron.textContent = "▾";
+  chevron.appendChild(createRibbonIcon("chevronDown"));
 
   button.append(icon, textWrap, chevron);
 
@@ -909,10 +909,12 @@ const createPickrColorButton = (
   label: string,
   colors: string[]
 ): HTMLButtonElement => {
-  const button = createIconButton({
+  const button = createRibbonButton({
     icon,
     label,
-    handler: () => pickr.show()
+    size: "medium",
+    tooltip: label,
+    extraClasses: ["leditor-ribbon-icon-btn"]
   });
   const applyColor = (color?: string) => {
     if (color) {
@@ -930,6 +932,7 @@ const createPickrColorButton = (
     default: colors[0],
     swatches: colors,
     position: "bottom-start",
+    useAsButton: true,
     components: {
       preview: true,
       opacity: true,

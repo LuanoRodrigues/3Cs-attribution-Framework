@@ -1,5 +1,5 @@
 import { getFootnoteRegistry } from "../extensions/extension_footnote.ts";
-import { allocateSectionId, defaultSectionMeta, parseSectionMeta, type SectionMeta } from "../legacy/editor/section_state.js";
+import { allocateSectionId, defaultSectionMeta, parseSectionMeta, type SectionMeta } from "../editor/section_state.ts";
 import interact from "interactjs";
 import nouislider from "nouislider";
 import "nouislider/dist/nouislider.css";
@@ -12,14 +12,14 @@ import {
   setPageMargins,
   setSectionColumns,
   subscribeToLayoutChanges
-} from "../legacy/ui/layout_settings.js";
-import type { MarginValues } from "../legacy/ui/layout_settings.js";
-import { THEME_CHANGE_EVENT } from "./theme_events.js";
+} from "../ui/layout_settings.ts";
+import type { MarginValues } from "../ui/layout_settings.ts";
+import { THEME_CHANGE_EVENT } from "./theme_events.ts";
 import {
   applyDocumentLayoutTokenDefaults,
   applyDocumentLayoutTokens
-} from "./pagination/index.js";
-import { featureFlags } from "../legacy/ui/feature_flags.js";
+} from "./pagination/index.ts";
+import { featureFlags } from "../ui/feature_flags.ts";
 import type { EditorHandle } from "../api/leditor.ts";
 import { reconcileFootnotes } from "../uipagination/footnotes/registry.ts";
 import { paginateWithFootnotes, type PageFootnoteState } from "../uipagination/footnotes/paginate_with_footnotes.ts";
@@ -204,12 +204,15 @@ html, body {
   transform: scale(var(--ui-scale));
   transform-origin: top left;
   width: calc(100% / var(--ui-scale));
+  --leditor-ribbon-height: 0px;
 }
 
 .leditor-app-header {
   flex: 0 0 auto;
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 40;
 }
 
@@ -220,6 +223,7 @@ html, body {
   flex-direction: column;
   overflow: auto;
   scrollbar-gutter: stable both-edges;
+  padding-top: var(--leditor-ribbon-height);
 }
 
 .leditor-app .ProseMirror a,

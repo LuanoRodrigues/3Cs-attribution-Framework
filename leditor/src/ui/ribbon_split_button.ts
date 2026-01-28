@@ -1,3 +1,5 @@
+import { createRibbonIcon } from "./ribbon_icons.ts";
+
 type LegacyMenuInstance = {
   open(anchor: HTMLElement): void;
 };
@@ -47,7 +49,7 @@ export class SplitButton {
     this.caretButton.type = "button";
     this.caretButton.className = "leditor-split-caret";
     this.caretButton.setAttribute("aria-label", `${options.label} menu`);
-    this.caretButton.textContent = "▾";
+    this.caretButton.appendChild(createRibbonIcon("chevronDown"));
     this.caretButton.addEventListener("click", (event) => {
       event.stopPropagation();
       options.menu.open(this.caretButton);

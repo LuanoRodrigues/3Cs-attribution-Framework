@@ -1,7 +1,7 @@
-import type { EditorCommandId } from "../legacy/api/editor_commands.js";
-import { createRibbonIcon, type RibbonIconName } from "../legacy/ui/ribbon_icons.js";
-import { RibbonControl } from "../legacy/ui/ribbon_primitives.js";
-import { Menu } from "../legacy/ui/ribbon_menu.js";
+import type { EditorCommandId } from "../api/editor_commands.ts";
+import { createRibbonIcon, type RibbonIconName } from "../ui/ribbon_icons.ts";
+import { RibbonControl } from "../ui/ribbon_primitives.ts";
+import { Menu } from "../ui/ribbon_menu.ts";
 
 type LegacyMenuInstance = InstanceType<typeof Menu>;
 
@@ -144,11 +144,11 @@ export const createRibbonSpinner = (): HTMLDivElement => {
   spinner.className = "leditor-ribbon-spinner";
   const decrease = document.createElement("button");
   decrease.type = "button";
-  decrease.textContent = "−";
+  decrease.appendChild(createRibbonIcon("shrinkFont"));
   decrease.className = "leditor-ribbon-spinner-step";
   const increase = document.createElement("button");
   increase.type = "button";
-  increase.textContent = "+";
+  increase.appendChild(createRibbonIcon("growFont"));
   increase.className = "leditor-ribbon-spinner-step";
   spinner.append(decrease, increase);
   return spinner;

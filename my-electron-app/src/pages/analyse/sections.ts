@@ -135,6 +135,15 @@ function countValues(values: string[]): Record<string, number> {
   }, {});
 }
 
+function resolveCorpusRunPath(state: AnalyseState): string {
+  const baseDir = (state.baseDir || "").trim();
+  if (baseDir) return baseDir;
+  const sectionsRoot = (state.sectionsRoot || "").trim();
+  if (!sectionsRoot) return "";
+  const trimmed = sectionsRoot.replace(/[\\/](sections)[\\/]?$/, "");
+  return trimmed || sectionsRoot;
+}
+
 function hashHue(value: string): number {
   let hash = 0;
   for (let i = 0; i < value.length; i += 1) {
@@ -511,7 +520,7 @@ export function renderSectionsPage(
   const isCorpus = options?.source === "corpus";
   const isBatchMode = isCorpus || round === "r1";
 
-  const runPath = isCorpus ? state.sectionsRoot || "" : state.activeRunPath || "";
+  const runPath = isCorpus ? resolveCorpusRunPath(state) : state.activeRunPath || "";
   if (!runPath) {
     const empty = document.createElement("div");
     empty.className = "empty-state";

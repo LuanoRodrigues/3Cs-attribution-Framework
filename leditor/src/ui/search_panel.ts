@@ -1,9 +1,9 @@
-import type { EditorHandle } from "../legacy/api/leditor.js";
+import type { EditorHandle } from "../api/leditor.ts";
 import {
   clearSearch,
   markSearchPanelOpened,
   setQuery
-} from "../editor/search.js";
+} from "../editor/search.ts";
 
 type SearchPanelController = {
   open: () => void;

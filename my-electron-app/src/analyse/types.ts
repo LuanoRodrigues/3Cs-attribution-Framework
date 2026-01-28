@@ -128,6 +128,7 @@ export type AnalyseUtilityAction =
   | "analyse/audio_read_current"
   | "analyse/audio_stop"
   | "analyse/audio_cache_status"
+  | "analyse/audio_cache_add"
   | "analyse/ai_open"
   | "analyse/ai_run_selection"
   | "analyse/ai_run_batch";

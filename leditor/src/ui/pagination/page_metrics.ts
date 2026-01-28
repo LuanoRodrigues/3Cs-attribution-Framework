@@ -1,4 +1,4 @@
-import { getDocumentLayoutSpec } from "./document_layout_state.js";
+import { getDocumentLayoutSpec } from "./document_layout_state.ts";
 
 type DocumentLayoutSpec = ReturnType<typeof getDocumentLayoutSpec>;
 

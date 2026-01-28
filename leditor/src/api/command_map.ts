@@ -111,14 +111,25 @@ const insertCitationNode = (
     window.alert("Citations are not supported in this schema.");
     return;
   }
-  const items = buildCitationItems(result.itemKeys, {
-    prefix: result.options.prefix ?? null,
-    locator: result.options.locator ?? null,
-    label: result.options.label ?? null,
-    suffix: result.options.suffix ?? null,
-    suppressAuthor: Boolean(result.options.suppressAuthor),
-    authorOnly: Boolean(result.options.authorOnly)
-  });
+  const items =
+    result.items && result.items.length
+      ? result.items.map((item) => ({
+          itemKey: item.itemKey,
+          prefix: item.prefix ?? null,
+          locator: item.locator ?? null,
+          label: item.label ?? null,
+          suffix: item.suffix ?? null,
+          suppressAuthor: Boolean(item.suppressAuthor),
+          authorOnly: Boolean(item.authorOnly)
+        }))
+      : buildCitationItems(result.itemKeys, {
+          prefix: result.options.prefix ?? null,
+          locator: result.options.locator ?? null,
+          label: result.options.label ?? null,
+          suffix: result.options.suffix ?? null,
+          suppressAuthor: Boolean(result.options.suppressAuthor),
+          authorOnly: Boolean(result.options.authorOnly)
+        });
   const attrs = {
     citationId,
     items,
@@ -212,7 +223,8 @@ const handleInsertCitationCommand = (editor: Editor) => {
   openCitationPicker({
     mode: existing ? "edit" : "insert",
     preselectItemKeys: preselectKeys,
-    activeCitationId
+    activeCitationId,
+    styleId: typeof editor.state.doc.attrs?.citationStyleId === "string" ? editor.state.doc.attrs.citationStyleId : null
   })
     .then((result) => {
       if (!result) return;
@@ -723,10 +735,10 @@ const ensureUniqueBookmarkId = (base: string, taken: Set<string>): string => {
   return candidate;
 };
 
-import { notifySearchUndo } from "../legacy/editor/search.js";
-import { notifyAutosaveUndoRedo } from "../legacy/editor/autosave.js";
+import { notifySearchUndo } from "../editor/search.ts";
+import { notifyAutosaveUndoRedo } from "../editor/autosave.ts";
 import { toggleVisualBlocks, toggleVisualChars } from "../editor/visual.ts";
-import { applyBlockDirection, notifyDirectionUndo } from "../legacy/editor/direction.js";
+import { applyBlockDirection, notifyDirectionUndo } from "../editor/direction.ts";
 import { toggleFullscreen } from "../ui/fullscreen.ts";
 import {
   isPageBoundariesVisible,
@@ -740,8 +752,8 @@ import {
   setScrollDirection
 } from "../ui/view_state.ts";
 import { getLayoutController } from "../ui/layout_context.ts";
-import { getTemplateById } from "../legacy/templates/index.js";
-import { setPageMargins, setPageOrientation, setPageSize, setSectionColumns } from "../legacy/ui/layout_settings.js";
+import { getTemplateById } from "../templates/index.ts";
+import { setPageMargins, setPageOrientation, setPageSize, setSectionColumns } from "../ui/layout_settings.ts";
 import {
   applyDocumentLayoutTokens,
   setFooterDistance,
@@ -751,8 +763,8 @@ import {
   setOrientation as setDocOrientation,
   setPageSizePreset,
   setMarginsPreset
-} from "../ui/pagination/index.js";
-import type { BreakKind } from "../legacy/extensions/extension_page_break.js";
+} from "../ui/pagination/index.ts";
+import type { BreakKind } from "../extensions/extension_page_break.ts";
 
 
 export type CommandHandler = (editor: Editor, args?: any) => void;

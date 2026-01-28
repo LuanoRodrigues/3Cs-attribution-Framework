@@ -11,4 +11,4 @@ export {
   setGutter,
   setHeaderDistance,
   setFooterDistance
-} from "./document_layout_state.js";
+} from "./document_layout_state.ts";

@@ -1,8 +1,8 @@
 import type { Editor } from "@tiptap/core";
 import type { EditorHandle } from "../api/leditor.ts";
-import { dispatchCommand, type EditorCommandId } from "../legacy/api/editor_commands.js";
-import { loadRibbonRegistry } from "./ribbon_config.js";
-import { getSelectionAlignment, getSelectionBlockDescriptor } from "./ribbon_selection_helpers.js";
+import { dispatchCommand, type EditorCommandId } from "../api/editor_commands.ts";
+import { loadRibbonRegistry } from "./ribbon_config.ts";
+import { getSelectionAlignment, getSelectionBlockDescriptor } from "./ribbon_selection_helpers.ts";
 import { getLayoutController } from "./layout_context.ts";
 import { isFullscreenActive } from "./fullscreen.ts";
 import {

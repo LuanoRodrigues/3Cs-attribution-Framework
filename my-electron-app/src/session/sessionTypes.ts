@@ -4,6 +4,19 @@ import type { CodeStateSnapshot } from "../state/codeState";
 import type { AnalyseState } from "../analyse/types";
 import type { TabId } from "../layout/TabRibbon";
 import type { PanelId } from "../layout/panelRegistry";
+import type { DataHubTable } from "../shared/types/dataHub";
+
+export interface RetrieveDataHubState {
+  sourceType: "file" | "zotero";
+  filePath?: string;
+  collectionName?: string;
+  table?: DataHubTable;
+  loadedAt?: string;
+}
+
+export interface RetrieveSessionState {
+  dataHub?: RetrieveDataHubState;
+}
 
 export interface SessionData {
   projectId: string;
@@ -19,6 +32,7 @@ export interface SessionData {
   activeToolId?: string;
   assets?: Record<string, string>;
   notes?: string;
+  retrieve?: RetrieveSessionState;
 }
 
 export interface ProjectMetadata {

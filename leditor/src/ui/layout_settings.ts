@@ -5,7 +5,7 @@ import {
   setMarginsPreset as docSetMarginsPreset,
   setMarginsCustom as docSetMarginsCustom,
   setColumns as docSetColumns
-} from "./pagination/document_layout_state.js";
+} from "./pagination/document_layout_state.ts";
 
 export type Orientation = "portrait" | "landscape";
 

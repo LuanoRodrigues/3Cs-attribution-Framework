@@ -1,8 +1,8 @@
-import { getDocumentLayoutSpec } from "./document_layout_state.js";
-import type { PageHost } from "./page_host.js";
-import { derivePageMetrics } from "./page_metrics.js";
-import { saveSelectionBookmark, restoreSelectionBookmark } from "./selection_bookmark.js";
-import { splitBlockInline, type InlineSplitResult } from "./inline_split.js";
+import { getDocumentLayoutSpec } from "./document_layout_state.ts";
+import type { PageHost } from "./page_host.ts";
+import { derivePageMetrics } from "./page_metrics.ts";
+import { saveSelectionBookmark, restoreSelectionBookmark } from "./selection_bookmark.ts";
+import { splitBlockInline, type InlineSplitResult } from "./inline_split.ts";
 import { allocateSectionId, parseSectionMeta, type SectionMeta } from "../../editor/section_state";
 
 type PaginatorOptions = {

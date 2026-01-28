@@ -1,6 +1,6 @@
-import { dispatchCommand } from "../api/editor_commands.js";
-import type { EditorCommandId } from "../api/editor_commands.js";
-import type { EditorHandle } from "../api/leditor.js";
+import { dispatchCommand } from "../api/editor_commands.ts";
+import type { EditorCommandId } from "../api/editor_commands.ts";
+import type { EditorHandle } from "../api/leditor.ts";
 import ribbonPlan from "./ribbon.json";
 import homeTab from "./home.json";
 import insertTab from "./insert.json";
@@ -8,15 +8,15 @@ import reviewTab from "./review.json";
 import layoutTab from "./layout_tab.json";
 import viewTab from "./view.json";
 import layoutPlan from "./layout.json";
-import { RibbonTabStrip } from "./ribbon_primitives.js";
-import { createRibbonButton, createRibbonDropdownButton, createRibbonSpinner } from "./ribbon_controls.js";
-import { createRibbonIcon, type RibbonIconName } from "./ribbon_icons.js";
-import { Menu, MenuItem, MenuSeparator, setMenuPortal } from "./ribbon_menu.js";
-import { SplitButton } from "./ribbon_split_button.js";
-import { getTemplates } from "../templates/index.js";
-import { getStyleTemplates, openStyleMiniApp } from "./style_mini_app.js";
-import { tabLayouts } from "./tab_layouts.js";
-import type { RibbonStateBus, RibbonStateKey, RibbonStateSnapshot } from "./ribbon_state.js";
+import { RibbonTabStrip } from "./ribbon_primitives.ts";
+import { createRibbonButton, createRibbonDropdownButton, createRibbonSpinner } from "./ribbon_controls.ts";
+import { createRibbonIcon, type RibbonIconName } from "./ribbon_icons.ts";
+import { Menu, MenuItem, MenuSeparator, setMenuPortal } from "./ribbon_menu.ts";
+import { SplitButton } from "./ribbon_split_button.ts";
+import { getTemplates } from "../templates/index.ts";
+import { getStyleTemplates, openStyleMiniApp } from "./style_mini_app.ts";
+import { tabLayouts } from "./tab_layouts.ts";
+import type { RibbonStateBus, RibbonStateKey, RibbonStateSnapshot } from "./ribbon_state.ts";
 import type {
   ClusterConfig,
   ControlConfig,
@@ -24,8 +24,8 @@ import type {
   GroupConfig,
   RibbonModel,
   TabConfig
-} from "./ribbon_config.js";
-import type { AlignmentVariant } from "./ribbon_selection_helpers.js";
+} from "./ribbon_config.ts";
+import type { AlignmentVariant } from "./ribbon_selection_helpers.ts";
 
 type RibbonHooks = {
   registerToggle?: (commandId: EditorCommandId, element: HTMLButtonElement) => void;
@@ -469,14 +469,24 @@ const resolveIconForControl = (control: ControlConfig): RibbonIconName | undefin
   return undefined;
 };
 
+const requireIcon = (control: ControlConfig, icon?: RibbonIconName): RibbonIconName => {
+  if (icon) return icon;
+  const id = control.controlId || control.command?.id || control.label || control.type;
+  throw new Error(`Ribbon control "${id}" is missing an icon.`);
+};
+
 const ensureControlIcon = (element: HTMLElement, iconName?: RibbonIconName): void => {
   if (!iconName) return;
   const existing = element.querySelector(".leditor-ribbon-icon");
-  if (existing && !existing.classList.contains("leditor-ribbon-icon-placeholder")) {
-    return;
-  }
   if (existing) {
-    existing.remove();
+    const existingKey = (existing as HTMLElement).dataset.iconKey;
+    if (!existingKey) {
+      throw new Error(`Ribbon control icon missing data-icon-key for "${iconName}".`);
+    }
+    if (existingKey !== iconName) {
+      throw new Error(`Ribbon control icon mismatch: expected "${iconName}", found "${existingKey}".`);
+    }
+    return;
   }
   const icon = createRibbonIcon(iconName);
   icon.classList.add("ribbon-button-icon");
@@ -585,7 +595,7 @@ const createOverflowButton = (label: string, menu: Menu): HTMLButtonElement => {
   button.type = "button";
   button.className = "ribbon-overflow-button";
   button.setAttribute("aria-label", `${label} overflow`);
-  button.textContent = "⋯";
+  button.appendChild(createRibbonIcon("more"));
   button.dataset.controlId = `${label}.overflow`;
   button.dataset.controlType = "overflow";
   button.dataset.groupId = label;
@@ -1170,15 +1180,16 @@ const buildControl = (
     }
     const args = control.command ? buildCommandArgs(control.command) : undefined;
     const targetId = control.command ? resolveCommandId(control.command as any, args) : undefined;
+    const requiredIcon = requireIcon(control, icon);
     const button = createRibbonButton({
-      icon,
+      icon: requiredIcon,
       label: control.label ?? "",
       size,
       toggle: control.type === "toggleButton",
       onClick: commandHandler,
       commandId: targetId as any
     });
-    ensureControlIcon(button, icon);
+    ensureControlIcon(button, requiredIcon);
     applyControlDataAttributes(button, control, size);
     if (control.label) {
       const labelSpan = document.createElement("span");
@@ -1205,8 +1216,9 @@ const buildControl = (
     ctx.menuRegistry.set(id ?? "", menu);
     const targetArgs = control.command ? buildCommandArgs(control.command) : undefined;
     const targetId = control.command ? resolveCommandId(control.command as any, targetArgs) : undefined;
+    const requiredIcon = requireIcon(control, icon);
     const button = createRibbonButton({
-      icon: icon ?? "underline",
+      icon: requiredIcon,
       label: control.label ?? "",
       size,
       toggle: true,
@@ -1221,7 +1233,7 @@ const buildControl = (
     menu.onClose(() => {
       button.setAttribute("aria-expanded", "false");
     });
-    ensureControlIcon(button, icon ?? "underline");
+    ensureControlIcon(button, requiredIcon);
     applyControlDataAttributes(button, control, size);
     if (targetId) {
       ctx.hooks.registerToggle?.(targetId as any, button);
@@ -1234,10 +1246,9 @@ const buildControl = (
   if (control.type === "splitButton" || control.type === "splitToggleButton" || control.type === "colorSplitButton") {
     const menu = buildMenu(control.menu, ctx);
     ctx.menuRegistry.set(id ?? "", menu);
-    const iconEl = icon ? createRibbonIcon(icon) : null;
-    if (iconEl) {
-      iconEl.classList.add("ribbon-button-icon");
-    }
+    const requiredIcon = requireIcon(control, icon);
+    const iconEl = createRibbonIcon(requiredIcon);
+    iconEl.classList.add("ribbon-button-icon");
     const split = new SplitButton({
       label: control.label ?? "",
       iconElement: iconEl,
@@ -1245,24 +1256,21 @@ const buildControl = (
       menu,
       logLabel: id
     });
-    if (iconEl) {
-      const primary = split.element.querySelector(".leditor-split-primary");
-      if (primary) {
-        if (!primary.querySelector(".leditor-ribbon-icon")) {
-          const iconClone = iconEl.cloneNode(true) as HTMLElement;
-          primary.prepend(iconClone);
-        }
-        Array.from(primary.childNodes).forEach((node) => {
-          if (node.nodeType === Node.TEXT_NODE) {
-            node.textContent = "";
-          }
-        });
-        primary.querySelectorAll(".ribbon-button-label").forEach((label) => label.remove());
-      }
-    }
     const primary = split.element.querySelector(".leditor-split-primary");
+    if (primary) {
+      if (!primary.querySelector(".leditor-ribbon-icon")) {
+        const iconClone = iconEl.cloneNode(true) as HTMLElement;
+        primary.prepend(iconClone);
+      }
+      Array.from(primary.childNodes).forEach((node) => {
+        if (node.nodeType === Node.TEXT_NODE) {
+          node.textContent = "";
+        }
+      });
+      primary.querySelectorAll(".ribbon-button-label").forEach((label) => label.remove());
+    }
     if (primary instanceof HTMLElement) {
-      ensureControlIcon(primary, icon);
+      ensureControlIcon(primary, requiredIcon);
     }
     applyControlDataAttributes(split.element, control, control.size ?? "medium");
     collapseMeta.element = split.element;
@@ -1273,12 +1281,13 @@ const buildControl = (
   if (control.type === "dropdown" || control.type === "colorPicker") {
     const menu = buildMenu(control.menu, ctx);
     ctx.menuRegistry.set(id ?? "", menu);
+    const requiredIcon = requireIcon(control, icon);
     const button = createRibbonDropdownButton({
-      icon: icon ?? "clear",
+      icon: requiredIcon,
       label: control.label ?? "",
       menu
     });
-    ensureControlIcon(button, icon ?? "clear");
+    ensureControlIcon(button, requiredIcon);
     applyControlDataAttributes(button, control, control.size ?? "medium");
     collapseMeta.element = button;
     recordParent(meta, button);
@@ -1359,12 +1368,13 @@ const buildControl = (
       menu.element.appendChild(item);
     }
 
+    const requiredIcon = requireIcon(control, icon);
     const dropdownButton = createRibbonDropdownButton({
-      icon: icon ?? "clear",
+      icon: requiredIcon,
       label: control.label ?? "",
       menu
     });
-    ensureControlIcon(dropdownButton, icon ?? "clear");
+    ensureControlIcon(dropdownButton, requiredIcon);
     spinnerContainer.appendChild(dropdownButton);
 
     const parseCurrentValue = (): number => {
@@ -1433,7 +1443,7 @@ const buildControl = (
     btn.type = "button";
     btn.className = "ribbon-dialog-launcher";
     btn.setAttribute("aria-label", control.label ?? "Open dialog");
-    const iconEl = createRibbonIcon(icon ?? "clear");
+    const iconEl = createRibbonIcon(requireIcon(control, icon));
     btn.appendChild(iconEl);
     btn.addEventListener("click", commandHandler);
     applyControlDataAttributes(btn, control, control.size ?? "small");

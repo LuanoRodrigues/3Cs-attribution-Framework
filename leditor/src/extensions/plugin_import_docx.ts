@@ -1,6 +1,6 @@
-import { registerPlugin } from "../legacy/api/plugin_registry.js";
-import type { EditorHandle } from "../legacy/api/leditor.js";
-import type { ImportDocxOptions, ImportDocxResult } from "../api/import_docx.js";
+import { registerPlugin } from "../api/plugin_registry.ts";
+import type { EditorHandle } from "../api/leditor.ts";
+import type { ImportDocxOptions, ImportDocxResult } from "../api/import_docx.ts";
 
 const triggerImport = (options?: ImportDocxOptions) => {
   const handler = window.leditorHost?.importDOCX;

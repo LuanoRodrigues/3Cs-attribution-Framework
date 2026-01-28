@@ -22,17 +22,17 @@ html.ribbon-panels-v2 {
   --ribbon-btn-active-bg: color-mix(in srgb, var(--panel-2) 90%, transparent);
   --ribbon-icon: 16px;
 
-  --panel-border: 1px solid var(--border);
-  --panel-divider: 1px solid var(--border);
-  --panel-chrome-height: 24px;
-  --panel-chrome-padX: 10px;
+  --panel-border: 1px solid var(--border-soft);
+  --panel-divider: 1px solid var(--border-soft);
+  --panel-chrome-height: 22px;
+  --panel-chrome-padX: 8px;
   --panel-tab-height: 18px;
   --panel-tab-padX: 6px;
   --panel-tab-gap: 6px;
-  --panel-minWidth: 240px;
+  --panel-minWidth: 220px;
   --panel-minHeight: 140px;
-  --panel-splitter-width: 6px;
-  --panel-splitter-hit: 12px;
+  --panel-splitter-width: 4px;
+  --panel-splitter-hit: 10px;
 }
 
 html.ribbon-panels-v2 body {
@@ -195,7 +195,7 @@ html.ribbon-panels-v2 #app-tab-actions .ribbon-button.active {
 }
 
 html.ribbon-panels-v2 .panel-grid {
-  padding: 12px;
+  padding: 8px;
   gap: 0;
 }
 
@@ -205,41 +205,44 @@ html.ribbon-panels-v2 .panel-shell {
   min-height: var(--panel-minHeight);
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 12px;
-  background: linear-gradient(135deg, var(--panel), var(--panel-2));
+  gap: 8px;
+  padding: 8px;
+  background: var(--panel);
   box-shadow: none;
-  border-radius: 10px;
+  border-radius: 6px;
   transition: none;
 }
 
 html.ribbon-panels-v2 .panel-shell .panel-chrome {
   height: var(--panel-chrome-height);
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 6px;
   padding: 0 var(--panel-chrome-padX);
   border-bottom: var(--panel-divider);
   background: transparent;
+  position: relative;
 }
 
 html.ribbon-panels-v2 .panel-tabs {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--panel-tab-gap);
   margin-left: auto;
   min-width: 0;
+  padding-bottom: 4px;
+  border-bottom: 1px solid transparent;
 }
 
 html.ribbon-panels-v2 .panel-tab {
   height: var(--panel-tab-height);
   padding: 0 var(--panel-tab-padX);
   border: 0;
-  background: color-mix(in srgb, var(--panel-2) 80%, transparent);
-  color: var(--text);
-  border-radius: 6px;
-  font-size: 11px;
-  letter-spacing: 0.1px;
+  background: transparent;
+  color: var(--muted);
+  border-radius: 4px;
+  font-size: 12px;
+  letter-spacing: 0.2px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -247,10 +250,26 @@ html.ribbon-panels-v2 .panel-tab {
   max-width: 120px;
   overflow: hidden;
   text-overflow: ellipsis;
+  border-bottom: 2px solid transparent;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+html.ribbon-panels-v2 .panel-tab::after {
+  content: "";
+  width: 1px;
+  height: 14px;
+  margin-left: 6px;
+  background: var(--border-soft);
+  opacity: 0.7;
+}
+
+html.ribbon-panels-v2 .panel-tab:last-child::after {
+  display: none;
 }
 
 html.ribbon-panels-v2 .panel-tab:hover {
-  background: color-mix(in srgb, var(--panel-2) 90%, transparent);
+  color: var(--text);
+  border-bottom-color: color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
 html.ribbon-panels-v2 .panel-tab:focus-visible {
@@ -268,7 +287,7 @@ html.ribbon-panels-v2 .panel-gutter {
   width: var(--panel-splitter-width);
   min-width: var(--panel-splitter-width);
   cursor: col-resize;
-  padding: 0 2px;
+  padding: 0 1px;
 }
 
 html.ribbon-panels-v2 .panel-gutter::before {
@@ -301,6 +320,22 @@ html.ribbon-panels-v2 .panel-shell[data-minimized="true"] .panel-index {
   margin: 0;
   padding: 0;
   font-size: 12px;
+}
+
+html.ribbon-panels-v2 .panel-index {
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  transform: translateY(-50%) scale(0.9);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+html.ribbon-panels-v2 .panel-shell:hover .panel-index,
+html.ribbon-panels-v2 .panel-shell:focus-within .panel-index {
+  opacity: 1;
+  transform: translateY(-50%) scale(1);
 }
 
 html.ribbon-panels-v2 .panel-pane {
@@ -358,7 +393,10 @@ html.ribbon-panels-v2 .panel-content.panel-split--col .panel-inner-gutter::befor
 }
 
 html.ribbon-panels-v2 .panel-tab.is-active {
-  background: color-mix(in srgb, var(--panel-2) 95%, transparent);
+  background: transparent;
+  color: var(--text);
+  border-bottom-color: var(--accent);
+  padding-bottom: 2px;
 }
 
 html.ribbon-panels-v2 .panel-tab.is-disabled {

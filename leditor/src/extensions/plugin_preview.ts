@@ -1,6 +1,6 @@
-import { registerPlugin } from "../legacy/api/plugin_registry.js";
-import type { EditorHandle } from "../legacy/api/leditor.js";
-import { createPreviewModal } from "../legacy/ui/preview.js";
+import { registerPlugin } from "../api/plugin_registry.ts";
+import type { EditorHandle } from "../api/leditor.ts";
+import { createPreviewModal } from "../ui/preview.ts";
 
 let previewController: ReturnType<typeof createPreviewModal> | null = null;
 

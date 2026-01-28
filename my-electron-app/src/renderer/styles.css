@@ -1125,21 +1125,21 @@ kbd { background: color-mix(in srgb, var(--surface) 10%, transparent); }
 }
 
 .panel-shell {
-  background: linear-gradient(135deg, color-mix(in srgb, var(--surface) 18%, transparent), color-mix(in srgb, var(--panel) 80%, transparent));
-  border: 1px solid var(--border);
-  border-radius: var(--panel-radius);
-  padding: 18px;
-  box-shadow: var(--shadow-level-2), inset 0 1px 0 var(--border-soft);
+  background: var(--panel);
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  padding: 10px;
+  box-shadow: none;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 8px;
   overflow: hidden;
   min-height: 0;
   height: 100%;
   max-height: 100%;
   min-width: 180px;
   flex: 1 1 260px;
-  transition: flex 0.25s ease, transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+  transition: flex 0.25s ease, transform 0.25s ease, border-color 0.25s ease;
   position: relative;
   z-index: 0;
 }
@@ -1426,8 +1426,8 @@ kbd { background: color-mix(in srgb, var(--surface) 10%, transparent); }
 }
 
 .panel-gutter {
-  width: 10px;
-  min-width: 10px;
+  width: 6px;
+  min-width: 6px;
   cursor: col-resize;
   display: flex;
   align-items: stretch;
@@ -1437,7 +1437,7 @@ kbd { background: color-mix(in srgb, var(--surface) 10%, transparent); }
 
 .panel-gutter::before {
   content: "";
-  width: 2px;
+  width: 1px;
   border-radius: 2px;
   background: var(--border);
   transition: background 0.15s ease;
@@ -1975,30 +1975,44 @@ kbd { background: color-mix(in srgb, var(--surface) 10%, transparent); }
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 6px 10px;
-  border-radius: 12px;
-  background: var(--surface-muted);
-  border: 1px solid transparent;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: transparent;
+  border-bottom: 1px solid var(--border-soft);
   transition: border-color 0.2s ease, background 0.2s ease;
+  position: relative;
 }
 
 .panel-shell:hover .panel-chrome {
   border-color: color-mix(in srgb, var(--accent) 40%, transparent);
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  background: transparent;
 }
 
 .panel-index {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: color-mix(in srgb, var(--accent) 18%, transparent);
-  color: var(--accent);
+  background: color-mix(in srgb, var(--panel-2) 70%, transparent);
+  color: var(--text);
   font-weight: 600;
-  font-size: 14px;
-  border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  font-size: 11px;
+  border: 1px solid var(--border-soft);
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  transform: translateY(-50%) scale(0.9);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.panel-shell:hover .panel-index,
+.panel-shell:focus-within .panel-index {
+  opacity: 1;
+  transform: translateY(-50%) scale(1);
 }
 
 .panel-title {
@@ -2305,8 +2319,8 @@ kbd { background: color-mix(in srgb, var(--surface) 10%, transparent); }
 }
 
 .section-card {
-  background: #020617;
-  border: 1px solid #1f2937;
+  background: color-mix(in srgb, var(--panel) 92%, var(--surface) 8%);
+  border: 1px solid var(--border);
   border-radius: 12px;
   box-shadow: var(--shadow-level-1);
   padding: 12px;
@@ -2319,7 +2333,7 @@ kbd { background: color-mix(in srgb, var(--surface) 10%, transparent); }
   margin: 0;
   font-size: 15px;
   font-weight: 600;
-  color: #e8edf5;
+  color: var(--text);
 }
 
 .section-card__head {
@@ -2350,9 +2364,9 @@ kbd { background: color-mix(in srgb, var(--surface) 10%, transparent); }
 }
 
 .section-status {
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  background: rgba(15, 23, 42, 0.65);
-  color: #e2e8f0;
+  border: 1px solid var(--border-soft);
+  background: color-mix(in srgb, var(--panel-2) 70%, transparent);
+  color: var(--text);
   font-size: 11px;
   padding: 2px 8px;
   border-radius: 999px;
@@ -2363,31 +2377,31 @@ kbd { background: color-mix(in srgb, var(--surface) 10%, transparent); }
 
 .section-info {
   font-size: 11px;
-  color: #94a3b8;
+  color: var(--muted);
 }
 
 .section-card:hover {
-  background: #161c29;
+  background: color-mix(in srgb, var(--panel-2) 85%, transparent);
 }
 
 .section-card[data-status="reading"] {
-  border-color: rgba(125, 211, 252, 0.65);
-  box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.35), var(--shadow-level-1);
+  border-color: color-mix(in srgb, var(--info) 65%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--info) 35%, transparent), var(--shadow-level-1);
 }
 
 .section-card[data-status="read"] {
-  border-color: rgba(34, 197, 94, 0.65);
-  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.35), var(--shadow-level-1);
+  border-color: color-mix(in srgb, var(--success) 65%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--success) 35%, transparent), var(--shadow-level-1);
 }
 
 .section-card[data-status="not_to_read"] {
-  border-color: rgba(248, 113, 113, 0.65);
-  box-shadow: 0 0 0 1px rgba(248, 113, 113, 0.35), var(--shadow-level-1);
+  border-color: color-mix(in srgb, var(--danger) 65%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--danger) 35%, transparent), var(--shadow-level-1);
 }
 
 .section-cached {
   font-size: 11px;
-  color: #60A5FA;
+  color: var(--info);
 }
 
 .audio-widget {
@@ -2408,9 +2422,9 @@ kbd { background: color-mix(in srgb, var(--surface) 10%, transparent); }
 }
 
 .audio-grip {
-  border: 1px solid #1B2233;
-  background: rgba(255,255,255,0.03);
-  color: #AEB7C4;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--panel) 80%, transparent);
+  color: var(--muted);
   border-radius: 999px;
   font-size: 12px;
   padding: 0 6px;
@@ -2438,32 +2452,32 @@ kbd { background: color-mix(in srgb, var(--surface) 10%, transparent); }
   min-width: var(--audio-control-height);
   height: var(--audio-control-height);
   border-radius: 18px;
-  border: 1px solid #1B2233;
-  background: rgba(255,255,255,0.03);
-  color: #E7ECF3;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  color: var(--text);
   cursor: pointer;
   font-size: 12px;
   line-height: 1;
 }
 
 .audio-btn.play {
-  background: linear-gradient(90deg, #67C4EA 0%, #3B82F6 100%);
-  border: none;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 70%, transparent) 0%, color-mix(in srgb, var(--accent-2) 80%, transparent) 100%);
+  border-color: transparent;
 }
 
 .audio-btn.stop {
-  background: rgba(255,90,90,0.14);
-  border: 1px solid rgba(255,120,120,0.55);
-  color: rgba(255,190,190,0.92);
+  background: color-mix(in srgb, var(--danger) 15%, var(--panel));
+  border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent);
+  color: var(--danger);
 }
 
 .audio-select,
 .audio-rate,
 .audio-cache {
-  background: rgba(255,255,255,0.02);
-  color: #E7ECF3;
+  background: var(--surface-muted);
+  color: var(--text);
   border-radius: 12px;
-  border: 1px solid #1B2233;
+  border: 1px solid var(--border);
   padding: 0 8px;
   font-size: 12px;
   height: var(--audio-control-height);
@@ -2493,8 +2507,8 @@ kbd { background: color-mix(in srgb, var(--surface) 10%, transparent); }
   position: absolute;
   top: 42px;
   right: 10px;
-  background: #0c1220;
-  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: var(--panel-2);
+  border: 1px solid var(--border-soft);
   border-radius: 12px;
   padding: 6px;
   display: none;
@@ -2509,9 +2523,9 @@ kbd { background: color-mix(in srgb, var(--surface) 10%, transparent); }
 }
 
 .audio-cache-item {
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  background: rgba(15, 23, 42, 0.7);
-  color: #e2e8f0;
+  border: 1px solid var(--border-soft);
+  background: color-mix(in srgb, var(--panel-2) 70%, transparent);
+  color: var(--text);
   font-size: 12px;
   padding: 6px 10px;
   border-radius: 10px;
@@ -2520,16 +2534,16 @@ kbd { background: color-mix(in srgb, var(--surface) 10%, transparent); }
 }
 
 .audio-cache-item:hover {
-  border-color: rgba(125, 211, 252, 0.55);
-  background: rgba(30, 41, 59, 0.85);
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  background: color-mix(in srgb, var(--panel-2) 85%, transparent);
 }
 
 .audio-rate-menu {
   position: absolute;
   top: 42px;
   right: 120px;
-  background: #0c1220;
-  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: var(--panel-2);
+  border: 1px solid var(--border-soft);
   border-radius: 12px;
   padding: 10px;
   display: none;
@@ -2548,11 +2562,11 @@ kbd { background: color-mix(in srgb, var(--surface) 10%, transparent); }
   display: flex;
   justify-content: space-between;
   font-size: 11px;
-  color: #cbd5f5;
+  color: var(--muted);
 }
 
 .audio-rate-menu__value {
-  color: #7dd3fc;
+  color: var(--accent);
   font-weight: 600;
 }
 

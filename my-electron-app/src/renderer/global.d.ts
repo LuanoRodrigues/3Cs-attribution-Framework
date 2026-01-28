@@ -8,6 +8,7 @@ import type {
 } from "../analyse/types";
 import type { ProjectContext, ProjectInitialization, RecentProjectRecord, SessionData, SessionMenuAction } from "../session/sessionTypes";
 import type { RetrievePaperSnapshot } from "../shared/types/retrieve";
+import type { RetrieveDataHubState } from "../session/sessionTypes";
 
 export {};
 
@@ -68,6 +69,7 @@ declare global {
       getDefaultDirectory: () => Promise<string>;
       listRecentProjects: () => Promise<RecentProjectRecord[]>;
     };
+    __retrieveDataHubState?: RetrieveDataHubState;
   }
 }
 

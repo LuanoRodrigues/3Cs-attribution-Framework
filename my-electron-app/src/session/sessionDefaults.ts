@@ -56,6 +56,7 @@ export function createEmptySessionData(projectName: string, projectId: string): 
     code: createDefaultCodeState(),
     analyse: createAnalyseState(),
     activeRibbonTab: DEFAULT_RIBBON_TAB,
-    assets: {}
+    assets: {},
+    retrieve: {}
   };
 }

@@ -269,11 +269,14 @@ export const handleRetrieveCommand = async (
     if (collectionName) {
       setSetting(ZOTERO_KEYS.lastCollection, collectionName);
     }
-    const result = invokeDataHubLoad({
+    const result = await invokeDataHubLoad({
       sourceType: "zotero",
       collectionName,
       zotero: credentials
     });
+    if ((result as Record<string, unknown>)?.status === "error") {
+      return result as Record<string, unknown>;
+    }
     return { status: "ok", ...result };
   }
   if (action === "datahub_list_collections") {
@@ -283,7 +286,7 @@ export const handleRetrieveCommand = async (
     } catch (error) {
       return { status: "error", message: error instanceof Error ? error.message : "Zotero credentials unavailable." };
     }
-    const result = invokeDataHubListCollections({ zotero: credentials });
+    const result = await invokeDataHubListCollections({ zotero: credentials });
     return { status: "ok", ...result };
   }
   if (action === "datahub_load_file") {
@@ -302,7 +305,10 @@ export const handleRetrieveCommand = async (
       }
       filePath = result.filePaths[0];
     }
-    const result = invokeDataHubLoad({ sourceType: "file", filePath });
+    const result = await invokeDataHubLoad({ sourceType: "file", filePath });
+    if ((result as Record<string, unknown>)?.status === "error") {
+      return result as Record<string, unknown>;
+    }
     return { status: "ok", ...result };
   }
   if (action === "datahub_load_excel") {
@@ -315,7 +321,10 @@ export const handleRetrieveCommand = async (
       return { status: "canceled", message: "File selection canceled." };
     }
     const filePath = result.filePaths[0];
-    const resultLoad = invokeDataHubLoad({ sourceType: "file", filePath });
+    const resultLoad = await invokeDataHubLoad({ sourceType: "file", filePath });
+    if ((resultLoad as Record<string, unknown>)?.status === "error") {
+      return resultLoad as Record<string, unknown>;
+    }
     return { status: "ok", ...resultLoad };
   }
   if (action === "datahub_export_csv") {
@@ -351,7 +360,10 @@ export const handleRetrieveCommand = async (
       }
       filePath = result.filePath;
     }
-    const result = invokeDataHubExportExcel({ filePath, table });
+    const result = await invokeDataHubExportExcel({ filePath, table });
+    if ((result as Record<string, unknown>)?.status === "error") {
+      return result as Record<string, unknown>;
+    }
     return { status: "ok", ...result };
   }
   if (action === "datahub_clear_cache") {

@@ -1,5 +1,5 @@
-import { registerPlugin } from "../legacy/api/plugin_registry.js";
-import type { EditorHandle } from "../legacy/api/leditor.js";
+import { registerPlugin } from "../api/plugin_registry.ts";
+import type { EditorHandle } from "../api/leditor.ts";
 import type {
   ExportDocxOptions,
   ExportDocxRequest,
@@ -7,7 +7,7 @@ import type {
   PageMargins,
   PageSizeDefinition,
   SectionOptions
-} from "../api/export_docx.js";
+} from "../api/export_docx.ts";
 
 const triggerExport = (docJson: object, options?: ExportDocxOptions) => {
   const handler = window.leditorHost?.exportDOCX;

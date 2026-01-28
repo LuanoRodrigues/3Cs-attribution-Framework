@@ -1,14 +1,14 @@
-import { registerPlugin } from "../legacy/api/plugin_registry.js";
-import type { EditorHandle } from "../legacy/api/leditor.js";
-import { searchExtension } from "../legacy/editor/search.js";
-import { createSearchPanel } from "../legacy/ui/search_panel.js";
+import { registerPlugin } from "../api/plugin_registry.ts";
+import type { EditorHandle } from "../api/leditor.ts";
+import { searchExtension } from "../editor/search.ts";
+import { createSearchPanel } from "../ui/search_panel.ts";
 import {
   nextMatch,
   prevMatch,
   replaceAll,
   replaceCurrent,
   setQuery
-} from "../editor/search.js";
+} from "../editor/search.ts";
 
 let panelController: ReturnType<typeof createSearchPanel> | null = null;
 

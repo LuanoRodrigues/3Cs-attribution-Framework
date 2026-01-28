@@ -1,6 +1,6 @@
-﻿import { registerPlugin } from "../legacy/api/plugin_registry.js";
-import type { EditorHandle } from "../legacy/api/leditor.js";
-import type { ExportPdfOptions, ExportPdfRequest, ExportPdfResult } from "../legacy/api/export_pdf.js";
+﻿import { registerPlugin } from "../api/plugin_registry.ts";
+import type { EditorHandle } from "../api/leditor.ts";
+import type { ExportPdfOptions, ExportPdfRequest, ExportPdfResult } from "../api/export_pdf.ts";
 
 const triggerExport = (html: string, options?: ExportPdfOptions) => {
   const handler = window.leditorHost?.exportPDF;

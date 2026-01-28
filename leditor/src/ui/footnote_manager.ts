@@ -1,5 +1,5 @@
 import type { Editor } from "@tiptap/core";
-import type { EditorHandle } from "../legacy/api/leditor.js";
+import type { EditorHandle } from "../api/leditor.ts";
 import { getFootnoteRegistry, type FootnoteNodeViewAPI } from "../extensions/extension_footnote.ts";
 import { reconcileFootnotes } from "../uipagination/footnotes/registry.ts";
 

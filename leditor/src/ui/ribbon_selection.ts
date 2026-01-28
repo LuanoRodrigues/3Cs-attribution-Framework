@@ -1,14 +1,14 @@
-import type { EditorCommandId } from "../legacy/api/editor_commands.js";
-import { setPressedState } from "./ribbon_controls.js";
+import type { EditorCommandId } from "../api/editor_commands.ts";
+import { setPressedState } from "./ribbon_controls.ts";
 import {
   RibbonStateBus,
   type RibbonStateSnapshot,
   type RibbonStateKey,
   isMixed,
   readBinding
-} from "./ribbon_state.js";
-import { type AlignmentVariant } from "./ribbon_selection_helpers.js";
-import { getSelectionAlignment } from "./ribbon_selection_helpers.js";
+} from "./ribbon_state.ts";
+import { type AlignmentVariant } from "./ribbon_selection_helpers.ts";
+import { getSelectionAlignment } from "./ribbon_selection_helpers.ts";
 
 export type RibbonSelectionTargets = {
   toggles: Array<{ commandId: EditorCommandId; bindingKey?: RibbonStateKey; element: HTMLButtonElement }>;

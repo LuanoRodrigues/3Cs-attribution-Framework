@@ -1,9 +1,9 @@
 import fs from "fs";
 import path from "path";
+import net from "net";
 import { randomUUID } from "crypto";
 import { app, BrowserWindow, ipcMain, Menu, MenuItemConstructorOptions, shell, dialog } from "electron";
 import { pathToFileURL } from "url";
-import type { ConvertResult } from "mammoth";
 import mammoth from "mammoth";
 
 import type { SectionLevel } from "./analyse/types";
@@ -42,6 +42,8 @@ let handlersRegistered = false;
 let projectManagerInstance: ProjectManager | null = null;
 const settingsService = new SettingsService();
 const SESSION_MENU_CHANNEL = "session:menu-action";
+type ConvertResult = Awaited<ReturnType<typeof mammoth.convertToHtml>>;
+const SCREEN_HOST_PORT = Number(process.env.SCREEN_HOST_PORT ?? "8222");
 
 type CommandEnvelope = {
   phase?: string;
@@ -64,6 +66,46 @@ function appendLogEntry(entry: string): void {
   } catch (error) {
     console.warn("Unable to append to editor log", error);
   }
+}
+
+async function sendScreenCommand(action: string, payload?: Record<string, unknown>): Promise<Record<string, unknown>> {
+  return new Promise((resolve) => {
+    const client = net.createConnection({ host: "127.0.0.1", port: SCREEN_HOST_PORT }, () => {
+      const message = JSON.stringify({ action, payload });
+      client.write(message);
+    });
+
+    let buffer = "";
+    const finalize = (response?: Record<string, unknown>) => {
+      try {
+        client.end();
+        client.destroy();
+      } catch {
+        // ignore
+      }
+      resolve(response ?? { status: "error", message: "screen host unavailable" });
+    };
+
+    client.on("data", (data) => {
+      buffer += data.toString();
+    });
+
+    client.on("end", () => {
+      if (!buffer.trim()) {
+        finalize({ status: "error", message: "screen host empty response" });
+        return;
+      }
+      try {
+        finalize(JSON.parse(buffer));
+      } catch (error) {
+        finalize({ status: "error", message: "screen host invalid response", error: String(error) });
+      }
+    });
+
+    client.on("error", (error) => {
+      finalize({ status: "error", message: error.message });
+    });
+  });
 }
 
 function sanitizeScopeId(scopeId?: string): string {
@@ -279,6 +321,14 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
       } catch (error) {
         console.error("Retrieve command failed", error);
         return { status: "error", message: error instanceof Error ? error.message : "retrieve command failed" };
+      }
+    }
+    if (payload?.phase === "screen" && payload.action) {
+      try {
+        return await sendScreenCommand(payload.action, payload.payload as Record<string, unknown> | undefined);
+      } catch (error) {
+        console.error("Screen command failed", error);
+        return { status: "error", message: error instanceof Error ? error.message : "screen command failed" };
       }
     }
     if (payload?.phase === "settings" && payload.action === "open") {

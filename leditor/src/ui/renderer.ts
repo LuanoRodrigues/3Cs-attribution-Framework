@@ -1,17 +1,17 @@
 import { LEditor, type EditorHandle } from "../api/leditor.ts";
 import { recordRibbonSelection, snapshotFromSelection } from "../utils/selection_snapshot.ts";
-import "../legacy/extensions/plugin_debug.js";
-import "../legacy/extensions/plugin_search.js";
-import "../legacy/extensions/plugin_preview.js";
-import "../extensions/plugin_export_docx.js";
-import "../extensions/plugin_import_docx.js";
+import "../extensions/plugin_debug.ts";
+import "../extensions/plugin_search.ts";
+import "../extensions/plugin_preview.ts";
+import "../extensions/plugin_export_docx.ts";
+import "../extensions/plugin_import_docx.ts";
 import { renderRibbon } from "./ribbon.ts";
-import { mountStatusBar } from "../legacy/ui/status_bar.js";
+import { mountStatusBar } from "../ui/status_bar.ts";
 import { attachContextMenu } from "./context_menu.ts";
 import { createQuickToolbar } from "./quick_toolbar.ts";
 import { initFullscreenController } from "./fullscreen.ts";
-import { featureFlags } from "../legacy/ui/feature_flags.js";
-import { initGlobalShortcuts } from "./shortcuts.js";
+import { featureFlags } from "../ui/feature_flags.ts";
+import { initGlobalShortcuts } from "./shortcuts.ts";
 import "@fontsource/source-sans-3/400.css";
 import "@fontsource/source-sans-3/600.css";
 import "@fontsource/source-serif-4/600.css";
@@ -28,16 +28,16 @@ import "./view.css";
 import { mountA4Layout, type A4LayoutController } from "./a4_layout.ts";
 import { initViewState } from "./view_state.ts";
 import { setLayoutController } from "./layout_context.ts";
-import { subscribeToLayoutChanges } from "../legacy/ui/layout_settings.js";
-import { refreshLayoutView } from "./layout_engine.js";
+import { subscribeToLayoutChanges } from "../ui/layout_settings.ts";
+import { refreshLayoutView } from "./layout_engine.ts";
 import { CellSelection, TableMap } from "@tiptap/pm/tables";
 import type { Editor as TiptapEditor } from "@tiptap/core";
 import { DOMParser as ProseMirrorDOMParser } from "prosemirror-model";
 import { getFootnoteRegistry, type FootnoteNodeViewAPI } from "../extensions/extension_footnote.ts";
-import { resetFootnoteState, getFootnoteIds } from "../legacy/editor/footnote_state.js";
+import { resetFootnoteState, getFootnoteIds } from "../editor/footnote_state.ts";
 import { createFootnoteManager } from "./footnote_manager.ts";
-import { getCurrentPageSize, getMarginValues } from "../legacy/ui/layout_settings.js";
-import { registerLibrarySmokeChecks } from "../plugins/librarySmokeChecks.js";
+import { getCurrentPageSize, getMarginValues } from "../ui/layout_settings.ts";
+import { registerLibrarySmokeChecks } from "../plugins/librarySmokeChecks.ts";
 import { getHostContract } from "./host_contract.ts";
 import { ensureReferencesLibrary, resolveCitationTitle } from "./references/library.ts";
 
@@ -622,6 +622,19 @@ export const mountEditor = async () => {
   if (ribbonEnabled) {
     // Debug: silenced noisy ribbon logs.
     renderRibbon(ribbonHost, handle);
+  }
+  const syncRibbonHeight = () => {
+    const height = appHeader.offsetHeight;
+    appRoot.style.setProperty("--leditor-ribbon-height", `${height}px`);
+  };
+  syncRibbonHeight();
+  if (typeof ResizeObserver !== "undefined") {
+    const ribbonObserver = new ResizeObserver(() => {
+      syncRibbonHeight();
+    });
+    ribbonObserver.observe(appHeader);
+  } else {
+    window.addEventListener("resize", syncRibbonHeight);
   }
   const layout: A4LayoutController | null = mountA4Layout(docShell, editorEl, handle);
   setLayoutController(layout);

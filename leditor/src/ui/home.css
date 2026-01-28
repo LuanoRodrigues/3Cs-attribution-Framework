@@ -240,22 +240,6 @@
   padding: 0 6px;
 }
 
-.leditor-ribbon-panel[data-tab-id="home"] .leditor-ribbon-icon-placeholder {
-  position: relative;
-}
-
-.leditor-ribbon-panel[data-tab-id="home"] .leditor-ribbon-icon-placeholder::before {
-  content: "•";
-  font-size: 14px;
-  line-height: 1;
-  opacity: 0.65;
-}
-
-.leditor-ribbon-panel[data-tab-id="home"] button.ribbon-dropdown-button .leditor-ribbon-icon-placeholder::before {
-  content: "▾";
-  font-size: 14px;
-  opacity: 0.75;
-}
 
 .leditor-ribbon-panel[data-tab-id="home"] .leditor-split-caret {
   display: none !important;
@@ -299,10 +283,6 @@
   font-size: 12px;
 }
 
-.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster--grid .leditor-ribbon-button--small:has(.leditor-ribbon-icon-placeholder),
-.leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster--segmented .leditor-ribbon-button--small:has(.leditor-ribbon-icon-placeholder) {
-  gap: 6px;
-}
 
 @supports not selector(:has(*)) {
   .leditor-ribbon-panel[data-tab-id="home"] .ribbon-cluster--grid .leditor-ribbon-button--small .ribbon-button-label,

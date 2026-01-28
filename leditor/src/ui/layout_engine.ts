@@ -1,5 +1,5 @@
-import { getLayoutController } from "../legacy/ui/layout_context.js";
-import { applyDocumentLayoutTokens } from "./pagination/index.js";
+import { getLayoutController } from "../ui/layout_context.ts";
+import { applyDocumentLayoutTokens } from "./pagination/index.ts";
 
 export const refreshLayoutView = (): void => {
   if (typeof document === "undefined") return;

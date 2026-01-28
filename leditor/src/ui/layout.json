@@ -448,7 +448,7 @@
       "trigger": {
         "type": "button",
         "label": "More",
-        "glyph": "⋯",
+        "glyph": "",
         "className": "ribbon-overflow-button",
         "ariaLabelTemplate": "{groupId} overflow"
       },
@@ -564,7 +564,7 @@
     },
     "fallback": {
       "missingIconBehavior": "usePlaceholder",
-      "placeholderIconKey": "icon.placeholder"
+      "placeholderIconKey": "icon.citation"
     }
   },
   "validation": {

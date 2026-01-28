@@ -1,5 +1,5 @@
 import { Node } from "@tiptap/core";
-import type { CitationSource } from "../legacy/editor/citation_state.js";
+import type { CitationSource } from "../editor/citation_state.ts";
 
 const normalizeSources = (value: unknown): CitationSource[] => {
   if (!Array.isArray(value)) return [];

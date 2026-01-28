@@ -1,7 +1,7 @@
-import type { EditorHandle } from "../legacy/api/leditor.js";
-import type { ExportPdfOptions, ExportPdfRequest, ExportPdfResult } from "../legacy/api/export_pdf.js";
-import type { ExportDocxOptions, ExportDocxRequest, ExportDocxResult } from "../api/export_docx.js";
-import type { ImportDocxOptions, ImportDocxRequest, ImportDocxResult } from "../api/import_docx.js";
+import type { EditorHandle } from "../api/leditor.ts";
+import type { ExportPdfOptions, ExportPdfRequest, ExportPdfResult } from "../api/export_pdf.ts";
+import type { ExportDocxOptions, ExportDocxRequest, ExportDocxResult } from "../api/export_docx.ts";
+import type { ImportDocxOptions, ImportDocxRequest, ImportDocxResult } from "../api/import_docx.ts";
 
 type InsertImageResult = {
   success: boolean;
@@ -95,3 +95,4 @@ declare global {
 export {};
 
 declare module "*.css";
+declare module "*.html";

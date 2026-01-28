@@ -1,7 +1,7 @@
 import { Extension, Node, mergeAttributes } from "@tiptap/core";
 import Document from "@tiptap/extension-document";
 import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
-import { PaginationScheduler } from "../ui/pagination/scheduler.js";
+import { PaginationScheduler } from "../ui/pagination/scheduler.ts";
 
 const PAGE_CLASS = "leditor-page";
 const PAGE_INNER_CLASS = "leditor-page-inner";

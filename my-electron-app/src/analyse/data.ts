@@ -21,6 +21,55 @@ const emptyDiscover: DiscoverResult = { runs: [], sectionsRoot: null };
 const emptyRuns: AnalyseRun[] = [];
 const emptySections: SectionRecord[] = [];
 const emptyBatches: BatchRecord[] = [];
+const MAX_DATASET_CACHE = 3;
+const batchesCache = new Map<string, BatchRecord[]>();
+const batchesInflight = new Map<string, Promise<BatchRecord[]>>();
+const sectionsCache = new Map<string, SectionRecord[]>();
+const sectionsInflight = new Map<string, Promise<SectionRecord[]>>();
+const dqCache = new Map<string, { data: Record<string, unknown>; path: string | null }>();
+const dqInflight = new Map<string, Promise<{ data: Record<string, unknown>; path: string | null }>>();
+
+function touchCache<T>(cache: Map<string, T>, key: string, value: T): void {
+  if (cache.has(key)) {
+    cache.delete(key);
+  }
+  cache.set(key, value);
+  if (cache.size > MAX_DATASET_CACHE) {
+    const oldestKey = cache.keys().next().value as string | undefined;
+    if (oldestKey) {
+      cache.delete(oldestKey);
+    }
+  }
+}
+
+async function withCache<T>(
+  key: string,
+  cache: Map<string, T>,
+  inflight: Map<string, Promise<T>>,
+  fallback: T,
+  loader: () => Promise<T>
+): Promise<T> {
+  const cached = cache.get(key);
+  if (cached) {
+    return cached;
+  }
+  const existing = inflight.get(key);
+  if (existing) {
+    return existing;
+  }
+  const promise = loader()
+    .then((result) => {
+      cache.set(key, result);
+      inflight.delete(key);
+      return result;
+    })
+    .catch(() => {
+      inflight.delete(key);
+      return fallback;
+    });
+  inflight.set(key, promise);
+  return promise;
+}
 
 export async function discoverRuns(baseDir?: string): Promise<DiscoverResult> {
   const bridge = getBridge();
@@ -56,13 +105,12 @@ export async function loadBatches(runPath: string): Promise<BatchRecord[]> {
   if (!bridge || !runPath) {
     return emptyBatches;
   }
-  try {
+  return withCache(runPath, batchesCache, batchesInflight, emptyBatches, async () => {
     const batches = (await bridge.loadBatches(runPath)) ?? emptyBatches;
+    touchCache(batchesCache, runPath, batches);
     console.info("[analyse][data][loadBatches]", { runPath, count: batches.length });
     return batches;
-  } catch {
-    return emptyBatches;
-  }
+  });
 }
 
 export async function loadSections(runPath: string, level: SectionLevel): Promise<SectionRecord[]> {
@@ -70,13 +118,13 @@ export async function loadSections(runPath: string, level: SectionLevel): Promis
   if (!bridge || !runPath) {
     return emptySections;
   }
-  try {
+  const key = `${runPath}::${level}`;
+  return withCache(key, sectionsCache, sectionsInflight, emptySections, async () => {
     const sections = (await bridge.loadSections(runPath, level)) ?? emptySections;
+    touchCache(sectionsCache, key, sections);
     console.info("[analyse][data][loadSections]", { runPath, level, count: sections.length });
     return sections;
-  } catch {
-    return emptySections;
-  }
+  });
 }
 
 export async function summariseRun(runPath: string): Promise<RunMetrics> {
@@ -108,11 +156,11 @@ export async function loadDirectQuoteLookup(runPath: string): Promise<{ data: Re
   if (!bridge || !runPath) {
     return { data: {}, path: null };
   }
-  try {
-    return (await bridge.loadDqLookup(runPath)) ?? { data: {}, path: null };
-  } catch {
-    return { data: {}, path: null };
-  }
+  return withCache(runPath, dqCache, dqInflight, { data: {}, path: null }, async () => {
+    const result = (await bridge.loadDqLookup(runPath)) ?? { data: {}, path: null };
+    touchCache(dqCache, runPath, result);
+    return result;
+  });
 }
 
 export async function getAudioCacheStatus(
@@ -143,4 +191,13 @@ export async function addAudioCacheEntries(
   } catch {
     return { cachedKeys: [] };
   }
+}
+
+export function warmAnalyseRun(runPath: string): void {
+  if (!runPath) return;
+  // Fire-and-forget warmup to reduce first interaction latency.
+  void loadBatches(runPath);
+  void loadSections(runPath, "r2");
+  void loadSections(runPath, "r3");
+  void loadDirectQuoteLookup(runPath);
 }

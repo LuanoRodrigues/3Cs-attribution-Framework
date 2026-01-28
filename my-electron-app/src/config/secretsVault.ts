@@ -3,10 +3,25 @@ import fs from "fs";
 import path from "path";
 
 import argon2 from "argon2";
-import keytar from "keytar";
 
 const VAULT_AAD = "annotarium-secrets-vault:v1";
 const KEYTAR_SERVICE = "annotarium-secrets";
+
+type KeytarModule = {
+  findCredentials: (service: string) => Promise<Array<{ account: string; password: string }>>;
+  setPassword: (service: string, account: string, password: string) => Promise<void>;
+};
+
+const loadKeytar = (): KeytarModule | null => {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const mod = require("keytar") as KeytarModule;
+    return mod ?? null;
+  } catch (error) {
+    console.warn("[SecretsVault] keytar unavailable, falling back to file-only secrets.", error);
+    return null;
+  }
+};
 
 export interface VaultKdfBase {
   name: "argon2id";
@@ -74,7 +89,10 @@ export class SecretsVault {
   async setSecret(name: string, value: string): Promise<void> {
     this.ensureUnlocked();
     this.secrets[name] = value;
-    await keytar.setPassword(KEYTAR_SERVICE, name, value);
+    const keytar = loadKeytar();
+    if (keytar) {
+      await keytar.setPassword(KEYTAR_SERVICE, name, value);
+    }
     await this.persistSecrets();
   }
 
@@ -158,6 +176,10 @@ export class SecretsVault {
   }
 
   private async loadFromKeytar(): Promise<SecretsMap> {
+    const keytar = loadKeytar();
+    if (!keytar) {
+      return {};
+    }
     const entries = await keytar.findCredentials(KEYTAR_SERVICE);
     const result: SecretsMap = {};
     entries.forEach((entry) => {
@@ -167,6 +189,10 @@ export class SecretsVault {
   }
 
   private async syncKeytar(): Promise<void> {
+    const keytar = loadKeytar();
+    if (!keytar) {
+      return;
+    }
     const promises = Object.entries(this.secrets).map(([name, secret]) =>
       keytar.setPassword(KEYTAR_SERVICE, name, secret)
     );
