@@ -332,19 +332,27 @@
 }
 
 .leditor-ribbon-group-body {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: var(--r-group-pad);
-  align-content: start;
-  justify-items: start;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(0, max-content);
-  grid-template-rows: repeat(var(--r-group-max-rows, 3), minmax(0, auto));
+  align-items: flex-start;
+  justify-content: flex-start;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
 }
 
-.leditor-ribbon-group-body > .ribbon-cluster{
+.leditor-ribbon-group-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--r-ctl-gap);
+  min-height: var(--r-ctl-h-sm);
+  width: max-content;
+}
+
+.leditor-ribbon-group-body > .ribbon-cluster,
+.leditor-ribbon-group-row > .ribbon-cluster {
   min-width: 0;
   max-width: 100%;
   overflow: clip;

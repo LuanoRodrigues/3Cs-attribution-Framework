@@ -12,6 +12,7 @@ import { SplitButton } from "./ribbon_split_button.ts";
 import { getTemplates } from "../templates/index.ts";
 import { getStyleTemplates, openStyleMiniApp } from "./style_mini_app.ts";
 import { tabLayouts } from "./tab_layouts.ts";
+import { resolveRibbonCommandId } from "./ribbon_command_aliases.ts";
 import type { RibbonStateBus, RibbonStateKey, RibbonStateSnapshot } from "./ribbon_state.ts";
 import type {
   ClusterConfig,
@@ -63,11 +64,15 @@ const MAX_ROWS_BY_GROUP: Record<string, number> = {
   editing: 2
 };
 
-const ROWED_TABS = new Set(["home", "insert"]);
-const ROWED_TAB_ROW_COUNT = 2;
+const ROWED_TABS = new Set(["home", "insert", "layout", "references", "review", "view"]);
+const ROWED_TAB_ROW_COUNT = 1;
 const ROWED_TAB_ROW_COUNTS: Record<string, number> = {
   home: 1,
-  insert: 2
+  insert: 1,
+  layout: 1,
+  references: 1,
+  review: 1,
+  view: 1
 };
 const ROWED_TAB_MIN_PER_ROW = 4;
 const ROWED_TAB_MAX_PER_ROW = 20;

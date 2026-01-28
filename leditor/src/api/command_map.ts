@@ -36,6 +36,7 @@ import referencesTabRaw from "../ui/references.json";
 import reviewTabRaw from "../ui/review.json";
 import viewTabRaw from "../ui/view.json";
 import type { ControlConfig, TabConfig } from "../ui/ribbon_config.ts";
+import { resolveRibbonCommandId } from "../ui/ribbon_command_aliases.ts";
 import {
   applySnapshotToTransaction,
   consumeRibbonSelection,
@@ -2229,7 +2230,10 @@ const collectNestedControls = (control: ControlConfig): ControlConfig[] => {
 const collectTabCommandIds = (tab: TabConfig): Set<string> => {
   const ids = new Set<string>();
   const traverse = (control: ControlConfig) => {
-    if (control.command?.id) ids.add(control.command.id);
+    if (control.command?.id) {
+      const resolved = resolveRibbonCommandId(control.command as { id: string; args?: Record<string, unknown> });
+      ids.add(resolved);
+    }
     collectNestedControls(control).forEach(traverse);
   };
   tab.groups?.forEach((group) => {
