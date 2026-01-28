@@ -415,8 +415,9 @@ export const handleRetrieveCommand = async (
   return { status: "ok" };
 };
 
-export const registerRetrieveIpcHandlers = (): void => {
-  ipcMain.handle("retrieve:search", async (_event, query: RetrieveQuery) => executeRetrieveSearch(query));
+export const registerRetrieveIpcHandlers = (options: { search?: (query: RetrieveQuery) => Promise<RetrieveSearchResult> } = {}): void => {
+  const searchImpl = options.search ?? ((query: RetrieveQuery) => executeRetrieveSearch(query));
+  ipcMain.handle("retrieve:search", async (_event, query: RetrieveQuery) => searchImpl(query));
   ipcMain.handle("retrieve:tags:list", (_event, paperId: string) => listTagsForPaper(paperId));
   ipcMain.handle("retrieve:tags:add", (_event, payload: { paper: RetrievePaperSnapshot; tag: string }) =>
     addTagToPaper(payload.paper, payload.tag)

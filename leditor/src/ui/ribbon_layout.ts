@@ -2,12 +2,8 @@ import { dispatchCommand } from "../api/editor_commands.ts";
 import type { EditorCommandId } from "../api/editor_commands.ts";
 import type { EditorHandle } from "../api/leditor.ts";
 import ribbonPlan from "./ribbon.json";
-import homeTab from "./home.json";
-import insertTab from "./insert.json";
-import reviewTab from "./review.json";
-import layoutTab from "./layout_tab.json";
-import viewTab from "./view.json";
 import layoutPlan from "./layout.json";
+import { commandMap } from "../api/command_map.ts";
 import { RibbonTabStrip } from "./ribbon_primitives.ts";
 import { createRibbonButton, createRibbonDropdownButton, createRibbonSpinner } from "./ribbon_controls.ts";
 import { createRibbonIcon, type RibbonIconName } from "./ribbon_icons.ts";
@@ -91,222 +87,35 @@ const applyGroupLayoutConfig = (body: HTMLDivElement, tabId: string, groupId: st
 const resolveCommandId = (
   command: { id: string; args?: Record<string, unknown> },
   args?: Record<string, unknown>
+): string => resolveRibbonCommandId(command, args);
+
+
+
+const isMissingCommand = (commandId: string): boolean =>
+  Boolean((commandMap[commandId] as { __missing?: boolean } | undefined)?.__missing);
+
+const resolveControlTooltip = (
+  control: ControlConfig,
+  resolvedCommandId?: string
 ): string => {
-  const merged = { ...(command.args ?? {}), ...(args ?? {}) };
-  if (command.id === "paragraph.align.set") {
-    switch (merged.mode) {
-      case "left":
-        return "AlignLeft";
-      case "center":
-        return "AlignCenter";
-      case "right":
-        return "AlignRight";
-      case "justify":
-        return "JustifyFull";
-      default:
-        return "JustifyFull";
-    }
+  const label = control.label ?? "";
+  if (!label) return label;
+  if (resolvedCommandId && isMissingCommand(resolvedCommandId)) {
+    return `${label} (missing)`;
   }
-  if (command.id === "font.case.set") {
-    return "ChangeCase";
-  }
-  if (command.id === "paragraph.lineSpacing.set") {
-    return "LineSpacing";
-  }
-  const resolved = COMMAND_ALIASES[command.id] ?? command.id;
-  if (!resolved) {
-    throw new Error(`Unmapped command: ${command.id}`);
-  }
-  return resolved;
+  return label;
 };
 
-const COMMAND_ALIASES: Record<string, string> = {
-  // Clipboard / paste
-  "paste.default": "Paste",
-  "paste.keepSource": "Paste",
-  "paste.mergeFormatting": "Paste",
-  "paste.keepTextOnly": "PastePlain",
-  "paste.textOnly": "PastePlain",
-  "paste.special.openDialog": "PasteClean",
-  "paste.plainText": "PastePlain",
-  "paste.fromWordCleanup": "PasteClean",
-  "paste.autoClean.toggle": "PasteClean",
-  "paste.cleanupRules.openDialog": "PasteClean",
-  "paste.defaults.openDialog": "Paste",
-  "clipboard.cut": "Cut",
-  "clipboard.copy": "Copy",
-  "clipboard.formatPainter.toggle": "RemoveFontStyle",
-  "clipboard.options.openDialog": "ClipboardOptionsDialog",
-  "history.undo": "Undo",
-  "history.redo": "Redo",
-  // Font
-  "font.bold.toggle": "Bold",
-  "font.italic.toggle": "Italic",
-  "font.underline.toggle": "Underline",
-  "font.underline.set": "Underline",
-  "font.strikethrough.toggle": "Strikethrough",
-  "font.subscript.toggle": "Subscript",
-  "font.superscript.toggle": "Superscript",
-  "font.inlineCode.toggle": "ClearFormatting",
-  "font.options.openDialog": "FontOptionsDialog",
-  "font.effects.openMenu": "FontEffectsMenu",
-  "font.effects.openDialog": "FontEffectsDialog",
-  "font.effects.outline.toggle": "FontEffectsOutline",
-  "font.effects.shadow.toggle": "FontEffectsShadow",
-  "font.underlineColor.openPicker": "UnderlineColorPicker",
-  "font.family.set": "FontFamily",
-  "font.size.set": "FontSize",
-  "font.size.increase": "FontSize",
-  "font.size.decrease": "FontSize",
-  "font.color.applyCurrent": "TextColor",
-  "font.color.set": "TextColor",
-  "font.highlight.applyCurrent": "HighlightColor",
-  "font.highlight.set": "HighlightColor",
-  "font.clearFormatting": "ClearFormatting",
-  "font.case.set": "ChangeCase",
-  // Paragraph
-  "list.bullet.toggle": "BulletList",
-  "list.bullet.setStyle": "BulletList",
-  "list.ordered.toggle": "NumberList",
-  "list.ordered.setStyle": "NumberList",
-  "list.multilevel.apply": "Indent",
-  "list.multilevel.openMenu": "Indent",
-  "list.task.toggle": "BulletList",
-  "paragraph.outdent": "Outdent",
-  "paragraph.indent": "Indent",
-  "paragraph.sort.openDialog": "Preview",
-  "view.formattingMarks.toggle": "VisualBlocks",
-  "paragraph.align.set": "JustifyFull",
-  "paragraph.lineSpacing.set": "LineSpacing",
-  "paragraph.spaceBefore.add": "SpaceBefore",
-  "paragraph.spaceBefore.remove": "SpaceBefore",
-  "paragraph.spaceAfter.add": "SpaceAfter",
-  "paragraph.spaceAfter.remove": "SpaceAfter",
-  "paragraph.options.openDialog": "ParagraphOptionsDialog",
-  "paragraph.spacing.openDialog": "ParagraphSpacingDialog",
-  "paragraph.spacing.openMenu": "ParagraphSpacingMenu",
-  "paragraph.borders.openDialog": "ParagraphBordersDialog",
-  "paragraph.borders.openMenu": "ParagraphBordersMenu",
-  "paragraph.borders.set": "ParagraphBordersSet",
-  "paragraph.shading.set": "HighlightColor",
-  "paragraph.blockquote.toggle": "BlockquoteToggle",
-  "insert.horizontalRule": "InsertPageBreak",
-  // Editing
-  "editing.find.open": "SearchReplace",
-  "editing.find.advanced.openDialog": "SearchReplace",
-  "editing.goto.openDialog": "SearchReplace",
-  "editing.find.regex.toggle": "SearchReplace",
-  "editing.find.matchCase.toggle": "SearchReplace",
-  "editing.find.wholeWords.toggle": "SearchReplace",
-  "editing.replace.open": "SearchReplace",
-  "selection.selectAll": "SelectAll",
-  "selection.selectObjects": "SelectObjects",
-  "selection.selectSimilarFormatting": "SelectSimilarFormatting",
-  "selection.openMenu": "SelectAll",
-  // View
-  "view.source.openHtmlRaw": "SourceView",
-  "view.source.openHtml": "SourceView",
-  "view.source.openMarkdown": "SourceView",
-  "view.source.openJson": "SourceView",
-  "view.cleanHtml": "PasteClean",
-  "view.allowedElements.open": "AllowedElements",
-  // Insert — pages / breaks
-  "insert.pageBreak": "InsertPageBreak",
-  "InsertPageBreak": "InsertPageBreak",
-  "insert.blankPage": "InsertPageBreak",
-  "insert.columnBreak": "InsertColumnBreak",
-  "insert.sectionBreak.nextPage": "InsertSectionBreakNextPage",
-  "insert.sectionBreak.continuous": "InsertSectionBreakContinuous",
-  "insert.sectionBreak.evenPage": "InsertSectionBreakEven",
-  "insert.sectionBreak.oddPage": "InsertSectionBreakOdd",
-  // Insert — cover/pages
-  "insert.coverPage.default": "InsertTemplate",
-  "insert.coverPage.apply": "InsertTemplate",
-  "insert.coverPage.remove": "InsertTemplate",
-  // Insert — tables
-  "insert.table.apply": "TableInsert",
-  "insert.table.openDialog": "TableInsert",
-  "insert.table.openGridPicker": "TableInsert",
-  "insert.table.convertText.openDialog": "TableInsert",
-  "insert.table.excelEmbed": "TableInsert",
-  "insert.table.quickTables.openGallery": "TableInsert",
-  "insert.table.drawMode.toggle": "TableInsert",
-  "insert.table.responsiveDefault.toggle": "TableInsert",
-  "table.accessibility.openDialog": "TableInsert",
-  // Insert — media/illustrations
-  "insert.image.upload.openPicker": "InsertImage",
-  "insert.image.stock.open": "InsertImage",
-  "insert.image.online.open": "InsertImage",
-  "insert.image.url.openDialog": "InsertImage",
-  "insert.icon.openPicker": "InsertImage",
-  "insert.smartArt.openPicker": "InsertImage",
-  "insert.chart.openPicker": "InsertImage",
-  "insert.chart.apply": "InsertImage",
-  "insert.screenshot.open": "InsertImage",
-  "insert.video.online.openDialog": "InsertImage",
-  "insert.embed.openDialog": "InsertImage",
-  "insert.embed.code.openDialog": "InsertImage",
-  "insert.embed.oembed.openDialog": "InsertImage",
-  "insert.embed.settings.openDialog": "InsertImage",
-  "insert.audio.upload.openPicker": "InsertImage",
-  "insert.audio.url.openDialog": "InsertImage",
-  "insert.file.attach.openPicker": "InsertImage",
-  "insert.file.link.openDialog": "InsertImage",
-  "insert.file.manage.openDialog": "InsertImage",
-  "insert.pdf.embed.openPicker": "InsertImage",
-  // Insert — links
-  "link.insert.openDialog": "Link",
-  "link.edit.openDialog": "Link",
-  "link.remove": "Link",
-  "link.auto.toggle": "Link",
-  "insert.bookmark.openDialog": "InsertBookmark",
-  "insert.crossReference.openDialog": "InsertCrossReference",
-  // Insert — comments
-  "comments.new": "CommentsNew",
-  "comments.mention.open": "InsertComment",
-  // Insert — header/footer/page number
-  "insert.header.openGallery": "EditHeader",
-  "insert.header.apply": "EditHeader",
-  "insert.header.remove": "EditHeader",
-  "insert.footer.openGallery": "EditFooter",
-  "insert.footer.apply": "EditFooter",
-  "insert.footer.remove": "EditFooter",
-  "insert.pageNumber.openGallery": "EditHeader",
-  "insert.pageNumber.apply": "EditHeader",
-  "insert.pageNumber.format.openDialog": "EditHeader",
-  "insert.pageNumber.remove": "EditHeader",
-  "insert.headerFooter.open": "EditHeader",
-  "edit.header.enter": "EditHeader",
-  "edit.footer.enter": "EditFooter",
-  // Insert — text/objects
-  "insert.textBox.openGallery": "InsertTemplate",
-  "insert.textBox.apply": "InsertTemplate",
-  "insert.textBox.drawMode.toggle": "InsertTemplate",
-  "insert.quickParts.openMenu": "InsertTemplate",
-  "insert.quickParts.autoText.open": "InsertTemplate",
-  "insert.quickParts.documentProperty.open": "InsertTemplate",
-  "insert.quickParts.saveSelection.openDialog": "InsertTemplate",
-  "insert.wordArt.openGallery": "InsertTemplate",
-  "insert.wordArt.apply": "InsertTemplate",
-  "insert.dropCap.openMenu": "InsertTemplate",
-  "insert.dropCap.apply": "InsertTemplate",
-  "insert.dropCap.openDialog": "InsertTemplate",
-  "insert.signatureLine.openDialog": "InsertTemplate",
-  "insert.dateTime.openDialog": "InsertTemplate",
-  "insert.object.openMenu": "InsertTemplate",
-  "insert.object.openDialog": "InsertTemplate",
-  "insert.placeholder.openMenu": "InsertTemplate",
-  "insert.placeholder.openDialog": "InsertTemplate",
-  "placeholders.manage.openDialog": "InsertTemplate",
-  "insert.shortcode.openDialog": "InsertTemplate",
-  "insert.text.openMenu": "InsertTemplate",
-  "insert.textFromFile.openPicker": "InsertTemplate",
-  // Insert — symbols
-  "insert.equation.openEditor": "InsertTemplate",
-  "insert.equation.apply": "InsertTemplate",
-  "insert.symbol.openPicker": "InsertTemplate",
-  "insert.symbol.apply": "InsertTemplate",
-  "insert.emoji.openPicker": "InsertTemplate"
+const applyMenuItemTooltip = (
+  element: HTMLElement,
+  control: ControlConfig,
+  resolvedCommandId?: string
+): void => {
+  const tooltip = resolveControlTooltip(control, resolvedCommandId);
+  if (tooltip) {
+    element.title = tooltip;
+    element.dataset.tooltip = tooltip;
+  }
 };
 
 const SCHEMA_VALUE_PATTERN =
@@ -491,11 +300,13 @@ const ensureControlIcon = (element: HTMLElement, iconName?: RibbonIconName): voi
     if (existingKey !== iconName) {
       throw new Error(`Ribbon control icon mismatch: expected "${iconName}", found "${existingKey}".`);
     }
+    element.classList.add("has-icon");
     return;
   }
   const icon = createRibbonIcon(iconName);
   icon.classList.add("ribbon-button-icon");
   element.prepend(icon);
+  element.classList.add("has-icon");
 };
 
 const applyTokens = (): void => {
@@ -895,6 +706,8 @@ const createMenuItemButton = (menu: Menu, ctx: BuildContext, item: ControlConfig
     button.setAttribute("aria-checked", "false");
     button.dataset.toggle = "true";
   }
+  const resolvedId = item.command ? resolveCommandId(item.command as any) : undefined;
+  applyMenuItemTooltip(button, item, resolvedId);
   applyControlDataAttributes(button, { ...item, type: toggle ? "menuToggle" : "menuItem" });
   menu.element.appendChild(button);
   return button;
@@ -1145,9 +958,11 @@ const buildControl = (
 
   if (control.type === "button" || control.type === "toggleButton") {
     if (control.command?.id === "font.size.grow") {
+      const tooltip = resolveControlTooltip(control);
       const button = createRibbonButton({
         icon,
         label: control.label ?? "",
+        tooltip,
         size,
         toggle: false,
         onClick: () => runFontSizeStep(1)
@@ -1165,9 +980,11 @@ const buildControl = (
       return { element: button, collapse: collapseMeta };
     }
     if (control.command?.id === "font.size.shrink") {
+      const tooltip = resolveControlTooltip(control);
       const button = createRibbonButton({
         icon,
         label: control.label ?? "",
+        tooltip,
         size,
         toggle: false,
         onClick: () => runFontSizeStep(-1)
@@ -1187,9 +1004,11 @@ const buildControl = (
     const args = control.command ? buildCommandArgs(control.command) : undefined;
     const targetId = control.command ? resolveCommandId(control.command as any, args) : undefined;
     const requiredIcon = requireIcon(control, icon);
+    const tooltip = resolveControlTooltip(control, targetId);
     const button = createRibbonButton({
       icon: requiredIcon,
       label: control.label ?? "",
+      tooltip,
       size,
       toggle: control.type === "toggleButton",
       onClick: commandHandler,
@@ -1223,9 +1042,11 @@ const buildControl = (
     const targetArgs = control.command ? buildCommandArgs(control.command) : undefined;
     const targetId = control.command ? resolveCommandId(control.command as any, targetArgs) : undefined;
     const requiredIcon = requireIcon(control, icon);
+    const tooltip = resolveControlTooltip(control, targetId);
     const button = createRibbonButton({
       icon: requiredIcon,
       label: control.label ?? "",
+      tooltip,
       size,
       toggle: true,
       onClick: () => {
@@ -1255,8 +1076,10 @@ const buildControl = (
     const requiredIcon = requireIcon(control, icon);
     const iconEl = createRibbonIcon(requiredIcon);
     iconEl.classList.add("ribbon-button-icon");
+    const tooltip = resolveControlTooltip(control, id ?? "");
     const split = new SplitButton({
       label: control.label ?? "",
+      tooltip,
       iconElement: iconEl,
       onPrimary: control.type === "colorSplitButton" ? runColorSplitPrimary : commandHandler,
       menu,
@@ -1288,9 +1111,11 @@ const buildControl = (
     const menu = buildMenu(control.menu, ctx);
     ctx.menuRegistry.set(id ?? "", menu);
     const requiredIcon = requireIcon(control, icon);
+    const tooltip = resolveControlTooltip(control, id ?? "");
     const button = createRibbonDropdownButton({
       icon: requiredIcon,
       label: control.label ?? "",
+      tooltip,
       menu
     });
     ensureControlIcon(button, requiredIcon);
@@ -1375,9 +1200,11 @@ const buildControl = (
     }
 
     const requiredIcon = requireIcon(control, icon);
+    const tooltip = resolveControlTooltip(control, id ?? "");
     const dropdownButton = createRibbonDropdownButton({
       icon: requiredIcon,
       label: control.label ?? "",
+      tooltip,
       menu
     });
     ensureControlIcon(dropdownButton, requiredIcon);
@@ -1449,6 +1276,11 @@ const buildControl = (
     btn.type = "button";
     btn.className = "ribbon-dialog-launcher";
     btn.setAttribute("aria-label", control.label ?? "Open dialog");
+    const tooltip = resolveControlTooltip(control, id ?? "");
+    if (tooltip) {
+      btn.dataset.tooltip = tooltip;
+      btn.title = tooltip;
+    }
     const iconEl = createRibbonIcon(requireIcon(control, icon));
     btn.appendChild(iconEl);
     btn.addEventListener("click", commandHandler);
@@ -1647,6 +1479,8 @@ const applyStageB = (meta: GroupMeta, ctx: BuildContext) => {
               dispatchCommand(ctx.editorHandle, c.config.command.id as any, c.config.command.args);
             }
           });
+          const resolvedId = c.config.command ? resolveCommandId(c.config.command as any) : undefined;
+          applyMenuItemTooltip(mi, c.config, resolvedId);
           applyControlDataAttributes(mi, { ...c.config, type: "menuItem" });
           menu.element.appendChild(mi);
           c.element.style.display = "none";
@@ -1661,6 +1495,8 @@ const applyStageB = (meta: GroupMeta, ctx: BuildContext) => {
               dispatchCommand(ctx.editorHandle, c.config.command.id as any, c.config.command.args);
             }
           });
+          const resolvedId = c.config.command ? resolveCommandId(c.config.command as any) : undefined;
+          applyMenuItemTooltip(mi, c.config, resolvedId);
           applyControlDataAttributes(mi, { ...c.config, type: "menuItem" });
           menu.element.appendChild(mi);
           c.element.style.display = "none";
@@ -1677,6 +1513,8 @@ const applyStageB = (meta: GroupMeta, ctx: BuildContext) => {
               dispatchCommand(ctx.editorHandle, c.config.command.id as any, c.config.command.args);
             }
           });
+          const resolvedId = c.config.command ? resolveCommandId(c.config.command as any) : undefined;
+          applyMenuItemTooltip(mi, c.config, resolvedId);
           applyControlDataAttributes(mi, { ...c.config, type: "menuItem" });
           targetMenu.element.appendChild(mi);
           c.element.style.display = "none";
@@ -1926,6 +1764,22 @@ export const renderRibbonLayout = (
   shell.append(tabStrip.element, panelsContainer);
   host.innerHTML = "";
   host.appendChild(shell);
+
+  const normalizeRibbonControls = (root: HTMLElement): void => {
+    const controls = root.querySelectorAll<HTMLElement>(
+      ".leditor-ribbon-button, .ribbon-dropdown-button, .leditor-split-primary, .leditor-ribbon-icon-btn"
+    );
+    controls.forEach((control) => {
+      const hasSvg = Boolean(control.querySelector("svg"));
+      control.classList.toggle("has-icon", hasSvg);
+      if (hasSvg) {
+        control.querySelectorAll(".ribbon-button-label, .ribbon-dropdown-text").forEach((label) => {
+          label.remove();
+        });
+      }
+    });
+  };
+  normalizeRibbonControls(shell);
 
   const ro = new ResizeObserver(() => {
     if (activeTab) activeTab.collapse();

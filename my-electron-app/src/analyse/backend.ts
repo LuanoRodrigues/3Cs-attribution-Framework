@@ -1,6 +1,10 @@
 ﻿import fs from "fs";
 import path from "path";
 import crypto from "crypto";
+// better-sqlite3 ships its own types but CJS/ESM interop can be finicky in Electron builds;
+// keep this as a runtime require to avoid type/namespace mismatches.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const BetterSqlite3 = require("better-sqlite3") as any;
 
 import type {
   AnalyseDatasets,
@@ -128,6 +132,14 @@ function buildCachePath(sourcePath: string, stat: fs.Stats, kind: string): strin
   return path.join(ANALYSE_CACHE_DIR, `${kind}_${hash}.json`);
 }
 
+function buildIndexPath(sourcePath: string, stat: fs.Stats, kind: string): string {
+  const hash = crypto
+    .createHash("sha1")
+    .update(`${CACHE_VERSION}|sqlite|${kind}|${sourcePath}|${stat.mtimeMs}|${stat.size}`)
+    .digest("hex");
+  return path.join(ANALYSE_CACHE_DIR, `${kind}_${hash}.sqlite`);
+}
+
 function readCache<T>(cachePath: string): T | null {
   try {
     const raw = fs.readFileSync(cachePath, { encoding: "utf8" });
@@ -169,10 +181,10 @@ export function loadDirectQuoteLookup(runPath: string): { data: Record<string, u
   const runDir = path.dirname(runPath);
   const runId = path.basename(runPath);
   const candidates = [
+    path.join(runPath, "direct_quote_lookup.json"),
     path.join(runDir, "thematics_outputs", runId, "direct_quote_lookup.json"),
     path.join(runDir, "direct_quote_lookup.json"),
-    path.join(path.dirname(runDir), "direct_quote_lookup.json"),
-    path.join(runPath, "direct_quote_lookup.json")
+    path.join(path.dirname(runDir), "direct_quote_lookup.json")
   ];
   const target = candidates.find((p) => fileExists(p)) || null;
   if (!target) return { data: {}, path: null };
@@ -193,6 +205,61 @@ export function loadDirectQuoteLookup(runPath: string): { data: Record<string, u
     return { data: out, path: target };
   }
   return { data: {}, path: target };
+}
+
+function resolveDirectQuoteLookupPath(runPath: string): string | null {
+  if (!runPath) return null;
+  const runDir = path.dirname(runPath);
+  const runId = path.basename(runPath);
+  const candidates = [
+    path.join(runPath, "direct_quote_lookup.json"),
+    path.join(runDir, "thematics_outputs", runId, "direct_quote_lookup.json"),
+    path.join(runDir, "direct_quote_lookup.json"),
+    path.join(path.dirname(runDir), "direct_quote_lookup.json")
+  ];
+  return candidates.find((p) => fileExists(p)) || null;
+}
+
+const dqLookupCache: Record<string, { data: Record<string, unknown>; mtimeMs: number }> = {};
+
+export function getDirectQuoteEntries(
+  runPath: string,
+  ids: string[]
+): { entries: Record<string, unknown>; path: string | null } {
+  const target = resolveDirectQuoteLookupPath(runPath);
+  if (!target) return { entries: {}, path: null };
+
+  let stat: fs.Stats | null = null;
+  try {
+    stat = fs.statSync(target);
+  } catch {
+    stat = null;
+  }
+
+  const mtimeMs = stat?.mtimeMs ?? 0;
+  const cached = dqLookupCache[target];
+  if (!cached || cached.mtimeMs !== mtimeMs) {
+    // Parse once in the worker/main process and serve per-id entries to the renderer.
+    // This avoids transferring the whole lookup table over IPC and bloating renderer memory.
+    const raw = fs.readFileSync(target, { encoding: "utf8" });
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const normalized: Record<string, unknown> = {};
+    Object.entries(parsed || {}).forEach(([k, v]) => {
+      normalized[String(k).trim().toLowerCase()] = v;
+    });
+    dqLookupCache[target] = { data: normalized, mtimeMs };
+  }
+
+  const out: Record<string, unknown> = {};
+  const source = dqLookupCache[target]?.data || {};
+  ids
+    .map((id) => String(id || "").trim().toLowerCase())
+    .filter(Boolean)
+    .forEach((id) => {
+      const value = source[id];
+      if (value !== undefined) out[id] = value;
+    });
+  return { entries: out, path: target };
 }
 
 function readJsonFile<T = unknown>(filePath: string): T | null {
@@ -277,6 +344,193 @@ function streamJsonArray(filePath: string, maxItems = 20000): Record<string, unk
   return out;
 }
 
+function streamJsonArrayPage(
+  filePath: string,
+  offset: number,
+  limit: number
+): { items: Record<string, unknown>[]; hasMore: boolean; nextOffset: number } {
+  const safeOffset = Math.max(0, Math.floor(offset || 0));
+  const safeLimit = Math.max(1, Math.min(1000, Math.floor(limit || 10)));
+  const fd = fs.openSync(filePath, "r");
+  const chunkSize = 4 * 1024 * 1024; // 4MB
+  const buffer = Buffer.alloc(chunkSize);
+  let buf = "";
+  let inString = false;
+  let escape = false;
+  let depth = 0;
+  let index = 0;
+  const items: Record<string, unknown>[] = [];
+  let hasMore = false;
+
+  try {
+    while (true) {
+      const bytesRead = fs.readSync(fd, buffer, 0, chunkSize, null);
+      if (bytesRead === 0) break;
+      const chunk = buffer.toString("utf8", 0, bytesRead);
+      for (const ch of chunk) {
+        if (inString) {
+          buf += ch;
+          if (escape) {
+            escape = false;
+          } else if (ch === "\\") {
+            escape = true;
+          } else if (ch === "\"") {
+            inString = false;
+          }
+          continue;
+        }
+        if (ch === "\"") {
+          inString = true;
+          buf += ch;
+          continue;
+        }
+        if (ch === "{") {
+          depth += 1;
+          buf += ch;
+          continue;
+        }
+        if (ch === "}") {
+          depth -= 1;
+          buf += ch;
+          if (depth === 0) {
+            let parsed: unknown = null;
+            try {
+              parsed = JSON.parse(buf);
+            } catch {
+              parsed = null;
+            }
+            buf = "";
+            if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+              if (index >= safeOffset && items.length < safeLimit) {
+                items.push(parsed as Record<string, unknown>);
+              } else if (index >= safeOffset && items.length >= safeLimit) {
+                hasMore = true;
+                return { items, hasMore, nextOffset: safeOffset + items.length };
+              }
+              index += 1;
+            }
+          }
+          continue;
+        }
+        if (depth > 0) {
+          buf += ch;
+        }
+      }
+    }
+  } finally {
+    fs.closeSync(fd);
+  }
+
+  return { items, hasMore: false, nextOffset: safeOffset + items.length };
+}
+
+function streamJsonObjects(filePath: string, onObject: (obj: Record<string, unknown>) => void): void {
+  const fd = fs.openSync(filePath, "r");
+  const chunkSize = 4 * 1024 * 1024;
+  const buffer = Buffer.alloc(chunkSize);
+  let buf = "";
+  let inString = false;
+  let escape = false;
+  let depth = 0;
+
+  try {
+    while (true) {
+      const bytesRead = fs.readSync(fd, buffer, 0, chunkSize, null);
+      if (bytesRead === 0) break;
+      const chunk = buffer.toString("utf8", 0, bytesRead);
+      for (const ch of chunk) {
+        if (inString) {
+          buf += ch;
+          if (escape) {
+            escape = false;
+          } else if (ch === "\\") {
+            escape = true;
+          } else if (ch === "\"") {
+            inString = false;
+          }
+          continue;
+        }
+        if (ch === "\"") {
+          inString = true;
+          buf += ch;
+          continue;
+        }
+        if (ch === "{") {
+          depth += 1;
+          buf += ch;
+          continue;
+        }
+        if (ch === "}") {
+          depth -= 1;
+          buf += ch;
+          if (depth === 0) {
+            try {
+              const parsed = JSON.parse(buf);
+              if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+                onObject(parsed as Record<string, unknown>);
+              }
+            } catch {
+              // ignore malformed object
+            }
+            buf = "";
+          }
+          continue;
+        }
+        if (depth > 0) {
+          buf += ch;
+        }
+      }
+    }
+  } finally {
+    fs.closeSync(fd);
+  }
+}
+
+type SectionQuery = {
+  search?: string;
+  tagContains?: string;
+  tags?: string[];
+  gold?: string[];
+  rq?: string[];
+  route?: string[];
+  evidence?: string[];
+  potential?: string[];
+};
+
+function includesInsensitive(hay: string, needle: string): boolean {
+  if (!needle) return true;
+  return hay.toLowerCase().includes(needle.toLowerCase());
+}
+
+function stripHtmlFast(html: string): string {
+  return (html || "").replace(/<[^>]+>/g, " ");
+}
+
+function pickFirstString(...values: unknown[]): string {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return "";
+}
+
+function sortTopCounts(counts: Record<string, number>, topN = 10): Record<string, number> {
+  const entries = Object.entries(counts)
+    .filter(([k]) => k && k.trim())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, topN);
+  const out: Record<string, number> = {};
+  entries.forEach(([k, v]) => (out[k] = v));
+  return out;
+}
+
+function incrementCounts(counts: Record<string, number>, values: string[]): void {
+  values.forEach((value) => {
+    const key = String(value || "").trim();
+    if (!key) return;
+    counts[key] = (counts[key] || 0) + 1;
+  });
+}
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (value && typeof value === "object" && !Array.isArray(value)) {
     return value as Record<string, unknown>;
@@ -305,6 +559,131 @@ function safeNumber(value: unknown, fallback?: number): number | undefined {
     }
   }
   return fallback;
+}
+
+type SectionsIndex = {
+  db: any;
+  dbPath: string;
+};
+
+const sectionsIndexCache = new Map<string, SectionsIndex>();
+
+function ensureSectionsIndex(datasetPath: string, stat: fs.Stats, level: SectionLevel): SectionsIndex {
+  const dbPath = buildIndexPath(datasetPath, stat, `sections_${level}`);
+  const existing = sectionsIndexCache.get(dbPath);
+  if (existing) return existing;
+
+  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+  const db = new BetterSqlite3(dbPath);
+  db.pragma("journal_mode = WAL");
+  db.pragma("synchronous = NORMAL");
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS sections(
+      id TEXT PRIMARY KEY,
+      title TEXT,
+      rq TEXT,
+      gold TEXT,
+      route TEXT,
+      evidence TEXT,
+      tags_text TEXT,
+      potential_text TEXT,
+      search_text TEXT,
+      html TEXT,
+      meta_json TEXT,
+      pdf_path TEXT,
+      page INTEGER
+    );
+    CREATE VIRTUAL TABLE IF NOT EXISTS sections_fts USING fts5(
+      id UNINDEXED,
+      search_text,
+      tags_text,
+      potential_text
+    );
+    CREATE INDEX IF NOT EXISTS idx_sections_rq ON sections(rq);
+    CREATE INDEX IF NOT EXISTS idx_sections_gold ON sections(gold);
+    CREATE INDEX IF NOT EXISTS idx_sections_route ON sections(route);
+    CREATE INDEX IF NOT EXISTS idx_sections_evidence ON sections(evidence);
+  `);
+
+  const signature = `${datasetPath}|${stat.mtimeMs}|${stat.size}|${CACHE_VERSION}`;
+  const metaKey = `source:${level}`;
+  const current = db.prepare("SELECT value FROM meta WHERE key=?").get(metaKey) as { value?: string } | undefined;
+  if (current?.value !== signature) {
+    db.exec("DELETE FROM sections; DELETE FROM sections_fts; DELETE FROM meta WHERE key LIKE 'source:%';");
+    db.prepare("INSERT OR REPLACE INTO meta(key,value) VALUES(?,?)").run(metaKey, signature);
+
+    const insertSection = db.prepare(`
+      INSERT OR REPLACE INTO sections(
+        id,title,rq,gold,route,evidence,tags_text,potential_text,search_text,html,meta_json,pdf_path,page
+      ) VALUES(
+        @id,@title,@rq,@gold,@route,@evidence,@tags_text,@potential_text,@search_text,@html,@meta_json,@pdf_path,@page
+      )
+    `);
+    const insertFts = db.prepare(`
+      INSERT INTO sections_fts(id,search_text,tags_text,potential_text)
+      VALUES(@id,@search_text,@tags_text,@potential_text)
+    `);
+
+    const flush = db.transaction((rows: any[]) => {
+      for (const row of rows) {
+        insertSection.run(row);
+        insertFts.run(row);
+      }
+    });
+
+    const rows: any[] = [];
+    let idx = 0;
+    streamJsonObjects(datasetPath, (obj) => {
+      const meta = pickMetaFields(asRecord(obj.meta) || {});
+      const html = safeString(obj.section_html ?? obj.html);
+      const id = safeString(obj.custom_id ?? meta.custom_id ?? `section_${idx + 1}`);
+      const rq = safeString(obj.rq ?? meta.rq);
+      const gold = safeString(obj.gold_theme ?? meta.gold_theme);
+      const route = safeString(obj.route_value ?? meta.route_value ?? meta.route);
+      const evidence = safeString(obj.evidence_type ?? meta.evidence_type);
+      const potentialTheme = safeString(obj.potential_theme ?? meta.potential_theme);
+      const potentialTokens = tokenizePotentialTheme(potentialTheme).map((t) => t.toLowerCase());
+      const tags = Array.from(
+        new Set([
+          ...normalizeTagList(obj.tags ?? obj.tag_cluster ?? meta.tags ?? meta.tag_cluster).map((t) => t.toLowerCase()),
+          ...extractTagsFromHtml(html).map((t) => t.toLowerCase()),
+        ])
+      );
+      const title = extractTitleFromHtml(html) || safeString(obj.title ?? meta.title) || id;
+      const text = pickFirstString(obj.paraphrase, obj.direct_quote, obj.section_text, obj.text, stripHtmlFast(html)).toLowerCase();
+      const searchText = `${title} ${rq} ${gold} ${route} ${evidence} ${tags.join(" ")} ${potentialTokens.join(" ")} ${text}`.trim();
+      const pdfPath = safeString((meta as any).pdf_path ?? (meta as any).pdf ?? (obj as any).pdf_path ?? (obj as any).pdf);
+      const page = safeNumber((obj as any).page ?? (meta as any).page ?? (meta as any).pdf_page);
+      rows.push({
+        id,
+        title,
+        rq,
+        gold,
+        route,
+        evidence,
+        tags_text: tags.join(" "),
+        potential_text: potentialTokens.join(" "),
+        search_text: searchText,
+        html,
+        meta_json: JSON.stringify(meta),
+        pdf_path: pdfPath,
+        page: typeof page === "number" ? page : null,
+      });
+      idx += 1;
+      if (rows.length >= 250) {
+        flush(rows.splice(0, rows.length));
+      }
+    });
+    if (rows.length) {
+      flush(rows.splice(0, rows.length));
+    }
+  }
+
+  const handle: SectionsIndex = { db, dbPath };
+  sectionsIndexCache.set(dbPath, handle);
+  return handle;
 }
 
 function normalizePayload(raw: unknown, batchId: string, idx: number): BatchPayload {
@@ -866,6 +1245,421 @@ export async function loadSections(runPath: string, level: SectionLevel): Promis
     writeCache(cachePath, result);
   }
   return result;
+}
+
+export async function loadSectionsPage(
+  runPath: string,
+  level: SectionLevel,
+  offset: number,
+  limit: number
+): Promise<{ sections: SectionRecord[]; hasMore: boolean; nextOffset: number }> {
+  let datasetPath = findFirstExistingFile(runPath, SECTION_FILE_MAP[level]);
+  if (!datasetPath) {
+    return { sections: [], hasMore: false, nextOffset: 0 };
+  }
+
+  const page = streamJsonArrayPage(datasetPath, offset, limit);
+  const sections = page.items.reduce<SectionRecord[]>((acc, entry, entryIdx) => {
+    const obj = asRecord(entry);
+    if (!obj) {
+      return acc;
+    }
+    let meta = pickMetaFields(asRecord(obj.meta) || {});
+    if (!Object.keys(meta).length && typeof obj.meta_json === "string") {
+      try {
+        const parsed = JSON.parse(obj.meta_json);
+        const parsedMeta = asRecord(parsed);
+        if (parsedMeta) {
+          meta = pickMetaFields(parsedMeta);
+        }
+      } catch {
+        // ignore
+      }
+    }
+    const html = safeString(obj.section_html ?? obj.html);
+    const customId = safeString(obj.custom_id ?? meta.custom_id ?? `section_${offset + entryIdx + 1}`);
+    const routeValue = safeString(obj.route_value ?? meta.route_value ?? meta.route);
+    const rq = safeString(obj.rq ?? meta.rq);
+    const gold = safeString(obj.gold_theme ?? meta.gold_theme);
+    const ev = safeString(obj.evidence_type ?? meta.evidence_type);
+    const potentialTheme = safeString(obj.potential_theme ?? meta.potential_theme);
+    const potentialTokens = tokenizePotentialTheme(potentialTheme);
+    const tags = Array.from(
+      new Set([
+        ...normalizeTagList(obj.tags ?? obj.tag_cluster ?? meta.tags ?? meta.tag_cluster),
+        ...extractTagsFromHtml(html),
+      ])
+    );
+    const title = extractTitleFromHtml(html) || safeString(obj.title ?? meta.title) || customId;
+    acc.push({
+      id: customId,
+      html,
+      meta,
+      route: routeValue || undefined,
+      routeValue: routeValue || undefined,
+      title,
+      rq: rq || undefined,
+      goldTheme: gold || undefined,
+      evidenceType: ev || undefined,
+      potentialTheme: potentialTheme || undefined,
+      potentialTokens: potentialTokens.length ? potentialTokens : undefined,
+      tags,
+      paraphrase: safeString(obj.paraphrase ?? meta.paraphrase) || undefined,
+      directQuote: safeString(obj.direct_quote ?? meta.direct_quote) || undefined,
+      researcherComment: safeString(obj.researcher_comment ?? meta.researcher_comment) || undefined,
+      firstAuthorLast: safeString(obj.first_author_last ?? meta.first_author_last) || undefined,
+      authorSummary: safeString(obj.author_summary ?? meta.author_summary) || undefined,
+      author: safeString(obj.author ?? meta.author) || undefined,
+      year: safeString(obj.year ?? meta.year) || undefined,
+      source: safeString(obj.source ?? meta.source) || undefined,
+      titleText: safeString(obj.title ?? meta.title) || undefined,
+      url: safeString(obj.url ?? meta.url) || undefined,
+      itemKey: safeString(obj.item_key ?? meta.item_key) || undefined,
+      page: safeNumber(obj.page ?? meta.page),
+    });
+    return acc;
+  }, []);
+
+  return { sections, hasMore: page.hasMore, nextOffset: page.nextOffset };
+}
+
+export async function querySections(
+  runPath: string,
+  level: SectionLevel,
+  query: SectionQuery,
+  offset: number,
+  limit: number
+): Promise<{
+  sections: SectionRecord[];
+  totalMatches: number;
+  hasMore: boolean;
+  nextOffset: number;
+  facets: Record<string, Record<string, number>>;
+}> {
+  let datasetPath = findFirstExistingFile(runPath, SECTION_FILE_MAP[level]);
+  if (!datasetPath) {
+    return { sections: [], totalMatches: 0, hasMore: false, nextOffset: 0, facets: {} };
+  }
+
+  // Fast path: use on-disk SQLite index (built once) to avoid rescanning gigabyte-scale JSON for every query/page.
+  try {
+    const stat = fs.statSync(datasetPath);
+    const { db } = ensureSectionsIndex(datasetPath, stat, level);
+    const safeOffset = Math.max(0, Math.floor(offset || 0));
+    const safeLimit = Math.max(1, Math.min(500, Math.floor(limit || 10)));
+
+    const where: string[] = [];
+    const params: any[] = [];
+    const joinFts = Boolean(String(query?.search || "").trim());
+    if (joinFts) {
+      where.push("sections_fts MATCH ?");
+      params.push(String(query?.search || "").trim().toLowerCase());
+    }
+    const tagContains = String(query?.tagContains || "").trim().toLowerCase();
+    if (tagContains) {
+      where.push("sections.tags_text LIKE ?");
+      params.push(`%${tagContains}%`);
+    }
+    const addIn = (col: string, values?: string[]) => {
+      const list = (values || []).map((v) => String(v || "").trim()).filter(Boolean);
+      if (!list.length) return;
+      where.push(`${col} IN (${list.map(() => "?").join(",")})`);
+      list.forEach((v) => params.push(v));
+    };
+    addIn("sections.rq", query?.rq);
+    addIn("sections.gold", query?.gold);
+    addIn("sections.route", query?.route);
+    addIn("sections.evidence", query?.evidence);
+
+    const addAnyLike = (col: string, values?: string[]) => {
+      const list = (values || []).map((v) => String(v || "").trim().toLowerCase()).filter(Boolean);
+      if (!list.length) return;
+      where.push(`(${list.map(() => `${col} LIKE ?`).join(" OR ")})`);
+      list.forEach((v) => params.push(`%${v}%`));
+    };
+    addAnyLike("sections.tags_text", query?.tags);
+    addAnyLike("sections.potential_text", query?.potential);
+
+    const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+    const fromSql = joinFts
+      ? "FROM sections JOIN sections_fts ON sections_fts.id = sections.id"
+      : "FROM sections";
+
+    const countRow = db.prepare(`SELECT COUNT(*) as count ${fromSql} ${whereSql}`).get(...params) as { count: number } | undefined;
+    const totalMatches = countRow?.count ?? 0;
+
+    const rows = db
+      .prepare(
+        `SELECT sections.id, sections.title, sections.rq, sections.gold, sections.route, sections.evidence, sections.tags_text, sections.potential_text, sections.html, sections.meta_json, sections.pdf_path, sections.page
+         ${fromSql} ${whereSql}
+         LIMIT ? OFFSET ?`
+      )
+      .all(...params, safeLimit, safeOffset) as any[];
+
+    const sections: SectionRecord[] = rows.map((row) => {
+      let meta: Record<string, unknown> = {};
+      try {
+        meta = row.meta_json ? (JSON.parse(row.meta_json) as Record<string, unknown>) : {};
+      } catch {
+        meta = {};
+      }
+      const tags = String(row.tags_text || "").split(/\s+/).filter(Boolean);
+      const potentialTokens = String(row.potential_text || "").split(/\s+/).filter(Boolean);
+      return {
+        id: String(row.id || ""),
+        title: String(row.title || ""),
+        rq: String(row.rq || "") || undefined,
+        goldTheme: String(row.gold || "") || undefined,
+        route: String(row.route || "") || undefined,
+        routeValue: String(row.route || "") || undefined,
+        evidenceType: String(row.evidence || "") || undefined,
+        tags,
+        potentialTokens: potentialTokens.length ? potentialTokens : undefined,
+        html: String(row.html || ""),
+        meta: {
+          ...meta,
+          pdf_path: row.pdf_path || (meta as any).pdf_path,
+          pdf_page: row.page ?? (meta as any).pdf_page
+        },
+        page: typeof row.page === "number" ? row.page : undefined
+      };
+    });
+
+    const hasMore = safeOffset + sections.length < totalMatches;
+    const tagsCounts: Record<string, number> = {};
+    const potCounts: Record<string, number> = {};
+    const rqCounts: Record<string, number> = {};
+    const goldCounts: Record<string, number> = {};
+    const routeCounts: Record<string, number> = {};
+    const evCounts: Record<string, number> = {};
+    sections.forEach((s) => {
+      if (s.rq) incrementCounts(rqCounts, [s.rq]);
+      if (s.goldTheme) incrementCounts(goldCounts, [s.goldTheme]);
+      if (s.route) incrementCounts(routeCounts, [s.route]);
+      if (s.evidenceType) incrementCounts(evCounts, [s.evidenceType]);
+      incrementCounts(tagsCounts, (s.tags || []).slice(0, 30));
+      incrementCounts(potCounts, ((s.potentialTokens as string[] | undefined) || []).slice(0, 30));
+    });
+
+    return {
+      sections,
+      totalMatches,
+      hasMore,
+      nextOffset: safeOffset + sections.length,
+      facets: {
+        tags: sortTopCounts(tagsCounts, 10),
+        rq: sortTopCounts(rqCounts, 10),
+        gold: sortTopCounts(goldCounts, 10),
+        route: sortTopCounts(routeCounts, 10),
+        evidence: sortTopCounts(evCounts, 10),
+        potential: sortTopCounts(potCounts, 10)
+      }
+    };
+  } catch (error) {
+    console.warn("[analyse][querySections][sqlite-fallback]", error);
+  }
+
+  const safeOffset = Math.max(0, Math.floor(offset || 0));
+  const safeLimit = Math.max(1, Math.min(500, Math.floor(limit || 10)));
+  const search = String(query?.search || "").trim().toLowerCase();
+  const tagContains = String(query?.tagContains || "").trim().toLowerCase();
+  const selectedTags = new Set((query?.tags || []).map((t) => String(t).trim()).filter(Boolean));
+  const selectedGold = new Set((query?.gold || []).map((t) => String(t).trim()).filter(Boolean));
+  const selectedRq = new Set((query?.rq || []).map((t) => String(t).trim()).filter(Boolean));
+  const selectedRoute = new Set((query?.route || []).map((t) => String(t).trim()).filter(Boolean));
+  const selectedEvidence = new Set((query?.evidence || []).map((t) => String(t).trim()).filter(Boolean));
+  const selectedPotential = new Set((query?.potential || []).map((t) => String(t).trim()).filter(Boolean));
+
+  const facets = {
+    tags: {} as Record<string, number>,
+    gold: {} as Record<string, number>,
+    rq: {} as Record<string, number>,
+    route: {} as Record<string, number>,
+    evidence: {} as Record<string, number>,
+    potential: {} as Record<string, number>,
+  };
+
+  const fd = fs.openSync(datasetPath, "r");
+  const chunkSize = 4 * 1024 * 1024;
+  const buffer = Buffer.alloc(chunkSize);
+  let buf = "";
+  let inString = false;
+  let escape = false;
+  let depth = 0;
+
+  const pageSections: SectionRecord[] = [];
+  let matchIndex = 0;
+  let totalMatches = 0;
+  let hasMore = false;
+
+  const matchesRecord = (section: SectionRecord, derived: { rq: string; gold: string; route: string; evidence: string; tags: string[]; potential: string[]; text: string }) => {
+    if (selectedRq.size && !selectedRq.has(derived.rq)) return false;
+    if (selectedGold.size && !selectedGold.has(derived.gold)) return false;
+    if (selectedRoute.size && !selectedRoute.has(derived.route)) return false;
+    if (selectedEvidence.size && !selectedEvidence.has(derived.evidence)) return false;
+    if (selectedPotential.size && !derived.potential.some((t) => selectedPotential.has(t))) return false;
+    if (selectedTags.size && !derived.tags.some((t) => selectedTags.has(t))) return false;
+    if (tagContains && !derived.tags.some((t) => t.toLowerCase().includes(tagContains))) return false;
+    if (search) {
+      const hay = `${derived.rq} ${derived.gold} ${derived.route} ${derived.evidence} ${derived.tags.join(" ")} ${derived.text}`.toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    return true;
+  };
+
+  try {
+    while (true) {
+      const bytesRead = fs.readSync(fd, buffer, 0, chunkSize, null);
+      if (bytesRead === 0) break;
+      const chunk = buffer.toString("utf8", 0, bytesRead);
+      for (const ch of chunk) {
+        if (inString) {
+          buf += ch;
+          if (escape) {
+            escape = false;
+          } else if (ch === "\\") {
+            escape = true;
+          } else if (ch === "\"") {
+            inString = false;
+          }
+          continue;
+        }
+        if (ch === "\"") {
+          inString = true;
+          buf += ch;
+          continue;
+        }
+        if (ch === "{") {
+          depth += 1;
+          buf += ch;
+          continue;
+        }
+        if (ch === "}") {
+          depth -= 1;
+          buf += ch;
+          if (depth === 0) {
+            let parsed: unknown = null;
+            try {
+              parsed = JSON.parse(buf);
+            } catch {
+              parsed = null;
+            }
+            buf = "";
+            if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+              const obj = parsed as Record<string, unknown>;
+              let meta = pickMetaFields(asRecord(obj.meta) || {});
+              if (!Object.keys(meta).length && typeof obj.meta_json === "string") {
+                try {
+                  const parsedMeta = JSON.parse(obj.meta_json);
+                  const record = asRecord(parsedMeta);
+                  if (record) meta = pickMetaFields(record);
+                } catch {
+                  // ignore
+                }
+              }
+              const html = safeString(obj.section_html ?? obj.html);
+              const customId = safeString(obj.custom_id ?? meta.custom_id ?? `section_${matchIndex + 1}`);
+              const rq = safeString(obj.rq ?? meta.rq);
+              const gold = safeString(obj.gold_theme ?? meta.gold_theme);
+              const route = safeString(obj.route_value ?? meta.route_value ?? meta.route);
+              const evidence = safeString(obj.evidence_type ?? meta.evidence_type);
+              const potentialTheme = safeString(obj.potential_theme ?? meta.potential_theme);
+              const potentialTokens = tokenizePotentialTheme(potentialTheme);
+              const tags = Array.from(
+                new Set([
+                  ...normalizeTagList(obj.tags ?? obj.tag_cluster ?? meta.tags ?? meta.tag_cluster),
+                  ...extractTagsFromHtml(html),
+                ])
+              );
+              const title = extractTitleFromHtml(html) || safeString(obj.title ?? meta.title) || customId;
+              const text = pickFirstString(
+                obj.paraphrase,
+                obj.direct_quote,
+                obj.section_text,
+                obj.text,
+                stripHtmlFast(html)
+              );
+              const section: SectionRecord = {
+                id: customId,
+                html,
+                meta,
+                route: route || undefined,
+                routeValue: route || undefined,
+                title,
+                rq: rq || undefined,
+                goldTheme: gold || undefined,
+                evidenceType: evidence || undefined,
+                potentialTheme: potentialTheme || undefined,
+                potentialTokens: potentialTokens.length ? potentialTokens : undefined,
+                tags,
+              };
+              const derived = {
+                rq,
+                gold,
+                route,
+                evidence,
+                tags,
+                potential: potentialTokens,
+                text,
+              };
+              if (matchesRecord(section, derived)) {
+                totalMatches += 1;
+                incrementCounts(facets.tags, tags);
+                if (rq) incrementCounts(facets.rq, [rq]);
+                if (gold) incrementCounts(facets.gold, [gold]);
+                if (route) incrementCounts(facets.route, [route]);
+                if (evidence) incrementCounts(facets.evidence, [evidence]);
+                incrementCounts(facets.potential, potentialTokens);
+                if (matchIndex >= safeOffset && pageSections.length < safeLimit) {
+                  pageSections.push(section);
+                }
+                matchIndex += 1;
+              }
+            }
+          }
+          continue;
+        }
+        if (depth > 0) {
+          buf += ch;
+        }
+      }
+    }
+  } finally {
+    fs.closeSync(fd);
+  }
+
+  hasMore = safeOffset + pageSections.length < totalMatches;
+  return {
+    sections: pageSections,
+    totalMatches,
+    hasMore,
+    nextOffset: safeOffset + pageSections.length,
+    facets: {
+      tags: sortTopCounts(facets.tags, 10),
+      rq: sortTopCounts(facets.rq, 10),
+      gold: sortTopCounts(facets.gold, 10),
+      route: sortTopCounts(facets.route, 10),
+      evidence: sortTopCounts(facets.evidence, 10),
+      potential: sortTopCounts(facets.potential, 10),
+    }
+  };
+}
+
+export async function loadBatchPayloadsPage(
+  runPath: string,
+  offset: number,
+  limit: number
+): Promise<{ payloads: BatchPayload[]; hasMore: boolean; nextOffset: number }> {
+  if (!runPath) {
+    return { payloads: [], hasMore: false, nextOffset: 0 };
+  }
+  const datasetPath = findFirstExistingFile(runPath, BATCH_FILE_CANDIDATES);
+  if (!datasetPath) {
+    return { payloads: [], hasMore: false, nextOffset: 0 };
+  }
+  const page = streamJsonArrayPage(datasetPath, offset, limit);
+  const payloads = page.items.map((entry, idx) => normalizePayload(entry, "batch", offset + idx));
+  return { payloads, hasMore: page.hasMore, nextOffset: page.nextOffset };
 }
 
 export async function summariseRun(runPath: string): Promise<RunMetrics> {

@@ -119,14 +119,6 @@ const persistLibrary = (library: ReferencesLibrary): void => {
   } catch {
     // Ignore storage errors.
   }
-  const host = window.leditorHost;
-  const contract = getHostContract();
-  if (!host?.writeFile || !contract?.policy?.allowDiskWrites) return;
-  // Never clobber an on-disk reference library with an empty payload.
-  // This prevents first-run empty state from overwriting caches produced by the host app.
-  if (libraryCount(library) === 0) return;
-  const path = getLibraryPath(contract);
-  void host.writeFile({ targetPath: path, data: JSON.stringify(library, null, 2) });
 };
 
 const loadFromBundledPublic = async (): Promise<ReferencesLibrary | null> => {

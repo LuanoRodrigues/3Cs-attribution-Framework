@@ -1,6 +1,7 @@
 ﻿import type {
   AnalyseDatasets,
   AnalyseRun,
+  BatchPayload,
   BatchRecord,
   SectionRecord,
   SectionLevel,
@@ -127,6 +128,69 @@ export async function loadSections(runPath: string, level: SectionLevel): Promis
   });
 }
 
+export async function loadSectionsPage(
+  runPath: string,
+  level: SectionLevel,
+  offset: number,
+  limit: number
+): Promise<{ sections: SectionRecord[]; hasMore: boolean; nextOffset: number }> {
+  const bridge = getBridge();
+  if (!bridge || !runPath || !bridge.loadSectionsPage) {
+    return { sections: emptySections, hasMore: false, nextOffset: 0 };
+  }
+  try {
+    return (await bridge.loadSectionsPage(runPath, level, offset, limit)) ?? { sections: emptySections, hasMore: false, nextOffset: 0 };
+  } catch {
+    return { sections: emptySections, hasMore: false, nextOffset: 0 };
+  }
+}
+
+export async function querySections(
+  runPath: string,
+  level: SectionLevel,
+  query: unknown,
+  offset: number,
+  limit: number
+): Promise<{
+  sections: SectionRecord[];
+  totalMatches: number;
+  hasMore: boolean;
+  nextOffset: number;
+  facets: Record<string, Record<string, number>>;
+}> {
+  const bridge = getBridge();
+  if (!bridge || !runPath || !bridge.querySections) {
+    return { sections: emptySections, totalMatches: 0, hasMore: false, nextOffset: 0, facets: {} };
+  }
+  try {
+    return (await bridge.querySections(runPath, level, query, offset, limit)) ?? {
+      sections: emptySections,
+      totalMatches: 0,
+      hasMore: false,
+      nextOffset: 0,
+      facets: {}
+    };
+  } catch {
+    return { sections: emptySections, totalMatches: 0, hasMore: false, nextOffset: 0, facets: {} };
+  }
+}
+
+export async function loadBatchPayloadsPage(
+  runPath: string,
+  offset: number,
+  limit: number
+): Promise<{ payloads: BatchPayload[]; hasMore: boolean; nextOffset: number }> {
+  const bridge = getBridge();
+  if (!bridge || !runPath || !(bridge as any).loadBatchPayloadsPage) {
+    return { payloads: [], hasMore: false, nextOffset: 0 };
+  }
+  try {
+    return ((await (bridge as any).loadBatchPayloadsPage(runPath, offset, limit)) as any) ?? { payloads: [], hasMore: false, nextOffset: 0 };
+  } catch {
+    return { payloads: [], hasMore: false, nextOffset: 0 };
+  }
+}
+
 export async function summariseRun(runPath: string): Promise<RunMetrics> {
   const bridge = getBridge();
   if (!bridge || !runPath) {
@@ -161,6 +225,21 @@ export async function loadDirectQuoteLookup(runPath: string): Promise<{ data: Re
     touchCache(dqCache, runPath, result);
     return result;
   });
+}
+
+export async function getDirectQuotes(
+  runPath: string,
+  ids: string[]
+): Promise<{ entries: Record<string, unknown>; path: string | null }> {
+  const bridge = getBridge();
+  if (!bridge || !runPath || !(bridge as any).getDirectQuotes) {
+    return { entries: {}, path: null };
+  }
+  try {
+    return ((await (bridge as any).getDirectQuotes(runPath, ids)) as any) ?? { entries: {}, path: null };
+  } catch {
+    return { entries: {}, path: null };
+  }
 }
 
 export async function getAudioCacheStatus(

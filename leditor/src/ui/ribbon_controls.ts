@@ -45,6 +45,7 @@ export const createRibbonButton = (options: RibbonButtonOptions): HTMLButtonElem
   const iconEl = createIconElement(options.icon);
   if (iconEl) {
     button.appendChild(iconEl);
+    button.classList.add("has-icon");
   }
   if (options.toggle) {
     button.dataset.ribbonToggle = "true";
@@ -83,6 +84,7 @@ export const setPressedState = (button: HTMLButtonElement, state: boolean | "mix
 type RibbonDropdownOptions = {
   icon: IconOrElement;
   label: string;
+  tooltip?: string;
   menu: LegacyMenuInstance;
 };
 
@@ -92,7 +94,7 @@ export const createRibbonDropdownButton = (options: RibbonDropdownOptions): HTML
     label: options.label,
     size: "medium",
     extraClasses: ["ribbon-dropdown-button"],
-    tooltip: options.label
+    tooltip: options.tooltip ?? options.label
   });
   button.setAttribute("aria-haspopup", "menu");
   button.setAttribute("aria-expanded", "false");

@@ -10,14 +10,23 @@ const resolveBibliographyDir = (): string => {
     fromEnv,
     path.join(app.getPath("userData"), "data-hub-cache"),
     // Useful when testing LEditor standalone alongside the main Annotarium app.
-    path.join(app.getPath("appData"), "Annotarium", "data-hub-cache")
+    path.join(app.getPath("appData"), "Annotarium", "data-hub-cache"),
+    // Useful when testing against the dev app name (matches Electron userData folder).
+    path.join(app.getPath("appData"), "my-electron-app", "data-hub-cache")
   ].filter(Boolean);
 
   const refsCount = (dir: string): number => {
     try {
       const libraryPath = path.join(dir, "references_library.json");
       const legacyPath = path.join(dir, "references.json");
-      const pickCount = (obj: any): number => (obj && typeof obj === "object" && Array.isArray(obj.items) ? obj.items.length : 0);
+      const pickCount = (obj: any): number => {
+        if (!obj || typeof obj !== "object") return 0;
+        if (Array.isArray((obj as any).items)) return (obj as any).items.length;
+        if ((obj as any).itemsByKey && typeof (obj as any).itemsByKey === "object") {
+          return Object.keys((obj as any).itemsByKey).length;
+        }
+        return 0;
+      };
       const lib = readJsonIfExists(libraryPath);
       const legacy = readJsonIfExists(legacyPath);
       return Math.max(pickCount(lib), pickCount(legacy));

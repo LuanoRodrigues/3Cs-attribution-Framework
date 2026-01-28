@@ -184,11 +184,44 @@ export class CoderStore {
   private readonly scopeId?: CoderScopeId;
   private lastStatePath: string | null = null;
   private lastBaseDir: string | null = null;
+  private persistTimer: number | null = null;
+  private persistPendingState: CoderState | null = null;
+  private persistPendingSource: string | undefined;
+  private persistLocalTimer: number | null = null;
+  private persistLocalPending: CoderState | null = null;
 
   constructor(initial?: CoderState, scopeId?: CoderScopeId) {
     this.scopeId = scopeId;
     this.state = initial ? cloneState(initial) : loadState(scopeId);
     ensureRootFolder(this.state);
+    if (typeof window !== "undefined") {
+      window.addEventListener("beforeunload", () => {
+        // Best-effort flush of pending persistence work.
+        if (this.persistLocalTimer !== null) {
+          window.clearTimeout(this.persistLocalTimer);
+          this.persistLocalTimer = null;
+        }
+        if (this.persistTimer !== null) {
+          window.clearTimeout(this.persistTimer);
+          this.persistTimer = null;
+        }
+        if (this.persistLocalPending) {
+          try {
+            saveState(this.persistLocalPending, this.scopeId);
+          } catch {
+            // ignore
+          }
+        }
+        if (this.persistPendingState) {
+          try {
+            // Fire-and-forget; may not finish before unload.
+            this.persistState(this.persistPendingState, this.persistPendingSource);
+          } catch {
+            // ignore
+          }
+        }
+      });
+    }
   }
 
   subscribe(listener: (state: CoderState) => void): () => void {
@@ -360,11 +393,45 @@ export class CoderStore {
       syncEditedHtmlForState(next);
     }
     this.state = next;
-    saveState(this.state, this.scopeId);
+    // Keep UI responsive: persistence is best-effort and can be expensive for large trees.
+    // - LocalStorage writes are synchronous (main-thread) -> debounce.
+    // - Disk persistence is async but still serializes large JSON -> debounce + coalesce.
+    this.scheduleLocalPersist(next);
     if (!options.skipPersist) {
-      this.persistState(next, options.source);
+      this.scheduleDiskPersist(next, options.source);
     }
     this.listeners.forEach((fn) => fn(this.state));
+  }
+
+  private scheduleLocalPersist(state: CoderState): void {
+    this.persistLocalPending = state;
+    if (this.persistLocalTimer !== null) {
+      window.clearTimeout(this.persistLocalTimer);
+    }
+    this.persistLocalTimer = window.setTimeout(() => {
+      this.persistLocalTimer = null;
+      const pending = this.persistLocalPending;
+      this.persistLocalPending = null;
+      if (!pending) return;
+      saveState(pending, this.scopeId);
+    }, 250);
+  }
+
+  private scheduleDiskPersist(state: CoderState, source?: string): void {
+    this.persistPendingState = state;
+    this.persistPendingSource = source;
+    if (this.persistTimer !== null) {
+      window.clearTimeout(this.persistTimer);
+    }
+    this.persistTimer = window.setTimeout(() => {
+      this.persistTimer = null;
+      const pending = this.persistPendingState;
+      const pendingSource = this.persistPendingSource;
+      this.persistPendingState = null;
+      this.persistPendingSource = undefined;
+      if (!pending) return;
+      this.persistState(pending, pendingSource);
+    }, 800);
   }
 
   private persistState(state: CoderState, source?: string): void {

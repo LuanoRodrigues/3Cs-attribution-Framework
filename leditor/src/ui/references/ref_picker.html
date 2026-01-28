@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Tiny Ref</title>
 
-  <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
 
   <style>
     :root{
@@ -1383,7 +1382,6 @@ function loadDbFromPy(){
 
   window.__py.getRefIndexJson(function(raw){
     var arr = safeJsonParse(String(raw || "[]"), []);
-    console.log("[TinyRef][JS] bibliography[0]:", (arr && arr.length) ? arr[0] : null);
 
     window.__db = arr;
     window.__db_filtered = arr;

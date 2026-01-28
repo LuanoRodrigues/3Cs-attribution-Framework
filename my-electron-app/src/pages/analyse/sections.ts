@@ -1,5 +1,5 @@
 import type { AnalysePageContext, AnalyseRoundId, AnalyseState, BatchPayload, BatchRecord, SectionRecord } from "../../analyse/types";
-import { loadBatches, loadSections, loadDirectQuoteLookup } from "../../analyse/data";
+import { loadBatches, loadBatchPayloadsPage, loadSections, loadSectionsPage, querySections, loadDirectQuoteLookup, getDirectQuotes } from "../../analyse/data";
 
 interface SectionFilters {
   search: string;
@@ -710,6 +710,9 @@ export function renderSectionsPage(
   let batchViews: BatchPayloadView[] = [];
   let dqLookup: Record<string, any> = {};
   let dqLookupPath: string | null = null;
+  const itemPdfCache = new Map<string, string>();
+  let itemPdfCacheBuilt = false;
+  const dqEntryCache = new Map<string, unknown>();
   const selectedSectionIds = new Set<string>();
   const readStatus = loadReadStatus(round, state.activeRunId);
   let cachedSectionIds = new Set<string>();
@@ -855,6 +858,7 @@ export function renderSectionsPage(
 
   const renderSectionFilters = (facets: Record<string, Record<string, number>>) => {
     filtersPanel.innerHTML = "";
+    currentPage = 0;
 
     const controls = document.createElement("div");
     controls.className = "control-row";
@@ -923,6 +927,7 @@ export function renderSectionsPage(
 
   const renderBatchFilters = (facets: Record<string, Record<string, number>>) => {
     filtersPanel.innerHTML = "";
+    currentPage = 0;
 
     const controls = document.createElement("div");
     controls.className = "control-row";
@@ -981,20 +986,13 @@ export function renderSectionsPage(
 
   const renderPreview = (panel: HTMLElement, section: SectionRecord) => {
     panel.innerHTML = "";
-    const wrapper = document.createElement("div");
-    wrapper.className = "viz-card";
-    const paper = document.createElement("div");
-    paper.className = "paper-preview paper";
-    const title = document.createElement("h4");
-    title.textContent = section.title || section.id;
-    paper.appendChild(title);
-    const route = document.createElement("div");
-    route.className = "status-bar";
-    route.textContent = section.route || "";
-    paper.appendChild(route);
     const body = document.createElement("div");
-    body.className = "preview-content";
-    body.innerHTML = section.html || "<p><em>No section HTML.</em></p>";
+    body.className = "preview-content academic-section__body";
+    body.innerHTML = `
+      <h4>${section.title || section.id}</h4>
+      ${section.route ? `<p class="academic-section__route">${section.route}</p>` : ""}
+      ${section.html || "<p><em>No section HTML.</em></p>"}
+    `;
     body.addEventListener("click", (ev) => {
       const target = ev.target as HTMLElement | null;
       if (target && target.tagName === "A") {
@@ -1002,25 +1000,67 @@ export function renderSectionsPage(
         if (href) {
           ev.preventDefault();
           const dqid = extractDqid(href, target, section);
-          const payload = dqid ? dqLookup[dqid] : undefined;
-          const detail = {
-            href,
-            sectionId: section.id,
-            route: section.route,
-            meta: section.meta,
-            title: section.title,
-            dqid,
-            payload,
-            lookupPath: dqLookupPath
+          const open = async () => {
+            const key = dqid ? dqid.trim().toLowerCase() : undefined;
+            let payload: unknown = key ? (dqEntryCache.get(key) ?? dqLookup[key]) : undefined;
+            if (key && payload === undefined) {
+              const fetched = await getDirectQuotes(runPath, [key]);
+              dqLookupPath = dqLookupPath || fetched.path || null;
+              const entry = fetched.entries?.[key];
+              if (entry !== undefined) {
+                dqEntryCache.set(key, entry);
+                payload = entry;
+              }
+            }
+            const normalizedPayload = (() => {
+              if (payload === undefined || payload === null) return undefined;
+              if (typeof payload === "string") {
+                return { direct_quote: payload };
+              }
+              if (typeof payload === "object" && !Array.isArray(payload)) {
+                return payload as Record<string, unknown>;
+              }
+              return { direct_quote: String(payload) };
+            })();
+            const itemKey = extractItemKey(href, target);
+            if (normalizedPayload) {
+              const meta = (section.meta as Record<string, unknown>) || {};
+              const pdf = (normalizedPayload as any).pdf_path || (normalizedPayload as any).pdf || meta.pdf_path || meta.pdf;
+              if (pdf) {
+                (normalizedPayload as any).pdf_path = pdf;
+              }
+              const page = (normalizedPayload as any).page ?? meta.page;
+              if (page !== undefined) {
+                (normalizedPayload as any).page = page;
+              }
+              if (!(normalizedPayload as any).item_key && itemKey) {
+                (normalizedPayload as any).item_key = itemKey;
+              }
+              if (!pdf) {
+                const resolved = await getPdfForItemKey(itemKey);
+                if (resolved) {
+                  (normalizedPayload as any).pdf_path = resolved;
+                }
+              }
+            }
+            const detail = {
+              href,
+              sectionId: section.id,
+              route: section.route,
+              meta: section.meta,
+              title: section.title,
+              dqid: key,
+              payload: normalizedPayload,
+              lookupPath: dqLookupPath
+            };
+            console.info("[analyse][preview][anchor-click]", detail);
+            panel.dispatchEvent(new CustomEvent("analyse-open-pdf", { bubbles: true, detail }));
           };
-          console.info("[analyse][preview][anchor-click]", detail);
-          panel.dispatchEvent(new CustomEvent("analyse-open-pdf", { bubbles: true, detail }));
+          void open();
         }
       }
     });
-    paper.appendChild(body);
-    wrapper.appendChild(paper);
-    panel.appendChild(wrapper);
+    panel.appendChild(body);
   };
 
   const extractDqid = (href: string, node: HTMLElement, section: SectionRecord): string | undefined => {
@@ -1068,7 +1108,207 @@ export function renderSectionsPage(
     return pick((meta as any).direct_quote_id || (meta as any).dqid || (meta as any).dq_id || (meta as any).custom_id);
   };
 
+  const extractItemKey = (href: string, node: HTMLElement): string | undefined => {
+    const pick = (val?: string | null) => {
+      const t = (val || "").trim();
+      return t || undefined;
+    };
+    const attr =
+      pick(node.getAttribute("data-key")) ||
+      pick(node.getAttribute("data-item-key")) ||
+      pick((node as HTMLAnchorElement).dataset?.key) ||
+      pick((node as HTMLAnchorElement).dataset?.itemKey);
+    if (attr) return attr;
+    const hrefStr = href || "";
+    if (/^[A-Z0-9]{6,12}$/.test(hrefStr)) {
+      return hrefStr;
+    }
+    return undefined;
+  };
+
+  const getPdfForItemKey = async (itemKey?: string): Promise<string | undefined> => {
+    if (!itemKey) return undefined;
+    const direct = itemPdfCache.get(itemKey) || itemPdfCache.get(itemKey.toLowerCase());
+    if (direct) return direct;
+    if (itemPdfCacheBuilt) return undefined;
+    itemPdfCacheBuilt = true;
+    try {
+      const batchData = await loadBatches(runPath);
+      batchData.forEach((batch) => {
+        batch.payloads.forEach((payload) => {
+          const raw = payload as Record<string, unknown>;
+          const key = String(raw.item_key ?? raw.itemKey ?? "").trim();
+          if (!key) return;
+          const pdf = String(raw.pdf_path ?? raw.pdf ?? "").trim();
+          if (!pdf) return;
+          itemPdfCache.set(key, pdf);
+          itemPdfCache.set(key.toLowerCase(), pdf);
+        });
+      });
+    } catch {
+      // ignore lookup failures
+    }
+    return itemPdfCache.get(itemKey) || itemPdfCache.get(itemKey.toLowerCase());
+  };
+
   let renderToken = 0;
+  let pageSize = 10;
+  let currentPage = 0;
+  let remotePagerMode = false;
+  let remotePagerHasMore = false;
+  let remotePagerOffset = 0;
+
+  const clampPage = (total: number) => {
+    const maxPage = Math.max(0, Math.ceil(total / pageSize) - 1);
+    if (currentPage > maxPage) currentPage = maxPage;
+    if (currentPage < 0) currentPage = 0;
+  };
+
+  const buildPager = (total: number, onChange: () => void): HTMLElement => {
+    clampPage(total);
+    const wrap = document.createElement("div");
+    wrap.className = "control-row";
+    wrap.style.alignItems = "center";
+    wrap.style.justifyContent = "space-between";
+    wrap.style.gap = "10px";
+
+    const left = document.createElement("div");
+    left.style.display = "flex";
+    left.style.gap = "8px";
+    left.style.alignItems = "center";
+
+    const prev = document.createElement("button");
+    prev.type = "button";
+    prev.className = "ribbon-button ghost";
+    prev.textContent = "Prev";
+    prev.disabled = currentPage === 0;
+    prev.addEventListener("click", () => {
+      if (currentPage === 0) return;
+      currentPage -= 1;
+      onChange();
+    });
+
+    const maxPage = Math.max(0, Math.ceil(total / pageSize) - 1);
+    const next = document.createElement("button");
+    next.type = "button";
+    next.className = "ribbon-button ghost";
+    next.textContent = "Next";
+    next.disabled = currentPage >= maxPage;
+    next.addEventListener("click", () => {
+      if (currentPage >= maxPage) return;
+      currentPage += 1;
+      onChange();
+    });
+
+    const info = document.createElement("div");
+    info.className = "status-bar";
+    const from = total === 0 ? 0 : currentPage * pageSize + 1;
+    const to = Math.min(total, (currentPage + 1) * pageSize);
+    info.textContent = `${from}-${to} of ${total}`;
+
+    left.append(prev, next, info);
+
+    const right = document.createElement("div");
+    right.style.display = "flex";
+    right.style.gap = "8px";
+    right.style.alignItems = "center";
+
+    const sizeLabel = document.createElement("span");
+    sizeLabel.textContent = "Page size";
+    sizeLabel.className = "status-bar";
+
+    const size = document.createElement("select");
+    size.className = "audio-select";
+    [10, 25, 50, 100].forEach((value) => {
+      const opt = document.createElement("option");
+      opt.value = String(value);
+      opt.textContent = String(value);
+      size.appendChild(opt);
+    });
+    size.value = String(pageSize);
+    size.addEventListener("change", () => {
+      const parsed = Number(size.value);
+      pageSize = Number.isFinite(parsed) && parsed > 0 ? parsed : 10;
+      currentPage = 0;
+      onChange();
+    });
+
+    right.append(sizeLabel, size);
+    wrap.append(left, right);
+    return wrap;
+  };
+
+  const buildRemotePager = (count: number, onChange: () => void): HTMLElement => {
+    const wrap = document.createElement("div");
+    wrap.className = "control-row";
+    wrap.style.alignItems = "center";
+    wrap.style.justifyContent = "space-between";
+    wrap.style.gap = "10px";
+
+    const left = document.createElement("div");
+    left.style.display = "flex";
+    left.style.gap = "8px";
+    left.style.alignItems = "center";
+
+    const prev = document.createElement("button");
+    prev.type = "button";
+    prev.className = "ribbon-button ghost";
+    prev.textContent = "Prev";
+    prev.disabled = currentPage === 0;
+    prev.addEventListener("click", () => {
+      if (currentPage === 0) return;
+      currentPage -= 1;
+      onChange();
+    });
+
+    const next = document.createElement("button");
+    next.type = "button";
+    next.className = "ribbon-button ghost";
+    next.textContent = "Next";
+    next.disabled = !remotePagerHasMore;
+    next.addEventListener("click", () => {
+      if (!remotePagerHasMore) return;
+      currentPage += 1;
+      onChange();
+    });
+
+    const info = document.createElement("div");
+    info.className = "status-bar";
+    const from = count === 0 ? 0 : remotePagerOffset + 1;
+    const to = remotePagerOffset + count;
+    info.textContent = `${from}-${to}${remotePagerHasMore ? "+" : ""}`;
+
+    left.append(prev, next, info);
+
+    const right = document.createElement("div");
+    right.style.display = "flex";
+    right.style.gap = "8px";
+    right.style.alignItems = "center";
+
+    const sizeLabel = document.createElement("span");
+    sizeLabel.textContent = "Page size";
+    sizeLabel.className = "status-bar";
+
+    const size = document.createElement("select");
+    size.className = "audio-select";
+    [10, 25, 50, 100].forEach((value) => {
+      const opt = document.createElement("option");
+      opt.value = String(value);
+      opt.textContent = String(value);
+      size.appendChild(opt);
+    });
+    size.value = String(pageSize);
+    size.addEventListener("change", () => {
+      const parsed = Number(size.value);
+      pageSize = Number.isFinite(parsed) && parsed > 0 ? parsed : 10;
+      currentPage = 0;
+      onChange();
+    });
+
+    right.append(sizeLabel, size);
+    wrap.append(left, right);
+    return wrap;
+  };
   const renderSectionList = (views: SectionView[]) => {
     const token = (renderToken += 1);
     list.innerHTML = "";
@@ -1081,6 +1321,24 @@ export function renderSectionsPage(
       empty.textContent = "No sections matched the current filters.";
       list.appendChild(empty);
       return;
+    }
+
+    const renderPage = () => {
+      const reload = (renderSectionList as any).__remoteReload as (() => void) | undefined;
+      if (remotePagerMode && typeof reload === "function") {
+        reload();
+        return;
+      }
+      renderSectionList(views);
+    };
+    const pageViews = remotePagerMode ? views : (() => {
+      list.appendChild(buildPager(views.length, renderPage));
+      const startIdx = currentPage * pageSize;
+      const endIdx = Math.min(views.length, startIdx + pageSize);
+      return views.slice(startIdx, endIdx);
+    })();
+    if (remotePagerMode) {
+      list.appendChild(buildRemotePager(pageViews.length, renderPage));
     }
 
     const chunkSize = 40;
@@ -1179,12 +1437,12 @@ export function renderSectionsPage(
     const renderChunk = () => {
       if (token !== renderToken) return;
       const frag = document.createDocumentFragment();
-      const end = Math.min(idx + chunkSize, views.length);
+      const end = Math.min(idx + chunkSize, pageViews.length);
       for (; idx < end; idx += 1) {
-        frag.appendChild(buildCard(views[idx]));
+        frag.appendChild(buildCard(pageViews[idx]));
       }
       list.appendChild(frag);
-      if (idx < views.length) {
+      if (idx < pageViews.length) {
         if (!sentinel.isConnected) list.appendChild(sentinel);
         if (sentinelObserver) sentinelObserver.observe(sentinel);
         else scheduleIdle(renderChunk);
@@ -1207,6 +1465,13 @@ export function renderSectionsPage(
       list.appendChild(empty);
       return;
     }
+
+    const renderPage = () => renderBatchList(records);
+    list.appendChild(buildPager(records.length, renderPage));
+
+    const startIdx = currentPage * pageSize;
+    const endIdx = Math.min(records.length, startIdx + pageSize);
+    const pageRecords = records.slice(startIdx, endIdx);
 
     let observer: IntersectionObserver | null = null;
     if ("IntersectionObserver" in window) {
@@ -1350,13 +1615,13 @@ export function renderSectionsPage(
     const renderChunk = () => {
       if (token !== renderToken) return;
       const frag = document.createDocumentFragment();
-      const end = Math.min(idx + chunkSize, records.length);
+      const end = Math.min(idx + chunkSize, pageRecords.length);
       for (; idx < end; idx += 1) {
-        const record = records[idx];
+        const record = pageRecords[idx];
         frag.appendChild(buildCard(record.batch, record.payloads));
       }
       list.appendChild(frag);
-      if (idx < records.length) {
+      if (idx < pageRecords.length) {
         scheduleIdle(renderChunk);
       }
     };
@@ -1365,6 +1630,11 @@ export function renderSectionsPage(
   };
 
   const applySectionFilters = () => {
+    if (remotePagerMode) {
+      const reload = (renderSectionList as any).__remoteReload as (() => void) | undefined;
+      if (reload) reload();
+      return;
+    }
     const term = sectionFilters.search.trim().toLowerCase();
     const tagTerm = sectionFilters.tagContains.trim().toLowerCase();
 
@@ -1517,6 +1787,45 @@ export function renderSectionsPage(
     status.textContent = isBatchMode ? "Loading batches..." : "Loading sections...";
     try {
       if (isBatchMode) {
+        if (isCorpus) {
+          remotePagerMode = true;
+          list.innerHTML = "";
+          status.textContent = "Loading corpus payloads...";
+
+          const loadPayloadPage = async () => {
+            const offset = currentPage * pageSize;
+            remotePagerOffset = offset;
+            const t0 = performance.now();
+            const page = await loadBatchPayloadsPage(runPath, offset, pageSize);
+            remotePagerHasMore = Boolean(page.hasMore);
+            list.innerHTML = "";
+            list.appendChild(buildRemotePager(page.payloads.length, () => loadPayloadPage()));
+
+            const frag = document.createDocumentFragment();
+            page.payloads.forEach((payload) => {
+              const card = document.createElement("div");
+              card.className = "section-card";
+              card.style.cursor = "pointer";
+              const title = document.createElement("h4");
+              title.textContent = String((payload as any).title || (payload as any).rq_question || (payload as any).rq || payload.id || "Payload");
+              const body = document.createElement("div");
+              body.className = "status-bar";
+              body.textContent = String((payload as any).paraphrase || (payload as any).direct_quote || (payload as any).text || "").slice(0, 240);
+              card.appendChild(title);
+              card.appendChild(body);
+              card.addEventListener("click", () => emitBatchPayload(container, payload, state.activeRunId));
+              frag.appendChild(card);
+            });
+            list.appendChild(frag);
+            const elapsed = Math.round(performance.now() - t0);
+            console.info("[analyse][perf][corpus-payloads-page-load]", { ms: elapsed, offset, count: page.payloads.length, hasMore: page.hasMore });
+            status.textContent = `${page.payloads.length} payloads (page ${currentPage + 1}${page.hasMore ? "" : ", last"})`;
+          };
+
+          await loadPayloadPage();
+          return;
+        }
+        remotePagerMode = false;
         const t0 = performance.now();
         batches = await loadBatches(runPath);
         batchViews = buildBatchPayloadViews(batches);
@@ -1551,46 +1860,49 @@ export function renderSectionsPage(
           void loadSections(runPath, "r3");
         });
       } else {
-        const t0 = performance.now();
-        const secData = await loadSections(runPath, round);
-        sections = secData;
-        sectionViews = buildSectionViews(sections);
-        if (filterWorker) {
-          filterWorker.postMessage({
-            type: "init_sections",
-            sessionId: workerSessionId,
-            items: sectionViews.map((view, idx) => ({
-              idx,
-              title: view.title,
-              rq: view.rq,
-              gold: view.gold,
-              route: view.route,
-              evidence: view.evidence,
-              potentialTokens: view.potentialTokens,
-              tags: view.tags,
-              text: view.text,
-            })),
+        remotePagerMode = true;
+
+        const loadPage = async () => {
+          const offset = currentPage * pageSize;
+          remotePagerOffset = offset;
+          const t0 = performance.now();
+          const queryPayload = {
+            search: sectionFilters.search,
+            tagContains: sectionFilters.tagContains,
+            tags: Array.from(sectionFilters.tags),
+            gold: Array.from(sectionFilters.gold),
+            rq: Array.from(sectionFilters.rq),
+            route: Array.from(sectionFilters.route),
+            evidence: Array.from(sectionFilters.evidence),
+            potential: Array.from(sectionFilters.potential),
+          };
+          const result = await querySections(runPath, round, queryPayload, offset, pageSize);
+          remotePagerHasMore = Boolean(result.hasMore);
+          sections = result.sections;
+          sectionViews = buildSectionViews(sections);
+          filteredViews = sectionViews;
+          renderSectionFilters(result.facets || {});
+          renderSectionList(filteredViews);
+          const elapsed = Math.round(performance.now() - t0);
+          console.info("[analyse][perf][sections-query-load]", {
+            round,
+            ms: elapsed,
+            offset,
+            count: result.sections.length,
+            hasMore: result.hasMore,
+            totalMatches: result.totalMatches
           });
-        }
-        renderSectionFilters({});
-        applySectionFilters();
-        emitSectionsState({ all: sections, filtered: filteredViews.map((v) => v.section) });
-        status.textContent = `${sections.length} sections loaded`;
-        const elapsed = Math.round(performance.now() - t0);
-        console.info("[analyse][perf][sections-load]", { round, ms: elapsed, count: sections.length });
-        if (elapsed > 2000) {
-          console.warn("[analyse][perf][sections-load][slow]", { round, ms: elapsed, count: sections.length });
-        }
-        scheduleIdle(async () => {
-          const dqData = await loadDirectQuoteLookup(runPath);
-          dqLookup = dqData?.data || {};
-          dqLookupPath = dqData?.path || null;
-          console.info("[analyse][sections][dq-lookup]", { count: Object.keys(dqLookup || {}).length, path: dqLookupPath });
-        });
-        scheduleIdle(() => {
-          if (round !== "r2") void loadSections(runPath, "r2");
-          if (round !== "r3") void loadSections(runPath, "r3");
-        });
+          status.textContent = `${result.totalMatches} matches (showing ${result.sections.length}, page ${currentPage + 1}${result.hasMore ? "" : ", last"})`;
+          emitSectionsState({ filtered: filteredViews.map((v) => v.section) });
+        };
+
+        (renderSectionList as any).__remoteReload = () => void loadPage();
+        await loadPage();
+
+        // Avoid loading the full direct_quote_lookup.json into the renderer for very large corpora.
+        // We fetch per-id entries over IPC on-demand during anchor clicks.
+        dqLookup = {};
+        dqLookupPath = null;
       }
     } catch (error) {
       console.error(error);

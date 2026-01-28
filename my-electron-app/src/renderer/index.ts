@@ -90,10 +90,15 @@ const htmlElement = document.documentElement;
 let teardownRibbonMenu: () => void = () => {};
 let retrieveDataHubToolId: string | undefined;
 let retrieveQueryToolId: string | undefined;
+let lastRibbonHeight = -1;
 
 function syncRibbonHeight(): void {
   if (!ribbonElement) return;
+  // Reading layout is expensive; do it at most once per frame (debounced below)
+  // and only write the CSS var when it actually changes.
   const height = ribbonElement.offsetHeight;
+  if (height === lastRibbonHeight) return;
+  lastRibbonHeight = height;
   document.documentElement.style.setProperty("--ribbon-height", `${height}px`);
 }
 
@@ -256,6 +261,10 @@ const scheduleIdle = (task: () => void, timeout = 120): void => {
   }
 };
 
+const scheduleRaf = (task: () => void): void => {
+  window.requestAnimationFrame(() => task());
+};
+
 function ensureWriteToolTab(): void {
   const existing = layoutRoot.serialize().tabs.find((t) => t.toolType === "write-leditor");
   if (!existing) {
@@ -375,6 +384,8 @@ document.addEventListener("analyse-open-pdf", (event) => {
   }
 
   const mergedMeta = { ...(payloadRaw || {}), ...(detail.meta || {}) };
+  const resolvedPdfPath =
+    payloadRaw.pdf_path || payloadRaw.pdf || mergedMeta.pdf_path || mergedMeta.pdf || payloadRaw.source || detail.pdfPath;
   const analysePayload = {
     id: detail.dqid || detail.sectionId || detail.href || "",
     title: detail.title,
@@ -384,7 +395,9 @@ document.addEventListener("analyse-open-pdf", (event) => {
     route: detail.route,
     runId: detail.runId,
     page,
-    source: payloadRaw.pdf_path || payloadRaw.pdf || mergedMeta.pdf_path || mergedMeta.pdf,
+    // Keep legacy `source` but also include `pdf_path` so downstream renderers can reliably find it.
+    source: resolvedPdfPath,
+    pdf_path: resolvedPdfPath,
     raw: payloadRaw,
     preferredPanel: detail.preferredPanel
   };
@@ -414,7 +427,14 @@ document.addEventListener("analyse-render-pdf", (event) => {
   const rawPayload = pl?.raw ?? pl;
   console.info("[analyse][raw-tab][payload]", rawPayload);
   const sourcePayload = rawPayload ?? pl;
-  const pdfPathRaw: string | undefined = detail.pdfPath || sourcePayload.pdf_path;
+  const pdfPathRaw: string | undefined =
+    detail.pdfPath ||
+    sourcePayload.pdf_path ||
+    sourcePayload.pdf ||
+    sourcePayload.source ||
+    (sourcePayload.meta?.pdf_path as string | undefined) ||
+    (sourcePayload.meta?.pdf as string | undefined) ||
+    detail.source;
   const parsePageNumber = (value: unknown): number | undefined => {
     if (typeof value === "number" && Number.isFinite(value)) return value;
     if (typeof value === "string") {
@@ -543,6 +563,7 @@ const tabRibbon = new TabRibbon({
   }),
   initialTab: "retrieve",
   onTabChange: (tabId) => {
+    const t0 = performance.now();
     panelGridContainer.style.display = "";
     const showAnalyse = tabId === "analyse";
     toolHost.style.display = showAnalyse ? "none" : "flex";
@@ -552,8 +573,9 @@ const tabRibbon = new TabRibbon({
     if (tabId !== "tools") {
       panelGrid.ensurePanelVisible(2);
     }
-  if (!showAnalyse && tabId !== "tools") {
-      ensureSectionTool(tabId, { replace: true });
+    if (!showAnalyse && tabId !== "tools") {
+      // Keep tools mounted per tab to avoid expensive teardown/recreate on tab switches.
+      ensureSectionTool(tabId);
     }
     if (tabId === "settings") {
       openSettingsWindow();
@@ -561,6 +583,13 @@ const tabRibbon = new TabRibbon({
       lastNonSettingsTab = tabId;
     }
     syncRibbonHeightDebounced();
+    // Measure perceived tab-switch cost to first paint.
+    scheduleRaf(() => {
+      scheduleRaf(() => {
+        const ms = Math.round(performance.now() - t0);
+        if (ms > 60) console.info("[perf][tab-switch]", { tabId, ms });
+      });
+    });
   }
 });
 tabRibbon.registerTabChangeListener(() => syncRibbonHeightDebounced());
@@ -571,7 +600,7 @@ ribbonHeader.addEventListener("click", (event) => {
   if (!button) return;
   if (button.dataset.tabId === "retrieve") {
     panelGrid.ensurePanelVisible(2);
-    ensureRetrieveDataHubTool({ replace: true });
+    ensureRetrieveDataHubTool();
   }
 });
 window.addEventListener("resize", syncRibbonHeightDebounced);
@@ -610,7 +639,8 @@ ensureRetrieveDataHubTool({ replace: true });
 
 document.addEventListener("retrieve:ensure-panel2", () => {
   panelGrid.ensurePanelVisible(2);
-  ensureRetrieveDataHubTool({ replace: true });
+  // Keep tool instance to avoid expensive remounting.
+  ensureRetrieveDataHubTool();
 });
 
 document.addEventListener("ribbon:action", (event) => {
@@ -628,7 +658,7 @@ document.addEventListener("ribbon:action", (event) => {
     tools: "tools"
   };
   const tabId = map[phase] ?? activeTab;
-  ensureSectionTool(tabId, { replace: true });
+  ensureSectionTool(tabId);
 });
 
 window.addEventListener("keydown", (ev) => {
@@ -651,219 +681,151 @@ function renderAnalyseRibbon(mount: HTMLElement): void {
   mount.innerHTML = "";
   mount.classList.add("ribbon-root");
 
-  const state = analyseStore.getState();
-
   const formatRunLabel = (run: AnalyseRun): string => {
     const leaf = (run.path || run.label || run.id || "").split(/[/\\]/).pop() || run.label || run.id || "Run";
     return leaf;
   };
 
-  const render = (runs: AnalyseRun[], activeRunId?: string): void => {
-    if (!analyseRibbonMount) return;
-    analyseRibbonMount.innerHTML = "";
-    if (analyseAudioController) {
-      analyseAudioController.dispose?.();
-      analyseAudioController = null;
-    }
-    const dataGroup = document.createElement("div");
-    dataGroup.className = "ribbon-group";
-    const dataTitle = document.createElement("h3");
-    dataTitle.textContent = "Data";
-    dataGroup.appendChild(dataTitle);
+  // Build the Analyse ribbon once and only update the dynamic pieces (runs + selection).
+  const dataGroup = document.createElement("div");
+  dataGroup.className = "ribbon-group";
+  const dataTitle = document.createElement("h3");
+  dataTitle.textContent = "Data";
+  dataGroup.appendChild(dataTitle);
 
-    const dataBody = document.createElement("div");
-    dataBody.style.display = "flex";
-    dataBody.style.flexDirection = "column";
-    dataBody.style.gap = "10px";
+  const dataBody = document.createElement("div");
+  dataBody.style.display = "flex";
+  dataBody.style.flexDirection = "column";
+  dataBody.style.gap = "10px";
 
-    const dashboardRow = document.createElement("div");
-    dashboardRow.style.display = "flex";
-    dashboardRow.style.alignItems = "center";
-    dashboardRow.style.flexWrap = "wrap";
-    dashboardRow.style.gap = "10px";
+  const dashboardRow = document.createElement("div");
+  dashboardRow.style.display = "flex";
+  dashboardRow.style.alignItems = "center";
+  dashboardRow.style.flexWrap = "wrap";
+  dashboardRow.style.gap = "10px";
 
-    const corpusBtn = document.createElement("button");
-    corpusBtn.type = "button";
-    corpusBtn.className = "ribbon-button ribbon-button--compact";
-    corpusBtn.textContent = "Corpus";
-    corpusBtn.addEventListener("click", () => {
-      console.info("[analyse][ui][corpus-button]", analyseStore.getState());
-      emitAnalyseAction("analyse/open_corpus");
+  const corpusBtn = document.createElement("button");
+  corpusBtn.type = "button";
+  corpusBtn.className = "ribbon-button ribbon-button--compact";
+  corpusBtn.textContent = "Corpus";
+  corpusBtn.addEventListener("click", () => {
+    console.info("[analyse][ui][corpus-button]", analyseStore.getState());
+    emitAnalyseAction("analyse/open_corpus");
+  });
+  dashboardRow.appendChild(corpusBtn);
+
+  const dashLabel = document.createElement("span");
+  dashLabel.textContent = "Dashboard";
+  dashLabel.className = "status-bar";
+  dashLabel.style.padding = "6px 10px";
+  dashLabel.style.borderRadius = "10px";
+  dashLabel.style.minWidth = "88px";
+  dashboardRow.appendChild(dashLabel);
+
+  const runSelect = document.createElement("select");
+  runSelect.style.minWidth = "220px";
+  runSelect.style.flex = "1";
+  dashboardRow.appendChild(runSelect);
+
+  const rescanBtn = document.createElement("button");
+  rescanBtn.type = "button";
+  rescanBtn.className = "ribbon-button ghost";
+  rescanBtn.textContent = "Rescan";
+  rescanBtn.addEventListener("click", () => {
+    console.info("[analyse][ui][dashboard-rescan]");
+    void refreshAnalyseRuns();
+  });
+  dashboardRow.appendChild(rescanBtn);
+
+  dataBody.appendChild(dashboardRow);
+  dataGroup.appendChild(dataBody);
+
+  const roundsGroup = document.createElement("div");
+  roundsGroup.className = "ribbon-group";
+  const roundsTitle = document.createElement("h3");
+  roundsTitle.textContent = "Rounds";
+  roundsGroup.appendChild(roundsTitle);
+  const roundsBody = document.createElement("div");
+  roundsBody.style.display = "flex";
+  roundsBody.style.flexDirection = "row";
+  roundsBody.style.flexWrap = "wrap";
+  roundsBody.style.alignItems = "center";
+  roundsBody.style.gap = "8px 10px";
+  (["r1", "r2", "r3"] as const).forEach((roundId, idx) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "ribbon-button";
+    btn.textContent = `Round ${idx + 1}`;
+    btn.addEventListener("click", () => {
+      console.info("[analyse][ui][round-button]", { round: roundId, run: analyseStore.getState().activeRunPath });
+      emitAnalyseAction(`analyse/open_sections_${roundId}` as AnalyseAction);
     });
-    dashboardRow.appendChild(corpusBtn);
+    roundsBody.appendChild(btn);
+  });
+  roundsGroup.appendChild(roundsBody);
 
-    const dashLabel = document.createElement("span");
-    dashLabel.textContent = "Dashboard";
-    dashLabel.className = "status-bar";
-    dashLabel.style.padding = "6px 10px";
-    dashLabel.style.borderRadius = "10px";
-    dashLabel.style.minWidth = "88px";
-    dashboardRow.appendChild(dashLabel);
+  const audioGroup = document.createElement("div");
+  audioGroup.className = "ribbon-group";
+  const audioTitle = document.createElement("h3");
+  audioTitle.textContent = "Audio";
+  audioGroup.appendChild(audioTitle);
 
-    const runSelect = document.createElement("select");
-    runSelect.style.minWidth = "220px";
-    runSelect.style.flex = "1";
+  const audioWidget = document.createElement("div");
+  audioWidget.className = "audio-widget";
+  audioGroup.appendChild(audioWidget);
+
+  mount.appendChild(dataGroup);
+  mount.appendChild(roundsGroup);
+  mount.appendChild(audioGroup);
+
+  let scheduled = false;
+  let lastKey = "";
+  let lastRuns: AnalyseRun[] = [];
+
+  const updateRuns = (runs: AnalyseRun[], activeRunId?: string) => {
+    const key = `${activeRunId || ""}::${runs.length}::${runs.map((r) => r.id).join(",")}`;
+    if (key === lastKey) return;
+    lastKey = key;
+    lastRuns = runs;
+    runSelect.innerHTML = "";
     if (!runs.length) {
       const opt = document.createElement("option");
       opt.textContent = "No runs discovered";
       opt.disabled = true;
       opt.selected = true;
       runSelect.appendChild(opt);
-    } else {
-      runs.forEach((run) => {
-        const opt = document.createElement("option");
-        opt.value = run.id;
-        opt.textContent = formatRunLabel(run);
-        opt.selected = run.id === activeRunId;
-        runSelect.appendChild(opt);
-      });
+      return;
     }
-    runSelect.addEventListener("change", async () => {
-      const next = runs.find((r) => r.id === runSelect.value) || null;
-      console.info("[analyse][ui][dashboard-select]", { runId: next?.id, runPath: next?.path });
-      await setActiveAnalyseRun(next);
-      emitAnalyseAction("analyse/open_dashboard");
-      analyseWorkspace.openPageById(analyseStore.getState().activePageId);
-    });
-    dashboardRow.appendChild(runSelect);
-
-    const rescanBtn = document.createElement("button");
-    rescanBtn.type = "button";
-    rescanBtn.className = "ribbon-button ghost";
-    rescanBtn.textContent = "Rescan";
-    rescanBtn.addEventListener("click", () => {
-      console.info("[analyse][ui][dashboard-rescan]");
-      void refreshAnalyseRuns();
-    });
-    dashboardRow.appendChild(rescanBtn);
-
-    dataBody.appendChild(dashboardRow);
-
-    dataGroup.appendChild(dataBody);
-
-    const roundsGroup = document.createElement("div");
-    roundsGroup.className = "ribbon-group";
-    const roundsTitle = document.createElement("h3");
-    roundsTitle.textContent = "Rounds";
-    roundsGroup.appendChild(roundsTitle);
-    const roundsBody = document.createElement("div");
-    roundsBody.style.display = "flex";
-    roundsBody.style.flexDirection = "row";
-    roundsBody.style.flexWrap = "wrap";
-    roundsBody.style.alignItems = "center";
-    roundsBody.style.gap = "8px 10px";
-    (["r1", "r2", "r3"] as const).forEach((roundId, idx) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "ribbon-button";
-      btn.textContent = `Round ${idx + 1}`;
-      btn.addEventListener("click", () => {
-        console.info("[analyse][ui][round-button]", { round: roundId, run: analyseStore.getState().activeRunPath });
-        emitAnalyseAction(`analyse/open_sections_${roundId}` as AnalyseAction);
-      });
-      roundsBody.appendChild(btn);
-    });
-    roundsGroup.appendChild(roundsBody);
-
-    const audioGroup = document.createElement("div");
-    audioGroup.className = "ribbon-group";
-    const audioTitle = document.createElement("h3");
-    audioTitle.textContent = "Audio";
-    audioGroup.appendChild(audioTitle);
-
-    const audioWidget = document.createElement("div");
-    audioWidget.className = "audio-widget";
-
-    const row1 = document.createElement("div");
-    row1.className = "audio-widget__row";
-    const playBtn = document.createElement("button");
-    playBtn.type = "button";
-    playBtn.className = "audio-btn play";
-    playBtn.textContent = "▶";
-    playBtn.addEventListener("click", () => emitAnalyseAction("analyse/audio_read_current"));
-    const stopBtn = document.createElement("button");
-    stopBtn.type = "button";
-    stopBtn.className = "audio-btn stop";
-    stopBtn.textContent = "■";
-    stopBtn.addEventListener("click", () => emitAnalyseAction("analyse/audio_stop"));
-    const cacheBtn = document.createElement("button");
-    cacheBtn.type = "button";
-    cacheBtn.className = "audio-cache";
-    cacheBtn.textContent = "Cache";
-    cacheBtn.addEventListener("click", () => emitAnalyseAction("analyse/audio_cache_status"));
-    const voice = document.createElement("select");
-    voice.className = "audio-select";
-    ["alloy", "ash", "ballad", "coral", "echo", "fable", "nova", "onyx", "sage", "shimmer", "verse"].forEach((v) => {
+    runs.forEach((run) => {
       const opt = document.createElement("option");
-      opt.value = v;
-      opt.textContent = v;
-      voice.appendChild(opt);
+      opt.value = run.id;
+      opt.textContent = formatRunLabel(run);
+      opt.selected = run.id === activeRunId;
+      runSelect.appendChild(opt);
     });
-    const refs = document.createElement("label");
-    const refsBox = document.createElement("input");
-    refsBox.type = "checkbox";
-    const refsText = document.createElement("span");
-    refsText.textContent = "Refs";
-    refs.appendChild(refsBox);
-    refs.appendChild(refsText);
-    const rateBtn = document.createElement("button");
-    rateBtn.type = "button";
-    rateBtn.className = "audio-rate";
-    rateBtn.textContent = "1.2x";
-    row1.append(playBtn, stopBtn, cacheBtn, voice, refs, rateBtn);
+  };
 
-    const grip = document.createElement("button");
-    grip.type = "button";
-    grip.className = "audio-grip";
-    grip.textContent = "⠿";
-    grip.title = "Audio panel";
-    row1.append(grip);
+  runSelect.addEventListener("change", async () => {
+    const next = lastRuns.find((r) => r.id === runSelect.value) || null;
+    console.info("[analyse][ui][dashboard-select]", { runId: next?.id, runPath: next?.path });
+    await setActiveAnalyseRun(next);
+    emitAnalyseAction("analyse/open_dashboard");
+    analyseWorkspace.openPageById(analyseStore.getState().activePageId);
+  });
 
-    audioWidget.appendChild(row1);
+  const syncAudioWidget = () => {
+    const active = (document.querySelector("[data-active-tab]") as HTMLElement | null) || ribbonActions;
+    const actionsRect = active.getBoundingClientRect();
+    const height = Math.max(0, Math.floor(actionsRect.height));
+    audioWidget.style.height = `${height}px`;
+    audioWidget.style.setProperty("--audio-control-height", `${Math.max(22, Math.floor(height / 4))}px`);
+    audioWidget.style.width = "100%";
+  };
+  window.addEventListener("resize", () => scheduleRaf(syncAudioWidget));
+  scheduleRaf(syncAudioWidget);
 
-    const row2 = document.createElement("div");
-    row2.className = "audio-widget__row";
-    const slider = document.createElement("input");
-    slider.type = "range";
-    slider.className = "audio-slider";
-    slider.min = "0";
-    slider.max = "0";
-    slider.value = "0";
-    row2.appendChild(slider);
-    audioWidget.appendChild(row2);
-
-    const timeRow = document.createElement("div");
-    timeRow.className = "audio-time";
-    const pos = document.createElement("span");
-    pos.className = "audio-time__pos";
-    pos.textContent = "0:00";
-    const dur = document.createElement("span");
-    dur.className = "audio-time__dur";
-    dur.textContent = "/ 0:00";
-    timeRow.append(pos, dur);
-    audioWidget.appendChild(timeRow);
-
-    audioGroup.appendChild(audioWidget);
-
-    const syncAudioWidget = () => {
-      const activeTab =
-        (document.querySelector("[data-active-tab]") as HTMLElement | null) ||
-        (document.querySelector(".data-active-tab") as HTMLElement | null) ||
-        ribbonActions;
-      const actionsRect = activeTab.getBoundingClientRect();
-      const height = Math.max(0, Math.floor(actionsRect.height));
-      audioWidget.style.height = `${height}px`;
-      audioWidget.style.setProperty("--audio-control-height", `${Math.max(22, Math.floor(height / 4))}px`);
-      audioWidget.style.width = "100%";
-    };
-
-    syncAudioWidget();
-    window.addEventListener("resize", syncAudioWidget);
-
-    analyseRibbonMount.appendChild(dataGroup);
-    analyseRibbonMount.appendChild(roundsGroup);
-    analyseRibbonMount.appendChild(audioGroup);
-
+  // Defer expensive audio controller init so tab switches remain snappy.
+  if (!analyseAudioController) {
     scheduleIdle(() => {
       analyseAudioController = initAnalyseAudioController({
         widget: audioWidget,
@@ -872,17 +834,30 @@ function renderAnalyseRibbon(mount: HTMLElement): void {
           document.dispatchEvent(new CustomEvent("analyse-tts-cache-updated", { detail, bubbles: true }));
         }
       });
-    });
+    }, 500);
+  }
+
+  const scheduleUpdate = () => {
+    if (scheduled) return;
+    scheduled = true;
+    // Only update when Analyse tab is visible; avoid doing DOM work during other tab switches.
+    scheduleIdle(() => {
+      scheduled = false;
+      if (activeTab !== "analyse") return;
+      const state = analyseStore.getState();
+      updateRuns(state.runs || [], state.activeRunId);
+    }, 120);
   };
 
   if (!unsubscribeAnalyseRibbon) {
     unsubscribeAnalyseRibbon = analyseStore.subscribe((next) => {
-      render(next.runs || [], next.activeRunId);
+      // Coalesce store updates to avoid repeated DOM rebuilds during async loads.
+      scheduleUpdate();
     });
   }
 
-  render(state.runs || [], state.activeRunId);
-  if (!state.runs?.length) {
+  scheduleUpdate();
+  if (!analyseStore.getState().runs?.length) {
     scheduleIdle(() => {
       void refreshAnalyseRuns();
     });
@@ -1064,20 +1039,33 @@ function renderRibbonTab(tab: RibbonTab, mount: HTMLElement): void {
   }
 
   const grouped = groupBy(tab.actions ?? [], (action) => action.group || "Actions");
-  grouped.forEach((actions, group) => {
-    const wrapper = document.createElement("div");
-    wrapper.className = "ribbon-group";
-    const title = document.createElement("h3");
-    title.textContent = group;
-    wrapper.appendChild(title);
-    actions.forEach((action) => wrapper.appendChild(createActionButton(action)));
-    mount.appendChild(wrapper);
-  });
+  // Defer heavy ribbon DOM construction so tab switches feel instant.
+  const placeholder = document.createElement("div");
+  placeholder.className = "status-bar";
+  placeholder.textContent = "Loading…";
+  mount.appendChild(placeholder);
 
-  if (tab.phase === "screen") {
-    renderScreenStatus(mount);
-    refreshScreenStatus();
-  }
+  const token = ((mount as any).__ribbonToken = ((mount as any).__ribbonToken || 0) + 1);
+  scheduleIdle(() => {
+    if (((mount as any).__ribbonToken || 0) !== token) return;
+    mount.innerHTML = "";
+    grouped.forEach((actions, group) => {
+      const wrapper = document.createElement("div");
+      wrapper.className = "ribbon-group";
+      const title = document.createElement("h3");
+      title.textContent = group;
+      wrapper.appendChild(title);
+      actions.forEach((action) => wrapper.appendChild(createActionButton(action)));
+      mount.appendChild(wrapper);
+    });
+
+    if (tab.phase === "screen") {
+      renderScreenStatus(mount);
+      refreshScreenStatus();
+    }
+  }, 120);
+
+  // screen status gets rendered after deferred groups
 }
 
 function createActionButton(action: RibbonAction): HTMLButtonElement {
@@ -1932,12 +1920,12 @@ function ensureSectionTool(tabId: TabId, options?: { replace?: boolean }): void 
         panelTools.moveTool(existing, "panel2");
       }
     }
-    panelTools.focusTool(existing);
+    scheduleRaf(() => panelTools.focusTool(existing));
     return;
   }
   const id = panelTools.spawnTool(config.toolType, { panelId: "panel2", metadata: config.metadata });
   sectionToolIds[tabId] = id;
-  panelTools.focusTool(id);
+  scheduleRaf(() => panelTools.focusTool(id));
   if (tabId === "visualiser") {
     ensureVisualiserPanelsVisible();
   }
@@ -1951,12 +1939,12 @@ function ensureRetrieveDataHubTool(options?: { replace?: boolean }): void {
     delete sectionToolIds["retrieve"];
   }
   if (retrieveDataHubToolId) {
-    panelTools.focusTool(retrieveDataHubToolId);
+    scheduleRaf(() => panelTools.focusTool(retrieveDataHubToolId!));
     return;
   }
   const id = panelTools.spawnTool("retrieve-datahub", { panelId: "panel2" });
   retrieveDataHubToolId = id;
-  panelTools.focusTool(id);
+  scheduleRaf(() => panelTools.focusTool(id));
 }
 
 function ensureRetrieveQueryBuilderTool(options?: { replace?: boolean }): void {
@@ -1967,12 +1955,12 @@ function ensureRetrieveQueryBuilderTool(options?: { replace?: boolean }): void {
     delete sectionToolIds["retrieve"];
   }
   if (retrieveQueryToolId) {
-    panelTools.focusTool(retrieveQueryToolId);
+    scheduleRaf(() => panelTools.focusTool(retrieveQueryToolId!));
     return;
   }
   const id = panelTools.spawnTool("retrieve", { panelId: "panel2" });
   retrieveQueryToolId = id;
-  panelTools.focusTool(id);
+  scheduleRaf(() => panelTools.focusTool(id));
 }
 
 function sectionToolConfig(

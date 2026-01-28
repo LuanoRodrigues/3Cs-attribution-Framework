@@ -75,7 +75,11 @@ export const writeUsedBibliography = async (keys: string[]): Promise<void> => {
 
 export const exportBibliographyJson = async (): Promise<void> => {
   const library = await ensureReferencesLibrary();
-  const payload = JSON.stringify(library, null, 2);
+  const payload = JSON.stringify(
+    { updatedAt: library.updatedAt, items: Object.values(library.itemsByKey) },
+    null,
+    2
+  );
   const host = window.leditorHost;
   const contract = getHostContract();
   if (host?.writeFile && contract?.policy?.allowDiskWrites) {

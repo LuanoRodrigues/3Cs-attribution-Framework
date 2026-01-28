@@ -286,7 +286,17 @@ const paginateView = (
 };
 
 export const PageDocument = Document.extend({
-  content: "page+"
+  content: "page+",
+  addAttributes() {
+    return {
+      citationStyleId: {
+        default: "apa"
+      },
+      citationLocale: {
+        default: "en-US"
+      }
+    };
+  }
 });
 
 export const PageNode = Node.create({

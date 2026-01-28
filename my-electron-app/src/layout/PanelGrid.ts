@@ -116,34 +116,12 @@ export class PanelGrid {
     shell.dataset.minimized = "false";
     shell.dataset.collapsed = "false";
 
-    const chrome = document.createElement("div");
-    chrome.className = "panel-chrome";
-
-    const badge = document.createElement("span");
-    badge.className = "panel-index";
-    badge.textContent = String(definition.index);
-
-    const title = document.createElement("span");
-    title.className = "panel-title";
-    title.textContent = definition.title;
-
     const tabs = document.createElement("div");
     tabs.className = "panel-tabs panel-tabs--tiny";
+    tabs.setAttribute("aria-label", `${definition.title} tabs`);
     const tabButton = this.createTabButton(definition.id, definition.title, "pane-1");
     tabs.appendChild(tabButton);
     tabButton.classList.add("is-active");
-
-    const mini = document.createElement("button");
-    mini.type = "button";
-    mini.className = "panel-minimize";
-    mini.ariaLabel = `Toggle visibility for ${definition.title}`;
-    mini.textContent = "▾";
-    mini.addEventListener("click", () => this.toggleMinimized(definition.id, shell, mini));
-
-    chrome.appendChild(badge);
-    chrome.appendChild(title);
-    chrome.appendChild(tabs);
-    chrome.appendChild(mini);
 
     const content = document.createElement("div");
     content.className = "panel-content";
@@ -161,7 +139,7 @@ export class PanelGrid {
     }
     content.appendChild(pane);
 
-    shell.appendChild(chrome);
+    shell.appendChild(tabs);
     shell.appendChild(content);
 
     return { shell, content: pane };
@@ -171,7 +149,9 @@ export class PanelGrid {
     const tab = document.createElement("button");
     tab.type = "button";
     tab.className = "panel-tab";
-    tab.textContent = label;
+    tab.textContent = "";
+    tab.setAttribute("aria-label", label);
+    tab.setAttribute("title", label);
     tab.dataset.tabId = tabId;
     tab.dataset.paneId = paneId;
     tab.addEventListener("click", () => this.activatePane(tab));
@@ -191,9 +171,9 @@ export class PanelGrid {
     this.panels.forEach((record, panelId) => {
       const { shell } = record;
       shell.addEventListener("contextmenu", (event) => this.handleContextMenu(event as MouseEvent, panelId));
-      const chrome = shell.querySelector<HTMLElement>(".panel-chrome");
-      if (chrome) {
-        chrome.addEventListener("pointerdown", (event) => this.handleChromePointerDown(event as PointerEvent, panelId));
+      const tabs = shell.querySelector<HTMLElement>(".panel-tabs");
+      if (tabs) {
+        tabs.addEventListener("pointerdown", (event) => this.handleChromePointerDown(event as PointerEvent, panelId));
       }
     });
   }
@@ -298,18 +278,12 @@ export class PanelGrid {
     this.persistState();
   };
 
-  private toggleMinimized(panelId: PanelId, shell: HTMLElement, button: HTMLButtonElement): void {
-    const currentlyCollapsed = shell.dataset.minimized === "true";
-    this.setPanelCollapsed(panelId, !currentlyCollapsed, shell, button);
-  }
-
   private setPanelCollapsed(panelId: PanelId, collapsed: boolean, shell?: HTMLElement, button?: HTMLButtonElement): void {
     const record = this.panels.get(panelId);
     const targetShell = shell ?? record?.shell;
     if (!targetShell) {
       return;
     }
-    const minimizeButton = button ?? targetShell.querySelector<HTMLButtonElement>(".panel-minimize");
     if (collapsed) {
       this.state.lastRatios[panelId] = this.state.ratios[panelId];
       this.state.ratios[panelId] = 0;
@@ -317,9 +291,6 @@ export class PanelGrid {
       targetShell.dataset.minimized = "true";
       targetShell.dataset.collapsed = "true";
       targetShell.classList.add("panel-shell--collapsed");
-      if (minimizeButton) {
-        minimizeButton.textContent = "▴";
-      }
     } else {
       const restored = this.state.lastRatios[panelId] || DEFAULT_PANEL_PARTS[panelId];
       this.state.ratios[panelId] = restored;
@@ -327,9 +298,6 @@ export class PanelGrid {
       targetShell.dataset.minimized = "false";
       targetShell.dataset.collapsed = "false";
       targetShell.classList.remove("panel-shell--collapsed");
-      if (minimizeButton) {
-        minimizeButton.textContent = "▾";
-      }
     }
     this.applySizes();
     this.updateGutterVisibility();

@@ -1,12 +1,11 @@
-import { CODER_MIME, type CoderPayload } from "./coderTypes";
-import { normalizePayloadHtml } from "./coderState";
+import { CODER_MIME } from "./coderTypes";
 
 function isInsideCoderPanel(target?: Element | null): boolean {
   if (!target) return false;
   return Boolean(target.closest?.(".coder-surface"));
 }
 
-function buildPayloadFromSelection(): CoderPayload | null {
+function buildTextFromSelection(): string | null {
   const sel = window.getSelection?.();
   if (!sel || sel.isCollapsed) {
     return null;
@@ -15,30 +14,20 @@ function buildPayloadFromSelection(): CoderPayload | null {
   if (!text.trim()) {
     return null;
   }
-  try {
-    const range = sel.getRangeAt(0);
-    const container = document.createElement("div");
-    container.appendChild(range.cloneContents());
-    const rawHtml = container.innerHTML;
-    const normalizedHtml = normalizePayloadHtml({ text, html: rawHtml });
-    return {
-      title: text.length > 80 ? `${text.slice(0, 80).trimEnd()}…` : text,
-      text,
-      html: normalizedHtml,
-      section_html: normalizedHtml,
-      source: { scope: "selection" }
-    };
-  } catch {
-    return null;
-  }
+  return text;
 }
 
-function attachPayloadToTransfer(dataTransfer: DataTransfer, payload: CoderPayload): void {
+function attachTextToTransfer(dataTransfer: DataTransfer, text: string): void {
   try {
-    const serialized = JSON.stringify(payload);
-    dataTransfer.setData(CODER_MIME, serialized);
-    dataTransfer.setData("text/plain", payload.text || "");
-    dataTransfer.setData("text/html", payload.html || "");
+    // Keep drag/copy fast: avoid cloning DOM ranges to HTML, which can be extremely expensive
+    // for large documents and will block the renderer main thread.
+    dataTransfer.setData("text/plain", text);
+    // Clear our custom mime if present from other sources to ensure the drop path uses text/plain.
+    try {
+      dataTransfer.setData(CODER_MIME, "");
+    } catch {
+      // ignore
+    }
   } catch {
     // best effort only
   }
@@ -48,18 +37,18 @@ export function attachGlobalCoderDragSources(): () => void {
   const onDragStart = (ev: DragEvent) => {
     if (!ev || !ev.dataTransfer) return;
     if (isInsideCoderPanel(ev.target as Element | null)) return;
-    const payload = buildPayloadFromSelection();
-    if (!payload) return;
-    attachPayloadToTransfer(ev.dataTransfer, payload);
+    const text = buildTextFromSelection();
+    if (!text) return;
+    attachTextToTransfer(ev.dataTransfer, text);
     ev.dataTransfer.effectAllowed = "copy";
   };
 
   const onCopy = (ev: ClipboardEvent) => {
     if (!ev || !ev.clipboardData) return;
     if (isInsideCoderPanel(ev.target as Element | null)) return;
-    const payload = buildPayloadFromSelection();
-    if (!payload) return;
-    attachPayloadToTransfer(ev.clipboardData, payload);
+    const text = buildTextFromSelection();
+    if (!text) return;
+    attachTextToTransfer(ev.clipboardData, text);
     ev.preventDefault();
   };
 

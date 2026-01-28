@@ -29,9 +29,13 @@ import {
   updateAllCitationsAndBibliography
 } from "../csl/update.ts";
 import type { BibliographyNode as CslBibliographyNode, CitationNode as CslCitationNode, DocCitationMeta } from "../csl/types.ts";
+import homeTabRaw from "../ui/home.json";
+import insertTabRaw from "../ui/insert.json";
+import layoutTabRaw from "../ui/layout_tab.json";
 import referencesTabRaw from "../ui/references.json";
-import type { TabConfig } from "../ui/ribbon_config.ts";
-import { getReferencesCommandIds } from "../ui/references_command_contract.ts";
+import reviewTabRaw from "../ui/review.json";
+import viewTabRaw from "../ui/view.json";
+import type { ControlConfig, TabConfig } from "../ui/ribbon_config.ts";
 import {
   applySnapshotToTransaction,
   consumeRibbonSelection,
@@ -469,6 +473,7 @@ const runCslUpdate = (editor: Editor): void => {
     doc: editor.state.doc,
     getDocCitationMeta: (doc) => getDocCitationMeta(doc as ProseMirrorNode),
     extractCitationNodes: (doc) => extractCitationNodes(doc as ProseMirrorNode),
+    additionalItemKeys: collectDocumentCitationKeys(editor),
     findBibliographyNode: (doc) => (noteKind ? null : findBibliographyNode(doc as ProseMirrorNode)),
     setCitationNodeRenderedHtml: (node, html) => {
       const record = node as CitationNodeRecord;
@@ -841,11 +846,39 @@ const updateTocNodes = (editor: Editor, entries: TocEntry[]): boolean => {
 
 const collectDocumentCitationKeys = (editor: Editor): string[] => {
   const keys = new Set<string>();
+  const push = (value: unknown) => {
+    const key = typeof value === "string" ? value.trim() : "";
+    if (key) keys.add(key);
+  };
+  const pushGroup = (value: unknown) => {
+    const raw = typeof value === "string" ? value : "";
+    raw
+      .split(";")
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .forEach((part) => keys.add(part));
+  };
   editor.state.doc.descendants((node) => {
     if (node.type.name === "citation" && Array.isArray(node.attrs?.items)) {
       (node.attrs.items as Array<{ itemKey: string }>).forEach((item) => {
         if (item && typeof item.itemKey === "string" && item.itemKey.trim().length > 0) {
           keys.add(item.itemKey.trim());
+        }
+      });
+    }
+    // Also include citation anchors (link marks) that carry item keys.
+    if (Array.isArray((node as any).marks)) {
+      (node as any).marks.forEach((mark: any) => {
+        if (!mark || mark.type?.name !== "link") return;
+        const attrs = mark.attrs ?? {};
+        push(attrs.dataKey);
+        push(attrs.itemKey);
+        push(attrs.dataItemKey);
+        const href = typeof attrs.href === "string" ? attrs.href : "";
+        if (href.startsWith("citegrp://")) {
+          pushGroup(href.replace(/^citegrp:\/\//, ""));
+        } else if (href.startsWith("cite://")) {
+          push(href.replace(/^cite:\/\//, ""));
         }
       });
     }
@@ -2182,20 +2215,58 @@ Paragraphs: ${stats.paragraphs}`);
   }
 };
 
-const createReferencePlaceholder = (id: string): CommandHandler => {
-  return (_editor, args) => {
-    console.warn(`[References] placeholder command invoked: ${id}`, { args });
-  };
+const collectNestedControls = (control: ControlConfig): ControlConfig[] => {
+  const nested: ControlConfig[] = [];
+  if (Array.isArray(control.controls)) nested.push(...control.controls);
+  if (Array.isArray(control.menu)) nested.push(...control.menu);
+  if (Array.isArray(control.items)) nested.push(...control.items);
+  if (control.gallery && Array.isArray(control.gallery.controls)) {
+    nested.push(...control.gallery.controls);
+  }
+  return nested;
 };
 
-const registerReferenceCommandPlaceholders = (): void => {
-  const tab = referencesTabRaw as unknown as TabConfig;
-  const ids = getReferencesCommandIds(tab);
+const collectTabCommandIds = (tab: TabConfig): Set<string> => {
+  const ids = new Set<string>();
+  const traverse = (control: ControlConfig) => {
+    if (control.command?.id) ids.add(control.command.id);
+    collectNestedControls(control).forEach(traverse);
+  };
+  tab.groups?.forEach((group) => {
+    group.clusters?.forEach((cluster) => {
+      cluster.controls?.forEach(traverse);
+    });
+  });
+  return ids;
+};
+
+const createMissingCommandPlaceholder = (id: string): CommandHandler => {
+  const handler: CommandHandler = (_editor, args) => {
+    console.warn(`[Ribbon] missing command invoked: ${id}`, { args });
+    showPlaceholderDialog(id, "This command is not implemented yet.");
+  };
+  (handler as CommandHandler & { __missing?: boolean }).__missing = true;
+  return handler;
+};
+
+const registerMissingCommands = (): void => {
+  const tabs = [
+    homeTabRaw,
+    insertTabRaw,
+    layoutTabRaw,
+    referencesTabRaw,
+    reviewTabRaw,
+    viewTabRaw
+  ] as unknown as TabConfig[];
+  const ids = new Set<string>();
+  tabs.forEach((tab) => {
+    collectTabCommandIds(tab).forEach((id) => ids.add(id));
+  });
   ids.forEach((id) => {
     if (id in commandMap) return;
-    commandMap[id] = createReferencePlaceholder(id);
+    commandMap[id] = createMissingCommandPlaceholder(id);
   });
 };
 
-registerReferenceCommandPlaceholders();
+registerMissingCommands();
 

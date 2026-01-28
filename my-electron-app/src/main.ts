@@ -2,21 +2,12 @@ import fs from "fs";
 import path from "path";
 import net from "net";
 import { randomUUID } from "crypto";
+import os from "os";
 import { app, BrowserWindow, ipcMain, Menu, MenuItemConstructorOptions, shell, dialog } from "electron";
 import { pathToFileURL } from "url";
 import mammoth from "mammoth";
 
 import type { SectionLevel } from "./analyse/types";
-import {
-  ANALYSE_DIR,
-  buildDatasetHandles,
-  discoverRuns,
-  loadBatches,
-  loadSections,
-  summariseRun,
-  loadDirectQuoteLookup,
-  getDefaultBaseDir
-} from "./analyse/backend";
 import { addAudioCacheEntries, getAudioCacheStatus } from "./analyse/audioCache";
 import { exportConfigBundle, importConfigBundle } from "./config/bundle";
 import { SettingsService } from "./config/settingsService";
@@ -35,6 +26,22 @@ import { createCoderTestTree, createPdfTestPayload } from "./test/testFixtures";
 import { getCoderCacheDir } from "./session/sessionPaths";
 import type { SessionMenuAction } from "./session/sessionTypes";
 import { openSettingsWindow } from "./windows/settingsWindow";
+import { WorkerPool } from "./main/jobs/workerPool";
+import { LruCache } from "./main/jobs/lruCache";
+import {
+  buildDatasetHandles,
+  discoverRuns,
+  getDefaultBaseDir,
+  getDirectQuoteEntries,
+  loadBatches,
+  loadDirectQuoteLookup,
+  loadSectionsPage,
+  loadSections,
+  querySections,
+  loadBatchPayloadsPage,
+  summariseRun
+} from "./analyse/backend";
+import { executeRetrieveSearch } from "./main/ipc/retrieve_ipc";
 
 let mainWindow: BrowserWindow | null = null;
 let secretsVault: ReturnType<typeof getSecretsVault> | null = null;
@@ -59,6 +66,39 @@ app.commandLine.appendSwitch("disable-background-timer-throttling");
 app.commandLine.appendSwitch("disable-backgrounding-occluded-windows");
 app.commandLine.appendSwitch("enable-gpu-rasterization");
 app.commandLine.appendSwitch("enable-zero-copy");
+
+const cpuCount = Math.max(1, os.cpus()?.length ?? 1);
+const workerCount = Math.max(1, Math.min(cpuCount - 1, 4));
+let analysePool: WorkerPool | null = null;
+let retrievePool: WorkerPool | null = null;
+const analyseCache = new LruCache<unknown>(24);
+const retrieveCache = new LruCache<unknown>(12);
+
+function cacheKey(method: string, args: unknown[]): string {
+  try {
+    return `${method}:${JSON.stringify(args)}`;
+  } catch {
+    return `${method}:[unserializable]`;
+  }
+}
+
+async function runCached<T>(cache: LruCache<unknown>, method: string, args: unknown[], run: () => Promise<T>): Promise<T> {
+  const key = cacheKey(method, args);
+  const hit = cache.get(key) as T | undefined;
+  if (hit !== undefined) {
+    return hit;
+  }
+  const result = await run();
+  cache.set(key, result as unknown);
+  return result;
+}
+
+function requirePools(): { analysePool: WorkerPool; retrievePool: WorkerPool } {
+  if (!analysePool || !retrievePool) {
+    throw new Error("Worker pools are not initialized");
+  }
+  return { analysePool, retrievePool };
+}
 
 function getLogPath(): string {
   const targetDir = app.isPackaged ? app.getPath("userData") : path.join(app.getAppPath(), "..");
@@ -303,6 +343,101 @@ function resolveRepoRoot(): string {
   return path.resolve(__dirname, "..", "..");
 }
 
+function normalizeLegacyJson(raw: string): string {
+  return raw
+    .replace(/\bNaN\b/g, "null")
+    .replace(/\bnan\b/g, "null")
+    .replace(/\bInfinity\b/g, "null")
+    .replace(/\b-Infinity\b/g, "null");
+}
+
+function seedReferencesJsonFromDataHubCache(cacheDir: string): void {
+  try {
+    const outPath = path.join(cacheDir, "references.json");
+    if (fs.existsSync(outPath)) {
+      try {
+        const existing = JSON.parse(fs.readFileSync(outPath, "utf-8")) as { items?: unknown[] };
+        if (Array.isArray(existing?.items) && existing.items.length > 0) {
+          return;
+        }
+      } catch {
+        // regenerate
+      }
+    }
+    if (!fs.existsSync(cacheDir)) return;
+
+    const candidates = fs
+      .readdirSync(cacheDir)
+      .filter((name) => name.endsWith(".json") && name !== "references.json" && name !== "references_library.json")
+      .map((name) => path.join(cacheDir, name))
+      .filter((p) => {
+        try {
+          return fs.statSync(p).isFile();
+        } catch {
+          return false;
+        }
+      })
+      .sort((a, b) => {
+        try {
+          return fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs;
+        } catch {
+          return 0;
+        }
+      });
+    const pick = candidates[0];
+    if (!pick) return;
+
+    const raw = fs.readFileSync(pick, "utf-8");
+    const parsed = JSON.parse(normalizeLegacyJson(raw)) as { table?: { columns?: unknown[]; rows?: unknown[][] } };
+    const table = parsed?.table;
+    const columns = Array.isArray(table?.columns) ? (table?.columns as unknown[]) : [];
+    const rows = Array.isArray(table?.rows) ? (table?.rows as unknown[][]) : [];
+    if (!columns.length || !rows.length) return;
+
+    const colIndex = new Map<string, number>();
+    columns.forEach((col, idx) => colIndex.set(String(col).trim().toLowerCase(), idx));
+    const pickCell = (row: unknown[], name: string): string => {
+      const idx = colIndex.get(name);
+      if (idx === undefined) return "";
+      const value = row[idx];
+      return value == null ? "" : String(value).trim();
+    };
+
+    const itemsByKey = new Map<string, any>();
+    for (const row of rows) {
+      if (!Array.isArray(row)) continue;
+      const itemKey = pickCell(row, "key");
+      if (!itemKey) continue;
+      if (itemsByKey.has(itemKey)) continue;
+      const item: any = { itemKey };
+      const title = pickCell(row, "title");
+      const year = pickCell(row, "year");
+      const author = pickCell(row, "creator_summary") || pickCell(row, "author_summary") || pickCell(row, "authors");
+      const url = pickCell(row, "url");
+      const source = pickCell(row, "source");
+      const doi = pickCell(row, "doi");
+      const note = pickCell(row, "abstract");
+      if (title) item.title = title;
+      if (author) item.author = author;
+      if (year) item.year = year;
+      if (url) item.url = url;
+      if (source) item.source = source;
+      if (doi) item.doi = doi;
+      if (note) item.note = note;
+      itemsByKey.set(itemKey, item);
+    }
+
+    const payload = {
+      updatedAt: new Date().toISOString(),
+      items: Array.from(itemsByKey.values())
+    };
+    fs.writeFileSync(outPath, JSON.stringify(payload, null, 2), "utf-8");
+    console.info("[data-hub-cache] seeded references.json", { cacheDir, from: pick, count: payload.items.length });
+  } catch (error) {
+    console.warn("[data-hub-cache] failed to seed references.json", error);
+  }
+}
+
 function registerIpcHandlers(projectManager: ProjectManager): void {
   if (handlersRegistered) {
     return;
@@ -512,9 +647,9 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
       const safeNodeId = sanitizeNodeId(payload.nodeId);
       const jsonPath = path.join(payloadDir, `${safeNodeId}.json`);
       const txtPath = path.join(payloadDir, `${safeNodeId}.txt`);
-      await fs.promises.writeFile(jsonPath, JSON.stringify(payload.data, null, 2), "utf-8");
-      const textValue = String(payload.data?.text || payload.data?.title || "");
-      await fs.promises.writeFile(txtPath, textValue, "utf-8");
+      await fs.promises.writeFile(jsonPath, JSON.stringify(payload.data), "utf-8");
+      const textValue = String((payload.data as any)?.text || (payload.data as any)?.title || "");
+      await fs.promises.writeFile(txtPath, textValue.slice(0, 20000), "utf-8");
       return { baseDir: payloadDir, nodeId: safeNodeId };
     } catch (error) {
       console.warn("Failed to save coder payload", error);
@@ -576,8 +711,9 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
     try {
       await fs.promises.mkdir(coderDir, { recursive: true });
       const toWrite = payload?.state ? payload.state : createDefaultCoderState();
-      await fs.promises.writeFile(primaryPath, JSON.stringify(toWrite, null, 2), "utf-8");
-      await fs.promises.writeFile(legacyPath, JSON.stringify(toWrite, null, 2), "utf-8");
+      const encoded = JSON.stringify(toWrite);
+      await fs.promises.writeFile(primaryPath, encoded, "utf-8");
+      await fs.promises.writeFile(legacyPath, encoded, "utf-8");
       console.info(`[CODER][STATE] save ${primaryPath}`);
     } catch (error) {
       console.warn(`[CODER][STATE] save failed ${primaryPath}`, error);
@@ -585,7 +721,17 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
     return { baseDir: coderDir, statePath: primaryPath };
   });
 
-  registerRetrieveIpcHandlers();
+  registerRetrieveIpcHandlers({
+    search: async (query) =>
+      runCached(retrieveCache, "retrieve:search", [query], async () => {
+        try {
+          return await requirePools().retrievePool.run("retrieve:search", [query]);
+        } catch (error) {
+          console.warn("[retrieve][worker][fallback]", error);
+          return executeRetrieveSearch(query);
+        }
+      })
+  });
 
   ipcMain.handle("analyse-command", (_event, payload: CommandEnvelope) => {
     if (payload && payload.phase && payload.action) {
@@ -594,13 +740,120 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
     return { status: "ok" };
   });
 
-  ipcMain.handle("analyse:discoverRuns", (_event, baseDir?: string) => discoverRuns(baseDir));
-  ipcMain.handle("analyse:buildDatasets", (_event, runPath: string) => buildDatasetHandles(runPath));
-  ipcMain.handle("analyse:loadBatches", async (_event, runPath: string) => loadBatches(runPath));
-  ipcMain.handle("analyse:loadSections", async (_event, runPath: string, level: SectionLevel) => loadSections(runPath, level));
-  ipcMain.handle("analyse:loadDqLookup", async (_event, runPath: string) => loadDirectQuoteLookup(runPath));
-  ipcMain.handle("analyse:summariseRun", async (_event, runPath: string) => summariseRun(runPath));
-  ipcMain.handle("analyse:getDefaultBaseDir", () => getDefaultBaseDir());
+  ipcMain.handle("analyse:discoverRuns", async (_event, baseDir?: string) =>
+    runCached(analyseCache, "analyse:discoverRuns", [baseDir], async () => {
+      try {
+        return await requirePools().analysePool.run("analyse:discoverRuns", [baseDir]);
+      } catch (error) {
+        console.warn("[analyse][worker][fallback][discoverRuns]", error);
+        return discoverRuns(baseDir);
+      }
+    })
+  );
+  ipcMain.handle("analyse:buildDatasets", async (_event, runPath: string) =>
+    runCached(analyseCache, "analyse:buildDatasets", [runPath], async () => {
+      try {
+        return await requirePools().analysePool.run("analyse:buildDatasets", [runPath]);
+      } catch (error) {
+        console.warn("[analyse][worker][fallback][buildDatasets]", error);
+        return buildDatasetHandles(runPath);
+      }
+    })
+  );
+  ipcMain.handle("analyse:loadBatches", async (_event, runPath: string) =>
+    runCached(analyseCache, "analyse:loadBatches", [runPath], async () => {
+      try {
+        return await requirePools().analysePool.run("analyse:loadBatches", [runPath]);
+      } catch (error) {
+        console.warn("[analyse][worker][fallback][loadBatches]", error);
+        return loadBatches(runPath);
+      }
+    })
+  );
+  ipcMain.handle("analyse:loadSections", async (_event, runPath: string, level: SectionLevel) =>
+    runCached(analyseCache, "analyse:loadSections", [runPath, level], () =>
+      requirePools()
+        .analysePool.run("analyse:loadSections", [runPath, level])
+        .catch((error) => {
+          console.warn("[analyse][worker][fallback][loadSections]", { runPath, level, error });
+          return loadSections(runPath, level);
+        })
+    )
+  );
+  ipcMain.handle("analyse:loadSectionsPage", async (_event, runPath: string, level: SectionLevel, offset: number, limit: number) =>
+    runCached(analyseCache, "analyse:loadSectionsPage", [runPath, level, offset, limit], () =>
+      requirePools()
+        .analysePool.run("analyse:loadSectionsPage", [runPath, level, offset, limit])
+        .catch((error) => {
+          console.warn("[analyse][worker][fallback][loadSectionsPage]", { runPath, level, offset, limit, error });
+          return loadSectionsPage(runPath, level, offset, limit);
+        })
+    )
+  );
+  ipcMain.handle(
+    "analyse:querySections",
+    async (_event, runPath: string, level: SectionLevel, query: unknown, offset: number, limit: number) =>
+      runCached(analyseCache, "analyse:querySections", [runPath, level, query, offset, limit], () =>
+        requirePools()
+          .analysePool.run("analyse:querySections", [runPath, level, query, offset, limit])
+          .catch((error) => {
+            console.warn("[analyse][worker][fallback][querySections]", { runPath, level, offset, limit, error });
+            return querySections(runPath, level, query as any, offset, limit);
+          })
+      )
+  );
+  ipcMain.handle(
+    "analyse:loadBatchPayloadsPage",
+    async (_event, runPath: string, offset: number, limit: number) =>
+      runCached(analyseCache, "analyse:loadBatchPayloadsPage", [runPath, offset, limit], () =>
+        requirePools()
+          .analysePool.run("analyse:loadBatchPayloadsPage", [runPath, offset, limit])
+          .catch((error) => {
+            console.warn("[analyse][worker][fallback][loadBatchPayloadsPage]", { runPath, offset, limit, error });
+            return loadBatchPayloadsPage(runPath, offset, limit);
+          })
+      )
+  );
+  ipcMain.handle("analyse:getDirectQuotes", async (_event, runPath: string, ids: string[]) =>
+    runCached(analyseCache, "analyse:getDirectQuotes", [runPath, ids], () =>
+      requirePools()
+        .analysePool.run("analyse:getDirectQuotes", [runPath, ids])
+        .catch((error) => {
+          console.warn("[analyse][worker][fallback][getDirectQuotes]", { runPath, idsCount: ids?.length ?? 0, error });
+          return getDirectQuoteEntries(runPath, ids || []);
+        })
+    )
+  );
+  ipcMain.handle("analyse:loadDqLookup", async (_event, runPath: string) =>
+    runCached(analyseCache, "analyse:loadDqLookup", [runPath], async () => {
+      try {
+        return await requirePools().analysePool.run("analyse:loadDqLookup", [runPath]);
+      } catch (error) {
+        console.warn("[analyse][worker][fallback][loadDqLookup]", error);
+        return loadDirectQuoteLookup(runPath);
+      }
+    })
+  );
+  ipcMain.handle("analyse:summariseRun", async (_event, runPath: string) =>
+    runCached(analyseCache, "analyse:summariseRun", [runPath], () =>
+      requirePools()
+        .analysePool.run("analyse:summariseRun", [runPath])
+        .catch((error) => {
+          console.warn("[analyse][worker][fallback][summariseRun]", error);
+          return summariseRun(runPath);
+        })
+    )
+  );
+  ipcMain.handle("analyse:getDefaultBaseDir", async () =>
+    runCached(analyseCache, "analyse:getDefaultBaseDir", [], async () => {
+      try {
+        return await requirePools().analysePool.run("analyse:getDefaultBaseDir", []);
+      } catch (error) {
+        console.warn("[analyse][worker][fallback][getDefaultBaseDir]", error);
+        return getDefaultBaseDir();
+      }
+    })
+  );
   ipcMain.handle("analyse:audioCacheStatus", (_event, runId: string | undefined, keys: string[]) =>
     getAudioCacheStatus(runId, keys)
   );
@@ -683,6 +936,16 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
       const data = await fs.promises.readFile(request.sourcePath, "utf-8");
       return { success: true, data, filePath: request.sourcePath };
     } catch (error) {
+      const sourcePath = String(request?.sourcePath || "");
+      if (sourcePath.endsWith(`${path.sep}references.json`) || sourcePath.endsWith("/references.json")) {
+        try {
+          seedReferencesJsonFromDataHubCache(path.dirname(sourcePath));
+          const data = await fs.promises.readFile(sourcePath, "utf-8");
+          return { success: true, data, filePath: sourcePath };
+        } catch {
+          // ignore and fall through
+        }
+      }
       return { success: false, error: normalizeError(error) };
     }
   });
@@ -705,6 +968,104 @@ function createWindow(): void {
     return;
   }
 
+  const ensureReferencesJsonFromDataHubCache = (cacheDir: string): void => {
+    try {
+      const outPath = path.join(cacheDir, "references.json");
+      if (fs.existsSync(outPath)) {
+        try {
+          const existing = JSON.parse(fs.readFileSync(outPath, "utf-8")) as { items?: unknown[] };
+          if (Array.isArray(existing?.items) && existing.items.length > 0) {
+            return;
+          }
+        } catch {
+          // fall through and regenerate
+        }
+      }
+      if (!fs.existsSync(cacheDir)) {
+        return;
+      }
+      const candidates = fs
+        .readdirSync(cacheDir)
+        .filter((name) => name.endsWith(".json") && name !== "references.json" && name !== "references_library.json")
+        .map((name) => path.join(cacheDir, name))
+        .filter((p) => {
+          try {
+            return fs.statSync(p).isFile();
+          } catch {
+            return false;
+          }
+        })
+        .sort((a, b) => {
+          try {
+            return fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs;
+          } catch {
+            return 0;
+          }
+        });
+      const pick = candidates[0];
+      if (!pick) return;
+
+      const raw = fs.readFileSync(pick, "utf-8");
+      // Some legacy caches may contain non-standard JSON tokens (NaN/Infinity). Normalize them to null.
+      const normalizedRaw = raw
+        .replace(/\bNaN\b/g, "null")
+        .replace(/\bnan\b/g, "null")
+        .replace(/\bInfinity\b/g, "null")
+        .replace(/\b-Infinity\b/g, "null");
+      const parsed = JSON.parse(normalizedRaw) as { table?: { columns?: unknown[]; rows?: unknown[][] } };
+      const table = parsed?.table;
+      const columns = Array.isArray(table?.columns) ? (table?.columns as unknown[]) : [];
+      const rows = Array.isArray(table?.rows) ? (table?.rows as unknown[][]) : [];
+      if (!columns.length || !rows.length) return;
+
+      const colIndex = new Map<string, number>();
+      columns.forEach((col, idx) => colIndex.set(String(col).trim().toLowerCase(), idx));
+      const pickCell = (row: unknown[], name: string): string => {
+        const idx = colIndex.get(name);
+        if (idx === undefined) return "";
+        const value = row[idx];
+        return value == null ? "" : String(value).trim();
+      };
+
+      const itemsByKey = new Map<string, any>();
+      for (const row of rows) {
+        if (!Array.isArray(row)) continue;
+        const itemKey = pickCell(row, "key");
+        if (!itemKey) continue;
+        if (itemsByKey.has(itemKey)) continue;
+        const item: any = { itemKey };
+        const title = pickCell(row, "title");
+        const year = pickCell(row, "year");
+        const author = pickCell(row, "creator_summary") || pickCell(row, "author_summary") || pickCell(row, "authors");
+        const url = pickCell(row, "url");
+        const source = pickCell(row, "source");
+        const doi = pickCell(row, "doi");
+        const note = pickCell(row, "abstract");
+        if (title) item.title = title;
+        if (author) item.author = author;
+        if (year) item.year = year;
+        if (url) item.url = url;
+        if (source) item.source = source;
+        if (doi) item.doi = doi;
+        if (note) item.note = note;
+        itemsByKey.set(itemKey, item);
+      }
+
+      const payload = {
+        updatedAt: new Date().toISOString(),
+        items: Array.from(itemsByKey.values())
+      };
+      fs.writeFileSync(outPath, JSON.stringify(payload, null, 2), "utf-8");
+      console.info("[data-hub-cache] seeded references.json", {
+        cacheDir,
+        from: pick,
+        count: payload.items.length
+      });
+    } catch (error) {
+      console.warn("[data-hub-cache] failed to seed references.json", error);
+    }
+  };
+
   const rendererPath = path.join(__dirname, "renderer", "index.html");
   const preloadScript = path.join(__dirname, "preload.js");
   const leditorResourcesPath = path.join(app.getAppPath(), "dist", "resources", "leditor");
@@ -714,6 +1075,7 @@ function createWindow(): void {
   } catch {
     // Ignore filesystem errors; downstream reads/writes will surface issues.
   }
+  seedReferencesJsonFromDataHubCache(dataHubCacheDir);
   const hostContract = {
     version: 1,
     sessionId: "annotarium-session",
@@ -796,6 +1158,14 @@ function initializeApp(): void {
     .then(() => {
       const baseUserData = app.getPath("userData");
       initializeSettingsFacade(baseUserData);
+      analysePool = new WorkerPool(path.join(__dirname, "main/jobs/analyseWorker.js"), {
+        size: workerCount,
+        workerData: { userDataPath: baseUserData }
+      });
+      retrievePool = new WorkerPool(path.join(__dirname, "main/jobs/retrieveWorker.js"), {
+        size: Math.max(1, Math.min(workerCount, 2)),
+        workerData: { userDataPath: baseUserData }
+      });
       userDataPath = getAppDataPath();
       secretsVault = initializeSecretsVault(userDataPath);
       projectManagerInstance = new ProjectManager(baseUserData, {
@@ -823,6 +1193,11 @@ function initializeApp(): void {
     if (process.platform !== "darwin") {
       app.quit();
     }
+  });
+
+  app.on("will-quit", () => {
+    void analysePool?.dispose();
+    void retrievePool?.dispose();
   });
 }
 

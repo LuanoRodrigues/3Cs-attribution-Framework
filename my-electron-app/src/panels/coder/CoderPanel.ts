@@ -1903,6 +1903,12 @@ export class CoderPanel {
 
   private persistPayloadFile(node: ItemNode): void {
     if (!window.coderBridge) return;
+    (this as any).__payloadPersistTimers = (this as any).__payloadPersistTimers || new Map<string, number>();
+    const timers: Map<string, number> = (this as any).__payloadPersistTimers;
+    const existing = timers.get(node.id);
+    if (existing) {
+      window.clearTimeout(existing);
+    }
     const data = {
       ...node.payload,
       html: normalizePayloadHtml(node.payload),
@@ -1910,14 +1916,20 @@ export class CoderPanel {
       status: node.status,
       savedAt: new Date().toISOString()
     };
-    window.coderBridge
-      .savePayload({ scopeId: this.scopeId, nodeId: node.id, data })
-      .then((result) => {
-        if (result.baseDir) {
-          console.info(`[CODER][PAYLOAD] saved ${result.baseDir}/${node.id}`);
-        }
-      })
-      .catch((error) => console.warn("Failed to persist coder payload", error));
+    const timer = window.setTimeout(() => {
+      timers.delete(node.id);
+      const bridge = window.coderBridge;
+      if (!bridge) return;
+      bridge
+        .savePayload({ scopeId: this.scopeId, nodeId: node.id, data })
+        .then((result) => {
+          if (result.baseDir) {
+            console.info(`[CODER][PAYLOAD] saved ${result.baseDir}/${node.id}`);
+          }
+        })
+        .catch((error) => console.warn("Failed to persist coder payload", error));
+    }, 600);
+    timers.set(node.id, timer);
   }
 
   private refreshNotePanel(): void {

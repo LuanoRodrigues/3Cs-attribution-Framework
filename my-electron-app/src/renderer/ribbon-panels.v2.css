@@ -22,17 +22,15 @@ html.ribbon-panels-v2 {
   --ribbon-btn-active-bg: color-mix(in srgb, var(--panel-2) 90%, transparent);
   --ribbon-icon: 16px;
 
-  --panel-border: 1px solid var(--border-soft);
+  --panel-border: 1px solid color-mix(in srgb, var(--border), var(--panel));
   --panel-divider: 1px solid var(--border-soft);
-  --panel-chrome-height: 22px;
-  --panel-chrome-padX: 8px;
   --panel-tab-height: 18px;
   --panel-tab-padX: 6px;
   --panel-tab-gap: 6px;
   --panel-minWidth: 220px;
   --panel-minHeight: 140px;
-  --panel-splitter-width: 4px;
-  --panel-splitter-hit: 10px;
+  --panel-splitter-width: 1px;
+  --panel-splitter-hit: 8px;
 }
 
 html.ribbon-panels-v2 body {
@@ -200,81 +198,51 @@ html.ribbon-panels-v2 .panel-grid {
 }
 
 html.ribbon-panels-v2 .panel-shell {
-  border: var(--panel-border);
   min-width: var(--panel-minWidth);
   min-height: var(--panel-minHeight);
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 8px;
-  background: var(--panel);
-  box-shadow: none;
-  border-radius: 6px;
-  transition: none;
-}
-
-html.ribbon-panels-v2 .panel-shell .panel-chrome {
-  height: var(--panel-chrome-height);
-  display: flex;
-  align-items: flex-end;
-  gap: 6px;
-  padding: 0 var(--panel-chrome-padX);
-  border-bottom: var(--panel-divider);
+  gap: 4px;
+  padding: 6px 6px 6px;
   background: transparent;
-  position: relative;
+  box-shadow: none;
+  border-radius: 0;
+  border: none;
+  transition: transform 0.2s ease;
 }
 
 html.ribbon-panels-v2 .panel-tabs {
   display: flex;
   align-items: center;
   gap: var(--panel-tab-gap);
-  margin-left: auto;
   min-width: 0;
-  padding-bottom: 4px;
-  border-bottom: 1px solid transparent;
 }
 
 html.ribbon-panels-v2 .panel-tab {
-  height: var(--panel-tab-height);
-  padding: 0 var(--panel-tab-padX);
   border: 0;
-  background: transparent;
-  color: var(--muted);
-  border-radius: 4px;
-  font-size: 12px;
-  letter-spacing: 0.2px;
+  padding: 0;
+  width: 32px;
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--border-soft) 70%, transparent);
   cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  white-space: nowrap;
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  border-bottom: 2px solid transparent;
-  transition: color 0.2s ease, border-color 0.2s ease;
-}
-
-html.ribbon-panels-v2 .panel-tab::after {
-  content: "";
-  width: 1px;
-  height: 14px;
-  margin-left: 6px;
-  background: var(--border-soft);
-  opacity: 0.7;
-}
-
-html.ribbon-panels-v2 .panel-tab:last-child::after {
-  display: none;
+  transition: background 0.2s ease, transform 0.2s ease;
 }
 
 html.ribbon-panels-v2 .panel-tab:hover {
-  color: var(--text);
-  border-bottom-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  background: color-mix(in srgb, var(--border-soft) 50%, transparent);
+}
+
+html.ribbon-panels-v2 .panel-tab.is-active {
+  width: 42px;
+  height: 6px;
+  background: var(--accent);
+  transform: translateY(-1px);
 }
 
 html.ribbon-panels-v2 .panel-tab:focus-visible {
-  outline: 1px solid var(--accent);
-  outline-offset: 1px;
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
 }
 
 html.ribbon-panels-v2 .panel-shell .panel-content {
@@ -284,58 +252,32 @@ html.ribbon-panels-v2 .panel-shell .panel-content {
 }
 
 html.ribbon-panels-v2 .panel-gutter {
-  width: var(--panel-splitter-width);
-  min-width: var(--panel-splitter-width);
+  width: var(--panel-splitter-hit);
+  min-width: var(--panel-splitter-hit);
   cursor: col-resize;
-  padding: 0 1px;
+  position: relative;
 }
 
 html.ribbon-panels-v2 .panel-gutter::before {
-  width: 1px;
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: var(--panel-splitter-width);
+  height: 70%;
   background: var(--border);
+  opacity: 0.6;
+  transition: background 0.2s ease, opacity 0.2s ease;
+}
+
+html.ribbon-panels-v2 .panel-gutter:hover::before,
+html.ribbon-panels-v2 .panel-gutter:focus-within::before {
+  background: var(--accent);
+  opacity: 1;
 }
 
 html.ribbon-panels-v2 .panel-shell[data-minimized="true"] {
-  flex: 0 0 44px;
-  max-width: 52px;
-  max-height: 52px;
-  padding: 6px;
-  overflow: hidden;
-}
-
-html.ribbon-panels-v2 .panel-shell[data-minimized="true"] .panel-title,
-html.ribbon-panels-v2 .panel-shell[data-minimized="true"] .panel-tabs,
-html.ribbon-panels-v2 .panel-shell[data-minimized="true"] .panel-content,
-html.ribbon-panels-v2 .panel-shell[data-minimized="true"] .panel-minimize {
-  display: none !important;
-}
-
-html.ribbon-panels-v2 .panel-shell[data-minimized="true"] .panel-chrome {
-  border-bottom: 0;
-  padding: 0;
-  gap: 4px;
-}
-
-html.ribbon-panels-v2 .panel-shell[data-minimized="true"] .panel-index {
-  margin: 0;
-  padding: 0;
-  font-size: 12px;
-}
-
-html.ribbon-panels-v2 .panel-index {
-  opacity: 0;
-  pointer-events: none;
-  position: absolute;
-  left: 6px;
-  top: 50%;
-  transform: translateY(-50%) scale(0.9);
-  transition: opacity 0.15s ease, transform 0.15s ease;
-}
-
-html.ribbon-panels-v2 .panel-shell:hover .panel-index,
-html.ribbon-panels-v2 .panel-shell:focus-within .panel-index {
-  opacity: 1;
-  transform: translateY(-50%) scale(1);
+  display: none;
 }
 
 html.ribbon-panels-v2 .panel-pane {
@@ -366,7 +308,7 @@ html.ribbon-panels-v2 .panel-content.panel-split--col {
 
 html.ribbon-panels-v2 .panel-inner-gutter {
   background: transparent;
-  flex: 0 0 var(--panel-splitter-width);
+  flex: 0 0 8px;
   cursor: col-resize;
   position: relative;
 }
@@ -376,13 +318,20 @@ html.ribbon-panels-v2 .panel-inner-gutter::before {
   position: absolute;
   inset: 0;
   margin: auto;
-  width: 1px;
-  height: 100%;
+  width: var(--panel-splitter-width);
+  height: 70%;
   background: var(--border);
+  opacity: 0.6;
+}
+
+html.ribbon-panels-v2 .panel-inner-gutter:hover::before,
+html.ribbon-panels-v2 .panel-inner-gutter:focus-within::before {
+  background: var(--accent);
+  opacity: 1;
 }
 
 html.ribbon-panels-v2 .panel-content.panel-split--col .panel-inner-gutter {
-  height: var(--panel-splitter-width);
+  height: 8px;
   width: 100%;
   cursor: row-resize;
 }

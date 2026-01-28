@@ -6,6 +6,7 @@ type LegacyMenuInstance = {
 
 type SplitButtonOptions = {
   label: string;
+  tooltip?: string;
   iconElement?: HTMLElement | null;
   onPrimary: () => void;
   menu: LegacyMenuInstance;
@@ -29,7 +30,7 @@ export class SplitButton {
     this.primaryButton.type = "button";
     this.primaryButton.className = "leditor-split-primary";
     this.primaryButton.setAttribute("aria-label", options.label);
-    this.primaryButton.dataset.tooltip = options.label;
+    this.primaryButton.dataset.tooltip = options.tooltip ?? options.label;
     if (options.iconElement) {
       this.primaryButton.appendChild(options.iconElement);
     } else {

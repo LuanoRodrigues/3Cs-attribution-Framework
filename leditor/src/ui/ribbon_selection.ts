@@ -8,7 +8,6 @@ import {
   readBinding
 } from "./ribbon_state.ts";
 import { type AlignmentVariant } from "./ribbon_selection_helpers.ts";
-import { getSelectionAlignment } from "./ribbon_selection_helpers.ts";
 
 export type RibbonSelectionTargets = {
   toggles: Array<{ commandId: EditorCommandId; bindingKey?: RibbonStateKey; element: HTMLButtonElement }>;
@@ -60,29 +59,4 @@ export const watchRibbonSelectionState = (
   const unsubscribe = stateBus.subscribe(update);
   update(stateBus.getState());
   return unsubscribe;
-};
-
-// Fallback watcher used by legacy JS bundle; keep getEditor guard to avoid crashes.
-export const watchRibbonSelectionStateLegacy = (
-  editorHandle: any,
-  targets: RibbonSelectionTargets
-): void => {
-  const editor = typeof editorHandle?.getEditor === "function" ? editorHandle.getEditor() : null;
-  if (!editor) return;
-  const run = () => {
-    const alignment = (getSelectionAlignment(editor) as AlignmentVariant) ?? "left";
-    for (const [variantKey, button] of Object.entries(targets.alignmentButtons)) {
-      if (!button) continue;
-      const variant = variantKey as AlignmentVariant;
-      const isActive = variant === alignment;
-      setPressedState(button, isActive);
-    }
-    targets.toggles.forEach(({ commandId, element }) => {
-      const resolver = TOGGLE_STATE_RESOLVERS[commandId];
-      const pressed = resolver ? resolver({} as any) : editor.isActive?.(commandId);
-      setPressedState(element, Boolean(pressed));
-    });
-  };
-  editorHandle.on?.("selectionChange", run);
-  run();
 };

@@ -48,6 +48,14 @@ contextBridge.exposeInMainWorld("analyseBridge", {
     buildDatasetHandles: (runPath: string) => ipcRenderer.invoke("analyse:buildDatasets", runPath),
     loadBatches: (runPath: string) => ipcRenderer.invoke("analyse:loadBatches", runPath),
     loadSections: (runPath: string, level: SectionLevel) => ipcRenderer.invoke("analyse:loadSections", runPath, level),
+    loadSectionsPage: (runPath: string, level: SectionLevel, offset: number, limit: number) =>
+      ipcRenderer.invoke("analyse:loadSectionsPage", runPath, level, offset, limit),
+    querySections: (runPath: string, level: SectionLevel, query: unknown, offset: number, limit: number) =>
+      ipcRenderer.invoke("analyse:querySections", runPath, level, query, offset, limit),
+    loadBatchPayloadsPage: (runPath: string, offset: number, limit: number) =>
+      ipcRenderer.invoke("analyse:loadBatchPayloadsPage", runPath, offset, limit),
+    getDirectQuotes: (runPath: string, ids: string[]) =>
+      ipcRenderer.invoke("analyse:getDirectQuotes", runPath, ids),
     loadDqLookup: (runPath: string) => ipcRenderer.invoke("analyse:loadDqLookup", runPath),
     summariseRun: (runPath: string) => ipcRenderer.invoke("analyse:summariseRun", runPath),
     getDefaultBaseDir: () => ipcRenderer.invoke("analyse:getDefaultBaseDir"),

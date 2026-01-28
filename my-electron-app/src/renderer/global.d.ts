@@ -2,6 +2,7 @@ import type {
   AnalyseRun,
   AnalyseDatasets,
   BatchRecord,
+  BatchPayload,
   SectionRecord,
   SectionLevel,
   RunMetrics
@@ -22,6 +23,34 @@ declare global {
         buildDatasetHandles: (runPath: string) => Promise<AnalyseDatasets>;
         loadBatches: (runPath: string) => Promise<BatchRecord[]>;
         loadSections: (runPath: string, level: SectionLevel) => Promise<SectionRecord[]>;
+        loadSectionsPage: (
+          runPath: string,
+          level: SectionLevel,
+          offset: number,
+          limit: number
+        ) => Promise<{ sections: SectionRecord[]; hasMore: boolean; nextOffset: number }>;
+        querySections: (
+          runPath: string,
+          level: SectionLevel,
+          query: unknown,
+          offset: number,
+          limit: number
+        ) => Promise<{
+          sections: SectionRecord[];
+          totalMatches: number;
+          hasMore: boolean;
+          nextOffset: number;
+          facets: Record<string, Record<string, number>>;
+        }>;
+        loadBatchPayloadsPage: (
+          runPath: string,
+          offset: number,
+          limit: number
+        ) => Promise<{ payloads: BatchPayload[]; hasMore: boolean; nextOffset: number }>;
+        getDirectQuotes: (
+          runPath: string,
+          ids: string[]
+        ) => Promise<{ entries: Record<string, unknown>; path: string | null }>;
         loadDqLookup: (runPath: string) => Promise<{ data: Record<string, unknown>; path: string | null }>;
         summariseRun: (runPath: string) => Promise<RunMetrics>;
         getDefaultBaseDir: () => Promise<string>;
