@@ -986,12 +986,13 @@ export function renderSectionsPage(
 
   const renderPreview = (panel: HTMLElement, section: SectionRecord) => {
     panel.innerHTML = "";
+    const normalizedHtml = (section.html || "<p><em>No section HTML.</em></p>").replace(/id=["']section-title["']/gi, "");
     const body = document.createElement("div");
     body.className = "preview-content academic-section__body";
     body.innerHTML = `
       <h4>${section.title || section.id}</h4>
       ${section.route ? `<p class="academic-section__route">${section.route}</p>` : ""}
-      ${section.html || "<p><em>No section HTML.</em></p>"}
+      ${normalizedHtml}
     `;
     body.addEventListener("click", (ev) => {
       const target = ev.target as HTMLElement | null;

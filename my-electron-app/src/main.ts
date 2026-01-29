@@ -22,6 +22,7 @@ import { handleRetrieveCommand, registerRetrieveIpcHandlers } from "./main/ipc/r
 import { registerProjectIpcHandlers } from "./main/ipc/project_ipc";
 import { ProjectManager } from "./main/services/projectManager";
 import { invokeVisualisePreview, invokeVisualiseSections } from "./main/services/visualiseBridge";
+import { invokePdfOcr } from "./main/services/pdfOcrBridge";
 import { createCoderTestTree, createPdfTestPayload } from "./test/testFixtures";
 import { getCoderCacheDir } from "./session/sessionPaths";
 import type { SessionMenuAction } from "./session/sessionTypes";
@@ -354,16 +355,15 @@ function normalizeLegacyJson(raw: string): string {
 function seedReferencesJsonFromDataHubCache(cacheDir: string): void {
   try {
     const outPath = path.join(cacheDir, "references.json");
-    if (fs.existsSync(outPath)) {
+    const existingRaw = fs.existsSync(outPath) ? fs.readFileSync(outPath, "utf-8") : "";
+    const existingParsed = (() => {
+      if (!existingRaw) return null;
       try {
-        const existing = JSON.parse(fs.readFileSync(outPath, "utf-8")) as { items?: unknown[] };
-        if (Array.isArray(existing?.items) && existing.items.length > 0) {
-          return;
-        }
+        return JSON.parse(normalizeLegacyJson(existingRaw)) as any;
       } catch {
-        // regenerate
+        return null;
       }
-    }
+    })();
     if (!fs.existsSync(cacheDir)) return;
 
     const candidates = fs
@@ -431,6 +431,12 @@ function seedReferencesJsonFromDataHubCache(cacheDir: string): void {
       updatedAt: new Date().toISOString(),
       items: Array.from(itemsByKey.values())
     };
+
+    const existingCount = Array.isArray(existingParsed?.items) ? existingParsed.items.length : 0;
+    // If references.json already exists and looks complete-ish, keep it.
+    if (existingCount >= payload.items.length && payload.items.length > 0) {
+      return;
+    }
     fs.writeFileSync(outPath, JSON.stringify(payload, null, 2), "utf-8");
     console.info("[data-hub-cache] seeded references.json", { cacheDir, from: pick, count: payload.items.length });
   } catch (error) {
@@ -463,6 +469,19 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
       } catch (error) {
         console.error("Retrieve command failed", error);
         return { status: "error", message: error instanceof Error ? error.message : "retrieve command failed" };
+      }
+    }
+    if (payload?.phase === "pdf" && payload.action) {
+      try {
+        if (payload.action === "ocr") {
+          const body = (payload.payload as Record<string, unknown>) || {};
+          const pdfPath = String(body.pdfPath || body.path || "");
+          return await invokePdfOcr(pdfPath);
+        }
+        return { status: "error", message: "Unknown pdf action." };
+      } catch (error) {
+        console.error("PDF command failed", error);
+        return { status: "error", message: error instanceof Error ? error.message : "pdf command failed" };
       }
     }
     if (payload?.phase === "visualiser" && payload.action) {
@@ -932,8 +951,29 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
 
   const normalizeError = (error: unknown): string => (error instanceof Error ? error.message : String(error));
   ipcMain.handle("leditor:read-file", async (_event, request: { sourcePath: string }) => {
+    const logRefs = (filePath: string, raw: string): void => {
+      try {
+        const parsed = JSON.parse(normalizeLegacyJson(raw)) as any;
+        const count = Array.isArray(parsed?.items)
+          ? parsed.items.length
+          : parsed?.itemsByKey && typeof parsed.itemsByKey === "object"
+            ? Object.keys(parsed.itemsByKey).length
+            : 0;
+        console.info("[leditor:read-file][references]", {
+          filePath,
+          count,
+          bytes: Buffer.byteLength(raw, "utf-8"),
+          topKeys: parsed && typeof parsed === "object" ? Object.keys(parsed).slice(0, 6) : []
+        });
+      } catch (e) {
+        console.warn("[leditor:read-file][references] parse failed", { filePath });
+      }
+    };
     try {
       const data = await fs.promises.readFile(request.sourcePath, "utf-8");
+      if (String(request?.sourcePath || "").endsWith("references.json")) {
+        logRefs(String(request.sourcePath), data);
+      }
       return { success: true, data, filePath: request.sourcePath };
     } catch (error) {
       const sourcePath = String(request?.sourcePath || "");
@@ -941,6 +981,7 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
         try {
           seedReferencesJsonFromDataHubCache(path.dirname(sourcePath));
           const data = await fs.promises.readFile(sourcePath, "utf-8");
+          logRefs(sourcePath, data);
           return { success: true, data, filePath: sourcePath };
         } catch {
           // ignore and fall through
@@ -967,104 +1008,6 @@ function createWindow(): void {
   if (mainWindow) {
     return;
   }
-
-  const ensureReferencesJsonFromDataHubCache = (cacheDir: string): void => {
-    try {
-      const outPath = path.join(cacheDir, "references.json");
-      if (fs.existsSync(outPath)) {
-        try {
-          const existing = JSON.parse(fs.readFileSync(outPath, "utf-8")) as { items?: unknown[] };
-          if (Array.isArray(existing?.items) && existing.items.length > 0) {
-            return;
-          }
-        } catch {
-          // fall through and regenerate
-        }
-      }
-      if (!fs.existsSync(cacheDir)) {
-        return;
-      }
-      const candidates = fs
-        .readdirSync(cacheDir)
-        .filter((name) => name.endsWith(".json") && name !== "references.json" && name !== "references_library.json")
-        .map((name) => path.join(cacheDir, name))
-        .filter((p) => {
-          try {
-            return fs.statSync(p).isFile();
-          } catch {
-            return false;
-          }
-        })
-        .sort((a, b) => {
-          try {
-            return fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs;
-          } catch {
-            return 0;
-          }
-        });
-      const pick = candidates[0];
-      if (!pick) return;
-
-      const raw = fs.readFileSync(pick, "utf-8");
-      // Some legacy caches may contain non-standard JSON tokens (NaN/Infinity). Normalize them to null.
-      const normalizedRaw = raw
-        .replace(/\bNaN\b/g, "null")
-        .replace(/\bnan\b/g, "null")
-        .replace(/\bInfinity\b/g, "null")
-        .replace(/\b-Infinity\b/g, "null");
-      const parsed = JSON.parse(normalizedRaw) as { table?: { columns?: unknown[]; rows?: unknown[][] } };
-      const table = parsed?.table;
-      const columns = Array.isArray(table?.columns) ? (table?.columns as unknown[]) : [];
-      const rows = Array.isArray(table?.rows) ? (table?.rows as unknown[][]) : [];
-      if (!columns.length || !rows.length) return;
-
-      const colIndex = new Map<string, number>();
-      columns.forEach((col, idx) => colIndex.set(String(col).trim().toLowerCase(), idx));
-      const pickCell = (row: unknown[], name: string): string => {
-        const idx = colIndex.get(name);
-        if (idx === undefined) return "";
-        const value = row[idx];
-        return value == null ? "" : String(value).trim();
-      };
-
-      const itemsByKey = new Map<string, any>();
-      for (const row of rows) {
-        if (!Array.isArray(row)) continue;
-        const itemKey = pickCell(row, "key");
-        if (!itemKey) continue;
-        if (itemsByKey.has(itemKey)) continue;
-        const item: any = { itemKey };
-        const title = pickCell(row, "title");
-        const year = pickCell(row, "year");
-        const author = pickCell(row, "creator_summary") || pickCell(row, "author_summary") || pickCell(row, "authors");
-        const url = pickCell(row, "url");
-        const source = pickCell(row, "source");
-        const doi = pickCell(row, "doi");
-        const note = pickCell(row, "abstract");
-        if (title) item.title = title;
-        if (author) item.author = author;
-        if (year) item.year = year;
-        if (url) item.url = url;
-        if (source) item.source = source;
-        if (doi) item.doi = doi;
-        if (note) item.note = note;
-        itemsByKey.set(itemKey, item);
-      }
-
-      const payload = {
-        updatedAt: new Date().toISOString(),
-        items: Array.from(itemsByKey.values())
-      };
-      fs.writeFileSync(outPath, JSON.stringify(payload, null, 2), "utf-8");
-      console.info("[data-hub-cache] seeded references.json", {
-        cacheDir,
-        from: pick,
-        count: payload.items.length
-      });
-    } catch (error) {
-      console.warn("[data-hub-cache] failed to seed references.json", error);
-    }
-  };
 
   const rendererPath = path.join(__dirname, "renderer", "index.html");
   const preloadScript = path.join(__dirname, "preload.js");

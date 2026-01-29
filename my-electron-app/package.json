@@ -53,6 +53,7 @@
     "mammoth": "^1.11.0",
     "marked": "^11.1.1",
     "orderedmap": "^2.1.1",
+    "pdfjs-dist": "^4.10.38",
     "plotly.js-dist-min": "^3.3.1",
     "prosemirror-commands": "^1.7.1",
     "prosemirror-dropcursor": "^1.8.2",
@@ -69,6 +70,7 @@
     "prosemirror-view": "^1.41.5",
     "tiptap-footnotes": "^3.0.1",
     "typecheck": "^0.1.2",
+    "vanilla-picker": "^2.12.3",
     "zod": "^4.3.5"
   }
 }

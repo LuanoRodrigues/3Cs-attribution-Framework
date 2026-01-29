@@ -75,6 +75,11 @@ registry.register(createVisualiserTool());
 registry.register(createCoderTool());
 registry.register(createScreenWidget());
 void initThemeManager();
+window.addEventListener("settings:updated", () => {
+  if (pdfViewerIframe) {
+    syncPdfViewerTheme(pdfViewerIframe);
+  }
+});
 
 const ribbonHeader = document.getElementById("app-tab-header") as HTMLElement;
 const ribbonActions = document.getElementById("app-tab-actions") as HTMLElement;
@@ -915,6 +920,11 @@ interface PdfSelectionMessage {
   payload?: PdfSelectionNotification | null;
 }
 
+interface PdfOcrRequestMessage {
+  type: "pdf-ocr-request";
+  payload?: { fileUrl?: string } | null;
+}
+
 function handlePdfSelectionMessage(event: MessageEvent): void {
   const data = (event.data as PdfSelectionMessage | undefined) || null;
   if (!data || data.type !== "pdf-selection") {
@@ -927,6 +937,46 @@ function handlePdfSelectionMessage(event: MessageEvent): void {
 }
 
 window.addEventListener("message", handlePdfSelectionMessage);
+
+function fileUrlToPath(fileUrl?: string): string {
+  if (!fileUrl) return "";
+  if (fileUrl.startsWith("file://")) {
+    try {
+      const u = new URL(fileUrl);
+      return decodeURIComponent(u.pathname || fileUrl.replace(/^file:\/\//, ""));
+    } catch {
+      return fileUrl.replace(/^file:\/\//, "");
+    }
+  }
+  return fileUrl;
+}
+
+async function handlePdfOcrRequest(event: MessageEvent): Promise<void> {
+  const data = (event.data as PdfOcrRequestMessage | undefined) || null;
+  if (!data || data.type !== "pdf-ocr-request") {
+    return;
+  }
+  if (event.source !== pdfViewerIframe?.contentWindow) {
+    return;
+  }
+  const fileUrl = data.payload?.fileUrl || "";
+  const pdfPath = fileUrlToPath(fileUrl);
+  if (!pdfPath || !window.commandBridge?.dispatch) {
+    return;
+  }
+  const result = await window.commandBridge.dispatch({ phase: "pdf", action: "ocr", payload: { pdfPath } });
+  if (!result || result.status !== "ok" || !result.pdfPath || !pdfViewerIframe?.contentWindow) {
+    return;
+  }
+  pdfViewerIframe.contentWindow.postMessage(
+    { type: "pdf-ocr-ready", payload: { pdfPath: result.pdfPath } },
+    "*"
+  );
+}
+
+window.addEventListener("message", (ev) => {
+  void handlePdfOcrRequest(ev);
+});
 
 async function processPdfSelection(payload: PdfSelectionNotification | null): Promise<void> {
   if (!payload) {
@@ -1407,6 +1457,34 @@ function updateScreenStatus(response?: RibbonCommandResponse): void {
 }
 
 const pdfViewerRetry = new WeakMap<HTMLIFrameElement, number>();
+const mapAppThemeToPdfTheme = (theme: string): string => {
+  const t = (theme || "").toLowerCase();
+  if (t === "high-contrast" || t === "highcontrast") return "highcontrast";
+  if (t === "light") return "paper";
+  if (t === "warm") return "sepia";
+  if (t === "colorful") return "paper";
+  if (t === "cold" || t === "dark" || t === "system") return "midnight";
+  return ["midnight", "dim", "paper", "sepia", "highcontrast"].includes(t) ? t : "midnight";
+};
+
+const getAppThemeId = (): string => {
+  const docTheme = document.documentElement.dataset.theme;
+  if (docTheme) return docTheme;
+  try {
+    const raw = window.localStorage.getItem("appearance.theme");
+    if (raw) return raw;
+  } catch {
+    // ignore
+  }
+  return "system";
+};
+
+const syncPdfViewerTheme = (iframe: HTMLIFrameElement): void => {
+  const win = iframe.contentWindow as Window & { PDF_APP?: { setTheme?: (t: string) => string } };
+  if (!win || !win.PDF_APP || typeof win.PDF_APP.setTheme !== "function") return;
+  win.PDF_APP.setTheme(mapAppThemeToPdfTheme(getAppThemeId()));
+};
+
 function renderPdfTabs(panel: HTMLElement, payload: PdfTestPayload, rawPayload?: any): void {
   const rawData = rawPayload || payload;
   const citations = rawData?.citations || rawData?.meta?.citations;
@@ -1801,7 +1879,11 @@ function ensurePdfViewerFrame(host: HTMLElement): HTMLIFrameElement {
   if (!iframe) {
     iframe = document.createElement("iframe");
     iframe.className = "pdf-test-viewer";
-    iframe.src = TEST_PDF_VIEWER_URL;
+    const theme = mapAppThemeToPdfTheme(getAppThemeId());
+    const url = new URL(TEST_PDF_VIEWER_URL);
+    url.searchParams.set("theme", theme);
+    url.searchParams.set("sidebar", "0");
+    iframe.src = url.toString();
     iframe.style.width = "100%";
     iframe.style.height = "100%";
     iframe.style.border = "0";
@@ -1833,6 +1915,7 @@ function applyPayloadToViewer(iframe: HTMLIFrameElement, payload: PdfTestPayload
     const pdfApp = win.PDF_APP;
     if (pdfApp && typeof pdfApp.loadFromPayload === 'function') {
       pdfApp.loadFromPayload(viewerPayload);
+      syncPdfViewerTheme(iframe);
       return true;
     }
     return false;

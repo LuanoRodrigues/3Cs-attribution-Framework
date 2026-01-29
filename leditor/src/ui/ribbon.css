@@ -29,8 +29,8 @@
 
 /* fluent-icon-button removed: icons are SVG-only */
 
-.leditor-ribbon-panel[data-tab-id="insert"] .ribbon-cluster > .leditor-ribbon-button,
-.leditor-ribbon-panel[data-tab-id="insert"] .ribbon-cluster > .leditor-ribbon-icon-btn {
+.leditor-ribbon-panel .ribbon-cluster > .leditor-ribbon-button,
+.leditor-ribbon-panel .ribbon-cluster > .leditor-ribbon-icon-btn {
   background: var(--fluent-icon-bg);
   border: var(--fluent-icon-border);
   box-shadow: var(--fluent-icon-shadow);
@@ -176,6 +176,20 @@
    Panel sizing (fixed height mode)
    ========================= */
 .leditor-ribbon-panel {
+  --panel-gap: 12px;
+  --panel-gap-tight: 8px;
+  --panel-row-height: 34px;
+  --panel-group-pad-y: 6px;
+  --panel-group-pad-x: 10px;
+  --panel-group-min: 180px;
+  --home-gap: 12px;
+  --home-gap-tight: 8px;
+  --home-row-height: 34px;
+  --home-border: 1px solid rgba(15, 23, 42, 0.1);
+  --home-divider: 1px solid rgba(15, 23, 42, 0.08);
+  --home-surface: #ffffff;
+  --home-shadow: 0 25px 60px rgba(15, 23, 42, 0.15);
+  font-size: 11px;
   padding: var(--r-panel-pad-y) var(--r-panel-pad-x);
   box-sizing: border-box;
 }
@@ -213,10 +227,72 @@
   scroll-snap-align: start;
 }
 
-@media (max-width: 1100px) {
-  .leditor-ribbon-panel .leditor-ribbon-group:nth-child(n + 4) {
-    display: none;
-  }
+/* =========================
+   Group layout (Home-like for all tabs)
+   ========================= */
+.leditor-ribbon-panel .leditor-ribbon-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--panel-gap);
+  overflow: visible;
+  min-width: max-content;
+  max-width: none;
+  height: 100%;
+  padding: var(--panel-group-pad-y) var(--panel-group-pad-x);
+}
+
+.leditor-ribbon-panel .leditor-ribbon-group-body {
+  display: flex;
+  flex-direction: row;
+  gap: var(--panel-gap);
+  overflow: visible;
+  max-height: none;
+  flex: 1;
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+.leditor-ribbon-panel .leditor-ribbon-group-body > .ribbon-cluster {
+  overflow: visible;
+  position: static;
+  contain: none;
+  min-width: var(--panel-group-min);
+  max-width: none;
+}
+
+.leditor-ribbon-panel .leditor-ribbon-group-row {
+  display: flex;
+  flex-direction: row;
+  gap: var(--panel-gap-tight);
+  align-items: center;
+  justify-content: flex-start;
+  overflow: visible;
+  height: var(--panel-row-height);
+  min-height: var(--panel-row-height);
+}
+
+.leditor-ribbon-panel .leditor-ribbon-group-footer {
+  margin-top: auto;
+  padding-top: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 10px;
+  line-height: 1;
+  position: relative;
+}
+
+.leditor-ribbon-panel .leditor-ribbon-group-title {
+  text-align: left;
+  flex: 1;
+  min-width: 0;
+}
+
+.leditor-ribbon-panel .ribbon-dialog-launcher-btn {
+  position: static;
+  margin-left: auto;
+  height: 16px;
 }
 
 @media (max-width: 960px) {
@@ -477,6 +553,8 @@
     box-shadow var(--r-d1) var(--r-ease);
   font-family: var(--r-font-family);
   color: var(--r-text);
+  background-image: none !important;
+  mask-image: none !important;
 }
 
 .leditor-ribbon-button:hover,
@@ -607,6 +685,18 @@
   flex-direction: column;
 }
 
+.leditor-ribbon-panel [data-control-id="font.underline"] {
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 2px 6px;
+  min-height: var(--r-ctl-h-sm);
+}
+
+.leditor-ribbon-panel [data-control-id="font.underline"] .leditor-ribbon-icon {
+  margin-bottom: 2px;
+}
+
 .leditor-ribbon .ribbon-button-icon {
   width: var(--r-icon);
   height: var(--r-icon);
@@ -623,9 +713,10 @@
 .leditor-ribbon .leditor-split-button svg {
   display: block;
   flex-shrink: 0;
+  visibility: visible !important;
   background: transparent !important;
-  color: #111827;
-  fill: #111827;
+  color: currentColor !important;
+  fill: currentColor !important;
   stroke: none;
   pointer-events: none;
   position: relative;
@@ -634,7 +725,9 @@
   transform: none !important;
   opacity: 1 !important;
   mix-blend-mode: normal !important;
-  -webkit-text-fill-color: #111827;
+  -webkit-text-fill-color: currentColor !important;
+  mask-image: none !important;
+  -webkit-mask-image: none !important;
 }
 
 .leditor-ribbon .leditor-ribbon-icon path,
@@ -642,7 +735,7 @@
 .leditor-ribbon .ribbon-dropdown-button svg path,
 .leditor-ribbon .leditor-split-primary svg path,
 .leditor-ribbon .leditor-split-button svg path {
-  fill: #111827 !important;
+  fill: currentColor !important;
   stroke: none !important;
   filter: none !important;
 }
@@ -655,8 +748,9 @@
    Unified ribbon control presentation
    (match Home tab across all tabs)
    ========================= */
-.leditor-ribbon-panel .has-icon .ribbon-button-label,
-.leditor-ribbon-panel .has-icon .ribbon-dropdown-text {
+.leditor-ribbon-panel .leditor-ribbon-button--small.has-icon .ribbon-button-label,
+.leditor-ribbon-panel .ribbon-dropdown-button.leditor-ribbon-button--small .ribbon-dropdown-text,
+.leditor-ribbon-panel .leditor-ribbon-icon-btn .ribbon-button-label {
   display: none;
 }
 
@@ -1278,24 +1372,6 @@
   }
 }
 
-@media (min-width: 1101px) and (max-width: 1290px) {
-  .leditor-ribbon-panel .leditor-ribbon-group {
-    display: none !important;
-  }
-  .leditor-ribbon-panel > .leditor-ribbon-group:nth-of-type(-n + 2) {
-    display: flex !important;
-  }
-}
-
-@media (min-width: 1291px) and (max-width: 1490px) {
-  .leditor-ribbon-panel .leditor-ribbon-group {
-    display: none !important;
-  }
-  .leditor-ribbon-panel > .leditor-ribbon-group:nth-of-type(-n + 3) {
-    display: flex !important;
-  }
-}
-
 /* =========================
    Missing classes from original snippet
    (keep compatibility)
@@ -1309,8 +1385,8 @@
   min-height: 26px;
 }
 
-.leditor-ribbon-panel[data-tab-id="insert"] .leditor-ribbon-button,
-.leditor-ribbon-panel[data-tab-id="insert"] .leditor-ribbon-icon-btn {
+.leditor-ribbon-panel .leditor-ribbon-button,
+.leditor-ribbon-panel .leditor-ribbon-icon-btn {
   border-radius: var(--r-ctl-radius);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 1px 3px rgba(0, 0, 0, 0.15);
   text-transform: none;

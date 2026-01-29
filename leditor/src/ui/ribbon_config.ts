@@ -1,10 +1,12 @@
-import ribbonRegistryRaw from "./ribbon.json";
-import homeTabRaw from "./home.json";
-import insertTabRaw from "./insert.json";
-import layoutTabRaw from "./layout_tab.json";
-import reviewTabRaw from "./review.json";
-import referencesTabRaw from "./references.json";
-import viewTabRaw from "./view.json";
+import {
+  ribbonRegistry,
+  homeTab,
+  insertTab,
+  layoutTab,
+  reviewTab,
+  referencesTab,
+  viewTab
+} from "./ribbon_model.ts";
 import { commandMap } from "../api/command_map.ts";
 import { getReferencesCommandIds } from "./references_command_contract.ts";
 
@@ -117,12 +119,12 @@ export interface RibbonModel {
 type TabSourceMap = Record<string, TabConfig>;
 
 const TAB_SOURCES: TabSourceMap = {
-  "home.json": homeTabRaw as TabConfig,
-  "insert.json": insertTabRaw as TabConfig,
-  "layout_tab.json": layoutTabRaw as TabConfig,
-  "review.json": reviewTabRaw as unknown as TabConfig,
-  "references.json": referencesTabRaw as unknown as TabConfig,
-  "view.json": viewTabRaw as TabConfig
+  home: homeTab as TabConfig,
+  insert: insertTab as TabConfig,
+  layout: layoutTab as TabConfig,
+  review: reviewTab as unknown as TabConfig,
+  references: referencesTab as unknown as TabConfig,
+  view: viewTab as TabConfig
 };
 
 let cachedRegistry: RibbonRegistry | null = null;
@@ -144,7 +146,7 @@ const ensureUniqueId = (set: Set<string>, id: string, context: string, label: st
   set.add(id);
 };
 
-const collectNestedControls = (control: ControlConfig): ControlConfig[] => {
+export const collectNestedControls = (control: ControlConfig): ControlConfig[] => {
   const nested: ControlConfig[] = [];
   if (Array.isArray(control.controls)) nested.push(...control.controls);
   if (Array.isArray(control.menu)) nested.push(...control.menu);
@@ -160,7 +162,7 @@ const validateReferencesCommands = (tab: TabConfig): void => {
   const missing = Array.from(ids).filter((id) => !(id in commandMap));
   if (missing.length > 0) {
     console.warn(
-      "[Ribbon] references.json includes commands without implementation (will be added later):",
+      "[Ribbon] references tab includes commands without implementation (will be added later):",
       missing
     );
   }
@@ -211,10 +213,10 @@ export const loadRibbonRegistry = (): RibbonRegistry => {
   if (cachedRegistry) {
     return cachedRegistry;
   }
-  if (!ribbonRegistryRaw || typeof ribbonRegistryRaw !== "object") {
+  if (!ribbonRegistry || typeof ribbonRegistry !== "object") {
     throw new Error("Ribbon registry JSON is invalid or missing");
   }
-  const typed = ribbonRegistryRaw as RibbonRegistry;
+  const typed = ribbonRegistry as RibbonRegistry;
   assertNonEmptyString(typed.ribbonId, "Ribbon registry is missing ribbonId");
   cachedRegistry = typed;
   return cachedRegistry;
@@ -242,9 +244,9 @@ export const loadRibbonModel = (): RibbonModel => {
   if (!referencesDescriptor) {
     throw new Error("Ribbon registry is missing the references tab descriptor");
   }
-  if (referencesDescriptor.source !== "references.json") {
+  if (referencesDescriptor.source !== "references") {
     throw new Error(
-      `References tab descriptor must point to references.json; found "${referencesDescriptor.source}"`
+      `References tab descriptor must point to references; found "${referencesDescriptor.source}"`
     );
   }
   if (!Array.isArray(descriptors) || descriptors.length === 0) {

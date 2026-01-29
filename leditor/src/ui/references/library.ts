@@ -17,7 +17,7 @@ export type ReferencesLibrary = {
 };
 
 const LIBRARY_STORAGE_KEY = "leditor.references.library";
-const LEGACY_LIBRARY_FILENAME = "references.json";
+const LIBRARY_FILENAME = "references.json";
 
 let cachedLibrary: ReferencesLibrary | null = null;
 let loadPromise: Promise<ReferencesLibrary> | null = null;
@@ -93,14 +93,8 @@ const parseLibrary = (raw: any): ReferencesLibrary => {
 
 const getLibraryPath = (host?: HostContract | null): string => {
   const base = host?.paths?.bibliographyDir?.trim() ?? "";
-  if (!base) return LEGACY_LIBRARY_FILENAME;
-  return `${base.replace(/[\\/]+$/, "")}/${LEGACY_LIBRARY_FILENAME}`;
-};
-
-const getLegacyLibraryPath = (host?: HostContract | null): string => {
-  const base = host?.paths?.bibliographyDir?.trim() ?? "";
-  if (!base) return LEGACY_LIBRARY_FILENAME;
-  return `${base.replace(/[\\/]+$/, "")}/${LEGACY_LIBRARY_FILENAME}`;
+  if (!base) return LIBRARY_FILENAME;
+  return `${base.replace(/[\\/]+$/, "")}/${LIBRARY_FILENAME}`;
 };
 
 const loadFromStorage = (): ReferencesLibrary | null => {
@@ -121,23 +115,11 @@ const persistLibrary = (library: ReferencesLibrary): void => {
   }
 };
 
-const loadFromBundledPublic = async (): Promise<ReferencesLibrary | null> => {
-  try {
-    const url = new URL("references.json", window.location.href);
-    const res = await fetch(url.href);
-    if (!res.ok) return null;
-    const parsed = await res.json();
-    return parseLibrary(parsed);
-  } catch {
-    return null;
-  }
-};
-
 const loadFromHost = async (): Promise<ReferencesLibrary | null> => {
   const host = window.leditorHost;
   if (!host?.readFile) return null;
   const contract = getHostContract();
-  const candidates = [getLegacyLibraryPath(contract)];
+  const candidates = [getLibraryPath(contract)];
   for (const path of candidates) {
     const result = await host.readFile({ sourcePath: path });
     if (!result?.success || typeof result.data !== "string") {
@@ -170,8 +152,7 @@ export const ensureReferencesLibrary = async (): Promise<ReferencesLibrary> => {
   loadPromise = (async () => {
     const fromStorage = loadFromStorage();
     const fromHost = await loadFromHost();
-    const fromBundled = !fromHost || libraryCount(fromHost) === 0 ? await loadFromBundledPublic() : null;
-    cachedLibrary = (fromHost && libraryCount(fromHost) > 0 ? fromHost : null) ?? fromBundled ?? fromStorage ?? buildEmptyLibrary();
+    cachedLibrary = (fromHost && libraryCount(fromHost) > 0 ? fromHost : null) ?? fromStorage ?? buildEmptyLibrary();
     persistLibrary(cachedLibrary);
     return cachedLibrary;
   })();
@@ -182,13 +163,6 @@ export const refreshReferencesLibrary = async (): Promise<ReferencesLibrary> => 
   const fromHost = await loadFromHost();
   if (fromHost && libraryCount(fromHost) > 0) {
     cachedLibrary = fromHost;
-    persistLibrary(cachedLibrary);
-    loadPromise = Promise.resolve(cachedLibrary);
-    return cachedLibrary;
-  }
-  const fromBundled = await loadFromBundledPublic();
-  if (fromBundled && libraryCount(fromBundled) > 0) {
-    cachedLibrary = fromBundled;
     persistLibrary(cachedLibrary);
     loadPromise = Promise.resolve(cachedLibrary);
     return cachedLibrary;

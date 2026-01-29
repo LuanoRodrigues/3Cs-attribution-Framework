@@ -816,10 +816,29 @@ export function parseDropPayload(dataTransfer: DataTransfer): { payload?: CoderP
   }
   if (dataTransfer.types.includes("text/html")) {
     const htmlSrc = dataTransfer.getData("text/html");
-    const text = dataTransfer.getData("text/plain") || "";
+    const extractText = (html: string): string => {
+      const src = String(html || "");
+      return src
+        .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, " ")
+        .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, " ")
+        .replace(/<br\s*\/?>/gi, "\n")
+        .replace(/<\/p>/gi, "\n")
+        .replace(/<[^>]+>/g, " ")
+        .replace(/&nbsp;/gi, " ")
+        .replace(/&amp;/gi, "&")
+        .replace(/&lt;/gi, "<")
+        .replace(/&gt;/gi, ">")
+        .replace(/&quot;/gi, "\"")
+        .replace(/&#39;/gi, "'")
+        .replace(/\s+\n/g, "\n")
+        .replace(/\n\s+/g, "\n")
+        .replace(/[ \t]{2,}/g, " ")
+        .trim();
+    };
+    const text = dataTransfer.getData("text/plain") || extractText(htmlSrc) || "";
     return {
       payload: {
-        title: text ? text.slice(0, 80) : "Selection",
+        title: text ? text.slice(0, 80) : extractText(htmlSrc).slice(0, 80) || "Selection",
         text,
         html: htmlSrc,
         source: { scope: "dragdrop" }

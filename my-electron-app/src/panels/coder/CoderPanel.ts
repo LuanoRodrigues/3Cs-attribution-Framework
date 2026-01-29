@@ -10,6 +10,7 @@ import {
 } from "./coderState";
 import type { CoderScopeId, CoderState } from "./coderTypes";
 import { CODER_STATUSES, CoderNode, CoderPayload, CoderStatus, FolderNode, ItemNode } from "./coderTypes";
+import { APPEARANCE_KEYS } from "../../config/settingsKeys";
 
 const NODE_MIME = "application/x-annotarium-coder-node";
 
@@ -68,6 +69,8 @@ export class CoderPanel {
   private showOnlyMatches = true;
   private compactMode = false;
   private pinPreviewOnClick = false;
+  private reducedMotion = true;
+  private effectsMode: "full" | "performance" = "full";
   private statusFilter = new Set<CoderStatus>();
   private matchedIds: string[] = [];
   private hoveredPathIds: string[] = [];
@@ -85,11 +88,14 @@ export class CoderPanel {
     this.stateLoadedCallback = options?.onStateLoaded;
     this.store = new CoderStore(undefined, this.scopeId);
     this.confirmDelete = this.readConfirmDelete();
-    this.showDropHints = this.readBoolSetting("coder.showDropHints", true);
-    this.showRowActions = this.readBoolSetting("coder.showRowActions", true);
+    this.effectsMode = this.readEffectsMode();
+    const defaultEffectsOn = this.effectsMode === "full";
+    this.showDropHints = this.readBoolSetting("coder.showDropHints", defaultEffectsOn);
+    this.showRowActions = this.readBoolSetting("coder.showRowActions", defaultEffectsOn);
     this.showOnlyMatches = this.readBoolSetting("coder.showOnlyMatches", true);
     this.compactMode = this.readBoolSetting("coder.compactMode", false);
-    this.pinPreviewOnClick = this.readBoolSetting("coder.pinPreviewOnClick", false);
+    this.pinPreviewOnClick = this.readBoolSetting("coder.pinPreviewOnClick", defaultEffectsOn);
+    this.reducedMotion = this.readBoolSetting("coder.reducedMotion", !defaultEffectsOn);
     this.statusFilter = this.readStatusFilter();
     if (options?.initialTree && options.initialTree.length) {
       this.fallbackTree = options.initialTree;
@@ -131,6 +137,14 @@ export class CoderPanel {
     this.previewTooltip.append(this.previewTitle, this.previewSnippet);
     document.body.append(this.previewTooltip);
 
+    window.addEventListener("settings:updated", (ev) => {
+      const detail = (ev as CustomEvent<{ key?: string; value?: unknown }>).detail || {};
+      if (detail.key !== APPEARANCE_KEYS.effects) return;
+      this.effectsMode = detail.value === "performance" ? "performance" : "full";
+      this.applyEffectsMode();
+    });
+    void this.syncEffectsModeFromSettingsBridge();
+
     this.noteBox = document.createElement("div");
     this.noteBox.className = "coder-note-box";
     const noteLabel = document.createElement("div");
@@ -165,6 +179,7 @@ export class CoderPanel {
 
     this.ensureStyleInjected();
 
+    this.applyEffectsMode();
     this.unsubscribeStore = this.store.subscribe((state) => this.render(state));
     void this.hydratePersistentState();
     this.attachExternalStateListener();
@@ -500,25 +515,24 @@ export class CoderPanel {
     expander.addEventListener("click", (ev) => {
       ev.stopPropagation();
       if (node.type === "folder") {
-        const childrenEl = row.querySelector(".coder-children") as HTMLElement | null;
-        if (childrenEl) {
-          const isCollapsed = childrenEl.getAttribute("data-collapsed") === "true";
-          this.toggleFolderExpansion(node, isCollapsed);
-        }
+        const isCollapsed = this.isFolderCollapsed(node.id);
+        this.toggleFolderExpansion(node, isCollapsed);
       }
     });
 
     const label = document.createElement("div");
     label.className = "coder-label";
-    const dot = document.createElement("span");
-    dot.className = "status-dot";
-    if (node.type === "item") {
-      dot.style.background =
-        node.status === "Included" ? "#22c55e" : node.status === "Maybe" ? "#eab308" : "#ef4444";
-    } else {
-      dot.style.background = "#94a3b8";
+    if (!this.compactMode) {
+      const dot = document.createElement("span");
+      dot.className = "status-dot";
+      if (node.type === "item") {
+        dot.style.background =
+          node.status === "Included" ? "#22c55e" : node.status === "Maybe" ? "#eab308" : "#ef4444";
+      } else {
+        dot.style.background = "#94a3b8";
+      }
+      label.append(dot);
     }
-    label.append(dot);
 
     const title = document.createElement("span");
     title.className = "coder-title-text";
@@ -558,12 +572,14 @@ export class CoderPanel {
       pill.textContent = node.status;
       actions.append(pill);
     } else {
-      const rollup = this.buildFolderRollup(node);
-      actions.append(rollup);
-      const count = document.createElement("span");
-      count.className = "coder-sync";
-      count.textContent = `${node.children.length} child${node.children.length === 1 ? "" : "ren"}`;
-      actions.append(count);
+      if (!this.compactMode) {
+        const rollup = this.buildFolderRollup(node);
+        actions.append(rollup);
+        const count = document.createElement("span");
+        count.className = "coder-sync";
+        count.textContent = `${node.children.length} child${node.children.length === 1 ? "" : "ren"}`;
+        actions.append(count);
+      }
     }
     if (this.anchorSelection === node.id) {
       const anchorBadge = document.createElement("span");
@@ -645,8 +661,13 @@ export class CoderPanel {
     });
 
     row.addEventListener("dragstart", (ev) => this.handleDragStart(ev, node.id));
+    // Dragover fires at very high frequency; keep it cheap.
     row.addEventListener("dragover", (ev) => {
       ev.stopPropagation();
+      if (!this.showDropHints) {
+        ev.preventDefault();
+        return;
+      }
       this.handleDragOver(ev, node);
     });
     row.addEventListener("dragleave", () => this.clearDropTarget());
@@ -655,19 +676,21 @@ export class CoderPanel {
       this.handleDrop(ev, node);
     });
 
-    row.addEventListener("mouseenter", () => {
-      this.applyHoverPath(row, node.id);
-      if (node.type === "item") {
-        if (this.previewPinned && this.previewPinnedId !== node.id) return;
-        this.showPreviewTooltip(node, row);
-      }
-    });
-    row.addEventListener("mouseleave", () => {
-      this.clearHoverPath(node.id);
-      if (node.type === "item") {
-        this.hidePreviewTooltip();
-      }
-    });
+    if (!this.reducedMotion) {
+      row.addEventListener("mouseenter", () => {
+        this.applyHoverPath(row, node.id);
+        if (node.type === "item") {
+          if (this.previewPinned && this.previewPinnedId !== node.id) return;
+          this.showPreviewTooltip(node, row);
+        }
+      });
+      row.addEventListener("mouseleave", () => {
+        this.clearHoverPath(node.id);
+        if (node.type === "item") {
+          this.hidePreviewTooltip();
+        }
+      });
+    }
 
     if (this.selection.has(node.id)) {
       row.classList.add("selected");
@@ -864,7 +887,7 @@ export class CoderPanel {
     if (!targetNode) return;
     const host = row ?? this.treeHost.querySelector(`[data-id="${targetNode.id}"]`);
     if (!host) return;
-    const titleSpan = host.querySelector(".coder-label span:nth-child(2)") as HTMLElement | null;
+    const titleSpan = host.querySelector(".coder-title-text") as HTMLElement | null;
     if (!titleSpan) return;
     const input = document.createElement("input");
     input.className = "rename-input";
@@ -1001,6 +1024,13 @@ export class CoderPanel {
   private handleDragOver(ev: DragEvent, target: CoderNode): void {
     ev.preventDefault();
     ev.stopPropagation();
+    if (!this.showDropHints) {
+      if (ev.dataTransfer) {
+        const hasNode = ev.dataTransfer.types.includes(NODE_MIME);
+        ev.dataTransfer.dropEffect = hasNode ? "move" : "copy";
+      }
+      return;
+    }
     if (ev.dataTransfer) {
       const hasNode = ev.dataTransfer.types.includes(NODE_MIME);
       if (!hasNode) {
@@ -1513,9 +1543,23 @@ export class CoderPanel {
   }
 
   private addPayloadNode(payload: CoderPayload, parentId: string | null): void {
+    if (parentId) {
+      // Ensure the target folder chain is visible so the new node doesn't "disappear".
+      this.expandFolderChain(parentId);
+    }
     const node = this.store.addItem(payload, parentId);
     this.setSelectionSingle(node.id);
     this.persistPayloadFile(node);
+  }
+
+  private expandFolderChain(folderId: string): void {
+    const state = this.store.snapshot();
+    let current: string | null = folderId;
+    while (current) {
+      this.store.setFolderCollapsed(current, false);
+      const parent = this.findParent(state.nodes, current);
+      current = parent?.id ?? null;
+    }
   }
 
   private setDropTarget(nodeId: string, mode: "into" | "after" | "before"): void {
@@ -1730,6 +1774,54 @@ export class CoderPanel {
   private updateSurfaceClasses(): void {
     this.element.classList.toggle("coder-hide-row-actions", !this.showRowActions);
     this.element.classList.toggle("coder-compact", this.compactMode);
+    this.element.dataset.reducedMotion = this.reducedMotion ? "true" : "false";
+  }
+
+  private readEffectsMode(): "full" | "performance" {
+    const val = document.documentElement.dataset.effects;
+    return val === "performance" ? "performance" : "full";
+  }
+
+  private async syncEffectsModeFromSettingsBridge(): Promise<void> {
+    const bridge = (window as unknown as { settingsBridge?: { getValue?: (key: string) => Promise<unknown> } }).settingsBridge;
+    if (!bridge?.getValue) {
+      const next = this.readEffectsMode();
+      if (next !== this.effectsMode) {
+        this.effectsMode = next;
+        this.applyEffectsMode();
+      }
+      return;
+    }
+    try {
+      const value = await bridge.getValue(APPEARANCE_KEYS.effects);
+      const next = value === "performance" ? "performance" : "full";
+      if (next !== this.effectsMode) {
+        this.effectsMode = next;
+        this.applyEffectsMode();
+      }
+    } catch {
+      // ignore settings read failures
+    }
+  }
+
+  private applyEffectsMode(): void {
+    const full = this.effectsMode === "full";
+    if (full) {
+      this.reducedMotion = false;
+      this.showDropHints = true;
+      this.showRowActions = true;
+      this.pinPreviewOnClick = true;
+    } else {
+      this.reducedMotion = true;
+      this.showDropHints = false;
+      this.showRowActions = false;
+      this.pinPreviewOnClick = false;
+      this.hidePreviewTooltip();
+      this.clearDropTarget();
+    }
+    this.updateSurfaceClasses();
+    // Re-render so row-level hover handlers align with reducedMotion.
+    this.render(this.store.snapshot());
   }
 
   private toggleSettingsMenu(anchor: HTMLElement): void {
@@ -1740,16 +1832,29 @@ export class CoderPanel {
     }
     const menu = document.createElement("div");
     menu.className = "coder-settings";
-    const addToggle = (labelText: string, checked: boolean, onChange: (value: boolean) => void) => {
+    const addToggle = (
+      labelText: string,
+      checked: boolean,
+      onChange: (value: boolean) => void,
+      options: { disabled?: boolean; hint?: string } = {}
+    ) => {
       const row = document.createElement("label");
       row.className = "coder-settings-row";
       const checkbox = document.createElement("input");
       checkbox.type = "checkbox";
       checkbox.checked = checked;
+      checkbox.disabled = Boolean(options.disabled);
       checkbox.addEventListener("change", () => onChange(checkbox.checked));
       const text = document.createElement("span");
       text.textContent = labelText;
       row.append(checkbox, text);
+      if (options.hint) {
+        const hint = document.createElement("div");
+        hint.className = "status-bar";
+        hint.style.marginTop = "4px";
+        hint.textContent = options.hint;
+        row.appendChild(hint);
+      }
       menu.append(row);
     };
     const addAction = (labelText: string, onClick: () => void) => {
@@ -1766,21 +1871,23 @@ export class CoderPanel {
     };
 
     addToggle("Confirm deletes", this.confirmDelete, (value) => this.writeConfirmDelete(value));
+    const effectsLocked = this.effectsMode !== "full";
+    const effectsHint = effectsLocked ? "Controlled by Appearance → Effects mode (Performance)." : "";
     addToggle("Show drop hints", this.showDropHints, (value) => {
       this.showDropHints = value;
       this.writeBoolSetting("coder.showDropHints", value);
       if (!value) this.hideDropHint();
-    });
+    }, { disabled: effectsLocked, hint: effectsHint });
     addToggle("Show row actions", this.showRowActions, (value) => {
       this.showRowActions = value;
       this.writeBoolSetting("coder.showRowActions", value);
       this.updateSurfaceClasses();
-    });
+    }, { disabled: effectsLocked, hint: effectsHint });
     addToggle("Pin previews on click", this.pinPreviewOnClick, (value) => {
       this.pinPreviewOnClick = value;
       this.writeBoolSetting("coder.pinPreviewOnClick", value);
       if (!value) this.clearPinnedPreview();
-    });
+    }, { disabled: effectsLocked, hint: effectsHint });
     addToggle("Compact mode", this.compactMode, (value) => {
       this.compactMode = value;
       this.writeBoolSetting("coder.compactMode", value);
@@ -1949,10 +2056,12 @@ export class CoderPanel {
         if (this.fallbackTree && this.fallbackTree.length) {
           this.store.replaceTree(this.fallbackTree);
         }
+        this.ensureInitialCollapsed();
         return;
       }
       this.loadedStatePath = result.statePath;
       this.loadedBaseDir = result.baseDir;
+      this.ensureInitialCollapsed();
       if (this.syncPill) {
         this.syncPill.title = `Loaded from ${result.statePath}`;
       }
@@ -1967,6 +2076,26 @@ export class CoderPanel {
         console.info(`[CODER][TREE]\n${treeLines.join("\n")}`);
       }
     });
+  }
+
+  private ensureInitialCollapsed(): void {
+    const state = this.store.snapshot();
+    if (state.collapsedIds && state.collapsedIds.length > 0) {
+      return;
+    }
+    const ids: string[] = [];
+    const walk = (nodes: CoderNode[]): void => {
+      nodes.forEach((node) => {
+        if (node.type === "folder") {
+          ids.push(node.id);
+          walk(node.children);
+        }
+      });
+    };
+    walk(state.nodes);
+    if (ids.length) {
+      this.store.setCollapsedFolders(ids, true);
+    }
   }
 
   private refreshSavedPill(): void {

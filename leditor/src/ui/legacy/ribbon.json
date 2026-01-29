@@ -92,37 +92,37 @@
     {
       "tabId": "home",
       "label": "Home",
-      "source": "home.json",
+      "source": "home",
       "priority": 100
     },
     {
       "tabId": "insert",
       "label": "Insert",
-      "source": "insert.json",
+      "source": "insert",
       "priority": 95
     },
     {
       "tabId": "layout",
       "label": "Layout",
-      "source": "layout_tab.json",
+      "source": "layout",
       "priority": 80
     },
     {
       "tabId": "references",
       "label": "References",
-      "source": "references.json",
+      "source": "references",
       "priority": 70
     },
     {
       "tabId": "review",
       "label": "Review",
-      "source": "review.json",
+      "source": "review",
       "priority": 60
     },
     {
       "tabId": "view",
       "label": "View",
-      "source": "view.json",
+      "source": "view",
       "priority": 50
     }
   ],

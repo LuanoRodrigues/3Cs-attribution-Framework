@@ -6,6 +6,8 @@ import {
   DATABASE_KEYS
 } from "../config/settingsKeys";
 
+import Picker from "vanilla-picker/csp";
+
 (() => {
   const root = document.getElementById("settings-root");
   const settingsBridge = window.settingsBridge;
@@ -270,6 +272,10 @@ import {
       const normalized = rawValue === undefined || rawValue === null ? "" : String(rawValue);
       inputElement.value = normalized;
     });
+    const accentInput = fieldInputs[APPEARANCE_KEYS.accent];
+    if (accentInput) {
+      accentInput.dispatchEvent(new Event("input"));
+    }
     if (jsonViewElement) {
       jsonViewElement.textContent = JSON.stringify(snapshot, null, 2);
     }
@@ -363,6 +369,114 @@ import {
     }
 
     fieldInputs[def.key] = input;
+    return row;
+  }
+
+  function createAccentPickerBlock() {
+    const row = document.createElement("div");
+    row.className = "field-row";
+
+    const label = document.createElement("label");
+    label.textContent = "Accent color";
+    row.appendChild(label);
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.readOnly = true;
+    input.placeholder = "#2f74ff";
+    input.setAttribute("aria-label", "Accent color value");
+    input.style.display = "none";
+    fieldInputs[APPEARANCE_KEYS.accent] = input;
+    row.appendChild(input);
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "accent-picker";
+
+    const valueCode = document.createElement("code");
+    valueCode.textContent = input.placeholder || "";
+
+    const swatchGrid = document.createElement("div");
+    swatchGrid.className = "accent-swatch-grid";
+
+    const palette = [
+      "#2563eb",
+      "#0ea5e9",
+      "#06b6d4",
+      "#10b981",
+      "#22c55e",
+      "#84cc16",
+      "#eab308",
+      "#f97316",
+      "#ef4444",
+      "#ec4899",
+      "#a855f7",
+      "#64748b"
+    ];
+
+    const normalize = (value: string) => {
+      const v = (value || "").trim();
+      if (!v) return "";
+      return v.startsWith("#") ? v.toLowerCase() : `#${v.toLowerCase()}`;
+    };
+
+    const applyValue = (raw: string) => {
+      const next = normalize(raw);
+      if (!next) {
+        input.value = "";
+        valueCode.textContent = input.placeholder || "";
+      } else {
+        input.value = next;
+        valueCode.textContent = next;
+      }
+      swatchGrid.querySelectorAll<HTMLButtonElement>("button.accent-swatch").forEach((btn) => {
+        const swatchHex = normalize(btn.dataset.hex || "");
+        btn.setAttribute("aria-pressed", swatchHex === next ? "true" : "false");
+        const dot = btn.querySelector<HTMLElement>(".accent-swatch-dot");
+        if (dot) dot.style.display = swatchHex === next ? "block" : "none";
+      });
+    };
+
+    palette.forEach((hex) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "accent-swatch";
+      btn.style.background = hex;
+      btn.dataset.hex = hex;
+      btn.setAttribute("aria-label", `Set accent color to ${hex}`);
+      btn.setAttribute("aria-pressed", "false");
+      const dot = document.createElement("span");
+      dot.className = "accent-swatch-dot";
+      dot.style.display = "none";
+      btn.appendChild(dot);
+      btn.addEventListener("click", () => applyValue(hex));
+      swatchGrid.appendChild(btn);
+    });
+
+    const customButton = document.createElement("button");
+    customButton.type = "button";
+    customButton.className = "action-button";
+    customButton.textContent = "Custom…";
+
+    const picker = new Picker({
+      parent: customButton,
+      popup: "bottom",
+      alpha: false,
+      editor: true,
+      editorFormat: "hex",
+      cancelButton: true,
+      color: input.placeholder || "#2f74ff"
+    });
+    picker.onOpen = () => {
+      picker.setColor(input.value || input.placeholder || "#2f74ff", true);
+    };
+    picker.onChange = (color) => applyValue(color.hex);
+    picker.onDone = (color) => applyValue(color.hex);
+
+    wrapper.append(swatchGrid, customButton, valueCode);
+    row.appendChild(wrapper);
+
+    input.addEventListener("input", () => applyValue(input.value));
+    applyValue(input.value);
     return row;
   }
 
@@ -568,13 +682,7 @@ import {
         ]
       })
     );
-    row.appendChild(
-      createFieldBlock({
-        key: APPEARANCE_KEYS.accent,
-        label: "Accent color",
-        placeholder: "#2f74ff"
-      })
-    );
+    row.appendChild(createAccentPickerBlock());
     card.appendChild(row);
     panel.appendChild(card);
   }

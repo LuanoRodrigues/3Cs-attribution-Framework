@@ -523,6 +523,10 @@ export class PanelGrid {
 
   private buildContextMenuItems(targetId?: PanelId): PanelContextItem[] {
     const items: PanelContextItem[] = [];
+    const minimized = Object.entries(this.state.collapsed)
+      .filter(([, collapsed]) => collapsed)
+      .map(([panelId]) => panelId as PanelId);
+    let visiblePanels: PanelDefinition[] = [];
     if (targetId) {
       const definition = this.getDefinitionFor(targetId);
       if (definition) {
@@ -575,9 +579,23 @@ export class PanelGrid {
         items.push({ type: "separator" });
       }
     }
-    const minimized = Object.entries(this.state.collapsed)
-      .filter(([, collapsed]) => collapsed)
-      .map(([panelId]) => panelId as PanelId);
+    if (!targetId) {
+      visiblePanels = this.registry.filter(
+        (definition) => !this.state.collapsed[definition.id] && !this.state.undocked[definition.id]
+      );
+
+      if (visiblePanels.length) {
+        items.push({ type: "label", label: "Hide panels" });
+        visiblePanels.forEach((definition) => {
+          items.push({
+            type: "action",
+            action: "minimize",
+            panelId: definition.id,
+            label: `Hide ${definition.title}`
+          });
+        });
+      }
+    }
     if (minimized.length) {
       items.push({ type: "label", label: "Restore minimized panels" });
       minimized.forEach((panelId) => {
@@ -591,8 +609,6 @@ export class PanelGrid {
           });
         }
       });
-    } else if (!targetId) {
-      items.push({ type: "label", label: "No panels are collapsed" });
     }
     return items;
   }

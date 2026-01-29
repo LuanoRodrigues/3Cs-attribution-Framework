@@ -1,8 +1,7 @@
 import { dispatchCommand } from "../api/editor_commands.ts";
 import type { EditorCommandId } from "../api/editor_commands.ts";
 import type { EditorHandle } from "../api/leditor.ts";
-import ribbonPlan from "./ribbon.json";
-import layoutPlan from "./layout.json";
+import layoutPlan from "./layout_plan.ts";
 import { commandMap } from "../api/command_map.ts";
 import { RibbonTabStrip } from "./ribbon_primitives.ts";
 import { createRibbonButton, createRibbonDropdownButton, createRibbonSpinner } from "./ribbon_controls.ts";
@@ -12,6 +11,8 @@ import { SplitButton } from "./ribbon_split_button.ts";
 import { getTemplates } from "../templates/index.ts";
 import { getStyleTemplates, openStyleMiniApp } from "./style_mini_app.ts";
 import { tabLayouts } from "./tab_layouts.ts";
+import { collectNestedControls } from "./ribbon_config.ts";
+import { INSERT_ICON_OVERRIDES } from "./ribbon_icon_overrides.ts";
 import { resolveRibbonCommandId } from "./ribbon_command_aliases.ts";
 import type { RibbonStateBus, RibbonStateKey, RibbonStateSnapshot } from "./ribbon_state.ts";
 import type {
@@ -87,6 +88,41 @@ const applyGroupLayoutConfig = (body: HTMLDivElement, tabId: string, groupId: st
   if (gridAutoColumns) body.style.gridAutoColumns = gridAutoColumns;
   if (columnGap) body.style.columnGap = columnGap;
   if (rowGap) body.style.rowGap = rowGap;
+};
+
+const stripNonFluentNodes = (button: HTMLElement): void => {
+  const allowedSpanClasses = [
+    "ribbon-button-label",
+    "ribbon-dropdown-text",
+    "ribbon-dropdown-title",
+    "ribbon-dropdown-value"
+  ];
+  Array.from(button.childNodes).forEach((node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      if (node.textContent?.trim()) {
+        node.textContent = "";
+      }
+      return;
+    }
+    if (!(node instanceof HTMLElement)) return;
+    if (node.tagName === "SVG") return;
+    if (
+      node.tagName === "SPAN" &&
+      allowedSpanClasses.some((cls) => node.classList.contains(cls))
+    ) {
+      return;
+    }
+    node.remove();
+  });
+};
+
+const resolveIconForElement = (
+  element: HTMLElement,
+  controlIconMap: Map<string, RibbonIconName>
+): RibbonIconName | undefined => {
+  const controlId = element.dataset.controlId ?? element.closest<HTMLElement>("[data-control-id]")?.dataset.controlId;
+  if (!controlId) return undefined;
+  return controlIconMap.get(controlId);
 };
 
 const resolveCommandId = (
@@ -259,6 +295,9 @@ const iconFromKey = (key?: string): RibbonIconName | undefined => {
 };
 
 const resolveIconForControl = (control: ControlConfig): RibbonIconName | undefined => {
+  if (control.controlId && INSERT_ICON_OVERRIDES[control.controlId]) {
+    return INSERT_ICON_OVERRIDES[control.controlId];
+  }
   const direct = iconFromKey(control.iconKey);
   if (direct) return direct;
   const map: Record<string, RibbonIconName> = {
@@ -1770,21 +1809,102 @@ export const renderRibbonLayout = (
   host.innerHTML = "";
   host.appendChild(shell);
 
+  const buildControlIconMap = (): Map<string, RibbonIconName> => {
+    const map = new Map<string, RibbonIconName>();
+    const visitControls = (controls: ControlConfig[] | undefined): void => {
+      if (!controls) return;
+      controls.forEach((control) => {
+        if (control.controlId) {
+          const iconName = resolveIconForControl(control);
+          if (iconName) {
+            map.set(control.controlId, iconName);
+          }
+        }
+        if (control.menu) {
+          visitControls(control.menu);
+        }
+        const nested = collectNestedControls(control);
+        if (nested.length) {
+          visitControls(nested);
+        }
+      });
+    };
+    tabConfigs.forEach((tab) => {
+      tab.groups.forEach((group) => {
+        group.clusters.forEach((cluster) => {
+          visitControls(cluster.controls);
+        });
+      });
+    });
+    return map;
+  };
+
+  const controlIconMap = buildControlIconMap();
+
   const normalizeRibbonControls = (root: HTMLElement): void => {
+    const controls = root.querySelectorAll<HTMLElement>(
+      ".leditor-ribbon-button, .ribbon-dropdown-button, .leditor-split-primary, .leditor-split-caret, " +
+        ".leditor-ribbon-icon-btn, .leditor-ribbon-spinner-step, .ribbon-dialog-launcher-btn"
+    );
+    controls.forEach((control) => {
+      stripNonFluentNodes(control);
+      const hasSvg = Boolean(control.querySelector("svg"));
+      if (!hasSvg) {
+        const iconName = resolveIconForElement(control, controlIconMap);
+        if (iconName) {
+          const icon = createRibbonIcon(iconName);
+          icon.classList.add("ribbon-button-icon");
+          control.prepend(icon);
+          control.classList.add("has-icon");
+        }
+      }
+      control.classList.toggle("has-icon", Boolean(control.querySelector("svg")));
+    });
+  };
+  normalizeRibbonControls(shell);
+
+  const repairMissingIcons = (root: HTMLElement): void => {
     const controls = root.querySelectorAll<HTMLElement>(
       ".leditor-ribbon-button, .ribbon-dropdown-button, .leditor-split-primary, .leditor-ribbon-icon-btn"
     );
     controls.forEach((control) => {
+      Array.from(control.childNodes).forEach((node) => {
+        if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) {
+          node.textContent = "";
+        }
+      });
       const hasSvg = Boolean(control.querySelector("svg"));
-      control.classList.toggle("has-icon", hasSvg);
-      if (hasSvg) {
-        control.querySelectorAll(".ribbon-button-label, .ribbon-dropdown-text").forEach((label) => {
-          label.remove();
-        });
-      }
+      if (hasSvg) return;
+      const controlId = control.dataset.controlId;
+      const iconName = controlId ? controlIconMap.get(controlId) : undefined;
+      if (!iconName) return;
+      const icon = createRibbonIcon(iconName);
+      icon.classList.add("ribbon-button-icon");
+      control.prepend(icon);
+      control.classList.add("has-icon");
     });
   };
-  normalizeRibbonControls(shell);
+
+  const iconObserver = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      mutation.removedNodes.forEach((node) => {
+        if (!(node instanceof HTMLElement)) return;
+        const svg = node instanceof SVGElement ? node : node.querySelector("svg");
+        if (!svg) return;
+        const control = (mutation.target as HTMLElement | null)?.closest<HTMLElement>(
+          ".leditor-ribbon-button, .ribbon-dropdown-button, .leditor-split-primary, .leditor-ribbon-icon-btn"
+        );
+        console.warn("[Ribbon][IconRemoved]", {
+          controlId: control?.dataset.controlId ?? "",
+          controlType: control?.dataset.controlType ?? "",
+          tag: node.tagName
+        });
+        console.trace("[Ribbon][IconRemoved] trace");
+      });
+    });
+    repairMissingIcons(shell);
+  });
+  iconObserver.observe(shell, { childList: true, subtree: true });
 
   const ro = new ResizeObserver(() => {
     if (activeTab) activeTab.collapse();

@@ -2326,8 +2326,14 @@ kbd { background: color-mix(in srgb, var(--surface) 10%, transparent); }
   line-height: 1.6;
   color: var(--text);
   font-size: 15px;
-  padding-right: 0;
-  padding-left: 0;
+  padding: 16px 20px;
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  background: color-mix(in srgb, var(--surface) 70%, var(--panel) 30%);
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  box-shadow: 0 12px 45px rgba(0, 0, 0, 0.35);
 }
 
 .preview-content.academic-section__body h4 {

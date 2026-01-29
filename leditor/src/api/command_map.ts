@@ -29,12 +29,14 @@ import {
   updateAllCitationsAndBibliography
 } from "../csl/update.ts";
 import type { BibliographyNode as CslBibliographyNode, CitationNode as CslCitationNode, DocCitationMeta } from "../csl/types.ts";
-import homeTabRaw from "../ui/home.json";
-import insertTabRaw from "../ui/insert.json";
-import layoutTabRaw from "../ui/layout_tab.json";
-import referencesTabRaw from "../ui/references.json";
-import reviewTabRaw from "../ui/review.json";
-import viewTabRaw from "../ui/view.json";
+import {
+  homeTab,
+  insertTab,
+  layoutTab,
+  referencesTab,
+  reviewTab,
+  viewTab
+} from "../ui/ribbon_model.ts";
 import type { ControlConfig, TabConfig } from "../ui/ribbon_config.ts";
 import { resolveRibbonCommandId } from "../ui/ribbon_command_aliases.ts";
 import {
@@ -873,6 +875,7 @@ const collectDocumentCitationKeys = (editor: Editor): string[] => {
         if (!mark || mark.type?.name !== "link") return;
         const attrs = mark.attrs ?? {};
         push(attrs.dataKey);
+        push(attrs.dataOrigHref);
         push(attrs.itemKey);
         push(attrs.dataItemKey);
         const href = typeof attrs.href === "string" ? attrs.href : "";
@@ -888,8 +891,45 @@ const collectDocumentCitationKeys = (editor: Editor): string[] => {
   return Array.from(keys);
 };
 
+const logFirstParagraphAnchors = (editor: Editor): void => {
+  try {
+    const anchors: Array<Record<string, string>> = [];
+    let paragraphText = "";
+    let found = false;
+    editor.state.doc.descendants((node) => {
+      if (found) return false;
+      if (node.type.name !== "paragraph") return true;
+      found = true;
+      paragraphText = node.textContent || "";
+      node.descendants((child: any) => {
+        (child?.marks || []).forEach((mark: any) => {
+          if (!mark || mark.type?.name !== "link") return;
+          const attrs = mark.attrs ?? {};
+          anchors.push({
+            href: typeof attrs.href === "string" ? attrs.href : "",
+            dataKey: typeof attrs.dataKey === "string" ? attrs.dataKey : "",
+            dataOrigHref: typeof attrs.dataOrigHref === "string" ? attrs.dataOrigHref : "",
+            itemKey: typeof attrs.itemKey === "string" ? attrs.itemKey : "",
+            dataItemKey: typeof attrs.dataItemKey === "string" ? attrs.dataItemKey : ""
+          });
+        });
+        return true;
+      });
+      return false;
+    });
+    console.info("[References][debug] first paragraph", {
+      text: paragraphText.slice(0, 220),
+      anchorCount: anchors.length,
+      anchors: anchors.slice(0, 20)
+    });
+  } catch (error) {
+    console.warn("[References][debug] paragraph anchor dump failed", error);
+  }
+};
+
 const refreshUsedBibliography = async (editor: Editor) => {
   const keys = collectDocumentCitationKeys(editor);
+  logFirstParagraphAnchors(editor);
   await writeUsedBibliography(keys);
 };
 
@@ -2216,6 +2256,141 @@ Paragraphs: ${stats.paragraphs}`);
   }
 };
 
+const ensureCommand = (id: string): CommandHandler => {
+  const handler = commandMap[id];
+  if (!handler) {
+    throw new Error(`Missing command handler for "${id}"`);
+  }
+  return handler;
+};
+
+const aliasCommand = (aliasId: string, targetId: string, fixedArgs?: any): void => {
+  commandMap[aliasId] = (editor, args) => {
+    const handler = ensureCommand(targetId);
+    handler(editor, fixedArgs ?? args);
+  };
+};
+
+const aliasCommandWithArgs = (
+  aliasId: string,
+  targetId: string,
+  mergeArgs: (args?: any) => any
+): void => {
+  commandMap[aliasId] = (editor, args) => {
+    const handler = ensureCommand(targetId);
+    handler(editor, mergeArgs(args));
+  };
+};
+
+const applyRibbonAliases = (): void => {
+  // Clipboard / history
+  aliasCommand("clipboard.cut", "Cut");
+  aliasCommand("clipboard.copy", "Copy");
+  aliasCommand("clipboard.paste", "Paste");
+  aliasCommand("paste.default", "Paste");
+  aliasCommand("paste.keepSource", "Paste");
+  aliasCommand("paste.mergeFormatting", "Paste");
+  aliasCommand("paste.textOnly", "PastePlain");
+  aliasCommand("paste.plainText", "PastePlain");
+  aliasCommand("paste.fromWordCleanup", "PastePlain");
+  aliasCommand("history.undo", "Undo");
+  aliasCommand("history.redo", "Redo");
+
+  // Font toggles
+  aliasCommand("font.bold.toggle", "Bold");
+  aliasCommand("font.italic.toggle", "Italic");
+  aliasCommand("font.underline.toggle", "Underline");
+  aliasCommand("font.strikethrough.toggle", "Strikethrough");
+  aliasCommand("font.subscript.toggle", "Subscript");
+  aliasCommand("font.superscript.toggle", "Superscript");
+  aliasCommand("font.clearFormatting", "ClearFormatting");
+
+  aliasCommandWithArgs("font.case.set", "ChangeCase", (args) => {
+    const mode = args?.mode ?? args?.value ?? args?.case;
+    return { mode };
+  });
+
+  // Style aliases
+  aliasCommand("font.style.normal", "NormalStyle");
+  aliasCommand("font.style.title", "Heading1");
+  aliasCommand("font.style.subtitle", "Heading2");
+  aliasCommand("font.style.heading1", "Heading1");
+  aliasCommand("font.style.heading2", "Heading2");
+  aliasCommand("font.style.heading3", "Heading3");
+  aliasCommand("font.style.heading4", "Heading4");
+  aliasCommand("font.style.heading5", "Heading5");
+  aliasCommand("font.style.heading6", "Heading6");
+
+  // Paragraph alignment
+  commandMap["paragraph.align.set"] = (editor, args) => {
+    const mode = String(args?.mode ?? "left").toLowerCase();
+    if (mode === "center") return ensureCommand("AlignCenter")(editor);
+    if (mode === "right") return ensureCommand("AlignRight")(editor);
+    if (mode === "justify") return ensureCommand("JustifyFull")(editor);
+    return ensureCommand("AlignLeft")(editor);
+  };
+
+  // Lists
+  aliasCommand("list.bullet.toggle", "BulletList");
+  aliasCommand("list.ordered.toggle", "NumberList");
+
+  // Indent / spacing
+  aliasCommand("paragraph.indent", "Indent");
+  aliasCommand("paragraph.outdent", "Outdent");
+  aliasCommandWithArgs("paragraph.lineSpacing.set", "LineSpacing", (args) => ({ value: args?.value }));
+  aliasCommandWithArgs("paragraph.spaceBefore.add", "SpaceBefore", () => ({ valuePx: 8 }));
+  aliasCommandWithArgs("paragraph.spaceBefore.remove", "SpaceBefore", () => ({ valuePx: 0 }));
+  aliasCommandWithArgs("paragraph.spaceAfter.add", "SpaceAfter", () => ({ valuePx: 8 }));
+  aliasCommandWithArgs("paragraph.spaceAfter.remove", "SpaceAfter", () => ({ valuePx: 0 }));
+  aliasCommand("paragraph.spacing.openMenu", "ParagraphSpacingMenu");
+  aliasCommand("paragraph.spacing.openDialog", "ParagraphSpacingDialog");
+
+  // Borders & shading
+  aliasCommand("paragraph.borders.openMenu", "ParagraphBordersMenu");
+  aliasCommand("paragraph.borders.openDialog", "ParagraphBordersDialog");
+  aliasCommandWithArgs("paragraph.borders.set", "ParagraphBordersSet", (args) => args ?? {});
+
+  // Quote / rule
+  aliasCommand("paragraph.blockquote.toggle", "BlockquoteToggle");
+  aliasCommand("insert.horizontalRule", "InsertHorizontalRule");
+
+  // Page breaks / sections
+  aliasCommand("insert.pageBreak", "InsertPageBreak");
+  aliasCommand("insert.columnBreak", "InsertColumnBreak");
+  aliasCommand("insert.sectionBreak.nextPage", "InsertSectionBreakNextPage");
+  aliasCommand("insert.sectionBreak.continuous", "InsertSectionBreakContinuous");
+  aliasCommand("insert.sectionBreak.evenPage", "InsertSectionBreakEven");
+  aliasCommand("insert.sectionBreak.oddPage", "InsertSectionBreakOdd");
+
+  // Tables / images / links
+  aliasCommandWithArgs("insert.table.apply", "TableInsert", (args) => ({
+    rows: Number(args?.rows ?? 2),
+    cols: Number(args?.cols ?? 2)
+  }));
+  aliasCommand("insert.image.upload.openPicker", "InsertImage");
+  aliasCommand("links.link", "Link");
+  aliasCommand("links.bookmark", "InsertBookmark");
+  aliasCommand("links.crossReference", "InsertCrossReference");
+
+  // TOC + references
+  aliasCommand("toc.tableOfContents", "InsertTOC");
+  aliasCommand("toc.updateTable", "UpdateTOC");
+  aliasCommand("toc.addText", "InsertTocHeading");
+
+  // Footnotes
+  aliasCommand("footnotes.insertFootnote", "InsertFootnote");
+  aliasCommand("footnotes.insertEndnote", "InsertEndnote");
+  aliasCommandWithArgs("footnotes.nextFootnote", "footnote.navigate", () => ({ direction: "next" }));
+  aliasCommandWithArgs("footnotes.prevFootnote", "footnote.navigate", () => ({ direction: "previous" }));
+
+  // View / pagination / zoom
+  aliasCommandWithArgs("view.pagination.mode.paged", "view.paginationMode.set", () => ({ mode: "paged" }));
+  aliasCommandWithArgs("view.pagination.mode.continuous", "view.paginationMode.set", () => ({ mode: "continuous" }));
+  aliasCommand("view.pagination.mode", "view.paginationMode.openMenu");
+};
+
+applyRibbonAliases();
+
 const collectNestedControls = (control: ControlConfig): ControlConfig[] => {
   const nested: ControlConfig[] = [];
   if (Array.isArray(control.controls)) nested.push(...control.controls);
@@ -2255,12 +2430,12 @@ const createMissingCommandPlaceholder = (id: string): CommandHandler => {
 
 const registerMissingCommands = (): void => {
   const tabs = [
-    homeTabRaw,
-    insertTabRaw,
-    layoutTabRaw,
-    referencesTabRaw,
-    reviewTabRaw,
-    viewTabRaw
+    homeTab,
+    insertTab,
+    layoutTab,
+    referencesTab,
+    reviewTab,
+    viewTab
   ] as unknown as TabConfig[];
   const ids = new Set<string>();
   tabs.forEach((tab) => {

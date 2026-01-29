@@ -59,6 +59,11 @@ const settingsHtmlSrc = path.join(projectRoot, "src", "windows", "settings.html"
 if (fs.existsSync(settingsHtmlSrc)) {
   copyFile(settingsHtmlSrc, path.join(projectRoot, "dist", "windows", "settings.html"));
 }
+
+const vanillaPickerCss = path.join(projectRoot, "node_modules", "vanilla-picker", "dist", "vanilla-picker.csp.css");
+if (fs.existsSync(vanillaPickerCss)) {
+  copyFile(vanillaPickerCss, path.join(projectRoot, "dist", "windows", "vendor", "vanilla-picker.csp.css"));
+}
 const settingsScript = path.join(sharedResourcesDir, "settings_ui.js");
 if (fs.existsSync(settingsScript)) {
   const settingsScriptDest = path.join(projectRoot, "dist", "resources", "settings_ui.js");
@@ -90,6 +95,21 @@ const viewerBuildSrc = path.join(sharedResourcesDir, "build");
 const viewerBuildDest = path.join(projectRoot, "dist", "resources", "build");
 if (fs.existsSync(viewerBuildSrc)) {
   copyDir(viewerBuildSrc, viewerBuildDest);
+}
+
+const pdfjsPackageJson = (() => {
+  try {
+    return require.resolve("pdfjs-dist/package.json");
+  } catch {
+    return null;
+  }
+})();
+if (pdfjsPackageJson) {
+  const pdfjsRoot = path.dirname(pdfjsPackageJson);
+  const pdfjsBuildSrc = path.join(pdfjsRoot, "build");
+  if (fs.existsSync(pdfjsBuildSrc)) {
+    copyDir(pdfjsBuildSrc, viewerBuildDest);
+  }
 }
 
 const pdfAssetsSrc = path.join(sharedResourcesDir, "pdfs");

@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <title>Annotarium Settings</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="./vendor/vanilla-picker.csp.css" />
     <style>
       :root {
         --bg: #f3f4f6;
@@ -36,6 +37,43 @@
         align-items: stretch;
         justify-content: center;
         padding: 24px;
+      }
+
+      .accent-picker {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 10px;
+      }
+
+      .accent-swatch-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .accent-swatch {
+        width: 22px;
+        height: 22px;
+        border-radius: 6px;
+        border: 1px solid rgba(15, 23, 42, 0.2);
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .accent-swatch[aria-pressed="true"] {
+        outline: 2px solid rgba(37, 99, 235, 0.75);
+        outline-offset: 2px;
+      }
+
+      .accent-swatch-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.95);
+        box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.15);
       }
 
       .settings-shell {

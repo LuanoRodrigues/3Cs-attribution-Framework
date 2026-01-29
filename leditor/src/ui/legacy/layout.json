@@ -627,9 +627,9 @@
     "src/ui/pagination/paginator.ts",
     "src/ui/pagination/page_model.ts",
     "Plans/ribbon.json",
-    "Plans/home.json",
-    "Plans/insert.json",
-    "Plans/view.json"
+    "Plans/home",
+    "Plans/insert",
+    "Plans/view"
   ],
   "notes": [
     "Separator behavior is explicitly configured; prefer DOM separators for pixel-perfect alignment and deterministic measurement.",

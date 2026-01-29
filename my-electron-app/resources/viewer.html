@@ -852,7 +852,16 @@
     <div id="logBody"></div>
   </div>
 
-<script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+<script>
+  (function () {
+    const href = String(window.location?.href || "");
+    if (href.startsWith("qrc:")) {
+      const script = document.createElement("script");
+      script.src = "qrc:///qtwebchannel/qwebchannel.js";
+      document.head.appendChild(script);
+    }
+  })();
+</script>
 <script>
   (function(){
     window.__ANN_BRIDGE_READY = new Promise((resolve) => {
@@ -891,11 +900,25 @@
 
 
 
-<script src="./build/pdf.js"></script>
+<script type="module">
+  window.__PDFJS_READY = (async () => {
+    try {
+      const pdfjsLib = await import("./build/pdf.mjs");
+      window.pdfjsLib = pdfjsLib;
+      if (pdfjsLib?.GlobalWorkerOptions) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = "./build/pdf.worker.mjs";
+      }
+      return pdfjsLib;
+    } catch (err) {
+      console.error("pdf.js failed to load: expected ./build/pdf.mjs", err);
+      return null;
+    }
+  })();
+</script>
 
 
   <script>
-    window.addEventListener("DOMContentLoaded", () => {
+window.addEventListener("DOMContentLoaded", async () => {
       const statusEl    = document.getElementById("status");
       const viewerEl    = document.getElementById("viewer");
       const docEl       = document.getElementById("doc");
@@ -956,12 +979,14 @@
 
       const hlDots      = Array.from(document.querySelectorAll(".hlDot"));
 
-      if (typeof window.pdfjsLib === "undefined") {
-        statusEl.textContent = "pdf.js failed to load: expected ./build/pdf.js";
-        console.error("pdf.js failed to load: expected ./build/pdf.js");
+      const pdfjsLib = (await (window.__PDFJS_READY || Promise.resolve(window.pdfjsLib))) || window.pdfjsLib;
+      if (typeof pdfjsLib === "undefined" || !pdfjsLib) {
+        statusEl.textContent = "pdf.js failed to load: expected ./build/pdf.mjs";
+        console.error("pdf.js failed to load: expected ./build/pdf.mjs");
         return;
       }
-     window.pdfjsLib.GlobalWorkerOptions.workerSrc = "./build/pdf.worker.js";
+     window.pdfjsLib = pdfjsLib;
+     window.pdfjsLib.GlobalWorkerOptions.workerSrc = "./build/pdf.worker.mjs";
 
 function setStatus(msg) { statusEl.textContent = msg || ""; }
 
@@ -1048,6 +1073,8 @@ function ensureAnnotationsBridgeReady(){
       const qs = new URLSearchParams(window.location.search);
       const fileParam = qs.get("file") || "";
       const pageParam = qs.get("page") || "";
+      const themeParam = (qs.get("theme") || "").trim().toLowerCase();
+      const sidebarParam = (qs.get("sidebar") || "").trim().toLowerCase();
       let pageJump = parseInt(pageParam || "1", 10) || 1;
 
       let fileUrl = fileParam ? String(fileParam) : "";
@@ -1084,6 +1111,17 @@ function ensureAnnotationsBridgeReady(){
       // - We apply filter only to ".page canvas" elements.
       // - We keep this state local and persist to localStorage.
       let pdfTheme = "midnight"; // midnight | dim | paper | sepia | highcontrast
+      const initialSidebarHidden = sidebarParam === "" ? true : !["1", "true", "yes", "on"].includes(sidebarParam);
+
+      function _mapAppThemeToPdfTheme(name){
+        const n = String(name || "").toLowerCase();
+        if (n === "high-contrast" || n === "highcontrast") return "highcontrast";
+        if (n === "light") return "paper";
+        if (n === "warm") return "sepia";
+        if (n === "colorful") return "paper";
+        if (n === "cold" || n === "dark" || n === "system") return "midnight";
+        return ["midnight", "dim", "paper", "sepia", "highcontrast"].includes(n) ? n : "midnight";
+      }
 
       function _pdfThemeFilter(name){
         const n = String(name || "midnight");
@@ -1107,6 +1145,10 @@ function ensureAnnotationsBridgeReady(){
       }
 
       function loadPdfTheme(){
+        if (themeParam) {
+          applyPdfTheme(_mapAppThemeToPdfTheme(themeParam));
+          return;
+        }
         const raw = localStorage.getItem("pdf_theme") || "midnight";
         applyPdfTheme(raw);
       }
@@ -1118,6 +1160,9 @@ function ensureAnnotationsBridgeReady(){
       // ---------------- Payload (Zotero-style citation metadata) ----------------
       let currentPayload = null;
       let pendingPayloadFocus = null;
+      let lastPayloadFocus = null;
+      let payloadFocusTimer = null;
+      let ocrRequested = false;
 
 
       function toFileUrlFromWindowsPath(p){
@@ -1125,6 +1170,22 @@ function ensureAnnotationsBridgeReady(){
         const norm = s.replace(/\\/g, "/");
         const enc = encodeURI(norm);
         return "file:///" + enc;
+      }
+
+      function requestOcrIfNeeded(reason, page){
+        if (ocrRequested) return;
+        if (!fileUrl || !fileUrl.startsWith("file://")) return;
+        const v = pageViews.get(page || pageJump);
+        if (!v) return;
+        const hasTextLayer = v._textDivs && v._textDivs.length;
+        if (hasTextLayer) return;
+        const rawLen = String(v._rawText || "").length;
+        if (!rawLen) return;
+        ocrRequested = true;
+        logWarn("ocr: request", `reason=${reason} page=${page || pageJump} rawLen=${rawLen}`);
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage({ type: "pdf-ocr-request", payload: { fileUrl } }, "*");
+        }
       }
 
       function payloadDqid(pl){
@@ -1142,12 +1203,18 @@ function ensureAnnotationsBridgeReady(){
 
 function pageTextForPage(p){
   const v = pageViews.get(p);
-  if (!v || !v._textDivs) return "";
-  return v._textDivs
-    .map(d => (d && d.dataset && d.dataset.srcText !== undefined) ? d.dataset.srcText : (d.textContent || ""))
-    .join(" ")
-    .replace(/\s+/g, " ")
-    .trim();
+  if (!v) return "";
+  if (v._textDivs && v._textDivs.length) {
+    return v._textDivs
+      .map(d => (d && d.dataset && d.dataset.srcText !== undefined) ? d.dataset.srcText : (d.textContent || ""))
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+  if (v._rawText) {
+    return String(v._rawText || "").replace(/\s+/g, " ").trim();
+  }
+  return "";
 }
 
 function _normTextForSearch(s){
@@ -1231,10 +1298,16 @@ async function highlightDirectQuoteOnPage(pageNum, quote){
   _clearFindOverlay();
 
   const parts = [];
-  for (let i = 0; i < v._textDivs.length; i++) {
-    const d = v._textDivs[i];
-    const src = (d && d.dataset && d.dataset.srcText !== undefined) ? d.dataset.srcText : (d.textContent || "");
-    parts.push({ divIndex: i, text: String(src || "") });
+  const textDivs = v._textDivs || [];
+  if (textDivs.length) {
+    for (let i = 0; i < textDivs.length; i++) {
+      const d = textDivs[i];
+      const src = (d && d.dataset && d.dataset.srcText !== undefined) ? d.dataset.srcText : (d.textContent || "");
+      parts.push({ divIndex: i, text: String(src || "") });
+    }
+  } else if (v._rawText) {
+    parts.push({ divIndex: -1, text: String(v._rawText || "") });
+    logWarn("payload focus: textLayer empty, using rawText", `page=${p} rawLen=${String(String(v._rawText || "").length)}`);
   }
   const joinedRaw = parts.map(x => x.text).join(" ");
   const joinedNorm = _normTextForSearch(joinedRaw);
@@ -1248,39 +1321,105 @@ async function highlightDirectQuoteOnPage(pageNum, quote){
   let hitStart = -1;
   let hitEnd = -1;
 
-  // 1) Exact match path (fast)
-  const at = joinedNorm.indexOf(needleNorm);
-  if (at !== -1) {
+  const wordPositions = [];
+  if (joinedNorm) {
+    const rx = /\S+/g;
+    let m;
+    while ((m = rx.exec(joinedNorm)) !== null) {
+      wordPositions.push({ start: m.index, end: m.index + m[0].length });
+    }
+  }
+  const wordIndexAt = (charIndex) => {
+    if (!wordPositions.length) return 0;
+    for (let i = 0; i < wordPositions.length; i++) {
+      if (charIndex < wordPositions[i].end) return i;
+    }
+    return wordPositions.length - 1;
+  };
+
+  // 1) Exact raw match path (fast)
+  const atRaw = joinedRaw.indexOf(qRaw);
+  if (atRaw !== -1) {
+    const prefixRaw = joinedRaw.slice(0, atRaw);
+    const prefixWordsRaw = prefixRaw ? prefixRaw.split(/\s+/).filter(x => x.length) : [];
+    const needleWordsRaw = qRaw.split(/\s+/).filter(x => x.length);
+    hitStart = prefixWordsRaw.length;
+    hitEnd = prefixWordsRaw.length + needleWordsRaw.length;
+    logInfo("payload focus: exact raw match", `page=${p} startWord=${hitStart} endWord=${hitEnd}`);
+  } else {
+    // 2) Exact normalized match path
+    const at = joinedNorm.indexOf(needleNorm);
+    if (at !== -1) {
     const prefixNorm = joinedNorm.slice(0, at);
     const prefixWords = prefixNorm ? prefixNorm.split(" ").filter(x => x.length) : [];
     hitStart = prefixWords.length;
     hitEnd = prefixWords.length + needleWordsAll.length;
-  } else {
-    // 2) Relaxed match path (token subsequence), ignoring minimal stopwords that commonly vary
-    const stop = new Set(["the"]);
-    const needleWords = needleWordsAll.filter(w => !stop.has(w));
-
-    let foundAt = -1;
-    for (let i = 0; i <= hayWordsAll.length - needleWords.length; i++) {
-      let ok = true;
-      for (let j = 0; j < needleWords.length; j++) {
-        if (hayWordsAll[i + j] !== needleWords[j]) { ok = false; break; }
+    logInfo("payload focus: exact normalized match", `page=${p} startWord=${hitStart} endWord=${hitEnd}`);
+    const snippet = joinedNorm.slice(Math.max(0, at - 120), Math.min(joinedNorm.length, at + needleNorm.length + 120));
+    logDebug("payload focus: match snippet", snippet);
+    } else {
+      // 3) Lenient regex match (allow extra spaces / broken words)
+      let looseMatch = null;
+      if (needleNorm) {
+        const tokens = needleNorm.split(" ").filter(x => x.length);
+        if (tokens.length) {
+          const tokenPatterns = tokens.map(tok => tok.split("").join("\\s*"));
+          const pattern = tokenPatterns.join("\\s*");
+          try {
+            const re = new RegExp(pattern, "i");
+            looseMatch = re.exec(joinedNorm);
+          } catch {
+            looseMatch = null;
+          }
+        }
       }
-      if (ok) { foundAt = i; break; }
+
+      if (looseMatch && looseMatch.index >= 0) {
+        const startIdx = looseMatch.index;
+        const endIdx = looseMatch.index + looseMatch[0].length;
+      hitStart = wordIndexAt(startIdx);
+      hitEnd = wordIndexAt(endIdx) + 1;
+      setStatus(`Target highlighted (lenient) · p. ${p}`);
+      logInfo("payload focus: lenient match", `page=${p} startWord=${hitStart} endWord=${hitEnd}`);
+      const snippet = joinedNorm.slice(Math.max(0, startIdx - 120), Math.min(joinedNorm.length, endIdx + 120));
+      logDebug("payload focus: match snippet", snippet);
+      } else {
+        // 4) Relaxed match path (token subsequence), ignoring minimal stopwords that commonly vary
+        const stop = new Set(["the"]);
+        const needleWords = needleWordsAll.filter(w => !stop.has(w));
+
+        let foundAt = -1;
+        for (let i = 0; i <= hayWordsAll.length - needleWords.length; i++) {
+          let ok = true;
+          for (let j = 0; j < needleWords.length; j++) {
+            if (hayWordsAll[i + j] !== needleWords[j]) { ok = false; break; }
+          }
+          if (ok) { foundAt = i; break; }
+        }
+
+        if (foundAt === -1) {
+          setStatus(`Target not found on p. ${p}`);
+          logWarn("payload focus: quote not found", `page=${p}`);
+          _debugQuoteNotFound(p, qRaw);
+          return "NOT_FOUND";
+        }
+
+        hitStart = foundAt;
+        hitEnd = foundAt + needleWords.length;
+
+        setStatus(`Target highlighted (relaxed) · p. ${p}`);
+        logInfo("payload focus: relaxed match", `page=${p} startWord=${hitStart} endWord=${hitEnd}`);
+      }
     }
+  }
 
-    if (foundAt === -1) {
-      setStatus(`Target not found on p. ${p}`);
-      logWarn("payload focus: quote not found", `page=${p}`);
-      _debugQuoteNotFound(p, qRaw);
-      return "NOT_FOUND";
+  if (!textDivs.length) {
+    if (hitStart >= 0 && hitEnd >= 0) {
+      setStatus(`Target found but text layer empty · p. ${p}`);
+      logWarn("payload focus: text layer empty, cannot highlight", `page=${p} startWord=${hitStart} endWord=${hitEnd}`);
     }
-
-    hitStart = foundAt;
-    hitEnd = foundAt + needleWords.length;
-
-    setStatus(`Target highlighted (relaxed) · p. ${p}`);
-    logInfo("payload focus: relaxed match", `page=${p} startWord=${hitStart} endWord=${hitEnd}`);
+    _debugQuoteNotFound(p, qRaw);
+    return "NO_TEXT_LAYER";
   }
 
   let globalWordIndex = 0;
@@ -1321,6 +1460,23 @@ async function highlightDirectQuoteOnPage(pageNum, quote){
   logInfo("payload focus: highlighted", `page=${p} matches=${findMatches.length}`);
 
   return "FOUND";
+}
+
+function schedulePayloadFocus(reason = "defer", delay = 160) {
+  if (!currentPayload) return;
+  const page = parseInt(String(currentPayload.page || 1), 10) || 1;
+  const quote = String(currentPayload.direct_quote_clean || currentPayload.direct_quote || "").trim();
+  if (!quote) return;
+  lastPayloadFocus = { page, quote };
+  if (payloadFocusTimer) {
+    clearTimeout(payloadFocusTimer);
+    payloadFocusTimer = null;
+  }
+  payloadFocusTimer = setTimeout(async () => {
+    payloadFocusTimer = null;
+    await highlightDirectQuoteOnPage(page, quote);
+    logInfo("payload focus: reapply", `reason=${reason} page=${page}`);
+  }, delay);
 }
 
 
@@ -1473,6 +1629,10 @@ async function highlightDirectQuoteOnPage(pageNum, quote){
 
 async function renderTextLayer(p) {
   const v = pageViews.get(p);
+  if (!v || !v.pdfPage || !v.textLayer) {
+    logWarn("renderTextLayer skipped", `page=${p}`);
+    return;
+  }
   const page = v.pdfPage;
   const vp = v.viewport;
 
@@ -1480,20 +1640,51 @@ async function renderTextLayer(p) {
   v._textDivs = [];
 
   const textContent = await page.getTextContent();
+  const rawText = (textContent.items || []).map(it => (it && it.str) ? String(it.str) : "").join(" ").trim();
+  v._rawText = rawText;
 
-  const textLayerTask = pdfjsLib.renderTextLayer({
-    textContentSource: textContent,   // pdf.js newer API
-    container: v.textLayer,
-    viewport: vp,
-    textDivs: v._textDivs,
-    enhanceTextSelection: true
-  });
-
-  await textLayerTask.promise;
+  if (pdfjsLib && typeof pdfjsLib.renderTextLayer === "function") {
+    const textLayerTask = pdfjsLib.renderTextLayer({
+      textContentSource: textContent,   // pdf.js newer API
+      container: v.textLayer,
+      viewport: vp,
+      textDivs: v._textDivs,
+      enhanceTextSelection: true
+    });
+    await textLayerTask.promise;
+  } else if (pdfjsLib && typeof pdfjsLib.TextLayer === "function") {
+    const textLayer = new pdfjsLib.TextLayer({
+      textContentSource: textContent,
+      container: v.textLayer,
+      viewport: vp,
+      textDivs: v._textDivs,
+      enhanceTextSelection: true
+    });
+    await textLayer.render();
+  } else {
+    logWarn("renderTextLayer unavailable", "pdfjsLib.renderTextLayer missing");
+  }
 
   for (const d of v._textDivs) {
     if (d.dataset && d.dataset.srcText === undefined) {
       d.dataset.srcText = d.textContent || "";
+    }
+  }
+  if (!v._textDivs.length) {
+    const spans = Array.from(v.textLayer.querySelectorAll("span"));
+    if (spans.length) {
+      v._textDivs = spans;
+      for (const d of v._textDivs) {
+        if (d.dataset && d.dataset.srcText === undefined) {
+          d.dataset.srcText = d.textContent || "";
+        }
+      }
+      logWarn("renderTextLayer recovered spans", `page=${p} spanCount=${String(spans.length)}`);
+    } else {
+      logWarn("renderTextLayer empty", `page=${p} rawLen=${String(rawText.length)}`);
+      if (p === pageJump) {
+        requestOcrIfNeeded("textLayer-empty", p);
+      }
     }
   }
 }
@@ -1566,6 +1757,10 @@ v.annoLayer.appendChild(d);
   v.textLayer.style.setProperty("--scale-factor", String(vp.scale));
 
   const ctx = v.canvas.getContext("2d", { alpha: false });
+  if (!ctx) {
+    logError("renderPage(" + String(p) + ")", "canvas context unavailable");
+    return;
+  }
   ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0,0,v.canvas.width,v.canvas.height);
 
@@ -2468,9 +2663,20 @@ _setActiveFindBox();
 
           const quote = String(payload.direct_quote_clean || payload.direct_quote || "");
           pendingPayloadFocus = { page: pageJump, quote };
+          lastPayloadFocus = { page: pageJump, quote };
+          ocrRequested = false;
 
           boot();
           return "OK_PAYLOAD";
+        },
+        setTheme: (theme) => {
+          applyPdfTheme(_mapAppThemeToPdfTheme(theme));
+          savePdfTheme();
+          return "OK_THEME";
+        },
+        setSidebar: (hidden) => {
+          setSidebarHidden(Boolean(hidden));
+          return "OK_SIDEBAR";
         },
 
         scrollToPage: (page) => {
@@ -2648,6 +2854,7 @@ window.addEventListener("resize", debounce(async () => {
     lazyQueue.push(i);
   }
   pumpLazyQueue();
+  schedulePayloadFocus("resize");
 }, 200));
 
 // Palette
@@ -2981,6 +3188,7 @@ async function applyZoom(newScale, mode){
   updatePageNumBoxFromScroll();
   setStatus(`Zoom ${(renderScale * 100).toFixed(0)}%`);
   logInfo("Zoom", `scale=${renderScale.toFixed(3)} mode=${fitMode}`);
+  schedulePayloadFocus("zoom");
 }
 
 btnPrev.addEventListener("click", () => {
@@ -3052,6 +3260,24 @@ btnSide.addEventListener("click", () => {
 
   focusViewerIfSafe();
 });
+
+function setSidebarHidden(hidden) {
+  const app = document.getElementById("app");
+  const sb  = document.getElementById("sidebar");
+  if (!app || !sb) return;
+  if (hidden) {
+    sb.dataset.hidden = "1";
+    sb.style.display = "none";
+    app.style.gridTemplateColumns = "0 1fr";
+  } else {
+    sb.dataset.hidden = "0";
+    sb.style.display = "";
+    app.style.gridTemplateColumns = "300px 1fr";
+  }
+  if (fitMode === "width") {
+    window.dispatchEvent(new Event("resize"));
+  }
+}
 
 /* Tabs */
 tabThumbs.addEventListener("click", () => showThumbs());
@@ -3266,7 +3492,10 @@ btnLogHide.addEventListener("click", () => {
         const start = clamp((hashStart && hashStart !== 1) ? hashStart : pageJump, 1, pageCount);
         scrollToPage(start);
 
-        showThumbs();
+        setSidebarHidden(initialSidebarHidden);
+        if (!initialSidebarHidden) {
+          showThumbs();
+        }
 
         setStatus(`Ready · ${pageCount} pages`);
         logInfo("Ready", "pages=" + String(pageCount));
@@ -3277,6 +3506,8 @@ btnLogHide.addEventListener("click", () => {
           await highlightDirectQuoteOnPage(pf.page, pf.quote);
         }
 
+        requestOcrIfNeeded("boot", pageJump);
+
         viewerEl.focus({ preventScroll: true });
       }
 
@@ -3286,6 +3517,19 @@ btnLogHide.addEventListener("click", () => {
         setStatus("Viewer error: " + msg);
         logError("Viewer error", msg);
         console.error(err);
+      });
+
+      window.addEventListener("message", (event) => {
+        const data = event.data || {};
+        if (data.type === "pdf-ocr-ready" && data.payload && data.payload.pdfPath) {
+          const next = String(data.payload.pdfPath || "");
+          if (currentPayload && next) {
+            currentPayload = { ...currentPayload, pdf_path: next };
+            ocrRequested = false;
+            logInfo("ocr: ready", next);
+            PDF_APP.loadFromPayload(currentPayload);
+          }
+        }
       });
     });
   </script>

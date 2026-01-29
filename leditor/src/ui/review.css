@@ -1,9 +1,0 @@
-/* review.css — Review tab scoped styling */
-
-.leditor-ribbon-panel[data-tab-id="review"] {
-  --review-group-gap: 10px;
-}
-
-.leditor-ribbon-panel[data-tab-id="review"] .leditor-ribbon-groups {
-  gap: var(--review-group-gap);
-}
