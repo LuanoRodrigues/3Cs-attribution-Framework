@@ -93,8 +93,7 @@ const BibliographyExtension = Node.create({
         "data-bibliography-id": HTMLAttributes.bibId ?? undefined,
         "data-bibliography-html": typeof HTMLAttributes.renderedHtml === "string" ? HTMLAttributes.renderedHtml : "",
         class: "leditor-bibliography"
-      },
-      0
+      }
     ];
   },
   addNodeView() {

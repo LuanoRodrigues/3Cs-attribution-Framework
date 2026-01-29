@@ -385,7 +385,8 @@
 
 .leditor-ribbon-group {
   min-width: var(--r-group-min);
-  max-width: var(--r-group-max);
+  max-width: none;
+  width: max-content;
   border: 1px solid var(--r-border-soft);
   border-radius: 3px;
   background: linear-gradient(180deg, #fafafa 0%, #f2f2f2 100%);
@@ -402,11 +403,6 @@
   max-height: 100%;
 }
 
-.leditor-ribbon-panel[data-tab-id="home"] .leditor-ribbon-group {
-  max-width: none;
-  width: max-content;
-}
-
 .leditor-ribbon-group-body {
   display: flex;
   flex-direction: column;
@@ -415,7 +411,7 @@
   justify-content: flex-start;
   min-width: 0;
   min-height: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .leditor-ribbon-group-row {
@@ -431,23 +427,14 @@
 .leditor-ribbon-group-row > .ribbon-cluster {
   min-width: 0;
   max-width: 100%;
-  overflow: clip;
-  contain: layout paint;
+  overflow: visible;
+  contain: none;
 }
 
 .leditor-ribbon-host[data-ribbon-fixed-height="true"] .leditor-ribbon-group-body {
   min-height: 0;
   max-height: 100%;
   overflow-y: hidden;
-}
-
-.leditor-ribbon-panel[data-tab-id="home"] .leditor-ribbon-group-body {
-  overflow: visible;
-}
-
-.leditor-ribbon-panel[data-tab-id="home"] .leditor-ribbon-group-body > .ribbon-cluster{
-  overflow: visible;
-  contain: none;
 }
 
 .leditor-ribbon-group-footer {
@@ -502,8 +489,8 @@
 }
 
 .leditor-ribbon .ribbon-cluster--column {
-  flex-direction: column;
-  align-items: stretch;
+  flex-direction: row;
+  align-items: center;
 }
 
 .leditor-ribbon .ribbon-cluster:not(.ribbon-cluster--grid) {

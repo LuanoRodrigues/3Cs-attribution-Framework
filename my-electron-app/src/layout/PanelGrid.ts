@@ -46,6 +46,11 @@ export class PanelGrid {
   private contextMenu?: HTMLElement;
   private panelTree: PanelNode;
   private panelsV2Enabled: boolean;
+  private roundLayout = false;
+  private readonly fixedPanelSizes: Partial<Record<PanelId, number>> = {
+    panel1: 320,
+    panel2: 360
+  };
 
   constructor(private container: HTMLElement, options?: { panelsV2Enabled?: boolean }) {
     this.panelsV2Enabled = options?.panelsV2Enabled ?? true;
@@ -305,7 +310,10 @@ export class PanelGrid {
   }
 
   private applySizes(): void {
-    const visibleRatios = PANEL_REGISTRY.map((definition) => {
+    const dynamicRegistry = this.roundLayout
+      ? PANEL_REGISTRY.filter((definition) => !this.fixedPanelSizes[definition.id])
+      : PANEL_REGISTRY;
+    const visibleRatios = dynamicRegistry.map((definition) => {
       const id = definition.id;
       const ratio = this.state.collapsed[id] ? 0 : this.state.ratios[id];
       return { id, ratio };
@@ -330,9 +338,23 @@ export class PanelGrid {
         shell.classList.remove("panel-shell--collapsed");
         return;
       }
+      if (this.roundLayout && this.fixedPanelSizes[id]) {
+        const width = this.fixedPanelSizes[id];
+        if (typeof width === "number") {
+          shell.style.flex = `0 0 ${width}px`;
+          shell.style.minWidth = `${width}px`;
+          shell.style.maxWidth = `${width}px`;
+        }
+        shell.classList.remove("panel-shell--collapsed");
+        shell.dataset.minimized = "false";
+        shell.dataset.collapsed = "false";
+        return;
+      }
       const ratio = this.state.ratios[id];
       const normalized = total > 0 ? ratio / total : 0;
       const basis = normalized > 0 ? `${normalized * 100}%` : "0%";
+      shell.style.minWidth = "";
+      shell.style.maxWidth = "";
       shell.style.flex = `${ratio} 1 ${basis}`;
       shell.classList.remove("panel-shell--collapsed");
       shell.dataset.minimized = "false";
@@ -865,6 +887,12 @@ export class PanelGrid {
       this.applySizes();
       this.persistState();
     }
+  }
+
+  public setRoundLayout(enabled: boolean): void {
+    if (this.roundLayout === enabled) return;
+    this.roundLayout = enabled;
+    this.applySizes();
   }
 
   public setPanelsV2Enabled(enabled: boolean): void {

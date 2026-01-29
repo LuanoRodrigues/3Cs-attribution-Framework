@@ -11,10 +11,10 @@ import { SplitButton } from "./ribbon_split_button.ts";
 import { getTemplates } from "../templates/index.ts";
 import { getStyleTemplates, openStyleMiniApp } from "./style_mini_app.ts";
 import { tabLayouts } from "./tab_layouts.ts";
-import { collectNestedControls } from "./ribbon_config.ts";
 import { INSERT_ICON_OVERRIDES } from "./ribbon_icon_overrides.ts";
 import { resolveRibbonCommandId } from "./ribbon_command_aliases.ts";
 import type { RibbonStateBus, RibbonStateKey, RibbonStateSnapshot } from "./ribbon_state.ts";
+import { perfMark, perfMeasure } from "./perf.ts";
 import type {
   ClusterConfig,
   ControlConfig,
@@ -34,6 +34,17 @@ type InstalledAddin = {
   id: string;
   name: string;
   description?: string;
+};
+
+const collectNestedControls = (control: ControlConfig): ControlConfig[] => {
+  const nested: ControlConfig[] = [];
+  if (Array.isArray(control.controls)) nested.push(...control.controls);
+  if (Array.isArray(control.menu)) nested.push(...control.menu);
+  if (Array.isArray(control.items)) nested.push(...control.items);
+  if (control.gallery && Array.isArray(control.gallery.controls)) {
+    nested.push(...control.gallery.controls);
+  }
+  return nested;
 };
 
 interface CollapseMeta {
@@ -241,8 +252,7 @@ const stepFontSize = (presets: number[], current: number | null, direction: 1 | 
 
 const iconFromKey = (key?: string): RibbonIconName | undefined => {
   if (!key) return undefined;
-  if (!key.startsWith("icon.")) return undefined;
-  const simple = key.replace("icon.", "");
+  const simple = key.startsWith("icon.") ? key.slice(5) : key;
   // Map common cases; fallback to direct cast.
   const map: Record<string, RibbonIconName> = {
     paste: "paste",
@@ -411,6 +421,20 @@ const applyControlDataAttributes = (
   element.dataset.controlId = resolveControlId(control);
   element.dataset.controlType = control.type;
   element.dataset.size = sizeOverride ?? control.size ?? "auto";
+  const baseLabel = control.label ?? element.getAttribute("aria-label") ?? "";
+  let tooltip = baseLabel;
+  if (control.command?.id) {
+    const resolved = resolveRibbonCommandId(control.command as { id: string; args?: Record<string, unknown> });
+    const handler = commandMap[resolved] as { __missing?: boolean } | undefined;
+    if (handler?.__missing) {
+      tooltip = baseLabel ? `${baseLabel} (missing)` : `${resolved} (missing)`;
+      element.dataset.missingCommand = "true";
+    }
+  }
+  if (tooltip) {
+    element.dataset.tooltip = tooltip;
+    element.setAttribute("title", tooltip);
+  }
   if (control.state?.binding) {
     element.dataset.stateBinding = control.state.binding;
   }
@@ -545,6 +569,66 @@ const fallbackSymbols: DynamicEntry[] = [
   { id: "symbol_sigma", label: "Sigma", description: "∑", payload: { codepoint: "∑" } }
 ];
 
+const BUILTIN_CITATION_STYLE_LABELS: Record<string, string> = {
+  apa: "APA",
+  "harvard-cite-them-right": "Harvard (Cite Them Right)",
+  "chicago-author-date": "Chicago (Author-Date)",
+  "chicago-note-bibliography": "Chicago (Notes & Bibliography)",
+  vancouver: "Vancouver (Numeric)",
+  ieee: "IEEE (Numeric)",
+  nature: "Nature (Numeric)",
+  "modern-language-association": "MLA",
+  oscola: "OSCOLA",
+  "turabian-fullnote-bibliography": "Turabian (Fullnote Bibliography)"
+};
+
+const formatCitationStyleValue = (value: unknown): string => {
+  const id = typeof value === "string" ? value.trim().toLowerCase() : "";
+  if (!id) return "";
+  return BUILTIN_CITATION_STYLE_LABELS[id] ?? id;
+};
+
+const listCitationStyles = (): DynamicEntry[] => {
+  const builtins: Array<{ id: string; label: string }> = [
+    { id: "apa", label: "APA" },
+    { id: "harvard-cite-them-right", label: "Harvard (Cite Them Right)" },
+    { id: "chicago-author-date", label: "Chicago (Author-Date)" },
+    { id: "chicago-note-bibliography", label: "Chicago (Notes & Bibliography)" },
+    { id: "vancouver", label: "Vancouver (Numeric)" },
+    { id: "ieee", label: "IEEE (Numeric)" },
+    { id: "nature", label: "Nature (Numeric)" },
+    { id: "modern-language-association", label: "MLA" },
+    { id: "oscola", label: "OSCOLA" },
+    { id: "turabian-fullnote-bibliography", label: "Turabian (Fullnote Bibliography)" }
+  ];
+  const entries: DynamicEntry[] = builtins.map((s) => ({
+    id: s.id,
+    label: s.label,
+    payload: { id: s.id }
+  }));
+
+  try {
+    const imported = Object.keys(window.localStorage || {})
+      .filter((k) => k.startsWith("leditor.csl.style:"))
+      .map((k) => k.replace("leditor.csl.style:", ""))
+      .filter(Boolean)
+      .sort();
+    imported.forEach((name) => {
+      const id = name.replace(/\.csl$/i, "").trim().toLowerCase().replace(/\s+/g, "-");
+      if (!id) return;
+      entries.push({
+        id: `imported:${name}`,
+        label: `Imported: ${name}`,
+        description: `Switch document styleId to "${id}"`,
+        payload: { id }
+      });
+    });
+  } catch {
+    // ignore storage errors
+  }
+  return entries;
+};
+
 const mapInstalledAddins = (items?: InstalledAddin[]): DynamicEntry[] =>
   (items ?? []).map((addin) => ({
     id: addin.id,
@@ -568,7 +652,8 @@ const dynamicSources: Record<string, (ctx: BuildContext) => Promise<DynamicEntry
     }
     return fallback;
   },
-  recentSymbols: async () => fallbackSymbols
+  recentSymbols: async () => fallbackSymbols,
+  citationStyles: async () => listCitationStyles()
 };
 
 const createMenuSectionHeader = (label: string): HTMLDivElement => {
@@ -683,6 +768,9 @@ const createGalleryMenu = (menu: Menu, ctx: BuildContext, item: ControlConfig): 
   return container;
 };
 
+const menuRefreshers = new WeakMap<Menu, Array<() => void>>();
+const menuOpenPatched = new WeakSet<Menu>();
+
 const renderDynamicMenu = (menu: Menu, ctx: BuildContext, item: ControlConfig): void => {
   const container = document.createElement("div");
   container.className = "leditor-menu-dynamic";
@@ -694,38 +782,68 @@ const renderDynamicMenu = (menu: Menu, ctx: BuildContext, item: ControlConfig): 
     container.appendChild(createMenuSectionHeader("Source not supported"));
     return;
   }
-  void provider(ctx)
-    .then((entries) => {
-      if (!entries.length) {
-        container.appendChild(createMenuSectionHeader(`No ${item.label ?? "items"} available`));
-        return;
-      }
-      entries.forEach((entry) => {
-        const button = MenuItem({
-          label: entry.label,
-          onSelect: () => {
-            runMenuCommand(ctx, item.command, entry.payload);
-            menu.close();
-          }
-        });
-        applyControlDataAttributes(button, { ...item, type: "menuItem" });
-        button.textContent = "";
-        const title = document.createElement("span");
-        title.className = "leditor-menu-item-title";
-        title.textContent = entry.label;
-        button.appendChild(title);
-        if (entry.description) {
-          const detail = document.createElement("span");
-          detail.className = "leditor-menu-item-description";
-          detail.textContent = entry.description;
-          button.appendChild(detail);
+
+  const refresh = () => {
+    container.textContent = "";
+    container.appendChild(createMenuSectionHeader("Loading…"));
+    void provider(ctx)
+      .then((entries) => {
+        container.textContent = "";
+        if (!entries.length) {
+          container.appendChild(createMenuSectionHeader(`No ${item.label ?? "items"} available`));
+          return;
         }
-        container.appendChild(button);
+        entries.forEach((entry) => {
+          const currentStyle = source === "citationStyles" ? getStateValue(ctx, "citationStyle") : undefined;
+          const nextStyle = typeof entry.payload?.id === "string" ? entry.payload.id : "";
+          const button = MenuItem({
+            label: entry.label,
+            onSelect: () => {
+              runMenuCommand(ctx, item.command, entry.payload);
+              menu.close();
+            }
+          });
+          applyControlDataAttributes(button, { ...item, type: "menuItem" });
+          if (nextStyle) {
+            button.dataset.stateValue = nextStyle;
+          }
+          if (typeof currentStyle === "string" && nextStyle && currentStyle === nextStyle) {
+            button.classList.add("is-selected");
+          }
+          button.textContent = "";
+          const title = document.createElement("span");
+          title.className = "leditor-menu-item-title";
+          title.textContent = entry.label;
+          button.appendChild(title);
+          if (entry.description) {
+            const detail = document.createElement("span");
+            detail.className = "leditor-menu-item-description";
+            detail.textContent = entry.description;
+            button.appendChild(detail);
+          }
+          container.appendChild(button);
+        });
+      })
+      .catch(() => {
+        container.textContent = "";
+        container.appendChild(createMenuSectionHeader("Failed to load items"));
       });
-    })
-    .catch(() => {
-      container.appendChild(createMenuSectionHeader("Failed to load items"));
-    });
+  };
+
+  const list = menuRefreshers.get(menu) ?? [];
+  list.push(refresh);
+  menuRefreshers.set(menu, list);
+
+  if (!menuOpenPatched.has(menu)) {
+    menuOpenPatched.add(menu);
+    const originalOpen = menu.open.bind(menu);
+    menu.open = ((anchor?: HTMLElement) => {
+      (menuRefreshers.get(menu) ?? []).forEach((fn) => fn());
+      originalOpen(anchor);
+    }) as any;
+  }
+
+  refresh();
 };
 
 const createMenuItemButton = (menu: Menu, ctx: BuildContext, item: ControlConfig, toggle = false): HTMLButtonElement => {
@@ -1162,6 +1280,23 @@ const buildControl = (
       tooltip,
       menu
     });
+    if (control.controlId === "cite.style") {
+      button.classList.add("ribbon-dropdown--big");
+      const textWrap = document.createElement("span");
+      textWrap.className = "ribbon-dropdown-text";
+      const title = document.createElement("span");
+      title.className = "ribbon-dropdown-title";
+      title.textContent = control.label ?? "";
+      const value = document.createElement("span");
+      value.className = "ribbon-dropdown-value";
+      value.textContent = formatCitationStyleValue(getStateValue(ctx, control.state?.binding));
+      textWrap.append(title, value);
+      button.appendChild(textWrap);
+      const chevron = document.createElement("span");
+      chevron.className = "ribbon-dropdown-chevron";
+      chevron.textContent = "▾";
+      button.appendChild(chevron);
+    }
     ensureControlIcon(button, requiredIcon);
     applyControlDataAttributes(button, control, control.size ?? "medium");
     collapseMeta.element = button;
@@ -1723,6 +1858,7 @@ export const renderRibbonLayout = (
   model: RibbonModel
 ): void => {
   if (typeof document === "undefined") return;
+  perfMark("ribbon:render:start");
   const g = globalThis as typeof globalThis & { __leditorRibbonRenderCount?: number };
   g.__leditorRibbonRenderCount = (g.__leditorRibbonRenderCount ?? 0) + 1;
   if (g.__leditorRibbonRenderCount > 1) {
@@ -1811,7 +1947,7 @@ export const renderRibbonLayout = (
 
   const buildControlIconMap = (): Map<string, RibbonIconName> => {
     const map = new Map<string, RibbonIconName>();
-    const visitControls = (controls: ControlConfig[] | undefined): void => {
+    const visitControls = (controls: readonly ControlConfig[] | undefined): void => {
       if (!controls) return;
       controls.forEach((control) => {
         if (control.controlId) {
@@ -1863,49 +1999,6 @@ export const renderRibbonLayout = (
   };
   normalizeRibbonControls(shell);
 
-  const repairMissingIcons = (root: HTMLElement): void => {
-    const controls = root.querySelectorAll<HTMLElement>(
-      ".leditor-ribbon-button, .ribbon-dropdown-button, .leditor-split-primary, .leditor-ribbon-icon-btn"
-    );
-    controls.forEach((control) => {
-      Array.from(control.childNodes).forEach((node) => {
-        if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) {
-          node.textContent = "";
-        }
-      });
-      const hasSvg = Boolean(control.querySelector("svg"));
-      if (hasSvg) return;
-      const controlId = control.dataset.controlId;
-      const iconName = controlId ? controlIconMap.get(controlId) : undefined;
-      if (!iconName) return;
-      const icon = createRibbonIcon(iconName);
-      icon.classList.add("ribbon-button-icon");
-      control.prepend(icon);
-      control.classList.add("has-icon");
-    });
-  };
-
-  const iconObserver = new MutationObserver((mutations) => {
-    mutations.forEach((mutation) => {
-      mutation.removedNodes.forEach((node) => {
-        if (!(node instanceof HTMLElement)) return;
-        const svg = node instanceof SVGElement ? node : node.querySelector("svg");
-        if (!svg) return;
-        const control = (mutation.target as HTMLElement | null)?.closest<HTMLElement>(
-          ".leditor-ribbon-button, .ribbon-dropdown-button, .leditor-split-primary, .leditor-ribbon-icon-btn"
-        );
-        console.warn("[Ribbon][IconRemoved]", {
-          controlId: control?.dataset.controlId ?? "",
-          controlType: control?.dataset.controlType ?? "",
-          tag: node.tagName
-        });
-        console.trace("[Ribbon][IconRemoved] trace");
-      });
-    });
-    repairMissingIcons(shell);
-  });
-  iconObserver.observe(shell, { childList: true, subtree: true });
-
   const ro = new ResizeObserver(() => {
     if (activeTab) activeTab.collapse();
   });
@@ -1926,6 +2019,8 @@ export const renderRibbonLayout = (
 
   const initial = defaults.initialTabId ?? tabs[0].tabId;
   activate(initial);
+  perfMark("ribbon:render:end");
+  perfMeasure("ribbon:render", "ribbon:render:start", "ribbon:render:end");
 
   if (stateBus) {
     const syncBindings = (state: RibbonStateSnapshot): void => {
@@ -1937,6 +2032,12 @@ export const renderRibbonLayout = (
         if (element.dataset.controlType === "dropdown") {
           if (typeof value === "string") {
             element.dataset.value = value;
+          }
+          if (element.dataset.controlId === "cite.style") {
+            const valueEl = element.querySelector<HTMLElement>(".ribbon-dropdown-value");
+            if (valueEl) {
+              valueEl.textContent = formatCitationStyleValue(value);
+            }
           }
           const controlId = element.dataset.controlId ?? "";
           if (controlId) {

@@ -217,7 +217,8 @@ function createCoderFolderNode(): Record<string, unknown> {
 function createDefaultCoderState(): Record<string, unknown> {
   return {
     version: CODER_STATE_VERSION,
-    nodes: [createCoderFolderNode()]
+    nodes: [createCoderFolderNode()],
+    collapsed_ids: []
   };
 }
 
@@ -226,13 +227,63 @@ function normalizeCoderStatePayload(value?: unknown): Record<string, unknown> {
     const typed = value as Record<string, unknown>;
     const nodes = Array.isArray(typed.nodes) ? typed.nodes : undefined;
     if (nodes && nodes.length > 0) {
+      const collapsed =
+        (Array.isArray((typed as any).collapsed_ids) && (typed as any).collapsed_ids) ||
+        (Array.isArray((typed as any).collapsedIds) && (typed as any).collapsedIds) ||
+        [];
       return {
         version: typeof typed.version === "number" ? typed.version : CODER_STATE_VERSION,
-        nodes
+        nodes,
+        collapsed_ids: collapsed
       };
     }
   }
   return createDefaultCoderState();
+}
+
+function toPersistentCoderStatePayload(value: Record<string, unknown>): Record<string, unknown> {
+  const normalized = normalizeCoderStatePayload(value);
+  const toNode = (node: any): any => {
+    if (!node || typeof node !== "object") {
+      return null;
+    }
+    const type = node.type === "item" ? "item" : "folder";
+    if (type === "folder") {
+      return {
+        type: "folder",
+        id: String(node.id || randomUUID()),
+        name: String(node.name || "Section"),
+        note: String(node.note || ""),
+        edited_html: String(node.edited_html || node.editedHtml || ""),
+        updated_utc: String(node.updated_utc || node.updatedUtc || new Date().toISOString()),
+        children: Array.isArray(node.children) ? node.children.map(toNode).filter(Boolean) : []
+      };
+    }
+    return {
+      type: "item",
+      id: String(node.id || randomUUID()),
+      title: String(node.title || node.name || "Selection"),
+      status: String(node.status || "include"),
+      note: String(node.note || ""),
+      edited_html: String(node.edited_html || node.editedHtml || ""),
+      updated_utc: String(node.updated_utc || node.updatedUtc || new Date().toISOString()),
+      payload: node.payload && typeof node.payload === "object" ? node.payload : {}
+    };
+  };
+  const nodes = Array.isArray((normalized as any).nodes) ? (normalized as any).nodes : [];
+  const collapsed = Array.isArray((normalized as any).collapsed_ids) ? (normalized as any).collapsed_ids : [];
+  return {
+    version: typeof (normalized as any).version === "number" ? (normalized as any).version : CODER_STATE_VERSION,
+    nodes: nodes.map(toNode).filter(Boolean),
+    collapsed_ids: collapsed.map(String)
+  };
+}
+
+async function atomicWriteJson(filePath: string, json: string): Promise<void> {
+  const dir = path.dirname(filePath);
+  const tmpPath = path.join(dir, `.${path.basename(filePath)}.${Date.now()}.tmp`);
+  await fs.promises.writeFile(tmpPath, json, "utf-8");
+  await fs.promises.rename(tmpPath, filePath);
 }
 
 function emitSessionMenuAction(action: SessionMenuAction): void {
@@ -355,6 +406,7 @@ function normalizeLegacyJson(raw: string): string {
 function seedReferencesJsonFromDataHubCache(cacheDir: string): void {
   try {
     const outPath = path.join(cacheDir, "references.json");
+    const outLibraryPath = path.join(cacheDir, "references_library.json");
     const existingRaw = fs.existsSync(outPath) ? fs.readFileSync(outPath, "utf-8") : "";
     const existingParsed = (() => {
       if (!existingRaw) return null;
@@ -368,7 +420,13 @@ function seedReferencesJsonFromDataHubCache(cacheDir: string): void {
 
     const candidates = fs
       .readdirSync(cacheDir)
-      .filter((name) => name.endsWith(".json") && name !== "references.json" && name !== "references_library.json")
+      .filter(
+        (name) =>
+          name.endsWith(".json") &&
+          name !== "references.json" &&
+          name !== "references_library.json" &&
+          !name.startsWith("references.")
+      )
       .map((name) => path.join(cacheDir, name))
       .filter((p) => {
         try {
@@ -384,15 +442,27 @@ function seedReferencesJsonFromDataHubCache(cacheDir: string): void {
           return 0;
         }
       });
-    const pick = candidates[0];
-    if (!pick) return;
+    const readFirstValidTable = (): { sourcePath: string; columns: unknown[]; rows: unknown[][] } | null => {
+      for (const candidate of candidates) {
+        try {
+          const raw = fs.readFileSync(candidate, "utf-8");
+          const parsed = JSON.parse(normalizeLegacyJson(raw)) as { table?: { columns?: unknown[]; rows?: unknown[][] } };
+          const table = parsed?.table;
+          const columns = Array.isArray(table?.columns) ? (table?.columns as unknown[]) : [];
+          const rows = Array.isArray(table?.rows) ? (table?.rows as unknown[][]) : [];
+          if (columns.length && rows.length) {
+            return { sourcePath: candidate, columns, rows };
+          }
+        } catch {
+          // keep scanning
+        }
+      }
+      return null;
+    };
 
-    const raw = fs.readFileSync(pick, "utf-8");
-    const parsed = JSON.parse(normalizeLegacyJson(raw)) as { table?: { columns?: unknown[]; rows?: unknown[][] } };
-    const table = parsed?.table;
-    const columns = Array.isArray(table?.columns) ? (table?.columns as unknown[]) : [];
-    const rows = Array.isArray(table?.rows) ? (table?.rows as unknown[][]) : [];
-    if (!columns.length || !rows.length) return;
+    const table = readFirstValidTable();
+    if (!table) return;
+    const { sourcePath, columns, rows } = table;
 
     const colIndex = new Map<string, number>();
     columns.forEach((col, idx) => colIndex.set(String(col).trim().toLowerCase(), idx));
@@ -438,7 +508,8 @@ function seedReferencesJsonFromDataHubCache(cacheDir: string): void {
       return;
     }
     fs.writeFileSync(outPath, JSON.stringify(payload, null, 2), "utf-8");
-    console.info("[data-hub-cache] seeded references.json", { cacheDir, from: pick, count: payload.items.length });
+    fs.writeFileSync(outLibraryPath, JSON.stringify(payload, null, 2), "utf-8");
+    console.info("[data-hub-cache] seeded references.json", { cacheDir, from: sourcePath, count: payload.items.length });
   } catch (error) {
     console.warn("[data-hub-cache] failed to seed references.json", error);
   }
@@ -729,11 +800,14 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
     const legacyPath = path.join(coderDir, CODE_STATE_FILE);
     try {
       await fs.promises.mkdir(coderDir, { recursive: true });
-      const toWrite = payload?.state ? payload.state : createDefaultCoderState();
-      const encoded = JSON.stringify(toWrite);
-      await fs.promises.writeFile(primaryPath, encoded, "utf-8");
-      await fs.promises.writeFile(legacyPath, encoded, "utf-8");
+      const raw = payload?.state ? payload.state : createDefaultCoderState();
+      const toWrite = toPersistentCoderStatePayload(raw);
+      const encoded = JSON.stringify(toWrite, null, 2);
+      await atomicWriteJson(primaryPath, encoded);
+      await atomicWriteJson(legacyPath, encoded);
       console.info(`[CODER][STATE] save ${primaryPath}`);
+      (global as any).__coder_state_cache = (global as any).__coder_state_cache || {};
+      (global as any).__coder_state_cache[primaryPath] = { state: toWrite, baseDir: coderDir, statePath: primaryPath };
     } catch (error) {
       console.warn(`[CODER][STATE] save failed ${primaryPath}`, error);
     }

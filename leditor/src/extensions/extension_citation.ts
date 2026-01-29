@@ -1,5 +1,6 @@
 import { Node, mergeAttributes, type NodeViewRenderer } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
+import { NodeSelection } from "@tiptap/pm/state";
 import type { CitationItemRef } from "../csl/types.ts";
 
 const KEY_REGEX = /^[A-Z0-9]{8}$/;
@@ -74,13 +75,25 @@ const getItemKeys = (items: CitationItemRef[]): string[] =>
 class CitationNodeView {
   private node: ProseMirrorNode;
   private readonly anchor: HTMLAnchorElement;
+  private readonly onSelect?: () => void;
 
-  constructor(node: ProseMirrorNode) {
+  constructor(node: ProseMirrorNode, onSelect?: () => void) {
     this.node = node;
+    this.onSelect = onSelect;
     this.anchor = document.createElement("a");
     this.anchor.className = "leditor-citation-anchor";
     this.anchor.href = "#";
     this.anchor.contentEditable = "false";
+    this.anchor.addEventListener("mousedown", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.onSelect?.();
+    });
+    this.anchor.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.onSelect?.();
+    });
     this.applyNode(node);
   }
 
@@ -96,6 +109,20 @@ class CitationNodeView {
       delete this.anchor.dataset.citationId;
     }
     this.anchor.dataset.citationItems = JSON.stringify(items);
+    const dqid = typeof attrs.dqid === "string" ? attrs.dqid.trim() : "";
+    if (dqid) {
+      this.anchor.dataset.dqid = dqid;
+      this.anchor.href = `dq://${dqid}`;
+    } else {
+      delete this.anchor.dataset.dqid;
+      this.anchor.href = "#";
+    }
+    const title = typeof attrs.title === "string" ? attrs.title.trim() : "";
+    if (title) {
+      this.anchor.title = title;
+    } else {
+      this.anchor.removeAttribute("title");
+    }
     const hidden = Boolean(attrs.hidden);
     this.anchor.style.display = hidden ? "none" : "";
     this.anchor.dataset.citationHidden = hidden ? "1" : "0";
@@ -125,7 +152,17 @@ class CitationNodeView {
 }
 
 const citationNodeView: NodeViewRenderer = (props) => {
-  const view = new CitationNodeView(props.node);
+  const onSelect = () => {
+    try {
+      const pos = typeof props.getPos === "function" ? props.getPos() : null;
+      if (typeof pos !== "number") return;
+      const selection = NodeSelection.create(props.editor.state.doc, pos);
+      props.editor.view.dispatch(props.editor.state.tr.setSelection(selection));
+    } catch {
+      // ignore
+    }
+  };
+  const view = new CitationNodeView(props.node, onSelect);
   return {
     dom: view.dom,
     update: (node) => view.update(node)
@@ -144,7 +181,9 @@ const CitationNode = Node.create({
       citationId: { default: null },
       items: { default: [] },
       renderedHtml: { default: "" },
-      hidden: { default: false }
+      hidden: { default: false },
+      dqid: { default: null },
+      title: { default: null }
     };
   },
   parseHTML() {
@@ -157,11 +196,19 @@ const CitationNode = Node.create({
           const itemKeys = parsedItems ? getItemKeys(parsedItems) : extractItemKeys(element);
           if (!itemKeys.length && (!parsedItems || parsedItems.length === 0)) return false;
           const items = parsedItems ?? buildLegacyItems(element, itemKeys);
+          const href = element.getAttribute("href") || "";
+          const dqid =
+            element.getAttribute("data-dqid") ||
+            element.getAttribute("data-quote-id") ||
+            element.getAttribute("data-quote_id") ||
+            (href.startsWith("dq://") ? href.slice("dq://".length) : null);
           return {
             citationId: element.getAttribute("data-citation-id") || null,
             items,
             renderedHtml: element.getAttribute("data-rendered-html") || element.innerHTML || "",
-            hidden: parseBoolAttr(element.getAttribute("data-citation-hidden")) ?? false
+            hidden: parseBoolAttr(element.getAttribute("data-citation-hidden")) ?? false,
+            dqid: dqid || null,
+            title: element.getAttribute("title") || null
           };
         }
       },
@@ -173,11 +220,19 @@ const CitationNode = Node.create({
           const itemKeys = parsedItems ? getItemKeys(parsedItems) : extractItemKeys(element);
           if (!itemKeys.length && (!parsedItems || parsedItems.length === 0)) return false;
           const items = parsedItems ?? buildLegacyItems(element, itemKeys);
+          const href = element.getAttribute("href") || "";
+          const dqid =
+            element.getAttribute("data-dqid") ||
+            element.getAttribute("data-quote-id") ||
+            element.getAttribute("data-quote_id") ||
+            (href.startsWith("dq://") ? href.slice("dq://".length) : null);
           return {
             citationId: element.getAttribute("data-citation-id") || null,
             items,
             renderedHtml: element.getAttribute("data-rendered-html") || element.innerHTML || "",
-            hidden: parseBoolAttr(element.getAttribute("data-citation-hidden")) ?? false
+            hidden: parseBoolAttr(element.getAttribute("data-citation-hidden")) ?? false,
+            dqid: dqid || null,
+            title: element.getAttribute("title") || null
           };
         }
       }
@@ -188,13 +243,19 @@ const CitationNode = Node.create({
     const itemKeys = getItemKeys(items);
     const attrs = mergeAttributes(HTMLAttributes, {
       class: "leditor-citation-anchor",
-      href: "#",
+      href: typeof HTMLAttributes.dqid === "string" && HTMLAttributes.dqid ? `dq://${HTMLAttributes.dqid}` : "#",
       "data-token": itemKeys.length ? formatToken(itemKeys) : undefined,
       "data-item-keys": itemKeys.length ? itemKeys.join(",") : undefined,
       "data-citation-items": JSON.stringify(items),
       "data-rendered-html": typeof HTMLAttributes.renderedHtml === "string" ? HTMLAttributes.renderedHtml : "",
       "data-citation-hidden": boolAttrString(HTMLAttributes.hidden)
     });
+    if (typeof HTMLAttributes.dqid === "string" && HTMLAttributes.dqid) {
+      attrs["data-dqid"] = HTMLAttributes.dqid;
+    }
+    if (typeof HTMLAttributes.title === "string" && HTMLAttributes.title) {
+      attrs.title = HTMLAttributes.title;
+    }
     if (HTMLAttributes.citationId) {
       attrs["data-citation-id"] = HTMLAttributes.citationId;
     }

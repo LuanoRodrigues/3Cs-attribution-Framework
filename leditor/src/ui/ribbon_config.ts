@@ -62,7 +62,7 @@ export interface ControlConfig {
 export interface ClusterConfig {
   clusterId: string;
   layout?: string;
-  controls: ControlConfig[];
+  controls: readonly ControlConfig[];
   [key: string]: unknown;
 }
 
@@ -71,7 +71,7 @@ export interface GroupConfig {
   label?: string;
   priority?: number;
   dialogLauncher?: ControlConfig | null;
-  clusters: ClusterConfig[];
+  clusters: readonly ClusterConfig[];
   [key: string]: unknown;
 }
 
@@ -79,7 +79,7 @@ export interface TabConfig {
   tabId: string;
   label: string;
   layout?: Record<string, unknown>;
-  groups: GroupConfig[];
+  groups: readonly GroupConfig[];
   [key: string]: unknown;
 }
 
@@ -91,7 +91,7 @@ export interface RibbonTabDescriptor {
 }
 
 export interface RibbonRegistryDefaults {
-  collapseStages?: string[];
+  collapseStages?: readonly string[];
   initialTabId?: string;
   contextualTabsEnabled?: boolean;
   [key: string]: unknown;
@@ -104,9 +104,9 @@ export interface RibbonRegistry {
   defaults?: RibbonRegistryDefaults;
   iconLibrary?: Record<string, unknown>;
   stateContract?: Record<string, string>;
-  tabs?: RibbonTabDescriptor[];
-  removedTabs?: unknown[];
-  notes?: string[];
+  tabs?: readonly RibbonTabDescriptor[];
+  removedTabs?: readonly unknown[];
+  notes?: readonly string[];
   [key: string]: unknown;
 }
 
@@ -118,13 +118,101 @@ export interface RibbonModel {
 
 type TabSourceMap = Record<string, TabConfig>;
 
+const ICON_TYPES = new Set<ControlType>([
+  "button",
+  "toggleButton",
+  "splitButton",
+  "splitToggleButton",
+  "colorSplitButton",
+  "dropdown",
+  "dialogLauncher",
+  "menuItem",
+  "menuToggle",
+  "colorPicker"
+]);
+
+const resolveIconKeyForControl = (control: ControlConfig, parentIconKey?: string): string | undefined => {
+  if (control.iconKey) return control.iconKey;
+  if (parentIconKey && (control.type === "menuItem" || control.type === "menuToggle")) {
+    return parentIconKey;
+  }
+  const id = control.controlId ?? "";
+  if (!id) return undefined;
+  const pick = (name: string) => `icon.${name}`;
+  if (id.startsWith("toc.")) return pick("toc");
+  if (id.startsWith("cite.")) return pick("citation");
+  if (id.startsWith("footnotes.")) return pick("footnote");
+  if (id.startsWith("research.")) return pick("smartLookup");
+  if (id.startsWith("index.auto")) return pick("autoMark");
+  if (id.startsWith("index.mark")) return pick("markEntry");
+  if (id.startsWith("index.insert")) return pick("insertIndex");
+  if (id.startsWith("index.preview")) return pick("preview");
+  if (id.startsWith("toa.")) return pick("tableOfAuthorities");
+  if (id.startsWith("view.source")) return pick("preview");
+  if (id.startsWith("view.zoom")) return pick("zoom");
+  if (id.startsWith("view.pagination")) return pick("pages");
+  if (id.startsWith("view.printPreview")) return pick("printLayout");
+  if (id.startsWith("view.ruler")) return pick("ruler");
+  if (id.startsWith("view.pageBoundaries")) return pick("page");
+  if (id.startsWith("view.pageBreakMarks")) return pick("pageBreak");
+  if (id.startsWith("view.formattingMarks")) return pick("visualChars");
+  if (id.startsWith("proofing.")) return pick("spellCheck");
+  if (id.startsWith("accessibility.")) return pick("accessibility");
+  if (id.startsWith("language.")) return pick("language");
+  if (id.startsWith("comments.")) return pick("commentAdd");
+  if (id.startsWith("tracking.")) return pick("trackChanges");
+  if (id.startsWith("changes.accept")) return pick("acceptChange");
+  if (id.startsWith("changes.reject")) return pick("rejectChange");
+  if (id.startsWith("changes.next")) return pick("nextChange");
+  if (id.startsWith("changes.previous")) return pick("previousChange");
+  if (id.startsWith("protect.")) return pick("protect");
+  if (id.startsWith("pages.coverPage")) return pick("coverPage");
+  if (id.startsWith("pages.pageBreak")) return pick("pageBreak");
+  if (id.startsWith("pages.blankPage")) return pick("blankPage");
+  if (id.startsWith("pages.sectionBreak")) return pick("sectionBreak");
+  if (id.startsWith("tables.insertTable")) return pick("table");
+  if (id.startsWith("tables.quickTables")) return pick("quickTables");
+  if (id.startsWith("tables.drawTable")) return pick("drawTable");
+  if (id.startsWith("illustrations.pictures")) return pick("pictures");
+  if (id.startsWith("illustrations.shapes")) return pick("shapes");
+  if (id.startsWith("illustrations.icons")) return pick("icons");
+  if (id.startsWith("illustrations.smartArt")) return pick("smartArt");
+  if (id.startsWith("illustrations.chart")) return pick("chart");
+  if (id.startsWith("illustrations.screenshot")) return pick("screenshot");
+  if (id.startsWith("links.link")) return pick("link");
+  if (id.startsWith("links.bookmark")) return pick("bookmark");
+  if (id.startsWith("links.crossReference")) return pick("crossReference");
+  if (id.startsWith("symbols.equation")) return pick("equation");
+  if (id.startsWith("symbols.symbol")) return pick("symbol");
+  if (id.startsWith("symbols.emoji")) return pick("emoji");
+  return undefined;
+};
+
+const ensureIconKeys = (tab: TabConfig): void => {
+  const visit = (control: ControlConfig, parentIconKey?: string) => {
+    if (ICON_TYPES.has(control.type)) {
+      const resolved = resolveIconKeyForControl(control, parentIconKey);
+      if (resolved) {
+        control.iconKey = resolved;
+      }
+    }
+    const nextParent = control.iconKey ?? parentIconKey;
+    collectNestedControls(control).forEach((nested) => visit(nested, nextParent));
+  };
+  tab.groups.forEach((group) => {
+    group.clusters.forEach((cluster) => {
+      cluster.controls.forEach((control) => visit(control));
+    });
+  });
+};
+
 const TAB_SOURCES: TabSourceMap = {
-  home: homeTab as TabConfig,
-  insert: insertTab as TabConfig,
-  layout: layoutTab as TabConfig,
+  home: homeTab as unknown as TabConfig,
+  insert: insertTab as unknown as TabConfig,
+  layout: layoutTab as unknown as TabConfig,
   review: reviewTab as unknown as TabConfig,
   references: referencesTab as unknown as TabConfig,
-  view: viewTab as TabConfig
+  view: viewTab as unknown as TabConfig
 };
 
 let cachedRegistry: RibbonRegistry | null = null;
@@ -230,6 +318,7 @@ export const loadTabConfig = (source: string): TabConfig => {
   if (!Array.isArray(config.groups) || config.groups.length === 0) {
     throw new Error(`Tab ${config.tabId ?? source} must expose a non-empty groups array`);
   }
+  ensureIconKeys(config);
   validateIconOnlyControls(config);
   return config;
 };
@@ -294,7 +383,9 @@ export const loadRibbonModel = (): RibbonModel => {
         if (!Array.isArray(cluster.controls) || cluster.controls.length === 0) {
           throw new Error(`Cluster ${cluster.clusterId} must declare controls`);
         }
-        cluster.controls.forEach((control) => traverseControls(control, `${contextBase}/${group.groupId}/${cluster.clusterId}`, seenControlIds));
+        cluster.controls.forEach((control: ControlConfig) =>
+          traverseControls(control, `${contextBase}/${group.groupId}/${cluster.clusterId}`, seenControlIds)
+        );
       });
       if (group.dialogLauncher) {
         traverseControls(group.dialogLauncher, `${contextBase}/${group.groupId}/dialogLauncher`, seenControlIds);

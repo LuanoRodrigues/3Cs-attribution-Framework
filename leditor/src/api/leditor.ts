@@ -61,6 +61,7 @@ import PageLayoutExtension from "../extensions/extension_page_layout.ts";
 import ParagraphLayoutExtension from "../extensions/extension_paragraph_layout.ts";
 import { PageDocument, PageNode, PagePagination } from "../extensions/extension_page.ts";
 import StyleStoreExtension from "../extensions/extension_style_store.ts";
+import { extractCitedKeysFromDoc, writeCitedWorksKeys } from "../ui/references/cited_works.ts";
 import {
   FootnotesContainerExtension,
   FootnoteBodyExtension,
@@ -400,6 +401,25 @@ export const LEditor = {
     editor.on("blur", () => emitter.emit("blur"));
     editor.on("selectionUpdate", () => emitter.emit("selectionChange"));
 
+    // Keep the cited-works store (`references.used.json`) synced with the document so deletions are
+    // reflected without requiring a manual "Update".
+    let citedWorksSyncTimer: number | null = null;
+    const scheduleCitedWorksSync = () => {
+      if (citedWorksSyncTimer != null) {
+        window.clearTimeout(citedWorksSyncTimer);
+      }
+      citedWorksSyncTimer = window.setTimeout(() => {
+        citedWorksSyncTimer = null;
+        try {
+          const keys = extractCitedKeysFromDoc(editor.state.doc as any);
+          void writeCitedWorksKeys(keys);
+        } catch {
+          // ignore
+        }
+      }, 450);
+    };
+    editor.on("update", scheduleCitedWorksSync);
+
     const handle: EditorHandle = {
       editorInstanceId,
       /** Returns the canonical JSON document currently in the editor. */
@@ -432,6 +452,16 @@ export const LEditor = {
             dataQuoteText?: string;
             itemKey?: string;
             dataItemKey?: string;
+            dataItemKeys?: string;
+          };
+
+          const pickFirstItemKey = (raw: string): string | undefined => {
+            const trimmed = (raw || "").trim();
+            if (!trimmed) return undefined;
+            // Accept "A,B" or "A B" or "[A]" style tokens.
+            const cleaned = trimmed.replace(/^\[|\]$/g, "");
+            const parts = cleaned.split(/[,\s]+/).filter(Boolean);
+            return parts[0] || undefined;
           };
 
           const extractAnchorsFromHtml = (html: string): AnchorSeed[] => {
@@ -453,10 +483,12 @@ export const LEditor = {
                     dataOrigHref: (a.getAttribute("data-orig-href") || "").trim() || undefined,
                     dataQuoteId:
                       (a.getAttribute("data-quote-id") || a.getAttribute("data-quote_id") || "").trim() || undefined,
-                    dataDqid: (a.getAttribute("data-dqid") || "").trim() || undefined,
+                    dataDqid:
+                      (a.getAttribute("data-dqid") || a.getAttribute("dqid") || "").trim() || undefined,
                     dataQuoteText: (a.getAttribute("data-quote-text") || "").trim() || undefined,
                     itemKey: (a.getAttribute("item-key") || "").trim() || undefined,
-                    dataItemKey: (a.getAttribute("data-item-key") || "").trim() || undefined
+                    dataItemKey: (a.getAttribute("data-item-key") || "").trim() || undefined,
+                    dataItemKeys: (a.getAttribute("data-item-keys") || "").trim() || undefined
                   } as AnchorSeed;
                 })
                 .filter((v): v is AnchorSeed => Boolean(v));
@@ -486,37 +518,74 @@ export const LEditor = {
             if (!seeds.length) return;
             const linkMark = editor.schema.marks.link;
             if (!linkMark) return;
-            let seedIndex = 0;
-            const tr = editor.state.tr;
-            editor.state.doc.descendants((node, pos) => {
-              if (seedIndex >= seeds.length) return false;
-              if (!node.isText || !node.text) return true;
-              const seed = seeds[seedIndex];
-              if (!seed) return false;
-              const idx = node.text.indexOf(seed.text);
-              if (idx === -1) return true;
-              const from = pos + idx;
-              const to = from + seed.text.length;
-              const attrs = {
-                href: seed.href,
-                title: seed.title,
-                target: seed.target,
-                rel: seed.rel,
-                dataKey: seed.dataKey,
-                dataOrigHref: seed.dataOrigHref,
-                dataQuoteId: seed.dataQuoteId,
-                dataDqid: seed.dataDqid,
-                dataQuoteText: seed.dataQuoteText,
-                itemKey: seed.itemKey,
-                dataItemKey: seed.dataItemKey
-              } as Record<string, unknown>;
-              tr.addMark(from, to, linkMark.create(attrs));
-              seedIndex += 1;
-              return seedIndex < seeds.length;
+            // Build a fast lookup so we can enrich existing link marks with missing attributes,
+            // and also re-create links if the parser dropped them.
+            const seedByKey = new Map<string, AnchorSeed>();
+            const toKey = (seed: AnchorSeed) =>
+              `${(seed.href || "").trim()}|${(seed.dataQuoteId || seed.dataDqid || "").trim()}|${seed.text}`;
+            seeds.forEach((seed) => {
+              const k = toKey(seed);
+              if (k) seedByKey.set(k, seed);
             });
-            if (tr.docChanged) {
-              editor.view.dispatch(tr);
-            }
+
+            const tr = editor.state.tr;
+            const ops: Array<{ from: number; to: number; mark: any }> = [];
+            editor.state.doc.descendants((node, pos) => {
+              if (!node.isText || !node.text) return true;
+              const marks = node.marks || [];
+              const link = marks.find((m) => m.type === linkMark);
+              if (!link) return true;
+
+              const attrs = (link.attrs || {}) as Record<string, unknown>;
+              const href = typeof attrs.href === "string" ? attrs.href : "";
+              const dqid =
+                (typeof attrs.dataQuoteId === "string" && attrs.dataQuoteId) ||
+                (typeof attrs.dataDqid === "string" && attrs.dataDqid) ||
+                "";
+              const key = `${href.trim()}|${String(dqid || "").trim()}|${node.text}`;
+              const seed = seedByKey.get(key);
+              if (!seed) return true;
+
+              const needs =
+                !attrs.dataKey ||
+                (!attrs.dataQuoteId && !attrs.dataDqid) ||
+                (!attrs.dataOrigHref && seed.dataOrigHref) ||
+                (!attrs.itemKey && seed.itemKey);
+              if (!needs) return true;
+
+              const itemKeyFallback = seed.itemKey || seed.dataItemKey || pickFirstItemKey(seed.dataItemKeys || "");
+              const merged = {
+                ...attrs,
+                href: href || seed.href,
+                title: (typeof attrs.title === "string" && attrs.title) || seed.title,
+                target: (typeof attrs.target === "string" && attrs.target) || seed.target,
+                rel: (typeof attrs.rel === "string" && attrs.rel) || seed.rel,
+                dataKey: (typeof attrs.dataKey === "string" && attrs.dataKey) || seed.dataKey,
+                dataOrigHref: (typeof attrs.dataOrigHref === "string" && attrs.dataOrigHref) || seed.dataOrigHref,
+                dataQuoteId: (typeof attrs.dataQuoteId === "string" && attrs.dataQuoteId) || seed.dataQuoteId,
+                dataDqid: (typeof attrs.dataDqid === "string" && attrs.dataDqid) || seed.dataDqid,
+                dataQuoteText: (typeof attrs.dataQuoteText === "string" && attrs.dataQuoteText) || seed.dataQuoteText,
+                itemKey: (typeof attrs.itemKey === "string" && attrs.itemKey) || itemKeyFallback,
+                dataItemKey:
+                  (typeof attrs.dataItemKey === "string" && attrs.dataItemKey) ||
+                  seed.dataItemKey ||
+                  pickFirstItemKey(seed.dataItemKeys || "")
+              } as Record<string, unknown>;
+
+              const from = pos;
+              const to = pos + node.text.length;
+              ops.push({ from, to, mark: linkMark.create(merged) });
+              return true;
+            });
+
+            // Apply ops from end -> start to avoid position mapping issues.
+            ops
+              .sort((a, b) => b.from - a.from)
+              .forEach((op) => {
+                tr.addMark(op.from, op.to, op.mark);
+              });
+
+            if (tr.docChanged) editor.view.dispatch(tr);
           };
 
           try {
@@ -526,12 +595,19 @@ export const LEditor = {
               afterAnchorCount,
               length: afterHtml.length
             });
-            if (inputAnchorCount > 0 && afterAnchorCount === 0 && anchorSeeds.length > 0) {
-              console.warn("[LEditor][setContent] anchors dropped; rehydrating link marks");
+            if (inputAnchorCount > 0 && anchorSeeds.length > 0) {
+              if (afterAnchorCount === 0) {
+                console.warn("[LEditor][setContent] anchors dropped; rehydrating link marks");
+              } else {
+                console.info("[LEditor][setContent] enriching link marks from source anchors", {
+                  inputAnchorCount,
+                  afterAnchorCount
+                });
+              }
               rehydrateLinksByText(anchorSeeds);
               const afterFix = editor.getHTML();
               console.info("[LEditor][setContent][html][after][rehydrate]", {
-                anchorCount: (afterFix.match(/<a\\b/gi) || []).length,
+                anchorCount: (afterFix.match(/<a\b/gi) || []).length,
                 length: afterFix.length
               });
             }
@@ -631,6 +707,14 @@ export const LEditor = {
       handle.setContent(config.initialContent.value, { format: config.initialContent.format });
     } else {
       handle.setContent("<p>Welcome to LEditor.</p>", { format: "html" });
+    }
+
+    // Initialize cited-works store (`references.used.json`) on load so bibliographies work before any edits.
+    try {
+      const keys = extractCitedKeysFromDoc(editor.state.doc as any);
+      void writeCitedWorksKeys(keys);
+    } catch {
+      // ignore
     }
 
     for (const plugin of plugins) {

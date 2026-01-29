@@ -143,8 +143,23 @@ function ensureScriptLoaded(): Promise<void> {
   const resourceBase = new URL("../resources/leditor/", window.location.href);
   const styleUrl = new URL(STYLE_ENTRY, base).href;
   try {
-    localStorage.setItem("leditor.coderStatePath", new URL("content/coder_state.json", resourceBase).pathname);
-    localStorage.setItem("leditor.scopeId", writePanelScopeId ?? getDefaultCoderScope());
+    const scopeId = writePanelScopeId ?? getDefaultCoderScope();
+    localStorage.setItem("leditor.scopeId", scopeId);
+    if (window.coderBridge?.loadState) {
+      void window.coderBridge
+        .loadState({ scopeId })
+        .then((result) => {
+          if (result?.statePath) {
+            localStorage.setItem("leditor.coderStatePath", String(result.statePath));
+          }
+        })
+        .catch(() => {
+          // ignore
+        });
+    } else {
+      // Fallback for dev/isolated runs.
+      localStorage.setItem("leditor.coderStatePath", new URL("content/coder_state.json", resourceBase).pathname);
+    }
   } catch {
     // best-effort; ignore storage failures
   }

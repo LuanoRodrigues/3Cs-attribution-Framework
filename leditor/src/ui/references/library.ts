@@ -7,6 +7,7 @@ export type ReferenceItem = {
   year?: string;
   url?: string;
   note?: string;
+  source?: string;
   dqid?: string;
 };
 
@@ -17,7 +18,8 @@ export type ReferencesLibrary = {
 };
 
 const LIBRARY_STORAGE_KEY = "leditor.references.library";
-const LIBRARY_FILENAME = "references.json";
+const LIBRARY_FILENAME = "references_library.json";
+const LEGACY_FILENAME = "references.json";
 
 let cachedLibrary: ReferencesLibrary | null = null;
 let loadPromise: Promise<ReferencesLibrary> | null = null;
@@ -97,6 +99,12 @@ const getLibraryPath = (host?: HostContract | null): string => {
   return `${base.replace(/[\\/]+$/, "")}/${LIBRARY_FILENAME}`;
 };
 
+const getLegacyPath = (host?: HostContract | null): string => {
+  const base = host?.paths?.bibliographyDir?.trim() ?? "";
+  if (!base) return LEGACY_FILENAME;
+  return `${base.replace(/[\\/]+$/, "")}/${LEGACY_FILENAME}`;
+};
+
 const loadFromStorage = (): ReferencesLibrary | null => {
   try {
     const raw = window.localStorage?.getItem(LIBRARY_STORAGE_KEY);
@@ -119,7 +127,7 @@ const loadFromHost = async (): Promise<ReferencesLibrary | null> => {
   const host = window.leditorHost;
   if (!host?.readFile) return null;
   const contract = getHostContract();
-  const candidates = [getLibraryPath(contract)];
+  const candidates = [getLibraryPath(contract), getLegacyPath(contract)];
   for (const path of candidates) {
     const result = await host.readFile({ sourcePath: path });
     if (!result?.success || typeof result.data !== "string") {
@@ -187,6 +195,21 @@ export const upsertReferenceItem = (item: ReferenceItem): void => {
   if (item.dqid) {
     library.itemsByDqid[item.dqid] = item;
   }
+  library.updatedAt = new Date().toISOString();
+  cachedLibrary = library;
+  persistLibrary(library);
+};
+
+export const upsertReferenceItems = (items: ReferenceItem[]): void => {
+  if (!Array.isArray(items) || items.length === 0) return;
+  const library = getReferencesLibrarySync();
+  items.forEach((item) => {
+    if (!item?.itemKey) return;
+    library.itemsByKey[item.itemKey] = item;
+    if (item.dqid) {
+      library.itemsByDqid[item.dqid] = item;
+    }
+  });
   library.updatedAt = new Date().toISOString();
   cachedLibrary = library;
   persistLibrary(library);

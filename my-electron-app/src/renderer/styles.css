@@ -1452,6 +1452,25 @@ kbd { background: color-mix(in srgb, var(--surface) 10%, transparent); }
   opacity: 1;
 }
 
+.panel-gutter::after {
+  content: "\EA1E";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 12px;
+  letter-spacing: 0.4px;
+  color: var(--muted);
+  font-family: "Segoe Fluent Icons", "Segoe UI", system-ui, sans-serif;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.panel-gutter:hover::after,
+.panel-gutter:focus-within::after {
+  opacity: 1;
+}
+
 .panel-inner-gutter {
   background: transparent;
   flex: 0 0 8px;
@@ -1473,6 +1492,25 @@ kbd { background: color-mix(in srgb, var(--surface) 10%, transparent); }
 .panel-inner-gutter:hover::before,
 .panel-inner-gutter:focus-within::before {
   background: var(--accent);
+  opacity: 1;
+}
+
+.panel-inner-gutter::after {
+  content: "\EA1E";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(90deg);
+  font-size: 12px;
+  letter-spacing: 0.4px;
+  color: var(--muted);
+  font-family: "Segoe Fluent Icons", "Segoe UI", system-ui, sans-serif;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.panel-inner-gutter:hover::after,
+.panel-inner-gutter:focus-within::after {
   opacity: 1;
 }
 
@@ -2326,14 +2364,13 @@ kbd { background: color-mix(in srgb, var(--surface) 10%, transparent); }
   line-height: 1.6;
   color: var(--text);
   font-size: 15px;
-  padding: 16px 20px;
+  padding: 24px 32px 28px;
   width: 100%;
-  max-width: 960px;
-  margin: 0 auto;
-  background: color-mix(in srgb, var(--surface) 70%, var(--panel) 30%);
-  border-radius: 12px;
-  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
-  box-shadow: 0 12px 45px rgba(0, 0, 0, 0.35);
+  margin: 0;
+  background: transparent;
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
 }
 
 .preview-content.academic-section__body h4 {

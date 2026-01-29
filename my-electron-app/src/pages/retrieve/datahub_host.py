@@ -119,6 +119,7 @@ def _write_references_cache(cache_dir: str, table: Dict[str, Any]) -> None:
         "items": items,
     }
     _write_json_file(cache_root / "references.json", payload)
+    _write_json_file(cache_root / "references_library.json", payload)
 
 
 def _safe_json(obj: Any) -> str:

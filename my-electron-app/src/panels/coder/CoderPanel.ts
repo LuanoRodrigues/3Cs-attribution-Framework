@@ -79,6 +79,7 @@ export class CoderPanel {
   private onlyMatchesBtn?: HTMLButtonElement;
   private nextMatchBtn?: HTMLButtonElement;
   private dragGhost?: HTMLElement;
+  private collapseStateTouched = false;
 
   private fallbackTree?: CoderNode[];
 
@@ -508,15 +509,35 @@ export class CoderPanel {
     const rowInner = document.createElement("div");
     rowInner.className = "coder-row";
 
-    const expander = document.createElement("span");
+    const expander = document.createElement("button");
+    expander.type = "button";
     expander.className = "coder-expander";
     const collapsed = node.type === "folder" ? this.isFolderCollapsed(node.id) : false;
-    expander.textContent = node.type === "folder" ? (collapsed ? "▸" : "▿") : "";
+    expander.innerHTML =
+      node.type === "folder"
+        ? collapsed
+          ? `<svg class="coder-expander-icon" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.22 3.97a.75.75 0 0 0 0 1.06L9.19 8l-2.97 2.97a.75.75 0 1 0 1.06 1.06l3.5-3.5a.75.75 0 0 0 0-1.06l-3.5-3.5a.75.75 0 0 0-1.06 0Z" fill="currentColor"/></svg>`
+          : `<svg class="coder-expander-icon" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.97 6.22a.75.75 0 0 1 1.06 0L8 9.19l2.97-2.97a.75.75 0 1 1 1.06 1.06l-3.5 3.5a.75.75 0 0 1-1.06 0l-3.5-3.5a.75.75 0 0 1 0-1.06Z" fill="currentColor"/></svg>`
+        : "";
+    expander.disabled = node.type !== "folder";
+    if (node.type === "folder") {
+      expander.setAttribute("aria-label", collapsed ? "Expand folder" : "Collapse folder");
+      expander.setAttribute("aria-expanded", collapsed ? "false" : "true");
+    }
+    // Prevent folder expander clicks from starting a drag (rows are draggable).
+    expander.addEventListener("pointerdown", (ev) => {
+      ev.stopPropagation();
+      ev.preventDefault();
+    });
+    expander.addEventListener("mousedown", (ev) => {
+      ev.stopPropagation();
+      ev.preventDefault();
+    });
     expander.addEventListener("click", (ev) => {
       ev.stopPropagation();
       if (node.type === "folder") {
-        const isCollapsed = this.isFolderCollapsed(node.id);
-        this.toggleFolderExpansion(node, isCollapsed);
+        this.collapseStateTouched = true;
+        this.store.setFolderCollapsed(node.id, !this.isFolderCollapsed(node.id));
       }
     });
 
@@ -1005,6 +1026,11 @@ export class CoderPanel {
 
   private handleDragStart(ev: DragEvent, nodeId: string): void {
     if (!ev.dataTransfer) return;
+    const origin = ev.target as HTMLElement | null;
+    if (origin?.closest?.("button, input, textarea, select, a")) {
+      ev.preventDefault();
+      return;
+    }
     const node = this.nodeById(nodeId);
     if (node) {
       const ghost = document.createElement("div");
@@ -1126,8 +1152,9 @@ export class CoderPanel {
     this.filterInput?.select();
   }
 
-  private toggleFolderExpansion(node: FolderNode, expand: boolean): void {
-    this.store.setFolderCollapsed(node.id, !expand);
+  private setFolderExpanded(folderId: string, expanded: boolean): void {
+    this.collapseStateTouched = true;
+    this.store.setFolderCollapsed(folderId, !expanded);
   }
 
   private isFolderCollapsed(nodeId: string, state: CoderState = this.store.snapshot()): boolean {
@@ -1136,6 +1163,7 @@ export class CoderPanel {
   }
 
   private toggleAllFolders(expand: boolean): void {
+    this.collapseStateTouched = true;
     const state = this.store.snapshot();
     const ids: string[] = [];
     const walk = (nodes: CoderNode[]) => {
@@ -1195,12 +1223,12 @@ export class CoderPanel {
     }
     if (ev.key === "ArrowRight" && node?.type === "folder") {
       ev.preventDefault();
-      this.toggleFolderExpansion(node, true);
+      this.setFolderExpanded(node.id, true);
       return;
     }
     if (ev.key === "ArrowLeft" && node?.type === "folder") {
       ev.preventDefault();
-      this.toggleFolderExpansion(node, false);
+      this.setFolderExpanded(node.id, false);
       return;
     }
     if (ev.altKey && ev.key === "ArrowRight") {
@@ -1215,8 +1243,7 @@ export class CoderPanel {
     }
     if (ev.key === " " && node?.type === "folder") {
       ev.preventDefault();
-      const collapsed = this.isFolderCollapsed(node.id);
-      this.toggleFolderExpansion(node, collapsed);
+      this.store.setFolderCollapsed(node.id, !this.isFolderCollapsed(node.id));
       return;
     }
     if (ev.key === "ArrowDown" && !meta) {
@@ -1543,11 +1570,31 @@ export class CoderPanel {
   }
 
   private addPayloadNode(payload: CoderPayload, parentId: string | null): void {
+    const parentName =
+      parentId ? (this.nodeById(parentId)?.type === "folder" ? (this.nodeById(parentId) as any).name : "") : "";
+    try {
+      (payload as any).coder_id = (payload as any).coder_id || undefined;
+      (payload as any).coder_parent_id = parentId || "";
+      (payload as any)._coder_target = {
+        node_id: parentId || "",
+        name: parentName || "",
+        is_root: !parentId
+      };
+    } catch {
+      // ignore payload mutation failures
+    }
     if (parentId) {
       // Ensure the target folder chain is visible so the new node doesn't "disappear".
       this.expandFolderChain(parentId);
     }
     const node = this.store.addItem(payload, parentId);
+    try {
+      (node.payload as any).coder_id = node.id;
+      (node.payload as any).coder_parent_id = parentId || "";
+      (node.payload as any)._coder_item_id = node.id;
+    } catch {
+      // ignore
+    }
     this.setSelectionSingle(node.id);
     this.persistPayloadFile(node);
   }
@@ -2079,6 +2126,9 @@ export class CoderPanel {
   }
 
   private ensureInitialCollapsed(): void {
+    if (this.collapseStateTouched) {
+      return;
+    }
     const state = this.store.snapshot();
     if (state.collapsedIds && state.collapsedIds.length > 0) {
       return;

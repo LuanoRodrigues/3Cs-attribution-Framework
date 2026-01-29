@@ -662,13 +662,18 @@ export function treeToLines(nodes: CoderNode[], depth = 0): string[] {
 
 function ensureStateStructure(candidate: unknown): CoderState {
   if (candidate && typeof candidate === "object") {
-    const typed = candidate as { version?: number; nodes?: unknown[]; collapsedIds?: unknown[] };
+    const typed = candidate as { version?: number; nodes?: unknown[]; collapsedIds?: unknown[]; collapsed_ids?: unknown[] };
     if (Array.isArray(typed.nodes) && typed.nodes.length > 0) {
       const version = typeof typed.version === "number" ? typed.version : STATE_VERSION;
+      const rawCollapsed = Array.isArray(typed.collapsedIds)
+        ? typed.collapsedIds
+        : Array.isArray(typed.collapsed_ids)
+        ? typed.collapsed_ids
+        : [];
       const normalized: CoderState = {
         version,
         nodes: normalizeSavedNodes(typed.nodes),
-        collapsedIds: Array.isArray(typed.collapsedIds) ? typed.collapsedIds.map(String) : []
+        collapsedIds: rawCollapsed.map(String)
       };
       ensureRootFolder(normalized);
       return normalized;

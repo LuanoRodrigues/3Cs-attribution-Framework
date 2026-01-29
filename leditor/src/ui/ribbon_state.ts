@@ -160,7 +160,8 @@ export class RibbonStateBus {
       this.updateState();
     };
     if (typeof window !== "undefined") {
-      this.pendingUpdate = window.setTimeout(callback, 32);
+      // Coalesce to a single update per frame to avoid tight loops on selection changes.
+      this.pendingUpdate = window.requestAnimationFrame(callback);
     } else {
       this.pendingUpdate = setTimeout(callback, 0);
     }

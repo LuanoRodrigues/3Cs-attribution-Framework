@@ -296,6 +296,7 @@ const setRatiosForRound = (action: AnalyseAction) => {
   const isR2 = action === "analyse/open_sections_r2";
   const isR3 = action === "analyse/open_sections_r3";
   if (isR2 || isR3) {
+    panelGrid.setRoundLayout(true);
     panelGrid.setRatios({
       panel1: 1,
       panel2: 1,
@@ -310,6 +311,7 @@ const setRatiosForRound = (action: AnalyseAction) => {
     return;
   }
   lastRoundWideLayout = false;
+  panelGrid.setRoundLayout(false);
   panelGrid.setRatios({ ...DEFAULT_PANEL_PARTS });
 };
 
@@ -964,8 +966,18 @@ async function handlePdfOcrRequest(event: MessageEvent): Promise<void> {
   if (!pdfPath || !window.commandBridge?.dispatch) {
     return;
   }
-  const result = await window.commandBridge.dispatch({ phase: "pdf", action: "ocr", payload: { pdfPath } });
-  if (!result || result.status !== "ok" || !result.pdfPath || !pdfViewerIframe?.contentWindow) {
+  const result = (await window.commandBridge.dispatch({
+    phase: "pdf",
+    action: "ocr",
+    payload: { pdfPath }
+  })) as any;
+  if (!pdfViewerIframe?.contentWindow) return;
+  if (!result || result.status !== "ok" || !result.pdfPath) {
+    const message = (result && (result.message || result.error)) ? String(result.message || result.error) : "OCR failed";
+    pdfViewerIframe.contentWindow.postMessage(
+      { type: "pdf-ocr-error", payload: { message } },
+      "*"
+    );
     return;
   }
   pdfViewerIframe.contentWindow.postMessage(

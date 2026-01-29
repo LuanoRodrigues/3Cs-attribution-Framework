@@ -35,6 +35,8 @@ import { getCurrentPageSize, getMarginValues } from "../ui/layout_settings.ts";
 import { registerLibrarySmokeChecks } from "../plugins/librarySmokeChecks.ts";
 import { getHostContract } from "./host_contract.ts";
 import { ensureReferencesLibrary, resolveCitationTitle } from "./references/library.ts";
+import { installDirectQuotePdfOpenHandler } from "./direct_quote_pdf.ts";
+import { perfMark, perfMeasure, perfSummaryOnce } from "./perf.ts";
 
 const ensureProcessEnv = (): Record<string, string | undefined> | undefined => {
   if (typeof globalThis === "undefined") {
@@ -52,7 +54,7 @@ const ensureProcessEnv = (): Record<string, string | undefined> | undefined => {
 };
 let handle: EditorHandle | null = null;
 const DEFAULT_CODER_STATE_PATH =
-  "\\\\wsl$\\Ubuntu-20.04\\home\\pantera\\annotarium\\coder\\0-13_cyber_attribution_corpus_records_total_included\\coder_state.json";
+  "\\\\wsl.localhost\\Ubuntu-22.04\\home\\pantera\\annotarium\\coder\\0-13_cyber_attribution_corpus_records_total_included\\coder_state.json";
 type CoderStateLoadResult = { html: string; sourcePath: string };
 const CODER_STATE_PATH_STORAGE_KEY = "leditor.coderStatePath";
 let lastCoderStateNode: any = null;
@@ -62,7 +64,8 @@ const CODER_SCOPE_STORAGE_KEY = "leditor.scopeId";
 const convertWslPath = (value: string): string => {
   const trimmed = value.replace(/^\\\\+/, "");
   const segments = trimmed.split(/[\\/]+/).filter(Boolean);
-  if (segments.length >= 3 && segments[0]?.toLowerCase() === "wsl$") {
+  const root = segments[0]?.toLowerCase();
+  if (segments.length >= 3 && (root === "wsl$" || root === "wsl.localhost")) {
     return `/${segments.slice(2).join("/")}`;
   }
   return value;
@@ -104,12 +107,21 @@ const extractBodyHtml = (html: string): string => {
   return html;
 };
 
+const normalizeLegacyJson = (raw: string): string => {
+  if (typeof raw !== "string") return String(raw ?? "");
+  return raw
+    .replace(/\bNaN\b/g, "null")
+    .replace(/\bnan\b/g, "null")
+    .replace(/\bInfinity\b/g, "null")
+    .replace(/\b-Infinity\b/g, "null");
+};
+
 const parseCoderStateHtml = (raw: string): ParsedCoderState | null => {
   if (typeof raw !== "string" || raw.trim().length === 0) {
     return null;
   }
   try {
-    const parsed = JSON.parse(raw) as {
+    const parsed = JSON.parse(normalizeLegacyJson(raw)) as {
       edited_html?: string;
       editedHtml?: string;
       nodes?: Array<{ edited_html?: string; editedHtml?: string } | null>;
@@ -227,7 +239,7 @@ const attemptCoderBridgeRead = async (): Promise<CoderStateLoadResult | null> =>
 
 const logKeys = (raw: string, path: string, mode: string) => {
   try {
-    const obj = JSON.parse(raw);
+    const obj = JSON.parse(normalizeLegacyJson(raw));
     const keys = Array.isArray(obj) ? [] : Object.keys(obj ?? {});
     const nodesCount = Array.isArray((obj as any)?.nodes) ? (obj as any).nodes.length : undefined;
     const hasEdited =
@@ -369,7 +381,32 @@ const attemptViteFsRead = async (sourcePath: string): Promise<CoderStateLoadResu
 };
 
 const resolveCoderStatePath = (): string => {
-  // Hard-pinned path per requirements; ignore query/localStorage overrides.
+  const fromStorage = (() => {
+    try {
+      const v = window.localStorage.getItem(CODER_STATE_PATH_STORAGE_KEY);
+      return v ? v.trim() : "";
+    } catch {
+      return "";
+    }
+  })();
+  if (fromStorage) {
+    // Normalize common WSL UNC variations to a canonical UNC path.
+    // Some environments may store a single-leading-backslash form like:
+    // \wsl.localhost\Ubuntu-22.04\home\...
+    // We require the canonical UNC prefix:
+    // \\wsl.localhost\Ubuntu-22.04\home\...
+    if (/^\\(wsl\.localhost|wsl\$)\\/i.test(fromStorage) && !/^\\\\(wsl\.localhost|wsl\$)\\/i.test(fromStorage)) {
+      const normalized = `\\${fromStorage}`;
+      try {
+        // Persist normalization so we don't keep re-normalizing each run.
+        window.localStorage.setItem(CODER_STATE_PATH_STORAGE_KEY, normalized);
+      } catch {
+        // Ignore storage failures.
+      }
+      return normalized;
+    }
+    return fromStorage;
+  }
   return DEFAULT_CODER_STATE_PATH;
 };
 
@@ -405,19 +442,118 @@ const loadCoderStateHtml = async (): Promise<CoderStateLoadResult | null> => {
 };
 
 let coderStateWarnedMissingWriter = false;
+
+const getCoderAutosaveGuard = () => {
+  const g = globalThis as typeof globalThis & { __leditorAllowCoderAutosave?: boolean };
+  return g;
+};
+
 const writeCoderStateHtml = async (html: string): Promise<void> => {
+  // Never persist synthetic content (phase checks / smoke tests). Only allow autosave
+  // after we've successfully loaded real coder state into the editor.
+  if (!getCoderAutosaveGuard().__leditorAllowCoderAutosave) {
+    return;
+  }
+  const scopeId = await resolveScopeId();
+  const bridgeSaver = window.coderBridge?.saveState;
+  const bridgeLoader = window.coderBridge?.loadState;
+  if (bridgeSaver && bridgeLoader && scopeId) {
+    try {
+      const loaded = await bridgeLoader({ scopeId });
+      const state = loaded?.state;
+      if (!state || typeof state !== "object") return;
+
+      const targetFolderId = (() => {
+        const node = lastCoderStateNode;
+        if (node && typeof node === "object" && node.type === "folder" && typeof node.id === "string" && node.id) {
+          return node.id;
+        }
+        const nodes = Array.isArray((state as any).nodes) ? (state as any).nodes : [];
+        const root = nodes.find((n: any) => n && typeof n === "object" && n.type === "folder" && typeof n.id === "string");
+        return typeof root?.id === "string" ? root.id : "";
+      })();
+
+      const stamp = new Date().toISOString();
+      const patchNode = (node: any): boolean => {
+        if (!node || typeof node !== "object") return false;
+        if (node.type === "folder" && String(node.id) === targetFolderId) {
+          node.edited_html = html;
+          node.updated_utc = stamp;
+          return true;
+        }
+        if (node.type === "folder" && Array.isArray(node.children)) {
+          for (const ch of node.children) {
+            if (patchNode(ch)) return true;
+          }
+        }
+        return false;
+      };
+      const nodes = Array.isArray((state as any).nodes) ? (state as any).nodes : [];
+      for (const n of nodes) {
+        if (patchNode(n)) break;
+      }
+      await bridgeSaver({ scopeId, state });
+      return;
+    } catch (error) {
+      console.warn("[CoderState] autosave via coderBridge failed", { scopeId, error });
+      // fall through to file-based writer if available
+    }
+  }
+
   const targetPath = resolveCoderStatePath();
   const writer = window.leditorHost?.writeFile;
-  if (!writer) {
+  const reader = window.leditorHost?.readFile;
+  if (!writer || !reader) {
     if (!coderStateWarnedMissingWriter) {
       coderStateWarnedMissingWriter = true;
-      console.warn("[CoderState] host writeFile unavailable; autosave disabled", { targetPath });
+      console.warn("[CoderState] host read/write unavailable; autosave disabled", { targetPath });
     }
     return;
   }
   try {
-    const payload = JSON.stringify({ edited_html: html });
-    const result = await writer({ targetPath, data: payload });
+    const existing = await reader({ sourcePath: targetPath });
+    const raw = existing?.success && typeof existing.data === "string" ? existing.data : "";
+    const stamp = new Date().toISOString();
+    const parsed = (() => {
+      try {
+        return raw ? (JSON.parse(raw) as any) : null;
+      } catch {
+        return null;
+      }
+    })();
+    const blob = parsed && typeof parsed === "object" ? parsed : { version: 2, nodes: [], collapsed_ids: [] };
+    if (!Array.isArray(blob.nodes)) blob.nodes = [];
+    if (!Array.isArray(blob.collapsed_ids) && Array.isArray(blob.collapsedIds)) blob.collapsed_ids = blob.collapsedIds;
+    if (!Array.isArray(blob.collapsed_ids)) blob.collapsed_ids = [];
+
+    const targetFolderId = (() => {
+      const node = lastCoderStateNode;
+      if (node && typeof node === "object" && node.type === "folder" && typeof node.id === "string" && node.id) {
+        return node.id;
+      }
+      const root = blob.nodes.find((n: any) => n && typeof n === "object" && n.type === "folder" && typeof n.id === "string");
+      return typeof root?.id === "string" ? root.id : "";
+    })();
+
+    const patchNode = (node: any): boolean => {
+      if (!node || typeof node !== "object") return false;
+      if (node.type === "folder" && String(node.id) === targetFolderId) {
+        node.edited_html = html;
+        node.updated_utc = stamp;
+        return true;
+      }
+      if (node.type === "folder" && Array.isArray(node.children)) {
+        for (const ch of node.children) {
+          if (patchNode(ch)) return true;
+        }
+      }
+      return false;
+    };
+    for (const n of blob.nodes) {
+      if (patchNode(n)) break;
+    }
+    const next = JSON.stringify(blob, null, 2);
+    const result = await writer({ targetPath, data: next });
     if (!result?.success) {
       console.warn("[CoderState] autosave failed", { targetPath, error: result?.error });
     }
@@ -486,6 +622,7 @@ const getMountGuard = (): MountGuard => {
 };
 
 export const mountEditor = async () => {
+  perfMark("mountEditor:start");
   const guard = getMountGuard();
   if (guard.mounted) {
     console.warn("[Renderer] mountEditor called after mount; ignoring.");
@@ -496,6 +633,7 @@ export const mountEditor = async () => {
     return guard.inFlight;
   }
   guard.inFlight = (async () => {
+    perfMark("mountEditor:inflight:start");
     if (document.getElementById("leditor-app")) {
       console.warn("[Renderer] mountEditor found existing app root; skipping mount.");
       guard.mounted = true;
@@ -541,6 +679,10 @@ export const mountEditor = async () => {
           : lastCoderStateNode?.edited_html?.length
     });
     (window as typeof window & { __coderStateLoaded?: boolean }).__coderStateLoaded = true;
+    // Only allow autosave once we have loaded real coder state from disk.
+    getCoderAutosaveGuard().__leditorAllowCoderAutosave = true;
+  } else {
+    getCoderAutosaveGuard().__leditorAllowCoderAutosave = false;
   }
   const hasInitialContent = Boolean(coderStateResult?.html);
   type RendererConfig = {
@@ -604,7 +746,10 @@ export const mountEditor = async () => {
 
   ensureEditorElement(config.elementId);
   await waitForEditorElement(config.elementId, 5000);
+  perfMark("editor:init:start");
   handle = LEditor.init(config);
+  perfMark("editor:init:end");
+  perfMeasure("editor:init", "editor:init:start", "editor:init:end");
   (window as typeof window & { leditor?: EditorHandle }).leditor = handle;
   if (coderStateResult?.html) {
     handle.setContent(coderStateResult.html, { format: "html" });
@@ -643,23 +788,41 @@ export const mountEditor = async () => {
     // Debug: silenced noisy ribbon logs.
     renderRibbon(ribbonHost, handle);
   }
+  let ribbonHeightQueued = false;
   const syncRibbonHeight = () => {
     const height = appHeader.offsetHeight;
     appRoot.style.setProperty("--leditor-ribbon-height", `${height}px`);
   };
+  const requestRibbonHeightSync = () => {
+    if (ribbonHeightQueued) return;
+    ribbonHeightQueued = true;
+    window.requestAnimationFrame(() => {
+      ribbonHeightQueued = false;
+      syncRibbonHeight();
+    });
+  };
   syncRibbonHeight();
   if (typeof ResizeObserver !== "undefined") {
     const ribbonObserver = new ResizeObserver(() => {
-      syncRibbonHeight();
+      requestRibbonHeightSync();
     });
     ribbonObserver.observe(appHeader);
   } else {
-    window.addEventListener("resize", syncRibbonHeight);
+    window.addEventListener("resize", requestRibbonHeightSync);
   }
   const layout: A4LayoutController | null = mountA4Layout(docShell, editorEl, handle);
   setLayoutController(layout);
-  refreshLayoutView();
-  subscribeToLayoutChanges(() => refreshLayoutView());
+  let layoutRefreshQueued = false;
+  const requestLayoutRefresh = () => {
+    if (layoutRefreshQueued) return;
+    layoutRefreshQueued = true;
+    window.requestAnimationFrame(() => {
+      layoutRefreshQueued = false;
+      refreshLayoutView();
+    });
+  };
+  requestLayoutRefresh();
+  subscribeToLayoutChanges(() => requestLayoutRefresh());
   initFullscreenController(appRoot);
   const editorHandle = handle;
   const tiptapEditor = editorHandle.getEditor();
@@ -695,8 +858,13 @@ export const mountEditor = async () => {
       }
       const href = (hrefHint ?? pickAttr(el, "href")).trim();
       const dqid = href ? extractDqid(el, href) : "";
+      const itemKeysRaw = pickAttr(el, "data-item-keys");
+      const itemKeyFromList = itemKeysRaw ? itemKeysRaw.split(/[,\s]+/).filter(Boolean)[0] : "";
       const itemKey =
-        pickAttr(el, "data-key") || pickAttr(el, "item-key") || pickAttr(el, "data-item-key");
+        pickAttr(el, "data-key") ||
+        pickAttr(el, "item-key") ||
+        pickAttr(el, "data-item-key") ||
+        itemKeyFromList;
       const fallbackText = (el.textContent || "").trim();
       const resolvedTitle = resolveCitationTitle({
         dqid: dqid || null,
@@ -712,6 +880,11 @@ export const mountEditor = async () => {
     root.addEventListener(
       "click",
       (ev) => {
+        // A double-click generates two click events (detail=1 then detail=2).
+        // Avoid firing our citation handler twice; it should open a single PDF viewer.
+        if (typeof (ev as MouseEvent).detail === "number" && (ev as MouseEvent).detail > 1) {
+          return;
+        }
         const target = ev.target as HTMLElement | null;
         if (!target) return;
         console.info("[leditor][click][capture]", {
@@ -745,6 +918,7 @@ export const mountEditor = async () => {
           title: anchor.getAttribute("title") || "",
           text: (anchor.textContent || "").trim(),
           dataKey: pickAttr(anchor, "data-key"),
+          dataItemKeys: pickAttr(anchor, "data-item-keys"),
           dataQuoteId: pickAttr(anchor, "data-quote-id"),
           dataQuoteIdAlt: pickAttr(anchor, "data-quote_id"),
           dataQuoteText: pickAttr(anchor, "data-quote-text")
@@ -773,6 +947,7 @@ export const mountEditor = async () => {
   console.info("[LEditor][schema][marks]", schemaMarks);
   console.info("[LEditor][schema][anchor]", { present: Boolean(tiptapEditor.schema.marks.anchor) });
   attachCitationHandlers(tiptapEditor.view.dom);
+  installDirectQuotePdfOpenHandler({ coderStatePath: lastCoderStatePath ?? resolveCoderStatePath() });
   try {
     const probeHtml =
       "<p>Probe <a href=\"dq://probe\" data-key=\"PROBE\" title=\"probe\">(Probe)</a> tail</p>";
@@ -794,14 +969,6 @@ export const mountEditor = async () => {
     close: () => footnoteManager.close()
   };
   initGlobalShortcuts(editorHandle);
-  window.addEventListener("keydown", (event) => {
-    if (!(event.ctrlKey && event.shiftKey)) return;
-    if (!["R", "r", "L", "l"].includes(event.key)) return;
-    event.preventDefault();
-    const win = window as typeof window & { __leditorPaginationDebug?: boolean };
-    win.__leditorPaginationDebug = !win.__leditorPaginationDebug;
-    console.info("[PaginationDebug] toggled", { enabled: win.__leditorPaginationDebug });
-  });
   if (window.leditorHost?.registerFootnoteHandlers) {
     window.leditorHost.registerFootnoteHandlers(footnoteHandlers);
   } else if (!window.leditorHost) {
@@ -811,6 +978,7 @@ export const mountEditor = async () => {
       closeFootnotePanel: footnoteHandlers.close
     };
   }
+  perfMark("mountEditor:ui-mounted");
   window.codexLog?.write("[PHASE3_OK]");
   mountStatusBar(handle, layout, { parent: appRoot });
   attachContextMenu(handle, tiptapEditor.view.dom, tiptapEditor);
@@ -848,111 +1016,16 @@ export const mountEditor = async () => {
     }
     window.codexLog?.write("[PHASE4_OK]");
 
-    editorHandle.setContent("<p>Alignment check</p>", { format: "html" });
-    editorHandle.focus();
-    editorHandle.execCommand("AlignCenter");
-    const json = editorHandle.getJSON() as {
-      content?: Array<{ type?: string; attrs?: { textAlign?: string } }>;
-    };
-    const firstParagraph = json.content?.find((node) => node.type === "paragraph");
-    if (firstParagraph?.attrs?.textAlign !== "center") {
-      throw new Error("Phase5 alignment JSON check failed.");
-    }
-    const html = editorHandle.getContent({ format: "html" });
-    if (typeof html !== "string" || !html.includes("text-align: center")) {
-      throw new Error("Phase5 alignment HTML check failed.");
-    }
-    window.codexLog?.write("[PHASE5_OK]");
-
-    const countListNodes = (node: any): number => {
-      if (!node || typeof node !== "object") return 0;
-      let count = 0;
-      if (node.type === "bulletList" || node.type === "orderedList") {
-        count += 1;
-      }
-      const content = node.content;
-      if (Array.isArray(content)) {
-        for (const child of content) {
-          count += countListNodes(child);
-        }
-      }
-      return count;
-    };
-
-    editorHandle.setContent("<p>Indent check</p>", { format: "html" });
-    editorHandle.focus();
-    editorHandle.execCommand("Indent");
-    const indentJson = editorHandle.getJSON() as {
-      content?: Array<{ type?: string; attrs?: { indentLevel?: number } }>;
-    };
-    const indentParagraph = indentJson.content?.find((node) => node.type === "paragraph");
-    if (indentParagraph?.attrs?.indentLevel !== 1) {
-      throw new Error("Phase6 paragraph indent JSON check failed.");
-    }
-    const indentHtml = editorHandle.getContent({ format: "html" });
-    if (typeof indentHtml !== "string" || !indentHtml.includes("margin-left: 1em")) {
-      throw new Error("Phase6 paragraph indent HTML check failed.");
-    }
-    editorHandle.execCommand("Outdent");
-    const outdentJson = editorHandle.getJSON() as {
-      content?: Array<{ type?: string; attrs?: { indentLevel?: number } }>;
-    };
-    const outdentParagraph = outdentJson.content?.find((node) => node.type === "paragraph");
-    if ((outdentParagraph?.attrs?.indentLevel ?? 0) !== 0) {
-      throw new Error("Phase6 paragraph outdent JSON check failed.");
-    }
-    const outdentHtml = editorHandle.getContent({ format: "html" });
-    if (typeof outdentHtml !== "string" || outdentHtml.includes("margin-left")) {
-      throw new Error("Phase6 paragraph outdent HTML check failed.");
-    }
-
-    editorHandle.setContent("<ul><li>One</li><li>Two</li></ul>", { format: "html" });
-    editorHandle.focus();
-    const listBefore = editorHandle.getJSON();
-    const listBeforeCount = countListNodes(listBefore);
-    if (listBeforeCount < 1) {
-      throw new Error("Phase6 list JSON setup failed.");
-    }
-    editorHandle.execCommand("Indent");
-    const listAfterIndent = editorHandle.getJSON();
-    const listAfterIndentCount = countListNodes(listAfterIndent);
-    if (listAfterIndentCount <= listBeforeCount) {
-      throw new Error("Phase6 list indent JSON check failed.");
-    }
-    editorHandle.execCommand("Outdent");
-    const listAfterOutdent = editorHandle.getJSON();
-    const listAfterOutdentCount = countListNodes(listAfterOutdent);
-    if (listAfterOutdentCount !== listBeforeCount) {
-      throw new Error("Phase6 list outdent JSON check failed.");
-    }
-    window.codexLog?.write("[PHASE6_OK]");
-
-    editorHandle.setContent("<p>Spacing check</p>", { format: "html" });
-    editorHandle.focus();
-    editorHandle.execCommand("LineSpacing", { value: "1.5" });
-    editorHandle.execCommand("SpaceBefore", { valuePx: 12 });
-    editorHandle.execCommand("SpaceAfter", { valuePx: 18 });
-    const spacingJson = editorHandle.getJSON() as {
-      content?: Array<{ type?: string; attrs?: { lineHeight?: string; spaceBefore?: number; spaceAfter?: number } }>;
-    };
-    const spacingParagraph = spacingJson.content?.find((node) => node.type === "paragraph");
-    if (
-      spacingParagraph?.attrs?.lineHeight !== "1.5" ||
-      spacingParagraph?.attrs?.spaceBefore !== 12 ||
-      spacingParagraph?.attrs?.spaceAfter !== 18
-    ) {
-      throw new Error("Phase7 spacing JSON check failed.");
-    }
-    const spacingHtml = editorHandle.getContent({ format: "html" });
-    if (
-      typeof spacingHtml !== "string" ||
-      !spacingHtml.includes("line-height: 1.5") ||
-      !spacingHtml.includes("margin-top: 12px") ||
-      !spacingHtml.includes("margin-bottom: 18px")
-    ) {
-      throw new Error("Phase7 spacing HTML check failed.");
-    }
-    window.codexLog?.write("[PHASE7_OK]");
+    // NOTE: Phase5+ content-mutation checks (alignment/indent/spacing) were removed.
+    // They were mutating the live editor content during startup and caused:
+    // - user-visible flicker and state changes
+    // - "phase" crashes when schema/layout differed
+    // - risk of clobbering persisted coder_state.json in some environments
+    // If you ever need them again, reintroduce behind an explicit opt-in flag
+    // and run in an isolated editor instance, never the live document.
+    window.codexLog?.write("[PHASE5_SKIPPED]");
+    window.codexLog?.write("[PHASE6_SKIPPED]");
+    window.codexLog?.write("[PHASE7_SKIPPED]");
 
     const hasMark = (node: any, type: string, predicate: (attrs: any) => boolean): boolean => {
       if (!node || typeof node !== "object") return false;
@@ -1009,18 +1082,28 @@ export const mountEditor = async () => {
     }
   }
 
-  // Autosave coder state
-  const autosaveIntervalMs = 1000;
-  setInterval(() => {
-    try {
-      const html = editorHandle.getContent({ format: "html" });
-      if (typeof html === "string" && html.trim().length > 0) {
-        void writeCoderStateHtml(html);
-      }
-    } catch (error) {
-      console.warn("[CoderState] autosave read failed", { error });
+  // Autosave coder state: event-driven and coalesced (no polling).
+  let autosaveTimer: number | null = null;
+  const scheduleAutosave = () => {
+    if (!getCoderAutosaveGuard().__leditorAllowCoderAutosave) {
+      return;
     }
-  }, autosaveIntervalMs);
+    if (autosaveTimer !== null) {
+      window.clearTimeout(autosaveTimer);
+    }
+    autosaveTimer = window.setTimeout(() => {
+      autosaveTimer = null;
+      try {
+        const html = editorHandle.getContent({ format: "html" });
+        if (typeof html === "string" && html.trim().length > 0) {
+          void writeCoderStateHtml(html);
+        }
+      } catch (error) {
+        console.warn("[CoderState] autosave read failed", { error });
+      }
+    }, 750);
+  };
+  editorHandle.on("change", scheduleAutosave);
 
   if (CURRENT_PHASE === 21) {
     if (!hasInitialContent) {
@@ -1060,8 +1143,13 @@ export const mountEditor = async () => {
   } else {
     console.info("[Phase23] Skipping DOCX auto-export (host export handler unavailable)");
   }
+    perfMark("mountEditor:end");
+    perfMark("mountEditor:inflight:end");
   })()
     .then(() => {
+      perfMeasure("mountEditor", "mountEditor:start", "mountEditor:end");
+      perfMeasure("mountEditor:inflight", "mountEditor:inflight:start", "mountEditor:inflight:end");
+      perfSummaryOnce();
       guard.mounted = true;
     })
     .catch((error) => {

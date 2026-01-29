@@ -2633,6 +2633,16 @@ const renderPages = (count: number) => {
     });
   }
 
+  let zoomQueued = false;
+  const requestZoomUpdate = () => {
+    if (zoomQueued) return;
+    zoomQueued = true;
+    window.requestAnimationFrame(() => {
+      zoomQueued = false;
+      updateZoomForViewMode();
+    });
+  };
+
   const setContentFrameHeight = (value: number) => {
     if (!Number.isFinite(value)) {
       throw new Error("Content frame height must be a finite number.");
@@ -2704,7 +2714,7 @@ const renderPages = (count: number) => {
       applyGridMode();
       return;
     }
-    updateZoomForViewMode();
+    requestZoomUpdate();
     applyGridMode();
   };
 
@@ -2875,15 +2885,7 @@ const renderPages = (count: number) => {
   };
 
   const handleKeydown = (event: KeyboardEvent) => {
-    if (event.ctrlKey && event.shiftKey && (event.key === "R" || event.key === "r")) {
-      event.preventDefault();
-      logLayoutDiagnostics();
-      logMissingRibbonIcons();
-      const win = window as typeof window & { __leditorPaginationDebug?: boolean };
-      win.__leditorPaginationDebug = !win.__leditorPaginationDebug;
-      console.info("[PaginationDebug] toggled", { enabled: win.__leditorPaginationDebug });
-      return;
-    }
+    // Debug shortcut removed (was easy to trigger and caused confusing log storms + flicker reports).
     if (event.ctrlKey && event.shiftKey && (event.key === "M" || event.key === "m")) {
       event.preventDefault();
       const editorHandle = (
@@ -3010,7 +3012,7 @@ const renderPages = (count: number) => {
 
   const resizeObserver = new ResizeObserver(() => {
     requestPagination();
-    updateZoomForViewMode();
+    requestZoomUpdate();
   });
   resizeObserver.observe(canvas);
 

@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PDF Viewer</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f6f2e7;
+        --fg: #111827;
+        --muted: rgba(17, 24, 39, 0.6);
+        --panel: rgba(17, 24, 39, 0.04);
+        --border: rgba(17, 24, 39, 0.12);
+      }
+      body {
+        margin: 0;
+        font: 13px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+        background: var(--bg);
+        color: var(--fg);
+      }
+      header {
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        gap: 12px;
+        align-items: baseline;
+      }
+      header .title {
+        font-weight: 600;
+      }
+      header .meta {
+        color: var(--muted);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      #error {
+        display: none;
+        padding: 12px;
+        border-bottom: 1px solid var(--border);
+        background: rgba(255, 80, 80, 0.15);
+      }
+      #frameWrap {
+        height: calc(100vh - 44px);
+      }
+      iframe {
+        width: 100%;
+        height: 100%;
+        border: 0;
+        background: #fff;
+      }
+      .pill {
+        border: 1px solid var(--border);
+        background: var(--panel);
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="title">PDF Viewer</div>
+      <div class="pill" id="dqidPill"></div>
+      <div class="meta" id="meta"></div>
+    </header>
+    <div id="error"></div>
+    <div id="frameWrap">
+      <iframe id="pdfFrame" title="PDF"></iframe>
+    </div>
+
+    <script>
+      (function () {
+        const $ = (id) => document.getElementById(id);
+        const setError = (msg) => {
+          const el = $("error");
+          el.textContent = String(msg || "Unknown error");
+          el.style.display = "block";
+        };
+        const convertWslPath = (value) => {
+          const trimmed = String(value || "").replace(/^\\\\+/, "");
+          const segments = trimmed.split(/[\\/]+/).filter(Boolean);
+          const head = String(segments[0] || "").toLowerCase();
+          if (segments.length >= 3 && (head === "wsl$" || head === "wsl.localhost")) {
+            return "/" + segments.slice(2).join("/");
+          }
+          return value;
+        };
+        const toFileUrl = (value) => {
+          const normalized = String(convertWslPath(value || "")).replace(/\\/g, "/");
+          if (!normalized) return "";
+          if (/^file:\/\//i.test(normalized)) return normalized;
+          if (normalized.startsWith("/")) return "file://" + normalized;
+          if (/^[A-Za-z]:\//.test(normalized)) return "file:///" + normalized;
+          return normalized;
+        };
+        const makeBlobUrlFromBase64 = (b64) => {
+          const raw = atob(String(b64 || "").replace(/^data:application\\/pdf;base64,/i, ""));
+          const bytes = new Uint8Array(raw.length);
+          for (let i = 0; i < raw.length; i += 1) bytes[i] = raw.charCodeAt(i);
+          const blob = new Blob([bytes], { type: "application/pdf" });
+          return URL.createObjectURL(blob);
+        };
+
+        const applyPayload = (payload) => {
+          if (!payload || typeof payload !== "object") {
+            setError("No payload received.");
+            return;
+          }
+          const dqid = String(payload.dqid || "").trim();
+          $("dqidPill").textContent = dqid ? "dqid: " + dqid : "direct quote";
+
+          const pdfPath = String(payload.pdf_path || payload.pdf || "").trim();
+          const page = payload.page != null ? String(payload.page).trim() : "";
+          $("meta").textContent = pdfPath ? pdfPath : "No pdf_path/pdf in payload.";
+
+          if (!pdfPath) {
+            setError("Payload missing pdf_path/pdf.");
+            return;
+          }
+          let src = pdfPath;
+          if (/^data:application\\/pdf/i.test(pdfPath)) {
+            src = pdfPath;
+          } else if (/^[A-Za-z0-9+/]+=*$/.test(pdfPath) && pdfPath.length > 256) {
+            src = makeBlobUrlFromBase64(pdfPath);
+          } else {
+            src = toFileUrl(pdfPath);
+          }
+          if (page) {
+            src += (src.includes("#") ? "&" : "#") + "page=" + encodeURIComponent(page);
+          }
+          $("meta").textContent = src;
+          $("pdfFrame").src = src;
+        };
+
+        const init = async () => {
+          const api = window.leditorPdfViewer;
+          if (!api || typeof api.getPayload !== "function") {
+            setError("Missing leditorPdfViewer preload API.");
+            return;
+          }
+          if (typeof api.onPayload === "function") {
+            api.onPayload((payload) => applyPayload(payload));
+          }
+          try {
+            const initial = await api.getPayload();
+            if (initial) applyPayload(initial);
+          } catch (err) {
+            setError(err && err.message ? err.message : String(err));
+          }
+        };
+        init();
+      })();
+    </script>
+  </body>
+</html>

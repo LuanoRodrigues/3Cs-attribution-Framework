@@ -34,6 +34,13 @@ const splitAuthors = (raw: string): string[] => {
     .filter(Boolean);
 };
 
+const isNumericStyle = (styleId: string): boolean => {
+  const style = (styleId || "").toLowerCase();
+  if (!style) return false;
+  if (style.includes("numeric")) return true;
+  return style === "vancouver" || style === "ieee" || style === "nature" || style === "oscola";
+};
+
 const formatApaInText = (itemKey: string): string => {
   const library = getReferencesLibrarySync();
   const item = library.itemsByKey[itemKey];
@@ -45,7 +52,20 @@ const formatApaInText = (itemKey: string): string => {
   return author || year || itemKey;
 };
 
-const renderCitationHtml = (node: CitationNode, meta: DocCitationMeta): string => {
+const formatAuthorOnly = (itemKey: string): string => {
+  const library = getReferencesLibrarySync();
+  const item = library.itemsByKey[itemKey];
+  if (!item) return itemKey;
+  const authors = splitAuthors(item.author || "");
+  const author = authors[0] || item.author || itemKey;
+  return author || itemKey;
+};
+
+const renderCitationHtml = (
+  node: CitationNode,
+  meta: DocCitationMeta,
+  numberByKey?: Map<string, number>
+): string => {
   if (typeof node.noteIndex === "number") {
     return `<sup class="leditor-citation-note">${node.noteIndex}</sup>`;
   }
@@ -54,16 +74,26 @@ const renderCitationHtml = (node: CitationNode, meta: DocCitationMeta): string =
     const label = node.items.map((item) => formatApaInText(item.itemKey)).join("; ");
     return `<span class="leditor-citation-rendered">(${escapeHtml(label)})</span>`;
   }
-  if (style.includes("numeric") || style.includes("nature")) {
-    // Lightweight numeric fallback: show keys (the registry provides stable numbering elsewhere).
-    const label = node.items.map((item) => item.itemKey).join(", ");
+  if (style.includes("modern-language-association") || style === "mla") {
+    const label = node.items.map((item) => formatAuthorOnly(item.itemKey)).join("; ");
+    return `<span class="leditor-citation-rendered">(${escapeHtml(label)})</span>`;
+  }
+  if (isNumericStyle(style)) {
+    const numbers = node.items
+      .map((item) => numberByKey?.get(item.itemKey))
+      .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+    const label = numbers.length ? numbers.join(", ") : node.items.map((item) => item.itemKey).join(", ");
     return `<span class="leditor-citation-rendered">[${escapeHtml(label)}]</span>`;
   }
   const label = node.items.map((item) => item.itemKey).join(", ");
   return `<span class="leditor-citation-rendered">(${escapeHtml(label)})</span>`;
 };
 
-const renderBibliographyHtml = (items: string[], meta: DocCitationMeta): string => {
+const renderBibliographyHtml = (
+  items: string[],
+  meta: DocCitationMeta,
+  numberByKey?: Map<string, number>
+): string => {
   if (!items.length) return "";
   const style = (meta.styleId || "").toLowerCase();
   const library = getReferencesLibrarySync();
@@ -91,6 +121,12 @@ const renderBibliographyHtml = (items: string[], meta: DocCitationMeta): string 
           .trim();
         return `<li data-item-key="${escapeHtml(itemKey)}">${parts}</li>`;
       }
+      if (isNumericStyle(style)) {
+        const n = numberByKey?.get(itemKey);
+        const prefix = typeof n === "number" ? `${n}. ` : "";
+        const label = item.title || item.author || item.itemKey;
+        return `<li data-item-key="${escapeHtml(itemKey)}">${escapeHtml(prefix + label)}</li>`;
+      }
       const label = item.title || item.author || item.itemKey;
       return `<li data-item-key="${escapeHtml(itemKey)}">${escapeHtml(label)}</li>`;
     })
@@ -110,19 +146,33 @@ export const updateAllCitationsAndBibliography = (args: {
   // Validate citation metadata first to surface schema issues early.
   const meta = args.getDocCitationMeta(args.doc);
   const citationNodes = args.extractCitationNodes(args.doc);
-  const itemKeys = new Set<string>();
+  const seen = new Set<string>();
+  const orderedKeys: string[] = [];
+  const numberByKey: Map<string, number> | undefined = isNumericStyle(meta.styleId || "")
+    ? new Map<string, number>()
+    : undefined;
+  let nextNumber = 1;
+
+  const registerKey = (key: string): void => {
+    const normalized = (key || "").trim();
+    if (!normalized || seen.has(normalized)) return;
+    seen.add(normalized);
+    orderedKeys.push(normalized);
+    if (numberByKey) {
+      numberByKey.set(normalized, nextNumber);
+      nextNumber += 1;
+    }
+  };
+
   citationNodes.forEach((node) => {
-    node.items.forEach((item) => itemKeys.add(item.itemKey));
-    const html = renderCitationHtml(node, meta);
+    node.items.forEach((item) => registerKey(item.itemKey));
+    const html = renderCitationHtml(node, meta, numberByKey);
     args.setCitationNodeRenderedHtml(node, html);
   });
-  (args.additionalItemKeys ?? []).forEach((key) => {
-    const normalized = (key || "").trim();
-    if (normalized) itemKeys.add(normalized);
-  });
+  (args.additionalItemKeys ?? []).forEach((key) => registerKey(key));
   const bibliography = args.findBibliographyNode(args.doc);
   if (bibliography) {
-    const html = renderBibliographyHtml(Array.from(itemKeys), meta);
+    const html = renderBibliographyHtml(orderedKeys, meta, numberByKey);
     args.setBibliographyRenderedHtml(bibliography, html);
   }
 };

@@ -39,6 +39,7 @@ type SettingsBridge = {
 
 type CoderBridge = {
     loadState(request: { scopeId: string }): Promise<{ state?: Record<string, unknown>; statePath?: string }>;
+    saveState?(request: { scopeId: string; state: Record<string, unknown> }): Promise<{ baseDir?: string; statePath?: string }>;
   };
 type LeditorHostInfo = {
   version: number;
@@ -73,6 +74,7 @@ declare global {
       toggleFootnotePanel?: () => void;
       closeFootnotePanel?: () => void;
       registerFootnoteHandlers?: (handlers: FootnoteHandlerSet) => void;
+      prefetchDirectQuotes?: (request: { lookupPath: string; dqids: string[] }) => Promise<{ success: boolean; error?: string }>;
       exportPDF?: (request: ExportPdfRequest) => Promise<ExportPdfResult>;
       exportDOCX?: (request: ExportDocxRequest) => Promise<ExportDocxResult>;
       importDOCX?: (request: ImportDocxRequest) => Promise<ImportDocxResult>;

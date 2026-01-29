@@ -6,8 +6,7 @@ import {
   getReferencesLibrarySync,
   type ReferenceItem
 } from "./library.ts";
-
-const USED_KEYS_STORAGE_KEY = "leditor.references.usedKeys";
+import { writeCitedWorksKeys, readCitedWorksKeys } from "./cited_works.ts";
 
 const buildBibtexEntry = (item: ReferenceItem): string => {
   const sanitize = (value?: string) => (value ? value.replace(/[{}]/g, "").trim() : "");
@@ -38,7 +37,19 @@ const buildBibliographyListHtml = (items: ReferenceItem[]): string => {
 export const getLibraryPath = (contract = getHostContract()): string =>
   getReferencesLibraryPath(contract);
 
-export const ensureBibliographyNode = (editor: Editor): void => {
+export const insertBibliographyField = (editor: Editor): void => {
+  const bibliographyNode = editor.schema.nodes.bibliography;
+  if (!bibliographyNode) {
+    throw new Error("Bibliography node is not registered in schema");
+  }
+  const bibId = `bib-${Date.now().toString(36)}`;
+  editor.chain().focus().insertContent({ type: "bibliography", attrs: { bibId } }).run();
+};
+
+export const ensureBibliographyNode = (
+  editor: Editor,
+  opts?: { headingText?: string }
+): void => {
   const bibliographyNode = editor.schema.nodes.bibliography;
   if (!bibliographyNode) {
     throw new Error("Bibliography node is not registered in schema");
@@ -53,24 +64,43 @@ export const ensureBibliographyNode = (editor: Editor): void => {
   });
   if (found) return;
   const bibId = `bib-${Date.now().toString(36)}`;
-  editor
-    .chain()
-    .focus()
-    .insertContentAt(editor.state.doc.content.size, { type: "bibliography", attrs: { bibId } })
-    .run();
+  const headingText = typeof opts?.headingText === "string" ? opts.headingText.trim() : "References";
+
+  // Page-based documents: append to the end of the last page.
+  const pageNode = editor.schema.nodes.page;
+  if (pageNode && editor.state.doc.lastChild?.type === pageNode) {
+    const lastPage = editor.state.doc.lastChild;
+    const lastPagePos = editor.state.doc.content.size - lastPage.nodeSize;
+    const insertAt = lastPagePos + lastPage.nodeSize - 1;
+    const content: any[] = [];
+    if (headingText && editor.schema.nodes.heading) {
+      content.push({
+        type: "heading",
+        attrs: { level: 1 },
+        content: [{ type: "text", text: headingText }]
+      });
+    }
+    content.push({ type: "bibliography", attrs: { bibId } });
+    editor.chain().focus().insertContentAt(insertAt, content).run();
+    return;
+  }
+
+  // Fallback: append at end of doc.
+  const insertAt = editor.state.doc.content.size;
+  const content: any[] = [];
+  if (headingText && editor.schema.nodes.heading) {
+    content.push({ type: "heading", attrs: { level: 1 }, content: [{ type: "text", text: headingText }] });
+  }
+  content.push({ type: "bibliography", attrs: { bibId } });
+  editor.chain().focus().insertContentAt(insertAt, content).run();
 };
 
 export const writeUsedBibliography = async (keys: string[]): Promise<void> => {
-  try {
-    window.localStorage?.setItem(USED_KEYS_STORAGE_KEY, JSON.stringify(keys));
-  } catch {
-    // Ignore storage errors.
-  }
-  const host = window.leditorHost;
-  const contract = getHostContract();
-  if (!host?.writeFile || !contract?.policy?.allowDiskWrites) return;
-  const path = getLibraryPath(contract).replace(/\.json$/i, ".used.json");
-  await host.writeFile({ targetPath: path, data: JSON.stringify(keys, null, 2) });
+  await writeCitedWorksKeys(keys);
+};
+
+export const readUsedBibliography = async (): Promise<string[]> => {
+  return readCitedWorksKeys();
 };
 
 export const exportBibliographyJson = async (): Promise<void> => {

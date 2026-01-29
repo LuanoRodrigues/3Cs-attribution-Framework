@@ -13,7 +13,7 @@ import { showAllowedElementsInspector } from "../ui/allowed_elements_inspector.t
 import { SANITIZE_OPTIONS } from "../plugins/pasteCleaner.ts";
 import { openCitationPicker, type CitationPickerResult } from "../ui/references/picker.ts";
 import { openSourcesPanel } from "../ui/references/sources_panel.ts";
-import { ensureReferencesLibrary } from "../ui/references/library.ts";
+import { ensureReferencesLibrary, upsertReferenceItems } from "../ui/references/library.ts";
 import { getHostContract } from "../ui/host_contract.ts";
 import { createSearchPanel } from "../ui/search_panel.ts";
 import { nextMatch, prevMatch, replaceAll, replaceCurrent, setQuery } from "../editor/search.ts";
@@ -21,7 +21,9 @@ import {
   exportBibliographyBibtex,
   exportBibliographyJson,
   getLibraryPath,
+  insertBibliographyField,
   writeUsedBibliography,
+  readUsedBibliography,
   ensureBibliographyNode
 } from "../ui/references/bibliography.ts";
 import {
@@ -355,13 +357,172 @@ const findBibliographyNode = (doc: ProseMirrorNode): BibliographyNodeRecord | nu
   return found;
 };
 
-const resolveNoteKind = (styleId: string): "footnote" | "endnote" | null => {
-  if (styleId === "chicago-note-bibliography" || styleId === "chicago-footnotes") return "footnote";
-  if (styleId === "chicago-note-bibliography-endnote") return "endnote";
+const resolveNoteKind = (_styleId: string): "footnote" | "endnote" | null => {
+  // Note-based CSL styles (footnotes/endnotes) aren’t fully implemented yet.
+  // Keeping this disabled ensures citations + bibliography always render as inline anchors.
   return null;
 };
 
 const stripHtml = (value: string): string => value.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+
+const KEY_REGEX = /^[A-Z0-9]{8}$/;
+const extractKeyFromLinkAttrs = (attrs: any): string => {
+  const candidates = [
+    attrs?.dataKey,
+    attrs?.dataOrigHref,
+    attrs?.itemKey,
+    attrs?.dataItemKey
+  ]
+    .map((v: any) => (typeof v === "string" ? v.trim() : ""))
+    .filter(Boolean);
+  for (const value of candidates) {
+    if (KEY_REGEX.test(value)) return value;
+  }
+  return "";
+};
+
+const collectCitationAnchors = (editor: Editor): Array<{ text: string; href: string; dataKey: string; dataOrigHref: string; itemKey: string; dataItemKey: string }> => {
+  const anchors: Array<{ text: string; href: string; dataKey: string; dataOrigHref: string; itemKey: string; dataItemKey: string }> = [];
+  editor.state.doc.descendants((node) => {
+    if (!node.isText) return true;
+    const text = node.text || "";
+    (node.marks || []).forEach((mark: any) => {
+      if (!mark || mark.type?.name !== "link") return;
+      const attrs = mark.attrs ?? {};
+      const dataKey = typeof attrs.dataKey === "string" ? attrs.dataKey.trim() : "";
+      const dataOrigHref = typeof attrs.dataOrigHref === "string" ? attrs.dataOrigHref.trim() : "";
+      const itemKey = typeof attrs.itemKey === "string" ? attrs.itemKey.trim() : "";
+      const dataItemKey = typeof attrs.dataItemKey === "string" ? attrs.dataItemKey.trim() : "";
+      const href = typeof attrs.href === "string" ? attrs.href.trim() : "";
+      const hasKey = Boolean(extractKeyFromLinkAttrs(attrs));
+      if (!hasKey) return;
+      anchors.push({ text: text.slice(0, 140), href, dataKey, dataOrigHref, itemKey, dataItemKey });
+    });
+    return true;
+  });
+  return anchors;
+};
+
+const logAllCitationAnchors = (editor: Editor, label: string): void => {
+  const anchors = collectCitationAnchors(editor);
+  console.info("[References][update] anchors", {
+    label,
+    anchorCount: anchors.length,
+    sample: anchors[0] ?? null
+  });
+};
+
+const extractDqidFromLinkAttrs = (attrs: any): string => {
+  const direct =
+    (typeof attrs?.dataDqid === "string" && attrs.dataDqid.trim()) ||
+    (typeof attrs?.dataQuoteId === "string" && attrs.dataQuoteId.trim()) ||
+    (typeof attrs?.dataQuoteText === "string" && attrs.dataQuoteText.trim()) ||
+    "";
+  if (direct) return direct;
+  const href = typeof attrs?.href === "string" ? attrs.href.trim() : "";
+  return href.startsWith("dq://") ? href.slice("dq://".length) : "";
+};
+
+const convertCitationAnchorsToCitationNodes = (editor: Editor): void => {
+  const citationNode = editor.schema.nodes.citation;
+  const linkMark = editor.schema.marks.link;
+  if (!citationNode || !linkMark) return;
+  const tr = editor.state.tr;
+  const ranges: Array<{ from: number; to: number; attrs: Record<string, any> }> = [];
+  editor.state.doc.descendants((node, pos) => {
+    if (!node.isText) return true;
+    const link = (node.marks || []).find((m) => m.type === linkMark);
+    if (!link) return true;
+    const attrs = link.attrs ?? {};
+    const key = extractKeyFromLinkAttrs(attrs);
+    if (!key) return true;
+    const dqid = extractDqidFromLinkAttrs(attrs);
+    const title = typeof attrs?.title === "string" ? attrs.title : null;
+    const from = pos;
+    const to = pos + node.nodeSize;
+    ranges.push({
+      from,
+      to,
+      attrs: {
+        citationId: generateCitationId(),
+        items: buildCitationItems([key], {}),
+        renderedHtml: "",
+        hidden: false,
+        dqid: dqid || null,
+        title
+      }
+    });
+    return true;
+  });
+  // Replace from end -> start to keep positions stable.
+  ranges
+    .sort((a, b) => b.from - a.from)
+    .forEach((range) => {
+      tr.replaceWith(range.from, range.to, citationNode.create(range.attrs));
+    });
+  if (tr.docChanged) {
+    editor.view.dispatch(tr);
+  }
+};
+
+const showBibliographyPreview = async (editor: Editor): Promise<void> => {
+  try {
+    const keys = await readUsedBibliography();
+    const library = await ensureReferencesLibrary();
+    const lines = keys
+      .map((key) => library.itemsByKey[key])
+      .filter(Boolean)
+      .map((item) => {
+        const author = item.author || "";
+        const year = item.year ? `(${item.year})` : "";
+        const title = item.title || item.itemKey;
+        return `${author} ${year} ${title}`.replace(/\s+/g, " ").trim();
+      });
+    const payload = lines.join("\n");
+
+    const overlay = document.createElement("div");
+    overlay.className = "leditor-source-view-overlay";
+    overlay.style.display = "flex";
+    overlay.style.zIndex = "2200";
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-modal", "true");
+    overlay.setAttribute("aria-label", "Bibliography preview");
+
+    const panel = document.createElement("div");
+    panel.className = "leditor-source-view-panel";
+    panel.style.maxWidth = "860px";
+    panel.style.width = "min(860px, 96vw)";
+
+    const header = document.createElement("div");
+    header.className = "leditor-source-view-header";
+    const titleEl = document.createElement("div");
+    titleEl.className = "leditor-source-view-title";
+    titleEl.textContent = `References preview (${keys.length})`;
+    const close = document.createElement("button");
+    close.type = "button";
+    close.className = "leditor-source-view-close";
+    close.textContent = "Close";
+    close.addEventListener("click", () => overlay.remove());
+    header.append(titleEl, close);
+
+    const content = document.createElement("div");
+    content.className = "leditor-source-view-content";
+    const pre = document.createElement("pre");
+    pre.style.whiteSpace = "pre-wrap";
+    pre.style.margin = "0";
+    pre.textContent = payload || "(No cited works found.)";
+    content.appendChild(pre);
+
+    panel.append(header, content);
+    overlay.appendChild(panel);
+    overlay.addEventListener("click", (ev) => {
+      if (ev.target === overlay) overlay.remove();
+    });
+    document.body.appendChild(overlay);
+  } catch (error) {
+    console.warn("[References] preview failed", error);
+  }
+};
 
 const collectFootnoteNodesByCitationId = (
   doc: ProseMirrorNode,
@@ -384,8 +545,8 @@ const collectFootnoteNodesByCitationId = (
 
 const applyCitationStyleToDoc = (editor: Editor, styleId: string): void => {
   const nextStyle = styleId.trim().toLowerCase();
-  if (!CITATION_STYLES.includes(nextStyle)) {
-    throw new Error(`Unsupported citation style: ${styleId}`);
+  if (!nextStyle) {
+    throw new Error("Unsupported citation style: empty");
   }
   const currentAttrs = editor.state.doc.attrs;
   if (!currentAttrs || typeof currentAttrs !== "object") {
@@ -399,7 +560,7 @@ const applyCitationStyleToDoc = (editor: Editor, styleId: string): void => {
 const setCitationStyleCommand: CommandHandler = (editor, args) => {
   const payloadRaw = typeof args?.id === "string" ? args.id : typeof args?.style === "string" ? args.style : "";
   const payload = payloadRaw.trim().toLowerCase();
-  const style = CITATION_STYLES.includes(payload) ? payload : CITATION_STYLE_DEFAULT;
+  const style = payload || CITATION_STYLE_DEFAULT;
   applyCitationStyleToDoc(editor, style);
   void refreshCitationsAndBibliography(editor);
 };
@@ -518,6 +679,117 @@ const refreshCitationsAndBibliography = async (editor: Editor): Promise<void> =>
   await ensureReferencesLibrary();
   runCslUpdate(editor);
   await refreshUsedBibliography(editor);
+};
+
+const setCitationLocaleCommand: CommandHandler = (editor) => {
+  const current = typeof editor.state.doc.attrs?.citationLocale === "string" ? editor.state.doc.attrs.citationLocale : "en-US";
+  const raw = window.prompt("Citation locale (e.g. en-US)", current);
+  if (raw === null) return;
+  const next = raw.trim();
+  if (!next) return;
+  editor.view.dispatch(editor.state.tr.setDocAttribute("citationLocale", next));
+  void refreshCitationsAndBibliography(editor);
+};
+
+const normalizeReferenceItemKey = (value: string): string => value.trim().toUpperCase();
+
+const promptAndInsertCiteKey = (editor: Editor): void => {
+  const raw = window.prompt("Insert citekey (8-char key, or comma-separated keys)", "");
+  if (raw === null) return;
+  const keys = raw
+    .split(/[,\s]+/)
+    .map((k) => normalizeReferenceItemKey(k))
+    .filter((k) => k.length > 0);
+  if (!keys.length) return;
+  const citationNode = editor.schema.nodes.citation;
+  if (!citationNode) {
+    window.alert("Citation node is not available.");
+    return;
+  }
+  const citationId = generateCitationId();
+  const attrs = {
+    citationId,
+    items: buildCitationItems(keys, {}),
+    renderedHtml: "",
+    hidden: false
+  };
+  editor.view.dispatch(editor.state.tr.replaceSelectionWith(citationNode.create(attrs)).scrollIntoView());
+  void refreshCitationsAndBibliography(editor);
+};
+
+const importReferencesJsonLike = (raw: any): Array<{ itemKey: string; title?: string; author?: string; year?: string; url?: string; note?: string; dqid?: string }> => {
+  const itemsRaw = Array.isArray(raw) ? raw : Array.isArray(raw?.items) ? raw.items : [];
+  return itemsRaw
+    .map((it: any) => ({
+      itemKey: String(it.itemKey ?? it.id ?? it.item_key ?? "").trim(),
+      title: typeof it.title === "string" ? it.title : undefined,
+      author: typeof it.author === "string" ? it.author : undefined,
+      year: typeof it.year === "string" ? it.year : undefined,
+      url: typeof it.url === "string" ? it.url : undefined,
+      note: typeof it.note === "string" ? it.note : undefined,
+      dqid: typeof it.dqid === "string" ? it.dqid : undefined
+    }))
+    .filter((it: any) => it.itemKey);
+};
+
+const parseBibtex = (text: string) => {
+  const items: any[] = [];
+  const entryRegex = /@\\w+\\s*\\{\\s*([^,\\s]+)\\s*,([\\s\\S]*?)\\n\\s*\\}\\s*/g;
+  let match: RegExpExecArray | null;
+  while ((match = entryRegex.exec(text))) {
+    const itemKey = String(match[1] || "").trim();
+    const body = match[2] || "";
+    const field = (name: string): string => {
+      const re = new RegExp(`${name}\\s*=\\s*(\\{([^}]*)\\}|\\\"([^\\\"]*)\\\")`, "i");
+      const m = re.exec(body);
+      return (m?.[2] || m?.[3] || "").trim();
+    };
+    items.push({
+      itemKey,
+      title: field("title") || undefined,
+      author: field("author") || undefined,
+      year: field("year") || undefined,
+      url: field("url") || undefined,
+      note: undefined
+    });
+  }
+  return items.filter((it) => it.itemKey);
+};
+
+const parseRis = (text: string) => {
+  const items: any[] = [];
+  const lines = text.split(/\\r?\\n/);
+  let current: any | null = null;
+  const flush = () => {
+    if (current && current.itemKey) items.push(current);
+    current = null;
+  };
+  for (const line of lines) {
+    const m = /^([A-Z0-9]{2})\\s*-\\s*(.*)$/.exec(line);
+    if (!m) continue;
+    const tag = m[1];
+    const val = (m[2] || "").trim();
+    if (tag === "TY") {
+      flush();
+      current = {};
+      continue;
+    }
+    if (!current) continue;
+    if (tag === "ER") {
+      flush();
+      continue;
+    }
+    if (tag === "ID" && !current.itemKey) current.itemKey = val;
+    if (tag === "TI" && !current.title) current.title = val;
+    if (tag === "T1" && !current.title) current.title = val;
+    if (tag === "AU") current.author = current.author ? `${current.author}; ${val}` : val;
+    if (tag === "PY" && !current.year) current.year = val.slice(0, 4);
+    if (tag === "Y1" && !current.year) current.year = val.slice(0, 4);
+    if (tag === "UR" && !current.url) current.url = val;
+    if (tag === "DO" && !current.note) current.note = `DOI: ${val}`;
+  }
+  flush();
+  return items.filter((it) => it.itemKey);
 };
 
 const applyStyleById = (editor: Editor, styleId: string): void => {
@@ -891,6 +1163,31 @@ const collectDocumentCitationKeys = (editor: Editor): string[] => {
   return Array.from(keys);
 };
 
+const collectDocumentDirectQuoteIds = (editor: Editor): string[] => {
+  const ids = new Set<string>();
+  const push = (value: unknown) => {
+    const raw = typeof value === "string" ? value.trim().toLowerCase() : "";
+    if (raw) ids.add(raw);
+  };
+  editor.state.doc.descendants((node) => {
+    if (Array.isArray((node as any).marks)) {
+      (node as any).marks.forEach((mark: any) => {
+        if (!mark || mark.type?.name !== "link") return;
+        const attrs = mark.attrs ?? {};
+        push(attrs.dataDqid);
+        push(attrs.dataQuoteId);
+        const href = typeof attrs.href === "string" ? attrs.href.trim() : "";
+        if (href.startsWith("dq://") || href.startsWith("dq:")) {
+          const cleaned = href.replace(/^dq:\/*/, "").split(/[?#]/)[0].trim().toLowerCase();
+          push(cleaned);
+        }
+      });
+    }
+    return true;
+  });
+  return Array.from(ids);
+};
+
 const logFirstParagraphAnchors = (editor: Editor): void => {
   try {
     const anchors: Array<Record<string, string>> = [];
@@ -931,6 +1228,18 @@ const refreshUsedBibliography = async (editor: Editor) => {
   const keys = collectDocumentCitationKeys(editor);
   logFirstParagraphAnchors(editor);
   await writeUsedBibliography(keys);
+  try {
+    const contract = getHostContract();
+    const lookupPath = (contract?.inputs?.directQuoteJsonPath || "").trim();
+    if (lookupPath && window.leditorHost?.prefetchDirectQuotes) {
+      const dqids = collectDocumentDirectQuoteIds(editor);
+      if (dqids.length) {
+        void window.leditorHost.prefetchDirectQuotes({ lookupPath, dqids });
+      }
+    }
+  } catch {
+    // ignore
+  }
 };
 
 const ensureBibliographyStore = (): void => {
@@ -1788,22 +2097,229 @@ export const commandMap: Record<string, CommandHandler> = {
 
   UpdateCitations(editor) {
     void (async () => {
-      if (!hasCitationNodes(editor)) {
-        window.alert("No citations to update.");
-        return;
-      }
+      logAllCitationAnchors(editor, "before");
+      // Imported documents often contain citation anchors (dq:// links with data-key).
+      // Convert them into atomic citation nodes so users cannot edit inside citations and delete acts
+      // on the whole citation. Also ensures they’re tracked as used bibliography keys.
+      convertCitationAnchorsToCitationNodes(editor);
       await refreshCitationsAndBibliography(editor);
+      logAllCitationAnchors(editor, "after");
+      await showBibliographyPreview(editor);
     })();
   },
 
   SetCitationStyle: setCitationStyleCommand,
 
   "citation.style.set": setCitationStyleCommand,
+  "citation.style.openMenu"() {
+    // Dropdown menus are handled by the ribbon UI; this exists to avoid "missing" markers.
+  },
   'citation.csl.import.openDialog'() {
-    console.warn('[References] citation.csl.import.openDialog stub invoked');
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".csl,application/xml,text/xml";
+    input.addEventListener("change", () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const xml = String(reader.result ?? "");
+        console.info("[References] CSL imported", { name: file.name, bytes: xml.length });
+        try {
+          window.localStorage?.setItem(`leditor.csl.style:${file.name}`, xml);
+        } catch {
+          // ignore
+        }
+        window.alert(`Imported CSL style: ${file.name}`);
+      };
+      reader.readAsText(file);
+    });
+    input.click();
   },
   'citation.csl.manage.openDialog'() {
-    console.warn('[References] citation.csl.manage.openDialog stub invoked');
+    try {
+      const keys = Object.keys(window.localStorage || {}).filter((k) => k.startsWith("leditor.csl.style:"));
+      if (keys.length === 0) {
+        window.alert("No imported CSL styles.");
+        return;
+      }
+      const listing = keys.map((k) => k.replace("leditor.csl.style:", "")).join("\n");
+      const target = window.prompt(`Imported CSL styles:\n\n${listing}\n\nType an exact name to delete:`);
+      if (!target) return;
+      const key = `leditor.csl.style:${target}`;
+      window.localStorage?.removeItem(key);
+      window.alert(`Deleted CSL style: ${target}`);
+    } catch {
+      window.alert("Unable to manage CSL styles (storage unavailable).");
+    }
+  },
+  "citation.options.openDialog": setCitationLocaleCommand,
+  "citation.import.openMenu"() {
+    // Dropdown menus are handled by the ribbon UI; this exists to avoid "missing" markers.
+  },
+  "citation.inspect.openPane"() {
+    openSourcesPanel();
+  },
+  "citation.source.add.openDialog"(_editor) {
+    const raw = window.prompt("New source itemKey (8-char key)", "");
+    if (!raw) return;
+    const itemKey = normalizeReferenceItemKey(raw);
+    const title = window.prompt("Title (optional)", "") ?? "";
+    const author = window.prompt("Author (optional)", "") ?? "";
+    const year = window.prompt("Year (optional)", "") ?? "";
+    const url = window.prompt("URL (optional)", "") ?? "";
+    upsertReferenceItems([
+      {
+        itemKey,
+        title: title.trim() || undefined,
+        author: author.trim() || undefined,
+        year: year.trim() || undefined,
+        url: url.trim() || undefined
+      }
+    ]);
+    window.alert(`Added source: ${itemKey}`);
+  },
+  "citation.placeholder.add.openDialog"(editor) {
+    editor.chain().focus().insertContent("(citation)").run();
+  },
+  "citation.import.bibtex.openDialog"() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".bib,text/plain";
+    input.addEventListener("change", () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const items = parseBibtex(String(reader.result ?? ""));
+          upsertReferenceItems(items);
+          window.alert(`Imported ${items.length} BibTeX references.`);
+        } catch (error) {
+          console.error("[References] import bibtex failed", error);
+          window.alert("Failed to import BibTeX.");
+        }
+      };
+      reader.readAsText(file);
+    });
+    input.click();
+  },
+  "citation.import.ris.openDialog"() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".ris,text/plain";
+    input.addEventListener("change", () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const items = parseRis(String(reader.result ?? ""));
+          upsertReferenceItems(items);
+          window.alert(`Imported ${items.length} RIS references.`);
+        } catch (error) {
+          console.error("[References] import ris failed", error);
+          window.alert("Failed to import RIS.");
+        }
+      };
+      reader.readAsText(file);
+    });
+    input.click();
+  },
+  "citation.import.csljson.openDialog"() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json,application/json";
+    input.addEventListener("change", () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const raw = JSON.parse(String(reader.result ?? "")) as any;
+          const itemsRaw = Array.isArray(raw) ? raw : Array.isArray(raw?.items) ? raw.items : [];
+          const items = itemsRaw
+            .map((it: any) => ({
+              itemKey: String(it.itemKey ?? it.id ?? it.item_key ?? "").trim(),
+              title: typeof it.title === "string" ? it.title : undefined,
+              author: typeof it.author === "string" ? it.author : undefined,
+              year: typeof it.year === "string" ? it.year : undefined,
+              url: typeof it.url === "string" ? it.url : undefined,
+              note: typeof it.note === "string" ? it.note : undefined,
+              dqid: typeof it.dqid === "string" ? it.dqid : undefined
+            }))
+            .filter((it: any) => it.itemKey);
+          upsertReferenceItems(items);
+          console.info("[References] imported CSL-JSON items", { count: items.length });
+          window.alert(`Imported ${items.length} references.`);
+        } catch (error) {
+          console.error("[References] import CSL-JSON failed", error);
+          window.alert("Failed to import CSL JSON.");
+        }
+      };
+      reader.readAsText(file);
+    });
+    input.click();
+  },
+  "citation.citeKey.insert.openDialog"(editor) {
+    promptAndInsertCiteKey(editor);
+  },
+  "citation.citeKey.resolveAll"(editor) {
+    // Best-effort resolver: converts dq:// anchors with data-key to citation nodes (already in Update),
+    // and resolves standalone "@KEY" tokens into citation nodes.
+    const citationNode = editor.schema.nodes.citation;
+    if (!citationNode) return;
+    const tr = editor.state.tr;
+    const ranges: Array<{ from: number; to: number; key: string }> = [];
+    editor.state.doc.descendants((node, pos) => {
+      if (!node.isText) return true;
+      const text = node.text || "";
+      const m = /^@([A-Z0-9]{8})$/.exec(text.trim());
+      if (!m) return true;
+      ranges.push({ from: pos, to: pos + node.nodeSize, key: m[1] });
+      return true;
+    });
+    ranges
+      .sort((a, b) => b.from - a.from)
+      .forEach((r) => {
+        const attrs = {
+          citationId: generateCitationId(),
+          items: buildCitationItems([r.key], {}),
+          renderedHtml: "",
+          hidden: false
+        };
+        tr.replaceWith(r.from, r.to, citationNode.create(attrs));
+      });
+    if (tr.docChanged) editor.view.dispatch(tr);
+    void refreshCitationsAndBibliography(editor);
+  },
+  "bibliography.insert.default"(editor) {
+    commandMap["bibliography.insert"](editor, { template: "references" });
+  },
+  "bibliography.insert"(editor, args) {
+    void (async () => {
+      const template = typeof args?.template === "string" ? args.template.trim() : "references";
+      const label =
+        template === "bibliography" ? "Bibliography" : template === "worksCited" ? "Works Cited" : "References";
+      const fromStore = await readUsedBibliography();
+      if (!fromStore.length) {
+        await writeUsedBibliography(collectDocumentCitationKeys(editor));
+      }
+      ensureBibliographyStore();
+      ensureBibliographyNode(editor, { headingText: label });
+      await refreshCitationsAndBibliography(editor);
+    })();
+  },
+  "bibliography.insert.field"(editor) {
+    void (async () => {
+      const fromStore = await readUsedBibliography();
+      if (!fromStore.length) {
+        await writeUsedBibliography(collectDocumentCitationKeys(editor));
+      }
+      ensureBibliographyStore();
+      insertBibliographyField(editor);
+      await refreshCitationsAndBibliography(editor);
+    })();
   },
 
   SetCitationSources(editor, args) {
@@ -1839,14 +2355,10 @@ export const commandMap: Record<string, CommandHandler> = {
   InsertBibliography(editor) {
     void (async () => {
       console.info("[References] insert bibliography", { styleId: editor.state.doc.attrs?.citationStyleId });
-      const styleId = getDocCitationMeta(editor.state.doc).styleId;
-      if (resolveNoteKind(styleId)) {
-        return;
-      }
-      const keys = collectDocumentCitationKeys(editor);
-      if (!keys.length) {
-        window.alert("Insert citations before generating a bibliography.");
-        return;
+      const fromStore = await readUsedBibliography();
+      const keys = fromStore.length ? fromStore : collectDocumentCitationKeys(editor);
+      if (!fromStore.length) {
+        await writeUsedBibliography(keys);
       }
       console.info("[References] insert bibliography", { itemKeys: keys });
       ensureBibliographyStore();
@@ -1857,13 +2369,8 @@ export const commandMap: Record<string, CommandHandler> = {
 
   UpdateBibliography(editor) {
     void (async () => {
-      const styleId = getDocCitationMeta(editor.state.doc).styleId;
-      if (resolveNoteKind(styleId)) {
-        return;
-      }
       if (!hasBibliographyNode(editor)) {
-        window.alert("No bibliography found to update.");
-        return;
+        ensureBibliographyNode(editor);
       }
       await refreshCitationsAndBibliography(editor);
     })();
@@ -1871,6 +2378,9 @@ export const commandMap: Record<string, CommandHandler> = {
   "citation.sources.manage.openDialog"(editor) {
     console.info("[References] manage sources invoked");
     openSourcesPanel();
+  },
+  "citation.sources.update.openDialog"(editor) {
+    commandMap.UpdateCitations(editor);
   },
   "bibliography.export.bibtex.openDialog"() {
     void exportBibliographyBibtex();

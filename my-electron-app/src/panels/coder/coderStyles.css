@@ -293,6 +293,29 @@
   padding: 2px 4px;
 }
 
+.coder-expander {
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted, #94a3b8);
+}
+
+.coder-expander-icon {
+  display: block;
+}
+
+.coder-expander:focus {
+  outline: 1px solid var(--focus, rgba(147, 197, 253, 0.6));
+}
+
+.coder-expander:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
 .coder-label {
   display: flex;
   align-items: center;
