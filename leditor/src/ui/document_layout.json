@@ -43,33 +43,33 @@
       {
         "id": "normal",
         "label": "Normal",
-        "marginsIn": { "top": 1, "right": 1, "bottom": 1, "left": 1 }
+        "marginsIn": { "top": 0.9843, "right": 0.9843, "bottom": 0.9843, "left": 0.9843 }
       },
       {
         "id": "narrow",
         "label": "Narrow",
-        "marginsIn": { "top": 0.5, "right": 0.5, "bottom": 0.5, "left": 0.5 }
+        "marginsIn": { "top": 0.9843, "right": 0.9843, "bottom": 0.9843, "left": 0.9843 }
       },
       {
         "id": "moderate",
         "label": "Moderate",
-        "marginsIn": { "top": 1, "right": 0.75, "bottom": 1, "left": 0.75 }
+        "marginsIn": { "top": 0.9843, "right": 0.9843, "bottom": 0.9843, "left": 0.9843 }
       },
       {
         "id": "wide",
         "label": "Wide",
-        "marginsIn": { "top": 1, "right": 2, "bottom": 1, "left": 2 }
+        "marginsIn": { "top": 0.9843, "right": 0.9843, "bottom": 0.9843, "left": 0.9843 }
       },
       {
         "id": "mirrored",
         "label": "Mirrored",
-        "marginsIn": { "top": 1, "right": 0.75, "bottom": 1, "left": 0.75 },
+        "marginsIn": { "top": 0.9843, "right": 0.9843, "bottom": 0.9843, "left": 0.9843 },
         "mirrored": true
       },
       {
         "id": "custom",
         "label": "Custom",
-        "marginsIn": { "top": 1, "right": 1, "bottom": 1, "left": 1 },
+        "marginsIn": { "top": 0.9843, "right": 0.9843, "bottom": 0.9843, "left": 0.9843 },
         "customizable": true
       }
     ],
@@ -80,10 +80,10 @@
       "stepIn": 0.05
     },
     "gutter": {
-      "enabled": true,
+      "enabled": false,
       "defaultIn": 0,
       "minIn": 0,
-      "maxIn": 2,
+      "maxIn": 0,
       "stepIn": 0.05,
       "positionOptions": [
         { "id": "left", "label": "Left" },

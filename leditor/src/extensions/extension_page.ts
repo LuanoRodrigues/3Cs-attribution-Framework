@@ -324,16 +324,33 @@ export const PageNode = Node.create({
       header.className = PAGE_HEADER_CLASS;
       header.setAttribute("aria-hidden", "true");
       header.contentEditable = "false";
+      header.style.top = "calc(var(--local-page-margin-top, var(--page-margin-top)) + var(--header-offset))";
+      header.style.bottom = "auto";
+      header.style.left = "var(--local-page-margin-left, var(--page-margin-left))";
+      header.style.right = "var(--local-page-margin-right, var(--page-margin-right))";
+      header.style.height = "var(--header-height)";
       const content = document.createElement("div");
       content.className = PAGE_CONTENT_CLASS;
       const footnotes = document.createElement("div");
       footnotes.className = PAGE_FOOTNOTES_CLASS;
       footnotes.setAttribute("aria-hidden", "true");
       footnotes.contentEditable = "false";
+      footnotes.style.top = "auto";
+      footnotes.style.left = "var(--local-page-margin-left, var(--page-margin-left))";
+      footnotes.style.right = "var(--local-page-margin-right, var(--page-margin-right))";
+      footnotes.style.bottom =
+        "calc(var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset) + var(--footer-height))";
+      footnotes.style.minHeight = "var(--footnote-area-height)";
       const footer = document.createElement("div");
       footer.className = PAGE_FOOTER_CLASS;
       footer.setAttribute("aria-hidden", "true");
       footer.contentEditable = "false";
+      footer.style.top = "auto";
+      footer.style.left = "var(--local-page-margin-left, var(--page-margin-left))";
+      footer.style.right = "var(--local-page-margin-right, var(--page-margin-right))";
+      footer.style.bottom =
+        "calc(var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset))";
+      footer.style.height = "var(--footer-height)";
       inner.appendChild(header);
       inner.appendChild(content);
       inner.appendChild(footnotes);

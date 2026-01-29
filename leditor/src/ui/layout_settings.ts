@@ -47,10 +47,12 @@ const MARGIN_PRESETS: Record<
   "normal" | "moderate" | "narrow" | "wide",
   { label: string; margins: MarginValuesCm }
 > = {
-  normal: { label: "Normal", margins: { top: 2.5, bottom: 2.5, left: 3.0, right: 3.0 } },
-  moderate: { label: "Moderate", margins: { top: 2.5, bottom: 2.5, left: 1.9, right: 1.9 } },
-  narrow: { label: "Narrow", margins: { top: 1.27, bottom: 1.27, left: 1.27, right: 1.27 } },
-  wide: { label: "Wide", margins: { top: 2.5, bottom: 2.5, left: 3.81, right: 3.81 } }
+  // Keep layout_settings presets aligned with the document layout spec defaults.
+  // 2.5cm = 0.9843in.
+  normal: { label: "Normal", margins: { top: 2.5, bottom: 2.5, left: 2.5, right: 2.5 } },
+  moderate: { label: "Moderate", margins: { top: 2.5, bottom: 2.5, left: 2.5, right: 2.5 } },
+  narrow: { label: "Narrow", margins: { top: 2.5, bottom: 2.5, left: 2.5, right: 2.5 } },
+  wide: { label: "Wide", margins: { top: 2.5, bottom: 2.5, left: 2.5, right: 2.5 } }
 };
 
 const cmToCss = (value: number): string => `${value}cm`;

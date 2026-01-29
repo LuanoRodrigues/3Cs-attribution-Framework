@@ -10,6 +10,7 @@ import {
   getMarginValues,
   getCurrentPageSize,
   setPageMargins,
+  resetMargins,
   setSectionColumns,
   subscribeToLayoutChanges
 } from "../ui/layout_settings.ts";
@@ -125,10 +126,10 @@ const ensureStyles = () => {
   --page-height-letter-mm: 279.4;
   --page-width-letter: calc(var(--page-width-letter-mm) * 1mm);
   --page-height-letter: calc(var(--page-height-letter-mm) * 1mm);
-  --page-margin-top: 1in;
-  --page-margin-right: 1in;
-  --page-margin-bottom: 1in;
-  --page-margin-left: 1in;
+  --page-margin-top: 2.5cm;
+  --page-margin-right: 2.5cm;
+  --page-margin-bottom: 2.5cm;
+  --page-margin-left: 2.5cm;
   --page-margin-narrow: 0.5in;
   --page-margin-moderate-vertical: 1in;
   --page-margin-moderate-horizontal: 0.75in;
@@ -142,7 +143,8 @@ const ensureStyles = () => {
   --header-offset: 0;
   --footer-offset: 0;
   --footnote-area-height: 0.55in;
-  --page-footnote-height: 0px;
+  /* Reserve space for the footnote area so it doesn't overlap the page break. */
+  --page-footnote-height: var(--footnote-area-height);
   --footnote-separator-height: 1px;
   --footnote-separator-color: rgba(0, 0, 0, 0.25);
   --footnote-spacing: 6px;
@@ -159,8 +161,8 @@ const ensureStyles = () => {
   --page-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
   --page-shadow-dark: 0 16px 40px rgba(0, 0, 0, 0.55);
   --page-gap: 22px;
-  --page-margin-inside: 1.25in;
-  --page-margin-outside: 1in;
+  --page-margin-inside: 2.5cm;
+  --page-margin-outside: 2.5cm;
   --column-separator-color: rgba(0, 0, 0, 0.25);
   --page-canvas-bg: radial-gradient(circle at 18% 18%, #f8f9fb 0%, #e9ecf3 45%, #d8dbe6 90%);
   --page-canvas-bg-dark: radial-gradient(circle at 30% 16%, #1d2431 0%, #141924 55%, #0c1018 100%);
@@ -192,8 +194,8 @@ html, body {
 }
 .leditor-app {
   position: relative;
-  min-height: 100vh;
-  height: 100vh;
+  min-height: calc(100vh / var(--ui-scale));
+  height: calc(100vh / var(--ui-scale));
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -205,25 +207,106 @@ html, body {
   transform-origin: top left;
   width: calc(100% / var(--ui-scale));
   --leditor-ribbon-height: 0px;
+  --leditor-header-height: 0px;
 }
 
 .leditor-app-header {
   flex: 0 0 auto;
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 40;
+  position: relative;
+  z-index: 1000;
+  background: var(--r-bg);
 }
 
 .leditor-doc-shell {
-  flex: 1;
+  flex: 0 0 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  padding-top: 0;
+  height: calc((100vh / var(--ui-scale)) - var(--leditor-header-height));
+}
+
+.leditor-split-shell {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  overflow: hidden;
+}
+
+.leditor-editor-pane {
+  flex: 1 1 auto;
+  min-width: 0;
   overflow: auto;
   scrollbar-gutter: stable both-edges;
-  padding-top: var(--leditor-ribbon-height);
+}
+
+.leditor-editor-pane.is-split {
+  flex: 1 1 60%;
+}
+
+.leditor-pdf-pane {
+  flex: 0 0 40%;
+  min-width: 320px;
+  max-width: 760px;
+  display: none;
+  flex-direction: column;
+  background: rgba(10, 14, 20, 0.92);
+  border-left: 1px solid rgba(148, 163, 184, 0.25);
+  overflow: hidden;
+}
+
+.leditor-pdf-pane.is-open {
+  display: flex;
+}
+
+.leditor-pdf-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+  color: #f1f5f9;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: rgba(10, 14, 20, 0.92);
+}
+
+.leditor-pdf-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.leditor-pdf-close {
+  flex: 0 0 auto;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(255, 255, 255, 0.06);
+  color: #f1f5f9;
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.leditor-pdf-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.leditor-pdf-frame {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  border: 0;
+  background: #0b1220;
 }
 
 .leditor-app .ProseMirror a,
@@ -234,10 +317,21 @@ html, body {
 }
 
 .leditor-app .ProseMirror a.leditor-citation-anchor {
+  display: inline-block;
   background: rgba(93, 213, 255, 0.14);
   border: 1px solid rgba(93, 213, 255, 0.35);
   border-radius: 6px;
   padding: 1px 4px;
+}
+
+@keyframes leditor-citation-flash {
+  0% { box-shadow: 0 0 0 0 rgba(93, 213, 255, 0.0); transform: translateY(0); }
+  20% { box-shadow: 0 0 0 3px rgba(93, 213, 255, 0.30); transform: translateY(-0.5px); }
+  100% { box-shadow: 0 0 0 0 rgba(93, 213, 255, 0.0); transform: translateY(0); }
+}
+
+.leditor-app .ProseMirror a.leditor-citation-anchor.leditor-citation-anchor--flash {
+  animation: leditor-citation-flash 0.6s ease-out;
 }
 
 .leditor-app.theme-dark {
@@ -382,12 +476,13 @@ html, body {
 }
 
 .leditor-page-header {
-  top: var(--header-offset);
+  top: calc(var(--local-page-margin-top, var(--page-margin-top)) + var(--header-offset));
   opacity: 1;
   pointer-events: auto;
 }
 
 .leditor-page-footer {
+  top: auto;
   bottom: calc(var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset));
   justify-content: flex-end;
   text-transform: none;
@@ -399,18 +494,22 @@ html, body {
   position: absolute;
   left: var(--local-page-margin-left, var(--page-margin-left));
   right: var(--local-page-margin-right, var(--page-margin-right));
+  top: auto;
   bottom: calc(
     var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset) + var(--footer-height)
   );
-  min-height: 0;
+  min-height: var(--footnote-area-height);
   overflow: hidden;
   font-size: var(--footnote-font-size);
   color: var(--page-footnote-color);
   z-index: 3;
+  background: rgba(255, 0, 0, 0.04);
+  outline: 1px dashed rgba(255, 0, 0, 0.35);
 }
 .leditor-page-footnotes.leditor-page-footnotes--active {
   border-top: var(--footnote-separator-height) solid var(--footnote-separator-color);
   padding-top: var(--footnote-spacing);
+  background: rgba(255, 0, 0, 0.08);
 }
 
 .leditor-footnote-list,
@@ -567,12 +666,13 @@ html, body {
 }
 
 .leditor-page-header {
-  top: var(--header-offset);
+  top: calc(var(--local-page-margin-top, var(--page-margin-top)) + var(--header-offset));
   opacity: 1;
   pointer-events: auto;
 }
 
 .leditor-page-footer {
+  top: auto;
   bottom: calc(var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset));
   justify-content: flex-end;
   text-transform: none;
@@ -582,17 +682,21 @@ html, body {
   position: absolute;
   left: var(--local-page-margin-left, var(--page-margin-left));
   right: var(--local-page-margin-right, var(--page-margin-right));
+  top: auto;
   bottom: calc(
     var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset) + var(--footer-height)
   );
-  min-height: 0;
+  min-height: var(--footnote-area-height);
   overflow: hidden;
   font-size: var(--footnote-font-size);
   color: #262626;
+  background: rgba(255, 0, 0, 0.04);
+  outline: 1px dashed rgba(255, 0, 0, 0.35);
 }
 .leditor-page-footnotes.leditor-page-footnotes--active {
   border-top: var(--footnote-separator-height) solid var(--footnote-separator-color);
   padding-top: var(--footnote-spacing);
+  background: rgba(255, 0, 0, 0.08);
 }
 
 .leditor-page-footer .leditor-page-number {
@@ -673,12 +777,13 @@ html, body {
 }
 
 .leditor-page-header {
-  top: var(--header-offset);
+  top: calc(var(--local-page-margin-top, var(--page-margin-top)) + var(--header-offset));
   opacity: 1;
   pointer-events: auto;
 }
 
 .leditor-page-footer {
+  top: auto;
   bottom: calc(var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset));
   justify-content: flex-end;
   text-transform: none;
@@ -689,17 +794,21 @@ html, body {
   position: absolute;
   left: var(--local-page-margin-left, var(--page-margin-left));
   right: var(--local-page-margin-right, var(--page-margin-right));
+  top: auto;
   bottom: calc(
     var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset) + var(--footer-height)
   );
-  min-height: 0;
+  min-height: var(--footnote-area-height);
   overflow: hidden;
   font-size: var(--footnote-font-size);
   color: #262626;
+  background: rgba(255, 0, 0, 0.04);
+  outline: 1px dashed rgba(255, 0, 0, 0.35);
 }
 .leditor-page-footnotes.leditor-page-footnotes--active {
   border-top: var(--footnote-separator-height) solid var(--footnote-separator-color);
   padding-top: var(--footnote-spacing);
+  background: rgba(255, 0, 0, 0.08);
 }
 
 .leditor-page-footer .leditor-page-number {
@@ -741,6 +850,7 @@ html, body {
 }
 
 .leditor-page-overlay .leditor-page-footnotes {
+  display: none;
   pointer-events: none;
 }
 
@@ -809,20 +919,11 @@ html, body {
 }
 
 .leditor-page-overlay .leditor-page-footnotes {
-  position: absolute;
-  left: var(--current-margin-left, var(--page-margin-left));
-  right: var(--current-margin-right, var(--page-margin-right));
-  bottom: calc(
-    var(--current-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset) + var(--footer-height)
-  );
-  min-height: 0;
-  overflow: hidden;
-  font-size: var(--footnote-font-size);
-  color: var(--page-footnote-color);
+  /* Overlay pages are for header/footer editing only. Footnotes render on the real page stack. */
+  display: none;
 }
 .leditor-page-overlay .leditor-page-footnotes.leditor-page-footnotes--active {
-  border-top: var(--footnote-separator-height) solid var(--footnote-separator-color);
-  padding-top: var(--footnote-spacing);
+  display: none;
 }
 
 #editor {
@@ -1220,14 +1321,17 @@ html, body {
   bottom: calc(
     var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset) + var(--footer-height)
   );
-  min-height: 0;
+  min-height: var(--footnote-area-height);
   overflow: hidden;
   font-size: var(--footnote-font-size);
   color: var(--page-footnote-color);
+  background: rgba(255, 0, 0, 0.04);
+  outline: 1px dashed rgba(255, 0, 0, 0.35);
 }
 .leditor-page-footnotes.leditor-page-footnotes--active {
   border-top: var(--footnote-separator-height) solid var(--footnote-separator-color);
   padding-top: var(--footnote-spacing);
+  background: rgba(255, 0, 0, 0.08);
 }
 
 .leditor-footnote-continuation {
@@ -1321,17 +1425,23 @@ html, body {
 }
 
 .leditor-page-overlay .leditor-page-footnotes {
-  position: absolute;
-  left: var(--current-margin-left, var(--page-margin-left));
-  right: var(--current-margin-right, var(--page-margin-right));
-  bottom: calc(
-    var(--current-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset) + var(--footer-height)
-  );
-  min-height: 0;
-  overflow: hidden;
-  font-size: var(--footnote-font-size);
-  color: var(--page-footnote-color);
+  display: none;
 }
+
+/* Debug regions */
+.leditor-page .leditor-page-header {
+  background: rgba(0, 120, 255, 0.08);
+  outline: 1px dashed rgba(0, 120, 255, 0.35);
+}
+.leditor-page .leditor-page-footer {
+  background: rgba(34, 197, 94, 0.10);
+  outline: 1px dashed rgba(34, 197, 94, 0.35);
+}
+.leditor-page .leditor-page-footnotes {
+  background: rgba(255, 0, 0, 0.08);
+  outline: 1px dashed rgba(255, 0, 0, 0.35);
+}
+
 `;
   document.head.appendChild(style);
 };
@@ -1438,6 +1548,7 @@ export const mountA4Layout = (
   const pageStack = document.createElement("div");
   pageStack.className = "leditor-page-stack";
   pageStack.style.pointerEvents = "auto";
+  // Keep overlays behind the real page stack unless editing headers/footers.
   pageStack.style.zIndex = "2";
   pageStack.style.position = "relative";
 
@@ -1645,11 +1756,13 @@ export const mountA4Layout = (
   });
 
   const loadStoredMargins = () => {
-    const raw = window.localStorage?.getItem(MARGINS_STORAGE_KEY);
-    if (!raw) return;
-    const parsed = JSON.parse(raw) as Partial<MarginValues> | null;
-    if (!parsed) return;
-    applyMarginChange(parsed);
+    // Ignore any previously stored margin tweaks to avoid drift across runs.
+    try {
+      window.localStorage?.removeItem(MARGINS_STORAGE_KEY);
+    } catch {
+      // ignore
+    }
+    resetMargins();
   };
 
   const handleDrag = (handleElement: HTMLElement, apply: (value: number) => void) => {
@@ -1947,9 +2060,7 @@ export const mountA4Layout = (
       const text = view?.getPlainText() || "";
       const rawKind = (node.dataset.footnoteKind ?? "footnote").toLowerCase();
       const pageIndex =
-        rawKind === "footnote"
-          ? determineFootnotePageIndex(node, pageElements, pageHeight, editorRect)
-          : 0;
+        rawKind === "footnote" ? determineFootnotePageIndex(node, pageElements, pageHeight, editorRect) : 0;
       const normalizedKind: FootnoteKind = rawKind === "endnote" ? "endnote" : "footnote";
       entries.push({
         footnoteId: id || `fn-${numberLabel}-${pageIndex}`,
@@ -2448,7 +2559,44 @@ const renderPages = (count: number) => {
     setEditorEditable(true);
     if (!didLogLayoutDebug) {
       didLogLayoutDebug = true;
-      console.info("[Footnote][debug] attachEditorForMode", {
+      const firstPage = editorEl.querySelector<HTMLElement>(".leditor-page");
+      const pageInner = firstPage?.querySelector<HTMLElement>(".leditor-page-inner") ?? null;
+      const pageHeader = pageInner?.querySelector<HTMLElement>(".leditor-page-header") ?? null;
+      const pageFooter = pageInner?.querySelector<HTMLElement>(".leditor-page-footer") ?? null;
+      const pageFootnotes = pageInner?.querySelector<HTMLElement>(".leditor-page-footnotes") ?? null;
+      const rect = (el: HTMLElement | null) => {
+        if (!el) return null;
+        const r = el.getBoundingClientRect();
+        return { top: r.top, left: r.left, width: r.width, height: r.height, bottom: r.bottom };
+      };
+      const cssBox = (el: HTMLElement | null) => {
+        if (!el) return null;
+        const styles = getComputedStyle(el);
+        return {
+          display: styles.display,
+          position: styles.position,
+          inset: styles.inset,
+          top: styles.top,
+          right: styles.right,
+          bottom: styles.bottom,
+          left: styles.left,
+          height: styles.height,
+          minHeight: styles.minHeight,
+          zIndex: styles.zIndex,
+          backgroundColor: styles.backgroundColor
+        };
+      };
+      const cssVars = (el: HTMLElement | null, keys: string[]) => {
+        if (!el) return null;
+        const styles = getComputedStyle(el);
+        const out: Record<string, string> = {};
+        keys.forEach((key) => {
+          out[key] = styles.getPropertyValue(key).trim();
+        });
+        return out;
+      };
+      const styleAttr = (el: HTMLElement | null) => (el ? el.getAttribute("style") || "" : "");
+      const payload = {
         pageStackPointerEvents: getComputedStyle(pageStack).pointerEvents,
         overlayPointerEvents: getComputedStyle(overlayLayer).pointerEvents,
         pageStackZIndex: getComputedStyle(pageStack).zIndex,
@@ -2460,8 +2608,49 @@ const renderPages = (count: number) => {
         overlayPointerEventsInline: overlayLayer.style.pointerEvents || "",
         editorPointerEvents: getComputedStyle(prose).pointerEvents,
         editorEditable: prose.contentEditable,
-        headerFooterMode
-      });
+        headerFooterMode,
+        pageCount: editorEl.querySelectorAll(".leditor-page").length,
+        pageFootnotesCount: editorEl.querySelectorAll(".leditor-page .leditor-page-footnotes").length,
+        overlayFootnotesCount: overlayLayer.querySelectorAll(".leditor-page-overlay .leditor-page-footnotes").length,
+        firstPageRect: rect(firstPage),
+        firstHeaderRect: rect(pageHeader),
+        firstFooterRect: rect(pageFooter),
+        firstFootnotesRect: rect(pageFootnotes),
+        firstHeaderComputed: cssBox(pageHeader),
+        firstFooterComputed: cssBox(pageFooter),
+        firstFootnotesComputed: cssBox(pageFootnotes),
+        firstHeaderStyleAttr: styleAttr(pageHeader),
+        firstFooterStyleAttr: styleAttr(pageFooter),
+        firstFootnotesStyleAttr: styleAttr(pageFootnotes),
+        headerSelectorMatches: {
+          headerIsDirectChild: Boolean(pageHeader && pageHeader.parentElement === pageInner),
+          footerIsDirectChild: Boolean(pageFooter && pageFooter.parentElement === pageInner),
+          footnotesIsDirectChild: Boolean(pageFootnotes && pageFootnotes.parentElement === pageInner),
+          headerMatches: Boolean(pageHeader?.matches(".leditor-page-inner > .leditor-page-header")),
+          footerMatches: Boolean(pageFooter?.matches(".leditor-page-inner > .leditor-page-footer")),
+          footnotesMatches: Boolean(pageFootnotes?.matches(".leditor-page-inner > .leditor-page-footnotes"))
+        },
+        headerInlinePriority: pageHeader
+          ? {
+              top: pageHeader.style.getPropertyPriority("top"),
+              bottom: pageHeader.style.getPropertyPriority("bottom"),
+              inset: pageHeader.style.getPropertyPriority("inset")
+            }
+          : null,
+        firstPageVars: cssVars(firstPage, [
+          "--page-margin-top",
+          "--page-margin-bottom",
+          "--header-height",
+          "--footer-height",
+          "--header-offset",
+          "--footer-offset",
+          "--footnote-area-height",
+          "--page-footnote-height",
+          "--local-page-margin-top",
+          "--local-page-margin-bottom"
+        ])
+      };
+      console.info("[Footnote][debug] attachEditorForMode::json", JSON.stringify(payload));
     }
   };
 
@@ -2725,6 +2914,9 @@ const renderPages = (count: number) => {
     }
     activeRegion = target;
     appRoot.classList.add("leditor-header-footer-editing");
+    // Bring overlays above the page stack for editing.
+    overlayLayer.style.zIndex = "3";
+    pageStack.style.zIndex = "1";
     overlayLayer.style.pointerEvents = "auto";
     updateHeaderFooterEditability();
     setEditorEditable(false);
@@ -2735,6 +2927,8 @@ const renderPages = (count: number) => {
     headerFooterMode = false;
     activeRegion = null;
     appRoot.classList.remove("leditor-header-footer-editing");
+    overlayLayer.style.zIndex = "1";
+    pageStack.style.zIndex = "2";
     overlayLayer.style.pointerEvents = "none";
     updateHeaderFooterEditability();
     setEditorEditable(true);

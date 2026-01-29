@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain } from "electron";
 import fs from "fs";
 import path from "path";
+import readline from "readline";
 
 const REFERENCES_LIBRARY_FILENAME = "references_library.json";
 const REFERENCES_LEGACY_FILENAME = "references.json";
@@ -11,6 +12,176 @@ const randomToken = (): string => `${Date.now().toString(36)}-${Math.random().to
 const pdfViewerPayloads = new Map<string, Record<string, unknown>>();
 const pdfResolveCache = new Map<string, string | null>();
 let pdfViewerWindow: BrowserWindow | null = null;
+const PDF_RESOLVE_CACHE_VERSION = 2;
+
+type ItemPdfIndex = { mtimeMs: number; byKey: Map<string, string> };
+const itemPdfIndexCache = new Map<string, ItemPdfIndex>();
+const itemPdfIndexInflight = new Map<string, Promise<Map<string, string>>>();
+
+type TablePdfIndex = { mtimeKey: string; byKey: Map<string, { pdf?: string; attachment?: string }> };
+const tablePdfIndexCache = new Map<string, TablePdfIndex>();
+const tablePdfIndexInflight = new Map<string, Promise<Map<string, { pdf?: string; attachment?: string }>>>();
+
+const buildItemPdfIndexFromJsonl = async (filePath: string): Promise<Map<string, string>> => {
+  const byKey = new Map<string, string>();
+  const stream = fs.createReadStream(filePath, { encoding: "utf8" });
+  const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
+  let scanned = 0;
+  for await (const line of rl) {
+    scanned += 1;
+    const trimmed = String(line || "").trim();
+    if (!trimmed) continue;
+    let obj: any = null;
+    try {
+      obj = JSON.parse(normalizeLegacyJson(trimmed));
+    } catch {
+      continue;
+    }
+    const key = String(obj?.item_key ?? obj?.itemKey ?? obj?.key ?? "").trim();
+    if (!key) continue;
+    // Only index true PDF locations (file path or URL). Do NOT treat `source` (journal name) as a PDF path.
+    const pdfRaw = String(obj?.pdf_path ?? obj?.pdf ?? obj?.source ?? "").trim();
+    const pdf = looksLikePdfPath(pdfRaw) ? normalizePdfCandidate(pdfRaw) : "";
+    if (!pdf) continue;
+    if (!byKey.has(key)) byKey.set(key, pdf);
+    const lower = key.toLowerCase();
+    if (!byKey.has(lower)) byKey.set(lower, pdf);
+    if (byKey.size >= 5000) {
+      // Enough coverage; avoid spending time indexing the entire file.
+      break;
+    }
+  }
+  if (byKey.size === 0 && scanned >= 2000) {
+    // This dataset likely doesn't include actual PDF paths in batches; stop early to keep UX snappy.
+    try {
+      rl.close();
+      stream.close();
+    } catch {
+      // ignore
+    }
+  }
+  return byKey;
+};
+
+const ensureItemPdfIndex = async (runDir: string): Promise<Map<string, string>> => {
+  const dir = String(runDir || "").trim();
+  if (!dir) return new Map();
+  const jsonlPath = path.join(dir, "pyr_l1_batches.jsonl");
+  const jsonPath = path.join(dir, "pyr_l1_batches.json");
+  const candidates = [jsonlPath, jsonPath];
+  const existing = candidates.find((p) => {
+    try {
+      return fs.existsSync(p);
+    } catch {
+      return false;
+    }
+  });
+  if (!existing) return new Map();
+
+  let stat: fs.Stats | null = null;
+  try {
+    stat = fs.statSync(existing);
+  } catch {
+    stat = null;
+  }
+  const mtimeMs = stat?.mtimeMs ?? 0;
+  const cached = itemPdfIndexCache.get(existing);
+  if (cached && cached.mtimeMs === mtimeMs) return cached.byKey;
+
+  const inflight = itemPdfIndexInflight.get(existing);
+  if (inflight) return inflight;
+
+  const task = (async () => {
+    const start = Date.now();
+    let byKey: Map<string, string>;
+    if (existing.endsWith(".jsonl")) {
+      byKey = await buildItemPdfIndexFromJsonl(existing);
+    } else {
+      // Fallback: streaming scan for keys in huge JSON array.
+      byKey = new Map<string, string>();
+      try {
+        const resolved = await findPdfInLargeBatchesJson(existing, "__NOOP__");
+        void resolved;
+      } catch {
+        // ignore
+      }
+    }
+    itemPdfIndexCache.set(existing, { mtimeMs, byKey });
+    console.info("[leditor][pdf] item pdf index built", { path: existing, count: byKey.size, ms: Date.now() - start });
+    return byKey;
+  })().finally(() => itemPdfIndexInflight.delete(existing));
+
+  itemPdfIndexInflight.set(existing, task);
+  return task;
+};
+
+const ensureTablePdfIndex = async (
+  bibliographyDir: string
+): Promise<Map<string, { pdf?: string; attachment?: string }>> => {
+  const dir = String(bibliographyDir || "").trim();
+  if (!dir) return new Map();
+
+  let files: string[] = [];
+  try {
+    files = fs
+      .readdirSync(dir)
+      .filter((name) => name.endsWith(".json") && !name.startsWith("references"))
+      .map((name) => path.join(dir, name));
+  } catch {
+    files = [];
+  }
+  if (!files.length) return new Map();
+
+  // Cache key uses newest mtime among candidate files.
+  let newest = 0;
+  for (const f of files) {
+    try {
+      const st = fs.statSync(f);
+      newest = Math.max(newest, st.mtimeMs || 0);
+    } catch {
+      // ignore
+    }
+  }
+  const mtimeKey = `${dir}::${newest}`;
+  const cached = tablePdfIndexCache.get(mtimeKey);
+  if (cached) return cached.byKey;
+  const inflight = tablePdfIndexInflight.get(mtimeKey);
+  if (inflight) return inflight;
+
+  const task = (async () => {
+    const byKey = new Map<string, { pdf?: string; attachment?: string }>();
+    for (const filePath of files) {
+      const parsed = readJsonIfExists(filePath);
+      const table = parsed?.table;
+      const cols = Array.isArray(table?.columns) ? table.columns.map((c: any) => String(c).toLowerCase()) : [];
+      const rows = Array.isArray(table?.rows) ? table.rows : [];
+      if (!cols.length || !rows.length) continue;
+      const keyIdx = cols.indexOf("key");
+      const pdfIdx = cols.indexOf("pdf_path");
+      const attachIdx = cols.indexOf("attachment_pdf");
+      if (keyIdx === -1 || (pdfIdx === -1 && attachIdx === -1)) continue;
+
+      for (const row of rows) {
+        if (!Array.isArray(row)) continue;
+        const key = String(row[keyIdx] ?? "").trim();
+        if (!key) continue;
+        const pdfRaw = pdfIdx >= 0 ? String(row[pdfIdx] ?? "").trim() : "";
+        const attachment = attachIdx >= 0 ? String(row[attachIdx] ?? "").trim() : "";
+        if (!pdfRaw && !attachment) continue;
+        const entry = byKey.get(key) ?? {};
+        if (!entry.pdf && pdfRaw) entry.pdf = pdfRaw;
+        if (!entry.attachment && attachment) entry.attachment = attachment;
+        byKey.set(key, entry);
+      }
+    }
+    tablePdfIndexCache.set(mtimeKey, { mtimeKey, byKey });
+    console.info("[leditor][pdf] table pdf index built", { dir, count: byKey.size });
+    return byKey;
+  })().finally(() => tablePdfIndexInflight.delete(mtimeKey));
+
+  tablePdfIndexInflight.set(mtimeKey, task);
+  return task;
+};
 
 const convertWslUncPath = (value: string): string => {
   const trimmed = String(value || "").trim();
@@ -36,6 +207,17 @@ const normalizeFsPath = (value: string): string => {
     return convertWslUncPath(trimmed);
   }
   return trimmed;
+};
+
+const normalizePdfCandidate = (value: string): string => String(value || "").trim();
+
+const looksLikePdfPath = (value: string): boolean => {
+  const raw = String(value || "").trim();
+  if (!raw) return false;
+  const lower = raw.toLowerCase();
+  if (lower.startsWith("http://") || lower.startsWith("https://")) return lower.includes(".pdf");
+  const normalized = normalizePdfCandidate(raw).toLowerCase();
+  return normalized.endsWith(".pdf");
 };
 
 const dirnameLike = (filePath: string): string => {
@@ -112,21 +294,19 @@ const ensureDqidIndex = async (lookupPath: string): Promise<Map<string, number>>
 
   const buildPromise = (async () => {
     const positions = new Map<string, number>();
-    // Match keys like "bb20a0475f":  (10 hex chars).
-    const keyRe = /"([0-9a-f]{10})"\s*:/gi;
+    // Match keys like "bb20a0475f": or "a700678522": (10 base36-ish chars in practice).
+    const keyRe = /"([0-9a-z]{10})"\s*:/gi;
     // NOTE: positions are byte offsets (fs read positions are byte-based).
-    // We stream Buffers (no encoding) so we can track byte offsets accurately even when
-    // the JSON contains non-ASCII characters.
+    // Use latin1 decoding so string indices map 1:1 to bytes (keys are ASCII).
     const stream = fs.createReadStream(target);
     let offsetBytes = 0;
     let carryText = "";
-    let carryBytes = 0;
     const maxCarry = 128;
 
     await new Promise<void>((resolve, reject) => {
       stream.on("data", (chunk: string | Buffer) => {
         const bufChunk = typeof chunk === "string" ? Buffer.from(chunk, "utf8") : chunk;
-        const text = bufChunk.toString("utf8");
+        const text = bufChunk.toString("latin1");
         const buf = carryText + text;
         keyRe.lastIndex = 0;
         let match: RegExpExecArray | null;
@@ -135,14 +315,11 @@ const ensureDqidIndex = async (lookupPath: string): Promise<Map<string, number>>
           if (!id) continue;
           if (positions.has(id)) continue;
           // Absolute position points to the opening quote of the key inside the file.
-          // Convert the string index into a byte offset for this (carry+chunk) buffer.
-          const prefix = buf.slice(0, match.index);
-          const prefixBytes = Buffer.byteLength(prefix, "utf8");
-          const abs = offsetBytes - carryBytes + prefixBytes;
+          // Because latin1 is 1 byte per code unit, match.index is a byte offset in buf.
+          const abs = offsetBytes - carryText.length + match.index;
           if (abs >= 0) positions.set(id, abs);
         }
         carryText = buf.slice(Math.max(0, buf.length - maxCarry));
-        carryBytes = Buffer.byteLength(carryText, "utf8");
         offsetBytes += bufChunk.length;
       });
       stream.on("end", () => resolve());
@@ -165,7 +342,8 @@ const computeValueStartPos = async (fd: fs.promises.FileHandle, keyPos: number):
   const windowSize = 4096;
   const buf = Buffer.alloc(windowSize);
   const read = await fd.read(buf, 0, windowSize, keyPos);
-  const text = buf.toString("utf8", 0, read.bytesRead);
+  // Use latin1 so indices correspond to bytes; we only look for ':' and whitespace.
+  const text = buf.toString("latin1", 0, read.bytesRead);
   const colonIdx = text.indexOf(":");
   if (colonIdx === -1) return null;
   let i = colonIdx + 1;
@@ -181,93 +359,117 @@ const readJsonValueAt = async (lookupPath: string, startPos: number): Promise<un
   try {
     const chunkSize = 128 * 1024;
     let pos = startPos;
-    let buf = "";
-    // State machine for JSON value parsing.
+    // Store bytes (not decoded strings) so UTF-8 chunk boundaries never corrupt parsing.
+    const parts: Buffer[] = [];
+    let totalBytes = 0;
+
+    // State machine over JSON ASCII bytes.
     let started = false;
-    let firstChar = "";
+    let firstByte = 0;
     let inString = false;
     let escape = false;
     let braceDepth = 0;
     let bracketDepth = 0;
-    let scanned = 0;
+
+    const isWs = (b: number) => b === 0x20 || b === 0x0a || b === 0x0d || b === 0x09;
+
     for (let iter = 0; iter < 20000; iter += 1) {
       const chunk = Buffer.alloc(chunkSize);
       const read = await fd.read(chunk, 0, chunkSize, pos);
       if (read.bytesRead <= 0) break;
-      const text = chunk.toString("utf8", 0, read.bytesRead);
+      const buf = chunk.subarray(0, read.bytesRead);
+      parts.push(buf);
+      totalBytes += buf.length;
       pos += read.bytesRead;
-      buf += text;
 
-      // Skip leading whitespace once.
-      if (!started) {
-        const m = buf.match(/^\s*/);
-        const skip = m ? m[0].length : 0;
-        if (skip) buf = buf.slice(skip);
-        if (buf.length === 0) continue;
-        started = true;
-        firstChar = buf[0];
-        braceDepth = 0;
-        bracketDepth = 0;
-        if (firstChar === "\"") inString = true;
-        scanned = 0;
+      // Hard cap to avoid runaway memory.
+      if (totalBytes > 64 * 1024 * 1024) {
+        throw new Error("direct-quote-value-too-large");
       }
 
-      // Walk buffer to determine end position for objects/arrays/strings/primitives.
-      for (let i = scanned; i < buf.length; i += 1) {
-        const ch = buf[i];
-        if (inString) {
-          if (escape) {
-            escape = false;
+      // Scan across the accumulated buffers. We only need to scan newly appended bytes,
+      // but a simple scan with a moving index across the tail is OK at this size.
+      let globalIndex = 0;
+      for (const p of parts) {
+        for (let i = 0; i < p.length; i += 1) {
+          const b = p[i];
+          if (!started) {
+            if (isWs(b)) {
+              globalIndex += 1;
+              continue;
+            }
+            started = true;
+            firstByte = b;
+            if (firstByte === 0x22) inString = true; // "
+          }
+
+          if (inString) {
+            if (escape) {
+              escape = false;
+              globalIndex += 1;
+              continue;
+            }
+            if (b === 0x5c) {
+              escape = true; // \
+              globalIndex += 1;
+              continue;
+            }
+            if (b === 0x22) {
+              inString = false;
+              if (firstByte === 0x22) {
+                const end = globalIndex + 1;
+                const full = Buffer.concat(parts, totalBytes);
+                const slice = full.subarray(0, end).toString("utf8");
+                return JSON.parse(normalizeLegacyJson(slice));
+              }
+            }
+            globalIndex += 1;
             continue;
           }
-          if (ch === "\\\\") {
-            escape = true;
+
+          if (b === 0x22) {
+            inString = true;
+            globalIndex += 1;
             continue;
           }
-          if (ch === "\"") {
-            inString = false;
-            if (firstChar === "\"") {
-              const slice = buf.slice(0, i + 1);
+
+          if (firstByte === 0x7b || braceDepth > 0) {
+            if (b === 0x7b) braceDepth += 1;
+            else if (b === 0x7d) braceDepth -= 1;
+            if (firstByte === 0x7b && braceDepth === 0 && b === 0x7d) {
+              const end = globalIndex + 1;
+              const full = Buffer.concat(parts, totalBytes);
+              const slice = full.subarray(0, end).toString("utf8");
               return JSON.parse(normalizeLegacyJson(slice));
             }
+            globalIndex += 1;
+            continue;
           }
-          continue;
-        }
-        if (ch === "\"") {
-          inString = true;
-          continue;
-        }
-        if (firstChar === "{" || braceDepth > 0) {
-          if (ch === "{") braceDepth += 1;
-          else if (ch === "}") braceDepth -= 1;
-          if (firstChar === "{" && braceDepth === 0 && ch === "}") {
-            const slice = buf.slice(0, i + 1);
-            return JSON.parse(normalizeLegacyJson(slice));
-          }
-          continue;
-        }
-        if (firstChar === "[" || bracketDepth > 0) {
-          if (ch === "[") bracketDepth += 1;
-          else if (ch === "]") bracketDepth -= 1;
-          if (firstChar === "[" && bracketDepth === 0 && ch === "]") {
-            const slice = buf.slice(0, i + 1);
-            return JSON.parse(normalizeLegacyJson(slice));
-          }
-          continue;
-        }
-        // Primitive ends at ',' or '}' or ']'
-        if (ch === "," || ch === "}" || ch === "]") {
-          const slice = buf.slice(0, i).trim();
-          if (!slice) return null;
-          return JSON.parse(normalizeLegacyJson(slice));
-        }
-      }
-      scanned = buf.length;
 
-      // Bound memory for very large values (but keep enough).
-      if (buf.length > 64 * 1024 * 1024) {
-        // If we're in an object/array/string, we need the whole prefix. Fail fast.
-        throw new Error("direct-quote-value-too-large");
+          if (firstByte === 0x5b || bracketDepth > 0) {
+            if (b === 0x5b) bracketDepth += 1;
+            else if (b === 0x5d) bracketDepth -= 1;
+            if (firstByte === 0x5b && bracketDepth === 0 && b === 0x5d) {
+              const end = globalIndex + 1;
+              const full = Buffer.concat(parts, totalBytes);
+              const slice = full.subarray(0, end).toString("utf8");
+              return JSON.parse(normalizeLegacyJson(slice));
+            }
+            globalIndex += 1;
+            continue;
+          }
+
+          // Primitive ends at ',' or '}' or ']'
+          if (b === 0x2c || b === 0x7d || b === 0x5d) {
+            const end = globalIndex;
+            const full = Buffer.concat(parts, totalBytes);
+            const raw = full.subarray(0, end).toString("utf8").trim();
+            if (!raw) return null;
+            return JSON.parse(normalizeLegacyJson(raw));
+          }
+
+          globalIndex += 1;
+        }
       }
     }
     return null;
@@ -685,6 +887,80 @@ const createWindow = () => {
   });
 
   const indexPath = path.join(app.getAppPath(), "dist", "public", "index.html");
+  window.webContents.on("did-fail-load", (_event, errorCode, errorDescription, validatedURL) => {
+    console.error("[leditor][window] did-fail-load", { errorCode, errorDescription, validatedURL });
+  });
+  window.webContents.on("console-message", (_event, level, message, line, sourceId) => {
+    const levelName = level === 0 ? "debug" : level === 1 ? "info" : level === 2 ? "warn" : "error";
+    console.info("[leditor][renderer][console]", { level: levelName, message, line, sourceId });
+  });
+  window.webContents.on("render-process-gone", (_event, details) => {
+    console.error("[leditor][window] render-process-gone", details);
+  });
+  window.webContents.on("unresponsive", () => {
+    console.error("[leditor][window] unresponsive");
+  });
+  window.webContents.on("crashed", () => {
+    console.error("[leditor][window] crashed");
+  });
+
+  const wantsDevtools =
+    process.env.LEDITOR_DISABLE_DEVTOOLS !== "1" &&
+    (process.argv.includes("--devtools") ||
+      process.argv.includes("--dev-unbundled") ||
+      process.env.LEDITOR_DEVTOOLS === "1" ||
+      // Default to DevTools in local (non-packaged) runs.
+      !app.isPackaged);
+  if (wantsDevtools) {
+    // In WSL/remote setups, "detach" can fail to show a separate window; use a docked mode.
+    const openTools = () => {
+      if (window.webContents.isDevToolsOpened()) return;
+      try {
+        window.webContents.openDevTools({ mode: "right" });
+      } catch (error) {
+        console.error("[leditor][devtools] openDevTools failed", normalizeError(error));
+      }
+      if (!window.webContents.isDevToolsOpened()) {
+        try {
+          window.webContents.openDevTools({ mode: "undocked" as any });
+        } catch (error) {
+          console.error("[leditor][devtools] openDevTools undocked failed", normalizeError(error));
+        }
+      }
+      if (!window.webContents.isDevToolsOpened()) {
+        try {
+          window.webContents.openDevTools();
+        } catch (error) {
+          console.error("[leditor][devtools] openDevTools default failed", normalizeError(error));
+        }
+      }
+      console.info("[leditor][devtools] isDevToolsOpened", window.webContents.isDevToolsOpened());
+    };
+    window.webContents.once("did-finish-load", () => {
+      openTools();
+      setTimeout(openTools, 750);
+    });
+    window.webContents.on("before-input-event", (event, input) => {
+      const key = String((input as any).key || "").toLowerCase();
+      if ((input as any).control && (input as any).shift && key === "i") {
+        event.preventDefault();
+        try {
+          window.webContents.toggleDevTools();
+        } catch (error) {
+          console.error("[leditor][devtools] toggleDevTools failed", normalizeError(error));
+        }
+      }
+      if (key === "f12") {
+        event.preventDefault();
+        try {
+          window.webContents.toggleDevTools();
+        } catch (error) {
+          console.error("[leditor][devtools] toggleDevTools failed", normalizeError(error));
+        }
+      }
+    });
+  }
+
   void window.loadFile(indexPath);
   return window;
 };
@@ -732,7 +1008,7 @@ app.whenReady().then(() => {
         page: (payload as any).page ?? null
       });
 
-      const viewerPath = path.join(app.getAppPath(), "dist", "public", "pdf_viewer.html");
+      const viewerPath = path.join(app.getAppPath(), "dist", "public", "PDF_Viewer", "viewer.html");
       const sendPayload = (win: BrowserWindow) => {
         try {
           win.webContents.send("leditor:pdf-viewer-payload", payload);
@@ -793,9 +1069,37 @@ app.whenReady().then(() => {
       const runDir = dirnameLike(lookupPath);
       if (!runDir) return null;
       console.info("[leditor][pdf] resolve requested", { lookupPath, itemKey });
-      const cacheKey = `${lookupPath}::${itemKey}`;
+      const cacheKey = `${PDF_RESOLVE_CACHE_VERSION}::${lookupPath}::${itemKey}`;
       if (pdfResolveCache.has(cacheKey)) {
-        return pdfResolveCache.get(cacheKey) ?? null;
+        const cached = pdfResolveCache.get(cacheKey) ?? null;
+        if (cached && !looksLikePdfPath(cached)) {
+          pdfResolveCache.delete(cacheKey);
+        } else {
+          return cached;
+        }
+      }
+
+      // NOTE: Do not scan `pyr_l1_batches.*` here. Those files are huge and in this dataset
+      // they don't reliably contain a real PDF path (often only a journal/source string).
+      // PDF resolution should come from bibliography tables / references caches instead.
+
+      // Next: resolve from bibliography table caches (e.g. attribution.json) which may include a real pdf_path.
+      try {
+        const bibliographyDir = resolveBibliographyDir();
+        const tableIndex = await ensureTablePdfIndex(bibliographyDir);
+        const row = tableIndex.get(itemKey) || tableIndex.get(itemKey.toLowerCase());
+        const candidatePdf = row?.pdf ? normalizePdfCandidate(row.pdf) : "";
+        if (candidatePdf && looksLikePdfPath(candidatePdf)) {
+          pdfResolveCache.set(cacheKey, candidatePdf);
+          return candidatePdf;
+        }
+        const attachment = String(row?.attachment || "").trim();
+        if (attachment && looksLikePdfPath(attachment)) {
+          pdfResolveCache.set(cacheKey, attachment);
+          return attachment;
+        }
+      } catch {
+        // ignore
       }
 
       // Fast path: check references library/legacy files in userData bibliographyDir.
@@ -809,17 +1113,24 @@ app.whenReady().then(() => {
           const raw = readJsonIfExists(candidate);
           if (!raw || typeof raw !== "object") continue;
           const itemsByKey = (raw as any).itemsByKey;
-          if (itemsByKey && typeof itemsByKey === "object") {
-            const entry = (itemsByKey as any)[itemKey] || (itemsByKey as any)[itemKey.toLowerCase()];
-            const pdf =
-              (entry && typeof entry === "object" && (entry.pdf_path || entry.pdf || entry.file_path || entry.file)) ||
-              "";
-            if (pdf) {
-              console.info("[leditor][pdf] resolved from references", { itemKey, path: candidate });
-              const resolved = String(pdf);
-              pdfResolveCache.set(cacheKey, resolved);
-              return resolved;
-            }
+          const items = Array.isArray((raw as any).items) ? (raw as any).items : [];
+          const entry =
+            (itemsByKey && typeof itemsByKey === "object" && ((itemsByKey as any)[itemKey] || (itemsByKey as any)[itemKey.toLowerCase()])) ||
+            items.find((it: any) => it && (it.itemKey === itemKey || it.item_key === itemKey || it.key === itemKey));
+          const pdf =
+            (entry && typeof entry === "object" && (entry.pdf_path || entry.pdf || entry.file_path || entry.file)) || "";
+          const attachment =
+            (entry && typeof entry === "object" && (entry.attachment_pdf || entry.attachmentPdf)) || "";
+          const pdfNorm = pdf ? normalizePdfCandidate(String(pdf)) : "";
+          if (pdfNorm && looksLikePdfPath(pdfNorm)) {
+            console.info("[leditor][pdf] resolved from references", { itemKey, path: candidate, kind: "pdf_path" });
+            pdfResolveCache.set(cacheKey, pdfNorm);
+            return pdfNorm;
+          }
+          if (attachment && looksLikePdfPath(String(attachment))) {
+            console.info("[leditor][pdf] resolved from references", { itemKey, path: candidate, kind: "attachment_pdf" });
+            pdfResolveCache.set(cacheKey, String(attachment));
+            return String(attachment);
           }
         }
       } catch {
