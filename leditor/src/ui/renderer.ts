@@ -762,6 +762,21 @@ export const createLeditorApp = async (options: CreateLeditorAppOptions = {}): P
 
 export const mountEditor = async () => {
   perfMark("mountEditor:start");
+  const isDevtoolsDocument = () => {
+    const protocol = String(window.location?.protocol || "").toLowerCase();
+    const href = String(window.location?.href || "").toLowerCase();
+    return (
+      protocol === "devtools:" ||
+      protocol === "chrome-devtools:" ||
+      href.startsWith("devtools://") ||
+      href.startsWith("chrome-devtools://")
+    );
+  };
+  // Safety: avoid mounting inside a Chromium DevTools renderer context.
+  if (isDevtoolsDocument()) {
+    console.warn("[Renderer] mountEditor called in devtools document; skipping mount.");
+    return;
+  }
   const guard = getMountGuard();
   if (guard.mounted) {
     console.warn("[Renderer] mountEditor called after mount; ignoring.");
@@ -773,12 +788,38 @@ export const mountEditor = async () => {
   }
   guard.inFlight = (async () => {
     perfMark("mountEditor:inflight:start");
-    if (document.getElementById("leditor-app")) {
-      console.warn("[Renderer] mountEditor found existing app root; skipping mount.");
+    const existingRoots = Array.from(document.querySelectorAll("#leditor-app")) as HTMLElement[];
+    if (existingRoots.length > 0) {
+      if (existingRoots.length > 1) {
+        // Hard-dedupe in case a previous regression caused multiple roots.
+        existingRoots.slice(1).forEach((el) => {
+          try {
+            el.remove();
+          } catch {
+            // ignore
+          }
+        });
+      }
+      console.warn("[Renderer] mountEditor found existing app root; skipping mount.", {
+        count: existingRoots.length
+      });
       guard.mounted = true;
       return;
     }
     const options = getCreateOptions();
+    // Prevent accidental mounting in unintended documents (e.g. Electron DevTools window).
+    // The real app window provides a dedicated host container (`#write-leditor-host`) unless
+    // an explicit `options.container` is passed.
+    const hostForMount = options.container ?? getWriteEditorHost();
+    if (!hostForMount) {
+      console.warn("[Renderer] mountEditor: no host container found; skipping mount.", {
+        hasContainerOverride: Boolean(options.container),
+        hasWriteHost: Boolean(document.getElementById("write-leditor-host")),
+        location: String(window.location?.href || "")
+      });
+      guard.mounted = true;
+      return;
+    }
     const abortController = new AbortController();
     const signal = abortController.signal;
     let ribbonObserver: ResizeObserver | null = null;
@@ -931,7 +972,7 @@ export const mountEditor = async () => {
   }
   const parent = editorEl.parentElement ?? document.body;
   // Keep UI density close to Word without breaking layout centering.
-  const APP_UI_SCALE = 1.34;
+  const APP_UI_SCALE = 1.5;
   const appRoot = document.createElement("div");
   appRoot.id = "leditor-app";
   appRoot.className = "leditor-app";
@@ -995,23 +1036,144 @@ export const mountEditor = async () => {
   initFullscreenController(appRoot);
   const editorHandle = handle;
   const tiptapEditor = editorHandle.getEditor();
+  try {
+    const prose = tiptapEditor.view.dom as HTMLElement;
+    const bullet = window.localStorage?.getItem("leditor:listStyle:bullet") || "disc";
+    const ordered = window.localStorage?.getItem("leditor:listStyle:ordered") || "decimal";
+    if (bullet) prose.dataset.bulletStyle = bullet;
+    if (ordered) prose.dataset.numberStyle = ordered;
+  } catch {
+    // ignore storage/dom failures
+  }
   let lastKnownSelection = snapshotFromSelection(tiptapEditor.state.selection);
-  const updateLastKnownSelection = () => {
-    lastKnownSelection = snapshotFromSelection(tiptapEditor.state.selection);
+  let lastKnownSelectionAt = Date.now();
+  let suppressSelectionTrackingUntil = 0;
+  let selectionUpdateQueued = false;
+  const updateLastKnownSelection = (reason: string) => {
+    try {
+      lastKnownSelection = snapshotFromSelection(tiptapEditor.state.selection);
+      lastKnownSelectionAt = Date.now();
+      if ((window as any).__leditorCaretDebug) {
+        console.info("[Selection][track]", {
+          reason,
+          at: lastKnownSelectionAt,
+          snapshot: lastKnownSelection,
+          from: tiptapEditor.state.selection.from,
+          to: tiptapEditor.state.selection.to,
+          empty: tiptapEditor.state.selection.empty
+        });
+      }
+    } catch {
+      // ignore
+    }
+  };
+  const scheduleLastKnownSelection = (reason: string) => {
+    if (selectionUpdateQueued) return;
+    selectionUpdateQueued = true;
+    window.requestAnimationFrame(() => {
+      selectionUpdateQueued = false;
+      updateLastKnownSelection(reason);
+    });
   };
   const captureRibbonSelection = () => {
-    // Ribbon clicks can blur the editor and lose the current caret position.
-    // Use the last-known selection captured from editor interaction/selectionUpdate.
+    // During ribbon interactions the editor can emit a "selectionUpdate" that jumps to a bogus
+    // location (commonly end-of-doc) as focus/blur propagates. Prevent that from poisoning our
+    // stored caret snapshot.
+    // Use a generous time window and clear it as soon as the user interacts with the editor again.
+    suppressSelectionTrackingUntil = Date.now() + 2000;
+
+    // Ribbon clicks can blur the editor and some extensions will move the selection (often end-of-doc).
+    // Prefer a live selection if the user is currently focused inside ProseMirror; otherwise use our
+    // last-known snapshot from recent editor interaction.
+    const prose = tiptapEditor?.view?.dom as HTMLElement | null;
+    const active = document.activeElement as HTMLElement | null;
+    const selection = window.getSelection?.();
+    const anchorNode = selection?.anchorNode as Node | null;
+    const selectionInProse =
+      !!prose &&
+      ((active && prose.contains(active)) ||
+        (anchorNode && prose.contains(anchorNode instanceof HTMLElement ? anchorNode : (anchorNode as any).parentElement)));
+
+    if (selectionInProse) {
+      updateLastKnownSelection("ribbon:pointerdown:live");
+      if ((window as any).__leditorCaretDebug) {
+        console.info("[Selection][ribbon] captured live", { snapshot: lastKnownSelection });
+      }
+      recordRibbonSelection(lastKnownSelection);
+      return;
+    }
+
+    if (Date.now() - lastKnownSelectionAt > 500) {
+      updateLastKnownSelection("ribbon:pointerdown:stale-refresh");
+    }
+    if ((window as any).__leditorCaretDebug) {
+      console.info("[Selection][ribbon] captured cached", { snapshot: lastKnownSelection, lastKnownSelectionAt });
+    }
     recordRibbonSelection(lastKnownSelection);
   };
   ribbonHost.addEventListener("pointerdown", captureRibbonSelection, { capture: true, signal });
   ribbonHost.addEventListener("touchstart", captureRibbonSelection, { capture: true, signal });
   // Also keep this updated while editing so ribbon clicks always have a fresh caret position.
   // This avoids cases where selection is lost/shifted when the editor blurs before a ribbon click.
-  editorEl.addEventListener("mouseup", updateLastKnownSelection, { capture: true, signal });
-  editorEl.addEventListener("keyup", updateLastKnownSelection, { capture: true, signal });
-  tiptapEditor.on("selectionUpdate", updateLastKnownSelection);
-  tiptapEditor.on("focus", updateLastKnownSelection);
+  const clearSelectionSuppression = () => {
+    suppressSelectionTrackingUntil = 0;
+  };
+  editorEl.addEventListener(
+    "pointerdown",
+    () => {
+      clearSelectionSuppression();
+      scheduleLastKnownSelection("editor:pointerdown");
+    },
+    { capture: true, signal }
+  );
+  editorEl.addEventListener(
+    "pointerup",
+    () => {
+      clearSelectionSuppression();
+      scheduleLastKnownSelection("editor:pointerup");
+    },
+    { capture: true, signal }
+  );
+  editorEl.addEventListener(
+    "mouseup",
+    () => {
+      clearSelectionSuppression();
+      scheduleLastKnownSelection("editor:mouseup");
+    },
+    { capture: true, signal }
+  );
+  editorEl.addEventListener(
+    "keyup",
+    () => {
+      clearSelectionSuppression();
+      scheduleLastKnownSelection("editor:keyup");
+    },
+    { capture: true, signal }
+  );
+  editorEl.addEventListener(
+    "keydown",
+    () => {
+      clearSelectionSuppression();
+      scheduleLastKnownSelection("editor:keydown");
+    },
+    { capture: true, signal }
+  );
+  tiptapEditor.on("selectionUpdate", () => {
+    if (Date.now() < suppressSelectionTrackingUntil) return;
+    const prose = tiptapEditor?.view?.dom as HTMLElement | null;
+    const active = document.activeElement as HTMLElement | null;
+    // Ignore selection updates while the editor is not the active surface. This prevents
+    // "end-of-doc" selection jumps on blur from poisoning ribbon footnote insertion.
+    if (!prose || !active || !prose.contains(active)) return;
+    updateLastKnownSelection("tiptap:selectionUpdate");
+  });
+  tiptapEditor.on("focus", () => {
+    if (Date.now() < suppressSelectionTrackingUntil) return;
+    const prose = tiptapEditor?.view?.dom as HTMLElement | null;
+    const active = document.activeElement as HTMLElement | null;
+    if (!prose || !active || !prose.contains(active)) return;
+    updateLastKnownSelection("tiptap:focus");
+  });
   const attachCitationHandlers = (root: HTMLElement, signal: AbortSignal) => {
     const pickAttr = (el: HTMLElement, name: string): string => {
       const raw = el.getAttribute(name) || "";

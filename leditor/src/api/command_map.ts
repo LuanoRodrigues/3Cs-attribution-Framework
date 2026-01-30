@@ -190,7 +190,9 @@ const tryFocusFootnoteUi = (footnoteId: string, attempt: number): boolean => {
     const text = entry.querySelector<HTMLElement>(".leditor-footnote-entry-text");
     text?.focus();
     if (text) placeCaretAtEnd(text);
-    console.info("[Footnote][focus] focused footnote UI", { footnoteId, attempt, hasText: Boolean(text) });
+    if ((window as any).__leditorFootnoteDebug) {
+      console.info("[Footnote][focus] focused footnote UI", { footnoteId, attempt, hasText: Boolean(text) });
+    }
     return Boolean(text);
   }
 
@@ -202,7 +204,9 @@ const tryFocusFootnoteUi = (footnoteId: string, attempt: number): boolean => {
     panel?.scrollIntoView({ block: "center", behavior: "smooth" });
     endnoteText.focus();
     placeCaretAtEnd(endnoteText);
-    console.info("[Footnote][focus] focused endnote UI", { footnoteId, attempt });
+    if ((window as any).__leditorFootnoteDebug) {
+      console.info("[Footnote][focus] focused endnote UI", { footnoteId, attempt });
+    }
     return true;
   }
 
@@ -221,26 +225,27 @@ const tryFocusFootnoteUi = (footnoteId: string, attempt: number): boolean => {
   return false;
 };
 
-const focusFootnoteById = (id: string) => {
+const focusFootnoteById = (id: string, selectionSnapshot?: StoredSelection | null) => {
   if (typeof window === "undefined" || typeof document === "undefined") return;
   // In A4 layout mode, a4_layout.ts owns focusing (it waits for the footnote rows to render).
   // Avoid running our own retry loop here, which spams logs and can fight the layout controller.
   if (document.querySelector(".leditor-page-footnotes")) {
-    console.info("[Footnote][focus] delegated to A4 layout", { id });
-    try {
-      window.dispatchEvent(new CustomEvent("leditor:footnote-focus", { detail: { footnoteId: id } }));
-    } catch {
-      // ignore
+    if ((window as any).__leditorFootnoteDebug) {
+      console.info("[Footnote][focus] delegated to A4 layout", { id });
     }
     try {
-      document.dispatchEvent(new CustomEvent("leditor:footnote-focus", { detail: { footnoteId: id } }));
+      window.dispatchEvent(
+        new CustomEvent("leditor:footnote-focus", { detail: { footnoteId: id, selectionSnapshot: selectionSnapshot ?? null } })
+      );
     } catch {
       // ignore
     }
     return;
   }
 
-  console.info("[Footnote][focus] request", { id });
+  if ((window as any).__leditorFootnoteDebug) {
+    console.info("[Footnote][focus] request", { id });
+  }
   tryFocusFootnoteUi(id, 0);
 };
 
@@ -252,12 +257,8 @@ const pickStableSelectionSnapshot = (
   if (!stored) {
     return { selectionSnapshot: current, source: "live" };
   }
-  const delta = Math.abs(stored.from - current.from) + Math.abs(stored.to - current.to);
-  // If stored selection is wildly different, fall back to the live editor selection.
-  if (delta > 25) {
-    console.info("[Footnote][selection] ignoring stale ribbon snapshot", { stored, current, delta });
-    return { selectionSnapshot: current, source: "live" };
-  }
+  // Ribbon clicks can blur the editor and move the live selection to a bogus location (often end-of-doc).
+  // Always trust the stored snapshot captured on ribbon pointerdown.
   return { selectionSnapshot: stored, source: "ribbon" };
 };
 
@@ -1693,10 +1694,40 @@ export const commandMap: Record<string, CommandHandler> = {
   Fullscreen() {
     toggleFullscreen();
   },
-  BulletList(editor) {
+  BulletList(editor, args) {
+    const styleId = typeof args?.styleId === "string" ? args.styleId.trim() : "";
+    if (styleId) {
+      try {
+        (editor.view.dom as HTMLElement).dataset.bulletStyle = styleId;
+        window.localStorage?.setItem("leditor:listStyle:bullet", styleId);
+      } catch {
+        // ignore storage failures
+      }
+      if (!editor.isActive("bulletList")) {
+        editor.chain().focus().toggleBulletList().run();
+      } else {
+        editor.commands.focus();
+      }
+      return;
+    }
     editor.chain().focus().toggleBulletList().run();
   },
-  NumberList(editor) {
+  NumberList(editor, args) {
+    const styleId = typeof args?.styleId === "string" ? args.styleId.trim() : "";
+    if (styleId) {
+      try {
+        (editor.view.dom as HTMLElement).dataset.numberStyle = styleId;
+        window.localStorage?.setItem("leditor:listStyle:ordered", styleId);
+      } catch {
+        // ignore storage failures
+      }
+      if (!editor.isActive("orderedList")) {
+        editor.chain().focus().toggleOrderedList().run();
+      } else {
+        editor.commands.focus();
+      }
+      return;
+    }
     editor.chain().focus().toggleOrderedList().run();
   },
   Heading1(editor) {
@@ -2147,18 +2178,23 @@ export const commandMap: Record<string, CommandHandler> = {
     const selectionSnapshot = picked.selectionSnapshot;
     const argText = typeof args?.text === "string" ? args.text : undefined;
     const text = argText;
-    console.info("[Footnote][InsertFootnote] selection", {
-      selectionSnapshot,
-      source: picked.source,
-      current: {
-        type: editor.state.selection.constructor?.name,
-        from: editor.state.selection.from,
-        to: editor.state.selection.to,
-        empty: editor.state.selection.empty
-      }
-    });
+    if ((window as any).__leditorCaretDebug) {
+      console.info("[Footnote][InsertFootnote] selection", {
+        selectionSnapshot,
+        source: picked.source,
+        current: {
+          type: editor.state.selection.constructor?.name,
+          from: editor.state.selection.from,
+          to: editor.state.selection.to,
+          empty: editor.state.selection.empty
+        }
+      });
+    }
     const id = insertManagedFootnote(editor, "footnote", text, selectionSnapshot);
-    focusFootnoteById(id);
+    // After insertion, the editor selection should be positioned just after the marker. Preserve it as the
+    // "return point" when exiting footnote mode.
+    const postInsertSnapshot = snapshotFromSelection(editor.state.selection);
+    focusFootnoteById(id, postInsertSnapshot);
   },
   "footnote.insert"(editor) {
     commandMap.InsertFootnote(editor);
@@ -2167,18 +2203,21 @@ export const commandMap: Record<string, CommandHandler> = {
     const picked = pickStableSelectionSnapshot(editor);
     const selectionSnapshot = picked.selectionSnapshot;
     const text = typeof args?.text === "string" ? args.text : undefined;
-    console.info("[Footnote][InsertEndnote] selection", {
-      selectionSnapshot,
-      source: picked.source,
-      current: {
-        type: editor.state.selection.constructor?.name,
-        from: editor.state.selection.from,
-        to: editor.state.selection.to,
-        empty: editor.state.selection.empty
-      }
-    });
+    if ((window as any).__leditorFootnoteDebug) {
+      console.info("[Footnote][InsertEndnote] selection", {
+        selectionSnapshot,
+        source: picked.source,
+        current: {
+          type: editor.state.selection.constructor?.name,
+          from: editor.state.selection.from,
+          to: editor.state.selection.to,
+          empty: editor.state.selection.empty
+        }
+      });
+    }
     const id = insertManagedFootnote(editor, "endnote", text, selectionSnapshot);
-    focusFootnoteById(id);
+    const postInsertSnapshot = snapshotFromSelection(editor.state.selection);
+    focusFootnoteById(id, postInsertSnapshot);
   },
   "endnote.insert"(editor) {
     commandMap.InsertEndnote(editor);

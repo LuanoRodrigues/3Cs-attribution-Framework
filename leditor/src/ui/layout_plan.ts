@@ -1,4 +1,4 @@
-// Ribbon layout plan (single source of truth; migrated from legacy JSON).
+// Ribbon layout plan (single source of truth; migrated from older JSON configs).
 const layoutPlan = {
   "layoutId": "ribbonLayout",
   "version": 3,
@@ -711,11 +711,11 @@ const layoutPlan = {
   "rollback": {
     "featureFlagKey": "ribbon.enabled",
     "immediate": [
-      "Disable ribbon.enabled to restore legacy UI.",
-      "Revert renderer entry point to legacy toolbar if flag unavailable."
+      "Disable ribbon.enabled to restore the previous UI.",
+      "Revert renderer entry point to the previous toolbar if flag unavailable."
     ],
     "partial": [
-      "Keep TabStrip but render legacy panel content.",
+      "Keep TabStrip but render the previous panel content.",
       "Disable Stage B and Stage C collapse logic.",
       "Force Stage A only (no overflow)."
     ],

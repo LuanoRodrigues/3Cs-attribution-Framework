@@ -72,30 +72,30 @@ const buildDecorations = (state: EditorState) => {
       currentSectionNumber = number;
       paragraphInSection = 0;
       currentSectionTitle = String(node.textContent || "").trim();
+      const label = number;
+      const meta = {
+        kind: "heading" as const,
+        sectionNumber: currentSectionNumber,
+        sectionTitle: currentSectionTitle
+      };
       decorations.push(
-        Decoration.widget(widgetPos, () =>
-          createNumberWidget(number, {
-            kind: "heading",
-            sectionNumber: currentSectionNumber,
-            sectionTitle: currentSectionTitle
-          }),
-          { side: -1 }
-        )
+        Decoration.widget(widgetPos, () => createNumberWidget(label, meta), { side: -1 })
       );
       return true;
     }
     paragraphN += 1;
     paragraphInSection += 1;
+    const label = String(paragraphN);
+    const meta = {
+      kind: "paragraph" as const,
+      sectionNumber: currentSectionNumber,
+      sectionTitle: currentSectionTitle,
+      paragraphInSection
+    };
     decorations.push(
       Decoration.widget(
         widgetPos,
-        () =>
-          createNumberWidget(String(paragraphN), {
-            kind: "paragraph",
-            sectionNumber: currentSectionNumber,
-            sectionTitle: currentSectionTitle,
-            paragraphInSection
-          }),
+        () => createNumberWidget(label, meta),
         { side: -1 }
       )
     );

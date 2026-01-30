@@ -29,6 +29,23 @@ const g = globalThis as typeof globalThis & { __leditorRendererEntryLoaded?: boo
 if (g.__leditorRendererEntryLoaded) {
   dbg("entry", "already loaded; skipping duplicate entry.");
 } else {
+  const isDevtoolsDocument = () => {
+    if (typeof window === "undefined") return false;
+    const protocol = String(window.location?.protocol || "").toLowerCase();
+    const href = String(window.location?.href || "").toLowerCase();
+    return (
+      protocol === "devtools:" ||
+      protocol === "chrome-devtools:" ||
+      href.startsWith("devtools://") ||
+      href.startsWith("chrome-devtools://")
+    );
+  };
+  // Never attempt to mount the app in a Chromium DevTools document.
+  // In Electron/Chromium, DevTools can host its own renderer context.
+  if (isDevtoolsDocument()) {
+    g.__leditorRendererEntryLoaded = true;
+    dbg("entry", "devtools document detected; skipping mount.");
+  } else {
   g.__leditorRendererEntryLoaded = true;
   dbg("entry", "loaded", { buildTime: __BUILD_TIME__ });
   // Electron/Chromium may disable `prompt()` / `alert()` in some environments (e.g. WSL).
@@ -72,4 +89,5 @@ if (g.__leditorRendererEntryLoaded) {
     .catch((error) => {
       console.error("[renderer-entry.ts][entry][debug] mount failed", error);
     });
+}
 }

@@ -12,7 +12,7 @@ const renderEntries = (container: HTMLElement, entries: FootnoteRenderEntry[]) =
   container.innerHTML = "";
   if (entries.length === 0) {
     container.classList.remove("leditor-page-footnotes--active");
-    container.setAttribute("aria-hidden", "true");
+    container.setAttribute("aria-hidden", "false");
     return;
   }
   container.classList.add("leditor-page-footnotes--active");

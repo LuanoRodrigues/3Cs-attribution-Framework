@@ -47,6 +47,13 @@ export class PanelGrid {
   private panelTree: PanelNode;
   private panelsV2Enabled: boolean;
   private roundLayout = false;
+  private layoutHint:
+    | {
+        mode: "centeredSingle";
+        panelId: PanelId;
+        maxWidthPx: number;
+      }
+    | null = null;
   private readonly fixedPanelSizes: Partial<Record<PanelId, number>> = {
     panel1: 320,
     panel2: 360
@@ -324,6 +331,9 @@ export class PanelGrid {
       const collapsed = this.state.collapsed[id];
       const undocked = this.state.undocked[id];
       const shell = record.shell;
+      // Reset any layout-hint styling before applying the normal sizing rules.
+      shell.style.marginLeft = "";
+      shell.style.marginRight = "";
       if (collapsed) {
         shell.style.flex = "0 0 0";
         shell.classList.add("panel-shell--collapsed");
@@ -360,6 +370,19 @@ export class PanelGrid {
       shell.dataset.minimized = "false";
       shell.dataset.collapsed = "false";
     });
+    // Apply optional centered layout after normal sizing so it wins.
+    if (this.layoutHint && this.layoutHint.mode === "centeredSingle") {
+      const record = this.panels.get(this.layoutHint.panelId);
+      if (record && !this.state.collapsed[this.layoutHint.panelId] && !this.state.undocked[this.layoutHint.panelId]) {
+        const shell = record.shell;
+        const maxWidth = Math.max(320, Math.floor(this.layoutHint.maxWidthPx));
+        shell.style.flex = "0 1 auto";
+        shell.style.minWidth = "";
+        shell.style.maxWidth = `${maxWidth}px`;
+        shell.style.marginLeft = "auto";
+        shell.style.marginRight = "auto";
+      }
+    }
     this.updateGutterVisibility();
   }
 
@@ -891,6 +914,19 @@ export class PanelGrid {
 
   public setCollapsed(panelId: PanelId, collapsed: boolean): void {
     this.setPanelCollapsed(panelId, collapsed);
+  }
+
+  public setLayoutHint(
+    hint:
+      | {
+          mode: "centeredSingle";
+          panelId: PanelId;
+          maxWidthPx: number;
+        }
+      | null
+  ): void {
+    this.layoutHint = hint;
+    this.applySizes();
   }
 
   public setRoundLayout(enabled: boolean): void {

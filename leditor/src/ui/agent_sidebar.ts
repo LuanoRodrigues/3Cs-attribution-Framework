@@ -1,7 +1,6 @@
 import type { EditorHandle } from "../api/leditor.ts";
-import { getAiSettings, subscribeAiSettings } from "./ai_settings.ts";
-
-export type AgentScope = "selection" | "paragraphs" | "section" | "document";
+import { subscribeAiSettings } from "./ai_settings.ts";
+import { Fragment } from "prosemirror-model";
 
 export type AgentMessage = {
   role: "user" | "assistant" | "system";
@@ -11,9 +10,6 @@ export type AgentMessage = {
 
 export type AgentRunRequest = {
   instruction: string;
-  scope: AgentScope;
-  range?: { from: number; to: number };
-  section?: number;
 };
 
 export type AgentRunResult = {
@@ -114,62 +110,10 @@ export const createAgentSidebar = (
   headerRight.append(apiBadge, closeBtn);
   header.append(title, headerRight);
 
-  const scopeRow = document.createElement("div");
-  scopeRow.className = "leditor-agent-sidebar__scope";
-
   let open = false;
-  let scope: AgentScope = getAiSettings().defaultScope;
-
-  const scopeLabel = document.createElement("div");
-  scopeLabel.className = "leditor-agent-sidebar__scopeLabel";
-  scopeLabel.textContent = "Scope";
-
-  const scopeSelect = document.createElement("select");
-  scopeSelect.className = "leditor-agent-sidebar__scopeSelect";
-  const selectionOption = document.createElement("option");
-  selectionOption.value = "selection";
-  selectionOption.textContent = "Selection";
-  const paragraphsOption = document.createElement("option");
-  paragraphsOption.value = "paragraphs";
-  paragraphsOption.textContent = "Paragraphs";
-  const sectionOption = document.createElement("option");
-  sectionOption.value = "section";
-  sectionOption.textContent = "Section";
-  const docOption = document.createElement("option");
-  docOption.value = "document";
-  docOption.textContent = "Document";
-  scopeSelect.append(selectionOption, paragraphsOption, sectionOption, docOption);
-  scopeSelect.value = scope;
-  scopeRow.append(scopeLabel, scopeSelect);
-
-  const rangeFrom = document.createElement("input");
-  rangeFrom.className = "leditor-agent-sidebar__scopeInput";
-  rangeFrom.type = "number";
-  rangeFrom.min = "1";
-  rangeFrom.placeholder = "From";
-
-  const rangeTo = document.createElement("input");
-  rangeTo.className = "leditor-agent-sidebar__scopeInput";
-  rangeTo.type = "number";
-  rangeTo.min = "1";
-  rangeTo.placeholder = "To";
-
-  const sectionInput = document.createElement("input");
-  sectionInput.className = "leditor-agent-sidebar__scopeInput";
-  sectionInput.type = "number";
-  sectionInput.min = "1";
-  sectionInput.placeholder = "Section #";
-
-  const scopeExtras = document.createElement("div");
-  scopeExtras.className = "leditor-agent-sidebar__scopeExtras";
-  scopeExtras.append(rangeFrom, rangeTo, sectionInput);
-  scopeRow.appendChild(scopeExtras);
-
-  const unsubscribeScope = subscribeAiSettings((next) => {
-    if (open) return;
-    scopeSelect.value = next.defaultScope;
-    scope = next.defaultScope;
-  });
+  // Keep subscription to prevent stale settings references (and for future Agent settings),
+  // but remove UI scope controls: agent targets are selected deterministically by paragraph index.
+  const unsubscribeScope = subscribeAiSettings(() => undefined);
 
   const showNumbersRow = document.createElement("div");
   showNumbersRow.className = "leditor-agent-sidebar__numbersRow";
@@ -196,7 +140,7 @@ export const createAgentSidebar = (
 
   const input = document.createElement("textarea");
   input.className = "leditor-agent-sidebar__input";
-  input.placeholder = 'Try: "Rewrite in formal tone"';
+  input.placeholder = 'Try: "35 refine" or "35-38 simplify"';
   input.rows = 2;
 
   const sendBtn = document.createElement("button");
@@ -208,7 +152,7 @@ export const createAgentSidebar = (
   cancelBtn.type = "button";
   cancelBtn.className = "leditor-agent-sidebar__cancel";
   cancelBtn.textContent = "Cancel";
-  cancelBtn.style.display = "none";
+  cancelBtn.classList.add("is-hidden");
 
   composer.append(input, sendBtn, cancelBtn);
 
@@ -227,14 +171,28 @@ export const createAgentSidebar = (
   acceptBtn.textContent = "Accept";
   footer.append(pendingLabel, rejectBtn, acceptBtn);
 
-  sidebar.append(header, scopeRow, showNumbersRow, messagesEl, draftList, composer, footer);
+  const suggestionsHeader = document.createElement("div");
+  suggestionsHeader.className = "leditor-agent-sidebar__suggestionsHeader";
+  const suggestionsTitle = document.createElement("div");
+  suggestionsTitle.className = "leditor-agent-sidebar__suggestionsTitle";
+  suggestionsTitle.textContent = "Suggestions";
+  const suggestionsMeta = document.createElement("div");
+  suggestionsMeta.className = "leditor-agent-sidebar__suggestionsMeta";
+  suggestionsMeta.textContent = "";
+  suggestionsHeader.append(suggestionsTitle, suggestionsMeta);
+
+  const suggestionsPanel = document.createElement("div");
+  suggestionsPanel.className = "leditor-agent-sidebar__suggestionsPanel";
+  suggestionsPanel.append(suggestionsHeader, draftList);
+
+  sidebar.append(header, showNumbersRow, messagesEl, suggestionsPanel, composer, footer);
   root.appendChild(sidebar);
 
   let messages: AgentMessage[] = [
     {
       role: "system",
       content:
-        "Agent is ready. Use scopes: Selection / Paragraphs / Section / Document. You can reference: paragraphs 2-4, section 3.1, heading \"Methods\", or paragraph \"keywords\".",
+        "Agent is ready. Reference paragraphs by index only (e.g. 35, 35-38, 35,37) then add your instruction.",
       ts: Date.now()
     }
   ];
@@ -299,7 +257,7 @@ export const createAgentSidebar = (
     inflight = value;
     input.disabled = inflight;
     sendBtn.disabled = inflight;
-    cancelBtn.style.display = inflight ? "" : "none";
+    cancelBtn.classList.toggle("is-hidden", !inflight);
     acceptBtn.disabled = inflight || !pending;
     rejectBtn.disabled = inflight || !pending;
     sidebar.classList.toggle("is-busy", inflight);
@@ -321,6 +279,7 @@ export const createAgentSidebar = (
     pending = null;
     pendingLabel.textContent = "";
     draftList.replaceChildren();
+    suggestionsMeta.textContent = "";
     acceptBtn.disabled = true;
     rejectBtn.disabled = true;
     try {
@@ -330,9 +289,67 @@ export const createAgentSidebar = (
     }
   };
 
+  const buildTextblockReplacementFragment = (doc: any, from: number, to: number, text: string) => {
+    const $from = doc.resolve(from);
+
+    const protectedMarkNames = new Set(["anchor", "link"]);
+
+    let blockDepth = -1;
+    let blockNode: any = null;
+    let blockStart = 0;
+    for (let d = $from.depth; d >= 0; d -= 1) {
+      const node = $from.node(d);
+      if (!node?.isTextblock) continue;
+      const start = $from.start(d);
+      const contentFrom = start + 1;
+      const contentTo = start + node.nodeSize - 1;
+      if (contentFrom === from && contentTo === to) {
+        blockDepth = d;
+        blockNode = node;
+        blockStart = start;
+        break;
+      }
+    }
+
+    if (!blockNode || blockDepth < 0) return null;
+
+    const protectedSegments: Array<{ text: string; marks: any[] }> = [];
+    blockNode.descendants((node: any) => {
+      if (!node?.isText) return;
+      const marks = Array.isArray(node.marks)
+        ? node.marks.filter((m: any) => protectedMarkNames.has(String(m?.type?.name ?? "")))
+        : [];
+      if (marks.length === 0) return;
+      protectedSegments.push({ text: String(node.text ?? ""), marks });
+    });
+
+    const schema = doc.type.schema;
+    const nodes: any[] = [];
+    const nextText = String(text ?? "");
+    let cursor = 0;
+    let searchFrom = 0;
+    for (const seg of protectedSegments) {
+      if (!seg.text) continue;
+      const idx = nextText.indexOf(seg.text, searchFrom);
+      if (idx < 0) continue;
+      const before = nextText.slice(cursor, idx);
+      if (before) nodes.push(schema.text(before));
+      nodes.push(schema.text(seg.text, seg.marks));
+      cursor = idx + seg.text.length;
+      searchFrom = cursor;
+    }
+    const after = nextText.slice(cursor);
+    if (after) nodes.push(schema.text(after));
+
+    return Fragment.fromArray(nodes);
+  };
+
   const applyRangeAsTransaction = (from: number, to: number, text: string) => {
     const editor = editorHandle.getEditor();
-    const tr = editor.state.tr.insertText(text, from, to);
+    const state = editor.state;
+    const baseDoc = state.doc;
+    const fragment = buildTextblockReplacementFragment(baseDoc, from, to, text);
+    const tr = fragment ? state.tr.replaceWith(from, to, fragment as any) : state.tr.insertText(text, from, to);
     tr.setMeta("leditor-ai", { kind: "agent", ts: Date.now() });
     editor.view.dispatch(tr);
     editor.commands.focus();
@@ -340,10 +357,13 @@ export const createAgentSidebar = (
 
   const applyBatchAsTransaction = (items: Array<{ from: number; to: number; text: string }>) => {
     const editor = editorHandle.getEditor();
+    const state = editor.state;
+    const baseDoc = state.doc;
     const sorted = [...items].sort((a, b) => b.from - a.from);
-    let tr = editor.state.tr;
+    let tr = state.tr;
     for (const item of sorted) {
-      tr = tr.insertText(item.text, item.from, item.to);
+      const fragment = buildTextblockReplacementFragment(baseDoc, item.from, item.to, item.text);
+      tr = fragment ? tr.replaceWith(item.from, item.to, fragment as any) : tr.insertText(item.text, item.from, item.to);
     }
     tr.setMeta("leditor-ai", { kind: "agent", ts: Date.now(), items: sorted.length });
     editor.view.dispatch(tr);
@@ -389,9 +409,13 @@ export const createAgentSidebar = (
   const renderDraftList = () => {
     draftList.replaceChildren();
     if (!pending || pending.kind !== "batchReplace" || pending.items.length === 0) return;
+    suggestionsMeta.textContent = `${pending.items.length} change(s)`;
     for (const item of pending.items) {
       const row = document.createElement("div");
       row.className = "leditor-agent-sidebar__draftRow";
+      const top = document.createElement("div");
+      top.className = "leditor-agent-sidebar__draftTop";
+
       const label = document.createElement("div");
       label.className = "leditor-agent-sidebar__draftLabel";
       label.textContent = `P${item.n}`;
@@ -406,7 +430,22 @@ export const createAgentSidebar = (
       btnReject.className = "leditor-agent-sidebar__draftReject";
       btnReject.textContent = "Reject";
       actions.append(btnApply, btnReject);
-      row.append(label, actions);
+      top.append(label, actions);
+
+      const draft = document.createElement("pre");
+      draft.className = "leditor-agent-sidebar__draftText";
+      draft.textContent = item.text;
+
+      const original = document.createElement("details");
+      original.className = "leditor-agent-sidebar__draftOriginal";
+      const originalSummary = document.createElement("summary");
+      originalSummary.textContent = "Show original";
+      const originalBody = document.createElement("pre");
+      originalBody.className = "leditor-agent-sidebar__draftOriginalText";
+      originalBody.textContent = item.originalText;
+      original.append(originalSummary, originalBody);
+
+      row.append(top, draft, original);
       draftList.appendChild(row);
 
       btnApply.addEventListener("click", () => {
@@ -421,6 +460,7 @@ export const createAgentSidebar = (
           pending.items = pending.items.filter((x) => x.n !== item.n);
           const count = pending.items.length;
           pendingLabel.textContent = count ? `Draft ready • ${count} change(s)` : "";
+          suggestionsMeta.textContent = count ? `${count} change(s)` : "";
           if (count === 0) {
             clearPending();
           } else {
@@ -440,6 +480,7 @@ export const createAgentSidebar = (
         pending.items = pending.items.filter((x) => x.n !== item.n);
         const count = pending.items.length;
         pendingLabel.textContent = count ? `Draft ready • ${count} change(s)` : "";
+        suggestionsMeta.textContent = count ? `${count} change(s)` : "";
         if (count === 0) {
           clearPending();
         } else {
@@ -492,16 +533,7 @@ export const createAgentSidebar = (
     try {
       clearPending();
       const progress = (message: string) => addMessage("system", message);
-      const request: AgentRunRequest = { instruction, scope };
-      if (scope === "paragraphs") {
-        const from = Math.max(1, Math.floor(Number(rangeFrom.value || "1")));
-        const to = Math.max(from, Math.floor(Number(rangeTo.value || String(from))));
-        request.range = { from, to };
-      }
-      if (scope === "section") {
-        const section = Math.max(1, Math.floor(Number(sectionInput.value || "1")));
-        request.section = section;
-      }
+      const request: AgentRunRequest = { instruction };
       abortController = new AbortController();
       activeRequestId = makeRequestId();
       const result = await options.runAgent(request, editorHandle, progress, abortController.signal, activeRequestId);
@@ -529,13 +561,6 @@ export const createAgentSidebar = (
       setInflight(false);
       editorHandle.focus();
     }
-  };
-
-  const syncScopeUi = () => {
-    const current = scopeSelect.value as AgentScope;
-    rangeFrom.style.display = current === "paragraphs" ? "" : "none";
-    rangeTo.style.display = current === "paragraphs" ? "" : "none";
-    sectionInput.style.display = current === "section" ? "" : "none";
   };
 
   const controller: AgentSidebarController = {
@@ -598,15 +623,6 @@ export const createAgentSidebar = (
   };
 
   closeBtn.addEventListener("click", () => controller.close());
-  scopeSelect.addEventListener("change", () => {
-    const next = String(scopeSelect.value || "").trim();
-    if (next !== "selection" && next !== "document" && next !== "paragraphs" && next !== "section") {
-      scopeSelect.value = scope;
-      return;
-    }
-    scope = next;
-    syncScopeUi();
-  });
 
   sendBtn.addEventListener("click", () => {
     void run();
@@ -664,7 +680,6 @@ export const createAgentSidebar = (
 
   window.addEventListener("resize", syncInsets);
   syncInsets();
-  syncScopeUi();
   renderMessages();
   const host = (window as any).leditorHost;
   if (host && typeof host.getAiStatus === "function") {

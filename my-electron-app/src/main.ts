@@ -76,6 +76,31 @@ let retrievePool: WorkerPool | null = null;
 const analyseCache = new LruCache<unknown>(24);
 const retrieveCache = new LruCache<unknown>(12);
 
+type AgentReplaceParagraphOp = {
+  op: "replaceParagraph";
+  n: number;
+  text: string;
+};
+
+type AgentRequestPayload = {
+  instruction: string;
+  targets?: Array<{ n: number }>;
+  blocks?: Array<{ n: number; type?: string; attrs?: unknown; text?: string; nodeJson?: unknown }>;
+  document?: { text?: string };
+  settings?: { model?: string; temperature?: number; chunkSize?: number };
+};
+
+type AgentRequestEnvelope = {
+  requestId?: string;
+  payload: AgentRequestPayload;
+};
+
+type AgentMeta = {
+  provider: "openai";
+  model: string;
+  ms: number;
+};
+
 function cacheKey(method: string, args: unknown[]): string {
   try {
     return `${method}:${JSON.stringify(args)}`;
@@ -199,7 +224,6 @@ function formatPayload(payload?: unknown): string {
   }
 }
 
-const CODE_STATE_FILE = "code_state.json";
 const CODER_STATE_FILE = "coder_state.json";
 const CODER_STATE_VERSION = 2;
 
@@ -396,6 +420,155 @@ function resolveRepoRoot(): string {
   return path.resolve(__dirname, "..", "..");
 }
 
+let dotenvLoaded = false;
+
+function parseDotEnvLine(line: string): { key: string; value: string } | null {
+  const trimmed = line.trim();
+  if (!trimmed || trimmed.startsWith("#")) return null;
+  const eq = trimmed.indexOf("=");
+  if (eq <= 0) return null;
+  const key = trimmed.slice(0, eq).trim();
+  let value = trimmed.slice(eq + 1).trim();
+  if (!key) return null;
+  if ((value.startsWith("\"") && value.endsWith("\"")) || (value.startsWith("'") && value.endsWith("'"))) {
+    value = value.slice(1, -1);
+  }
+  return { key, value };
+}
+
+function loadDotEnvIntoProcessEnv(): void {
+  if (dotenvLoaded) return;
+  dotenvLoaded = true;
+  const candidates = [path.join(process.cwd(), ".env"), path.join(resolveRepoRoot(), ".env")];
+  for (const candidate of candidates) {
+    try {
+      if (!fs.existsSync(candidate)) continue;
+      const raw = fs.readFileSync(candidate, "utf-8");
+      raw.split(/\r?\n/).forEach((line) => {
+        const parsed = parseDotEnvLine(line);
+        if (!parsed) return;
+        if (process.env[parsed.key] !== undefined) return;
+        process.env[parsed.key] = parsed.value;
+      });
+      return;
+    } catch {
+      // ignore
+    }
+  }
+}
+
+function normalizeAgentError(error: unknown): string {
+  if (!error) return "Unknown error";
+  if (error instanceof Error) return error.message || "Error";
+  return String(error);
+}
+
+function extractFirstJsonValue(text: string): unknown {
+  const trimmed = (text || "").trim();
+  if (!trimmed) throw new Error("Empty model response");
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    // try to extract a JSON object/array substring
+  }
+  const firstBrace = trimmed.indexOf("{");
+  const firstBracket = trimmed.indexOf("[");
+  const start =
+    firstBrace === -1 ? firstBracket : firstBracket === -1 ? firstBrace : Math.min(firstBrace, firstBracket);
+  if (start === -1) {
+    throw new Error("Model did not return JSON");
+  }
+  const candidate = trimmed.slice(start);
+  // brute-force: find a suffix that parses
+  for (let end = candidate.length; end > 0; end -= 1) {
+    const slice = candidate.slice(0, end).trim();
+    if (!slice.endsWith("}") && !slice.endsWith("]")) continue;
+    try {
+      return JSON.parse(slice);
+    } catch {
+      // continue
+    }
+  }
+  throw new Error("Unable to parse JSON from model response");
+}
+
+async function callOpenAiResponses(params: {
+  apiKey: string;
+  model: string;
+  instructions: string;
+  input: string;
+  temperature?: number;
+  signal?: AbortSignal;
+}): Promise<{ outputText: string; meta: AgentMeta }> {
+  const started = Date.now();
+  const bodyBase: Record<string, unknown> = {
+    model: params.model,
+    instructions: params.instructions,
+    input: params.input
+  };
+  const makeBody = (includeTemperature: boolean) => {
+    const body: Record<string, unknown> = { ...bodyBase };
+    if (includeTemperature && typeof params.temperature === "number" && Number.isFinite(params.temperature)) {
+      body.temperature = params.temperature;
+    }
+    return body;
+  };
+
+  const doFetch = async (includeTemperature: boolean): Promise<{ outputText: string; meta: AgentMeta }> => {
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${params.apiKey}`
+      },
+      body: JSON.stringify(makeBody(includeTemperature)),
+      signal: params.signal
+    });
+
+    const text = await response.text();
+    let json: any = null;
+    try {
+      json = text ? JSON.parse(text) : null;
+    } catch {
+      json = null;
+    }
+
+    if (!response.ok) {
+      const message =
+        (json && (json.error?.message || json.error?.code || json.message)) || text || `HTTP ${response.status}`;
+      const err = new Error(String(message));
+      (err as any).status = response.status;
+      throw err;
+    }
+
+    const outputText =
+      (json && typeof json.output_text === "string" && json.output_text) ||
+      (json && Array.isArray(json.output)
+        ? json.output
+            .flatMap((item: any) => (Array.isArray(item?.content) ? item.content : []))
+            .filter((c: any) => c && (c.type === "output_text" || c.type === "text") && typeof c.text === "string")
+            .map((c: any) => c.text)
+            .join("")
+        : "") ||
+      "";
+
+    return {
+      outputText: String(outputText || ""),
+      meta: { provider: "openai", model: params.model, ms: Date.now() - started }
+    };
+  };
+
+  try {
+    return await doFetch(true);
+  } catch (error) {
+    const msg = normalizeAgentError(error);
+    if (msg.includes("Unsupported parameter: 'temperature'") || msg.includes("temperature is not supported")) {
+      return await doFetch(false);
+    }
+    throw error;
+  }
+}
+
 function normalizeLegacyJson(raw: string): string {
   return raw
     .replace(/\bNaN\b/g, "null")
@@ -521,6 +694,8 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
     return;
   }
   handlersRegistered = true;
+
+  const agentControllers = new Map<string, AbortController>();
 
   ipcMain.handle("command:dispatch", async (_event, payload: CommandEnvelope) => {
     if (payload && payload.phase && payload.action) {
@@ -729,6 +904,147 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
     }
   });
 
+  ipcMain.handle("leditor:ai-status", async () => {
+    loadDotEnvIntoProcessEnv();
+    const hasApiKey = Boolean(String(process.env.OPENAI_API_KEY || "").trim());
+    const envModel = String(process.env.OPENAI_MODEL || process.env.CODEX_MODEL || "").trim();
+    return {
+      hasApiKey,
+      model: envModel || "codex-mini-latest",
+      modelFromEnv: Boolean(envModel)
+    };
+  });
+
+  ipcMain.handle("leditor:agent-cancel", async (_event, request: { requestId?: string }) => {
+    const requestId = typeof request?.requestId === "string" ? request.requestId : "";
+    if (!requestId) return { success: false, error: "Missing requestId" };
+    const controller = agentControllers.get(requestId);
+    if (controller) {
+      try {
+        controller.abort();
+      } catch {
+        // ignore
+      }
+      agentControllers.delete(requestId);
+    }
+    return { success: true };
+  });
+
+  ipcMain.handle("leditor:agent-request", async (_event, request: AgentRequestEnvelope) => {
+    loadDotEnvIntoProcessEnv();
+    const apiKey = String(process.env.OPENAI_API_KEY || "").trim();
+    if (!apiKey) {
+      return { success: false, error: "Missing OPENAI_API_KEY in environment.", meta: { provider: "openai", model: "unknown", ms: 0 } };
+    }
+    const requestId = typeof request?.requestId === "string" ? request.requestId : `agent-${Date.now()}`;
+    const payload = request?.payload;
+    const controller = new AbortController();
+    agentControllers.set(requestId, controller);
+    try {
+      const instruction = typeof payload?.instruction === "string" ? payload.instruction.trim() : "";
+      if (!instruction) {
+        return { success: false, error: "Agent instruction is required." };
+      }
+
+      const envModel = String(process.env.OPENAI_MODEL || process.env.CODEX_MODEL || "").trim();
+      const settingsModel = typeof payload?.settings?.model === "string" ? payload.settings.model.trim() : "";
+      const model = settingsModel || envModel || "codex-mini-latest";
+      const temperature =
+        typeof payload?.settings?.temperature === "number" && Number.isFinite(payload.settings.temperature)
+          ? payload.settings.temperature
+          : undefined;
+
+      const targetNs = Array.isArray(payload?.targets) ? payload.targets.map((t) => Number((t as any)?.n)).filter(Number.isFinite) : [];
+      const uniqueTargets = Array.from(new Set(targetNs)).sort((a, b) => a - b);
+
+      const blocksRaw = Array.isArray(payload?.blocks) ? payload.blocks : [];
+      const blocks = blocksRaw
+        .map((b) => ({
+          n: Number((b as any)?.n),
+          type: typeof (b as any)?.type === "string" ? String((b as any).type) : undefined,
+          attrs: (b as any)?.attrs ?? undefined,
+          text: typeof (b as any)?.text === "string" ? String((b as any).text) : "",
+          nodeJson: (b as any)?.nodeJson ?? undefined
+        }))
+        .filter((b) => Number.isFinite(b.n) && b.n >= 1);
+
+      const filteredBlocks = uniqueTargets.length
+        ? blocks.filter((b) => uniqueTargets.includes(b.n))
+        : blocks;
+
+      const system = [
+        "You are a deterministic academic document editing agent.",
+        "You receive a JSON payload describing numbered BLOCKS from a ProseMirror document.",
+        "Return STRICT JSON only (no markdown, no commentary).",
+        "",
+        "Output schema (JSON object):",
+        '{ "assistantText": string, "operations": Array<{ "op": "replaceParagraph", "n": number, "text": string }> }',
+        "",
+        "Rules:",
+        "- Only propose operations for the provided blocks, and only for the listed target indices.",
+        "- Do not invent new indices.",
+        "- If no change is needed, return operations: [].",
+        "- The 'text' must be plain text (no HTML).",
+        "",
+        uniqueTargets.length ? `Target indices: ${uniqueTargets.join(", ")}` : ""
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      const input = JSON.stringify(
+        {
+          instruction,
+          targets: uniqueTargets,
+          blocks: filteredBlocks.map((b) => ({
+            n: b.n,
+            type: b.type,
+            attrs: b.attrs,
+            text: b.text,
+            node: b.nodeJson
+          }))
+        },
+        null,
+        2
+      );
+
+      const { outputText, meta } = await callOpenAiResponses({
+        apiKey,
+        model,
+        instructions: system,
+        input,
+        temperature,
+        signal: controller.signal
+      });
+
+      const parsed = extractFirstJsonValue(outputText);
+      const assistantText = typeof (parsed as any)?.assistantText === "string" ? String((parsed as any).assistantText) : "";
+      const operationsRaw = (parsed as any)?.operations;
+      const operations = Array.isArray(operationsRaw) ? operationsRaw : [];
+      const sanitizedOps: AgentReplaceParagraphOp[] = [];
+
+      for (const op of operations) {
+        if (!op || typeof op !== "object") continue;
+        if ((op as any).op !== "replaceParagraph") continue;
+        const n = Number((op as any).n);
+        const text = typeof (op as any).text === "string" ? String((op as any).text) : "";
+        if (!Number.isFinite(n) || n < 1) continue;
+        if (uniqueTargets.length && !uniqueTargets.includes(n)) continue;
+        sanitizedOps.push({ op: "replaceParagraph", n, text });
+      }
+
+      return {
+        success: true,
+        assistantText: assistantText || (sanitizedOps.length ? "Draft ready." : "No changes proposed."),
+        operations: sanitizedOps,
+        meta
+      };
+    } catch (error) {
+      return { success: false, error: normalizeAgentError(error) };
+    } finally {
+      agentControllers.delete(requestId);
+    }
+  });
+
   ipcMain.handle("coder:save-payload", async (_event, payload: { scopeId?: string; nodeId: string; data: Record<string, unknown> }) => {
     try {
       const scope = sanitizeScopeId(payload?.scopeId);
@@ -752,12 +1068,8 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
     const scope = sanitizeScopeId(payload?.scopeId);
     const coderDir = path.join(getCoderCacheDir(), scope);
     const primaryPath = path.join(coderDir, CODER_STATE_FILE);
-    const legacyPath = path.join(coderDir, CODE_STATE_FILE);
     if ((global as any).__coder_state_cache?.[primaryPath]) {
       return (global as any).__coder_state_cache[primaryPath];
-    }
-    if ((global as any).__coder_state_cache?.[legacyPath]) {
-      return (global as any).__coder_state_cache[legacyPath];
     }
     try {
       await fs.promises.mkdir(coderDir, { recursive: true });
@@ -774,23 +1086,8 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
         console.warn(`[CODER][STATE] load failed ${primaryPath}`, error);
         return null;
       }
-      try {
-        const rawLegacy = await fs.promises.readFile(legacyPath, "utf-8");
-        const parsedLegacy = JSON.parse(rawLegacy);
-        const normalizedLegacy = normalizeCoderStatePayload(parsedLegacy);
-        console.info(`[CODER][STATE] load legacy ${legacyPath}`);
-        const payloadOut = { state: normalizedLegacy, baseDir: coderDir, statePath: legacyPath };
-        (global as any).__coder_state_cache = (global as any).__coder_state_cache || {};
-        (global as any).__coder_state_cache[legacyPath] = payloadOut;
-        return payloadOut;
-      } catch (legacyError) {
-        if ((legacyError as NodeJS.ErrnoException).code !== "ENOENT") {
-          console.warn(`[CODER][STATE] load failed ${legacyPath}`, legacyError);
-        } else {
-          console.info(`[CODER][STATE] load missing ${legacyPath}`);
-        }
-        return null;
-      }
+      console.info(`[CODER][STATE] load missing ${primaryPath}`);
+      return null;
     }
   });
 
@@ -798,14 +1095,12 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
     const scope = sanitizeScopeId(payload?.scopeId);
     const coderDir = path.join(getCoderCacheDir(), scope);
     const primaryPath = path.join(coderDir, CODER_STATE_FILE);
-    const legacyPath = path.join(coderDir, CODE_STATE_FILE);
     try {
       await fs.promises.mkdir(coderDir, { recursive: true });
       const raw = payload?.state ? payload.state : createDefaultCoderState();
       const toWrite = toPersistentCoderStatePayload(raw);
       const encoded = JSON.stringify(toWrite, null, 2);
       await atomicWriteJson(primaryPath, encoded);
-      await atomicWriteJson(legacyPath, encoded);
       console.info(`[CODER][STATE] save ${primaryPath}`);
       (global as any).__coder_state_cache = (global as any).__coder_state_cache || {};
       (global as any).__coder_state_cache[primaryPath] = { state: toWrite, baseDir: coderDir, statePath: primaryPath };
@@ -1120,6 +1415,8 @@ function createWindow(): void {
     minHeight: 768,
     show: false,
     title: "Annotarium",
+    // Avoid the native menu bar overlapping the web ribbon on Windows/Linux.
+    autoHideMenuBar: true,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -1129,6 +1426,11 @@ function createWindow(): void {
   });
 
   applyDefaultZoomFactor(window);
+  try {
+    window.setMenuBarVisibility(false);
+  } catch {
+    // ignore (platform dependent)
+  }
 
   window.once("ready-to-show", () => {
     window.show();
@@ -1176,6 +1478,7 @@ function initializeApp(): void {
 
   app.whenReady()
     .then(() => {
+      loadDotEnvIntoProcessEnv();
       const baseUserData = app.getPath("userData");
       initializeSettingsFacade(baseUserData);
       analysePool = new WorkerPool(path.join(__dirname, "main/jobs/analyseWorker.js"), {

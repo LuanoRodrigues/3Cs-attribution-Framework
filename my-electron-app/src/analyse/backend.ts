@@ -22,52 +22,17 @@ import { getAnalyseRoot } from "../session/sessionPaths";
 
 export const ANALYSE_DIR = getAnalyseRoot();
 const ANALYSE_CACHE_DIR = path.join(ANALYSE_DIR, ".cache");
-const LEGACY_ANALYSE_DIR = path.join(process.env.HOME ?? "", ".annotarium", "analyse");
-const LEGACY_EVIDENCE_DIR = path.join(process.env.HOME ?? "", "annotarium", "evidence_coding_outputs");
 const CACHE_VERSION = "v1";
 const MAX_CACHE_SOURCE_BYTES = 120 * 1024 * 1024;
 const MAX_CACHE_WRITE_BYTES = 150 * 1024 * 1024;
 
 function normalizeAnalysePath(candidate?: string): string | undefined {
-  if (!candidate) return undefined;
-  const resolved = path.resolve(candidate);
-  const legacyAnalyse = path.resolve(LEGACY_ANALYSE_DIR);
-  const legacyEvidence = path.resolve(LEGACY_EVIDENCE_DIR);
-  for (const legacy of [legacyAnalyse, legacyEvidence]) {
-    if (resolved === legacy) return ANALYSE_DIR;
-    if (resolved.startsWith(legacy + path.sep)) {
-      const suffix = path.relative(legacy, resolved);
-      return path.join(ANALYSE_DIR, suffix);
-    }
-  }
   return candidate;
-}
-
-function migrateLegacyAnalyseDir(): void {
-  const candidates = [LEGACY_ANALYSE_DIR, LEGACY_EVIDENCE_DIR];
-  fs.mkdirSync(ANALYSE_DIR, { recursive: true });
-  for (const candidate of candidates) {
-    if (!candidate || !fs.existsSync(candidate)) continue;
-    const entries = fs.readdirSync(candidate, { withFileTypes: true });
-    for (const entry of entries) {
-      const source = path.join(candidate, entry.name);
-      const target = path.join(ANALYSE_DIR, entry.name);
-      if (fs.existsSync(target)) {
-        throw new Error(`Legacy analyse migration aborted: target already exists at ${target}`);
-      }
-      if (entry.isDirectory()) {
-        fs.cpSync(source, target, { recursive: true, errorOnExist: true });
-      } else if (entry.isFile()) {
-        fs.copyFileSync(source, target);
-      }
-    }
-  }
 }
 
 try {
   fs.mkdirSync(ANALYSE_DIR, { recursive: true });
   fs.mkdirSync(ANALYSE_CACHE_DIR, { recursive: true });
-  migrateLegacyAnalyseDir();
 } catch {
   // best effort: throw on collision but swallow other fs errors to keep startup predictable.
 }

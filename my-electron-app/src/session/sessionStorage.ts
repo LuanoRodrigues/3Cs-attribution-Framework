@@ -5,7 +5,6 @@ import type { CodeStateSnapshot } from "../state/codeState";
 const LAYOUT_KEY = "annotarium.layout.v1";
 const PANEL_LAYOUTS_KEY = "annotarium.layout.panels.v1";
 const PANEL_GRID_KEY = "annotarium.panelgrid.v2";
-const PANEL_GRID_LEGACY_KEY = "annotarium.panelgrid.v1";
 const CODE_STATE_KEY = "annotarium.code.rqs.v1";
 
 export interface SessionStateProvider {
@@ -52,8 +51,7 @@ export function loadPanelLayouts(): Record<string, LayoutSnapshot> | null {
   if (direct) {
     return sanitizePanelLayouts(direct);
   }
-  const legacy = loadLayoutSnapshot();
-  return legacy ? sanitizePanelLayouts({ panel2: legacy }) : null;
+  return null;
 }
 
 export function persistPanelLayouts(layouts: Record<string, LayoutSnapshot>): void {
@@ -70,7 +68,7 @@ export function loadPanelGridState(): PanelGridState | null {
   if (direct) {
     return direct;
   }
-  return readFromStorage<PanelGridState>(PANEL_GRID_LEGACY_KEY);
+  return null;
 }
 
 export function persistPanelGridState(state: PanelGridState): void {

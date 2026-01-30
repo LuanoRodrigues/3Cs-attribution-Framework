@@ -2,43 +2,10 @@
 import { buildDatasetHandles, discoverRuns, getDefaultBaseDir, warmAnalyseRun } from "../../analyse/data";
 
 const BASE_DIR_KEY = "analyse.baseDir";
-const LEGACY_BASE_PREFIX = "/home/pantera/.annotarium/analyse";
-const LEGACY_EVIDENCE_PREFIX = "/home/pantera/annotarium/evidence_coding_outputs";
-const NEW_BASE_PREFIX = "/home/pantera/annotarium/analyse";
-
-function normalizeBaseDir(pathValue?: string | null): string | undefined {
-  if (!pathValue) return undefined;
-  const trimmed = pathValue.trim();
-  if (!trimmed) return undefined;
-  if (trimmed === LEGACY_BASE_PREFIX) {
-    return NEW_BASE_PREFIX;
-  }
-  if (trimmed === LEGACY_EVIDENCE_PREFIX) {
-    return NEW_BASE_PREFIX;
-  }
-  if (trimmed.startsWith(`${LEGACY_BASE_PREFIX}/`)) {
-    const suffix = trimmed.slice(LEGACY_BASE_PREFIX.length);
-    return `${NEW_BASE_PREFIX}${suffix}`;
-  }
-  if (trimmed.startsWith(`${LEGACY_EVIDENCE_PREFIX}/`)) {
-    const suffix = trimmed.slice(LEGACY_EVIDENCE_PREFIX.length);
-    return `${NEW_BASE_PREFIX}${suffix}`;
-  }
-  return trimmed;
-}
 
 function readStoredBaseDir(): string | undefined {
   try {
-    const stored = window.localStorage.getItem(BASE_DIR_KEY);
-    const normalized = normalizeBaseDir(stored);
-    if (normalized && normalized !== stored) {
-      window.localStorage.setItem(BASE_DIR_KEY, normalized);
-      console.info("[Analyse][Corpus] Migrated legacy baseDir to new location", {
-        from: stored,
-        to: normalized
-      });
-    }
-    return normalized || undefined;
+    return window.localStorage.getItem(BASE_DIR_KEY) || undefined;
   } catch (err) {
     console.warn("Unable to read stored base dir", err);
     return undefined;
@@ -47,8 +14,7 @@ function readStoredBaseDir(): string | undefined {
 
 function persistBaseDir(path: string): void {
   try {
-    const normalized = normalizeBaseDir(path) || path;
-    window.localStorage.setItem(BASE_DIR_KEY, normalized);
+    window.localStorage.setItem(BASE_DIR_KEY, path);
   } catch (err) {
     console.warn("Unable to persist base dir", err);
   }

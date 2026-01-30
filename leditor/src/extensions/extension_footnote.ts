@@ -282,8 +282,16 @@ class FootnoteNodeView implements FootnoteNodeViewAPI {
   }
 
   setPlainText(value: string) {
-    if (!this.innerEditor) return;
     const trimmed = typeof value === "string" ? value : "";
+    const textNode = trimmed.length ? this.view.state.schema.text(trimmed) : null;
+    const newNode = this.node.type.create(this.node.attrs, textNode ? [textNode] : [], this.node.marks);
+    const pos = this.getPos();
+    if (typeof pos === "number") {
+      const tr = this.view.state.tr.replaceWith(pos, pos + this.node.nodeSize, newNode);
+      this.view.dispatch(tr);
+    }
+
+    if (!this.innerEditor) return;
     const doc = {
       type: "doc",
       content: [

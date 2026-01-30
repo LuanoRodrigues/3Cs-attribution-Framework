@@ -4452,7 +4452,7 @@ def shape_and_normalise_df(
         default_numeric_cast_cols.update(dict(numeric_cast_cols))
     numeric_cast_cols = default_numeric_cast_cols
 
-    # ---- expand 'codes_flat' (legacy) ----
+    # ---- expand 'codes_flat' (older format) ----
     if "codes_flat" in df.columns:
         codes_df = df["codes_flat"].apply(
             lambda d: pd.Series(d) if isinstance(d, dict) else pd.Series(dtype="object")

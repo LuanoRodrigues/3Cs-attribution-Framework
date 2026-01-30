@@ -138,6 +138,9 @@ contextBridge.exposeInMainWorld("leditorHost", {
     ipcRenderer.invoke("leditor:export-docx", request),
   exportPDF: (request: { html: string; options?: { suggestedPath?: string; prompt?: boolean } }) =>
     ipcRenderer.invoke("leditor:export-pdf", request),
+  agentRequest: (request: { requestId?: string; payload: unknown }) => ipcRenderer.invoke("leditor:agent-request", request),
+  agentCancel: (request: { requestId: string }) => ipcRenderer.invoke("leditor:agent-cancel", request),
+  getAiStatus: () => ipcRenderer.invoke("leditor:ai-status"),
   registerFootnoteHandlers: (handlers: { open?: () => void; toggle?: () => void; close?: () => void }) => {
     footnoteHandlers = handlers;
   },

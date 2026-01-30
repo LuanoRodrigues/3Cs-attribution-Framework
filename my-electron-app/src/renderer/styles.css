@@ -30,11 +30,7 @@
   --chip-gap: 10px;
   --shadow-level-1: 0 20px 48px rgba(0, 0, 0, 0.35);
   --shadow-level-2: 0 30px 80px rgba(0, 0, 0, 0.5);
-  /* Viewport height (fallback to 100vh if dvh isn't supported). */
-  --app-viewport-height: 100vh;
-  /* Top inset for notches / safe areas. (Electron chrome/titlebars are handled in main process.) */
-  --app-top-inset: env(safe-area-inset-top, 0px);
-  --app-shell-height: calc((var(--app-viewport-height) - var(--app-top-inset)) / var(--app-scale));
+  --app-shell-height: calc(100vh / var(--app-scale));
   --workspace-shell-height: calc(var(--app-shell-height) - var(--ribbon-height));
   --blur-soft: 12px;
   --blur-strong: 24px;
@@ -54,12 +50,6 @@
   background: radial-gradient(circle at 15% -10%, var(--gradient-1), transparent 40%),
               radial-gradient(circle at 80% 0%, var(--gradient-2), transparent 45%),
               var(--bg);
-}
-
-@supports (height: 100dvh) {
-  :root {
-    --app-viewport-height: 100dvh;
-  }
 }
 
 html,
@@ -112,8 +102,9 @@ body.panel-drop-active iframe {
   min-height: var(--app-shell-height);
   height: var(--app-shell-height);
   width: calc(100% / var(--app-scale));
-  transform: scale(var(--app-scale));
-  transform-origin: top left;
+  /* Use zoom instead of transform so fixed-position elements (the ribbon) stay anchored
+     to the viewport and don't vanish/shift when the UI scale changes. */
+  zoom: var(--app-scale);
 }
 
 #workspace-shell {
@@ -508,11 +499,11 @@ body.panel-drop-active iframe {
 
 #app-ribbon {
   position: fixed;
-  top: var(--app-top-inset);
+  top: 0;
   left: 0;
   right: 0;
   height: auto;
-  /* Let content define height; --ribbon-height is maintained by JS for layout math. */
+  min-height: var(--ribbon-height);
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -529,7 +520,7 @@ body.panel-drop-active iframe {
 
 #app-ribbon-separator {
   position: fixed;
-  top: calc(var(--app-top-inset) + var(--ribbon-height));
+  top: var(--ribbon-height);
   left: 0;
   right: 0;
   height: 10px;

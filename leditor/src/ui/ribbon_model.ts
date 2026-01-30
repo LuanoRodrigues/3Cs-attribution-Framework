@@ -686,6 +686,75 @@ export const homeTab = {
                 "B": "inOverflow",
                 "C": "inFlyout"
               }
+            },
+            {
+              "controlId": "font.changeCase",
+              "label": "Change Case",
+              "type": "dropdown",
+              "size": "small",
+              "iconKey": "icon.changeCase",
+              "menu": [
+                {
+                  "controlId": "font.case.sentence",
+                  "label": "Sentence case",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "font.case.set",
+                    "payloadSchema": {
+                      "mode": "sentence"
+                    }
+                  }
+                },
+                {
+                  "controlId": "font.case.lower",
+                  "label": "lowercase",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "font.case.set",
+                    "payloadSchema": {
+                      "mode": "lower"
+                    }
+                  }
+                },
+                {
+                  "controlId": "font.case.upper",
+                  "label": "UPPERCASE",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "font.case.set",
+                    "payloadSchema": {
+                      "mode": "upper"
+                    }
+                  }
+                },
+                {
+                  "controlId": "font.case.title",
+                  "label": "Capitalize Each Word",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "font.case.set",
+                    "payloadSchema": {
+                      "mode": "title"
+                    }
+                  }
+                },
+                {
+                  "controlId": "font.case.toggle",
+                  "label": "tOGGLE cASE",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "font.case.set",
+                    "payloadSchema": {
+                      "mode": "toggle"
+                    }
+                  }
+                }
+              ],
+              "collapse": {
+                "A": "visible",
+                "B": "inOverflow",
+                "C": "inFlyout"
+              }
             }
           ]
         },
@@ -1063,78 +1132,6 @@ export const homeTab = {
               "command": {
                 "id": "font.clearFormatting"
               },
-              "collapse": {
-                "A": "visible",
-                "B": "inOverflow",
-                "C": "inFlyout"
-              }
-            },
-            {
-              "controlId": "font.changeCase",
-              "label": "Change Case",
-              "type": "dropdown",
-              "size": "small",
-              "iconKey": "icon.changeCase",
-              "command": {
-                "id": "font.case.openMenu"
-              },
-              "menu": [
-                {
-                  "controlId": "font.case.sentence",
-                  "label": "Sentence case",
-                  "type": "menuItem",
-                  "command": {
-                    "id": "font.case.set",
-                    "payloadSchema": {
-                      "mode": "sentence"
-                    }
-                  }
-                },
-                {
-                  "controlId": "font.case.lower",
-                  "label": "lowercase",
-                  "type": "menuItem",
-                  "command": {
-                    "id": "font.case.set",
-                    "payloadSchema": {
-                      "mode": "lower"
-                    }
-                  }
-                },
-                {
-                  "controlId": "font.case.upper",
-                  "label": "UPPERCASE",
-                  "type": "menuItem",
-                  "command": {
-                    "id": "font.case.set",
-                    "payloadSchema": {
-                      "mode": "upper"
-                    }
-                  }
-                },
-                {
-                  "controlId": "font.case.title",
-                  "label": "Capitalize Each Word",
-                  "type": "menuItem",
-                  "command": {
-                    "id": "font.case.set",
-                    "payloadSchema": {
-                      "mode": "title"
-                    }
-                  }
-                },
-                {
-                  "controlId": "font.case.toggle",
-                  "label": "tOGGLE cASE",
-                  "type": "menuItem",
-                  "command": {
-                    "id": "font.case.set",
-                    "payloadSchema": {
-                      "mode": "toggle"
-                    }
-                  }
-                }
-              ],
               "collapse": {
                 "A": "visible",
                 "B": "inOverflow",
@@ -2733,7 +2730,7 @@ export const insertTab = {
       "dialogLauncher": null,
       "clusters": [
         {
-          "clusterId": "links.primary",
+          "clusterId": "links.primary.row1",
           "layout": "row",
           "controls": [
             {
@@ -2822,7 +2819,13 @@ export const insertTab = {
                 "C": "inFlyout"
               },
               "priority": 90
-            },
+            }
+          ]
+        },
+        {
+          "clusterId": "links.primary.row2",
+          "layout": "row",
+          "controls": [
             {
               "controlId": "links.bookmark",
               "label": "Bookmark",
@@ -2902,7 +2905,7 @@ export const insertTab = {
       "dialogLauncher": null,
       "clusters": [
         {
-          "clusterId": "symbols.primary",
+          "clusterId": "symbols.primary.row1",
           "layout": "row",
           "controls": [
             {
@@ -3037,7 +3040,13 @@ export const insertTab = {
                 "C": "inFlyout"
               },
               "priority": 80
-            },
+            }
+          ]
+        },
+        {
+          "clusterId": "symbols.primary.row2",
+          "layout": "row",
+          "controls": [
             {
               "controlId": "symbols.emoji",
               "label": "Emoji",
@@ -3696,7 +3705,7 @@ export const referencesTab = {
       },
       "clusters": [
         {
-          "clusterId": "references.footnotes.primary",
+          "clusterId": "references.footnotes.row1",
           "layout": "grid",
           "controls": [
             {
@@ -3741,6 +3750,12 @@ export const referencesTab = {
                 }
               }
             },
+          ]
+        },
+        {
+          "clusterId": "references.footnotes.row2",
+          "layout": "grid",
+          "controls": [
             {
               "controlId": "footnotes.nextFootnote",
               "label": "Next Footnote",
@@ -3937,7 +3952,7 @@ export const referencesTab = {
       },
       "clusters": [
         {
-          "clusterId": "references.citationsBibliography.primary",
+          "clusterId": "references.citationsBibliography.row1",
           "layout": "row",
           "controls": [
             {
@@ -3984,28 +3999,6 @@ export const referencesTab = {
                 },
                 "B": {
                   "mode": "full"
-                },
-                "C": {
-                  "mode": "inGroupFlyout"
-                }
-              }
-            },
-            {
-              "controlId": "cite.manageSources",
-              "label": "Update",
-              "type": "button",
-              "size": "medium",
-              "iconKey": "icon.manageSources",
-              "command": {
-                "id": "citation.sources.update.openDialog"
-              },
-              "collapse": {
-                "A": {
-                  "mode": "full"
-                },
-                "B": {
-                  "mode": "inMenuOf",
-                  "targetId": "cite.insertCitation"
                 },
                 "C": {
                   "mode": "inGroupFlyout"
@@ -4153,6 +4146,34 @@ export const referencesTab = {
                 }
               }
             },
+          ]
+        },
+        {
+          "clusterId": "references.citationsBibliography.row2",
+          "layout": "row",
+          "controls": [
+            {
+              "controlId": "cite.manageSources",
+              "label": "Update",
+              "type": "button",
+              "size": "medium",
+              "iconKey": "icon.manageSources",
+              "command": {
+                "id": "citation.sources.update.openDialog"
+              },
+              "collapse": {
+                "A": {
+                  "mode": "full"
+                },
+                "B": {
+                  "mode": "inMenuOf",
+                  "targetId": "cite.insertCitation"
+                },
+                "C": {
+                  "mode": "inGroupFlyout"
+                }
+              }
+            },
             {
               "controlId": "cite.citeKey",
               "label": "Citekey",
@@ -4262,7 +4283,7 @@ export const referencesTab = {
       "priority": 50,
       "clusters": [
         {
-          "clusterId": "references.index.primary",
+          "clusterId": "references.index.row1",
           "layout": "row",
           "controls": [
             {
@@ -4307,6 +4328,12 @@ export const referencesTab = {
                 }
               }
             },
+          ]
+        },
+        {
+          "clusterId": "references.index.row2",
+          "layout": "row",
+          "controls": [
             {
               "controlId": "index.autoMark",
               "label": "AutoMark",
@@ -4364,7 +4391,7 @@ export const referencesTab = {
       "priority": 40,
       "clusters": [
         {
-          "clusterId": "references.tableOfAuthorities.primary",
+          "clusterId": "references.tableOfAuthorities.row1",
           "layout": "row",
           "controls": [
             {
@@ -4409,6 +4436,12 @@ export const referencesTab = {
                 }
               }
             },
+          ]
+        },
+        {
+          "clusterId": "references.tableOfAuthorities.row2",
+          "layout": "row",
+          "controls": [
             {
               "controlId": "toa.updateTable",
               "label": "Update Table",
@@ -4543,8 +4576,8 @@ export const reviewTab = {
       "dialogLauncher": null,
       "clusters": [
         {
-          "clusterId": "proofing.primary",
-          "layout": "column",
+          "clusterId": "proofing.row1",
+          "layout": "row",
           "controls": [
             {
               "controlId": "proofing.spellingGrammar",
@@ -4566,7 +4599,13 @@ export const reviewTab = {
                   "mode": "inGroupFlyout"
                 }
               }
-            },
+            }
+          ]
+        },
+        {
+          "clusterId": "proofing.row2",
+          "layout": "row",
+          "controls": [
             {
               "controlId": "proofing.thesaurus",
               "label": "Thesaurus",

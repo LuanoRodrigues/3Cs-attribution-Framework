@@ -1,5 +1,5 @@
 /**
- * Fixtures borrowed from the legacy Python prototypes:
+ * Fixtures borrowed from earlier Python prototypes:
  * - `annotarium_package/Z_Corpus_analysis/PDF_widget.py` for the PDF payload schema.
  * - `annotarium_package/Z_Corpus_analysis/Coder.py` for the coder statuses and tree hints.
  */

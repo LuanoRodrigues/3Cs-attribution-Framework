@@ -579,6 +579,18 @@ const galleryProviders: Record<string, () => GalleryEntry[]> = {
     { id: "equation_quadratic", label: "Quadratic formula", description: "ax² + bx + c = 0", payload: { templateId: "equation_quadratic" } },
     { id: "equation_matrix", label: "Matrix", description: "3×3 matrix layout", payload: { templateId: "equation_matrix" } },
     { id: "equation_integral", label: "Integral", description: "Integral with bounds", payload: { templateId: "equation_integral" } }
+  ],
+  "paragraph.bullets.gallery": () => [
+    { id: "disc", label: "• Bullets", description: "Filled circle bullets", payload: { styleId: "disc" } },
+    { id: "circle", label: "◦ Hollow bullets", description: "Hollow circle bullets", payload: { styleId: "circle" } },
+    { id: "square", label: "▪ Square bullets", description: "Square bullets", payload: { styleId: "square" } }
+  ],
+  "paragraph.numbering.gallery": () => [
+    { id: "decimal", label: "1. 2. 3.", description: "Decimal numbering", payload: { styleId: "decimal" } },
+    { id: "lower-alpha", label: "a. b. c.", description: "Lowercase letters", payload: { styleId: "lower-alpha" } },
+    { id: "upper-alpha", label: "A. B. C.", description: "Uppercase letters", payload: { styleId: "upper-alpha" } },
+    { id: "lower-roman", label: "i. ii. iii.", description: "Lowercase roman numerals", payload: { styleId: "lower-roman" } },
+    { id: "upper-roman", label: "I. II. III.", description: "Uppercase roman numerals", payload: { styleId: "upper-roman" } }
   ]
 };
 
@@ -1594,9 +1606,6 @@ const buildControl = (
     const input = document.createElement("input");
     input.type = "number";
     input.className = "ribbon-spinner-input";
-    if (control.controlId === "font.size") {
-      input.value = "12";
-    }
     input.placeholder = control.label ?? "";
     spinnerContainer.appendChild(input);
 
@@ -1615,7 +1624,9 @@ const buildControl = (
     };
 
     const presets = control.presets ?? [];
-    if (presets.length) {
+    if (control.controlId === "font.size") {
+      input.value = String(DEFAULT_FONT_SIZE);
+    } else if (presets.length) {
       input.value = String(presets[0]);
     }
     if (presets.length) {
@@ -1659,6 +1670,9 @@ const buildControl = (
       const current = Number.parseFloat(input.value);
       if (Number.isFinite(current)) {
         return current;
+      }
+      if (control.controlId === "font.size") {
+        return DEFAULT_FONT_SIZE;
       }
       return presets[0] ?? 0;
     };
@@ -1790,7 +1804,25 @@ const buildGroup = (group: GroupConfig, ctx: BuildContext, tabId: string): Group
   if (customRowCount !== undefined) {
     const effectiveRowCount = ROWED_TAB_ROW_COUNT_BY_GROUP[group.groupId] ?? customRowCount;
     body.dataset.rowCount = String(effectiveRowCount);
-    const clusters = group.clusters ?? [];
+    const rawClusters = group.clusters ?? [];
+    const clusters =
+      tabId !== "home" &&
+      effectiveRowCount === 2 &&
+      rawClusters.length === 1 &&
+      Array.isArray(rawClusters[0]?.controls) &&
+      rawClusters[0].controls.length >= 4
+        ? (() => {
+            const base = rawClusters[0];
+            const controls = base.controls;
+            const splitAt = Math.ceil(controls.length / 2);
+            const first = controls.slice(0, splitAt);
+            const second = controls.slice(splitAt);
+            return [
+              { ...base, clusterId: `${base.clusterId}.row1`, controls: first },
+              { ...base, clusterId: `${base.clusterId}.row2`, controls: second }
+            ] as ClusterConfig[];
+          })()
+        : rawClusters;
     const minPerRow = ROWED_TAB_MIN_PER_ROW;
     const perRow = Math.min(
       ROWED_TAB_MAX_PER_ROW,
@@ -1980,11 +2012,13 @@ const collapseToStageC = (
   groups: GroupMeta[],
   portal: HTMLElement,
   availableWidth: number
-): void => {
+): { stillOverflows: boolean } => {
   const sorted = [...groups].sort((a, b) => a.priority - b.priority);
-  let total = groups.reduce((sum, g) => sum + g.element.offsetWidth, 0);
+  // Use DOM-measured widths so we collapse the minimum number of groups needed.
+  let total = groups.reduce((sum, g) => sum + g.element.getBoundingClientRect().width, 0);
   for (const meta of sorted) {
     if (total <= availableWidth) break;
+    const before = meta.element.getBoundingClientRect().width;
     const button = document.createElement("button");
     button.type = "button";
     button.className = "ribbon-group-button";
@@ -2032,8 +2066,10 @@ const collapseToStageC = (
     meta.element.appendChild(button);
     meta.element.classList.add("is-collapsed-group");
     meta.element.dataset.collapseStage = "C";
-    total -= meta.element.offsetWidth;
+    const after = meta.element.getBoundingClientRect().width;
+    total -= Math.max(0, before - after);
   }
+  return { stillOverflows: total > availableWidth + 1 };
 };
 
 const auditIconOnlyControls = (panelEl: HTMLElement): void => {
@@ -2067,6 +2103,7 @@ const applyCollapseStages = (
 
   const available = Math.floor(strip.getBoundingClientRect().width);
   const currentStage = (panelEl.dataset.collapseStage as "A" | "B" | "C" | undefined) ?? "A";
+  panelEl.dataset.groupScroll = "disabled";
 
   // Use the current DOM widths as a hysteresis band to avoid oscillation.
   const totalCurrent = groups.reduce((sum, g) => sum + g.element.getBoundingClientRect().width, 0);
@@ -2115,9 +2152,13 @@ const applyCollapseStages = (
     auditIconOnlyControls(panelEl);
     return;
   }
-  collapseToStageC(groups, portal, available);
+  const { stillOverflows } = collapseToStageC(groups, portal, available);
   panelEl.dataset.collapseStage = "C";
   panelEl.dataset.stage = "C";
+  if (stillOverflows) {
+    // Extremely narrow windows: allow horizontal scroll as last resort.
+    panelEl.dataset.groupScroll = "enabled";
+  }
   auditIconOnlyControls(panelEl);
 };
 
@@ -2305,27 +2346,178 @@ export const renderRibbonLayout = (
 
   const controlIconMap = buildControlIconMap();
 
-  const normalizeRibbonControls = (root: HTMLElement): void => {
-    const controls = root.querySelectorAll<HTMLElement>(
-      ".leditor-ribbon-button, .ribbon-dropdown-button, .leditor-split-primary, .leditor-split-caret, " +
-        ".leditor-ribbon-icon-btn, .leditor-ribbon-spinner-step, .ribbon-dialog-launcher-btn"
-    );
-    controls.forEach((control) => {
-      stripNonFluentNodes(control);
-      const hasSvg = Boolean(control.querySelector("svg"));
-      if (!hasSvg) {
-        const iconName = resolveIconForElement(control, controlIconMap);
-        if (iconName) {
-          const icon = createRibbonIcon(iconName);
-          icon.classList.add("ribbon-button-icon");
-          control.prepend(icon);
-          control.classList.add("has-icon");
-        }
+  const CONTROL_SELECTOR =
+    ".leditor-ribbon-button, .ribbon-dropdown-button, .leditor-split-primary, .leditor-split-caret, " +
+    ".leditor-ribbon-icon-btn, .leditor-ribbon-spinner-step, .ribbon-dialog-launcher-btn";
+
+  const isDebugRibbonDomTraceEnabled = (): boolean => {
+    try {
+      const raw = window.location?.search || "";
+      if (raw) {
+        const params = new URLSearchParams(raw);
+        const qp = params.get("ribbonDomTrace");
+        if (qp === "1" || qp === "true") return true;
       }
-      control.classList.toggle("has-icon", Boolean(control.querySelector("svg")));
-    });
+    } catch {
+      // ignore
+    }
+    try {
+      if ((globalThis as any).__leditorDebugRibbonDomTrace === true) return true;
+    } catch {
+      // ignore
+    }
+    try {
+      return window.localStorage?.getItem("leditor.debug.ribbon.dom") === "1";
+    } catch {
+      return false;
+    }
   };
+
+  const installRibbonDomTracer = (root: HTMLElement): (() => void) => {
+    const originals = {
+      appendChild: Node.prototype.appendChild,
+      insertBefore: Node.prototype.insertBefore,
+      removeChild: Node.prototype.removeChild,
+      replaceChild: Node.prototype.replaceChild
+    };
+    const isInRibbon = (node: Node): boolean => {
+      try {
+        return node instanceof Node && root.contains(node as any);
+      } catch {
+        return false;
+      }
+    };
+    const isRibbonIconNode = (node: Node): boolean => {
+      return (
+        node instanceof Element &&
+        (node.matches("svg.leditor-ribbon-icon") ||
+          node.classList.contains("leditor-ribbon-icon") ||
+          node.querySelector?.("svg.leditor-ribbon-icon") != null)
+      );
+    };
+    const isSuspiciousIconFontNode = (node: Node): boolean => {
+      if (!(node instanceof Element)) return false;
+      const tag = node.tagName.toLowerCase();
+      if (tag === "i") return true;
+      if (tag === "span") {
+        const cls = node.className || "";
+        return /\b(ms-Icon|codicon|fabric|icon|iconfont)\b/i.test(String(cls));
+      }
+      return false;
+    };
+    const maybeLog = (op: string, parent: Node, args: any[]) => {
+      const parentInRibbon = isInRibbon(parent);
+      const childNodes = args.filter((a) => a instanceof Node) as Node[];
+      const hasSuspicious =
+        childNodes.some(isRibbonIconNode) ||
+        childNodes.some(isSuspiciousIconFontNode) ||
+        childNodes.some((n) => n instanceof Element && n.matches?.(CONTROL_SELECTOR));
+      if (!parentInRibbon || !hasSuspicious) return;
+      try {
+        const parentEl = parent as any as Element;
+        const control = parentEl.closest?.(CONTROL_SELECTOR) as HTMLElement | null;
+        const controlId = control?.dataset?.controlId ?? parentEl.getAttribute?.("data-control-id") ?? "";
+        console.groupCollapsed(`[RibbonDOMTrace] ${op}`, { controlId });
+        console.log("parent:", parent);
+        console.log(
+          "nodes:",
+          childNodes.map((n) => {
+            if (!(n instanceof Element)) return { kind: "node", nodeType: n.nodeType };
+            return {
+              tag: n.tagName.toLowerCase(),
+              class: n.className,
+              dataIconKey: (n as any).dataset?.iconKey,
+              text: (n.textContent || "").trim().slice(0, 60)
+            };
+          })
+        );
+        console.trace("stack");
+        console.groupEnd();
+      } catch {
+        // ignore
+      }
+    };
+
+    (Node.prototype as any).appendChild = function (...args: any[]) {
+      maybeLog("appendChild", this, args);
+      return originals.appendChild.apply(this, args as any);
+    };
+    (Node.prototype as any).insertBefore = function (...args: any[]) {
+      maybeLog("insertBefore", this, args);
+      return originals.insertBefore.apply(this, args as any);
+    };
+    (Node.prototype as any).removeChild = function (...args: any[]) {
+      maybeLog("removeChild", this, args);
+      return originals.removeChild.apply(this, args as any);
+    };
+    (Node.prototype as any).replaceChild = function (...args: any[]) {
+      maybeLog("replaceChild", this, args);
+      return originals.replaceChild.apply(this, args as any);
+    };
+
+    return () => {
+      (Node.prototype as any).appendChild = originals.appendChild;
+      (Node.prototype as any).insertBefore = originals.insertBefore;
+      (Node.prototype as any).removeChild = originals.removeChild;
+      (Node.prototype as any).replaceChild = originals.replaceChild;
+    };
+  };
+
+  const normalizeRibbonControl = (control: HTMLElement): void => {
+    stripNonFluentNodes(control);
+    const hasSvg = Boolean(control.querySelector("svg"));
+    if (!hasSvg) {
+      const iconName = resolveIconForElement(control, controlIconMap);
+      if (iconName) {
+        const icon = createRibbonIcon(iconName);
+        icon.classList.add("ribbon-button-icon");
+        control.prepend(icon);
+        control.classList.add("has-icon");
+      }
+    }
+    control.classList.toggle("has-icon", Boolean(control.querySelector("svg")));
+  };
+
+  const normalizeRibbonControls = (root: HTMLElement): void => {
+    root.querySelectorAll<HTMLElement>(CONTROL_SELECTOR).forEach((control) => normalizeRibbonControl(control));
+  };
+
+  // Run once after mount.
   normalizeRibbonControls(shell);
+
+  // Guard against external DOM/CSS systems injecting icon-font nodes.
+  // If that happens, icons can appear as black "tofu" squares on some platforms.
+  const iconStabilityObserver = new MutationObserver((mutations) => {
+    const touched = new Set<HTMLElement>();
+    for (const m of mutations) {
+      const candidates: HTMLElement[] = [];
+      if (m.target instanceof HTMLElement) candidates.push(m.target);
+      m.addedNodes.forEach((node) => {
+        if (node instanceof HTMLElement) candidates.push(node);
+      });
+      candidates.forEach((node) => {
+        const control = node.matches?.(CONTROL_SELECTOR)
+          ? (node as HTMLElement)
+          : node.closest?.(CONTROL_SELECTOR);
+        if (control) touched.add(control as HTMLElement);
+      });
+    }
+    touched.forEach((control) => normalizeRibbonControl(control));
+  });
+  iconStabilityObserver.observe(shell, { subtree: true, childList: true });
+  host.addEventListener("ribbon-dispose", () => iconStabilityObserver.disconnect(), { once: true });
+
+  // Optional deep tracing to locate the code that mutates ribbon icon DOM.
+  // Enable with one of:
+  // - localStorage.setItem("leditor.debug.ribbon.dom", "1") then reload
+  // - add ?ribbonDomTrace=1 to the URL then reload
+  // - set window.__leditorDebugRibbonDomTrace = true then reload
+  let uninstallRibbonDomTrace: (() => void) | null = null;
+  if (isDebugRibbonDomTraceEnabled()) {
+    console.warn("[RibbonDOMTrace] enabled");
+    uninstallRibbonDomTrace = installRibbonDomTracer(shell);
+    host.addEventListener("ribbon-dispose", () => uninstallRibbonDomTrace?.(), { once: true });
+  }
 
   let activeTab: TabBuildResult | null = null;
   let collapseQueued = false;
@@ -2467,13 +2659,23 @@ export const renderRibbonLayout = (
     { once: true }
   );
 
-  // Stabilize collapse: run only on real width changes.
+  // Stabilize collapse: debounce and ignore 1px jitter (GPU/transform rounding can cause oscillation).
+  let collapseDebounce: number | null = null;
+  let pendingWidth = 0;
   const shellObserver = new ResizeObserver((entries) => {
     const entry = entries[0];
     const width = Math.floor(entry?.contentRect?.width ?? shell.getBoundingClientRect().width);
-    if (!width || width === lastShellWidth) return;
-    lastShellWidth = width;
-    requestCollapse();
+    if (!width) return;
+    if (Math.abs(width - lastShellWidth) < 2) return;
+    pendingWidth = width;
+    if (collapseDebounce) window.clearTimeout(collapseDebounce);
+    collapseDebounce = window.setTimeout(() => {
+      collapseDebounce = null;
+      if (pendingWidth && Math.abs(pendingWidth - lastShellWidth) >= 2) {
+        lastShellWidth = pendingWidth;
+        requestCollapse();
+      }
+    }, 120);
   });
   shellObserver.observe(shell);
   host.addEventListener("ribbon-dispose", () => shellObserver.disconnect(), { once: true });

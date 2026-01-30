@@ -38,7 +38,7 @@ html.ribbon-panels-v2 body {
 }
 
 html.ribbon-panels-v2 #app-shell {
-  padding-top: calc(var(--app-top-inset) + var(--ribbon-height));
+  padding-top: var(--ribbon-height);
 }
 
 html.ribbon-panels-v2 #workspace-shell {
@@ -46,6 +46,8 @@ html.ribbon-panels-v2 #workspace-shell {
 }
 
 html.ribbon-panels-v2 header#app-ribbon {
+  height: var(--ribbon-height);
+  min-height: var(--ribbon-height);
   padding: var(--ribbon-padY) var(--ribbon-padX);
   display: flex;
   flex-direction: column;
@@ -59,7 +61,7 @@ html.ribbon-panels-v2 header#app-ribbon {
 }
 
 html.ribbon-panels-v2 #app-ribbon-separator {
-  top: calc(var(--app-top-inset) + var(--ribbon-height));
+  top: var(--ribbon-height);
   height: 6px;
   background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 70%, transparent), transparent);
   box-shadow: none;

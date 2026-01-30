@@ -273,15 +273,76 @@
 
 /* Font group: keep the first-row selectors compact (Style, Font family, Font size, +/-). */
 .leditor-ribbon-host[data-ribbon-density="compact3"] .ribbon-group-font [data-control-id="font.style"].ribbon-dropdown--big {
-  width: 124px;
+  width: max-content;
+  max-width: 128px;
 }
 
 .leditor-ribbon-host[data-ribbon-density="compact3"] .ribbon-group-font [data-control-id="font.family"].leditor-ribbon-combobox {
-  min-width: 132px;
+  min-width: 0;
+  width: 90px;
+  padding: 0 2px;
+  gap: 2px;
 }
 
 .leditor-ribbon-host[data-ribbon-density="compact3"] .ribbon-group-font [data-control-id="font.size"].ribbon-spinner-dropdown input {
-  width: 46px;
+  width: 26px;
+  padding: 0;
+  text-align: center;
+}
+
+/* Remove native number spinners (they reserve space + look inconsistent in Electron). */
+.leditor-ribbon-host[data-ribbon-density="compact3"] .ribbon-group-font [data-control-id="font.size"].ribbon-spinner-dropdown input::-webkit-outer-spin-button,
+.leditor-ribbon-host[data-ribbon-density="compact3"] .ribbon-group-font [data-control-id="font.size"].ribbon-spinner-dropdown input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.leditor-ribbon-host[data-ribbon-density="compact3"] .ribbon-group-font [data-control-id="font.size"].ribbon-spinner-dropdown {
+  width: max-content;
+  grid-template-columns: 26px 16px;
+}
+
+.leditor-ribbon-host[data-ribbon-density="compact3"] .ribbon-group-font [data-control-id="font.size"].ribbon-spinner-dropdown .ribbon-spinner-caret {
+  width: 16px;
+}
+
+/* Tighten combobox caret hitbox in compact font row. */
+.leditor-ribbon-host[data-ribbon-density="compact3"] .ribbon-group-font [data-control-id="font.family"] .leditor-ribbon-combobox-caret {
+  width: 16px;
+  height: 100%;
+}
+
+/* These first-row inputs don't need leading icons. */
+.leditor-ribbon-host[data-ribbon-density="compact3"] .ribbon-group-font [data-control-id="font.style"] .ribbon-button-icon {
+  display: none;
+}
+
+.leditor-ribbon-host[data-ribbon-density="compact3"] .ribbon-group-font [data-control-id="font.style"].ribbon-dropdown--big {
+  gap: 6px;
+  padding: 2px 6px;
+}
+
+.leditor-ribbon-host[data-ribbon-density="compact3"] .ribbon-group-font [data-control-id="font.style"] .ribbon-dropdown-title {
+  display: none;
+}
+
+.leditor-ribbon-host[data-ribbon-density="compact3"] .ribbon-group-font [data-control-id="font.style"] .ribbon-dropdown-text {
+  flex-direction: row;
+  gap: 6px;
+  align-items: center;
+}
+
+.leditor-ribbon-host[data-ribbon-density="compact3"] .ribbon-group-font [data-control-id="font.style"] .ribbon-dropdown-value {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.leditor-ribbon-host[data-ribbon-density="compact3"] .ribbon-group-font [data-control-id="font.style"] .ribbon-dropdown-chevron,
+.leditor-ribbon-host[data-ribbon-density="compact3"] .ribbon-group-font [data-control-id="font.family"] .leditor-ribbon-combobox-caret svg,
+.leditor-ribbon-host[data-ribbon-density="compact3"] .ribbon-group-font [data-control-id="font.size"] .ribbon-spinner-caret svg {
+  width: 12px;
+  height: 12px;
 }
 
 /* =========================
@@ -297,10 +358,14 @@
 
 .leditor-ribbon-host[data-ribbon-fixed-height="true"] .leditor-ribbon-groups {
   height: 100%;
-  overflow-x: auto;
+  overflow-x: hidden;
   overflow-y: hidden;
   scrollbar-gutter: stable;
   padding-bottom: 4px;
+}
+
+.leditor-ribbon-panel[data-group-scroll="enabled"] .leditor-ribbon-groups {
+  overflow-x: auto;
 }
 
 .leditor-ribbon-groups > .leditor-ribbon-group {
@@ -382,7 +447,16 @@
 
 .leditor-ribbon-host[data-ribbon-fixed-height="true"] .ribbon-group-styles .home-quick-style-shell {
   /* Ensure the 3-up card gallery fits within the 2-row ribbon height. */
-  height: calc(var(--r-row-h) * 2 + var(--r-ctl-gap));
+  height: calc(var(--r-row-h) * 2 - 26px);
+  max-height: 100%;
+  overflow: hidden;
+}
+
+/* Editing: keep Replace label extra compact (the icon is the primary affordance). */
+.leditor-ribbon-host[data-ribbon-density="compact3"] .ribbon-group-editing [data-control-id="editing.replace"] .ribbon-button-label {
+  font-size: calc(var(--r-font-size-sm) * 0.9);
+  letter-spacing: 0;
+  line-height: 1;
 }
 
 .leditor-ribbon-group-footer {
@@ -585,6 +659,10 @@
 
 .leditor-ribbon .leditor-split-primary,
 .leditor-ribbon .leditor-split-caret {
+  height: var(--r-ctl-h-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 0;
 }
 
@@ -639,6 +717,20 @@
   gap: var(--r-ctl-gap);
   cursor: pointer;
   user-select: none;
+}
+
+.leditor-ribbon .ribbon-button-label {
+  font-size: var(--r-font-size-sm);
+  line-height: 1.05;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+
+.leditor-ribbon-host[data-ribbon-density="compact3"] .ribbon-button-label {
+  font-size: calc(var(--r-font-size-sm) * 0.9);
+  max-width: 96px;
 }
 
 .leditor-ribbon .leditor-ribbon-button .leditor-ribbon-icon,

@@ -99,12 +99,14 @@ let lastRibbonHeight = -1;
 
 function syncRibbonHeight(): void {
   if (!ribbonElement) return;
+  // In ribbon-panels-v2, --ribbon-height is a fixed token set in CSS.
+  // Avoid measuring/writing it to prevent layout feedback loops.
+  if (document.documentElement.classList.contains("ribbon-panels-v2")) {
+    return;
+  }
   // Reading layout is expensive; do it at most once per frame (debounced below)
   // and only write the CSS var when it actually changes.
-  // Use a measurement that doesn't depend on CSS vars we also drive (avoid feedback loops).
-  // If the ribbon is temporarily hidden/reflowing, don't overwrite with a zero height.
-  const rectHeight = Math.round(ribbonElement.getBoundingClientRect().height);
-  const height = rectHeight > 0 ? rectHeight : ribbonElement.scrollHeight;
+  const height = ribbonElement.offsetHeight;
   if (!height) return;
   if (height === lastRibbonHeight) return;
   lastRibbonHeight = height;
@@ -307,32 +309,70 @@ let analyseAudioController: ReturnType<typeof initAnalyseAudioController> | null
 
 let lastRoundWideLayout = false;
 const setRatiosForRound = (action: AnalyseAction) => {
+  const isCorpus = action === "analyse/open_corpus";
+  const isR1 = action === "analyse/open_sections_r1";
   const isR2 = action === "analyse/open_sections_r2";
   const isR3 = action === "analyse/open_sections_r3";
+
+  // Keep the current layout while opening the PDF viewer (it temporarily takes over a panel).
+  if (action === "analyse/open_pdf_viewer" && lastRoundWideLayout) {
+    return;
+  }
+
+  if (isCorpus || isR1) {
+    // Panel 1: filters (1/6)
+    // Panel 2: cards (3/6) centered
+    panelGrid.setRoundLayout(false);
+    panelGrid.setLayoutHint(null);
+    panelGrid.setCollapsed("panel1", false);
+    panelGrid.setCollapsed("panel2", false);
+    panelGrid.setCollapsed("panel3", true);
+    panelGrid.setCollapsed("panel4", true);
+    panelGrid.setRatios({ panel1: 1, panel2: 3, panel3: 0, panel4: 0 });
+    panelGrid.setLayoutHint({ mode: "centeredSingle", panelId: "panel2", maxWidthPx: 1180 });
+    lastRoundWideLayout = false;
+    return;
+  }
+
   if (isR2 || isR3) {
-    panelGrid.setRoundLayout(true);
-    panelGrid.setRatios({
-      panel1: 1,
-      panel2: 1,
-      panel3: 2,
-      panel4: 3
-    });
+    // Round 2/3:
+    // Panel 1: filters (1/6)
+    // Panel 2: cards (1/6)
+    // Panel 3: sections (2/6)
+    // Panel 4: coder (2/6)
+    panelGrid.setRoundLayout(false);
+    panelGrid.setLayoutHint(null);
+    panelGrid.setCollapsed("panel1", false);
+    panelGrid.setCollapsed("panel2", false);
+    panelGrid.setCollapsed("panel3", false);
+    panelGrid.setCollapsed("panel4", false);
+    panelGrid.setRatios({ panel1: 1, panel2: 1, panel3: 2, panel4: 2 });
     lastRoundWideLayout = true;
     return;
   }
-  if (action === "analyse/open_pdf_viewer" && lastRoundWideLayout) {
-    // keep current wide layout while PDF viewer is in use
-    return;
-  }
+
   lastRoundWideLayout = false;
   panelGrid.setRoundLayout(false);
+  panelGrid.setLayoutHint(null);
   panelGrid.setRatios({ ...DEFAULT_PANEL_PARTS });
+};
+
+const ensureAnalyseCoderPanel = (): void => {
+  try {
+    panelTools.ensureToolHost("panel4", { replaceContent: true });
+    panelTools.spawnTool("coder-panel", { panelId: "panel4" });
+  } catch (error) {
+    console.warn("[analyse] unable to ensure coder panel", error);
+  }
 };
 
 const emitAnalyseAction = (action: AnalyseAction, payload?: Record<string, unknown>) => {
   const targetPanel = action === "analyse/open_pdf_viewer" ? 4 : 2;
   panelGrid.ensurePanelVisible(targetPanel);
   setRatiosForRound(action);
+  if (action === "analyse/open_sections_r2" || action === "analyse/open_sections_r3") {
+    ensureAnalyseCoderPanel();
+  }
   analyseAudioController?.handleAction(action, payload);
   analyseWorkspace?.route(action, payload);
   dispatchAnalyseCommand("analyse", action, payload).catch((err) => console.error(err));
@@ -416,7 +456,7 @@ document.addEventListener("analyse-open-pdf", (event) => {
     route: detail.route,
     runId: detail.runId,
     page,
-    // Keep legacy `source` but also include `pdf_path` so downstream renderers can reliably find it.
+    // Keep `source` but also include `pdf_path` so downstream renderers can reliably find it.
     source: resolvedPdfPath,
     pdf_path: resolvedPdfPath,
     raw: payloadRaw,
@@ -1578,7 +1618,7 @@ function renderPdfTabs(panel: HTMLElement, payload: PdfTestPayload, rawPayload?:
     applyPayloadToViewer(iframe, payload);
   }
 
-  // Raw data view (legacy-style preview HTML)
+  // Raw data view (preview HTML)
   const rawView = views["raw"];
   if (rawView) {
     rawView.style.overflow = "auto";
@@ -1997,6 +2037,8 @@ function ensureSectionTool(tabId: TabId, options?: { replace?: boolean }): void 
   if (!config) {
     return;
   }
+  // Reset layout hint unless explicitly set per-tab below.
+  panelGrid.setLayoutHint(null);
   if (options?.replace) {
     panelTools.clearPanelTools("panel2");
     Object.entries(sectionToolIds).forEach(([key, toolId]) => {
@@ -2008,9 +2050,28 @@ function ensureSectionTool(tabId: TabId, options?: { replace?: boolean }): void 
   }
   if (tabId === "write") {
     console.info("[WRITE][NAV] clicked Write tab; ensuring editor in panel 2");
+    // Use the full workspace for writing by collapsing the other panels.
+    panelGrid.setRoundLayout(false);
+    panelGrid.setLayoutHint(null);
+    panelGrid.setCollapsed("panel1", true);
+    panelGrid.setCollapsed("panel3", true);
+    panelGrid.setCollapsed("panel4", true);
+    panelGrid.setCollapsed("panel2", false);
+    panelGrid.setRatios({ panel1: 0, panel2: 6, panel3: 0, panel4: 0 });
     panelGrid.ensurePanelVisible(2);
     debugLogPanelState(2, "after Write click");
     ensureWriteToolTab();
+  }
+  if (tabId === "code") {
+    // Center the code panel with empty space around.
+    panelGrid.setRoundLayout(false);
+    panelGrid.setCollapsed("panel1", true);
+    panelGrid.setCollapsed("panel3", true);
+    panelGrid.setCollapsed("panel4", true);
+    panelGrid.setCollapsed("panel2", false);
+    panelGrid.setRatios({ panel1: 0, panel2: 3, panel3: 0, panel4: 0 });
+    panelGrid.setLayoutHint({ mode: "centeredSingle", panelId: "panel2", maxWidthPx: 1100 });
+    panelGrid.ensurePanelVisible(2);
   }
   if (tabId === "screen") {
     // Focus screening work into Panels 2–3.

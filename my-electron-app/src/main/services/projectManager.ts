@@ -409,39 +409,28 @@ export class ProjectManager {
     if (manifest.paths.analyse?.activeRunRelativePath) {
       session.analyse.activeRunPath = absolutizeRunPath(analyseDest, manifest.paths.analyse.activeRunRelativePath);
     }
-    const migrated = this.migrateAnalysePaths(session);
-    await this.writeSession(projectRoot, migrated);
-    await this.writeProjectMetadata(projectRoot, migrated);
+    await this.writeSession(projectRoot, session);
+    await this.writeProjectMetadata(projectRoot, session);
   }
 
   private migrateAnalysePaths(session: SessionData): SessionData {
-    if (!session.analyse) return session;
-    const legacy = path.join(process.env.HOME ?? "", "annotarium", "evidence_coding_outputs");
-    const newRoot = getAnalyseRoot();
-    const mapPath = (candidate?: string): string | undefined => {
-      if (!candidate) return candidate;
-      const resolved = path.resolve(candidate);
-      const legacyResolved = path.resolve(legacy);
-      if (resolved === legacyResolved) return newRoot;
-      if (resolved.startsWith(legacyResolved + path.sep)) {
-        const suffix = path.relative(legacyResolved, resolved);
-        return path.join(newRoot, suffix);
-      }
-      return candidate;
-    };
+    if (!session.analyse) {
+      return session;
+    }
+    const analyse = session.analyse as unknown as Record<string, unknown>;
+    const nextAnalyse = { ...session.analyse };
 
-    const next = { ...session, analyse: { ...session.analyse } };
-    next.analyse.baseDir = mapPath(session.analyse.baseDir);
-    if (next.analyse.runs) {
-      next.analyse.runs = next.analyse.runs.map((run) => ({
-        ...run,
-        path: mapPath(run.path) ?? run.path
-      }));
+    const baseDirLegacy = analyse.effectiveDir;
+    if (!nextAnalyse.baseDir && typeof baseDirLegacy === "string" && baseDirLegacy.trim()) {
+      nextAnalyse.baseDir = baseDirLegacy.trim();
     }
-    if (next.analyse.activeRunPath) {
-      next.analyse.activeRunPath = mapPath(next.analyse.activeRunPath);
+
+    const activeRunLegacy = analyse.runPath;
+    if (!nextAnalyse.activeRunPath && typeof activeRunLegacy === "string" && activeRunLegacy.trim()) {
+      nextAnalyse.activeRunPath = activeRunLegacy.trim();
     }
-    return next;
+
+    return { ...session, analyse: nextAnalyse };
   }
 
   private migrateLegacyPanels(session: SessionData): SessionData {

@@ -179,6 +179,9 @@ export const dispatchCommand = (
   payload?: unknown
 ) => {
   window.codexLog?.write(`[RIBBON_COMMAND] ${commandId}`);
+  // Some commands trigger pagination/layout reflow. Preserve the user's scroll position across the
+  // next pagination pass to avoid "scrollbar disappears / cursor jumps to end" reports.
+  (window as any).__leditorPreserveScrollOnNextPagination = true;
   // Ribbon clicks can blur the editor and lose the current caret position.
   // Restore the last recorded selection before running commands so formatting changes don't jump to the end.
   const tiptapEditor = (editorHandle as any)?.getEditor?.();
@@ -197,11 +200,29 @@ export const dispatchCommand = (
     }
   }
   editorHandle.execCommand(commandId, payload);
-  const tiptap = (editorHandle as any)?.getEditor?.();
-  if (tiptap?.commands?.focus) {
-    tiptap.commands.focus();
-  } else if ((editorHandle as any)?.focus) {
-    (editorHandle as any).focus();
+  // Some commands intentionally move focus away from the main ProseMirror editor (e.g. footnotes,
+  // header/footer overlays). For those cases, forcing focus back here will steal the caret and
+  // make typing impossible.
+  const appRoot = document.getElementById("leditor-app");
+  const isOverlayEditing =
+    !!appRoot &&
+    (appRoot.classList.contains("leditor-footnote-editing") ||
+      appRoot.classList.contains("leditor-header-footer-editing"));
+  const isOverlayCommand =
+    commandId === "InsertFootnote" ||
+    commandId === "InsertEndnote" ||
+    commandId === "NextFootnote" ||
+    commandId === "PreviousFootnote" ||
+    commandId === "EditHeader" ||
+    commandId === "EditFooter";
+
+  if (!isOverlayEditing && !isOverlayCommand) {
+    const tiptap = (editorHandle as any)?.getEditor?.();
+    if (tiptap?.commands?.focus) {
+      tiptap.commands.focus();
+    } else if ((editorHandle as any)?.focus) {
+      (editorHandle as any).focus();
+    }
   }
 };
 

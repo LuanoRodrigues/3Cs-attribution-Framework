@@ -6,7 +6,6 @@ import OpenAI from "openai";
 import type { AiSettings } from "./shared/ai.ts";
 
 const REFERENCES_LIBRARY_FILENAME = "references_library.json";
-const REFERENCES_LEGACY_FILENAME = "references.json";
 
 const normalizeError = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 const randomToken = (): string => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
@@ -248,14 +247,20 @@ const buildAgentPrompt = (payload: AgentRequestPayload): { system: string; user:
     throw new Error('agent-request: scope must be "selection" | "document"');
   }
 
+  const hasTargets = Array.isArray(payload.targets) && payload.targets.length > 0;
+  const operationSchemaLines =
+    scope === "selection"
+      ? ['- {"op":"replaceSelection","text":string}']
+      : hasTargets
+        ? ['- {"op":"replaceParagraph","n":number,"text":string}']
+        : ['- {"op":"replaceDocument","text":string}'];
+
   const system = [
     "You are an AI writing assistant embedded in an offline desktop academic editor.",
     "Return STRICT JSON only (no markdown, no backticks, no extra keys).",
     'Schema: {"assistantText": string, "operations": Array<Operation>}.',
     "Operation is one of:",
-    '- {"op":"replaceSelection","text":string}',
-    '- {"op":"replaceParagraph","n":number,"text":string}',
-    '- {"op":"replaceDocument","text":string}',
+    ...operationSchemaLines,
     "assistantText: brief response to the user (what you did / answer).",
     "If the instruction is NOT a request to modify text (e.g. user asks a question), return operations: [] and answer in assistantText.",
     "Never include surrounding quotes in text fields; return raw text."
@@ -870,8 +875,7 @@ const resolveBibliographyDir = (): string => {
         return 0;
       };
       const library = readJsonIfExists(path.join(dir, REFERENCES_LIBRARY_FILENAME));
-      const legacy = readJsonIfExists(path.join(dir, REFERENCES_LEGACY_FILENAME));
-      return Math.max(pickCount(library), pickCount(legacy));
+      return pickCount(library);
     } catch {
       return 0;
     }
@@ -886,7 +890,6 @@ const resolveBibliographyDir = (): string => {
           (name) =>
             name.endsWith(".json") &&
             name !== REFERENCES_LIBRARY_FILENAME &&
-            name !== REFERENCES_LEGACY_FILENAME &&
             !name.startsWith("references.")
         )
         .map((name) => path.join(dir, name))
@@ -945,7 +948,6 @@ const readJsonIfExists = (filePath: string): any | null => {
 const seedReferencesFromDataHubCache = (bibliographyDir: string): void => {
   try {
     const outPath = path.join(bibliographyDir, REFERENCES_LIBRARY_FILENAME);
-    const legacyOutPath = path.join(bibliographyDir, REFERENCES_LEGACY_FILENAME);
 
     const existing = readJsonIfExists(outPath);
     const existingCount =
@@ -1116,7 +1118,6 @@ const seedReferencesFromDataHubCache = (bibliographyDir: string): void => {
     }
 
     fs.writeFileSync(outPath, JSON.stringify(next, null, 2), "utf-8");
-    fs.writeFileSync(legacyOutPath, JSON.stringify(next, null, 2), "utf-8");
     console.info("[leditor][refs] seeded references_library.json", {
       bibliographyDir,
       from: sourcePath,
@@ -1389,15 +1390,29 @@ app.whenReady().then(() => {
         .join("\n");
       const inputText = historyBlock ? `Conversation history:\n${historyBlock}\n\n${user}` : user;
 
-      const response = await client.responses.create(
-        {
+      const createResponse = async (allowTemperature: boolean) => {
+        const body: any = {
           model,
           instructions: system,
-          input: inputText,
-          temperature
-        },
-        { signal: abortController.signal }
-      );
+          input: inputText
+        };
+        if (allowTemperature && typeof temperature === "number") {
+          body.temperature = temperature;
+        }
+        return client.responses.create(body, { signal: abortController.signal });
+      };
+
+      let response: any;
+      try {
+        response = await createResponse(true);
+      } catch (error) {
+        const msg = normalizeError(error);
+        if (msg.includes("Unsupported parameter") && msg.includes("'temperature'")) {
+          response = await createResponse(false);
+        } else {
+          throw error;
+        }
+      }
 
       const raw = String((response as any).output_text ?? "").trim();
       const extractJson = (text: string): any => {
@@ -1434,7 +1449,7 @@ app.whenReady().then(() => {
         | { op: "replaceDocument"; text: string }
       >;
 
-      // Backward compatibility: accept legacy applyText outputs.
+      // Backward compatibility: accept applyText outputs.
       if (operations.length === 0 && applyText) {
         if (payload.scope === "selection") {
           operations.push({ op: "replaceSelection", text: applyText });
@@ -1605,16 +1620,12 @@ app.whenReady().then(() => {
         // ignore
       }
 
-      // Fast path: check references library/legacy files in userData bibliographyDir.
+      // Fast path: check references library in userData bibliographyDir.
       try {
         const bibliographyDir = resolveBibliographyDir();
-        const candidates = [
-          path.join(bibliographyDir, REFERENCES_LIBRARY_FILENAME),
-          path.join(bibliographyDir, REFERENCES_LEGACY_FILENAME)
-        ];
-        for (const candidate of candidates) {
-          const raw = readJsonIfExists(candidate);
-          if (!raw || typeof raw !== "object") continue;
+        const candidate = path.join(bibliographyDir, REFERENCES_LIBRARY_FILENAME);
+        const raw = readJsonIfExists(candidate);
+        if (raw && typeof raw === "object") {
           const itemsByKey = (raw as any).itemsByKey;
           const items = Array.isArray((raw as any).items) ? (raw as any).items : [];
           const entry =

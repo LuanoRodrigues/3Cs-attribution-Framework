@@ -44,7 +44,7 @@ registerPlugin({
       const promise = runAutoImport(args);
       if (!promise) {
         editorHandle.execCommand("ImportDOCX", args);
-        writeLog("legacy import fallback");
+        writeLog("import fallback");
         return;
       }
       promise.then((result) => {
@@ -58,7 +58,7 @@ registerPlugin({
       const promise = runAutoExport(args);
       if (!promise) {
         editorHandle.execCommand("ExportDOCX", args);
-        writeLog("legacy export fallback");
+        writeLog("export fallback");
         return;
       }
       promise.then((result) => {
