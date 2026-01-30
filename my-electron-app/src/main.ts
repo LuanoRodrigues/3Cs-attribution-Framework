@@ -27,6 +27,7 @@ import { createCoderTestTree, createPdfTestPayload } from "./test/testFixtures";
 import { getCoderCacheDir } from "./session/sessionPaths";
 import type { SessionMenuAction } from "./session/sessionTypes";
 import { openSettingsWindow } from "./windows/settingsWindow";
+import { applyDefaultZoomFactor } from "./windows/windowZoom";
 import { WorkerPool } from "./main/jobs/workerPool";
 import { LruCache } from "./main/jobs/lruCache";
 import {
@@ -1126,6 +1127,8 @@ function createWindow(): void {
       additionalArguments: [leditorHostArg]
     }
   });
+
+  applyDefaultZoomFactor(window);
 
   window.once("ready-to-show", () => {
     window.show();

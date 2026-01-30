@@ -53,6 +53,14 @@ class FootnoteNodeView implements FootnoteNodeViewAPI {
     this.root.className = "leditor-footnote";
     this.root.dataset.footnoteId = this.footnoteId;
     this.root.dataset.footnoteKind = String(node.attrs.kind ?? "footnote");
+    const citationId = typeof node.attrs?.citationId === "string" ? node.attrs.citationId.trim() : "";
+    if (citationId) {
+      this.root.dataset.citationId = citationId;
+      this.root.dataset.footnoteSource = "citation";
+    } else {
+      delete this.root.dataset.citationId;
+      this.root.dataset.footnoteSource = "manual";
+    }
 
     this.marker = document.createElement("sup");
     this.marker.className = "leditor-footnote-marker";
@@ -275,7 +283,16 @@ class FootnoteNodeView implements FootnoteNodeViewAPI {
 
   setPlainText(value: string) {
     if (!this.innerEditor) return;
-    const doc = { type: "doc", content: [{ type: "text", text: value }] };
+    const trimmed = typeof value === "string" ? value : "";
+    const doc = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: trimmed.length ? [{ type: "text", text: trimmed }] : []
+        }
+      ]
+    };
     this.syncingFromNode = true;
     this.innerEditor.commands.setContent(doc);
     this.lastInnerContent = JSON.stringify(doc.content);

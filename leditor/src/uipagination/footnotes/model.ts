@@ -5,5 +5,6 @@ export type FootnoteRenderEntry = {
   number: string;
   text: string;
   kind: FootnoteKind;
+  source: "manual" | "citation";
   pageIndex: number;
 };

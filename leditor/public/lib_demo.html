@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LEditor Library Demo</title>
+    <link rel="stylesheet" href="../lib/leditor.global.css" />
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        background: #f6f2e7;
+      }
+      #demo-host {
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="demo-host"></div>
+    <script type="module">
+      import "../lib/leditor.global.mjs";
+
+      const api = globalThis.LEditor;
+      if (!api?.createLeditorApp) {
+        throw new Error("LEditor global API is missing. Run `npm run build:lib` first.");
+      }
+
+      const host = document.getElementById("demo-host");
+      if (!host) throw new Error("Missing #demo-host");
+
+      await api.createLeditorApp({
+        container: host,
+        elementId: "leditor-lib-editor",
+        requireHostContract: false,
+        enableCoderStateImport: false
+      });
+    </script>
+  </body>
+</html>
+

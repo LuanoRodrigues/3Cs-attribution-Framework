@@ -14,10 +14,10 @@ type RibbonHooks = {
   registerAlignment?: (variant: AlignmentVariant, element: HTMLButtonElement) => void;
 };
 
-export const renderRibbon = (host: HTMLElement, editorHandle: EditorHandle): void => {
+export const renderRibbon = (host: HTMLElement, editorHandle: EditorHandle): (() => void) => {
   if (host.dataset.ribbonRendered === "true") {
     console.warn("[Ribbon] renderRibbon called twice; skipping duplicate render.");
-    return;
+    return () => {};
   }
   host.dataset.ribbonRendered = "true";
 
@@ -39,7 +39,7 @@ export const renderRibbon = (host: HTMLElement, editorHandle: EditorHandle): voi
   const stateBus = new RibbonStateBus(editorHandle);
 
   renderRibbonLayout(host, editorHandle, hooks, stateBus, model);
-  watchRibbonSelectionState(stateBus, selectionTargets);
+  const unsubscribeSelection = watchRibbonSelectionState(stateBus, selectionTargets);
 
   const handleFindShortcut = (event: KeyboardEvent) => {
     const key = event.key.toLowerCase();
@@ -49,4 +49,29 @@ export const renderRibbon = (host: HTMLElement, editorHandle: EditorHandle): voi
     }
   };
   document.addEventListener("keydown", handleFindShortcut);
+
+  const dispose = (): void => {
+    try {
+      host.dispatchEvent(new CustomEvent("ribbon-dispose"));
+    } catch {
+      // ignore
+    }
+    try {
+      document.removeEventListener("keydown", handleFindShortcut);
+    } catch {
+      // ignore
+    }
+    try {
+      unsubscribeSelection?.();
+    } catch {
+      // ignore
+    }
+    try {
+      stateBus.dispose();
+    } catch {
+      // ignore
+    }
+    host.dataset.ribbonRendered = "false";
+  };
+  return dispose;
 };

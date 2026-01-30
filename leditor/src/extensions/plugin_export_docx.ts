@@ -8,9 +8,10 @@ import type {
   PageSizeDefinition,
   SectionOptions
 } from "../api/export_docx.ts";
+import { getHostAdapter } from "../host/host_adapter.ts";
 
 const triggerExport = (docJson: object, options?: ExportDocxOptions) => {
-  const handler = window.leditorHost?.exportDOCX;
+  const handler = getHostAdapter()?.exportDOCX;
   if (!handler) {
     return Promise.resolve({
       success: false,

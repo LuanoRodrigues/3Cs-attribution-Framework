@@ -211,6 +211,8 @@ export class VisualiserPage {
   private exportHost: HTMLElement | null;
   private sectionsPlaceholder: string;
   private exportPlaceholder: string;
+  private sidePanelsActive = false;
+  private ribbonTabObserver: MutationObserver | null = null;
   private plotHost: HTMLElement | null = null;
   private slideIndex = 0;
   private readonly totalSlides = DEFAULT_SLIDE_COUNT;
@@ -249,10 +251,10 @@ export class VisualiserPage {
     this.sectionsPlaceholder = this.sectionsHost?.innerHTML || "";
     this.exportPlaceholder = this.exportHost?.innerHTML || "";
     this.installConsoleHook();
-    this.renderSectionsPanel();
-    this.renderExportPanel();
     this.renderCenterPanel();
     this.installGlobalListeners();
+    this.installRibbonTabObserver();
+    this.syncSidePanels();
     this.startHitTestLoop();
     this.installDataHubListener();
     void this.loadVisualiserSchema();
@@ -264,7 +266,48 @@ export class VisualiserPage {
     if (!shell) {
       return null;
     }
-    return shell.querySelector<HTMLElement>(".panel-content");
+    // Target the active pane to avoid clobbering panel chrome/tool hosts.
+    return shell.querySelector<HTMLElement>(".panel-pane.is-active") ?? shell.querySelector<HTMLElement>(".panel-pane");
+  }
+
+  private getActiveRibbonTab(): string {
+    const actions = document.getElementById("app-tab-actions");
+    return String(actions?.dataset.activeTab ?? "");
+  }
+
+  private installRibbonTabObserver(): void {
+    const actions = document.getElementById("app-tab-actions");
+    if (!actions || this.ribbonTabObserver) {
+      return;
+    }
+    this.ribbonTabObserver = new MutationObserver(() => this.syncSidePanels());
+    this.ribbonTabObserver.observe(actions, { attributes: true, attributeFilter: ["data-active-tab"] });
+  }
+
+  private syncSidePanels(): void {
+    const shouldBeActive = this.getActiveRibbonTab() === "visualiser";
+    if (shouldBeActive === this.sidePanelsActive) {
+      return;
+    }
+    this.sidePanelsActive = shouldBeActive;
+
+    if (this.sidePanelsActive) {
+      // Refresh references in case panel chrome re-rendered.
+      this.sectionsHost = VisualiserPage.findPanelContent("panel1");
+      this.exportHost = VisualiserPage.findPanelContent("panel3");
+      this.sectionsPlaceholder = this.sectionsHost?.innerHTML || this.sectionsPlaceholder;
+      this.exportPlaceholder = this.exportHost?.innerHTML || this.exportPlaceholder;
+      this.renderSectionsPanel();
+      this.renderExportPanel();
+      return;
+    }
+
+    if (this.sectionsHost) {
+      this.sectionsHost.innerHTML = this.sectionsPlaceholder;
+    }
+    if (this.exportHost) {
+      this.exportHost.innerHTML = this.exportPlaceholder;
+    }
   }
 
   private renderSectionsPanel(): void {
@@ -1165,6 +1208,10 @@ export class VisualiserPage {
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
       this.resizeObserver = null;
+    }
+    if (this.ribbonTabObserver) {
+      this.ribbonTabObserver.disconnect();
+      this.ribbonTabObserver = null;
     }
     this.restoreConsoleHook();
     this.mount.innerHTML = "";

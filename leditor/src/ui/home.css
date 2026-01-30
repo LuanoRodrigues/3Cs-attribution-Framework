@@ -1,35 +1,120 @@
 /* home.css — Home-only quick style cards */
+.leditor-ribbon-panel[data-tab-id="home"] .home-quick-style-shell {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  /* Make 3 perfectly-square cards visible at once (Word-like), with a nav rail. */
+  --home-quick-style-gap: 6px;
+  /* These used to come from ribbon.css; derive them from canonical ribbon tokens. */
+  --home-row-height: var(--r-row-h);
+  --home-gap-tight: var(--r-ctl-gap);
+  --home-border: 1px solid rgba(15, 23, 42, 0.1);
+  --home-divider: 1px solid rgba(15, 23, 42, 0.08);
+  --home-surface: var(--r-surface);
+  --home-shadow: var(--r-shadow);
+  --home-quick-card: calc(var(--home-row-height) * 2 + var(--home-gap-tight));
+  --home-quick-nav: 40px;
+  width: calc(
+    (var(--home-quick-card) * 3) +
+    (var(--home-quick-style-gap) * 2) +
+    var(--home-quick-nav) +
+    8px
+  );
+  max-width: calc(
+    (var(--home-quick-card) * 3) +
+    (var(--home-quick-style-gap) * 2) +
+    var(--home-quick-nav) +
+    8px
+  );
+}
+
 .leditor-ribbon-panel[data-tab-id="home"] .home-quick-style-gallery {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  grid-auto-rows: minmax(0, 1fr);
-  gap: 6px;
-  width: 100%;
-  max-width: 314px;
-  height: calc(var(--home-row-height) * 2 + var(--home-gap-tight));
-  align-content: stretch;
-  justify-content: stretch;
-  align-self: stretch;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: var(--home-quick-style-gap);
+  width: calc((var(--home-quick-card) * 3) + (var(--home-quick-style-gap) * 2));
+  height: var(--home-quick-card);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
   padding-bottom: var(--home-gap-tight);
+  scrollbar-width: none;
+}
+
+.leditor-ribbon-panel[data-tab-id="home"] .home-quick-style-gallery::-webkit-scrollbar {
+  display: none;
 }
 
 .leditor-ribbon-panel[data-tab-id="home"] .home-quick-style-card {
   border: var(--home-border);
   border-radius: 12px;
   background: var(--home-surface);
-  padding: 6px 8px;
+  padding: 8px 10px;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
   gap: 0.25rem;
-  aspect-ratio: 1 / 1;
-  width: 100%;
-  height: auto;
+  width: var(--home-quick-card);
+  min-width: var(--home-quick-card);
+  flex: 0 0 var(--home-quick-card);
+  height: var(--home-quick-card);
+  scroll-snap-align: start;
   cursor: pointer;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
   align-self: stretch;
   position: relative;
   overflow: hidden;
+}
+
+.leditor-ribbon-panel[data-tab-id="home"] .home-quick-style-card__label {
+  /* Title fills the card. */
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  box-sizing: border-box;
+  font-size: 0.95rem;
+  font-weight: 650;
+  color: #0f172a;
+  text-align: center;
+  line-height: 1.15;
+  white-space: normal;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.leditor-ribbon-panel[data-tab-id="home"] .home-quick-style-nav {
+  width: var(--home-quick-nav);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: stretch;
+  padding-bottom: var(--home-gap-tight);
+}
+
+.leditor-ribbon-panel[data-tab-id="home"] .home-quick-style-nav-btn {
+  all: unset;
+  height: calc(var(--home-quick-card) / 2);
+  border: var(--home-border);
+  border-radius: 10px;
+  background: var(--home-surface);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.leditor-ribbon-panel[data-tab-id="home"] .home-quick-style-nav-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.leditor-ribbon-panel[data-tab-id="home"] .home-quick-style-nav-btn:hover:not(:disabled) {
+  border-color: #94a1c3;
 }
 
 .leditor-ribbon-panel[data-tab-id="home"] .home-quick-style-card__menu {
@@ -42,19 +127,14 @@
 }
 
 .leditor-ribbon-panel[data-tab-id="home"] .leditor-ribbon-group.ribbon-group-styles {
-  width: 314px;
-  max-width: 314px;
+  width: fit-content;
+  max-width: none;
   margin-right: 0;
 }
 
 .leditor-ribbon-panel[data-tab-id="home"] .home-quick-style-card.is-selected {
   border-color: #1d4ed8;
   box-shadow: 0 15px 35px rgba(15, 23, 42, 0.15);
-}
-
-.leditor-ribbon-panel[data-tab-id="home"] .home-quick-style-card__label {
-  font-size: 0.95rem;
-  font-weight: 600;
 }
 
 .leditor-ribbon-panel[data-tab-id="home"] .home-quick-style-card__description {
@@ -73,8 +153,4 @@
   min-width: 120px;
 }
 
-@media (max-width: 900px) {
-  .leditor-ribbon-panel[data-tab-id="home"] .home-quick-style-gallery {
-    grid-template-columns: 1fr;
-  }
-}
+/* Desktop-first: keep a stable 3-up gallery layout. */

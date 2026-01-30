@@ -101,7 +101,11 @@ function syncRibbonHeight(): void {
   if (!ribbonElement) return;
   // Reading layout is expensive; do it at most once per frame (debounced below)
   // and only write the CSS var when it actually changes.
-  const height = ribbonElement.offsetHeight;
+  // Use a measurement that doesn't depend on CSS vars we also drive (avoid feedback loops).
+  // If the ribbon is temporarily hidden/reflowing, don't overwrite with a zero height.
+  const rectHeight = Math.round(ribbonElement.getBoundingClientRect().height);
+  const height = rectHeight > 0 ? rectHeight : ribbonElement.scrollHeight;
+  if (!height) return;
   if (height === lastRibbonHeight) return;
   lastRibbonHeight = height;
   document.documentElement.style.setProperty("--ribbon-height", `${height}px`);
@@ -169,6 +173,16 @@ void readFeatureFlag(FEATURE_FLAG_KEYS.panelsV2, { settings: featureSettings }).
 let lastNonSettingsTab: TabId = "retrieve";
 const panelGrid = new PanelGrid(panelGridContainer, { panelsV2Enabled: true });
 function debugLogPanelState(index: number, marker: string): void {
+  const enabled = (() => {
+    try {
+      return window.localStorage.getItem("debug.panels") === "true";
+    } catch {
+      return false;
+    }
+  })();
+  if (!enabled) {
+    return;
+  }
   const shell = document.querySelector<HTMLElement>(`.panel-shell[data-panel-index="${index}"]`);
   if (!shell) {
     console.warn(`Panel ${index} shell missing for ${marker}`);
@@ -1122,8 +1136,7 @@ function renderRibbonTab(tab: RibbonTab, mount: HTMLElement): void {
     });
 
     if (tab.phase === "screen") {
-      renderScreenStatus(mount);
-      refreshScreenStatus();
+      // No extra status banner for Screen.
     }
   }, 120);
 
@@ -1438,21 +1451,13 @@ function renderScreenStatus(mount: HTMLElement): void {
   if (screenStatusEl) {
     screenStatusEl.remove();
   }
-  screenStatusEl = document.createElement("div");
-  screenStatusEl.className = "screen-tab-status";
-  screenStatusEl.textContent = "Record status unavailable";
-  mount.appendChild(screenStatusEl);
+  screenStatusEl = null;
 }
 
 function refreshScreenStatus(): void {
   if (!screenStatusEl) return;
-  command("screen", "status")
-    .then(updateScreenStatus)
-    .catch(() => {
-      if (screenStatusEl) {
-        screenStatusEl.textContent = "Screen host unavailable";
-      }
-    });
+  // Legacy Python screen host status is not required for the current Screen workflow.
+  screenStatusEl.textContent = "Uses cached Data Hub table. Panel 2: abstract + screen codes + comment. Panel 3: PDF viewer.";
 }
 
 function updateScreenStatus(response?: RibbonCommandResponse): void {
@@ -2007,6 +2012,32 @@ function ensureSectionTool(tabId: TabId, options?: { replace?: boolean }): void 
     debugLogPanelState(2, "after Write click");
     ensureWriteToolTab();
   }
+  if (tabId === "screen") {
+    // Focus screening work into Panels 2–3.
+    panelGrid.setRoundLayout(false);
+    panelGrid.setCollapsed("panel1", true);
+    panelGrid.setCollapsed("panel4", true);
+    panelGrid.setCollapsed("panel2", false);
+    panelGrid.setCollapsed("panel3", false);
+    // Use ratios that satisfy PanelGrid.ensurePanelRatio() minimums while remaining 50/50.
+    panelGrid.setRatios({ panel1: 0, panel2: 3, panel3: 3, panel4: 0 });
+    panelGrid.ensurePanelVisible(2);
+    panelGrid.ensurePanelVisible(3);
+    // Force Panel 3 to be replaced when Screen is selected (Screen tool will load the current row's pdf_path).
+    const panel3 = panelGrid.getPanelContent(3);
+    if (panel3) {
+      panel3.innerHTML = "";
+      const iframe = document.createElement("iframe");
+      iframe.title = "PDF Viewer";
+      iframe.style.width = "100%";
+      iframe.style.height = "100%";
+      iframe.style.border = "0";
+      iframe.style.display = "block";
+      iframe.src = TEST_PDF_VIEWER_URL;
+      panel3.appendChild(iframe);
+      (window as any).__screenPdfViewerIframe = iframe;
+    }
+  }
   const existing = sectionToolIds[tabId];
   if (existing) {
     if (tabId === "retrieve") {
@@ -2074,7 +2105,7 @@ function sectionToolConfig(
     return { toolType: "visualiser" };
   }
   if (tabId === "screen") {
-    return { toolType: "screen-widget" };
+    return { toolType: "screen" };
   }
   if (tabId === "export") {
     return { toolType: "panel-shell", metadata: { title: "Export", description: "Export workspace" } };

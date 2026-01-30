@@ -119,9 +119,8 @@
   This targets common patterns:
   - .leditor-ribbon-tab
   - [role="tab"]
-  - .ribbonTab
 */
-.leditor-ribbon :where(.leditor-ribbon-tab, .ribbonTab, [role="tab"]) {
+.leditor-ribbon :where(.leditor-ribbon-tab, [role="tab"]) {
   height: 30px;
   padding: 0 14px;
   border: 1px solid transparent;
@@ -140,14 +139,14 @@
     color var(--r-d1) var(--r-ease), transform var(--r-d1) var(--r-ease);
 }
 
-.leditor-ribbon :where(.leditor-ribbon-tab, .ribbonTab, [role="tab"]):hover {
+.leditor-ribbon :where(.leditor-ribbon-tab, [role="tab"]):hover {
   background: rgba(255, 255, 255, 0.85);
   border-color: rgba(182, 197, 224, 0.95);
   transform: translateY(-1px);
 }
 
-.leditor-ribbon :where(.leditor-ribbon-tab, .ribbonTab, [role="tab"]).is-selected,
-.leditor-ribbon :where(.leditor-ribbon-tab, .ribbonTab, [role="tab"])[aria-selected="true"] {
+.leditor-ribbon :where(.leditor-ribbon-tab, [role="tab"]).is-selected,
+.leditor-ribbon :where(.leditor-ribbon-tab, [role="tab"])[aria-selected="true"] {
   background: #ffffff;
   border-color: #c7d3ee;
   color: #0f172a;
@@ -155,8 +154,8 @@
 }
 
 /* Optional: subtle accent underline for active tab */
-.leditor-ribbon :where(.leditor-ribbon-tab, .ribbonTab, [role="tab"]).is-selected::after,
-.leditor-ribbon :where(.leditor-ribbon-tab, .ribbonTab, [role="tab"])[aria-selected="true"]::after {
+.leditor-ribbon :where(.leditor-ribbon-tab, [role="tab"]).is-selected::after,
+.leditor-ribbon :where(.leditor-ribbon-tab, [role="tab"])[aria-selected="true"]::after {
   content: "";
   position: absolute;
   height: 3px;
@@ -168,7 +167,7 @@
 }
 
 /* Ensure pseudo underline positions correctly */
-.leditor-ribbon :where(.leditor-ribbon-tab, .ribbonTab, [role="tab"]) {
+.leditor-ribbon :where(.leditor-ribbon-tab, [role="tab"]) {
   position: relative;
 }
 
@@ -176,20 +175,6 @@
    Panel sizing (fixed height mode)
    ========================= */
 .leditor-ribbon-panel {
-  --panel-gap: 12px;
-  --panel-gap-tight: 8px;
-  --panel-row-height: 34px;
-  --panel-group-pad-y: 6px;
-  --panel-group-pad-x: 10px;
-  --panel-group-min: 180px;
-  --home-gap: 12px;
-  --home-gap-tight: 8px;
-  --home-row-height: 34px;
-  --home-border: 1px solid rgba(15, 23, 42, 0.1);
-  --home-divider: 1px solid rgba(15, 23, 42, 0.08);
-  --home-surface: #ffffff;
-  --home-shadow: 0 25px 60px rgba(15, 23, 42, 0.15);
-  font-size: 11px;
   padding: var(--r-panel-pad-y) var(--r-panel-pad-x);
   box-sizing: border-box;
 }
@@ -228,123 +213,75 @@
 }
 
 /* =========================
-   Group layout (Home-like for all tabs)
+   Ribbon density + derived tokens
    ========================= */
-.leditor-ribbon-panel .leditor-ribbon-group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--panel-gap);
-  overflow: visible;
-  min-width: max-content;
-  max-width: none;
-  height: 100%;
-  padding: var(--panel-group-pad-y) var(--panel-group-pad-x);
+.leditor-ribbon-host,
+.leditor-ribbon {
+  --r-density-scale: 1;
+  --r-tab-rows: 2;
+  --r-font-size: calc(var(--r-font-size-base, 12px) * var(--r-density-scale));
+  --r-font-size-sm: calc(var(--r-font-size-sm-base, 11px) * var(--r-density-scale));
+  --r-panel-pad-x: calc(var(--r-panel-pad-x-base, 12px) * var(--r-density-scale));
+  --r-panel-pad-y: calc(var(--r-panel-pad-y-base, 8px) * var(--r-density-scale));
+  --r-group-gap: calc(var(--r-group-gap-base, 10px) * var(--r-density-scale));
+  --r-group-pad: calc(var(--r-group-pad-base, 8px) * var(--r-density-scale));
+  --r-group-min: calc(var(--r-group-min-base, 180px) * var(--r-density-scale));
+  --r-ctl-gap: calc(var(--r-ctl-gap-base, 6px) * var(--r-density-scale));
+  --r-icon: calc(var(--r-icon-base, 18px) * var(--r-density-scale));
+  --r-icon-lg: calc(var(--r-icon-lg-base, 22px) * var(--r-density-scale));
+  /* Approx row height used by home quick-style cards (fits exactly 2 rows in fixed-height ribbon). */
+  --r-row-h: calc((var(--r-panel-height) - (var(--r-group-pad) * 2) - 28px) / var(--r-tab-rows));
 }
 
-.leditor-ribbon-panel .leditor-ribbon-group-body {
-  display: flex;
+.leditor-ribbon-host[data-ribbon-density="compact3"] {
+  --r-density-scale: 0.67;
+}
+
+.leditor-ribbon-host[data-ribbon-density="compact3"] .leditor-ribbon-button--large,
+.leditor-ribbon-host[data-ribbon-density="compact3"] .ribbon-dropdown-button--large {
+  /* 3-row ribbon: large buttons waste vertical space; present them as medium buttons. */
+  height: var(--r-ctl-h-md);
+  padding: 0 8px;
   flex-direction: row;
-  gap: var(--panel-gap);
-  overflow: visible;
-  max-height: none;
-  flex: 1;
-  align-items: center;
-  flex-wrap: nowrap;
 }
 
-.leditor-ribbon-panel .leditor-ribbon-group-body > .ribbon-cluster {
-  overflow: visible;
-  position: static;
-  contain: none;
-  min-width: var(--panel-group-min);
-  max-width: none;
+.leditor-ribbon-host[data-ribbon-density="compact3"] .leditor-ribbon-button--large .leditor-ribbon-icon,
+.leditor-ribbon-host[data-ribbon-density="compact3"] .ribbon-dropdown-button--large .leditor-ribbon-icon {
+  width: var(--r-icon);
+  height: var(--r-icon);
 }
 
-.leditor-ribbon-panel .leditor-ribbon-group-row {
-  display: flex;
-  flex-direction: row;
-  gap: var(--panel-gap-tight);
-  align-items: center;
-  justify-content: flex-start;
-  overflow: visible;
-  height: var(--panel-row-height);
-  min-height: var(--panel-row-height);
+.leditor-ribbon-host[data-ribbon-density="compact3"] .leditor-ribbon-combobox {
+  min-width: 120px;
+  padding: 0 6px;
 }
 
-.leditor-ribbon-panel .leditor-ribbon-group-footer {
-  margin-top: auto;
-  padding-top: 2px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.leditor-ribbon-host[data-ribbon-density="compact3"] .ribbon-dropdown-button {
+  padding: 4px 8px;
+  min-height: 28px;
   gap: 6px;
-  font-size: 10px;
-  line-height: 1;
-  position: relative;
 }
 
-.leditor-ribbon-panel .leditor-ribbon-group-title {
-  text-align: left;
-  flex: 1;
-  min-width: 0;
+.leditor-ribbon-host[data-ribbon-density="compact3"] .leditor-ribbon-combobox {
+  height: 28px;
 }
 
-.leditor-ribbon-panel .ribbon-dialog-launcher-btn {
-  position: static;
-  margin-left: auto;
-  height: 16px;
+.leditor-ribbon-host[data-ribbon-density="compact3"] .leditor-ribbon-combobox-input,
+.leditor-ribbon-host[data-ribbon-density="compact3"] .ribbon-spinner-dropdown input {
+  font-size: calc(12px * 0.67);
 }
 
-@media (max-width: 960px) {
-  .leditor-ribbon-panel .leditor-ribbon-group:nth-child(n + 3) {
-    display: none;
-  }
+/* Font group: keep the first-row selectors compact (Style, Font family, Font size, +/-). */
+.leditor-ribbon-host[data-ribbon-density="compact3"] .ribbon-group-font [data-control-id="font.style"].ribbon-dropdown--big {
+  width: 124px;
 }
 
-@media (max-width: 760px) {
-  .leditor-ribbon-host,
-  .leditor-status-bar {
-    display: none;
-  }
+.leditor-ribbon-host[data-ribbon-density="compact3"] .ribbon-group-font [data-control-id="font.family"].leditor-ribbon-combobox {
+  min-width: 132px;
 }
 
-.leditor-ribbon-home-row {
-  flex-wrap: nowrap;
-  overflow-x: auto;
-}
-
-.leditor-ribbon-home-row .leditor-ribbon-group,
-.leditor-ribbon-home-row .ribbonGroup {
-  flex: 0 0 auto;
-  min-width: 180px;
-}
-
-.leditor-ribbon-home-overflow {
-  display: none;
-  margin-left: var(--r-group-gap);
-  height: 32px;
-  width: 32px;
-  border: 1px dashed var(--r-border-color);
-  border-radius: 3px;
-  background: transparent;
-  color: var(--r-muted);
-  font-size: 1.5rem;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-@media (max-width: 1100px) {
-  .leditor-ribbon-home-overflow {
-    display: inline-flex;
-  }
-  .leditor-ribbon-grid[data-home-rows-expanded="false"]
-    .leditor-ribbon-home-row:not(.home-row-primary) {
-    display: none;
-  }
-  .leditor-ribbon-grid[data-home-rows-expanded="true"] .leditor-ribbon-home-row {
-    display: flex;
-  }
+.leditor-ribbon-host[data-ribbon-density="compact3"] .ribbon-group-font [data-control-id="font.size"].ribbon-spinner-dropdown input {
+  width: 46px;
 }
 
 /* =========================
@@ -362,14 +299,15 @@
   height: 100%;
   overflow-x: auto;
   overflow-y: hidden;
+  scrollbar-gutter: stable;
   padding-bottom: 4px;
 }
 
-.leditor-ribbon .ribbonGroup {
+.leditor-ribbon-groups > .leditor-ribbon-group {
   position: relative;
 }
 
-.leditor-ribbon .ribbonGroup::after {
+.leditor-ribbon-groups > .leditor-ribbon-group::after {
   content: "";
   position: absolute;
   top: var(--r-panel-pad-y);
@@ -379,7 +317,7 @@
   background: rgba(0, 0, 0, 0.10);
 }
 
-.leditor-ribbon .ribbonGroup:last-child::after {
+.leditor-ribbon-groups > .leditor-ribbon-group:last-child::after {
   display: none;
 }
 
@@ -435,6 +373,16 @@
   min-height: 0;
   max-height: 100%;
   overflow-y: hidden;
+}
+
+.leditor-ribbon-host[data-ribbon-fixed-height="true"] .ribbon-group-styles .leditor-ribbon-group-body {
+  /* The home quick-style cards are tall and should not get clipped by the fixed-height body container. */
+  overflow: visible;
+}
+
+.leditor-ribbon-host[data-ribbon-fixed-height="true"] .ribbon-group-styles .home-quick-style-shell {
+  /* Ensure the 3-up card gallery fits within the 2-row ribbon height. */
+  height: calc(var(--r-row-h) * 2 + var(--r-ctl-gap));
 }
 
 .leditor-ribbon-group-footer {
@@ -521,7 +469,6 @@
 .leditor-ribbon .leditor-ribbon-button,
 .leditor-ribbon .leditor-ribbon-icon-btn,
 .leditor-ribbon .ribbon-dropdown-button,
-.leditor-ribbon .leditor-split-button,
 .leditor-ribbon .leditor-split-primary,
 .leditor-ribbon .leditor-split-caret,
 .leditor-ribbon .ribbon-overflow-button,
@@ -547,7 +494,6 @@
 .leditor-ribbon-button:hover,
 .leditor-ribbon-icon-btn:hover,
 .leditor-ribbon .ribbon-dropdown-button:hover,
-.leditor-ribbon .leditor-split-button:hover,
 .leditor-ribbon .leditor-split-primary:hover,
 .leditor-ribbon .leditor-split-caret:hover,
 .leditor-ribbon .ribbon-overflow-button:hover,
@@ -563,7 +509,6 @@
 .leditor-ribbon .leditor-ribbon-button:active,
 .leditor-ribbon .leditor-ribbon-icon-btn:active,
 .leditor-ribbon .ribbon-dropdown-button:active,
-.leditor-ribbon .leditor-split-button:active,
 .leditor-ribbon .leditor-split-primary:active,
 .leditor-ribbon .leditor-split-caret:active,
 .leditor-ribbon .ribbon-overflow-button:active,
@@ -579,7 +524,6 @@
 .leditor-ribbon .leditor-ribbon-button:focus-visible,
 .leditor-ribbon .leditor-ribbon-icon-btn:focus-visible,
 .leditor-ribbon .ribbon-dropdown-button:focus-visible,
-.leditor-ribbon .leditor-split-button:focus-visible,
 .leditor-ribbon .leditor-split-primary:focus-visible,
 .leditor-ribbon .leditor-split-caret:focus-visible,
 .leditor-ribbon .ribbon-overflow-button:focus-visible,
@@ -600,7 +544,7 @@
    ========================= */
 .leditor-ribbon .ribbon-spinner-dropdown {
   display: inline-grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr auto;
   align-items: center;
 }
 
@@ -609,6 +553,61 @@
   background: transparent;
   width: 60px;
   font-size: 12px;
+}
+
+.leditor-ribbon .ribbon-spinner-dropdown .ribbon-spinner-caret {
+  all: unset;
+  width: 26px;
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-left: 1px solid rgba(15, 23, 42, 0.12);
+}
+
+.leditor-ribbon .ribbon-spinner-dropdown .ribbon-spinner-caret:hover {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.leditor-ribbon .ribbon-spinner-dropdown .ribbon-spinner-caret:active {
+  background: rgba(226, 232, 240, 0.7);
+}
+
+/* =========================
+   Split buttons
+   - Keep DOM wrapper for state/collapse, but flatten it out in layout.
+   - The actual "buttons" are the primary + caret, styled to appear as one control.
+   ========================= */
+.leditor-ribbon .leditor-split-button {
+  display: contents;
+}
+
+.leditor-ribbon .leditor-split-primary,
+.leditor-ribbon .leditor-split-caret {
+  border-radius: 0;
+}
+
+.leditor-ribbon .leditor-split-primary {
+  padding: 0 8px;
+  border-top-left-radius: var(--r-ctl-radius);
+  border-bottom-left-radius: var(--r-ctl-radius);
+}
+
+.leditor-ribbon .leditor-split-caret {
+  width: 26px;
+  padding: 0;
+  margin-left: -1px; /* collapse adjacent borders */
+  border-top-right-radius: var(--r-ctl-radius);
+  border-bottom-right-radius: var(--r-ctl-radius);
+}
+
+.leditor-ribbon-host[data-ribbon-density="compact3"] .leditor-split-primary {
+  padding: 0 6px;
+}
+
+.leditor-ribbon-host[data-ribbon-density="compact3"] .leditor-split-caret {
+  width: 22px;
 }
 
 .leditor-ribbon .leditor-ribbon-combobox {
@@ -766,9 +765,7 @@
   box-shadow: none;
 }
 
-.leditor-ribbon-panel .leditor-split-caret {
-  display: none !important;
-}
+/* Split buttons (Bullets/Numbering/etc) must remain interactive; never hide caret in panels. */
 
 .leditor-ribbon-panel button.ribbon-dropdown-button {
   min-width: 34px;
@@ -876,7 +873,8 @@
 
 .leditor-ribbon .ribbon-dropdown-chevron {
   margin-left: auto;
-  font-size: 10px;
+  width: 12px;
+  height: 12px;
   color: #4b5563;
 }
 
@@ -924,7 +922,9 @@
    Galleries / pickers / popups
    ========================= */
 .leditor-ribbon .rgallery {
-  width: 420px;
+  --rgallery-gap: 10px;
+  --rgallery-card-w: 132px;
+  width: 460px;
   background: var(--r-surface);
   border: 1px solid var(--r-border-color);
   border-radius: 6px;
@@ -938,7 +938,7 @@
 .leditor-ribbon .rgallery__nav {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 8px;
 }
 
@@ -965,34 +965,37 @@
   cursor: default;
 }
 
-.leditor-ribbon .rgallery__range {
-  flex: 1;
-  text-align: center;
-  font-size: 12px;
-  color: var(--r-muted);
-}
-
 .leditor-ribbon .rgallery__viewport {
   display: flex;
-  gap: 10px;
-  justify-content: space-between;
+  gap: var(--rgallery-gap);
+  width: calc(var(--rgallery-card-w) * 3 + var(--rgallery-gap) * 2);
+  min-width: calc(var(--rgallery-card-w) * 3 + var(--rgallery-gap) * 2);
+  max-width: calc(var(--rgallery-card-w) * 3 + var(--rgallery-gap) * 2);
+  overflow-x: hidden; /* show exactly 3 cards; arrows scroll programmatically */
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  padding-bottom: 4px;
 }
 
 .leditor-ribbon .rgallery__item {
   border: 1px solid var(--r-border-color);
-  border-radius: 3px;
+  border-radius: 6px;
   background: linear-gradient(180deg, #ffffff 0%, #f7f8fb 100%);
-  min-height: 72px;
-  padding: 8px;
+  width: var(--rgallery-card-w);
+  height: var(--rgallery-card-w);
+  min-height: var(--rgallery-card-w);
+  padding: 10px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 4px;
   cursor: pointer;
   align-items: flex-start;
   text-align: left;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
-  flex: 1;
+  flex: 0 0 var(--rgallery-card-w);
+  scroll-snap-align: start;
+  box-sizing: border-box;
 }
 
 .leditor-ribbon .rgallery__item:hover {
@@ -1019,6 +1022,113 @@
   color: var(--r-muted);
   text-align: center;
   font-size: 12px;
+}
+
+/* =========================
+   Menus
+   ========================= */
+.leditor-ribbon .leditor-menu {
+  display: none;
+  min-width: 220px;
+  background: var(--r-surface);
+  border: 1px solid var(--r-border-color);
+  border-radius: 8px;
+  box-shadow: var(--r-shadow);
+  padding: 6px 0;
+}
+
+.leditor-ribbon .leditor-menu-item {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 8px 12px;
+  cursor: pointer;
+  font: inherit;
+  color: var(--r-text);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+}
+
+.leditor-ribbon .leditor-menu-item:hover:not(:disabled),
+.leditor-ribbon .leditor-menu-item:focus-visible:not(:disabled) {
+  background: var(--r-ctl-bg-hover);
+  outline: none;
+}
+
+.leditor-ribbon .leditor-menu-item:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.leditor-ribbon .leditor-menu-separator {
+  height: 1px;
+  background: rgba(0, 0, 0, 0.08);
+  margin: 6px 0;
+}
+
+.leditor-ribbon .leditor-menu-item-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--r-text);
+}
+
+.leditor-ribbon .leditor-menu-item-description {
+  font-size: 11px;
+  color: var(--r-muted);
+}
+
+.leditor-ribbon .leditor-menu-item--style-preview,
+.leditor-ribbon .leditor-menu-item--font-preview {
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.leditor-ribbon .leditor-menu-item__label {
+  font-size: 12px;
+  color: var(--r-text);
+}
+
+.leditor-ribbon .leditor-menu-item__sample {
+  font-size: 12px;
+  color: var(--r-muted);
+  white-space: nowrap;
+}
+
+.leditor-ribbon .leditor-menu-item--style-preview[data-preview-value="title"] .leditor-menu-item__sample,
+.leditor-ribbon .leditor-menu-item--style-preview[data-preview-value="heading1"] .leditor-menu-item__sample {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.leditor-ribbon .leditor-menu-item--style-preview[data-preview-value="subtitle"] .leditor-menu-item__sample,
+.leditor-ribbon .leditor-menu-item--style-preview[data-preview-value="heading2"] .leditor-menu-item__sample {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.leditor-ribbon .leditor-menu-item--style-preview[data-preview-value="heading3"] .leditor-menu-item__sample {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.leditor-ribbon .leditor-menu-item--style-preview[data-preview-value="heading4"] .leditor-menu-item__sample {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.leditor-ribbon .leditor-menu-item--style-preview[data-preview-value="heading5"] .leditor-menu-item__sample,
+.leditor-ribbon .leditor-menu-item--style-preview[data-preview-value="heading6"] .leditor-menu-item__sample {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.leditor-ribbon .leditor-menu-item--style-preview[data-preview-value="blockquote"] .leditor-menu-item__sample {
+  font-style: italic;
 }
 
 .leditor-ribbon .leditor-menu-section-header {
@@ -1088,6 +1198,8 @@
   padding: 2px 6px;
   gap: 6px;
   background: var(--r-ctl-bg);
+  border: 1px solid var(--r-border-color);
+  border-radius: 4px;
 }
 
 .leditor-ribbon-combobox-input {
@@ -1098,6 +1210,28 @@
   width: 110px;
   background: transparent;
   color: var(--r-text);
+}
+
+.leditor-ribbon-combobox-caret {
+  border: 0;
+  background: transparent;
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: var(--r-muted);
+  cursor: pointer;
+}
+
+.leditor-ribbon-combobox-caret:hover {
+  background: var(--r-ctl-bg-hover);
+  color: var(--r-text);
+}
+
+.leditor-ribbon .leditor-menu-item--font-preview .leditor-menu-item__sample {
+  color: var(--r-muted);
 }
 
 .leditor-ribbon-combobox-input::placeholder {
@@ -1363,6 +1497,7 @@
   gap: 6px;
   padding: 4px 6px;
   background: var(--r-ctl-bg);
+  height: var(--r-ctl-h-md);
 }
 
 .leditor-ribbon .ribbon-spinner-dropdown .leditor-ribbon-spinner {

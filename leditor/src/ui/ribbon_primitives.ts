@@ -61,17 +61,14 @@ export class RibbonGroup {
   constructor(label: string | undefined, controls: HTMLElement[]) {
     this.element = document.createElement("div");
     this.element.className = "leditor-ribbon-group";
-    this.element.classList.add("ribbonGroup");
     if (label) {
       const labelEl = document.createElement("div");
       labelEl.className = "leditor-ribbon-group-label";
-      labelEl.classList.add("ribbonGroup__label");
       labelEl.textContent = label;
       this.element.appendChild(labelEl);
     }
     const body = document.createElement("div");
     body.className = "leditor-ribbon-group-body";
-    body.classList.add("ribbonGroup__body");
     body.setAttribute("role", "toolbar");
     body.setAttribute("aria-label", label ? `${label} controls` : "Ribbon group controls");
     const getFocusableControls = (): HTMLElement[] =>
@@ -112,7 +109,6 @@ export class RibbonTabPanel {
   constructor(id: string, content: HTMLElement) {
     this.element = content;
     this.element.classList.add("leditor-ribbon-panel");
-    this.element.classList.add("ribbonPanel");
     this.element.id = this.element.id || `${PANEL_ID_PREFIX}${id}`;
     this.element.setAttribute("role", "tabpanel");
     this.element.setAttribute("aria-labelledby", `${TAB_ID_PREFIX}${id}`);
@@ -129,7 +125,6 @@ export class RibbonTabStrip {
   constructor(private onActivate: (tabId: string) => void) {
     this.element = document.createElement("div");
     this.element.className = "leditor-ribbon-tabs";
-    this.element.classList.add("ribbonTabs");
     this.element.setAttribute("role", "tablist");
     this.element.setAttribute("aria-orientation", "horizontal");
     this.element.setAttribute("aria-label", "Ribbon tabs");

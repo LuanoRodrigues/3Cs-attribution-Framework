@@ -24,7 +24,12 @@ const TOGGLE_STATE_RESOLVERS: Partial<Record<EditorCommandId, ToggleResolver>> =
   Superscript: (state) => Boolean(state.superscript),
   Subscript: (state) => Boolean(state.subscript),
   BulletList: (state) => state.listType === "bulleted",
-  NumberList: (state) => state.listType === "numbered"
+  NumberList: (state) => state.listType === "numbered",
+  SetReadMode: (state) => Boolean(state.readMode),
+  SetPrintLayout: (state) => !Boolean(state.readMode),
+  ViewSinglePage: (state) => (state.viewMode as string | undefined) === "single",
+  ViewTwoPage: (state) => (state.viewMode as string | undefined) === "two-page",
+  ViewFitWidth: (state) => (state.viewMode as string | undefined) === "fit-width"
 };
 
 export const watchRibbonSelectionState = (

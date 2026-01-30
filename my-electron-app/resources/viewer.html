@@ -640,75 +640,7 @@
       margin-top: 10px;
     }
 
-    #logBox{
-      position: fixed;
-      right: 12px;
-      bottom: 12px;
-      width: 460px;
-      max-width: calc(100vw - 24px);
-      max-height: 220px;
-      display:flex;
-      flex-direction:column;
-      gap:8px;
-      border-radius: 14px;
-      border: 1px solid var(--stroke);
-      background: rgba(10,14,20,0.92);
-      backdrop-filter: blur(10px);
-      box-shadow: var(--shadow2);
-      padding: 10px;
-      z-index: 80;
-      font-size: 12px;
-    }
-    #logHdr{
-      display:flex;
-      align-items:center;
-      gap:8px;
-    }
-    #logTitle{
-      font-weight:600;
-      color: var(--txt);
-    }
-    #logBtns{
-      margin-left:auto;
-      display:flex;
-      gap:8px;
-      align-items:center;
-    }
-    .logBtn{
-      height:26px;
-      line-height:26px;
-      padding:0 10px;
-      border-radius:10px;
-      border: 1px solid var(--stroke);
-      background: rgba(255,255,255,0.04);
-      color: var(--muted);
-      cursor:pointer;
-      user-select:none;
-      font-size:12px;
-      touch-action: manipulation;
-    }
-    .logBtn:hover{
-      border-color: var(--stroke2);
-      color: var(--txt);
-    }
-    #logBody{
-      overflow:auto;
-      padding-right: 4px;
-      line-height: 1.45;
-      color: var(--muted);
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      white-space: pre-wrap;
-      word-break: break-word;
-      max-height: 170px;
-      border-top: 1px solid rgba(27,34,51,0.65);
-      padding-top: 8px;
-    }
-    .logLine{ margin: 0 0 6px 0; }
-    .logLine .lvl{ font-weight: 700; }
-    .lvlI{ color: #9CB8FF; }
-    .lvlW{ color: #FFD166; }
-    .lvlE{ color: #FF6B6B; }
-    .lvlD{ color: #B8C2D0; }
+	    /* Viewer log UI removed for production UX */
     /* -------- Theme System -------- */
 :root{
   --ui-bg: #0A0E14;
@@ -775,12 +707,11 @@
 }
 
 
-    @media (max-width: 980px){
-      #app{ grid-template-columns: 0 1fr; }
-      #sidebar{ display:none; }
-      #logBox{ width: 96vw; }
-    }
-  </style>
+	    @media (max-width: 980px){
+	      #app{ grid-template-columns: 0 1fr; }
+	      #sidebar{ display:none; }
+	    }
+	  </style>
 </head>
 
 <body>
@@ -902,17 +833,7 @@
     </div>
   </div>
 
-  <div id="logBox">
-    <div id="logHdr">
-      <div id="logTitle">Viewer log</div>
-      <div id="logBtns">
-        <div class="logBtn" id="btnLogCopy">Copy</div>
-        <div class="logBtn" id="btnLogClear">Clear</div>
-        <div class="logBtn" id="btnLogHide">Hide</div>
-      </div>
-    </div>
-    <div id="logBody"></div>
-  </div>
+	  <!-- Viewer log removed for production UX -->
 
 <script>
   (function () {
@@ -925,38 +846,33 @@
   })();
 </script>
 <script>
-  (function(){
-    window.__ANN_BRIDGE_READY = new Promise((resolve) => {
-      if (typeof QWebChannel === "undefined") {
-        console.warn("QWebChannel is undefined (qwebchannel.js not loaded)");
-        window.ANNOTATIONS_BRIDGE = null;
-        resolve("NO_QWEBCHANNEL");
-        return;
-      }
-      if (!window.qt || !qt.webChannelTransport) {
-        console.warn("qt.webChannelTransport missing");
-        window.ANNOTATIONS_BRIDGE = null;
-        resolve("NO_TRANSPORT");
-        return;
-      }
-
-      new QWebChannel(qt.webChannelTransport, function(channel) {
-        const keys = Object.keys(channel.objects || {});
-        console.log("WebChannel objects =", keys.join(", "));
-
-        window.ANNOTATIONS_BRIDGE = channel.objects.ANNOTATIONS_BRIDGE || null;
-
-        if (!window.ANNOTATIONS_BRIDGE) {
-          console.warn("ANNOTATIONS_BRIDGE missing; available objects =", keys.join(", "));
-          resolve("MISSING_OBJECT");
-          return;
-        }
-
-        console.log("ANNOTATIONS_BRIDGE ready = true");
-        resolve("OK");
-      });
-    });
-  })();
+	  (function(){
+	    window.__ANN_BRIDGE_READY = new Promise((resolve) => {
+	      if (typeof QWebChannel === "undefined") {
+	        console.warn("QWebChannel is undefined (qwebchannel.js not loaded)");
+	        window.ANNOTATIONS_BRIDGE = null;
+	        resolve("NO_QWEBCHANNEL");
+	        return;
+	      }
+	      if (!window.qt || !qt.webChannelTransport) {
+	        console.warn("qt.webChannelTransport missing");
+	        window.ANNOTATIONS_BRIDGE = null;
+	        resolve("NO_TRANSPORT");
+	        return;
+	      }
+	
+	      new QWebChannel(qt.webChannelTransport, function(channel) {
+	        window.ANNOTATIONS_BRIDGE = channel.objects.ANNOTATIONS_BRIDGE || null;
+	
+	        if (!window.ANNOTATIONS_BRIDGE) {
+	          console.warn("ANNOTATIONS_BRIDGE missing");
+	          resolve("MISSING_OBJECT");
+	          return;
+	        }
+	        resolve("OK");
+	      });
+	    });
+	  })();
 </script>
 
 
@@ -981,9 +897,9 @@
 
   <script>
 window.addEventListener("DOMContentLoaded", async () => {
-      const statusEl    = document.getElementById("status");
-      const viewerEl    = document.getElementById("viewer");
-      const docEl       = document.getElementById("doc");
+	      const statusEl    = document.getElementById("status");
+	      const viewerEl    = document.getElementById("viewer");
+	      const docEl       = document.getElementById("doc");
 
       const btnSide     = document.getElementById("btnSide");
       const btnHand     = document.getElementById("btnHand");
@@ -1041,11 +957,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       const btnNoteCancel = document.getElementById("btnNoteCancel");
       const btnNoteSave   = document.getElementById("btnNoteSave");
 
-      const logBox      = document.getElementById("logBox");
-      const logBody     = document.getElementById("logBody");
-      const btnLogCopy  = document.getElementById("btnLogCopy");
-      const btnLogClear = document.getElementById("btnLogClear");
-      const btnLogHide  = document.getElementById("btnLogHide");
+	      // Viewer log UI removed; keep console logging minimal.
 
       const hlDots      = Array.from(document.querySelectorAll(".hlDot"));
 
@@ -1093,50 +1005,12 @@ function ensureAnnotationsBridgeReady(){
   return window.__ANN_BRIDGE_READY;
 }
 
-
-
-      // ---------------- Logging ----------------
-      const __LOG_LINES = [];
-      const __LOG_MAX = 400;
-
-      function nowStamp(){
-        const d = new Date();
-        const hh = String(d.getHours()).padStart(2,"0");
-        const mm = String(d.getMinutes()).padStart(2,"0");
-        const ss = String(d.getSeconds()).padStart(2,"0");
-        return `${hh}:${mm}:${ss}`;
-      }
-
-      function escapeHtml(s){
-        return String(s).replace(/[&<>"']/g, c => ({
-          "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
-        }[c]));
-      }
-
-      function logLine(level, msg, extra){
-        const lvl = String(level || "I").toUpperCase();
-        const text = String(msg || "");
-        const more = (extra === undefined || extra === null) ? "" : (" " + String(extra));
-        const line = `[${nowStamp()}] ${lvl} ${text}${more}`;
-        __LOG_LINES.push(line);
-        while (__LOG_LINES.length > __LOG_MAX) __LOG_LINES.shift();
-
-        const div = document.createElement("div");
-        div.className = "logLine";
-        const cls = (lvl === "E") ? "lvlE" : (lvl === "W") ? "lvlW" : (lvl === "D") ? "lvlD" : "lvlI";
-        div.innerHTML = `<span class="lvl ${cls}">${lvl}</span> ${escapeHtml(text + more)}`;
-        logBody.appendChild(div);
-        logBody.scrollTop = logBody.scrollHeight;
-
-        if (lvl === "E") console.error(line);
-        else if (lvl === "W") console.warn(line);
-        else console.log(line);
-      }
-
-      function logInfo(msg, extra){ logLine("I", msg, extra); }
-      function logWarn(msg, extra){ logLine("W", msg, extra); }
-      function logError(msg, extra){ logLine("E", msg, extra); }
-      function logDebug(msg, extra){ logLine("D", msg, extra); }
+	      // ---------------- Logging ----------------
+	      const __DEBUG = new URLSearchParams(window.location.search).get("debug") === "1";
+	      function logInfo(msg, extra){ if (__DEBUG) console.info("[pdf]", msg, extra ?? ""); }
+	      function logWarn(msg, extra){ console.warn("[pdf]", msg, extra ?? ""); }
+	      function logError(msg, extra){ console.error("[pdf]", msg, extra ?? ""); }
+	      function logDebug(msg, extra){ if (__DEBUG) console.debug("[pdf]", msg, extra ?? ""); }
 
       // ---------------- Query params ----------------
           // ---------------- Query params ----------------
@@ -1339,31 +1213,10 @@ function _tokeniseNorm(s){
   return n.split(" ").filter(x => x.length);
 }
 
-function _debugQuoteNotFound(p, qRaw){
-  const pageTxtRaw = pageTextForPage(p);
-  const pageTxtNorm = _normTextForSearch(pageTxtRaw);
-  const qNorm = _normTextForSearch(qRaw);
-
-  const qTokens = _tokeniseNorm(qRaw);
-  const pageTokens = _tokeniseNorm(pageTxtRaw);
-
-  const pageTokSet = new Set(pageTokens);
-  const missing = [];
-  for (const t of qTokens) {
-    if (!pageTokSet.has(t)) missing.push(t);
-  }
-
-  logWarn("payload focus: quote (RAW)", qRaw);
-  logWarn("payload focus: quote (NORM)", qNorm);
-
-  logWarn("payload focus: pageText (RAW)", pageTxtRaw);
-
-  logWarn("payload focus: pageText (NORM len)", String(pageTxtNorm.length));
-  logWarn("payload focus: pageText (NORM sample)", pageTxtNorm.slice(0, 900));
-
-  logWarn("payload focus: quoteTokens", String(qTokens.length));
-  logWarn("payload focus: missingTokens", missing.slice(0, 80).join(" "));
-}
+	function _debugQuoteNotFound(_p, _qRaw){
+	  // Debug helper removed for production UX.
+	  return;
+	}
 
 async function highlightDirectQuoteOnPage(pageNum, quote){
   const p = clamp(parseInt(String(pageNum), 10) || 1, 1, pageCount);
@@ -1481,8 +1334,8 @@ async function highlightDirectQuoteOnPage(pageNum, quote){
         if (foundAt === -1) {
           setStatus(`Target not found on p. ${p}`);
           logWarn("payload focus: quote not found", `page=${p}`);
-          _debugQuoteNotFound(p, qRaw);
-          return "NOT_FOUND";
+	          // no-op (debug helper removed)
+	          return "NOT_FOUND";
         }
 
         hitStart = foundAt;
@@ -1499,8 +1352,8 @@ async function highlightDirectQuoteOnPage(pageNum, quote){
       setStatus(`Target found but text layer empty · p. ${p}`);
       logWarn("payload focus: text layer empty, cannot highlight", `page=${p} startWord=${hitStart} endWord=${hitEnd}`);
     }
-    _debugQuoteNotFound(p, qRaw);
-    return "NO_TEXT_LAYER";
+	    // no-op (debug helper removed)
+	    return "NO_TEXT_LAYER";
   }
 
   let globalWordIndex = 0;
@@ -1602,21 +1455,21 @@ function schedulePayloadFocus(reason = "defer", delay = 160) {
         viewerEl.focus({ preventScroll: true });
       }
 
-      // Only wire focus for toolbar/sidebar controls (not the viewer, not the modal)
-      function wireControlFocus(node){
-        node.addEventListener("mousedown", () => focusViewerIfSafe(), { passive: true });
-        node.addEventListener("pointerdown", () => focusViewerIfSafe(), { passive: true });
-      }
+	      // Only wire focus for toolbar/sidebar controls (not the viewer, not the modal)
+	      function wireControlFocus(node){
+	        if (!node) return;
+	        node.addEventListener("mousedown", () => focusViewerIfSafe(), { passive: true });
+	        node.addEventListener("pointerdown", () => focusViewerIfSafe(), { passive: true });
+	      }
 
-      const __controls = [
-        btnSide,
-        btnAnnotsMenu, menuAnnots,
-        btnViewMenu, menuView,
-        btnPrev, pageNum, btnNext,
-        findBox, btnFindPrev, btnFindNext, btnFindClose,
-        tabThumbs, tabOutline, tabAnnots, sidePane,
-        btnLogCopy, btnLogClear, btnLogHide
-      ];
+	      const __controls = [
+	        btnSide,
+	        btnAnnotsMenu, menuAnnots,
+	        btnViewMenu, menuView,
+	        btnPrev, pageNum, btnNext,
+	        findBox, btnFindPrev, btnFindNext, btnFindClose,
+	        tabThumbs, tabOutline, tabAnnots, sidePane
+	      ];
 
       for (const n of __controls) wireControlFocus(n);
 
@@ -1814,7 +1667,7 @@ async function renderTextLayer(p) {
           d.dataset.srcText = d.textContent || "";
         }
       }
-      logWarn("renderTextLayer recovered spans", `page=${p} spanCount=${String(spans.length)}`);
+	      // recovered spans (silenced in production)
     } else {
       logWarn("renderTextLayer empty", `page=${p} rawLen=${String(rawText.length)}`);
       if (p === pageJump) {
@@ -3734,25 +3587,7 @@ document.addEventListener("keydown", async (ev) => {
   }
 }, true);
 
-// Log box
-btnLogClear.addEventListener("click", () => {
-  __LOG_LINES.length = 0;
-  logBody.innerHTML = "";
-  logInfo("Log cleared.");
-  focusViewerIfSafe();
-});
-
-btnLogCopy.addEventListener("click", async () => {
-  await navigator.clipboard.writeText(__LOG_LINES.join("\n"));
-  logInfo("Log copied to clipboard.");
-  focusViewerIfSafe();
-});
-
-btnLogHide.addEventListener("click", () => {
-  const hidden = logBox.style.display === "none";
-  logBox.style.display = hidden ? "" : "none";
-  focusViewerIfSafe();
-});
+	// Viewer log UI removed.
 
       // ---------------- Boot ----------------
       function resetStateForNewDocument() {

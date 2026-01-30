@@ -7,6 +7,14 @@
     "node:fs/promises": "./scripts/shims/fs-promises.js"
   },
   "main": "dist/electron/main.js",
+  "exports": {
+    ".": {
+      "import": "./dist/lib/index.js",
+      "require": "./dist/lib/index.cjs",
+      "default": "./dist/lib/index.js"
+    },
+    "./global": "./dist/lib/leditor.global.mjs"
+  },
   "scripts": {
     "prestart": "npm run build",
     "start": "GTK_USE_PORTAL=0 electron --gtk-use-portal=0 --disable-features=UsePortal .",
@@ -19,6 +27,10 @@
     "generate:templates": "node scripts/generate_template_index.mjs",
     "typecheck": "tsc --project tsconfig.json --pretty",
     "build:renderer": "npx esbuild scripts/renderer-entry.ts --bundle --platform=browser --format=esm --sourcemap --define:__BUILD_TIME__=\\\"dev\\\" --outfile=dist/renderer/bootstrap.bundle.js --loader:.ttf=dataurl --loader:.woff=dataurl --loader:.woff2=dataurl --loader:.html=text --alias:node:fs/promises=./scripts/shims/fs-promises.js --external:@simonwep/pickr/dist/pickr.min.css",
+    "build:lib:esm": "npx esbuild scripts/lib-entry.ts --bundle --platform=browser --format=esm --sourcemap --outdir=dist/lib --entry-names=index --chunk-names=chunks/[name]-[hash] --asset-names=assets/[name]-[hash] --loader:.ttf=dataurl --loader:.woff=dataurl --loader:.woff2=dataurl --loader:.html=text --alias:node:fs/promises=./scripts/shims/fs-promises.js --external:@simonwep/pickr/dist/pickr.min.css",
+    "build:lib:cjs": "node scripts/build-lib-cjs-stub.mjs",
+    "build:lib:global": "npx esbuild scripts/lib-global-entry.ts --bundle --platform=browser --format=esm --sourcemap --outfile=dist/lib/leditor.global.mjs --loader:.ttf=dataurl --loader:.woff=dataurl --loader:.woff2=dataurl --loader:.html=text --alias:node:fs/promises=./scripts/shims/fs-promises.js --external:@simonwep/pickr/dist/pickr.min.css",
+    "build:lib": "npm run build:lib:esm && npm run build:lib:global && npm run build:lib:cjs",
     "build:public": "node scripts/copy-public.js",
     "build:electron": "tsc --project tsconfig.electron.json",
     "build": "npm run generate:templates && npm run build:renderer && npm run build:public && npm run build:electron",

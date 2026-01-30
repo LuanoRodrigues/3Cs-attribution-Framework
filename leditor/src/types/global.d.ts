@@ -27,14 +27,26 @@ type AgentRequestPayload = {
   instruction: string;
   selection?: { from: number; to: number; text: string };
   document?: { text: string };
+  targets?: Array<{ n: number; headingNumber?: string; headingTitle?: string }>;
   history?: Array<{ role: "user" | "assistant" | "system"; content: string }>;
   settings?: AiSettings;
 };
+
+type AgentOperation =
+  | { op: "replaceSelection"; text: string }
+  | { op: "replaceParagraph"; n: number; text: string }
+  | { op: "replaceDocument"; text: string };
 
 type AgentRequestResult = {
   success: boolean;
   assistantText?: string;
   applyText?: string;
+  operations?: AgentOperation[];
+  meta?: {
+    provider: "openai";
+    model?: string;
+    ms?: number;
+  };
   error?: string;
 };
 
@@ -98,7 +110,9 @@ declare global {
       insertImage?: (request?: { sourcePath?: string }) => Promise<InsertImageResult>;
       readFile?: (request: { sourcePath: string }) => Promise<HostReadFileResult>;
       writeFile?: (request: { targetPath: string; data: string }) => Promise<HostWriteFileResult>;
-      agentRequest?: (request: { payload: AgentRequestPayload }) => Promise<AgentRequestResult>;
+      agentRequest?: (request: { requestId?: string; payload: AgentRequestPayload }) => Promise<AgentRequestResult>;
+      agentCancel?: (request: { requestId: string }) => Promise<{ success: boolean; cancelled?: boolean; error?: string }>;
+      getAiStatus?: () => Promise<{ success: boolean; hasApiKey?: boolean; model?: string; modelFromEnv?: boolean; error?: string }>;
       getInstalledAddins?: () => Promise<InstalledAddin[]>;
       installedAddins?: InstalledAddin[];
     };

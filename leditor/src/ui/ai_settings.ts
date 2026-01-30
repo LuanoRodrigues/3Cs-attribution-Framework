@@ -4,7 +4,7 @@ const STORAGE_KEY = "leditor.ai.settings";
 
 const DEFAULT_SETTINGS: AiSettings = {
   apiKey: "",
-  model: "gpt-4o-mini",
+  model: "codex-mini-latest",
   temperature: 0.2,
   chunkSize: 32000,
   defaultScope: "selection"
@@ -20,8 +20,15 @@ const parseStoredSettings = (): AiSettings => {
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return DEFAULT_SETTINGS;
     return {
-      apiKey: typeof parsed.apiKey === "string" ? parsed.apiKey : DEFAULT_SETTINGS.apiKey,
-      model: typeof parsed.model === "string" ? parsed.model : DEFAULT_SETTINGS.model,
+      // API keys are loaded from the environment (`OPENAI_API_KEY`) in the Electron main process.
+      // Do not persist API keys in renderer storage.
+      apiKey: "",
+      model: (() => {
+        const rawModel = typeof parsed.model === "string" ? parsed.model.trim() : "";
+        if (!rawModel) return DEFAULT_SETTINGS.model;
+        if (rawModel === "gpt-4o-mini") return DEFAULT_SETTINGS.model;
+        return rawModel;
+      })(),
       temperature: typeof parsed.temperature === "number" ? parsed.temperature : DEFAULT_SETTINGS.temperature,
       chunkSize: Number.isFinite(parsed.chunkSize) ? Number(parsed.chunkSize) : DEFAULT_SETTINGS.chunkSize,
       defaultScope:
@@ -124,15 +131,10 @@ export const createAISettingsPanel = (): AiSettingsPanelController => {
     return row;
   };
 
-  const apiKeyInput = document.createElement("input");
-  apiKeyInput.type = "password";
-  apiKeyInput.className = "leditor-ai-settings-panel__input";
-  apiKeyInput.placeholder = "sk-...";
-
   const modelInput = document.createElement("input");
   modelInput.type = "text";
   modelInput.className = "leditor-ai-settings-panel__input";
-  modelInput.placeholder = "gpt-4o-mini";
+  modelInput.placeholder = "codex-mini-latest";
 
   const temperatureInput = document.createElement("input");
   temperatureInput.type = "range";
@@ -161,9 +163,11 @@ export const createAISettingsPanel = (): AiSettingsPanelController => {
 
   const status = document.createElement("div");
   status.className = "leditor-ai-settings-panel__status";
+  const envStatus = document.createElement("div");
+  envStatus.className = "leditor-ai-settings-panel__status";
+  envStatus.style.opacity = "0.85";
 
   form.append(
-    renderField("API key", apiKeyInput),
     renderField("Model", modelInput),
     renderField("Temperature", ((): HTMLElement => {
       const wrapper = document.createElement("div");
@@ -173,6 +177,7 @@ export const createAISettingsPanel = (): AiSettingsPanelController => {
     })()),
     renderField("Chunk size", chunkInput),
     renderField("Default scope", scopeSelect),
+    envStatus,
     status
   );
 
@@ -180,7 +185,6 @@ export const createAISettingsPanel = (): AiSettingsPanelController => {
   root.appendChild(panel);
 
   const applySettingsToForm = (settings: AiSettings) => {
-    apiKeyInput.value = settings.apiKey;
     modelInput.value = settings.model;
     temperatureInput.value = settings.temperature.toString();
     temperatureValue.textContent = settings.temperature.toFixed(2);
@@ -195,9 +199,23 @@ export const createAISettingsPanel = (): AiSettingsPanelController => {
     }, 1200);
   };
 
+  const refreshEnvStatus = async () => {
+    if (!window.leditorHost?.getAiStatus) {
+      envStatus.textContent = "OpenAI API key: (status unavailable in this host)";
+      return;
+    }
+    try {
+      const result = await window.leditorHost.getAiStatus();
+      const hasApiKey = Boolean(result?.hasApiKey);
+      const model = typeof result?.model === "string" ? result.model : "";
+      envStatus.textContent = `OpenAI API key: ${hasApiKey ? "loaded from .env" : "missing"}${model ? ` • Default model: ${model}` : ""}`;
+    } catch {
+      envStatus.textContent = "OpenAI API key: (status check failed)";
+    }
+  };
+
   const handleChange = () => {
     setAiSettings({
-      apiKey: apiKeyInput.value.trim(),
       model: modelInput.value.trim() || DEFAULT_SETTINGS.model,
       temperature: Number.parseFloat(temperatureInput.value) || DEFAULT_SETTINGS.temperature,
       chunkSize: Number.parseInt(chunkInput.value, 10) || DEFAULT_SETTINGS.chunkSize,
@@ -206,8 +224,6 @@ export const createAISettingsPanel = (): AiSettingsPanelController => {
     syncStatus();
   };
 
-  apiKeyInput.addEventListener("change", handleChange);
-  apiKeyInput.addEventListener("blur", handleChange);
   modelInput.addEventListener("change", handleChange);
   temperatureInput.addEventListener("input", () => {
     temperatureValue.textContent = temperatureInput.value;
@@ -225,6 +241,7 @@ export const createAISettingsPanel = (): AiSettingsPanelController => {
       panel.classList.add("is-open");
       root.classList.add(APP_OPEN_CLASS);
       applyPanelSettings();
+      void refreshEnvStatus();
     },
     close() {
       panel.classList.remove("is-open");

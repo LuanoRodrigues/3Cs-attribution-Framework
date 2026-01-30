@@ -5,10 +5,12 @@ const HOST_ID = "write-leditor-host";
 const LEDITOR_MOUNT_ID = "editor";
 const STATUS_CLASS = "write-leditor-status";
 const HOST_CLASS = "write-leditor-shell";
-const STYLE_ENTRY = "renderer/bootstrap.bundle.css";
-const SCRIPT_ENTRY = "renderer/bootstrap.bundle.js";
-const SCRIPT_PRELUDE = "renderer/prelude.js";
-const SCRIPT_VENDOR = "renderer/vendor-leditor.js";
+const LIB_STYLE_ENTRY = "lib/leditor.global.css";
+const LIB_MODULE_ENTRY = "lib/leditor.global.mjs";
+const LEGACY_STYLE_ENTRY = "renderer/bootstrap.bundle.css";
+const LEGACY_SCRIPT_ENTRY = "renderer/bootstrap.bundle.js";
+const LEGACY_SCRIPT_PRELUDE = "renderer/prelude.js";
+const LEGACY_SCRIPT_VENDOR = "renderer/vendor-leditor.js";
 let writePanelScopeId: string | null = null;
 const BODY_WRITE_CLASS = "write-leditor-active";
 
@@ -19,14 +21,15 @@ type HostPackage = {
 };
 
 let sharedHost: HostPackage | undefined;
-let scriptPromise: Promise<void> | undefined;
+let leditorReadyPromise: Promise<void> | undefined;
+let destroyApp: (() => void) | null = null;
 
 function getProjectBase(): { hostRoot: HostPackage; scriptUrl: string } {
   if (!sharedHost) {
     sharedHost = createHostPackage();
   }
   const base = new URL("../leditor/", window.location.href);
-  const scriptUrl = new URL(SCRIPT_ENTRY, base).href;
+  const scriptUrl = new URL(LEGACY_SCRIPT_ENTRY, base).href;
   return { hostRoot: sharedHost, scriptUrl };
 }
 
@@ -100,15 +103,15 @@ function appendScript(scriptUrl: string, asModule = false): Promise<void> {
   });
 }
 
-function ensureStyleLoaded(styleUrl: string): void {
-  const existing = document.querySelector<HTMLLinkElement>("link[data-leditor-style]");
+function ensureStyleLoaded(styleUrl: string, id: string): void {
+  const existing = document.querySelector<HTMLLinkElement>(`link[data-leditor-style="${id}"]`);
   if (existing) {
     return;
   }
   const link = document.createElement("link");
   link.rel = "stylesheet";
   link.href = styleUrl;
-  link.dataset.leditorStyle = "true";
+  link.dataset.leditorStyle = id;
   document.head.appendChild(link);
 }
 
@@ -126,23 +129,9 @@ function ensureMountPoint(packageRef: HostPackage): HTMLElement {
   return mount;
 }
 
-function ensureScriptLoaded(): Promise<void> {
-  if (scriptPromise) {
-    return scriptPromise;
-  }
-  const { scriptUrl } = getProjectBase();
-  setHostStatus("Loading Write editor…", false);
-  const hostPackage = sharedHost;
-  if (!hostPackage) {
-    const error = new Error("Write host missing");
-    setHostStatus(error.message, true);
-    return Promise.reject(error);
-  }
-  const host = hostPackage.host;
-  const base = new URL("../leditor/", window.location.href);
-  const resourceBase = new URL("../resources/leditor/", window.location.href);
-  const styleUrl = new URL(STYLE_ENTRY, base).href;
+async function seedLeditorScope(): Promise<void> {
   try {
+    const base = new URL("../resources/leditor/", window.location.href);
     const scopeId = writePanelScopeId ?? getDefaultCoderScope();
     localStorage.setItem("leditor.scopeId", scopeId);
     if (window.coderBridge?.loadState) {
@@ -157,29 +146,90 @@ function ensureScriptLoaded(): Promise<void> {
           // ignore
         });
     } else {
-      // Fallback for dev/isolated runs.
-      localStorage.setItem("leditor.coderStatePath", new URL("content/coder_state.json", resourceBase).pathname);
+      localStorage.setItem("leditor.coderStatePath", new URL("content/coder_state.json", base).pathname);
     }
   } catch {
     // best-effort; ignore storage failures
   }
-  ensureStyleLoaded(styleUrl);
-  const vendorUrl = new URL(SCRIPT_VENDOR, new URL("../leditor/", window.location.href)).href;
-  const preludeUrl = new URL(SCRIPT_PRELUDE, new URL("../leditor/", window.location.href)).href;
+}
+
+async function ensureLibraryLeditorLoaded(): Promise<void> {
+  const hostPackage = sharedHost;
+  if (!hostPackage) {
+    throw new Error("Write host missing");
+  }
+  const host = hostPackage.host;
+  await waitForHostReady(host);
+  ensureMountPoint(hostPackage);
+  await seedLeditorScope();
+  const w = window as typeof window & { codexLog?: { write: (line: string) => void } };
+  if (!w.codexLog) {
+    w.codexLog = {
+      write: (line: string) => console.info("[write][leditor][codexLog]", line)
+    };
+  }
+
+  const base = new URL("../leditor/", window.location.href);
+  const styleUrl = new URL(LIB_STYLE_ENTRY, base).href;
+  const moduleUrl = new URL(LIB_MODULE_ENTRY, base).href;
+  ensureStyleLoaded(styleUrl, "lib");
+
+  const mod: any = await import(moduleUrl);
+  const api = mod?.createLeditorApp ? mod : (globalThis as any).LEditor;
+  if (!api?.createLeditorApp) {
+    throw new Error("LEditor library API missing after module load");
+  }
+
+  const instance = await api.createLeditorApp({
+    container: hostPackage.host,
+    elementId: LEDITOR_MOUNT_ID,
+    requireHostContract: true,
+    enableCoderStateImport: true
+  });
+  destroyApp = typeof instance?.destroy === "function" ? instance.destroy : api.destroyLeditorApp ?? null;
+}
+
+async function ensureLegacyLeditorLoaded(): Promise<void> {
+  const { scriptUrl } = getProjectBase();
+  const hostPackage = sharedHost;
+  if (!hostPackage) {
+    throw new Error("Write host missing");
+  }
+  const host = hostPackage.host;
+  const base = new URL("../leditor/", window.location.href);
+  const styleUrl = new URL(LEGACY_STYLE_ENTRY, base).href;
+  ensureStyleLoaded(styleUrl, "legacy");
+  const vendorUrl = new URL(LEGACY_SCRIPT_VENDOR, base).href;
+  const preludeUrl = new URL(LEGACY_SCRIPT_PRELUDE, base).href;
+
+  await waitForHostReady(host);
+  const mount = ensureMountPoint(hostPackage);
+  await waitForEditorMount(mount.id);
+  await seedLeditorScope();
+  console.info("[write][mount-check]", { hasEditor: Boolean(mount.isConnected) });
+  await appendScript(preludeUrl, false);
+  await appendScript(vendorUrl, false);
+  window.__leditorAutoMount = false;
+  await appendScript(scriptUrl, true);
+  window.__leditorMountEditor?.();
+}
+
+function ensureLeditorLoaded(): Promise<void> {
+  if (leditorReadyPromise) return leditorReadyPromise;
+  setHostStatus("Loading Write editor…", false);
   const ready = (async () => {
-    await waitForHostReady(host);
-    const mount = ensureMountPoint(hostPackage);
-    await waitForEditorMount(mount.id);
-    console.info("[write][mount-check]", { hasEditor: Boolean(mount.isConnected) });
-    await appendScript(preludeUrl, false);
-    await appendScript(vendorUrl, false);
-    window.__leditorAutoMount = false;
-    await appendScript(scriptUrl, true);
-    window.__leditorMountEditor?.();
+    try {
+      await ensureLibraryLeditorLoaded();
+      setHostStatus("", false);
+    } catch (error) {
+      console.warn("[write][leditor][fallback]", error);
+      await ensureLegacyLeditorLoaded();
+      setHostStatus("", false);
+    }
   })();
-  scriptPromise = ready;
+  leditorReadyPromise = ready;
   ready.catch(() => {
-    scriptPromise = undefined;
+    leditorReadyPromise = undefined;
   });
   return ready;
 }
@@ -212,7 +262,7 @@ export class WritePage {
     this.addWriteBodyClass();
     const panelScope = getDefaultCoderScope();
     writePanelScopeId = panelScope;
-    const ready = this.waitForHostConnection().then(() => ensureScriptLoaded());
+    const ready = this.waitForHostConnection().then(() => ensureLeditorLoaded());
     this.sync = new WritePanel({ scopeId: panelScope, scriptReady: ready });
     void this.sync.init();
   }
@@ -224,6 +274,13 @@ export class WritePage {
   destroy(): void {
     this.cleanupHostConnectionWatcher();
     this.sync?.destroy();
+    try {
+      destroyApp?.();
+    } catch {
+      // ignore
+    }
+    destroyApp = null;
+    leditorReadyPromise = undefined;
     const host = this.hostPackage.host;
     if (host.parentElement === this.container) {
       this.container.removeChild(host);

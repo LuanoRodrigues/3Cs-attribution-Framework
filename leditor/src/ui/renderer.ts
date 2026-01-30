@@ -9,7 +9,6 @@ import "../extensions/plugin_import_docx.ts";
 import { renderRibbon } from "./ribbon.ts";
 import { mountStatusBar } from "../ui/status_bar.ts";
 import { attachContextMenu } from "./context_menu.ts";
-import { createQuickToolbar } from "./quick_toolbar.ts";
 import { initFullscreenController } from "./fullscreen.ts";
 import { featureFlags } from "../ui/feature_flags.ts";
 import { initGlobalShortcuts } from "./shortcuts.ts";
@@ -18,8 +17,11 @@ import "@fontsource/source-sans-3/600.css";
 import "@fontsource/source-serif-4/600.css";
 import "./ribbon.css";
 import "./home.css";
+import "./style_mini_app.css";
 import "./agent_sidebar.css";
 import "./ai_settings.css";
+import "./paragraph_grid.css";
+import "./ai_draft_preview.css";
 import "./references.css";
 import "./references_overlay.css";
 import { mountA4Layout, type A4LayoutController } from "./a4_layout.ts";
@@ -39,6 +41,7 @@ import { getHostContract } from "./host_contract.ts";
 import { ensureReferencesLibrary, resolveCitationTitle } from "./references/library.ts";
 import { installDirectQuotePdfOpenHandler } from "./direct_quote_pdf.ts";
 import { perfMark, perfMeasure, perfSummaryOnce } from "./perf.ts";
+import { getHostAdapter, setHostAdapter, type HostAdapter } from "../host/host_adapter.ts";
 
 const ensureProcessEnv = (): Record<string, string | undefined> | undefined => {
   if (typeof globalThis === "undefined") {
@@ -581,7 +584,12 @@ const getWriteEditorHost = (): HTMLElement | null => {
   return document.getElementById("write-leditor-host");
 };
 
-const findEditorElement = (elementId: string): HTMLElement | null => {
+const findEditorElement = (elementId: string, hostOverride?: HTMLElement | null): HTMLElement | null => {
+  const overrideHost = hostOverride ?? null;
+  if (overrideHost) {
+    const found = overrideHost.querySelector(`#${elementId}`) as HTMLElement | null;
+    if (found?.isConnected) return found;
+  }
   const host = getWriteEditorHost();
   if (host) {
     const found = host.querySelector(`#${elementId}`) as HTMLElement | null;
@@ -596,12 +604,13 @@ const findEditorElement = (elementId: string): HTMLElement | null => {
   return null;
 };
 
-const ensureEditorElement = (elementId: string): HTMLElement => {
-  const existing = findEditorElement(elementId);
-  if (existing) {
-    return existing;
-  }
-  const host = getWriteEditorHost();
+const ensureEditorElement = (
+  elementId: string,
+  hostOverride?: HTMLElement | null
+): { element: HTMLElement; created: boolean } => {
+  const existing = findEditorElement(elementId, hostOverride);
+  if (existing) return { element: existing, created: false };
+  const host = hostOverride ?? getWriteEditorHost();
   const mount = document.createElement("div");
   mount.id = elementId;
   mount.className = "leditor-mount";
@@ -610,7 +619,7 @@ const ensureEditorElement = (elementId: string): HTMLElement => {
   } else {
     document.body.appendChild(mount);
   }
-  return mount;
+  return { element: mount, created: true };
 };
 
 type MountGuard = { mounted: boolean; inFlight: Promise<void> | null };
@@ -621,6 +630,134 @@ const getMountGuard = (): MountGuard => {
     g.__leditorMountGuard = { mounted: false, inFlight: null };
   }
   return g.__leditorMountGuard;
+};
+
+export type CreateLeditorAppOptions = {
+  container?: HTMLElement;
+  elementId?: string;
+  toolbar?: string;
+  plugins?: string[];
+  autosave?: { enabled: boolean; intervalMs: number };
+  initialContent?: { format: "html"; value: string };
+  requireHostContract?: boolean;
+  enableCoderStateImport?: boolean;
+  hostAdapter?: HostAdapter | null;
+};
+
+export type LeditorAppInstance = {
+  handle: EditorHandle;
+  destroy: () => void;
+};
+
+type MountedAppState = {
+  abortController: AbortController;
+  unsubscribeLayout: (() => void) | null;
+  ribbonObserver: ResizeObserver | null;
+  disposeRibbon: (() => void) | null;
+  appRoot: HTMLElement | null;
+  editorEl: HTMLElement | null;
+  createdEditorEl: boolean;
+};
+
+const getCreateOptions = (): Required<
+  Pick<CreateLeditorAppOptions, "elementId" | "requireHostContract" | "enableCoderStateImport">
+> &
+  Omit<CreateLeditorAppOptions, "elementId" | "requireHostContract" | "enableCoderStateImport"> => {
+  const g = globalThis as typeof globalThis & { __leditorCreateOptions?: CreateLeditorAppOptions };
+  const options = g.__leditorCreateOptions ?? {};
+  return {
+    elementId: options.elementId ?? "editor",
+    requireHostContract: options.requireHostContract ?? true,
+    enableCoderStateImport: options.enableCoderStateImport ?? (options.requireHostContract ?? true),
+    container: options.container,
+    toolbar: options.toolbar,
+    plugins: options.plugins,
+    autosave: options.autosave,
+    initialContent: options.initialContent,
+    hostAdapter: options.hostAdapter
+  };
+};
+
+const setMountedAppState = (state: MountedAppState | null) => {
+  const g = globalThis as typeof globalThis & { __leditorMountedAppState?: MountedAppState };
+  if (!state) {
+    delete g.__leditorMountedAppState;
+    return;
+  }
+  g.__leditorMountedAppState = state;
+};
+
+const getMountedAppState = (): MountedAppState | null => {
+  const g = globalThis as typeof globalThis & { __leditorMountedAppState?: MountedAppState };
+  return g.__leditorMountedAppState ?? null;
+};
+
+export const destroyLeditorApp = (): void => {
+  const state = getMountedAppState();
+  const guard = getMountGuard();
+  if (!state) {
+    guard.mounted = false;
+    guard.inFlight = null;
+    return;
+  }
+
+  try {
+    state.unsubscribeLayout?.();
+  } catch {
+    // ignore
+  }
+  try {
+    state.ribbonObserver?.disconnect();
+  } catch {
+    // ignore
+  }
+  try {
+    state.disposeRibbon?.();
+  } catch {
+    // ignore
+  }
+  try {
+    state.abortController.abort();
+  } catch {
+    // ignore
+  }
+
+  try {
+    const h = (window as typeof window & { leditor?: EditorHandle }).leditor;
+    h?.destroy();
+  } catch {
+    // ignore
+  }
+
+  try {
+    if (state.appRoot?.isConnected) state.appRoot.remove();
+  } catch {
+    // ignore
+  }
+  try {
+    if (state.createdEditorEl && state.editorEl?.isConnected) state.editorEl.remove();
+  } catch {
+    // ignore
+  }
+
+  (window as typeof window & { leditor?: EditorHandle }).leditor = undefined;
+  setMountedAppState(null);
+  guard.mounted = false;
+  guard.inFlight = null;
+};
+
+export const createLeditorApp = async (options: CreateLeditorAppOptions = {}): Promise<LeditorAppInstance> => {
+  const g = globalThis as typeof globalThis & { __leditorCreateOptions?: CreateLeditorAppOptions };
+  g.__leditorCreateOptions = options;
+  if (options.hostAdapter !== undefined) {
+    setHostAdapter(options.hostAdapter);
+  }
+  await mountEditor();
+  const h = (window as typeof window & { leditor?: EditorHandle }).leditor;
+  if (!h) {
+    throw new Error("createLeditorApp: mount completed but window.leditor is not set");
+  }
+  return { handle: h, destroy: destroyLeditorApp };
 };
 
 export const mountEditor = async () => {
@@ -641,15 +778,28 @@ export const mountEditor = async () => {
       guard.mounted = true;
       return;
     }
-  let hostContractInfo: ReturnType<typeof getHostContract> | null = null;
-  try {
-    hostContractInfo = getHostContract();
-    console.info("[HostContract] loaded host payload", hostContractInfo);
-    await ensureReferencesLibrary();
-  } catch (error) {
-    console.error("[HostContract] initialization failed", error);
-    throw error;
-  }
+    const options = getCreateOptions();
+    const abortController = new AbortController();
+    const signal = abortController.signal;
+    let ribbonObserver: ResizeObserver | null = null;
+    let unsubscribeLayout: (() => void) | null = null;
+    let editorEl: HTMLElement | null = null;
+    let createdEditorEl = false;
+
+    let hostContractInfo: ReturnType<typeof getHostContract> | null = null;
+    try {
+      hostContractInfo = getHostContract();
+      console.info("[HostContract] loaded host payload", hostContractInfo);
+      if (options.requireHostContract || hostContractInfo.paths.bibliographyDir) {
+        await ensureReferencesLibrary();
+      }
+    } catch (error) {
+      if (options.requireHostContract) {
+        console.error("[HostContract] initialization failed", error);
+        throw error;
+      }
+      console.warn("[HostContract] initialization skipped/failed (portable mode)", error);
+    }
   // Debug: silenced noisy ribbon logs.
   if (featureFlags.paginationDebugEnabled) {
     const win = window as typeof window & { __leditorPaginationDebug?: boolean };
@@ -668,7 +818,7 @@ export const mountEditor = async () => {
 
   const defaultToolbar =
     "Undo Redo | Bold Italic | Heading1 Heading2 | BulletList NumberList | Link | AlignLeft AlignCenter AlignRight JustifyFull | Outdent Indent | SearchReplace Preview ImportDOCX ExportDOCX FootnotePanel Fullscreen | VisualChars VisualBlocks | DirectionLTR DirectionRTL";
-  const coderStateResult = await loadCoderStateHtml();
+  const coderStateResult = options.enableCoderStateImport ? await loadCoderStateHtml() : null;
   if (coderStateResult && lastCoderStateNode) {
     console.info("[CoderState][node0][render]", {
       path: coderStateResult.sourcePath,
@@ -686,18 +836,19 @@ export const mountEditor = async () => {
   } else {
     getCoderAutosaveGuard().__leditorAllowCoderAutosave = false;
   }
-  const hasInitialContent = Boolean(coderStateResult?.html);
+  const hasInitialContent = Boolean(options.initialContent?.value || coderStateResult?.html);
   type RendererConfig = {
     elementId: string;
+    mountElement?: HTMLElement | null;
     toolbar: string;
     plugins: string[];
     autosave: { enabled: boolean; intervalMs: number };
     initialContent?: { format: "html"; value: string };
   };
   const config: RendererConfig = {
-    elementId: "editor",
-    toolbar: defaultToolbar,
-    plugins: [
+    elementId: options.elementId,
+    toolbar: options.toolbar ?? defaultToolbar,
+    plugins: options.plugins ?? [
       "debug",
       "search",
       "preview",
@@ -710,19 +861,26 @@ export const mountEditor = async () => {
       "revision_history",
       "spellcheck",
       "ai_assistant",
+      "ai_agent",
       "source_view",
       "print_preview"
     ],
-    autosave: { enabled: true, intervalMs: 1000 }
+    autosave: options.autosave ?? { enabled: true, intervalMs: 1000 }
   };
-  if (coderStateResult) {
+  if (options.initialContent) {
+    config.initialContent = options.initialContent;
+  } else if (coderStateResult?.html) {
     config.initialContent = { format: "html", value: coderStateResult.html };
     const snippet = coderStateResult.html.replace(/\\s+/g, " ").slice(0, 200);
     console.info("[text][preview]", { path: coderStateResult.sourcePath, snippet });
   }
 
-  const waitForEditorElement = (elementId: string, timeoutMs: number): Promise<HTMLElement> => {
-    const existing = findEditorElement(elementId);
+  const waitForEditorElement = (
+    elementId: string,
+    timeoutMs: number,
+    hostOverride?: HTMLElement | null
+  ): Promise<HTMLElement> => {
+    const existing = findEditorElement(elementId, hostOverride);
     if (existing) {
       return Promise.resolve(existing);
     }
@@ -735,7 +893,7 @@ export const mountEditor = async () => {
         reject(new Error(`LEditor: elementId "${elementId}" not found`));
       }, timeoutMs);
       const observer = new MutationObserver(() => {
-        const found = findEditorElement(elementId);
+        const found = findEditorElement(elementId, hostOverride);
         if (!found || settled) return;
         settled = true;
         window.clearTimeout(timeout);
@@ -746,8 +904,11 @@ export const mountEditor = async () => {
     });
   };
 
-  ensureEditorElement(config.elementId);
-  await waitForEditorElement(config.elementId, 5000);
+  const ensured = ensureEditorElement(config.elementId, options.container ?? null);
+  editorEl = ensured.element;
+  createdEditorEl = ensured.created;
+  await waitForEditorElement(config.elementId, 5000, options.container ?? null);
+  config.mountElement = editorEl;
   perfMark("editor:init:start");
   handle = LEditor.init(config);
   perfMark("editor:init:end");
@@ -765,18 +926,21 @@ export const mountEditor = async () => {
     margins: { top: 2.5, right: 2.5, bottom: 2.5, left: 2.5 }
   });
 
-  const editorEl = document.getElementById(config.elementId);
   if (!editorEl) {
     throw new Error(`LEditor: elementId "${config.elementId}" not found`);
   }
   const parent = editorEl.parentElement ?? document.body;
+  // Keep UI density close to Word without breaking layout centering.
+  const APP_UI_SCALE = 1.34;
   const appRoot = document.createElement("div");
   appRoot.id = "leditor-app";
   appRoot.className = "leditor-app";
+  appRoot.style.setProperty("--ui-scale", String(APP_UI_SCALE));
   parent.insertBefore(appRoot, editorEl);
   const ribbonHost = document.createElement("div");
   ribbonHost.id = "leditor-ribbon";
   ribbonHost.className = "leditor-ribbon-host";
+  ribbonHost.dataset.ribbonDensity = "compact3";
   const appHeader = document.createElement("div");
   appHeader.className = "leditor-app-header";
   appHeader.appendChild(ribbonHost);
@@ -784,11 +948,14 @@ export const mountEditor = async () => {
   docShell.className = "leditor-doc-shell";
   appRoot.appendChild(appHeader);
   appRoot.appendChild(docShell);
+  // Keep the editor mount inside the app shell so UI layout and feature CSS (e.g. paragraph grid) apply consistently.
+  docShell.appendChild(editorEl);
   initViewState(appRoot);
   const ribbonEnabled = featureFlags.ribbonEnabled;
+  let disposeRibbon: (() => void) | null = null;
   if (ribbonEnabled) {
     // Debug: silenced noisy ribbon logs.
-    renderRibbon(ribbonHost, handle);
+    disposeRibbon = renderRibbon(ribbonHost, handle);
   }
   let ribbonHeightQueued = false;
   const syncRibbonHeight = () => {
@@ -805,12 +972,12 @@ export const mountEditor = async () => {
   };
   syncRibbonHeight();
   if (typeof ResizeObserver !== "undefined") {
-    const ribbonObserver = new ResizeObserver(() => {
+    ribbonObserver = new ResizeObserver(() => {
       requestRibbonHeightSync();
     });
     ribbonObserver.observe(appHeader);
   } else {
-    window.addEventListener("resize", requestRibbonHeightSync);
+    window.addEventListener("resize", requestRibbonHeightSync, { signal });
   }
   const layout: A4LayoutController | null = mountA4Layout(docShell, editorEl, handle);
   setLayoutController(layout);
@@ -824,16 +991,28 @@ export const mountEditor = async () => {
     });
   };
   requestLayoutRefresh();
-  subscribeToLayoutChanges(() => requestLayoutRefresh());
+  unsubscribeLayout = subscribeToLayoutChanges(() => requestLayoutRefresh());
   initFullscreenController(appRoot);
   const editorHandle = handle;
   const tiptapEditor = editorHandle.getEditor();
-  const captureRibbonSelection = () => {
-    recordRibbonSelection(snapshotFromSelection(tiptapEditor.state.selection));
+  let lastKnownSelection = snapshotFromSelection(tiptapEditor.state.selection);
+  const updateLastKnownSelection = () => {
+    lastKnownSelection = snapshotFromSelection(tiptapEditor.state.selection);
   };
-  ribbonHost.addEventListener("pointerdown", captureRibbonSelection, { capture: true });
-  ribbonHost.addEventListener("touchstart", captureRibbonSelection, { capture: true });
-  const attachCitationHandlers = (root: HTMLElement) => {
+  const captureRibbonSelection = () => {
+    // Ribbon clicks can blur the editor and lose the current caret position.
+    // Use the last-known selection captured from editor interaction/selectionUpdate.
+    recordRibbonSelection(lastKnownSelection);
+  };
+  ribbonHost.addEventListener("pointerdown", captureRibbonSelection, { capture: true, signal });
+  ribbonHost.addEventListener("touchstart", captureRibbonSelection, { capture: true, signal });
+  // Also keep this updated while editing so ribbon clicks always have a fresh caret position.
+  // This avoids cases where selection is lost/shifted when the editor blurs before a ribbon click.
+  editorEl.addEventListener("mouseup", updateLastKnownSelection, { capture: true, signal });
+  editorEl.addEventListener("keyup", updateLastKnownSelection, { capture: true, signal });
+  tiptapEditor.on("selectionUpdate", updateLastKnownSelection);
+  tiptapEditor.on("focus", updateLastKnownSelection);
+  const attachCitationHandlers = (root: HTMLElement, signal: AbortSignal) => {
     const pickAttr = (el: HTMLElement, name: string): string => {
       const raw = el.getAttribute(name) || "";
       return raw.trim();
@@ -928,7 +1107,7 @@ export const mountEditor = async () => {
         console.info("[leditor][anchor-click]", detail);
         window.dispatchEvent(new CustomEvent("leditor-anchor-click", { detail, bubbles: true }));
       },
-      true
+      { capture: true, signal }
     );
 
     root.addEventListener(
@@ -942,13 +1121,13 @@ export const mountEditor = async () => {
         ensureTitle(anchor, href);
         anchor.classList.add("leditor-citation-anchor");
       },
-      true
+      { capture: true, signal }
     );
   };
   const schemaMarks = Object.keys(tiptapEditor.schema.marks || {});
   console.info("[LEditor][schema][marks]", schemaMarks);
   console.info("[LEditor][schema][anchor]", { present: Boolean(tiptapEditor.schema.marks.anchor) });
-  attachCitationHandlers(tiptapEditor.view.dom);
+  attachCitationHandlers(tiptapEditor.view.dom, signal);
   installDirectQuotePdfOpenHandler({ coderStatePath: lastCoderStatePath ?? resolveCoderStatePath() });
   try {
     const probeHtml =
@@ -971,20 +1150,34 @@ export const mountEditor = async () => {
     close: () => footnoteManager.close()
   };
   initGlobalShortcuts(editorHandle);
-  if (window.leditorHost?.registerFootnoteHandlers) {
-    window.leditorHost.registerFootnoteHandlers(footnoteHandlers);
-  } else if (!window.leditorHost) {
-    window.leditorHost = {
+  const host = getHostAdapter();
+  if (host?.registerFootnoteHandlers) {
+    host.registerFootnoteHandlers(footnoteHandlers);
+  } else {
+    const merged = {
+      ...(host ?? {}),
       openFootnotePanel: footnoteHandlers.open,
       toggleFootnotePanel: footnoteHandlers.toggle,
       closeFootnotePanel: footnoteHandlers.close
-    };
+    } as HostAdapter;
+    setHostAdapter(merged);
+    if (!window.leditorHost) {
+      window.leditorHost = merged;
+    }
   }
   perfMark("mountEditor:ui-mounted");
   window.codexLog?.write("[PHASE3_OK]");
   mountStatusBar(handle, layout, { parent: appRoot });
   attachContextMenu(handle, tiptapEditor.view.dom, tiptapEditor);
-  createQuickToolbar(handle, tiptapEditor);
+  setMountedAppState({
+    abortController,
+    unsubscribeLayout,
+    ribbonObserver,
+    disposeRibbon,
+    appRoot,
+    editorEl,
+    createdEditorEl
+  });
 
   editorHandle.execCommand("debugDumpJson");
   window.__logCoderNode = () => {

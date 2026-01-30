@@ -9,7 +9,10 @@ import {
   getPaginationMode,
   isPageBoundariesVisible,
   isPageBreakMarksVisible,
-  isRulerVisible
+  isRulerVisible,
+  isGridlinesVisible,
+  isNavigationVisible,
+  isReadMode
 } from "./view_state.ts";
 import { isVisualBlocksEnabled } from "../editor/visual.ts";
 
@@ -89,18 +92,33 @@ const stateSelectors: Partial<
   canInsert: (editor) => editor.isEditable,
   canComment: (editor) => editor.isEditable,
   availableStyles: () => [],
-  activeStyle: () => null,
+  activeStyle: (editor) => {
+    if (editor.isActive("blockquote")) return "font.style.blockquote";
+    for (let level = 1; level <= 6; level += 1) {
+      if (editor.isActive("heading", { level })) {
+        return `font.style.heading${level}`;
+      }
+    }
+    return "font.style.normal";
+  },
   styleSet: () => null,
   blockquote: (editor) => editor.isActive("blockquote"),
   showFormattingMarks: () => isVisualBlocksEnabled(),
   pageBoundaries: () => isPageBoundariesVisible(),
   pageBreakMarks: () => isPageBreakMarksVisible(),
   ruler: () => isRulerVisible(),
+  gridlines: () => isGridlinesVisible(),
+  navigationPane: () => isNavigationVisible(),
+  readMode: () => isReadMode(),
   fullscreen: () => isFullscreenActive(),
   paginationMode: () => getPaginationMode(),
   zoomLevel: () => {
     const layout = getLayoutController();
     return layout?.getZoom() ?? 1;
+  },
+  viewMode: () => {
+    const layout = getLayoutController();
+    return layout?.getViewMode?.() ?? "single";
   },
   pageCount: () => {
     const layout = getLayoutController();
@@ -139,6 +157,24 @@ export class RibbonStateBus {
     this.editorHandle.on("change", this.handleSelectionChange);
   }
 
+  dispose(): void {
+    try {
+      this.editorHandle.off("selectionChange", this.handleSelectionChange);
+      this.editorHandle.off("change", this.handleSelectionChange);
+    } catch {
+      // ignore
+    }
+    if (this.pendingUpdate !== null && typeof window !== "undefined") {
+      try {
+        window.cancelAnimationFrame(this.pendingUpdate as number);
+      } catch {
+        // ignore
+      }
+    }
+    this.pendingUpdate = null;
+    this.listeners.clear();
+  }
+
   dispatch(commandId: EditorCommandId, payload?: unknown): void {
     dispatchCommand(this.editorHandle, commandId, payload);
     this.scheduleUpdate();
@@ -175,7 +211,22 @@ export class RibbonStateBus {
       if (!selector) {
         continue;
       }
-      nextState[key] = selector(editor, this.state);
+      const raw = selector(editor, this.state);
+      if (key === "selectionContext" && raw && typeof raw === "object") {
+        const prev = this.state.selectionContext as any;
+        if (
+          prev &&
+          typeof prev === "object" &&
+          (raw as any).hasSelection === prev.hasSelection &&
+          (raw as any).isRange === prev.isRange
+        ) {
+          nextState[key] = prev;
+        } else {
+          nextState[key] = raw;
+        }
+      } else {
+        nextState[key] = raw;
+      }
     }
     if (this.hasStateChanged(nextState)) {
       this.state = { ...this.state, ...nextState };

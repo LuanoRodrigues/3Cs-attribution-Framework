@@ -30,7 +30,11 @@
   --chip-gap: 10px;
   --shadow-level-1: 0 20px 48px rgba(0, 0, 0, 0.35);
   --shadow-level-2: 0 30px 80px rgba(0, 0, 0, 0.5);
-  --app-shell-height: calc(100vh / var(--app-scale));
+  /* Viewport height (fallback to 100vh if dvh isn't supported). */
+  --app-viewport-height: 100vh;
+  /* Top inset for notches / safe areas. (Electron chrome/titlebars are handled in main process.) */
+  --app-top-inset: env(safe-area-inset-top, 0px);
+  --app-shell-height: calc((var(--app-viewport-height) - var(--app-top-inset)) / var(--app-scale));
   --workspace-shell-height: calc(var(--app-shell-height) - var(--ribbon-height));
   --blur-soft: 12px;
   --blur-strong: 24px;
@@ -50,6 +54,12 @@
   background: radial-gradient(circle at 15% -10%, var(--gradient-1), transparent 40%),
               radial-gradient(circle at 80% 0%, var(--gradient-2), transparent 45%),
               var(--bg);
+}
+
+@supports (height: 100dvh) {
+  :root {
+    --app-viewport-height: 100dvh;
+  }
 }
 
 html,
@@ -415,11 +425,9 @@ body.panel-drop-active iframe {
   max-height: 100% !important;
   overflow: hidden !important;
   position: relative !important;
-  transform: none !important;
   transform-origin: top center;
   width: 100% !important;
   max-width: 100% !important;
-  --ui-scale: 1 !important;
   --page-canvas-bg: transparent !important;
 }
 
@@ -433,7 +441,8 @@ body.panel-drop-active iframe {
 .write-leditor-shell .leditor-app-header {
   position: sticky;
   top: 0;
-  z-index: 3;
+  /* Keep above leditor internal overlays; upstream expects ~1000+. */
+  z-index: 1100;
 }
 
 .write-page-shell .leditor-doc-shell {
@@ -452,7 +461,7 @@ body.panel-drop-active iframe {
   flex: 0 0 auto;
   position: sticky;
   top: 0;
-  z-index: 3;
+  z-index: 1100;
 }
 
 .write-page-shell .leditor-a4-canvas {
@@ -499,11 +508,11 @@ body.panel-drop-active iframe {
 
 #app-ribbon {
   position: fixed;
-  top: 0;
+  top: var(--app-top-inset);
   left: 0;
   right: 0;
   height: auto;
-  min-height: var(--ribbon-height);
+  /* Let content define height; --ribbon-height is maintained by JS for layout math. */
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -520,7 +529,7 @@ body.panel-drop-active iframe {
 
 #app-ribbon-separator {
   position: fixed;
-  top: var(--ribbon-height);
+  top: calc(var(--app-top-inset) + var(--ribbon-height));
   left: 0;
   right: 0;
   height: 10px;
@@ -1453,15 +1462,16 @@ kbd { background: color-mix(in srgb, var(--surface) 10%, transparent); }
 }
 
 .panel-gutter::after {
-  content: "\EA1E";
+  content: "";
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 12px;
-  letter-spacing: 0.4px;
-  color: var(--muted);
-  font-family: "Segoe Fluent Icons", "Segoe UI", system-ui, sans-serif;
+  width: 3px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--muted);
+  box-shadow: 0 -6px 0 var(--muted), 0 6px 0 var(--muted);
   opacity: 0;
   transition: opacity 0.2s ease;
 }
@@ -1496,15 +1506,16 @@ kbd { background: color-mix(in srgb, var(--surface) 10%, transparent); }
 }
 
 .panel-inner-gutter::after {
-  content: "\EA1E";
+  content: "";
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%) rotate(90deg);
-  font-size: 12px;
-  letter-spacing: 0.4px;
-  color: var(--muted);
-  font-family: "Segoe Fluent Icons", "Segoe UI", system-ui, sans-serif;
+  width: 3px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--muted);
+  box-shadow: 0 -6px 0 var(--muted), 0 6px 0 var(--muted);
   opacity: 0;
   transition: opacity 0.2s ease;
 }

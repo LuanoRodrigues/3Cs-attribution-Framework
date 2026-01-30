@@ -1,0 +1,64 @@
+.leditor-app.leditor-app--paragraph-grid #editor .ProseMirror p,
+.leditor-app.leditor-app--paragraph-grid #editor .ProseMirror h1,
+.leditor-app.leditor-app--paragraph-grid #editor .ProseMirror h2,
+.leditor-app.leditor-app--paragraph-grid #editor .ProseMirror h3,
+.leditor-app.leditor-app--paragraph-grid #editor .ProseMirror h4,
+.leditor-app.leditor-app--paragraph-grid #editor .ProseMirror h5,
+.leditor-app.leditor-app--paragraph-grid #editor .ProseMirror h6 {
+  position: relative;
+  padding-left: var(--leditor-paragraph-grid-gutter, 46px);
+}
+
+.leditor-app.leditor-app--paragraph-grid .leditor-paragraph-grid__n {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: var(--leditor-paragraph-grid-gutter, 46px);
+  padding: 0 10px 0 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  font-family: "Source Sans 3", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  font-size: 11px;
+  line-height: 1.35;
+  color: rgba(27, 27, 27, 0.55);
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+  pointer-events: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-right: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.leditor-app.leditor-app--paragraph-grid .leditor-paragraph-grid__n.leditor-paragraph-grid__n--heading {
+  font-weight: 700;
+  color: rgba(27, 27, 27, 0.72);
+}
+
+.leditor-app.leditor-app--paragraph-grid .leditor-paragraph-grid__n::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.leditor-app.leditor-app--paragraph-grid.leditor-app--theme-dark .leditor-paragraph-grid__n,
+.leditor-app.leditor-app--paragraph-grid.leditor-app--dark .leditor-paragraph-grid__n {
+  color: rgba(247, 247, 247, 0.55);
+  border-right-color: rgba(255, 255, 255, 0.14);
+}
+
+.leditor-app.leditor-app--paragraph-grid.leditor-app--theme-dark .leditor-paragraph-grid__n.leditor-paragraph-grid__n--heading,
+.leditor-app.leditor-app--paragraph-grid.leditor-app--dark .leditor-paragraph-grid__n.leditor-paragraph-grid__n--heading {
+  color: rgba(247, 247, 247, 0.72);
+}
+
+.leditor-app.leditor-app--paragraph-grid.leditor-app--theme-dark .leditor-paragraph-grid__n::after,
+.leditor-app.leditor-app--paragraph-grid.leditor-app--dark .leditor-paragraph-grid__n::after {
+  background: rgba(255, 255, 255, 0.08);
+}

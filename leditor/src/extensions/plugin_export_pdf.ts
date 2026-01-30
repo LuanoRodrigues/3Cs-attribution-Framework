@@ -1,9 +1,10 @@
 ﻿import { registerPlugin } from "../api/plugin_registry.ts";
 import type { EditorHandle } from "../api/leditor.ts";
 import type { ExportPdfOptions, ExportPdfRequest, ExportPdfResult } from "../api/export_pdf.ts";
+import { getHostAdapter } from "../host/host_adapter.ts";
 
 const triggerExport = (html: string, options?: ExportPdfOptions) => {
-  const handler = window.leditorHost?.exportPDF;
+  const handler = getHostAdapter()?.exportPDF;
   if (!handler) {
     return Promise.reject(new Error("ExportPDF handler is unavailable"));
   }

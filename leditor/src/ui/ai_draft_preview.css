@@ -1,0 +1,62 @@
+.leditor-ai-draft-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(37, 99, 235, 0.28);
+  background: rgba(37, 99, 235, 0.08);
+  color: rgba(27, 27, 27, 0.8);
+  font-family: "Source Sans 3", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  font-size: 11px;
+  line-height: 1.2;
+  user-select: none;
+  pointer-events: auto;
+}
+
+.leditor-ai-draft-old {
+  background: rgba(239, 68, 68, 0.10);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  text-decoration-color: rgba(239, 68, 68, 0.55);
+}
+
+.leditor-ai-draft-new {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  background: rgba(16, 185, 129, 0.10);
+  color: rgba(27, 27, 27, 0.82);
+  font-family: "Source Sans 3", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  font-size: 11.5px;
+  line-height: 1.25;
+  white-space: nowrap;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: none;
+  pointer-events: auto;
+}
+
+.leditor-app--theme-dark .leditor-ai-draft-pill,
+.leditor-app--dark .leditor-ai-draft-pill {
+  color: rgba(247, 247, 247, 0.82);
+  border-color: rgba(59, 130, 246, 0.35);
+  background: rgba(59, 130, 246, 0.16);
+}
+
+.leditor-app--theme-dark .leditor-ai-draft-old,
+.leditor-app--dark .leditor-ai-draft-old {
+  background: rgba(239, 68, 68, 0.16);
+  text-decoration-color: rgba(239, 68, 68, 0.7);
+}
+
+.leditor-app--theme-dark .leditor-ai-draft-new,
+.leditor-app--dark .leditor-ai-draft-new {
+  color: rgba(247, 247, 247, 0.86);
+  border-color: rgba(16, 185, 129, 0.32);
+  background: rgba(16, 185, 129, 0.16);
+}

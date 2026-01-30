@@ -16,19 +16,52 @@ declare global {
 
 declare const __BUILD_TIME__: string;
 
+const dbg = (fn: string, msg: string, extra?: Record<string, unknown>) => {
+  const line = `[renderer-entry.ts][${fn}][debug] ${msg}`;
+  if (extra) {
+    console.debug(line, extra);
+  } else {
+    console.debug(line);
+  }
+};
+
 const g = globalThis as typeof globalThis & { __leditorRendererEntryLoaded?: boolean };
 if (g.__leditorRendererEntryLoaded) {
-  console.warn("[renderer-entry] already loaded; skipping duplicate entry.");
+  dbg("entry", "already loaded; skipping duplicate entry.");
 } else {
   g.__leditorRendererEntryLoaded = true;
-  // Simple build marker to prove which bundle is currently running.
-  console.info("[renderer-entry] loaded", { buildTime: __BUILD_TIME__ });
+  dbg("entry", "loaded", { buildTime: __BUILD_TIME__ });
+  // Electron/Chromium may disable `prompt()` / `alert()` in some environments (e.g. WSL).
+  // Wrap them to avoid hard crashes inside command handlers.
+  try {
+    const originalPrompt = window.prompt?.bind(window);
+    window.prompt = ((message?: string, defaultValue?: string) => {
+      try {
+        return originalPrompt ? originalPrompt(message, defaultValue) : null;
+      } catch {
+        dbg("prompt", "prompt() is not supported in this environment.");
+        return null;
+      }
+    }) as any;
+    const originalAlert = window.alert?.bind(window);
+    window.alert = ((message?: any) => {
+      try {
+        return originalAlert ? originalAlert(message) : undefined;
+      } catch {
+        dbg("alert", "alert() is not supported in this environment.", { messageType: typeof message });
+        return undefined;
+      }
+    }) as any;
+  } catch {
+    // ignore
+  }
   import("../src/ui/renderer.ts")
     .then(({ mountEditor }) => {
       let hasMounted = false;
       const mountOnce = () => {
         if (hasMounted) return;
         hasMounted = true;
+        dbg("mountOnce", "mounting editor");
         mountEditor();
       };
       window.__leditorMountEditor = mountOnce;
@@ -37,6 +70,6 @@ if (g.__leditorRendererEntryLoaded) {
       }
     })
     .catch((error) => {
-      console.error("[renderer-entry] mount failed", error);
+      console.error("[renderer-entry.ts][entry][debug] mount failed", error);
     });
 }

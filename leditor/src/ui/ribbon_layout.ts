@@ -4,7 +4,7 @@ import type { EditorHandle } from "../api/leditor.ts";
 import layoutPlan from "./layout_plan.ts";
 import { commandMap } from "../api/command_map.ts";
 import { RibbonTabStrip } from "./ribbon_primitives.ts";
-import { createRibbonButton, createRibbonDropdownButton, createRibbonSpinner } from "./ribbon_controls.ts";
+import { createRibbonButton, createRibbonDropdownButton } from "./ribbon_controls.ts";
 import { createRibbonIcon, type RibbonIconName } from "./ribbon_icons.ts";
 import { Menu, MenuItem, MenuSeparator, setMenuPortal } from "./ribbon_menu.ts";
 import { SplitButton } from "./ribbon_split_button.ts";
@@ -13,6 +13,7 @@ import { getStyleTemplates, openStyleMiniApp } from "./style_mini_app.ts";
 import { tabLayouts } from "./tab_layouts.ts";
 import { INSERT_ICON_OVERRIDES } from "./ribbon_icon_overrides.ts";
 import { resolveRibbonCommandId } from "./ribbon_command_aliases.ts";
+import { refreshLayoutView } from "./layout_engine.ts";
 import type { RibbonStateBus, RibbonStateKey, RibbonStateSnapshot } from "./ribbon_state.ts";
 import { perfMark, perfMeasure } from "./perf.ts";
 import type {
@@ -77,17 +78,36 @@ const MAX_ROWS_BY_GROUP: Record<string, number> = {
 };
 
 const ROWED_TABS = new Set(["home", "insert", "layout", "references", "review", "view"]);
-const ROWED_TAB_ROW_COUNT = 1;
 const ROWED_TAB_ROW_COUNTS: Record<string, number> = {
-  home: 1,
-  insert: 1,
-  layout: 1,
-  references: 1,
-  review: 1,
-  view: 1
+  home: 2,
+  insert: 2,
+  layout: 2,
+  references: 2,
+  review: 2,
+  view: 2
 };
-const ROWED_TAB_MIN_PER_ROW = 4;
+const ROWED_TAB_ROW_COUNT_BY_GROUP: Record<string, number> = {
+  paragraph: 2
+};
+const ROWED_TAB_MIN_PER_ROW = 1;
 const ROWED_TAB_MAX_PER_ROW = 20;
+const PINNED_CLUSTER_ROWS: Record<string, Record<string, number>> = {
+  font: {
+    "font.styles": 0
+  },
+  styles: {
+    "styles.quickTemplates": 0,
+    "styles.gallery": 1
+  }
+};
+
+const GROUP_DEFAULT_ROW_INDEX: Record<string, number> = {
+  font: 1
+};
+
+const resolvePinnedRow = (_tabId: string, groupId: string, clusterId: string): number | undefined => {
+  return PINNED_CLUSTER_ROWS[groupId]?.[clusterId];
+};
 
 const applyGroupLayoutConfig = (body: HTMLDivElement, tabId: string, groupId: string): void => {
   const layout = tabLayouts[tabId]?.[groupId];
@@ -367,24 +387,24 @@ const applyTokens = (): void => {
   const root = document.documentElement;
   const tokens = layoutPlan.tokens;
   root.style.setProperty("--r-font-family", tokens.fontFamily);
-  root.style.setProperty("--r-font-size", tokens.fontSize);
-  root.style.setProperty("--r-font-size-sm", tokens.fontSizeSmall);
+  root.style.setProperty("--r-font-size-base", tokens.fontSize);
+  root.style.setProperty("--r-font-size-sm-base", tokens.fontSizeSmall);
   root.style.setProperty("--r-line-height", `${tokens.lineHeight}`);
   root.style.setProperty("--r-tabstrip-height", tokens.tabstripHeight);
   root.style.setProperty("--r-panel-height", tokens.panelHeight);
-  root.style.setProperty("--r-panel-pad-x", tokens.panelPadX);
-  root.style.setProperty("--r-panel-pad-y", tokens.panelPadY);
-  root.style.setProperty("--r-group-gap", tokens.groupGap);
-  root.style.setProperty("--r-group-pad", tokens.groupPad);
-  root.style.setProperty("--r-group-min", tokens.groupMinWidth);
+  root.style.setProperty("--r-panel-pad-x-base", tokens.panelPadX);
+  root.style.setProperty("--r-panel-pad-y-base", tokens.panelPadY);
+  root.style.setProperty("--r-group-gap-base", tokens.groupGap);
+  root.style.setProperty("--r-group-pad-base", tokens.groupPad);
+  root.style.setProperty("--r-group-min-base", tokens.groupMinWidth);
   root.style.setProperty("--r-group-max", tokens.groupMaxWidth);
   root.style.setProperty("--r-ctl-h-sm", tokens.controlHeightSmall);
   root.style.setProperty("--r-ctl-h-md", tokens.controlHeightMedium);
   root.style.setProperty("--r-ctl-h-lg", tokens.controlHeightLarge);
   root.style.setProperty("--r-ctl-radius", tokens.controlRadius);
-  root.style.setProperty("--r-ctl-gap", tokens.controlGap);
-  root.style.setProperty("--r-icon", tokens.iconSize);
-  root.style.setProperty("--r-icon-lg", tokens.iconSizeLarge);
+  root.style.setProperty("--r-ctl-gap-base", tokens.controlGap);
+  root.style.setProperty("--r-icon-base", tokens.iconSize);
+  root.style.setProperty("--r-icon-lg-base", tokens.iconSizeLarge);
   root.style.setProperty("--r-radius", tokens.radius);
   root.style.setProperty("--r-border", tokens.border);
   root.style.setProperty("--r-divider", tokens.divider);
@@ -588,6 +608,28 @@ const formatCitationStyleValue = (value: unknown): string => {
   return BUILTIN_CITATION_STYLE_LABELS[id] ?? id;
 };
 
+const BUILTIN_PARAGRAPH_STYLE_LABELS: Record<string, string> = {
+  "font.style.normal": "Normal",
+  "font.style.title": "Title",
+  "font.style.subtitle": "Subtitle",
+  "font.style.blockquote": "Blockquote",
+  "font.style.heading1": "Heading 1",
+  "font.style.heading2": "Heading 2",
+  "font.style.heading3": "Heading 3",
+  "font.style.heading4": "Heading 4",
+  "font.style.heading5": "Heading 5",
+  "font.style.heading6": "Heading 6"
+};
+
+const DEFAULT_FONT_FAMILY = "Times New Roman";
+const DEFAULT_FONT_SIZE = 12;
+
+const formatParagraphStyleValue = (value: unknown): string => {
+  const key = typeof value === "string" ? value.trim() : "";
+  if (!key) return "";
+  return BUILTIN_PARAGRAPH_STYLE_LABELS[key] ?? key;
+};
+
 const listCitationStyles = (): DynamicEntry[] => {
   const builtins: Array<{ id: string; label: string }> = [
     { id: "apa", label: "APA" },
@@ -747,20 +789,15 @@ const createGalleryMenu = (menu: Menu, ctx: BuildContext, item: ControlConfig): 
   prevBtn.className = "rgallery__nav-btn";
   prevBtn.setAttribute("aria-label", "Previous templates");
   prevBtn.appendChild(createRibbonIcon("previous"));
-  const rangeLabel = document.createElement("span");
-  rangeLabel.className = "rgallery__range";
   const nextBtn = document.createElement("button");
   nextBtn.type = "button";
   nextBtn.className = "rgallery__nav-btn";
   nextBtn.setAttribute("aria-label", "Next templates");
   nextBtn.appendChild(createRibbonIcon("next"));
-  nav.append(prevBtn, rangeLabel, nextBtn);
+  nav.append(prevBtn, nextBtn);
 
   const viewport = document.createElement("div");
   viewport.className = "rgallery__viewport";
-
-  const visibleCount = 3;
-  let startIndex = 0;
   const buildEntryButton = (entry: GalleryEntry): HTMLButtonElement => {
     const button = document.createElement("button");
     button.type = "button";
@@ -783,38 +820,33 @@ const createGalleryMenu = (menu: Menu, ctx: BuildContext, item: ControlConfig): 
     return button;
   };
 
-  const updateRangeLabel = (): void => {
-    const last = Math.min(entries.length, startIndex + visibleCount);
-    rangeLabel.textContent = `${startIndex + 1}–${last} of ${entries.length}`;
+  entries.forEach((entry) => viewport.appendChild(buildEntryButton(entry)));
+
+  const getStep = (): number => {
+    const first = viewport.querySelector<HTMLElement>(".rgallery__item");
+    if (!first) return 160;
+    const style = getComputedStyle(viewport);
+    const gap = Number.parseFloat(style.columnGap || style.gap || "10") || 10;
+    return first.getBoundingClientRect().width + gap;
   };
 
-  const updateNavButtons = (): void => {
-    prevBtn.disabled = startIndex <= 0;
-    nextBtn.disabled = startIndex + visibleCount >= entries.length;
-  };
-
-  const renderEntries = (): void => {
-    viewport.innerHTML = "";
-    const slice = entries.slice(startIndex, startIndex + visibleCount);
-    slice.forEach((entry) => viewport.appendChild(buildEntryButton(entry)));
-    updateRangeLabel();
-    updateNavButtons();
+  const syncButtons = (): void => {
+    const maxScrollLeft = viewport.scrollWidth - viewport.clientWidth;
+    prevBtn.disabled = viewport.scrollLeft <= 1;
+    nextBtn.disabled = viewport.scrollLeft >= maxScrollLeft - 1;
   };
 
   prevBtn.addEventListener("click", () => {
-    if (startIndex > 0) {
-      startIndex = Math.max(0, startIndex - 1);
-      renderEntries();
-    }
+    viewport.scrollBy({ left: -getStep(), behavior: "smooth" });
   });
   nextBtn.addEventListener("click", () => {
-    if (startIndex + visibleCount < entries.length) {
-      startIndex = Math.min(entries.length - visibleCount, startIndex + 1);
-      renderEntries();
-    }
+    viewport.scrollBy({ left: getStep(), behavior: "smooth" });
   });
+  viewport.addEventListener("scroll", () => {
+    syncButtons();
+  });
+  syncButtons();
 
-  renderEntries();
   container.append(nav, viewport);
   return container;
 };
@@ -898,23 +930,38 @@ const renderDynamicMenu = (menu: Menu, ctx: BuildContext, item: ControlConfig): 
 };
 
 const createMenuItemButton = (menu: Menu, ctx: BuildContext, item: ControlConfig, toggle = false): HTMLButtonElement => {
+  const rawLabel = item.label ?? item.controlId ?? "";
   const button = MenuItem({
-    label: item.label ?? item.controlId ?? "",
+    label: rawLabel,
     onSelect: () => {
       const baseArgs = buildCommandArgs(item.command);
+      menu.close();
       if (!baseArgs && (item.command?.id === "TextColor" || item.command?.id === "HighlightColor")) {
         const raw = window.prompt("Enter a hex color (e.g. #1f2937)");
         if (!raw) {
-          menu.close();
           return;
         }
         runMenuCommand(ctx, item.command, { value: raw.trim() });
       } else {
         runMenuCommand(ctx, item.command, undefined);
       }
-      menu.close();
     }
   });
+  if (item.controlId?.startsWith("font.style.")) {
+    button.classList.add("leditor-menu-item--style-preview");
+    button.dataset.previewKind = "paragraphStyle";
+    button.dataset.previewValue = item.controlId.slice("font.style.".length);
+    button.dataset.stateValue = item.controlId;
+
+    button.textContent = "";
+    const label = document.createElement("span");
+    label.className = "leditor-menu-item__label";
+    label.textContent = rawLabel;
+    const sample = document.createElement("span");
+    sample.className = "leditor-menu-item__sample";
+    sample.textContent = "AaBbCc";
+    button.append(label, sample);
+  }
   if (toggle) {
     button.setAttribute("aria-checked", "false");
     button.dataset.toggle = "true";
@@ -1030,8 +1077,26 @@ const attachStylesContextMenu = (
 
 const createStyleTemplateGallery = (ctx: BuildContext): HTMLElement => {
   const templates = getStyleTemplates();
+  const shell = document.createElement("div");
+  shell.className = "home-quick-style-shell";
+
   const gallery = document.createElement("div");
   gallery.className = "home-quick-style-gallery";
+
+  const nav = document.createElement("div");
+  nav.className = "home-quick-style-nav";
+  const prevBtn = document.createElement("button");
+  prevBtn.type = "button";
+  prevBtn.className = "home-quick-style-nav-btn";
+  prevBtn.setAttribute("aria-label", "Previous templates");
+  prevBtn.appendChild(createRibbonIcon("previous"));
+  const nextBtn = document.createElement("button");
+  nextBtn.type = "button";
+  nextBtn.className = "home-quick-style-nav-btn";
+  nextBtn.setAttribute("aria-label", "Next templates");
+  nextBtn.appendChild(createRibbonIcon("next"));
+  nav.append(prevBtn, nextBtn);
+
   const appState = { editorHandle: ctx.editorHandle };
   templates.forEach((template) => {
     const card = document.createElement("div");
@@ -1042,27 +1107,71 @@ const createStyleTemplateGallery = (ctx: BuildContext): HTMLElement => {
     const label = document.createElement("div");
     label.className = "home-quick-style-card__label";
     label.textContent = template.label;
-    const description = document.createElement("p");
-    description.className = "home-quick-style-card__description";
-    description.textContent = template.description;
+    card.title = template.label;
 
-    const openMiniApp = () => {
-      openStyleMiniApp(card, appState, { templateId: template.templateId });
+    const applyTemplate = () => {
+      // Apply the selected template to the whole document.
+      try {
+        ctx.editorHandle.execCommand("ApplyTemplate", { id: template.templateId });
+        refreshLayoutView();
+      } catch (error) {
+        console.error("[QuickTemplates] Failed to apply template", template.templateId, error);
+        const message = error instanceof Error ? error.message : String(error);
+        window.alert(`Failed to apply template "${template.label}": ${message}`);
+      }
     };
 
-    card.addEventListener("click", openMiniApp);
+    card.addEventListener("click", applyTemplate);
     card.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
-        openMiniApp();
+        applyTemplate();
       }
     });
 
-    card.append(label, description);
+    card.append(label);
+    if (template.description && template.description.trim().length > 0) {
+      const description = document.createElement("p");
+      description.className = "home-quick-style-card__description";
+      description.textContent = template.description;
+      card.appendChild(description);
+    }
     gallery.appendChild(card);
   });
+  const getStep = (): number => {
+    const first = gallery.querySelector<HTMLElement>(".home-quick-style-card");
+    if (!first) return 160;
+    const style = getComputedStyle(gallery);
+    const gap = Number.parseFloat(style.columnGap || style.gap || "6") || 6;
+    return first.getBoundingClientRect().width + gap;
+  };
+  const syncButtons = (): void => {
+    const maxScrollLeft = gallery.scrollWidth - gallery.clientWidth;
+    prevBtn.disabled = gallery.scrollLeft <= 1;
+    nextBtn.disabled = gallery.scrollLeft >= maxScrollLeft - 1;
+  };
+  const scheduleSyncButtons = (): void => {
+    // This component is built before being attached to the DOM, so measure after layout.
+    requestAnimationFrame(() => requestAnimationFrame(syncButtons));
+  };
+  prevBtn.addEventListener("click", () => {
+    gallery.scrollBy({ left: -getStep(), behavior: "smooth" });
+  });
+  nextBtn.addEventListener("click", () => {
+    gallery.scrollBy({ left: getStep(), behavior: "smooth" });
+  });
+  gallery.addEventListener("scroll", () => syncButtons());
+  scheduleSyncButtons();
+  if (typeof ResizeObserver !== "undefined") {
+    const ro = new ResizeObserver(() => scheduleSyncButtons());
+    ro.observe(gallery);
+  } else {
+    window.addEventListener("resize", scheduleSyncButtons);
+  }
+
   attachStylesContextMenu(gallery, ctx);
-  return gallery;
+  shell.append(gallery, nav);
+  return shell;
 };
 
 const buildMenu = (items: ControlConfig[] | undefined, ctx: BuildContext): Menu => {
@@ -1331,6 +1440,13 @@ const buildControl = (
       tooltip,
       menu
     });
+    if (control.size === "large") {
+      button.classList.remove("leditor-ribbon-button--medium");
+      button.classList.add("leditor-ribbon-button--large");
+    } else if (control.size === "small") {
+      button.classList.remove("leditor-ribbon-button--medium");
+      button.classList.add("leditor-ribbon-button--small");
+    }
     if (control.controlId === "cite.style") {
       button.classList.add("ribbon-dropdown--big");
       const textWrap = document.createElement("span");
@@ -1343,9 +1459,25 @@ const buildControl = (
       value.textContent = formatCitationStyleValue(getStateValue(ctx, control.state?.binding));
       textWrap.append(title, value);
       button.appendChild(textWrap);
-      const chevron = document.createElement("span");
-      chevron.className = "ribbon-dropdown-chevron";
-      chevron.textContent = "▾";
+      const chevron = createRibbonIcon("chevronDown");
+      chevron.classList.add("ribbon-dropdown-chevron");
+      button.appendChild(chevron);
+    }
+    if (control.controlId === "font.style") {
+      button.classList.add("ribbon-dropdown--big");
+      const textWrap = document.createElement("span");
+      textWrap.className = "ribbon-dropdown-text";
+      const title = document.createElement("span");
+      title.className = "ribbon-dropdown-title";
+      title.textContent = control.label ?? "Style";
+      const value = document.createElement("span");
+      value.className = "ribbon-dropdown-value";
+      value.textContent =
+        formatParagraphStyleValue(getStateValue(ctx, control.state?.binding)) || "Normal";
+      textWrap.append(title, value);
+      button.appendChild(textWrap);
+      const chevron = createRibbonIcon("chevronDown");
+      chevron.classList.add("ribbon-dropdown-chevron");
       button.appendChild(chevron);
     }
     ensureControlIcon(button, requiredIcon);
@@ -1362,10 +1494,93 @@ const buildControl = (
     input.type = "text";
     input.className = "leditor-ribbon-combobox-input";
     input.placeholder = control.label ?? "";
-    if (control.controlId === "font.family") {
-      input.value = "Times New Roman";
-    }
     box.appendChild(input);
+
+    const suggestions = (control as any)?.suggestions?.items;
+    const hasSuggestions = Array.isArray(suggestions) && suggestions.length > 0;
+    const menu = hasSuggestions ? new Menu([]) : null;
+    if (menu && id) {
+      ctx.menuRegistry.set(id, menu);
+    }
+
+    const openMenu = (): void => {
+      if (!menu) return;
+      menu.open(box);
+    };
+
+    let suppressBlur = false;
+
+    const applyValue = (value: string): void => {
+      if (!control.command) return;
+      const trimmed = value.trim();
+      if (!trimmed) return;
+      runMenuCommand(ctx, control.command, { value: trimmed });
+    };
+
+    if (menu && hasSuggestions) {
+      suggestions.forEach((fontName: unknown) => {
+        if (typeof fontName !== "string") return;
+        const name = fontName.trim();
+        if (!name) return;
+        const item = MenuItem({
+          label: name,
+          onSelect: () => {
+            suppressBlur = true;
+            input.value = name;
+            applyValue(name);
+            menu.close();
+            queueMicrotask(() => {
+              suppressBlur = false;
+            });
+          }
+        });
+        item.classList.add("leditor-menu-item--font-preview");
+        item.style.fontFamily = name;
+        item.textContent = "";
+        const label = document.createElement("span");
+        label.className = "leditor-menu-item__label";
+        label.textContent = name;
+        const sample = document.createElement("span");
+        sample.className = "leditor-menu-item__sample";
+        sample.textContent = "AaBbCc";
+        item.append(label, sample);
+        menu.element.appendChild(item);
+      });
+    }
+
+    if (control.controlId === "font.family") {
+      input.value = DEFAULT_FONT_FAMILY;
+    }
+
+    const caret = document.createElement("button");
+    caret.type = "button";
+    caret.className = "leditor-ribbon-combobox-caret";
+    caret.setAttribute("aria-label", `${control.label ?? "Combobox"} options`);
+    caret.appendChild(createRibbonIcon("chevronDown"));
+    caret.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      openMenu();
+    });
+
+    input.addEventListener("click", () => openMenu());
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        openMenu();
+        return;
+      }
+      if (event.key === "Enter") {
+        event.preventDefault();
+        applyValue(input.value);
+      }
+    });
+    input.addEventListener("blur", () => {
+      if (suppressBlur) return;
+      applyValue(input.value);
+    });
+
+    box.appendChild(caret);
     applyControlDataAttributes(box, control, control.size ?? "medium");
     collapseMeta.element = box;
     recordParent(meta, box);
@@ -1384,9 +1599,6 @@ const buildControl = (
     }
     input.placeholder = control.label ?? "";
     spinnerContainer.appendChild(input);
-    const spinner = createRibbonSpinner();
-    spinner.classList.add("ribbon-spinner-steps");
-    spinnerContainer.appendChild(spinner);
 
     const menu = new Menu([]);
     ctx.menuRegistry.set(id ?? "", menu);
@@ -1429,16 +1641,19 @@ const buildControl = (
       menu.element.appendChild(item);
     }
 
-    const requiredIcon = requireIcon(control, icon);
-    const tooltip = resolveControlTooltip(control, id ?? "");
-    const dropdownButton = createRibbonDropdownButton({
-      icon: requiredIcon,
-      label: control.label ?? "",
-      tooltip,
-      menu
+    // Use a lightweight caret button (not a full ribbon dropdown button) to avoid nested chrome.
+    const caret = document.createElement("button");
+    caret.type = "button";
+    caret.className = "ribbon-spinner-caret";
+    caret.setAttribute("aria-label", `${control.label ?? "Spinner"} options`);
+    caret.setAttribute("aria-haspopup", "menu");
+    caret.appendChild(createRibbonIcon("chevronDown"));
+    caret.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      menu.open(spinnerContainer);
     });
-    ensureControlIcon(dropdownButton, requiredIcon);
-    spinnerContainer.appendChild(dropdownButton);
+    spinnerContainer.appendChild(caret);
 
     const parseCurrentValue = (): number => {
       const current = Number.parseFloat(input.value);
@@ -1447,19 +1662,6 @@ const buildControl = (
       }
       return presets[0] ?? 0;
     };
-
-    const changeValue = (delta: number) => {
-      const next = parseCurrentValue() + delta;
-      input.value = String(next);
-      runSpinnerCommand(next);
-    };
-
-    spinner.querySelectorAll<HTMLButtonElement>("button").forEach((btn, index) => {
-      btn.addEventListener("click", (event) => {
-        event.stopPropagation();
-        changeValue(index === 0 ? -1 : 1);
-      });
-    });
 
     input.addEventListener("keydown", (event) => {
       if (event.key === "Enter") {
@@ -1471,6 +1673,11 @@ const buildControl = (
       runSpinnerCommand(parseCurrentValue());
     });
 
+    const tooltip = resolveControlTooltip(control, id ?? "");
+    if (tooltip) {
+      spinnerContainer.dataset.tooltip = tooltip;
+      spinnerContainer.title = tooltip;
+    }
     applyControlDataAttributes(spinnerContainer, control, control.size ?? "medium");
     collapseMeta.element = spinnerContainer;
     recordParent(meta, spinnerContainer);
@@ -1544,7 +1751,7 @@ const buildCluster = (
 
 const buildGroup = (group: GroupConfig, ctx: BuildContext, tabId: string): GroupMeta => {
   const element = document.createElement("div");
-  element.className = "leditor-ribbon-group ribbonGroup";
+  element.className = "leditor-ribbon-group";
   element.classList.add(`ribbon-group-${group.groupId.replace(/\./g, "-")}`);
   element.dataset.groupId = group.groupId;
   const body = document.createElement("div");
@@ -1574,34 +1781,38 @@ const buildGroup = (group: GroupConfig, ctx: BuildContext, tabId: string): Group
   };
 
   const baseMaxRows = MAX_ROWS_BY_GROUP[group.groupId] ?? 5;
-  const maxRows = ROWED_TABS.has(tabId) ? Math.min(baseMaxRows, ROWED_TAB_ROW_COUNT) : baseMaxRows;
+  const rowCountCap = ROWED_TABS.has(tabId) ? (ROWED_TAB_ROW_COUNTS[tabId] ?? 1) : baseMaxRows;
+  const maxRows = ROWED_TABS.has(tabId) ? Math.min(baseMaxRows, rowCountCap) : baseMaxRows;
   body.style.setProperty("--r-group-max-rows", String(maxRows));
   body.dataset.maxRows = String(maxRows);
 
   const customRowCount = ROWED_TAB_ROW_COUNTS[tabId];
   if (customRowCount !== undefined) {
-    body.dataset.rowCount = String(customRowCount);
+    const effectiveRowCount = ROWED_TAB_ROW_COUNT_BY_GROUP[group.groupId] ?? customRowCount;
+    body.dataset.rowCount = String(effectiveRowCount);
     const clusters = group.clusters ?? [];
+    const minPerRow = ROWED_TAB_MIN_PER_ROW;
     const perRow = Math.min(
       ROWED_TAB_MAX_PER_ROW,
-      Math.max(ROWED_TAB_MIN_PER_ROW, Math.ceil(clusters.length / customRowCount))
+      Math.max(minPerRow, Math.ceil(clusters.length / effectiveRowCount))
     );
     const rows: HTMLDivElement[] = [];
-    for (let i = 0; i < customRowCount; i += 1) {
+    for (let i = 0; i < effectiveRowCount; i += 1) {
       const row = document.createElement("div");
       row.className = "leditor-ribbon-group-row";
       row.dataset.rowIndex = String(i + 1);
       rows.push(row);
       body.appendChild(row);
     }
-    let rowIndex = 0;
+    let rowIndex = tabId === "home" ? (GROUP_DEFAULT_ROW_INDEX[group.groupId] ?? 0) : 0;
     let rowItemCount = 0;
     clusters.forEach((cluster) => {
       const clusterEl = buildCluster(cluster, meta, ctx);
-      const pinFirstRow = tabId === "home" && cluster.clusterId === "styles.quickTemplates";
-      const targetRow = pinFirstRow ? 0 : rowIndex;
+      const pinnedRow = resolvePinnedRow(tabId, group.groupId, cluster.clusterId);
+      const isPinned = pinnedRow !== undefined;
+      const targetRow = pinnedRow ?? rowIndex;
       rows[targetRow].appendChild(clusterEl);
-      if (!pinFirstRow) {
+      if (!isPinned) {
         rowItemCount += 1;
         if (rowItemCount >= perRow && rowIndex < rows.length - 1) {
           rowIndex += 1;
@@ -1785,6 +1996,10 @@ const collapseToStageC = (
     button.dataset.size = "medium";
     button.addEventListener("click", (event) => {
       event.stopPropagation();
+      const panel = meta.element.closest<HTMLElement>(".leditor-ribbon-panel");
+      const registerFlyout = (panel as any)?.__registerRibbonFlyout as
+        | ((flyout: HTMLElement, close: (ev: MouseEvent) => void) => void)
+        | undefined;
       const placeholder = document.createComment("group-body-placeholder");
       if (meta.body.parentNode === meta.element) {
         meta.element.replaceChild(placeholder, meta.body);
@@ -1805,6 +2020,9 @@ const collapseToStageC = (
           document.removeEventListener("mousedown", close, true);
         }
       };
+      if (registerFlyout) {
+        registerFlyout(flyout, close);
+      }
       document.addEventListener("mousedown", close, true);
       meta.body.hidden = false;
       meta.footer.hidden = false;
@@ -1836,27 +2054,62 @@ const applyCollapseStages = (
   panelEl: HTMLElement,
   groups: GroupMeta[],
   portal: HTMLElement,
-  ctx: BuildContext
+  ctx: BuildContext,
+  cleanup: { closeFlyouts: () => void }
 ) => {
   if (ctx.disableCollapse) {
     panelEl.dataset.collapseStage = "A";
     panelEl.dataset.stage = "A";
     return;
   }
-  groups.forEach(resetGroup);
   const strip = panelEl.querySelector<HTMLElement>(".leditor-ribbon-groups");
   if (!strip) return;
-  const available = strip.clientWidth;
-  const total = groups.reduce((sum, g) => sum + g.element.offsetWidth, 0);
-  if (total <= available) {
+
+  const available = Math.floor(strip.getBoundingClientRect().width);
+  const currentStage = (panelEl.dataset.collapseStage as "A" | "B" | "C" | undefined) ?? "A";
+
+  // Use the current DOM widths as a hysteresis band to avoid oscillation.
+  const totalCurrent = groups.reduce((sum, g) => sum + g.element.getBoundingClientRect().width, 0);
+  const needsMoreSpace = totalCurrent > available + 8;
+  const hasSlack = totalCurrent < available - 24;
+
+  // If current stage is stable within the band, do nothing.
+  if (!needsMoreSpace && !hasSlack) {
+    panelEl.dataset.stage = currentStage;
+    auditIconOnlyControls(panelEl);
+    return;
+  }
+
+  // Any stage change should close active flyouts (stage C menu listeners).
+  cleanup.closeFlyouts();
+
+  // Reset back to a known baseline before applying a new stage.
+  groups.forEach(resetGroup);
+  const totalA = groups.reduce((sum, g) => sum + g.element.offsetWidth, 0);
+  if (totalA <= available) {
     panelEl.dataset.collapseStage = "A";
     panelEl.dataset.stage = "A";
     auditIconOnlyControls(panelEl);
     return;
   }
+  // If we're already at stage A and only barely overflow, keep A to avoid flicker.
+  if (currentStage === "A" && totalA <= available + 12) {
+    panelEl.dataset.collapseStage = "A";
+    panelEl.dataset.stage = "A";
+    auditIconOnlyControls(panelEl);
+    return;
+  }
+
   groups.forEach((g) => applyStageB(g, ctx));
-  const afterB = groups.reduce((sum, g) => sum + g.element.offsetWidth, 0);
-  if (afterB <= available) {
+  const totalB = groups.reduce((sum, g) => sum + g.element.offsetWidth, 0);
+  if (totalB <= available) {
+    panelEl.dataset.collapseStage = "B";
+    panelEl.dataset.stage = "B";
+    auditIconOnlyControls(panelEl);
+    return;
+  }
+  // Similarly, avoid dropping to stage C unless it's clearly necessary.
+  if (currentStage === "B" && totalB <= available + 12) {
     panelEl.dataset.collapseStage = "B";
     panelEl.dataset.stage = "B";
     auditIconOnlyControls(panelEl);
@@ -1893,11 +2146,32 @@ const buildTab = (
   const groupMetas = tab.groups.map((g) => buildGroup(g, ctx, tab.tabId));
   groupMetas.forEach((gm) => groupsStrip.appendChild(gm.element));
 
+  const openFlyouts = new Set<{ flyout: HTMLElement; close: (ev: MouseEvent) => void }>();
+  const closeFlyouts = () => {
+    openFlyouts.forEach(({ flyout, close }) => {
+      document.removeEventListener("mousedown", close, true);
+      try {
+        flyout.remove();
+      } catch {
+        // ignore
+      }
+    });
+    openFlyouts.clear();
+  };
+
+  // Patch stage-C flyout creation to register cleanup.
+  const registerFlyout = (flyout: HTMLElement, close: (ev: MouseEvent) => void) => {
+    openFlyouts.add({ flyout, close });
+  };
+
   const collapse = () => {
-    applyCollapseStages(panel, groupMetas, portal, ctx);
+    applyCollapseStages(panel, groupMetas, portal, ctx, { closeFlyouts });
     const stage = panel.dataset.collapseStage ?? ctx.defaultStage ?? "A";
     ctx.onStageUpdate?.(stage);
   };
+  // Expose a cleanup hook via the panel for tab switch / dispose.
+  (panel as any).__closeRibbonFlyouts = closeFlyouts;
+  (panel as any).__registerRibbonFlyout = registerFlyout;
   return { tabId: tab.tabId, label: tab.label, panel, collapse };
 };
 
@@ -1922,6 +2196,9 @@ export const renderRibbonLayout = (
   }
   applyTokens();
   host.classList.add("leditor-ribbon");
+  if (!host.dataset.ribbonDensity) {
+    host.dataset.ribbonDensity = "compact3";
+  }
   const portal = ensurePortal();
   setMenuPortal(portal);
   ensurePortalStyle(portal);
@@ -2050,68 +2327,155 @@ export const renderRibbonLayout = (
   };
   normalizeRibbonControls(shell);
 
-  const ro = new ResizeObserver(() => {
-    if (activeTab) activeTab.collapse();
-  });
-  const dispose = () => ro.disconnect();
-
   let activeTab: TabBuildResult | null = null;
+  let collapseQueued = false;
+  let collapsing = false;
+  let lastShellWidth = 0;
+  const requestCollapse = () => {
+    if (collapseQueued) return;
+    collapseQueued = true;
+    window.requestAnimationFrame(() => {
+      collapseQueued = false;
+      if (!activeTab || collapsing) return;
+      collapsing = true;
+      try {
+        activeTab.collapse();
+      } finally {
+        collapsing = false;
+      }
+    });
+  };
   const activate = (tabId: string) => {
     const next = tabs.find((t) => t.tabId === tabId);
     if (!next) return;
     if (activeTab === next) return;
+    if (activeTab) {
+      const closeFlyouts = (activeTab.panel as any)?.__closeRibbonFlyouts as (() => void) | undefined;
+      closeFlyouts?.();
+    }
     tabs.forEach((t) => (t.panel.hidden = t !== next));
     tabStrip.setActiveTab(tabId);
     activeTab = next;
     next.collapse();
   };
 
-  tabs.forEach((t) => ro.observe(t.panel));
-
   const initial = defaults.initialTabId ?? tabs[0].tabId;
   activate(initial);
   perfMark("ribbon:render:end");
   perfMeasure("ribbon:render", "ribbon:render:start", "ribbon:render:end");
 
-  if (stateBus) {
-    const syncBindings = (state: RibbonStateSnapshot): void => {
-      const bindingTargets = host.querySelectorAll<HTMLElement>("[data-state-binding]");
-      bindingTargets.forEach((element) => {
-        const binding = element.dataset.stateBinding as RibbonStateKey | undefined;
-        if (!binding) return;
-        const value = state[binding];
-        if (element.dataset.controlType === "dropdown") {
-          if (typeof value === "string") {
-            element.dataset.value = value;
+    if (stateBus) {
+      const syncBindings = (state: RibbonStateSnapshot): void => {
+        const cacheKey = "__ribbonBindingCache";
+        const cached = (host as any)[cacheKey] as
+          | { targets: HTMLElement[]; last: WeakMap<HTMLElement, string> }
+          | undefined;
+        const bindingTargets = cached?.targets ?? Array.from(host.querySelectorAll<HTMLElement>("[data-state-binding]"));
+        const lastMap = cached?.last ?? new WeakMap<HTMLElement, string>();
+        if (!cached) {
+          (host as any)[cacheKey] = { targets: bindingTargets, last: lastMap };
+        }
+        bindingTargets.forEach((element) => {
+          const binding = element.dataset.stateBinding as RibbonStateKey | undefined;
+          if (!binding) return;
+          const value = state[binding];
+          const serialized = typeof value === "string" || typeof value === "number" ? String(value) : value == null ? "" : JSON.stringify(value);
+          const prev = lastMap.get(element);
+          if (prev === serialized) {
+            return;
           }
-          if (element.dataset.controlId === "cite.style") {
-            const valueEl = element.querySelector<HTMLElement>(".ribbon-dropdown-value");
-            if (valueEl) {
-              valueEl.textContent = formatCitationStyleValue(value);
+          lastMap.set(element, serialized);
+          if (element.dataset.controlType === "dropdown") {
+            if (typeof value === "string") {
+              if (element.dataset.value !== value) {
+                element.dataset.value = value;
+              }
             }
-          }
-          const controlId = element.dataset.controlId ?? "";
-          if (controlId) {
-            const menu = menuRegistry.get(controlId);
-            if (menu) {
+            if (element.dataset.controlId === "cite.style") {
+              const valueEl = element.querySelector<HTMLElement>(".ribbon-dropdown-value");
+              if (valueEl) {
+                const nextText = formatCitationStyleValue(value);
+                if (valueEl.textContent !== nextText) {
+                  valueEl.textContent = nextText;
+                }
+              }
+            }
+            if (element.dataset.controlId === "font.style") {
+              const valueEl = element.querySelector<HTMLElement>(".ribbon-dropdown-value");
+              if (valueEl) {
+                const nextText = formatParagraphStyleValue(value) || "Normal";
+                if (valueEl.textContent !== nextText) {
+                  valueEl.textContent = nextText;
+                }
+              }
+            }
+            const controlId = element.dataset.controlId ?? "";
+            if (controlId) {
+              const menu = menuRegistry.get(controlId);
+              if (menu) {
               const matchValue = typeof value === "string" ? value : null;
-              menu.element
-                .querySelectorAll<HTMLElement>("[data-state-value]")
-                .forEach((item) => item.classList.toggle("is-selected", matchValue === item.dataset.stateValue));
-              if (matchValue) {
-                menu.element.dataset.selectedValue = matchValue;
+              if (menu.element.dataset.selectedValue !== (matchValue ?? "")) {
+                menu.element
+                  .querySelectorAll<HTMLElement>("[data-state-value]")
+                  .forEach((item) => item.classList.toggle("is-selected", matchValue === item.dataset.stateValue));
+                if (matchValue) {
+                  menu.element.dataset.selectedValue = matchValue;
+                } else {
+                  delete (menu.element as any).dataset.selectedValue;
+                }
+              }
               }
             }
           }
-        }
-      });
-    };
+          if (element.dataset.controlType === "combobox") {
+            const input = element.querySelector<HTMLInputElement>("input");
+            if (!input) return;
+            if (document.activeElement === input) return;
+            if (typeof value === "string") {
+              if (input.value !== value) input.value = value;
+            } else {
+              if (input.value !== DEFAULT_FONT_FAMILY) input.value = DEFAULT_FONT_FAMILY;
+            }
+          }
+          if (element.dataset.controlType === "spinnerDropdown" || element.dataset.controlType === "spinner-dropdown") {
+            const input = element.querySelector<HTMLInputElement>("input");
+            if (!input) return;
+            if (document.activeElement === input) return;
+            if (typeof value === "number" && Number.isFinite(value)) {
+              const nextValue = String(value);
+              if (input.value !== nextValue) input.value = nextValue;
+            } else {
+              const fallback = String(DEFAULT_FONT_SIZE);
+              if (input.value !== fallback) input.value = fallback;
+            }
+          }
+        });
+      };
     const unsubscribe = stateBus.subscribe(syncBindings);
     syncBindings(stateBus.getState());
     host.addEventListener("ribbon-dispose", () => unsubscribe(), { once: true });
   }
 
-  const disposeEvent = () => dispose();
-  host.addEventListener("ribbon-dispose", disposeEvent, { once: true });
-  window.addEventListener("beforeunload", disposeEvent, { once: true });
+  host.addEventListener(
+    "ribbon-dispose",
+    () => {
+      tabs.forEach((t) => {
+        const closeFlyouts = (t.panel as any)?.__closeRibbonFlyouts as (() => void) | undefined;
+        closeFlyouts?.();
+      });
+    },
+    { once: true }
+  );
+
+  // Stabilize collapse: run only on real width changes.
+  const shellObserver = new ResizeObserver((entries) => {
+    const entry = entries[0];
+    const width = Math.floor(entry?.contentRect?.width ?? shell.getBoundingClientRect().width);
+    if (!width || width === lastShellWidth) return;
+    lastShellWidth = width;
+    requestCollapse();
+  });
+  shellObserver.observe(shell);
+  host.addEventListener("ribbon-dispose", () => shellObserver.disconnect(), { once: true });
+  window.addEventListener("beforeunload", () => shellObserver.disconnect(), { once: true });
 };

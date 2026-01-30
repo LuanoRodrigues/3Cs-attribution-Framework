@@ -1,1 +1,54 @@
-404: Not Found
+<?xml version="1.0" encoding="utf-8"?>
+<style xmlns="http://purl.org/net/xbiblio/csl" version="1.0" class="note">
+  <info>
+    <title>Chicago Manual of Style 17th edition (note)</title>
+    <id>http://www.zotero.org/styles/chicago-note-bibliography</id>
+    <link href="http://www.zotero.org/styles/chicago-note-bibliography" rel="self"/>
+    <author>
+      <name>LEditor</name>
+    </author>
+    <category citation-format="note"/>
+    <category field="generic-base"/>
+    <updated>2026-01-30T00:00:00+00:00</updated>
+    <rights license="http://creativecommons.org/licenses/by-sa/3.0/"/>
+  </info>
+
+  <!-- Minimal CSL placeholder.
+       LEditor currently formats citations/bibliographies in code (see src/csl/update.ts),
+       but we keep a valid CSL file here so the Style dropdown matches expectations. -->
+  <macro name="author">
+    <names variable="author">
+      <name and="text" delimiter=", " form="long"/>
+    </names>
+  </macro>
+
+  <macro name="title">
+    <text variable="title" font-style="italic"/>
+  </macro>
+
+  <citation>
+    <layout suffix=".">
+      <group delimiter=", ">
+        <text macro="author"/>
+        <text macro="title"/>
+        <date variable="issued">
+          <date-part name="year"/>
+        </date>
+        <text variable="locator"/>
+      </group>
+    </layout>
+  </citation>
+
+  <bibliography>
+    <layout suffix=".">
+      <group delimiter=". ">
+        <text macro="author"/>
+        <text macro="title"/>
+        <date variable="issued">
+          <date-part name="year"/>
+        </date>
+      </group>
+    </layout>
+  </bibliography>
+</style>
+

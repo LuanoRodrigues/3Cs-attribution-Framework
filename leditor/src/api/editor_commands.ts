@@ -1,4 +1,5 @@
 import type { EditorHandle } from "../api/leditor.ts";
+import { peekRibbonSelection, applySnapshotToTransaction } from "../utils/selection_snapshot.ts";
 
 export type EditorCommandId =
   | "Bold"
@@ -178,6 +179,23 @@ export const dispatchCommand = (
   payload?: unknown
 ) => {
   window.codexLog?.write(`[RIBBON_COMMAND] ${commandId}`);
+  // Ribbon clicks can blur the editor and lose the current caret position.
+  // Restore the last recorded selection before running commands so formatting changes don't jump to the end.
+  const tiptapEditor = (editorHandle as any)?.getEditor?.();
+  const snapshot = peekRibbonSelection();
+  if (snapshot && tiptapEditor?.view && tiptapEditor?.state?.tr) {
+    try {
+      const tr = applySnapshotToTransaction(tiptapEditor.state.tr, snapshot);
+      if (
+        tr.selection.from !== tiptapEditor.state.selection.from ||
+        tr.selection.to !== tiptapEditor.state.selection.to
+      ) {
+        tiptapEditor.view.dispatch(tr);
+      }
+    } catch {
+      // ignore selection restoration failures
+    }
+  }
   editorHandle.execCommand(commandId, payload);
   const tiptap = (editorHandle as any)?.getEditor?.();
   if (tiptap?.commands?.focus) {

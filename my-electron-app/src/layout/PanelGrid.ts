@@ -889,6 +889,10 @@ export class PanelGrid {
     }
   }
 
+  public setCollapsed(panelId: PanelId, collapsed: boolean): void {
+    this.setPanelCollapsed(panelId, collapsed);
+  }
+
   public setRoundLayout(enabled: boolean): void {
     if (this.roundLayout === enabled) return;
     this.roundLayout = enabled;

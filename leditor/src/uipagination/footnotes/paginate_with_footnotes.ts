@@ -22,14 +22,20 @@ const renderEntries = (container: HTMLElement, entries: FootnoteRenderEntry[]) =
   entries.forEach((entry) => {
     const row = document.createElement("div");
     row.className = "leditor-footnote-entry";
+    if (entry.source === "citation") {
+      row.classList.add("leditor-footnote-entry--citation");
+    }
     row.dataset.footnoteId = entry.footnoteId;
     const number = document.createElement("span");
     number.className = "leditor-footnote-entry-number";
     number.textContent = entry.number;
     const text = document.createElement("span");
     text.className = "leditor-footnote-entry-text";
-    text.textContent = entry.text || "Empty footnote";
-    text.contentEditable = "true";
+    text.dataset.footnoteId = entry.footnoteId;
+    text.dataset.placeholder = "Type footnote…";
+    text.textContent = (entry.text || "").trim();
+    text.contentEditable = entry.source === "citation" ? "false" : "true";
+    text.tabIndex = entry.source === "citation" ? -1 : 0;
     text.setAttribute("role", "textbox");
     text.setAttribute("spellcheck", "false");
     row.appendChild(number);

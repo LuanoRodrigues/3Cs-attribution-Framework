@@ -1,0 +1,247 @@
+{
+  "description": "Comprehensive template showing most supported formatting options (headings, paragraph spacing, alignment, colors, marks, lists, tables).",
+  "metadata": {
+    "schemaVersion": 1,
+    "documentDefaults": {
+      "fontFamily": "Times New Roman",
+      "fontSizePx": 12,
+      "textColor": "#0f172a",
+      "lineHeight": "double",
+      "spaceBeforePx": 0,
+      "spaceAfterPx": 8,
+      "textAlign": "left"
+    },
+    "citation": {
+      "styleId": "chicago-note-bibliography",
+      "locale": "en-US"
+    },
+    "layout": {
+      "pageSize": "A4",
+      "marginsCm": { "top": 2.5, "right": 2.5, "bottom": 2.5, "left": 2.5 }
+    },
+    "styles": {
+      "headings": {
+        "h1": { "fontFamily": "Times New Roman", "fontSizePx": 16, "bold": true, "spaceAfterPx": 10 },
+        "h2": { "fontFamily": "Times New Roman", "fontSizePx": 14, "bold": true, "spaceBeforePx": 12, "spaceAfterPx": 6 },
+        "h3": { "fontFamily": "Times New Roman", "fontSizePx": 12, "bold": true, "spaceBeforePx": 10, "spaceAfterPx": 4 }
+      },
+      "paragraph": { "lineHeight": "double", "spaceAfterPx": 8 }
+    }
+  },
+  "document": {
+    "type": "doc",
+    "attrs": {
+      "citationStyleId": "chicago-note-bibliography",
+      "citationLocale": "en-US"
+    },
+    "content": [
+      {
+        "type": "heading",
+        "attrs": { "level": 1, "textAlign": "center", "spaceAfter": 10 },
+        "content": [
+          {
+            "type": "text",
+            "text": "Journal Template Full"
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "attrs": { "lineHeight": "double", "spaceAfter": 8 },
+        "content": [
+          { "type": "text", "text": "This template demonstrates the editor's supported formatting options. Use it as a reference for building real journal templates." }
+        ]
+      },
+      {
+        "type": "heading",
+        "attrs": { "level": 2 },
+        "content": [{ "type": "text", "text": "Typography & Marks" }]
+      },
+      {
+        "type": "paragraph",
+        "attrs": { "lineHeight": "double", "spaceAfter": 8 },
+        "content": [
+          { "type": "text", "text": "Bold", "marks": [{ "type": "bold" }] },
+          { "type": "text", "text": ", " },
+          { "type": "text", "text": "Italic", "marks": [{ "type": "italic" }] },
+          { "type": "text", "text": ", " },
+          { "type": "text", "text": "Underline", "marks": [{ "type": "underline" }] },
+          { "type": "text", "text": ", " },
+          { "type": "text", "text": "Strikethrough", "marks": [{ "type": "strikethrough" }] },
+          { "type": "text", "text": ", " },
+          { "type": "text", "text": "Superscript", "marks": [{ "type": "superscript" }] },
+          { "type": "text", "text": ", " },
+          { "type": "text", "text": "Subscript", "marks": [{ "type": "subscript" }] },
+          { "type": "text", "text": ", " },
+          {
+            "type": "text",
+            "text": "Highlight",
+            "marks": [{ "type": "highlightColor", "attrs": { "highlight": "#fde68a" } }]
+          },
+          { "type": "text", "text": ", " },
+          {
+            "type": "text",
+            "text": "Color",
+            "marks": [{ "type": "textColor", "attrs": { "color": "#1d4ed8" } }]
+          },
+          { "type": "text", "text": ", " },
+          {
+            "type": "text",
+            "text": "Font Family",
+            "marks": [{ "type": "fontFamily", "attrs": { "fontFamily": "Georgia" } }]
+          },
+          { "type": "text", "text": ", " },
+          {
+            "type": "text",
+            "text": "Font Size",
+            "marks": [{ "type": "fontSize", "attrs": { "fontSize": 16 } }]
+          },
+          { "type": "text", "text": "." }
+        ]
+      },
+      {
+        "type": "heading",
+        "attrs": { "level": 2 },
+        "content": [{ "type": "text", "text": "Paragraph Layout" }]
+      },
+      {
+        "type": "paragraph",
+        "attrs": {
+          "textAlign": "justify",
+          "lineHeight": "double",
+          "spaceBefore": 4,
+          "spaceAfter": 8,
+          "indentLevel": 1
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "Justified text with line spacing, spacing before/after, and an indent level."
+          }
+        ]
+      },
+      {
+        "type": "heading",
+        "attrs": { "level": 2 },
+        "content": [{ "type": "text", "text": "Lists" }]
+      },
+      {
+        "type": "bulletList",
+        "content": [
+          {
+            "type": "listItem",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Bullet item one" }] }
+            ]
+          },
+          {
+            "type": "listItem",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Bullet item two" }] }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "orderedList",
+        "content": [
+          {
+            "type": "listItem",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Numbered item one" }] }
+            ]
+          },
+          {
+            "type": "listItem",
+            "content": [
+              { "type": "paragraph", "content": [{ "type": "text", "text": "Numbered item two" }] }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "heading",
+        "attrs": { "level": 2 },
+        "content": [{ "type": "text", "text": "Block Quote" }]
+      },
+      {
+        "type": "blockquote",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "A block quote is useful for longer quotations or highlighted passages."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "heading",
+        "attrs": { "level": 2 },
+        "content": [{ "type": "text", "text": "Code Block" }]
+      },
+      {
+        "type": "codeBlock",
+        "content": [
+          {
+            "type": "text",
+            "text": "function hello() {\\n  return 'world';\\n}"
+          }
+        ]
+      },
+      {
+        "type": "heading",
+        "attrs": { "level": 2 },
+        "content": [{ "type": "text", "text": "Table" }]
+      },
+      {
+        "type": "table",
+        "content": [
+          {
+            "type": "tableRow",
+            "content": [
+              {
+                "type": "tableHeader",
+                "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Column A" }] }]
+              },
+              {
+                "type": "tableHeader",
+                "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Column B" }] }]
+              }
+            ]
+          },
+          {
+            "type": "tableRow",
+            "content": [
+              {
+                "type": "tableCell",
+                "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Row 1" }] }]
+              },
+              {
+                "type": "tableCell",
+                "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Value" }] }]
+              }
+            ]
+          },
+          {
+            "type": "tableRow",
+            "content": [
+              {
+                "type": "tableCell",
+                "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Row 2" }] }]
+              },
+              {
+                "type": "tableCell",
+                "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Value" }] }]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
+

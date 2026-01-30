@@ -1,0 +1,255 @@
+{
+  "id": "journal_conflict_security_law",
+  "label": "Journal of Conflict and Security Law",
+  "description": "Template for authors submitting to the Journal of Conflict and Security Law (JCSL). This template synthesizes the available author guidance: the journal calls for abstracts of around 250 words and total article length under 9,000 words【940797253148206†L113-L116】. It uses the Oxford Standard for Citation of Legal Authorities (OSCOLA) footnote system and generally follows standard OSCOLA formatting, including double‑spaced text, 1‑inch margins and 12‑point Arial font【513106655613384†L246-L252】.",
+  "metadata": {
+    "documentDefaults": {
+      "fontFamily": "Arial",
+      "fontSizePx": 12,
+      "textColor": "#0f172a",
+      "lineHeight": "double",
+      "spaceBeforePx": 0,
+      "spaceAfterPx": 8,
+      "textAlign": "left"
+    },
+    "citation": {
+      "style": "OSCOLA",
+      "locale": "en-GB",
+      "note": "Use the OSCOLA footnote system: citations appear in numbered footnotes, with corresponding entries in a bibliography. Footnote markers are placed at the end of a sentence and separated by semicolons when citing multiple sources【513106655613384†L256-L263】. Use single quotation marks for quotations【513106655613384†L256-L263】."
+    },
+    "typography": {
+      "headings": [
+        {
+          "name": "Title",
+          "font": "Arial",
+          "size": "16pt",
+          "weight": "700",
+          "case": "title",
+          "alignment": "center",
+          "spacing": {
+            "before": "12pt",
+            "after": "6pt",
+            "lineHeight": "2.0"
+          }
+        },
+        {
+          "name": "Heading 1",
+          "font": "Arial",
+          "size": "14pt",
+          "weight": "700",
+          "case": "title",
+          "alignment": "center",
+          "spacing": {
+            "before": "10pt",
+            "after": "5pt",
+            "lineHeight": "2.0"
+          }
+        },
+        {
+          "name": "Heading 2",
+          "font": "Arial",
+          "size": "13pt",
+          "weight": "700",
+          "case": "title",
+          "alignment": "left",
+          "spacing": {
+            "before": "8pt",
+            "after": "4pt",
+            "lineHeight": "2.0"
+          }
+        },
+        {
+          "name": "Heading 3",
+          "font": "Arial",
+          "size": "12pt",
+          "weight": "400",
+          "style": "italic",
+          "case": "sentence",
+          "alignment": "left",
+          "spacing": {
+            "before": "6pt",
+            "after": "3pt",
+            "lineHeight": "2.0"
+          }
+        }
+      ],
+      "paragraph": {
+        "font": "Arial",
+        "size": "12pt",
+        "lineHeight": "2.0",
+        "alignment": "left",
+        "color": "#000000",
+        "spacing": {
+          "before": "0pt",
+          "after": "6pt"
+        }
+      },
+      "abstract": {
+        "font": "Arial",
+        "size": "11pt",
+        "lineHeight": "2.0",
+        "alignment": "left",
+        "style": "italic",
+        "spacing": {
+          "before": "0pt",
+          "after": "8pt"
+        }
+      },
+      "emphasis": [
+        {
+          "label": "Strong",
+          "style": {
+            "weight": "700",
+            "color": "#002147"
+          }
+        },
+        {
+          "label": "Italic",
+          "style": {
+            "italic": true,
+            "color": "#002147"
+          }
+        },
+        {
+          "label": "Quote",
+          "style": {
+            "italic": true,
+            "color": "#666666"
+          }
+        }
+      ]
+    },
+    "colors": {
+      "accent": "#002147",
+      "muted": "#666666",
+      "background": "#FFFFFF"
+    },
+    "layout": {
+      "margins": "1in",
+      "gutter": "0.5in",
+      "grid": "single",
+      "columns": 1
+    },
+    "houseStyle": {
+      "abstractLength": "Include an abstract of around 250 words; the call for papers notes abstracts should not exceed 400 words, and full papers should be under 9,000 words【940797253148206†L113-L116】.",
+      "spacing": "Use double‑spaced text and 1‑inch margins as recommended by OSCOLA formatting guidelines【513106655613384†L246-L252】.",
+      "citationNotes": "Apply OSCOLA footnotes: place superscript note numbers at the end of sentences, separate multiple citations with semicolons and use ‘ibid’ for successive citations【513106655613384†L256-L283】.",
+      "headings": "Follow the OSCOLA heading hierarchy: Level 1 headings are centred, bold and capitalized; Level 2 are centred and capitalized; Level 3 are flush left, bold and capitalized; Level 4 are flush left and sentence‑style【513106655613384†L267-L274】."
+    }
+  },
+  "document": {
+    "type": "doc",
+    "attrs": {
+      "citationStyleId": "oscola",
+      "citationLocale": "en-GB"
+    },
+    "content": [
+      {
+        "type": "heading",
+        "attrs": {
+          "level": 1
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "Article Title"
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "type": "text",
+            "text": "Provide a concise abstract of 250–400 words summarizing the article’s argument and findings."
+          }
+        ]
+      },
+      {
+        "type": "heading",
+        "attrs": {
+          "level": 2
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "Introduction"
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "type": "text",
+            "text": "Begin the main text using double‑spaced paragraphs. Use single quotation marks for quotations and place footnote markers at the end of sentences."
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "type": "text",
+            "text": "When citing sources, insert a superscript note number"
+          },
+          {
+            "type": "text",
+            "text": "1",
+            "marks": [
+              {
+                "type": "footnote"
+              }
+            ]
+          },
+          {
+            "type": "text",
+            "text": " and provide the full citation in the footnote following OSCOLA style."
+          }
+        ]
+      },
+      {
+        "type": "heading",
+        "attrs": {
+          "level": 2
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "Main Section"
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "type": "text",
+            "text": "Develop your argument with appropriately structured headings and subheadings following the OSCOLA hierarchy. Keep the manuscript under 9,000 words."
+          }
+        ]
+      },
+      {
+        "type": "heading",
+        "attrs": {
+          "level": 2
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "Conclusion"
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "type": "text",
+            "text": "Summarize the key arguments and implications. Ensure that footnotes provide complete references and that the bibliography is arranged alphabetically as per OSCOLA guidelines."
+          }
+        ]
+      }
+    ]
+  }
+}

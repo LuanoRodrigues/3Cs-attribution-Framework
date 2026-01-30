@@ -1,0 +1,245 @@
+{
+  "id": "journal_international_affairs",
+  "label": "Journal of International Affairs",
+  "description": "Style template for the Journal of International Affairs, drawing on submission guidelines from Columbia’s JIA and the Georgetown Journal of International Affairs. The template uses 12‑point Times New Roman, follows Chicago notes‑and‑bibliography citations, and includes a summary tagline and author bio as required for online pieces.",
+  "metadata": {
+    "documentDefaults": {
+      "fontFamily": "Times New Roman",
+      "fontSizePx": 12,
+      "textColor": "#0f172a",
+      "lineHeight": "double",
+      "spaceBeforePx": 0,
+      "spaceAfterPx": 8,
+      "textAlign": "left"
+    },
+    "citation": {
+      "style": "Chicago",
+      "locale": "en-US",
+      "note": "Use the Chicago Manual of Style notes‑and‑bibliography system. JIA specifies that all facts and quotations must be cited using Chicago‑style citations【101171438270059†L113-L116】【101171438270059†L154-L156】, and GJIA requires endnotes adhering to Chicago’s 17th edition【942078689576472†L149-L163】."
+    },
+    "typography": {
+      "headings": [
+        {
+          "name": "Title",
+          "font": "Times New Roman",
+          "size": "16pt",
+          "weight": "700",
+          "case": "title",
+          "spacing": {
+            "before": "12pt",
+            "after": "6pt",
+            "lineHeight": "1.5"
+          }
+        },
+        {
+          "name": "Heading 1",
+          "font": "Times New Roman",
+          "size": "14pt",
+          "weight": "700",
+          "case": "title",
+          "spacing": {
+            "before": "10pt",
+            "after": "5pt",
+            "lineHeight": "1.5"
+          }
+        },
+        {
+          "name": "Heading 2",
+          "font": "Times New Roman",
+          "size": "12pt",
+          "weight": "700",
+          "style": "italic",
+          "case": "title",
+          "spacing": {
+            "before": "8pt",
+            "after": "4pt",
+            "lineHeight": "1.5"
+          }
+        },
+        {
+          "name": "Heading 3",
+          "font": "Times New Roman",
+          "size": "12pt",
+          "weight": "400",
+          "style": "italic",
+          "case": "sentence",
+          "spacing": {
+            "before": "6pt",
+            "after": "3pt",
+            "lineHeight": "1.5"
+          }
+        }
+      ],
+      "paragraph": {
+        "font": "Times New Roman",
+        "size": "12pt",
+        "lineHeight": "1.5",
+        "alignment": "justify",
+        "color": "#111111",
+        "spacing": {
+          "before": "0pt",
+          "after": "6pt"
+        }
+      },
+      "tagline": {
+        "font": "Times New Roman",
+        "size": "11pt",
+        "style": "italic",
+        "alignment": "center",
+        "color": "#444444",
+        "spacing": {
+          "before": "0pt",
+          "after": "8pt"
+        }
+      },
+      "biography": {
+        "font": "Times New Roman",
+        "size": "10pt",
+        "style": "italic",
+        "alignment": "left",
+        "color": "#555555",
+        "spacing": {
+          "before": "8pt",
+          "after": "0pt"
+        }
+      },
+      "emphasis": [
+        {
+          "label": "Strong",
+          "style": {
+            "weight": "700",
+            "color": "#0b3c5d"
+          }
+        },
+        {
+          "label": "Italic",
+          "style": {
+            "italic": true,
+            "color": "#1f2933"
+          }
+        }
+      ]
+    },
+    "colors": {
+      "accent": "#0b3c5d",
+      "muted": "#6b7280",
+      "background": "#ffffff"
+    },
+    "layout": {
+      "margins": "1in",
+      "gutter": "0.75in",
+      "grid": "single",
+      "columns": 1
+    },
+    "digitalGuidelines": {
+      "paragraphLength": "Keep paragraphs under eight lines for online articles【101171438270059†L154-L157】.",
+      "tagline": "Include a two‑ to three‑line summary at the start of the essay【101171438270059†L158-L160】.",
+      "bio": "Add a one‑ to two‑line author bio at the end of the article【101171438270059†L158-L161】.",
+      "fontSize": "For online submissions, use a 12‑point font as suggested by the Georgetown Journal guidelines【942078689576472†L178-L182】."
+    }
+  },
+  "document": {
+    "type": "doc",
+    "attrs": {
+      "citationStyleId": "chicago-note-bibliography",
+      "citationLocale": "en-US"
+    },
+    "content": [
+      {
+        "type": "heading",
+        "attrs": {
+          "level": 1
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "Article Title"
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "type": "text",
+            "text": "Summary tagline capturing the core argument of the essay."
+          }
+        ]
+      },
+      {
+        "type": "heading",
+        "attrs": {
+          "level": 2
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "Introduction"
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "type": "text",
+            "text": "Compose the main text using 1.5 line spacing and justified alignment. Use footnotes for citations; each note corresponds to a Chicago‑style entry in the bibliography."
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "type": "text",
+            "text": "Citations appear as superscript numbers",
+            "marks": []
+          },
+          {
+            "type": "text",
+            "text": "1",
+            "marks": [
+              {
+                "type": "footnote"
+              }
+            ]
+          },
+          {
+            "type": "text",
+            "text": " with the full reference presented in an endnote or footnote following Chicago guidelines."
+          }
+        ]
+      },
+      {
+        "type": "heading",
+        "attrs": {
+          "level": 2
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "Conclusion"
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "type": "text",
+            "text": "Summarize the key points, ensuring each paragraph remains concise and within the recommended length."
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "type": "text",
+            "text": "Author Name is a researcher in international relations at Institution Name."
+          }
+        ]
+      }
+    ]
+  }
+}

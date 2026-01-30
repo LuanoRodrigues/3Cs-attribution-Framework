@@ -9,6 +9,7 @@ const PAGE_HEADER_CLASS = "leditor-page-header";
 const PAGE_CONTENT_CLASS = "leditor-page-content";
 const PAGE_FOOTER_CLASS = "leditor-page-footer";
 const PAGE_FOOTNOTES_CLASS = "leditor-page-footnotes";
+const PAGE_FOOTNOTE_CONTINUATION_CLASS = "leditor-footnote-continuation";
 
 const paginationKey = new PluginKey("leditor-page-pagination");
 const debugEnabled = (): boolean => {
@@ -315,9 +316,25 @@ export const PageNode = Node.create({
     return ["div", mergeAttributes(HTMLAttributes, { "data-page": "true", class: PAGE_CLASS }), 0];
   },
   addNodeView() {
-    return () => {
+    return (props: any) => {
+      const _node = props?.node;
+      const view = props?.view;
+      const getPos = props?.getPos;
+      let pageIndex: number | null = null;
+      try {
+        const pos = typeof getPos === "function" ? getPos() : null;
+        if (typeof pos === "number" && view?.state?.doc) {
+          const $pos = view.state.doc.resolve(pos);
+          pageIndex = $pos.index(0);
+        }
+      } catch {
+        pageIndex = null;
+      }
       const page = document.createElement("div");
       page.className = PAGE_CLASS;
+      if (pageIndex != null) {
+        page.dataset.pageIndex = String(pageIndex);
+      }
       const inner = document.createElement("div");
       inner.className = PAGE_INNER_CLASS;
       const header = document.createElement("div");
@@ -331,6 +348,10 @@ export const PageNode = Node.create({
       header.style.height = "var(--header-height)";
       const content = document.createElement("div");
       content.className = PAGE_CONTENT_CLASS;
+      const continuation = document.createElement("div");
+      continuation.className = PAGE_FOOTNOTE_CONTINUATION_CLASS;
+      continuation.setAttribute("aria-hidden", "true");
+      continuation.contentEditable = "false";
       const footnotes = document.createElement("div");
       footnotes.className = PAGE_FOOTNOTES_CLASS;
       footnotes.setAttribute("aria-hidden", "true");
@@ -349,8 +370,10 @@ export const PageNode = Node.create({
       footer.style.right = "var(--local-page-margin-right, var(--page-margin-right))";
       footer.style.bottom = "var(--doc-footer-distance, 48px)";
       footer.style.height = "var(--footer-height)";
+
       inner.appendChild(header);
       inner.appendChild(content);
+      inner.appendChild(continuation);
       inner.appendChild(footnotes);
       inner.appendChild(footer);
       page.appendChild(inner);

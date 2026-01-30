@@ -45,6 +45,9 @@ export const ribbonRegistry = {
     "pageBoundaries": "boolean",
     "pageBreakMarks": "boolean",
     "ruler": "boolean",
+    "gridlines": "boolean",
+    "navigationPane": "boolean",
+    "readMode": "boolean",
     "fullscreen": "boolean",
     "activeStyle": "string|mixed",
     "availableStyles": "list",
@@ -67,6 +70,7 @@ export const ribbonRegistry = {
     "paperSize": "enum",
     "pageMargins": "object",
     "zoomLevel": "number",
+    "viewMode": "enum",
     "trackChanges": "boolean",
     "markupMode": "enum",
     "spellcheckEnabled": "boolean",
@@ -201,12 +205,9 @@ export const homeTab = {
             {
               "controlId": "clipboard.paste",
               "label": "Paste",
-              "type": "splitButton",
+              "type": "dropdown",
               "size": "large",
               "iconKey": "icon.paste",
-              "command": {
-                "id": "paste.default"
-              },
               "keyTip": "V",
               "tooltip": {
                 "title": "Paste",
@@ -214,6 +215,21 @@ export const homeTab = {
                 "shortcut": "Ctrl+V"
               },
               "menu": [
+                {
+                  "controlId": "clipboard.paste.default",
+                  "label": "Paste",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "paste.default"
+                  },
+                  "tooltip": {
+                    "title": "Paste",
+                    "shortcut": "Ctrl+V"
+                  }
+                },
+                {
+                  "type": "separator"
+                },
                 {
                   "controlId": "clipboard.paste.keepSource",
                   "label": "Keep Source Formatting",
@@ -454,17 +470,21 @@ export const homeTab = {
             {
               "controlId": "font.style",
               "label": "Style",
-              "type": "button",
+              "type": "dropdown",
               "size": "mediumWide",
               "iconKey": "icon.paragraphStyle",
               "command": {
                 "id": "NormalStyle"
               },
+              "state": {
+                "binding": "activeStyle",
+                "kind": "string|mixed"
+              },
               "keyTip": "S",
               "menu": [
                 {
                   "controlId": "font.style.normal",
-                  "label": "Normal",
+                  "label": "Normal (Paragraph)",
                   "type": "menuItem",
                   "command": {
                     "id": "NormalStyle"
@@ -472,7 +492,7 @@ export const homeTab = {
                 },
                 {
                   "controlId": "font.style.title",
-                  "label": "Title",
+                  "label": "Title (Heading 1)",
                   "type": "menuItem",
                   "command": {
                     "id": "Heading1"
@@ -484,6 +504,14 @@ export const homeTab = {
                   "type": "menuItem",
                   "command": {
                     "id": "Heading2"
+                  }
+                },
+                {
+                  "controlId": "font.style.blockquote",
+                  "label": "Blockquote",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "BlockquoteToggle"
                   }
                 },
                 {
@@ -563,14 +591,20 @@ export const homeTab = {
               "suggestions": {
                 "kind": "static",
                 "items": [
-                  "Calibri",
-                  "Calibri Light",
-                  "Segoe UI",
-                  "Arial",
                   "Times New Roman",
+                  "Aptos",
+                  "Arial",
+                  "Calibri",
+                  "Colibri",
                   "Cambria",
                   "Georgia",
-                  "Consolas"
+                  "Segoe UI",
+                  "Verdana",
+                  "Tahoma",
+                  "Courier New",
+                  "Consolas",
+                  "Aptos Display",
+                  "Calibri Light"
                 ]
               },
               "collapse": {
@@ -596,9 +630,9 @@ export const homeTab = {
                 "kind": "number|mixed"
               },
               "presets": [
+                12,
                 10,
                 11,
-                12,
                 14,
                 16,
                 18,
@@ -624,13 +658,13 @@ export const homeTab = {
               }
             },
             {
-              "controlId": "font.grow",
-              "label": "Increase Font Size",
+              "controlId": "font.shrink",
+              "label": "Decrease Font Size",
               "type": "button",
               "size": "small",
-              "iconKey": "icon.growFont",
+              "iconKey": "icon.shrinkFont",
               "command": {
-                "id": "font.size.grow"
+                "id": "font.size.shrink"
               },
               "collapse": {
                 "A": "optional",
@@ -639,13 +673,13 @@ export const homeTab = {
               }
             },
             {
-              "controlId": "font.shrink",
-              "label": "Decrease Font Size",
+              "controlId": "font.grow",
+              "label": "Increase Font Size",
               "type": "button",
               "size": "small",
-              "iconKey": "icon.shrinkFont",
+              "iconKey": "icon.growFont",
               "command": {
-                "id": "font.size.shrink"
+                "id": "font.size.grow"
               },
               "collapse": {
                 "A": "optional",
@@ -861,7 +895,7 @@ export const homeTab = {
             {
               "controlId": "font.color",
               "label": "Font Color",
-              "type": "colorSplitButton",
+              "type": "colorPicker",
               "size": "small",
               "iconKey": "icon.textColor",
               "command": {
@@ -951,7 +985,7 @@ export const homeTab = {
             {
               "controlId": "font.highlight",
               "label": "Text Highlight Color",
-              "type": "colorSplitButton",
+              "type": "colorPicker",
               "size": "small",
               "iconKey": "icon.highlight",
               "command": {
@@ -5023,121 +5057,61 @@ export const viewTab = {
   "label": "View",
   "groups": [
     {
-      "groupId": "view.document",
-      "label": "Document",
+      "groupId": "view.viewes",
+      "label": "Viewes",
       "priority": 95,
       "dialogLauncher": null,
       "clusters": [
         {
-          "clusterId": "view.document.primary",
+          "clusterId": "view.viewes.primary",
           "layout": "row",
           "controls": [
             {
-              "controlId": "view.source.selector",
-              "label": "Source view",
-              "type": "dropdown",
+              "controlId": "view.readMode",
+              "label": "Read Mode",
+              "type": "toggleButton",
               "size": "medium",
-              "iconKey": "icon.preview",
+              "iconKey": "icon.bookOpen",
               "command": {
-                "id": "view.source.openHtml",
-                "args": {
-                  "tab": "html"
-                }
+                "id": "SetReadMode"
               },
               "collapse": {
                 "A": "visible",
                 "B": "visible",
                 "C": "inFlyout"
-              },
-              "menu": [
-                {
-                  "controlId": "view.source.raw",
-                  "label": "Raw HTML",
-                  "type": "menuItem",
-                  "command": {
-                    "id": "view.source.openHtmlRaw",
-                    "args": {
-                      "tab": "raw"
-                    }
-                  }
-                },
-                {
-                  "controlId": "view.source.html",
-                  "label": "HTML",
-                  "type": "menuItem",
-                  "command": {
-                    "id": "view.source.openHtml",
-                    "args": {
-                      "tab": "html"
-                    }
-                  }
-                },
-                {
-                  "controlId": "view.source.markdown",
-                  "label": "Markdown",
-                  "type": "menuItem",
-                  "command": {
-                    "id": "view.source.openMarkdown",
-                    "args": {
-                      "tab": "markdown"
-                    }
-                  }
-                },
-                {
-                  "controlId": "view.source.json",
-                  "label": "Document JSON",
-                  "type": "menuItem",
-                  "command": {
-                    "id": "view.source.openJson",
-                    "args": {
-                      "tab": "json"
-                    }
-                  }
-                }
-              ]
+              }
             },
             {
-              "controlId": "view.cleanHtml",
-              "label": "Clean HTML",
-              "type": "button",
-              "size": "small",
-              "iconKey": "icon.pasteClean",
+              "controlId": "view.printLayout.mode",
+              "label": "Print Layout",
+              "type": "toggleButton",
+              "size": "medium",
+              "iconKey": "icon.bookClosed",
               "command": {
-                "id": "view.cleanHtml"
+                "id": "SetPrintLayout"
               },
               "collapse": {
                 "A": "visible",
-                "B": "inOverflow",
+                "B": "visible",
                 "C": "inFlyout"
               }
             },
             {
-              "controlId": "view.allowedElements",
-              "label": "Allowed elements",
-              "type": "button",
-              "size": "small",
-              "iconKey": "icon.dialogLauncher",
+              "controlId": "view.outline",
+              "label": "Outline",
+              "type": "toggleButton",
+              "size": "medium",
+              "iconKey": "icon.toc",
               "command": {
-                "id": "view.allowedElements.open"
+                "id": "view.navigationPanel.toggle"
+              },
+              "state": {
+                "binding": "navigationPane",
+                "kind": "boolean"
               },
               "collapse": {
                 "A": "visible",
-                "B": "inOverflow",
-                "C": "inFlyout"
-              }
-            },
-            {
-              "controlId": "view.printPreview",
-              "label": "Print Preview",
-              "type": "button",
-              "size": "small",
-              "iconKey": "icon.printLayout",
-              "command": {
-                "id": "view.printPreview.open"
-              },
-              "collapse": {
-                "A": "optional",
-                "B": "inOverflow",
+                "B": "visible",
                 "C": "inFlyout"
               }
             }
@@ -5153,65 +5127,8 @@ export const viewTab = {
       "clusters": [
         {
           "clusterId": "view.show.primary",
-          "layout": "grid",
+          "layout": "column",
           "controls": [
-            {
-              "controlId": "view.formattingMarks",
-              "label": "Formatting marks",
-              "type": "toggleButton",
-              "size": "small",
-              "iconKey": "icon.preview",
-              "command": {
-                "id": "view.formattingMarks.toggle"
-              },
-              "state": {
-                "binding": "showFormattingMarks",
-                "kind": "boolean"
-              },
-              "collapse": {
-                "A": "visible",
-                "B": "visible",
-                "C": "inFlyout"
-              }
-            },
-            {
-              "controlId": "view.pageBoundaries",
-              "label": "Page boundaries",
-              "type": "toggleButton",
-              "size": "small",
-              "iconKey": "icon.page",
-              "command": {
-                "id": "view.pageBoundaries.toggle"
-              },
-              "state": {
-                "binding": "pageBoundaries",
-                "kind": "boolean"
-              },
-              "collapse": {
-                "A": "visible",
-                "B": "visible",
-                "C": "inFlyout"
-              }
-            },
-            {
-              "controlId": "view.pageBreakMarks",
-              "label": "Page break marks",
-              "type": "toggleButton",
-              "size": "small",
-              "iconKey": "icon.pageBreak",
-              "command": {
-                "id": "view.pageBreakMarks.toggle"
-              },
-              "state": {
-                "binding": "pageBreakMarks",
-                "kind": "boolean"
-              },
-              "collapse": {
-                "A": "optional",
-                "B": "inOverflow",
-                "C": "inFlyout"
-              }
-            },
             {
               "controlId": "view.ruler",
               "label": "Ruler",
@@ -5226,8 +5143,46 @@ export const viewTab = {
                 "kind": "boolean"
               },
               "collapse": {
-                "A": "optional",
-                "B": "inOverflow",
+                "A": "visible",
+                "B": "visible",
+                "C": "inFlyout"
+              }
+            },
+            {
+              "controlId": "view.gridlines",
+              "label": "Gridlines",
+              "type": "toggleButton",
+              "size": "small",
+              "iconKey": "icon.gridlines",
+              "command": {
+                "id": "view.gridlines.toggle"
+              },
+              "state": {
+                "binding": "gridlines",
+                "kind": "boolean"
+              },
+              "collapse": {
+                "A": "visible",
+                "B": "visible",
+                "C": "inFlyout"
+              }
+            },
+            {
+              "controlId": "view.navigationPane",
+              "label": "Navigation pane",
+              "type": "toggleButton",
+              "size": "small",
+              "iconKey": "icon.navigation",
+              "command": {
+                "id": "view.navigationPanel.toggle"
+              },
+              "state": {
+                "binding": "navigationPane",
+                "kind": "boolean"
+              },
+              "collapse": {
+                "A": "visible",
+                "B": "visible",
                 "C": "inFlyout"
               }
             }
@@ -5456,6 +5411,57 @@ export const viewTab = {
               ]
             }
           ]
+        },
+        {
+          "clusterId": "view.zoom.modes",
+          "layout": "column",
+          "controls": [
+            {
+              "controlId": "view.zoom.onePage",
+              "label": "One Page",
+              "type": "toggleButton",
+              "size": "small",
+              "iconKey": "icon.onePage",
+              "command": {
+                "id": "ViewSinglePage"
+              },
+              "collapse": {
+                "A": "visible",
+                "B": "visible",
+                "C": "inFlyout"
+              }
+            },
+            {
+              "controlId": "view.zoom.multiplePage",
+              "label": "Multiple Page",
+              "type": "toggleButton",
+              "size": "small",
+              "iconKey": "icon.twoPage",
+              "command": {
+                "id": "ViewTwoPage"
+              },
+              "collapse": {
+                "A": "visible",
+                "B": "visible",
+                "C": "inFlyout"
+              }
+            },
+            {
+              "controlId": "view.zoom.width",
+              "label": "Width",
+              "type": "toggleButton",
+              "size": "small",
+              "iconKey": "icon.fitWidth",
+              "command": {
+                "id": "ViewFitWidth"
+              },
+              "collapse": {
+                "A": "visible",
+                "B": "visible",
+                "C": "inFlyout"
+              }
+            }
+          ]
         }
       ]
     },
@@ -5548,7 +5554,7 @@ export const aiTab = {
           "controls": [
             {
               "controlId": "settings.api",
-              "label": "API Settings",
+              "label": "AI Settings",
               "type": "button",
               "size": "medium",
               "iconKey": "icon.manageStyles",

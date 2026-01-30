@@ -26,7 +26,12 @@ function ensureLeditorAssets() {
       `The leditor/dist directory (${leditorDist}) is missing. Build the leditor project and rerun "npm run validate:leditor-assets".`
     );
   }
-  const required = [path.join(leditorDist, "public", "index.html"), path.join(leditorDist, "renderer", "bootstrap.bundle.js")];
+  const required = [
+    path.join(leditorDist, "public", "index.html"),
+    path.join(leditorDist, "renderer", "bootstrap.bundle.js"),
+    path.join(leditorDist, "lib", "leditor.global.mjs"),
+    path.join(leditorDist, "lib", "leditor.global.css")
+  ];
   required.forEach((file) => ensurePathExists(file));
   return { leditorDist, projectRoot };
 }
@@ -59,6 +64,10 @@ function copyLeditorAssets() {
   }
   copyDirectory(path.join(leditorDist, "public"), path.join(targetRoot, "public"));
   copyDirectory(path.join(leditorDist, "renderer"), path.join(targetRoot, "renderer"));
+  const libDir = path.join(leditorDist, "lib");
+  if (fs.existsSync(libDir)) {
+    copyDirectory(libDir, path.join(targetRoot, "lib"));
+  }
   ensureVendorShim(targetRoot);
   buildLeditorPrelude(targetRoot);
   return targetRoot;

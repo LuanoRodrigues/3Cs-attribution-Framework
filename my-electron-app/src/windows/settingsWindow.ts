@@ -1,5 +1,6 @@
 import { BrowserWindow } from "electron";
 import path from "path";
+import { applyDefaultZoomFactor } from "./windowZoom";
 
 let cachedWindow: BrowserWindow | null = null;
 
@@ -28,6 +29,8 @@ export function openSettingsWindow(targetSection?: string): void {
       preload: path.join(__dirname, "..", "preload.js")
     }
   });
+
+  applyDefaultZoomFactor(window);
 
   const hash = targetSection ? `section=${targetSection}` : "";
   window.loadFile(getSettingsHtmlPath(), { hash });

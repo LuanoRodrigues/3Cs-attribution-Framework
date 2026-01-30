@@ -44,10 +44,11 @@ class TocNodeView {
     this.list.className = "leditor-toc-list";
     this.root.appendChild(title);
     this.root.appendChild(this.list);
-    this.renderEntries(normalizeEntries(node.attrs?.entries));
+    this.renderEntries(normalizeEntries(node.attrs?.entries), (node.attrs?.style as string) ?? "auto1");
   }
 
-  private renderEntries(entries: TocEntry[]) {
+  private renderEntries(entries: TocEntry[], styleId: string) {
+    this.root.dataset.tocStyle = styleId ?? "auto1";
     this.list.innerHTML = "";
     if (entries.length === 0) {
       const empty = document.createElement("div");
@@ -79,7 +80,7 @@ class TocNodeView {
   update(node: ProseMirrorNode) {
     if (node.type !== this.node.type) return false;
     this.node = node;
-    this.renderEntries(normalizeEntries(node.attrs?.entries));
+    this.renderEntries(normalizeEntries(node.attrs?.entries), (node.attrs?.style as string) ?? "auto1");
     return true;
   }
 
@@ -106,6 +107,13 @@ const TocExtension = Node.create({
     return {
       entries: {
         default: []
+      },
+      style: {
+        default: "auto1",
+        parseHTML: (element) => {
+          const value = (element as HTMLElement).getAttribute("data-toc-style");
+          return value ? value : "auto1";
+        }
       }
     };
   },
@@ -119,7 +127,8 @@ const TocExtension = Node.create({
           if (!raw) return {};
           try {
             const parsed = JSON.parse(raw);
-            return { entries: normalizeEntries(parsed) };
+            const style = node.getAttribute("data-toc-style");
+            return { entries: normalizeEntries(parsed), style: style ?? "auto1" };
           } catch {
             return {};
           }
@@ -129,10 +138,12 @@ const TocExtension = Node.create({
   },
   renderHTML({ HTMLAttributes }) {
     const entries = normalizeEntries(HTMLAttributes.entries);
+    const styleId = typeof HTMLAttributes.style === "string" && HTMLAttributes.style.length > 0 ? HTMLAttributes.style : "auto1";
     return [
       "nav",
       {
         "data-toc": "true",
+        "data-toc-style": styleId,
         "data-toc-entries": JSON.stringify(entries),
         class: "leditor-toc"
       },

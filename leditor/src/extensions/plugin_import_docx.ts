@@ -1,9 +1,10 @@
 import { registerPlugin } from "../api/plugin_registry.ts";
 import type { EditorHandle } from "../api/leditor.ts";
 import type { ImportDocxOptions, ImportDocxResult } from "../api/import_docx.ts";
+import { getHostAdapter } from "../host/host_adapter.ts";
 
 const triggerImport = (options?: ImportDocxOptions) => {
-  const handler = window.leditorHost?.importDOCX;
+  const handler = getHostAdapter()?.importDOCX;
   if (!handler) {
     return Promise.reject(new Error("ImportDOCX handler is unavailable"));
   }

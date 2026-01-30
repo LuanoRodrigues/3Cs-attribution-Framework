@@ -1,0 +1,223 @@
+{
+  "id": "journal_cyber_policy",
+  "label": "Journal of Cyber Policy",
+  "description": "Template for authors submitting to the Journal of Cyber Policy. It combines Chatham House’s editorial preferences (British punctuation and spelling) with Taylor & Francis formatting requirements such as 12‑point Times New Roman, double spacing, and one‑inch margins. Citations should follow the Chicago notes and bibliography style.",
+  "metadata": {
+    "documentDefaults": {
+      "fontFamily": "Times New Roman",
+      "fontSizePx": 12,
+      "textColor": "#0f172a",
+      "lineHeight": "double",
+      "spaceBeforePx": 0,
+      "spaceAfterPx": 8,
+      "textAlign": "left"
+    },
+    "citation": {
+      "style": "Chicago",
+      "locale": "en-GB",
+      "note": "Use the Chicago Manual of Style notes‑and‑bibliography system to format footnotes and a reference list. Each citation should appear as a numbered note at the bottom of the page, with a corresponding entry in the bibliography."
+    },
+    "typography": {
+      "headings": [
+        {
+          "name": "Title",
+          "font": "Times New Roman",
+          "size": "16pt",
+          "weight": "700",
+          "case": "title",
+          "spacing": {
+            "before": "12pt",
+            "after": "6pt",
+            "lineHeight": "1.5"
+          }
+        },
+        {
+          "name": "Heading 1",
+          "font": "Times New Roman",
+          "size": "14pt",
+          "weight": "700",
+          "case": "title",
+          "spacing": {
+            "before": "10pt",
+            "after": "5pt",
+            "lineHeight": "1.5"
+          }
+        },
+        {
+          "name": "Heading 2",
+          "font": "Times New Roman",
+          "size": "12pt",
+          "weight": "700",
+          "style": "italic",
+          "case": "title",
+          "spacing": {
+            "before": "8pt",
+            "after": "4pt",
+            "lineHeight": "1.5"
+          }
+        },
+        {
+          "name": "Heading 3",
+          "font": "Times New Roman",
+          "size": "12pt",
+          "weight": "400",
+          "style": "italic",
+          "case": "sentence",
+          "spacing": {
+            "before": "6pt",
+            "after": "3pt",
+            "lineHeight": "1.5"
+          }
+        }
+      ],
+      "paragraph": {
+        "font": "Times New Roman",
+        "size": "12pt",
+        "lineHeight": "2.0",
+        "alignment": "left",
+        "color": "#000000",
+        "spacing": {
+          "before": "0pt",
+          "after": "6pt"
+        }
+      },
+      "emphasis": [
+        {
+          "label": "Strong",
+          "style": {
+            "weight": "700",
+            "color": "#000000"
+          }
+        },
+        {
+          "label": "Italic",
+          "style": {
+            "italic": true,
+            "color": "#000000"
+          }
+        },
+        {
+          "label": "Quote",
+          "style": {
+            "italic": true,
+            "color": "#333333"
+          }
+        }
+      ]
+    },
+    "colors": {
+      "accent": "#156082",
+      "muted": "#666666",
+      "background": "#FFFFFF"
+    },
+    "layout": {
+      "margins": "1in",
+      "gutter": "0.75in",
+      "grid": "single",
+      "columns": 1
+    },
+    "houseStyle": {
+      "quotes": "Use single quotation marks, reserving double quotation marks for quotations within quotations as per the Chatham House style guide【857399576858549†L277-L287】.",
+      "dashes": "For parenthetical phrases use an en‑dash surrounded by spaces; do not use an em dash【857399576858549†L300-L301】.",
+      "serialComma": "Omit the serial comma before ‘and’ in lists unless needed for clarity【857399576858549†L311-L313】.",
+      "numbers": "Spell out numbers one to nine; use numerals for 10 and above【857399576858549†L142-L159】."
+    }
+  },
+  "document": {
+    "type": "doc",
+    "attrs": {
+      "citationStyleId": "chicago-note-bibliography",
+      "citationLocale": "en-GB"
+    },
+    "content": [
+      {
+        "type": "heading",
+        "attrs": {
+          "level": 1
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "Article Title"
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "attrs": {
+          "textAlign": "left"
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "Provide a concise abstract summarizing the purpose and findings of the paper."
+          }
+        ]
+      },
+      {
+        "type": "heading",
+        "attrs": {
+          "level": 2
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "Introduction"
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "type": "text",
+            "text": "The body of the article should be written in clear, concise prose. Use double‑spaced paragraphs with a first‑line indent and adhere to British spelling conventions. Footnote numbers appear as superscripts in the text."
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "type": "text",
+            "text": "When citing a source, insert a superscript note number"
+          },
+          {
+            "type": "text",
+            "text": "1",
+            "marks": [
+              {
+                "type": "footnote"
+              }
+            ]
+          },
+          {
+            "type": "text",
+            "text": " and list the corresponding citation in the footnote section following Chicago style."
+          }
+        ]
+      },
+      {
+        "type": "heading",
+        "attrs": {
+          "level": 2
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "Conclusion"
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "type": "text",
+            "text": "Summarize the key findings and implications for cyber policy. Use en‑dashes for parenthetical statements and single quotation marks for quotations as specified in the house style."
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -19,6 +19,14 @@ pnpm-debug.log*
 # Codex / local logs
 .codex_logs/
 
+# local env files (often contain secrets)
+.env
+.env.*
+
+# npm artifacts
+.npm-cache/
+.npm-logs/
+
 # Windows/WSL path artifacts accidentally created as filenames
 *\\wsl$*
 

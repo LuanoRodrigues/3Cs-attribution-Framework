@@ -44,6 +44,8 @@ export const recordRibbonSelection = (selection: StoredSelection): void => {
   ribbonSelection = selection;
 };
 
+export const peekRibbonSelection = (): StoredSelection | null => ribbonSelection;
+
 export const consumeRibbonSelection = (): StoredSelection | null => {
   const cached = ribbonSelection;
   ribbonSelection = null;

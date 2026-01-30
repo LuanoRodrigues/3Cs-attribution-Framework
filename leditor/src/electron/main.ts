@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, ipcMain, Menu, type MenuItemConstructorOptions } from "electron";
 import fs from "fs";
 import path from "path";
 import readline from "readline";
@@ -11,12 +11,218 @@ const REFERENCES_LEGACY_FILENAME = "references.json";
 const normalizeError = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 const randomToken = (): string => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 
+const dbg = (fn: string, msg: string, extra?: Record<string, unknown>) => {
+  const line = `[main.ts][${fn}][debug] ${msg}`;
+  if (extra) {
+    console.debug(line, extra);
+  } else {
+    console.debug(line);
+  }
+};
+
+const loadDotenv = (envPath: string): void => {
+  try {
+    if (!fs.existsSync(envPath)) {
+      dbg("loadDotenv", "no .env found", { envPathLen: envPath.length });
+      return;
+    }
+    const raw = fs.readFileSync(envPath, "utf-8");
+    const keys: string[] = [];
+    for (const line of raw.split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) continue;
+      const normalized = trimmed.startsWith("export ") ? trimmed.slice("export ".length).trim() : trimmed;
+      const eq = normalized.indexOf("=");
+      if (eq <= 0) continue;
+      const key = normalized.slice(0, eq).trim();
+      if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) continue;
+      if (Object.prototype.hasOwnProperty.call(process.env, key)) continue;
+      let value = normalized.slice(eq + 1).trim();
+      if (
+        value.length >= 2 &&
+        ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'")))
+      ) {
+        value = value.slice(1, -1);
+      }
+      process.env[key] = value;
+      keys.push(key);
+    }
+    if (keys.length > 0) {
+      dbg("loadDotenv", "loaded env keys", { keys });
+    }
+  } catch (error) {
+    dbg("loadDotenv", "failed to load .env", { error: normalizeError(error) });
+  }
+};
+
+const installAppMenu = (window: BrowserWindow): void => {
+  // Restore a native menu bar (File/Edit/...) so standard window controls and shortcuts work.
+  // Note: Some File actions are placeholders unless the renderer registers matching commands.
+  const template: MenuItemConstructorOptions[] = [
+    ...(process.platform === "darwin"
+      ? ([
+          {
+            label: app.name,
+            submenu: [
+              { role: "about" },
+              { type: "separator" },
+              { role: "services" },
+              { type: "separator" },
+              { role: "hide" },
+              { role: "hideOthers" },
+              { role: "unhide" },
+              { type: "separator" },
+              { role: "quit" }
+            ]
+          }
+        ] as MenuItemConstructorOptions[])
+      : []),
+    {
+      label: "File",
+      submenu: [
+        {
+          label: "New",
+          accelerator: "CmdOrCtrl+N",
+          click: () => {
+            void window.webContents.executeJavaScript("window.leditor?.execCommand?.('NewDocument')", true).catch(() => {});
+          }
+        },
+        {
+          label: "Open…",
+          accelerator: "CmdOrCtrl+O",
+          click: () => {
+            void window.webContents.executeJavaScript("window.leditor?.execCommand?.('OpenDocument')", true).catch(() => {});
+          }
+        },
+        { type: "separator" },
+        {
+          label: "Print…",
+          accelerator: "CmdOrCtrl+P",
+          click: () => window.webContents.print({ silent: false, printBackground: true })
+        },
+        { type: "separator" },
+        ...(process.platform === "darwin"
+          ? ([] as Electron.MenuItemConstructorOptions[])
+          : ([{ role: "quit" }] as Electron.MenuItemConstructorOptions[]))
+      ]
+    },
+    {
+      label: "Edit",
+      submenu: [
+        { role: "undo" },
+        { role: "redo" },
+        { type: "separator" },
+        { role: "cut" },
+        { role: "copy" },
+        { role: "paste" },
+        { role: "selectAll" }
+      ]
+    },
+    { role: "viewMenu" },
+    { role: "windowMenu" },
+    {
+      role: "help",
+      submenu: [
+        {
+          label: "Toggle Developer Tools",
+          accelerator: process.platform === "darwin" ? "Alt+Command+I" : "Ctrl+Shift+I",
+          click: () => window.webContents.toggleDevTools()
+        }
+      ]
+    }
+  ];
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+};
+
+const summarizeIpcRequest = (channel: string, request: unknown): Record<string, unknown> => {
+  if (!request || typeof request !== "object") return { channel, requestType: typeof request };
+  const obj = request as any;
+  switch (channel) {
+    case "leditor:read-file":
+    case "leditor:file-exists":
+      return { channel, sourcePathLen: typeof obj?.sourcePath === "string" ? obj.sourcePath.length : 0 };
+    case "leditor:write-file":
+      return {
+        channel,
+        targetPathLen: typeof obj?.targetPath === "string" ? obj.targetPath.length : 0,
+        dataLen: typeof obj?.data === "string" ? obj.data.length : 0
+      };
+    case "leditor:agent-request": {
+      const payload = obj?.payload as any;
+      return {
+        channel,
+        scope: typeof payload?.scope === "string" ? payload.scope : "unknown",
+        instructionLen: typeof payload?.instruction === "string" ? payload.instruction.length : 0,
+        selectionTextLen: typeof payload?.selection?.text === "string" ? payload.selection.text.length : 0,
+        documentTextLen: typeof payload?.document?.text === "string" ? payload.document.text.length : 0,
+        historyLen: Array.isArray(payload?.history) ? payload.history.length : 0,
+        targetsLen: Array.isArray(payload?.targets) ? payload.targets.length : 0
+      };
+    }
+    case "leditor:open-pdf-viewer":
+      return { channel, payloadKeys: obj?.payload && typeof obj.payload === "object" ? Object.keys(obj.payload).length : 0 };
+    case "leditor:resolve-pdf-path":
+      return {
+        channel,
+        lookupPathLen: typeof obj?.lookupPath === "string" ? obj.lookupPath.length : 0,
+        itemKeyLen: typeof obj?.itemKey === "string" ? obj.itemKey.length : 0
+      };
+    case "leditor:get-direct-quote-entry":
+      return {
+        channel,
+        lookupPathLen: typeof obj?.lookupPath === "string" ? obj.lookupPath.length : 0,
+        dqidLen: typeof obj?.dqid === "string" ? obj.dqid.length : 0
+      };
+    case "leditor:prefetch-direct-quotes":
+      return {
+        channel,
+        lookupPathLen: typeof obj?.lookupPath === "string" ? obj.lookupPath.length : 0,
+        dqids: Array.isArray(obj?.dqids) ? obj.dqids.length : 0
+      };
+    case "leditor:pdf-viewer-payload":
+      return { channel, tokenLen: typeof obj?.token === "string" ? obj.token.length : 0 };
+    default:
+      return { channel, keys: Object.keys(obj).length };
+  }
+};
+
+const summarizeIpcResult = (result: unknown): Record<string, unknown> => {
+  if (result == null) return { result: null };
+  if (typeof result !== "object") return { resultType: typeof result };
+  const obj = result as any;
+  return {
+    success: typeof obj?.success === "boolean" ? obj.success : undefined,
+    hasError: typeof obj?.error === "string" ? obj.error.length > 0 : undefined,
+    dataLen: typeof obj?.data === "string" ? obj.data.length : undefined
+  };
+};
+
+const registerIpc = <Req, Res>(
+  channel: string,
+  handler: (event: Electron.IpcMainInvokeEvent, request: Req) => Promise<Res> | Res
+) => {
+  dbg("registerIpc", `ipcMain.handle ${channel}`);
+  ipcMain.handle(channel, async (event, request) => {
+    const started = Date.now();
+    dbg("ipc", `call ${channel}`, summarizeIpcRequest(channel, request));
+    try {
+      const result = await handler(event, request as Req);
+      dbg("ipc", `done ${channel}`, { ms: Date.now() - started, ...summarizeIpcResult(result) });
+      return result as Res;
+    } catch (error) {
+      dbg("ipc", `throw ${channel}`, { ms: Date.now() - started, error: normalizeError(error) });
+      throw error;
+    }
+  });
+};
+
 type AgentHistoryMessage = { role: "user" | "assistant" | "system"; content: string };
 type AgentRequestPayload = {
   scope: "selection" | "document";
   instruction: string;
   selection?: { from: number; to: number; text: string };
   document?: { text: string };
+  targets?: Array<{ n: number; headingNumber?: string; headingTitle?: string }>;
   history?: AgentHistoryMessage[];
   settings?: AiSettings;
 };
@@ -45,10 +251,14 @@ const buildAgentPrompt = (payload: AgentRequestPayload): { system: string; user:
   const system = [
     "You are an AI writing assistant embedded in an offline desktop academic editor.",
     "Return STRICT JSON only (no markdown, no backticks, no extra keys).",
-    'Schema: {"assistantText": string, "applyText": string}.',
-    'assistantText: a brief description of what you changed.',
-    "applyText: the text to insert into the editor for the requested scope.",
-    "Do not include surrounding quotes in applyText; return raw text."
+    'Schema: {"assistantText": string, "operations": Array<Operation>}.',
+    "Operation is one of:",
+    '- {"op":"replaceSelection","text":string}',
+    '- {"op":"replaceParagraph","n":number,"text":string}',
+    '- {"op":"replaceDocument","text":string}',
+    "assistantText: brief response to the user (what you did / answer).",
+    "If the instruction is NOT a request to modify text (e.g. user asks a question), return operations: [] and answer in assistantText.",
+    "Never include surrounding quotes in text fields; return raw text."
   ].join("\n");
 
   if (scope === "selection") {
@@ -63,6 +273,8 @@ const buildAgentPrompt = (payload: AgentRequestPayload): { system: string; user:
         : "";
     const userParts = [
       "Task: Apply the instruction to the TARGET TEXT.",
+      "If the instruction is not requesting a text change, answer in assistantText and return operations: [].",
+      "If you change the text, return operations: [{\"op\":\"replaceSelection\",\"text\":...}].",
       "Instruction:",
       instruction,
       "",
@@ -80,18 +292,40 @@ const buildAgentPrompt = (payload: AgentRequestPayload): { system: string; user:
   if (!doc || typeof doc.text !== "string") {
     throw new Error("agent-request: document.text is required for document scope");
   }
+  const targets = Array.isArray(payload.targets) ? payload.targets : [];
   const chunkHint =
     typeof payload.settings?.chunkSize === "number" && payload.settings.chunkSize > 0
       ? `Chunk limit: ${payload.settings.chunkSize} characters.`
       : "";
-  const userParts = [
-    "Task: Apply the instruction to the DOCUMENT TEXT.",
-    "Instruction:",
-    instruction,
-    "",
-    "DOCUMENT TEXT (rewrite this):",
-    doc.text
-  ];
+  const targetHint =
+    targets.length > 0
+      ? [
+          "Apply the instruction to the numbered paragraphs in DOCUMENT TEXT.",
+          "Only produce operations for paragraphs present in this chunk.",
+          "Each paragraph begins with a marker like <<<P:12>>>.",
+          "Return operations using op=replaceParagraph with matching n.",
+          "If a paragraph needs no change, omit it."
+        ].join("\n")
+      : "Apply the instruction to the DOCUMENT TEXT.";
+  const metaBlock =
+    targets.length > 0
+      ? [
+          "",
+          "PARAGRAPH METADATA (for disambiguation only):",
+          ...targets
+            .slice(0, 180)
+            .map((t) => {
+              const n = Number(t?.n);
+              if (!Number.isFinite(n)) return "";
+              const hn = typeof t?.headingNumber === "string" && t.headingNumber.trim() ? t.headingNumber.trim() : "";
+              const ht = typeof t?.headingTitle === "string" && t.headingTitle.trim() ? t.headingTitle.trim() : "";
+              const extra = [hn ? `heading=${hn}` : "", ht ? `title="${ht.replaceAll("\"", "'")}"` : ""].filter(Boolean).join(" ");
+              return extra ? `P${n}: ${extra}` : `P${n}`;
+            })
+            .filter(Boolean)
+        ].join("\n")
+      : "";
+  const userParts = ["Task:", targetHint, "Instruction:", instruction, metaBlock, "", "DOCUMENT TEXT:", doc.text];
   if (chunkHint) {
     userParts.push("", chunkHint);
   }
@@ -929,9 +1163,15 @@ const seedBundledReferences = (bibliographyDir: string): void => {
 };
 
 const createWindow = () => {
+  dbg("createWindow", "begin", { argvCount: process.argv.length, isPackaged: app.isPackaged });
   const bibliographyDir = resolveBibliographyDir();
   const contentDir = path.join(app.getPath("userData"), "content");
   const tempDir = path.join(app.getPath("userData"), "temp");
+  dbg("createWindow", "resolved dirs", {
+    hasBibliographyDir: Boolean(bibliographyDir),
+    contentDirLen: contentDir.length,
+    tempDirLen: tempDir.length
+  });
   [bibliographyDir, contentDir, tempDir].forEach((dir) => {
     try {
       fs.mkdirSync(dir, { recursive: true });
@@ -961,28 +1201,51 @@ const createWindow = () => {
       allowDiskWrites: true
     }
   };
+  dbg("createWindow", "host contract", {
+    version: hostContract.version,
+    sessionId: hostContract.sessionId,
+    documentId: hostContract.documentId,
+    titleLen: hostContract.documentTitle.length,
+    directQuoteJsonPathLen: hostContract.inputs.directQuoteJsonPath.length
+  });
   const leditorHostArg = `--leditor-host=${encodeURIComponent(JSON.stringify(hostContract))}`;
 
+  const SCALE_FACTOR = 1.25;
   const window = new BrowserWindow({
     width: 1280,
     height: 900,
     backgroundColor: "#f6f2e7",
+    useContentSize: true,
+    autoHideMenuBar: false,
+    frame: true,
     webPreferences: {
       preload: path.join(app.getAppPath(), "dist", "electron", "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
-      additionalArguments: [leditorHostArg]
+      additionalArguments: [leditorHostArg],
+      zoomFactor: SCALE_FACTOR
     }
+  });
+  installAppMenu(window);
+  dbg("createWindow", "BrowserWindow created", {
+    contextIsolation: true,
+    nodeIntegration: false,
+    preload: "dist/electron/preload.js",
+    additionalArguments: 1
   });
 
   const indexPath = path.join(app.getAppPath(), "dist", "public", "index.html");
+  dbg("createWindow", "loadFile", { indexPathLen: indexPath.length });
   window.webContents.on("did-fail-load", (_event, errorCode, errorDescription, validatedURL) => {
     console.error("[leditor][window] did-fail-load", { errorCode, errorDescription, validatedURL });
   });
   window.webContents.on("console-message", (_event, level, message, line, sourceId) => {
     const levelName = level === 0 ? "debug" : level === 1 ? "info" : level === 2 ? "warn" : "error";
-    console.info("[leditor][renderer][console]", { level: levelName, message, line, sourceId });
+    const raw = typeof message === "string" ? message : String(message);
+    const maxLen = 800;
+    const preview = raw.length > maxLen ? `${raw.slice(0, maxLen)}…(truncated)` : raw;
+    console.info("[leditor][renderer][console]", { level: levelName, message: preview, messageLen: raw.length, line, sourceId });
   });
   window.webContents.on("render-process-gone", (_event, details) => {
     console.error("[leditor][window] render-process-gone", details);
@@ -1056,7 +1319,15 @@ const createWindow = () => {
 };
 
 app.whenReady().then(() => {
-  ipcMain.handle("leditor:file-exists", async (_event, request: { sourcePath: string }) => {
+  dbg("whenReady", "app ready");
+  loadDotenv(path.join(app.getAppPath(), ".env"));
+  registerIpc("leditor:ai-status", async () => {
+    const hasApiKey = Boolean(String(process.env.OPENAI_API_KEY || "").trim());
+    const envModel = String(process.env.LEDITOR_AGENT_MODEL || process.env.OPENAI_MODEL || "").trim();
+    const model = envModel || "codex-mini-latest";
+    return { success: true, hasApiKey, model, modelFromEnv: Boolean(envModel) };
+  });
+  registerIpc("leditor:file-exists", async (_event, request: { sourcePath: string }) => {
     try {
       const sourcePath = normalizeFsPath(request.sourcePath);
       if (!sourcePath) return { success: false, exists: false };
@@ -1067,7 +1338,19 @@ app.whenReady().then(() => {
     }
   });
 
-  ipcMain.handle("leditor:agent-request", async (_event, request: { payload: AgentRequestPayload }) => {
+  registerIpc("leditor:agent-request", async (_event, request: { requestId?: string; payload: AgentRequestPayload }) => {
+    const started = Date.now();
+    const requestId = typeof (request as any)?.requestId === "string" ? String((request as any).requestId) : "";
+    const abortController = new AbortController();
+    const inflight = (globalThis as any).__leditorAgentInflight as Map<string, AbortController> | undefined;
+    const inflightMap =
+      inflight ??
+      (() => {
+        const m = new Map<string, AbortController>();
+        (globalThis as any).__leditorAgentInflight = m;
+        return m;
+      })();
+    if (requestId) inflightMap.set(requestId, abortController);
     try {
       const payload = request?.payload as AgentRequestPayload;
       const settings = payload?.settings;
@@ -1098,16 +1381,25 @@ app.whenReady().then(() => {
         settings?.model?.trim() ||
         String(process.env.LEDITOR_AGENT_MODEL || "").trim() ||
         String(process.env.OPENAI_MODEL || "").trim() ||
-        "gpt-4o-mini";
+        "codex-mini-latest";
       const temperature = typeof settings?.temperature === "number" ? settings.temperature : 0.2;
 
-      const completion = await client.chat.completions.create({
-        model,
-        messages,
-        temperature
-      });
+      const historyBlock = normalizeHistory(history)
+        .map((m) => `${m.role.toUpperCase()}: ${m.content}`)
+        .join("\n");
+      const inputText = historyBlock ? `Conversation history:\n${historyBlock}\n\n${user}` : user;
 
-      const raw = String(completion.choices?.[0]?.message?.content ?? "").trim();
+      const response = await client.responses.create(
+        {
+          model,
+          instructions: system,
+          input: inputText,
+          temperature
+        },
+        { signal: abortController.signal }
+      );
+
+      const raw = String((response as any).output_text ?? "").trim();
       const extractJson = (text: string): any => {
         const start = text.indexOf("{");
         const end = text.lastIndexOf("}");
@@ -1120,17 +1412,75 @@ app.whenReady().then(() => {
 
       const parsed = extractJson(raw);
       const assistantText = typeof parsed?.assistantText === "string" ? parsed.assistantText : "";
+      const operationsRaw = Array.isArray(parsed?.operations) ? parsed.operations : [];
       const applyText = typeof parsed?.applyText === "string" ? parsed.applyText : "";
-      if (!assistantText && !applyText) {
-        throw new Error("Agent response JSON missing assistantText/applyText.");
+      const operations = operationsRaw
+        .map((op: any) => {
+          const kind = String(op?.op || "");
+          if (kind === "replaceSelection" && typeof op?.text === "string") {
+            return { op: "replaceSelection" as const, text: op.text };
+          }
+          if (kind === "replaceParagraph" && Number.isFinite(op?.n) && typeof op?.text === "string") {
+            return { op: "replaceParagraph" as const, n: Number(op.n), text: op.text };
+          }
+          if (kind === "replaceDocument" && typeof op?.text === "string") {
+            return { op: "replaceDocument" as const, text: op.text };
+          }
+          return null;
+        })
+        .filter(Boolean) as Array<
+        | { op: "replaceSelection"; text: string }
+        | { op: "replaceParagraph"; n: number; text: string }
+        | { op: "replaceDocument"; text: string }
+      >;
+
+      // Backward compatibility: accept legacy applyText outputs.
+      if (operations.length === 0 && applyText) {
+        if (payload.scope === "selection") {
+          operations.push({ op: "replaceSelection", text: applyText });
+        } else {
+          operations.push({ op: "replaceDocument", text: applyText });
+        }
       }
-      return { success: true, assistantText, applyText };
+
+      if (!assistantText && operations.length === 0) {
+        throw new Error("Agent response JSON missing assistantText/operations.");
+      }
+      return {
+        success: true,
+        assistantText,
+        applyText,
+        operations,
+        meta: { provider: "openai" as const, model, ms: Date.now() - started }
+      };
     } catch (error) {
-      return { success: false, error: normalizeError(error) };
+      return {
+        success: false,
+        error: normalizeError(error),
+        meta: { provider: "openai" as const, ms: Date.now() - started }
+      };
+    } finally {
+      if (requestId) inflightMap.delete(requestId);
     }
   });
 
-  ipcMain.handle("leditor:read-file", async (_event, request: { sourcePath: string }) => {
+  registerIpc("leditor:agent-cancel", async (_event, request: { requestId: string }) => {
+    const requestId = String(request?.requestId || "").trim();
+    if (!requestId) return { success: false, error: "requestId required" };
+    const inflight = (globalThis as any).__leditorAgentInflight as Map<string, AbortController> | undefined;
+    const ctrl = inflight?.get(requestId);
+    if (!ctrl) return { success: true, cancelled: false };
+    try {
+      ctrl.abort();
+    } catch {
+      // ignore
+    } finally {
+      inflight?.delete(requestId);
+    }
+    return { success: true, cancelled: true };
+  });
+
+  registerIpc("leditor:read-file", async (_event, request: { sourcePath: string }) => {
     try {
       const sourcePath = normalizeFsPath(request.sourcePath);
       const data = await fs.promises.readFile(sourcePath, "utf-8");
@@ -1140,7 +1490,7 @@ app.whenReady().then(() => {
     }
   });
 
-  ipcMain.handle("leditor:write-file", async (_event, request: { targetPath: string; data: string }) => {
+  registerIpc("leditor:write-file", async (_event, request: { targetPath: string; data: string }) => {
     try {
       const targetPath = normalizeFsPath(request.targetPath);
       await fs.promises.mkdir(path.dirname(targetPath), { recursive: true });
@@ -1151,7 +1501,7 @@ app.whenReady().then(() => {
     }
   });
 
-  ipcMain.handle("leditor:open-pdf-viewer", async (_event, request: { payload: Record<string, unknown> }) => {
+  registerIpc("leditor:open-pdf-viewer", async (_event, request: { payload: Record<string, unknown> }) => {
     try {
       const payload = request?.payload || {};
       console.info("[leditor][pdf] open viewer requested", {
@@ -1206,7 +1556,7 @@ app.whenReady().then(() => {
     }
   });
 
-  ipcMain.handle("leditor:pdf-viewer-payload", async (_event, request: { token: string }) => {
+  registerIpc("leditor:pdf-viewer-payload", async (_event, request: { token: string }) => {
     const token = String(request?.token || "");
     if (!token) return null;
     const payload = pdfViewerPayloads.get(token) || null;
@@ -1214,7 +1564,7 @@ app.whenReady().then(() => {
     return payload;
   });
 
-  ipcMain.handle("leditor:resolve-pdf-path", async (_event, request: { lookupPath: string; itemKey: string }) => {
+  registerIpc("leditor:resolve-pdf-path", async (_event, request: { lookupPath: string; itemKey: string }) => {
     try {
       const lookupPath = normalizeFsPath(request.lookupPath);
       const itemKey = String(request.itemKey || "").trim();
@@ -1313,7 +1663,7 @@ app.whenReady().then(() => {
     }
   });
 
-  ipcMain.handle("leditor:get-direct-quote-entry", async (_event, request: { lookupPath: string; dqid: string }) => {
+  registerIpc("leditor:get-direct-quote-entry", async (_event, request: { lookupPath: string; dqid: string }) => {
     try {
       const lookupPath = normalizeFsPath(request.lookupPath);
       const dqid = String(request.dqid || "").trim().toLowerCase();
@@ -1328,7 +1678,7 @@ app.whenReady().then(() => {
     }
   });
 
-  ipcMain.handle("leditor:prefetch-direct-quotes", async (_event, request: { lookupPath: string; dqids: string[] }) => {
+  registerIpc("leditor:prefetch-direct-quotes", async (_event, request: { lookupPath: string; dqids: string[] }) => {
     try {
       const lookupPath = normalizeFsPath(request.lookupPath);
       const dqids = Array.isArray(request.dqids) ? request.dqids : [];

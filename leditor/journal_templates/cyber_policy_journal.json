@@ -2,8 +2,23 @@
   "id": "cyber_policy_journal",
   "label": "Cyber Policy Journal",
   "description": "Research-first layout for technology governance papers.",
+  "metadata": {
+    "documentDefaults": {
+      "fontFamily": "Times New Roman",
+      "fontSizePx": 12,
+      "textColor": "#0f172a",
+      "lineHeight": "double",
+      "spaceBeforePx": 0,
+      "spaceAfterPx": 8,
+      "textAlign": "left"
+    }
+  },
   "document": {
     "type": "doc",
+    "attrs": {
+      "citationStyleId": "chicago-note-bibliography",
+      "citationLocale": "en-US"
+    },
     "content": [
       {
         "type": "heading",

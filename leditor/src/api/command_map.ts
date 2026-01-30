@@ -1,5 +1,6 @@
 import type { Editor } from "@tiptap/core";
-import { NodeSelection, TextSelection } from "@tiptap/pm/state";
+import { Fragment } from "@tiptap/pm/model";
+import { NodeSelection, TextSelection, Transaction } from "@tiptap/pm/state";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { getFootnoteRegistry } from "../extensions/extension_footnote.ts";
 import {
@@ -29,6 +30,7 @@ import {
 } from "../ui/references/bibliography.ts";
 import {
   buildCitationItems,
+  resolveNoteKind,
   updateAllCitationsAndBibliography
 } from "../csl/update.ts";
 import type { BibliographyNode as CslBibliographyNode, CitationNode as CslCitationNode, DocCitationMeta } from "../csl/types.ts";
@@ -162,49 +164,101 @@ const insertCitationNode = (
   editor.view.dispatch(tr.scrollIntoView());
 };
 
-const scrollFootnoteAreaIntoView = (footnoteId: string, attempt = 0) => {
-  if (typeof window === "undefined" || typeof document === "undefined") return;
-  window.requestAnimationFrame(() => {
-    const marker = document.querySelector<HTMLElement>(`.leditor-footnote[data-footnote-id="${footnoteId}"]`);
-    if (!marker) return;
-    const kind = (marker.dataset.footnoteKind ?? "footnote").toLowerCase();
-    if (kind === "endnote") {
-      document
-        .querySelector<HTMLElement>(".leditor-endnotes-panel")
-        ?.scrollIntoView({ block: "center", behavior: "smooth" });
-      return;
-    }
-    const container = marker.closest<HTMLElement>(".leditor-page")?.querySelector<HTMLElement>(".leditor-page-footnotes");
-    if (container) {
-      container.scrollIntoView({ block: "center", behavior: "smooth" });
-      const entry = container.querySelector<HTMLElement>(
-        `.leditor-footnote-entry[data-footnote-id="${footnoteId}"]`
-      );
-      if (entry) {
-        entry.classList.add("leditor-footnote-entry--active");
-        window.setTimeout(() => entry.classList.remove("leditor-footnote-entry--active"), 900);
-        const text = entry.querySelector<HTMLElement>(".leditor-footnote-entry-text");
-        text?.focus();
-        return;
-      }
-      if (attempt < 5) {
-        scrollFootnoteAreaIntoView(footnoteId, attempt + 1);
-      }
-      return;
-    }
-    marker.scrollIntoView({ block: "center", behavior: "smooth" });
-  });
+const MAX_FOOTNOTE_FOCUS_ATTEMPTS = 90;
+
+const placeCaretAtEnd = (el: HTMLElement) => {
+  try {
+    const selection = window.getSelection?.();
+    if (!selection) return;
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    range.collapse(false);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  } catch {
+    // ignore
+  }
 };
 
-const focusFootnoteById = (id: string, attempt = 0) => {
-  const view = getFootnoteRegistry().get(id);
-  if (view) {
-    view.open();
-    scrollFootnoteAreaIntoView(id);
+const tryFocusFootnoteUi = (footnoteId: string, attempt: number): boolean => {
+  const entry = document.querySelector<HTMLElement>(`.leditor-footnote-entry[data-footnote-id="${footnoteId}"]`);
+  if (entry) {
+    const container = entry.closest<HTMLElement>(".leditor-page-footnotes");
+    container?.scrollIntoView({ block: "center", behavior: "smooth" });
+    entry.classList.add("leditor-footnote-entry--active");
+    window.setTimeout(() => entry.classList.remove("leditor-footnote-entry--active"), 900);
+    const text = entry.querySelector<HTMLElement>(".leditor-footnote-entry-text");
+    text?.focus();
+    if (text) placeCaretAtEnd(text);
+    console.info("[Footnote][focus] focused footnote UI", { footnoteId, attempt, hasText: Boolean(text) });
+    return Boolean(text);
+  }
+
+  const endnoteText = document.querySelector<HTMLElement>(
+    `.leditor-endnote-entry[data-footnote-id="${footnoteId}"] .leditor-endnote-entry-text`
+  );
+  if (endnoteText) {
+    const panel = endnoteText.closest<HTMLElement>(".leditor-endnotes-panel");
+    panel?.scrollIntoView({ block: "center", behavior: "smooth" });
+    endnoteText.focus();
+    placeCaretAtEnd(endnoteText);
+    console.info("[Footnote][focus] focused endnote UI", { footnoteId, attempt });
+    return true;
+  }
+
+  const marker = document.querySelector<HTMLElement>(`.leditor-footnote[data-footnote-id="${footnoteId}"]`);
+  if (marker) {
+    const kind = (marker.dataset.footnoteKind ?? "footnote").toLowerCase();
+    if (kind === "endnote") {
+      const panel = document.querySelector<HTMLElement>(".leditor-endnotes-panel");
+      panel?.scrollIntoView({ block: "center", behavior: "smooth" });
+      return false;
+    }
+    const container = marker.closest<HTMLElement>(".leditor-page")?.querySelector<HTMLElement>(".leditor-page-footnotes");
+    container?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }
+
+  return false;
+};
+
+const focusFootnoteById = (id: string) => {
+  if (typeof window === "undefined" || typeof document === "undefined") return;
+  // In A4 layout mode, a4_layout.ts owns focusing (it waits for the footnote rows to render).
+  // Avoid running our own retry loop here, which spams logs and can fight the layout controller.
+  if (document.querySelector(".leditor-page-footnotes")) {
+    console.info("[Footnote][focus] delegated to A4 layout", { id });
+    try {
+      window.dispatchEvent(new CustomEvent("leditor:footnote-focus", { detail: { footnoteId: id } }));
+    } catch {
+      // ignore
+    }
+    try {
+      document.dispatchEvent(new CustomEvent("leditor:footnote-focus", { detail: { footnoteId: id } }));
+    } catch {
+      // ignore
+    }
     return;
   }
-  if (attempt >= 5) return;
-  window.requestAnimationFrame(() => focusFootnoteById(id, attempt + 1));
+
+  console.info("[Footnote][focus] request", { id });
+  tryFocusFootnoteUi(id, 0);
+};
+
+const pickStableSelectionSnapshot = (
+  editor: Editor
+): { selectionSnapshot: StoredSelection; source: "ribbon" | "live" } => {
+  const current = snapshotFromSelection(editor.state.selection);
+  const stored = consumeRibbonSelection();
+  if (!stored) {
+    return { selectionSnapshot: current, source: "live" };
+  }
+  const delta = Math.abs(stored.from - current.from) + Math.abs(stored.to - current.to);
+  // If stored selection is wildly different, fall back to the live editor selection.
+  if (delta > 25) {
+    console.info("[Footnote][selection] ignoring stale ribbon snapshot", { stored, current, delta });
+    return { selectionSnapshot: current, source: "live" };
+  }
+  return { selectionSnapshot: stored, source: "ribbon" };
 };
 
 let searchPanelController: ReturnType<typeof createSearchPanel> | null = null;
@@ -293,12 +347,7 @@ const extractCitationNodes = (doc: ProseMirrorNode): CitationNodeRecord[] => {
     throw new Error("Citation node is not registered in schema");
   }
   const styleId = typeof doc.attrs?.citationStyleId === "string" ? doc.attrs.citationStyleId : "";
-  const noteKind =
-    styleId === "chicago-note-bibliography" || styleId === "chicago-footnotes"
-      ? "footnote"
-      : styleId === "chicago-note-bibliography-endnote"
-        ? "endnote"
-        : null;
+  const noteKind = styleId ? resolveNoteKind(styleId) : null;
   const noteIndexByCitationId = new Map<string, number>();
   if (noteKind) {
     let noteIndex = 0;
@@ -367,12 +416,6 @@ const findBibliographyNode = (doc: ProseMirrorNode): BibliographyNodeRecord | nu
   return found;
 };
 
-const resolveNoteKind = (_styleId: string): "footnote" | "endnote" | null => {
-  // Note-based CSL styles (footnotes/endnotes) aren’t fully implemented yet.
-  // Keeping this disabled ensures citations + bibliography always render as inline anchors.
-  return null;
-};
-
 const stripHtml = (value: string): string => value.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
 
 const KEY_REGEX = /^[A-Z0-9]{8}$/;
@@ -433,6 +476,14 @@ const extractDqidFromLinkAttrs = (attrs: any): string => {
   return href.startsWith("dq://") ? href.slice("dq://".length) : "";
 };
 
+const parseLocatorFromRenderedText = (text: string): { locator: string | null; label: string | null } => {
+  const raw = (text || "").replace(/\s+/g, " ").trim();
+  if (!raw) return { locator: null, label: null };
+  const m = /\bpp?\.\s*([0-9]+(?:\s*[-–]\s*[0-9]+)?)\b/i.exec(raw);
+  if (!m) return { locator: null, label: null };
+  return { locator: m[1].replace(/\s+/g, ""), label: "page" };
+};
+
 const convertCitationAnchorsToCitationNodes = (editor: Editor): void => {
   const citationNode = editor.schema.nodes.citation;
   const linkMark = editor.schema.marks.link;
@@ -446,6 +497,8 @@ const convertCitationAnchorsToCitationNodes = (editor: Editor): void => {
     const attrs = link.attrs ?? {};
     const key = extractKeyFromLinkAttrs(attrs);
     if (!key) return true;
+    const text = typeof node.text === "string" ? node.text : "";
+    const { locator, label } = parseLocatorFromRenderedText(text);
     const dqid = extractDqidFromLinkAttrs(attrs);
     const title = typeof attrs?.title === "string" ? attrs.title : null;
     const from = pos;
@@ -455,7 +508,7 @@ const convertCitationAnchorsToCitationNodes = (editor: Editor): void => {
       to,
       attrs: {
         citationId: generateCitationId(),
-        items: buildCitationItems([key], {}),
+        items: buildCitationItems([key], { locator, label }),
         renderedHtml: "",
         hidden: false,
         dqid: dqid || null,
@@ -617,13 +670,6 @@ const runCslUpdate = (editor: Editor): void => {
       }
       return true;
     });
-    editor.state.doc.descendants((node, pos) => {
-      if (node.type === bibliographyNode) {
-        const mappedPos = trPrelude.mapping.map(pos);
-        trPrelude.delete(mappedPos, mappedPos + node.nodeSize);
-      }
-      return true;
-    });
   } else {
     editor.state.doc.descendants((node, pos) => {
       if (node.type === citationNode && node.attrs?.hidden) {
@@ -648,7 +694,7 @@ const runCslUpdate = (editor: Editor): void => {
     getDocCitationMeta: (doc) => getDocCitationMeta(doc as ProseMirrorNode),
     extractCitationNodes: (doc) => extractCitationNodes(doc as ProseMirrorNode),
     additionalItemKeys: collectDocumentCitationKeys(editor),
-    findBibliographyNode: (doc) => (noteKind ? null : findBibliographyNode(doc as ProseMirrorNode)),
+    findBibliographyNode: (doc) => findBibliographyNode(doc as ProseMirrorNode),
     setCitationNodeRenderedHtml: (node, html) => {
       const record = node as CitationNodeRecord;
       if (record.pmNode.attrs?.renderedHtml === html) return;
@@ -1035,12 +1081,15 @@ import {
   isPageBoundariesVisible,
   isPageBreakMarksVisible,
   isRulerVisible,
+  isGridlinesVisible,
   setPageBoundariesVisible,
   setPageBreakMarksVisible,
   setPaginationMode,
   setReadMode,
   setRulerVisible,
-  setScrollDirection
+  setScrollDirection,
+  setGridlinesVisible,
+  toggleNavigationPanel
 } from "../ui/view_state.ts";
 import { getLayoutController } from "../ui/layout_context.ts";
 import { getTemplateById } from "../templates/index.ts";
@@ -1096,17 +1145,52 @@ const collectHeadingEntries = (editor: Editor): TocEntry[] => {
   return entries;
 };
 
-const insertTocNode = (editor: Editor, entries: TocEntry[]): void => {
+const collectTocNodeInfos = (doc: ProseMirrorNode): { pos: number; size: number }[] => {
+  const infos: { pos: number; size: number }[] = [];
+  doc.descendants((node, pos) => {
+    if (node.type.name === "toc") {
+      infos.push({ pos, size: node.nodeSize });
+    }
+    return true;
+  });
+  return infos;
+};
+
+const deleteTocNodesFromTransaction = (tr: Transaction, doc: ProseMirrorNode): boolean => {
+  const infos = collectTocNodeInfos(doc);
+  if (infos.length === 0) {
+    return false;
+  }
+  const sorted = [...infos].sort((a, b) => b.pos - a.pos);
+  sorted.forEach((entry) => {
+    tr.delete(entry.pos, entry.pos + entry.size);
+  });
+  return true;
+};
+
+const insertTocNode = (editor: Editor, entries: TocEntry[], options?: { style?: string }): void => {
   if (entries.length === 0) {
     window.alert("No headings found to populate a table of contents.");
     return;
   }
-  const tocNode = editor.schema.nodes.toc;
+  const schema = editor.schema;
+  const tocNode = schema.nodes.toc;
   if (!tocNode) {
     window.alert("Table of Contents is not available in the current schema.");
     return;
   }
-  editor.chain().focus().insertContent({ type: "toc", attrs: { entries } }).run();
+  const styleId = typeof options?.style === "string" && options.style.length > 0 ? options.style : "auto1";
+  const pageBreakNode = schema.nodes.page_break;
+  const paragraphNode = schema.nodes.paragraph;
+  const tr = editor.state.tr;
+  deleteTocNodesFromTransaction(tr, editor.state.doc);
+  const nodes: ProseMirrorNode[] = [
+    tocNode.create({ entries, style: styleId }),
+    ...(pageBreakNode ? [pageBreakNode.create({ kind: "page" })] : []),
+    ...(paragraphNode ? [paragraphNode.create()] : [])
+  ];
+  tr.insert(0, Fragment.fromArray(nodes));
+  editor.view.dispatch(tr);
 };
 
 const updateTocNodes = (editor: Editor, entries: TocEntry[]): boolean => {
@@ -1127,6 +1211,19 @@ const updateTocNodes = (editor: Editor, entries: TocEntry[]): boolean => {
     editor.view.dispatch(tr);
   }
   return updated;
+};
+
+const removeTocNodes = (editor: Editor, options?: { silent?: boolean }): boolean => {
+  const tr = editor.state.tr;
+  const removed = deleteTocNodesFromTransaction(tr, editor.state.doc);
+  if (!removed) {
+    if (!options?.silent) {
+      window.alert("No table of contents found to remove.");
+    }
+    return false;
+  }
+  editor.view.dispatch(tr);
+  return true;
 };
 
 const collectDocumentCitationKeys = (editor: Editor): string[] => {
@@ -1574,6 +1671,25 @@ export const commandMap: Record<string, CommandHandler> = {
       editor.chain().focus().insertContent(text).run();
     });
   },
+  SearchReplace() {
+    const editorHandle = (window as typeof window & { leditor?: EditorHandle }).leditor;
+    if (!editorHandle) {
+      showPlaceholderDialog("Search", "Editor handle not available.");
+      return;
+    }
+    try {
+      // Prefer the shared UI panel implementation.
+      ensureSearchPanel(editorHandle).toggle();
+    } catch (error) {
+      console.warn("[SearchReplace] failed to open panel", error);
+      // Fallback to editor command routing if available.
+      try {
+        editorHandle.execCommand("SearchReplace" as any);
+      } catch {
+        showPlaceholderDialog("Search", "Search panel failed to open.");
+      }
+    }
+  },
   Fullscreen() {
     toggleFullscreen();
   },
@@ -1635,6 +1751,14 @@ export const commandMap: Record<string, CommandHandler> = {
   },
   "view.ruler.toggle"() {
     setRulerVisible(!isRulerVisible());
+  },
+  "view.gridlines.toggle"() {
+    setGridlinesVisible(!isGridlinesVisible());
+  },
+  "view.navigationPanel.toggle"() {
+    const handle = window.leditor;
+    if (!handle) return;
+    toggleNavigationPanel(handle);
   },
   "view.paginationMode.set"(_editor, args) {
     const mode = args?.mode;
@@ -1778,6 +1902,38 @@ export const commandMap: Record<string, CommandHandler> = {
       chain.selectAll();
     }
     chain.setMark("fontSize", { fontSize: args.valuePx }).run();
+  },
+  "font.size.grow"(editor) {
+    const attrs = editor.getAttributes("fontSize") as { fontSize?: unknown } | null;
+    const raw = attrs?.fontSize;
+    const current =
+      typeof raw === "number"
+        ? raw
+        : typeof raw === "string" && raw.length > 0
+          ? Number(raw)
+          : NaN;
+    const next = Number.isFinite(current) ? Math.min(400, current + 1) : 12;
+    const chain = editor.chain().focus();
+    if (editor.state.selection.empty) {
+      chain.selectAll();
+    }
+    chain.setMark("fontSize", { fontSize: next }).run();
+  },
+  "font.size.shrink"(editor) {
+    const attrs = editor.getAttributes("fontSize") as { fontSize?: unknown } | null;
+    const raw = attrs?.fontSize;
+    const current =
+      typeof raw === "number"
+        ? raw
+        : typeof raw === "string" && raw.length > 0
+          ? Number(raw)
+          : NaN;
+    const next = Number.isFinite(current) ? Math.max(1, current - 1) : 12;
+    const chain = editor.chain().focus();
+    if (editor.state.selection.empty) {
+      chain.selectAll();
+    }
+    chain.setMark("fontSize", { fontSize: next }).run();
   },
   NormalStyle(editor) {
     editor.chain().focus().setParagraph().run();
@@ -1987,20 +2143,41 @@ export const commandMap: Record<string, CommandHandler> = {
     editor.chain().focus().setTextSelection(0).run();
   },
   InsertFootnote(editor, args) {
-    const selectionSnapshot = consumeRibbonSelection() ?? snapshotFromSelection(editor.state.selection);
-    restoreSelectionFromSnapshot(editor, selectionSnapshot);
-    const text = typeof args?.text === "string" ? args.text : undefined;
-    const id = insertManagedFootnote(editor, "footnote", text);
+    const picked = pickStableSelectionSnapshot(editor);
+    const selectionSnapshot = picked.selectionSnapshot;
+    const argText = typeof args?.text === "string" ? args.text : undefined;
+    const text = argText;
+    console.info("[Footnote][InsertFootnote] selection", {
+      selectionSnapshot,
+      source: picked.source,
+      current: {
+        type: editor.state.selection.constructor?.name,
+        from: editor.state.selection.from,
+        to: editor.state.selection.to,
+        empty: editor.state.selection.empty
+      }
+    });
+    const id = insertManagedFootnote(editor, "footnote", text, selectionSnapshot);
     focusFootnoteById(id);
   },
   "footnote.insert"(editor) {
     commandMap.InsertFootnote(editor);
   },
   InsertEndnote(editor, args) {
-    const selectionSnapshot = consumeRibbonSelection() ?? snapshotFromSelection(editor.state.selection);
-    restoreSelectionFromSnapshot(editor, selectionSnapshot);
+    const picked = pickStableSelectionSnapshot(editor);
+    const selectionSnapshot = picked.selectionSnapshot;
     const text = typeof args?.text === "string" ? args.text : undefined;
-    const id = insertManagedFootnote(editor, "endnote", text);
+    console.info("[Footnote][InsertEndnote] selection", {
+      selectionSnapshot,
+      source: picked.source,
+      current: {
+        type: editor.state.selection.constructor?.name,
+        from: editor.state.selection.from,
+        to: editor.state.selection.to,
+        empty: editor.state.selection.empty
+      }
+    });
+    const id = insertManagedFootnote(editor, "endnote", text, selectionSnapshot);
     focusFootnoteById(id);
   },
   "endnote.insert"(editor) {
@@ -2072,9 +2249,15 @@ export const commandMap: Record<string, CommandHandler> = {
     editor.chain().focus().insertContent(crossRefNode.create({ targetId, label: bookmark.label || targetId })).run();
   },
 
-  InsertTOC(editor) {
+  InsertTOC(editor, args) {
     const entries = collectHeadingEntries(editor);
-    insertTocNode(editor, entries);
+    const style =
+      typeof args?.id === "string"
+        ? args.id
+        : typeof args?.style === "string"
+          ? args.style
+          : "auto1";
+    insertTocNode(editor, entries, { style });
   },
 
   UpdateTOC(editor) {
@@ -2084,15 +2267,29 @@ export const commandMap: Record<string, CommandHandler> = {
     }
   },
 
-  InsertTocHeading(editor) {
-    const text = window.prompt('Heading text');
-    if (!text) {
+  RemoveTOC(editor) {
+    removeTocNodes(editor);
+  },
+
+  InsertTocHeading(editor, args) {
+    const defaultText = typeof args?.text === "string" ? args.text.trim() : "";
+    const userText = defaultText || window.prompt('Heading text');
+    if (!userText) {
       return;
     }
-    const rawLevel = window.prompt('Heading level (1-6)', '1');
-    const level = Math.max(1, Math.min(6, Number.parseInt(rawLevel ?? '1', 10) || 1));
-    const trimmed = text.trim();
+    const trimmed = userText.trim();
     if (trimmed.length === 0) {
+      return;
+    }
+    const levelArg =
+      typeof args?.level === "number" && Number.isFinite(args.level) ? Math.floor(args.level) : undefined;
+    const levelRaw =
+      levelArg !== undefined
+        ? levelArg
+        : Number.parseInt(window.prompt('Heading level (1-6)', '1') ?? '1', 10);
+    const level = levelArg !== undefined ? Math.max(0, Math.min(6, levelArg)) : Math.max(1, Math.min(6, levelRaw || 1));
+    if (level === 0) {
+      window.alert("Do not show in TOC is not supported yet.");
       return;
     }
     editor
@@ -2434,6 +2631,93 @@ export const commandMap: Record<string, CommandHandler> = {
     }
     editor.chain().focus().insertContent(template.document as any).run();
   },
+  ApplyTemplate(editor, args) {
+    const templateId = typeof args?.id === "string" ? args.id : undefined;
+    if (!templateId) return;
+    const template = getTemplateById(templateId);
+    if (!template) {
+      console.warn("ApplyTemplate: unknown template", templateId);
+      return;
+    }
+
+    const docJson = template.document as any;
+    const pageNode = editor.schema.nodes.page;
+    const normalized =
+      docJson?.type === "doc" && pageNode && Array.isArray(docJson.content) && !docJson.content.some((n: any) => n?.type === "page")
+        ? { ...docJson, content: [{ type: "page", content: docJson.content ?? [] }] }
+        : docJson;
+
+    editor.commands.setContent(normalized);
+
+    const metadata = (template as any).metadata as Record<string, unknown> | undefined;
+    const defaults = (metadata?.documentDefaults as Record<string, unknown> | undefined) ?? undefined;
+    if (defaults && typeof defaults === "object") {
+      const fontFamily = typeof (defaults as any).fontFamily === "string" ? ((defaults as any).fontFamily as string).trim() : "";
+      const fontSizePx = typeof (defaults as any).fontSizePx === "number" ? (defaults as any).fontSizePx : NaN;
+      const textColor = typeof (defaults as any).textColor === "string" ? ((defaults as any).textColor as string).trim() : "";
+      const markFontFamily = fontFamily ? editor.schema.marks.fontFamily?.create({ fontFamily }) : null;
+      const markFontSize = Number.isFinite(fontSizePx) ? editor.schema.marks.fontSize?.create({ fontSize: fontSizePx }) : null;
+      const markTextColor = textColor ? editor.schema.marks.textColor?.create({ color: textColor }) : null;
+
+      // Apply text marks to paragraph ranges only (avoid overriding heading sizing).
+      if (markFontFamily || markFontSize || markTextColor) {
+        const mtFamily = editor.schema.marks.fontFamily;
+        const mtSize = editor.schema.marks.fontSize;
+        const mtColor = editor.schema.marks.textColor;
+        let tr = editor.state.tr;
+        editor.state.doc.descendants((node, pos) => {
+          if (node.type.name !== "paragraph") return true;
+          const from = pos + 1;
+          const to = pos + node.nodeSize - 1;
+          if (markFontFamily && mtFamily) {
+            tr = tr.removeMark(from, to, mtFamily).addMark(from, to, markFontFamily);
+          }
+          if (markFontSize && mtSize) {
+            tr = tr.removeMark(from, to, mtSize).addMark(from, to, markFontSize);
+          }
+          if (markTextColor && mtColor) {
+            tr = tr.removeMark(from, to, mtColor).addMark(from, to, markTextColor);
+          }
+          return true;
+        });
+        if (tr.docChanged) {
+          editor.view.dispatch(tr);
+        }
+      }
+
+      // Apply paragraph-level defaults across the document.
+      editor.commands.selectAll();
+      const textAlign = (defaults as any).textAlign;
+      const lineHeight = (defaults as any).lineHeight;
+      const spaceBeforePx = (defaults as any).spaceBeforePx;
+      const spaceAfterPx = (defaults as any).spaceAfterPx;
+      if (textAlign === "left" || textAlign === "center" || textAlign === "right" || textAlign === "justify") {
+        editor.commands.updateAttributes("paragraph", { textAlign });
+        editor.commands.updateAttributes("heading", { textAlign });
+      }
+      if (typeof lineHeight === "string" && lineHeight.trim().length > 0) {
+        editor.commands.updateAttributes("paragraph", { lineHeight });
+        editor.commands.updateAttributes("heading", { lineHeight });
+      }
+      if (typeof spaceBeforePx === "number" && Number.isFinite(spaceBeforePx)) {
+        editor.commands.updateAttributes("paragraph", { spaceBefore: spaceBeforePx });
+        editor.commands.updateAttributes("heading", { spaceBefore: spaceBeforePx });
+      }
+      if (typeof spaceAfterPx === "number" && Number.isFinite(spaceAfterPx)) {
+        editor.commands.updateAttributes("paragraph", { spaceAfter: spaceAfterPx });
+        editor.commands.updateAttributes("heading", { spaceAfter: spaceAfterPx });
+      }
+
+      // Set stored marks so continued typing follows the template defaults.
+      const chainAtStart = editor.chain().focus("start");
+      if (fontFamily) chainAtStart.setMark("fontFamily", { fontFamily });
+      if (Number.isFinite(fontSizePx)) chainAtStart.setMark("fontSize", { fontSize: fontSizePx });
+      if (textColor) chainAtStart.setMark("textColor", { color: textColor });
+      chainAtStart.run();
+    }
+
+    editor.commands.focus("start");
+  },
   WordCount(editor) {
     const stats = getWordStatistics(editor);
     window.alert(`Words: ${stats.words}
@@ -2698,6 +2982,56 @@ Paragraphs: ${stats.paragraphs}`);
       throw new Error("setLineNumbering command failed");
     }
   },
+  SetParagraphGrid(editor, args) {
+    const enabled = typeof args?.enabled === "boolean" ? args.enabled : Boolean(args?.enabled);
+    const tiptap = getTiptap(editor);
+    if (!tiptap?.commands?.setParagraphGrid) {
+      throw new Error("TipTap setParagraphGrid command unavailable");
+    }
+    const ok = tiptap.commands.setParagraphGrid(enabled);
+    if (!ok) {
+      throw new Error("setParagraphGrid command failed");
+    }
+    const root = document.getElementById("leditor-app") ?? document.body;
+    root?.classList.toggle("leditor-app--paragraph-grid", enabled);
+  },
+  SetAiDraftPreview(editor, args) {
+    const items = Array.isArray(args?.items) ? args.items : [];
+    const tiptap = getTiptap(editor);
+    if (!tiptap?.commands?.setAiDraftPreview) {
+      throw new Error("TipTap setAiDraftPreview command unavailable");
+    }
+    const normalized = items
+      .map((it: any) => {
+        const from = Number(it?.from);
+        const to = Number(it?.to);
+        const proposedText = typeof it?.proposedText === "string" ? it.proposedText : "";
+        const n = Number(it?.n);
+        if (!Number.isFinite(from) || !Number.isFinite(to) || !proposedText) return null;
+        return {
+          n: Number.isFinite(n) && n > 0 ? Math.floor(n) : undefined,
+          from: Math.floor(from),
+          to: Math.floor(to),
+          proposedText,
+          originalText: typeof it?.originalText === "string" ? it.originalText : undefined
+        };
+      })
+      .filter(Boolean);
+    const ok = tiptap.commands.setAiDraftPreview(normalized as any);
+    if (!ok) {
+      throw new Error("setAiDraftPreview command failed");
+    }
+  },
+  ClearAiDraftPreview(editor) {
+    const tiptap = getTiptap(editor);
+    if (!tiptap?.commands?.clearAiDraftPreview) {
+      throw new Error("TipTap clearAiDraftPreview command unavailable");
+    }
+    const ok = tiptap.commands.clearAiDraftPreview();
+    if (!ok) {
+      throw new Error("clearAiDraftPreview command failed");
+    }
+  },
   SetHyphenation(editor, args) {
     const mode = typeof args?.mode === "string" ? args.mode : "none";
     const tiptap = getTiptap(editor);
@@ -2897,8 +3231,16 @@ const applyRibbonAliases = (): void => {
 
   // TOC + references
   aliasCommand("toc.tableOfContents", "InsertTOC");
+  aliasCommand("toc.insert.default", "InsertTOC");
+  aliasCommand("toc.insert.template", "InsertTOC");
+  aliasCommand("toc.insert.custom.openDialog", "InsertTOC");
   aliasCommand("toc.updateTable", "UpdateTOC");
+  aliasCommand("toc.update", "UpdateTOC");
+  aliasCommand("toc.update.default", "UpdateTOC");
   aliasCommand("toc.addText", "InsertTocHeading");
+  aliasCommand("toc.addText.openMenu", "InsertTocHeading");
+  aliasCommand("toc.addText.setLevel", "InsertTocHeading");
+  aliasCommand("toc.remove", "RemoveTOC");
 
   // Footnotes
   aliasCommand("footnotes.insertFootnote", "InsertFootnote");

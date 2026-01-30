@@ -1,6 +1,18 @@
 import type { BibliographyNode, CitationItemRef, CitationNode, DocCitationMeta } from "./types.ts";
 import { getReferencesLibrarySync } from "../ui/references/library.ts";
 
+export const resolveNoteKind = (styleId: string): "footnote" | "endnote" | null => {
+  const style = (styleId || "").trim().toLowerCase();
+  if (!style) return null;
+  if (style === "chicago-note-bibliography" || style === "turabian-fullnote-bibliography" || style === "oscola") {
+    return "footnote";
+  }
+  if (style === "chicago-note-bibliography-endnote") {
+    return "endnote";
+  }
+  return null;
+};
+
 export const buildCitationItems = (
   itemKeys: string[],
   options: {
@@ -41,15 +53,22 @@ const isNumericStyle = (styleId: string): boolean => {
   return style === "vancouver" || style === "ieee" || style === "nature" || style === "oscola";
 };
 
-const formatApaInText = (itemKey: string): string => {
+const formatApaInText = (item: CitationItemRef): string => {
   const library = getReferencesLibrarySync();
-  const item = library.itemsByKey[itemKey];
-  if (!item) return itemKey;
-  const authors = splitAuthors(item.author || "");
-  const author = authors[0] || item.author || itemKey;
-  const year = item.year || "";
-  if (author && year) return `${author}, ${year}`;
-  return author || year || itemKey;
+  const ref = library.itemsByKey[item.itemKey];
+  if (!ref) return item.itemKey;
+  const authors = splitAuthors(ref.author || "");
+  const author = authors[0] || ref.author || item.itemKey;
+  const year = ref.year || "";
+  const locator = (item.locator || "").trim();
+  const label = (item.label || "").trim().toLowerCase();
+  const locLabel = locator
+    ? label
+      ? `${label} ${locator}`
+      : `p. ${locator}`
+    : "";
+  const base = author && year ? `${author}, ${year}` : author || year || item.itemKey;
+  return locLabel ? `${base}, ${locLabel}` : base;
 };
 
 const formatAuthorOnly = (itemKey: string): string => {
@@ -61,17 +80,55 @@ const formatAuthorOnly = (itemKey: string): string => {
   return author || itemKey;
 };
 
+const formatChicagoNote = (item: CitationItemRef): string => {
+  const library = getReferencesLibrarySync();
+  const ref = library.itemsByKey[item.itemKey];
+  if (!ref) return item.itemKey;
+  const author = (ref.author || "").trim() || item.itemKey;
+  const title = (ref.title || "").trim() || ref.itemKey || item.itemKey;
+  const year = (ref.year || "").trim();
+  const locator = (item.locator || "").trim();
+  const label = (item.label || "").trim().toLowerCase();
+  const locLabel = locator
+    ? label
+      ? `${label} ${locator}`
+      : `p. ${locator}`
+    : "";
+  const parts = [
+    author ? `${author},` : "",
+    title ? ` <i>${escapeHtml(title)}</i>` : "",
+    year ? ` (${escapeHtml(year)})` : "",
+    locLabel ? `, ${escapeHtml(locLabel)}` : ""
+  ]
+    .join("")
+    .trim();
+  return parts.endsWith(".") ? parts : `${parts}.`;
+};
+
+const renderCitationNoteHtml = (node: CitationNode, meta: DocCitationMeta): string => {
+  const style = (meta.styleId || "").toLowerCase();
+  if (style === "chicago-note-bibliography" || style === "turabian-fullnote-bibliography" || style === "oscola") {
+    const note = node.items.map((item) => formatChicagoNote(item)).join(" ");
+    return `<span class="leditor-citation-note-body">${note}</span>`;
+  }
+  // Fallback note body: reuse APA-like label without parentheses.
+  const label = node.items.map((item) => formatApaInText(item)).join("; ");
+  return `<span class="leditor-citation-note-body">${escapeHtml(label)}</span>`;
+};
+
 const renderCitationHtml = (
   node: CitationNode,
   meta: DocCitationMeta,
   numberByKey?: Map<string, number>
 ): string => {
-  if (typeof node.noteIndex === "number") {
-    return `<sup class="leditor-citation-note">${node.noteIndex}</sup>`;
-  }
   const style = (meta.styleId || "").toLowerCase();
+  if (resolveNoteKind(style)) {
+    // In note-based styles, the inline marker is rendered by a separate `footnote` node.
+    // We still store a full note body in `renderedHtml` so it can be copied into footnotes.
+    return renderCitationNoteHtml(node, meta);
+  }
   if (style.includes("apa")) {
-    const label = node.items.map((item) => formatApaInText(item.itemKey)).join("; ");
+    const label = node.items.map((item) => formatApaInText(item)).join("; ");
     return `<span class="leditor-citation-rendered">(${escapeHtml(label)})</span>`;
   }
   if (style.includes("modern-language-association") || style === "mla") {

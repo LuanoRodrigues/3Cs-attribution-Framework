@@ -20,6 +20,14 @@ export interface PanelLayoutRootOptions {
   onFocusChange?: (toolId?: string, toolType?: string) => void;
 }
 
+const TOOL_TYPE_ALIASES: Record<string, string> = {
+  "screen-widget": "screen"
+};
+
+function normalizeToolType(toolType: string): string {
+  return TOOL_TYPE_ALIASES[toolType] ?? toolType;
+}
+
 export class PanelLayoutRoot {
   private container: HTMLElement;
   private registry: ToolRegistry;
@@ -40,8 +48,12 @@ export class PanelLayoutRoot {
   }
 
   load(snapshot: LayoutSnapshot): void {
-    this.states = snapshot.tabs.slice();
-    this.activeToolId = snapshot.activeToolId;
+    const normalized = snapshot.tabs.map((tab) => this.normalizeState(tab));
+    this.states = normalized.filter((state) => Boolean(this.registry.get(state.toolType)));
+    const desiredActiveId = snapshot.activeToolId;
+    this.activeToolId = desiredActiveId && this.states.some((state) => state.id === desiredActiveId)
+      ? desiredActiveId
+      : this.states[this.states.length - 1]?.id;
     this.panels.forEach((panel) => panel.destroy());
     this.panels.clear();
     this.render();
@@ -49,11 +61,12 @@ export class PanelLayoutRoot {
   }
 
   spawnTool(toolType: string, metadata?: Record<string, unknown>): string {
-    const definition = this.registry.get(toolType);
+    const normalizedToolType = normalizeToolType(toolType);
+    const definition = this.registry.get(normalizedToolType);
     if (!definition) {
-      throw new Error(`Tool type ${toolType} is not registered.`);
+      throw new Error(`Tool type ${normalizedToolType} is not registered.`);
     }
-    const existing = this.findExistingState(toolType, definition.title);
+    const existing = this.findExistingState(normalizedToolType, definition.title);
     if (existing) {
       existing.metadata = metadata ?? existing.metadata;
       this.activeToolId = existing.id;
@@ -65,7 +78,7 @@ export class PanelLayoutRoot {
     const id = `tool_${Date.now()}_${Math.random().toString(16).slice(2, 6)}`;
     const state: ToolState = {
       id,
-      toolType,
+      toolType: normalizedToolType,
       title: definition.title,
       metadata: metadata || {}
     };
@@ -95,6 +108,13 @@ export class PanelLayoutRoot {
 
   focusTool(toolId: string): void {
     if (!this.states.some((state) => state.id === toolId)) return;
+    // Avoid re-rendering the entire panel layout when the active tool receives
+    // additional pointer/mouse events (e.g. clicking inside an editor UI).
+    // Rebuilding the DOM during a click can cancel events and break embedded apps.
+    if (this.activeToolId === toolId) {
+      this.panels.get(toolId)?.focus();
+      return;
+    }
     this.activeToolId = toolId;
     const panel = this.panels.get(toolId);
     panel?.focus();
@@ -141,15 +161,16 @@ export class PanelLayoutRoot {
   }
 
   insertToolState(state: ToolState, options?: { focus?: boolean }): void {
-    const definition = this.registry.get(state.toolType);
+    const normalized = this.normalizeState(state);
+    const definition = this.registry.get(normalized.toolType);
     if (!definition) {
-      throw new Error(`Tool type ${state.toolType} is not registered.`);
+      throw new Error(`Tool type ${normalized.toolType} is not registered.`);
     }
     const exists = this.states.some((existing) => existing.id === state.id);
     if (exists) {
       return;
     }
-    const next: ToolState = { ...state };
+    const next: ToolState = { ...normalized };
     this.states.push(next);
     if (options?.focus) {
       this.activeToolId = next.id;
@@ -173,6 +194,11 @@ export class PanelLayoutRoot {
 
   private findExistingState(toolType: string, title: string): ToolState | undefined {
     return this.states.find((state) => state.toolType === toolType && state.title === title);
+  }
+
+  private normalizeState(state: ToolState): ToolState {
+    const normalizedToolType = normalizeToolType(state.toolType);
+    return normalizedToolType === state.toolType ? { ...state } : { ...state, toolType: normalizedToolType };
   }
 
   private ensurePanel(state: ToolState, definition?: ToolDefinition): ToolPanel {

@@ -3,4 +3,5 @@ export type TemplateDefinition = {
   label: string;
   description: string;
   document: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
 };

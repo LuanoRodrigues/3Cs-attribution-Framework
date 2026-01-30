@@ -156,6 +156,18 @@ export const COMMAND_ALIASES: Record<string, string> = {
   "insert.shortcode.openDialog": "InsertTemplate",
   "insert.text.openMenu": "InsertTemplate",
   "insert.textFromFile.openPicker": "InsertTemplate",
+  // TOC + references
+  "toc.tableOfContents": "InsertTOC",
+  "toc.insert.default": "InsertTOC",
+  "toc.insert.template": "InsertTOC",
+  "toc.insert.custom.openDialog": "InsertTOC",
+  "toc.remove": "RemoveTOC",
+  "toc.addText": "InsertTocHeading",
+  "toc.addText.openMenu": "InsertTocHeading",
+  "toc.addText.setLevel": "InsertTocHeading",
+  "toc.update": "UpdateTOC",
+  "toc.update.default": "UpdateTOC",
+  "toc.updateTable": "UpdateTOC",
   // Insert — symbols
   "insert.equation.openEditor": "InsertTemplate",
   "insert.equation.apply": "InsertTemplate",

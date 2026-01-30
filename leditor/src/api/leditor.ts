@@ -17,6 +17,8 @@ import { DOMParser as ProseMirrorDOMParser } from "prosemirror-model";
 import { directionExtension } from "../editor/direction.ts";
 import { setSearchEditor } from "../editor/search.ts";
 import { setVisualEditor, visualExtension } from "../editor/visual.ts";
+import { paragraphGridExtension, setParagraphGridEditor } from "../editor/paragraph_grid.ts";
+import { aiDraftPreviewExtension, setAiDraftPreviewEditor } from "../editor/ai_draft_preview.ts";
 import { createAutosaveController, getAutosaveSnapshot, restoreAutosaveSnapshot } from "../editor/autosave.ts";
 import { getPlugins } from "./plugin_registry.ts";
 import "../plugins/pasteCleaner.ts";
@@ -74,6 +76,11 @@ type EditorEventName = "change" | "focus" | "blur" | "selectionChange";
 
 export type EditorInitConfig = {
   elementId: string;
+  /**
+   * Optional direct mount element override.
+   * Prefer this in embedded/hosted scenarios to avoid relying on global DOM lookups.
+   */
+  mountElement?: HTMLElement | null;
   toolbar?: string;
   plugins?: string[];
   initialContent?: { format: ContentFormat; value: string | object };
@@ -284,7 +291,7 @@ export const LEditor = {
    * Initializes the editor within the DOM element `config.elementId`.
    */
   init(config: EditorInitConfig): EditorHandle {
-    const mountEl = document.getElementById(config.elementId);
+    const mountEl = config.mountElement ?? document.getElementById(config.elementId);
     if (!mountEl) {
       throw new Error(`LEditor: elementId "${config.elementId}" not found`);
     }
@@ -310,8 +317,10 @@ export const LEditor = {
         AlignExtension,
         IndentExtension,
         SpacingExtension,
-        directionExtension,
-        visualExtension,
+	        directionExtension,
+	        visualExtension,
+	        paragraphGridExtension,
+	        aiDraftPreviewExtension,
         FontFamilyMark,
         FontSizeMark,
         TextColorMark,
@@ -380,8 +389,10 @@ export const LEditor = {
       }
     };
     editor.view.dom.addEventListener("paste", handlePaste);
-    setSearchEditor(editor);
-    setVisualEditor(editor);
+	    setSearchEditor(editor);
+	    setVisualEditor(editor);
+	    setParagraphGridEditor(editor);
+	    setAiDraftPreviewEditor(editor);
 
     const editorInstanceId = Math.random().toString(36).slice(2, 10);
     const autosaveInterval =
