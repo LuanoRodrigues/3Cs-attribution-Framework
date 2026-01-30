@@ -16,11 +16,12 @@
     "generate:round-trip-fixture": "node scripts/create_round_trip_docx_fixture.js",
     "test:print-pdf-headless": "electron scripts/print_pdf_check.mjs",
     "test:csl": "node scripts/csl_citation_test.js",
+    "generate:templates": "node scripts/generate_template_index.mjs",
     "typecheck": "tsc --project tsconfig.json --pretty",
     "build:renderer": "npx esbuild scripts/renderer-entry.ts --bundle --platform=browser --format=esm --sourcemap --define:__BUILD_TIME__=\\\"dev\\\" --outfile=dist/renderer/bootstrap.bundle.js --loader:.ttf=dataurl --loader:.woff=dataurl --loader:.woff2=dataurl --loader:.html=text --alias:node:fs/promises=./scripts/shims/fs-promises.js --external:@simonwep/pickr/dist/pickr.min.css",
     "build:public": "node scripts/copy-public.js",
     "build:electron": "tsc --project tsconfig.electron.json",
-    "build": "npm run build:renderer && npm run build:public && npm run build:electron",
+    "build": "npm run generate:templates && npm run build:renderer && npm run build:public && npm run build:electron",
     "ribbon:validate": "node -e \"console.log('ribbon:validate removed (JSON ribbon deprecated)')\"",
     "test:pagination": "node scripts/pagination_fixture.mjs"
   },

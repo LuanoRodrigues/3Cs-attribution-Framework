@@ -47,6 +47,10 @@ const writeFile = async (request: { targetPath: string; data: string }) => {
   return ipcRenderer.invoke("leditor:write-file", request);
 };
 
+const agentRequest = async (request: { payload: Record<string, unknown> }) => {
+  return ipcRenderer.invoke("leditor:agent-request", request);
+};
+
 const openPdfViewer = async (request: { payload: Record<string, unknown> }) => {
   return ipcRenderer.invoke("leditor:open-pdf-viewer", request);
 };
@@ -80,6 +84,7 @@ contextBridge.exposeInMainWorld("leditorHost", {
   readFile,
   fileExists,
   writeFile,
+  agentRequest,
   openPdfViewer,
   resolvePdfPathForItemKey,
   getDirectQuoteEntry,

@@ -1,0 +1,348 @@
+export const documentLayoutSpec = {
+  documentLayoutSpecId: "wordLikePages",
+  version: 2,
+  units: {
+    base: "in",
+    dpi: 96,
+    pxPerIn: 96,
+    roundingPolicy: {
+      pxRounding: "round",
+      note:
+        "All computed px values derived from inches are rounded to integer px for deterministic pagination; re-measurement from computed styles is still the source of truth."
+    }
+  },
+  page: {
+    sizePresets: [
+      { id: "a4", label: "A4", widthIn: 8.27, heightIn: 11.69 },
+      { id: "a5", label: "A5", widthIn: 5.83, heightIn: 8.27 },
+      { id: "a3", label: "A3", widthIn: 11.69, heightIn: 16.54 },
+      { id: "letter", label: "Letter", widthIn: 8.5, heightIn: 11 },
+      { id: "legal", label: "Legal", widthIn: 8.5, heightIn: 14 }
+    ],
+    defaultSizePresetId: "a4",
+    orientationOptions: [
+      { id: "portrait", label: "Portrait" },
+      { id: "landscape", label: "Landscape" }
+    ],
+    defaultOrientation: "portrait",
+    layoutBoxModel: {
+      pageBorderBox: "The outer page box (paper).",
+      contentPaddingBox:
+        "The editable body area inside margins; implemented as padding on .leditor-page-content.",
+      contentMeasuredBox:
+        "The box used for pagination measurement; typically .leditor-page-content clientHeight/scrollHeight.",
+      headerBox:
+        "Header visual region; does not reduce body content height unless includeHeaderFooterInContentHeight=true.",
+      footerBox:
+        "Footer visual region; does not reduce body content height unless includeHeaderFooterInContentHeight=true."
+    },
+    pageVisuals: {
+      pageGapDefaultIn: 0.1875,
+      shadowEnabled: true,
+      borderEnabled: false,
+      note: "Gap is a UI canvas concern; paper size is independent."
+    }
+  },
+  margins: {
+    presets: [
+      {
+        id: "normal",
+        label: "Normal",
+        // 2.5cm
+        marginsIn: { top: 0.9843, right: 0.9843, bottom: 0.9843, left: 0.9843 }
+      },
+      {
+        id: "narrow",
+        label: "Narrow",
+        marginsIn: { top: 0.9843, right: 0.9843, bottom: 0.9843, left: 0.9843 }
+      },
+      {
+        id: "moderate",
+        label: "Moderate",
+        marginsIn: { top: 0.9843, right: 0.9843, bottom: 0.9843, left: 0.9843 }
+      },
+      {
+        id: "wide",
+        label: "Wide",
+        marginsIn: { top: 0.9843, right: 0.9843, bottom: 0.9843, left: 0.9843 }
+      },
+      {
+        id: "mirrored",
+        label: "Mirrored",
+        marginsIn: { top: 0.9843, right: 0.9843, bottom: 0.9843, left: 0.9843 },
+        mirrored: true
+      },
+      {
+        id: "custom",
+        label: "Custom",
+        marginsIn: { top: 0.9843, right: 0.9843, bottom: 0.9843, left: 0.9843 },
+        customizable: true
+      }
+    ],
+    defaultPresetId: "normal",
+    constraints: { minIn: 0, maxIn: 3, stepIn: 0.05 },
+    gutter: {
+      enabled: false,
+      defaultIn: 0,
+      minIn: 0,
+      maxIn: 0,
+      stepIn: 0.05,
+      positionOptions: [
+        { id: "left", label: "Left" },
+        { id: "top", label: "Top" }
+      ],
+      defaultPositionId: "left",
+      applicationRule: {
+        left:
+          "Increase effective left margin by gutter for non-mirrored; for mirrored, apply to inside margin.",
+        top: "Increase effective top margin by gutter."
+      }
+    },
+    mirrorRule: {
+      whenPresetMirrored: true,
+      insideOutside: {
+        oddPageInside: "left",
+        evenPageInside: "right"
+      }
+    },
+    application: {
+      appliesTo: ".leditor-page-content",
+      mechanism: "padding",
+      note:
+        "Margins are applied as padding on the per-page content container to create deterministic content bounds and measurement."
+    }
+  },
+  headerFooter: {
+    enabled: true,
+    default: {
+      headerDistanceIn: 0.5,
+      footerDistanceIn: 0.5,
+      differentFirstPage: false,
+      differentOddEven: false
+    },
+    constraints: { minDistanceIn: 0, maxDistanceIn: 3, stepIn: 0.05 },
+    regions: {
+      header: {
+        heightPolicy: "auto",
+        maxHeightIn: 1.5,
+        placement: "top",
+        anchorFromPageEdge: "top",
+        distanceKey: "headerDistanceIn",
+        domRole: "visualRegion",
+        editableInMvp: false
+      },
+      footer: {
+        heightPolicy: "auto",
+        maxHeightIn: 1.5,
+        placement: "bottom",
+        anchorFromPageEdge: "bottom",
+        distanceKey: "footerDistanceIn",
+        domRole: "visualRegion",
+        editableInMvp: false
+      }
+    },
+    contentFlowPolicy: {
+      reserveSpaceInContentBox: false,
+      note:
+        "Default Word-like behavior: body content is constrained by margins; header/footer occupy the margin area visually. If reserveSpaceInContentBox is true, body content height is reduced by header/footer heights."
+    }
+  },
+  chrome: {
+    default: {
+      headerHeightIn: 0.5,
+      footerHeightIn: 0.5,
+      footnoteAreaHeightIn: 0.55
+    }
+  },
+  domPageBreaks: {
+    enabled: true,
+    breakNodeSelectors: [".leditor-break[data-break-kind='page']", "hr[data-break-kind='page']"] as readonly string[],
+    sectionBreakSelectors: [
+      ".leditor-break[data-break-kind='section']",
+      ".leditor-break[data-break-kind='section'][data-kind='nextPage']",
+      ".leditor-break[data-break-kind='section'][data-kind='continuous']",
+      ".leditor-break[data-break-kind='section'][data-kind='oddPage']",
+      ".leditor-break[data-break-kind='section'][data-kind='evenPage']"
+    ] as readonly string[],
+    normalizedAttributes: {
+      breakKindAttr: "data-break-kind",
+      sectionKindAttr: "data-kind",
+      supportedSectionKinds: ["nextPage", "continuous", "oddPage", "evenPage"] as readonly string[]
+    },
+    behavior: {
+      pageBreak: {
+        forcesNewPage: true,
+        keepMarker: "previousPageBottom",
+        renderMarker: {
+          visibleInEditor: true,
+          affectsMeasurement: false,
+          strategy: "overlay"
+        }
+      },
+      sectionBreak: {
+        forcesNewPageForKinds: ["nextPage", "oddPage", "evenPage"] as readonly string[],
+        continuousDoesNotForceNewPage: true,
+        carrySectionSettingsForward: true
+      }
+    }
+  },
+  sections: {
+    enabled: true,
+    defaultPolicy: {
+      inheritFromPrevious: true,
+      allowPerSectionPageMetrics: true
+    },
+    supportedSectionSettings: [
+      "pageSizePresetId",
+      "orientation",
+      "marginsPresetId",
+      "marginsCustomIn",
+      "gutterIn",
+      "gutterPositionId",
+      "headerFooter"
+    ] as readonly string[],
+    resolutionRules: [
+      "A section break creates a new section record with settings inherited from the previous section unless explicitly overridden by command args.",
+      "If a section break kind forces a new page, pagination must end the current page immediately."
+    ]
+  },
+  pagination: {
+    engine: "truePagination",
+    pageHostClass: "leditor-page-host",
+    pageClass: "leditor-page",
+    pageContentClass: "leditor-page-content",
+    pageHeaderClass: "leditor-page-header",
+    pageFooterClass: "leditor-page-footer",
+    editableRootPolicy: {
+      singleLogicalEditorSurface: true,
+      implementation:
+        "Move block nodes between per-page content containers; keep selection stable via bookmarks.",
+      compositionPolicy: "Defer pagination during IME composition."
+    },
+    pageTemplate: {
+      structure: [
+        { slot: "header", class: "leditor-page-header", ariaHidden: true },
+        { slot: "content", class: "leditor-page-content", contenteditable: true },
+        { slot: "footnotes", class: "leditor-page-footnotes", ariaHidden: true },
+        { slot: "footer", class: "leditor-page-footer", ariaHidden: true }
+      ],
+      note:
+        "Header/footer are non-editable visual regions in MVP; future modes may toggle contenteditable when editing header/footer."
+    },
+    measurement: {
+      policy: "measured",
+      probePageCount: 1,
+      readFromComputedStyles: true,
+      heightField: "clientHeight",
+      overflowField: "scrollHeight",
+      tolerancePx: 1,
+      batching: { useRaf: true, useBinarySearchFit: true }
+    },
+    contentRectComputation: {
+      deriveFrom: "pageSize + margins + orientation + gutter",
+      includeHeaderFooterInContentHeight: false,
+      rules: [
+        "pageWidthPx = widthIn * dpi, pageHeightPx = heightIn * dpi (swap for landscape).",
+        "effectiveMargins = marginsPreset or marginsCustom; apply gutter per rule; apply mirrored inside/outside if enabled.",
+        "contentWidthPx = pageWidthPx - (marginLeftPx + marginRightPx).",
+        "contentHeightPx = pageHeightPx - (marginTopPx + marginBottomPx)."
+      ]
+    },
+    blockPagination: {
+      pageableBlockSelectors: [
+        "p",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "ul",
+        "ol",
+        "table",
+        "blockquote",
+        "pre",
+        "hr",
+        ".leditor-break"
+      ] as readonly string[],
+      atomicInitially: ["ul", "ol", "table"] as readonly string[],
+      manualBreakHandling: "Break nodes end the current page immediately.",
+      overflowHandling:
+        "If a block overflows an empty page, trigger inlineSplit if eligible; else mark unsplittable."
+    },
+    inlineSplit: {
+      enabled: true,
+      eligibleSelectors: ["p", "li", "blockquote", "h1", "h2", "h3", "h4", "h5", "h6"] as readonly string[],
+      splitPolicy: {
+        boundaryPreference: "word",
+        fallback: "character",
+        preserveInlineFormatting: true,
+        unsplittableInlineWidgets: "treatAsAtomic"
+      }
+    },
+    selection: {
+      bookmarkPolicy: "nodeIdPreferred",
+      nodeIdAttribute: "data-leditor-node-id",
+      fallbackPolicy: "pathBased",
+      restoreFocusPolicy: "returnToAnchor",
+      compositionSafety: {
+        deferDuringComposition: true,
+        maxDeferredMs: 60000
+      }
+    },
+    incremental: {
+      enabled: true,
+      mutationObserver: true,
+      repaginateFromDirtyBlock: true,
+      coalesceMutationsInRaf: true,
+      maxRepaginatePerFrame: 1
+    }
+  },
+  rendering: {
+    nonPrintingMarks: {
+      showByDefault: false,
+      pageBreakMarker: {
+        style: "overlay",
+        affectsMeasurement: false
+      },
+      sectionBreakMarker: {
+        style: "overlay",
+        affectsMeasurement: false
+      }
+    },
+    debug: {
+      enableOverlay: true,
+      showContentRect: true,
+      showMarginGuides: true,
+      showHeaderFooterGuides: true,
+      showOverflowWarnings: true
+    }
+  },
+  cssTokens: {
+    vars: {
+      pageWidth: "--doc-page-width",
+      pageHeight: "--doc-page-height",
+      contentWidth: "--doc-content-width",
+      contentHeight: "--doc-content-height",
+      marginTop: "--doc-margin-top",
+      marginRight: "--doc-margin-right",
+      marginBottom: "--doc-margin-bottom",
+      marginLeft: "--doc-margin-left",
+      gutter: "--doc-gutter",
+      pageGap: "--doc-page-gap",
+      headerDistance: "--doc-header-distance",
+      footerDistance: "--doc-footer-distance",
+      canvasBg: "--doc-canvas-bg",
+      pageBg: "--doc-page-bg"
+    },
+    defaults: {
+      "--doc-page-gap": "18px",
+      "--doc-header-distance": "48px",
+      "--doc-footer-distance": "48px",
+      "--doc-canvas-bg": "#f3f4f6",
+      "--doc-page-bg": "#ffffff"
+    }
+  }
+} as const;
+
+export type DocumentLayoutSpec = typeof documentLayoutSpec;

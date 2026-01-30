@@ -2,12 +2,102 @@ import { app, BrowserWindow, ipcMain } from "electron";
 import fs from "fs";
 import path from "path";
 import readline from "readline";
+import OpenAI from "openai";
+import type { AiSettings } from "./shared/ai.ts";
 
 const REFERENCES_LIBRARY_FILENAME = "references_library.json";
 const REFERENCES_LEGACY_FILENAME = "references.json";
 
 const normalizeError = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 const randomToken = (): string => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+
+type AgentHistoryMessage = { role: "user" | "assistant" | "system"; content: string };
+type AgentRequestPayload = {
+  scope: "selection" | "document";
+  instruction: string;
+  selection?: { from: number; to: number; text: string };
+  document?: { text: string };
+  history?: AgentHistoryMessage[];
+  settings?: AiSettings;
+};
+
+const openaiClients = new Map<string, OpenAI>();
+const getOpenAiClient = (apiKey?: string): OpenAI | null => {
+  const key = String(apiKey || process.env.OPENAI_API_KEY || "").trim();
+  if (!key) return null;
+  let client = openaiClients.get(key);
+  if (client) return client;
+  client = new OpenAI({ apiKey: key });
+  openaiClients.set(key, client);
+  return client;
+};
+
+const buildAgentPrompt = (payload: AgentRequestPayload): { system: string; user: string } => {
+  const scope = payload.scope;
+  const instruction = String(payload.instruction || "").trim();
+  if (!instruction) {
+    throw new Error("agent-request: instruction is required");
+  }
+  if (scope !== "selection" && scope !== "document") {
+    throw new Error('agent-request: scope must be "selection" | "document"');
+  }
+
+  const system = [
+    "You are an AI writing assistant embedded in an offline desktop academic editor.",
+    "Return STRICT JSON only (no markdown, no backticks, no extra keys).",
+    'Schema: {"assistantText": string, "applyText": string}.',
+    'assistantText: a brief description of what you changed.',
+    "applyText: the text to insert into the editor for the requested scope.",
+    "Do not include surrounding quotes in applyText; return raw text."
+  ].join("\n");
+
+  if (scope === "selection") {
+    const sel = payload.selection;
+    if (!sel || typeof sel.text !== "string") {
+      throw new Error("agent-request: selection.text is required for selection scope");
+    }
+    const selected = sel.text;
+    const chunkHint =
+      typeof payload.settings?.chunkSize === "number" && payload.settings.chunkSize > 0
+        ? `Chunk limit: ${payload.settings.chunkSize} characters.`
+        : "";
+    const userParts = [
+      "Task: Apply the instruction to the TARGET TEXT.",
+      "Instruction:",
+      instruction,
+      "",
+      "TARGET TEXT (rewrite this):",
+      selected
+    ];
+    if (chunkHint) {
+      userParts.push("", chunkHint);
+    }
+    const user = userParts.join("\n");
+    return { system, user };
+  }
+
+  const doc = payload.document;
+  if (!doc || typeof doc.text !== "string") {
+    throw new Error("agent-request: document.text is required for document scope");
+  }
+  const chunkHint =
+    typeof payload.settings?.chunkSize === "number" && payload.settings.chunkSize > 0
+      ? `Chunk limit: ${payload.settings.chunkSize} characters.`
+      : "";
+  const userParts = [
+    "Task: Apply the instruction to the DOCUMENT TEXT.",
+    "Instruction:",
+    instruction,
+    "",
+    "DOCUMENT TEXT (rewrite this):",
+    doc.text
+  ];
+  if (chunkHint) {
+    userParts.push("", chunkHint);
+  }
+  const user = userParts.join("\n");
+  return { system, user };
+};
 
 const pdfViewerPayloads = new Map<string, Record<string, unknown>>();
 const pdfResolveCache = new Map<string, string | null>();
@@ -974,6 +1064,69 @@ app.whenReady().then(() => {
       return { success: true, exists: true };
     } catch {
       return { success: true, exists: false };
+    }
+  });
+
+  ipcMain.handle("leditor:agent-request", async (_event, request: { payload: AgentRequestPayload }) => {
+    try {
+      const payload = request?.payload as AgentRequestPayload;
+      const settings = payload?.settings;
+      const client = getOpenAiClient(settings?.apiKey);
+      if (!client) {
+        return { success: false, error: "OPENAI_API_KEY is not set." };
+      }
+
+      const { system, user } = buildAgentPrompt(payload);
+
+      const history = Array.isArray(payload?.history) ? payload.history : [];
+      const normalizeHistory = (value: AgentHistoryMessage[]): AgentHistoryMessage[] =>
+        value
+          .map((msg) => ({
+            role: msg?.role,
+            content: typeof msg?.content === "string" ? msg.content : String(msg?.content ?? "")
+          }))
+          .filter((msg) => (msg.role === "user" || msg.role === "assistant" || msg.role === "system") && msg.content.trim())
+          .slice(-20);
+
+      const messages = [
+        { role: "system" as const, content: system },
+        ...normalizeHistory(history).map((m) => ({ role: m.role as any, content: m.content })),
+        { role: "user" as const, content: user }
+      ];
+
+      const model =
+        settings?.model?.trim() ||
+        String(process.env.LEDITOR_AGENT_MODEL || "").trim() ||
+        String(process.env.OPENAI_MODEL || "").trim() ||
+        "gpt-4o-mini";
+      const temperature = typeof settings?.temperature === "number" ? settings.temperature : 0.2;
+
+      const completion = await client.chat.completions.create({
+        model,
+        messages,
+        temperature
+      });
+
+      const raw = String(completion.choices?.[0]?.message?.content ?? "").trim();
+      const extractJson = (text: string): any => {
+        const start = text.indexOf("{");
+        const end = text.lastIndexOf("}");
+        if (start === -1 || end === -1 || end <= start) {
+          throw new Error("Agent response was not valid JSON.");
+        }
+        const slice = text.slice(start, end + 1);
+        return JSON.parse(slice);
+      };
+
+      const parsed = extractJson(raw);
+      const assistantText = typeof parsed?.assistantText === "string" ? parsed.assistantText : "";
+      const applyText = typeof parsed?.applyText === "string" ? parsed.applyText : "";
+      if (!assistantText && !applyText) {
+        throw new Error("Agent response JSON missing assistantText/applyText.");
+      }
+      return { success: true, assistantText, applyText };
+    } catch (error) {
+      return { success: false, error: normalizeError(error) };
     }
   });
 

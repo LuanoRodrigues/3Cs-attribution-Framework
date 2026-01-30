@@ -16,6 +16,7 @@ import { openSourcesPanel } from "../ui/references/sources_panel.ts";
 import { ensureReferencesLibrary, upsertReferenceItems } from "../ui/references/library.ts";
 import { getHostContract } from "../ui/host_contract.ts";
 import { createSearchPanel } from "../ui/search_panel.ts";
+import { createAISettingsPanel, type AiSettingsPanelController } from "../ui/ai_settings.ts";
 import { nextMatch, prevMatch, replaceAll, replaceCurrent, setQuery } from "../editor/search.ts";
 import {
   exportBibliographyBibtex,
@@ -37,6 +38,7 @@ import {
   layoutTab,
   referencesTab,
   reviewTab,
+  aiTab,
   viewTab
 } from "../ui/ribbon_model.ts";
 import type { ControlConfig, TabConfig } from "../ui/ribbon_config.ts";
@@ -211,6 +213,14 @@ const ensureSearchPanel = (editorHandle: EditorHandle) => {
     searchPanelController = createSearchPanel(editorHandle);
   }
   return searchPanelController;
+};
+
+let aiSettingsPanel: AiSettingsPanelController | null = null;
+const ensureAISettingsPanel = () => {
+  if (!aiSettingsPanel) {
+    aiSettingsPanel = createAISettingsPanel();
+  }
+  return aiSettingsPanel;
 };
 
 const handleInsertCitationCommand = (editor: Editor) => {
@@ -1687,6 +1697,9 @@ export const commandMap: Record<string, CommandHandler> = {
   DirectionRTL(editor) {
     applyBlockDirection(editor, "rtl");
   },
+  "ai.settings.open"() {
+    ensureAISettingsPanel().open();
+  },
   Indent(editor) {
     editor.commands.focus();
     if (findListItemDepth(editor) !== null) {
@@ -2945,6 +2958,7 @@ const registerMissingCommands = (): void => {
     layoutTab,
     referencesTab,
     reviewTab,
+    aiTab,
     viewTab
   ] as unknown as TabConfig[];
   const ids = new Set<string>();

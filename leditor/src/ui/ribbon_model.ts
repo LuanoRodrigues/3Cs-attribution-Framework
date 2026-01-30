@@ -105,6 +105,12 @@ export const ribbonRegistry = {
       "priority": 60
     },
     {
+      "tabId": "ai",
+      "label": "AI",
+      "source": "ai",
+      "priority": 55
+    },
+    {
       "tabId": "view",
       "label": "View",
       "source": "view",
@@ -5480,6 +5486,85 @@ export const viewTab = {
                 "A": "optional",
                 "B": "inOverflow",
                 "C": "inFlyout"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+} as const;
+
+export const aiTab = {
+  "$schema": "app://schemas/ribbon-tab.schema.json",
+  "tabId": "ai",
+  "label": "AI",
+  "keytip": "A",
+  "groups": [
+    {
+      "groupId": "agent",
+      "label": "Agent",
+      "priority": 100,
+      "dialogLauncher": null,
+      "clusters": [
+        {
+          "clusterId": "agent.primary",
+          "layout": "column",
+          "controls": [
+            {
+              "controlId": "agent.toggle",
+              "label": "Agent",
+              "type": "button",
+              "size": "large",
+              "iconKey": "icon.aiAssistant",
+              "command": {
+                "id": "agent.sidebar.toggle"
+              },
+              "collapse": {
+                "A": {
+                  "mode": "full"
+                },
+                "B": {
+                  "mode": "full"
+                },
+                "C": {
+                  "mode": "inGroupFlyout"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "groupId": "settings",
+      "label": "Settings",
+      "priority": 90,
+      "dialogLauncher": null,
+      "clusters": [
+        {
+          "clusterId": "settings.primary",
+          "layout": "column",
+          "controls": [
+            {
+              "controlId": "settings.api",
+              "label": "API Settings",
+              "type": "button",
+              "size": "medium",
+              "iconKey": "icon.manageStyles",
+              "command": {
+                "id": "ai.settings.open"
+              },
+              "collapse": {
+                "A": {
+                  "mode": "full"
+                },
+                "B": {
+                  "mode": "full"
+                },
+                "C": {
+                  "mode": "inGroupFlyout"
+                }
               }
             }
           ]

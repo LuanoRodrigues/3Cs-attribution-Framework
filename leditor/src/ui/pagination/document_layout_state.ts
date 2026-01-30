@@ -1,6 +1,4 @@
-import documentLayoutSpec from "../document_layout.json";
-
-type DocumentLayoutSpec = typeof documentLayoutSpec;
+import { documentLayoutSpec, type DocumentLayoutSpec } from "./layout_spec.ts";
 
 type LayoutState = {
   spec: DocumentLayoutSpec;
@@ -15,7 +13,7 @@ type LayoutState = {
   footerDistanceIn: number;
 };
 
-const spec = documentLayoutSpec;
+const spec: DocumentLayoutSpec = documentLayoutSpec;
 const defaults = spec.margins.presets.find((preset) => preset.id === spec.margins.defaultPresetId);
 if (!defaults) {
   throw new Error("DocumentLayoutSpec default margins preset is missing.");
@@ -74,7 +72,7 @@ const computePx = (valueIn: number): number => {
   throw new Error(`Unsupported px rounding policy: ${rounding}`);
 };
 
-const findPreset = <T extends { id: string }>(list: T[], id: string): T => {
+const findPreset = <T extends { id: string }>(list: readonly T[], id: string): T => {
   const preset = list.find((entry) => entry.id === id);
   if (!preset) {
     throw new Error(`Preset not found: ${id}.`);
@@ -198,8 +196,16 @@ export const applyDocumentLayoutTokens = (root: HTMLElement): void => {
   root.style.setProperty(spec.cssTokens.vars.pageGap, `${computePx(spec.page.pageVisuals.pageGapDefaultIn)}px`);
   root.style.setProperty(spec.cssTokens.vars.headerDistance, `${computePx(state.headerDistanceIn)}px`);
   root.style.setProperty(spec.cssTokens.vars.footerDistance, `${computePx(state.footerDistanceIn)}px`);
-  root.style.setProperty("--header-height", `${computePx(state.headerDistanceIn)}px`);
-  root.style.setProperty("--footer-height", `${computePx(state.footerDistanceIn)}px`);
+  const chrome = spec.chrome?.default;
+  if (!chrome) {
+    throw new Error("DocumentLayoutSpec chrome defaults are missing.");
+  }
+  root.style.setProperty("--header-height", `${computePx(chrome.headerHeightIn)}px`);
+  root.style.setProperty("--footer-height", `${computePx(chrome.footerHeightIn)}px`);
+  root.style.setProperty("--footnote-area-height", `${computePx(chrome.footnoteAreaHeightIn)}px`);
+  // Offsets are length values (px) to keep calc() expressions valid.
+  root.style.setProperty("--header-offset", "0px");
+  root.style.setProperty("--footer-offset", "0px");
   root.style.setProperty("--page-width", `${computePx(widthIn)}px`);
   root.style.setProperty("--page-height", `${computePx(heightIn)}px`);
   root.style.setProperty("--page-width-landscape", `${computePx(state.orientation === "portrait" ? heightIn : widthIn)}px`);

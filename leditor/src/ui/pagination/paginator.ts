@@ -52,10 +52,10 @@ export class Paginator {
     if (!inlineSelectors || inlineSelectors.length === 0) {
       throw new Error("Paginator requires inline split selectors.");
     }
-    this.pageableSelectors = pageable;
-    this.breakSelectors = breaks;
-    this.sectionBreakSelectors = sectionBreaks;
-    this.inlineSplitSelectors = inlineSelectors;
+    this.pageableSelectors = Array.from(pageable);
+    this.breakSelectors = Array.from(breaks);
+    this.sectionBreakSelectors = Array.from(sectionBreaks);
+    this.inlineSplitSelectors = Array.from(inlineSelectors);
     this.inlineSplitEnabled = inlineSplit.enabled;
   }
 

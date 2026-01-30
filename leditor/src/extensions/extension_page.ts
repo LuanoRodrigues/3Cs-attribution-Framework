@@ -324,7 +324,7 @@ export const PageNode = Node.create({
       header.className = PAGE_HEADER_CLASS;
       header.setAttribute("aria-hidden", "true");
       header.contentEditable = "false";
-      header.style.top = "calc(var(--local-page-margin-top, var(--page-margin-top)) + var(--header-offset))";
+      header.style.top = "var(--doc-header-distance, 48px)";
       header.style.bottom = "auto";
       header.style.left = "var(--local-page-margin-left, var(--page-margin-left))";
       header.style.right = "var(--local-page-margin-right, var(--page-margin-right))";
@@ -338,8 +338,7 @@ export const PageNode = Node.create({
       footnotes.style.top = "auto";
       footnotes.style.left = "var(--local-page-margin-left, var(--page-margin-left))";
       footnotes.style.right = "var(--local-page-margin-right, var(--page-margin-right))";
-      footnotes.style.bottom =
-        "calc(var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset) + var(--footer-height))";
+      footnotes.style.bottom = "calc(var(--doc-footer-distance, 48px) + var(--footer-height))";
       footnotes.style.minHeight = "var(--footnote-area-height)";
       const footer = document.createElement("div");
       footer.className = PAGE_FOOTER_CLASS;
@@ -348,8 +347,7 @@ export const PageNode = Node.create({
       footer.style.top = "auto";
       footer.style.left = "var(--local-page-margin-left, var(--page-margin-left))";
       footer.style.right = "var(--local-page-margin-right, var(--page-margin-right))";
-      footer.style.bottom =
-        "calc(var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset))";
+      footer.style.bottom = "var(--doc-footer-distance, 48px)";
       footer.style.height = "var(--footer-height)";
       inner.appendChild(header);
       inner.appendChild(content);

@@ -18,6 +18,8 @@ import "@fontsource/source-sans-3/600.css";
 import "@fontsource/source-serif-4/600.css";
 import "./ribbon.css";
 import "./home.css";
+import "./agent_sidebar.css";
+import "./ai_settings.css";
 import "./references.css";
 import "./references_overlay.css";
 import { mountA4Layout, type A4LayoutController } from "./a4_layout.ts";

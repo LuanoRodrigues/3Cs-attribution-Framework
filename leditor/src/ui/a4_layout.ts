@@ -140,8 +140,8 @@ const ensureStyles = () => {
   --orphan-lines: 2;
   --header-height: 0.5in;
   --footer-height: 0.5in;
-  --header-offset: 0;
-  --footer-offset: 0;
+  --header-offset: 0px;
+  --footer-offset: 0px;
   --footnote-area-height: 0.55in;
   /* Reserve space for the footnote area so it doesn't overlap the page break. */
   --page-footnote-height: var(--footnote-area-height);
@@ -196,7 +196,10 @@ html, body {
   position: relative;
   min-height: calc(100vh / var(--ui-scale));
   height: calc(100vh / var(--ui-scale));
-  width: 100%;
+  width: calc(100vw / var(--ui-scale));
+  min-height: calc(100dvh / var(--ui-scale));
+  height: calc(100dvh / var(--ui-scale));
+  width: calc(100dvw / var(--ui-scale));
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -205,7 +208,6 @@ html, body {
   color: var(--ui-text);
   transform: scale(var(--ui-scale));
   transform-origin: top left;
-  width: calc(100% / var(--ui-scale));
   --leditor-ribbon-height: 0px;
   --leditor-header-height: 0px;
 }
@@ -218,13 +220,12 @@ html, body {
 }
 
 .leditor-doc-shell {
-  flex: 0 0 auto;
+  flex: 1 1 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   padding-top: 0;
-  height: calc((100vh / var(--ui-scale)) - var(--leditor-header-height));
 }
 
 .leditor-split-shell {
@@ -430,88 +431,6 @@ html, body {
   --local-page-height: var(--page-width);
 }
 
-.leditor-page-inner {
-  position: absolute;
-  inset: 0;
-  padding: 0;
-  display: block;
-  box-sizing: border-box;
-}
-
-.leditor-page-content {
-  position: absolute;
-  top: var(--local-page-margin-top, var(--page-margin-top));
-  left: var(--local-page-margin-left, var(--page-margin-left));
-  width: calc(
-    var(--local-page-width, var(--page-width)) -
-      (var(--local-page-margin-left, var(--page-margin-left)) +
-        var(--local-page-margin-right, var(--page-margin-right)))
-  );
-  height: calc(
-    var(--local-page-height, var(--page-height)) -
-      (var(--local-page-margin-top, var(--page-margin-top)) +
-        var(--local-page-margin-bottom, var(--page-margin-bottom)) +
-        var(--page-footnote-height, 0px))
-  );
-  padding: 0;
-  overflow: hidden;
-}
-
-.leditor-page-header,
-.leditor-page-footer {
-  font-family: var(--page-font-family);
-  font-size: 10pt;
-  text-transform: uppercase;
-  font-weight: bold;
-  color: var(--page-header-color);
-  min-height: var(--header-height);
-  position: absolute;
-  left: var(--local-page-margin-left, var(--page-margin-left));
-  right: var(--local-page-margin-right, var(--page-margin-right));
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding: 0 12px;
-  box-sizing: border-box;
-}
-
-.leditor-page-header {
-  top: calc(var(--local-page-margin-top, var(--page-margin-top)) + var(--header-offset));
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.leditor-page-footer {
-  top: auto;
-  bottom: calc(var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset));
-  justify-content: flex-end;
-  text-transform: none;
-  color: var(--page-footer-color);
-  z-index: 2;
-}
-
-.leditor-page-footnotes {
-  position: absolute;
-  left: var(--local-page-margin-left, var(--page-margin-left));
-  right: var(--local-page-margin-right, var(--page-margin-right));
-  top: auto;
-  bottom: calc(
-    var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset) + var(--footer-height)
-  );
-  min-height: var(--footnote-area-height);
-  overflow: hidden;
-  font-size: var(--footnote-font-size);
-  color: var(--page-footnote-color);
-  z-index: 3;
-  background: rgba(255, 0, 0, 0.04);
-  outline: 1px dashed rgba(255, 0, 0, 0.35);
-}
-.leditor-page-footnotes.leditor-page-footnotes--active {
-  border-top: var(--footnote-separator-height) solid var(--footnote-separator-color);
-  padding-top: var(--footnote-spacing);
-  background: rgba(255, 0, 0, 0.08);
-}
-
 .leditor-footnote-list,
 .leditor-endnotes-entries {
   list-style: none;
@@ -588,228 +507,11 @@ html, body {
   color: var(--page-footer-color);
 }
 
-.leditor-page-number {
-  display: inline-flex;
-  gap: 4px;
-  align-items: baseline;
-}
+/* legacy overlay/content frame styles removed */
+
+
 
 /* legacy overlay/content frame styles removed */
-.leditor-page-overlays {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--page-gap);
-  width: fit-content;
-  margin: 0 auto;
-  pointer-events: none;
-}
-
-.leditor-page-stack.is-two-page,
-.leditor-page-overlays.is-two-page {
-  display: grid;
-  grid-template-columns: repeat(2, var(--page-width));
-  justify-content: center;
-  width: calc(var(--page-width) * 2 + var(--page-gap));
-  margin: 0 auto;
-}
-
-.leditor-page-stack {
-  position: relative;
-  z-index: 2;
-  pointer-events: auto;
-}
-
-
-.leditor-page {
-  width: var(--local-page-width, var(--page-width));
-  height: var(--local-page-height, var(--page-height));
-  background: var(--page-bg);
-  border: var(--page-border-width) solid var(--page-border-color);
-  box-shadow: var(--page-shadow);
-  border-radius: 6px;
-  position: relative;
-  overflow: hidden;
-  box-sizing: border-box;
-}
-
-.leditor-page.is-landscape,
-.leditor-page-overlay.is-landscape {
-  --local-page-width: var(--page-height);
-  --local-page-height: var(--page-width);
-}
-
-.leditor-page-inner {
-  position: absolute;
-  inset: 0;
-  padding: 0;
-  display: block;
-  box-sizing: border-box;
-}
-
-.leditor-page-header,
-.leditor-page-footer {
-  font-family: var(--page-font-family);
-  font-size: 10pt;
-  text-transform: uppercase;
-  font-weight: bold;
-  color: var(--page-header-color);
-  min-height: var(--header-height);
-  position: absolute;
-  left: var(--local-page-margin-left, var(--page-margin-left));
-  right: var(--local-page-margin-right, var(--page-margin-right));
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding: 0 12px;
-  box-sizing: border-box;
-}
-
-.leditor-page-header {
-  top: calc(var(--local-page-margin-top, var(--page-margin-top)) + var(--header-offset));
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.leditor-page-footer {
-  top: auto;
-  bottom: calc(var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset));
-  justify-content: flex-end;
-  text-transform: none;
-}
-
-.leditor-page-footnotes {
-  position: absolute;
-  left: var(--local-page-margin-left, var(--page-margin-left));
-  right: var(--local-page-margin-right, var(--page-margin-right));
-  top: auto;
-  bottom: calc(
-    var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset) + var(--footer-height)
-  );
-  min-height: var(--footnote-area-height);
-  overflow: hidden;
-  font-size: var(--footnote-font-size);
-  color: #262626;
-  background: rgba(255, 0, 0, 0.04);
-  outline: 1px dashed rgba(255, 0, 0, 0.35);
-}
-.leditor-page-footnotes.leditor-page-footnotes--active {
-  border-top: var(--footnote-separator-height) solid var(--footnote-separator-color);
-  padding-top: var(--footnote-spacing);
-  background: rgba(255, 0, 0, 0.08);
-}
-
-.leditor-page-footer .leditor-page-number {
-  margin-left: auto;
-  font-variant-numeric: tabular-nums;
-  font-size: 10pt;
-  color: var(--page-footer-color);
-}
-
-.leditor-page-number {
-  display: inline-flex;
-  gap: 4px;
-  align-items: baseline;
-}
-
-.leditor-page-overlays {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--page-gap);
-  width: fit-content;
-  margin: 0 auto;
-}
-
-.leditor-page-stack.is-two-page,
-.leditor-page-overlays.is-two-page {
-  display: grid;
-  grid-template-columns: repeat(2, var(--page-width));
-  justify-content: center;
-  width: calc(var(--page-width) * 2 + var(--page-gap));
-  margin: 0 auto;
-}
-
-
-
-.leditor-page {
-  width: var(--local-page-width, var(--page-width));
-  height: var(--local-page-height, var(--page-height));
-  background: var(--page-bg);
-  border: var(--page-border-width) solid var(--page-border-color);
-  box-shadow: var(--page-shadow);
-  border-radius: 6px;
-  position: relative;
-  overflow: hidden;
-  box-sizing: border-box;
-}
-
-.leditor-page.is-landscape,
-.leditor-page-overlay.is-landscape {
-  --local-page-width: var(--page-height);
-  --local-page-height: var(--page-width);
-}
-
-.leditor-page-inner {
-  position: absolute;
-  inset: 0;
-  padding: 0;
-  display: block;
-  box-sizing: border-box;
-}
-
-.leditor-page-header,
-.leditor-page-footer {
-  font-family: var(--page-font-family);
-  font-size: 10pt;
-  text-transform: uppercase;
-  font-weight: bold;
-  color: var(--page-header-color);
-  min-height: var(--header-height);
-  position: absolute;
-  left: var(--local-page-margin-left, var(--page-margin-left));
-  right: var(--local-page-margin-right, var(--page-margin-right));
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding: 0 12px;
-  box-sizing: border-box;
-}
-
-.leditor-page-header {
-  top: calc(var(--local-page-margin-top, var(--page-margin-top)) + var(--header-offset));
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.leditor-page-footer {
-  top: auto;
-  bottom: calc(var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset));
-  justify-content: flex-end;
-  text-transform: none;
-  color: var(--page-footer-color);
-}
-
-.leditor-page-footnotes {
-  position: absolute;
-  left: var(--local-page-margin-left, var(--page-margin-left));
-  right: var(--local-page-margin-right, var(--page-margin-right));
-  top: auto;
-  bottom: calc(
-    var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset) + var(--footer-height)
-  );
-  min-height: var(--footnote-area-height);
-  overflow: hidden;
-  font-size: var(--footnote-font-size);
-  color: #262626;
-  background: rgba(255, 0, 0, 0.04);
-  outline: 1px dashed rgba(255, 0, 0, 0.35);
-}
-.leditor-page-footnotes.leditor-page-footnotes--active {
-  border-top: var(--footnote-separator-height) solid var(--footnote-separator-color);
-  padding-top: var(--footnote-spacing);
-  background: rgba(255, 0, 0, 0.08);
-}
 
 .leditor-page-footer .leditor-page-number {
   margin-left: auto;
@@ -909,12 +611,18 @@ html, body {
 }
 
 .leditor-page-overlay .leditor-page-header {
-  top: calc(var(--current-margin-top, var(--page-margin-top)) + var(--header-offset));
+  top: var(
+    --doc-header-distance,
+    calc(var(--current-margin-top, var(--page-margin-top)) + var(--header-offset))
+  );
   height: var(--header-height);
 }
 
 .leditor-page-overlay .leditor-page-footer {
-  bottom: calc(var(--current-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset));
+  bottom: var(
+    --doc-footer-distance,
+    calc(var(--current-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset))
+  );
   height: var(--footer-height);
 }
 
@@ -1284,12 +992,18 @@ html, body {
 }
 
 .leditor-page-header {
-  top: calc(var(--local-page-margin-top, var(--page-margin-top)) + var(--header-offset));
+  top: var(
+    --doc-header-distance,
+    calc(var(--local-page-margin-top, var(--page-margin-top)) + var(--header-offset))
+  );
   height: var(--header-height);
 }
 
 .leditor-page-footer {
-  bottom: calc(var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset));
+  bottom: var(
+    --doc-footer-distance,
+    calc(var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset))
+  );
   height: var(--footer-height);
   text-transform: none;
 }
@@ -1319,19 +1033,20 @@ html, body {
   left: var(--local-page-margin-left, var(--page-margin-left));
   right: var(--local-page-margin-right, var(--page-margin-right));
   bottom: calc(
-    var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset) + var(--footer-height)
+    var(
+        --doc-footer-distance,
+        calc(var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset))
+      ) + var(--footer-height)
   );
   min-height: var(--footnote-area-height);
   overflow: hidden;
   font-size: var(--footnote-font-size);
   color: var(--page-footnote-color);
-  background: rgba(255, 0, 0, 0.04);
-  outline: 1px dashed rgba(255, 0, 0, 0.35);
 }
 .leditor-page-footnotes.leditor-page-footnotes--active {
   border-top: var(--footnote-separator-height) solid var(--footnote-separator-color);
   padding-top: var(--footnote-spacing);
-  background: rgba(255, 0, 0, 0.08);
+  background: rgba(255, 0, 0, 0.04);
 }
 
 .leditor-footnote-continuation {
@@ -1385,42 +1100,66 @@ html, body {
   transform: none;
 }
 .leditor-page-inner > .leditor-page-header {
-  top: calc(var(--local-page-margin-top, var(--page-margin-top)) + var(--header-offset));
+  top: var(
+    --doc-header-distance,
+    calc(var(--local-page-margin-top, var(--page-margin-top)) + var(--header-offset))
+  );
   height: var(--header-height);
 }
 .leditor-page-inner > .leditor-page-footer {
-  bottom: calc(var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset));
+  bottom: var(
+    --doc-footer-distance,
+    calc(var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset))
+  );
   height: var(--footer-height);
   z-index: 2;
 }
 .leditor-page-inner > .leditor-page-footnotes {
   bottom: calc(
-    var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset) + var(--footer-height)
+    var(
+        --doc-footer-distance,
+        calc(var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset))
+      ) + var(--footer-height)
   );
   z-index: 3;
 }
 .leditor-page-overlay > .leditor-page-header {
-  top: calc(var(--current-margin-top, var(--page-margin-top)) + var(--header-offset));
+  top: var(
+    --doc-header-distance,
+    calc(var(--current-margin-top, var(--page-margin-top)) + var(--header-offset))
+  );
   height: var(--header-height);
 }
 .leditor-page-overlay > .leditor-page-footer {
-  bottom: calc(var(--current-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset));
+  bottom: var(
+    --doc-footer-distance,
+    calc(var(--current-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset))
+  );
   height: var(--footer-height);
   z-index: 2;
 }
 .leditor-page-overlay > .leditor-page-footnotes {
   bottom: calc(
-    var(--current-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset) + var(--footer-height)
+    var(
+        --doc-footer-distance,
+        calc(var(--current-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset))
+      ) + var(--footer-height)
   );
   z-index: 3;
 }
 .leditor-page-overlay .leditor-page-header {
-  top: calc(var(--current-margin-top, var(--page-margin-top)) + var(--header-offset));
+  top: var(
+    --doc-header-distance,
+    calc(var(--current-margin-top, var(--page-margin-top)) + var(--header-offset))
+  );
   height: var(--header-height);
 }
 
 .leditor-page-overlay .leditor-page-footer {
-  bottom: calc(var(--current-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset));
+  bottom: var(
+    --doc-footer-distance,
+    calc(var(--current-margin-bottom, var(--page-margin-bottom)) + var(--footer-offset))
+  );
   height: var(--footer-height);
 }
 
@@ -1429,15 +1168,15 @@ html, body {
 }
 
 /* Debug regions */
-.leditor-page .leditor-page-header {
+.leditor-debug-chrome .leditor-page .leditor-page-header {
   background: rgba(0, 120, 255, 0.08);
   outline: 1px dashed rgba(0, 120, 255, 0.35);
 }
-.leditor-page .leditor-page-footer {
+.leditor-debug-chrome .leditor-page .leditor-page-footer {
   background: rgba(34, 197, 94, 0.10);
   outline: 1px dashed rgba(34, 197, 94, 0.35);
 }
-.leditor-page .leditor-page-footnotes {
+.leditor-debug-chrome .leditor-page .leditor-page-footnotes {
   background: rgba(255, 0, 0, 0.08);
   outline: 1px dashed rgba(255, 0, 0, 0.35);
 }
@@ -1591,6 +1330,10 @@ export const mountA4Layout = (
   const THEME_STORAGE_KEY = "leditor:theme";
   const PAGE_SURFACE_STORAGE_KEY = "leditor:page-surface";
   const MARGINS_STORAGE_KEY = "leditor:margins";
+  const DEBUG_CHROME_STORAGE_KEY = "leditor:debug-chrome";
+  if (localStorage.getItem(DEBUG_CHROME_STORAGE_KEY) === "1") {
+    appRoot.classList.add("leditor-debug-chrome");
+  }
 
   let paginationQueued = false;
   let gridMode: GridMode = "stack";
@@ -2638,6 +2381,8 @@ const renderPages = (count: number) => {
             }
           : null,
         firstPageVars: cssVars(firstPage, [
+          "--doc-header-distance",
+          "--doc-footer-distance",
           "--page-margin-top",
           "--page-margin-bottom",
           "--header-height",

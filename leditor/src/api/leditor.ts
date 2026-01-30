@@ -26,6 +26,7 @@ import "../plugins/trackChanges.ts";
 import "../plugins/revisionHistory.ts";
 import "../plugins/spellcheck.ts";
 import "../plugins/aiAssistant.ts";
+import "../plugins/aiAgent.ts";
 import "../plugins/comments.ts";
 import "../extensions/plugin_source_view.ts";
 import "../extensions/plugin_debug.ts";

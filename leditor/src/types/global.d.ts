@@ -1,4 +1,5 @@
 import type { EditorHandle } from "../api/leditor.ts";
+import type { AiSettings } from "../types/ai.ts";
 import type { ExportPdfOptions, ExportPdfRequest, ExportPdfResult } from "../api/export_pdf.ts";
 import type { ExportDocxOptions, ExportDocxRequest, ExportDocxResult } from "../api/export_docx.ts";
 import type { ImportDocxOptions, ImportDocxRequest, ImportDocxResult } from "../api/import_docx.ts";
@@ -18,6 +19,22 @@ type HostReadFileResult = {
 
 type HostWriteFileResult = {
   success: boolean;
+  error?: string;
+};
+
+type AgentRequestPayload = {
+  scope: "selection" | "document";
+  instruction: string;
+  selection?: { from: number; to: number; text: string };
+  document?: { text: string };
+  history?: Array<{ role: "user" | "assistant" | "system"; content: string }>;
+  settings?: AiSettings;
+};
+
+type AgentRequestResult = {
+  success: boolean;
+  assistantText?: string;
+  applyText?: string;
   error?: string;
 };
 
@@ -81,6 +98,7 @@ declare global {
       insertImage?: (request?: { sourcePath?: string }) => Promise<InsertImageResult>;
       readFile?: (request: { sourcePath: string }) => Promise<HostReadFileResult>;
       writeFile?: (request: { targetPath: string; data: string }) => Promise<HostWriteFileResult>;
+      agentRequest?: (request: { payload: AgentRequestPayload }) => Promise<AgentRequestResult>;
       getInstalledAddins?: () => Promise<InstalledAddin[]>;
       installedAddins?: InstalledAddin[];
     };

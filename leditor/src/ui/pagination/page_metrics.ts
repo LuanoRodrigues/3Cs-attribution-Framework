@@ -81,8 +81,10 @@ export const derivePageMetrics = ({ page, pageContent, pageStack }: PageMetricsI
   const marginBottomPx = Math.max(0, pageRect.bottom - contentRect.bottom);
   const marginLeftPx = Math.max(0, contentRect.left - pageRect.left);
   const rootStyle = getComputedStyle(document.documentElement);
-  const headerDistanceValue = rootStyle.getPropertyValue("--header-height").trim();
-  const footerDistanceValue = rootStyle.getPropertyValue("--footer-height").trim();
+  const headerDistanceToken = spec.cssTokens?.vars?.headerDistance ?? "--doc-header-distance";
+  const footerDistanceToken = spec.cssTokens?.vars?.footerDistance ?? "--doc-footer-distance";
+  const headerDistanceValue = rootStyle.getPropertyValue(headerDistanceToken).trim();
+  const footerDistanceValue = rootStyle.getPropertyValue(footerDistanceToken).trim();
   const headerDistanceIn = spec.headerFooter?.default?.headerDistanceIn;
   const footerDistanceIn = spec.headerFooter?.default?.footerDistanceIn;
   if (!Number.isFinite(headerDistanceIn) || !Number.isFinite(footerDistanceIn)) {

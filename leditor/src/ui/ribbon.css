@@ -924,21 +924,58 @@
    Galleries / pickers / popups
    ========================= */
 .leditor-ribbon .rgallery {
-  width: 320px;
+  width: 420px;
   background: var(--r-surface);
   border: 1px solid var(--r-border-color);
-  border-radius: 4px;
+  border-radius: 6px;
   box-shadow: var(--r-shadow);
-  padding: 12px;
+  padding: 10px 12px 14px;
   display: flex;
   flex-direction: column;
+  gap: 10px;
+}
+
+.leditor-ribbon .rgallery__nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
 }
 
-.leditor-ribbon .rgallery__grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+.leditor-ribbon .rgallery__nav-btn {
+  all: unset;
+  width: 34px;
+  height: 34px;
+  border-radius: 5px;
+  border: 1px solid var(--r-border-color);
+  background: #ffffff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.leditor-ribbon .rgallery__nav-btn:hover:not(:disabled) {
+  border-color: #94a1c3;
+}
+
+.leditor-ribbon .rgallery__nav-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.leditor-ribbon .rgallery__range {
+  flex: 1;
+  text-align: center;
+  font-size: 12px;
+  color: var(--r-muted);
+}
+
+.leditor-ribbon .rgallery__viewport {
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
 }
 
 .leditor-ribbon .rgallery__item {
@@ -955,6 +992,7 @@
   align-items: flex-start;
   text-align: left;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  flex: 1;
 }
 
 .leditor-ribbon .rgallery__item:hover {

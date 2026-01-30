@@ -730,8 +730,6 @@ const createGalleryMenu = (menu: Menu, ctx: BuildContext, item: ControlConfig): 
   const provider = galleryProviders[galleryId];
   const container = document.createElement("div");
   container.className = "rgallery";
-  const grid = document.createElement("div");
-  grid.className = "rgallery__grid";
   const entries = provider ? provider() : [];
 
   if (entries.length === 0) {
@@ -742,7 +740,28 @@ const createGalleryMenu = (menu: Menu, ctx: BuildContext, item: ControlConfig): 
     return container;
   }
 
-  entries.forEach((entry) => {
+  const nav = document.createElement("div");
+  nav.className = "rgallery__nav";
+  const prevBtn = document.createElement("button");
+  prevBtn.type = "button";
+  prevBtn.className = "rgallery__nav-btn";
+  prevBtn.setAttribute("aria-label", "Previous templates");
+  prevBtn.appendChild(createRibbonIcon("previous"));
+  const rangeLabel = document.createElement("span");
+  rangeLabel.className = "rgallery__range";
+  const nextBtn = document.createElement("button");
+  nextBtn.type = "button";
+  nextBtn.className = "rgallery__nav-btn";
+  nextBtn.setAttribute("aria-label", "Next templates");
+  nextBtn.appendChild(createRibbonIcon("next"));
+  nav.append(prevBtn, rangeLabel, nextBtn);
+
+  const viewport = document.createElement("div");
+  viewport.className = "rgallery__viewport";
+
+  const visibleCount = 3;
+  let startIndex = 0;
+  const buildEntryButton = (entry: GalleryEntry): HTMLButtonElement => {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "rgallery__item";
@@ -761,10 +780,42 @@ const createGalleryMenu = (menu: Menu, ctx: BuildContext, item: ControlConfig): 
       runMenuCommand(ctx, item.command, entry.payload);
       menu.close();
     });
-    grid.appendChild(button);
+    return button;
+  };
+
+  const updateRangeLabel = (): void => {
+    const last = Math.min(entries.length, startIndex + visibleCount);
+    rangeLabel.textContent = `${startIndex + 1}–${last} of ${entries.length}`;
+  };
+
+  const updateNavButtons = (): void => {
+    prevBtn.disabled = startIndex <= 0;
+    nextBtn.disabled = startIndex + visibleCount >= entries.length;
+  };
+
+  const renderEntries = (): void => {
+    viewport.innerHTML = "";
+    const slice = entries.slice(startIndex, startIndex + visibleCount);
+    slice.forEach((entry) => viewport.appendChild(buildEntryButton(entry)));
+    updateRangeLabel();
+    updateNavButtons();
+  };
+
+  prevBtn.addEventListener("click", () => {
+    if (startIndex > 0) {
+      startIndex = Math.max(0, startIndex - 1);
+      renderEntries();
+    }
+  });
+  nextBtn.addEventListener("click", () => {
+    if (startIndex + visibleCount < entries.length) {
+      startIndex = Math.min(entries.length - visibleCount, startIndex + 1);
+      renderEntries();
+    }
   });
 
-  container.appendChild(grid);
+  renderEntries();
+  container.append(nav, viewport);
   return container;
 };
 

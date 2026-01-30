@@ -5,6 +5,7 @@ import {
   layoutTab,
   reviewTab,
   referencesTab,
+  aiTab,
   viewTab
 } from "./ribbon_model.ts";
 import { commandMap } from "../api/command_map.ts";
@@ -212,6 +213,7 @@ const TAB_SOURCES: TabSourceMap = {
   layout: layoutTab as unknown as TabConfig,
   review: reviewTab as unknown as TabConfig,
   references: referencesTab as unknown as TabConfig,
+  ai: aiTab as unknown as TabConfig,
   view: viewTab as unknown as TabConfig
 };
 

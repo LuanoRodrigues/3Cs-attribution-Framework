@@ -1,0 +1,28 @@
+{
+  "id": "cyber_policy_journal",
+  "label": "Cyber Policy Journal",
+  "description": "Research-first layout for technology governance papers.",
+  "document": {
+    "type": "doc",
+    "content": [
+      {
+        "type": "heading",
+        "attrs": { "level": 1 },
+        "content": [{ "type": "text", "text": "Cyber Policy Journal" }]
+      },
+      {
+        "type": "paragraph",
+        "content": [{ "type": "text", "text": "Abstract: " }, { "type": "merge_tag", "attrs": { "key": "ABSTRACT" } }]
+      },
+      {
+        "type": "heading",
+        "attrs": { "level": 2 },
+        "content": [{ "type": "text", "text": "Recommendations" }]
+      },
+      {
+        "type": "paragraph",
+        "content": [{ "type": "text", "text": "1. Maintain strong encryption policies." }]
+      }
+    ]
+  }
+}
