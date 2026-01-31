@@ -1,23 +1,26 @@
 import type { Editor } from "@tiptap/core";
 import { Selection, TextSelection } from "@tiptap/pm/state";
 import type { StoredSelection } from "../../utils/selection_snapshot";
-import { applySnapshotToTransaction } from "../../utils/selection_snapshot";
+import { applySnapshotToTransaction, snapshotFromSelection } from "../../utils/selection_snapshot";
 import type { FootnoteKind } from "./model.ts";
+import { getNextFootnoteId } from "./footnote_id_generator.ts";
 
-const createFootnoteId = (kind: FootnoteKind) =>
-  `${kind}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+export type InsertFootnoteResult = {
+  footnoteId: string;
+  postInsertSelection: StoredSelection;
+};
 
 export const insertFootnoteAtSelection = (
   editor: Editor,
   kind: FootnoteKind,
   text?: string,
   storedSelection?: StoredSelection | null
-): string => {
+): InsertFootnoteResult => {
   const footnoteNode = editor.schema.nodes.footnote;
   if (!footnoteNode) {
     throw new Error("Footnote node is not registered in schema");
   }
-  const footnoteId = createFootnoteId(kind);
+  const footnoteId = getNextFootnoteId(kind);
   const contentText = typeof text === "string" ? text.trim() : "";
   const content = contentText.length > 0 ? editor.schema.text(contentText) : null;
   const node = footnoteNode.create({ footnoteId, kind }, content ? [content] : []);
@@ -58,6 +61,7 @@ export const insertFootnoteAtSelection = (
   }
   tr = tr.replaceSelectionWith(node);
   if (tr.docChanged) {
+    const postInsertSelection = snapshotFromSelection(tr.selection);
     const afterPos = tr.selection.from;
     const afterContext = tr.doc.textBetween(Math.max(0, afterPos - 40), Math.min(tr.doc.content.size, afterPos + 40), " ");
     if ((window as any).__leditorFootnoteDebug) {
@@ -75,8 +79,9 @@ export const insertFootnoteAtSelection = (
       });
     }
     editor.view.dispatch(tr.scrollIntoView());
+    return { footnoteId, postInsertSelection };
   } else {
     console.warn("[Footnote][insert] no-op (doc not changed)", { kind, footnoteId });
   }
-  return footnoteId;
+  return { footnoteId, postInsertSelection: storedSelection ?? snapshotFromSelection(editor.state.selection) };
 };

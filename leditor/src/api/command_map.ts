@@ -2190,11 +2190,10 @@ export const commandMap: Record<string, CommandHandler> = {
         }
       });
     }
-    const id = insertManagedFootnote(editor, "footnote", text, selectionSnapshot);
+    const result = insertManagedFootnote(editor, "footnote", text, selectionSnapshot);
     // After insertion, the editor selection should be positioned just after the marker. Preserve it as the
     // "return point" when exiting footnote mode.
-    const postInsertSnapshot = snapshotFromSelection(editor.state.selection);
-    focusFootnoteById(id, postInsertSnapshot);
+    focusFootnoteById(result.footnoteId, result.postInsertSelection);
   },
   "footnote.insert"(editor) {
     commandMap.InsertFootnote(editor);
@@ -2215,9 +2214,8 @@ export const commandMap: Record<string, CommandHandler> = {
         }
       });
     }
-    const id = insertManagedFootnote(editor, "endnote", text, selectionSnapshot);
-    const postInsertSnapshot = snapshotFromSelection(editor.state.selection);
-    focusFootnoteById(id, postInsertSnapshot);
+    const result = insertManagedFootnote(editor, "endnote", text, selectionSnapshot);
+    focusFootnoteById(result.footnoteId, result.postInsertSelection);
   },
   "endnote.insert"(editor) {
     commandMap.InsertEndnote(editor);
@@ -3069,6 +3067,44 @@ Paragraphs: ${stats.paragraphs}`);
     const ok = tiptap.commands.clearAiDraftPreview();
     if (!ok) {
       throw new Error("clearAiDraftPreview command failed");
+    }
+  },
+  SetSourceChecks(editor, args) {
+    const items = Array.isArray(args?.items) ? args.items : [];
+    const tiptap = getTiptap(editor);
+    if (!tiptap?.commands?.setSourceChecks) {
+      throw new Error("TipTap setSourceChecks command unavailable");
+    }
+    const normalized = items
+      .map((it: any) => {
+        const from = Number(it?.from);
+        const to = Number(it?.to);
+        const key = typeof it?.key === "string" ? it.key : "";
+        const verdict = it?.verdict === "verified" ? "verified" : "needs_review";
+        const justification = typeof it?.justification === "string" ? it.justification : "";
+        if (!key || !Number.isFinite(from) || !Number.isFinite(to)) return null;
+        return {
+          key,
+          verdict,
+          justification,
+          from: Math.floor(from),
+          to: Math.floor(to)
+        };
+      })
+      .filter(Boolean);
+    const ok = tiptap.commands.setSourceChecks(normalized as any);
+    if (!ok) {
+      throw new Error("setSourceChecks command failed");
+    }
+  },
+  ClearSourceChecks(editor) {
+    const tiptap = getTiptap(editor);
+    if (!tiptap?.commands?.clearSourceChecks) {
+      throw new Error("TipTap clearSourceChecks command unavailable");
+    }
+    const ok = tiptap.commands.clearSourceChecks();
+    if (!ok) {
+      throw new Error("clearSourceChecks command failed");
     }
   },
   SetHyphenation(editor, args) {

@@ -19,6 +19,7 @@ import { setSearchEditor } from "../editor/search.ts";
 import { setVisualEditor, visualExtension } from "../editor/visual.ts";
 import { paragraphGridExtension, setParagraphGridEditor } from "../editor/paragraph_grid.ts";
 import { aiDraftPreviewExtension, setAiDraftPreviewEditor } from "../editor/ai_draft_preview.ts";
+import { sourceCheckBadgesExtension, setSourceCheckBadgesEditor } from "../editor/source_check_badges.ts";
 import { createAutosaveController, getAutosaveSnapshot, restoreAutosaveSnapshot } from "../editor/autosave.ts";
 import { getPlugins } from "./plugin_registry.ts";
 import "../plugins/pasteCleaner.ts";
@@ -70,6 +71,8 @@ import {
   FootnoteBodyExtension,
   FootnoteBodyManagementExtension
 } from "../extensions/extension_footnote_body.ts";
+import { resetFootnoteCounter, seedFootnoteCounterFromDoc } from "../uipagination/footnotes/footnote_id_generator.ts";
+import { clearFootnoteRegistry } from "../extensions/extension_footnote.ts";
 
 type ContentFormat = "json" | "html" | "markdown";
 type EditorEventName = "change" | "focus" | "blur" | "selectionChange";
@@ -321,6 +324,7 @@ export const LEditor = {
 	        visualExtension,
 	        paragraphGridExtension,
 	        aiDraftPreviewExtension,
+          sourceCheckBadgesExtension,
         FontFamilyMark,
         FontSizeMark,
         TextColorMark,
@@ -393,6 +397,7 @@ export const LEditor = {
 	    setVisualEditor(editor);
 	    setParagraphGridEditor(editor);
 	    setAiDraftPreviewEditor(editor);
+      setSourceCheckBadgesEditor(editor);
 
     const editorInstanceId = Math.random().toString(36).slice(2, 10);
     const autosaveInterval =
@@ -440,6 +445,14 @@ export const LEditor = {
       },
       /** Sets the document content using the requested format. */
       setContent(content, opts) {
+        // Treat setContent as a full document replacement: reset deterministic footnote id state so ids
+        // start from a clean slate and then reseed from the new document.
+        try {
+          resetFootnoteCounter();
+          clearFootnoteRegistry();
+        } catch {
+          // ignore
+        }
         if (opts.format === "html") {
           if (typeof content !== "string") {
             throw new Error("LEditor.setContent: html requires string content");
@@ -525,6 +538,11 @@ export const LEditor = {
           }
 
           editor.commands.setContent(content, { parseOptions: { preserveWhitespace: "full" } });
+          try {
+            seedFootnoteCounterFromDoc(editor.state.doc as any);
+          } catch {
+            // ignore
+          }
 
           const rehydrateLinksByText = (seeds: AnchorSeed[]) => {
             if (!seeds.length) return;
@@ -626,6 +644,11 @@ export const LEditor = {
           } catch (err) {
             console.warn("[LEditor][setContent][html][after] failed", err);
           }
+          try {
+            seedFootnoteCounterFromDoc(editor.state.doc as any);
+          } catch {
+            // ignore
+          }
           return;
         }
         if (opts.format === "markdown") {
@@ -634,11 +657,21 @@ export const LEditor = {
           }
           const doc = markdownParser.parse(content);
           editor.commands.setContent(doc.toJSON());
+          try {
+            seedFootnoteCounterFromDoc(editor.state.doc as any);
+          } catch {
+            // ignore
+          }
           return;
         }
         if (opts.format === "json") {
           const jsonContent = typeof content === "string" ? JSON.parse(content) : content;
           editor.commands.setContent(jsonContent);
+          try {
+            seedFootnoteCounterFromDoc(editor.state.doc as any);
+          } catch {
+            // ignore
+          }
           return;
         }
         throw new Error(`LEditor.setContent: unsupported format "${opts.format}"`);

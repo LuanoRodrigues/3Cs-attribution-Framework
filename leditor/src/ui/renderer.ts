@@ -22,6 +22,7 @@ import "./agent_sidebar.css";
 import "./ai_settings.css";
 import "./paragraph_grid.css";
 import "./ai_draft_preview.css";
+import "./source_check_badges.css";
 import "./references.css";
 import "./references_overlay.css";
 import { mountA4Layout, type A4LayoutController } from "./a4_layout.ts";
@@ -33,7 +34,7 @@ import { CellSelection, TableMap } from "@tiptap/pm/tables";
 import type { Editor as TiptapEditor } from "@tiptap/core";
 import { DOMParser as ProseMirrorDOMParser } from "prosemirror-model";
 import { getFootnoteRegistry, type FootnoteNodeViewAPI } from "../extensions/extension_footnote.ts";
-import { resetFootnoteState, getFootnoteIds } from "../editor/footnote_state.ts";
+
 import { createFootnoteManager } from "./footnote_manager.ts";
 import { getCurrentPageSize, getMarginValues } from "../ui/layout_settings.ts";
 import { registerLibrarySmokeChecks } from "../plugins/librarySmokeChecks.ts";
@@ -1051,6 +1052,15 @@ export const mountEditor = async () => {
   let selectionUpdateQueued = false;
   const updateLastKnownSelection = (reason: string) => {
     try {
+      // While editing header/footer/footnotes, ProseMirror can emit noisy focus/selection updates
+      // that jump to start/end of document due to blur/focus. Do not let those poison our
+      // "return point" selection used by ribbon commands.
+      if (
+        appRoot.classList.contains("leditor-footnote-editing") ||
+        appRoot.classList.contains("leditor-header-footer-editing")
+      ) {
+        return;
+      }
       lastKnownSelection = snapshotFromSelection(tiptapEditor.state.selection);
       lastKnownSelectionAt = Date.now();
       if ((window as any).__leditorCaretDebug) {
@@ -1094,10 +1104,16 @@ export const mountEditor = async () => {
       ((active && prose.contains(active)) ||
         (anchorNode && prose.contains(anchorNode instanceof HTMLElement ? anchorNode : (anchorNode as any).parentElement)));
 
+    // Even when the selection appears to be in ProseMirror, reading directly from the editor
+    // during ribbon pointerdown is risky: focus/blur can transiently move the selection
+    // (often to end-of-doc). Prefer our last-known snapshot captured from actual editor
+    // interaction, and only refresh if it is stale.
     if (selectionInProse) {
-      updateLastKnownSelection("ribbon:pointerdown:live");
+      if (Date.now() - lastKnownSelectionAt > 500) {
+        updateLastKnownSelection("ribbon:pointerdown:stale-refresh");
+      }
       if ((window as any).__leditorCaretDebug) {
-        console.info("[Selection][ribbon] captured live", { snapshot: lastKnownSelection });
+        console.info("[Selection][ribbon] captured cached", { snapshot: lastKnownSelection, lastKnownSelectionAt });
       }
       recordRibbonSelection(lastKnownSelection);
       return;
@@ -1590,14 +1606,23 @@ const runPhase22Validation = (editorHandle: EditorHandle) => {
     return;
   }
   const registry = getFootnoteRegistry();
-  resetFootnoteState();
+  const collectIds = (editor: TiptapEditor): string[] => {
+    const ids: string[] = [];
+    editor.state.doc.descendants((node) => {
+      if (node.type.name !== "footnote") return true;
+      const id = typeof (node.attrs as any)?.footnoteId === "string" ? String((node.attrs as any).footnoteId).trim() : "";
+      if (id) ids.push(id);
+      return true;
+    });
+    return ids;
+  };
 
   editorHandle.setContent("<p>Footnote phase</p>", { format: "html" });
   editorHandle.focus();
   editorHandle.execCommand("InsertFootnote");
   editorHandle.execCommand("InsertFootnote");
 
-  const ids = getFootnoteIds();
+  const ids = collectIds(editorInstance);
   if (ids.length < 2) {
     throw new Error("Phase22 expected at least two footnotes after insertion.");
   }
@@ -1615,12 +1640,12 @@ const runPhase22Validation = (editorHandle: EditorHandle) => {
   editorHandle.execCommand("SelectStart");
   editorHandle.execCommand("InsertFootnote");
 
-  const allIds = getFootnoteIds();
+  const allIds = collectIds(editorInstance);
   if (allIds.length !== 3) {
     throw new Error("Phase22 expected three footnotes after inserting at start.");
   }
 
-  const thirdId = allIds[2];
+  const thirdId = allIds[0];
   const thirdView = getFootnoteView(registry, thirdId, "inserted");
   if (thirdView.getNumber() !== "1") {
     throw new Error("Phase22 new footnote was not renumbered to 1.");

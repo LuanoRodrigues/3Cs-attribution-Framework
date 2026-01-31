@@ -22,8 +22,8 @@ const THUMBS_STYLE =
   "flex:0 0 200px;border:1px solid var(--border);border-radius:12px;background:var(--surface-muted);padding:8px;overflow:auto;";
 const STAGE_STYLE =
   "flex:1 1 auto;border:1px solid var(--border);border-radius:12px;background:var(--surface);display:flex;flex-direction:column;overflow:hidden;padding:0;";
-const LOG_STYLE =
-  "margin-top:8px;padding:10px 12px;font-size:12px;color:var(--muted);border-top:1px solid var(--border);background:var(--surface-muted);max-height:140px;overflow:auto;";
+const HEADER_LOG_STYLE =
+  "flex:0 0 260px;margin-left:8px;padding:6px 10px;font-size:11px;color:var(--muted);border:1px solid var(--border);background:var(--surface-muted);border-radius:10px;max-height:60px;overflow:auto;font-family:var(--font-mono);";
 const BUTTON_ROW_STYLE = "display:flex;gap:6px;flex-wrap:wrap;";
 
 const SECTIONS_PANEL_HTML = `
@@ -75,7 +75,9 @@ const MAIN_PANEL_HTML = `
   <section class="panel center-panel visualiser-tool" style="${PANEL_STYLE}">
     <header class="panel-head visualiser-head" style="${PANEL_HEAD_STYLE}">
       <div class="title" style="font-weight:900;letter-spacing:0.4px;">Visuals Test</div>
-      <div class="status" id="status" style="color:var(--muted);">Ready</div>
+      <div class="log visualiser-log header-log" id="visualiserLog" style="${HEADER_LOG_STYLE}">
+        <div class="visualiser-log-placeholder">No issues.</div>
+      </div>
       <div class="button-row visualiser-button-row" style="${BUTTON_ROW_STYLE}">
         <button class="btn" id="btnCopy" type="button">Copy</button>
         <button class="btn" id="btnClear" type="button">Clear</button>
@@ -170,20 +172,6 @@ const EXPORT_PANEL_HTML = `
           </div>
         </div>
       </div>
-      <div class="section export-section" aria-label="Export status" style="margin-bottom:10px;">
-        <header class="section-head" style="margin-bottom:6px;">
-          <div class="section-title" style="font-weight:700;">Status</div>
-        </header>
-        <div class="section-body export-status">
-          <div
-            id="exportLog"
-            class="export-log"
-            style="max-height:220px;overflow:auto;padding:8px;background:var(--surface-muted);border-radius:10px;border:1px solid var(--border);font-size:12px;color:var(--muted);"
-          >
-            <div class="export-logline muted">No activity yet.</div>
-          </div>
-        </div>
-      </div>
       <div class="section export-section" aria-label="Export actions">
         <header class="section-head" style="margin-bottom:6px;">
           <div class="section-title" style="font-weight:700;">Actions</div>
@@ -201,10 +189,6 @@ const EXPORT_PANEL_HTML = `
 `;
 
 const DEFAULT_SLIDE_COUNT = 8;
-
-type ConsoleMethodName = "log" | "info" | "warn" | "error" | "debug";
-type ConsoleHandler = (...data: unknown[]) => void;
-
 export class VisualiserPage {
   private mount: HTMLElement;
   private sectionsHost: HTMLElement | null;

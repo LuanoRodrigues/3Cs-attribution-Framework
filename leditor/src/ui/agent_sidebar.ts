@@ -545,13 +545,15 @@ export const createAgentSidebar = (
         lastApiMeta = { ...result.meta, ts: Date.now() };
         renderApiBadge();
       }
-      addMessage("assistant", result.assistantText || "(no response)");
       pending = result.apply ?? null;
       if (pending) {
         const count = pending.kind === "batchReplace" ? pending.items.length : 1;
         pendingLabel.textContent = `Draft ready • ${count} change(s)`;
         renderDraftList();
         syncDraftPreview();
+        addMessage("system", `Suggestions ready • ${count} change(s). Review inline in the document.`);
+      } else {
+        addMessage("assistant", (result.assistantText || "(no response)").trim());
       }
     } catch (error) {
       addMessage("assistant", `Error: ${error instanceof Error ? error.message : String(error)}`);
@@ -561,6 +563,198 @@ export const createAgentSidebar = (
       setInflight(false);
       editorHandle.focus();
     }
+  };
+
+  const listParagraphRanges = () => {
+    const editor = editorHandle.getEditor();
+    const targets: Array<{ n: number; from: number; to: number }> = [];
+    const excludedParentTypes = new Set(["tableCell", "tableHeader", "table_cell", "table_header", "footnoteBody"]);
+    let n = 0;
+    editor.state.doc.nodesBetween(0, editor.state.doc.content.size, (node: any, pos: number, parent: any) => {
+      if (!node?.isTextblock) return true;
+      if (node.type?.name === "doc") return true;
+      if (node.type?.name === "heading") return true;
+      const parentName = parent?.type?.name;
+      if (parentName && excludedParentTypes.has(parentName)) return true;
+      const from = pos + 1;
+      const to = pos + node.nodeSize - 1;
+      n += 1;
+      targets.push({ n, from, to });
+      return true;
+    });
+    return targets;
+  };
+
+  const formatIndexSpec = (indices: number[]): string => {
+    const list = Array.from(new Set(indices)).filter((n) => Number.isFinite(n) && n > 0).sort((a, b) => a - b);
+    if (list.length === 0) return "";
+    if (list.length === 1) return String(list[0]);
+    const contiguous = list.every((v, i) => i === 0 || v === list[i - 1]! + 1);
+    return contiguous ? `${list[0]}-${list[list.length - 1]}` : list.join(",");
+  };
+
+  const getIndicesForCurrentSelectionOrCursor = (): { indices: number[]; from: number; to: number } | null => {
+    const editor = editorHandle.getEditor();
+    const sel = editor.state.selection;
+    const ranges = listParagraphRanges();
+    if (ranges.length === 0) return null;
+    const from = sel.from;
+    const to = sel.to;
+    const selectionFrom = Math.min(from, to);
+    const selectionTo = Math.max(from, to);
+    if (selectionFrom !== selectionTo) {
+      const indices = ranges.filter((p) => p.to >= selectionFrom && p.from <= selectionTo).map((p) => p.n);
+      if (indices.length === 0) return null;
+      return { indices, from: selectionFrom, to: selectionTo };
+    }
+    const cursorPos = selectionFrom;
+    const at = ranges.find((p) => cursorPos >= p.from && cursorPos <= p.to) ?? ranges[ranges.length - 1]!;
+    return { indices: [at.n], from: at.from, to: at.to };
+  };
+
+  const collectAnchorsInRange = (from: number, to: number) => {
+    const editor = editorHandle.getEditor();
+    const anchors: Array<{
+      key: string;
+      from: number;
+      to: number;
+      text: string;
+      title: string;
+      href: string;
+      dataKey: string;
+      dataDqid: string;
+      dataQuoteId: string;
+    }> = [];
+    const doc = editor.state.doc;
+    const seen = new Set<string>();
+    doc.nodesBetween(from, to, (node: any, pos: number) => {
+      if (!node?.isText) return true;
+      const marks = Array.isArray(node.marks) ? node.marks : [];
+      const anchorMark = marks.find((m: any) => String(m?.type?.name ?? "") === "anchor");
+      if (!anchorMark) return true;
+      const attrs = anchorMark.attrs ?? {};
+      const href = String(attrs.href ?? (attrs.dataDqid ? `dq://${attrs.dataDqid}` : "") ?? "");
+      const title = String(attrs.title ?? "");
+      const dataKey = String(attrs.dataKey ?? attrs.itemKey ?? attrs.dataItemKey ?? "");
+      const dataDqid = String(attrs.dataDqid ?? "");
+      const dataQuoteId = String(attrs.dataQuoteId ?? "");
+      const text = String(node.text ?? "");
+      const baseId = dataKey || dataDqid || dataQuoteId || href || "anchor";
+      const key = `${baseId}@${pos}`;
+      if (seen.has(key)) return true;
+      seen.add(key);
+      anchors.push({
+        key,
+        from: pos,
+        to: pos + node.nodeSize,
+        text,
+        title,
+        href,
+        dataKey,
+        dataDqid,
+        dataQuoteId
+      });
+      return true;
+    });
+    return anchors;
+  };
+
+  const runCheckSources = async () => {
+    const target = getIndicesForCurrentSelectionOrCursor();
+    if (!target) {
+      addMessage("system", "No sources to be checked.");
+      return;
+    }
+    const anchors = collectAnchorsInRange(target.from, target.to);
+    if (anchors.length === 0) {
+      try {
+        editorHandle.execCommand("ClearSourceChecks");
+      } catch {
+        // ignore
+      }
+      addMessage("system", "No sources to be checked.");
+      return;
+    }
+    const host: any = (window as any).leditorHost;
+    if (!host || typeof host.checkSources !== "function") {
+      addMessage("assistant", "Source checking host bridge unavailable.");
+      return;
+    }
+    setInflight(true);
+    try {
+      const editor = editorHandle.getEditor();
+      const contextText = editor.state.doc.textBetween(target.from, target.to, "\n").trim();
+      const requestId = `check-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+      const result = await host.checkSources({
+        requestId,
+        payload: {
+          contextText,
+          anchors: anchors.map((a) => ({
+            key: a.key,
+            text: a.text,
+            title: a.title,
+            href: a.href,
+            dataKey: a.dataKey,
+            dataDqid: a.dataDqid,
+            dataQuoteId: a.dataQuoteId
+          }))
+        }
+      });
+      if (!result?.success) {
+        addMessage("assistant", result?.error ? String(result.error) : "Source check failed.");
+        return;
+      }
+      const checksRaw = Array.isArray(result.checks) ? result.checks : [];
+      const byKey = new Map<string, { verdict: string; justification: string }>();
+      for (const c of checksRaw) {
+        const key = typeof c?.key === "string" ? c.key : "";
+        if (!key) continue;
+        byKey.set(key, {
+          verdict: c?.verdict === "verified" ? "verified" : "needs_review",
+          justification: typeof c?.justification === "string" ? c.justification : ""
+        });
+      }
+      const items = anchors
+        .map((a) => {
+          const check = byKey.get(a.key);
+          if (!check) return null;
+          return {
+            key: a.key,
+            from: a.from,
+            to: a.to,
+            verdict: check.verdict,
+            justification:
+              check.justification || (check.verdict === "verified" ? "Citation appears consistent." : "Check citation relevance.")
+          };
+        })
+        .filter(Boolean);
+      if (items.length === 0) {
+        addMessage("system", "No sources to be checked.");
+        return;
+      }
+      editorHandle.execCommand("SetSourceChecks", { items });
+      addMessage("system", `Checked ${items.length} source(s).`);
+    } finally {
+      setInflight(false);
+      editorHandle.focus();
+    }
+  };
+
+  const applyActionTemplate = (actionId: AgentActionId) => {
+    const target = getIndicesForCurrentSelectionOrCursor();
+    if (!target) {
+      addMessage("system", "Select text or place cursor in a paragraph, then run an action.");
+      return;
+    }
+    const spec = formatIndexSpec(target.indices);
+    const actions: any = (agentActionPrompts as any)?.actions ?? {};
+    const entry = actions[actionId];
+    const prompt =
+      entry && typeof entry.prompt === "string" && entry.prompt.trim()
+        ? entry.prompt.trim()
+        : "Refine for clarity. Keep citations/anchors unchanged.";
+    input.value = `${spec} ${prompt}`;
+    void run();
   };
 
   const controller: AgentSidebarController = {
@@ -602,6 +796,24 @@ export const createAgentSidebar = (
     isOpen() {
       return open;
     },
+    runAction(actionId: AgentActionId) {
+      if (destroyed) return;
+      if (!open) controller.open();
+      if (actionId === "clear_checks") {
+        try {
+          editorHandle.execCommand("ClearSourceChecks");
+        } catch {
+          // ignore
+        }
+        addMessage("system", "Cleared source checks.");
+        return;
+      }
+      if (actionId === "check_sources") {
+        void runCheckSources();
+        return;
+      }
+      applyActionTemplate(actionId);
+    },
     destroy() {
       if (destroyed) return;
       destroyed = true;
@@ -613,6 +825,11 @@ export const createAgentSidebar = (
       }
       try {
         editorHandle.execCommand("ClearAiDraftPreview");
+      } catch {
+        // ignore
+      }
+      try {
+        editorHandle.execCommand("ClearSourceChecks");
       } catch {
         // ignore
       }

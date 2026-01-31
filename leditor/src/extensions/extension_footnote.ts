@@ -1,9 +1,10 @@
-import { Editor, Node as TiptapNode, type NodeViewRenderer } from "@tiptap/core";
-import Link from "@tiptap/extension-link";
-import StarterKit from "@tiptap/starter-kit";
+import { Node as TiptapNode, type NodeViewRenderer } from "@tiptap/core";
 import type { Mark, Node as ProseMirrorNode } from "@tiptap/pm/model";
 import type { EditorView } from "@tiptap/pm/view";
+import { Plugin, TextSelection } from "@tiptap/pm/state";
 import { reconcileFootnotes } from "../uipagination/footnotes/registry.ts";
+import { getNextFootnoteId, registerFootnoteId } from "../uipagination/footnotes/footnote_id_generator.ts";
+import type { FootnoteKind } from "../uipagination/footnotes/model.ts";
 
 export type FootnoteNodeViewAPI = {
   id: string;
@@ -18,6 +19,7 @@ export type FootnoteNodeViewAPI = {
 const footnoteRegistry = new Map<string, FootnoteNodeViewAPI>();
 
 export const getFootnoteRegistry = () => footnoteRegistry;
+export const clearFootnoteRegistry = () => footnoteRegistry.clear();
 
 type FootnoteNodeViewProps = {
   node: ProseMirrorNode;
@@ -33,26 +35,43 @@ class FootnoteNodeView implements FootnoteNodeViewAPI {
   private readonly getPos: () => number | null | undefined;
   private readonly root: HTMLElement;
   private readonly marker: HTMLElement;
-  private readonly popover: HTMLDivElement;
-  private readonly toolbar: HTMLDivElement;
-  private readonly editorHost: HTMLDivElement;
-  private innerEditor: Editor | null = null;
-  private isOpen = false;
-  private syncingFromNode = false;
-  private lastInnerContent = "";
-  private readonly documentClickHandler: (event: MouseEvent) => void;
 
   constructor({ node, view, getPos }: FootnoteNodeViewProps) {
     this.node = node;
     this.view = view;
     this.getPos = getPos;
-    this.footnoteId = String(node.attrs?.footnoteId ?? `footnote-${Math.random().toString(36).slice(2)}`);
+    const rawKind = typeof node.attrs?.kind === "string" ? String(node.attrs.kind) : "footnote";
+    const kind: FootnoteKind = rawKind === "endnote" ? "endnote" : "footnote";
+    let footnoteId = typeof node.attrs?.footnoteId === "string" ? String(node.attrs.footnoteId).trim() : "";
+    if (!footnoteId) {
+      // Deterministically allocate an ID and patch the document so the ID is stable across reloads.
+      footnoteId = getNextFootnoteId(kind);
+      const pos = this.getPos();
+      if (typeof pos === "number") {
+        const attrs = { ...(node.attrs as any), footnoteId, kind };
+        window.requestAnimationFrame(() => {
+          try {
+            // Only patch if the node is still at this position and still missing an id.
+            const live = this.view.state.doc.nodeAt(pos);
+            const liveId = typeof live?.attrs?.footnoteId === "string" ? String(live?.attrs?.footnoteId).trim() : "";
+            if (live && live.type === node.type && !liveId) {
+              this.view.dispatch(this.view.state.tr.setNodeMarkup(pos, live.type, attrs, live.marks));
+            }
+          } catch {
+            // ignore
+          }
+        });
+      }
+    } else {
+      registerFootnoteId(footnoteId, kind);
+    }
+    this.footnoteId = footnoteId;
     this.id = this.footnoteId;
 
     this.root = document.createElement("span");
     this.root.className = "leditor-footnote";
     this.root.dataset.footnoteId = this.footnoteId;
-    this.root.dataset.footnoteKind = String(node.attrs.kind ?? "footnote");
+    this.root.dataset.footnoteKind = kind;
     const citationId = typeof node.attrs?.citationId === "string" ? node.attrs.citationId.trim() : "";
     if (citationId) {
       this.root.dataset.citationId = citationId;
@@ -67,184 +86,17 @@ class FootnoteNodeView implements FootnoteNodeViewAPI {
     this.marker.setAttribute("aria-label", "Footnote");
     this.marker.addEventListener("click", (event) => {
       event.preventDefault();
-      this.toggle();
+      // A4 layout owns the footnote UI. Trigger a focus request instead of opening a legacy popover.
+      try {
+        window.dispatchEvent(new CustomEvent("leditor:footnote-focus", { detail: { footnoteId: this.footnoteId } }));
+      } catch {
+        // ignore
+      }
     });
     this.root.appendChild(this.marker);
 
-    this.popover = document.createElement("div");
-    this.popover.className = "leditor-footnote-popover";
-    this.popover.style.display = "none";
-    this.popover.setAttribute("aria-hidden", "true");
-    this.root.appendChild(this.popover);
-
-    this.toolbar = document.createElement("div");
-    this.toolbar.className = "leditor-footnote-toolbar";
-    this.toolbar.setAttribute("role", "toolbar");
-    this.toolbar.setAttribute("aria-label", "Footnote toolbar");
-    const actions: Array<{ label: string; ariaLabel: string; tooltip: string; action: () => void }> = [
-      { label: "B", ariaLabel: "Bold", tooltip: "Bold (Ctrl+B)", action: () => this.toggleMark("bold") },
-      { label: "I", ariaLabel: "Italic", tooltip: "Italic (Ctrl+I)", action: () => this.toggleMark("italic") },
-      {
-        label: "Link",
-        ariaLabel: "Link",
-        tooltip: "Link (Ctrl+K)",
-        action: () => {
-          const currentHref = this.innerEditor?.getAttributes("link").href ?? "";
-          const raw = window.prompt("Enter footnote link URL", currentHref);
-          if (raw === null) return;
-          const href = raw.trim();
-          this.innerEditor?.commands.focus();
-          if (href.length === 0) {
-            this.innerEditor?.commands.unsetLink();
-            return;
-          }
-          this.innerEditor?.commands.setLink({ href });
-        }
-      }
-    ];
-    for (const action of actions) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.textContent = action.label;
-      button.className = "tb-btn tb-btn--quiet";
-      button.setAttribute("aria-label", action.ariaLabel);
-      button.setAttribute("data-tooltip", action.tooltip);
-      button.addEventListener("click", (event) => {
-        event.stopPropagation();
-        action.action();
-      });
-      this.toolbar.appendChild(button);
-    }
-    this.popover.appendChild(this.toolbar);
-
-    this.editorHost = document.createElement("div");
-    this.editorHost.className = "leditor-footnote-editor";
-    this.popover.appendChild(this.editorHost);
-
-    this.setupInnerEditor();
-
-    this.documentClickHandler = (event: MouseEvent) => {
-      if (!this.root.contains(event.target as globalThis.Node)) {
-        this.close();
-      }
-    };
-    document.addEventListener("click", this.documentClickHandler);
-
     footnoteRegistry.set(this.footnoteId, this);
     this.syncNumberFromDoc();
-  }
-
-  private setupInnerEditor() {
-    this.innerEditor = new Editor({
-      element: this.editorHost,
-      extensions: [StarterKit.configure({ link: false }), Link],
-      content: this.createDocFromNode(this.node),
-      editable: true,
-      editorProps: {
-        attributes: {
-          class: "footnote-inner-editor"
-        }
-      }
-    });
-    this.innerEditor.on("update", () => {
-      if (this.syncingFromNode) {
-        this.syncingFromNode = false;
-        return;
-      }
-      this.syncFromInnerEditor();
-    });
-    this.lastInnerContent = this.serializeInnerContent();
-  }
-
-  private serializeInnerContent(): string {
-    if (!this.innerEditor) return "";
-    return JSON.stringify(this.innerEditor.getJSON().content ?? []);
-  }
-
-  private createDocFromNode(node: ProseMirrorNode) {
-    const content = node.content.toJSON();
-    const normalized = Array.isArray(content) ? content : [];
-    return {
-      type: "doc",
-      content: [
-        {
-          type: "paragraph",
-          content: normalized.length ? normalized : []
-        }
-      ]
-    };
-  }
-
-  private syncFromInnerEditor() {
-    if (!this.innerEditor) return;
-    const content = this.innerEditor.getJSON().content ?? [];
-    const serialized = JSON.stringify(content);
-    if (serialized === this.lastInnerContent) return;
-    this.lastInnerContent = serialized;
-    this.applyInnerContent(content);
-  }
-
-  private applyInnerContent(content: any[]) {
-    const inlineNodes = this.extractInlineNodes(content);
-    const newNode = this.node.type.create(this.node.attrs, inlineNodes, this.node.marks);
-    const pos = this.getPos();
-    if (typeof pos !== "number") return;
-    const tr = this.view.state.tr.replaceWith(pos, pos + this.node.nodeSize, newNode);
-    this.view.dispatch(tr);
-  }
-
-  private extractInlineNodes(content: any[]): ProseMirrorNode[] {
-    const schema = this.view.state.schema;
-    const nodes: ProseMirrorNode[] = [];
-    const hardBreakType = schema.nodes.hardBreak;
-    const paragraphType = schema.nodes.paragraph;
-    const resolveMarks = (marks: any[] | undefined): Mark[] =>
-      (marks ?? [])
-        .map((mark) => {
-          const type = schema.marks[mark.type];
-          return type ? type.create(mark.attrs ?? {}) : null;
-        })
-        .filter((mark): mark is Mark => Boolean(mark));
-    const pushInline = (node: any) => {
-      if (!node || typeof node !== "object") return;
-      if (node.type === "text") {
-        if (typeof node.text !== "string" || node.text.length === 0) return;
-        nodes.push(schema.text(node.text, resolveMarks(node.marks)));
-        return;
-      }
-      if (node.type === "hardBreak" && hardBreakType) {
-        nodes.push(hardBreakType.create());
-        return;
-      }
-      const inlineType = schema.nodes[node.type];
-      if (inlineType && inlineType.isInline) {
-        nodes.push(inlineType.create(node.attrs ?? {}, node.content ?? [], resolveMarks(node.marks)));
-      }
-    };
-    const pushParagraphContent = (block: any) => {
-      const inline = Array.isArray(block?.content) ? block.content : [];
-      inline.forEach(pushInline);
-    };
-    content.forEach((block: any, index: number) => {
-      if (block?.type === "paragraph") {
-        pushParagraphContent(block);
-      } else {
-        const blockType = paragraphType && block?.type && schema.nodes[block.type];
-        if (blockType && blockType.isBlock && Array.isArray(block.content)) {
-          block.content.forEach(pushInline);
-        } else {
-          pushInline(block);
-        }
-      }
-      if (index < content.length - 1 && hardBreakType) {
-        nodes.push(hardBreakType.create());
-      }
-    });
-    return nodes;
-  }
-
-  private toggleMark(mark: string) {
-    this.innerEditor?.chain().focus().toggleMark(mark as any).run();
   }
 
   private syncNumberFromDoc() {
@@ -257,28 +109,17 @@ class FootnoteNodeView implements FootnoteNodeViewAPI {
     }
   }
 
-  private toggle() {
-    if (this.isOpen) {
-      this.close();
-      return;
-    }
-    this.open();
-  }
-
   open() {
-    if (this.isOpen) return;
-    this.isOpen = true;
-    this.popover.style.display = "block";
-    this.popover.setAttribute("aria-hidden", "false");
-    this.innerEditor?.commands.focus();
+    // Legacy popover removed. Use the main (A4) footnote surface.
+    try {
+      window.dispatchEvent(new CustomEvent("leditor:footnote-focus", { detail: { footnoteId: this.footnoteId } }));
+    } catch {
+      // ignore
+    }
   }
 
   close() {
-    if (!this.isOpen) return;
-    this.isOpen = false;
-    this.popover.style.display = "none";
-    this.popover.setAttribute("aria-hidden", "true");
-    this.view.focus();
+    // no-op (no legacy popover)
   }
 
   setPlainText(value: string) {
@@ -290,24 +131,10 @@ class FootnoteNodeView implements FootnoteNodeViewAPI {
       const tr = this.view.state.tr.replaceWith(pos, pos + this.node.nodeSize, newNode);
       this.view.dispatch(tr);
     }
-
-    if (!this.innerEditor) return;
-    const doc = {
-      type: "doc",
-      content: [
-        {
-          type: "paragraph",
-          content: trimmed.length ? [{ type: "text", text: trimmed }] : []
-        }
-      ]
-    };
-    this.syncingFromNode = true;
-    this.innerEditor.commands.setContent(doc);
-    this.lastInnerContent = JSON.stringify(doc.content);
   }
 
   getPlainText(): string {
-    return this.innerEditor?.state.doc.textContent ?? "";
+    return this.node.textContent ?? "";
   }
 
   getNumber(): string {
@@ -328,12 +155,20 @@ class FootnoteNodeView implements FootnoteNodeViewAPI {
   update(node: ProseMirrorNode) {
     if (node.type !== this.node.type) return false;
     this.node = node;
-    const target = this.createDocFromNode(node);
-    const serialized = JSON.stringify(target.content);
-    if (serialized === this.lastInnerContent) return true;
-    this.syncingFromNode = true;
-    this.lastInnerContent = serialized;
-    this.innerEditor?.commands.setContent(target);
+    // Keep dataset flags in sync (citation/manual).
+    const citationId = typeof node.attrs?.citationId === "string" ? node.attrs.citationId.trim() : "";
+    if (citationId) {
+      this.root.dataset.citationId = citationId;
+      this.root.dataset.footnoteSource = "citation";
+    } else {
+      delete this.root.dataset.citationId;
+      this.root.dataset.footnoteSource = "manual";
+    }
+    // Track newly seen ids so deterministic insertion never collides.
+    const rawKind = typeof node.attrs?.kind === "string" ? String(node.attrs.kind) : "footnote";
+    const kind: FootnoteKind = rawKind === "endnote" ? "endnote" : "footnote";
+    const id = typeof node.attrs?.footnoteId === "string" ? String(node.attrs.footnoteId).trim() : "";
+    if (id) registerFootnoteId(id, kind);
     this.syncNumberFromDoc();
     return true;
   }
@@ -356,8 +191,6 @@ class FootnoteNodeView implements FootnoteNodeViewAPI {
 
   destroy() {
     footnoteRegistry.delete(this.footnoteId);
-    document.removeEventListener("click", this.documentClickHandler);
-    this.innerEditor?.destroy();
   }
 
   get dom() {
@@ -385,6 +218,35 @@ const FootnoteExtension = TiptapNode.create({
   atom: true,
   selectable: true,
   content: "inline*",
+  addKeyboardShortcuts() {
+    // Word-like deletion: pressing Backspace/Delete adjacent to a footnote marker removes the
+    // marker in a single keystroke (instead of selecting it first and requiring a second press).
+    const deleteNeighbor = (dir: "back" | "forward") => () => {
+      const editor: any = (this as any).editor;
+      const state = editor?.state;
+      const view = editor?.view;
+      if (!state || !view) return false;
+      const { selection } = state;
+      if (!(selection instanceof TextSelection) || !selection.empty) return false;
+      const footnoteType = state.schema.nodes.footnote;
+      if (!footnoteType) return false;
+      const $from = selection.$from;
+      const node = dir === "back" ? $from.nodeBefore : $from.nodeAfter;
+      if (!node || node.type !== footnoteType) return false;
+      const from = dir === "back" ? selection.from - node.nodeSize : selection.from;
+      const to = from + node.nodeSize;
+      try {
+        view.dispatch(state.tr.delete(from, to).scrollIntoView());
+        return true;
+      } catch {
+        return false;
+      }
+    };
+    return {
+      Backspace: deleteNeighbor("back"),
+      Delete: deleteNeighbor("forward")
+    };
+  },
   addAttributes() {
     return {
       footnoteId: {
@@ -427,6 +289,64 @@ const FootnoteExtension = TiptapNode.create({
       attrs["data-footnote-id"] = HTMLAttributes.footnoteId;
     }
     return ["span", attrs, 0];
+  },
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        view: (view) => {
+          let lastDoc = view.state.doc;
+          // Ensure any imported/legacy footnote nodes missing ids get a deterministic id.
+          const ensureIds = () => {
+            const footnoteType = view.state.schema.nodes.footnote;
+            if (!footnoteType) return;
+            const missing: Array<{ pos: number; kind: FootnoteKind }> = [];
+            view.state.doc.descendants((node, pos) => {
+              if (node.type !== footnoteType) return true;
+              const id = typeof node.attrs?.footnoteId === "string" ? String(node.attrs.footnoteId).trim() : "";
+              const rawKind = typeof node.attrs?.kind === "string" ? String(node.attrs.kind) : "footnote";
+              const kind: FootnoteKind = rawKind === "endnote" ? "endnote" : "footnote";
+              if (!id) missing.push({ pos, kind });
+              else registerFootnoteId(id, kind);
+              return true;
+            });
+            if (missing.length === 0) return;
+            let tr = view.state.tr;
+            missing.forEach((entry) => {
+              const node = tr.doc.nodeAt(entry.pos);
+              if (!node || node.type !== footnoteType) return;
+              const nextId = getNextFootnoteId(entry.kind);
+              tr = tr.setNodeMarkup(entry.pos, node.type, { ...(node.attrs as any), footnoteId: nextId, kind: entry.kind }, node.marks);
+            });
+            if (tr.docChanged) {
+              try {
+                view.dispatch(tr);
+              } catch {
+                // ignore
+              }
+            }
+          };
+          const sync = () => {
+            const numbering = reconcileFootnotes(view.state.doc).numbering;
+            for (const [id, api] of footnoteRegistry.entries()) {
+              api.setNumber(numbering.get(id) ?? Number.NaN);
+            }
+          };
+          // Run once after mount.
+          window.requestAnimationFrame(() => {
+            ensureIds();
+            sync();
+          });
+          return {
+            update: (_view, prevState) => {
+              if (prevState.doc === _view.state.doc || _view.state.doc === lastDoc) return;
+              lastDoc = _view.state.doc;
+              ensureIds();
+              sync();
+            }
+          };
+        }
+      })
+    ];
   },
   addNodeView() {
     return footnoteNodeView;
