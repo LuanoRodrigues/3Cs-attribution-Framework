@@ -5,7 +5,6 @@ from typing import Generator, Callable, Tuple
 from html import escape as _escape
 
 
-from src.core.utils.calling_models import _process_batch_for, _get_prompt_details
 
 
 def _get_en_english():
@@ -14,11 +13,8 @@ def _get_en_english():
     return spacy.blank("en")
 
 
-from bibliometric_analysis_tool.utils.footnotes_parser import link_citations_to_footnotes
-# from bibliometric_analysis_tool.utils.zotero_class import Zotero
 
 
-from src.core.utils.calling_models import *
 
 # library_id = os.environ.get("LIBRARY_ID")
 # api_key = os.environ.get("API_KEY")
@@ -43,7 +39,7 @@ import traceback
 
 
 # Import constants from within the same 'utils' package
-from bibliometric_analysis_tool.core.app_constants import ZOTERO_CACHE_DIR_NAME, MISTRAL_API_KEY_ENV_VAR, \
+from general.app_constants import ZOTERO_CACHE_DIR_NAME, MISTRAL_API_KEY_ENV_VAR, \
     COUNTRY_SYNONYM_MAP, INSTITUTION_SYNONYM_MAP, PUBLISHER_SYNONYM_MAP, FUNDER_SYNONYM_MAP, ITEMTYPE_SYNONYM_MAP, \
     COUNTRY_TO_CONTINENT, ZOTKW_CACHE_DIR, TOP_N_DEFAULT, PDF_MARKDOWN_CACHE_DIR, CORE_COLUMNS
 
@@ -85,7 +81,7 @@ from datetime import datetime
 import datetime
 from dateutil import parser as dateutil_parser
 
-from src.core.pdf_processor import  referenced_paragraph, _exponential_backoff, _cache_path
+from python_backend.core.pdf_processor import referenced_paragraph, _exponential_backoff, _cache_path
 import nltk
 
 

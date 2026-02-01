@@ -85,6 +85,67 @@ const injectBridgeScript = (html: string): string => {
         };
       }
     }
+
+    var THEME_CHANGE_EVENT = "leditor:theme-change";
+    var applyParentTheme = function(){
+      try {
+        var parentWindow = window.parent;
+        var parentDoc = parentWindow && parentWindow.document;
+        if (!parentDoc) return;
+        var parentRoot = parentDoc.documentElement;
+
+        var mode = "";
+        try {
+          mode = String(parentWindow.localStorage.getItem("leditor:theme") || "").trim().toLowerCase();
+        } catch (e) {}
+        if (mode !== "dark" && mode !== "light") {
+          if (parentRoot.classList.contains("theme-dark")) mode = "dark";
+          else if (parentRoot.classList.contains("theme-light")) mode = "light";
+        }
+        if (mode === "dark" || mode === "light") {
+          document.documentElement.dataset.theme = mode;
+        }
+
+        var computed = parentWindow.getComputedStyle(parentRoot);
+        var pick = function(name){
+          var v = computed.getPropertyValue(name);
+          return v && String(v).trim() ? String(v).trim() : "";
+        };
+
+        var rootStyle = document.documentElement.style;
+        var uiBg = pick("--ui-bg");
+        var uiSurface = pick("--ui-surface");
+        var uiSurface2 = pick("--ui-surface-2");
+        var uiText = pick("--ui-text");
+        var uiMuted = pick("--ui-muted");
+        var uiAccent = pick("--ui-accent");
+        var uiBorderColor = pick("--ui-border-color");
+        var uiShadow2 = pick("--ui-shadow-2");
+        var uiShadow1 = pick("--ui-shadow-1");
+
+        if (uiBg) rootStyle.setProperty("--ui-bg", uiBg);
+        if (uiSurface) rootStyle.setProperty("--ui-surface", uiSurface);
+        if (uiSurface2) rootStyle.setProperty("--ui-surface-2", uiSurface2);
+        if (uiText) rootStyle.setProperty("--ui-text", uiText);
+        if (uiMuted) rootStyle.setProperty("--ui-muted", uiMuted);
+        if (uiAccent) rootStyle.setProperty("--ui-accent", uiAccent);
+        if (uiBorderColor) {
+          rootStyle.setProperty("--ui-border", uiBorderColor);
+          rootStyle.setProperty("--ui-border-2", uiBorderColor);
+        }
+        if (uiShadow2) rootStyle.setProperty("--ui-shadow-lg", uiShadow2);
+        if (uiShadow1) rootStyle.setProperty("--ui-shadow-md", uiShadow1);
+      } catch (e) {
+        // ignore (best-effort for embedded iframe)
+      }
+    };
+
+    applyParentTheme();
+    try {
+      if (window.parent && window.parent.document) {
+        window.parent.document.addEventListener(THEME_CHANGE_EVENT, applyParentTheme, true);
+      }
+    } catch (e) {}
   })();
 </script>
 `;

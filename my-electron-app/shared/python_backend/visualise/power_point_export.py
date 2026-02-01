@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import base64
 import hashlib
 import html
@@ -5,6 +7,7 @@ import importlib.util
 import json
 import os
 import re
+import sys
 from urllib.parse import quote
 from pathlib import Path
 from typing import Any, Dict
@@ -13,12 +16,29 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.io as pio
 
-from PyQt6.QtCore import QObject, QUrl, Qt, pyqtSignal, pyqtSlot
-from PyQt6.QtWebChannel import QWebChannel
-from PyQt6.QtWebEngineWidgets import QWebEngineView
-from PyQt6.QtWidgets import QWidget, QVBoxLayout
 
-from bibliometric_analysis_tool.core.app_constants import MAIN_APP_CACHE_DIR, _path_to_file_url, PPT_HTML
+BASE_DIR = Path(__file__).resolve().parent
+REPO_ROOT = next((parent for parent in BASE_DIR.parents if (parent / "package.json").is_file()), BASE_DIR.parents[-1])
+for entry in (BASE_DIR, REPO_ROOT):
+    entry_str = str(entry)
+    if entry_str not in sys.path:
+        sys.path.insert(0, entry_str)
+
+try:
+    from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot  # type: ignore
+    from PyQt6.QtWidgets import QWidget  # type: ignore
+except Exception:  # pragma: no cover
+    QObject = object  # type: ignore
+    QWidget = object  # type: ignore
+
+    def pyqtSignal(*_args, **_kwargs):  # type: ignore
+        return object()
+
+    def pyqtSlot(*_args, **_kwargs):  # type: ignore
+        def _decorator(fn):
+            return fn
+
+        return _decorator
 
 
 def _ppt_dbg_on() -> bool:
@@ -2136,7 +2156,6 @@ class PptxExportWidget(QWidget):
         import pandas as pd
         from pptx import Presentation
 
-        from .power_point_export import ppt_ui_warmup, _normalize_slide_for_ui
 
         VERBOSE_PPT_PRELOAD = True
         sections_called = 0

@@ -12,65 +12,12 @@ type SearchPanelController = {
   isOpen: () => boolean;
 };
 
-const ensureSearchStyles = () => {
-  if (document.getElementById("leditor-search-styles")) return;
-  const style = document.createElement("style");
-  style.id = "leditor-search-styles";
-  style.textContent = `
-.leditor-search-panel {
-  position: fixed;
-  top: 12px;
-  right: 12px;
-  z-index: 1000;
-  background: #f7f3e8;
-  border: 1px solid #cbbf9a;
-  padding: 8px;
-  display: none;
-  font-family: "Georgia", "Times New Roman", serif;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
-}
-.leditor-search-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 6px;
-}
-.leditor-search-row:last-child {
-  margin-bottom: 0;
-}
-.leditor-search-input {
-  width: 180px;
-  padding: 4px 6px;
-  border: 1px solid #a89a74;
-  background: #fffaf0;
-  font-size: 13px;
-}
-.leditor-search-btn {
-  padding: 4px 8px;
-  border: 1px solid #8c7a53;
-  background: #eadbb8;
-  font-size: 12px;
-  cursor: pointer;
-}
-.leditor-search-btn:hover {
-  background: #dfcfac;
-}
-.leditor-search-match {
-  background: #ffe9a8;
-}
-.leditor-search-match-active {
-  background: #ffd46a;
-  outline: 1px solid #b38b2a;
-}
-`;
-  document.head.appendChild(style);
-};
-
 export const createSearchPanel = (editorHandle: EditorHandle): SearchPanelController => {
-  ensureSearchStyles();
-
   const panel = document.createElement("div");
   panel.className = "leditor-search-panel";
+  panel.classList.add("leditor-ui-panel");
+  panel.setAttribute("role", "dialog");
+  panel.setAttribute("aria-label", "Search and replace");
 
   const searchRow = document.createElement("div");
   searchRow.className = "leditor-search-row";
@@ -158,24 +105,24 @@ export const createSearchPanel = (editorHandle: EditorHandle): SearchPanelContro
 
   controller = {
     open() {
-      panel.style.display = "block";
+      panel.classList.add("is-open");
       markSearchPanelOpened();
       applyQuery();
       searchInput.focus();
     },
     close() {
-      panel.style.display = "none";
+      panel.classList.remove("is-open");
       clearSearch();
     },
     toggle() {
-      if (panel.style.display === "none" || panel.style.display === "") {
+      if (!panel.classList.contains("is-open")) {
         controller.open();
         return;
       }
       controller.close();
     },
     isOpen() {
-      return panel.style.display !== "none" && panel.style.display !== "";
+      return panel.classList.contains("is-open");
     }
   };
 

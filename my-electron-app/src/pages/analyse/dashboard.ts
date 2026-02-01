@@ -11,17 +11,12 @@ export function renderDashboardPage(container: HTMLElement, state: AnalyseState,
   };
 
   const header = document.createElement("div");
-  header.style.display = "flex";
-  header.style.alignItems = "center";
-  header.style.gap = "12px";
+  header.className = "analyse-dashboard-header";
   const title = document.createElement("h2");
   title.textContent = "Dashboard";
   header.appendChild(title);
   const baseBadge = document.createElement("span");
-  baseBadge.className = "status-bar";
-  baseBadge.style.fontSize = "12px";
-  baseBadge.style.padding = "4px 8px";
-  baseBadge.style.borderRadius = "8px";
+  baseBadge.className = "status-bar analyse-badge";
   baseBadge.textContent = viewState.baseDir ? `Base: ${viewState.baseDir}` : "Base not set";
   header.appendChild(baseBadge);
   container.appendChild(header);
@@ -33,7 +28,7 @@ export function renderDashboardPage(container: HTMLElement, state: AnalyseState,
   const actions = document.createElement("div");
   actions.className = "control-row";
   const runSelect = document.createElement("select");
-  runSelect.style.minWidth = "280px";
+  runSelect.className = "analyse-select analyse-select--wide";
   const rescanBtn = document.createElement("button");
   rescanBtn.className = "ribbon-button";
   rescanBtn.textContent = "Rescan runs";
@@ -43,9 +38,7 @@ export function renderDashboardPage(container: HTMLElement, state: AnalyseState,
   container.appendChild(actions);
 
   const grid = document.createElement("div");
-  grid.style.display = "grid";
-  grid.style.gridTemplateColumns = "repeat(auto-fit, minmax(200px, 1fr))";
-  grid.style.gap = "12px";
+  grid.className = "analyse-dashboard-grid";
   container.appendChild(grid);
 
   const status = document.createElement("div");
@@ -74,8 +67,7 @@ export function renderDashboardPage(container: HTMLElement, state: AnalyseState,
       t.textContent = label;
       const v = document.createElement("div");
       v.textContent = value;
-      v.style.fontSize = "20px";
-      v.style.fontWeight = "600";
+      v.className = "analyse-metric-value";
       card.appendChild(t);
       card.appendChild(v);
       grid.appendChild(card);

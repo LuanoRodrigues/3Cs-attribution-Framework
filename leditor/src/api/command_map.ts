@@ -184,7 +184,7 @@ const tryFocusFootnoteUi = (footnoteId: string, attempt: number): boolean => {
   const entry = document.querySelector<HTMLElement>(`.leditor-footnote-entry[data-footnote-id="${footnoteId}"]`);
   if (entry) {
     const container = entry.closest<HTMLElement>(".leditor-page-footnotes");
-    container?.scrollIntoView({ block: "center", behavior: "smooth" });
+    container?.scrollIntoView({ block: "center", behavior: "auto" });
     entry.classList.add("leditor-footnote-entry--active");
     window.setTimeout(() => entry.classList.remove("leditor-footnote-entry--active"), 900);
     const text = entry.querySelector<HTMLElement>(".leditor-footnote-entry-text");
@@ -201,7 +201,7 @@ const tryFocusFootnoteUi = (footnoteId: string, attempt: number): boolean => {
   );
   if (endnoteText) {
     const panel = endnoteText.closest<HTMLElement>(".leditor-endnotes-panel");
-    panel?.scrollIntoView({ block: "center", behavior: "smooth" });
+    panel?.scrollIntoView({ block: "center", behavior: "auto" });
     endnoteText.focus();
     placeCaretAtEnd(endnoteText);
     if ((window as any).__leditorFootnoteDebug) {
@@ -215,11 +215,11 @@ const tryFocusFootnoteUi = (footnoteId: string, attempt: number): boolean => {
     const kind = (marker.dataset.footnoteKind ?? "footnote").toLowerCase();
     if (kind === "endnote") {
       const panel = document.querySelector<HTMLElement>(".leditor-endnotes-panel");
-      panel?.scrollIntoView({ block: "center", behavior: "smooth" });
+      panel?.scrollIntoView({ block: "center", behavior: "auto" });
       return false;
     }
     const container = marker.closest<HTMLElement>(".leditor-page")?.querySelector<HTMLElement>(".leditor-page-footnotes");
-    container?.scrollIntoView({ block: "center", behavior: "smooth" });
+    container?.scrollIntoView({ block: "center", behavior: "auto" });
   }
 
   return false;
@@ -234,9 +234,18 @@ const focusFootnoteById = (id: string, selectionSnapshot?: StoredSelection | nul
       console.info("[Footnote][focus] delegated to A4 layout", { id });
     }
     try {
-      window.dispatchEvent(
-        new CustomEvent("leditor:footnote-focus", { detail: { footnoteId: id, selectionSnapshot: selectionSnapshot ?? null } })
-      );
+      // Defer until after the ribbon click completes (focus can otherwise be restored to the button).
+      window.requestAnimationFrame(() => {
+        try {
+          window.dispatchEvent(
+            new CustomEvent("leditor:footnote-focus", {
+              detail: { footnoteId: id, selectionSnapshot: selectionSnapshot ?? null }
+            })
+          );
+        } catch {
+          // ignore
+        }
+      });
     } catch {
       // ignore
     }
@@ -661,8 +670,8 @@ const runCslUpdate = (editor: Editor): void => {
           }
           const footnoteId = `fn-${citationId}`;
           const footnote = footnoteNode.create(
-            { footnoteId, kind: noteKind, citationId },
-            editor.schema.text("Citation")
+            { footnoteId, kind: noteKind, citationId, text: "Citation" },
+            []
           );
           const mappedInsertPos = trPrelude.mapping.map(pos + node.nodeSize);
           trPrelude.insert(mappedInsertPos, footnote);
@@ -721,8 +730,7 @@ const runCslUpdate = (editor: Editor): void => {
       footnoteNodes.forEach((entry) => {
         const text = stripHtml(rendered.get(entry.citationId) ?? "");
         const contentText = text.length > 0 ? text : "Citation";
-        const content = editor.schema.text(contentText);
-        const newNode = entry.node.type.create(entry.node.attrs, content);
+        const newNode = entry.node.type.create({ ...(entry.node.attrs as any), text: contentText }, []);
         trNotes.replaceWith(entry.pos, entry.pos + entry.node.nodeSize, newNode);
       });
       if (trNotes.docChanged) {
@@ -1617,6 +1625,78 @@ const setZoomFitWholePage = () => {
 
 
 export const commandMap: Record<string, CommandHandler> = {
+  NewDocument() {
+    const editorHandle = (window as typeof window & { leditor?: EditorHandle }).leditor;
+    if (!editorHandle) {
+      showPlaceholderDialog("New document", "Editor handle not available.");
+      return;
+    }
+
+    const shouldDiscard =
+      typeof window.confirm === "function"
+        ? window.confirm("Create a new document? Unsaved changes will be lost.")
+        : true;
+    if (!shouldDiscard) return;
+
+    // Ensure we are not stuck in overlay edit modes (which disable ProseMirror editing).
+    try {
+      const layout = getLayoutController();
+      layout?.exitFootnoteMode?.();
+      layout?.exitHeaderFooterMode?.();
+    } catch {
+      // ignore
+    }
+
+    // Prevent coder_state autosave from overwriting the previously loaded document.
+    try {
+      (globalThis as typeof globalThis & { __leditorAllowCoderAutosave?: boolean }).__leditorAllowCoderAutosave = false;
+    } catch {
+      // ignore
+    }
+
+    // Minimal valid PageDocument: doc -> page -> paragraph
+    const blankDoc = {
+      type: "doc",
+      content: [
+        {
+          type: "page",
+          content: [{ type: "paragraph" }]
+        }
+      ]
+    };
+
+    try {
+      editorHandle.setContent(blankDoc, { format: "json" });
+      editorHandle.focus();
+    } catch (error) {
+      console.warn("[NewDocument] failed to reset content", error);
+      showPlaceholderDialog("New document", "Failed to create a new document.");
+      return;
+    }
+
+    // Create a new on-disk file immediately (so File > New actually creates a file).
+    const exporter = (window as any).__leditorAutoExportLEDOC as undefined | ((opts?: any) => Promise<any>);
+    if (typeof exporter === "function") {
+      void exporter({
+        prompt: true,
+        suggestedPath: `Untitled-${Date.now()}.ledoc`
+      }).catch(() => {
+        // ignore (user may cancel save dialog)
+      });
+    }
+  },
+
+  OpenDocument() {
+    const importer = (window as any).__leditorAutoImportLEDOC as undefined | ((opts?: any) => Promise<any>);
+    if (typeof importer !== "function") {
+      showPlaceholderDialog("Open document", "ImportLEDOC handler is unavailable.");
+      return;
+    }
+    void importer({ prompt: true }).catch(() => {
+      // ignore (user may cancel open dialog)
+    });
+  },
+
   Bold(editor) {
     editor.chain().focus().toggleBold().run();
   },

@@ -684,12 +684,8 @@ export function renderSectionsPage(
   options?: { source?: "corpus" }
 ): void {
   container.innerHTML = "";
-  container.style.display = "flex";
-  container.style.flexDirection = "column";
-  container.style.gap = "12px";
-  container.style.height = "100%";
-  container.style.minHeight = "0";
-  container.style.overflow = "hidden";
+  container.removeAttribute("style");
+  container.classList.add("analyse-sections-page");
   const isCorpus = options?.source === "corpus";
   const isBatchMode = isCorpus || round === "r1";
 
@@ -774,15 +770,7 @@ export function renderSectionsPage(
   }
 
   const filtersPanel = document.createElement("div");
-  filtersPanel.className = "panel";
-  filtersPanel.style.padding = "10px";
-  filtersPanel.style.border = "1px solid var(--border)";
-  filtersPanel.style.borderRadius = "12px";
-  filtersPanel.style.overflow = "hidden";
-  filtersPanel.style.display = "flex";
-  filtersPanel.style.flexDirection = "column";
-  filtersPanel.style.height = "100%";
-  filtersPanel.style.maxHeight = "100%";
+  filtersPanel.className = "panel analyse-panel analyse-filters-panel";
 
   if (panel1Host) {
     panel1Host.innerHTML = "";
@@ -792,29 +780,15 @@ export function renderSectionsPage(
   }
 
   const list = document.createElement("div");
-  list.style.display = isBatchMode ? "flex" : "grid";
-  list.style.flexDirection = isBatchMode ? "column" : "";
-  list.style.gridTemplateColumns = isBatchMode ? "" : "repeat(auto-fit, minmax(320px, 1fr))";
-  list.style.gap = "12px";
-  list.style.flex = "1";
-  list.style.minHeight = "0";
-  list.style.overflow = "auto";
-  list.style.contain = "strict";
+  list.className = isBatchMode
+    ? "analyse-sections-list analyse-sections-list--batch"
+    : "analyse-sections-list analyse-sections-list--grid";
   container.appendChild(list);
 
   if (!isBatchMode && panel3Host) {
     panel3Host.innerHTML = "";
     previewPanel = document.createElement("div");
-    previewPanel.style.display = "flex";
-    previewPanel.style.flexDirection = "column";
-    previewPanel.style.gap = "10px";
-    previewPanel.style.padding = "10px";
-    previewPanel.className = "panel";
-    previewPanel.style.border = "1px solid var(--border)";
-    previewPanel.style.borderRadius = "12px";
-    previewPanel.style.flex = "1";
-    previewPanel.style.minHeight = "0";
-    previewPanel.style.overflow = "auto";
+    previewPanel.className = "panel analyse-panel analyse-preview-panel";
     panel3Host.appendChild(previewPanel);
   }
 

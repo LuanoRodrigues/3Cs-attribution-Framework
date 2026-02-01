@@ -13,7 +13,7 @@ const STORAGE_KEY = "retrieve.queryDefaults";
 const DEFAULTS: RetrieveQueryDefaults = {
   provider: "semantic_scholar",
   sort: "relevance",
-  limit: 25
+  limit: 50
 };
 
 export function readRetrieveQueryDefaults(): RetrieveQueryDefaults {
@@ -48,4 +48,3 @@ export function writeRetrieveQueryDefaults(next: Partial<RetrieveQueryDefaults>)
   document.dispatchEvent(new CustomEvent("retrieve:query-defaults-updated", { detail: { defaults: merged } }));
   return merged;
 }
-

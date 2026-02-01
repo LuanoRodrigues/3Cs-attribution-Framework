@@ -2,7 +2,7 @@ import { contextBridge, ipcRenderer } from "electron";
 import type { IpcRendererEvent } from "electron";
 import type { SectionLevel } from "./analyse/types";
 import type { SessionData, SessionMenuAction } from "./session/sessionTypes";
-import type { RetrievePaperSnapshot } from "./shared/types/retrieve";
+import type { RetrieveCitationNetwork, RetrieveCitationNetworkRequest, RetrievePaperSnapshot } from "./shared/types/retrieve";
 import type { CoderState } from "./panels/coder/coderTypes";
 
 const LEDITOR_HOST_FLAG = "--leditor-host=";
@@ -38,6 +38,10 @@ contextBridge.exposeInMainWorld("retrieveBridge", {
       ipcRenderer.invoke("retrieve:tags:add", payload),
     remove: (payload: { paperId: string; tag: string }) =>
       ipcRenderer.invoke("retrieve:tags:remove", payload)
+  },
+  citationNetwork: {
+    fetch: (payload: RetrieveCitationNetworkRequest): Promise<RetrieveCitationNetwork> =>
+      ipcRenderer.invoke("retrieve:citation-network", payload)
   }
 });
 

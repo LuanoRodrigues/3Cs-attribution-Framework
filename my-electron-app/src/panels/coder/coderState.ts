@@ -339,6 +339,42 @@ export class CoderStore {
     this.commit(next);
   }
 
+  moveMany(spec: { nodeIds: string[]; targetParentId: string | null; targetIndex: number }): void {
+    const uniqueIds = Array.from(new Set((spec.nodeIds || []).map(String))).filter(Boolean);
+    if (uniqueIds.length === 0) return;
+
+    const next = cloneState(this.state);
+    const targetParentId = spec.targetParentId ?? null;
+    const targetIndexRaw = typeof spec.targetIndex === "number" ? spec.targetIndex : 0;
+
+    const originalPaths = new Map<string, NodePath | null>();
+    uniqueIds.forEach((id) => originalPaths.set(id, findPath(next.nodes, id)));
+
+    let removedBefore = 0;
+    uniqueIds.forEach((id) => {
+      const path = originalPaths.get(id);
+      if (!path) return;
+      const parentId = path.parent ? path.parent.id : null;
+      if (parentId === targetParentId && path.index < targetIndexRaw) {
+        removedBefore += 1;
+      }
+    });
+
+    const targetIndex = Math.max(0, targetIndexRaw - removedBefore);
+
+    const removedNodes: CoderNode[] = [];
+    uniqueIds.forEach((id) => {
+      const { removed } = removeNode(next.nodes, id);
+      if (removed) removedNodes.push(removed);
+    });
+    if (removedNodes.length === 0) return;
+
+    removedNodes.forEach((node, offset) => {
+      insertNode(next.nodes, node, targetParentId, targetIndex + offset);
+    });
+    this.commit(next);
+  }
+
   restoreNode(node: CoderNode, parentId: string | null, index: number): void {
     const next = cloneState(this.state);
     insertNode(next.nodes, node, parentId ?? null, index);
@@ -761,6 +797,27 @@ function collapseWhitespace(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
 
+function snippet80(value: string): string {
+  const trimmed = collapseWhitespace(String(value || ""));
+  if (!trimmed) return "";
+  return trimmed.length > 80 ? `${trimmed.slice(0, 80).trimEnd()}…` : trimmed;
+}
+
+function firstParagraphFromText(text: string): string {
+  const normalized = String(text || "").replace(/\r\n?/g, "\n");
+  const chunks = normalized.split(/\n\s*\n/);
+  for (const chunk of chunks) {
+    if (chunk.trim()) return chunk;
+  }
+  return normalized;
+}
+
+function deriveDropTitleFromText(text: string): string {
+  const firstPara = firstParagraphFromText(text);
+  const snip = snippet80(firstPara);
+  return snip || "Selection";
+}
+
 export function getFirstParagraphSnippet(state: CoderState): string | null {
   const item = findFirstItem(state.nodes);
   if (!item) return null;
@@ -843,7 +900,7 @@ export function parseDropPayload(dataTransfer: DataTransfer): { payload?: CoderP
     const text = dataTransfer.getData("text/plain") || extractText(htmlSrc) || "";
     return {
       payload: {
-        title: text ? text.slice(0, 80) : extractText(htmlSrc).slice(0, 80) || "Selection",
+        title: deriveDropTitleFromText(text || extractText(htmlSrc) || ""),
         text,
         html: htmlSrc,
         source: { scope: "dragdrop" }
@@ -854,7 +911,7 @@ export function parseDropPayload(dataTransfer: DataTransfer): { payload?: CoderP
     const text = dataTransfer.getData("text/plain");
     return {
       payload: {
-        title: text ? text.slice(0, 80) : "Selection",
+        title: deriveDropTitleFromText(text || ""),
         text,
         html: `<p>${escapeHtml(text).replace(/\n/g, "<br/>")}</p>`,
         source: { scope: "dragdrop" }

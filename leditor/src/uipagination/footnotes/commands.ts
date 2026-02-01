@@ -22,8 +22,9 @@ export const insertFootnoteAtSelection = (
   }
   const footnoteId = getNextFootnoteId(kind);
   const contentText = typeof text === "string" ? text.trim() : "";
-  const content = contentText.length > 0 ? editor.schema.text(contentText) : null;
-  const node = footnoteNode.create({ footnoteId, kind }, content ? [content] : []);
+  // Persist footnote text in attrs to keep the marker's nodeSize stable (prevents selection drift).
+  // Do not create empty text nodes (ProseMirror disallows them).
+  const node = footnoteNode.create({ footnoteId, kind, text: contentText }, []);
   let tr = editor.state.tr;
   if (storedSelection) {
     // Restoring selection can fail if the stored pos no longer points into inline content.

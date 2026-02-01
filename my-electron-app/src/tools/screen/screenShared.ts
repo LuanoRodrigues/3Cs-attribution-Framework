@@ -37,11 +37,23 @@ export type PdfViewerPayload = {
 export function normalizePdfPath(input: string): string {
   const trimmed = String(input ?? "").trim();
   if (!trimmed) return "";
+  if (trimmed.startsWith("file://")) return trimmed;
   const win = trimmed.match(/^([A-Za-z]):[\\/](.*)$/);
   if (win) {
-    const drive = win[1].toLowerCase();
+    const drive = win[1];
     const rest = win[2].replace(/\\/g, "/");
-    return `file:///mnt/${drive}/${rest}`;
+    const isWindowsAgent =
+      typeof navigator !== "undefined" && /Windows/i.test(navigator.userAgent || "");
+    if (isWindowsAgent) {
+      const path = rest.startsWith("/") ? rest : `/${rest}`;
+      return `file:///${drive}:${path}`;
+    }
+    // WSL/Linux fallback: map Windows-style paths onto /mnt/<drive>/...
+    return `file:///mnt/${drive.toLowerCase()}/${rest}`;
+  }
+  if (trimmed.startsWith("\\\\")) {
+    // UNC paths (\\server\share) → file://server/share
+    return `file://${trimmed.replace(/\\/g, "/")}`;
   }
   if (trimmed.startsWith("/")) {
     return trimmed.startsWith("file://") ? trimmed : `file://${trimmed}`;

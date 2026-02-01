@@ -10,6 +10,7 @@ export interface VisualisePreviewRequest {
   include?: string[];
   params?: Record<string, unknown>;
   collectionName?: string;
+  mode?: string;
 }
 
 const resolvePythonBinary = (): string => {
@@ -22,7 +23,11 @@ const resolvePythonBinary = (): string => {
 
 const resolveHostScript = (): string => {
   const appPath = app.getAppPath();
+  const pythonBackendPath = path.join(appPath, "shared", "python_backend", "visualise", "visualise_host.py");
   const candidates = [
+    pythonBackendPath,
+    path.join(appPath, "..", "shared", "python_backend", "visualise", "visualise_host.py"),
+    path.join(appPath, "..", "..", "shared", "python_backend", "visualise", "visualise_host.py"),
     path.join(appPath, "backend", "visualise_host.py"),
     path.join(appPath, "src", "pages", "visualise", "visualise_host.py"),
     path.join(appPath, "..", "src", "pages", "visualise", "visualise_host.py"),
@@ -34,6 +39,40 @@ const resolveHostScript = (): string => {
     }
   }
   return candidates[0];
+};
+
+const splitLines = (text: string): string[] => {
+  return String(text || "")
+    .split(/\r?\n/g)
+    .map((line) => line.trimEnd())
+    .filter((line) => line.trim().length > 0);
+};
+
+const parsePythonJson = (stdout: string): { parsed?: Record<string, unknown>; extraLogs: string[] } => {
+  const raw = (stdout || "").trim();
+  if (!raw) {
+    return { parsed: {}, extraLogs: [] };
+  }
+  try {
+    return { parsed: JSON.parse(raw), extraLogs: [] };
+  } catch {
+    // If python printed debug lines, try parsing the last JSON-looking line and treat the rest as logs.
+    const lines = raw.split(/\r?\n/g).filter((l) => l.trim().length > 0);
+    for (let i = lines.length - 1; i >= 0; i -= 1) {
+      const candidate = lines[i].trim();
+      if (!(candidate.startsWith("{") && candidate.endsWith("}"))) {
+        continue;
+      }
+      try {
+        const parsed = JSON.parse(candidate);
+        const extraLogs = lines.slice(0, i);
+        return { parsed, extraLogs };
+      } catch {
+        // continue
+      }
+    }
+  }
+  return { extraLogs: splitLines(raw) };
 };
 
 const runPythonTask = async (payload: Record<string, unknown>): Promise<Record<string, unknown>> => {
@@ -59,21 +98,25 @@ const runPythonTask = async (payload: Record<string, unknown>): Promise<Record<s
       if (code !== 0 && !stdout.trim()) {
         resolve({
           status: "error",
-          message: stderr.trim() || `python exited with ${code}`
+          message: stderr.trim() || `python exited with ${code}`,
+          pythonLogs: splitLines(stderr)
         });
         return;
       }
-      try {
-        const parsed = JSON.parse(stdout.trim() || "{}");
-        resolve(parsed);
-      } catch (error) {
-        resolve({
-          status: "error",
-          message: `Invalid response from python (${error instanceof Error ? error.message : "parse error"})`,
-          raw: stdout.trim(),
-          stderr: stderr.trim()
-        });
+      const { parsed, extraLogs } = parsePythonJson(stdout);
+      const stderrLogs = splitLines(stderr);
+      const pythonLogs = [...extraLogs, ...stderrLogs];
+      if (parsed) {
+        resolve({ ...(parsed as any), pythonLogs });
+        return;
       }
+      resolve({
+        status: "error",
+        message: "Invalid response from python (parse error)",
+        raw: stdout.trim(),
+        stderr: stderr.trim(),
+        pythonLogs
+      });
     });
     child.stdin.write(JSON.stringify(payload));
     child.stdin.end();
@@ -90,6 +133,7 @@ export const invokeVisualisePreview = async (request: VisualisePreviewRequest): 
     table: request.table,
     include: request.include ?? [],
     params: request.params ?? {},
-    collectionName: request.collectionName
+    collectionName: request.collectionName,
+    mode: request.mode
   });
 };

@@ -70,6 +70,9 @@ declare global {
         add: (payload: { paper: RetrievePaperSnapshot; tag: string }) => Promise<string[]>;
         remove: (payload: { paperId: string; tag: string }) => Promise<string[]>;
       };
+      citationNetwork: {
+        fetch: (payload: { record: RetrieveRecord }) => Promise<import("../shared/types/retrieve").RetrieveCitationNetwork>;
+      };
     };
     settingsBridge?: {
       getAll: () => Promise<Record<string, unknown>>;

@@ -15,6 +15,24 @@ const summarizeInvokeRequest = (channel: string, request: unknown): Record<strin
   switch (channel) {
     case "leditor:ai-status":
       return { channel };
+    case "leditor:check-sources": {
+      const payload = obj?.payload as any;
+      return {
+        channel,
+        requestIdLen: typeof obj?.requestId === "string" ? obj.requestId.length : 0,
+        contextTextLen: typeof payload?.contextText === "string" ? payload.contextText.length : 0,
+        anchorsLen: Array.isArray(payload?.anchors) ? payload.anchors.length : 0
+      };
+    }
+    case "leditor:lexicon": {
+      const payload = obj?.payload as any;
+      return {
+        channel,
+        requestIdLen: typeof obj?.requestId === "string" ? obj.requestId.length : 0,
+        mode: typeof payload?.mode === "string" ? payload.mode : "unknown",
+        textLen: typeof payload?.text === "string" ? payload.text.length : 0
+      };
+    }
     case "leditor:read-file":
     case "leditor:file-exists":
       return { channel, sourcePathLen: typeof obj?.sourcePath === "string" ? obj.sourcePath.length : 0 };
@@ -23,6 +41,20 @@ const summarizeInvokeRequest = (channel: string, request: unknown): Record<strin
         channel,
         targetPathLen: typeof obj?.targetPath === "string" ? obj.targetPath.length : 0,
         dataLen: typeof obj?.data === "string" ? obj.data.length : 0
+      };
+    case "leditor:export-ledoc":
+      return {
+        channel,
+        hasPayload: Boolean(obj?.payload && typeof obj.payload === "object"),
+        targetPathLen: typeof obj?.options?.targetPath === "string" ? obj.options.targetPath.length : 0,
+        suggestedPathLen: typeof obj?.options?.suggestedPath === "string" ? obj.options.suggestedPath.length : 0,
+        prompt: Boolean(obj?.options?.prompt)
+      };
+    case "leditor:import-ledoc":
+      return {
+        channel,
+        sourcePathLen: typeof obj?.options?.sourcePath === "string" ? obj.options.sourcePath.length : 0,
+        prompt: Boolean(obj?.options?.prompt)
       };
 	    case "leditor:agent-request": {
 	      const payload = obj?.payload as any;
@@ -147,6 +179,14 @@ const writeFile = async (request: { targetPath: string; data: string }) => {
   return invoke<typeof request, any>("leditor:write-file", request);
 };
 
+const exportLEDOC = async (request: Record<string, unknown>) => {
+  return invoke<typeof request, any>("leditor:export-ledoc", request as any);
+};
+
+const importLEDOC = async (request: Record<string, unknown>) => {
+  return invoke<typeof request, any>("leditor:import-ledoc", request as any);
+};
+
 const getAiStatus = async () => {
   return invoke<void, any>("leditor:ai-status", undefined as any);
 };
@@ -157,6 +197,14 @@ const agentRequest = async (request: { requestId?: string; payload: Record<strin
 
 const agentCancel = async (request: { requestId: string }) => {
   return invoke<typeof request, any>("leditor:agent-cancel", request);
+};
+
+const checkSources = async (request: { requestId?: string; payload: Record<string, unknown> }) => {
+  return invoke<typeof request, any>("leditor:check-sources", request);
+};
+
+const lexicon = async (request: { requestId?: string; payload: Record<string, unknown> }) => {
+  return invoke<typeof request, any>("leditor:lexicon", request);
 };
 
 const openPdfViewer = async (request: { payload: Record<string, unknown> }) => {
@@ -194,8 +242,12 @@ contextBridge.exposeInMainWorld("leditorHost", {
   readFile,
   fileExists,
   writeFile,
+  exportLEDOC,
+  importLEDOC,
   agentRequest,
   agentCancel,
+  checkSources,
+  lexicon,
   openPdfViewer,
   resolvePdfPathForItemKey,
   getDirectQuoteEntry,

@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Citations Graph</title>
+
+  <link rel="stylesheet" href="citations.css" />
+</head>
+
+<body>
+  <div id="app" class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand__title">Citations</div>
+        <div class="brand__subtitle" id="subtitle">0 references</div>
+      </div>
+
+      <div class="controls">
+        <div class="control">
+          <label class="label" for="q">Search</label>
+          <input id="q" class="input" type="text" placeholder="Filter by anchor, footnote, or text…" autocomplete="off" />
+        </div>
+
+        <div class="control">
+          <label class="label" for="typeFilter">Type</label>
+          <select id="typeFilter" class="select">
+            <option value="all">All</option>
+            <option value="in_text">In-text</option>
+            <option value="footnote">Footnote</option>
+          </select>
+        </div>
+
+        <div class="control">
+          <label class="label" for="groupBy">Group</label>
+          <select id="groupBy" class="select">
+            <option value="none">None</option>
+            <option value="citation_anchor">Anchor</option>
+            <option value="footnote_number">Footnote #</option>
+            <option value="mention_id">Mention ID</option>
+          </select>
+        </div>
+
+        <div class="control">
+          <label class="label" for="sortBy">Sort</label>
+          <select id="sortBy" class="select">
+            <option value="citation_anchor_asc">Anchor ↑</option>
+            <option value="citation_anchor_desc">Anchor ↓</option>
+            <option value="footnote_asc">Footnote ↑</option>
+            <option value="footnote_desc">Footnote ↓</option>
+            <option value="type_asc">Type ↑</option>
+            <option value="type_desc">Type ↓</option>
+          </select>
+        </div>
+
+        <button id="btnReset" class="btn btn--ghost" type="button">Reset</button>
+      </div>
+    </header>
+
+    <main class="main">
+      <aside class="panel">
+        <div class="panel__header">
+          <div class="panel__title">References</div>
+          <div class="panel__meta">
+            <span class="pill" id="pillVisible">0 visible</span>
+            <span class="pill pill--muted" id="pillTotal">0 total</span>
+          </div>
+        </div>
+
+        <div class="list" id="list"></div>
+
+        <div class="panel__footer">
+          <div class="hint">
+            Click a card to inspect. Double-click to pin selection.
+          </div>
+        </div>
+      </aside>
+
+      <section class="stage">
+        <div class="stage__header">
+          <div class="stage__title">Detail</div>
+
+          <div class="stage__actions">
+            <button id="btnCopyJson" class="btn btn--ghost" type="button" disabled>Copy JSON</button>
+            <button id="btnCopyText" class="btn btn--ghost" type="button" disabled>Copy Text</button>
+          </div>
+        </div>
+
+        <div class="detail" id="detail">
+          <div class="empty">
+            <div class="empty__title">No selection</div>
+            <div class="empty__text">Select a reference on the left.</div>
+          </div>
+        </div>
+
+        <div class="graphWrap">
+          <div class="graphHeader">
+            <div class="graphHeader__title">Relationships</div>
+            <div class="graphHeader__meta" id="graphMeta">—</div>
+          </div>
+
+          <div class="graph">
+            <svg id="svg" class="svg" viewBox="0 0 1000 520" preserveAspectRatio="xMidYMid meet" aria-label="Citations graph"></svg>
+            <div class="graphLegend">
+              <div class="legendItem"><span class="dot dot--intext"></span>In-text</div>
+              <div class="legendItem"><span class="dot dot--footnote"></span>Footnote</div>
+              <div class="legendItem"><span class="dot dot--group"></span>Group</div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+    </main>
+
+    <footer class="bottombar">
+      <div class="status">
+        <span class="status__dot" id="statusDot"></span>
+        <span class="status__text" id="statusText">Ready</span>
+      </div>
+
+      <div class="statusRight">
+        <span class="mono" id="selectedKey">—</span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Embedded fallback data for standalone testing; PyQt can overwrite via window.setReferences(...) -->
+  <script id="embeddedData" type="application/json">
+  {
+    "structured_references": {
+      "references": []
+    }
+  }
+  </script>
+
+  <script src="citations.js"></script>
+</body>
+</html>

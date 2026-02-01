@@ -3,6 +3,8 @@ import type { AiSettings } from "../types/ai.ts";
 import type { ExportPdfOptions, ExportPdfRequest, ExportPdfResult } from "../api/export_pdf.ts";
 import type { ExportDocxOptions, ExportDocxRequest, ExportDocxResult } from "../api/export_docx.ts";
 import type { ImportDocxOptions, ImportDocxRequest, ImportDocxResult } from "../api/import_docx.ts";
+import type { ExportLedocOptions, ExportLedocRequest, ExportLedocResult } from "../api/export_ledoc.ts";
+import type { ImportLedocOptions, ImportLedocRequest, ImportLedocResult } from "../api/import_ledoc.ts";
 
 type InsertImageResult = {
   success: boolean;
@@ -107,6 +109,8 @@ declare global {
       exportPDF?: (request: ExportPdfRequest) => Promise<ExportPdfResult>;
       exportDOCX?: (request: ExportDocxRequest) => Promise<ExportDocxResult>;
       importDOCX?: (request: ImportDocxRequest) => Promise<ImportDocxResult>;
+      exportLEDOC?: (request: ExportLedocRequest) => Promise<ExportLedocResult>;
+      importLEDOC?: (request: ImportLedocRequest) => Promise<ImportLedocResult>;
       insertImage?: (request?: { sourcePath?: string }) => Promise<InsertImageResult>;
       readFile?: (request: { sourcePath: string }) => Promise<HostReadFileResult>;
       writeFile?: (request: { targetPath: string; data: string }) => Promise<HostWriteFileResult>;
@@ -122,6 +126,8 @@ declare global {
     __leditorAutoImportDOCX?: (options?: ImportDocxOptions) => Promise<ImportDocxResult>;
     __leditorAutoExportDOCX?: (options?: ExportDocxOptions) => Promise<ExportDocxResult>;
     __leditorAutoExportPDF?: (options?: ExportPdfOptions) => Promise<ExportPdfResult>;
+    __leditorAutoImportLEDOC?: (options?: ImportLedocOptions) => Promise<ImportLedocResult>;
+    __leditorAutoExportLEDOC?: (options?: ExportLedocOptions) => Promise<ExportLedocResult>;
     __leditorAutoPreview?: () => void;
     __leditorAutoSourceView?: () => void;
   }

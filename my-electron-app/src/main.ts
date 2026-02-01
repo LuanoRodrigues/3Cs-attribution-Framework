@@ -18,6 +18,7 @@ import {
   initializeSettingsFacade
 } from "./config/settingsFacade";
 import { getSecretsVault, initializeSecretsVault } from "./config/secretsVaultInstance";
+import { DATABASE_KEYS } from "./config/settingsKeys";
 import { handleRetrieveCommand, registerRetrieveIpcHandlers } from "./main/ipc/retrieve_ipc";
 import { registerProjectIpcHandlers } from "./main/ipc/project_ipc";
 import { ProjectManager } from "./main/services/projectManager";
@@ -62,6 +63,17 @@ type CommandEnvelope = {
 };
 
 const isDevelopment = process.env.NODE_ENV !== "production";
+
+const isWsl =
+  Boolean(process.env.WSL_DISTRO_NAME) ||
+  Boolean(process.env.WSL_INTEROP) ||
+  os.release().toLowerCase().includes("microsoft");
+
+// WSL/DBus/systemd integration can be noisy and is not required for this app.
+// Reduce Chromium-level logging to avoid misleading startup "ERROR:" lines.
+if (isWsl) {
+  app.commandLine.appendSwitch("log-level", "3"); // FATAL only
+}
 
 app.commandLine.appendSwitch("disable-renderer-backgrounding");
 app.commandLine.appendSwitch("disable-background-timer-throttling");
@@ -457,6 +469,63 @@ function loadDotEnvIntoProcessEnv(): void {
   }
 }
 
+function sanitizeEnvValue(value: unknown): string {
+  if (typeof value !== "string") {
+    return "";
+  }
+  return value.replace(/^['"\s]+|['"\s]+$/g, "").trim();
+}
+
+async function syncAcademicApiSecretsFromEnv(): Promise<void> {
+  const vault = getSecretsVault();
+
+  // In dev setups the UI auto-tries "1234"; mirror that so .env keys can be imported automatically.
+  if (!vault.isUnlocked()) {
+    try {
+      await vault.unlockSecrets("1234");
+    } catch {
+      // ignore; user may have a custom passphrase
+    }
+  }
+
+  if (!vault.isUnlocked()) {
+    console.warn(
+      "[main.ts][syncAcademicApiSecretsFromEnv][debug] secrets vault locked; cannot persist .env API keys. Use Settings → Vault to unlock, then Settings → Academic database keys."
+    );
+    return;
+  }
+
+  const envMap: Array<{ envKeys: string[]; secretKey: string }> = [
+    { envKeys: ["SEMANTIC_API", "SEMANTIC_SCHOLAR_API_KEY"], secretKey: DATABASE_KEYS.semanticScholarKey },
+    { envKeys: ["ELSEVIER_KEY", "ELSEVIER_API"], secretKey: DATABASE_KEYS.elsevierKey },
+    { envKeys: ["wos_api_key", "WOS_API_KEY"], secretKey: DATABASE_KEYS.wosKey },
+    { envKeys: ["ser_api_key", "SERPAPI_KEY", "SERP_API_KEY"], secretKey: DATABASE_KEYS.serpApiKey },
+    { envKeys: ["SPRINGER_key", "SPRINGER_KEY"], secretKey: DATABASE_KEYS.springerKey }
+  ];
+
+  for (const entry of envMap) {
+    const envValue = entry.envKeys.map((k) => sanitizeEnvValue(process.env[k])).find(Boolean) ?? "";
+    if (!envValue) {
+      continue;
+    }
+    try {
+      const current = vault.getSecret(entry.secretKey) ?? "";
+      if (String(current).trim()) {
+        continue;
+      }
+      await vault.setSecret(entry.secretKey, envValue);
+      console.info("[main.ts][syncAcademicApiSecretsFromEnv][debug] imported academic API key from .env", {
+        key: entry.secretKey
+      });
+    } catch (error) {
+      console.warn("[main.ts][syncAcademicApiSecretsFromEnv][debug] failed to import academic API key", {
+        key: entry.secretKey,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+}
+
 function normalizeAgentError(error: unknown): string {
   if (!error) return "Unknown error";
   if (error instanceof Error) return error.message || "Error";
@@ -731,18 +800,19 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
         return { status: "error", message: error instanceof Error ? error.message : "pdf command failed" };
       }
     }
-    if (payload?.phase === "visualiser" && payload.action) {
-      try {
-        if (payload.action === "run_inputs" || payload.action === "refresh_preview" || payload.action === "build_deck") {
-          const body = (payload.payload as Record<string, unknown>) || {};
-          const response = await invokeVisualisePreview({
-            table: body.table as any,
-            include: (body.include as string[]) || [],
-            params: (body.params as Record<string, unknown>) || {},
-            collectionName: body.collectionName as string | undefined
-          });
-          return response;
-        }
+        if (payload?.phase === "visualiser" && payload.action) {
+          try {
+            if (payload.action === "run_inputs" || payload.action === "refresh_preview" || payload.action === "build_deck") {
+              const body = (payload.payload as Record<string, unknown>) || {};
+              const response = await invokeVisualisePreview({
+                table: body.table as any,
+                include: (body.include as string[]) || [],
+                params: (body.params as Record<string, unknown>) || {},
+                collectionName: body.collectionName as string | undefined,
+                mode: payload.action
+              });
+              return response;
+            }
         if (payload.action === "get_sections") {
           return await invokeVisualiseSections();
         }
@@ -1491,6 +1561,7 @@ function initializeApp(): void {
       });
       userDataPath = getAppDataPath();
       secretsVault = initializeSecretsVault(userDataPath);
+      void syncAcademicApiSecretsFromEnv();
       projectManagerInstance = new ProjectManager(baseUserData, {
         onRecentChange: refreshApplicationMenu
       });

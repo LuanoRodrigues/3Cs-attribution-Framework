@@ -21,12 +21,11 @@ const sanitizePayload = (payload?: CommandPayload): CommandPayload | undefined =
   return payload;
 };
 
-export async function command(
+export async function commandInternal(
   phase: string,
   action: string,
   payload?: CommandPayload
 ): Promise<RibbonCommandResponse | undefined> {
-  document.dispatchEvent(new CustomEvent("ribbon:action", { detail: { phase } }));
   const envelope: RibbonCommand = {
     phase,
     action,
@@ -50,4 +49,13 @@ export async function command(
   }
   console.warn("commandBridge unavailable, falling back to console only", envelope);
   return { status: "logged-stub" };
+}
+
+export async function command(
+  phase: string,
+  action: string,
+  payload?: CommandPayload
+): Promise<RibbonCommandResponse | undefined> {
+  document.dispatchEvent(new CustomEvent("ribbon:action", { detail: { phase } }));
+  return commandInternal(phase, action, payload);
 }

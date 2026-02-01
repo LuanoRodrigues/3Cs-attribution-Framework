@@ -1,11 +1,22 @@
+from __future__ import annotations
+
 # src/core/utils/data_processing.py
 
 import pathlib
-from typing import Generator, Callable, Tuple
+import sys
 from html import escape as _escape
+from pathlib import Path
+from typing import Generator, Callable, Tuple
+
+BASE_DIR = Path(__file__).resolve().parent
+REPO_ROOT = next((parent for parent in BASE_DIR.parents if (parent / "package.json").is_file()), BASE_DIR.parents[-1])
+for entry in (BASE_DIR, REPO_ROOT):
+    entry_str = str(entry)
+    if entry_str not in sys.path:
+        sys.path.insert(0, entry_str)
 
 
-from src.core.utils.calling_models import _process_batch_for, _get_prompt_details
+from python_backend.core.utils.calling_models import _process_batch_for, _get_prompt_details
 
 
 def _get_en_english():
@@ -14,11 +25,7 @@ def _get_en_english():
     return spacy.blank("en")
 
 
-from bibliometric_analysis_tool.utils.footnotes_parser import link_citations_to_footnotes
-# from bibliometric_analysis_tool.utils.zotero_class import Zotero
-
-
-from src.core.utils.calling_models import *
+from python_backend.core.utils.calling_models import *
 
 # library_id = os.environ.get("LIBRARY_ID")
 # api_key = os.environ.get("API_KEY")
@@ -43,7 +50,7 @@ import traceback
 
 
 # Import constants from within the same 'utils' package
-from bibliometric_analysis_tool.core.app_constants import ZOTERO_CACHE_DIR_NAME, MISTRAL_API_KEY_ENV_VAR, \
+from general.app_constants import ZOTERO_CACHE_DIR_NAME, MISTRAL_API_KEY_ENV_VAR, \
     COUNTRY_SYNONYM_MAP, INSTITUTION_SYNONYM_MAP, PUBLISHER_SYNONYM_MAP, FUNDER_SYNONYM_MAP, ITEMTYPE_SYNONYM_MAP, \
     COUNTRY_TO_CONTINENT, ZOTKW_CACHE_DIR, TOP_N_DEFAULT, PDF_MARKDOWN_CACHE_DIR, CORE_COLUMNS
 
@@ -85,13 +92,9 @@ from datetime import datetime
 import datetime
 from dateutil import parser as dateutil_parser
 
-from src.core.pdf_processor import  referenced_paragraph, _exponential_backoff, _cache_path
+from python_backend.core.pdf_processor import referenced_paragraph, _exponential_backoff, _cache_path
 import nltk
 
-
-nltk.download('averaged_perceptron_tagger', quiet=True) # For POS tagging
-nltk.download('wordnet', quiet=True)                  # For Lemmatization
-nltk.download('omw-1.4', quiet=True)
 
 from nltk.stem import WordNetLemmatizer
 from bs4 import BeautifulSoup  # For robust HTML stripping
@@ -159,6 +162,145 @@ if 'MISTRAL_API_KEY_ENV_VAR' not in globals(): MISTRAL_API_KEY_ENV_VAR = "MISTRA
 if 'STOP_WORDS' not in globals(): STOP_WORDS = set(["the", "a", "is", "of", "and"])  # Minimal
 if 'PUNCTUATION_TABLE' not in globals(): PUNCTUATION_TABLE = str.maketrans('', '', string.punctuation + '“”—‘’')
 
+_FALLBACK_STOP_WORDS = {
+    "a",
+    "about",
+    "above",
+    "after",
+    "again",
+    "against",
+    "all",
+    "am",
+    "an",
+    "and",
+    "any",
+    "are",
+    "as",
+    "at",
+    "be",
+    "because",
+    "been",
+    "before",
+    "being",
+    "below",
+    "between",
+    "both",
+    "but",
+    "by",
+    "can",
+    "could",
+    "did",
+    "do",
+    "does",
+    "doing",
+    "down",
+    "during",
+    "each",
+    "few",
+    "for",
+    "from",
+    "further",
+    "had",
+    "has",
+    "have",
+    "having",
+    "he",
+    "her",
+    "here",
+    "hers",
+    "herself",
+    "him",
+    "himself",
+    "his",
+    "how",
+    "i",
+    "if",
+    "in",
+    "into",
+    "is",
+    "it",
+    "its",
+    "itself",
+    "just",
+    "me",
+    "more",
+    "most",
+    "my",
+    "myself",
+    "no",
+    "nor",
+    "not",
+    "now",
+    "of",
+    "off",
+    "on",
+    "once",
+    "only",
+    "or",
+    "other",
+    "our",
+    "ours",
+    "ourselves",
+    "out",
+    "over",
+    "own",
+    "same",
+    "she",
+    "should",
+    "so",
+    "some",
+    "such",
+    "than",
+    "that",
+    "the",
+    "their",
+    "theirs",
+    "them",
+    "themselves",
+    "then",
+    "there",
+    "these",
+    "they",
+    "this",
+    "those",
+    "through",
+    "to",
+    "too",
+    "under",
+    "until",
+    "up",
+    "very",
+    "was",
+    "we",
+    "were",
+    "what",
+    "when",
+    "where",
+    "which",
+    "while",
+    "who",
+    "whom",
+    "why",
+    "will",
+    "with",
+    "you",
+    "your",
+    "yours",
+    "yourself",
+    "yourselves",
+}
+
+
+def _safe_stopwords_english() -> set[str]:
+    try:
+        return set(stopwords.words("english"))
+    except LookupError as exc:
+        logging.warning("NLTK stopwords not found; using fallback list. %s", exc)
+        return set(_FALLBACK_STOP_WORDS)
+    except Exception as exc:
+        logging.warning("Failed to load NLTK stopwords; using fallback list. %s", exc)
+        return set(_FALLBACK_STOP_WORDS)
+
 
 if 'preprocess_text' not in globals():  # General preprocessor
     def preprocess_text(text, use_stemming=False):  # STUB
@@ -168,7 +310,7 @@ if 'preprocess_text' not in globals():  # General preprocessor
 # --- Global NLP Setup (ensure these are defined robustly) ---
 # (STOP_WORDS, CUSTOM_STOP_WORDS, PUNCTUATION_TABLE as before, but PUNCTUATION_TABLE might be less used with regex tokenizers)
 
-STOP_WORDS = set(stopwords.words('english'))
+STOP_WORDS = _safe_stopwords_english()
 CUSTOM_STOP_WORDS = {  # Add more specific or domain-irrelevant words
     "et", "al", "eg", "ie", "cf", "etc", "ibid", "op", "cit",
     "fig", "figure", "figures", "table", "tables", "appendix", "chapter",
@@ -198,15 +340,15 @@ LEMMATIZER = WordNetLemmatizer()
 try:
     nltk.data.find('taggers/averaged_perceptron_tagger')
 except LookupError:
-    nltk.download('averaged_perceptron_tagger', quiet=True)
+    logging.warning("NLTK resource missing: averaged_perceptron_tagger (POS tagging disabled).")
 try:
     nltk.data.find('corpora/wordnet')
 except LookupError:
-    nltk.download('wordnet', quiet=True)
+    logging.warning("NLTK resource missing: wordnet (lemmatization may be limited).")
 try:
     nltk.data.find('corpora/omw-1.4')
 except LookupError:
-    nltk.download('omw-1.4', quiet=True)
+    logging.warning("NLTK resource missing: omw-1.4 (lemmatization may be limited).")
 
 
 def get_wordnet_pos(treebank_tag):
@@ -2628,8 +2770,11 @@ global count
 mistral_key= os.environ.get("MISTRAL_API_KEY")
 from pathlib import Path
 
-CACHE_DIR = Path.home()/".zotkw_phrase_cache"
-CACHE_DIR.mkdir(exist_ok=True)
+CACHE_DIR = Path(ZOTKW_CACHE_DIR) / "phrase"
+try:
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+except Exception as exc:
+    logging.warning("Failed to create CACHE_DIR=%s: %s", str(CACHE_DIR), exc)
 
 
 import subprocess
@@ -2653,8 +2798,11 @@ load_dotenv()  # loads the variables from .env
 import os
 # count = 0
 # mistral_key= os.environ.get("MISTRAL_API_KEY")
-CACHE_DIR = Path.home()/".zotkw_phrase_cache"
-CACHE_DIR.mkdir(exist_ok=True)
+CACHE_DIR = Path(ZOTKW_CACHE_DIR) / "phrase"
+try:
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+except Exception as exc:
+    logging.warning("Failed to create CACHE_DIR=%s: %s", str(CACHE_DIR), exc)
 
 import re, time, html
 from pathlib import Path
@@ -5661,7 +5809,7 @@ def extract_content_for_keywords(
 # ---------------------------------------------------------------------------
 
 # Initialize NLTK resources (consider doing this once globally if possible)
-STOP_WORDS = set(stopwords.words('english'))
+STOP_WORDS = _safe_stopwords_english()
 # Add custom stop words if needed
 CUSTOM_STOP_WORDS = {"et", "al", "fig", "figure", "table", "data", "study",
                      "research", "paper", "article", "method", "result",

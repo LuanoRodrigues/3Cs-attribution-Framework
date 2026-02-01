@@ -24,77 +24,6 @@ const getZoomRanges = () => {
   };
 }
 
-const ensureStatusBarStyles = () => {
-  if (document.getElementById("leditor-statusbar-styles")) return;
-  const style = document.createElement("style");
-  style.id = "leditor-statusbar-styles";
-  style.textContent = `
-.leditor-status-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 6px 12px;
-  background: #1d232a;
-  color: #f1e7d0;
-  font-family: "Georgia", "Times New Roman", serif;
-  font-size: 12px;
-  letter-spacing: 0.2px;
-  border-top: 1px solid #3b424b;
-  z-index: 900;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  box-sizing: border-box;
-}
-
-.leditor-status-bar--embedded {
-  position: absolute;
-  border-radius: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-}
-
-.leditor-status-group {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.leditor-zoom-controls {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.leditor-zoom-controls button,
-.leditor-zoom-controls input,
-.leditor-zoom-controls select {
-  font-family: "Georgia", "Times New Roman", serif;
-  font-size: 12px;
-  background: #2a3139;
-  color: #f1e7d0;
-  border: 1px solid #3b424b;
-  border-radius: 4px;
-  padding: 2px 6px;
-  height: 24px;
-  box-sizing: border-box;
-}
-
-.leditor-zoom-controls input {
-  width: 64px;
-  text-align: center;
-}
-
-.leditor-status-pages {
-  opacity: 0.9;
-}
-`;
-  document.head.appendChild(style);
-};
-
 export type MountStatusBarOptions = {
   parent?: HTMLElement | null;
 };
@@ -104,7 +33,6 @@ export const mountStatusBar = (
   layout?: A4LayoutController | null,
   options?: MountStatusBarOptions
 ) => {
-  ensureStatusBarStyles();
   const bar = document.createElement("div");
   bar.className = "leditor-status-bar";
 

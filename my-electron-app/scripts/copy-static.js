@@ -21,12 +21,23 @@ function copyDir(src, dest) {
   fs.cpSync(src, dest, { recursive: true, force: true });
 }
 
+function copyDirClean(src, dest) {
+  if (!fs.existsSync(src)) {
+    return;
+  }
+  if (fs.existsSync(dest)) {
+    fs.rmSync(dest, { recursive: true, force: true });
+  }
+  ensureDir(path.dirname(dest));
+  fs.cpSync(src, dest, { recursive: true, force: true });
+}
+
 const projectRoot = path.resolve(__dirname, "..");
 const sharedResourcesDir = path.join(projectRoot, "..", "resources");
 const srcRenderer = path.join(projectRoot, "src", "renderer");
 const distRenderer = path.join(projectRoot, "dist", "renderer");
 
-const files = ["index.html", "styles.css", "ribbon-panels.v2.css"];
+const files = ["index.html", "styles.css", "ui-primitives.css", "ribbon-panels.v2.css"];
 files.forEach((file) => {
   const src = path.join(srcRenderer, file);
   const dest = path.join(distRenderer, file);
@@ -44,6 +55,19 @@ backendFiles.forEach((file) => {
     copyFile(src, path.join(backendDest, file));
   }
 });
+
+const pythonBackendSrc = path.join(projectRoot, "shared", "python_backend");
+const pythonBackendDest = path.join(projectRoot, "dist", "shared", "python_backend");
+copyDirClean(pythonBackendSrc, pythonBackendDest);
+// We no longer ship a `src/` Python package; it used to hold legacy imports and can confuse runtime resolution.
+const legacyPythonSrcDir = path.join(pythonBackendDest, "src");
+if (fs.existsSync(legacyPythonSrcDir)) {
+  fs.rmSync(legacyPythonSrcDir, { recursive: true, force: true });
+}
+
+const generalSharedSrc = path.join(projectRoot, "shared", "general");
+const generalSharedDest = path.join(projectRoot, "dist", "shared", "general");
+copyDirClean(generalSharedSrc, generalSharedDest);
 
 const retrieveBackendSrc = path.join(projectRoot, "src", "pages", "retrieve", "datahub_host.py");
 if (fs.existsSync(retrieveBackendSrc)) {
@@ -84,6 +108,11 @@ retrieveResources.forEach((resource) => {
   const dest = path.join(projectRoot, "dist", resource);
   copyFile(src, dest);
 });
+
+// Copy bundled vendor assets used by the legacy citation graph (Cytoscape, layouts).
+const retrieveVendorSrc = path.join(projectRoot, "resources", "retrieve", "vendor");
+const retrieveVendorDest = path.join(projectRoot, "dist", "resources", "retrieve", "vendor");
+copyDirClean(retrieveVendorSrc, retrieveVendorDest);
 
 const localViewerHtmlSrc = path.join(projectRoot, "resources", "viewer.html");
 const fallbackViewerHtmlSrc = path.join(sharedResourcesDir, "viewer.html");

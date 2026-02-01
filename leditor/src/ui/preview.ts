@@ -38,62 +38,7 @@ const getFocusableElements = (container: HTMLElement): HTMLElement[] =>
       element.tabIndex >= 0
   );
 
-const ensurePreviewStyles = () => {
-  if (document.getElementById("leditor-preview-styles")) return;
-  const style = document.createElement("style");
-  style.id = "leditor-preview-styles";
-  style.textContent = `
-.leditor-preview-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(20, 24, 28, 0.75);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 1100;
-  padding: 24px;
-}
-.leditor-preview-panel {
-  background: #fbf7ee;
-  color: #1b1b1b;
-  border: 1px solid #cbbf9a;
-  max-width: 900px;
-  width: 100%;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-}
-.leditor-preview-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 14px;
-  border-bottom: 1px solid #d8cba8;
-  font-family: "Georgia", "Times New Roman", serif;
-  font-size: 14px;
-  background: #f2e8d3;
-}
-.leditor-preview-close {
-  border: 1px solid #8c7a53;
-  background: #eadbb8;
-  padding: 4px 10px;
-  cursor: pointer;
-  font-size: 12px;
-}
-.leditor-preview-content {
-  padding: 20px 24px;
-  overflow: auto;
-  font-family: "Georgia", "Times New Roman", serif;
-  background: #fffdfa;
-}
-`;
-  document.head.appendChild(style);
-};
-
 export const createPreviewModal = (editorHandle: EditorHandle): PreviewController => {
-  ensurePreviewStyles();
-
   const overlay = document.createElement("div");
   overlay.className = "leditor-preview-overlay";
   overlay.setAttribute("role", "dialog");
@@ -167,7 +112,7 @@ export const createPreviewModal = (editorHandle: EditorHandle): PreviewControlle
       const html = editorHandle.getContent({ format: "html" });
       const htmlString = typeof html === "string" ? html : "";
       content.innerHTML = htmlString;
-      overlay.style.display = "flex";
+      overlay.classList.add("is-open");
       overlay.setAttribute("aria-hidden", "false");
       phaseFlags.opened = true;
       if (htmlString.trim().length > 0) {
@@ -179,7 +124,7 @@ export const createPreviewModal = (editorHandle: EditorHandle): PreviewControlle
       (focusable.length > 0 ? focusable[0] : closeBtn).focus();
     },
     close() {
-      overlay.style.display = "none";
+      overlay.classList.remove("is-open");
       overlay.setAttribute("aria-hidden", "true");
       document.removeEventListener("keydown", handleKeydown);
       panel.removeEventListener("keydown", trapFocus);
@@ -187,14 +132,14 @@ export const createPreviewModal = (editorHandle: EditorHandle): PreviewControlle
       lastActiveElement?.focus();
     },
     toggle() {
-      if (overlay.style.display === "none" || overlay.style.display === "") {
+      if (!overlay.classList.contains("is-open")) {
         controller.open();
       } else {
         controller.close();
       }
     },
     isOpen() {
-      return overlay.style.display !== "none" && overlay.style.display !== "";
+      return overlay.classList.contains("is-open");
     }
   };
 

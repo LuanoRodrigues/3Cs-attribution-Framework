@@ -17,6 +17,15 @@ from typing import Any, Dict, List, Optional, Tuple
 import math
 from datetime import datetime
 
+BASE_DIR = Path(__file__).resolve().parent
+REPO_ROOT = next((parent for parent in BASE_DIR.parents if (parent / "package.json").is_file()), BASE_DIR.parents[-1])
+SHARED_DIR = REPO_ROOT / "shared"
+SHARED_PYTHON_ROOT = SHARED_DIR / "python_backend"
+for entry in (SHARED_DIR, SHARED_PYTHON_ROOT, REPO_ROOT):
+    entry_str = str(entry)
+    if entry_str and entry_str not in sys.path:
+        sys.path.insert(0, entry_str)
+
 
 def _write_json_file(path: Path, payload: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -121,6 +130,21 @@ def _write_references_cache(cache_dir: str, table: Dict[str, Any]) -> None:
     _write_json_file(cache_root / "references.json", payload)
     _write_json_file(cache_root / "references_library.json", payload)
 
+def _write_last_cache_info(cache_dir: str, cache_key: str, source: Dict[str, Any]) -> None:
+    try:
+        cache_root = Path(cache_dir)
+        payload = {
+            "updatedAt": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+            "cacheDir": str(cache_root),
+            "cacheKey": str(cache_key),
+            "cachePath": str(_resolve_cache_path(cache_dir, cache_key)),
+            "source": source,
+        }
+        _write_json_file(cache_root / "last.json", payload)
+    except Exception:
+        # best-effort only
+        return
+
 
 def _safe_json(obj: Any) -> str:
     def _clean(v: Any) -> Any:
@@ -184,19 +208,13 @@ def _repo_root() -> Path:
 
 
 def _load_retrieve_loader():
-    repo_root = _repo_root()
-    candidate = repo_root / "src" / "pages" / "retrieve" / "Zotero_loader_to_df.py"
-    if not candidate.exists():
-        return None
-    spec = importlib.util.spec_from_file_location("zotero_loader_to_df", str(candidate))
-    if spec is None or spec.loader is None:
-        return None
-    module = importlib.util.module_from_spec(spec)
     try:
-        spec.loader.exec_module(module)  # type: ignore[attr-defined]
+        import importlib
+
+        module = importlib.import_module("python_backend.retrieve.Zotero_loader_to_df")
+        return importlib.reload(module)
     except Exception:
         return None
-    return module
 
 
 def _python_value(value: Any) -> Any:
@@ -511,6 +529,7 @@ def main() -> None:
                             _write_references_cache(cache_dir, cached_table)
                     except Exception:
                         pass
+                    _write_last_cache_info(cache_dir, cache_key, {"type": "file", "path": file_path})
                     if max_rows is not None and isinstance(cached_table, dict):
                         cached_table = {
                             "columns": cached_table.get("columns", []),
@@ -541,11 +560,12 @@ def main() -> None:
             }
             if payload.get("cache") and cache_dir:
                 # Cache the full table so subsequent loads can regenerate references even if the UI requests maxRows.
-                _write_cache(cache_dir, cache_key, {"table": table_full})
+                _write_cache(cache_dir, cache_key, {"table": table_full, "source": {"type": "file", "path": file_path}})
                 try:
                     _write_references_cache(cache_dir, table_full)
                 except Exception:
                     pass
+                _write_last_cache_info(cache_dir, cache_key, {"type": "file", "path": file_path})
             sys.stdout.write(_safe_json(response))
             return
 
@@ -561,6 +581,7 @@ def main() -> None:
                             _write_references_cache(cache_dir, cached_table)
                     except Exception:
                         pass
+                    _write_last_cache_info(cache_dir, cache_key, {"type": "zotero", "collectionName": collection_name})
                     if max_rows is not None and isinstance(cached_table, dict):
                         cached_table = {
                             "columns": cached_table.get("columns", []),
@@ -593,11 +614,16 @@ def main() -> None:
                 "source": {"type": "zotero", "collectionName": collection_name}
             }
             if payload.get("cache") and cache_dir:
-                _write_cache(cache_dir, cache_key, {"table": table_full})
+                _write_cache(
+                    cache_dir,
+                    cache_key,
+                    {"table": table_full, "source": {"type": "zotero", "collectionName": collection_name}},
+                )
                 try:
                     _write_references_cache(cache_dir, table_full)
                 except Exception:
                     pass
+                _write_last_cache_info(cache_dir, cache_key, {"type": "zotero", "collectionName": collection_name})
             sys.stdout.write(_safe_json(response))
             return
 

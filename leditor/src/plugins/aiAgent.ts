@@ -8,6 +8,7 @@ import {
   createAgentSidebar,
   type AgentRunRequest,
   type AgentRunResult,
+  type AgentActionId,
   type AgentSidebarController
 } from "../ui/agent_sidebar.ts";
 
@@ -59,10 +60,15 @@ type ParagraphTarget = {
   type: string;
   attrs?: unknown;
   nodeJson?: unknown;
+  headingNumber?: string;
+  headingTitle?: string;
 };
 
-const listParagraphTargets = (editor: Editor): ParagraphTarget[] => {
+const listParagraphTargets = (
+  editor: Editor
+): { paragraphs: ParagraphTarget[]; sectionToIndices: Map<string, number[]> } => {
   const targets: ParagraphTarget[] = [];
+  const sectionToIndices = new Map<string, number[]>();
   let n = 0;
   const excludedParentTypes = new Set([
     "tableCell",
@@ -71,16 +77,40 @@ const listParagraphTargets = (editor: Editor): ParagraphTarget[] => {
     "table_header",
     "footnoteBody"
   ]);
+  const headingCounters: number[] = [];
+  let currentSectionNumber = "";
+  let currentSectionTitle = "";
+
+  const bumpHeading = (levelRaw: unknown): string => {
+    const level = Math.max(1, Math.min(6, Number(levelRaw ?? 1) || 1));
+    while (headingCounters.length < level) headingCounters.push(0);
+    headingCounters[level - 1] += 1;
+    for (let i = level; i < headingCounters.length; i += 1) {
+      headingCounters[i] = 0;
+    }
+    return headingCounters.slice(0, level).join(".");
+  };
+
   editor.state.doc.nodesBetween(0, editor.state.doc.content.size, (node, pos, parent) => {
     if (!node?.isTextblock) return true;
     if (node.type?.name === "doc") return true;
     const parentName = parent?.type?.name;
     if (parentName && excludedParentTypes.has(parentName)) return true;
-    if (node.type?.name === "heading") return true;
+    if (node.type?.name === "heading") {
+      currentSectionNumber = bumpHeading((node.attrs as any)?.level);
+      currentSectionTitle = String(node.textContent || "").trim();
+      if (!sectionToIndices.has(currentSectionNumber)) sectionToIndices.set(currentSectionNumber, []);
+      return true;
+    }
     const from = pos + 1;
     const to = pos + node.nodeSize - 1;
     const text = editor.state.doc.textBetween(from, to, "\n").trim();
     n += 1;
+    if (currentSectionNumber) {
+      const list = sectionToIndices.get(currentSectionNumber) ?? [];
+      list.push(n);
+      sectionToIndices.set(currentSectionNumber, list);
+    }
     targets.push({
       n,
       from,
@@ -88,11 +118,13 @@ const listParagraphTargets = (editor: Editor): ParagraphTarget[] => {
       text,
       type: String(node.type?.name ?? "unknown"),
       attrs: node.attrs ?? undefined,
-      nodeJson: typeof (node as any)?.toJSON === "function" ? (node as any).toJSON() : undefined
+      nodeJson: typeof (node as any)?.toJSON === "function" ? (node as any).toJSON() : undefined,
+      headingNumber: currentSectionNumber || undefined,
+      headingTitle: currentSectionTitle || undefined
     });
     return true;
   });
-  return targets;
+  return { paragraphs: targets, sectionToIndices };
 };
 
 let sidebarController: AgentSidebarController | null = null;
@@ -106,10 +138,10 @@ const parseLeadingParagraphSpec = (
   const trimmedStart = raw.trimStart();
   const match =
     trimmedStart.match(
-      /^(?:p(?:aragraph)?\s*)?(\d{1,5}(?:\s*(?:-|to)\s*\d{1,5})?)(?:\s*,\s*\d{1,5}(?:\s*(?:-|to)\s*\d{1,5})?)*\s*/i
+      /^(?:p(?:aragraph)?s?\s*)?(\d{1,5}(?:\s*(?:-|to)\s*\d{1,5})?)(?:\s*,\s*\d{1,5}(?:\s*(?:-|to)\s*\d{1,5})?)*\s*/i
     ) ??
     trimmedStart.match(
-      /\b(?:p(?:aragraph)?\s*)(\d{1,5}(?:\s*(?:-|to)\s*\d{1,5})?)(?:\s*,\s*\d{1,5}(?:\s*(?:-|to)\s*\d{1,5})?)*\b/i
+      /\b(?:p(?:aragraph)?s?\s*)(\d{1,5}(?:\s*(?:-|to)\s*\d{1,5})?)(?:\s*,\s*\d{1,5}(?:\s*(?:-|to)\s*\d{1,5})?)*\b/i
     );
 
   if (!match) return { indices: [], instruction: raw.trim() };
@@ -144,6 +176,27 @@ const parseLeadingParagraphSpec = (
   return { indices: Array.from(indices).sort((a, b) => a - b), instruction };
 };
 
+const parseTargetSpec = (
+  instructionRaw: string,
+  maxParagraph: number,
+  sectionToIndices: Map<string, number[]>
+): { indices: number[]; instruction: string } => {
+  const raw = instructionRaw || "";
+  const trimmed = raw.trimStart();
+
+  const sectionMatch =
+    trimmed.match(/\b(?:section|sec|§)\s*(\d+(?:\.\d+)*)\b/i) ??
+    trimmed.match(/\b(\d+(?:\.\d+)*)\s*(?:section|sec)\b/i);
+  if (sectionMatch?.[1]) {
+    const sectionNumber = String(sectionMatch[1]).replace(/\.$/, "");
+    const indices = sectionToIndices.get(sectionNumber) ?? [];
+    const rest = trimmed.replace(sectionMatch[0] ?? "", " ").replace(/^[\s:–—-]+/, "").trim();
+    return { indices: indices.slice(), instruction: rest };
+  }
+
+  return parseLeadingParagraphSpec(instructionRaw, maxParagraph);
+};
+
 const runAgent = async (
   request: AgentRunRequest,
   editorHandle: EditorHandle,
@@ -167,16 +220,16 @@ const runAgent = async (
   }
 
   const settings = getAiSettings();
-  const allParagraphs = listParagraphTargets(editor);
+  const { paragraphs: allParagraphs, sectionToIndices } = listParagraphTargets(editor);
   if (allParagraphs.length === 0) {
     return { assistantText: "No paragraphs found." };
   }
-  const parsed = parseLeadingParagraphSpec(instructionRaw, allParagraphs.length);
+  const parsed = parseTargetSpec(instructionRaw, allParagraphs.length, sectionToIndices);
   const indices = parsed.indices;
   if (indices.length === 0) {
     return {
       assistantText:
-        'Start your message with paragraph index(es) (e.g. "35 refine" or "35-38 simplify").'
+        'Reference a target (e.g. "p35 refine", "paragraph 35", "35-38", or "section 3.1").'
     };
   }
   const instruction = parsed.instruction;
@@ -224,7 +277,11 @@ const runAgent = async (
       instruction,
       history: [],
       settings,
-      targets: chunk.map((p) => ({ n: p.n })),
+      targets: chunk.map((p) => ({
+        n: p.n,
+        headingNumber: p.headingNumber,
+        headingTitle: p.headingTitle
+      })),
       blocks: chunk.map((p) => ({
         n: p.n,
         type: p.type,
@@ -292,6 +349,16 @@ registerPlugin({
       const sidebar = ensureSidebar(editorHandle);
       sidebar.toggle();
       log(`sidebar.toggle -> ${sidebar.isOpen() ? "open" : "closed"}`);
+      editorHandle.focus();
+    },
+    "agent.action"(editorHandle: EditorHandle, args?: { id?: unknown }) {
+      const sidebar = ensureSidebar(editorHandle);
+      const id = typeof args?.id === "string" ? (args.id as AgentActionId) : null;
+      if (!id) {
+        throw new Error('agent.action requires args.id (e.g. "refine")');
+      }
+      sidebar.runAction(id);
+      log(`action ${id}`);
       editorHandle.focus();
     }
   }

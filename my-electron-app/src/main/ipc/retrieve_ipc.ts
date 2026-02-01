@@ -5,6 +5,8 @@ import path from "path";
 import type {
   RetrievePaperSnapshot,
   RetrieveProviderId,
+  RetrieveCitationNetwork,
+  RetrieveCitationNetworkRequest,
   RetrieveQuery,
   RetrieveRecord,
   RetrieveSearchResult
@@ -16,6 +18,7 @@ import { getSecretsVault } from "../../config/secretsVaultInstance";
 import { getProviderSpec, mergeCosResults, type ProviderSearchResult } from "../services/retrieve/providers";
 import { getCachedResult, setCachedResult } from "../services/retrieve/cache";
 import { addTagToPaper, listTagsForPaper, removeTagFromPaper } from "../services/retrieve/tags_db";
+import { buildCitationNetwork } from "../services/retrieve/citation_network";
 import { invokeDataHubExportExcel, invokeDataHubListCollections, invokeDataHubLoad } from "../services/dataHubBridge";
 
 const rateTracker = new Map<RetrieveProviderId, number>();
@@ -155,13 +158,31 @@ const normalizeQuery = (payload?: Record<string, unknown>): RetrieveQuery => {
     limit: toNumberOrUndefined(payload?.limit),
     cursor: toStringOrUndefined(payload?.cursor),
     offset: toNumberOrUndefined(payload?.offset),
-    page: toNumberOrUndefined(payload?.page)
+    page: toNumberOrUndefined(payload?.page),
+    author_contains: toStringOrUndefined(payload?.author_contains),
+    venue_contains: toStringOrUndefined(payload?.venue_contains),
+    only_doi: Boolean(payload?.only_doi),
+    only_abstract: Boolean(payload?.only_abstract)
   };
   const providerId = typeof payload?.provider === "string" ? (payload.provider as RetrieveProviderId) : undefined;
   if (providerId) {
     base.provider = providerId;
   }
   return base;
+};
+
+const headerAuthSignature = (headers?: Record<string, unknown>): string => {
+  if (!headers) return "";
+  const authKeys = ["x-api-key", "x-els-apikey", "x-apikey", "authorization", "X-ApiKey", "X-ELS-APIKey"];
+  const pairs: Array<[string, string]> = [];
+  Object.entries(headers).forEach(([k, v]) => {
+    if (v === null || v === undefined) return;
+    const key = String(k).trim();
+    if (!authKeys.includes(key) && !authKeys.includes(key.toLowerCase())) return;
+    pairs.push([key.toLowerCase(), String(v)]);
+  });
+  if (!pairs.length) return "";
+  return JSON.stringify(pairs.sort((a, b) => a[0].localeCompare(b[0])));
 };
 
 const executeProviderSearch = async (
@@ -173,6 +194,7 @@ const executeProviderSearch = async (
     return { records: [], total: 0 };
   }
 
+  let authSig = "";
   const cached = getCachedResult(providerId, query);
   if (cached) {
     return cached;
@@ -181,11 +203,20 @@ const executeProviderSearch = async (
   if (spec.mergeSources?.length) {
     const children: Array<{ providerId: RetrieveProviderId; result: ProviderSearchResult }> = [];
     for (const child of spec.mergeSources) {
-      const result = await executeProviderSearch(child, query);
-      children.push({ providerId: child, result });
+      try {
+        const result = await executeProviderSearch(child, query);
+        children.push({ providerId: child, result });
+      } catch (error) {
+        console.warn("[retrieve_ipc.ts][executeProviderSearch][debug] merge child failed", {
+          providerId,
+          child,
+          error: error instanceof Error ? error.message : String(error)
+        });
+        children.push({ providerId: child, result: { records: [], total: 0 } });
+      }
     }
     const merged = mergeCosResults(children);
-    setCachedResult(providerId, query, merged);
+    setCachedResult(providerId, query, merged, authSig);
     return merged;
   }
 
@@ -198,23 +229,82 @@ const executeProviderSearch = async (
     return { records: [], total: 0 };
   }
 
+  authSig = headerAuthSignature(request.headers as Record<string, unknown> | undefined);
+  const cachedWithAuth = getCachedResult(providerId, query, authSig);
+  if (cachedWithAuth) {
+    return cachedWithAuth;
+  }
+
   await throttle(providerId, spec.rateMs);
 
-  try {
-    const response = await fetch(request.url, {
-      headers: request.headers ?? {}
-    });
-    if (!response.ok) {
-      return { records: [], total: 0 };
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const response = await fetch(request.url, {
+        headers: request.headers ?? {}
+      });
+      if (!response.ok) {
+        const bodyText = await response.text().catch(() => "");
+        const snippet = bodyText ? bodyText.slice(0, 600) : "";
+        console.error("[retrieve_ipc.ts][executeProviderSearch][debug] provider request failed", {
+          providerId,
+          attempt,
+          status: response.status,
+          statusText: response.statusText,
+          url: request.url,
+          hasApiKey: Boolean(
+            (request.headers as Record<string, unknown> | undefined)?.["x-api-key"] ||
+              (request.headers as Record<string, unknown> | undefined)?.["X-ApiKey"] ||
+              (request.headers as Record<string, unknown> | undefined)?.["X-ELS-APIKey"]
+          ),
+          body: snippet
+        });
+
+        if (response.status === 429 && attempt < 2) {
+          const retryHeader = response.headers.get("retry-after");
+          const retrySeconds = retryHeader ? Number(retryHeader) : NaN;
+          const delayMs = Number.isFinite(retrySeconds) ? Math.max(250, retrySeconds * 1000) : 800 * (attempt + 1);
+          console.warn("[retrieve_ipc.ts][executeProviderSearch][debug] rate limited, retrying", {
+            providerId,
+            attempt,
+            delayMs
+          });
+          await sleep(delayMs);
+          continue;
+        }
+
+        if (providerId === "semantic_scholar" && response.status === 403) {
+          throw new Error(
+            "Semantic Scholar request was forbidden (403). Add a Semantic Scholar key in Settings → Academic database keys (or set SEMANTIC_API/SEMANTIC_SCHOLAR_API_KEY)."
+          );
+        }
+        if (providerId === "semantic_scholar" && response.status === 429) {
+          throw new Error(
+            "Semantic Scholar rate-limited this app (429). Add a Semantic Scholar key in Settings → Academic database keys and retry, or wait and try again."
+          );
+        }
+
+        throw new Error(`Retrieve provider ${providerId} failed (${response.status} ${response.statusText}).`);
+      }
+      const payload = await response.json();
+      const parsed = spec.parseResponse(payload);
+      setCachedResult(providerId, query, parsed, authSig);
+      return parsed;
+    } catch (error) {
+      if (attempt < 2) {
+        console.warn("[retrieve_ipc.ts][executeProviderSearch][debug] request attempt failed, retrying", {
+          providerId,
+          attempt,
+          error: error instanceof Error ? error.message : String(error)
+        });
+        await sleep(600 * (attempt + 1));
+        continue;
+      }
+      console.error("Retrieve provider error", providerId, error);
+      throw error instanceof Error ? error : new Error(String(error));
     }
-    const payload = await response.json();
-    const parsed = spec.parseResponse(payload);
-    setCachedResult(providerId, query, parsed);
-    return parsed;
-  } catch (error) {
-    console.error("Retrieve provider error", providerId, error);
-    return { records: [], total: 0 };
   }
+
+  return { records: [], total: 0 };
 };
 
 export const executeRetrieveSearch = async (query: RetrieveQuery): Promise<RetrieveSearchResult> => {
@@ -228,12 +318,39 @@ export const executeRetrieveSearch = async (query: RetrieveQuery): Promise<Retri
     return { provider, items: [], total: 0 };
   }
   const result = await executeProviderSearch(provider, normalized);
+  const filtered = applyRecordFilters(result.records, normalized);
+  const limited =
+    typeof normalized.limit === "number" && normalized.limit > 0
+      ? filtered.slice(0, Math.min(normalized.limit, 1000))
+      : filtered;
   return {
     provider,
-    items: result.records,
+    items: limited,
     total: result.total,
     nextCursor: result.nextCursor
   };
+};
+
+const applyRecordFilters = (records: RetrieveRecord[], query: RetrieveQuery): RetrieveRecord[] => {
+  let next = records ?? [];
+  if (query.only_doi) {
+    next = next.filter((r) => !!r.doi);
+  }
+  if (query.only_abstract) {
+    next = next.filter((r) => !!(r.abstract && r.abstract.trim()));
+  }
+  if (query.author_contains) {
+    const needle = query.author_contains.toLowerCase();
+    next = next.filter((r) => (r.authors || []).some((a) => a.toLowerCase().includes(needle)));
+  }
+  if (query.venue_contains) {
+    const needle = query.venue_contains.toLowerCase();
+    next = next.filter((r) => {
+      const venue = (r as any).venue || (r as any).journal;
+      return typeof venue === "string" && venue.toLowerCase().includes(needle);
+    });
+  }
+  return next;
 };
 
 export const handleRetrieveCommand = async (
@@ -326,6 +443,57 @@ export const handleRetrieveCommand = async (
       return resultLoad as Record<string, unknown>;
     }
     return { status: "ok", ...resultLoad };
+  }
+  if (action === "datahub_load_last") {
+    const cacheDir = path.join(app.getPath("userData"), "data-hub-cache");
+    const lastPath = path.join(cacheDir, "last.json");
+    if (!fs.existsSync(lastPath)) {
+      return { status: "error", message: "No cached data found. Load data in Retrieve first.", cacheDir };
+    }
+    let last: Record<string, unknown> | undefined;
+    try {
+      last = JSON.parse(fs.readFileSync(lastPath, "utf-8")) as Record<string, unknown>;
+    } catch (error) {
+      return {
+        status: "error",
+        message: `Failed to read cache marker: ${error instanceof Error ? error.message : String(error)}`,
+        cacheDir
+      };
+    }
+    const source = (last?.source ?? {}) as Record<string, unknown>;
+    const sourceType = toStringOrUndefined(source.type);
+    if (sourceType === "file") {
+      const filePath = toStringOrUndefined(source.path);
+      if (!filePath) {
+        return { status: "error", message: "Cached source is missing file path.", cacheDir, last };
+      }
+      const result = await invokeDataHubLoad({ sourceType: "file", filePath, cacheDir, cache: true });
+      if ((result as Record<string, unknown>)?.status === "error") {
+        return result as Record<string, unknown>;
+      }
+      return { status: "ok", ...result, last };
+    }
+    if (sourceType === "zotero") {
+      const collectionName = toStringOrUndefined(source.collectionName) ?? "";
+      let credentials: { libraryId: string; libraryType: string; apiKey: string };
+      try {
+        credentials = resolveZoteroCredentials();
+      } catch (error) {
+        return { status: "error", message: error instanceof Error ? error.message : "Zotero credentials unavailable." };
+      }
+      const result = await invokeDataHubLoad({
+        sourceType: "zotero",
+        collectionName,
+        zotero: credentials,
+        cacheDir,
+        cache: true
+      });
+      if ((result as Record<string, unknown>)?.status === "error") {
+        return result as Record<string, unknown>;
+      }
+      return { status: "ok", ...result, last };
+    }
+    return { status: "error", message: `Unknown cached source type '${sourceType ?? ""}'.`, cacheDir, last };
   }
   if (action === "datahub_export_csv") {
     const table = ensureTablePayload(payload);
@@ -425,4 +593,10 @@ export const registerRetrieveIpcHandlers = (options: { search?: (query: Retrieve
   ipcMain.handle("retrieve:tags:remove", (_event, payload: { paperId: string; tag: string }) =>
     removeTagFromPaper(payload.paperId, payload.tag)
   );
+  ipcMain.handle("retrieve:citation-network", (_event, payload: RetrieveCitationNetworkRequest): RetrieveCitationNetwork => {
+    if (!payload?.record?.paperId) {
+      throw new Error("Citation network request missing record.");
+    }
+    return buildCitationNetwork(payload.record);
+  });
 };

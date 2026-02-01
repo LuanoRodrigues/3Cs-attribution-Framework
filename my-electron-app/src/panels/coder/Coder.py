@@ -12,7 +12,7 @@ from pydantic import BaseModel
 
 from Z_Corpus_analysis.Editor import HtmlPreviewDialog
 from Z_Corpus_analysis.help_functions import _sanitize_filename
-from bibliometric_analysis_tool.core.app_constants import MIME_PAYLOAD, ROLE_NODE_ID, ROLE_PAYLOAD, ROLE_IS_FOLDER, \
+from general.app_constants import MIME_PAYLOAD, ROLE_NODE_ID, ROLE_PAYLOAD, ROLE_IS_FOLDER, \
     ROLE_STATUS, STATUS_INCLUDE, STATUS_MAYBE, ROLE_NOTE, collection_cache_dir, STATUS_EXCLUDE, ROLE_EDITED_HTML, \
     APP_SESSION_DIR
 from bibliometric_analysis_tool.core.common_styles import add_soft_shadow

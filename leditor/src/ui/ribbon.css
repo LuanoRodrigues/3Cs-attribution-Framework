@@ -42,6 +42,9 @@
    ========================= */
 .leditor-ribbon-host {
   background: var(--r-bg);
+  position: sticky;
+  top: 0;
+  z-index: 12;
 }
 
 .leditor-ribbon-shell {
@@ -70,6 +73,7 @@
   padding: 6px 12px 0;
   overflow-x: auto;
   overflow-y: hidden;
+  overscroll-behavior: contain;
   border-bottom: 1px solid var(--r-divider-color);
   background:
     linear-gradient(180deg, #fbfbfb 0%, #f1f3f6 100%);

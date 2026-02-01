@@ -707,29 +707,51 @@
 
 .coder-context-menu {
   position: fixed;
-  z-index: 10000;
-  background: var(--panel, #0b1224);
-  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
-  border-radius: 8px;
+  z-index: 9000;
+  background: color-mix(in srgb, var(--panel, #0b1224) 92%, transparent);
+  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
+  border-radius: 12px;
   padding: 6px;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-overlay, 0 30px 80px rgba(0, 0, 0, 0.45));
+  backdrop-filter: blur(var(--blur-soft, 10px));
   display: flex;
   flex-direction: column;
-  min-width: 200px;
+  min-width: 220px;
+  gap: 2px;
+  transform-origin: top left;
+  animation: coderMenuIn var(--motion-fast, 120ms) var(--ui-ease, cubic-bezier(0.2, 0.8, 0.2, 1));
+}
+
+@keyframes coderMenuIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .coder-context-action {
   background: transparent;
   border: none;
   text-align: left;
-  padding: 6px 10px;
+  padding: 9px 10px;
   color: var(--text, #e5e7eb);
   font-size: 13px;
   cursor: pointer;
+  border-radius: 10px;
+  transition: background var(--motion-fast, 120ms) var(--ui-ease, cubic-bezier(0.2, 0.8, 0.2, 1));
 }
 
 .coder-context-action:hover {
-  background: color-mix(in srgb, var(--accent, #93c5fd) 20%, transparent);
+  background: color-mix(in srgb, var(--accent, #93c5fd) 14%, transparent);
+}
+
+.coder-context-action:focus-visible {
+  outline: 2px solid var(--accent, #93c5fd);
+  outline-offset: 2px;
 }
 
 .coder-note-visible {

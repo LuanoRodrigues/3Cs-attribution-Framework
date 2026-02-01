@@ -1,4 +1,6 @@
 import type { RetrieveProviderId, RetrieveQuery, RetrieveRecord } from "../../../shared/types/retrieve";
+import { DATABASE_KEYS } from "../../../config/settingsKeys";
+import { getSecretsVault } from "../../../config/secretsVaultInstance";
 
 const USER_AGENT = "Annotarium/1.0";
 const SEMANTIC_SEARCH_URL = "https://api.semanticscholar.org/graph/v1/paper/search";
@@ -8,10 +10,32 @@ const ELSEVIER_SEARCH_URL = "https://api.elsevier.com/content/search/scopus";
 const WOS_SEARCH_URL = "https://api.clarivate.com/apis/wos-starter/v1/documents";
 const UNPAYWALL_BASE_URL = "https://api.unpaywall.org/v2";
 
-const getSemanticKey = (): string => (process.env.SEMANTIC_API ?? process.env.SEMANTIC_SCHOLAR_API_KEY ?? "").trim();
-const getElsevierKey = (): string => (process.env.ELSEVIER_KEY ?? process.env.ELSEVIER_API ?? "").trim();
-const getWosKey = (): string => (process.env.WOS_API_KEY ?? process.env.wos_api_key ?? "").trim();
-const getUnpaywallEmail = (): string => (process.env.UNPAYWALL_EMAIL ?? process.env.unpaywall_email ?? "").trim();
+const sanitizeSecret = (value: unknown): string => {
+  if (typeof value !== "string") {
+    return "";
+  }
+  return value.replace(/^['"\s]+|['"\s]+$/g, "").trim();
+};
+
+const readVaultSecret = (name: string): string => {
+  try {
+    return sanitizeSecret(getSecretsVault().getSecret(name));
+  } catch {
+    return "";
+  }
+};
+
+const getSemanticKey = (): string =>
+  readVaultSecret(DATABASE_KEYS.semanticScholarKey) ||
+  sanitizeSecret(process.env.SEMANTIC_API) ||
+  sanitizeSecret(process.env.SEMANTIC_SCHOLAR_API_KEY);
+
+const getElsevierKey = (): string =>
+  readVaultSecret(DATABASE_KEYS.elsevierKey) || sanitizeSecret(process.env.ELSEVIER_KEY) || sanitizeSecret(process.env.ELSEVIER_API);
+
+const getWosKey = (): string => readVaultSecret(DATABASE_KEYS.wosKey) || sanitizeSecret(process.env.WOS_API_KEY) || sanitizeSecret(process.env.wos_api_key);
+
+const getUnpaywallEmail = (): string => sanitizeSecret(process.env.UNPAYWALL_EMAIL) || sanitizeSecret(process.env.unpaywall_email);
 const COS_MERGE_ORDER: RetrieveProviderId[] = ["semantic_scholar", "openalex", "crossref"];
 
 export interface ProviderHeaders {
@@ -669,7 +693,7 @@ const buildSemanticRequest = (query: RetrieveQuery): ProviderSearchRequest | und
   }
   const params: Record<string, unknown> = {
     query: text,
-    limit: getLimit(query, 25, 100),
+    limit: getLimit(query, 50, 100),
     offset: getOffset(query),
     fields: SEMANTIC_FIELDS.join(","),
     year: buildYearRange(query.year_from, query.year_to)
@@ -700,7 +724,7 @@ const buildCrossrefRequest = (query: RetrieveQuery): ProviderSearchRequest | und
   }
   const params: Record<string, unknown> = {
     "query.bibliographic": text,
-    rows: getLimit(query, 25, 100),
+    rows: getLimit(query, 50, 100),
     offset: getOffset(query)
   };
   if (query.sort === "year") {
@@ -731,7 +755,7 @@ const buildOpenAlexRequest = (query: RetrieveQuery): ProviderSearchRequest | und
   if (!text) {
     return undefined;
   }
-  const limit = getLimit(query, 25, 200);
+  const limit = getLimit(query, 50, 200);
   const params: Record<string, unknown> = {
     search: text,
     "per-page": Math.min(limit, 200),
@@ -755,7 +779,7 @@ const buildElsevierRequest = (query: RetrieveQuery): ProviderSearchRequest | und
   }
   const params: Record<string, unknown> = {
     query: scopusQueryWithYear(text, query.year_from, query.year_to),
-    count: getLimit(query, 25, 200),
+    count: getLimit(query, 50, 200),
     start: getOffset(query),
     view: "COMPLETE"
   };

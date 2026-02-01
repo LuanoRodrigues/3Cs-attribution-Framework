@@ -80,6 +80,7 @@ export class CoderPanel {
   private nextMatchBtn?: HTMLButtonElement;
   private dragGhost?: HTMLElement;
   private collapseStateTouched = false;
+  private renamingId: string | null = null;
 
   private fallbackTree?: CoderNode[];
 
@@ -504,7 +505,8 @@ export class CoderPanel {
     row.dataset.depth = String(depth);
     row.dataset.path = parentPath.join("/");
     if (depth === 0) row.classList.add("is-root");
-    row.draggable = true;
+    const isRenaming = this.renamingId === node.id;
+    row.draggable = !isRenaming;
 
     const rowInner = document.createElement("div");
     rowInner.className = "coder-row";
@@ -555,10 +557,40 @@ export class CoderPanel {
       label.append(dot);
     }
 
-    const title = document.createElement("span");
-    title.className = "coder-title-text";
-    title.textContent = node.name;
-    label.append(title);
+    if (isRenaming) {
+      const input = document.createElement("input");
+      input.className = "rename-input";
+      input.value = node.name;
+      input.addEventListener("pointerdown", (ev) => ev.stopPropagation());
+      input.addEventListener("mousedown", (ev) => ev.stopPropagation());
+      input.addEventListener("click", (ev) => ev.stopPropagation());
+      input.addEventListener("dragstart", (ev) => ev.preventDefault());
+      const commit = () => {
+        this.renamingId = null;
+        this.setSelectionSingleSilent(node.id);
+        this.store.rename(node.id, input.value.trim());
+      };
+      const cancel = () => {
+        this.renamingId = null;
+        this.render(this.store.snapshot());
+      };
+      input.addEventListener("blur", commit);
+      input.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter") {
+          ev.preventDefault();
+          commit();
+        } else if (ev.key === "Escape") {
+          ev.preventDefault();
+          cancel();
+        }
+      });
+      label.append(input);
+    } else {
+      const title = document.createElement("span");
+      title.className = "coder-title-text";
+      title.textContent = node.name;
+      label.append(title);
+    }
 
     const actions = document.createElement("div");
     actions.style.display = "flex";
@@ -906,31 +938,16 @@ export class CoderPanel {
   private beginRename(row?: HTMLElement, node?: CoderNode): void {
     const targetNode = node ?? this.selectedNode();
     if (!targetNode) return;
-    const host = row ?? this.treeHost.querySelector(`[data-id="${targetNode.id}"]`);
-    if (!host) return;
-    const titleSpan = host.querySelector(".coder-title-text") as HTMLElement | null;
-    if (!titleSpan) return;
-    const input = document.createElement("input");
-    input.className = "rename-input";
-    input.value = targetNode.name;
-    titleSpan.replaceWith(input);
-    input.focus();
-    input.select();
-    const commit = () => {
-      this.store.rename(targetNode.id, input.value.trim());
-      this.setSelectionSingle(targetNode.id);
-      this.render(this.store.snapshot());
-    };
-    input.addEventListener("blur", commit);
-    input.addEventListener("keydown", (ev) => {
-      if (ev.key === "Enter") {
-        ev.preventDefault();
-        commit();
-      }
-      if (ev.key === "Escape") {
-        this.render(this.store.snapshot());
-      }
-    });
+    this.renamingId = targetNode.id;
+    this.render(this.store.snapshot());
+    window.setTimeout(() => {
+      if (this.renamingId !== targetNode.id) return;
+      const host = row ?? (this.treeHost.querySelector(`[data-id="${targetNode.id}"]`) as HTMLElement | null);
+      const input = host?.querySelector("input.rename-input") as HTMLInputElement | null;
+      if (!input) return;
+      input.focus();
+      input.select();
+    }, 0);
   }
 
   private moveSelected(direction: number): void {
@@ -1031,11 +1048,14 @@ export class CoderPanel {
       ev.preventDefault();
       return;
     }
+    const dragIdsRaw = this.selection.has(nodeId) ? Array.from(this.selection) : [nodeId];
+    const dragIds = this.orderIdsByTree(dragIdsRaw);
     const node = this.nodeById(nodeId);
     if (node) {
       const ghost = document.createElement("div");
       ghost.className = "coder-drag-ghost";
-      ghost.textContent = `${node.type === "folder" ? "📁" : "📄"} ${node.name}`;
+      ghost.textContent =
+        dragIds.length > 1 ? `${dragIds.length} items` : `${node.type === "folder" ? "📁" : "📄"} ${node.name}`;
       document.body.append(ghost);
       this.dragGhost = ghost;
       ev.dataTransfer.setDragImage(ghost, 12, 12);
@@ -1044,7 +1064,44 @@ export class CoderPanel {
       }, 0);
     }
     ev.dataTransfer.effectAllowed = "move";
-    ev.dataTransfer.setData(NODE_MIME, nodeId);
+    ev.dataTransfer.setData(NODE_MIME, dragIds.length > 1 ? JSON.stringify(dragIds) : nodeId);
+  }
+
+  private parseDraggedNodeIds(dt: DataTransfer): string[] | null {
+    if (!dt || !dt.types.includes(NODE_MIME)) return null;
+    const raw = dt.getData(NODE_MIME);
+    const trimmed = String(raw || "").trim();
+    if (!trimmed) return null;
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      if (Array.isArray(parsed)) {
+        return parsed.map(String).filter(Boolean);
+      }
+      if (parsed && typeof parsed === "object" && "ids" in (parsed as any) && Array.isArray((parsed as any).ids)) {
+        return (parsed as any).ids.map(String).filter(Boolean);
+      }
+    } catch {
+      // fall back to single-id drag payload
+    }
+    return [trimmed];
+  }
+
+  private orderIdsByTree(ids: string[]): string[] {
+    const wanted = new Set((ids || []).map(String));
+    const ordered: string[] = [];
+    const walk = (nodes: CoderNode[]) => {
+      nodes.forEach((n) => {
+        if (wanted.has(n.id)) ordered.push(n.id);
+        if (n.type === "folder") walk(n.children);
+      });
+    };
+    walk(this.store.snapshot().nodes);
+    // Preserve any ids that weren't found (should be rare) at the end.
+    ids.forEach((id) => {
+      const str = String(id);
+      if (str && !ordered.includes(str)) ordered.push(str);
+    });
+    return ordered;
   }
 
   private handleDragOver(ev: DragEvent, target: CoderNode): void {
@@ -1104,19 +1161,29 @@ export class CoderPanel {
   private handleDrop(ev: DragEvent, target: CoderNode): void {
     ev.preventDefault();
     ev.stopPropagation();
-    this.clearDropTarget();
 
     const dt = ev.dataTransfer;
     if (!dt) return;
     if (dt.types.includes(NODE_MIME)) {
-      const sourceId = dt.getData(NODE_MIME);
-      if (sourceId && sourceId !== target.id && !this.isAncestor(sourceId, target.id)) {
-        const spec = this.buildMoveSpecForDrop(target, sourceId);
-        if (spec) {
-          this.store.move(spec);
-          this.setSelectionSingle(sourceId);
-        }
+      const draggedRaw = this.parseDraggedNodeIds(dt) || [];
+      if (draggedRaw.length === 0) return;
+      if (draggedRaw.includes(target.id)) return;
+
+      const filtered = draggedRaw.filter((id) => id && id !== target.id && !this.isAncestor(id, target.id));
+      const dragged = this.orderIdsByTree(filtered);
+      if (dragged.length === 0) return;
+
+      const spec0 = this.buildMoveSpecForDrop(target, dragged[0]);
+      if (!spec0) return;
+      if (spec0.targetParentId) {
+        this.expandFolderChain(spec0.targetParentId);
       }
+
+      this.selection = new Set(dragged);
+      this.primarySelection = dragged[dragged.length - 1] ?? null;
+      this.anchorSelection = dragged[0] ?? null;
+      this.store.moveMany({ nodeIds: dragged, targetParentId: spec0.targetParentId, targetIndex: spec0.targetIndex });
+      this.clearDropTarget();
       return;
     }
 
@@ -1125,18 +1192,34 @@ export class CoderPanel {
       const parentId = this.buildParentForPayloadDrop(target);
       this.addPayloadNode(payload, parentId);
     }
+    this.clearDropTarget();
   }
 
   private handleRootDrop(ev: DragEvent): void {
     ev.preventDefault();
     ev.stopPropagation();
-    this.clearDropTarget();
     const dt = ev.dataTransfer;
     if (!dt) return;
+    if (dt.types.includes(NODE_MIME)) {
+      const draggedRaw = this.parseDraggedNodeIds(dt) || [];
+      const state = this.store.snapshot();
+      const rootFolderId = state.nodes[0]?.type === "folder" ? state.nodes[0].id : null;
+      const filtered = draggedRaw.filter((id) => id && (!rootFolderId || id !== rootFolderId));
+      const dragged = this.orderIdsByTree(filtered);
+      if (dragged.length === 0) return;
+
+      this.selection = new Set(dragged);
+      this.primarySelection = dragged[dragged.length - 1] ?? null;
+      this.anchorSelection = dragged[0] ?? null;
+      this.store.moveMany({ nodeIds: dragged, targetParentId: null, targetIndex: state.nodes.length });
+      this.clearDropTarget();
+      return;
+    }
     const { payload } = parseDropPayload(dt);
     if (payload) {
       this.addPayloadNode(payload, null);
     }
+    this.clearDropTarget();
   }
 
   private addFolderShortcut(parentId?: string | null): void {

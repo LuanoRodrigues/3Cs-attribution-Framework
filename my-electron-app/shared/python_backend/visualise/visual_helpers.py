@@ -6,6 +6,7 @@ import itertools
 import json
 import logging
 import re
+import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import List, Optional, Tuple
@@ -22,11 +23,18 @@ from pptx.enum.text import PP_ALIGN  # <-- Correct name
 from pptx.util import Emu, Inches, Pt
 from wordcloud import WordCloud
 
-from bibliometric_analysis_tool.utils.data_processing import get_text_corpus_from_df, preprocess_text, _country_counts, \
+BASE_DIR = Path(__file__).resolve().parent
+REPO_ROOT = next((parent for parent in BASE_DIR.parents if (parent / "package.json").is_file()), BASE_DIR.parents[-1])
+for entry in (BASE_DIR, REPO_ROOT):
+    entry_str = str(entry)
+    if entry_str not in sys.path:
+        sys.path.insert(0, entry_str)
+
+from .data_processing import get_text_corpus_from_df, preprocess_text, _country_counts, \
     _make_world_map, _centroid, _split_institutions, _set_notes, _calculate_all_author_stats, get_document_type, \
     _geocode, _get_ngrams_from_text, _choose_corpus_text, _scan_text_for_keywords, _normalise_and_strip_html, \
     tokenize_for_ngram_context_refined, _get_ngram_data_by_year
-from src.core.utils.calling_models import call_models_plots
+from python_backend.core.utils.calling_models import call_models_plots
 
 # Zotero Setup
 load_dotenv()
@@ -3237,33 +3245,39 @@ def add_authorship_and_institution_section(
 
         content_w = SLIDE_W_IN - 2 * OUTER_MARGIN_X
         content_h = SLIDE_H_IN - (TITLE_HEIGHT_IN + 2 * OUTER_MARGIN_Y)
+        if export:
+            try:
+                png = fig.to_image(format="png", width=PLOT_W, height=PLOT_H, scale=2)
+                ar = (PLOT_W / PLOT_H) if PLOT_H else 1.7778
 
-        png = fig.to_image(format="png", width=PLOT_W, height=PLOT_H, scale=2)
-        ar = (PLOT_W / PLOT_H) if PLOT_H else 1.7778
+                target_w = content_w
+                target_h = target_w / ar
+                if target_h > content_h:
+                    target_h = content_h
+                    target_w = target_h * ar
+                target_w *= 0.98
+                target_h *= 0.98
 
-        target_w = content_w
-        target_h = target_w / ar
-        if target_h > content_h:
-            target_h = content_h
-            target_w = target_h * ar
-        target_w *= 0.98
-        target_h *= 0.98
+                left_in = (SLIDE_W_IN - target_w) / 2.0
+                top_in = TITLE_HEIGHT_IN + (SLIDE_H_IN - TITLE_HEIGHT_IN - target_h) / 2.0
 
-        left_in = (SLIDE_W_IN - target_w) / 2.0
-        top_in = TITLE_HEIGHT_IN + (SLIDE_H_IN - TITLE_HEIGHT_IN - target_h) / 2.0
-
-        slide.shapes.add_picture(
-            io.BytesIO(png),
-            Inches(left_in),
-            Inches(top_in),
-            width=Inches(target_w),
-            height=Inches(target_h),
-        )
+                slide.shapes.add_picture(
+                    io.BytesIO(png),
+                    Inches(left_in),
+                    Inches(top_in),
+                    width=Inches(target_w),
+                    height=Inches(target_h),
+                )
+            except Exception as exc:
+                try:
+                    print(f"[visualise][warn] plotly.to_image failed ({title_text}): {exc}")
+                except Exception:
+                    pass
 
         if preview_slides is not None:
             fig_json = json.dumps(fig.to_plotly_json(), cls=PlotlyJSONEncoder)
             preview_figs.append({"title": title_text, "fig_json": fig_json, "notes": notes or ""})
-            preview_slides.append({"title": title_text, "table_html": "", "notes": notes or ""})
+            preview_slides.append({"title": title_text, "fig_json": fig_json, "table_html": "", "notes": notes or ""})
 
         return slide
 
@@ -4430,6 +4444,39 @@ def analyze_temporal_analysis(
         _add_figure_slide(f"{base_title} — Figure", fig, notes=f"Figure: analyze_temporal_analysis(plot_type='{chart_type}').")
 
     if preview_slides is not None:
+        base_title = f"{collection_name} · Temporal Analysis — {chart_type}"
+        try:
+            table_html = (
+                return_df.head(50).to_html(index=False, escape=True)
+                if isinstance(return_df, pd.DataFrame) and not return_df.empty
+                else "<div>No data available.</div>"
+            )
+        except Exception:
+            table_html = "<div>Unable to render table.</div>"
+
+        fig_json = None
+        try:
+            fig_json = fig.to_plotly_json() if fig is not None else None
+        except Exception:
+            fig_json = None
+
+        preview_slides.append(
+            {
+                "title": f"{base_title} — Table",
+                "table_html": table_html,
+                "notes": f"Source: analyze_temporal_analysis(plot_type='{chart_type}').",
+            }
+        )
+        preview_slides.append(
+            {
+                "title": f"{base_title} — Figure",
+                "table_html": "",
+                "fig_json": fig_json,
+                "notes": f"Figure: analyze_temporal_analysis(plot_type='{chart_type}').",
+            }
+        )
+        if preview_figs is not None and fig_json is not None:
+            preview_figs.append(json.dumps(fig_json, cls=PlotlyJSONEncoder))
         return {"slides": preview_slides, "figs": preview_figs or [], "index": 0}
 
     return return_df, fig
@@ -7320,28 +7367,59 @@ def authors_overview(
 
         content_w = SLIDE_W_IN - 2 * OUTER_MARGIN_X
         content_h = SLIDE_H_IN - (TITLE_HEIGHT_IN + 2 * OUTER_MARGIN_Y)
+        if export:
+            try:
+                png = fig.to_image(format="png", width=PLOT_W, height=PLOT_H, scale=2)
+                ar = (PLOT_W / PLOT_H) if PLOT_H else 1.7778
 
-        png = fig.to_image(format="png", width=PLOT_W, height=PLOT_H, scale=2)
-        ar = (PLOT_W / PLOT_H) if PLOT_H else 1.7778
+                target_w = content_w
+                target_h = target_w / ar
+                if target_h > content_h:
+                    target_h = content_h
+                    target_w = target_h * ar
+                target_w *= 0.98
+                target_h *= 0.98
 
-        target_w = content_w
-        target_h = target_w / ar
-        if target_h > content_h:
-            target_h = content_h
-            target_w = target_h * ar
-        target_w *= 0.98
-        target_h *= 0.98
+                left_in = (SLIDE_W_IN - target_w) / 2.0
+                top_in = TITLE_HEIGHT_IN + (SLIDE_H_IN - TITLE_HEIGHT_IN - target_h) / 2.0
 
-        left_in = (SLIDE_W_IN - target_w) / 2.0
-        top_in = TITLE_HEIGHT_IN + (SLIDE_H_IN - TITLE_HEIGHT_IN - target_h) / 2.0
-
-        slide.shapes.add_picture(
-            io.BytesIO(png),
-            Inches(left_in),
-            Inches(top_in),
-            width=Inches(target_w),
-            height=Inches(target_h),
-        )
+                slide.shapes.add_picture(
+                    io.BytesIO(png),
+                    Inches(left_in),
+                    Inches(top_in),
+                    width=Inches(target_w),
+                    height=Inches(target_h),
+                )
+            except Exception as exc:
+                # Kaleido/Chrome is optional for preview, but can block export. Degrade gracefully and log.
+                try:
+                    print(f"[visualise][warn] plotly.to_image failed ({title_text}): {exc}")
+                except Exception:
+                    pass
+                tb = slide.shapes.add_textbox(
+                    Inches(OUTER_MARGIN_X),
+                    Inches(TITLE_HEIGHT_IN + 2.2),
+                    Inches(SLIDE_W_IN - 2 * OUTER_MARGIN_X),
+                    Inches(1.2),
+                )
+                p = tb.text_frame.paragraphs[0]
+                p.text = "Figure export unavailable (Plotly image rendering failed)."
+                p.font.name = FONT_FAMILY
+                p.font.size = Pt(14)
+                p.alignment = PP_ALIGN.CENTER
+        else:
+            # Preview mode: the Electron UI renders Plotly from fig_json; don't require Kaleido/Chrome.
+            tb = slide.shapes.add_textbox(
+                Inches(OUTER_MARGIN_X),
+                Inches(TITLE_HEIGHT_IN + 2.2),
+                Inches(SLIDE_W_IN - 2 * OUTER_MARGIN_X),
+                Inches(1.2),
+            )
+            p = tb.text_frame.paragraphs[0]
+            p.text = "Preview-only slide (figure rendered in the app)."
+            p.font.name = FONT_FAMILY
+            p.font.size = Pt(14)
+            p.alignment = PP_ALIGN.CENTER
 
         if preview_slides is not None:
             fig_json_str = json.dumps(fig.to_plotly_json(), cls=PlotlyJSONEncoder)
@@ -7619,28 +7697,34 @@ def add_institution_section(
 
         content_w = SLIDE_W_IN - 2 * OUTER_MARGIN_X
         content_h = SLIDE_H_IN - (TITLE_HEIGHT_IN + 2 * OUTER_MARGIN_Y)
+        if export:
+            try:
+                png = fig.to_image(format="png", width=PLOT_W, height=PLOT_H, scale=2)
+                ar = (PLOT_W / PLOT_H) if PLOT_H else 1.7778
 
-        png = fig.to_image(format="png", width=PLOT_W, height=PLOT_H, scale=2)
-        ar = (PLOT_W / PLOT_H) if PLOT_H else 1.7778
+                target_w = content_w
+                target_h = target_w / ar
+                if target_h > content_h:
+                    target_h = content_h
+                    target_w = target_h * ar
+                target_w *= 0.98
+                target_h *= 0.98
 
-        target_w = content_w
-        target_h = target_w / ar
-        if target_h > content_h:
-            target_h = content_h
-            target_w = target_h * ar
-        target_w *= 0.98
-        target_h *= 0.98
+                left_in = (SLIDE_W_IN - target_w) / 2.0
+                top_in = TITLE_HEIGHT_IN + (SLIDE_H_IN - TITLE_HEIGHT_IN - target_h) / 2.0
 
-        left_in = (SLIDE_W_IN - target_w) / 2.0
-        top_in = TITLE_HEIGHT_IN + (SLIDE_H_IN - TITLE_HEIGHT_IN - target_h) / 2.0
-
-        slide.shapes.add_picture(
-            io.BytesIO(png),
-            Inches(left_in),
-            Inches(top_in),
-            width=Inches(target_w),
-            height=Inches(target_h),
-        )
+                slide.shapes.add_picture(
+                    io.BytesIO(png),
+                    Inches(left_in),
+                    Inches(top_in),
+                    width=Inches(target_w),
+                    height=Inches(target_h),
+                )
+            except Exception as exc:
+                try:
+                    print(f"[visualise][warn] plotly.to_image failed ({title_text}): {exc}")
+                except Exception:
+                    pass
 
         if preview_slides is not None:
             fig_json_str = json.dumps(fig.to_plotly_json(), cls=PlotlyJSONEncoder)

@@ -11,10 +11,7 @@ export function renderWelcomePage(container: HTMLElement, state: AnalyseState): 
   container.appendChild(intro);
 
   const form = document.createElement("form");
-  form.className = "analyse-form";
-  form.style.display = "grid";
-  form.style.gridTemplateColumns = "1fr";
-  form.style.gap = "10px";
+  form.className = "analyse-form analyse-form--welcome";
 
   const baseDirInput = document.createElement("input");
   baseDirInput.name = "baseDir";

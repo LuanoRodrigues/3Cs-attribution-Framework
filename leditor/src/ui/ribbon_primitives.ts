@@ -155,7 +155,15 @@ export class RibbonTabStrip {
       button.setAttribute("aria-selected", isActive ? "true" : "false");
       button.tabIndex = isActive ? 0 : -1;
       if (isActive) {
-        button.focus();
+        try {
+          if (typeof (button as any).focus === "function") {
+            (button as any).focus({ preventScroll: true });
+          } else {
+            button.focus();
+          }
+        } catch {
+          // ignore focus failures
+        }
       }
     });
   }
@@ -163,7 +171,15 @@ export class RibbonTabStrip {
   private focusTab(tabId: string): void {
     const button = this.buttons.get(tabId);
     if (!button) return;
-    button.focus();
+    try {
+      if (typeof (button as any).focus === "function") {
+        (button as any).focus({ preventScroll: true });
+      } else {
+        button.focus();
+      }
+    } catch {
+      // ignore focus failures
+    }
   }
 
   private handleKeydown = (event: KeyboardEvent): void => {

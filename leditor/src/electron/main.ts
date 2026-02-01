@@ -1,9 +1,11 @@
-import { app, BrowserWindow, ipcMain, Menu, type MenuItemConstructorOptions } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Menu, type MenuItemConstructorOptions } from "electron";
 import fs from "fs";
 import path from "path";
 import readline from "readline";
 import OpenAI from "openai";
-import type { AiSettings } from "./shared/ai.ts";
+import type { AiSettings } from "./shared/ai";
+import { LEDOC_EXTENSION, packLedocZip, unpackLedocZip } from "./ledoc";
+import { convertCoderStateToLedoc } from "./coder_state_converter";
 
 const REFERENCES_LIBRARY_FILENAME = "references_library.json";
 
@@ -52,6 +54,15 @@ const loadDotenv = (envPath: string): void => {
   } catch (error) {
     dbg("loadDotenv", "failed to load .env", { error: normalizeError(error) });
   }
+};
+
+const ensureLedocExtension = (filePath: string): string => {
+  const trimmed = String(filePath || "").trim();
+  if (!trimmed) return trimmed;
+  const lower = trimmed.toLowerCase();
+  const ext = `.${LEDOC_EXTENSION}`;
+  if (lower.endsWith(ext)) return trimmed;
+  return `${trimmed}${ext}`;
 };
 
 const installAppMenu = (window: BrowserWindow): void => {
@@ -145,6 +156,20 @@ const summarizeIpcRequest = (channel: string, request: unknown): Record<string, 
         channel,
         targetPathLen: typeof obj?.targetPath === "string" ? obj.targetPath.length : 0,
         dataLen: typeof obj?.data === "string" ? obj.data.length : 0
+      };
+    case "leditor:export-ledoc":
+      return {
+        channel,
+        hasPayload: Boolean(obj?.payload && typeof obj.payload === "object"),
+        targetPathLen: typeof obj?.options?.targetPath === "string" ? obj.options.targetPath.length : 0,
+        suggestedPathLen: typeof obj?.options?.suggestedPath === "string" ? obj.options.suggestedPath.length : 0,
+        prompt: Boolean(obj?.options?.prompt)
+      };
+    case "leditor:import-ledoc":
+      return {
+        channel,
+        sourcePathLen: typeof obj?.options?.sourcePath === "string" ? obj.options.sourcePath.length : 0,
+        prompt: Boolean(obj?.options?.prompt)
       };
     case "leditor:agent-request": {
       const payload = obj?.payload as any;
@@ -1258,13 +1283,11 @@ const createWindow = () => {
     console.error("[leditor][window] crashed");
   });
 
-  const wantsDevtools =
-    process.env.LEDITOR_DISABLE_DEVTOOLS !== "1" &&
-    (process.argv.includes("--devtools") ||
-      process.argv.includes("--dev-unbundled") ||
-      process.env.LEDITOR_DEVTOOLS === "1" ||
-      // Default to DevTools in local (non-packaged) runs.
-      !app.isPackaged);
+	  const wantsDevtools =
+	    process.env.LEDITOR_DISABLE_DEVTOOLS !== "1" &&
+	    (process.argv.includes("--devtools") ||
+	      process.argv.includes("--dev-unbundled") ||
+	      process.env.LEDITOR_DEVTOOLS === "1");
   if (wantsDevtools) {
     // In WSL/remote setups, "detach" can fail to show a separate window; use a docked mode.
     const openTools = () => {
@@ -1495,6 +1518,157 @@ app.whenReady().then(() => {
     return { success: true, cancelled: true };
   });
 
+  registerIpc(
+    "leditor:check-sources",
+    async (_event, request: { requestId?: string; payload: { paragraphN?: number; paragraphText: string; anchors: any[] } }) => {
+      const started = Date.now();
+      try {
+        const client = getOpenAiClient();
+        if (!client) return { success: false, error: "Missing OPENAI_API_KEY." };
+
+        const payload = request?.payload as any;
+        const paragraphN = Number(payload?.paragraphN);
+        const paragraphText = String(payload?.paragraphText ?? "").trim();
+        const anchors = Array.isArray(payload?.anchors) ? payload.anchors : [];
+        if (!paragraphText) return { success: false, error: "check-sources: payload.paragraphText required" };
+        if (anchors.length === 0) return { success: true, assistantText: "No sources to be checked.", checks: [] };
+
+        const model =
+          String(process.env.LEDITOR_AGENT_MODEL || "").trim() ||
+          String(process.env.OPENAI_MODEL || "").trim() ||
+          "codex-mini-latest";
+
+        const system = [
+          "You are a citation-consistency checker inside an offline academic editor.",
+          "You MUST NOT claim external factual verification (no web access).",
+          "Given (1) a paragraph and (2) ONE citation/anchor (its anchorText + its title metadata),",
+          "decide if the paragraph's claim near the anchor is consistent with that citation metadata.",
+          'Return STRICT JSON only: {"verdict":"verified"|"needs_review","justification":string}.',
+          "justification must be ONE short sentence (<= 200 chars).",
+          'If insufficient info, set verdict="needs_review".'
+        ].join("\n");
+
+        const checks: Array<{ key: string; verdict: "verified" | "needs_review"; justification: string }> = [];
+        for (const anchor of anchors) {
+          const key = String(anchor?.key ?? "");
+          if (!key) continue;
+          const anchorText = String(anchor?.text ?? "");
+          const title = String(anchor?.title ?? "");
+          const href = String(anchor?.href ?? "");
+          const dataKey = String(anchor?.dataKey ?? "");
+          const dataDqid = String(anchor?.dataDqid ?? "");
+          const dataQuoteId = String(anchor?.dataQuoteId ?? "");
+
+          const input = JSON.stringify(
+            {
+              paragraphN: Number.isFinite(paragraphN) ? paragraphN : undefined,
+              paragraphText,
+              anchor: { key, anchorText, title, href, dataKey, dataDqid, dataQuoteId }
+            },
+            null,
+            2
+          );
+          console.info("[agent][check_sources]", { paragraphN, key, input });
+          const response = await client.responses.create({ model, instructions: system, input });
+          const raw = String((response as any).output_text ?? "").trim();
+          const start = raw.indexOf("{");
+          const end = raw.lastIndexOf("}");
+          if (start === -1 || end === -1 || end <= start) {
+            checks.push({ key, verdict: "needs_review", justification: "Model response was not JSON." });
+            console.info("[agent][check_sources]", { paragraphN, key, output: raw.slice(0, 400), parsed: null });
+            continue;
+          }
+          const parsed = JSON.parse(raw.slice(start, end + 1));
+          const verdict = parsed?.verdict === "verified" ? ("verified" as const) : ("needs_review" as const);
+          const justification =
+            typeof parsed?.justification === "string"
+              ? String(parsed.justification).replace(/\s+/g, " ").trim().slice(0, 200)
+              : verdict === "verified"
+                ? "Citation appears consistent."
+                : "Needs review.";
+          checks.push({ key, verdict, justification });
+          console.info("[agent][check_sources]", { paragraphN, key, output: raw.slice(0, 400), parsed: { verdict, justification } });
+        }
+
+        return {
+          success: true,
+          assistantText: `Checked ${checks.length} source(s).`,
+          checks,
+          meta: { provider: "openai" as const, model, ms: Date.now() - started }
+        };
+      } catch (error) {
+        return {
+          success: false,
+          error: normalizeError(error),
+          meta: { provider: "openai" as const, ms: Date.now() - started }
+        };
+      }
+    }
+  );
+
+  registerIpc(
+    "leditor:lexicon",
+    async (_event, request: { requestId?: string; payload: { mode: string; text: string } }) => {
+      const started = Date.now();
+      try {
+        const client = getOpenAiClient();
+        if (!client) return { success: false, error: "Missing OPENAI_API_KEY." };
+        const payload = request?.payload as any;
+        const mode = String(payload?.mode ?? "").toLowerCase();
+        const text = String(payload?.text ?? "").trim();
+        if (mode !== "synonyms" && mode !== "antonyms") {
+          return { success: false, error: 'lexicon: payload.mode must be "synonyms" | "antonyms"' };
+        }
+        if (!text) return { success: false, error: "lexicon: payload.text required" };
+        const model =
+          String(process.env.LEDITOR_AGENT_MODEL || "").trim() ||
+          String(process.env.OPENAI_MODEL || "").trim() ||
+          "codex-mini-latest";
+
+        const system = [
+          "You are a deterministic thesaurus helper inside an offline academic editor.",
+          "Return STRICT JSON only (no markdown): {\"assistantText\":string,\"suggestions\":string[]}.",
+          "suggestions MUST contain exactly 4 short alternatives (no numbering, no quotes).",
+          "Do not repeat the input text."
+        ].join("\n");
+
+        const user = [
+          `Mode: ${mode}.`,
+          "Input text:",
+          text,
+          "Return suggestions suitable for academic writing."
+        ].join("\n");
+
+        const response = await client.responses.create({ model, instructions: system, input: user });
+        const raw = String((response as any).output_text ?? "").trim();
+        const start = raw.indexOf("{");
+        const end = raw.lastIndexOf("}");
+        if (start === -1 || end === -1 || end <= start) {
+          throw new Error("lexicon: model response was not JSON.");
+        }
+        const parsed = JSON.parse(raw.slice(start, end + 1));
+        const suggestionsRaw = Array.isArray(parsed?.suggestions) ? parsed.suggestions : [];
+        const suggestions = suggestionsRaw
+          .map((s: any) => (typeof s === "string" ? s : ""))
+          .map((s: string) => s.replace(/\s+/g, " ").trim())
+          .filter((s: string) => s && s.toLowerCase() !== text.toLowerCase())
+          .slice(0, 4);
+        return {
+          success: true,
+          assistantText: typeof parsed?.assistantText === "string" ? parsed.assistantText : "",
+          suggestions,
+          meta: { provider: "openai" as const, model, ms: Date.now() - started }
+        };
+      } catch (error) {
+        return {
+          success: false,
+          error: normalizeError(error),
+          meta: { provider: "openai" as const, ms: Date.now() - started }
+        };
+      }
+    }
+  );
+
   registerIpc("leditor:read-file", async (_event, request: { sourcePath: string }) => {
     try {
       const sourcePath = normalizeFsPath(request.sourcePath);
@@ -1511,6 +1685,152 @@ app.whenReady().then(() => {
       await fs.promises.mkdir(path.dirname(targetPath), { recursive: true });
       await fs.promises.writeFile(targetPath, request.data, "utf-8");
       return { success: true };
+    } catch (error) {
+      return { success: false, error: normalizeError(error) };
+    }
+  });
+
+  registerIpc("leditor:export-ledoc", async (_event, request: any): Promise<any> => {
+    try {
+      const options = request?.options ?? {};
+      const payload = request?.payload;
+      if (!payload || typeof payload !== "object") {
+        return { success: false, error: "ExportLEDOC: payload is required" };
+      }
+
+      let targetPath = String(options.targetPath || "").trim();
+      const suggestedPath = String(options.suggestedPath || "").trim();
+      const prompt = Boolean(options.prompt);
+
+      if (prompt || !targetPath) {
+        const defaultPath = ensureLedocExtension(suggestedPath || path.join(app.getPath("documents"), `document.${LEDOC_EXTENSION}`));
+        const result = await dialog.showSaveDialog({
+          title: "Export LEDOC",
+          defaultPath,
+          filters: [{ name: "LEditor Document", extensions: [LEDOC_EXTENSION] }]
+        });
+        if (result.canceled) {
+          return { success: false, error: "ExportLEDOC canceled" };
+        }
+        targetPath = String(result.filePath || "").trim();
+      }
+
+      if (!targetPath) {
+        return { success: false, error: "ExportLEDOC: targetPath is required" };
+      }
+      targetPath = normalizeFsPath(ensureLedocExtension(targetPath));
+
+      const buffer = await packLedocZip(payload);
+      await fs.promises.mkdir(path.dirname(targetPath), { recursive: true });
+      await fs.promises.writeFile(targetPath, buffer);
+      return { success: true, filePath: targetPath, bytes: buffer.length };
+    } catch (error) {
+      return { success: false, error: normalizeError(error) };
+    }
+  });
+
+  registerIpc("leditor:import-ledoc", async (_event, request: any): Promise<any> => {
+    const event = _event;
+    try {
+      const options = request?.options ?? {};
+      let sourcePath = String(options.sourcePath || "").trim();
+      const prompt = Boolean(options.prompt);
+
+      if (prompt || !sourcePath) {
+        const result = await dialog.showOpenDialog({
+          title: "Import LEDOC",
+          properties: ["openFile"],
+          filters: [
+            { name: "LEditor Document", extensions: [LEDOC_EXTENSION] },
+            { name: "Coder state JSON", extensions: ["json"] }
+          ]
+        });
+        const filePath = result.filePaths?.[0] ?? "";
+        if (result.canceled || !filePath) {
+          return { success: false, error: "ImportLEDOC canceled" };
+        }
+        sourcePath = String(filePath).trim();
+      }
+
+      if (!sourcePath) {
+        return { success: false, error: "ImportLEDOC: sourcePath is required" };
+      }
+      sourcePath = normalizeFsPath(sourcePath);
+
+      const setWindowTitle = (title: string) => {
+        const win = BrowserWindow.fromWebContents(event.sender);
+        const label = title?.trim() || path.basename(sourcePath);
+        if (win) {
+          try {
+            win.setTitle(`LEditor — ${label}`);
+          } catch {
+            // ignore
+          }
+        }
+      };
+
+      const ext = path.extname(sourcePath).toLowerCase();
+      if (ext === ".json") {
+        const converted = await convertCoderStateToLedoc(sourcePath);
+        if (!converted.success || !converted.payload) {
+          return { success: false, error: converted.error ?? "Conversion failed" };
+        }
+        if (converted.title) {
+          setWindowTitle(converted.title);
+        }
+        return {
+          success: true,
+          filePath: converted.ledocPath ?? sourcePath,
+          payload: converted.payload as any,
+          warnings: converted.warnings
+        };
+      }
+
+      const buffer = await fs.promises.readFile(sourcePath);
+      const unpacked = await unpackLedocZip(buffer as Buffer);
+
+      // Best-effort: if footnotes.json exists and the document's footnote nodes lack attrs.text,
+      // merge text into the document so footnotes persist even if a future schema changes.
+      const payload = unpacked.payload as any;
+      const footnotes = payload?.footnotes?.footnotes;
+      const doc = payload?.document;
+      if (doc && Array.isArray(footnotes)) {
+        const textById = new Map<string, string>();
+        for (const entry of footnotes) {
+          const id = typeof entry?.id === "string" ? entry.id.trim() : "";
+          if (!id) continue;
+          const text = typeof entry?.text === "string" ? entry.text : "";
+          textById.set(id, text);
+        }
+        const visit = (node: any) => {
+          if (!node || typeof node !== "object") return;
+          if (node.type === "footnote" && node.attrs && typeof node.attrs === "object") {
+            const id = typeof node.attrs.footnoteId === "string" ? node.attrs.footnoteId.trim() : "";
+            if (id) {
+              const current = typeof node.attrs.text === "string" ? node.attrs.text : "";
+              if (!current && textById.has(id)) {
+                node.attrs.text = textById.get(id) ?? "";
+              }
+            }
+          }
+          const content = node.content;
+          if (Array.isArray(content)) content.forEach(visit);
+        };
+        visit(doc);
+      }
+
+      const metaTitle =
+        (payload as any)?.meta?.title ||
+        path.basename(sourcePath, path.extname(sourcePath)) ||
+        "Document";
+      setWindowTitle(metaTitle);
+
+      return {
+        success: true,
+        filePath: sourcePath,
+        payload: payload as any,
+        warnings: unpacked.warnings
+      };
     } catch (error) {
       return { success: false, error: normalizeError(error) };
     }

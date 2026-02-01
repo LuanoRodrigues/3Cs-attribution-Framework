@@ -1,6 +1,6 @@
 from typing import Mapping, Sequence, Callable, Set
 
-from src.core.utils.calling_models import *
+from python_backend.core.utils.calling_models import *
 
 from datetime import datetime
 import datetime
@@ -23,7 +23,7 @@ chat_args = {
     "api_key":api_key
 }
 zotero_client =Zotero(**chat_args)
-from bibliometric_analysis_tool.core.app_constants import CORE_COLUMNS, CODEBOOKS, ZOTERO_DF_CACHE_DIR
+from general.app_constants import CORE_COLUMNS, CODEBOOKS, ZOTERO_DF_CACHE_DIR
 
 
 import pandas as pd
@@ -4163,7 +4163,7 @@ def parse_payload_affiliation(data_block: dict, payload: dict) -> Dict[str, str]
     # derive continent if missing but countries exist
     if not continent_vals and country_vals:
         try:
-            from bibliometric_analysis_tool.core.app_constants import COUNTRY_TO_CONTINENT
+            from general.app_constants import COUNTRY_TO_CONTINENT
             for c in country_vals:
                 key = c.strip().casefold()
                 cont = COUNTRY_TO_CONTINENT.get(key) or COUNTRY_TO_CONTINENT.get(c.strip())
@@ -4793,7 +4793,7 @@ def get_note_meta_citation_country_place(item_key: str) -> dict:
 def _apply_column_order(df_in: pd.DataFrame, cfg: dict | None) -> pd.DataFrame:
     """Return a new DataFrame with columns ordered as CORE + chosen codes + rest."""
     try:
-        from bibliometric_analysis_tool.core.app_constants import CORE_COLUMNS as APP_CORE
+        from general.app_constants import CORE_COLUMNS as APP_CORE
         core = [c for c in APP_CORE if c in df_in.columns]
     except Exception:
         core = [c for c in

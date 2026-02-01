@@ -50,6 +50,8 @@ type A4LayoutController = {
   enterHeaderFooterMode: (target?: "header" | "footer") => void;
   exitHeaderFooterMode: () => void;
   isHeaderFooterMode: () => boolean;
+  exitFootnoteMode?: () => void;
+  isFootnoteMode?: () => boolean;
   setTheme: (mode: "light" | "dark", surface?: "light" | "dark") => void;
   toggleTheme: () => void;
   togglePageSurface: () => void;
@@ -143,9 +145,12 @@ const ensureStyles = () => {
   --footer-height: 0.5in;
   --header-offset: 0px;
   --footer-offset: 0px;
-  --footnote-area-height: 0.55in;
+  /* Minimal reserved height for footnotes when none measured; keep at 0 so we only grow when content exists. */
+  --footnote-area-height: 0px;
   /* Reserve space for footnotes only when the page actually has footnote entries. */
   --page-footnote-height: 0px;
+  /* Gap between the last body line and the footnote band to prevent overlap / caret loss. */
+  --page-footnote-gap: 12px;
   --footnote-separator-height: 1px;
   --footnote-separator-color: rgba(0, 0, 0, 0.25);
   --footnote-spacing: 6px;
@@ -407,7 +412,9 @@ html, body {
 #toolbar {
   flex: 0 0 auto;
   width: 100%;
-  z-index: 4;
+  position: relative;
+  z-index: 1200;
+  pointer-events: auto;
 }
 
 
@@ -639,6 +646,14 @@ html, body {
   pointer-events: none;
 }
 
+/* Visual debug: flash page background when footnote reflow triggers. */
+.leditor-page.leditor-footnote-reflow,
+.leditor-page .leditor-footnote-reflow {
+  outline: 2px solid rgba(96, 165, 250, 0.8);
+  outline-offset: 4px;
+  transition: outline 0.2s ease-out;
+}
+
 .leditor-margin-guide {
   position: absolute;
   top: calc(var(--local-page-margin-top, var(--page-margin-top)) + var(--header-height) + var(--header-offset));
@@ -659,6 +674,31 @@ html, body {
 .leditor-debug-margins .leditor-margins-frame {
   outline: 1px dashed rgba(200, 40, 40, 0.35);
   outline-offset: -1px;
+}
+
+.leditor-debug-footnotes .leditor-page-content {
+  outline: 2px solid rgba(59, 130, 246, 0.55);
+  outline-offset: -2px;
+}
+
+.leditor-debug-footnotes .leditor-page-overlay .leditor-page-footnotes {
+  outline: 2px solid rgba(16, 185, 129, 0.6);
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.leditor-debug-footnotes .leditor-page-overlay .leditor-page-footnotes::after {
+  content: attr(data-debug-footnote-height);
+  position: absolute;
+  right: 6px;
+  top: -16px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #047857;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  border-radius: 6px;
+  padding: 2px 6px;
+  pointer-events: none;
 }
 
 .leditor-header-footer-editing .leditor-page-overlays {
@@ -700,8 +740,9 @@ html, body {
   pointer-events: none;
 }
 
+/* In footnote editing mode, overlays remain present but only footnote areas are interactive. */
 .leditor-footnote-editing .leditor-page-overlays {
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 /* In footnote editing mode, only the footnote area should capture pointer events.
@@ -765,9 +806,10 @@ html, body {
 .leditor-page-overlay .leditor-page-footnotes {
   /* Footnotes render in the overlay so they can be edited without ProseMirror stealing focus. */
   display: block;
-  min-height: var(--footnote-area-height);
+  min-height: 0;
+  pointer-events: none;
 }
-.leditor-page-overlay .leditor-page-footnotes.leditor-page-footnotes--active {
+.leditor-footnote-editing .leditor-page-overlay .leditor-page-footnotes.leditor-page-footnotes--active {
   pointer-events: auto;
 }
 
@@ -1193,13 +1235,29 @@ html, body {
           --effective-margin-bottom,
           calc(
             var(--local-page-margin-bottom, var(--page-margin-bottom)) +
-              var(--page-footnote-height, 0px)
+              var(--doc-footer-distance, 0px) +
+              var(--footer-height, 0px) +
+              var(--page-footnote-height, 0px) +
+              var(--page-footnote-gap, 0px)
           )
         ))
+  );
+  /* Keep a matching inset so content never visually overlaps the footnote band. */
+  padding-bottom: calc(
+    var(--doc-footer-distance, 0px) + var(--footer-height, 0px) + var(--page-footnote-height, 0px) +
+      var(--page-footnote-gap, 0px)
   );
   padding: 0;
   overflow: hidden;
   pointer-events: auto;
+}
+.leditor-page-content::after {
+  /* Spacer that mirrors the reserved footnote band so body lines never collide with footnotes. */
+  content: "";
+  display: block;
+  height: calc(var(--page-footnote-height, 0px) + var(--page-footnote-gap, 0px));
+  min-height: 0;
+  pointer-events: none;
 }
 
 .leditor-page-footnotes {
@@ -1216,12 +1274,15 @@ html, body {
   overflow: hidden;
   font-size: var(--footnote-font-size);
   color: var(--page-footnote-color);
+  background: var(--page-background, #ffffff);
+  z-index: 1;
+  box-sizing: border-box;
 }
 .leditor-page-footnotes.leditor-page-footnotes--active {
   border-top: var(--footnote-separator-height) solid var(--footnote-separator-color);
   padding-top: var(--footnote-spacing);
-  background: transparent;
-  min-height: var(--footnote-area-height);
+  background: var(--page-background, #ffffff);
+  min-height: 0;
 }
 
 .leditor-footnote-continuation {
@@ -1392,7 +1453,90 @@ export const mountA4Layout = (
   applyDocumentLayoutTokenDefaults(document.documentElement);
   applyDocumentLayoutTokens(document.documentElement);
 
+  // NOTE: `mountA4Layout` mounts onto the scroll container (`.leditor-doc-shell`), but several
+  // systems (notably the ribbon dispatcher) key off `#leditor-app` for overlay edit-mode detection.
+  // Mirror our mode classes to `#leditor-app` so ribbon commands do not steal focus back to
+  // ProseMirror while the user is typing in overlay editors (footnotes/header/footer).
+  const appShell = document.getElementById("leditor-app");
+  const setModeClass = (className: string, enabled: boolean) => {
+    appRoot.classList.toggle(className, enabled);
+    if (appShell && appShell !== appRoot) {
+      appShell.classList.toggle(className, enabled);
+    }
+  };
+
   const attachedEditorHandle = editorHandle ?? null;
+  // Footnote text edits happen in overlay contenteditables. We keep drafts in-memory while typing to
+  // avoid ProseMirror focus/selection churn (which presents as caret loss + ribbon flicker).
+  // IMPORTANT: autosave/export calls `EditorHandle.getContent()/getJSON()` frequently; we must not
+  // dispatch ProseMirror transactions in those paths while the user is editing footnotes.
+  //
+  // Single source of truth:
+  // - persisted: `footnote` node attrs.text
+  // - in-session edits: `footnoteTextDraft` (overrides attrs.text until committed)
+  const footnoteTextDraft = new Map<string, string>();
+
+  const injectFootnoteDraftsIntoHtml = (html: unknown): unknown => {
+    if (typeof html !== "string") return html;
+    if (footnoteTextDraft.size === 0) return html;
+    try {
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      const nodes = Array.from(doc.querySelectorAll<HTMLElement>("span[data-footnote][data-footnote-id]"));
+      for (const el of nodes) {
+        const id = (el.getAttribute("data-footnote-id") || "").trim();
+        if (!id) continue;
+        if (!footnoteTextDraft.has(id)) continue;
+        const nextText = (footnoteTextDraft.get(id) ?? "").trim();
+        if (nextText.length > 0) {
+          el.setAttribute("data-footnote-text", nextText);
+        } else {
+          el.removeAttribute("data-footnote-text");
+        }
+      }
+      return doc.body.innerHTML;
+    } catch {
+      return html;
+    }
+  };
+
+  const injectFootnoteDraftsIntoJson = (json: any): any => {
+    if (!json || footnoteTextDraft.size === 0) return json;
+    const visit = (node: any) => {
+      if (!node || typeof node !== "object") return;
+      if (node.type === "footnote" && node.attrs && typeof node.attrs.footnoteId === "string") {
+        const id = String(node.attrs.footnoteId).trim();
+        if (id && footnoteTextDraft.has(id)) {
+          node.attrs.text = (footnoteTextDraft.get(id) ?? "").trim();
+        }
+      }
+      const content = Array.isArray(node.content) ? node.content : null;
+      if (content) content.forEach(visit);
+    };
+    try {
+      visit(json);
+      return json;
+    } catch {
+      return json;
+    }
+  };
+
+  if (attachedEditorHandle && !(attachedEditorHandle as any).__leditorFootnoteSerializeWrapped) {
+    (attachedEditorHandle as any).__leditorFootnoteSerializeWrapped = true;
+    const originalGetContent = (attachedEditorHandle as any).getContent?.bind(attachedEditorHandle);
+    const originalGetJSON = (attachedEditorHandle as any).getJSON?.bind(attachedEditorHandle);
+    if (typeof originalGetContent === "function") {
+      (attachedEditorHandle as any).getContent = (opts: any) => {
+        const result = originalGetContent(opts);
+        return injectFootnoteDraftsIntoHtml(result);
+      };
+    }
+    if (typeof originalGetJSON === "function") {
+      (attachedEditorHandle as any).getJSON = () => {
+        const result = originalGetJSON();
+        return injectFootnoteDraftsIntoJson(result);
+      };
+    }
+  }
   const getFootnoteNumbering = (): Map<string, number> => {
     if (!attachedEditorHandle) return new Map();
     const editorInstance = attachedEditorHandle.getEditor();
@@ -1647,14 +1791,24 @@ export const mountA4Layout = (
     marginHandlesElements.left.style.left = `${leftPct}%`;
     marginHandlesElements.right.style.right = `${rightPct}%`;
     sliderSuppress = true;
-    leftSliderInstance?.updateOptions({ range: { min: 0, max: horizontalMax } }, false);
-    rightSliderInstance?.updateOptions({ range: { min: 0, max: horizontalMax } }, false);
-    topSliderInstance?.updateOptions({ range: { min: 0, max: verticalMax } }, false);
-    bottomSliderInstance?.updateOptions({ range: { min: 0, max: verticalMax } }, false);
-    leftSliderInstance?.set(leftMm);
-    rightSliderInstance?.set(rightMm);
-    topSliderInstance?.set(topMm);
-    bottomSliderInstance?.set(bottomMm);
+    try {
+      leftSliderInstance?.updateOptions({ range: { min: 0, max: horizontalMax } }, false);
+      rightSliderInstance?.updateOptions({ range: { min: 0, max: horizontalMax } }, false);
+      topSliderInstance?.updateOptions({ range: { min: 0, max: verticalMax } }, false);
+      bottomSliderInstance?.updateOptions({ range: { min: 0, max: verticalMax } }, false);
+      leftSliderInstance?.set(leftMm);
+      rightSliderInstance?.set(rightMm);
+      topSliderInstance?.set(topMm);
+      bottomSliderInstance?.set(bottomMm);
+    } catch (error) {
+      // nouislider can throw if the instance was destroyed but a queued update still runs.
+      // Never crash the editor UI; disable sliders for this session instead.
+      console.warn("[A4][margins] slider update failed; disabling sliders", error);
+      leftSliderInstance = null;
+      rightSliderInstance = null;
+      topSliderInstance = null;
+      bottomSliderInstance = null;
+    }
     sliderSuppress = false;
   };
 
@@ -1779,30 +1933,45 @@ export const mountA4Layout = (
     element.setAttribute("aria-disabled", editable ? "false" : "true");
   };
 
-  const setEditorEditable = (editable: boolean) => {
-    const editorInstance = attachedEditorHandle?.getEditor();
-    const prose = editorInstance?.view?.dom as HTMLElement | null;
-    if (!prose || !editorEl.contains(prose)) return;
-    // Prefer the editor API when available so ProseMirror plugins also respect the state.
-    try {
-      const anyEditor = editorInstance as any;
-      if (typeof anyEditor?.setEditable === "function") {
-        anyEditor.setEditable(editable);
-      }
-    } catch {
-      // ignore
-    }
-    prose.contentEditable = editable ? "true" : "false";
-    prose.setAttribute("aria-disabled", editable ? "false" : "true");
-    if (!editable) {
-      // Avoid focus fights: blur ProseMirror so overlay editors can own the caret deterministically.
-      try {
-        prose.blur();
-      } catch {
-        // ignore
-      }
-    }
-  };
+	  const setEditorEditable = (editable: boolean) => {
+	    const editorInstance = attachedEditorHandle?.getEditor();
+	    const viewDom = (editorInstance?.view?.dom as HTMLElement | null) ?? null;
+	    // In pagination/rehydration flows, `view.dom` can momentarily point at a detached node.
+	    // Always fall back to the currently-mounted ProseMirror root inside `editorEl`.
+	    const proseRoots: HTMLElement[] = [];
+	    if (viewDom && viewDom.isConnected) proseRoots.push(viewDom);
+	    proseRoots.push(
+	      ...Array.from(editorEl.querySelectorAll<HTMLElement>(".tiptap.ProseMirror, .ProseMirror")).filter(
+	        (el) => el.isConnected
+	      )
+	    );
+	    // Dedupe in case viewDom is also found by the selector.
+	    const prose = Array.from(new Set(proseRoots));
+	    if (prose.length === 0) return;
+	    // Prefer the editor API when available so ProseMirror plugins also respect the state.
+	    try {
+	      const anyEditor = editorInstance as any;
+	      if (typeof anyEditor?.setEditable === "function") {
+	        anyEditor.setEditable(editable);
+	      }
+	    } catch {
+	      // ignore
+	    }
+	    prose.forEach((root) => {
+	      root.contentEditable = editable ? "true" : "false";
+	      root.setAttribute("aria-disabled", editable ? "false" : "true");
+	    });
+	    if (!editable) {
+	      // Avoid focus fights: blur ProseMirror so overlay editors can own the caret deterministically.
+	      prose.forEach((root) => {
+	        try {
+	          root.blur();
+	        } catch {
+	          // ignore
+	        }
+	      });
+	    }
+	  };
 
   const updateHeaderFooterEditability = () => {
     const overlays = overlayLayer.querySelectorAll<HTMLElement>(".leditor-page-overlay");
@@ -1897,12 +2066,21 @@ export const mountA4Layout = (
     let node: Text | null = walker.nextNode() as Text | null;
     try {
       while (node) {
+        // Pagination/rehydration can replace text nodes between frames. Skip detached nodes.
+        if (!(node as any).isConnected) {
+          node = walker.nextNode() as Text | null;
+          continue;
+        }
         const len = node.data.length;
         if (remaining <= len) {
           range.setStart(node, remaining);
           range.collapse(true);
-          selection.removeAllRanges();
-          selection.addRange(range);
+          try {
+            selection.removeAllRanges();
+            selection.addRange(range);
+          } catch {
+            // ignore
+          }
           return;
         }
         remaining -= len;
@@ -2028,10 +2206,12 @@ export const mountA4Layout = (
 
   const focusBody = () => {
     const editorInstance = attachedEditorHandle?.getEditor();
-    const prose = editorInstance?.view?.dom as HTMLElement | null;
-    if (!prose || !editorEl.contains(prose)) return;
+    const view = editorInstance?.view ?? null;
+    const prose = (view?.dom as HTMLElement | null) ?? null;
+    if (!prose || !editorEl.contains(prose) || !prose.isConnected) return;
     try {
-      prose.focus();
+      // Prefer ProseMirror's focus method when available (it ensures selection is synced).
+      view?.focus?.();
     } catch {
       // ignore
     }
@@ -2078,6 +2258,19 @@ export const mountA4Layout = (
   };
 
   const ensurePointerSelection = (event: PointerEvent) => {
+    // Failsafe: if we're not in an overlay editing mode, the body editor must remain editable.
+    // (Several focus/rehydration edge-cases can leave ProseMirror `contenteditable=false`,
+    // which looks like "I can't edit anything".)
+    if (!footnoteMode && !headerFooterMode) {
+      const editorInstance = attachedEditorHandle?.getEditor?.() ?? null;
+      const prose =
+        (editorInstance?.view?.dom as HTMLElement | null) ??
+        editorEl.querySelector<HTMLElement>(".tiptap.ProseMirror, .ProseMirror");
+      if (prose && prose.isConnected && prose.contentEditable !== "true") {
+        setEditorEditable(true);
+      }
+      return;
+    }
     // ProseMirror owns caret placement in body mode.
     // However, in footnote mode we need a reliable "click anywhere in the document body exits footnotes"
     // handler because clicks can land on non-editor elements (canvas/page shell) and bypass editorEl listeners.
@@ -2095,18 +2288,38 @@ export const mountA4Layout = (
     const editorInstance = attachedEditorHandle?.getEditor?.() ?? null;
     const prose = (editorInstance?.view?.dom as HTMLElement | null) ?? null;
     const inProse = !!prose && (target === prose || prose.contains(target));
-    exitFootnoteMode({ restore: !inProse });
-    // If the click is in ProseMirror, make sure the body regains focus so the caret becomes visible.
-    // We do this on the next frame so ProseMirror's own click handler can still position the selection.
     if (inProse) {
-      window.requestAnimationFrame(() => {
-        try {
-          focusBody();
-        } catch {
-          // ignore
+      // Exit footnote mode and let the subsequent click event place the caret naturally now that
+      // ProseMirror is editable again. Forcing posAtCoords/focus here fights with ProseMirror and
+      // can result in "caret jumps to end/start" reports.
+      exitFootnoteMode({ restore: false });
+      // Fallback: if the click doesn't end up focusing ProseMirror (e.g. it landed on a page shell
+      // element under the overlay), focus the body after the click completes so the caret becomes visible.
+      window.setTimeout(() => {
+        if (footnoteMode || headerFooterMode) return;
+        const editorInstance2 = attachedEditorHandle?.getEditor?.() ?? null;
+        const prose2 = (editorInstance2?.view?.dom as HTMLElement | null) ?? null;
+        const active = document.activeElement as HTMLElement | null;
+        if (prose2 && prose2.isConnected && (!active || !(active === prose2 || prose2.contains(active)))) {
+          try {
+            focusBody();
+          } catch {
+            // ignore
+          }
         }
-      });
+      }, 0);
+      return;
     }
+    // Click was outside ProseMirror (canvas/page shell): restore deterministically using coords.
+    exitFootnoteMode({ restore: true, coords: { x: event.clientX, y: event.clientY } });
+    // Ensure the body regains focus so the caret becomes visible.
+    window.requestAnimationFrame(() => {
+      try {
+        focusBody();
+      } catch {
+        // ignore
+      }
+    });
   };
 
   const setBodySelectionFromSnapshot = (source: string, snapshot: StoredSelection) => {
@@ -2142,75 +2355,122 @@ export const mountA4Layout = (
   const pendingFootnoteSourceSelection = new Map<string, StoredSelection>();
   let lastFootnoteExitAt = 0;
   let footnoteFocusRetryToken = 0;
-  let suppressBodyFocusUntil = 0;
+	  let footnoteCaretToken = 0;
+	  let suppressBodyFocusUntil = 0;
+	  let footnoteTypingPaginationTimer: number | null = null;
+	  let lastFootnoteInputAt = 0;
+	  let pendingFootnoteRefocusId: string | null = null;
+  // Only repaginate from footnote-height changes when the user actually edited footnote text
+  // (or just inserted a footnote). This prevents pagination/focus oscillation loops caused by
+  // 1px layout jitter while the footnote editor is focused.
+  let footnotePaginationArmed = false;
 
-  const enterFootnoteMode = (footnoteId: string, sourceSelection?: StoredSelection | null) => {
-    if (!footnoteId) return;
-    if (headerFooterMode) {
-      // Do not allow competing edit modes.
-      exitHeaderFooterMode();
-    }
-    if (!footnoteMode) {
-      if (sourceSelection) {
-        setBodySelectionFromSnapshot("enterFootnote", sourceSelection);
-      } else {
-        captureBodySelection("enterFootnote");
-      }
-      footnoteMode = true;
-      appRoot.classList.add("leditor-footnote-editing");
-      setEditorEditable(false);
-    }
-    activeFootnoteId = footnoteId;
-    caretState.active = "footnotes";
+		  const enterFootnoteMode = (footnoteId: string, sourceSelection?: StoredSelection | null) => {
+		    if (!footnoteId) return;
+		    if (headerFooterMode) {
+		      // Do not allow competing edit modes.
+		      exitHeaderFooterMode();
+		    }
+		    if (!footnoteMode) {
+	      if (sourceSelection) {
+	        setBodySelectionFromSnapshot("enterFootnote", sourceSelection);
+	      } else {
+	        captureBodySelection("enterFootnote");
+	      }
+		      footnoteMode = true;
+		      try {
+		        (window as any).__leditorFootnoteMode = true;
+		      } catch {
+		        // ignore
+		      }
+		      setModeClass("leditor-footnote-editing", true);
+		      setEditorEditable(false);
+		      // Allow a single responsive repagination right after entering footnote mode so the body can
+		      // make room for the footnote area (Word-like).
+		      footnotePaginationArmed = true;
+	    }
+	    activeFootnoteId = footnoteId;
+	    caretState.active = "footnotes";
     // Prevent ProseMirror focus fights for a brief window while we focus the overlay editor.
     suppressBodyFocusUntil = Date.now() + 600;
   };
 
-		  const exitFootnoteMode = (opts?: { restore?: boolean; coords?: { x: number; y: number } }) => {
-		    if (!footnoteMode) return;
+	  const exitFootnoteMode = (opts?: { restore?: boolean; coords?: { x: number; y: number } }) => {
+	    if (!footnoteMode) return;
+	    const restore = opts?.restore !== false;
+	    const coords = opts?.coords ?? null;
+
+    // Never leave the editor stuck non-editable: always unwind mode flags/classes even if
+    // selection restoration fails.
+    try {
       lastFootnoteExitAt = Date.now();
+      flushPendingFootnoteTextCommits("exitFootnoteMode");
+    } catch {
+      // ignore
+    }
+
+    try {
+      // Cancel any in-flight caret loop tied to footnote mode.
+      footnoteCaretToken += 1;
       // Cancel any in-flight async focus retry so it doesn't re-enter footnote mode after exit.
       footnoteFocusRetryToken += 1;
       pendingFootnoteSourceSelection.clear();
-		    footnoteMode = false;
-		    activeFootnoteId = null;
-		    caretState.active = "body";
-		    appRoot.classList.remove("leditor-footnote-editing");
-		    setEditorEditable(true);
-        suppressBodyFocusUntil = Date.now() + 250;
-
-	    const restore = opts?.restore !== false;
-	    const coords = opts?.coords ?? null;
-	    if (coords && attachedEditorHandle) {
-	      const view = attachedEditorHandle.getEditor()?.view;
+      if (footnoteDraftFlushTimer != null) {
+        window.clearTimeout(footnoteDraftFlushTimer);
+        footnoteDraftFlushTimer = null;
+      }
+      if (footnoteTypingPaginationTimer != null) {
+        window.clearTimeout(footnoteTypingPaginationTimer);
+        footnoteTypingPaginationTimer = null;
+      }
+      pendingFootnoteRefocusId = null;
+      footnotePaginationArmed = false;
+    } catch {
+      // ignore
+	    } finally {
+	      footnoteMode = false;
 	      try {
-	        const pos = view?.posAtCoords?.({ left: coords.x, top: coords.y }) ?? null;
-	        if (pos?.pos != null) {
-	          const $pos = view.state.doc.resolve(pos.pos);
-	          const safe = $pos.parent.inlineContent ? Selection.near($pos, 1) : Selection.near($pos, 1);
-	          view.dispatch(view.state.tr.setSelection(safe).scrollIntoView());
-	          view.focus();
-	          caretState.body.bookmark = view.state.selection.getBookmark();
-	          caretState.body.from = (view.state.selection as any)?.from ?? caretState.body.from;
-	          caretState.body.to = (view.state.selection as any)?.to ?? caretState.body.to;
-	          if ((window as any).__leditorCaretDebug) {
-	            console.info("[Footnote][exit] restored selection from coords", {
-	              x: coords.x,
-	              y: coords.y,
-	              from: caretState.body.from,
-	              to: caretState.body.to
-	            });
-	          }
-	          return;
-	        }
+	        (window as any).__leditorFootnoteMode = false;
 	      } catch {
-	        // fall back to stored restore
+	        // ignore
 	      }
-	    }
-		    if (restore) {
-		      restoreBodySelection("exitFootnote");
-		    }
-		  };
+	      activeFootnoteId = null;
+	      caretState.active = "body";
+	      setModeClass("leditor-footnote-editing", false);
+	      setEditorEditable(true);
+	      suppressBodyFocusUntil = Date.now() + 250;
+    }
+
+    if (coords && attachedEditorHandle) {
+      const view = attachedEditorHandle.getEditor()?.view;
+      try {
+        const pos = view?.posAtCoords?.({ left: coords.x, top: coords.y }) ?? null;
+        if (pos?.pos != null) {
+          const $pos = view.state.doc.resolve(pos.pos);
+          const safe = $pos.parent.inlineContent ? Selection.near($pos, 1) : Selection.near($pos, 1);
+          view.dispatch(view.state.tr.setSelection(safe).scrollIntoView());
+          view.focus();
+          caretState.body.bookmark = view.state.selection.getBookmark();
+          caretState.body.from = (view.state.selection as any)?.from ?? caretState.body.from;
+          caretState.body.to = (view.state.selection as any)?.to ?? caretState.body.to;
+          if ((window as any).__leditorCaretDebug) {
+            console.info("[Footnote][exit] restored selection from coords", {
+              x: coords.x,
+              y: coords.y,
+              from: caretState.body.from,
+              to: caretState.body.to
+            });
+          }
+          return;
+        }
+      } catch {
+        // fall back to stored restore
+      }
+    }
+    if (restore) {
+      restoreBodySelection("exitFootnote");
+    }
+  };
 
   const measureCssLength = (value: string, anchor: HTMLElement): number => {
     const probe = document.createElement("div");
@@ -2381,48 +2641,119 @@ export const mountA4Layout = (
     endnotesList.appendChild(list);
   };
 
-  const collectFootnoteEntries = () => {
-    const registry = getFootnoteRegistry();
-    const editorInstance = attachedEditorHandle?.getEditor?.() ?? null;
-    const proseRoot = (editorInstance?.view?.dom as HTMLElement | null) ?? null;
-    const root = proseRoot && editorEl.contains(proseRoot) ? proseRoot : editorEl;
-    const nodes = Array.from(root.querySelectorAll<HTMLElement>(".leditor-footnote"));
-    const entries: FootnoteRenderEntry[] = [];
-    const numbering = getFootnoteNumbering();
-    let fallbackCounter = 0;
-    const pageElements = Array.from(root.querySelectorAll<HTMLElement>(".leditor-page"));
-    const pageHeight = measurePageHeight();
-    const editorRect = root.getBoundingClientRect();
-    for (const node of nodes) {
-      const id = node.dataset.footnoteId ?? "";
-      const view = id ? registry.get(id) : null;
-      let numberLabel = "";
-      const mappedNumber = numbering.get(id);
-      if (mappedNumber) {
-        numberLabel = String(mappedNumber);
-      } else if (view?.getNumber()) {
-        numberLabel = view.getNumber();
-      } else if (node.dataset.footnoteNumber) {
-        numberLabel = node.dataset.footnoteNumber;
-      } else {
-        fallbackCounter += 1;
-        numberLabel = String(fallbackCounter);
+  // IMPORTANT: Do not continuously write footnote text back into the ProseMirror document while the
+  // user is actively editing the overlay footnote editor. Dispatching transactions during footnote
+  // mode can cause ProseMirror to steal focus/selection, leading to caret loss, ribbon flicker, and
+  // "can't edit anything" moments. We keep an in-memory draft and flush it on explicit boundaries.
+  let footnoteDraftFlushTimer: number | null = null;
+
+  const shouldAddFootnoteCommitToHistory = (reason: string): boolean => {
+    // Writes triggered by autosave/export/unload should not pollute the undo history.
+    if (reason.startsWith("EditorHandle.getContent")) return false;
+    if (reason.startsWith("EditorHandle.getJSON")) return false;
+    if (reason === "pagehide" || reason === "beforeunload" || reason.startsWith("visibilitychange")) return false;
+    // Normal editing boundaries should remain undoable.
+    return true;
+  };
+
+  const flushPendingFootnoteTextCommits = (reason: string) => {
+    const addToHistory = shouldAddFootnoteCommitToHistory(reason);
+    for (const [id, text] of Array.from(footnoteTextDraft.entries())) {
+      try {
+        const ok = setFootnotePlainTextById(id, text, { addToHistory });
+        if (ok) {
+          footnoteTextDraft.delete(id);
+        }
+      } catch {
+        // ignore
       }
-      const text = view?.getPlainText() || footnoteTextFallback.get(id) || "";
-      const rawKind = (node.dataset.footnoteKind ?? "footnote").toLowerCase();
-      const source: "manual" | "citation" = node.dataset.footnoteSource === "citation" ? "citation" : "manual";
-      const pageIndex =
-        rawKind === "footnote" ? determineFootnotePageIndex(node, pageElements, pageHeight, editorRect) : 0;
-      const normalizedKind: FootnoteKind = rawKind === "endnote" ? "endnote" : "footnote";
+    }
+    if ((window as any).__leditorFootnoteDebug) {
+      console.info("[Footnote][text] flushed", { reason, draftCount: footnoteTextDraft.size });
+    }
+  };
+  // NOTE: serialization is handled by the `EditorHandle.getContent/getJSON` wrappers above; do not
+  // export ad-hoc globals from here (it breaks renderer boot if the symbol is missing).
+
+  const collectFootnoteEntries = () => {
+    // Single source of truth: derive footnotes from the ProseMirror document, not from
+    // `.leditor-footnote` DOM markers (which can be missing during pagination churn).
+    const editorInstance = attachedEditorHandle?.getEditor?.() ?? null;
+    const doc = editorInstance?.state?.doc ?? null;
+    const entries: FootnoteRenderEntry[] = [];
+    const numbering = doc ? reconcileFootnotes(doc).numbering : new Map<string, number>();
+
+    const footnoteType = editorInstance?.state?.schema?.nodes?.footnote ?? null;
+    const pageType = editorInstance?.state?.schema?.nodes?.page ?? null;
+    if (!doc || !footnoteType) return entries;
+
+    const pushEntry = (id: string, kind: FootnoteKind, source: "manual" | "citation", pageIndex: number, text: string) => {
+      const mapped = numbering.get(id);
+      const numberLabel = mapped ? String(mapped) : "";
       entries.push({
-        footnoteId: id || `fn-${numberLabel}-${pageIndex}`,
-        number: numberLabel,
+        footnoteId: id,
+        number: numberLabel || "1",
         text,
-        kind: normalizedKind,
+        kind,
         source,
         pageIndex
       });
+    };
+
+    // Fast path: doc is a list of `page` nodes.
+    if (pageType && doc.childCount > 0 && Array.from({ length: doc.childCount }).every((_, i) => doc.child(i).type === pageType)) {
+      for (let pageIndex = 0; pageIndex < doc.childCount; pageIndex += 1) {
+        const pageNode = doc.child(pageIndex);
+        pageNode.descendants((node) => {
+          if (node.type !== footnoteType) return true;
+          const id = typeof (node.attrs as any)?.footnoteId === "string" ? String((node.attrs as any).footnoteId).trim() : "";
+          if (!id) return true;
+          const rawKind = typeof (node.attrs as any)?.kind === "string" ? String((node.attrs as any).kind) : "footnote";
+          const kind: FootnoteKind = rawKind === "endnote" ? "endnote" : "footnote";
+          const citationId = typeof (node.attrs as any)?.citationId === "string" ? String((node.attrs as any).citationId).trim() : "";
+          const source: "manual" | "citation" = citationId ? "citation" : "manual";
+          const draft = footnoteTextDraft.get(id);
+          const attrText = typeof (node.attrs as any)?.text === "string" ? String((node.attrs as any).text) : "";
+          const text = typeof draft === "string" ? draft : attrText;
+          pushEntry(id, kind, source, kind === "endnote" ? 0 : pageIndex, text);
+          return true;
+        });
+      }
+      // Fill missing numbering labels deterministically for legacy ids if needed.
+      let counterByKind: Record<FootnoteKind, number> = { footnote: 0, endnote: 0 };
+      entries.forEach((entry) => {
+        if (entry.number && entry.number !== "1") return;
+        const mapped = numbering.get(entry.footnoteId);
+        if (mapped) {
+          entry.number = String(mapped);
+          return;
+        }
+        counterByKind[entry.kind] += 1;
+        entry.number = String(counterByKind[entry.kind]);
+      });
+      return entries;
     }
+
+    // Fallback: traverse the whole doc and approximate page index by counting page nodes.
+    let currentPageIndex = 0;
+    doc.descendants((node) => {
+      if (pageType && node.type === pageType) {
+        currentPageIndex += 1;
+        return true;
+      }
+      if (node.type !== footnoteType) return true;
+      const id = typeof (node.attrs as any)?.footnoteId === "string" ? String((node.attrs as any).footnoteId).trim() : "";
+      if (!id) return true;
+      const rawKind = typeof (node.attrs as any)?.kind === "string" ? String((node.attrs as any).kind) : "footnote";
+      const kind: FootnoteKind = rawKind === "endnote" ? "endnote" : "footnote";
+      const citationId = typeof (node.attrs as any)?.citationId === "string" ? String((node.attrs as any).citationId).trim() : "";
+      const source: "manual" | "citation" = citationId ? "citation" : "manual";
+      const draft = footnoteTextDraft.get(id);
+      const attrText = typeof (node.attrs as any)?.text === "string" ? String((node.attrs as any).text) : "";
+      const text = typeof draft === "string" ? draft : attrText;
+      pushEntry(id, kind, source, kind === "endnote" ? 0 : Math.max(0, currentPageIndex - 1), text);
+      return true;
+    });
     return entries;
   };
 
@@ -2452,26 +2783,52 @@ export const mountA4Layout = (
 	      .filter((state): state is PageFootnoteState => state != null);
 	  };
 
-  const footnoteTextFallback = new Map<string, string>();
+  // (moved) footnoteTextDraft/commit timers declared above.
   let lastFootnoteRenderSignature = "";
+  let lastFootnoteRenderPageCount = -1;
 
   const renderFootnoteSections = () => {
     const entries = collectFootnoteEntries();
     // Skip expensive re-renders when nothing relevant changed. This is critical to avoid
     // caret-loss/flicker loops while typing (especially in the overlay footnote editor).
     {
-      const signature = entries
+      const overlayCount = overlayLayer.querySelectorAll<HTMLElement>(".leditor-page-overlay").length;
+      const needsFootnoteRows = entries.some((entry) => entry.kind === "footnote");
+      const hasFootnoteRows = overlayLayer.querySelectorAll(".leditor-footnote-entry").length > 0;
+      const signature = [
+        `pages:${pageCount}`,
+        `overlays:${overlayCount}`,
+        ...entries
         .map((entry) => {
-          const citationText =
-            entry.source === "citation"
-              ? `${(entry.text || "").trim().length}:${(entry.text || "").trim().slice(0, 80)}`
-              : "";
-          return `${entry.kind}:${entry.footnoteId}:${entry.number}:${entry.pageIndex}:${entry.source}:${citationText}`;
+          const trimmed = (entry.text || "").trim();
+          // Do not include the actively edited footnote's text in the signature; otherwise every
+          // keystroke would trigger a re-render. The overlay is already the source of truth while
+          // typing, and we avoid clobbering caret by not rewriting the active node anyway.
+          const isActiveManualFootnote =
+            footnoteMode &&
+            activeFootnoteId === entry.footnoteId &&
+            entry.kind === "footnote" &&
+            entry.source !== "citation";
+          const textSig = isActiveManualFootnote ? "active" : `${trimmed.length}:${trimmed.slice(0, 80)}`;
+          return `${entry.kind}:${entry.footnoteId}:${entry.number}:${entry.pageIndex}:${entry.source}:${textSig}`;
         })
-        .join("|");
+      ].join("|");
       const signatureUnchanged = signature === lastFootnoteRenderSignature;
       lastFootnoteRenderSignature = signature;
-      if (signatureUnchanged && !headerFooterMode) {
+      const pageCountUnchanged = lastFootnoteRenderPageCount === pageCount;
+      lastFootnoteRenderPageCount = pageCount;
+      // IMPORTANT: overlays can be rebuilt by pagination even when the logical entries signature
+      // does not change. If we early-return in that situation, footnote rows can disappear until
+      // another change forces a render.
+      // Only skip when the DOM already matches the logical need. If the document has no footnotes
+      // but stale rows exist (or vice versa), we must re-render to avoid "ghost" footnotes and
+      // incorrect reserved heights.
+      const safeToSkip =
+        signatureUnchanged &&
+        pageCountUnchanged &&
+        !headerFooterMode &&
+        needsFootnoteRows === hasFootnoteRows;
+      if (safeToSkip) {
         // Still measure heights so body layout reserves enough space as the user types.
         scheduleFootnoteHeightMeasurement();
         return;
@@ -2481,8 +2838,8 @@ export const mountA4Layout = (
     // resurrected numbering/text on the next insertion.
     {
       const liveIds = new Set(entries.map((entry) => entry.footnoteId));
-      for (const id of Array.from(footnoteTextFallback.keys())) {
-        if (!liveIds.has(id)) footnoteTextFallback.delete(id);
+      for (const id of Array.from(footnoteTextDraft.keys())) {
+        if (!liveIds.has(id)) footnoteTextDraft.delete(id);
       }
       for (const id of Array.from(caretState.footnotes.byId.keys())) {
         if (!liveIds.has(id)) caretState.footnotes.byId.delete(id);
@@ -2566,218 +2923,211 @@ export const mountA4Layout = (
     scheduleFootnoteHeightMeasurement();
   };
 
-	  const focusFootnoteEntry = (footnoteId: string, behavior: "preserve" | "end" = "end"): boolean => {
-	    // Throttle duplicate focus requests. Pagination/layout churn can re-request focus many times,
-	    // which results in visible blinking and can steal the caret away from the user.
-	    const focusNow = Date.now();
-    const lastFocusAtById =
-      ((window as any).__leditorFootnoteFocusAtById as Map<string, number> | undefined) ??
-      new Map<string, number>();
-    (window as any).__leditorFootnoteFocusAtById = lastFocusAtById;
-    const lastFocusAt = lastFocusAtById.get(footnoteId) ?? 0;
-    const activeEl = document.activeElement as HTMLElement | null;
-	    if (
-	      focusNow - lastFocusAt < 200 &&
-	      activeEl?.classList?.contains("leditor-footnote-entry-text") &&
-	      activeEl.getAttribute("data-footnote-id") === footnoteId
-	    ) {
-	      return true;
-	    }
-    lastFocusAtById.set(footnoteId, focusNow);
+  const focusFootnoteEntry = (footnoteId: string, behavior: "preserve" | "end" = "end"): boolean => {
+    const id = (footnoteId ?? "").trim();
+    if (!id) return false;
 
-	    const ensureOverlayEntryForFootnote = (id: string): HTMLElement | null => {
-	      const editorInstance = attachedEditorHandle?.getEditor?.() ?? null;
-	      const proseRoot = (editorInstance?.view?.dom as HTMLElement | null) ?? null;
-	      const root = proseRoot && editorEl.contains(proseRoot) ? proseRoot : editorEl;
-	      const marker = root.querySelector<HTMLElement>(`.leditor-footnote[data-footnote-id="${id}"]`);
-	      if (!marker) return null;
-	      const rawKind = (marker.dataset.footnoteKind ?? "footnote").toLowerCase();
-	      const kind: FootnoteKind = rawKind === "endnote" ? "endnote" : "footnote";
-	      if (kind !== "footnote") return null;
-
-	      const pageElements = Array.from(root.querySelectorAll<HTMLElement>(".leditor-page"));
-	      const pageHeight = measurePageHeight();
-	      const editorRect = root.getBoundingClientRect();
-	      const pageIndex = determineFootnotePageIndex(marker, pageElements, pageHeight, editorRect);
-	      const overlay = overlayLayer.querySelector<HTMLElement>(`.leditor-page-overlay[data-page-index="${pageIndex}"]`);
-      const container = overlay?.querySelector<HTMLElement>(".leditor-page-footnotes") ?? null;
-      if (!container) return null;
-
-      const numbering = getFootnoteNumbering();
-      const registry = getFootnoteRegistry();
-      const view = registry.get(id) ?? null;
-      const numberLabel = numbering.get(id) ? String(numbering.get(id)) : view?.getNumber?.() || marker.dataset.footnoteNumber || "1";
-      const source: "manual" | "citation" = marker.dataset.footnoteSource === "citation" ? "citation" : "manual";
-      const text = view?.getPlainText?.() || footnoteTextFallback.get(id) || "";
-
-      container.classList.add("leditor-page-footnotes--active");
-      container.setAttribute("aria-hidden", "false");
-
-      let list = container.querySelector<HTMLElement>(".leditor-footnote-list");
-      if (!list) {
-        list = document.createElement("div");
-        list.className = "leditor-footnote-list";
-        container.appendChild(list);
-      }
-
-      let row = list.querySelector<HTMLElement>(`.leditor-footnote-entry[data-footnote-id="${id}"]`);
-      if (!row) {
-        row = document.createElement("div");
-        row.className = "leditor-footnote-entry";
-        row.dataset.footnoteId = id;
-        if (source === "citation") {
-          row.classList.add("leditor-footnote-entry--citation");
-        }
-        const number = document.createElement("span");
-        number.className = "leditor-footnote-entry-number";
-        const body = document.createElement("span");
-        body.className = "leditor-footnote-entry-text";
-        body.dataset.footnoteId = id;
-        body.dataset.placeholder = "Type footnote…";
-        body.setAttribute("role", "textbox");
-        body.setAttribute("spellcheck", "false");
-        row.appendChild(number);
-        row.appendChild(body);
-        list.appendChild(row);
-      }
-
-      const numberEl = row.querySelector<HTMLElement>(".leditor-footnote-entry-number");
-      if (numberEl) numberEl.textContent = numberLabel;
-
-      const bodyEl = row.querySelector<HTMLElement>(".leditor-footnote-entry-text");
-      if (bodyEl) {
-        bodyEl.contentEditable = source === "citation" ? "false" : "true";
-        bodyEl.tabIndex = source === "citation" ? -1 : 0;
-        const currentText = bodyEl.textContent ?? "";
-        if (currentText !== text) {
-          bodyEl.textContent = text.trim();
-        }
-      }
-
-      return row;
-    };
-
-    let entry =
-      overlayLayer.querySelector<HTMLElement>(`.leditor-footnote-entry[data-footnote-id="${footnoteId}"]`) ??
-      ensureOverlayEntryForFootnote(footnoteId);
-    if (!entry) return false;
-    const existingTextEl = entry.querySelector<HTMLElement>(".leditor-footnote-entry-text") ?? null;
-    if (footnoteMode && activeFootnoteId === footnoteId && existingTextEl) {
+    // If we're already focused in this exact footnote editor, don't re-run scroll/focus/caret logic.
+    // Repeated calls here were a primary source of "blinking" caret and ribbon flicker.
+    if (footnoteMode && activeFootnoteId === id) {
       const active = document.activeElement as HTMLElement | null;
-      const sel = window.getSelection?.();
-      const alreadyIn =
-        active === existingTextEl &&
-        !!sel &&
-        sel.rangeCount > 0;
-      if (alreadyIn) {
-        try {
-          existingTextEl.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
-        } catch {
-          // ignore
-        }
+      if (
+        active?.classList?.contains("leditor-footnote-entry-text") &&
+        (active.getAttribute("data-footnote-id") || "").trim() === id &&
+        active.getAttribute("contenteditable") === "true"
+      ) {
         return true;
       }
     }
-    const sourceSelection = pendingFootnoteSourceSelection.get(footnoteId) ?? null;
-    pendingFootnoteSourceSelection.delete(footnoteId);
-    enterFootnoteMode(footnoteId, sourceSelection);
-    try {
-      entry.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
-    } catch {
-      // ignore
-    }
-    entry.classList.add("leditor-footnote-entry--active");
-    window.setTimeout(() => entry.classList.remove("leditor-footnote-entry--active"), 900);
-    let text = entry.querySelector<HTMLElement>(".leditor-footnote-entry-text");
-    if (text) {
-      const applyCaret = () => {
-        if (!text.isConnected) {
-          const freshEntry = overlayLayer.querySelector<HTMLElement>(
-            `.leditor-footnote-entry[data-footnote-id="${footnoteId}"]`
-          );
-          text = freshEntry?.querySelector<HTMLElement>(".leditor-footnote-entry-text") ?? null;
-        }
-        if (!text || !text.isConnected) return;
-        try {
-          text.focus({ preventScroll: true } as any);
-        } catch {
-          text.focus();
-        }
-        const storedOffset = caretState.footnotes.byId.get(footnoteId);
-        const offset =
-          behavior === "preserve" && storedOffset != null ? storedOffset : Number.POSITIVE_INFINITY;
-        applyContentEditableCaret(text, offset);
-        const nextOffset = getCharOffsetInContentEditable(text);
-        if (nextOffset != null) {
-          caretState.footnotes.byId.set(footnoteId, nextOffset);
-        }
-      };
 
-      // Focus/caret placement can be stolen immediately after insertion by unrelated focus handlers.
-      // Keep trying for a short window until selection is actually inside the footnote editor.
-      const start = performance.now();
-      let attempts = 0;
-      const lastCaretLogAtById =
-        ((window as any).__leditorFootnoteCaretLogAtById as Map<string, number> | undefined) ??
-        new Map<string, number>();
-      (window as any).__leditorFootnoteCaretLogAtById = lastCaretLogAtById;
-      const ensureFocused = () => {
-        attempts += 1;
-        applyCaret();
-        const sel = window.getSelection?.();
-        const active = document.activeElement as HTMLElement | null;
-        const ok =
-          !!text &&
-          text.isConnected &&
-          active === text &&
-          !!sel &&
-          sel.rangeCount > 0 &&
-          (sel.anchorNode ? text.contains(sel.anchorNode) : true);
-        if (ok) {
-          if ((window as any).__leditorCaretDebug) {
-            const lastAt = lastCaretLogAtById.get(footnoteId) ?? 0;
-            const now = Date.now();
-            if (now - lastAt > 750) {
-              lastCaretLogAtById.set(footnoteId, now);
-              console.info("[Footnote][focus][caret]", {
-                footnoteId,
-                behavior,
-                attempts,
-                activeEl: (document.activeElement as HTMLElement | null)?.className ?? null,
-                contentEditable: text?.getAttribute("contenteditable"),
-                rangeCount: sel?.rangeCount ?? 0
-              });
-            }
-          }
-          return;
-        }
-        if (attempts >= 8) {
-          if ((window as any).__leditorCaretDebug) {
-            console.warn("[Footnote][focus][caret] failed to land selection inside footnote editor", {
-              footnoteId,
-              behavior,
-              attempts,
-              elapsedMs: Math.round(performance.now() - start),
-              activeEl: (document.activeElement as HTMLElement | null)?.className ?? null
-            });
-          }
-          return;
-        }
-        if (performance.now() - start > 500) {
-          if ((window as any).__leditorCaretDebug) {
-            console.warn("[Footnote][focus][caret] timeout", {
-              footnoteId,
-              behavior,
-              attempts,
-              elapsedMs: Math.round(performance.now() - start)
-            });
-          }
-          return;
-        }
-        window.requestAnimationFrame(ensureFocused);
-      };
-      ensureFocused();
+    // Throttle duplicate requests (prevents blinking when pagination refocuses).
+    const focusNow = Date.now();
+    const lastFocusAtById =
+      ((window as any).__leditorFootnoteFocusAtById as Map<string, number> | undefined) ?? new Map<string, number>();
+    (window as any).__leditorFootnoteFocusAtById = lastFocusAtById;
+    const lastFocusAt = lastFocusAtById.get(id) ?? 0;
+    const activeEl = document.activeElement as HTMLElement | null;
+    if (
+      focusNow - lastFocusAt < 200 &&
+      activeEl?.classList?.contains("leditor-footnote-entry-text") &&
+      (activeEl.getAttribute("data-footnote-id") || "").trim() === id
+    ) {
+      return true;
     }
+    lastFocusAtById.set(id, focusNow);
+
+    // Resolve page index + kind from the document (authoritative).
+    const editorInstance = attachedEditorHandle?.getEditor?.() ?? null;
+    const doc = editorInstance?.state?.doc ?? null;
+    const footnoteType = editorInstance?.state?.schema?.nodes?.footnote ?? null;
+    const pageType = editorInstance?.state?.schema?.nodes?.page ?? null;
+    let kind: FootnoteKind = "footnote";
+    let pageIndex = 0;
+    if (doc && footnoteType) {
+      if (pageType && doc.childCount > 0 && Array.from({ length: doc.childCount }).every((_, i) => doc.child(i).type === pageType)) {
+        outer: for (let i = 0; i < doc.childCount; i += 1) {
+          const page = doc.child(i);
+          let found = false;
+          page.descendants((node) => {
+            if (node.type !== footnoteType) return true;
+            const nodeId = typeof (node.attrs as any)?.footnoteId === "string" ? String((node.attrs as any).footnoteId).trim() : "";
+            if (nodeId !== id) return true;
+            const rawKind = typeof (node.attrs as any)?.kind === "string" ? String((node.attrs as any).kind) : "footnote";
+            kind = rawKind === "endnote" ? "endnote" : "footnote";
+            pageIndex = i;
+            found = true;
+            return false;
+          });
+          if (found) break outer;
+        }
+      } else {
+        let currentPageIndex = 0;
+        doc.descendants((node) => {
+          if (pageType && node.type === pageType) {
+            currentPageIndex += 1;
+            return true;
+          }
+          if (node.type !== footnoteType) return true;
+          const nodeId = typeof (node.attrs as any)?.footnoteId === "string" ? String((node.attrs as any).footnoteId).trim() : "";
+          if (nodeId !== id) return true;
+          const rawKind = typeof (node.attrs as any)?.kind === "string" ? String((node.attrs as any).kind) : "footnote";
+          kind = rawKind === "endnote" ? "endnote" : "footnote";
+          pageIndex = Math.max(0, currentPageIndex - 1);
+          return false;
+        });
+      }
+    }
+
+    if (kind === "endnote") {
+      focusEndnoteEntry(id);
+      return true;
+    }
+
+    const sourceSelection = pendingFootnoteSourceSelection.get(id) ?? null;
+    pendingFootnoteSourceSelection.delete(id);
+    // Only enter/re-enter footnote mode when needed. Repeated calls can cause focus suppression
+    // to continuously reset, presenting as flicker/caret loss.
+    if (!footnoteMode || activeFootnoteId !== id) {
+      enterFootnoteMode(id, sourceSelection);
+    }
+
+    const overlays = Array.from(overlayLayer.querySelectorAll<HTMLElement>(".leditor-page-overlay"));
+    const maxOverlayIndex = Math.max(0, overlays.length - 1);
+    const clampedPageIndex = clamp(pageIndex, 0, maxOverlayIndex);
+    const overlay =
+      overlayLayer.querySelector<HTMLElement>(`.leditor-page-overlay[data-page-index="${clampedPageIndex}"]`) ??
+      overlays[clampedPageIndex] ??
+      null;
+    const container = overlay?.querySelector<HTMLElement>(".leditor-page-footnotes") ?? null;
+
+    const locateTextEl = (): HTMLElement | null => {
+      if (overlay) {
+        const within = overlay.querySelector<HTMLElement>(`.leditor-footnote-entry-text[data-footnote-id="${id}"]`);
+        if (within) return within;
+      }
+      return overlayLayer.querySelector<HTMLElement>(`.leditor-footnote-entry-text[data-footnote-id="${id}"]`);
+    };
+    let textEl = locateTextEl();
+    if (!textEl) {
+      // Ensure entries exist before we attempt to focus.
+      renderFootnoteSections();
+      scheduleFootnoteHeightMeasurement();
+      textEl = locateTextEl();
+    }
+    if (!textEl) {
+      // If overlays were just rebuilt, allow one render frame and let the focus event retry loop pick it up.
+      scheduleFootnoteUpdate();
+      return false;
+    }
+
+    const row = textEl.closest<HTMLElement>(".leditor-footnote-entry");
+    if (row) {
+      row.classList.add("leditor-footnote-entry--active");
+      window.setTimeout(() => row.classList.remove("leditor-footnote-entry--active"), 900);
+    }
+
+    // Ensure the footnote editor is visible in the scroll container. `scrollIntoView` can be
+    // inconsistent under transformed (zoomed) surfaces, so we also apply a deterministic scrollTop
+    // adjustment against the known scroller (`appRoot`).
+    const scrollIntoScroller = (el: HTMLElement | null, align: "center" | "nearest") => {
+      if (!el) return;
+      try {
+        el.scrollIntoView({ block: align === "center" ? "center" : "nearest", inline: "nearest", behavior: "auto" });
+      } catch {
+        // ignore
+      }
+      try {
+        const scroller = appRoot;
+        const s = scroller.getBoundingClientRect();
+        const r = el.getBoundingClientRect();
+        if (!Number.isFinite(r.top) || !Number.isFinite(s.top)) return;
+        const pad = 28;
+        const topBound = s.top + pad;
+        const bottomBound = s.bottom - pad;
+        const isVisible = r.top >= topBound && r.bottom <= bottomBound;
+        if (isVisible) return;
+        const desiredTop = align === "center" ? s.top + s.height * 0.4 : topBound;
+        const delta = r.top - desiredTop;
+        if (!Number.isFinite(delta)) return;
+        scroller.scrollTo({ top: scroller.scrollTop + delta, left: scroller.scrollLeft, behavior: "auto" });
+      } catch {
+        // ignore
+      }
+    };
+    scrollIntoScroller(container, behavior === "preserve" ? "nearest" : "center");
+    scrollIntoScroller(textEl, "nearest");
+
+    // Cancel any in-flight caret loop for other footnotes.
+    footnoteCaretToken += 1;
+    const token = footnoteCaretToken;
+    const start = performance.now();
+    let attempts = 0;
+
+    const ensureFocused = () => {
+      if (token !== footnoteCaretToken) return;
+      if (!footnoteMode || activeFootnoteId !== id) return;
+      attempts += 1;
+
+      // Re-resolve the node if pagination replaced it.
+      if (!textEl || !textEl.isConnected) {
+        textEl = locateTextEl();
+      }
+      if (!textEl || !textEl.isConnected) return;
+
+      try {
+        textEl.focus({ preventScroll: true } as any);
+      } catch {
+        try {
+          textEl.focus();
+        } catch {
+          // ignore
+        }
+      }
+
+      const storedOffset = caretState.footnotes.byId.get(id);
+      const offset = behavior === "preserve" && storedOffset != null ? storedOffset : Number.POSITIVE_INFINITY;
+      applyContentEditableCaret(textEl, offset);
+
+      const sel = window.getSelection?.();
+      const active = document.activeElement as HTMLElement | null;
+      const ok =
+        active === textEl &&
+        !!sel &&
+        sel.rangeCount > 0 &&
+        (sel.anchorNode ? textEl.contains(sel.anchorNode) : true);
+      if (ok) {
+        const nextOffset = getCharOffsetInContentEditable(textEl);
+        if (nextOffset != null) caretState.footnotes.byId.set(id, nextOffset);
+        if ((window as any).__leditorCaretDebug) {
+          console.info("[Footnote][focus][caret]", { footnoteId: id, behavior, attempts });
+        }
+        return;
+      }
+
+      if (attempts >= 8 || performance.now() - start > 500) return;
+      window.requestAnimationFrame(ensureFocused);
+    };
+    ensureFocused();
     return true;
   };
 
@@ -2814,19 +3164,91 @@ export const mountA4Layout = (
     }
   };
 
-  const handleFootnoteEntryInput = (event: Event) => {
-    const target = (event.target as HTMLElement | null)?.closest<HTMLElement>(".leditor-footnote-entry-text");
-    if (!target) return;
-    const footnoteId = target.dataset.footnoteId;
-    if (!footnoteId) return;
-    const view = getFootnoteRegistry().get(footnoteId);
-    const text = target.textContent ?? "";
-    if (!view) {
-      footnoteTextFallback.set(footnoteId, text);
-      return;
+  const setFootnotePlainTextById = (
+    footnoteId: string,
+    text: string,
+    opts?: { addToHistory?: boolean }
+  ): boolean => {
+    if (!attachedEditorHandle) return false;
+    const editorInstance = attachedEditorHandle.getEditor();
+    const view = editorInstance?.view;
+    if (!view) return false;
+    const footnoteType = view.state.schema.nodes.footnote;
+    if (!footnoteType) return false;
+    let foundPos: number | null = null;
+    let foundNode: any = null;
+    view.state.doc.descendants((node, pos) => {
+      if (node.type !== footnoteType) return true;
+      const id = typeof (node.attrs as any)?.footnoteId === "string" ? String((node.attrs as any).footnoteId) : "";
+      if (id === footnoteId) {
+        foundPos = pos;
+        foundNode = node;
+        return false;
+      }
+      return true;
+    });
+    if (foundPos == null || !foundNode) return false;
+    const trimmed = typeof text === "string" ? text : "";
+    const current = typeof (foundNode.attrs as any)?.text === "string" ? String((foundNode.attrs as any).text).trim() : "";
+    if (current === trimmed.trim()) return true;
+    try {
+      const nextAttrs = { ...(foundNode.attrs as any), text: trimmed };
+      // Keep nodeSize stable by storing text in attrs and clearing node content.
+      const nextNode = footnoteType.create(nextAttrs, [], foundNode.marks);
+      const fromPos = Number(foundPos);
+      const rawNodeSize =
+        typeof foundNode.nodeSize === "number" ? foundNode.nodeSize : Number((foundNode as any).nodeSize);
+      const nodeSize = Number.isFinite(rawNodeSize) ? rawNodeSize : 0;
+      const prevSelection = view.state.selection;
+      let tr = view.state.tr.replaceWith(fromPos, fromPos + nodeSize, nextNode);
+      // Preserve the current ProseMirror selection. Updating a footnote node's attrs must not
+      // reset the selection to start/end-of-doc (caret poison) or steal focus from overlay editors.
+      try {
+        const mapped = prevSelection.map(tr.doc, tr.mapping);
+        tr = tr.setSelection(mapped);
+      } catch {
+        // ignore
+      }
+      const addToHistory = opts?.addToHistory !== false;
+      tr = tr.setMeta("addToHistory", addToHistory);
+      view.dispatch(tr);
+      return true;
+    } catch {
+      return false;
     }
-    view.setPlainText(text);
   };
+
+  const scheduleFootnoteTextCommit = (footnoteId: string, rawText: string) => {
+    const id = (footnoteId ?? "").trim();
+    if (!id) return;
+    const nextText = typeof rawText === "string" ? rawText : "";
+    footnoteTextDraft.set(id, nextText);
+    // Persist drafts into the ProseMirror document on idle, but only while *not* in footnote mode.
+    // Autosave/export uses getContent/getJSON; we inject drafts there without dispatching transactions.
+    // Committing to the doc while footnote mode is active causes focus ping-pong in ProseMirror.
+    if (footnoteDraftFlushTimer != null) {
+      window.clearTimeout(footnoteDraftFlushTimer);
+    }
+    if (footnoteMode) return;
+    const delay = 300;
+    footnoteDraftFlushTimer = window.setTimeout(() => {
+      footnoteDraftFlushTimer = null;
+      flushPendingFootnoteTextCommits(footnoteMode ? "idle:footnote" : "idle");
+    }, delay);
+  };
+
+	  const handleFootnoteEntryInput = (event: Event) => {
+	    const target = (event.target as HTMLElement | null)?.closest<HTMLElement>(".leditor-footnote-entry-text");
+	    if (!target) return;
+	    const footnoteId = target.dataset.footnoteId;
+	    if (!footnoteId) return;
+	    const text = target.textContent ?? "";
+	    scheduleFootnoteTextCommit(footnoteId, text);
+	    // The user edited footnote text; allow a responsive repagination to make room.
+	    footnotePaginationArmed = true;
+	    lastFootnoteInputAt = Date.now();
+	    scheduleFootnoteHeightMeasurement();
+	  };
 
   const deleteFootnoteNodeById = (footnoteId: string): boolean => {
     if (!attachedEditorHandle) return false;
@@ -2868,7 +3290,7 @@ export const mountA4Layout = (
     event.stopPropagation();
     const removed = deleteFootnoteNodeById(footnoteId);
     if (removed) {
-      footnoteTextFallback.delete(footnoteId);
+      footnoteTextDraft.delete(footnoteId);
       // Exit footnote mode back to the stored body selection.
       exitFootnoteMode({ restore: true });
       scheduleFootnoteUpdate();
@@ -2899,18 +3321,58 @@ export const mountA4Layout = (
     const host = target.closest<HTMLElement>(".leditor-endnote-entry");
     const footnoteId = host?.dataset.footnoteId;
     if (!footnoteId) return;
-    const view = getFootnoteRegistry().get(footnoteId);
     const text = target.textContent ?? "";
-    if (!view) {
-      footnoteTextFallback.set(footnoteId, text);
-      return;
-    }
-    view.setPlainText(text);
+    scheduleFootnoteTextCommit(footnoteId, text);
   };
 
   let footnoteHeightHandle = 0;
   const footnoteHeightCache = new Map<number, number>();
-  const FOOTNOTE_HEIGHT_DIRTY_THRESHOLD = 0.75;
+  // Rounded pixel values can still jitter by 1px across layout passes (scrollbar toggles, font hinting).
+  // Use the smallest delta so a new footnote line always triggers a repagination.
+  const FOOTNOTE_HEIGHT_DIRTY_THRESHOLD = 1;
+  const FOOTNOTE_BODY_GAP_PX = 12;
+  let lastFootnoteDebugLogAt = 0;
+  const isFootnoteLayoutDebug = () => Boolean((window as any).__leditorFootnoteLayoutDebug);
+  const syncFootnoteDebugClass = () => {
+    appRoot.classList.toggle("leditor-debug-footnotes", isFootnoteLayoutDebug());
+  };
+  const setFootnoteLayoutVars = (
+    target: HTMLElement | null,
+    heightPx: number,
+    effectiveBottomPx: number,
+    gapPx: number
+  ) => {
+    if (!target) return;
+    target.style.setProperty("--page-footnote-gap", `${gapPx}px`);
+    target.style.setProperty("--page-footnote-height", `${Math.max(0, Math.round(heightPx))}px`);
+    target.style.setProperty("--effective-margin-bottom", `${Math.max(0, Math.round(effectiveBottomPx))}px`);
+  };
+  const updateFootnoteDebugData = (
+    container: HTMLElement,
+    payload: { appliedHeight: number; overlap: boolean }
+  ) => {
+    if (!isFootnoteLayoutDebug()) {
+      container.removeAttribute("data-debug-footnote-height");
+      container.removeAttribute("data-debug-footnote-overlap");
+      return;
+    }
+    container.dataset.debugFootnoteHeight = `${Math.max(0, Math.round(payload.appliedHeight))}px`;
+    if (payload.overlap) {
+      container.dataset.debugFootnoteOverlap = "true";
+    } else {
+      container.removeAttribute("data-debug-footnote-overlap");
+    }
+  };
+  const flashFootnoteReflow = (pageIndex: number) => {
+    try {
+      const pageEl = editorEl.querySelectorAll<HTMLElement>(".leditor-page")[pageIndex] ?? null;
+      if (!pageEl) return;
+      pageEl.classList.add("leditor-footnote-reflow");
+      setTimeout(() => pageEl.classList.remove("leditor-footnote-reflow"), 220);
+    } catch {
+      // ignore
+    }
+  };
   function scheduleFootnoteHeightMeasurement() {
     if (footnoteHeightHandle) return;
     footnoteHeightHandle = window.requestAnimationFrame(() => {
@@ -2923,6 +3385,7 @@ export const mountA4Layout = (
       const pageStackPages = proseRoot
         ? Array.from(proseRoot.querySelectorAll<HTMLElement>(".leditor-page"))
         : Array.from(editorEl.querySelectorAll<HTMLElement>(".leditor-page"));
+      const pageHeightPx = measurePageHeight() || 1122; // fallback
       const rootTokens = getComputedStyle(document.documentElement);
       const docFooterDistancePx = Number.parseFloat(rootTokens.getPropertyValue("--doc-footer-distance").trim() || "48");
       const footerHeightPx = Number.parseFloat(rootTokens.getPropertyValue("--footer-height").trim() || "48");
@@ -2930,48 +3393,146 @@ export const mountA4Layout = (
         (Number.isFinite(docFooterDistancePx) ? docFooterDistancePx : 48) +
         (Number.isFinite(footerHeightPx) ? footerHeightPx : 48);
       let earliestDirtyPage: number | null = null;
-      const now = Date.now();
-      const activeFootnoteEditor = document.activeElement as HTMLElement | null;
-      const typingInFootnote =
-        footnoteMode &&
-        !!activeFootnoteEditor &&
-        activeFootnoteEditor.classList.contains("leditor-footnote-entry-text") &&
-        activeFootnoteEditor.getAttribute("contenteditable") === "true";
+      // Prune cached heights for pages that no longer exist.
+      for (const pageIndex of Array.from(footnoteHeightCache.keys())) {
+        if (pageIndex < 0 || pageIndex >= footnoteContainers.length) {
+          footnoteHeightCache.delete(pageIndex);
+        }
+      }
+      syncFootnoteDebugClass();
+      const debugEnabled = isFootnoteLayoutDebug();
+
       footnoteContainers.forEach((container) => {
         const host = container.closest<HTMLElement>(".leditor-page-overlay");
+        const pageIndex = host ? Number(host.dataset.pageIndex ?? "-1") : -1;
+        const pageStackPage = pageIndex >= 0 ? (pageStackPages[pageIndex] ?? null) : null;
+        const pageContent = pageStackPage?.querySelector<HTMLElement>(".leditor-page-content") ?? null;
         const hasEntries = container.querySelector(".leditor-footnote-entry") != null;
+        const containerStyle = getComputedStyle(container);
+        const paddingTopPx = Number.parseFloat(containerStyle.paddingTop || "0") || 0;
+        const borderTopPx = Number.parseFloat(containerStyle.borderTopWidth || "0") || 0;
+        const borderBottomPx = Number.parseFloat(containerStyle.borderBottomWidth || "0") || 0;
+        const chromePx = Math.max(0, paddingTopPx + borderTopPx + borderBottomPx);
         // When there are no entries, we should not reserve the base footnote-area-height. Only reserve
         // the footer distance + footer height in that case (Word-like behavior).
         if (!hasEntries) {
+          const reservePx = footnoteMode ? Math.max(18, Math.round(footerReservePx * 0.35)) : 0;
+          const effectiveBottomPx = Math.max(0, footerReservePx + reservePx + FOOTNOTE_BODY_GAP_PX);
           container.classList.remove("leditor-page-footnotes--active");
           container.setAttribute("aria-hidden", "true");
-          container.style.setProperty("--page-footnote-height", "0px");
-          if (host) {
-            host.style.setProperty("--page-footnote-height", "0px");
+          container.style.height = `${reservePx}px`;
+          container.style.overflowY = "hidden";
+          container.style.setProperty("--page-footnote-height", `${reservePx}px`);
+          setFootnoteLayoutVars(host, reservePx, effectiveBottomPx, FOOTNOTE_BODY_GAP_PX);
+          if (pageIndex >= 0) {
+            setFootnoteLayoutVars(pageStackPage, reservePx, effectiveBottomPx, FOOTNOTE_BODY_GAP_PX);
+            const prevHeight = footnoteHeightCache.get(pageIndex);
+            const appliedHeight = reservePx;
+            if (prevHeight === undefined || Math.abs(appliedHeight - prevHeight) >= FOOTNOTE_HEIGHT_DIRTY_THRESHOLD) {
+              footnoteHeightCache.set(pageIndex, appliedHeight);
+              earliestDirtyPage = earliestDirtyPage === null ? pageIndex : Math.min(earliestDirtyPage, pageIndex);
+              if (reservePx > 0) flashFootnoteReflow(pageIndex);
+            }
+            updateFootnoteDebugData(container, { appliedHeight, overlap: false });
+          }
+          return;
+        }
+        // Measure only the actual list content to avoid including container padding/margins that make
+        // the box jump on every character.
+        const listEl = container.querySelector<HTMLElement>(".leditor-footnote-list");
+        const measuredHeight = hasEntries
+          ? Math.max(0, Math.round((listEl ?? container).scrollHeight + chromePx))
+          : 0;
+        // Hard cap: never let footnotes consume more than ~35% of the page height (Word-like guardrail).
+        const hardCapPx = Math.max(0, Math.round(pageHeightPx * 0.35));
+
+        // Snap growth to full lines to avoid per-character expansion jitter.
+        const linePx = (() => {
+          const raw = getComputedStyle(container).lineHeight;
+          const v = Number.parseFloat((raw || "").trim());
+          if (Number.isFinite(v) && v > 0) return v;
+          return 18; // sensible fallback
+        })();
+        const currentBoxPx = Number.parseFloat(getComputedStyle(container).height || "0") || 0;
+        // Minimum visible height: a single line.
+        const minFootnotePx = Math.max(linePx + chromePx, 12);
+
+        let appliedHeight = Math.min(Math.max(measuredHeight, minFootnotePx), hardCapPx);
+        if (hasEntries && pageStackPage) {
+          const contentEl = pageContent;
+          const currentFootnotePx = Number.parseFloat(
+            getComputedStyle(pageStackPage).getPropertyValue("--page-footnote-height").trim() || "0"
+          );
+          const baseContentPx =
+            (contentEl?.getBoundingClientRect().height ?? 0) + (Number.isFinite(currentFootnotePx) ? currentFootnotePx : 0);
+          // Preserve a minimum amount of body space so the page can still display the line containing the
+          // footnote marker (Word-like). Otherwise a large footnote collapses the body to 0px, which causes
+          // unstable pagination and confusing "missing text" moments.
+          const minBodyPx = (() => {
+            const raw = contentEl ? getComputedStyle(contentEl).lineHeight : "";
+            const lh = Number.parseFloat((raw || "").trim());
+            if (Number.isFinite(lh) && lh > 0) return Math.max(12, Math.min(36, Math.round(lh)));
+            return 18;
+          })();
+          const maxFootnotePx = Math.max(0, Math.floor(baseContentPx - minBodyPx));
+          if (Number.isFinite(maxFootnotePx) && maxFootnotePx > 0) {
+            appliedHeight = Math.min(appliedHeight, maxFootnotePx);
           }
         }
-        const height = hasEntries ? Math.max(0, Math.round(container.scrollHeight)) : 0;
-        container.style.setProperty("--page-footnote-height", `${height}px`);
+
+        // Snap to whole-line increments; grow immediately when needed.
+        const step = Math.max(linePx, 4);
+        appliedHeight = Math.max(minFootnotePx, Math.ceil(appliedHeight / step) * step);
+
+        // Force the body to reflow instead of adding a scrollbar.
+        container.style.overflowY = "hidden";
+        container.style.height = hasEntries ? `${appliedHeight}px` : "0px";
+        container.style.setProperty("--page-footnote-height", `${appliedHeight}px`);
         if (host) {
-          host.style.setProperty("--page-footnote-height", `${height}px`);
           const currentMarginBottomPx = Number.parseFloat(
             getComputedStyle(host).getPropertyValue("--current-margin-bottom").trim() || "0"
           );
-          const effectiveBottomPx = Math.max(currentMarginBottomPx, footerReservePx + height);
-          host.style.setProperty("--effective-margin-bottom", `${Math.max(0, Math.round(effectiveBottomPx))}px`);
-          const pageIndex = Number(host.dataset.pageIndex ?? "-1");
+          const effectiveBottomPx = Math.max(
+            currentMarginBottomPx,
+            footerReservePx + appliedHeight + FOOTNOTE_BODY_GAP_PX
+          );
+          setFootnoteLayoutVars(host, appliedHeight, effectiveBottomPx, FOOTNOTE_BODY_GAP_PX);
           if (pageIndex >= 0) {
-            const pageStackPage = pageStackPages[pageIndex] ?? null;
-            pageStackPage?.style.setProperty("--page-footnote-height", `${height}px`);
-            pageStackPage?.style.setProperty(
-              "--effective-margin-bottom",
-              `${Math.max(0, Math.round(effectiveBottomPx))}px`
-            );
+            setFootnoteLayoutVars(pageStackPage, appliedHeight, effectiveBottomPx, FOOTNOTE_BODY_GAP_PX);
             const prevHeight = footnoteHeightCache.get(pageIndex);
-            if (prevHeight === undefined || Math.abs(height - prevHeight) >= FOOTNOTE_HEIGHT_DIRTY_THRESHOLD) {
-              footnoteHeightCache.set(pageIndex, height);
+            if (prevHeight === undefined || Math.abs(appliedHeight - prevHeight) >= FOOTNOTE_HEIGHT_DIRTY_THRESHOLD) {
+              footnoteHeightCache.set(pageIndex, appliedHeight);
               earliestDirtyPage =
                 earliestDirtyPage === null ? pageIndex : Math.min(earliestDirtyPage, pageIndex);
+              flashFootnoteReflow(pageIndex);
+            }
+            const overlap =
+              debugEnabled && pageContent
+                ? pageContent.getBoundingClientRect().bottom > container.getBoundingClientRect().top - 1
+                : false;
+            updateFootnoteDebugData(container, { appliedHeight, overlap });
+            if (debugEnabled) {
+              const logNow = Date.now();
+              if (overlap || logNow - lastFootnoteDebugLogAt > 750) {
+                lastFootnoteDebugLogAt = logNow;
+                console.info("[Footnote][layout]", {
+                  pageIndex,
+                  appliedHeight,
+                  measuredHeight,
+                  chromePx,
+                  effectiveBottomPx,
+                  overlap,
+                  footnoteVars: pageStackPage
+                    ? {
+                        height: getComputedStyle(pageStackPage).getPropertyValue("--page-footnote-height").trim(),
+                        gap: getComputedStyle(pageStackPage).getPropertyValue("--page-footnote-gap").trim(),
+                        effectiveBottom: getComputedStyle(pageStackPage)
+                          .getPropertyValue("--effective-margin-bottom")
+                          .trim()
+                      }
+                    : null
+                });
+              }
             }
           }
         }
@@ -2979,21 +3540,28 @@ export const mountA4Layout = (
       // IMPORTANT: Never apply the "max across all pages" footnote height globally. That causes
       // every page to reserve space for the largest footnote, producing huge blank gaps and
       // truncated lines on pages without footnotes.
+      zoomLayer.style.setProperty("--page-footnote-gap", `${FOOTNOTE_BODY_GAP_PX}px`);
       zoomLayer.style.setProperty("--page-footnote-height", "0px");
       const baseMarginBottomPx = Number.parseFloat(
         getComputedStyle(zoomLayer).getPropertyValue("--current-margin-bottom").trim() || "0"
       );
       const effectiveBottomPx = Math.max(baseMarginBottomPx, footerReservePx);
       zoomLayer.style.setProperty("--effective-margin-bottom", `${Math.max(0, Math.round(effectiveBottomPx))}px`);
-      if (earliestDirtyPage !== null && !typingInFootnote) {
+      if (earliestDirtyPage !== null) {
+        // Repaginate immediately so body text yields space as soon as footnotes grow.
+        footnotePaginationArmed = false;
+        if (footnoteTypingPaginationTimer != null) {
+          window.clearTimeout(footnoteTypingPaginationTimer);
+          footnoteTypingPaginationTimer = null;
+        }
+        if (footnoteMode) {
+          pendingFootnoteRefocusId = activeFootnoteId ?? pendingFootnoteRefocusId;
+          (window as any).__leditorPreserveScrollOnNextPagination = true;
+        }
         requestPagination();
-      } else if (earliestDirtyPage !== null && typingInFootnote) {
-        // Defer repagination while the user is actively typing in the footnote editor to avoid
-        // DOM churn that can steal focus/caret. We'll repaginate on the next idle frame.
-        window.setTimeout(() => scheduleFootnoteHeightMeasurement(), 120);
       }
-    });
-  }
+	    });
+	  }
 
   let footnoteUpdateHandle = 0;
   const scheduleFootnoteUpdate = () => {
@@ -3372,7 +3940,7 @@ const renderPages = (count: number) => {
   };
 
   let missingProseRootRetries = 0;
-  const attachEditorForMode = () => {
+	  const attachEditorForMode = () => {
     // If the host detaches the editor (panel switches / DOM rebuild), avoid doing
     // pagination work until we're connected again.
     if (!editorEl.isConnected || !appRoot.isConnected) {
@@ -3387,12 +3955,17 @@ const renderPages = (count: number) => {
     pageStack.style.pointerEvents = "auto";
     pageStack.style.zIndex = "2";
     // In normal body editing, overlays must be visual-only and must not block ProseMirror caret placement.
-    overlayLayer.style.pointerEvents = "none";
-    overlayLayer.style.zIndex = "3";
-    headerFooterMode = false;
-    activeRegion = null;
-    appRoot.classList.remove("leditor-header-footer-editing");
-    const editorInstance = attachedEditorHandle?.getEditor();
+    // In overlay edit modes (footnotes / header-footer), overlays must receive pointer events.
+    // Failsafe: explicitly disable overlay pointer events when not in an overlay edit mode.
+    overlayLayer.style.pointerEvents = footnoteMode || headerFooterMode ? "" : "none";
+	    overlayLayer.style.zIndex = "3";
+	    // IMPORTANT: do not reset mode flags here. Pagination/layout churn can call attachEditorForMode
+	    // while the user is editing footnotes/header/footer; clearing mode state causes caret loss and
+	    // makes the body appear non-editable.
+	    setModeClass("leditor-header-footer-editing", headerFooterMode);
+	    setModeClass("leditor-footnote-editing", footnoteMode);
+	    updateHeaderFooterEditability();
+	    const editorInstance = attachedEditorHandle?.getEditor();
     const prose = (editorInstance?.view?.dom as HTMLElement | null) ?? editorEl.querySelector<HTMLElement>(".ProseMirror");
     if (!prose) {
       // In embedded hosts, DOM reparenting or transient layout churn can momentarily detach/rebuild
@@ -3429,8 +4002,26 @@ const renderPages = (count: number) => {
         prose.focus({ preventScroll: true });
       }
     }
-    updateHeaderFooterEditability();
-    setEditorEditable(true);
+	    updateHeaderFooterEditability();
+	    // Preserve editor editability across pagination churn: in footnote mode, the overlay owns the caret.
+	    // Heal a common stuck state: footnote mode flag true but no active footnote and no focused
+	    // overlay editor. This leaves the body non-editable and makes the app feel "frozen".
+	    if (footnoteMode) {
+	      const activeEl = document.activeElement as HTMLElement | null;
+	      const activeInFootnotes =
+	        Boolean(activeEl?.closest?.(".leditor-footnote-entry-text")) ||
+	        Boolean(activeEl?.closest?.(".leditor-page-footnotes"));
+	      if (!activeFootnoteId && !activeInFootnotes) {
+	        footnoteMode = false;
+	        try {
+	          (window as any).__leditorFootnoteMode = false;
+	        } catch {
+	          // ignore
+	        }
+	        setModeClass("leditor-footnote-editing", false);
+	      }
+	    }
+	    setEditorEditable(!footnoteMode && !headerFooterMode);
     if (!didLogLayoutDebug) {
       didLogLayoutDebug = true;
       const firstPage = editorEl.querySelector<HTMLElement>(".leditor-page");
@@ -3727,6 +4318,19 @@ const renderPages = (count: number) => {
           }
         });
       }
+      // When pagination was explicitly triggered from footnote typing, re-focus the active footnote
+      // once the overlays are rebuilt. This is opt-in and does not run for normal pagination churn.
+      if (footnoteMode && pendingFootnoteRefocusId) {
+        const id = pendingFootnoteRefocusId;
+        pendingFootnoteRefocusId = null;
+        window.requestAnimationFrame(() => {
+          try {
+            focusFootnoteEntry(id, "preserve");
+          } catch {
+            // ignore
+          }
+        });
+      }
       // Note: do not try to "re-arm" footnote focus from pagination/layout churn.
       // That causes a feedback loop (pagination -> steal focus -> re-focus -> pagination) which
       // presents to the user as blinking and caret loss. Footnote focus should only be driven by
@@ -3837,20 +4441,20 @@ const renderPages = (count: number) => {
     syncZoomBox();
   };
 
-  const enterHeaderFooterMode = (target?: "header" | "footer", pageIndex?: string | null) => {
-    headerFooterMode = true;
-    if (!target) {
-      throw new Error("Header/footer edit mode requires an active region.");
-    }
-    captureBodySelection("enter");
-    activeRegion = target;
-    activeHeaderFooterPageIndex = pageIndex ?? null;
-    caretState.active = target;
-    appRoot.classList.add("leditor-header-footer-editing");
-    updateHeaderFooterEditability();
-    setEditorEditable(false);
-    focusHeaderFooterRegion(target, activeHeaderFooterPageIndex);
-  };
+	  const enterHeaderFooterMode = (target?: "header" | "footer", pageIndex?: string | null) => {
+	    headerFooterMode = true;
+	    if (!target) {
+	      throw new Error("Header/footer edit mode requires an active region.");
+	    }
+	    captureBodySelection("enter");
+	    activeRegion = target;
+	    activeHeaderFooterPageIndex = pageIndex ?? null;
+	    caretState.active = target;
+	    setModeClass("leditor-header-footer-editing", true);
+	    updateHeaderFooterEditability();
+	    setEditorEditable(false);
+	    focusHeaderFooterRegion(target, activeHeaderFooterPageIndex);
+	  };
 
   const resolvePageIndexFromTarget = (target: HTMLElement | null): string | null => {
     if (!target) return null;
@@ -3910,16 +4514,16 @@ const renderPages = (count: number) => {
     return null;
   };
 
-	  const exitHeaderFooterMode = () => {
-    headerFooterMode = false;
-    activeRegion = null;
-    activeHeaderFooterPageIndex = null;
-    caretState.active = "body";
-	    appRoot.classList.remove("leditor-header-footer-editing");
-	    updateHeaderFooterEditability();
-	    setEditorEditable(true);
-	    restoreBodySelection("exit");
-	  };
+		  const exitHeaderFooterMode = () => {
+	    headerFooterMode = false;
+	    activeRegion = null;
+	    activeHeaderFooterPageIndex = null;
+	    caretState.active = "body";
+		    setModeClass("leditor-header-footer-editing", false);
+		    updateHeaderFooterEditability();
+		    setEditorEditable(true);
+		    restoreBodySelection("exit");
+		  };
 
   const handleOverlayDblClick = (event: MouseEvent) => {
     if (headerFooterMode || footnoteMode) return;
@@ -4208,31 +4812,49 @@ const renderPages = (count: number) => {
     // Escape handling is above to work even when a footnote/inner editor has focus.
   };
 
-  const handleDocumentFocusIn = (event: FocusEvent) => {
-    if (!footnoteMode) return;
-    if (Date.now() < suppressBodyFocusUntil) {
-      const editorInstance = attachedEditorHandle?.getEditor?.() ?? null;
-      const prose = (editorInstance?.view?.dom as HTMLElement | null) ?? null;
-      const target = event.target as HTMLElement | null;
-      if (prose && target && (target === prose || prose.contains(target))) {
-        // If ProseMirror tries to grab focus while we're entering footnote mode, immediately
-        // return focus to the active footnote editor.
+	  let lastProseStealAt = 0;
+	  const handleDocumentFocusIn = (event: FocusEvent) => {
+	    // Body editability failsafe: if ProseMirror ever ends up focused while not editable,
+	    // restore editability immediately. (We've seen rare cases where mode flags are false
+	    // but the DOM remained contenteditable=false after an error during mode switching.)
+	    if (!footnoteMode && !headerFooterMode) {
+	      const editorInstance = attachedEditorHandle?.getEditor?.() ?? null;
+	      const prose = (editorInstance?.view?.dom as HTMLElement | null) ?? null;
+	      const target = event.target as HTMLElement | null;
+	      if (prose && prose.isConnected && target && (target === prose || prose.contains(target))) {
+	        if (prose.contentEditable !== "true") {
+	          setEditorEditable(true);
+	          // Don't try to manage selection here; just ensure the editor can type again.
+	        }
+	      }
+	      return;
+	    }
+	    if (!footnoteMode) return;
+	    const now = Date.now();
+	    // Guard against focus ping-pong (can happen when transactions or rehydration briefly focus ProseMirror).
+	    if (now - lastProseStealAt < 80) return;
+	    const editorInstance = attachedEditorHandle?.getEditor?.() ?? null;
+	    const prose = (editorInstance?.view?.dom as HTMLElement | null) ?? null;
+    const target = event.target as HTMLElement | null;
+    if (prose && target && (target === prose || prose.contains(target))) {
+      lastProseStealAt = now;
+      // While the footnote overlay editor is active, ProseMirror must not steal focus; it causes
+      // the caret to jump (often to start/end-of-doc) and makes the ribbon flicker.
+      try {
+        prose.blur();
+      } catch {
+        // ignore
+      }
+      const active = activeFootnoteId
+        ? overlayLayer.querySelector<HTMLElement>(
+            `.leditor-footnote-entry-text[data-footnote-id="${activeFootnoteId}"]`
+          )
+        : null;
+      if (active && active.isConnected) {
         try {
-          prose.blur();
+          active.focus({ preventScroll: true } as any);
         } catch {
-          // ignore
-        }
-        const active = activeFootnoteId
-          ? overlayLayer.querySelector<HTMLElement>(
-              `.leditor-footnote-entry-text[data-footnote-id="${activeFootnoteId}"]`
-            )
-          : null;
-        if (active && active.isConnected) {
-          try {
-            active.focus({ preventScroll: true } as any);
-          } catch {
-            active.focus();
-          }
+          active.focus();
         }
       }
     }
@@ -4252,8 +4874,323 @@ const renderPages = (count: number) => {
   appRoot.addEventListener("keydown", handleFootnoteEntryKeydown, true);
   appRoot.addEventListener("click", handleEndnoteEntryClick);
   appRoot.addEventListener("input", handleEndnoteEntryInput);
+  // Global (document/window) listeners must be singletons: if the layout remounts without a clean
+  // destroy (crash, hot reload, devtools reload), duplicate listeners cause focus/selection loops
+  // and visible UI flicker.
+  const globalKeydownKey = "__leditorA4DocKeydownHandler";
+  const globalSelectionChangeKey = "__leditorA4DocSelectionChangeHandler";
+  const globalFocusInKey = "__leditorA4DocFocusInHandler";
+  const globalPointerDownKey = "__leditorA4DocPointerDownHandler";
+  const globalClickKey = "__leditorA4DocClickHandler";
+  const globalPagehideKey = "__leditorA4WinPagehideHandler";
+  const globalBeforeUnloadKey = "__leditorA4WinBeforeUnloadHandler";
+  const globalVisibilityChangeKey = "__leditorA4DocVisibilityChangeHandler";
+
+  const existingDocKeydown = (window as any)[globalKeydownKey] as ((e: KeyboardEvent) => void) | undefined;
+  if (existingDocKeydown) document.removeEventListener("keydown", existingDocKeydown);
+  (window as any)[globalKeydownKey] = handleKeydown;
   document.addEventListener("keydown", handleKeydown);
+
+  const existingSelectionChange = (window as any)[globalSelectionChangeKey] as (() => void) | undefined;
+  if (existingSelectionChange) document.removeEventListener("selectionchange", existingSelectionChange);
+  (window as any)[globalSelectionChangeKey] = handleSelectionChange;
   document.addEventListener("selectionchange", handleSelectionChange);
+
+  // Surgical failsafe for "I can't edit anything":
+  // sometimes a crash/throw during an edit-mode transition leaves ProseMirror non-editable even though
+  // `footnoteMode/headerFooterMode` are false. Ensure the body is always editable on any pointerdown.
+		  const handleDocumentPointerDown = (_event: PointerEvent) => {
+		    if (footnoteMode || headerFooterMode) return;
+		    const event = _event;
+		    // Un-stick stray mode classes (flags are the source of truth).
+		    setModeClass("leditor-footnote-editing", false);
+		    setModeClass("leditor-header-footer-editing", false);
+		    setEditorEditable(true);
+		    // If the user is clicking back into the editor surface, ensure focus is restored so the caret appears.
+		    const target = event.target as HTMLElement | null;
+		    if (target && editorEl.contains(target)) {
+          // Store the most-recent body click candidate. We'll validate / apply it on `click` (bubble),
+          // after ProseMirror has had a chance to set selection normally.
+          try {
+            (window as any).__leditorLastBodyClick = {
+              at: Date.now(),
+              x: event.clientX,
+              y: event.clientY,
+              targetTag: target.tagName,
+              targetClass: (target.getAttribute("class") || "").slice(0, 120)
+            };
+          } catch {
+            // ignore
+          }
+
+		      // Capture selection before ProseMirror handles the click.
+		      // We only apply a "failsafe" selection *after pointerup* if ProseMirror didn't move it.
+		      let selectionFromBefore: number | null = null;
+		      try {
+		        const editorInstance = attachedEditorHandle?.getEditor?.() ?? null;
+		        const view = editorInstance?.view ?? null;
+		        selectionFromBefore =
+		          typeof view?.state?.selection?.from === "number" ? view.state.selection.from : null;
+		      } catch {
+		        selectionFromBefore = null;
+		      }
+
+		      const onPointerUp = (upEvent: PointerEvent) => {
+		        document.removeEventListener("pointerup", onPointerUp, true);
+		        document.removeEventListener("pointercancel", onPointerUp, true);
+		        if (footnoteMode || headerFooterMode) return;
+		        // IMPORTANT: ProseMirror often applies click-based selection on the subsequent `click` event,
+		        // which fires *after* `pointerup`. If we intervene synchronously here we can overwrite the
+		        // intended caret placement (observed as "always types at position 0/2"). Defer to the next
+		        // task so ProseMirror can update selection first, then apply a failsafe only if needed.
+		        window.setTimeout(() => {
+		          if (footnoteMode || headerFooterMode) return;
+		          try {
+		            const editorInstance = attachedEditorHandle?.getEditor?.() ?? null;
+		            const view = editorInstance?.view ?? null;
+		            const prose = (view?.dom as HTMLElement | null) ?? null;
+		            if (!view || !prose || !prose.isConnected) return;
+
+		            const selectionFromAfter =
+		              typeof view.state.selection?.from === "number" ? view.state.selection.from : null;
+		            const selectionDidNotMove =
+		              selectionFromBefore != null &&
+		              selectionFromAfter != null &&
+		              selectionFromBefore === selectionFromAfter;
+
+		            const hitInProse = target === prose || prose.contains(target);
+		            const inPageChrome =
+		              !!target.closest?.(".leditor-page") && !target.closest?.(".leditor-page-content");
+
+		            // Compute a "safe" coords point that stays inside the page content box when the user
+		            // clicks on page chrome (margins/header/footer clones). This prevents posAtCoords from
+		            // resolving to the page wrapper node (non-inline), which breaks typing.
+		            const pageEl = (target.closest?.(".leditor-page") as HTMLElement | null) ?? null;
+		            const pageContent = pageEl?.querySelector<HTMLElement>(".leditor-page-content") ?? null;
+		            const rawX = upEvent.clientX;
+		            const rawY = upEvent.clientY;
+		            const x = (() => {
+		              if (!pageContent) return rawX;
+		              const r = pageContent.getBoundingClientRect();
+		              return Math.min(Math.max(rawX, r.left + 4), r.right - 4);
+		            })();
+		            const y = (() => {
+		              if (!pageContent) return rawY;
+		              const r = pageContent.getBoundingClientRect();
+		              return Math.min(Math.max(rawY, r.top + 4), r.bottom - 4);
+		            })();
+		            const coords = view.posAtCoords?.({ left: x, top: y }) ?? null;
+
+		            const coordsPos = typeof coords?.pos === "number" ? coords.pos : null;
+		            const coordsFarFromBefore =
+		              selectionFromBefore != null && coordsPos != null
+		                ? Math.abs(coordsPos - selectionFromBefore) > 2
+		                : true;
+
+		            // Only intervene if:
+		            // - click wasn't in ProseMirror (chrome), OR
+		            // - selection didn't move *and* the coords indicate a different place (broken click), OR
+		            // - click landed in page chrome and ProseMirror didn't map it.
+		            if ((!hitInProse || inPageChrome) || (selectionDidNotMove && coordsFarFromBefore)) {
+		              if (coordsPos != null) {
+		                const $pos = view.state.doc.resolve(coordsPos);
+		                const safe = Selection.near($pos, 1);
+		                view.dispatch(view.state.tr.setSelection(safe).scrollIntoView());
+		              }
+		              try {
+		                view.focus();
+		              } catch {
+		                // ignore
+		              }
+		            } else if (hitInProse) {
+		              // Normal ProseMirror click: don't override selection, but make sure focus is on the editor.
+		              const activeEl = document.activeElement as HTMLElement | null;
+		              const alreadyInProse = !!activeEl && (activeEl === prose || prose.contains(activeEl));
+		              if (!alreadyInProse) {
+		                try {
+		                  view.focus();
+		                } catch {
+		                  // ignore
+		                }
+		              }
+		            }
+		          } catch {
+		            // ignore
+		          }
+		        }, 0);
+		      };
+
+		      document.addEventListener("pointerup", onPointerUp, true);
+		      document.addEventListener("pointercancel", onPointerUp, true);
+	    }
+	  };
+  const existingPointerDown = (window as any)[globalPointerDownKey] as ((e: PointerEvent) => void) | undefined;
+  if (existingPointerDown) document.removeEventListener("pointerdown", existingPointerDown, true);
+  (window as any)[globalPointerDownKey] = handleDocumentPointerDown;
+  document.addEventListener("pointerdown", handleDocumentPointerDown, true);
+
+  // Body click caret enforcement (bubble phase):
+  // ProseMirror typically finalizes click selection on `click`. In some cases (page wrappers, overlays,
+  // transient non-editable state) the selection ends up stuck at doc start. After the click has
+  // propagated, force selection to the click coords if it's clearly wrong.
+  const handleDocumentClick = (event: MouseEvent) => {
+    if (footnoteMode || headerFooterMode) return;
+    if (event.button !== 0) return;
+    let target = event.target as HTMLElement | null;
+    if (!target) return;
+
+    // Leaving footnote mode: any body click outside the footnote panel should restore body editing.
+    if (footnoteMode && !target.closest?.(".leditor-page-footnotes")) {
+      try {
+        exitFootnoteMode({ restore: true });
+      } catch {
+        // ignore
+      }
+    }
+
+    // If the overlay layer is accidentally intercepting clicks in body mode, "pierce" it by
+    // temporarily disabling pointer events and re-resolving the underlying hit target.
+    if (
+      target.classList.contains("leditor-page-overlays") ||
+      !!target.closest?.(".leditor-page-overlays")
+    ) {
+      try {
+        const prev = overlayLayer.style.pointerEvents;
+        overlayLayer.style.pointerEvents = "none";
+        const under = document.elementFromPoint(event.clientX, event.clientY) as HTMLElement | null;
+        overlayLayer.style.pointerEvents = prev;
+        if (under) target = under;
+      } catch {
+        // ignore
+      }
+    }
+    // Only treat clicks on actual pages as "body surface" interactions.
+    // (Clicks on the canvas background should not move the caret.)
+    const pageEl = (target.closest?.(".leditor-page") as HTMLElement | null) ?? null;
+    if ((window as any).__leditorCaretDebug) {
+      console.info("[Body][click] captured", {
+        tag: target.tagName,
+        className: (target.getAttribute("class") || "").slice(0, 120),
+        hasPage: Boolean(pageEl),
+        inPageStack: Boolean(pageEl && pageStack.contains(pageEl))
+      });
+    }
+    if (!pageEl || !pageStack.contains(pageEl)) return;
+    const editorInstance = attachedEditorHandle?.getEditor?.() ?? null;
+    const view = editorInstance?.view ?? null;
+    const prose = (view?.dom as HTMLElement | null) ?? null;
+    if (!view || !prose || !prose.isConnected) return;
+
+    // Clamp coords into the page content box if available.
+    const pageContent = pageEl.querySelector<HTMLElement>(".leditor-page-content") ?? null;
+    const rawX = event.clientX;
+    const rawY = event.clientY;
+    const x = (() => {
+      if (!pageContent) return rawX;
+      const r = pageContent.getBoundingClientRect();
+      return Math.min(Math.max(rawX, r.left + 4), r.right - 4);
+    })();
+    const y = (() => {
+      if (!pageContent) return rawY;
+      const r = pageContent.getBoundingClientRect();
+      return Math.min(Math.max(rawY, r.top + 4), r.bottom - 4);
+    })();
+
+    const coords = view.posAtCoords?.({ left: x, top: y }) ?? null;
+    const coordsPos = typeof coords?.pos === "number" ? coords.pos : null;
+    if (coordsPos == null) return;
+
+    const currentFrom = (view.state.selection as any)?.from as number | undefined;
+    const delta = typeof currentFrom === "number" ? Math.abs(currentFrom - coordsPos) : Number.POSITIVE_INFINITY;
+
+    // Detect obviously-wrong selections:
+    // - far from click, or
+    // - selection anchored in a non-inline parent (e.g. page wrapper)
+    let selectionInlineOk = true;
+    try {
+      const selFrom = typeof currentFrom === "number" ? currentFrom : 0;
+      const $from = view.state.doc.resolve(Math.max(0, Math.min(view.state.doc.content.size, selFrom)));
+      selectionInlineOk = !!$from.parent.inlineContent;
+    } catch {
+      selectionInlineOk = true;
+    }
+
+    const shouldForce = delta > 5 || !selectionInlineOk;
+    if ((window as any).__leditorCaretDebug) {
+      console.info("[Body][click] observed", { currentFrom, coordsPos, delta, selectionInlineOk });
+    }
+
+    // If selection is clearly wrong, force it.
+    if (shouldForce) {
+      try {
+        const $pos = view.state.doc.resolve(coordsPos);
+        const safe = Selection.near($pos, 1);
+        view.dispatch(view.state.tr.setSelection(safe).scrollIntoView());
+        view.focus();
+        if ((window as any).__leditorCaretDebug) {
+          console.info("[Body][click] forced selection", { coordsPos, currentFrom, delta });
+        }
+      } catch {
+        // ignore
+      }
+    } else {
+      // Ensure focus stays on the editor so caret is visible.
+      const activeEl = document.activeElement as HTMLElement | null;
+      const alreadyInProse = !!activeEl && (activeEl === prose || prose.contains(activeEl));
+      if (!alreadyInProse) {
+        try {
+          view.focus();
+        } catch {
+          // ignore
+        }
+      }
+    }
+  };
+
+  // NOTE: register in capture phase so we still observe clicks even if some element stops propagation
+  // (we've seen this happen with overlays/legacy handlers, resulting in "no click is catched").
+  const existingDocClick = (window as any)[globalClickKey] as ((e: MouseEvent) => void) | undefined;
+  if (existingDocClick) document.removeEventListener("click", existingDocClick, true);
+  (window as any)[globalClickKey] = handleDocumentClick;
+  document.addEventListener("click", handleDocumentClick, true);
+
+  // Some hosts (Electron + embedded devtools / legacy layers) can stop propagation before it reaches
+  // `document`. Add redundant capture listeners on our known interactive roots so body clicks always
+  // re-arm the caret, even if another layer interferes.
+  const globalCanvasClickKey = "__leditorA4CanvasClickHandler";
+  const globalEditorClickKey = "__leditorA4EditorClickHandler";
+  const existingCanvasClick = (window as any)[globalCanvasClickKey] as ((e: MouseEvent) => void) | undefined;
+  if (existingCanvasClick) canvas.removeEventListener("click", existingCanvasClick, true);
+  (window as any)[globalCanvasClickKey] = handleDocumentClick;
+  canvas.addEventListener("click", handleDocumentClick, true);
+  const existingEditorClick = (window as any)[globalEditorClickKey] as ((e: MouseEvent) => void) | undefined;
+  if (existingEditorClick) editorEl.removeEventListener("click", existingEditorClick, true);
+  (window as any)[globalEditorClickKey] = handleDocumentClick;
+  editorEl.addEventListener("click", handleDocumentClick, true);
+
+  // Ensure footnote text drafts are persisted even if the user closes the app/window while a
+  // debounce timer is pending (common source of "missing footnotes next session").
+  const handleFootnoteFlushOnPageHide = () => flushPendingFootnoteTextCommits("pagehide");
+  const handleFootnoteFlushOnBeforeUnload = () => flushPendingFootnoteTextCommits("beforeunload");
+  const handleFootnoteFlushOnVisibilityChange = () => {
+    if (document.visibilityState === "hidden") {
+      flushPendingFootnoteTextCommits("visibilitychange:hidden");
+    }
+  };
+  const existingPagehide = (window as any)[globalPagehideKey] as (() => void) | undefined;
+  if (existingPagehide) window.removeEventListener("pagehide", existingPagehide);
+  (window as any)[globalPagehideKey] = handleFootnoteFlushOnPageHide;
+  window.addEventListener("pagehide", handleFootnoteFlushOnPageHide);
+
+  const existingBeforeUnload = (window as any)[globalBeforeUnloadKey] as (() => void) | undefined;
+  if (existingBeforeUnload) window.removeEventListener("beforeunload", existingBeforeUnload);
+  (window as any)[globalBeforeUnloadKey] = handleFootnoteFlushOnBeforeUnload;
+  window.addEventListener("beforeunload", handleFootnoteFlushOnBeforeUnload);
+
+  const existingVisChange = (window as any)[globalVisibilityChangeKey] as (() => void) | undefined;
+  if (existingVisChange) document.removeEventListener("visibilitychange", existingVisChange);
+  (window as any)[globalVisibilityChangeKey] = handleFootnoteFlushOnVisibilityChange;
+  document.addEventListener("visibilitychange", handleFootnoteFlushOnVisibilityChange);
 
   initTheme();
   const handleFootnoteFocusEvent = (event: Event) => {
@@ -4287,48 +5224,26 @@ const renderPages = (count: number) => {
     if ((window as any).__leditorFootnoteDebug) {
       console.info("[Footnote][focus][event] received", { footnoteId: id });
     }
-    // Try to focus immediately; if the marker hasn't been mounted into the DOM yet, retry briefly.
-    // Do not couple this to renderFootnoteSections() (it causes focus/caret flicker).
+    // Focus exactly once (plus at most one deferred retry). Repeated loops here caused app/ribbon
+    // flicker, caret oscillation, and "ghost" footnote renders during pagination churn.
     footnoteFocusRetryToken += 1;
     const token = footnoteFocusRetryToken;
-    const start = performance.now();
-    let attempts = 0;
-    const tryFocus = () => {
+    const tryOnce = (phase: "now" | "raf") => {
       if (token !== footnoteFocusRetryToken) return;
-      attempts += 1;
-      const started = focusFootnoteEntry(id, "end");
+      const ok = focusFootnoteEntry(id, "end");
       const active = document.activeElement as HTMLElement | null;
       const focused =
         !!active &&
         active.classList.contains("leditor-footnote-entry-text") &&
         (active.getAttribute("data-footnote-id") || "").trim() === id;
-      if (focused) return;
-      if (started) {
-        // focusFootnoteEntry has its own short retry to land the caret; give it a moment.
-        window.setTimeout(() => {
-          if (token !== footnoteFocusRetryToken) return;
-          const a = document.activeElement as HTMLElement | null;
-          const ok =
-            !!a &&
-            a.classList.contains("leditor-footnote-entry-text") &&
-            (a.getAttribute("data-footnote-id") || "").trim() === id;
-          if (ok) return;
-          if (performance.now() - start > 1200 || attempts >= 24) return;
-          tryFocus();
-        }, 60);
-        return;
+      if (ok && focused) return;
+      if (phase === "now") {
+        window.requestAnimationFrame(() => tryOnce("raf"));
+      } else if ((window as any).__leditorCaretDebug) {
+        console.warn("[Footnote][focus][event] focus retry gave up", { footnoteId: id });
       }
-      // Marker/entry not present yet; ensure a render pass and retry.
-      scheduleFootnoteUpdate();
-      if (performance.now() - start > 1200 || attempts >= 24) {
-        if ((window as any).__leditorCaretDebug) {
-          console.warn("[Footnote][focus][event] focus retry gave up", { footnoteId: id, attempts });
-        }
-        return;
-      }
-      window.setTimeout(tryFocus, 50);
     };
-    tryFocus();
+    tryOnce("now");
   };
   // Ensure we never register multiple global listeners (can happen if A4 layout remounts after an error).
   const globalFootnoteFocusKey = "__leditorFootnoteFocusHandler";
@@ -4338,6 +5253,28 @@ const renderPages = (count: number) => {
   }
   (window as any)[globalFootnoteFocusKey] = handleFootnoteFocusEvent as EventListener;
   window.addEventListener("leditor:footnote-focus", handleFootnoteFocusEvent as EventListener);
+
+  // Allow non-UI callers (host / ribbon) to request leaving footnote mode without depending on
+  // internal closures. This is also used to stop "focus fights" where another subsystem tries to
+  // steal focus back to ProseMirror while the user is editing a footnote.
+  const handleFootnoteExitEvent = () => {
+    if (!footnoteMode) return;
+    try {
+      exitFootnoteMode({ restore: true });
+    } catch {
+      // ignore
+    }
+  };
+  const globalFootnoteExitKey = "__leditorFootnoteExitHandler";
+  const existingGlobalFootnoteExitHandler = (window as any)[globalFootnoteExitKey] as EventListener | undefined;
+  if (existingGlobalFootnoteExitHandler) {
+    window.removeEventListener("leditor:footnote-exit", existingGlobalFootnoteExitHandler);
+  }
+  (window as any)[globalFootnoteExitKey] = handleFootnoteExitEvent as EventListener;
+  window.addEventListener("leditor:footnote-exit", handleFootnoteExitEvent as EventListener);
+  const existingFocusIn = (window as any)[globalFocusInKey] as ((e: FocusEvent) => void) | undefined;
+  if (existingFocusIn) document.removeEventListener("focusin", existingFocusIn, true);
+  (window as any)[globalFocusInKey] = handleDocumentFocusIn;
   document.addEventListener("focusin", handleDocumentFocusIn, true);
   renderPages(pageCount);
   attachEditorForMode();
@@ -4407,7 +5344,7 @@ const renderPages = (count: number) => {
   }
 
   const pageObserver = new MutationObserver(() => {
-    if (suspendPageObserver) return;
+    if (suspendPageObserver || footnoteMode || headerFooterMode) return;
     requestPagination();
   });
   pageObserver.observe(editorEl, { childList: true, subtree: true });
@@ -4461,6 +5398,14 @@ const renderPages = (count: number) => {
   return {
     updatePagination,
     destroy() {
+      if (footnoteDraftFlushTimer != null) {
+        try {
+          window.clearTimeout(footnoteDraftFlushTimer);
+        } catch {
+          // ignore
+        }
+        footnoteDraftFlushTimer = null;
+      }
       resizeObserver.disconnect();
       pageObserver.disconnect();
       try {
@@ -4489,14 +5434,53 @@ const renderPages = (count: number) => {
       appRoot.removeEventListener("keydown", handleFootnoteEntryKeydown, true);
       appRoot.removeEventListener("click", handleEndnoteEntryClick);
       appRoot.removeEventListener("input", handleEndnoteEntryInput);
-      document.removeEventListener("keydown", handleKeydown);
-      document.removeEventListener("selectionchange", handleSelectionChange);
-      document.removeEventListener("focusin", handleDocumentFocusIn, true);
+      const existingDocKeydown = (window as any)[globalKeydownKey] as ((e: KeyboardEvent) => void) | undefined;
+      if (existingDocKeydown) {
+        document.removeEventListener("keydown", existingDocKeydown);
+        if (existingDocKeydown === handleKeydown) delete (window as any)[globalKeydownKey];
+      }
+      const existingSelectionChange = (window as any)[globalSelectionChangeKey] as (() => void) | undefined;
+      if (existingSelectionChange) {
+        document.removeEventListener("selectionchange", existingSelectionChange);
+        if (existingSelectionChange === handleSelectionChange) delete (window as any)[globalSelectionChangeKey];
+      }
+      const existingPointerDown = (window as any)[globalPointerDownKey] as ((e: PointerEvent) => void) | undefined;
+      if (existingPointerDown) {
+        document.removeEventListener("pointerdown", existingPointerDown, true);
+        if (existingPointerDown === handleDocumentPointerDown) delete (window as any)[globalPointerDownKey];
+      }
+      const existingPagehide = (window as any)[globalPagehideKey] as (() => void) | undefined;
+      if (existingPagehide) {
+        window.removeEventListener("pagehide", existingPagehide);
+        if (existingPagehide === handleFootnoteFlushOnPageHide) delete (window as any)[globalPagehideKey];
+      }
+      const existingBeforeUnload = (window as any)[globalBeforeUnloadKey] as (() => void) | undefined;
+      if (existingBeforeUnload) {
+        window.removeEventListener("beforeunload", existingBeforeUnload);
+        if (existingBeforeUnload === handleFootnoteFlushOnBeforeUnload) delete (window as any)[globalBeforeUnloadKey];
+      }
+      const existingVisChange = (window as any)[globalVisibilityChangeKey] as (() => void) | undefined;
+      if (existingVisChange) {
+        document.removeEventListener("visibilitychange", existingVisChange);
+        if (existingVisChange === handleFootnoteFlushOnVisibilityChange) delete (window as any)[globalVisibilityChangeKey];
+      }
+      const existingFocusIn = (window as any)[globalFocusInKey] as ((e: FocusEvent) => void) | undefined;
+      if (existingFocusIn) {
+        document.removeEventListener("focusin", existingFocusIn, true);
+        if (existingFocusIn === handleDocumentFocusIn) delete (window as any)[globalFocusInKey];
+      }
       const existing = (window as any)[globalFootnoteFocusKey] as EventListener | undefined;
       if (existing) {
         window.removeEventListener("leditor:footnote-focus", existing);
         if (existing === (handleFootnoteFocusEvent as any)) {
           delete (window as any)[globalFootnoteFocusKey];
+        }
+      }
+      const existingExit = (window as any)[globalFootnoteExitKey] as EventListener | undefined;
+      if (existingExit) {
+        window.removeEventListener("leditor:footnote-exit", existingExit);
+        if (existingExit === (handleFootnoteExitEvent as any)) {
+          delete (window as any)[globalFootnoteExitKey];
         }
       }
     },
@@ -4533,6 +5517,12 @@ const renderPages = (count: number) => {
     exitHeaderFooterMode,
     isHeaderFooterMode() {
       return headerFooterMode;
+    },
+    exitFootnoteMode() {
+      exitFootnoteMode({ restore: false });
+    },
+    isFootnoteMode() {
+      return footnoteMode;
     },
     setTheme: applyTheme,
     toggleTheme,

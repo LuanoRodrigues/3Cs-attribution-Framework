@@ -5,6 +5,7 @@ export class CitationsPanel {
   readonly element: HTMLElement;
   private frame: HTMLIFrameElement;
   private payload: CitationPayload;
+  private frameLoaded = false;
   private highlightListener: (event: Event) => void;
 
   constructor(record?: RetrieveRecord) {
@@ -23,7 +24,10 @@ export class CitationsPanel {
     this.frame.style.border = "none";
     this.frame.style.width = "100%";
     this.frame.style.height = "520px";
-    this.frame.addEventListener("load", () => this.sendPayload());
+    this.frame.addEventListener("load", () => {
+      this.frameLoaded = true;
+      this.sendPayload();
+    });
 
     this.highlightListener = (event: Event) => {
       const custom = event as CustomEvent<{ nodeId?: string }>;
@@ -36,6 +40,22 @@ export class CitationsPanel {
     window.addEventListener("retrieve-citation-node-click", this.highlightListener);
 
     this.element.append(header, this.frame);
+
+    if (record && window.retrieveBridge?.citationNetwork?.fetch) {
+      void this.fetchBackendPayload(record);
+    }
+  }
+
+  private async fetchBackendPayload(record: RetrieveRecord): Promise<void> {
+    try {
+      const payload = await window.retrieveBridge!.citationNetwork.fetch({ record });
+      this.payload = payload as unknown as CitationPayload;
+      if (this.frameLoaded) {
+        this.sendPayload();
+      }
+    } catch (error) {
+      console.warn("Citation network fetch failed; falling back to placeholder payload.", error);
+    }
   }
 
   private sendPayload(): void {

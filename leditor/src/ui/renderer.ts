@@ -6,6 +6,8 @@ import "../extensions/plugin_preview.ts";
 import "../extensions/plugin_source_view.ts";
 import "../extensions/plugin_export_docx.ts";
 import "../extensions/plugin_import_docx.ts";
+import "../extensions/plugin_export_ledoc.ts";
+import "../extensions/plugin_import_ledoc.ts";
 import { renderRibbon } from "./ribbon.ts";
 import { mountStatusBar } from "../ui/status_bar.ts";
 import { attachContextMenu } from "./context_menu.ts";
@@ -15,10 +17,12 @@ import { initGlobalShortcuts } from "./shortcuts.ts";
 import "@fontsource/source-sans-3/400.css";
 import "@fontsource/source-sans-3/600.css";
 import "@fontsource/source-serif-4/600.css";
+import "./theme.css";
 import "./ribbon.css";
 import "./home.css";
 import "./style_mini_app.css";
 import "./agent_sidebar.css";
+import "./agent_fab.css";
 import "./ai_settings.css";
 import "./paragraph_grid.css";
 import "./ai_draft_preview.css";
@@ -35,7 +39,6 @@ import type { Editor as TiptapEditor } from "@tiptap/core";
 import { DOMParser as ProseMirrorDOMParser } from "prosemirror-model";
 import { getFootnoteRegistry, type FootnoteNodeViewAPI } from "../extensions/extension_footnote.ts";
 
-import { createFootnoteManager } from "./footnote_manager.ts";
 import { getCurrentPageSize, getMarginValues } from "../ui/layout_settings.ts";
 import { registerLibrarySmokeChecks } from "../plugins/librarySmokeChecks.ts";
 import { getHostContract } from "./host_contract.ts";
@@ -43,6 +46,7 @@ import { ensureReferencesLibrary, resolveCitationTitle } from "./references/libr
 import { installDirectQuotePdfOpenHandler } from "./direct_quote_pdf.ts";
 import { perfMark, perfMeasure, perfSummaryOnce } from "./perf.ts";
 import { getHostAdapter, setHostAdapter, type HostAdapter } from "../host/host_adapter.ts";
+import { THEME_CHANGE_EVENT } from "./theme_events.ts";
 
 const ensureProcessEnv = (): Record<string, string | undefined> | undefined => {
   if (typeof globalThis === "undefined") {
@@ -90,6 +94,50 @@ const toFileUrl = (value: string): string => {
     return `file:///${normalized}`;
   }
   return normalized;
+};
+
+const mountAgentFab = (editorHandle: EditorHandle, appRoot: HTMLElement, signal?: AbortSignal) => {
+  if (document.getElementById("leditor-agent-fab")) return;
+  const btn = document.createElement("button");
+  btn.id = "leditor-agent-fab";
+  btn.type = "button";
+  btn.className = "leditor-agent-fab";
+  btn.setAttribute("aria-label", "Open Agent");
+  btn.innerHTML = `
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="currentColor" d="M20 2H4a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h3v-2H4V4h16v11h2V4a2 2 0 0 0-2-2Zm-1 16-4 4v-4h4Zm-6-2a1 1 0 0 1-1-1V8a1 1 0 0 1 2 0v7a1 1 0 0 1-1 1Zm0 4a1.25 1.25 0 1 1 0-2.5A1.25 1.25 0 0 1 13 20Z"/>
+    </svg>
+  `;
+  btn.addEventListener(
+    "click",
+    () => {
+      try {
+        editorHandle.execCommand("agent.sidebar.toggle");
+        editorHandle.focus();
+      } catch (error) {
+        console.warn("[agent_fab][click] toggle failed", error);
+      }
+    },
+    { signal }
+  );
+
+  // Keep the FAB above the status bar if present.
+  const updateBottom = () => {
+    const el = document.querySelector<HTMLElement>(".leditor-status-bar");
+    const h = el ? el.getBoundingClientRect().height : 0;
+    btn.style.bottom = h > 0 ? `${Math.ceil(h) + 18}px` : "";
+  };
+  updateBottom();
+  if (typeof ResizeObserver !== "undefined") {
+    const ro = new ResizeObserver(updateBottom);
+    const el = document.querySelector<HTMLElement>(".leditor-status-bar");
+    if (el) ro.observe(el);
+    signal?.addEventListener?.("abort", () => ro.disconnect(), { once: true });
+  } else {
+    window.addEventListener("resize", updateBottom, { signal });
+  }
+
+  appRoot.appendChild(btn);
 };
 
 type ParsedCoderState = {
@@ -859,7 +907,7 @@ export const mountEditor = async () => {
   registerLibrarySmokeChecks();
 
   const defaultToolbar =
-    "Undo Redo | Bold Italic | Heading1 Heading2 | BulletList NumberList | Link | AlignLeft AlignCenter AlignRight JustifyFull | Outdent Indent | SearchReplace Preview ImportDOCX ExportDOCX FootnotePanel Fullscreen | VisualChars VisualBlocks | DirectionLTR DirectionRTL";
+    "Undo Redo | Bold Italic | Heading1 Heading2 | BulletList NumberList | Link | AlignLeft AlignCenter AlignRight JustifyFull | Outdent Indent | SearchReplace Preview ImportLEDOC ExportLEDOC ImportDOCX ExportDOCX FootnotePanel Fullscreen | VisualChars VisualBlocks | DirectionLTR DirectionRTL";
   const coderStateResult = options.enableCoderStateImport ? await loadCoderStateHtml() : null;
   if (coderStateResult && lastCoderStateNode) {
     console.info("[CoderState][node0][render]", {
@@ -894,6 +942,8 @@ export const mountEditor = async () => {
       "debug",
       "search",
       "preview",
+      "export_ledoc",
+      "import_ledoc",
       "export_docx",
       "import_docx",
       "paste_cleaner",
@@ -1023,6 +1073,23 @@ export const mountEditor = async () => {
   }
   const layout: A4LayoutController | null = mountA4Layout(docShell, editorEl, handle);
   setLayoutController(layout);
+  document.addEventListener(
+    THEME_CHANGE_EVENT,
+    ((event: Event) => {
+      if (!layout) return;
+      const detail = (event as CustomEvent<{ mode?: unknown; surface?: unknown }>).detail;
+      const mode = detail?.mode === "dark" ? "dark" : detail?.mode === "light" ? "light" : null;
+      const surface =
+        detail?.surface === "dark" ? "dark" : detail?.surface === "light" ? "light" : null;
+      if (!mode) return;
+      const current = layout.getTheme?.();
+      if (current && current.mode === mode && (!surface || current.surface === surface)) {
+        return;
+      }
+      layout.setTheme(mode, surface ?? undefined);
+    }) as EventListener,
+    { signal }
+  );
   let layoutRefreshQueued = false;
   const requestLayoutRefresh = () => {
     if (layoutRefreshQueued) return;
@@ -1092,43 +1159,48 @@ export const mountEditor = async () => {
     // Use a generous time window and clear it as soon as the user interacts with the editor again.
     suppressSelectionTrackingUntil = Date.now() + 2000;
 
-    // Ribbon clicks can blur the editor and some extensions will move the selection (often end-of-doc).
-    // Prefer a live selection if the user is currently focused inside ProseMirror; otherwise use our
-    // last-known snapshot from recent editor interaction.
-    const prose = tiptapEditor?.view?.dom as HTMLElement | null;
-    const active = document.activeElement as HTMLElement | null;
-    const selection = window.getSelection?.();
-    const anchorNode = selection?.anchorNode as Node | null;
-    const selectionInProse =
-      !!prose &&
-      ((active && prose.contains(active)) ||
-        (anchorNode && prose.contains(anchorNode instanceof HTMLElement ? anchorNode : (anchorNode as any).parentElement)));
-
-    // Even when the selection appears to be in ProseMirror, reading directly from the editor
-    // during ribbon pointerdown is risky: focus/blur can transiently move the selection
-    // (often to end-of-doc). Prefer our last-known snapshot captured from actual editor
-    // interaction, and only refresh if it is stale.
-    if (selectionInProse) {
+    // Always capture directly from the editor state on ribbon pointerdown.
+    // Pointerdown fires before blur, so this is the most reliable way to avoid "end-of-doc" selection
+    // poisoning when a ribbon click steals focus.
+    try {
+      lastKnownSelection = snapshotFromSelection(tiptapEditor.state.selection);
+      lastKnownSelectionAt = Date.now();
+    } catch {
+      // Fall back to our last-known snapshot if state selection is unavailable for any reason.
       if (Date.now() - lastKnownSelectionAt > 500) {
         updateLastKnownSelection("ribbon:pointerdown:stale-refresh");
       }
-      if ((window as any).__leditorCaretDebug) {
-        console.info("[Selection][ribbon] captured cached", { snapshot: lastKnownSelection, lastKnownSelectionAt });
-      }
-      recordRibbonSelection(lastKnownSelection);
-      return;
-    }
-
-    if (Date.now() - lastKnownSelectionAt > 500) {
-      updateLastKnownSelection("ribbon:pointerdown:stale-refresh");
     }
     if ((window as any).__leditorCaretDebug) {
-      console.info("[Selection][ribbon] captured cached", { snapshot: lastKnownSelection, lastKnownSelectionAt });
+      console.info("[Selection][ribbon] captured", { snapshot: lastKnownSelection, lastKnownSelectionAt });
     }
     recordRibbonSelection(lastKnownSelection);
   };
   ribbonHost.addEventListener("pointerdown", captureRibbonSelection, { capture: true, signal });
   ribbonHost.addEventListener("touchstart", captureRibbonSelection, { capture: true, signal });
+  ribbonHost.addEventListener(
+    "click",
+    () => {
+      if (layout?.isFootnoteMode?.()) {
+        return;
+      }
+      try {
+        handle.focus();
+      } catch {
+        // ignore focus failures
+      }
+    },
+    { capture: false, signal }
+  );
+  ribbonHost.addEventListener(
+    "wheel",
+    (event) => {
+      // Prevent ribbon scroll from propagating to page/doc scroll.
+      event.preventDefault();
+      event.stopPropagation();
+    },
+    { capture: true, passive: false, signal }
+  );
   // Also keep this updated while editing so ribbon clicks always have a fresh caret position.
   // This avoids cases where selection is lost/shifted when the editor blurs before a ribbon click.
   const clearSelectionSuppression = () => {
@@ -1174,22 +1246,26 @@ export const mountEditor = async () => {
     },
     { capture: true, signal }
   );
-  tiptapEditor.on("selectionUpdate", () => {
-    if (Date.now() < suppressSelectionTrackingUntil) return;
-    const prose = tiptapEditor?.view?.dom as HTMLElement | null;
-    const active = document.activeElement as HTMLElement | null;
-    // Ignore selection updates while the editor is not the active surface. This prevents
-    // "end-of-doc" selection jumps on blur from poisoning ribbon footnote insertion.
-    if (!prose || !active || !prose.contains(active)) return;
-    updateLastKnownSelection("tiptap:selectionUpdate");
-  });
-  tiptapEditor.on("focus", () => {
-    if (Date.now() < suppressSelectionTrackingUntil) return;
-    const prose = tiptapEditor?.view?.dom as HTMLElement | null;
-    const active = document.activeElement as HTMLElement | null;
-    if (!prose || !active || !prose.contains(active)) return;
-    updateLastKnownSelection("tiptap:focus");
-  });
+	  tiptapEditor.on("selectionUpdate", () => {
+	    if (Date.now() < suppressSelectionTrackingUntil) return;
+	    // During footnote editing the body ProseMirror can briefly steal focus (transactions/rehydration).
+	    // Never let those transient focus/selection events poison our stored caret snapshot.
+	    if ((window as any).__leditorFootnoteMode) return;
+	    const prose = tiptapEditor?.view?.dom as HTMLElement | null;
+	    const active = document.activeElement as HTMLElement | null;
+	    // Ignore selection updates while the editor is not the active surface. This prevents
+	    // "end-of-doc" selection jumps on blur from poisoning ribbon footnote insertion.
+	    if (!prose || !active || !prose.contains(active)) return;
+	    updateLastKnownSelection("tiptap:selectionUpdate");
+	  });
+	  tiptapEditor.on("focus", () => {
+	    if (Date.now() < suppressSelectionTrackingUntil) return;
+	    if ((window as any).__leditorFootnoteMode) return;
+	    const prose = tiptapEditor?.view?.dom as HTMLElement | null;
+	    const active = document.activeElement as HTMLElement | null;
+	    if (!prose || !active || !prose.contains(active)) return;
+	    updateLastKnownSelection("tiptap:focus");
+	  });
   const attachCitationHandlers = (root: HTMLElement, signal: AbortSignal) => {
     const pickAttr = (el: HTMLElement, name: string): string => {
       const raw = el.getAttribute(name) || "";
@@ -1321,11 +1397,49 @@ export const mountEditor = async () => {
   } catch (err) {
     console.warn("[LEditor][schema][anchor-parse] failed", err);
   }
-  const footnoteManager = createFootnoteManager(editorHandle, tiptapEditor);
+  // Footnotes are edited in the A4 overlay (per-page footnote area). The legacy "footnote panel"
+  // (footnote_manager.ts) caused focus/selection fights and visible UI flicker, so we disable it.
+  // Keep host handlers as thin shims so existing commands don't crash.
+  const focusFirstFootnote = () => {
+    const footnoteType = tiptapEditor.schema.nodes.footnote;
+    if (!footnoteType) return;
+    let firstId: string | null = null;
+    try {
+      tiptapEditor.state.doc.descendants((node) => {
+        if (node.type !== footnoteType) return true;
+        const id =
+          typeof (node.attrs as any)?.footnoteId === "string" ? String((node.attrs as any).footnoteId).trim() : "";
+        if (id) {
+          firstId = id;
+          return false;
+        }
+        return true;
+      });
+    } catch {
+      // ignore
+    }
+    if (!firstId) return;
+    try {
+      const snapshot = snapshotFromSelection(tiptapEditor.state.selection);
+      window.dispatchEvent(
+        new CustomEvent("leditor:footnote-focus", {
+          detail: { footnoteId: firstId, selectionSnapshot: snapshot }
+        })
+      );
+    } catch {
+      // ignore
+    }
+  };
   const footnoteHandlers = {
-    open: () => footnoteManager.open(),
-    toggle: () => footnoteManager.toggle(),
-    close: () => footnoteManager.close()
+    open: () => focusFirstFootnote(),
+    toggle: () => {
+      if ((window as any).__leditorFootnoteMode) {
+        window.dispatchEvent(new CustomEvent("leditor:footnote-exit"));
+      } else {
+        focusFirstFootnote();
+      }
+    },
+    close: () => window.dispatchEvent(new CustomEvent("leditor:footnote-exit"))
   };
   initGlobalShortcuts(editorHandle);
   const host = getHostAdapter();
@@ -1346,6 +1460,7 @@ export const mountEditor = async () => {
   perfMark("mountEditor:ui-mounted");
   window.codexLog?.write("[PHASE3_OK]");
   mountStatusBar(handle, layout, { parent: appRoot });
+  mountAgentFab(handle, appRoot, signal);
   attachContextMenu(handle, tiptapEditor.view.dom, tiptapEditor);
   setMountedAppState({
     abortController,
@@ -1484,7 +1599,7 @@ export const mountEditor = async () => {
     }
   } else if (CURRENT_PHASE === 22) {
     if (!hasInitialContent) {
-      runPhase22Validation(editorHandle);
+      runPhase22Validation(editorHandle, tiptapEditor);
     }
   }
 
@@ -1600,7 +1715,7 @@ const runPhase21Validation = (editorHandle: EditorHandle, editorInstance: Tiptap
   window.codexLog?.write("[PHASE21_OK]");
 };
 
-const runPhase22Validation = (editorHandle: EditorHandle) => {
+const runPhase22Validation = (editorHandle: EditorHandle, editorInstance: TiptapEditor) => {
   if ((window as typeof window & { __coderStateLoaded?: boolean }).__coderStateLoaded) {
     console.info("[CoderState] skipping Phase22 validation because coder state is loaded");
     return;

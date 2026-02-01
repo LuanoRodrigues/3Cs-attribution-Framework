@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "actions": {
+    "refine": {
+      "label": "Refine",
+      "prompt": "Refine the target text for clarity, flow, and academic tone. Keep meaning. DO NOT change, remove, reorder, or duplicate any citations/anchors (keep them EXACTLY as-is)."
+    },
+    "paraphrase": {
+      "label": "Paraphrase",
+      "prompt": "Paraphrase the target text while preserving meaning and technical accuracy. Keep citations/anchors EXACTLY unchanged and in the same places."
+    },
+    "shorten": {
+      "label": "Shorten",
+      "prompt": "Shorten the target text (reduce length) while preserving all arguments and key details. Keep citations/anchors EXACTLY unchanged."
+    },
+    "substantiate": {
+      "label": "Substantiate",
+      "prompt": "Strengthen the argument by making claims more precise and adding brief clarifying context, without introducing new citations. Keep all existing citations/anchors EXACTLY unchanged."
+    },
+    "proofread": {
+      "label": "Proofread",
+      "prompt": "Proofread for grammar, punctuation, and style. Keep meaning. Keep citations/anchors EXACTLY unchanged."
+    }
+  }
+}
+

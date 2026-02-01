@@ -12,7 +12,7 @@ from PyQt6.QtWidgets import QDialog, QVBoxLayout, QWidget
 
 from Z_Corpus_analysis.help_functions import _load_or_build_records, _load_direct_quote_lookup, \
     _ensure_bibliography_store_exists, _ensure_bib_bibliographic_exists
-from bibliometric_analysis_tool.core.app_constants import TINYMCE_HTML, TINY_REF_HTML, _bib_store_path, \
+from general.app_constants import TINYMCE_HTML, TINY_REF_HTML, _bib_store_path, \
     _bib_bibliographic_path
 
 

@@ -1,0 +1,151 @@
+/* ui-primitives.css — shared primitives + density/effects token fallbacks */
+
+:root {
+  /* Density/effects defaults (comfortable + full) */
+  --shadow-ambient: 0 8px 24px rgba(0, 0, 0, 0.18);
+  --shadow-elevated: 0 20px 48px rgba(0, 0, 0, 0.32);
+  --shadow-overlay: 0 30px 80px rgba(0, 0, 0, 0.45);
+
+  --focus-ring-width: 3px;
+  --focus-ring-offset: 2px;
+
+  --blur-soft: 10px;
+  --blur-strong: 20px;
+  --glow-strength: 1;
+
+  --motion-fast: 120ms;
+  --motion-medium: 200ms;
+  --motion-slow: 320ms;
+
+  --control-radius: 12px;
+  --chip-radius: 999px;
+
+  /* Legacy aliases used across the app */
+  --shadow-level-1: var(--shadow-ambient);
+  --shadow-level-2: var(--shadow-overlay);
+
+  --ui-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-btn,
+  .ui-input,
+  .ui-select,
+  .ui-menu,
+  .ui-menu-item {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+/* -------------------------
+   Primitives (opt-in classes)
+   ------------------------- */
+
+.ui-card {
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--card-radius);
+  box-shadow: var(--shadow-ambient);
+}
+
+.ui-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--panel-radius);
+  box-shadow: var(--shadow-elevated);
+}
+
+.ui-btn {
+  appearance: none;
+  border: 1px solid var(--border-soft);
+  background: color-mix(in srgb, var(--panel-2) 70%, transparent);
+  color: var(--text);
+  border-radius: var(--control-radius);
+  height: var(--control-height);
+  padding: var(--control-padding-y) var(--control-padding-x);
+  cursor: pointer;
+  transition: transform var(--motion-fast) var(--ui-ease), border-color var(--motion-fast) var(--ui-ease),
+    background var(--motion-fast) var(--ui-ease), box-shadow var(--motion-fast) var(--ui-ease);
+}
+
+.ui-btn:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  box-shadow: var(--shadow-ambient);
+  transform: translateY(-1px);
+}
+
+.ui-btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.28);
+}
+
+.ui-btn:disabled,
+.ui-btn[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ui-btn--primary {
+  border-color: color-mix(in srgb, var(--accent) 70%, var(--border));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-2) 85%, #ffffff), var(--accent));
+  color: #041014;
+}
+
+.ui-btn--primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-2) 92%, #ffffff), color-mix(in srgb, var(--accent) 92%, #000000));
+}
+
+.ui-input,
+.ui-select,
+.ui-textarea {
+  width: 100%;
+  border-radius: var(--control-radius);
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text);
+  padding: 8px 10px;
+  transition: border-color var(--motion-fast) var(--ui-ease), box-shadow var(--motion-fast) var(--ui-ease);
+}
+
+.ui-input:focus,
+.ui-select:focus,
+.ui-textarea:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent) 70%, var(--border));
+  box-shadow: 0 0 0 var(--focus-ring-width) color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.ui-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: var(--chip-radius);
+  border: 1px solid var(--border-soft);
+  background: color-mix(in srgb, var(--panel-2) 78%, transparent);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.ui-menu {
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  box-shadow: var(--shadow-overlay);
+  backdrop-filter: blur(var(--blur-soft));
+  overflow: hidden;
+}
+
+.ui-menu-item {
+  padding: 10px 12px;
+  cursor: pointer;
+  user-select: none;
+  color: var(--text);
+  transition: background var(--motion-fast) var(--ui-ease);
+}
+
+.ui-menu-item:hover {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+

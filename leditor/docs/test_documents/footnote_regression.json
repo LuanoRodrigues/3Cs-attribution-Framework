@@ -1,0 +1,47 @@
+{
+  "type": "doc",
+  "content": [
+    {
+      "type": "heading",
+      "attrs": {
+        "level": 1
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "Footnote Regression Fixture"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "This paragraph is intentionally long to push text near the bottom of the page for footnote layout testing. This paragraph is intentionally long to push text near the bottom of the page for footnote layout testing. This paragraph is intentionally long to push text near the bottom of the page for footnote layout testing. This paragraph is intentionally long to push text near the bottom of the page for footnote layout testing. This paragraph is intentionally long to push text near the bottom of the page for footnote layout testing. This paragraph is intentionally long to push text near the bottom of the page for footnote layout testing. This paragraph is intentionally long to push text near the bottom of the page for footnote layout testing. This paragraph is intentionally long to push text near the bottom of the page for footnote layout testing. This paragraph is intentionally long to push text near the bottom of the page for footnote layout testing. This paragraph is intentionally long to push text near the bottom of the page for footnote layout testing. This paragraph is intentionally long to push text near the bottom of the page for footnote layout testing. This paragraph is intentionally long to push text near the bottom of the page for footnote layout testing. This paragraph is intentionally long to push text near the bottom of the page for footnote layout testing. This paragraph is intentionally long to push text near the bottom of the page for footnote layout testing. This paragraph is intentionally long to push text near the bottom of the page for footnote layout testing. This paragraph is intentionally long to push text near the bottom of the page for footnote layout testing. This paragraph is intentionally long to push text near the bottom of the page for footnote layout testing. This paragraph is intentionally long to push text near the bottom of the page for footnote layout testing. This paragraph is intentionally long to push text near the bottom of the page for footnote layout testing. This paragraph is intentionally long to push text near the bottom of the page for footnote layout testing. This paragraph is intentionally long to push text near the bottom of the page for footnote layout testing. This paragraph is intentionally long to push text near the bottom of the page for footnote layout testing. This paragraph is intentionally long to push text near the bottom of the page for footnote layout testing. This paragraph is intentionally long to push text near the bottom of the page for footnote layout testing. Near the end of the page we insert a footnote marker "
+        },
+        {
+          "type": "footnote",
+          "attrs": {
+            "footnoteId": "footnote-1",
+            "kind": "footnote",
+            "text": "Initial footnote text. Add lines here to force body pagination."
+          }
+        },
+        {
+          "type": "text",
+          "text": ". Continue with the paragraph to fill the page."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Second paragraph exists to catch overflow after the footnote expands. Keep typing in the footnote area and confirm this line jumps to the next page."
+        }
+      ]
+    }
+  ]
+}

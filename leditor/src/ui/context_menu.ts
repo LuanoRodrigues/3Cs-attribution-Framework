@@ -35,39 +35,6 @@ const phaseFlags: PhaseFlags = {
   logged: false
 };
 
-const ensureStyles = () => {
-  if (document.getElementById("leditor-context-menu-styles")) return;
-  const style = document.createElement("style");
-  style.id = "leditor-context-menu-styles";
-  style.textContent = `
-.leditor-context-menu {
-  font-family: "Georgia", "Times New Roman", serif;
-  font-size: 13px;
-  background: #fffdfa;
-  border: 1px solid #cbbf9a;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
-  border-radius: 8px;
-  padding: 6px;
-  display: grid;
-  grid-auto-rows: min-content;
-  gap: 4px;
-  z-index: 10000;
-}
-.leditor-context-menu button {
-  border: none;
-  background: transparent;
-  text-align: left;
-  padding: 6px 10px;
-  cursor: pointer;
-  color: #1e1e1e;
-}
-.leditor-context-menu button:hover {
-  background: #fff2d2;
-}
-`;
-  document.head.appendChild(style);
-};
-
 const recordAction = (context: ContextType) => {
   if (context === "text") {
     phaseFlags.textAction = true;
@@ -120,9 +87,15 @@ const buildMenuItems = (context: ContextType): MenuItem[] => {
   switch (context) {
     case "text":
       return [
-        { label: "Substantiate", command: "", action: "subst", requireSelection: true },
-        { label: "Refine", command: "", action: "refine", requireSelection: true },
-        { label: "Verify Sources", command: "", action: "verify", requireSelection: true },
+        { label: "Agent: Refine", command: "agent.action", args: { id: "refine" } },
+        { label: "Agent: Paraphrase", command: "agent.action", args: { id: "paraphrase" } },
+        { label: "Agent: Shorten", command: "agent.action", args: { id: "shorten" } },
+        { label: "Agent: Proofread", command: "agent.action", args: { id: "proofread" } },
+        { label: "Agent: Substantiate", command: "agent.action", args: { id: "substantiate" } },
+        { label: "Agent: Synonyms", command: "agent.action", args: { id: "synonyms" }, requireSelection: true },
+        { label: "Agent: Antonyms", command: "agent.action", args: { id: "antonyms" }, requireSelection: true },
+        { label: "Agent: Check sources", command: "agent.action", args: { id: "check_sources" } },
+        { label: "Agent: Clear checks", command: "agent.action", args: { id: "clear_checks" } },
         { label: "Ref: Open picker…", command: "", action: "ref_open_picker" },
         { label: "Ref: Insert bibliography", command: "", action: "ref_insert_biblio" },
         { label: "Ref: Update from editor", command: "", action: "ref_update_from_editor" },
@@ -141,9 +114,15 @@ const buildMenuItems = (context: ContextType): MenuItem[] => {
       ];
     case "link":
       return [
-        { label: "Substantiate", command: "", action: "subst", requireSelection: true },
-        { label: "Refine", command: "", action: "refine", requireSelection: true },
-        { label: "Verify Sources", command: "", action: "verify", requireSelection: true },
+        { label: "Agent: Refine", command: "agent.action", args: { id: "refine" } },
+        { label: "Agent: Paraphrase", command: "agent.action", args: { id: "paraphrase" } },
+        { label: "Agent: Shorten", command: "agent.action", args: { id: "shorten" } },
+        { label: "Agent: Proofread", command: "agent.action", args: { id: "proofread" } },
+        { label: "Agent: Substantiate", command: "agent.action", args: { id: "substantiate" } },
+        { label: "Agent: Synonyms", command: "agent.action", args: { id: "synonyms" }, requireSelection: true },
+        { label: "Agent: Antonyms", command: "agent.action", args: { id: "antonyms" }, requireSelection: true },
+        { label: "Agent: Check sources", command: "agent.action", args: { id: "check_sources" } },
+        { label: "Agent: Clear checks", command: "agent.action", args: { id: "clear_checks" } },
         { label: "Ref: Open picker…", command: "", action: "ref_open_picker" },
         { label: "Ref: Update from editor", command: "", action: "ref_update_from_editor" },
         { label: "Edit Link", command: "EditLink" },
@@ -189,8 +168,6 @@ const dispatchContextAction = (action: string, editor: Editor) => {
 };
 
 export const attachContextMenu = (handle: EditorHandle, editorDom: HTMLElement, editor: Editor) => {
-  ensureStyles();
-
   let menuEl: HTMLDivElement | null = null;
 
   const closeMenu = () => {
@@ -231,6 +208,13 @@ export const attachContextMenu = (handle: EditorHandle, editorDom: HTMLElement, 
           return;
         }
         if (item.command) {
+          if (item.requireSelection) {
+            const selection = getSelectionSnapshot(editor);
+            if (!selection.text && !selection.html) {
+              closeMenu();
+              return;
+            }
+          }
           handle.execCommand(item.command, item.args);
           recordAction(context);
         }

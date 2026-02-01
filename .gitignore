@@ -23,6 +23,17 @@ pnpm-debug.log*
 .env
 .env.*
 
+# local app state / documents
+coder_state.json
+*.ledoc
+
+# local caches / fetched data
+my-electron-app/src/pages/retrieve/Search_engine/zotero_items_cache.json
+my-electron-app/retrieve-cache-fallback/
+
+# local scratch/demo files
+visuals.html
+
 # npm artifacts
 .npm-cache/
 .npm-logs/

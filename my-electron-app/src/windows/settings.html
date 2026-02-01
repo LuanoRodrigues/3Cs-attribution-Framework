@@ -7,15 +7,36 @@
     <link rel="stylesheet" href="./vendor/vanilla-picker.csp.css" />
     <style>
       :root {
-        --bg: #f3f4f6;
-        --panel: #ffffff;
-        --panel-2: #f7f8fb;
-        --border: #d7dde7;
+        color-scheme: light dark;
+
+        /* Theme tokens (renderer overwrites these from settings). */
+        --app-scale: 1;
+        --bg: #f6f7fb;
+        --panel: #fbfcff;
+        --panel-2: #f1f4fa;
+        --surface: rgba(255, 255, 255, 0.92);
+        --surface-muted: rgba(243, 246, 252, 0.92);
+        --border: rgba(17, 24, 39, 0.12);
+        --border-soft: rgba(17, 24, 39, 0.08);
         --accent: #2563eb;
-        --accent-soft: rgba(37, 99, 235, 0.12);
-        --text: #0f172a;
-        --muted: #6b7280;
-        --sidebar: #f0f2f7;
+        --accent-2: #0f56b3;
+        --gradient-1: color-mix(in srgb, var(--accent) 14%, transparent);
+        --gradient-2: color-mix(in srgb, var(--accent-2) 12%, transparent);
+        --text: #111827;
+        --muted: #4b5563;
+        --shadow-ambient: 0 8px 24px rgba(15, 23, 42, 0.12);
+        --shadow-elevated: 0 18px 60px rgba(15, 23, 42, 0.12);
+        --shadow-overlay: 0 30px 80px rgba(15, 23, 42, 0.22);
+
+        /* Density/effects defaults (renderer overwrites these from settings). */
+        --panel-radius: 18px;
+        --card-radius: 16px;
+        --control-radius: 12px;
+        --control-height: 44px;
+
+        /* Derived helpers */
+        --accent-soft: color-mix(in srgb, var(--accent) 14%, transparent);
+        --sidebar: color-mix(in srgb, var(--panel) 88%, var(--bg));
         font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
       }
 
@@ -26,17 +47,20 @@
       body {
         margin: 0;
         min-height: 100vh;
-        background: radial-gradient(circle at 20% 20%, #ffffff 0, #eef1f6 40%), var(--bg);
+        background: radial-gradient(circle at 18% -10%, var(--gradient-1), transparent 45%),
+                    radial-gradient(circle at 85% 0%, var(--gradient-2), transparent 50%),
+                    var(--bg);
         color: var(--text);
       }
 
       #settings-root {
         min-height: 100vh;
-        width: 100%;
+        width: calc(100% / var(--app-scale));
         display: flex;
         align-items: stretch;
         justify-content: center;
         padding: 24px;
+        zoom: var(--app-scale);
       }
 
       .accent-picker {
@@ -87,11 +111,12 @@
       .settings-nav {
         background: var(--sidebar);
         border: 1px solid var(--border);
-        border-radius: 18px;
+        border-radius: var(--panel-radius);
         padding: 16px;
         display: flex;
         flex-direction: column;
         gap: 12px;
+        box-shadow: var(--shadow-ambient);
       }
 
       .settings-nav-title {
@@ -121,7 +146,7 @@
         color: var(--text);
         font-size: 14px;
         padding: 9px 12px;
-        border-radius: 12px;
+        border-radius: var(--control-radius);
         text-align: left;
         cursor: pointer;
         display: flex;
@@ -139,12 +164,12 @@
       .settings-content {
         background: var(--panel);
         border: 1px solid var(--border);
-        border-radius: 20px;
+        border-radius: var(--panel-radius);
         padding: 26px;
         display: flex;
         flex-direction: column;
         gap: 20px;
-        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+        box-shadow: var(--shadow-elevated);
         min-width: 0;
       }
 
@@ -177,7 +202,7 @@
         border: 1px solid var(--border);
         background: var(--panel-2);
         color: var(--text);
-        border-radius: 10px;
+        border-radius: var(--control-radius);
         padding: 8px 14px;
         cursor: pointer;
         transition: border-color 0.15s ease, color 0.15s ease;
@@ -205,7 +230,7 @@
 
       .panel-card {
         border: 1px solid var(--border);
-        border-radius: 12px;
+        border-radius: var(--card-radius);
         padding: 18px;
         background: var(--panel-2);
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);

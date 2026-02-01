@@ -354,37 +354,55 @@ html.ribbon-panels-v2 .panel-tab.is-disabled {
 
 html.ribbon-panels-v2 .ribbon-context-menu {
   position: fixed;
-  min-width: 180px;
+  min-width: 220px;
   padding: 6px;
-  border-radius: 10px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow);
-  display: none;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-overlay, var(--shadow));
+  backdrop-filter: blur(var(--blur-soft, 10px));
+  display: flex;
   flex-direction: column;
   gap: 2px;
-  z-index: 1400;
+  z-index: 9000;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(6px) scale(0.98);
+  visibility: hidden;
+  transition: opacity var(--motion-fast, 120ms) var(--ui-ease, cubic-bezier(0.2, 0.8, 0.2, 1)),
+    transform var(--motion-fast, 120ms) var(--ui-ease, cubic-bezier(0.2, 0.8, 0.2, 1)),
+    visibility 0s linear var(--motion-fast, 120ms);
 }
 
 html.ribbon-panels-v2 .ribbon-context-menu.visible {
-  display: flex;
+  pointer-events: auto;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  visibility: visible;
+  transition-delay: 0s;
 }
 
 html.ribbon-panels-v2 .ribbon-context-menu__item {
   width: 100%;
-  padding: 8px 10px;
+  padding: 9px 10px;
   background: transparent;
   border: 0;
   color: var(--ribbon-text);
   text-align: left;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 13px;
   letter-spacing: 0.1px;
   cursor: pointer;
+  transition: background var(--motion-fast, 120ms) var(--ui-ease, cubic-bezier(0.2, 0.8, 0.2, 1));
 }
 
 html.ribbon-panels-v2 .ribbon-context-menu__item:hover {
-  background: color-mix(in srgb, var(--panel-2) 85%, transparent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+html.ribbon-panels-v2 .ribbon-context-menu__item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 html.ribbon-panels-v2 .ribbon-context-menu__divider {

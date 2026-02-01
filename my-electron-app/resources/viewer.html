@@ -6,6 +6,7 @@
   <title>PDF Reader</title>
   <style>
     :root{
+      color-scheme: light dark;
       --bg0:#0A0E14;
       --bg1:#0F1420;
       --bg2:#0C1220;
@@ -2717,6 +2718,36 @@ _setActiveFindBox();
         setSidebar: (hidden) => {
           setSidebarHidden(Boolean(hidden));
           return "OK_SIDEBAR";
+        },
+        setUiTokens: (vars) => {
+          try {
+            if (!vars || typeof vars !== "object") return "ERR_TOKENS";
+            const root = document.documentElement;
+            const allowed = [
+              "--bg0",
+              "--bg1",
+              "--bg2",
+              "--panel",
+              "--panel2",
+              "--stroke",
+              "--stroke2",
+              "--txt",
+              "--muted",
+              "--muted2",
+              "--accent",
+              "--shadow",
+              "--shadow2"
+            ];
+            allowed.forEach((key) => {
+              const value = vars[key];
+              if (value !== undefined && value !== null && String(value).trim()) {
+                root.style.setProperty(key, String(value).trim());
+              }
+            });
+            return "OK_TOKENS";
+          } catch (e) {
+            return "ERR_TOKENS";
+          }
         },
 
         scrollToPage: (page) => {

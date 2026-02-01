@@ -71,7 +71,11 @@ import {
   FootnoteBodyExtension,
   FootnoteBodyManagementExtension
 } from "../extensions/extension_footnote_body.ts";
-import { resetFootnoteCounter, seedFootnoteCounterFromDoc } from "../uipagination/footnotes/footnote_id_generator.ts";
+import {
+  getNextFootnoteId,
+  resetFootnoteCounter,
+  seedFootnoteCounterFromDoc
+} from "../uipagination/footnotes/footnote_id_generator.ts";
 import { clearFootnoteRegistry } from "../extensions/extension_footnote.ts";
 
 type ContentFormat = "json" | "html" | "markdown";
@@ -453,6 +457,34 @@ export const LEditor = {
         } catch {
           // ignore
         }
+        const ensureFootnoteIds = () => {
+          try {
+            const footnoteType = editor.state.schema.nodes.footnote;
+            if (!footnoteType) return;
+            let tr = editor.state.tr;
+            let changed = false;
+            editor.state.doc.descendants((node, pos) => {
+              if (node.type !== footnoteType) return true;
+              const rawId =
+                typeof (node.attrs as any)?.footnoteId === "string"
+                  ? String((node.attrs as any).footnoteId).trim()
+                  : "";
+              if (rawId) return true;
+              const rawKind = typeof (node.attrs as any)?.kind === "string" ? String((node.attrs as any).kind) : "footnote";
+              const kind = rawKind === "endnote" ? "endnote" : "footnote";
+              const nextId = getNextFootnoteId(kind);
+              const nextAttrs = { ...(node.attrs as any), footnoteId: nextId, kind };
+              tr = tr.setNodeMarkup(pos, undefined, nextAttrs, node.marks);
+              changed = true;
+              return true;
+            });
+            if (!changed) return;
+            tr = tr.setMeta("addToHistory", false);
+            editor.view.dispatch(tr);
+          } catch {
+            // ignore
+          }
+        };
         if (opts.format === "html") {
           if (typeof content !== "string") {
             throw new Error("LEditor.setContent: html requires string content");
@@ -539,6 +571,8 @@ export const LEditor = {
 
           editor.commands.setContent(content, { parseOptions: { preserveWhitespace: "full" } });
           try {
+            seedFootnoteCounterFromDoc(editor.state.doc as any);
+            ensureFootnoteIds();
             seedFootnoteCounterFromDoc(editor.state.doc as any);
           } catch {
             // ignore
@@ -646,6 +680,8 @@ export const LEditor = {
           }
           try {
             seedFootnoteCounterFromDoc(editor.state.doc as any);
+            ensureFootnoteIds();
+            seedFootnoteCounterFromDoc(editor.state.doc as any);
           } catch {
             // ignore
           }
@@ -659,6 +695,8 @@ export const LEditor = {
           editor.commands.setContent(doc.toJSON());
           try {
             seedFootnoteCounterFromDoc(editor.state.doc as any);
+            ensureFootnoteIds();
+            seedFootnoteCounterFromDoc(editor.state.doc as any);
           } catch {
             // ignore
           }
@@ -668,6 +706,8 @@ export const LEditor = {
           const jsonContent = typeof content === "string" ? JSON.parse(content) : content;
           editor.commands.setContent(jsonContent);
           try {
+            seedFootnoteCounterFromDoc(editor.state.doc as any);
+            ensureFootnoteIds();
             seedFootnoteCounterFromDoc(editor.state.doc as any);
           } catch {
             // ignore

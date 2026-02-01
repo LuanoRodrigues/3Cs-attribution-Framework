@@ -10,7 +10,6 @@ import { createEditorTool } from "../tools/editor";
 import { createNotesTool } from "../tools/notes";
 import { createTimelineTool } from "../tools/timeline";
 import { createVizTool } from "../tools/viz";
-import { createRetrieveTool } from "../tools/retrieve";
 import { createRetrieveDataHubTool } from "../tools/retrieveDataHub";
 import { createCodeTool } from "../tools/code";
 import { createVisualiserTool } from "../tools/visualiser";
@@ -59,6 +58,10 @@ import type { SessionMenuAction } from "../session/sessionTypes";
 import { initThemeManager } from "./theme/manager";
 import { FEATURE_FLAG_KEYS, applyFeatureClass, readFeatureFlag } from "../config/featureFlags";
 import { initRibbonContextMenu, type RibbonMenuActionId } from "./ribbonContextMenu";
+import type { RetrieveRecord } from "../shared/types/retrieve";
+import { createRetrieveCitationGraphTool, createRetrieveCitationsTool, createRetrieveTool } from "../tools/retrieve";
+import { createRetrieveSearchAppTool } from "../tools/retrieveSearchApp";
+import { createRetrieveSearchMetaTool } from "../tools/retrieveSearchMeta";
 
 const registry = new ToolRegistry();
 registry.register(createPdfTool());
@@ -67,6 +70,10 @@ registry.register(createNotesTool());
 registry.register(createTimelineTool());
 registry.register(createVizTool());
 registry.register(createRetrieveTool());
+registry.register(createRetrieveSearchAppTool());
+registry.register(createRetrieveSearchMetaTool());
+registry.register(createRetrieveCitationsTool());
+registry.register(createRetrieveCitationGraphTool());
 registry.register(createRetrieveDataHubTool());
 registry.register(createPanelShellTool());
 registry.register(createCodeTool());
@@ -95,6 +102,10 @@ const htmlElement = document.documentElement;
 let teardownRibbonMenu: () => void = () => {};
 let retrieveDataHubToolId: string | undefined;
 let retrieveQueryToolId: string | undefined;
+let retrieveSearchAppToolId: string | undefined;
+let retrieveGraphToolId: string | undefined;
+let retrieveMetaToolId: string | undefined;
+let retrieveSearchSelectedRecord: RetrieveRecord | undefined;
 let lastRibbonHeight = -1;
 
 function syncRibbonHeight(): void {
@@ -704,6 +715,41 @@ document.addEventListener("retrieve:ensure-panel2", () => {
   ensureRetrieveDataHubTool();
 });
 
+document.addEventListener("retrieve:open-graph", (event) => {
+  const detail = (event as CustomEvent<{ record?: RetrieveRecord }>).detail;
+  openRetrieveGraph(detail?.record);
+});
+
+document.addEventListener("retrieve:close-graph", () => {
+  closeRetrieveGraph();
+  const record = retrieveSearchSelectedRecord;
+  if (record) {
+    setRetrieveLayout("search-selected");
+    ensureRetrieveSearchMetaTool();
+  } else {
+    setRetrieveLayout("search-empty");
+    panelTools.clearPanelTools("panel4");
+    retrieveMetaToolId = undefined;
+  }
+});
+
+document.addEventListener("retrieve:search-selection", (event) => {
+  const detail = (event as CustomEvent<{ record?: RetrieveRecord }>).detail;
+  retrieveSearchSelectedRecord = detail?.record;
+  if (!retrieveSearchSelectedRecord) {
+    panelTools.clearPanelTools("panel4");
+    retrieveMetaToolId = undefined;
+    setRetrieveLayout("search-empty");
+    return;
+  }
+  if (retrieveGraphToolId) {
+    // Keep graph open; selection changes can still update the node highlight in future.
+    return;
+  }
+  setRetrieveLayout("search-selected");
+  ensureRetrieveSearchMetaTool();
+});
+
 document.addEventListener("ribbon:action", (event) => {
   const phase = (event as CustomEvent<{ phase?: string }>).detail?.phase;
   if (!phase) return;
@@ -1219,7 +1265,12 @@ function handleAction(action: RibbonAction): void {
   ) {
     // DataHub actions always target the dedicated DataHub tool in panel 2.
     panelGrid.ensurePanelVisible(2);
+    setRetrieveLayout("datahub");
     ensureRetrieveDataHubTool({ replace: !retrieveDataHubToolId });
+    closeRetrieveGraph();
+    retrieveSearchSelectedRecord = undefined;
+    panelTools.clearPanelTools("panel4");
+    retrieveMetaToolId = undefined;
     window.setTimeout(() => {
       document.dispatchEvent(
         new CustomEvent("retrieve-datahub-command", {
@@ -1231,7 +1282,12 @@ function handleAction(action: RibbonAction): void {
   }
   if (action.command.phase === "retrieve" && action.command.action === "retrieve_open_query_builder") {
     panelGrid.ensurePanelVisible(2);
-    ensureRetrieveQueryBuilderTool({ replace: true });
+    setRetrieveLayout("search-empty");
+    closeRetrieveGraph();
+    retrieveSearchSelectedRecord = undefined;
+    panelTools.clearPanelTools("panel4");
+    retrieveMetaToolId = undefined;
+    ensureRetrieveSearchAppTool();
     return;
   }
   if (action.command.phase === "retrieve" && action.command.action === "retrieve_set_provider") {
@@ -1243,7 +1299,9 @@ function handleAction(action: RibbonAction): void {
     if (raw === null) return;
     writeRetrieveQueryDefaults({ provider: raw.trim() as RetrieveProviderId });
     panelGrid.ensurePanelVisible(2);
-    ensureRetrieveQueryBuilderTool({ replace: true });
+    setRetrieveLayout("search-empty");
+    closeRetrieveGraph();
+    ensureRetrieveSearchAppTool();
     return;
   }
   if (action.command.phase === "retrieve" && action.command.action === "retrieve_set_sort") {
@@ -1252,7 +1310,9 @@ function handleAction(action: RibbonAction): void {
     if (raw === null) return;
     writeRetrieveQueryDefaults({ sort: raw.trim() as RetrieveSort });
     panelGrid.ensurePanelVisible(2);
-    ensureRetrieveQueryBuilderTool({ replace: true });
+    setRetrieveLayout("search-empty");
+    closeRetrieveGraph();
+    ensureRetrieveSearchAppTool();
     return;
   }
   if (action.command.phase === "retrieve" && action.command.action === "retrieve_set_year_range") {
@@ -1275,7 +1335,9 @@ function handleAction(action: RibbonAction): void {
       });
     }
     panelGrid.ensurePanelVisible(2);
-    ensureRetrieveQueryBuilderTool({ replace: true });
+    setRetrieveLayout("search-empty");
+    closeRetrieveGraph();
+    ensureRetrieveSearchAppTool();
     return;
   }
   if (action.command.phase === "retrieve" && action.command.action === "retrieve_set_limit") {
@@ -1286,7 +1348,9 @@ function handleAction(action: RibbonAction): void {
     if (!Number.isFinite(n) || n <= 0) return;
     writeRetrieveQueryDefaults({ limit: Math.floor(n) });
     panelGrid.ensurePanelVisible(2);
-    ensureRetrieveQueryBuilderTool({ replace: true });
+    setRetrieveLayout("search-empty");
+    closeRetrieveGraph();
+    ensureRetrieveSearchAppTool();
     return;
   }
   if (action.command.phase === "tools" && action.command.action === "open_tool") {
@@ -1536,10 +1600,71 @@ const getAppThemeId = (): string => {
   return "system";
 };
 
+const readRootCssVar = (name: string): string => {
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name);
+  return value ? value.trim() : "";
+};
+
+const buildPdfViewerUiTokens = (): Record<string, string> => {
+  const bg = readRootCssVar("--bg");
+  const panel = readRootCssVar("--panel");
+  const panel2 = readRootCssVar("--panel-2");
+  const surface = readRootCssVar("--surface");
+  const surfaceMuted = readRootCssVar("--surface-muted");
+  const border = readRootCssVar("--border");
+  const borderSoft = readRootCssVar("--border-soft");
+  const text = readRootCssVar("--text");
+  const muted = readRootCssVar("--muted");
+  const accent = readRootCssVar("--accent");
+  const shadowOverlay = readRootCssVar("--shadow-overlay") || readRootCssVar("--shadow");
+  const shadowAmbient = readRootCssVar("--shadow-ambient") || readRootCssVar("--shadow");
+
+  return {
+    "--bg0": bg || "#0b0f14",
+    "--bg1": panel || "#0f141b",
+    "--bg2": panel2 || "#151c26",
+    "--panel": surface || panel || "#0f141b",
+    "--panel2": surfaceMuted || panel2 || "#151c26",
+    "--stroke": border || "rgba(226, 232, 240, 0.14)",
+    "--stroke2": borderSoft || "rgba(226, 232, 240, 0.08)",
+    "--txt": text || "#e8eef5",
+    "--muted": muted || "#a8b3c3",
+    "--muted2": muted || "#a8b3c3",
+    "--accent": accent || "#10a37f",
+    "--shadow": shadowOverlay || "0 30px 80px rgba(0, 0, 0, 0.45)",
+    "--shadow2": shadowAmbient || "0 8px 24px rgba(0, 0, 0, 0.18)"
+  };
+};
+
+const syncPdfViewerUiTokens = (iframe: HTMLIFrameElement): void => {
+  const vars = buildPdfViewerUiTokens();
+  const win =
+    iframe.contentWindow as (Window & { PDF_APP?: { setUiTokens?: (vars: Record<string, string>) => string } }) | null;
+
+  try {
+    if (win?.PDF_APP && typeof win.PDF_APP.setUiTokens === "function") {
+      win.PDF_APP.setUiTokens(vars);
+      return;
+    }
+  } catch {
+    // ignore
+  }
+
+  try {
+    const doc = iframe.contentDocument;
+    if (!doc) return;
+    Object.entries(vars).forEach(([k, v]) => doc.documentElement.style.setProperty(k, v));
+  } catch {
+    // ignore
+  }
+};
+
 const syncPdfViewerTheme = (iframe: HTMLIFrameElement): void => {
   const win = iframe.contentWindow as Window & { PDF_APP?: { setTheme?: (t: string) => string } };
-  if (!win || !win.PDF_APP || typeof win.PDF_APP.setTheme !== "function") return;
-  win.PDF_APP.setTheme(mapAppThemeToPdfTheme(getAppThemeId()));
+  if (win?.PDF_APP && typeof win.PDF_APP.setTheme === "function") {
+    win.PDF_APP.setTheme(mapAppThemeToPdfTheme(getAppThemeId()));
+  }
+  syncPdfViewerUiTokens(iframe);
 };
 
 function renderPdfTabs(panel: HTMLElement, payload: PdfTestPayload, rawPayload?: any): void {
@@ -2101,14 +2226,23 @@ function ensureSectionTool(tabId: TabId, options?: { replace?: boolean }): void 
   }
   const existing = sectionToolIds[tabId];
   if (existing) {
-    if (tabId === "retrieve") {
-      const currentPanel = panelTools.getToolPanel(existing);
-      if (currentPanel && currentPanel !== "panel2") {
-        panelTools.moveTool(existing, "panel2");
+    // If the tool was closed/destroyed, clear the stale id and recreate.
+    const existingPanel = panelTools.getToolPanel(existing);
+    if (!existingPanel) {
+      delete sectionToolIds[tabId];
+    } else {
+      if (tabId === "retrieve") {
+        const currentPanel = existingPanel;
+        if (currentPanel && currentPanel !== "panel2") {
+          panelTools.moveTool(existing, "panel2");
+        }
       }
+      if (tabId === "visualiser") {
+        ensureVisualiserPanelsVisible();
+      }
+      scheduleRaf(() => panelTools.focusTool(existing));
+      return;
     }
-    scheduleRaf(() => panelTools.focusTool(existing));
-    return;
   }
   const id = panelTools.spawnTool(config.toolType, { panelId: "panel2", metadata: config.metadata });
   sectionToolIds[tabId] = id;
@@ -2123,6 +2257,7 @@ function ensureRetrieveDataHubTool(options?: { replace?: boolean }): void {
     panelTools.clearPanelTools("panel2");
     retrieveDataHubToolId = undefined;
     retrieveQueryToolId = undefined;
+    retrieveSearchAppToolId = undefined;
     delete sectionToolIds["retrieve"];
   }
   if (retrieveDataHubToolId) {
@@ -2139,6 +2274,7 @@ function ensureRetrieveQueryBuilderTool(options?: { replace?: boolean }): void {
     panelTools.clearPanelTools("panel2");
     retrieveDataHubToolId = undefined;
     retrieveQueryToolId = undefined;
+    retrieveSearchAppToolId = undefined;
     delete sectionToolIds["retrieve"];
   }
   if (retrieveQueryToolId) {
@@ -2148,6 +2284,96 @@ function ensureRetrieveQueryBuilderTool(options?: { replace?: boolean }): void {
   const id = panelTools.spawnTool("retrieve", { panelId: "panel2" });
   retrieveQueryToolId = id;
   scheduleRaf(() => panelTools.focusTool(id));
+}
+
+function ensureRetrieveSearchAppTool(): void {
+  if (retrieveSearchAppToolId) {
+    scheduleRaf(() => panelTools.focusTool(retrieveSearchAppToolId!));
+    return;
+  }
+  const id = panelTools.spawnTool("retrieve-search-app", { panelId: "panel2" });
+  retrieveSearchAppToolId = id;
+  scheduleRaf(() => panelTools.focusTool(id));
+}
+
+function ensureRetrieveSearchMetaTool(options?: { replace?: boolean }): void {
+  if (options?.replace) {
+    panelTools.clearPanelTools("panel4");
+    retrieveMetaToolId = undefined;
+  }
+  if (retrieveMetaToolId) {
+    scheduleRaf(() => panelTools.focusTool(retrieveMetaToolId!));
+    return;
+  }
+  const id = panelTools.spawnTool("retrieve-search-meta", { panelId: "panel4" });
+  retrieveMetaToolId = id;
+  scheduleRaf(() => panelTools.focusTool(id));
+}
+
+function setRetrieveLayout(mode: "datahub" | "search-empty" | "search-selected" | "search-graph"): void {
+  panelGrid.setRoundLayout(false);
+  panelGrid.setCollapsed("panel1", true);
+  // panel4 used as "meta" in search-selected mode; collapsed by default.
+  panelGrid.setCollapsed("panel4", true);
+
+  if (mode === "datahub") {
+    panelGrid.setCollapsed("panel3", true);
+    panelGrid.setCollapsed("panel2", false);
+    panelGrid.setRatios({ panel1: 0, panel2: 3, panel3: 0, panel4: 0 });
+    panelGrid.setLayoutHint({ mode: "centeredSingle", panelId: "panel2", maxWidthPx: 1400 });
+    panelGrid.ensurePanelVisible(2);
+    return;
+  }
+
+  if (mode === "search-empty") {
+    // Search-only: full width panel 2.
+    panelGrid.setCollapsed("panel3", true);
+    panelGrid.setCollapsed("panel2", false);
+    panelGrid.setCollapsed("panel4", true);
+    panelGrid.setRatios({ panel1: 0, panel2: 6, panel3: 0, panel4: 0 });
+    panelGrid.setLayoutHint(null);
+    panelGrid.ensurePanelVisible(2);
+    return;
+  }
+
+  // Search-selected and search-graph should use full width (no centered single hint).
+  panelGrid.setLayoutHint(null);
+  panelGrid.setCollapsed("panel2", false);
+
+  if (mode === "search-selected") {
+    panelGrid.setCollapsed("panel3", true);
+    panelGrid.setCollapsed("panel4", false);
+    // 6/7 for panel 2, 1/7 for right meta.
+    panelGrid.setRatios({ panel1: 0, panel2: 6, panel3: 0, panel4: 1 });
+    panelGrid.ensurePanelVisible(2);
+    panelGrid.ensurePanelVisible(4);
+    return;
+  }
+
+  // Graph mode: hide meta (panel 4), show panel 3 under panel 2 (3/6).
+  panelGrid.setCollapsed("panel4", true);
+  panelGrid.setCollapsed("panel3", false);
+  panelGrid.setRatios({ panel1: 0, panel2: 3, panel3: 3, panel4: 0 });
+  panelGrid.ensurePanelVisible(2);
+  panelGrid.ensurePanelVisible(3);
+}
+
+function openRetrieveGraph(record?: RetrieveRecord): void {
+  if (!record) {
+    return;
+  }
+  setRetrieveLayout("search-graph");
+  panelTools.ensureToolHost("panel3", { replaceContent: true });
+  panelTools.clearPanelTools("panel3");
+  retrieveGraphToolId = panelTools.spawnTool("retrieve-citation-graph", { panelId: "panel3", metadata: { record } });
+  panelTools.focusTool(retrieveGraphToolId);
+}
+
+function closeRetrieveGraph(): void {
+  panelTools.clearPanelTools("panel3");
+  retrieveGraphToolId = undefined;
+  panelGrid.setCollapsed("panel3", true);
+  panelGrid.setRatios({ panel3: 0 });
 }
 
 function sectionToolConfig(
@@ -2181,6 +2407,14 @@ function sectionToolConfig(
 }
 
 function ensureVisualiserPanelsVisible(): void {
+  // Visualiser uses Panels 1/2/3 only, with a narrow side context + wide center + narrow status.
+  panelGrid.setRoundLayout(false);
+  panelGrid.setLayoutHint(null);
+  panelGrid.setCollapsed("panel4", true);
+  panelGrid.setCollapsed("panel1", false);
+  panelGrid.setCollapsed("panel2", false);
+  panelGrid.setCollapsed("panel3", false);
+  panelGrid.setRatios({ panel1: 1, panel2: 4, panel3: 1, panel4: 0 });
   panelGrid.ensurePanelVisible(1);
   panelGrid.ensurePanelVisible(2);
   panelGrid.ensurePanelVisible(3);

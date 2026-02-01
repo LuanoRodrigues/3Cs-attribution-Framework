@@ -23,92 +23,6 @@ const syncFootnoteNumbers = (editor: Editor) => {
   }
 };
 
-const ensureFootnoteStyles = () => {
-  if (document.getElementById("leditor-footnote-panel-styles")) return;
-  const style = document.createElement("style");
-  style.id = "leditor-footnote-panel-styles";
-  style.textContent = `
-.leditor-footnote-panel-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(14, 18, 22, 0.65);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 1200;
-  padding: 24px;
-}
-.leditor-footnote-panel {
-  width: min(560px, 90vw);
-  max-height: 80vh;
-  background: #fbf7ee;
-  border: 1px solid #cbbf9a;
-  border-radius: 12px;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3);
-  overflow: hidden;
-}
-.leditor-footnote-panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  background: #f2e8d3;
-  border-bottom: 1px solid #d8cba8;
-  font-family: "Georgia", "Times New Roman", serif;
-  font-size: 16px;
-}
-.leditor-footnote-panel-list {
-  padding: 12px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  overflow: auto;
-}
-.leditor-footnote-panel-item {
-  padding: 10px 12px;
-  background: #fffdfa;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.leditor-footnote-panel-item-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-weight: 600;
-}
-.leditor-footnote-panel-item-snippet {
-  color: #4c4c4c;
-  font-size: 13px;
-  line-height: 1.3;
-}
-.leditor-footnote-panel-actions {
-  padding: 12px 16px;
-  border-top: 1px solid #d8cba8;
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-.leditor-footnote-panel button {
-  border: 1px solid #8c7a53;
-  border-radius: 999px;
-  background: #eadbb8;
-  padding: 6px 14px;
-  cursor: pointer;
-  font-family: "Georgia", "Times New Roman", serif;
-  font-size: 13px;
-}
-.leditor-footnote-panel button:hover {
-  background: #f6e8c8;
-}
-`;
-  document.head.appendChild(style);
-};
-
 const normalizeSnippet = (text: string) => {
   const trimmed = text.replace(/\s+/g, " ").trim();
   if (trimmed.length <= 80) return trimmed;
@@ -126,7 +40,6 @@ export const createFootnoteManager = (
   editorHandle: EditorHandle,
   editor: Editor
 ): FootnotePanelController => {
-  ensureFootnoteStyles();
   let syncHandle = 0;
   const scheduleSync = () => {
     if (syncHandle) return;
@@ -164,22 +77,22 @@ export const createFootnoteManager = (
   document.body.appendChild(overlay);
 
   const close = () => {
-    overlay.style.display = "none";
+    overlay.classList.remove("is-open");
     document.removeEventListener("keydown", onKeydown);
   };
   const open = () => {
     refreshList();
-    overlay.style.display = "flex";
+    overlay.classList.add("is-open");
     document.addEventListener("keydown", onKeydown);
   };
   const toggle = () => {
-    if (overlay.style.display === "none" || overlay.style.display === "") {
+    if (!overlay.classList.contains("is-open")) {
       open();
     } else {
       close();
     }
   };
-  const isOpen = () => overlay.style.display === "flex";
+  const isOpen = () => overlay.classList.contains("is-open");
 
   const refreshList = () => {
     list.innerHTML = "";

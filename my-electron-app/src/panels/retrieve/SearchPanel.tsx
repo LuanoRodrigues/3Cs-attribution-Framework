@@ -1,4 +1,4 @@
-import { command } from "../../ribbon/commandDispatcher";
+import { commandInternal } from "../../ribbon/commandDispatcher";
 import { retrieveContext } from "../../state/retrieveContext";
 import type {
   RetrieveProviderId,
@@ -221,7 +221,12 @@ export class SearchPanel {
     this.loadMoreBtn.disabled = true;
     this.updateStatus(loadMore ? "Loading more results…" : "Searching…");
     try {
-      const response = await command("retrieve", "fetch_from_source", payload);
+      const response = await commandInternal("retrieve", "fetch_from_source", payload);
+      if (response?.status !== "ok") {
+        console.error("[SearchPanel.tsx][handleSearch][debug] retrieve search failed", response);
+        this.updateStatus(response?.message ?? "Search failed (unknown error).");
+        return;
+      }
       const items = (response?.items ?? []) as RetrieveRecord[];
       this.lastProvider = response?.provider ?? this.lastProvider ?? payload.provider;
       this.totalCount = response?.total ?? this.totalCount;

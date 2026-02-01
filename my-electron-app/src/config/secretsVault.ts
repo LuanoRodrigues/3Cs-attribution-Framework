@@ -12,14 +12,31 @@ type KeytarModule = {
   setPassword: (service: string, account: string, password: string) => Promise<void>;
 };
 
+let keytarCached: KeytarModule | null | undefined;
+let keytarWarned = false;
+
 const loadKeytar = (): KeytarModule | null => {
+  if (keytarCached !== undefined) {
+    return keytarCached;
+  }
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const mod = require("keytar") as KeytarModule;
-    return mod ?? null;
+    keytarCached = mod ?? null;
+    return keytarCached;
   } catch (error) {
-    console.warn("[SecretsVault] keytar unavailable, falling back to file-only secrets.", error);
-    return null;
+    keytarCached = null;
+    if (!keytarWarned) {
+      keytarWarned = true;
+      const msg =
+        error instanceof Error
+          ? error.message
+          : typeof error === "string"
+            ? error
+            : "keytar load failed";
+      console.warn(`[SecretsVault] keytar unavailable; using file-only secrets. (${msg})`);
+    }
+    return keytarCached;
   }
 };
 

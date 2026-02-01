@@ -7,6 +7,8 @@ import {
 } from "../config/settingsKeys";
 
 import Picker from "vanilla-picker/csp";
+import { resolveDensityTokens, type Density, type Effects } from "../renderer/theme/density";
+import { resolveThemeTokens, themeIds, type ThemeId } from "../renderer/theme/tokens";
 
 (() => {
   const root = document.getElementById("settings-root");
@@ -93,6 +95,109 @@ import Picker from "vanilla-picker/csp";
 
   const navButtons: Record<string, HTMLButtonElement> = {};
   const panels: Record<string, HTMLElement> = {};
+
+  type SettingsSnapshot = Record<string, unknown>;
+  let latestSnapshot: SettingsSnapshot = {};
+
+  const isThemeId = (value: unknown): value is ThemeId =>
+    typeof value === "string" && themeIds.includes(value as ThemeId);
+
+  const isHexColor = (value: unknown): value is string =>
+    typeof value === "string" && /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(value.trim());
+
+  const normalizeTheme = (value: unknown): ThemeId => {
+    if (isThemeId(value)) return value;
+    if (typeof value === "string" && themeIds.includes(value.toLowerCase() as ThemeId)) {
+      return value.toLowerCase() as ThemeId;
+    }
+    return "system";
+  };
+
+  const normalizeDensity = (value: unknown): Density => (value === "compact" ? "compact" : "comfortable");
+  const normalizeEffects = (value: unknown): Effects => (value === "performance" ? "performance" : "full");
+
+  const normalizeScale = (value: unknown): number => {
+    const parsed =
+      typeof value === "number"
+        ? value
+        : typeof value === "string"
+          ? parseFloat(value)
+          : Number.NaN;
+    if (!Number.isFinite(parsed)) return 1;
+    return Math.min(1.4, Math.max(0.8, parsed));
+  };
+
+  const getSystemPreference = (): "dark" | "light" =>
+    window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+
+  const applyCssVars = (vars: Record<string, string>): void => {
+    const el = document.documentElement;
+    Object.entries(vars).forEach(([k, v]) => el.style.setProperty(k, v));
+  };
+
+  const applyAppearance = (snapshot: SettingsSnapshot): void => {
+    const themeId = normalizeTheme(snapshot[APPEARANCE_KEYS.theme]);
+    const systemPref = getSystemPreference();
+    const base = resolveThemeTokens(themeId, systemPref);
+
+    const accentOverride = isHexColor(snapshot[APPEARANCE_KEYS.accent])
+      ? String(snapshot[APPEARANCE_KEYS.accent])
+      : null;
+    const accent = accentOverride ?? base.accent;
+
+    const resolvedTheme: ThemeId =
+      themeId === "system" ? (systemPref === "dark" ? "dark" : "light") : themeId;
+
+    const density = normalizeDensity(snapshot[APPEARANCE_KEYS.density]);
+    const effects = normalizeEffects(snapshot[APPEARANCE_KEYS.effects]);
+    const scale = normalizeScale(snapshot[APPEARANCE_KEYS.uiScale]);
+
+    const themeVars: Record<string, string> = {
+      "--bg": base.bg,
+      "--panel": base.panel,
+      "--panel-2": base.panel2,
+      "--surface": base.surface,
+      "--surface-muted": base.surfaceMuted,
+      "--text": base.text,
+      "--muted": base.muted,
+      "--border": base.border,
+      "--border-soft": base.borderSoft,
+      "--card-border": base.cardBorder,
+      "--accent": accent,
+      "--accent-2": base.accent2,
+      "--shadow": base.shadow,
+      "--gradient-1": base.gradient1,
+      "--gradient-2": base.gradient2,
+      "--ribbon": base.ribbon,
+      "--focus": base.focus,
+      "--highlight": base.accent2,
+      "--link": accent,
+      "--link-hover": base.accent2,
+      "--sidebar-bg": base.panel2,
+      "--paper-border": base.border,
+      "--paper-text": base.text,
+      "--paper-muted": base.muted,
+      "--red": base.red,
+      "--orange": base.orange,
+      "--yellow": base.yellow,
+      "--green": base.green,
+      "--cyan": base.cyan,
+      "--blue": base.blue,
+      "--purple": base.purple,
+      "--danger": base.danger,
+      "--warning": base.warning,
+      "--success": base.success,
+      "--info": base.info,
+      "--app-scale": String(scale)
+    };
+
+    const densityVars = resolveDensityTokens(density, effects);
+    applyCssVars({ ...themeVars, ...densityVars });
+
+    document.documentElement.dataset.theme = resolvedTheme;
+    document.documentElement.dataset.density = density;
+    document.documentElement.dataset.effects = effects;
+  };
 
   const shell = document.createElement("div");
   shell.className = "settings-shell";
@@ -259,6 +364,7 @@ import Picker from "vanilla-picker/csp";
 
   async function loadSettingsSnapshot() {
     const snapshot = await bridge.getAll();
+    latestSnapshot = snapshot as SettingsSnapshot;
     Object.keys(fieldInputs).forEach((key) => {
       const rawValue = snapshot[key];
       const inputElement = fieldInputs[key];
@@ -279,6 +385,7 @@ import Picker from "vanilla-picker/csp";
     if (jsonViewElement) {
       jsonViewElement.textContent = JSON.stringify(snapshot, null, 2);
     }
+    applyAppearance(latestSnapshot);
     setStatus("Settings loaded");
   }
 
@@ -1011,6 +1118,13 @@ import Picker from "vanilla-picker/csp";
     } catch {
       // ignore
     }
+  });
+
+  const media = window.matchMedia("(prefers-color-scheme: dark)");
+  media.addEventListener("change", () => {
+    const themeId = normalizeTheme(latestSnapshot[APPEARANCE_KEYS.theme]);
+    if (themeId !== "system") return;
+    applyAppearance(latestSnapshot);
   });
 
   function applyInitialSection() {

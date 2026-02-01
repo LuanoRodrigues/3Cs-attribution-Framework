@@ -128,6 +128,8 @@ export type EditorCommandId =
   | "SearchReplace"
   | "ExportDOCX"
   | "ImportDOCX"
+  | "ExportLEDOC"
+  | "ImportLEDOC"
   | "PasteClean"
   | "ImportDocx"
   | "ExportDocx"

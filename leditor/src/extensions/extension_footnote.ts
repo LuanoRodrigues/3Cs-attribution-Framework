@@ -1,7 +1,7 @@
 import { Node as TiptapNode, type NodeViewRenderer } from "@tiptap/core";
 import type { Mark, Node as ProseMirrorNode } from "@tiptap/pm/model";
 import type { EditorView } from "@tiptap/pm/view";
-import { Plugin, TextSelection } from "@tiptap/pm/state";
+import { NodeSelection, Plugin, TextSelection } from "@tiptap/pm/state";
 import { reconcileFootnotes } from "../uipagination/footnotes/registry.ts";
 import { getNextFootnoteId, registerFootnoteId } from "../uipagination/footnotes/footnote_id_generator.ts";
 import type { FootnoteKind } from "../uipagination/footnotes/model.ts";
@@ -124,8 +124,8 @@ class FootnoteNodeView implements FootnoteNodeViewAPI {
 
   setPlainText(value: string) {
     const trimmed = typeof value === "string" ? value : "";
-    const textNode = trimmed.length ? this.view.state.schema.text(trimmed) : null;
-    const newNode = this.node.type.create(this.node.attrs, textNode ? [textNode] : [], this.node.marks);
+    const nextAttrs = { ...(this.node.attrs as any), text: trimmed };
+    const newNode = this.node.type.create(nextAttrs, [], this.node.marks);
     const pos = this.getPos();
     if (typeof pos === "number") {
       const tr = this.view.state.tr.replaceWith(pos, pos + this.node.nodeSize, newNode);
@@ -134,7 +134,8 @@ class FootnoteNodeView implements FootnoteNodeViewAPI {
   }
 
   getPlainText(): string {
-    return this.node.textContent ?? "";
+    const attrText = typeof (this.node.attrs as any)?.text === "string" ? String((this.node.attrs as any).text) : "";
+    return attrText;
   }
 
   getNumber(): string {
@@ -221,12 +222,32 @@ const FootnoteExtension = TiptapNode.create({
   addKeyboardShortcuts() {
     // Word-like deletion: pressing Backspace/Delete adjacent to a footnote marker removes the
     // marker in a single keystroke (instead of selecting it first and requiring a second press).
+    const deleteSelected = () => {
+      const editor: any = (this as any).editor;
+      const state = editor?.state;
+      const view = editor?.view;
+      if (!state || !view) return false;
+      const { selection } = state;
+      const footnoteType = state.schema.nodes.footnote;
+      if (!footnoteType) return false;
+      if (!(selection instanceof NodeSelection)) return false;
+      if (!selection.node || selection.node.type !== footnoteType) return false;
+      try {
+        view.dispatch(state.tr.deleteSelection().scrollIntoView());
+        return true;
+      } catch {
+        return false;
+      }
+    };
     const deleteNeighbor = (dir: "back" | "forward") => () => {
       const editor: any = (this as any).editor;
       const state = editor?.state;
       const view = editor?.view;
       if (!state || !view) return false;
       const { selection } = state;
+      if (selection instanceof NodeSelection) {
+        return deleteSelected();
+      }
       if (!(selection instanceof TextSelection) || !selection.empty) return false;
       const footnoteType = state.schema.nodes.footnote;
       if (!footnoteType) return false;
@@ -243,8 +264,8 @@ const FootnoteExtension = TiptapNode.create({
       }
     };
     return {
-      Backspace: deleteNeighbor("back"),
-      Delete: deleteNeighbor("forward")
+      Backspace: () => deleteSelected() || deleteNeighbor("back")(),
+      Delete: () => deleteSelected() || deleteNeighbor("forward")()
     };
   },
   addAttributes() {
@@ -257,6 +278,12 @@ const FootnoteExtension = TiptapNode.create({
       },
       citationId: {
         default: null
+      },
+      // Persisted footnote text (single source of truth). We intentionally keep this in attrs
+      // (not node content) so the marker's nodeSize stays constant and body selection snapshots
+      // don't drift when footnote text changes.
+      text: {
+        default: ""
       }
     };
   },
@@ -266,10 +293,14 @@ const FootnoteExtension = TiptapNode.create({
         tag: "span[data-footnote]",
         getAttrs: (node) => {
           if (!(node instanceof HTMLElement)) return {};
+          const rawTextAttr = (node.getAttribute("data-footnote-text") || "").trim();
+          const rawText =
+            rawTextAttr.length > 0 ? rawTextAttr : (node.textContent || "").trim();
           return {
             footnoteId: node.getAttribute("data-footnote-id") || null,
             kind: node.getAttribute("data-footnote-kind") ?? "footnote",
-            citationId: node.getAttribute("data-citation-id") || null
+            citationId: node.getAttribute("data-citation-id") || null,
+            text: rawText
           };
         }
       }
@@ -288,7 +319,11 @@ const FootnoteExtension = TiptapNode.create({
     if (HTMLAttributes.footnoteId) {
       attrs["data-footnote-id"] = HTMLAttributes.footnoteId;
     }
-    return ["span", attrs, 0];
+    if (typeof HTMLAttributes.text === "string" && HTMLAttributes.text.trim().length > 0) {
+      attrs["data-footnote-text"] = HTMLAttributes.text;
+    }
+    // Do not serialize the footnote text into the body HTML; the overlay renders it from attrs.
+    return ["span", attrs];
   },
   addProseMirrorPlugins() {
     return [
@@ -300,6 +335,7 @@ const FootnoteExtension = TiptapNode.create({
             const footnoteType = view.state.schema.nodes.footnote;
             if (!footnoteType) return;
             const missing: Array<{ pos: number; kind: FootnoteKind }> = [];
+            const migrateText: Array<{ pos: number; kind: FootnoteKind; id: string; attrs: any; marks: Mark[] }> = [];
             view.state.doc.descendants((node, pos) => {
               if (node.type !== footnoteType) return true;
               const id = typeof node.attrs?.footnoteId === "string" ? String(node.attrs.footnoteId).trim() : "";
@@ -307,16 +343,49 @@ const FootnoteExtension = TiptapNode.create({
               const kind: FootnoteKind = rawKind === "endnote" ? "endnote" : "footnote";
               if (!id) missing.push({ pos, kind });
               else registerFootnoteId(id, kind);
+              const attrText = typeof (node.attrs as any)?.text === "string" ? String((node.attrs as any).text) : "";
+              const legacyText = (node.textContent || "").trim();
+              // Migrate any legacy inline content into attrs.text and clear node content to keep nodeSize stable.
+              if (id && legacyText && !attrText.trim()) {
+                migrateText.push({
+                  pos,
+                  kind,
+                  id,
+                  attrs: { ...(node.attrs as any), footnoteId: id, kind, text: legacyText },
+                  marks: (node.marks as any) ?? []
+                });
+              } else if (id && attrText.trim() && node.content && node.content.size > 0) {
+                migrateText.push({
+                  pos,
+                  kind,
+                  id,
+                  attrs: { ...(node.attrs as any), footnoteId: id, kind, text: attrText },
+                  marks: (node.marks as any) ?? []
+                });
+              }
               return true;
             });
-            if (missing.length === 0) return;
             let tr = view.state.tr;
             missing.forEach((entry) => {
               const node = tr.doc.nodeAt(entry.pos);
               if (!node || node.type !== footnoteType) return;
               const nextId = getNextFootnoteId(entry.kind);
-              tr = tr.setNodeMarkup(entry.pos, node.type, { ...(node.attrs as any), footnoteId: nextId, kind: entry.kind }, node.marks);
+              tr = tr.setNodeMarkup(
+                entry.pos,
+                node.type,
+                { ...(node.attrs as any), footnoteId: nextId, kind: entry.kind, text: (node.attrs as any)?.text ?? "" },
+                node.marks
+              );
             });
+            // Apply text migrations by replacing nodes so we can clear any legacy content.
+            migrateText
+              .sort((a, b) => b.pos - a.pos)
+              .forEach((entry) => {
+                const node = tr.doc.nodeAt(entry.pos);
+                if (!node || node.type !== footnoteType) return;
+                const next = footnoteType.create(entry.attrs, [], entry.marks);
+                tr = tr.replaceWith(entry.pos, entry.pos + node.nodeSize, next);
+              });
             if (tr.docChanged) {
               try {
                 view.dispatch(tr);
