@@ -15,7 +15,7 @@ import {
   isReadMode
 } from "./view_state.ts";
 import { isVisualBlocksEnabled } from "../editor/visual.ts";
-import { isSourceChecksVisible } from "./source_checks_thread.ts";
+import { isSourceChecksVisible, subscribeSourceChecksThread } from "./source_checks_thread.ts";
 import { ribbonTraceCall } from "./ribbon_debugger.ts";
 
 const STATE_CONTRACT = (loadRibbonRegistry().stateContract ?? {}) as Record<string, string>;
@@ -149,6 +149,7 @@ export class RibbonStateBus {
   private state: RibbonStateSnapshot = {};
   private listeners = new Set<RibbonStateListener>();
   private pendingUpdate: number | NodeJS.Timeout | null = null;
+  private unsubscribeSourceChecks: (() => void) | null = null;
 
   private readonly handleSelectionChange = (): void => {
     this.scheduleUpdate();
@@ -158,12 +159,23 @@ export class RibbonStateBus {
     this.updateState();
     this.editorHandle.on("selectionChange", this.handleSelectionChange);
     this.editorHandle.on("change", this.handleSelectionChange);
+    // Keep ribbon toggle bindings in sync with non-editor state (source checks visibility + thread).
+    try {
+      this.unsubscribeSourceChecks = subscribeSourceChecksThread(() => this.scheduleUpdate());
+    } catch {
+      // ignore
+    }
   }
 
   dispose(): void {
     try {
       this.editorHandle.off("selectionChange", this.handleSelectionChange);
       this.editorHandle.off("change", this.handleSelectionChange);
+    } catch {
+      // ignore
+    }
+    try {
+      this.unsubscribeSourceChecks?.();
     } catch {
       // ignore
     }

@@ -236,6 +236,12 @@ html, body {
   padding-top: 0;
 }
 
+/* When the Source Checks rail is visible, reserve a right gutter in the scroll container so
+   rail cards never get clipped by overflow-x: hidden. */
+.leditor-app.leditor-app--source-checks-open .leditor-doc-shell {
+  padding-right: 380px;
+}
+
 .leditor-split-shell {
   flex: 1;
   min-height: 0;
@@ -311,7 +317,8 @@ html, body {
   background: rgba(255, 255, 255, 0.1);
 }
 
-.leditor-pdf-frame {
+/* Legacy PDF pane frame (kept scoped so it doesn't override the embedded split PDF panel). */
+.leditor-pdf-pane .leditor-pdf-frame {
   flex: 1 1 auto;
   min-height: 0;
   width: 100%;
@@ -367,17 +374,41 @@ html, body {
 
 .leditor-app .ProseMirror a,
 .leditor-app .ProseMirror a * {
-  color: #5dd5ff;
+  color: #1d4ed8;
   text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
   cursor: pointer;
 }
 
 .leditor-app .ProseMirror a.leditor-citation-anchor {
-  display: inline-block;
-  background: rgba(93, 213, 255, 0.14);
-  border: 1px solid rgba(93, 213, 255, 0.35);
+  display: inline-flex;
+  align-items: baseline;
+  background: rgba(29, 78, 216, 0.07);
+  border: 1px solid rgba(29, 78, 216, 0.18);
   border-radius: 6px;
-  padding: 1px 4px;
+  padding: 1px 5px;
+  transition: background 120ms ease, border-color 120ms ease, transform 80ms ease;
+}
+.leditor-app .ProseMirror a.leditor-citation-anchor:hover {
+  background: rgba(29, 78, 216, 0.10);
+  border-color: rgba(29, 78, 216, 0.28);
+}
+.leditor-app .ProseMirror a.leditor-citation-anchor:active {
+  transform: translateY(1px);
+}
+
+.leditor-app.theme-dark .ProseMirror a,
+.leditor-app.theme-dark .ProseMirror a * {
+  color: #93c5fd;
+}
+.leditor-app.theme-dark .ProseMirror a.leditor-citation-anchor {
+  background: rgba(147, 197, 253, 0.12);
+  border-color: rgba(147, 197, 253, 0.22);
+}
+.leditor-app.theme-dark .ProseMirror a.leditor-citation-anchor:hover {
+  background: rgba(147, 197, 253, 0.16);
+  border-color: rgba(147, 197, 253, 0.30);
 }
 
 @keyframes leditor-citation-flash {
@@ -388,6 +419,19 @@ html, body {
 
 .leditor-app .ProseMirror a.leditor-citation-anchor.leditor-citation-anchor--flash {
   animation: leditor-citation-flash 0.6s ease-out;
+}
+
+/* Make citation anchors feel like real links even when the A4/pagination layer renders content
+   outside the raw ".ProseMirror" container. */
+.leditor-app a.leditor-citation-anchor,
+.leditor-app a.leditor-citation-anchor *,
+.leditor-app a.leditor-citation-anchor *::before,
+.leditor-app a.leditor-citation-anchor *::after {
+  cursor: pointer !important;
+}
+.leditor-app a.leditor-citation-anchor {
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 .leditor-app.theme-dark {
@@ -449,7 +493,6 @@ html, body {
   width: fit-content;
   position: relative;
 }
-
 .leditor-page-stack,
 .leditor-page-overlays {
   display: flex;
@@ -1147,6 +1190,37 @@ html, body {
   width: fit-content;
 }
 
+/* When the embedded PDF panel is open, keep the A4 content left-aligned so the PDF viewer
+   can occupy the right side without the page stack staying visually centered. */
+.leditor-app.leditor-pdf-open .leditor-a4-canvas {
+  align-items: flex-start;
+}
+.leditor-app.leditor-pdf-open .leditor-a4-zoom {
+  justify-content: flex-start;
+}
+.leditor-app.leditor-pdf-open .leditor-a4-zoom-content {
+  transform-origin: top left;
+}
+.leditor-app.leditor-pdf-open .leditor-page-stack,
+.leditor-app.leditor-pdf-open .leditor-page-overlays {
+  margin-left: 0;
+  margin-right: 0;
+}
+.leditor-app.leditor-pdf-open .leditor-page-stack[data-grid-mode="stack"],
+.leditor-app.leditor-pdf-open .leditor-page-overlays[data-grid-mode="stack"] {
+  align-items: flex-start;
+  margin-left: 0;
+  margin-right: 0;
+}
+.leditor-app.leditor-pdf-open .leditor-page-stack[data-grid-mode^="grid-"],
+.leditor-app.leditor-pdf-open .leditor-page-overlays[data-grid-mode^="grid-"],
+.leditor-app.leditor-pdf-open .leditor-page-stack.is-two-page,
+.leditor-app.leditor-pdf-open .leditor-page-overlays.is-two-page {
+  justify-content: flex-start;
+  margin-left: 0;
+  margin-right: 0;
+}
+
 .leditor-break,
 .leditor-break::before,
 .leditor-break::after {
@@ -1182,6 +1256,13 @@ html, body {
   color: rgba(34, 34, 34, 0.85);
   font-size: 10px;
   font-weight: 600;
+}
+
+/* Hide internal "start bibliography on new page" breaks. */
+.leditor-break[data-break-kind="page"][data-section-id="bibliography"],
+.leditor-break[data-break-kind="page"][data-section-id="bibliography"]::before,
+.leditor-break[data-break-kind="page"][data-section-id="bibliography"]::after {
+  display: none !important;
 }
 `;
   style.textContent += `
@@ -2499,10 +2580,16 @@ export const mountA4Layout = (
       const header = overlay.querySelector(".leditor-page-header");
       const footer = overlay.querySelector(".leditor-page-footer");
       if (header) {
-        header.innerHTML = normalizeHeaderFooterHtml(getSectionHeaderContent(sectionId));
+        const nextHtml = normalizeHeaderFooterHtml(getSectionHeaderContent(sectionId));
+        if (header.innerHTML !== nextHtml) {
+          header.innerHTML = nextHtml;
+        }
       }
       if (footer) {
-        footer.innerHTML = normalizeHeaderFooterHtml(getSectionFooterContent(sectionId));
+        const nextHtml = normalizeHeaderFooterHtml(getSectionFooterContent(sectionId));
+        if (footer.innerHTML !== nextHtml) {
+          footer.innerHTML = nextHtml;
+        }
       }
     });
     const pageNodes = editorEl.querySelectorAll<HTMLElement>(".leditor-page");
@@ -2512,10 +2599,16 @@ export const mountA4Layout = (
       const header = page.querySelector(".leditor-page-header");
       const footer = page.querySelector(".leditor-page-footer");
       if (header) {
-        header.innerHTML = normalizeHeaderFooterHtml(getSectionHeaderContent(sectionId));
+        const nextHtml = normalizeHeaderFooterHtml(getSectionHeaderContent(sectionId));
+        if (header.innerHTML !== nextHtml) {
+          header.innerHTML = nextHtml;
+        }
       }
       if (footer) {
-        footer.innerHTML = normalizeHeaderFooterHtml(pageStackFooterHtml);
+        const nextHtml = normalizeHeaderFooterHtml(pageStackFooterHtml);
+        if (footer.innerHTML !== nextHtml) {
+          footer.innerHTML = nextHtml;
+        }
       }
     });
   };
@@ -3779,8 +3872,12 @@ export const mountA4Layout = (
   const updateColumnGuide = (page: HTMLElement, columns: number) => {
     const guide = page.querySelector(".leditor-page-column-guide");
     if (!guide) return;
+    const desiredCount = Math.max(0, columns - 1);
+    if (guide.childElementCount === desiredCount) {
+      return;
+    }
     guide.innerHTML = "";
-    for (let i = 1; i < columns; i += 1) {
+    for (let i = 0; i < desiredCount; i += 1) {
       guide.appendChild(document.createElement("span"));
     }
   };
@@ -3981,7 +4078,7 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
   });
   };
 
-const renderPages = (count: number) => {
+  const renderPages = (count: number) => {
   // The overlay DOM gets rebuilt here. If a footnote render is already queued, it may render
   // into stale containers and then get "lost" when overlays are recreated. Cancel and allow
   // a fresh render to run after the new overlays exist.
@@ -3993,7 +4090,7 @@ const renderPages = (count: number) => {
     window.cancelAnimationFrame(footnoteHeightHandle);
     footnoteHeightHandle = 0;
   }
-  if (paginationEnabled) {
+    if (paginationEnabled) {
     Array.from(pageStack.children).forEach((child) => {
       if (child !== editorEl) child.remove();
     });
@@ -5032,17 +5129,22 @@ const renderPages = (count: number) => {
             // ignore
           }
 
-		      // Capture selection before ProseMirror handles the click.
-		      // We only apply a "failsafe" selection *after pointerup* if ProseMirror didn't move it.
-		      let selectionFromBefore: number | null = null;
-		      try {
-		        const editorInstance = attachedEditorHandle?.getEditor?.() ?? null;
-		        const view = editorInstance?.view ?? null;
-		        selectionFromBefore =
-		          typeof view?.state?.selection?.from === "number" ? view.state.selection.from : null;
-		      } catch {
-		        selectionFromBefore = null;
-		      }
+			      // Capture selection before ProseMirror handles the click.
+			      // We only apply a "failsafe" selection *after pointerup* if ProseMirror didn't move it.
+			      let selectionFromBefore: number | null = null;
+			      let selectionToBefore: number | null = null;
+			      const selectionModifierHeld = !!(event.shiftKey || event.metaKey || event.ctrlKey || event.altKey);
+			      try {
+			        const editorInstance = attachedEditorHandle?.getEditor?.() ?? null;
+			        const view = editorInstance?.view ?? null;
+			        selectionFromBefore =
+			          typeof view?.state?.selection?.from === "number" ? view.state.selection.from : null;
+			        selectionToBefore =
+			          typeof view?.state?.selection?.to === "number" ? view.state.selection.to : null;
+			      } catch {
+			        selectionFromBefore = null;
+			        selectionToBefore = null;
+			      }
 
 		      const onPointerUp = (upEvent: PointerEvent) => {
 		        document.removeEventListener("pointerup", onPointerUp, true);
@@ -5060,16 +5162,25 @@ const renderPages = (count: number) => {
 		            const prose = (view?.dom as HTMLElement | null) ?? null;
 		            if (!view || !prose || !prose.isConnected) return;
 
-		            const selectionFromAfter =
-		              typeof view.state.selection?.from === "number" ? view.state.selection.from : null;
-		            const selectionDidNotMove =
-		              selectionFromBefore != null &&
-		              selectionFromAfter != null &&
-		              selectionFromBefore === selectionFromAfter;
+			            const selectionFromAfter =
+			              typeof view.state.selection?.from === "number" ? view.state.selection.from : null;
+			            const selectionToAfter =
+			              typeof view.state.selection?.to === "number" ? view.state.selection.to : null;
+			            const selectionDidNotMove =
+			              selectionFromBefore != null &&
+			              selectionFromAfter != null &&
+			              selectionFromBefore === selectionFromAfter &&
+			              selectionToBefore != null &&
+			              selectionToAfter != null &&
+			              selectionToBefore === selectionToAfter;
+			            const selectionWasRange =
+			              selectionFromBefore != null &&
+			              selectionToBefore != null &&
+			              selectionFromBefore !== selectionToBefore;
 
-		            const hitInProse = target === prose || prose.contains(target);
-		            const inPageChrome =
-		              !!target.closest?.(".leditor-page") && !target.closest?.(".leditor-page-content");
+			            const hitInProse = target === prose || prose.contains(target);
+			            const inPageChrome =
+			              !!target.closest?.(".leditor-page") && !target.closest?.(".leditor-page-content");
 
 		            // Compute a "safe" coords point that stays inside the page content box when the user
 		            // clicks on page chrome (margins/header/footer clones). This prevents posAtCoords from
@@ -5090,16 +5201,35 @@ const renderPages = (count: number) => {
 		            })();
 		            const coords = view.posAtCoords?.({ left: x, top: y }) ?? null;
 
-		            const coordsPos = typeof coords?.pos === "number" ? coords.pos : null;
-		            const coordsFarFromBefore =
-		              selectionFromBefore != null && coordsPos != null
-		                ? Math.abs(coordsPos - selectionFromBefore) > 2
-		                : true;
+			            const coordsPos = typeof coords?.pos === "number" ? coords.pos : null;
+			            const coordsFarFromBefore =
+			              selectionFromBefore != null && coordsPos != null
+			                ? Math.abs(coordsPos - selectionFromBefore) > 2
+			                : true;
 
-		            // Only intervene if:
-		            // - click wasn't in ProseMirror (chrome), OR
-		            // - selection didn't move *and* the coords indicate a different place (broken click), OR
-		            // - click landed in page chrome and ProseMirror didn't map it.
+			            // Word-like behavior: if there is an active range selection and a plain click doesn't
+			            // collapse it (usually because an overlay/page chrome intercepted the event), force a
+			            // caret at the click coords. Never do this when the user is holding selection modifiers.
+			            if (selectionDidNotMove && selectionWasRange && !selectionModifierHeld && coordsPos != null) {
+			              try {
+			                const $pos = view.state.doc.resolve(coordsPos);
+			                const safe = Selection.near($pos, 1);
+			                view.dispatch(view.state.tr.setSelection(safe).scrollIntoView());
+			              } catch {
+			                // ignore
+			              }
+			              try {
+			                view.focus();
+			              } catch {
+			                // ignore
+			              }
+			              return;
+			            }
+
+			            // Only intervene if:
+			            // - click wasn't in ProseMirror (chrome), OR
+			            // - selection didn't move *and* the coords indicate a different place (broken click), OR
+			            // - click landed in page chrome and ProseMirror didn't map it.
 		            if ((!hitInProse || inPageChrome) || (selectionDidNotMove && coordsFarFromBefore)) {
 		              if (coordsPos != null) {
 		                const $pos = view.state.doc.resolve(coordsPos);
@@ -5452,9 +5582,25 @@ const renderPages = (count: number) => {
     // ignore
   }
 
+  const computePaginationDocSignature = (doc: any): string => {
+    if (!doc) return "";
+    const size = typeof doc.content?.size === "number" ? doc.content.size : doc.nodeSize ?? 0;
+    const childCount = typeof doc.childCount === "number" ? doc.childCount : 0;
+    return `${size}:${childCount}`;
+  };
+  let lastPaginationDocSignature = computePaginationDocSignature(attachedEditorHandle?.getEditor?.()?.state?.doc);
   const pageObserver = new MutationObserver(() => {
     scheduleFootnoteLayoutVarSync();
     if (suspendPageObserver || paginationQueued || footnoteMode || headerFooterMode) return;
+    const editorInstance = attachedEditorHandle?.getEditor?.() ?? null;
+    const nextSignature = computePaginationDocSignature(editorInstance?.state?.doc);
+    if (nextSignature === lastPaginationDocSignature) {
+      if ((window as any).__leditorPaginationDebug) {
+        console.info("[PaginationDebug] skip mutation (doc unchanged)");
+      }
+      return;
+    }
+    lastPaginationDocSignature = nextSignature;
     requestPagination();
   });
   pageObserver.observe(editorEl, { childList: true, subtree: true });

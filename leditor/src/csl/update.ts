@@ -46,7 +46,7 @@ const splitAuthors = (raw: string): string[] => {
     .filter(Boolean);
 };
 
-const isNumericStyle = (styleId: string): boolean => {
+export const isNumericStyle = (styleId: string): boolean => {
   const style = (styleId || "").toLowerCase();
   if (!style) return false;
   if (style.includes("numeric")) return true;
@@ -146,7 +146,7 @@ const renderCitationHtml = (
   return `<span class="leditor-citation-rendered">(${escapeHtml(label)})</span>`;
 };
 
-const renderBibliographyHtml = (
+export const renderBibliographyHtml = (
   items: string[],
   meta: DocCitationMeta,
   numberByKey?: Map<string, number>
@@ -154,41 +154,61 @@ const renderBibliographyHtml = (
   if (!items.length) return "";
   const style = (meta.styleId || "").toLowerCase();
   const library = getReferencesLibrarySync();
-  const rows = items
+  const normalize = (value: string): string => value.trim().toLowerCase().replace(/\s+/g, " ");
+  const sortApa = (aKey: string, bKey: string): number => {
+    const a = library.itemsByKey[aKey];
+    const b = library.itemsByKey[bKey];
+    const aAuthor = normalize(a?.author || "");
+    const bAuthor = normalize(b?.author || "");
+    if (aAuthor !== bAuthor) return aAuthor < bAuthor ? -1 : 1;
+    const aYear = normalize(a?.year || "");
+    const bYear = normalize(b?.year || "");
+    if (aYear !== bYear) return aYear < bYear ? -1 : 1;
+    const aTitle = normalize(a?.title || "");
+    const bTitle = normalize(b?.title || "");
+    if (aTitle !== bTitle) return aTitle < bTitle ? -1 : 1;
+    return aKey < bKey ? -1 : aKey > bKey ? 1 : 0;
+  };
+
+  const ordered = style.includes("apa") ? [...items].sort(sortApa) : items;
+  const rows = ordered
     .map((itemKey) => {
       const item = library.itemsByKey[itemKey];
+      const safeKey = escapeHtml(itemKey);
       if (!item) {
-        return `<li>${escapeHtml(itemKey)}</li>`;
+        return `<div class="csl-entry" data-item-key="${safeKey}">${safeKey}</div>`;
       }
       if (style.includes("apa")) {
         const authors = splitAuthors(item.author || "");
         const author = authors.join(", ") || item.author || itemKey;
         const year = item.year ? `(${escapeHtml(item.year)})` : "";
-        const title = item.title ? escapeHtml(item.title) : escapeHtml(itemKey);
+        const title = item.title ? escapeHtml(item.title) : safeKey;
         const source = item.source ? escapeHtml(item.source) : "";
         const urlOrDoi = item.url ? escapeHtml(item.url) : "";
         const parts = [
           author ? `${escapeHtml(author)}.` : "",
           year ? ` ${year}.` : "",
-          ` ${title}.`,
+          // CSL APA typically italicizes titles conditionally; we keep a consistent emphasis to aid readability.
+          ` <i>${title}</i>.`,
           source ? ` ${source}.` : "",
           urlOrDoi ? ` ${urlOrDoi}` : ""
         ]
           .join("")
           .trim();
-        return `<li data-item-key="${escapeHtml(itemKey)}">${parts}</li>`;
+        return `<div class="csl-entry" data-item-key="${safeKey}">${parts}</div>`;
       }
       if (isNumericStyle(style)) {
         const n = numberByKey?.get(itemKey);
-        const prefix = typeof n === "number" ? `${n}. ` : "";
+        const nLabel = typeof n === "number" ? String(n) : "";
         const label = item.title || item.author || item.itemKey;
-        return `<li data-item-key="${escapeHtml(itemKey)}">${escapeHtml(prefix + label)}</li>`;
+        const numberHtml = nLabel ? `<b class="csl-number">[${escapeHtml(nLabel)}]</b> ` : "";
+        return `<div class="csl-entry" data-item-key="${safeKey}">${numberHtml}${escapeHtml(label)}</div>`;
       }
       const label = item.title || item.author || item.itemKey;
-      return `<li data-item-key="${escapeHtml(itemKey)}">${escapeHtml(label)}</li>`;
+      return `<div class="csl-entry" data-item-key="${safeKey}">${escapeHtml(label)}</div>`;
     })
     .join("");
-  return `<ol class="leditor-bibliography-list">${rows}</ol>`;
+  return `<div class="csl-bib-body">${rows}</div>`;
 };
 
 export const updateAllCitationsAndBibliography = (args: {
@@ -199,7 +219,7 @@ export const updateAllCitationsAndBibliography = (args: {
   findBibliographyNode: (doc: unknown) => BibliographyNode | null;
   setCitationNodeRenderedHtml: (node: CitationNode, html: string) => void;
   setBibliographyRenderedHtml: (node: BibliographyNode, html: string) => void;
-}) => {
+}): { meta: DocCitationMeta; orderedKeys: string[]; numberByKey?: Map<string, number> } => {
   // Validate citation metadata first to surface schema issues early.
   const meta = args.getDocCitationMeta(args.doc);
   const citationNodes = args.extractCitationNodes(args.doc);
@@ -232,4 +252,5 @@ export const updateAllCitationsAndBibliography = (args: {
     const html = renderBibliographyHtml(orderedKeys, meta, numberByKey);
     args.setBibliographyRenderedHtml(bibliography, html);
   }
+  return { meta, orderedKeys, numberByKey: numberByKey ?? undefined };
 };

@@ -21,6 +21,13 @@ const triggerExport = (request: ExportLedocRequest) => {
 
 const cmToPx = (cm: number): number => Math.round((cm / 2.54) * 96);
 
+const sanitizeFilenameBase = (raw: string): string => {
+  const trimmed = String(raw ?? "").trim();
+  if (!trimmed) return "untitled";
+  const safe = trimmed.replace(/[\\/:"*?<>|]+/g, "-").replace(/\s+/g, " ").trim();
+  return safe.slice(0, 96) || "untitled";
+};
+
 const collectFootnotes = (editorHandle: EditorHandle): LedocFootnoteEntry[] => {
   const editor = editorHandle.getEditor();
   const numbering = reconcileFootnotes(editor.state.doc as any).numbering;
@@ -45,10 +52,14 @@ const collectFootnotes = (editorHandle: EditorHandle): LedocFootnoteEntry[] => {
   return entries;
 };
 
-const buildDefaultOptions = (): ExportLedocOptions => ({
-  prompt: true,
-  suggestedPath: `.codex_logs/exports/ledoc-${Date.now()}.ledoc`
-});
+const buildDefaultOptions = (): ExportLedocOptions => {
+  const host = getHostContract();
+  const base = sanitizeFilenameBase(host.documentTitle || "untitled");
+  return {
+    prompt: true,
+    suggestedPath: `${base}.ledoc`
+  };
+};
 
 const buildPayload = (editorHandle: EditorHandle) => {
   const host = getHostContract();

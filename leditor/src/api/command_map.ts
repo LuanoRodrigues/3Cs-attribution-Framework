@@ -14,10 +14,18 @@ import { showAllowedElementsInspector } from "../ui/allowed_elements_inspector.t
 import { SANITIZE_OPTIONS } from "../plugins/pasteCleaner.ts";
 import { openCitationPicker, type CitationPickerResult } from "../ui/references/picker.ts";
 import { openSourcesPanel } from "../ui/references/sources_panel.ts";
-import { ensureReferencesLibrary, upsertReferenceItems } from "../ui/references/library.ts";
+import { ensureReferencesLibrary, upsertReferenceItems, getReferencesLibrarySync } from "../ui/references/library.ts";
 import { getHostContract } from "../ui/host_contract.ts";
 import { createSearchPanel } from "../ui/search_panel.ts";
 import { createAISettingsPanel, type AiSettingsPanelController } from "../ui/ai_settings.ts";
+import {
+  dismissSourceCheckThreadItem,
+  getSourceChecksThread,
+  isSourceChecksVisible,
+  setSourceChecksVisible,
+  clearSourceChecksThread
+} from "../ui/source_checks_thread.ts";
+import { getSourceCheckState } from "../editor/source_check_badges.ts";
 import { nextMatch, prevMatch, replaceAll, replaceCurrent, setQuery } from "../editor/search.ts";
 import {
   exportBibliographyBibtex,
@@ -33,6 +41,7 @@ import {
   resolveNoteKind,
   updateAllCitationsAndBibliography
 } from "../csl/update.ts";
+import { extractCitedKeysFromDoc, writeCitedWorksKeys, acceptKey, extractKeyFromLinkAttrs } from "../ui/references/cited_works.ts";
 import type { BibliographyNode as CslBibliographyNode, CitationNode as CslCitationNode, DocCitationMeta } from "../csl/types.ts";
 import {
   homeTab,
@@ -48,7 +57,6 @@ import { resolveRibbonCommandId } from "../ui/ribbon_command_aliases.ts";
 import {
   applySnapshotToTransaction,
   consumeRibbonSelection,
-  restoreSelectionFromSnapshot,
   snapshotFromSelection,
   StoredSelection
 } from "../utils/selection_snapshot";
@@ -68,6 +76,96 @@ const clampIndentLevel = (value: number) => Math.max(MIN_INDENT_LEVEL, Math.min(
 
 let citationIdCounter = 0;
 const generateCitationId = () => `c-${Date.now().toString(36)}-${(citationIdCounter++).toString(36)}`;
+
+const isOverlayEditing = (): boolean => {
+  const appRoot = document.getElementById("leditor-app");
+  if (!appRoot) return false;
+  return (
+    appRoot.classList.contains("leditor-footnote-editing") ||
+    appRoot.classList.contains("leditor-header-footer-editing")
+  );
+};
+
+const isEditorActiveSurface = (editor: Editor): boolean => {
+  const prose = editor?.view?.dom as HTMLElement | null;
+  const active = document.activeElement as HTMLElement | null;
+  return Boolean(prose && active && prose.contains(active));
+};
+
+const isRibbonActiveSurface = (active: HTMLElement | null): boolean => {
+  if (!active) return false;
+  return Boolean(active.closest?.(".leditor-ribbon"));
+};
+
+const shouldAllowProgrammaticFocus = (editor: Editor, allowRibbon = true): boolean => {
+  if (isOverlayEditing()) return false;
+  const active = document.activeElement as HTMLElement | null;
+  if (!active) return false;
+  if (isEditorActiveSurface(editor)) return true;
+  if (allowRibbon && isRibbonActiveSurface(active)) return true;
+  return false;
+};
+
+const logCaretGate = (label: string, detail: Record<string, unknown>): void => {
+  if (!(window as any).__leditorCaretDebug) return;
+  try {
+    console.info(`[CaretGate] ${label}`, detail);
+  } catch {
+    // ignore logging failures
+  }
+};
+
+const shouldAllowSelectionRestore = (editor: Editor, allowRibbon = true): boolean => {
+  if (isOverlayEditing()) return false;
+  const active = document.activeElement as HTMLElement | null;
+  if (!active) return false;
+  if (isEditorActiveSurface(editor)) return true;
+  if (allowRibbon && isRibbonActiveSurface(active)) return true;
+  return false;
+};
+
+const safeFocusEditor = (editor: Editor, focusTarget?: Parameters<Editor["commands"]["focus"]>[0]): void => {
+  if (!editor?.commands?.focus) return;
+  if (!shouldAllowProgrammaticFocus(editor, true)) {
+    logCaretGate("focus:skip", { reason: "inactive-surface", focusTarget });
+    return;
+  }
+  try {
+    editor.commands.focus(focusTarget as any);
+  } catch {
+    // ignore focus failures
+  }
+};
+
+const restoreSelectionSafely = (editor: Editor, snapshot?: StoredSelection | null): void => {
+  if (!snapshot) return;
+  if (!shouldAllowSelectionRestore(editor, true)) {
+    logCaretGate("restore:skip", { reason: "inactive-surface" });
+    return;
+  }
+  try {
+    const tr = applySnapshotToTransaction(editor.state.tr, snapshot);
+    if (
+      tr.selection.from !== editor.state.selection.from ||
+      tr.selection.to !== editor.state.selection.to
+    ) {
+      editor.view.dispatch(tr);
+    }
+  } catch {
+    // ignore selection restore failures
+  }
+};
+
+const chainWithSafeFocus = (
+  editor: Editor,
+  focusTarget?: Parameters<Editor["commands"]["focus"]>[0]
+) => {
+  const chain = editor.chain();
+  if (shouldAllowProgrammaticFocus(editor, true)) {
+    (chain as any).focus(focusTarget);
+  }
+  return chain;
+};
 
 type CitationNodeRecord = CslCitationNode & { pos: number; pmNode: ProseMirrorNode };
 type BibliographyNodeRecord = CslBibliographyNode & { pos: number; pmNode: ProseMirrorNode };
@@ -312,8 +410,8 @@ const handleInsertCitationCommand = (editor: Editor) => {
   })
     .then((result) => {
       if (!result) return;
-      editor.view.focus();
-      restoreSelectionFromSnapshot(editor, selectionSnapshot);
+      restoreSelectionSafely(editor, selectionSnapshot);
+      safeFocusEditor(editor);
       if (result.templateId === "bibliography") {
         commandMap.InsertBibliography(editor);
         return;
@@ -428,29 +526,43 @@ const findBibliographyNode = (doc: ProseMirrorNode): BibliographyNodeRecord | nu
 
 const stripHtml = (value: string): string => value.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
 
-const KEY_REGEX = /^[A-Z0-9]{8}$/;
-const extractKeyFromLinkAttrs = (attrs: any): string => {
-  const candidates = [
-    attrs?.dataKey,
-    attrs?.dataOrigHref,
-    attrs?.itemKey,
-    attrs?.dataItemKey
-  ]
-    .map((v: any) => (typeof v === "string" ? v.trim() : ""))
-    .filter(Boolean);
-  for (const value of candidates) {
-    if (KEY_REGEX.test(value)) return value;
-  }
-  return "";
+type AnchorInfo = {
+  text: string;
+  href: string;
+  dataKey: string;
+  dataOrigHref: string;
+  itemKey: string;
+  dataItemKey: string;
+  from: number;
+  to: number;
 };
 
-const collectCitationAnchors = (editor: Editor): Array<{ text: string; href: string; dataKey: string; dataOrigHref: string; itemKey: string; dataItemKey: string }> => {
-  const anchors: Array<{ text: string; href: string; dataKey: string; dataOrigHref: string; itemKey: string; dataItemKey: string }> = [];
+const isCitationLikeMark = (mark: any): boolean => {
+  const name = String(mark?.type?.name ?? "");
+  if (name === "anchor") return true;
+  if (name !== "link") return false;
+  const attrs = mark?.attrs ?? {};
+  const href = typeof attrs?.href === "string" ? attrs.href : "";
+  const looksLikeCitation = Boolean(
+    attrs?.dataKey ||
+      attrs?.itemKey ||
+      attrs?.dataItemKey ||
+      attrs?.dataDqid ||
+      attrs?.dataQuoteId ||
+      attrs?.dataQuoteText
+  );
+  if (looksLikeCitation) return true;
+  if (href && /^(dq|cite|citegrp):\/\//i.test(href)) return true;
+  return false;
+};
+
+const collectCitationAnchors = (editor: Editor): AnchorInfo[] => {
+  const anchors: AnchorInfo[] = [];
   editor.state.doc.descendants((node) => {
     if (!node.isText) return true;
     const text = node.text || "";
     (node.marks || []).forEach((mark: any) => {
-      if (!mark || mark.type?.name !== "link") return;
+      if (!mark || !isCitationLikeMark(mark)) return;
       const attrs = mark.attrs ?? {};
       const dataKey = typeof attrs.dataKey === "string" ? attrs.dataKey.trim() : "";
       const dataOrigHref = typeof attrs.dataOrigHref === "string" ? attrs.dataOrigHref.trim() : "";
@@ -459,7 +571,7 @@ const collectCitationAnchors = (editor: Editor): Array<{ text: string; href: str
       const href = typeof attrs.href === "string" ? attrs.href.trim() : "";
       const hasKey = Boolean(extractKeyFromLinkAttrs(attrs));
       if (!hasKey) return;
-      anchors.push({ text: text.slice(0, 140), href, dataKey, dataOrigHref, itemKey, dataItemKey });
+      anchors.push({ text: text.slice(0, 140), href, dataKey, dataOrigHref, itemKey, dataItemKey, from: 0, to: 0 });
     });
     return true;
   });
@@ -471,8 +583,19 @@ const logAllCitationAnchors = (editor: Editor, label: string): void => {
   console.info("[References][update] anchors", {
     label,
     anchorCount: anchors.length,
-    sample: anchors[0] ?? null
+    sample: anchors[0] ?? null,
+    anchors
   });
+};
+
+const citationKeysToUsedStore = async (editor: Editor): Promise<void> => {
+  try {
+    const keys = extractCitedKeysFromDoc(editor.state.doc as any);
+    await writeCitedWorksKeys(keys);
+    console.info("[References][sync] wrote cited works", { count: keys.length, sample: keys.slice(0, 5) });
+  } catch (error) {
+    console.warn("[References][sync] cited works write failed", error);
+  }
 };
 
 const extractDqidFromLinkAttrs = (attrs: any): string => {
@@ -531,7 +654,14 @@ const convertCitationAnchorsToCitationNodes = (editor: Editor): void => {
   ranges
     .sort((a, b) => b.from - a.from)
     .forEach((range) => {
-      tr.replaceWith(range.from, range.to, citationNode.create(range.attrs));
+      const $from = tr.doc.resolve(range.from);
+      const $to = tr.doc.resolve(range.to);
+      if (!$from.parent.canReplaceWith($from.index(), $to.index(), citationNode)) {
+        return;
+      }
+      const node = citationNode.createAndFill(range.attrs);
+      if (!node) return;
+      tr.replaceWith(range.from, range.to, node);
     });
   if (tr.docChanged) {
     editor.view.dispatch(tr);
@@ -698,8 +828,78 @@ const runCslUpdate = (editor: Editor): void => {
     editor.view.dispatch(trPrelude);
   }
 
+  const buildBibliographyBlocks = (
+    itemKeys: string[],
+    meta: DocCitationMeta,
+    numberByKey?: Map<string, number>
+  ): ProseMirrorNode[] => {
+    const schema = editor.schema;
+    const paragraph = schema.nodes.paragraph;
+    if (!paragraph) return [];
+    const italicType = schema.marks.italic ?? schema.marks.em;
+    const boldType = schema.marks.bold ?? schema.marks.strong;
+    const italicMark = italicType ? italicType.create() : null;
+    const boldMark = boldType ? boldType.create() : null;
+    const lib = getReferencesLibrarySync();
+    const style = String(meta.styleId || "").toLowerCase();
+    const normalize = (value: string): string => value.trim().toLowerCase().replace(/\s+/g, " ");
+    const sortApa = (aKey: string, bKey: string): number => {
+      const a = lib.itemsByKey[aKey];
+      const b = lib.itemsByKey[bKey];
+      const aAuthor = normalize(a?.author || "");
+      const bAuthor = normalize(b?.author || "");
+      if (aAuthor !== bAuthor) return aAuthor < bAuthor ? -1 : 1;
+      const aYear = normalize(a?.year || "");
+      const bYear = normalize(b?.year || "");
+      if (aYear !== bYear) return aYear < bYear ? -1 : 1;
+      const aTitle = normalize(a?.title || "");
+      const bTitle = normalize(b?.title || "");
+      if (aTitle !== bTitle) return aTitle < bTitle ? -1 : 1;
+      return aKey < bKey ? -1 : aKey > bKey ? 1 : 0;
+    };
+    const ordered = style.includes("apa") ? [...itemKeys].sort(sortApa) : itemKeys;
+
+    const textNode = (value: string, mark?: any) => {
+      const raw = String(value || "");
+      if (!raw) return null;
+      return mark ? schema.text(raw, [mark]) : schema.text(raw);
+    };
+
+    return ordered.map((itemKey) => {
+      const item = lib.itemsByKey[itemKey];
+      if (!item) {
+        return paragraph.create(null, [schema.text(itemKey)]);
+      }
+      const pieces: any[] = [];
+      if (numberByKey) {
+        const n = numberByKey.get(itemKey);
+        if (typeof n === "number") {
+          const t = textNode(`[${n}] `, boldMark);
+          if (t) pieces.push(t);
+        }
+      }
+      const author = (item.author || "").trim();
+      const year = (item.year || "").trim();
+      const title = (item.title || "").trim();
+      const source = (item.source || "").trim();
+      const url = (item.url || "").trim();
+
+      if (author) pieces.push(schema.text(`${author}. `));
+      if (year) pieces.push(schema.text(`(${year}). `));
+      if (title) {
+        const t = textNode(title, italicMark);
+        if (t) pieces.push(t);
+        pieces.push(schema.text(". "));
+      }
+      if (source) pieces.push(schema.text(`${source}. `));
+      if (url) pieces.push(schema.text(url));
+      if (!pieces.length) pieces.push(schema.text(itemKey));
+      return paragraph.create(null, pieces.filter(Boolean));
+    });
+  };
+
   const tr = editor.state.tr;
-  updateAllCitationsAndBibliography({
+  const update = updateAllCitationsAndBibliography({
     doc: editor.state.doc,
     getDocCitationMeta: (doc) => getDocCitationMeta(doc as ProseMirrorNode),
     extractCitationNodes: (doc) => extractCitationNodes(doc as ProseMirrorNode),
@@ -716,6 +916,22 @@ const runCslUpdate = (editor: Editor): void => {
       tr.setNodeMarkup(record.pos, bibliographyNode, { ...record.pmNode.attrs, renderedHtml: html });
     }
   });
+
+  // Update bibliography node children so it can flow across pages (instead of being a single atom).
+  try {
+    const bibRecord = findBibliographyNode(editor.state.doc) as BibliographyNodeRecord | null;
+    if (bibRecord) {
+      const mappedPos = tr.mapping.map(bibRecord.pos);
+      const current = tr.doc.nodeAt(mappedPos);
+      if (current && current.type === bibliographyNode) {
+        const blocks = buildBibliographyBlocks(update.orderedKeys, update.meta, update.numberByKey);
+        const safeBlocks = blocks.length ? blocks : [editor.schema.nodes.paragraph.create(null, [editor.schema.text("No sources cited.")])];
+        tr.replaceWith(mappedPos + 1, mappedPos + current.nodeSize - 1, Fragment.from(safeBlocks));
+      }
+    }
+  } catch (error) {
+    console.warn("[References] bibliography block update failed", error);
+  }
   if (tr.docChanged) {
     editor.view.dispatch(tr);
   }
@@ -860,46 +1076,46 @@ const parseRis = (text: string) => {
 const applyStyleById = (editor: Editor, styleId: string): void => {
   const id = styleId.toLowerCase();
   if (id.includes("heading1")) {
-    editor.chain().focus().toggleHeading({ level: 1 }).run();
+    chainWithSafeFocus(editor).toggleHeading({ level: 1 }).run();
     return;
   }
   if (id.includes("heading2")) {
-    editor.chain().focus().toggleHeading({ level: 2 }).run();
+    chainWithSafeFocus(editor).toggleHeading({ level: 2 }).run();
     return;
   }
   if (id.includes("heading3")) {
-    editor.chain().focus().toggleHeading({ level: 3 }).run();
+    chainWithSafeFocus(editor).toggleHeading({ level: 3 }).run();
     return;
   }
   if (id.includes("heading4")) {
-    editor.chain().focus().toggleHeading({ level: 4 }).run();
+    chainWithSafeFocus(editor).toggleHeading({ level: 4 }).run();
     return;
   }
   if (id.includes("heading5")) {
-    editor.chain().focus().toggleHeading({ level: 5 }).run();
+    chainWithSafeFocus(editor).toggleHeading({ level: 5 }).run();
     return;
   }
   if (id.includes("heading6")) {
-    editor.chain().focus().toggleHeading({ level: 6 }).run();
+    chainWithSafeFocus(editor).toggleHeading({ level: 6 }).run();
     return;
   }
   if (id.includes("title")) {
-    editor.chain().focus().toggleHeading({ level: 1 }).run();
+    chainWithSafeFocus(editor).toggleHeading({ level: 1 }).run();
     return;
   }
   if (id.includes("subtitle")) {
-    editor.chain().focus().toggleHeading({ level: 2 }).run();
+    chainWithSafeFocus(editor).toggleHeading({ level: 2 }).run();
     return;
   }
   if (id.includes("quote")) {
-    editor.chain().focus().toggleBlockquote().run();
+    chainWithSafeFocus(editor).toggleBlockquote().run();
     return;
   }
   if (id.includes("code")) {
-    editor.chain().focus().toggleCodeBlock().run();
+    chainWithSafeFocus(editor).toggleCodeBlock().run();
     return;
   }
-  editor.chain().focus().setParagraph().run();
+  chainWithSafeFocus(editor).setParagraph().run();
 };
 
 const parseToCm = (value: unknown, fallback: number): number => {
@@ -1035,7 +1251,7 @@ const requestImageInsert = (editor: Editor): void => {
         console.error("InsertImage failed", result?.error);
         return;
       }
-      editor.chain().focus().insertContent({ type: "image", attrs: { src: result.url } }).run();
+      chainWithSafeFocus(editor).insertContent({ type: "image", attrs: { src: result.url } }).run();
     })
     .catch((error) => {
       console.error("InsertImage failed", error);
@@ -1239,7 +1455,7 @@ const collectDocumentCitationKeys = (editor: Editor): string[] => {
   const keys = new Set<string>();
   const push = (value: unknown) => {
     const key = typeof value === "string" ? value.trim() : "";
-    if (key) keys.add(key);
+    if (acceptKey(key)) keys.add(key);
   };
   const pushGroup = (value: unknown) => {
     const raw = typeof value === "string" ? value : "";
@@ -1247,25 +1463,26 @@ const collectDocumentCitationKeys = (editor: Editor): string[] => {
       .split(";")
       .map((part) => part.trim())
       .filter(Boolean)
-      .forEach((part) => keys.add(part));
+      .forEach((part) => push(part));
   };
   editor.state.doc.descendants((node) => {
     if (node.type.name === "citation" && Array.isArray(node.attrs?.items)) {
       (node.attrs.items as Array<{ itemKey: string }>).forEach((item) => {
-        if (item && typeof item.itemKey === "string" && item.itemKey.trim().length > 0) {
+        if (item && typeof item.itemKey === "string" && acceptKey(item.itemKey)) {
           keys.add(item.itemKey.trim());
         }
       });
     }
-    // Also include citation anchors (link marks) that carry item keys.
+    // Also include citation anchors (link/anchor marks) that carry item keys or dqids.
     if (Array.isArray((node as any).marks)) {
       (node as any).marks.forEach((mark: any) => {
-        if (!mark || mark.type?.name !== "link") return;
+        if (!mark) return;
+        const name = mark.type?.name;
+        if (name !== "link" && name !== "anchor") return;
         const attrs = mark.attrs ?? {};
-        push(attrs.dataKey);
+        const key = extractKeyFromLinkAttrs(attrs);
+        push(key);
         push(attrs.dataOrigHref);
-        push(attrs.itemKey);
-        push(attrs.dataItemKey);
         const href = typeof attrs.href === "string" ? attrs.href : "";
         if (href.startsWith("citegrp://")) {
           pushGroup(href.replace(/^citegrp:\/\//, ""));
@@ -1400,7 +1617,7 @@ const insertBreakNode = (editor: Editor, kind: BreakKind): void => {
   if (!breakNode) {
     throw new Error("Page break node is not available on the schema");
   }
-  editor.chain().focus().insertContent({ type: "page_break", attrs: { kind } }).run();
+  chainWithSafeFocus(editor).insertContent({ type: "page_break", attrs: { kind } }).run();
 };
 
 const collectFootnoteTargets = (editor: Editor) => {
@@ -1653,6 +1870,12 @@ export const commandMap: Record<string, CommandHandler> = {
     } catch {
       // ignore
     }
+    // Disable LEDOC autosave for the new blank document.
+    try {
+      (globalThis as typeof globalThis & { __leditorAllowLedocAutosave?: boolean }).__leditorAllowLedocAutosave = false;
+    } catch {
+      // ignore
+    }
 
     // Minimal valid PageDocument: doc -> page -> paragraph
     const blankDoc = {
@@ -1698,58 +1921,58 @@ export const commandMap: Record<string, CommandHandler> = {
   },
 
   Bold(editor) {
-    editor.chain().focus().toggleBold().run();
+    chainWithSafeFocus(editor).toggleBold().run();
   },
   Italic(editor) {
-    editor.chain().focus().toggleItalic().run();
+    chainWithSafeFocus(editor).toggleItalic().run();
   },
   Underline(editor) {
-    editor.chain().focus().toggleMark("underline").run();
+    chainWithSafeFocus(editor).toggleMark("underline").run();
   },
   Strikethrough(editor) {
-    editor.chain().focus().toggleMark("strikethrough").run();
+    chainWithSafeFocus(editor).toggleMark("strikethrough").run();
   },
   Superscript(editor) {
-    editor.chain().focus().toggleMark("superscript").run();
+    chainWithSafeFocus(editor).toggleMark("superscript").run();
   },
   Subscript(editor) {
-    editor.chain().focus().toggleMark("subscript").run();
+    chainWithSafeFocus(editor).toggleMark("subscript").run();
   },
   Undo(editor) {
-    editor.chain().focus().undo().run();
+    chainWithSafeFocus(editor).undo().run();
     notifySearchUndo();
     notifyAutosaveUndoRedo();
     notifyDirectionUndo();
   },
   Redo(editor) {
-    editor.chain().focus().redo().run();
+    chainWithSafeFocus(editor).redo().run();
     notifyAutosaveUndoRedo();
   },
   Cut(editor) {
-    editor.commands.focus();
+    safeFocusEditor(editor);
     execClipboardCommand("cut");
   },
   Copy(editor) {
-    editor.commands.focus();
+    safeFocusEditor(editor);
     execClipboardCommand("copy");
   },
   Paste(editor) {
-    editor.commands.focus();
+    safeFocusEditor(editor);
     void readClipboardText().then((text) => {
       if (text) {
-        editor.chain().focus().insertContent(text).run();
+        chainWithSafeFocus(editor).insertContent(text).run();
         return;
       }
       execClipboardCommand("paste");
     });
   },
   PastePlain(editor) {
-    editor.commands.focus();
+    safeFocusEditor(editor);
     void readClipboardText().then((text) => {
       if (!text) {
         return;
       }
-      editor.chain().focus().insertContent(text).run();
+      chainWithSafeFocus(editor).insertContent(text).run();
     });
   },
   SearchReplace() {
@@ -1784,13 +2007,13 @@ export const commandMap: Record<string, CommandHandler> = {
         // ignore storage failures
       }
       if (!editor.isActive("bulletList")) {
-        editor.chain().focus().toggleBulletList().run();
+        chainWithSafeFocus(editor).toggleBulletList().run();
       } else {
-        editor.commands.focus();
+        safeFocusEditor(editor);
       }
       return;
     }
-    editor.chain().focus().toggleBulletList().run();
+    chainWithSafeFocus(editor).toggleBulletList().run();
   },
   NumberList(editor, args) {
     const styleId = typeof args?.styleId === "string" ? args.styleId.trim() : "";
@@ -1802,49 +2025,49 @@ export const commandMap: Record<string, CommandHandler> = {
         // ignore storage failures
       }
       if (!editor.isActive("orderedList")) {
-        editor.chain().focus().toggleOrderedList().run();
+        chainWithSafeFocus(editor).toggleOrderedList().run();
       } else {
-        editor.commands.focus();
+        safeFocusEditor(editor);
       }
       return;
     }
-    editor.chain().focus().toggleOrderedList().run();
+    chainWithSafeFocus(editor).toggleOrderedList().run();
   },
   Heading1(editor) {
-    editor.chain().focus().toggleHeading({ level: 1 }).run();
+    chainWithSafeFocus(editor).toggleHeading({ level: 1 }).run();
   },
   Heading2(editor) {
-    editor.chain().focus().toggleHeading({ level: 2 }).run();
+    chainWithSafeFocus(editor).toggleHeading({ level: 2 }).run();
   },
   Heading3(editor) {
-    editor.chain().focus().toggleHeading({ level: 3 }).run();
+    chainWithSafeFocus(editor).toggleHeading({ level: 3 }).run();
   },
   Heading4(editor) {
-    editor.chain().focus().toggleHeading({ level: 4 }).run();
+    chainWithSafeFocus(editor).toggleHeading({ level: 4 }).run();
   },
   Heading5(editor) {
-    editor.chain().focus().toggleHeading({ level: 5 }).run();
+    chainWithSafeFocus(editor).toggleHeading({ level: 5 }).run();
   },
   Heading6(editor) {
-    editor.chain().focus().toggleHeading({ level: 6 }).run();
+    chainWithSafeFocus(editor).toggleHeading({ level: 6 }).run();
   },
   AlignLeft(editor) {
-    editor.commands.focus();
+    safeFocusEditor(editor);
     editor.commands.updateAttributes("paragraph", { textAlign: "left" });
     editor.commands.updateAttributes("heading", { textAlign: "left" });
   },
   AlignCenter(editor) {
-    editor.commands.focus();
+    safeFocusEditor(editor);
     editor.commands.updateAttributes("paragraph", { textAlign: "center" });
     editor.commands.updateAttributes("heading", { textAlign: "center" });
   },
   AlignRight(editor) {
-    editor.commands.focus();
+    safeFocusEditor(editor);
     editor.commands.updateAttributes("paragraph", { textAlign: "right" });
     editor.commands.updateAttributes("heading", { textAlign: "right" });
   },
   JustifyFull(editor) {
-    editor.commands.focus();
+    safeFocusEditor(editor);
     editor.commands.updateAttributes("paragraph", { textAlign: "justify" });
     editor.commands.updateAttributes("heading", { textAlign: "justify" });
   },
@@ -1935,8 +2158,66 @@ export const commandMap: Record<string, CommandHandler> = {
   "ai.settings.open"() {
     ensureAISettingsPanel().open();
   },
+  "ai.sourceChecks.toggle"(editor) {
+    const next = !isSourceChecksVisible();
+    setSourceChecksVisible(next);
+    if (!next) {
+      (editor.commands as any).clearSourceChecks?.();
+      return;
+    }
+    // When toggling on, prefer showing existing checks if they exist. If not, the
+    // right-side rail will best-effort reattach from the persisted thread.
+    const view = (editor as any)?.view;
+    const sc = view ? getSourceCheckState(view.state) : null;
+    if (!sc?.enabled || !Array.isArray(sc.items) || sc.items.length === 0) {
+      const t = getSourceChecksThread();
+      if (!t?.items?.length) return;
+      // No-op here: renderer rail will reattach using EditorHandle.
+      return;
+    }
+  },
+  "ai.sourceChecks.clear"(editor) {
+    clearSourceChecksThread();
+    (editor.commands as any).clearSourceChecks?.();
+  },
+  "ai.sourceChecks.dismiss"(editor, args) {
+    const key = typeof (args as any)?.key === "string" ? String((args as any).key).trim() : "";
+    if (!key) return;
+    dismissSourceCheckThreadItem(key);
+    try {
+      const view = (editor as any)?.view;
+      const sc = view ? getSourceCheckState(view.state) : null;
+      const remaining = (sc?.items ?? []).filter((it) => String(it?.key) !== key);
+      if (remaining.length) {
+        (editor.commands as any).setSourceChecks?.(remaining as any);
+      } else {
+        (editor.commands as any).clearSourceChecks?.();
+      }
+    } catch {
+      // ignore
+    }
+  },
+  // Back-compat / typo tolerance
+  "ai.sourcecheck.toggle"(editor) {
+    commandMap["ai.sourceChecks.toggle"](editor);
+  },
+  "ai.sourcecheck.clear"(editor) {
+    commandMap["ai.sourceChecks.clear"](editor);
+  },
+  "ai.sourcecheck.dismiss"(editor, args) {
+    commandMap["ai.sourceChecks.dismiss"](editor, args);
+  },
+  "ai.sourcechecks.toggle"(editor) {
+    commandMap["ai.sourceChecks.toggle"](editor);
+  },
+  "ai.sourcechecks.clear"(editor) {
+    commandMap["ai.sourceChecks.clear"](editor);
+  },
+  "ai.sourcechecks.dismiss"(editor, args) {
+    commandMap["ai.sourceChecks.dismiss"](editor, args);
+  },
   Indent(editor) {
-    editor.commands.focus();
+    safeFocusEditor(editor);
     if (findListItemDepth(editor) !== null) {
       editor.commands.sinkListItem("listItem");
       return;
@@ -1948,7 +2229,7 @@ export const commandMap: Record<string, CommandHandler> = {
     editor.commands.updateAttributes(block.name, { indentLevel: next });
   },
   Outdent(editor) {
-    editor.commands.focus();
+    safeFocusEditor(editor);
     if (findListItemDepth(editor) !== null) {
       editor.commands.liftListItem("listItem");
       return;
@@ -1966,7 +2247,7 @@ export const commandMap: Record<string, CommandHandler> = {
     }
     const block = getBlockAtSelection(editor);
     if (!block) return;
-    editor.commands.focus();
+    safeFocusEditor(editor);
     const next = clampIndentLevel(target);
     editor.commands.updateAttributes(block.name, { indentLevel: next });
   },
@@ -1974,7 +2255,7 @@ export const commandMap: Record<string, CommandHandler> = {
     if (!args || typeof args.value !== "string") {
       throw new Error("LineSpacing requires { value }");
     }
-    editor.commands.focus();
+    safeFocusEditor(editor);
     editor.commands.updateAttributes("paragraph", { lineHeight: args.value });
     editor.commands.updateAttributes("heading", { lineHeight: args.value });
   },
@@ -1982,7 +2263,7 @@ export const commandMap: Record<string, CommandHandler> = {
     if (!args || typeof args.valuePx !== "number") {
       throw new Error("SpaceBefore requires { valuePx }");
     }
-    editor.commands.focus();
+    safeFocusEditor(editor);
     editor.commands.updateAttributes("paragraph", { spaceBefore: args.valuePx });
     editor.commands.updateAttributes("heading", { spaceBefore: args.valuePx });
   },
@@ -1990,7 +2271,7 @@ export const commandMap: Record<string, CommandHandler> = {
     if (!args || typeof args.valuePx !== "number") {
       throw new Error("SpaceAfter requires { valuePx }");
     }
-    editor.commands.focus();
+    safeFocusEditor(editor);
     editor.commands.updateAttributes("paragraph", { spaceAfter: args.valuePx });
     editor.commands.updateAttributes("heading", { spaceAfter: args.valuePx });
   },
@@ -1998,7 +2279,7 @@ export const commandMap: Record<string, CommandHandler> = {
     if (!args || typeof args.value !== "string") {
       throw new Error("FontFamily requires { value }");
     }
-    const chain = editor.chain().focus();
+    const chain = chainWithSafeFocus(editor);
     if (editor.state.selection.empty) {
       chain.selectAll();
     }
@@ -2008,7 +2289,7 @@ export const commandMap: Record<string, CommandHandler> = {
     if (!args || typeof args.valuePx !== "number") {
       throw new Error("FontSize requires { valuePx }");
     }
-    const chain = editor.chain().focus();
+    const chain = chainWithSafeFocus(editor);
     if (editor.state.selection.empty) {
       chain.selectAll();
     }
@@ -2024,7 +2305,7 @@ export const commandMap: Record<string, CommandHandler> = {
           ? Number(raw)
           : NaN;
     const next = Number.isFinite(current) ? Math.min(400, current + 1) : 12;
-    const chain = editor.chain().focus();
+    const chain = chainWithSafeFocus(editor);
     if (editor.state.selection.empty) {
       chain.selectAll();
     }
@@ -2040,41 +2321,41 @@ export const commandMap: Record<string, CommandHandler> = {
           ? Number(raw)
           : NaN;
     const next = Number.isFinite(current) ? Math.max(1, current - 1) : 12;
-    const chain = editor.chain().focus();
+    const chain = chainWithSafeFocus(editor);
     if (editor.state.selection.empty) {
       chain.selectAll();
     }
     chain.setMark("fontSize", { fontSize: next }).run();
   },
   NormalStyle(editor) {
-    editor.chain().focus().setParagraph().run();
+    chainWithSafeFocus(editor).setParagraph().run();
   },
   RemoveFontStyle(editor) {
-    editor.chain().focus().unsetMark("fontFamily").unsetMark("fontSize").run();
+    chainWithSafeFocus(editor).unsetMark("fontFamily").unsetMark("fontSize").run();
   },
   TextColor(editor, args) {
     if (!args || typeof args.value !== "string") {
       throw new Error("TextColor requires { value }");
     }
-    editor.chain().focus().setMark("textColor", { color: args.value }).run();
+    chainWithSafeFocus(editor).setMark("textColor", { color: args.value }).run();
   },
   RemoveTextColor(editor) {
-    editor.chain().focus().unsetMark("textColor").run();
+    chainWithSafeFocus(editor).unsetMark("textColor").run();
   },
   HighlightColor(editor, args) {
     if (!args || typeof args.value !== "string") {
       throw new Error("HighlightColor requires { value }");
     }
-    editor.chain().focus().setMark("highlightColor", { highlight: args.value }).run();
+    chainWithSafeFocus(editor).setMark("highlightColor", { highlight: args.value }).run();
   },
   RemoveHighlightColor(editor) {
-    editor.chain().focus().unsetMark("highlightColor").run();
+    chainWithSafeFocus(editor).unsetMark("highlightColor").run();
   },
   Link(editor) {
     const raw = window.prompt("Enter link URL");
     if (raw === null) return;
     const href = raw.trim();
-    const chain = editor.chain().focus() as any;
+    const chain = chainWithSafeFocus(editor) as any;
     const markChain = (chain.extendMarkRange("link") as any);
     if (href.length === 0) {
       markChain.unsetLink().run();
@@ -2099,10 +2380,10 @@ export const commandMap: Record<string, CommandHandler> = {
     applyCaseTransform(editor, transformer);
   },
   BlockquoteToggle(editor) {
-    editor.chain().focus().toggleBlockquote().run();
+    chainWithSafeFocus(editor).toggleBlockquote().run();
   },
   SelectAll(editor) {
-    editor.commands.focus();
+    safeFocusEditor(editor);
     editor.commands.selectAll();
   },
   SelectObjects() {
@@ -2154,7 +2435,7 @@ export const commandMap: Record<string, CommandHandler> = {
   "styles.apply"(editor, args) {
     const styleId = typeof args?.styleId === "string" ? args.styleId : "";
     if (!styleId) {
-      editor.chain().focus().setParagraph().run();
+      chainWithSafeFocus(editor).setParagraph().run();
       return;
     }
     applyStyleById(editor, styleId);
@@ -2206,7 +2487,7 @@ export const commandMap: Record<string, CommandHandler> = {
     const raw = window.prompt("Edit link URL", current);
     if (raw === null) return;
     const href = raw.trim();
-    const chain = editor.chain().focus() as any;
+    const chain = chainWithSafeFocus(editor) as any;
     const markChain = (chain.extendMarkRange("link") as any);
     if (href.length === 0) {
       markChain.unsetLink().run();
@@ -2215,43 +2496,43 @@ export const commandMap: Record<string, CommandHandler> = {
     markChain.setLink({ href }).run();
   },
   RemoveLink(editor) {
-    const chain = editor.chain().focus() as any;
+    const chain = chainWithSafeFocus(editor) as any;
     (chain.extendMarkRange("link") as any).unsetLink().run();
   },
   TableInsert(editor, args) {
     const rows = Math.max(1, Number(args?.rows ?? 2));
     const cols = Math.max(1, Number(args?.cols ?? 2));
-    editor.chain().focus().insertTable({ rows, cols, withHeaderRow: false }).run();
+    chainWithSafeFocus(editor).insertTable({ rows, cols, withHeaderRow: false }).run();
   },
   InsertImage(editor) {
     requestImageInsert(editor);
   },
   TableAddRowAbove(editor) {
-    editor.chain().focus().addRowBefore().run();
+    chainWithSafeFocus(editor).addRowBefore().run();
   },
   TableAddRowBelow(editor) {
-    editor.chain().focus().addRowAfter().run();
+    chainWithSafeFocus(editor).addRowAfter().run();
   },
   TableAddColumnLeft(editor) {
-    editor.chain().focus().addColumnBefore().run();
+    chainWithSafeFocus(editor).addColumnBefore().run();
   },
   TableAddColumnRight(editor) {
-    editor.chain().focus().addColumnAfter().run();
+    chainWithSafeFocus(editor).addColumnAfter().run();
   },
   TableDeleteRow(editor) {
-    editor.chain().focus().deleteRow().run();
+    chainWithSafeFocus(editor).deleteRow().run();
   },
   TableDeleteColumn(editor) {
-    editor.chain().focus().deleteColumn().run();
+    chainWithSafeFocus(editor).deleteColumn().run();
   },
   TableMergeCells(editor) {
-    editor.chain().focus().mergeCells().run();
+    chainWithSafeFocus(editor).mergeCells().run();
   },
   TableSplitCell(editor) {
-    editor.chain().focus().splitCell().run();
+    chainWithSafeFocus(editor).splitCell().run();
   },
   SelectStart(editor) {
-    editor.chain().focus().setTextSelection(0).run();
+    chainWithSafeFocus(editor).setTextSelection(0).run();
   },
   InsertFootnote(editor, args) {
     const picked = pickStableSelectionSnapshot(editor);
@@ -2332,7 +2613,7 @@ export const commandMap: Record<string, CommandHandler> = {
     const overrideId = typeof args?.id === "string" && args.id.trim().length > 0 ? args.id.trim() : undefined;
     const idBase = overrideId ?? slugifyBookmarkLabel(label);
     const id = ensureUniqueBookmarkId(idBase, existing);
-    editor.chain().focus().insertContent(bookmarkNode.create({ id, label })).insertContent(" ").run();
+    chainWithSafeFocus(editor).insertContent(bookmarkNode.create({ id, label })).insertContent(" ").run();
   },
   InsertCrossReference(editor, args) {
     const crossRefNode = editor.schema.nodes.cross_reference;
@@ -2363,7 +2644,7 @@ export const commandMap: Record<string, CommandHandler> = {
       window.alert(`Bookmark "${targetId}" not found.`);
       return;
     }
-    editor.chain().focus().insertContent(crossRefNode.create({ targetId, label: bookmark.label || targetId })).run();
+    chainWithSafeFocus(editor).insertContent(crossRefNode.create({ targetId, label: bookmark.label || targetId })).run();
   },
 
   InsertTOC(editor, args) {
@@ -2431,6 +2712,7 @@ export const commandMap: Record<string, CommandHandler> = {
       convertCitationAnchorsToCitationNodes(editor);
       await refreshCitationsAndBibliography(editor);
       logAllCitationAnchors(editor, "after");
+      await citationKeysToUsedStore(editor);
       await showBibliographyPreview(editor);
     })();
   },
@@ -2507,7 +2789,7 @@ export const commandMap: Record<string, CommandHandler> = {
     window.alert(`Added source: ${itemKey}`);
   },
   "citation.placeholder.add.openDialog"(editor) {
-    editor.chain().focus().insertContent("(citation)").run();
+    chainWithSafeFocus(editor).insertContent("(citation)").run();
   },
   "citation.import.bibtex.openDialog"() {
     const input = document.createElement("input");
@@ -2629,9 +2911,8 @@ export const commandMap: Record<string, CommandHandler> = {
       const label =
         template === "bibliography" ? "Bibliography" : template === "worksCited" ? "Works Cited" : "References";
       const fromStore = await readUsedBibliography();
-      if (!fromStore.length) {
-        await writeUsedBibliography(collectDocumentCitationKeys(editor));
-      }
+      const keys = fromStore.length ? fromStore : collectDocumentCitationKeys(editor);
+      if (!fromStore.length) await writeUsedBibliography(keys);
       ensureBibliographyStore();
       ensureBibliographyNode(editor, { headingText: label });
       await refreshCitationsAndBibliography(editor);
@@ -2746,7 +3027,7 @@ export const commandMap: Record<string, CommandHandler> = {
       console.warn('InsertTemplate: unknown template', templateId);
       return;
     }
-    editor.chain().focus().insertContent(template.document as any).run();
+    chainWithSafeFocus(editor).insertContent(template.document as any).run();
   },
   ApplyTemplate(editor, args) {
     const templateId = typeof args?.id === "string" ? args.id : undefined;
@@ -2826,14 +3107,14 @@ export const commandMap: Record<string, CommandHandler> = {
       }
 
       // Set stored marks so continued typing follows the template defaults.
-      const chainAtStart = editor.chain().focus("start");
+      const chainAtStart = chainWithSafeFocus(editor, "start");
       if (fontFamily) chainAtStart.setMark("fontFamily", { fontFamily });
       if (Number.isFinite(fontSizePx)) chainAtStart.setMark("fontSize", { fontSize: fontSizePx });
       if (textColor) chainAtStart.setMark("textColor", { color: textColor });
       chainAtStart.run();
     }
 
-    editor.commands.focus("start");
+    safeFocusEditor(editor, "start");
   },
   WordCount(editor) {
     const stats = getWordStatistics(editor);

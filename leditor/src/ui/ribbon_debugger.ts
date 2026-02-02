@@ -4,7 +4,8 @@ import {
   ribbonDebugLog,
   ribbonDebugMutation,
   ribbonDebugTabFilter,
-  ribbonDebugVerbose
+  ribbonDebugVerbose,
+  nonFluentDebugEnabled
 } from "./ribbon_debug.ts";
 
 type DebugHandles = {
@@ -122,6 +123,10 @@ const installEventLogger = (host: HTMLElement): (() => void) => {
     const control = target?.closest?.(CONTROL_SELECTOR) as HTMLElement | null;
     const tabId = control?.closest?.(".leditor-ribbon-panel")?.getAttribute("data-tab-id") ?? null;
     if (!tabMatches(tabId)) return;
+    if (!control && !ribbonDebugVerbose()) {
+      // Suppress non-control container events unless verbose is enabled.
+      return;
+    }
     setRibbonDebugContext(tabId, control?.dataset?.controlId ?? null);
     const active = document.activeElement as HTMLElement | null;
     const scrollTop = docShell?.scrollTop ?? null;
@@ -198,7 +203,7 @@ const installMutationLogger = (host: HTMLElement): MutationObserver => {
 
       // Detect non-Fluent icon injections (e.g., icon fonts or unexpected nodes) on mutation.
       let nonFluentIcon: string | null = null;
-      if (control) {
+      if (control && nonFluentDebugEnabled()) {
         const bad =
           isNonFluentNode(m.target) ||
           Array.from(m.addedNodes).map(isNonFluentNode).find(Boolean) ||

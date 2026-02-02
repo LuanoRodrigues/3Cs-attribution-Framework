@@ -9,6 +9,7 @@ import type {
   SectionOptions
 } from "../api/export_docx.ts";
 import { getHostAdapter } from "../host/host_adapter.ts";
+import { getHostContract } from "../ui/host_contract.ts";
 
 const triggerExport = (docJson: object, options?: ExportDocxOptions) => {
   const handler = getHostAdapter()?.exportDOCX;
@@ -31,6 +32,13 @@ const readComputedRootValue = (name: string) => {
 const parseNumber = (value: string, fallback: number) => {
   const parsed = parseFloat(value.replace(/[^\d.-]/g, ""));
   return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const sanitizeFilenameBase = (raw: string): string => {
+  const trimmed = String(raw ?? "").trim();
+  if (!trimmed) return "untitled";
+  const safe = trimmed.replace(/[\\/:"*?<>|]+/g, "-").replace(/\s+/g, " ").trim();
+  return safe.slice(0, 96) || "untitled";
 };
 
 const readPageSize = (): PageSizeDefinition => {
@@ -75,13 +83,17 @@ const mergeSection = (base: SectionOptions, override?: SectionOptions): SectionO
   pageNumberStart: override?.pageNumberStart ?? base.pageNumberStart
 });
 
-const buildDefaultOptions = (): ExportDocxOptions => ({
-  prompt: true,
-  suggestedPath: `.codex_logs/exports/docx-${Date.now()}.docx`,
-  pageSize: readPageSize(),
-  pageMargins: readPageMargins(),
-  section: readSectionDefaults()
-});
+const buildDefaultOptions = (): ExportDocxOptions => {
+  const host = getHostContract();
+  const base = sanitizeFilenameBase(host.documentTitle || "untitled");
+  return {
+    prompt: true,
+    suggestedPath: `${base}.docx`,
+    pageSize: readPageSize(),
+    pageMargins: readPageMargins(),
+    section: readSectionDefaults()
+  };
+};
 
 const buildExportOptions = (override?: ExportDocxOptions): ExportDocxOptions => {
   const defaults = buildDefaultOptions();

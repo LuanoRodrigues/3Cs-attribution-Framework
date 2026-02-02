@@ -124,6 +124,7 @@ declare global {
     __leditorRibbonDebug?: boolean;
     __leditorRibbonDebugTab?: string;
     __leditorRibbonDebugVerbose?: boolean;
+    __leditorNonFluentDebug?: boolean;
     __leditorHost?: LeditorHostInfo;
     leditor?: EditorHandle;
     leditorHost?: {
@@ -140,6 +141,7 @@ declare global {
       importLEDOC?: (request: ImportLedocRequest) => Promise<ImportLedocResult>;
       insertImage?: (request?: { sourcePath?: string }) => Promise<InsertImageResult>;
       getDefaultLEDOCPath?: () => Promise<string>;
+      fileExists?: (request: { sourcePath: string }) => Promise<{ exists?: boolean; error?: string }>;
       readFile?: (request: { sourcePath: string }) => Promise<HostReadFileResult>;
       writeFile?: (request: { targetPath: string; data: string }) => Promise<HostWriteFileResult>;
       agentRequest?: (request: { requestId?: string; payload: AgentRequestPayload }) => Promise<AgentRequestResult>;

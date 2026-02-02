@@ -16,6 +16,7 @@ type AnchorClickDetail = {
   title?: string;
   text?: string;
   dataKey?: string;
+  dataItemKeys?: string;
 };
 
 const normalizeDqid = (value: unknown): string => {
@@ -74,6 +75,50 @@ const readTextViaHost = async (filePath: string): Promise<string> => {
 };
 
 const safeString = (value: unknown): string => (value == null ? "" : String(value));
+
+const looksLikePdfRef = (value: unknown): boolean => {
+  const raw = safeString(value).trim();
+  if (!raw) return false;
+  const lower = raw.toLowerCase();
+  if (lower.startsWith("data:application/pdf")) return true;
+  if (lower.startsWith("http://") || lower.startsWith("https://")) return lower.includes(".pdf");
+  if (lower.startsWith("file://")) return lower.includes(".pdf");
+  const cleaned = raw.split(/[?#]/)[0].trim().toLowerCase();
+  return cleaned.endsWith(".pdf");
+};
+
+const parsePageFromHref = (href: string): number | undefined => {
+  const raw = String(href || "").trim();
+  if (!raw) return undefined;
+  const parseNumber = (value: unknown): number | undefined => {
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      if (!trimmed) return undefined;
+      const numeric = Number.parseInt(trimmed, 10);
+      return Number.isFinite(numeric) ? numeric : undefined;
+    }
+    return undefined;
+  };
+  try {
+    const url = new URL(raw, window.location.href);
+    const qPage = parseNumber(url.searchParams.get("page"));
+    if (qPage) return qPage;
+    const hash = (url.hash || "").replace(/^#/, "");
+    if (hash) {
+      const hp = new URLSearchParams(hash.replace("?", "&"));
+      const hPage = parseNumber(hp.get("page"));
+      if (hPage) return hPage;
+      const m = hash.match(/page=(\d+)/i);
+      if (m && m[1]) return parseNumber(m[1]);
+    }
+  } catch {
+    // ignore malformed urls
+  }
+  const m = raw.match(/[?#&]page=(\d+)/i);
+  if (m && m[1]) return parseNumber(m[1]);
+  return undefined;
+};
 
 const coerceLookup = (raw: unknown): DirectQuoteLookup => {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
@@ -136,6 +181,17 @@ const openPdfViewer = async (payload: DirectQuotePayload): Promise<void> => {
   window.open(`${url}${pageSuffix}`, "_blank", "noopener,noreferrer");
 };
 
+const openEmbeddedPdfPanel = (payload: DirectQuotePayload): boolean => {
+  try {
+    const api = (window as any).__leditorEmbeddedPdf;
+    if (!api || typeof api.open !== "function") return false;
+    api.open(payload as Record<string, unknown>);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 const inFlightByDqid = new Map<string, Promise<void>>();
 
 export const installDirectQuotePdfOpenHandler = (opts?: { coderStatePath?: string | null }): void => {
@@ -171,15 +227,39 @@ export const installDirectQuotePdfOpenHandler = (opts?: { coderStatePath?: strin
           console.warn("[leditor][directquote] dqid not found", { dqid, lookupPath });
           return;
         }
+        if (payload.page == null) {
+          const page = parsePageFromHref(detail?.href || "");
+          if (page) payload.page = page;
+        }
         const itemKey =
           safeString((payload as any).item_key ?? (payload as any).itemKey ?? detail?.dataKey ?? "").trim() ||
-          safeString(detail?.dataKey ?? "").trim();
-        const missingPdf = !safeString(payload.pdf_path ?? payload.pdf).trim();
+          safeString(detail?.dataKey ?? "").trim() ||
+          safeString(detail?.dataItemKeys ?? "")
+            .split(/[,\s]+/)
+            .filter(Boolean)[0]
+            ?.trim() ||
+          "";
+        const sourceCandidate = safeString((payload as any).source).trim();
+        if (!(payload as any).pdf_path && !(payload as any).pdf && sourceCandidate) {
+          payload.pdf_path = sourceCandidate;
+        }
+        let pdfCandidate = safeString(payload.pdf_path ?? payload.pdf ?? sourceCandidate).trim();
+        if (!looksLikePdfRef(pdfCandidate) && looksLikePdfRef(sourceCandidate)) {
+          payload.pdf_path = sourceCandidate;
+          pdfCandidate = sourceCandidate;
+        }
+        const missingPdf = !looksLikePdfRef(pdfCandidate);
         if (missingPdf && itemKey && host?.resolvePdfPathForItemKey) {
           const resolvedPdf = await host.resolvePdfPathForItemKey({ lookupPath, itemKey });
           if (typeof resolvedPdf === "string" && resolvedPdf.trim()) {
             payload.pdf_path = resolvedPdf.trim();
           }
+        }
+        const finalPdfCandidate = safeString(payload.pdf_path ?? payload.pdf ?? sourceCandidate).trim();
+        if (!looksLikePdfRef(finalPdfCandidate)) {
+          // Avoid feeding obviously-not-a-path values (e.g. journal/source strings) into the iframe src.
+          delete (payload as any).pdf_path;
+          delete (payload as any).pdf;
         }
         console.info("[leditor][directquote] open-pdf", {
           dqid,
@@ -188,6 +268,9 @@ export const installDirectQuotePdfOpenHandler = (opts?: { coderStatePath?: strin
           page: payload.page ?? null,
           lookupPath
         });
+        if (openEmbeddedPdfPanel(payload)) {
+          return;
+        }
         console.info("[leditor][directquote] calling openPdfViewer", { dqid });
         await openPdfViewer(payload);
         console.info("[leditor][directquote] openPdfViewer returned", { dqid });

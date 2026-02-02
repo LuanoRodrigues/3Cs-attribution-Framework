@@ -71,6 +71,17 @@ const deriveTitle = (result: ImportLedocResult): string | null => {
   return dot > 0 ? base.slice(0, dot) : base;
 };
 
+const LAST_LEDOC_PATH_STORAGE_KEY = "leditor.lastLedocPath";
+const persistLastLedocPath = (result: ImportLedocResult) => {
+  const pathValue = typeof result.filePath === "string" ? result.filePath : "";
+  if (!pathValue) return;
+  try {
+    window.localStorage.setItem(LAST_LEDOC_PATH_STORAGE_KEY, pathValue);
+  } catch {
+    // ignore
+  }
+};
+
 const applyImportedTitle = (result: ImportLedocResult) => {
   const title = deriveTitle(result);
   if (!title) return;
@@ -100,6 +111,7 @@ const tryImportFromDroppedFile = (file: File, editorHandle: EditorHandle) => {
       if (documentJson) {
         editorHandle.setContent(documentJson, { format: "json" });
       }
+      persistLastLedocPath(result as ImportLedocResult);
       applySettings((result as any)?.payload?.settings);
     })
     .catch(() => {});
@@ -119,12 +131,18 @@ registerPlugin({
           if (doc) {
             editorHandle.setContent(doc, { format: "json" });
           }
+          persistLastLedocPath(result);
           applyImportedTitle(result);
           if (result.payload?.settings) {
             applySettings(result.payload.settings);
           }
           try {
             loadSourceChecksThreadFromLedoc((result as any)?.payload?.history);
+          } catch {
+            // ignore
+          }
+          try {
+            (globalThis as typeof globalThis & { __leditorAllowLedocAutosave?: boolean }).__leditorAllowLedocAutosave = true;
           } catch {
             // ignore
           }
@@ -146,12 +164,18 @@ registerPlugin({
         if (result.payload?.document) {
           editorHandle.setContent(result.payload.document, { format: "json" });
         }
+        persistLastLedocPath(result);
         applyImportedTitle(result);
         if (result.payload?.settings) {
           applySettings(result.payload.settings);
         }
         try {
           loadSourceChecksThreadFromLedoc((result as any)?.payload?.history);
+        } catch {
+          // ignore
+        }
+        try {
+          (globalThis as typeof globalThis & { __leditorAllowLedocAutosave?: boolean }).__leditorAllowLedocAutosave = true;
         } catch {
           // ignore
         }

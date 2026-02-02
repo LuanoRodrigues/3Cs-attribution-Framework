@@ -9,6 +9,12 @@ import { convertCoderStateToLedoc } from "./coder_state_converter";
 
 const REFERENCES_LIBRARY_FILENAME = "references_library.json";
 
+// Avoid GPU-process crashes in environments without stable GPU/driver support.
+app.disableHardwareAcceleration();
+app.commandLine.appendSwitch("disable-gpu");
+app.commandLine.appendSwitch("disable-software-rasterizer");
+app.commandLine.appendSwitch("disable-gpu-compositing");
+
 type LlmProviderId = "openai" | "deepseek" | "mistral" | "gemini";
 type LlmCatalogModel = { id: string; label: string; description?: string };
 type LlmCatalogProvider = { id: LlmProviderId; label: string; envKey: string; models: LlmCatalogModel[] };
@@ -1790,15 +1796,36 @@ app.whenReady().then(() => {
         const system = [
           "You are a citation-consistency checker inside an offline academic editor.",
           "You MUST NOT claim external factual verification (no web access).",
-          "You are given (1) a paragraph, (2) ONE citation anchor, and (3) the citation's title metadata (often a direct quote).",
-          "Determine whether the sentence/claim associated with that citation is consistent with the citation title metadata.",
+          "You are given: (1) a paragraph, (2) ONE target citation anchor, (3) the citation title metadata (often a direct quote), and (4) a list of other available citation anchors in the SAME paragraph (with their title metadata).",
+          "Decide if the claim associated with the target citation is semantically supported/consistent with that title metadata.",
           "Do NOT judge factual truth; only check semantic support/consistency.",
-          'Return STRICT JSON only: {"verdict":"verified"|"needs_review","justification":string}.',
-          "justification must be ONE short sentence (<= 200 chars).",
-          'If insufficient info, set verdict="needs_review".'
+          "",
+          'Return STRICT JSON only: {"verdict":"verified"|"needs_review","justification":string,"fixSuggestion":string|null,"suggestedReplacementKey":string|null,"claimRewrite":string|null}.',
+          "justification must be ONE short sentence (<= 400 chars).",
+          "If verdict is verified: fixSuggestion=null and suggestedReplacementKey=null.",
+          "If verdict is needs_review: provide fixSuggestion as ONE sentence describing how to fix (either adjust the claim to match the citation, or use a better-matching citation).",
+          "If verdict is needs_review: also provide claimRewrite as ONE sentence rewriting the claim text (WITHOUT citations) so it aligns with the citation title. If you cannot confidently propose a rewrite, claimRewrite=null.",
+          "If there is a clearly better-matching citation among availableAnchors, set suggestedReplacementKey to that anchor's key; otherwise null.",
+          "NEVER invent keys; suggestedReplacementKey must be an exact key from availableAnchors."
         ].join("\n");
 
-        const checks: Array<{ key: string; verdict: "verified" | "needs_review"; justification: string }> = [];
+        const checks: Array<{
+          key: string;
+          verdict: "verified" | "needs_review";
+          justification: string;
+          fixSuggestion?: string;
+          suggestedReplacementKey?: string | null;
+          claimRewrite?: string;
+        }> = [];
+        const availableAnchors = anchors.map((a: any) => ({
+          key: String(a?.key ?? ""),
+          anchorText: String(a?.text ?? ""),
+          title: String(a?.title ?? ""),
+          href: String(a?.href ?? ""),
+          dataKey: String(a?.dataKey ?? ""),
+          dataDqid: String(a?.dataDqid ?? ""),
+          dataQuoteId: String(a?.dataQuoteId ?? "")
+        }));
         for (const anchor of anchors) {
           const key = String(anchor?.key ?? "");
           if (!key) continue;
@@ -1816,12 +1843,29 @@ app.whenReady().then(() => {
           const claimAfter =
             typeof context?.after === "string" && context.after.trim() ? String(context.after).trim() : "";
 
+          const claimTextWithoutCitations = (() => {
+            const sentence = claimSentence || paragraphText;
+            let masked = sentence;
+            for (const a of availableAnchors) {
+              const t = String(a?.anchorText ?? "").trim();
+              if (!t) continue;
+              // Remove exact anchor text occurrences.
+              masked = masked.split(t).join("");
+            }
+            masked = masked.replace(/\(\s*\)/g, " ");
+            masked = masked.replace(/\s+/g, " ").trim();
+            // Avoid ending with dangling punctuation from removed citations.
+            masked = masked.replace(/\s+\)/g, ")").replace(/\(\s+/g, "(").trim();
+            return masked;
+          })();
+
           const input = JSON.stringify(
             {
               paragraphN: Number.isFinite(paragraphN) ? paragraphN : undefined,
               paragraphText,
-              claim: { sentence: claimSentence, before: claimBefore, after: claimAfter },
-              anchor: { key, anchorText, title, href, dataKey, dataDqid, dataQuoteId }
+              claim: { sentence: claimSentence, before: claimBefore, after: claimAfter, textWithoutCitations: claimTextWithoutCitations },
+              anchor: { key, anchorText, title, href, dataKey, dataDqid, dataQuoteId },
+              availableAnchors
             },
             null,
             2
@@ -1839,12 +1883,36 @@ app.whenReady().then(() => {
           const verdict = parsed?.verdict === "verified" ? ("verified" as const) : ("needs_review" as const);
           const justification =
             typeof parsed?.justification === "string"
-              ? String(parsed.justification).replace(/\s+/g, " ").trim().slice(0, 200)
+              ? String(parsed.justification).replace(/\s+/g, " ").trim().slice(0, 400)
               : verdict === "verified"
                 ? "Citation appears consistent."
                 : "Needs review.";
-          checks.push({ key, verdict, justification });
-          console.info("[agent][check_sources]", { paragraphN, key, output: raw.slice(0, 400), parsed: { verdict, justification } });
+          const fixSuggestion =
+            verdict === "needs_review" && typeof parsed?.fixSuggestion === "string"
+              ? String(parsed.fixSuggestion).replace(/\s+/g, " ").trim().slice(0, 280)
+              : "";
+          const claimRewrite =
+            verdict === "needs_review" && typeof parsed?.claimRewrite === "string"
+              ? String(parsed.claimRewrite).replace(/\s+/g, " ").trim().slice(0, 320)
+              : "";
+          const suggestedReplacementKey =
+            verdict === "needs_review" && (typeof parsed?.suggestedReplacementKey === "string" || parsed?.suggestedReplacementKey === null)
+              ? (parsed.suggestedReplacementKey === null ? null : String(parsed.suggestedReplacementKey).trim())
+              : null;
+          checks.push({
+            key,
+            verdict,
+            justification,
+            ...(fixSuggestion ? { fixSuggestion } : {}),
+            ...(claimRewrite ? { claimRewrite } : {}),
+            suggestedReplacementKey
+          });
+          console.info("[agent][check_sources]", {
+            paragraphN,
+            key,
+            output: raw.slice(0, 400),
+            parsed: { verdict, justification, fixSuggestion: fixSuggestion || null, suggestedReplacementKey }
+          });
         }
 
         return {
@@ -1865,7 +1933,13 @@ app.whenReady().then(() => {
 
   registerIpc(
     "leditor:lexicon",
-    async (_event, request: { requestId?: string; payload: { provider?: string; model?: string; mode: string; text: string } }) => {
+    async (
+      _event,
+      request: {
+        requestId?: string;
+        payload: { provider?: string; model?: string; mode: string; text: string; sentence?: string };
+      }
+    ) => {
       const started = Date.now();
       try {
         const payload = request?.payload as any;
@@ -1876,6 +1950,7 @@ app.whenReady().then(() => {
             : "openai";
         const mode = String(payload?.mode ?? "").toLowerCase();
         const text = String(payload?.text ?? "").trim();
+        const sentence = typeof payload?.sentence === "string" ? String(payload.sentence).trim() : "";
         if (mode !== "synonyms" && mode !== "antonyms") {
           return { success: false, error: 'lexicon: payload.mode must be "synonyms" | "antonyms"' };
         }
@@ -1890,17 +1965,22 @@ app.whenReady().then(() => {
 
         const system = [
           "You are a deterministic thesaurus helper inside an offline academic editor.",
+          "You will be given a selected word/phrase and the full sentence it appears in.",
           "Return STRICT JSON only (no markdown): {\"assistantText\":string,\"suggestions\":string[]}.",
-          "suggestions MUST contain exactly 4 short alternatives (no numbering, no quotes).",
+          "suggestions MUST contain exactly 5 short replacement candidates (no numbering, no quotes).",
+          "Each suggestion must be a direct replacement for the selected text that still fits the sentence.",
           "Do not repeat the input text."
         ].join("\n");
 
-        const user = [
-          `Mode: ${mode}.`,
-          "Input text:",
-          text,
-          "Return suggestions suitable for academic writing."
-        ].join("\n");
+        const user = JSON.stringify(
+          {
+            mode,
+            selection: text,
+            sentence
+          },
+          null,
+          2
+        );
 
         const raw = await callLlmText({ provider, apiKey, model, system, input: user, signal: undefined });
         const start = raw.indexOf("{");
@@ -1914,7 +1994,7 @@ app.whenReady().then(() => {
           .map((s: any) => (typeof s === "string" ? s : ""))
           .map((s: string) => s.replace(/\s+/g, " ").trim())
           .filter((s: string) => s && s.toLowerCase() !== text.toLowerCase())
-          .slice(0, 4);
+          .slice(0, 5);
         return {
           success: true,
           assistantText: typeof parsed?.assistantText === "string" ? parsed.assistantText : "",

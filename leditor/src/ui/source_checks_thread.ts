@@ -17,6 +17,10 @@ export type SourceCheckThreadItem = {
   anchor: SourceCheckThreadAnchor;
   verdict: "verified" | "needs_review";
   justification: string;
+  fixSuggestion?: string;
+  suggestedReplacementKey?: string;
+  claimRewrite?: string;
+  fixStatus?: "pending" | "dismissed" | "applied";
   createdAt: string;
   provider?: string;
   model?: string;
@@ -28,21 +32,8 @@ export type SourceChecksThread = {
   items: SourceCheckThreadItem[];
 };
 
-const STORAGE_VISIBLE_KEY = "leditor.sourceChecks.visible";
-
+// Important: visibility is session-only. Do not auto-show source checks on load.
 let visible = false;
-const loadVisible = () => {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_VISIBLE_KEY);
-    if (raw === "true") visible = true;
-  } catch {
-    // ignore
-  }
-};
-
-if (typeof window !== "undefined") {
-  loadVisible();
-}
 
 let thread: SourceChecksThread = { version: 1, items: [] };
 const listeners = new Set<() => void>();
@@ -65,11 +56,6 @@ export const isSourceChecksVisible = (): boolean => visible;
 
 export const setSourceChecksVisible = (next: boolean) => {
   visible = Boolean(next);
-  try {
-    window.localStorage.setItem(STORAGE_VISIBLE_KEY, visible ? "true" : "false");
-  } catch {
-    // ignore
-  }
   notify();
 };
 
@@ -98,12 +84,32 @@ export const dismissSourceCheckThreadItem = (key: string) => {
   notify();
 };
 
+export const setSourceCheckFixStatus = (key: string, status: "pending" | "dismissed" | "applied") => {
+  const k = String(key || "").trim();
+  if (!k) return;
+  const nextItems = thread.items.map((it) => {
+    if (String(it?.key) !== k) return it;
+    return { ...it, fixStatus: status } as SourceCheckThreadItem;
+  });
+  thread = { ...thread, items: nextItems };
+  notify();
+};
+
 export const upsertSourceChecksFromRun = (args: {
   paragraphN: number;
   provider?: string;
   model?: string;
   anchors: SourceCheckThreadAnchor[];
-  checksByKey: Map<string, { verdict: "verified" | "needs_review"; justification: string }>;
+  checksByKey: Map<
+    string,
+    {
+      verdict: "verified" | "needs_review";
+      justification: string;
+      fixSuggestion?: string;
+      suggestedReplacementKey?: string;
+      claimRewrite?: string;
+    }
+  >;
 }) => {
   const now = new Date().toISOString();
   const paragraphN = Math.max(1, Math.floor(Number(args.paragraphN) || 1));
@@ -133,6 +139,10 @@ export const upsertSourceChecksFromRun = (args: {
       },
       verdict: c.verdict,
       justification: String(c.justification ?? ""),
+      fixSuggestion: typeof c.fixSuggestion === "string" ? c.fixSuggestion : undefined,
+      suggestedReplacementKey: typeof c.suggestedReplacementKey === "string" ? c.suggestedReplacementKey : undefined,
+      claimRewrite: typeof c.claimRewrite === "string" ? c.claimRewrite : undefined,
+      fixStatus: "pending",
       createdAt: now,
       provider: args.provider,
       model: args.model
@@ -168,6 +178,13 @@ export const loadSourceChecksThreadFromLedoc = (history: unknown) => {
         const paragraphN = Number.isFinite(it?.paragraphN) ? Math.max(1, Math.floor(it.paragraphN)) : 1;
         const verdict = it?.verdict === "verified" ? "verified" : "needs_review";
         const justification = typeof it?.justification === "string" ? it.justification : "";
+        const fixSuggestion = typeof it?.fixSuggestion === "string" ? it.fixSuggestion : "";
+        const suggestedReplacementKey =
+          typeof it?.suggestedReplacementKey === "string" ? it.suggestedReplacementKey : "";
+        const claimRewrite = typeof it?.claimRewrite === "string" ? it.claimRewrite : "";
+        const fixStatusRaw = typeof it?.fixStatus === "string" ? it.fixStatus : "";
+        const fixStatus =
+          fixStatusRaw === "applied" ? "applied" : fixStatusRaw === "dismissed" ? "dismissed" : "pending";
         const createdAt = typeof it?.createdAt === "string" ? it.createdAt : "";
         const anchor = it?.anchor && typeof it.anchor === "object" ? it.anchor : {};
         const text = typeof anchor?.text === "string" ? anchor.text : "";
@@ -177,6 +194,10 @@ export const loadSourceChecksThreadFromLedoc = (history: unknown) => {
           paragraphN,
           verdict,
           justification,
+          fixSuggestion: fixSuggestion || undefined,
+          suggestedReplacementKey: suggestedReplacementKey || undefined,
+          claimRewrite: claimRewrite || undefined,
+          fixStatus,
           createdAt: createdAt || new Date().toISOString(),
           provider: typeof it?.provider === "string" ? it.provider : undefined,
           model: typeof it?.model === "string" ? it.model : undefined,

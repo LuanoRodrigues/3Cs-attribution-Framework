@@ -125,7 +125,7 @@
           return normalized;
         };
         const makeBlobUrlFromBase64 = (b64) => {
-          const raw = atob(String(b64 || "").replace(/^data:application\\/pdf;base64,/i, ""));
+          const raw = atob(String(b64 || "").replace(/^data:application\/pdf;base64,/i, ""));
           const bytes = new Uint8Array(raw.length);
           for (let i = 0; i < raw.length; i += 1) bytes[i] = raw.charCodeAt(i);
           const blob = new Blob([bytes], { type: "application/pdf" });
@@ -149,7 +149,7 @@
             return;
           }
           let src = pdfPath;
-          if (/^data:application\\/pdf/i.test(pdfPath)) {
+          if (/^data:application\/pdf/i.test(pdfPath)) {
             src = pdfPath;
           } else if (/^[A-Za-z0-9+/]+=*$/.test(pdfPath) && pdfPath.length > 256) {
             src = makeBlobUrlFromBase64(pdfPath);
@@ -163,12 +163,36 @@
           $("pdfFrame").src = src;
         };
 
-        const init = async () => {
-          const api = window.leditorPdfViewer;
-          if (!api || typeof api.getPayload !== "function") {
-            setError("Missing leditorPdfViewer preload API.");
-            return;
-          }
+	        const init = async () => {
+	          const isEmbedded = (() => {
+	            try {
+	              const u = new URL(window.location.href);
+	              return u.searchParams.get("embedded") === "1" || window.parent !== window;
+	            } catch {
+	              return window.parent !== window;
+	            }
+	          })();
+	          if (isEmbedded) {
+	            window.addEventListener("message", (event) => {
+	              const data = event && event.data ? event.data : null;
+	              if (!data || typeof data !== "object") return;
+	              if (data.type === "leditor:pdf-payload") {
+	                applyPayload(data.payload);
+	              }
+	            });
+	            try {
+	              window.parent.postMessage({ type: "leditor:pdf-viewer-ready" }, "*");
+	            } catch {
+	              // ignore
+	            }
+	            return;
+	          }
+
+	          const api = window.leditorPdfViewer;
+	          if (!api || typeof api.getPayload !== "function") {
+	            setError("Missing leditorPdfViewer preload API.");
+	            return;
+	          }
           if (typeof api.onPayload === "function") {
             api.onPayload((payload) => applyPayload(payload));
           }

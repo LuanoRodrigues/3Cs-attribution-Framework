@@ -63,3 +63,12 @@ export const ribbonDebugVerbose = (): boolean => {
     return false;
   }
 };
+
+export const nonFluentDebugEnabled = (): boolean => {
+  if (typeof window === "undefined") return false;
+  try {
+    return (window as typeof window & { __leditorNonFluentDebug?: boolean }).__leditorNonFluentDebug === true;
+  } catch {
+    return false;
+  }
+};

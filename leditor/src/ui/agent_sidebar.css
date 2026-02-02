@@ -329,6 +329,71 @@
   background: rgba(16, 185, 129, 0.10);
 }
 
+.leditor-lexicon-popup {
+  position: fixed;
+  z-index: 3000;
+  width: 260px;
+  max-width: calc(100vw - 16px);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+.leditor-app.theme-dark .leditor-lexicon-popup {
+  background: rgba(24, 28, 36, 0.98);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.leditor-lexicon-popup__header {
+  padding: 10px 10px 8px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(23, 23, 23, 0.86);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.leditor-app.theme-dark .leditor-lexicon-popup__header {
+  color: rgba(240, 240, 240, 0.9);
+  border-bottom-color: rgba(255, 255, 255, 0.10);
+}
+
+.leditor-lexicon-popup__list {
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  gap: 4px;
+}
+
+.leditor-lexicon-popup__item {
+  text-align: left;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.75);
+  padding: 8px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  color: rgba(23, 23, 23, 0.86);
+}
+
+.leditor-app.theme-dark .leditor-lexicon-popup__item {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(240, 240, 240, 0.9);
+}
+
+.leditor-lexicon-popup__item:hover {
+  background: rgba(37, 99, 235, 0.10);
+  border-color: rgba(37, 99, 235, 0.24);
+}
+
+.leditor-lexicon-popup__item:focus {
+  outline: none;
+  background: rgba(37, 99, 235, 0.14);
+  border-color: rgba(37, 99, 235, 0.32);
+}
+
 .leditor-agent-sidebar__checkboxRow {
   display: inline-flex;
   align-items: center;

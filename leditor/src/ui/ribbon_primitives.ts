@@ -121,6 +121,7 @@ export class RibbonTabStrip {
   private buttons = new Map<string, HTMLButtonElement>();
   private tabOrder: string[] = [];
   private activeTabId: string | null = null;
+  private focusOnActivate = false;
 
   constructor(private onActivate: (tabId: string) => void) {
     this.element = document.createElement("div");
@@ -129,6 +130,7 @@ export class RibbonTabStrip {
     this.element.setAttribute("aria-orientation", "horizontal");
     this.element.setAttribute("aria-label", "Ribbon tabs");
     this.element.addEventListener("keydown", this.handleKeydown);
+    this.element.addEventListener("pointerdown", this.handlePointerDown);
   }
 
   addTab(tabId: string, label: string): HTMLButtonElement {
@@ -150,11 +152,13 @@ export class RibbonTabStrip {
 
   setActiveTab(tabId: string): void {
     this.activeTabId = tabId;
+    const shouldFocus = this.focusOnActivate;
+    this.focusOnActivate = false;
     this.buttons.forEach((button, id) => {
       const isActive = id === tabId;
       button.setAttribute("aria-selected", isActive ? "true" : "false");
       button.tabIndex = isActive ? 0 : -1;
-      if (isActive) {
+      if (isActive && shouldFocus) {
         try {
           if (typeof (button as any).focus === "function") {
             (button as any).focus({ preventScroll: true });
@@ -206,6 +210,7 @@ export class RibbonTabStrip {
       const tabId = target?.dataset?.tabId;
       if (tabId && this.buttons.has(tabId)) {
         event.preventDefault();
+        this.focusOnActivate = true;
         this.onActivate(tabId);
       }
       return;
@@ -213,6 +218,16 @@ export class RibbonTabStrip {
     if (event.key === "Escape") {
       event.preventDefault();
       focusEditor();
+    }
+  };
+
+  private handlePointerDown = (event: PointerEvent): void => {
+    const target = event.target as HTMLElement | null;
+    if (!target) return;
+    if (target.closest(".leditor-ribbon-tab") || target.closest(".ribbon-collapse-toggle")) {
+      // Keep the caret in the editor; don't move focus to the tab strip on pointer clicks.
+      event.preventDefault();
+      this.focusOnActivate = false;
     }
   };
 }

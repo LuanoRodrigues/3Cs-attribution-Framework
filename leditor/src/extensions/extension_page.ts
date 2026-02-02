@@ -280,6 +280,29 @@ const paginateView = (
         });
         continue;
       }
+      // Guard against splitting at the very start/end of a page. Since page.content is "block+",
+      // splitting at pageStart/pageEnd would create an empty page and ProseMirror will throw.
+      const pageStart = splitResolved.start(pageDepth);
+      const pageEnd = splitResolved.end(pageDepth);
+      if (splitPos === pageStart || splitPos === pageEnd) {
+        // Try the opposite boundary relative to the target block before giving up.
+        const altSplitPos = split.after ? resolved.before(childDepth) : resolved.after(childDepth);
+        const altResolved = altSplitPos > 0 ? view.state.doc.resolve(altSplitPos) : null;
+        const altPageStart = altResolved ? altResolved.start(pageDepth) : null;
+        const altPageEnd = altResolved ? altResolved.end(pageDepth) : null;
+        const altIsValid =
+          altResolved &&
+          altResolved.depth === pageDepth &&
+          altSplitPos !== altPageStart &&
+          altSplitPos !== altPageEnd;
+        if (altIsValid) {
+          logDebug("adjusting split away from empty page boundary", { splitPos, altSplitPos, pageStart, pageEnd });
+          splitPos = altSplitPos;
+        } else {
+          logDebug("skipping split at empty page boundary", { splitPos, pageStart, pageEnd });
+          continue;
+        }
+      }
       const depth = 1;
       if (depth <= 0) continue;
       const from = view.state.selection.from;

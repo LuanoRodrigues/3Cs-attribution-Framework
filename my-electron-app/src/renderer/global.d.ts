@@ -100,8 +100,6 @@ declare global {
       getDefaultLEDOCPath: () => Promise<string>;
       readFile: (request: { sourcePath: string }) => Promise<{ success: boolean; data?: string; error?: string }>;
       writeFile: (request: { targetPath: string; data: string }) => Promise<{ success: boolean; error?: string }>;
-      agentRequest: (request: { requestId?: string; payload: unknown }) => Promise<unknown>;
-      agentCancel: (request: { requestId: string }) => Promise<unknown>;
       getAiStatus: () => Promise<unknown>;
       registerFootnoteHandlers: (handlers: { open?: () => void; toggle?: () => void; close?: () => void }) => void;
       openFootnotePanel: () => void;

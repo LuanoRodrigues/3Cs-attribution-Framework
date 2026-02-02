@@ -23,3 +23,43 @@
   margin: 0;
   padding-left: 20px;
 }
+
+/* CSL bibliography output (citeproc) uses hanging indents and sometimes negative
+   text-indent; ensure it doesn't get clipped inside the paged layout. */
+.leditor-bibliography,
+.leditor-bibliography-content {
+  overflow: visible;
+}
+
+.leditor-bibliography .csl-bib-body {
+  margin: 0;
+  padding: 0;
+}
+
+.leditor-bibliography .csl-entry {
+  margin: 0 0 0.8em 0;
+  padding-left: 2em;
+  text-indent: -2em;
+  line-height: 1.4;
+}
+
+.leditor-bibliography .csl-entry:last-child {
+  margin-bottom: 0;
+}
+
+.leditor-bibliography .csl-number {
+  display: inline-block;
+  width: 2em;
+}
+
+/* When bibliography entries are inserted as real document paragraphs, use a hanging indent. */
+.leditor-bibliography p {
+  margin: 0 0 0.8em 0;
+  padding-left: 2em;
+  text-indent: -2em;
+  line-height: 1.4;
+}
+
+.leditor-bibliography p:last-child {
+  margin-bottom: 0;
+}

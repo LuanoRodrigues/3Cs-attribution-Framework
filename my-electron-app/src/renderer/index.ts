@@ -332,6 +332,9 @@ const setRatiosForRound = (action: AnalyseAction) => {
     return;
   }
 
+  // Ensure page switches don't inherit floating/undocked panels from other pages.
+  panelGrid.resetPanelPlacement();
+
   if (isCorpus || isR1 || isPhases) {
     // Panel 1: filters (2/6)
     // Panel 2: cards (3/6) centered with 1/12 margins on each side (total free space 1/6).
@@ -2386,6 +2389,8 @@ function ensureSectionTool(tabId: TabId, options?: { replace?: boolean }): void 
   if (!config) {
     return;
   }
+  // Ensure deterministic layout when switching tabs/tools.
+  panelGrid.resetPanelPlacement();
   // Reset layout hint unless explicitly set per-tab below.
   panelGrid.setLayoutHint(null);
   if (options?.replace) {
@@ -2535,6 +2540,7 @@ function ensureRetrieveSearchMetaTool(options?: { replace?: boolean }): void {
 }
 
 function setRetrieveLayout(mode: "datahub" | "search-empty" | "search-selected" | "search-graph"): void {
+  panelGrid.resetPanelPlacement();
   panelGrid.setRoundLayout(false);
   panelGrid.setCollapsed("panel1", true);
   // panel4 used as "meta" in search-selected mode; collapsed by default.
@@ -2631,6 +2637,7 @@ function sectionToolConfig(
 }
 
 function ensureVisualiserPanelsVisible(): void {
+  panelGrid.resetPanelPlacement();
   // Visualiser uses Panels 1/2/3 only, with a narrow side context + wide center + narrow status.
   panelGrid.setRoundLayout(false);
   panelGrid.setLayoutHint(null);

@@ -60,3 +60,52 @@
   border-color: rgba(16, 185, 129, 0.32);
   background: rgba(16, 185, 129, 0.16);
 }
+
+.leditor-ai-draft-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 6px;
+  vertical-align: text-top;
+  pointer-events: auto;
+}
+
+.leditor-ai-draft-actions__btn {
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  background: rgba(255, 255, 255, 0.92);
+  color: rgba(23, 23, 23, 0.82);
+  border-radius: 10px;
+  padding: 4px 8px;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+}
+
+.leditor-ai-draft-actions__btn:hover {
+  background: rgba(245, 245, 245, 0.96);
+}
+
+.leditor-ai-draft-actions__btn--primary {
+  border-color: rgba(37, 99, 235, 0.30);
+  background: rgba(37, 99, 235, 0.12);
+  color: rgba(30, 64, 175, 1);
+}
+
+.leditor-ai-draft-actions__btn--primary:hover {
+  background: rgba(37, 99, 235, 0.16);
+}
+
+.leditor-app--theme-dark .leditor-ai-draft-actions__btn,
+.leditor-app--dark .leditor-ai-draft-actions__btn {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(17, 17, 17, 0.65);
+  color: rgba(247, 247, 247, 0.84);
+}
+
+.leditor-app--theme-dark .leditor-ai-draft-actions__btn--primary,
+.leditor-app--dark .leditor-ai-draft-actions__btn--primary {
+  border-color: rgba(59, 130, 246, 0.40);
+  background: rgba(59, 130, 246, 0.22);
+  color: rgba(219, 234, 254, 1);
+}

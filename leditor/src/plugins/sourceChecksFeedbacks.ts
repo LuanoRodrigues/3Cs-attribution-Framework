@@ -66,7 +66,25 @@ registerPlugin({
     },
     "ai.sourceChecks.dismiss"(editorHandle: EditorHandle, args?: { key?: unknown }) {
       dismissOne(editorHandle, args);
+    },
+    // Back-compat / typo tolerance: some UI surfaces referenced "sourcecheck" (singular) or different casing.
+    "ai.sourcecheck.toggle"(editorHandle: EditorHandle) {
+      toggle(editorHandle);
+    },
+    "ai.sourcecheck.clear"(editorHandle: EditorHandle) {
+      clearAll(editorHandle);
+    },
+    "ai.sourcecheck.dismiss"(editorHandle: EditorHandle, args?: { key?: unknown }) {
+      dismissOne(editorHandle, args);
+    },
+    "ai.sourcechecks.toggle"(editorHandle: EditorHandle) {
+      toggle(editorHandle);
+    },
+    "ai.sourcechecks.clear"(editorHandle: EditorHandle) {
+      clearAll(editorHandle);
+    },
+    "ai.sourcechecks.dismiss"(editorHandle: EditorHandle, args?: { key?: unknown }) {
+      dismissOne(editorHandle, args);
     }
   }
 });
-

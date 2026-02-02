@@ -59,6 +59,7 @@ type AgentSidebarOptions = {
 
 const APP_OPEN_CLASS = "leditor-app--agent-open";
 const ROOT_ID = "leditor-agent-sidebar";
+const DRAFT_RAIL_ID = "leditor-ai-draft-rail";
 
 const clampHistory = (messages: AgentMessage[], maxMessages: number): AgentMessage[] => {
   if (messages.length <= maxMessages) return messages;
@@ -745,59 +746,157 @@ export const createAgentSidebar = (
   };
 
   const buildTextblockReplacementFragment = (doc: any, from: number, to: number, text: string) => {
-    const $from = doc.resolve(from);
+    // Preserve citation/anchor tokens even when the model omits them in its rewrite.
+    // Works when the replacement stays within the same textblock parent.
+    try {
+      const schema = doc.type.schema;
+      const $from = doc.resolve(from);
+      const $to = doc.resolve(to);
+      if (!$from.sameParent($to)) return null;
+      const parent = $from.parent;
+      if (!parent?.isTextblock) return null;
 
-    const protectedMarkNames = new Set(["anchor", "link"]);
+      const slice = doc.slice(from, to);
+      const content = slice.content;
 
-    let blockDepth = -1;
-    let blockNode: any = null;
-    let blockStart = 0;
-    for (let d = $from.depth; d >= 0; d -= 1) {
-      const node = $from.node(d);
-      if (!node?.isTextblock) continue;
-      const start = $from.start(d);
-      const contentFrom = start + 1;
-      const contentTo = start + node.nodeSize - 1;
-      if (contentFrom === from && contentTo === to) {
-        blockDepth = d;
-        blockNode = node;
-        blockStart = start;
-        break;
+      const isCitationLikeMarkLocal = (mark: any): boolean => {
+        const name = String(mark?.type?.name ?? "");
+        if (name === "anchor") return true;
+        if (name !== "link") return false;
+        const attrs = mark?.attrs ?? {};
+        const href = typeof attrs?.href === "string" ? attrs.href : "";
+        const looksLikeCitation = Boolean(
+          attrs?.dataKey ||
+            attrs?.itemKey ||
+            attrs?.dataItemKey ||
+            attrs?.dataDqid ||
+            attrs?.dataQuoteId ||
+            attrs?.dataQuoteText
+        );
+        if (looksLikeCitation) return true;
+        if (href && /^(dq|cite|citegrp):\/\//i.test(href)) return true;
+        return false;
+      };
+
+      const isProtectedTextNode = (node: any): boolean => {
+        if (!node?.isText) return false;
+        const marks = Array.isArray(node.marks) ? node.marks : [];
+        return marks.some((m: any) => isCitationLikeMarkLocal(m));
+      };
+
+      const isProtectedInlineNode = (node: any): boolean => {
+        const name = String(node?.type?.name ?? "");
+        if (name === "citation") return true;
+        return false;
+      };
+
+      // Build a template of inline units from the original slice.
+      const units: Array<{ kind: "plain"; text: string } | { kind: "protected"; node: any; text: string }> = [];
+      for (let i = 0; i < content.childCount; i += 1) {
+        const child = content.child(i);
+        if (!child) continue;
+        if (child.isText) {
+          const t = String(child.text ?? "");
+          if (isProtectedTextNode(child)) units.push({ kind: "protected", node: child, text: t });
+          else units.push({ kind: "plain", text: t });
+          continue;
+        }
+        if (isProtectedInlineNode(child)) {
+          units.push({ kind: "protected", node: child, text: "" });
+          continue;
+        }
+        // Non-text inline nodes (images, etc.) are preserved as-is.
+        units.push({ kind: "protected", node: child, text: "" });
       }
+
+      const originalPlainChunks: string[] = [];
+      let curPlain = "";
+      const protectedNodes: any[] = [];
+      const protectedTexts: string[] = [];
+      for (const u of units) {
+        if (u.kind === "plain") {
+          curPlain += u.text;
+          continue;
+        }
+        originalPlainChunks.push(curPlain);
+        curPlain = "";
+        protectedNodes.push(u.node);
+        if (u.text) protectedTexts.push(u.text);
+      }
+      originalPlainChunks.push(curPlain);
+
+      const stripProtectedTexts = (value: string): string => {
+        let out = String(value ?? "");
+        for (const t of protectedTexts) {
+          if (!t) continue;
+          out = out.split(t).join("");
+        }
+        return out.replace(/\s+/g, " ").trim();
+      };
+
+      const nextPlain = stripProtectedTexts(String(text ?? ""));
+      const totalOriginalPlainLen = originalPlainChunks.reduce((acc, s) => acc + s.length, 0);
+      const proportions = originalPlainChunks.map((s) => (totalOriginalPlainLen > 0 ? s.length / totalOriginalPlainLen : 0));
+
+      const splitByProportions = (value: string, props: number[]): string[] => {
+        const out: string[] = [];
+        const input = String(value ?? "");
+        if (props.length <= 1) return [input];
+        let idx = 0;
+        for (let i = 0; i < props.length; i += 1) {
+          if (i === props.length - 1) {
+            out.push(input.slice(idx));
+            break;
+          }
+          const target = idx + Math.floor(input.length * (props[i] ?? 0));
+          const limit = Math.max(idx, Math.min(input.length, target));
+          let cut = input.lastIndexOf(" ", limit);
+          if (cut < idx + 8) cut = input.indexOf(" ", limit);
+          if (cut < 0) cut = limit;
+          out.push(input.slice(idx, cut).trim());
+          idx = cut;
+        }
+        return out.map((s) => s.replace(/\s+/g, " ").trim());
+      };
+
+      const nextChunks = splitByProportions(nextPlain, proportions);
+      while (nextChunks.length < originalPlainChunks.length) nextChunks.push("");
+      if (nextChunks.length > originalPlainChunks.length) {
+        const extra = nextChunks.slice(originalPlainChunks.length - 1).join(" ").trim();
+        nextChunks.length = originalPlainChunks.length;
+        nextChunks[originalPlainChunks.length - 1] = [nextChunks[originalPlainChunks.length - 1], extra].filter(Boolean).join(" ").trim();
+      }
+
+      const nodes: any[] = [];
+      const maybeAddSpaceBetween = (a: string, b: any) => {
+        if (!a) return;
+        if (!b) return;
+        if (typeof b === "string") {
+          if (a && b && /\S$/.test(a) && /^\S/.test(b)) nodes.push(schema.text(" "));
+          return;
+        }
+        if (a && /\S$/.test(a)) nodes.push(schema.text(" "));
+      };
+
+      for (let i = 0; i < originalPlainChunks.length; i += 1) {
+        const chunk = String(nextChunks[i] ?? "");
+        if (chunk) nodes.push(schema.text(chunk));
+        const prot = protectedNodes[i];
+        if (prot) {
+          if (chunk) maybeAddSpaceBetween(chunk, prot);
+          nodes.push(prot);
+          const next = String(nextChunks[i + 1] ?? "");
+          if (next && /^\S/.test(next)) nodes.push(schema.text(" "));
+        }
+      }
+
+      return Fragment.fromArray(nodes.filter(Boolean));
+    } catch {
+      return null;
     }
-
-    if (!blockNode || blockDepth < 0) return null;
-
-    const protectedSegments: Array<{ text: string; marks: any[] }> = [];
-    blockNode.descendants((node: any) => {
-      if (!node?.isText) return;
-      const marks = Array.isArray(node.marks)
-        ? node.marks.filter((m: any) => protectedMarkNames.has(String(m?.type?.name ?? "")))
-        : [];
-      if (marks.length === 0) return;
-      protectedSegments.push({ text: String(node.text ?? ""), marks });
-    });
-
-    const schema = doc.type.schema;
-    const nodes: any[] = [];
-    const nextText = String(text ?? "");
-    let cursor = 0;
-    let searchFrom = 0;
-    for (const seg of protectedSegments) {
-      if (!seg.text) continue;
-      const idx = nextText.indexOf(seg.text, searchFrom);
-      if (idx < 0) continue;
-      const before = nextText.slice(cursor, idx);
-      if (before) nodes.push(schema.text(before));
-      nodes.push(schema.text(seg.text, seg.marks));
-      cursor = idx + seg.text.length;
-      searchFrom = cursor;
-    }
-    const after = nextText.slice(cursor);
-    if (after) nodes.push(schema.text(after));
-
-    return Fragment.fromArray(nodes);
   };
+
+
 
   const isCitationLikeMark = (mark: any): boolean => {
     const name = String(mark?.type?.name ?? "");
@@ -845,15 +944,16 @@ export const createAgentSidebar = (
   };
 
   const assertAnchorsPreserved = (doc: any, from: number, to: number, nextText: string) => {
-    const anchors = extractAnchorTextsInRange(doc, from, to);
-    if (anchors.length === 0) return;
+    const segments = extractAnchorTextsInRange(doc, from, to);
+    if (segments.length === 0) return;
     const originalText = String(doc.textBetween(from, to, "\n") ?? "");
     const proposed = String(nextText ?? "");
-    for (const anchorText of anchors) {
-      const originalCount = countOccurrences(originalText, anchorText);
-      const nextCount = countOccurrences(proposed, anchorText);
+    const unique = Array.from(new Set(segments));
+    for (const seg of unique) {
+      const originalCount = countOccurrences(originalText, seg);
+      const nextCount = countOccurrences(proposed, seg);
       if (nextCount < originalCount) {
-        throw new Error(`Anchor/citation text must be preserved exactly. Missing or altered: "${anchorText}".`);
+        throw new Error(`Anchor/citation text must be preserved exactly. Missing or altered: "${seg}".`);
       }
     }
   };
@@ -862,8 +962,11 @@ export const createAgentSidebar = (
     const editor = editorHandle.getEditor();
     const state = editor.state;
     const baseDoc = state.doc;
-    assertAnchorsPreserved(baseDoc, from, to, text);
     const fragment = buildTextblockReplacementFragment(baseDoc, from, to, text);
+    if (!fragment) {
+      // Fallback: if not an exact textblock replacement, still prevent citation loss.
+      assertAnchorsPreserved(baseDoc, from, to, text);
+    }
     const tr = fragment ? state.tr.replaceWith(from, to, fragment as any) : state.tr.insertText(text, from, to);
     tr.setMeta("leditor-ai", { kind: "agent", ts: Date.now() });
     editor.view.dispatch(tr);
@@ -874,13 +977,13 @@ export const createAgentSidebar = (
     const editor = editorHandle.getEditor();
     const state = editor.state;
     const baseDoc = state.doc;
-    for (const item of items) {
-      assertAnchorsPreserved(baseDoc, item.from, item.to, item.text);
-    }
     const sorted = [...items].sort((a, b) => b.from - a.from);
     let tr = state.tr;
     for (const item of sorted) {
       const fragment = buildTextblockReplacementFragment(baseDoc, item.from, item.to, item.text);
+      if (!fragment) {
+        assertAnchorsPreserved(baseDoc, item.from, item.to, item.text);
+      }
       tr = fragment ? tr.replaceWith(item.from, item.to, fragment as any) : tr.insertText(item.text, item.from, item.to);
     }
     tr.setMeta("leditor-ai", { kind: "agent", ts: Date.now(), items: sorted.length });
@@ -928,6 +1031,258 @@ export const createAgentSidebar = (
     // Intentionally no suggestions UI list; drafts are previewed inline in the document.
     suggestionsMeta.textContent =
       pending && pending.kind === "batchReplace" ? `${pending.items.length} change(s)` : "";
+  };
+
+  let draftRail: null | { update: () => void; destroy: () => void } = null;
+
+  const acceptPendingItem = (detail: { n?: number; from?: number; to?: number }) => {
+    if (!pending) return;
+    const n = Number.isFinite(detail.n) ? Number(detail.n) : null;
+    const from = Number.isFinite(detail.from) ? Number(detail.from) : null;
+    const to = Number.isFinite(detail.to) ? Number(detail.to) : null;
+
+    if (pending.kind === "replaceRange") {
+      applyRangeAsTransaction(pending.from, pending.to, pending.text);
+      clearPending();
+      return;
+    }
+
+    if (pending.kind !== "batchReplace") return;
+    const match =
+      (n && n > 0 ? pending.items.find((it) => it.n === n) : null) ??
+      (from && to ? pending.items.find((it) => it.from === from && it.to === to) : null) ??
+      null;
+    if (!match) return;
+    applyRangeAsTransaction(match.from, match.to, match.text);
+    const nextItems = pending.items.filter((it) => it !== match);
+    pending = nextItems.length ? { ...pending, items: nextItems } : null;
+    if (!pending) {
+      clearPending();
+    } else {
+      pendingLabel.textContent = `Draft ready • ${nextItems.length} change(s)`;
+      syncDraftPreview();
+    }
+  };
+
+  const rejectPendingItem = (detail: { n?: number; from?: number; to?: number }) => {
+    if (!pending) return;
+    const n = Number.isFinite(detail.n) ? Number(detail.n) : null;
+    const from = Number.isFinite(detail.from) ? Number(detail.from) : null;
+    const to = Number.isFinite(detail.to) ? Number(detail.to) : null;
+
+    if (pending.kind === "replaceRange") {
+      clearPending();
+      return;
+    }
+    if (pending.kind !== "batchReplace") return;
+
+    const match =
+      (n && n > 0 ? pending.items.find((it) => it.n === n) : null) ??
+      (from && to ? pending.items.find((it) => it.from === from && it.to === to) : null) ??
+      null;
+    if (!match) return;
+    const nextItems = pending.items.filter((it) => it !== match);
+    pending = nextItems.length ? { ...pending, items: nextItems } : null;
+    if (!pending) {
+      clearPending();
+    } else {
+      pendingLabel.textContent = `Draft ready • ${nextItems.length} change(s)`;
+      syncDraftPreview();
+    }
+  };
+
+  const mountDraftRail = () => {
+    const appRoot = getAppRoot();
+    if (!appRoot) return null as null | { update: () => void; destroy: () => void };
+    const mountEl =
+      (appRoot.querySelector(".leditor-a4-zoom-content") as HTMLElement | null) ??
+      (appRoot.querySelector(".leditor-a4-zoom") as HTMLElement | null) ??
+      (appRoot.querySelector(".leditor-a4-canvas") as HTMLElement | null) ??
+      appRoot;
+
+    const existing = document.getElementById(DRAFT_RAIL_ID);
+    if (existing) existing.remove();
+
+    const overlay = document.createElement("div");
+    overlay.id = DRAFT_RAIL_ID;
+    overlay.className = "leditor-ai-draft-rail is-hidden";
+    overlay.setAttribute("aria-hidden", "true");
+
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.classList.add("leditor-ai-draft-rail__lines");
+    svg.setAttribute("aria-hidden", "true");
+
+    const rail = document.createElement("div");
+    rail.className = "leditor-ai-draft-rail__rail";
+    overlay.append(svg, rail);
+    mountEl.appendChild(overlay);
+
+    let raf = 0;
+
+    const clearSvg = () => {
+      while (svg.firstChild) svg.removeChild(svg.firstChild);
+    };
+
+    const sanitize = (value: string, maxLen: number) => {
+      const s = String(value || "").replace(/\s+/g, " ").trim();
+      if (s.length <= maxLen) return s;
+      return `${s.slice(0, maxLen - 1)}…`;
+    };
+
+    const schedule = () => {
+      if (raf) return;
+      raf = window.requestAnimationFrame(() => {
+        raf = 0;
+        update();
+      });
+    };
+
+    const acceptOne = (n: number) => {
+      acceptPendingItem({ n });
+      schedule();
+    };
+
+    const rejectOne = (n: number) => {
+      rejectPendingItem({ n });
+      schedule();
+    };
+
+	    const update = () => {
+	      if (!open || !pending || pending.kind !== "batchReplace") {
+	        overlay.classList.add("is-hidden");
+	        rail.replaceChildren();
+	        clearSvg();
+	        return;
+	      }
+	      const batch = pending;
+	      const show = batch.items.length > 0;
+	      overlay.classList.toggle("is-hidden", !show);
+	      if (!show) {
+	        rail.replaceChildren();
+	        clearSvg();
+	        return;
+	      }
+
+      const editor = editorHandle.getEditor();
+      const view = (editor as any)?.view;
+      if (!view) return;
+      const overlayRect = overlay.getBoundingClientRect();
+      const stackEl = appRoot.querySelector<HTMLElement>(".leditor-page-stack") ?? null;
+      const stackRect = stackEl?.getBoundingClientRect?.() ?? null;
+      const railLeftX = Math.round((stackRect?.right ?? overlayRect.left + 680) - overlayRect.left + 18);
+
+      rail.replaceChildren();
+      clearSvg();
+	      const sorted = [...batch.items].sort((a, b) => a.from - b.from);
+      const minGap = 10;
+      let cursorY = -Infinity;
+
+      for (const it of sorted) {
+        const coords = view.coordsAtPos(Math.max(0, Math.min(view.state.doc.content.size, it.to)));
+        const anchorX = Math.round(coords.right - overlayRect.left);
+        const anchorY = Math.round(((coords.top + coords.bottom) / 2) - overlayRect.top);
+
+        const card = document.createElement("div");
+        card.className = "leditor-ai-draft-rail__card";
+        card.style.left = `${Math.max(12, railLeftX)}px`;
+        card.style.top = `0px`;
+
+        const header = document.createElement("div");
+        header.className = "leditor-ai-draft-rail__cardHeader";
+        const badge = document.createElement("span");
+        badge.className = "leditor-ai-draft-rail__badge";
+        badge.textContent = "AI";
+        const title = document.createElement("span");
+        title.className = "leditor-ai-draft-rail__title";
+        title.textContent = "Draft update";
+        const meta = document.createElement("span");
+        meta.className = "leditor-ai-draft-rail__meta";
+        meta.textContent = it.n ? `P${it.n}` : "";
+        header.append(badge, title, meta);
+
+        const body = document.createElement("div");
+        body.className = "leditor-ai-draft-rail__body";
+        body.textContent = sanitize(it.text, 420);
+
+        const actions = document.createElement("div");
+        actions.className = "leditor-ai-draft-rail__actions";
+        const rejectBtnEl = document.createElement("button");
+        rejectBtnEl.type = "button";
+        rejectBtnEl.className = "leditor-ai-draft-rail__btn";
+        rejectBtnEl.textContent = "Reject";
+        rejectBtnEl.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          rejectOne(it.n);
+        });
+        const acceptBtnEl = document.createElement("button");
+        acceptBtnEl.type = "button";
+        acceptBtnEl.className = "leditor-ai-draft-rail__btn leditor-ai-draft-rail__btn--primary";
+        acceptBtnEl.textContent = "Accept";
+        acceptBtnEl.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          acceptOne(it.n);
+        });
+        actions.append(rejectBtnEl, acceptBtnEl);
+
+        card.append(header, body, actions);
+        rail.appendChild(card);
+
+        const h = Math.ceil(card.getBoundingClientRect().height || 120);
+        const desiredY = anchorY - 14;
+        const y = Math.max(desiredY, cursorY + minGap);
+        cursorY = y + h;
+        card.style.top = `${Math.max(0, y)}px`;
+
+        const endX = Math.max(0, railLeftX - 4);
+        const endY = Math.max(0, y + 18);
+        const elbowX = Math.max(anchorX + 18, endX - 18);
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.setAttribute("d", `M ${anchorX} ${anchorY} L ${elbowX} ${anchorY} L ${elbowX} ${endY} L ${endX} ${endY}`);
+        svg.appendChild(path);
+      }
+    };
+
+    const onScroll = () => schedule();
+    appRoot.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", schedule);
+    editorHandle.on("change", schedule);
+    editorHandle.on("selectionChange", schedule);
+
+    schedule();
+
+    return {
+      update: schedule,
+      destroy() {
+        try {
+          if (raf) window.cancelAnimationFrame(raf);
+        } catch {
+          // ignore
+        }
+        try {
+          appRoot.removeEventListener("scroll", onScroll);
+        } catch {
+          // ignore
+        }
+        try {
+          window.removeEventListener("resize", schedule);
+        } catch {
+          // ignore
+        }
+        try {
+          editorHandle.off("change", schedule);
+          editorHandle.off("selectionChange", schedule);
+        } catch {
+          // ignore
+        }
+        try {
+          overlay.remove();
+        } catch {
+          // ignore
+        }
+      }
+    };
   };
 
   const applyPending = () => {
@@ -1050,6 +1405,11 @@ export const createAgentSidebar = (
         pendingLabel.textContent = `Draft ready • ${count} change(s)`;
         renderDraftList();
         syncDraftPreview();
+        try {
+          draftRail?.update();
+        } catch {
+          // ignore
+        }
       } else {
         addMessage("assistant", (result.assistantText || "(no response)").trim());
       }
@@ -1287,6 +1647,165 @@ export const createAgentSidebar = (
     lexiconPanel.classList.add("is-hidden");
   };
 
+  let lexiconPopup: HTMLElement | null = null;
+  let lexiconCleanup: Array<() => void> = [];
+
+  const closeLexiconPopup = () => {
+    for (const fn of lexiconCleanup) {
+      try {
+        fn();
+      } catch {
+        // ignore
+      }
+    }
+    lexiconCleanup = [];
+    try {
+      lexiconPopup?.remove();
+    } catch {
+      // ignore
+    }
+    lexiconPopup = null;
+  };
+
+  const getSentenceForSelection = (from: number, to: number): string => {
+    const editor = editorHandle.getEditor();
+    const doc = editor.state.doc;
+    const pos = doc.resolve(from);
+    let depth = pos.depth;
+    while (depth > 0 && !pos.node(depth).isTextblock) depth -= 1;
+    const blockNode = pos.node(depth);
+    const blockPos = pos.before(depth);
+    const blockFrom = blockPos + 1;
+    const blockTo = blockFrom + blockNode.content.size;
+    const blockText = doc.textBetween(blockFrom, blockTo, "\n").replace(/\s+/g, " ").trim();
+    if (!blockText) return "";
+
+    // Best-effort offset mapping in the plain-text projection.
+    const leftText = doc.textBetween(blockFrom, from, "\n").replace(/\s+/g, " ");
+    const offset = Math.max(0, Math.min(blockText.length, leftText.length));
+    const clamp = (v: number) => Math.max(0, Math.min(blockText.length, v));
+
+    // Sentence boundaries: last punctuation boundary before offset, next punctuation after.
+    const left = blockText.slice(0, offset);
+    const right = blockText.slice(offset);
+    const boundaryRe = /[.!?;]\s+(?=[“"'\(\[]?[A-Z0-9])/g;
+    let start = 0;
+    for (const m of left.matchAll(boundaryRe)) {
+      const idx = typeof m.index === "number" ? m.index : -1;
+      if (idx < 0) continue;
+      const prev = left.slice(Math.max(0, idx - 3), idx + 1).toLowerCase();
+      const next = left.slice(idx + 1).trimStart();
+      if ((prev.endsWith("p.") || prev.endsWith("pp.")) && /^\d/.test(next)) continue;
+      start = idx + m[0].length;
+    }
+    start = clamp(start);
+    const nextCandidates = Array.from(right.matchAll(/[.!?;]/g))
+      .map((m) => (typeof m.index === "number" ? m.index : -1))
+      .filter((n) => n >= 0)
+      .map((n) => offset + n + 1);
+    const end = clamp(nextCandidates.length ? Math.min(...nextCandidates) : blockText.length);
+    return blockText.slice(start, end).replace(/\s+/g, " ").trim();
+  };
+
+  const openLexiconPopup = (args: {
+    title: string;
+    from: number;
+    to: number;
+    suggestions: string[];
+    onPick: (text: string) => void;
+  }) => {
+    closeLexiconPopup();
+    const editor = editorHandle.getEditor();
+    const view: any = (editor as any)?.view;
+    if (!view?.coordsAtPos) return;
+    const a = view.coordsAtPos(args.from);
+    const b = view.coordsAtPos(args.to);
+    const left = Math.min(a.left, b.left);
+    const top = Math.max(a.bottom, b.bottom) + 6;
+
+    const popup = document.createElement("div");
+    popup.className = "leditor-lexicon-popup";
+    popup.setAttribute("role", "menu");
+    popup.setAttribute("aria-label", args.title);
+    popup.style.left = "0px";
+    popup.style.top = "0px";
+
+    const header = document.createElement("div");
+    header.className = "leditor-lexicon-popup__header";
+    header.textContent = args.title;
+
+    const list = document.createElement("div");
+    list.className = "leditor-lexicon-popup__list";
+
+    const addItem = (label: string, value: string | null) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "leditor-lexicon-popup__item";
+      btn.textContent = label;
+      btn.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (value === null) {
+          closeLexiconPopup();
+          return;
+        }
+        args.onPick(value);
+        closeLexiconPopup();
+      });
+      list.appendChild(btn);
+      return btn;
+    };
+
+    const first = addItem(args.suggestions[0] ?? "", args.suggestions[0] ?? "");
+    for (const s of args.suggestions.slice(1)) addItem(s, s);
+    addItem("None", null);
+
+    popup.append(header, list);
+    document.body.appendChild(popup);
+    lexiconPopup = popup;
+
+    // Clamp within viewport.
+    const rect = popup.getBoundingClientRect();
+    const maxLeft = Math.max(8, window.innerWidth - rect.width - 8);
+    const maxTop = Math.max(8, window.innerHeight - rect.height - 8);
+    const clampedLeft = Math.max(8, Math.min(maxLeft, left));
+    const clampedTop = Math.max(8, Math.min(maxTop, top));
+    popup.style.left = `${Math.round(clampedLeft)}px`;
+    popup.style.top = `${Math.round(clampedTop)}px`;
+
+    // Focus first option.
+    try {
+      first?.focus();
+    } catch {
+      // ignore
+    }
+
+    const onDocPointerDown = (e: Event) => {
+      const t = e.target as Node | null;
+      if (!t) return;
+      if (popup.contains(t)) return;
+      closeLexiconPopup();
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        closeLexiconPopup();
+      }
+    };
+    const docShell = document.querySelector(".leditor-doc-shell") as HTMLElement | null;
+    const onScroll = () => closeLexiconPopup();
+
+    document.addEventListener("pointerdown", onDocPointerDown, true);
+    document.addEventListener("keydown", onKeyDown, true);
+    docShell?.addEventListener("scroll", onScroll, { passive: true });
+    editorHandle.on("selectionChange", onScroll);
+
+    lexiconCleanup.push(() => document.removeEventListener("pointerdown", onDocPointerDown, true));
+    lexiconCleanup.push(() => document.removeEventListener("keydown", onKeyDown, true));
+    lexiconCleanup.push(() => docShell?.removeEventListener("scroll", onScroll));
+    lexiconCleanup.push(() => editorHandle.off("selectionChange", onScroll));
+  };
+
   const runLexicon = async (mode: "synonyms" | "antonyms") => {
     const editor = editorHandle.getEditor();
     const sel = editor.state.selection;
@@ -1305,12 +1824,12 @@ export const createAgentSidebar = (
       addMessage("system", "Select a word or phrase first.");
       return;
     }
+    const sentence = getSentenceForSelection(from, to);
     const host: any = (window as any).leditorHost;
     if (!host || typeof host.lexicon !== "function") {
       addMessage("assistant", "Lexicon host bridge unavailable.");
       return;
     }
-    clearLexicon();
     setInflight(true);
     try {
       const sel = resolveSelectedModelId();
@@ -1321,7 +1840,8 @@ export const createAgentSidebar = (
           provider: sel.provider,
           model: sel.model,
           mode,
-          text: selectedText
+          text: selectedText,
+          sentence
         }
       });
       if (!result?.success) {
@@ -1333,29 +1853,24 @@ export const createAgentSidebar = (
         .map((s: any) => (typeof s === "string" ? s : typeof s?.text === "string" ? s.text : ""))
         .map((s: string) => s.trim())
         .filter(Boolean)
-        .slice(0, 4);
+        .slice(0, 5);
       if (normalized.length === 0) {
         addMessage("system", "No suggestions.");
         return;
       }
-      lexiconTitle.textContent = mode === "synonyms" ? "Synonyms" : "Antonyms";
-      for (const suggestion of normalized) {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "leditor-agent-sidebar__lexiconBtn";
-        btn.textContent = suggestion;
-        btn.addEventListener("click", () => {
+      openLexiconPopup({
+        title: mode === "synonyms" ? "Synonyms" : "Antonyms",
+        from,
+        to,
+        suggestions: normalized,
+        onPick: (replacement) => {
           try {
-            editor.chain().focus().insertContent(suggestion).run();
-            addMessage("system", `Applied ${mode.slice(0, -1)}.`);
+            editor.chain().focus().insertContent(replacement).run();
           } finally {
-            clearLexicon();
             editorHandle.focus();
           }
-        });
-        lexiconRow.appendChild(btn);
-      }
-      lexiconPanel.classList.remove("is-hidden");
+        }
+      });
     } finally {
       setInflight(false);
       editorHandle.focus();
@@ -1602,13 +2117,27 @@ export const createAgentSidebar = (
           continue;
         }
         const checksRaw = Array.isArray(result.checks) ? result.checks : [];
-        const byKey = new Map<string, { verdict: "verified" | "needs_review"; justification: string }>();
+        const byKey = new Map<
+          string,
+          {
+            verdict: "verified" | "needs_review";
+            justification: string;
+            fixSuggestion?: string;
+            suggestedReplacementKey?: string;
+            claimRewrite?: string;
+          }
+        >();
         for (const c of checksRaw) {
           const key = typeof c?.key === "string" ? c.key : "";
           if (!key) continue;
           byKey.set(key, {
             verdict: c?.verdict === "verified" ? "verified" : "needs_review",
-            justification: typeof c?.justification === "string" ? c.justification : ""
+            justification: typeof c?.justification === "string" ? c.justification : "",
+            fixSuggestion: typeof c?.fixSuggestion === "string" ? c.fixSuggestion : undefined,
+            suggestedReplacementKey:
+              typeof c?.suggestedReplacementKey === "string" ? c.suggestedReplacementKey : undefined
+            ,
+            claimRewrite: typeof c?.claimRewrite === "string" ? c.claimRewrite : undefined
           });
         }
         for (const a of anchors) {
@@ -1664,6 +2193,14 @@ export const createAgentSidebar = (
       editorHandle.execCommand("SetSourceChecks", { items: allItems });
       setSourceChecksVisible(true);
       addMessage("system", `Checked ${allItems.length} source(s).`);
+      try {
+        const firstKey = typeof (allItems[0] as any)?.key === "string" ? String((allItems[0] as any).key) : "";
+        if (firstKey) {
+          window.dispatchEvent(new CustomEvent("leditor:source-checks-focus", { detail: { key: firstKey } }));
+        }
+      } catch {
+        // ignore
+      }
     } finally {
       setInflight(false);
       editorHandle.focus();
@@ -1719,6 +2256,43 @@ export const createAgentSidebar = (
       renderParsePills();
       renderMessages();
       input.focus();
+      if (!draftRail) {
+        try {
+          draftRail = mountDraftRail();
+        } catch {
+          draftRail = null;
+        }
+      }
+      try {
+        draftRail?.update();
+      } catch {
+        // ignore
+      }
+
+      // Inline accept/reject buttons (rendered inside the document) dispatch this event.
+      const onDraftAction = (event: Event) => {
+        const detail = (event as CustomEvent).detail as any;
+        if (!detail || typeof detail !== "object") return;
+        if (detail.action === "accept") {
+          acceptPendingItem(detail);
+          try {
+            draftRail?.update();
+          } catch {
+            // ignore
+          }
+          return;
+        }
+        if (detail.action === "reject") {
+          rejectPendingItem(detail);
+          try {
+            draftRail?.update();
+          } catch {
+            // ignore
+          }
+        }
+      };
+      window.addEventListener("leditor:ai-draft-action", onDraftAction as any, { passive: true });
+      (controller as any).__onDraftAction = onDraftAction;
     },
     close() {
       if (destroyed) return;
@@ -1740,6 +2314,19 @@ export const createAgentSidebar = (
       } catch {
         // ignore
       }
+      try {
+        draftRail?.destroy();
+      } catch {
+        // ignore
+      }
+      draftRail = null;
+      try {
+        const fn = (controller as any).__onDraftAction as any;
+        if (fn) window.removeEventListener("leditor:ai-draft-action", fn);
+      } catch {
+        // ignore
+      }
+      (controller as any).__onDraftAction = null;
     },
     toggle() {
       if (destroyed) return;
@@ -1800,6 +2387,19 @@ export const createAgentSidebar = (
       }
       clearPending();
       unsubscribeScope();
+      try {
+        draftRail?.destroy();
+      } catch {
+        // ignore
+      }
+      draftRail = null;
+      try {
+        const fn = (controller as any).__onDraftAction as any;
+        if (fn) window.removeEventListener("leditor:ai-draft-action", fn);
+      } catch {
+        // ignore
+      }
+      (controller as any).__onDraftAction = null;
       sidebar.remove();
     }
   };

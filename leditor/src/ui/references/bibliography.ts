@@ -66,33 +66,46 @@ export const ensureBibliographyNode = (
   const bibId = `bib-${Date.now().toString(36)}`;
   const headingText = typeof opts?.headingText === "string" ? opts.headingText.trim() : "References";
 
-  // Page-based documents: append to the end of the last page.
-  const pageNode = editor.schema.nodes.page;
-  if (pageNode && editor.state.doc.lastChild?.type === pageNode) {
-    const lastPage = editor.state.doc.lastChild;
-    const lastPagePos = editor.state.doc.content.size - lastPage.nodeSize;
-    const insertAt = lastPagePos + lastPage.nodeSize - 1;
-    const content: any[] = [];
-    if (headingText && editor.schema.nodes.heading) {
-      content.push({
-        type: "heading",
-        attrs: { level: 1 },
-        content: [{ type: "text", text: headingText }]
-      });
-    }
-    content.push({ type: "bibliography", attrs: { bibId } });
-    editor.chain().focus().insertContentAt(insertAt, content).run();
-    return;
-  }
-
-  // Fallback: append at end of doc.
-  const insertAt = editor.state.doc.content.size;
   const content: any[] = [];
+  // Force the bibliography to start on a fresh page so the heading isn't stranded.
+  // Use a normal page_break node (which the layout engine respects), but hide it via CSS
+  // when it's our internal bibliography break.
+  if (editor.schema.nodes.page_break) {
+    content.push({ type: "page_break", attrs: { kind: "page", sectionId: "bibliography" } });
+  }
   if (headingText && editor.schema.nodes.heading) {
     content.push({ type: "heading", attrs: { level: 1 }, content: [{ type: "text", text: headingText }] });
   }
-  content.push({ type: "bibliography", attrs: { bibId } });
-  editor.chain().focus().insertContentAt(insertAt, content).run();
+  // Bibliography is a container node (block+). Seed it with a paragraph so it's always valid.
+  content.push({ type: "bibliography", attrs: { bibId }, content: [{ type: "paragraph" }] });
+  const doc = editor.state.doc;
+  const nodeType = bibliographyNode;
+  const findInsertPos = (): number => {
+    // Prefer inserting at the end of the last page so we never violate the
+    // doc → page → block hierarchy. The page node's content ends at
+    // pos + node.nodeSize - 1.
+    if (doc.childCount > 0) {
+      const lastPageNode = doc.child(doc.childCount - 1);
+      if (lastPageNode?.type?.name === "page") {
+        let lastPagePos = 0;
+        for (let i = 0; i < doc.childCount - 1; i += 1) {
+          lastPagePos += doc.child(i).nodeSize;
+        }
+        const endOfPageContent = lastPagePos + lastPageNode.nodeSize - 1;
+        return endOfPageContent;
+      }
+    }
+    // Fallback: scan backwards for any parent that accepts the bibliography.
+    for (let pos = doc.content.size - 2; pos >= 0; pos -= 1) {
+      const $pos = doc.resolve(pos);
+      if ($pos.parent?.canReplaceWith?.($pos.index(), $pos.index(), nodeType)) {
+        return pos;
+      }
+    }
+    return doc.content.size - 2;
+  };
+  const insertPos = findInsertPos();
+  editor.chain().focus().insertContentAt(insertPos, content, { updateSelection: false }).run();
 };
 
 export const writeUsedBibliography = async (keys: string[]): Promise<void> => {

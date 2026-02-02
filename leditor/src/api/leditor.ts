@@ -309,6 +309,10 @@ export const LEditor = {
 
     const starterKitOptions = {} as StarterKitOptions & { image?: boolean };
     starterKitOptions.image = false;
+    // Workaround: prosemirror-dropcursor can throw during teardown when its element was already removed
+    // (seen as `Cannot read properties of null (reading 'removeChild')` in DropCursorView.setCursor).
+    // We can reintroduce a patched dropcursor later via a custom extension.
+    starterKitOptions.dropcursor = false;
     starterKitOptions.heading = { levels: [1, 2, 3, 4, 5, 6] };
     starterKitOptions.underline = false;
     starterKitOptions.link = false;
@@ -434,6 +438,11 @@ export const LEditor = {
         citedWorksSyncTimer = null;
         try {
           const keys = extractCitedKeysFromDoc(editor.state.doc as any);
+          try {
+            console.info("[References][sync] cited keys", { count: keys.length, sample: keys.slice(0, 5) });
+          } catch {
+            // ignore logging failures
+          }
           void writeCitedWorksKeys(keys);
         } catch {
           // ignore

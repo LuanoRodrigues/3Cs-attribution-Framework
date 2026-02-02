@@ -1028,6 +1028,19 @@ export class PanelGrid {
     this.panelsV2Enabled = enabled;
   }
 
+  // Make page navigation deterministic by clearing any "floating/undocked" carryover
+  // from other pages before applying a page-specific layout.
+  public resetPanelPlacement(): void {
+    (Object.keys(this.state.undocked) as PanelId[]).forEach((panelId) => {
+      this.state.undocked[panelId] = false;
+      this.state.floatingPositions[panelId] = null;
+    });
+    this.applyFloatingState();
+    this.applySizes();
+    this.updateGutterVisibility();
+    this.persistState();
+  }
+
   getPanelContent(index: number): HTMLElement | null {
     let match: HTMLElement | null = null;
     this.panels.forEach((value) => {

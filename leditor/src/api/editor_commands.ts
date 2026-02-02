@@ -190,7 +190,18 @@ export const dispatchCommand = (
   // Restore the last recorded selection before running commands so formatting changes don't jump to the end.
     const tiptapEditor = (editorHandle as any)?.getEditor?.();
     const snapshot = peekRibbonSelection();
-    if (snapshot && tiptapEditor?.view && tiptapEditor?.state?.tr) {
+    const appRoot = document.getElementById("leditor-app");
+    const isOverlayEditing =
+      !!appRoot &&
+      (appRoot.classList.contains("leditor-footnote-editing") ||
+        appRoot.classList.contains("leditor-header-footer-editing"));
+    const active = document.activeElement as HTMLElement | null;
+    const prose = tiptapEditor?.view?.dom as HTMLElement | null;
+    const isEditorActive = Boolean(prose && active && prose.contains(active));
+    const isRibbonActive = Boolean(active && active.closest?.(".leditor-ribbon"));
+    const allowSelectionRestore = !isOverlayEditing && (isEditorActive || isRibbonActive);
+
+    if (snapshot && tiptapEditor?.view && tiptapEditor?.state?.tr && allowSelectionRestore) {
       try {
         const tr = applySnapshotToTransaction(tiptapEditor.state.tr, snapshot);
         if (
@@ -202,16 +213,20 @@ export const dispatchCommand = (
       } catch {
         // ignore selection restoration failures
       }
+    } else if ((window as any).__leditorCaretDebug && snapshot) {
+      console.info("[CaretGate] restore:skip", {
+        reason: "inactive-surface",
+        commandId,
+        hasSnapshot: Boolean(snapshot),
+        isOverlayEditing,
+        isEditorActive,
+        isRibbonActive
+      });
     }
     editorHandle.execCommand(commandId, payload);
   // Some commands intentionally move focus away from the main ProseMirror editor (e.g. footnotes,
   // header/footer overlays). For those cases, forcing focus back here will steal the caret and
   // make typing impossible.
-    const appRoot = document.getElementById("leditor-app");
-    const isOverlayEditing =
-      !!appRoot &&
-      (appRoot.classList.contains("leditor-footnote-editing") ||
-        appRoot.classList.contains("leditor-header-footer-editing"));
     const isOverlayCommand =
       commandId === "InsertFootnote" ||
       commandId === "InsertEndnote" ||
@@ -220,13 +235,26 @@ export const dispatchCommand = (
       commandId === "EditHeader" ||
       commandId === "EditFooter";
 
-    if (!isOverlayEditing && !isOverlayCommand) {
+    const shouldRestoreFocus =
+      !isOverlayEditing &&
+      !isOverlayCommand &&
+      (isEditorActive || isRibbonActive);
+
+    if (shouldRestoreFocus) {
       const tiptap = (editorHandle as any)?.getEditor?.();
       if (tiptap?.commands?.focus) {
         tiptap.commands.focus();
       } else if ((editorHandle as any)?.focus) {
         (editorHandle as any).focus();
       }
+    } else if ((window as any).__leditorCaretDebug) {
+      console.info("[CaretGate] focus:skip", {
+        reason: "inactive-surface",
+        commandId,
+        isOverlayEditing,
+        isEditorActive,
+        isRibbonActive
+      });
     }
   });
 };

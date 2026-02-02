@@ -11,6 +11,13 @@ export type AiDraftPreviewItem = {
   proposedText: string;
 };
 
+type DraftActionEvent = {
+  action: "accept" | "reject";
+  n?: number;
+  from: number;
+  to: number;
+};
+
 type DraftState = {
   enabled: boolean;
   items: AiDraftPreviewItem[];
@@ -76,6 +83,55 @@ const buildDecorations = (state: EditorState, draft: DraftState): DecorationSet 
           return el;
         },
         { side: 1 }
+      )
+    );
+
+    decos.push(
+      Decoration.widget(
+        to,
+        () => {
+          const wrap = document.createElement("span");
+          wrap.className = "leditor-ai-draft-actions";
+          wrap.contentEditable = "false";
+
+          const emit = (action: DraftActionEvent["action"]) => {
+            try {
+              const detail: DraftActionEvent = {
+                action,
+                n: typeof item.n === "number" ? item.n : undefined,
+                from,
+                to
+              };
+              window.dispatchEvent(new CustomEvent("leditor:ai-draft-action", { detail }));
+            } catch {
+              // ignore
+            }
+          };
+
+          const rejectBtn = document.createElement("button");
+          rejectBtn.type = "button";
+          rejectBtn.className = "leditor-ai-draft-actions__btn";
+          rejectBtn.textContent = "Reject";
+          rejectBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            emit("reject");
+          });
+
+          const acceptBtn = document.createElement("button");
+          acceptBtn.type = "button";
+          acceptBtn.className = "leditor-ai-draft-actions__btn leditor-ai-draft-actions__btn--primary";
+          acceptBtn.textContent = "Accept";
+          acceptBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            emit("accept");
+          });
+
+          wrap.append(rejectBtn, acceptBtn);
+          return wrap;
+        },
+        { side: 2 }
       )
     );
   }

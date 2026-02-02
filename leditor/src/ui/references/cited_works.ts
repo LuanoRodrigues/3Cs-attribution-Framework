@@ -5,6 +5,8 @@ export const CITED_WORKS_FILENAME = "references.used.json";
 export const CITED_WORKS_STORAGE_KEY = "leditor.references.usedKeys";
 
 const KEY_REGEX = /^[A-Z0-9]{8}$/;
+// references.used.json is keyed by our citation "itemKey" (8-char dataKey), not by dqids.
+export const acceptKey = (value: string): boolean => KEY_REGEX.test(value);
 
 const joinLike = (dir: string, name: string): string => {
   const base = String(dir || "").replace(/[\\/]+$/, "");
@@ -30,12 +32,20 @@ const parseCiteHref = (href: string): string[] => {
   return KEY_REGEX.test(payload) ? [payload] : [];
 };
 
-const extractKeyFromLinkAttrs = (attrs: any): string => {
-  const candidates = [attrs?.dataKey, attrs?.dataOrigHref, attrs?.itemKey, attrs?.dataItemKey]
+export const extractKeyFromLinkAttrs = (attrs: any): string => {
+  const candidates = [
+    attrs?.dataKey,
+    attrs?.dataOrigHref,
+    attrs?.itemKey,
+    attrs?.dataItemKey,
+    attrs?.["data-key"],
+    attrs?.["data-item-key"],
+    attrs?.["data-orig-href"]
+  ]
     .map((v: any) => (typeof v === "string" ? v.trim() : ""))
     .filter(Boolean);
   for (const value of candidates) {
-    if (KEY_REGEX.test(value)) return value;
+    if (acceptKey(value)) return value;
   }
   const href = typeof attrs?.href === "string" ? attrs.href.trim() : "";
   const fromCite = parseCiteHref(href)[0] || "";
@@ -53,20 +63,34 @@ export const extractCitedKeysFromDoc = (doc: ProseMirrorNode): string[] => {
       if (Array.isArray(items)) {
         items.forEach((item: any) => {
           const key = typeof item?.itemKey === "string" ? item.itemKey.trim() : "";
-          if (KEY_REGEX.test(key)) keys.add(key);
+          if (acceptKey(key)) keys.add(key);
         });
       }
       return true;
     }
+    const attrs = node.attrs ?? {};
+    if (node.type.name === "anchor") {
+      const key = extractKeyFromLinkAttrs(attrs);
+      if (acceptKey(key)) keys.add(key);
+      const href = typeof attrs.href === "string" ? attrs.href : "";
+      parseCiteHref(href).forEach((k) => keys.add(k));
+      parseCiteGrpHref(href).forEach((k) => keys.add(k));
+      const itemKey = typeof attrs.itemKey === "string" ? attrs.itemKey.trim() : "";
+      if (acceptKey(itemKey)) keys.add(itemKey);
+      return true;
+    }
     const marks: any[] = (node as any).marks || [];
     marks.forEach((mark) => {
-      if (mark?.type?.name !== "link") return;
+      const name = mark?.type?.name;
+      if (name !== "link" && name !== "anchor") return;
       const attrs = mark.attrs ?? {};
       const href = typeof attrs.href === "string" ? attrs.href : "";
       parseCiteHref(href).forEach((k) => keys.add(k));
       parseCiteGrpHref(href).forEach((k) => keys.add(k));
       const key = extractKeyFromLinkAttrs(attrs);
-      if (KEY_REGEX.test(key)) keys.add(key);
+      if (acceptKey(key)) keys.add(key);
+      const itemKey = typeof attrs.itemKey === "string" ? attrs.itemKey.trim() : "";
+      if (acceptKey(itemKey)) keys.add(itemKey);
     });
     return true;
   });
@@ -83,7 +107,9 @@ const safeParseKeys = (raw: string): string[] => {
   try {
     const parsed = JSON.parse(raw) as any;
     const keys = Array.isArray(parsed?.keys) ? parsed.keys : Array.isArray(parsed) ? parsed : [];
-    return keys.map((k: any) => String(k || "").trim()).filter((k: string) => KEY_REGEX.test(k));
+    return keys
+      .map((k: any) => String(k || "").trim())
+      .filter((k: string) => KEY_REGEX.test(k));
   } catch {
     return [];
   }
@@ -113,7 +139,7 @@ export const readCitedWorksKeys = async (): Promise<string[]> => {
 };
 
 export const writeCitedWorksKeys = async (keys: string[]): Promise<void> => {
-  const normalized = Array.from(new Set(keys.map((k) => String(k || "").trim()).filter((k) => KEY_REGEX.test(k)))).sort();
+  const normalized = Array.from(new Set(keys.map((k) => String(k || "").trim()).filter((k) => acceptKey(k)))).sort();
   const payload = JSON.stringify({ updatedAt: new Date().toISOString(), keys: normalized }, null, 2);
   try {
     window.localStorage?.setItem(CITED_WORKS_STORAGE_KEY, payload);
@@ -129,4 +155,3 @@ export const writeCitedWorksKeys = async (keys: string[]): Promise<void> => {
     // ignore
   }
 };
-

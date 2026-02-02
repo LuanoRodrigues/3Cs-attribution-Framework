@@ -50,7 +50,8 @@
       height:100%;
       display:grid;
       grid-template-columns: 300px 1fr;
-      grid-template-rows: 52px 1fr;
+      /* Use `auto` so the toolbar never "jumps" or overlaps content when fonts/zoom change. */
+      grid-template-rows: auto 1fr;
       grid-template-areas:
         "toolbar toolbar"
         "sidebar main";
@@ -190,6 +191,44 @@
       z-index: 10;
     }
 
+    /* Embedded-in-LEditor close button (premium, unobtrusive). */
+    .embedCloseBtn{
+      height:30px;
+      width:30px;
+      min-width:30px;
+      padding:0;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.04);
+      color: var(--txt);
+      font-size: 18px;
+      line-height: 30px;
+      cursor:pointer;
+      user-select:none;
+      box-shadow: 0 10px 22px rgba(0,0,0,0.28);
+      transition: transform 90ms ease, background 90ms ease, border-color 90ms ease;
+      opacity: 0.85;
+    }
+    .embedCloseBtn:hover{
+      background: rgba(255,255,255,0.07);
+      border-color: rgba(156,184,255,0.40);
+      opacity: 1;
+    }
+    .embedCloseBtn:active{ transform: translateY(1px); }
+    #app[data-embedded="1"] .embedCloseBtn{ display:flex; }
+
+	    /* Always keep the close button reachable even when the toolbar is dense. */
+	    #toolbar{ position: relative; }
+	    #app[data-embedded="1"] #btnEmbedClose{
+	      position: fixed;
+	      top: 12px;
+	      right: 12px;
+	      z-index: 9999;
+	    }
+
     #sidebar{
       grid-area:sidebar;
       background: linear-gradient(to bottom, var(--panel) 0%, var(--panel2) 100%);
@@ -204,6 +243,9 @@
       grid-area:main;
       position:relative;
       overflow:hidden;
+      min-height: 0;
+      display:flex;
+      flex-direction:column;
       background: radial-gradient(1200px 700px at 30% 10%, rgba(156,184,255,0.08), transparent 60%),
                   radial-gradient(900px 600px at 80% 40%, rgba(125,211,252,0.06), transparent 60%),
                   var(--bg0);
@@ -431,20 +473,21 @@
       color: var(--txt);
     }
 
-   #viewer{
-  position:absolute;
-  inset:0;
-  overflow:auto;
-  padding: 18px 0 26px 0;
-  box-sizing:border-box;
-  outline:none;
-  user-select:text;
-  -webkit-user-select:text;
-  -webkit-overflow-scrolling: touch;
+	   #viewer{
+	  position:relative;
+	  flex: 1 1 auto;
+	  min-height: 0;
+	  overflow:auto;
+	  padding: 18px 0 26px 0;
+	  box-sizing:border-box;
+	  outline:none;
+	  user-select:text;
+	  -webkit-user-select:text;
+	  -webkit-overflow-scrolling: touch;
 
-  /* Avoid QtWebEngine black-flash under heavy compositing */
-  contain: layout;
-}
+	  /* Avoid QtWebEngine black-flash under heavy compositing */
+	  contain: layout;
+	}
 
     #viewer:focus{ outline:none; }
 
@@ -717,6 +760,7 @@
 <body>
   <div id="app">
 <div id="toolbar">
+  <button type="button" class="embedCloseBtn" id="btnEmbedClose" title="Close viewer">×</button>
   <div class="btn" id="btnSide">Sidebar</div>
   <div class="btn" id="btnHand" title="Hand tool (H)">Hand</div>
 
@@ -781,11 +825,11 @@
     </div>
   </div>
 
-  <div id="zoomLabel">100%</div>
-  <div id="searchCount"></div>
-  <div id="status"></div>
-  <div id="ocrStatus"></div>
-</div>
+	  <div id="zoomLabel">100%</div>
+	  <div id="searchCount"></div>
+	  <div id="status"></div>
+	  <div id="ocrStatus"></div>
+	</div>
 
 
 
@@ -1016,14 +1060,46 @@ function ensureAnnotationsBridgeReady(){
 
       // ---------------- Query params ----------------
           // ---------------- Query params ----------------
-      const qs = new URLSearchParams(window.location.search);
-      const fileParam = qs.get("file") || "";
-      const pageParam = qs.get("page") || "";
-      const themeParam = (qs.get("theme") || "").trim().toLowerCase();
-      const sidebarParam = (qs.get("sidebar") || "").trim().toLowerCase();
-      let pageJump = parseInt(pageParam || "1", 10) || 1;
+	      const qs = new URLSearchParams(window.location.search);
+	      const fileParam = qs.get("file") || "";
+	      const pageParam = qs.get("page") || "";
+	      const embeddedParam = (qs.get("embedded") || "").trim();
+	      const themeParam = (qs.get("theme") || "").trim().toLowerCase();
+	      const sidebarParam = (qs.get("sidebar") || "").trim().toLowerCase();
+	      let pageJump = parseInt(pageParam || "1", 10) || 1;
 
-      let fileUrl = fileParam ? String(fileParam) : "";
+	      let fileUrl = fileParam ? String(fileParam) : "";
+
+	      const isEmbedded = embeddedParam === "1" || (window.parent && window.parent !== window);
+	      try {
+	        const appEl = document.getElementById("app");
+	        if (appEl) appEl.setAttribute("data-embedded", isEmbedded ? "1" : "0");
+	      } catch {}
+	      if (isEmbedded) {
+	        const closeBtn = document.getElementById("btnEmbedClose");
+	        const requestClose = () => {
+	          try {
+	            if (window.parent && window.parent !== window) {
+	              window.parent.postMessage({ type: "leditor:pdf-close" }, "*");
+	            }
+	          } catch {}
+	        };
+	        if (closeBtn) {
+	          // Force-show in embedded mode even if CSS attributes are delayed.
+	          try { closeBtn.style.display = "flex"; } catch {}
+	          closeBtn.addEventListener("click", (ev) => {
+	            ev.preventDefault();
+	            ev.stopPropagation();
+	            requestClose();
+	          });
+	        }
+	        window.addEventListener("keydown", (ev) => {
+	          if (ev.key === "Escape") {
+	            ev.preventDefault();
+	            requestClose();
+	          }
+	        });
+	      }
 
 
       // ---------------- State ----------------
@@ -1121,12 +1197,33 @@ function ensureAnnotationsBridgeReady(){
       let ocrRequested = false;
 
 
-      function toFileUrlFromWindowsPath(p){
-        const s = String(p);
-        const norm = s.replace(/\\/g, "/");
-        const enc = encodeURI(norm);
-        return "file:///" + enc;
-      }
+	      function toFileUrlFromWindowsPath(p){
+	        const s = String(p || "");
+	        const norm = s.replace(/\\/g, "/");
+	        const m = norm.match(/^([A-Za-z]):\/(.*)$/);
+	        const isWindowsHost = (() => {
+	          try {
+	            const plat = String(
+	              (navigator && navigator.userAgentData && navigator.userAgentData.platform) ||
+	                navigator.platform ||
+	                ""
+	            );
+	            const ua = String(navigator.userAgent || "");
+	            return /win/i.test(plat) || /windows/i.test(ua);
+	          } catch {
+	            return false;
+	          }
+	        })();
+	        if (m && !isWindowsHost) {
+	          // Running on a POSIX host (e.g. WSL/Linux): map `C:/...` -> `/mnt/c/...`
+	          const drive = String(m[1] || "").toLowerCase();
+	          const rest = String(m[2] || "");
+	          const posix = `/mnt/${drive}/${rest}`;
+	          return "file://" + encodeURI(posix);
+	        }
+	        const enc = encodeURI(norm);
+	        return "file:///" + enc;
+	      }
 
       function requestOcrIfNeeded(reason, page){
         if (ocrRequested) return;
@@ -1451,16 +1548,20 @@ function schedulePayloadFocus(reason = "defer", delay = 160) {
       // ---------------- Focus rules ----------------
        // ---------------- Focus rules ----------------
       // Key point: do NOT blur/refocus the viewer during selection drag.
-      function focusViewerIfSafe(){
-        if (modal.style.display === "flex") return;
-        if (document.activeElement === noteBox) return;
-        viewerEl.focus({ preventScroll: true });
-      }
+	      function focusViewerIfSafe(){
+	        if (modal.style.display === "flex") return;
+	        if (document.activeElement === noteBox) return;
+	        // In embedded mode, focusing can scroll the parent document/iframe host and looks like a "jump".
+	        // Let the user click into the viewer instead.
+	        if (!isEmbedded) {
+	          viewerEl.focus({ preventScroll: true });
+	        }
+	      }
 
-	      // Only wire focus for toolbar/sidebar controls (not the viewer, not the modal)
-	      function wireControlFocus(node){
-	        if (!node) return;
-	        node.addEventListener("mousedown", () => focusViewerIfSafe(), { passive: true });
+		      // Only wire focus for toolbar/sidebar controls (not the viewer, not the modal)
+		      function wireControlFocus(node){
+		        if (!node) return;
+		        node.addEventListener("mousedown", () => focusViewerIfSafe(), { passive: true });
 	        node.addEventListener("pointerdown", () => focusViewerIfSafe(), { passive: true });
 	      }
 
@@ -1680,30 +1781,36 @@ async function renderTextLayer(p) {
 }
 
 
-      function renderAnnoLayer(p) {
-        const v = pageViews.get(p);
-        v.annoLayer.innerHTML = "";
+	      function _renderAnnoLayerForView(v, p) {
+	        if (!v || !v.annoLayer) return;
+	        v.annoLayer.innerHTML = "";
 
-        const list = annotations.filter(a => a.page === p);
-        for (const a of list) {
-          for (const r of a.rects) {
-            const d = document.createElement("div");
-            d.className = "hl";
-            d.style.left   = r.x + "px";
-            d.style.top    = r.y + "px";
-            d.style.width  = r.w + "px";
-            d.style.height = r.h + "px";
-           d.dataset.annoId = a.id;
-d.dataset.color = a.color || "yellow";
+	        const list = annotations.filter(a => a.page === p);
+	        for (const a of list) {
+	          for (const r of a.rects) {
+	            const d = document.createElement("div");
+	            d.className = "hl";
+	            d.style.left   = r.x + "px";
+	            d.style.top    = r.y + "px";
+	            d.style.width  = r.w + "px";
+	            d.style.height = r.h + "px";
+	           d.dataset.annoId = a.id;
+	d.dataset.color = a.color || "yellow";
 
 // Allow right-click on highlight blocks even though annoLayer itself is pointer-events:none
 d.style.pointerEvents = "auto";
+	
+	v.annoLayer.appendChild(d);
 
-v.annoLayer.appendChild(d);
+	          }
+	        }
+	      }
 
-          }
-        }
-      }
+	      function renderAnnoLayer(p) {
+	        const v = pageViews.get(p);
+	        if (!v) return;
+	        _renderAnnoLayerForView(v, p);
+	      }
       async function renderPage(p) {
   await sleep0();
   const v = pageViews.get(p);
@@ -1758,12 +1865,12 @@ v.annoLayer.appendChild(d);
   prs.task = task;
 
   try {
-    await task.promise;
-    if (myEpoch !== globalRenderEpoch) return;
-    if (prs.token !== myToken) return;
-
-    await renderTextLayer(p);
-    renderAnnoLayer(p);
+	    await task.promise;
+	    if (myEpoch !== globalRenderEpoch) return;
+	    if (prs.token !== myToken) return;
+	
+	    await renderTextLayer(p);
+	    _renderAnnoLayerForView(v, p);
 
     // Apply PDF theme to this canvas only (do NOT theme app chrome)
     v.canvas.style.filter = _pdfThemeFilter(pdfTheme);
@@ -3592,9 +3699,10 @@ document.addEventListener("keydown", async (ev) => {
 	// Viewer log UI removed.
 
       // ---------------- Boot ----------------
-      function resetStateForNewDocument() {
-        hideSelBar();
-        modal.style.display = "none";
+	      function resetStateForNewDocument() {
+	        cancelAllRenders("reset");
+	        hideSelBar();
+	        modal.style.display = "none";
 
         pdfDoc = null;
         pageCount = 0;
@@ -3602,8 +3710,9 @@ document.addEventListener("keydown", async (ev) => {
         docEl.innerHTML = "";
         sidePane.innerHTML = "";
 
-        pageViews.clear();
-        thumbViews.clear();
+	        pageViews.clear();
+	        pageRenderState.clear();
+	        thumbViews.clear();
 
         annotations = [];
         resetFindState();
@@ -3656,9 +3765,13 @@ document.addEventListener("keydown", async (ev) => {
         setOcrStatus("OCR: idle");
         setHandTool(false);
 
-        const hashStart = parseInitialPageFromHash();
-        const start = clamp((hashStart && hashStart !== 1) ? hashStart : pageJump, 1, pageCount);
-        scrollToPage(start);
+	        const hashStart = parseInitialPageFromHash();
+	        const start = clamp((hashStart && hashStart !== 1) ? hashStart : pageJump, 1, pageCount);
+	        // Avoid a visible "double jump" when opening a direct-quote payload:
+	        // `highlightDirectQuoteOnPage()` already scrolls to the target page.
+	        if (!pendingPayloadFocus || !String(pendingPayloadFocus.quote || "").trim()) {
+	          scrollToPage(start);
+	        }
 
         setSidebarHidden(initialSidebarHidden);
         if (!initialSidebarHidden) {
@@ -3676,7 +3789,11 @@ document.addEventListener("keydown", async (ev) => {
 
         requestOcrIfNeeded("boot", pageJump);
 
-        viewerEl.focus({ preventScroll: true });
+        // In embedded mode, focusing can scroll the parent document/iframe host and looks like a "jump".
+        // Let the user click into the viewer instead.
+        if (!isEmbedded) {
+          viewerEl.focus({ preventScroll: true });
+        }
       }
 
 
@@ -3703,6 +3820,14 @@ document.addEventListener("keydown", async (ev) => {
           ocrRequested = false;
           setOcrStatus("OCR: failed");
           logWarn("ocr: error", msg);
+        } else if ((data.type === "leditor:pdf-payload" || data.type === "pdf-payload") && data.payload) {
+          try {
+            PDF_APP.loadFromPayload(data.payload);
+          } catch (err) {
+            const msg = (err && (err.message || String(err))) || "payload load failed";
+            setStatus("Payload load error: " + msg);
+            logError("payload load error", msg);
+          }
         }
       });
     });

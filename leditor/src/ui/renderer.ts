@@ -27,6 +27,7 @@ import "./agent_fab.css";
 import "./ai_settings.css";
 import "./paragraph_grid.css";
 import "./ai_draft_preview.css";
+import "./ai_draft_rail.css";
 import "./source_check_badges.css";
 import "./source_check_rail.css";
 import "./references.css";
@@ -51,6 +52,7 @@ import { getHostAdapter, setHostAdapter, type HostAdapter } from "../host/host_a
 import { THEME_CHANGE_EVENT } from "./theme_events.ts";
 import { ribbonDebugLog } from "./ribbon_debug.ts";
 import { mountSourceCheckRail } from "./source_check_rail.ts";
+import { subscribeSourceChecksThread } from "./source_checks_thread.ts";
 
 const ensureProcessEnv = (): Record<string, string | undefined> | undefined => {
   if (typeof globalThis === "undefined") {
@@ -68,8 +70,10 @@ const ensureProcessEnv = (): Record<string, string | undefined> | undefined => {
 };
 let handle: EditorHandle | null = null;
 const DEFAULT_CODER_STATE_PATH = "";
+const DEFAULT_LEDOC_FILENAME = "coder_state.ledoc";
 type CoderStateLoadResult = { html: string; sourcePath: string };
 const CODER_STATE_PATH_STORAGE_KEY = "leditor.coderStatePath";
+const LAST_LEDOC_PATH_STORAGE_KEY = "leditor.lastLedocPath";
 let lastCoderStateNode: any = null;
 let lastCoderStatePath: string | null = null;
 const CODER_SCOPE_STORAGE_KEY = "leditor.scopeId";
@@ -478,6 +482,32 @@ async function maybeImportDefaultLedoc(): Promise<boolean> {
         console.warn("[ImportLEDOC][auto] default-path failed", { error });
       }
     }
+    try {
+      const last = window.localStorage.getItem(LAST_LEDOC_PATH_STORAGE_KEY);
+      if (last && last.trim()) return last.trim();
+    } catch {
+      // ignore
+    }
+    try {
+      const coderStatePath = window.localStorage.getItem(CODER_STATE_PATH_STORAGE_KEY);
+      if (coderStatePath && coderStatePath.trim()) {
+        const trimmed = coderStatePath.trim();
+        const next = trimmed.replace(/\.json$/i, ".ledoc");
+        if (next && next !== trimmed) return next;
+      }
+    } catch {
+      // ignore
+    }
+    try {
+      const host = getHostAdapter();
+      if (host?.fileExists) {
+        const probe = await host.fileExists({ sourcePath: DEFAULT_LEDOC_FILENAME });
+        const exists = Boolean((probe as any)?.exists);
+        if (exists) return DEFAULT_LEDOC_FILENAME;
+      }
+    } catch {
+      // ignore
+    }
     return null;
   };
   const importer = (window as typeof window & { __leditorAutoImportLEDOC?: (opts?: any) => Promise<any> })
@@ -529,6 +559,15 @@ let coderStateWarnedMissingWriter = false;
 
 const getCoderAutosaveGuard = () => {
   const g = globalThis as typeof globalThis & { __leditorAllowCoderAutosave?: boolean };
+  return g;
+};
+
+const getLedocAutosaveGuard = () => {
+  const g = globalThis as typeof globalThis & { __leditorAllowLedocAutosave?: boolean };
+  if (typeof g.__leditorAllowLedocAutosave !== "boolean") {
+    // Default off until a LEDOC file is imported.
+    g.__leditorAllowLedocAutosave = false;
+  }
   return g;
 };
 
@@ -933,6 +972,7 @@ export const mountEditor = async () => {
       __leditorRibbonDebug?: boolean;
       __leditorRibbonDebugTab?: string;
       __leditorRibbonDebugVerbose?: boolean;
+      __leditorNonFluentDebug?: boolean;
     };
     win.__leditorRibbonDebug = true;
     if (featureFlags.ribbonDebugTab) {
@@ -940,6 +980,9 @@ export const mountEditor = async () => {
     }
     if (featureFlags.ribbonDebugVerbose) {
       win.__leditorRibbonDebugVerbose = featureFlags.ribbonDebugVerbose;
+    }
+    if (featureFlags.nonFluentIconDebug) {
+      win.__leditorNonFluentDebug = true;
     }
     ribbonDebugLog("enabled by feature flag");
   }
@@ -1051,6 +1094,75 @@ export const mountEditor = async () => {
   appRoot.id = "leditor-app";
   appRoot.className = "leditor-app";
   appRoot.style.setProperty("--ui-scale", String(APP_UI_SCALE));
+
+  const ensureSplitStyles = () => {
+    if (document.getElementById("leditor-split-styles")) return;
+    const style = document.createElement("style");
+    style.id = "leditor-split-styles";
+    style.textContent = `
+.leditor-main-split {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+
+.leditor-doc-shell {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+	.leditor-pdf-shell {
+	  flex: 0 0 clamp(360px, 40vw, 760px);
+	  min-width: 0;
+	  min-height: 0;
+	  display: none;
+	  flex-direction: column;
+	  border-left: 1px solid rgba(17, 24, 39, 0.12);
+	  background: var(--ui-surface);
+	  padding: 0;
+	  box-sizing: border-box;
+	  overflow: hidden;
+	}
+
+.leditor-app.theme-dark .leditor-pdf-shell {
+  border-left-color: rgba(255, 255, 255, 0.16);
+  background: var(--ui-surface-dark);
+}
+
+	.leditor-app.leditor-pdf-open .leditor-pdf-shell {
+	  display: flex;
+	}
+
+	.leditor-pdf-frame {
+	  flex: 1 1 auto;
+	  min-height: 0;
+	  width: 100%;
+	  height: 100%;
+	  display: flex;
+	  flex-direction: column;
+	  padding: 12px 10px 14px;
+	  border-radius: 14px;
+	  overflow: hidden;
+	  background: rgba(255, 255, 255, 0.55);
+	  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.08);
+	  box-sizing: border-box;
+	}
+
+	.leditor-pdf-iframe {
+	  flex: 1 1 auto;
+	  width: 100%;
+	  min-height: 0;
+	  border: 0;
+	  display: block;
+	}
+	`;
+	    document.head.appendChild(style);
+	  };
+  ensureSplitStyles();
   parent.insertBefore(appRoot, editorEl);
   const ribbonHost = document.createElement("div");
   ribbonHost.id = "leditor-ribbon";
@@ -1059,10 +1171,23 @@ export const mountEditor = async () => {
   const appHeader = document.createElement("div");
   appHeader.className = "leditor-app-header";
   appHeader.appendChild(ribbonHost);
+  const mainSplit = document.createElement("div");
+  mainSplit.className = "leditor-main-split";
   const docShell = document.createElement("div");
   docShell.className = "leditor-doc-shell";
   appRoot.appendChild(appHeader);
-  appRoot.appendChild(docShell);
+  appRoot.appendChild(mainSplit);
+  mainSplit.appendChild(docShell);
+	  const pdfShell = document.createElement("div");
+	  pdfShell.className = "leditor-pdf-shell";
+	  const pdfFrame = document.createElement("div");
+	  pdfFrame.className = "leditor-pdf-frame";
+	  const pdfIframe = document.createElement("iframe");
+	  pdfIframe.className = "leditor-pdf-iframe";
+	  pdfIframe.title = "PDF viewer";
+	  pdfFrame.appendChild(pdfIframe);
+	  pdfShell.appendChild(pdfFrame);
+	  mainSplit.appendChild(pdfShell);
   // Keep the editor mount inside the app shell so UI layout and feature CSS (e.g. paragraph grid) apply consistently.
   docShell.appendChild(editorEl);
   initViewState(appRoot);
@@ -1154,6 +1279,116 @@ export const mountEditor = async () => {
   requestLayoutRefresh();
   unsubscribeLayout = subscribeToLayoutChanges(() => requestLayoutRefresh());
   initFullscreenController(appRoot);
+
+  // Embedded PDF viewer (side-by-side with A4). The iframe loads `pdf_viewer.html` and receives payload via postMessage.
+  let pdfFrameLoaded = false;
+  let pendingPdfPayload: Record<string, unknown> | null = null;
+  const pdfViewerRetry = new WeakMap<HTMLIFrameElement, number>();
+  const ensurePdfIframeLoaded = () => {
+    if (pdfIframe.src) return;
+    // Use the full-featured TEIA PDF viewer (pdf.js-based) shipped into `dist/public/PDF_Viewer/`.
+    pdfIframe.src = "PDF_Viewer/viewer.html?embedded=1";
+  };
+  const applyPayloadToPdfViewer = (iframe: HTMLIFrameElement, payload: Record<string, unknown>) => {
+    pendingPdfPayload = payload;
+    const tryApply = (): boolean => {
+      const win = iframe.contentWindow as (Window & { PDF_APP?: { loadFromPayload?: (payload: any) => unknown } }) | null;
+      const pdfApp = win?.PDF_APP;
+      if (pdfApp && typeof pdfApp.loadFromPayload === "function") {
+        try {
+          pdfApp.loadFromPayload(payload);
+          return true;
+        } catch (error) {
+          console.warn("[leditor][pdf] PDF_APP.loadFromPayload failed", error);
+          return false;
+        }
+      }
+      return false;
+    };
+
+    if (tryApply()) {
+      const existing = pdfViewerRetry.get(iframe);
+      if (existing !== undefined) {
+        window.clearInterval(existing);
+        pdfViewerRetry.delete(iframe);
+      }
+      return;
+    }
+
+    const existing = pdfViewerRetry.get(iframe);
+    if (existing !== undefined) {
+      window.clearInterval(existing);
+      pdfViewerRetry.delete(iframe);
+    }
+
+    let intervalId: number | null = null;
+    const cleanup = () => {
+      iframe.removeEventListener("load", onLoad);
+      if (intervalId != null) {
+        window.clearInterval(intervalId);
+        intervalId = null;
+      }
+      pdfViewerRetry.delete(iframe);
+    };
+    const onLoad = () => {
+      pdfFrameLoaded = true;
+      if (pendingPdfPayload && tryApply()) {
+        cleanup();
+      }
+    };
+    iframe.addEventListener("load", onLoad);
+    intervalId = window.setInterval(() => {
+      if (pendingPdfPayload && tryApply()) {
+        cleanup();
+      }
+    }, 250);
+    pdfViewerRetry.set(iframe, intervalId);
+  };
+  pdfIframe.addEventListener("load", () => {
+    pdfFrameLoaded = true;
+    if (pendingPdfPayload) {
+      applyPayloadToPdfViewer(pdfIframe, pendingPdfPayload);
+    }
+  });
+  const openEmbeddedPdf = (payload: Record<string, unknown>) => {
+    ensurePdfIframeLoaded();
+    appRoot.classList.add("leditor-pdf-open");
+    applyPayloadToPdfViewer(pdfIframe, payload);
+    // Ensure pagination reacts to the reduced width.
+    try {
+      layout?.updatePagination();
+    } catch {
+      // ignore
+    }
+  };
+  const closeEmbeddedPdf = () => {
+    appRoot.classList.remove("leditor-pdf-open");
+    try {
+      layout?.updatePagination();
+    } catch {
+      // ignore
+    }
+  };
+  (window as any).__leditorEmbeddedPdf = {
+    open: openEmbeddedPdf,
+    close: closeEmbeddedPdf,
+    isOpen: () => appRoot.classList.contains("leditor-pdf-open"),
+    loaded: () => pdfFrameLoaded
+  };
+
+  // Allow the embedded PDF viewer iframe to request closing the side panel.
+  window.addEventListener(
+    "message",
+    (event) => {
+      const data = (event as MessageEvent<any>).data;
+      if (!data || typeof data !== "object") return;
+      if (data.type === "leditor:pdf-close") {
+        closeEmbeddedPdf();
+      }
+    },
+    { signal }
+  );
+
   const editorHandle = handle;
   const tiptapEditor = editorHandle.getEditor();
   try {
@@ -1231,27 +1466,6 @@ export const mountEditor = async () => {
   ribbonHost.addEventListener("pointerdown", captureRibbonSelection, { capture: true, signal });
   ribbonHost.addEventListener("touchstart", captureRibbonSelection, { capture: true, signal });
   ribbonHost.addEventListener(
-    "click",
-    (event) => {
-      if (layout?.isFootnoteMode?.()) {
-        return;
-      }
-      try {
-        // Avoid scroll jumps when re-focusing after ribbon clicks.
-        if (handle?.focus) {
-          (handle.focus as any)({ preventScroll: true });
-        }
-      } catch {
-        try {
-          handle?.focus?.();
-        } catch {
-          // ignore focus failures
-        }
-      }
-    },
-    { capture: false, signal }
-  );
-  ribbonHost.addEventListener(
     "wheel",
     (event) => {
       // Prevent ribbon scroll from propagating to page/doc scroll.
@@ -1325,10 +1539,25 @@ export const mountEditor = async () => {
 	    if (!prose || !active || !prose.contains(active)) return;
 	    updateLastKnownSelection("tiptap:focus");
 	  });
-  const attachCitationHandlers = (root: HTMLElement, signal: AbortSignal) => {
+  const attachCitationHandlers = (
+    root: Document | HTMLElement,
+    proseRoot: HTMLElement,
+    scopeRoot: HTMLElement,
+    signal: AbortSignal
+  ) => {
     const pickAttr = (el: HTMLElement, name: string): string => {
       const raw = el.getAttribute(name) || "";
       return raw.trim();
+    };
+
+    const targetToElement = (value: EventTarget | null): HTMLElement | null => {
+      if (!value) return null;
+      if (value instanceof HTMLElement) return value;
+      if (value instanceof Node) {
+        const parent = (value as Node).parentElement;
+        return parent instanceof HTMLElement ? parent : null;
+      }
+      return null;
     };
 
     const extractDqid = (el: HTMLElement, href: string): string => {
@@ -1337,9 +1566,42 @@ export const mountEditor = async () => {
         pickAttr(el, "data-quote-id") ||
         pickAttr(el, "data-quote_id");
       if (direct) return direct.toLowerCase();
-      if (href.startsWith("dq://") || href.startsWith("dq:")) {
-        return href.replace(/^dq:\/*/, "").split(/[?#]/)[0].trim().toLowerCase();
+      const hrefRaw = String(href || "").trim();
+      if (!hrefRaw) return "";
+      if (hrefRaw.startsWith("dq://") || hrefRaw.startsWith("dq:")) {
+        return hrefRaw.replace(/^dq:\/*/, "").split(/[?#]/)[0].trim().toLowerCase();
       }
+      const pick = (value: string | null | undefined): string => {
+        const raw = String(value ?? "").trim();
+        if (!raw) return "";
+        try {
+          return decodeURIComponent(raw).trim().toLowerCase();
+        } catch {
+          return raw.toLowerCase();
+        }
+      };
+      const tryUrl = (value: string): string => {
+        try {
+          const url = new URL(value, window.location.href);
+          const q =
+            pick(url.searchParams.get("dqid")) ||
+            pick(url.searchParams.get("quote_id")) ||
+            pick(url.searchParams.get("quote-id"));
+          if (q) return q;
+          const hash = (url.hash || "").replace(/^#/, "");
+          if (hash) {
+            const hp = new URLSearchParams(hash.replace("?", "&"));
+            return pick(hp.get("dqid")) || pick(hp.get("quote_id")) || pick(hp.get("quote-id"));
+          }
+        } catch {
+          // ignore invalid urls
+        }
+        return "";
+      };
+      const fromUrl = tryUrl(hrefRaw);
+      if (fromUrl) return fromUrl;
+      const match = hrefRaw.match(/[?#&](?:dqid|quote_id|quote-id)=([^&#]+)/i);
+      if (match && match[1]) return pick(match[1]);
       return "";
     };
 
@@ -1371,6 +1633,102 @@ export const mountEditor = async () => {
       }
     };
 
+    const isHandledAnchor = (anchor: HTMLAnchorElement, hrefHint?: string): { href: string; dqid: string } | null => {
+      const rawHref = (hrefHint ?? pickAttr(anchor, "href")).trim();
+      const dqidFallback = extractDqid(anchor, rawHref);
+      const href = rawHref || (dqidFallback ? `dq://${dqidFallback}` : "");
+      if (!href) return null;
+      const dqid = extractDqid(anchor, href) || dqidFallback;
+      if (!dqid) return null;
+      return { href, dqid };
+    };
+
+    const recentOpenAt = new WeakMap<HTMLAnchorElement, number>();
+    const OPEN_DEDUPE_MS = 450;
+    const dispatchAnchorOpen = (anchor: HTMLAnchorElement, handled: { href: string; dqid: string }) => {
+      const now = Date.now();
+      const last = recentOpenAt.get(anchor) ?? 0;
+      if (now - last < OPEN_DEDUPE_MS) return;
+      recentOpenAt.set(anchor, now);
+      const dqid = handled.dqid;
+      const anchorId =
+        anchor.id ||
+        pickAttr(anchor, "data-key") ||
+        pickAttr(anchor, "item-key") ||
+        pickAttr(anchor, "data-item-key") ||
+        pickAttr(anchor, "data-quote-id") ||
+        pickAttr(anchor, "data-quote_id") ||
+        dqid;
+      const detail = {
+        href: handled.href,
+        dqid,
+        anchorId,
+        title: anchor.getAttribute("title") || "",
+        text: (anchor.textContent || "").trim(),
+        dataKey: pickAttr(anchor, "data-key"),
+        dataItemKeys: pickAttr(anchor, "data-item-keys"),
+        dataQuoteId: pickAttr(anchor, "data-quote-id"),
+        dataQuoteIdAlt: pickAttr(anchor, "data-quote_id"),
+        dataQuoteText: pickAttr(anchor, "data-quote-text")
+      };
+      if ((window as any).__leditorPdfDebug) {
+        console.info("[leditor][anchor-click]", detail);
+      }
+      window.dispatchEvent(new CustomEvent("leditor-anchor-click", { detail, bubbles: true }));
+    };
+
+    // Prevent caret/selection from moving into the anchor when clicking direct-quote links.
+    root.addEventListener(
+      "mousedown",
+      (ev) => {
+        const mouse = ev as MouseEvent;
+        if (typeof mouse.button === "number" && mouse.button !== 0) return;
+        const target = targetToElement(ev.target);
+        if (!target) return;
+        if (!scopeRoot.contains(target)) return;
+        const anchor = target.closest("a") as HTMLAnchorElement | null;
+        if (!anchor) return;
+        const handled = isHandledAnchor(anchor);
+        if (!handled) return;
+        const inProseMirror = proseRoot.contains(anchor);
+        if (inProseMirror) {
+          ev.preventDefault();
+          ev.stopPropagation();
+        }
+        ensureTitle(anchor, handled.href);
+        anchor.classList.add("leditor-citation-anchor");
+        anchor.setAttribute("contenteditable", "false");
+        anchor.setAttribute("draggable", "false");
+      },
+      { capture: true, signal }
+    );
+
+    // Some ProseMirror/selection interactions can cancel the `click` event; open on pointerdown
+    // so a single click reliably opens the PDF viewer.
+    root.addEventListener(
+      "pointerdown",
+      (ev) => {
+        const pe = ev as PointerEvent;
+        if (typeof (pe as any).button === "number" && (pe as any).button !== 0) return;
+        const target = targetToElement(ev.target);
+        if (!target) return;
+        if (!scopeRoot.contains(target)) return;
+        const anchor = target.closest("a") as HTMLAnchorElement | null;
+        if (!anchor) return;
+        const handled = isHandledAnchor(anchor);
+        if (!handled) return;
+        // Prevent selection/caret changes and stop ProseMirror from consuming the interaction.
+        ev.preventDefault();
+        ev.stopPropagation();
+        ensureTitle(anchor, handled.href);
+        anchor.classList.add("leditor-citation-anchor");
+        anchor.setAttribute("contenteditable", "false");
+        anchor.setAttribute("draggable", "false");
+        dispatchAnchorOpen(anchor, handled);
+      },
+      { capture: true, signal }
+    );
+
     root.addEventListener(
       "click",
       (ev) => {
@@ -1379,46 +1737,39 @@ export const mountEditor = async () => {
         if (typeof (ev as MouseEvent).detail === "number" && (ev as MouseEvent).detail > 1) {
           return;
         }
-        const target = ev.target as HTMLElement | null;
+        const target = targetToElement(ev.target);
         if (!target) return;
-        console.info("[leditor][click][capture]", {
-          tag: target.tagName,
-          className: target.className,
-          text: (target.textContent || "").slice(0, 80)
-        });
+        if (!scopeRoot.contains(target)) return;
+        if ((window as any).__leditorPdfDebug) {
+          console.info("[leditor][click][capture]", {
+            tag: target.tagName,
+            className: target.className,
+            text: (target.textContent || "").slice(0, 80)
+          });
+        }
         const anchor = target.closest("a") as HTMLAnchorElement | null;
         if (!anchor) return;
-        const rawHref = (anchor.getAttribute("href") || "").trim();
-        const dqidFallback = extractDqid(anchor, rawHref);
-        const href = rawHref || (dqidFallback ? `dq://${dqidFallback}` : "");
-        if (!href) return;
+        const handled = isHandledAnchor(anchor);
+        if (!handled) {
+          if ((window as any).__leditorPdfDebug) {
+            console.info("[leditor][anchor-click][skip]", {
+              href: (anchor.getAttribute("href") || "").trim(),
+              dataDqid: pickAttr(anchor, "data-dqid"),
+              dataQuoteId: pickAttr(anchor, "data-quote-id") || pickAttr(anchor, "data-quote_id"),
+              text: (anchor.textContent || "").trim().slice(0, 80)
+            });
+          }
+          return;
+        }
         ev.preventDefault();
-        ev.stopPropagation();
-        ensureTitle(anchor, href);
+        if (proseRoot.contains(anchor)) {
+          ev.stopPropagation();
+        }
+        ensureTitle(anchor, handled.href);
         anchor.classList.add("leditor-citation-anchor");
-        const dqid = extractDqid(anchor, href) || dqidFallback;
-        const anchorId =
-          anchor.id ||
-          pickAttr(anchor, "data-key") ||
-          pickAttr(anchor, "item-key") ||
-          pickAttr(anchor, "data-item-key") ||
-          pickAttr(anchor, "data-quote-id") ||
-          pickAttr(anchor, "data-quote_id") ||
-          dqid;
-        const detail = {
-          href,
-          dqid,
-          anchorId,
-          title: anchor.getAttribute("title") || "",
-          text: (anchor.textContent || "").trim(),
-          dataKey: pickAttr(anchor, "data-key"),
-          dataItemKeys: pickAttr(anchor, "data-item-keys"),
-          dataQuoteId: pickAttr(anchor, "data-quote-id"),
-          dataQuoteIdAlt: pickAttr(anchor, "data-quote_id"),
-          dataQuoteText: pickAttr(anchor, "data-quote-text")
-        };
-        console.info("[leditor][anchor-click]", detail);
-        window.dispatchEvent(new CustomEvent("leditor-anchor-click", { detail, bubbles: true }));
+        anchor.setAttribute("contenteditable", "false");
+        anchor.setAttribute("draggable", "false");
+        dispatchAnchorOpen(anchor, handled);
       },
       { capture: true, signal }
     );
@@ -1426,13 +1777,16 @@ export const mountEditor = async () => {
     root.addEventListener(
       "mouseover",
       (ev) => {
-        const target = ev.target as HTMLElement | null;
+        const target = targetToElement(ev.target);
         if (!target) return;
+        if (!scopeRoot.contains(target)) return;
         const anchor = target.closest("a") as HTMLAnchorElement | null;
         if (!anchor) return;
         const href = (anchor.getAttribute("href") || "").trim();
         ensureTitle(anchor, href);
         anchor.classList.add("leditor-citation-anchor");
+        anchor.setAttribute("contenteditable", "false");
+        anchor.setAttribute("draggable", "false");
       },
       { capture: true, signal }
     );
@@ -1440,7 +1794,7 @@ export const mountEditor = async () => {
   const schemaMarks = Object.keys(tiptapEditor.schema.marks || {});
   console.info("[LEditor][schema][marks]", schemaMarks);
   console.info("[LEditor][schema][anchor]", { present: Boolean(tiptapEditor.schema.marks.anchor) });
-  attachCitationHandlers(tiptapEditor.view.dom, signal);
+  attachCitationHandlers(document, tiptapEditor.view.dom, appRoot, signal);
   installDirectQuotePdfOpenHandler();
   try {
     const probeHtml =
@@ -1549,7 +1903,7 @@ export const mountEditor = async () => {
     }
   };
 
-  if (!hasInitialContent) {
+  if (!hasInitialContent && featureFlags.startupSmokeChecksEnabled) {
     editorHandle.execCommand("Bold");
     editorHandle.execCommand("Undo");
     let didThrow = false;
@@ -1594,41 +1948,8 @@ export const mountEditor = async () => {
       return false;
     };
 
-    editorHandle.setContent("<p>Font check</p>", { format: "html" });
-    editorHandle.focus();
-    editorHandle.execCommand("FontFamily", { value: "Times New Roman" });
-    editorHandle.execCommand("FontSize", { valuePx: 16 });
-    const fontJson = editorHandle.getJSON();
-    if (!hasMark(fontJson, "fontFamily", (attrs) => attrs.fontFamily === "Times New Roman")) {
-      throw new Error("Phase8 font family JSON check failed.");
-    }
-    if (!hasMark(fontJson, "fontSize", (attrs) => attrs.fontSize === 16)) {
-      throw new Error("Phase8 font size JSON check failed.");
-    }
-    const fontHtml = editorHandle.getContent({ format: "html" });
-    if (typeof fontHtml !== "string") {
-      throw new Error("Phase8 font HTML check failed.");
-    }
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(`${fontHtml}`, "text/html");
-    const fontFamilyElement = doc.querySelector("[style*='font-family']");
-    const fontSizeElement = doc.querySelector("[style*='font-size']");
-    const hasFontFamily =
-      typeof fontFamilyElement?.getAttribute("style") === "string" &&
-      fontFamilyElement
-        .getAttribute("style")!
-        .toLowerCase()
-        .includes("font-family: times new roman");
-    const hasFontSize =
-      typeof fontSizeElement?.getAttribute("style") === "string" &&
-      fontSizeElement.getAttribute("style")!.toLowerCase().includes("font-size: 16px");
-    if (!hasFontFamily || !hasFontSize) {
-      console.warn("Phase8 font HTML check skipped", { fontHtml });
-    } else {
-      window.codexLog?.write("[PHASE8_OK]");
-    }
-    // Restore to a clean doc after the transient font check.
-    editorHandle.setContent("<p></p>", { format: "html" });
+    // Phase 8 font check skipped in live doc to avoid clobbering user state.
+    window.codexLog?.write("[PHASE8_SKIPPED]");
   }
 
   // Autosave coder state: event-driven and coalesced (no polling).
@@ -1654,6 +1975,42 @@ export const mountEditor = async () => {
   };
   editorHandle.on("change", scheduleAutosave);
 
+  // Autosave LEDOC to persist session annotations (e.g. source-checks thread) when the current
+  // document was loaded from a LEDOC file (default: coder_state.ledoc auto-import).
+  let ledocAutosaveTimer: number | null = null;
+  const scheduleLedocAutosave = (reason: string) => {
+    if (!getLedocAutosaveGuard().__leditorAllowLedocAutosave) return;
+    let targetPath = "";
+    try {
+      targetPath = (window.localStorage.getItem(LAST_LEDOC_PATH_STORAGE_KEY) || "").trim();
+    } catch {
+      targetPath = "";
+    }
+    if (!targetPath) return;
+    if (ledocAutosaveTimer !== null) window.clearTimeout(ledocAutosaveTimer);
+    ledocAutosaveTimer = window.setTimeout(() => {
+      ledocAutosaveTimer = null;
+      try {
+        const exporter = (window as typeof window & {
+          __leditorAutoExportLEDOC?: (options?: { targetPath?: string; suggestedPath?: string; prompt?: boolean }) => Promise<any>;
+        }).__leditorAutoExportLEDOC;
+        if (!exporter) return;
+        console.debug(
+          `[renderer.ts][ledocAutosave][debug] export requested: reason=${reason} pathLen=${targetPath.length}`
+        );
+        // IMPORTANT: export-ledoc prompts if `targetPath` is missing. For autosave we must set it.
+        void exporter({ targetPath, prompt: false }).catch((error) => {
+          console.warn("[renderer.ts][ledocAutosave][debug] export failed", { reason, error });
+        });
+      } catch (error) {
+        console.warn("[renderer.ts][ledocAutosave][debug] export threw", { reason, error });
+      }
+    }, 1200);
+  };
+  const unsubSourceChecks = subscribeSourceChecksThread(() => scheduleLedocAutosave("sourceChecksThread"));
+  // keep subscription for app lifetime
+  void unsubSourceChecks;
+
   if (CURRENT_PHASE === 21) {
     if (!hasInitialContent) {
       runPhase21Validation(editorHandle, tiptapEditor);
@@ -1669,9 +2026,23 @@ export const mountEditor = async () => {
   const margins = getMarginValues();
   const headerHtml = layout?.getHeaderContent();
   const footerHtml = layout?.getFooterContent();
+  const contract = getHostContract();
+  const sanitizeFilenameBase = (raw: string): string => {
+    const trimmed = String(raw ?? "").trim();
+    if (!trimmed) return "untitled";
+    const safe = trimmed.replace(/[\\/:"*?<>|]+/g, "-").replace(/\s+/g, " ").trim();
+    return safe.slice(0, 96) || "untitled";
+  };
+  const joinLike = (dir: string, name: string): string => {
+    const base = String(dir || "").replace(/[\\/]+$/, "");
+    if (!base) return name;
+    const sep = base.includes("\\") && !base.includes("/") ? "\\" : "/";
+    return `${base}${sep}${name}`;
+  };
+  const autoExportName = `docx-phase23-${Date.now()}-${sanitizeFilenameBase(contract.documentTitle || "document")}.docx`;
   const exportOptions = {
     prompt: false,
-    suggestedPath: `.codex_logs/exports/docx-phase23-${Date.now()}.docx`,
+    suggestedPath: joinLike(contract.paths?.tempDir || "", autoExportName),
     pageSize,
     pageMargins: margins,
     section: {
