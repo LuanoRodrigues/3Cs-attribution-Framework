@@ -4,6 +4,7 @@ const STORAGE_KEY = "leditor.ai.settings";
 
 const DEFAULT_SETTINGS: AiSettings = {
   apiKey: "",
+  provider: "openai",
   model: "codex-mini-latest",
   temperature: 0.2,
   chunkSize: 32000,
@@ -23,10 +24,16 @@ const parseStoredSettings = (): AiSettings => {
       // API keys are loaded from the environment (`OPENAI_API_KEY`) in the Electron main process.
       // Do not persist API keys in renderer storage.
       apiKey: "",
+      provider: (() => {
+        const rawProvider = typeof (parsed as any).provider === "string" ? String((parsed as any).provider).trim() : "";
+        if (rawProvider === "openai" || rawProvider === "deepseek" || rawProvider === "mistral" || rawProvider === "gemini") {
+          return rawProvider;
+        }
+        return DEFAULT_SETTINGS.provider;
+      })(),
       model: (() => {
         const rawModel = typeof parsed.model === "string" ? parsed.model.trim() : "";
         if (!rawModel) return DEFAULT_SETTINGS.model;
-        if (rawModel === "gpt-4o-mini") return DEFAULT_SETTINGS.model;
         return rawModel;
       })(),
       temperature: typeof parsed.temperature === "number" ? parsed.temperature : DEFAULT_SETTINGS.temperature,

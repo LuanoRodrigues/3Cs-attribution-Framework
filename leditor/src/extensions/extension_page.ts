@@ -77,6 +77,15 @@ const shouldSplitAfter = (el: HTMLElement): boolean => {
   return false;
 };
 
+const isHeadingElement = (el: HTMLElement): boolean => {
+  const tag = el.tagName.toUpperCase();
+  if (tag.length === 2 && tag.startsWith("H")) {
+    const level = Number(tag.slice(1));
+    return Number.isFinite(level) && level >= 1 && level <= 6;
+  }
+  return false;
+};
+
 // Require extra slack before joining to avoid split/join oscillation at boundaries.
 const DEFAULT_JOIN_BUFFER_PX = 12;
 const DELETE_JOIN_BUFFER_PX = 0;
@@ -127,6 +136,16 @@ const findSplitTarget = (content: HTMLElement, tolerance = 1): { target: HTMLEle
         });
         return null;
       }
+      const prev = children[i - 1] ?? null;
+      if (prev && isHeadingElement(prev) && !shouldSplitAfter(prev)) {
+        logDebug("keep-with-next: moving heading to next page", {
+          headingTag: prev.tagName,
+          headingIndex: i - 1,
+          overflowTag: child.tagName,
+          overflowIndex: i
+        });
+        return { target: prev, after: false };
+      }
       logDebug("overflow split target", {
         tag: child.tagName,
         index: i,
@@ -172,7 +191,14 @@ const findJoinBoundary = (
     const used = last ? last.offsetTop + last.offsetHeight + lastMarginBottom : 0;
     const remaining = content.clientHeight - used;
     const nextMarginTop = parseFloat(getComputedStyle(nextFirst).marginTop || "0") || 0;
-    const nextHeight = nextMarginTop + nextFirst.offsetHeight;
+    let nextHeight = nextMarginTop + nextFirst.offsetHeight;
+    if (isHeadingElement(nextFirst)) {
+      const nextSecond = nextFirst.nextElementSibling as HTMLElement | null;
+      if (nextSecond) {
+        const nextSecondMarginTop = parseFloat(getComputedStyle(nextSecond).marginTop || "0") || 0;
+        nextHeight += nextSecondMarginTop + nextSecond.offsetHeight;
+      }
+    }
     if (remaining + tolerance >= nextHeight + joinBufferPx) {
       let pos = 0;
       for (let idx = 0; idx <= i; idx += 1) {
@@ -267,13 +293,16 @@ const paginateView = (
       view.dispatch(tr);
       return;
     }
-    const joinBufferPx = options?.preferJoin ? DELETE_JOIN_BUFFER_PX : DEFAULT_JOIN_BUFFER_PX;
-    const joinPos = findJoinBoundary(view, pageType, 1, joinBufferPx);
-    if (joinPos !== null) {
-      logDebug("joining pages", { joinPos });
-      const tr = view.state.tr.join(joinPos);
-      view.dispatch(tr);
-      return;
+    const skipJoin = document.documentElement.classList.contains("leditor-footnote-editing");
+    if (!skipJoin) {
+      const joinBufferPx = options?.preferJoin ? DELETE_JOIN_BUFFER_PX : DEFAULT_JOIN_BUFFER_PX;
+      const joinPos = findJoinBoundary(view, pageType, 1, joinBufferPx);
+      if (joinPos !== null) {
+        logDebug("joining pages", { joinPos });
+        const tr = view.state.tr.join(joinPos);
+        view.dispatch(tr);
+        return;
+      }
     }
     const emptyRange = findEmptyPageRange(view.state.doc, pageType);
     if (emptyRange && view.state.doc.childCount > 1) {
@@ -394,7 +423,7 @@ export const PagePagination = Extension.create({
           return wrapDocInPage(newState);
         },
         view(editorView) {
-          console.info("[PaginationDebug] PagePagination initialized");
+          // pagination debug log removed
           const running = { value: false };
           const scheduler = new PaginationScheduler({
             root: editorView.dom as HTMLElement,
@@ -404,8 +433,15 @@ export const PagePagination = Extension.create({
               lastMutationWasDelete = false;
             }
           });
+          const handleExternalPaginationRequest = () => {
+            scheduler.request();
+          };
           logPaginationStats(editorView, "scheduler mounted");
           scheduler.request();
+          editorView.dom.addEventListener(
+            "leditor:pagination-request",
+            handleExternalPaginationRequest as EventListener
+          );
           return {
             update(view, prevState) {
               if (view.state.doc.eq(prevState.doc)) return;
@@ -413,6 +449,10 @@ export const PagePagination = Extension.create({
               scheduler.request();
             },
             destroy() {
+              editorView.dom.removeEventListener(
+                "leditor:pagination-request",
+                handleExternalPaginationRequest as EventListener
+              );
               scheduler.dispose();
             }
           };

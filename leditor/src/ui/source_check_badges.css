@@ -1,13 +1,13 @@
 /* source_check_badges.css */
 
 .leditor-source-check--verified {
-  background: rgba(16, 185, 129, 0.10);
-  border-bottom: 1px solid rgba(16, 185, 129, 0.35);
+  background: transparent;
+  border-bottom: 1px solid rgba(16, 185, 129, 0.28);
 }
 
 .leditor-source-check--needsReview {
-  background: rgba(239, 68, 68, 0.08);
-  border-bottom: 1px solid rgba(239, 68, 68, 0.32);
+  background: transparent;
+  border-bottom: 1px solid rgba(239, 68, 68, 0.28);
 }
 
 .leditor-source-check--anchor.leditor-source-check--verified {
@@ -18,62 +18,7 @@
   color: rgba(239, 68, 68, 0.88);
 }
 
-.leditor-source-check-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  margin-left: 3px;
-  border-radius: 999px;
-  font-size: 11px;
-  line-height: 1;
-  user-select: none;
-  vertical-align: text-top;
-  cursor: help;
-  pointer-events: auto;
-}
-
-.leditor-source-check-badge--verified {
-  color: rgba(6, 95, 70, 1);
-  background: rgba(16, 185, 129, 0.18);
-  border: 1px solid rgba(16, 185, 129, 0.35);
-}
-
-.leditor-source-check-badge--needsReview {
-  color: rgba(127, 29, 29, 1);
-  background: rgba(239, 68, 68, 0.14);
-  border: 1px solid rgba(239, 68, 68, 0.32);
-}
-
-.leditor-source-check-note {
-  display: inline-flex;
-  align-items: center;
-  max-width: 260px;
-  margin-left: 6px;
-  padding: 2px 6px;
-  border-radius: 8px;
-  font-size: 11px;
-  line-height: 1.25;
-  vertical-align: text-top;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  user-select: none;
-  pointer-events: none;
-}
-
-.leditor-source-check-note--verified {
-  color: rgba(6, 95, 70, 1);
-  background: rgba(16, 185, 129, 0.12);
-  border: 1px solid rgba(16, 185, 129, 0.28);
-}
-
-.leditor-source-check-note--needsReview {
-  color: rgba(127, 29, 29, 1);
-  background: rgba(239, 68, 68, 0.10);
-  border: 1px solid rgba(239, 68, 68, 0.24);
-}
+/* Inline badge/note widgets were removed in favor of the right-side feedback rail. */
 
 /* When the citation atom node is decorated, the class is applied on the <a.leditor-citation-anchor>. */
 .leditor-citation-anchor.leditor-source-check--verified {

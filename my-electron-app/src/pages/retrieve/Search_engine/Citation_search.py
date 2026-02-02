@@ -6,7 +6,11 @@ from Search_engine.Citations_graph.Graph_widget import ConnectedPapersLikeGraph
 from bibliometric_analysis_tool.utils.Zotero_loader_to_df import load_data_from_source_for_widget
 from bibliometric_analysis_tool.utils.zotero_class import merge_sections_min_words
 from extract_pdf_ui import process_pdf
-from src.core.utils.calling_models import ocr_single_pdf_structured, submit_mistral_ocr3_batch, mistral_batch_references
+from python_backend.core.utils.calling_models import (
+    ocr_single_pdf_structured,
+    submit_mistral_ocr3_batch,
+    mistral_batch_references,
+)
 
 collection_name=("0.13_cyber_attribution_corpus_records_total_included")
 def references_to_graph(

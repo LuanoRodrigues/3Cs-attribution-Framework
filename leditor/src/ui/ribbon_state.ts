@@ -15,6 +15,8 @@ import {
   isReadMode
 } from "./view_state.ts";
 import { isVisualBlocksEnabled } from "../editor/visual.ts";
+import { isSourceChecksVisible } from "./source_checks_thread.ts";
+import { ribbonTraceCall } from "./ribbon_debugger.ts";
 
 const STATE_CONTRACT = (loadRibbonRegistry().stateContract ?? {}) as Record<string, string>;
 export type RibbonStateContract = typeof STATE_CONTRACT;
@@ -139,7 +141,8 @@ const stateSelectors: Partial<
     const styleId = editor.state.doc.attrs?.citationStyleId;
     if (typeof styleId === "string") return styleId;
     return null;
-  }
+  },
+  sourceChecksVisible: () => isSourceChecksVisible()
 };
 
 export class RibbonStateBus {
@@ -176,8 +179,10 @@ export class RibbonStateBus {
   }
 
   dispatch(commandId: EditorCommandId, payload?: unknown): void {
-    dispatchCommand(this.editorHandle, commandId, payload);
-    this.scheduleUpdate();
+    ribbonTraceCall("stateBus.dispatch", { commandId }, () => {
+      dispatchCommand(this.editorHandle, commandId, payload);
+      this.scheduleUpdate();
+    });
   }
 
   getState(): RibbonStateSnapshot {
@@ -204,37 +209,39 @@ export class RibbonStateBus {
   }
 
   private updateState(): void {
-    const editor = this.editorHandle.getEditor();
-    const nextState: RibbonStateSnapshot = {};
-    for (const key of STATE_KEYS) {
-      const selector = stateSelectors[key];
-      if (!selector) {
-        continue;
-      }
-      const raw = selector(editor, this.state);
-      if (key === "selectionContext" && raw && typeof raw === "object") {
-        const prev = this.state.selectionContext as any;
-        if (
-          prev &&
-          typeof prev === "object" &&
-          (raw as any).hasSelection === prev.hasSelection &&
-          (raw as any).isRange === prev.isRange
-        ) {
-          nextState[key] = prev;
+    ribbonTraceCall("stateBus.updateState", { keys: STATE_KEYS.length }, () => {
+      const editor = this.editorHandle.getEditor();
+      const nextState: RibbonStateSnapshot = {};
+      for (const key of STATE_KEYS) {
+        const selector = stateSelectors[key];
+        if (!selector) {
+          continue;
+        }
+        const raw = selector(editor, this.state);
+        if (key === "selectionContext" && raw && typeof raw === "object") {
+          const prev = this.state.selectionContext as any;
+          if (
+            prev &&
+            typeof prev === "object" &&
+            (raw as any).hasSelection === prev.hasSelection &&
+            (raw as any).isRange === prev.isRange
+          ) {
+            nextState[key] = prev;
+          } else {
+            nextState[key] = raw;
+          }
         } else {
           nextState[key] = raw;
         }
-      } else {
-        nextState[key] = raw;
       }
-    }
-    if (this.hasStateChanged(nextState)) {
-      this.state = { ...this.state, ...nextState };
-      const snapshot = this.getState();
-      this.listeners.forEach((listener) => listener(snapshot));
-    } else {
-      this.state = { ...this.state, ...nextState };
-    }
+      if (this.hasStateChanged(nextState)) {
+        this.state = { ...this.state, ...nextState };
+        const snapshot = this.getState();
+        this.listeners.forEach((listener) => listener(snapshot));
+      } else {
+        this.state = { ...this.state, ...nextState };
+      }
+    });
   }
 
   private hasStateChanged(next: RibbonStateSnapshot): boolean {

@@ -31,11 +31,14 @@ export class PanelGrid {
     | {
         startX: number;
         leftId: PanelId;
+        rightFirstId: PanelId;
         rightIds: PanelId[];
         leftStartPx: number;
         rightStartPx: number;
+        rightFirstStartPx: number;
         rightStartParts: number[];
         leftMin: number;
+        rightFirstMin: number;
         rightMin: number;
         containerWidth: number;
       }
@@ -53,8 +56,14 @@ export class PanelGrid {
         panelId: PanelId;
         maxWidthPx: number;
       }
+    | {
+        mode: "centeredGrid";
+        // Prefer maxWidthFrac to keep layouts proportional across window sizes.
+        maxWidthFrac?: number;
+        maxWidthPx?: number;
+      }
     | null = null;
-  private readonly fixedPanelSizes: Partial<Record<PanelId, number>> = {
+  private fixedPanelSizes: Partial<Record<PanelId, number>> = {
     panel1: 320,
     panel2: 360
   };
@@ -70,6 +79,7 @@ export class PanelGrid {
     this.updateGutterVisibility();
     document.addEventListener("click", this.handleDocumentClick);
     document.addEventListener("keydown", this.handleDocumentKeyDown);
+    window.addEventListener("resize", () => this.applySizes());
   }
 
   private loadState(): PanelGridState {
@@ -175,6 +185,7 @@ export class PanelGrid {
     gutter.className = "panel-gutter";
     gutter.dataset.leftPanel = leftId;
     gutter.dataset.rightPanel = rightId;
+    gutter.setAttribute("aria-hidden", "true");
     gutter.addEventListener("pointerdown", (event) => this.beginDrag(event as PointerEvent, leftId, rightId));
     return gutter;
   }
@@ -208,18 +219,25 @@ export class PanelGrid {
       .filter((r): r is PanelRecord => Boolean(r))
       .map((r) => r.shell.getBoundingClientRect().width);
     const rightStartPx = rightShells.reduce((sum, w) => sum + w, 0);
+    const rightFirstRecord = this.panels.get(rightId);
+    const rightFirstStartPx = rightFirstRecord?.shell.getBoundingClientRect().width ?? 0;
+    const rightFirstMin = rightDefs[0]?.minWidthPx ?? 0;
     const rightMin = rightDefs.reduce((sum, def) => sum + def.minWidthPx, 0);
     this.dragSession = {
       startX: event.clientX,
       leftId,
+      rightFirstId: rightId,
       rightIds,
       leftStartPx: leftBounds.width,
       rightStartPx,
+      rightFirstStartPx,
       rightStartParts: rightShells,
       leftMin: left.definition.minWidthPx,
+      rightFirstMin,
       rightMin,
       containerWidth: containerBounds.width
     };
+    document.body.classList.add("panel-resizing");
     window.addEventListener("pointermove", this.handleDragMove);
     window.addEventListener("pointerup", this.endDrag);
   }
@@ -254,6 +272,48 @@ export class PanelGrid {
     if (!this.dragSession) return;
     const drag = this.dragSession;
     const delta = clientX - drag.startX;
+
+    // In round layouts, panels 1/2 are pixel-fixed by default; resizing should adjust those px widths.
+    const leftFixed = this.roundLayout && typeof this.fixedPanelSizes[drag.leftId] === "number";
+    const rightFixed = this.roundLayout && typeof this.fixedPanelSizes[drag.rightFirstId] === "number";
+    if (leftFixed || rightFixed) {
+      if (leftFixed && rightFixed) {
+        const totalFixed = drag.leftStartPx + drag.rightFirstStartPx;
+        const minLeft = drag.leftMin;
+        const minRight = drag.rightFirstMin;
+        let nextLeft = drag.leftStartPx + delta;
+        if (nextLeft < minLeft) nextLeft = minLeft;
+        if (nextLeft > totalFixed - minRight) nextLeft = totalFixed - minRight;
+        const nextRight = totalFixed - nextLeft;
+        this.fixedPanelSizes[drag.leftId] = Math.round(nextLeft);
+        this.fixedPanelSizes[drag.rightFirstId] = Math.round(nextRight);
+        this.applySizes();
+        return;
+      }
+
+      if (leftFixed) {
+        const totalSegment = drag.leftStartPx + drag.rightStartPx;
+        let nextLeft = drag.leftStartPx + delta;
+        if (nextLeft < drag.leftMin) nextLeft = drag.leftMin;
+        const maxLeft = totalSegment - drag.rightMin;
+        if (nextLeft > maxLeft) nextLeft = maxLeft;
+        this.fixedPanelSizes[drag.leftId] = Math.round(nextLeft);
+        this.applySizes();
+        return;
+      }
+
+      if (rightFixed) {
+        const totalSegment = drag.leftStartPx + drag.rightStartPx;
+        let nextRightFirst = drag.rightFirstStartPx - delta;
+        if (nextRightFirst < drag.rightFirstMin) nextRightFirst = drag.rightFirstMin;
+        const maxRight = totalSegment - drag.leftMin;
+        if (nextRightFirst > maxRight) nextRightFirst = maxRight;
+        this.fixedPanelSizes[drag.rightFirstId] = Math.round(nextRightFirst);
+        this.applySizes();
+        return;
+      }
+    }
+
     const totalSegment = drag.leftStartPx + drag.rightStartPx;
     let nextLeft = drag.leftStartPx + delta;
     if (nextLeft < drag.leftMin) {
@@ -280,6 +340,7 @@ export class PanelGrid {
       return;
     }
     this.dragSession = null;
+    document.body.classList.remove("panel-resizing");
     if (this.dragMoveRaf) {
       cancelAnimationFrame(this.dragMoveRaf);
       this.dragMoveRaf = 0;
@@ -370,7 +431,13 @@ export class PanelGrid {
       shell.dataset.minimized = "false";
       shell.dataset.collapsed = "false";
     });
-    // Apply optional centered layout after normal sizing so it wins.
+    // Apply optional layout hints after normal sizing so they win.
+    if (this.root) {
+      this.root.style.maxWidth = "";
+      this.root.style.marginLeft = "";
+      this.root.style.marginRight = "";
+    }
+
     if (this.layoutHint && this.layoutHint.mode === "centeredSingle") {
       const record = this.panels.get(this.layoutHint.panelId);
       if (record && !this.state.collapsed[this.layoutHint.panelId] && !this.state.undocked[this.layoutHint.panelId]) {
@@ -382,6 +449,23 @@ export class PanelGrid {
         shell.style.marginLeft = "auto";
         shell.style.marginRight = "auto";
       }
+    }
+
+    if (this.layoutHint && this.layoutHint.mode === "centeredGrid" && this.root) {
+      const containerWidth = this.container.getBoundingClientRect().width || window.innerWidth || 0;
+      const frac =
+        typeof this.layoutHint.maxWidthFrac === "number" && Number.isFinite(this.layoutHint.maxWidthFrac)
+          ? Math.min(1, Math.max(0.1, this.layoutHint.maxWidthFrac))
+          : null;
+      const px =
+        typeof this.layoutHint.maxWidthPx === "number" && Number.isFinite(this.layoutHint.maxWidthPx)
+          ? Math.floor(this.layoutHint.maxWidthPx)
+          : null;
+      const computed = frac ? Math.floor(containerWidth * frac) : px;
+      const maxWidth = Math.max(480, Math.floor(computed ?? containerWidth));
+      this.root.style.maxWidth = `${maxWidth}px`;
+      this.root.style.marginLeft = "auto";
+      this.root.style.marginRight = "auto";
     }
     this.updateGutterVisibility();
   }
@@ -922,6 +1006,11 @@ export class PanelGrid {
           mode: "centeredSingle";
           panelId: PanelId;
           maxWidthPx: number;
+        }
+      | {
+          mode: "centeredGrid";
+          maxWidthFrac?: number;
+          maxWidthPx?: number;
         }
       | null
   ): void {

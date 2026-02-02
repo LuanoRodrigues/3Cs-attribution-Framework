@@ -15,13 +15,20 @@ const summarizeInvokeRequest = (channel: string, request: unknown): Record<strin
   switch (channel) {
     case "leditor:ai-status":
       return { channel };
+    case "leditor:llm-status":
+    case "leditor:llm-catalog":
+      return { channel };
     case "leditor:check-sources": {
       const payload = obj?.payload as any;
       return {
         channel,
         requestIdLen: typeof obj?.requestId === "string" ? obj.requestId.length : 0,
-        contextTextLen: typeof payload?.contextText === "string" ? payload.contextText.length : 0,
-        anchorsLen: Array.isArray(payload?.anchors) ? payload.anchors.length : 0
+        provider: typeof payload?.provider === "string" ? payload.provider : "unknown",
+        model: typeof payload?.model === "string" ? payload.model : "unknown",
+        paragraphTextLen: typeof payload?.paragraphText === "string" ? payload.paragraphText.length : 0,
+        anchorsLen: Array.isArray(payload?.anchors) ? payload.anchors.length : 0,
+        anchorsWithContext:
+          Array.isArray(payload?.anchors) ? payload.anchors.filter((a: any) => a && typeof a === "object" && a.context).length : 0
       };
     }
     case "leditor:lexicon": {
@@ -29,6 +36,8 @@ const summarizeInvokeRequest = (channel: string, request: unknown): Record<strin
       return {
         channel,
         requestIdLen: typeof obj?.requestId === "string" ? obj.requestId.length : 0,
+        provider: typeof payload?.provider === "string" ? payload.provider : "unknown",
+        model: typeof payload?.model === "string" ? payload.model : "unknown",
         mode: typeof payload?.mode === "string" ? payload.mode : "unknown",
         textLen: typeof payload?.text === "string" ? payload.text.length : 0
       };
@@ -191,6 +200,14 @@ const getAiStatus = async () => {
   return invoke<void, any>("leditor:ai-status", undefined as any);
 };
 
+const getLlmStatus = async () => {
+  return invoke<void, any>("leditor:llm-status", undefined as any);
+};
+
+const getLlmCatalog = async () => {
+  return invoke<void, any>("leditor:llm-catalog", undefined as any);
+};
+
 const agentRequest = async (request: { requestId?: string; payload: Record<string, unknown> }) => {
   return invoke<typeof request, any>("leditor:agent-request", request);
 };
@@ -239,6 +256,8 @@ contextBridge.exposeInMainWorld("leditorHost", {
   closeFootnotePanel: () => undefined,
   registerFootnoteHandlers: () => undefined,
   getAiStatus,
+  getLlmStatus,
+  getLlmCatalog,
   readFile,
   fileExists,
   writeFile,

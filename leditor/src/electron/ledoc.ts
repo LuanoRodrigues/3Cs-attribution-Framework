@@ -47,6 +47,20 @@ const readJsonObjectOptional = async (
   return parseJsonObject(raw, label);
 };
 
+const readJsonAnyOptional = async (
+  zip: JSZip,
+  archivePath: string,
+  label: string
+): Promise<unknown | null> => {
+  const raw = await readTextFileOptional(zip, archivePath);
+  if (raw == null) return null;
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch (error) {
+    throw new Error(`${label} parse failed: ${normalizeError(error)}`);
+  }
+};
+
 const requireJsonObject = async (zip: JSZip, archivePath: string, label: string): Promise<Record<string, unknown>> => {
   const parsed = await readJsonObjectOptional(zip, archivePath, label);
   if (!parsed) {
@@ -78,7 +92,14 @@ export const packLedocZip = async (payload: any): Promise<Buffer> => {
 export const unpackLedocZip = async (
   buffer: Buffer
 ): Promise<{
-  payload: { document: object; meta: Record<string, unknown>; settings?: Record<string, unknown>; footnotes?: Record<string, unknown> };
+  payload: {
+    document: object;
+    meta: Record<string, unknown>;
+    settings?: Record<string, unknown>;
+    footnotes?: Record<string, unknown>;
+    styles?: unknown;
+    history?: unknown;
+  };
   warnings: string[];
 }> => {
   const warnings: string[] = [];
@@ -93,6 +114,21 @@ export const unpackLedocZip = async (
   const footnotes = await readJsonObjectOptional(zip, LEDOC_PATHS.footnotes, "footnotes.json");
   if (!footnotes) warnings.push("footnotes.json missing; loaded content only.");
 
-  return { payload: { document, meta, settings: settings ?? undefined, footnotes: footnotes ?? undefined }, warnings };
-};
+  const styles = await readJsonAnyOptional(zip, LEDOC_PATHS.styles, "styles.json");
+  if (styles == null) warnings.push("styles.json missing; using default styles.");
 
+  const history = await readJsonAnyOptional(zip, LEDOC_PATHS.history, "history.json");
+  if (history == null) warnings.push("history.json missing; no persisted session metadata.");
+
+  return {
+    payload: {
+      document,
+      meta,
+      settings: settings ?? undefined,
+      footnotes: footnotes ?? undefined,
+      styles: styles ?? undefined,
+      history: history ?? undefined
+    },
+    warnings
+  };
+};

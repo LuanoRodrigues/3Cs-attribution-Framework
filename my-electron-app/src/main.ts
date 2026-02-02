@@ -6,6 +6,8 @@ import os from "os";
 import { app, BrowserWindow, ipcMain, Menu, MenuItemConstructorOptions, shell, dialog } from "electron";
 import { pathToFileURL } from "url";
 import mammoth from "mammoth";
+import JSZip from "jszip";
+import { spawn } from "child_process";
 
 import type { SectionLevel } from "./analyse/types";
 import { addAudioCacheEntries, getAudioCacheStatus } from "./analyse/audioCache";
@@ -22,7 +24,7 @@ import { DATABASE_KEYS } from "./config/settingsKeys";
 import { handleRetrieveCommand, registerRetrieveIpcHandlers } from "./main/ipc/retrieve_ipc";
 import { registerProjectIpcHandlers } from "./main/ipc/project_ipc";
 import { ProjectManager } from "./main/services/projectManager";
-import { invokeVisualisePreview, invokeVisualiseSections } from "./main/services/visualiseBridge";
+import { invokeVisualiseExportPptx, invokeVisualisePreview, invokeVisualiseSections } from "./main/services/visualiseBridge";
 import { invokePdfOcr } from "./main/services/pdfOcrBridge";
 import { createCoderTestTree, createPdfTestPayload } from "./test/testFixtures";
 import { getCoderCacheDir } from "./session/sessionPaths";
@@ -800,19 +802,50 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
         return { status: "error", message: error instanceof Error ? error.message : "pdf command failed" };
       }
     }
-        if (payload?.phase === "visualiser" && payload.action) {
+    if (payload?.phase === "visualiser" && payload.action) {
+      try {
+        if (payload.action === "run_inputs" || payload.action === "refresh_preview" || payload.action === "build_deck") {
+          const body = (payload.payload as Record<string, unknown>) || {};
+          const response = await invokeVisualisePreview({
+            table: body.table as any,
+            include: (body.include as string[]) || [],
+            params: (body.params as Record<string, unknown>) || {},
+            selection: (body.selection as any) || undefined,
+            collectionName: body.collectionName as string | undefined,
+            mode: payload.action
+          });
+          return response;
+        }
+        if (payload.action === "export_pptx") {
+          const body = (payload.payload as Record<string, unknown>) || {};
+          const collectionName = String(body.collectionName || "Collection").trim() || "Collection";
+          const safeBase = collectionName.replace(/[^\w\-_. ]+/g, "_").replace(/\s+/g, "_").slice(0, 80) || "Collection";
+          const result = await dialog.showOpenDialog({
+            title: "Select folder to save PowerPoint",
+            properties: ["openDirectory", "createDirectory"]
+          });
+          if (result.canceled || result.filePaths.length === 0) {
+            return { status: "canceled", message: "Export canceled." };
+          }
+          const outputDir = result.filePaths[0];
+          let outputPath = path.join(outputDir, `${safeBase}_visualiser.pptx`);
           try {
-            if (payload.action === "run_inputs" || payload.action === "refresh_preview" || payload.action === "build_deck") {
-              const body = (payload.payload as Record<string, unknown>) || {};
-              const response = await invokeVisualisePreview({
-                table: body.table as any,
-                include: (body.include as string[]) || [],
-                params: (body.params as Record<string, unknown>) || {},
-                collectionName: body.collectionName as string | undefined,
-                mode: payload.action
-              });
-              return response;
+            if (fs.existsSync(outputPath)) {
+              outputPath = path.join(outputDir, `${safeBase}_visualiser_${Date.now()}.pptx`);
             }
+          } catch {
+            // ignore
+          }
+          const response = await invokeVisualiseExportPptx({
+            table: body.table as any,
+            include: (body.include as string[]) || [],
+            params: (body.params as Record<string, unknown>) || {},
+            selection: (body.selection as any) || undefined,
+            collectionName,
+            outputPath
+          });
+          return response;
+        }
         if (payload.action === "get_sections") {
           return await invokeVisualiseSections();
         }
@@ -973,6 +1006,187 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
       return { success: false, error: normalizeError(error) };
     }
   });
+
+  const resolveDefaultLedocPath = async (): Promise<string> => {
+    const repoRoot = resolveRepoRoot();
+    const repoCandidate = path.join(repoRoot, "coder_state.ledoc");
+    try {
+      if (fs.existsSync(repoCandidate)) {
+        return repoCandidate;
+      }
+    } catch {
+      // ignore
+    }
+    const fallbackDir = path.join(app.getPath("userData"), "leditor");
+    const fallbackPath = path.join(fallbackDir, "coder_state.ledoc");
+    try {
+      await fs.promises.mkdir(fallbackDir, { recursive: true });
+    } catch {
+      // ignore
+    }
+    return fallbackPath;
+  };
+
+  const packLedocZip = async (payload: Record<string, unknown>): Promise<Buffer> => {
+    const zip = new JSZip();
+    const addJson = (name: string, value: unknown) => {
+      if (value === undefined || value === null) return;
+      zip.file(name, JSON.stringify(value, null, 2));
+    };
+    addJson("document.json", (payload as any).document ?? {});
+    addJson("meta.json", (payload as any).meta ?? {});
+    addJson("settings.json", (payload as any).settings);
+    addJson("footnotes.json", (payload as any).footnotes);
+    addJson("styles.json", (payload as any).styles);
+    addJson("history.json", (payload as any).history);
+    return zip.generateAsync({ type: "nodebuffer" });
+  };
+
+  const unpackLedocZip = async (buffer: Buffer): Promise<Record<string, unknown>> => {
+    const zip = await JSZip.loadAsync(buffer);
+    const readTextOptional = async (name: string): Promise<string | null> => {
+      const file = zip.file(name);
+      if (!file) return null;
+      return file.async("string");
+    };
+    const readJsonOptional = async (name: string): Promise<Record<string, unknown> | null> => {
+      const raw = await readTextOptional(name);
+      if (!raw) return null;
+      try {
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : null;
+      } catch {
+        return null;
+      }
+    };
+    const requireJson = async (name: string): Promise<Record<string, unknown>> => {
+      const value = await readJsonOptional(name);
+      if (!value) throw new Error(`Missing or invalid ${name}`);
+      return value;
+    };
+
+    const document = await requireJson("document.json");
+    const meta = await requireJson("meta.json");
+    const settings = await readJsonOptional("settings.json");
+    const footnotes = await readJsonOptional("footnotes.json");
+    const styles = await readJsonOptional("styles.json");
+    const history = await readJsonOptional("history.json");
+    return {
+      document,
+      meta,
+      settings: settings ?? undefined,
+      footnotes: footnotes ?? undefined,
+      styles: styles ?? undefined,
+      history: history ?? undefined
+    };
+  };
+
+  const ensureLedocExists = async (filePath: string): Promise<void> => {
+    try {
+      if (fs.existsSync(filePath)) return;
+    } catch {
+      // ignore
+    }
+    const now = new Date().toISOString();
+    const payload = {
+      document: { type: "doc", content: [{ type: "paragraph" }] },
+      meta: { version: "1.0", title: "Untitled document", authors: [], created: now, lastModified: now },
+      settings: {
+        pageSize: "A4",
+        // px @ 96dpi
+        margins: { top: 96, right: 96, bottom: 96, left: 96 }
+      }
+    };
+    const buffer = await packLedocZip(payload as any);
+    await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.promises.writeFile(filePath, buffer);
+  };
+
+  ipcMain.handle("leditor:get-default-ledoc-path", async () => {
+    const filePath = await resolveDefaultLedocPath();
+    try {
+      await ensureLedocExists(filePath);
+    } catch (error) {
+      console.warn("[leditor:get-default-ledoc-path] unable to create default LEDOC", error);
+    }
+    return filePath;
+  });
+
+  ipcMain.handle(
+    "leditor:import-ledoc",
+    async (_event, request: { options?: { sourcePath?: string; prompt?: boolean } }) => {
+      const options = request?.options ?? {};
+      let sourcePath = options.sourcePath;
+      if (!sourcePath || (options.prompt ?? true)) {
+        const result = await dialog.showOpenDialog({
+          title: "Import LEDOC",
+          properties: ["openFile"],
+          filters: [
+            { name: "LEditor Document", extensions: ["ledoc"] },
+            { name: "JSON Document", extensions: ["json"] },
+            { name: "All files", extensions: ["*"] }
+          ]
+        });
+        if (result.canceled || result.filePaths.length === 0 || !result.filePaths[0]) {
+          return { success: false, error: "Import canceled" };
+        }
+        sourcePath = result.filePaths[0];
+      }
+      if (!sourcePath) {
+        return { success: false, error: "No document selected" };
+      }
+      try {
+        const ext = path.extname(sourcePath).toLowerCase();
+        if (ext === ".json") {
+          const raw = await fs.promises.readFile(sourcePath, "utf-8");
+          const parsed = JSON.parse(raw);
+          return { success: true, filePath: sourcePath, payload: { document: parsed, meta: { version: "1.0", title: "Imported JSON", authors: [], created: "", lastModified: "" } } };
+        }
+        const buffer = await fs.promises.readFile(sourcePath);
+        const payload = await unpackLedocZip(buffer);
+        return { success: true, filePath: sourcePath, payload };
+      } catch (error) {
+        return { success: false, error: normalizeError(error) };
+      }
+    }
+  );
+
+  ipcMain.handle(
+    "leditor:export-ledoc",
+    async (_event, request: { payload?: any; options?: { suggestedPath?: string; prompt?: boolean } }) => {
+      const repoRoot = resolveRepoRoot();
+      const options = request?.options ?? {};
+      const promptUser = options.prompt ?? true;
+      let filePath = options.suggestedPath as string | undefined;
+      if (!filePath || promptUser) {
+        const defaultPath = filePath && path.isAbsolute(filePath) ? filePath : path.join(repoRoot, "coder_state.ledoc");
+        const result = await dialog.showSaveDialog({
+          title: "Export LEDOC",
+          defaultPath,
+          filters: [{ name: "LEditor Document", extensions: ["ledoc"] }]
+        });
+        if (result.canceled || !result.filePath) {
+          return { success: false, error: "Export canceled" };
+        }
+        filePath = result.filePath;
+      } else if (!path.isAbsolute(filePath)) {
+        filePath = path.join(repoRoot, filePath);
+      }
+      if (!filePath) {
+        return { success: false, error: "No path provided" };
+      }
+      try {
+        const payload = request?.payload ?? {};
+        const buffer = await packLedocZip(payload);
+        await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
+        await fs.promises.writeFile(filePath, buffer);
+        const stats = fs.statSync(filePath);
+        return { success: true, filePath, bytes: stats.size };
+      } catch (error) {
+        return { success: false, error: normalizeError(error) };
+      }
+    }
+  );
 
   ipcMain.handle("leditor:ai-status", async () => {
     loadDotEnvIntoProcessEnv();
@@ -1441,7 +1655,124 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
     }
   });
 
+  ipcMain.handle("analyse:list-cached-tables", async () => {
+    return listCachedDataHubTables();
+  });
+
+  ipcMain.handle("analyse:run-ai-on-table", async (_event, payload: Record<string, unknown>) => {
+    return runAnalyseAiHost({
+      ...(payload ?? {}),
+      // Always resolve cache dir from Electron.
+      cacheDir: path.join(app.getPath("userData"), "data-hub-cache")
+    });
+  });
+
   registerProjectIpcHandlers(projectManager);
+}
+
+async function listCachedDataHubTables(): Promise<
+  Array<{ fileName: string; filePath: string; mtimeMs: number; rows: number; cols: number }>
+> {
+  const cacheDir = path.join(app.getPath("userData"), "data-hub-cache");
+  try {
+    await fs.promises.mkdir(cacheDir, { recursive: true });
+  } catch {
+    // ignore
+  }
+  const ignoreNames = new Set([
+    "references.json",
+    "references_library.json",
+    "references.used.json",
+    "references_library.used.json"
+  ]);
+  const out: Array<{ fileName: string; filePath: string; mtimeMs: number; rows: number; cols: number }> = [];
+  let entries: string[] = [];
+  try {
+    entries = await fs.promises.readdir(cacheDir);
+  } catch {
+    return out;
+  }
+  for (const name of entries) {
+    const lower = name.toLowerCase();
+    if (!lower.endsWith(".json")) continue;
+    if (ignoreNames.has(lower)) continue;
+    const filePath = path.join(cacheDir, name);
+    try {
+      const stat = await fs.promises.stat(filePath);
+      if (!stat.isFile()) continue;
+      const raw = await fs.promises.readFile(filePath, "utf-8");
+      const parsed = JSON.parse(raw);
+      const table = (parsed as any)?.table;
+      const cols = Array.isArray(table?.columns) ? table.columns.length : 0;
+      const rows = Array.isArray(table?.rows) ? table.rows.length : 0;
+      if (cols <= 0 || rows <= 0) continue;
+      out.push({ fileName: name, filePath, mtimeMs: stat.mtimeMs, rows, cols });
+    } catch {
+      // ignore corrupt caches
+    }
+  }
+  out.sort((a, b) => b.mtimeMs - a.mtimeMs || a.fileName.localeCompare(b.fileName));
+  return out;
+}
+
+function resolvePythonBinary(): string {
+  const candidate = process.env.PYTHON || process.env.PYTHON3;
+  if (candidate && candidate.trim()) return candidate.trim();
+  return process.platform === "win32" ? "python" : "python3";
+}
+
+function resolveAnalyseAiHostScript(): string {
+  const appPath = app.getAppPath();
+  const candidates = [
+    path.join(appPath, "shared", "python_backend", "analyse", "analyse_ai_host.py"),
+    path.join(appPath, "..", "shared", "python_backend", "analyse", "analyse_ai_host.py"),
+    path.join(appPath, "..", "..", "shared", "python_backend", "analyse", "analyse_ai_host.py")
+  ];
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return candidates[0];
+}
+
+async function runAnalyseAiHost(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const python = resolvePythonBinary();
+  const script = resolveAnalyseAiHostScript();
+  if (!fs.existsSync(script)) {
+    return { success: false, error: `Missing analyse_ai_host.py: ${script}` };
+  }
+  return new Promise((resolve) => {
+    const child = spawn(python, [script], { stdio: ["pipe", "pipe", "pipe"] });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk.toString();
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk.toString();
+    });
+    child.on("error", (error) => {
+      resolve({ success: false, error: error.message });
+    });
+    child.on("close", (code) => {
+      const raw = (stdout || "").trim();
+      if (code !== 0 && !raw) {
+        resolve({ success: false, error: stderr.trim() || `python exited with ${code}` });
+        return;
+      }
+      try {
+        resolve(JSON.parse(raw || "{}"));
+      } catch (error) {
+        resolve({
+          success: false,
+          error: `Invalid response from python (${error instanceof Error ? error.message : "parse error"})`,
+          raw,
+          stderr: stderr.trim()
+        });
+      }
+    });
+    child.stdin.write(JSON.stringify(payload));
+    child.stdin.end();
+  });
 }
 
 function createWindow(): void {

@@ -211,7 +211,8 @@ function debugLogPanelState(index: number, marker: string): void {
   window.setTimeout(() => shell.classList.remove("panel-shell--debug-state"), 400);
 }
 let panelRoot: HTMLElement;
-const TEST_PDF_VIEWER_URL = new URL("../resources/viewer.html", window.location.href).href;
+// Prefer the bundled external PDF viewer (copied to dist/resources/pdf_viewer).
+const TEST_PDF_VIEWER_URL = new URL("../resources/pdf_viewer/viewer.html", window.location.href).href;
 const TEST_PDF_ASSET_URL = new URL(
   "../resources/pdfs/O'Connell - 2012 - Cyber security without cyber war.pdf",
   window.location.href
@@ -322,6 +323,7 @@ let lastRoundWideLayout = false;
 const setRatiosForRound = (action: AnalyseAction) => {
   const isCorpus = action === "analyse/open_corpus";
   const isR1 = action === "analyse/open_sections_r1";
+  const isPhases = action === "analyse/open_phases";
   const isR2 = action === "analyse/open_sections_r2";
   const isR3 = action === "analyse/open_sections_r3";
 
@@ -330,17 +332,16 @@ const setRatiosForRound = (action: AnalyseAction) => {
     return;
   }
 
-  if (isCorpus || isR1) {
-    // Panel 1: filters (1/6)
-    // Panel 2: cards (3/6) centered
+  if (isCorpus || isR1 || isPhases) {
+    // Panel 1: filters (2/6)
+    // Panel 2: cards (3/6) centered with 1/12 margins on each side (total free space 1/6).
     panelGrid.setRoundLayout(false);
-    panelGrid.setLayoutHint(null);
+    panelGrid.setLayoutHint({ mode: "centeredGrid", maxWidthFrac: 5 / 6 });
     panelGrid.setCollapsed("panel1", false);
     panelGrid.setCollapsed("panel2", false);
     panelGrid.setCollapsed("panel3", true);
     panelGrid.setCollapsed("panel4", true);
-    panelGrid.setRatios({ panel1: 1, panel2: 3, panel3: 0, panel4: 0 });
-    panelGrid.setLayoutHint({ mode: "centeredSingle", panelId: "panel2", maxWidthPx: 1180 });
+    panelGrid.setRatios({ panel1: 2, panel2: 3, panel3: 0, panel4: 0 });
     lastRoundWideLayout = false;
     return;
   }
@@ -351,7 +352,7 @@ const setRatiosForRound = (action: AnalyseAction) => {
     // Panel 2: cards (1/6)
     // Panel 3: sections (2/6)
     // Panel 4: coder (2/6)
-    panelGrid.setRoundLayout(false);
+    panelGrid.setRoundLayout(true);
     panelGrid.setLayoutHint(null);
     panelGrid.setCollapsed("panel1", false);
     panelGrid.setCollapsed("panel2", false);
@@ -821,6 +822,15 @@ function renderAnalyseRibbon(mount: HTMLElement): void {
   });
   dashboardRow.appendChild(corpusBtn);
 
+  const analyseDataBtn = document.createElement("button");
+  analyseDataBtn.type = "button";
+  analyseDataBtn.className = "ribbon-button ribbon-button--compact";
+  analyseDataBtn.textContent = "Analyse data";
+  analyseDataBtn.addEventListener("click", () => {
+    void openAnalyseDataModal();
+  });
+  dashboardRow.appendChild(analyseDataBtn);
+
   const dashLabel = document.createElement("span");
   dashLabel.textContent = "Dashboard";
   dashLabel.className = "status-bar";
@@ -911,6 +921,220 @@ function renderAnalyseRibbon(mount: HTMLElement): void {
       runSelect.appendChild(opt);
     });
   };
+
+  async function openAnalyseDataModal(): Promise<void> {
+    const backdrop = document.createElement("div");
+    backdrop.className = "modal-backdrop";
+    const dialog = document.createElement("div");
+    dialog.className = "modal";
+    dialog.style.maxWidth = "820px";
+    const title = document.createElement("h3");
+    title.textContent = "Analyse data (cached tables)";
+    dialog.appendChild(title);
+
+    const status = document.createElement("div");
+    status.className = "status-bar";
+    status.textContent = "Loading cached tables…";
+    dialog.appendChild(status);
+
+    const form = document.createElement("div");
+    form.style.display = "grid";
+    form.style.gridTemplateColumns = "1fr 1fr";
+    form.style.gap = "10px 14px";
+    form.style.marginTop = "10px";
+    dialog.appendChild(form);
+
+    const makeRow = (labelText: string, field: HTMLElement) => {
+      const label = document.createElement("label");
+      label.style.display = "flex";
+      label.style.flexDirection = "column";
+      label.style.gap = "6px";
+      const l = document.createElement("span");
+      l.textContent = labelText;
+      l.style.fontSize = "12px";
+      l.style.color = "var(--muted)";
+      label.append(l, field);
+      return label;
+    };
+
+    const tableSelect = document.createElement("select");
+    tableSelect.style.width = "100%";
+    form.appendChild(makeRow("Cached table", tableSelect));
+
+    const scopeSelect = document.createElement("select");
+    ["All rows", "Selected rows", "Row indices"].forEach((label) => {
+      const opt = document.createElement("option");
+      opt.value = label;
+      opt.textContent = label;
+      scopeSelect.appendChild(opt);
+    });
+    form.appendChild(makeRow("Scope", scopeSelect));
+
+    const indicesInput = document.createElement("input");
+    indicesInput.type = "text";
+    indicesInput.placeholder = "e.g. 0,1,2 (only for Row indices)";
+    form.appendChild(makeRow("Row indices", indicesInput));
+
+    const datesInput = document.createElement("input");
+    datesInput.type = "text";
+    datesInput.placeholder = "e.g. 2010-2018; 2019-2024";
+    form.appendChild(makeRow("Dates", datesInput));
+
+    const batchSize = document.createElement("input");
+    batchSize.type = "number";
+    batchSize.value = "50";
+    batchSize.min = "5";
+    batchSize.max = "500";
+    form.appendChild(makeRow("Batch size", batchSize));
+
+    const overlap = document.createElement("input");
+    overlap.type = "number";
+    overlap.value = "10";
+    overlap.min = "0";
+    overlap.max = "100";
+    form.appendChild(makeRow("Overlap", overlap));
+
+    const round2 = document.createElement("select");
+    ["paragraphs", "sentences"].forEach((value) => {
+      const opt = document.createElement("option");
+      opt.value = value;
+      opt.textContent = value;
+      round2.appendChild(opt);
+    });
+    form.appendChild(makeRow("Round 2 mode", round2));
+
+    const framework = document.createElement("label");
+    framework.style.display = "flex";
+    framework.style.alignItems = "center";
+    framework.style.gap = "8px";
+    const frameworkCb = document.createElement("input");
+    frameworkCb.type = "checkbox";
+    frameworkCb.checked = true;
+    const frameworkTxt = document.createElement("span");
+    frameworkTxt.textContent = "Framework analysis";
+    framework.append(frameworkCb, frameworkTxt);
+    const frameworkWrap = document.createElement("div");
+    frameworkWrap.style.gridColumn = "1 / -1";
+    frameworkWrap.appendChild(framework);
+    form.appendChild(frameworkWrap);
+
+    const prompt = document.createElement("textarea");
+    prompt.rows = 4;
+    prompt.placeholder = "Extra prompt…";
+    const promptWrap = makeRow("Prompt", prompt);
+    promptWrap.style.gridColumn = "1 / -1";
+    form.appendChild(promptWrap);
+
+    const logs = document.createElement("pre");
+    logs.style.marginTop = "10px";
+    logs.style.maxHeight = "220px";
+    logs.style.overflow = "auto";
+    logs.style.background = "color-mix(in srgb, var(--panel-2) 70%, transparent)";
+    logs.style.border = "1px solid var(--border-soft)";
+    logs.style.borderRadius = "10px";
+    logs.style.padding = "10px";
+    logs.style.fontSize = "12px";
+    logs.textContent = "";
+    dialog.appendChild(logs);
+
+    const actions = document.createElement("div");
+    actions.className = "modal-actions";
+    const cancel = document.createElement("button");
+    cancel.className = "ribbon-button ghost";
+    cancel.textContent = "Close";
+    cancel.addEventListener("click", () => backdrop.remove());
+    const run = document.createElement("button");
+    run.className = "ribbon-button";
+    run.textContent = "Run";
+    actions.append(cancel, run);
+    dialog.appendChild(actions);
+
+    backdrop.appendChild(dialog);
+    document.body.appendChild(backdrop);
+
+    const appendLog = (line: string) => {
+      logs.textContent = `${logs.textContent || ""}${line}\n`;
+      logs.scrollTop = logs.scrollHeight;
+    };
+
+    const tables = (await window.analyseBridge?.data.listCachedTables?.().catch(() => [])) as Array<{
+      fileName: string;
+      filePath: string;
+      mtimeMs: number;
+      rows: number;
+      cols: number;
+    }>;
+    tableSelect.innerHTML = "";
+    if (!tables.length) {
+      status.textContent = "No cached tables found.";
+      const opt = document.createElement("option");
+      opt.disabled = true;
+      opt.selected = true;
+      opt.textContent = "No cached tables";
+      tableSelect.appendChild(opt);
+      run.disabled = true;
+      return;
+    }
+    status.textContent = `Found ${tables.length} cached table(s).`;
+    tables.forEach((t, idx) => {
+      const opt = document.createElement("option");
+      opt.value = t.filePath;
+      opt.textContent = `${t.fileName} (${t.rows}×${t.cols})`;
+      if (idx === 0) opt.selected = true;
+      tableSelect.appendChild(opt);
+    });
+
+    run.addEventListener("click", async () => {
+      run.disabled = true;
+      status.textContent = "Running…";
+      logs.textContent = "";
+      const tablePath = tableSelect.value;
+      const scopeLabel = scopeSelect.value;
+      const rowIndices =
+        scopeLabel === "Row indices"
+          ? indicesInput.value
+              .split(/[\\s,;]+/g)
+              .map((x) => Number(x))
+              .filter((n) => Number.isFinite(n) && n >= 0)
+          : null;
+
+      const aiPayload = {
+        tablePath,
+        ai: {
+          data_scope: scopeLabel,
+          dates: datesInput.value,
+          batch_size: Number(batchSize.value) || 50,
+          batch_overlapping: Number(overlap.value) || 10,
+          framework_analysis: Boolean(frameworkCb.checked),
+          round2: round2.value,
+          prompt: prompt.value
+        },
+        scope: rowIndices ? { rowIndices } : {}
+      };
+
+      appendLog(`[AI] table=${tablePath}`);
+      try {
+        const resp = await window.analyseBridge?.data.runAiOnTable?.(aiPayload);
+        const asAny = resp as any;
+        const ok = Boolean(asAny?.success);
+        if (Array.isArray(asAny?.logs)) {
+          asAny.logs.forEach((l: any) => appendLog(String(l)));
+        }
+        if (ok) {
+          status.textContent = "Done.";
+          appendLog(JSON.stringify(asAny?.result ?? {}, null, 2));
+        } else {
+          status.textContent = "Failed.";
+          appendLog(`[ERROR] ${String(asAny?.error || "unknown")}`);
+        }
+      } catch (err: any) {
+        status.textContent = "Failed.";
+        appendLog(`[ERROR] ${String(err?.message || err)}`);
+      } finally {
+        run.disabled = false;
+      }
+    });
+  }
 
   runSelect.addEventListener("change", async () => {
     const next = lastRuns.find((r) => r.id === runSelect.value) || null;

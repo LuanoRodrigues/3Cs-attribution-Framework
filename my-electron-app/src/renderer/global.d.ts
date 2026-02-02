@@ -56,6 +56,10 @@ declare global {
         getDefaultBaseDir: () => Promise<string>;
         getAudioCacheStatus: (runId: string | undefined, keys: string[]) => Promise<{ cachedKeys: string[] }>;
         addAudioCacheEntries: (runId: string | undefined, entries: unknown[]) => Promise<{ cachedKeys: string[] }>;
+        listCachedTables: () => Promise<
+          Array<{ fileName: string; filePath: string; mtimeMs: number; rows: number; cols: number }>
+        >;
+        runAiOnTable: (payload: unknown) => Promise<unknown>;
       };
     };
     commandBridge?: {
@@ -85,6 +89,24 @@ declare global {
       importBundle: (zipPath: string) => Promise<{ success: boolean }>;
       getPaths: () => Promise<{ appDataPath: string; configPath: string; settingsFilePath: string; exportPath: string }>;
       openSettingsWindow: (section?: string) => Promise<{ status: string }>;
+    };
+    leditorHost?: {
+      exportDOCX: (request: { docJson: object; options?: Record<string, unknown> }) => Promise<unknown>;
+      exportPDF: (request: { html: string; options?: { suggestedPath?: string; prompt?: boolean } }) => Promise<unknown>;
+      exportLEDOC: (request: { payload: unknown; options?: { suggestedPath?: string; prompt?: boolean } }) => Promise<unknown>;
+      importDOCX: (request?: { options?: { sourcePath?: string; prompt?: boolean } }) => Promise<unknown>;
+      importLEDOC: (request?: { options?: { sourcePath?: string; prompt?: boolean } }) => Promise<unknown>;
+      insertImage: () => Promise<unknown>;
+      getDefaultLEDOCPath: () => Promise<string>;
+      readFile: (request: { sourcePath: string }) => Promise<{ success: boolean; data?: string; error?: string }>;
+      writeFile: (request: { targetPath: string; data: string }) => Promise<{ success: boolean; error?: string }>;
+      agentRequest: (request: { requestId?: string; payload: unknown }) => Promise<unknown>;
+      agentCancel: (request: { requestId: string }) => Promise<unknown>;
+      getAiStatus: () => Promise<unknown>;
+      registerFootnoteHandlers: (handlers: { open?: () => void; toggle?: () => void; close?: () => void }) => void;
+      openFootnotePanel: () => void;
+      toggleFootnotePanel: () => void;
+      closeFootnotePanel: () => void;
     };
     sessionBridge?: {
       onMenuAction: (callback: (action: SessionMenuAction) => void) => () => void;

@@ -163,6 +163,7 @@ const ICON_CREATORS = {
   revisionHistory: () => fluentSvg("History20Filled"),
   aiAssistant: () => fluentSvg("Sparkle20Filled"),
   accessibility: () => fluentSvg("Accessibility20Filled"),
+  delete: () => fluentSvg("Dismiss20Filled"),
   acceptChange: () => fluentSvg("Checkmark20Filled"),
   addText: () => fluentSvg("TextAdd20Filled"),
   autoMark: () => fluentSvg("CheckboxChecked20Filled"),

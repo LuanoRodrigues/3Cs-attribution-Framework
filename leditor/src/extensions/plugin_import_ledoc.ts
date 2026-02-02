@@ -3,6 +3,7 @@ import type { EditorHandle } from "../api/leditor.ts";
 import type { ImportLedocOptions, ImportLedocResult } from "../api/import_ledoc.ts";
 import { getHostAdapter } from "../host/host_adapter.ts";
 import { getPageSizeDefinitions, setPageMargins, setPageSize } from "../ui/layout_settings.ts";
+import { loadSourceChecksThreadFromLedoc } from "../ui/source_checks_thread.ts";
 
 const triggerImport = (options?: ImportLedocOptions) => {
   const handler = getHostAdapter()?.importLEDOC;
@@ -122,6 +123,11 @@ registerPlugin({
           if (result.payload?.settings) {
             applySettings(result.payload.settings);
           }
+          try {
+            loadSourceChecksThreadFromLedoc((result as any)?.payload?.history);
+          } catch {
+            // ignore
+          }
           if (result.warnings?.length) {
             console.warn("ImportLEDOC warnings", result.warnings);
           }
@@ -143,6 +149,11 @@ registerPlugin({
         applyImportedTitle(result);
         if (result.payload?.settings) {
           applySettings(result.payload.settings);
+        }
+        try {
+          loadSourceChecksThreadFromLedoc((result as any)?.payload?.history);
+        } catch {
+          // ignore
         }
         return result;
       });

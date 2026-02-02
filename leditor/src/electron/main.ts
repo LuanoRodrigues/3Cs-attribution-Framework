@@ -9,6 +9,10 @@ import { convertCoderStateToLedoc } from "./coder_state_converter";
 
 const REFERENCES_LIBRARY_FILENAME = "references_library.json";
 
+type LlmProviderId = "openai" | "deepseek" | "mistral" | "gemini";
+type LlmCatalogModel = { id: string; label: string; description?: string };
+type LlmCatalogProvider = { id: LlmProviderId; label: string; envKey: string; models: LlmCatalogModel[] };
+
 const normalizeError = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 const randomToken = (): string => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 
@@ -260,6 +264,254 @@ const getOpenAiClient = (apiKey?: string): OpenAI | null => {
   client = new OpenAI({ apiKey: key });
   openaiClients.set(key, client);
   return client;
+};
+
+const getCatalog = (): LlmCatalogProvider[] => [
+  {
+    id: "openai",
+    label: "OpenAI",
+    envKey: "OPENAI_API_KEY",
+    models: [
+      { id: "codex-mini-latest", label: "Codex Mini", description: "Deterministic edits" },
+      { id: "gpt-4o-mini", label: "GPT-4o Mini", description: "Fast and responsive" },
+      { id: "gpt-4o", label: "GPT-4o", description: "Reliable general model" },
+      { id: "gpt-5", label: "GPT-5", description: "Intelligent chat model" },
+      { id: "gpt-5.1", label: "GPT-5.1", description: "Advanced reasoning" }
+    ]
+  },
+  {
+    id: "deepseek",
+    label: "DeepSeek",
+    envKey: "DEEP_SEEK_API_KEY",
+    models: [
+      { id: "deepseek-chat", label: "DeepSeek Chat", description: "General chat" },
+      { id: "deepseek-reasoner", label: "DeepSeek Reasoner", description: "Reasoning-focused" }
+    ]
+  },
+  {
+    id: "mistral",
+    label: "Mistral",
+    envKey: "MISTRAL_API_KEY",
+    models: [
+      { id: "mistral-small-latest", label: "Mistral Small", description: "Fast and cost-effective" },
+      { id: "mistral-medium-latest", label: "Mistral Medium", description: "Balanced" },
+      { id: "mistral-large-latest", label: "Mistral Large", description: "Highest quality" },
+      { id: "codestral-latest", label: "Codestral", description: "Code + structured edits" }
+    ]
+  },
+  {
+    id: "gemini",
+    label: "Gemini",
+    envKey: "LU_GEMINI_API_KEY",
+    models: [
+      { id: "gemini-2.5-flash", label: "Gemini Flash", description: "Excellent all-rounder" },
+      { id: "gemini-2.5-pro", label: "Gemini Pro", description: "Flagship model" },
+      { id: "gemini-3-pro-preview", label: "Gemini 3 Pro Preview", description: "Preview" }
+    ]
+  }
+];
+
+const getProviderEnvKeyName = (provider: LlmProviderId): string => {
+  switch (provider) {
+    case "openai":
+      return "OPENAI_API_KEY";
+    case "deepseek":
+      return "DEEP_SEEK_API_KEY";
+    case "mistral":
+      return "MISTRAL_API_KEY";
+    case "gemini":
+      return "LU_GEMINI_API_KEY";
+  }
+};
+
+const getProviderApiKey = (provider: LlmProviderId, settingsApiKey?: string): string => {
+  if (provider === "openai") return String(settingsApiKey || process.env.OPENAI_API_KEY || "").trim();
+  const keyEnv = getProviderEnvKeyName(provider);
+  return String((process.env as any)[keyEnv] || "").trim();
+};
+
+const getDefaultModelForProvider = (provider: LlmProviderId): { model: string; modelFromEnv: boolean } => {
+  const fromEnv =
+    provider === "openai"
+      ? String(process.env.LEDITOR_AGENT_MODEL || process.env.OPENAI_MODEL || "").trim()
+      : provider === "deepseek"
+        ? String(process.env.DEEPSEEK_MODEL || "").trim()
+        : provider === "mistral"
+          ? String(process.env.MISTRAL_MODEL || "").trim()
+          : String(process.env.GEMINI_MODEL || "").trim();
+  if (fromEnv) return { model: fromEnv, modelFromEnv: true };
+  const catalog = getCatalog();
+  const entry = catalog.find((p) => p.id === provider);
+  const first = entry?.models?.[0]?.id || (provider === "openai" ? "codex-mini-latest" : "");
+  return { model: first, modelFromEnv: false };
+};
+
+const extractFirstJsonObject = (text: string): any => {
+  const raw = String(text ?? "").trim();
+  const start = raw.indexOf("{");
+  const end = raw.lastIndexOf("}");
+  if (start === -1 || end === -1 || end <= start) {
+    throw new Error("Model response was not valid JSON.");
+  }
+  return JSON.parse(raw.slice(start, end + 1));
+};
+
+const fetchJson = async (url: string, init: RequestInit): Promise<any> => {
+  const res = await fetch(url, init);
+  const raw = await res.text();
+  if (!res.ok) {
+    throw new Error(`${res.status} ${res.statusText}: ${raw.slice(0, 800)}`);
+  }
+  try {
+    return JSON.parse(raw);
+  } catch {
+    throw new Error(`Non-JSON response: ${raw.slice(0, 800)}`);
+  }
+};
+
+const callOpenAiCompatibleChat = async (args: {
+  baseUrl: string;
+  apiKey: string;
+  model: string;
+  messages: Array<{ role: "system" | "user" | "assistant"; content: string }>;
+  temperature?: number;
+  signal?: AbortSignal;
+}): Promise<string> => {
+  const url = `${args.baseUrl.replace(/\/+$/, "")}/chat/completions`;
+  const body: any = { model: args.model, messages: args.messages };
+  if (typeof args.temperature === "number") body.temperature = args.temperature;
+  const json = await fetchJson(url, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${args.apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal: args.signal
+  });
+  const content = json?.choices?.[0]?.message?.content;
+  return typeof content === "string" ? content : String(content ?? "");
+};
+
+const callGeminiGenerateContent = async (args: {
+  apiKey: string;
+  model: string;
+  system: string;
+  input: string;
+  temperature?: number;
+  signal?: AbortSignal;
+}): Promise<string> => {
+  const base = "https://generativelanguage.googleapis.com/v1beta";
+  const modelId = encodeURIComponent(args.model);
+  const url = `${base}/models/${modelId}:generateContent`;
+  const combined = `SYSTEM:\n${args.system}\n\nUSER:\n${args.input}`;
+  const body: any = {
+    contents: [{ role: "user", parts: [{ text: combined }] }]
+  };
+  if (typeof args.temperature === "number") {
+    body.generationConfig = { temperature: args.temperature };
+  }
+  const json = await fetchJson(url, {
+    method: "POST",
+    headers: { "x-goog-api-key": args.apiKey, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal: args.signal
+  });
+  const parts = json?.candidates?.[0]?.content?.parts;
+  if (Array.isArray(parts)) {
+    const text = parts.map((p: any) => (typeof p?.text === "string" ? p.text : "")).join("");
+    return text.trim();
+  }
+  return String(json?.candidates?.[0]?.content?.text ?? "").trim();
+};
+
+const callLlmText = async (args: {
+  provider: LlmProviderId;
+  apiKey: string;
+  model: string;
+  system: string;
+  input: string;
+  temperature?: number;
+  signal?: AbortSignal;
+}): Promise<string> => {
+  const provider = args.provider;
+  if (provider === "openai") {
+    const client = getOpenAiClient(args.apiKey);
+    if (!client) throw new Error("Missing OPENAI_API_KEY.");
+    const isCodex = /^codex-/i.test(args.model);
+    const createResponse = async (allowTemperature: boolean) => {
+      const body: any = { model: args.model, instructions: args.system, input: args.input };
+      if (!isCodex && allowTemperature && typeof args.temperature === "number") {
+        body.temperature = args.temperature;
+      }
+      return client.responses.create(body, { signal: args.signal });
+    };
+    try {
+      const response: any = await createResponse(true);
+      return String(response?.output_text ?? "").trim();
+    } catch (error) {
+      const msg = normalizeError(error);
+      if (msg.includes("Unsupported parameter") && msg.includes("'temperature'")) {
+        const response: any = await createResponse(false);
+        return String(response?.output_text ?? "").trim();
+      }
+      throw error;
+    }
+  }
+
+  if (provider === "deepseek") {
+    const messages = [
+      { role: "system" as const, content: args.system },
+      { role: "user" as const, content: args.input }
+    ];
+    const baseA = "https://api.deepseek.com";
+    try {
+      return await callOpenAiCompatibleChat({
+        baseUrl: baseA,
+        apiKey: args.apiKey,
+        model: args.model,
+        messages,
+        temperature: args.temperature,
+        signal: args.signal
+      });
+    } catch (error) {
+      const msg = normalizeError(error);
+      if (msg.startsWith("404")) {
+        // Some deployments expect /v1 prefix.
+        return await callOpenAiCompatibleChat({
+          baseUrl: `${baseA}/v1`,
+          apiKey: args.apiKey,
+          model: args.model,
+          messages,
+          temperature: args.temperature,
+          signal: args.signal
+        });
+      }
+      throw error;
+    }
+  }
+
+  if (provider === "mistral") {
+    const messages = [
+      { role: "system" as const, content: args.system },
+      { role: "user" as const, content: args.input }
+    ];
+    return await callOpenAiCompatibleChat({
+      baseUrl: "https://api.mistral.ai/v1",
+      apiKey: args.apiKey,
+      model: args.model,
+      messages,
+      temperature: args.temperature,
+      signal: args.signal
+    });
+  }
+
+  // gemini
+  return await callGeminiGenerateContent({
+    apiKey: args.apiKey,
+    model: args.model,
+    system: args.system,
+    input: args.input,
+    temperature: args.temperature,
+    signal: args.signal
+  });
 };
 
 const buildAgentPrompt = (payload: AgentRequestPayload): { system: string; user: string } => {
@@ -1347,9 +1599,26 @@ app.whenReady().then(() => {
   loadDotenv(path.join(app.getAppPath(), ".env"));
   registerIpc("leditor:ai-status", async () => {
     const hasApiKey = Boolean(String(process.env.OPENAI_API_KEY || "").trim());
-    const envModel = String(process.env.LEDITOR_AGENT_MODEL || process.env.OPENAI_MODEL || "").trim();
-    const model = envModel || "codex-mini-latest";
-    return { success: true, hasApiKey, model, modelFromEnv: Boolean(envModel) };
+    const { model, modelFromEnv } = getDefaultModelForProvider("openai");
+    return { success: true, hasApiKey, model, modelFromEnv };
+  });
+  registerIpc("leditor:llm-catalog", async () => {
+    return { success: true, providers: getCatalog() };
+  });
+  registerIpc("leditor:llm-status", async () => {
+    const providers = getCatalog().map((p) => {
+      const apiKey = getProviderApiKey(p.id, undefined);
+      const { model, modelFromEnv } = getDefaultModelForProvider(p.id);
+      return {
+        id: p.id,
+        label: p.label,
+        envKey: p.envKey,
+        hasApiKey: Boolean(apiKey),
+        defaultModel: model,
+        modelFromEnv
+      };
+    });
+    return { success: true, providers };
   });
   registerIpc("leditor:file-exists", async (_event, request: { sourcePath: string }) => {
     try {
@@ -1378,9 +1647,18 @@ app.whenReady().then(() => {
     try {
       const payload = request?.payload as AgentRequestPayload;
       const settings = payload?.settings;
-      const client = getOpenAiClient(settings?.apiKey);
-      if (!client) {
-        return { success: false, error: "OPENAI_API_KEY is not set." };
+      const rawProvider = typeof (settings as any)?.provider === "string" ? String((settings as any).provider).trim() : "";
+      const provider: LlmProviderId =
+        rawProvider === "openai" || rawProvider === "deepseek" || rawProvider === "mistral" || rawProvider === "gemini"
+          ? (rawProvider as LlmProviderId)
+          : "openai";
+      const fallback = getDefaultModelForProvider(provider);
+      const model = String(settings?.model || "").trim() || fallback.model || (provider === "openai" ? "codex-mini-latest" : "");
+      const temperature = typeof settings?.temperature === "number" ? settings.temperature : 0.2;
+      const apiKey = getProviderApiKey(provider, settings?.apiKey);
+      if (!apiKey) {
+        const envKey = getProviderEnvKeyName(provider);
+        return { success: false, error: `Missing ${envKey} in environment.` };
       }
 
       const { system, user } = buildAgentPrompt(payload);
@@ -1395,60 +1673,20 @@ app.whenReady().then(() => {
           .filter((msg) => (msg.role === "user" || msg.role === "assistant" || msg.role === "system") && msg.content.trim())
           .slice(-20);
 
-      const messages = [
-        { role: "system" as const, content: system },
-        ...normalizeHistory(history).map((m) => ({ role: m.role as any, content: m.content })),
-        { role: "user" as const, content: user }
-      ];
-
-      const model =
-        settings?.model?.trim() ||
-        String(process.env.LEDITOR_AGENT_MODEL || "").trim() ||
-        String(process.env.OPENAI_MODEL || "").trim() ||
-        "codex-mini-latest";
-      const temperature = typeof settings?.temperature === "number" ? settings.temperature : 0.2;
-
       const historyBlock = normalizeHistory(history)
         .map((m) => `${m.role.toUpperCase()}: ${m.content}`)
         .join("\n");
       const inputText = historyBlock ? `Conversation history:\n${historyBlock}\n\n${user}` : user;
-
-      const createResponse = async (allowTemperature: boolean) => {
-        const body: any = {
-          model,
-          instructions: system,
-          input: inputText
-        };
-        if (allowTemperature && typeof temperature === "number") {
-          body.temperature = temperature;
-        }
-        return client.responses.create(body, { signal: abortController.signal });
-      };
-
-      let response: any;
-      try {
-        response = await createResponse(true);
-      } catch (error) {
-        const msg = normalizeError(error);
-        if (msg.includes("Unsupported parameter") && msg.includes("'temperature'")) {
-          response = await createResponse(false);
-        } else {
-          throw error;
-        }
-      }
-
-      const raw = String((response as any).output_text ?? "").trim();
-      const extractJson = (text: string): any => {
-        const start = text.indexOf("{");
-        const end = text.lastIndexOf("}");
-        if (start === -1 || end === -1 || end <= start) {
-          throw new Error("Agent response was not valid JSON.");
-        }
-        const slice = text.slice(start, end + 1);
-        return JSON.parse(slice);
-      };
-
-      const parsed = extractJson(raw);
+      const raw = await callLlmText({
+        provider,
+        apiKey,
+        model,
+        system,
+        input: inputText,
+        temperature,
+        signal: abortController.signal
+      });
+      const parsed = extractFirstJsonObject(raw);
       const assistantText = typeof parsed?.assistantText === "string" ? parsed.assistantText : "";
       const operationsRaw = Array.isArray(parsed?.operations) ? parsed.operations : [];
       const applyText = typeof parsed?.applyText === "string" ? parsed.applyText : "";
@@ -1489,7 +1727,7 @@ app.whenReady().then(() => {
         assistantText,
         applyText,
         operations,
-        meta: { provider: "openai" as const, model, ms: Date.now() - started }
+        meta: { provider, model, ms: Date.now() - started }
       };
     } catch (error) {
       return {
@@ -1520,29 +1758,41 @@ app.whenReady().then(() => {
 
   registerIpc(
     "leditor:check-sources",
-    async (_event, request: { requestId?: string; payload: { paragraphN?: number; paragraphText: string; anchors: any[] } }) => {
+    async (
+      _event,
+      request: {
+        requestId?: string;
+        payload: { provider?: string; model?: string; paragraphN?: number; paragraphText: string; anchors: any[] };
+      }
+    ) => {
       const started = Date.now();
       try {
-        const client = getOpenAiClient();
-        if (!client) return { success: false, error: "Missing OPENAI_API_KEY." };
-
         const payload = request?.payload as any;
+        const rawProvider = typeof payload?.provider === "string" ? String(payload.provider).trim() : "";
+        const provider: LlmProviderId =
+          rawProvider === "openai" || rawProvider === "deepseek" || rawProvider === "mistral" || rawProvider === "gemini"
+            ? (rawProvider as LlmProviderId)
+            : "openai";
         const paragraphN = Number(payload?.paragraphN);
         const paragraphText = String(payload?.paragraphText ?? "").trim();
         const anchors = Array.isArray(payload?.anchors) ? payload.anchors : [];
         if (!paragraphText) return { success: false, error: "check-sources: payload.paragraphText required" };
         if (anchors.length === 0) return { success: true, assistantText: "No sources to be checked.", checks: [] };
 
-        const model =
-          String(process.env.LEDITOR_AGENT_MODEL || "").trim() ||
-          String(process.env.OPENAI_MODEL || "").trim() ||
-          "codex-mini-latest";
+        const fallback = getDefaultModelForProvider(provider);
+        const model = String(payload?.model || "").trim() || fallback.model || (provider === "openai" ? "codex-mini-latest" : "");
+        const apiKey = getProviderApiKey(provider, undefined);
+        if (!apiKey) {
+          const envKey = getProviderEnvKeyName(provider);
+          return { success: false, error: `Missing ${envKey} in environment.` };
+        }
 
         const system = [
           "You are a citation-consistency checker inside an offline academic editor.",
           "You MUST NOT claim external factual verification (no web access).",
-          "Given (1) a paragraph and (2) ONE citation/anchor (its anchorText + its title metadata),",
-          "decide if the paragraph's claim near the anchor is consistent with that citation metadata.",
+          "You are given (1) a paragraph, (2) ONE citation anchor, and (3) the citation's title metadata (often a direct quote).",
+          "Determine whether the sentence/claim associated with that citation is consistent with the citation title metadata.",
+          "Do NOT judge factual truth; only check semantic support/consistency.",
           'Return STRICT JSON only: {"verdict":"verified"|"needs_review","justification":string}.',
           "justification must be ONE short sentence (<= 200 chars).",
           'If insufficient info, set verdict="needs_review".'
@@ -1558,19 +1808,26 @@ app.whenReady().then(() => {
           const dataKey = String(anchor?.dataKey ?? "");
           const dataDqid = String(anchor?.dataDqid ?? "");
           const dataQuoteId = String(anchor?.dataQuoteId ?? "");
+          const context = anchor?.context && typeof anchor.context === "object" ? anchor.context : null;
+          const claimSentence =
+            typeof context?.sentence === "string" && context.sentence.trim() ? String(context.sentence).trim() : "";
+          const claimBefore =
+            typeof context?.before === "string" && context.before.trim() ? String(context.before).trim() : "";
+          const claimAfter =
+            typeof context?.after === "string" && context.after.trim() ? String(context.after).trim() : "";
 
           const input = JSON.stringify(
             {
               paragraphN: Number.isFinite(paragraphN) ? paragraphN : undefined,
               paragraphText,
+              claim: { sentence: claimSentence, before: claimBefore, after: claimAfter },
               anchor: { key, anchorText, title, href, dataKey, dataDqid, dataQuoteId }
             },
             null,
             2
           );
           console.info("[agent][check_sources]", { paragraphN, key, input });
-          const response = await client.responses.create({ model, instructions: system, input });
-          const raw = String((response as any).output_text ?? "").trim();
+          const raw = await callLlmText({ provider, apiKey, model, system, input, signal: undefined });
           const start = raw.indexOf("{");
           const end = raw.lastIndexOf("}");
           if (start === -1 || end === -1 || end <= start) {
@@ -1594,7 +1851,7 @@ app.whenReady().then(() => {
           success: true,
           assistantText: `Checked ${checks.length} source(s).`,
           checks,
-          meta: { provider: "openai" as const, model, ms: Date.now() - started }
+          meta: { provider, model, ms: Date.now() - started }
         };
       } catch (error) {
         return {
@@ -1608,22 +1865,28 @@ app.whenReady().then(() => {
 
   registerIpc(
     "leditor:lexicon",
-    async (_event, request: { requestId?: string; payload: { mode: string; text: string } }) => {
+    async (_event, request: { requestId?: string; payload: { provider?: string; model?: string; mode: string; text: string } }) => {
       const started = Date.now();
       try {
-        const client = getOpenAiClient();
-        if (!client) return { success: false, error: "Missing OPENAI_API_KEY." };
         const payload = request?.payload as any;
+        const rawProvider = typeof payload?.provider === "string" ? String(payload.provider).trim() : "";
+        const provider: LlmProviderId =
+          rawProvider === "openai" || rawProvider === "deepseek" || rawProvider === "mistral" || rawProvider === "gemini"
+            ? (rawProvider as LlmProviderId)
+            : "openai";
         const mode = String(payload?.mode ?? "").toLowerCase();
         const text = String(payload?.text ?? "").trim();
         if (mode !== "synonyms" && mode !== "antonyms") {
           return { success: false, error: 'lexicon: payload.mode must be "synonyms" | "antonyms"' };
         }
         if (!text) return { success: false, error: "lexicon: payload.text required" };
-        const model =
-          String(process.env.LEDITOR_AGENT_MODEL || "").trim() ||
-          String(process.env.OPENAI_MODEL || "").trim() ||
-          "codex-mini-latest";
+        const fallback = getDefaultModelForProvider(provider);
+        const model = String(payload?.model || "").trim() || fallback.model || (provider === "openai" ? "codex-mini-latest" : "");
+        const apiKey = getProviderApiKey(provider, undefined);
+        if (!apiKey) {
+          const envKey = getProviderEnvKeyName(provider);
+          return { success: false, error: `Missing ${envKey} in environment.` };
+        }
 
         const system = [
           "You are a deterministic thesaurus helper inside an offline academic editor.",
@@ -1639,8 +1902,7 @@ app.whenReady().then(() => {
           "Return suggestions suitable for academic writing."
         ].join("\n");
 
-        const response = await client.responses.create({ model, instructions: system, input: user });
-        const raw = String((response as any).output_text ?? "").trim();
+        const raw = await callLlmText({ provider, apiKey, model, system, input: user, signal: undefined });
         const start = raw.indexOf("{");
         const end = raw.lastIndexOf("}");
         if (start === -1 || end === -1 || end <= start) {
@@ -1657,7 +1919,7 @@ app.whenReady().then(() => {
           success: true,
           assistantText: typeof parsed?.assistantText === "string" ? parsed.assistantText : "",
           suggestions,
-          meta: { provider: "openai" as const, model, ms: Date.now() - started }
+          meta: { provider, model, ms: Date.now() - started }
         };
       } catch (error) {
         return {

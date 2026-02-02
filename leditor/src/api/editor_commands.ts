@@ -1,5 +1,6 @@
 import type { EditorHandle } from "../api/leditor.ts";
 import { peekRibbonSelection, applySnapshotToTransaction } from "../utils/selection_snapshot.ts";
+import { ribbonTraceCall } from "../ui/ribbon_debugger.ts";
 
 export type EditorCommandId =
   | "Bold"
@@ -180,51 +181,53 @@ export const dispatchCommand = (
   commandId: EditorCommandId,
   payload?: unknown
 ) => {
-  window.codexLog?.write(`[RIBBON_COMMAND] ${commandId}`);
+  ribbonTraceCall("editor_commands.dispatch", { commandId, payload }, () => {
+    window.codexLog?.write(`[RIBBON_COMMAND] ${commandId}`);
   // Some commands trigger pagination/layout reflow. Preserve the user's scroll position across the
   // next pagination pass to avoid "scrollbar disappears / cursor jumps to end" reports.
-  (window as any).__leditorPreserveScrollOnNextPagination = true;
+    (window as any).__leditorPreserveScrollOnNextPagination = true;
   // Ribbon clicks can blur the editor and lose the current caret position.
   // Restore the last recorded selection before running commands so formatting changes don't jump to the end.
-  const tiptapEditor = (editorHandle as any)?.getEditor?.();
-  const snapshot = peekRibbonSelection();
-  if (snapshot && tiptapEditor?.view && tiptapEditor?.state?.tr) {
-    try {
-      const tr = applySnapshotToTransaction(tiptapEditor.state.tr, snapshot);
-      if (
-        tr.selection.from !== tiptapEditor.state.selection.from ||
-        tr.selection.to !== tiptapEditor.state.selection.to
-      ) {
-        tiptapEditor.view.dispatch(tr);
+    const tiptapEditor = (editorHandle as any)?.getEditor?.();
+    const snapshot = peekRibbonSelection();
+    if (snapshot && tiptapEditor?.view && tiptapEditor?.state?.tr) {
+      try {
+        const tr = applySnapshotToTransaction(tiptapEditor.state.tr, snapshot);
+        if (
+          tr.selection.from !== tiptapEditor.state.selection.from ||
+          tr.selection.to !== tiptapEditor.state.selection.to
+        ) {
+          tiptapEditor.view.dispatch(tr);
+        }
+      } catch {
+        // ignore selection restoration failures
       }
-    } catch {
-      // ignore selection restoration failures
     }
-  }
-  editorHandle.execCommand(commandId, payload);
+    editorHandle.execCommand(commandId, payload);
   // Some commands intentionally move focus away from the main ProseMirror editor (e.g. footnotes,
   // header/footer overlays). For those cases, forcing focus back here will steal the caret and
   // make typing impossible.
-  const appRoot = document.getElementById("leditor-app");
-  const isOverlayEditing =
-    !!appRoot &&
-    (appRoot.classList.contains("leditor-footnote-editing") ||
-      appRoot.classList.contains("leditor-header-footer-editing"));
-  const isOverlayCommand =
-    commandId === "InsertFootnote" ||
-    commandId === "InsertEndnote" ||
-    commandId === "NextFootnote" ||
-    commandId === "PreviousFootnote" ||
-    commandId === "EditHeader" ||
-    commandId === "EditFooter";
+    const appRoot = document.getElementById("leditor-app");
+    const isOverlayEditing =
+      !!appRoot &&
+      (appRoot.classList.contains("leditor-footnote-editing") ||
+        appRoot.classList.contains("leditor-header-footer-editing"));
+    const isOverlayCommand =
+      commandId === "InsertFootnote" ||
+      commandId === "InsertEndnote" ||
+      commandId === "NextFootnote" ||
+      commandId === "PreviousFootnote" ||
+      commandId === "EditHeader" ||
+      commandId === "EditFooter";
 
-  if (!isOverlayEditing && !isOverlayCommand) {
-    const tiptap = (editorHandle as any)?.getEditor?.();
-    if (tiptap?.commands?.focus) {
-      tiptap.commands.focus();
-    } else if ((editorHandle as any)?.focus) {
-      (editorHandle as any).focus();
+    if (!isOverlayEditing && !isOverlayCommand) {
+      const tiptap = (editorHandle as any)?.getEditor?.();
+      if (tiptap?.commands?.focus) {
+        tiptap.commands.focus();
+      } else if ((editorHandle as any)?.focus) {
+        (editorHandle as any).focus();
+      }
     }
-  }
+  });
 };
 

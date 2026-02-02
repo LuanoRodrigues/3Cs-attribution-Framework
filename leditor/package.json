@@ -24,6 +24,7 @@
     "generate:round-trip-fixture": "node scripts/create_round_trip_docx_fixture.js",
     "test:print-pdf-headless": "electron scripts/print_pdf_check.mjs",
     "test:csl": "node scripts/csl_citation_test.js",
+    "test:footnote-layout": "electron scripts/footnote_layout_smoke.cjs",
     "generate:templates": "node scripts/generate_template_index.mjs",
     "typecheck": "tsc --project tsconfig.json --pretty",
     "build:renderer": "npx esbuild scripts/renderer-entry.ts --bundle --platform=browser --format=esm --sourcemap --define:__BUILD_TIME__=\\\"dev\\\" --outfile=dist/renderer/bootstrap.bundle.js --loader:.ttf=dataurl --loader:.woff=dataurl --loader:.woff2=dataurl --loader:.html=text --alias:node:fs/promises=./scripts/shims/fs-promises.js --external:@simonwep/pickr/dist/pickr.min.css",
@@ -35,7 +36,8 @@
     "build:electron": "tsc --project tsconfig.electron.json",
     "build": "npm run generate:templates && npm run build:renderer && npm run build:public && npm run build:electron",
     "ribbon:validate": "node -e \"console.log('ribbon:validate removed (JSON ribbon deprecated)')\"",
-    "test:pagination": "node scripts/pagination_fixture.mjs"
+    "test:pagination": "node scripts/pagination_fixture.mjs",
+    "lint:icons": "node scripts/check-icons.js"
   },
   "devDependencies": {
     "@types/node": "^20.10.6",

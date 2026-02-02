@@ -16,17 +16,11 @@ type SourceCheckState = {
   items: SourceCheckItem[];
 };
 
-const sourceCheckKey = new PluginKey<SourceCheckState>("leditor-source-check-badges");
+export const sourceCheckKey = new PluginKey<SourceCheckState>("leditor-source-check-badges");
 
 let editorRef: Editor | null = null;
 
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
-
-const sanitize = (value: string, maxLen: number) => {
-  const s = String(value || "").replace(/\s+/g, " ").trim();
-  if (s.length <= maxLen) return s;
-  return `${s.slice(0, maxLen - 1)}…`;
-};
 
 const buildDecorations = (state: EditorState, sc: SourceCheckState): DecorationSet => {
   if (!sc.enabled || sc.items.length === 0) return DecorationSet.empty;
@@ -38,7 +32,6 @@ const buildDecorations = (state: EditorState, sc: SourceCheckState): DecorationS
     const to = clamp(Math.floor(item.to), 0, docSize);
     if (to <= from) continue;
     const verdict = item.verdict === "verified" ? "verified" : "needs_review";
-    const title = sanitize(item.justification, 280);
 
     const nodeAtFrom = state.doc.nodeAt(from);
     const isExactNode =
@@ -62,43 +55,6 @@ const buildDecorations = (state: EditorState, sc: SourceCheckState): DecorationS
         })
       );
     }
-
-    decos.push(
-      Decoration.widget(
-        to,
-        () => {
-          const el = document.createElement("span");
-          el.className =
-            verdict === "verified"
-              ? "leditor-source-check-badge leditor-source-check-badge--verified"
-              : "leditor-source-check-badge leditor-source-check-badge--needsReview";
-          el.textContent = verdict === "verified" ? "✓" : "✕";
-          el.setAttribute("title", title || (verdict === "verified" ? "Verified" : "Needs review"));
-          el.contentEditable = "false";
-          el.dataset.key = item.key;
-          return el;
-        },
-        { side: 1 }
-      )
-    );
-
-    decos.push(
-      Decoration.widget(
-        to,
-        () => {
-          const el = document.createElement("span");
-          el.className =
-            verdict === "verified"
-              ? "leditor-source-check-note leditor-source-check-note--verified"
-              : "leditor-source-check-note leditor-source-check-note--needsReview";
-          el.textContent = sanitize(item.justification, 140);
-          el.contentEditable = "false";
-          el.setAttribute("aria-hidden", "true");
-          return el;
-        },
-        { side: 2 }
-      )
-    );
   }
 
   return DecorationSet.create(state.doc, decos);
@@ -115,6 +71,14 @@ const applyMeta = (tr: Transaction, prev: SourceCheckState): SourceCheckState =>
 
 export const setSourceCheckBadgesEditor = (editor: Editor) => {
   editorRef = editor;
+};
+
+export const getSourceCheckState = (state: EditorState): SourceCheckState | null => {
+  try {
+    return sourceCheckKey.getState(state) ?? null;
+  } catch {
+    return null;
+  }
 };
 
 export const setSourceChecks = (items: SourceCheckItem[]) => {

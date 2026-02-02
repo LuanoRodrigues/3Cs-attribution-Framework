@@ -235,14 +235,35 @@ def ppt_ui_warmup() -> dict:
     res_dir = _resources_dir().resolve()
 
     template_path = res_dir / "visuals.html"
-    template_text = _read_text(template_path) if template_path.exists() else ""
+    template_text = ""
+    if template_path.exists():
+        template_text = _read_text(template_path)
+    else:
+        # Fall back to a repo-level visuals.html (useful in dev workspaces where resources/ is minimal).
+        for parent in Path(__file__).resolve().parents:
+            candidate = parent / "visuals.html"
+            if candidate.exists():
+                template_path = candidate
+                template_text = _read_text(candidate)
+                break
 
     js_dir = (res_dir / "js").resolve()
     plotly_fp = js_dir / "plotly-2.35.2.min.js"
     qweb_fp = js_dir / "qwebchannel.js"
 
     plotly_js = _read_text(plotly_fp) if plotly_fp.exists() else ""
+    if not plotly_js:
+        # Fallback to the renderer's bundled Plotly (node_modules) when resources/js isn't populated.
+        try:
+            alt = (res_dir.parent / "node_modules" / "plotly.js-dist-min" / "plotly.min.js").resolve()
+            if alt.exists():
+                plotly_js = _read_text(alt)
+        except Exception:
+            plotly_js = plotly_js or ""
+
     qweb_js = _read_text(qweb_fp) if qweb_fp.exists() else ""
+    if not qweb_js:
+        qweb_js = _load_qwebchannel_js_text() or ""
 
     _PPT_UI_CACHE = {
         "res_dir": str(res_dir),

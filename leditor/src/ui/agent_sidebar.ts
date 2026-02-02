@@ -1,5 +1,6 @@
 import type { EditorHandle } from "../api/leditor.ts";
-import { subscribeAiSettings } from "./ai_settings.ts";
+import { getAiSettings, setAiSettings, subscribeAiSettings } from "./ai_settings.ts";
+import { setSourceChecksVisible, upsertSourceChecksFromRun } from "./source_checks_thread.ts";
 import { Fragment } from "prosemirror-model";
 import agentActionPrompts from "./agent_action_prompts.json";
 
@@ -111,6 +112,31 @@ export const createAgentSidebar = (
   const headerRight = document.createElement("div");
   headerRight.className = "leditor-agent-sidebar__headerRight";
 
+  const modelPickerWrap = document.createElement("div");
+  modelPickerWrap.className = "leditor-agent-sidebar__modelPickerWrap";
+  const modelPickerBtn = document.createElement("button");
+  modelPickerBtn.type = "button";
+  modelPickerBtn.className = "leditor-agent-sidebar__modelPickerBtn";
+  modelPickerBtn.setAttribute("aria-haspopup", "menu");
+  modelPickerBtn.setAttribute("aria-expanded", "false");
+  const modelPickerLabel = document.createElement("div");
+  modelPickerLabel.className = "leditor-agent-sidebar__modelPickerLabel";
+  const modelPickerChevron = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  modelPickerChevron.setAttribute("viewBox", "0 0 24 24");
+  modelPickerChevron.setAttribute("width", "16");
+  modelPickerChevron.setAttribute("height", "16");
+  modelPickerChevron.classList.add("leditor-agent-sidebar__modelPickerChevron");
+  const chevronPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  chevronPath.setAttribute("d", "m6 9 6 6 6-6");
+  chevronPath.setAttribute("fill", "none");
+  chevronPath.setAttribute("stroke", "currentColor");
+  chevronPath.setAttribute("stroke-width", "2");
+  chevronPath.setAttribute("stroke-linecap", "round");
+  chevronPath.setAttribute("stroke-linejoin", "round");
+  modelPickerChevron.appendChild(chevronPath);
+  modelPickerBtn.append(modelPickerLabel, modelPickerChevron);
+  modelPickerWrap.appendChild(modelPickerBtn);
+
   const apiBadge = document.createElement("div");
   apiBadge.className = "leditor-agent-sidebar__apiBadge";
   apiBadge.textContent = "API: not used yet";
@@ -120,13 +146,46 @@ export const createAgentSidebar = (
   closeBtn.className = "leditor-agent-sidebar__close";
   closeBtn.textContent = "Close";
 
-  headerRight.append(apiBadge, closeBtn);
+  headerRight.append(modelPickerWrap, apiBadge, closeBtn);
   header.append(title, headerRight);
 
   let open = false;
   // Keep subscription to prevent stale settings references (and for future Agent settings),
   // but remove UI scope controls: agent targets are selected deterministically by paragraph index.
-  const unsubscribeScope = subscribeAiSettings(() => undefined);
+  let currentSettings = getAiSettings();
+  let renderReady = false;
+  const unsubscribeScope = subscribeAiSettings((settings) => {
+    currentSettings = settings;
+    if (renderReady) {
+      renderApiBadge();
+      renderModelPickerLabel();
+    }
+  });
+
+  type CatalogModel = { id: string; label?: string; description?: string };
+  type CatalogProvider = { id: string; label?: string; envKey?: string; models?: CatalogModel[] };
+  type LlmCatalog = { providers: CatalogProvider[] };
+  type LlmStatus = {
+    providers: Array<{
+      id: string;
+      label?: string;
+      envKey?: string;
+      hasApiKey?: boolean;
+      defaultModel?: string;
+      modelFromEnv?: boolean;
+    }>;
+  };
+
+  let llmCatalog: LlmCatalog | null = null;
+  let llmStatus: LlmStatus | null = null;
+
+  const modelMenu = document.createElement("div");
+  modelMenu.className = "leditor-agent-sidebar__modelMenu is-hidden";
+  modelMenu.setAttribute("role", "menu");
+  modelPickerWrap.appendChild(modelMenu);
+  modelMenu.addEventListener("click", (event) => {
+    event.stopPropagation();
+  });
 
   const showNumbersRow = document.createElement("div");
   showNumbersRow.className = "leditor-agent-sidebar__numbersRow";
@@ -163,8 +222,24 @@ export const createAgentSidebar = (
   const composer = document.createElement("div");
   composer.className = "leditor-agent-sidebar__composer";
 
+  const composerInner = document.createElement("div");
+  composerInner.className = "leditor-agent-sidebar__composerInner";
+
+  const plusBtn = document.createElement("button");
+  plusBtn.type = "button";
+  plusBtn.className = "leditor-agent-sidebar__iconBtn";
+  plusBtn.setAttribute("aria-label", "Actions");
+  plusBtn.innerHTML =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>';
+
   const inputWrap = document.createElement("div");
   inputWrap.className = "leditor-agent-sidebar__inputWrap";
+
+  const inputShell = document.createElement("div");
+  inputShell.className = "leditor-agent-sidebar__inputShell";
+
+  const inputGrid = document.createElement("div");
+  inputGrid.className = "leditor-agent-sidebar__inputGrid";
 
   const inputOverlay = document.createElement("div");
   inputOverlay.className = "leditor-agent-sidebar__inputOverlay";
@@ -173,25 +248,40 @@ export const createAgentSidebar = (
   const input = document.createElement("textarea");
   input.className = "leditor-agent-sidebar__input";
   input.placeholder = 'Try: "35 refine" or "35-38 simplify"';
-  input.rows = 2;
+  input.rows = 1;
 
   const slashMenu = document.createElement("div");
   slashMenu.className = "leditor-agent-sidebar__slashMenu";
   slashMenu.classList.add("is-hidden");
 
+  const micBtn = document.createElement("button");
+  micBtn.type = "button";
+  micBtn.className = "leditor-agent-sidebar__iconBtn";
+  micBtn.setAttribute("aria-label", "Dictation");
+  micBtn.disabled = true;
+  micBtn.innerHTML =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19v3"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><rect x="9" y="2" width="6" height="13" rx="3"></rect></svg>';
+
   const sendBtn = document.createElement("button");
   sendBtn.type = "button";
-  sendBtn.className = "leditor-agent-sidebar__send";
-  sendBtn.textContent = "Send";
+  sendBtn.className = "leditor-agent-sidebar__sendIcon";
+  sendBtn.setAttribute("aria-label", "Send");
+  sendBtn.innerHTML =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 7-7 7 7"></path><path d="M12 19V5"></path></svg>';
 
   const cancelBtn = document.createElement("button");
   cancelBtn.type = "button";
-  cancelBtn.className = "leditor-agent-sidebar__cancel";
-  cancelBtn.textContent = "Cancel";
+  cancelBtn.className = "leditor-agent-sidebar__cancelIcon";
+  cancelBtn.setAttribute("aria-label", "Cancel");
+  cancelBtn.innerHTML =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>';
   cancelBtn.classList.add("is-hidden");
 
-  inputWrap.append(inputOverlay, input);
-  composer.append(inputWrap, slashMenu, sendBtn, cancelBtn);
+  inputGrid.append(inputOverlay, input);
+  inputShell.appendChild(inputGrid);
+  inputWrap.append(inputShell, slashMenu);
+  composerInner.append(plusBtn, inputWrap, micBtn, sendBtn, cancelBtn);
+  composer.appendChild(composerInner);
 
   const footer = document.createElement("div");
   footer.className = "leditor-agent-sidebar__footer";
@@ -349,6 +439,8 @@ export const createAgentSidebar = (
     const spans = collectHighlightSpans(value, { from, to });
     inputOverlay.innerHTML = renderOverlayHtml(value, spans);
     inputOverlay.scrollTop = input.scrollTop;
+    updateComposerState();
+    autoResizeInput();
   };
 
   const findInlineSlashCommand = (
@@ -437,9 +529,101 @@ export const createAgentSidebar = (
     }
   };
 
+  const getProviderStatus = (providerId: string) => {
+    const list = Array.isArray(llmStatus?.providers) ? llmStatus!.providers : [];
+    return list.find((p) => String(p.id) === providerId) ?? null;
+  };
+
+  const getProviderLabel = (providerId: string): string => {
+    const fromCatalog = (Array.isArray(llmCatalog?.providers) ? llmCatalog!.providers : []).find(
+      (p) => String(p.id) === providerId
+    );
+    const label = typeof fromCatalog?.label === "string" ? fromCatalog.label : "";
+    return label || (providerId === "openai" ? "OpenAI" : providerId === "deepseek" ? "DeepSeek" : providerId === "mistral" ? "Mistral" : providerId === "gemini" ? "Gemini" : providerId);
+  };
+
+  const getModelLabel = (providerId: string, modelId: string): string => {
+    const provider = (Array.isArray(llmCatalog?.providers) ? llmCatalog!.providers : []).find(
+      (p) => String(p.id) === providerId
+    );
+    const models = Array.isArray(provider?.models) ? (provider!.models as CatalogModel[]) : [];
+    const found = models.find((m) => String(m.id) === modelId);
+    const label = typeof found?.label === "string" ? found.label : "";
+    return label || modelId;
+  };
+
+  const resolveSelectedModelId = (): { provider: string; model: string; envKey?: string; hasKey?: boolean } => {
+    const provider = String((currentSettings as any)?.provider ?? "openai");
+    const explicitModel = String(currentSettings?.model ?? "").trim();
+    const status = getProviderStatus(provider);
+    const model = explicitModel || String(status?.defaultModel ?? "").trim() || "codex-mini-latest";
+    return { provider, model, envKey: status?.envKey, hasKey: status?.hasApiKey };
+  };
+
+  const renderModelPickerLabel = () => {
+    const sel = resolveSelectedModelId();
+    modelPickerLabel.textContent = `${getProviderLabel(sel.provider)} • ${getModelLabel(sel.provider, sel.model)}`;
+  };
+
+  const closeModelMenu = () => {
+    modelMenu.classList.add("is-hidden");
+    modelPickerBtn.setAttribute("aria-expanded", "false");
+  };
+
+  const openModelMenu = () => {
+    modelMenu.classList.remove("is-hidden");
+    modelPickerBtn.setAttribute("aria-expanded", "true");
+  };
+
+  const renderModelMenu = () => {
+    modelMenu.replaceChildren();
+    const providers = Array.isArray(llmCatalog?.providers) ? llmCatalog!.providers : [];
+    for (const provider of providers) {
+      const providerId = String(provider.id);
+      const groupTitle = document.createElement("div");
+      groupTitle.className = "leditor-agent-sidebar__modelGroupTitle";
+      groupTitle.textContent = getProviderLabel(providerId);
+      modelMenu.appendChild(groupTitle);
+
+      const status = getProviderStatus(providerId);
+      const hasKey = status ? Boolean(status.hasApiKey) : true;
+      const models = Array.isArray(provider.models) ? (provider.models as CatalogModel[]) : [];
+      for (const model of models) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "leditor-agent-sidebar__modelOption";
+        btn.setAttribute("role", "menuitem");
+        btn.disabled = !hasKey;
+
+        const name = document.createElement("div");
+        name.className = "leditor-agent-sidebar__modelOptionName";
+        name.textContent = getModelLabel(providerId, String(model.id));
+        const desc = document.createElement("div");
+        desc.className = "leditor-agent-sidebar__modelOptionDesc";
+        desc.textContent = typeof model.description === "string" ? model.description : "";
+
+        btn.append(name, desc);
+        btn.addEventListener("click", () => {
+          setAiSettings({ provider: providerId as any, model: String(model.id) } as any);
+          closeModelMenu();
+        });
+        modelMenu.appendChild(btn);
+      }
+    }
+    if (!providers.length) {
+      const empty = document.createElement("div");
+      empty.className = "leditor-agent-sidebar__modelEmpty";
+      empty.textContent = "Models unavailable in this host.";
+      modelMenu.appendChild(empty);
+    }
+  };
+
   const createMessageEl = (msg: AgentMessage): HTMLElement => {
     const row = document.createElement("div");
     row.className = `leditor-agent-sidebar__msg leditor-agent-sidebar__msg--${msg.role}`;
+    if (msg.role === "user") {
+      row.classList.add("leditor-agent-sidebar__msg--withTools");
+    }
     const meta = document.createElement("div");
     meta.className = "leditor-agent-sidebar__msgMeta";
     meta.textContent = `${msg.role} • ${formatTimestamp(msg.ts)}`;
@@ -447,10 +631,30 @@ export const createAgentSidebar = (
     body.className = "leditor-agent-sidebar__msgBody";
     appendTextWithCommandLinks(body, msg.content);
     row.append(meta, body);
+    if (msg.role === "user") {
+      const tools = document.createElement("div");
+      tools.className = "leditor-agent-sidebar__msgTools";
+      const copyBtn = document.createElement("button");
+      copyBtn.type = "button";
+      copyBtn.className = "leditor-agent-sidebar__msgToolBtn";
+      copyBtn.setAttribute("aria-label", "Copy");
+      copyBtn.innerHTML =
+        '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>';
+      copyBtn.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(String(msg.content ?? ""));
+        } catch {
+          // ignore
+        }
+      });
+      tools.appendChild(copyBtn);
+      row.appendChild(tools);
+    }
     return row;
   };
 
   const renderApiBadge = () => {
+    const sel = resolveSelectedModelId();
     const parts: string[] = [];
     if (lastApiMeta?.provider) parts.push(String(lastApiMeta.provider));
     if (lastApiMeta?.model) parts.push(String(lastApiMeta.model));
@@ -459,16 +663,17 @@ export const createAgentSidebar = (
     const time =
       lastApiMeta?.ts ? ` • ${formatTimestamp(lastApiMeta.ts)}` : "";
     const envParts: string[] = [];
-    if (!lastApiMeta?.model && envStatus?.model) {
-      envParts.push(envStatus.modelFromEnv ? `envModel=${envStatus.model}` : `defaultModel=${envStatus.model}`);
+    envParts.push(`provider=${sel.provider}`);
+    envParts.push(`model=${sel.model}`);
+    if (sel.hasKey === false) {
+      envParts.push(`key missing (${sel.envKey || "API key"})`);
     }
-    if (envStatus && !envStatus.hasApiKey) envParts.push("key missing (OPENAI_API_KEY)");
     const env = envParts.length ? ` • ${envParts.join(" • ")}` : "";
     const base =
       parts.length > 0 ? `API: ${parts.join(" • ")}${time}${env}` : `API: not used yet${env}`;
     apiBadge.textContent = base;
     apiBadge.classList.toggle("is-ok", Boolean(lastApiMeta));
-    apiBadge.classList.toggle("is-missing", Boolean(envStatus && !envStatus.hasApiKey));
+    apiBadge.classList.toggle("is-missing", Boolean(sel.hasKey === false));
   };
 
   let renderedCount = 0;
@@ -487,11 +692,30 @@ export const createAgentSidebar = (
   const setInflight = (value: boolean) => {
     inflight = value;
     input.disabled = inflight;
-    sendBtn.disabled = inflight;
+    // sendBtn disabled state is computed in updateComposerState()
     cancelBtn.classList.toggle("is-hidden", !inflight);
     acceptBtn.disabled = inflight || !pending;
     rejectBtn.disabled = inflight || !pending;
     sidebar.classList.toggle("is-busy", inflight);
+    updateComposerState();
+  };
+
+  const autoResizeInput = () => {
+    try {
+      input.style.height = "auto";
+      const max = 200;
+      const next = Math.min(max, Math.max(26, input.scrollHeight));
+      input.style.height = `${next}px`;
+    } catch {
+      // ignore
+    }
+  };
+
+  const updateComposerState = () => {
+    const hasText = Boolean(String(input.value ?? "").trim());
+    sendBtn.disabled = inflight || !hasText;
+    plusBtn.disabled = inflight;
+    micBtn.disabled = true;
   };
 
   const addMessage = (role: AgentMessage["role"], content: string) => {
@@ -575,13 +799,31 @@ export const createAgentSidebar = (
     return Fragment.fromArray(nodes);
   };
 
+  const isCitationLikeMark = (mark: any): boolean => {
+    const name = String(mark?.type?.name ?? "");
+    if (name === "anchor") return true;
+    if (name !== "link") return false;
+    const attrs = mark?.attrs ?? {};
+    const href = typeof attrs?.href === "string" ? attrs.href : "";
+    const looksLikeCitation = Boolean(
+      attrs?.dataKey ||
+        attrs?.itemKey ||
+        attrs?.dataItemKey ||
+        attrs?.dataDqid ||
+        attrs?.dataQuoteId ||
+        attrs?.dataQuoteText
+    );
+    if (looksLikeCitation) return true;
+    if (href && /^(dq|cite|citegrp):\/\//i.test(href)) return true;
+    return false;
+  };
+
   const extractAnchorTextsInRange = (doc: any, from: number, to: number): string[] => {
     const texts: string[] = [];
     doc.nodesBetween(from, to, (node: any) => {
       if (!node?.isText) return true;
       const marks = Array.isArray(node.marks) ? node.marks : [];
-      const hasAnchor = marks.some((m: any) => String(m?.type?.name ?? "") === "anchor");
-      if (!hasAnchor) return true;
+      if (!marks.some((m: any) => isCitationLikeMark(m))) return true;
       const t = String(node.text ?? "");
       if (t) texts.push(t);
       return true;
@@ -735,6 +977,7 @@ export const createAgentSidebar = (
       ) {
         addMessage("user", instruction);
         input.value = "";
+        autoResizeInput();
         updateInputOverlay();
         await runCheckSourcesForParagraphs(targetIndices);
         return;
@@ -747,18 +990,21 @@ export const createAgentSidebar = (
       if (isOnlyCommand) {
         addMessage("user", instruction);
         input.value = "";
+        autoResizeInput();
         controller.runAction(inlineSlash.id);
         return;
       }
       if (inlineSlash.id === "check_sources" || inlineSlash.id === "clear_checks") {
         addMessage("user", instruction);
         input.value = "";
+        autoResizeInput();
         controller.runAction(inlineSlash.id);
         return;
       }
       if (inlineSlash.id === "synonyms" || inlineSlash.id === "antonyms") {
         addMessage("user", instruction);
         input.value = "";
+        autoResizeInput();
         controller.runAction(inlineSlash.id);
         return;
       }
@@ -780,6 +1026,7 @@ export const createAgentSidebar = (
 
     addMessage("user", instruction);
     input.value = "";
+    autoResizeInput();
     updateInputOverlay();
     setInflight(true);
     try {
@@ -1015,7 +1262,7 @@ export const createAgentSidebar = (
     editor.state.doc.nodesBetween(from, to, (node: any) => {
       if (!node?.isText) return true;
       const marks = Array.isArray(node.marks) ? node.marks : [];
-      if (marks.some((m: any) => String(m?.type?.name ?? "") === "anchor")) {
+      if (marks.some((m: any) => isCitationLikeMark(m))) {
         found = true;
         return false;
       }
@@ -1066,10 +1313,16 @@ export const createAgentSidebar = (
     clearLexicon();
     setInflight(true);
     try {
+      const sel = resolveSelectedModelId();
       const requestId = `lex-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
       const result = await host.lexicon({
         requestId,
-        payload: { mode, text: selectedText }
+        payload: {
+          provider: sel.provider,
+          model: sel.model,
+          mode,
+          text: selectedText
+        }
       });
       if (!result?.success) {
         addMessage("assistant", result?.error ? String(result.error) : "Lexicon request failed.");
@@ -1127,11 +1380,12 @@ export const createAgentSidebar = (
     doc.nodesBetween(from, to, (node: any, pos: number) => {
       if (!node?.isText) return true;
       const marks = Array.isArray(node.marks) ? node.marks : [];
-      const anchorMark = marks.find((m: any) => String(m?.type?.name ?? "") === "anchor");
-      if (!anchorMark) return true;
-      const attrs = anchorMark.attrs ?? {};
-      const href = String(attrs.href ?? (attrs.dataDqid ? `dq://${attrs.dataDqid}` : "") ?? "");
-      const title = String(attrs.title ?? "");
+      const mark = marks.find((m: any) => isCitationLikeMark(m));
+      if (!mark) return true;
+      const attrs = mark.attrs ?? {};
+      const hrefRaw = typeof attrs.href === "string" ? attrs.href : "";
+      const href = hrefRaw || (attrs.dataDqid ? `dq://${attrs.dataDqid}` : "");
+      const title = String(attrs.title ?? attrs.dataQuoteText ?? "");
       const dataKey = String(attrs.dataKey ?? attrs.itemKey ?? attrs.dataItemKey ?? "");
       const dataDqid = String(attrs.dataDqid ?? "");
       const dataQuoteId = String(attrs.dataQuoteId ?? "");
@@ -1207,6 +1461,48 @@ export const createAgentSidebar = (
     return [...collectAnchorsInRange(from, to), ...collectCitationsInRange(from, to)];
   };
 
+  const extractCitationContext = (
+    paragraphText: string,
+    anchors: Array<{ text: string; key: string }>
+  ): Map<string, { start: number; end: number; sentence: string; before: string; after: string }> => {
+    const text = String(paragraphText ?? "");
+    const out = new Map<string, { start: number; end: number; sentence: string; before: string; after: string }>();
+    let searchFrom = 0;
+    const findSentenceBounds = (idx: number): { start: number; end: number } => {
+      const clamp = (v: number) => Math.max(0, Math.min(text.length, v));
+      const i = clamp(idx);
+      const leftSlice = text.slice(0, i);
+      const rightSlice = text.slice(i);
+      const leftBoundary = Math.max(
+        leftSlice.lastIndexOf("."),
+        leftSlice.lastIndexOf("?"),
+        leftSlice.lastIndexOf("!"),
+        leftSlice.lastIndexOf(";"),
+        leftSlice.lastIndexOf("\n")
+      );
+      const start = clamp(leftBoundary >= 0 ? leftBoundary + 1 : 0);
+      const rightCandidates = [rightSlice.indexOf("."), rightSlice.indexOf("?"), rightSlice.indexOf("!"), rightSlice.indexOf(";"), rightSlice.indexOf("\n")]
+        .filter((n) => n >= 0)
+        .map((n) => i + n + 1);
+      const end = clamp(rightCandidates.length ? Math.min(...rightCandidates) : text.length);
+      return { start, end };
+    };
+    for (const a of anchors) {
+      const needle = String(a.text ?? "");
+      if (!needle) continue;
+      let idx = text.indexOf(needle, searchFrom);
+      if (idx < 0) idx = text.indexOf(needle);
+      if (idx >= 0) searchFrom = idx + needle.length;
+      const anchorIdx = idx >= 0 ? idx : 0;
+      const bounds = findSentenceBounds(anchorIdx);
+      const sentence = text.slice(bounds.start, bounds.end).replace(/\s+/g, " ").trim();
+      const before = text.slice(Math.max(0, anchorIdx - 140), anchorIdx).replace(/\s+/g, " ").trim();
+      const after = text.slice(anchorIdx + needle.length, Math.min(text.length, anchorIdx + needle.length + 140)).replace(/\s+/g, " ").trim();
+      out.set(String(a.key), { start: bounds.start, end: bounds.end, sentence, before, after });
+    }
+    return out;
+  };
+
   const runCheckSources = async () => {
     const target = getIndicesForCurrentSelectionOrCursor();
     if (!target) {
@@ -1244,8 +1540,18 @@ export const createAgentSidebar = (
       const editor = editorHandle.getEditor();
       const allItems: any[] = [];
       for (const paragraph of selected) {
-        const anchors = collectSourceRefsInRange(paragraph.from, paragraph.to);
+        const anchorsRaw = collectSourceRefsInRange(paragraph.from, paragraph.to);
         const paragraphText = editor.state.doc.textBetween(paragraph.from, paragraph.to, "\n").trim();
+        const anchors = anchorsRaw.map((a, idx) => {
+          const base = String(a?.href || a?.dataDqid || a?.dataKey || a?.text || "").replace(/\s+/g, " ").trim();
+          const baseShort = base.length > 72 ? `${base.slice(0, 71)}…` : base;
+          const stableKey = `P${paragraph.n}:${baseShort}:${idx + 1}`;
+          return { ...a, key: stableKey };
+        });
+        const ctxByKey = extractCitationContext(
+          paragraphText,
+          anchors.map((a) => ({ key: a.key, text: a.text }))
+        );
         addMessage(
           "system",
           `[check_sources][P${paragraph.n}] sources=${anchors.length} paragraphLen=${paragraphText.length}`
@@ -1267,11 +1573,14 @@ export const createAgentSidebar = (
           console.warn("[agent][check_sources]", {
             paragraph: paragraph.n,
             status: "no_sources_found",
-            hint: "No anchor marks or citation nodes found in this paragraph."
+            hint: "No citation anchors found in this paragraph (anchor/link marks or citation nodes)."
           });
           continue;
         }
+        const sel = resolveSelectedModelId();
         const requestPayload = {
+          provider: sel.provider,
+          model: sel.model,
           paragraphN: paragraph.n,
           paragraphText,
           anchors: anchors.map((a) => ({
@@ -1281,7 +1590,8 @@ export const createAgentSidebar = (
             href: a.href,
             dataKey: a.dataKey,
             dataDqid: a.dataDqid,
-            dataQuoteId: a.dataQuoteId
+            dataQuoteId: a.dataQuoteId,
+            context: ctxByKey.get(a.key) ?? null
           }))
         };
         console.info("[agent][check_sources]", { paragraph: paragraph.n, requestPayload });
@@ -1292,7 +1602,7 @@ export const createAgentSidebar = (
           continue;
         }
         const checksRaw = Array.isArray(result.checks) ? result.checks : [];
-        const byKey = new Map<string, { verdict: string; justification: string }>();
+        const byKey = new Map<string, { verdict: "verified" | "needs_review"; justification: string }>();
         for (const c of checksRaw) {
           const key = typeof c?.key === "string" ? c.key : "";
           if (!key) continue;
@@ -1314,15 +1624,45 @@ export const createAgentSidebar = (
               (check.verdict === "verified" ? "Citation appears consistent." : "Check citation relevance.")
           });
         }
+        try {
+          upsertSourceChecksFromRun({
+            paragraphN: paragraph.n,
+            provider: requestPayload.provider,
+            model: requestPayload.model,
+            anchors: requestPayload.anchors,
+            checksByKey: byKey
+          });
+        } catch {
+          // ignore
+        }
       }
       if (allItems.length === 0) {
+        // Help user diagnose paragraph index mismatches: show where citations actually exist.
+        const paragraphsWithSources: Array<{ n: number; count: number }> = [];
+        for (const r of ranges) {
+          const refs = collectSourceRefsInRange(r.from, r.to);
+          if (refs.length > 0) paragraphsWithSources.push({ n: r.n, count: refs.length });
+        }
+        const hint =
+          paragraphsWithSources.length > 0
+            ? `Found citation anchors in: ${paragraphsWithSources
+                .slice(0, 20)
+                .map((p) => `P${p.n}(${p.count})`)
+                .join(", ")}${paragraphsWithSources.length > 20 ? ", …" : ""}`
+            : "No citation anchors found anywhere in this document.";
+        console.info("[agent][check_sources]", {
+          status: "no_sources_overall",
+          requested: indices,
+          paragraphsWithSources
+        });
         addMessage(
           "system",
-          "No sources to be checked. (No citation anchors found; citations must be inserted as citation/anchor nodes.)"
+          `No sources to be checked. (${hint})`
         );
         return;
       }
       editorHandle.execCommand("SetSourceChecks", { items: allItems });
+      setSourceChecksVisible(true);
       addMessage("system", `Checked ${allItems.length} source(s).`);
     } finally {
       setInflight(false);
@@ -1414,9 +1754,13 @@ export const createAgentSidebar = (
       if (!open) controller.open();
       if (actionId === "clear_checks") {
         try {
-          editorHandle.execCommand("ClearSourceChecks");
+          editorHandle.execCommand("ai.sourceChecks.clear");
         } catch {
-          // ignore
+          try {
+            editorHandle.execCommand("ClearSourceChecks");
+          } catch {
+            // ignore
+          }
         }
         addMessage("system", "Cleared source checks.");
         return;
@@ -1519,7 +1863,7 @@ export const createAgentSidebar = (
       if (i === slashSelectionIndex) row.classList.add("is-selected");
       row.textContent = `${cmd.label} (${cmd.aliases[0]})`;
       row.addEventListener("click", () => {
-        input.value = preferredAlias(cmd);
+      input.value = preferredAlias(cmd);
         void run();
         closeSlashMenu();
       });
@@ -1536,10 +1880,28 @@ export const createAgentSidebar = (
     renderSlashMenu(findSlashMatches(q));
   };
 
+  modelPickerBtn.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    renderModelMenu();
+    if (modelMenu.classList.contains("is-hidden")) {
+      openModelMenu();
+    } else {
+      closeModelMenu();
+    }
+  });
+
+  window.addEventListener("click", () => closeModelMenu());
+
   closeBtn.addEventListener("click", () => controller.close());
 
   sendBtn.addEventListener("click", () => {
     void run();
+  });
+
+  plusBtn.addEventListener("click", () => {
+    // Placeholder for future attachments/actions menu.
+    input.focus();
   });
 
   cancelBtn.addEventListener("click", () => {
@@ -1627,6 +1989,12 @@ export const createAgentSidebar = (
     updateInputOverlay();
   });
 
+  input.addEventListener("input", () => {
+    maybeOpenSlashMenu();
+    renderParsePills();
+    updateInputOverlay();
+  });
+
   input.addEventListener("scroll", () => {
     updateInputOverlay();
   });
@@ -1672,22 +2040,45 @@ export const createAgentSidebar = (
   renderMessages();
   updateInputOverlay();
   const host = (window as any).leditorHost;
-  if (host && typeof host.getAiStatus === "function") {
-    host
-      .getAiStatus()
-      .then((status: any) => {
+  const loadStatus = async () => {
+    if (host && typeof host.getLlmCatalog === "function") {
+      try {
+        const catalog = await host.getLlmCatalog();
+        if (catalog?.success && Array.isArray(catalog?.providers)) {
+          llmCatalog = { providers: catalog.providers as any };
+        }
+      } catch {
+        // ignore
+      }
+    }
+    if (host && typeof host.getLlmStatus === "function") {
+      try {
+        const status = await host.getLlmStatus();
+        if (status?.success && Array.isArray(status?.providers)) {
+          llmStatus = { providers: status.providers as any };
+        }
+      } catch {
+        // ignore
+      }
+    } else if (host && typeof host.getAiStatus === "function") {
+      // Backward compatibility (OpenAI-only hosts).
+      try {
+        const status: any = await host.getAiStatus();
         const hasApiKey = Boolean(status?.hasApiKey);
         const model = String(status?.model || "").trim();
         const modelFromEnv = Boolean(status?.modelFromEnv);
         envStatus = { hasApiKey, model, modelFromEnv };
-        renderApiBadge();
-      })
-      .catch(() => {
+      } catch {
         // ignore
-      });
-  } else {
+      }
+    }
+  };
+
+  void loadStatus().finally(() => {
+    renderReady = true;
+    renderModelPickerLabel();
     renderApiBadge();
-  }
+  });
 
   return controller;
 };

@@ -6,6 +6,7 @@ import { LEDOC_FORMAT_VERSION, type LedocFootnoteEntry } from "../ledoc/format.t
 import { getHostContract } from "../ui/host_contract.ts";
 import { getCurrentPageSize, getMarginValuesCm } from "../ui/layout_settings.ts";
 import { reconcileFootnotes } from "../uipagination/footnotes/registry.ts";
+import { exportSourceChecksThreadForLedoc } from "../ui/source_checks_thread.ts";
 
 const triggerExport = (request: ExportLedocRequest) => {
   const handler = getHostAdapter()?.exportLEDOC;
@@ -54,6 +55,7 @@ const buildPayload = (editorHandle: EditorHandle) => {
   const now = new Date().toISOString();
   const page = getCurrentPageSize();
   const marginsCm = getMarginValuesCm();
+  const sourceChecksThread = exportSourceChecksThreadForLedoc();
   return {
     document: editorHandle.getJSON(),
     meta: {
@@ -75,7 +77,13 @@ const buildPayload = (editorHandle: EditorHandle) => {
     footnotes: {
       version: LEDOC_FORMAT_VERSION,
       footnotes: collectFootnotes(editorHandle)
-    }
+    },
+    history:
+      sourceChecksThread && typeof sourceChecksThread === "object"
+        ? {
+            sourceChecksThread
+          }
+        : undefined
   };
 };
 

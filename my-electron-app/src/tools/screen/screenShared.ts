@@ -3,6 +3,10 @@ import type { RetrieveDataHubState } from "../../session/sessionTypes";
 
 export const SCREEN_CODES_COL = "screen_codes";
 export const SCREEN_COMMENT_COL = "screen_comment";
+export const SCREEN_DECISION_COL = "screen_decision";
+export const SCREEN_BLIND_COL = "screen_blind";
+export const SCREEN_LLM_DECISION_COL = "llm_screen_decision";
+export const SCREEN_LLM_JUSTIFICATION_COL = "llm_screen_justification";
 
 export const SCREEN_ACTIVE_EVENT = "screen:active-changed";
 
@@ -153,6 +157,11 @@ export function ensureScreenColumns(state?: RetrieveDataHubState): { state?: Ret
 
   ensureColumn(SCREEN_CODES_COL);
   ensureColumn(SCREEN_COMMENT_COL);
+   // Decision + blind + optional LLM assist columns
+  ensureColumn(SCREEN_DECISION_COL);
+  ensureColumn(SCREEN_BLIND_COL);
+  ensureColumn(SCREEN_LLM_DECISION_COL);
+  ensureColumn(SCREEN_LLM_JUSTIFICATION_COL);
 
   if (!changed) return { state, changed: false };
   return {
@@ -190,6 +199,63 @@ export function buildEmptyPdfPayload(pdfPath: string): PdfViewerPayload {
     direct_quote_clean: "",
     paraphrase: "",
     researcher_comment: ""
+  };
+}
+
+function pickFirstAuthor(authors: string): string {
+  if (!authors) return "";
+  const parts = authors.split(/[,;]+/);
+  return parts[0]?.trim() ?? "";
+}
+
+function parsePageNumber(value: string): number {
+  const n = Number.parseInt(value, 10);
+  if (Number.isFinite(n) && n > 0) return n;
+  return 1;
+}
+
+export function buildPdfPayloadFromRow(columns: string[], row: unknown[], titleHint: string, sourceHint: string): PdfViewerPayload {
+  const pdfPathRaw = getStringCell(columns, row, "pdf_path");
+  const authors =
+    getStringCell(columns, row, "authors") ||
+    getStringCell(columns, row, "author") ||
+    getStringCell(columns, row, "first_author_last");
+  const firstAuthor =
+    getStringCell(columns, row, "first_author_last") ||
+    pickFirstAuthor(authors);
+  const sectionText =
+    getStringCell(columns, row, "section_text") ||
+    getStringCell(columns, row, "abstract") ||
+    getStringCell(columns, row, "description");
+
+  return {
+    item_key: getStringCell(columns, row, "item_key") || getStringCell(columns, row, "key"),
+    pdf_path: normalizePdfPath(pdfPathRaw),
+    url: getStringCell(columns, row, "url") || getStringCell(columns, row, "link"),
+    author_summary: authors,
+    first_author_last: firstAuthor,
+    year: getStringCell(columns, row, "year"),
+    title: titleHint,
+    source: sourceHint,
+    page: parsePageNumber(
+      getStringCell(columns, row, "page") ||
+        getStringCell(columns, row, "page_number") ||
+        getStringCell(columns, row, "pdf_page")
+    ),
+    section_title: getStringCell(columns, row, "section_title"),
+    section_text: sectionText,
+    rq_question: getStringCell(columns, row, "rq_question"),
+    overarching_theme: getStringCell(columns, row, "overarching_theme"),
+    gold_theme: getStringCell(columns, row, "gold_theme"),
+    route: getStringCell(columns, row, "route"),
+    theme: getStringCell(columns, row, "theme"),
+    potential_theme: getStringCell(columns, row, "potential_theme"),
+    evidence_type: getStringCell(columns, row, "evidence_type"),
+    evidence_type_norm: getStringCell(columns, row, "evidence_type_norm"),
+    direct_quote: getStringCell(columns, row, "direct_quote"),
+    direct_quote_clean: getStringCell(columns, row, "direct_quote_clean"),
+    paraphrase: getStringCell(columns, row, "paraphrase"),
+    researcher_comment: getStringCell(columns, row, "researcher_comment")
   };
 }
 

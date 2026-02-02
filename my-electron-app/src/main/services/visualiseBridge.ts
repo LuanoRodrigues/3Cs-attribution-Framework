@@ -9,8 +9,18 @@ export interface VisualisePreviewRequest {
   table: DataHubTable;
   include?: string[];
   params?: Record<string, unknown>;
+  selection?: { sections?: string[]; slideIds?: string[] };
   collectionName?: string;
   mode?: string;
+}
+
+export interface VisualiseExportPptxRequest {
+  table: DataHubTable;
+  include?: string[];
+  params?: Record<string, unknown>;
+  selection?: { sections?: string[]; slideIds?: string[] };
+  collectionName?: string;
+  outputPath: string;
 }
 
 const resolvePythonBinary = (): string => {
@@ -133,7 +143,20 @@ export const invokeVisualisePreview = async (request: VisualisePreviewRequest): 
     table: request.table,
     include: request.include ?? [],
     params: request.params ?? {},
+    selection: request.selection ?? undefined,
     collectionName: request.collectionName,
     mode: request.mode
+  });
+};
+
+export const invokeVisualiseExportPptx = async (request: VisualiseExportPptxRequest): Promise<Record<string, unknown>> => {
+  return runPythonTask({
+    action: "export_pptx",
+    table: request.table,
+    include: request.include ?? [],
+    params: request.params ?? {},
+    selection: request.selection ?? undefined,
+    collectionName: request.collectionName,
+    outputPath: request.outputPath
   });
 };

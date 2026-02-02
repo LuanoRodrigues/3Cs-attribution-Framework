@@ -31,6 +31,7 @@ import "../plugins/spellcheck.ts";
 import "../plugins/aiAssistant.ts";
 import "../plugins/aiAgent.ts";
 import "../plugins/comments.ts";
+import "../plugins/sourceChecksFeedbacks.ts";
 import "../extensions/plugin_source_view.ts";
 import "../extensions/plugin_debug.ts";
 import "../extensions/plugin_print_preview.ts";
@@ -490,11 +491,6 @@ export const LEditor = {
             throw new Error("LEditor.setContent: html requires string content");
           }
           const inputAnchorCount = (content.match(/<a\b/gi) || []).length;
-          console.info("[LEditor][setContent][html][input]", {
-            inputAnchorCount,
-            length: content.length
-          });
-          console.info("[LEditor][setContent][schema][marks]", Object.keys(editor.schema.marks || {}));
 
           type AnchorSeed = {
             href: string;
@@ -557,16 +553,11 @@ export const LEditor = {
           const anchorSeeds = inputAnchorCount > 0 ? extractAnchorsFromHtml(content) : [];
 
           try {
-            const parsedDoc = ProseMirrorDOMParser.fromSchema(editor.schema).parse(
+            ProseMirrorDOMParser.fromSchema(editor.schema).parse(
               new DOMParser().parseFromString(content, "text/html").body
             );
-            const parsedJson = JSON.stringify(parsedDoc.toJSON());
-            console.info("[LEditor][setContent][html][parsed]", {
-              hasLinkMark: parsedJson.includes("\"link\""),
-              textSample: parsedDoc.textBetween(0, Math.min(parsedDoc.content.size, 200), " ")
-            });
-          } catch (err) {
-            console.warn("[LEditor][setContent][html][parsed] failed", err);
+          } catch {
+            // parse diagnostics suppressed
           }
 
           editor.commands.setContent(content, { parseOptions: { preserveWhitespace: "full" } });
@@ -655,28 +646,11 @@ export const LEditor = {
           try {
             const afterHtml = editor.getHTML();
             const afterAnchorCount = (afterHtml.match(/<a\b/gi) || []).length;
-            console.info("[LEditor][setContent][html][after]", {
-              afterAnchorCount,
-              length: afterHtml.length
-            });
-            if (inputAnchorCount > 0 && anchorSeeds.length > 0) {
-              if (afterAnchorCount === 0) {
-                console.warn("[LEditor][setContent] anchors dropped; rehydrating link marks");
-              } else {
-                console.info("[LEditor][setContent] enriching link marks from source anchors", {
-                  inputAnchorCount,
-                  afterAnchorCount
-                });
-              }
+            if (inputAnchorCount > 0 && anchorSeeds.length > 0 && afterAnchorCount === 0) {
               rehydrateLinksByText(anchorSeeds);
-              const afterFix = editor.getHTML();
-              console.info("[LEditor][setContent][html][after][rehydrate]", {
-                anchorCount: (afterFix.match(/<a\b/gi) || []).length,
-                length: afterFix.length
-              });
             }
-          } catch (err) {
-            console.warn("[LEditor][setContent][html][after] failed", err);
+          } catch {
+            // ignore post-setContent diagnostics
           }
           try {
             seedFootnoteCounterFromDoc(editor.state.doc as any);

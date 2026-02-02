@@ -4,6 +4,7 @@
   "main": "dist/main.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit",
     "build": "npm run build:main && npm run build:renderer && npm run build:settings && npm run validate:leditor-assets && npm run copy-static",
     "smoke:analyse": "node scripts/analyse-smoke.js",

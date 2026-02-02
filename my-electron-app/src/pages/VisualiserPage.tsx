@@ -6,8 +6,6 @@ import type { RetrieveDataHubState } from "../session/sessionTypes";
 
 declare global {
   interface Window {
-    __hitX?: number;
-    __hitY?: number;
     __CENTRAL_LOG_INSTALLED?: boolean;
   }
 }
@@ -36,6 +34,10 @@ const SECTIONS_PANEL_HTML = `
       <div class="section" aria-label="Section keys">
         <header class="section-head section-head--row">
           <div class="section-title">Keys</div>
+          <div class="visualiser-sections-actions" role="group" aria-label="Section selection actions">
+            <button class="btn visualiser-sections-btn" id="btnSectionsAll" type="button">All</button>
+            <button class="btn visualiser-sections-btn" id="btnSectionsNone" type="button">None</button>
+          </div>
           <div class="chip">Include</div>
           <div class="chip" id="checkedCount">0 selected</div>
         </header>
@@ -87,9 +89,6 @@ const MAIN_PANEL_HTML = `
         </div>
       </section>
     </div>
-    <div class="hittest visualiser-hit" id="hitTest">
-      HitTest: idle
-    </div>
   </section>
 `;
 
@@ -106,7 +105,7 @@ const EXPORT_PANEL_HTML = `
           <div class="export-summary-v" id="summaryCount">0</div>
         </div>
         <div class="export-summary-row">
-          <div class="export-summary-k">Slides</div>
+          <div class="export-summary-k">Figures</div>
           <div class="export-summary-v" id="summarySlides">0</div>
         </div>
         <div class="export-summary-row export-summary-row--last">
@@ -133,7 +132,7 @@ const EXPORT_PANEL_HTML = `
         </header>
         <div class="section-body">
           <div class="button-row visualiser-button-row">
-            <button class="btn" id="btnBuild" type="button">Build</button>
+            <button class="btn" id="btnBuild" type="button">Build PPT</button>
             <button class="btn" id="btnCopyStatus" type="button">Copy status</button>
             <button class="btn" id="btnClearStatus" type="button">Clear status</button>
             <button class="btn" id="btnRefresh" type="button">Refresh preview</button>
@@ -144,7 +143,6 @@ const EXPORT_PANEL_HTML = `
   </div>
 `;
 
-const DEFAULT_SLIDE_COUNT = 8;
 export class VisualiserPage {
   private mount: HTMLElement;
   private sectionsHost: HTMLElement | null;
@@ -154,8 +152,8 @@ export class VisualiserPage {
   private sidePanelsActive = false;
   private ribbonTabObserver: MutationObserver | null = null;
   private plotHost: HTMLElement | null = null;
+  private currentTab: "slide" | "table" = "slide";
   private slideIndex = 0;
-  private readonly totalSlides = DEFAULT_SLIDE_COUNT;
   private deckAll: Array<Record<string, unknown>> = [];
   private deck: Array<Record<string, unknown>> = [];
   private deckVersion = 0;
@@ -163,6 +161,9 @@ export class VisualiserPage {
   private thumbQueue: Array<() => Promise<void>> = [];
   private thumbInFlight = 0;
   private readonly thumbMaxConcurrency = 2;
+  private thumbPumpScheduled = false;
+  private thumbRequestedKeys = new Set<string>();
+  private thumbObserver: IntersectionObserver | null = null;
   private previewHiddenSections = new Set<string>();
   private pendingFocusSectionId: string | null = null;
   private currentTable?: DataHubTable;
@@ -177,6 +178,8 @@ export class VisualiserPage {
     options?: Array<{ label: string; value: string }>;
   }> = [];
   private selectedSections = new Set<string>();
+  private selectedSlideKeys = new Set<string>();
+  private loadingDeck = false;
   private dataHubListener: ((event: Event) => void) | null = null;
   private dataHubRestoreListener: ((event: Event) => void) | null = null;
   private eventHandlers: Array<{ element: HTMLElement; type: string; listener: EventListener }> = [];
@@ -187,7 +190,8 @@ export class VisualiserPage {
     options?: boolean | AddEventListenerOptions;
   }> = [];
   private resizeObserver: ResizeObserver | null = null;
-  private hitTestFrame: number | null = null;
+  private plotResizeScheduled = false;
+  private lastActiveThumbIdx: number | null = null;
   private static activeInstance: VisualiserPage | null = null;
 
   constructor(mount: HTMLElement) {
@@ -197,11 +201,11 @@ export class VisualiserPage {
     this.exportHost = VisualiserPage.findPanelContent("panel3");
     this.sectionsPlaceholder = this.sectionsHost?.innerHTML || "";
     this.exportPlaceholder = this.exportHost?.innerHTML || "";
+    this.ensurePlotlyTopojsonConfig();
     this.renderCenterPanel();
     this.installGlobalListeners();
     this.installRibbonTabObserver();
     this.syncSidePanels();
-    this.startHitTestLoop();
     this.installDataHubListener();
     void this.loadVisualiserSchema();
     this.hydrateTableFromRestore();
@@ -269,6 +273,14 @@ export class VisualiserPage {
     const search = this.sectionsHost?.querySelector<HTMLInputElement>("#sectionSearch") ?? null;
     if (search) {
       this.attachListener(search, "input", () => this.applySectionFilter());
+    }
+    const selectAll = this.sectionsHost?.querySelector<HTMLElement>("#btnSectionsAll") ?? null;
+    if (selectAll) {
+      this.attachListener(selectAll, "click", () => this.setAllSectionsSelected(true));
+    }
+    const selectNone = this.sectionsHost?.querySelector<HTMLElement>("#btnSectionsNone") ?? null;
+    if (selectNone) {
+      this.attachListener(selectNone, "click", () => this.setAllSectionsSelected(false));
     }
     const includeHost = this.sectionsHost?.querySelector<HTMLElement>("#includeHost") ?? null;
     if (!includeHost) {
@@ -485,6 +497,7 @@ export class VisualiserPage {
         this.deck = [];
       } else {
         this.slideIndex = 0;
+        this.snapToFirstVisualSlide();
         this.renderSectionsList();
         this.renderThumbs();
         this.renderSlide();
@@ -536,20 +549,62 @@ export class VisualiserPage {
     }
     const hideSet = this.previewHiddenSections;
     const includeSet = this.selectedSections;
-    const filterByInclude = includeSet.size > 0;
+    // When schema is loaded, treat an empty set as "include none" (so All/None controls work).
+    const filterByInclude = this.sections.length > 0;
     return deck.filter((s) => {
       const sec = String((s as any)?.section ?? "").trim();
       if (sec && hideSet.has(sec)) {
         return false;
       }
       if (sec && filterByInclude && !includeSet.has(sec)) {
-        return false;
+        const key = this.buildSlideKey(s);
+        if (!key || !this.selectedSlideKeys.has(key)) {
+          return false;
+        }
       }
       return true;
     });
   }
 
+  private setAllSectionsSelected(value: boolean): void {
+    if (!this.sections.length) {
+      return;
+    }
+    if (value) {
+      this.selectedSections = new Set(this.sections.map((s) => s.id));
+    } else {
+      this.selectedSections.clear();
+    }
+    this.updateDeckFromFilters();
+    this.renderSectionsList();
+  }
+
+  private isVisualSlide(slide: Record<string, unknown> | undefined): boolean {
+    if (!slide) return false;
+    const s: any = slide;
+    if (s.fig_json) return true;
+    const img = String(s.img ?? s.thumb_img ?? "").trim();
+    return Boolean(img);
+  }
+
+  private getVisualSlideIndices(deck: Array<Record<string, unknown>>): number[] {
+    const out: number[] = [];
+    for (let i = 0; i < deck.length; i += 1) {
+      if (this.isVisualSlide(deck[i])) {
+        out.push(i);
+      }
+    }
+    return out;
+  }
+
   private findFirstSlideIndex(sectionId: string): number {
+    for (let i = 0; i < this.deck.length; i += 1) {
+      const slide = this.deck[i] as any;
+      const sec = String(slide?.section ?? "");
+      if (sec === sectionId && this.isVisualSlide(slide)) {
+        return i;
+      }
+    }
     for (let i = 0; i < this.deck.length; i += 1) {
       const sec = String((this.deck[i] as any)?.section ?? "");
       if (sec === sectionId) {
@@ -581,6 +636,7 @@ export class VisualiserPage {
 
   private updateDeckFromFilters(focusSectionId?: string): void {
     this.deck = this.applyPreviewFilter(this.deckAll);
+    const visual = this.getVisualSlideIndices(this.deck);
     if (focusSectionId) {
       this.slideIndex = Math.max(
         0,
@@ -589,9 +645,25 @@ export class VisualiserPage {
     } else {
       this.slideIndex = Math.max(0, Math.min(this.slideIndex, Math.max(0, this.deck.length - 1)));
     }
+    if (visual.length) {
+      if (!visual.includes(this.slideIndex)) {
+        this.slideIndex = visual[0];
+      }
+    }
     this.renderThumbs();
     this.renderSlide();
     this.updateSummary();
+  }
+
+  private snapToFirstVisualSlide(): void {
+    const visual = this.getVisualSlideIndices(this.deck);
+    if (visual.length) {
+      if (!visual.includes(this.slideIndex)) {
+        this.slideIndex = visual[0];
+      }
+      return;
+    }
+    this.slideIndex = Math.max(0, Math.min(this.slideIndex, Math.max(0, this.deck.length - 1)));
   }
 
   private async loadVisualiserSchema(): Promise<void> {
@@ -622,6 +694,7 @@ export class VisualiserPage {
           this.deck = [];
         } else {
           this.slideIndex = 0;
+          this.snapToFirstVisualSlide();
           this.renderSectionsList();
           this.renderThumbs();
           this.renderSlide();
@@ -646,15 +719,17 @@ export class VisualiserPage {
     }
 
     const slides = Array.isArray(this.deckAll) ? this.deckAll : [];
-    const slidesBySection = new Map<string, string[]>();
+    const slidesBySection = new Map<string, Array<{ title: string; key: string }>>();
     slides.forEach((slide) => {
+      if (!this.isVisualSlide(slide)) return;
       const sec = String((slide as any)?.section ?? "").trim();
       if (!sec) return;
       const title = String((slide as any)?.title ?? "").trim() || "Untitled";
+      const key = this.buildSlideKey(slide);
       if (!slidesBySection.has(sec)) {
         slidesBySection.set(sec, []);
       }
-      slidesBySection.get(sec)!.push(title);
+      slidesBySection.get(sec)!.push({ title, key });
     });
 
     const out: string[] = [];
@@ -671,8 +746,18 @@ export class VisualiserPage {
       const body =
         secSlides.length > 0
           ? secSlides
-              .slice(0, 10)
-              .map((t) => `<div class="slide-line">${this.escapeXml(t)}</div>`)
+              .map((s) => {
+                const stitle = this.escapeXml(s.title);
+                const skey = this.escapeXml(s.key);
+                const slideChecked = checked ? true : this.selectedSlideKeys.has(s.key);
+                const disabled = checked ? "disabled" : "";
+                return (
+                  `<label class="slide-check">` +
+                    `<input type="checkbox" data-slide-key="${skey}" ${slideChecked ? "checked" : ""} ${disabled} />` +
+                    `<span>${stitle}</span>` +
+                  `</label>`
+                );
+              })
               .join("")
           : `<div class="muted">No slides in this section.</div>`;
 
@@ -721,6 +806,16 @@ export class VisualiserPage {
     if (!(target instanceof HTMLInputElement)) {
       return;
     }
+    if (target.type === "checkbox" && target.matches("input[data-slide-key]")) {
+      const key = String(target.getAttribute("data-slide-key") ?? "").trim();
+      if (!key) {
+        return;
+      }
+      if (target.checked) this.selectedSlideKeys.add(key);
+      else this.selectedSlideKeys.delete(key);
+      this.updateDeckFromFilters();
+      return;
+    }
     if (target.type !== "checkbox" || !target.matches("input.include[data-section]")) {
       return;
     }
@@ -731,6 +826,14 @@ export class VisualiserPage {
     if (target.checked) {
       this.selectedSections.add(sectionId);
       this.updateDeckFromFilters(sectionId);
+      // Section checked means export everything in this section.
+      const toRemove: string[] = [];
+      this.selectedSlideKeys.forEach((k) => {
+        if (k.startsWith(`${sectionId}::`)) {
+          toRemove.push(k);
+        }
+      });
+      toRemove.forEach((k) => this.selectedSlideKeys.delete(k));
     } else {
       this.selectedSections.delete(sectionId);
       this.updateDeckFromFilters();
@@ -876,9 +979,20 @@ export class VisualiserPage {
     if (!host) {
       return;
     }
+    this.cleanupThumbObserver();
     host.innerHTML = "";
-    const count = this.deck.length || this.totalSlides;
-    for (let index = 0; index < count; index += 1) {
+    const indices = this.getVisualSlideIndices(this.deck);
+    if (!indices.length) {
+      host.innerHTML = this.loadingDeck
+        ? `<div class="muted" style="padding:10px;font-size:12px;color:var(--muted);">Loading visuals…</div>`
+        : `<div class="muted" style="padding:10px;font-size:12px;color:var(--muted);">No figures yet.</div>`;
+      this.updateSlideCounter();
+      return;
+    }
+    const pane = this.mount.querySelector<HTMLElement>("#thumbsPane") ?? host;
+    const observer = this.ensureThumbObserver(pane);
+    this.lastActiveThumbIdx = null;
+    for (const index of indices) {
       const thumb = document.createElement("button");
       thumb.type = "button";
       thumb.className = "thumb";
@@ -896,6 +1010,13 @@ export class VisualiserPage {
       img.decoding = "async";
       img.loading = "lazy";
       img.src = this.svgThumbDataUrl({ title, subtitle: "Loading…", kind: "loading" });
+      img.dataset.fallbackSrc = img.src;
+      img.addEventListener("error", () => {
+        const fallback = img.dataset.fallbackSrc;
+        if (fallback && img.src !== fallback) {
+          img.src = fallback;
+        }
+      });
       preview.appendChild(img);
 
       const label = document.createElement("div");
@@ -910,6 +1031,7 @@ export class VisualiserPage {
       thumb.appendChild(label);
       thumb.appendChild(sub);
       thumb.setAttribute("data-idx", String(index));
+      (thumb as any).dataset.idx = String(index);
       thumb.addEventListener("click", () => {
         this.slideIndex = index;
         this.applySlideChange();
@@ -917,8 +1039,15 @@ export class VisualiserPage {
       host.appendChild(thumb);
 
       const slide = this.deck[index] as Record<string, unknown> | undefined;
-      this.enqueueThumbTask(() => this.populateThumbImage(img, slide, index));
+      observer.observe(thumb);
+
+      // Prime the currently active thumb immediately for perceived performance.
+      if (index === this.slideIndex && slide) {
+        const key = this.buildThumbKey(slide, index);
+        this.enqueueThumbTask(key, () => this.populateThumbImage(img, slide, index));
+      }
     }
+    this.lastActiveThumbIdx = this.slideIndex;
     this.updateSlideCounter();
   }
 
@@ -926,11 +1055,34 @@ export class VisualiserPage {
     this.thumbQueue = [];
     this.thumbInFlight = 0;
     this.thumbCache.clear();
+    this.thumbRequestedKeys.clear();
+    this.thumbPumpScheduled = false;
   }
 
-  private enqueueThumbTask(task: () => Promise<void>): void {
+  private enqueueThumbTask(key: string, task: () => Promise<void>): void {
+    if (key && this.thumbRequestedKeys.has(key)) {
+      return;
+    }
+    if (key) {
+      this.thumbRequestedKeys.add(key);
+    }
     this.thumbQueue.push(task);
-    this.pumpThumbQueue();
+    this.scheduleThumbPump();
+  }
+
+  private scheduleThumbPump(): void {
+    if (this.thumbPumpScheduled) return;
+    this.thumbPumpScheduled = true;
+    const run = () => {
+      this.thumbPumpScheduled = false;
+      this.pumpThumbQueue();
+    };
+    const w = window as any;
+    if (typeof w.requestIdleCallback === "function") {
+      w.requestIdleCallback(run, { timeout: 500 });
+      return;
+    }
+    window.setTimeout(run, 0);
   }
 
   private pumpThumbQueue(): void {
@@ -938,14 +1090,52 @@ export class VisualiserPage {
       const next = this.thumbQueue.shift();
       if (!next) return;
       this.thumbInFlight += 1;
-      void next()
+      void (async () => {
+        await this.yieldToUi();
+        await next();
+      })()
         .catch(() => {
           // ignore; populateThumbImage handles fallbacks + logging
         })
         .finally(() => {
           this.thumbInFlight -= 1;
-          this.pumpThumbQueue();
+          this.scheduleThumbPump();
         });
+    }
+  }
+
+  private async yieldToUi(): Promise<void> {
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  }
+
+  private ensureThumbObserver(root: HTMLElement): IntersectionObserver {
+    if (this.thumbObserver) {
+      return this.thumbObserver;
+    }
+    this.thumbObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          const el = entry.target as HTMLElement;
+          const img = el.querySelector<HTMLImageElement>("img.thumb-img");
+          const idx = Number(el.dataset.idx || "");
+          if (!img || !Number.isFinite(idx)) return;
+          const slide = this.deck[idx] as Record<string, unknown> | undefined;
+          if (!slide) return;
+          this.thumbObserver?.unobserve(el);
+          const key = this.buildThumbKey(slide, idx);
+          this.enqueueThumbTask(key, () => this.populateThumbImage(img, slide, idx));
+        });
+      },
+      { root, rootMargin: "250px 0px", threshold: 0.01 }
+    );
+    return this.thumbObserver;
+  }
+
+  private cleanupThumbObserver(): void {
+    if (this.thumbObserver) {
+      this.thumbObserver.disconnect();
+      this.thumbObserver = null;
     }
   }
 
@@ -1035,6 +1225,7 @@ export class VisualiserPage {
     if (directImg) {
       this.thumbCache.set(key, directImg);
       img.src = directImg;
+      img.dataset.fallbackSrc = img.dataset.fallbackSrc || directImg;
       return;
     }
 
@@ -1045,6 +1236,7 @@ export class VisualiserPage {
         // Always show a deterministic, fast fallback first (and keep the log area clean).
         this.thumbCache.set(key, svgFallback);
         img.src = svgFallback;
+        img.dataset.fallbackSrc = svgFallback;
       }
       if (this.shouldAttemptPngThumb(figJson)) {
         const url = await this.plotlyThumbDataUrl(figJson).catch(() => undefined);
@@ -1202,18 +1394,23 @@ ${dots}
   private async plotlyThumbDataUrl(figJson: any): Promise<string> {
     // Render offscreen to create a small PNG thumb without requiring python/kaleido.
     const palette = this.getThemePalette();
+    const THUMB_W = 320;
+    const THUMB_H = 320;
     const container = document.createElement("div");
     container.style.position = "fixed";
     container.style.left = "-10000px";
     container.style.top = "0";
-    container.style.width = "320px";
-    container.style.height = "220px";
+    container.style.width = `${THUMB_W}px`;
+    container.style.height = `${THUMB_H}px`;
     container.style.pointerEvents = "none";
     container.style.opacity = "0";
     document.body.appendChild(container);
 
     try {
-      const data = figJson.data || figJson;
+      // Give the UI thread a breath before heavy plotly work.
+      await this.yieldToUi();
+      const rawData = Array.isArray(figJson?.data) ? figJson.data : Array.isArray(figJson) ? figJson : [];
+      const data = this.applyCategoricalPaletteToData(rawData);
       const layout = figJson.layout || {};
       const finalLayout = {
         ...layout,
@@ -1221,21 +1418,41 @@ ${dots}
         paper_bgcolor: palette.panel,
         plot_bgcolor: palette.panel,
         font: { ...(layout.font || {}), color: palette.text },
-        margin: layout.margin ?? { l: 24, r: 16, t: 12, b: 24 },
-        width: 320,
-        height: 220,
+        margin: layout.margin ?? { l: 34, r: 28, t: 18, b: 34 },
+        width: THUMB_W,
+        height: THUMB_H,
         autosize: false
       };
       await Plotly.newPlot(container, data, finalLayout, {
         displayModeBar: false,
+        staticPlot: true,
         responsive: false
       });
       const url = (await (Plotly as any).toImage(container, {
         format: "png",
-        width: 320,
-        height: 220,
-        scale: 1
+        width: THUMB_W,
+        height: THUMB_H,
+        scale: 2
       })) as string;
+      if (typeof url === "string" && url.startsWith("blob:")) {
+        // CSP can block blob: in img-src; convert to a data URL.
+        try {
+          const resp = await fetch(url);
+          const blob = await resp.blob();
+          const dataUrl = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result || ""));
+            reader.readAsDataURL(blob);
+          });
+          return dataUrl || url;
+        } finally {
+          try {
+            URL.revokeObjectURL(url);
+          } catch {
+            // ignore
+          }
+        }
+      }
       return url;
     } catch (error) {
       // Don't write thumb errors into the Visualiser log: thumbs are best-effort UI polish.
@@ -1256,10 +1473,32 @@ ${dots}
     }
   }
 
-  private applySlideChange(): void {
-    this.renderThumbs();
+  private applySlideChange(options?: { rebuildThumbs?: boolean }): void {
+    if (options?.rebuildThumbs) {
+      this.renderThumbs();
+    } else {
+      this.updateActiveThumb();
+    }
     this.renderSlide();
     this.updateSummary();
+  }
+
+  private updateActiveThumb(): void {
+    const host = this.mount.querySelector<HTMLElement>("#thumbsList");
+    if (!host) return;
+    const currentIdx = this.slideIndex;
+    if (this.lastActiveThumbIdx === currentIdx) return;
+    const prev = this.lastActiveThumbIdx;
+    if (prev !== null) {
+      const prevEl = host.querySelector<HTMLElement>(`button.thumb[data-idx='${prev}']`);
+      if (prevEl) prevEl.classList.remove("active");
+    } else {
+      const existing = host.querySelector<HTMLElement>("button.thumb.active");
+      if (existing) existing.classList.remove("active");
+    }
+    const nextEl = host.querySelector<HTMLElement>(`button.thumb[data-idx='${currentIdx}']`);
+    if (nextEl) nextEl.classList.add("active");
+    this.lastActiveThumbIdx = currentIdx;
   }
 
   private updateSlideCounter(): void {
@@ -1267,8 +1506,10 @@ ${dots}
     if (!counter) {
       return;
     }
-    const total = this.deck.length || this.totalSlides || 0;
-    const current = total ? String(this.slideIndex + 1) : "0";
+    const indices = this.getVisualSlideIndices(this.deck);
+    const total = indices.length || 0;
+    const pos = indices.indexOf(this.slideIndex);
+    const current = total && pos >= 0 ? String(pos + 1) : total ? "1" : "0";
     counter.textContent = `${current} / ${total}`;
   }
 
@@ -1371,6 +1612,100 @@ ${dots}
     };
   }
 
+  private getPlotlyColorway(): string[] {
+    const p = this.getThemePalette();
+    return [
+      p.accent,
+      p.accent2,
+      p.accent3,
+      p.accent4,
+      "#f56565",
+      "#48bb78",
+      "#ed8936",
+      "#38b2ac",
+      "#9f7aea",
+      "#ecc94b",
+      "#63b3ed",
+      "#f687b3"
+    ];
+  }
+
+  private buildCategoricalPalette(n: number): string[] {
+    const base = [
+      ...this.getPlotlyColorway(),
+      "#22c55e",
+      "#ef4444",
+      "#06b6d4",
+      "#a855f7",
+      "#f59e0b",
+      "#10b981",
+      "#3b82f6",
+      "#e11d48",
+      "#84cc16",
+      "#14b8a6"
+    ];
+    const out: string[] = [];
+    for (let i = 0; i < n; i += 1) {
+      if (i < base.length) {
+        out.push(base[i]);
+        continue;
+      }
+      const h = (i * 137.508) % 360;
+      out.push(`hsl(${h} 72% 58%)`);
+    }
+    return out;
+  }
+
+  private applyCategoricalPaletteToData(dataIn: unknown): any[] {
+    const traces = Array.isArray(dataIn) ? (dataIn as any[]) : [];
+    if (!traces.length) {
+      return traces;
+    }
+    const out = traces.map((t) => (t && typeof t === "object" ? { ...(t as any) } : t));
+    const paletteLine = "rgba(148,163,184,0.32)";
+
+    out.forEach((trace: any) => {
+      if (!trace || typeof trace !== "object") return;
+      const type = String(trace.type || "scatter");
+      if (type === "bar") {
+        const orient = String(trace.orientation || "v");
+        const catsRaw = orient === "h" ? trace.y : trace.x;
+        const valsRaw = orient === "h" ? trace.x : trace.y;
+        if (!Array.isArray(catsRaw) || !Array.isArray(valsRaw)) return;
+        const cats = catsRaw.map((c: unknown) => String(c ?? "").trim()).filter(Boolean);
+        if (cats.length < 2 || cats.length !== valsRaw.length) return;
+        const marker = trace.marker && typeof trace.marker === "object" ? { ...trace.marker } : {};
+        const existing = (marker as any).color;
+        const hasArrayColors = Array.isArray(existing) && existing.length === cats.length;
+        if (!hasArrayColors) {
+          const colors = this.buildCategoricalPalette(cats.length);
+          (marker as any).color = colors;
+        }
+        if (!(marker as any).line) {
+          (marker as any).line = { color: paletteLine, width: 1 };
+        }
+        trace.marker = marker;
+        return;
+      }
+
+      if (type === "pie") {
+        const labelsRaw = trace.labels;
+        const valuesRaw = trace.values;
+        if (!Array.isArray(labelsRaw) || !Array.isArray(valuesRaw)) return;
+        const labels = labelsRaw.map((c: unknown) => String(c ?? "").trim()).filter(Boolean);
+        if (labels.length < 2 || labels.length !== valuesRaw.length) return;
+        const marker = trace.marker && typeof trace.marker === "object" ? { ...trace.marker } : {};
+        const existing = (marker as any).colors;
+        const hasArrayColors = Array.isArray(existing) && existing.length === labels.length;
+        if (!hasArrayColors) {
+          (marker as any).colors = this.buildCategoricalPalette(labels.length);
+        }
+        trace.marker = marker;
+      }
+    });
+    return out;
+  }
+
   private installPlotResizeObserver(): void {
     const host = this.mount.querySelector<HTMLElement>("#plotHost");
     if (!host || typeof ResizeObserver === "undefined") {
@@ -1386,7 +1721,21 @@ ${dots}
   }
 
   private resizePlot(): void {
+    if (this.plotResizeScheduled) {
+      return;
+    }
+    this.plotResizeScheduled = true;
+    requestAnimationFrame(() => {
+      this.plotResizeScheduled = false;
+      this.resizePlotNow();
+    });
+  }
+
+  private resizePlotNow(): void {
     if (!this.plotHost) {
+      return;
+    }
+    if (this.currentTab !== "slide") {
       return;
     }
     if (!this.plotHost.isConnected) {
@@ -1395,8 +1744,8 @@ ${dots}
     if (!this.plotHost.classList.contains("js-plotly-plot")) {
       return;
     }
-    const rect = this.plotHost.getBoundingClientRect();
-    if (rect.width < 2 || rect.height < 2) {
+    // offset* returns 0 when hidden via a display:none ancestor (which getComputedStyle can miss).
+    if (this.plotHost.offsetWidth < 2 || this.plotHost.offsetHeight < 2) {
       return;
     }
     const style = window.getComputedStyle(this.plotHost);
@@ -1431,16 +1780,25 @@ ${dots}
       summaryCount.textContent = String(this.selectedSections.size);
     }
     if (summarySlides) {
-      summarySlides.textContent = String(this.deck.length || this.totalSlides);
+      summarySlides.textContent = String(this.getVisualSlideIndices(this.deck).length || 0);
     }
     if (summaryActive) {
-      summaryActive.textContent = `Slide ${this.slideIndex + 1}`;
+      const slide = this.deck[this.slideIndex] as any;
+      const sec = String(slide?.section ?? "").trim();
+      const label = sec ? this.sections.find((s) => s.id === sec)?.label ?? sec : "";
+      summaryActive.textContent = label || "None";
     }
     const slideCount = this.mount.querySelector<HTMLElement>("#slideCount");
     if (slideCount) {
-      slideCount.textContent = `${this.slideIndex + 1} / ${this.deck.length || this.totalSlides}`;
+      const indices = this.getVisualSlideIndices(this.deck);
+      const total = indices.length || 0;
+      const pos = indices.indexOf(this.slideIndex);
+      slideCount.textContent = `${total && pos >= 0 ? pos + 1 : total ? 1 : 0} / ${total}`;
     }
-    this.setStatus(this.deck.length ? `Slides: ${this.deck.length}` : "No slides");
+    if (!this.loadingDeck) {
+      const n = this.getVisualSlideIndices(this.deck).length;
+      this.setStatus(n ? `Figures: ${n}` : "No figures");
+    }
   }
 
   private setStatus(message: string): void {
@@ -1465,19 +1823,19 @@ ${dots}
   }
 
   private goToSlide(direction: -1 | 1): void {
-    const next = this.slideIndex + direction;
-    const total = this.deck.length || this.totalSlides;
-    if (next < 0) {
+    const indices = this.getVisualSlideIndices(this.deck);
+    if (!indices.length) {
       this.slideIndex = 0;
       this.applySlideChange();
       return;
     }
-    if (next >= total) {
-      this.slideIndex = total - 1;
-      this.applySlideChange();
-      return;
+    let pos = indices.indexOf(this.slideIndex);
+    if (pos < 0) {
+      const snap = indices.find((i) => i >= this.slideIndex) ?? indices[0];
+      pos = indices.indexOf(snap);
     }
-    this.slideIndex = next;
+    const nextPos = Math.max(0, Math.min(pos + direction, indices.length - 1));
+    this.slideIndex = indices[nextPos];
     this.applySlideChange();
   }
 
@@ -1555,6 +1913,7 @@ ${dots}
   }
 
   private setTab(tab: "slide" | "table"): void {
+    this.currentTab = tab;
     const slidePane = this.mount.querySelector<HTMLElement>("#paneSlide");
     const tablePane = this.mount.querySelector<HTMLElement>("#paneTable");
     const tabSlide = this.mount.querySelector<HTMLButtonElement>("#tabSlide");
@@ -1759,7 +2118,7 @@ ${dots}
   };
 
   private handleBuild = (): void => {
-    void this.runVisualiser(true);
+    void this.exportPptx();
   };
 
   private handleRefreshClick = (): void => {
@@ -1767,17 +2126,115 @@ ${dots}
     void this.runVisualiser(true);
   };
 
+  private getCollectionNameForExport(): string {
+    const state = (window as unknown as { __retrieveDataHubState?: RetrieveDataHubState }).__retrieveDataHubState;
+    const fromState = typeof state?.collectionName === "string" ? state.collectionName.trim() : "";
+    if (fromState) {
+      return fromState;
+    }
+    const filePath = typeof state?.filePath === "string" ? state.filePath : "";
+    if (filePath) {
+      const parts = filePath.split(/[/\\\\]+/g).filter(Boolean);
+      const last = parts[parts.length - 1] || "";
+      const base = last.replace(/\.[^/.]+$/, "");
+      return base.trim() || "Collection";
+    }
+    return "Collection";
+  }
+
+  private async exportPptx(): Promise<void> {
+    if (!this.currentTable) {
+      this.setStatus("Load data in Retrieve first.");
+      return;
+    }
+    const include = this.getBuildIncludeIds();
+    if (!include.length) {
+      this.setStatus("Select at least one section.");
+      return;
+    }
+    const params = this.readParams();
+    const collectionName = this.getCollectionNameForExport();
+    const selection = {
+      sections: Array.from(this.selectedSections),
+      slideIds: Array.from(this.selectedSlideKeys)
+    };
+    this.appendVisualiserLog("Build PPT requested.", "info");
+    this.setStatus("Building PPTX…");
+
+    const response = await this.sendVisualiserCommand("export_pptx", {
+      table: this.currentTable,
+      include,
+      params,
+      selection,
+      collectionName
+    });
+
+    if (!response) {
+      this.setStatus("PPT export failed.");
+      this.appendIssueLog("No response from export_pptx.");
+      return;
+    }
+    if (response.status === "canceled") {
+      this.setStatus("Export canceled.");
+      this.appendVisualiserLog(String((response as any).message || "Export canceled."), "warn");
+      return;
+    }
+    const pythonLogs = (response as any).pythonLogs;
+    if (Array.isArray(pythonLogs)) {
+      pythonLogs.forEach((line) => {
+        if (typeof line === "string" && line.trim()) {
+          const l = line.toLowerCase();
+          const level =
+            l.includes("traceback") || l.includes("exception") || l.includes("error")
+              ? "error"
+              : l.includes("warn")
+                ? "warn"
+                : "info";
+          this.appendVisualiserLog(line, level);
+        }
+      });
+    }
+    const logs = (response as any).logs;
+    if (Array.isArray(logs)) {
+      logs.forEach((line) => {
+        if (typeof line === "string" && line.trim()) {
+          const l = line.toLowerCase();
+          const level =
+            l.includes("[error]") || l.includes("traceback") || l.includes("exception")
+              ? "error"
+              : l.includes("[warn]") || l.includes("warn")
+                ? "warn"
+                : "info";
+          this.appendVisualiserLog(line, level);
+        }
+      });
+    }
+    if (response.status !== "ok") {
+      this.setStatus("PPT export failed.");
+      this.appendIssueLog(String((response as any).message || "PPT export failed."));
+      return;
+    }
+    const outPath = String((response as any).path || "").trim();
+    this.setStatus(outPath ? `Saved PPTX: ${outPath}` : "PPT export done.");
+    if (outPath) {
+      this.appendVisualiserLog(`Saved: ${outPath}`, "info");
+    }
+  }
+
   private async runVisualiser(isBuild = false): Promise<void> {
     if (!this.currentTable) {
       this.setStatus("Load data in Retrieve first.");
       return;
     }
-    const include = isBuild ? this.orderedInclude() : this.getPreviewIncludeIds();
+    const include = isBuild ? this.getBuildIncludeIds() : this.getPreviewIncludeIds();
     if (isBuild && !include.length) {
       this.setStatus("Select at least one section.");
       return;
     }
-    this.setStatus("Running visualiser...");
+    this.loadingDeck = true;
+    this.setStatus(isBuild ? "Building deck..." : "Loading visuals…");
+    this.renderThumbs();
+    this.renderSlide();
     const params = this.readParams();
     const includeForCache = isBuild ? include : this.getPreviewIncludeKey();
     const cacheKey = this.buildCacheKey(this.currentTable, includeForCache, params);
@@ -1799,6 +2256,7 @@ ${dots}
         this.renderThumbs();
         this.renderSlide();
         this.updateSummary();
+        this.loadingDeck = false;
         this.setStatus("Visualiser ready (cache)");
         return;
       }
@@ -1807,11 +2265,19 @@ ${dots}
       this.renderSlide();
       this.updateSummary();
     }
-    const response = await this.sendVisualiserCommand(isBuild ? "build_deck" : "run_inputs", {
+    const requestPayload: Record<string, unknown> = {
       table: this.currentTable,
       include,
       params
-    });
+    };
+    if (isBuild) {
+      requestPayload.selection = {
+        sections: Array.from(this.selectedSections),
+        slideIds: Array.from(this.selectedSlideKeys)
+      };
+    }
+    const response = await this.sendVisualiserCommand(isBuild ? "build_deck" : "run_inputs", requestPayload);
+    this.loadingDeck = false;
     if (!response || response.status !== "ok") {
       this.setStatus("Visualiser failed.");
       this.appendIssueLog("Visualiser failed to return results.");
@@ -1836,6 +2302,9 @@ ${dots}
           this.appendIssueLog(text);
         }
       }
+      this.renderThumbs();
+      this.clearPlotPlaceholder();
+      this.updateSummary();
       return;
     }
     const pythonLogs = (response as any).pythonLogs;
@@ -1869,7 +2338,8 @@ ${dots}
       });
     }
     const deck = (response as any).deck?.slides || [];
-    this.deckAll = this.normalizeDeck(Array.isArray(deck) ? deck : [], isBuild ? "build" : "run");
+    const nextDeckAll = this.normalizeDeck(Array.isArray(deck) ? deck : [], isBuild ? "build" : "run");
+    this.deckAll = isBuild ? this.applyBuildSlideFilter(nextDeckAll) : nextDeckAll;
     this.deck = this.applyPreviewFilter(this.deckAll);
     this.applyPendingFocus();
     this.deckVersion += 1;
@@ -1885,6 +2355,7 @@ ${dots}
       this.deleteDeckCache(cacheKey);
     }
     this.slideIndex = 0;
+    this.snapToFirstVisualSlide();
     this.renderSectionsList();
     this.renderThumbs();
     this.renderSlide();
@@ -1899,6 +2370,55 @@ ${dots}
     return this.sections.map((s) => s.id).filter((id) => this.selectedSections.has(id));
   }
 
+  private getBuildIncludeIds(): string[] {
+    const ids = new Set<string>();
+    this.orderedInclude().forEach((id) => ids.add(id));
+    this.deckAll.forEach((slide) => {
+      const key = this.buildSlideKey(slide);
+      if (!key || !this.selectedSlideKeys.has(key)) {
+        return;
+      }
+      const sec = String((slide as any)?.section ?? "").trim();
+      if (sec) ids.add(sec);
+    });
+    return Array.from(ids);
+  }
+
+  private buildSlideKey(slide: Record<string, unknown> | undefined): string {
+    if (!slide) return "";
+    const explicitId = String((slide as any)?.slide_id ?? "").trim();
+    if (explicitId) {
+      return explicitId;
+    }
+    const sec = String((slide as any)?.section ?? "").trim();
+    const rawTitle = String((slide as any)?.title ?? "");
+    const title = this.normalizeTitleForPairing(rawTitle);
+    const kind = (slide as any)?.fig_json
+      ? "fig"
+      : String((slide as any)?.table_html ?? "").trim()
+        ? "table"
+        : String((slide as any)?.img ?? "").trim()
+          ? "img"
+          : "other";
+    const disambiguator = this.hashString(rawTitle).slice(0, 8);
+    return `${sec}::${kind}::${title}::${disambiguator}`;
+  }
+
+  private applyBuildSlideFilter(deck: Array<Record<string, unknown>>): Array<Record<string, unknown>> {
+    if (!deck.length) return [];
+    if (!this.selectedSlideKeys.size) {
+      return deck;
+    }
+    return deck.filter((slide) => {
+      const sec = String((slide as any)?.section ?? "").trim();
+      if (sec && this.selectedSections.has(sec)) {
+        return true;
+      }
+      const key = this.buildSlideKey(slide);
+      return key ? this.selectedSlideKeys.has(key) : false;
+    });
+  }
+
   private clearPlotPlaceholder(): void {
     this.plotHost = this.mount.querySelector<HTMLElement>("#plot");
     if (!this.plotHost) return;
@@ -1907,47 +2427,97 @@ ${dots}
 
   private renderSlide(): void {
     if (!this.plotHost) return;
+    if (this.loadingDeck) {
+      this.plotHost.innerHTML = `<div class="visualiser-loading"><div class="spinner"></div><div>Loading visuals…</div></div>`;
+      return;
+    }
     const slide = this.deck[this.slideIndex] as any;
     if (!slide) {
       this.setStatus("No slide to render.");
       return;
     }
     const figJson = this.normalizeFigJson(slide.fig_json);
-    const tableHtml = slide.table_html;
     const title = slide.title;
     if (figJson && this.plotHost) {
-      Plotly.purge(this.plotHost);
       const rect = this.plotHost.getBoundingClientRect();
       if (rect.width < 2 || rect.height < 2) {
         this.appendIssueLog(
           `Plot container has near-zero size (${Math.round(rect.width)}x${Math.round(rect.height)}). Try reopening the tab/panel.`
         );
       }
-      const data = (figJson as any).data || figJson;
-      const baseLayout = (figJson as any).layout || {};
+      const rawData = Array.isArray((figJson as any).data)
+        ? (figJson as any).data
+        : Array.isArray(figJson)
+          ? figJson
+          : [];
+      const data = this.applyCategoricalPaletteToData(rawData);
+      const rawLayout = (figJson as any).layout || {};
+      // Avoid locking Plotly to a stale width/height from upstream JSON; let it size to the container.
+      const { width: _w, height: _h, ...baseLayout } =
+        rawLayout && typeof rawLayout === "object" ? (rawLayout as Record<string, unknown>) : ({} as Record<string, unknown>);
       const safeMargin = (() => {
         const m = (baseLayout as any).margin || {};
         const toNum = (v: unknown, fallback: number) => (typeof v === "number" && Number.isFinite(v) ? v : fallback);
         return {
-          l: Math.max(30, toNum(m.l, 46)),
-          r: Math.max(30, toNum(m.r, 56)),
-          t: Math.max(20, toNum(m.t, 30)),
-          b: Math.max(30, toNum(m.b, 46)),
+          l: Math.max(36, toNum(m.l, 52)),
+          r: Math.max(44, toNum(m.r, 64)),
+          t: Math.max(26, toNum(m.t, 36)),
+          b: Math.max(36, toNum(m.b, 56)),
           pad: Math.max(0, toNum(m.pad, 4)),
           autoexpand: true
         };
       })();
       const palette = this.getThemePalette();
-      const layout = {
+      const colorway = this.getPlotlyColorway();
+      const hexToRgba = (hex: string, alpha: number): string => {
+        const h = String(hex || "").trim().replace(/^#/, "");
+        const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
+        if (full.length !== 6) return `rgba(148,163,184,${alpha})`;
+        const r = parseInt(full.slice(0, 2), 16);
+        const g = parseInt(full.slice(2, 4), 16);
+        const b = parseInt(full.slice(4, 6), 16);
+        return `rgba(${r},${g},${b},${alpha})`;
+      };
+      const layout: any = {
         ...baseLayout,
         autosize: true,
-        // Let Plotly size to container; we still provide dimensions to reduce initial jitter.
-        width: Math.max(1, Math.floor(rect.width)),
-        height: Math.max(1, Math.floor(rect.height)),
         paper_bgcolor: (baseLayout as any).paper_bgcolor ?? palette.panel,
         plot_bgcolor: (baseLayout as any).plot_bgcolor ?? palette.panel,
-        margin: safeMargin
+        margin: safeMargin,
+        font: { ...(baseLayout as any).font, color: (baseLayout as any)?.font?.color ?? palette.text },
+        colorway: Array.isArray((baseLayout as any).colorway) && (baseLayout as any).colorway.length ? (baseLayout as any).colorway : colorway,
+        hoverlabel: {
+          ...((baseLayout as any).hoverlabel || {}),
+          bgcolor: ((baseLayout as any).hoverlabel || {}).bgcolor ?? palette.panel,
+          bordercolor: ((baseLayout as any).hoverlabel || {}).bordercolor ?? hexToRgba(palette.muted, 0.35),
+          font: { ...(((baseLayout as any).hoverlabel || {}).font || {}), color: (((baseLayout as any).hoverlabel || {}).font || {}).color ?? palette.text }
+        }
       };
+      if ((layout as any).title && typeof (layout as any).title === "object") {
+        (layout as any).title = {
+          ...(layout as any).title,
+          font: { ...((layout as any).title.font || {}), color: (layout as any).title.font?.color ?? palette.text }
+        };
+      }
+      if ((layout as any).legend && typeof (layout as any).legend === "object") {
+        (layout as any).legend = {
+          ...(layout as any).legend,
+          font: { ...((layout as any).legend.font || {}), color: (layout as any).legend.font?.color ?? palette.text }
+        };
+      }
+      Object.keys(layout).forEach((key) => {
+        if (!key.startsWith("xaxis") && !key.startsWith("yaxis")) return;
+        const ax = (layout as any)[key];
+        if (!ax || typeof ax !== "object") return;
+        (layout as any)[key] = {
+          ...ax,
+          color: ax.color ?? palette.text,
+          gridcolor: ax.gridcolor ?? hexToRgba(palette.muted, 0.18),
+          zerolinecolor: ax.zerolinecolor ?? hexToRgba(palette.muted, 0.25),
+          tickfont: { ...(ax.tickfont || {}), color: ax.tickfont?.color ?? palette.text },
+          titlefont: { ...(ax.titlefont || {}), color: ax.titlefont?.color ?? palette.text }
+        };
+      });
       // Reduce clipping issues by letting axes auto-margin when labels are wide.
       if (layout.xaxis && typeof layout.xaxis === "object") {
         (layout as any).xaxis = { ...(layout as any).xaxis, automargin: true };
@@ -1956,26 +2526,49 @@ ${dots}
         (layout as any).yaxis = { ...(layout as any).yaxis, automargin: true };
       }
 
-      // Keep interactive plots, but avoid the default crosshair by preferring pan + scroll zoom.
+      // Keep plots fully interactive (modebar, zoom/pan, selection, exports).
       const config = {
         responsive: true,
-        displayModeBar: false,
+        displayModeBar: true,
         scrollZoom: true,
-        displaylogo: false
+        displaylogo: false,
+        doubleClick: "reset+autosize",
+        showAxisDragHandles: true,
+        showAxisRangeEntryBoxes: true,
+        modeBarButtonsToAdd: ["drawline", "drawopenpath", "drawclosedpath", "drawcircle", "drawrect", "eraseshape"],
+        toImageButtonOptions: {
+          format: "png",
+          filename: String(title || "visual").replace(/[^\w.-]+/g, "_").slice(0, 80) || "visual",
+          width: Math.max(640, Math.round(rect.width || 0)),
+          height: Math.max(420, Math.round(rect.height || 0)),
+          scale: 2
+        }
       };
-      void Plotly.newPlot(this.plotHost, data, { ...layout, dragmode: (layout as any).dragmode ?? "pan" }, config)
+      const uirevision = String((slide as any)?.slide_id ?? this.buildSlideKey(slide) ?? this.slideIndex);
+      const finalLayout = { ...layout, dragmode: (layout as any).dragmode ?? "pan", uirevision };
+      const hasPlot = this.plotHost.classList.contains("js-plotly-plot");
+      const plotlyAny = Plotly as any;
+      const plotFn = hasPlot && typeof plotlyAny.react === "function" ? plotlyAny.react : plotlyAny.newPlot;
+      void plotFn(this.plotHost, data, finalLayout, config)
         .then(() => {
           this.setStatus(title || "Rendered");
           this.installPlotResizeObserver();
           this.resizePlot();
         })
-        .catch((error) => {
+        .catch((error: unknown) => {
           this.setStatus("Plot render failed.");
           this.appendIssueLog(
             `Plotly render failed: ${error instanceof Error ? error.message : String(error)}`
           );
         });
     } else {
+      if (this.plotHost.classList.contains("js-plotly-plot")) {
+        try {
+          Plotly.purge(this.plotHost);
+        } catch {
+          // ignore
+        }
+      }
       const bullets = Array.isArray((slide as any)?.bullets) ? ((slide as any).bullets as unknown[]) : [];
       if (bullets.length) {
         const items = bullets
@@ -1995,7 +2588,8 @@ ${dots}
     }
     const tableHost = this.mount.querySelector<HTMLElement>("#tableHost");
     if (tableHost) {
-      tableHost.innerHTML = tableHtml || "<div>No table available.</div>";
+      const html = this.findTableHtmlForSlide(slide);
+      tableHost.innerHTML = html || "<div>No table available.</div>";
     }
   }
 
@@ -2031,9 +2625,9 @@ ${dots}
   };
 
   private installGlobalListeners(): void {
-    this.addGlobalListener(document, "pointermove", this.handlePointerMove, true);
     this.addGlobalListener(window, "resize", this.handleWindowResize);
     this.addGlobalListener(window, "settings:updated", this.handleThemeUpdate);
+    this.addGlobalListener(window, "unhandledrejection", this.handleUnhandledRejection as unknown as EventListener);
   }
 
   private addGlobalListener(
@@ -2046,15 +2640,52 @@ ${dots}
     this.globalListeners.push({ target, type, listener, options });
   }
 
-  private handlePointerMove = (event: Event): void => {
-    const pointer = event as PointerEvent;
-    window.__hitX = pointer.clientX;
-    window.__hitY = pointer.clientY;
-  };
-
   private handleWindowResize = (): void => {
     this.resizePlot();
   };
+
+  private handleUnhandledRejection = (event: PromiseRejectionEvent): void => {
+    try {
+      // Only surface errors while Visualiser is the active ribbon tab.
+      if (this.getActiveRibbonTab() !== "visualiser") {
+        return;
+      }
+      const reason = event.reason as unknown;
+      const message =
+        reason instanceof Error
+          ? reason.message
+          : reason && typeof reason === "object" && "message" in (reason as any)
+            ? String((reason as any).message || "")
+            : String(reason || "");
+      const stack = reason instanceof Error ? reason.stack || "" : "";
+      const lowered = `${message}\n${stack}`.toLowerCase();
+      if (!lowered.trim()) {
+        return;
+      }
+      const looksRelevant =
+        lowered.includes("plotly") ||
+        lowered.includes("topojson") ||
+        lowered.includes("resize must be passed") ||
+        lowered.includes("visualiser");
+      if (!looksRelevant) {
+        return;
+      }
+      this.appendIssueLog(`Unhandled rejection: ${message || "unknown error"}`);
+    } catch {
+      // ignore
+    }
+  };
+
+  private ensurePlotlyTopojsonConfig(): void {
+    const w = window as any;
+    if (!w.PlotlyConfig || typeof w.PlotlyConfig !== "object") {
+      w.PlotlyConfig = {};
+    }
+    // Plotly geo traces may fetch topojson; keep it explicit so CSP can allowlist it.
+    if (!w.PlotlyConfig.topojsonURL) {
+      w.PlotlyConfig.topojsonURL = "https://cdn.plot.ly/";
+    }
+  }
 
   private handleThemeUpdate = (event: Event): void => {
     const detail = (event as CustomEvent<{ key?: string }>).detail;
@@ -2065,48 +2696,12 @@ ${dots}
     if (!this.plotHost) {
       return;
     }
+    if (this.deck.length) {
+      this.renderSlide();
+      return;
+    }
     this.drawExampleFigure();
   };
-
-  private startHitTestLoop(): void {
-    if (this.hitTestFrame !== null) {
-      return;
-    }
-    this.hitTestTick();
-  }
-
-  private stopHitTestLoop(): void {
-    if (this.hitTestFrame !== null) {
-      cancelAnimationFrame(this.hitTestFrame);
-      this.hitTestFrame = null;
-    }
-  }
-
-  private hitTestTick = (): void => {
-    const trace = document.elementFromPoint(window.__hitX || 0, window.__hitY || 0);
-    this.updateHitTestText(trace);
-    this.hitTestFrame = requestAnimationFrame(this.hitTestTick);
-  };
-
-  private updateHitTestText(element: Element | null): void {
-    const host = this.mount.querySelector<HTMLElement>("#hitTest");
-    if (!host) {
-      return;
-    }
-    if (!element) {
-      host.textContent = "HitTest: none";
-      return;
-    }
-    const idPart = element.id ? `#${element.id}` : "";
-    const classList = element.className
-      ? `.${String(element.className)
-          .split(/\s+/)
-          .filter(Boolean)
-          .slice(0, 2)
-          .join(".")}`
-      : "";
-    host.textContent = `HitTest: ${element.tagName.toLowerCase()}${idPart}${classList}`;
-  }
 
   private cleanupGlobalListeners(): void {
     this.globalListeners.forEach(({ target, type, listener, options }) => {
@@ -2120,6 +2715,7 @@ ${dots}
       Plotly.purge(this.plotHost);
       this.plotHost = null;
     }
+    this.cleanupThumbObserver();
     this.eventHandlers.forEach(({ element, type, listener }) => {
       element.removeEventListener(type, listener);
     });
@@ -2133,7 +2729,6 @@ ${dots}
       this.dataHubRestoreListener = null;
     }
     this.cleanupGlobalListeners();
-    this.stopHitTestLoop();
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
       this.resizeObserver = null;

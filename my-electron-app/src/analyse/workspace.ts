@@ -34,6 +34,7 @@ interface AnalysePayload {
 export class AnalyseWorkspace {
   private root: HTMLElement;
   private headerEl: HTMLHeadingElement;
+  private headerWrap: HTMLElement;
   private pageMount: HTMLElement;
   private toolDock: HTMLElement;
   public readonly element: HTMLElement;
@@ -53,6 +54,7 @@ export class AnalyseWorkspace {
       this.store.update(options.initialState);
     }
     this.headerEl = document.createElement("h2");
+    this.headerWrap = document.createElement("div");
     this.pageMount = document.createElement("div");
     this.toolDock = document.createElement("div");
     this.setupShell();
@@ -164,6 +166,8 @@ export class AnalyseWorkspace {
         : {};
     this.store.update({ activePageId: def.id, lastAction: action, lastPayload: payload, ...roundPatch });
     this.headerEl.textContent = label;
+    // For corpus and Round 1 we want a clean, panel-only layout (no extra page title chrome).
+    this.headerWrap.style.display = action === "analyse/open_corpus" || action === "analyse/open_sections_r1" ? "none" : "";
     this.pageMount.innerHTML = "";
     const ctx: AnalysePageContext = {
       updateState: (patch) => this.store.update(patch),
@@ -176,15 +180,14 @@ export class AnalyseWorkspace {
     this.root.innerHTML = "";
     this.root.classList.add("analyse-shell");
 
-    const headerWrap = document.createElement("div");
-    headerWrap.className = "analyse-header";
-    headerWrap.appendChild(this.headerEl);
+    this.headerWrap.className = "analyse-header";
+    this.headerWrap.appendChild(this.headerEl);
 
     this.pageMount.className = "analyse-page";
 
     this.toolDock.className = "tool-dock";
 
-    this.root.appendChild(headerWrap);
+    this.root.appendChild(this.headerWrap);
     this.root.appendChild(this.pageMount);
     this.root.appendChild(this.toolDock);
   }

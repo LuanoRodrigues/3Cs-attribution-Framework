@@ -545,6 +545,14 @@ html, body {
   background: transparent;
 }
 
+.leditor-footnote-entry--continuation {
+  opacity: 0.9;
+}
+
+.leditor-footnote-entry--continuation .leditor-footnote-entry-number {
+  opacity: 0.7;
+}
+
 .leditor-footnote-popover {
   position: absolute;
   z-index: 20;
@@ -1242,24 +1250,10 @@ html, body {
           )
         ))
   );
-  /* Keep a matching inset so content never visually overlaps the footnote band. */
-  padding-bottom: calc(
-    var(--doc-footer-distance, 0px) + var(--footer-height, 0px) + var(--page-footnote-height, 0px) +
-      var(--page-footnote-gap, 0px)
-  );
   padding: 0;
   overflow: hidden;
   pointer-events: auto;
 }
-.leditor-page-content::after {
-  /* Spacer that mirrors the reserved footnote band so body lines never collide with footnotes. */
-  content: "";
-  display: block;
-  height: calc(var(--page-footnote-height, 0px) + var(--page-footnote-gap, 0px));
-  min-height: 0;
-  pointer-events: none;
-}
-
 .leditor-page-footnotes {
   position: absolute;
   left: var(--local-page-margin-left, var(--page-margin-left));
@@ -1701,6 +1695,7 @@ export const mountA4Layout = (
   const MARGINS_STORAGE_KEY = "leditor:margins";
 
   let paginationQueued = false;
+  let suspendPageObserverReleaseHandle = 0;
   let gridMode: GridMode = "stack";
   const paginationEnabled = featureFlags.paginationEnabled;
   let suspendPageObserver = false;
@@ -2920,7 +2915,7 @@ export const mountA4Layout = (
     }
     renderEndnotes(entries.filter((entry) => entry.kind === "endnote"));
 
-    scheduleFootnoteHeightMeasurement();
+    scheduleFootnoteHeightMeasurement(true);
   };
 
   const focusFootnoteEntry = (footnoteId: string, behavior: "preserve" | "end" = "end"): boolean => {
@@ -2998,7 +2993,7 @@ export const mountA4Layout = (
       }
     }
 
-    if (kind === "endnote") {
+    if ((kind as FootnoteKind) === "endnote") {
       focusEndnoteEntry(id);
       return true;
     }
@@ -3327,6 +3322,10 @@ export const mountA4Layout = (
 
   let footnoteHeightHandle = 0;
   const footnoteHeightCache = new Map<number, number>();
+  const footnoteLayoutVarsByPage = new Map<
+    number,
+    { height: number; effectiveBottom: number; gap: number }
+  >();
   // Rounded pixel values can still jitter by 1px across layout passes (scrollbar toggles, font hinting).
   // Use the smallest delta so a new footnote line always triggers a repagination.
   const FOOTNOTE_HEIGHT_DIRTY_THRESHOLD = 1;
@@ -3346,6 +3345,70 @@ export const mountA4Layout = (
     target.style.setProperty("--page-footnote-gap", `${gapPx}px`);
     target.style.setProperty("--page-footnote-height", `${Math.max(0, Math.round(heightPx))}px`);
     target.style.setProperty("--effective-margin-bottom", `${Math.max(0, Math.round(effectiveBottomPx))}px`);
+  };
+  const getPageStackPages = () => {
+    const pages = Array.from(editorEl.querySelectorAll<HTMLElement>(".leditor-page"));
+    if (pages.length > 0) return pages;
+    return Array.from(document.querySelectorAll<HTMLElement>(".leditor-page"));
+  };
+  const getPageContentNodes = () => {
+    const nodes = Array.from(editorEl.querySelectorAll<HTMLElement>(".leditor-page-content"));
+    if (nodes.length > 0) return nodes;
+    return Array.from(document.querySelectorAll<HTMLElement>(".leditor-page-content"));
+  };
+  let footnoteLayoutSyncHandle = 0;
+  let footnoteLayoutSyncRetries = 0;
+  let footnoteLayoutSyncRaf = 0;
+  const requestEditorPagination = () => {
+    try {
+      const editorInstance = attachedEditorHandle?.getEditor?.() ?? null;
+      const viewDom = (editorInstance?.view?.dom as HTMLElement | null) ?? null;
+      const target = viewDom ?? editorEl;
+      target.dispatchEvent(new CustomEvent("leditor:pagination-request", { bubbles: true }));
+    } catch {
+      // ignore
+    }
+  };
+  const syncFootnoteLayoutVarsToPages = () => {
+    const pages = getPageStackPages();
+    if (pages.length === 0) {
+      if (footnoteLayoutVarsByPage.size > 0 && footnoteLayoutSyncHandle === 0 && footnoteLayoutSyncRetries < 6) {
+        footnoteLayoutSyncRetries += 1;
+        footnoteLayoutSyncHandle = window.requestAnimationFrame(() => {
+          footnoteLayoutSyncHandle = 0;
+          syncFootnoteLayoutVarsToPages();
+        });
+      }
+      return;
+    }
+    footnoteLayoutSyncRetries = 0;
+    const pageContents = getPageContentNodes();
+    let applied = 0;
+    pages.forEach((page, index) => {
+      const raw = (page.dataset.pageIndex ?? "").trim();
+      const parsed = raw.length > 0 ? Number(raw) : Number.NaN;
+      const pageIndex = Number.isFinite(parsed) ? parsed : index;
+      const entry = footnoteLayoutVarsByPage.get(pageIndex);
+      if (!entry) return;
+      setFootnoteLayoutVars(page, entry.height, entry.effectiveBottom, entry.gap);
+      const pageContent = pageContents[pageIndex] ?? pageContents[index] ?? null;
+      setFootnoteLayoutVars(pageContent, entry.height, entry.effectiveBottom, entry.gap);
+      applied += 1;
+    });
+    if (applied === 0 && footnoteLayoutVarsByPage.size > 0 && footnoteLayoutSyncHandle === 0 && footnoteLayoutSyncRetries < 6) {
+      footnoteLayoutSyncRetries += 1;
+      footnoteLayoutSyncHandle = window.requestAnimationFrame(() => {
+        footnoteLayoutSyncHandle = 0;
+        syncFootnoteLayoutVarsToPages();
+      });
+    }
+  };
+  const scheduleFootnoteLayoutVarSync = () => {
+    if (footnoteLayoutSyncRaf) return;
+    footnoteLayoutSyncRaf = window.requestAnimationFrame(() => {
+      footnoteLayoutSyncRaf = 0;
+      window.requestAnimationFrame(() => syncFootnoteLayoutVarsToPages());
+    });
   };
   const updateFootnoteDebugData = (
     container: HTMLElement,
@@ -3373,18 +3436,19 @@ export const mountA4Layout = (
       // ignore
     }
   };
-  function scheduleFootnoteHeightMeasurement() {
-    if (footnoteHeightHandle) return;
+  function scheduleFootnoteHeightMeasurement(force = false) {
+    if (footnoteHeightHandle) {
+      if (!force) return;
+      window.cancelAnimationFrame(footnoteHeightHandle);
+      footnoteHeightHandle = 0;
+    }
     footnoteHeightHandle = window.requestAnimationFrame(() => {
       footnoteHeightHandle = 0;
       const footnoteContainers = Array.from(
         overlayLayer.querySelectorAll<HTMLElement>(".leditor-page-overlay .leditor-page-footnotes")
       );
-      const editorInstance = attachedEditorHandle?.getEditor();
-      const proseRoot = (editorInstance?.view?.dom as HTMLElement | null) ?? null;
-      const pageStackPages = proseRoot
-        ? Array.from(proseRoot.querySelectorAll<HTMLElement>(".leditor-page"))
-        : Array.from(editorEl.querySelectorAll<HTMLElement>(".leditor-page"));
+      const pageStackPages = getPageStackPages();
+      const pageContents = getPageContentNodes();
       const pageHeightPx = measurePageHeight() || 1122; // fallback
       const rootTokens = getComputedStyle(document.documentElement);
       const docFooterDistancePx = Number.parseFloat(rootTokens.getPropertyValue("--doc-footer-distance").trim() || "48");
@@ -3402,11 +3466,17 @@ export const mountA4Layout = (
       syncFootnoteDebugClass();
       const debugEnabled = isFootnoteLayoutDebug();
 
-      footnoteContainers.forEach((container) => {
+      footnoteContainers.forEach((container, containerIndex) => {
         const host = container.closest<HTMLElement>(".leditor-page-overlay");
-        const pageIndex = host ? Number(host.dataset.pageIndex ?? "-1") : -1;
+        const rawIndex = (host?.dataset.pageIndex ?? "").trim();
+        const parsedIndex = rawIndex.length > 0 ? Number(rawIndex) : Number.NaN;
+        const pageIndex = Number.isFinite(parsedIndex) ? parsedIndex : containerIndex;
         const pageStackPage = pageIndex >= 0 ? (pageStackPages[pageIndex] ?? null) : null;
-        const pageContent = pageStackPage?.querySelector<HTMLElement>(".leditor-page-content") ?? null;
+        const pageContent =
+          pageStackPage?.querySelector<HTMLElement>(".leditor-page-content") ??
+          pageContents[pageIndex] ??
+          pageContents[containerIndex] ??
+          null;
         const hasEntries = container.querySelector(".leditor-footnote-entry") != null;
         const containerStyle = getComputedStyle(container);
         const paddingTopPx = Number.parseFloat(containerStyle.paddingTop || "0") || 0;
@@ -3418,6 +3488,17 @@ export const mountA4Layout = (
         if (!hasEntries) {
           const reservePx = footnoteMode ? Math.max(18, Math.round(footerReservePx * 0.35)) : 0;
           const effectiveBottomPx = Math.max(0, footerReservePx + reservePx + FOOTNOTE_BODY_GAP_PX);
+          if (pageIndex >= 0) {
+            if (reservePx > 0) {
+              footnoteLayoutVarsByPage.set(pageIndex, {
+                height: reservePx,
+                effectiveBottom: effectiveBottomPx,
+                gap: FOOTNOTE_BODY_GAP_PX
+              });
+            } else {
+              footnoteLayoutVarsByPage.delete(pageIndex);
+            }
+          }
           container.classList.remove("leditor-page-footnotes--active");
           container.setAttribute("aria-hidden", "true");
           container.style.height = `${reservePx}px`;
@@ -3426,6 +3507,7 @@ export const mountA4Layout = (
           setFootnoteLayoutVars(host, reservePx, effectiveBottomPx, FOOTNOTE_BODY_GAP_PX);
           if (pageIndex >= 0) {
             setFootnoteLayoutVars(pageStackPage, reservePx, effectiveBottomPx, FOOTNOTE_BODY_GAP_PX);
+            setFootnoteLayoutVars(pageContent, reservePx, effectiveBottomPx, FOOTNOTE_BODY_GAP_PX);
             const prevHeight = footnoteHeightCache.get(pageIndex);
             const appliedHeight = reservePx;
             if (prevHeight === undefined || Math.abs(appliedHeight - prevHeight) >= FOOTNOTE_HEIGHT_DIRTY_THRESHOLD) {
@@ -3483,60 +3565,68 @@ export const mountA4Layout = (
         // Snap to whole-line increments; grow immediately when needed.
         const step = Math.max(linePx, 4);
         appliedHeight = Math.max(minFootnotePx, Math.ceil(appliedHeight / step) * step);
+        const currentMarginBottomPx = Number.parseFloat(
+          getComputedStyle(host ?? container).getPropertyValue("--current-margin-bottom").trim() || "0"
+        );
+        const effectiveBottomPx = Math.max(
+          currentMarginBottomPx,
+          footerReservePx + appliedHeight + FOOTNOTE_BODY_GAP_PX
+        );
+        if (pageIndex >= 0) {
+          footnoteLayoutVarsByPage.set(pageIndex, {
+            height: appliedHeight,
+            effectiveBottom: effectiveBottomPx,
+            gap: FOOTNOTE_BODY_GAP_PX
+          });
+        }
 
         // Force the body to reflow instead of adding a scrollbar.
         container.style.overflowY = "hidden";
         container.style.height = hasEntries ? `${appliedHeight}px` : "0px";
         container.style.setProperty("--page-footnote-height", `${appliedHeight}px`);
-        if (host) {
-          const currentMarginBottomPx = Number.parseFloat(
-            getComputedStyle(host).getPropertyValue("--current-margin-bottom").trim() || "0"
-          );
-          const effectiveBottomPx = Math.max(
-            currentMarginBottomPx,
-            footerReservePx + appliedHeight + FOOTNOTE_BODY_GAP_PX
-          );
-          setFootnoteLayoutVars(host, appliedHeight, effectiveBottomPx, FOOTNOTE_BODY_GAP_PX);
-          if (pageIndex >= 0) {
-            setFootnoteLayoutVars(pageStackPage, appliedHeight, effectiveBottomPx, FOOTNOTE_BODY_GAP_PX);
-            const prevHeight = footnoteHeightCache.get(pageIndex);
-            if (prevHeight === undefined || Math.abs(appliedHeight - prevHeight) >= FOOTNOTE_HEIGHT_DIRTY_THRESHOLD) {
-              footnoteHeightCache.set(pageIndex, appliedHeight);
-              earliestDirtyPage =
-                earliestDirtyPage === null ? pageIndex : Math.min(earliestDirtyPage, pageIndex);
-              flashFootnoteReflow(pageIndex);
-            }
-            const overlap =
-              debugEnabled && pageContent
-                ? pageContent.getBoundingClientRect().bottom > container.getBoundingClientRect().top - 1
-                : false;
-            updateFootnoteDebugData(container, { appliedHeight, overlap });
-            if (debugEnabled) {
-              const logNow = Date.now();
-              if (overlap || logNow - lastFootnoteDebugLogAt > 750) {
-                lastFootnoteDebugLogAt = logNow;
-                console.info("[Footnote][layout]", {
-                  pageIndex,
-                  appliedHeight,
-                  measuredHeight,
-                  chromePx,
-                  effectiveBottomPx,
-                  overlap,
-                  footnoteVars: pageStackPage
-                    ? {
-                        height: getComputedStyle(pageStackPage).getPropertyValue("--page-footnote-height").trim(),
-                        gap: getComputedStyle(pageStackPage).getPropertyValue("--page-footnote-gap").trim(),
-                        effectiveBottom: getComputedStyle(pageStackPage)
-                          .getPropertyValue("--effective-margin-bottom")
-                          .trim()
-                      }
-                    : null
-                });
-              }
+        setFootnoteLayoutVars(host, appliedHeight, effectiveBottomPx, FOOTNOTE_BODY_GAP_PX);
+        if (pageIndex >= 0) {
+          setFootnoteLayoutVars(pageStackPage, appliedHeight, effectiveBottomPx, FOOTNOTE_BODY_GAP_PX);
+          setFootnoteLayoutVars(pageContent, appliedHeight, effectiveBottomPx, FOOTNOTE_BODY_GAP_PX);
+          const prevHeight = footnoteHeightCache.get(pageIndex);
+          if (prevHeight === undefined || Math.abs(appliedHeight - prevHeight) >= FOOTNOTE_HEIGHT_DIRTY_THRESHOLD) {
+            footnoteHeightCache.set(pageIndex, appliedHeight);
+            earliestDirtyPage =
+              earliestDirtyPage === null ? pageIndex : Math.min(earliestDirtyPage, pageIndex);
+            flashFootnoteReflow(pageIndex);
+          }
+          const overlap =
+            debugEnabled && pageContent
+              ? pageContent.getBoundingClientRect().bottom > container.getBoundingClientRect().top - 1
+              : false;
+          updateFootnoteDebugData(container, { appliedHeight, overlap });
+          if (debugEnabled) {
+            const logNow = Date.now();
+            if (overlap || logNow - lastFootnoteDebugLogAt > 750) {
+              lastFootnoteDebugLogAt = logNow;
+              console.info("[Footnote][layout]", {
+                pageIndex,
+                appliedHeight,
+                measuredHeight,
+                chromePx,
+                effectiveBottomPx,
+                overlap,
+                footnoteVars: pageStackPage
+                  ? {
+                      height: getComputedStyle(pageStackPage).getPropertyValue("--page-footnote-height").trim(),
+                      gap: getComputedStyle(pageStackPage).getPropertyValue("--page-footnote-gap").trim(),
+                      effectiveBottom: getComputedStyle(pageStackPage)
+                        .getPropertyValue("--effective-margin-bottom")
+                        .trim()
+                    }
+                  : null
+              });
             }
           }
         }
       });
+      // Re-apply cached footnote vars in case pagination replaced page nodes after measurement.
+      syncFootnoteLayoutVarsToPages();
       // IMPORTANT: Never apply the "max across all pages" footnote height globally. That causes
       // every page to reserve space for the largest footnote, producing huge blank gaps and
       // truncated lines on pages without footnotes.
@@ -3548,6 +3638,8 @@ export const mountA4Layout = (
       const effectiveBottomPx = Math.max(baseMarginBottomPx, footerReservePx);
       zoomLayer.style.setProperty("--effective-margin-bottom", `${Math.max(0, Math.round(effectiveBottomPx))}px`);
       if (earliestDirtyPage !== null) {
+        const shouldPaginate = !footnoteMode || footnotePaginationArmed;
+        if (!shouldPaginate) return;
         // Repaginate immediately so body text yields space as soon as footnotes grow.
         footnotePaginationArmed = false;
         if (footnoteTypingPaginationTimer != null) {
@@ -3558,6 +3650,7 @@ export const mountA4Layout = (
           pendingFootnoteRefocusId = activeFootnoteId ?? pendingFootnoteRefocusId;
           (window as any).__leditorPreserveScrollOnNextPagination = true;
         }
+        requestEditorPagination();
         requestPagination();
       }
 	    });
@@ -3923,6 +4016,8 @@ const renderPages = (count: number) => {
     syncHeaderFooter();
     updatePageNumbers();
     applyGridMode();
+    syncFootnoteLayoutVarsToPages();
+    scheduleFootnoteUpdate();
     return;
   }
     pageStack.innerHTML = "";
@@ -4263,6 +4358,7 @@ const renderPages = (count: number) => {
           syncHeaderFooter();
           updatePageNumbers();
           scheduleFootnoteUpdate();
+          scheduleFootnoteLayoutVarSync();
           syncZoomBox();
           return;
         }
@@ -4275,6 +4371,7 @@ const renderPages = (count: number) => {
           updatePageNumbers();
         }
         scheduleFootnoteUpdate();
+        scheduleFootnoteLayoutVarSync();
         syncZoomBox();
         return;
       }
@@ -4291,6 +4388,7 @@ const renderPages = (count: number) => {
         syncHeaderFooter();
       }
       updateContentHeight();
+      scheduleFootnoteLayoutVarSync();
       syncZoomBox();
     } finally {
       const now = performance.now();
@@ -4335,7 +4433,18 @@ const renderPages = (count: number) => {
       // That causes a feedback loop (pagination -> steal focus -> re-focus -> pagination) which
       // presents to the user as blinking and caret loss. Footnote focus should only be driven by
       // explicit user actions and the one-shot insert flow.
-      suspendPageObserver = false;
+      if (suspendPageObserverReleaseHandle) {
+        try {
+          window.cancelAnimationFrame(suspendPageObserverReleaseHandle);
+        } catch {
+          // ignore
+        }
+        suspendPageObserverReleaseHandle = 0;
+      }
+      suspendPageObserverReleaseHandle = window.requestAnimationFrame(() => {
+        suspendPageObserverReleaseHandle = 0;
+        suspendPageObserver = false;
+      });
     }
   };
 
@@ -5344,7 +5453,8 @@ const renderPages = (count: number) => {
   }
 
   const pageObserver = new MutationObserver(() => {
-    if (suspendPageObserver || footnoteMode || headerFooterMode) return;
+    scheduleFootnoteLayoutVarSync();
+    if (suspendPageObserver || paginationQueued || footnoteMode || headerFooterMode) return;
     requestPagination();
   });
   pageObserver.observe(editorEl, { childList: true, subtree: true });
@@ -5389,11 +5499,23 @@ const renderPages = (count: number) => {
   };
   (window as typeof window & { leditorTheme?: any }).leditorTheme = themeControl;
 
-  const resizeObserver = new ResizeObserver(() => {
-    requestPagination();
+  let lastViewportSize = { width: 0, height: 0 };
+  const resizeObserver = new ResizeObserver((entries) => {
+    const entry = entries[0];
+    if (!entry) return;
+    const nextWidth = Math.round(entry.contentRect.width);
+    const nextHeight = Math.round(entry.contentRect.height);
+    if (
+      Math.abs(nextWidth - lastViewportSize.width) < 1 &&
+      Math.abs(nextHeight - lastViewportSize.height) < 1
+    ) {
+      return;
+    }
+    lastViewportSize = { width: nextWidth, height: nextHeight };
     requestZoomUpdate();
   });
-  resizeObserver.observe(canvas);
+  // Observe the viewport shell (not the canvas) so pagination doesn't loop on content height changes.
+  resizeObserver.observe(appRoot);
 
   return {
     updatePagination,

@@ -1,0 +1,214 @@
+/* source_check_rail.css */
+
+#leditor-source-check-rail.leditor-source-check-rail {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 40;
+}
+
+#leditor-source-check-rail.is-hidden {
+  display: none;
+}
+
+.leditor-source-check-rail__lines {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.leditor-source-check-rail__lines path {
+  fill: none;
+  stroke-width: 1.2;
+  opacity: 0.9;
+}
+
+.leditor-source-check-rail__lines path.is-verified {
+  stroke: rgba(16, 185, 129, 0.75);
+}
+
+.leditor-source-check-rail__lines path.is-needsReview {
+  stroke: rgba(239, 68, 68, 0.7);
+}
+
+.leditor-source-check-rail__rail {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.leditor-source-check-rail__header {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  width: max-content;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(245, 245, 245, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  pointer-events: auto;
+  backdrop-filter: blur(8px);
+}
+
+.leditor-source-check-rail__title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: rgba(23, 23, 23, 0.92);
+  user-select: none;
+}
+
+.leditor-source-check-rail__headerBtns {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.leditor-source-check-rail__btn {
+  pointer-events: auto;
+  cursor: pointer;
+  user-select: none;
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  background: rgba(255, 255, 255, 0.95);
+  color: rgba(23, 23, 23, 0.86);
+  border-radius: 10px;
+  padding: 5px 9px;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.leditor-source-check-rail__btn:hover {
+  background: rgba(240, 240, 240, 0.95);
+}
+
+.leditor-source-check-rail__list {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.leditor-source-check-rail__empty {
+  position: absolute;
+  top: 56px;
+  left: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(245, 245, 245, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  font-size: 12px;
+  color: rgba(23, 23, 23, 0.78);
+  pointer-events: auto;
+}
+
+.leditor-source-check-rail__card {
+  position: absolute;
+  width: 320px;
+  max-width: 320px;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.10);
+  background: rgba(250, 250, 250, 0.97);
+  pointer-events: auto;
+  overflow: hidden;
+}
+
+.leditor-source-check-rail__card.is-verified {
+  border-color: rgba(16, 185, 129, 0.30);
+}
+
+.leditor-source-check-rail__card.is-needsReview {
+  border-color: rgba(239, 68, 68, 0.28);
+}
+
+.leditor-source-check-rail__cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.98);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.07);
+}
+
+.leditor-source-check-rail__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 1;
+  user-select: none;
+  flex: 0 0 auto;
+}
+
+.leditor-source-check-rail__card.is-verified .leditor-source-check-rail__badge {
+  color: rgba(6, 95, 70, 1);
+  background: rgba(16, 185, 129, 0.16);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.leditor-source-check-rail__card.is-needsReview .leditor-source-check-rail__badge {
+  color: rgba(127, 29, 29, 1);
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.30);
+}
+
+.leditor-source-check-rail__anchor {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(30, 30, 30, 0.90);
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.leditor-source-check-rail__meta {
+  font-size: 11px;
+  color: rgba(30, 30, 30, 0.55);
+  flex: 0 0 auto;
+}
+
+.leditor-source-check-rail__cardBtns {
+  display: inline-flex;
+  gap: 6px;
+  margin-left: 6px;
+}
+
+.leditor-source-check-rail__iconBtn {
+  pointer-events: auto;
+  cursor: pointer;
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: 9px;
+  width: 22px;
+  height: 22px;
+  line-height: 20px;
+  font-size: 14px;
+  padding: 0;
+  color: rgba(30, 30, 30, 0.72);
+  user-select: none;
+}
+
+.leditor-source-check-rail__iconBtn:hover {
+  background: rgba(245, 245, 245, 0.96);
+}
+
+.leditor-source-check-rail__body {
+  padding: 8px 10px 10px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: rgba(30, 30, 30, 0.78);
+  max-height: 120px;
+  overflow: hidden;
+}
+
+.leditor-source-check-rail__card.is-collapsed .leditor-source-check-rail__body {
+  display: none;
+}

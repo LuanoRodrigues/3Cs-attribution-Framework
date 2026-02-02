@@ -13,25 +13,25 @@ const normalizeError = (error: unknown): string => (error instanceof Error ? err
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === "object" && Object.getPrototypeOf(value) === Object.prototype;
 
-const assertLedocVersion = (value: unknown): asserts value is typeof LEDOC_FORMAT_VERSION => {
+const assertLedocVersion: (value: unknown) => asserts value is typeof LEDOC_FORMAT_VERSION = (value) => {
   if (value !== LEDOC_FORMAT_VERSION) {
     throw new Error(`Unsupported format version: ${String(value ?? "") || "unknown"}`);
   }
 };
 
-const assertString = (value: unknown, label: string): asserts value is string => {
+const assertString: (value: unknown, label: string) => asserts value is string = (value, label) => {
   if (typeof value !== "string" || value.trim().length === 0) {
     throw new Error(`Invalid ${label}`);
   }
 };
 
-const assertStringArray = (value: unknown, label: string): asserts value is string[] => {
+const assertStringArray: (value: unknown, label: string) => asserts value is string[] = (value, label) => {
   if (!Array.isArray(value) || !value.every((entry) => typeof entry === "string")) {
     throw new Error(`Invalid ${label}`);
   }
 };
 
-const assertNumber = (value: unknown, label: string): asserts value is number => {
+const assertNumber: (value: unknown, label: string) => asserts value is number = (value, label) => {
   if (typeof value !== "number" || !Number.isFinite(value)) {
     throw new Error(`Invalid ${label}`);
   }
@@ -185,4 +185,3 @@ export const unpackLedocZip = async (
 
   return { payload: { document, meta, settings, footnotes }, warnings };
 };
-

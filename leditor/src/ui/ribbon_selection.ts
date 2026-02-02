@@ -8,6 +8,7 @@ import {
   readBinding
 } from "./ribbon_state.ts";
 import { type AlignmentVariant } from "./ribbon_selection_helpers.ts";
+import { ribbonTraceCall, setRibbonDebugContext } from "./ribbon_debugger.ts";
 
 export type RibbonSelectionTargets = {
   toggles: Array<{ commandId: EditorCommandId; bindingKey?: RibbonStateKey; element: HTMLButtonElement }>;
@@ -43,22 +44,26 @@ export const watchRibbonSelectionState = (
     return () => {};
   }
   const update = (state: RibbonStateSnapshot): void => {
-    const alignment = (state.alignment as AlignmentVariant) ?? "left";
-    for (const [variantKey, button] of Object.entries(targets.alignmentButtons)) {
-      if (!button) continue;
-      const variant = variantKey as AlignmentVariant;
-      const isActive = variant === alignment;
-      setPressedState(button, isActive);
-    }
-    targets.toggles.forEach(({ commandId, bindingKey, element }) => {
-      const resolver = TOGGLE_STATE_RESOLVERS[commandId];
-      const boundValue = bindingKey ? readBinding(state, bindingKey) : undefined;
-      if (bindingKey && isMixed(boundValue)) {
-        setPressedState(element, "mixed");
-        return;
+    ribbonTraceCall("selection:update", { tab: null }, () => {
+      const alignment = (state.alignment as AlignmentVariant) ?? "left";
+      for (const [variantKey, button] of Object.entries(targets.alignmentButtons)) {
+        if (!button) continue;
+        const variant = variantKey as AlignmentVariant;
+        const isActive = variant === alignment;
+        setPressedState(button, isActive);
       }
-      const pressed = resolver ? resolver(state) : Boolean(boundValue ?? state[commandId as RibbonStateKey]);
-      setPressedState(element, pressed ?? false);
+      targets.toggles.forEach(({ commandId, bindingKey, element }) => {
+        const controlId = element?.dataset?.controlId ?? null;
+        setRibbonDebugContext(element?.closest?.(".leditor-ribbon-panel")?.getAttribute("data-tab-id") ?? null, controlId);
+        const resolver = TOGGLE_STATE_RESOLVERS[commandId];
+        const boundValue = bindingKey ? readBinding(state, bindingKey) : undefined;
+        if (bindingKey && isMixed(boundValue)) {
+          setPressedState(element, "mixed");
+          return;
+        }
+        const pressed = resolver ? resolver(state) : Boolean(boundValue ?? state[commandId as RibbonStateKey]);
+        setPressedState(element, pressed ?? false);
+      });
     });
   };
   const unsubscribe = stateBus.subscribe(update);

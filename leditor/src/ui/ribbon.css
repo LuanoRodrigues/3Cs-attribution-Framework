@@ -892,6 +892,34 @@
   content: none !important;
 }
 
+/* Ribbon debug visual aid */
+.leditor-ribbon.leditor-ribbon-debug {
+  position: relative;
+  outline: 2px dashed rgba(255, 99, 146, 0.8);
+  background-image: repeating-linear-gradient(
+      45deg,
+      rgba(255, 99, 146, 0.08),
+      rgba(255, 99, 146, 0.08) 10px,
+      transparent 10px,
+      transparent 20px
+    ),
+    var(--r-surface);
+}
+.leditor-ribbon .ribbon-debug-badge {
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  background: rgba(255, 99, 146, 0.9);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+  pointer-events: none;
+  z-index: 9999;
+}
+
 .leditor-ribbon .leditor-ribbon-button::before,
 .leditor-ribbon .leditor-ribbon-button::after,
 .leditor-ribbon .leditor-ribbon-icon-btn::before,

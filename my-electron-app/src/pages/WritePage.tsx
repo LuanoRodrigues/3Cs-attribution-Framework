@@ -1,14 +1,14 @@
-import { WritePanel } from "../panels/write/WritePanel";
-import { getDefaultCoderScope } from "../analyse/collectionScope";
+// Write now uses leditor's LEDOC import/export (no coder_state.json bootstrapping).
 
 const HOST_ID = "write-leditor-host";
 const LEDITOR_MOUNT_ID = "editor";
 const STATUS_CLASS = "write-leditor-status";
 const HOST_CLASS = "write-leditor-shell";
-const LIB_STYLE_ENTRY = "lib/leditor.global.css";
-const LIB_MODULE_ENTRY = "lib/leditor.global.mjs";
-let writePanelScopeId: string | null = null;
+// Prefer the canonical ESM entry used by the leditor build (avoids legacy globals).
+const LIB_STYLE_ENTRY = "lib/index.css";
+const LIB_MODULE_ENTRY = "lib/index.js";
 const BODY_WRITE_CLASS = "write-leditor-active";
+const LEDOC_AUTOSAVE_DELAY_MS = 750;
 
 type HostPackage = {
   host: HTMLElement;
@@ -19,6 +19,9 @@ type HostPackage = {
 let sharedHost: HostPackage | undefined;
 let leditorReadyPromise: Promise<void> | undefined;
 let destroyApp: (() => void) | null = null;
+let ledocPath: string | null = null;
+let ledocAutosaveTimer: number | null = null;
+let ledocAutosaveHandler: (() => void) | null = null;
 
 function getProjectBase(): { hostRoot: HostPackage } {
   if (!sharedHost) {
@@ -91,29 +94,54 @@ function ensureMountPoint(packageRef: HostPackage): HTMLElement {
   return mount;
 }
 
-async function seedLeditorScope(): Promise<void> {
-  try {
-    const base = new URL("../resources/leditor/", window.location.href);
-    const scopeId = writePanelScopeId ?? getDefaultCoderScope();
-    localStorage.setItem("leditor.scopeId", scopeId);
-    if (window.coderBridge?.loadState) {
-      void window.coderBridge
-        .loadState({ scopeId })
-        .then((result) => {
-          if (result?.statePath) {
-            localStorage.setItem("leditor.coderStatePath", String(result.statePath));
-          }
-        })
-        .catch(() => {
-          // ignore
-        });
-    } else {
-      localStorage.setItem("leditor.coderStatePath", new URL("content/coder_state.json", base).pathname);
-    }
-  } catch {
-    // best-effort; ignore storage failures
+const waitForGlobal = async <T,>(getter: () => T | null | undefined, timeoutMs: number): Promise<T> => {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const value = getter();
+    if (value) return value;
+    await new Promise((resolve) => window.setTimeout(resolve, 25));
   }
-}
+  throw new Error("Timeout waiting for editor API");
+};
+
+const detachLedocAutosave = () => {
+  if (ledocAutosaveTimer !== null) {
+    window.clearTimeout(ledocAutosaveTimer);
+    ledocAutosaveTimer = null;
+  }
+  if (ledocAutosaveHandler && (window as any).leditor?.off) {
+    try {
+      (window as any).leditor.off("change", ledocAutosaveHandler);
+    } catch {
+      // ignore
+    }
+  }
+  ledocAutosaveHandler = null;
+};
+
+const attachLedocAutosave = (targetPath: string) => {
+  detachLedocAutosave();
+  ledocAutosaveHandler = () => {
+    if (ledocAutosaveTimer !== null) {
+      window.clearTimeout(ledocAutosaveTimer);
+    }
+    ledocAutosaveTimer = window.setTimeout(() => {
+      ledocAutosaveTimer = null;
+      const exporter = (window as any).__leditorAutoExportLEDOC as
+        | ((options?: { prompt?: boolean; suggestedPath?: string }) => Promise<any>)
+        | undefined;
+      if (!exporter) return;
+      void exporter({ prompt: false, suggestedPath: targetPath }).catch((error: unknown) => {
+        console.warn("[write][ledoc][autosave] failed", error);
+      });
+    }, LEDOC_AUTOSAVE_DELAY_MS);
+  };
+  try {
+    (window as any).leditor?.on?.("change", ledocAutosaveHandler);
+  } catch {
+    // ignore
+  }
+};
 
 async function ensureLibraryLeditorLoaded(): Promise<void> {
   const hostPackage = sharedHost;
@@ -123,7 +151,6 @@ async function ensureLibraryLeditorLoaded(): Promise<void> {
   const host = hostPackage.host;
   await waitForHostReady(host);
   ensureMountPoint(hostPackage);
-  await seedLeditorScope();
   const w = window as typeof window & { codexLog?: { write: (line: string) => void } };
   if (!w.codexLog) {
     w.codexLog = {
@@ -133,22 +160,40 @@ async function ensureLibraryLeditorLoaded(): Promise<void> {
 
   const base = new URL("../leditor/", window.location.href);
   const styleUrl = new URL(LIB_STYLE_ENTRY, base).href;
-  const moduleUrl = new URL(LIB_MODULE_ENTRY, base).href;
-  ensureStyleLoaded(styleUrl, "lib");
+  const moduleUrl = new URL(LIB_MODULE_ENTRY, base);
+  // Bust ESM caching so reopening Write after updating leditor on disk uses the latest bits.
+  moduleUrl.searchParams.set("v", String(Date.now()));
+  ensureStyleLoaded(styleUrl, "lib-index");
 
-  const mod: any = await import(moduleUrl);
-  const api = mod?.createLeditorApp ? mod : (globalThis as any).LEditor;
-  if (!api?.createLeditorApp) {
-    throw new Error("LEditor library API missing after module load");
-  }
+  const mod: any = await import(moduleUrl.href);
+  const api = mod;
+  if (!api?.createLeditorApp) throw new Error("LEditor library API missing after module load");
 
   const instance = await api.createLeditorApp({
     container: hostPackage.host,
     elementId: LEDITOR_MOUNT_ID,
     requireHostContract: true,
-    enableCoderStateImport: true
+    enableCoderStateImport: false
   });
   destroyApp = typeof instance?.destroy === "function" ? instance.destroy : api.destroyLeditorApp ?? null;
+
+  // Load the persisted LEDOC document (coder_state.ledoc) and autosave back into it.
+  ledocPath = await (window.leditorHost as any)?.getDefaultLEDOCPath?.().catch(() => null);
+  if (!ledocPath) {
+    ledocPath = "coder_state.ledoc";
+  }
+  try {
+    const importer = await waitForGlobal(
+      () => (window as any).__leditorAutoImportLEDOC as
+        | ((options?: { sourcePath?: string; prompt?: boolean }) => Promise<any>)
+        | undefined,
+      8000
+    );
+    await importer({ sourcePath: ledocPath, prompt: false });
+  } catch (error) {
+    console.warn("[write][ledoc][import] skipped", { ledocPath, error });
+  }
+  attachLedocAutosave(ledocPath);
 }
 
 function ensureLeditorLoaded(): Promise<void> {
@@ -175,7 +220,6 @@ declare global {
 export class WritePage {
   private container: HTMLElement;
   private hostPackage: HostPackage;
-  private sync?: WritePanel;
   private hostConnectionPromise: Promise<void> | null = null;
   private hostConnectionObserver: MutationObserver | null = null;
   private hostConnectionTimeout: number | null = null;
@@ -189,11 +233,7 @@ export class WritePage {
     this.attachHost();
     window.__writeEditorHost = this.hostPackage.host;
     this.addWriteBodyClass();
-    const panelScope = getDefaultCoderScope();
-    writePanelScopeId = panelScope;
-    const ready = this.waitForHostConnection().then(() => ensureLeditorLoaded());
-    this.sync = new WritePanel({ scopeId: panelScope, scriptReady: ready });
-    void this.sync.init();
+    void this.waitForHostConnection().then(() => ensureLeditorLoaded());
   }
 
   focus(): void {
@@ -202,7 +242,7 @@ export class WritePage {
 
   destroy(): void {
     this.cleanupHostConnectionWatcher();
-    this.sync?.destroy();
+    detachLedocAutosave();
     try {
       destroyApp?.();
     } catch {
@@ -210,6 +250,7 @@ export class WritePage {
     }
     destroyApp = null;
     leditorReadyPromise = undefined;
+    ledocPath = null;
     const host = this.hostPackage.host;
     if (host.parentElement === this.container) {
       this.container.removeChild(host);

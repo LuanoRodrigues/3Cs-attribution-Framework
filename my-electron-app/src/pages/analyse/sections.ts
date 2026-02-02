@@ -1762,44 +1762,6 @@ export function renderSectionsPage(
     status.textContent = isBatchMode ? "Loading batches..." : "Loading sections...";
     try {
       if (isBatchMode) {
-        if (isCorpus) {
-          remotePagerMode = true;
-          list.innerHTML = "";
-          status.textContent = "Loading corpus payloads...";
-
-          const loadPayloadPage = async () => {
-            const offset = currentPage * pageSize;
-            remotePagerOffset = offset;
-            const t0 = performance.now();
-            const page = await loadBatchPayloadsPage(runPath, offset, pageSize);
-            remotePagerHasMore = Boolean(page.hasMore);
-            list.innerHTML = "";
-            list.appendChild(buildRemotePager(page.payloads.length, () => loadPayloadPage()));
-
-            const frag = document.createDocumentFragment();
-            page.payloads.forEach((payload) => {
-              const card = document.createElement("div");
-              card.className = "section-card";
-              card.style.cursor = "pointer";
-              const title = document.createElement("h4");
-              title.textContent = String((payload as any).title || (payload as any).rq_question || (payload as any).rq || payload.id || "Payload");
-              const body = document.createElement("div");
-              body.className = "status-bar";
-              body.textContent = String((payload as any).paraphrase || (payload as any).direct_quote || (payload as any).text || "").slice(0, 240);
-              card.appendChild(title);
-              card.appendChild(body);
-              card.addEventListener("click", () => emitBatchPayload(container, payload, state.activeRunId));
-              frag.appendChild(card);
-            });
-            list.appendChild(frag);
-            const elapsed = Math.round(performance.now() - t0);
-            console.info("[analyse][perf][corpus-payloads-page-load]", { ms: elapsed, offset, count: page.payloads.length, hasMore: page.hasMore });
-            status.textContent = `${page.payloads.length} payloads (page ${currentPage + 1}${page.hasMore ? "" : ", last"})`;
-          };
-
-          await loadPayloadPage();
-          return;
-        }
         remotePagerMode = false;
         const t0 = performance.now();
         batches = await loadBatches(runPath);
@@ -1822,7 +1784,17 @@ export function renderSectionsPage(
             })),
           });
         }
-        renderBatchFilters({});
+        // Render initial facets immediately (so corpus has filters without waiting on the worker).
+        const initialFacets = {
+          rq: countValues(batchViews.map((v) => v.rq).filter(Boolean)),
+          evidence: countValues(batchViews.map((v) => v.evidence).filter(Boolean)),
+          theme: countValues(batchViews.map((v) => v.theme).filter(Boolean)),
+          tags: countValues(batchViews.flatMap((v) => v.tags)),
+          authors: countValues(batchViews.map((v) => v.author).filter(Boolean)),
+          years: countValues(batchViews.map((v) => v.year).filter(Boolean)),
+          score: countValues(batchViews.map((v) => v.score).filter(Boolean)),
+        };
+        renderBatchFilters(initialFacets);
         applyBatchFilters();
         status.textContent = `${batches.length} batches loaded`;
         const elapsed = Math.round(performance.now() - t0);

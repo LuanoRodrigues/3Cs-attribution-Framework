@@ -9,6 +9,7 @@ import "../extensions/plugin_import_docx.ts";
 import "../extensions/plugin_export_ledoc.ts";
 import "../extensions/plugin_import_ledoc.ts";
 import { renderRibbon } from "./ribbon.ts";
+import { assertRibbonIconKeysExist } from "./ribbon_icons.ts";
 import { mountStatusBar } from "../ui/status_bar.ts";
 import { attachContextMenu } from "./context_menu.ts";
 import { initFullscreenController } from "./fullscreen.ts";
@@ -27,6 +28,7 @@ import "./ai_settings.css";
 import "./paragraph_grid.css";
 import "./ai_draft_preview.css";
 import "./source_check_badges.css";
+import "./source_check_rail.css";
 import "./references.css";
 import "./references_overlay.css";
 import { mountA4Layout, type A4LayoutController } from "./a4_layout.ts";
@@ -47,6 +49,8 @@ import { installDirectQuotePdfOpenHandler } from "./direct_quote_pdf.ts";
 import { perfMark, perfMeasure, perfSummaryOnce } from "./perf.ts";
 import { getHostAdapter, setHostAdapter, type HostAdapter } from "../host/host_adapter.ts";
 import { THEME_CHANGE_EVENT } from "./theme_events.ts";
+import { ribbonDebugLog } from "./ribbon_debug.ts";
+import { mountSourceCheckRail } from "./source_check_rail.ts";
 
 const ensureProcessEnv = (): Record<string, string | undefined> | undefined => {
   if (typeof globalThis === "undefined") {
@@ -63,8 +67,7 @@ const ensureProcessEnv = (): Record<string, string | undefined> | undefined => {
   return g.process.env;
 };
 let handle: EditorHandle | null = null;
-const DEFAULT_CODER_STATE_PATH =
-  "\\\\wsl.localhost\\Ubuntu-22.04\\home\\pantera\\annotarium\\coder\\0-13_cyber_attribution_corpus_records_total_included\\coder_state.json";
+const DEFAULT_CODER_STATE_PATH = "";
 type CoderStateLoadResult = { html: string; sourcePath: string };
 const CODER_STATE_PATH_STORAGE_KEY = "leditor.coderStatePath";
 let lastCoderStateNode: any = null;
@@ -464,6 +467,33 @@ const resolveCoderStatePath = (): string => {
   return DEFAULT_CODER_STATE_PATH;
 };
 
+async function maybeImportDefaultLedoc(): Promise<boolean> {
+  const resolveDefaultLedocPath = async (): Promise<string | null> => {
+    const adapter = getHostAdapter();
+    if (adapter?.getDefaultLEDOCPath) {
+      try {
+        const path = await adapter.getDefaultLEDOCPath();
+        if (path) return path;
+      } catch (error) {
+        console.warn("[ImportLEDOC][auto] default-path failed", { error });
+      }
+    }
+    return null;
+  };
+  const importer = (window as typeof window & { __leditorAutoImportLEDOC?: (opts?: any) => Promise<any> })
+    .__leditorAutoImportLEDOC;
+  if (!importer) return false;
+  const sourcePath = await resolveDefaultLedocPath();
+  if (!sourcePath) return false;
+  try {
+    const result = await importer({ sourcePath, prompt: false });
+    return Boolean(result?.success);
+  } catch (error) {
+    console.warn("[ImportLEDOC][auto] failed", { error, sourcePath });
+    return false;
+  }
+}
+
 const loadCoderStateHtml = async (): Promise<CoderStateLoadResult | null> => {
   const bridgeResult = await attemptCoderBridgeRead();
   if (bridgeResult) {
@@ -811,6 +841,8 @@ export const createLeditorApp = async (options: CreateLeditorAppOptions = {}): P
 
 export const mountEditor = async () => {
   perfMark("mountEditor:start");
+  // Ensure caret debug flag exists so console access doesn't throw on first load.
+  (window as any).__leditorCaretDebug = (window as any).__leditorCaretDebug ?? false;
   const isDevtoolsDocument = () => {
     const protocol = String(window.location?.protocol || "").toLowerCase();
     const href = String(window.location?.href || "").toLowerCase();
@@ -896,6 +928,21 @@ export const mountEditor = async () => {
     win.__leditorPaginationDebug = true;
     console.info("[PaginationDebug] enabled by feature flag");
   }
+  if (featureFlags.ribbonDebugEnabled) {
+    const win = window as typeof window & {
+      __leditorRibbonDebug?: boolean;
+      __leditorRibbonDebugTab?: string;
+      __leditorRibbonDebugVerbose?: boolean;
+    };
+    win.__leditorRibbonDebug = true;
+    if (featureFlags.ribbonDebugTab) {
+      win.__leditorRibbonDebugTab = featureFlags.ribbonDebugTab;
+    }
+    if (featureFlags.ribbonDebugVerbose) {
+      win.__leditorRibbonDebugVerbose = featureFlags.ribbonDebugVerbose;
+    }
+    ribbonDebugLog("enabled by feature flag");
+  }
   const env = ensureProcessEnv();
   if (env?.GTK_USE_PORTAL === "0") {
     console.info("[Startup] GTK_USE_PORTAL=0 (portal disabled)");
@@ -908,25 +955,9 @@ export const mountEditor = async () => {
 
   const defaultToolbar =
     "Undo Redo | Bold Italic | Heading1 Heading2 | BulletList NumberList | Link | AlignLeft AlignCenter AlignRight JustifyFull | Outdent Indent | SearchReplace Preview ImportLEDOC ExportLEDOC ImportDOCX ExportDOCX FootnotePanel Fullscreen | VisualChars VisualBlocks | DirectionLTR DirectionRTL";
-  const coderStateResult = options.enableCoderStateImport ? await loadCoderStateHtml() : null;
-  if (coderStateResult && lastCoderStateNode) {
-    console.info("[CoderState][node0][render]", {
-      path: coderStateResult.sourcePath,
-      id: lastCoderStateNode.id,
-      type: lastCoderStateNode.type,
-      name: lastCoderStateNode.name,
-      editedHtmlLength:
-        typeof lastCoderStateNode?.editedHtml === "string"
-          ? lastCoderStateNode.editedHtml.length
-          : lastCoderStateNode?.edited_html?.length
-    });
-    (window as typeof window & { __coderStateLoaded?: boolean }).__coderStateLoaded = true;
-    // Only allow autosave once we have loaded real coder state from disk.
-    getCoderAutosaveGuard().__leditorAllowCoderAutosave = true;
-  } else {
-    getCoderAutosaveGuard().__leditorAllowCoderAutosave = false;
-  }
-  const hasInitialContent = Boolean(options.initialContent?.value || coderStateResult?.html);
+  const coderStateResult = null;
+  getCoderAutosaveGuard().__leditorAllowCoderAutosave = false;
+  let hasInitialContent = Boolean(options.initialContent?.value);
   type RendererConfig = {
     elementId: string;
     mountElement?: HTMLElement | null;
@@ -961,10 +992,6 @@ export const mountEditor = async () => {
   };
   if (options.initialContent) {
     config.initialContent = options.initialContent;
-  } else if (coderStateResult?.html) {
-    config.initialContent = { format: "html", value: coderStateResult.html };
-    const snippet = coderStateResult.html.replace(/\\s+/g, " ").slice(0, 200);
-    console.info("[text][preview]", { path: coderStateResult.sourcePath, snippet });
   }
 
   const waitForEditorElement = (
@@ -1006,17 +1033,13 @@ export const mountEditor = async () => {
   perfMark("editor:init:end");
   perfMeasure("editor:init", "editor:init:start", "editor:init:end");
   (window as typeof window & { leditor?: EditorHandle }).leditor = handle;
-  if (coderStateResult?.html) {
-    handle.setContent(coderStateResult.html, { format: "html" });
-    const rendered = handle.getContent({ format: "html" });
-    console.info("[CoderState][rendered]", {
-      path: coderStateResult.sourcePath,
-      length: typeof rendered === "string" ? rendered.length : 0
-    });
-  }
   handle.execCommand("SetPageMargins", {
     margins: { top: 2.5, right: 2.5, bottom: 2.5, left: 2.5 }
   });
+  const autoImportOk = await maybeImportDefaultLedoc();
+  if (autoImportOk) {
+    hasInitialContent = true;
+  }
 
   if (!editorEl) {
     throw new Error(`LEditor: elementId "${config.elementId}" not found`);
@@ -1046,8 +1069,31 @@ export const mountEditor = async () => {
   const ribbonEnabled = featureFlags.ribbonEnabled;
   let disposeRibbon: (() => void) | null = null;
   if (ribbonEnabled) {
-    // Debug: silenced noisy ribbon logs.
-    disposeRibbon = renderRibbon(ribbonHost, handle);
+    try {
+      // Preflight icon integrity before rendering ribbon to avoid runtime crashes.
+      const ribbonConfig = await import("./ribbon_config.ts");
+      const model = ribbonConfig.loadRibbonModel?.();
+      const allIconKeys: string[] = [];
+      if (model?.orderedTabs) {
+        model.orderedTabs.forEach((tab: any) =>
+          tab.groups.forEach((group: any) =>
+            group.clusters.forEach((cluster: any) =>
+              (cluster.controls || []).forEach((control: any) => {
+                if (control.iconKey) allIconKeys.push(control.iconKey);
+                if (control.menu) control.menu.forEach((c: any) => c.iconKey && allIconKeys.push(c.iconKey));
+              })
+            )
+          )
+        );
+      }
+      if (allIconKeys.length) {
+        assertRibbonIconKeysExist(allIconKeys);
+      }
+      disposeRibbon = renderRibbon(ribbonHost, handle);
+    } catch (error) {
+      console.error("[Renderer][Ribbon] preflight failed", error);
+      throw error;
+    }
   }
   let ribbonHeightQueued = false;
   const syncRibbonHeight = () => {
@@ -1072,6 +1118,12 @@ export const mountEditor = async () => {
     window.addEventListener("resize", requestRibbonHeightSync, { signal });
   }
   const layout: A4LayoutController | null = mountA4Layout(docShell, editorEl, handle);
+  // Source checks comments rail (shown only when toggle is enabled).
+  try {
+    mountSourceCheckRail(handle);
+  } catch (error) {
+    console.warn("[source_check_rail][mount] failed", error);
+  }
   setLayoutController(layout);
   document.addEventListener(
     THEME_CHANGE_EVENT,
@@ -1180,14 +1232,21 @@ export const mountEditor = async () => {
   ribbonHost.addEventListener("touchstart", captureRibbonSelection, { capture: true, signal });
   ribbonHost.addEventListener(
     "click",
-    () => {
+    (event) => {
       if (layout?.isFootnoteMode?.()) {
         return;
       }
       try {
-        handle.focus();
+        // Avoid scroll jumps when re-focusing after ribbon clicks.
+        if (handle?.focus) {
+          (handle.focus as any)({ preventScroll: true });
+        }
       } catch {
-        // ignore focus failures
+        try {
+          handle?.focus?.();
+        } catch {
+          // ignore focus failures
+        }
       }
     },
     { capture: false, signal }
@@ -1382,7 +1441,7 @@ export const mountEditor = async () => {
   console.info("[LEditor][schema][marks]", schemaMarks);
   console.info("[LEditor][schema][anchor]", { present: Boolean(tiptapEditor.schema.marks.anchor) });
   attachCitationHandlers(tiptapEditor.view.dom, signal);
-  installDirectQuotePdfOpenHandler({ coderStatePath: lastCoderStatePath ?? resolveCoderStatePath() });
+  installDirectQuotePdfOpenHandler();
   try {
     const probeHtml =
       "<p>Probe <a href=\"dq://probe\" data-key=\"PROBE\" title=\"probe\">(Probe)</a> tail</p>";
@@ -1568,6 +1627,8 @@ export const mountEditor = async () => {
     } else {
       window.codexLog?.write("[PHASE8_OK]");
     }
+    // Restore to a clean doc after the transient font check.
+    editorHandle.setContent("<p></p>", { format: "html" });
   }
 
   // Autosave coder state: event-driven and coalesced (no polling).

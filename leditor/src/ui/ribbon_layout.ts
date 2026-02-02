@@ -16,6 +16,14 @@ import { resolveRibbonCommandId } from "./ribbon_command_aliases.ts";
 import { refreshLayoutView } from "./layout_engine.ts";
 import type { RibbonStateBus, RibbonStateKey, RibbonStateSnapshot } from "./ribbon_state.ts";
 import { perfMark, perfMeasure } from "./perf.ts";
+import {
+  ribbonDebugEnabled,
+  ribbonDebugLog,
+  ribbonDebugTrace,
+  ribbonDebugEvent,
+  ribbonDebugMutation
+} from "./ribbon_debug.ts";
+import { ribbonTraceCall, setRibbonDebugContext } from "./ribbon_debugger.ts";
 import type {
   ClusterConfig,
   ControlConfig,
@@ -35,6 +43,14 @@ type InstalledAddin = {
   id: string;
   name: string;
   description?: string;
+};
+
+const dispatchRibbonCommand = (
+  handle: EditorHandle,
+  commandId: EditorCommandId,
+  args?: Record<string, unknown> | undefined
+): void => {
+  ribbonTraceCall("dispatchCommand", { commandId, args }, () => dispatchCommand(handle, commandId, args as any));
 };
 
 const collectNestedControls = (control: ControlConfig): ControlConfig[] => {
@@ -727,10 +743,10 @@ const runMenuCommand = (
   const targetId = resolveCommandId(command as any, args);
   if ((targetId === "HighlightColor" || targetId === "TextColor") && args?.value === null) {
     const fallback = targetId === "HighlightColor" ? "RemoveHighlightColor" : "RemoveTextColor";
-    dispatchCommand(ctx.editorHandle, fallback as any);
+    dispatchRibbonCommand(ctx.editorHandle, fallback as any);
     return;
   }
-  dispatchCommand(ctx.editorHandle, targetId as any, args);
+  dispatchRibbonCommand(ctx.editorHandle, targetId as any, args);
 };
 
 const createTableGridPicker = (
@@ -1051,7 +1067,7 @@ const openStylesContextMenu = (anchor: HTMLElement, ctx: BuildContext): void => 
     MenuItem({
       label: "Clear Style",
       onSelect: () => {
-        dispatchCommand(ctx.editorHandle, "ClearFormatting");
+        dispatchRibbonCommand(ctx.editorHandle, "ClearFormatting");
         menu.close();
       }
     })
@@ -1267,14 +1283,14 @@ const buildControl = (
     if (!control.command) throw new Error(`Control ${id ?? "?"} missing command`);
     const args = buildCommandArgs(control.command);
     const targetId = resolveCommandId(control.command as any, args);
-    dispatchCommand(ctx.editorHandle, targetId as any, args);
+    dispatchRibbonCommand(ctx.editorHandle, targetId as any, args);
   };
 
   const runFontSizeStep = (direction: 1 | -1) => {
     const current = getStateValue(ctx, "fontSize");
     const numeric = typeof current === "number" ? current : null;
     const next = stepFontSize(ctx.fontSizePresets, numeric, direction);
-    dispatchCommand(ctx.editorHandle, "FontSize" as any, { valuePx: next });
+    dispatchRibbonCommand(ctx.editorHandle, "FontSize" as any, { valuePx: next });
   };
 
   const runColorSplitPrimary = () => {
@@ -1949,7 +1965,7 @@ const applyStageB = (meta: GroupMeta, ctx: BuildContext) => {
             label: c.config.label ?? c.controlId ?? "",
             onSelect: () => {
               if (!c.config.command) throw new Error(`Overflow item missing command: ${c.controlId}`);
-              dispatchCommand(ctx.editorHandle, c.config.command.id as any, c.config.command.args);
+              dispatchRibbonCommand(ctx.editorHandle, c.config.command.id as any, c.config.command.args);
             }
           });
           const resolvedId = c.config.command ? resolveCommandId(c.config.command as any) : undefined;
@@ -1965,7 +1981,7 @@ const applyStageB = (meta: GroupMeta, ctx: BuildContext) => {
             label: c.config.label ?? c.controlId ?? "",
             onSelect: () => {
               if (!c.config.command) throw new Error(`Overflow item missing command: ${c.controlId}`);
-              dispatchCommand(ctx.editorHandle, c.config.command.id as any, c.config.command.args);
+              dispatchRibbonCommand(ctx.editorHandle, c.config.command.id as any, c.config.command.args);
             }
           });
           const resolvedId = c.config.command ? resolveCommandId(c.config.command as any) : undefined;
@@ -1983,7 +1999,7 @@ const applyStageB = (meta: GroupMeta, ctx: BuildContext) => {
             label: c.config.label ?? c.controlId ?? "",
             onSelect: () => {
               if (!c.config.command) throw new Error(`Menu-of item missing command: ${c.controlId}`);
-              dispatchCommand(ctx.editorHandle, c.config.command.id as any, c.config.command.args);
+              dispatchRibbonCommand(ctx.editorHandle, c.config.command.id as any, c.config.command.args);
             }
           });
           const resolvedId = c.config.command ? resolveCommandId(c.config.command as any) : undefined;
@@ -2256,6 +2272,19 @@ export const renderRibbonLayout = (
     host.dataset.ribbonCollapseStage = normalized;
     host.dataset.stage = normalized;
     host.dataset.ribbonTabScroll = normalized === lastStage ? "enabled" : "disabled";
+    if (ribbonDebugEnabled()) {
+      try {
+        const appHeader = host.closest(".leditor-app-header") as HTMLElement | null;
+        const docShell = host.closest(".leditor-app")?.querySelector(".leditor-doc-shell") as HTMLElement | null;
+        ribbonDebugLog("stage update", {
+          stage: normalized,
+          headerHeight: appHeader?.offsetHeight ?? null,
+          docShellScrollTop: docShell?.scrollTop ?? null
+        });
+      } catch {
+        // ignore logging failures
+      }
+    }
   };
   updateStage(defaultStage);
 
@@ -2361,6 +2390,7 @@ export const renderRibbonLayout = (
     } catch {
       // ignore
     }
+    if (ribbonDebugEnabled()) return true;
     try {
       if ((globalThis as any).__leditorDebugRibbonDomTrace === true) return true;
     } catch {
@@ -2463,33 +2493,79 @@ export const renderRibbonLayout = (
     };
   };
 
-  const normalizeRibbonControl = (control: HTMLElement): void => {
+  const normalizeRibbonControl = (control: HTMLElement, reason?: string): void => {
+    const controlId = control.dataset.controlId;
+    const beforeHasIcon = Boolean(control.querySelector("svg"));
     stripNonFluentNodes(control);
-    const hasSvg = Boolean(control.querySelector("svg"));
-    if (!hasSvg) {
+    let iconAdded = false;
+    if (!beforeHasIcon) {
       const iconName = resolveIconForElement(control, controlIconMap);
       if (iconName) {
         const icon = createRibbonIcon(iconName);
         icon.classList.add("ribbon-button-icon");
         control.prepend(icon);
-        control.classList.add("has-icon");
+        iconAdded = true;
       }
     }
-    control.classList.toggle("has-icon", Boolean(control.querySelector("svg")));
+    const afterHasIcon = Boolean(control.querySelector("svg"));
+    control.classList.toggle("has-icon", afterHasIcon);
+    if (ribbonDebugEnabled() && (iconAdded || beforeHasIcon !== afterHasIcon)) {
+      ribbonDebugLog("normalizeRibbonControl", { controlId, reason: reason ?? "normalize", iconAdded });
+    }
   };
 
   const normalizeRibbonControls = (root: HTMLElement): void => {
-    root.querySelectorAll<HTMLElement>(CONTROL_SELECTOR).forEach((control) => normalizeRibbonControl(control));
+    root.querySelectorAll<HTMLElement>(CONTROL_SELECTOR).forEach((control) => normalizeRibbonControl(control, "initial"));
+  };
+
+  const installRibbonEventLogger = (root: HTMLElement): (() => void) => {
+    if (!ribbonDebugEnabled()) return () => {};
+    const docShell = root.closest(".leditor-app")?.querySelector(".leditor-doc-shell") as HTMLElement | null;
+    const events: (keyof GlobalEventHandlersEventMap)[] = [
+      "pointerenter",
+      "pointerleave",
+      "pointerdown",
+      "pointerup",
+      "click",
+      "focus",
+      "blur"
+    ];
+    const handler = (event: Event) => {
+      const target = event.target as HTMLElement | null;
+      const control = target?.closest?.(CONTROL_SELECTOR) as HTMLElement | null;
+      const active = document.activeElement as HTMLElement | null;
+      const scrollTop = docShell?.scrollTop ?? null;
+      ribbonDebugEvent(event.type, {
+        controlId: control?.dataset?.controlId ?? null,
+        tabId: control?.closest?.(".leditor-ribbon-panel")?.getAttribute("data-tab-id") ?? null,
+        node: target?.tagName ?? null,
+        activeNode: active?.tagName ?? null,
+        activeControlId: active?.closest?.(CONTROL_SELECTOR)?.getAttribute("data-control-id") ?? null,
+        docScrollTop: scrollTop
+      });
+    };
+    events.forEach((ev) => root.addEventListener(ev, handler, true));
+    return () => events.forEach((ev) => root.removeEventListener(ev, handler, true));
   };
 
   // Run once after mount.
   normalizeRibbonControls(shell);
+  const uninstallEventLogger = installRibbonEventLogger(shell);
 
   // Guard against external DOM/CSS systems injecting icon-font nodes.
   // If that happens, icons can appear as black "tofu" squares on some platforms.
   const iconStabilityObserver = new MutationObserver((mutations) => {
     const touched = new Set<HTMLElement>();
     for (const m of mutations) {
+      if (ribbonDebugEnabled()) {
+        ribbonDebugMutation("icon observer", {
+          type: m.type,
+          target: (m.target as HTMLElement | null)?.className ?? m.target.nodeName,
+          attributeName: m.attributeName ?? null,
+          added: m.addedNodes.length,
+          removed: m.removedNodes.length
+        });
+      }
       const candidates: HTMLElement[] = [];
       if (m.target instanceof HTMLElement) candidates.push(m.target);
       m.addedNodes.forEach((node) => {
@@ -2502,10 +2578,11 @@ export const renderRibbonLayout = (
         if (control) touched.add(control as HTMLElement);
       });
     }
-    touched.forEach((control) => normalizeRibbonControl(control));
+    touched.forEach((control) => normalizeRibbonControl(control, "mutation"));
   });
   iconStabilityObserver.observe(shell, { subtree: true, childList: true });
   host.addEventListener("ribbon-dispose", () => iconStabilityObserver.disconnect(), { once: true });
+  host.addEventListener("ribbon-dispose", () => uninstallEventLogger?.(), { once: true });
 
   // Optional deep tracing to locate the code that mutates ribbon icon DOM.
   // Enable with one of:
@@ -2541,6 +2618,7 @@ export const renderRibbonLayout = (
     const next = tabs.find((t) => t.tabId === tabId);
     if (!next) return;
     if (activeTab === next) return;
+    setRibbonDebugContext(tabId, null);
     if (activeTab) {
       const closeFlyouts = (activeTab.panel as any)?.__closeRibbonFlyouts as (() => void) | undefined;
       closeFlyouts?.();
@@ -2660,24 +2738,29 @@ export const renderRibbonLayout = (
   );
 
   // Stabilize collapse: debounce and ignore 1px jitter (GPU/transform rounding can cause oscillation).
-  let collapseDebounce: number | null = null;
-  let pendingWidth = 0;
-  const shellObserver = new ResizeObserver((entries) => {
-    const entry = entries[0];
-    const width = Math.floor(entry?.contentRect?.width ?? shell.getBoundingClientRect().width);
-    if (!width) return;
-    if (Math.abs(width - lastShellWidth) < 2) return;
-    pendingWidth = width;
-    if (collapseDebounce) window.clearTimeout(collapseDebounce);
-    collapseDebounce = window.setTimeout(() => {
-      collapseDebounce = null;
-      if (pendingWidth && Math.abs(pendingWidth - lastShellWidth) >= 2) {
-        lastShellWidth = pendingWidth;
-        requestCollapse();
-      }
-    }, 120);
-  });
-  shellObserver.observe(shell);
-  host.addEventListener("ribbon-dispose", () => shellObserver.disconnect(), { once: true });
-  window.addEventListener("beforeunload", () => shellObserver.disconnect(), { once: true });
+  // If collapse is disabled for this ribbon instance, avoid wiring the observer entirely so we don't
+  // create a needless resize → collapse → resize feedback loop that manifests as icon thrash.
+  if (!disableCollapse) {
+    let collapseDebounce: number | null = null;
+    let pendingWidth = 0;
+    lastShellWidth = Math.floor(shell.getBoundingClientRect().width) || 0;
+    const shellObserver = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      const width = Math.floor(entry?.contentRect?.width ?? shell.getBoundingClientRect().width);
+      if (!width) return;
+      if (Math.abs(width - lastShellWidth) < 2) return;
+      pendingWidth = width;
+      if (collapseDebounce) window.clearTimeout(collapseDebounce);
+      collapseDebounce = window.setTimeout(() => {
+        collapseDebounce = null;
+        if (pendingWidth && Math.abs(pendingWidth - lastShellWidth) >= 2) {
+          lastShellWidth = pendingWidth;
+          requestCollapse();
+        }
+      }, 120);
+    });
+    shellObserver.observe(shell);
+    host.addEventListener("ribbon-dispose", () => shellObserver.disconnect(), { once: true });
+    window.addEventListener("beforeunload", () => shellObserver.disconnect(), { once: true });
+  }
 };

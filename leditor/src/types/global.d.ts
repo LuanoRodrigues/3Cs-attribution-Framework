@@ -45,10 +45,34 @@ type AgentRequestResult = {
   applyText?: string;
   operations?: AgentOperation[];
   meta?: {
-    provider: "openai";
+    provider: string;
     model?: string;
     ms?: number;
   };
+  error?: string;
+};
+
+type LlmStatusResult = {
+  success: boolean;
+  providers?: Array<{
+    id: string;
+    label?: string;
+    envKey?: string;
+    hasApiKey?: boolean;
+    defaultModel?: string;
+    modelFromEnv?: boolean;
+  }>;
+  error?: string;
+};
+
+type LlmCatalogResult = {
+  success: boolean;
+  providers?: Array<{
+    id: string;
+    label?: string;
+    envKey?: string;
+    models?: Array<{ id: string; label?: string; description?: string }>;
+  }>;
   error?: string;
 };
 
@@ -97,6 +121,9 @@ declare global {
     };
     __logCoderNode?: () => void;
     __leditorPaginationDebug?: boolean;
+    __leditorRibbonDebug?: boolean;
+    __leditorRibbonDebugTab?: string;
+    __leditorRibbonDebugVerbose?: boolean;
     __leditorHost?: LeditorHostInfo;
     leditor?: EditorHandle;
     leditorHost?: {
@@ -112,11 +139,16 @@ declare global {
       exportLEDOC?: (request: ExportLedocRequest) => Promise<ExportLedocResult>;
       importLEDOC?: (request: ImportLedocRequest) => Promise<ImportLedocResult>;
       insertImage?: (request?: { sourcePath?: string }) => Promise<InsertImageResult>;
+      getDefaultLEDOCPath?: () => Promise<string>;
       readFile?: (request: { sourcePath: string }) => Promise<HostReadFileResult>;
       writeFile?: (request: { targetPath: string; data: string }) => Promise<HostWriteFileResult>;
       agentRequest?: (request: { requestId?: string; payload: AgentRequestPayload }) => Promise<AgentRequestResult>;
       agentCancel?: (request: { requestId: string }) => Promise<{ success: boolean; cancelled?: boolean; error?: string }>;
       getAiStatus?: () => Promise<{ success: boolean; hasApiKey?: boolean; model?: string; modelFromEnv?: boolean; error?: string }>;
+      getLlmStatus?: () => Promise<LlmStatusResult>;
+      getLlmCatalog?: () => Promise<LlmCatalogResult>;
+      checkSources?: (request: { requestId?: string; payload: Record<string, unknown> }) => Promise<Record<string, unknown>>;
+      lexicon?: (request: { requestId?: string; payload: Record<string, unknown> }) => Promise<Record<string, unknown>>;
       getInstalledAddins?: () => Promise<InstalledAddin[]>;
       installedAddins?: InstalledAddin[];
     };

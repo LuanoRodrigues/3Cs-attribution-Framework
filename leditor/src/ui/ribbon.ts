@@ -8,6 +8,7 @@ import {
   type RibbonSelectionTargets
 } from "./ribbon_selection.ts";
 import type { AlignmentVariant } from "./ribbon_selection_helpers.ts";
+import { installRibbonDebugger } from "./ribbon_debugger.ts";
 
 type RibbonHooks = {
   registerToggle?: (commandId: EditorCommandId, element: HTMLButtonElement) => void;
@@ -39,6 +40,7 @@ export const renderRibbon = (host: HTMLElement, editorHandle: EditorHandle): (()
   const stateBus = new RibbonStateBus(editorHandle);
 
   renderRibbonLayout(host, editorHandle, hooks, stateBus, model);
+  const ribbonDebugger = installRibbonDebugger(host);
   const unsubscribeSelection = watchRibbonSelectionState(stateBus, selectionTargets);
 
   const handleFindShortcut = (event: KeyboardEvent) => {
@@ -63,6 +65,11 @@ export const renderRibbon = (host: HTMLElement, editorHandle: EditorHandle): (()
     }
     try {
       unsubscribeSelection?.();
+    } catch {
+      // ignore
+    }
+    try {
+      ribbonDebugger.dispose();
     } catch {
       // ignore
     }

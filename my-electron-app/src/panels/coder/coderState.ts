@@ -29,15 +29,59 @@ function generateId(): string {
   return `coder_${Math.random().toString(16).slice(2)}${Date.now().toString(16)}`;
 }
 
+function isPlaceholderTitle(value: string): boolean {
+  const normalized = String(value || "")
+    .replace(/\u2026/g, "...")
+    .trim()
+    .toLowerCase();
+  return normalized === "selection" || normalized === "selection..." || normalized === "selected text";
+}
+
 function deriveTitle(payload: CoderPayload): string {
-  const raw =
-    (payload.paraphrase as string | undefined) ||
-    (payload.direct_quote as string | undefined) ||
-    (payload.title as string | undefined) ||
-    (payload.text as string | undefined) ||
-    "";
-  const trimmed = raw.trim() || "Selection";
-  return trimmed.length > 80 ? `${trimmed.slice(0, 80).trimEnd()}…` : trimmed;
+  const paraphrase = String((payload.paraphrase as string | undefined) || "").trim();
+  if (paraphrase) return snippet80(paraphrase);
+
+  const directQuote = String((payload.direct_quote as string | undefined) || "").trim();
+  if (directQuote) return snippet80(directQuote);
+
+  const title = String((payload.title as string | undefined) || "").trim();
+  if (title && !isPlaceholderTitle(title)) return snippet80(title);
+
+  const text = String((payload.text as string | undefined) || "").trim();
+  if (text) return deriveDropTitleFromText(text);
+
+  const html =
+    String((payload.section_html as string | undefined) || (payload.html as string | undefined) || "").trim() || "";
+  if (html) {
+    // Try to derive from the first paragraph of HTML if present.
+    const frag = stripFragment(html);
+    const match = frag.match(/<p[^>]*>([\s\S]*?)<\/p>/i);
+    const firstPara = match?.[1]
+      ? match[1]
+          .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, " ")
+          .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, " ")
+          .replace(/<br\s*\/?>/gi, "\n")
+          .replace(/<[^>]+>/g, " ")
+      : frag
+          .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, " ")
+          .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, " ")
+          .replace(/<br\s*\/?>/gi, "\n")
+          .replace(/<\/p>/gi, "\n")
+          .replace(/<[^>]+>/g, " ");
+    const decoded = firstPara
+      .replace(/&nbsp;/gi, " ")
+      .replace(/&amp;/gi, "&")
+      .replace(/&lt;/gi, "<")
+      .replace(/&gt;/gi, ">")
+      .replace(/&quot;/gi, "\"")
+      .replace(/&#39;/gi, "'")
+      .trim();
+    const fromHtml = deriveDropTitleFromText(decoded);
+    if (fromHtml && !isPlaceholderTitle(fromHtml)) return fromHtml;
+  }
+
+  // Final fallback: keep the legacy label for truly empty payloads.
+  return "Selection";
 }
 
 export function createFolder(name = "Section"): FolderNode {
@@ -670,7 +714,13 @@ function normalizeSavedNodes(rawNodes: unknown[]): CoderNode[] {
     return {
       id: String(value.id || generateId()),
       type: "item",
-      name: String(value.name || value.title || "Selection"),
+      name: (() => {
+        const payload = (value.payload || value) as CoderPayload;
+        const raw = String(value.name || value.title || "").trim();
+        if (raw && !isPlaceholderTitle(raw)) return raw;
+        const derived = deriveTitle(payload);
+        return derived && !isPlaceholderTitle(derived) ? derived : raw || "Selection";
+      })(),
       status: CODER_STATUSES.includes(value.status) ? value.status : "Included",
       payload: (value.payload || value) as CoderPayload,
       note: String(value.note || "") || "",

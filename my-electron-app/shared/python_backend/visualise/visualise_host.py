@@ -84,6 +84,7 @@ def _schema_and_sections() -> dict:
         {"type": "number", "key": "top_n_authors", "label": "Top N authors", "default": 15, "min": 5, "max": 100},
         {"type": "number", "key": "production_top_n", "label": "Production top N", "default": 10, "min": 3, "max": 50},
         {"type": "number", "key": "top_ngram", "label": "Top n-gram", "default": 20, "min": 5, "max": 200},
+        {"type": "number", "key": "ngram_n", "label": "N-gram N", "default": 2, "min": 1, "max": 5},
         {
             "type": "select",
             "key": "slide_notes",
@@ -98,6 +99,7 @@ def _schema_and_sections() -> dict:
         {"id": "Authors_overview", "label": "Authors overview", "hint": "Top authors and collaboration."},
         {"id": "Citations_overview", "label": "Citations overview", "hint": "Citation distribution and leaders."},
         {"id": "Words_and_topics", "label": "Words and topics", "hint": "Keywords, n-grams, topic signals."},
+        {"id": "Ngrams", "label": "N-grams", "hint": "N-gram frequency and co-occurrence."},
         {"id": "Affiliations_geo", "label": "Affiliations (geo)", "hint": "Institutions and geography."},
         {"id": "Temporal_analysis", "label": "Temporal analysis", "hint": "Trends over time."},
         {"id": "Research_design", "label": "Research design", "hint": "Design outputs and mix."},
@@ -133,8 +135,126 @@ def _flatten_slides(payload: Any, *, section: str) -> list[dict]:
         return out
     return []
 
+def _export_pptx_from_slides(
+    slides: list[dict],
+    *,
+    output_path: Path,
+    slide_notes: bool,
+    logs: list[str],
+) -> Path:
+    import io
 
-def _run_preview(df, params: dict, include: list[str], collection_name: str, *, mode: str = "") -> tuple[dict, list[str]]:
+    from pptx import Presentation
+    from pptx.util import Inches, Pt
+
+    prs = Presentation()
+    blank_layout = prs.slide_layouts[6] if len(prs.slide_layouts) > 6 else prs.slide_layouts[0]
+
+    def _table_text(html: str, *, max_rows: int = 22, max_cols: int = 10) -> str:
+        if not isinstance(html, str) or not html.strip():
+            return ""
+        try:
+            from bs4 import BeautifulSoup  # type: ignore
+
+            soup = BeautifulSoup(html, "html.parser")
+            rows = []
+            for r_i, tr in enumerate(soup.find_all("tr")):
+                if r_i >= max_rows:
+                    break
+                cells = tr.find_all(["th", "td"])
+                vals = [c.get_text(" ", strip=True) for c in cells[:max_cols]]
+                if vals:
+                    rows.append("\t".join(vals))
+            return "\n".join(rows).strip()
+        except Exception:
+            import re
+
+            txt = re.sub(r"<[^>]+>", " ", html)
+            txt = re.sub(r"\s+", " ", txt).strip()
+            return txt[:4000]
+
+    def _fig_png_bytes(fig_json: Any) -> bytes | None:
+        if not fig_json:
+            return None
+        try:
+            import plotly.graph_objects as go  # type: ignore
+            import plotly.io as pio  # type: ignore
+
+            fig = go.Figure(fig_json)
+            return pio.to_image(fig, format="png", width=1400, height=800, scale=2)
+        except Exception as exc:
+            logs.append(f"[visualise][export_pptx][warn] fig->png failed: {exc}")
+            logs.append(traceback.format_exc())
+            return None
+
+    for idx, slide_dict in enumerate(slides):
+        if not isinstance(slide_dict, dict):
+            continue
+        title = str(slide_dict.get("title") or f"Slide {idx + 1}")
+        notes = str(slide_dict.get("notes") or "")
+        table_html = str(slide_dict.get("table_html") or "")
+        fig_json = slide_dict.get("fig_json")
+        bullets = slide_dict.get("bullets")
+
+        slide = prs.slides.add_slide(blank_layout)
+
+        tx = slide.shapes.add_textbox(left=Inches(0.6), top=Inches(0.35), width=Inches(12.0), height=Inches(0.6))
+        tf = tx.text_frame
+        tf.clear()
+        tf.text = title
+        try:
+            tf.paragraphs[0].runs[0].font.size = Pt(26)
+        except Exception:
+            pass
+
+        png = _fig_png_bytes(fig_json)
+        if png:
+            bio = io.BytesIO(png)
+            slide.shapes.add_picture(bio, left=Inches(0.6), top=Inches(1.1), width=Inches(12.0))
+        else:
+            body = slide.shapes.add_textbox(left=Inches(0.7), top=Inches(1.1), width=Inches(12.0), height=Inches(5.7))
+            btf = body.text_frame
+            btf.clear()
+
+            table_text = _table_text(table_html)
+            if table_text:
+                lines = table_text.splitlines()
+                btf.text = (lines[0] if lines else "")[:160]
+                for line in lines[1:40]:
+                    p = btf.add_paragraph()
+                    p.text = line[:180]
+                    p.level = 0
+            elif isinstance(bullets, list) and bullets:
+                btf.text = str(bullets[0] or "")
+                for b in bullets[1:20]:
+                    p = btf.add_paragraph()
+                    p.text = str(b or "")
+                    p.level = 0
+            elif notes.strip():
+                btf.text = notes[:2000]
+            else:
+                btf.text = "No figure available for this slide."
+
+        if slide_notes and notes.strip():
+            try:
+                slide.notes_slide.notes_text_frame.text = notes
+            except Exception:
+                pass
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    prs.save(str(output_path))
+    return output_path
+
+
+def _run_preview(
+    df,
+    params: dict,
+    include: list[str],
+    collection_name: str,
+    *,
+    mode: str = "",
+    selection: dict | None = None,
+) -> tuple[dict, list[str]]:
     visual, load_logs = _load_visual_helpers()
     logs: list[str] = []
     logs.extend(load_logs)
@@ -195,9 +315,12 @@ def _run_preview(df, params: dict, include: list[str], collection_name: str, *, 
 
     defaults = {
         "word": {"plot_type": "bar_vertical", "data_source": "controlled_vocabulary_terms"},
-        "affiliations": {"plot_type": "world_map_pubs", "top_n": 30},
+        "ngrams": {"plot_type": "bar_chart", "data_source": "controlled_vocabulary_terms", "ngram_n": 2, "top_n_ngrams": 20},
+        # Prefer offline-safe plots by default (world maps require topojson fetch in the renderer).
+        "affiliations": {"plot_type": "country_bar", "top_n": 30},
         "temporal": {"plot_type": "multi_line_trend"},
         "citations": {"plot_type": "top_cited_bar"},
+        "categorical": {"selected_category": "#theme", "plot_type": "bar_chart"},
     }
 
     if not include:
@@ -273,6 +396,26 @@ def _run_preview(df, params: dict, include: list[str], collection_name: str, *, 
                 logs.append(f"[visualise][section][error] Words_and_topics: {exc}")
                 logs.append(traceback.format_exc())
                 slides.append(_error_slide(sec, exc))
+        elif sec == "Ngrams":
+            try:
+                p = dict(defaults["ngrams"], **(params or {}))
+                if isinstance(params, dict) and "top_ngram" in params and "top_n_ngrams" not in p:
+                    p["top_n_ngrams"] = params.get("top_ngram")
+                payload = visual.analyze_ngrams(
+                    df,
+                    p,
+                    _cb,
+                    collection_name_for_cache=collection_name,
+                    slide_notes=slide_notes,
+                    return_payload=True,
+                    export=False,
+                )
+                slides.extend(_flatten_slides(payload, section=sec))
+                logs.append(f"[visualise][section][ok] Ngrams")
+            except Exception as exc:
+                logs.append(f"[visualise][section][error] Ngrams: {exc}")
+                logs.append(traceback.format_exc())
+                slides.append(_error_slide(sec, exc))
         elif sec == "Affiliations_geo":
             try:
                 p = dict(defaults["affiliations"], **(params or {}))
@@ -320,7 +463,8 @@ def _run_preview(df, params: dict, include: list[str], collection_name: str, *, 
                 slides.append(_error_slide(sec, exc))
         elif sec == "Categorical_keywords":
             try:
-                results_df, fig = visual.analyze_categorical_keywords(df, params or {}, _cb)
+                p = dict(defaults["categorical"], **(params or {}))
+                results_df, fig = visual.analyze_categorical_keywords(df, p, _cb)
                 table_html = "<div>No data available.</div>"
                 try:
                     if getattr(results_df, "empty", True):
@@ -359,6 +503,50 @@ def _run_preview(df, params: dict, include: list[str], collection_name: str, *, 
         else:
             slides.append({"title": sec.replace("_", " "), "bullets": ["No handler for section."], "notes": "", "section": sec})
             logs.append(f"[visualise][section][warn] No handler for {sec}")
+
+    # Assign stable-ish ids so the renderer can select slides without depending on titles.
+    try:
+        import hashlib
+
+        by_section_count: dict[str, int] = {}
+        for s in slides:
+            if not isinstance(s, dict):
+                continue
+            if s.get("slide_id"):
+                continue
+            sec = str(s.get("section") or "").strip() or "Visualise"
+            by_section_count[sec] = int(by_section_count.get(sec, 0)) + 1
+            n = by_section_count[sec]
+            title = str(s.get("title") or "")
+            kind = "fig" if s.get("fig_json") else "table" if str(s.get("table_html") or "").strip() else "text"
+            h = hashlib.sha1(f"{sec}|{n}|{kind}|{title}".encode("utf-8")).hexdigest()[:10]
+            s["slide_id"] = f"{sec}:{n}:{kind}:{h}"
+    except Exception:
+        # Never fail the deck due to metadata.
+        pass
+
+    # Build-mode filtering: keep all slides in selected sections OR explicitly selected slide ids.
+    if is_build and isinstance(selection, dict):
+        try:
+            selected_sections = {
+                str(x).strip() for x in (selection.get("sections") or []) if str(x).strip()
+            }
+            selected_slide_ids = {
+                str(x).strip() for x in (selection.get("slideIds") or []) if str(x).strip()
+            }
+            if selected_sections or selected_slide_ids:
+                slides = [
+                    s
+                    for s in slides
+                    if isinstance(s, dict)
+                    and (
+                        (str(s.get("section") or "").strip() in selected_sections)
+                        or (str(s.get("slide_id") or "").strip() in selected_slide_ids)
+                    )
+                ]
+        except Exception as exc:
+            logs.append(f"[visualise][selection][error] {exc}")
+            logs.append(traceback.format_exc())
 
     if is_build:
         try:
@@ -422,6 +610,7 @@ def main() -> None:
         table = payload.get("table") or {}
         params = payload.get("params") or {}
         include = payload.get("include") or []
+        selection = payload.get("selection") if isinstance(payload.get("selection"), dict) else None
         collection_name = str(payload.get("collectionName") or "Collection")
         mode = str(payload.get("mode") or "")
         df = _coerce_table(table)
@@ -431,8 +620,46 @@ def main() -> None:
             [str(s) for s in include if str(s).strip()],
             collection_name,
             mode=mode,
+            selection=selection,
         )
         print(_safe_json({"status": "ok", "deck": deck, "logs": logs}))
+        return
+
+    if action == "export_pptx":
+        table = payload.get("table") or {}
+        params = payload.get("params") or {}
+        include = payload.get("include") or []
+        selection = payload.get("selection") if isinstance(payload.get("selection"), dict) else None
+        collection_name = str(payload.get("collectionName") or "Collection")
+        outp_raw = str(payload.get("outputPath") or "").strip()
+        if not outp_raw:
+            print(_safe_json({"status": "error", "message": "Missing outputPath"}))
+            return
+        df = _coerce_table(table)
+        mode = "build_pptx"
+        deck, logs = _run_preview(
+            df,
+            params,
+            [str(s) for s in include if str(s).strip()],
+            collection_name,
+            mode=mode,
+            selection=selection,
+        )
+        slides = deck.get("slides") if isinstance(deck, dict) else None
+        slides_list = slides if isinstance(slides, list) else []
+        slide_notes = str(params.get("slide_notes", "false")).strip().lower() in {"1", "true", "yes", "y", "on"}
+        try:
+            saved = _export_pptx_from_slides(
+                [s for s in slides_list if isinstance(s, dict)],
+                output_path=Path(outp_raw).expanduser().resolve(),
+                slide_notes=slide_notes,
+                logs=logs,
+            )
+            print(_safe_json({"status": "ok", "path": str(saved), "logs": logs}))
+        except Exception as exc:
+            logs.append(f"[visualise][export_pptx][fatal] {exc}")
+            logs.append(traceback.format_exc())
+            print(_safe_json({"status": "error", "message": str(exc), "logs": logs}))
         return
 
     print(_safe_json({"status": "error", "message": f"unknown_action:{action}"}))

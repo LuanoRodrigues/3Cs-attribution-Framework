@@ -114,16 +114,23 @@ const retrieveVendorSrc = path.join(projectRoot, "resources", "retrieve", "vendo
 const retrieveVendorDest = path.join(projectRoot, "dist", "resources", "retrieve", "vendor");
 copyDirClean(retrieveVendorSrc, retrieveVendorDest);
 
+const externalViewerDir = path.join(projectRoot, "..", "PDF_Viewer");
+const externalViewerHtmlSrc = path.join(externalViewerDir, "viewer.html");
 const localViewerHtmlSrc = path.join(projectRoot, "resources", "viewer.html");
 const fallbackViewerHtmlSrc = path.join(sharedResourcesDir, "viewer.html");
-const viewerHtmlSrc = fs.existsSync(localViewerHtmlSrc) ? localViewerHtmlSrc : fallbackViewerHtmlSrc;
-if (fs.existsSync(viewerHtmlSrc)) {
-  copyFile(viewerHtmlSrc, path.join(projectRoot, "dist", "resources", "viewer.html"));
+const viewerHtmlSrc = [externalViewerHtmlSrc, localViewerHtmlSrc, fallbackViewerHtmlSrc].find((p) => fs.existsSync(p));
+const viewerBuildSrcExternal = path.join(externalViewerDir, "build");
+const viewerBuildSrcShared = path.join(sharedResourcesDir, "build");
+const viewerBuildDest = path.join(projectRoot, "dist", "resources", "pdf_viewer", "build");
+const viewerHtmlDest = path.join(projectRoot, "dist", "resources", "pdf_viewer", "viewer.html");
+
+if (viewerHtmlSrc) {
+  copyFile(viewerHtmlSrc, viewerHtmlDest);
 }
-const viewerBuildSrc = path.join(sharedResourcesDir, "build");
-const viewerBuildDest = path.join(projectRoot, "dist", "resources", "build");
-if (fs.existsSync(viewerBuildSrc)) {
-  copyDir(viewerBuildSrc, viewerBuildDest);
+if (fs.existsSync(viewerBuildSrcExternal)) {
+  copyDirClean(viewerBuildSrcExternal, viewerBuildDest);
+} else if (fs.existsSync(viewerBuildSrcShared)) {
+  copyDirClean(viewerBuildSrcShared, viewerBuildDest);
 }
 
 const pdfjsPackageJson = (() => {

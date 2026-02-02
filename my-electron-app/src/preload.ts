@@ -66,7 +66,9 @@ contextBridge.exposeInMainWorld("analyseBridge", {
     getAudioCacheStatus: (runId: string | undefined, keys: string[]) =>
       ipcRenderer.invoke("analyse:audioCacheStatus", runId, keys),
     addAudioCacheEntries: (runId: string | undefined, entries: unknown[]) =>
-      ipcRenderer.invoke("analyse:audioCacheAdd", runId, entries)
+      ipcRenderer.invoke("analyse:audioCacheAdd", runId, entries),
+    listCachedTables: () => ipcRenderer.invoke("analyse:list-cached-tables"),
+    runAiOnTable: (payload: unknown) => ipcRenderer.invoke("analyse:run-ai-on-table", payload)
   }
 });
 
@@ -142,6 +144,8 @@ contextBridge.exposeInMainWorld("leditorHost", {
     ipcRenderer.invoke("leditor:export-docx", request),
   exportPDF: (request: { html: string; options?: { suggestedPath?: string; prompt?: boolean } }) =>
     ipcRenderer.invoke("leditor:export-pdf", request),
+  exportLEDOC: (request: { payload: unknown; options?: { suggestedPath?: string; prompt?: boolean } }) =>
+    ipcRenderer.invoke("leditor:export-ledoc", request),
   agentRequest: (request: { requestId?: string; payload: unknown }) => ipcRenderer.invoke("leditor:agent-request", request),
   agentCancel: (request: { requestId: string }) => ipcRenderer.invoke("leditor:agent-cancel", request),
   getAiStatus: () => ipcRenderer.invoke("leditor:ai-status"),
@@ -153,7 +157,10 @@ contextBridge.exposeInMainWorld("leditorHost", {
   closeFootnotePanel: () => footnoteHandlers?.close?.(),
   importDOCX: (request?: { options?: { sourcePath?: string; prompt?: boolean } }) =>
     ipcRenderer.invoke("leditor:import-docx", request ?? {}),
+  importLEDOC: (request?: { options?: { sourcePath?: string; prompt?: boolean } }) =>
+    ipcRenderer.invoke("leditor:import-ledoc", request ?? {}),
   insertImage: () => ipcRenderer.invoke("leditor:insert-image"),
+  getDefaultLEDOCPath: () => ipcRenderer.invoke("leditor:get-default-ledoc-path"),
   readFile,
   writeFile
 });

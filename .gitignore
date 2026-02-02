@@ -34,6 +34,9 @@ my-electron-app/retrieve-cache-fallback/
 # local scratch/demo files
 visuals.html
 
+# electron headless runs / ephemeral userData
+**/.tmp_headless/
+
 # npm artifacts
 .npm-cache/
 .npm-logs/
