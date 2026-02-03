@@ -88,6 +88,8 @@ import { resolveThemeTokens, themeIds, type ThemeId } from "../renderer/theme/to
   const DEFAULT_VAULT_PASSPHRASE = "1234";
 
   let secretsUnlocked = false;
+  let dotenvStatusElement: HTMLElement | null = null;
+  const pendingEnvSecrets: Record<string, string> = {};
   let jsonViewElement: HTMLElement;
   let secretsStatusElement: HTMLElement;
   let passphraseField: HTMLInputElement;
@@ -98,6 +100,45 @@ import { resolveThemeTokens, themeIds, type ThemeId } from "../renderer/theme/to
 
   type SettingsSnapshot = Record<string, unknown>;
   let latestSnapshot: SettingsSnapshot = {};
+
+  const LLM_PROVIDERS = [
+    {
+      id: "openai",
+      name: "OpenAI",
+      baseKey: LLM_KEYS.openaiBaseUrl,
+      secretKey: LLM_KEYS.openaiKey,
+      placeholder: "https://api.openai.com/v1",
+      envKey: ["OPENAI_API_KEY", "OPENAI_KEY"],
+      envBase: ["OPENAI_BASE_URL", "OPENAI_API_BASE", "OPENAI_BASEURL"]
+    },
+    {
+      id: "gemini",
+      name: "Gemini",
+      baseKey: LLM_KEYS.geminiBaseUrl,
+      secretKey: LLM_KEYS.geminiKey,
+      placeholder: "https://generative.googleapis.com/v1",
+      envKey: ["GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_GEMINI_API_KEY"],
+      envBase: ["GEMINI_BASE_URL", "GOOGLE_API_BASE", "GEMINI_API_BASE"]
+    },
+    {
+      id: "deepseek",
+      name: "DeepSeek",
+      baseKey: LLM_KEYS.deepSeekBaseUrl,
+      secretKey: LLM_KEYS.deepSeekKey,
+      placeholder: "https://api.deepseek.com",
+      envKey: ["DEEPSEEK_API_KEY", "DEEPSEEK_KEY"],
+      envBase: ["DEEPSEEK_BASE_URL", "DEEPSEEK_API_BASE"]
+    },
+    {
+      id: "mistral",
+      name: "Mistral",
+      baseKey: LLM_KEYS.mistralBaseUrl,
+      secretKey: LLM_KEYS.mistralKey,
+      placeholder: "https://api.mistral.ai",
+      envKey: ["MISTRAL_API_KEY", "MISTRAL_KEY"],
+      envBase: ["MISTRAL_BASE_URL", "MISTRAL_API_BASE"]
+    }
+  ] as const;
 
   const isThemeId = (value: unknown): value is ThemeId =>
     typeof value === "string" && themeIds.includes(value as ThemeId);
@@ -360,6 +401,7 @@ import { resolveThemeTokens, themeIds, type ThemeId } from "../renderer/theme/to
     await loadSettingsSnapshot();
     await refreshPaths();
     await refreshSecretInputs();
+    await refreshDotEnvStatusAndPrefill();
   }
 
   async function loadSettingsSnapshot() {
@@ -401,6 +443,49 @@ import { resolveThemeTokens, themeIds, type ThemeId } from "../renderer/theme/to
       });
     } catch (error) {
       setStatus("Failed to read paths", true);
+    }
+  }
+
+  async function refreshDotEnvStatusAndPrefill() {
+    const fn = (bridge as any).getDotEnvStatus as undefined | (() => Promise<{ found: boolean; paths: string[]; values: Record<string, string> }>);
+    if (typeof fn !== "function") {
+      return;
+    }
+    try {
+      const status = await fn();
+      if (dotenvStatusElement) {
+        dotenvStatusElement.textContent = status?.found
+          ? `.env found (${(status?.paths || []).join(", ")})`
+          : "no .env found, insert apis below";
+      }
+
+      const envValues = status?.values || {};
+      const getEnv = (keys: readonly string[]): string => keys.map((k) => String(envValues[k] || "").trim()).find(Boolean) || "";
+
+      LLM_PROVIDERS.forEach((provider) => {
+        const baseVal = getEnv(provider.envBase);
+        const keyVal = getEnv(provider.envKey);
+
+        const baseInput = fieldInputs[provider.baseKey];
+        if (baseInput && baseVal) {
+          const current = baseInput.value.trim();
+          if (!current || current === provider.placeholder) {
+            baseInput.value = baseVal;
+          }
+        }
+
+        if (keyVal) {
+          pendingEnvSecrets[provider.secretKey] = keyVal;
+          const secretInput = secretInputs[provider.secretKey];
+          if (secretsUnlocked && secretInput && !secretInput.value.trim()) {
+            secretInput.value = keyVal;
+          }
+        }
+      });
+    } catch {
+      if (dotenvStatusElement) {
+        dotenvStatusElement.textContent = "no .env found, insert apis below";
+      }
     }
   }
 
@@ -864,38 +949,14 @@ import { resolveThemeTokens, themeIds, type ThemeId } from "../renderer/theme/to
 
   function buildModelProvidersPanel(panel: HTMLElement) {
     panel.appendChild(createVaultHint());
-    const providers = [
-      {
-        id: "openai",
-        name: "OpenAI",
-        baseKey: LLM_KEYS.openaiBaseUrl,
-        secretKey: LLM_KEYS.openaiKey,
-        placeholder: "https://api.openai.com/v1"
-      },
-      {
-        id: "gemini",
-        name: "Gemini",
-        baseKey: LLM_KEYS.geminiBaseUrl,
-        secretKey: LLM_KEYS.geminiKey,
-        placeholder: "https://generative.googleapis.com/v1"
-      },
-      {
-        id: "deepseek",
-        name: "DeepSeek",
-        baseKey: LLM_KEYS.deepSeekBaseUrl,
-        secretKey: LLM_KEYS.deepSeekKey,
-        placeholder: "https://api.deepseek.com"
-      },
-      {
-        id: "mistral",
-        name: "Mistral",
-        baseKey: LLM_KEYS.mistralBaseUrl,
-        secretKey: LLM_KEYS.mistralKey,
-        placeholder: "https://api.mistral.ai"
-      }
-    ];
+    const envCard = createPanelCard("Environment (.env)", "Auto-load API keys from your .env file.");
+    dotenvStatusElement = document.createElement("div");
+    dotenvStatusElement.className = "panel-card-subtitle";
+    dotenvStatusElement.textContent = "Checking for .env...";
+    envCard.appendChild(dotenvStatusElement);
+    panel.appendChild(envCard);
 
-    providers.forEach((provider) => {
+    LLM_PROVIDERS.forEach((provider) => {
       const card = createPanelCard(`${provider.name} settings`, "Endpoint and API key for this provider.");
       const row = document.createElement("div");
       row.className = "control-row";
@@ -1081,6 +1142,9 @@ import { resolveThemeTokens, themeIds, type ThemeId } from "../renderer/theme/to
           secretInputs[key].value = value || "";
         } catch {
           secretInputs[key].value = "";
+        }
+        if (!secretInputs[key].value && pendingEnvSecrets[key]) {
+          secretInputs[key].value = pendingEnvSecrets[key];
         }
       })
     );

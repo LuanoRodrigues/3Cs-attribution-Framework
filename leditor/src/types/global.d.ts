@@ -139,6 +139,19 @@ declare global {
       importDOCX?: (request: ImportDocxRequest) => Promise<ImportDocxResult>;
       exportLEDOC?: (request: ExportLedocRequest) => Promise<ExportLedocResult>;
       importLEDOC?: (request: ImportLedocRequest) => Promise<ImportLedocResult>;
+      listLedocVersions?: (request: { ledocPath: string }) => Promise<{ success: boolean; index?: any; error?: string }>;
+      createLedocVersion?: (request: {
+        ledocPath: string;
+        reason?: string;
+        label?: string;
+        note?: string;
+        payload?: any;
+        throttleMs?: number;
+        force?: boolean;
+      }) => Promise<{ success: boolean; created?: boolean; entry?: any; index?: any; warnings?: string[]; error?: string }>;
+      restoreLedocVersion?: (request: { ledocPath: string; versionId: string; mode?: "replace" | "copy" }) => Promise<any>;
+      deleteLedocVersion?: (request: { ledocPath: string; versionId: string }) => Promise<any>;
+      pinLedocVersion?: (request: { ledocPath: string; versionId: string; pinned: boolean }) => Promise<any>;
       insertImage?: (request?: { sourcePath?: string }) => Promise<InsertImageResult>;
       getDefaultLEDOCPath?: () => Promise<string>;
       fileExists?: (request: { sourcePath: string }) => Promise<{ exists?: boolean; error?: string }>;

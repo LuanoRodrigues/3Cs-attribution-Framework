@@ -17,6 +17,13 @@ const ParagraphLayoutExtension = Extension.create({
       {
         types: ["paragraph", "heading"],
         attributes: {
+          paginationSplitId: {
+            default: null,
+            renderHTML: () => {
+              // Internal pagination marker; do not serialize into HTML.
+              return {};
+            }
+          },
           indentLeftCm: {
             default: 0,
             renderHTML: (attrs) => {

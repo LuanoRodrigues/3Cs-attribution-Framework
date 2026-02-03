@@ -10355,7 +10355,7 @@ import os
 import json
 from pathlib import Path
 
-from src.core.utils.calling_models import call_models_plots
+from python_backend.core.utils.calling_models import call_models_plots
 
 
 def test_call_models_plots_once() -> None:

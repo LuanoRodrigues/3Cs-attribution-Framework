@@ -8,7 +8,6 @@ const HOST_CLASS = "write-leditor-shell";
 const LIB_STYLE_ENTRY = "lib/index.css";
 const LIB_MODULE_ENTRY = "lib/index.js";
 const BODY_WRITE_CLASS = "write-leditor-active";
-const LEDOC_AUTOSAVE_DELAY_MS = 750;
 
 type HostPackage = {
   host: HTMLElement;
@@ -20,8 +19,6 @@ let sharedHost: HostPackage | undefined;
 let leditorReadyPromise: Promise<void> | undefined;
 let destroyApp: (() => void) | null = null;
 let ledocPath: string | null = null;
-let ledocAutosaveTimer: number | null = null;
-let ledocAutosaveHandler: (() => void) | null = null;
 
 function getProjectBase(): { hostRoot: HostPackage } {
   if (!sharedHost) {
@@ -104,44 +101,6 @@ const waitForGlobal = async <T,>(getter: () => T | null | undefined, timeoutMs: 
   throw new Error("Timeout waiting for editor API");
 };
 
-const detachLedocAutosave = () => {
-  if (ledocAutosaveTimer !== null) {
-    window.clearTimeout(ledocAutosaveTimer);
-    ledocAutosaveTimer = null;
-  }
-  if (ledocAutosaveHandler && (window as any).leditor?.off) {
-    try {
-      (window as any).leditor.off("change", ledocAutosaveHandler);
-    } catch {
-      // ignore
-    }
-  }
-  ledocAutosaveHandler = null;
-};
-
-const attachLedocAutosave = (targetPath: string) => {
-  detachLedocAutosave();
-  ledocAutosaveHandler = () => {
-    if (ledocAutosaveTimer !== null) {
-      window.clearTimeout(ledocAutosaveTimer);
-    }
-    ledocAutosaveTimer = window.setTimeout(() => {
-      ledocAutosaveTimer = null;
-      const exporter = (window as any).__leditorAutoExportLEDOC as
-        | ((options?: { prompt?: boolean; suggestedPath?: string }) => Promise<any>)
-        | undefined;
-      if (!exporter) return;
-      void exporter({ prompt: false, suggestedPath: targetPath }).catch((error: unknown) => {
-        console.warn("[write][ledoc][autosave] failed", error);
-      });
-    }, LEDOC_AUTOSAVE_DELAY_MS);
-  };
-  try {
-    (window as any).leditor?.on?.("change", ledocAutosaveHandler);
-  } catch {
-    // ignore
-  }
-};
 
 async function ensureLibraryLeditorLoaded(): Promise<void> {
   const hostPackage = sharedHost;
@@ -193,7 +152,7 @@ async function ensureLibraryLeditorLoaded(): Promise<void> {
   } catch (error) {
     console.warn("[write][ledoc][import] skipped", { ledocPath, error });
   }
-  attachLedocAutosave(ledocPath);
+  // Autosave is handled inside leditor itself (debounced, non-prompting).
 }
 
 function ensureLeditorLoaded(): Promise<void> {
@@ -242,7 +201,6 @@ export class WritePage {
 
   destroy(): void {
     this.cleanupHostConnectionWatcher();
-    detachLedocAutosave();
     try {
       destroyApp?.();
     } catch {

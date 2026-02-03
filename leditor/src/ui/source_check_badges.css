@@ -73,48 +73,44 @@
   background: rgba(37, 99, 235, 0.12);
 }
 
-.leditor-source-check-fix__popover {
-  display: none;
-  position: absolute;
-  left: 0;
-  top: calc(100% + 6px);
+/* Portal popover so it never gets clipped by A4 page overflow. */
+.leditor-source-check-fix-popover {
+  position: fixed;
+  z-index: 4000;
   width: 280px;
+  max-width: calc(100vw - 16px);
   padding: 10px 10px 8px;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.98);
   border: 1px solid rgba(0, 0, 0, 0.10);
   box-shadow: 0 14px 30px rgba(0, 0, 0, 0.16);
-  z-index: 80;
+  overflow: hidden;
+  pointer-events: auto;
 }
 
-.leditor-app.theme-dark .leditor-source-check-fix__popover {
+.leditor-app.theme-dark .leditor-source-check-fix-popover {
   background: rgba(24, 28, 36, 0.98);
   border-color: rgba(255, 255, 255, 0.14);
 }
 
-.leditor-source-check-fix:hover .leditor-source-check-fix__popover,
-.leditor-source-check-fix.is-open .leditor-source-check-fix__popover {
-  display: block;
-}
-
-.leditor-source-check-fix__text {
+.leditor-source-check-fix-popover__text {
   font-size: 11.5px;
   line-height: 1.25;
   color: rgba(23, 23, 23, 0.88);
   white-space: pre-wrap;
 }
-.leditor-app.theme-dark .leditor-source-check-fix__text {
+.leditor-app.theme-dark .leditor-source-check-fix-popover__text {
   color: rgba(240, 240, 240, 0.92);
 }
 
-.leditor-source-check-fix__actions {
+.leditor-source-check-fix-popover__actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
   margin-top: 8px;
 }
 
-.leditor-source-check-fix__btn {
+.leditor-source-check-fix-popover__btn {
   border: 1px solid rgba(0, 0, 0, 0.12);
   background: rgba(255, 255, 255, 0.95);
   color: rgba(23, 23, 23, 0.86);
@@ -124,18 +120,18 @@
   line-height: 1;
   cursor: pointer;
 }
-.leditor-app.theme-dark .leditor-source-check-fix__btn {
+.leditor-app.theme-dark .leditor-source-check-fix-popover__btn {
   border-color: rgba(255, 255, 255, 0.14);
   background: rgba(255, 255, 255, 0.06);
   color: rgba(240, 240, 240, 0.9);
 }
 
-.leditor-source-check-fix__btn--primary {
+.leditor-source-check-fix-popover__btn--primary {
   border-color: rgba(37, 99, 235, 0.30);
   background: rgba(37, 99, 235, 0.92);
   color: white;
 }
-.leditor-source-check-fix__btn--primary:hover {
+.leditor-source-check-fix-popover__btn--primary:hover {
   background: rgba(37, 99, 235, 1);
 }
 

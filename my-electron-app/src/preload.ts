@@ -79,6 +79,7 @@ contextBridge.exposeInMainWorld("settingsBridge", {
   unlockSecrets: (passphrase: string) => ipcRenderer.invoke("settings:unlockSecrets", passphrase),
   getSecret: (name: string) => ipcRenderer.invoke("settings:getSecret", name),
   setSecret: (name: string, value: string) => ipcRenderer.invoke("settings:setSecret", name, value),
+  getDotEnvStatus: () => ipcRenderer.invoke("settings:getDotEnvStatus"),
   exportBundle: (zipPath: string, includeSecrets?: boolean) =>
     ipcRenderer.invoke("settings:exportBundle", { zipPath, includeSecrets }),
   importBundle: (zipPath: string) => ipcRenderer.invoke("settings:importBundle", zipPath),
@@ -144,7 +145,7 @@ const writeFile = async (request: { targetPath: string; data: string }) => {
     ipcRenderer.invoke("leditor:export-docx", request),
   exportPDF: (request: { html: string; options?: { suggestedPath?: string; prompt?: boolean } }) =>
     ipcRenderer.invoke("leditor:export-pdf", request),
-  exportLEDOC: (request: { payload: unknown; options?: { suggestedPath?: string; prompt?: boolean } }) =>
+  exportLEDOC: (request: { payload: unknown; options?: { targetPath?: string; suggestedPath?: string; prompt?: boolean } }) =>
     ipcRenderer.invoke("leditor:export-ledoc", request),
   getAiStatus: () => ipcRenderer.invoke("leditor:ai-status"),
   registerFootnoteHandlers: (handlers: { open?: () => void; toggle?: () => void; close?: () => void }) => {
@@ -155,8 +156,22 @@ const writeFile = async (request: { targetPath: string; data: string }) => {
   closeFootnotePanel: () => footnoteHandlers?.close?.(),
   importDOCX: (request?: { options?: { sourcePath?: string; prompt?: boolean } }) =>
     ipcRenderer.invoke("leditor:import-docx", request ?? {}),
-  importLEDOC: (request?: { options?: { sourcePath?: string; prompt?: boolean } }) =>
+ importLEDOC: (request?: { options?: { sourcePath?: string; prompt?: boolean } }) =>
     ipcRenderer.invoke("leditor:import-ledoc", request ?? {}),
+  listLedocVersions: (request: { ledocPath: string }) => ipcRenderer.invoke("leditor:versions:list", request),
+  createLedocVersion: (request: {
+    ledocPath: string;
+    reason?: string;
+    label?: string;
+    note?: string;
+    payload?: any;
+    throttleMs?: number;
+    force?: boolean;
+  }) => ipcRenderer.invoke("leditor:versions:create", request),
+  restoreLedocVersion: (request: { ledocPath: string; versionId: string; mode?: "replace" | "copy" }) =>
+    ipcRenderer.invoke("leditor:versions:restore", request),
+  deleteLedocVersion: (request: { ledocPath: string; versionId: string }) => ipcRenderer.invoke("leditor:versions:delete", request),
+  pinLedocVersion: (request: { ledocPath: string; versionId: string; pinned: boolean }) => ipcRenderer.invoke("leditor:versions:pin", request),
   insertImage: () => ipcRenderer.invoke("leditor:insert-image"),
   getDefaultLEDOCPath: () => ipcRenderer.invoke("leditor:get-default-ledoc-path"),
   readFile,

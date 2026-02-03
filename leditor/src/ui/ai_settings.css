@@ -89,9 +89,37 @@
   text-align: center;
 }
 
+.leditor-ai-settings-panel__seg {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 0.70);
+}
+
+.leditor-ai-settings-panel__segBtn {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  color: rgba(41, 41, 41, 0.92);
+}
+
+.leditor-ai-settings-panel__segBtn:hover {
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.leditor-ai-settings-panel__segBtn.is-active {
+  background: rgba(37, 99, 235, 0.12);
+  border: 1px solid rgba(37, 99, 235, 0.22);
+  color: rgba(29, 78, 216, 0.95);
+}
+
 .leditor-ai-settings-panel__status {
   font-size: 11px;
   color: #4a4a4a;
   min-height: 16px;
 }
-

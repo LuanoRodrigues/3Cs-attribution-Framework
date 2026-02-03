@@ -1,4 +1,4 @@
-import type { LedocPayload } from "../ledoc/format.ts";
+import type { LedocBundlePayload, LedocPayload } from "../ledoc/format.ts";
 
 export type ImportLedocOptions = {
   sourcePath?: string;
@@ -12,8 +12,7 @@ export type ImportLedocRequest = {
 export type ImportLedocResult = {
   success: boolean;
   filePath?: string;
-  payload?: LedocPayload;
+  payload?: LedocPayload | LedocBundlePayload;
   warnings?: string[];
   error?: string;
 };
-

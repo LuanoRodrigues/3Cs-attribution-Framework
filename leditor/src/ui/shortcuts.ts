@@ -2,9 +2,29 @@ import { tinykeys } from "tinykeys";
 import { dispatchCommand } from "../api/editor_commands.ts";
 import type { EditorHandle } from "../api/leditor.ts";
 import { getOrientation } from "../ui/layout_settings.ts";
+import { toggleInsertMode } from "../editor/input_modes.ts";
 
 export const initGlobalShortcuts = (editorHandle: EditorHandle): (() => void) => {
+  const exec = (id: string, args?: unknown) => {
+    try {
+      editorHandle.execCommand(id, args as any);
+    } catch (error) {
+      console.warn(`[Shortcuts] command failed: ${id}`, error);
+    }
+  };
   const handler = tinykeys(window, {
+    "mod+s": () => {
+      dispatchCommand(editorHandle, "Save");
+      return true;
+    },
+    "mod+shift+s": () => {
+      dispatchCommand(editorHandle, "SaveAs");
+      return true;
+    },
+    "mod+o": () => {
+      dispatchCommand(editorHandle, "Open");
+      return true;
+    },
     "mod+b": () => {
       dispatchCommand(editorHandle, "Bold");
       return true;
@@ -15,10 +35,6 @@ export const initGlobalShortcuts = (editorHandle: EditorHandle): (() => void) =>
     },
     "mod+u": () => {
       dispatchCommand(editorHandle, "Underline");
-      return true;
-    },
-    "mod+shift+s": () => {
-      dispatchCommand(editorHandle, "ExportDOCX");
       return true;
     },
     "mod+shift+p": () => {
@@ -40,6 +56,82 @@ export const initGlobalShortcuts = (editorHandle: EditorHandle): (() => void) =>
     "mod+shift+o": () => {
       const next = getOrientation() === "portrait" ? "landscape" : "portrait";
       dispatchCommand(editorHandle, "SetPageOrientation", { orientation: next });
+      return true;
+    },
+    "ctrl+pageup": () => {
+      dispatchCommand(editorHandle, "EditHeader");
+      return true;
+    },
+    "ctrl+pagedown": () => {
+      dispatchCommand(editorHandle, "EditFooter");
+      return true;
+    },
+    f5: () => {
+      exec("Navigator");
+      return true;
+    },
+    "shift+f5": () => {
+      exec("GoToLastCursor");
+      return true;
+    },
+    f7: () => {
+      dispatchCommand(editorHandle, "Spelling");
+      return true;
+    },
+    "ctrl+f7": () => {
+      dispatchCommand(editorHandle, "Thesaurus");
+      return true;
+    },
+    "ctrl+f2": () => {
+      exec("InsertField");
+      return true;
+    },
+    f9: () => {
+      exec("UpdateFields");
+      return true;
+    },
+    "ctrl+f9": () => {
+      exec("ToggleFieldCodes");
+      return true;
+    },
+    "ctrl+shift+f9": () => {
+      exec("UpdateInputFields");
+      return true;
+    },
+    f11: () => {
+      exec("styles.pane.open");
+      return true;
+    },
+    "shift+f11": () => {
+      exec("styles.create.openDialog");
+      return true;
+    },
+    "ctrl+shift+f11": () => {
+      exec("styles.modify.openDialog");
+      return true;
+    },
+    "ctrl+f8": () => {
+      exec("FieldShadingToggle");
+      return true;
+    },
+    "ctrl+f10": () => {
+      dispatchCommand(editorHandle, "VisualChars");
+      return true;
+    },
+    "ctrl+shift+f10": () => {
+      exec("NavigatorDockToggle");
+      return true;
+    },
+    "shift+f4": () => {
+      exec("DataSourceNavigator");
+      return true;
+    },
+    "ctrl+shift+f4": () => {
+      exec("DataSourceDetach");
+      return true;
+    },
+    insert: () => {
+      toggleInsertMode();
       return true;
     },
     "ctrl+shift+r": () => {

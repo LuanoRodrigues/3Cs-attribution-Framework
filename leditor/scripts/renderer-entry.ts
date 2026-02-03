@@ -1,10 +1,18 @@
 if (typeof globalThis !== "undefined") {
-  const g = globalThis as typeof globalThis & { process?: NodeJS.Process };
+  const g = globalThis as typeof globalThis & {
+    process?: NodeJS.Process;
+    __leditorDebug?: boolean;
+    __leditorCaretDebug?: boolean;
+    __leditorReferencesDebug?: boolean;
+  };
   if (!g.process) {
     g.process = { env: {} } as NodeJS.Process;
   } else if (!g.process.env) {
     g.process.env = {};
   }
+  g.__leditorDebug = g.__leditorDebug ?? false;
+  g.__leditorCaretDebug = g.__leditorCaretDebug ?? false;
+  g.__leditorReferencesDebug = g.__leditorReferencesDebug ?? false;
 }
 
 declare global {
@@ -17,6 +25,8 @@ declare global {
 declare const __BUILD_TIME__: string;
 
 const dbg = (fn: string, msg: string, extra?: Record<string, unknown>) => {
+  const g = globalThis as typeof globalThis & { __leditorDebug?: boolean };
+  if (!g.__leditorDebug) return;
   const line = `[renderer-entry.ts][${fn}][debug] ${msg}`;
   if (extra) {
     console.debug(line, extra);

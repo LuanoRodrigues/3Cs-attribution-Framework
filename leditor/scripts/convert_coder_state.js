@@ -1,30 +1,27 @@
 #!/usr/bin/env node
 /**
- * Convert coder_state.json (version 2) into a LEDOC archive.
+ * Convert coder_state.json (version 2) into a LEDOC v2 bundle directory (`*.ledoc/`).
  *
  * Usage:
  *   node scripts/convert_coder_state.js [sourcePath] [targetPath]
  *
  * Defaults:
  *   sourcePath: ./coder_state.json
- *   targetPath: ./coder_state.ledoc
+ *   targetPath: ./coder_state.ledoc   (directory)
  */
 
 const fs = require("fs");
 const path = require("path");
-const JSZip = require("jszip");
 const sanitizeHtml = require("sanitize-html");
 
-const LEDOC_FORMAT_VERSION = "1.0";
-const LEDOC_PATHS = {
-  document: "document.json",
-  footnotes: "footnotes.json",
+const LEDOC_BUNDLE_VERSION = "2.0";
+const LEDOC_BUNDLE_FILES = {
+  version: "version.txt",
+  content: "content.json",
+  layout: "layout.json",
+  registry: "registry.json",
   meta: "meta.json",
-  settings: "settings.json",
-  styles: "styles.json",
-  history: "history.json",
-  mediaDir: "media",
-  preview: "preview.png"
+  mediaDir: "media"
 };
 
 const normalizeError = (error) => (error instanceof Error ? error.message : String(error));
@@ -310,6 +307,17 @@ const htmlToBlocks = (html) => {
   return blocks.length ? blocks : [{ type: "paragraph", attrs: paragraphAttrs(), content: [] }];
 };
 
+const readOptionalPackageVersion = () => {
+  try {
+    const pkgPath = path.join(__dirname, "..", "package.json");
+    const raw = fs.readFileSync(pkgPath, "utf-8");
+    const parsed = JSON.parse(raw);
+    return typeof parsed?.version === "string" ? parsed.version : null;
+  } catch {
+    return null;
+  }
+};
+
 const cmToPx = (cm) => (cm / 2.54) * 96;
 
 const buildDocument = (blocks) => {
@@ -340,24 +348,57 @@ const buildDocument = (blocks) => {
   };
 };
 
-const packLedocZip = async (payload) => {
-  const zip = new JSZip();
-  zip.file(LEDOC_PATHS.document, JSON.stringify(payload.document ?? {}, null, 2));
-  zip.file(LEDOC_PATHS.meta, JSON.stringify(payload.meta ?? {}, null, 2));
-  if (payload.settings) {
-    zip.file(LEDOC_PATHS.settings, JSON.stringify(payload.settings, null, 2));
+const ensureEmptyDir = (dirPath) => {
+  if (fs.existsSync(dirPath)) {
+    const st = fs.statSync(dirPath);
+    if (st.isFile()) {
+      throw new Error(`Target exists and is a file: ${dirPath}`);
+    }
+    return;
   }
-  if (payload.footnotes) {
-    zip.file(LEDOC_PATHS.footnotes, JSON.stringify(payload.footnotes, null, 2));
-  }
-  if (payload.styles !== undefined) {
-    zip.file(LEDOC_PATHS.styles, JSON.stringify(payload.styles, null, 2));
-  }
-  if (payload.history !== undefined) {
-    zip.file(LEDOC_PATHS.history, JSON.stringify(payload.history, null, 2));
-  }
-  const buffer = await zip.generateAsync({ type: "nodebuffer" });
-  return buffer;
+  fs.mkdirSync(dirPath, { recursive: true });
+};
+
+const writeJson = (filePath, value) => {
+  fs.writeFileSync(filePath, JSON.stringify(value, null, 2), "utf-8");
+};
+
+const writeText = (filePath, text) => {
+  fs.writeFileSync(filePath, text, "utf-8");
+};
+
+const writeLedocBundle = ({ targetDir, content, title, created, lastModified }) => {
+  ensureEmptyDir(targetDir);
+  ensureEmptyDir(path.join(targetDir, LEDOC_BUNDLE_FILES.mediaDir));
+
+  const appVersion = readOptionalPackageVersion();
+  const meta = {
+    version: LEDOC_BUNDLE_VERSION,
+    title: title || "Untitled document",
+    authors: [],
+    created,
+    lastModified,
+    appVersion: appVersion || undefined,
+    sourceFormat: "bundle"
+  };
+
+  const layout = {
+    version: LEDOC_BUNDLE_VERSION,
+    pageSize: "A4",
+    margins: { unit: "cm", top: 2.5, right: 2.5, bottom: 2.5, left: 2.5 }
+  };
+
+  const registry = {
+    version: LEDOC_BUNDLE_VERSION,
+    footnoteIdState: { counters: { footnote: 0, endnote: 0 } },
+    knownFootnotes: []
+  };
+
+  writeText(path.join(targetDir, LEDOC_BUNDLE_FILES.version), `${LEDOC_BUNDLE_VERSION}\n`);
+  writeJson(path.join(targetDir, LEDOC_BUNDLE_FILES.content), content);
+  writeJson(path.join(targetDir, LEDOC_BUNDLE_FILES.meta), meta);
+  writeJson(path.join(targetDir, LEDOC_BUNDLE_FILES.layout), layout);
+  writeJson(path.join(targetDir, LEDOC_BUNDLE_FILES.registry), registry);
 };
 
 async function main() {
@@ -430,38 +471,14 @@ async function main() {
 
     const document = buildDocument(allBlocks);
     const stamp = new Date().toISOString();
-    const marginsPx = cmToPx(2.5);
-    const payload = {
-      document,
-      meta: {
-        version: LEDOC_FORMAT_VERSION,
-        title,
-        authors: [],
-        created: stamp,
-        lastModified: stamp
-      },
-      settings: {
-        pageSize: "a4",
-        margins: {
-          top: marginsPx,
-          right: marginsPx,
-          bottom: marginsPx,
-          left: marginsPx,
-          topCm: 2.5,
-          rightCm: 2.5,
-          bottomCm: 2.5,
-          leftCm: 2.5
-        }
-      },
-      footnotes: {
-        version: LEDOC_FORMAT_VERSION,
-        footnotes: []
-      }
-    };
-
-    const buffer = await packLedocZip(payload);
-    fs.writeFileSync(targetPath, buffer);
-    console.log(`[convert] wrote ${targetPath} (${buffer.length} bytes)`);
+    writeLedocBundle({
+      targetDir: targetPath,
+      content: document,
+      title,
+      created: stamp,
+      lastModified: stamp
+    });
+    console.log(`[convert] wrote bundle ${targetPath}`);
   } catch (error) {
     console.error("[convert] failed:", normalizeError(error));
     process.exit(1);

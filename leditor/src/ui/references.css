@@ -63,3 +63,14 @@
 .leditor-bibliography p:last-child {
   margin-bottom: 0;
 }
+
+/* Entries inserted as real blocks (pagination-friendly). */
+.leditor-bibliography-entry {
+  margin: 0 0 0.8em 0;
+  padding-left: 2em;
+  text-indent: -2em;
+  line-height: 1.4;
+}
+.leditor-bibliography-entry:last-child {
+  margin-bottom: 0;
+}

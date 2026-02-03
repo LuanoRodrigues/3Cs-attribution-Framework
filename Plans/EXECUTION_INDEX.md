@@ -1,11 +1,16 @@
 # Execution Index — Premium Theme Upgrade
 
-Active master plan: `Plans/MASTER_PREMIUM_THEME.md`
+Active master plan: `Plans/LEDITOR_FILE_SAVE_EXPORT_AUTOSAVE_PLAN.md`
 
 ## Cursor
 - Current shard: COMPLETED
 
 ## Shards
+- `Plans/PLAN_SHARDS/PLAN_SHARD_001_leditor_file_tab_and_commands.md` — PASS
+- `Plans/PLAN_SHARDS/PLAN_SHARD_002_leditor_autosave_manager.md` — PASS
+- `Plans/PLAN_SHARDS/PLAN_SHARD_003_ledoc_v2_bundle_library.md` — PASS
+- `Plans/PLAN_SHARDS/PLAN_SHARD_004_myapp_ledoc_bundle_host.md` — PASS
+- `Plans/PLAN_SHARDS/PLAN_SHARD_005_validation.md` — PASS
 - `Plans/PLAN_SHARDS/PLAN_SHARD_001_leditor_theme_css.md` — PASS
 - `Plans/PLAN_SHARDS/PLAN_SHARD_002_leditor_search_panel.md` — PASS
 - `Plans/PLAN_SHARDS/PLAN_SHARD_003_leditor_status_bar.md` — PASS
@@ -23,6 +28,9 @@ Active master plan: `Plans/MASTER_PREMIUM_THEME.md`
 - `Plans/PLAN_SHARDS/PLAN_SHARD_015_myapp_validation.md` — PASS
 
 ## Validation log
+- 2026-02-03: `leditor` — `npm run typecheck` PASS (File/Save/Export + autosave + LEDOC v2 bundle)
+- 2026-02-03: `leditor` — `npm run build` PASS (File/Save/Export + autosave + LEDOC v2 bundle)
+- 2026-02-03: `my-electron-app` — `npm run build` PASS (LEDOC v2 bundle host)
 - 2026-01-31: `leditor` — `npm run build` PASS
 - 2026-01-31: `leditor` — `npm run typecheck` PASS
 - 2026-01-31: `leditor` — `npm run build` PASS (post search panel refactor)

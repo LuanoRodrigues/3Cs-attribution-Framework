@@ -33,7 +33,6 @@ import "../plugins/aiAgent.ts";
 import "../plugins/comments.ts";
 import "../plugins/sourceChecksFeedbacks.ts";
 import "../extensions/plugin_source_view.ts";
-import "../extensions/plugin_debug.ts";
 import "../extensions/plugin_print_preview.ts";
 import { commandMap } from "./command_map.ts";
 import AlignExtension from "../extensions/extension_align.ts";
@@ -60,13 +59,16 @@ import CrossReferenceExtension from "../extensions/extension_cross_reference.ts"
 import TocExtension from "../extensions/extension_toc.ts";
 import CitationSourcesExtension from "../extensions/extension_citation_sources.ts";
 import BibliographyExtension from "../extensions/extension_bibliography.ts";
+import BibliographyEntryExtension from "../extensions/extension_bibliography_entry.ts";
 import WordShortcutsExtension from "../extensions/extension_word_shortcuts.ts";
+import SafeDropcursorExtension from "../extensions/extension_dropcursor_safe.ts";
 import CommentMark from "../extensions/extension_comment.ts";
 import PageLayoutExtension from "../extensions/extension_page_layout.ts";
 import ParagraphLayoutExtension from "../extensions/extension_paragraph_layout.ts";
 import { PageDocument, PageNode, PagePagination } from "../extensions/extension_page.ts";
 import StyleStoreExtension from "../extensions/extension_style_store.ts";
 import { extractCitedKeysFromDoc, writeCitedWorksKeys } from "../ui/references/cited_works.ts";
+import { debugInfo } from "../utils/debug.ts";
 import {
   FootnotesContainerExtension,
   FootnoteBodyExtension,
@@ -361,32 +363,44 @@ export const LEditor = {
         MergeTagExtension,
         BookmarkExtension,
         CrossReferenceExtension,
-        TocExtension,
-        CitationSourcesExtension,
-        BibliographyExtension,
-        PageLayoutExtension,
-        ParagraphLayoutExtension,
-        WordShortcutsExtension,
-        StyleStoreExtension,
-        CommentMark,
-        Table.configure({ resizable: false }),
-        TableRow,
-        TableHeader,
+	        TocExtension,
+	        CitationSourcesExtension,
+		        BibliographyExtension,
+          BibliographyEntryExtension,
+		        PageLayoutExtension,
+	        ParagraphLayoutExtension,
+	        WordShortcutsExtension,
+	        SafeDropcursorExtension.configure({ width: 2, color: "black" }),
+	        StyleStoreExtension,
+	        CommentMark,
+	        Table.configure({ resizable: false }),
+	        TableRow,
+	        TableHeader,
         TableCell,
         ...pluginExtensions
       ],
       content: ""
     });
-    const handlePaste = (event: ClipboardEvent) => {
-      const clipboardData = event.clipboardData;
-      if (!clipboardData) {
-        return;
-      }
-      const html = clipboardData.getData("text/html");
-      if (!html) {
-        return;
-      }
-      const sanitized = sanitizeClipboardHTML(html);
+	    const handlePaste = (event: ClipboardEvent) => {
+	      const clipboardData = event.clipboardData;
+	      if (!clipboardData) {
+	        return;
+	      }
+	      const eAny = event as any;
+	      const plainOnly = !!(eAny.getModifierState?.("Shift") ?? eAny.shiftKey);
+	      if (plainOnly) {
+	        const plain = clipboardData.getData("text/plain");
+	        if (plain) {
+	          event.preventDefault();
+	          editor.commands.insertContent(plain);
+	          return;
+	        }
+	      }
+	      const html = clipboardData.getData("text/html");
+	      if (!html) {
+	        return;
+	      }
+	      const sanitized = sanitizeClipboardHTML(html);
       if (!sanitized && !clipboardData.getData("text/plain")) {
         event.preventDefault();
         return;
@@ -438,11 +452,7 @@ export const LEditor = {
         citedWorksSyncTimer = null;
         try {
           const keys = extractCitedKeysFromDoc(editor.state.doc as any);
-          try {
-            console.info("[References][sync] cited keys", { count: keys.length, sample: keys.slice(0, 5) });
-          } catch {
-            // ignore logging failures
-          }
+          debugInfo("[References][sync] cited keys", { count: keys.length, sample: keys.slice(0, 5) });
           void writeCitedWorksKeys(keys);
         } catch {
           // ignore

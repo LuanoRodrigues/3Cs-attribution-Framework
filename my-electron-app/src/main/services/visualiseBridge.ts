@@ -21,6 +21,14 @@ export interface VisualiseExportPptxRequest {
   selection?: { sections?: string[]; slideIds?: string[] };
   collectionName?: string;
   outputPath: string;
+  notesOverrides?: Record<string, string>;
+  renderedImages?: Record<string, string>;
+}
+
+export interface VisualiseDescribeSlideRequest {
+  slide: Record<string, unknown>;
+  params?: Record<string, unknown>;
+  collectionName?: string;
 }
 
 const resolvePythonBinary = (): string => {
@@ -157,6 +165,19 @@ export const invokeVisualiseExportPptx = async (request: VisualiseExportPptxRequ
     params: request.params ?? {},
     selection: request.selection ?? undefined,
     collectionName: request.collectionName,
-    outputPath: request.outputPath
+    outputPath: request.outputPath,
+    notesOverrides: request.notesOverrides ?? {},
+    renderedImages: request.renderedImages ?? {}
+  });
+};
+
+export const invokeVisualiseDescribeSlide = async (
+  request: VisualiseDescribeSlideRequest
+): Promise<Record<string, unknown>> => {
+  return runPythonTask({
+    action: "describe_slide",
+    slide: request.slide,
+    params: request.params ?? {},
+    collectionName: request.collectionName
   });
 };

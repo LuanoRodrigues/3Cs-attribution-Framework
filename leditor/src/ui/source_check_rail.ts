@@ -92,11 +92,15 @@ const iconSvg = (name: "collapse" | "expand" | "close"): string => {
 };
 
 const bindIconAction = (el: HTMLElement, fn: () => void) => {
-  // Use pointerdown instead of click to avoid focus/selection interactions swallowing events.
+  // Pointer events can be swallowed by selection/focus interactions in the editor.
+  // Also keep a click fallback for environments where pointer events are disabled.
+  let fired = false;
   el.addEventListener("pointerdown", (e) => {
+    fired = true;
     try {
       e.preventDefault();
       e.stopPropagation();
+      (e as any).stopImmediatePropagation?.();
     } catch {
       // ignore
     }
@@ -106,9 +110,15 @@ const bindIconAction = (el: HTMLElement, fn: () => void) => {
     try {
       e.preventDefault();
       e.stopPropagation();
+      (e as any).stopImmediatePropagation?.();
     } catch {
       // ignore
     }
+    if (fired) {
+      fired = false;
+      return;
+    }
+    fn();
   });
 };
 
@@ -181,14 +191,17 @@ export const mountSourceCheckRail = (editorHandle: EditorHandle) => {
     (appRoot.querySelector(".leditor-doc-shell") as HTMLElement | null) ??
     (appRoot.querySelector(".leditor-editor-pane") as HTMLElement | null) ??
     (appRoot as HTMLElement);
-  // Prefer the scaled content wrapper as the coordinate space for the rail. This keeps the
-  // cards aligned with the A4 page stack even when zoom/centering is applied.
+  // Mount rails into the unscaled A4 viewport so cards can live in a right gutter (outside the page),
+  // while still using the scaled content wrapper for coordinate normalization.
   const overlayHost =
-    (appRoot.querySelector(".leditor-a4-zoom-content") as HTMLElement | null) ??
     (appRoot.querySelector(".leditor-a4-zoom") as HTMLElement | null) ??
     (appRoot.querySelector(".leditor-a4-canvas") as HTMLElement | null) ??
+    (appRoot.querySelector(".leditor-a4-zoom-content") as HTMLElement | null) ??
     appRoot;
-  const scaleEl = overlayHost;
+  const scaleEl =
+    (appRoot.querySelector(".leditor-a4-zoom-content") as HTMLElement | null) ??
+    (appRoot.querySelector(".leditor-a4-zoom") as HTMLElement | null) ??
+    overlayHost;
 
   const existingCards = document.getElementById(CARDS_ID);
   if (existingCards) existingCards.remove();
@@ -230,7 +243,7 @@ export const mountSourceCheckRail = (editorHandle: EditorHandle) => {
   btnClear.type = "button";
   btnClear.className = "leditor-source-check-rail__btn";
   btnClear.textContent = "Clear";
-  btnClear.addEventListener("click", () => {
+  bindIconAction(btnClear, () => {
     try {
       editorHandle.execCommand("ai.sourceChecks.clear");
     } catch {
@@ -242,7 +255,7 @@ export const mountSourceCheckRail = (editorHandle: EditorHandle) => {
   btnHide.type = "button";
   btnHide.className = "leditor-source-check-rail__btn";
   btnHide.textContent = "Hide";
-  btnHide.addEventListener("click", () => {
+  bindIconAction(btnHide, () => {
     try {
       editorHandle.execCommand("ai.sourceChecks.toggle");
     } catch {
@@ -576,6 +589,7 @@ export const mountSourceCheckRail = (editorHandle: EditorHandle) => {
     if (!shouldShow) {
       try {
         appRoot.classList.remove("leditor-app--source-checks-open");
+        appRoot.classList.remove("leditor-app--feedback-rail-open");
       } catch {
         // ignore
       }
@@ -595,6 +609,7 @@ export const mountSourceCheckRail = (editorHandle: EditorHandle) => {
     }
     try {
       appRoot.classList.add("leditor-app--source-checks-open");
+      appRoot.classList.add("leditor-app--feedback-rail-open");
     } catch {
       // ignore
     }

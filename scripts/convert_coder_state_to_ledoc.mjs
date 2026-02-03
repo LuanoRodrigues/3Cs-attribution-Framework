@@ -1,10 +1,9 @@
 #!/usr/bin/env node
-// Converts a coder_state.json (Annotarium) export into a minimal .ledoc file
+// Converts a coder_state.json (Annotarium) export into a minimal LEDOC v2 bundle directory (`*.ledoc/`).
 // Usage: node scripts/convert_coder_state_to_ledoc.mjs <path-to-coder_state.json> [output.ledoc]
 
 import fs from "fs";
 import path from "path";
-import JSZip from "jszip";
 
 const inputPath = process.argv[2] || "coder_state.json";
 const outputPath =
@@ -29,6 +28,8 @@ if (!nodes.length || typeof nodes[0]?.edited_html !== "string") {
 const title = nodes[0]?.name || "Imported coder_state";
 const updated = nodes[0]?.updated_utc || new Date().toISOString();
 const html = nodes[0].edited_html;
+
+const LEDOC_BUNDLE_VERSION = "2.0";
 
 // Very lightweight HTML → text for inclusion. We keep links’ visible text.
 const textFromHtml = (markup) => {
@@ -86,29 +87,48 @@ const documentJson = {
   content: [page]
 };
 
+const ensureEmptyDir = (dirPath) => {
+  if (fs.existsSync(dirPath)) {
+    const st = fs.statSync(dirPath);
+    if (st.isFile()) {
+      throw new Error(`Target exists and is a file: ${dirPath}`);
+    }
+    return;
+  }
+  fs.mkdirSync(dirPath, { recursive: true });
+};
+
+const writeJson = (filePath, value) => {
+  fs.writeFileSync(filePath, JSON.stringify(value, null, 2), "utf-8");
+};
+
+ensureEmptyDir(outputPath);
+ensureEmptyDir(path.join(outputPath, "media"));
+
 const meta = {
-  version: "1.0",
+  version: LEDOC_BUNDLE_VERSION,
   title,
   authors: [],
   created: updated,
-  lastModified: updated
+  lastModified: updated,
+  sourceFormat: "bundle"
+};
+const layout = {
+  version: LEDOC_BUNDLE_VERSION,
+  pageSize: "A4",
+  margins: { unit: "cm", top: 2.5, right: 2.5, bottom: 2.5, left: 2.5 }
+};
+const registry = {
+  version: LEDOC_BUNDLE_VERSION,
+  footnoteIdState: { counters: { footnote: 0, endnote: 0 } },
+  knownFootnotes: []
 };
 
-const settings = {
-  pageSize: "a4",
-  margins: { topCm: 2.5, rightCm: 2.5, bottomCm: 2.5, leftCm: 2.5 }
-};
+fs.writeFileSync(path.join(outputPath, "version.txt"), `${LEDOC_BUNDLE_VERSION}\n`, "utf-8");
+writeJson(path.join(outputPath, "content.json"), documentJson);
+writeJson(path.join(outputPath, "meta.json"), meta);
+writeJson(path.join(outputPath, "layout.json"), layout);
+writeJson(path.join(outputPath, "registry.json"), registry);
 
-const footnotes = { entries: [] };
-
-const zip = new JSZip();
-zip.file("document.json", JSON.stringify(documentJson));
-zip.file("meta.json", JSON.stringify(meta));
-zip.file("settings.json", JSON.stringify(settings));
-zip.file("footnotes.json", JSON.stringify(footnotes));
-
-const outBuf = await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" });
-fs.writeFileSync(outputPath, outBuf);
-
-console.log(`[convert_coder_state_to_ledoc] wrote ${outputPath}`);
+console.log(`[convert_coder_state_to_ledoc] wrote bundle ${outputPath}`);
 console.log(`Title: ${title}`);

@@ -142,19 +142,30 @@ class FootnoteNodeView implements FootnoteNodeViewAPI {
     return this.marker.textContent ?? "";
   }
 
-  setNumber(value: number) {
-    if (!Number.isFinite(value) || value <= 0) {
+  setNumber(value: string | number) {
+    const normalized =
+      typeof value === "string"
+        ? value.trim()
+        : Number.isFinite(value) && value > 0
+          ? String(Math.floor(value))
+          : "";
+    if (!normalized) {
       this.marker.textContent = "";
       delete this.root.dataset.footnoteNumber;
       return;
     }
-    const normalized = String(Math.floor(value));
     this.marker.textContent = normalized;
     this.root.dataset.footnoteNumber = normalized;
   }
 
   update(node: ProseMirrorNode) {
     if (node.type !== this.node.type) return false;
+    const nextId =
+      typeof node.attrs?.footnoteId === "string" ? String(node.attrs.footnoteId).trim() : "";
+    if (nextId && nextId !== this.footnoteId) {
+      // Force a fresh NodeView so registry keys and datasets stay consistent.
+      return false;
+    }
     this.node = node;
     // Keep dataset flags in sync (citation/manual).
     const citationId = typeof node.attrs?.citationId === "string" ? node.attrs.citationId.trim() : "";
@@ -168,7 +179,7 @@ class FootnoteNodeView implements FootnoteNodeViewAPI {
     // Track newly seen ids so deterministic insertion never collides.
     const rawKind = typeof node.attrs?.kind === "string" ? String(node.attrs.kind) : "footnote";
     const kind: FootnoteKind = rawKind === "endnote" ? "endnote" : "footnote";
-    const id = typeof node.attrs?.footnoteId === "string" ? String(node.attrs.footnoteId).trim() : "";
+    const id = nextId;
     if (id) registerFootnoteId(id, kind);
     this.syncNumberFromDoc();
     return true;
@@ -334,28 +345,61 @@ const FootnoteExtension = TiptapNode.create({
           const ensureIds = () => {
             const footnoteType = view.state.schema.nodes.footnote;
             if (!footnoteType) return;
-            const missing: Array<{ pos: number; kind: FootnoteKind }> = [];
-            const migrateText: Array<{ pos: number; kind: FootnoteKind; id: string; attrs: any; marks: Mark[] }> = [];
+            const needsId: Array<{ pos: number; kind: FootnoteKind }> = [];
+            const seen = new Set<string>();
             view.state.doc.descendants((node, pos) => {
               if (node.type !== footnoteType) return true;
               const id = typeof node.attrs?.footnoteId === "string" ? String(node.attrs.footnoteId).trim() : "";
               const rawKind = typeof node.attrs?.kind === "string" ? String(node.attrs.kind) : "footnote";
               const kind: FootnoteKind = rawKind === "endnote" ? "endnote" : "footnote";
-              if (!id) missing.push({ pos, kind });
-              else registerFootnoteId(id, kind);
+              if (!id) {
+                needsId.push({ pos, kind });
+              } else if (seen.has(id)) {
+                // Duplicate id detected; schedule a replacement.
+                needsId.push({ pos, kind });
+              } else {
+                seen.add(id);
+                registerFootnoteId(id, kind);
+              }
+              return true;
+            });
+            let tr = view.state.tr;
+            needsId.forEach((entry) => {
+              const node = tr.doc.nodeAt(entry.pos);
+              if (!node || node.type !== footnoteType) return;
+              let nextId = getNextFootnoteId(entry.kind);
+              while (seen.has(nextId)) {
+                nextId = getNextFootnoteId(entry.kind);
+              }
+              seen.add(nextId);
+              tr = tr.setNodeMarkup(
+                entry.pos,
+                node.type,
+                { ...(node.attrs as any), footnoteId: nextId, kind: entry.kind, text: (node.attrs as any)?.text ?? "" },
+                node.marks
+              );
+            });
+            // Apply text migrations by replacing nodes so we can clear any legacy content.
+            // Re-read the updated doc so migrated nodes use the current, de-duplicated ids.
+            const nextMigrations: Array<{ pos: number; kind: FootnoteKind; id: string; attrs: any; marks: Mark[] }> = [];
+            tr.doc.descendants((node, pos) => {
+              if (node.type !== footnoteType) return true;
+              const id = typeof node.attrs?.footnoteId === "string" ? String(node.attrs.footnoteId).trim() : "";
+              if (!id) return true;
+              const rawKind = typeof node.attrs?.kind === "string" ? String(node.attrs.kind) : "footnote";
+              const kind: FootnoteKind = rawKind === "endnote" ? "endnote" : "footnote";
               const attrText = typeof (node.attrs as any)?.text === "string" ? String((node.attrs as any).text) : "";
               const legacyText = (node.textContent || "").trim();
-              // Migrate any legacy inline content into attrs.text and clear node content to keep nodeSize stable.
-              if (id && legacyText && !attrText.trim()) {
-                migrateText.push({
+              if (legacyText && !attrText.trim()) {
+                nextMigrations.push({
                   pos,
                   kind,
                   id,
                   attrs: { ...(node.attrs as any), footnoteId: id, kind, text: legacyText },
                   marks: (node.marks as any) ?? []
                 });
-              } else if (id && attrText.trim() && node.content && node.content.size > 0) {
-                migrateText.push({
+              } else if (attrText.trim() && node.content && node.content.size > 0) {
+                nextMigrations.push({
                   pos,
                   kind,
                   id,
@@ -365,20 +409,7 @@ const FootnoteExtension = TiptapNode.create({
               }
               return true;
             });
-            let tr = view.state.tr;
-            missing.forEach((entry) => {
-              const node = tr.doc.nodeAt(entry.pos);
-              if (!node || node.type !== footnoteType) return;
-              const nextId = getNextFootnoteId(entry.kind);
-              tr = tr.setNodeMarkup(
-                entry.pos,
-                node.type,
-                { ...(node.attrs as any), footnoteId: nextId, kind: entry.kind, text: (node.attrs as any)?.text ?? "" },
-                node.marks
-              );
-            });
-            // Apply text migrations by replacing nodes so we can clear any legacy content.
-            migrateText
+            nextMigrations
               .sort((a, b) => b.pos - a.pos)
               .forEach((entry) => {
                 const node = tr.doc.nodeAt(entry.pos);
@@ -397,7 +428,9 @@ const FootnoteExtension = TiptapNode.create({
           const sync = () => {
             const numbering = reconcileFootnotes(view.state.doc).numbering;
             for (const [id, api] of footnoteRegistry.entries()) {
-              api.setNumber(numbering.get(id) ?? Number.NaN);
+              const raw = numbering.get(id);
+              const n = typeof raw === "number" ? raw : Number(raw);
+              api.setNumber(Number.isFinite(n) ? n : Number.NaN);
             }
           };
           // Run once after mount.

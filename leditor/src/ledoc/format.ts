@@ -14,6 +14,19 @@ export const LEDOC_PATHS = {
   preview: "preview.png"
 } as const;
 
+// LEDOC v2 (directory bundle format)
+export const LEDOC_BUNDLE_VERSION = "2.0" as const;
+export type LedocBundleVersion = typeof LEDOC_BUNDLE_VERSION;
+
+export const LEDOC_BUNDLE_PATHS = {
+  version: "version.txt",
+  content: "content.json",
+  layout: "layout.json",
+  registry: "registry.json",
+  meta: "meta.json",
+  mediaDir: "media"
+} as const;
+
 export type LedocFootnoteEntry = {
   id: string;
   text: string;
@@ -51,3 +64,42 @@ export type LedocPayload = {
   history?: unknown;
 };
 
+export type LedocBundleMetaFile = {
+  version: LedocBundleVersion;
+  title: string;
+  authors: string[];
+  created: string;
+  lastModified: string;
+  appVersion?: string;
+  sourceFormat?: "bundle" | "zip-v1";
+};
+
+export type LedocBundleLayoutFile = {
+  version: LedocBundleVersion;
+  pageSize: string;
+  margins: { unit: "cm"; top: number; bottom: number; left: number; right: number };
+  pagination?: { pageCount?: number; computedAt?: string; engine?: string };
+  footnotes?: { offsetCm?: number; computedAt?: string };
+};
+
+export type LedocBundleRegistryFile = {
+  version: LedocBundleVersion;
+  footnoteIdState?: { counters: { footnote: number; endnote: number } };
+  knownFootnotes?: Array<{
+    id: string;
+    kind: "footnote" | "endnote";
+    index?: number;
+    deleted?: boolean;
+    citationId?: string;
+  }>;
+  // Optional persisted AI/source-check thread state (renderer decides how to interpret it).
+  sourceChecksThread?: unknown;
+};
+
+export type LedocBundlePayload = {
+  version: LedocBundleVersion;
+  content: object;
+  layout: LedocBundleLayoutFile;
+  registry: LedocBundleRegistryFile;
+  meta: LedocBundleMetaFile;
+};

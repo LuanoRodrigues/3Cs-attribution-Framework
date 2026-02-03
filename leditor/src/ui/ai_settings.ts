@@ -8,7 +8,9 @@ const DEFAULT_SETTINGS: AiSettings = {
   model: "codex-mini-latest",
   temperature: 0.2,
   chunkSize: 32000,
-  defaultScope: "selection"
+  defaultScope: "selection",
+  audience: "expert",
+  formality: "formal"
 };
 
 const parseStoredSettings = (): AiSettings => {
@@ -41,7 +43,17 @@ const parseStoredSettings = (): AiSettings => {
       defaultScope:
         parsed.defaultScope === "selection" || parsed.defaultScope === "document"
           ? parsed.defaultScope
-          : DEFAULT_SETTINGS.defaultScope
+          : DEFAULT_SETTINGS.defaultScope,
+      audience: (() => {
+        const rawAudience = typeof (parsed as any).audience === "string" ? String((parsed as any).audience).trim() : "";
+        if (rawAudience === "general" || rawAudience === "knowledgeable" || rawAudience === "expert") return rawAudience;
+        return DEFAULT_SETTINGS.audience;
+      })(),
+      formality: (() => {
+        const rawFormality = typeof (parsed as any).formality === "string" ? String((parsed as any).formality).trim() : "";
+        if (rawFormality === "casual" || rawFormality === "neutral" || rawFormality === "formal") return rawFormality;
+        return DEFAULT_SETTINGS.formality;
+      })()
     };
   } catch {
     return DEFAULT_SETTINGS;
@@ -158,6 +170,33 @@ export const createAISettingsPanel = (): AiSettingsPanelController => {
   chunkInput.step = "1000";
   chunkInput.className = "leditor-ai-settings-panel__input";
 
+  const renderSegmented = (options: Array<{ value: string; label: string }>) => {
+    const wrap = document.createElement("div");
+    wrap.className = "leditor-ai-settings-panel__seg";
+    const buttons = options.map((opt) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "leditor-ai-settings-panel__segBtn";
+      btn.textContent = opt.label;
+      btn.dataset.value = opt.value;
+      wrap.appendChild(btn);
+      return btn;
+    });
+    return { wrap, buttons };
+  };
+
+  const audienceSeg = renderSegmented([
+    { value: "general", label: "General" },
+    { value: "knowledgeable", label: "Knowledgeable" },
+    { value: "expert", label: "Expert" }
+  ]);
+
+  const formalitySeg = renderSegmented([
+    { value: "casual", label: "Casual" },
+    { value: "neutral", label: "Neutral" },
+    { value: "formal", label: "Formal" }
+  ]);
+
   const scopeSelect = document.createElement("select");
   scopeSelect.className = "leditor-ai-settings-panel__select";
   const optionSelection = document.createElement("option");
@@ -183,6 +222,8 @@ export const createAISettingsPanel = (): AiSettingsPanelController => {
       return wrapper;
     })()),
     renderField("Chunk size", chunkInput),
+    renderField("Audience", audienceSeg.wrap),
+    renderField("Formality", formalitySeg.wrap),
     renderField("Default scope", scopeSelect),
     envStatus,
     status
@@ -197,6 +238,12 @@ export const createAISettingsPanel = (): AiSettingsPanelController => {
     temperatureValue.textContent = settings.temperature.toFixed(2);
     chunkInput.value = `${settings.chunkSize}`;
     scopeSelect.value = settings.defaultScope;
+    for (const btn of audienceSeg.buttons) {
+      btn.classList.toggle("is-active", btn.dataset.value === settings.audience);
+    }
+    for (const btn of formalitySeg.buttons) {
+      btn.classList.toggle("is-active", btn.dataset.value === settings.formality);
+    }
   };
 
   const syncStatus = () => {
@@ -238,6 +285,30 @@ export const createAISettingsPanel = (): AiSettingsPanelController => {
   temperatureInput.addEventListener("change", handleChange);
   chunkInput.addEventListener("change", handleChange);
   scopeSelect.addEventListener("change", handleChange);
+
+  const setSegmentValue = (kind: "audience" | "formality", value: string) => {
+    if (kind === "audience") {
+      setAiSettings({ audience: (value === "general" || value === "knowledgeable" ? value : "expert") as any });
+    } else {
+      setAiSettings({ formality: (value === "casual" || value === "neutral" ? value : "formal") as any });
+    }
+    syncStatus();
+  };
+
+  for (const btn of audienceSeg.buttons) {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setSegmentValue("audience", String(btn.dataset.value || ""));
+    });
+  }
+  for (const btn of formalitySeg.buttons) {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setSegmentValue("formality", String(btn.dataset.value || ""));
+    });
+  }
 
   const applyPanelSettings = () => {
     applySettingsToForm(getAiSettings());

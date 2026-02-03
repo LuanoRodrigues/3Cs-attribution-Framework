@@ -2243,13 +2243,15 @@ export const renderRibbonLayout = (
   perfMark("ribbon:render:start");
   const g = globalThis as typeof globalThis & { __leditorRibbonRenderCount?: number };
   g.__leditorRibbonRenderCount = (g.__leditorRibbonRenderCount ?? 0) + 1;
-  if (g.__leditorRibbonRenderCount > 1) {
-    console.warn("[Ribbon] renderRibbonLayout called multiple times", {
-      count: g.__leditorRibbonRenderCount
-    });
-    console.trace("[Ribbon] renderRibbonLayout trace");
-  } else {
-    console.info("[Ribbon] renderRibbonLayout start");
+  if (ribbonDebugEnabled()) {
+    if (g.__leditorRibbonRenderCount > 1) {
+      console.warn("[Ribbon] renderRibbonLayout called multiple times", {
+        count: g.__leditorRibbonRenderCount
+      });
+      console.trace("[Ribbon] renderRibbonLayout trace");
+    } else {
+      console.info("[Ribbon] renderRibbonLayout start");
+    }
   }
   applyTokens();
   host.classList.add("leditor-ribbon");
@@ -2380,6 +2382,7 @@ export const renderRibbonLayout = (
     ".leditor-ribbon-icon-btn, .leditor-ribbon-spinner-step, .ribbon-dialog-launcher-btn";
 
   const isDebugRibbonDomTraceEnabled = (): boolean => {
+    if (!ribbonDebugEnabled()) return false;
     try {
       const raw = window.location?.search || "";
       if (raw) {
@@ -2390,17 +2393,7 @@ export const renderRibbonLayout = (
     } catch {
       // ignore
     }
-    if (ribbonDebugEnabled()) return true;
-    try {
-      if ((globalThis as any).__leditorDebugRibbonDomTrace === true) return true;
-    } catch {
-      // ignore
-    }
-    try {
-      return window.localStorage?.getItem("leditor.debug.ribbon.dom") === "1";
-    } catch {
-      return false;
-    }
+    return false;
   };
 
   const installRibbonDomTracer = (root: HTMLElement): (() => void) => {

@@ -4,6 +4,8 @@ import type { ImportLedocOptions, ImportLedocResult } from "../api/import_ledoc.
 import { getHostAdapter } from "../host/host_adapter.ts";
 import { getPageSizeDefinitions, setPageMargins, setPageSize } from "../ui/layout_settings.ts";
 import { loadSourceChecksThreadFromLedoc } from "../ui/source_checks_thread.ts";
+import { LEDOC_BUNDLE_VERSION } from "../ledoc/format.ts";
+import { normalizeLedocBundlePayload } from "../ledoc/bundle.ts";
 
 const triggerImport = (options?: ImportLedocOptions) => {
   const handler = getHostAdapter()?.importLEDOC;
@@ -54,6 +56,33 @@ const applySettings = (settings: any) => {
       left: leftCm
     });
   }
+};
+
+const applyBundleLayout = (layout: any) => {
+  if (!layout || typeof layout !== "object") return;
+  const pageSizeRaw = typeof layout.pageSize === "string" ? layout.pageSize.trim() : "";
+  if (pageSizeRaw) {
+    const sizes = getPageSizeDefinitions();
+    const match = sizes.find(
+      (s) => s.label.toLowerCase() === pageSizeRaw.toLowerCase() || s.id.toLowerCase() === pageSizeRaw.toLowerCase()
+    );
+    if (match) setPageSize(match.id);
+  }
+  const margins = layout.margins && typeof layout.margins === "object" ? layout.margins : null;
+  if (!margins) return;
+  const unit = typeof (margins as any).unit === "string" ? String((margins as any).unit).toLowerCase() : "cm";
+  const toCm = (value: unknown): number | undefined => {
+    if (typeof value !== "number" || !Number.isFinite(value)) return undefined;
+    if (unit === "cm") return value;
+    if (unit === "px") return pxToCm(value);
+    return value;
+  };
+  setPageMargins({
+    top: toCm((margins as any).top),
+    right: toCm((margins as any).right),
+    bottom: toCm((margins as any).bottom),
+    left: toCm((margins as any).left)
+  });
 };
 
 const deriveTitle = (result: ImportLedocResult): string | null => {
@@ -127,17 +156,32 @@ registerPlugin({
             console.error("ImportLEDOC failed", result?.error);
             return;
           }
-          const doc = result.payload?.document;
-          if (doc) {
-            editorHandle.setContent(doc, { format: "json" });
+          const payload: any = result.payload ?? null;
+          if (payload && payload.version === LEDOC_BUNDLE_VERSION && payload.content) {
+            const normalized = normalizeLedocBundlePayload(payload);
+            editorHandle.setContent(normalized.payload.content, { format: "json" });
+            applyBundleLayout(normalized.payload.layout);
+            if (normalized.warnings.length) {
+              console.warn("ImportLEDOC bundle warnings", normalized.warnings);
+            }
+            try {
+              loadSourceChecksThreadFromLedoc(normalized.payload.registry);
+            } catch {
+              // ignore
+            }
+          } else {
+            const doc = payload?.document;
+            if (doc) {
+              editorHandle.setContent(doc, { format: "json" });
+            }
+            if (payload?.settings) {
+              applySettings(payload.settings);
+            }
           }
           persistLastLedocPath(result);
           applyImportedTitle(result);
-          if (result.payload?.settings) {
-            applySettings(result.payload.settings);
-          }
           try {
-            loadSourceChecksThreadFromLedoc((result as any)?.payload?.history);
+            loadSourceChecksThreadFromLedoc(payload?.history);
           } catch {
             // ignore
           }
@@ -161,16 +205,29 @@ registerPlugin({
         if (!result.success) {
           return Promise.reject(new Error(result.error ?? "ImportLEDOC failed"));
         }
-        if (result.payload?.document) {
-          editorHandle.setContent(result.payload.document, { format: "json" });
+        const payload: any = result.payload ?? null;
+        if (payload && payload.version === LEDOC_BUNDLE_VERSION && payload.content) {
+          const normalized = normalizeLedocBundlePayload(payload);
+          editorHandle.setContent(normalized.payload.content, { format: "json" });
+          applyBundleLayout(normalized.payload.layout);
+          if (normalized.warnings.length) {
+            console.warn("ImportLEDOC bundle warnings", normalized.warnings);
+          }
+          try {
+            loadSourceChecksThreadFromLedoc(normalized.payload.registry);
+          } catch {
+            // ignore
+          }
+        } else if (payload?.document) {
+          editorHandle.setContent(payload.document, { format: "json" });
+          if (payload?.settings) {
+            applySettings(payload.settings);
+          }
         }
         persistLastLedocPath(result);
         applyImportedTitle(result);
-        if (result.payload?.settings) {
-          applySettings(result.payload.settings);
-        }
         try {
-          loadSourceChecksThreadFromLedoc((result as any)?.payload?.history);
+          loadSourceChecksThreadFromLedoc(payload?.history);
         } catch {
           // ignore
         }

@@ -4,7 +4,10 @@ import {
   setOrientation as docSetOrientation,
   setMarginsPreset as docSetMarginsPreset,
   setMarginsCustom as docSetMarginsCustom,
-  setColumns as docSetColumns
+  setColumns as docSetColumns,
+  setFootnoteGap as docSetFootnoteGap,
+  setFootnoteMaxHeightRatio as docSetFootnoteMaxHeightRatio,
+  setFootnoteSeparator as docSetFootnoteSeparator
 } from "./pagination/document_layout_state.ts";
 
 export type Orientation = "portrait" | "landscape";
@@ -222,6 +225,28 @@ export const setPageMargins = (margins: Partial<MarginValues | MarginValuesCm>):
       bottom: cmToInches(next.bottom),
       left: cmToInches(next.left)
     });
+  });
+};
+
+export const setFootnoteGap = (value: number | string): void => {
+  const cm = parseToCm(value as any, 0.125 * 2.54);
+  const inches = cm / 2.54;
+  withLayoutUpdate(() => {
+    docSetFootnoteGap(inches);
+  });
+};
+
+export const setFootnoteMaxHeightRatio = (value: number): void => {
+  withLayoutUpdate(() => {
+    docSetFootnoteMaxHeightRatio(value);
+  });
+};
+
+export const setFootnoteSeparator = (values: { height?: number | string; color?: string }): void => {
+  const heightIn =
+    values.height !== undefined ? parseToCm(values.height as any, 0.01 * 2.54) / 2.54 : undefined;
+  withLayoutUpdate(() => {
+    docSetFootnoteSeparator({ heightIn, color: values.color });
   });
 };
 

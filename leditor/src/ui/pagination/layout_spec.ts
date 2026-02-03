@@ -154,6 +154,14 @@ export const documentLayoutSpec = {
       footnoteAreaHeightIn: 0.55
     }
   },
+  footnotes: {
+    maxHeightRatioDefault: 1,
+    gapDefaultIn: 0.125,
+    separator: {
+      heightDefaultIn: 0.01,
+      colorDefault: "rgba(0, 0, 0, 0.25)"
+    }
+  },
   domPageBreaks: {
     enabled: true,
     breakNodeSelectors: [".leditor-break[data-break-kind='page']", "hr[data-break-kind='page']"] as readonly string[],

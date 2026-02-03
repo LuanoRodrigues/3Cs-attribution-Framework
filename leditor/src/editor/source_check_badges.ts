@@ -28,6 +28,136 @@ let editorRef: Editor | null = null;
 
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
+let activeFixPopover:
+  | {
+      key: string;
+      popover: HTMLElement;
+      cleanup: Array<() => void>;
+    }
+  | null = null;
+
+const closeFixPopover = () => {
+  if (!activeFixPopover) return;
+  for (const fn of activeFixPopover.cleanup) {
+    try {
+      fn();
+    } catch {
+      // ignore
+    }
+  }
+  try {
+    activeFixPopover.popover.remove();
+  } catch {
+    // ignore
+  }
+  activeFixPopover = null;
+};
+
+const openFixPopover = (args: { key: string; chipEl: HTMLElement; rewrite: string }) => {
+  if (!editorRef) return;
+  if (activeFixPopover?.key === args.key) {
+    closeFixPopover();
+    return;
+  }
+  closeFixPopover();
+
+  const pop = document.createElement("div");
+  pop.className = "leditor-source-check-fix-popover";
+  pop.setAttribute("role", "dialog");
+  pop.setAttribute("aria-label", "Source check fix suggestion");
+
+  const txt = document.createElement("div");
+  txt.className = "leditor-source-check-fix-popover__text";
+  txt.textContent = args.rewrite;
+
+  const actions = document.createElement("div");
+  actions.className = "leditor-source-check-fix-popover__actions";
+
+  const reject = document.createElement("button");
+  reject.type = "button";
+  reject.className = "leditor-source-check-fix-popover__btn";
+  reject.textContent = "Reject";
+  reject.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dismissClaimRewriteForKey(args.key);
+    closeFixPopover();
+  });
+
+  const apply = document.createElement("button");
+  apply.type = "button";
+  apply.className = "leditor-source-check-fix-popover__btn leditor-source-check-fix-popover__btn--primary";
+  apply.textContent = "Apply";
+  apply.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    applyClaimRewriteForKey(args.key);
+    closeFixPopover();
+  });
+
+  actions.append(reject, apply);
+  pop.append(txt, actions);
+  document.body.appendChild(pop);
+
+  // Position relative to the chip, but clamp to the A4 page rect so it never gets clipped by the page.
+  const chipRect = args.chipEl.getBoundingClientRect();
+  const pageEl = args.chipEl.closest(".leditor-page") as HTMLElement | null;
+  const boundsRect = pageEl?.getBoundingClientRect?.() ?? null;
+  const viewportRect = {
+    left: 8,
+    top: 8,
+    right: window.innerWidth - 8,
+    bottom: window.innerHeight - 8
+  };
+  const bounds = boundsRect
+    ? { left: boundsRect.left + 10, top: boundsRect.top + 10, right: boundsRect.right - 10, bottom: boundsRect.bottom - 10 }
+    : viewportRect;
+
+  // Measure after attach.
+  const popRect = pop.getBoundingClientRect();
+
+  const preferBelow = chipRect.bottom + 8 + popRect.height <= bounds.bottom;
+  const top = preferBelow ? chipRect.bottom + 8 : Math.max(bounds.top, chipRect.top - 8 - popRect.height);
+  const left = Math.max(bounds.left, Math.min(bounds.right - popRect.width, chipRect.left));
+
+  pop.style.left = `${Math.round(left)}px`;
+  pop.style.top = `${Math.round(top)}px`;
+
+  const onDocPointerDown = (e: Event) => {
+    const t = e.target as Node | null;
+    if (!t) return;
+    if (pop.contains(t) || args.chipEl.contains(t)) return;
+    closeFixPopover();
+  };
+  const onKeyDown = (e: KeyboardEvent) => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      closeFixPopover();
+    }
+  };
+  const docShell = document.querySelector(".leditor-doc-shell") as HTMLElement | null;
+  const onScroll = () => closeFixPopover();
+
+  document.addEventListener("pointerdown", onDocPointerDown, true);
+  document.addEventListener("keydown", onKeyDown, true);
+  docShell?.addEventListener("scroll", onScroll, { passive: true });
+  try {
+    editorRef?.on?.("selectionUpdate" as any, onScroll);
+  } catch {
+    // ignore
+  }
+
+  activeFixPopover = {
+    key: args.key,
+    popover: pop,
+    cleanup: [
+      () => document.removeEventListener("pointerdown", onDocPointerDown, true),
+      () => document.removeEventListener("keydown", onKeyDown, true),
+      () => docShell?.removeEventListener("scroll", onScroll)
+    ]
+  };
+};
+
 const findSentenceStartInBlock = (state: EditorState, blockFrom: number, pos: number): number => {
   const doc = state.doc;
   const left = doc.textBetween(blockFrom, pos, "\n");
@@ -77,7 +207,7 @@ const rangeHasCitationLikeMarks = (state: EditorState, from: number, to: number)
   return found;
 };
 
-const applyClaimRewriteForKey = (key: string) => {
+export const applyClaimRewriteForKey = (key: string) => {
   if (!editorRef) return;
   const k = String(key || "").trim();
   if (!k) return;
@@ -137,7 +267,7 @@ const applyClaimRewriteForKey = (key: string) => {
   }
 };
 
-const dismissClaimRewriteForKey = (key: string) => {
+export const dismissClaimRewriteForKey = (key: string) => {
   const k = String(key || "").trim();
   if (!k) return;
   try {
@@ -305,49 +435,13 @@ export const sourceCheckBadgesExtension = Extension.create({
                       chip.type = "button";
                       chip.className = "leditor-source-check-fix__chip";
                       chip.textContent = "Fix";
-                      chip.addEventListener("click", (e) => {
+                      chip.addEventListener("pointerdown", (e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        try {
-                          root.classList.toggle("is-open");
-                        } catch {
-                          // ignore
-                        }
+                        openFixPopover({ key: String(it.key), chipEl: chip, rewrite });
                       });
 
-                      const pop = document.createElement("span");
-                      pop.className = "leditor-source-check-fix__popover";
-
-                      const txt = document.createElement("div");
-                      txt.className = "leditor-source-check-fix__text";
-                      txt.textContent = rewrite;
-
-                      const actions = document.createElement("div");
-                      actions.className = "leditor-source-check-fix__actions";
-
-                      const reject = document.createElement("button");
-                      reject.type = "button";
-                      reject.className = "leditor-source-check-fix__btn";
-                      reject.textContent = "Reject";
-                      reject.addEventListener("click", (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        dismissClaimRewriteForKey(String(it.key));
-                      });
-
-                      const apply = document.createElement("button");
-                      apply.type = "button";
-                      apply.className = "leditor-source-check-fix__btn leditor-source-check-fix__btn--primary";
-                      apply.textContent = "Apply";
-                      apply.addEventListener("click", (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        applyClaimRewriteForKey(String(it.key));
-                      });
-
-                      actions.append(reject, apply);
-                      pop.append(txt, actions);
-                      root.append(chip, pop);
+                      root.append(chip);
                       return root;
                     },
                     { side: 1, key: `fix:${String(it.key)}` }

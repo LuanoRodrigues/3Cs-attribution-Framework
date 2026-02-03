@@ -1,6 +1,9 @@
 import { contextBridge, ipcRenderer } from "electron";
 
+const DEBUG_LOGS = process.env.LEDITOR_DEBUG === "1";
+
 const dbg = (fn: string, msg: string, extra?: Record<string, unknown>) => {
+  if (!DEBUG_LOGS) return;
   const line = `[preload.ts][${fn}][debug] ${msg}`;
   if (extra) {
     console.debug(line, extra);
@@ -196,6 +199,34 @@ const importLEDOC = async (request: Record<string, unknown>) => {
   return invoke<typeof request, any>("leditor:import-ledoc", request as any);
 };
 
+const listLedocVersions = async (request: { ledocPath: string }) => {
+  return invoke<typeof request, any>("leditor:versions:list", request as any);
+};
+
+const createLedocVersion = async (request: {
+  ledocPath: string;
+  reason?: string;
+  label?: string;
+  note?: string;
+  payload?: any;
+  throttleMs?: number;
+  force?: boolean;
+}) => {
+  return invoke<typeof request, any>("leditor:versions:create", request as any);
+};
+
+const restoreLedocVersion = async (request: { ledocPath: string; versionId: string; mode?: "replace" | "copy" }) => {
+  return invoke<typeof request, any>("leditor:versions:restore", request as any);
+};
+
+const deleteLedocVersion = async (request: { ledocPath: string; versionId: string }) => {
+  return invoke<typeof request, any>("leditor:versions:delete", request as any);
+};
+
+const pinLedocVersion = async (request: { ledocPath: string; versionId: string; pinned: boolean }) => {
+  return invoke<typeof request, any>("leditor:versions:pin", request as any);
+};
+
 const getAiStatus = async () => {
   return invoke<void, any>("leditor:ai-status", undefined as any);
 };
@@ -263,6 +294,11 @@ contextBridge.exposeInMainWorld("leditorHost", {
   writeFile,
   exportLEDOC,
   importLEDOC,
+  listLedocVersions,
+  createLedocVersion,
+  restoreLedocVersion,
+  deleteLedocVersion,
+  pinLedocVersion,
   agentRequest,
   agentCancel,
   checkSources,

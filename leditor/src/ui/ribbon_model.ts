@@ -80,6 +80,12 @@ export const ribbonRegistry = {
   },
   "tabs": [
     {
+      "tabId": "file",
+      "label": "File",
+      "source": "file",
+      "priority": 110
+    },
+    {
       "tabId": "home",
       "label": "Home",
       "source": "home",
@@ -137,6 +143,146 @@ export const ribbonRegistry = {
     "All tabs are declarative and resolved at runtime via typed TS sources.",
     "Collapse behavior is driven exclusively by per-control collapse manifests.",
     "StateContract is authoritative; missing keys are fatal errors."
+  ]
+} as const;
+
+export const fileTab = {
+  "$schema": "leditor.ribbon.schema.v1",
+  "ribbonId": "main.ribbon",
+  "version": 1,
+  "tabId": "file",
+  "label": "File",
+  "accessibility": {
+    "ariaLabel": "Ribbon tab: File",
+    "keyboard": {
+      "keyTips": true,
+      "keyTipModeKey": "Alt",
+      "focusRing": "system"
+    }
+  },
+  "layout": {
+    "stages": ["A", "B", "C"],
+    "stageMeaning": {
+      "A": "Full layout",
+      "B": "Compact layout with overflow/menu consolidation",
+      "C": "Collapsed group flyouts"
+    },
+    "stageDefaults": {
+      "A": { "maxGroups": 6, "allowTabScroll": false },
+      "B": { "maxGroups": 6, "allowTabScroll": true },
+      "C": { "maxGroups": 6, "allowTabScroll": true }
+    }
+  },
+  "groups": [
+    {
+      "groupId": "file.document",
+      "label": "Document",
+      "priority": 100,
+      "clusters": [
+        {
+          "clusterId": "file.document.actions",
+          "layout": "row",
+          "controls": [
+            {
+              "controlId": "file.new",
+              "label": "New",
+              "type": "button",
+              "size": "large",
+              "iconKey": "icon.file",
+              "command": { "id": "file.new" },
+              "keyTip": "N"
+            },
+            {
+              "controlId": "file.open",
+              "label": "Open",
+              "type": "button",
+              "size": "large",
+              "iconKey": "icon.import",
+              "command": { "id": "file.open" },
+              "keyTip": "O"
+            },
+            {
+              "controlId": "file.save",
+              "label": "Save",
+              "type": "button",
+              "size": "large",
+              "iconKey": "icon.export",
+              "command": { "id": "file.save" },
+              "keyTip": "S"
+            },
+            {
+              "controlId": "file.saveAs",
+              "label": "Save As",
+              "type": "button",
+              "size": "large",
+              "iconKey": "icon.export",
+              "command": { "id": "file.saveAs" },
+              "keyTip": "A"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "groupId": "file.export",
+      "label": "Export",
+      "priority": 90,
+      "clusters": [
+        {
+          "clusterId": "file.export.actions",
+          "layout": "column",
+          "controls": [
+            {
+              "controlId": "file.export",
+              "label": "Export",
+              "type": "splitButton",
+              "size": "large",
+              "iconKey": "icon.export",
+              "command": { "id": "ExportDOCX" },
+              "menu": [
+                {
+                  "controlId": "file.export.docx",
+                  "label": "Word (.docx)",
+                  "type": "menuItem",
+                  "iconKey": "icon.docx",
+                  "command": { "id": "ExportDOCX" }
+                },
+                {
+                  "controlId": "file.export.pdf",
+                  "label": "PDF (.pdf)",
+                  "type": "menuItem",
+                  "iconKey": "icon.exportPdf",
+                  "command": { "id": "ExportPdf" }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+    ,
+    {
+      "groupId": "file.history",
+      "label": "History",
+      "priority": 80,
+      "clusters": [
+        {
+          "clusterId": "file.history.actions",
+          "layout": "column",
+          "controls": [
+            {
+              "controlId": "file.versionHistory",
+              "label": "Version History",
+              "type": "button",
+              "size": "large",
+              "iconKey": "icon.revisionHistory",
+              "command": { "id": "file.versionHistory" },
+              "keyTip": "H"
+            }
+          ]
+        }
+      ]
+    }
   ]
 } as const;
 

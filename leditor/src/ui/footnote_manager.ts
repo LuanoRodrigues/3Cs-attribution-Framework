@@ -14,12 +14,9 @@ const syncFootnoteNumbers = (editor: Editor) => {
   const registry = getFootnoteRegistry();
   const numbering = reconcileFootnotes(editor.state.doc).numbering;
   for (const [id, view] of registry.entries()) {
-    const number = numbering.get(id);
-    if (number) {
-      view.setNumber(number);
-    } else {
-      view.setNumber(Number.NaN);
-    }
+    const raw = numbering.get(id);
+    const num = typeof raw === "number" ? raw : Number(raw);
+    view.setNumber(Number.isFinite(num) ? num : Number.NaN);
   }
 };
 

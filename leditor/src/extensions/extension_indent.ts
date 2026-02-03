@@ -102,24 +102,16 @@ const IndentExtension = Extension.create({
         return this.editor.commands.sinkListItem("listItem");
       }
       return adjustIndent(this.editor, 1);
-    },
-    "Shift-Tab": () => {
-      const selection = this.editor.state.selection;
-      if (selection instanceof CellSelection) return false;
-      this.editor.commands.focus();
-      if (findListItemDepth(this.editor) !== null) {
-        return this.editor.commands.liftListItem("listItem");
+      },
+      "Shift-Tab": () => {
+        const selection = this.editor.state.selection;
+        if (selection instanceof CellSelection) return false;
+        this.editor.commands.focus();
+        if (findListItemDepth(this.editor) !== null) {
+          return this.editor.commands.liftListItem("listItem");
+        }
+        return adjustIndent(this.editor, -1);
       }
-      return adjustIndent(this.editor, -1);
-    },
-    "Mod-m": () => {
-      this.editor.commands.focus();
-      return adjustIndent(this.editor, 1);
-    },
-    "Mod-Shift-m": () => {
-      this.editor.commands.focus();
-      return adjustIndent(this.editor, -1);
-    }
   };
 },
   addCommands() {

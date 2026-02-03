@@ -1,6 +1,7 @@
 import type { EditorHandle } from "../api/leditor.ts";
 import type { A4LayoutController, A4ViewMode } from "./a4_layout.ts";
 import { computeStats } from "../editor/stats.ts";
+import { getInsertMode, getSelectionMode } from "../editor/input_modes.ts";
 
 declare global {
   interface Window {
@@ -48,6 +49,10 @@ export const mountStatusBar = (
   const statsLabel = document.createElement("span");
   statsLabel.textContent = "Words: 0 | Chars: 0 | Chars (no spaces): 0";
   statsGroup.appendChild(statsLabel);
+
+  const modeLabel = document.createElement("span");
+  modeLabel.className = "leditor-status-mode";
+  statsGroup.appendChild(modeLabel);
 
   const pagesLabel = document.createElement("span");
   pagesLabel.className = "leditor-status-pages";
@@ -126,6 +131,14 @@ export const mountStatusBar = (
     }
   };
 
+  const updateModes = () => {
+    const insertMode = getInsertMode();
+    const selectionMode = getSelectionMode();
+    const insertLabel = insertMode === "overwrite" ? "OVR" : "INS";
+    const selectionLabel = selectionMode === "normal" ? "SEL:NORM" : `SEL:${selectionMode.toUpperCase()}`;
+    modeLabel.textContent = `${insertLabel} | ${selectionLabel}`;
+  };
+
   const handleZoomStep = (direction: 1 | -1) => {
     if (!layout) return;
     const step = 0.1;
@@ -178,6 +191,10 @@ export const mountStatusBar = (
 
   editorHandle.on("change", updateStats);
   updateStats();
+  updateModes();
+
+  window.addEventListener("leditor:selection-mode", updateModes as EventListener);
+  window.addEventListener("leditor:insert-mode", updateModes as EventListener);
 
   if (layout) {
     zoomInput.value = `${Math.round(layout.getZoom() * 100)}%`;

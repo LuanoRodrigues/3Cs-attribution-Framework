@@ -18,6 +18,7 @@ import { ensureReferencesLibrary, upsertReferenceItems, getReferencesLibrarySync
 import { getHostContract } from "../ui/host_contract.ts";
 import { createSearchPanel } from "../ui/search_panel.ts";
 import { createAISettingsPanel, type AiSettingsPanelController } from "../ui/ai_settings.ts";
+import { openVersionHistoryModal } from "../ui/version_history_modal.ts";
 import {
   dismissSourceCheckThreadItem,
   getSourceChecksThread,
@@ -62,6 +63,7 @@ import {
 } from "../utils/selection_snapshot";
 import { insertFootnoteAtSelection as insertManagedFootnote } from "../uipagination/footnotes/commands";
 import type { EditorHandle } from "./leditor.ts";
+import { isDebugLoggingEnabled } from "../utils/debug.ts";
 const findListItemDepth = (editor: Editor) => {
   const { $from } = editor.state.selection;
   for (let depth = $from.depth; depth > 0; depth -= 1) {
@@ -76,6 +78,20 @@ const clampIndentLevel = (value: number) => Math.max(MIN_INDENT_LEVEL, Math.min(
 
 let citationIdCounter = 0;
 const generateCitationId = () => `c-${Date.now().toString(36)}-${(citationIdCounter++).toString(36)}`;
+
+const isReferencesDebugEnabled = (): boolean => {
+  const g = window as typeof window & { __leditorReferencesDebug?: boolean; __leditorDebug?: boolean };
+  return Boolean(g.__leditorReferencesDebug || g.__leditorDebug) || isDebugLoggingEnabled();
+};
+
+const refsInfo = (message: string, detail?: Record<string, unknown>): void => {
+  if (!isReferencesDebugEnabled()) return;
+  if (detail) {
+    console.info(message, detail);
+  } else {
+    console.info(message);
+  }
+};
 
 const isOverlayEditing = (): boolean => {
   const appRoot = document.getElementById("leditor-app");
@@ -169,6 +185,227 @@ const chainWithSafeFocus = (
 
 type CitationNodeRecord = CslCitationNode & { pos: number; pmNode: ProseMirrorNode };
 type BibliographyNodeRecord = CslBibliographyNode & { pos: number; pmNode: ProseMirrorNode };
+
+const normalizeText = (value: string): string => value.trim().replace(/\s+/g, " ");
+
+const buildBibliographyEntryParagraphs = (
+  editor: Editor,
+  itemKeys: string[],
+  meta: DocCitationMeta
+): ProseMirrorNode[] => {
+  const schema = editor.schema;
+  const entryNode = schema.nodes.bibliography_entry ?? schema.nodes.paragraph;
+  if (!entryNode) return [];
+  const italicType = schema.marks.italic ?? schema.marks.em;
+  const boldType = schema.marks.bold ?? schema.marks.strong;
+  const italicMark = italicType ? italicType.create() : null;
+  const boldMark = boldType ? boldType.create() : null;
+
+  const lib = getReferencesLibrarySync();
+  const style = String(meta.styleId || "").toLowerCase();
+
+  const normalize = (value: string): string => value.trim().toLowerCase().replace(/\s+/g, " ");
+  const sortApa = (aKey: string, bKey: string): number => {
+    const a = lib.itemsByKey[aKey];
+    const b = lib.itemsByKey[bKey];
+    const aAuthor = normalize(a?.author || "");
+    const bAuthor = normalize(b?.author || "");
+    if (aAuthor !== bAuthor) return aAuthor < bAuthor ? -1 : 1;
+    const aYear = normalize(a?.year || "");
+    const bYear = normalize(b?.year || "");
+    if (aYear !== bYear) return aYear < bYear ? -1 : 1;
+    const aTitle = normalize(a?.title || "");
+    const bTitle = normalize(b?.title || "");
+    if (aTitle !== bTitle) return aTitle < bTitle ? -1 : 1;
+    return aKey < bKey ? -1 : aKey > bKey ? 1 : 0;
+  };
+
+  const ordered = style.includes("apa") ? [...itemKeys].sort(sortApa) : itemKeys;
+
+  const numberByKey = style.includes("numeric") || style === "vancouver" || style === "ieee" || style === "nature"
+    ? new Map(ordered.map((k, i) => [k, i + 1]))
+    : null;
+
+  const makeText = (value: string, mark?: any) => {
+    const raw = String(value || "");
+    if (!raw) return null;
+    return mark ? schema.text(raw, [mark]) : schema.text(raw);
+  };
+
+  return ordered.map((itemKey) => {
+    const item = lib.itemsByKey[itemKey];
+    if (!item) {
+      return entryNode.create(null, [schema.text(itemKey)]);
+    }
+    const pieces: any[] = [];
+    if (numberByKey) {
+      const n = numberByKey.get(itemKey);
+      if (typeof n === "number") {
+        const t = makeText(`[${n}] `, boldMark);
+        if (t) pieces.push(t);
+      }
+    }
+    const author = normalizeText(item.author || "");
+    const year = normalizeText(item.year || "");
+    const title = normalizeText(item.title || "");
+    const source = normalizeText(item.source || "");
+    const url = normalizeText(item.url || "");
+
+    if (author) pieces.push(schema.text(`${author}. `));
+    if (year) pieces.push(schema.text(`(${year}). `));
+    if (title) {
+      const t = makeText(title, italicMark);
+      if (t) pieces.push(t);
+      pieces.push(schema.text(". "));
+    }
+    if (source) pieces.push(schema.text(`${source}. `));
+    if (url) pieces.push(schema.text(url));
+    if (!pieces.length) pieces.push(schema.text(itemKey));
+    return entryNode.create(null, pieces.filter(Boolean));
+  });
+};
+
+const removeTrailingReferencesSection = (editor: Editor, headingText: string): void => {
+  const doc = editor.state.doc;
+  const heading = editor.schema.nodes.heading;
+  if (!heading) return;
+  const target = headingText.trim().toLowerCase();
+  if (!target) return;
+
+  let lastMatchPos: number | null = null;
+  doc.descendants((node, pos) => {
+    if (node.type !== heading) return true;
+    const level = typeof node.attrs?.level === "number" ? node.attrs.level : null;
+    if (level !== 1) return true;
+    const text = (node.textContent || "").trim().toLowerCase();
+    if (text === target) {
+      lastMatchPos = pos;
+    }
+    return true;
+  });
+  if (lastMatchPos == null) return;
+  const $pos = doc.resolve(lastMatchPos);
+  const pageType = editor.schema.nodes.page;
+  if (!pageType) return;
+  let pageDepth = -1;
+  for (let d = $pos.depth; d > 0; d -= 1) {
+    if ($pos.node(d).type === pageType) {
+      pageDepth = d;
+      break;
+    }
+  }
+  if (pageDepth < 0) return;
+  const pageStart = $pos.before(pageDepth);
+  editor.view.dispatch(editor.state.tr.delete(pageStart, doc.content.size));
+};
+
+const insertReferencesAsNewLastPages = (editor: Editor, headingText: string, itemKeys: string[]): void => {
+  const doc = editor.state.doc;
+  const pageType = editor.schema.nodes.page;
+  const headingType = editor.schema.nodes.heading;
+  const pageBreakType = editor.schema.nodes.page_break;
+  if (!pageType || !headingType) return;
+
+  const lastPage = doc.child(doc.childCount - 1);
+  if (!lastPage || lastPage.type !== pageType) return;
+  let lastPagePos = 0;
+  for (let i = 0; i < doc.childCount - 1; i += 1) {
+    lastPagePos += doc.child(i).nodeSize;
+  }
+  const endOfLastPageContent = lastPagePos + lastPage.nodeSize - 1;
+
+  const label = headingText.trim() || "References";
+  const meta = getDocCitationMeta(doc);
+  const entryNodes = buildBibliographyEntryParagraphs(editor, itemKeys, meta);
+  const safeEntries = entryNodes.length
+    ? entryNodes
+    : [editor.schema.nodes.bibliography_entry?.create(null, [editor.schema.text("No sources cited.")]) ?? editor.schema.nodes.paragraph.create(null, [editor.schema.text("No sources cited.")])];
+
+  // Measure how many entries fit per page using the real page-content height/width.
+  const measure = (): { pageContentHeight: number; pageContentWidth: number } => {
+    const el = document.querySelector<HTMLElement>(".leditor-page-content");
+    if (!el) return { pageContentHeight: 0, pageContentWidth: 0 };
+    return { pageContentHeight: el.clientHeight, pageContentWidth: el.clientWidth };
+  };
+  const { pageContentHeight, pageContentWidth } = measure();
+
+  const chunkEntries = (): ProseMirrorNode[][] => {
+    if (!pageContentHeight || !pageContentWidth) {
+      // Fallback: rough chunking (keeps it stable even if the DOM isn't ready yet).
+      const perPage = 28;
+      const pages: ProseMirrorNode[][] = [];
+      for (let i = 0; i < safeEntries.length; i += perPage) {
+        pages.push(safeEntries.slice(i, i + perPage));
+      }
+      return pages;
+    }
+
+    const host = (document.querySelector(".leditor-app") as HTMLElement | null) ?? document.body;
+    const scratch = document.createElement("div");
+    scratch.style.position = "fixed";
+    scratch.style.left = "-10000px";
+    scratch.style.top = "0";
+    scratch.style.width = `${pageContentWidth}px`;
+    scratch.style.visibility = "hidden";
+    scratch.style.pointerEvents = "none";
+    scratch.style.whiteSpace = "normal";
+    scratch.style.boxSizing = "border-box";
+    host.appendChild(scratch);
+
+    const measureBlockHeight = (tag: string, className: string, text: string): number => {
+      const el = document.createElement(tag);
+      el.className = className;
+      el.textContent = text;
+      scratch.appendChild(el);
+      const h = el.getBoundingClientRect().height;
+      el.remove();
+      return h;
+    };
+
+    const headingHeight = measureBlockHeight("h1", "", label);
+    const entriesHeights = safeEntries.map((node) => {
+      const text = (node.textContent || "").trim() || " ";
+      return measureBlockHeight("p", "leditor-bibliography-entry", text);
+    });
+    scratch.remove();
+
+    const pages: ProseMirrorNode[][] = [];
+    let current: ProseMirrorNode[] = [];
+    let used = Math.max(headingHeight, 0);
+    const capacity = Math.max(0, pageContentHeight);
+    for (let i = 0; i < safeEntries.length; i += 1) {
+      const h = entriesHeights[i] ?? 0;
+      // Always place at least one entry on a page.
+      if (current.length > 0 && used + h > capacity) {
+        pages.push(current);
+        current = [];
+        used = 0;
+      }
+      current.push(safeEntries[i]);
+      used += h;
+    }
+    if (current.length) pages.push(current);
+    return pages.length ? pages : [safeEntries];
+  };
+
+  const pages = chunkEntries();
+  const headingNode = headingType.create({ level: 1 }, editor.schema.text(label));
+
+  const tr = editor.state.tr;
+  // Insert an internal manual break at the end of the current last page so the
+  // paginator/joiner never merges References back into existing content.
+  if (pageBreakType) {
+    tr.insert(endOfLastPageContent, pageBreakType.create({ kind: "page", sectionId: "bibliography" }));
+  }
+  // Append one or more fresh pages containing the references blocks.
+  const insertAt = tr.doc.content.size;
+  const pageNodes: ProseMirrorNode[] = pages.map((chunk, idx) => {
+    const content = idx === 0 ? [headingNode, ...chunk] : chunk;
+    return pageType.create(null, Fragment.from(content));
+  });
+  tr.insert(insertAt, Fragment.from(pageNodes));
+  if (tr.docChanged) editor.view.dispatch(tr);
+};
 
 type CitationSelectionInfo = {
   node: ProseMirrorNode;
@@ -396,7 +633,7 @@ const handleInsertCitationCommand = (editor: Editor) => {
   const selectionSnapshot =
     consumeRibbonSelection() ?? snapshotFromSelection(selectionBeforePicker);
   const activeCitationId = existing ? (existing.node.attrs.citationId as string | null) : null;
-  console.info("[References] insert citation", {
+  refsInfo("[References] insert citation", {
     mode: existing ? "edit" : "insert",
     preselectKeys,
     activeCitationId,
@@ -580,7 +817,7 @@ const collectCitationAnchors = (editor: Editor): AnchorInfo[] => {
 
 const logAllCitationAnchors = (editor: Editor, label: string): void => {
   const anchors = collectCitationAnchors(editor);
-  console.info("[References][update] anchors", {
+  refsInfo("[References][update] anchors", {
     label,
     anchorCount: anchors.length,
     sample: anchors[0] ?? null,
@@ -592,7 +829,7 @@ const citationKeysToUsedStore = async (editor: Editor): Promise<void> => {
   try {
     const keys = extractCitedKeysFromDoc(editor.state.doc as any);
     await writeCitedWorksKeys(keys);
-    console.info("[References][sync] wrote cited works", { count: keys.length, sample: keys.slice(0, 5) });
+    refsInfo("[References][sync] wrote cited works", { count: keys.length, sample: keys.slice(0, 5) });
   } catch (error) {
     console.warn("[References][sync] cited works write failed", error);
   }
@@ -755,7 +992,7 @@ const applyCitationStyleToDoc = (editor: Editor, styleId: string): void => {
   if (!currentAttrs || typeof currentAttrs !== "object") {
     throw new Error("Document attributes are missing");
   }
-  console.info("[References] citation style change", { from: currentAttrs.citationStyleId, to: nextStyle });
+  refsInfo("[References] citation style change", { from: currentAttrs.citationStyleId, to: nextStyle });
   const tr = editor.state.tr.setDocAttribute("citationStyleId", nextStyle);
   editor.view.dispatch(tr);
 };
@@ -828,78 +1065,8 @@ const runCslUpdate = (editor: Editor): void => {
     editor.view.dispatch(trPrelude);
   }
 
-  const buildBibliographyBlocks = (
-    itemKeys: string[],
-    meta: DocCitationMeta,
-    numberByKey?: Map<string, number>
-  ): ProseMirrorNode[] => {
-    const schema = editor.schema;
-    const paragraph = schema.nodes.paragraph;
-    if (!paragraph) return [];
-    const italicType = schema.marks.italic ?? schema.marks.em;
-    const boldType = schema.marks.bold ?? schema.marks.strong;
-    const italicMark = italicType ? italicType.create() : null;
-    const boldMark = boldType ? boldType.create() : null;
-    const lib = getReferencesLibrarySync();
-    const style = String(meta.styleId || "").toLowerCase();
-    const normalize = (value: string): string => value.trim().toLowerCase().replace(/\s+/g, " ");
-    const sortApa = (aKey: string, bKey: string): number => {
-      const a = lib.itemsByKey[aKey];
-      const b = lib.itemsByKey[bKey];
-      const aAuthor = normalize(a?.author || "");
-      const bAuthor = normalize(b?.author || "");
-      if (aAuthor !== bAuthor) return aAuthor < bAuthor ? -1 : 1;
-      const aYear = normalize(a?.year || "");
-      const bYear = normalize(b?.year || "");
-      if (aYear !== bYear) return aYear < bYear ? -1 : 1;
-      const aTitle = normalize(a?.title || "");
-      const bTitle = normalize(b?.title || "");
-      if (aTitle !== bTitle) return aTitle < bTitle ? -1 : 1;
-      return aKey < bKey ? -1 : aKey > bKey ? 1 : 0;
-    };
-    const ordered = style.includes("apa") ? [...itemKeys].sort(sortApa) : itemKeys;
-
-    const textNode = (value: string, mark?: any) => {
-      const raw = String(value || "");
-      if (!raw) return null;
-      return mark ? schema.text(raw, [mark]) : schema.text(raw);
-    };
-
-    return ordered.map((itemKey) => {
-      const item = lib.itemsByKey[itemKey];
-      if (!item) {
-        return paragraph.create(null, [schema.text(itemKey)]);
-      }
-      const pieces: any[] = [];
-      if (numberByKey) {
-        const n = numberByKey.get(itemKey);
-        if (typeof n === "number") {
-          const t = textNode(`[${n}] `, boldMark);
-          if (t) pieces.push(t);
-        }
-      }
-      const author = (item.author || "").trim();
-      const year = (item.year || "").trim();
-      const title = (item.title || "").trim();
-      const source = (item.source || "").trim();
-      const url = (item.url || "").trim();
-
-      if (author) pieces.push(schema.text(`${author}. `));
-      if (year) pieces.push(schema.text(`(${year}). `));
-      if (title) {
-        const t = textNode(title, italicMark);
-        if (t) pieces.push(t);
-        pieces.push(schema.text(". "));
-      }
-      if (source) pieces.push(schema.text(`${source}. `));
-      if (url) pieces.push(schema.text(url));
-      if (!pieces.length) pieces.push(schema.text(itemKey));
-      return paragraph.create(null, pieces.filter(Boolean));
-    });
-  };
-
   const tr = editor.state.tr;
-  const update = updateAllCitationsAndBibliography({
+  updateAllCitationsAndBibliography({
     doc: editor.state.doc,
     getDocCitationMeta: (doc) => getDocCitationMeta(doc as ProseMirrorNode),
     extractCitationNodes: (doc) => extractCitationNodes(doc as ProseMirrorNode),
@@ -916,22 +1083,6 @@ const runCslUpdate = (editor: Editor): void => {
       tr.setNodeMarkup(record.pos, bibliographyNode, { ...record.pmNode.attrs, renderedHtml: html });
     }
   });
-
-  // Update bibliography node children so it can flow across pages (instead of being a single atom).
-  try {
-    const bibRecord = findBibliographyNode(editor.state.doc) as BibliographyNodeRecord | null;
-    if (bibRecord) {
-      const mappedPos = tr.mapping.map(bibRecord.pos);
-      const current = tr.doc.nodeAt(mappedPos);
-      if (current && current.type === bibliographyNode) {
-        const blocks = buildBibliographyBlocks(update.orderedKeys, update.meta, update.numberByKey);
-        const safeBlocks = blocks.length ? blocks : [editor.schema.nodes.paragraph.create(null, [editor.schema.text("No sources cited.")])];
-        tr.replaceWith(mappedPos + 1, mappedPos + current.nodeSize - 1, Fragment.from(safeBlocks));
-      }
-    }
-  } catch (error) {
-    console.warn("[References] bibliography block update failed", error);
-  }
   if (tr.docChanged) {
     editor.view.dispatch(tr);
   }
@@ -1547,7 +1698,7 @@ const logFirstParagraphAnchors = (editor: Editor): void => {
       });
       return false;
     });
-    console.info("[References][debug] first paragraph", {
+    refsInfo("[References][debug] first paragraph", {
       text: paragraphText.slice(0, 220),
       anchorCount: anchors.length,
       anchors: anchors.slice(0, 20)
@@ -1578,7 +1729,7 @@ const refreshUsedBibliography = async (editor: Editor) => {
 const ensureBibliographyStore = (): void => {
   void ensureReferencesLibrary()
     .then((library) => {
-      console.info("[References] bibliography library persisted", {
+      refsInfo("[References] bibliography library persisted", {
         path: getLibraryPath(getHostContract()),
         total: Object.keys(library.itemsByKey).length
       });
@@ -1842,6 +1993,90 @@ const setZoomFitWholePage = () => {
 
 
 export const commandMap: Record<string, CommandHandler> = {
+  New() {
+    const handler = commandMap.NewDocument;
+    handler?.(undefined as any, undefined as any);
+  },
+  Open() {
+    const handler = commandMap.OpenDocument;
+    handler?.(undefined as any, undefined as any);
+  },
+  VersionHistory() {
+    const editorHandle = (window as typeof window & { leditor?: EditorHandle }).leditor;
+    if (!editorHandle) {
+      showPlaceholderDialog("Version History", "Editor handle not available.");
+      return;
+    }
+    void openVersionHistoryModal(editorHandle);
+  },
+  Save() {
+    const exporter = (window as any).__leditorAutoExportLEDOC as undefined | ((opts?: any) => Promise<any>);
+    if (typeof exporter !== "function") {
+      showPlaceholderDialog("Save document", "ExportLEDOC handler is unavailable.");
+      return;
+    }
+    const last = String(window.localStorage?.getItem("leditor.lastLedocPath") || "").trim();
+    if (!last) {
+      const handler = commandMap.SaveAs;
+      handler?.(undefined as any, undefined as any);
+      return;
+    }
+    void exporter({ prompt: false, targetPath: last, suggestedPath: last })
+      .then((result: any) => {
+        const nextPath = typeof result?.filePath === "string" ? result.filePath : "";
+        if (!nextPath) return;
+        try {
+          window.localStorage?.setItem("leditor.lastLedocPath", nextPath);
+        } catch {
+          // ignore
+        }
+        try {
+          const host = (window as any).leditorHost as any;
+          host?.createLedocVersion?.({
+            ledocPath: nextPath,
+            reason: "save",
+            payload: result?.payload,
+            throttleMs: 0,
+            force: false
+          });
+        } catch {
+          // ignore
+        }
+      })
+      .catch(() => {
+        // ignore
+      });
+  },
+  SaveAs() {
+    const exporter = (window as any).__leditorAutoExportLEDOC as undefined | ((opts?: any) => Promise<any>);
+    if (typeof exporter !== "function") {
+      showPlaceholderDialog("Save As", "ExportLEDOC handler is unavailable.");
+      return;
+    }
+    void exporter({ prompt: true }).then((result: any) => {
+      const nextPath = typeof result?.filePath === "string" ? result.filePath : "";
+      if (!nextPath) return;
+      try {
+        window.localStorage?.setItem("leditor.lastLedocPath", nextPath);
+      } catch {
+        // ignore
+      }
+      try {
+        const host = (window as any).leditorHost as any;
+        host?.createLedocVersion?.({
+          ledocPath: nextPath,
+          reason: "save",
+          payload: result?.payload,
+          throttleMs: 0,
+          force: false
+        });
+      } catch {
+        // ignore
+      }
+    }).catch(() => {
+      // ignore
+    });
+  },
   NewDocument() {
     const editorHandle = (window as typeof window & { leditor?: EditorHandle }).leditor;
     if (!editorHandle) {
@@ -2392,6 +2627,52 @@ export const commandMap: Record<string, CommandHandler> = {
   SelectSimilarFormatting() {
     showPlaceholderDialog("Select Similar Formatting");
   },
+  Navigator() {
+    showPlaceholderDialog("Navigator");
+  },
+  NavigatorDockToggle() {
+    showPlaceholderDialog("Navigator Dock");
+  },
+  GoToLastCursor() {
+    const layout = getLayoutController();
+    const ok = layout?.restoreLastBodySelection?.();
+    if (!ok) {
+      window.alert("No previous cursor position available.");
+    }
+  },
+  InsertField(editor, args) {
+    const raw = typeof args?.name === "string" ? args.name : window.prompt("Field name", "");
+    if (raw === null) return;
+    const name = (raw ?? "").trim();
+    const label = name ? `[${name}]` : "[Field]";
+    chainWithSafeFocus(editor).insertContent(label).run();
+  },
+  UpdateFields() {
+    window.alert("Fields updated.");
+  },
+  ToggleFieldCodes() {
+    const appRoot = document.getElementById("leditor-app");
+    if (!appRoot) return;
+    const next = !appRoot.classList.contains("leditor-field-codes");
+    appRoot.classList.toggle("leditor-field-codes", next);
+    window.alert(`Field codes ${next ? "shown" : "hidden"}.`);
+  },
+  UpdateInputFields() {
+    showPlaceholderDialog("Update Input Fields");
+  },
+  FieldShadingToggle() {
+    const appRoot = document.getElementById("leditor-app");
+    if (!appRoot) return;
+    const next = !appRoot.classList.contains("leditor-field-shading");
+    appRoot.classList.toggle("leditor-field-shading", next);
+    window.alert(`Field shading ${next ? "enabled" : "disabled"}.`);
+  },
+  DataSourceNavigator() {
+    showPlaceholderDialog("Data Sources");
+  },
+  DataSourceDetach() {
+    showPlaceholderDialog("Detach Data Sources");
+  },
   ClipboardOptionsDialog() {
     showPlaceholderDialog("Clipboard Options");
   },
@@ -2733,7 +3014,7 @@ export const commandMap: Record<string, CommandHandler> = {
       const reader = new FileReader();
       reader.onload = () => {
         const xml = String(reader.result ?? "");
-        console.info("[References] CSL imported", { name: file.name, bytes: xml.length });
+        refsInfo("[References] CSL imported", { name: file.name, bytes: xml.length });
         try {
           window.localStorage?.setItem(`leditor.csl.style:${file.name}`, xml);
         } catch {
@@ -2859,7 +3140,7 @@ export const commandMap: Record<string, CommandHandler> = {
             }))
             .filter((it: any) => it.itemKey);
           upsertReferenceItems(items);
-          console.info("[References] imported CSL-JSON items", { count: items.length });
+          refsInfo("[References] imported CSL-JSON items", { count: items.length });
           window.alert(`Imported ${items.length} references.`);
         } catch (error) {
           console.error("[References] import CSL-JSON failed", error);
@@ -2914,7 +3195,9 @@ export const commandMap: Record<string, CommandHandler> = {
       const keys = fromStore.length ? fromStore : collectDocumentCitationKeys(editor);
       if (!fromStore.length) await writeUsedBibliography(keys);
       ensureBibliographyStore();
-      ensureBibliographyNode(editor, { headingText: label });
+      // Always rebuild references as the last pages and force a clean page boundary.
+      removeTrailingReferencesSection(editor, label);
+      insertReferencesAsNewLastPages(editor, label, keys);
       await refreshCitationsAndBibliography(editor);
     })();
   },
@@ -2962,29 +3245,31 @@ export const commandMap: Record<string, CommandHandler> = {
 
   InsertBibliography(editor) {
     void (async () => {
-      console.info("[References] insert bibliography", { styleId: editor.state.doc.attrs?.citationStyleId });
+      refsInfo("[References] insert bibliography", { styleId: editor.state.doc.attrs?.citationStyleId });
       const fromStore = await readUsedBibliography();
       const keys = fromStore.length ? fromStore : collectDocumentCitationKeys(editor);
       if (!fromStore.length) {
         await writeUsedBibliography(keys);
       }
-      console.info("[References] insert bibliography", { itemKeys: keys });
+      refsInfo("[References] insert bibliography", { itemKeys: keys });
       ensureBibliographyStore();
-      ensureBibliographyNode(editor);
+      removeTrailingReferencesSection(editor, "References");
+      insertReferencesAsNewLastPages(editor, "References", keys);
       await refreshCitationsAndBibliography(editor);
     })();
   },
 
   UpdateBibliography(editor) {
     void (async () => {
-      if (!hasBibliographyNode(editor)) {
-        ensureBibliographyNode(editor);
-      }
+      const fromStore = await readUsedBibliography();
+      const keys = fromStore.length ? fromStore : collectDocumentCitationKeys(editor);
+      removeTrailingReferencesSection(editor, "References");
+      insertReferencesAsNewLastPages(editor, "References", keys);
       await refreshCitationsAndBibliography(editor);
     })();
   },
   "citation.sources.manage.openDialog"(editor) {
-    console.info("[References] manage sources invoked");
+    refsInfo("[References] manage sources invoked");
     openSourcesPanel();
   },
   "citation.sources.update.openDialog"(editor) {
@@ -3576,6 +3861,13 @@ const aliasCommandWithArgs = (
 };
 
 const applyRibbonAliases = (): void => {
+  // File
+  aliasCommand("file.new", "New");
+  aliasCommand("file.open", "Open");
+  aliasCommand("file.save", "Save");
+  aliasCommand("file.saveAs", "SaveAs");
+  aliasCommand("file.versionHistory", "VersionHistory");
+
   // Clipboard / history
   aliasCommand("clipboard.cut", "Cut");
   aliasCommand("clipboard.copy", "Copy");

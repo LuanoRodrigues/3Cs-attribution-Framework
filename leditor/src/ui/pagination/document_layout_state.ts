@@ -11,6 +11,10 @@ type LayoutState = {
   gutterPositionId: "left" | "top";
   headerDistanceIn: number;
   footerDistanceIn: number;
+  footnoteGapIn: number;
+  footnoteMaxHeightRatio: number;
+  footnoteSeparatorHeightIn: number;
+  footnoteSeparatorColor: string;
 };
 
 const spec: DocumentLayoutSpec = documentLayoutSpec;
@@ -35,7 +39,11 @@ const state: LayoutState = {
   gutterIn: spec.margins.gutter.defaultIn,
   gutterPositionId: spec.margins.gutter.defaultPositionId as "left" | "top",
   headerDistanceIn: spec.headerFooter.default.headerDistanceIn,
-  footerDistanceIn: spec.headerFooter.default.footerDistanceIn
+  footerDistanceIn: spec.headerFooter.default.footerDistanceIn,
+  footnoteGapIn: spec.footnotes?.gapDefaultIn ?? 0.125,
+  footnoteMaxHeightRatio: spec.footnotes?.maxHeightRatioDefault ?? 0.35,
+  footnoteSeparatorHeightIn: spec.footnotes?.separator?.heightDefaultIn ?? 0.01,
+  footnoteSeparatorColor: spec.footnotes?.separator?.colorDefault ?? "rgba(0, 0, 0, 0.25)"
 };
 
 export const getDocumentLayoutSpec = (): DocumentLayoutSpec => state.spec;
@@ -157,6 +165,32 @@ export const setFooterDistance = (valueIn: number): void => {
   state.footerDistanceIn = valueIn;
 };
 
+export const setFootnoteGap = (valueIn: number): void => {
+  if (!Number.isFinite(valueIn) || valueIn < 0) {
+    throw new Error("Footnote gap must be a finite non-negative number.");
+  }
+  state.footnoteGapIn = valueIn;
+};
+
+export const setFootnoteMaxHeightRatio = (value: number): void => {
+  if (!Number.isFinite(value) || value <= 0 || value > 1) {
+    throw new Error("Footnote max height ratio must be between 0 and 1.");
+  }
+  state.footnoteMaxHeightRatio = value;
+};
+
+export const setFootnoteSeparator = (values: { heightIn?: number; color?: string }): void => {
+  if (values.heightIn !== undefined) {
+    if (!Number.isFinite(values.heightIn) || values.heightIn < 0) {
+      throw new Error("Footnote separator height must be a finite non-negative number.");
+    }
+    state.footnoteSeparatorHeightIn = values.heightIn;
+  }
+  if (values.color !== undefined) {
+    state.footnoteSeparatorColor = values.color;
+  }
+};
+
 export const applyDocumentLayoutTokenDefaults = (root: HTMLElement): void => {
   const defaults = state.spec.cssTokens?.defaults ?? {};
   Object.entries(defaults).forEach(([token, value]) => {
@@ -217,4 +251,8 @@ export const applyDocumentLayoutTokens = (root: HTMLElement): void => {
   root.style.setProperty("--page-margin-inside", `${computePx(marginLeft)}px`);
   root.style.setProperty("--page-margin-outside", `${computePx(marginRight)}px`);
   root.style.setProperty("--page-columns", String(state.columnsCount));
+  root.style.setProperty("--page-footnote-gap", `${computePx(state.footnoteGapIn)}px`);
+  root.style.setProperty("--footnote-max-height-ratio", String(state.footnoteMaxHeightRatio));
+  root.style.setProperty("--footnote-separator-height", `${computePx(state.footnoteSeparatorHeightIn)}px`);
+  root.style.setProperty("--footnote-separator-color", state.footnoteSeparatorColor);
 };

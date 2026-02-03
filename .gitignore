@@ -37,6 +37,11 @@ visuals.html
 # electron headless runs / ephemeral userData
 **/.tmp_headless/
 
+# office exports / temp files
+*.pptx
+~$*.pptx
+tmp_ppt_images/
+
 # npm artifacts
 .npm-cache/
 .npm-logs/

@@ -83,8 +83,100 @@ def _schema_and_sections() -> dict:
     schema = [
         {"type": "number", "key": "top_n_authors", "label": "Top N authors", "default": 15, "min": 5, "max": 100},
         {"type": "number", "key": "production_top_n", "label": "Production top N", "default": 10, "min": 3, "max": 50},
-        {"type": "number", "key": "top_ngram", "label": "Top n-gram", "default": 20, "min": 5, "max": 200},
-        {"type": "number", "key": "ngram_n", "label": "N-gram N", "default": 2, "min": 1, "max": 5},
+        {
+            "type": "select",
+            "key": "data_source",
+            "label": "Text source",
+            "default": "controlled_vocabulary_terms",
+            "options": [
+                {"label": "Keywords", "value": "controlled_vocabulary_terms"},
+                {"label": "Title", "value": "title"},
+                {"label": "Abstract", "value": "abstract"},
+                {"label": "Full text", "value": "fulltext"},
+            ],
+        },
+        {
+            "type": "select",
+            "key": "words_topics_view",
+            "label": "Words & topics",
+            "default": "both",
+            "options": [
+                {"label": "Words", "value": "words"},
+                {"label": "N-grams", "value": "ngrams"},
+                {"label": "Both", "value": "both"},
+            ],
+        },
+        {
+            "type": "select",
+            "key": "word_plot_type",
+            "label": "Word analysis plot",
+            "default": "bar_vertical",
+            "options": [
+                {"label": "Frequency bar (vertical)", "value": "bar_vertical"},
+                {"label": "Frequency bar (horizontal)", "value": "bar_horizontal"},
+                {"label": "Word cloud", "value": "word_cloud"},
+                {"label": "Treemap", "value": "treemap"},
+                {"label": "Frequency heatmap", "value": "heatmap"},
+                {"label": "Co-occurrence network", "value": "cooccurrence_network"},
+                {"label": "Words over time", "value": "words_over_time"},
+            ],
+        },
+        {"type": "number", "key": "top_n_words", "label": "Top N words", "default": 30, "min": 5, "max": 500},
+        {"type": "number", "key": "max_words", "label": "Max words (cloud)", "default": 100, "min": 10, "max": 500},
+        {"type": "number", "key": "min_frequency", "label": "Min frequency", "default": 2, "min": 1, "max": 100},
+        {"type": "number", "key": "min_cooccurrence", "label": "Min co-occurrence", "default": 2, "min": 1, "max": 100},
+        {"type": "number", "key": "min_keyword_frequency", "label": "Min keyword freq (network)", "default": 3, "min": 1, "max": 100},
+        {"type": "number", "key": "max_nodes_for_plot", "label": "Max nodes (network)", "default": 50, "min": 10, "max": 200},
+        {"type": "number", "key": "num_top_words", "label": "Top N words (over time)", "default": 5, "min": 1, "max": 20},
+        {
+            "type": "textarea",
+            "key": "specific_words_to_track",
+            "label": "Specific words (optional)",
+            "default": "",
+            "asList": True,
+            "placeholder": "semicolon or newline separated…",
+        },
+        {
+            "type": "select",
+            "key": "wordcloud_colormap",
+            "label": "Word cloud colormap",
+            "default": "viridis",
+            "options": [
+                {"label": "viridis", "value": "viridis"},
+                {"label": "plasma", "value": "plasma"},
+                {"label": "inferno", "value": "inferno"},
+                {"label": "magma", "value": "magma"},
+                {"label": "cividis", "value": "cividis"},
+                {"label": "Pastel1", "value": "Pastel1"},
+                {"label": "Paired", "value": "Paired"},
+                {"label": "Spectral", "value": "Spectral"},
+                {"label": "coolwarm", "value": "coolwarm"},
+                {"label": "RdYlGn", "value": "RdYlGn"},
+            ],
+        },
+        {"type": "number", "key": "contour_width", "label": "Cloud contour width", "default": 0, "min": 0, "max": 5},
+        {"type": "text", "key": "contour_color", "label": "Cloud contour color", "default": "steelblue"},
+        {
+            "type": "select",
+            "key": "ngram_plot_type",
+            "label": "N-gram plot",
+            "default": "bar_chart",
+            "options": [
+                {"label": "Bar chart (frequency)", "value": "bar_chart"},
+                {"label": "Evolution over time", "value": "ngram_evolution_time_series"},
+                {"label": "Co-occurrence network", "value": "ngram_cooccurrence_network"},
+                {"label": "Frequency heatmap", "value": "ngram_frequency_heatmap"},
+            ],
+        },
+        {"type": "number", "key": "ngram_n", "label": "N-gram size (n)", "default": 2, "min": 1, "max": 7},
+        {"type": "number", "key": "top_n_ngrams", "label": "Top N n-grams", "default": 20, "min": 5, "max": 200},
+        {"type": "number", "key": "num_top_ngrams_for_evolution", "label": "N-grams to track (evolution)", "default": 7, "min": 1, "max": 15},
+        {"type": "number", "key": "min_ngram_cooccurrence", "label": "Min n-gram co-occurrence", "default": 2, "min": 1, "max": 20},
+        {"type": "number", "key": "max_nodes_for_ngram_network", "label": "Max nodes (ngram net)", "default": 30, "min": 10, "max": 150},
+        {"type": "number", "key": "num_ngrams_for_heatmap_cols", "label": "N-grams (heatmap cols)", "default": 25, "min": 5, "max": 50},
+        {"type": "number", "key": "num_docs_for_heatmap_rows", "label": "Docs (heatmap rows)", "default": 30, "min": 5, "max": 100},
+        # Back-compat keys (older UI)
+        {"type": "number", "key": "top_ngram", "label": "Top n-gram (legacy)", "default": 20, "min": 5, "max": 200},
         {
             "type": "select",
             "key": "slide_notes",
@@ -97,12 +189,16 @@ def _schema_and_sections() -> dict:
         {"id": "Data_summary", "label": "Data summary", "hint": "Summary cards and key totals."},
         {"id": "Scope_and_shape", "label": "Scope and shape", "hint": "Volume, years, document types."},
         {"id": "Authors_overview", "label": "Authors overview", "hint": "Top authors and collaboration."},
+        {"id": "Authorship_institution", "label": "Authorship & institutions", "hint": "Top authors, co-authorship and institutional actors."},
         {"id": "Citations_overview", "label": "Citations overview", "hint": "Citation distribution and leaders."},
+        {"id": "Citations_influence", "label": "Citations & influence", "hint": "Stats, distributions and top-cited works."},
         {"id": "Words_and_topics", "label": "Words and topics", "hint": "Keywords, n-grams, topic signals."},
         {"id": "Ngrams", "label": "N-grams", "hint": "N-gram frequency and co-occurrence."},
         {"id": "Affiliations_geo", "label": "Affiliations (geo)", "hint": "Institutions and geography."},
+        {"id": "Geo_sector", "label": "Geo & sector", "hint": "Country and sector coverage."},
         {"id": "Temporal_analysis", "label": "Temporal analysis", "hint": "Trends over time."},
         {"id": "Research_design", "label": "Research design", "hint": "Design outputs and mix."},
+        {"id": "Thematic_method", "label": "Thematic & method", "hint": "Cross-tabs and phase mapping."},
         {"id": "Profiles", "label": "Profiles", "hint": "Feature profiles and summaries."},
         {"id": "Categorical_keywords", "label": "Categorical keywords", "hint": "Categorical keyword outputs."},
     ]
@@ -142,9 +238,12 @@ def _export_pptx_from_slides(
     slide_notes: bool,
     logs: list[str],
 ) -> Path:
+    import base64
     import io
 
     from pptx import Presentation
+    from pptx.dml.color import RGBColor
+    from pptx.enum.text import PP_ALIGN
     from pptx.util import Inches, Pt
 
     prs = Presentation()
@@ -173,6 +272,18 @@ def _export_pptx_from_slides(
             txt = re.sub(r"\s+", " ", txt).strip()
             return txt[:4000]
 
+    def _decode_data_url_to_bytes(s: str) -> bytes | None:
+        s = str(s or "").strip()
+        if not s:
+            return None
+        if s.startswith("data:image/") and "base64," in s:
+            try:
+                b64 = s.split("base64,", 1)[1].strip()
+                return base64.b64decode(b64)
+            except Exception:
+                return None
+        return None
+
     def _fig_png_bytes(fig_json: Any) -> bytes | None:
         if not fig_json:
             return None
@@ -187,6 +298,116 @@ def _export_pptx_from_slides(
             logs.append(traceback.format_exc())
             return None
 
+    def _add_picture_fit(slide, png_bytes: bytes, *, title_height_in: float = 0.95) -> None:
+        from pptx.util import Inches
+
+        # Default widescreen: 13.33 x 7.5 inches
+        slide_w_in = prs.slide_width / 914400.0
+        slide_h_in = prs.slide_height / 914400.0
+        left = 0.6
+        right = 0.6
+        top = title_height_in
+        bottom = 0.6
+        box_w = max(1.0, slide_w_in - left - right)
+        box_h = max(1.0, slide_h_in - top - bottom)
+
+        img_w_px = None
+        img_h_px = None
+        try:
+            from PIL import Image  # type: ignore
+
+            im = Image.open(io.BytesIO(png_bytes))
+            img_w_px, img_h_px = im.size
+        except Exception:
+            img_w_px, img_h_px = None, None
+
+        if img_w_px and img_h_px:
+            aspect = float(img_w_px) / float(img_h_px)
+            box_aspect = float(box_w) / float(box_h)
+            if aspect >= box_aspect:
+                w = box_w
+                h = w / aspect
+            else:
+                h = box_h
+                w = h * aspect
+            x = left + (box_w - w) / 2.0
+            y = top + (box_h - h) / 2.0
+            slide.shapes.add_picture(io.BytesIO(png_bytes), left=Inches(x), top=Inches(y), width=Inches(w), height=Inches(h))
+            return
+
+        # Fallback: width only.
+        slide.shapes.add_picture(io.BytesIO(png_bytes), left=Inches(left), top=Inches(top), width=Inches(box_w))
+
+    def _extract_table(html: str, *, max_rows: int = 26, max_cols: int = 10) -> tuple[list[list[str]], bool]:
+        if not isinstance(html, str) or not html.strip():
+            return ([], False)
+        try:
+            from bs4 import BeautifulSoup  # type: ignore
+
+            soup = BeautifulSoup(html, "html.parser")
+            rows_out: list[list[str]] = []
+            header = False
+            for r_i, tr in enumerate(soup.find_all("tr")):
+                if r_i >= max_rows:
+                    break
+                cells = tr.find_all(["th", "td"])
+                vals = [c.get_text(" ", strip=True) for c in cells[:max_cols]]
+                if vals:
+                    rows_out.append(vals)
+                if tr.find("th") is not None:
+                    header = True
+            return (rows_out, header)
+        except Exception:
+            return ([], False)
+
+    def _add_table_styled(slide, table_html: str, *, title_height_in: float = 0.95) -> bool:
+        rows, has_header = _extract_table(table_html)
+        if not rows:
+            return False
+        # normalize to rectangle
+        cols_n = max(len(r) for r in rows)
+        rows = [r + [""] * (cols_n - len(r)) for r in rows]
+
+        slide_w_in = prs.slide_width / 914400.0
+        slide_h_in = prs.slide_height / 914400.0
+        left = 0.6
+        right = 0.6
+        top = title_height_in
+        bottom = 0.6
+        box_w = max(1.0, slide_w_in - left - right)
+        box_h = max(1.0, slide_h_in - top - bottom)
+
+        tbl_shape = slide.shapes.add_table(len(rows), cols_n, Inches(left), Inches(top), Inches(box_w), Inches(box_h))
+        table = tbl_shape.table
+
+        # Basic styling
+        header_fill = RGBColor(31, 41, 55)  # slate-800
+        header_text = RGBColor(255, 255, 255)
+        body_text = RGBColor(17, 24, 39)  # slate-900
+        stripe_a = RGBColor(255, 255, 255)
+        stripe_b = RGBColor(243, 244, 246)  # gray-100
+
+        for r in range(len(rows)):
+            for c in range(cols_n):
+                cell = table.cell(r, c)
+                cell.text = str(rows[r][c] or "")
+                tf = cell.text_frame
+                tf.word_wrap = True
+                for p in tf.paragraphs:
+                    p.alignment = PP_ALIGN.LEFT
+                    for run in p.runs:
+                        run.font.size = Pt(10)
+                        run.font.name = "Calibri"
+                        run.font.color.rgb = header_text if (has_header and r == 0) else body_text
+                        run.font.bold = bool(has_header and r == 0)
+                fill = cell.fill
+                fill.solid()
+                if has_header and r == 0:
+                    fill.fore_color.rgb = header_fill
+                else:
+                    fill.fore_color.rgb = stripe_a if (r % 2 == 0) else stripe_b
+        return True
+
     for idx, slide_dict in enumerate(slides):
         if not isinstance(slide_dict, dict):
             continue
@@ -195,6 +416,7 @@ def _export_pptx_from_slides(
         table_html = str(slide_dict.get("table_html") or "")
         fig_json = slide_dict.get("fig_json")
         bullets = slide_dict.get("bullets")
+        img_value = slide_dict.get("img") or slide_dict.get("image") or slide_dict.get("png") or slide_dict.get("data_url") or ""
 
         slide = prs.slides.add_slide(blank_layout)
 
@@ -207,10 +429,14 @@ def _export_pptx_from_slides(
         except Exception:
             pass
 
-        png = _fig_png_bytes(fig_json)
+        png = _decode_data_url_to_bytes(str(img_value)) if isinstance(img_value, str) else None
+        if png is None:
+            png = _fig_png_bytes(fig_json)
+
         if png:
-            bio = io.BytesIO(png)
-            slide.shapes.add_picture(bio, left=Inches(0.6), top=Inches(1.1), width=Inches(12.0))
+            _add_picture_fit(slide, png, title_height_in=1.05)
+        elif table_html.strip() and _add_table_styled(slide, table_html, title_height_in=1.05):
+            pass
         else:
             body = slide.shapes.add_textbox(left=Inches(0.7), top=Inches(1.1), width=Inches(12.0), height=Inches(5.7))
             btf = body.text_frame
@@ -244,6 +470,177 @@ def _export_pptx_from_slides(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     prs.save(str(output_path))
     return output_path
+
+
+def _describe_slide(slide: dict, *, collection_name: str, params: dict) -> tuple[str, list[str]]:
+    logs: list[str] = []
+    title = str(slide.get("title") or "Figure").strip()
+    section = str(slide.get("section") or "").strip()
+    fig_json = slide.get("fig_json")
+    table_html = str(slide.get("table_html") or "").strip()
+
+    if isinstance(fig_json, str):
+        s = fig_json.strip()
+        if s.startswith("{") or s.startswith("["):
+            try:
+                fig_json = json.loads(s)
+            except Exception:
+                fig_json = None
+
+    def _strip_html(s: str, max_chars: int = 2400) -> str:
+        import re
+
+        txt = re.sub(r"<[^>]+>", " ", s or "")
+        txt = re.sub(r"\s+", " ", txt).strip()
+        return txt[:max_chars]
+
+    def _top_pairs(cats: list[str], vals: list[float], n: int = 5) -> list[tuple[str, float]]:
+        pairs = []
+        for c, v in zip(cats, vals):
+            if c is None:
+                continue
+            name = str(c).strip()
+            if not name:
+                continue
+            try:
+                fv = float(v)
+            except Exception:
+                continue
+            pairs.append((name, fv))
+        pairs.sort(key=lambda x: x[1], reverse=True)
+        return pairs[:n]
+
+    desc_bits: list[str] = []
+    desc_bits.append(f"{title}".strip())
+    if section:
+        desc_bits.append(f"Section: {section.replace('_', ' ')}")
+    if collection_name:
+        desc_bits.append(f"Collection: {collection_name}")
+
+    # --- Heuristic summary from fig_json
+    summary = ""
+    try:
+        if isinstance(fig_json, dict):
+            data = fig_json.get("data") if isinstance(fig_json.get("data"), list) else []
+            layout = fig_json.get("layout") if isinstance(fig_json.get("layout"), dict) else {}
+            types = [str(t.get("type") or "scatter") for t in data if isinstance(t, dict)]
+            types_uniq = sorted({t for t in types if t})
+            if types_uniq:
+                summary += f"Plot type(s): {', '.join(types_uniq)}. "
+            # Prefer first trace for stats
+            t0 = next((t for t in data if isinstance(t, dict)), None)
+            if isinstance(t0, dict):
+                ttype = str(t0.get("type") or "scatter")
+                orient = str(t0.get("orientation") or "v")
+                if ttype == "bar":
+                    cats_raw = t0.get("y") if orient == "h" else t0.get("x")
+                    vals_raw = t0.get("x") if orient == "h" else t0.get("y")
+                    if isinstance(cats_raw, list) and isinstance(vals_raw, list) and len(cats_raw) == len(vals_raw):
+                        pairs = _top_pairs([str(c) for c in cats_raw], vals_raw, n=6)
+                        if pairs:
+                            top = ", ".join([f"{c} ({v:g})" for c, v in pairs])
+                            summary += f"Top categories: {top}. "
+                elif ttype == "histogram":
+                    xs = t0.get("x")
+                    if isinstance(xs, list) and xs:
+                        import numpy as np
+
+                        vals = []
+                        for v in xs:
+                            try:
+                                vals.append(float(v))
+                            except Exception:
+                                pass
+                        if vals:
+                            arr = np.array(vals, dtype=float)
+                            summary += f"N={len(vals)} mean={float(arr.mean()):.2f} median={float(np.median(arr)):.2f}. "
+                elif ttype in {"scatter", "scattergl"}:
+                    xs = t0.get("x")
+                    ys = t0.get("y")
+                    if isinstance(xs, list) and isinstance(ys, list) and len(xs) == len(ys) and len(xs) >= 3:
+                        # attempt numeric trend on y
+                        import numpy as np
+
+                        yv = []
+                        for v in ys:
+                            try:
+                                yv.append(float(v))
+                            except Exception:
+                                yv.append(np.nan)
+                        arr = np.array(yv, dtype=float)
+                        arr = arr[np.isfinite(arr)]
+                        if arr.size >= 3:
+                            delta = float(arr[-1] - arr[0])
+                            direction = "increasing" if delta > 0 else "decreasing" if delta < 0 else "flat"
+                            summary += f"Trend appears {direction} over the plotted range. "
+                elif ttype == "pie":
+                    labels = t0.get("labels")
+                    values = t0.get("values")
+                    if isinstance(labels, list) and isinstance(values, list) and len(labels) == len(values):
+                        pairs = _top_pairs([str(c) for c in labels], values, n=6)
+                        if pairs:
+                            top = ", ".join([f"{c} ({v:g})" for c, v in pairs])
+                            summary += f"Top slices: {top}. "
+            # Include title from layout if present
+            try:
+                lt = layout.get("title")
+                if isinstance(lt, dict) and lt.get("text"):
+                    summary = f"{str(lt.get('text')).strip()}. " + summary
+                elif isinstance(lt, str) and lt.strip():
+                    summary = f"{lt.strip()}. " + summary
+            except Exception:
+                pass
+    except Exception as exc:
+        logs.append(f"[visualise][describe][warn] fig summary failed: {exc}")
+
+    if summary:
+        desc_bits.append("")
+        desc_bits.append("Summary:")
+        desc_bits.append(summary.strip())
+
+    # --- Table cue
+    if table_html:
+        desc_bits.append("")
+        desc_bits.append("Table (preview):")
+        desc_bits.append(_strip_html(table_html))
+
+    # --- LLM call (optional/stubbed in this repo), fallback to heuristic.
+    desc = "\n".join([b for b in desc_bits if b is not None]).strip()
+    try:
+        from python_backend.core.utils.calling_models import call_models_plots  # type: ignore
+        import os
+
+        prompt_text = (
+            "[TASK]\n"
+            "Write speaker notes to explain the chart for a presentation slide.\n"
+            "Be concise, concrete, and mention key patterns + caveats.\n\n"
+            "[CONTEXT]\n"
+            f"Collection: {collection_name}\n"
+            f"Section: {section}\n"
+            f"Title: {title}\n\n"
+            "[SLIDE DATA]\n"
+            f"{desc}\n"
+        )
+        ai_out = call_models_plots(
+            mode="analyze",
+            prompt_text=prompt_text,
+            model_api_name=os.getenv("OPENAI_VISION_MODEL", "gpt-5.1-mini"),
+            images=None,
+            image_detail="low",
+            max_tokens=500,
+            use_cache=True,
+            analysis_key_suffix="visualise_slide_description",
+            section_title=collection_name or "collection",
+            store_only=False,
+            read=False,
+        )
+        ai_text = str((ai_out or {}).get("text") or "").strip()
+        if ai_text:
+            return ai_text, logs
+    except Exception as exc:
+        logs.append(f"[visualise][describe][warn] ai describe failed: {exc}")
+
+    return desc, logs
 
 
 def _run_preview(
@@ -367,6 +764,26 @@ def _run_preview(
                 logs.append(f"[visualise][section][error] Authors_overview: {exc}")
                 logs.append(traceback.format_exc())
                 slides.append(_error_slide(sec, exc))
+        elif sec == "Authorship_institution":
+            try:
+                p = dict(params or {})
+                top_n_authors = int(p.get("top_n_authors", 20) or 20)
+                payload = visual.add_authorship_and_institution_section(
+                    prs,
+                    df,
+                    collection_name=collection_name,
+                    slide_notes=slide_notes,
+                    top_n_authors=top_n_authors,
+                    return_payload=True,
+                    export=False,
+                    progress_callback=_cb,
+                )
+                slides.extend(_flatten_slides(payload, section=sec))
+                logs.append(f"[visualise][section][ok] Authorship_institution")
+            except Exception as exc:
+                logs.append(f"[visualise][section][error] Authorship_institution: {exc}")
+                logs.append(traceback.format_exc())
+                slides.append(_error_slide(sec, exc))
         elif sec == "Citations_overview":
             try:
                 p = dict(defaults["citations"], **(params or {}))
@@ -377,20 +794,97 @@ def _run_preview(
                 logs.append(f"[visualise][section][error] Citations_overview: {exc}")
                 logs.append(traceback.format_exc())
                 slides.append(_error_slide(sec, exc))
-        elif sec == "Words_and_topics":
+        elif sec == "Citations_influence":
             try:
-                p = dict(defaults["word"], **(params or {}))
-                payload = visual.analyze_wordanalysis_dispatcher(
+                p = dict(params or {})
+                top_n = int(p.get("production_top_n", 10) or 10)
+                citations_col = p.get("citations_col") if isinstance(p.get("citations_col"), str) else None
+                payload = visual.add_citations_and_influence_section(
+                    prs,
                     df,
-                    p,
-                    _cb,
+                    collection_name=collection_name,
                     slide_notes=slide_notes,
+                    citations_col=citations_col,
+                    top_n=top_n,
                     return_payload=True,
                     export=False,
-                    zotero_client_for_pdf=None,
-                    collection_name_for_cache=collection_name,
+                    progress_callback=_cb,
                 )
                 slides.extend(_flatten_slides(payload, section=sec))
+                logs.append(f"[visualise][section][ok] Citations_influence")
+            except Exception as exc:
+                logs.append(f"[visualise][section][error] Citations_influence: {exc}")
+                logs.append(traceback.format_exc())
+                slides.append(_error_slide(sec, exc))
+        elif sec == "Words_and_topics":
+            try:
+                p0 = dict(params or {})
+                view = str(p0.get("words_topics_view") or "both").strip().lower()
+                data_source = str(p0.get("data_source") or defaults["word"].get("data_source") or "controlled_vocabulary_terms")
+                word_plot_type = str(p0.get("word_plot_type") or defaults["word"].get("plot_type") or "bar_vertical")
+                ngram_plot_type = str(p0.get("ngram_plot_type") or defaults["ngrams"].get("plot_type") or "bar_chart")
+
+                include_has_ngrams = "Ngrams" in set(include or [])
+
+                want_words = view in {"words", "both", ""}  # default to both
+                want_ngrams = view in {"ngrams", "both"} and not include_has_ngrams
+
+                if want_words:
+                    wp = dict(defaults["word"], **p0)
+                    wp["data_source"] = data_source
+                    wp["plot_type"] = word_plot_type
+                    payload = visual.analyze_wordanalysis_dispatcher(
+                        df,
+                        wp,
+                        _cb,
+                        slide_notes=slide_notes,
+                        return_payload=True,
+                        export=False,
+                        zotero_client_for_pdf=None,
+                        collection_name_for_cache=collection_name,
+                    )
+                    slides.extend(_flatten_slides(payload, section=sec))
+
+                if want_ngrams:
+                    np = dict(defaults["ngrams"], **p0)
+                    np["data_source"] = data_source
+                    np["plot_type"] = ngram_plot_type
+                    if "top_n_ngrams" not in np and "top_ngram" in p0:
+                        np["top_n_ngrams"] = p0.get("top_ngram")
+                    payload2 = visual.analyze_ngrams(
+                        df,
+                        np,
+                        _cb,
+                        collection_name_for_cache=collection_name,
+                        slide_notes=slide_notes,
+                        return_payload=True,
+                        export=False,
+                    )
+                    slides.extend(_flatten_slides(payload2, section=sec))
+
+                if not want_words and not want_ngrams:
+                    if view in {"ngrams"} and include_has_ngrams:
+                        slides.append(
+                            _normalize_slide(
+                                {
+                                    "title": "Words and topics — N-grams",
+                                    "bullets": ["N-grams are generated in the N-grams section."],
+                                    "notes": "",
+                                    "section": sec,
+                                }
+                            )
+                        )
+                    elif view not in {"words", "ngrams", "both", ""}:
+                        slides.append(
+                            _normalize_slide(
+                                {
+                                    "title": "Words and topics — No selection",
+                                    "bullets": [f"Unsupported Words & topics view: '{view}'"],
+                                    "notes": "",
+                                    "section": sec,
+                                }
+                            )
+                        )
                 logs.append(f"[visualise][section][ok] Words_and_topics")
             except Exception as exc:
                 logs.append(f"[visualise][section][error] Words_and_topics: {exc}")
@@ -398,9 +892,14 @@ def _run_preview(
                 slides.append(_error_slide(sec, exc))
         elif sec == "Ngrams":
             try:
-                p = dict(defaults["ngrams"], **(params or {}))
-                if isinstance(params, dict) and "top_ngram" in params and "top_n_ngrams" not in p:
-                    p["top_n_ngrams"] = params.get("top_ngram")
+                p0 = dict(params or {})
+                p = dict(defaults["ngrams"], **p0)
+                if "plot_type" not in p and "ngram_plot_type" in p0:
+                    p["plot_type"] = p0.get("ngram_plot_type")
+                if "data_source" not in p and "data_source" in p0:
+                    p["data_source"] = p0.get("data_source")
+                if "top_n_ngrams" not in p and "top_ngram" in p0:
+                    p["top_n_ngrams"] = p0.get("top_ngram")
                 payload = visual.analyze_ngrams(
                     df,
                     p,
@@ -424,6 +923,27 @@ def _run_preview(
                 logs.append(f"[visualise][section][ok] Affiliations_geo")
             except Exception as exc:
                 logs.append(f"[visualise][section][error] Affiliations_geo: {exc}")
+                logs.append(traceback.format_exc())
+                slides.append(_error_slide(sec, exc))
+        elif sec == "Geo_sector":
+            try:
+                p = dict(params or {})
+                payload = visual.add_geo_and_sector_section(
+                    prs,
+                    df,
+                    collection_name=collection_name,
+                    slide_notes=slide_notes,
+                    country_tag=str(p.get("country_tag") or "country_focus_value"),
+                    sector_tag=str(p.get("sector_tag") or "sector_focus_value"),
+                    top_countries=int(p.get("top_countries", 30) or 30),
+                    return_payload=True,
+                    export=False,
+                    progress_callback=_cb,
+                )
+                slides.extend(_flatten_slides(payload, section=sec))
+                logs.append(f"[visualise][section][ok] Geo_sector")
+            except Exception as exc:
+                logs.append(f"[visualise][section][error] Geo_sector: {exc}")
                 logs.append(traceback.format_exc())
                 slides.append(_error_slide(sec, exc))
         elif sec == "Temporal_analysis":
@@ -450,6 +970,27 @@ def _run_preview(
                 logs.append(f"[visualise][section][ok] Research_design")
             except Exception as exc:
                 logs.append(f"[visualise][section][error] Research_design: {exc}")
+                logs.append(traceback.format_exc())
+                slides.append(_error_slide(sec, exc))
+        elif sec == "Thematic_method":
+            try:
+                p = dict(params or {})
+                payload = visual.add_thematic_and_method_section(
+                    prs,
+                    df,
+                    collection_name=collection_name,
+                    slide_notes=slide_notes,
+                    cross_tabs=p.get("cross_tabs") if isinstance(p.get("cross_tabs"), list) else None,
+                    phase_tag=str(p.get("phase_tag") or "phase_focus_value"),
+                    year_col=str(p.get("year_col") or "publication_year"),
+                    return_payload=True,
+                    export=False,
+                    progress_callback=_cb,
+                )
+                slides.extend(_flatten_slides(payload, section=sec))
+                logs.append(f"[visualise][section][ok] Thematic_method")
+            except Exception as exc:
+                logs.append(f"[visualise][section][error] Thematic_method: {exc}")
                 logs.append(traceback.format_exc())
                 slides.append(_error_slide(sec, exc))
         elif sec == "Profiles":
@@ -504,10 +1045,8 @@ def _run_preview(
             slides.append({"title": sec.replace("_", " "), "bullets": ["No handler for section."], "notes": "", "section": sec})
             logs.append(f"[visualise][section][warn] No handler for {sec}")
 
-    # Assign stable-ish ids so the renderer can select slides without depending on titles.
+    # Assign stable ids so the renderer can keep focus between reruns with different params.
     try:
-        import hashlib
-
         by_section_count: dict[str, int] = {}
         for s in slides:
             if not isinstance(s, dict):
@@ -519,8 +1058,8 @@ def _run_preview(
             n = by_section_count[sec]
             title = str(s.get("title") or "")
             kind = "fig" if s.get("fig_json") else "table" if str(s.get("table_html") or "").strip() else "text"
-            h = hashlib.sha1(f"{sec}|{n}|{kind}|{title}".encode("utf-8")).hexdigest()[:10]
-            s["slide_id"] = f"{sec}:{n}:{kind}:{h}"
+            # Keep the ID independent of title so changing top-N params doesn't break selection/focus.
+            s["slide_id"] = f"{sec}:{n}:{kind}"
     except Exception:
         # Never fail the deck due to metadata.
         pass
@@ -632,6 +1171,8 @@ def main() -> None:
         selection = payload.get("selection") if isinstance(payload.get("selection"), dict) else None
         collection_name = str(payload.get("collectionName") or "Collection")
         outp_raw = str(payload.get("outputPath") or "").strip()
+        notes_overrides = payload.get("notesOverrides") if isinstance(payload.get("notesOverrides"), dict) else {}
+        rendered_images = payload.get("renderedImages") if isinstance(payload.get("renderedImages"), dict) else {}
         if not outp_raw:
             print(_safe_json({"status": "error", "message": "Missing outputPath"}))
             return
@@ -647,7 +1188,21 @@ def main() -> None:
         )
         slides = deck.get("slides") if isinstance(deck, dict) else None
         slides_list = slides if isinstance(slides, list) else []
-        slide_notes = str(params.get("slide_notes", "false")).strip().lower() in {"1", "true", "yes", "y", "on"}
+        # Apply per-slide notes overrides (from UI "Describe" opt-in).
+        try:
+            for s in slides_list:
+                if not isinstance(s, dict):
+                    continue
+                sid = str(s.get("slide_id") or "").strip()
+                if sid and sid in notes_overrides:
+                    s["notes"] = str(notes_overrides.get(sid) or "").strip()
+                if sid and sid in rendered_images and str(rendered_images.get(sid) or "").strip():
+                    s["img"] = str(rendered_images.get(sid) or "").strip()
+        except Exception as exc:
+            logs.append(f"[visualise][notes_override][warn] {exc}")
+            logs.append(traceback.format_exc())
+
+        slide_notes = str(params.get("slide_notes", "false")).strip().lower() in {"1", "true", "yes", "y", "on"} or bool(notes_overrides)
         try:
             saved = _export_pptx_from_slides(
                 [s for s in slides_list if isinstance(s, dict)],
@@ -660,6 +1215,14 @@ def main() -> None:
             logs.append(f"[visualise][export_pptx][fatal] {exc}")
             logs.append(traceback.format_exc())
             print(_safe_json({"status": "error", "message": str(exc), "logs": logs}))
+        return
+
+    if action == "describe_slide":
+        slide = payload.get("slide") if isinstance(payload.get("slide"), dict) else {}
+        params = payload.get("params") if isinstance(payload.get("params"), dict) else {}
+        collection_name = str(payload.get("collectionName") or "Collection")
+        text, logs = _describe_slide(slide, collection_name=collection_name, params=params)
+        print(_safe_json({"status": "ok", "description": text, "logs": logs}))
         return
 
     print(_safe_json({"status": "error", "message": f"unknown_action:{action}"}))

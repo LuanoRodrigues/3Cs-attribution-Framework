@@ -1,111 +1,134 @@
-.leditor-ai-draft-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-right: 6px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  border: 1px solid rgba(37, 99, 235, 0.28);
-  background: rgba(37, 99, 235, 0.08);
-  color: rgba(27, 27, 27, 0.8);
-  font-family: "Source Sans 3", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-  font-size: 11px;
-  line-height: 1.2;
-  user-select: none;
+.leditor-ai-draft-repl {
+  display: inline;
+  color: rgba(29, 78, 216, 0.98);
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 2px;
+  text-decoration-color: rgba(29, 78, 216, 0.75);
+  background: rgba(29, 78, 216, 0.06);
+  border-radius: 3px;
+  cursor: pointer;
+  white-space: pre-wrap;
   pointer-events: auto;
 }
-
-.leditor-ai-draft-old {
-  background: rgba(239, 68, 68, 0.10);
-  text-decoration: line-through;
-  text-decoration-thickness: 1px;
-  text-decoration-color: rgba(239, 68, 68, 0.55);
+.leditor-ai-draft-hidden {
+  display: none;
+}
+.leditor-ai-draft-repl:hover {
+  background: rgba(29, 78, 216, 0.10);
+  text-decoration-color: rgba(29, 78, 216, 0.95);
 }
 
-.leditor-ai-draft-new {
-  display: inline-block;
-  margin-left: 6px;
-  padding: 1px 6px;
-  border-radius: 6px;
-  border: 1px solid rgba(16, 185, 129, 0.25);
-  background: rgba(16, 185, 129, 0.10);
-  color: rgba(27, 27, 27, 0.82);
-  font-family: "Source Sans 3", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+.leditor-app--theme-dark .leditor-ai-draft-repl,
+.leditor-app--dark .leditor-ai-draft-repl {
+  color: rgba(147, 197, 253, 0.98);
+  text-decoration-color: rgba(147, 197, 253, 0.82);
+  background: rgba(147, 197, 253, 0.10);
+}
+.leditor-app--theme-dark .leditor-ai-draft-repl:hover,
+.leditor-app--dark .leditor-ai-draft-repl:hover {
+  background: rgba(147, 197, 253, 0.14);
+}
+
+.leditor-ai-draft-popover {
+  position: fixed;
+  z-index: 4500;
+  width: 320px;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: rgba(250, 250, 250, 0.98);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.18);
+  padding: 10px 10px 12px;
+  backdrop-filter: blur(10px);
+}
+.leditor-ai-draft-popover__title {
+  font-size: 12px;
+  font-weight: 750;
+  color: rgba(23, 23, 23, 0.9);
+  user-select: none;
+  margin-bottom: 8px;
+}
+.leditor-ai-draft-popover__body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.leditor-ai-draft-popover__block {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  padding: 8px 9px;
+  background: rgba(255, 255, 255, 0.78);
+}
+.leditor-ai-draft-popover__label {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(23, 23, 23, 0.78);
+  margin-bottom: 4px;
+}
+.leditor-ai-draft-popover__text {
   font-size: 11.5px;
   line-height: 1.25;
-  white-space: nowrap;
-  max-width: 280px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  user-select: none;
-  pointer-events: auto;
+  color: rgba(23, 23, 23, 0.78);
+  white-space: pre-wrap;
 }
-
-.leditor-app--theme-dark .leditor-ai-draft-pill,
-.leditor-app--dark .leditor-ai-draft-pill {
-  color: rgba(247, 247, 247, 0.82);
-  border-color: rgba(59, 130, 246, 0.35);
-  background: rgba(59, 130, 246, 0.16);
+.leditor-ai-draft-popover__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
 }
-
-.leditor-app--theme-dark .leditor-ai-draft-old,
-.leditor-app--dark .leditor-ai-draft-old {
-  background: rgba(239, 68, 68, 0.16);
-  text-decoration-color: rgba(239, 68, 68, 0.7);
-}
-
-.leditor-app--theme-dark .leditor-ai-draft-new,
-.leditor-app--dark .leditor-ai-draft-new {
-  color: rgba(247, 247, 247, 0.86);
-  border-color: rgba(16, 185, 129, 0.32);
-  background: rgba(16, 185, 129, 0.16);
-}
-
-.leditor-ai-draft-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: 6px;
-  vertical-align: text-top;
-  pointer-events: auto;
-}
-
-.leditor-ai-draft-actions__btn {
-  border: 1px solid rgba(0, 0, 0, 0.10);
+.leditor-ai-draft-popover__btn {
+  border: 1px solid rgba(0, 0, 0, 0.12);
   background: rgba(255, 255, 255, 0.92);
   color: rgba(23, 23, 23, 0.82);
-  border-radius: 10px;
-  padding: 4px 8px;
-  font-size: 11px;
+  border-radius: 12px;
+  padding: 6px 10px;
+  font-size: 12px;
   line-height: 1;
   cursor: pointer;
   user-select: none;
 }
-
-.leditor-ai-draft-actions__btn:hover {
+.leditor-ai-draft-popover__btn:hover {
   background: rgba(245, 245, 245, 0.96);
 }
-
-.leditor-ai-draft-actions__btn--primary {
-  border-color: rgba(37, 99, 235, 0.30);
-  background: rgba(37, 99, 235, 0.12);
+.leditor-ai-draft-popover__btn--primary {
+  border-color: rgba(29, 78, 216, 0.30);
+  background: rgba(29, 78, 216, 0.12);
   color: rgba(30, 64, 175, 1);
 }
-
-.leditor-ai-draft-actions__btn--primary:hover {
-  background: rgba(37, 99, 235, 0.16);
+.leditor-ai-draft-popover__btn--primary:hover {
+  background: rgba(29, 78, 216, 0.16);
 }
 
-.leditor-app--theme-dark .leditor-ai-draft-actions__btn,
-.leditor-app--dark .leditor-ai-draft-actions__btn {
-  border-color: rgba(255, 255, 255, 0.14);
-  background: rgba(17, 17, 17, 0.65);
+.leditor-app--theme-dark .leditor-ai-draft-popover,
+.leditor-app--dark .leditor-ai-draft-popover {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(17, 17, 17, 0.86);
+}
+.leditor-app--theme-dark .leditor-ai-draft-popover__title,
+.leditor-app--dark .leditor-ai-draft-popover__title {
+  color: rgba(247, 247, 247, 0.90);
+}
+.leditor-app--theme-dark .leditor-ai-draft-popover__block,
+.leditor-app--dark .leditor-ai-draft-popover__block {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+}
+.leditor-app--theme-dark .leditor-ai-draft-popover__text,
+.leditor-app--dark .leditor-ai-draft-popover__text,
+.leditor-app--theme-dark .leditor-ai-draft-popover__label,
+.leditor-app--dark .leditor-ai-draft-popover__label {
   color: rgba(247, 247, 247, 0.84);
 }
-
-.leditor-app--theme-dark .leditor-ai-draft-actions__btn--primary,
-.leditor-app--dark .leditor-ai-draft-actions__btn--primary {
+.leditor-app--theme-dark .leditor-ai-draft-popover__btn,
+.leditor-app--dark .leditor-ai-draft-popover__btn {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(247, 247, 247, 0.84);
+}
+.leditor-app--theme-dark .leditor-ai-draft-popover__btn--primary,
+.leditor-app--dark .leditor-ai-draft-popover__btn--primary {
   border-color: rgba(59, 130, 246, 0.40);
-  background: rgba(59, 130, 246, 0.22);
+  background: rgba(59, 130, 246, 0.20);
   color: rgba(219, 234, 254, 1);
 }

@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import sanitizeHtml from "sanitize-html";
-import { LEDOC_FORMAT_VERSION, packLedocZip } from "./ledoc";
+import { LEDOC_BUNDLE_VERSION, writeLedocBundle } from "./ledoc";
 
 const normalizeError = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
@@ -411,41 +411,34 @@ export const convertCoderStateToLedoc = async (
     const document = buildDocument(allBlocks, title);
     const now = new Date().toISOString();
     const payload = {
-      document,
+      version: LEDOC_BUNDLE_VERSION,
+      content: document,
       meta: {
-        version: LEDOC_FORMAT_VERSION,
+        version: LEDOC_BUNDLE_VERSION,
         title,
         authors: [],
         created: now,
-        lastModified: now
+        lastModified: now,
+        sourceFormat: "bundle"
       },
-      settings: {
-        version: LEDOC_FORMAT_VERSION,
-        pageSize: "a4",
-        margins: {
-          top: 2.5 * (96 / 2.54),
-          right: 2.5 * (96 / 2.54),
-          bottom: 2.5 * (96 / 2.54),
-          left: 2.5 * (96 / 2.54),
-          topCm: 2.5,
-          rightCm: 2.5,
-          bottomCm: 2.5,
-          leftCm: 2.5
-        }
+      layout: {
+        version: LEDOC_BUNDLE_VERSION,
+        pageSize: "A4",
+        margins: { unit: "cm", top: 2.5, right: 2.5, bottom: 2.5, left: 2.5 }
       },
-      footnotes: {
-        version: LEDOC_FORMAT_VERSION,
-        footnotes: []
+      registry: {
+        version: LEDOC_BUNDLE_VERSION,
+        footnoteIdState: { counters: { footnote: 0, endnote: 0 } },
+        knownFootnotes: []
       }
     };
 
     let ledocPath: string | undefined;
     try {
-      const buffer = await packLedocZip(payload);
       ledocPath = path.join(path.dirname(sourcePath), `${path.basename(sourcePath, path.extname(sourcePath))}.ledoc`);
-      await fs.promises.writeFile(ledocPath, buffer);
+      await writeLedocBundle(ledocPath, payload as any);
     } catch (error) {
-      warnings.push(`Failed to write LEDOC archive: ${normalizeError(error)}`);
+      warnings.push(`Failed to write LEDOC bundle: ${normalizeError(error)}`);
     }
 
     return { success: true, payload, ledocPath, warnings, title };

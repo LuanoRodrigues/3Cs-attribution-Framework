@@ -85,6 +85,7 @@ declare global {
       unlockSecrets: (passphrase: string) => Promise<{ success: boolean }>;
       getSecret: (name: string) => Promise<string | undefined>;
       setSecret: (name: string, value: string) => Promise<{ success: boolean }>;
+      getDotEnvStatus: () => Promise<{ found: boolean; paths: string[]; values: Record<string, string> }>;
       exportBundle: (zipPath: string, includeSecrets?: boolean) => Promise<string>;
       importBundle: (zipPath: string) => Promise<{ success: boolean }>;
       getPaths: () => Promise<{ appDataPath: string; configPath: string; settingsFilePath: string; exportPath: string }>;
@@ -93,9 +94,22 @@ declare global {
     leditorHost?: {
       exportDOCX: (request: { docJson: object; options?: Record<string, unknown> }) => Promise<unknown>;
       exportPDF: (request: { html: string; options?: { suggestedPath?: string; prompt?: boolean } }) => Promise<unknown>;
-      exportLEDOC: (request: { payload: unknown; options?: { suggestedPath?: string; prompt?: boolean } }) => Promise<unknown>;
+      exportLEDOC: (request: { payload: unknown; options?: { targetPath?: string; suggestedPath?: string; prompt?: boolean } }) => Promise<unknown>;
       importDOCX: (request?: { options?: { sourcePath?: string; prompt?: boolean } }) => Promise<unknown>;
       importLEDOC: (request?: { options?: { sourcePath?: string; prompt?: boolean } }) => Promise<unknown>;
+      listLedocVersions?: (request: { ledocPath: string }) => Promise<unknown>;
+      createLedocVersion?: (request: {
+        ledocPath: string;
+        reason?: string;
+        label?: string;
+        note?: string;
+        payload?: any;
+        throttleMs?: number;
+        force?: boolean;
+      }) => Promise<unknown>;
+      restoreLedocVersion?: (request: { ledocPath: string; versionId: string; mode?: "replace" | "copy" }) => Promise<unknown>;
+      deleteLedocVersion?: (request: { ledocPath: string; versionId: string }) => Promise<unknown>;
+      pinLedocVersion?: (request: { ledocPath: string; versionId: string; pinned: boolean }) => Promise<unknown>;
       insertImage: () => Promise<unknown>;
       getDefaultLEDOCPath: () => Promise<string>;
       readFile: (request: { sourcePath: string }) => Promise<{ success: boolean; data?: string; error?: string }>;

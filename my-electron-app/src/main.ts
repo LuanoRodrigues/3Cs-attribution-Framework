@@ -8,6 +8,7 @@ import { pathToFileURL } from "url";
 import mammoth from "mammoth";
 import JSZip from "jszip";
 import { spawn } from "child_process";
+import { createLedocVersion, deleteLedocVersion, listLedocVersions, pinLedocVersion, restoreLedocVersion } from "./ledoc_versions";
 
 import type { SectionLevel } from "./analyse/types";
 import { addAudioCacheEntries, getAudioCacheStatus } from "./analyse/audioCache";
@@ -16,15 +17,17 @@ import { SettingsService } from "./config/settingsService";
 import {
   getAppDataPath,
   getConfigDirectory,
+  getSetting,
+  setSetting,
   getSettingsFilePath,
   initializeSettingsFacade
 } from "./config/settingsFacade";
 import { getSecretsVault, initializeSecretsVault } from "./config/secretsVaultInstance";
-import { DATABASE_KEYS } from "./config/settingsKeys";
+import { DATABASE_KEYS, LLM_KEYS } from "./config/settingsKeys";
 import { handleRetrieveCommand, registerRetrieveIpcHandlers } from "./main/ipc/retrieve_ipc";
 import { registerProjectIpcHandlers } from "./main/ipc/project_ipc";
 import { ProjectManager } from "./main/services/projectManager";
-import { invokeVisualiseExportPptx, invokeVisualisePreview, invokeVisualiseSections } from "./main/services/visualiseBridge";
+import { invokeVisualiseDescribeSlide, invokeVisualiseExportPptx, invokeVisualisePreview, invokeVisualiseSections } from "./main/services/visualiseBridge";
 import { invokePdfOcr } from "./main/services/pdfOcrBridge";
 import { createCoderTestTree, createPdfTestPayload } from "./test/testFixtures";
 import { getCoderCacheDir } from "./session/sessionPaths";
@@ -78,6 +81,83 @@ if (isWsl) {
 }
 
 app.commandLine.appendSwitch("disable-renderer-backgrounding");
+
+const fetchJson = async (url: string, init: RequestInit): Promise<any> => {
+  const res = await fetch(url, init);
+  const text = await res.text();
+  let json: any = null;
+  try {
+    json = text ? JSON.parse(text) : null;
+  } catch {
+    // ignore
+  }
+  if (!res.ok) {
+    const message =
+      typeof json?.error?.message === "string"
+        ? json.error.message
+        : typeof json?.message === "string"
+          ? json.message
+          : text.slice(0, 1000);
+    throw new Error(`${res.status} ${res.statusText}: ${message}`);
+  }
+  return json;
+};
+
+const getOpenAiApiKey = (): string => {
+  // Prefer settings if present, else environment.
+  loadDotEnvIntoProcessEnv();
+  try {
+    const configured = String(getSetting<string>(LLM_KEYS.openaiKey, "") || "").trim();
+    if (configured) return configured;
+  } catch {
+    // ignore
+  }
+  return String(process.env.OPENAI_API_KEY || "").trim();
+};
+
+const getOpenAiBaseUrl = (): string => {
+  loadDotEnvIntoProcessEnv();
+  try {
+    const configured = String(getSetting<string>(LLM_KEYS.openaiBaseUrl, "https://api.openai.com/v1") || "").trim();
+    if (configured) return configured;
+  } catch {
+    // ignore
+  }
+  return "https://api.openai.com/v1";
+};
+
+const callOpenAiDescribeWithImage = async (args: {
+  model: string;
+  instructions: string;
+  inputText: string;
+  imageDataUrl?: string;
+  signal?: AbortSignal;
+}): Promise<string> => {
+  const apiKey = getOpenAiApiKey();
+  if (!apiKey) {
+    throw new Error("Missing OpenAI API key (set OPENAI_API_KEY or configure APIs/openai_api_key in Settings).");
+  }
+  const baseUrl = getOpenAiBaseUrl().replace(/\/+$/, "");
+  const url = `${baseUrl}/responses`;
+  const content: any[] = [{ type: "input_text", text: args.inputText }];
+  if (args.imageDataUrl && args.imageDataUrl.startsWith("data:image/")) {
+    content.push({ type: "input_image", image_url: args.imageDataUrl });
+  }
+  const body: any = {
+    model: args.model,
+    instructions: args.instructions,
+    input: [{ role: "user", content }],
+    max_output_tokens: 700
+  };
+  const json = await fetchJson(url, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal: args.signal
+  });
+  const text = typeof json?.output_text === "string" ? json.output_text : String(json?.output_text ?? "");
+  return text.trim();
+};
 app.commandLine.appendSwitch("disable-background-timer-throttling");
 app.commandLine.appendSwitch("disable-backgrounding-occluded-windows");
 app.commandLine.appendSwitch("enable-gpu-rasterization");
@@ -319,6 +399,13 @@ function buildRecentProjectsSubmenu(manager: ProjectManager): MenuItemConstructo
 }
 
 function buildApplicationMenu(manager: ProjectManager): void {
+  // We ship a Word-like in-app ribbon; disable the native Electron menu bar.
+  // On macOS this also removes the top application menu.
+  Menu.setApplicationMenu(null);
+  return;
+
+  // (kept for future use)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const template: MenuItemConstructorOptions[] = [];
 
   if (process.platform === "darwin") {
@@ -501,6 +588,72 @@ async function syncAcademicApiSecretsFromEnv(): Promise<void> {
       });
     }
   }
+}
+
+function syncLlmSettingsFromEnv(): void {
+  // Mirror common `.env` LLM keys into Settings so the Settings UI is pre-populated in dev setups.
+  // Do not overwrite user-configured values.
+  loadDotEnvIntoProcessEnv();
+
+  const maybeSet = (
+    key: string,
+    envKeys: string[],
+    options?: { defaultValue?: string; allowOverrideDefault?: boolean; allowWhenAlreadySet?: boolean }
+  ) => {
+    const defaultValue = options?.defaultValue ?? "";
+    const allowOverrideDefault = options?.allowOverrideDefault ?? true;
+    const allowWhenAlreadySet = options?.allowWhenAlreadySet ?? false;
+    const envValue = envKeys.map((k) => sanitizeEnvValue(process.env[k])).find(Boolean) ?? "";
+    if (!envValue) return;
+    try {
+      const current = String(getSetting<string>(key, defaultValue) || "").trim();
+      if (current) {
+        if (allowWhenAlreadySet) {
+          if (current === envValue) return;
+          setSetting(key, envValue);
+        }
+        if (!allowOverrideDefault) return;
+        if (current !== defaultValue) return;
+        if (current === envValue) return;
+      }
+      setSetting(key, envValue);
+    } catch {
+      // ignore
+    }
+  };
+
+  const maybeSetProvider = () => {
+    const envProvider = sanitizeEnvValue(process.env.LLM_PROVIDER || process.env.TEIA_LLM_PROVIDER);
+    const valid = ["openai", "gemini", "deepseek", "mistral"] as const;
+    if (!envProvider || !valid.includes(envProvider as any)) return;
+    try {
+      const current = String(getSetting<string>(LLM_KEYS.provider, "openai") || "").trim();
+      if (current && current !== "openai") return;
+      setSetting(LLM_KEYS.provider, envProvider);
+    } catch {
+      // ignore
+    }
+  };
+
+  maybeSetProvider();
+
+  maybeSet(LLM_KEYS.openaiKey, ["OPENAI_API_KEY", "OPENAI_KEY"], { allowOverrideDefault: false });
+  maybeSet(LLM_KEYS.openaiBaseUrl, ["OPENAI_BASE_URL", "OPENAI_API_BASE", "OPENAI_BASEURL"], {
+    defaultValue: "https://api.openai.com/v1",
+    allowOverrideDefault: true
+  });
+
+  maybeSet(LLM_KEYS.geminiKey, ["GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_GEMINI_API_KEY"], { allowOverrideDefault: false });
+  maybeSet(LLM_KEYS.geminiBaseUrl, ["GEMINI_BASE_URL", "GOOGLE_API_BASE", "GEMINI_API_BASE"], {
+    defaultValue: "https://generative.googleapis.com/v1",
+    allowOverrideDefault: true
+  });
+
+  maybeSet(LLM_KEYS.deepSeekKey, ["DEEPSEEK_API_KEY", "DEEPSEEK_KEY"], { allowOverrideDefault: false });
+  maybeSet(LLM_KEYS.deepSeekBaseUrl, ["DEEPSEEK_BASE_URL", "DEEPSEEK_API_BASE"], { defaultValue: "", allowOverrideDefault: true });
+
+  maybeSet(LLM_KEYS.mistralKey, ["MISTRAL_API_KEY", "MISTRAL_KEY"], { allowOverrideDefault: false });
+  maybeSet(LLM_KEYS.mistralBaseUrl, ["MISTRAL_BASE_URL", "MISTRAL_API_BASE"], { defaultValue: "", allowOverrideDefault: true });
 }
 
 function normalizeLegacyJson(raw: string): string {
@@ -705,12 +858,42 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
             params: (body.params as Record<string, unknown>) || {},
             selection: (body.selection as any) || undefined,
             collectionName,
-            outputPath
+            outputPath,
+            notesOverrides: (body.notesOverrides as Record<string, string>) || {},
+            renderedImages: (body.renderedImages as Record<string, string>) || {}
+          });
+          return response;
+        }
+        if (payload.action === "describe_slide") {
+          const body = (payload.payload as Record<string, unknown>) || {};
+          const response = await invokeVisualiseDescribeSlide({
+            slide: (body.slide as Record<string, unknown>) || {},
+            params: (body.params as Record<string, unknown>) || {},
+            collectionName: body.collectionName as string | undefined
           });
           return response;
         }
         if (payload.action === "get_sections") {
           return await invokeVisualiseSections();
+        }
+        if (payload.action === "describe_slide_llm") {
+          const body = (payload.payload as Record<string, unknown>) || {};
+          const model = String(body.model || "gpt-5-mini").trim() || "gpt-5-mini";
+          const instructions = String(body.instructions || "").trim();
+          const inputText = String(body.inputText || "").trim();
+          const imageDataUrl = typeof body.imageDataUrl === "string" ? body.imageDataUrl : "";
+          if (!inputText) {
+            return { status: "error", message: "Missing inputText." };
+          }
+          const started = Date.now();
+          const text = await callOpenAiDescribeWithImage({
+            model,
+            instructions,
+            inputText,
+            imageDataUrl: imageDataUrl || undefined,
+            signal: undefined
+          });
+          return { status: "ok", description: text, meta: { provider: "openai", model, ms: Date.now() - started } };
         }
         return { status: "ok" };
       } catch (error) {
@@ -844,7 +1027,7 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
     }
   });
 
-  ipcMain.handle("leditor:import-docx", async (_event, request: { options?: { sourcePath?: string; prompt?: boolean } }) => {
+	  ipcMain.handle("leditor:import-docx", async (_event, request: { options?: { sourcePath?: string; prompt?: boolean } }) => {
     const options = request?.options ?? {};
     let sourcePath = options.sourcePath;
     if (!sourcePath || (options.prompt ?? true)) {
@@ -868,20 +1051,38 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
     } catch (error) {
       return { success: false, error: normalizeError(error) };
     }
-  });
+	  });
 
-  const resolveDefaultLedocPath = async (): Promise<string> => {
-    const repoRoot = resolveRepoRoot();
-    const repoCandidate = path.join(repoRoot, "coder_state.ledoc");
-    try {
-      if (fs.existsSync(repoCandidate)) {
-        return repoCandidate;
-      }
-    } catch {
-      // ignore
-    }
-    const fallbackDir = path.join(app.getPath("userData"), "leditor");
-    const fallbackPath = path.join(fallbackDir, "coder_state.ledoc");
+	  const isValidLedocZipV1 = async (filePath: string): Promise<boolean> => {
+	    try {
+	      const buffer = await fs.promises.readFile(filePath);
+	      const payload = await unpackLedocZip(buffer);
+	      const doc = (payload as any)?.document;
+	      return Boolean(doc && typeof (doc as any).type === "string");
+	    } catch {
+	      return false;
+	    }
+	  };
+
+	  const resolveDefaultLedocPath = async (): Promise<string> => {
+	    const repoRoot = resolveRepoRoot();
+	    const repoCandidate = path.join(repoRoot, "coder_state.ledoc");
+	    try {
+	      const st = await statSafe(repoCandidate);
+	      if (st?.isDirectory()) {
+	        return repoCandidate;
+	      }
+	      if (st?.isFile()) {
+	        // Only prefer the repo file if it's a valid v1 zip LEDOC. Older builds may have written
+	        // a corrupted `.ledoc` zip (e.g., `document.json` was `{}`), which would fail to load.
+	        const ok = await isValidLedocZipV1(repoCandidate);
+	        if (ok) return repoCandidate;
+	      }
+	    } catch {
+	      // ignore
+	    }
+	    const fallbackDir = path.join(app.getPath("userData"), "leditor");
+	    const fallbackPath = path.join(fallbackDir, "coder_state.ledoc");
     try {
       await fs.promises.mkdir(fallbackDir, { recursive: true });
     } catch {
@@ -944,31 +1145,104 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
     };
   };
 
-  const ensureLedocExists = async (filePath: string): Promise<void> => {
+  const LEDOC_BUNDLE_VERSION = "2.0";
+  const LEDOC_BUNDLE_FILES = {
+    version: "version.txt",
+    content: "content.json",
+    layout: "layout.json",
+    registry: "registry.json",
+    meta: "meta.json"
+  } as const;
+
+  const statSafe = async (p: string): Promise<fs.Stats | null> => {
     try {
-      if (fs.existsSync(filePath)) return;
+      return await fs.promises.stat(p);
     } catch {
-      // ignore
+      return null;
     }
-    const now = new Date().toISOString();
-    const payload = {
-      document: { type: "doc", content: [{ type: "paragraph" }] },
-      meta: { version: "1.0", title: "Untitled document", authors: [], created: now, lastModified: now },
-      settings: {
-        pageSize: "A4",
-        // px @ 96dpi
-        margins: { top: 96, right: 96, bottom: 96, left: 96 }
+  };
+
+  const atomicWriteText = async (filePath: string, data: string): Promise<void> => {
+    const dir = path.dirname(filePath);
+    const tmpPath = path.join(dir, `.${path.basename(filePath)}.${Date.now()}.tmp`);
+    await fs.promises.writeFile(tmpPath, data, "utf-8");
+    try {
+      await fs.promises.rename(tmpPath, filePath);
+    } catch (error) {
+      try {
+        await fs.promises.unlink(filePath);
+      } catch {
+        // ignore
       }
+      await fs.promises.rename(tmpPath, filePath);
+    }
+  };
+
+  const ensureLedocBundleExists = async (bundleDir: string): Promise<void> => {
+    const st = await statSafe(bundleDir);
+    if (st?.isFile()) return; // legacy v1 zip at this path; do not overwrite
+    if (!st) {
+      await fs.promises.mkdir(bundleDir, { recursive: true });
+    }
+    const versionPath = path.join(bundleDir, LEDOC_BUNDLE_FILES.version);
+    const versionSt = await statSafe(versionPath);
+    if (versionSt?.isFile()) return;
+
+    const now = new Date().toISOString();
+    const content = { type: "doc", content: [{ type: "page", content: [{ type: "paragraph" }] }] };
+    const meta = { version: LEDOC_BUNDLE_VERSION, title: "Untitled document", authors: [], created: now, lastModified: now, sourceFormat: "bundle" };
+    const layout = {
+      version: LEDOC_BUNDLE_VERSION,
+      pageSize: "A4",
+      margins: { unit: "cm", top: 2.5, right: 2.5, bottom: 2.5, left: 2.5 }
     };
-    const buffer = await packLedocZip(payload as any);
-    await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
-    await fs.promises.writeFile(filePath, buffer);
+    const registry = { version: LEDOC_BUNDLE_VERSION, footnoteIdState: { counters: { footnote: 0, endnote: 0 } }, knownFootnotes: [] };
+
+    await atomicWriteText(versionPath, `${LEDOC_BUNDLE_VERSION}\n`);
+    await atomicWriteText(path.join(bundleDir, LEDOC_BUNDLE_FILES.content), JSON.stringify(content, null, 2));
+    await atomicWriteText(path.join(bundleDir, LEDOC_BUNDLE_FILES.meta), JSON.stringify(meta, null, 2));
+    await atomicWriteText(path.join(bundleDir, LEDOC_BUNDLE_FILES.layout), JSON.stringify(layout, null, 2));
+    await atomicWriteText(path.join(bundleDir, LEDOC_BUNDLE_FILES.registry), JSON.stringify(registry, null, 2));
+    await fs.promises.mkdir(path.join(bundleDir, "media"), { recursive: true });
+  };
+
+  const readJsonFile = async (filePath: string): Promise<any> => {
+    const raw = await fs.promises.readFile(filePath, "utf-8");
+    return JSON.parse(raw);
+  };
+
+  const loadLedocBundle = async (bundleDir: string): Promise<{ payload: any; warnings: string[] }> => {
+    const warnings: string[] = [];
+    const versionPath = path.join(bundleDir, LEDOC_BUNDLE_FILES.version);
+    const versionRaw = await fs.promises.readFile(versionPath, "utf-8").catch(() => "");
+    const version = String(versionRaw || "").trim();
+    if (version !== LEDOC_BUNDLE_VERSION) {
+      throw new Error(`Unsupported bundle version: ${version || "unknown"}`);
+    }
+    const content = await readJsonFile(path.join(bundleDir, LEDOC_BUNDLE_FILES.content)).catch(() => {
+      warnings.push("content.json missing; using empty document.");
+      return { type: "doc", content: [{ type: "page", content: [{ type: "paragraph" }] }] };
+    });
+    const meta = await readJsonFile(path.join(bundleDir, LEDOC_BUNDLE_FILES.meta)).catch(() => {
+      warnings.push("meta.json missing; using defaults.");
+      const now = new Date().toISOString();
+      return { version: LEDOC_BUNDLE_VERSION, title: "Untitled document", authors: [], created: now, lastModified: now, sourceFormat: "bundle" };
+    });
+    const layout = await readJsonFile(path.join(bundleDir, LEDOC_BUNDLE_FILES.layout)).catch(() => {
+      warnings.push("layout.json missing; using defaults.");
+      return { version: LEDOC_BUNDLE_VERSION, pageSize: "A4", margins: { unit: "cm", top: 2.5, right: 2.5, bottom: 2.5, left: 2.5 } };
+    });
+    const registry = await readJsonFile(path.join(bundleDir, LEDOC_BUNDLE_FILES.registry)).catch(() => {
+      warnings.push("registry.json missing; using defaults.");
+      return { version: LEDOC_BUNDLE_VERSION, footnoteIdState: { counters: { footnote: 0, endnote: 0 } }, knownFootnotes: [] };
+    });
+    return { payload: { version: LEDOC_BUNDLE_VERSION, content, meta, layout, registry }, warnings };
   };
 
   ipcMain.handle("leditor:get-default-ledoc-path", async () => {
     const filePath = await resolveDefaultLedocPath();
     try {
-      await ensureLedocExists(filePath);
+      await ensureLedocBundleExists(filePath);
     } catch (error) {
       console.warn("[leditor:get-default-ledoc-path] unable to create default LEDOC", error);
     }
@@ -976,14 +1250,14 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
   });
 
   ipcMain.handle(
-    "leditor:import-ledoc",
-    async (_event, request: { options?: { sourcePath?: string; prompt?: boolean } }) => {
+	    "leditor:import-ledoc",
+	    async (_event, request: { options?: { sourcePath?: string; prompt?: boolean } }) => {
       const options = request?.options ?? {};
       let sourcePath = options.sourcePath;
       if (!sourcePath || (options.prompt ?? true)) {
         const result = await dialog.showOpenDialog({
           title: "Import LEDOC",
-          properties: ["openFile"],
+          properties: ["openFile", "openDirectory"],
           filters: [
             { name: "LEditor Document", extensions: ["ledoc"] },
             { name: "JSON Document", extensions: ["json"] },
@@ -998,31 +1272,48 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
       if (!sourcePath) {
         return { success: false, error: "No document selected" };
       }
-      try {
-        const ext = path.extname(sourcePath).toLowerCase();
-        if (ext === ".json") {
-          const raw = await fs.promises.readFile(sourcePath, "utf-8");
-          const parsed = JSON.parse(raw);
-          return { success: true, filePath: sourcePath, payload: { document: parsed, meta: { version: "1.0", title: "Imported JSON", authors: [], created: "", lastModified: "" } } };
-        }
-        const buffer = await fs.promises.readFile(sourcePath);
-        const payload = await unpackLedocZip(buffer);
-        return { success: true, filePath: sourcePath, payload };
-      } catch (error) {
-        return { success: false, error: normalizeError(error) };
-      }
-    }
-  );
+	      try {
+	        const st = await statSafe(sourcePath);
+	        if (st?.isDirectory()) {
+	          const loaded = await loadLedocBundle(sourcePath);
+	          return { success: true, filePath: sourcePath, payload: loaded.payload, warnings: loaded.warnings };
+	        }
+	        const ext = path.extname(sourcePath).toLowerCase();
+	        if (ext === ".json") {
+	          const raw = await fs.promises.readFile(sourcePath, "utf-8");
+	          const parsed = JSON.parse(raw);
+	          return { success: true, filePath: sourcePath, payload: { document: parsed, meta: { version: "1.0", title: "Imported JSON", authors: [], created: "", lastModified: "" } } };
+	        }
+	        const buffer = await fs.promises.readFile(sourcePath);
+	        const payload = await unpackLedocZip(buffer);
+	        const doc = (payload as any)?.document;
+	        if (!doc || typeof (doc as any).type !== "string") {
+	          return {
+	            success: false,
+	            error:
+	              "Invalid LEDOC file: document.json is missing a ProseMirror root `type`. If this was created by an older build, re-save to a `.ledoc` folder bundle."
+	          };
+	        }
+	        return { success: true, filePath: sourcePath, payload };
+	      } catch (error) {
+	        return { success: false, error: normalizeError(error) };
+	      }
+	    }
+	  );
 
   ipcMain.handle(
     "leditor:export-ledoc",
-    async (_event, request: { payload?: any; options?: { suggestedPath?: string; prompt?: boolean } }) => {
+    async (
+      _event,
+      request: { payload?: any; options?: { targetPath?: string; suggestedPath?: string; prompt?: boolean } }
+    ) => {
       const repoRoot = resolveRepoRoot();
       const options = request?.options ?? {};
       const promptUser = options.prompt ?? true;
-      let filePath = options.suggestedPath as string | undefined;
+      let filePath = (options.targetPath || options.suggestedPath) as string | undefined;
       if (!filePath || promptUser) {
-        const defaultPath = filePath && path.isAbsolute(filePath) ? filePath : path.join(repoRoot, "coder_state.ledoc");
+        const defaultPath =
+          filePath && path.isAbsolute(filePath) ? filePath : path.join(app.getPath("userData"), "leditor", "coder_state.ledoc");
         const result = await dialog.showSaveDialog({
           title: "Export LEDOC",
           defaultPath,
@@ -1032,14 +1323,51 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
           return { success: false, error: "Export canceled" };
         }
         filePath = result.filePath;
-      } else if (!path.isAbsolute(filePath)) {
-        filePath = path.join(repoRoot, filePath);
       }
       if (!filePath) {
         return { success: false, error: "No path provided" };
       }
+      // Normalize relative paths.
+      if (!path.isAbsolute(filePath)) {
+        filePath = path.join(repoRoot, filePath);
+      }
+      // Ensure `.ledoc` suffix for bundles.
+      if (!filePath.toLowerCase().endsWith(".ledoc")) {
+        filePath = `${filePath}.ledoc`;
+      }
       try {
         const payload = request?.payload ?? {};
+        const st = await statSafe(filePath);
+        const wantsBundle = payload && typeof payload === "object" && String((payload as any).version || "") === LEDOC_BUNDLE_VERSION;
+
+        if (wantsBundle) {
+          let bundleDir = filePath;
+          if (st?.isFile()) {
+            const base = path.basename(filePath, ".ledoc");
+            bundleDir = path.join(path.dirname(filePath), `${base}-bundle.ledoc`);
+          }
+          await fs.promises.mkdir(bundleDir, { recursive: true });
+          await fs.promises.mkdir(path.join(bundleDir, "media"), { recursive: true });
+          await atomicWriteText(path.join(bundleDir, LEDOC_BUNDLE_FILES.version), `${LEDOC_BUNDLE_VERSION}\n`);
+          await atomicWriteText(path.join(bundleDir, LEDOC_BUNDLE_FILES.content), JSON.stringify((payload as any).content ?? {}, null, 2));
+          await atomicWriteText(path.join(bundleDir, LEDOC_BUNDLE_FILES.meta), JSON.stringify((payload as any).meta ?? {}, null, 2));
+          await atomicWriteText(path.join(bundleDir, LEDOC_BUNDLE_FILES.layout), JSON.stringify((payload as any).layout ?? {}, null, 2));
+          await atomicWriteText(path.join(bundleDir, LEDOC_BUNDLE_FILES.registry), JSON.stringify((payload as any).registry ?? {}, null, 2));
+          // Approximate bytes by summing required files.
+          const files = Object.values(LEDOC_BUNDLE_FILES).map((name) => path.join(bundleDir, name));
+          let bytes = 0;
+          for (const f of files) {
+            try {
+              const s = await fs.promises.stat(f);
+              bytes += s.size;
+            } catch {
+              // ignore
+            }
+          }
+          return { success: true, filePath: bundleDir, bytes };
+        }
+
+        // Legacy v1 zip export fallback.
         const buffer = await packLedocZip(payload);
         await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
         await fs.promises.writeFile(filePath, buffer);
@@ -1050,6 +1378,78 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
       }
     }
   );
+
+  ipcMain.handle("leditor:versions:list", async (_event, request: { ledocPath: string }) => {
+    try {
+      const bundleDir = String(request?.ledocPath || "").trim();
+      if (!bundleDir) return { success: false, error: "versions:list ledocPath is required" };
+      return await listLedocVersions(bundleDir);
+    } catch (error) {
+      return { success: false, error: normalizeError(error) };
+    }
+  });
+
+  ipcMain.handle(
+    "leditor:versions:create",
+    async (
+      _event,
+      request: { ledocPath: string; reason?: string; label?: string; note?: string; payload?: any; throttleMs?: number; force?: boolean }
+    ) => {
+      try {
+        const bundleDir = String(request?.ledocPath || "").trim();
+        if (!bundleDir) return { success: false, error: "versions:create ledocPath is required" };
+        const reason = typeof request?.reason === "string" && request.reason.trim() ? request.reason.trim() : "manual";
+        return await createLedocVersion({
+          bundleDir,
+          reason,
+          label: typeof request?.label === "string" ? request.label : undefined,
+          note: typeof request?.note === "string" ? request.note : undefined,
+          payload: request?.payload,
+          throttleMs: typeof request?.throttleMs === "number" ? request.throttleMs : undefined,
+          force: Boolean(request?.force)
+        });
+      } catch (error) {
+        return { success: false, error: normalizeError(error) };
+      }
+    }
+  );
+
+  ipcMain.handle("leditor:versions:restore", async (_event, request: { ledocPath: string; versionId: string; mode?: "replace" | "copy" }) => {
+    try {
+      const bundleDir = String(request?.ledocPath || "").trim();
+      const versionId = String(request?.versionId || "").trim();
+      const mode = request?.mode === "copy" ? "copy" : "replace";
+      if (!bundleDir) return { success: false, error: "versions:restore ledocPath is required" };
+      if (!versionId) return { success: false, error: "versions:restore versionId is required" };
+      return await restoreLedocVersion({ bundleDir, versionId, mode });
+    } catch (error) {
+      return { success: false, error: normalizeError(error) };
+    }
+  });
+
+  ipcMain.handle("leditor:versions:delete", async (_event, request: { ledocPath: string; versionId: string }) => {
+    try {
+      const bundleDir = String(request?.ledocPath || "").trim();
+      const versionId = String(request?.versionId || "").trim();
+      if (!bundleDir) return { success: false, error: "versions:delete ledocPath is required" };
+      if (!versionId) return { success: false, error: "versions:delete versionId is required" };
+      return await deleteLedocVersion({ bundleDir, versionId });
+    } catch (error) {
+      return { success: false, error: normalizeError(error) };
+    }
+  });
+
+  ipcMain.handle("leditor:versions:pin", async (_event, request: { ledocPath: string; versionId: string; pinned: boolean }) => {
+    try {
+      const bundleDir = String(request?.ledocPath || "").trim();
+      const versionId = String(request?.versionId || "").trim();
+      if (!bundleDir) return { success: false, error: "versions:pin ledocPath is required" };
+      if (!versionId) return { success: false, error: "versions:pin versionId is required" };
+      return await pinLedocVersion({ bundleDir, versionId, pinned: Boolean(request?.pinned) });
+    } catch (error) {
+      return { success: false, error: normalizeError(error) };
+    }
+  });
 
   ipcMain.handle("leditor:ai-status", async () => {
     loadDotEnvIntoProcessEnv();
@@ -1285,6 +1685,46 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
       settingsFilePath: getSettingsFilePath(),
       exportPath: ensureExportDirectory()
     };
+  });
+
+  ipcMain.handle("settings:getDotEnvStatus", () => {
+    loadDotEnvIntoProcessEnv();
+    const candidates = [path.join(process.cwd(), ".env"), path.join(resolveRepoRoot(), ".env")];
+    const paths = candidates.filter((p) => {
+      try {
+        return fs.existsSync(p);
+      } catch {
+        return false;
+      }
+    });
+    const keys = [
+      "OPENAI_API_KEY",
+      "OPENAI_BASE_URL",
+      "OPENAI_API_BASE",
+      "OPENAI_BASEURL",
+      "GEMINI_API_KEY",
+      "GOOGLE_API_KEY",
+      "GOOGLE_GEMINI_API_KEY",
+      "GEMINI_BASE_URL",
+      "GOOGLE_API_BASE",
+      "GEMINI_API_BASE",
+      "MISTRAL_API_KEY",
+      "MISTRAL_BASE_URL",
+      "MISTRAL_API_BASE",
+      "DEEPSEEK_API_KEY",
+      "DEEPSEEK_BASE_URL",
+      "DEEPSEEK_API_BASE",
+      "LLM_PROVIDER",
+      "TEIA_LLM_PROVIDER"
+    ];
+    const values: Record<string, string> = {};
+    keys.forEach((key) => {
+      const raw = sanitizeEnvValue(process.env[key]);
+      if (raw) {
+        values[key] = raw;
+      }
+    });
+    return { found: paths.length > 0, paths, values };
   });
 
   ipcMain.handle("settings:open-window", (_event, payload?: { section?: string }) => {
@@ -1615,6 +2055,7 @@ function initializeApp(): void {
       loadDotEnvIntoProcessEnv();
       const baseUserData = app.getPath("userData");
       initializeSettingsFacade(baseUserData);
+      syncLlmSettingsFromEnv();
       analysePool = new WorkerPool(path.join(__dirname, "main/jobs/analyseWorker.js"), {
         size: workerCount,
         workerData: { userDataPath: baseUserData }

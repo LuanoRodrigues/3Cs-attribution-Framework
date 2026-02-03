@@ -1,5 +1,6 @@
 import {
   ribbonRegistry,
+  fileTab,
   homeTab,
   insertTab,
   layoutTab,
@@ -208,6 +209,7 @@ const ensureIconKeys = (tab: TabConfig): void => {
 };
 
 const TAB_SOURCES: TabSourceMap = {
+  file: fileTab as unknown as TabConfig,
   home: homeTab as unknown as TabConfig,
   insert: insertTab as unknown as TabConfig,
   layout: layoutTab as unknown as TabConfig,

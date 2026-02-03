@@ -13,6 +13,8 @@ declare global {
 
 type ContextType = "text" | "link" | "table";
 
+type ContextGroup = "agent" | "dictionary" | "ref";
+
 type MenuItem = {
   label: string;
   command: string;
@@ -83,60 +85,49 @@ const tableSizes = [
   { rows: 4, cols: 3 }
 ];
 
-const buildMenuItems = (context: ContextType): MenuItem[] => {
-  switch (context) {
-    case "text":
-      return [
-        { label: "Agent: Refine", command: "agent.action", args: { id: "refine" } },
-        { label: "Agent: Paraphrase", command: "agent.action", args: { id: "paraphrase" } },
-        { label: "Agent: Shorten", command: "agent.action", args: { id: "shorten" } },
-        { label: "Agent: Proofread", command: "agent.action", args: { id: "proofread" } },
-        { label: "Agent: Substantiate", command: "agent.action", args: { id: "substantiate" } },
-        { label: "Agent: Synonyms", command: "agent.action", args: { id: "synonyms" }, requireSelection: true },
-        { label: "Agent: Antonyms", command: "agent.action", args: { id: "antonyms" }, requireSelection: true },
-        { label: "Agent: Check sources", command: "agent.action", args: { id: "check_sources" } },
-        { label: "Agent: Clear checks", command: "agent.action", args: { id: "clear_checks" } },
-        { label: "Ref: Open picker…", command: "", action: "ref_open_picker" },
-        { label: "Ref: Insert bibliography", command: "", action: "ref_insert_biblio" },
-        { label: "Ref: Update from editor", command: "", action: "ref_update_from_editor" },
-        { label: "Ref: Style = APA", command: "", action: "ref_style_apa" },
-        { label: "Ref: Style = Numeric", command: "", action: "ref_style_numeric" },
-        { label: "Ref: Style = Footnote", command: "", action: "ref_style_footnote" },
-        { label: "Bold", command: "Bold" },
-        { label: "Italic", command: "Italic" },
-        { label: "Clear Formatting", command: "ClearFormatting" },
-        ...tableSizes.map((size) => ({
-          label: `Insert Table ${size.rows}Į-${size.cols}`,
-          command: "TableInsert",
-          args: { rows: size.rows, cols: size.cols }
-        })),
-        { label: "Footnotes…", command: "FootnotePanel" }
-      ];
-    case "link":
-      return [
-        { label: "Agent: Refine", command: "agent.action", args: { id: "refine" } },
-        { label: "Agent: Paraphrase", command: "agent.action", args: { id: "paraphrase" } },
-        { label: "Agent: Shorten", command: "agent.action", args: { id: "shorten" } },
-        { label: "Agent: Proofread", command: "agent.action", args: { id: "proofread" } },
-        { label: "Agent: Substantiate", command: "agent.action", args: { id: "substantiate" } },
-        { label: "Agent: Synonyms", command: "agent.action", args: { id: "synonyms" }, requireSelection: true },
-        { label: "Agent: Antonyms", command: "agent.action", args: { id: "antonyms" }, requireSelection: true },
-        { label: "Agent: Check sources", command: "agent.action", args: { id: "check_sources" } },
-        { label: "Agent: Clear checks", command: "agent.action", args: { id: "clear_checks" } },
-        { label: "Ref: Open picker…", command: "", action: "ref_open_picker" },
-        { label: "Ref: Update from editor", command: "", action: "ref_update_from_editor" },
-        { label: "Edit Link", command: "EditLink" },
-        { label: "Remove Link", command: "RemoveLink" }
-      ];
-    case "table":
-      return tableSizes.map((size) => ({
-        label: `Insert Table ${size.rows}Į-${size.cols}`,
-        command: "TableInsert",
-        args: { rows: size.rows, cols: size.cols }
-      }));
-    default:
-      return [];
+const buildMenuGroups = (context: ContextType): Record<ContextGroup, MenuItem[]> => {
+  const agentItems: MenuItem[] = [
+    { label: "Refine", command: "agent.action", args: { id: "refine" } },
+    { label: "Paraphrase", command: "agent.action", args: { id: "paraphrase" } },
+    { label: "Shorten", command: "agent.action", args: { id: "shorten" } },
+    { label: "Proofread", command: "agent.action", args: { id: "proofread" } },
+    { label: "Substantiate", command: "agent.action", args: { id: "substantiate" } },
+    { label: "Check sources", command: "agent.action", args: { id: "check_sources" } },
+    { label: "Clear checks", command: "agent.action", args: { id: "clear_checks" } }
+  ];
+
+  const dictionaryItems: MenuItem[] = [
+    // NOTE: Dictionary features are implemented in the agent sidebar as Lexicon actions.
+    { label: "Define", command: "agent.action", args: { id: "define" }, requireSelection: true },
+    { label: "Synonyms", command: "agent.action", args: { id: "synonyms" }, requireSelection: true },
+    { label: "Antonyms", command: "agent.action", args: { id: "antonyms" }, requireSelection: true }
+    // Future: Definition, Collocation
+  ];
+
+  const refItemsText: MenuItem[] = [
+    { label: "Open picker…", command: "", action: "ref_open_picker" },
+    { label: "Insert bibliography", command: "", action: "ref_insert_biblio" },
+    { label: "Update from editor", command: "", action: "ref_update_from_editor" },
+    { label: "Style = APA", command: "", action: "ref_style_apa" },
+    { label: "Style = Numeric", command: "", action: "ref_style_numeric" },
+    { label: "Style = Footnote", command: "", action: "ref_style_footnote" }
+  ];
+
+  const refItemsLink: MenuItem[] = [
+    { label: "Open picker…", command: "", action: "ref_open_picker" },
+    { label: "Update from editor", command: "", action: "ref_update_from_editor" },
+    { label: "Edit link", command: "EditLink" },
+    { label: "Remove link", command: "RemoveLink" }
+  ];
+
+  if (context === "link") {
+    return { agent: agentItems, dictionary: dictionaryItems, ref: refItemsLink };
   }
+  if (context === "table") {
+    // Context menu is intentionally simplified. Table/formatting actions are removed per product UX.
+    return { agent: [], dictionary: [], ref: [] };
+  }
+  return { agent: agentItems, dictionary: dictionaryItems, ref: refItemsText };
 };
 
 const getSelectionSnapshot = (editor: Editor) => {
@@ -169,6 +160,25 @@ const dispatchContextAction = (action: string, editor: Editor) => {
 
 export const attachContextMenu = (handle: EditorHandle, editorDom: HTMLElement, editor: Editor) => {
   let menuEl: HTMLDivElement | null = null;
+  let activeGroup: ContextGroup = "agent";
+
+  // Word-like right-click behavior: when right-clicking inside an existing range selection, do not
+  // collapse/move the selection before opening the context menu.
+  const onMouseDown = (event: MouseEvent) => {
+    if (event.button !== 2) return;
+    const target = event.target as HTMLElement | null;
+    if (!target || !editorDom.contains(target)) return;
+    const { from, to } = editor.state.selection;
+    if (from === to) return;
+    const pos = editor.view.posAtCoords({ left: event.clientX, top: event.clientY });
+    const docPos = typeof pos?.pos === "number" ? pos.pos : null;
+    if (docPos == null) return;
+    const min = Math.min(from, to);
+    const max = Math.max(from, to);
+    if (docPos >= min && docPos <= max) {
+      event.preventDefault();
+    }
+  };
 
   const closeMenu = () => {
     if (!menuEl) return;
@@ -183,47 +193,109 @@ export const attachContextMenu = (handle: EditorHandle, editorDom: HTMLElement, 
     if (!context) return;
     event.preventDefault();
     closeMenu();
-    const items = buildMenuItems(context);
-    if (items.length === 0) return;
+    const groups = buildMenuGroups(context);
+    const selection = getSelectionSnapshot(editor);
+    const hasSelection = Boolean(selection.text || selection.html);
+    const anyItems = Object.values(groups).some((list) => list.length > 0);
+    if (!anyItems) return;
     menuEl = document.createElement("div");
     menuEl.className = "leditor-context-menu";
     menuEl.style.position = "fixed";
     menuEl.style.top = `${event.clientY}px`;
     menuEl.style.left = `${event.clientX}px`;
 
-    for (const item of items) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.textContent = item.label;
-      button.addEventListener("click", () => {
-        if (item.action) {
-          const selection = getSelectionSnapshot(editor);
-          if (item.requireSelection && !selection.text && !selection.html) {
+    const header = document.createElement("div");
+    header.className = "leditor-context-menu__header";
+
+    const itemsEl = document.createElement("div");
+    itemsEl.className = "leditor-context-menu__items";
+
+    const tab = (group: ContextGroup, label: string) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "leditor-context-menu__tab";
+      b.textContent = label;
+      b.setAttribute("role", "tab");
+      b.setAttribute("aria-selected", group === activeGroup ? "true" : "false");
+      b.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        activeGroup = group;
+        renderItems();
+      });
+      return b;
+    };
+
+    const renderItems = () => {
+      header.querySelectorAll(".leditor-context-menu__tab").forEach((el) => {
+        const btn = el as HTMLButtonElement;
+        const g = (btn.dataset.group ?? "") as ContextGroup;
+        const isActive = g === activeGroup;
+        btn.classList.toggle("is-active", isActive);
+        btn.setAttribute("aria-selected", isActive ? "true" : "false");
+      });
+      itemsEl.replaceChildren();
+      const items = groups[activeGroup] ?? [];
+      for (const item of items) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "leditor-context-menu__item";
+        button.textContent = item.label;
+        const disabled = Boolean(item.requireSelection && !hasSelection);
+        button.disabled = disabled;
+        button.addEventListener("click", () => {
+          if (button.disabled) {
             closeMenu();
             return;
           }
-          dispatchContextAction(item.action, editor);
-          recordAction(context);
-          closeMenu();
-          return;
-        }
-        if (item.command) {
-          if (item.requireSelection) {
-            const selection = getSelectionSnapshot(editor);
-            if (!selection.text && !selection.html) {
-              closeMenu();
-              return;
-            }
+          if (item.action) {
+            dispatchContextAction(item.action, editor);
+            recordAction(context);
+            closeMenu();
+            return;
           }
-          handle.execCommand(item.command, item.args);
-          recordAction(context);
-        }
-        closeMenu();
-      });
-      menuEl.appendChild(button);
-    }
+          if (item.command) {
+            handle.execCommand(item.command, item.args);
+            recordAction(context);
+          }
+          closeMenu();
+        });
+        itemsEl.appendChild(button);
+      }
+    };
+
+    const tAgent = tab("agent", "Agent");
+    tAgent.dataset.group = "agent";
+    const tDict = tab("dictionary", "Dictionary");
+    tDict.dataset.group = "dictionary";
+    const tRef = tab("ref", "Ref");
+    tRef.dataset.group = "ref";
+    header.append(tAgent, tDict, tRef);
+
+    menuEl.append(header, itemsEl);
+    renderItems();
 
     document.body.appendChild(menuEl);
+
+    // Clamp to viewport.
+    try {
+      const rect = menuEl.getBoundingClientRect();
+      const maxLeft = Math.max(8, window.innerWidth - rect.width - 8);
+      const maxTop = Math.max(8, window.innerHeight - rect.height - 8);
+      const left = Math.max(8, Math.min(maxLeft, event.clientX));
+      const top = Math.max(8, Math.min(maxTop, event.clientY));
+      menuEl.style.left = `${Math.round(left)}px`;
+      menuEl.style.top = `${Math.round(top)}px`;
+    } catch {
+      // ignore
+    }
+
+    // Focus first tab.
+    try {
+      (menuEl.querySelector(".leditor-context-menu__tab") as HTMLButtonElement | null)?.focus();
+    } catch {
+      // ignore
+    }
   };
 
   const onKeyDown = (event: KeyboardEvent) => {
@@ -233,6 +305,7 @@ export const attachContextMenu = (handle: EditorHandle, editorDom: HTMLElement, 
   document.addEventListener("click", closeMenu);
   document.addEventListener("scroll", closeMenu, true);
   document.addEventListener("keydown", onKeyDown);
+  editorDom.addEventListener("mousedown", onMouseDown, true);
     editorDom.addEventListener("contextmenu", onContextMenu);
 
   return () => {
@@ -240,6 +313,7 @@ export const attachContextMenu = (handle: EditorHandle, editorDom: HTMLElement, 
     document.removeEventListener("click", closeMenu);
     document.removeEventListener("scroll", closeMenu, true);
     document.removeEventListener("keydown", onKeyDown);
+    editorDom.removeEventListener("mousedown", onMouseDown, true);
         editorDom.removeEventListener("contextmenu", onContextMenu);
   };
 };

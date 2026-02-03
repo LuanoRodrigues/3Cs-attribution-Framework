@@ -4,8 +4,16 @@ import path from "path";
 import readline from "readline";
 import OpenAI from "openai";
 import type { AiSettings } from "./shared/ai";
-import { LEDOC_EXTENSION, packLedocZip, unpackLedocZip } from "./ledoc";
+import {
+  LEDOC_BUNDLE_VERSION,
+  LEDOC_EXTENSION,
+  normalizeLedocToBundle,
+  readLedocBundle,
+  unpackLedocZip,
+  writeLedocBundle
+} from "./ledoc";
 import { convertCoderStateToLedoc } from "./coder_state_converter";
+import { createLedocVersion, deleteLedocVersion, listLedocVersions, pinLedocVersion, restoreLedocVersion } from "./ledoc_versions";
 
 const REFERENCES_LIBRARY_FILENAME = "references_library.json";
 
@@ -22,7 +30,10 @@ type LlmCatalogProvider = { id: LlmProviderId; label: string; envKey: string; mo
 const normalizeError = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 const randomToken = (): string => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 
+const DEBUG_LOGS = process.env.LEDITOR_DEBUG === "1";
+
 const dbg = (fn: string, msg: string, extra?: Record<string, unknown>) => {
+  if (!DEBUG_LOGS) return;
   const line = `[main.ts][${fn}][debug] ${msg}`;
   if (extra) {
     console.debug(line, extra);
@@ -75,83 +86,10 @@ const ensureLedocExtension = (filePath: string): string => {
   return `${trimmed}${ext}`;
 };
 
-const installAppMenu = (window: BrowserWindow): void => {
-  // Restore a native menu bar (File/Edit/...) so standard window controls and shortcuts work.
-  // Note: Some File actions are placeholders unless the renderer registers matching commands.
-  const template: MenuItemConstructorOptions[] = [
-    ...(process.platform === "darwin"
-      ? ([
-          {
-            label: app.name,
-            submenu: [
-              { role: "about" },
-              { type: "separator" },
-              { role: "services" },
-              { type: "separator" },
-              { role: "hide" },
-              { role: "hideOthers" },
-              { role: "unhide" },
-              { type: "separator" },
-              { role: "quit" }
-            ]
-          }
-        ] as MenuItemConstructorOptions[])
-      : []),
-    {
-      label: "File",
-      submenu: [
-        {
-          label: "New",
-          accelerator: "CmdOrCtrl+N",
-          click: () => {
-            void window.webContents.executeJavaScript("window.leditor?.execCommand?.('NewDocument')", true).catch(() => {});
-          }
-        },
-        {
-          label: "Open…",
-          accelerator: "CmdOrCtrl+O",
-          click: () => {
-            void window.webContents.executeJavaScript("window.leditor?.execCommand?.('OpenDocument')", true).catch(() => {});
-          }
-        },
-        { type: "separator" },
-        {
-          label: "Print…",
-          accelerator: "CmdOrCtrl+P",
-          click: () => window.webContents.print({ silent: false, printBackground: true })
-        },
-        { type: "separator" },
-        ...(process.platform === "darwin"
-          ? ([] as Electron.MenuItemConstructorOptions[])
-          : ([{ role: "quit" }] as Electron.MenuItemConstructorOptions[]))
-      ]
-    },
-    {
-      label: "Edit",
-      submenu: [
-        { role: "undo" },
-        { role: "redo" },
-        { type: "separator" },
-        { role: "cut" },
-        { role: "copy" },
-        { role: "paste" },
-        { role: "selectAll" }
-      ]
-    },
-    { role: "viewMenu" },
-    { role: "windowMenu" },
-    {
-      role: "help",
-      submenu: [
-        {
-          label: "Toggle Developer Tools",
-          accelerator: process.platform === "darwin" ? "Alt+Command+I" : "Ctrl+Shift+I",
-          click: () => window.webContents.toggleDevTools()
-        }
-      ]
-    }
-  ];
-  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+const installAppMenu = (): void => {
+  // We ship a Word-like in-app ribbon; disable the native Electron menu bar.
+  // On macOS this also removes the top application menu.
+  Menu.setApplicationMenu(null);
 };
 
 const summarizeIpcRequest = (channel: string, request: unknown): Record<string, unknown> => {
@@ -530,6 +468,14 @@ const buildAgentPrompt = (payload: AgentRequestPayload): { system: string; user:
     throw new Error('agent-request: scope must be "selection" | "document"');
   }
 
+  const audienceRaw = typeof (payload.settings as any)?.audience === "string" ? String((payload.settings as any).audience) : "";
+  const audience =
+    audienceRaw === "general" || audienceRaw === "knowledgeable" || audienceRaw === "expert" ? audienceRaw : "expert";
+  const formalityRaw = typeof (payload.settings as any)?.formality === "string" ? String((payload.settings as any).formality) : "";
+  const formality =
+    formalityRaw === "casual" || formalityRaw === "neutral" || formalityRaw === "formal" ? formalityRaw : "formal";
+  const styleLine = `Style: audience=${audience}; formality=${formality}.`;
+
   const hasTargets = Array.isArray(payload.targets) && payload.targets.length > 0;
   const operationSchemaLines =
     scope === "selection"
@@ -540,6 +486,7 @@ const buildAgentPrompt = (payload: AgentRequestPayload): { system: string; user:
 
   const system = [
     "You are an AI writing assistant embedded in an offline desktop academic editor.",
+    styleLine,
     "Return STRICT JSON only (no markdown, no backticks, no extra keys).",
     'Schema: {"assistantText": string, "operations": Array<Operation>}.',
     "Operation is one of:",
@@ -1212,8 +1159,10 @@ const resolveBibliographyDir = (): string => {
       return b.tableCount - a.tableCount;
     });
   const best = scored[0]?.dir;
-  console.info("[leditor][refs] bibliographyDir candidates", scored);
-  console.info("[leditor][refs] bibliographyDir picked", { best: best ?? "", fallback: candidates[0] ?? "" });
+  if (DEBUG_LOGS) {
+    console.info("[leditor][refs] bibliographyDir candidates", scored);
+    console.info("[leditor][refs] bibliographyDir picked", { best: best ?? "", fallback: candidates[0] ?? "" });
+  }
   cachedBibliographyDir = best ?? candidates[0] ?? path.join(app.getPath("userData"), "data-hub-cache");
   return cachedBibliographyDir;
 };
@@ -1500,7 +1449,7 @@ const createWindow = () => {
     height: 900,
     backgroundColor: "#f6f2e7",
     useContentSize: true,
-    autoHideMenuBar: false,
+    autoHideMenuBar: true,
     frame: true,
     webPreferences: {
       preload: path.join(app.getAppPath(), "dist", "electron", "preload.js"),
@@ -1511,7 +1460,12 @@ const createWindow = () => {
       zoomFactor: SCALE_FACTOR
     }
   });
-  installAppMenu(window);
+  installAppMenu();
+  try {
+    window.setMenuBarVisibility(false);
+  } catch {
+    // ignore (platform dependent)
+  }
   dbg("createWindow", "BrowserWindow created", {
     contextIsolation: true,
     nodeIntegration: false,
@@ -1525,6 +1479,7 @@ const createWindow = () => {
     console.error("[leditor][window] did-fail-load", { errorCode, errorDescription, validatedURL });
   });
   window.webContents.on("console-message", (_event, level, message, line, sourceId) => {
+    if (!DEBUG_LOGS) return;
     const levelName = level === 0 ? "debug" : level === 1 ? "info" : level === 2 ? "warn" : "error";
     const raw = typeof message === "string" ? message : String(message);
     const maxLen = 800;
@@ -1541,8 +1496,9 @@ const createWindow = () => {
     console.error("[leditor][window] crashed");
   });
 
+  const devtoolsEnabled = process.env.LEDITOR_DISABLE_DEVTOOLS !== "1";
 	  const wantsDevtools =
-	    process.env.LEDITOR_DISABLE_DEVTOOLS !== "1" &&
+	    devtoolsEnabled &&
 	    (process.argv.includes("--devtools") ||
 	      process.argv.includes("--dev-unbundled") ||
 	      process.env.LEDITOR_DEVTOOLS === "1");
@@ -1569,32 +1525,38 @@ const createWindow = () => {
           console.error("[leditor][devtools] openDevTools default failed", normalizeError(error));
         }
       }
-      console.info("[leditor][devtools] isDevToolsOpened", window.webContents.isDevToolsOpened());
+      if (DEBUG_LOGS) {
+        console.info("[leditor][devtools] isDevToolsOpened", window.webContents.isDevToolsOpened());
+      }
     };
     window.webContents.once("did-finish-load", () => {
       openTools();
       setTimeout(openTools, 750);
     });
-    window.webContents.on("before-input-event", (event, input) => {
-      const key = String((input as any).key || "").toLowerCase();
-      if ((input as any).control && (input as any).shift && key === "i") {
-        event.preventDefault();
-        try {
-          window.webContents.toggleDevTools();
-        } catch (error) {
-          console.error("[leditor][devtools] toggleDevTools failed", normalizeError(error));
-        }
-      }
-      if (key === "f12") {
-        event.preventDefault();
-        try {
-          window.webContents.toggleDevTools();
-        } catch (error) {
-          console.error("[leditor][devtools] toggleDevTools failed", normalizeError(error));
-        }
-      }
-    });
   }
+
+  window.webContents.on("before-input-event", (event, input) => {
+    if (!devtoolsEnabled) return;
+    const key = String((input as any).key || "").toLowerCase();
+    const isWindowsShortcut = (input as any).control && (input as any).shift && key === "i";
+    const isMacShortcut = (input as any).meta && (input as any).alt && key === "i";
+    if (isWindowsShortcut || isMacShortcut) {
+      event.preventDefault();
+      try {
+        window.webContents.toggleDevTools();
+      } catch (error) {
+        console.error("[leditor][devtools] toggleDevTools failed", normalizeError(error));
+      }
+    }
+    if (key === "f12") {
+      event.preventDefault();
+      try {
+        window.webContents.toggleDevTools();
+      } catch (error) {
+        console.error("[leditor][devtools] toggleDevTools failed", normalizeError(error));
+      }
+    }
+  });
 
   void window.loadFile(indexPath);
   return window;
@@ -1951,8 +1913,8 @@ app.whenReady().then(() => {
         const mode = String(payload?.mode ?? "").toLowerCase();
         const text = String(payload?.text ?? "").trim();
         const sentence = typeof payload?.sentence === "string" ? String(payload.sentence).trim() : "";
-        if (mode !== "synonyms" && mode !== "antonyms") {
-          return { success: false, error: 'lexicon: payload.mode must be "synonyms" | "antonyms"' };
+        if (mode !== "synonyms" && mode !== "antonyms" && mode !== "definition" && mode !== "define") {
+          return { success: false, error: 'lexicon: payload.mode must be "synonyms" | "antonyms" | "definition"' };
         }
         if (!text) return { success: false, error: "lexicon: payload.text required" };
         const fallback = getDefaultModelForProvider(provider);
@@ -1963,18 +1925,27 @@ app.whenReady().then(() => {
           return { success: false, error: `Missing ${envKey} in environment.` };
         }
 
-        const system = [
-          "You are a deterministic thesaurus helper inside an offline academic editor.",
-          "You will be given a selected word/phrase and the full sentence it appears in.",
-          "Return STRICT JSON only (no markdown): {\"assistantText\":string,\"suggestions\":string[]}.",
-          "suggestions MUST contain exactly 5 short replacement candidates (no numbering, no quotes).",
-          "Each suggestion must be a direct replacement for the selected text that still fits the sentence.",
-          "Do not repeat the input text."
-        ].join("\n");
+        const isDefinition = mode === "definition" || mode === "define";
+        const system = isDefinition
+          ? [
+              "You are a deterministic dictionary helper inside an offline academic editor.",
+              "You will be given a selected word/phrase and the full sentence it appears in.",
+              "Return STRICT JSON only (no markdown): {\"assistantText\":string,\"definition\":string}.",
+              "definition must be 1–2 sentences, written for the given sentence context.",
+              "Do NOT include bullets, numbering, or quotes unless they are part of the definition itself."
+            ].join("\n")
+          : [
+              "You are a deterministic thesaurus helper inside an offline academic editor.",
+              "You will be given a selected word/phrase and the full sentence it appears in.",
+              "Return STRICT JSON only (no markdown): {\"assistantText\":string,\"suggestions\":string[]}.",
+              "suggestions MUST contain exactly 5 short replacement candidates (no numbering, no quotes).",
+              "Each suggestion must be a direct replacement for the selected text that still fits the sentence.",
+              "Do not repeat the input text."
+            ].join("\n");
 
         const user = JSON.stringify(
           {
-            mode,
+            mode: isDefinition ? "definition" : mode,
             selection: text,
             sentence
           },
@@ -1990,15 +1961,21 @@ app.whenReady().then(() => {
         }
         const parsed = JSON.parse(raw.slice(start, end + 1));
         const suggestionsRaw = Array.isArray(parsed?.suggestions) ? parsed.suggestions : [];
-        const suggestions = suggestionsRaw
-          .map((s: any) => (typeof s === "string" ? s : ""))
-          .map((s: string) => s.replace(/\s+/g, " ").trim())
-          .filter((s: string) => s && s.toLowerCase() !== text.toLowerCase())
-          .slice(0, 5);
+        const suggestions = isDefinition
+          ? []
+          : suggestionsRaw
+              .map((s: any) => (typeof s === "string" ? s : ""))
+              .map((s: string) => s.replace(/\s+/g, " ").trim())
+              .filter((s: string) => s && s.toLowerCase() !== text.toLowerCase())
+              .slice(0, 5);
+        const definition = isDefinition
+          ? (typeof parsed?.definition === "string" ? parsed.definition.replace(/\s+/g, " ").trim() : "")
+          : "";
         return {
           success: true,
           assistantText: typeof parsed?.assistantText === "string" ? parsed.assistantText : "",
           suggestions,
+          ...(definition ? { definition } : {}),
           meta: { provider, model, ms: Date.now() - started }
         };
       } catch (error) {
@@ -2062,10 +2039,24 @@ app.whenReady().then(() => {
       }
       targetPath = normalizeFsPath(ensureLedocExtension(targetPath));
 
-      const buffer = await packLedocZip(payload);
-      await fs.promises.mkdir(path.dirname(targetPath), { recursive: true });
-      await fs.promises.writeFile(targetPath, buffer);
-      return { success: true, filePath: targetPath, bytes: buffer.length };
+      // LEDOC v2 (directory bundle) is the canonical persistence format.
+      const normalized = normalizeLedocToBundle(payload);
+      let bundleDir = targetPath;
+
+      // If a legacy `.ledoc` zip exists at the chosen path, don't clobber it; write a sibling bundle dir instead.
+      try {
+        const st = await fs.promises.stat(bundleDir);
+        if (st.isFile()) {
+          bundleDir = bundleDir.replace(new RegExp(`\\.${LEDOC_EXTENSION}$`, "i"), `-bundle.${LEDOC_EXTENSION}`);
+          normalized.warnings.push(`Target path was a file; wrote bundle to ${path.basename(bundleDir)} instead.`);
+        }
+      } catch {
+        // ignore
+      }
+
+      const written = await writeLedocBundle(bundleDir, normalized.payload);
+      const warnings = [...(normalized.warnings ?? []), ...(written.warnings ?? [])];
+      return { success: true, filePath: bundleDir, payload: normalized.payload, warnings };
     } catch (error) {
       return { success: false, error: normalizeError(error) };
     }
@@ -2081,7 +2072,7 @@ app.whenReady().then(() => {
       if (prompt || !sourcePath) {
         const result = await dialog.showOpenDialog({
           title: "Import LEDOC",
-          properties: ["openFile"],
+          properties: ["openFile", "openDirectory"],
           filters: [
             { name: "LEditor Document", extensions: [LEDOC_EXTENSION] },
             { name: "Coder state JSON", extensions: ["json"] }
@@ -2111,6 +2102,22 @@ app.whenReady().then(() => {
         }
       };
 
+      // Directory bundle import (v2).
+      try {
+        const st = await fs.promises.stat(sourcePath);
+        if (st.isDirectory()) {
+          const loaded = await readLedocBundle(sourcePath);
+          const title =
+            (loaded.payload as any)?.meta?.title ||
+            path.basename(sourcePath, path.extname(sourcePath)) ||
+            "Document";
+          setWindowTitle(title);
+          return { success: true, filePath: sourcePath, payload: loaded.payload, warnings: loaded.warnings };
+        }
+      } catch {
+        // ignore stat errors; fall through
+      }
+
       const ext = path.extname(sourcePath).toLowerCase();
       if (ext === ".json") {
         const converted = await convertCoderStateToLedoc(sourcePath);
@@ -2136,6 +2143,13 @@ app.whenReady().then(() => {
       const payload = unpacked.payload as any;
       const footnotes = payload?.footnotes?.footnotes;
       const doc = payload?.document;
+      if (!doc || typeof doc !== "object" || typeof (doc as any).type !== "string") {
+        return {
+          success: false,
+          error:
+            "Invalid LEDOC zip: document.json is missing a ProseMirror root `type`. If this file was created by a newer build, re-save to a `.ledoc` folder bundle."
+        };
+      }
       if (doc && Array.isArray(footnotes)) {
         const textById = new Map<string, string>();
         for (const entry of footnotes) {
@@ -2178,6 +2192,84 @@ app.whenReady().then(() => {
     }
   });
 
+  registerIpc("leditor:versions:list", async (_event, request: { ledocPath: string }): Promise<any> => {
+    try {
+      const bundleDir = normalizeFsPath(String(request?.ledocPath || ""));
+      if (!bundleDir) return { success: false, error: "versions:list ledocPath is required" };
+      return await listLedocVersions(bundleDir);
+    } catch (error) {
+      return { success: false, error: normalizeError(error) };
+    }
+  });
+
+  registerIpc(
+    "leditor:versions:create",
+    async (
+      _event,
+      request: { ledocPath: string; reason?: string; label?: string; note?: string; payload?: any; throttleMs?: number; force?: boolean }
+    ): Promise<any> => {
+      try {
+        const bundleDir = normalizeFsPath(String(request?.ledocPath || ""));
+        if (!bundleDir) return { success: false, error: "versions:create ledocPath is required" };
+        const reason = typeof request?.reason === "string" && request.reason.trim() ? request.reason.trim() : "manual";
+        return await createLedocVersion({
+          bundleDir,
+          reason,
+          label: typeof request?.label === "string" ? request.label : undefined,
+          note: typeof request?.note === "string" ? request.note : undefined,
+          payload: request?.payload,
+          throttleMs: typeof request?.throttleMs === "number" ? request.throttleMs : undefined,
+          force: Boolean(request?.force)
+        });
+      } catch (error) {
+        return { success: false, error: normalizeError(error) };
+      }
+    }
+  );
+
+  registerIpc(
+    "leditor:versions:restore",
+    async (_event, request: { ledocPath: string; versionId: string; mode?: "replace" | "copy" }): Promise<any> => {
+      try {
+        const bundleDir = normalizeFsPath(String(request?.ledocPath || ""));
+        const versionId = String(request?.versionId || "").trim();
+        const mode = request?.mode === "copy" ? "copy" : "replace";
+        if (!bundleDir) return { success: false, error: "versions:restore ledocPath is required" };
+        if (!versionId) return { success: false, error: "versions:restore versionId is required" };
+        return await restoreLedocVersion({ bundleDir, versionId, mode });
+      } catch (error) {
+        return { success: false, error: normalizeError(error) };
+      }
+    }
+  );
+
+  registerIpc("leditor:versions:delete", async (_event, request: { ledocPath: string; versionId: string }): Promise<any> => {
+    try {
+      const bundleDir = normalizeFsPath(String(request?.ledocPath || ""));
+      const versionId = String(request?.versionId || "").trim();
+      if (!bundleDir) return { success: false, error: "versions:delete ledocPath is required" };
+      if (!versionId) return { success: false, error: "versions:delete versionId is required" };
+      return await deleteLedocVersion({ bundleDir, versionId });
+    } catch (error) {
+      return { success: false, error: normalizeError(error) };
+    }
+  });
+
+  registerIpc(
+    "leditor:versions:pin",
+    async (_event, request: { ledocPath: string; versionId: string; pinned: boolean }): Promise<any> => {
+      try {
+        const bundleDir = normalizeFsPath(String(request?.ledocPath || ""));
+        const versionId = String(request?.versionId || "").trim();
+        if (!bundleDir) return { success: false, error: "versions:pin ledocPath is required" };
+        if (!versionId) return { success: false, error: "versions:pin versionId is required" };
+        return await pinLedocVersion({ bundleDir, versionId, pinned: Boolean(request?.pinned) });
+      } catch (error) {
+        return { success: false, error: normalizeError(error) };
+      }
+    }
+  );
+
   registerIpc("leditor:open-pdf-viewer", async (_event, request: { payload: Record<string, unknown> }) => {
     try {
       const payload = request?.payload || {};
@@ -2212,6 +2304,7 @@ app.whenReady().then(() => {
         width: 1100,
         height: 900,
         backgroundColor: "#f6f2e7",
+        autoHideMenuBar: true,
         webPreferences: {
           preload: path.join(app.getAppPath(), "dist", "electron", "preload.js"),
           contextIsolation: true,
@@ -2220,6 +2313,11 @@ app.whenReady().then(() => {
           additionalArguments: [`--pdf-viewer-token=${token}`]
         }
       });
+      try {
+        pdfViewerWindow.setMenuBarVisibility(false);
+      } catch {
+        // ignore
+      }
       pdfViewerWindow.on("closed", () => {
         pdfViewerWindow = null;
       });

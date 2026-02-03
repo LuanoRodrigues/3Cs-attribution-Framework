@@ -1,4 +1,5 @@
 import { getHostContract, type HostContract } from "../host_contract.ts";
+import { debugInfo, debugWarn } from "../../utils/debug.ts";
 
 export type ReferenceItem = {
   itemKey: string;
@@ -131,7 +132,7 @@ const loadFromHost = async (): Promise<ReferencesLibrary | null> => {
   for (const path of candidates) {
     const result = await host.readFile({ sourcePath: path });
     if (!result?.success || typeof result.data !== "string") {
-      console.info("[References] library read miss", {
+      debugInfo("[References] library read miss", {
         path,
         bibliographyDir: contract.paths?.bibliographyDir,
         error: (result as any)?.error
@@ -140,14 +141,14 @@ const loadFromHost = async (): Promise<ReferencesLibrary | null> => {
     }
     try {
       const library = parseLibrary(JSON.parse(result.data));
-      console.info("[References] library loaded", {
+      debugInfo("[References] library loaded", {
         path,
         count: libraryCount(library),
         updatedAt: library.updatedAt
       });
       return library;
     } catch (error) {
-      console.warn("[References] failed to parse library file", error);
+      debugWarn("[References] failed to parse library file", error);
       return null;
     }
   }

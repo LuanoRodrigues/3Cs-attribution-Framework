@@ -1,6 +1,5 @@
 import { LEditor, type EditorHandle } from "../api/leditor.ts";
 import { recordRibbonSelection, snapshotFromSelection } from "../utils/selection_snapshot.ts";
-import "../extensions/plugin_debug.ts";
 import "../extensions/plugin_search.ts";
 import "../extensions/plugin_preview.ts";
 import "../extensions/plugin_source_view.ts";
@@ -15,6 +14,7 @@ import { attachContextMenu } from "./context_menu.ts";
 import { initFullscreenController } from "./fullscreen.ts";
 import { featureFlags } from "../ui/feature_flags.ts";
 import { initGlobalShortcuts } from "./shortcuts.ts";
+import { debugInfo, debugWarn } from "../utils/debug.ts";
 import "@fontsource/source-sans-3/400.css";
 import "@fontsource/source-sans-3/600.css";
 import "@fontsource/source-serif-4/600.css";
@@ -28,6 +28,7 @@ import "./ai_settings.css";
 import "./paragraph_grid.css";
 import "./ai_draft_preview.css";
 import "./ai_draft_rail.css";
+import "./feedback_hub.css";
 import "./source_check_badges.css";
 import "./source_check_rail.css";
 import "./references.css";
@@ -310,7 +311,7 @@ const logKeys = (raw: string, path: string, mode: string) => {
         (obj as any).nodes.some(
           (n: any) => typeof n?.edited_html === "string" || typeof n?.editedHtml === "string"
         ));
-    console.info("[text][keys]", { mode, path, keys, nodesCount, hasEditedHtml: hasEdited });
+    debugInfo("[text][keys]", { mode, path, keys, nodesCount, hasEditedHtml: hasEdited });
   } catch (error) {
     console.debug("[CoderState] key log parse failed", { mode, path, error });
   }
@@ -320,12 +321,12 @@ const logNode0 = (mode: string, path: string, node: any) => {
   lastCoderStateNode = node ?? null;
   lastCoderStatePath = path ?? null;
   if (!node) {
-    console.info("[CoderState][node0]", { mode, path, status: "missing" });
+    debugInfo("[CoderState][node0]", { mode, path, status: "missing" });
     return;
   }
   const editedHtmlLength =
     typeof node?.editedHtml === "string" ? node.editedHtml.length : node?.edited_html?.length;
-  console.info("[CoderState][node0]", {
+  debugInfo("[CoderState][node0]", {
     mode,
     path,
     id: node.id,
@@ -361,7 +362,7 @@ const attemptHostRead = async (sourcePath: string): Promise<CoderStateLoadResult
     const resolvedPath = result.filePath ?? sourcePath;
     logKeys(result.data, resolvedPath, "host");
     logNode0("host", resolvedPath, parsed.firstNode);
-    console.info(`[text][loader]: ${resolvedPath}`, {
+    debugInfo(`[text][loader]: ${resolvedPath}`, {
       mode: "host",
       length: parsed.html.length,
       keys: parsed.keyCount,
@@ -400,7 +401,7 @@ const attemptFetchRead = async (sourcePath: string): Promise<CoderStateLoadResul
       return null;
     }
     logNode0("fetch", fileUrl, parsed.firstNode);
-    console.info(`[text][loader]: ${fileUrl}`, {
+    debugInfo(`[text][loader]: ${fileUrl}`, {
       mode: "fetch",
       length: parsed.html.length,
       keys: parsed.keyCount,
@@ -433,7 +434,12 @@ const attemptViteFsRead = async (sourcePath: string): Promise<CoderStateLoadResu
       return null;
     }
     logNode0("@fs", url, parsed.firstNode);
-    console.info(`[text][loader]: ${url}`, { mode: "@fs", length: parsed.html.length, keys: parsed.keyCount, nodes: parsed.nodeCount });
+    debugInfo(`[text][loader]: ${url}`, {
+      mode: "@fs",
+      length: parsed.html.length,
+      keys: parsed.keyCount,
+      nodes: parsed.nodeCount
+    });
     return { html: parsed.html, sourcePath };
   } catch (error) {
     console.debug("[CoderState] @fs fetch threw", { error, url });
@@ -472,19 +478,35 @@ const resolveCoderStatePath = (): string => {
 };
 
 async function maybeImportDefaultLedoc(): Promise<boolean> {
-  const resolveDefaultLedocPath = async (): Promise<string | null> => {
+  const resolveCandidateLedocPaths = async (): Promise<string[]> => {
+    const candidates: string[] = [];
+
+    const push = (value: unknown) => {
+      const v = typeof value === "string" ? value.trim() : "";
+      if (!v) return;
+      if (candidates.includes(v)) return;
+      candidates.push(v);
+    };
+
+    // Prefer the last used path (Word-like: reopen last document), before falling back to host defaults.
+    try {
+      push(window.localStorage.getItem(LAST_LEDOC_PATH_STORAGE_KEY));
+    } catch {
+      // ignore
+    }
+
     const adapter = getHostAdapter();
     if (adapter?.getDefaultLEDOCPath) {
       try {
-        const path = await adapter.getDefaultLEDOCPath();
-        if (path) return path;
+        push(await adapter.getDefaultLEDOCPath());
       } catch (error) {
-        console.warn("[ImportLEDOC][auto] default-path failed", { error });
+        debugWarn("[ImportLEDOC][auto] default-path failed", { error });
       }
     }
+
     try {
       const last = window.localStorage.getItem(LAST_LEDOC_PATH_STORAGE_KEY);
-      if (last && last.trim()) return last.trim();
+      if (last && last.trim()) push(last.trim());
     } catch {
       // ignore
     }
@@ -493,7 +515,7 @@ async function maybeImportDefaultLedoc(): Promise<boolean> {
       if (coderStatePath && coderStatePath.trim()) {
         const trimmed = coderStatePath.trim();
         const next = trimmed.replace(/\.json$/i, ".ledoc");
-        if (next && next !== trimmed) return next;
+        if (next && next !== trimmed) push(next);
       }
     } catch {
       // ignore
@@ -503,31 +525,35 @@ async function maybeImportDefaultLedoc(): Promise<boolean> {
       if (host?.fileExists) {
         const probe = await host.fileExists({ sourcePath: DEFAULT_LEDOC_FILENAME });
         const exists = Boolean((probe as any)?.exists);
-        if (exists) return DEFAULT_LEDOC_FILENAME;
+        if (exists) push(DEFAULT_LEDOC_FILENAME);
       }
     } catch {
       // ignore
     }
-    return null;
+    return candidates;
   };
   const importer = (window as typeof window & { __leditorAutoImportLEDOC?: (opts?: any) => Promise<any> })
     .__leditorAutoImportLEDOC;
   if (!importer) return false;
-  const sourcePath = await resolveDefaultLedocPath();
-  if (!sourcePath) return false;
-  try {
-    const result = await importer({ sourcePath, prompt: false });
-    return Boolean(result?.success);
-  } catch (error) {
-    console.warn("[ImportLEDOC][auto] failed", { error, sourcePath });
-    return false;
+  const candidatePaths = await resolveCandidateLedocPaths();
+  if (candidatePaths.length === 0) return false;
+  for (const sourcePath of candidatePaths) {
+    try {
+      const result = await importer({ sourcePath, prompt: false });
+      if (result?.success) {
+        return true;
+      }
+    } catch (error) {
+      debugWarn("[ImportLEDOC][auto] failed", { error, sourcePath });
+    }
   }
+  return false;
 }
 
 const loadCoderStateHtml = async (): Promise<CoderStateLoadResult | null> => {
   const bridgeResult = await attemptCoderBridgeRead();
   if (bridgeResult) {
-    console.info("[CoderState] loaded HTML via coderBridge", { path: bridgeResult.sourcePath });
+    debugInfo("[CoderState] loaded HTML via coderBridge", { path: bridgeResult.sourcePath });
     logNode0("coderBridge", bridgeResult.sourcePath, lastCoderStateNode);
     return bridgeResult;
   }
@@ -535,23 +561,23 @@ const loadCoderStateHtml = async (): Promise<CoderStateLoadResult | null> => {
   if (!sourcePath) {
     return null;
   }
-  console.info("[CoderState] trying path", { path: sourcePath });
+  debugInfo("[CoderState] trying path", { path: sourcePath });
   const hostResult = await attemptHostRead(sourcePath);
   if (hostResult) {
-    console.info("[CoderState] loaded HTML from coder state", { path: hostResult.sourcePath });
+    debugInfo("[CoderState] loaded HTML from coder state", { path: hostResult.sourcePath });
     return hostResult;
   }
   const fetchResult = await attemptFetchRead(sourcePath);
   if (fetchResult) {
-    console.info("[CoderState] loaded HTML via file fetch", { path: fetchResult.sourcePath });
+    debugInfo("[CoderState] loaded HTML via file fetch", { path: fetchResult.sourcePath });
     return fetchResult;
   }
   const viteFsResult = await attemptViteFsRead(sourcePath);
   if (viteFsResult) {
-    console.info("[CoderState] loaded HTML via @fs dev path", { path: viteFsResult.sourcePath });
+    debugInfo("[CoderState] loaded HTML via @fs dev path", { path: viteFsResult.sourcePath });
     return viteFsResult;
   }
-  console.info("[CoderState] skipped auto-loading coder state", { path: sourcePath });
+  debugInfo("[CoderState] skipped auto-loading coder state", { path: sourcePath });
   return null;
 };
 
@@ -618,7 +644,7 @@ const writeCoderStateHtml = async (html: string): Promise<void> => {
       await bridgeSaver({ scopeId, state });
       return;
     } catch (error) {
-      console.warn("[CoderState] autosave via coderBridge failed", { scopeId, error });
+      debugWarn("[CoderState] autosave via coderBridge failed", { scopeId, error });
       // fall through to file-based writer if available
     }
   }
@@ -629,7 +655,7 @@ const writeCoderStateHtml = async (html: string): Promise<void> => {
   if (!writer || !reader) {
     if (!coderStateWarnedMissingWriter) {
       coderStateWarnedMissingWriter = true;
-      console.warn("[CoderState] host read/write unavailable; autosave disabled", { targetPath });
+      debugWarn("[CoderState] host read/write unavailable; autosave disabled", { targetPath });
     }
     return;
   }
@@ -678,10 +704,10 @@ const writeCoderStateHtml = async (html: string): Promise<void> => {
     const next = JSON.stringify(blob, null, 2);
     const result = await writer({ targetPath, data: next });
     if (!result?.success) {
-      console.warn("[CoderState] autosave failed", { targetPath, error: result?.error });
+      debugWarn("[CoderState] autosave failed", { targetPath, error: result?.error });
     }
   } catch (error) {
-    console.warn("[CoderState] autosave threw", { targetPath, error });
+    debugWarn("[CoderState] autosave threw", { targetPath, error });
   }
 };
 
@@ -881,7 +907,23 @@ export const createLeditorApp = async (options: CreateLeditorAppOptions = {}): P
 export const mountEditor = async () => {
   perfMark("mountEditor:start");
   // Ensure caret debug flag exists so console access doesn't throw on first load.
-  (window as any).__leditorCaretDebug = (window as any).__leditorCaretDebug ?? false;
+  const debugGlobals = window as typeof window & {
+    __leditorDebug?: boolean;
+    __leditorCaretDebug?: boolean;
+    __leditorReferencesDebug?: boolean;
+    __leditorPaginationDebug?: boolean;
+  };
+  debugGlobals.__leditorDebug = debugGlobals.__leditorDebug ?? false;
+  debugGlobals.__leditorCaretDebug = debugGlobals.__leditorCaretDebug ?? false;
+  debugGlobals.__leditorReferencesDebug = debugGlobals.__leditorReferencesDebug ?? false;
+  debugGlobals.__leditorPaginationDebug = debugGlobals.__leditorPaginationDebug ?? false;
+  if (
+    featureFlags.startupSmokeChecksEnabled ||
+    featureFlags.paginationDebugEnabled ||
+    featureFlags.ribbonDebugEnabled
+  ) {
+    debugGlobals.__leditorDebug = true;
+  }
   const isDevtoolsDocument = () => {
     const protocol = String(window.location?.protocol || "").toLowerCase();
     const href = String(window.location?.href || "").toLowerCase();
@@ -950,7 +992,7 @@ export const mountEditor = async () => {
     let hostContractInfo: ReturnType<typeof getHostContract> | null = null;
     try {
       hostContractInfo = getHostContract();
-      console.info("[HostContract] loaded host payload", hostContractInfo);
+      debugInfo("[HostContract] loaded host payload", hostContractInfo);
       if (options.requireHostContract || hostContractInfo.paths.bibliographyDir) {
         await ensureReferencesLibrary();
       }
@@ -959,13 +1001,13 @@ export const mountEditor = async () => {
         console.error("[HostContract] initialization failed", error);
         throw error;
       }
-      console.warn("[HostContract] initialization skipped/failed (portable mode)", error);
+      debugWarn("[HostContract] initialization skipped/failed (portable mode)", error);
     }
   // Debug: silenced noisy ribbon logs.
   if (featureFlags.paginationDebugEnabled) {
     const win = window as typeof window & { __leditorPaginationDebug?: boolean };
     win.__leditorPaginationDebug = true;
-    console.info("[PaginationDebug] enabled by feature flag");
+    debugInfo("[PaginationDebug] enabled by feature flag");
   }
   if (featureFlags.ribbonDebugEnabled) {
     const win = window as typeof window & {
@@ -988,7 +1030,7 @@ export const mountEditor = async () => {
   }
   const env = ensureProcessEnv();
   if (env?.GTK_USE_PORTAL === "0") {
-    console.info("[Startup] GTK_USE_PORTAL=0 (portal disabled)");
+    debugInfo("[Startup] GTK_USE_PORTAL=0 (portal disabled)");
   }
   window.codexLog?.write(`[RUN] BATCH=3 PHASE=${CURRENT_PHASE}`);
   window.codexLog?.write("[RUN_SEP] --------------------------------");
@@ -1013,7 +1055,6 @@ export const mountEditor = async () => {
     elementId: options.elementId,
     toolbar: options.toolbar ?? defaultToolbar,
     plugins: options.plugins ?? [
-      "debug",
       "search",
       "preview",
       "export_ledoc",
@@ -1431,6 +1472,28 @@ export const mountEditor = async () => {
       // ignore
     }
   };
+  const caretProbe = {
+    log(reason = "manual") {
+      try {
+        const active = document.activeElement as HTMLElement | null;
+        const prose = tiptapEditor?.view?.dom as HTMLElement | null;
+        console.info("[CaretProbe] state", {
+          reason,
+          snapshot: lastKnownSelection,
+          lastKnownSelectionAt,
+          selectionFrom: tiptapEditor.state.selection.from,
+          selectionTo: tiptapEditor.state.selection.to,
+          selectionEmpty: tiptapEditor.state.selection.empty,
+          activeTag: active?.tagName ?? null,
+          activeClass: (active?.getAttribute("class") || "").slice(0, 120),
+          activeInProse: Boolean(prose && active && prose.contains(active))
+        });
+      } catch (error) {
+        console.warn("[CaretProbe] failed", { error });
+      }
+    }
+  };
+  (window as typeof window & { leditorCaretProbe?: any }).leditorCaretProbe = caretProbe;
   const scheduleLastKnownSelection = (reason: string) => {
     if (selectionUpdateQueued) return;
     selectionUpdateQueued = true;
@@ -1792,8 +1855,8 @@ export const mountEditor = async () => {
     );
   };
   const schemaMarks = Object.keys(tiptapEditor.schema.marks || {});
-  console.info("[LEditor][schema][marks]", schemaMarks);
-  console.info("[LEditor][schema][anchor]", { present: Boolean(tiptapEditor.schema.marks.anchor) });
+  debugInfo("[LEditor][schema][marks]", schemaMarks);
+  debugInfo("[LEditor][schema][anchor]", { present: Boolean(tiptapEditor.schema.marks.anchor) });
   attachCitationHandlers(document, tiptapEditor.view.dom, appRoot, signal);
   installDirectQuotePdfOpenHandler();
   try {
@@ -1803,14 +1866,14 @@ export const mountEditor = async () => {
     const parsed = ProseMirrorDOMParser.fromSchema(tiptapEditor.schema).parse(probeDoc.body);
     const parsedJson = parsed.toJSON();
     const parsedString = JSON.stringify(parsedJson);
-    console.info("[LEditor][schema][anchor-parse]", {
+    debugInfo("[LEditor][schema][anchor-parse]", {
       hasAnchorMark: parsedString.includes("\"anchor\""),
       text: parsed.textBetween(0, parsed.content.size, " ")
     });
   } catch (err) {
-    console.warn("[LEditor][schema][anchor-parse] failed", err);
+    debugWarn("[LEditor][schema][anchor-parse] failed", err);
   }
-  // Footnotes are edited in the A4 overlay (per-page footnote area). The legacy "footnote panel"
+  // Footnotes are edited in the per-page footnote area inside the page stack. The legacy "footnote panel"
   // (footnote_manager.ts) caused focus/selection fights and visible UI flicker, so we disable it.
   // Keep host handlers as thin shims so existing commands don't crash.
   const focusFirstFootnote = () => {
@@ -1885,10 +1948,12 @@ export const mountEditor = async () => {
     createdEditorEl
   });
 
-  editorHandle.execCommand("debugDumpJson");
+  if (featureFlags.startupSmokeChecksEnabled) {
+    editorHandle.execCommand("debugDumpJson");
+  }
   window.__logCoderNode = () => {
     if (lastCoderStateNode && lastCoderStatePath) {
-      console.info("[CoderState][node0][hotkey]", {
+      debugInfo("[CoderState][node0][hotkey]", {
         path: lastCoderStatePath,
         id: lastCoderStateNode.id,
         type: lastCoderStateNode.type,
@@ -1899,7 +1964,7 @@ export const mountEditor = async () => {
             : lastCoderStateNode?.edited_html?.length
       });
     } else {
-      console.info("[CoderState][node0][hotkey]", { status: "not loaded" });
+      debugInfo("[CoderState][node0][hotkey]", { status: "not loaded" });
     }
   };
 
@@ -1969,47 +2034,114 @@ export const mountEditor = async () => {
           void writeCoderStateHtml(html);
         }
       } catch (error) {
-        console.warn("[CoderState] autosave read failed", { error });
+        debugWarn("[CoderState] autosave read failed", { error });
       }
     }, 750);
   };
   editorHandle.on("change", scheduleAutosave);
 
-  // Autosave LEDOC to persist session annotations (e.g. source-checks thread) when the current
-  // document was loaded from a LEDOC file (default: coder_state.ledoc auto-import).
-  let ledocAutosaveTimer: number | null = null;
-  const scheduleLedocAutosave = (reason: string) => {
-    if (!getLedocAutosaveGuard().__leditorAllowLedocAutosave) return;
-    let targetPath = "";
-    try {
-      targetPath = (window.localStorage.getItem(LAST_LEDOC_PATH_STORAGE_KEY) || "").trim();
-    } catch {
-      targetPath = "";
-    }
-    if (!targetPath) return;
-    if (ledocAutosaveTimer !== null) window.clearTimeout(ledocAutosaveTimer);
-    ledocAutosaveTimer = window.setTimeout(() => {
-      ledocAutosaveTimer = null;
-      try {
-        const exporter = (window as typeof window & {
-          __leditorAutoExportLEDOC?: (options?: { targetPath?: string; suggestedPath?: string; prompt?: boolean }) => Promise<any>;
-        }).__leditorAutoExportLEDOC;
-        if (!exporter) return;
-        console.debug(
-          `[renderer.ts][ledocAutosave][debug] export requested: reason=${reason} pathLen=${targetPath.length}`
-        );
-        // IMPORTANT: export-ledoc prompts if `targetPath` is missing. For autosave we must set it.
-        void exporter({ targetPath, prompt: false }).catch((error) => {
-          console.warn("[renderer.ts][ledocAutosave][debug] export failed", { reason, error });
-        });
+	  // Autosave LEDOC to persist session annotations (e.g. source-checks thread) when the current
+	  // document was loaded from a LEDOC file (default: coder_state.ledoc auto-import).
+	  let ledocAutosaveTimer: number | null = null;
+	  let ledocAutosaveTargetPath: string | null = null;
+	  let ledocAutosaveTargetPathInFlight: Promise<string | null> | null = null;
+	  const resolveLedocAutosaveTargetPath = async (): Promise<string | null> => {
+	    if (ledocAutosaveTargetPath) return ledocAutosaveTargetPath;
+	    try {
+	      const fromStorage = (window.localStorage.getItem(LAST_LEDOC_PATH_STORAGE_KEY) || "").trim();
+	      if (fromStorage) {
+	        ledocAutosaveTargetPath = fromStorage;
+	        return fromStorage;
+	      }
+	    } catch {
+	      // ignore
+	    }
+	    if (ledocAutosaveTargetPathInFlight) return ledocAutosaveTargetPathInFlight;
+	    ledocAutosaveTargetPathInFlight = (async () => {
+	      try {
+	        const adapter = getHostAdapter();
+	        const next = (await adapter?.getDefaultLEDOCPath?.()) ?? null;
+	        if (next && String(next).trim()) {
+	          const trimmed = String(next).trim();
+	          ledocAutosaveTargetPath = trimmed;
+	          try {
+	            window.localStorage.setItem(LAST_LEDOC_PATH_STORAGE_KEY, trimmed);
+	          } catch {
+	            // ignore
+	          }
+	          return trimmed;
+	        }
       } catch (error) {
-        console.warn("[renderer.ts][ledocAutosave][debug] export threw", { reason, error });
+        debugWarn("[renderer.ts][ledocAutosave][debug] default-path failed", { error });
+      } finally {
+        ledocAutosaveTargetPathInFlight = null;
       }
+	      return null;
+	    })();
+	    return ledocAutosaveTargetPathInFlight;
+	  };
+	  const scheduleLedocAutosave = (reason: string) => {
+	    if (!getLedocAutosaveGuard().__leditorAllowLedocAutosave) return;
+	    if (ledocAutosaveTimer !== null) window.clearTimeout(ledocAutosaveTimer);
+	    ledocAutosaveTimer = window.setTimeout(() => {
+	      ledocAutosaveTimer = null;
+	      void resolveLedocAutosaveTargetPath()
+	        .then((targetPath) => {
+	          if (!targetPath) return;
+	          try {
+	            const exporter = (window as typeof window & {
+	              __leditorAutoExportLEDOC?: (options?: {
+	                targetPath?: string;
+	                suggestedPath?: string;
+	                prompt?: boolean;
+	              }) => Promise<any>;
+	            }).__leditorAutoExportLEDOC;
+	            if (!exporter) return;
+	            console.debug(
+	              `[renderer.ts][ledocAutosave][debug] export requested: reason=${reason} pathLen=${targetPath.length}`
+	            );
+	            // IMPORTANT: export-ledoc prompts if the path is missing. For autosave we must set it.
+	            void exporter({ targetPath, suggestedPath: targetPath, prompt: false })
+	              .then((result) => {
+	                const savedPath = typeof result?.filePath === "string" ? String(result.filePath).trim() : "";
+	                if (!savedPath) return;
+	                try {
+	                  const adapter = getHostAdapter();
+	                  adapter?.createLedocVersion?.({
+	                    ledocPath: savedPath,
+	                    reason: "autosave",
+	                    throttleMs: 2 * 60 * 1000,
+	                    force: false,
+	                    payload: result?.payload
+	                  });
+	                } catch {
+	                  // ignore
+	                }
+	                if (savedPath === targetPath) return;
+	                // Migration/support: host may redirect legacy v1 `.ledoc` file saves to a v2 bundle directory.
+	                ledocAutosaveTargetPath = savedPath;
+	                try {
+	                  window.localStorage.setItem(LAST_LEDOC_PATH_STORAGE_KEY, savedPath);
+	                } catch {
+	                  // ignore
+	                }
+	              })
+              .catch((error) => {
+                debugWarn("[renderer.ts][ledocAutosave][debug] export failed", { reason, error });
+              });
+          } catch (error) {
+            debugWarn("[renderer.ts][ledocAutosave][debug] export threw", { reason, error });
+          }
+        })
+        .catch((error) => {
+          debugWarn("[renderer.ts][ledocAutosave][debug] resolve target failed", { reason, error });
+        });
     }, 1200);
   };
-  const unsubSourceChecks = subscribeSourceChecksThread(() => scheduleLedocAutosave("sourceChecksThread"));
-  // keep subscription for app lifetime
-  void unsubSourceChecks;
+	  editorHandle.on("change", () => scheduleLedocAutosave("editorChange"));
+	  const unsubSourceChecks = subscribeSourceChecksThread(() => scheduleLedocAutosave("sourceChecksThread"));
+	  // keep subscription for app lifetime
+	  void unsubSourceChecks;
 
   if (CURRENT_PHASE === 21) {
     if (!hasInitialContent) {
@@ -2055,13 +2187,13 @@ export const mountEditor = async () => {
     const exportResult = await window.__leditorAutoExportDOCX(exportOptions);
     if (!exportResult?.success) {
       if (exportResult?.error === "ExportDOCX handler is unavailable") {
-        console.info("[Phase23] Skipping DOCX auto-export (host export handler unavailable)");
+        debugInfo("[Phase23] Skipping DOCX auto-export (host export handler unavailable)");
         return;
       }
       throw new Error(`Phase23 DOCX export failed: ${exportResult?.error ?? "unknown error"}`);
     }
   } else {
-    console.info("[Phase23] Skipping DOCX auto-export (host export handler unavailable)");
+    debugInfo("[Phase23] Skipping DOCX auto-export (host export handler unavailable)");
   }
     perfMark("mountEditor:end");
     perfMark("mountEditor:inflight:end");
@@ -2084,7 +2216,7 @@ export const mountEditor = async () => {
 
 const runPhase21Validation = (editorHandle: EditorHandle, editorInstance: TiptapEditor) => {
   if ((window as typeof window & { __coderStateLoaded?: boolean }).__coderStateLoaded) {
-    console.info("[CoderState] skipping Phase21 validation because coder state is loaded");
+    debugInfo("[CoderState] skipping Phase21 validation because coder state is loaded");
     return;
   }
   const getFirstTable = (editor: TiptapEditor) => {
@@ -2149,7 +2281,7 @@ const runPhase21Validation = (editorHandle: EditorHandle, editorInstance: Tiptap
 
 const runPhase22Validation = (editorHandle: EditorHandle, editorInstance: TiptapEditor) => {
   if ((window as typeof window & { __coderStateLoaded?: boolean }).__coderStateLoaded) {
-    console.info("[CoderState] skipping Phase22 validation because coder state is loaded");
+    debugInfo("[CoderState] skipping Phase22 validation because coder state is loaded");
     return;
   }
   const registry = getFootnoteRegistry();

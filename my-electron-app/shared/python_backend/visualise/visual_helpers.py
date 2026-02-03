@@ -1096,7 +1096,8 @@ def shape_scope(
             payload = {"title": title_text, "notes": notes}
 
             if isinstance(fig2, go.Figure):
-                payload["fig_json"] = fig2.to_plotly_json()
+                # Ensure json-safe payload (avoid numpy arrays becoming strings in the host serializer).
+                payload["fig_json"] = json.loads(json.dumps(fig2.to_plotly_json(), cls=PlotlyJSONEncoder))
                 payload["fig_html"] = fig2.to_html(
                     include_plotlyjs=False,
                     full_html=False,
@@ -3511,10 +3512,30 @@ def add_authorship_and_institution_section(
     _cb("Building institutional-actors slides")
 
     outlet_col = None
-    for c in ("publication_outlet", "publicationTitle", "publisher"):
-        if c in df.columns:
-            outlet_col = c
-            break
+    try:
+        want = {
+            "publication_outlet",
+            "publicationtitle",
+            "publication_title",
+            "publicationtitle",
+            "publication",
+            "journal",
+            "journal_title",
+            "publisher",
+        }
+        for c in df.columns:
+            if str(c).strip().lower() in want:
+                outlet_col = c
+                break
+        if outlet_col is None:
+            # tolerate camelCase variants and minor spelling differences
+            for c in df.columns:
+                lc = str(c).strip().lower()
+                if "publication" in lc and ("title" in lc or "outlet" in lc):
+                    outlet_col = c
+                    break
+    except Exception:
+        outlet_col = None
 
     if "publisher_type_value" in df.columns:
         type_col = "publisher_type_value"
@@ -3526,45 +3547,53 @@ def add_authorship_and_institution_section(
         parts = re.split(r"[;|,/]\s*", str(s or ""))
         return [" ".join(p.strip().split()) for p in parts if p and p.strip()]
 
-    tmp = df[[outlet_col, type_col]].copy().rename(
-        columns={outlet_col: "publication_outlet", type_col: "publisher_type_value"}
-    )
+    if outlet_col is None:
+        _cb("No publication outlet column found; skipping institutional-actors slides")
+        if type_col == "_tmp_pubtype_" and "_tmp_pubtype_" in df.columns:
+            try:
+                df.drop(columns=["_tmp_pubtype_"], inplace=True)
+            except Exception:
+                pass
+    else:
+        tmp = df[[outlet_col, type_col]].copy().rename(
+            columns={outlet_col: "publication_outlet", type_col: "publisher_type_value"}
+        )
 
-    tmp["publication_outlet"] = tmp["publication_outlet"].astype(str).map(lambda x: " ".join(x.split()))
-    tmp["publisher_type_value"] = tmp["publisher_type_value"].astype(str).replace(
-        {"": "Unknown/Other", "nan": "Unknown/Other"}
-    )
+        tmp["publication_outlet"] = tmp["publication_outlet"].astype(str).map(lambda x: " ".join(x.split()))
+        tmp["publisher_type_value"] = tmp["publisher_type_value"].astype(str).replace(
+            {"": "Unknown/Other", "nan": "Unknown/Other"}
+        )
 
-    tmp["publication_outlet_list"] = tmp["publication_outlet"].apply(_split_outlets)
-    tmp = tmp.explode("publication_outlet_list", ignore_index=True)
-    tmp["publication_outlet"] = tmp["publication_outlet_list"].fillna("").astype(str).str.strip()
-    tmp = tmp.drop(columns=["publication_outlet_list"])
-    tmp = tmp[tmp["publication_outlet"] != ""].copy()
+        tmp["publication_outlet_list"] = tmp["publication_outlet"].apply(_split_outlets)
+        tmp = tmp.explode("publication_outlet_list", ignore_index=True)
+        tmp["publication_outlet"] = tmp["publication_outlet_list"].fillna("").astype(str).str.strip()
+        tmp = tmp.drop(columns=["publication_outlet_list"])
+        tmp = tmp[tmp["publication_outlet"] != ""].copy()
 
-    counts = tmp.groupby("publication_outlet").size().rename("Count")
-    modal_type = (
-        tmp.groupby("publication_outlet")["publisher_type_value"]
-        .agg(lambda s: s.value_counts().index[0])
-        .rename("Publisher Type")
-    )
-    agg = (
-        pd.concat([counts, modal_type], axis=1)
-        .sort_values("Count", ascending=False)
-        .head(20)
-        .reset_index()
-    )
+        counts = tmp.groupby("publication_outlet").size().rename("Count")
+        modal_type = (
+            tmp.groupby("publication_outlet")["publisher_type_value"]
+            .agg(lambda s: s.value_counts().index[0])
+            .rename("Publisher Type")
+        )
+        agg = (
+            pd.concat([counts, modal_type], axis=1)
+            .sort_values("Count", ascending=False)
+            .head(20)
+            .reset_index()
+        )
 
-    table_df = agg.rename(columns={"publication_outlet": "Publication Outlet"})[
-        ["Publication Outlet", "Publisher Type", "Count"]
-    ]
-    _add_table_slide(
-        "(B) Major institutional actors (publication_outlet) — Table",
-        table_df,
-        notes=(
-            "Method: publication_outlet values split on ';', ',', '/', or '|' and whitespace-normalised. "
-            "Counts are outlet mentions (not unique records). Publisher Type is modal publisher_type_value per outlet."
-        ),
-    )
+        table_df = agg.rename(columns={"publication_outlet": "Publication Outlet"})[
+            ["Publication Outlet", "Publisher Type", "Count"]
+        ]
+        _add_table_slide(
+            "(B) Major institutional actors (publication_outlet) — Table",
+            table_df,
+            notes=(
+                "Method: publication_outlet values split on ';', ',', '/', or '|' and whitespace-normalised. "
+                "Counts are outlet mentions (not unique records). Publisher Type is modal publisher_type_value per outlet."
+            ),
+        )
 
     fig_inst = px.bar(
         agg.sort_values("Count", ascending=False),
@@ -3603,6 +3632,555 @@ def add_authorship_and_institution_section(
 
     if preview_slides is not None:
         return {"slides": preview_slides, "figs": preview_figs or [], "index": 0}
+
+    return None
+
+
+def add_citations_and_influence_section(
+    prs,
+    df: "pd.DataFrame",
+    collection_name: str = "Collection",
+    *,
+    slide_notes: bool = True,
+    export: bool = False,
+    return_payload: bool = False,
+    citations_col: str | None = None,
+    top_n: int = 10,
+    progress_callback=None,
+):
+    """
+    Produce a citations/influence mini-deck as interactive Plotly payload slides.
+
+    Slides returned (figure slides only; tables are attached as table_html for the Table tab):
+      1) Citation distribution (linear, capped at P99) + stats table
+      2) Citation distribution (log10(citations+1)) + stats table
+      3) Top-N most cited (horizontal bars) + top table
+    """
+    import json
+    import numpy as np
+    import pandas as pd
+    import plotly.express as px
+    import plotly.graph_objects as go
+    from plotly.utils import PlotlyJSONEncoder
+
+    def _cb(msg: str):
+        if progress_callback:
+            try:
+                progress_callback(f"CIT: {msg}")
+            except Exception:
+                pass
+
+    def _fig_json(fig_obj: "go.Figure") -> dict:
+        return json.loads(json.dumps(fig_obj.to_plotly_json(), cls=PlotlyJSONEncoder))
+
+    def _table_html(frame: "pd.DataFrame") -> str:
+        try:
+            if frame is None or frame.empty:
+                return "<div>No data available.</div>"
+            return frame.to_html(index=False, escape=True)
+        except Exception:
+            return "<div>Unable to render table.</div>"
+
+    preview_slides = [] if (export or return_payload) else None
+
+    if df is None or not isinstance(df, pd.DataFrame) or df.empty:
+        fig = go.Figure()
+        fig.add_annotation(text="No data.", showarrow=False, xref="paper", yref="paper")
+        if preview_slides is not None:
+            preview_slides.append(
+                {
+                    "title": f"{collection_name} — Citations (no data)",
+                    "fig_json": _fig_json(fig),
+                    "table_html": "<div>No data.</div>",
+                    "notes": "Source: add_citations_and_influence_section()." if slide_notes else "",
+                }
+            )
+            return {"slides": preview_slides, "index": 0}
+        return None
+
+    # ---- detect citations column
+    cand_cols = [citations_col] if citations_col else []
+    cand_cols += ["citations", "citation", "times_cited", "timescited", "n_cit", "num_cit", "cites"]
+    cit_col = None
+    for c in cand_cols:
+        if c and c in df.columns:
+            cit_col = c
+            break
+    if not cit_col:
+        # heuristic: first column containing "cit" that is mostly numeric
+        for c in df.columns:
+            if "cit" not in str(c).lower():
+                continue
+            s = pd.to_numeric(df[c], errors="coerce")
+            if s.notna().mean() >= 0.5:
+                cit_col = c
+                break
+
+    if not cit_col:
+        fig = go.Figure()
+        fig.add_annotation(text="No citations column found.", showarrow=False, xref="paper", yref="paper")
+        if preview_slides is not None:
+            preview_slides.append(
+                {
+                    "title": f"{collection_name} — Citations (missing column)",
+                    "fig_json": _fig_json(fig),
+                    "table_html": "<div>No citations column found.</div>",
+                    "notes": "Source: add_citations_and_influence_section()." if slide_notes else "",
+                }
+            )
+            return {"slides": preview_slides, "index": 0}
+        return None
+
+    s = pd.to_numeric(df[cit_col], errors="coerce")
+    n_total = int(len(s))
+    n_missing = int(s.isna().sum())
+    s = s.fillna(0.0)
+    s = s.clip(lower=0)
+
+    _cb(f"citations_col={cit_col} n={n_total}")
+
+    def _h_index(vals: "pd.Series") -> int:
+        try:
+            v = np.sort(vals.astype(float).to_numpy())[::-1]
+            h = 0
+            for i, x in enumerate(v, start=1):
+                if x >= i:
+                    h = i
+                else:
+                    break
+            return int(h)
+        except Exception:
+            return 0
+
+    stats = {
+        "N": n_total,
+        "Missing": n_missing,
+        "Zero": int((s <= 0).sum()),
+        "Sum": float(s.sum()),
+        "Mean": float(s.mean()),
+        "Median": float(s.median()),
+        "P75": float(s.quantile(0.75)),
+        "P90": float(s.quantile(0.90)),
+        "P95": float(s.quantile(0.95)),
+        "P99": float(s.quantile(0.99)),
+        "H-index": _h_index(s),
+    }
+    stats_df = pd.DataFrame([{"Metric": k, "Value": v} for k, v in stats.items()])
+    stats_html = _table_html(stats_df)
+
+    # ---- (1) linear distribution capped at P99
+    p99 = float(stats["P99"]) if np.isfinite(stats["P99"]) else float(s.max())
+    s_lin = s.clip(upper=max(1.0, p99))
+    fig_lin = px.histogram(
+        x=s_lin,
+        nbins=min(40, max(10, int(np.sqrt(max(1, n_total))))),
+        title=f"{collection_name} · Citation distribution (capped at P99={p99:.0f})",
+        labels={"x": f"{cit_col} (capped)", "y": "Count"},
+    )
+    fig_lin.update_layout(margin=dict(l=60, r=60, t=70, b=60))
+
+    # ---- (2) log distribution
+    fig_log = px.histogram(
+        x=np.log10(s + 1.0),
+        nbins=min(40, max(10, int(np.sqrt(max(1, n_total))))),
+        title=f"{collection_name} · Citation distribution (log10({cit_col}+1))",
+        labels={"x": f"log10({cit_col}+1)", "y": "Count"},
+    )
+    fig_log.update_layout(margin=dict(l=60, r=60, t=70, b=60))
+
+    # ---- (3) top cited
+    top = df.copy()
+    top["_cit"] = pd.to_numeric(top[cit_col], errors="coerce").fillna(0.0).clip(lower=0)
+    top = top.sort_values("_cit", ascending=False).head(int(top_n) if int(top_n) > 0 else 10)
+    if "title" in top.columns:
+        top["title"] = top["title"].astype(str)
+    top_tbl_cols = [c for c in ["title", "authors", "year", cit_col] if c in top.columns]
+    top_table = top[top_tbl_cols].copy() if top_tbl_cols else top[["_cit"]].copy()
+    if cit_col not in top_table.columns and "_cit" in top_table.columns:
+        top_table = top_table.rename(columns={"_cit": cit_col})
+    top_html = _table_html(top_table)
+
+    label = None
+    if "title" in top.columns:
+        label = top["title"].astype(str).str.slice(0, 80)
+    elif "key" in top.columns:
+        label = top["key"].astype(str)
+    else:
+        label = pd.Series([f"Item {i+1}" for i in range(len(top))])
+    fig_top = px.bar(
+        top.assign(_label=label).sort_values("_cit", ascending=True),
+        x="_cit",
+        y="_label",
+        orientation="h",
+        text="_cit",
+        title=f"{collection_name} · Top {len(top)} by citations",
+        labels={"_cit": cit_col, "_label": "Work"},
+    )
+    fig_top.update_traces(textposition="outside", marker_line_width=0.5, marker_line_color="rgba(0,0,0,0.15)")
+    xmax = float(np.nanmax(pd.to_numeric(top["_cit"], errors="coerce"))) if len(top) else 0.0
+    if np.isfinite(xmax) and xmax > 0:
+        fig_top.update_xaxes(range=[0, xmax * 1.18])
+    fig_top.update_layout(margin=dict(l=180, r=140, t=70, b=60))
+
+    if preview_slides is not None:
+        preview_slides.extend(
+            [
+                {
+                    "title": "Citations — Distribution (linear)",
+                    "fig_json": _fig_json(fig_lin),
+                    "table_html": stats_html,
+                    "notes": f"Column: {cit_col}. Missing treated as 0. P99 cap={p99:.0f}." if slide_notes else "",
+                },
+                {
+                    "title": "Citations — Distribution (log)",
+                    "fig_json": _fig_json(fig_log),
+                    "table_html": stats_html,
+                    "notes": f"Column: {cit_col}. Log uses log10(citations+1)." if slide_notes else "",
+                },
+                {
+                    "title": "Citations — Top cited",
+                    "fig_json": _fig_json(fig_top),
+                    "table_html": top_html,
+                    "notes": f"Top {len(top)} by {cit_col}." if slide_notes else "",
+                },
+            ]
+        )
+        return {"slides": preview_slides, "index": 0}
+
+    return None
+
+
+def add_geo_and_sector_section(
+    prs,
+    df: "pd.DataFrame",
+    collection_name: str = "Collection",
+    *,
+    slide_notes: bool = True,
+    export: bool = False,
+    return_payload: bool = False,
+    country_tag: str = "country_focus_value",
+    sector_tag: str = "sector_focus_value",
+    top_countries: int = 30,
+    progress_callback=None,
+):
+    """
+    Geographic & sectoral coverage (payload form).
+
+    Slides returned:
+      1) Country focus (Top countries) — Figure + table
+      2) Sector coverage (%) — Figure + table
+      3) Government missions (optional) — Figure + table (if a mission column exists)
+    """
+    import json
+    import re
+    import numpy as np
+    import pandas as pd
+    import plotly.express as px
+    import plotly.graph_objects as go
+    from plotly.utils import PlotlyJSONEncoder
+
+    def _cb(msg: str):
+        if progress_callback:
+            try:
+                progress_callback(f"GEO: {msg}")
+            except Exception:
+                pass
+
+    def _fig_json(fig_obj: "go.Figure") -> dict:
+        return json.loads(json.dumps(fig_obj.to_plotly_json(), cls=PlotlyJSONEncoder))
+
+    def _explode_tags(series: "pd.Series") -> "pd.Series":
+        s = series.fillna("").astype(str)
+        s = s.str.replace(r"\s*[,;|/]\s*", "§", regex=True)
+        out = s.str.split("§").explode()
+        out = out.astype(str).str.strip()
+        return out[out.astype(bool)]
+
+    def _table_html(frame: "pd.DataFrame") -> str:
+        try:
+            if frame is None or frame.empty:
+                return "<div>No data available.</div>"
+            return frame.to_html(index=False, escape=True)
+        except Exception:
+            return "<div>Unable to render table.</div>"
+
+    preview_slides = [] if (export or return_payload) else None
+    if df is None or not hasattr(df, "columns") or getattr(df, "empty", True):
+        fig = go.Figure()
+        fig.add_annotation(text="No data.", showarrow=False, xref="paper", yref="paper")
+        if preview_slides is not None:
+            preview_slides.append({"title": "Geo & sector (no data)", "fig_json": _fig_json(fig), "table_html": "<div>No data.</div>", "notes": ""})
+            return {"slides": preview_slides, "index": 0}
+        return None
+
+    # ---- Countries
+    if country_tag in df.columns:
+        cexp = _explode_tags(df[country_tag])
+        ccounts = cexp.value_counts().rename_axis("Country").reset_index(name="Count")
+        ccounts = ccounts.sort_values("Count", ascending=False).reset_index(drop=True)
+        topN = int(top_countries) if int(top_countries) > 0 else 30
+        ctbl = ccounts.head(topN).copy()
+        fig_c = px.bar(
+            ctbl.sort_values("Count", ascending=True),
+            x="Count",
+            y="Country",
+            orientation="h",
+            text="Count",
+            title=f"{collection_name} · Country focus (Top {len(ctbl)})",
+        )
+        fig_c.update_traces(textposition="outside", marker_line_width=0.5, marker_line_color="rgba(0,0,0,0.15)")
+        xmax = float(np.nanmax(pd.to_numeric(ctbl["Count"], errors="coerce"))) if len(ctbl) else 0.0
+        if np.isfinite(xmax) and xmax > 0:
+            fig_c.update_xaxes(range=[0, xmax * 1.18])
+        fig_c.update_layout(margin=dict(l=160, r=140, t=70, b=60))
+
+        if preview_slides is not None:
+            preview_slides.append(
+                {
+                    "title": "Geo — Country focus",
+                    "fig_json": _fig_json(fig_c),
+                    "table_html": _table_html(ctbl),
+                    "notes": f"Tag column: {country_tag}." if slide_notes else "",
+                }
+            )
+
+    # ---- Sectors (%)
+    if sector_tag in df.columns:
+        sexp = _explode_tags(df[sector_tag])
+        if not sexp.empty:
+            sc = (
+                sexp.value_counts(normalize=True)
+                .mul(100.0)
+                .round(1)
+                .rename_axis("Sector")
+                .reset_index(name="%")
+            )
+            sc["Sector"] = sc["Sector"].astype(str).map(lambda x: re.sub(r"\s+", " ", x).strip())
+            sc_plot = sc.sort_values("%", ascending=True)
+            sc_plot["Label"] = sc_plot["%"].map(lambda v: f"{float(v):.1f}%")
+            fig_s = px.bar(
+                sc_plot,
+                x="%",
+                y="Sector",
+                orientation="h",
+                text="Label",
+                title=f"{collection_name} · Sector coverage (%)",
+            )
+            fig_s.update_traces(textposition="outside", marker_line_width=0.5, marker_line_color="rgba(0,0,0,0.15)")
+            xmax = float(np.nanmax(pd.to_numeric(sc_plot["%"], errors="coerce"))) if len(sc_plot) else 0.0
+            if np.isfinite(xmax) and xmax > 0:
+                fig_s.update_xaxes(range=[0, xmax * 1.22])
+            fig_s.update_layout(margin=dict(l=160, r=170, t=70, b=60))
+
+            if preview_slides is not None:
+                preview_slides.append(
+                    {
+                        "title": "Sector — Coverage (%)",
+                        "fig_json": _fig_json(fig_s),
+                        "table_html": _table_html(sc),
+                        "notes": f"Tag column: {sector_tag}." if slide_notes else "",
+                    }
+                )
+
+    # ---- Missions (optional)
+    mission_col = next((c for c in ("mission", "mission_title", "government_mission", "mission_name") if c in df.columns), None)
+    if mission_col:
+        mexp = _explode_tags(df[mission_col])
+        if not mexp.empty and preview_slides is not None:
+            miss = mexp.value_counts().rename_axis("Mission").reset_index(name="Count")
+            miss_plot = miss.head(25).sort_values("Count", ascending=True)
+            fig_m = px.bar(
+                miss_plot,
+                x="Count",
+                y="Mission",
+                orientation="h",
+                text="Count",
+                title=f"{collection_name} · Government missions (Top {len(miss_plot)})",
+            )
+            fig_m.update_traces(textposition="outside", marker_line_width=0.5, marker_line_color="rgba(0,0,0,0.15)")
+            xmax = float(np.nanmax(pd.to_numeric(miss_plot["Count"], errors="coerce"))) if len(miss_plot) else 0.0
+            if np.isfinite(xmax) and xmax > 0:
+                fig_m.update_xaxes(range=[0, xmax * 1.18])
+            fig_m.update_layout(margin=dict(l=200, r=140, t=70, b=60))
+
+            preview_slides.append(
+                {
+                    "title": "Missions — Coverage",
+                    "fig_json": _fig_json(fig_m),
+                    "table_html": _table_html(miss),
+                    "notes": f"Column: {mission_col}." if slide_notes else "",
+                }
+            )
+
+    if preview_slides is not None:
+        if not preview_slides:
+            fig = go.Figure()
+            fig.add_annotation(text="No geo/sector content produced.", showarrow=False, xref="paper", yref="paper")
+            preview_slides.append({"title": "Geo & sector", "fig_json": _fig_json(fig), "table_html": "<div>No data available.</div>", "notes": ""})
+        return {"slides": preview_slides, "index": 0}
+    return None
+
+
+def add_thematic_and_method_section(
+    prs,
+    df: "pd.DataFrame",
+    collection_name: str = "Collection",
+    *,
+    slide_notes: bool = True,
+    export: bool = False,
+    return_payload: bool = False,
+    cross_tabs: list[list[str]] | None = None,
+    phase_tag: str = "phase_focus_value",
+    year_col: str = "publication_year",
+    topn_cols: int = 14,
+    progress_callback=None,
+):
+    """
+    Thematic & methodological mapping (payload form).
+
+    Default cross-tabs follow create_power_point.py:
+      - focus_type_value × publisher_type
+      - empirical_theoretical × sector_focus_value
+      - mission phase proportions and time trend
+    """
+    import json
+    import numpy as np
+    import pandas as pd
+    import plotly.express as px
+    import plotly.graph_objects as go
+    from plotly.utils import PlotlyJSONEncoder
+
+    def _cb(msg: str):
+        if progress_callback:
+            try:
+                progress_callback(f"THEM: {msg}")
+            except Exception:
+                pass
+
+    def _fig_json(fig_obj: "go.Figure") -> dict:
+        return json.loads(json.dumps(fig_obj.to_plotly_json(), cls=PlotlyJSONEncoder))
+
+    def _explode(series: "pd.Series") -> "pd.Series":
+        s = series.fillna("").astype(str)
+        s = s.str.replace(r"\s*[,;|/]\s*", "§", regex=True)
+        out = s.str.split("§").explode()
+        out = out.astype(str).str.strip()
+        return out[out.astype(bool)]
+
+    def _table_html(frame: "pd.DataFrame") -> str:
+        try:
+            if frame is None or frame.empty:
+                return "<div>No data available.</div>"
+            return frame.to_html(index=False, escape=True)
+        except Exception:
+            return "<div>Unable to render table.</div>"
+
+    def _cap_columns(ct: "pd.DataFrame", n: int) -> "pd.DataFrame":
+        if ct is None or ct.empty or ct.shape[1] <= n:
+            return ct
+        totals = ct.sum(axis=0).sort_values(ascending=False)
+        keep = totals.head(n).index.tolist()
+        other = ct.drop(columns=keep).sum(axis=1)
+        out = ct[keep].copy()
+        out["Other"] = other
+        return out
+
+    preview_slides = [] if (export or return_payload) else None
+    if df is None or not isinstance(df, pd.DataFrame) or df.empty:
+        fig = go.Figure()
+        fig.add_annotation(text="No data.", showarrow=False, xref="paper", yref="paper")
+        if preview_slides is not None:
+            preview_slides.append({"title": "Thematic & method (no data)", "fig_json": _fig_json(fig), "table_html": "<div>No data.</div>", "notes": ""})
+            return {"slides": preview_slides, "index": 0}
+        return None
+
+    cross_tabs = cross_tabs or [["focus_type_value", "publisher_type"], ["empirical_theoretical", "sector_focus_value"]]
+
+    # ---- Cross-tabs
+    for (row_col, col_col) in cross_tabs:
+        if row_col not in df.columns or col_col not in df.columns:
+            continue
+        rows = _explode(df[row_col])
+        cols = _explode(df[col_col])
+        # align by index by building temp DF
+        tmp = pd.DataFrame({"__i": np.arange(len(df))})
+        tmp[row_col] = df[row_col]
+        tmp[col_col] = df[col_col]
+        tmp[row_col] = tmp[row_col].fillna("").astype(str).str.replace(r"\s*[,;|/]\s*", "§", regex=True).str.split("§")
+        tmp[col_col] = tmp[col_col].fillna("").astype(str).str.replace(r"\s*[,;|/]\s*", "§", regex=True).str.split("§")
+        tmp = tmp.explode(row_col).explode(col_col)
+        tmp[row_col] = tmp[row_col].astype(str).str.strip()
+        tmp[col_col] = tmp[col_col].astype(str).str.strip()
+        tmp = tmp[(tmp[row_col].astype(bool)) & (tmp[col_col].astype(bool))]
+        if tmp.empty:
+            continue
+
+        ct = pd.crosstab(tmp[row_col], tmp[col_col])
+        ct = _cap_columns(ct, int(topn_cols) if int(topn_cols) > 0 else 14)
+        table = ct.reset_index()
+        long = ct.stack().reset_index(name="Count")
+        long.columns = [row_col, col_col, "Count"]
+        fig = px.bar(long, x=row_col, y="Count", color=col_col, barmode="group", title=f"{collection_name} · {row_col} × {col_col}")
+        fig.update_layout(margin=dict(l=60, r=60, t=70, b=140))
+        fig.update_xaxes(tickangle=-25, automargin=True)
+
+        if preview_slides is not None:
+            preview_slides.append(
+                {
+                    "title": f"Thematic — {row_col} × {col_col}",
+                    "fig_json": _fig_json(fig),
+                    "table_html": _table_html(table),
+                    "notes": f"Cross-tab of {row_col} vs {col_col}." if slide_notes else "",
+                }
+            )
+
+    # ---- Phase proportions
+    if phase_tag in df.columns:
+        phase = _explode(df[phase_tag])
+        if not phase.empty and preview_slides is not None:
+            ph = phase.value_counts().rename_axis("Phase").reset_index(name="Count")
+            figp = px.bar(ph, x="Phase", y="Count", text="Count", title=f"{collection_name} · Mission phase (overall)")
+            figp.update_traces(textposition="outside", marker_line_width=0.5, marker_line_color="rgba(0,0,0,0.15)")
+            figp.update_layout(margin=dict(l=60, r=160, t=70, b=140))
+            figp.update_xaxes(tickangle=-25, automargin=True)
+            preview_slides.append(
+                {
+                    "title": "Phase — Overall",
+                    "fig_json": _fig_json(figp),
+                    "table_html": _table_html(ph),
+                    "notes": f"Tag column: {phase_tag}." if slide_notes else "",
+                }
+            )
+
+    # ---- Phase trend by year
+    if year_col in df.columns and phase_tag in df.columns and preview_slides is not None:
+        years = pd.to_numeric(df[year_col], errors="coerce")
+        tmp = pd.DataFrame({"Year": years, "Phase": df[phase_tag]})
+        tmp = tmp.dropna(subset=["Year"])
+        tmp["Year"] = tmp["Year"].astype(int)
+        tmp["Phase"] = tmp["Phase"].fillna("").astype(str).str.replace(r"\s*[,;|/]\s*", "§", regex=True).str.split("§")
+        tmp = tmp.explode("Phase")
+        tmp["Phase"] = tmp["Phase"].astype(str).str.strip()
+        tmp = tmp[tmp["Phase"].astype(bool)]
+        if not tmp.empty:
+            grp = tmp.groupby(["Year", "Phase"]).size().rename("Count").reset_index()
+            figt = px.line(grp.sort_values(["Year", "Phase"]), x="Year", y="Count", color="Phase", markers=True, title=f"{collection_name} · Mission phase trend")
+            figt.update_layout(margin=dict(l=60, r=60, t=70, b=60))
+            preview_slides.append(
+                {
+                    "title": "Phase — Trend",
+                    "fig_json": _fig_json(figt),
+                    "table_html": _table_html(grp.head(80)),
+                    "notes": f"Year: {year_col}; Phase: {phase_tag}." if slide_notes else "",
+                }
+            )
+
+    if preview_slides is not None:
+        if not preview_slides:
+            fig = go.Figure()
+            fig.add_annotation(text="No thematic/method content produced.", showarrow=False, xref="paper", yref="paper")
+            preview_slides.append({"title": "Thematic & method", "fig_json": _fig_json(fig), "table_html": "<div>No data available.</div>", "notes": ""})
+        return {"slides": preview_slides, "index": 0}
 
     return None
 
@@ -3713,7 +4291,7 @@ def analyze_word_cloud(df: pd.DataFrame, params: dict, progress_callback=None,
         if progress_callback: progress_callback(f"WordCloud: {msg}")
         logging.info(f"WordCloud: {msg}")
 
-    data_source_param = params.get("data_source", "full_text")
+    data_source_param = params.get("data_source", "controlled_vocabulary_terms")
     max_words = params.get("max_words", 100)
     colormap = params.get("wordcloud_colormap", "viridis")
     contour_width = params.get("contour_width", 0)
@@ -4049,7 +4627,8 @@ def analyze_citations_overview_plotly(
             {
                 "title": f"Citations Overview — {plot_type}",
                 "table_html": results_df.to_html(index=False, escape=True),
-                "fig_json": fig.to_plotly_json(),
+                # Ensure json-safe payload (avoid numpy arrays becoming strings in the host serializer).
+                "fig_json": json.loads(json.dumps(fig.to_plotly_json(), cls=PlotlyJSONEncoder)),
                 "notes": "",
             }
         )
@@ -7017,6 +7596,10 @@ def analyze_wordanalysis_dispatcher(
             return "treemap"
         if pt in {"word_cloud", "cloud", "wordcloud"}:
             return "word_cloud"
+        if pt in {"heatmap", "frequency_heatmap", "keyword_heatmap"}:
+            return "heatmap"
+        if pt in {"cooccurrence_network", "co-occurrence network", "cooccurrence", "network_graph", "network"}:
+            return "cooccurrence_network"
         if pt in {"words_over_time", "time_series", "trend"}:
             return "words_over_time"
         return "freq_words"
@@ -7137,6 +7720,46 @@ def analyze_wordanalysis_dispatcher(
         notes = ""
         if slide_notes:
             notes = f"Source: analyze_words_over_time(data_source='{data_source}')."
+        if preview_slides is not None:
+            _append_slide(title, table_df, fig=fig_obj, img=None, notes=notes)
+            return _payload_return(preview_slides, payload, 0)
+        return table_df, fig_obj
+
+    if analysis == "heatmap":
+        table_df, fig_obj = analyze_keyword_heatmap(
+            df,
+            params,
+            progress_callback=progress_callback,
+            zotero_client=zotero_client_for_pdf,
+            collection_name_for_cache=collection_name_for_cache,
+        )
+        if fig_obj is None:
+            fig_obj = _as_message_fig("No heatmap figure returned.")
+        title = "Word Analysis — Frequency Heatmap"
+        notes = ""
+        if slide_notes:
+            notes = f"Source: analyze_keyword_heatmap(data_source='{data_source}')."
+        if preview_slides is not None:
+            _append_slide(title, table_df, fig=fig_obj, img=None, notes=notes)
+            return _payload_return(preview_slides, payload, 0)
+        return table_df, fig_obj
+
+    if analysis == "cooccurrence_network":
+        p2 = dict(params or {})
+        p2["plot_type"] = "network_graph"
+        table_df, fig_obj = analyze_keyword_cooccurrence_network(
+            df,
+            p2,
+            progress_callback=progress_callback,
+            zotero_client_for_pdf=zotero_client_for_pdf,
+            collection_name_for_cache=collection_name_for_cache,
+        )
+        if fig_obj is None:
+            fig_obj = _as_message_fig("No network figure returned.")
+        title = "Word Analysis — Co-occurrence Network"
+        notes = ""
+        if slide_notes:
+            notes = f"Source: analyze_keyword_cooccurrence_network(data_source='{data_source}')."
         if preview_slides is not None:
             _append_slide(title, table_df, fig=fig_obj, img=None, notes=notes)
             return _payload_return(preview_slides, payload, 0)
@@ -7476,7 +8099,7 @@ def authors_overview(
         fig_title = f"{collection_name} · Author Collaboration — {pt} — Figure"
 
         _add_table_slide(table_title, tab_df, notes=f"Source: analyze_author_collaboration(plot_type='{pt}').")
-        _add_figure_slide(fig_title, fig, notes=f"Figure: analyze_author_collaboration(plot_type='{pt}').")
+        _add_figure_slide(fig_title, fig, notes=f"Source: analyze_author_collaboration(plot_type='{pt}').")
 
     _cb("Building trend slides")
     for pt in trends_plot_types:

@@ -1,5 +1,6 @@
 import { Extension } from "@tiptap/core";
 import type { Transaction } from "prosemirror-state";
+import { debugInfo } from "../utils/debug.ts";
 
 type Orientation = "portrait" | "landscape";
 type ColumnsMode = "one" | "two" | "three" | "left" | "right";
@@ -104,7 +105,7 @@ const PageLayoutExtension = Extension.create({
             marginsBottomCm: parseToCm(margins.bottom, defaultLayout.marginsBottomCm),
             marginsLeftCm: parseToCm(margins.left, defaultLayout.marginsLeftCm)
           };
-          console.info("[A4Debug] setPageMargins cmd", payload);
+          debugInfo("[A4Debug] setPageMargins cmd", payload);
           return payload;
         }),
       setPageSize:

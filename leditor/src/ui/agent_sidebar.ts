@@ -1,6 +1,12 @@
 import type { EditorHandle } from "../api/leditor.ts";
 import { getAiSettings, setAiSettings, subscribeAiSettings } from "./ai_settings.ts";
-import { setSourceChecksVisible, upsertSourceChecksFromRun } from "./source_checks_thread.ts";
+import {
+  getSourceChecksThread,
+  isSourceChecksVisible,
+  setSourceChecksVisible,
+  subscribeSourceChecksThread,
+  upsertSourceChecksFromRun
+} from "./source_checks_thread.ts";
 import { Fragment } from "prosemirror-model";
 import agentActionPrompts from "./agent_action_prompts.json";
 
@@ -33,6 +39,7 @@ export type AgentActionId =
   | "shorten"
   | "substantiate"
   | "proofread"
+  | "define"
   | "synonyms"
   | "antonyms"
   | "check_sources"
@@ -60,6 +67,9 @@ type AgentSidebarOptions = {
 const APP_OPEN_CLASS = "leditor-app--agent-open";
 const ROOT_ID = "leditor-agent-sidebar";
 const DRAFT_RAIL_ID = "leditor-ai-draft-rail";
+const FEEDBACK_HUB_ID = "leditor-feedback-hub";
+const FEEDBACK_HUB_STORAGE_KEY = "leditor.feedbackHub.mode";
+type FeedbackHubMode = "edits" | "sources" | "all";
 
 const clampHistory = (messages: AgentMessage[], maxMessages: number): AgentMessage[] => {
   if (messages.length <= maxMessages) return messages;
@@ -106,6 +116,10 @@ export const createAgentSidebar = (
 
   const header = document.createElement("div");
   header.className = "leditor-agent-sidebar__header";
+  const headerTop = document.createElement("div");
+  headerTop.className = "leditor-agent-sidebar__headerTop";
+  const headerBottom = document.createElement("div");
+  headerBottom.className = "leditor-agent-sidebar__headerBottom";
   const title = document.createElement("div");
   title.className = "leditor-agent-sidebar__title";
   title.textContent = "Agent";
@@ -138,17 +152,67 @@ export const createAgentSidebar = (
   modelPickerBtn.append(modelPickerLabel, modelPickerChevron);
   modelPickerWrap.appendChild(modelPickerBtn);
 
-  const apiBadge = document.createElement("div");
-  apiBadge.className = "leditor-agent-sidebar__apiBadge";
-  apiBadge.textContent = "API: not used yet";
-
   const closeBtn = document.createElement("button");
   closeBtn.type = "button";
   closeBtn.className = "leditor-agent-sidebar__close";
   closeBtn.textContent = "Close";
 
-  headerRight.append(modelPickerWrap, apiBadge, closeBtn);
-  header.append(title, headerRight);
+  headerRight.append(modelPickerWrap, closeBtn);
+  headerTop.append(title, headerRight);
+
+  const statusLine = document.createElement("div");
+  statusLine.className = "leditor-agent-sidebar__status";
+  statusLine.textContent = "Ready • Reference paragraphs by index (e.g. 35, 35-38).";
+
+  const headerTools = document.createElement("div");
+  headerTools.className = "leditor-agent-sidebar__headerTools";
+
+  const actionPickerWrap = document.createElement("div");
+  actionPickerWrap.className = "leditor-agent-sidebar__actionPickerWrap";
+  const actionPickerBtn = document.createElement("button");
+  actionPickerBtn.type = "button";
+  actionPickerBtn.className = "leditor-agent-sidebar__actionPickerBtn";
+  actionPickerBtn.setAttribute("aria-haspopup", "menu");
+  actionPickerBtn.setAttribute("aria-expanded", "false");
+  const actionPickerLabel = document.createElement("div");
+  actionPickerLabel.className = "leditor-agent-sidebar__actionPickerLabel";
+  actionPickerLabel.textContent = "Auto";
+  const actionPickerChevron = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  actionPickerChevron.setAttribute("viewBox", "0 0 24 24");
+  actionPickerChevron.setAttribute("width", "16");
+  actionPickerChevron.setAttribute("height", "16");
+  actionPickerChevron.classList.add("leditor-agent-sidebar__modelPickerChevron");
+  const actionChevronPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  actionChevronPath.setAttribute("d", "m6 9 6 6 6-6");
+  actionChevronPath.setAttribute("fill", "none");
+  actionChevronPath.setAttribute("stroke", "currentColor");
+  actionChevronPath.setAttribute("stroke-width", "2");
+  actionChevronPath.setAttribute("stroke-linecap", "round");
+  actionChevronPath.setAttribute("stroke-linejoin", "round");
+  actionPickerChevron.appendChild(actionChevronPath);
+  actionPickerBtn.append(actionPickerLabel, actionPickerChevron);
+  actionPickerWrap.appendChild(actionPickerBtn);
+
+  const actionMenu = document.createElement("div");
+  actionMenu.className = "leditor-agent-sidebar__actionMenu is-hidden";
+  actionMenu.setAttribute("role", "menu");
+  actionPickerWrap.appendChild(actionMenu);
+  actionMenu.addEventListener("click", (event) => event.stopPropagation());
+
+  const showNumbersLabel = document.createElement("label");
+  showNumbersLabel.className = "leditor-agent-sidebar__numbersToggle";
+  const showNumbers = document.createElement("input");
+  showNumbers.type = "checkbox";
+  showNumbers.checked = true;
+  const showNumbersText = document.createElement("span");
+  showNumbersText.textContent = "Numbers";
+  showNumbersLabel.append(showNumbers, showNumbersText);
+
+  // Replace the legacy "Auto" action picker with lightweight view tabs (chat / actions / sources).
+  // The plus menu and slash commands remain the primary way to run actions.
+  headerTools.append(showNumbersLabel);
+  headerBottom.append(statusLine, headerTools);
+  header.append(headerTop, headerBottom);
 
   let open = false;
   // Keep subscription to prevent stale settings references (and for future Agent settings),
@@ -158,7 +222,6 @@ export const createAgentSidebar = (
   const unsubscribeScope = subscribeAiSettings((settings) => {
     currentSettings = settings;
     if (renderReady) {
-      renderApiBadge();
       renderModelPickerLabel();
     }
   });
@@ -188,37 +251,25 @@ export const createAgentSidebar = (
     event.stopPropagation();
   });
 
-  const showNumbersRow = document.createElement("div");
-  showNumbersRow.className = "leditor-agent-sidebar__numbersRow";
-  const showNumbersLabel = document.createElement("label");
-  showNumbersLabel.className = "leditor-agent-sidebar__checkboxRow";
-  const showNumbers = document.createElement("input");
-  showNumbers.type = "checkbox";
-  showNumbers.checked = true;
-  const showNumbersText = document.createElement("span");
-  showNumbersText.textContent = "Show paragraph numbers";
-  showNumbersLabel.append(showNumbers, showNumbersText);
-  showNumbersRow.appendChild(showNumbersLabel);
-
-  const actionsPanel = document.createElement("div");
-  actionsPanel.className = "leditor-agent-sidebar__actionsPanel";
-  const actionsTitle = document.createElement("div");
-  actionsTitle.className = "leditor-agent-sidebar__actionsTitle";
-  actionsTitle.textContent = "Actions";
-  const actionsRow = document.createElement("div");
-  actionsRow.className = "leditor-agent-sidebar__actionsRow";
-  actionsPanel.append(actionsTitle, actionsRow);
-
-  const parsePills = document.createElement("div");
-  parsePills.className = "leditor-agent-sidebar__parsePills";
-
   const messagesEl = document.createElement("div");
   messagesEl.className = "leditor-agent-sidebar__messages";
   messagesEl.setAttribute("role", "log");
   messagesEl.setAttribute("aria-live", "polite");
 
-  const draftList = document.createElement("div");
-  draftList.className = "leditor-agent-sidebar__draftList";
+  type SidebarViewId = "chat" | "refine" | "paraphrase" | "shorten" | "proofread" | "substantiate" | "sources";
+  let viewMode: SidebarViewId = "chat";
+
+  const viewTabs = document.createElement("div");
+  viewTabs.className = "leditor-agent-sidebar__viewTabs";
+  viewTabs.setAttribute("role", "tablist");
+  viewTabs.setAttribute("aria-label", "Agent views");
+
+  const boxesEl = document.createElement("div");
+  boxesEl.className = "leditor-agent-sidebar__boxes is-hidden";
+  boxesEl.setAttribute("aria-hidden", "true");
+
+  const panel = document.createElement("div");
+  panel.className = "leditor-agent-sidebar__panel";
 
   const composer = document.createElement("div");
   composer.className = "leditor-agent-sidebar__composer";
@@ -255,71 +306,38 @@ export const createAgentSidebar = (
   slashMenu.className = "leditor-agent-sidebar__slashMenu";
   slashMenu.classList.add("is-hidden");
 
-  const micBtn = document.createElement("button");
-  micBtn.type = "button";
-  micBtn.className = "leditor-agent-sidebar__iconBtn";
-  micBtn.setAttribute("aria-label", "Dictation");
-  micBtn.disabled = true;
-  micBtn.innerHTML =
-    '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19v3"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><rect x="9" y="2" width="6" height="13" rx="3"></rect></svg>';
-
   const sendBtn = document.createElement("button");
   sendBtn.type = "button";
   sendBtn.className = "leditor-agent-sidebar__sendIcon";
   sendBtn.setAttribute("aria-label", "Send");
-  sendBtn.innerHTML =
+  const SEND_ICON =
     '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 7-7 7 7"></path><path d="M12 19V5"></path></svg>';
-
-  const cancelBtn = document.createElement("button");
-  cancelBtn.type = "button";
-  cancelBtn.className = "leditor-agent-sidebar__cancelIcon";
-  cancelBtn.setAttribute("aria-label", "Cancel");
-  cancelBtn.innerHTML =
-    '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>';
-  cancelBtn.classList.add("is-hidden");
+  const STOP_ICON =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="1.5"></rect></svg>';
+  sendBtn.innerHTML = SEND_ICON;
 
   inputGrid.append(inputOverlay, input);
   inputShell.appendChild(inputGrid);
   inputWrap.append(inputShell, slashMenu);
-  composerInner.append(plusBtn, inputWrap, micBtn, sendBtn, cancelBtn);
+  composerInner.append(plusBtn, inputWrap, sendBtn);
   composer.appendChild(composerInner);
 
-  const footer = document.createElement("div");
-  footer.className = "leditor-agent-sidebar__footer";
-  const pendingLabel = document.createElement("div");
-  pendingLabel.className = "leditor-agent-sidebar__pending";
-  pendingLabel.textContent = "";
-  const rejectBtn = document.createElement("button");
-  rejectBtn.type = "button";
-  rejectBtn.className = "leditor-agent-sidebar__reject";
-  rejectBtn.textContent = "Reject";
-  const acceptBtn = document.createElement("button");
-  acceptBtn.type = "button";
-  acceptBtn.className = "leditor-agent-sidebar__accept";
-  acceptBtn.textContent = "Accept";
-  footer.append(pendingLabel, rejectBtn, acceptBtn);
+  const plusMenu = document.createElement("div");
+  plusMenu.className = "leditor-agent-sidebar__plusMenu is-hidden";
+  plusMenu.setAttribute("role", "menu");
+  plusMenu.addEventListener("click", (event) => event.stopPropagation());
+  composer.appendChild(plusMenu);
 
-  // Intentionally omit the "Suggestions" panel UI: drafts are reviewed inline in the document.
-  const suggestionsMeta = document.createElement("div");
-  suggestionsMeta.className = "leditor-agent-sidebar__suggestionsMeta";
-  suggestionsMeta.textContent = "";
-
-  sidebar.append(header, showNumbersRow, actionsPanel, parsePills, messagesEl, composer, footer);
+  panel.append(messagesEl, boxesEl);
+  sidebar.append(header, viewTabs, panel, composer);
   root.appendChild(sidebar);
 
-  let messages: AgentMessage[] = [
-    {
-      role: "system",
-      content:
-        "Agent is ready. Reference paragraphs by index only (e.g. 35, 35-38, 35,37) then add your instruction.",
-      ts: Date.now()
-    }
-  ];
+  let messages: AgentMessage[] = [];
   let inflight = false;
   let destroyed = false;
   let pending: AgentRunResult["apply"] | null = null;
+  let pendingActionId: AgentActionId | null = null;
   let lastApiMeta: { provider?: string; model?: string; ms?: number; ts: number } | null = null;
-  let envStatus: { hasApiKey: boolean; model: string; modelFromEnv: boolean } | null = null;
   let abortController: AbortController | null = null;
   let activeRequestId: string | null = null;
 
@@ -337,6 +355,7 @@ export const createAgentSidebar = (
     { id: "shorten", label: "Shorten", aliases: ["/s", "/shorten"] },
     { id: "proofread", label: "Proofread", aliases: ["/pr", "/proofread"] },
     { id: "substantiate", label: "Substantiate", aliases: ["/sub", "/substantiate"] },
+    { id: "define", label: "Define", aliases: ["/def", "/define"] },
     { id: "synonyms", label: "Synonyms", aliases: ["/syn", "/synonyms"] },
     { id: "antonyms", label: "Antonyms", aliases: ["/ant", "/antonyms"] },
     { id: "check_sources", label: "Check sources", aliases: ["/cs", "/check", "/check-sources", "/check sources", "/checksources"] },
@@ -344,6 +363,39 @@ export const createAgentSidebar = (
   ];
 
   const normalizeSlash = (value: string) => value.trim().toLowerCase().replace(/\s+/g, "");
+
+  const loadFeedbackHubMode = (): FeedbackHubMode => {
+    try {
+      const raw = (window.localStorage.getItem(FEEDBACK_HUB_STORAGE_KEY) || "").trim().toLowerCase();
+      if (raw === "edits" || raw === "sources" || raw === "all") return raw;
+    } catch {
+      // ignore
+    }
+    return "edits";
+  };
+
+  const saveFeedbackHubMode = (mode: FeedbackHubMode) => {
+    try {
+      window.localStorage.setItem(FEEDBACK_HUB_STORAGE_KEY, mode);
+    } catch {
+      // ignore
+    }
+  };
+
+  const detectActionFromInstruction = (instruction: string): AgentActionId | null => {
+    const text = String(instruction ?? "").toLowerCase();
+    if (/\B\/refine\b/.test(text) || /\brefine\b/.test(text)) return "refine";
+    if (/\B\/paraphrase\b/.test(text) || /\bparaphrase\b/.test(text)) return "paraphrase";
+    if (/\B\/shorten\b/.test(text) || /\bshorten\b/.test(text)) return "shorten";
+    if (/\B\/proofread\b/.test(text) || /\bproofread\b/.test(text)) return "proofread";
+    if (/\B\/substantiate\b/.test(text) || /\bsubstantiate\b/.test(text)) return "substantiate";
+    if (/\B\/define\b/.test(text) || /\B\/def\b/.test(text) || /\bdefine\b/.test(text)) return "define";
+    if (/\B\/synonyms\b/.test(text) || /\bsynonyms\b/.test(text)) return "synonyms";
+    if (/\B\/antonyms\b/.test(text) || /\bantonyms\b/.test(text)) return "antonyms";
+    if (/\B\/check(?:\s+sources)?\b/.test(text) || /\bcheck\s+sources\b/.test(text)) return "check_sources";
+    if (/\B\/clear(?:\s+checks)?\b/.test(text) || /\bclear\s+checks\b/.test(text)) return "clear_checks";
+    return null;
+  };
 
   const escapeHtml = (value: string) =>
     value
@@ -372,10 +424,10 @@ export const createAgentSidebar = (
     };
 
     // Commands (plain words and slash forms).
-    addMatches(/\B\/(?:refine|paraphrase|shorten|proofread|substantiate|synonyms|antonyms)\b/gi, "cmd");
+    addMatches(/\B\/(?:refine|paraphrase|shorten|proofread|substantiate|define|def|synonyms|antonyms)\b/gi, "cmd");
     addMatches(/\B\/check(?:\s+sources)?\b/gi, "cmd");
     addMatches(/\B\/clear(?:\s+checks)?\b/gi, "cmd");
-    addMatches(/\b(?:refine|paraphrase|shorten|proofread|substantiate|synonyms|antonyms)\b/gi, "cmd");
+    addMatches(/\b(?:refine|paraphrase|shorten|proofread|substantiate|define|synonyms|antonyms)\b/gi, "cmd");
     addMatches(/\bcheck\s+sources\b/gi, "cmd");
 
     // Targets: sections + paragraphs (various forms).
@@ -488,6 +540,8 @@ export const createAgentSidebar = (
       { re: /\B\/shorten\b/gi, id: "shorten" },
       { re: /\B\/proofread\b/gi, id: "proofread" },
       { re: /\B\/substantiate\b/gi, id: "substantiate" },
+      { re: /\B\/define\b/gi, id: "define" },
+      { re: /\B\/def\b/gi, id: "define" },
       { re: /\B\/synonyms\b/gi, id: "synonyms" },
       { re: /\B\/antonyms\b/gi, id: "antonyms" },
       { re: /\B\/check(?:\s+sources)?\b/gi, id: "check_sources" },
@@ -497,6 +551,7 @@ export const createAgentSidebar = (
       { re: /\bshorten\b/gi, id: "shorten" },
       { re: /\bproofread\b/gi, id: "proofread" },
       { re: /\bsubstantiate\b/gi, id: "substantiate" },
+      { re: /\bdefine\b/gi, id: "define" },
       { re: /\bsynonyms\b/gi, id: "synonyms" },
       { re: /\bantonyms\b/gi, id: "antonyms" },
       { re: /\bcheck sources\b/gi, id: "check_sources" }
@@ -619,6 +674,102 @@ export const createAgentSidebar = (
     }
   };
 
+  type ActionMode = "auto" | Exclude<AgentActionId, "synonyms" | "antonyms">;
+  let actionMode: ActionMode = "auto";
+
+  const actionLabel = (id: ActionMode): string => {
+    if (id === "auto") return "Auto";
+    if (id === "check_sources") return "Check sources";
+    if (id === "clear_checks") return "Clear checks";
+    return (
+      ((agentActionPrompts as any)?.actions?.[id]?.label as string | undefined) ??
+      (id.charAt(0).toUpperCase() + id.slice(1).replaceAll("_", " "))
+    );
+  };
+
+  const setActionMode = (next: ActionMode) => {
+    actionMode = next;
+    actionPickerLabel.textContent = actionLabel(next);
+  };
+
+  const closeActionMenu = () => {
+    actionMenu.classList.add("is-hidden");
+    actionPickerBtn.setAttribute("aria-expanded", "false");
+  };
+
+  const openActionMenu = () => {
+    actionMenu.classList.remove("is-hidden");
+    actionPickerBtn.setAttribute("aria-expanded", "true");
+  };
+
+  const renderActionMenu = () => {
+    actionMenu.replaceChildren();
+    const modes: ActionMode[] = [
+      "auto",
+      "refine",
+      "paraphrase",
+      "shorten",
+      "proofread",
+      "substantiate",
+      "check_sources",
+      "clear_checks"
+    ];
+    for (const id of modes) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "leditor-agent-sidebar__modelOption";
+      btn.setAttribute("role", "menuitem");
+      btn.textContent = actionLabel(id);
+      if (id === actionMode) {
+        btn.style.background = "rgba(245,245,246,0.92)";
+      }
+      btn.addEventListener("click", () => {
+        setActionMode(id);
+        closeActionMenu();
+        input.focus();
+        updateInputOverlay();
+      });
+      actionMenu.appendChild(btn);
+    }
+  };
+
+  const closePlusMenu = () => {
+    plusMenu.classList.add("is-hidden");
+    plusBtn.setAttribute("aria-expanded", "false");
+  };
+
+  const openPlusMenu = () => {
+    renderPlusMenu();
+    plusMenu.classList.remove("is-hidden");
+    plusBtn.setAttribute("aria-expanded", "true");
+  };
+
+  const renderPlusMenu = () => {
+    plusMenu.replaceChildren();
+    const entries: Array<{ id: Exclude<ActionMode, "auto">; label: string }> = [
+      { id: "refine", label: "Refine" },
+      { id: "paraphrase", label: "Paraphrase" },
+      { id: "shorten", label: "Shorten" },
+      { id: "proofread", label: "Proofread" },
+      { id: "substantiate", label: "Substantiate" },
+      { id: "check_sources", label: "Check sources" },
+      { id: "clear_checks", label: "Clear checks" }
+    ];
+    for (const entry of entries) {
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "leditor-agent-sidebar__plusItem";
+      row.setAttribute("role", "menuitem");
+      row.textContent = entry.label;
+      row.addEventListener("click", () => {
+        closePlusMenu();
+        setActionMode(entry.id);
+        controller.runAction(entry.id as any);
+      });
+      plusMenu.appendChild(row);
+    }
+  };
+
   const createMessageEl = (msg: AgentMessage): HTMLElement => {
     const row = document.createElement("div");
     row.className = `leditor-agent-sidebar__msg leditor-agent-sidebar__msg--${msg.role}`;
@@ -654,29 +805,6 @@ export const createAgentSidebar = (
     return row;
   };
 
-  const renderApiBadge = () => {
-    const sel = resolveSelectedModelId();
-    const parts: string[] = [];
-    if (lastApiMeta?.provider) parts.push(String(lastApiMeta.provider));
-    if (lastApiMeta?.model) parts.push(String(lastApiMeta.model));
-    if (typeof lastApiMeta?.ms === "number") parts.push(`${Math.max(0, Math.round(lastApiMeta.ms))}ms`);
-
-    const time =
-      lastApiMeta?.ts ? ` • ${formatTimestamp(lastApiMeta.ts)}` : "";
-    const envParts: string[] = [];
-    envParts.push(`provider=${sel.provider}`);
-    envParts.push(`model=${sel.model}`);
-    if (sel.hasKey === false) {
-      envParts.push(`key missing (${sel.envKey || "API key"})`);
-    }
-    const env = envParts.length ? ` • ${envParts.join(" • ")}` : "";
-    const base =
-      parts.length > 0 ? `API: ${parts.join(" • ")}${time}${env}` : `API: not used yet${env}`;
-    apiBadge.textContent = base;
-    apiBadge.classList.toggle("is-ok", Boolean(lastApiMeta));
-    apiBadge.classList.toggle("is-missing", Boolean(sel.hasKey === false));
-  };
-
   let renderedCount = 0;
   const renderMessages = (forceFull: boolean = false) => {
     if (forceFull) {
@@ -690,15 +818,209 @@ export const createAgentSidebar = (
     messagesEl.scrollTop = messagesEl.scrollHeight;
   };
 
+  const setStatus = (text: string) => {
+    statusLine.textContent = String(text || "").trim() || "Ready.";
+  };
+
+  const truncate = (value: string, maxLen: number) => {
+    const s = String(value ?? "").replace(/\s+/g, " ").trim();
+    if (s.length <= maxLen) return s;
+    return `${s.slice(0, Math.max(0, maxLen - 1))}…`;
+  };
+
   const setInflight = (value: boolean) => {
     inflight = value;
     input.disabled = inflight;
-    // sendBtn disabled state is computed in updateComposerState()
-    cancelBtn.classList.toggle("is-hidden", !inflight);
-    acceptBtn.disabled = inflight || !pending;
-    rejectBtn.disabled = inflight || !pending;
     sidebar.classList.toggle("is-busy", inflight);
     updateComposerState();
+  };
+
+  const setViewMode = (next: SidebarViewId) => {
+    viewMode = next;
+    // tab button classes updated in renderViewTabs()
+    renderViewTabs();
+    renderBoxes();
+  };
+
+  const renderViewTabs = () => {
+    viewTabs.replaceChildren();
+    const tabs: Array<{ id: SidebarViewId; label: string }> = [
+      { id: "chat", label: "Chat" },
+      { id: "refine", label: "Refine" },
+      { id: "paraphrase", label: "Paraphrase" },
+      { id: "shorten", label: "Shorten" },
+      { id: "proofread", label: "Proofread" },
+      { id: "substantiate", label: "Substantiate" },
+      { id: "sources", label: "Sources" }
+    ];
+    for (const t of tabs) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "leditor-agent-sidebar__viewTab";
+      btn.textContent = t.label;
+      btn.setAttribute("role", "tab");
+      const active = t.id === viewMode;
+      btn.classList.toggle("is-active", active);
+      btn.setAttribute("aria-selected", active ? "true" : "false");
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setViewMode(t.id);
+      });
+      viewTabs.appendChild(btn);
+    }
+  };
+
+  const renderBoxes = () => {
+    const showBoxes = viewMode !== "chat";
+    messagesEl.classList.toggle("is-hidden", showBoxes);
+    messagesEl.setAttribute("aria-hidden", showBoxes ? "true" : "false");
+    boxesEl.classList.toggle("is-hidden", !showBoxes);
+    boxesEl.setAttribute("aria-hidden", showBoxes ? "false" : "true");
+    if (!showBoxes) return;
+
+    boxesEl.replaceChildren();
+
+    if (viewMode === "sources") {
+      const threadItems = getSourceChecksThread().items ?? [];
+      if (threadItems.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "leditor-agent-sidebar__boxEmpty";
+        empty.textContent = "No source checks yet.";
+        boxesEl.appendChild(empty);
+        return;
+      }
+
+      const byP = new Map<number, any[]>();
+      for (const it of threadItems as any[]) {
+        const p = Number.isFinite(it?.paragraphN) ? Math.max(1, Math.floor(it.paragraphN)) : 1;
+        const list = byP.get(p) ?? [];
+        list.push(it);
+        byP.set(p, list);
+      }
+      const paragraphs = [...byP.entries()].sort((a, b) => a[0] - b[0]);
+      for (const [p, items] of paragraphs) {
+        const card = document.createElement("div");
+        card.className = "leditor-agent-sidebar__boxCard";
+        const h = document.createElement("div");
+        h.className = "leditor-agent-sidebar__boxHeader";
+        h.textContent = `P${p} • ${items.length}`;
+        const body = document.createElement("div");
+        body.className = "leditor-agent-sidebar__boxBody";
+        for (const it of items) {
+          const row = document.createElement("button");
+          row.type = "button";
+          row.className = "leditor-agent-sidebar__srcRow";
+          const verdict = it?.verdict === "verified" ? "verified" : "needs_review";
+          row.classList.toggle("is-verified", verdict === "verified");
+          row.classList.toggle("is-needsReview", verdict !== "verified");
+          const anchorText = String(it?.anchor?.text ?? "");
+          const just = String(it?.justification ?? "");
+          row.innerHTML = `<span class="leditor-agent-sidebar__srcBadge">${verdict === "verified" ? "✓" : "!"}</span><span class="leditor-agent-sidebar__srcMain"><span class="leditor-agent-sidebar__srcAnchor">${escapeHtml(anchorText)}</span><span class="leditor-agent-sidebar__srcJust">${escapeHtml(just)}</span></span>`;
+          row.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            try {
+              setSourceChecksVisible(true);
+            } catch {
+              // ignore
+            }
+            try {
+              const key = typeof it?.key === "string" ? String(it.key) : "";
+              if (key) {
+                window.dispatchEvent(new CustomEvent("leditor:source-checks-focus", { detail: { key } }));
+              }
+            } catch {
+              // ignore
+            }
+          });
+          body.appendChild(row);
+        }
+        card.append(h, body);
+        boxesEl.appendChild(card);
+      }
+      return;
+    }
+
+    // Edits view (refine/paraphrase/shorten/proofread/substantiate)
+    if (!pending) {
+      const empty = document.createElement("div");
+      empty.className = "leditor-agent-sidebar__boxEmpty";
+      empty.textContent = "No edits pending. Run an action to see suggestions here.";
+      boxesEl.appendChild(empty);
+      return;
+    }
+
+    const mkCard = (title: string, subtitle: string, text: string, onAccept: () => void, onReject: () => void) => {
+      const card = document.createElement("div");
+      card.className = "leditor-agent-sidebar__boxCard";
+      const h = document.createElement("div");
+      h.className = "leditor-agent-sidebar__boxHeader";
+      h.textContent = title;
+      const meta = document.createElement("div");
+      meta.className = "leditor-agent-sidebar__boxMeta";
+      meta.textContent = subtitle;
+      const body = document.createElement("div");
+      body.className = "leditor-agent-sidebar__boxBody";
+      body.textContent = text;
+      const actions = document.createElement("div");
+      actions.className = "leditor-agent-sidebar__boxActions";
+      const reject = document.createElement("button");
+      reject.type = "button";
+      reject.className = "leditor-agent-sidebar__boxBtn";
+      reject.textContent = "Reject";
+      reject.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onReject();
+        renderBoxes();
+      });
+      const accept = document.createElement("button");
+      accept.type = "button";
+      accept.className = "leditor-agent-sidebar__boxBtn leditor-agent-sidebar__boxBtn--primary";
+      accept.textContent = "Accept";
+      accept.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onAccept();
+        renderBoxes();
+      });
+      actions.append(reject, accept);
+      card.append(h, meta, body, actions);
+      return card;
+    };
+
+    if (pending.kind === "batchReplace") {
+      for (const it of pending.items) {
+        boxesEl.appendChild(
+          mkCard(
+            `P${it.n}`,
+            `Pending ${viewMode}`,
+            truncate(it.text, 520),
+            () => acceptPendingItem({ n: it.n }),
+            () => rejectPendingItem({ n: it.n })
+          )
+        );
+      }
+      return;
+    }
+    if (pending.kind === "replaceRange") {
+      boxesEl.appendChild(
+        mkCard(
+          "Selection",
+          `Pending ${viewMode}`,
+          truncate(pending.text, 520),
+          () => acceptPendingItem({ from: pending.from, to: pending.to }),
+          () => rejectPendingItem({ from: pending.from, to: pending.to })
+        )
+      );
+      return;
+    }
+
+    const empty = document.createElement("div");
+    empty.className = "leditor-agent-sidebar__boxEmpty";
+    empty.textContent = "This edit type is shown inline in the document.";
+    boxesEl.appendChild(empty);
   };
 
   const autoResizeInput = () => {
@@ -714,12 +1036,17 @@ export const createAgentSidebar = (
 
   const updateComposerState = () => {
     const hasText = Boolean(String(input.value ?? "").trim());
-    sendBtn.disabled = inflight || !hasText;
+    sendBtn.disabled = !inflight && !hasText;
     plusBtn.disabled = inflight;
-    micBtn.disabled = true;
+    sendBtn.innerHTML = inflight ? STOP_ICON : SEND_ICON;
+    sendBtn.setAttribute("aria-label", inflight ? "Stop" : "Send");
   };
 
   const addMessage = (role: AgentMessage["role"], content: string) => {
+    if (role === "system") {
+      setStatus(content);
+      return;
+    }
     const prevLen = messages.length;
     messages = clampHistory([...messages, { role, content, ts: Date.now() }], 50);
     const clamped = messages.length !== prevLen + 1;
@@ -733,16 +1060,14 @@ export const createAgentSidebar = (
 
   const clearPending = () => {
     pending = null;
-    pendingLabel.textContent = "";
-    draftList.replaceChildren();
-    suggestionsMeta.textContent = "";
-    acceptBtn.disabled = true;
-    rejectBtn.disabled = true;
+    pendingActionId = null;
+    setStatus("Ready.");
     try {
       editorHandle.execCommand("ClearAiDraftPreview");
     } catch {
       // ignore
     }
+    renderBoxes();
   };
 
   const buildTextblockReplacementFragment = (doc: any, from: number, to: number, text: string) => {
@@ -791,14 +1116,17 @@ export const createAgentSidebar = (
       };
 
       // Build a template of inline units from the original slice.
-      const units: Array<{ kind: "plain"; text: string } | { kind: "protected"; node: any; text: string }> = [];
+      const units: Array<
+        | { kind: "plain"; text: string; marks: any[] }
+        | { kind: "protected"; node: any; text: string }
+      > = [];
       for (let i = 0; i < content.childCount; i += 1) {
         const child = content.child(i);
         if (!child) continue;
         if (child.isText) {
           const t = String(child.text ?? "");
           if (isProtectedTextNode(child)) units.push({ kind: "protected", node: child, text: t });
-          else units.push({ kind: "plain", text: t });
+          else units.push({ kind: "plain", text: t, marks: Array.isArray((child as any).marks) ? (child as any).marks : [] });
           continue;
         }
         if (isProtectedInlineNode(child)) {
@@ -810,20 +1138,28 @@ export const createAgentSidebar = (
       }
 
       const originalPlainChunks: string[] = [];
+      const originalPlainChunkMarks: any[][] = [];
       let curPlain = "";
+      let curMarks: any[] | null = null;
       const protectedNodes: any[] = [];
       const protectedTexts: string[] = [];
       for (const u of units) {
         if (u.kind === "plain") {
+          if (!curPlain && !curMarks) {
+            curMarks = Array.isArray((u as any).marks) ? (u as any).marks : [];
+          }
           curPlain += u.text;
           continue;
         }
         originalPlainChunks.push(curPlain);
+        originalPlainChunkMarks.push(curMarks ?? []);
         curPlain = "";
+        curMarks = null;
         protectedNodes.push(u.node);
         if (u.text) protectedTexts.push(u.text);
       }
       originalPlainChunks.push(curPlain);
+      originalPlainChunkMarks.push(curMarks ?? []);
 
       const stripProtectedTexts = (value: string): string => {
         let out = String(value ?? "");
@@ -880,7 +1216,10 @@ export const createAgentSidebar = (
 
       for (let i = 0; i < originalPlainChunks.length; i += 1) {
         const chunk = String(nextChunks[i] ?? "");
-        if (chunk) nodes.push(schema.text(chunk));
+        if (chunk) {
+          const marks = Array.isArray(originalPlainChunkMarks[i]) ? originalPlainChunkMarks[i] : [];
+          nodes.push(schema.text(chunk, marks));
+        }
         const prot = protectedNodes[i];
         if (prot) {
           if (chunk) maybeAddSpaceBetween(chunk, prot);
@@ -1027,13 +1366,8 @@ export const createAgentSidebar = (
     }
   };
 
-  const renderDraftList = () => {
-    // Intentionally no suggestions UI list; drafts are previewed inline in the document.
-    suggestionsMeta.textContent =
-      pending && pending.kind === "batchReplace" ? `${pending.items.length} change(s)` : "";
-  };
-
-  let draftRail: null | { update: () => void; destroy: () => void } = null;
+  let draftRail: null | { update: () => void; destroy: () => void; setVisible?: (next: boolean) => void } = null;
+  let draftRailVisible = true;
 
   const acceptPendingItem = (detail: { n?: number; from?: number; to?: number }) => {
     if (!pending) return;
@@ -1059,7 +1393,7 @@ export const createAgentSidebar = (
     if (!pending) {
       clearPending();
     } else {
-      pendingLabel.textContent = `Draft ready • ${nextItems.length} change(s)`;
+      setStatus(`Draft ready • ${nextItems.length} change(s)`);
       syncDraftPreview();
     }
   };
@@ -1086,7 +1420,7 @@ export const createAgentSidebar = (
     if (!pending) {
       clearPending();
     } else {
-      pendingLabel.textContent = `Draft ready • ${nextItems.length} change(s)`;
+      setStatus(`Draft ready • ${nextItems.length} change(s)`);
       syncDraftPreview();
     }
   };
@@ -1147,21 +1481,27 @@ export const createAgentSidebar = (
       schedule();
     };
 
-	    const update = () => {
-	      if (!open || !pending || pending.kind !== "batchReplace") {
-	        overlay.classList.add("is-hidden");
-	        rail.replaceChildren();
-	        clearSvg();
-	        return;
-	      }
-	      const batch = pending;
-	      const show = batch.items.length > 0;
-	      overlay.classList.toggle("is-hidden", !show);
-	      if (!show) {
-	        rail.replaceChildren();
-	        clearSvg();
-	        return;
-	      }
+		    const update = () => {
+		      if (!draftRailVisible || !open || !pending || pending.kind !== "batchReplace") {
+		        overlay.classList.add("is-hidden");
+		        rail.replaceChildren();
+		        clearSvg();
+		        return;
+		      }
+		      const batch = pending;
+		      const show = batch.items.length > 0;
+		      overlay.classList.toggle("is-hidden", !show);
+		      if (!show) {
+		        rail.replaceChildren();
+		        clearSvg();
+		        return;
+		      }
+          try {
+            const root = getAppRoot();
+            root?.classList.add("leditor-app--feedback-rail-open");
+          } catch {
+            // ignore
+          }
 
       const editor = editorHandle.getEditor();
       const view = (editor as any)?.view;
@@ -1254,6 +1594,10 @@ export const createAgentSidebar = (
 
     return {
       update: schedule,
+      setVisible(next: boolean) {
+        draftRailVisible = Boolean(next);
+        schedule();
+      },
       destroy() {
         try {
           if (raf) window.cancelAnimationFrame(raf);
@@ -1278,6 +1622,227 @@ export const createAgentSidebar = (
         }
         try {
           overlay.remove();
+        } catch {
+          // ignore
+        }
+      }
+    };
+  };
+
+  let feedbackHub: null | { update: () => void; destroy: () => void; setMode: (mode: FeedbackHubMode) => void } = null;
+
+  const mountFeedbackHub = () => {
+    const appRoot = getAppRoot();
+    if (!appRoot) return null;
+    const mountEl =
+      (appRoot.querySelector(".leditor-a4-zoom-content") as HTMLElement | null) ??
+      (appRoot.querySelector(".leditor-a4-zoom") as HTMLElement | null) ??
+      (appRoot.querySelector(".leditor-a4-canvas") as HTMLElement | null) ??
+      appRoot;
+
+    const existing = document.getElementById(FEEDBACK_HUB_ID);
+    if (existing) existing.remove();
+
+    let mode: FeedbackHubMode = loadFeedbackHubMode();
+
+    const hub = document.createElement("div");
+    hub.id = FEEDBACK_HUB_ID;
+    hub.className = "leditor-feedback-hub is-hidden";
+    hub.setAttribute("aria-hidden", "true");
+
+    const title = document.createElement("div");
+    title.className = "leditor-feedback-hub__title";
+    title.textContent = "Feedbacks";
+
+    const tabs = document.createElement("div");
+    tabs.className = "leditor-feedback-hub__tabs";
+    const mkTab = (label: string, value: FeedbackHubMode) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "leditor-feedback-hub__tab";
+      b.textContent = label;
+      b.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setMode(value);
+      });
+      return b;
+    };
+    const tabEdits = mkTab("Edits", "edits");
+    const tabSources = mkTab("Sources", "sources");
+    const tabAll = mkTab("All", "all");
+    tabs.append(tabEdits, tabSources, tabAll);
+
+    const counts = document.createElement("div");
+    counts.className = "leditor-feedback-hub__counts";
+
+    const actions = document.createElement("div");
+    actions.className = "leditor-feedback-hub__actions";
+
+    const btnRejectAll = document.createElement("button");
+    btnRejectAll.type = "button";
+    btnRejectAll.className = "leditor-feedback-hub__btn";
+    btnRejectAll.textContent = "Reject all";
+    btnRejectAll.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (mode === "edits" || mode === "all") {
+        clearPending();
+        addMessage("system", "Rejected all edits.");
+      }
+      if (mode === "sources" || mode === "all") {
+        try {
+          editorHandle.execCommand("ai.sourceChecks.dismissAllFixes");
+          addMessage("system", "Dismissed all source fixes.");
+        } catch {
+          // ignore
+        }
+      }
+      editorHandle.focus();
+      schedule();
+    });
+
+    const btnApplyAll = document.createElement("button");
+    btnApplyAll.type = "button";
+    btnApplyAll.className = "leditor-feedback-hub__btn leditor-feedback-hub__btn--primary";
+    btnApplyAll.textContent = "Apply all";
+    btnApplyAll.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      try {
+        if ((mode === "edits" || mode === "all") && pending) {
+          applyPending();
+          clearPending();
+          addMessage("system", "Applied all edits.");
+        }
+      } catch (error) {
+        addMessage("assistant", `Error: ${error instanceof Error ? error.message : String(error)}`);
+      }
+      try {
+        if (mode === "sources" || mode === "all") {
+          editorHandle.execCommand("ai.sourceChecks.applyAllFixes");
+          addMessage("system", "Applied all source fixes.");
+        }
+      } catch {
+        // ignore
+      } finally {
+        editorHandle.focus();
+        schedule();
+      }
+    });
+
+    actions.append(btnRejectAll, btnApplyAll);
+    hub.append(title, tabs, counts, actions);
+    mountEl.appendChild(hub);
+
+    let raf = 0;
+    const schedule = () => {
+      if (raf) return;
+      raf = window.requestAnimationFrame(() => {
+        raf = 0;
+        update();
+      });
+    };
+
+    const updateTabs = () => {
+      tabEdits.classList.toggle("is-active", mode === "edits");
+      tabSources.classList.toggle("is-active", mode === "sources");
+      tabAll.classList.toggle("is-active", mode === "all");
+    };
+
+    const update = () => {
+      const sourceCount = getSourceChecksThread().items?.length ?? 0;
+      const editsCount = pending && pending.kind === "batchReplace" ? pending.items.length : pending ? 1 : 0;
+      counts.textContent = `${editsCount ? `${editsCount} edit(s)` : ""}${editsCount && sourceCount ? " • " : ""}${sourceCount ? `${sourceCount} source check(s)` : ""}` || "";
+
+      const visible = open && (Boolean(pending) || isSourceChecksVisible());
+      hub.classList.toggle("is-hidden", !visible);
+      hub.setAttribute("aria-hidden", visible ? "false" : "true");
+      updateTabs();
+
+      try {
+        const rect = mountEl.getBoundingClientRect();
+        const stackEl = appRoot.querySelector<HTMLElement>(".leditor-page-stack") ?? null;
+        const stackRect = stackEl?.getBoundingClientRect?.() ?? null;
+        const leftPx = Math.round((stackRect?.right ?? rect.left + 680) - rect.left + 18);
+        hub.style.left = `${Math.max(12, leftPx)}px`;
+        hub.style.top = "12px";
+      } catch {
+        // ignore
+      }
+
+      // Mode effects.
+      if (mode === "edits") {
+        draftRailVisible = true;
+        if (isSourceChecksVisible()) setSourceChecksVisible(false);
+      } else if (mode === "sources") {
+        draftRailVisible = false;
+        if (!isSourceChecksVisible()) setSourceChecksVisible(true);
+      } else {
+        draftRailVisible = true;
+        if (!isSourceChecksVisible()) setSourceChecksVisible(true);
+      }
+      try {
+        draftRail?.setVisible?.(draftRailVisible);
+      } catch {
+        // ignore
+      }
+      try {
+        const root = getAppRoot();
+        const anyOpen = draftRailVisible || isSourceChecksVisible();
+        root?.classList.toggle("leditor-app--feedback-rail-open", anyOpen);
+      } catch {
+        // ignore
+      }
+    };
+
+    const setMode = (next: FeedbackHubMode) => {
+      mode = next;
+      saveFeedbackHubMode(mode);
+      schedule();
+    };
+
+    const onScroll = () => schedule();
+    appRoot.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", schedule);
+    editorHandle.on("change", schedule);
+    editorHandle.on("selectionChange", schedule);
+    const unsub = subscribeSourceChecksThread(() => schedule());
+
+    schedule();
+
+    return {
+      update: schedule,
+      setMode,
+      destroy() {
+        try {
+          if (raf) window.cancelAnimationFrame(raf);
+        } catch {
+          // ignore
+        }
+        try {
+          unsub();
+        } catch {
+          // ignore
+        }
+        try {
+          appRoot.removeEventListener("scroll", onScroll);
+        } catch {
+          // ignore
+        }
+        try {
+          window.removeEventListener("resize", schedule);
+        } catch {
+          // ignore
+        }
+        try {
+          editorHandle.off("change", schedule);
+          editorHandle.off("selectionChange", schedule);
+        } catch {
+          // ignore
+        }
+        try {
+          hub.remove();
         } catch {
           // ignore
         }
@@ -1319,8 +1884,6 @@ export const createAgentSidebar = (
     if (destroyed) return;
     let instruction = input.value.trim();
     if (!instruction) return;
-    // Keep target + action pills in sync with what will be sent.
-    renderParsePills();
     const parsedTargets = parseTargetsFromText(instruction);
     if (parsedTargets.kind === "paragraphs" || parsedTargets.kind === "section") {
       const targetIndices = parsedTargets.kind === "paragraphs" ? parsedTargets.indices : parsedTargets.indices;
@@ -1356,7 +1919,7 @@ export const createAgentSidebar = (
         controller.runAction(inlineSlash.id);
         return;
       }
-      if (inlineSlash.id === "synonyms" || inlineSlash.id === "antonyms") {
+      if (inlineSlash.id === "synonyms" || inlineSlash.id === "antonyms" || inlineSlash.id === "define") {
         addMessage("user", instruction);
         input.value = "";
         autoResizeInput();
@@ -1390,6 +1953,7 @@ export const createAgentSidebar = (
       const request: AgentRunRequest = { instruction };
       abortController = new AbortController();
       activeRequestId = makeRequestId();
+      pendingActionId = detectActionFromInstruction(instruction);
       const result = await options.runAgent(request, editorHandle, progress, abortController.signal, activeRequestId);
       if (abortController.signal.aborted) {
         addMessage("assistant", "Cancelled.");
@@ -1397,13 +1961,19 @@ export const createAgentSidebar = (
       }
       if (result.meta && (result.meta.provider || result.meta.model || typeof result.meta.ms === "number")) {
         lastApiMeta = { ...result.meta, ts: Date.now() };
-        renderApiBadge();
+        const parts = [
+          result.meta.provider ? `provider=${String(result.meta.provider)}` : "",
+          result.meta.model ? `model=${String(result.meta.model)}` : "",
+          typeof result.meta.ms === "number" ? `ms=${Math.max(0, Math.round(result.meta.ms))}` : ""
+        ].filter(Boolean);
+        if (parts.length) {
+          addMessage("system", `API OK • ${parts.join(" • ")}`);
+        }
       }
       pending = result.apply ?? null;
       if (pending) {
         const count = pending.kind === "batchReplace" ? pending.items.length : 1;
-        pendingLabel.textContent = `Draft ready • ${count} change(s)`;
-        renderDraftList();
+        setStatus(`Draft ready • ${count} change(s). Review inline in the document.`);
         syncDraftPreview();
         try {
           draftRail?.update();
@@ -1548,33 +2118,6 @@ export const createAgentSidebar = (
     return contiguous ? `${list[0]}-${list[list.length - 1]}` : list.join(",");
   };
 
-  const renderParsePills = () => {
-    parsePills.replaceChildren();
-    const value = String(input.value ?? "").trim();
-    if (!value) return;
-    const targets = parseTargetsFromText(value);
-    const inlineSlash = findInlineSlashCommand(value);
-
-    const addPill = (label: string, kind: "target" | "action") => {
-      const pill = document.createElement("span");
-      pill.className = `leditor-agent-sidebar__pill leditor-agent-sidebar__pill--${kind}`;
-      pill.textContent = label;
-      parsePills.appendChild(pill);
-    };
-
-    if (targets.kind === "paragraphs") {
-      addPill(`Targets: P${formatIndexSpec(targets.indices)}`, "target");
-    }
-    if (targets.kind === "section") {
-      const spec = targets.indices.length ? `P${formatIndexSpec(targets.indices)}` : "no paragraphs";
-      addPill(`Targets: Section ${targets.sectionNumber} (${spec})`, "target");
-    }
-    if (inlineSlash) {
-      const label = SLASH_COMMANDS.find((c) => c.id === inlineSlash.id)?.label ?? inlineSlash.id;
-      addPill(`Action: ${label}`, "action");
-    }
-  };
-
   const getIndicesForCurrentSelectionOrCursor = (): { indices: number[]; from: number; to: number } | null => {
     const editor = editorHandle.getEditor();
     const sel = editor.state.selection;
@@ -1629,22 +2172,6 @@ export const createAgentSidebar = (
       return true;
     });
     return found;
-  };
-
-  const lexiconPanel = document.createElement("div");
-  lexiconPanel.className = "leditor-agent-sidebar__lexiconPanel";
-  lexiconPanel.classList.add("is-hidden");
-  const lexiconTitle = document.createElement("div");
-  lexiconTitle.className = "leditor-agent-sidebar__lexiconTitle";
-  const lexiconRow = document.createElement("div");
-  lexiconRow.className = "leditor-agent-sidebar__lexiconRow";
-  lexiconPanel.append(lexiconTitle, lexiconRow);
-  actionsPanel.appendChild(lexiconPanel);
-
-  const clearLexicon = () => {
-    lexiconTitle.textContent = "";
-    lexiconRow.replaceChildren();
-    lexiconPanel.classList.add("is-hidden");
   };
 
   let lexiconPopup: HTMLElement | null = null;
@@ -1806,7 +2333,89 @@ export const createAgentSidebar = (
     lexiconCleanup.push(() => editorHandle.off("selectionChange", onScroll));
   };
 
-  const runLexicon = async (mode: "synonyms" | "antonyms") => {
+  const openDefinitionPopup = (args: { title: string; from: number; to: number; definition: string }) => {
+    closeLexiconPopup();
+    const editor = editorHandle.getEditor();
+    const view: any = (editor as any)?.view;
+    if (!view?.coordsAtPos) return;
+    const a = view.coordsAtPos(args.from);
+    const b = view.coordsAtPos(args.to);
+    const left = Math.min(a.left, b.left);
+    const top = Math.max(a.bottom, b.bottom) + 6;
+
+    const popup = document.createElement("div");
+    popup.className = "leditor-lexicon-popup";
+    popup.setAttribute("role", "dialog");
+    popup.setAttribute("aria-label", args.title);
+    popup.style.left = "0px";
+    popup.style.top = "0px";
+
+    const header = document.createElement("div");
+    header.className = "leditor-lexicon-popup__header";
+    header.textContent = args.title;
+
+    const body = document.createElement("div");
+    body.className = "leditor-lexicon-popup__list";
+    body.style.padding = "8px 10px";
+    body.style.whiteSpace = "pre-wrap";
+    body.textContent = args.definition;
+
+    const footer = document.createElement("div");
+    footer.className = "leditor-lexicon-popup__list";
+    footer.style.padding = "8px 10px";
+    footer.style.display = "flex";
+    footer.style.justifyContent = "flex-end";
+
+    const close = document.createElement("button");
+    close.type = "button";
+    close.className = "leditor-lexicon-popup__item";
+    close.textContent = "Close";
+    close.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      closeLexiconPopup();
+    });
+    footer.appendChild(close);
+
+    popup.append(header, body, footer);
+    document.body.appendChild(popup);
+    lexiconPopup = popup;
+
+    const rect = popup.getBoundingClientRect();
+    const maxLeft = Math.max(8, window.innerWidth - rect.width - 8);
+    const maxTop = Math.max(8, window.innerHeight - rect.height - 8);
+    const clampedLeft = Math.max(8, Math.min(maxLeft, left));
+    const clampedTop = Math.max(8, Math.min(maxTop, top));
+    popup.style.left = `${Math.round(clampedLeft)}px`;
+    popup.style.top = `${Math.round(clampedTop)}px`;
+
+    const onDocPointerDown = (e: Event) => {
+      const t = e.target as Node | null;
+      if (!t) return;
+      if (popup.contains(t)) return;
+      closeLexiconPopup();
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        closeLexiconPopup();
+      }
+    };
+    const docShell = document.querySelector(".leditor-doc-shell") as HTMLElement | null;
+    const onScroll = () => closeLexiconPopup();
+
+    document.addEventListener("pointerdown", onDocPointerDown, true);
+    document.addEventListener("keydown", onKeyDown, true);
+    docShell?.addEventListener("scroll", onScroll, { passive: true });
+    editorHandle.on("selectionChange", onScroll);
+
+    lexiconCleanup.push(() => document.removeEventListener("pointerdown", onDocPointerDown, true));
+    lexiconCleanup.push(() => document.removeEventListener("keydown", onKeyDown, true));
+    lexiconCleanup.push(() => docShell?.removeEventListener("scroll", onScroll));
+    lexiconCleanup.push(() => editorHandle.off("selectionChange", onScroll));
+  };
+
+  const runLexicon = async (mode: "synonyms" | "antonyms" | "definition") => {
     const editor = editorHandle.getEditor();
     const sel = editor.state.selection;
     const from = Math.min(sel.from, sel.to);
@@ -1846,6 +2455,20 @@ export const createAgentSidebar = (
       });
       if (!result?.success) {
         addMessage("assistant", result?.error ? String(result.error) : "Lexicon request failed.");
+        return;
+      }
+      if (mode === "definition") {
+        const definition = typeof result?.definition === "string" ? String(result.definition).trim() : "";
+        if (!definition) {
+          addMessage("system", "No definition.");
+          return;
+        }
+        openDefinitionPopup({
+          title: "Definition",
+          from,
+          to,
+          definition
+        });
         return;
       }
       const suggestions = Array.isArray(result?.suggestions) ? result.suggestions : [];
@@ -2207,39 +2830,6 @@ export const createAgentSidebar = (
     }
   };
 
-  const renderActions = () => {
-    const order: AgentActionId[] = [
-      "refine",
-      "paraphrase",
-      "shorten",
-      "proofread",
-      "substantiate",
-      "synonyms",
-      "antonyms",
-      "check_sources",
-      "clear_checks"
-    ];
-    actionsRow.replaceChildren();
-    for (const id of order) {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "leditor-agent-sidebar__actionBtn";
-      const label =
-        id === "check_sources"
-          ? "Check sources"
-          : id === "clear_checks"
-            ? "Clear checks"
-            : id === "synonyms"
-              ? "Synonyms"
-              : id === "antonyms"
-                ? "Antonyms"
-            : ((agentActionPrompts as any)?.actions?.[id]?.label as string | undefined) ?? id;
-      btn.textContent = label;
-      btn.addEventListener("click", () => controller.runAction(id));
-      actionsRow.appendChild(btn);
-    }
-  };
-
   const controller: AgentSidebarController = {
     open() {
       if (destroyed) return;
@@ -2252,9 +2842,9 @@ export const createAgentSidebar = (
         // ignore
       }
       syncInsets();
-      renderActions();
-      renderParsePills();
       renderMessages();
+      updateComposerState();
+      setStatus("Ready • Reference paragraphs by index (e.g. 35, 35-38).");
       input.focus();
       if (!draftRail) {
         try {
@@ -2321,6 +2911,12 @@ export const createAgentSidebar = (
       }
       draftRail = null;
       try {
+        feedbackHub?.destroy();
+      } catch {
+        // ignore
+      }
+      feedbackHub = null;
+      try {
         const fn = (controller as any).__onDraftAction as any;
         if (fn) window.removeEventListener("leditor:ai-draft-action", fn);
       } catch {
@@ -2364,6 +2960,10 @@ export const createAgentSidebar = (
         void runLexicon("antonyms");
         return;
       }
+      if (actionId === "define") {
+        void runLexicon("definition");
+        return;
+      }
       applyActionTemplate(actionId);
     },
     destroy() {
@@ -2393,6 +2993,12 @@ export const createAgentSidebar = (
         // ignore
       }
       draftRail = null;
+      try {
+        feedbackHub?.destroy();
+      } catch {
+        // ignore
+      }
+      feedbackHub = null;
       try {
         const fn = (controller as any).__onDraftAction as any;
         if (fn) window.removeEventListener("leditor:ai-draft-action", fn);
@@ -2480,6 +3086,17 @@ export const createAgentSidebar = (
     renderSlashMenu(findSlashMatches(q));
   };
 
+  actionPickerBtn.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    renderActionMenu();
+    if (actionMenu.classList.contains("is-hidden")) {
+      openActionMenu();
+    } else {
+      closeActionMenu();
+    }
+  });
+
   modelPickerBtn.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
@@ -2491,29 +3108,42 @@ export const createAgentSidebar = (
     }
   });
 
-  window.addEventListener("click", () => closeModelMenu());
+  const closeMenus = () => {
+    closeModelMenu();
+    closeActionMenu();
+    closePlusMenu();
+  };
+
+  window.addEventListener("click", () => closeMenus());
 
   closeBtn.addEventListener("click", () => controller.close());
 
   sendBtn.addEventListener("click", () => {
+    if (inflight) {
+      try {
+        abortController?.abort();
+        const host = (window as any).leditorHost;
+        if (activeRequestId && host && typeof host.agentCancel === "function") {
+          void host.agentCancel({ requestId: activeRequestId });
+        }
+      } catch {
+        // ignore
+      } finally {
+        addMessage("system", "Cancelled.");
+        setInflight(false);
+      }
+      return;
+    }
     void run();
   });
 
-  plusBtn.addEventListener("click", () => {
-    // Placeholder for future attachments/actions menu.
-    input.focus();
-  });
-
-  cancelBtn.addEventListener("click", () => {
-    try {
-      abortController?.abort();
-      const host = (window as any).leditorHost;
-      if (activeRequestId && host && typeof host.agentCancel === "function") {
-        void host.agentCancel({ requestId: activeRequestId });
-      }
-      addMessage("system", "Cancelled.");
-    } catch {
-      // ignore
+  plusBtn.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (plusMenu.classList.contains("is-hidden")) {
+      openPlusMenu();
+    } else {
+      closePlusMenu();
     }
   });
 
@@ -2521,6 +3151,14 @@ export const createAgentSidebar = (
     if (event.key === "Escape") {
       if (slashOpen) {
         closeSlashMenu();
+        return;
+      }
+      if (!plusMenu.classList.contains("is-hidden")) {
+        closePlusMenu();
+        return;
+      }
+      if (!actionMenu.classList.contains("is-hidden")) {
+        closeActionMenu();
         return;
       }
       controller.close();
@@ -2556,42 +3194,20 @@ export const createAgentSidebar = (
         return;
       }
     }
-    if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+    if (event.key === "Enter" && !event.shiftKey && !event.ctrlKey && !event.metaKey) {
       event.preventDefault();
       void run();
-      return;
-    }
-    if (event.key === "Enter" && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
-      // Allow exact slash commands with Enter.
-      const raw = String(input.value ?? "").trim();
-      if (raw.startsWith("/")) {
-        const normalized = normalizeSlash(raw);
-        const cmd = SLASH_COMMANDS.find((c) => c.aliases.map((a) => normalizeSlash(a)).includes(normalized));
-        if (cmd) {
-          event.preventDefault();
-          void run();
-          closeSlashMenu();
-          return;
-        }
-      }
+      closeSlashMenu();
     }
   });
 
   input.addEventListener("input", () => {
     maybeOpenSlashMenu();
-    renderParsePills();
     updateInputOverlay();
   });
 
   input.addEventListener("focus", () => {
     maybeOpenSlashMenu();
-    renderParsePills();
-    updateInputOverlay();
-  });
-
-  input.addEventListener("input", () => {
-    maybeOpenSlashMenu();
-    renderParsePills();
     updateInputOverlay();
   });
 
@@ -2615,28 +3231,8 @@ export const createAgentSidebar = (
     }
   });
 
-  acceptBtn.addEventListener("click", () => {
-    try {
-      applyPending();
-      clearPending();
-      addMessage("system", "Applied.");
-    } catch (error) {
-      addMessage("assistant", `Error: ${error instanceof Error ? error.message : String(error)}`);
-    } finally {
-      editorHandle.focus();
-    }
-  });
-
-  rejectBtn.addEventListener("click", () => {
-    clearPending();
-    addMessage("system", "Rejected.");
-    editorHandle.focus();
-  });
-
   window.addEventListener("resize", syncInsets);
   syncInsets();
-  renderActions();
-  renderParsePills();
   renderMessages();
   updateInputOverlay();
   const host = (window as any).leditorHost;
@@ -2667,7 +3263,7 @@ export const createAgentSidebar = (
         const hasApiKey = Boolean(status?.hasApiKey);
         const model = String(status?.model || "").trim();
         const modelFromEnv = Boolean(status?.modelFromEnv);
-        envStatus = { hasApiKey, model, modelFromEnv };
+        // env status is reflected by disabling providers/models without keys in the model menu.
       } catch {
         // ignore
       }
@@ -2677,7 +3273,6 @@ export const createAgentSidebar = (
   void loadStatus().finally(() => {
     renderReady = true;
     renderModelPickerLabel();
-    renderApiBadge();
   });
 
   return controller;

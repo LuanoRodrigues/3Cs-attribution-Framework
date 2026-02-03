@@ -136,6 +136,18 @@ const EXPORT_PANEL_HTML = `
             <button class="btn" id="btnCopyStatus" type="button">Copy status</button>
             <button class="btn" id="btnClearStatus" type="button">Clear status</button>
             <button class="btn" id="btnRefresh" type="button">Refresh preview</button>
+            <button class="btn" id="btnDescribe" type="button">Describe</button>
+          </div>
+          <div id="describeBox" style="margin-top:10px;border:1px solid var(--border);border-radius:10px;background:var(--surface-muted);padding:10px;">
+            <div id="describeStatus" style="font-size:12px;color:var(--muted);margin-bottom:6px;">No description yet.</div>
+            <textarea id="describeText" class="visualiser-input" rows="9" style="width:100%;resize:vertical;"></textarea>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px;">
+              <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);">
+                <input type="checkbox" id="describeUse" />
+                Use in PPT notes for this figure
+              </label>
+              <button class="btn" id="btnDescribeClear" type="button">Clear</button>
+            </div>
           </div>
         </div>
       </div>
@@ -192,6 +204,7 @@ export class VisualiserPage {
   private resizeObserver: ResizeObserver | null = null;
   private plotResizeScheduled = false;
   private lastActiveThumbIdx: number | null = null;
+  private slideDescriptions = new Map<string, string>();
   private static activeInstance: VisualiserPage | null = null;
 
   constructor(mount: HTMLElement) {
@@ -514,10 +527,9 @@ export class VisualiserPage {
   }
 
   private getPreviewIncludeIds(): string[] {
-    if (!this.sections.length) {
-      return [];
-    }
-    return this.sections.map((s) => s.id).filter(Boolean);
+    // Preview should only compute selected sections (plus any explicitly selected slides).
+    // This keeps preview fast and makes "Select none" actually mean "preview none".
+    return this.getBuildIncludeIds();
   }
 
   private getPreviewIncludeKey(): string[] {
@@ -574,6 +586,7 @@ export class VisualiserPage {
       this.selectedSections = new Set(this.sections.map((s) => s.id));
     } else {
       this.selectedSections.clear();
+      this.selectedSlideKeys.clear();
     }
     this.updateDeckFromFilters();
     this.renderSectionsList();
@@ -891,6 +904,18 @@ export class VisualiserPage {
         });
         if (field.default !== undefined) sel.value = String(field.default);
         input = sel;
+      } else if (field.type === "textarea") {
+        const ta = document.createElement("textarea");
+        ta.rows = 4;
+        const placeholder = String((field as any).placeholder ?? "").trim();
+        if (placeholder) {
+          ta.placeholder = placeholder;
+        }
+        if (field.default !== undefined) ta.value = String(field.default);
+        if ((field as any).asList) {
+          ta.setAttribute("data-param-as-list", "1");
+        }
+        input = ta;
       } else {
         const inp = document.createElement("input");
         inp.type = field.type === "number" ? "number" : "text";
@@ -940,6 +965,17 @@ export class VisualiserPage {
         }
       } else if (node instanceof HTMLSelectElement) {
         params[key] = node.value;
+      } else if (node instanceof HTMLTextAreaElement) {
+        const raw = String(node.value || "");
+        if (node.getAttribute("data-param-as-list") === "1") {
+          const items = raw
+            .split(/[;\n,]+/g)
+            .map((s) => s.trim())
+            .filter(Boolean);
+          params[key] = items.length ? items : undefined;
+        } else {
+          params[key] = raw;
+        }
       }
     });
     return params;
@@ -964,6 +1000,52 @@ export class VisualiserPage {
     this.attachListener(this.exportHost.querySelector("#btnRefresh"), "click", this.handleRefreshClick);
     this.attachListener(this.exportHost.querySelector("#btnCopyStatus"), "click", this.handleCopyStatus);
     this.attachListener(this.exportHost.querySelector("#btnClearStatus"), "click", this.handleClearStatus);
+    this.attachListener(this.exportHost.querySelector("#btnDescribe"), "click", this.handleDescribeClick);
+    this.attachListener(this.exportHost.querySelector("#btnDescribeClear"), "click", this.handleDescribeClearClick);
+    const use = this.exportHost.querySelector<HTMLInputElement>("#describeUse");
+    if (use) {
+      this.attachListener(use as unknown as HTMLElement, "change", this.handleDescribeUseChange);
+    }
+    const text = this.exportHost.querySelector<HTMLTextAreaElement>("#describeText");
+    if (text) {
+      this.attachListener(text as unknown as HTMLElement, "input", this.handleDescribeTextInput);
+    }
+    this.refreshDescribeBox();
+  }
+
+  private getActiveSlideNoteKey(): string {
+    const slide = this.deck[this.slideIndex] as any;
+    const explicitId = String(slide?.slide_id ?? "").trim();
+    if (explicitId) return explicitId;
+    return this.buildSlideKey(slide);
+  }
+
+  private setDescribeBoxOpen(open: boolean): void {
+    const box = this.exportHost?.querySelector<HTMLElement>("#describeBox");
+    if (!box) return;
+    box.style.display = open ? "" : "none";
+  }
+
+  private refreshDescribeBox(): void {
+    if (!this.exportHost) return;
+    const text = this.exportHost.querySelector<HTMLTextAreaElement>("#describeText");
+    const use = this.exportHost.querySelector<HTMLInputElement>("#describeUse");
+    const status = this.exportHost.querySelector<HTMLElement>("#describeStatus");
+    if (!text || !use || !status) return;
+    const key = this.getActiveSlideNoteKey();
+    const existing = this.slideDescriptions.get(key) ?? "";
+    if (existing) {
+      text.value = existing;
+      use.checked = true;
+      status.textContent = "Description saved for PPT notes.";
+      return;
+    }
+    // If user is drafting (box open) keep text unless they opt out.
+    if (!use.checked) {
+      text.value = "";
+    }
+    use.checked = false;
+    status.textContent = "No description yet.";
   }
 
   private attachListener(element: HTMLElement | null, type: string, listener: EventListener): void {
@@ -1148,22 +1230,24 @@ export class VisualiserPage {
     const title = args.title || "Slide";
     const subtitle = args.subtitle || (args.kind === "table" ? "Table" : args.kind === "text" ? "Notes" : "Loading…");
     const badge = args.kind === "table" ? "TABLE" : args.kind === "text" ? "TEXT" : "…";
+    const W = 320;
+    const H = 320;
     const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="320" height="220" viewBox="0 0 320 220">
+<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
   <defs>
     <linearGradient id="g" x1="0" x2="1" y1="0" y2="1">
       <stop offset="0" stop-color="${bg}" stop-opacity="1"/>
       <stop offset="1" stop-color="${bg}" stop-opacity="0.85"/>
     </linearGradient>
   </defs>
-  <rect x="0" y="0" width="320" height="220" rx="18" fill="url(#g)"/>
-  <rect x="16" y="16" width="288" height="148" rx="14" fill="${palette.panel}" opacity="0.65" stroke="${accent}" stroke-opacity="0.35"/>
+  <rect x="0" y="0" width="${W}" height="${H}" rx="18" fill="url(#g)"/>
+  <rect x="16" y="16" width="${W - 32}" height="${H - 80}" rx="14" fill="${palette.panel}" opacity="0.65" stroke="${accent}" stroke-opacity="0.35"/>
   <text x="28" y="44" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace" font-size="12" fill="${muted}">${badge}</text>
   <text x="28" y="78" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="14" fill="${fg}" font-weight="700">${this.escapeXml(title).slice(0, 44)}</text>
   <text x="28" y="104" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="${muted}">${this.escapeXml(subtitle).slice(0, 54)}</text>
-  <rect x="16" y="178" width="288" height="26" rx="12" fill="${palette.panel}" opacity="0.5" stroke="${accent}" stroke-opacity="0.25"/>
-  <circle cx="32" cy="191" r="5" fill="${accent}" opacity="0.9"/>
-  <text x="44" y="195" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="${muted}">Visualiser preview</text>
+  <rect x="16" y="${H - 42}" width="${W - 32}" height="26" rx="12" fill="${palette.panel}" opacity="0.5" stroke="${accent}" stroke-opacity="0.25"/>
+  <circle cx="32" cy="${H - 29}" r="5" fill="${accent}" opacity="0.9"/>
+  <text x="44" y="${H - 25}" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="12" fill="${muted}">Visualiser preview</text>
 </svg>`;
     return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
   }
@@ -1276,7 +1360,7 @@ export class VisualiserPage {
       const accent = palette.accent;
 
       const W = 320;
-      const H = 220;
+      const H = 320;
       const padL = 18;
       const padR = 10;
       const padT = 12;
@@ -1481,6 +1565,255 @@ ${dots}
     }
     this.renderSlide();
     this.updateSummary();
+    this.refreshDescribeBox();
+  }
+
+  private handleDescribeClearClick = (): void => {
+    if (!this.exportHost) return;
+    this.setDescribeBoxOpen(true);
+    const key = this.getActiveSlideNoteKey();
+    this.slideDescriptions.delete(key);
+    const text = this.exportHost.querySelector<HTMLTextAreaElement>("#describeText");
+    const use = this.exportHost.querySelector<HTMLInputElement>("#describeUse");
+    const status = this.exportHost.querySelector<HTMLElement>("#describeStatus");
+    if (text) text.value = "";
+    if (use) use.checked = false;
+    if (status) status.textContent = "Cleared.";
+  };
+
+  private handleDescribeUseChange = (): void => {
+    if (!this.exportHost) return;
+    const key = this.getActiveSlideNoteKey();
+    const use = this.exportHost.querySelector<HTMLInputElement>("#describeUse");
+    const text = this.exportHost.querySelector<HTMLTextAreaElement>("#describeText");
+    const status = this.exportHost.querySelector<HTMLElement>("#describeStatus");
+    if (!use || !text || !status) return;
+    if (use.checked) {
+      const v = String(text.value || "").trim();
+      if (v) {
+        this.slideDescriptions.set(key, v);
+        status.textContent = "Description saved for PPT notes.";
+      } else {
+        use.checked = false;
+        status.textContent = "Nothing to save (empty).";
+      }
+    } else {
+      this.slideDescriptions.delete(key);
+      status.textContent = "Not included in PPT notes.";
+    }
+  };
+
+  private handleDescribeTextInput = (): void => {
+    if (!this.exportHost) return;
+    const key = this.getActiveSlideNoteKey();
+    const use = this.exportHost.querySelector<HTMLInputElement>("#describeUse");
+    const text = this.exportHost.querySelector<HTMLTextAreaElement>("#describeText");
+    const status = this.exportHost.querySelector<HTMLElement>("#describeStatus");
+    if (!use || !text || !status) return;
+    if (use.checked) {
+      const v = String(text.value || "").trim();
+      if (v) {
+        this.slideDescriptions.set(key, v);
+        status.textContent = "Description saved for PPT notes.";
+      } else {
+        this.slideDescriptions.delete(key);
+        status.textContent = "Description empty (not saved).";
+      }
+    }
+  };
+
+  private handleDescribeClick = (): void => {
+    void this.describeActiveSlide();
+  };
+
+  private async describeActiveSlide(): Promise<void> {
+    if (!this.exportHost) return;
+    const status = this.exportHost.querySelector<HTMLElement>("#describeStatus");
+    const text = this.exportHost.querySelector<HTMLTextAreaElement>("#describeText");
+    const use = this.exportHost.querySelector<HTMLInputElement>("#describeUse");
+    if (!status || !text || !use) return;
+
+    const slide = this.deck[this.slideIndex] as Record<string, unknown> | undefined;
+    if (!slide) {
+      status.textContent = "No active slide.";
+      return;
+    }
+    status.textContent = "Generating description…";
+    const collectionName = this.getCollectionNameForExport();
+    const img = await this.captureActivePlotPngDataUrl().catch(() => "");
+    const dfDescribe = this.describeCurrentTableForPrompt();
+    const tablePreview = this.tablePreviewForSlide(slide);
+    const sec = String((slide as any)?.section ?? "").trim();
+    const title = String((slide as any)?.title ?? "").trim();
+
+    const instructions =
+      "You are a senior bibliometrics analyst. Write speaker notes for the slide.\n" +
+      "Keep it concise, concrete, and useful for presenting.\n" +
+      "Output: 6-10 bullet-like sentences (no markdown), then a short 'Caveats:' line.";
+
+    const inputText =
+      `Title: ${title || "Figure"}\n` +
+      `Section: ${sec || "Visualise"}\n` +
+      `Collection: ${collectionName}\n\n` +
+      (dfDescribe ? `DataFrame describe (global):\n${dfDescribe}\n\n` : "") +
+      (tablePreview ? `Slide table preview:\n${tablePreview}\n\n` : "") +
+      "Describe what the chart shows, highlight key patterns, and suggest what to check next.";
+
+    const response = await this.sendVisualiserCommand("describe_slide_llm", {
+      model: "gpt-5-mini",
+      instructions,
+      inputText,
+      imageDataUrl: img
+    });
+    if (!response || response.status !== "ok") {
+      status.textContent = "Describe failed.";
+      const message = String((response as any)?.message || "No response");
+      this.appendIssueLog(`[describe] ${message}`);
+      return;
+    }
+    const desc = String((response as any).description || "").trim();
+    if (!desc) {
+      status.textContent = "No description returned.";
+      return;
+    }
+    text.value = desc;
+    status.textContent = "Description ready. Check “Use in PPT notes” to include.";
+    use.checked = this.slideDescriptions.has(this.getActiveSlideNoteKey());
+  }
+
+  private tablePreviewForSlide(slide: Record<string, unknown>): string {
+    const html = this.findTableHtmlForSlide(slide);
+    const tmp = document.createElement("div");
+    tmp.innerHTML = html || "";
+    const text = (tmp.textContent || "").replace(/\s+/g, " ").trim();
+    return text.slice(0, 2000);
+  }
+
+  private describeCurrentTableForPrompt(maxCols = 24): string {
+    const table = this.currentTable;
+    if (!table || !Array.isArray(table.columns) || !Array.isArray(table.rows)) {
+      return "";
+    }
+    const cols = table.columns.map((c) => String(c ?? ""));
+    const rows = table.rows;
+    const out: string[] = [];
+    out.push(`rows=${rows.length} cols=${cols.length}`);
+    const nCols = Math.min(cols.length, maxCols);
+
+    const sampleNumeric = (values: number[]): { p25: number; p50: number; p75: number } => {
+      if (!values.length) return { p25: 0, p50: 0, p75: 0 };
+      const N = values.length;
+      const pick = (q: number) => {
+        const idx = Math.min(N - 1, Math.max(0, Math.floor(q * (N - 1))));
+        return values[idx];
+      };
+      return { p25: pick(0.25), p50: pick(0.5), p75: pick(0.75) };
+    };
+
+    const toNum = (v: unknown): number | null => {
+      if (v == null) return null;
+      if (typeof v === "number" && Number.isFinite(v)) return v;
+      const s = String(v).trim();
+      if (!s) return null;
+      const n = Number(s);
+      return Number.isFinite(n) ? n : null;
+    };
+
+    for (let j = 0; j < nCols; j += 1) {
+      const name = cols[j] || `col_${j}`;
+      let nonEmpty = 0;
+      let numericCount = 0;
+      let mean = 0;
+      let m2 = 0;
+      let min = Number.POSITIVE_INFINITY;
+      let max = Number.NEGATIVE_INFINITY;
+      const sample: number[] = [];
+      const catCounts = new Map<string, number>();
+
+      const pushSample = (x: number) => {
+        // capped sample for quantiles
+        if (sample.length < 2000) {
+          sample.push(x);
+          return;
+        }
+        // stride replacement (cheap deterministic)
+        const idx = (numericCount - 1) % sample.length;
+        sample[idx] = x;
+      };
+
+      for (let i = 0; i < rows.length; i += 1) {
+        const v = rows[i]?.[j];
+        if (v == null || v === "") continue;
+        nonEmpty += 1;
+        const n = toNum(v);
+        if (n != null) {
+          numericCount += 1;
+          const delta = n - mean;
+          mean += delta / numericCount;
+          const delta2 = n - mean;
+          m2 += delta * delta2;
+          if (n < min) min = n;
+          if (n > max) max = n;
+          pushSample(n);
+        } else {
+          const s = String(v).trim();
+          if (!s) continue;
+          catCounts.set(s, (catCounts.get(s) || 0) + 1);
+        }
+      }
+
+      if (numericCount >= Math.max(3, Math.floor(nonEmpty * 0.6))) {
+        sample.sort((a, b) => a - b);
+        const q = sampleNumeric(sample);
+        const variance = numericCount > 1 ? m2 / (numericCount - 1) : 0;
+        const std = Math.sqrt(Math.max(0, variance));
+        out.push(
+          `${name}: count=${numericCount} mean=${mean.toFixed(3)} std=${std.toFixed(3)} min=${min.toFixed(
+            3
+          )} p25=${q.p25.toFixed(3)} p50=${q.p50.toFixed(3)} p75=${q.p75.toFixed(3)} max=${max.toFixed(3)}`
+        );
+      } else {
+        // categorical-ish
+        const entries = Array.from(catCounts.entries()).sort((a, b) => b[1] - a[1]);
+        const unique = entries.length;
+        const top = entries.slice(0, 3).map(([k, n]) => `${k}(${n})`).join(", ");
+        out.push(`${name}: count=${nonEmpty} unique=${unique}${top ? ` top=${top}` : ""}`);
+      }
+    }
+    if (cols.length > nCols) {
+      out.push(`… +${cols.length - nCols} more columns`);
+    }
+    return out.join("\n");
+  }
+
+  private async captureActivePlotPngDataUrl(): Promise<string> {
+    if (!this.plotHost) return "";
+    if (!this.plotHost.classList.contains("js-plotly-plot")) return "";
+    const rect = this.plotHost.getBoundingClientRect();
+    const width = Math.max(900, Math.round(rect.width || 0));
+    const height = Math.max(520, Math.round(rect.height || 0));
+    const url = (await (Plotly as any).toImage(this.plotHost, {
+      format: "png",
+      width,
+      height,
+      scale: 2
+    })) as string;
+    if (typeof url === "string" && url.startsWith("blob:")) {
+      const resp = await fetch(url);
+      const blob = await resp.blob();
+      const dataUrl = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.readAsDataURL(blob);
+      });
+      try {
+        URL.revokeObjectURL(url);
+      } catch {
+        // ignore
+      }
+      return dataUrl || "";
+    }
+    return typeof url === "string" ? url : "";
   }
 
   private updateActiveThumb(): void {
@@ -2147,17 +2480,80 @@ ${dots}
       this.setStatus("Load data in Retrieve first.");
       return;
     }
-    const include = this.getBuildIncludeIds();
+    if (!this.deckAll.length) {
+      // Build needs a deck; also lets us capture images client-side so Python doesn't need kaleido/Chrome.
+      this.appendWarnLog("No preview deck loaded; running Visualiser to prepare export.");
+      await this.runVisualiser(false);
+    }
+    const selectedSlideIds = Array.from(this.selectedSlideKeys).filter(Boolean);
+    const hasExplicitSlideSelection = selectedSlideIds.length > 0;
+    const include = hasExplicitSlideSelection
+      ? this.getIncludeIdsForSlideIds(selectedSlideIds)
+      : this.getBuildIncludeIds();
     if (!include.length) {
-      this.setStatus("Select at least one section.");
+      this.setStatus(hasExplicitSlideSelection ? "Select at least one slide." : "Select at least one section.");
       return;
     }
     const params = this.readParams();
     const collectionName = this.getCollectionNameForExport();
     const selection = {
-      sections: Array.from(this.selectedSections),
-      slideIds: Array.from(this.selectedSlideKeys)
+      sections: hasExplicitSlideSelection ? [] : Array.from(this.selectedSections),
+      slideIds: selectedSlideIds
     };
+    const notesOverrides: Record<string, string> = {};
+    this.slideDescriptions.forEach((value, key) => {
+      const v = String(value || "").trim();
+      if (key && v) {
+        notesOverrides[key] = v;
+      }
+    });
+
+    const renderedImages: Record<string, string> = {};
+    try {
+      const wantIds = hasExplicitSlideSelection ? new Set(selectedSlideIds) : null;
+      const wantSections = new Set(include);
+      const candidates = this.deckAll.filter((slide) => {
+        if (!this.isVisualSlide(slide)) return false;
+        const key = this.buildSlideKey(slide);
+        if (!key) return false;
+        if (wantIds) return wantIds.has(key);
+        const sec = String((slide as any)?.section ?? "").trim();
+        return sec ? wantSections.has(sec) : false;
+      });
+
+      if (candidates.length) {
+        this.appendVisualiserLog(`Rendering ${candidates.length} figure image(s) for PPT…`, "info");
+        this.setStatus(`Rendering ${candidates.length} figure image(s)…`);
+        for (let i = 0; i < candidates.length; i += 1) {
+          const slide = candidates[i] as any;
+          const key = this.buildSlideKey(slide);
+          if (!key || renderedImages[key]) continue;
+          const figJson = this.normalizeFigJson(slide.fig_json);
+          if (!figJson) continue;
+          try {
+            // Best-effort: some plot types (geo/topojson) can fail offline; still export what we can.
+            const url = await this.capturePptFigurePngDataUrl(figJson, String(slide.title || "Figure"));
+            if (url && typeof url === "string" && url.startsWith("data:image/")) {
+              renderedImages[key] = url;
+            }
+          } catch (error) {
+            this.appendWarnLog(
+              `PPT image render failed (${String(slide.title || "").slice(0, 80) || key}): ${
+                error instanceof Error ? error.message : String(error)
+              }`
+            );
+          }
+          await this.yieldToUi();
+        }
+        this.appendVisualiserLog(
+          `Prepared ${Object.keys(renderedImages).length}/${candidates.length} figure image(s) for export.`,
+          "info"
+        );
+      }
+    } catch (error) {
+      this.appendWarnLog(`PPT image preparation skipped: ${error instanceof Error ? error.message : String(error)}`);
+    }
+
     this.appendVisualiserLog("Build PPT requested.", "info");
     this.setStatus("Building PPTX…");
 
@@ -2166,6 +2562,8 @@ ${dots}
       include,
       params,
       selection,
+      notesOverrides,
+      renderedImages,
       collectionName
     });
 
@@ -2221,13 +2619,131 @@ ${dots}
     }
   }
 
+  private getIncludeIdsForSlideIds(slideIds: string[]): string[] {
+    const want = new Set(slideIds.map((s) => String(s || "").trim()).filter(Boolean));
+    const set = new Set<string>();
+    this.deckAll.forEach((slide) => {
+      const key = this.buildSlideKey(slide);
+      if (!key || !want.has(key)) {
+        return;
+      }
+      const sec = String((slide as any)?.section ?? "").trim();
+      if (sec) {
+        set.add(sec);
+      }
+    });
+    // Fallback: slide_id is typically "{section}:{n}:{kind}".
+    want.forEach((id) => {
+      const sec = id.split(":")[0]?.trim();
+      if (sec) set.add(sec);
+    });
+    if (!set.size) {
+      return [];
+    }
+    const ordered = this.sections.map((s) => String((s as any)?.id ?? "").trim()).filter(Boolean);
+    const out: string[] = [];
+    ordered.forEach((id) => {
+      if (set.has(id)) out.push(id);
+    });
+    // Append any unknown sections (should be rare).
+    Array.from(set).forEach((id) => {
+      if (!out.includes(id)) out.push(id);
+    });
+    return out;
+  }
+
+  private async capturePptFigurePngDataUrl(figJson: any, title: string): Promise<string> {
+    const palette = this.getThemePalette();
+    const W = 1600;
+    const H = 900;
+    const container = document.createElement("div");
+    container.style.position = "fixed";
+    container.style.left = "-10000px";
+    container.style.top = "0";
+    container.style.width = `${W}px`;
+    container.style.height = `${H}px`;
+    container.style.pointerEvents = "none";
+    container.style.opacity = "0";
+    document.body.appendChild(container);
+
+    try {
+      await this.yieldToUi();
+      const rawData = Array.isArray(figJson?.data) ? figJson.data : Array.isArray(figJson) ? figJson : [];
+      const data = this.applyCategoricalPaletteToData(rawData);
+      const layout = figJson.layout || {};
+      const finalLayout = {
+        ...layout,
+        paper_bgcolor: palette.panel,
+        plot_bgcolor: palette.panel,
+        font: { ...(layout.font || {}), color: palette.text },
+        margin: layout.margin ?? { l: 80, r: 60, t: 80, b: 80 },
+        width: W,
+        height: H,
+        autosize: false
+      };
+      await Plotly.newPlot(container, data, finalLayout, {
+        displayModeBar: false,
+        staticPlot: true,
+        responsive: false
+      });
+      const url = (await (Plotly as any).toImage(container, {
+        format: "png",
+        width: W,
+        height: H,
+        scale: 2
+      })) as string;
+      if (typeof url === "string" && url.startsWith("blob:")) {
+        try {
+          const resp = await fetch(url);
+          const blob = await resp.blob();
+          const dataUrl = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result || ""));
+            reader.readAsDataURL(blob);
+          });
+          return dataUrl || url;
+        } finally {
+          try {
+            URL.revokeObjectURL(url);
+          } catch {
+            // ignore
+          }
+        }
+      }
+      return url;
+    } catch (error) {
+      const base = error instanceof Error ? error.message : String(error);
+      throw new Error(`toImage failed (${String(title || "figure").slice(0, 60)}): ${base}`);
+    } finally {
+      try {
+        Plotly.purge(container);
+      } catch {
+        // ignore
+      }
+      container.remove();
+    }
+  }
+
   private async runVisualiser(isBuild = false): Promise<void> {
+    const previousSlide = !isBuild ? (this.deck[this.slideIndex] as any) : null;
+    const previousSlideKey = !isBuild && previousSlide ? this.buildSlideKey(previousSlide) : "";
+    const previousSectionId = !isBuild ? String(previousSlide?.section ?? "").trim() : "";
+
     if (!this.currentTable) {
       this.setStatus("Load data in Retrieve first.");
       return;
     }
     const include = isBuild ? this.getBuildIncludeIds() : this.getPreviewIncludeIds();
     if (isBuild && !include.length) {
+      this.setStatus("Select at least one section.");
+      return;
+    }
+    if (!isBuild && !include.length) {
+      this.deckAll = [];
+      this.deck = [];
+      this.renderThumbs();
+      this.renderSlide();
+      this.updateSummary();
       this.setStatus("Select at least one section.");
       return;
     }
@@ -2354,13 +2870,43 @@ ${dots}
     } else {
       this.deleteDeckCache(cacheKey);
     }
-    this.slideIndex = 0;
+    if (!isBuild) {
+      const resolved = this.resolveSlideIndexAfterRun({
+        previousSlideKey,
+        previousSectionId
+      });
+      this.slideIndex = Math.max(0, Math.min(resolved, Math.max(0, this.deck.length - 1)));
+    } else {
+      this.slideIndex = 0;
+    }
     this.snapToFirstVisualSlide();
     this.renderSectionsList();
     this.renderThumbs();
     this.renderSlide();
     this.updateSummary();
     this.setStatus("Visualiser ready");
+  }
+
+  private resolveSlideIndexAfterRun(args: { previousSlideKey: string; previousSectionId: string }): number {
+    const prevKey = String(args.previousSlideKey || "").trim();
+    if (prevKey) {
+      const idx = this.deck.findIndex((s) => this.buildSlideKey(s) === prevKey);
+      if (idx >= 0) {
+        return idx;
+      }
+    }
+    const prevSec = String(args.previousSectionId || "").trim();
+    if (prevSec) {
+      const idx = this.deck.findIndex((s) => String((s as any)?.section ?? "").trim() === prevSec && this.isVisualSlide(s));
+      if (idx >= 0) {
+        return idx;
+      }
+      const anyIdx = this.deck.findIndex((s) => String((s as any)?.section ?? "").trim() === prevSec);
+      if (anyIdx >= 0) {
+        return anyIdx;
+      }
+    }
+    return 0;
   }
 
   private orderedInclude(): string[] {
@@ -2438,6 +2984,7 @@ ${dots}
     }
     const figJson = this.normalizeFigJson(slide.fig_json);
     const title = slide.title;
+    const img = String(slide.img ?? "").trim();
     if (figJson && this.plotHost) {
       const rect = this.plotHost.getBoundingClientRect();
       if (rect.width < 2 || rect.height < 2) {
@@ -2569,6 +3116,10 @@ ${dots}
           // ignore
         }
       }
+      if (img) {
+        const safe = img.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+        this.plotHost.innerHTML = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--panel);"><img src="${safe}" alt="figure" style="max-width:100%;max-height:100%;width:100%;height:100%;object-fit:contain;"/></div>`;
+      } else {
       const bullets = Array.isArray((slide as any)?.bullets) ? ((slide as any).bullets as unknown[]) : [];
       if (bullets.length) {
         const items = bullets
@@ -2584,6 +3135,7 @@ ${dots}
         this.plotHost.innerHTML = `<div style="padding:12px;color:var(--text);">${heading}<ul style="margin:0 0 0 16px;padding:0;color:var(--muted);line-height:1.35;">${items}</ul></div>`;
       } else {
         this.plotHost.innerHTML = `<div style="padding:12px;color:var(--muted);">No figure on this slide.</div>`;
+      }
       }
     }
     const tableHost = this.mount.querySelector<HTMLElement>("#tableHost");
