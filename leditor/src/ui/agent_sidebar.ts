@@ -1005,13 +1005,14 @@ export const createAgentSidebar = (
       return;
     }
     if (pending.kind === "replaceRange") {
+      const { from, to } = pending;
       boxesEl.appendChild(
         mkCard(
           "Selection",
           `Pending ${viewMode}`,
           truncate(pending.text, 520),
-          () => acceptPendingItem({ from: pending.from, to: pending.to }),
-          () => rejectPendingItem({ from: pending.from, to: pending.to })
+          () => acceptPendingItem({ from, to }),
+          () => rejectPendingItem({ from, to })
         )
       );
       return;
