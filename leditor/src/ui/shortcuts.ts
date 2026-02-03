@@ -3,6 +3,7 @@ import { dispatchCommand } from "../api/editor_commands.ts";
 import type { EditorHandle } from "../api/leditor.ts";
 import { getOrientation } from "../ui/layout_settings.ts";
 import { toggleInsertMode } from "../editor/input_modes.ts";
+import { openContextMenuAtSelection } from "./context_menu.ts";
 
 export const initGlobalShortcuts = (editorHandle: EditorHandle): (() => void) => {
   const exec = (id: string, args?: unknown) => {
@@ -120,6 +121,13 @@ export const initGlobalShortcuts = (editorHandle: EditorHandle): (() => void) =>
     },
     "ctrl+shift+f10": () => {
       exec("NavigatorDockToggle");
+      return true;
+    },
+    "shift+f10": () => {
+      const editor = editorHandle.getEditor();
+      if (editor) {
+        openContextMenuAtSelection(editor);
+      }
       return true;
     },
     "shift+f4": () => {

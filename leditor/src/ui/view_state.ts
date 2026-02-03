@@ -24,8 +24,13 @@ const NAV_PANEL_ID = "leditor-navigation-panel";
 let appRoot: HTMLElement | null = null;
 
 let navPanel: HTMLElement | null = null;
+let navBody: HTMLElement | null = null;
+let navDockButton: HTMLButtonElement | null = null;
 
 let navVisible = false;
+let navDocked = false;
+let navEntries: Array<{ label: string; level: number; pos: number }> = [];
+let navActiveIndex = -1;
 let readModeActive = false;
 let scrollDirectionState: "vertical" | "horizontal" = "vertical";
 let rulerVisibleState = false;
@@ -35,6 +40,25 @@ let pageBreakMarksVisibleState = true;
 let paginationModeState: "paged" | "continuous" = "paged";
 
 
+
+const getNavigationHost = (): HTMLElement | null => {
+  if (!appRoot) return null;
+  return appRoot.querySelector<HTMLElement>(".leditor-main-split") ?? appRoot;
+};
+
+const updateNavDocking = () => {
+  if (!navPanel) return;
+  navPanel.classList.toggle("is-docked", navDocked);
+  navPanel.classList.toggle("is-floating", !navDocked);
+  if (navDockButton) {
+    navDockButton.textContent = navDocked ? "Undock" : "Dock";
+  }
+};
+
+export const toggleNavigationDock = () => {
+  navDocked = !navDocked;
+  updateNavDocking();
+};
 
 const ensureNavPanel = (): HTMLElement | null => {
 
@@ -50,6 +74,9 @@ const ensureNavPanel = (): HTMLElement | null => {
 
   }
 
+  const host = getNavigationHost();
+  if (!host) return null;
+
   navPanel = document.createElement("div");
 
   navPanel.id = NAV_PANEL_ID;
@@ -60,7 +87,35 @@ const ensureNavPanel = (): HTMLElement | null => {
 
   navPanel.setAttribute("aria-label", "Document map");
 
-  appRoot.appendChild(navPanel);
+  const header = document.createElement("div");
+  header.className = "leditor-navigation-header";
+  const title = document.createElement("div");
+  title.className = "leditor-navigation-title";
+  title.textContent = "Navigator";
+  const actions = document.createElement("div");
+  actions.className = "leditor-navigation-actions";
+  navDockButton = document.createElement("button");
+  navDockButton.type = "button";
+  navDockButton.className = "leditor-navigation-dock";
+  navDockButton.textContent = navDocked ? "Undock" : "Dock";
+  navDockButton.addEventListener("click", () => toggleNavigationDock());
+  actions.appendChild(navDockButton);
+  header.append(title, actions);
+
+  navBody = document.createElement("div");
+  navBody.className = "leditor-navigation-body";
+
+  navPanel.append(header, navBody);
+
+  const docShell = host.querySelector<HTMLElement>(".leditor-doc-shell");
+  if (docShell) {
+    host.insertBefore(navPanel, docShell);
+  } else {
+    host.appendChild(navPanel);
+  }
+
+  navPanel.classList.toggle("is-open", navVisible);
+  updateNavDocking();
 
   return navPanel;
 
@@ -102,9 +157,13 @@ const renderNavigation = (editor: Editor) => {
 
   if (!panel) return;
 
-  panel.innerHTML = "";
+  const body = navBody ?? panel.querySelector<HTMLElement>(".leditor-navigation-body");
+  if (!body) return;
+  body.innerHTML = "";
 
   const entries = buildNavigationEntries(editor);
+  navEntries = entries;
+  navActiveIndex = -1;
 
   if (entries.length === 0) {
 
@@ -114,13 +173,18 @@ const renderNavigation = (editor: Editor) => {
 
     empty.textContent = "No headings defined.";
 
-    panel.appendChild(empty);
+    body.appendChild(empty);
 
     return;
 
   }
 
-  for (const entry of entries) {
+  const activePos = editor.state.selection.from;
+  for (let i = 0; i < entries.length; i += 1) {
+    if (entries[i].pos <= activePos) navActiveIndex = i;
+  }
+
+  entries.forEach((entry, index) => {
 
     const button = document.createElement("button");
 
@@ -129,6 +193,9 @@ const renderNavigation = (editor: Editor) => {
     button.className = "leditor-navigation-entry";
 
     button.dataset.level = String(entry.level);
+    if (index === navActiveIndex) {
+      button.classList.add("is-active");
+    }
 
     button.textContent = entry.label;
 
@@ -142,9 +209,9 @@ const renderNavigation = (editor: Editor) => {
 
     });
 
-    panel.appendChild(button);
+    body.appendChild(button);
 
-  }
+  });
 
 };
 
@@ -253,7 +320,7 @@ export const toggleNavigationPanel = (editorHandle: EditorHandle) => {
 
   if (navVisible) {
 
-    panel.style.display = "none";
+    panel.classList.remove("is-open");
 
     navVisible = false;
 
@@ -263,10 +330,31 @@ export const toggleNavigationPanel = (editorHandle: EditorHandle) => {
 
   renderNavigation(tiptapEditor);
 
-  panel.style.display = "block";
+  panel.classList.add("is-open");
 
   navVisible = true;
 
+};
+
+export const refreshNavigationPanel = (editor: Editor) => {
+  if (!navVisible) return;
+  renderNavigation(editor);
+};
+
+export const updateNavigationActive = (editor: Editor) => {
+  if (!navVisible || !navPanel) return;
+  if (!navEntries.length) return;
+  const activePos = editor.state.selection.from;
+  let nextIndex = -1;
+  for (let i = 0; i < navEntries.length; i += 1) {
+    if (navEntries[i].pos <= activePos) nextIndex = i;
+  }
+  if (nextIndex === navActiveIndex) return;
+  navActiveIndex = nextIndex;
+  const buttons = navPanel.querySelectorAll<HTMLButtonElement>(".leditor-navigation-entry");
+  buttons.forEach((btn, idx) => {
+    btn.classList.toggle("is-active", idx === navActiveIndex);
+  });
 };
 
 export const isReadMode = () => readModeActive;
@@ -274,6 +362,7 @@ export const getScrollDirection = () => scrollDirectionState;
 export const isRulerVisible = () => rulerVisibleState;
 export const isGridlinesVisible = () => gridVisibleState;
 export const isNavigationVisible = () => navVisible;
+export const isNavigationDocked = () => navDocked;
 export const isPageBoundariesVisible = () => pageBoundariesVisibleState;
 export const isPageBreakMarksVisible = () => pageBreakMarksVisibleState;
 export const getPaginationMode = () => paginationModeState;

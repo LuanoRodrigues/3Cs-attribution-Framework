@@ -97,11 +97,10 @@ const buildMenuGroups = (context: ContextType): Record<ContextGroup, MenuItem[]>
   ];
 
   const dictionaryItems: MenuItem[] = [
-    // NOTE: Dictionary features are implemented in the agent sidebar as Lexicon actions.
-    { label: "Define", command: "agent.action", args: { id: "define" }, requireSelection: true },
-    { label: "Synonyms", command: "agent.action", args: { id: "synonyms" }, requireSelection: true },
-    { label: "Antonyms", command: "agent.action", args: { id: "antonyms" }, requireSelection: true }
-    // Future: Definition, Collocation
+    { label: "Explain", command: "lexicon.explain", requireSelection: true },
+    { label: "Define", command: "lexicon.define", requireSelection: true },
+    { label: "Synonyms", command: "lexicon.synonyms", requireSelection: true },
+    { label: "Antonyms", command: "lexicon.antonyms", requireSelection: true }
   ];
 
   const refItemsText: MenuItem[] = [
@@ -316,4 +315,20 @@ export const attachContextMenu = (handle: EditorHandle, editorDom: HTMLElement, 
     editorDom.removeEventListener("mousedown", onMouseDown, true);
         editorDom.removeEventListener("contextmenu", onContextMenu);
   };
+};
+
+export const openContextMenuAtSelection = (editor: Editor) => {
+  try {
+    const pos = editor.state.selection.from;
+    const coords = editor.view.coordsAtPos(pos);
+    const event = new MouseEvent("contextmenu", {
+      bubbles: true,
+      cancelable: true,
+      clientX: coords.left,
+      clientY: coords.top
+    });
+    editor.view.dom.dispatchEvent(event);
+  } catch {
+    // ignore context menu errors
+  }
 };

@@ -5,6 +5,7 @@ import { NodeSelection, Plugin, TextSelection } from "@tiptap/pm/state";
 import { reconcileFootnotes } from "../uipagination/footnotes/registry.ts";
 import { getNextFootnoteId, registerFootnoteId } from "../uipagination/footnotes/footnote_id_generator.ts";
 import type { FootnoteKind } from "../uipagination/footnotes/model.ts";
+import { buildFootnoteBodyContent, getFootnoteBodyPlainText } from "./extension_footnote_body.ts";
 
 export type FootnoteNodeViewAPI = {
   id: string;
@@ -20,6 +21,24 @@ const footnoteRegistry = new Map<string, FootnoteNodeViewAPI>();
 
 export const getFootnoteRegistry = () => footnoteRegistry;
 export const clearFootnoteRegistry = () => footnoteRegistry.clear();
+
+const findFootnoteBodyNode = (
+  doc: ProseMirrorNode,
+  footnoteBodyType: any,
+  footnoteId: string
+): { node: ProseMirrorNode; pos: number } | null => {
+  let found: { node: ProseMirrorNode; pos: number } | null = null;
+  doc.descendants((node, pos) => {
+    if (node.type !== footnoteBodyType) return true;
+    const id = typeof (node.attrs as any)?.footnoteId === "string" ? String((node.attrs as any).footnoteId).trim() : "";
+    if (id === footnoteId) {
+      found = { node, pos };
+      return false;
+    }
+    return true;
+  });
+  return found;
+};
 
 type FootnoteNodeViewProps = {
   node: ProseMirrorNode;
@@ -124,16 +143,53 @@ class FootnoteNodeView implements FootnoteNodeViewAPI {
 
   setPlainText(value: string) {
     const trimmed = typeof value === "string" ? value : "";
-    const nextAttrs = { ...(this.node.attrs as any), text: trimmed };
-    const newNode = this.node.type.create(nextAttrs, [], this.node.marks);
+    const state = this.view.state;
+    const footnoteBodyType = state.schema.nodes.footnoteBody;
     const pos = this.getPos();
-    if (typeof pos === "number") {
-      const tr = this.view.state.tr.replaceWith(pos, pos + this.node.nodeSize, newNode);
+    let tr = state.tr;
+    let updated = false;
+    if (footnoteBodyType) {
+      const found = findFootnoteBodyNode(state.doc, footnoteBodyType, this.footnoteId);
+      if (found) {
+        const nextNode = footnoteBodyType.create(
+          { ...(found.node.attrs as any), footnoteId: this.footnoteId, kind: this.node.attrs?.kind ?? "footnote" },
+          buildFootnoteBodyContent(state.schema, trimmed)
+        );
+        tr = tr.replaceWith(found.pos, found.pos + found.node.nodeSize, nextNode);
+        updated = true;
+      }
+    }
+    if (!updated) {
+      const nextAttrs = { ...(this.node.attrs as any), text: trimmed };
+      const newNode = this.node.type.create(nextAttrs, [], this.node.marks);
+      if (typeof pos === "number") {
+        tr = tr.replaceWith(pos, pos + this.node.nodeSize, newNode);
+      }
+    } else if (typeof pos === "number") {
+      const nextAttrs = { ...(this.node.attrs as any), text: trimmed };
+      tr = tr.setNodeMarkup(pos, this.node.type, nextAttrs, this.node.marks);
+    }
+    if (tr.docChanged) {
+      const prevSelection = state.selection;
+      try {
+        const mapped = prevSelection.map(tr.doc, tr.mapping);
+        tr = tr.setSelection(mapped);
+      } catch {
+        // ignore
+      }
       this.view.dispatch(tr);
     }
   }
 
   getPlainText(): string {
+    const state = this.view.state;
+    const footnoteBodyType = state.schema.nodes.footnoteBody;
+    if (footnoteBodyType) {
+      const found = findFootnoteBodyNode(state.doc, footnoteBodyType, this.footnoteId);
+      if (found) {
+        return getFootnoteBodyPlainText(found.node);
+      }
+    }
     const attrText = typeof (this.node.attrs as any)?.text === "string" ? String((this.node.attrs as any).text) : "";
     return attrText;
   }
@@ -290,9 +346,7 @@ const FootnoteExtension = TiptapNode.create({
       citationId: {
         default: null
       },
-      // Persisted footnote text (single source of truth). We intentionally keep this in attrs
-      // (not node content) so the marker's nodeSize stays constant and body selection snapshots
-      // don't drift when footnote text changes.
+      // Legacy fallback for footnote text. The canonical text now lives in `footnoteBody` nodes.
       text: {
         default: ""
       }

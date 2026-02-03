@@ -1,4 +1,5 @@
 import { getFootnoteRegistry } from "../extensions/extension_footnote.ts";
+import { buildFootnoteBodyContent, getFootnoteBodyPlainText } from "../extensions/extension_footnote_body.ts";
 import { allocateSectionId, defaultSectionMeta, parseSectionMeta, type SectionMeta } from "../editor/section_state.ts";
 import interact from "interactjs";
 import nouislider from "nouislider";
@@ -29,6 +30,8 @@ import { findSentenceBounds } from "../editor/sentence_utils.ts";
 import type { StoredSelection } from "../utils/selection_snapshot";
 import { applySnapshotToTransaction } from "../utils/selection_snapshot";
 import type { FootnoteRenderEntry, FootnoteKind } from "../uipagination/footnotes/model.ts";
+import { getSelectionMode } from "../editor/input_modes.ts";
+import { setVirtualSelections, type VirtualSelectionRange } from "../extensions/extension_virtual_selection.ts";
 
 type A4ViewMode = "single" | "fit-width" | "two-page";
 type GridMode = "stack" | "grid-2" | "grid-4" | "grid-9";
@@ -153,6 +156,8 @@ const ensureStyles = () => {
   --page-footnote-height: 0px;
   /* Gap between the last body line and the footnote band to prevent overlap / caret loss. */
   --page-footnote-gap: 12px;
+  /* Additional guard to keep the last text line away from the footnote band. */
+  --page-footnote-guard: 6px;
   --footnote-max-height-ratio: 1;
   --footnote-separator-height: 1px;
   --footnote-separator-color: rgba(0, 0, 0, 0.25);
@@ -173,6 +178,7 @@ const ensureStyles = () => {
   --page-margin-inside: 2.5cm;
   --page-margin-outside: 2.5cm;
   --column-separator-color: rgba(0, 0, 0, 0.25);
+  --page-column-gap: 24px;
   --page-canvas-bg: radial-gradient(circle at 18% 18%, #f8f9fb 0%, #e9ecf3 45%, #d8dbe6 90%);
   --page-canvas-bg-dark: radial-gradient(circle at 30% 16%, #1d2431 0%, #141924 55%, #0c1018 100%);
   --min-zoom: 0.3;
@@ -430,7 +436,7 @@ html, body {
 }
 
 /* Make citation anchors feel like real links even when the A4/pagination layer renders content
-   outside the raw ".ProseMirror" container. */
+   outside the raw ProseMirror container. */
 .leditor-app a.leditor-citation-anchor,
 .leditor-app a.leditor-citation-anchor *,
 .leditor-app a.leditor-citation-anchor *::before,
@@ -574,6 +580,11 @@ html, body {
   font-weight: 600;
   min-width: 1.5em;
   user-select: none;
+}
+
+.leditor-footnotes-container,
+.leditor-footnote-body {
+  display: none;
 }
 
 .leditor-footnote {
@@ -1329,9 +1340,25 @@ html, body {
           )
         ))
   );
-  padding: 0;
+  box-sizing: border-box;
+  padding: 0 0 calc(var(--page-footnote-gap, 0px) + var(--page-footnote-guard, 0px)) 0;
   overflow: hidden;
   pointer-events: auto;
+  hyphens: var(--page-hyphens, manual);
+  column-count: var(--page-columns, 1);
+  column-gap: var(--page-column-gap, var(--doc-gutter, 24px));
+  column-fill: auto;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+/* Keep complex blocks together unless explicitly allowed to split. */
+.leditor-page-content table,
+.leditor-page-content figure,
+.leditor-page-content img,
+.leditor-page-content .leditor-keep-together {
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 .leditor-page-footnotes {
   position: absolute;
@@ -1570,6 +1597,23 @@ export const mountA4Layout = (
           el.removeAttribute("data-footnote-text");
         }
       }
+      const bodyNodes = Array.from(doc.querySelectorAll<HTMLElement>("[data-footnote-body][data-footnote-id]"));
+      for (const el of bodyNodes) {
+        const id = (el.getAttribute("data-footnote-id") || "").trim();
+        if (!id) continue;
+        if (!footnoteTextDraft.has(id)) continue;
+        const nextText = footnoteTextDraft.get(id) ?? "";
+        const fragment = doc.createDocumentFragment();
+        const lines = nextText.replace(/\r/g, "").split("\n");
+        const blocks = lines.length ? lines : [""];
+        for (const line of blocks) {
+          const p = doc.createElement("p");
+          p.textContent = line;
+          fragment.appendChild(p);
+        }
+        el.innerHTML = "";
+        el.appendChild(fragment);
+      }
       return doc.body.innerHTML;
     } catch {
       return html;
@@ -1578,12 +1622,30 @@ export const mountA4Layout = (
 
   const injectFootnoteDraftsIntoJson = (json: any): any => {
     if (!json || footnoteTextDraft.size === 0) return json;
+    const buildFootnoteBodyJson = (value: string) => {
+      const safeText = typeof value === "string" ? value : "";
+      const lines = safeText.replace(/\r/g, "").split("\n");
+      const blocks = lines.length ? lines : [""];
+      return blocks.map((line) => {
+        if (!line) return { type: "paragraph" };
+        return {
+          type: "paragraph",
+          content: [{ type: "text", text: line }]
+        };
+      });
+    };
     const visit = (node: any) => {
       if (!node || typeof node !== "object") return;
       if (node.type === "footnote" && node.attrs && typeof node.attrs.footnoteId === "string") {
         const id = String(node.attrs.footnoteId).trim();
         if (id && footnoteTextDraft.has(id)) {
           node.attrs.text = (footnoteTextDraft.get(id) ?? "").trim();
+        }
+      }
+      if (node.type === "footnoteBody" && node.attrs && typeof node.attrs.footnoteId === "string") {
+        const id = String(node.attrs.footnoteId).trim();
+        if (id && footnoteTextDraft.has(id)) {
+          node.content = buildFootnoteBodyJson(footnoteTextDraft.get(id) ?? "");
         }
       }
       const content = Array.isArray(node.content) ? node.content : null;
@@ -1780,9 +1842,37 @@ export const mountA4Layout = (
   let pointerSelectionRange = false;
   let lastPointerSelectionAt = 0;
   let lastPointerDragAt = 0;
+  let lastPointerDownAt = 0;
+  let lastPointerUpAt = 0;
   let pointerDownX = 0;
   let pointerDownY = 0;
   let pointerMoved = false;
+  let selectionHoldUntil = 0;
+  const armSelectionHold = (ms = 350) => {
+    selectionHoldUntil = Math.max(selectionHoldUntil, Date.now() + ms);
+  };
+  const selectionHoldActive = () => Date.now() < selectionHoldUntil;
+  const markRangeSelection = (ms = 400) => {
+    pointerSelectionRange = true;
+    lastPointerSelectionAt = Date.now();
+    armSelectionHold(ms);
+  };
+  type MultiClickDragState = {
+    active: boolean;
+    kind: "word" | "sentence" | "paragraph";
+    anchorFrom: number;
+    anchorTo: number;
+    lastPos: number;
+  };
+  let multiClickDrag: MultiClickDragState | null = null;
+  let marginSelectionActive = false;
+  let marginSelectionAnchor: { from: number; to: number } | null = null;
+  let lastPageContentEl: HTMLElement | null = null;
+  let blockSelectionActive = false;
+  let blockSelectionAnchor: { x: number; y: number } | null = null;
+  let blockSelectionPageContent: HTMLElement | null = null;
+  let autoScrollRaf = 0;
+  let pendingAutoScroll = 0;
 
   let themeMode: "light" | "dark" = "light";
   let pageSurfaceMode: "light" | "dark" = "light";
@@ -2266,9 +2356,11 @@ export const mountA4Layout = (
             typeof sel?.from === "number" &&
             typeof sel?.to === "number" &&
             sel.from !== sel.to;
-          if (pointerDownActive && isRange) {
-            pointerSelectionRange = true;
-            lastPointerSelectionAt = Date.now();
+          const now = Date.now();
+          const recentPointer =
+            pointerDownActive || now - lastPointerDownAt < 350 || now - lastPointerUpAt < 350;
+          if (isRange && recentPointer) {
+            markRangeSelection(450);
           }
         } catch {
           // ignore
@@ -2597,12 +2689,9 @@ export const mountA4Layout = (
     if (coords && attachedEditorHandle) {
       const view = attachedEditorHandle.getEditor()?.view;
       try {
-        const pos = view?.posAtCoords?.({ left: coords.x, top: coords.y }) ?? null;
-        if (pos?.pos != null) {
-          const $pos = view.state.doc.resolve(pos.pos);
-          const safe = $pos.parent.inlineContent ? Selection.near($pos, 1) : Selection.near($pos, 1);
-          view.dispatch(view.state.tr.setSelection(safe).scrollIntoView());
-          view.focus();
+        const pos = view ? getCoordsPosFromPoint(view, coords.x, coords.y, lastPageContentEl) : null;
+        if (pos != null) {
+          setCaretAtPos(view, pos);
           caretState.body.bookmark = view.state.selection.getBookmark();
           caretState.body.from = (view.state.selection as any)?.from ?? caretState.body.from;
           caretState.body.to = (view.state.selection as any)?.to ?? caretState.body.to;
@@ -2849,8 +2938,19 @@ export const mountA4Layout = (
     const numbering = doc ? reconcileFootnotes(doc).numbering : new Map<string, string>();
 
     const footnoteType = editorInstance?.state?.schema?.nodes?.footnote ?? null;
+    const footnoteBodyType = editorInstance?.state?.schema?.nodes?.footnoteBody ?? null;
     const pageType = editorInstance?.state?.schema?.nodes?.page ?? null;
     if (!doc || !footnoteType) return entries;
+    const bodyTextById = new Map<string, string>();
+    if (footnoteBodyType) {
+      doc.descendants((node) => {
+        if (node.type !== footnoteBodyType) return true;
+        const id = typeof (node.attrs as any)?.footnoteId === "string" ? String((node.attrs as any).footnoteId).trim() : "";
+        if (!id || bodyTextById.has(id)) return true;
+        bodyTextById.set(id, getFootnoteBodyPlainText(node));
+        return true;
+      });
+    }
 
     const pushEntry = (id: string, kind: FootnoteKind, source: "manual" | "citation", pageIndex: number, text: string) => {
       const mapped = numbering.get(id);
@@ -2879,7 +2979,9 @@ export const mountA4Layout = (
           const source: "manual" | "citation" = citationId ? "citation" : "manual";
           const draft = footnoteTextDraft.get(id);
           const attrText = typeof (node.attrs as any)?.text === "string" ? String((node.attrs as any).text) : "";
-          const text = typeof draft === "string" ? draft : attrText;
+          const bodyText = bodyTextById.get(id) ?? "";
+          const baseText = bodyText.trim().length > 0 ? bodyText : attrText;
+          const text = typeof draft === "string" ? draft : baseText;
           pushEntry(id, kind, source, kind === "endnote" ? 0 : pageIndex, text);
           return true;
         });
@@ -2915,7 +3017,9 @@ export const mountA4Layout = (
       const source: "manual" | "citation" = citationId ? "citation" : "manual";
       const draft = footnoteTextDraft.get(id);
       const attrText = typeof (node.attrs as any)?.text === "string" ? String((node.attrs as any).text) : "";
-      const text = typeof draft === "string" ? draft : attrText;
+      const bodyText = bodyTextById.get(id) ?? "";
+      const baseText = bodyText.trim().length > 0 ? bodyText : attrText;
+      const text = typeof draft === "string" ? draft : baseText;
       pushEntry(id, kind, source, kind === "endnote" ? 0 : Math.max(0, currentPageIndex - 1), text);
       return true;
     });
@@ -3352,6 +3456,9 @@ export const mountA4Layout = (
     const view = editorInstance?.view;
     if (!view) return false;
     const footnoteType = view.state.schema.nodes.footnote;
+    const footnoteBodyType = view.state.schema.nodes.footnoteBody;
+    const footnotesContainerType = view.state.schema.nodes.footnotesContainer;
+    const pageType = view.state.schema.nodes.page;
     if (!footnoteType) return false;
     let foundPos: number | null = null;
     let foundNode: any = null;
@@ -3366,19 +3473,76 @@ export const mountA4Layout = (
       return true;
     });
     if (foundPos == null || !foundNode) return false;
+    let bodyPos: number | null = null;
+    let bodyNode: any = null;
+    if (footnoteBodyType) {
+      view.state.doc.descendants((node, pos) => {
+        if (node.type !== footnoteBodyType) return true;
+        const id = typeof (node.attrs as any)?.footnoteId === "string" ? String((node.attrs as any).footnoteId).trim() : "";
+        if (id === footnoteId) {
+          bodyPos = pos;
+          bodyNode = node;
+          return false;
+        }
+        return true;
+      });
+    }
     const trimmed = typeof text === "string" ? text : "";
-    const current = typeof (foundNode.attrs as any)?.text === "string" ? String((foundNode.attrs as any).text).trim() : "";
-    if (current === trimmed.trim()) return true;
+    const currentAttr = typeof (foundNode.attrs as any)?.text === "string" ? String((foundNode.attrs as any).text).trim() : "";
+    const currentBody = bodyNode ? getFootnoteBodyPlainText(bodyNode).trim() : "";
+    if (currentAttr === trimmed.trim() && currentBody === trimmed.trim()) return true;
+    const findContainer = (doc: any) => {
+      let pos: number | null = null;
+      let node: any = null;
+      if (!footnotesContainerType) return null;
+      doc.descendants((child: any, childPos: number) => {
+        if (child.type !== footnotesContainerType) return true;
+        pos = childPos;
+        node = child;
+        return false;
+      });
+      if (pos == null || !node) return null;
+      return { pos, node };
+    };
     try {
-      const nextAttrs = { ...(foundNode.attrs as any), text: trimmed };
-      // Keep nodeSize stable by storing text in attrs and clearing node content.
-      const nextNode = footnoteType.create(nextAttrs, [], foundNode.marks);
-      const fromPos = Number(foundPos);
-      const rawNodeSize =
-        typeof foundNode.nodeSize === "number" ? foundNode.nodeSize : Number((foundNode as any).nodeSize);
-      const nodeSize = Number.isFinite(rawNodeSize) ? rawNodeSize : 0;
+      let tr = view.state.tr;
       const prevSelection = view.state.selection;
-      let tr = view.state.tr.replaceWith(fromPos, fromPos + nodeSize, nextNode);
+      let changed = false;
+      if (currentAttr !== trimmed.trim()) {
+        const nextAttrs = { ...(foundNode.attrs as any), text: trimmed };
+        tr = tr.setNodeMarkup(foundPos as number, foundNode.type, nextAttrs, foundNode.marks);
+        changed = true;
+      }
+      if (footnoteBodyType) {
+        if (bodyPos != null && bodyNode) {
+          const nextBody = footnoteBodyType.create(
+            { ...(bodyNode.attrs as any), footnoteId, kind: bodyNode.attrs?.kind ?? foundNode.attrs?.kind ?? "footnote" },
+            buildFootnoteBodyContent(view.state.schema, trimmed)
+          );
+          tr = tr.replaceWith(bodyPos, bodyPos + Number(bodyNode.nodeSize), nextBody);
+          changed = true;
+        } else if (footnotesContainerType) {
+          let containerInfo = findContainer(tr.doc);
+          if (!containerInfo && pageType && tr.doc.childCount > 0) {
+            const firstPage = tr.doc.child(0);
+            if (firstPage?.type === pageType) {
+              const insertPos = firstPage.nodeSize - 1;
+              tr = tr.insert(insertPos, footnotesContainerType.create());
+              containerInfo = findContainer(tr.doc);
+            }
+          }
+          if (containerInfo) {
+            const insertPos = Number(containerInfo.pos) + Number(containerInfo.node.nodeSize) - 1;
+            const nextBody = footnoteBodyType.create(
+              { footnoteId, kind: foundNode.attrs?.kind ?? "footnote" },
+              buildFootnoteBodyContent(view.state.schema, trimmed)
+            );
+            tr = tr.insert(insertPos, nextBody);
+            changed = true;
+          }
+        }
+      }
+      if (!changed) return true;
       // Preserve the current ProseMirror selection. Updating a footnote node's attrs must not
       // reset the selection to start/end-of-doc (caret poison) or steal focus from overlay editors.
       try {
@@ -3436,10 +3600,14 @@ export const mountA4Layout = (
     const view = editorInstance?.view;
     if (!view) return false;
     const footnoteType = view.state.schema.nodes.footnote;
+    const footnoteBodyType = view.state.schema.nodes.footnoteBody;
     if (!footnoteType) return false;
     const positions: number[] = [];
     view.state.doc.descendants((node, pos) => {
       if (node.type === footnoteType && String((node.attrs as any)?.footnoteId ?? "") === footnoteId) {
+        positions.push(pos);
+      }
+      if (footnoteBodyType && node.type === footnoteBodyType && String((node.attrs as any)?.footnoteId ?? "") === footnoteId) {
         positions.push(pos);
       }
       return true;
@@ -3509,7 +3677,7 @@ export const mountA4Layout = (
   const footnoteHeightCache = new Map<number, number>();
   const footnoteLayoutVarsByPage = new Map<
     number,
-    { height: number; effectiveBottom: number; gap: number }
+    { height: number; effectiveBottom: number; gap: number; guard: number }
   >();
   // Rounded pixel values can still jitter by 1px across layout passes (scrollbar toggles, font hinting).
   // Use the smallest delta so a new footnote line always triggers a repagination.
@@ -3522,6 +3690,21 @@ export const mountA4Layout = (
     if (Number.isFinite(parsed)) return parsed;
     return FOOTNOTE_BODY_GAP_FALLBACK_PX;
   };
+  const FOOTNOTE_GUARD_FALLBACK_PX = 6;
+  const getFootnoteGuardPx = (contentEl?: HTMLElement | null, target?: HTMLElement | null): number => {
+    const el = target ?? document.documentElement;
+    const raw = getComputedStyle(el).getPropertyValue("--page-footnote-guard").trim();
+    const parsed = Number.parseFloat(raw);
+    let base = Number.isFinite(parsed) ? parsed : FOOTNOTE_GUARD_FALLBACK_PX;
+    if (contentEl) {
+      const rawLineHeight = getComputedStyle(contentEl).lineHeight.trim();
+      const lh = Number.parseFloat(rawLineHeight);
+      if (Number.isFinite(lh) && lh > 0) {
+        base = Math.max(base, Math.round(lh * 0.4));
+      }
+    }
+    return base;
+  };
   let lastFootnoteDebugLogAt = 0;
   const isFootnoteLayoutDebug = () => Boolean((window as any).__leditorFootnoteLayoutDebug);
   const syncFootnoteDebugClass = () => {
@@ -3531,10 +3714,12 @@ export const mountA4Layout = (
     target: HTMLElement | null,
     heightPx: number,
     effectiveBottomPx: number,
-    gapPx: number
+    gapPx: number,
+    guardPx: number
   ) => {
     if (!target) return;
     target.style.setProperty("--page-footnote-gap", `${gapPx}px`);
+    target.style.setProperty("--page-footnote-guard", `${Math.max(0, Math.round(guardPx))}px`);
     target.style.setProperty("--page-footnote-height", `${Math.max(0, Math.round(heightPx))}px`);
     target.style.setProperty("--effective-margin-bottom", `${Math.max(0, Math.round(effectiveBottomPx))}px`);
   };
@@ -3582,9 +3767,13 @@ export const mountA4Layout = (
       const pageIndex = Number.isFinite(parsed) ? parsed : index;
       const entry = footnoteLayoutVarsByPage.get(pageIndex);
       if (!entry) return;
-      setFootnoteLayoutVars(page, entry.height, entry.effectiveBottom, entry.gap);
-      const pageContent = pageContents[pageIndex] ?? pageContents[index] ?? null;
-      setFootnoteLayoutVars(pageContent, entry.height, entry.effectiveBottom, entry.gap);
+      setFootnoteLayoutVars(page, entry.height, entry.effectiveBottom, entry.gap, entry.guard);
+      const pageContent =
+        pageContents[pageIndex] ??
+        pageContents[index] ??
+        editorEl.querySelector<HTMLElement>(`.leditor-page[data-page-index="${pageIndex}"] .leditor-page-content`) ??
+        null;
+      setFootnoteLayoutVars(pageContent, entry.height, entry.effectiveBottom, entry.gap, entry.guard);
       applied += 1;
     });
     if (applied === 0 && footnoteLayoutVarsByPage.size > 0 && footnoteLayoutSyncHandle === 0 && footnoteLayoutSyncRetries < 6) {
@@ -3669,9 +3858,11 @@ export const mountA4Layout = (
           pageStackPage?.querySelector<HTMLElement>(".leditor-page-content") ??
           pageContents[pageIndex] ??
           pageContents[containerIndex] ??
+          editorEl.querySelector<HTMLElement>(`.leditor-page[data-page-index="${pageIndex}"] .leditor-page-content`) ??
           null;
         const hasEntries = container.querySelector(".leditor-footnote-entry") != null;
         const gapPx = getFootnoteGapPx(host ?? pageStackPage ?? document.documentElement);
+        const guardPxRaw = getFootnoteGuardPx(pageContent, host ?? pageStackPage ?? document.documentElement);
         const containerStyle = getComputedStyle(container);
         const paddingTopPx = Number.parseFloat(containerStyle.paddingTop || "0") || 0;
         const borderTopPx = Number.parseFloat(containerStyle.borderTopWidth || "0") || 0;
@@ -3681,13 +3872,15 @@ export const mountA4Layout = (
         // the footer distance + footer height in that case (Word-like behavior).
         if (!hasEntries) {
           const reservePx = footnoteMode ? Math.max(18, Math.round(footerReservePx * 0.35)) : 0;
-          const effectiveBottomPx = Math.max(0, footerReservePx + reservePx + gapPx);
+          const guardPx = reservePx > 0 ? guardPxRaw : 0;
+          const effectiveBottomPx = Math.max(0, footerReservePx + reservePx + gapPx + guardPx);
           if (pageIndex >= 0) {
             if (reservePx > 0) {
               footnoteLayoutVarsByPage.set(pageIndex, {
                 height: reservePx,
                 effectiveBottom: effectiveBottomPx,
-                gap: gapPx
+                gap: gapPx,
+                guard: guardPx
               });
             } else {
               footnoteLayoutVarsByPage.delete(pageIndex);
@@ -3698,10 +3891,10 @@ export const mountA4Layout = (
           container.style.height = `${reservePx}px`;
           container.style.overflowY = "hidden";
           container.style.setProperty("--page-footnote-height", `${reservePx}px`);
-          setFootnoteLayoutVars(host, reservePx, effectiveBottomPx, gapPx);
+          setFootnoteLayoutVars(host, reservePx, effectiveBottomPx, gapPx, guardPx);
           if (pageIndex >= 0) {
-            setFootnoteLayoutVars(pageStackPage, reservePx, effectiveBottomPx, gapPx);
-            setFootnoteLayoutVars(pageContent, reservePx, effectiveBottomPx, gapPx);
+            setFootnoteLayoutVars(pageStackPage, reservePx, effectiveBottomPx, gapPx, guardPx);
+            setFootnoteLayoutVars(pageContent, reservePx, effectiveBottomPx, gapPx, guardPx);
             const prevHeight = footnoteHeightCache.get(pageIndex);
             const appliedHeight = reservePx;
           if (prevHeight === undefined || Math.abs(appliedHeight - prevHeight) >= FOOTNOTE_HEIGHT_DIRTY_THRESHOLD) {
@@ -3766,15 +3959,17 @@ export const mountA4Layout = (
         const currentMarginBottomPx = Number.parseFloat(
           getComputedStyle(host ?? container).getPropertyValue("--current-margin-bottom").trim() || "0"
         );
+        const guardPx = guardPxRaw;
         const effectiveBottomPx = Math.max(
           currentMarginBottomPx,
-          footerReservePx + appliedHeight + gapPx
+          footerReservePx + appliedHeight + gapPx + guardPx
         );
         if (pageIndex >= 0) {
           footnoteLayoutVarsByPage.set(pageIndex, {
             height: appliedHeight,
             effectiveBottom: effectiveBottomPx,
-            gap: gapPx
+            gap: gapPx,
+            guard: guardPx
           });
         }
 
@@ -3782,10 +3977,10 @@ export const mountA4Layout = (
         container.style.overflowY = "hidden";
         container.style.height = hasEntries ? `${appliedHeight}px` : "0px";
         container.style.setProperty("--page-footnote-height", `${appliedHeight}px`);
-        setFootnoteLayoutVars(host, appliedHeight, effectiveBottomPx, gapPx);
+        setFootnoteLayoutVars(host, appliedHeight, effectiveBottomPx, gapPx, guardPx);
         if (pageIndex >= 0) {
-          setFootnoteLayoutVars(pageStackPage, appliedHeight, effectiveBottomPx, gapPx);
-          setFootnoteLayoutVars(pageContent, appliedHeight, effectiveBottomPx, gapPx);
+          setFootnoteLayoutVars(pageStackPage, appliedHeight, effectiveBottomPx, gapPx, guardPx);
+          setFootnoteLayoutVars(pageContent, appliedHeight, effectiveBottomPx, gapPx, guardPx);
           const prevHeight = footnoteHeightCache.get(pageIndex);
           if (prevHeight === undefined || Math.abs(appliedHeight - prevHeight) >= FOOTNOTE_HEIGHT_DIRTY_THRESHOLD) {
             footnoteHeightCache.set(pageIndex, appliedHeight);
@@ -3814,6 +4009,7 @@ export const mountA4Layout = (
                   ? {
                       height: getComputedStyle(pageStackPage).getPropertyValue("--page-footnote-height").trim(),
                       gap: getComputedStyle(pageStackPage).getPropertyValue("--page-footnote-gap").trim(),
+                      guard: getComputedStyle(pageStackPage).getPropertyValue("--page-footnote-guard").trim(),
                       effectiveBottom: getComputedStyle(pageStackPage)
                         .getPropertyValue("--effective-margin-bottom")
                         .trim()
@@ -3838,6 +4034,7 @@ export const mountA4Layout = (
       // every page to reserve space for the largest footnote, producing huge blank gaps and
       // truncated lines on pages without footnotes.
       zoomLayer.style.setProperty("--page-footnote-gap", `${getFootnoteGapPx(zoomLayer)}px`);
+      zoomLayer.style.setProperty("--page-footnote-guard", "0px");
       zoomLayer.style.setProperty("--page-footnote-height", "0px");
       const baseMarginBottomPx = Number.parseFloat(
         getComputedStyle(zoomLayer).getPropertyValue("--current-margin-bottom").trim() || "0"
@@ -4480,11 +4677,28 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
     return Math.max(1, Math.ceil((contentHeight + gap) / total));
   };
 
+  let lastHyphenationMode: string | null = null;
+  const syncHyphenation = () => {
+    const editorInstance = attachedEditorHandle?.getEditor?.() ?? null;
+    const rawMode = (editorInstance?.state?.doc?.attrs as any)?.hyphenation ?? "none";
+    const mode = typeof rawMode === "string" ? rawMode.toLowerCase() : "none";
+    const cssMode =
+      mode === "auto" || mode === "full"
+        ? "auto"
+        : mode === "manual"
+          ? "manual"
+          : "manual";
+    if (cssMode === lastHyphenationMode) return;
+    lastHyphenationMode = cssMode;
+    document.documentElement.style.setProperty("--page-hyphens", cssMode);
+  };
+
   const updatePagination = () => {
     suspendPageObserver = true;
     const scrollTopBefore = appRoot.scrollTop;
     const scrollLeftBefore = appRoot.scrollLeft;
     try {
+      syncHyphenation();
       const rootStyle = getComputedStyle(document.documentElement);
       const pageColumns = rootStyle.getPropertyValue("--page-columns").trim();
       if (pageColumns && pageColumns !== "1") {
@@ -5211,15 +5425,81 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
     pointerDownActive = true;
     pointerSelectionRange = false;
     pointerMoved = false;
+    lastPointerDownAt = Date.now();
     pointerDownX = event.clientX;
     pointerDownY = event.clientY;
-		    // Un-stick stray mode classes (flags are the source of truth).
-		    setModeClass("leditor-footnote-editing", false);
-		    setModeClass("leditor-header-footer-editing", false);
-		    setEditorEditable(true);
-		    // If the user is clicking back into the editor surface, ensure focus is restored so the caret appears.
-		    const target = event.target as HTMLElement | null;
-		    if (target && editorEl.contains(target)) {
+    multiClickDrag = null;
+    marginSelectionActive = false;
+    marginSelectionAnchor = null;
+    // Un-stick stray mode classes (flags are the source of truth).
+    setModeClass("leditor-footnote-editing", false);
+    setModeClass("leditor-header-footer-editing", false);
+    setEditorEditable(true);
+
+    const clickCount = typeof event.detail === "number" ? event.detail : 1;
+    const target = event.target as HTMLElement | null;
+    const editorInstance = attachedEditorHandle?.getEditor?.() ?? null;
+    const view = editorInstance?.view ?? null;
+    if (view) {
+      const selectionMode = getSelectionMode();
+      const wantsBlock = selectionMode === "block" || event.altKey;
+      const pageCtx = getPageContextFromPoint(event.clientX, event.clientY);
+      if (pageCtx?.pageContent) lastPageContentEl = pageCtx.pageContent;
+      if (pageCtx?.pageContent && pageCtx?.pageEl) {
+        const pageRect = pageCtx.pageEl.getBoundingClientRect();
+        const contentRect = pageCtx.pageContent.getBoundingClientRect();
+        const inPageY = event.clientY >= pageRect.top && event.clientY <= pageRect.bottom;
+        const inContentX = event.clientX >= contentRect.left && event.clientX <= contentRect.right;
+        const inContentY = event.clientY >= contentRect.top && event.clientY <= contentRect.bottom;
+        const inLeftMargin =
+          inPageY && event.clientX >= pageRect.left && event.clientX < contentRect.left - 2;
+        if (wantsBlock && inContentX && inContentY) {
+          blockSelectionActive = true;
+          blockSelectionAnchor = { x: event.clientX, y: event.clientY };
+          blockSelectionPageContent = pageCtx.pageContent;
+          const ranges = computeBlockRanges(
+            view,
+            blockSelectionAnchor,
+            blockSelectionAnchor,
+            blockSelectionPageContent
+          );
+          if (ranges.length) {
+            setVirtualSelections({ view }, ranges, "block");
+          }
+          armSelectionHold(800);
+        } else if (!wantsBlock && inLeftMargin) {
+          const coordsPos = getCoordsPosFromPoint(view, event.clientX, event.clientY, pageCtx.pageContent);
+          if (coordsPos != null) {
+            const range = getParagraphRangeAtPos(view, coordsPos);
+            if (range) {
+              marginSelectionActive = true;
+              marginSelectionAnchor = range;
+              applyRangeSelection(view, range.from, range.to);
+              pointerSelectionRange = true;
+              lastPointerSelectionAt = Date.now();
+              armSelectionHold(600);
+              event.preventDefault();
+            }
+          }
+        } else if (!wantsBlock && clickCount >= 2 && inContentX && inContentY) {
+          const targetBlock = target?.closest?.(CLICK_BLOCK_SELECTOR) as HTMLElement | null;
+          const coordsPos = getCoordsPosFromPoint(
+            view,
+            event.clientX,
+            event.clientY,
+            pageCtx.pageContent,
+            targetBlock
+          );
+          if (coordsPos != null) {
+            const kind = clickCount >= 4 ? "paragraph" : clickCount >= 3 ? "sentence" : "word";
+            startMultiClickDrag(view, kind, coordsPos);
+          }
+        }
+      }
+    }
+
+    // If the user is clicking back into the editor surface, ensure focus is restored so the caret appears.
+    if (target && editorEl.contains(target)) {
           // Store the most-recent body click candidate. We'll validate / apply it on `click` (bubble),
           // after ProseMirror has had a chance to set selection normally.
           try {
@@ -5255,12 +5535,22 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
 		        document.removeEventListener("pointerup", onPointerUp, true);
 		        document.removeEventListener("pointercancel", onPointerUp, true);
             pointerDownActive = false;
+            lastPointerUpAt = Date.now();
             if (pointerMoved) {
               lastPointerDragAt = Date.now();
-              pointerSelectionRange = true;
-              lastPointerSelectionAt = lastPointerDragAt;
+              markRangeSelection(450);
             }
-		        if (footnoteMode || headerFooterMode) return;
+            try {
+              const editorInstance = attachedEditorHandle?.getEditor?.() ?? null;
+              const view = editorInstance?.view ?? null;
+              const sel: any = view?.state?.selection ?? null;
+              if (sel && typeof sel.from === "number" && typeof sel.to === "number" && sel.from !== sel.to) {
+                markRangeSelection(450);
+              }
+            } catch {
+              // ignore
+            }
+            if (footnoteMode || headerFooterMode) return;
 		        // IMPORTANT: ProseMirror often applies click-based selection on the subsequent `click` event,
 		        // which fires *after* `pointerup`. If we intervene synchronously here we can overwrite the
 		        // intended caret placement (observed as "always types at position 0/2"). Defer to the next
@@ -5288,6 +5578,8 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
 			              selectionFromBefore != null &&
 			              selectionToBefore != null &&
 			              selectionFromBefore !== selectionToBefore;
+			            const holdSelection = selectionHoldActive();
+			            const holdRangeSelection = selectionWasRange && holdSelection;
 
 			            const hitInProse = target === prose || prose.contains(target);
 			            const inPageChrome =
@@ -5310,9 +5602,7 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
 		              const r = pageContent.getBoundingClientRect();
 		              return Math.min(Math.max(rawY, r.top + 4), r.bottom - 4);
 		            })();
-		            const coords = view.posAtCoords?.({ left: x, top: y }) ?? null;
-
-			            const coordsPos = typeof coords?.pos === "number" ? coords.pos : null;
+		            const coordsPos = getCoordsPosFromPoint(view, x, y, pageContent);
 			            const coordsFarFromBefore =
 			              selectionFromBefore != null && coordsPos != null
 			                ? Math.abs(coordsPos - selectionFromBefore) > 2
@@ -5321,14 +5611,18 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
 			            // Word-like behavior: if there is an active range selection and a plain click doesn't
 			            // collapse it (usually because an overlay/page chrome intercepted the event), force a
 			            // caret at the click coords. Never do this when the user is holding selection modifiers.
-			            if (selectionDidNotMove && selectionWasRange && !selectionModifierHeld && coordsPos != null) {
-			              try {
-			                const $pos = view.state.doc.resolve(coordsPos);
-			                const safe = Selection.near($pos, 1);
-			                view.dispatch(view.state.tr.setSelection(safe).scrollIntoView());
-			              } catch {
-			                // ignore
-			              }
+			            if (
+			              selectionDidNotMove &&
+			              selectionWasRange &&
+			              !selectionModifierHeld &&
+			              coordsPos != null &&
+			              !holdRangeSelection
+			            ) {
+			              setCaretAtPos(view, coordsPos);
+			              return;
+			            }
+
+			            if (holdSelection) {
 			              try {
 			                view.focus();
 			              } catch {
@@ -5343,14 +5637,7 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
 			            // - click landed in page chrome and ProseMirror didn't map it.
 		            if ((!hitInProse || inPageChrome) || (selectionDidNotMove && coordsFarFromBefore)) {
 		              if (coordsPos != null) {
-		                const $pos = view.state.doc.resolve(coordsPos);
-		                const safe = Selection.near($pos, 1);
-		                view.dispatch(view.state.tr.setSelection(safe).scrollIntoView());
-		              }
-		              try {
-		                view.focus();
-		              } catch {
-		                // ignore
+		                setCaretAtPos(view, coordsPos);
 		              }
 		            } else if (hitInProse) {
 		              // Normal ProseMirror click: don't override selection, but make sure focus is on the editor.
@@ -5380,11 +5667,80 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
   document.addEventListener("pointerdown", handleDocumentPointerDown, true);
 
   const handleGlobalPointerMove = (event: PointerEvent) => {
-    if (!pointerDownActive || pointerMoved) return;
+    if (!pointerDownActive) return;
     const dx = Math.abs(event.clientX - pointerDownX);
     const dy = Math.abs(event.clientY - pointerDownY);
-    if (dx > 2 || dy > 2) {
+    if (!pointerMoved && (dx > 2 || dy > 2)) {
       pointerMoved = true;
+    }
+
+    const editorInstance = attachedEditorHandle?.getEditor?.() ?? null;
+    const view = editorInstance?.view ?? null;
+    if (view && (multiClickDrag?.active || marginSelectionActive || blockSelectionActive)) {
+      const pageCtx = getPageContextFromPoint(event.clientX, event.clientY);
+      if (pageCtx?.pageContent) lastPageContentEl = pageCtx.pageContent;
+      const pageContent = pageCtx?.pageContent ?? blockSelectionPageContent ?? lastPageContentEl;
+      const coordsPos = getCoordsPosFromPoint(view, event.clientX, event.clientY, pageContent);
+      if (blockSelectionActive && blockSelectionAnchor && pageContent) {
+        const ranges = computeBlockRanges(
+          view,
+          blockSelectionAnchor,
+          { x: event.clientX, y: event.clientY },
+          pageContent
+        );
+        const editorInstance = attachedEditorHandle?.getEditor?.() ?? null;
+        if (editorInstance) {
+          setVirtualSelections(editorInstance, ranges, "block");
+        }
+        pointerSelectionRange = true;
+        lastPointerSelectionAt = Date.now();
+        armSelectionHold(350);
+      } else if (coordsPos != null) {
+        if (multiClickDrag?.active) {
+          updateMultiClickDrag(view, coordsPos);
+        }
+        if (marginSelectionActive && marginSelectionAnchor) {
+          const range = getParagraphRangeAtPos(view, coordsPos);
+          if (range) {
+            let from = marginSelectionAnchor.from;
+            let to = marginSelectionAnchor.to;
+            if (range.from < marginSelectionAnchor.from) {
+              from = range.from;
+              to = marginSelectionAnchor.to;
+            } else if (range.to > marginSelectionAnchor.to) {
+              from = marginSelectionAnchor.from;
+              to = range.to;
+            }
+            applyRangeSelection(view, Math.min(from, to), Math.max(from, to));
+            pointerSelectionRange = true;
+            lastPointerSelectionAt = Date.now();
+            armSelectionHold(250);
+          }
+        }
+      }
+    }
+
+    if (!pointerMoved) return;
+    const scrollRoot = appRoot;
+    const rect = scrollRoot.getBoundingClientRect();
+    const threshold = 40;
+    let delta = 0;
+    if (event.clientY < rect.top + threshold) {
+      const dist = Math.max(0, rect.top + threshold - event.clientY);
+      delta = -Math.ceil((dist / threshold) * 24);
+    } else if (event.clientY > rect.bottom - threshold) {
+      const dist = Math.max(0, event.clientY - (rect.bottom - threshold));
+      delta = Math.ceil((dist / threshold) * 24);
+    }
+    if (delta !== 0) {
+      pendingAutoScroll = delta;
+      if (!autoScrollRaf) {
+        autoScrollRaf = window.requestAnimationFrame(() => {
+          scrollRoot.scrollBy({ top: pendingAutoScroll, behavior: "auto" });
+          pendingAutoScroll = 0;
+          autoScrollRaf = 0;
+        });
+      }
     }
   };
   const existingPointerMove = (window as any)[globalPointerMoveKey] as ((e: PointerEvent) => void) | undefined;
@@ -5394,6 +5750,16 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
 
   const handleGlobalPointerUp = () => {
     pointerDownActive = false;
+    lastPointerUpAt = Date.now();
+    if (marginSelectionActive || multiClickDrag?.active || blockSelectionActive) {
+      markRangeSelection(350);
+    }
+    marginSelectionActive = false;
+    marginSelectionAnchor = null;
+    multiClickDrag = null;
+    blockSelectionActive = false;
+    blockSelectionAnchor = null;
+    blockSelectionPageContent = null;
   };
   const existingPointerUp = (window as any)[globalPointerUpKey] as ((e: PointerEvent) => void) | undefined;
   if (existingPointerUp) document.removeEventListener("pointerup", existingPointerUp, true);
@@ -5417,13 +5783,116 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
     return depth;
   };
 
-  const selectWordAtPos = (view: any, pos: number): boolean => {
+  const clampDocPos = (view: any, pos: number) =>
+    Math.max(0, Math.min(view.state.doc.content.size, pos));
+
+  const isAnchorInlineNode = (node: any): boolean => node?.type?.name === "anchorMarker";
+  const hasLockedAnchorMark = (node: any): boolean => {
+    if (!node?.isText) return false;
+    const marks = node.marks ?? [];
+    return marks.some((mark: any) => {
+      if (mark?.type?.name !== "anchor") return false;
+      const attrs = mark.attrs || {};
+      return Boolean(
+        attrs.dataKey ||
+          attrs.dataItemKey ||
+          attrs.itemKey ||
+          attrs.dataDqid ||
+          attrs.dataQuoteId ||
+          attrs.dataQuoteText
+      );
+    });
+  };
+  const isAnchorBlockedPos = (doc: any, pos: number): boolean => {
+    try {
+      const $pos = doc.resolve(pos);
+      const before = $pos.nodeBefore;
+      const after = $pos.nodeAfter;
+      const index = $pos.index();
+      const parent = $pos.parent;
+      const at = parent && index < parent.childCount ? parent.child(index) : null;
+      return (
+        isAnchorInlineNode(before) ||
+        isAnchorInlineNode(after) ||
+        isAnchorInlineNode(at) ||
+        hasLockedAnchorMark(before) ||
+        hasLockedAnchorMark(after) ||
+        hasLockedAnchorMark(at)
+      );
+    } catch {
+      return false;
+    }
+  };
+  const findSafeCaretPos = (view: any, pos: number): number => {
+    const direct = resolveInlinePos(view, pos, 1);
+    if (direct != null) return direct;
+    const doc = view.state.doc;
+    const max = doc.content.size;
+    const clamp = (p: number) => Math.max(0, Math.min(max, p));
+    for (let step = 1; step <= 16; step += 1) {
+      const left = resolveInlinePos(view, clamp(pos - step), -1);
+      if (left != null) return left;
+      const right = resolveInlinePos(view, clamp(pos + step), 1);
+      if (right != null) return right;
+    }
+    return pos;
+  };
+  const resolveInlinePos = (view: any, pos: number, bias = 1): number | null => {
+    const doc = view.state.doc;
+    const max = doc.content.size;
+    const clamp = (p: number) => Math.max(0, Math.min(max, p));
+    const accept = (p: number) => {
+      const $pos = doc.resolve(p);
+      return $pos.parent.inlineContent && !isAnchorBlockedPos(doc, p);
+    };
+    let candidate = clamp(pos);
+    if (accept(candidate)) return candidate;
+    for (let step = 1; step <= 8; step += 1) {
+      const left = clamp(candidate - step);
+      if (accept(left)) return left;
+      const right = clamp(candidate + step);
+      if (accept(right)) return right;
+    }
+    try {
+      const $pos = doc.resolve(candidate);
+      const near = Selection.near($pos, bias);
+      const nearPos = clamp((near as any)?.from ?? candidate);
+      if (accept(nearPos)) return nearPos;
+    } catch {
+      // ignore
+    }
+    return null;
+  };
+
+  const CLICK_BLOCK_SELECTOR = "p, li, blockquote, pre, h1, h2, h3, h4, h5, h6";
+
+  const clampPosToBlock = (view: any, pos: number, blockEl: HTMLElement | null): number => {
+    if (!blockEl) return pos;
+    try {
+      const blockPos = view.posAtDOM(blockEl, 0);
+      const $block = view.state.doc.resolve(blockPos);
+      const depth = resolveTextblockDepth($block);
+      if (depth <= 0) return pos;
+      const start = $block.start(depth);
+      const end = $block.end(depth);
+      let clamped = Math.max(start + 1, Math.min(end - 1, pos));
+      const inline = resolveInlinePos(view, clamped, 1);
+      if (inline == null) return clamped;
+      if (inline < start + 1) return start + 1;
+      if (inline > end - 1) return end - 1;
+      return inline;
+    } catch {
+      return pos;
+    }
+  };
+
+  const getWordRangeAtPos = (view: any, pos: number): { from: number; to: number } | null => {
     try {
       const $pos = view.state.doc.resolve(pos);
       const depth = resolveTextblockDepth($pos);
-      if (depth <= 0) return false;
+      if (depth <= 0) return null;
       const text = $pos.parent.textBetween(0, $pos.parent.content.size, "\n", "\n");
-      if (!text) return false;
+      if (!text) return null;
       const offset = Math.max(0, Math.min($pos.parentOffset, text.length));
       let start = offset;
       while (start > 0 && isWordChar(text[start - 1])) start -= 1;
@@ -5434,53 +5903,244 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
         end = Math.min(text.length, offset + 1);
       }
       const blockStart = $pos.start(depth);
-      const from = Math.max(0, Math.min(view.state.doc.content.size, blockStart + start));
-      const to = Math.max(from, Math.min(view.state.doc.content.size, blockStart + end));
+      const from = clampDocPos(view, blockStart + start);
+      const to = Math.max(from, clampDocPos(view, blockStart + end));
+      return { from, to };
+    } catch {
+      return null;
+    }
+  };
+
+  const getSentenceRangeAtPos = (view: any, pos: number): { from: number; to: number } | null => {
+    try {
+      const $pos = view.state.doc.resolve(pos);
+      const depth = resolveTextblockDepth($pos);
+      if (depth <= 0) return null;
+      const text = $pos.parent.textBetween(0, $pos.parent.content.size, "\n", "\n");
+      if (!text) return null;
+      const offset = Math.max(0, Math.min($pos.parentOffset, text.length));
+      const bounds = findSentenceBounds(text, offset);
+      if (bounds.start === bounds.end) return null;
+      const blockStart = $pos.start(depth);
+      const from = clampDocPos(view, blockStart + bounds.start);
+      const to = Math.max(from, clampDocPos(view, blockStart + bounds.end));
+      return { from, to };
+    } catch {
+      return null;
+    }
+  };
+
+  const getParagraphRangeAtPos = (view: any, pos: number): { from: number; to: number } | null => {
+    try {
+      const $pos = view.state.doc.resolve(pos);
+      const depth = resolveTextblockDepth($pos);
+      if (depth <= 0) return null;
+      const from = clampDocPos(view, $pos.start(depth));
+      const to = Math.max(from, clampDocPos(view, $pos.end(depth)));
+      return { from, to };
+    } catch {
+      return null;
+    }
+  };
+
+  const applyRangeSelection = (
+    view: any,
+    from: number,
+    to: number,
+    options?: { scrollIntoView?: boolean }
+  ) => {
+    try {
       const selection = TextSelection.create(view.state.doc, from, to);
-      view.dispatch(view.state.tr.setSelection(selection).scrollIntoView());
+      const tr = view.state.tr.setSelection(selection);
+      if (options?.scrollIntoView) {
+        view.dispatch(tr.scrollIntoView());
+      } else {
+        view.dispatch(tr);
+      }
+      view.focus();
+    } catch {
+      // ignore
+    }
+  };
+
+  const setCaretAtPos = (view: any, pos: number, options?: { scrollIntoView?: boolean }) => {
+    try {
+      const safePos = findSafeCaretPos(view, pos);
+      const selection = TextSelection.create(view.state.doc, safePos, safePos);
+      const tr = view.state.tr.setSelection(selection);
+      if (options?.scrollIntoView) {
+        view.dispatch(tr.scrollIntoView());
+      } else {
+        view.dispatch(tr);
+      }
       view.focus();
       return true;
     } catch {
       return false;
     }
+  };
+
+  const selectWordAtPos = (view: any, pos: number): boolean => {
+    const range = getWordRangeAtPos(view, pos);
+    if (!range) return false;
+    applyRangeSelection(view, range.from, range.to);
+    return true;
   };
 
   const selectSentenceAtPos = (view: any, pos: number): boolean => {
-    try {
-      const $pos = view.state.doc.resolve(pos);
-      const depth = resolveTextblockDepth($pos);
-      if (depth <= 0) return false;
-      const text = $pos.parent.textBetween(0, $pos.parent.content.size, "\n", "\n");
-      if (!text) return false;
-      const offset = Math.max(0, Math.min($pos.parentOffset, text.length));
-      const bounds = findSentenceBounds(text, offset);
-      if (bounds.start === bounds.end) return false;
-      const blockStart = $pos.start(depth);
-      const from = Math.max(0, Math.min(view.state.doc.content.size, blockStart + bounds.start));
-      const to = Math.max(from, Math.min(view.state.doc.content.size, blockStart + bounds.end));
-      const selection = TextSelection.create(view.state.doc, from, to);
-      view.dispatch(view.state.tr.setSelection(selection).scrollIntoView());
-      view.focus();
-      return true;
-    } catch {
-      return false;
-    }
+    const range = getSentenceRangeAtPos(view, pos);
+    if (!range) return false;
+    applyRangeSelection(view, range.from, range.to);
+    return true;
   };
 
   const selectParagraphAtPos = (view: any, pos: number): boolean => {
-    try {
-      const $pos = view.state.doc.resolve(pos);
-      const depth = resolveTextblockDepth($pos);
-      if (depth <= 0) return false;
-      const from = $pos.start(depth);
-      const to = $pos.end(depth);
-      const selection = TextSelection.create(view.state.doc, from, to);
-      view.dispatch(view.state.tr.setSelection(selection).scrollIntoView());
-      view.focus();
-      return true;
-    } catch {
-      return false;
+    const range = getParagraphRangeAtPos(view, pos);
+    if (!range) return false;
+    applyRangeSelection(view, range.from, range.to);
+    return true;
+  };
+
+  const getRangeForKind = (
+    view: any,
+    kind: "word" | "sentence" | "paragraph",
+    pos: number
+  ): { from: number; to: number } | null => {
+    if (kind === "word") return getWordRangeAtPos(view, pos);
+    if (kind === "sentence") return getSentenceRangeAtPos(view, pos);
+    return getParagraphRangeAtPos(view, pos);
+  };
+
+  const getPageContextFromPoint = (x: number, y: number) => {
+    const el = document.elementFromPoint(x, y) as HTMLElement | null;
+    if (!el) return null;
+    const pageEl = el.closest<HTMLElement>(".leditor-page");
+    if (!pageEl || !pageStack.contains(pageEl)) return null;
+    const pageContent = pageEl.querySelector<HTMLElement>(".leditor-page-content") ?? null;
+    return { el, pageEl, pageContent };
+  };
+
+  const getCoordsPosFromPoint = (
+    view: any,
+    x: number,
+    y: number,
+    pageContent?: HTMLElement | null,
+    limitBlock?: HTMLElement | null
+  ) => {
+    const rawX = x;
+    const rawY = y;
+    const clamped = (() => {
+      if (!pageContent) return { left: rawX, top: rawY };
+      const r = pageContent.getBoundingClientRect();
+      return {
+        left: Math.min(Math.max(rawX, r.left + 4), r.right - 4),
+        top: Math.min(Math.max(rawY, r.top + 4), r.bottom - 4)
+      };
+    })();
+    const coords = view.posAtCoords?.({ left: clamped.left, top: clamped.top }) ?? null;
+    if (typeof coords?.pos !== "number") return null;
+    const inlinePos = resolveInlinePos(view, coords.pos, 1);
+    if (inlinePos == null) return null;
+    if (limitBlock) return clampPosToBlock(view, inlinePos, limitBlock);
+    return inlinePos;
+  };
+
+  const getLineStep = (view: any) => {
+    const style = getComputedStyle(view.dom);
+    const fontSize = Number.parseFloat(style.fontSize || "14");
+    let lineHeight = Number.parseFloat(style.lineHeight || "");
+    if (!Number.isFinite(lineHeight)) {
+      lineHeight = Number.isFinite(fontSize) ? fontSize * 1.2 : 16;
     }
+    return Math.max(8, Math.min(lineHeight, 72));
+  };
+
+  const computeBlockRanges = (
+    view: any,
+    anchor: { x: number; y: number },
+    current: { x: number; y: number },
+    pageContent: HTMLElement | null
+  ): VirtualSelectionRange[] => {
+    if (!pageContent) return [];
+    const rect = pageContent.getBoundingClientRect();
+    const left = Math.min(anchor.x, current.x);
+    const right = Math.max(anchor.x, current.x);
+    const top = Math.min(anchor.y, current.y);
+    const bottom = Math.max(anchor.y, current.y);
+    const clampX = (x: number) => Math.min(Math.max(x, rect.left + 4), rect.right - 4);
+    const clampY = (y: number) => Math.min(Math.max(y, rect.top + 2), rect.bottom - 2);
+    const clampedLeft = clampX(left);
+    const clampedRight = clampX(right);
+    const clampedTop = clampY(top);
+    const clampedBottom = clampY(bottom);
+    if (clampedBottom <= clampedTop || clampedRight <= clampedLeft) return [];
+    const step = getLineStep(view);
+    const ranges: VirtualSelectionRange[] = [];
+    let y = clampedTop;
+    const maxY = clampedBottom + step / 2;
+    while (y <= maxY) {
+      const fromPos = getCoordsPosFromPoint(view, clampedLeft, y, pageContent);
+      const toPos = getCoordsPosFromPoint(view, clampedRight, y, pageContent);
+      if (fromPos != null && toPos != null) {
+        const from = Math.min(fromPos, toPos);
+        const to = Math.max(fromPos, toPos);
+        if (to > from) {
+          ranges.push({ from, to });
+        }
+      }
+      y += step;
+    }
+    if (!ranges.length) return ranges;
+    ranges.sort((a, b) => a.from - b.from || a.to - b.to);
+    const merged: VirtualSelectionRange[] = [];
+    let currentRange = ranges[0];
+    for (let i = 1; i < ranges.length; i += 1) {
+      const next = ranges[i];
+      if (next.from <= currentRange.to + 1) {
+        currentRange = { from: currentRange.from, to: Math.max(currentRange.to, next.to) };
+      } else {
+        merged.push(currentRange);
+        currentRange = next;
+      }
+    }
+    merged.push(currentRange);
+    return merged;
+  };
+
+  const startMultiClickDrag = (view: any, kind: "word" | "sentence" | "paragraph", pos: number) => {
+    const range = getRangeForKind(view, kind, pos);
+    if (!range) return false;
+    multiClickDrag = {
+      active: true,
+      kind,
+      anchorFrom: range.from,
+      anchorTo: range.to,
+      lastPos: pos
+    };
+    applyRangeSelection(view, range.from, range.to);
+    armSelectionHold(600);
+    return true;
+  };
+
+  const updateMultiClickDrag = (view: any, pos: number) => {
+    if (!multiClickDrag || !multiClickDrag.active) return;
+    if (multiClickDrag.lastPos === pos) return;
+    const range = getRangeForKind(view, multiClickDrag.kind, pos);
+    if (!range) return;
+    multiClickDrag.lastPos = pos;
+    let from = multiClickDrag.anchorFrom;
+    let to = multiClickDrag.anchorTo;
+    if (pos <= multiClickDrag.anchorFrom) {
+      from = range.from;
+      to = multiClickDrag.anchorTo;
+    } else if (pos >= multiClickDrag.anchorTo) {
+      from = multiClickDrag.anchorFrom;
+      to = range.to;
+    }
+    applyRangeSelection(view, Math.min(from, to), Math.max(from, to));
+    pointerSelectionRange = true;
+    lastPointerSelectionAt = Date.now();
+    armSelectionHold(250);
   };
 
   const scheduleMultiClickSelection = (
@@ -5522,6 +6182,7 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
   const handleDocumentClick = (event: MouseEvent) => {
     if (footnoteMode || headerFooterMode) return;
     if (event.button !== 0) return;
+    if (selectionHoldActive()) return;
     let target = event.target as HTMLElement | null;
     if (!target) return;
 
@@ -5573,12 +6234,13 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
       return Math.min(Math.max(rawY, r.top + 4), r.bottom - 4);
     })();
 
-    const coords = view.posAtCoords?.({ left: x, top: y }) ?? null;
-    const coordsPos = typeof coords?.pos === "number" ? coords.pos : null;
+    const targetBlock = target.closest(CLICK_BLOCK_SELECTOR) as HTMLElement | null;
+    const coordsPos = getCoordsPosFromPoint(view, x, y, pageContent, targetBlock);
     if (coordsPos == null) return;
 
     const clickCount = typeof event.detail === "number" ? event.detail : 1;
     if (clickCount >= 2) {
+      armSelectionHold(600);
       const kind = clickCount >= 4 ? "paragraph" : clickCount >= 3 ? "sentence" : "word";
       scheduleMultiClickSelection(
         kind,
@@ -5600,22 +6262,19 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
       selection.from !== selection.to;
     // Word-like: any single, unmodified click collapses an existing range to the click point.
     if (selectionIsRange && !modifierHeld && clickCount <= 1) {
+      if (selectionHoldActive()) {
+        return;
+      }
       const now = Date.now();
       if (
-        (pointerSelectionRange && now - lastPointerSelectionAt < 350) ||
-        (lastPointerDragAt > 0 && now - lastPointerDragAt < 350)
+        (pointerSelectionRange && now - lastPointerSelectionAt < 450) ||
+        (lastPointerDragAt > 0 && now - lastPointerDragAt < 450) ||
+        (lastPointerUpAt > 0 && now - lastPointerUpAt < 350)
       ) {
         pointerSelectionRange = false;
         return;
       }
-      try {
-        const $pos = view.state.doc.resolve(coordsPos);
-        const safe = Selection.near($pos, 1);
-        view.dispatch(view.state.tr.setSelection(safe).scrollIntoView());
-        view.focus();
-      } catch {
-        // ignore
-      }
+      setCaretAtPos(view, coordsPos);
       return;
     }
 
@@ -5641,16 +6300,8 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
 
     // If selection is clearly wrong, force it.
     if (shouldForce) {
-      try {
-        const $pos = view.state.doc.resolve(coordsPos);
-        const safe = Selection.near($pos, 1);
-        view.dispatch(view.state.tr.setSelection(safe).scrollIntoView());
-        view.focus();
-        if ((window as any).__leditorCaretDebug) {
-          console.info("[Body][click] forced selection", { coordsPos, currentFrom, delta });
-        }
-      } catch {
-        // ignore
+      if (setCaretAtPos(view, coordsPos) && (window as any).__leditorCaretDebug) {
+        console.info("[Body][click] forced selection", { coordsPos, currentFrom, delta });
       }
     } else {
       // Ensure focus stays on the editor so caret is visible.

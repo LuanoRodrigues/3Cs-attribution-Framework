@@ -104,6 +104,26 @@ const dismissAllFixes = () => {
   }
 };
 
+const applyOneFix = (args?: { key?: unknown }) => {
+  const key = typeof args?.key === "string" ? args.key.trim() : "";
+  if (!key) return;
+  try {
+    applyClaimRewriteForKey(key);
+  } catch {
+    // ignore
+  }
+};
+
+const dismissOneFix = (args?: { key?: unknown }) => {
+  const key = typeof args?.key === "string" ? args.key.trim() : "";
+  if (!key) return;
+  try {
+    dismissClaimRewriteForKey(key);
+  } catch {
+    // ignore
+  }
+};
+
 registerPlugin({
   id: "source_checks_feedbacks",
   commands: {
@@ -122,6 +142,12 @@ registerPlugin({
     "ai.sourceChecks.dismissAllFixes"() {
       dismissAllFixes();
     },
+    "ai.sourceChecks.applyFix"(_editorHandle: EditorHandle, args?: { key?: unknown }) {
+      applyOneFix(args);
+    },
+    "ai.sourceChecks.dismissFix"(_editorHandle: EditorHandle, args?: { key?: unknown }) {
+      dismissOneFix(args);
+    },
     // Back-compat / typo tolerance: some UI surfaces referenced "sourcecheck" (singular) or different casing.
     "ai.sourcecheck.toggle"(editorHandle: EditorHandle) {
       toggle(editorHandle);
@@ -138,6 +164,12 @@ registerPlugin({
     "ai.sourcecheck.dismissAllFixes"() {
       dismissAllFixes();
     },
+    "ai.sourcecheck.applyFix"(_editorHandle: EditorHandle, args?: { key?: unknown }) {
+      applyOneFix(args);
+    },
+    "ai.sourcecheck.dismissFix"(_editorHandle: EditorHandle, args?: { key?: unknown }) {
+      dismissOneFix(args);
+    },
     "ai.sourcechecks.toggle"(editorHandle: EditorHandle) {
       toggle(editorHandle);
     },
@@ -153,6 +185,13 @@ registerPlugin({
     },
     "ai.sourcechecks.dismissAllFixes"() {
       dismissAllFixes();
+    }
+    ,
+    "ai.sourcechecks.applyFix"(_editorHandle: EditorHandle, args?: { key?: unknown }) {
+      applyOneFix(args);
+    },
+    "ai.sourcechecks.dismissFix"(_editorHandle: EditorHandle, args?: { key?: unknown }) {
+      dismissOneFix(args);
     }
   }
 });

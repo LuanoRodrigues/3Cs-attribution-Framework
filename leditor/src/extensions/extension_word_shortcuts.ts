@@ -62,6 +62,21 @@ const WordShortcutsExtension = Extension.create({
       return true;
     };
 
+    const promptTableSize = (): { rows: number; cols: number } | null => {
+      const raw = window.prompt("Insert table (rows x columns)", "2x2");
+      if (raw == null) return null;
+      const cleaned = raw.toLowerCase().replace(/[^0-9x, ]/g, "");
+      const parts = cleaned.split(/[x, ]+/).filter(Boolean);
+      if (parts.length === 0) return null;
+      const nums = parts
+        .map((val) => Number(val))
+        .filter((val) => Number.isFinite(val) && val > 0);
+      if (nums.length === 0) return null;
+      const rows = Math.max(1, Math.min(50, nums[0]));
+      const cols = Math.max(1, Math.min(20, nums[1] ?? nums[0]));
+      return { rows, cols };
+    };
+
     const findPrevTextblockEnd = (fromPos: number): number | null => {
       const doc = editor.state.doc;
       let found: number | null = null;
@@ -558,12 +573,10 @@ const WordShortcutsExtension = Extension.create({
         },
         "Shift-F8": () => {
           toggleSelectionMode("add");
-          if (getSelectionMode() === "add") showPlaceholder("Add selection mode");
           return true;
         },
         "Ctrl-Shift-F8": () => {
           toggleSelectionMode("block");
-          if (getSelectionMode() === "block") showPlaceholder("Block selection mode");
           return true;
         },
 
@@ -753,6 +766,13 @@ const WordShortcutsExtension = Extension.create({
         "Shift-F12": () => editor.commands.toggleOrderedList(),
         "Ctrl-Shift-F12": () =>
           findListItemDepth() != null ? editor.commands.liftListItem("listItem") : false,
+        "Ctrl-F12": () => {
+          focusIfEditable();
+          const size = promptTableSize();
+          if (!size) return true;
+          editor.commands.insertTable({ rows: size.rows, cols: size.cols, withHeaderRow: false });
+          return true;
+        },
 
         // Table resize placeholders (non-mac)
         "Alt-Shift-ArrowLeft": () =>

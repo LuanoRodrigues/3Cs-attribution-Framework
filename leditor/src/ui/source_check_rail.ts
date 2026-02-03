@@ -2,6 +2,7 @@ import type { EditorHandle } from "../api/leditor.ts";
 import { getSourceCheckState } from "../editor/source_check_badges.ts";
 import {
   applySourceChecksThreadToEditor,
+  clearSourceChecksThread,
   dismissSourceCheckThreadItem,
   getSourceChecksThread,
   isSourceChecksVisible,
@@ -13,6 +14,7 @@ type CardState = { collapsed: boolean };
 
 const OVERLAY_ID = "leditor-source-check-rail";
 const CARDS_ID = "leditor-source-check-rail-cards";
+const CARDS_LAYER_WIDTH = 320;
 const COLLAPSE_KEY = "leditor.sourceChecks.cardState";
 const ROW_EXPANDED_KEY = "leditor.sourceChecks.rowExpanded";
 const DRAW_CONNECTOR_LINES = false;
@@ -246,6 +248,17 @@ export const mountSourceCheckRail = (editorHandle: EditorHandle) => {
   bindIconAction(btnClear, () => {
     try {
       editorHandle.execCommand("ai.sourceChecks.clear");
+      return;
+    } catch {
+      // fall through
+    }
+    try {
+      clearSourceChecksThread();
+    } catch {
+      // ignore
+    }
+    try {
+      editorHandle.execCommand("ClearSourceChecks");
     } catch {
       // ignore
     }
@@ -662,7 +675,10 @@ export const mountSourceCheckRail = (editorHandle: EditorHandle) => {
     const stackEl = appRoot.querySelector<HTMLElement>(".leditor-page-stack") ?? null;
     const stackRect = stackEl?.getBoundingClientRect?.() ?? null;
     const railLeftX = Math.round((((stackRect?.right ?? overlayRect.left + 680) - overlayRect.left) + 18) / sx);
-    cardsLayer.style.left = `${Math.max(12, railLeftX)}px`;
+    const hostW = overlayHost.clientWidth || overlayHost.offsetWidth || 0;
+    const maxLeft = hostW > 0 ? Math.max(12, Math.floor(hostW - CARDS_LAYER_WIDTH - 12)) : railLeftX;
+    const clampedLeft = Math.max(12, Math.min(maxLeft, railLeftX));
+    cardsLayer.style.left = `${clampedLeft}px`;
 
     const resolvedByParagraph = new Map<
       number,

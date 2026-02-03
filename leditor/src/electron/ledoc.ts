@@ -217,7 +217,8 @@ export const normalizeLedocToBundle = (
       registry: {
         version: LEDOC_BUNDLE_VERSION,
         footnoteIdState: isPlainObject(registryRaw.footnoteIdState) ? registryRaw.footnoteIdState : undefined,
-        knownFootnotes: Array.isArray(registryRaw.knownFootnotes) ? registryRaw.knownFootnotes : undefined
+        knownFootnotes: Array.isArray(registryRaw.knownFootnotes) ? registryRaw.knownFootnotes : undefined,
+        sourceChecksThread: isPlainObject(registryRaw.sourceChecksThread) ? registryRaw.sourceChecksThread : undefined
       }
     };
     return { payload, warnings };
@@ -272,7 +273,10 @@ export const normalizeLedocToBundle = (
       margins: layoutMargins
     },
     registry: {
-      version: LEDOC_BUNDLE_VERSION
+      version: LEDOC_BUNDLE_VERSION,
+      ...(isPlainObject((legacy as any)?.history?.sourceChecksThread)
+        ? { sourceChecksThread: (legacy as any).history.sourceChecksThread }
+        : {})
     }
   };
   return { payload, warnings };

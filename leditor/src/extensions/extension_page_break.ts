@@ -60,6 +60,8 @@ const PageBreakExtension = Node.create({
     }
     if (kind === "page") {
       attrs["style"] = "break-before: page; page-break-before: always;";
+    } else if (kind === "column") {
+      attrs["style"] = "break-before: column; column-break-before: always;";
     }
     return ["div", attrs, 0];
   }

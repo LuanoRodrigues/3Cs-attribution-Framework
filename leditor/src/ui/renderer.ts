@@ -52,7 +52,6 @@ import { perfMark, perfMeasure, perfSummaryOnce } from "./perf.ts";
 import { getHostAdapter, setHostAdapter, type HostAdapter } from "../host/host_adapter.ts";
 import { THEME_CHANGE_EVENT } from "./theme_events.ts";
 import { ribbonDebugLog } from "./ribbon_debug.ts";
-import { mountSourceCheckRail } from "./source_check_rail.ts";
 import { subscribeSourceChecksThread } from "./source_checks_thread.ts";
 
 const ensureProcessEnv = (): Record<string, string | undefined> | undefined => {
@@ -1069,11 +1068,14 @@ export const mountEditor = async () => {
       "spellcheck",
       "ai_assistant",
       "ai_agent",
+      "lexicon_quick",
+      "source_checks_feedbacks",
       "source_view",
       "print_preview"
     ],
     autosave: options.autosave ?? { enabled: true, intervalMs: 1000 }
   };
+  if (!config.plugins.includes("lexicon_quick")) config.plugins.push("lexicon_quick");
   if (options.initialContent) {
     config.initialContent = options.initialContent;
   }
@@ -1117,6 +1119,17 @@ export const mountEditor = async () => {
   perfMark("editor:init:end");
   perfMeasure("editor:init", "editor:init:start", "editor:init:end");
   (window as typeof window & { leditor?: EditorHandle }).leditor = handle;
+
+  // Defensive cleanup: older builds mounted document-side rails for drafts/source checks.
+  // Current UX renders those only in the Agent sidebar.
+  try {
+    for (const id of ["leditor-source-check-rail", "leditor-ai-draft-rail", "leditor-feedback-hub"]) {
+      document.getElementById(id)?.remove();
+    }
+  } catch {
+    // ignore
+  }
+
   handle.execCommand("SetPageMargins", {
     margins: { top: 2.5, right: 2.5, bottom: 2.5, left: 2.5 }
   });
@@ -1148,6 +1161,7 @@ export const mountEditor = async () => {
   display: flex;
   align-items: stretch;
   gap: 0;
+  position: relative;
 }
 
 .leditor-doc-shell {
@@ -1284,12 +1298,6 @@ export const mountEditor = async () => {
     window.addEventListener("resize", requestRibbonHeightSync, { signal });
   }
   const layout: A4LayoutController | null = mountA4Layout(docShell, editorEl, handle);
-  // Source checks comments rail (shown only when toggle is enabled).
-  try {
-    mountSourceCheckRail(handle);
-  } catch (error) {
-    console.warn("[source_check_rail][mount] failed", error);
-  }
   setLayoutController(layout);
   document.addEventListener(
     THEME_CHANGE_EVENT,

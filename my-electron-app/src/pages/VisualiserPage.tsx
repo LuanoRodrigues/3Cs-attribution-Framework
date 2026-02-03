@@ -1230,8 +1230,8 @@ export class VisualiserPage {
     const title = args.title || "Slide";
     const subtitle = args.subtitle || (args.kind === "table" ? "Table" : args.kind === "text" ? "Notes" : "Loading…");
     const badge = args.kind === "table" ? "TABLE" : args.kind === "text" ? "TEXT" : "…";
-    const W = 320;
-    const H = 320;
+    const W = 420;
+    const H = 315;
     const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
   <defs>
@@ -1359,8 +1359,8 @@ export class VisualiserPage {
       const muted = palette.muted;
       const accent = palette.accent;
 
-      const W = 320;
-      const H = 320;
+      const W = 420;
+      const H = 315;
       const padL = 18;
       const padR = 10;
       const padT = 12;
@@ -1478,8 +1478,8 @@ ${dots}
   private async plotlyThumbDataUrl(figJson: any): Promise<string> {
     // Render offscreen to create a small PNG thumb without requiring python/kaleido.
     const palette = this.getThemePalette();
-    const THUMB_W = 320;
-    const THUMB_H = 320;
+    const THUMB_W = 420;
+    const THUMB_H = 315;
     const container = document.createElement("div");
     container.style.position = "fixed";
     container.style.left = "-10000px";

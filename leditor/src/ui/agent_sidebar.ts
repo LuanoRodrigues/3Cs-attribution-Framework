@@ -1,8 +1,8 @@
 import type { EditorHandle } from "../api/leditor.ts";
 import { getAiSettings, setAiSettings, subscribeAiSettings } from "./ai_settings.ts";
 import {
+  applySourceChecksThreadToEditor,
   getSourceChecksThread,
-  isSourceChecksVisible,
   setSourceChecksVisible,
   subscribeSourceChecksThread,
   upsertSourceChecksFromRun
@@ -264,6 +264,9 @@ export const createAgentSidebar = (
   viewTabs.setAttribute("role", "tablist");
   viewTabs.setAttribute("aria-label", "Agent views");
 
+  // Keep tabs in the header (headerTop) so the panel has a single top area.
+  headerTop.insertBefore(viewTabs, headerRight);
+
   const boxesEl = document.createElement("div");
   boxesEl.className = "leditor-agent-sidebar__boxes is-hidden";
   boxesEl.setAttribute("aria-hidden", "true");
@@ -329,13 +332,22 @@ export const createAgentSidebar = (
   composer.appendChild(plusMenu);
 
   panel.append(messagesEl, boxesEl);
-  sidebar.append(header, viewTabs, panel, composer);
+  sidebar.append(header, panel, composer);
   root.appendChild(sidebar);
 
   let messages: AgentMessage[] = [];
   let inflight = false;
   let destroyed = false;
   let pending: AgentRunResult["apply"] | null = null;
+  let pendingByView: Partial<Record<SidebarViewId, AgentRunResult["apply"] | null>> = {
+    refine: null,
+    paraphrase: null,
+    shorten: null,
+    proofread: null,
+    substantiate: null,
+    sources: null
+  };
+  let sourceFocusKey: string | null = null;
   let pendingActionId: AgentActionId | null = null;
   let lastApiMeta: { provider?: string; model?: string; ms?: number; ts: number } | null = null;
   let abortController: AbortController | null = null;
@@ -744,6 +756,32 @@ export const createAgentSidebar = (
     plusBtn.setAttribute("aria-expanded", "true");
   };
 
+  const actionIdToSlashToken = (id: string): string => {
+    const key = String(id ?? "").toLowerCase();
+    if (key === "check_sources") return "/check sources";
+    if (key === "clear_checks") return "/clear checks";
+    return "/" + key;
+  };
+
+  const insertIntoComposer = (token: string) => {
+    const t = String(token ?? "").trim();
+    if (!t) return;
+    const before = String(input.value ?? "");
+    const start = Number.isFinite(input.selectionStart) ? (input.selectionStart ?? before.length) : before.length;
+    const end = Number.isFinite(input.selectionEnd) ? (input.selectionEnd ?? start) : start;
+    const left = before.slice(0, start);
+    const right = before.slice(end);
+    const needsSpace = left.length > 0 && !/\s$/.test(left);
+    const insert = (needsSpace ? " " : "") + t + " ";
+    const next = left + insert + right;
+    input.value = next;
+    const caret = (left + insert).length;
+    input.selectionStart = caret;
+    input.selectionEnd = caret;
+    input.focus();
+    updateInputOverlay();
+  };
+
   const renderPlusMenu = () => {
     plusMenu.replaceChildren();
     const entries: Array<{ id: Exclude<ActionMode, "auto">; label: string }> = [
@@ -764,7 +802,7 @@ export const createAgentSidebar = (
       row.addEventListener("click", () => {
         closePlusMenu();
         setActionMode(entry.id);
-        controller.runAction(entry.id as any);
+        insertIntoComposer(actionIdToSlashToken(entry.id));
       });
       plusMenu.appendChild(row);
     }
@@ -828,6 +866,31 @@ export const createAgentSidebar = (
     return `${s.slice(0, Math.max(0, maxLen - 1))}…`;
   };
 
+  const focusParagraphNumber = (n: number) => {
+    try {
+      const target = String(Math.max(1, Math.floor(n))).trim();
+      const candidates = Array.from(
+        document.querySelectorAll<HTMLElement>(
+          "span.leditor-paragraph-grid__n[data-kind=\"paragraph\"]"
+        )
+      );
+      const el = candidates.find((c) => String(c.textContent ?? "").trim() === target) ?? null;
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+      el.classList.add("leditor-paragraph-grid__n--flash");
+      window.setTimeout(() => {
+        try {
+          el.classList.remove("leditor-paragraph-grid__n--flash");
+        } catch {
+          // ignore
+        }
+      }, 650);
+      editorHandle.focus();
+    } catch {
+      // ignore
+    }
+  };
+
   const setInflight = (value: boolean) => {
     inflight = value;
     input.disabled = inflight;
@@ -836,7 +899,26 @@ export const createAgentSidebar = (
   };
 
   const setViewMode = (next: SidebarViewId) => {
+    if (viewMode === next) return;
+    // Source checks highlights are shown only while the Sources tab is active.
+    if (viewMode === "sources" && next !== "sources") {
+      try {
+        setSourceChecksVisible(false);
+        editorHandle.execCommand("ClearSourceChecks");
+      } catch {
+        // ignore
+      }
+    }
     viewMode = next;
+    pending = next === "chat" ? null : ((pendingByView as any)[next] ?? null);
+    if (next === "sources") {
+      try {
+        setSourceChecksVisible(true);
+        applySourceChecksThreadToEditor(editorHandle);
+      } catch {
+        // ignore
+      }
+    }
     // tab button classes updated in renderViewTabs()
     renderViewTabs();
     renderBoxes();
@@ -883,6 +965,138 @@ export const createAgentSidebar = (
 
     if (viewMode === "sources") {
       const threadItems = getSourceChecksThread().items ?? [];
+
+      const normalizeText = (value: unknown) => String(value ?? "").replace(/\s+/g, " ").trim();
+
+      const focusAnchor = (anchor: any) => {
+        try {
+          const editor = editorHandle.getEditor();
+          const href = String(anchor?.href ?? "").trim();
+          const text = normalizeText(anchor?.text);
+          if (!href) return;
+          const candidates = Array.from(document.querySelectorAll<HTMLElement>("a.leditor-citation-anchor")).filter(
+            (el) => String(el.getAttribute("href") ?? "").trim() === href
+          );
+          if (!candidates.length) return;
+          const exact = text ? candidates.find((el) => normalizeText(el.textContent) === text) : null;
+          const el = exact ?? candidates[0];
+          if (!el) return;
+          el.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+          try {
+            const view: any = (editor as any)?.view;
+            if (view?.posAtDOM) {
+              const pos = view.posAtDOM(el, 0);
+              if (typeof pos === "number" && pos >= 0) {
+                editor.commands.setTextSelection?.({ from: pos, to: pos });
+              }
+            }
+          } catch {
+            // ignore
+          }
+          el.classList.add("leditor-citation-anchor--flash");
+          window.setTimeout(() => {
+            try {
+              el.classList.remove("leditor-citation-anchor--flash");
+            } catch {
+              // ignore
+            }
+          }, 650);
+          editor.commands.focus();
+        } catch {
+          // ignore
+        }
+      };
+
+      const bindIconAction = (el: HTMLElement, fn: () => void) => {
+        let fired = false;
+        el.addEventListener("pointerdown", (e) => {
+          fired = true;
+          try {
+            e.preventDefault();
+            e.stopPropagation();
+            (e as any).stopImmediatePropagation?.();
+          } catch {
+            // ignore
+          }
+          fn();
+        });
+        el.addEventListener("click", (e) => {
+          try {
+            e.preventDefault();
+            e.stopPropagation();
+            (e as any).stopImmediatePropagation?.();
+          } catch {
+            // ignore
+          }
+          if (fired) {
+            fired = false;
+            return;
+          }
+          fn();
+        });
+      };
+
+      const iconSvg = (name: "collapse" | "expand" | "close"): string => {
+        if (name === "close") {
+          return "<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path fill=\"currentColor\" d=\"M18.3 5.7a1 1 0 0 0-1.4 0L12 10.6 7.1 5.7a1 1 0 1 0-1.4 1.4l4.9 4.9-4.9 4.9a1 1 0 1 0 1.4 1.4l4.9-4.9 4.9 4.9a1 1 0 0 0 1.4-1.4L13.4 12l4.9-4.9a1 1 0 0 0 0-1.4Z\"/></svg>";
+        }
+        if (name === "collapse") {
+          return "<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path fill=\"currentColor\" d=\"M7.4 14.6a1 1 0 0 1 0-1.4l4.0-4.0a1 1 0 0 1 1.4 0l4.0 4.0a1 1 0 1 1-1.4 1.4L12 11.4l-3.2 3.2a1 1 0 0 1-1.4 0Z\"/></svg>";
+        }
+        return "<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path fill=\"currentColor\" d=\"M16.6 9.4a1 1 0 0 1 0 1.4l-4.0 4.0a1 1 0 0 1-1.4 0l-4.0-4.0a1 1 0 1 1 1.4-1.4L12 12.6l3.2-3.2a1 1 0 0 1 1.4 0Z\"/></svg>";
+      };
+
+      const header = document.createElement("div");
+      header.className = "leditor-source-check-rail__header";
+      const titleEl = document.createElement("div");
+      titleEl.className = "leditor-source-check-rail__title";
+      titleEl.textContent = "Source checks";
+      const headerBtns = document.createElement("div");
+      headerBtns.className = "leditor-source-check-rail__headerBtns";
+
+      const clearBtn = document.createElement("button");
+      clearBtn.type = "button";
+      clearBtn.className = "leditor-source-check-rail__btn";
+      clearBtn.textContent = "Clear";
+      bindIconAction(clearBtn, () => {
+        try {
+          editorHandle.execCommand("ai.sourceChecks.clear");
+        } catch {
+          // ignore
+        }
+        renderBoxes();
+      });
+
+      const applyAllBtn = document.createElement("button");
+      applyAllBtn.type = "button";
+      applyAllBtn.className = "leditor-source-check-rail__btn";
+      applyAllBtn.textContent = "Apply fixes";
+      bindIconAction(applyAllBtn, () => {
+        try {
+          editorHandle.execCommand("ai.sourceChecks.applyAllFixes");
+        } catch {
+          // ignore
+        }
+        renderBoxes();
+      });
+
+      const dismissAllBtn = document.createElement("button");
+      dismissAllBtn.type = "button";
+      dismissAllBtn.className = "leditor-source-check-rail__btn";
+      dismissAllBtn.textContent = "Dismiss fixes";
+      bindIconAction(dismissAllBtn, () => {
+        try {
+          editorHandle.execCommand("ai.sourceChecks.dismissAllFixes");
+        } catch {
+          // ignore
+        }
+        renderBoxes();
+      });
+
+      headerBtns.append(clearBtn, applyAllBtn, dismissAllBtn);
+      header.append(titleEl, headerBtns);
+      boxesEl.appendChild(header);
+
       if (threadItems.length === 0) {
         const empty = document.createElement("div");
         empty.className = "leditor-agent-sidebar__boxEmpty";
@@ -891,6 +1105,10 @@ export const createAgentSidebar = (
         return;
       }
 
+      const listEl = document.createElement("div");
+      listEl.className = "leditor-source-check-rail__list";
+      boxesEl.appendChild(listEl);
+
       const byP = new Map<number, any[]>();
       for (const it of threadItems as any[]) {
         const p = Number.isFinite(it?.paragraphN) ? Math.max(1, Math.floor(it.paragraphN)) : 1;
@@ -898,47 +1116,256 @@ export const createAgentSidebar = (
         list.push(it);
         byP.set(p, list);
       }
+
       const paragraphs = [...byP.entries()].sort((a, b) => a[0] - b[0]);
       for (const [p, items] of paragraphs) {
-        const card = document.createElement("div");
-        card.className = "leditor-agent-sidebar__boxCard";
-        const h = document.createElement("div");
-        h.className = "leditor-agent-sidebar__boxHeader";
-        h.textContent = `P${p} • ${items.length}`;
-        const body = document.createElement("div");
-        body.className = "leditor-agent-sidebar__boxBody";
-        for (const it of items) {
-          const row = document.createElement("button");
-          row.type = "button";
-          row.className = "leditor-agent-sidebar__srcRow";
+        const pCard = document.createElement("div");
+        pCard.className = "leditor-source-check-rail__pCard";
+        pCard.dataset.paragraph = String(p);
+
+        const pHeader = document.createElement("div");
+        pHeader.className = "leditor-source-check-rail__pHeader";
+
+        const pTitle = document.createElement("div");
+        pTitle.className = "leditor-source-check-rail__pTitle";
+        pTitle.textContent = "P" + String(p);
+
+        const pCount = document.createElement("div");
+        pCount.className = "leditor-source-check-rail__pCount";
+        pCount.textContent = String(items.length);
+
+        const cardBtns = document.createElement("div");
+        cardBtns.className = "leditor-source-check-rail__cardBtns";
+
+        const collapseBtn = document.createElement("button");
+        collapseBtn.type = "button";
+        collapseBtn.className = "leditor-source-check-rail__iconBtn";
+        collapseBtn.setAttribute("aria-label", "Collapse");
+        collapseBtn.title = "Collapse";
+        collapseBtn.innerHTML = iconSvg("collapse");
+
+        const dismissPBtn = document.createElement("button");
+        dismissPBtn.type = "button";
+        dismissPBtn.className = "leditor-source-check-rail__iconBtn";
+        dismissPBtn.setAttribute("aria-label", "Dismiss paragraph checks");
+        dismissPBtn.title = "Dismiss paragraph checks";
+        dismissPBtn.innerHTML = iconSvg("close");
+
+        bindIconAction(collapseBtn, () => {
+          const collapsed = pCard.classList.toggle("is-collapsed");
+          collapseBtn.innerHTML = iconSvg(collapsed ? "expand" : "collapse");
+          collapseBtn.title = collapsed ? "Expand" : "Collapse";
+          collapseBtn.setAttribute("aria-label", collapsed ? "Expand" : "Collapse");
+        });
+
+        bindIconAction(dismissPBtn, () => {
+          for (const it of items as any[]) {
+            const key = typeof it?.key === "string" ? String(it.key) : "";
+            if (!key) continue;
+            try {
+              editorHandle.execCommand("ai.sourceChecks.dismiss", { key });
+            } catch {
+              // ignore
+            }
+          }
+          renderBoxes();
+        });
+
+        cardBtns.append(collapseBtn, dismissPBtn);
+        pHeader.append(pTitle, pCount, cardBtns);
+
+        const pBody = document.createElement("div");
+        pBody.className = "leditor-source-check-rail__pBody";
+
+        for (const it of items as any[]) {
+          const key = typeof it?.key === "string" ? String(it.key) : "";
           const verdict = it?.verdict === "verified" ? "verified" : "needs_review";
+          const anchorText = String(it?.anchor?.text ?? "");
+          const justification = String(it?.justification ?? "");
+          const fixSuggestion = typeof it?.fixSuggestion === "string" ? String(it.fixSuggestion) : "";
+          const claimRewrite = typeof it?.claimRewrite === "string" ? String(it.claimRewrite) : "";
+          const suggestedReplacementKey = typeof it?.suggestedReplacementKey === "string" ? String(it.suggestedReplacementKey) : "";
+          const fixStatus =
+            typeof it?.fixStatus === "string"
+              ? String(it.fixStatus)
+              : verdict === "verified"
+                ? "applied"
+                : "pending";
+
+          const row = document.createElement("div");
+          row.className = "leditor-source-check-rail__row";
+          const shouldAutoFocus = key && key === sourceFocusKey;
           row.classList.toggle("is-verified", verdict === "verified");
           row.classList.toggle("is-needsReview", verdict !== "verified");
-          const anchorText = String(it?.anchor?.text ?? "");
-          const just = String(it?.justification ?? "");
-          row.innerHTML = `<span class="leditor-agent-sidebar__srcBadge">${verdict === "verified" ? "✓" : "!"}</span><span class="leditor-agent-sidebar__srcMain"><span class="leditor-agent-sidebar__srcAnchor">${escapeHtml(anchorText)}</span><span class="leditor-agent-sidebar__srcJust">${escapeHtml(just)}</span></span>`;
+          if (key) row.dataset.key = key;
+          if (shouldAutoFocus) row.classList.add("is-selected");
+
+          const badge = document.createElement("span");
+          badge.className = "leditor-source-check-rail__badge";
+          badge.textContent = verdict === "verified" ? "✓" : "!";
+
+          const rowMain = document.createElement("div");
+          rowMain.className = "leditor-source-check-rail__rowMain";
+
+          const aEl = document.createElement("div");
+          aEl.className = "leditor-source-check-rail__anchor";
+          aEl.textContent = anchorText;
+
+          const justEl = document.createElement("div");
+          justEl.className = "leditor-source-check-rail__rowJust";
+          justEl.textContent = fixSuggestion ? justification + " Suggestion: " + fixSuggestion : justification;
+
+          rowMain.append(aEl, justEl);
+
+          if (verdict !== "verified" && claimRewrite.trim()) {
+            const rewriteEl = document.createElement("div");
+            rewriteEl.className = "leditor-source-check-rail__rowRewrite";
+            rewriteEl.textContent = "Suggested rewrite (aligns with this citation): " + claimRewrite.trim();
+            rowMain.appendChild(rewriteEl);
+
+            const actions = document.createElement("div");
+            actions.className = "leditor-source-check-rail__rowFixActions";
+
+            if (fixStatus === "applied") {
+              const tag = document.createElement("span");
+              tag.textContent = "Applied";
+              tag.className = "leditor-source-check-rail__rowFixTag";
+              actions.appendChild(tag);
+            } else if (fixStatus === "dismissed") {
+              const tag = document.createElement("span");
+              tag.textContent = "Dismissed";
+              tag.className = "leditor-source-check-rail__rowFixTag";
+              actions.appendChild(tag);
+            } else {
+              const applyFix = document.createElement("button");
+              applyFix.type = "button";
+              applyFix.className = "leditor-source-check-rail__rowReplace";
+              applyFix.textContent = "Apply rewrite";
+              bindIconAction(applyFix, () => {
+                if (!key) return;
+                try {
+                  editorHandle.execCommand("ai.sourceChecks.applyFix", { key });
+                } catch {
+                  // ignore
+                }
+                renderBoxes();
+                focusAnchor(it?.anchor);
+              });
+
+              const dismissFix = document.createElement("button");
+              dismissFix.type = "button";
+              dismissFix.className = "leditor-source-check-rail__rowReplace";
+              dismissFix.textContent = "Dismiss rewrite";
+              bindIconAction(dismissFix, () => {
+                if (!key) return;
+                try {
+                  editorHandle.execCommand("ai.sourceChecks.dismissFix", { key });
+                } catch {
+                  // ignore
+                }
+                renderBoxes();
+              });
+
+              actions.append(applyFix, dismissFix);
+            }
+
+            rowMain.appendChild(actions);
+          }
+
+          if (verdict !== "verified" && suggestedReplacementKey.trim()) {
+            // Suggested a different citation anchor in the same paragraph.
+            const byKey = new Map<string, any>();
+            for (const x of items as any[]) {
+              const k = typeof x?.key === "string" ? String(x.key) : "";
+              if (k) byKey.set(k, x);
+            }
+            const suggested = byKey.get(suggestedReplacementKey.trim()) ?? (threadItems as any[]).find((x) => String(x?.key) === suggestedReplacementKey.trim());
+            const suggestedAnchorText = String(suggested?.anchor?.text ?? "").trim() || suggestedReplacementKey.trim();
+
+            const rep = document.createElement("button");
+            rep.type = "button";
+            rep.className = "leditor-source-check-rail__rowReplace";
+            rep.textContent = "Suggested citation: " + suggestedAnchorText;
+            rep.addEventListener("click", (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              focusAnchor(suggested?.anchor);
+            });
+            rowMain.appendChild(rep);
+          }
+
+          const rowBtns = document.createElement("div");
+          rowBtns.className = "leditor-source-check-rail__rowBtns";
+
+          const expandBtn = document.createElement("button");
+          expandBtn.type = "button";
+          expandBtn.className = "leditor-source-check-rail__iconBtn";
+          expandBtn.setAttribute("aria-label", "Expand");
+          expandBtn.title = "Expand";
+          expandBtn.innerHTML = iconSvg("expand");
+
+          const dismissBtn = document.createElement("button");
+          dismissBtn.type = "button";
+          dismissBtn.className = "leditor-source-check-rail__iconBtn";
+          dismissBtn.setAttribute("aria-label", "Dismiss");
+          dismissBtn.title = "Dismiss";
+          dismissBtn.innerHTML = iconSvg("close");
+
+          bindIconAction(expandBtn, () => {
+            const expanded = row.classList.toggle("is-expanded");
+            expandBtn.innerHTML = iconSvg(expanded ? "collapse" : "expand");
+            expandBtn.title = expanded ? "Collapse" : "Expand";
+            expandBtn.setAttribute("aria-label", expanded ? "Collapse" : "Expand");
+          });
+
+          bindIconAction(dismissBtn, () => {
+            if (!key) return;
+            try {
+              editorHandle.execCommand("ai.sourceChecks.dismiss", { key });
+            } catch {
+              // ignore
+            }
+            renderBoxes();
+          });
+
+          rowBtns.append(expandBtn, dismissBtn);
+
+          row.append(badge, rowMain, rowBtns);
+
           row.addEventListener("click", (e) => {
             e.preventDefault();
             e.stopPropagation();
             try {
-              setSourceChecksVisible(true);
-            } catch {
-              // ignore
-            }
-            try {
-              const key = typeof it?.key === "string" ? String(it.key) : "";
-              if (key) {
-                window.dispatchEvent(new CustomEvent("leditor:source-checks-focus", { detail: { key } }));
+              for (const el of Array.from(listEl.querySelectorAll(".leditor-source-check-rail__row.is-selected"))) {
+                (el as HTMLElement).classList.remove("is-selected");
               }
+              row.classList.add("is-selected");
             } catch {
               // ignore
             }
+            focusAnchor(it?.anchor);
           });
-          body.appendChild(row);
+
+          if (shouldAutoFocus) {
+            // One-time: scroll sidebar row into view and focus the citation in the document.
+            window.requestAnimationFrame(() => {
+              try {
+                row.scrollIntoView({ block: "nearest" });
+              } catch {
+                // ignore
+              }
+              focusAnchor(it?.anchor);
+            });
+            sourceFocusKey = null;
+          }
+
+          pBody.appendChild(row);
         }
-        card.append(h, body);
-        boxesEl.appendChild(card);
+
+        pCard.append(pHeader, pBody);
+        listEl.appendChild(pCard);
       }
+
       return;
     }
 
@@ -951,9 +1378,28 @@ export const createAgentSidebar = (
       return;
     }
 
-    const mkCard = (title: string, subtitle: string, text: string, onAccept: () => void, onReject: () => void) => {
+    const mkCard = (
+      title: string,
+      subtitle: string,
+      text: string,
+      onAccept: () => void,
+      onReject: () => void,
+      onFocus?: () => void
+    ) => {
       const card = document.createElement("div");
       card.className = "leditor-agent-sidebar__boxCard";
+      if (onFocus) {
+        card.addEventListener("click", (e) => {
+          // Buttons stopPropagation; this only runs when the card body is clicked.
+          e.preventDefault();
+          e.stopPropagation();
+          try {
+            onFocus();
+          } catch {
+            // ignore
+          }
+        });
+      }
       const h = document.createElement("div");
       h.className = "leditor-agent-sidebar__boxHeader";
       h.textContent = title;
@@ -999,6 +1445,7 @@ export const createAgentSidebar = (
             truncate(it.text, 520),
             () => acceptPendingItem({ n: it.n }),
             () => rejectPendingItem({ n: it.n })
+           , () => focusParagraphNumber(it.n)
           )
         );
       }
@@ -1013,6 +1460,15 @@ export const createAgentSidebar = (
           truncate(pending.text, 520),
           () => acceptPendingItem({ from, to }),
           () => rejectPendingItem({ from, to })
+        , () => {
+            try {
+              const editor = editorHandle.getEditor();
+              editor.commands.setTextSelection({ from, to });
+              editor.commands.focus();
+            } catch {
+              // ignore
+            }
+          }
         )
       );
       return;
@@ -1058,9 +1514,17 @@ export const createAgentSidebar = (
     const bottom = getStatusBarHeight();
     sidebar.style.bottom = bottom > 0 ? `${Math.ceil(bottom)}px` : "";
   };
-
   const clearPending = () => {
     pending = null;
+    pendingByView = {
+      ...pendingByView,
+      refine: null,
+      paraphrase: null,
+      shorten: null,
+      proofread: null,
+      substantiate: null,
+      sources: null
+    };
     pendingActionId = null;
     setStatus("Ready.");
     try {
@@ -1330,38 +1794,51 @@ export const createAgentSidebar = (
     editor.view.dispatch(tr);
     editor.commands.focus();
   };
-
   const syncDraftPreview = () => {
     try {
-      if (!pending) {
+      const items: any[] = [];
+      const seen = new Set<string>();
+      const push = (it: any) => {
+        const k = `${it.from}:${it.to}`;
+        if (seen.has(k)) return;
+        seen.add(k);
+        items.push(it);
+      };
+      const editor = editorHandle.getEditor();
+      const baseDoc = editor.state.doc;
+
+      const addApply = (apply: any) => {
+        if (!apply) return;
+        if (apply.kind === "replaceRange") {
+          push({
+            from: apply.from,
+            to: apply.to,
+            proposedText: apply.text,
+            originalText: baseDoc.textBetween(apply.from, apply.to, "\n")
+          });
+          return;
+        }
+        if (apply.kind === "batchReplace") {
+          for (const it of apply.items ?? []) {
+            push({
+              from: it.from,
+              to: it.to,
+              proposedText: it.text,
+              originalText: it.originalText
+            });
+          }
+        }
+      };
+
+      for (const apply of Object.values(pendingByView as any)) {
+        addApply(apply);
+      }
+
+      if (!items.length) {
         editorHandle.execCommand("ClearAiDraftPreview");
         return;
       }
-      if (pending.kind === "replaceRange") {
-        editorHandle.execCommand("SetAiDraftPreview", {
-          items: [
-            {
-              n: 0,
-              from: pending.from,
-              to: pending.to,
-              proposedText: pending.text
-            }
-          ]
-        });
-        return;
-      }
-      if (pending.kind === "batchReplace") {
-        editorHandle.execCommand("SetAiDraftPreview", {
-          items: pending.items.map((it) => ({
-            n: it.n,
-            from: it.from,
-            to: it.to,
-            proposedText: it.text,
-            originalText: it.originalText
-          }))
-        });
-        return;
-      }
+      editorHandle.execCommand("SetAiDraftPreview", { items });
     } catch {
       // ignore
     }
@@ -1369,60 +1846,72 @@ export const createAgentSidebar = (
 
   let draftRail: null | { update: () => void; destroy: () => void; setVisible?: (next: boolean) => void } = null;
   let draftRailVisible = true;
-
   const acceptPendingItem = (detail: { n?: number; from?: number; to?: number }) => {
-    if (!pending) return;
     const n = Number.isFinite(detail.n) ? Number(detail.n) : null;
     const from = Number.isFinite(detail.from) ? Number(detail.from) : null;
     const to = Number.isFinite(detail.to) ? Number(detail.to) : null;
 
-    if (pending.kind === "replaceRange") {
-      applyRangeAsTransaction(pending.from, pending.to, pending.text);
-      clearPending();
-      return;
-    }
-
-    if (pending.kind !== "batchReplace") return;
-    const match =
-      (n && n > 0 ? pending.items.find((it) => it.n === n) : null) ??
-      (from && to ? pending.items.find((it) => it.from === from && it.to === to) : null) ??
-      null;
-    if (!match) return;
-    applyRangeAsTransaction(match.from, match.to, match.text);
-    const nextItems = pending.items.filter((it) => it !== match);
-    pending = nextItems.length ? { ...pending, items: nextItems } : null;
-    if (!pending) {
-      clearPending();
-    } else {
-      setStatus(`Draft ready • ${nextItems.length} change(s)`);
-      syncDraftPreview();
+    const entries = Object.entries(pendingByView as any) as Array<[SidebarViewId, any]>;
+    for (const [view, apply] of entries) {
+      if (!apply) continue;
+      if (apply.kind === "replaceRange") {
+        const match = (from !== null && to !== null) ? (apply.from === from && apply.to === to) : true;
+        if (!match) continue;
+        applyRangeAsTransaction(apply.from, apply.to, apply.text);
+        (pendingByView as any)[view] = null;
+        pending = viewMode === "chat" ? null : ((pendingByView as any)[viewMode] ?? null);
+        syncDraftPreview();
+        renderBoxes();
+        return;
+      }
+      if (apply.kind === "batchReplace") {
+        const items = Array.isArray(apply.items) ? apply.items : [];
+        const match =
+          (from !== null && to !== null) ? items.find((it: any) => it.from === from && it.to === to) :
+          (n !== null) ? items.find((it: any) => it.n === n) :
+          null;
+        if (!match) continue;
+        applyRangeAsTransaction(match.from, match.to, match.text);
+        const nextItems = items.filter((it: any) => it !== match);
+        (pendingByView as any)[view] = nextItems.length ? { ...apply, items: nextItems } : null;
+        pending = viewMode === "chat" ? null : ((pendingByView as any)[viewMode] ?? null);
+        syncDraftPreview();
+        renderBoxes();
+        return;
+      }
     }
   };
-
   const rejectPendingItem = (detail: { n?: number; from?: number; to?: number }) => {
-    if (!pending) return;
     const n = Number.isFinite(detail.n) ? Number(detail.n) : null;
     const from = Number.isFinite(detail.from) ? Number(detail.from) : null;
     const to = Number.isFinite(detail.to) ? Number(detail.to) : null;
 
-    if (pending.kind === "replaceRange") {
-      clearPending();
-      return;
-    }
-    if (pending.kind !== "batchReplace") return;
-
-    const match =
-      (n && n > 0 ? pending.items.find((it) => it.n === n) : null) ??
-      (from && to ? pending.items.find((it) => it.from === from && it.to === to) : null) ??
-      null;
-    if (!match) return;
-    const nextItems = pending.items.filter((it) => it !== match);
-    pending = nextItems.length ? { ...pending, items: nextItems } : null;
-    if (!pending) {
-      clearPending();
-    } else {
-      setStatus(`Draft ready • ${nextItems.length} change(s)`);
-      syncDraftPreview();
+    const entries = Object.entries(pendingByView as any) as Array<[SidebarViewId, any]>;
+    for (const [view, apply] of entries) {
+      if (!apply) continue;
+      if (apply.kind === "replaceRange") {
+        const match = (from !== null && to !== null) ? (apply.from === from && apply.to === to) : true;
+        if (!match) continue;
+        (pendingByView as any)[view] = null;
+        pending = viewMode === "chat" ? null : ((pendingByView as any)[viewMode] ?? null);
+        syncDraftPreview();
+        renderBoxes();
+        return;
+      }
+      if (apply.kind === "batchReplace") {
+        const items = Array.isArray(apply.items) ? apply.items : [];
+        const match =
+          (from !== null && to !== null) ? items.find((it: any) => it.from === from && it.to === to) :
+          (n !== null) ? items.find((it: any) => it.n === n) :
+          null;
+        if (!match) continue;
+        const nextItems = items.filter((it: any) => it !== match);
+        (pendingByView as any)[view] = nextItems.length ? { ...apply, items: nextItems } : null;
+        pending = viewMode === "chat" ? null : ((pendingByView as any)[viewMode] ?? null);
+        syncDraftPreview();
+        renderBoxes();
+        return;
+      }
     }
   };
 
@@ -1756,7 +2245,7 @@ export const createAgentSidebar = (
       const editsCount = pending && pending.kind === "batchReplace" ? pending.items.length : pending ? 1 : 0;
       counts.textContent = `${editsCount ? `${editsCount} edit(s)` : ""}${editsCount && sourceCount ? " • " : ""}${sourceCount ? `${sourceCount} source check(s)` : ""}` || "";
 
-      const visible = open && (Boolean(pending) || isSourceChecksVisible());
+      const visible = open && (Boolean(pending) || sourceCount > 0);
       hub.classList.toggle("is-hidden", !visible);
       hub.setAttribute("aria-hidden", visible ? "false" : "true");
       updateTabs();
@@ -1772,16 +2261,11 @@ export const createAgentSidebar = (
         // ignore
       }
 
-      // Mode effects.
-      if (mode === "edits") {
-        draftRailVisible = true;
-        if (isSourceChecksVisible()) setSourceChecksVisible(false);
-      } else if (mode === "sources") {
+            // Mode effects (source checks are shown inside the Agent sidebar, not in a document rail).
+      if (mode === "sources") {
         draftRailVisible = false;
-        if (!isSourceChecksVisible()) setSourceChecksVisible(true);
       } else {
         draftRailVisible = true;
-        if (!isSourceChecksVisible()) setSourceChecksVisible(true);
       }
       try {
         draftRail?.setVisible?.(draftRailVisible);
@@ -1790,7 +2274,7 @@ export const createAgentSidebar = (
       }
       try {
         const root = getAppRoot();
-        const anyOpen = draftRailVisible || isSourceChecksVisible();
+        const anyOpen = draftRailVisible;
         root?.classList.toggle("leditor-app--feedback-rail-open", anyOpen);
       } catch {
         // ignore
@@ -2192,6 +2676,11 @@ export const createAgentSidebar = (
     } catch {
       // ignore
     }
+    try {
+      editorHandle.getEditor()?.commands?.clearLexiconHighlight?.();
+    } catch {
+      // ignore
+    }
     lexiconPopup = null;
   };
 
@@ -2251,6 +2740,12 @@ export const createAgentSidebar = (
     const left = Math.min(a.left, b.left);
     const top = Math.max(a.bottom, b.bottom) + 6;
 
+    try {
+      editor.commands.setLexiconHighlight?.({ from: args.from, to: args.to });
+    } catch {
+      // ignore
+    }
+
     const popup = document.createElement("div");
     popup.className = "leditor-lexicon-popup";
     popup.setAttribute("role", "menu");
@@ -2301,13 +2796,6 @@ export const createAgentSidebar = (
     popup.style.left = `${Math.round(clampedLeft)}px`;
     popup.style.top = `${Math.round(clampedTop)}px`;
 
-    // Focus first option.
-    try {
-      first?.focus();
-    } catch {
-      // ignore
-    }
-
     const onDocPointerDown = (e: Event) => {
       const t = e.target as Node | null;
       if (!t) return;
@@ -2343,6 +2831,12 @@ export const createAgentSidebar = (
     const b = view.coordsAtPos(args.to);
     const left = Math.min(a.left, b.left);
     const top = Math.max(a.bottom, b.bottom) + 6;
+
+    try {
+      editor.commands.setLexiconHighlight?.({ from: args.from, to: args.to });
+    } catch {
+      // ignore
+    }
 
     const popup = document.createElement("div");
     popup.className = "leditor-lexicon-popup";
@@ -2815,21 +3309,31 @@ export const createAgentSidebar = (
         return;
       }
       editorHandle.execCommand("SetSourceChecks", { items: allItems });
-      setSourceChecksVisible(true);
-      addMessage("system", `Checked ${allItems.length} source(s).`);
       try {
         const firstKey = typeof (allItems[0] as any)?.key === "string" ? String((allItems[0] as any).key) : "";
-        if (firstKey) {
-          window.dispatchEvent(new CustomEvent("leditor:source-checks-focus", { detail: { key: firstKey } }));
-        }
+        sourceFocusKey = firstKey || null;
       } catch {
-        // ignore
+        sourceFocusKey = null;
       }
+      setViewMode("sources");
+      addMessage("system", `Checked ${allItems.length} source(s).`);
     } finally {
       setInflight(false);
       editorHandle.focus();
     }
   };
+
+  // Keep the Sources tab in sync with persisted checks as they are loaded/updated.
+  let sourceThreadRaf = 0;
+  const unsubscribeSourceThread = subscribeSourceChecksThread(() => {
+    if (destroyed || !open) return;
+    if (viewMode !== "sources") return;
+    if (sourceThreadRaf) return;
+    sourceThreadRaf = window.requestAnimationFrame(() => {
+      sourceThreadRaf = 0;
+      renderBoxes();
+    });
+  });
 
   const controller: AgentSidebarController = {
     open() {
@@ -2847,18 +3351,24 @@ export const createAgentSidebar = (
       updateComposerState();
       setStatus("Ready • Reference paragraphs by index (e.g. 35, 35-38).");
       input.focus();
-      if (!draftRail) {
-        try {
-          draftRail = mountDraftRail();
-        } catch {
-          draftRail = null;
-        }
-      }
+      // Sidebar-only UX: remove any legacy document-side rails if present.
       try {
-        draftRail?.update();
+        document.getElementById(DRAFT_RAIL_ID)?.remove();
       } catch {
         // ignore
       }
+      try {
+        document.getElementById(FEEDBACK_HUB_ID)?.remove();
+      } catch {
+        // ignore
+      }
+      try {
+        document.getElementById("leditor-source-check-rail")?.remove();
+      } catch {
+        // ignore
+      }
+      draftRail = null;
+      feedbackHub = null;
 
       // Inline accept/reject buttons (rendered inside the document) dispatch this event.
       const onDraftAction = (event: Event) => {
@@ -2866,20 +3376,10 @@ export const createAgentSidebar = (
         if (!detail || typeof detail !== "object") return;
         if (detail.action === "accept") {
           acceptPendingItem(detail);
-          try {
-            draftRail?.update();
-          } catch {
-            // ignore
-          }
           return;
         }
         if (detail.action === "reject") {
           rejectPendingItem(detail);
-          try {
-            draftRail?.update();
-          } catch {
-            // ignore
-          }
         }
       };
       window.addEventListener("leditor:ai-draft-action", onDraftAction as any, { passive: true });
@@ -2902,6 +3402,18 @@ export const createAgentSidebar = (
       }
       try {
         editorHandle.execCommand("ClearSourceChecks");
+      } catch {
+        // ignore
+      }
+      try {
+        setSourceChecksVisible(false);
+      } catch {
+        // ignore
+      }
+      try {
+        document.getElementById(DRAFT_RAIL_ID)?.remove();
+        document.getElementById(FEEDBACK_HUB_ID)?.remove();
+        document.getElementById("leditor-source-check-rail")?.remove();
       } catch {
         // ignore
       }
@@ -2986,8 +3498,31 @@ export const createAgentSidebar = (
       } catch {
         // ignore
       }
+      try {
+        setSourceChecksVisible(false);
+      } catch {
+        // ignore
+      }
+      try {
+        document.getElementById(DRAFT_RAIL_ID)?.remove();
+        document.getElementById(FEEDBACK_HUB_ID)?.remove();
+        document.getElementById("leditor-source-check-rail")?.remove();
+      } catch {
+        // ignore
+      }
       clearPending();
       unsubscribeScope();
+      try {
+        unsubscribeSourceThread();
+      } catch {
+        // ignore
+      }
+      try {
+        if (sourceThreadRaf) window.cancelAnimationFrame(sourceThreadRaf);
+      } catch {
+        // ignore
+      }
+      sourceThreadRaf = 0;
       try {
         draftRail?.destroy();
       } catch {

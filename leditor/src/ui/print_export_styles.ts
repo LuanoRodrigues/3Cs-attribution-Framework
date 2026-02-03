@@ -13,6 +13,7 @@ body {
   font-family: var(--page-font-family, "Georgia", "Times New Roman", serif);
   background: #ffffff;
   color: #1b1b1b;
+  hyphens: var(--page-hyphens, manual);
 }
 .print-container {
   width: calc(var(--page-width-mm, 210) * 1mm);

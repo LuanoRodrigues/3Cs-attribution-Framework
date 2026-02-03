@@ -20,6 +20,7 @@ import { setVisualEditor, visualExtension } from "../editor/visual.ts";
 import { paragraphGridExtension, setParagraphGridEditor } from "../editor/paragraph_grid.ts";
 import { aiDraftPreviewExtension, setAiDraftPreviewEditor } from "../editor/ai_draft_preview.ts";
 import { sourceCheckBadgesExtension, setSourceCheckBadgesEditor } from "../editor/source_check_badges.ts";
+import { lexiconHighlightExtension } from "../editor/lexicon_highlight.ts";
 import { createAutosaveController, getAutosaveSnapshot, restoreAutosaveSnapshot } from "../editor/autosave.ts";
 import { getPlugins } from "./plugin_registry.ts";
 import "../plugins/pasteCleaner.ts";
@@ -32,6 +33,7 @@ import "../plugins/aiAssistant.ts";
 import "../plugins/aiAgent.ts";
 import "../plugins/comments.ts";
 import "../plugins/sourceChecksFeedbacks.ts";
+import "../plugins/lexiconQuick.ts";
 import "../extensions/plugin_source_view.ts";
 import "../extensions/plugin_print_preview.ts";
 import { commandMap } from "./command_map.ts";
@@ -67,8 +69,12 @@ import PageLayoutExtension from "../extensions/extension_page_layout.ts";
 import ParagraphLayoutExtension from "../extensions/extension_paragraph_layout.ts";
 import { PageDocument, PageNode, PagePagination } from "../extensions/extension_page.ts";
 import StyleStoreExtension from "../extensions/extension_style_store.ts";
+import VirtualSelectionExtension from "../extensions/extension_virtual_selection.ts";
+import SelectionDragDropExtension from "../extensions/extension_selection_dnd.ts";
 import { extractCitedKeysFromDoc, writeCitedWorksKeys } from "../ui/references/cited_works.ts";
 import { debugInfo } from "../utils/debug.ts";
+import { refreshNavigationPanel, updateNavigationActive } from "../ui/view_state.ts";
+import { refreshStylesPane } from "../ui/styles_pane.ts";
 import {
   FootnotesContainerExtension,
   FootnoteBodyExtension,
@@ -340,6 +346,7 @@ export const LEditor = {
         FontSizeMark,
         TextColorMark,
         HighlightColorMark,
+        lexiconHighlightExtension,
         UnderlineMark,
         StrikethroughMark,
         SuperscriptMark,
@@ -371,6 +378,8 @@ export const LEditor = {
 	        ParagraphLayoutExtension,
 	        WordShortcutsExtension,
 	        SafeDropcursorExtension.configure({ width: 2, color: "black" }),
+	        VirtualSelectionExtension,
+	        SelectionDragDropExtension,
 	        StyleStoreExtension,
 	        CommentMark,
 	        Table.configure({ resizable: false }),
@@ -436,10 +445,18 @@ export const LEditor = {
     const markdownSerializer = createMarkdownSerializer();
     const pluginCommands = new Map<string, (args?: any) => void>();
 
-    editor.on("update", () => emitter.emit("change"));
+    editor.on("update", () => {
+      emitter.emit("change");
+      refreshNavigationPanel(editor);
+      refreshStylesPane(editor);
+    });
     editor.on("focus", () => emitter.emit("focus"));
     editor.on("blur", () => emitter.emit("blur"));
-    editor.on("selectionUpdate", () => emitter.emit("selectionChange"));
+    editor.on("selectionUpdate", () => {
+      emitter.emit("selectionChange");
+      updateNavigationActive(editor);
+      refreshStylesPane(editor);
+    });
 
     // Keep the cited-works store (`references.used.json`) synced with the document so deletions are
     // reflected without requiring a manual "Update".

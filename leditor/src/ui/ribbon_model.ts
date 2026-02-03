@@ -17,7 +17,7 @@ export const ribbonRegistry = {
     "iconSize": {
       "small": 16,
       "large": 20
-    }
+    },
   },
   "stateContract": {
     "canUndo": "boolean",
@@ -5718,66 +5718,6 @@ export const aiTab = {
                 },
                 "B": {
                   "mode": "full"
-                },
-                "C": {
-                  "mode": "inGroupFlyout"
-                }
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "groupId": "feedbacks",
-      "label": "Feedbacks",
-      "priority": 95,
-      "dialogLauncher": null,
-      "clusters": [
-        {
-          "clusterId": "feedbacks.primary",
-          "layout": "row",
-          "controls": [
-            {
-              "controlId": "feedbacks.showSourceChecks",
-              "label": "Show source checks",
-              "type": "toggleButton",
-              "size": "medium",
-              "iconKey": "icon.commentAdd",
-              "command": {
-                "id": "ai.sourceChecks.toggle"
-              },
-              "state": {
-                "binding": "sourceChecksVisible",
-                "kind": "boolean"
-              },
-              "collapse": {
-                "A": {
-                  "mode": "full"
-                },
-                "B": {
-                  "mode": "full"
-                },
-                "C": {
-                  "mode": "inGroupFlyout"
-                }
-              }
-            },
-            {
-              "controlId": "feedbacks.clearSourceChecks",
-              "label": "Clear checks",
-              "type": "button",
-              "size": "small",
-              "iconKey": "icon.delete",
-              "command": {
-                "id": "ai.sourceChecks.clear"
-              },
-              "collapse": {
-                "A": {
-                  "mode": "full"
-                },
-                "B": {
-                  "mode": "inOverflow"
                 },
                 "C": {
                   "mode": "inGroupFlyout"

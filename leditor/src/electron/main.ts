@@ -1913,8 +1913,8 @@ app.whenReady().then(() => {
         const mode = String(payload?.mode ?? "").toLowerCase();
         const text = String(payload?.text ?? "").trim();
         const sentence = typeof payload?.sentence === "string" ? String(payload.sentence).trim() : "";
-        if (mode !== "synonyms" && mode !== "antonyms" && mode !== "definition" && mode !== "define") {
-          return { success: false, error: 'lexicon: payload.mode must be "synonyms" | "antonyms" | "definition"' };
+        if (mode !== "synonyms" && mode !== "antonyms" && mode !== "definition" && mode !== "define" && mode !== "explain") {
+          return { success: false, error: 'lexicon: payload.mode must be "synonyms" | "antonyms" | "definition" | "explain"' };
         }
         if (!text) return { success: false, error: "lexicon: payload.text required" };
         const fallback = getDefaultModelForProvider(provider);
@@ -1926,6 +1926,7 @@ app.whenReady().then(() => {
         }
 
         const isDefinition = mode === "definition" || mode === "define";
+        const isExplain = mode === "explain";
         const system = isDefinition
           ? [
               "You are a deterministic dictionary helper inside an offline academic editor.",
@@ -1934,14 +1935,23 @@ app.whenReady().then(() => {
               "definition must be 1–2 sentences, written for the given sentence context.",
               "Do NOT include bullets, numbering, or quotes unless they are part of the definition itself."
             ].join("\n")
-          : [
-              "You are a deterministic thesaurus helper inside an offline academic editor.",
-              "You will be given a selected word/phrase and the full sentence it appears in.",
-              "Return STRICT JSON only (no markdown): {\"assistantText\":string,\"suggestions\":string[]}.",
-              "suggestions MUST contain exactly 5 short replacement candidates (no numbering, no quotes).",
-              "Each suggestion must be a direct replacement for the selected text that still fits the sentence.",
-              "Do not repeat the input text."
-            ].join("\n");
+          : isExplain
+            ? [
+                "You are a deterministic explainer inside an offline academic editor.",
+                "You will be given a selected word/phrase and the full paragraph it appears in.",
+                "Return STRICT JSON only (no markdown): {\"assistantText\":string,\"explanation\":string}.",
+                "explanation must be 2–4 sentences explaining what the selection means in THIS paragraph.",
+                "Do NOT quote large parts of the paragraph; focus on meaning and role in context.",
+                "Do NOT use bullets or numbering."
+              ].join("\n")
+            : [
+                "You are a deterministic thesaurus helper inside an offline academic editor.",
+                "You will be given a selected word/phrase and the full sentence it appears in.",
+                "Return STRICT JSON only (no markdown): {\"assistantText\":string,\"suggestions\":string[]}.",
+                "suggestions MUST contain exactly 5 short replacement candidates (no numbering, no quotes).",
+                "Each suggestion must be a direct replacement for the selected text that still fits the sentence.",
+                "Do not repeat the input text."
+              ].join("\n");
 
         const user = JSON.stringify(
           {
@@ -1971,11 +1981,15 @@ app.whenReady().then(() => {
         const definition = isDefinition
           ? (typeof parsed?.definition === "string" ? parsed.definition.replace(/\s+/g, " ").trim() : "")
           : "";
+        const explanation = isExplain
+          ? (typeof parsed?.explanation === "string" ? parsed.explanation.replace(/\s+/g, " ").trim() : "")
+          : "";
         return {
           success: true,
           assistantText: typeof parsed?.assistantText === "string" ? parsed.assistantText : "",
           suggestions,
           ...(definition ? { definition } : {}),
+          ...(explanation ? { explanation } : {}),
           meta: { provider, model, ms: Date.now() - started }
         };
       } catch (error) {
@@ -2158,6 +2172,15 @@ app.whenReady().then(() => {
           const text = typeof entry?.text === "string" ? entry.text : "";
           textById.set(id, text);
         }
+        const buildFootnoteBodyJson = (value: string) => {
+          const safeText = typeof value === "string" ? value : "";
+          const lines = safeText.replace(/\r/g, "").split("\n");
+          const blocks = lines.length ? lines : [""];
+          return blocks.map((line) => {
+            if (!line) return { type: "paragraph" };
+            return { type: "paragraph", content: [{ type: "text", text: line }] };
+          });
+        };
         const visit = (node: any) => {
           if (!node || typeof node !== "object") return;
           if (node.type === "footnote" && node.attrs && typeof node.attrs === "object") {
@@ -2166,6 +2189,18 @@ app.whenReady().then(() => {
               const current = typeof node.attrs.text === "string" ? node.attrs.text : "";
               if (!current && textById.has(id)) {
                 node.attrs.text = textById.get(id) ?? "";
+              }
+            }
+          }
+          if (node.type === "footnoteBody" && node.attrs && typeof node.attrs === "object") {
+            const id = typeof node.attrs.footnoteId === "string" ? node.attrs.footnoteId.trim() : "";
+            if (id && textById.has(id)) {
+              const content = Array.isArray(node.content) ? node.content : [];
+              const hasText = content.some(
+                (child: any) => child && Array.isArray(child.content) && child.content.length > 0
+              );
+              if (!hasText) {
+                node.content = buildFootnoteBodyJson(textById.get(id) ?? "");
               }
             }
           }

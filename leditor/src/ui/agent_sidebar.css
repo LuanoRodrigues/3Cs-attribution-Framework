@@ -38,11 +38,95 @@
 }
 
 .leditor-agent-sidebar__headerTop {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 6px;
+  padding: 6px 10px 4px 10px;
+}
+
+.leditor-agent-sidebar__title {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.leditor-agent-sidebar__headerRight {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.leditor-agent-sidebar__viewTabs {
+  grid-column: 1 / 3;
+  grid-row: 2;
+  width: 100%;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 10px 12px 8px 12px;
+  gap: 6px;
+  justify-content: flex-start;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  padding-bottom: 2px;
+}
+
+.leditor-agent-sidebar__viewTabs::-webkit-scrollbar {
+  height: 6px;
+}
+
+.leditor-agent-sidebar__viewTabs::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.18);
+  border-radius: 999px;
+}
+
+.leditor-app.theme-dark .leditor-agent-sidebar__viewTabs::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+}
+
+
+
+.leditor-agent-sidebar__viewTab {
+  appearance: none;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 0.72);
+  color: rgba(23, 23, 23, 0.86);
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 10.5px;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+
+.leditor-agent-sidebar__viewTab:hover {
+  background: rgba(37, 99, 235, 0.10);
+  border-color: rgba(37, 99, 235, 0.22);
+}
+
+.leditor-agent-sidebar__viewTab.is-active {
+  background: rgba(37, 99, 235, 0.14);
+  border-color: rgba(37, 99, 235, 0.35);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+}
+
+.leditor-app.theme-dark .leditor-agent-sidebar__viewTab {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(240, 240, 240, 0.88);
+}
+
+.leditor-app.theme-dark .leditor-agent-sidebar__viewTab:hover {
+  background: rgba(37, 99, 235, 0.18);
+  border-color: rgba(37, 99, 235, 0.35);
+}
+
+.leditor-app.theme-dark .leditor-agent-sidebar__viewTab.is-active {
+  background: rgba(37, 99, 235, 0.24);
+  border-color: rgba(37, 99, 235, 0.55);
 }
 
 .leditor-agent-sidebar__headerBottom {
@@ -50,7 +134,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 0 12px 10px 12px;
+  padding: 0 12px 8px 12px;
 }
 
 .leditor-agent-sidebar__title {
@@ -86,10 +170,10 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: 11px;
   opacity: 0.9;
   user-select: none;
-  padding: 6px 10px;
+  padding: 5px 8px;
   border-radius: 999px;
   border: 1px solid rgba(0, 0, 0, 0.12);
   background: rgba(255, 255, 255, 0.70);
@@ -163,8 +247,8 @@
   border: 1px solid rgba(0, 0, 0, 0.12);
   background: rgba(255, 255, 255, 0.72);
   border-radius: 999px;
-  padding: 6px 10px;
-  font-size: 12px;
+  padding: 5px 9px;
+  font-size: 11px;
   cursor: pointer;
   max-width: 240px;
 }
@@ -178,7 +262,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: 12px;
+  font-size: 11px;
   color: rgba(41, 41, 41, 0.96);
 }
 
@@ -277,8 +361,8 @@
   border: 1px solid rgba(0, 0, 0, 0.12);
   background: rgba(255, 255, 255, 0.7);
   border-radius: 8px;
-  padding: 6px 10px;
-  font-size: 12px;
+  padding: 5px 9px;
+  font-size: 11px;
   cursor: pointer;
 }
 
@@ -400,6 +484,31 @@
   width: 14px;
   height: 14px;
   accent-color: rgba(37, 99, 235, 0.95);
+}
+
+.leditor-agent-sidebar__panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.leditor-agent-sidebar__boxes {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.leditor-agent-sidebar__boxes.is-hidden {
+  display: none;
+}
+
+.leditor-agent-sidebar__messages.is-hidden {
+  display: none;
 }
 
 .leditor-agent-sidebar__messages {
@@ -578,7 +687,7 @@
   position: sticky;
   bottom: 0;
   z-index: 2;
-  padding: 10px 12px 12px 12px;
+  padding: 6px 10px 8px 10px;
   border-top: 1px solid rgba(0, 0, 0, 0.08);
   background: rgba(248, 250, 252, 0.86);
   backdrop-filter: blur(8px);
@@ -592,8 +701,8 @@
 
 .leditor-agent-sidebar__iconBtn {
   flex: 0 0 auto;
-  width: 36px;
-  height: 36px;
+  width: 30px;
+  height: 30px;
   border-radius: 999px;
   border: 1px solid transparent;
   background: transparent;
@@ -623,7 +732,7 @@
   border: 1px solid rgba(0, 0, 0, 0.12);
   background: rgba(244, 244, 244, 0.92);
   border-radius: 14px;
-  padding: 10px 12px;
+  padding: 6px 8px;
 }
 
 .leditor-agent-sidebar__inputGrid {
@@ -691,8 +800,8 @@
   resize: none;
   display: block;
   font-family: inherit;
-  font-size: 14px;
-  line-height: 1.45;
+  font-size: 13px;
+  line-height: 1.4;
   padding: 0;
   border-radius: 0;
   border: 0;
@@ -712,8 +821,8 @@
   border: 0;
   background: transparent;
   font-family: inherit;
-  font-size: 14px;
-  line-height: 1.45;
+  font-size: 13px;
+  line-height: 1.4;
   min-height: 26px;
   white-space: pre-wrap;
   word-break: break-word;
@@ -749,8 +858,8 @@
 
 .leditor-agent-sidebar__sendIcon {
   flex: 0 0 auto;
-  width: 36px;
-  height: 36px;
+  width: 30px;
+  height: 30px;
   border-radius: 999px;
   border: 1px solid rgba(0, 0, 0, 0.12);
   background: rgba(255, 255, 255, 0.65);
@@ -816,7 +925,7 @@
   position: absolute;
   left: 12px;
   bottom: calc(100% + 10px);
-  width: 240px;
+  width: 220px;
   max-width: calc(100% - 24px);
   display: flex;
   flex-direction: column;
@@ -838,8 +947,8 @@
   border: 1px solid rgba(0, 0, 0, 0.10);
   background: rgba(241, 245, 249, 0.7);
   border-radius: 10px;
-  padding: 8px 10px;
-  font-size: 12px;
+  padding: 7px 9px;
+  font-size: 11.5px;
   cursor: pointer;
   text-align: left;
 }
@@ -847,4 +956,32 @@
 .leditor-agent-sidebar__plusItem:hover {
   border-color: rgba(37, 99, 235, 0.28);
   background: rgba(37, 99, 235, 0.10);
+}
+
+
+/* Source checks (sidebar list layout) */
+.leditor-agent-sidebar .leditor-source-check-rail__header {
+  position: sticky;
+  top: 0;
+  left: auto;
+  width: auto;
+  margin: 0 0 10px 0;
+}
+
+.leditor-agent-sidebar .leditor-source-check-rail__list {
+  position: static;
+  inset: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.leditor-agent-sidebar .leditor-source-check-rail__pCard {
+  position: static;
+  width: 100%;
+  max-width: none;
+}
+
+.leditor-agent-sidebar .leditor-source-check-rail__pBody {
+  max-height: 320px;
 }
