@@ -27,6 +27,9 @@ type PageLayoutAttrs = {
   hyphenation?: string;
 };
 
+const shouldForceSingleColumn = (): boolean =>
+  typeof window !== "undefined" && (window as any).__leditorDisableColumns !== false;
+
 const defaultLayout: PageLayoutAttrs = {
   pageSizeId: "a4",
   orientation: "portrait",
@@ -121,11 +124,15 @@ const PageLayoutExtension = Extension.create({
           updateDocAttrs((attrs) => ({ ...attrs, orientation })),
       setPageColumns:
         (input: { count: number; mode?: ColumnsMode }) =>
-          updateDocAttrs((attrs) => ({
-            ...attrs,
-            columns: Math.max(1, Math.min(4, Math.floor(input.count))),
-            columnsMode: input.mode ?? defaultLayout.columnsMode
-          })),
+          updateDocAttrs((attrs) => {
+            const forceSingle = shouldForceSingleColumn();
+            const normalized = forceSingle ? 1 : Math.max(1, Math.min(4, Math.floor(input.count)));
+            return {
+              ...attrs,
+              columns: normalized,
+              columnsMode: forceSingle ? "one" : input.mode ?? defaultLayout.columnsMode
+            };
+          }),
       setLineNumbering:
         (mode: string) =>
           updateDocAttrs((attrs) => ({ ...attrs, lineNumbering: mode })),

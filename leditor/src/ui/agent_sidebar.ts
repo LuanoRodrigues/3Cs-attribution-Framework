@@ -953,6 +953,10 @@ export const createAgentSidebar = (
     }
   };
 
+  // Render tabs immediately so they are visible as soon as the sidebar opens
+  // (initial render previously relied on setViewMode, which might not run before first paint).
+  renderViewTabs();
+
   const renderBoxes = () => {
     const showBoxes = viewMode !== "chat";
     messagesEl.classList.toggle("is-hidden", showBoxes);

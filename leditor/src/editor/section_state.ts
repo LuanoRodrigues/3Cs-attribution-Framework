@@ -18,7 +18,11 @@ export const allocateSectionId = () => {
 
 export const serializeSectionMeta = (meta: Partial<SectionMeta>) => JSON.stringify(meta);
 
+const shouldForceSingleColumn = (): boolean =>
+  typeof window !== 'undefined' && (window as any).__leditorDisableColumns !== false;
+
 const normalizeColumns = (value: unknown): SectionMeta['columns'] => {
+  if (shouldForceSingleColumn()) return 1;
   if (typeof value !== 'number') return defaultSectionMeta.columns;
   const clamped = Math.max(1, Math.min(4, Math.floor(value)));
   return clamped as SectionMeta['columns'];

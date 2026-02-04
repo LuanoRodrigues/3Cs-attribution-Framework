@@ -118,6 +118,17 @@ const measureTextWidth = (text: string, size = 12) => {
   return (advance / 1000) * size;
 };
 
+const shouldForceSingleColumn = (): boolean =>
+  typeof window !== "undefined" && (window as any).__leditorDisableColumns !== false;
+
+const enforceSingleColumnStyle = (content: HTMLElement | null) => {
+  if (!content || !shouldForceSingleColumn()) return;
+  content.style.columnCount = "1";
+  content.style.columnGap = "0px";
+  content.style.columnFill = "auto";
+  content.style.columnWidth = "auto";
+};
+
 const ensureStyles = () => {
   if (document.getElementById(STYLE_ID)) return;
   const style = document.createElement("style");
@@ -441,7 +452,7 @@ html, body {
 .leditor-app a.leditor-citation-anchor *,
 .leditor-app a.leditor-citation-anchor *::before,
 .leditor-app a.leditor-citation-anchor *::after {
-  cursor: pointer !important;
+  cursor: pointer;
 }
 .leditor-app a.leditor-citation-anchor {
   user-select: text;
@@ -1271,7 +1282,7 @@ html, body {
 .leditor-break[data-break-kind="page"][data-section-id="bibliography"],
 .leditor-break[data-break-kind="page"][data-section-id="bibliography"]::before,
 .leditor-break[data-break-kind="page"][data-section-id="bibliography"]::after {
-  display: none !important;
+  display: none;
 }
 `;
   style.textContent += `
@@ -1317,7 +1328,7 @@ html, body {
   text-transform: none;
 }
 
-.leditor-page-content {
+  .leditor-page-content {
   position: absolute;
   top: var(--local-page-margin-top, var(--page-margin-top));
   left: var(--local-page-margin-left, var(--page-margin-left));
@@ -1345,8 +1356,8 @@ html, body {
   overflow: hidden;
   pointer-events: auto;
   hyphens: var(--page-hyphens, manual);
-  column-count: var(--page-columns, 1);
-  column-gap: var(--page-column-gap, var(--doc-gutter, 24px));
+  column-count: 1;
+  column-gap: 0;
   column-fill: auto;
   word-break: normal;
   overflow-wrap: normal;
@@ -4141,6 +4152,7 @@ export const mountA4Layout = (
     content.contentEditable = "true";
     content.setAttribute("role", "textbox");
     content.setAttribute("translate", "no");
+    enforceSingleColumnStyle(content);
     const continuation = document.createElement("div");
     continuation.className = "leditor-footnote-continuation";
     continuation.setAttribute("aria-hidden", "true");
@@ -4343,7 +4355,7 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
       syncCurrentMargins(resolvedTopMargin, resolvedBottomMargin, resolvedLeftMargin, resolvedRightMargin);
     }
 
-    const columns = Math.max(1, info.meta.columns ?? 1);
+    const columns = shouldForceSingleColumn() ? 1 : Math.max(1, info.meta.columns ?? 1);
     updateColumnGuide(page, columns);
     return {
       top: resolvedTopMargin || topMargin,
@@ -4704,7 +4716,17 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
       if (pageColumns && pageColumns !== "1") {
         console.warn("[PaginationDebug] forcing page columns to 1", { pageColumns });
         setSectionColumns(1);
-        return;
+        try {
+          (window as any).__leditorAutoNormalizeOnce = true;
+          document.documentElement.style.setProperty("--page-columns", "1");
+          document.documentElement.style.setProperty("--page-column-gap", "0px");
+        } catch {
+          // ignore
+        }
+      }
+      if (shouldForceSingleColumn()) {
+        const contents = editorEl.querySelectorAll<HTMLElement>(".leditor-page-content");
+        contents.forEach((content) => enforceSingleColumnStyle(content));
       }
       if (window.__leditorPaginationDebug) {
         console.info("[PaginationDebug] css tokens", {

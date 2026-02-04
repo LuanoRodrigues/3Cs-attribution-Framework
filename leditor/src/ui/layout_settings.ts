@@ -62,6 +62,9 @@ const cmToCss = (value: number): string => `${value}cm`;
 const mmFromCm = (cm: number): number => cm * 10;
 const cmToInches = (cm: number): number => cm / 2.54;
 
+const shouldForceSingleColumn = (): boolean =>
+  typeof window !== "undefined" && (window as any).__leditorDisableColumns !== false;
+
 const parseToCm = (value: number | string | undefined, fallback: number): number => {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value !== "string") return fallback;
@@ -113,7 +116,8 @@ const snapshotStateForListeners = (): {
   columns: number;
   columnsMode: ColumnMode;
 } => {
-  const { orientation, pageSize, marginsCm, columns } = layoutState;
+  const { orientation, pageSize, marginsCm } = layoutState;
+  const columns = shouldForceSingleColumn() ? { count: 1, mode: "one" as ColumnMode } : layoutState.columns;
   const widthCm = orientation === "portrait" ? pageSize.widthCm : pageSize.heightCm;
   const heightCm = orientation === "portrait" ? pageSize.heightCm : pageSize.widthCm;
   return {
@@ -172,7 +176,7 @@ export const getMarginValues = (): MarginValues => snapshotStateForListeners().m
 
 export const getMarginValuesCm = (): MarginValuesCm => ({ ...layoutState.marginsCm });
 
-export const getLayoutColumns = (): number => layoutState.columns.count;
+export const getLayoutColumns = (): number => (shouldForceSingleColumn() ? 1 : layoutState.columns.count);
 
 export const getColumnMode = (): ColumnMode => layoutState.columns.mode;
 
@@ -262,9 +266,17 @@ export const resetMargins = (): void => {
 };
 
 export const setSectionColumns = (count: number): void => {
-  const normalized = Math.max(1, Math.min(4, Math.floor(count)));
-  const mode: ColumnMode =
-    normalized === 1 ? "one" : normalized === 2 ? "two" : normalized === 3 ? "three" : "three";
+  const forceSingle = shouldForceSingleColumn();
+  const normalized = forceSingle ? 1 : Math.max(1, Math.min(4, Math.floor(count)));
+  const mode: ColumnMode = forceSingle
+    ? "one"
+    : normalized === 1
+      ? "one"
+      : normalized === 2
+        ? "two"
+        : normalized === 3
+          ? "three"
+          : "three";
   withLayoutUpdate(() => {
     layoutState.columns = { count: normalized, mode };
     docSetColumns(normalized);
@@ -272,9 +284,11 @@ export const setSectionColumns = (count: number): void => {
 };
 
 export const setColumnMode = (mode: ColumnMode): void => {
-  const count = mode === "one" ? 1 : mode === "two" ? 2 : mode === "three" ? 3 : 2;
+  const forceSingle = shouldForceSingleColumn();
+  const count = forceSingle ? 1 : mode === "one" ? 1 : mode === "two" ? 2 : mode === "three" ? 3 : 2;
+  const normalizedMode: ColumnMode = forceSingle ? "one" : mode;
   withLayoutUpdate(() => {
-    layoutState.columns = { count, mode };
+    layoutState.columns = { count, mode: normalizedMode };
     docSetColumns(count);
   });
 };
@@ -288,6 +302,9 @@ export const subscribeToLayoutChanges = (listener: LayoutChangeListener): (() =>
 };
 
 const initializeDocumentLayoutState = (): void => {
+  if (shouldForceSingleColumn()) {
+    layoutState.columns = { count: 1, mode: "one" };
+  }
   docSetPageSizePreset(layoutState.pageSize.id);
   docSetOrientation(layoutState.orientation);
   docSetMarginsCustom({

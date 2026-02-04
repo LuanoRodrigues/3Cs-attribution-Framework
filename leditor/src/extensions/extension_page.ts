@@ -29,6 +29,30 @@ const logDebug = (message: string, detail?: Record<string, unknown>) => {
   console.info(`[PaginationDebug] ${message}`);
 };
 
+const shouldForceSingleColumn = (): boolean =>
+  typeof window !== "undefined" && (window as any).__leditorDisableColumns !== false;
+
+const enforceSingleColumnContent = (content: HTMLElement | null) => {
+  if (!content || !shouldForceSingleColumn()) return;
+  content.style.columnCount = "1";
+  content.style.columnGap = "0px";
+  content.style.columnFill = "auto";
+  content.style.columnWidth = "auto";
+};
+
+const shouldLogBlockMetrics = (): boolean => {
+  if (!debugEnabled()) return false;
+  return (window as any).__leditorPaginationDebugBlocks === true;
+};
+
+const getPageIndexForContent = (content: HTMLElement): number | null => {
+  const page = content.closest<HTMLElement>(`.${PAGE_CLASS}`);
+  if (!page) return null;
+  const raw = page.dataset.pageIndex;
+  const parsed = raw ? Number.parseInt(raw, 10) : NaN;
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
 const markPreserveScroll = () => {
   try {
     (window as any).__leditorPreserveScrollOnNextPagination = true;
@@ -302,6 +326,301 @@ const stripAnchorOnlyBlocks = (state: any, pageType: any): any | null => {
     }
   }
   return changed ? tr : null;
+};
+
+const collectParagraphText = (node: ProseMirrorNode): string => {
+  return (node.textContent ?? "").replace(/\s+/g, " ").trim();
+};
+
+const countHardBreaks = (node: ProseMirrorNode): number => {
+  let count = 0;
+  node.forEach((child) => {
+    if (child.type?.name === "hardBreak") count += 1;
+  });
+  return count;
+};
+
+const normalizeParagraphInline = (node: ProseMirrorNode, schema: any): Fragment => {
+  const children: ProseMirrorNode[] = [];
+  node.forEach((child) => {
+    if (child.type?.name === "hardBreak") {
+      const last = children[children.length - 1];
+      const lastText = last?.isText ? (last.text ?? "") : "";
+      if (!lastText.endsWith(" ")) {
+        children.push(schema.text(" "));
+      }
+      return;
+    }
+    children.push(child);
+  });
+  return Fragment.fromArray(children);
+};
+
+const paragraphStartsWithPunct = (node: ProseMirrorNode): boolean => {
+  for (let i = 0; i < node.childCount; i += 1) {
+    const child = node.child(i);
+    if (!child.isText) continue;
+    const text = (child.text ?? "").trim();
+    if (!text) continue;
+    return /^[,.;:!?)]/.test(text);
+  }
+  return false;
+};
+
+const paragraphEndsWithSpace = (node: ProseMirrorNode): boolean => {
+  for (let i = node.childCount - 1; i >= 0; i -= 1) {
+    const child = node.child(i);
+    if (!child.isText) continue;
+    const text = child.text ?? "";
+    if (!text) continue;
+    return /\s$/.test(text);
+  }
+  return false;
+};
+
+const normalizeBrokenLines = (
+  state: any,
+  pageType: any,
+  options?: { forceShortRuns?: boolean }
+): any | null => {
+  const doc = state.doc;
+  if (!doc) return null;
+  type ParaInfo = {
+    pos: number;
+    node: ProseMirrorNode;
+    pageIndex: number;
+    isShort: boolean;
+    wordCount: number;
+    text: string;
+    hardBreaks: number;
+  };
+  const paras: ParaInfo[] = [];
+  let totalParas = 0;
+  let shortParas = 0;
+  let hardBreakParas = 0;
+  let shortRunParas = 0;
+  doc.nodesBetween(0, doc.content.size, (node: any, pos: number) => {
+    if (!node?.isTextblock || node.type?.name !== "paragraph") return;
+    let $pos;
+    try {
+      $pos = doc.resolve(pos);
+    } catch {
+      return;
+    }
+    const pageDepth = findPageDepth($pos, pageType);
+    if (pageDepth < 0) return;
+    if ($pos.depth !== pageDepth + 1) return;
+    const text = collectParagraphText(node);
+    const wordCount = text ? text.split(/\s+/).filter(Boolean).length : 0;
+    const isShort = wordCount > 0 && wordCount <= 3 && text.length <= 24;
+    const hardBreaks = countHardBreaks(node);
+    totalParas += 1;
+    if (isShort) shortParas += 1;
+    if (hardBreaks >= 2) hardBreakParas += 1;
+    paras.push({
+      pos,
+      node,
+      pageIndex: $pos.index(0),
+      isShort,
+      wordCount,
+      text,
+      hardBreaks
+    });
+  });
+  if (totalParas < 4) return null;
+  const shortRatio = totalParas > 0 ? shortParas / totalParas : 0;
+  const forceShortRuns = options?.forceShortRuns ?? false;
+  const shouldNormalize = forceShortRuns || shortRatio >= 0.45 || hardBreakParas >= 4;
+  if (!shouldNormalize) return null;
+  let tr = state.tr;
+  let changed = false;
+  const mergedRanges: Array<{ from: number; to: number }> = [];
+
+  const runs: ParaInfo[][] = [];
+  let current: ParaInfo[] = [];
+  for (let i = 0; i < paras.length; i += 1) {
+    const prev = current[current.length - 1];
+    const next = paras[i];
+    if (
+      prev &&
+      next.pageIndex === prev.pageIndex &&
+      next.pos === prev.pos + prev.node.nodeSize
+    ) {
+      current.push(next);
+    } else {
+      if (current.length) runs.push(current);
+      current = [next];
+    }
+  }
+  if (current.length) runs.push(current);
+
+  for (let i = runs.length - 1; i >= 0; i -= 1) {
+    const run = runs[i];
+    if (run.length < (forceShortRuns ? 2 : 5)) continue;
+    const shortCount = run.filter((p) => p.isShort).length;
+    const avgWords =
+      run.reduce((sum, p) => sum + p.wordCount, 0) / Math.max(1, run.length);
+    if (!forceShortRuns && shortCount / run.length < 0.7 && avgWords > 2.5) continue;
+    const start = run[0].pos;
+    const end = run[run.length - 1].pos + run[run.length - 1].node.nodeSize;
+    const schema = run[0].node.type.schema;
+    const mergedChildren: ProseMirrorNode[] = [];
+    for (let r = 0; r < run.length; r += 1) {
+      const para = run[r].node;
+      const normalized = normalizeParagraphInline(para, schema);
+      const fragChildren: ProseMirrorNode[] = [];
+      normalized.forEach((child) => fragChildren.push(child));
+      if (fragChildren.length) {
+        mergedChildren.push(...fragChildren);
+      }
+      const isLast = r === run.length - 1;
+      if (!isLast) {
+        const endsWithSpace = paragraphEndsWithSpace(para);
+        const nextStartsWithPunct = paragraphStartsWithPunct(run[r + 1].node);
+        if (!endsWithSpace && !nextStartsWithPunct) {
+          mergedChildren.push(schema.text(" "));
+        }
+      }
+    }
+    const merged = run[0].node.type.create(run[0].node.attrs, Fragment.fromArray(mergedChildren), run[0].node.marks);
+    try {
+      tr = tr.replaceWith(start, end, merged);
+      changed = true;
+      mergedRanges.push({ from: start, to: end });
+    } catch {
+      // ignore merge failures
+    }
+  }
+
+  const mergedContains = (pos: number) =>
+    mergedRanges.some((range) => pos >= range.from && pos < range.to);
+
+  for (let i = paras.length - 1; i >= 0; i -= 1) {
+    const para = paras[i];
+    if (mergedContains(para.pos)) continue;
+    if (para.hardBreaks < 2) continue;
+    const schema = para.node.type.schema;
+    const normalized = normalizeParagraphInline(para.node, schema);
+    const fragChildren: ProseMirrorNode[] = [];
+    normalized.forEach((child) => fragChildren.push(child));
+    const newNode = para.node.type.create(para.node.attrs, Fragment.fromArray(fragChildren), para.node.marks);
+    try {
+      tr = tr.replaceWith(para.pos, para.pos + para.node.nodeSize, newNode);
+      changed = true;
+    } catch {
+      // ignore replace failures
+    }
+  }
+
+  return changed ? tr : null;
+};
+
+const hasManualBreaks = (doc: any): boolean => {
+  let found = false;
+  doc.nodesBetween(0, doc.content.size, (node: any) => {
+    if (node?.type?.name === "page_break") {
+      found = true;
+      return false;
+    }
+    return true;
+  });
+  return found;
+};
+
+const flattenPagesForReflow = (
+  state: any,
+  pageType: any,
+  options?: { normalizeShortParagraphs?: boolean }
+): any | null => {
+  const doc = state.doc;
+  if (!doc || doc.childCount <= 1) return null;
+  if (hasManualBreaks(doc)) return null;
+  const normalizeShort = options?.normalizeShortParagraphs ?? false;
+  const mergedNodes: ProseMirrorNode[] = [];
+  let storedFootnotes: ProseMirrorNode[] = [];
+  const flushShortRun = (
+    run: ProseMirrorNode[],
+    schema: any
+  ) => {
+    if (!run.length) return;
+    if (!normalizeShort || run.length === 1) {
+      mergedNodes.push(...run);
+      return;
+    }
+    const mergedChildren: ProseMirrorNode[] = [];
+    for (let i = 0; i < run.length; i += 1) {
+      const para = run[i];
+      const normalized = normalizeParagraphInline(para, schema);
+      const fragChildren: ProseMirrorNode[] = [];
+      normalized.forEach((child) => fragChildren.push(child));
+      if (fragChildren.length) mergedChildren.push(...fragChildren);
+      const isLast = i === run.length - 1;
+      if (!isLast) {
+        const endsWithSpace = paragraphEndsWithSpace(para);
+        const nextStartsWithPunct = paragraphStartsWithPunct(run[i + 1]);
+        if (!endsWithSpace && !nextStartsWithPunct) {
+          mergedChildren.push(schema.text(" "));
+        }
+      }
+    }
+    const mergedPara = run[0].type.create(run[0].attrs, Fragment.fromArray(mergedChildren), run[0].marks);
+    mergedNodes.push(mergedPara);
+  };
+  let shortRun: ProseMirrorNode[] = [];
+  const isShortPara = (node: ProseMirrorNode): boolean => {
+    if (!node?.isTextblock || node.type?.name !== "paragraph") return false;
+    const text = collectParagraphText(node);
+    const words = text ? text.split(/\s+/).filter(Boolean).length : 0;
+    return words > 0 && words <= 3 && text.length <= 28;
+  };
+  for (let i = 0; i < doc.childCount; i += 1) {
+    const child = doc.child(i);
+    if (!child || child.type !== pageType) return null;
+    const storage = collectFootnoteStorage(child.content);
+    if (!storedFootnotes.length && storage.length) {
+      storedFootnotes = storage;
+    }
+    const stripped = stripFootnoteStorage(child.content);
+    stripped.forEach((node) => {
+      if (normalizeShort && isShortPara(node)) {
+        shortRun.push(node);
+        return;
+      }
+      if (shortRun.length) {
+        flushShortRun(shortRun, node.type.schema);
+        shortRun = [];
+      }
+      if (normalizeShort && node.type?.name === "paragraph") {
+        const normalized = normalizeParagraphInline(node, node.type.schema);
+        const fragChildren: ProseMirrorNode[] = [];
+        normalized.forEach((childNode) => fragChildren.push(childNode));
+        const updated = node.type.create(node.attrs, Fragment.fromArray(fragChildren), node.marks);
+        mergedNodes.push(updated);
+      } else {
+        mergedNodes.push(node);
+      }
+    });
+  }
+  if (shortRun.length) {
+    flushShortRun(shortRun, shortRun[0].type.schema);
+    shortRun = [];
+  }
+  if (!mergedNodes.length) return null;
+  if (storedFootnotes.length) {
+    mergedNodes.push(...storedFootnotes);
+  }
+  const pageAttrs = doc.child(0)?.attrs ?? null;
+  const mergedPage = pageType.create(pageAttrs, Fragment.fromArray(mergedNodes));
+  const replacement = Fragment.fromArray([mergedPage]);
+  let tr = state.tr.replaceWith(0, doc.content.size, replacement);
+  try {
+    const mapped = tr.mapping.map(state.selection.from);
+    const resolved = tr.doc.resolve(Math.max(0, Math.min(tr.doc.content.size, mapped)));
+    tr = tr.setSelection(Selection.near(resolved, 1));
+  } catch {
+    // ignore selection mapping failures
+  }
+  return tr;
 };
 
 const stripFootnoteStorage = (content: Fragment): Fragment => {
@@ -1276,6 +1595,7 @@ const findSplitTarget = (
   content: HTMLElement,
   tolerance = 1
 ): { target: HTMLElement; after: boolean; reason: "keepWithNext" | "overflow" | "manual" } | null => {
+  enforceSingleColumnContent(content);
   const { usableHeight } = getContentMetrics(content);
   if (usableHeight <= 0) {
     logDebug("page content height is non-positive", { usableHeight });
@@ -1286,6 +1606,66 @@ const findSplitTarget = (
   const guardPx = Math.max(BOTTOM_GUARD_PX, 1);
   const bottomLimit = Math.max(0, usableHeight - guardPx);
   const children = getContentChildren(content);
+  if (shouldLogBlockMetrics()) {
+    const contentStyle = getComputedStyle(content);
+    const pageIndex = getPageIndexForContent(content);
+    const clientWidth = content.clientWidth;
+    const clientHeight = content.clientHeight;
+    const scrollWidth = content.scrollWidth;
+    const scrollHeight = content.scrollHeight;
+    const maxRows = typeof (window as any).__leditorPaginationDebugBlocksLimit === "number"
+      ? (window as any).__leditorPaginationDebugBlocksLimit
+      : 40;
+    const rows = children.slice(0, Math.max(0, maxRows)).map((child, index) => {
+      const rect = child.getBoundingClientRect();
+      const marginBottom = parseFloat(getComputedStyle(child).marginBottom || "0") || 0;
+      const top = (rect.top - contentRect.top) / scale;
+      const bottom = (rect.bottom - contentRect.top) / scale + marginBottom;
+      const left = (rect.left - contentRect.left) / scale;
+      const right = (rect.right - contentRect.left) / scale;
+      const preview = (child.textContent || "").trim().slice(0, 60);
+      return {
+        index,
+        tag: child.tagName,
+        top,
+        bottom,
+        left,
+        right,
+        height: rect.height / scale,
+        width: rect.width / scale,
+        marginBottom,
+        overflowBottom: bottom > bottomLimit + tolerance,
+        rightShift: left > clientWidth * 0.55,
+        preview
+      };
+    });
+    const rightShiftCount = rows.filter((row) => row.rightShift).length;
+    logDebug("split diagnostics", {
+      pageIndex,
+      usableHeight,
+      bottomLimit,
+      guardPx,
+      scale,
+      clientWidth,
+      clientHeight,
+      scrollWidth,
+      scrollHeight,
+      columnCount: contentStyle.columnCount,
+      columnGap: contentStyle.columnGap,
+      columnWidth: (contentStyle as any).columnWidth,
+      columns: (contentStyle as any).columns,
+      inOverlay: Boolean(content.closest(".leditor-page-overlay") || content.closest(".leditor-page-overlays")),
+      rightShiftCount,
+      sample: rows
+    });
+    if (rightShiftCount > 0) {
+      logDebug("horizontal flow detected", {
+        pageIndex,
+        rightShiftCount,
+        sample: rows.filter((row) => row.rightShift).slice(0, 10)
+      });
+    }
+  }
   let lastBottom = 0;
   for (let i = 0; i < children.length; i += 1) {
     const child = children[i];
@@ -1484,6 +1864,30 @@ const findUnderfilledJoin = (view: any, pageType: any): number | null => {
   return null;
 };
 
+const isUnderfilledDoc = (view: any): boolean => {
+  const pages = Array.from(view.dom.querySelectorAll(`.${PAGE_CLASS}`)).filter(
+    (node): node is HTMLElement => node instanceof HTMLElement
+  );
+  if (pages.length < 4) return false;
+  let total = 0;
+  let underfilled = 0;
+  for (const page of pages) {
+    const content = page.querySelector(`.${PAGE_CONTENT_CLASS}`) as HTMLElement | null;
+    if (!content) continue;
+    const children = getContentChildren(content);
+    if (!children.length) continue;
+    const lastBottom = getLastContentBottom(content);
+    if (lastBottom <= 0) continue;
+    const lineHeight = getLineHeightPx(children[children.length - 1] ?? content);
+    total += 1;
+    if (lastBottom < Math.max(lineHeight * 2.2, lineHeight + 6)) {
+      underfilled += 1;
+    }
+  }
+  if (total < 3) return false;
+  return underfilled / total >= 0.5;
+};
+
 const getJoinPosForPageIndex = (doc: any, pageType: any, pageIndex: number): number | null => {
   if (!doc || pageIndex <= 0) return null;
   let pos = 0;
@@ -1517,6 +1921,11 @@ type PaginationMemo = {
   lastSplitReason: "keepWithNext" | "overflow" | "manual" | null;
   lastExternalChangeAt: number;
   lastDocSize: number;
+  lastNormalizeAt: number;
+  lastNormalizeDocSize: number;
+  lastFlattenAt: number;
+  lastFlattenDocSize: number;
+  autoNormalizeOnceDone: boolean;
   lockedJoinPos: Map<number, { docSize: number; at: number; reason: string }>;
   splitIdCounter: number;
 };
@@ -1552,6 +1961,63 @@ const paginateView = (
       logDebug("stripped anchor-only blocks");
       dispatchPagination(view, anchorCleanup);
       return;
+    }
+    const normalizeMode = (window as any).__leditorAutoNormalizeLines;
+    const allowNormalizeAlways = normalizeMode === true || normalizeMode === "always";
+    const allowNormalizeOnce = normalizeMode === "once" || Boolean((window as any).__leditorAutoNormalizeOnce);
+    const allowOnceRun =
+      allowNormalizeOnce ||
+      (!allowNormalizeAlways && !memo.autoNormalizeOnceDone && memo.lastNormalizeDocSize !== docSize);
+    const allowAutoNormalize = allowNormalizeAlways || allowOnceRun;
+    const forceNormalize = isUnderfilledDoc(view);
+    const allowNormalizeNow =
+      (allowAutoNormalize && forceNormalize) ||
+      (allowNormalizeAlways &&
+        memo.lastExternalChangeAt > memo.lastNormalizeAt &&
+        (memo.lastNormalizeDocSize !== docSize || performance.now() - memo.lastNormalizeAt > 1000));
+    if (
+      allowAutoNormalize &&
+      forceNormalize &&
+      (memo.lastFlattenDocSize !== docSize || performance.now() - memo.lastFlattenAt > 4000)
+    ) {
+      const flattened = flattenPagesForReflow(view.state, pageType, { normalizeShortParagraphs: true });
+      if (flattened) {
+        memo.lastFlattenDocSize = docSize;
+        memo.lastFlattenAt = performance.now();
+        if (allowOnceRun) {
+          memo.autoNormalizeOnceDone = true;
+          try {
+            (window as any).__leditorAutoNormalizeOnce = false;
+            if (normalizeMode === "once") (window as any).__leditorAutoNormalizeLines = false;
+          } catch {
+            // ignore
+          }
+        }
+        flattened.setMeta(paginationKey, { source: "pagination", op: "flattenPages" });
+        logDebug("flattened pages for reflow");
+        dispatchPagination(view, flattened);
+        return;
+      }
+    }
+    if (allowAutoNormalize && allowNormalizeNow) {
+      const normalized = normalizeBrokenLines(view.state, pageType, { forceShortRuns: forceNormalize });
+      if (normalized) {
+        memo.lastNormalizeDocSize = docSize;
+        memo.lastNormalizeAt = performance.now();
+        if (allowOnceRun) {
+          memo.autoNormalizeOnceDone = true;
+          try {
+            (window as any).__leditorAutoNormalizeOnce = false;
+            if (normalizeMode === "once") (window as any).__leditorAutoNormalizeLines = false;
+          } catch {
+            // ignore
+          }
+        }
+        normalized.setMeta(paginationKey, { source: "pagination", op: "normalizeLines" });
+        logDebug("normalized broken lines");
+        dispatchPagination(view, normalized);
+        return;
+      }
     }
     const pages = Array.from(view.dom.querySelectorAll(`.${PAGE_CLASS}`)).filter(
       (node): node is HTMLElement => node instanceof HTMLElement
@@ -2496,6 +2962,7 @@ export const PageNode = Node.create({
       header.style.height = "var(--header-height)";
       const content = document.createElement("div");
       content.className = PAGE_CONTENT_CLASS;
+      enforceSingleColumnContent(content);
       const continuation = document.createElement("div");
       continuation.className = PAGE_FOOTNOTE_CONTINUATION_CLASS;
       continuation.setAttribute("aria-hidden", "true");
@@ -2548,6 +3015,11 @@ export const PagePagination = Extension.create({
       lastSplitReason: null,
       lastExternalChangeAt: 0,
       lastDocSize: 0,
+      lastNormalizeAt: 0,
+      lastNormalizeDocSize: 0,
+      lastFlattenAt: 0,
+      lastFlattenDocSize: 0,
+      autoNormalizeOnceDone: false,
       lockedJoinPos: new Map(),
       splitIdCounter: 1
     };

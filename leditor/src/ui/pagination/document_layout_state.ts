@@ -17,6 +17,9 @@ type LayoutState = {
   footnoteSeparatorColor: string;
 };
 
+const shouldForceSingleColumn = (): boolean =>
+  typeof window !== "undefined" && (window as any).__leditorDisableColumns !== false;
+
 const spec: DocumentLayoutSpec = documentLayoutSpec;
 const defaults = spec.margins.presets.find((preset) => preset.id === spec.margins.defaultPresetId);
 if (!defaults) {
@@ -128,7 +131,7 @@ export const setColumns = (count: number): void => {
   if (count < 1) {
     throw new Error("Column count must be at least 1.");
   }
-  state.columnsCount = count;
+  state.columnsCount = shouldForceSingleColumn() ? 1 : count;
 };
 
 export const setGutter = (values: {
@@ -250,7 +253,8 @@ export const applyDocumentLayoutTokens = (root: HTMLElement): void => {
   root.style.setProperty("--page-margin-left", `${computePx(marginLeft)}px`);
   root.style.setProperty("--page-margin-inside", `${computePx(marginLeft)}px`);
   root.style.setProperty("--page-margin-outside", `${computePx(marginRight)}px`);
-  root.style.setProperty("--page-columns", String(state.columnsCount));
+  const columnsCount = shouldForceSingleColumn() ? 1 : state.columnsCount;
+  root.style.setProperty("--page-columns", String(columnsCount));
   root.style.setProperty("--page-footnote-gap", `${computePx(state.footnoteGapIn)}px`);
   root.style.setProperty("--footnote-max-height-ratio", String(state.footnoteMaxHeightRatio));
   root.style.setProperty("--footnote-separator-height", `${computePx(state.footnoteSeparatorHeightIn)}px`);
