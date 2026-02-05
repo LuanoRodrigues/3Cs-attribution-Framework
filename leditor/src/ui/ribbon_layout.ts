@@ -1138,9 +1138,9 @@ const createStyleTemplateGallery = (ctx: BuildContext): HTMLElement => {
     card.title = template.label;
 
     const applyTemplate = () => {
-      // Apply the selected template to the whole document.
+      // Apply template styles without replacing document content.
       try {
-        ctx.editorHandle.execCommand("ApplyTemplate", { id: template.templateId });
+        ctx.editorHandle.execCommand("ApplyTemplateStyles", { id: template.templateId });
         refreshLayoutView();
       } catch (error) {
         console.error("[QuickTemplates] Failed to apply template", template.templateId, error);

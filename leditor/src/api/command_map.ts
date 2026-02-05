@@ -2,6 +2,7 @@ import type { Editor } from "@tiptap/core";
 import { DOMParser as PMDOMParser, Fragment } from "@tiptap/pm/model";
 import { NodeSelection, TextSelection, Transaction } from "@tiptap/pm/state";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
+import sanitizeHtml from "sanitize-html";
 import { getFootnoteRegistry } from "../extensions/extension_footnote.ts";
 import { buildFootnoteBodyContent } from "../extensions/extension_footnote_body.ts";
 import {
@@ -117,6 +118,225 @@ const refsInfo = (message: string, detail?: Record<string, unknown>): void => {
     console.info(message, detail);
   } else {
     console.info(message);
+  }
+};
+
+const getEditorHandle = (): EditorHandle | null => {
+  const handle = (window as typeof window & { leditor?: EditorHandle }).leditor;
+  return handle ?? null;
+};
+
+const tryExecHandleCommand = (name: string, args?: any): boolean => {
+  const handle = getEditorHandle();
+  if (!handle?.execCommand) return false;
+  try {
+    handle.execCommand(name as any, args);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const readClipboardHtml = async (): Promise<string | null> => {
+  if (typeof navigator === "undefined" || !navigator.clipboard?.read) {
+    return null;
+  }
+  try {
+    const items = await navigator.clipboard.read();
+    for (const item of items) {
+      if (!item.types.includes("text/html")) continue;
+      const blob = await item.getType("text/html");
+      return await blob.text();
+    }
+  } catch {
+    return null;
+  }
+  return null;
+};
+
+const sanitizeClipboardHtml = (html: string): string => {
+  const sanitized = sanitizeHtml(html, SANITIZE_OPTIONS).trim();
+  return sanitized || "";
+};
+
+const downloadTextFile = (filename: string, content: string, mime = "text/plain"): void => {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.style.display = "none";
+  document.body.appendChild(anchor);
+  anchor.click();
+  window.setTimeout(() => {
+    URL.revokeObjectURL(url);
+    anchor.remove();
+  }, 0);
+};
+
+type MarkerEntry = { term: string; count: number };
+
+const collectMarkerEntries = (doc: ProseMirrorNode, kind: "index" | "toa"): MarkerEntry[] => {
+  const counts = new Map<string, number>();
+  const pattern = new RegExp(`\\[\\[${kind}:([^\\]]+)\\]\\]`, "gi");
+  doc.descendants((node) => {
+    if (!node.isText) return true;
+    const text = node.text ?? "";
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(text)) !== null) {
+      const term = String(match[1] ?? "").trim();
+      if (!term) continue;
+      counts.set(term, (counts.get(term) ?? 0) + 1);
+    }
+    return true;
+  });
+  return [...counts.entries()]
+    .map(([term, count]) => ({ term, count }))
+    .sort((a, b) => a.term.localeCompare(b.term));
+};
+
+const insertIndexSection = (editor: Editor, title: string, entries: MarkerEntry[]): void => {
+  const heading = {
+    type: "heading",
+    attrs: { level: 1 },
+    content: [{ type: "text", text: title }]
+  };
+  const items = entries.length
+    ? entries.map((entry) => ({
+        type: "paragraph",
+        content: [{ type: "text", text: `${entry.term} ..... ${entry.count}` }]
+      }))
+    : [
+        {
+          type: "paragraph",
+          content: [{ type: "text", text: "No entries found." }]
+        }
+      ];
+  const insertPos = editor.state.doc.content.size;
+  editor.commands.insertContentAt(insertPos, [heading, ...items]);
+};
+
+const looksLikeUrl = (value: string): boolean => /^(https?:\/\/|mailto:|file:)/i.test(value.trim());
+
+const resolveLinkHref = (editor: Editor): string => {
+  const attrs = editor.getAttributes("link") as { href?: unknown } | null;
+  const href = typeof attrs?.href === "string" ? attrs.href.trim() : "";
+  if (href) return href;
+  const { from, to } = editor.state.selection;
+  if (from === to) return "";
+  const text = editor.state.doc.textBetween(from, to, " ").trim();
+  return looksLikeUrl(text) ? text : "";
+};
+
+let trackChangesSnapshot: { active?: boolean; pendingChanges?: unknown[] } | null = null;
+if (typeof window !== "undefined") {
+  window.addEventListener("leditor:track-changes", (event) => {
+    const detail = (event as CustomEvent).detail as { active?: boolean; pendingChanges?: unknown[] } | undefined;
+    trackChangesSnapshot = detail ?? null;
+  });
+}
+
+const applyTemplateStyles = (editor: Editor, template: TemplateDefinition): void => {
+  const docJson = template.document as any;
+  const docAttrs = docJson?.attrs && typeof docJson.attrs === "object" ? docJson.attrs : null;
+  let refreshCitations = false;
+
+  if (docAttrs && typeof docAttrs.citationStyleId === "string") {
+    const nextStyle = docAttrs.citationStyleId.trim();
+    if (nextStyle) {
+      const current = typeof editor.state.doc.attrs?.citationStyleId === "string" ? editor.state.doc.attrs.citationStyleId : "";
+      if (current.trim().toLowerCase() !== nextStyle.trim().toLowerCase()) {
+        applyCitationStyleToDoc(editor, nextStyle);
+        refreshCitations = true;
+      }
+    }
+  }
+  if (docAttrs && typeof docAttrs.citationLocale === "string") {
+    const nextLocale = docAttrs.citationLocale.trim();
+    if (nextLocale) {
+      const current = typeof editor.state.doc.attrs?.citationLocale === "string" ? editor.state.doc.attrs.citationLocale : "";
+      if (current.trim() !== nextLocale) {
+        editor.view.dispatch(editor.state.tr.setDocAttribute("citationLocale", nextLocale));
+        refreshCitations = true;
+      }
+    }
+  }
+  if (refreshCitations) {
+    void refreshCitationsAndBibliography(editor);
+  }
+
+  const metadata = (template as any).metadata as Record<string, unknown> | undefined;
+  const defaults = (metadata?.documentDefaults as Record<string, unknown> | undefined) ?? undefined;
+  if (defaults && typeof defaults === "object") {
+    const fontFamily = typeof (defaults as any).fontFamily === "string" ? ((defaults as any).fontFamily as string).trim() : "";
+    const fontSizePx = typeof (defaults as any).fontSizePx === "number" ? (defaults as any).fontSizePx : NaN;
+    const textColor = typeof (defaults as any).textColor === "string" ? ((defaults as any).textColor as string).trim() : "";
+    const headingColor = typeof (defaults as any).headingColor === "string" ? ((defaults as any).headingColor as string).trim() : "";
+    const markFontFamily = fontFamily ? editor.schema.marks.fontFamily?.create({ fontFamily }) : null;
+    const markFontSize = Number.isFinite(fontSizePx) ? editor.schema.marks.fontSize?.create({ fontSize: fontSizePx }) : null;
+    const markTextColor = textColor ? editor.schema.marks.textColor?.create({ color: textColor }) : null;
+    const markHeadingColor = headingColor ? editor.schema.marks.textColor?.create({ color: headingColor }) : null;
+
+    // Apply text marks to paragraph ranges only (avoid overriding heading sizing).
+    if (markFontFamily || markFontSize || markTextColor) {
+      const mtFamily = editor.schema.marks.fontFamily;
+      const mtSize = editor.schema.marks.fontSize;
+      const mtColor = editor.schema.marks.textColor;
+      let tr = editor.state.tr;
+      editor.state.doc.descendants((node, pos) => {
+        const isParagraph = node.type.name === "paragraph";
+        const isHeading = node.type.name === "heading";
+        if (!isParagraph && !isHeading) return true;
+        const from = pos + 1;
+        const to = pos + node.nodeSize - 1;
+        if (markFontFamily && mtFamily && isParagraph) {
+          tr = tr.removeMark(from, to, mtFamily).addMark(from, to, markFontFamily);
+        }
+        if (markFontSize && mtSize && isParagraph) {
+          tr = tr.removeMark(from, to, mtSize).addMark(from, to, markFontSize);
+        }
+        if (markTextColor && mtColor && isParagraph) {
+          tr = tr.removeMark(from, to, mtColor).addMark(from, to, markTextColor);
+        }
+        if (markHeadingColor && mtColor && isHeading) {
+          tr = tr.removeMark(from, to, mtColor).addMark(from, to, markHeadingColor);
+        }
+        return true;
+      });
+      if (tr.docChanged) {
+        editor.view.dispatch(tr);
+      }
+    }
+
+    // Apply paragraph-level defaults across the document.
+    editor.commands.selectAll();
+    const textAlign = (defaults as any).textAlign;
+    const lineHeight = (defaults as any).lineHeight;
+    const spaceBeforePx = (defaults as any).spaceBeforePx;
+    const spaceAfterPx = (defaults as any).spaceAfterPx;
+    if (textAlign === "left" || textAlign === "center" || textAlign === "right" || textAlign === "justify") {
+      editor.commands.updateAttributes("paragraph", { textAlign });
+      editor.commands.updateAttributes("heading", { textAlign });
+    }
+    if (typeof lineHeight === "string" && lineHeight.trim().length > 0) {
+      editor.commands.updateAttributes("paragraph", { lineHeight });
+      editor.commands.updateAttributes("heading", { lineHeight });
+    }
+    if (typeof spaceBeforePx === "number" && Number.isFinite(spaceBeforePx)) {
+      editor.commands.updateAttributes("paragraph", { spaceBefore: spaceBeforePx });
+      editor.commands.updateAttributes("heading", { spaceBefore: spaceBeforePx });
+    }
+    if (typeof spaceAfterPx === "number" && Number.isFinite(spaceAfterPx)) {
+      editor.commands.updateAttributes("paragraph", { spaceAfter: spaceAfterPx });
+      editor.commands.updateAttributes("heading", { spaceAfter: spaceAfterPx });
+    }
+
+    // Set stored marks so continued typing follows the template defaults.
+    const chainAtStart = chainWithSafeFocus(editor, "start");
+    if (fontFamily) chainAtStart.setMark("fontFamily", { fontFamily });
+    if (Number.isFinite(fontSizePx)) chainAtStart.setMark("fontSize", { fontSize: fontSizePx });
+    if (textColor) chainAtStart.setMark("textColor", { color: textColor });
+    chainAtStart.run();
   }
 };
 
@@ -1463,6 +1683,21 @@ const setCitationLocaleCommand: CommandHandler = (editor) => {
 
 const normalizeReferenceItemKey = (value: string): string => value.trim().toUpperCase();
 
+const buildReferenceItemKey = (seed: string, existing: Record<string, unknown>): string => {
+  const cleaned = String(seed || "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "");
+  const base = (cleaned || "REF").slice(0, 8);
+  let key = base;
+  let i = 1;
+  while (existing[key]) {
+    const suffix = String(i);
+    key = (base.slice(0, Math.max(1, 8 - suffix.length)) + suffix).slice(0, 8);
+    i += 1;
+  }
+  return key;
+};
+
 const promptAndInsertCiteKey = (editor: Editor): void => {
   const raw = window.prompt("Insert citekey (8-char key, or comma-separated keys)", "");
   if (raw === null) return;
@@ -1807,7 +2042,7 @@ import {
   toggleNavigationDock
 } from "../ui/view_state.ts";
 import { getLayoutController } from "../ui/layout_context.ts";
-import { getTemplateById } from "../templates/index.ts";
+import { getTemplateById, type TemplateDefinition } from "../templates/index.ts";
 import { toggleStylesPane } from "../ui/styles_pane.ts";
 import { openStyleMiniApp } from "../ui/style_mini_app.ts";
 import { setPageMargins, setPageOrientation, setPageSize, setSectionColumns } from "../ui/layout_settings.ts";
@@ -2418,6 +2653,26 @@ export const commandMap: Record<string, CommandHandler> = {
       // ignore
     });
   },
+  ExportDOCX(_editor, args) {
+    const exporter = (window as any).__leditorAutoExportDOCX as undefined | ((opts?: any) => Promise<any>);
+    if (typeof exporter !== "function") {
+      showPlaceholderDialog("Export DOCX", "ExportDOCX handler is unavailable.");
+      return;
+    }
+    void exporter(args?.options ?? {}).catch(() => {
+      // ignore
+    });
+  },
+  ExportPdf(_editor, args) {
+    const exporter = (window as any).__leditorAutoExportPDF as undefined | ((opts?: any) => Promise<any>);
+    if (typeof exporter !== "function") {
+      showPlaceholderDialog("Export PDF", "ExportPDF handler is unavailable.");
+      return;
+    }
+    void exporter(args?.options ?? {}).catch(() => {
+      // ignore
+    });
+  },
   NewDocument() {
     const editorHandle = (window as typeof window & { leditor?: EditorHandle }).leditor;
     if (!editorHandle) {
@@ -2550,6 +2805,23 @@ export const commandMap: Record<string, CommandHandler> = {
       }
       chainWithSafeFocus(editor).insertContent(text).run();
     });
+  },
+  PasteClean(editor) {
+    safeFocusEditor(editor);
+    void (async () => {
+      const html = await readClipboardHtml();
+      if (html) {
+        const sanitized = sanitizeClipboardHtml(html);
+        if (sanitized) {
+          chainWithSafeFocus(editor).insertContent(sanitized).run();
+          return;
+        }
+      }
+      const fallback = await readClipboardText();
+      if (fallback) {
+        chainWithSafeFocus(editor).insertContent(fallback).run();
+      }
+    })();
   },
   SearchReplace() {
     const editorHandle = (window as typeof window & { leditor?: EditorHandle }).leditor;
@@ -2733,6 +3005,9 @@ export const commandMap: Record<string, CommandHandler> = {
   },
   "ai.settings.open"() {
     ensureAISettingsPanel().open();
+  },
+  "agent.sidebar.toggle"() {
+    showPlaceholderDialog("Agent");
   },
   "lexicon.define"(editor) {
     void runLexiconCommand(editor, "definition");
@@ -2984,6 +3259,50 @@ export const commandMap: Record<string, CommandHandler> = {
     }
     markChain.setLink({ href }).run();
   },
+  InsertLink(editor, args) {
+    const href = typeof args?.href === "string" ? args.href.trim() : "";
+    if (href) {
+      const chain = chainWithSafeFocus(editor) as any;
+      (chain.extendMarkRange("link") as any).setLink({ href }).run();
+      return;
+    }
+    commandMap.Link(editor);
+  },
+  CopyLink(editor) {
+    const href = resolveLinkHref(editor);
+    if (!href) {
+      window.alert("No link found at selection.");
+      return;
+    }
+    if (navigator.clipboard?.writeText) {
+      void navigator.clipboard.writeText(href).catch(() => {
+        window.prompt("Copy link", href);
+      });
+      return;
+    }
+    window.prompt("Copy link", href);
+  },
+  OpenLink(editor) {
+    const href = resolveLinkHref(editor);
+    if (!href) {
+      window.alert("No link found at selection.");
+      return;
+    }
+    window.open(href, "_blank", "noopener");
+  },
+  AutoLink(editor) {
+    const { from, to } = editor.state.selection;
+    if (from === to) {
+      commandMap.Link(editor);
+      return;
+    }
+    const text = editor.state.doc.textBetween(from, to, " ").trim();
+    if (!looksLikeUrl(text)) {
+      window.alert("Select a URL to auto-link.");
+      return;
+    }
+    chainWithSafeFocus(editor).setLink({ href: text }).run();
+  },
   ClearFormatting(editor) {
     editor
       .chain()
@@ -3101,6 +3420,21 @@ export const commandMap: Record<string, CommandHandler> = {
     const detail = args && typeof args === "object" ? JSON.stringify(args) : undefined;
     showPlaceholderDialog("Paragraph Borders", detail);
   },
+  ParagraphSort(editor) {
+    const { from, to, empty } = editor.state.selection;
+    if (empty) {
+      window.alert("Select text to sort.");
+      return;
+    }
+    const text = editor.state.doc.textBetween(from, to, "\n");
+    const lines = text
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b));
+    if (!lines.length) return;
+    chainWithSafeFocus(editor).insertContentAt({ from, to }, lines.join("\n")).run();
+  },
   "styles.apply"(editor, args) {
     const styleId = typeof args?.styleId === "string" ? args.styleId : "";
     if (!styleId) {
@@ -3178,6 +3512,9 @@ export const commandMap: Record<string, CommandHandler> = {
     const rows = Math.max(1, Number(args?.rows ?? 2));
     const cols = Math.max(1, Number(args?.cols ?? 2));
     chainWithSafeFocus(editor).insertTable({ rows, cols, withHeaderRow: false }).run();
+  },
+  InsertTable(editor, args) {
+    commandMap.TableInsert(editor, args);
   },
   InsertImage(editor) {
     requestImageInsert(editor);
@@ -3320,6 +3657,68 @@ export const commandMap: Record<string, CommandHandler> = {
       return;
     }
     chainWithSafeFocus(editor).insertContent(crossRefNode.create({ targetId, label: bookmark.label || targetId })).run();
+  },
+  "insert.bookmark.openDialog"(editor, args) {
+    commandMap.InsertBookmark(editor, args);
+  },
+  "insert.bookmark.manage.openDialog"(editor) {
+    const bookmarks = collectBookmarks(editor);
+    if (bookmarks.length === 0) {
+      window.alert("No bookmarks found.");
+      return;
+    }
+    const listing = bookmarks.map((entry) => `${entry.id} (${entry.label || "unnamed"})`).join("\n");
+    const target = window.prompt(`Bookmarks:\n\n${listing}\n\nEnter an id to delete:`, "");
+    if (!target) return;
+    const id = target.trim();
+    if (!id) return;
+    const tr = editor.state.tr;
+    const positions: Array<{ from: number; to: number }> = [];
+    editor.state.doc.descendants((node, pos) => {
+      if (node.type?.name !== "bookmark") return true;
+      const nodeId = typeof (node.attrs as any)?.id === "string" ? String((node.attrs as any).id) : "";
+      if (nodeId === id) {
+        positions.push({ from: pos, to: pos + node.nodeSize });
+      }
+      return true;
+    });
+    if (positions.length === 0) {
+      window.alert(`Bookmark "${id}" not found.`);
+      return;
+    }
+    positions
+      .sort((a, b) => b.from - a.from)
+      .forEach((range) => tr.delete(range.from, range.to));
+    if (tr.docChanged) {
+      editor.view.dispatch(tr);
+    }
+  },
+  "insert.crossReference.openDialog"(editor, args) {
+    commandMap.InsertCrossReference(editor, args);
+  },
+  "insert.crossReference.updateAll"(editor) {
+    const bookmarks = collectBookmarks(editor);
+    if (!bookmarks.length) {
+      window.alert("No bookmarks found.");
+      return;
+    }
+    const labelById = new Map(bookmarks.map((b) => [b.id, b.label || b.id]));
+    const tr = editor.state.tr;
+    editor.state.doc.descendants((node, pos) => {
+      if (node.type?.name !== "cross_reference") return true;
+      const attrs = node.attrs as any;
+      const targetId = typeof attrs?.targetId === "string" ? attrs.targetId : "";
+      const nextLabel = labelById.get(targetId);
+      if (!nextLabel) return true;
+      if (attrs.label === nextLabel) return true;
+      tr.setNodeMarkup(pos, undefined, { ...attrs, label: nextLabel });
+      return true;
+    });
+    if (tr.docChanged) {
+      editor.view.dispatch(tr);
+    } else {
+      window.alert("No cross-references to update.");
+    }
   },
 
   InsertTOC(editor, args) {
@@ -3680,6 +4079,134 @@ export const commandMap: Record<string, CommandHandler> = {
   "bibliography.export.json.openDialog"() {
     void exportBibliographyJson();
   },
+  "research.smartLookup.open"() {
+    openSourcesPanel();
+  },
+  "research.library.search.open"() {
+    openSourcesPanel();
+  },
+  "research.doi.openDialog"() {
+    ensureReferencesLibrary();
+    const raw = window.prompt("Enter DOI (e.g. 10.1000/xyz123)");
+    if (!raw) return;
+    const doi = raw.trim();
+    if (!doi) return;
+    const library = getReferencesLibrarySync();
+    const itemKey = buildReferenceItemKey(doi, library.itemsByKey);
+    const url = doi.startsWith("http") ? doi : `https://doi.org/${doi}`;
+    upsertReferenceItems([
+      {
+        itemKey,
+        title: doi,
+        url
+      }
+    ]);
+    window.alert(`Added DOI source: ${itemKey}`);
+    openSourcesPanel();
+  },
+  "research.url.openDialog"() {
+    ensureReferencesLibrary();
+    const raw = window.prompt("Enter URL");
+    if (!raw) return;
+    const url = raw.trim();
+    if (!url) return;
+    const library = getReferencesLibrarySync();
+    const itemKey = buildReferenceItemKey(url, library.itemsByKey);
+    upsertReferenceItems([
+      {
+        itemKey,
+        title: url,
+        url
+      }
+    ]);
+    window.alert(`Added URL source: ${itemKey}`);
+    openSourcesPanel();
+  },
+  "research.resolveCitation.openDialog"() {
+    ensureReferencesLibrary();
+    const raw = window.prompt("Paste citation text");
+    if (!raw) return;
+    const text = raw.trim();
+    if (!text) return;
+    const library = getReferencesLibrarySync();
+    const itemKey = buildReferenceItemKey(text, library.itemsByKey);
+    upsertReferenceItems([
+      {
+        itemKey,
+        title: text
+      }
+    ]);
+    window.alert(`Added citation: ${itemKey}`);
+    openSourcesPanel();
+  },
+  "index.mark.openDialog"(editor) {
+    const raw = window.prompt("Index entry", "");
+    if (raw === null) return;
+    const term = raw.trim();
+    if (!term) return;
+    chainWithSafeFocus(editor).insertContent(`[[index:${term}]] `).run();
+  },
+  "index.insert.openDialog"(editor) {
+    const entries = collectMarkerEntries(editor.state.doc, "index");
+    insertIndexSection(editor, "Index", entries);
+  },
+  "index.automark.openDialog"(editor) {
+    const raw = window.prompt("AutoMark terms (comma-separated)", "");
+    if (!raw) return;
+    const terms = raw
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
+    if (!terms.length) return;
+    const markers = terms.map((term) => `[[index:${term}]]`).join(" ");
+    chainWithSafeFocus(editor).insertContent(`${markers} `).run();
+  },
+  "index.preview.toggle"() {
+    window.alert("Index preview is inline; markers are visible in the document.");
+  },
+  "toa.mark.openDialog"(editor) {
+    const raw = window.prompt("Authority entry", "");
+    if (raw === null) return;
+    const term = raw.trim();
+    if (!term) return;
+    chainWithSafeFocus(editor).insertContent(`[[toa:${term}]] `).run();
+  },
+  "toa.insert.openDialog"(editor) {
+    const entries = collectMarkerEntries(editor.state.doc, "toa");
+    insertIndexSection(editor, "Table of Authorities", entries);
+  },
+  "toa.update"(editor) {
+    commandMap["toa.insert.openDialog"](editor);
+  },
+  "toa.export.openMenu"() {
+    const choice = window.prompt("Export Table of Authorities as JSON or CSV?", "json");
+    if (!choice) return;
+    const mode = choice.trim().toLowerCase();
+    if (mode.startsWith("c")) {
+      commandMap["toa.export.csv.openDialog"]();
+    } else {
+      commandMap["toa.export.json.openDialog"]();
+    }
+  },
+  "toa.export.json.openDialog"() {
+    const handle = getEditorHandle();
+    if (!handle) return;
+    const editor = handle.getEditor();
+    const entries = collectMarkerEntries(editor.state.doc, "toa");
+    downloadTextFile(
+      "table_of_authorities.json",
+      JSON.stringify({ entries }, null, 2),
+      "application/json"
+    );
+  },
+  "toa.export.csv.openDialog"() {
+    const handle = getEditorHandle();
+    if (!handle) return;
+    const editor = handle.getEditor();
+    const entries = collectMarkerEntries(editor.state.doc, "toa");
+    const lines = ["term,count", ...entries.map((e) => `"${e.term.replace(/\"/g, '""')}",${e.count}`)];
+    downloadTextFile("table_of_authorities.csv", lines.join("\n"), "text/csv");
+  },
   InsertPageBreak(editor) {
     insertBreakNode(editor, 'page');
   },
@@ -3688,6 +4215,14 @@ export const commandMap: Record<string, CommandHandler> = {
   },
   InsertTextWrappingBreak(editor) {
     insertBreakNode(editor, 'text_wrap');
+  },
+  InsertHorizontalRule(editor) {
+    const chain = chainWithSafeFocus(editor) as any;
+    if (typeof chain.setHorizontalRule === "function") {
+      chain.setHorizontalRule().run();
+      return;
+    }
+    chain.insertContent("---").run();
   },
   InsertSectionBreakNextPage(editor) {
     insertBreakNode(editor, 'section_next');
@@ -3701,6 +4236,24 @@ export const commandMap: Record<string, CommandHandler> = {
   InsertSectionBreakOdd(editor) {
     insertBreakNode(editor, 'section_odd');
   },
+  "insert.sectionBreak"(editor, args) {
+    const kind = typeof args?.kind === "string" ? args.kind : "nextPage";
+    switch (kind) {
+      case "continuous":
+        commandMap.InsertSectionBreakContinuous(editor);
+        break;
+      case "evenPage":
+        commandMap.InsertSectionBreakEven(editor);
+        break;
+      case "oddPage":
+        commandMap.InsertSectionBreakOdd(editor);
+        break;
+      case "nextPage":
+      default:
+        commandMap.InsertSectionBreakNextPage(editor);
+        break;
+    }
+  },
   InsertTemplate(editor, args) {
     const templateId = typeof args?.id === 'string' ? args.id : undefined;
     if (!templateId) {
@@ -3712,6 +4265,41 @@ export const commandMap: Record<string, CommandHandler> = {
       return;
     }
     chainWithSafeFocus(editor).insertContent(template.document as any).run();
+  },
+  "insert.equation.insertInline"(editor, args) {
+    const raw = typeof args?.text === "string" ? args.text : window.prompt("Inline equation (LaTeX)", "");
+    if (raw === null) return;
+    const value = String(raw ?? "").trim();
+    if (!value) return;
+    chainWithSafeFocus(editor).insertContent(`$${value}$`).run();
+  },
+  "insert.equation.insertDisplay"(editor, args) {
+    const raw = typeof args?.text === "string" ? args.text : window.prompt("Display equation (LaTeX)", "");
+    if (raw === null) return;
+    const value = String(raw ?? "").trim();
+    if (!value) return;
+    chainWithSafeFocus(editor).insertContent(`\n$$${value}$$\n`).run();
+  },
+  "insert.symbol.insert"(editor, args) {
+    const raw = typeof args?.codepoint === "string" ? args.codepoint : "";
+    const codepoint = raw.trim();
+    if (!codepoint) {
+      const fallback = window.prompt("Symbol codepoint (hex)", "");
+      if (!fallback) return;
+      const parsed = Number.parseInt(fallback.trim(), 16);
+      if (!Number.isFinite(parsed)) {
+        window.alert("Invalid codepoint.");
+        return;
+      }
+      chainWithSafeFocus(editor).insertContent(String.fromCodePoint(parsed)).run();
+      return;
+    }
+    const parsed = Number.parseInt(codepoint, 16);
+    if (!Number.isFinite(parsed)) {
+      window.alert("Invalid codepoint.");
+      return;
+    }
+    chainWithSafeFocus(editor).insertContent(String.fromCodePoint(parsed)).run();
   },
   ApplyTemplate(editor, args) {
     const templateId = typeof args?.id === "string" ? args.id : undefined;
@@ -3730,74 +4318,18 @@ export const commandMap: Record<string, CommandHandler> = {
         : docJson;
 
     editor.commands.setContent(normalized);
-
-    const metadata = (template as any).metadata as Record<string, unknown> | undefined;
-    const defaults = (metadata?.documentDefaults as Record<string, unknown> | undefined) ?? undefined;
-    if (defaults && typeof defaults === "object") {
-      const fontFamily = typeof (defaults as any).fontFamily === "string" ? ((defaults as any).fontFamily as string).trim() : "";
-      const fontSizePx = typeof (defaults as any).fontSizePx === "number" ? (defaults as any).fontSizePx : NaN;
-      const textColor = typeof (defaults as any).textColor === "string" ? ((defaults as any).textColor as string).trim() : "";
-      const markFontFamily = fontFamily ? editor.schema.marks.fontFamily?.create({ fontFamily }) : null;
-      const markFontSize = Number.isFinite(fontSizePx) ? editor.schema.marks.fontSize?.create({ fontSize: fontSizePx }) : null;
-      const markTextColor = textColor ? editor.schema.marks.textColor?.create({ color: textColor }) : null;
-
-      // Apply text marks to paragraph ranges only (avoid overriding heading sizing).
-      if (markFontFamily || markFontSize || markTextColor) {
-        const mtFamily = editor.schema.marks.fontFamily;
-        const mtSize = editor.schema.marks.fontSize;
-        const mtColor = editor.schema.marks.textColor;
-        let tr = editor.state.tr;
-        editor.state.doc.descendants((node, pos) => {
-          if (node.type.name !== "paragraph") return true;
-          const from = pos + 1;
-          const to = pos + node.nodeSize - 1;
-          if (markFontFamily && mtFamily) {
-            tr = tr.removeMark(from, to, mtFamily).addMark(from, to, markFontFamily);
-          }
-          if (markFontSize && mtSize) {
-            tr = tr.removeMark(from, to, mtSize).addMark(from, to, markFontSize);
-          }
-          if (markTextColor && mtColor) {
-            tr = tr.removeMark(from, to, mtColor).addMark(from, to, markTextColor);
-          }
-          return true;
-        });
-        if (tr.docChanged) {
-          editor.view.dispatch(tr);
-        }
-      }
-
-      // Apply paragraph-level defaults across the document.
-      editor.commands.selectAll();
-      const textAlign = (defaults as any).textAlign;
-      const lineHeight = (defaults as any).lineHeight;
-      const spaceBeforePx = (defaults as any).spaceBeforePx;
-      const spaceAfterPx = (defaults as any).spaceAfterPx;
-      if (textAlign === "left" || textAlign === "center" || textAlign === "right" || textAlign === "justify") {
-        editor.commands.updateAttributes("paragraph", { textAlign });
-        editor.commands.updateAttributes("heading", { textAlign });
-      }
-      if (typeof lineHeight === "string" && lineHeight.trim().length > 0) {
-        editor.commands.updateAttributes("paragraph", { lineHeight });
-        editor.commands.updateAttributes("heading", { lineHeight });
-      }
-      if (typeof spaceBeforePx === "number" && Number.isFinite(spaceBeforePx)) {
-        editor.commands.updateAttributes("paragraph", { spaceBefore: spaceBeforePx });
-        editor.commands.updateAttributes("heading", { spaceBefore: spaceBeforePx });
-      }
-      if (typeof spaceAfterPx === "number" && Number.isFinite(spaceAfterPx)) {
-        editor.commands.updateAttributes("paragraph", { spaceAfter: spaceAfterPx });
-        editor.commands.updateAttributes("heading", { spaceAfter: spaceAfterPx });
-      }
-
-      // Set stored marks so continued typing follows the template defaults.
-      const chainAtStart = chainWithSafeFocus(editor, "start");
-      if (fontFamily) chainAtStart.setMark("fontFamily", { fontFamily });
-      if (Number.isFinite(fontSizePx)) chainAtStart.setMark("fontSize", { fontSize: fontSizePx });
-      if (textColor) chainAtStart.setMark("textColor", { color: textColor });
-      chainAtStart.run();
+    applyTemplateStyles(editor, template);
+    safeFocusEditor(editor, "start");
+  },
+  ApplyTemplateStyles(editor, args) {
+    const templateId = typeof args?.id === "string" ? args.id : undefined;
+    if (!templateId) return;
+    const template = getTemplateById(templateId);
+    if (!template) {
+      console.warn("ApplyTemplateStyles: unknown template", templateId);
+      return;
     }
-
+    applyTemplateStyles(editor, template);
     safeFocusEditor(editor, "start");
   },
   WordCount(editor) {
@@ -3831,6 +4363,189 @@ ${suggestions.slice(0, 6).join('\\n')}`);
     }
     window.alert(`Synonyms for "${word.trim()}":
 ${synonyms.join(', ')}`);
+  },
+
+  "review.wordCount.open"(editor) {
+    commandMap.WordCount(editor);
+  },
+  "review.spellingGrammar.open"(editor) {
+    commandMap.Spelling(editor);
+  },
+  "review.thesaurus.open"(editor) {
+    commandMap.Thesaurus(editor);
+  },
+  "review.accessibility.open"(editor) {
+    const issues: string[] = [];
+    let headingCount = 0;
+    let imageMissingAlt = 0;
+    editor.state.doc.descendants((node) => {
+      if (node.type?.name === "heading") {
+        headingCount += 1;
+      }
+      if (node.type?.name === "image") {
+        const alt = typeof (node.attrs as any)?.alt === "string" ? String((node.attrs as any).alt).trim() : "";
+        if (!alt) imageMissingAlt += 1;
+      }
+      return true;
+    });
+    if (headingCount === 0) {
+      issues.push("No headings found (add headings for structure).");
+    }
+    if (imageMissingAlt > 0) {
+      issues.push(`${imageMissingAlt} image(s) missing alt text.`);
+    }
+    if (!issues.length) {
+      window.alert("No obvious accessibility issues detected.");
+      return;
+    }
+    window.alert(`Accessibility check:\n\n${issues.join("\n")}`);
+  },
+  "review.translate.open"(editor) {
+    const mode = window.prompt("Translate selection or document? (selection/document)", "selection");
+    if (!mode) return;
+    const key = mode.trim().toLowerCase();
+    if (key.startsWith("d")) {
+      commandMap["review.translate.document"](editor);
+      return;
+    }
+    commandMap["review.translate.selection"](editor);
+  },
+  "review.translate.selection"(editor) {
+    const { from, to } = editor.state.selection;
+    if (from === to) {
+      window.alert("Select text to translate.");
+      return;
+    }
+    const original = editor.state.doc.textBetween(from, to, " ");
+    const translated = window.prompt("Translated text", original);
+    if (translated === null) return;
+    const next = String(translated).trim();
+    if (!next) return;
+    chainWithSafeFocus(editor).insertContentAt({ from, to }, next).run();
+  },
+  "review.translate.document"(editor) {
+    const translated = window.prompt("Translated document text");
+    if (translated === null) return;
+    const text = String(translated ?? "").trim();
+    if (!text) return;
+    const paragraphs = text
+      .split(/\n+/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => ({ type: "paragraph", content: [{ type: "text", text: line }] }));
+    const doc = {
+      type: "doc",
+      content: [
+        {
+          type: "page",
+          content: paragraphs.length ? paragraphs : [{ type: "paragraph" }]
+        }
+      ]
+    };
+    editor.commands.setContent(doc);
+  },
+  "review.language.openDialog"() {
+    const current = window.localStorage?.getItem("leditor.proofingLanguage") ?? "en-US";
+    const next = window.prompt("Proofing language (e.g. en-US)", current);
+    if (next === null) return;
+    const value = next.trim();
+    if (!value) return;
+    window.localStorage?.setItem("leditor.proofingLanguage", value);
+    window.alert(`Proofing language set to ${value}`);
+  },
+  "review.comment.add"() {
+    if (tryExecHandleCommand("CommentsNew")) return;
+    const handle = getEditorHandle();
+    if (!handle) return;
+    try {
+      handle.execCommand("InsertComment");
+    } catch {
+      // ignore
+    }
+  },
+  "review.comment.delete.openMenu"() {
+    const choice = window.prompt("Delete current or all comments? (current/all)", "current");
+    if (!choice) return;
+    const key = choice.trim().toLowerCase();
+    if (key.startsWith("a")) {
+      commandMap["review.comment.delete.all"]();
+    } else {
+      commandMap["review.comment.delete.current"]();
+    }
+  },
+  "review.comment.delete.current"() {
+    if (tryExecHandleCommand("CommentsDelete")) return;
+    const handle = getEditorHandle();
+    if (!handle) return;
+    const editor = handle.getEditor();
+    editor.chain().focus().unsetMark("comment").run();
+  },
+  "review.comment.delete.all"() {
+    const handle = getEditorHandle();
+    if (!handle) return;
+    const editor = handle.getEditor();
+    const commentMark = editor.schema.marks.comment;
+    if (!commentMark) return;
+    const tr = editor.state.tr;
+    editor.state.doc.descendants((node, pos) => {
+      if (!node.isText) return true;
+      if (!node.marks?.some((mark) => mark.type === commentMark)) return true;
+      tr.removeMark(pos, pos + node.nodeSize, commentMark);
+      return true;
+    });
+    if (tr.docChanged) {
+      editor.view.dispatch(tr);
+    }
+  },
+  "review.trackChanges.toggle"() {
+    tryExecHandleCommand("ToggleTrackChanges");
+  },
+  "review.change.accept"() {
+    tryExecHandleCommand("AcceptChange");
+  },
+  "review.change.acceptAll"() {
+    const count = trackChangesSnapshot?.pendingChanges?.length ?? 0;
+    const max = Math.max(1, Math.min(200, count || 50));
+    for (let i = 0; i < max; i += 1) {
+      if (!tryExecHandleCommand("AcceptChange")) break;
+    }
+  },
+  "review.change.reject"() {
+    tryExecHandleCommand("RejectChange");
+  },
+  "review.change.rejectAll"() {
+    const count = trackChangesSnapshot?.pendingChanges?.length ?? 0;
+    const max = Math.max(1, Math.min(200, count || 50));
+    for (let i = 0; i < max; i += 1) {
+      if (!tryExecHandleCommand("RejectChange")) break;
+    }
+  },
+  "review.change.previous"() {
+    tryExecHandleCommand("PrevChange");
+  },
+  "review.change.next"() {
+    tryExecHandleCommand("NextChange");
+  },
+  "review.markup.openMenu"() {
+    const mode = window.prompt("Markup mode (simple/all/none)", "simple");
+    if (!mode) return;
+    commandMap["review.markup.set"](undefined as any, { mode });
+  },
+  "review.markup.set"(_editor, args) {
+    const raw = typeof args?.mode === "string" ? args.mode : typeof args?.value === "string" ? args.value : "";
+    const mode = raw.trim().toLowerCase() || "simple";
+    window.localStorage?.setItem("leditor.markupMode", mode);
+    window.alert(`Markup mode set to ${mode}.`);
+  },
+  "review.restrictEditing.open"(editor) {
+    const next = !editor.isEditable;
+    editor.setEditable(!next);
+    const appRoot = document.getElementById("leditor-app");
+    if (appRoot) {
+      appRoot.classList.toggle("leditor-restrict-editing", next);
+    }
+    window.localStorage?.setItem("leditor.restrictEditing", next ? "1" : "0");
+    window.alert(next ? "Editing restricted." : "Editing enabled.");
   },
 
   ReadAloud(editor) {

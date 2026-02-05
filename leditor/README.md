@@ -25,6 +25,7 @@
 ### AI-assisted workflows
 - Agent sidebar + action prompts.
 - Source-check badges/rail with threaded “verified / needs review” feedback.
+- Multi-agent runner (OpenAI Agents) with tool use, streaming IPC, and persisted agent history in `.ledoc`.
 
 ## Running (standalone Electron)
 From `leditor/`:
@@ -49,4 +50,3 @@ npm run lint:icons
 
 ## Docs
 See `leditor/docs/README.md`.
-

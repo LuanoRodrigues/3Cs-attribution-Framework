@@ -35,7 +35,7 @@ function createDefaultPanelGridState(): PanelGridState {
   };
 }
 
-const DEFAULT_RIBBON_TAB: TabId = "retrieve";
+const DEFAULT_RIBBON_TAB: TabId = "export";
 const EMPTY_LAYOUT: { tabs: []; activeToolId: undefined } = { tabs: [], activeToolId: undefined };
 
 export function createEmptySessionData(projectName: string, projectId: string): SessionData {

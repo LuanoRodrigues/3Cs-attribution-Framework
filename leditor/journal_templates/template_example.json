@@ -3,7 +3,17 @@
   "label": "Template Example",
   "description": "Structure reference for new templates.",
   "metadata": {
-    "citation": { "style": "apa", "locale": "en-US" }
+    "citation": { "style": "apa", "locale": "en-US" },
+    "documentDefaults": {
+      "fontFamily": "Times New Roman",
+      "fontSizePx": 12,
+      "textColor": "#0f172a",
+      "headingColor": "#111827",
+      "lineHeight": "double",
+      "spaceBeforePx": 0,
+      "spaceAfterPx": 8,
+      "textAlign": "justify"
+    }
   },
   "document": {
     "type": "doc",

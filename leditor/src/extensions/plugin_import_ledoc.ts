@@ -4,6 +4,7 @@ import type { ImportLedocOptions, ImportLedocResult } from "../api/import_ledoc.
 import { getHostAdapter } from "../host/host_adapter.ts";
 import { getPageSizeDefinitions, setPageMargins, setPageSize } from "../ui/layout_settings.ts";
 import { loadSourceChecksThreadFromLedoc } from "../ui/source_checks_thread.ts";
+import { loadAgentHistoryFromLedoc } from "../ui/agent_history.ts";
 import { LEDOC_BUNDLE_VERSION } from "../ledoc/format.ts";
 import { normalizeLedocBundlePayload } from "../ledoc/bundle.ts";
 
@@ -169,6 +170,11 @@ registerPlugin({
             } catch {
               // ignore
             }
+            try {
+              loadAgentHistoryFromLedoc(normalized.payload.registry);
+            } catch {
+              // ignore
+            }
           } else {
             const doc = payload?.document;
             if (doc) {
@@ -182,6 +188,11 @@ registerPlugin({
           applyImportedTitle(result);
           try {
             loadSourceChecksThreadFromLedoc(payload?.history);
+          } catch {
+            // ignore
+          }
+          try {
+            loadAgentHistoryFromLedoc(payload?.history);
           } catch {
             // ignore
           }
@@ -218,6 +229,11 @@ registerPlugin({
           } catch {
             // ignore
           }
+          try {
+            loadAgentHistoryFromLedoc(normalized.payload.registry);
+          } catch {
+            // ignore
+          }
         } else if (payload?.document) {
           editorHandle.setContent(payload.document, { format: "json" });
           if (payload?.settings) {
@@ -228,6 +244,11 @@ registerPlugin({
         applyImportedTitle(result);
         try {
           loadSourceChecksThreadFromLedoc(payload?.history);
+        } catch {
+          // ignore
+        }
+        try {
+          loadAgentHistoryFromLedoc(payload?.history);
         } catch {
           // ignore
         }

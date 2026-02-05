@@ -18,6 +18,11 @@ type RenderItem = {
 
 const CONTINUED_FROM_LABEL = "Continued from previous page";
 const CONTINUED_TO_LABEL = "Continued on next page";
+const isFootnoteDebug = (): boolean =>
+  typeof window !== "undefined" && Boolean((window as any).__leditorFootnoteDebug);
+const isFootnoteEditing = (): boolean =>
+  typeof document !== "undefined" &&
+  document.documentElement.classList.contains("leditor-footnote-editing");
 
 const ensureList = (container: HTMLElement, className = "leditor-footnote-list"): HTMLElement => {
   const existing = container.querySelector<HTMLElement>(`.${className}`);
@@ -97,14 +102,18 @@ const renderEntries = (
   suffixLabel?: string
 ) => {
   if (items.length === 0) {
-    // Keep the footnote area visible even when no entries are present so users always see the
-    // reserved region and placeholder.
-    container.classList.add("leditor-page-footnotes--active");
-    container.setAttribute("aria-hidden", "false");
-    if (!container.dataset.leditorPlaceholder) {
-      container.dataset.leditorPlaceholder = "Footnotes";
+    // Keep the footnote area visible only when editing footnotes.
+    if (isFootnoteEditing()) {
+      container.classList.add("leditor-page-footnotes--active");
+      container.setAttribute("aria-hidden", "false");
+      if (!container.dataset.leditorPlaceholder) {
+        container.dataset.leditorPlaceholder = "Footnotes";
+      }
+      container.style.minHeight = container.style.minHeight || "var(--footnote-area-height)";
+    } else {
+      container.classList.remove("leditor-page-footnotes--active");
+      container.setAttribute("aria-hidden", "true");
     }
-    container.style.minHeight = container.style.minHeight || "var(--footnote-area-height)";
     const list = container.querySelector<HTMLElement>(".leditor-footnote-list") ?? ensureList(container);
     list.replaceChildren();
     return;
@@ -168,6 +177,33 @@ const renderEntries = (
     label.textContent = suffixText;
     list.appendChild(label);
   }
+  if (isFootnoteDebug()) {
+    try {
+      (window as any).__leditorFootnoteRendered = {
+        count: document.querySelectorAll(".leditor-footnote-entry-text").length,
+        ids: items.map((item) => item.entry.footnoteId),
+        textById: Object.fromEntries(items.map((item) => [item.entry.footnoteId, item.text ?? ""]))
+      };
+    } catch {
+      // ignore debug state failures
+    }
+  }
+  if (isFootnoteDebug()) {
+    const key = "leditorFootnoteRenderLogged";
+    if (!container.dataset[key]) {
+      container.dataset[key] = "1";
+      const textEl = list.querySelector<HTMLElement>(".leditor-footnote-entry-text");
+      const info = {
+        items: items.length,
+        listChildren: list.childElementCount,
+        containerChildren: container.childElementCount,
+        globalEntries: document.querySelectorAll(".leditor-footnote-entry-text").length,
+        firstEntryId: textEl?.getAttribute("data-footnote-id") ?? null,
+        containerHtml: container.innerHTML.slice(0, 120)
+      };
+      console.info("[Footnote][renderEntries]", JSON.stringify(info));
+    }
+  }
 };
 
 const getCssNumber = (element: HTMLElement, name: string, fallback = 0): number => {
@@ -176,11 +212,30 @@ const getCssNumber = (element: HTMLElement, name: string, fallback = 0): number 
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const getPageScale = (pageElement: HTMLElement): number => {
+  const root = document.documentElement;
+  const cssHeight =
+    getCssNumber(pageElement, "--local-page-height", 0) ||
+    getCssNumber(root, "--page-height", 0) ||
+    1122;
+  const rect = pageElement.getBoundingClientRect();
+  if (cssHeight > 0 && rect.height > 0) {
+    const scale = rect.height / cssHeight;
+    return Number.isFinite(scale) && scale > 0 ? scale : 1;
+  }
+  return 1;
+};
+
 const getMaxFootnoteHeight = (state: PageFootnoteState): number => {
   const root = document.documentElement;
-  const pageHeight =
-    state.pageElement.getBoundingClientRect().height ||
+  const scale = getPageScale(state.pageElement);
+  const cssPageHeight =
+    getCssNumber(state.pageElement, "--local-page-height", 0) ||
     getCssNumber(root, "--page-height", 1122);
+  const pageRectHeight = state.pageElement.getBoundingClientRect().height || 0;
+  const pageHeight =
+    (pageRectHeight > 0 && scale > 0 ? pageRectHeight / scale : 0) ||
+    cssPageHeight;
   const marginTop = getCssNumber(state.pageElement, "--local-page-margin-top", getCssNumber(root, "--page-margin-top", 0));
   const marginBottom = getCssNumber(
     state.pageElement,
@@ -221,7 +276,10 @@ const measureFittedItems = (
   measureList.style.pointerEvents = "none";
   measureList.style.left = "-9999px";
   measureList.style.top = "0";
-  measureList.style.width = `${Math.max(0, container.clientWidth || 0)}px`;
+  const scale = getPageScale(container.closest(".leditor-page") as HTMLElement);
+  const rectWidth = container.getBoundingClientRect().width || 0;
+  const baseWidth = rectWidth > 0 && scale > 0 ? rectWidth / scale : container.clientWidth || 0;
+  measureList.style.width = `${Math.max(0, baseWidth)}px`;
   container.appendChild(measureList);
   const prefixLabel = (opts?.prefixLabel || "").trim();
   const suffixLabel = (opts?.suffixLabel || "").trim();
@@ -372,17 +430,51 @@ export const paginateWithFootnotes = (params: {
       prefixLabel: hasCarry ? CONTINUED_FROM_LABEL : ""
     });
     if (measurement.overflow.length > 0) {
-      measurement = measureFittedItems(state.footnoteContainer, items, safeMaxListHeight, {
+      const withSuffix = measureFittedItems(state.footnoteContainer, items, safeMaxListHeight, {
         prefixLabel: hasCarry ? CONTINUED_FROM_LABEL : "",
         suffixLabel: CONTINUED_TO_LABEL
       });
+      measurement = withSuffix.fitted.length > 0 ? withSuffix : measurement;
     }
-    const { fitted, overflow } = measurement;
+    let forcedVisibility = false;
+    let { fitted, overflow } = measurement;
+    if (fitted.length === 0 && items.length > 0) {
+      forcedVisibility = true;
+      fitted = [items[0]];
+      overflow = items.slice(1);
+    }
+    if (isFootnoteDebug()) {
+      const key = "leditorFootnoteDebugLogged";
+      if (!state.footnoteContainer.dataset[key]) {
+        state.footnoteContainer.dataset[key] = "1";
+        const pageRect = state.pageElement.getBoundingClientRect();
+        const scale = getPageScale(state.pageElement);
+        const containerRect = state.footnoteContainer.getBoundingClientRect();
+        const payload = {
+          pageIndex: state.pageIndex,
+          items: items.length,
+          fitted: fitted.length,
+          overflow: overflow.length,
+          forcedVisibility,
+          maxHeight,
+          maxListHeight,
+          safeMaxListHeight,
+          pageRect: { w: pageRect.width, h: pageRect.height, scale },
+          container: {
+            clientW: state.footnoteContainer.clientWidth,
+            clientH: state.footnoteContainer.clientHeight,
+            rectW: containerRect.width,
+            rectH: containerRect.height
+          }
+        };
+        console.info("[Footnote][paginate]", JSON.stringify(payload));
+      }
+    }
     renderEntries(
       state.footnoteContainer,
       fitted,
       hasCarry ? CONTINUED_FROM_LABEL : "",
-      overflow.length > 0 ? CONTINUED_TO_LABEL : ""
+      overflow.length > 0 && !forcedVisibility ? CONTINUED_TO_LABEL : ""
     );
     carry = overflow;
     state.continuationContainer.classList.remove("leditor-footnote-continuation--active");

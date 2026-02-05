@@ -10,7 +10,7 @@ The bundle is defined in `leditor/src/ledoc/format.ts` and uses these paths:
 - `settings.json`: page/margins and other editor settings
 - `footnotes.json`: footnote registry payload (id/text/index)
 - `styles.json`: optional style payload
-- `history.json`: optional history payload (e.g. source-check thread)
+- `history.json`: optional history payload (source-check thread, agent history)
 - `preview.png`: optional thumbnail/preview
 - `media/`: optional directory for future embedded media
 
@@ -24,4 +24,3 @@ The bundle is defined in `leditor/src/ledoc/format.ts` and uses these paths:
   - `settings.json` (page size/margins, etc.)
   - title (from `meta.json`)
 - The last imported `.ledoc` path is cached in `localStorage` under `leditor.lastLedocPath` for optional auto-reopen flows.
-

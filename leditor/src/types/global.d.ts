@@ -27,8 +27,10 @@ type HostWriteFileResult = {
 type AgentRequestPayload = {
   scope: "selection" | "document";
   instruction: string;
+  actionId?: string;
   selection?: { from: number; to: number; text: string };
   document?: { text: string };
+  documentJson?: object;
   targets?: Array<{ n: number; headingNumber?: string; headingTitle?: string }>;
   history?: Array<{ role: "user" | "assistant" | "system"; content: string }>;
   settings?: AiSettings;
@@ -44,12 +46,22 @@ type AgentRequestResult = {
   assistantText?: string;
   applyText?: string;
   operations?: AgentOperation[];
+  citations?: unknown[];
+  actions?: unknown[];
   meta?: {
     provider: string;
     model?: string;
     ms?: number;
   };
   error?: string;
+};
+
+type AgentStreamUpdate = {
+  requestId: string;
+  kind: "delta" | "status" | "tool" | "done" | "error";
+  message?: string;
+  delta?: string;
+  tool?: string;
 };
 
 type LlmStatusResult = {
@@ -157,12 +169,18 @@ declare global {
       fileExists?: (request: { sourcePath: string }) => Promise<{ exists?: boolean; error?: string }>;
       readFile?: (request: { sourcePath: string }) => Promise<HostReadFileResult>;
       writeFile?: (request: { targetPath: string; data: string }) => Promise<HostWriteFileResult>;
+      agentRun?: (request: { requestId?: string; payload: AgentRequestPayload }) => Promise<AgentRequestResult>;
       agentRequest?: (request: { requestId?: string; payload: AgentRequestPayload }) => Promise<AgentRequestResult>;
       agentCancel?: (request: { requestId: string }) => Promise<{ success: boolean; cancelled?: boolean; error?: string }>;
+      onAgentStreamUpdate?: (handler: (payload: AgentStreamUpdate) => void) => () => void;
       getAiStatus?: () => Promise<{ success: boolean; hasApiKey?: boolean; model?: string; modelFromEnv?: boolean; error?: string }>;
       getLlmStatus?: () => Promise<LlmStatusResult>;
       getLlmCatalog?: () => Promise<LlmCatalogResult>;
       checkSources?: (request: { requestId?: string; payload: Record<string, unknown> }) => Promise<Record<string, unknown>>;
+      substantiateAnchors?: (request: {
+        requestId?: string;
+        payload: Record<string, unknown>;
+      }) => Promise<Record<string, unknown>>;
       lexicon?: (request: { requestId?: string; payload: Record<string, unknown> }) => Promise<Record<string, unknown>>;
       getInstalledAddins?: () => Promise<InstalledAddin[]>;
       installedAddins?: InstalledAddin[];

@@ -36,6 +36,8 @@ const parseStoredSettings = (): AiSettings => {
       model: (() => {
         const rawModel = typeof parsed.model === "string" ? parsed.model.trim() : "";
         if (!rawModel) return DEFAULT_SETTINGS.model;
+        if (rawModel === "gpt-4o-mini") return "gpt-5-mini";
+        if (rawModel === "gpt-4o") return "gpt-5";
         return rawModel;
       })(),
       temperature: typeof parsed.temperature === "number" ? parsed.temperature : DEFAULT_SETTINGS.temperature,

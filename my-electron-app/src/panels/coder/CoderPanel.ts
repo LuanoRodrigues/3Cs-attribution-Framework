@@ -36,6 +36,9 @@ export class CoderPanel {
   private filterStatus!: HTMLElement;
   private noteBox: HTMLDivElement;
   private noteInput: HTMLTextAreaElement;
+  private noteInputDirty = false;
+  private noteInputTargetId: string | null = null;
+  private noteSaveTimer: number | null = null;
   private selection = new Set<string>();
   private primarySelection: string | null = null;
   private anchorSelection: string | null = null;
@@ -159,8 +162,34 @@ export class CoderPanel {
     this.noteInput.addEventListener("input", () => {
       const node = this.selectedNode();
       if (node && node.type === "folder") {
-        this.store.setNote(node.id, this.noteInput.value);
+        this.noteInputDirty = true;
+        this.noteInputTargetId = node.id;
+        if (this.noteSaveTimer !== null) {
+          window.clearTimeout(this.noteSaveTimer);
+        }
+        const value = this.noteInput.value;
+        this.noteSaveTimer = window.setTimeout(() => {
+          this.noteSaveTimer = null;
+          // Only save if the user is still editing the same folder.
+          if (this.noteInputTargetId === node.id) {
+            this.store.setNote(node.id, value);
+            // Keep dirty flag while focused to avoid overwrite; cleared on blur/selection change.
+          }
+        }, 250);
       }
+    });
+    this.noteInput.addEventListener("blur", () => {
+      if (this.noteSaveTimer !== null) {
+        window.clearTimeout(this.noteSaveTimer);
+        this.noteSaveTimer = null;
+      }
+      const node = this.selectedNode();
+      if (node && node.type === "folder") {
+        const value = this.noteInput.value;
+        this.store.setNote(node.id, value);
+      }
+      this.noteInputDirty = false;
+      this.noteInputTargetId = null;
     });
     this.noteBox.append(noteLabel, this.noteInput);
 
@@ -2364,8 +2393,10 @@ export class CoderPanel {
     const rect = row.getBoundingClientRect();
     const y = ev.clientY - rect.top;
     const ratio = rect.height ? y / rect.height : 0.5;
-    if (target.type === "folder" && ratio > 0.25 && ratio < 0.75) {
-      return "into";
+    if (target.type === "folder") {
+      // Make dropping into folders easier: middle 60% hits “into”.
+      if (ratio >= 0.2 && ratio <= 0.8) return "into";
+      return ratio < 0.2 ? "before" : "after";
     }
     return ratio <= 0.5 ? "before" : "after";
   }
@@ -2456,10 +2487,19 @@ export class CoderPanel {
     if (!node || node.type !== "folder" || this.selection.size !== 1) {
       this.noteBox.style.display = "none";
       this.noteInput.value = "";
+      this.noteInputDirty = false;
+      this.noteInputTargetId = null;
       return;
     }
     this.noteBox.style.display = "";
+    // Avoid clobbering the user's typing while focused on this note.
+    const focused = document.activeElement === this.noteInput;
+    if (focused && this.noteInputDirty && this.noteInputTargetId === node.id) {
+      return;
+    }
     this.noteInput.value = node.note || "";
+    this.noteInputDirty = false;
+    this.noteInputTargetId = node.id;
   }
 
   private hydratePersistentState(): void {

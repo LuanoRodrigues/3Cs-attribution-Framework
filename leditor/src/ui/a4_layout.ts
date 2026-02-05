@@ -166,9 +166,9 @@ const ensureStyles = () => {
   /* Reserve space for footnotes only when the page actually has footnote entries. */
   --page-footnote-height: 0px;
   /* Gap between the last body line and the footnote band to prevent overlap / caret loss. */
-  --page-footnote-gap: 12px;
+  --page-footnote-gap: 16px;
   /* Additional guard to keep the last text line away from the footnote band. */
-  --page-footnote-guard: 6px;
+  --page-footnote-guard: 16px;
   --footnote-max-height-ratio: 1;
   --footnote-separator-height: 1px;
   --footnote-separator-color: rgba(0, 0, 0, 0.25);
@@ -203,6 +203,8 @@ const ensureStyles = () => {
   --page-font-family: "Times New Roman", "Times", "Georgia", serif;
   --page-font-size: 12pt;
   --page-line-height: 1.0;
+  /* Extra leading to avoid descender clipping at single spacing. */
+  --page-line-leading: 0.15;
   --page-body-color: #1c1c1c;
   --page-header-color: #2d2d2d;
   --page-footer-color: #3a3a3a;
@@ -900,7 +902,7 @@ html, body {
   background: transparent;
   font-family: var(--page-font-family);
   font-size: var(--page-font-size);
-  line-height: var(--page-line-height);
+  line-height: calc(var(--page-line-height) + var(--page-line-leading, 0));
   color: var(--page-body-color);
   min-height: 1px;
   overflow-wrap: anywhere;
@@ -920,18 +922,18 @@ html, body {
   outline: none;
 }
 
-#editor .ProseMirror p,
+#editor .ProseMirror p {
+  margin: 0;
+  text-align: justify;
+}
+
 #editor .ProseMirror h1,
 #editor .ProseMirror h2,
 #editor .ProseMirror h3,
 #editor .ProseMirror h4,
 #editor .ProseMirror h5,
 #editor .ProseMirror h6 {
-  margin: 0 0 10px;
-}
-
-#editor .ProseMirror p {
-  text-align: justify;
+  margin: 10px 0 6px;
 }
 
 #editor .ProseMirror h1 {
@@ -1365,6 +1367,17 @@ html, body {
   column-fill: auto;
   word-break: normal;
   overflow-wrap: normal;
+}
+
+.leditor-page-content::after {
+  /* Spacer that mirrors the reserved footnote band so body lines never collide with footnotes. */
+  content: "";
+  display: block;
+  height: calc(
+    var(--page-footnote-height, 0px) + var(--page-footnote-gap, 0px) + var(--page-footnote-guard, 0px)
+  );
+  min-height: 0;
+  pointer-events: none;
 }
 
 /* Keep complex blocks together unless explicitly allowed to split. */
@@ -1912,6 +1925,16 @@ export const mountA4Layout = (
     gridMode = getTargetGridMode();
     pageStack.dataset.gridMode = gridMode;
     overlayLayer.dataset.gridMode = gridMode;
+  };
+
+  const syncOverlayBounds = () => {
+    // Keep overlay pages aligned with the page stack to prevent drifting page numbers.
+    const left = pageStack.offsetLeft;
+    const top = pageStack.offsetTop;
+    overlayLayer.style.left = `${left}px`;
+    overlayLayer.style.top = `${top}px`;
+    overlayLayer.style.width = `${pageStack.offsetWidth}px`;
+    overlayLayer.style.height = `${pageStack.offsetHeight}px`;
   };
 
   const syncCurrentMargins = (
@@ -2967,6 +2990,19 @@ export const mountA4Layout = (
       });
     }
 
+    const resolveFootnoteText = (id: string, attrText: string, bodyText: string): string => {
+      const baseText = bodyText.trim().length > 0 ? bodyText : attrText;
+      const draft = footnoteTextDraft.get(id);
+      const draftText = typeof draft === "string" ? draft : null;
+      if (!draftText) return baseText;
+      const draftTrimmed = draftText.trim();
+      const shouldUseDraft =
+        draftTrimmed.length > 0 ||
+        (footnoteMode && activeFootnoteId === id) ||
+        baseText.trim().length === 0;
+      return shouldUseDraft ? draftText : baseText;
+    };
+
     const pushEntry = (id: string, kind: FootnoteKind, source: "manual" | "citation", pageIndex: number, text: string) => {
       const mapped = numbering.get(id);
       const numberLabel = mapped ? String(mapped) : "";
@@ -2992,11 +3028,9 @@ export const mountA4Layout = (
           const kind: FootnoteKind = rawKind === "endnote" ? "endnote" : "footnote";
           const citationId = typeof (node.attrs as any)?.citationId === "string" ? String((node.attrs as any).citationId).trim() : "";
           const source: "manual" | "citation" = citationId ? "citation" : "manual";
-          const draft = footnoteTextDraft.get(id);
           const attrText = typeof (node.attrs as any)?.text === "string" ? String((node.attrs as any).text) : "";
           const bodyText = bodyTextById.get(id) ?? "";
-          const baseText = bodyText.trim().length > 0 ? bodyText : attrText;
-          const text = typeof draft === "string" ? draft : baseText;
+          const text = resolveFootnoteText(id, attrText, bodyText);
           pushEntry(id, kind, source, kind === "endnote" ? 0 : pageIndex, text);
           return true;
         });
@@ -3030,11 +3064,9 @@ export const mountA4Layout = (
       const kind: FootnoteKind = rawKind === "endnote" ? "endnote" : "footnote";
       const citationId = typeof (node.attrs as any)?.citationId === "string" ? String((node.attrs as any).citationId).trim() : "";
       const source: "manual" | "citation" = citationId ? "citation" : "manual";
-      const draft = footnoteTextDraft.get(id);
       const attrText = typeof (node.attrs as any)?.text === "string" ? String((node.attrs as any).text) : "";
       const bodyText = bodyTextById.get(id) ?? "";
-      const baseText = bodyText.trim().length > 0 ? bodyText : attrText;
-      const text = typeof draft === "string" ? draft : baseText;
+      const text = resolveFootnoteText(id, attrText, bodyText);
       pushEntry(id, kind, source, kind === "endnote" ? 0 : Math.max(0, currentPageIndex - 1), text);
       return true;
     });
@@ -3074,6 +3106,26 @@ export const mountA4Layout = (
 
   const renderFootnoteSections = () => {
     const entries = collectFootnoteEntries();
+    if ((window as any).__leditorFootnoteDebug) {
+      try {
+        const editorInstance = attachedEditorHandle?.getEditor?.() ?? null;
+        const doc = editorInstance?.state?.doc ?? null;
+        let docFootnotes = 0;
+        let docBodies = 0;
+        doc?.descendants?.((node: any) => {
+          if (node?.type?.name === "footnote") docFootnotes += 1;
+          if (node?.type?.name === "footnoteBody") docBodies += 1;
+          return true;
+        });
+        const pages = getPageStackPages().length;
+        const containerCount = document.querySelectorAll(".leditor-page-footnotes").length;
+        console.info(
+          `[a4_layout.ts][renderFootnoteSections][debug] entries=${entries.length} footnoteEntries=${entries.filter((e) => e.kind === "footnote").length} pages=${pages} containers=${containerCount} docFootnotes=${docFootnotes} docBodies=${docBodies}`
+        );
+      } catch {
+        // ignore
+      }
+    }
     // Skip expensive re-renders when nothing relevant changed. This is critical to avoid
     // caret-loss/flicker loops while typing (especially in the footnote editor).
     {
@@ -3138,6 +3190,15 @@ export const mountA4Layout = (
       }
     }
     const pageStates = buildFootnotePageStates();
+    if ((window as any).__leditorFootnoteDebug) {
+      try {
+        console.info(
+          `[a4_layout.ts][renderFootnoteSections][debug] pageStateCount=${pageStates.length}`
+        );
+      } catch {
+        // ignore
+      }
+    }
     const footnoteEntries = entries.filter((entry) => entry.kind === "footnote");
     try {
       paginateWithFootnotes({
@@ -3189,11 +3250,13 @@ export const mountA4Layout = (
       const first = footnoteEntries[0];
       const preferred = pageStates.find((state) => state.pageIndex === first.pageIndex) ?? pageStates[0] ?? null;
       if (preferred?.footnoteContainer) {
-        renderFallback(preferred.footnoteContainer, footnoteEntries.filter((e) => e.pageIndex === preferred.pageIndex));
+        const preferredEntries = footnoteEntries.filter((e) => e.pageIndex === preferred.pageIndex);
+        const entriesToRender = preferredEntries.length > 0 ? preferredEntries : footnoteEntries;
+        renderFallback(preferred.footnoteContainer, entriesToRender);
         if ((window as any).__leditorFootnoteDebug) {
           console.info("[Footnote] fallback renderer used", {
             pageIndex: preferred.pageIndex,
-            count: footnoteEntries.length
+            count: entriesToRender.length
           });
         }
       } else {
@@ -3876,7 +3939,7 @@ export const mountA4Layout = (
           editorEl.querySelector<HTMLElement>(`.leditor-page[data-page-index="${pageIndex}"] .leditor-page-content`) ??
           null;
         const hasEntries = container.querySelector(".leditor-footnote-entry") != null;
-        const gapPx = getFootnoteGapPx(host ?? pageStackPage ?? document.documentElement);
+        const gapPxRaw = getFootnoteGapPx(host ?? pageStackPage ?? document.documentElement);
         const guardPxRaw = getFootnoteGuardPx(pageContent, host ?? pageStackPage ?? document.documentElement);
         const containerStyle = getComputedStyle(container);
         const paddingTopPx = Number.parseFloat(containerStyle.paddingTop || "0") || 0;
@@ -3890,10 +3953,8 @@ export const mountA4Layout = (
           const defaultAreaRaw = rootTokens.getPropertyValue("--footnote-area-height").trim();
           const defaultAreaPx = Number.parseFloat(defaultAreaRaw || "0") || 0;
           const baseReservePx = defaultAreaPx > 0 ? defaultAreaPx : Math.max(18, Math.round(footerReservePx * 0.35));
-          const reservePx =
-            footnoteMode && baseReservePx < 18
-              ? Math.max(18, Math.round(footerReservePx * 0.35))
-              : baseReservePx;
+          const reservePx = footnoteMode ? (baseReservePx < 18 ? Math.max(18, Math.round(footerReservePx * 0.35)) : baseReservePx) : 0;
+          const gapPx = reservePx > 0 ? gapPxRaw : 0;
           const guardPx = reservePx > 0 ? guardPxRaw : 0;
           const effectiveBottomPx = Math.max(0, footerReservePx + reservePx);
           if (pageIndex >= 0) {
@@ -3908,13 +3969,19 @@ export const mountA4Layout = (
               footnoteLayoutVarsByPage.delete(pageIndex);
             }
           }
-          container.classList.add("leditor-page-footnotes--active");
-          container.setAttribute("aria-hidden", "false");
-          if (!container.dataset.leditorPlaceholder) {
-            container.dataset.leditorPlaceholder = "Footnotes";
+          if (reservePx > 0) {
+            container.classList.add("leditor-page-footnotes--active");
+            container.setAttribute("aria-hidden", "false");
+            if (!container.dataset.leditorPlaceholder) {
+              container.dataset.leditorPlaceholder = "Footnotes";
+            }
+            container.style.minHeight = container.style.minHeight || "var(--footnote-area-height)";
+            container.style.height = `${reservePx}px`;
+          } else {
+            container.classList.remove("leditor-page-footnotes--active");
+            container.setAttribute("aria-hidden", "true");
+            container.style.height = "0px";
           }
-          container.style.minHeight = container.style.minHeight || "var(--footnote-area-height)";
-          container.style.height = `${reservePx}px`;
           container.style.overflowY = "hidden";
           container.style.setProperty("--page-footnote-height", `${reservePx}px`);
           setFootnoteLayoutVars(host, reservePx, effectiveBottomPx, gapPx, guardPx);
@@ -3933,6 +4000,7 @@ export const mountA4Layout = (
           }
           return;
         }
+        const gapPx = gapPxRaw;
         // Measure only the actual list content to avoid including container padding/margins that make
         // the box jump on every character.
         const listEl = container.querySelector<HTMLElement>(".leditor-footnote-list");
@@ -4056,8 +4124,15 @@ export const mountA4Layout = (
       // IMPORTANT: Never apply the "max across all pages" footnote height globally. That causes
       // every page to reserve space for the largest footnote, producing huge blank gaps and
       // truncated lines on pages without footnotes.
-      zoomLayer.style.setProperty("--page-footnote-gap", `${getFootnoteGapPx(zoomLayer)}px`);
-      zoomLayer.style.setProperty("--page-footnote-guard", "0px");
+      const zoomGapPx = getFootnoteGapPx(zoomLayer);
+      const zoomGuardPx = getFootnoteGuardPx(
+        pageContents[0] ??
+          editorEl.querySelector<HTMLElement>(".leditor-page-content") ??
+          null,
+        zoomLayer
+      );
+      zoomLayer.style.setProperty("--page-footnote-gap", `${zoomGapPx}px`);
+      zoomLayer.style.setProperty("--page-footnote-guard", `${Math.max(0, Math.round(zoomGuardPx))}px`);
       zoomLayer.style.setProperty("--page-footnote-height", "0px");
       const baseMarginBottomPx = Number.parseFloat(
         getComputedStyle(zoomLayer).getPropertyValue("--current-margin-bottom").trim() || "0"
@@ -4448,6 +4523,7 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
     syncHeaderFooter();
     updatePageNumbers();
     applyGridMode();
+    syncOverlayBounds();
     syncFootnoteLayoutVarsToPages();
     scheduleFootnoteUpdate();
     return;
@@ -4462,6 +4538,7 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
     syncHeaderFooter();
     updatePageNumbers();
     applyGridMode();
+    syncOverlayBounds();
     scheduleFootnoteUpdate();
     updateHeaderFooterEditability();
   };
@@ -4485,6 +4562,7 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
     // Only header/footer editing should enable overlay pointer events now that footnotes live in the page stack.
     overlayLayer.style.pointerEvents = headerFooterMode ? "" : "none";
 	    overlayLayer.style.zIndex = "3";
+	    syncOverlayBounds();
 	    // IMPORTANT: do not reset mode flags here. Pagination/layout churn can call attachEditorForMode
 	    // while the user is editing footnotes/header/footer; clearing mode state causes caret loss and
 	    // makes the body appear non-editable.

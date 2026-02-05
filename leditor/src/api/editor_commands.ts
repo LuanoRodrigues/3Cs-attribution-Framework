@@ -50,6 +50,7 @@ export type EditorCommandId =
   | "InsertSectionBreakEven"
   | "InsertSectionBreakOdd"
   | "InsertTemplate"
+  | "ApplyTemplateStyles"
   | "InsertFootnote"
   | "InsertEndnote"
   | "NextFootnote"

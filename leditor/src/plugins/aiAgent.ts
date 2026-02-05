@@ -11,14 +11,18 @@ import {
   type AgentRunRequest,
   type AgentRunResult,
   type AgentActionId,
-  type AgentSidebarController
+  type AgentSidebarController,
+  type AgentProgressEvent
 } from "../ui/agent_sidebar.ts";
+import { appendAgentHistoryMessage, getAgentHistory } from "../ui/agent_history.ts";
 
 type AgentContext = {
   scope: "selection" | "document";
   instruction: string;
+  actionId?: AgentActionId;
   selection?: { from: number; to: number; text: string };
   document?: { text: string };
+  documentJson?: object;
   blocks?: Array<{ n: number; type: string; attrs?: unknown; text: string; nodeJson?: unknown }>;
   targets?: Array<{ n: number; headingNumber?: string; headingTitle?: string }>;
   history: Array<{ role: "user" | "assistant" | "system"; content: string }>;
@@ -40,6 +44,21 @@ type AgentBridge = {
     error?: string;
     meta?: { provider?: string; model?: string; ms?: number };
   }>;
+  run?: (
+    request: { requestId?: string; payload: AgentContext }
+  ) => Promise<{
+    success: boolean;
+    assistantText?: string;
+    applyText?: string;
+    operations?: Array<
+      | { op: "replaceSelection"; text: string }
+      | { op: "replaceParagraph"; n: number; text: string }
+      | { op: "replaceDocument"; text: string }
+    >;
+    error?: string;
+    meta?: { provider?: string; model?: string; ms?: number };
+  }>;
+  onUpdate?: (handler: (update: { requestId?: string; kind?: string; message?: string; delta?: string; tool?: string }) => void) => () => void;
 };
 
 const log = (action: string) => window.codexLog?.write(`[AI_AGENT] ${action}`);
@@ -48,7 +67,15 @@ const getAgentBridge = (): AgentBridge | null => {
   const host = getHostAdapter();
   if (host && typeof host.agentRequest === "function") {
     return {
-      request: (request: { requestId?: string; payload: AgentContext }) => host.agentRequest!(request as any)
+      request: (request: { requestId?: string; payload: AgentContext }) => host.agentRequest!(request as any),
+      run:
+        typeof (host as any).agentRun === "function"
+          ? (request: { requestId?: string; payload: AgentContext }) => (host as any).agentRun(request as any)
+          : undefined,
+      onUpdate:
+        typeof (host as any).onAgentStreamUpdate === "function"
+          ? (handler: (update: any) => void) => (host as any).onAgentStreamUpdate(handler)
+          : undefined
     };
   }
   return null;
@@ -183,8 +210,6 @@ const ensureHeadingAndEmptyParagraph = (
 };
 
 let sidebarController: AgentSidebarController | null = null;
-let history: Array<{ role: "user" | "assistant" | "system"; content: string }> = [];
-
 const parseLeadingParagraphSpec = (
   instructionRaw: string,
   maxParagraph: number
@@ -398,6 +423,23 @@ const parseTargetSpec = (
     return { indices, instruction: rest };
   }
 
+  const headingPlain = trimmed.match(
+    /\b(?:the\s+)?(?:heading|section)\s+([^\d][^.,;:]+?)(?=\s+(?:for|to|in|with|by|that)\b|$)/i
+  );
+  if (headingPlain?.[1]) {
+    const title = String(headingPlain[1]).trim();
+    let sectionNumber = resolveSectionByTitle(title);
+    if (!sectionNumber) {
+      const byTopic = resolveSectionByTopic(title);
+      if (byTopic.length > 0) {
+        return { indices: byTopic, instruction: strip(trimmed, headingPlain[0] ?? "") };
+      }
+    }
+    const indices = sectionNumber ? (sectionToIndices.get(sectionNumber) ?? []).slice() : [];
+    const rest = strip(trimmed, headingPlain[0] ?? "");
+    return { indices, instruction: rest };
+  }
+
   // Section about topic
   const sectionTopic = trimmed.match(/\bsection\s+(?:about|on|regarding|talking about)\s+(.+?)\s*$/i);
   if (sectionTopic?.[1]) {
@@ -446,7 +488,7 @@ const ensureLabeledParagraph = (
 const runAgent = async (
   request: AgentRunRequest,
   editorHandle: EditorHandle,
-  progress?: (message: string) => void,
+  progress?: (event: AgentProgressEvent | string) => void,
   signal?: AbortSignal,
   requestId?: string
 ): Promise<AgentRunResult> => {
@@ -464,6 +506,39 @@ const runAgent = async (
       apply: undefined
     };
   }
+
+  const runBridge = async (ctx: AgentContext) => {
+    let unsubscribe: (() => void) | null = null;
+    if (requestId && bridge.run && bridge.onUpdate) {
+      unsubscribe = bridge.onUpdate((update) => {
+        if (!update || (update.requestId && update.requestId !== requestId)) return;
+        const kind = typeof update.kind === "string" ? update.kind : "";
+        if (kind === "delta" && typeof update.delta === "string") {
+          progress?.({ kind: "stream", delta: update.delta });
+        } else if (kind === "tool" && typeof update.tool === "string") {
+          progress?.({ kind: "tool", tool: update.tool });
+        } else if (kind === "status" && typeof update.message === "string") {
+          progress?.({ kind: "status", message: update.message });
+        } else if (kind === "error" && typeof update.message === "string") {
+          progress?.({ kind: "error", message: update.message });
+        }
+      });
+    }
+    try {
+      if (bridge.run) {
+        return await bridge.run({ requestId, payload: ctx });
+      }
+      return await bridge.request({ requestId, payload: ctx });
+    } finally {
+      if (unsubscribe) {
+        try {
+          unsubscribe();
+        } catch {
+          // ignore
+        }
+      }
+    }
+  };
 
   const settings = getAiSettings();
   let { paragraphs: allParagraphs, sectionToIndices, sectionTitleByNumber } = listParagraphTargets(editor);
@@ -527,7 +602,8 @@ const runAgent = async (
     const ctx: AgentContext = {
       scope: "document",
       instruction,
-      history: [],
+      actionId: request.actionId,
+      history: getAgentHistory(),
       settings,
       targets: chunk.map((p) => ({
         n: p.n,
@@ -541,6 +617,7 @@ const runAgent = async (
         text: p.text,
         nodeJson: p.nodeJson
       })),
+      documentJson: editor.getJSON(),
       document: {
         text: allParagraphs
           .slice(0, 200)
@@ -548,7 +625,7 @@ const runAgent = async (
           .join("\n")
       }
     };
-    const result = await bridge.request({ requestId, payload: ctx });
+    const result = await runBridge(ctx);
     if (!result?.success) {
       return { assistantText: result?.error ? String(result.error) : "Agent request failed.", meta: result?.meta };
     }
@@ -575,6 +652,7 @@ const runAgent = async (
       }
     }
     const assistantText = edits.length === 0 ? "No changes proposed." : `Draft ready for ${edits.length} paragraph(s).`;
+    appendAgentHistoryMessage({ role: "assistant", content: assistantText });
     return edits.length === 0
       ? { assistantText, meta: result?.meta }
       : { assistantText, meta: result?.meta, apply: { kind: "batchReplace", items: edits } };
@@ -631,7 +709,8 @@ const runAgent = async (
     const ctx: AgentContext = {
       scope: "document",
       instruction,
-      history: [],
+      actionId: request.actionId,
+      history: getAgentHistory(),
       settings,
       targets: chunk.map((p) => ({
         n: p.n,
@@ -645,13 +724,14 @@ const runAgent = async (
         text: p.text,
         nodeJson: p.nodeJson
       })),
+      documentJson: editor.getJSON(),
       document: {
         text: chunk
           .map((p) => [`<<<P:${p.n}>>>`, p.text, ""].join("\n"))
           .join("\n")
       }
     };
-    const result = await bridge.request({ requestId, payload: ctx });
+    const result = await runBridge(ctx);
     if (signal?.aborted) {
       return { assistantText: "Cancelled." };
     }
@@ -675,7 +755,7 @@ const runAgent = async (
 
   const assistantText =
     edits.length === 0 ? "No changes proposed." : `Draft ready for ${edits.length} paragraph(s).`;
-  history.push({ role: "assistant", content: assistantText });
+  appendAgentHistoryMessage({ role: "assistant", content: assistantText });
   if (lastMeta?.provider || lastMeta?.model || typeof lastMeta?.ms === "number") {
     const parts = [
       lastMeta?.provider ? `provider=${String(lastMeta.provider)}` : "",

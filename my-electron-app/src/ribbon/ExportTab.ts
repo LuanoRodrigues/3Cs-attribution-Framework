@@ -2,7 +2,7 @@ import type { RibbonTab } from "../types";
 
 export const ExportTab: RibbonTab = {
   phase: "export",
-  label: "Export",
+  label: "File",
   description: "Share your project bundle or derive structured outputs.",
   actions: [
     {

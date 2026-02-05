@@ -15,6 +15,7 @@ import { getHostContract } from "../ui/host_contract.ts";
 import { getCurrentPageSize, getMarginValuesCm } from "../ui/layout_settings.ts";
 import { reconcileFootnotes } from "../uipagination/footnotes/registry.ts";
 import { exportSourceChecksThreadForLedoc } from "../ui/source_checks_thread.ts";
+import { exportAgentHistoryForLedoc } from "../ui/agent_history.ts";
 import { debugFootnoteIdState } from "../uipagination/footnotes/footnote_id_generator.ts";
 
 const triggerExport = (request: ExportLedocRequest) => {
@@ -106,6 +107,7 @@ const buildLegacyPayloadV1 = (editorHandle: EditorHandle) => {
   const page = getCurrentPageSize();
   const marginsCm = getMarginValuesCm();
   const sourceChecksThread = exportSourceChecksThreadForLedoc();
+  const agentHistory = exportAgentHistoryForLedoc();
   return {
     document: editorHandle.getJSON(),
     meta: {
@@ -129,9 +131,10 @@ const buildLegacyPayloadV1 = (editorHandle: EditorHandle) => {
       footnotes: collectFootnotes(editorHandle)
     },
     history:
-      sourceChecksThread && typeof sourceChecksThread === "object"
+      (sourceChecksThread && typeof sourceChecksThread === "object") || agentHistory
         ? {
-            sourceChecksThread
+            ...(sourceChecksThread && typeof sourceChecksThread === "object" ? { sourceChecksThread } : {}),
+            ...(agentHistory ? { agentHistory } : {})
           }
         : undefined
   };
@@ -144,6 +147,7 @@ const buildBundlePayloadV2 = (editorHandle: EditorHandle): LedocBundlePayload =>
   const marginsCm = getMarginValuesCm();
   const idState = debugFootnoteIdState();
   const sourceChecksThread = exportSourceChecksThreadForLedoc();
+  const agentHistory = exportAgentHistoryForLedoc();
   const meta: LedocBundleMetaFile = {
     version: LEDOC_BUNDLE_VERSION,
     title: host.documentTitle || "Untitled document",
@@ -171,7 +175,8 @@ const buildBundlePayloadV2 = (editorHandle: EditorHandle): LedocBundlePayload =>
     knownFootnotes: collectKnownFootnotes(editorHandle),
     ...(sourceChecksThread && typeof sourceChecksThread === "object"
       ? { sourceChecksThread }
-      : {})
+      : {}),
+    ...(agentHistory ? { agentHistory } : {})
   };
   return {
     version: LEDOC_BUNDLE_VERSION,

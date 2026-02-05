@@ -38,6 +38,9 @@ let navActiveId: string | null = null;
 let navRenderLockUntil = 0;
 let navGestureUntil = 0;
 let navCollapsed: Record<string, boolean> = {};
+let navPointerActionId: string | null = null;
+let navPointerActionAt = 0;
+let navPointerActionKind: "twisty" | "entry" | null = null;
 let navSearchQuery = "";
 let readModeActive = false;
 let scrollDirectionState: "vertical" | "horizontal" = "vertical";
@@ -287,11 +290,56 @@ const ensureNavPanel = (): HTMLElement | null => {
 
   navPanel.append(header, navBody);
 
-  // Keep renders stable during nav gestures without blocking events.
-  const onPointerDown = () => {
+  // Keep renders stable during nav gestures and run actions on pointerdown so rerenders can't drop clicks.
+  const onPointerDown = (ev: PointerEvent) => {
     const now = performance.now();
     navGestureUntil = now + 220;
     navRenderLockUntil = Math.max(navRenderLockUntil, now + 120);
+    if (ev.button !== 0) return;
+    const target = ev.target as HTMLElement | null;
+    if (!target) return;
+    const twisty = target.closest(".leditor-navigation-twisty") as HTMLElement | null;
+    const entry = target.closest(".leditor-navigation-entry") as HTMLButtonElement | null;
+    if (!twisty && !entry) return;
+    const recent = now - navPointerActionAt < 250;
+    const editor = getCurrentEditor();
+    if (!editor) return;
+    if (twisty) {
+      const id =
+        twisty.dataset.id ??
+        twisty.parentElement?.querySelector<HTMLElement>(".leditor-navigation-entry")?.dataset.id ??
+        "";
+      if (!id) return;
+      if (recent && navPointerActionKind === "twisty" && navPointerActionId === id) return;
+      navPointerActionId = id;
+      navPointerActionAt = now;
+      navPointerActionKind = "twisty";
+      const collapsed = !!navCollapsed[id];
+      navLog("toggle", { id, collapsed, nextCollapsed: !collapsed, via: "panel:pointerdown" });
+      navCollapsed[id] = !collapsed;
+      saveNavState();
+      renderNavigation(editor, true);
+      return;
+    }
+    if (entry && entry.dataset.id) {
+      const id = entry.dataset.id;
+      const node = navEntriesFlat.find((n) => n.id === id);
+      if (!node) return;
+      if (recent && navPointerActionKind === "entry" && navPointerActionId === id) return;
+      navPointerActionId = id;
+      navPointerActionAt = now;
+      navPointerActionKind = "entry";
+      navLog("click", {
+        id: node.id,
+        label: node.label,
+        pos: node.pos,
+        level: node.level,
+        depth: Number(entry.dataset.level || 0),
+        via: "panel:pointerdown"
+      });
+      scrollEditorToPos(editor, node.pos);
+      flashHeading(editor, node.pos);
+    }
   };
   const onPointerUp = () => {
     const now = performance.now();
@@ -573,47 +621,7 @@ const renderNavigation = (editor: Editor, force = false) => {
 
   roots.forEach((n) => treeHost.appendChild(renderNode(n, 0)));
 
-  // Event delegation so clicks survive rerenders.
-  treeHost.onclick = (ev) => {
-    const target = ev.target as HTMLElement | null;
-    if (!target) return;
-    const twisty = target.closest(".leditor-navigation-twisty") as HTMLElement | null;
-    const entry = target.closest(".leditor-navigation-entry") as HTMLButtonElement | null;
-    if (twisty && twisty.dataset.id) {
-      ev.preventDefault();
-      ev.stopPropagation();
-      const now = performance.now();
-      navGestureUntil = Math.max(navGestureUntil, now + 120);
-      navRenderLockUntil = Math.max(navRenderLockUntil, now + 80);
-      const id = twisty.dataset.id;
-      const collapsed = !!navCollapsed[id];
-      navLog("toggle", { id, collapsed, nextCollapsed: !collapsed, via: "delegate", targetTag: target.tagName });
-      navCollapsed[id] = !collapsed;
-      saveNavState();
-      renderNavigation(editor, true);
-      return;
-    }
-    if (entry && entry.dataset.id) {
-      ev.preventDefault();
-      ev.stopPropagation();
-      const now = performance.now();
-      navGestureUntil = Math.max(navGestureUntil, now + 80);
-      navRenderLockUntil = Math.max(navRenderLockUntil, now + 60);
-      const id = entry.dataset.id;
-      const node = nodesById.get(id);
-      if (!node) return;
-      navLog("click", {
-        id: node.id,
-        label: node.label,
-        pos: node.pos,
-        level: node.level,
-        depth: Number(entry.dataset.level || 0),
-        targetTag: target.tagName
-      });
-      scrollEditorToPos(editor, node.pos);
-      flashHeading(editor, node.pos);
-    }
-  };
+  // Event delegation handled at the panel level to survive rerenders.
 
   // Keyboard navigation on the visible tree items.
   treeHost.onkeydown = (ev) => {

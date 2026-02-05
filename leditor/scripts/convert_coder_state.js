@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 /**
- * Convert coder_state.json (version 2) into a LEDOC v2 bundle directory (`*.ledoc/`).
+ * Convert coder_state.json (version 2) into a LEDOC v2 bundle directory (`*.ledoc/`)
+ * and produce a copy of the bundle's content.json next to the bundle.
  *
  * Usage:
  *   node scripts/convert_coder_state.js [sourcePath] [targetPath]
  *
  * Defaults:
- *   sourcePath: ./coder_state.json
+ *   sourcePath: DEFAULT_SOURCE_PATH (see constants below)
  *   targetPath: ./coder_state.ledoc   (directory)
  */
 
@@ -24,6 +25,10 @@ const LEDOC_BUNDLE_FILES = {
   meta: "meta.json",
   mediaDir: "media"
 };
+
+// Toggle the default input path by commenting/uncommenting one line below.
+ const DEFAULT_SOURCE_PATH = "\\\\wsl.localhost\\Ubuntu-22.04\\home\\pantera\\projects\\TEIA\\coder_state_paper.json";
+//const DEFAULT_SOURCE_PATH = "./coder_state.json";
 
 const normalizeError = (error) => (error instanceof Error ? error.message : String(error));
 
@@ -388,7 +393,8 @@ const inlineFromNodes = (nodes, activeMarks = []) => {
       nextMarks.push({ type: "anchor", attrs: markAttrs });
     }
     if (tag === "br") {
-      out.push({ type: "hardBreak" });
+      // Treat <br> as a soft space to avoid hard line breaks that fragment pages.
+      pushTextNode(out, " ", activeMarks);
       continue;
     }
     out.push(...inlineFromNodes(node.children || [], nextMarks));
@@ -581,8 +587,23 @@ const writeLedocBundle = ({ targetDir, content, title, created, lastModified }) 
   writeJson(path.join(targetDir, LEDOC_BUNDLE_FILES.registry), registry);
 };
 
+const resolveContentCopyPath = (targetDir) => {
+  const base = path.basename(targetDir);
+  const stem = base.toLowerCase().endsWith(".ledoc") ? base.slice(0, -".ledoc".length) : base;
+  return path.join(path.dirname(targetDir), `${stem}_content.json`);
+};
+
+const writeContentCopy = (targetDir, copyPath = resolveContentCopyPath(targetDir)) => {
+  const contentPath = path.join(targetDir, LEDOC_BUNDLE_FILES.content);
+  if (!fs.existsSync(contentPath)) {
+    throw new Error(`content.json not found at ${contentPath}`);
+  }
+  fs.copyFileSync(contentPath, copyPath);
+  return copyPath;
+};
+
 async function main() {
-  let sourcePath = path.resolve(process.cwd(), process.argv[2] || "coder_state.json");
+  let sourcePath = path.resolve(process.cwd(), process.argv[2] || DEFAULT_SOURCE_PATH);
   let targetPath = path.resolve(
     process.cwd(),
     process.argv[3] || `${path.basename(sourcePath, path.extname(sourcePath))}.ledoc`
@@ -667,7 +688,9 @@ async function main() {
       created: stamp,
       lastModified: stamp
     });
+    const contentCopyPath = writeContentCopy(targetPath);
     console.log(`[convert] wrote bundle ${targetPath}`);
+    console.log(`[convert] wrote content copy ${contentCopyPath}`);
   } catch (error) {
     console.error("[convert] failed:", normalizeError(error));
     process.exit(1);

@@ -54,7 +54,7 @@ export const COMMAND_ALIASES: Record<string, string> = {
   "list.task.toggle": "BulletList",
   "paragraph.outdent": "Outdent",
   "paragraph.indent": "Indent",
-  "paragraph.sort.openDialog": "Preview",
+  "paragraph.sort.openDialog": "ParagraphSort",
   "view.formattingMarks.toggle": "VisualBlocks",
   "paragraph.align.set": "JustifyFull",
   "paragraph.lineSpacing.set": "LineSpacing",
@@ -70,7 +70,7 @@ export const COMMAND_ALIASES: Record<string, string> = {
   "paragraph.borders.set": "ParagraphBordersSet",
   "paragraph.shading.set": "HighlightColor",
   "paragraph.blockquote.toggle": "BlockquoteToggle",
-  "insert.horizontalRule": "InsertPageBreak",
+  "insert.horizontalRule": "InsertHorizontalRule",
   // Editing
   "editing.find.open": "SearchReplace",
   "editing.find.advanced.openDialog": "SearchReplace",

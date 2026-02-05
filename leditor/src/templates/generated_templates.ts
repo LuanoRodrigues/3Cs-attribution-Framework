@@ -126,10 +126,11 @@ export const templateDefinitions: TemplateDefinition[] = [
         "fontFamily": "Arial",
         "fontSizePx": 12,
         "textColor": "#0f172a",
+        "headingColor": "#111827",
         "lineHeight": "double",
         "spaceBeforePx": 0,
         "spaceAfterPx": 8,
-        "textAlign": "left"
+        "textAlign": "justify"
       },
       "citation": {
         "style": "OSCOLA",
@@ -363,10 +364,11 @@ export const templateDefinitions: TemplateDefinition[] = [
         "fontFamily": "Times New Roman",
         "fontSizePx": 12,
         "textColor": "#0f172a",
+        "headingColor": "#111827",
         "lineHeight": "double",
         "spaceBeforePx": 0,
         "spaceAfterPx": 8,
-        "textAlign": "left"
+        "textAlign": "justify"
       },
       "citation": {
         "style": "Chicago",
@@ -546,10 +548,11 @@ export const templateDefinitions: TemplateDefinition[] = [
         "fontFamily": "Times New Roman",
         "fontSizePx": 12,
         "textColor": "#0f172a",
+        "headingColor": "#111827",
         "lineHeight": "double",
         "spaceBeforePx": 0,
         "spaceAfterPx": 8,
-        "textAlign": "left"
+        "textAlign": "justify"
       }
     }
   },
@@ -666,10 +669,11 @@ export const templateDefinitions: TemplateDefinition[] = [
         "fontFamily": "Times New Roman",
         "fontSizePx": 12,
         "textColor": "#0f172a",
+        "headingColor": "#111827",
         "lineHeight": "double",
         "spaceBeforePx": 0,
         "spaceAfterPx": 8,
-        "textAlign": "left"
+        "textAlign": "justify"
       },
       "citation": {
         "style": "Chicago",
@@ -1276,10 +1280,11 @@ export const templateDefinitions: TemplateDefinition[] = [
         "fontFamily": "Times New Roman",
         "fontSizePx": 12,
         "textColor": "#0f172a",
+        "headingColor": "#111827",
         "lineHeight": "double",
         "spaceBeforePx": 0,
         "spaceAfterPx": 8,
-        "textAlign": "left"
+        "textAlign": "justify"
       },
       "citation": {
         "styleId": "chicago-note-bibliography",

@@ -7,10 +7,12 @@ import {
   subscribeSourceChecksThread,
   upsertSourceChecksFromRun
 } from "./source_checks_thread.ts";
+import { appendAgentHistoryMessage, getAgentHistory } from "./agent_history.ts";
 import { Fragment } from "prosemirror-model";
 import agentActionPrompts from "./agent_action_prompts.json";
 
 export type AgentMessage = {
+  id: string;
   role: "user" | "assistant" | "system";
   content: string;
   ts: number;
@@ -18,7 +20,14 @@ export type AgentMessage = {
 
 export type AgentRunRequest = {
   instruction: string;
+  actionId?: AgentActionId;
 };
+
+export type AgentProgressEvent =
+  | { kind: "status"; message: string }
+  | { kind: "stream"; delta: string }
+  | { kind: "tool"; tool: string }
+  | { kind: "error"; message: string };
 
 export type AgentRunResult = {
   assistantText: string;
@@ -31,6 +40,34 @@ export type AgentRunResult = {
         kind: "batchReplace";
         items: Array<{ n: number; from: number; to: number; text: string; originalText: string }>;
       };
+};
+
+type SubstantiateMatch = {
+  dqid: string;
+  title: string;
+  author?: string;
+  year?: string;
+  source?: string;
+  page?: number;
+  directQuote?: string;
+  paraphrase?: string;
+  score?: number;
+};
+
+type SubstantiateSuggestion = {
+  key: string;
+  paragraphN: number;
+  anchorText: string;
+  anchorTitle: string;
+  sentence: string;
+  rewrite: string;
+  stance?: "corroborates" | "refutes" | "mixed" | "uncertain";
+  notes?: string;
+  matches: SubstantiateMatch[];
+  from?: number;
+  to?: number;
+  status?: "pending" | "applied" | "dismissed";
+  error?: string;
 };
 
 export type AgentActionId =
@@ -55,7 +92,7 @@ type AgentSidebarOptions = {
   runAgent: (
     request: AgentRunRequest,
     editorHandle: EditorHandle,
-    progress?: (message: string) => void,
+    progress?: (event: AgentProgressEvent | string) => void,
     signal?: AbortSignal,
     requestId?: string
   ) => Promise<AgentRunResult>;
@@ -116,13 +153,29 @@ export const createAgentSidebar = (
   const headerTop = document.createElement("div");
   headerTop.className = "leditor-agent-sidebar__headerTop";
   const headerBottom = document.createElement("div");
-  headerBottom.className = "leditor-agent-sidebar__headerBottom";
+  headerBottom.className = "leditor-agent-sidebar__headerTabs";
   const title = document.createElement("div");
   title.className = "leditor-agent-sidebar__title";
   title.textContent = "Agent";
 
   const headerRight = document.createElement("div");
   headerRight.className = "leditor-agent-sidebar__headerRight";
+
+  type SidebarViewId = "chat" | "refine" | "paraphrase" | "shorten" | "proofread" | "substantiate" | "sources";
+  let viewMode: SidebarViewId = "chat";
+
+  const viewTabs = document.createElement("div");
+  viewTabs.className = "leditor-agent-sidebar__viewTabs";
+  viewTabs.setAttribute("role", "tablist");
+  viewTabs.setAttribute("aria-label", "Agent views");
+
+  const closeBtn = document.createElement("button");
+  closeBtn.type = "button";
+  closeBtn.className = "leditor-agent-sidebar__close";
+  closeBtn.textContent = "Close";
+
+  headerRight.append(closeBtn);
+  headerTop.append(title, headerRight);
 
   const modelPickerWrap = document.createElement("div");
   modelPickerWrap.className = "leditor-agent-sidebar__modelPickerWrap";
@@ -149,20 +202,9 @@ export const createAgentSidebar = (
   modelPickerBtn.append(modelPickerLabel, modelPickerChevron);
   modelPickerWrap.appendChild(modelPickerBtn);
 
-  const closeBtn = document.createElement("button");
-  closeBtn.type = "button";
-  closeBtn.className = "leditor-agent-sidebar__close";
-  closeBtn.textContent = "Close";
-
-  headerRight.append(modelPickerWrap, closeBtn);
-  headerTop.append(title, headerRight);
-
   const statusLine = document.createElement("div");
   statusLine.className = "leditor-agent-sidebar__status";
   statusLine.textContent = "Ready • Reference paragraphs by index (e.g. 35, 35-38).";
-
-  const headerTools = document.createElement("div");
-  headerTools.className = "leditor-agent-sidebar__headerTools";
 
   const actionPickerWrap = document.createElement("div");
   actionPickerWrap.className = "leditor-agent-sidebar__actionPickerWrap";
@@ -207,8 +249,7 @@ export const createAgentSidebar = (
 
   // Replace the legacy "Auto" action picker with lightweight view tabs (chat / actions / sources).
   // The plus menu and slash commands remain the primary way to run actions.
-  headerTools.append(showNumbersLabel);
-  headerBottom.append(statusLine, headerTools);
+  headerBottom.append(viewTabs);
   header.append(headerTop, headerBottom);
 
   let open = false;
@@ -253,23 +294,15 @@ export const createAgentSidebar = (
   messagesEl.setAttribute("role", "log");
   messagesEl.setAttribute("aria-live", "polite");
 
-  type SidebarViewId = "chat" | "refine" | "paraphrase" | "shorten" | "proofread" | "substantiate" | "sources";
-  let viewMode: SidebarViewId = "chat";
-
-  const viewTabs = document.createElement("div");
-  viewTabs.className = "leditor-agent-sidebar__viewTabs";
-  viewTabs.setAttribute("role", "tablist");
-  viewTabs.setAttribute("aria-label", "Agent views");
-
-  // Keep tabs in the header (headerTop) so the panel has a single top area.
-  headerTop.insertBefore(viewTabs, headerRight);
-
   const boxesEl = document.createElement("div");
   boxesEl.className = "leditor-agent-sidebar__boxes is-hidden";
   boxesEl.setAttribute("aria-hidden", "true");
 
   const panel = document.createElement("div");
   panel.className = "leditor-agent-sidebar__panel";
+
+  const results = document.createElement("div");
+  results.className = "leditor-agent-sidebar__results";
 
   const composer = document.createElement("div");
   composer.className = "leditor-agent-sidebar__composer";
@@ -328,8 +361,22 @@ export const createAgentSidebar = (
   plusMenu.addEventListener("click", (event) => event.stopPropagation());
   composer.appendChild(plusMenu);
 
-  panel.append(messagesEl, boxesEl);
-  sidebar.append(header, panel, composer);
+  results.append(messagesEl, boxesEl);
+  panel.append(results);
+
+  const footer = document.createElement("div");
+  footer.className = "leditor-agent-sidebar__footer";
+
+  const footerMeta = document.createElement("div");
+  footerMeta.className = "leditor-agent-sidebar__footerMeta";
+  const footerControls = document.createElement("div");
+  footerControls.className = "leditor-agent-sidebar__footerControls";
+  footerControls.append(modelPickerWrap, actionPickerWrap, showNumbersLabel);
+  footerMeta.append(footerControls, statusLine);
+
+  footer.append(footerMeta, composer);
+
+  sidebar.append(header, panel, footer);
   root.appendChild(sidebar);
 
   let messages: AgentMessage[] = [];
@@ -346,11 +393,24 @@ export const createAgentSidebar = (
   };
   let sourceFocusKey: string | null = null;
   let pendingActionId: AgentActionId | null = null;
+  let substantiateResults: SubstantiateSuggestion[] = [];
+  let substantiateError: string | null = null;
   let lastApiMeta: { provider?: string; model?: string; ms?: number; ts: number } | null = null;
   let abortController: AbortController | null = null;
   let activeRequestId: string | null = null;
 
   const makeRequestId = () => `agent-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  const makeMessageId = () => `msg-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+
+  const seedHistoryMessages = () => {
+    const stored = getAgentHistory();
+    if (!stored.length) return;
+    messages = clampHistory(
+      stored.map((m) => ({ id: makeMessageId(), role: m.role, content: m.content, ts: m.ts })),
+      50
+    );
+    renderMessages(true);
+  };
 
   type SlashCommand = {
     id: AgentActionId;
@@ -391,11 +451,22 @@ export const createAgentSidebar = (
   const detectActionFromInstruction = (instruction: string): AgentActionId | null => {
     const text = String(instruction ?? "").toLowerCase();
     if (/\B\/refine\b/.test(text) || /\brefine\b/.test(text)) return "refine";
+    if (/\B\/rewrite\b/.test(text) || /\brewrite\b/.test(text)) return "refine";
+    if (/\B\/revise\b/.test(text) || /\brevise\b/.test(text)) return "refine";
+    if (/\B\/reword\b/.test(text) || /\breword\b/.test(text)) return "refine";
     if (/\B\/paraphrase\b/.test(text) || /\bparaphrase\b/.test(text)) return "paraphrase";
     if (/\B\/shorten\b/.test(text) || /\bshorten\b/.test(text)) return "shorten";
     if (/\B\/proofread\b/.test(text) || /\bproofread\b/.test(text)) return "proofread";
     if (/\B\/substantiate\b/.test(text) || /\bsubstantiate\b/.test(text)) return "substantiate";
-    if (/\B\/check(?:\s+sources)?\b/.test(text) || /\bcheck\s+sources\b/.test(text)) return "check_sources";
+    if (
+      /\B\/check(?:\s+sources)?\b/.test(text) ||
+      /\bcheck\s+sources?\b/.test(text) ||
+      /\bverify\s+sources?\b/.test(text) ||
+      /\bcheck\s+citations?\b/.test(text) ||
+      /\bverify\s+citations?\b/.test(text)
+    ) {
+      return "check_sources";
+    }
     if (/\B\/clear(?:\s+checks)?\b/.test(text) || /\bclear\s+checks\b/.test(text)) return "clear_checks";
     return null;
   };
@@ -894,6 +965,13 @@ export const createAgentSidebar = (
       }
     }
     viewMode = next;
+    if (next === "sources") {
+      setActionMode("check_sources");
+    } else if (next === "chat") {
+      setActionMode("auto");
+    } else {
+      setActionMode(next);
+    }
     pending = next === "chat" ? null : ((pendingByView as any)[next] ?? null);
     if (next === "sources") {
       try {
@@ -1357,7 +1435,132 @@ export const createAgentSidebar = (
       return;
     }
 
-    // Edits view (refine/paraphrase/shorten/proofread/substantiate)
+    if (viewMode === "substantiate") {
+      if (substantiateError) {
+        const empty = document.createElement("div");
+        empty.className = "leditor-agent-sidebar__boxEmpty";
+        empty.textContent = substantiateError;
+        boxesEl.appendChild(empty);
+        return;
+      }
+      if (substantiateResults.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "leditor-agent-sidebar__boxEmpty";
+        empty.textContent = "No substantiate suggestions yet.";
+        boxesEl.appendChild(empty);
+        return;
+      }
+
+      const stanceLabel = (stance?: string) => {
+        if (stance === "corroborates") return "Corroborates";
+        if (stance === "refutes") return "Refutes";
+        if (stance === "mixed") return "Mixed";
+        return "Uncertain";
+      };
+
+      for (const s of substantiateResults) {
+        const card = document.createElement("div");
+        card.className = "leditor-agent-sidebar__boxCard";
+        card.addEventListener("click", (e) => {
+          if ((e.target as HTMLElement)?.closest?.("button,summary")) return;
+          focusParagraphNumber(s.paragraphN);
+        });
+
+        const h = document.createElement("div");
+        h.className = "leditor-agent-sidebar__boxHeader";
+        h.textContent = `P${s.paragraphN} • ${stanceLabel(s.stance)}`;
+
+        const meta = document.createElement("div");
+        meta.className = "leditor-agent-sidebar__boxMeta";
+        meta.textContent = s.anchorTitle || s.anchorText || "Anchor";
+
+        const body = document.createElement("div");
+        body.className = "leditor-agent-sidebar__boxBody";
+        body.textContent = s.rewrite || s.sentence;
+
+        if (s.notes) {
+          const notes = document.createElement("div");
+          notes.className = "leditor-agent-sidebar__subNotes";
+          notes.textContent = s.notes;
+          body.appendChild(notes);
+        }
+
+        const original = document.createElement("details");
+        original.className = "leditor-agent-sidebar__subOriginal";
+        const summary = document.createElement("summary");
+        summary.textContent = "Original sentence";
+        const originalText = document.createElement("div");
+        originalText.className = "leditor-agent-sidebar__subOriginalText";
+        originalText.textContent = s.sentence || "(no sentence captured)";
+        original.append(summary, originalText);
+
+        const matchesWrap = document.createElement("div");
+        matchesWrap.className = "leditor-agent-sidebar__subMatches is-hidden";
+        if (Array.isArray(s.matches) && s.matches.length > 0) {
+          for (const m of s.matches) {
+            const row = document.createElement("div");
+            row.className = "leditor-agent-sidebar__subMatch";
+            const title = document.createElement("div");
+            title.className = "leditor-agent-sidebar__subMatchTitle";
+            title.textContent = m.title || "(untitled)";
+            const metaLine = document.createElement("div");
+            metaLine.className = "leditor-agent-sidebar__subMatchMeta";
+            const score =
+              typeof m.score === "number" ? `${Math.round(Math.max(0, m.score) * 1000) / 10}%` : "";
+            metaLine.textContent = [m.author, m.year, m.source, m.page ? `p.${m.page}` : "", score].filter(Boolean).join(" • ");
+            const quote = document.createElement("div");
+            quote.className = "leditor-agent-sidebar__subMatchQuote";
+            quote.textContent = m.directQuote || m.paraphrase || "";
+            row.append(title, metaLine);
+            if (quote.textContent) row.appendChild(quote);
+            matchesWrap.appendChild(row);
+          }
+        } else {
+          const empty = document.createElement("div");
+          empty.className = "leditor-agent-sidebar__subMatchEmpty";
+          empty.textContent = "No matches found.";
+          matchesWrap.appendChild(empty);
+        }
+
+        const actions = document.createElement("div");
+        actions.className = "leditor-agent-sidebar__boxActions";
+        const reject = document.createElement("button");
+        reject.type = "button";
+        reject.className = "leditor-agent-sidebar__boxBtn";
+        reject.textContent = "Reject";
+        reject.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropSubstantiateSuggestion(s.key);
+        });
+        const accept = document.createElement("button");
+        accept.type = "button";
+        accept.className = "leditor-agent-sidebar__boxBtn leditor-agent-sidebar__boxBtn--primary";
+        accept.textContent = "Apply";
+        accept.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          applySubstantiateSuggestion(s.key);
+        });
+        const toggle = document.createElement("button");
+        toggle.type = "button";
+        toggle.className = "leditor-agent-sidebar__boxBtn";
+        toggle.textContent = `Matches (${s.matches?.length ?? 0})`;
+        toggle.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          matchesWrap.classList.toggle("is-hidden");
+        });
+        actions.append(reject, accept, toggle);
+
+        card.append(h, meta, body, original, matchesWrap, actions);
+        boxesEl.appendChild(card);
+      }
+
+      return;
+    }
+
+    // Edits view (refine/paraphrase/shorten/proofread)
     if (!pending) {
       const empty = document.createElement("div");
       empty.className = "leditor-agent-sidebar__boxEmpty";
@@ -1487,15 +1690,27 @@ export const createAgentSidebar = (
     sendBtn.setAttribute("aria-label", inflight ? "Stop" : "Send");
   };
 
-  const addMessage = (role: AgentMessage["role"], content: string) => {
+  const addMessage = (role: AgentMessage["role"], content: string): string | null => {
     if (role === "system") {
       setStatus(content);
-      return;
+      return null;
     }
     const prevLen = messages.length;
-    messages = clampHistory([...messages, { role, content, ts: Date.now() }], 50);
+    const id = makeMessageId();
+    messages = clampHistory([...messages, { id, role, content, ts: Date.now() }], 50);
     const clamped = messages.length !== prevLen + 1;
     renderMessages(clamped);
+    if (role === "user") {
+      appendAgentHistoryMessage({ role, content });
+    }
+    return id;
+  };
+
+  const updateMessage = (id: string, content: string) => {
+    const idx = messages.findIndex((m) => m.id === id);
+    if (idx === -1) return;
+    messages[idx] = { ...messages[idx]!, content };
+    renderMessages(true);
   };
 
   const syncInsets = () => {
@@ -1514,6 +1729,8 @@ export const createAgentSidebar = (
       sources: null
     };
     pendingActionId = null;
+    substantiateResults = [];
+    substantiateError = null;
     setStatus("Ready.");
     try {
       editorHandle.execCommand("ClearAiDraftPreview");
@@ -1781,6 +1998,41 @@ export const createAgentSidebar = (
     tr.setMeta("leditor-ai", { kind: "agent", ts: Date.now(), items: sorted.length });
     editor.view.dispatch(tr);
     editor.commands.focus();
+  };
+
+  const dropSubstantiateSuggestion = (key: string) => {
+    const k = String(key || "").trim();
+    if (!k) return;
+    substantiateResults = substantiateResults.filter((it) => it.key !== k);
+    renderBoxes();
+  };
+
+  const applySubstantiateSuggestion = (key: string) => {
+    const k = String(key || "").trim();
+    if (!k) return;
+    const suggestion = substantiateResults.find((it) => it.key === k);
+    if (!suggestion) return;
+    if (typeof suggestion.from !== "number" || typeof suggestion.to !== "number" || !suggestion.rewrite) {
+      addMessage("assistant", "Cannot apply substantiate suggestion: missing target range.");
+      return;
+    }
+    if (suggestion.from >= suggestion.to) {
+      addMessage("assistant", "Cannot apply substantiate suggestion: invalid range.");
+      return;
+    }
+    const editor = editorHandle.getEditor();
+    const current = editor.state.doc.textBetween(suggestion.from, suggestion.to, "\n").replace(/\s+/g, " ").trim();
+    const expected = String(suggestion.sentence || "").replace(/\s+/g, " ").trim();
+    if (expected && current !== expected) {
+      addMessage("assistant", "Paragraph changed since suggestion. Re-run substantiate.");
+      return;
+    }
+    try {
+      applyRangeAsTransaction(suggestion.from, suggestion.to, suggestion.rewrite);
+      dropSubstantiateSuggestion(k);
+    } catch (error) {
+      addMessage("assistant", `Failed to apply suggestion: ${error instanceof Error ? error.message : String(error)}`);
+    }
   };
   const syncDraftPreview = () => {
     try {
@@ -2356,25 +2608,42 @@ export const createAgentSidebar = (
   const run = async () => {
     if (destroyed) return;
     let instruction = input.value.trim();
-    if (!instruction) return;
-    const parsedTargets = parseTargetsFromText(instruction);
-    if (parsedTargets.kind === "paragraphs" || parsedTargets.kind === "section") {
-      const targetIndices = parsedTargets.kind === "paragraphs" ? parsedTargets.indices : parsedTargets.indices;
-      const normalized = instruction.toLowerCase();
-      if (
-        /\bcheck\s+sources?\b/i.test(normalized) ||
-        /\bverify\s+sources?\b/i.test(normalized) ||
-        /\bcheck\s+citations?\b/i.test(normalized)
-      ) {
-        addMessage("user", instruction);
-        input.value = "";
-        autoResizeInput();
-        updateInputOverlay();
-        await runCheckSourcesForParagraphs(targetIndices);
+    const modeAction: ActionMode = actionMode;
+    if (!instruction) {
+      if (modeAction === "check_sources") {
+        setViewMode("sources");
+        await runCheckSources();
         return;
       }
+      if (modeAction === "substantiate") {
+        await runSubstantiate();
+        return;
+      }
+      if (modeAction === "clear_checks") {
+        try {
+          editorHandle.execCommand("ai.sourceChecks.clear");
+        } catch {
+          try {
+            editorHandle.execCommand("ClearSourceChecks");
+          } catch {
+            // ignore
+          }
+        }
+        addMessage("system", "Cleared source checks.");
+        return;
+      }
+      if (modeAction !== "auto") {
+        applyActionTemplate(modeAction);
+        return;
+      }
+      return;
     }
+
+    const rawInstruction = instruction;
     const inlineSlash = findInlineSlashCommand(instruction);
+    let forcedAction: AgentActionId | null = null;
+    let actionFromText: AgentActionId | null = null;
+
     if (inlineSlash) {
       const normalizedAll = normalizeSlash(instruction);
       const isOnlyCommand = inlineSlash.start === 0 && normalizeSlash(inlineSlash.token) === normalizedAll;
@@ -2392,6 +2661,7 @@ export const createAgentSidebar = (
         controller.runAction(inlineSlash.id);
         return;
       }
+      forcedAction = inlineSlash.id;
       const prompt = getActionPrompt(inlineSlash.id);
       const before = instruction.slice(0, inlineSlash.start).trimEnd();
       const after = instruction.slice(inlineSlash.end).trimStart();
@@ -2406,6 +2676,70 @@ export const createAgentSidebar = (
       } else {
         instruction = [before, prompt, after].filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
       }
+    } else {
+      actionFromText = detectActionFromInstruction(rawInstruction);
+      if (actionFromText) {
+        forcedAction = actionFromText;
+      } else if (modeAction !== "auto") {
+        forcedAction = modeAction;
+      }
+      if (
+        forcedAction &&
+        forcedAction !== "check_sources" &&
+        forcedAction !== "clear_checks" &&
+        !actionFromText
+      ) {
+        const prompt = getActionPrompt(forcedAction);
+        const trimmed = instruction.trim();
+        const m =
+          trimmed.match(
+            /^(?:p(?:aragraph)?\s*)?\d{1,5}(?:\s*(?:-|to)\s*\d{1,5})?(?:\s*,\s*\d{1,5}(?:\s*(?:-|to)\s*\d{1,5})?)*/i
+          ) ?? null;
+        if (m?.[0]) {
+          const idxPart = m[0];
+          const rest = trimmed.slice(idxPart.length).trim();
+          instruction = [idxPart.trim(), prompt, rest].filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
+        } else {
+          instruction = [prompt, trimmed].filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
+        }
+      }
+    }
+
+    if (forcedAction === "substantiate") {
+      addMessage("user", rawInstruction);
+      input.value = "";
+      autoResizeInput();
+      await runSubstantiate();
+      return;
+    }
+
+    if (forcedAction === "clear_checks") {
+      try {
+        editorHandle.execCommand("ai.sourceChecks.clear");
+      } catch {
+        try {
+          editorHandle.execCommand("ClearSourceChecks");
+        } catch {
+          // ignore
+        }
+      }
+      addMessage("system", "Cleared source checks.");
+      return;
+    }
+
+    if (forcedAction === "check_sources") {
+      setViewMode("sources");
+      addMessage("user", instruction);
+      input.value = "";
+      autoResizeInput();
+      updateInputOverlay();
+      const parsedTargets = parseTargetsFromText(instruction);
+      if (parsedTargets.kind === "paragraphs" || parsedTargets.kind === "section") {
+        await runCheckSourcesForParagraphs(parsedTargets.indices);
+      } else {
+        await runCheckSources();
+      }
+      return;
     }
 
     addMessage("user", instruction);
@@ -2415,11 +2749,40 @@ export const createAgentSidebar = (
     setInflight(true);
     try {
       clearPending();
-      const progress = (message: string) => addMessage("system", message);
-      const request: AgentRunRequest = { instruction };
+      let streamMessageId: string | null = null;
+      let streamBuffer = "";
+      const progress = (event: AgentProgressEvent | string) => {
+        if (typeof event === "string") {
+          addMessage("system", event);
+          return;
+        }
+        switch (event.kind) {
+          case "status":
+            addMessage("system", event.message);
+            break;
+          case "tool":
+            addMessage("system", `Tool: ${event.tool}`);
+            break;
+          case "stream": {
+            if (!event.delta) return;
+            if (!streamMessageId) {
+              streamMessageId = addMessage("assistant", "");
+            }
+            streamBuffer += event.delta;
+            if (streamMessageId) updateMessage(streamMessageId, streamBuffer.trimStart());
+            break;
+          }
+          case "error":
+            addMessage("assistant", `Error: ${event.message}`);
+            break;
+          default:
+            break;
+        }
+      };
+      const request: AgentRunRequest = { instruction, actionId: forcedAction ?? undefined };
       abortController = new AbortController();
       activeRequestId = makeRequestId();
-      pendingActionId = detectActionFromInstruction(instruction);
+      pendingActionId = forcedAction ?? null;
       const result = await options.runAgent(request, editorHandle, progress, abortController.signal, activeRequestId);
       if (abortController.signal.aborted) {
         addMessage("assistant", "Cancelled.");
@@ -2438,6 +2801,17 @@ export const createAgentSidebar = (
       }
       pending = result.apply ?? null;
       if (pending) {
+        const viewKey =
+          pendingActionId && pendingActionId !== "check_sources" && pendingActionId !== "clear_checks"
+            ? pendingActionId
+            : null;
+        if (viewKey) {
+          pendingByView = { ...pendingByView, [viewKey]: pending };
+        }
+        pending = viewMode === "chat" ? null : ((pendingByView as any)[viewMode] ?? pending);
+        if (viewKey && viewKey !== viewMode) {
+          setViewMode(viewKey as SidebarViewId);
+        }
         const count = pending.kind === "batchReplace" ? pending.items.length : 1;
         setStatus(`Draft ready • ${count} change(s). Review inline in the document.`);
         syncDraftPreview();
@@ -2447,7 +2821,13 @@ export const createAgentSidebar = (
           // ignore
         }
       } else {
-        addMessage("assistant", (result.assistantText || "(no response)").trim());
+        const finalText = (result.assistantText || streamBuffer || "(no response)").trim();
+        if (streamMessageId) {
+          updateMessage(streamMessageId, finalText);
+        } else {
+          addMessage("assistant", finalText);
+        }
+        appendAgentHistoryMessage({ role: "assistant", content: finalText });
       }
     } catch (error) {
       addMessage("assistant", `Error: ${error instanceof Error ? error.message : String(error)}`);
@@ -2781,6 +3161,34 @@ export const createAgentSidebar = (
     return out;
   };
 
+  const resolveTextOffsetToDocPos = (from: number, to: number, offset: number): number => {
+    const editor = editorHandle.getEditor();
+    let remaining = Math.max(0, Math.floor(offset));
+    let resolved = from;
+    editor.state.doc.nodesBetween(from, to, (node: any, pos: number) => {
+      if (!node) return true;
+      if (node.isText) {
+        const text = String(node.text ?? "");
+        if (remaining <= text.length) {
+          resolved = pos + remaining;
+          return false;
+        }
+        remaining -= text.length;
+        return true;
+      }
+      if (String(node.type?.name ?? "") === "hard_break") {
+        if (remaining <= 1) {
+          resolved = pos + 1;
+          return false;
+        }
+        remaining -= 1;
+        return true;
+      }
+      return true;
+    });
+    return resolved;
+  };
+
   const runCheckSources = async () => {
     const target = getIndicesForCurrentSelectionOrCursor();
     if (!target) {
@@ -2968,6 +3376,159 @@ export const createAgentSidebar = (
     }
   };
 
+  const runSubstantiate = async () => {
+    const target = getIndicesForCurrentSelectionOrCursor();
+    if (!target) {
+      addMessage("system", "Select text or place cursor in a paragraph, then run Substantiate.");
+      return;
+    }
+    await runSubstantiateForParagraphs(target.indices);
+  };
+
+  const runSubstantiateForParagraphs = async (indices: number[]) => {
+    const ranges = listParagraphRanges();
+    const byN = new Map<number, { n: number; from: number; to: number }>();
+    for (const r of ranges) byN.set(r.n, r);
+    const selected = indices
+      .map((n) => byN.get(n))
+      .filter(Boolean) as Array<{ n: number; from: number; to: number }>;
+    if (selected.length === 0) {
+      addMessage("system", "No target paragraphs for substantiate.");
+      return;
+    }
+
+    const host: any = (window as any).leditorHost;
+    if (!host || typeof host.substantiateAnchors !== "function") {
+      addMessage("assistant", "Substantiate host bridge unavailable.");
+      return;
+    }
+    const contract: any = (window as any).__leditorHost;
+    const lookupPath = String(contract?.inputs?.directQuoteJsonPath ?? "").trim();
+    if (!lookupPath) {
+      addMessage("assistant", "Direct-quote lookup path is not configured.");
+      return;
+    }
+
+    setInflight(true);
+    substantiateResults = [];
+    substantiateError = null;
+    setViewMode("substantiate");
+    setStatus("Running substantiate…");
+    renderBoxes();
+    try {
+      const editor = editorHandle.getEditor();
+      const anchorsPayload: any[] = [];
+      const anchorContextByKey = new Map<
+        string,
+        { paragraph: { n: number; from: number; to: number }; sentence: string; context: any; anchorText: string; anchorTitle: string }
+      >();
+      for (const paragraph of selected) {
+        const anchorsRaw = collectSourceRefsInRange(paragraph.from, paragraph.to);
+        const paragraphTextRaw = editor.state.doc.textBetween(paragraph.from, paragraph.to, "\n");
+        const paragraphText = paragraphTextRaw.trim();
+        const anchors = anchorsRaw.map((a, idx) => {
+          const base = String(a?.href || a?.dataDqid || a?.dataKey || a?.text || "").replace(/\s+/g, " ").trim();
+          const baseShort = base.length > 72 ? `${base.slice(0, 71)}…` : base;
+          const stableKey = `P${paragraph.n}:${baseShort}:${idx + 1}`;
+          return { ...a, key: stableKey };
+        });
+        if (anchors.length === 0) continue;
+        const ctxByKey = extractCitationContext(
+          paragraphTextRaw,
+          anchors.map((a) => ({ key: a.key, text: a.text }))
+        );
+        for (const a of anchors) {
+          const ctx = ctxByKey.get(a.key) ?? null;
+          const sentence = typeof ctx?.sentence === "string" ? String(ctx.sentence).trim() : "";
+          const anchorText = String(a?.text ?? "");
+          const anchorTitle = String(a?.title ?? "");
+          anchorsPayload.push({
+            key: a.key,
+            paragraphN: paragraph.n,
+            text: anchorText,
+            title: anchorTitle,
+            sentence,
+            context: ctx,
+            paragraphText
+          });
+          anchorContextByKey.set(a.key, { paragraph, sentence, context: ctx, anchorText, anchorTitle });
+        }
+      }
+
+      if (anchorsPayload.length === 0) {
+        addMessage("system", "No citation anchors found in the selected paragraphs.");
+        setViewMode("substantiate");
+        renderBoxes();
+        return;
+      }
+
+      const sel = resolveSelectedModelId();
+      const requestId = `sub-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+      const result = await host.substantiateAnchors({
+        requestId,
+        payload: {
+          provider: sel.provider,
+          model: sel.model,
+          lookupPath,
+          anchors: anchorsPayload
+        }
+      });
+
+      if (!result?.success) {
+        substantiateError = result?.error ? String(result.error) : "Substantiate failed.";
+        addMessage("assistant", substantiateError);
+        setViewMode("substantiate");
+        renderBoxes();
+        return;
+      }
+
+      const resultsRaw = Array.isArray(result?.results) ? result.results : [];
+      const byKey = new Map<string, any>();
+      for (const r of resultsRaw) {
+        const key = typeof r?.key === "string" ? r.key : "";
+        if (!key) continue;
+        byKey.set(key, r);
+      }
+
+      const nextResults: SubstantiateSuggestion[] = [];
+      for (const [key, context] of anchorContextByKey.entries()) {
+        const r = byKey.get(key);
+        if (!r) continue;
+        const ctx = context.context ?? null;
+        const sentence = context.sentence;
+        const from =
+          ctx && Number.isFinite(ctx.start) ? resolveTextOffsetToDocPos(context.paragraph.from, context.paragraph.to, Number(ctx.start)) : undefined;
+        const to =
+          ctx && Number.isFinite(ctx.end) ? resolveTextOffsetToDocPos(context.paragraph.from, context.paragraph.to, Number(ctx.end)) : undefined;
+        nextResults.push({
+          key,
+          paragraphN: context.paragraph.n,
+          anchorText: context.anchorText,
+          anchorTitle: context.anchorTitle,
+          sentence,
+          rewrite: typeof r?.rewrite === "string" ? String(r.rewrite) : sentence,
+          stance:
+            r?.stance === "corroborates" || r?.stance === "refutes" || r?.stance === "mixed" || r?.stance === "uncertain"
+              ? r.stance
+              : "uncertain",
+          notes: typeof r?.notes === "string" ? String(r.notes) : undefined,
+          matches: Array.isArray(r?.matches) ? r.matches : [],
+          from,
+          to,
+          status: "pending"
+        });
+      }
+
+      substantiateResults = nextResults;
+      setViewMode("substantiate");
+      setStatus(`Substantiate ready • ${nextResults.length} suggestion(s).`);
+      renderBoxes();
+    } finally {
+      setInflight(false);
+      editorHandle.focus();
+    }
+  };
+
   // Keep the Sources tab in sync with persisted checks as they are loaded/updated.
   let sourceThreadRaf = 0;
   const unsubscribeSourceThread = subscribeSourceChecksThread(() => {
@@ -3108,6 +3669,10 @@ export const createAgentSidebar = (
       }
       if (actionId === "check_sources") {
         void runCheckSources();
+        return;
+      }
+      if (actionId === "substantiate") {
+        void runSubstantiate();
         return;
       }
       applyActionTemplate(actionId);
@@ -3402,6 +3967,7 @@ export const createAgentSidebar = (
 
   window.addEventListener("resize", syncInsets);
   syncInsets();
+  seedHistoryMessages();
   renderMessages();
   updateInputOverlay();
   const host = (window as any).leditorHost;

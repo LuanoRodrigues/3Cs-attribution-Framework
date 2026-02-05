@@ -7,10 +7,11 @@
       "fontFamily": "Times New Roman",
       "fontSizePx": 12,
       "textColor": "#0f172a",
+      "headingColor": "#111827",
       "lineHeight": "double",
       "spaceBeforePx": 0,
       "spaceAfterPx": 8,
-      "textAlign": "left"
+      "textAlign": "justify"
     },
     "citation": {
       "style": "Chicago",

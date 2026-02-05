@@ -183,7 +183,7 @@ void readFeatureFlag(FEATURE_FLAG_KEYS.panelsV2, { settings: featureSettings }).
   panelGrid.setPanelsV2Enabled(enabled);
 });
 
-let lastNonSettingsTab: TabId = "retrieve";
+let lastNonSettingsTab: TabId = "export";
 const panelGrid = new PanelGrid(panelGridContainer, { panelsV2Enabled: true });
 function debugLogPanelState(index: number, marker: string): void {
   const enabled = (() => {
@@ -602,19 +602,19 @@ const ribbonTabs: Record<TabId, RibbonTab> = {
 };
 
 const tabOrder: TabId[] = [
+  "export",
   "retrieve",
   "screen",
   "code",
   "visualiser",
   "analyse",
   "write",
-  "export",
   "settings",
   "tools"
 ];
 const sectionToolIds: Partial<Record<TabId, string>> = {};
 
-let activeTab: TabId = "retrieve";
+let activeTab: TabId = "export";
 
 const tabRibbon = new TabRibbon({
   header: ribbonHeader,
@@ -637,7 +637,7 @@ const tabRibbon = new TabRibbon({
       }
     };
   }),
-  initialTab: "retrieve",
+  initialTab: "export",
   onTabChange: (tabId) => {
     const t0 = performance.now();
     panelGridContainer.style.display = "";

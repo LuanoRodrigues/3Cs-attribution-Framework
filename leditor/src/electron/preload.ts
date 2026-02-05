@@ -276,6 +276,10 @@ const getLlmCatalog = async () => {
   return invoke<void, any>("leditor:llm-catalog", undefined as any);
 };
 
+const agentRun = async (request: { requestId?: string; payload: Record<string, unknown> }) => {
+  return invoke<typeof request, any>("leditor:agent-run", request);
+};
+
 const agentRequest = async (request: { requestId?: string; payload: Record<string, unknown> }) => {
   return invoke<typeof request, any>("leditor:agent-request", request);
 };
@@ -284,8 +288,24 @@ const agentCancel = async (request: { requestId: string }) => {
   return invoke<typeof request, any>("leditor:agent-cancel", request);
 };
 
+const onAgentStreamUpdate = (handler: (payload: Record<string, unknown>) => void) => {
+  const listener = (_event: any, payload: any) => {
+    if (payload && typeof payload === "object") {
+      handler(payload as Record<string, unknown>);
+    }
+  };
+  ipcRenderer.on("leditor:agent-stream-update", listener);
+  return () => {
+    ipcRenderer.off("leditor:agent-stream-update", listener);
+  };
+};
+
 const checkSources = async (request: { requestId?: string; payload: Record<string, unknown> }) => {
   return invoke<typeof request, any>("leditor:check-sources", request);
+};
+
+const substantiateAnchors = async (request: { requestId?: string; payload: Record<string, unknown> }) => {
+  return invoke<typeof request, any>("leditor:substantiate-anchors", request);
 };
 
 const lexicon = async (request: { requestId?: string; payload: Record<string, unknown> }) => {
@@ -337,9 +357,12 @@ contextBridge.exposeInMainWorld("leditorHost", {
   restoreLedocVersion,
   deleteLedocVersion,
   pinLedocVersion,
+  agentRun,
   agentRequest,
   agentCancel,
+  onAgentStreamUpdate,
   checkSources,
+  substantiateAnchors,
   lexicon,
   openPdfViewer,
   resolvePdfPathForItemKey,

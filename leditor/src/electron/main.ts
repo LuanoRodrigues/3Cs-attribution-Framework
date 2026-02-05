@@ -1,9 +1,12 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, type MenuItemConstructorOptions } from "electron";
+import crypto from "crypto";
 import fs from "fs";
 import path from "path";
 import readline from "readline";
 import OpenAI from "openai";
+import { z } from "zod";
 import type { AiSettings } from "./shared/ai";
+import { applyEditsToText, extractParagraphsFromMarkedText, normalizeEdits, type AgentEdit } from "./agent_utils";
 import {
   LEDOC_BUNDLE_VERSION,
   LEDOC_EXTENSION,
@@ -17,6 +20,9 @@ import { createLedocVersion, deleteLedocVersion, listLedocVersions, pinLedocVers
 
 const REFERENCES_LIBRARY_FILENAME = "references_library.json";
 const DEFAULT_LEDOC_FILENAME = "coder_state.ledoc";
+const DEFAULT_EMBEDDING_MODEL = (process.env.LEDITOR_EMBEDDING_MODEL || "text-embedding-3-small").trim();
+const EMBEDDING_BATCH_SIZE = Math.max(8, Math.min(256, Number(process.env.LEDITOR_EMBEDDING_BATCH_SIZE) || 64));
+const EMBEDDING_TOP_K = Math.max(3, Math.min(12, Number(process.env.LEDITOR_EMBEDDING_TOP_K) || 6));
 
 // Avoid GPU-process crashes in environments without stable GPU/driver support.
 app.disableHardwareAcceleration();
@@ -46,6 +52,15 @@ const DEBUG_LOGS = process.env.LEDITOR_DEBUG === "1";
 const dbg = (fn: string, msg: string, extra?: Record<string, unknown>) => {
   if (!DEBUG_LOGS) return;
   const line = `[main.ts][${fn}][debug] ${msg}`;
+  if (extra) {
+    console.debug(line, extra);
+  } else {
+    console.debug(line);
+  }
+};
+
+const agentDbg = (msg: string, extra?: Record<string, unknown>) => {
+  const line = `[agent][runWorkflow][debug] ${msg}`;
   if (extra) {
     console.debug(line, extra);
   } else {
@@ -240,11 +255,26 @@ type AgentHistoryMessage = { role: "user" | "assistant" | "system"; content: str
 type AgentRequestPayload = {
   scope: "selection" | "document";
   instruction: string;
+  actionId?: string;
   selection?: { from: number; to: number; text: string };
   document?: { text: string };
+  documentJson?: object;
   targets?: Array<{ n: number; headingNumber?: string; headingTitle?: string }>;
   history?: AgentHistoryMessage[];
   settings?: AiSettings;
+};
+
+type AgentOperation =
+  | { op: "replaceSelection"; text: string }
+  | { op: "replaceParagraph"; n: number; text: string }
+  | { op: "replaceDocument"; text: string };
+
+type AgentStreamUpdate = {
+  requestId: string;
+  kind: "delta" | "status" | "tool" | "done" | "error";
+  message?: string;
+  delta?: string;
+  tool?: string;
 };
 
 const openaiClients = new Map<string, OpenAI>();
@@ -265,9 +295,8 @@ const getCatalog = (): LlmCatalogProvider[] => [
     envKey: "OPENAI_API_KEY",
     models: [
       { id: "codex-mini-latest", label: "Codex Mini", description: "Deterministic edits" },
-      { id: "gpt-4o-mini", label: "GPT-4o Mini", description: "Fast and responsive" },
-      { id: "gpt-4o", label: "GPT-4o", description: "Reliable general model" },
-      { id: "gpt-5", label: "GPT-5", description: "Intelligent chat model" },
+      { id: "gpt-5-mini", label: "GPT-5 Mini", description: "Fast and responsive" },
+      { id: "gpt-5", label: "GPT-5", description: "Reliable general model" },
       { id: "gpt-5.1", label: "GPT-5.1", description: "Advanced reasoning" }
     ]
   },
@@ -506,6 +535,458 @@ const callLlmText = async (args: {
   });
 };
 
+const callOpenAiEmbeddings = async (args: {
+  apiKey: string;
+  model: string;
+  input: string[];
+  signal?: AbortSignal;
+}): Promise<number[][]> => {
+  const client = getOpenAiClient(args.apiKey);
+  if (!client) throw new Error("Missing OPENAI_API_KEY.");
+  const response: any = await client.embeddings.create(
+    { model: args.model, input: args.input },
+    { signal: args.signal }
+  );
+  const data = Array.isArray(response?.data) ? response.data : [];
+  return data.map((d: any) => (Array.isArray(d?.embedding) ? d.embedding.map((v: any) => Number(v)) : []));
+};
+
+
+const buildOperationsFromEdits = (payload: AgentRequestPayload, edits: AgentEdit[]): AgentOperation[] => {
+  if (!edits.length) return [];
+  if (payload.scope === "selection") {
+    const sel = payload.selection?.text ?? "";
+    const replaced = applyEditsToText(sel, edits);
+    return [{ op: "replaceSelection", text: replaced }];
+  }
+  const docText = payload.document?.text ?? "";
+  const replaced = applyEditsToText(docText, edits);
+  const targets = Array.isArray(payload.targets) ? payload.targets : [];
+  if (targets.length > 0) {
+    const byParagraph = extractParagraphsFromMarkedText(replaced);
+    const ops: AgentOperation[] = [];
+    for (const t of targets) {
+      const n = Number(t?.n);
+      if (!Number.isFinite(n)) continue;
+      const next = byParagraph.get(n);
+      if (typeof next === "string" && next.trim()) {
+        ops.push({ op: "replaceParagraph", n, text: next });
+      }
+    }
+    return ops;
+  }
+  return [{ op: "replaceDocument", text: replaced }];
+};
+
+type AgentsSdk = {
+  Agent: any;
+  run: any;
+  setDefaultOpenAIKey?: (apiKey: string) => void;
+  webSearchTool?: (...args: any[]) => any;
+  codeInterpreterTool?: (...args: any[]) => any;
+  tool?: (def: any) => any;
+  createTool?: (def: any) => any;
+};
+
+let agentsSdkPromise: Promise<AgentsSdk> | null = null;
+const loadAgentsSdk = async (): Promise<AgentsSdk> => {
+  if (!agentsSdkPromise) {
+    agentsSdkPromise = Promise.all([import("@openai/agents"), import("@openai/agents-openai")])
+      .then(([core, openai]: any[]) => ({
+        Agent: core?.Agent,
+        run: core?.run,
+        setDefaultOpenAIKey: core?.setDefaultOpenAIKey,
+        webSearchTool: openai?.webSearchTool ?? core?.webSearchTool,
+        codeInterpreterTool: openai?.codeInterpreterTool ?? core?.codeInterpreterTool,
+        tool: core?.tool,
+        createTool: core?.createTool
+      }))
+      .catch((error) => {
+        agentsSdkPromise = null;
+        throw error;
+      });
+  }
+  return agentsSdkPromise;
+};
+
+const extractStreamDelta = (event: any): { delta?: string; tool?: string; status?: string } | null => {
+  const type = typeof event?.type === "string" ? event.type : "";
+  if (!type) return null;
+  if (type.endsWith("output_text.delta") && typeof event?.delta === "string") {
+    return { delta: event.delta };
+  }
+  if (type.endsWith("output_text.done") && typeof event?.text === "string") {
+    return { delta: event.text };
+  }
+  if (type.includes("tool") && typeof event?.name === "string") {
+    return { tool: event.name };
+  }
+  if (type.includes("tool") && typeof event?.tool_name === "string") {
+    return { tool: event.tool_name };
+  }
+  if (type.includes("error") && typeof event?.message === "string") {
+    return { status: event.message };
+  }
+  return null;
+};
+
+const buildClassifierInput = (payload: AgentRequestPayload): string => {
+  const selection = typeof payload.selection?.text === "string" ? payload.selection.text.trim() : "";
+  const docText = typeof payload.document?.text === "string" ? payload.document.text.trim() : "";
+  const snippet = selection || docText;
+  const context = snippet ? snippet.slice(0, 1200) : "";
+  return JSON.stringify(
+    {
+      instruction: payload.instruction,
+      actionId: typeof payload.actionId === "string" ? payload.actionId : undefined,
+      scope: payload.scope,
+      hasSelection: Boolean(selection),
+      context
+    },
+    null,
+    2
+  );
+};
+
+const runCompatAgentWorkflow = async (args: {
+  payload: AgentRequestPayload;
+  provider: LlmProviderId;
+  apiKey: string;
+  model: string;
+  temperature: number;
+  signal?: AbortSignal;
+}): Promise<{ assistantText: string; applyText?: string; operations: AgentOperation[] }> => {
+  const { system, user } = buildAgentPrompt(args.payload);
+  const history = Array.isArray(args.payload?.history) ? args.payload.history : [];
+  const normalizeHistory = (value: AgentHistoryMessage[]): AgentHistoryMessage[] =>
+    value
+      .map((msg) => ({
+        role: msg?.role,
+        content: typeof msg?.content === "string" ? msg.content : String(msg?.content ?? "")
+      }))
+      .filter((msg) => (msg.role === "user" || msg.role === "assistant" || msg.role === "system") && msg.content.trim())
+      .slice(-20);
+  const historyBlock = normalizeHistory(history)
+    .map((m) => `${m.role.toUpperCase()}: ${m.content}`)
+    .join("\n");
+  const inputText = historyBlock ? `Conversation history:\n${historyBlock}\n\n${user}` : user;
+  const raw = await callLlmText({
+    provider: args.provider,
+    apiKey: args.apiKey,
+    model: args.model,
+    system,
+    input: inputText,
+    temperature: args.temperature,
+    signal: args.signal
+  });
+  const parsed = extractFirstJsonObject(raw);
+  const assistantText = typeof parsed?.assistantText === "string" ? parsed.assistantText : "";
+  const operationsRaw = Array.isArray(parsed?.operations) ? parsed.operations : [];
+  const applyText = typeof parsed?.applyText === "string" ? parsed.applyText : "";
+  const editsRaw = Array.isArray(parsed?.edits) ? parsed.edits : [];
+  const operations = operationsRaw
+    .map((op: any) => {
+      const kind = String(op?.op || "");
+      if (kind === "replaceSelection" && typeof op?.text === "string") {
+        return { op: "replaceSelection" as const, text: op.text };
+      }
+      if (kind === "replaceParagraph" && Number.isFinite(op?.n) && typeof op?.text === "string") {
+        return { op: "replaceParagraph" as const, n: Number(op.n), text: op.text };
+      }
+      if (kind === "replaceDocument" && typeof op?.text === "string") {
+        return { op: "replaceDocument" as const, text: op.text };
+      }
+      return null;
+    })
+    .filter(Boolean) as AgentOperation[];
+
+  const edits = editsRaw
+    .map((e: any) => ({
+      action: String(e?.action || ""),
+      start: Number(e?.start),
+      end: Number(e?.end),
+      text: typeof e?.text === "string" ? e.text : String(e?.text ?? "")
+    }))
+    .filter((e: any) => e.action === "replace" && Number.isFinite(e.start) && Number.isFinite(e.end)) as AgentEdit[];
+
+  if (edits.length > 0) {
+    try {
+      const fromEdits = buildOperationsFromEdits(args.payload, edits);
+      if (fromEdits.length) return { assistantText, applyText, operations: fromEdits };
+    } catch (error) {
+      throw error instanceof Error ? error : new Error(String(error));
+    }
+  }
+
+  if (operations.length === 0 && applyText) {
+    if (args.payload.scope === "selection") {
+      operations.push({ op: "replaceSelection", text: applyText });
+    } else {
+      operations.push({ op: "replaceDocument", text: applyText });
+    }
+  }
+
+  if (!assistantText && operations.length === 0) {
+    throw new Error("Agent response JSON missing assistantText/operations.");
+  }
+
+  return { assistantText, applyText, operations };
+};
+
+const runOpenAiAgentWorkflow = async (args: {
+  requestId?: string;
+  payload: AgentRequestPayload;
+  apiKey: string;
+  model: string;
+  temperature: number;
+  signal?: AbortSignal;
+  onStream?: (update: AgentStreamUpdate) => void;
+}): Promise<{ assistantText: string; operations: AgentOperation[]; citations?: any[]; actions?: any[]; route?: string }> => {
+  const withRetry = async <T>(fn: () => Promise<T>, retries: number): Promise<T> => {
+    try {
+      return await fn();
+    } catch (error) {
+      if (retries <= 0 || args.signal?.aborted) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      return await withRetry(fn, retries - 1);
+    }
+  };
+  const { Agent, run, setDefaultOpenAIKey, webSearchTool, codeInterpreterTool, tool, createTool } = await loadAgentsSdk();
+  if (!Agent || !run) {
+    throw new Error("OpenAI Agents SDK unavailable. Ensure @openai/agents is installed.");
+  }
+  if (typeof setDefaultOpenAIKey === "function") {
+    setDefaultOpenAIKey(args.apiKey);
+  }
+
+  const buildDocFetchTool = (): any | null => {
+    const factory = tool ?? createTool;
+    if (typeof factory !== "function") return null;
+    const parameters = z.object({
+      includeJson: z.boolean().optional(),
+      includeText: z.boolean().optional()
+    });
+    return factory({
+      name: "fetch_document",
+      description:
+        "Return the current document snapshot for this request. Use includeJson/includeText to control fields.",
+      parameters,
+      execute: async (input: any) => {
+        const includeJson = input?.includeJson !== false;
+        const includeText = input?.includeText !== false;
+        return {
+          selection: args.payload.selection ?? null,
+          documentText: includeText ? args.payload.document?.text ?? null : null,
+          documentJson: includeJson ? args.payload.documentJson ?? null : null,
+          targets: Array.isArray(args.payload.targets) ? args.payload.targets : null,
+          blocks: Array.isArray((args.payload as any).blocks) ? (args.payload as any).blocks : null
+        };
+      }
+    });
+  };
+
+  const operationSchema = z.union([
+    z.object({ op: z.literal("replaceSelection"), text: z.string() }),
+    z.object({ op: z.literal("replaceParagraph"), n: z.number(), text: z.string() }),
+    z.object({ op: z.literal("replaceDocument"), text: z.string() })
+  ]);
+  const editSchema = z.object({
+    action: z.literal("replace"),
+    start: z.number(),
+    end: z.number(),
+    text: z.string()
+  });
+  const outputSchema = z.object({
+    assistantText: z.string(),
+    operations: z.array(operationSchema),
+    edits: z.array(editSchema).optional(),
+    citations: z.array(z.object({ url: z.string().optional(), title: z.string().optional(), snippet: z.string().optional() })).optional(),
+    actions: z.array(z.object({ type: z.string(), payload: z.any().optional() })).optional()
+  });
+  const classifySchema = z.object({
+    route: z.enum(["edit", "internal_qa", "external_fact", "general"]).default("edit"),
+    needsSearch: z.boolean().default(false),
+    needsCode: z.boolean().default(false),
+    reason: z.string().optional()
+  });
+
+  const rewriteSchema = z.object({ instruction: z.string() });
+  const rewriteAgent = new Agent({
+    name: "queryRewrite",
+    instructions: [
+      "Rewrite the user's instruction into a clear, single-sentence directive.",
+      "Preserve the user's intent, scope, and constraints.",
+      "Return JSON: {\"instruction\": string}."
+    ].join("\n"),
+    model: args.model,
+    outputType: rewriteSchema,
+    modelSettings: { temperature: 0 }
+  });
+
+  const classifyAgent = new Agent({
+    name: "classify",
+    instructions: [
+      "Classify whether the user instruction needs external web search or code execution.",
+      "Return JSON with fields: route, needsSearch, needsCode, reason.",
+      "route: edit when primarily rewriting the provided text; internal_qa for questions that can be answered with search; external_fact when deep verification or computation is needed; general for other.",
+      "needsSearch: true ONLY if the user asks to verify facts or requests citations beyond the provided document.",
+      "needsCode: true ONLY if calculation or code execution is required to answer."
+    ].join("\n"),
+    model: args.model,
+    outputType: classifySchema,
+    modelSettings: { temperature: 0 }
+  });
+
+  let rewrittenInstruction = args.payload.instruction;
+  try {
+    const rewriteResult = (await withRetry(
+      () => run(rewriteAgent, JSON.stringify({ instruction: args.payload.instruction }), { signal: args.signal }),
+      1
+    )) as any;
+    if (typeof rewriteResult?.finalOutput?.instruction === "string" && rewriteResult.finalOutput.instruction.trim()) {
+      rewrittenInstruction = rewriteResult.finalOutput.instruction.trim();
+    }
+  } catch {
+    // ignore rewrite failures
+  }
+
+  let classification = { route: "edit", needsSearch: false, needsCode: false };
+  try {
+    const classResult = (await withRetry(
+      () =>
+        run(
+          classifyAgent,
+          buildClassifierInput({ ...args.payload, instruction: rewrittenInstruction }),
+          { signal: args.signal }
+        ),
+      1
+    )) as any;
+    classification = classResult?.finalOutput ?? classification;
+  } catch {
+    // ignore classifier failures; default to edit/no tools
+  }
+  const actionIdRaw = typeof args.payload.actionId === "string" ? args.payload.actionId.trim() : "";
+  if (actionIdRaw && actionIdRaw !== "check_sources" && actionIdRaw !== "clear_checks") {
+    classification = { route: "edit", needsSearch: false, needsCode: false };
+  }
+
+  const tools: any[] = [];
+  const docTool = buildDocFetchTool();
+  if (docTool) tools.push(docTool);
+  if (classification.needsSearch && typeof webSearchTool === "function") {
+    tools.push(webSearchTool({ userLocation: { type: "approximate" } }));
+  }
+  if (classification.needsCode && typeof codeInterpreterTool === "function") {
+    tools.push(codeInterpreterTool());
+  }
+
+  const basePrompt = buildAgentPrompt({ ...args.payload, instruction: rewrittenInstruction });
+  const history = Array.isArray(args.payload?.history) ? args.payload.history : [];
+  const normalizedHistory = history
+    .map((msg) => ({
+      role: msg?.role,
+      content: typeof msg?.content === "string" ? msg.content : String(msg?.content ?? "")
+    }))
+    .filter((msg) => (msg.role === "user" || msg.role === "assistant" || msg.role === "system") && msg.content.trim())
+    .slice(-20);
+  const historyBlock = normalizedHistory.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join("\n");
+  const userInput = historyBlock ? `Conversation history:\n${historyBlock}\n\n${basePrompt.user}` : basePrompt.user;
+  const qaPrompt = [
+    basePrompt.system,
+    "This request is Q&A. Do NOT propose edits. operations must be an empty array."
+  ].join("\n");
+  const generalPrompt = [
+    basePrompt.system,
+    "This request is general assistance. Do NOT propose edits. operations must be an empty array."
+  ].join("\n");
+
+  const editAgent = new Agent({
+    name: "assistant",
+    instructions: basePrompt.system,
+    model: args.model,
+    tools: tools.length ? tools : undefined,
+    outputType: outputSchema,
+    modelSettings: { temperature: args.temperature }
+  });
+  const internalQaAgent = new Agent({
+    name: "internalQA",
+    instructions: qaPrompt,
+    model: args.model,
+    tools: [
+      ...(docTool ? [docTool] : []),
+      ...(typeof webSearchTool === "function" ? [webSearchTool({ userLocation: { type: "approximate" } })] : [])
+    ],
+    outputType: outputSchema,
+    modelSettings: { temperature: args.temperature }
+  });
+  const externalFactAgent = new Agent({
+    name: "externalFactFinding",
+    instructions: qaPrompt,
+    model: args.model,
+    tools: [
+      ...(docTool ? [docTool] : []),
+      ...(typeof webSearchTool === "function" ? [webSearchTool({ userLocation: { type: "approximate" } })] : []),
+      ...(typeof codeInterpreterTool === "function" ? [codeInterpreterTool()] : [])
+    ],
+    outputType: outputSchema,
+    modelSettings: { temperature: args.temperature }
+  });
+  const generalAgent = new Agent({
+    name: "generalAssistant",
+    instructions: generalPrompt,
+    model: args.model,
+    tools: tools.length ? tools : undefined,
+    outputType: outputSchema,
+    modelSettings: { temperature: args.temperature }
+  });
+
+  const onStream = typeof args.onStream === "function" ? args.onStream : null;
+  const onEvent = onStream
+    ? (event: any) => {
+        const extracted = extractStreamDelta(event);
+        if (!extracted) return;
+        if (extracted.delta) {
+          onStream({ requestId: args.requestId || "", kind: "delta", delta: extracted.delta });
+        } else if (extracted.tool) {
+          onStream({ requestId: args.requestId || "", kind: "tool", tool: extracted.tool });
+        } else if (extracted.status) {
+          onStream({ requestId: args.requestId || "", kind: "status", message: extracted.status });
+        }
+      }
+    : undefined;
+
+  const selectedAgent =
+    classification.route === "external_fact"
+      ? externalFactAgent
+      : classification.route === "internal_qa"
+        ? internalQaAgent
+        : classification.route === "general"
+          ? generalAgent
+          : editAgent;
+  const result = (await withRetry(
+    () => run(selectedAgent, userInput, { signal: args.signal, onEvent }),
+    1
+  )) as any;
+  const output = result?.finalOutput;
+  if (!output || typeof output.assistantText !== "string" || !Array.isArray(output.operations)) {
+    throw new Error("Agent response missing final output.");
+  }
+  const outputEdits = Array.isArray((output as any).edits)
+    ? ((output as any).edits as AgentEdit[])
+    : [];
+  let operations = output.operations as AgentOperation[];
+  if (outputEdits.length > 0) {
+    operations = buildOperationsFromEdits(args.payload, outputEdits);
+  }
+  return {
+    assistantText: output.assistantText,
+    operations,
+    citations: Array.isArray((output as any).citations) ? (output as any).citations : undefined,
+    actions: Array.isArray((output as any).actions) ? (output as any).actions : undefined,
+    route: classification.route
+  };
+};
+
 const buildAgentPrompt = (payload: AgentRequestPayload): { system: string; user: string } => {
   const scope = payload.scope;
   const instruction = String(payload.instruction || "").trim();
@@ -523,6 +1004,8 @@ const buildAgentPrompt = (payload: AgentRequestPayload): { system: string; user:
   const formality =
     formalityRaw === "casual" || formalityRaw === "neutral" || formalityRaw === "formal" ? formalityRaw : "formal";
   const styleLine = `Style: audience=${audience}; formality=${formality}.`;
+  const actionIdRaw = typeof payload.actionId === "string" ? payload.actionId.trim() : "";
+  const actionLine = actionIdRaw ? `Action: ${actionIdRaw}. Follow this action unless it conflicts with the instruction.` : "";
 
   const hasTargets = Array.isArray(payload.targets) && payload.targets.length > 0;
   const operationSchemaLines =
@@ -535,12 +1018,15 @@ const buildAgentPrompt = (payload: AgentRequestPayload): { system: string; user:
   const system = [
     "You are an AI writing assistant embedded in an offline desktop academic editor.",
     styleLine,
+    actionLine,
     "Return STRICT JSON only (no markdown, no backticks, no extra keys).",
-    'Schema: {"assistantText": string, "operations": Array<Operation>}.',
+    'Schema: {"assistantText": string, "operations": Array<Operation>, "edits"?: Array<Edit>}.',
     "Operation is one of:",
     ...operationSchemaLines,
+    "Edit is: {\"action\":\"replace\",\"start\":number,\"end\":number,\"text\":string} with offsets relative to the provided text block.",
     "assistantText: brief response to the user (what you did / answer).",
     "If the instruction is NOT a request to modify text (e.g. user asks a question), return operations: [] and answer in assistantText.",
+    "You may return edits instead of operations. If edits is present, operations may be [].",
     "Never include surrounding quotes in text fields; return raw text."
   ].join("\n");
 
@@ -614,6 +1100,125 @@ const buildAgentPrompt = (payload: AgentRequestPayload): { system: string; user:
   }
   const user = userParts.join("\n");
   return { system, user };
+};
+
+const runAgentRequestInternal = async (
+  event: Electron.IpcMainInvokeEvent,
+  request: { requestId?: string; payload: AgentRequestPayload },
+  options?: { stream?: boolean }
+): Promise<{
+  success: boolean;
+  assistantText?: string;
+  applyText?: string;
+  operations?: AgentOperation[];
+  error?: string;
+  meta?: { provider: LlmProviderId; model?: string; ms?: number };
+}> => {
+  const started = Date.now();
+  const requestId = typeof (request as any)?.requestId === "string" ? String((request as any).requestId) : "";
+  const abortController = new AbortController();
+  const inflight = (globalThis as any).__leditorAgentInflight as Map<string, AbortController> | undefined;
+  const inflightMap =
+    inflight ??
+    (() => {
+      const m = new Map<string, AbortController>();
+      (globalThis as any).__leditorAgentInflight = m;
+      return m;
+    })();
+  if (requestId) inflightMap.set(requestId, abortController);
+  try {
+    const payload = request?.payload as AgentRequestPayload;
+    const settings = payload?.settings;
+    const rawProvider = typeof (settings as any)?.provider === "string" ? String((settings as any).provider).trim() : "";
+    const provider: LlmProviderId =
+      rawProvider === "openai" || rawProvider === "deepseek" || rawProvider === "mistral" || rawProvider === "gemini"
+        ? (rawProvider as LlmProviderId)
+        : "openai";
+    const fallback = getDefaultModelForProvider(provider);
+    const model = String(settings?.model || "").trim() || fallback.model || (provider === "openai" ? "codex-mini-latest" : "");
+    const temperature = typeof settings?.temperature === "number" ? settings.temperature : 0.2;
+    const apiKey = getProviderApiKey(provider, settings?.apiKey);
+    if (!apiKey) {
+      const envKey = getProviderEnvKeyName(provider);
+      return { success: false, error: `Missing ${envKey} in environment.` };
+    }
+
+    agentDbg("start", { requestId, provider, model, scope: payload.scope });
+
+    const onStream =
+      options?.stream && requestId
+        ? (update: AgentStreamUpdate) => {
+            if (!update.requestId) update.requestId = requestId;
+            try {
+              event.sender.send("leditor:agent-stream-update", update);
+            } catch {
+              // ignore
+            }
+          }
+        : undefined;
+
+    const result: any =
+      provider === "openai"
+        ? await runOpenAiAgentWorkflow({
+            requestId,
+            payload,
+            apiKey,
+            model,
+            temperature,
+            signal: abortController.signal,
+            onStream
+          })
+        : await runCompatAgentWorkflow({
+            payload,
+            provider,
+            apiKey,
+            model,
+            temperature,
+            signal: abortController.signal
+          });
+
+    if (provider === "openai" && payload?.instruction && result?.operations && result?.operations?.length) {
+      const route = (result as any).route;
+      if (route && route !== "edit") {
+        result.operations = [];
+      }
+    }
+
+    return {
+      success: true,
+      assistantText: result.assistantText,
+      applyText: typeof result.applyText === "string" ? result.applyText : undefined,
+      operations: result.operations,
+      ...(Array.isArray(result.citations) ? { citations: result.citations } : {}),
+      ...(Array.isArray(result.actions) ? { actions: result.actions } : {}),
+      meta: { provider, model, ms: Date.now() - started }
+    };
+  } catch (error) {
+    const message = normalizeError(error);
+    agentDbg("error", { requestId, error: message });
+    if (options?.stream && requestId) {
+      try {
+        event.sender.send("leditor:agent-stream-update", { requestId, kind: "error", message });
+      } catch {
+        // ignore
+      }
+    }
+    return {
+      success: false,
+      error: message,
+      meta: { provider: "openai" as const, ms: Date.now() - started }
+    };
+  } finally {
+    if (requestId) inflightMap.delete(requestId);
+    if (options?.stream && requestId) {
+      try {
+        event.sender.send("leditor:agent-stream-update", { requestId, kind: "done" });
+      } catch {
+        // ignore
+      }
+    }
+    agentDbg("done", { requestId, ms: Date.now() - started });
+  }
 };
 
 const pdfViewerPayloads = new Map<string, Record<string, unknown>>();
@@ -1085,6 +1690,126 @@ const readJsonValueAt = async (lookupPath: string, startPos: number): Promise<un
   }
 };
 
+const readJsonValueAtWithHandle = async (
+  fd: fs.promises.FileHandle,
+  startPos: number
+): Promise<unknown | null> => {
+  try {
+    const chunkSize = 128 * 1024;
+    let pos = startPos;
+    const parts: Buffer[] = [];
+    let totalBytes = 0;
+
+    let started = false;
+    let firstByte = 0;
+    let inString = false;
+    let escape = false;
+    let braceDepth = 0;
+    let bracketDepth = 0;
+
+    const isWs = (b: number) => b === 0x20 || b === 0x0a || b === 0x0d || b === 0x09;
+
+    for (let iter = 0; iter < 20000; iter += 1) {
+      const chunk = Buffer.alloc(chunkSize);
+      const read = await fd.read(chunk, 0, chunkSize, pos);
+      if (read.bytesRead <= 0) break;
+      const buf = chunk.subarray(0, read.bytesRead);
+      parts.push(buf);
+      totalBytes += buf.length;
+      pos += read.bytesRead;
+
+      if (totalBytes > 64 * 1024 * 1024) {
+        throw new Error("direct-quote-value-too-large");
+      }
+
+      let globalIndex = 0;
+      for (const p of parts) {
+        for (let i = 0; i < p.length; i += 1) {
+          const b = p[i];
+          if (!started) {
+            if (isWs(b)) {
+              globalIndex += 1;
+              continue;
+            }
+            started = true;
+            firstByte = b;
+            if (firstByte === 0x22) inString = true;
+          }
+
+          if (inString) {
+            if (escape) {
+              escape = false;
+              globalIndex += 1;
+              continue;
+            }
+            if (b === 0x5c) {
+              escape = true;
+              globalIndex += 1;
+              continue;
+            }
+            if (b === 0x22) {
+              inString = false;
+              if (firstByte === 0x22) {
+                const end = globalIndex + 1;
+                const full = Buffer.concat(parts, totalBytes);
+                const slice = full.subarray(0, end).toString("utf8");
+                return JSON.parse(normalizeLegacyJson(slice));
+              }
+            }
+            globalIndex += 1;
+            continue;
+          }
+
+          if (b === 0x22) {
+            inString = true;
+            globalIndex += 1;
+            continue;
+          }
+
+          if (firstByte === 0x7b || braceDepth > 0) {
+            if (b === 0x7b) braceDepth += 1;
+            else if (b === 0x7d) braceDepth -= 1;
+            if (firstByte === 0x7b && braceDepth === 0 && b === 0x7d) {
+              const end = globalIndex + 1;
+              const full = Buffer.concat(parts, totalBytes);
+              const slice = full.subarray(0, end).toString("utf8");
+              return JSON.parse(normalizeLegacyJson(slice));
+            }
+            globalIndex += 1;
+            continue;
+          }
+
+          if (firstByte === 0x5b || bracketDepth > 0) {
+            if (b === 0x5b) bracketDepth += 1;
+            else if (b === 0x5d) bracketDepth -= 1;
+            if (firstByte === 0x5b && bracketDepth === 0 && b === 0x5d) {
+              const end = globalIndex + 1;
+              const full = Buffer.concat(parts, totalBytes);
+              const slice = full.subarray(0, end).toString("utf8");
+              return JSON.parse(normalizeLegacyJson(slice));
+            }
+            globalIndex += 1;
+            continue;
+          }
+
+          if (b === 0x2c || b === 0x7d || b === 0x5d) {
+            const end = globalIndex;
+            const full = Buffer.concat(parts, totalBytes);
+            const raw = full.subarray(0, end).toString("utf8").trim();
+            if (!raw) return null;
+            return JSON.parse(normalizeLegacyJson(raw));
+          }
+
+          globalIndex += 1;
+        }
+      }
+    }
+    return null;
+  } catch (error) {
+    throw error;
+  }
+};
+
 export const getDirectQuotePayload = async (lookupPath: string, dqid: string): Promise<unknown | null> => {
   const target = normalizeFsPath(lookupPath);
   const id = String(dqid || "").trim().toLowerCase();
@@ -1122,6 +1847,334 @@ export const getDirectQuotePayload = async (lookupPath: string, dqid: string): P
     return value;
   } finally {
     await fd.close();
+  }
+};
+
+type EmbeddingIndexItem = {
+  id: string;
+  title: string;
+  author?: string;
+  year?: string;
+  source?: string;
+  page?: number;
+  directQuote?: string;
+  paraphrase?: string;
+};
+
+type EmbeddingIndex = {
+  key: string;
+  lookupPath: string;
+  mtimeMs: number;
+  model: string;
+  dims: number;
+  items: EmbeddingIndexItem[];
+  vectors: Float32Array;
+  ready: boolean;
+  building: boolean;
+  total: number;
+  processed: number;
+  builtAt: number;
+  lastError?: string;
+};
+
+const embeddingIndexCache = new Map<string, EmbeddingIndex>();
+const embeddingIndexInflight = new Map<string, Promise<EmbeddingIndex>>();
+
+const getEmbeddingCacheDir = (): string => path.join(app.getPath("userData"), "embedding-cache");
+
+const makeEmbeddingCacheKey = (lookupPath: string, model: string, mtimeMs: number): string => {
+  const hash = crypto.createHash("sha1");
+  hash.update(`${lookupPath}|${model}|${mtimeMs}`);
+  return hash.digest("hex");
+};
+
+const normalizeEmbeddingText = (value: string): string =>
+  String(value || "")
+    .replace(/\s+/g, " ")
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'")
+    .trim();
+
+const loadEmbeddingIndexFromDisk = async (args: {
+  lookupPath: string;
+  mtimeMs: number;
+  model: string;
+  key: string;
+}): Promise<EmbeddingIndex | null> => {
+  try {
+    const dir = getEmbeddingCacheDir();
+    const metaPath = path.join(dir, `dq_${args.key}.json`);
+    const binPath = path.join(dir, `dq_${args.key}.bin`);
+    const metaRaw = await fs.promises.readFile(metaPath, "utf8");
+    const meta = JSON.parse(metaRaw) as any;
+    if (!meta || meta.model !== args.model || meta.mtimeMs !== args.mtimeMs) return null;
+    const buf = await fs.promises.readFile(binPath);
+    const dims = Math.max(1, Number(meta.dims) || 0);
+    const items = Array.isArray(meta.items) ? (meta.items as EmbeddingIndexItem[]) : [];
+    const vec = new Float32Array(buf.buffer, buf.byteOffset, Math.floor(buf.byteLength / 4));
+    if (items.length * dims !== vec.length) return null;
+    const index: EmbeddingIndex = {
+      key: args.key,
+      lookupPath: args.lookupPath,
+      mtimeMs: args.mtimeMs,
+      model: args.model,
+      dims,
+      items,
+      vectors: vec,
+      ready: true,
+      building: false,
+      total: items.length,
+      processed: items.length,
+      builtAt: Number(meta.builtAt) || Date.now()
+    };
+    return index;
+  } catch {
+    return null;
+  }
+};
+
+const saveEmbeddingIndexToDisk = async (index: EmbeddingIndex): Promise<void> => {
+  try {
+    const dir = getEmbeddingCacheDir();
+    await fs.promises.mkdir(dir, { recursive: true });
+    const metaPath = path.join(dir, `dq_${index.key}.json`);
+    const binPath = path.join(dir, `dq_${index.key}.bin`);
+    const meta = {
+      key: index.key,
+      lookupPath: index.lookupPath,
+      mtimeMs: index.mtimeMs,
+      model: index.model,
+      dims: index.dims,
+      builtAt: index.builtAt,
+      items: index.items
+    };
+    await fs.promises.writeFile(metaPath, JSON.stringify(meta));
+    await fs.promises.writeFile(binPath, Buffer.from(index.vectors.buffer));
+  } catch (error) {
+    console.warn("[substantiate] failed to persist embedding index", normalizeError(error));
+  }
+};
+
+const normalizeVectorInPlace = (vec: number[]): number[] => {
+  let sum = 0;
+  for (const v of vec) sum += v * v;
+  const norm = Math.sqrt(sum);
+  if (!norm) return vec;
+  for (let i = 0; i < vec.length; i += 1) vec[i] = vec[i]! / norm;
+  return vec;
+};
+
+const dotProduct = (query: number[], vecs: Float32Array, offset: number): number => {
+  let sum = 0;
+  for (let i = 0; i < query.length; i += 1) {
+    sum += query[i]! * vecs[offset + i]!;
+  }
+  return sum;
+};
+
+const ensureEmbeddingIndex = async (args: {
+  lookupPath: string;
+  model: string;
+  apiKey: string;
+}): Promise<EmbeddingIndex> => {
+  const target = normalizeFsPath(args.lookupPath);
+  if (!target) throw new Error("lookupPath is required");
+  const stat = await fs.promises.stat(target);
+  const mtimeMs = stat?.mtimeMs ?? 0;
+  const key = makeEmbeddingCacheKey(target, args.model, mtimeMs);
+  const cached = embeddingIndexCache.get(key);
+  if (cached && cached.ready) return cached;
+  const inflight = embeddingIndexInflight.get(key);
+  if (inflight) return inflight;
+
+  const fromDisk = await loadEmbeddingIndexFromDisk({ lookupPath: target, mtimeMs, model: args.model, key });
+  if (fromDisk) {
+    embeddingIndexCache.set(key, fromDisk);
+    return fromDisk;
+  }
+
+  const buildPromise = (async () => {
+    const index: EmbeddingIndex = {
+      key,
+      lookupPath: target,
+      mtimeMs,
+      model: args.model,
+      dims: 0,
+      items: [],
+      vectors: new Float32Array(0),
+      ready: false,
+      building: true,
+      total: 0,
+      processed: 0,
+      builtAt: Date.now()
+    };
+    embeddingIndexCache.set(key, index);
+
+    const positions = await ensureDqidIndex(target);
+    index.total = positions.size;
+    const items: EmbeddingIndexItem[] = [];
+    const titles: string[] = [];
+    const fd = await fs.promises.open(target, "r");
+    try {
+      let seen = 0;
+      for (const [id, keyPos] of positions.entries()) {
+        const valueStart = await computeValueStartPos(fd, keyPos);
+        if (valueStart == null) {
+          seen += 1;
+          continue;
+        }
+        const raw = (await readJsonValueAtWithHandle(fd, valueStart)) as any;
+        const title = normalizeEmbeddingText(raw?.title ?? "");
+        if (title) {
+          items.push({
+            id,
+            title,
+            author: typeof raw?.author_summary === "string" ? raw.author_summary : undefined,
+            year: typeof raw?.year === "string" ? raw.year : undefined,
+            source: typeof raw?.source === "string" ? raw.source : undefined,
+            page: Number.isFinite(raw?.page) ? Number(raw.page) : undefined,
+            directQuote: typeof raw?.direct_quote_clean === "string" ? raw.direct_quote_clean : typeof raw?.direct_quote === "string" ? raw.direct_quote : undefined,
+            paraphrase: typeof raw?.paraphrase === "string" ? raw.paraphrase : undefined
+          });
+          titles.push(title);
+        }
+        seen += 1;
+        if (seen % 500 === 0) {
+          index.processed = seen;
+        }
+      }
+      index.processed = seen;
+    } finally {
+      await fd.close();
+    }
+
+    if (items.length === 0) {
+      index.ready = true;
+      index.building = false;
+      index.items = [];
+      index.vectors = new Float32Array(0);
+      embeddingIndexCache.set(key, index);
+      return index;
+    }
+
+    const embeddings: number[][] = [];
+    for (let i = 0; i < titles.length; i += EMBEDDING_BATCH_SIZE) {
+      const batch = titles.slice(i, i + EMBEDDING_BATCH_SIZE);
+      const vectors = await callOpenAiEmbeddings({ apiKey: args.apiKey, model: args.model, input: batch });
+      embeddings.push(...vectors);
+      index.processed = Math.min(index.total, index.processed + batch.length);
+    }
+
+    const dims = embeddings[0]?.length ?? 0;
+    if (!dims) {
+      index.ready = true;
+      index.building = false;
+      index.items = [];
+      index.vectors = new Float32Array(0);
+      index.lastError = "Embedding model returned no vectors.";
+      embeddingIndexCache.set(key, index);
+      return index;
+    }
+    index.dims = dims;
+    index.items = items;
+    index.vectors = new Float32Array(items.length * dims);
+    for (let i = 0; i < items.length; i += 1) {
+      const vec = normalizeVectorInPlace(embeddings[i] ?? []);
+      const base = i * dims;
+      for (let j = 0; j < dims; j += 1) {
+        index.vectors[base + j] = Number(vec[j] ?? 0);
+      }
+    }
+
+    index.ready = true;
+    index.building = false;
+    index.builtAt = Date.now();
+    embeddingIndexCache.set(key, index);
+    await saveEmbeddingIndexToDisk(index);
+    return index;
+  })()
+    .catch((error) => {
+      const msg = normalizeError(error);
+      const failed: EmbeddingIndex = {
+        key,
+        lookupPath: target,
+        mtimeMs,
+        model: args.model,
+        dims: 0,
+        items: [],
+        vectors: new Float32Array(0),
+        ready: true,
+        building: false,
+        total: 0,
+        processed: 0,
+        builtAt: Date.now(),
+        lastError: msg
+      };
+      embeddingIndexCache.set(key, failed);
+      return failed;
+    })
+    .finally(() => {
+      embeddingIndexInflight.delete(key);
+    });
+
+  embeddingIndexInflight.set(key, buildPromise);
+  return buildPromise;
+};
+
+const searchEmbeddingIndex = (
+  index: EmbeddingIndex,
+  query: number[],
+  topK: number
+): Array<{ item: EmbeddingIndexItem; score: number }> => {
+  if (!index.items.length || index.dims === 0) return [];
+  if (query.length !== index.dims) return [];
+  const k = Math.max(1, Math.min(topK, index.items.length));
+  const results: Array<{ idx: number; score: number }> = [];
+  let minScore = Infinity;
+  let minIdx = -1;
+  for (let i = 0; i < index.items.length; i += 1) {
+    const score = dotProduct(query, index.vectors, i * index.dims);
+    if (results.length < k) {
+      results.push({ idx: i, score });
+      if (score < minScore) {
+        minScore = score;
+        minIdx = results.length - 1;
+      }
+      continue;
+    }
+    if (score <= minScore) continue;
+    results[minIdx] = { idx: i, score };
+    minScore = results[0]!.score;
+    minIdx = 0;
+    for (let r = 1; r < results.length; r += 1) {
+      if (results[r]!.score < minScore) {
+        minScore = results[r]!.score;
+        minIdx = r;
+      }
+    }
+  }
+  return results
+    .sort((a, b) => b.score - a.score)
+    .map((r) => ({ item: index.items[r.idx]!, score: r.score }));
+};
+
+const parseStrictJsonObject = (raw: string): any | null => {
+  const trimmed = String(raw ?? "").trim();
+  if (!trimmed) return null;
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    const start = trimmed.indexOf("{");
+    const end = trimmed.lastIndexOf("}");
+    if (start >= 0 && end > start) {
+      const slice = trimmed.slice(start, end + 1);
+      try {
+        return JSON.parse(slice);
+      } catch {
+        return null;
+      }
+    }
+    return null;
   }
 };
 
@@ -1695,113 +2748,13 @@ app.whenReady().then(() => {
     return { success: false, error: "Default LEDOC path not found" };
   });
 
-  registerIpc("leditor:agent-request", async (_event, request: { requestId?: string; payload: AgentRequestPayload }) => {
-    const started = Date.now();
-    const requestId = typeof (request as any)?.requestId === "string" ? String((request as any).requestId) : "";
-    const abortController = new AbortController();
-    const inflight = (globalThis as any).__leditorAgentInflight as Map<string, AbortController> | undefined;
-    const inflightMap =
-      inflight ??
-      (() => {
-        const m = new Map<string, AbortController>();
-        (globalThis as any).__leditorAgentInflight = m;
-        return m;
-      })();
-    if (requestId) inflightMap.set(requestId, abortController);
-    try {
-      const payload = request?.payload as AgentRequestPayload;
-      const settings = payload?.settings;
-      const rawProvider = typeof (settings as any)?.provider === "string" ? String((settings as any).provider).trim() : "";
-      const provider: LlmProviderId =
-        rawProvider === "openai" || rawProvider === "deepseek" || rawProvider === "mistral" || rawProvider === "gemini"
-          ? (rawProvider as LlmProviderId)
-          : "openai";
-      const fallback = getDefaultModelForProvider(provider);
-      const model = String(settings?.model || "").trim() || fallback.model || (provider === "openai" ? "codex-mini-latest" : "");
-      const temperature = typeof settings?.temperature === "number" ? settings.temperature : 0.2;
-      const apiKey = getProviderApiKey(provider, settings?.apiKey);
-      if (!apiKey) {
-        const envKey = getProviderEnvKeyName(provider);
-        return { success: false, error: `Missing ${envKey} in environment.` };
-      }
+  registerIpc("leditor:agent-run", async (event, request: { requestId?: string; payload: AgentRequestPayload }) => {
+    return runAgentRequestInternal(event, request, { stream: true });
+  });
 
-      const { system, user } = buildAgentPrompt(payload);
-
-      const history = Array.isArray(payload?.history) ? payload.history : [];
-      const normalizeHistory = (value: AgentHistoryMessage[]): AgentHistoryMessage[] =>
-        value
-          .map((msg) => ({
-            role: msg?.role,
-            content: typeof msg?.content === "string" ? msg.content : String(msg?.content ?? "")
-          }))
-          .filter((msg) => (msg.role === "user" || msg.role === "assistant" || msg.role === "system") && msg.content.trim())
-          .slice(-20);
-
-      const historyBlock = normalizeHistory(history)
-        .map((m) => `${m.role.toUpperCase()}: ${m.content}`)
-        .join("\n");
-      const inputText = historyBlock ? `Conversation history:\n${historyBlock}\n\n${user}` : user;
-      const raw = await callLlmText({
-        provider,
-        apiKey,
-        model,
-        system,
-        input: inputText,
-        temperature,
-        signal: abortController.signal
-      });
-      const parsed = extractFirstJsonObject(raw);
-      const assistantText = typeof parsed?.assistantText === "string" ? parsed.assistantText : "";
-      const operationsRaw = Array.isArray(parsed?.operations) ? parsed.operations : [];
-      const applyText = typeof parsed?.applyText === "string" ? parsed.applyText : "";
-      const operations = operationsRaw
-        .map((op: any) => {
-          const kind = String(op?.op || "");
-          if (kind === "replaceSelection" && typeof op?.text === "string") {
-            return { op: "replaceSelection" as const, text: op.text };
-          }
-          if (kind === "replaceParagraph" && Number.isFinite(op?.n) && typeof op?.text === "string") {
-            return { op: "replaceParagraph" as const, n: Number(op.n), text: op.text };
-          }
-          if (kind === "replaceDocument" && typeof op?.text === "string") {
-            return { op: "replaceDocument" as const, text: op.text };
-          }
-          return null;
-        })
-        .filter(Boolean) as Array<
-        | { op: "replaceSelection"; text: string }
-        | { op: "replaceParagraph"; n: number; text: string }
-        | { op: "replaceDocument"; text: string }
-      >;
-
-      // Backward compatibility: accept applyText outputs.
-      if (operations.length === 0 && applyText) {
-        if (payload.scope === "selection") {
-          operations.push({ op: "replaceSelection", text: applyText });
-        } else {
-          operations.push({ op: "replaceDocument", text: applyText });
-        }
-      }
-
-      if (!assistantText && operations.length === 0) {
-        throw new Error("Agent response JSON missing assistantText/operations.");
-      }
-      return {
-        success: true,
-        assistantText,
-        applyText,
-        operations,
-        meta: { provider, model, ms: Date.now() - started }
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: normalizeError(error),
-        meta: { provider: "openai" as const, ms: Date.now() - started }
-      };
-    } finally {
-      if (requestId) inflightMap.delete(requestId);
-    }
+  // Backward compatibility: non-streaming agent bridge.
+  registerIpc("leditor:agent-request", async (event, request: { requestId?: string; payload: AgentRequestPayload }) => {
+    return runAgentRequestInternal(event, request, { stream: false });
   });
 
   registerIpc("leditor:agent-cancel", async (_event, request: { requestId: string }) => {
@@ -1978,6 +2931,152 @@ app.whenReady().then(() => {
           assistantText: `Checked ${checks.length} source(s).`,
           checks,
           meta: { provider, model, ms: Date.now() - started }
+        };
+      } catch (error) {
+        return {
+          success: false,
+          error: normalizeError(error),
+          meta: { provider: "openai" as const, ms: Date.now() - started }
+        };
+      }
+    }
+  );
+
+  registerIpc(
+    "leditor:substantiate-anchors",
+    async (
+      _event,
+      request: {
+        requestId?: string;
+        payload: {
+          provider?: string;
+          model?: string;
+          embeddingModel?: string;
+          lookupPath?: string;
+          anchors?: any[];
+        };
+      }
+    ) => {
+      const started = Date.now();
+      try {
+        const payload = request?.payload as any;
+        const rawProvider = typeof payload?.provider === "string" ? String(payload.provider).trim() : "";
+        const provider: LlmProviderId =
+          rawProvider === "openai" || rawProvider === "deepseek" || rawProvider === "mistral" || rawProvider === "gemini"
+            ? (rawProvider as LlmProviderId)
+            : "openai";
+        const fallback = getDefaultModelForProvider(provider);
+        const model = String(payload?.model || "").trim() || fallback.model || (provider === "openai" ? "codex-mini-latest" : "");
+        const embeddingModel = String(payload?.embeddingModel || DEFAULT_EMBEDDING_MODEL).trim() || DEFAULT_EMBEDDING_MODEL;
+        const lookupPath = String(payload?.lookupPath ?? "").trim();
+        const anchors = Array.isArray(payload?.anchors) ? payload.anchors : [];
+        if (!lookupPath) return { success: false, error: "substantiate: lookupPath required" };
+        if (!anchors.length) return { success: true, results: [] };
+
+        const llmApiKey = getProviderApiKey(provider, undefined);
+        if (!llmApiKey) {
+          const envKey = getProviderEnvKeyName(provider);
+          return { success: false, error: `Missing ${envKey} in environment.` };
+        }
+        const embeddingApiKey = getProviderApiKey("openai", undefined);
+        if (!embeddingApiKey) {
+          const envKey = getProviderEnvKeyName("openai");
+          return { success: false, error: `Missing ${envKey} in environment.` };
+        }
+
+        const index = await ensureEmbeddingIndex({ lookupPath, model: embeddingModel, apiKey: embeddingApiKey });
+        if (index.lastError) return { success: false, error: index.lastError };
+
+        const queryTexts = anchors.map((a: any) => {
+          const title = normalizeEmbeddingText(a?.title ?? "");
+          if (title) return title;
+          const sentence = normalizeEmbeddingText(a?.sentence ?? "");
+          if (sentence) return sentence;
+          const fallbackText = normalizeEmbeddingText(a?.text ?? "");
+          return fallbackText || "unknown";
+        });
+        const queryEmbeddings = await callOpenAiEmbeddings({
+          apiKey: embeddingApiKey,
+          model: embeddingModel,
+          input: queryTexts
+        });
+
+        const system = [
+          "You are an academic writing assistant inside an offline editor.",
+          "Rewrite ONE sentence to make the claim more precise and substantiated using the matched evidence.",
+          "Preserve the anchor token EXACTLY as provided (verbatim string).",
+          "Do NOT add or remove citations or anchors.",
+          "If matches conflict, narrow/qualify the claim or note uncertainty.",
+          'Return STRICT JSON only: {"rewrite":string,"stance":"corroborates"|"refutes"|"mixed"|"uncertain","notes":string}.',
+          "rewrite must be a single sentence."
+        ].join("\n");
+
+        const results: any[] = [];
+        for (let i = 0; i < anchors.length; i += 1) {
+          const anchor = anchors[i] ?? {};
+          const anchorText = String(anchor?.text ?? "");
+          const anchorTitle = String(anchor?.title ?? "");
+          const sentence = String(anchor?.sentence ?? "");
+          const paragraphText = String(anchor?.paragraphText ?? "");
+          const qvec = normalizeVectorInPlace(queryEmbeddings[i] ?? []);
+          const matchesRaw = qvec.length ? searchEmbeddingIndex(index, qvec, EMBEDDING_TOP_K) : [];
+          const matches = matchesRaw.map((m) => ({
+            dqid: m.item.id,
+            title: m.item.title,
+            author: m.item.author,
+            year: m.item.year,
+            source: m.item.source,
+            page: m.item.page,
+            directQuote: m.item.directQuote,
+            paraphrase: m.item.paraphrase,
+            score: m.score
+          }));
+
+          let rewrite = sentence;
+          let stance = "uncertain";
+          let notes = "";
+          if (sentence && anchorText) {
+            const input = JSON.stringify(
+              {
+                anchor: { text: anchorText, title: anchorTitle },
+                sentence,
+                paragraph: paragraphText.slice(0, 1200),
+                matches: matches.slice(0, 4)
+              },
+              null,
+              2
+            );
+            const raw = await callLlmText({ provider, apiKey: llmApiKey, model, system, input, signal: undefined });
+            const parsed = parseStrictJsonObject(raw);
+            if (parsed && typeof parsed === "object") {
+              const candidate = typeof parsed.rewrite === "string" ? String(parsed.rewrite).trim() : "";
+              if (candidate) rewrite = candidate;
+              const s = typeof parsed.stance === "string" ? String(parsed.stance).trim().toLowerCase() : "";
+              if (s === "corroborates" || s === "refutes" || s === "mixed" || s === "uncertain") stance = s;
+              notes = typeof parsed.notes === "string" ? String(parsed.notes).trim() : "";
+            }
+          }
+          if (anchorText && rewrite && !rewrite.includes(anchorText)) {
+            rewrite = sentence || rewrite;
+          }
+
+          results.push({
+            key: String(anchor?.key ?? ""),
+            paragraphN: Number(anchor?.paragraphN) || undefined,
+            anchorText,
+            anchorTitle,
+            sentence,
+            rewrite,
+            stance,
+            notes,
+            matches
+          });
+        }
+
+        return {
+          success: true,
+          results,
+          meta: { provider, model, embeddingModel, ms: Date.now() - started }
         };
       } catch (error) {
         return {
