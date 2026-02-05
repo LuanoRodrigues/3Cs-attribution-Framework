@@ -1050,6 +1050,8 @@ import { resolveThemeTokens, themeIds, type ThemeId } from "../renderer/theme/to
     add("Arrow Up/Down", "Change selection (Shift extends range)");
     add("Ctrl/Cmd + Arrow Up/Down", "Move node up/down within its folder");
     add("Ctrl/Cmd + PageUp/PageDown", "Move node to top/bottom of its folder");
+    add("Ctrl/Cmd + Shift + Arrow Right", "Indent selection into previous folder sibling");
+    add("Ctrl/Cmd + Shift + Arrow Left", "Outdent selection to parent folder");
     add("Home / End", "Jump to first/last visible row (Shift extends)");
     add("Ctrl/Cmd + D", "Duplicate selection");
     add("Ctrl/Cmd + Shift + V", "Paste clipboard as new item");

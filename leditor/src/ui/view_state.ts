@@ -82,6 +82,8 @@ const navLog = (event: string, data?: any) => {
   if (!navDebugEnabled()) return;
   try {
     console.info(`[leditor][nav] ${event}`, data ?? "");
+    // Expose state for debugging in DevTools when debug is on.
+    (window as any).__navCollapsed = navCollapsed;
   } catch {
     // ignore
   }
@@ -585,7 +587,7 @@ const renderNavigation = (editor: Editor, force = false) => {
       navRenderLockUntil = Math.max(navRenderLockUntil, now + 80);
       const id = twisty.dataset.id;
       const collapsed = !!navCollapsed[id];
-      navLog("toggle", { id, collapsed, nextCollapsed: !collapsed, via: "delegate" });
+      navLog("toggle", { id, collapsed, nextCollapsed: !collapsed, via: "delegate", targetTag: target.tagName });
       navCollapsed[id] = !collapsed;
       saveNavState();
       renderNavigation(editor, true);
@@ -600,7 +602,14 @@ const renderNavigation = (editor: Editor, force = false) => {
       const id = entry.dataset.id;
       const node = nodesById.get(id);
       if (!node) return;
-      navLog("click", { id: node.id, label: node.label, pos: node.pos, level: node.level, depth: Number(entry.dataset.level || 0) });
+      navLog("click", {
+        id: node.id,
+        label: node.label,
+        pos: node.pos,
+        level: node.level,
+        depth: Number(entry.dataset.level || 0),
+        targetTag: target.tagName
+      });
       scrollEditorToPos(editor, node.pos);
       flashHeading(editor, node.pos);
     }

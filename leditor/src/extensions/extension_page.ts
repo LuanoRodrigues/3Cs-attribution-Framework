@@ -251,7 +251,20 @@ const LINE_SPLIT_SELECTOR = "p, li, blockquote, pre";
 const isLineSplitTag = (tag: string): boolean =>
   tag === "P" || tag === "LI" || tag === "BLOCKQUOTE" || tag === "PRE";
 
+const isDivLineSplitCandidate = (el: HTMLElement): boolean => {
+  const tag = el.tagName.toUpperCase();
+  if (tag !== "DIV") return false;
+  const dataType =
+    (el.getAttribute("data-node-type") || el.getAttribute("data-type") || "").toLowerCase();
+  if (dataType === "paragraph" || dataType === "heading") return true;
+  // If the div contains a real block child, defer to that child instead of splitting the div.
+  if (el.querySelector(BLOCK_SELECTOR)) return false;
+  const text = (el.textContent || "").trim();
+  return text.length > 0;
+};
+
 const getLineSplitRoot = (el: HTMLElement): HTMLElement | null => {
+  if (isLineSplitElement(el)) return el;
   const tag = el.tagName.toUpperCase();
   if (tag === "UL" || tag === "OL") {
     const nested = el.querySelector<HTMLElement>(LINE_SPLIT_SELECTOR);
@@ -264,6 +277,7 @@ const getLineSplitRoot = (el: HTMLElement): HTMLElement | null => {
     return nested ?? el;
   }
   if (isLineSplitTag(tag)) return el;
+  if (isDivLineSplitCandidate(el)) return el;
   const fallback = el.querySelector<HTMLElement>(LINE_SPLIT_SELECTOR);
   return fallback ? getLineSplitRoot(fallback) : null;
 };
@@ -307,6 +321,7 @@ const isFootnoteContainerElement = (el: HTMLElement): boolean => {
 const isBlockCandidate = (el: HTMLElement): boolean => {
   const tag = el.tagName.toUpperCase();
   if (isLineSplitTag(tag) || isHeadingTag(tag)) return true;
+  if (isDivLineSplitCandidate(el)) return true;
   if (tag === "UL" || tag === "OL" || tag === "TABLE" || tag === "FIGURE" || tag === "HR") return true;
   if (el.classList.contains("leditor-break") || el.dataset.break === "true") return true;
   return false;
@@ -397,18 +412,22 @@ const isAnchorOnlyContent = (content: HTMLElement): boolean => {
 const DEFAULT_JOIN_BUFFER_PX = 12;
 const DELETE_JOIN_BUFFER_PX = 0;
 const MIN_SECTION_LINES = 1;
-const MIN_UNDERFILL_LINES = 4;
-const MIN_UNDERFILL_RATIO = 0.35;
+const MIN_UNDERFILL_LINES = 2;
+const MIN_UNDERFILL_RATIO = 0.85;
 const CRITICAL_UNDERFILL_LINES = 2;
-const CRITICAL_UNDERFILL_RATIO = 0.15;
-const MIN_LINE_SPLIT_TAIL_LINES = 4;
-const MIN_LINE_SPLIT_HEAD_LINES = 3;
+const CRITICAL_UNDERFILL_RATIO = 0.4;
+const MIN_LINE_SPLIT_TAIL_LINES = 1;
+const MIN_LINE_SPLIT_HEAD_LINES = 1;
 const BOTTOM_GUARD_PX = 6;
 const PAGINATION_DEBUG_LAYER_CLASS = "leditor-pagination-debug-layer";
 const PAGINATION_DEBUG_LINE_CLASS = "leditor-pagination-debug-line";
 const PAGINATION_DEBUG_RECT_CLASS = "leditor-pagination-debug-rect";
 
-const isLineSplitElement = (el: HTMLElement): boolean => isLineSplitTag(el.tagName.toUpperCase());
+const isLineSplitElement = (el: HTMLElement): boolean => {
+  const tag = el.tagName.toUpperCase();
+  if (isLineSplitTag(tag)) return true;
+  return isDivLineSplitCandidate(el);
+};
 const isFootnoteStorageNode = (node: ProseMirrorNode | null | undefined): boolean => {
   const name = node?.type?.name;
   return name === "footnotesContainer" || name === "footnoteBody";
@@ -1289,31 +1308,29 @@ const getWidowOrphanLimits = (content: HTMLElement, block: HTMLElement) => {
   const widowRaw =
     contentStyle.getPropertyValue("--widow-lines") ||
     blockStyle.getPropertyValue("--widow-lines") ||
-    (blockStyle as any).widows ||
     "";
   const orphanRaw =
     contentStyle.getPropertyValue("--orphan-lines") ||
     blockStyle.getPropertyValue("--orphan-lines") ||
-    (blockStyle as any).orphans ||
     "";
   return {
-    widowLines: parseLineCount(widowRaw, 2),
-    orphanLines: parseLineCount(orphanRaw, 2)
+    widowLines: parseLineCount(widowRaw, 1),
+    orphanLines: parseLineCount(orphanRaw, 1)
   };
 };
 
 const clampTrailingWordOffset = (text: string, offset: number): number => {
   const safeOffset = Math.max(0, Math.min(offset, text.length));
   if (!text || safeOffset <= 0) return safeOffset;
+  // Prefer splitting after the last fully visible word to avoid
+  // leaving early gaps at the end of a page.
   let end = safeOffset;
   while (end > 0 && /\s/.test(text[end - 1] ?? "")) end -= 1;
   if (end <= 0) return safeOffset;
-  let start = end;
-  while (start > 0 && !/\s/.test(text[start - 1] ?? "")) start -= 1;
-  if (start > 0 && start < safeOffset) {
-    return start;
-  }
-  return safeOffset;
+  let forward = end;
+  while (forward < text.length && !/\s/.test(text[forward] ?? "")) forward += 1;
+  if (forward > safeOffset) return forward;
+  return end;
 };
 
 const resolveInlinePos = (view: any, pos: number, blockStart: number, blockEnd: number): number | null => {
@@ -1339,6 +1356,31 @@ const resolveInlinePos = (view: any, pos: number, blockStart: number, blockEnd: 
     if (isInline(nearPos)) return nearPos;
   } catch {
     // ignore
+  }
+  return null;
+};
+
+const findNearestSplittablePos = (
+  doc: any,
+  pos: number,
+  blockStart: number,
+  blockEnd: number,
+  depth: number,
+  maxScan = 96
+): number | null => {
+  const clamp = (value: number) =>
+    Math.max(blockStart + 1, Math.min(blockEnd - 1, value));
+  const start = clamp(pos);
+  const limit = Math.max(0, Math.min(maxScan, blockEnd - blockStart - 2));
+  for (let delta = 0; delta <= limit; delta += 1) {
+    const left = start - delta;
+    if (left > blockStart + 1 && canSplit(doc, left, depth)) {
+      return left;
+    }
+    const right = start + delta;
+    if (right < blockEnd - 1 && canSplit(doc, right, depth)) {
+      return right;
+    }
   }
   return null;
 };
@@ -1424,9 +1466,16 @@ const attemptLineSplitPageSplit = (
     const $split = state.doc.resolve(splitPos);
     const blockDepth = findBlockDepth($split, pageDepth);
     const paragraphDepth = Math.max(1, $split.depth - blockDepth);
-    if (!canSplit(state.doc, splitPos, paragraphDepth)) return null;
-    let tr = state.tr.split(splitPos, paragraphDepth);
-    const mappedSplit = tr.mapping.map(splitPos, -1);
+    const blockStart = $split.start(blockDepth);
+    const blockEnd = $split.end(blockDepth);
+    let splitCandidate = splitPos;
+    if (!canSplit(state.doc, splitCandidate, paragraphDepth)) {
+      const nearest = findNearestSplittablePos(state.doc, splitCandidate, blockStart, blockEnd, paragraphDepth);
+      if (!nearest) return null;
+      splitCandidate = nearest;
+    }
+    let tr = state.tr.split(splitCandidate, paragraphDepth);
+    const mappedSplit = tr.mapping.map(splitCandidate, -1);
     const boundaryInfo = resolvePageBoundaryPos(tr.doc, pageType, pageDepth, mappedSplit);
     let boundaryPos = boundaryInfo?.pos ?? mappedSplit;
     const boundaryResolved = boundaryInfo?.resolved ?? tr.doc.resolve(boundaryPos);
@@ -1444,6 +1493,26 @@ const attemptLineSplitPageSplit = (
       if (altInfo && altInfo.pos > pageStart && altInfo.pos < pageEnd) {
         boundaryPos = altInfo.pos;
       } else {
+        // Fall back to splitting the page directly at the mapped line split position.
+        const manual = attemptManualPageSplit(tr, mappedSplit, pageDepth, pageType, selectionFrom);
+        if (manual) {
+          manual.setMeta(paginationKey, { source: "pagination", op: "split", pos: mappedSplit });
+          memo.lastSplitPos = mappedSplit;
+          memo.lastSplitAt = performance.now();
+          memo.lastSplitReason = splitReason;
+          if (splitReason === "keepWithNext") {
+            memo.lockedJoinPos.set(mappedSplit, {
+              docSize: state.doc.content.size,
+              at: memo.lastSplitAt,
+              reason: splitReason
+            });
+          }
+          if (typeof selectionFrom === "number" && selectionFrom >= splitCandidate) {
+            const mapped = manual.mapping.map(selectionFrom);
+            setSafeSelection(manual, mapped);
+          }
+          return manual;
+        }
         return null;
       }
     }
@@ -1477,7 +1546,9 @@ const attemptLineSplitPageSplit = (
       }
     }
     if (!didSplit) {
-      const manual = attemptManualPageSplit(tr, boundaryPos, pageDepth, pageType, selectionFrom);
+    const manual =
+        attemptManualPageSplit(tr, boundaryPos, pageDepth, pageType, selectionFrom) ??
+        attemptManualPageSplit(tr, mappedSplit, pageDepth, pageType, selectionFrom);
       if (manual) {
         tr = manual;
         didSplit = true;
@@ -1495,7 +1566,7 @@ const attemptLineSplitPageSplit = (
         reason: splitReason
       });
     }
-    if (typeof selectionFrom === "number" && selectionFrom >= splitPos) {
+    if (typeof selectionFrom === "number" && selectionFrom >= splitCandidate) {
       const mapped = tr.mapping.map(selectionFrom);
       setSafeSelection(tr, mapped);
     }
@@ -1599,54 +1670,91 @@ const findLineSplitPos = (
   content: HTMLElement,
   block: HTMLElement
 ): number | null => {
-  const lineRoot = getLineSplitRoot(block);
-  if (!lineRoot || !isLineSplitElement(lineRoot)) return null;
-  const contentRect = content.getBoundingClientRect();
   const { usableHeight } = getContentMetrics(content);
   if (usableHeight <= 0) return null;
+  const contentRect = content.getBoundingClientRect();
   const scale = getContentScale(content);
-  const lineHeightRaw = getComputedStyle(lineRoot).lineHeight;
+  const lineHeightRaw = getComputedStyle(block).lineHeight;
   const lineHeight = Number.parseFloat(lineHeightRaw || "0");
-  const guardPx = Math.max(BOTTOM_GUARD_PX, Number.isFinite(lineHeight) && lineHeight > 0 ? lineHeight * 0.25 : 0);
-  const maxBottom = contentRect.top + usableHeight * scale - guardPx * scale;
+  const guardPx = Math.max(
+    BOTTOM_GUARD_PX,
+    Number.isFinite(lineHeight) && lineHeight > 0 ? lineHeight * 0.25 : 0
+  );
+  const bottomLimit = Math.max(0, usableHeight - guardPx);
+  const lineRoot = (() => {
+    const direct = getLineSplitRoot(block);
+    if (direct && isLineSplitElement(direct)) return direct;
+    const descendant = findOverflowDescendant(block, content, bottomLimit, 1);
+    if (descendant && isLineSplitElement(descendant)) return descendant;
+    return null;
+  })();
+  if (!lineRoot) return null;
+  const lineHeightRootRaw = getComputedStyle(lineRoot).lineHeight;
+  const lineHeightRoot = Number.parseFloat(lineHeightRootRaw || "0");
+  const guardPxRoot = Math.max(
+    BOTTOM_GUARD_PX,
+    Number.isFinite(lineHeightRoot) && lineHeightRoot > 0 ? lineHeightRoot * 0.25 : 0
+  );
+  const bottomLimitRoot = Math.max(0, usableHeight - guardPxRoot);
+  const maxBottomAbs = contentRect.top + bottomLimitRoot * scale;
   const lineRects = collectLineRects(lineRoot);
-  if (!lineRects.length) return null;
+  const rangePos = findSplitPosByRange(view, lineRoot, maxBottomAbs);
   let lastVisibleIndex = -1;
-  for (let i = 0; i < lineRects.length; i += 1) {
-    if (lineRects[i].bottom <= maxBottom) {
-      lastVisibleIndex = i;
+  if (lineRects.length > 0) {
+    for (let i = 0; i < lineRects.length; i += 1) {
+      const relBottom = (lineRects[i].bottom - contentRect.top) / scale;
+      if (relBottom <= bottomLimitRoot) {
+        lastVisibleIndex = i;
+      }
     }
   }
-  if (lastVisibleIndex < 0) return null;
+  if (lastVisibleIndex < 0 && !rangePos) return null;
   const { widowLines, orphanLines } = getWidowOrphanLimits(content, block);
   const enforcedWidowLines = Math.max(widowLines, MIN_LINE_SPLIT_TAIL_LINES);
   const enforcedOrphanLines = Math.max(orphanLines, MIN_LINE_SPLIT_HEAD_LINES);
-  let targetIndex = lastVisibleIndex;
-  if (enforcedWidowLines > 0) {
-    const minIndexForWidow = lineRects.length - enforcedWidowLines - 1;
-    if (minIndexForWidow < 0) return null;
-    targetIndex = Math.min(targetIndex, minIndexForWidow);
+  const chooseTargetIndex = (minWidows: number, minOrphans: number): number | null => {
+    let target = lastVisibleIndex;
+    if (minWidows > 0) {
+      const minIndexForWidow = lineRects.length - minWidows - 1;
+      if (minIndexForWidow < 0) return null;
+      target = Math.min(target, minIndexForWidow);
+    }
+    if (target < 0) return null;
+    if (minOrphans > 0 && target + 1 < minOrphans) return null;
+    return target;
+  };
+  let targetIndex = chooseTargetIndex(enforcedWidowLines, enforcedOrphanLines);
+  if (targetIndex == null && (enforcedWidowLines > 1 || enforcedOrphanLines > 1)) {
+    targetIndex = chooseTargetIndex(1, 1);
+    if (debugEnabled()) {
+      logDebug("line split relax widows/orphans", {
+        enforcedWidowLines,
+        enforcedOrphanLines,
+        relaxedTargetIndex: targetIndex
+      });
+    }
   }
-  if (targetIndex < 0) return null;
-  if (enforcedOrphanLines > 0 && targetIndex + 1 < enforcedOrphanLines) {
-    return null;
+  let lineRect: LineRect | null = null;
+  if (targetIndex != null && lineRects.length > 0) {
+    lineRect = lineRects[targetIndex];
+    renderDebugLine(content, lineRect);
+    if (debugEnabled()) {
+      logDebug("line split rect", {
+        rect: {
+          left: lineRect.left,
+          top: lineRect.top,
+          right: lineRect.right,
+          bottom: lineRect.bottom,
+          width: lineRect.width,
+          height: lineRect.height
+        }
+      });
+    }
   }
-  const lineRect = lineRects[targetIndex];
-  renderDebugLine(content, lineRect);
-  if (debugEnabled()) {
-    logDebug("line split rect", {
-      rect: {
-        left: lineRect.left,
-        top: lineRect.top,
-        right: lineRect.right,
-        bottom: lineRect.bottom,
-        width: lineRect.width,
-        height: lineRect.height
-      }
-    });
-  }
-  const x = Math.max(lineRect.left + 1, Math.min(lineRect.right - 1, lineRect.left + lineRect.width - 1));
-  const y = Math.max(lineRect.top + 1, lineRect.bottom - 1);
+  const x = lineRect
+    ? Math.max(lineRect.left + 1, Math.min(lineRect.right - 1, lineRect.left + lineRect.width - 1))
+    : Math.max(contentRect.left + 2, contentRect.left + 2);
+  const y = lineRect ? Math.max(lineRect.top + 1, lineRect.bottom - 1) : contentRect.top + 2;
   const rawBlockPos = view.posAtDOM(lineRoot, 0);
   const blockPos = Math.max(0, Math.min(rawBlockPos + 1, view.state.doc.content.size));
   const blockResolved = view.state.doc.resolve(blockPos);
@@ -1665,7 +1773,7 @@ const findLineSplitPos = (
       const mid = Math.floor((low + high) / 2);
       try {
         const rect = view.coordsAtPos(mid);
-        if (rect.bottom <= maxBottom) {
+        if (rect.bottom <= maxBottomAbs) {
           best = mid;
           low = mid + 1;
         } else {
@@ -1677,24 +1785,23 @@ const findLineSplitPos = (
     }
     return best;
   };
-  let pos = tryCoordsAtPos();
+  let pos = rangePos;
   if (!pos) {
+    pos = tryCoordsAtPos();
+  }
+  if (!pos && lineRect) {
     const coords = view.posAtCoords({ left: x, top: y });
     pos = coords && typeof coords.pos === "number" ? coords.pos : null;
   }
-  if (!pos) {
-    if (debugEnabled()) {
-      logDebug("line split posAtCoords failed", { x, y });
-    }
-    const rangeFallback = findSplitPosByRange(view, lineRoot, lineRect.bottom - 1);
-    if (rangeFallback) pos = rangeFallback;
+  if (!pos && debugEnabled()) {
+    logDebug("line split posAtCoords failed", { x, y });
   }
   if (!pos) return null;
   if (pos <= blockStart + 1) {
     const fallback = tryCoordsAtPos();
     if (fallback) pos = fallback;
     if (pos <= blockStart + 1) {
-      const rangeFallback = findSplitPosByRange(view, lineRoot, lineRect.bottom - 1);
+      const rangeFallback = findSplitPosByRange(view, lineRoot, maxBottomAbs);
       if (rangeFallback) pos = rangeFallback;
     }
   }
@@ -1702,7 +1809,7 @@ const findLineSplitPos = (
     const fallback = tryCoordsAtPos();
     if (fallback) pos = fallback;
     if (pos >= blockEnd) {
-      const rangeFallback = findSplitPosByRange(view, lineRoot, lineRect.bottom - 1);
+      const rangeFallback = findSplitPosByRange(view, lineRoot, maxBottomAbs);
       if (rangeFallback) pos = rangeFallback;
     }
     if (pos >= blockEnd) {
@@ -1724,6 +1831,7 @@ const findLineSplitPos = (
   const inlinePos = resolveInlinePos(view, pos, blockStart, blockEnd);
   if (inlinePos == null) return null;
   pos = inlinePos;
+  if (pos == null) return null;
   const resolved = view.state.doc.resolve(pos);
   if (findPageDepth(resolved, pageType) !== pageDepth) {
     if (debugEnabled()) {
@@ -1745,7 +1853,10 @@ const findLineSplitPos = (
       pos = adjustedPos;
     }
   }
-  pos = adjustSplitPosForAnchors(view.state.doc, pos, blockStart, blockEnd);
+  const anchorAdjusted = adjustSplitPosForAnchors(view.state.doc, pos!, blockStart, blockEnd);
+  if (anchorAdjusted != null) {
+    pos = anchorAdjusted;
+  }
   // Avoid leaving anchor-only tails (e.g., lone citation lines) on the next page.
   try {
     const tailResolved = view.state.doc.resolve(pos);
@@ -1947,7 +2058,8 @@ const isCursorOnLastVisibleLine = (
   block: HTMLElement
 ): boolean => {
   const lineRoot = getLineSplitRoot(block) ?? (isHeadingElement(block) ? block : null);
-  if (!lineRoot || !isLineSplitElement(lineRoot)) return false;
+  if (!lineRoot) return false;
+  if (!isLineSplitElement(lineRoot) && !isHeadingElement(lineRoot)) return false;
   const lineRects = collectLineRects(lineRoot);
   if (!lineRects.length) return false;
   const { usableHeight } = getContentMetrics(content);
@@ -1986,6 +2098,31 @@ const isCursorOnLastVisibleLine = (
     }
   }
   return currentIndex === lastVisibleIndex;
+};
+
+const isCursorNearPageBottom = (
+  view: any,
+  selection: Selection,
+  content: HTMLElement,
+  block: HTMLElement
+): boolean => {
+  const { usableHeight } = getContentMetrics(content);
+  if (usableHeight <= 0) return false;
+  const scale = getContentScale(content);
+  const lineHeightRaw = getComputedStyle(block).lineHeight;
+  const lineHeight = Number.parseFloat(lineHeightRaw || "0");
+  const guardPx = Math.max(BOTTOM_GUARD_PX, Number.isFinite(lineHeight) && lineHeight > 0 ? lineHeight * 0.25 : 0);
+  const contentRect = content.getBoundingClientRect();
+  const maxBottom = contentRect.top + usableHeight * scale - guardPx * scale;
+  let coords: { top: number; bottom: number } | null = null;
+  try {
+    coords = view.coordsAtPos(selection.from, -1);
+  } catch {
+    return false;
+  }
+  if (!coords) return false;
+  const slack = Number.isFinite(lineHeight) && lineHeight > 0 ? lineHeight * 0.6 : 12;
+  return coords.bottom >= maxBottom - slack;
 };
 
 const handlePageBoundaryBackspace = (view: any): boolean => {
@@ -2038,6 +2175,36 @@ const handlePageBoundaryBackspace = (view: any): boolean => {
   return false;
 };
 
+const isSelectionAtPageEnd = (
+  state: any,
+  pageType: any,
+  pageDepth: number,
+  selectionFrom: number
+): boolean => {
+  try {
+    const $from = state.doc.resolve(selectionFrom);
+    if (findPageDepth($from, pageType) !== pageDepth) return false;
+    const pageNode = $from.node(pageDepth);
+    let endOffset = pageNode.content.size;
+    let cursor = 0;
+    pageNode.content.forEach((child: ProseMirrorNode) => {
+      const start = cursor;
+      const end = cursor + child.nodeSize;
+      if (isFootnoteStorageNode(child)) {
+        if (start < endOffset) endOffset = start;
+      }
+      cursor = end;
+    });
+    const pageStart = $from.start(pageDepth);
+    const pageEnd = pageStart + endOffset;
+    const endSel = Selection.near(state.doc.resolve(Math.max(0, pageEnd - 1)), -1);
+    if (endSel && endSel.from === selectionFrom) return true;
+    return selectionFrom >= pageEnd - 1;
+  } catch {
+    return false;
+  }
+};
+
 const handlePageBoundaryEnter = (view: any): boolean => {
   const { state } = view;
   const selection = state.selection;
@@ -2051,7 +2218,12 @@ const handlePageBoundaryEnter = (view: any): boolean => {
   if (!content) return false;
   const block = getSelectionBlockElement(view, selection);
   if (!block) return false;
-  if (!isCursorOnLastVisibleLine(view, selection, content, block)) return false;
+  const atPageEnd = isSelectionAtPageEnd(state, pageType, pageDepth, selection.from);
+  if (!atPageEnd) {
+    if (!isCursorOnLastVisibleLine(view, selection, content, block)) {
+      if (!isCursorNearPageBottom(view, selection, content, block)) return false;
+    }
+  }
   let trSplit: any | null = null;
   const didSplit = splitBlock(state, (tr) => {
     trSplit = tr;
@@ -2060,6 +2232,33 @@ const handlePageBoundaryEnter = (view: any): boolean => {
   const nextSelection = trSplit.selection as Selection;
   const $next = nextSelection.$from;
   const nextPageDepth = findPageDepth($next, pageType);
+  if (nextPageDepth === pageDepth) {
+    try {
+      const splitPos = nextSelection.from;
+      const splitResolved = trSplit.doc.resolve(splitPos);
+      const splitPageDepth = findPageDepth(splitResolved, pageType);
+      if (splitPageDepth >= 0) {
+        const manualSplit = attemptManualPageSplit(
+          trSplit,
+          splitPos,
+          splitPageDepth,
+          pageType,
+          selection.from
+        );
+        if (manualSplit) {
+          try {
+            (window as any).__leditorPreserveScrollOnNextPagination = true;
+          } catch {
+            // ignore
+          }
+          view.dispatch(manualSplit);
+          return true;
+        }
+      }
+    } catch {
+      // ignore manual split failures
+    }
+  }
   if (nextPageDepth < 0) {
     try {
       (window as any).__leditorPreserveScrollOnNextPagination = true;
@@ -2146,9 +2345,22 @@ const findOverflowDescendant = (
   tolerance: number
 ): HTMLElement | null => {
   const candidates = Array.from(container.querySelectorAll<HTMLElement>(LINE_SPLIT_SELECTOR));
+  const divCandidates = Array.from(container.querySelectorAll<HTMLElement>("div")).filter(
+    (el) => isDivLineSplitCandidate(el)
+  );
+  const allCandidates: HTMLElement[] = [];
+  const pushUnique = (el: HTMLElement) => {
+    if (allCandidates.includes(el)) return;
+    allCandidates.push(el);
+  };
+  if (isLineSplitElement(container)) {
+    pushUnique(container);
+  }
+  candidates.forEach(pushUnique);
+  divCandidates.forEach(pushUnique);
   let best: HTMLElement | null = null;
   let bestTop = -Infinity;
-  for (const candidate of candidates) {
+  for (const candidate of allCandidates) {
     const box = getRelativeBox(candidate, content);
     if (!box || (box.bottom - box.top) <= 0) continue;
     const top = box.top;
@@ -2250,7 +2462,12 @@ const findSplitTarget = (
     }
     const marginBottom = parseFloat(getComputedStyle(child).marginBottom || "0") || 0;
     const box = getRelativeBox(child, content);
-    const bottom = box.bottom + marginBottom;
+    let bottom = box.bottom + marginBottom;
+    if (marginBottom > 0 && box.bottom <= bottomLimit + tolerance) {
+      if (bottom > bottomLimit + tolerance) {
+        bottom = box.bottom;
+      }
+    }
     lastBottom = Math.max(lastBottom, bottom);
     if (bottom > bottomLimit + tolerance) {
       if (i === 0) {
@@ -2269,16 +2486,26 @@ const findSplitTarget = (
         !isSplittableBlock(child) && child.querySelector(LINE_SPLIT_SELECTOR)
           ? findOverflowDescendant(child, content, bottomLimit, tolerance)
           : null;
-      const splitCandidate = overflowDescendant ?? child;
+      let splitCandidate = overflowDescendant ?? child;
+      let lineSplitCandidate: HTMLElement | null = null;
+      if (isLineSplitElement(splitCandidate)) {
+        lineSplitCandidate = splitCandidate;
+      } else {
+        const lineRoot = getLineSplitRoot(splitCandidate);
+        if (lineRoot && isLineSplitElement(lineRoot)) {
+          lineSplitCandidate = lineRoot;
+        }
+      }
       if (prev && prevKeepWithNext) {
         const prevIndex = i - 1;
         const isFirstBlock = prevIndex <= 0;
-        if (isSplittableBlock(splitCandidate)) {
-          const prevRect = prev.getBoundingClientRect();
+        const splitForMetrics = lineSplitCandidate ?? (isSplittableBlock(splitCandidate) ? splitCandidate : null);
+        if (splitForMetrics) {
           const prevMarginBottom = parseFloat(getComputedStyle(prev).marginBottom || "0") || 0;
-          const prevBottom = (prevRect.bottom - contentRect.top) / scale + prevMarginBottom;
+          const prevBox = getRelativeBox(prev, content);
+          const prevBottom = prevBox.bottom + prevMarginBottom;
           const remainingAfterHeading = bottomLimit - prevBottom;
-          const childLineHeightRaw = getComputedStyle(splitCandidate).lineHeight;
+          const childLineHeightRaw = getComputedStyle(splitForMetrics).lineHeight;
           const childLineHeight = Number.parseFloat(childLineHeightRaw || "0");
           const minLinesPx =
             (Number.isFinite(childLineHeight) && childLineHeight > 0 ? childLineHeight : 18) *
@@ -2287,7 +2514,7 @@ const findSplitTarget = (
             logDebug("keep-with-next: avoid orphan heading at page start", {
               headingTag: prev.tagName,
               headingIndex: prevIndex,
-              overflowTag: splitCandidate.tagName,
+              overflowTag: splitForMetrics.tagName,
               overflowIndex: i,
               remainingAfterHeading,
               minLinesPx
@@ -2297,7 +2524,7 @@ const findSplitTarget = (
             logDebug("keep-with-next: allowing split inside paragraph", {
               headingTag: prev.tagName,
               headingIndex: prevIndex,
-              overflowTag: splitCandidate.tagName,
+              overflowTag: splitForMetrics.tagName,
               overflowIndex: i,
               remainingAfterHeading,
               minLinesPx
@@ -2306,7 +2533,7 @@ const findSplitTarget = (
             logDebug("keep-with-next: moving heading to next page", {
               headingTag: prev.tagName,
               headingIndex: prevIndex,
-              overflowTag: splitCandidate.tagName,
+              overflowTag: splitForMetrics.tagName,
               overflowIndex: i,
               remainingAfterHeading,
               minLinesPx
@@ -2327,14 +2554,15 @@ const findSplitTarget = (
           }
         }
       }
+      const finalCandidate = lineSplitCandidate ?? splitCandidate;
       logDebug("overflow split target", {
-        tag: splitCandidate.tagName,
+        tag: finalCandidate.tagName,
         index: i,
         bottom,
         contentHeight: usableHeight,
         bottomLimit
       });
-      return { target: splitCandidate, after: false, reason: "overflow" };
+      return { target: finalCandidate, after: false, reason: "overflow" };
     }
   }
   if (debugEnabled()) {
@@ -2445,6 +2673,15 @@ const findUnderfilledJoin = (view: any, pageType: any): number | null => {
     const minFill = Math.max(lineHeight * MIN_UNDERFILL_LINES, lineHeight + 4);
     const { usableHeight } = getContentMetrics(content);
     const fillRatio = usableHeight > 0 ? lastBottom / usableHeight : 1;
+    const remaining = usableHeight - lastBottom;
+    const nextPage = pages[i + 1] ?? null;
+    const nextContent = nextPage?.querySelector(`.${PAGE_CONTENT_CLASS}`) as HTMLElement | null;
+    const nextChildren = nextContent ? getContentChildren(nextContent) : [];
+    const nextFirst = nextChildren[0] ?? null;
+    const nextFirstLineHeight = nextFirst ? getLineHeightPx(nextFirst) : 0;
+    const orphanHeadingPull =
+      Boolean(last && isHeadingElement(last) && nextFirst && isLineSplitElement(nextFirst)) &&
+      remaining >= Math.max(nextFirstLineHeight * 0.6, 6);
     if (lastBottom > 0 && (lastBottom < minFill || fillRatio < MIN_UNDERFILL_RATIO)) {
       const joinPos = getJoinPosForPageIndex(view.state.doc, pageType, i + 1);
       if (joinPos != null && joinPos > 0) {
@@ -2454,6 +2691,18 @@ const findUnderfilledJoin = (view: any, pageType: any): number | null => {
           lastBottom,
           minFill,
           fillRatio
+        });
+        return joinPos;
+      }
+    }
+    if (orphanHeadingPull) {
+      const joinPos = getJoinPosForPageIndex(view.state.doc, pageType, i + 1);
+      if (joinPos != null && joinPos > 0) {
+        logDebug("underfilled join (orphan heading)", {
+          pageIndex: i,
+          joinPos,
+          remaining,
+          lineHeight: nextFirstLineHeight
         });
         return joinPos;
       }
@@ -2758,9 +3007,18 @@ const paginateView = (
         }
       }
       let forceLineSplit = false;
-      if (split.reason === "overflow" && isSplittableBlock(split.target) && typeof view.posAtCoords === "function") {
+      const lineSplitTarget = (() => {
+        if (isSplittableBlock(split.target)) return split.target;
+        const root = getLineSplitRoot(split.target);
+        return root && isLineSplitElement(root) ? root : null;
+      })();
+      if (
+        (split.reason === "overflow" || split.reason === "keepWithNext") &&
+        lineSplitTarget &&
+        typeof view.posAtCoords === "function"
+      ) {
         try {
-          const lineSplitPos = findLineSplitPos(view, pageType, pageDepth, content, split.target);
+          const lineSplitPos = findLineSplitPos(view, pageType, pageDepth, content, lineSplitTarget);
           if (typeof lineSplitPos === "number" && lineSplitPos > 0) {
             splitPos = lineSplitPos;
             forceLineSplit = true;
@@ -2768,8 +3026,8 @@ const paginateView = (
               logDebug("overflow line split pos", {
                 splitPos,
                 pageDepth,
-                targetTag: split.target.tagName,
-                targetIndex: split.target.dataset?.nodeIndex ?? null
+                targetTag: lineSplitTarget.tagName,
+                targetIndex: lineSplitTarget.dataset?.nodeIndex ?? null
               });
             }
           }
@@ -3038,10 +3296,9 @@ const paginateView = (
           let didSplit = false;
           const boundaryCandidates = Array.from(
             new Set(
-              [pageBoundaryPos, mappedSplit, mappedPosLeft, mappedPosRight]
-                .concat(boundaryInfoLeft?.pos ?? [])
-                .concat(boundaryInfoRight?.pos ?? [])
-                .filter((value) => Number.isFinite(value as number) && (value as number) > 0)
+              [pageBoundaryPos, mappedSplit, mappedPosLeft, mappedPosRight].filter(
+                (value) => Number.isFinite(value as number) && (value as number) > 0
+              )
             )
           ) as number[];
           for (const candidate of boundaryCandidates) {
@@ -3376,7 +3633,10 @@ const paginateView = (
     const skipJoin = document.documentElement.classList.contains("leditor-footnote-editing");
     if (!skipJoin) {
       const criticalJoinPos = findCriticalUnderfillJoin(view, pageType);
-      if (criticalJoinPos != null && !memo.lockedJoinPos.has(criticalJoinPos)) {
+      if (criticalJoinPos != null) {
+        if (memo.lockedJoinPos.has(criticalJoinPos)) {
+          memo.lockedJoinPos.delete(criticalJoinPos);
+        }
         let tr = attemptManualPageJoin(view.state.tr, criticalJoinPos, pageType, view.state.selection.from);
         if (!tr && canJoin(view.state.doc, criticalJoinPos)) {
           try {
@@ -3398,23 +3658,34 @@ const paginateView = (
     }
     if (!skipJoin) {
       const underfilledJoinPos = findUnderfilledJoin(view, pageType);
-      if (underfilledJoinPos != null && !memo.lockedJoinPos.has(underfilledJoinPos)) {
-        let tr = attemptManualPageJoin(view.state.tr, underfilledJoinPos, pageType, view.state.selection.from);
-        if (!tr && canJoin(view.state.doc, underfilledJoinPos)) {
-          try {
-            tr = view.state.tr.join(underfilledJoinPos);
-            tr.setMeta(paginationKey, { source: "pagination", op: "join", pos: underfilledJoinPos });
-          } catch {
-            tr = null;
-          }
+      if (underfilledJoinPos != null) {
+        const lock = memo.lockedJoinPos.get(underfilledJoinPos);
+        const lockAge = lock ? performance.now() - lock.at : 0;
+        const ignoreLock = Boolean(lock && lockAge > 900);
+        if (lock && !ignoreLock) {
+          logDebug("skip join (locked underfill)", { joinPos: underfilledJoinPos, lockAge });
         }
-        if (tr) {
-          memo.lastSplitPos = null;
-          memo.lastSplitAt = 0;
-          memo.lastSplitReason = null;
+        if (ignoreLock) {
           memo.lockedJoinPos.delete(underfilledJoinPos);
-          dispatchPagination(view, tr);
-          return;
+        }
+        if (!lock || ignoreLock) {
+          let tr = attemptManualPageJoin(view.state.tr, underfilledJoinPos, pageType, view.state.selection.from);
+          if (!tr && canJoin(view.state.doc, underfilledJoinPos)) {
+            try {
+              tr = view.state.tr.join(underfilledJoinPos);
+              tr.setMeta(paginationKey, { source: "pagination", op: "join", pos: underfilledJoinPos });
+            } catch {
+              tr = null;
+            }
+          }
+          if (tr) {
+            memo.lastSplitPos = null;
+            memo.lastSplitAt = 0;
+            memo.lastSplitReason = null;
+            memo.lockedJoinPos.delete(underfilledJoinPos);
+            dispatchPagination(view, tr);
+            return;
+          }
         }
       }
       const now = performance.now();

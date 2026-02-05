@@ -202,7 +202,7 @@ const ensureStyles = () => {
   --ruler-border: rgba(0, 0, 0, 0.2);
   --page-font-family: "Times New Roman", "Times", "Georgia", serif;
   --page-font-size: 12pt;
-  --page-line-height: 1.15;
+  --page-line-height: 1.0;
   --page-body-color: #1c1c1c;
   --page-header-color: #2d2d2d;
   --page-footer-color: #3a3a3a;
@@ -928,6 +928,10 @@ html, body {
 #editor .ProseMirror h5,
 #editor .ProseMirror h6 {
   margin: 0 0 10px;
+}
+
+#editor .ProseMirror p {
+  text-align: justify;
 }
 
 #editor .ProseMirror h1 {
@@ -3891,7 +3895,7 @@ export const mountA4Layout = (
               ? Math.max(18, Math.round(footerReservePx * 0.35))
               : baseReservePx;
           const guardPx = reservePx > 0 ? guardPxRaw : 0;
-          const effectiveBottomPx = Math.max(0, footerReservePx + reservePx + gapPx + guardPx);
+          const effectiveBottomPx = Math.max(0, footerReservePx + reservePx);
           if (pageIndex >= 0) {
             if (reservePx > 0) {
               footnoteLayoutVarsByPage.set(pageIndex, {
@@ -3982,10 +3986,7 @@ export const mountA4Layout = (
           getComputedStyle(host ?? container).getPropertyValue("--current-margin-bottom").trim() || "0"
         );
         const guardPx = guardPxRaw;
-        const effectiveBottomPx = Math.max(
-          currentMarginBottomPx,
-          footerReservePx + appliedHeight + gapPx + guardPx
-        );
+        const effectiveBottomPx = Math.max(currentMarginBottomPx, footerReservePx + appliedHeight);
         if (pageIndex >= 0) {
           footnoteLayoutVarsByPage.set(pageIndex, {
             height: appliedHeight,

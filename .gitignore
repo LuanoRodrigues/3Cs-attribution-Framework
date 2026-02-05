@@ -52,3 +52,7 @@ tmp_ppt_images/
 # OS
 .DS_Store
 Thumbs.db
+
+Plans/
+leditor/Plans/
+my-electron-app/Plans/

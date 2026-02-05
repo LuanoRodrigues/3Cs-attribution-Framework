@@ -39,9 +39,6 @@ export type AgentActionId =
   | "shorten"
   | "substantiate"
   | "proofread"
-  | "define"
-  | "synonyms"
-  | "antonyms"
   | "check_sources"
   | "clear_checks";
 
@@ -367,9 +364,6 @@ export const createAgentSidebar = (
     { id: "shorten", label: "Shorten", aliases: ["/s", "/shorten"] },
     { id: "proofread", label: "Proofread", aliases: ["/pr", "/proofread"] },
     { id: "substantiate", label: "Substantiate", aliases: ["/sub", "/substantiate"] },
-    { id: "define", label: "Define", aliases: ["/def", "/define"] },
-    { id: "synonyms", label: "Synonyms", aliases: ["/syn", "/synonyms"] },
-    { id: "antonyms", label: "Antonyms", aliases: ["/ant", "/antonyms"] },
     { id: "check_sources", label: "Check sources", aliases: ["/cs", "/check", "/check-sources", "/check sources", "/checksources"] },
     { id: "clear_checks", label: "Clear checks", aliases: ["/cc", "/clear", "/clear-checks", "/clear checks", "/clearchecks"] }
   ];
@@ -401,9 +395,6 @@ export const createAgentSidebar = (
     if (/\B\/shorten\b/.test(text) || /\bshorten\b/.test(text)) return "shorten";
     if (/\B\/proofread\b/.test(text) || /\bproofread\b/.test(text)) return "proofread";
     if (/\B\/substantiate\b/.test(text) || /\bsubstantiate\b/.test(text)) return "substantiate";
-    if (/\B\/define\b/.test(text) || /\B\/def\b/.test(text) || /\bdefine\b/.test(text)) return "define";
-    if (/\B\/synonyms\b/.test(text) || /\bsynonyms\b/.test(text)) return "synonyms";
-    if (/\B\/antonyms\b/.test(text) || /\bantonyms\b/.test(text)) return "antonyms";
     if (/\B\/check(?:\s+sources)?\b/.test(text) || /\bcheck\s+sources\b/.test(text)) return "check_sources";
     if (/\B\/clear(?:\s+checks)?\b/.test(text) || /\bclear\s+checks\b/.test(text)) return "clear_checks";
     return null;
@@ -436,10 +427,10 @@ export const createAgentSidebar = (
     };
 
     // Commands (plain words and slash forms).
-    addMatches(/\B\/(?:refine|paraphrase|shorten|proofread|substantiate|define|def|synonyms|antonyms)\b/gi, "cmd");
+    addMatches(/\B\/(?:refine|paraphrase|shorten|proofread|substantiate)\b/gi, "cmd");
     addMatches(/\B\/check(?:\s+sources)?\b/gi, "cmd");
     addMatches(/\B\/clear(?:\s+checks)?\b/gi, "cmd");
-    addMatches(/\b(?:refine|paraphrase|shorten|proofread|substantiate|define|synonyms|antonyms)\b/gi, "cmd");
+    addMatches(/\b(?:refine|paraphrase|shorten|proofread|substantiate)\b/gi, "cmd");
     addMatches(/\bcheck\s+sources\b/gi, "cmd");
 
     // Targets: sections + paragraphs (various forms).
@@ -552,10 +543,6 @@ export const createAgentSidebar = (
       { re: /\B\/shorten\b/gi, id: "shorten" },
       { re: /\B\/proofread\b/gi, id: "proofread" },
       { re: /\B\/substantiate\b/gi, id: "substantiate" },
-      { re: /\B\/define\b/gi, id: "define" },
-      { re: /\B\/def\b/gi, id: "define" },
-      { re: /\B\/synonyms\b/gi, id: "synonyms" },
-      { re: /\B\/antonyms\b/gi, id: "antonyms" },
       { re: /\B\/check(?:\s+sources)?\b/gi, id: "check_sources" },
       { re: /\B\/clear(?:\s+checks)?\b/gi, id: "clear_checks" },
       { re: /\brefine\b/gi, id: "refine" },
@@ -563,9 +550,6 @@ export const createAgentSidebar = (
       { re: /\bshorten\b/gi, id: "shorten" },
       { re: /\bproofread\b/gi, id: "proofread" },
       { re: /\bsubstantiate\b/gi, id: "substantiate" },
-      { re: /\bdefine\b/gi, id: "define" },
-      { re: /\bsynonyms\b/gi, id: "synonyms" },
-      { re: /\bantonyms\b/gi, id: "antonyms" },
       { re: /\bcheck sources\b/gi, id: "check_sources" }
     ];
 
@@ -686,7 +670,7 @@ export const createAgentSidebar = (
     }
   };
 
-  type ActionMode = "auto" | Exclude<AgentActionId, "synonyms" | "antonyms">;
+  type ActionMode = "auto" | AgentActionId;
   let actionMode: ActionMode = "auto";
 
   const actionLabel = (id: ActionMode): string => {
@@ -2408,13 +2392,6 @@ export const createAgentSidebar = (
         controller.runAction(inlineSlash.id);
         return;
       }
-      if (inlineSlash.id === "synonyms" || inlineSlash.id === "antonyms" || inlineSlash.id === "define") {
-        addMessage("user", instruction);
-        input.value = "";
-        autoResizeInput();
-        controller.runAction(inlineSlash.id);
-        return;
-      }
       const prompt = getActionPrompt(inlineSlash.id);
       const before = instruction.slice(0, inlineSlash.start).trimEnd();
       const after = instruction.slice(inlineSlash.end).trimStart();
@@ -2661,342 +2638,6 @@ export const createAgentSidebar = (
       return true;
     });
     return found;
-  };
-
-  let lexiconPopup: HTMLElement | null = null;
-  let lexiconCleanup: Array<() => void> = [];
-
-  const closeLexiconPopup = () => {
-    for (const fn of lexiconCleanup) {
-      try {
-        fn();
-      } catch {
-        // ignore
-      }
-    }
-    lexiconCleanup = [];
-    try {
-      lexiconPopup?.remove();
-    } catch {
-      // ignore
-    }
-    try {
-      editorHandle.getEditor()?.commands?.clearLexiconHighlight?.();
-    } catch {
-      // ignore
-    }
-    lexiconPopup = null;
-  };
-
-  const getSentenceForSelection = (from: number, to: number): string => {
-    const editor = editorHandle.getEditor();
-    const doc = editor.state.doc;
-    const pos = doc.resolve(from);
-    let depth = pos.depth;
-    while (depth > 0 && !pos.node(depth).isTextblock) depth -= 1;
-    const blockNode = pos.node(depth);
-    const blockPos = pos.before(depth);
-    const blockFrom = blockPos + 1;
-    const blockTo = blockFrom + blockNode.content.size;
-    const blockText = doc.textBetween(blockFrom, blockTo, "\n").replace(/\s+/g, " ").trim();
-    if (!blockText) return "";
-
-    // Best-effort offset mapping in the plain-text projection.
-    const leftText = doc.textBetween(blockFrom, from, "\n").replace(/\s+/g, " ");
-    const offset = Math.max(0, Math.min(blockText.length, leftText.length));
-    const clamp = (v: number) => Math.max(0, Math.min(blockText.length, v));
-
-    // Sentence boundaries: last punctuation boundary before offset, next punctuation after.
-    const left = blockText.slice(0, offset);
-    const right = blockText.slice(offset);
-    const boundaryRe = /[.!?;]\s+(?=[“"'\(\[]?[A-Z0-9])/g;
-    let start = 0;
-    for (const m of left.matchAll(boundaryRe)) {
-      const idx = typeof m.index === "number" ? m.index : -1;
-      if (idx < 0) continue;
-      const prev = left.slice(Math.max(0, idx - 3), idx + 1).toLowerCase();
-      const next = left.slice(idx + 1).trimStart();
-      if ((prev.endsWith("p.") || prev.endsWith("pp.")) && /^\d/.test(next)) continue;
-      start = idx + m[0].length;
-    }
-    start = clamp(start);
-    const nextCandidates = Array.from(right.matchAll(/[.!?;]/g))
-      .map((m) => (typeof m.index === "number" ? m.index : -1))
-      .filter((n) => n >= 0)
-      .map((n) => offset + n + 1);
-    const end = clamp(nextCandidates.length ? Math.min(...nextCandidates) : blockText.length);
-    return blockText.slice(start, end).replace(/\s+/g, " ").trim();
-  };
-
-  const openLexiconPopup = (args: {
-    title: string;
-    from: number;
-    to: number;
-    suggestions: string[];
-    onPick: (text: string) => void;
-  }) => {
-    closeLexiconPopup();
-    const editor = editorHandle.getEditor();
-    const view: any = (editor as any)?.view;
-    if (!view?.coordsAtPos) return;
-    const a = view.coordsAtPos(args.from);
-    const b = view.coordsAtPos(args.to);
-    const left = Math.min(a.left, b.left);
-    const top = Math.max(a.bottom, b.bottom) + 6;
-
-    try {
-      editor.commands.setLexiconHighlight?.({ from: args.from, to: args.to });
-    } catch {
-      // ignore
-    }
-
-    const popup = document.createElement("div");
-    popup.className = "leditor-lexicon-popup";
-    popup.setAttribute("role", "menu");
-    popup.setAttribute("aria-label", args.title);
-    popup.style.left = "0px";
-    popup.style.top = "0px";
-
-    const header = document.createElement("div");
-    header.className = "leditor-lexicon-popup__header";
-    header.textContent = args.title;
-
-    const list = document.createElement("div");
-    list.className = "leditor-lexicon-popup__list";
-
-    const addItem = (label: string, value: string | null) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "leditor-lexicon-popup__item";
-      btn.textContent = label;
-      btn.addEventListener("pointerdown", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (value === null) {
-          closeLexiconPopup();
-          return;
-        }
-        args.onPick(value);
-        closeLexiconPopup();
-      });
-      list.appendChild(btn);
-      return btn;
-    };
-
-    const first = addItem(args.suggestions[0] ?? "", args.suggestions[0] ?? "");
-    for (const s of args.suggestions.slice(1)) addItem(s, s);
-    addItem("None", null);
-
-    popup.append(header, list);
-    document.body.appendChild(popup);
-    lexiconPopup = popup;
-
-    // Clamp within viewport.
-    const rect = popup.getBoundingClientRect();
-    const maxLeft = Math.max(8, window.innerWidth - rect.width - 8);
-    const maxTop = Math.max(8, window.innerHeight - rect.height - 8);
-    const clampedLeft = Math.max(8, Math.min(maxLeft, left));
-    const clampedTop = Math.max(8, Math.min(maxTop, top));
-    popup.style.left = `${Math.round(clampedLeft)}px`;
-    popup.style.top = `${Math.round(clampedTop)}px`;
-
-    const onDocPointerDown = (e: Event) => {
-      const t = e.target as Node | null;
-      if (!t) return;
-      if (popup.contains(t)) return;
-      closeLexiconPopup();
-    };
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        closeLexiconPopup();
-      }
-    };
-    const docShell = document.querySelector(".leditor-doc-shell") as HTMLElement | null;
-    const onScroll = () => closeLexiconPopup();
-
-    document.addEventListener("pointerdown", onDocPointerDown, true);
-    document.addEventListener("keydown", onKeyDown, true);
-    docShell?.addEventListener("scroll", onScroll, { passive: true });
-    editorHandle.on("selectionChange", onScroll);
-
-    lexiconCleanup.push(() => document.removeEventListener("pointerdown", onDocPointerDown, true));
-    lexiconCleanup.push(() => document.removeEventListener("keydown", onKeyDown, true));
-    lexiconCleanup.push(() => docShell?.removeEventListener("scroll", onScroll));
-    lexiconCleanup.push(() => editorHandle.off("selectionChange", onScroll));
-  };
-
-  const openDefinitionPopup = (args: { title: string; from: number; to: number; definition: string }) => {
-    closeLexiconPopup();
-    const editor = editorHandle.getEditor();
-    const view: any = (editor as any)?.view;
-    if (!view?.coordsAtPos) return;
-    const a = view.coordsAtPos(args.from);
-    const b = view.coordsAtPos(args.to);
-    const left = Math.min(a.left, b.left);
-    const top = Math.max(a.bottom, b.bottom) + 6;
-
-    try {
-      editor.commands.setLexiconHighlight?.({ from: args.from, to: args.to });
-    } catch {
-      // ignore
-    }
-
-    const popup = document.createElement("div");
-    popup.className = "leditor-lexicon-popup";
-    popup.setAttribute("role", "dialog");
-    popup.setAttribute("aria-label", args.title);
-    popup.style.left = "0px";
-    popup.style.top = "0px";
-
-    const header = document.createElement("div");
-    header.className = "leditor-lexicon-popup__header";
-    header.textContent = args.title;
-
-    const body = document.createElement("div");
-    body.className = "leditor-lexicon-popup__list";
-    body.style.padding = "8px 10px";
-    body.style.whiteSpace = "pre-wrap";
-    body.textContent = args.definition;
-
-    const footer = document.createElement("div");
-    footer.className = "leditor-lexicon-popup__list";
-    footer.style.padding = "8px 10px";
-    footer.style.display = "flex";
-    footer.style.justifyContent = "flex-end";
-
-    const close = document.createElement("button");
-    close.type = "button";
-    close.className = "leditor-lexicon-popup__item";
-    close.textContent = "Close";
-    close.addEventListener("pointerdown", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      closeLexiconPopup();
-    });
-    footer.appendChild(close);
-
-    popup.append(header, body, footer);
-    document.body.appendChild(popup);
-    lexiconPopup = popup;
-
-    const rect = popup.getBoundingClientRect();
-    const maxLeft = Math.max(8, window.innerWidth - rect.width - 8);
-    const maxTop = Math.max(8, window.innerHeight - rect.height - 8);
-    const clampedLeft = Math.max(8, Math.min(maxLeft, left));
-    const clampedTop = Math.max(8, Math.min(maxTop, top));
-    popup.style.left = `${Math.round(clampedLeft)}px`;
-    popup.style.top = `${Math.round(clampedTop)}px`;
-
-    const onDocPointerDown = (e: Event) => {
-      const t = e.target as Node | null;
-      if (!t) return;
-      if (popup.contains(t)) return;
-      closeLexiconPopup();
-    };
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        closeLexiconPopup();
-      }
-    };
-    const docShell = document.querySelector(".leditor-doc-shell") as HTMLElement | null;
-    const onScroll = () => closeLexiconPopup();
-
-    document.addEventListener("pointerdown", onDocPointerDown, true);
-    document.addEventListener("keydown", onKeyDown, true);
-    docShell?.addEventListener("scroll", onScroll, { passive: true });
-    editorHandle.on("selectionChange", onScroll);
-
-    lexiconCleanup.push(() => document.removeEventListener("pointerdown", onDocPointerDown, true));
-    lexiconCleanup.push(() => document.removeEventListener("keydown", onKeyDown, true));
-    lexiconCleanup.push(() => docShell?.removeEventListener("scroll", onScroll));
-    lexiconCleanup.push(() => editorHandle.off("selectionChange", onScroll));
-  };
-
-  const runLexicon = async (mode: "synonyms" | "antonyms" | "definition") => {
-    const editor = editorHandle.getEditor();
-    const sel = editor.state.selection;
-    const from = Math.min(sel.from, sel.to);
-    const to = Math.max(sel.from, sel.to);
-    if (from === to) {
-      addMessage("system", "Select a word or phrase first.");
-      return;
-    }
-    if (selectionHasAnchors(from, to)) {
-      addMessage("system", "Cannot replace anchored/cited text. Adjust your selection.");
-      return;
-    }
-    const selectedText = editor.state.doc.textBetween(from, to, "\n").trim();
-    if (!selectedText) {
-      addMessage("system", "Select a word or phrase first.");
-      return;
-    }
-    const sentence = getSentenceForSelection(from, to);
-    const host: any = (window as any).leditorHost;
-    if (!host || typeof host.lexicon !== "function") {
-      addMessage("assistant", "Lexicon host bridge unavailable.");
-      return;
-    }
-    setInflight(true);
-    try {
-      const sel = resolveSelectedModelId();
-      const requestId = `lex-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-      const result = await host.lexicon({
-        requestId,
-        payload: {
-          provider: sel.provider,
-          model: sel.model,
-          mode,
-          text: selectedText,
-          sentence
-        }
-      });
-      if (!result?.success) {
-        addMessage("assistant", result?.error ? String(result.error) : "Lexicon request failed.");
-        return;
-      }
-      if (mode === "definition") {
-        const definition = typeof result?.definition === "string" ? String(result.definition).trim() : "";
-        if (!definition) {
-          addMessage("system", "No definition.");
-          return;
-        }
-        openDefinitionPopup({
-          title: "Definition",
-          from,
-          to,
-          definition
-        });
-        return;
-      }
-      const suggestions = Array.isArray(result?.suggestions) ? result.suggestions : [];
-      const normalized = suggestions
-        .map((s: any) => (typeof s === "string" ? s : typeof s?.text === "string" ? s.text : ""))
-        .map((s: string) => s.trim())
-        .filter(Boolean)
-        .slice(0, 5);
-      if (normalized.length === 0) {
-        addMessage("system", "No suggestions.");
-        return;
-      }
-      openLexiconPopup({
-        title: mode === "synonyms" ? "Synonyms" : "Antonyms",
-        from,
-        to,
-        suggestions: normalized,
-        onPick: (replacement) => {
-          try {
-            editor.chain().focus().insertContent(replacement).run();
-          } finally {
-            editorHandle.focus();
-          }
-        }
-      });
-    } finally {
-      setInflight(false);
-      editorHandle.focus();
-    }
   };
 
   const collectAnchorsInRange = (from: number, to: number) => {
@@ -3467,18 +3108,6 @@ export const createAgentSidebar = (
       }
       if (actionId === "check_sources") {
         void runCheckSources();
-        return;
-      }
-      if (actionId === "synonyms") {
-        void runLexicon("synonyms");
-        return;
-      }
-      if (actionId === "antonyms") {
-        void runLexicon("antonyms");
-        return;
-      }
-      if (actionId === "define") {
-        void runLexicon("definition");
         return;
       }
       applyActionTemplate(actionId);

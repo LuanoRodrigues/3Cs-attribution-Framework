@@ -43,6 +43,7 @@ const registerIpcFallbacks = () => {
   register("leditor:write-file", async () => ({ success: true }));
   register("leditor:export-ledoc", async () => ({ success: false, error: "disabled" }));
   register("leditor:import-ledoc", async () => ({ success: false, error: "disabled" }));
+  register("leditor:get-default-ledoc-path", async () => ({ success: true, path: "" }));
   register("leditor:open-pdf-viewer", async () => ({ success: false, error: "disabled" }));
   register("leditor:pdf-viewer-payload", async () => null);
   register("leditor:resolve-pdf-path", async () => null);

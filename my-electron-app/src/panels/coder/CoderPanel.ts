@@ -1526,6 +1526,16 @@ export class CoderPanel {
       this.moveSelected(1);
       return;
     }
+    if (meta && shift && ev.key === "ArrowRight") {
+      ev.preventDefault();
+      this.indentSelection();
+      return;
+    }
+    if (meta && shift && ev.key === "ArrowLeft") {
+      ev.preventDefault();
+      this.outdentSelection();
+      return;
+    }
     if (meta && ev.key.toLowerCase() === "s") {
       ev.preventDefault();
       this.refreshSavedPill();
@@ -1773,6 +1783,53 @@ export class CoderPanel {
   private getTopLevelSelected(): string[] {
     const ids = Array.from(this.selection);
     return ids.filter((id) => !ids.some((other) => other !== id && this.isAncestor(other, id)));
+  }
+
+  private indentSelection(): void {
+    const ids = this.getTopLevelSelected();
+    if (!ids.length) return;
+    const state = this.store.snapshot();
+    const primaryId = this.primarySelection ?? ids[ids.length - 1];
+    const parent = this.findParent(state.nodes, primaryId);
+    const siblings = parent ? parent.children : state.nodes;
+    const idx = siblings.findIndex((n) => n.id === primaryId);
+    if (idx <= 0) return;
+    // find nearest previous folder sibling
+    for (let i = idx - 1; i >= 0; i -= 1) {
+      const candidate = siblings[i];
+      if (candidate.type === "folder") {
+        const targetParentId = candidate.id;
+        const targetIndex = candidate.children.length;
+        this.store.moveMany({ nodeIds: ids, targetParentId, targetIndex });
+        this.selection = new Set(ids);
+        this.primarySelection = ids[ids.length - 1] ?? null;
+        this.anchorSelection = ids[0] ?? null;
+        this.render(this.store.snapshot());
+        this.scrollNodeIntoView(this.primarySelection ?? ids[0]);
+        return;
+      }
+    }
+  }
+
+  private outdentSelection(): void {
+    const ids = this.getTopLevelSelected();
+    if (!ids.length) return;
+    const state = this.store.snapshot();
+    const primaryId = this.primarySelection ?? ids[ids.length - 1];
+    const parent = this.findParent(state.nodes, primaryId);
+    if (!parent) return; // already root
+    const grand = this.findParent(state.nodes, parent.id);
+    const grandSiblings = grand ? grand.children : state.nodes;
+    const parentIdx = grandSiblings.findIndex((n) => n.id === parent.id);
+    if (parentIdx < 0) return;
+    const targetParentId = grand ? grand.id : null;
+    const targetIndex = parentIdx + 1;
+    this.store.moveMany({ nodeIds: ids, targetParentId, targetIndex });
+    this.selection = new Set(ids);
+    this.primarySelection = ids[ids.length - 1] ?? null;
+    this.anchorSelection = ids[0] ?? null;
+    this.render(this.store.snapshot());
+    this.scrollNodeIntoView(this.primarySelection ?? ids[0]);
   }
 
   private handleGlobalClick(event: MouseEvent): void {
