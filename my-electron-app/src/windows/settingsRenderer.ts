@@ -299,7 +299,8 @@ import { resolveThemeTokens, themeIds, type ThemeId } from "../renderer/theme/to
       items: [
         { id: "author", label: "Author details", build: buildAuthorPanel },
         { id: "project", label: "Project defaults", build: buildProjectPanel },
-        { id: "appearance", label: "Appearance", build: buildAppearancePanel }
+        { id: "appearance", label: "Appearance", build: buildAppearancePanel },
+        { id: "coder-shortcuts", label: "Coder shortcuts", build: buildCoderShortcutsPanel }
       ]
     },
     {
@@ -1021,6 +1022,46 @@ import { resolveThemeTokens, themeIds, type ThemeId } from "../renderer/theme/to
     card.appendChild(unlockRow);
     panel.appendChild(card);
     unlockSecretButton.addEventListener("click", () => unlockVault(passphraseField.value));
+  }
+
+  function buildCoderShortcutsPanel(panel: HTMLElement) {
+    const card = createPanelCard("Coder shortcuts", "Keyboard and mouse shortcuts for the Coder tree.");
+    const list = document.createElement("div");
+    list.className = "shortcut-list";
+
+    const add = (keys: string, desc: string) => {
+      const row = document.createElement("div");
+      row.className = "shortcut-row";
+      const k = document.createElement("span");
+      k.className = "shortcut-keys";
+      k.textContent = keys;
+      const d = document.createElement("span");
+      d.className = "shortcut-desc";
+      d.textContent = desc;
+      row.append(k, d);
+      list.appendChild(row);
+    };
+
+    add("Drag", "Move item/folder within the tree");
+    add("Ctrl/Alt + Drag", "Copy item/folder to target");
+    add("Delete / Backspace", "Delete selection");
+    add("F2 or Enter", "Rename selected node");
+    add("Ctrl/Cmd + N (Shift for root)", "New folder");
+    add("Arrow Up/Down", "Change selection (Shift extends range)");
+    add("Ctrl/Cmd + Arrow Up/Down", "Move node up/down within its folder");
+    add("Ctrl/Cmd + PageUp/PageDown", "Move node to top/bottom of its folder");
+    add("Home / End", "Jump to first/last visible row (Shift extends)");
+    add("Ctrl/Cmd + D", "Duplicate selection");
+    add("Ctrl/Cmd + Shift + V", "Paste clipboard as new item");
+    add("1 / 2 / 3", "Set status: Included / Maybe / Excluded");
+    add("Ctrl/Cmd + F", "Focus filter");
+    add("F3 / Shift+F3 (Ctrl/Cmd+G)", "Next / previous match");
+    add("Space", "Toggle folder expand/collapse");
+    add("Alt + Arrow Left/Right", "Collapse / expand all folders");
+    add("Alt + N", "Toggle note panel");
+
+    card.appendChild(list);
+    panel.appendChild(card);
   }
 
   function buildPathsPanel(panel: HTMLElement) {

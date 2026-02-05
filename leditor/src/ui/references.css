@@ -15,8 +15,8 @@
 .leditor-citation-anchor {
   color: #2a3b6f;
   text-decoration: none;
-  display: inline-block;
-  user-select: none;
+  display: inline;
+  user-select: text;
 }
 
 .leditor-bibliography-list {

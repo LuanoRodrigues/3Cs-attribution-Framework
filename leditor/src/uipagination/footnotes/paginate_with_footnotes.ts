@@ -97,10 +97,16 @@ const renderEntries = (
   suffixLabel?: string
 ) => {
   if (items.length === 0) {
-    container.classList.remove("leditor-page-footnotes--active");
-    container.setAttribute("aria-hidden", "true");
-    const list = container.querySelector<HTMLElement>(".leditor-footnote-list");
-    if (list) list.replaceChildren();
+    // Keep the footnote area visible even when no entries are present so users always see the
+    // reserved region and placeholder.
+    container.classList.add("leditor-page-footnotes--active");
+    container.setAttribute("aria-hidden", "false");
+    if (!container.dataset.leditorPlaceholder) {
+      container.dataset.leditorPlaceholder = "Footnotes";
+    }
+    container.style.minHeight = container.style.minHeight || "var(--footnote-area-height)";
+    const list = container.querySelector<HTMLElement>(".leditor-footnote-list") ?? ensureList(container);
+    list.replaceChildren();
     return;
   }
   container.classList.add("leditor-page-footnotes--active");

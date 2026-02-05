@@ -6,7 +6,8 @@ import {
   parseDropPayload,
   getFirstParagraphSnippet,
   treeToLines,
-  getFolderEditedHtml
+  getFolderEditedHtml,
+  snippet80
 } from "./coderState";
 import type { CoderScopeId, CoderState } from "./coderTypes";
 import { CODER_STATUSES, CoderNode, CoderPayload, CoderStatus, FolderNode, ItemNode } from "./coderTypes";
@@ -185,6 +186,54 @@ export class CoderPanel {
     this.unsubscribeStore = this.store.subscribe((state) => this.render(state));
     void this.hydratePersistentState();
     this.attachExternalStateListener();
+  }
+
+  private async pasteAsNewItem(): Promise<void> {
+    try {
+      const text = await navigator.clipboard.readText();
+      const html = await navigator.clipboard.read().then(async (items) => {
+        for (const item of items) {
+          const htmlType = item.types.find((t) => t === "text/html");
+          if (htmlType) {
+            const blob = await item.getType(htmlType);
+            return await blob.text();
+          }
+        }
+        return "";
+      });
+      const contentHtml = normalizePayloadHtml({ html, text } as any);
+      const payload: CoderPayload = {
+        title: snippet80(text || html) || "Pasted item",
+        text,
+        html: contentHtml,
+        source: { scope: "clipboard" }
+      };
+      this.addPayloadNode(payload, this.selectedFolderId());
+    } catch (error) {
+      console.error("[CoderPanel.ts][pasteAsNewItem][error]", error);
+    }
+  }
+
+  private duplicateSelection(): void {
+    const ids = this.getTopLevelSelected();
+    if (ids.length === 0) return;
+    const state = this.store.snapshot();
+    const targetId = ids[ids.length - 1];
+    const parent = this.findParent(state.nodes, targetId);
+    const siblings = parent ? parent.children : state.nodes;
+    const targetIndex = siblings.findIndex((n) => n.id === targetId);
+    const newIds = this.store.copyMany({
+      nodeIds: ids,
+      targetParentId: parent ? parent.id : null,
+      targetIndex: targetIndex + 1
+    });
+    if (newIds.length) {
+      this.selection = new Set(newIds);
+      this.primarySelection = newIds[newIds.length - 1] ?? null;
+      this.anchorSelection = newIds[0] ?? null;
+      this.render(this.store.snapshot());
+      this.scrollNodeIntoView(newIds[newIds.length - 1]);
+    }
   }
 
   public addPayload(payload: CoderPayload, parentId?: string | null): void {
@@ -634,7 +683,7 @@ export class CoderPanel {
         actions.append(count);
       }
     }
-    if (this.anchorSelection === node.id) {
+    if (this.anchorSelection === node.id && this.selection.size > 1) {
       const anchorBadge = document.createElement("span");
       anchorBadge.className = "coder-anchor-badge";
       anchorBadge.textContent = "anchor";
@@ -721,36 +770,43 @@ export class CoderPanel {
         ev.preventDefault();
         return;
       }
-      this.handleDragOver(ev, node);
+      this.handleDragOver(ev, node, row);
     });
-    row.addEventListener("dragleave", () => this.clearDropTarget());
+    row.addEventListener("dragleave", () => {
+      this.clearDropTarget();
+      if (node.type === "item") {
+        this.hidePreviewTooltip();
+      }
+    });
     row.addEventListener("drop", (ev) => {
       ev.stopPropagation();
       this.handleDrop(ev, node);
     });
 
-    if (!this.reducedMotion) {
-      row.addEventListener("mouseenter", () => {
+    row.addEventListener("mouseenter", () => {
+      if (!this.reducedMotion) {
         this.applyHoverPath(row, node.id);
-        if (node.type === "item") {
-          if (this.previewPinned && this.previewPinnedId !== node.id) return;
-          this.showPreviewTooltip(node, row);
-        }
-      });
-      row.addEventListener("mouseleave", () => {
+      }
+      if (node.type === "item") {
+        if (this.previewPinned && this.previewPinnedId !== node.id) return;
+        this.showPreviewTooltip(node, row);
+      }
+    });
+    row.addEventListener("mouseleave", () => {
+      if (!this.reducedMotion) {
         this.clearHoverPath(node.id);
-        if (node.type === "item") {
-          this.hidePreviewTooltip();
-        }
-      });
-    }
+      }
+      if (node.type === "item") {
+        this.hidePreviewTooltip();
+      }
+    });
 
     if (this.selection.has(node.id)) {
       row.classList.add("selected");
       if (this.primarySelection === node.id) {
         row.classList.add("selected-primary");
       }
-      if (this.anchorSelection === node.id) {
+      if (this.anchorSelection === node.id && this.selection.size > 1) {
         row.classList.add("selected-anchor");
         row.title = "Range anchor";
       }
@@ -864,18 +920,52 @@ export class CoderPanel {
     });
   }
 
+  private isPlaceholderTitle(value: string): boolean {
+    const normalized = String(value || "")
+      .replace(/\u2026/g, "...")
+      .trim()
+      .toLowerCase();
+    return normalized === "selection" || normalized === "selection..." || normalized === "selected text";
+  }
+
+  private deriveTitleFromPayload(payload: CoderPayload): string {
+    const collapse = (value: string): string => String(value || "").replace(/\s+/g, " ").trim();
+    const snippet80 = (value: string): string => {
+      const t = collapse(value);
+      if (!t) return "";
+      return t.length > 80 ? `${t.slice(0, 80).trimEnd()}…` : t;
+    };
+    const text = snippet80(String((payload.text as string | undefined) || ""));
+    if (text) return text;
+    const html = String((payload.section_html as string | undefined) || (payload.html as string | undefined) || "");
+    if (!html.trim()) return "";
+    const stripped = html
+      .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, " ")
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/p>/gi, "\n")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&nbsp;/gi, " ")
+      .replace(/&amp;/gi, "&")
+      .replace(/&lt;/gi, "<")
+      .replace(/&gt;/gi, ">")
+      .replace(/&quot;/gi, "\"")
+      .replace(/&#39;/gi, "'")
+      .trim();
+    return snippet80(stripped);
+  }
+
   private showPreviewTooltip(node: ItemNode, row: HTMLElement): void {
     if (!this.previewTooltip || !this.previewTitle || !this.previewSnippet) return;
-    const rawTitle =
-      (node.payload.title as string | undefined) ||
-      (node.payload.direct_quote as string | undefined) ||
-      node.name ||
-      "Selection";
-    const rawText =
-      (node.payload.text as string | undefined) ||
-      (node.payload.direct_quote as string | undefined) ||
-      (node.payload.html as string | undefined) ||
-      "";
+    const payloadTitle = String((node.payload.title as string | undefined) || "").trim();
+    const rawTitle = payloadTitle && !this.isPlaceholderTitle(payloadTitle) ? payloadTitle : node.name || payloadTitle || "Selection";
+
+    const payloadText = String((node.payload.text as string | undefined) || "").trim();
+    const directQuote = String((node.payload.direct_quote as string | undefined) || "").trim();
+    const html = String(
+      (node.payload.section_html as string | undefined) || (node.payload.html as string | undefined) || ""
+    ).trim();
+    const rawText = payloadText || directQuote || html || normalizePayloadHtml(node.payload) || "";
     const title = this.normalizePreviewText(rawTitle, 64);
     const snippet = this.normalizePreviewText(rawText, 220);
     this.previewTitle.textContent = title;
@@ -938,16 +1028,27 @@ export class CoderPanel {
   private beginRename(row?: HTMLElement, node?: CoderNode): void {
     const targetNode = node ?? this.selectedNode();
     if (!targetNode) return;
-    this.renamingId = targetNode.id;
-    this.render(this.store.snapshot());
-    window.setTimeout(() => {
-      if (this.renamingId !== targetNode.id) return;
-      const host = row ?? (this.treeHost.querySelector(`[data-id="${targetNode.id}"]`) as HTMLElement | null);
-      const input = host?.querySelector("input.rename-input") as HTMLInputElement | null;
-      if (!input) return;
-      input.focus();
-      input.select();
-    }, 0);
+    try {
+      this.renamingId = targetNode.id;
+      this.render(this.store.snapshot());
+      window.setTimeout(() => {
+        try {
+          if (this.renamingId !== targetNode.id) return;
+          const host = row ?? (this.treeHost.querySelector(`[data-id="${targetNode.id}"]`) as HTMLElement | null);
+          const input = host?.querySelector("input.rename-input") as HTMLInputElement | null;
+          if (!input) {
+            console.error("[CoderPanel.ts][beginRename][error] rename input missing", { nodeId: targetNode.id });
+            return;
+          }
+          input.focus();
+          input.select();
+        } catch (error) {
+          console.error("[CoderPanel.ts][beginRename][error]", error);
+        }
+      }, 0);
+    } catch (error) {
+      console.error("[CoderPanel.ts][beginRename][error]", error);
+    }
   }
 
   private moveSelected(direction: number): void {
@@ -967,6 +1068,8 @@ export class CoderPanel {
     const spec = { nodeId: sel.id, targetParentId: parent ? parent.id : null, targetIndex: target };
     this.store.move(spec);
     this.setSelectionSingle(sel.id);
+    // Keep scroll position stable for keyboard moves
+    this.scrollNodeIntoView(sel.id);
   }
 
   private moveSelectionBatch(direction: number): void {
@@ -998,6 +1101,7 @@ export class CoderPanel {
     };
     walk(state.nodes, null);
     this.render(this.store.snapshot());
+    if (this.primarySelection) this.scrollNodeIntoView(this.primarySelection);
   }
 
   private deleteSelected(): void {
@@ -1063,7 +1167,7 @@ export class CoderPanel {
         this.cleanupDragGhost();
       }, 0);
     }
-    ev.dataTransfer.effectAllowed = "move";
+    ev.dataTransfer.effectAllowed = "copyMove";
     ev.dataTransfer.setData(NODE_MIME, dragIds.length > 1 ? JSON.stringify(dragIds) : nodeId);
   }
 
@@ -1086,6 +1190,11 @@ export class CoderPanel {
     return [trimmed];
   }
 
+  private isCopyModifierActive(ev: DragEvent): boolean {
+    // Windows/Linux: Ctrl-copy. macOS typically uses Alt/Option-copy.
+    return Boolean(ev.ctrlKey || ev.altKey);
+  }
+
   private orderIdsByTree(ids: string[]): string[] {
     const wanted = new Set((ids || []).map(String));
     const ordered: string[] = [];
@@ -1104,18 +1213,28 @@ export class CoderPanel {
     return ordered;
   }
 
-  private handleDragOver(ev: DragEvent, target: CoderNode): void {
+  private handleDragOver(ev: DragEvent, target: CoderNode, rowEl?: HTMLElement): void {
     ev.preventDefault();
     ev.stopPropagation();
     if (!this.showDropHints) {
       if (ev.dataTransfer) {
         const hasNode = ev.dataTransfer.types.includes(NODE_MIME);
-        ev.dataTransfer.dropEffect = hasNode ? "move" : "copy";
+        const copy = this.isCopyModifierActive(ev);
+        ev.dataTransfer.dropEffect = hasNode ? (copy ? "copy" : "move") : "copy";
       }
       return;
     }
     if (ev.dataTransfer) {
       const hasNode = ev.dataTransfer.types.includes(NODE_MIME);
+      const copy = this.isCopyModifierActive(ev);
+      if (target.type === "item") {
+        const row = rowEl ?? ((ev.currentTarget as HTMLElement | null) ?? undefined);
+        if (row) {
+          if (!this.previewPinned || this.previewPinnedId === target.id) {
+            this.showPreviewTooltip(target, row);
+          }
+        }
+      }
       if (!hasNode) {
         if (target.type === "folder") {
           this.setDropTarget(target.id, "into");
@@ -1141,7 +1260,7 @@ export class CoderPanel {
             : `Drop after “${target.name}”`;
         this.showDropHint(ev.clientX, ev.clientY, label, this.buildDropIndexHint(target, mode));
       }
-      ev.dataTransfer.dropEffect = hasNode ? "move" : "copy";
+      ev.dataTransfer.dropEffect = hasNode ? (copy ? "copy" : "move") : "copy";
     }
   }
 
@@ -1179,16 +1298,36 @@ export class CoderPanel {
         this.expandFolderChain(spec0.targetParentId);
       }
 
-      this.selection = new Set(dragged);
-      this.primarySelection = dragged[dragged.length - 1] ?? null;
-      this.anchorSelection = dragged[0] ?? null;
-      this.store.moveMany({ nodeIds: dragged, targetParentId: spec0.targetParentId, targetIndex: spec0.targetIndex });
+      const copy = this.isCopyModifierActive(ev);
+      if (copy) {
+        const newIds = this.store.copyMany({
+          nodeIds: dragged,
+          targetParentId: spec0.targetParentId,
+          targetIndex: spec0.targetIndex
+        });
+        if (newIds.length) {
+          this.selection = new Set(newIds);
+          this.primarySelection = newIds[newIds.length - 1] ?? null;
+          this.anchorSelection = newIds[0] ?? null;
+        }
+      } else {
+        this.selection = new Set(dragged);
+        this.primarySelection = dragged[dragged.length - 1] ?? null;
+        this.anchorSelection = dragged[0] ?? null;
+        this.store.moveMany({ nodeIds: dragged, targetParentId: spec0.targetParentId, targetIndex: spec0.targetIndex });
+      }
       this.clearDropTarget();
       return;
     }
 
     const { payload } = parseDropPayload(dt);
-    if (payload) {
+    if (!payload) {
+      try {
+        console.error("[CoderPanel.ts][handleDrop][error] no payload parsed", { types: Array.from(dt.types || []) });
+      } catch {
+        // ignore
+      }
+    } else {
       const parentId = this.buildParentForPayloadDrop(target);
       this.addPayloadNode(payload, parentId);
     }
@@ -1208,10 +1347,20 @@ export class CoderPanel {
       const dragged = this.orderIdsByTree(filtered);
       if (dragged.length === 0) return;
 
-      this.selection = new Set(dragged);
-      this.primarySelection = dragged[dragged.length - 1] ?? null;
-      this.anchorSelection = dragged[0] ?? null;
-      this.store.moveMany({ nodeIds: dragged, targetParentId: null, targetIndex: state.nodes.length });
+      const copy = this.isCopyModifierActive(ev);
+      if (copy) {
+        const newIds = this.store.copyMany({ nodeIds: dragged, targetParentId: null, targetIndex: state.nodes.length });
+        if (newIds.length) {
+          this.selection = new Set(newIds);
+          this.primarySelection = newIds[newIds.length - 1] ?? null;
+          this.anchorSelection = newIds[0] ?? null;
+        }
+      } else {
+        this.selection = new Set(dragged);
+        this.primarySelection = dragged[dragged.length - 1] ?? null;
+        this.anchorSelection = dragged[0] ?? null;
+        this.store.moveMany({ nodeIds: dragged, targetParentId: null, targetIndex: state.nodes.length });
+      }
       this.clearDropTarget();
       return;
     }
@@ -1223,11 +1372,19 @@ export class CoderPanel {
   }
 
   private addFolderShortcut(parentId?: string | null): void {
-    const parent = parentId ?? this.selectedFolderId();
-    const folder = this.store.addFolder("New section", parent);
-    this.setSelectionSingle(folder.id);
-    this.render(this.store.snapshot());
-    this.beginRename(undefined, folder);
+    try {
+      const parent = parentId ?? this.selectedFolderId();
+      if (parent) {
+        this.expandFolderChain(parent);
+        this.setFolderExpanded(parent, true);
+      }
+      const folder = this.store.addFolder("New section", parent);
+      this.setSelectionSingle(folder.id);
+      this.render(this.store.snapshot());
+      this.beginRename(undefined, folder);
+    } catch (error) {
+      console.error("[CoderPanel.ts][addFolderShortcut][error]", error);
+    }
   }
 
   private focusFilterInput(): void {
@@ -1324,6 +1481,16 @@ export class CoderPanel {
       this.toggleAllFolders(false);
       return;
     }
+    if (ev.key === "PageUp" && meta) {
+      ev.preventDefault();
+      this.moveSelectionToEdge("up");
+      return;
+    }
+    if (ev.key === "PageDown" && meta) {
+      ev.preventDefault();
+      this.moveSelectionToEdge("down");
+      return;
+    }
     if (ev.key === " " && node?.type === "folder") {
       ev.preventDefault();
       this.store.setFolderCollapsed(node.id, !this.isFolderCollapsed(node.id));
@@ -1382,6 +1549,21 @@ export class CoderPanel {
     if ((meta && ev.key.toLowerCase() === "g") || ev.key === "F3") {
       ev.preventDefault();
       this.jumpToNextMatch();
+      return;
+    }
+    if (ev.shiftKey && ev.key === "F3") {
+      ev.preventDefault();
+      this.jumpToPrevMatch();
+      return;
+    }
+    if (meta && ev.shiftKey && ev.key.toLowerCase() === "v") {
+      ev.preventDefault();
+      void this.pasteAsNewItem();
+      return;
+    }
+    if (meta && ev.key.toLowerCase() === "d") {
+      ev.preventDefault();
+      this.duplicateSelection();
       return;
     }
     if (ev.altKey && ev.key.toLowerCase() === "n") {
@@ -1480,6 +1662,28 @@ export class CoderPanel {
     }
   }
 
+  private moveSelectionToEdge(direction: "up" | "down"): void {
+    const visible = this.getVisibleNodeIds();
+    if (visible.length === 0) return;
+    const ids = this.getTopLevelSelected();
+    if (ids.length === 0) return;
+    const state = this.store.snapshot();
+    const id = ids[ids.length - 1];
+    const parent = this.findParent(state.nodes, id);
+    const siblings = parent ? parent.children : state.nodes;
+    const targetIndex = direction === "up" ? 0 : siblings.length - 1;
+    ids.forEach((nodeId, offset) => {
+      this.store.move({
+        nodeId,
+        targetParentId: parent ? parent.id : null,
+        targetIndex: targetIndex + offset
+      });
+    });
+    this.setSelectionSingle(ids[ids.length - 1]);
+    this.render(this.store.snapshot());
+    this.scrollNodeIntoView(ids[ids.length - 1]);
+  }
+
   private jumpToEdge(edge: "start" | "end", extend: boolean): void {
     const visible = this.getVisibleNodeIds();
     if (visible.length === 0) return;
@@ -1548,6 +1752,16 @@ export class CoderPanel {
     if (!nextId) return;
     this.setSelectionSingle(nextId);
     this.scrollNodeIntoView(nextId);
+  }
+
+  private jumpToPrevMatch(): void {
+    if (!this.matchedIds.length) return;
+    const current = this.primarySelection ? this.matchedIds.indexOf(this.primarySelection) : -1;
+    const prevIndex = current > 0 ? current - 1 : this.matchedIds.length - 1;
+    const prevId = this.matchedIds[prevIndex];
+    if (!prevId) return;
+    this.setSelectionSingle(prevId);
+    this.scrollNodeIntoView(prevId);
   }
 
   private scrollNodeIntoView(nodeId: string): void {
@@ -1671,6 +1885,17 @@ export class CoderPanel {
       this.expandFolderChain(parentId);
     }
     const node = this.store.addItem(payload, parentId);
+    try {
+      const derived = this.deriveTitleFromPayload(payload);
+      if (derived && this.isPlaceholderTitle(node.name)) {
+        this.store.rename(node.id, derived);
+      }
+      if (derived && this.isPlaceholderTitle(String((node.payload as any).title || ""))) {
+        (node.payload as any).title = derived;
+      }
+    } catch (error) {
+      console.error("[CoderPanel.ts][addPayloadNode][error]", error);
+    }
     try {
       (node.payload as any).coder_id = node.id;
       (node.payload as any).coder_parent_id = parentId || "";

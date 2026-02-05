@@ -1888,6 +1888,8 @@ const buildGroup = (group: GroupConfig, ctx: BuildContext, tabId: string): Group
 const resetGroup = (meta: GroupMeta) => {
   meta.element.dataset.collapseStage = "A";
   meta.element.classList.remove("is-collapsed-group");
+  meta.element.hidden = false;
+  meta.element.style.display = "";
   const existingButton = meta.element.querySelector(".ribbon-group-button");
   existingButton?.remove();
   if (meta.body.parentNode !== meta.element) {
@@ -1913,6 +1915,58 @@ const resetGroup = (meta: GroupMeta) => {
     restoreElement(meta, c.element);
     c.element.style.display = "";
   });
+};
+
+const HOME_PROGRESSIVE_GROUP_ORDER = ["clipboard", "font", "paragraph", "styles", "editing"] as const;
+
+const sumGroupWidths = (groups: GroupMeta[]): number => {
+  return groups.reduce((sum, meta) => sum + Math.ceil(meta.element.getBoundingClientRect().width), 0);
+};
+
+const resolveProgressiveGroupOrder = (groups: GroupMeta[]): GroupMeta[] => {
+  const byId = new Map(groups.map((g) => [g.groupId, g] as const));
+  const ordered: GroupMeta[] = [];
+  HOME_PROGRESSIVE_GROUP_ORDER.forEach((id) => {
+    const found = byId.get(id);
+    if (found) ordered.push(found);
+  });
+  const remaining = groups
+    .filter((g) => !ordered.includes(g))
+    .sort((a, b) => (a.priority ?? 50) - (b.priority ?? 50));
+  ordered.push(...remaining);
+  if (ordered.length === 0 && groups.length) return [...groups];
+  return ordered;
+};
+
+const applyProgressiveGroupVisibility = (
+  panelEl: HTMLElement,
+  groups: GroupMeta[],
+  available: number
+): GroupMeta[] => {
+  const ordered = resolveProgressiveGroupOrder(groups);
+  // Clear prior visibility decisions.
+  ordered.forEach((g) => {
+    g.element.hidden = false;
+    g.element.style.display = "";
+  });
+  // Progressive add: keep the left-most groups that fit.
+  const visible: GroupMeta[] = [];
+  let used = 0;
+  const padding = 6;
+  for (const meta of ordered) {
+    meta.element.hidden = false;
+    meta.element.style.display = "";
+    const width = Math.ceil(meta.element.getBoundingClientRect().width);
+    const fits = visible.length === 0 ? true : used + width <= available - padding;
+    if (fits) {
+      visible.push(meta);
+      used += width;
+    } else {
+      meta.element.style.display = "none";
+    }
+  }
+  panelEl.dataset.progressiveGroups = String(visible.length);
+  return visible;
 };
 
 const applyStageB = (meta: GroupMeta, ctx: BuildContext) => {
@@ -2118,8 +2172,32 @@ const applyCollapseStages = (
   if (!strip) return;
 
   const available = Math.floor(strip.getBoundingClientRect().width);
+  const tabId = panelEl.dataset.tabId ?? "";
   const currentStage = (panelEl.dataset.collapseStage as "A" | "B" | "C" | undefined) ?? "A";
   panelEl.dataset.groupScroll = "disabled";
+
+  if (tabId === "home") {
+    cleanup.closeFlyouts();
+    groups.forEach(resetGroup);
+
+    const visibleA = applyProgressiveGroupVisibility(panelEl, groups, available);
+    if (sumGroupWidths(visibleA) <= available) {
+      panelEl.dataset.collapseStage = "A";
+      panelEl.dataset.stage = "A";
+      auditIconOnlyControls(panelEl);
+      return;
+    }
+
+    groups.forEach((g) => applyStageB(g, ctx));
+    const visibleB = applyProgressiveGroupVisibility(panelEl, groups, available);
+    panelEl.dataset.collapseStage = "B";
+    panelEl.dataset.stage = "B";
+    if (sumGroupWidths(visibleB) > available + 1) {
+      panelEl.dataset.groupScroll = "enabled";
+    }
+    auditIconOnlyControls(panelEl);
+    return;
+  }
 
   // Use the current DOM widths as a hysteresis band to avoid oscillation.
   const totalCurrent = groups.reduce((sum, g) => sum + g.element.getBoundingClientRect().width, 0);

@@ -185,7 +185,7 @@ const ensureStyles = () => {
   --page-border-width: 1px;
   --page-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
   --page-shadow-dark: 0 16px 40px rgba(0, 0, 0, 0.55);
-  --page-gap: 16px;
+  --page-gap: 12px;
   --page-margin-inside: 2.5cm;
   --page-margin-outside: 2.5cm;
   --column-separator-color: rgba(0, 0, 0, 0.25);
@@ -211,8 +211,8 @@ const ensureStyles = () => {
   --ui-surface-dark: rgba(24, 28, 36, 0.85);
   --ui-text: #1b1b1b;
   --ui-text-inverse: #f7f7f7;
-  /* Slightly tighter overall UI scale (renderer can override). */
-  --ui-scale: 1.5;
+  /* UI scaling is handled by --ui-scale set by renderer bootstrap. */
+  --ui-scale: 1;
 }
 
 html, body {
@@ -496,8 +496,8 @@ html, body {
   flex-direction: column;
   justify-content: flex-start;
   align-items: center;
-  /* Bring the first page closer to the ribbon. */
-  padding: 12px 20px 64px;
+  /* Keep the first page visible while leaving a small cushion below the ribbon. */
+  padding: 24px 16px 56px;
   background: var(--page-canvas-bg);
   overflow: visible;
 }
@@ -3879,10 +3879,17 @@ export const mountA4Layout = (
         const borderTopPx = Number.parseFloat(containerStyle.borderTopWidth || "0") || 0;
         const borderBottomPx = Number.parseFloat(containerStyle.borderBottomWidth || "0") || 0;
         const chromePx = Math.max(0, paddingTopPx + borderTopPx + borderBottomPx);
-        // When there are no entries, we should not reserve the base footnote-area-height. Only reserve
-        // the footer distance + footer height in that case (Word-like behavior).
         if (!hasEntries) {
-          const reservePx = footnoteMode ? Math.max(18, Math.round(footerReservePx * 0.35)) : 0;
+          // Always keep the footnote area visible so the user can see the reserved space and
+          // placeholders even before any note exists. Fall back to the document-level
+          // --footnote-area-height token when available; otherwise keep a small guard height.
+          const defaultAreaRaw = rootTokens.getPropertyValue("--footnote-area-height").trim();
+          const defaultAreaPx = Number.parseFloat(defaultAreaRaw || "0") || 0;
+          const baseReservePx = defaultAreaPx > 0 ? defaultAreaPx : Math.max(18, Math.round(footerReservePx * 0.35));
+          const reservePx =
+            footnoteMode && baseReservePx < 18
+              ? Math.max(18, Math.round(footerReservePx * 0.35))
+              : baseReservePx;
           const guardPx = reservePx > 0 ? guardPxRaw : 0;
           const effectiveBottomPx = Math.max(0, footerReservePx + reservePx + gapPx + guardPx);
           if (pageIndex >= 0) {
@@ -3897,8 +3904,12 @@ export const mountA4Layout = (
               footnoteLayoutVarsByPage.delete(pageIndex);
             }
           }
-          container.classList.remove("leditor-page-footnotes--active");
-          container.setAttribute("aria-hidden", "true");
+          container.classList.add("leditor-page-footnotes--active");
+          container.setAttribute("aria-hidden", "false");
+          if (!container.dataset.leditorPlaceholder) {
+            container.dataset.leditorPlaceholder = "Footnotes";
+          }
+          container.style.minHeight = container.style.minHeight || "var(--footnote-area-height)";
           container.style.height = `${reservePx}px`;
           container.style.overflowY = "hidden";
           container.style.setProperty("--page-footnote-height", `${reservePx}px`);
@@ -4717,7 +4728,6 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
         console.warn("[PaginationDebug] forcing page columns to 1", { pageColumns });
         setSectionColumns(1);
         try {
-          (window as any).__leditorAutoNormalizeOnce = true;
           document.documentElement.style.setProperty("--page-columns", "1");
           document.documentElement.style.setProperty("--page-column-gap", "0px");
         } catch {
@@ -5440,29 +5450,42 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
   // Surgical failsafe for "I can't edit anything":
   // sometimes a crash/throw during an edit-mode transition leaves ProseMirror non-editable even though
   // `footnoteMode/headerFooterMode` are false. Ensure the body is always editable on any pointerdown.
-  const handleDocumentPointerDown = (_event: PointerEvent) => {
-    if (footnoteMode || headerFooterMode) return;
-    const event = _event;
-    if (event.button !== 0) return;
-    pointerDownActive = true;
-    pointerSelectionRange = false;
-    pointerMoved = false;
-    lastPointerDownAt = Date.now();
-    pointerDownX = event.clientX;
-    pointerDownY = event.clientY;
-    multiClickDrag = null;
-    marginSelectionActive = false;
-    marginSelectionAnchor = null;
-    // Un-stick stray mode classes (flags are the source of truth).
-    setModeClass("leditor-footnote-editing", false);
-    setModeClass("leditor-header-footer-editing", false);
-    setEditorEditable(true);
+	  const handleDocumentPointerDown = (_event: PointerEvent) => {
+	    if (footnoteMode || headerFooterMode) return;
+	    const event = _event;
+	    if (event.button !== 0) return;
+	    const target = (event.target as HTMLElement | null) ?? null;
+	    const inChromeUi =
+	      !!target?.closest?.(
+	        ".leditor-ribbon-host, .leditor-navigation-panel, .leditor-styles-panel, .leditor-pdf-shell"
+	      );
+	    // Do not let the global caret/selection failsafes interfere with UI chrome interactions
+	    // (navigation pane, styles pane, ribbon, embedded PDF viewer).
+	    if (inChromeUi) {
+	      // Still unstick mode classes (flags are the source of truth) and restore editability.
+	      setModeClass("leditor-footnote-editing", false);
+	      setModeClass("leditor-header-footer-editing", false);
+	      setEditorEditable(true);
+	      return;
+	    }
+	    pointerDownActive = true;
+	    pointerSelectionRange = false;
+	    pointerMoved = false;
+	    lastPointerDownAt = Date.now();
+	    pointerDownX = event.clientX;
+	    pointerDownY = event.clientY;
+	    multiClickDrag = null;
+	    marginSelectionActive = false;
+	    marginSelectionAnchor = null;
+	    // Un-stick stray mode classes (flags are the source of truth).
+	    setModeClass("leditor-footnote-editing", false);
+	    setModeClass("leditor-header-footer-editing", false);
+	    setEditorEditable(true);
 
     const clickCount = typeof event.detail === "number" ? event.detail : 1;
-    const target = event.target as HTMLElement | null;
-    const editorInstance = attachedEditorHandle?.getEditor?.() ?? null;
-    const view = editorInstance?.view ?? null;
-    if (view) {
+	    const editorInstance = attachedEditorHandle?.getEditor?.() ?? null;
+	    const view = editorInstance?.view ?? null;
+	    if (view) {
       const selectionMode = getSelectionMode();
       const wantsBlock = selectionMode === "block" || event.altKey;
       const pageCtx = getPageContextFromPoint(event.clientX, event.clientY);
@@ -6464,6 +6487,55 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
   }
   (window as any)[globalFootnoteExitKey] = handleFootnoteExitEvent as EventListener;
   window.addEventListener("leditor:footnote-exit", handleFootnoteExitEvent as EventListener);
+
+  // Allow non-UI callers (ribbon/commands) to request an immediate footnote overlay refresh.
+  // This is needed when only footnote body text changes (the document signature used to
+  // debounce updates ignores footnote text to avoid re-rendering on every keystroke).
+  const handleFootnotesRefreshEvent = () => {
+    // Force renders on a short cadence. Citation-driven footnotes can be inserted before
+    // the EditorHandle is attached or while pagination is rebuilding shells, so a single
+    // synchronous render can be a no-op. Keep this bounded to avoid loops.
+    const attempts: Array<() => void> = [
+      () => renderFootnoteSections(),
+      () => renderFootnoteSections(),
+      () => renderFootnoteSections()
+    ];
+    try {
+      attempts[0]();
+    } catch {
+      // ignore
+    }
+    try {
+      window.requestAnimationFrame(() => {
+        try {
+          attempts[1]();
+        } catch {
+          // ignore
+        }
+      });
+    } catch {
+      // ignore
+    }
+    try {
+      window.setTimeout(() => {
+        try {
+          attempts[2]();
+        } catch {
+          // ignore
+        }
+      }, 250);
+    } catch {
+      // ignore
+    }
+    scheduleFootnoteHeightMeasurement();
+  };
+  const globalFootnotesRefreshKey = "__leditorFootnotesRefreshHandler";
+  const existingGlobalFootnotesRefreshHandler = (window as any)[globalFootnotesRefreshKey] as EventListener | undefined;
+  if (existingGlobalFootnotesRefreshHandler) {
+    window.removeEventListener("leditor:footnotes-refresh", existingGlobalFootnotesRefreshHandler);
+  }
+  (window as any)[globalFootnotesRefreshKey] = handleFootnotesRefreshEvent as EventListener;
+  window.addEventListener("leditor:footnotes-refresh", handleFootnotesRefreshEvent as EventListener);
   const existingFocusIn = (window as any)[globalFocusInKey] as ((e: FocusEvent) => void) | undefined;
   if (existingFocusIn) document.removeEventListener("focusin", existingFocusIn, true);
   (window as any)[globalFocusInKey] = handleDocumentFocusIn;

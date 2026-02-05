@@ -1,8 +1,9 @@
 import type { Editor } from "@tiptap/core";
-import { Fragment } from "@tiptap/pm/model";
+import { DOMParser as PMDOMParser, Fragment } from "@tiptap/pm/model";
 import { NodeSelection, TextSelection, Transaction } from "@tiptap/pm/state";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { getFootnoteRegistry } from "../extensions/extension_footnote.ts";
+import { buildFootnoteBodyContent } from "../extensions/extension_footnote_body.ts";
 import {
   normalizeCitationId,
   setCitationSources,
@@ -42,6 +43,11 @@ import {
   resolveNoteKind,
   updateAllCitationsAndBibliography
 } from "../csl/update.ts";
+import {
+  ensureCslStyleAvailable,
+  renderCitationsAndBibliographyWithCiteproc,
+  renderBibliographyEntriesWithCiteproc
+} from "../csl/citeproc.ts";
 import { extractCitedKeysFromDoc, writeCitedWorksKeys, acceptKey, extractKeyFromLinkAttrs } from "../ui/references/cited_works.ts";
 import type { BibliographyNode as CslBibliographyNode, CitationNode as CslCitationNode, DocCitationMeta } from "../csl/types.ts";
 import {
@@ -79,6 +85,26 @@ const clampIndentLevel = (value: number) => Math.max(MIN_INDENT_LEVEL, Math.min(
 let citationIdCounter = 0;
 const generateCitationId = () => `c-${Date.now().toString(36)}-${(citationIdCounter++).toString(36)}`;
 
+let cslUpdateRunId = 0;
+
+const findFootnoteBodyNodeById = (
+  doc: ProseMirrorNode,
+  footnoteBodyType: any,
+  footnoteId: string
+): { node: ProseMirrorNode; pos: number } | null => {
+  let found: { node: ProseMirrorNode; pos: number } | null = null;
+  doc.descendants((node, pos) => {
+    if (node.type !== footnoteBodyType) return true;
+    const id = typeof (node.attrs as any)?.footnoteId === "string" ? String((node.attrs as any).footnoteId).trim() : "";
+    if (id === footnoteId) {
+      found = { node, pos };
+      return false;
+    }
+    return true;
+  });
+  return found;
+};
+
 const isReferencesDebugEnabled = (): boolean => {
   const g = window as typeof window & { __leditorReferencesDebug?: boolean; __leditorDebug?: boolean };
   return Boolean(g.__leditorReferencesDebug || g.__leditorDebug) || isDebugLoggingEnabled();
@@ -115,6 +141,7 @@ const isRibbonActiveSurface = (active: HTMLElement | null): boolean => {
 
 const shouldAllowProgrammaticFocus = (editor: Editor, allowRibbon = true): boolean => {
   if (isOverlayEditing()) return false;
+  if ((window as any).__leditorRibbonCommandActive) return true;
   const active = document.activeElement as HTMLElement | null;
   if (!active) return false;
   if (isEditorActiveSurface(editor)) return true;
@@ -133,6 +160,7 @@ const logCaretGate = (label: string, detail: Record<string, unknown>): void => {
 
 const shouldAllowSelectionRestore = (editor: Editor, allowRibbon = true): boolean => {
   if (isOverlayEditing()) return false;
+  if ((window as any).__leditorRibbonCommandActive) return true;
   const active = document.activeElement as HTMLElement | null;
   if (!active) return false;
   if (isEditorActiveSurface(editor)) return true;
@@ -196,73 +224,63 @@ const buildBibliographyEntryParagraphs = (
   const schema = editor.schema;
   const entryNode = schema.nodes.bibliography_entry ?? schema.nodes.paragraph;
   if (!entryNode) return [];
-  const italicType = schema.marks.italic ?? schema.marks.em;
-  const boldType = schema.marks.bold ?? schema.marks.strong;
-  const italicMark = italicType ? italicType.create() : null;
-  const boldMark = boldType ? boldType.create() : null;
+  const parser = PMDOMParser.fromSchema(schema);
+  const stripOuterWrapper = (html: string): string => {
+    const raw = String(html || "").trim();
+    if (!raw) return "";
+    const host = document.createElement("div");
+    host.innerHTML = raw;
+    const entry = host.querySelector(".csl-entry") as HTMLElement | null;
+    const target = entry ?? host;
 
-  const lib = getReferencesLibrarySync();
-  const style = String(meta.styleId || "").toLowerCase();
-
-  const normalize = (value: string): string => value.trim().toLowerCase().replace(/\s+/g, " ");
-  const sortApa = (aKey: string, bKey: string): number => {
-    const a = lib.itemsByKey[aKey];
-    const b = lib.itemsByKey[bKey];
-    const aAuthor = normalize(a?.author || "");
-    const bAuthor = normalize(b?.author || "");
-    if (aAuthor !== bAuthor) return aAuthor < bAuthor ? -1 : 1;
-    const aYear = normalize(a?.year || "");
-    const bYear = normalize(b?.year || "");
-    if (aYear !== bYear) return aYear < bYear ? -1 : 1;
-    const aTitle = normalize(a?.title || "");
-    const bTitle = normalize(b?.title || "");
-    if (aTitle !== bTitle) return aTitle < bTitle ? -1 : 1;
-    return aKey < bKey ? -1 : aKey > bKey ? 1 : 0;
-  };
-
-  const ordered = style.includes("apa") ? [...itemKeys].sort(sortApa) : itemKeys;
-
-  const numberByKey = style.includes("numeric") || style === "vancouver" || style === "ieee" || style === "nature"
-    ? new Map(ordered.map((k, i) => [k, i + 1]))
-    : null;
-
-  const makeText = (value: string, mark?: any) => {
-    const raw = String(value || "");
-    if (!raw) return null;
-    return mark ? schema.text(raw, [mark]) : schema.text(raw);
-  };
-
-  return ordered.map((itemKey) => {
-    const item = lib.itemsByKey[itemKey];
-    if (!item) {
-      return entryNode.create(null, [schema.text(itemKey)]);
-    }
-    const pieces: any[] = [];
-    if (numberByKey) {
-      const n = numberByKey.get(itemKey);
-      if (typeof n === "number") {
-        const t = makeText(`[${n}] `, boldMark);
-        if (t) pieces.push(t);
+    // Citeproc bibliography entries sometimes contain block-level wrappers (divs).
+    // Our bibliography_entry node only allows inline content, so flatten blocks to spans.
+    const flatten = (root: Element) => {
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
+      const toReplace: Element[] = [];
+      while (walker.nextNode()) {
+        const el = walker.currentNode as Element;
+        const tag = el.tagName.toLowerCase();
+        if (tag === "div" || tag === "p" || tag === "section" || tag === "article") {
+          toReplace.push(el);
+        }
       }
+      toReplace.forEach((el) => {
+        const span = document.createElement("span");
+        span.className = (el as HTMLElement).className || "";
+        // Preserve a little separation between left-margin / right-inline layouts.
+        span.innerHTML = el.innerHTML;
+        el.replaceWith(span);
+      });
+    };
+    flatten(target);
+    return target.innerHTML.trim();
+  };
+  const safeText = (html: string): string => String(html || "").replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+  const parseEntry = (html: string): ProseMirrorNode => {
+    const inner = stripOuterWrapper(html);
+    const container = document.createElement("div");
+    container.innerHTML = `<p data-bibliography-entry="true">${inner || safeText(html) || " "}</p>`;
+    const parsed = parser.parse(container);
+    const first = parsed.firstChild;
+    if (first && first.type === entryNode) return first;
+    if (first && first.isTextblock) {
+      return entryNode.create(null, first.content);
     }
-    const author = normalizeText(item.author || "");
-    const year = normalizeText(item.year || "");
-    const title = normalizeText(item.title || "");
-    const source = normalizeText(item.source || "");
-    const url = normalizeText(item.url || "");
+    return entryNode.create(null, [schema.text(safeText(html) || " ")]);
+  };
 
-    if (author) pieces.push(schema.text(`${author}. `));
-    if (year) pieces.push(schema.text(`(${year}). `));
-    if (title) {
-      const t = makeText(title, italicMark);
-      if (t) pieces.push(t);
-      pieces.push(schema.text(". "));
-    }
-    if (source) pieces.push(schema.text(`${source}. `));
-    if (url) pieces.push(schema.text(url));
-    if (!pieces.length) pieces.push(schema.text(itemKey));
-    return entryNode.create(null, pieces.filter(Boolean));
-  });
+  let entriesHtml: string[] = [];
+  try {
+    entriesHtml = renderBibliographyEntriesWithCiteproc({ meta, itemKeys });
+  } catch (error) {
+    console.warn("[References] citeproc bibliography render failed", error);
+    entriesHtml = [];
+  }
+  if (!entriesHtml.length) {
+    return [entryNode.create(null, [schema.text("No sources cited.")])];
+  }
+  return entriesHtml.map((html) => parseEntry(html));
 };
 
 const removeTrailingReferencesSection = (editor: Editor, headingText: string): void => {
@@ -297,6 +315,70 @@ const removeTrailingReferencesSection = (editor: Editor, headingText: string): v
   if (pageDepth < 0) return;
   const pageStart = $pos.before(pageDepth);
   editor.view.dispatch(editor.state.tr.delete(pageStart, doc.content.size));
+};
+
+const findTrailingBibliographyBreakPos = (doc: ProseMirrorNode): number | null => {
+  let lastPos: number | null = null;
+  doc.descendants((node, pos) => {
+    if (node.type.name !== "page_break") return true;
+    const kind = typeof node.attrs?.kind === "string" ? node.attrs.kind : "";
+    const sectionId = typeof node.attrs?.sectionId === "string" ? node.attrs.sectionId : "";
+    if (kind === "page" && sectionId === "bibliography") {
+      lastPos = pos;
+    }
+    return true;
+  });
+  return lastPos;
+};
+
+const getBibliographyLabelFromBreak = (doc: ProseMirrorNode, breakPos: number): string => {
+  const heading = doc.type.schema.nodes.heading;
+  if (!heading) return "References";
+  let label = "References";
+  doc.nodesBetween(breakPos, doc.content.size, (node) => {
+    if (node.type !== heading) return true;
+    const level = typeof node.attrs?.level === "number" ? node.attrs.level : null;
+    if (level !== 1) return true;
+    const text = (node.textContent || "").trim();
+    if (text) label = text;
+    return false;
+  });
+  return label;
+};
+
+const removeTrailingReferencesByBreak = (editor: Editor): void => {
+  const doc = editor.state.doc;
+  const pos = findTrailingBibliographyBreakPos(doc);
+  if (pos == null) return;
+  editor.view.dispatch(editor.state.tr.delete(pos, doc.content.size));
+};
+
+const collectOrderedCitedItemKeys = (editor: Editor, extras?: string[]): string[] => {
+  const seen = new Set<string>();
+  const ordered: string[] = [];
+  const register = (value: unknown) => {
+    const key = typeof value === "string" ? value.trim() : "";
+    if (!acceptKey(key) || seen.has(key)) return;
+    seen.add(key);
+    ordered.push(key);
+  };
+  editor.state.doc.descendants((node) => {
+    if (node.type.name === "citation" && Array.isArray(node.attrs?.items)) {
+      (node.attrs.items as Array<{ itemKey: string }>).forEach((item) => register(item?.itemKey));
+    }
+    if (Array.isArray((node as any).marks)) {
+      (node as any).marks.forEach((mark: any) => {
+        if (!mark) return;
+        const name = mark.type?.name;
+        if (name !== "link" && name !== "anchor") return;
+        const key = extractKeyFromLinkAttrs(mark.attrs ?? {});
+        register(key);
+      });
+    }
+    return true;
+  });
+  (extras ?? []).forEach((k) => register(k));
+  return ordered;
 };
 
 const insertReferencesAsNewLastPages = (editor: Editor, headingText: string, itemKeys: string[]): void => {
@@ -342,6 +424,7 @@ const insertReferencesAsNewLastPages = (editor: Editor, headingText: string, ite
 
     const host = (document.querySelector(".leditor-app") as HTMLElement | null) ?? document.body;
     const scratch = document.createElement("div");
+    scratch.className = "ProseMirror leditor-bibliography";
     scratch.style.position = "fixed";
     scratch.style.left = "-10000px";
     scratch.style.top = "0";
@@ -350,6 +433,19 @@ const insertReferencesAsNewLastPages = (editor: Editor, headingText: string, ite
     scratch.style.pointerEvents = "none";
     scratch.style.whiteSpace = "normal";
     scratch.style.boxSizing = "border-box";
+    scratch.style.overflow = "visible";
+    try {
+      const prose = document.querySelector<HTMLElement>(".ProseMirror");
+      if (prose) {
+        const cs = getComputedStyle(prose);
+        scratch.style.fontFamily = cs.fontFamily;
+        scratch.style.fontSize = cs.fontSize;
+        scratch.style.lineHeight = cs.lineHeight;
+        scratch.style.letterSpacing = cs.letterSpacing;
+      }
+    } catch {
+      // ignore
+    }
     host.appendChild(scratch);
 
     const measureBlockHeight = (tag: string, className: string, text: string): number => {
@@ -374,7 +470,8 @@ const insertReferencesAsNewLastPages = (editor: Editor, headingText: string, ite
     let used = Math.max(headingHeight, 0);
     const capacity = Math.max(0, pageContentHeight);
     for (let i = 0; i < safeEntries.length; i += 1) {
-      const h = entriesHeights[i] ?? 0;
+      // Add a small safety pad to avoid underestimating due to font/mark differences.
+      const h = (entriesHeights[i] ?? 0) * 1.12 + 2;
       // Always place at least one entry on a page.
       if (current.length > 0 && used + h > capacity) {
         pages.push(current);
@@ -857,12 +954,13 @@ const parseLocatorFromRenderedText = (text: string): { locator: string | null; l
 const convertCitationAnchorsToCitationNodes = (editor: Editor): void => {
   const citationNode = editor.schema.nodes.citation;
   const linkMark = editor.schema.marks.link;
-  if (!citationNode || !linkMark) return;
+  const anchorMark = editor.schema.marks.anchor;
+  if (!citationNode || (!linkMark && !anchorMark)) return;
   const tr = editor.state.tr;
   const ranges: Array<{ from: number; to: number; attrs: Record<string, any> }> = [];
   editor.state.doc.descendants((node, pos) => {
     if (!node.isText) return true;
-    const link = (node.marks || []).find((m) => m.type === linkMark);
+    const link = (node.marks || []).find((m) => (linkMark && m.type === linkMark) || (anchorMark && m.type === anchorMark));
     if (!link) return true;
     const attrs = link.attrs ?? {};
     const key = extractKeyFromLinkAttrs(attrs);
@@ -1002,7 +1100,18 @@ const setCitationStyleCommand: CommandHandler = (editor, args) => {
   const payload = payloadRaw.trim().toLowerCase();
   const style = payload || CITATION_STYLE_DEFAULT;
   applyCitationStyleToDoc(editor, style);
-  void refreshCitationsAndBibliography(editor);
+  void refreshCitationsAndBibliography(editor).then(() => {
+    // If a references section exists at the end, rebuild it so it matches the new style.
+    const breakPos = findTrailingBibliographyBreakPos(editor.state.doc);
+    if (breakPos == null) return;
+    const label = getBibliographyLabelFromBreak(editor.state.doc, breakPos);
+    const keys = collectOrderedCitedItemKeys(editor, collectDocumentCitationKeys(editor));
+    // Rebuild on next frame so layout metrics used for page splitting are up to date.
+    window.requestAnimationFrame(() => {
+      removeTrailingReferencesByBreak(editor);
+      insertReferencesAsNewLastPages(editor, label, keys);
+    });
+  });
 };
 
 const runCslUpdate = (editor: Editor): void => {
@@ -1017,11 +1126,14 @@ const runCslUpdate = (editor: Editor): void => {
   const styleId = getDocCitationMeta(editor.state.doc).styleId;
   const noteKind = resolveNoteKind(styleId);
   const trPrelude = editor.state.tr;
+  const cslDebug = (window as any).__leditorCslDebug;
 
   if (noteKind) {
     const existingNotes = collectFootnoteNodesByCitationId(editor.state.doc, noteKind);
     const noteMap = new Map(existingNotes.map((entry) => [entry.citationId, entry]));
     const existingIds = new Set(noteMap.keys());
+    let inserted = 0;
+    let hidden = 0;
     editor.state.doc.descendants((node, pos) => {
       if (node.type === citationNode) {
         const citationId = typeof node.attrs?.citationId === "string" ? node.attrs.citationId : "";
@@ -1029,6 +1141,7 @@ const runCslUpdate = (editor: Editor): void => {
         if (!node.attrs?.hidden) {
           const mappedPos = trPrelude.mapping.map(pos);
           trPrelude.setNodeMarkup(mappedPos, citationNode, { ...node.attrs, hidden: true });
+          hidden += 1;
         }
         if (!existingIds.has(citationId)) {
           const footnoteNode = editor.schema.nodes.footnote;
@@ -1043,10 +1156,21 @@ const runCslUpdate = (editor: Editor): void => {
           const mappedInsertPos = trPrelude.mapping.map(pos + node.nodeSize);
           trPrelude.insert(mappedInsertPos, footnote);
           existingIds.add(citationId);
+          inserted += 1;
         }
       }
       return true;
     });
+    if (cslDebug) {
+      console.log("[CSLDebug] note prelude", {
+        styleId,
+        noteKind,
+        citationsSeen: existingIds.size,
+        inserted,
+        hidden,
+        existingNotes: existingNotes.length
+      });
+    }
   } else {
     editor.state.doc.descendants((node, pos) => {
       if (node.type === citationNode && node.attrs?.hidden) {
@@ -1063,52 +1187,265 @@ const runCslUpdate = (editor: Editor): void => {
 
   if (trPrelude.docChanged) {
     editor.view.dispatch(trPrelude);
-  }
-
-  const tr = editor.state.tr;
-  updateAllCitationsAndBibliography({
-    doc: editor.state.doc,
-    getDocCitationMeta: (doc) => getDocCitationMeta(doc as ProseMirrorNode),
-    extractCitationNodes: (doc) => extractCitationNodes(doc as ProseMirrorNode),
-    additionalItemKeys: collectDocumentCitationKeys(editor),
-    findBibliographyNode: (doc) => findBibliographyNode(doc as ProseMirrorNode),
-    setCitationNodeRenderedHtml: (node, html) => {
-      const record = node as CitationNodeRecord;
-      if (record.pmNode.attrs?.renderedHtml === html) return;
-      tr.setNodeMarkup(record.pos, citationNode, { ...record.pmNode.attrs, renderedHtml: html });
-    },
-    setBibliographyRenderedHtml: (node, html) => {
-      const record = node as BibliographyNodeRecord;
-      if (record.pmNode.attrs?.renderedHtml === html) return;
-      tr.setNodeMarkup(record.pos, bibliographyNode, { ...record.pmNode.attrs, renderedHtml: html });
-    }
-  });
-  if (tr.docChanged) {
-    editor.view.dispatch(tr);
-  }
-
-  if (noteKind) {
-    const rendered = new Map<string, string>();
-    const citationNodes = extractCitationNodes(editor.state.doc);
-    citationNodes.forEach((node) => rendered.set(node.citationId, node.renderedHtml));
-    const footnoteNodes = collectFootnoteNodesByCitationId(editor.state.doc, noteKind);
-    if (footnoteNodes.length) {
-      const trNotes = editor.state.tr;
-      footnoteNodes.forEach((entry) => {
-        const text = stripHtml(rendered.get(entry.citationId) ?? "");
-        const contentText = text.length > 0 ? text : "Citation";
-        const newNode = entry.node.type.create({ ...(entry.node.attrs as any), text: contentText }, []);
-        trNotes.replaceWith(entry.pos, entry.pos + entry.node.nodeSize, newNode);
-      });
-      if (trNotes.docChanged) {
-        editor.view.dispatch(trNotes);
+    // Force the A4 overlay to refresh footnote sections immediately. In some environments,
+    // Tiptap's "update" event can be missed when transactions are dispatched directly,
+    // and the overlay debouncer ignores footnote text changes by design.
+    if (noteKind) {
+      try {
+        window.dispatchEvent(new CustomEvent("leditor:footnotes-refresh"));
+      } catch {
+        // ignore
+      }
+      // Pagination/layout can rebuild page shells after this transaction, wiping rendered rows.
+      // Fire a second refresh on the next frame to mirror the "InsertFootnote -> focus" timing.
+      try {
+        window.requestAnimationFrame(() => {
+          try {
+            window.dispatchEvent(new CustomEvent("leditor:footnotes-refresh"));
+          } catch {
+            // ignore
+          }
+        });
+      } catch {
+        // ignore
+      }
+      // One more delayed refresh: A4 layout attaches its editor update listener after mount,
+      // and style changes can race that attachment in some environments.
+      try {
+        window.setTimeout(() => {
+          try {
+            window.dispatchEvent(new CustomEvent("leditor:footnotes-refresh"));
+          } catch {
+            // ignore
+          }
+        }, 300);
+      } catch {
+        // ignore
       }
     }
   }
+
+  if (cslDebug && noteKind) {
+    // Footnote bodies are managed by a plugin; log after it has a chance to append its transaction.
+    window.requestAnimationFrame(() => {
+      try {
+        const doc = editor.state.doc;
+        const footnoteType = doc.type.schema.nodes.footnote;
+        const bodyType = doc.type.schema.nodes.footnoteBody;
+        const containerType = doc.type.schema.nodes.footnotesContainer;
+        let footnotes = 0;
+        let bodies = 0;
+        let containers = 0;
+        doc.descendants((node) => {
+          if (footnoteType && node.type === footnoteType) footnotes += 1;
+          if (bodyType && node.type === bodyType) bodies += 1;
+          if (containerType && node.type === containerType) containers += 1;
+          return true;
+        });
+        console.log("[CSLDebug] footnote state", { footnotes, bodies, containers });
+      } catch (e) {
+        console.warn("[CSLDebug] footnote state failed", e);
+      }
+    });
+  }
+
+  const runId = ++cslUpdateRunId;
+  void (async () => {
+    try {
+      await ensureCslStyleAvailable(styleId);
+    } catch (error) {
+      console.error("[References] CSL style load failed; falling back to simplified renderer", error);
+      // Continue; simplified renderer does not require CSL XML.
+    }
+    if (runId !== cslUpdateRunId) return;
+
+    const tr = editor.state.tr;
+    const meta = getDocCitationMeta(editor.state.doc);
+    const citationNodes = extractCitationNodes(editor.state.doc);
+    const additionalItemKeys = collectDocumentCitationKeys(editor);
+
+    if (cslDebug) {
+      console.log("[CSLDebug] doc citation mapping", {
+        styleId: meta.styleId,
+        locale: meta.locale,
+        count: citationNodes.length,
+        sample: citationNodes.slice(0, 5).map((c) => ({
+          citationId: c.citationId,
+          pos: c.pos,
+          noteIndex: c.noteIndex,
+          itemKeys: Array.isArray(c.items) ? c.items.map((it: any) => it?.itemKey).filter(Boolean) : []
+        })),
+        all:
+          cslDebug === "full"
+            ? citationNodes.map((c) => ({
+                citationId: c.citationId,
+                pos: c.pos,
+                noteIndex: c.noteIndex,
+                itemKeys: Array.isArray(c.items) ? c.items.map((it: any) => it?.itemKey).filter(Boolean) : []
+              }))
+            : undefined
+      });
+    }
+
+    let rendered: ReturnType<typeof renderCitationsAndBibliographyWithCiteproc> | null = null;
+    try {
+      rendered = renderCitationsAndBibliographyWithCiteproc({
+        meta,
+        citations: citationNodes.map((c) => ({ citationId: c.citationId, items: c.items, noteIndex: c.noteIndex })),
+        additionalItemKeys
+      });
+    } catch (error) {
+      console.error("[References] citeproc update failed; falling back to simplified renderer", error);
+    }
+
+    if (rendered) {
+      citationNodes.forEach((node) => {
+        const html = rendered?.citationHtmlById.get(node.citationId) ?? "";
+        if (node.pmNode.attrs?.renderedHtml === html) return;
+        tr.setNodeMarkup(node.pos, citationNode, { ...node.pmNode.attrs, renderedHtml: html });
+      });
+      const bibliography = findBibliographyNode(editor.state.doc);
+      if (bibliography) {
+        const html = rendered.bibliographyHtml;
+        if (bibliography.pmNode.attrs?.renderedHtml !== html) {
+          tr.setNodeMarkup(bibliography.pos, bibliographyNode, { ...bibliography.pmNode.attrs, renderedHtml: html });
+        }
+      }
+    } else {
+      // Backward-compatible fallback if citeproc fails for any reason.
+      updateAllCitationsAndBibliography({
+        doc: editor.state.doc,
+        getDocCitationMeta: (doc) => getDocCitationMeta(doc as ProseMirrorNode),
+        extractCitationNodes: (doc) => extractCitationNodes(doc as ProseMirrorNode),
+        additionalItemKeys,
+        findBibliographyNode: (doc) => findBibliographyNode(doc as ProseMirrorNode),
+        setCitationNodeRenderedHtml: (node, html) => {
+          const record = node as CitationNodeRecord;
+          if (record.pmNode.attrs?.renderedHtml === html) return;
+          tr.setNodeMarkup(record.pos, citationNode, { ...record.pmNode.attrs, renderedHtml: html });
+        },
+        setBibliographyRenderedHtml: (node, html) => {
+          const record = node as BibliographyNodeRecord;
+          if (record.pmNode.attrs?.renderedHtml === html) return;
+          tr.setNodeMarkup(record.pos, bibliographyNode, { ...record.pmNode.attrs, renderedHtml: html });
+        }
+      });
+    }
+    if (tr.docChanged) {
+      editor.view.dispatch(tr);
+    }
+
+    if (noteKind) {
+      const renderedById = new Map<string, string>();
+      const updatedCitationNodes = extractCitationNodes(editor.state.doc);
+      updatedCitationNodes.forEach((node) => renderedById.set(node.citationId, node.renderedHtml));
+      const footnoteNodes = collectFootnoteNodesByCitationId(editor.state.doc, noteKind);
+      if (footnoteNodes.length) {
+        const trNotes = editor.state.tr;
+        const schema = editor.state.schema;
+        const footnoteType = schema.nodes.footnote;
+        const footnoteBodyType = schema.nodes.footnoteBody;
+        const contentByFootnoteId = new Map<string, { text: string; kind: string }>();
+
+        // Update inline footnote marker nodes first (descending positions to keep steps stable).
+        footnoteNodes
+          .map((entry) => {
+            const html = renderedById.get(entry.citationId) ?? "";
+            const text = stripHtml(html);
+            const contentText = text.length > 0 ? text : "Citation";
+            const footnoteId =
+              typeof entry.node.attrs?.footnoteId === "string" ? String(entry.node.attrs.footnoteId).trim() : "";
+            const kind = typeof entry.node.attrs?.kind === "string" ? String(entry.node.attrs.kind) : "footnote";
+            if (footnoteId) contentByFootnoteId.set(footnoteId, { text: contentText, kind });
+            return { ...entry, footnoteId, contentText };
+          })
+          .sort((a, b) => b.pos - a.pos)
+          .forEach((entry) => {
+            if (!footnoteType) return;
+            const live = trNotes.doc.nodeAt(entry.pos);
+            if (!live || live.type !== footnoteType) return;
+            const prevText = typeof (live.attrs as any)?.text === "string" ? String((live.attrs as any).text) : "";
+            if (prevText === entry.contentText) return;
+            trNotes.setNodeMarkup(entry.pos, live.type, { ...(live.attrs as any), text: entry.contentText }, live.marks);
+          });
+
+        // Patch the corresponding footnoteBody nodes (FootnoteBodyManagement does not rebuild on text changes).
+        if (footnoteBodyType && contentByFootnoteId.size > 0) {
+          const bodyUpdates: Array<{ pos: number; node: ProseMirrorNode; id: string; text: string; kind: string }> = [];
+          trNotes.doc.descendants((node, pos) => {
+            if (node.type !== footnoteBodyType) return true;
+            const id = typeof (node.attrs as any)?.footnoteId === "string" ? String((node.attrs as any).footnoteId).trim() : "";
+            if (!id) return true;
+            const payload = contentByFootnoteId.get(id);
+            if (!payload) return true;
+            bodyUpdates.push({ pos, node, id, text: payload.text, kind: payload.kind });
+            return true;
+          });
+          bodyUpdates
+            .sort((a, b) => b.pos - a.pos)
+            .forEach((entry) => {
+              const nextBody = footnoteBodyType.create(
+                { ...(entry.node.attrs as any), footnoteId: entry.id, kind: entry.kind },
+                buildFootnoteBodyContent(schema, entry.text)
+              );
+              trNotes.replaceWith(entry.pos, entry.pos + entry.node.nodeSize, nextBody);
+            });
+
+          if ((window as any).__leditorCslDebug) {
+            const updated = bodyUpdates.length;
+            const wanted = contentByFootnoteId.size;
+            if (updated < wanted) {
+              console.warn("[CSLDebug] footnote bodies missing", { wanted, updated });
+            }
+          }
+        }
+        if (trNotes.docChanged) {
+          editor.view.dispatch(trNotes);
+        }
+        // Force the A4 overlay to refresh footnote sections. The overlay debouncer intentionally
+        // ignores footnote text, so purely textual updates won't trigger a re-render automatically.
+        try {
+          window.dispatchEvent(new CustomEvent("leditor:footnotes-refresh"));
+        } catch {
+          // ignore
+        }
+        try {
+          window.requestAnimationFrame(() => {
+            try {
+              window.dispatchEvent(new CustomEvent("leditor:footnotes-refresh"));
+            } catch {
+              // ignore
+            }
+          });
+        } catch {
+          // ignore
+        }
+        try {
+          window.setTimeout(() => {
+            try {
+              window.dispatchEvent(new CustomEvent("leditor:footnotes-refresh"));
+            } catch {
+              // ignore
+            }
+          }, 300);
+        } catch {
+          // ignore
+        }
+      }
+    }
+  })();
 };
 
 const refreshCitationsAndBibliography = async (editor: Editor): Promise<void> => {
   await ensureReferencesLibrary();
+  // Ensure all legacy/manual citation anchors are normalized into real citation nodes.
+  // This is required for style changes (numeric, note-based) to fully re-render in-text citations
+  // and to populate footnotes/endnotes for note styles.
+  try {
+    convertCitationAnchorsToCitationNodes(editor);
+  } catch (error) {
+    console.warn("[References] convert anchors to citations failed", error);
+  }
   runCslUpdate(editor);
   await refreshUsedBibliography(editor);
 };
@@ -3501,7 +3838,9 @@ export const commandMap: Record<string, CommandHandler> = {
               year: typeof it.year === "string" ? it.year : undefined,
               url: typeof it.url === "string" ? it.url : undefined,
               note: typeof it.note === "string" ? it.note : undefined,
-              dqid: typeof it.dqid === "string" ? it.dqid : undefined
+              dqid: typeof it.dqid === "string" ? it.dqid : undefined,
+              // Preserve full CSL-JSON to allow accurate citeproc rendering.
+              csl: it && typeof it === "object" ? it : undefined
             }))
             .filter((it: any) => it.itemKey);
           upsertReferenceItems(items);
@@ -3557,11 +3896,12 @@ export const commandMap: Record<string, CommandHandler> = {
       const label =
         template === "bibliography" ? "Bibliography" : template === "worksCited" ? "Works Cited" : "References";
       const fromStore = await readUsedBibliography();
-      const keys = fromStore.length ? fromStore : collectDocumentCitationKeys(editor);
-      if (!fromStore.length) await writeUsedBibliography(keys);
+      const rawKeys = fromStore.length ? fromStore : collectDocumentCitationKeys(editor);
+      const keys = collectOrderedCitedItemKeys(editor, rawKeys);
+      if (!fromStore.length) await writeUsedBibliography(rawKeys);
       ensureBibliographyStore();
       // Always rebuild references as the last pages and force a clean page boundary.
-      removeTrailingReferencesSection(editor, label);
+      removeTrailingReferencesByBreak(editor);
       insertReferencesAsNewLastPages(editor, label, keys);
       await refreshCitationsAndBibliography(editor);
     })();
@@ -3612,13 +3952,14 @@ export const commandMap: Record<string, CommandHandler> = {
     void (async () => {
       refsInfo("[References] insert bibliography", { styleId: editor.state.doc.attrs?.citationStyleId });
       const fromStore = await readUsedBibliography();
-      const keys = fromStore.length ? fromStore : collectDocumentCitationKeys(editor);
+      const rawKeys = fromStore.length ? fromStore : collectDocumentCitationKeys(editor);
+      const keys = collectOrderedCitedItemKeys(editor, rawKeys);
       if (!fromStore.length) {
-        await writeUsedBibliography(keys);
+        await writeUsedBibliography(rawKeys);
       }
       refsInfo("[References] insert bibliography", { itemKeys: keys });
       ensureBibliographyStore();
-      removeTrailingReferencesSection(editor, "References");
+      removeTrailingReferencesByBreak(editor);
       insertReferencesAsNewLastPages(editor, "References", keys);
       await refreshCitationsAndBibliography(editor);
     })();
@@ -3627,8 +3968,9 @@ export const commandMap: Record<string, CommandHandler> = {
   UpdateBibliography(editor) {
     void (async () => {
       const fromStore = await readUsedBibliography();
-      const keys = fromStore.length ? fromStore : collectDocumentCitationKeys(editor);
-      removeTrailingReferencesSection(editor, "References");
+      const rawKeys = fromStore.length ? fromStore : collectDocumentCitationKeys(editor);
+      const keys = collectOrderedCitedItemKeys(editor, rawKeys);
+      removeTrailingReferencesByBreak(editor);
       insertReferencesAsNewLastPages(editor, "References", keys);
       await refreshCitationsAndBibliography(editor);
     })();

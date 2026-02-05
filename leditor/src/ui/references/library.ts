@@ -10,6 +10,9 @@ export type ReferenceItem = {
   note?: string;
   source?: string;
   dqid?: string;
+  // Optional full CSL-JSON for citeproc. When present, this is used as-is
+  // (with id forced to itemKey) to produce rich CSL-compliant rendering.
+  csl?: any;
 };
 
 export type ReferencesLibrary = {
@@ -42,6 +45,19 @@ const normalizeItem = (raw: any): ReferenceItem | null => {
   if (typeof raw.year === "string") entry.year = raw.year;
   if (typeof raw.url === "string") entry.url = raw.url;
   if (typeof raw.note === "string") entry.note = raw.note;
+  // Preserve CSL-JSON payloads if they exist in the library file.
+  // Common keys: "csl", "cslJson", or a raw CSL-JSON item with a "type".
+  const cslCandidate =
+    raw.csl && typeof raw.csl === "object"
+      ? raw.csl
+      : raw.cslJson && typeof raw.cslJson === "object"
+        ? raw.cslJson
+        : raw.type && typeof raw.type === "string"
+          ? raw
+          : null;
+  if (cslCandidate && typeof cslCandidate === "object") {
+    entry.csl = { ...(cslCandidate as any) };
+  }
   if (dqid) entry.dqid = dqid;
   return entry;
 };

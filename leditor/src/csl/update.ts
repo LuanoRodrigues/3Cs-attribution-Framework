@@ -62,11 +62,13 @@ const formatApaInText = (item: CitationItemRef): string => {
   const year = ref.year || "";
   const locator = (item.locator || "").trim();
   const label = (item.label || "").trim().toLowerCase();
-  const locLabel = locator
-    ? label
-      ? `${label} ${locator}`
-      : `p. ${locator}`
-    : "";
+  const locLabel = (() => {
+    if (!locator) return "";
+    if (!label) return `p. ${locator}`;
+    if (label === "page" || label === "p") return `p. ${locator}`;
+    if (label === "pages" || label === "pp") return `pp. ${locator}`;
+    return `${label} ${locator}`;
+  })();
   const base = author && year ? `${author}, ${year}` : author || year || item.itemKey;
   return locLabel ? `${base}, ${locLabel}` : base;
 };
@@ -89,11 +91,13 @@ const formatChicagoNote = (item: CitationItemRef): string => {
   const year = (ref.year || "").trim();
   const locator = (item.locator || "").trim();
   const label = (item.label || "").trim().toLowerCase();
-  const locLabel = locator
-    ? label
-      ? `${label} ${locator}`
-      : `p. ${locator}`
-    : "";
+  const locLabel = (() => {
+    if (!locator) return "";
+    if (!label) return `p. ${locator}`;
+    if (label === "page" || label === "p") return `p. ${locator}`;
+    if (label === "pages" || label === "pp") return `pp. ${locator}`;
+    return `${label} ${locator}`;
+  })();
   const parts = [
     author ? `${author},` : "",
     title ? ` <i>${escapeHtml(title)}</i>` : "",

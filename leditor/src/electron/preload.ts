@@ -118,6 +118,30 @@ const summarizeInvokeResult = (_channel: string, result: unknown): Record<string
   };
 };
 
+const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+
+const resolveUiScale = (host: any): number => {
+  const fromHost = typeof host?.uiScale === "number" && Number.isFinite(host.uiScale) ? host.uiScale : null;
+  const fromArg = (() => {
+    try {
+      const raw = (process.argv || []).find((v) => typeof v === "string" && v.startsWith("--ui-scale="));
+      if (!raw) return null;
+      const parsed = Number(raw.slice("--ui-scale=".length));
+      return Number.isFinite(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  })();
+  const fromEnv = (() => {
+    const raw = String(process.env.LEDITOR_UI_SCALE || "").trim();
+    if (!raw) return null;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : null;
+  })();
+  const chosen = fromHost ?? fromArg ?? fromEnv ?? 1.8;
+  return clamp(chosen, 0.75, 4.0);
+};
+
 const invoke = async <TReq, TRes>(channel: string, request: TReq): Promise<TRes> => {
   const started = Date.now();
   dbg("invoke", `ipcRenderer.invoke ${channel}`, summarizeInvokeRequest(channel, request));
@@ -157,6 +181,7 @@ const hostContract =
     sessionId: "local-session",
     documentId: "local-document",
     documentTitle: "Untitled document",
+    uiScale: 1.8,
     paths: {
       contentDir: "",
       bibliographyDir: "",
@@ -179,12 +204,24 @@ dbg("init", "host contract ready", {
   hasBibliographyDir: Boolean((hostContract as any)?.paths?.bibliographyDir)
 });
 
+const uiScale = resolveUiScale(hostContract as any);
+contextBridge.exposeInMainWorld("leditorUiScale", uiScale);
+dbg("init", "ui scale ready", { uiScale });
+
 const readFile = async (request: { sourcePath: string }) => {
   return invoke<typeof request, any>("leditor:read-file", request);
 };
 
 const fileExists = async (request: { sourcePath: string }) => {
   return invoke<typeof request, any>("leditor:file-exists", request);
+};
+
+const getDefaultLEDOCPath = async (): Promise<string> => {
+  const result = await invoke<Record<string, never>, any>("leditor:get-default-ledoc-path", {} as any);
+  const value = typeof result?.path === "string" ? result.path.trim() : "";
+  if (result?.success && value) return value;
+  const error = typeof result?.error === "string" && result.error.trim() ? result.error.trim() : "Default LEDOC path unavailable";
+  throw new Error(error);
 };
 
 const writeFile = async (request: { targetPath: string; data: string }) => {
@@ -291,6 +328,7 @@ contextBridge.exposeInMainWorld("leditorHost", {
   getLlmCatalog,
   readFile,
   fileExists,
+  getDefaultLEDOCPath,
   writeFile,
   exportLEDOC,
   importLEDOC,

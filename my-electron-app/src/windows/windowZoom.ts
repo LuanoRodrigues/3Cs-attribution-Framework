@@ -1,6 +1,6 @@
 import type { BrowserWindow } from "electron";
 
-const DEFAULT_ZOOM_FACTOR = 1.15;
+const DEFAULT_ZOOM_FACTOR = 1.5;
 const DEFAULT_ZOOM_FACTOR_ENV = "ANNOTARIUM_DEFAULT_ZOOM_FACTOR";
 
 function clamp(value: number, min: number, max: number): number {

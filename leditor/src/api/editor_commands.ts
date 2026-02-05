@@ -213,31 +213,41 @@ export const dispatchCommand = (
     const prose = tiptapEditor?.view?.dom as HTMLElement | null;
     const isEditorActive = Boolean(prose && active && prose.contains(active));
     const isRibbonActive = Boolean(active && active.closest?.(".leditor-ribbon"));
-    const allowSelectionRestore = !isOverlayEditing && (isEditorActive || isRibbonActive);
+    const isRibbonCommand = Boolean(snapshot) || isRibbonActive;
+    const allowSelectionRestore = !isOverlayEditing && (isEditorActive || isRibbonActive || isRibbonCommand);
 
-    if (snapshot && tiptapEditor?.view && tiptapEditor?.state?.tr && allowSelectionRestore) {
-      try {
-        const tr = applySnapshotToTransaction(tiptapEditor.state.tr, snapshot);
-        if (
-          tr.selection.from !== tiptapEditor.state.selection.from ||
-          tr.selection.to !== tiptapEditor.state.selection.to
-        ) {
-          tiptapEditor.view.dispatch(tr);
-        }
-      } catch {
-        // ignore selection restoration failures
-      }
-    } else if ((window as any).__leditorCaretDebug && snapshot) {
-      console.info("[CaretGate] restore:skip", {
-        reason: "inactive-surface",
-        commandId,
-        hasSnapshot: Boolean(snapshot),
-        isOverlayEditing,
-        isEditorActive,
-        isRibbonActive
-      });
+    if (isRibbonCommand) {
+      (window as any).__leditorRibbonCommandActive = true;
     }
-    editorHandle.execCommand(commandId, payload);
+    try {
+      if (snapshot && tiptapEditor?.view && tiptapEditor?.state?.tr && allowSelectionRestore) {
+        try {
+          const tr = applySnapshotToTransaction(tiptapEditor.state.tr, snapshot);
+          if (
+            tr.selection.from !== tiptapEditor.state.selection.from ||
+            tr.selection.to !== tiptapEditor.state.selection.to
+          ) {
+            tiptapEditor.view.dispatch(tr);
+          }
+        } catch {
+          // ignore selection restoration failures
+        }
+      } else if ((window as any).__leditorCaretDebug && snapshot) {
+        console.info("[CaretGate] restore:skip", {
+          reason: "inactive-surface",
+          commandId,
+          hasSnapshot: Boolean(snapshot),
+          isOverlayEditing,
+          isEditorActive,
+          isRibbonActive
+        });
+      }
+      editorHandle.execCommand(commandId, payload);
+    } finally {
+      if (isRibbonCommand) {
+        (window as any).__leditorRibbonCommandActive = false;
+      }
+    }
   // Some commands intentionally move focus away from the main ProseMirror editor (e.g. footnotes,
   // header/footer overlays). For those cases, forcing focus back here will steal the caret and
   // make typing impossible.
@@ -252,7 +262,7 @@ export const dispatchCommand = (
     const shouldRestoreFocus =
       !isOverlayEditing &&
       !isOverlayCommand &&
-      (isEditorActive || isRibbonActive);
+      (isEditorActive || isRibbonActive || isRibbonCommand);
 
     if (shouldRestoreFocus) {
       const tiptap = (editorHandle as any)?.getEditor?.();

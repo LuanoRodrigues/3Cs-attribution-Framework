@@ -16,12 +16,23 @@ import { convertCoderStateToLedoc } from "./coder_state_converter";
 import { createLedocVersion, deleteLedocVersion, listLedocVersions, pinLedocVersion, restoreLedocVersion } from "./ledoc_versions";
 
 const REFERENCES_LIBRARY_FILENAME = "references_library.json";
+const DEFAULT_LEDOC_FILENAME = "coder_state.ledoc";
 
 // Avoid GPU-process crashes in environments without stable GPU/driver support.
 app.disableHardwareAcceleration();
 app.commandLine.appendSwitch("disable-gpu");
 app.commandLine.appendSwitch("disable-software-rasterizer");
 app.commandLine.appendSwitch("disable-gpu-compositing");
+
+// Some Linux environments (containers, restricted user namespaces) cannot initialize the Chromium sandbox.
+// Default to disabling it for dev runs to prevent hard crashes on startup.
+if (
+  process.platform === "linux" &&
+  (!app.isPackaged || process.env.LEDITOR_NO_SANDBOX === "1" || process.env.ELECTRON_DISABLE_SANDBOX === "1")
+) {
+  app.commandLine.appendSwitch("no-sandbox");
+  app.commandLine.appendSwitch("disable-setuid-sandbox");
+}
 
 type LlmProviderId = "openai" | "deepseek" | "mistral" | "gemini";
 type LlmCatalogModel = { id: string; label: string; description?: string };
@@ -40,6 +51,27 @@ const dbg = (fn: string, msg: string, extra?: Record<string, unknown>) => {
   } else {
     console.debug(line);
   }
+};
+
+const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+
+const resolveUiScale = (): number => {
+  const fromArg = (() => {
+    const prefix = "--ui-scale=";
+    const raw = process.argv.find((v) => typeof v === "string" && v.startsWith(prefix));
+    if (!raw) return null;
+    const parsed = Number(raw.slice(prefix.length));
+    return Number.isFinite(parsed) ? parsed : null;
+  })();
+  const fromEnv = (() => {
+    const raw = String(process.env.LEDITOR_UI_SCALE || "").trim();
+    if (!raw) return null;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : null;
+  })();
+  // Default UI scale; override via `--ui-scale=` or `LEDITOR_UI_SCALE`.
+  const chosen = fromArg ?? fromEnv ?? 1.8;
+  return clamp(chosen, 0.75, 4.0);
 };
 
 const loadDotenv = (envPath: string): void => {
@@ -84,6 +116,22 @@ const ensureLedocExtension = (filePath: string): string => {
   const ext = `.${LEDOC_EXTENSION}`;
   if (lower.endsWith(ext)) return trimmed;
   return `${trimmed}${ext}`;
+};
+
+const resolveRepoRelativePath = (value: string): string => {
+  const trimmed = String(value || "").trim();
+  if (!trimmed) return "";
+  if (trimmed.startsWith("@")) {
+    const rest = trimmed.slice(1).trim();
+    if (!rest) return "";
+    if (path.isAbsolute(rest) || rest.startsWith("\\\\")) return rest;
+    try {
+      return path.resolve(app.getAppPath(), "..", rest);
+    } catch {
+      return rest;
+    }
+  }
+  return trimmed;
 };
 
 const installAppMenu = (): void => {
@@ -1420,6 +1468,7 @@ const createWindow = () => {
     sessionId: "local-session",
     documentId: "local-document",
     documentTitle: "Untitled document",
+    uiScale: resolveUiScale(),
     paths: {
       contentDir,
       bibliographyDir,
@@ -1443,7 +1492,6 @@ const createWindow = () => {
   });
   const leditorHostArg = `--leditor-host=${encodeURIComponent(JSON.stringify(hostContract))}`;
 
-  const SCALE_FACTOR = 1.25;
   const window = new BrowserWindow({
     width: 1280,
     height: 900,
@@ -1457,9 +1505,11 @@ const createWindow = () => {
       nodeIntegration: false,
       sandbox: false,
       additionalArguments: [leditorHostArg],
-      zoomFactor: SCALE_FACTOR
+      // Use CSS `--ui-scale` in the renderer for consistent sizing across hosts/embeds.
+      zoomFactor: 1.0
     }
   });
+  dbg("createWindow", "ui scale", { scale: hostContract.uiScale });
   installAppMenu();
   try {
     window.setMenuBarVisibility(false);
@@ -1597,6 +1647,52 @@ app.whenReady().then(() => {
     } catch {
       return { success: true, exists: false };
     }
+  });
+
+  registerIpc("leditor:get-default-ledoc-path", async (): Promise<{ success: boolean; path?: string; error?: string }> => {
+    const candidates: string[] = [];
+
+    const push = (value: unknown) => {
+      const trimmed = typeof value === "string" ? value.trim() : "";
+      if (!trimmed) return;
+      if (candidates.includes(trimmed)) return;
+      candidates.push(trimmed);
+    };
+
+    // User override.
+    push(process.env.LEDITOR_DEFAULT_LEDOC_PATH);
+
+    // Typical dev layout: `<repo>/leditor` running with appPath inside that folder.
+    try {
+      // Prefer a bundled document inside the app folder, if present.
+      push(path.resolve(app.getAppPath(), DEFAULT_LEDOC_FILENAME));
+      push(path.resolve(app.getAppPath(), "..", DEFAULT_LEDOC_FILENAME));
+    } catch {
+      // ignore
+    }
+
+    // Fallbacks (cwd and userData content dir).
+    try {
+      push(path.resolve(process.cwd(), DEFAULT_LEDOC_FILENAME));
+    } catch {
+      // ignore
+    }
+    try {
+      push(path.join(app.getPath("userData"), "content", DEFAULT_LEDOC_FILENAME));
+    } catch {
+      // ignore
+    }
+
+    for (const candidate of candidates) {
+      try {
+        await fs.promises.access(candidate, fs.constants.R_OK);
+        return { success: true, path: candidate };
+      } catch {
+        // try next
+      }
+    }
+
+    return { success: false, error: "Default LEDOC path not found" };
   });
 
   registerIpc("leditor:agent-request", async (_event, request: { requestId?: string; payload: AgentRequestPayload }) => {
@@ -2102,7 +2198,7 @@ app.whenReady().then(() => {
       if (!sourcePath) {
         return { success: false, error: "ImportLEDOC: sourcePath is required" };
       }
-      sourcePath = normalizeFsPath(sourcePath);
+      sourcePath = resolveRepoRelativePath(normalizeFsPath(sourcePath));
 
       const setWindowTitle = (title: string) => {
         const win = BrowserWindow.fromWebContents(event.sender);
@@ -2348,6 +2444,11 @@ app.whenReady().then(() => {
           additionalArguments: [`--pdf-viewer-token=${token}`]
         }
       });
+      try {
+        pdfViewerWindow.webContents.setZoomFactor(1.0);
+      } catch {
+        // ignore
+      }
       try {
         pdfViewerWindow.setMenuBarVisibility(false);
       } catch {

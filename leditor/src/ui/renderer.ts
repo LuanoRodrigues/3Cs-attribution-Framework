@@ -1142,8 +1142,9 @@ export const mountEditor = async () => {
     throw new Error(`LEditor: elementId "${config.elementId}" not found`);
   }
   const parent = editorEl.parentElement ?? document.body;
-  // Keep UI density close to Word without breaking layout centering.
-  const APP_UI_SCALE = 1.5;
+  const rawUiScale = (window as any).leditorUiScale;
+  const parsedUiScale = typeof rawUiScale === "number" && Number.isFinite(rawUiScale) ? rawUiScale : 1.8;
+  const APP_UI_SCALE = Math.max(0.75, Math.min(4.0, parsedUiScale));
   const appRoot = document.createElement("div");
   appRoot.id = "leditor-app";
   appRoot.className = "leditor-app";
@@ -1747,6 +1748,8 @@ export const mountEditor = async () => {
       }
       window.dispatchEvent(new CustomEvent("leditor-anchor-click", { detail, bubbles: true }));
     };
+    const shouldOpenAnchor = (ev: MouseEvent | PointerEvent): boolean =>
+      Boolean((ev as MouseEvent).metaKey || (ev as MouseEvent).ctrlKey);
 
     // Prevent caret/selection from moving into the anchor when clicking direct-quote links.
     root.addEventListener(
@@ -1754,6 +1757,7 @@ export const mountEditor = async () => {
       (ev) => {
         const mouse = ev as MouseEvent;
         if (typeof mouse.button === "number" && mouse.button !== 0) return;
+        if (!shouldOpenAnchor(mouse)) return;
         const target = targetToElement(ev.target);
         if (!target) return;
         if (!scopeRoot.contains(target)) return;
@@ -1768,7 +1772,6 @@ export const mountEditor = async () => {
         }
         ensureTitle(anchor, handled.href);
         anchor.classList.add("leditor-citation-anchor");
-        anchor.setAttribute("contenteditable", "false");
         anchor.setAttribute("draggable", "false");
       },
       { capture: true, signal }
@@ -1781,6 +1784,7 @@ export const mountEditor = async () => {
       (ev) => {
         const pe = ev as PointerEvent;
         if (typeof (pe as any).button === "number" && (pe as any).button !== 0) return;
+        if (!shouldOpenAnchor(pe)) return;
         const target = targetToElement(ev.target);
         if (!target) return;
         if (!scopeRoot.contains(target)) return;
@@ -1793,7 +1797,6 @@ export const mountEditor = async () => {
         ev.stopPropagation();
         ensureTitle(anchor, handled.href);
         anchor.classList.add("leditor-citation-anchor");
-        anchor.setAttribute("contenteditable", "false");
         anchor.setAttribute("draggable", "false");
         dispatchAnchorOpen(anchor, handled);
       },
@@ -1832,13 +1835,15 @@ export const mountEditor = async () => {
           }
           return;
         }
+        if (!shouldOpenAnchor(ev as MouseEvent)) {
+          return;
+        }
         ev.preventDefault();
         if (proseRoot.contains(anchor)) {
           ev.stopPropagation();
         }
         ensureTitle(anchor, handled.href);
         anchor.classList.add("leditor-citation-anchor");
-        anchor.setAttribute("contenteditable", "false");
         anchor.setAttribute("draggable", "false");
         dispatchAnchorOpen(anchor, handled);
       },
@@ -1856,7 +1861,6 @@ export const mountEditor = async () => {
         const href = (anchor.getAttribute("href") || "").trim();
         ensureTitle(anchor, href);
         anchor.classList.add("leditor-citation-anchor");
-        anchor.setAttribute("contenteditable", "false");
         anchor.setAttribute("draggable", "false");
       },
       { capture: true, signal }

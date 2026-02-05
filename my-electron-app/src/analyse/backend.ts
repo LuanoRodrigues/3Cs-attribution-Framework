@@ -696,10 +696,11 @@ function decodeHtmlEntities(value: string): string {
 function extractTagsFromHtml(html: string): string[] {
   if (!html) return [];
   const tags: string[] = [];
-  const regex = /data-tags="([^"]*)"/gi;
+  // Handle both single and double quoted attributes, and allow whitespace around '='.
+  const regex = /data-tags\s*=\s*(["'])([\s\S]*?)\1/gi;
   let match: RegExpExecArray | null = null;
   while ((match = regex.exec(html))) {
-    const raw = decodeHtmlEntities(match[1] || "");
+    const raw = decodeHtmlEntities(match[2] || "");
     raw
       .split(/[;|,/]/)
       .map((t) => t.trim())
@@ -725,10 +726,19 @@ function tokenizePotentialTheme(value: string): string[] {
 function normalizeTagList(value: unknown): string[] {
   if (!value) return [];
   if (Array.isArray(value)) {
+    const exploded: string[] = [];
+    value.forEach((entry) => {
+      if (typeof entry !== "string") return;
+      entry
+        .split(/[;|,/]/)
+        .map((t) => t.trim())
+        .filter(Boolean)
+        .forEach((t) => exploded.push(t));
+    });
     return Array.from(
       new Set(
-        value
-          .map((v) => (typeof v === "string" ? v.trim() : ""))
+        exploded
+          .map((v) => v.trim())
           .filter(Boolean)
       )
     );
@@ -1301,6 +1311,10 @@ export async function querySections(
   nextOffset: number;
   facets: Record<string, Record<string, number>>;
 }> {
+  // UI shows top 10 by default but the facet inventory must represent the whole dataset
+  // (expand modal relies on us returning the full set, not just page-local values).
+  const FACET_RETURN_LIMIT = 200;
+
   let datasetPath = findFirstExistingFile(runPath, SECTION_FILE_MAP[level]);
   if (!datasetPath) {
     return { sections: [], totalMatches: 0, hasMore: false, nextOffset: 0, facets: {} };
@@ -1391,20 +1405,72 @@ export async function querySections(
     });
 
     const hasMore = safeOffset + sections.length < totalMatches;
-    const tagsCounts: Record<string, number> = {};
-    const potCounts: Record<string, number> = {};
+
+    // Facets must reflect the full filtered match-set, not just the current page.
+    // Compute structured facets via GROUP BY and token facets from a bounded sample.
     const rqCounts: Record<string, number> = {};
     const goldCounts: Record<string, number> = {};
     const routeCounts: Record<string, number> = {};
     const evCounts: Record<string, number> = {};
-    sections.forEach((s) => {
-      if (s.rq) incrementCounts(rqCounts, [s.rq]);
-      if (s.goldTheme) incrementCounts(goldCounts, [s.goldTheme]);
-      if (s.route) incrementCounts(routeCounts, [s.route]);
-      if (s.evidenceType) incrementCounts(evCounts, [s.evidenceType]);
-      incrementCounts(tagsCounts, (s.tags || []).slice(0, 30));
-      incrementCounts(potCounts, ((s.potentialTokens as string[] | undefined) || []).slice(0, 30));
-    });
+    const tagsCounts: Record<string, number> = {};
+    const potCounts: Record<string, number> = {};
+
+    try {
+      const facetLimit = FACET_RETURN_LIMIT;
+      const sampleLimit = Math.min(4000, Math.max(400, totalMatches));
+      const readGroup = (col: string, target: Record<string, number>) => {
+        const facetRows = db
+          .prepare(
+            `SELECT ${col} as value, COUNT(*) as count
+             ${fromSql} ${whereSql}
+             GROUP BY ${col}
+             ORDER BY count DESC
+             LIMIT ?`
+          )
+          .all(...params, facetLimit) as Array<{ value: unknown; count: number }>;
+        facetRows.forEach((row) => {
+          const key = String((row as any)?.value ?? "").trim();
+          if (!key) return;
+          target[key] = Number((row as any)?.count ?? 0) || 0;
+        });
+      };
+
+      readGroup("sections.rq", rqCounts);
+      readGroup("sections.gold", goldCounts);
+      readGroup("sections.route", routeCounts);
+      readGroup("sections.evidence", evCounts);
+
+      const tokenRows = db
+        .prepare(
+          `SELECT sections.tags_text, sections.potential_text
+           ${fromSql} ${whereSql}
+           LIMIT ?`
+        )
+        .all(...params, sampleLimit) as Array<{ tags_text?: string; potential_text?: string }>;
+      tokenRows.forEach((row) => {
+        const tags = String((row as any)?.tags_text || "")
+          .split(/\\s+/)
+          .map((t) => t.trim())
+          .filter(Boolean);
+        const pot = String((row as any)?.potential_text || "")
+          .split(/\\s+/)
+          .map((t) => t.trim())
+          .filter(Boolean);
+        incrementCounts(tagsCounts, tags.slice(0, 60));
+        incrementCounts(potCounts, pot.slice(0, 60));
+      });
+    } catch (err) {
+      // Fallback: keep the UI working even if facet aggregation fails.
+      sections.forEach((s) => {
+        if (s.rq) incrementCounts(rqCounts, [s.rq]);
+        if (s.goldTheme) incrementCounts(goldCounts, [s.goldTheme]);
+        if (s.route) incrementCounts(routeCounts, [s.route]);
+        if (s.evidenceType) incrementCounts(evCounts, [s.evidenceType]);
+        incrementCounts(tagsCounts, (s.tags || []).slice(0, 30));
+        incrementCounts(potCounts, ((s.potentialTokens as string[] | undefined) || []).slice(0, 30));
+      });
+      console.warn("[analyse][querySections][facets-fallback]", err);
+    }
 
     return {
       sections,
@@ -1412,12 +1478,12 @@ export async function querySections(
       hasMore,
       nextOffset: safeOffset + sections.length,
       facets: {
-        tags: sortTopCounts(tagsCounts, 10),
-        rq: sortTopCounts(rqCounts, 10),
-        gold: sortTopCounts(goldCounts, 10),
-        route: sortTopCounts(routeCounts, 10),
-        evidence: sortTopCounts(evCounts, 10),
-        potential: sortTopCounts(potCounts, 10)
+        tags: sortTopCounts(tagsCounts, FACET_RETURN_LIMIT),
+        rq: sortTopCounts(rqCounts, FACET_RETURN_LIMIT),
+        gold: sortTopCounts(goldCounts, FACET_RETURN_LIMIT),
+        route: sortTopCounts(routeCounts, FACET_RETURN_LIMIT),
+        evidence: sortTopCounts(evCounts, FACET_RETURN_LIMIT),
+        potential: sortTopCounts(potCounts, FACET_RETURN_LIMIT)
       }
     };
   } catch (error) {
@@ -1600,12 +1666,12 @@ export async function querySections(
     hasMore,
     nextOffset: safeOffset + pageSections.length,
     facets: {
-      tags: sortTopCounts(facets.tags, 10),
-      rq: sortTopCounts(facets.rq, 10),
-      gold: sortTopCounts(facets.gold, 10),
-      route: sortTopCounts(facets.route, 10),
-      evidence: sortTopCounts(facets.evidence, 10),
-      potential: sortTopCounts(facets.potential, 10),
+      tags: sortTopCounts(facets.tags, FACET_RETURN_LIMIT),
+      rq: sortTopCounts(facets.rq, FACET_RETURN_LIMIT),
+      gold: sortTopCounts(facets.gold, FACET_RETURN_LIMIT),
+      route: sortTopCounts(facets.route, FACET_RETURN_LIMIT),
+      evidence: sortTopCounts(facets.evidence, FACET_RETURN_LIMIT),
+      potential: sortTopCounts(facets.potential, FACET_RETURN_LIMIT),
     }
   };
 }

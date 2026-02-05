@@ -97,10 +97,19 @@ export function createFolder(name = "Section"): FolderNode {
 }
 
 export function createItem(payload: CoderPayload): ItemNode {
+  const name = deriveTitle(payload);
+  try {
+    const existingTitle = String((payload as any).title || "").trim();
+    if ((!existingTitle || isPlaceholderTitle(existingTitle)) && name && !isPlaceholderTitle(name)) {
+      (payload as any).title = name;
+    }
+  } catch {
+    // ignore payload mutation failures
+  }
   return {
     id: generateId(),
     type: "item",
-    name: deriveTitle(payload),
+    name,
     status: "Included",
     payload,
     note: "",
@@ -417,6 +426,63 @@ export class CoderStore {
       insertNode(next.nodes, node, targetParentId, targetIndex + offset);
     });
     this.commit(next);
+  }
+
+  copyMany(spec: { nodeIds: string[]; targetParentId: string | null; targetIndex: number }): string[] {
+    const uniqueIds = Array.from(new Set((spec.nodeIds || []).map(String))).filter(Boolean);
+    if (uniqueIds.length === 0) return [];
+
+    const next = cloneState(this.state);
+    const targetParentId = spec.targetParentId ?? null;
+    const targetIndex = Math.max(0, typeof spec.targetIndex === "number" ? spec.targetIndex : 0);
+
+    const pickNodes: CoderNode[] = [];
+    uniqueIds.forEach((id) => {
+      const path = findPath(next.nodes, id);
+      if (path?.node) pickNodes.push(path.node);
+    });
+    if (pickNodes.length === 0) return [];
+
+    const newIds: string[] = [];
+    const cloneNode = (node: CoderNode, parentId: string | null): CoderNode => {
+      if (node.type === "folder") {
+        const folderId = generateId();
+        newIds.push(folderId);
+        return {
+          id: folderId,
+          type: "folder",
+          name: node.name || "Section",
+          note: node.note || "",
+          editedHtml: node.editedHtml || "",
+          updatedUtc: nowUtc(),
+          children: (node.children || []).map((child) => cloneNode(child, folderId))
+        };
+      }
+      const itemId = generateId();
+      newIds.push(itemId);
+      const payload = JSON.parse(JSON.stringify(node.payload || {})) as CoderPayload;
+      try {
+        (payload as any).coder_id = itemId;
+        (payload as any)._coder_item_id = itemId;
+        (payload as any).coder_parent_id = parentId || "";
+      } catch {
+        // ignore
+      }
+      return {
+        id: itemId,
+        type: "item",
+        name: node.name || deriveTitle(payload),
+        status: node.status,
+        payload,
+        note: node.note || "",
+        updatedUtc: nowUtc()
+      };
+    };
+
+    const clones = pickNodes.map((n) => cloneNode(n, targetParentId));
+    clones.forEach((node, offset) => insertNode(next.nodes, node, targetParentId, targetIndex + offset));
+    this.commit(next);
+    return newIds;
   }
 
   restoreNode(node: CoderNode, parentId: string | null, index: number): void {
@@ -847,7 +913,7 @@ function collapseWhitespace(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
 
-function snippet80(value: string): string {
+export function snippet80(value: string): string {
   const trimmed = collapseWhitespace(String(value || ""));
   if (!trimmed) return "";
   return trimmed.length > 80 ? `${trimmed.slice(0, 80).trimEnd()}…` : trimmed;

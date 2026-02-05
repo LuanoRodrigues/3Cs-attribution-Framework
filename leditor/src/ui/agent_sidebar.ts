@@ -1975,27 +1975,27 @@ export const createAgentSidebar = (
       schedule();
     };
 
-		    const update = () => {
-		      if (!draftRailVisible || !open || !pending || pending.kind !== "batchReplace") {
-		        overlay.classList.add("is-hidden");
-		        rail.replaceChildren();
-		        clearSvg();
-		        return;
-		      }
-		      const batch = pending;
-		      const show = batch.items.length > 0;
-		      overlay.classList.toggle("is-hidden", !show);
-		      if (!show) {
-		        rail.replaceChildren();
-		        clearSvg();
-		        return;
-		      }
-          try {
-            const root = getAppRoot();
-            root?.classList.add("leditor-app--feedback-rail-open");
-          } catch {
-            // ignore
-          }
+    const update = () => {
+      if (!draftRailVisible || !open || !pending || pending.kind !== "batchReplace") {
+        overlay.classList.add("is-hidden");
+        rail.replaceChildren();
+        clearSvg();
+        return;
+      }
+      const batch = pending;
+      const show = batch.items.length > 0;
+      overlay.classList.toggle("is-hidden", !show);
+      if (!show) {
+        rail.replaceChildren();
+        clearSvg();
+        return;
+      }
+      try {
+        const root = getAppRoot();
+        root?.classList.add("leditor-app--feedback-rail-open");
+      } catch {
+        // ignore
+      }
 
       const editor = editorHandle.getEditor();
       const view = (editor as any)?.view;
@@ -2007,7 +2007,7 @@ export const createAgentSidebar = (
 
       rail.replaceChildren();
       clearSvg();
-	      const sorted = [...batch.items].sort((a, b) => a.from - b.from);
+      const sorted = [...batch.items].sort((a, b) => a.from - b.from);
       const minGap = 10;
       let cursorY = -Infinity;
 

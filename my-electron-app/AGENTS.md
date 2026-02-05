@@ -123,6 +123,32 @@ Stop condition: do not stop until the issue is resolved AND validated by at leas
 - Fix description (what changed and why).
 - Validation evidence (which command(s) ran, and what passed).
 
+### Escalation: create deterministic tests when fixes are not converging (mandatory)
+If you attempt multiple fixes for the same issue and results are still inconsistent or failing:
+- Stop guessing from symptoms and create a deterministic test harness to validate the invariant before reporting back.
+- Prefer automated checks over manual UI inspection, especially for layout/pagination/widget correctness.
+
+Where to put these tests:
+- Create repo-local scripts under `Plans/pending/scripts/` (create the directory if missing).
+- Keep scripts narrowly scoped to the active task and easy to delete once the issue is resolved.
+
+What “deterministic” means here:
+- The script must produce a PASS/FAIL signal based on explicit invariants (no “looks ok” checks).
+- The script must be runnable locally and in CI-like environments (offline, headless where possible).
+
+Example (layout/pagination invariant):
+- If a page must be “fully populated” without overflow gaps, implement a check that computes per-page line/word distribution and fails if:
+  - a line contains only 1–2 words when it should be wrapped (overflow/measure bug),
+  - there are unexpected empty lines,
+  - content overlaps footnote containers,
+  - page overflow/underflow thresholds are violated.
+
+Required workflow under escalation:
+1) Create or update the deterministic script.
+2) Run the script and capture output.
+3) Iterate on code until the script passes reliably.
+4) Only then report the fix to the user, including the script name/path and the passing result.
+
 ### Default behavior (no plan explicitly provided)
 - If the user requests repo changes: implement directly.
 - Do not require a plan.
@@ -131,18 +157,41 @@ Stop condition: do not stop until the issue is resolved AND validated by at leas
 - Default execution for debugging is:
   - `NODE_OPTIONS="--trace-warnings --trace-deprecation --enable-source-maps" ELECTRON_ENABLE_LOGGING=1 ELECTRON_ENABLE_STACK_DUMPING=1 npm run build && npm run start --loglevel verbose`
 
-
 ### Multi-hour autonomous runs (only when a plan is explicitly provided)
+
 A “plan is provided” only if:
-- the user gives a plan path under `Plans/` (example: `Plans/leditor_some_work.md`), OR
+- the user gives a plan path under `Plans/pending/` (example: `Plans/pending/leditor_some_work.md`), OR
 - the user pastes a plan and asks you to adopt it as the execution plan.
 
-When a plan is provided:
+#### Plans folder invariants (mandatory)
+
+- Ensure these directories exist in the repo root; create them if missing:
+  - `Plans/`
+  - `Plans/pending/`
+  - `Plans/legacy/`
+
+- All newly created plans MUST be created under `Plans/pending/` only.
+- Once a plan is finished (all steps attempted), move it from `Plans/pending/` to `Plans/legacy/` and update `Plans/EXECUTION_INDEX.md` accordingly.
+
+#### Plan execution authority (mandatory)
+
+- Execute only plans you have created OR plans the user explicitly instructs you to run.
+- Do NOT execute or adopt any other plans found in the repository implicitly.
+- Never operate on plans located in `Plans/legacy/`.
+
+#### Scope discipline (mandatory)
+
+- Any change in the codebase MUST be strictly related to the active Codex task scope.
+- Do NOT refactor, reformat, rename, or modify unrelated files.
+- Do NOT restore, revert, or adjust previous work unless it is explicitly part of the active plan.
+
+#### Execution behavior when a plan is provided
+
 - Execute autonomously with no user validation gating.
-- Track progress inside the plan.
+- Track progress inside the active plan.
 - Batch work (1–5 files or one subsystem).
 - If prerequisites are missing, create `Plans/DEPENDENCIES.md` and execute it first.
-- If too large, shard under `Plans/PLAN_SHARDS/` and track cursor in `Plans/EXECUTION_INDEX.md`.
+- If the plan is too large, shard under `Plans/pending/PLAN_SHARDS/` and track cursor in `Plans/pending/EXECUTION_INDEX.md`.
 
 ---
 
@@ -184,6 +233,21 @@ Rules:
 - Do not introduce global logging frameworks.
 - Keep it local and easy to delete after issue resolution.
 
+## Code correctness constraints (FAIL-FAST)
+
+- Errors are signals. Prefer a crash to ambiguous behavior.
+- Do not add safety fallbacks, guards, or silent coercions to hide missing keys or attributes.
+- If correctness cannot be guaranteed without adding such fallbacks, stop and explain the ambiguity instead of masking it.
+
+### Avoid masking (mandatory)
+
+- Do not introduce patterns that hide correctness issues.
+- Avoid CSS `!important` unless the active task explicitly requires it.
+- Avoid reflective or defensive constructs such as:
+  - optional chaining used only to suppress errors,
+  - `hasattr` / “hasAttribute” style checks,
+  - runtime feature detection used to bypass invariants.
+- Do not implement silent error swallowing, default fallbacks, or hidden coercions.
 
 ## Git hygiene
 Never add generated artifacts, caches, secrets, build outputs, or local datasets.
@@ -193,6 +257,7 @@ Examples:
 - `__pycache__/`, `*.pyc`
 - `node_modules/`
 - exported PDFs, logs, large data files
+
 
 If such files appear:
 - add `.gitignore` rules

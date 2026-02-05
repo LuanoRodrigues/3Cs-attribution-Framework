@@ -1639,22 +1639,12 @@
 }
 
 /* =========================
-   Responsive ribbon fallbacks
-   ========================= */
-@media (max-width: 900px) {
-  .leditor-ribbon-panel {
-    display: none !important;
-  }
-}
-
-@media (min-width: 901px) and (max-width: 1100px) {
-  .leditor-ribbon-panel .leditor-ribbon-group {
-    display: none !important;
-  }
-  .leditor-ribbon-panel > .leditor-ribbon-group:nth-of-type(-n + 1) {
-    display: flex !important;
-  }
-}
+   Responsive ribbon behavior
+   =========================
+   Do not hide panels on narrow widths. The JS collapse manager (Stage A/B/C) already:
+   - collapses controls into overflow/flyouts
+   - enables horizontal scroll as a last resort (`data-group-scroll="enabled"`)
+*/
 
 /* =========================
    Missing classes from original snippet

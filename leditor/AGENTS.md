@@ -46,11 +46,36 @@ This file provides repo-wide guidance. Codex reads AGENTS.md automatically befor
 - If the user requests repository changes (implement/fix/build): implement directly without requiring a plan.
 - Do not create a plan unless the user explicitly asks for one.
 
----
+### Escalation: create deterministic tests when fixes are not converging (mandatory)
+If you attempt multiple fixes for the same issue and results are still inconsistent or failing:
+- Stop guessing from symptoms and create a deterministic test harness to validate the invariant before reporting back.
+- Prefer automated checks over manual UI inspection, especially for layout/pagination/widget correctness.
 
+Where to put these tests:
+- Create repo-local scripts under `Plans/pending/scripts/` (create the directory if missing).
+- Keep scripts narrowly scoped to the active task and easy to delete once the issue is resolved.
+
+What “deterministic” means here:
+- The script must produce a PASS/FAIL signal based on explicit invariants (no “looks ok” checks).
+- The script must be runnable locally and in CI-like environments (offline, headless where possible).
+
+Example (layout/pagination invariant):
+- If a page must be “fully populated” without overflow gaps, implement a check that computes per-page line/word distribution and fails if:
+  - a line contains only 1–2 words when it should be wrapped (overflow/measure bug),
+  - there are unexpected empty lines,
+  - content overlaps footnote containers,
+  - page overflow/underflow thresholds are violated.
+
+Required workflow under escalation:
+1) Create or update the deterministic script.
+2) Run the script and capture output.
+3) Iterate on code until the script passes reliably.
+4) Only then report the fix to the user, including the script name/path and the passing result.
+
+---
 ## Workflow (MULTI-HOUR AUTONOMOUS RUNS — ONLY WHEN A PLAN IS PROVIDED)
 A “plan is provided” only if:
-- the user gives a plan file path under `Plans/` (example: `Plans/FEATURE_X.md`), OR
+- the user gives a plan file path under `Plans/` (example: `Plans/pending/FEATURE_X.md`), OR
 - the user pastes a plan and asks you to adopt it as the execution plan.
 
 When a plan is provided:
@@ -64,9 +89,25 @@ When a plan is provided:
   - do not ask the user to run validation commands for you
 - For long runs, rely on explicit, file-based plans because the execution agent does not infer missing intent: embed assumptions and required context in the plan itself. :contentReference[oaicite:3]{index=3}
 
+### Plans folder invariants (mandatory)
+- Ensure these directories exist in the repo root; create them if missing:
+  - `Plans/`
+  - `Plans/pending/`
+  - `Plans/legacy/`
+- All newly created plans MUST be created under `Plans/pending/` only.
+- Once a plan is finished (all steps attempted), move it from `Plans/pending/` to `Plans/legacy/` and update `Plans/pending//EXECUTION_INDEX.md` accordingly.
+
 ### Plan location constraint (for plan-provided runs only)
-- The active execution plan MUST live under `Plans/`.
-- If the user gives a plan path outside `Plans/`, create a copy under `Plans/` and treat that as the active plan.
+- The active execution plan MUST live under `Plans/pending/`.
+- If the user gives a plan path outside `Plans/pending/`, create a copy under `Plans/pending/` and treat that as the active plan.
+
+### Plan execution authority (mandatory)
+- Do NOT implement or execute plans you did not create and that the user did not explicitly ask you to run.
+- Do NOT “discover” or pick up other plans from the repository implicitly (including older plans in `Plans/legacy/`).
+
+### Scope discipline (mandatory)
+- Any repo change MUST be strictly related to the active Codex task scope (as defined by the active plan or explicit user request).
+- Do NOT refactor, reformat, rename, or “clean up” unrelated code or files.
 
 ### Plan format (required for plan-provided runs)
 The active Plan MUST include:
@@ -153,6 +194,11 @@ A non-interactive list derived only from observed failures or incomplete shards:
 - Errors are signals. Prefer a crash to ambiguous behavior.
 - Do not add safety fallbacks, guards, or silent coercions to hide missing keys/attributes.
 - If correctness cannot be guaranteed without adding such fallbacks, stop and explain what is ambiguous.
+
+### Avoid masking (mandatory)
+- Do not introduce masking patterns that hide correctness issues.
+- Avoid CSS `!important` unless the active plan explicitly requires it.
+- Avoid reflective/defensive patterns like `hasattr` / “hasAttribute” / optional chaining used to bypass invariants.
 
 ---
 

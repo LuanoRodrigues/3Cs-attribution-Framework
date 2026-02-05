@@ -295,6 +295,29 @@ function formatPayload(payload?: unknown): string {
 
 const CODER_STATE_FILE = "coder_state.json";
 const CODER_STATE_VERSION = 2;
+const DEFAULT_CODER_STATE_PATH_WINDOWS = "\\\\wsl.localhost\\Ubuntu-22.04\\home\\pantera\\projects\\TEIA\\coder_state.json";
+
+function getCoderStatePathOverride(): string | null {
+  const fromEnv = String(process.env.CODER_STATE_PATH || "").trim();
+  if (fromEnv) return fromEnv;
+  if (process.platform === "win32") return DEFAULT_CODER_STATE_PATH_WINDOWS;
+  return null;
+}
+
+function resolveCoderPaths(scopeId?: string): { coderDir: string; statePath: string; payloadDir: string } {
+  const override = getCoderStatePathOverride();
+  if (override) {
+    const statePath = override;
+    const coderDir = path.dirname(statePath);
+    const payloadDir = path.join(coderDir, "payloads");
+    return { coderDir, statePath, payloadDir };
+  }
+  const scope = sanitizeScopeId(scopeId);
+  const coderDir = path.join(getCoderCacheDir(), scope);
+  const statePath = path.join(coderDir, CODER_STATE_FILE);
+  const payloadDir = path.join(coderDir, "payloads");
+  return { coderDir, statePath, payloadDir };
+}
 
 function createCoderFolderNode(): Record<string, unknown> {
   return {
@@ -328,47 +351,288 @@ function normalizeCoderStatePayload(value?: unknown): Record<string, unknown> {
       return {
         version: typeof typed.version === "number" ? typed.version : CODER_STATE_VERSION,
         nodes,
-        collapsed_ids: collapsed
+        collapsed_ids: collapsed,
+        meta: typeof (typed as any).meta === "object" && (typed as any).meta ? (typed as any).meta : undefined
       };
     }
   }
   return createDefaultCoderState();
 }
 
-function toPersistentCoderStatePayload(value: Record<string, unknown>): Record<string, unknown> {
+function stripHtmlTags(html: string): string {
+  return String(html || "")
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, " ")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<\/h[1-6]>/gi, "\n")
+    .replace(/<\/li>/gi, "\n")
+    .replace(/<\/div>/gi, "\n")
+    .replace(/<[^>]+>/g, " ");
+}
+
+function decodeEntities(html: string): string {
+  return String(html || "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, "\"")
+    .replace(/&#39;/gi, "'")
+    .trim();
+}
+
+function collapseWhitespace(text: string): string {
+  return String(text || "").replace(/\s+/g, " ").trim();
+}
+
+function snippet80(text: string): string {
+  const t = collapseWhitespace(text);
+  if (!t) return "";
+  return t.length > 80 ? `${t.slice(0, 80).trimEnd()}…` : t;
+}
+
+function escapeHtml(value: string): string {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function stripFragment(html: string): string {
+  const src = String(html || "").trim();
+  if (!src) return "";
+  const start = src.indexOf("<!--StartFragment-->");
+  const end = src.indexOf("<!--EndFragment-->");
+  if (start >= 0 && end > start) {
+    return src.slice(start + "<!--StartFragment-->".length, end).trim();
+  }
+  const bodyMatch = src.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+  if (bodyMatch) {
+    return String(bodyMatch[1] || "").trim();
+  }
+  return src
+    .replace(/<!doctype.*?>/gis, "")
+    .replace(/<\/?html[^>]*>/gis, "")
+    .replace(/<\/?head[^>]*>.*?<\/head>/gis, "")
+    .replace(/<\/?body[^>]*>/gis, "")
+    .trim();
+}
+
+function normalizeDropHtml(html: string): string {
+  const frag = stripFragment(html);
+  if (!frag.trim()) return "";
+  let out = frag.trim();
+  // Strip Qt "empty paragraph" blocks and collapse long runs of blank <p> to a single <p></p>.
+  out = out.replace(/<p\b[^>]*-qt-paragraph-type:\s*empty[^>]*>\s*<\/p>/gis, "");
+  out = out.replace(
+    /(<p\b[^>]*>\s*(?:&nbsp;|\s|<span\b[^>]*>\s*(?:&nbsp;|\s)*<\/span>)*\s*<\/p>\s*){2,}/gis,
+    "<p></p>"
+  );
+  // Remove headings that are empty / only whitespace or <br>.
+  out = out.replace(/<h([1-6])\b[^>]*>\s*(?:<br\s*\/?>|\s|&nbsp;)*\s*<\/h\1>/gis, "");
+  // Ensure block wrapper so downstream renderers don't apply inline styles weirdly.
+  const lo = out.trimStart().toLowerCase();
+  const isBlock =
+    lo.startsWith("<p") ||
+    lo.startsWith("<div") ||
+    lo.startsWith("<blockquote") ||
+    lo.startsWith("<ul") ||
+    lo.startsWith("<ol") ||
+    lo.startsWith("<pre") ||
+    /^<h[1-6]\b/.test(lo);
+  if (!isBlock) {
+    out = `<p>${out}</p>`;
+  }
+  return out;
+}
+
+function blocksFromHtml(html: string): any[] {
+  const frag = String(html || "").trim();
+  if (!frag) return [{ type: "paragraph", content: [{ type: "text", text: "" }] }];
+  const blocks: any[] = [];
+  const parseAnchorAttrs = (attrsSrc: string): Record<string, unknown> => {
+    const attrs: Record<string, string> = {};
+    const re = /\b([a-zA-Z0-9_-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/g;
+    let m: RegExpExecArray | null;
+    // eslint-disable-next-line no-cond-assign
+    while ((m = re.exec(String(attrsSrc || "")))) {
+      const key = String(m[1] || "").trim();
+      const value = String(m[2] || m[3] || m[4] || "");
+      if (key) attrs[key.toLowerCase()] = value;
+    }
+    const pick = (...keys: string[]) => {
+      for (const k of keys) {
+        const v = attrs[k.toLowerCase()];
+        if (v !== undefined && v !== "") return v;
+      }
+      return undefined;
+    };
+    return {
+      href: pick("href"),
+      title: pick("title"),
+      dataKey: pick("data-key"),
+      dataOrigHref: pick("data-orig-href"),
+      dataQuoteId: pick("data-quote-id", "data-quote_id"),
+      dataDqid: pick("data-dqid"),
+      ...(Object.keys(attrs).length ? { attrsRaw: attrs } : {})
+    };
+  };
+
+  const textTokensFromFragment = (src: string): any[] => {
+    const decoded = decodeEntities(stripHtmlTags(String(src || "")));
+    if (!decoded) return [];
+    const out: any[] = [];
+    const lines = decoded.split("\n");
+    lines.forEach((line, idx) => {
+      const t = collapseWhitespace(line);
+      if (t) out.push({ type: "text", text: t });
+      if (idx < lines.length - 1) out.push({ type: "hardBreak" });
+    });
+    return out;
+  };
+
+  const inlineContentFromHtml = (innerHtml: string): any[] => {
+    const src = String(innerHtml || "").replace(/<br\s*\/?>/gi, "\n");
+    const out: any[] = [];
+    const aRe = /<a\b([^>]*)>([\s\S]*?)<\/a>/gi;
+    let last = 0;
+    let m: RegExpExecArray | null;
+    // eslint-disable-next-line no-cond-assign
+    while ((m = aRe.exec(src))) {
+      const before = src.slice(last, m.index);
+      out.push(...textTokensFromFragment(before));
+      const attrs = parseAnchorAttrs(m[1] || "");
+      const inner = String(m[2] || "").replace(/<br\s*\/?>/gi, "\n");
+      const txt = collapseWhitespace(decodeEntities(stripHtmlTags(inner)));
+      if (txt) {
+        out.push({ type: "text", text: txt, marks: [{ type: "anchor", attrs }] });
+      }
+      last = m.index + m[0].length;
+    }
+    out.push(...textTokensFromFragment(src.slice(last)));
+    // Normalize: drop leading/trailing hardBreaks and ensure at least one text node.
+    while (out.length && out[0]?.type === "hardBreak") out.shift();
+    while (out.length && out[out.length - 1]?.type === "hardBreak") out.pop();
+    return out.length ? out : [{ type: "text", text: "" }];
+  };
+
+  const pushPara = (innerHtml: string) => {
+    blocks.push({ type: "paragraph", content: inlineContentFromHtml(innerHtml) });
+  };
+  const pushHeading = (level: number, innerHtml: string) => {
+    blocks.push({
+      type: "heading",
+      level: Math.max(1, Math.min(6, level)),
+      content: inlineContentFromHtml(innerHtml)
+    });
+  };
+  const matchers: Array<{ re: RegExp; kind: "p" | "h" }> = [
+    { re: /<h([1-6])\b[^>]*>([\s\S]*?)<\/h\1>/gis, kind: "h" },
+    { re: /<p\b[^>]*>([\s\S]*?)<\/p>/gis, kind: "p" }
+  ];
+  // Prefer explicit <p>/<h*> blocks; fall back to one paragraph.
+  let any = false;
+  for (const { re, kind } of matchers) {
+    let m: RegExpExecArray | null;
+    // eslint-disable-next-line no-cond-assign
+    while ((m = re.exec(frag))) {
+      any = true;
+      if (kind === "h") {
+        const level = Number(m[1] || 1);
+        pushHeading(level, String(m[2] || ""));
+      } else {
+        pushPara(String(m[1] || ""));
+      }
+    }
+  }
+  if (!any) {
+    pushPara(frag);
+  }
+  // Ensure at least one block.
+  return blocks.length ? blocks : [{ type: "paragraph", content: [{ type: "text", text: "" }] }];
+}
+
+function toPersistentCoderStatePayload(value: Record<string, unknown>, existing?: Record<string, unknown>): Record<string, unknown> {
   const normalized = normalizeCoderStatePayload(value);
-  const toNode = (node: any): any => {
+  const now = new Date().toISOString();
+  const existingMeta = (existing && typeof existing.meta === "object" && existing.meta) ? (existing.meta as any) : undefined;
+  const incomingMeta = (normalized as any).meta && typeof (normalized as any).meta === "object" ? (normalized as any).meta : undefined;
+  const meta = {
+    title: String((incomingMeta as any)?.title || existingMeta?.title || (Array.isArray((normalized as any).nodes) && (normalized as any).nodes[0]?.name) || "Coder"),
+    created_utc: String((incomingMeta as any)?.created_utc || existingMeta?.created_utc || now),
+    last_modified_utc: now,
+    page_size: String((incomingMeta as any)?.page_size || existingMeta?.page_size || "A4"),
+    margins_cm: (incomingMeta as any)?.margins_cm || existingMeta?.margins_cm || { top: 2.5, right: 2.5, bottom: 2.5, left: 2.5 },
+    citation_locale: String((incomingMeta as any)?.citation_locale || existingMeta?.citation_locale || "en-US"),
+    citation_style_id: String((incomingMeta as any)?.citation_style_id || existingMeta?.citation_style_id || "apa")
+  };
+
+  const toNode = (node: any, parentId: string | null, depth: number): any => {
     if (!node || typeof node !== "object") {
       return null;
     }
     const type = node.type === "item" ? "item" : "folder";
+    const id = String(node.id || randomUUID());
+    const parent_id = parentId ? String(parentId) : "";
     if (type === "folder") {
+      const childrenRaw = Array.isArray(node.children) ? node.children : [];
+      const children = childrenRaw.map((child: any) => toNode(child, id, depth + 1)).filter(Boolean);
       return {
         type: "folder",
-        id: String(node.id || randomUUID()),
+        id,
+        parent_id,
+        parentId: parent_id || null,
+        depth,
+        heading_level: Math.max(1, Math.min(6, depth + 1)),
+        headingLevel: Math.max(1, Math.min(6, depth + 1)),
         name: String(node.name || "Section"),
         note: String(node.note || ""),
         edited_html: String(node.edited_html || node.editedHtml || ""),
         updated_utc: String(node.updated_utc || node.updatedUtc || new Date().toISOString()),
-        children: Array.isArray(node.children) ? node.children.map(toNode).filter(Boolean) : []
+        children
       };
+    }
+    const payloadIn = node.payload && typeof node.payload === "object" ? node.payload : {};
+    const payloadAny = payloadIn as any;
+    const htmlRaw = String(payloadAny.html || payloadAny.section_html || "");
+    const htmlNormalized = normalizeDropHtml(htmlRaw);
+    const textFromHtml = decodeEntities(stripHtmlTags(htmlNormalized || htmlRaw));
+    const text = String(payloadAny.text || textFromHtml || "");
+    const title = String(node.title || node.name || payloadAny.title || snippet80(text) || "Selection");
+    const payload = {
+      ...payloadAny,
+      title: snippet80(payloadAny.title || title),
+      text: collapseWhitespace(text),
+      html: htmlNormalized || (text ? `<p>${escapeHtml(text).replace(/\n/g, "<br/>")}</p>` : "<p><br/></p>"),
+      blocks: Array.isArray(payloadAny.blocks) && payloadAny.blocks.length ? payloadAny.blocks : blocksFromHtml(htmlNormalized || htmlRaw)
+    };
+    // Preserve original unnormalized HTML for fidelity/debugging if we had to change it.
+    if (htmlRaw && htmlNormalized && htmlRaw.trim() !== htmlNormalized.trim() && !payload.html_raw) {
+      payload.html_raw = htmlRaw;
     }
     return {
       type: "item",
-      id: String(node.id || randomUUID()),
-      title: String(node.title || node.name || "Selection"),
+      id,
+      parent_id,
+      parentId: parent_id || null,
+      title: snippet80(title) || "Selection",
+      name: snippet80(node.name || node.title || title) || "Selection",
       status: String(node.status || "include"),
       note: String(node.note || ""),
       edited_html: String(node.edited_html || node.editedHtml || ""),
       updated_utc: String(node.updated_utc || node.updatedUtc || new Date().toISOString()),
-      payload: node.payload && typeof node.payload === "object" ? node.payload : {}
+      payload
     };
   };
   const nodes = Array.isArray((normalized as any).nodes) ? (normalized as any).nodes : [];
   const collapsed = Array.isArray((normalized as any).collapsed_ids) ? (normalized as any).collapsed_ids : [];
   return {
     version: typeof (normalized as any).version === "number" ? (normalized as any).version : CODER_STATE_VERSION,
-    nodes: nodes.map(toNode).filter(Boolean),
+    meta,
+    nodes: nodes.map((n: any) => toNode(n, null, 0)).filter(Boolean),
     collapsed_ids: collapsed.map(String)
   };
 }
@@ -1464,9 +1728,7 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
 
   ipcMain.handle("coder:save-payload", async (_event, payload: { scopeId?: string; nodeId: string; data: Record<string, unknown> }) => {
     try {
-      const scope = sanitizeScopeId(payload?.scopeId);
-      const coderDir = path.join(getCoderCacheDir(), scope);
-      const payloadDir = path.join(coderDir, "payloads");
+      const { payloadDir } = resolveCoderPaths(payload?.scopeId);
       await fs.promises.mkdir(payloadDir, { recursive: true });
       const safeNodeId = sanitizeNodeId(payload.nodeId);
       const jsonPath = path.join(payloadDir, `${safeNodeId}.json`);
@@ -1482,9 +1744,7 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
   });
 
   ipcMain.handle("coder:load-state", async (_event, payload: { scopeId?: string }) => {
-    const scope = sanitizeScopeId(payload?.scopeId);
-    const coderDir = path.join(getCoderCacheDir(), scope);
-    const primaryPath = path.join(coderDir, CODER_STATE_FILE);
+    const { coderDir, statePath: primaryPath } = resolveCoderPaths(payload?.scopeId);
     if ((global as any).__coder_state_cache?.[primaryPath]) {
       return (global as any).__coder_state_cache[primaryPath];
     }
@@ -1509,13 +1769,18 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
   });
 
   ipcMain.handle("coder:save-state", async (_event, payload: { scopeId?: string; state?: Record<string, unknown> }) => {
-    const scope = sanitizeScopeId(payload?.scopeId);
-    const coderDir = path.join(getCoderCacheDir(), scope);
-    const primaryPath = path.join(coderDir, CODER_STATE_FILE);
+    const { coderDir, statePath: primaryPath } = resolveCoderPaths(payload?.scopeId);
     try {
       await fs.promises.mkdir(coderDir, { recursive: true });
       const raw = payload?.state ? payload.state : createDefaultCoderState();
-      const toWrite = toPersistentCoderStatePayload(raw);
+      let existing: Record<string, unknown> | undefined;
+      try {
+        const prev = await fs.promises.readFile(primaryPath, "utf-8");
+        existing = prev ? (JSON.parse(prev) as Record<string, unknown>) : undefined;
+      } catch {
+        existing = undefined;
+      }
+      const toWrite = toPersistentCoderStatePayload(raw, existing);
       const encoded = JSON.stringify(toWrite, null, 2);
       await atomicWriteJson(primaryPath, encoded);
       console.info(`[CODER][STATE] save ${primaryPath}`);
@@ -2011,6 +2276,32 @@ function createWindow(): void {
   });
 
   window.webContents.setBackgroundThrottling(false);
+
+  window.webContents.on("before-input-event", (event, input) => {
+    try {
+      const key = String((input as any).key || "").toLowerCase();
+      const metaOrCtrl = Boolean((input as any).control) || Boolean((input as any).meta);
+      const shift = Boolean((input as any).shift);
+      if (metaOrCtrl && shift && key === "i") {
+        event.preventDefault();
+        if (window.webContents.isDevToolsOpened()) {
+          window.webContents.closeDevTools();
+        } else {
+          window.webContents.openDevTools({ mode: "detach" });
+        }
+      }
+      if (key === "f12") {
+        event.preventDefault();
+        if (window.webContents.isDevToolsOpened()) {
+          window.webContents.closeDevTools();
+        } else {
+          window.webContents.openDevTools({ mode: "detach" });
+        }
+      }
+    } catch (error) {
+      console.error("[main.ts][before-input-event][error]", error);
+    }
+  });
 
   window.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);

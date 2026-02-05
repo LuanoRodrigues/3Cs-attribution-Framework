@@ -22,12 +22,6 @@ function attachTextToTransfer(dataTransfer: DataTransfer, text: string): void {
     // Keep drag/copy fast: avoid cloning DOM ranges to HTML, which can be extremely expensive
     // for large documents and will block the renderer main thread.
     dataTransfer.setData("text/plain", text);
-    // Clear our custom mime if present from other sources to ensure the drop path uses text/plain.
-    try {
-      dataTransfer.setData(CODER_MIME, "");
-    } catch {
-      // ignore
-    }
   } catch {
     // best effort only
   }

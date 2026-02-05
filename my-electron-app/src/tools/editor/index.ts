@@ -8,10 +8,10 @@ import { baseKeymap, exitCode, toggleMark, setBlockType } from "prosemirror-comm
 import { keymap } from "prosemirror-keymap";
 import { schema as basicSchema } from "prosemirror-schema-basic";
 import { addListNodes, wrapInList, sinkListItem, liftListItem } from "prosemirror-schema-list";
-import { dropCursor } from "prosemirror-dropcursor";
 import { gapCursor } from "prosemirror-gapcursor";
 import { tableEditing } from "prosemirror-tables";
 import { marked } from "marked";
+import { safeDropCursor } from "./safe_dropcursor";
 
 function buildSchema(): Schema {
   const listNodes = addListNodes(basicSchema.spec.nodes as any, "paragraph block*", "block");
@@ -237,7 +237,7 @@ export function createEditorTool(): ToolDefinition {
         doc: content || schema.node("doc", undefined, [schema.node("paragraph", undefined, schema.text("Start writing..."))]),
         plugins: [
           history(),
-          dropCursor(),
+          safeDropCursor(),
           gapCursor(),
           tableEditing(),
           keymap({
@@ -259,7 +259,7 @@ export function createEditorTool(): ToolDefinition {
           const newState = view.state.apply(tr);
           view.updateState(newState);
           const counts = countWords(newState.doc);
-          statusBar.textContent = `${counts.words} words • ${counts.chars} chars`;
+          statusBar.textContent = `${counts.words} words â€¢ ${counts.chars} chars`;
           if (onUpdate) {
             onUpdate({ doc: newState.doc.toJSON() });
           }
@@ -374,7 +374,7 @@ export function createEditorTool(): ToolDefinition {
       };
 
       const counts = countWords(view.state.doc);
-      statusBar.textContent = `${counts.words} words • ${counts.chars} chars`;
+      statusBar.textContent = `${counts.words} words â€¢ ${counts.chars} chars`;
 
       return {
         element: mount,
