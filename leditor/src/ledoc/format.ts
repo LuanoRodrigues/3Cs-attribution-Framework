@@ -95,6 +95,7 @@ export type LedocBundleRegistryFile = {
   // Optional persisted AI/source-check thread state (renderer decides how to interpret it).
   sourceChecksThread?: unknown;
   agentHistory?: unknown;
+  llmCache?: unknown;
 };
 
 export type LedocBundlePayload = {

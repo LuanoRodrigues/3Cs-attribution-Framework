@@ -17,6 +17,7 @@ import {
 } from "./coderTypes";
 
 const STATE_VERSION = 3;
+export const DEFAULT_ITEM_TITLE = "Untitled";
 
 function nowUtc(): string {
   return new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
@@ -80,8 +81,8 @@ function deriveTitle(payload: CoderPayload): string {
     if (fromHtml && !isPlaceholderTitle(fromHtml)) return fromHtml;
   }
 
-  // Final fallback: keep the legacy label for truly empty payloads.
-  return "Selection";
+  // Final fallback: empty payloads still get a stable, non-placeholder title.
+  return DEFAULT_ITEM_TITLE;
 }
 
 export function createFolder(name = "Section"): FolderNode {
@@ -311,7 +312,7 @@ export class CoderStore {
     const next = cloneState(this.state);
     const path = findPath(next.nodes, nodeId);
     if (!path) return;
-    path.node.name = name || (path.node.type === "folder" ? "Section" : "Selection");
+    path.node.name = name || (path.node.type === "folder" ? "Section" : DEFAULT_ITEM_TITLE);
     path.node.updatedUtc = nowUtc();
     this.commit(next);
   }
@@ -701,7 +702,7 @@ function buildItemSection(item: ItemNode): string {
   if (frag.trim()) {
     return `<section class='coder-item' data-coder-type='item' data-coder-id='${escapeHtml(item.id)}'>${frag}</section>`;
   }
-  const fallbackText = (item.name || "Selection").trim();
+  const fallbackText = (item.name || DEFAULT_ITEM_TITLE).trim();
   return `<section class='coder-item' data-coder-type='item' data-coder-id='${escapeHtml(item.id)}'><p>${escapeHtml(fallbackText)}</p></section>`;
 }
 
@@ -785,7 +786,7 @@ function normalizeSavedNodes(rawNodes: unknown[]): CoderNode[] {
         const raw = String(value.name || value.title || "").trim();
         if (raw && !isPlaceholderTitle(raw)) return raw;
         const derived = deriveTitle(payload);
-        return derived && !isPlaceholderTitle(derived) ? derived : raw || "Selection";
+        return derived && !isPlaceholderTitle(derived) ? derived : raw || DEFAULT_ITEM_TITLE;
       })(),
       status: CODER_STATUSES.includes(value.status) ? value.status : "Included",
       payload: (value.payload || value) as CoderPayload,
@@ -931,7 +932,7 @@ function firstParagraphFromText(text: string): string {
 function deriveDropTitleFromText(text: string): string {
   const firstPara = firstParagraphFromText(text);
   const snip = snippet80(firstPara);
-  return snip || "Selection";
+  return snip || DEFAULT_ITEM_TITLE;
 }
 
 export function getFirstParagraphSnippet(state: CoderState): string | null {

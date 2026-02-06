@@ -18,10 +18,35 @@ import { openCitationPicker, type CitationPickerResult } from "../ui/references/
 import { openSourcesPanel } from "../ui/references/sources_panel.ts";
 import { ensureReferencesLibrary, upsertReferenceItems, getReferencesLibrarySync } from "../ui/references/library.ts";
 import { getHostContract } from "../ui/host_contract.ts";
+import { getHostAdapter } from "../host/host_adapter.ts";
 import { createSearchPanel } from "../ui/search_panel.ts";
 import { createAISettingsPanel, getAiSettings, type AiSettingsPanelController } from "../ui/ai_settings.ts";
+import {
+  openRibbonColorDialog,
+  openParagraphSpacingDialog,
+  openBordersDialog,
+  openTextEffectsDialog,
+  openSortDialog,
+  openColumnsDialog,
+  openLinkDialog,
+  openCopyLinkDialog,
+  openBookmarkManagerDialog,
+  openEquationDialog,
+  openSymbolDialog,
+  openSingleInputDialog,
+  openAddSourceDialog,
+  openFileImportDialog,
+  openCslManageDialog,
+  openTocAddTextDialog,
+  openTocUpdateDialog,
+  openToaExportDialog,
+  showRibbonToast,
+  pushRecentColor
+} from "../ui/ribbon_dialogs.ts";
 import { runLexiconCommand, closeLexiconPopup } from "../ui/lexicon";
 import { openVersionHistoryModal } from "../ui/version_history_modal.ts";
+import { buildLlmCacheKey, getLlmCacheEntry, setLlmCacheEntry } from "../ui/llm_cache.ts";
+import { allocateSectionId, parseSectionMeta, serializeSectionMeta } from "../editor/section_state.ts";
 import {
   dismissSourceCheckThreadItem,
   getSourceChecksThread,
@@ -45,11 +70,6 @@ import {
   resolveNoteKind,
   updateAllCitationsAndBibliography
 } from "../csl/update.ts";
-import {
-  ensureCslStyleAvailable,
-  renderCitationsAndBibliographyWithCiteproc,
-  renderBibliographyEntriesWithCiteproc
-} from "../csl/citeproc.ts";
 import { extractCitedKeysFromDoc, writeCitedWorksKeys, acceptKey, extractKeyFromLinkAttrs } from "../ui/references/cited_works.ts";
 import type { BibliographyNode as CslBibliographyNode, CitationNode as CslCitationNode, DocCitationMeta } from "../csl/types.ts";
 import {
@@ -72,6 +92,34 @@ import {
 import { insertFootnoteAtSelection as insertManagedFootnote } from "../uipagination/footnotes/commands";
 import type { EditorHandle } from "./leditor.ts";
 import { isDebugLoggingEnabled } from "../utils/debug.ts";
+let citeprocModulePromise: Promise<typeof import("../csl/citeproc.ts")> | null = null;
+const loadCiteprocModule = async () => {
+  if (!citeprocModulePromise) {
+    citeprocModulePromise = import("../csl/citeproc.ts");
+  }
+  return citeprocModulePromise;
+};
+type CiteprocModule = typeof import("../csl/citeproc.ts");
+type CiteprocRenderResult = ReturnType<CiteprocModule["renderCitationsAndBibliographyWithCiteproc"]>;
+
+let directQuoteLookupModulePromise: Promise<typeof import("../ui/direct_quote_lookup.ts")> | null = null;
+const loadDirectQuoteLookupModule = async () => {
+  if (!directQuoteLookupModulePromise) {
+    directQuoteLookupModulePromise = import("../ui/direct_quote_lookup.ts");
+  }
+  return directQuoteLookupModulePromise;
+};
+
+const openDirectQuoteLookupPanelLazy = (handle: EditorHandle | null) => {
+  if (!handle) return;
+  void loadDirectQuoteLookupModule()
+    .then(({ openDirectQuoteLookupPanel }) => {
+      openDirectQuoteLookupPanel(handle);
+    })
+    .catch((error) => {
+      console.error("[DirectQuote] lazy load failed", error);
+    });
+};
 const findListItemDepth = (editor: Editor) => {
   const { $from } = editor.state.selection;
   for (let depth = $from.depth; depth > 0; depth -= 1) {
@@ -124,6 +172,171 @@ const refsInfo = (message: string, detail?: Record<string, unknown>): void => {
 const getEditorHandle = (): EditorHandle | null => {
   const handle = (window as typeof window & { leditor?: EditorHandle }).leditor;
   return handle ?? null;
+};
+
+const PREF_AUTO_LINK = "leditor.autoLink";
+const PREF_PASTE_AUTO_CLEAN = "leditor.pasteAutoClean";
+const PREF_EVENT_NAME = "leditor:ribbon-preferences";
+
+const readBoolPref = (key: string, fallback = false): boolean => {
+  try {
+    const raw = window.localStorage?.getItem(key);
+    if (raw == null) return fallback;
+    return raw === "1" || raw.toLowerCase() === "true";
+  } catch {
+    return fallback;
+  }
+};
+
+const writeBoolPref = (key: string, value: boolean): void => {
+  try {
+    window.localStorage?.setItem(key, value ? "1" : "0");
+  } catch {
+    // ignore
+  }
+};
+
+const toggleBoolPref = (key: string, fallback = false): boolean => {
+  const next = !readBoolPref(key, fallback);
+  writeBoolPref(key, next);
+  return next;
+};
+
+const emitPrefChange = (): void => {
+  try {
+    window.dispatchEvent(new CustomEvent(PREF_EVENT_NAME));
+  } catch {
+    // ignore
+  }
+};
+
+const PREF_TRANSLATE_LANG = "leditor.translate.language";
+
+const promptTranslateLanguage = (): string | null => {
+  try {
+    const current = window.localStorage?.getItem(PREF_TRANSLATE_LANG) ?? "Spanish";
+    const next = window.prompt("Translate to language (e.g. Spanish)", current);
+    if (next === null) return null;
+    const value = next.trim();
+    if (!value) return null;
+    window.localStorage?.setItem(PREF_TRANSLATE_LANG, value);
+    return value;
+  } catch {
+    return null;
+  }
+};
+
+const setDocumentFromPlainText = (editor: Editor, text: string) => {
+  const paragraphs = text
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => ({ type: "paragraph", content: [{ type: "text", text: line }] }));
+  const doc = {
+    type: "doc",
+    content: [
+      {
+        type: "page",
+        content: paragraphs.length ? paragraphs : [{ type: "paragraph" }]
+      }
+    ]
+  };
+  editor.commands.setContent(doc);
+};
+
+const runAiTranslation = async (editor: Editor, scope: "selection" | "document") => {
+  const host = getHostAdapter();
+  if (!host?.agentRequest) {
+    window.alert("AI host bridge unavailable.");
+    return;
+  }
+  const language = promptTranslateLanguage();
+  if (!language) return;
+  const settings = getAiSettings();
+  if (scope === "selection") {
+    const { from, to } = editor.state.selection;
+    if (from === to) {
+      window.alert("Select text to translate.");
+      return;
+    }
+    const original = editor.state.doc.textBetween(from, to, " ");
+    const instruction = `Translate the TARGET TEXT into ${language}. Return replaceSelection.`;
+    const payload = {
+      scope: "selection" as const,
+      instruction,
+      selection: { from, to, text: original },
+      history: [],
+      settings
+    };
+    const cacheKey = buildLlmCacheKey({
+      fn: "translate.selection",
+      provider: settings.provider,
+      model: settings.model,
+      payload
+    });
+    const cached = getLlmCacheEntry(cacheKey);
+    let result: any = cached?.value ?? null;
+    if (!result) {
+      const requestId = `translate-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+      result = await host.agentRequest({ requestId, payload });
+      if (result?.success) {
+        setLlmCacheEntry({ key: cacheKey, fn: "translate.selection", value: result, meta: result?.meta });
+      }
+    }
+    if (!result?.success) {
+      window.alert(result?.error ? String(result.error) : "Translation failed.");
+      return;
+    }
+    const ops = Array.isArray(result.operations)
+      ? (result.operations as Array<{ op: string; text?: string }>)
+      : [];
+    const replaceOp = ops.find((op) => op && op.op === "replaceSelection" && typeof op.text === "string") as
+      | { op: "replaceSelection"; text: string }
+      | undefined;
+    const translated = replaceOp?.text ?? (typeof result.applyText === "string" ? result.applyText : result.assistantText);
+    const next = String(translated || "").trim();
+    if (!next) return;
+    chainWithSafeFocus(editor).insertContentAt({ from, to }, next).run();
+    return;
+  }
+  const original = editor.state.doc.textBetween(0, editor.state.doc.content.size, "\n\n");
+  const instruction = `Translate the DOCUMENT TEXT into ${language}. Return replaceDocument with paragraphs separated by blank lines.`;
+  const payload = {
+    scope: "document" as const,
+    instruction,
+    document: { text: original },
+    history: [],
+    settings
+  };
+  const cacheKey = buildLlmCacheKey({
+    fn: "translate.document",
+    provider: settings.provider,
+    model: settings.model,
+    payload
+  });
+  const cached = getLlmCacheEntry(cacheKey);
+  let result: any = cached?.value ?? null;
+  if (!result) {
+    const requestId = `translate-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    result = await host.agentRequest({ requestId, payload });
+    if (result?.success) {
+      setLlmCacheEntry({ key: cacheKey, fn: "translate.document", value: result, meta: result?.meta });
+    }
+  }
+  if (!result?.success) {
+    window.alert(result?.error ? String(result.error) : "Translation failed.");
+    return;
+  }
+  const ops = Array.isArray(result.operations)
+    ? (result.operations as Array<{ op: string; text?: string }>)
+    : [];
+  const replaceDoc = ops.find((op) => op && op.op === "replaceDocument" && typeof op.text === "string") as
+    | { op: "replaceDocument"; text: string }
+    | undefined;
+  const translated = replaceDoc?.text ?? (typeof result.applyText === "string" ? result.applyText : result.assistantText);
+  const next = String(translated || "").trim();
+  if (!next) return;
+  setDocumentFromPlainText(editor, next);
 };
 
 const tryExecHandleCommand = (name: string, args?: any): boolean => {
@@ -437,11 +650,11 @@ type BibliographyNodeRecord = CslBibliographyNode & { pos: number; pmNode: Prose
 
 const normalizeText = (value: string): string => value.trim().replace(/\s+/g, " ");
 
-const buildBibliographyEntryParagraphs = (
+const buildBibliographyEntryParagraphs = async (
   editor: Editor,
   itemKeys: string[],
   meta: DocCitationMeta
-): ProseMirrorNode[] => {
+): Promise<ProseMirrorNode[]> => {
   const schema = editor.schema;
   const entryNode = schema.nodes.bibliography_entry ?? schema.nodes.paragraph;
   if (!entryNode) return [];
@@ -493,6 +706,7 @@ const buildBibliographyEntryParagraphs = (
 
   let entriesHtml: string[] = [];
   try {
+    const { renderBibliographyEntriesWithCiteproc } = await loadCiteprocModule();
     entriesHtml = renderBibliographyEntriesWithCiteproc({ meta, itemKeys });
   } catch (error) {
     console.warn("[References] citeproc bibliography render failed", error);
@@ -602,7 +816,11 @@ const collectOrderedCitedItemKeys = (editor: Editor, extras?: string[]): string[
   return ordered;
 };
 
-const insertReferencesAsNewLastPages = (editor: Editor, headingText: string, itemKeys: string[]): void => {
+const insertReferencesAsNewLastPages = async (
+  editor: Editor,
+  headingText: string,
+  itemKeys: string[]
+): Promise<void> => {
   const doc = editor.state.doc;
   const pageType = editor.schema.nodes.page;
   const headingType = editor.schema.nodes.heading;
@@ -619,7 +837,7 @@ const insertReferencesAsNewLastPages = (editor: Editor, headingText: string, ite
 
   const label = headingText.trim() || "References";
   const meta = getDocCitationMeta(doc);
-  const entryNodes = buildBibliographyEntryParagraphs(editor, itemKeys, meta);
+  const entryNodes = await buildBibliographyEntryParagraphs(editor, itemKeys, meta);
   const safeEntries = entryNodes.length
     ? entryNodes
     : [editor.schema.nodes.bibliography_entry?.create(null, [editor.schema.text("No sources cited.")]) ?? editor.schema.nodes.paragraph.create(null, [editor.schema.text("No sources cited.")])];
@@ -991,6 +1209,47 @@ const handleInsertCitationCommand = (editor: Editor) => {
     });
 };
 
+const handleInsertDirectCitation = (editor: Editor, args?: any) => {
+  const itemKey = String(args?.itemKey ?? args?.dqid ?? "").trim();
+  if (!itemKey) {
+    window.alert("Missing citation key.");
+    return;
+  }
+  const page = Number.isFinite(args?.page) ? Number(args.page) : null;
+  const entry = {
+    itemKey,
+    title: typeof args?.title === "string" ? args.title : undefined,
+    author: typeof args?.author === "string" ? args.author : undefined,
+    year: typeof args?.year === "string" ? args.year : undefined,
+    source: typeof args?.source === "string" ? args.source : undefined,
+    dqid: typeof args?.dqid === "string" ? args.dqid : itemKey
+  };
+  upsertReferenceItems([entry]);
+
+  const selectionSnapshot = (args?.selectionSnapshot as StoredSelection | undefined) ?? pickStableSelectionSnapshot(editor).selectionSnapshot;
+  const existing = findCitationInSelection(editor);
+  const citationId = (existing?.node.attrs?.citationId as string | null) ?? generateCitationId();
+  const result: CitationPickerResult = {
+    itemKeys: [itemKey],
+    items: [
+      {
+        itemKey,
+        locator: page != null ? String(page) : null,
+        label: page != null ? "page" : null
+      }
+    ],
+    options: {}
+  };
+  insertCitationNode(editor, result, citationId, existing, selectionSnapshot);
+  const styleId = editor.state.doc.attrs?.citationStyleId;
+  const noteKind = typeof styleId === "string" ? resolveNoteKind(styleId) : null;
+  void refreshCitationsAndBibliography(editor).then(() => {
+    if (noteKind === "footnote" && !existing) {
+      focusFootnoteById(`fn-${citationId}`);
+    }
+  });
+};
+
 const getDocCitationMeta = (doc: ProseMirrorNode): DocCitationMeta => {
   const styleId = doc.attrs?.citationStyleId;
   if (typeof styleId !== "string" || styleId.trim().length === 0) {
@@ -1330,7 +1589,7 @@ const setCitationStyleCommand: CommandHandler = (editor, args) => {
     // Rebuild on next frame so layout metrics used for page splitting are up to date.
     window.requestAnimationFrame(() => {
       removeTrailingReferencesByBreak(editor);
-      insertReferencesAsNewLastPages(editor, label, keys);
+      void insertReferencesAsNewLastPages(editor, label, keys);
     });
   });
 };
@@ -1369,9 +1628,12 @@ const runCslUpdate = (editor: Editor): void => {
           if (!footnoteNode) {
             throw new Error("Footnote node is not registered in schema");
           }
+          const rawTitle = typeof node.attrs?.title === "string" ? node.attrs.title.trim() : "";
+          const rendered = typeof node.attrs?.renderedHtml === "string" ? node.attrs.renderedHtml : "";
+          const title = rawTitle || (rendered ? stripHtml(rendered) : "");
           const footnoteId = `fn-${citationId}`;
           const footnote = footnoteNode.create(
-            { footnoteId, kind: noteKind, citationId, text: "Citation" },
+            { footnoteId, kind: noteKind, citationId, text: "Citation", title: title || null },
             []
           );
           const mappedInsertPos = trPrelude.mapping.map(pos + node.nodeSize);
@@ -1472,8 +1734,10 @@ const runCslUpdate = (editor: Editor): void => {
 
   const runId = ++cslUpdateRunId;
   void (async () => {
+    let citeproc: CiteprocModule | null = null;
     try {
-      await ensureCslStyleAvailable(styleId);
+      citeproc = await loadCiteprocModule();
+      await citeproc.ensureCslStyleAvailable(styleId);
     } catch (error) {
       console.error("[References] CSL style load failed; falling back to simplified renderer", error);
       // Continue; simplified renderer does not require CSL XML.
@@ -1508,15 +1772,17 @@ const runCslUpdate = (editor: Editor): void => {
       });
     }
 
-    let rendered: ReturnType<typeof renderCitationsAndBibliographyWithCiteproc> | null = null;
-    try {
-      rendered = renderCitationsAndBibliographyWithCiteproc({
-        meta,
-        citations: citationNodes.map((c) => ({ citationId: c.citationId, items: c.items, noteIndex: c.noteIndex })),
-        additionalItemKeys
-      });
-    } catch (error) {
-      console.error("[References] citeproc update failed; falling back to simplified renderer", error);
+    let rendered: CiteprocRenderResult | null = null;
+    if (citeproc) {
+      try {
+        rendered = citeproc.renderCitationsAndBibliographyWithCiteproc({
+          meta,
+          citations: citationNodes.map((c) => ({ citationId: c.citationId, items: c.items, noteIndex: c.noteIndex })),
+          additionalItemKeys
+        });
+      } catch (error) {
+        console.error("[References] citeproc update failed; falling back to simplified renderer", error);
+      }
     }
 
     if (rendered) {
@@ -1558,8 +1824,14 @@ const runCslUpdate = (editor: Editor): void => {
 
     if (noteKind) {
       const renderedById = new Map<string, string>();
+      const titleById = new Map<string, string>();
       const updatedCitationNodes = extractCitationNodes(editor.state.doc);
-      updatedCitationNodes.forEach((node) => renderedById.set(node.citationId, node.renderedHtml));
+      updatedCitationNodes.forEach((node) => {
+        renderedById.set(node.citationId, node.renderedHtml);
+        const explicitTitle = typeof (node as any).title === "string" ? String((node as any).title).trim() : "";
+        const derivedTitle = explicitTitle || (node.renderedHtml ? stripHtml(node.renderedHtml) : "");
+        if (derivedTitle) titleById.set(node.citationId, derivedTitle);
+      });
       const footnoteNodes = collectFootnoteNodesByCitationId(editor.state.doc, noteKind);
       if (footnoteNodes.length) {
         const trNotes = editor.state.tr;
@@ -1574,11 +1846,12 @@ const runCslUpdate = (editor: Editor): void => {
             const html = renderedById.get(entry.citationId) ?? "";
             const text = stripHtml(html);
             const contentText = text.length > 0 ? text : "Citation";
+            const title = titleById.get(entry.citationId) ?? "";
             const footnoteId =
               typeof entry.node.attrs?.footnoteId === "string" ? String(entry.node.attrs.footnoteId).trim() : "";
             const kind = typeof entry.node.attrs?.kind === "string" ? String(entry.node.attrs.kind) : "footnote";
             if (footnoteId) contentByFootnoteId.set(footnoteId, { text: contentText, kind });
-            return { ...entry, footnoteId, contentText };
+            return { ...entry, footnoteId, contentText, title };
           })
           .sort((a, b) => b.pos - a.pos)
           .forEach((entry) => {
@@ -1586,8 +1859,15 @@ const runCslUpdate = (editor: Editor): void => {
             const live = trNotes.doc.nodeAt(entry.pos);
             if (!live || live.type !== footnoteType) return;
             const prevText = typeof (live.attrs as any)?.text === "string" ? String((live.attrs as any).text) : "";
-            if (prevText === entry.contentText) return;
-            trNotes.setNodeMarkup(entry.pos, live.type, { ...(live.attrs as any), text: entry.contentText }, live.marks);
+            const prevTitle = typeof (live.attrs as any)?.title === "string" ? String((live.attrs as any).title).trim() : "";
+            const nextTitle = entry.title ? String(entry.title).trim() : "";
+            if (prevText === entry.contentText && prevTitle === nextTitle) return;
+            trNotes.setNodeMarkup(
+              entry.pos,
+              live.type,
+              { ...(live.attrs as any), text: entry.contentText, title: nextTitle || null },
+              live.marks
+            );
           });
 
         // Patch the corresponding footnoteBody nodes (FootnoteBodyManagement does not rebuild on text changes).
@@ -1872,6 +2152,52 @@ const getBlockAtSelection = (editor: Editor) => {
   }
   return null;
 };
+
+const UNDERLINE_STYLE_VALUES = new Set(["single", "double", "dotted", "dashed"]);
+const normalizeUnderlineStyle = (value?: unknown): "single" | "double" | "dotted" | "dashed" => {
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (UNDERLINE_STYLE_VALUES.has(normalized)) {
+      return normalized as "single" | "double" | "dotted" | "dashed";
+    }
+  }
+  return "single";
+};
+
+const isSelectableObjectNode = (node: ProseMirrorNode): boolean => {
+  if (node.isText) return false;
+  if (node.type.name === "table") return true;
+  if (node.isAtom || node.isLeaf) return true;
+  return false;
+};
+
+const findNextSelectableObject = (
+  doc: ProseMirrorNode,
+  from: number,
+  to: number
+): number | null => {
+  let found: number | null = null;
+  doc.nodesBetween(from, to, (node, pos) => {
+    if (found !== null) return false;
+    if (isSelectableObjectNode(node)) {
+      found = pos;
+      return false;
+    }
+    return true;
+  });
+  return found;
+};
+
+const serializeMarks = (marks: readonly any[] | null | undefined): string => {
+  if (!marks || marks.length === 0) return "";
+  return marks
+    .map((mark) => {
+      const attrs = mark?.attrs ? JSON.stringify(mark.attrs) : "";
+      return `${mark?.type?.name ?? "mark"}:${attrs}`;
+    })
+    .sort()
+    .join("|");
+};
 type CaseMode = "sentence" | "lowercase" | "uppercase" | "title";
 type CaseTransformer = (value: string) => string;
 type InsertImageResult = {
@@ -2045,7 +2371,17 @@ import { getLayoutController } from "../ui/layout_context.ts";
 import { getTemplateById, type TemplateDefinition } from "../templates/index.ts";
 import { toggleStylesPane } from "../ui/styles_pane.ts";
 import { openStyleMiniApp } from "../ui/style_mini_app.ts";
-import { setPageMargins, setPageOrientation, setPageSize, setSectionColumns } from "../ui/layout_settings.ts";
+import {
+  getCurrentPageSize,
+  getMarginValues,
+  getLayoutColumns,
+  getColumnGapIn,
+  getColumnWidthIn,
+  setPageMargins,
+  setPageOrientation,
+  setPageSize,
+  setSectionColumns
+} from "../ui/layout_settings.ts";
 import {
   applyDocumentLayoutTokens,
   setFooterDistance,
@@ -2081,6 +2417,9 @@ const collectHeadingEntries = (editor: Editor): TocEntry[] => {
   const entries: TocEntry[] = [];
   editor.state.doc.descendants((node, pos) => {
     if (node.type.name === "heading") {
+      if (node.attrs?.tocExclude) {
+        return true;
+      }
       const level = Number(node.attrs?.level ?? 1);
       const text = (node.textContent ?? "").trim();
       if (text.length === 0) {
@@ -2095,6 +2434,34 @@ const collectHeadingEntries = (editor: Editor): TocEntry[] => {
     return true;
   });
   return entries;
+};
+
+const normalizeTocEntries = (value: unknown): TocEntry[] => {
+  if (!Array.isArray(value)) return [];
+  const entries: TocEntry[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== "object") continue;
+    const text = typeof (item as TocEntry).text === "string" ? (item as TocEntry).text : "";
+    const level = Number((item as TocEntry).level);
+    const pos = Number((item as TocEntry).pos);
+    entries.push({
+      text: text.trim() || "Untitled",
+      level: Number.isFinite(level) ? Math.max(1, Math.min(6, Math.floor(level))) : 1,
+      pos: Number.isFinite(pos) ? Math.max(0, Math.floor(pos)) : 0
+    });
+  }
+  return entries;
+};
+
+const findSelectionHeadingNode = (editor: Editor): { node: ProseMirrorNode; pos: number } | null => {
+  const { $from } = editor.state.selection;
+  for (let depth = $from.depth; depth > 0; depth -= 1) {
+    const node = $from.node(depth);
+    if (node.type.name === "heading" || node.type.name === "paragraph") {
+      return { node, pos: $from.before(depth) };
+    }
+  }
+  return null;
 };
 
 const collectTocNodeInfos = (doc: ProseMirrorNode): { pos: number; size: number }[] => {
@@ -2145,16 +2512,43 @@ const insertTocNode = (editor: Editor, entries: TocEntry[], options?: { style?: 
   editor.view.dispatch(tr);
 };
 
-const updateTocNodes = (editor: Editor, entries: TocEntry[]): boolean => {
+const updateTocNodes = (
+  editor: Editor,
+  entries: TocEntry[],
+  options?: { mode?: "pageNumbers" | "all" }
+): boolean => {
   const tocNode = editor.schema.nodes.toc;
   if (!tocNode) {
     return false;
   }
   const tr = editor.state.tr;
   let updated = false;
+  const mode = options?.mode ?? "all";
   editor.state.doc.descendants((node, pos) => {
     if (node.type === tocNode) {
-      tr.setNodeMarkup(pos, tocNode, { ...node.attrs, entries });
+      let nextEntries = entries;
+      if (mode === "pageNumbers") {
+        const existing = normalizeTocEntries(node.attrs?.entries);
+        const map = new Map<string, TocEntry[]>();
+        entries.forEach((entry) => {
+          const key = `${entry.level}|${entry.text.toLowerCase()}`;
+          const list = map.get(key) ?? [];
+          list.push(entry);
+          map.set(key, list);
+        });
+        nextEntries = existing.map((entry) => {
+          const key = `${entry.level}|${entry.text.toLowerCase()}`;
+          const list = map.get(key);
+          if (list && list.length) {
+            const match = list.shift();
+            if (match) {
+              return { ...entry, pos: match.pos };
+            }
+          }
+          return entry;
+        });
+      }
+      tr.setNodeMarkup(pos, tocNode, { ...node.attrs, entries: nextEntries });
       updated = true;
     }
     return true;
@@ -2345,6 +2739,97 @@ const insertBreakNode = (editor: Editor, kind: BreakKind): void => {
     throw new Error("Page break node is not available on the schema");
   }
   chainWithSafeFocus(editor).insertContent({ type: "page_break", attrs: { kind } }).run();
+};
+
+const parseLengthToIn = (value: unknown): number | null => {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim().toLowerCase();
+  if (!trimmed) return null;
+  const numeric = Number.parseFloat(trimmed);
+  if (!Number.isFinite(numeric)) return null;
+  if (trimmed.endsWith("in")) return numeric;
+  if (trimmed.endsWith("cm")) return numeric / 2.54;
+  if (trimmed.endsWith("mm")) return numeric / 25.4;
+  if (trimmed.endsWith("px")) return numeric / 96;
+  return numeric;
+};
+
+const getContentWidthIn = (): number | null => {
+  const page = getCurrentPageSize();
+  if (!page) return null;
+  const widthIn = page.widthMm / 25.4;
+  const margins = getMarginValues();
+  const leftIn = parseLengthToIn(margins.left) ?? 0;
+  const rightIn = parseLengthToIn(margins.right) ?? 0;
+  const content = widthIn - leftIn - rightIn;
+  return Number.isFinite(content) && content > 0 ? content : null;
+};
+
+const parseOptionalNumber = (value: unknown): number | null | undefined => {
+  if (value === null) return null;
+  if (value === undefined) return undefined;
+  const numeric = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(numeric)) return undefined;
+  return numeric;
+};
+
+const applySectionColumnSettings = (
+  editor: Editor,
+  payload: { count: number; gapIn?: number | null; widthIn?: number | null }
+): boolean => {
+  if (typeof window !== "undefined") {
+    (window as any).__leditorDisableColumns = payload.count > 1 ? false : true;
+  }
+  const normalizedCount = Math.max(1, Math.min(4, Math.floor(payload.count))) as 1 | 2 | 3 | 4;
+  const { from } = editor.state.selection;
+  let target: { pos: number; node: ProseMirrorNode } | null = null;
+  editor.state.doc.nodesBetween(0, from, (node, pos) => {
+    if (node.type.name !== "page_break") return true;
+    const kind = typeof node.attrs?.kind === "string" ? node.attrs.kind : "";
+    if (kind.startsWith("section_")) {
+      target = { pos, node };
+    }
+    return true;
+  });
+  if (!target) {
+    const breakNode = editor.schema.nodes.page_break;
+    if (!breakNode) return false;
+    const sectionId = allocateSectionId();
+    const meta = {
+      ...parseSectionMeta(undefined),
+      columns: normalizedCount,
+      columnGapIn: payload.gapIn === null ? undefined : payload.gapIn,
+      columnWidthIn: payload.widthIn === undefined ? null : payload.widthIn
+    };
+    const node = breakNode.create({
+      kind: "section_continuous",
+      sectionId,
+      sectionSettings: serializeSectionMeta(meta)
+    });
+    const tr = editor.state.tr.insert(from, node);
+    const nextPos = Math.min(tr.doc.content.size, from + node.nodeSize);
+    tr.setSelection(TextSelection.create(tr.doc, nextPos));
+    editor.view.dispatch(tr);
+    return true;
+  }
+  const ensured = target as { pos: number; node: ProseMirrorNode };
+  const meta = parseSectionMeta(ensured.node.attrs?.sectionSettings);
+  const nextMeta = { ...meta, columns: normalizedCount };
+  if (payload.gapIn !== undefined) {
+    (nextMeta as any).columnGapIn = payload.gapIn === null ? undefined : payload.gapIn;
+  }
+  if (payload.widthIn !== undefined) {
+    (nextMeta as any).columnWidthIn = payload.widthIn;
+  }
+  const tr = editor.state.tr.setNodeMarkup(ensured.pos, undefined, {
+    ...ensured.node.attrs,
+    sectionSettings: serializeSectionMeta(nextMeta)
+  });
+  if (tr.docChanged) {
+    editor.view.dispatch(tr);
+  }
+  return true;
 };
 
 const collectFootnoteTargets = (editor: Editor) => {
@@ -2757,7 +3242,15 @@ export const commandMap: Record<string, CommandHandler> = {
   Italic(editor) {
     chainWithSafeFocus(editor).toggleItalic().run();
   },
-  Underline(editor) {
+  Underline(editor, args) {
+    const rawStyle = typeof (args as any)?.style === "string" ? (args as any).style : null;
+    if (rawStyle) {
+      const style = normalizeUnderlineStyle(rawStyle);
+      const current = editor.getAttributes("underline") as { underlineColor?: unknown };
+      const underlineColor = typeof current?.underlineColor === "string" ? current.underlineColor : null;
+      chainWithSafeFocus(editor).setMark("underline", { underlineStyle: style, underlineColor }).run();
+      return;
+    }
     chainWithSafeFocus(editor).toggleMark("underline").run();
   },
   Strikethrough(editor) {
@@ -2822,6 +3315,10 @@ export const commandMap: Record<string, CommandHandler> = {
         chainWithSafeFocus(editor).insertContent(fallback).run();
       }
     })();
+  },
+  PasteAutoCleanToggle() {
+    toggleBoolPref(PREF_PASTE_AUTO_CLEAN, false);
+    emitPrefChange();
   },
   SearchReplace() {
     const editorHandle = (window as typeof window & { leditor?: EditorHandle }).leditor;
@@ -3007,7 +3504,12 @@ export const commandMap: Record<string, CommandHandler> = {
     ensureAISettingsPanel().open();
   },
   "agent.sidebar.toggle"() {
-    showPlaceholderDialog("Agent");
+    const handle = window.leditor;
+    if (!handle) {
+      window.alert("Agent sidebar unavailable.");
+      return;
+    }
+    handle.execCommand("agent.sidebar.toggle");
   },
   "lexicon.define"(editor) {
     void runLexiconCommand(editor, "definition");
@@ -3148,12 +3650,13 @@ export const commandMap: Record<string, CommandHandler> = {
     editor.commands.updateAttributes(block.name, { indentLevel: next });
   },
   LineSpacing(editor, args) {
-    if (!args || typeof args.value !== "string") {
+    if (!args || (typeof args.value !== "string" && typeof args.value !== "number")) {
       throw new Error("LineSpacing requires { value }");
     }
+    const value = typeof args.value === "number" ? String(args.value) : args.value;
     safeFocusEditor(editor);
-    editor.commands.updateAttributes("paragraph", { lineHeight: args.value });
-    editor.commands.updateAttributes("heading", { lineHeight: args.value });
+    editor.commands.updateAttributes("paragraph", { lineHeight: value });
+    editor.commands.updateAttributes("heading", { lineHeight: value });
   },
   SpaceBefore(editor, args) {
     if (!args || typeof args.valuePx !== "number") {
@@ -3230,34 +3733,83 @@ export const commandMap: Record<string, CommandHandler> = {
     chainWithSafeFocus(editor).unsetMark("fontFamily").unsetMark("fontSize").run();
   },
   TextColor(editor, args) {
-    if (!args || typeof args.value !== "string") {
+    if (!args || args.value == null) {
+      const current = editor.getAttributes("textColor") as { color?: unknown };
+      const existing = typeof current?.color === "string" ? current.color : null;
+      openRibbonColorDialog({
+        title: "Font Color",
+        current: existing,
+        allowClear: true,
+        recentKey: "text",
+        onSelect: (color) => {
+          if (!color) {
+            commandMap.RemoveTextColor(editor);
+            return;
+          }
+          pushRecentColor("text", color);
+          chainWithSafeFocus(editor).setMark("textColor", { color }).run();
+        }
+      });
+      return;
+    }
+    if (args.value === null) {
+      commandMap.RemoveTextColor(editor);
+      return;
+    }
+    if (typeof args.value !== "string") {
       throw new Error("TextColor requires { value }");
     }
+    pushRecentColor("text", args.value);
     chainWithSafeFocus(editor).setMark("textColor", { color: args.value }).run();
   },
   RemoveTextColor(editor) {
     chainWithSafeFocus(editor).unsetMark("textColor").run();
   },
   HighlightColor(editor, args) {
-    if (!args || typeof args.value !== "string") {
+    if (!args || args.value == null) {
+      const current = editor.getAttributes("highlightColor") as { highlight?: unknown };
+      const existing = typeof current?.highlight === "string" ? current.highlight : null;
+      openRibbonColorDialog({
+        title: "Highlight Color",
+        current: existing,
+        allowClear: true,
+        recentKey: "highlight",
+        onSelect: (color) => {
+          if (!color) {
+            commandMap.RemoveHighlightColor(editor);
+            return;
+          }
+          pushRecentColor("highlight", color);
+          chainWithSafeFocus(editor).setMark("highlightColor", { highlight: color }).run();
+        }
+      });
+      return;
+    }
+    if (typeof args.value !== "string") {
       throw new Error("HighlightColor requires { value }");
     }
+    pushRecentColor("highlight", args.value);
     chainWithSafeFocus(editor).setMark("highlightColor", { highlight: args.value }).run();
   },
   RemoveHighlightColor(editor) {
     chainWithSafeFocus(editor).unsetMark("highlightColor").run();
   },
   Link(editor) {
-    const raw = window.prompt("Enter link URL");
-    if (raw === null) return;
-    const href = raw.trim();
-    const chain = chainWithSafeFocus(editor) as any;
-    const markChain = (chain.extendMarkRange("link") as any);
-    if (href.length === 0) {
-      markChain.unsetLink().run();
-      return;
-    }
-    markChain.setLink({ href }).run();
+    const current = editor.getAttributes("link").href ?? "";
+    openLinkDialog({
+      title: "Insert Link",
+      current,
+      allowClear: Boolean(current),
+      onApply: (href) => {
+        const chain = chainWithSafeFocus(editor) as any;
+        const markChain = (chain.extendMarkRange("link") as any);
+        if (!href) {
+          markChain.unsetLink().run();
+          return;
+        }
+        markChain.setLink({ href }).run();
+      }
+    });
   },
   InsertLink(editor, args) {
     const href = typeof args?.href === "string" ? args.href.trim() : "";
@@ -3271,37 +3823,52 @@ export const commandMap: Record<string, CommandHandler> = {
   CopyLink(editor) {
     const href = resolveLinkHref(editor);
     if (!href) {
-      window.alert("No link found at selection.");
+      showRibbonToast("No link found at selection.");
       return;
     }
     if (navigator.clipboard?.writeText) {
-      void navigator.clipboard.writeText(href).catch(() => {
-        window.prompt("Copy link", href);
-      });
+      void navigator.clipboard
+        .writeText(href)
+        .then(() => showRibbonToast("Link copied."))
+        .catch(() => openCopyLinkDialog({ href }));
       return;
     }
-    window.prompt("Copy link", href);
+    openCopyLinkDialog({ href });
   },
   OpenLink(editor) {
     const href = resolveLinkHref(editor);
     if (!href) {
-      window.alert("No link found at selection.");
+      showRibbonToast("No link found at selection.");
       return;
     }
     window.open(href, "_blank", "noopener");
   },
   AutoLink(editor) {
+    const enabled = toggleBoolPref(PREF_AUTO_LINK, false);
+    emitPrefChange();
     const { from, to } = editor.state.selection;
     if (from === to) {
+      if (!enabled) {
+        if (editor.isActive("link")) {
+          commandMap.RemoveLink(editor);
+        }
+        return;
+      }
       commandMap.Link(editor);
       return;
     }
     const text = editor.state.doc.textBetween(from, to, " ").trim();
-    if (!looksLikeUrl(text)) {
-      window.alert("Select a URL to auto-link.");
+    if (enabled) {
+      if (!looksLikeUrl(text)) {
+        showRibbonToast("Select a URL to auto-link.");
+        return;
+      }
+      chainWithSafeFocus(editor).setLink({ href: text }).run();
       return;
     }
-    chainWithSafeFocus(editor).setLink({ href: text }).run();
+    if (editor.isActive("link")) {
+      commandMap.RemoveLink(editor);
+    }
   },
   ClearFormatting(editor) {
     editor
@@ -3326,11 +3893,56 @@ export const commandMap: Record<string, CommandHandler> = {
     safeFocusEditor(editor);
     editor.commands.selectAll();
   },
-  SelectObjects() {
-    showPlaceholderDialog("Select Objects");
+  SelectObjects(editor) {
+    const { doc, selection } = editor.state;
+    const start = Math.min(selection.to, doc.content.size);
+    let pos = findNextSelectableObject(doc, start, doc.content.size);
+    if (pos === null) {
+      pos = findNextSelectableObject(doc, 0, start);
+    }
+    if (pos === null) {
+      showRibbonToast("No selectable objects found.");
+      return;
+    }
+    const tr = editor.state.tr.setSelection(NodeSelection.create(doc, pos));
+    editor.view.dispatch(tr);
+    editor.view.focus();
   },
-  SelectSimilarFormatting() {
-    showPlaceholderDialog("Select Similar Formatting");
+  SelectSimilarFormatting(editor) {
+    const { doc, selection, storedMarks } = editor.state;
+    const marks = storedMarks ?? selection.$from.marks();
+    const targetKey = serializeMarks(marks);
+    if (!targetKey) {
+      showRibbonToast("No formatting to match.");
+      return;
+    }
+    let found: { pos: number; node: ProseMirrorNode } | null = null;
+    const scan = (from: number, to: number) => {
+      doc.nodesBetween(from, to, (node, pos) => {
+        if (found) return false;
+        if (!node.isText || !node.text) return true;
+        if (serializeMarks(node.marks) === targetKey) {
+          found = { pos, node };
+          return false;
+        }
+        return true;
+      });
+    };
+    const start = Math.min(selection.to, doc.content.size);
+    scan(start, doc.content.size);
+    if (!found) {
+      scan(0, start);
+    }
+    if (!found) {
+      showRibbonToast("No similar formatting found.");
+      return;
+    }
+    const match = found as { pos: number; node: ProseMirrorNode };
+    const fromPos = match.pos;
+    const toPos = match.pos + match.node.nodeSize;
+    const tr = editor.state.tr.setSelection(TextSelection.create(doc, fromPos, toPos));
+    editor.view.dispatch(tr);
+    editor.view.focus();
   },
   Navigator() {
     const handle = window.leditor;
@@ -3387,53 +3999,188 @@ export const commandMap: Record<string, CommandHandler> = {
     showPlaceholderDialog("Font Options");
   },
   FontEffectsMenu() {
-    showPlaceholderDialog("Text Effects");
+    // Menu-only control; handled by ribbon UI.
   },
-  FontEffectsDialog() {
-    showPlaceholderDialog("Text Effects Dialog");
+  FontEffectsDialog(editor) {
+    const shadowAttrs = editor.getAttributes("textShadow") as { shadow?: unknown };
+    const outlineAttrs = editor.getAttributes("textOutline") as { stroke?: unknown };
+    const shadowCurrent = typeof shadowAttrs.shadow === "string" ? shadowAttrs.shadow : null;
+    const outlineCurrent = typeof outlineAttrs.stroke === "string" ? outlineAttrs.stroke : null;
+    openTextEffectsDialog({
+      shadow: shadowCurrent,
+      outline: outlineCurrent,
+      onApply: ({ shadow, outline }) => {
+        const chain = chainWithSafeFocus(editor);
+        if (shadow) {
+          chain.setMark("textShadow", { shadow });
+        } else {
+          chain.unsetMark("textShadow");
+        }
+        if (outline) {
+          chain.setMark("textOutline", { stroke: outline });
+        } else {
+          chain.unsetMark("textOutline");
+        }
+        chain.run();
+      }
+    });
   },
-  FontEffectsOutline() {
-    showPlaceholderDialog("Text Outline");
+  FontEffectsOutline(editor, args) {
+    const override = typeof (args as any)?.stroke === "string" ? String((args as any).stroke) : "";
+    const chain = chainWithSafeFocus(editor);
+    if (editor.isActive("textOutline")) {
+      chain.unsetMark("textOutline").run();
+      return;
+    }
+    if (override.trim()) {
+      chain.setMark("textOutline", { stroke: override.trim() }).run();
+      return;
+    }
+    chain.setMark("textOutline").run();
   },
-  FontEffectsShadow() {
-    showPlaceholderDialog("Text Shadow");
+  FontEffectsShadow(editor, args) {
+    const override = typeof (args as any)?.shadow === "string" ? String((args as any).shadow) : "";
+    const chain = chainWithSafeFocus(editor);
+    if (editor.isActive("textShadow")) {
+      chain.unsetMark("textShadow").run();
+      return;
+    }
+    if (override.trim()) {
+      chain.setMark("textShadow", { shadow: override.trim() }).run();
+      return;
+    }
+    chain.setMark("textShadow").run();
   },
-  UnderlineColorPicker() {
-    showPlaceholderDialog("Underline Color");
+  UnderlineColorPicker(editor, args) {
+    const current = editor.getAttributes("underline") as {
+      underlineStyle?: unknown;
+      underlineColor?: unknown;
+    };
+    const underlineStyle = normalizeUnderlineStyle(current.underlineStyle);
+    const existingColor = typeof current.underlineColor === "string" ? current.underlineColor : null;
+    if (args && typeof (args as any).value === "string") {
+      const value = String((args as any).value);
+      pushRecentColor("underline", value);
+      chainWithSafeFocus(editor).setMark("underline", { underlineStyle, underlineColor: value }).run();
+      return;
+    }
+    if (args && (args as any).value === null) {
+      if (editor.isActive("underline")) {
+        chainWithSafeFocus(editor).setMark("underline", { underlineStyle, underlineColor: null }).run();
+      }
+      return;
+    }
+    openRibbonColorDialog({
+      title: "Underline Color",
+      current: existingColor,
+      allowClear: true,
+      recentKey: "underline",
+      onSelect: (color) => {
+        const chain = chainWithSafeFocus(editor);
+        if (!color) {
+          if (editor.isActive("underline")) {
+            chain.setMark("underline", { underlineStyle, underlineColor: null }).run();
+          }
+          return;
+        }
+        pushRecentColor("underline", color);
+        chain.setMark("underline", { underlineStyle, underlineColor: color }).run();
+      }
+    });
   },
   ParagraphOptionsDialog() {
     showPlaceholderDialog("Paragraph Options");
   },
-  ParagraphSpacingDialog() {
-    showPlaceholderDialog("Paragraph Spacing");
+  ParagraphSpacingDialog(editor) {
+    const block = getBlockAtSelection(editor);
+    if (!block) return;
+    openParagraphSpacingDialog({
+      currentLineHeight: typeof block.attrs?.lineHeight === "string" ? block.attrs.lineHeight : "",
+      spaceBefore: typeof block.attrs?.spaceBefore === "number" ? block.attrs.spaceBefore : undefined,
+      spaceAfter: typeof block.attrs?.spaceAfter === "number" ? block.attrs.spaceAfter : undefined,
+      onApply: ({ lineHeight, spaceBefore, spaceAfter }) => {
+        if (lineHeight) {
+          commandMap.LineSpacing(editor, { value: lineHeight });
+        }
+        if (typeof spaceBefore === "number" && Number.isFinite(spaceBefore)) {
+          commandMap.SpaceBefore(editor, { valuePx: spaceBefore });
+        }
+        if (typeof spaceAfter === "number" && Number.isFinite(spaceAfter)) {
+          commandMap.SpaceAfter(editor, { valuePx: spaceAfter });
+        }
+      }
+    });
   },
   ParagraphSpacingMenu() {
-    showPlaceholderDialog("Paragraph Spacing");
+    // Menu-only control; the ribbon UI handles opening the dropdown.
   },
-  ParagraphBordersDialog() {
-    showPlaceholderDialog("Paragraph Borders");
+  ParagraphBordersDialog(editor) {
+    const block = getBlockAtSelection(editor);
+    if (!block) return;
+    const preset = typeof (block.attrs as any)?.borderPreset === "string" ? String((block.attrs as any).borderPreset) : "none";
+    const color = typeof (block.attrs as any)?.borderColor === "string" ? String((block.attrs as any).borderColor) : null;
+    const width = typeof (block.attrs as any)?.borderWidth === "number" ? Number((block.attrs as any).borderWidth) : null;
+    openBordersDialog({
+      preset,
+      color,
+      width,
+      onApply: ({ preset: nextPreset, color: nextColor, width: nextWidth }) => {
+        commandMap.ParagraphBordersSet(editor, { preset: nextPreset, color: nextColor, width: nextWidth });
+      }
+    });
   },
   ParagraphBordersMenu() {
-    showPlaceholderDialog("Paragraph Borders");
+    // Menu-only control; the ribbon UI handles opening the dropdown.
   },
   ParagraphBordersSet(editor, args) {
-    const detail = args && typeof args === "object" ? JSON.stringify(args) : undefined;
-    showPlaceholderDialog("Paragraph Borders", detail);
+    const presetRaw = typeof (args as any)?.preset === "string" ? (args as any).preset : "none";
+    const preset = presetRaw.trim().toLowerCase();
+    const allowed = new Set(["none", "bottom", "top", "left", "right", "all", "outside", "inside"]);
+    if (!allowed.has(preset)) {
+      showRibbonToast("Unknown border preset.");
+      return;
+    }
+    const next = preset === "none" ? null : preset;
+    const color = typeof (args as any)?.color === "string" ? String((args as any).color) : undefined;
+    const widthRaw = (args as any)?.width;
+    const width = typeof widthRaw === "number" ? widthRaw : widthRaw != null ? Number(widthRaw) : undefined;
+    const payload: Record<string, unknown> = { borderPreset: next };
+    if (typeof color === "string" && color.trim()) {
+      payload.borderColor = color.trim();
+    }
+    if (Number.isFinite(width)) {
+      payload.borderWidth = width;
+    }
+    safeFocusEditor(editor);
+    editor.commands.updateAttributes("paragraph", payload);
+    editor.commands.updateAttributes("heading", payload);
   },
   ParagraphSort(editor) {
     const { from, to, empty } = editor.state.selection;
+    const sortLines = (order: "asc" | "desc") => {
+      const text = editor.state.doc.textBetween(from, to, "\n");
+      const lines = text
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b));
+      if (order === "desc") lines.reverse();
+      if (!lines.length) return;
+      chainWithSafeFocus(editor).insertContentAt({ from, to }, lines.join("\n")).run();
+    };
     if (empty) {
-      window.alert("Select text to sort.");
+      openSortDialog({
+        hasSelection: false,
+        onApply: () => {
+          // no-op
+        }
+      });
       return;
     }
-    const text = editor.state.doc.textBetween(from, to, "\n");
-    const lines = text
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .sort((a, b) => a.localeCompare(b));
-    if (!lines.length) return;
-    chainWithSafeFocus(editor).insertContentAt({ from, to }, lines.join("\n")).run();
+    openSortDialog({
+      hasSelection: true,
+      onApply: ({ order }) => sortLines(order)
+    });
   },
   "styles.apply"(editor, args) {
     const styleId = typeof args?.styleId === "string" ? args.styleId : "";
@@ -3493,16 +4240,20 @@ export const commandMap: Record<string, CommandHandler> = {
   },
   EditLink(editor) {
     const current = editor.getAttributes("link").href ?? "";
-    const raw = window.prompt("Edit link URL", current);
-    if (raw === null) return;
-    const href = raw.trim();
-    const chain = chainWithSafeFocus(editor) as any;
-    const markChain = (chain.extendMarkRange("link") as any);
-    if (href.length === 0) {
-      markChain.unsetLink().run();
-      return;
-    }
-    markChain.setLink({ href }).run();
+    openLinkDialog({
+      title: "Edit Link",
+      current,
+      allowClear: true,
+      onApply: (href) => {
+        const chain = chainWithSafeFocus(editor) as any;
+        const markChain = (chain.extendMarkRange("link") as any);
+        if (!href) {
+          markChain.unsetLink().run();
+          return;
+        }
+        markChain.setLink({ href }).run();
+      }
+    });
   },
   RemoveLink(editor) {
     const chain = chainWithSafeFocus(editor) as any;
@@ -3663,35 +4414,32 @@ export const commandMap: Record<string, CommandHandler> = {
   },
   "insert.bookmark.manage.openDialog"(editor) {
     const bookmarks = collectBookmarks(editor);
-    if (bookmarks.length === 0) {
-      window.alert("No bookmarks found.");
-      return;
-    }
-    const listing = bookmarks.map((entry) => `${entry.id} (${entry.label || "unnamed"})`).join("\n");
-    const target = window.prompt(`Bookmarks:\n\n${listing}\n\nEnter an id to delete:`, "");
-    if (!target) return;
-    const id = target.trim();
-    if (!id) return;
-    const tr = editor.state.tr;
-    const positions: Array<{ from: number; to: number }> = [];
-    editor.state.doc.descendants((node, pos) => {
-      if (node.type?.name !== "bookmark") return true;
-      const nodeId = typeof (node.attrs as any)?.id === "string" ? String((node.attrs as any).id) : "";
-      if (nodeId === id) {
-        positions.push({ from: pos, to: pos + node.nodeSize });
+    openBookmarkManagerDialog({
+      bookmarks,
+      onDelete: (id) => {
+        const tr = editor.state.tr;
+        const positions: Array<{ from: number; to: number }> = [];
+        editor.state.doc.descendants((node, pos) => {
+          if (node.type?.name !== "bookmark") return true;
+          const nodeId = typeof (node.attrs as any)?.id === "string" ? String((node.attrs as any).id) : "";
+          if (nodeId === id) {
+            positions.push({ from: pos, to: pos + node.nodeSize });
+          }
+          return true;
+        });
+        if (positions.length === 0) {
+          showRibbonToast(`Bookmark "${id}" not found.`);
+          return;
+        }
+        positions
+          .sort((a, b) => b.from - a.from)
+          .forEach((range) => tr.delete(range.from, range.to));
+        if (tr.docChanged) {
+          editor.view.dispatch(tr);
+          showRibbonToast(`Deleted bookmark "${id}".`);
+        }
       }
-      return true;
     });
-    if (positions.length === 0) {
-      window.alert(`Bookmark "${id}" not found.`);
-      return;
-    }
-    positions
-      .sort((a, b) => b.from - a.from)
-      .forEach((range) => tr.delete(range.from, range.to));
-    if (tr.docChanged) {
-      editor.view.dispatch(tr);
-    }
   },
   "insert.crossReference.openDialog"(editor, args) {
     commandMap.InsertCrossReference(editor, args);
@@ -3699,11 +4447,12 @@ export const commandMap: Record<string, CommandHandler> = {
   "insert.crossReference.updateAll"(editor) {
     const bookmarks = collectBookmarks(editor);
     if (!bookmarks.length) {
-      window.alert("No bookmarks found.");
+      showRibbonToast("No bookmarks found.");
       return;
     }
     const labelById = new Map(bookmarks.map((b) => [b.id, b.label || b.id]));
     const tr = editor.state.tr;
+    let updated = 0;
     editor.state.doc.descendants((node, pos) => {
       if (node.type?.name !== "cross_reference") return true;
       const attrs = node.attrs as any;
@@ -3712,12 +4461,16 @@ export const commandMap: Record<string, CommandHandler> = {
       if (!nextLabel) return true;
       if (attrs.label === nextLabel) return true;
       tr.setNodeMarkup(pos, undefined, { ...attrs, label: nextLabel });
+      updated += 1;
       return true;
     });
     if (tr.docChanged) {
       editor.view.dispatch(tr);
     } else {
-      window.alert("No cross-references to update.");
+      showRibbonToast("No cross-references to update.");
+    }
+    if (updated > 0) {
+      showRibbonToast(`Updated ${updated} cross-reference${updated === 1 ? "" : "s"}.`);
     }
   },
 
@@ -3732,11 +4485,21 @@ export const commandMap: Record<string, CommandHandler> = {
     insertTocNode(editor, entries, { style });
   },
 
-  UpdateTOC(editor) {
+  UpdateTOC(editor, args) {
     const entries = collectHeadingEntries(editor);
-    if (!updateTocNodes(editor, entries)) {
-      window.alert('No table of contents found to update.');
+    const mode = args?.mode === "pageNumbers" || args?.mode === "all" ? args.mode : null;
+    const runUpdate = (nextMode: "pageNumbers" | "all") => {
+      if (!updateTocNodes(editor, entries, { mode: nextMode })) {
+        showRibbonToast("No table of contents found to update.");
+        return;
+      }
+      showRibbonToast(nextMode === "pageNumbers" ? "Updated page numbers." : "Updated table of contents.");
+    };
+    if (!mode) {
+      openTocUpdateDialog({ onApply: runUpdate });
+      return;
     }
+    runUpdate(mode);
   },
 
   RemoveTOC(editor) {
@@ -3744,38 +4507,60 @@ export const commandMap: Record<string, CommandHandler> = {
   },
 
   InsertTocHeading(editor, args) {
-    const defaultText = typeof args?.text === "string" ? args.text.trim() : "";
-    const userText = defaultText || window.prompt('Heading text');
-    if (!userText) {
-      return;
-    }
-    const trimmed = userText.trim();
-    if (trimmed.length === 0) {
-      return;
-    }
+    const applyLevel = (levelRaw: number) => {
+      const level = Math.max(0, Math.min(6, Math.floor(levelRaw)));
+      const target = findSelectionHeadingNode(editor);
+      if (!target) {
+        showRibbonToast("Place the cursor in a paragraph or heading first.");
+        return;
+      }
+      const { node, pos } = target;
+      const headingType = editor.schema.nodes.heading;
+      if (!headingType) {
+        showRibbonToast("Heading styles are unavailable.");
+        return;
+      }
+      const tr = editor.state.tr;
+      if (level === 0) {
+        if (node.type.name !== "heading") {
+          showRibbonToast("Select a heading to exclude from the TOC.");
+          return;
+        }
+        tr.setNodeMarkup(pos, headingType, { ...node.attrs, tocExclude: true });
+      } else if (node.type.name === "heading") {
+        tr.setNodeMarkup(pos, headingType, { ...node.attrs, level, tocExclude: false });
+      } else {
+        tr.setNodeMarkup(pos, headingType, { ...node.attrs, level, tocExclude: false });
+      }
+      if (tr.docChanged) {
+        editor.view.dispatch(tr);
+      }
+    };
+
     const levelArg =
       typeof args?.level === "number" && Number.isFinite(args.level) ? Math.floor(args.level) : undefined;
-    const levelRaw =
-      levelArg !== undefined
-        ? levelArg
-        : Number.parseInt(window.prompt('Heading level (1-6)', '1') ?? '1', 10);
-    const level = levelArg !== undefined ? Math.max(0, Math.min(6, levelArg)) : Math.max(1, Math.min(6, levelRaw || 1));
-    if (level === 0) {
-      window.alert("Do not show in TOC is not supported yet.");
+    if (levelArg !== undefined) {
+      applyLevel(levelArg);
       return;
     }
-    editor
-      .chain()
-      .focus()
-      .insertContent([
-        { type: 'heading', attrs: { level }, content: [{ type: 'text', text: trimmed }] },
-        { type: 'paragraph' }
-      ])
-      .run();
+
+    const selectionLevel = (() => {
+      const target = findSelectionHeadingNode(editor);
+      if (!target) return 1;
+      if (target.node.type.name === "heading") {
+        return target.node.attrs?.tocExclude ? 0 : Number(target.node.attrs?.level ?? 1);
+      }
+      return 1;
+    })();
+    openTocAddTextDialog({
+      currentLevel: Number.isFinite(selectionLevel) ? selectionLevel : 1,
+      onApply: applyLevel
+    });
   },
 
   InsertCitation: handleInsertCitationCommand,
   "citation.insert.openDialog": handleInsertCitationCommand,
+  "citation.insert.direct": handleInsertDirectCitation,
 
   UpdateCitations(editor) {
     void (async () => {
@@ -3798,42 +4583,35 @@ export const commandMap: Record<string, CommandHandler> = {
     // Dropdown menus are handled by the ribbon UI; this exists to avoid "missing" markers.
   },
   'citation.csl.import.openDialog'() {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = ".csl,application/xml,text/xml";
-    input.addEventListener("change", () => {
-      const file = input.files?.[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        const xml = String(reader.result ?? "");
+    openFileImportDialog({
+      title: "Import CSL Style",
+      accept: ".csl,application/xml,text/xml",
+      hint: "Select a CSL style (.csl) file to import.",
+      onLoad: (file, xml) => {
         refsInfo("[References] CSL imported", { name: file.name, bytes: xml.length });
         try {
           window.localStorage?.setItem(`leditor.csl.style:${file.name}`, xml);
         } catch {
           // ignore
         }
-        window.alert(`Imported CSL style: ${file.name}`);
-      };
-      reader.readAsText(file);
+        showRibbonToast(`Imported CSL style: ${file.name}`);
+      }
     });
-    input.click();
   },
   'citation.csl.manage.openDialog'() {
     try {
       const keys = Object.keys(window.localStorage || {}).filter((k) => k.startsWith("leditor.csl.style:"));
-      if (keys.length === 0) {
-        window.alert("No imported CSL styles.");
-        return;
-      }
-      const listing = keys.map((k) => k.replace("leditor.csl.style:", "")).join("\n");
-      const target = window.prompt(`Imported CSL styles:\n\n${listing}\n\nType an exact name to delete:`);
-      if (!target) return;
-      const key = `leditor.csl.style:${target}`;
-      window.localStorage?.removeItem(key);
-      window.alert(`Deleted CSL style: ${target}`);
+      const styles = keys.map((k) => k.replace("leditor.csl.style:", ""));
+      openCslManageDialog({
+        styles,
+        onDelete: (name) => {
+          const key = `leditor.csl.style:${name}`;
+          window.localStorage?.removeItem(key);
+          showRibbonToast(`Deleted CSL style: ${name}`);
+        }
+      });
     } catch {
-      window.alert("Unable to manage CSL styles (storage unavailable).");
+      showRibbonToast("Unable to manage CSL styles (storage unavailable).");
     }
   },
   "citation.options.openDialog": setCitationLocaleCommand,
@@ -3844,82 +4622,72 @@ export const commandMap: Record<string, CommandHandler> = {
     openSourcesPanel();
   },
   "citation.source.add.openDialog"(_editor) {
-    const raw = window.prompt("New source itemKey (8-char key)", "");
-    if (!raw) return;
-    const itemKey = normalizeReferenceItemKey(raw);
-    const title = window.prompt("Title (optional)", "") ?? "";
-    const author = window.prompt("Author (optional)", "") ?? "";
-    const year = window.prompt("Year (optional)", "") ?? "";
-    const url = window.prompt("URL (optional)", "") ?? "";
-    upsertReferenceItems([
-      {
-        itemKey,
-        title: title.trim() || undefined,
-        author: author.trim() || undefined,
-        year: year.trim() || undefined,
-        url: url.trim() || undefined
+    openAddSourceDialog({
+      onApply: (payload) => {
+        const itemKey = normalizeReferenceItemKey(payload.itemKey);
+        if (!itemKey) {
+          showRibbonToast("Item key is required.");
+          return;
+        }
+        upsertReferenceItems([
+          {
+            itemKey,
+            title: payload.title?.trim() || undefined,
+            author: payload.author?.trim() || undefined,
+            year: payload.year?.trim() || undefined,
+            url: payload.url?.trim() || undefined,
+            note: payload.note?.trim() || undefined
+          }
+        ]);
+        showRibbonToast(`Added source: ${itemKey}`);
       }
-    ]);
-    window.alert(`Added source: ${itemKey}`);
+    });
   },
   "citation.placeholder.add.openDialog"(editor) {
     chainWithSafeFocus(editor).insertContent("(citation)").run();
   },
   "citation.import.bibtex.openDialog"() {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = ".bib,text/plain";
-    input.addEventListener("change", () => {
-      const file = input.files?.[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
+    openFileImportDialog({
+      title: "Import BibTeX",
+      accept: ".bib,text/plain",
+      hint: "Select a BibTeX (.bib) file to import.",
+      onLoad: (_file, text) => {
         try {
-          const items = parseBibtex(String(reader.result ?? ""));
+          const items = parseBibtex(text);
           upsertReferenceItems(items);
-          window.alert(`Imported ${items.length} BibTeX references.`);
+          showRibbonToast(`Imported ${items.length} BibTeX references.`);
         } catch (error) {
           console.error("[References] import bibtex failed", error);
-          window.alert("Failed to import BibTeX.");
+          showRibbonToast("Failed to import BibTeX.");
         }
-      };
-      reader.readAsText(file);
+      }
     });
-    input.click();
   },
   "citation.import.ris.openDialog"() {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = ".ris,text/plain";
-    input.addEventListener("change", () => {
-      const file = input.files?.[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
+    openFileImportDialog({
+      title: "Import RIS",
+      accept: ".ris,text/plain",
+      hint: "Select a RIS (.ris) file to import.",
+      onLoad: (_file, text) => {
         try {
-          const items = parseRis(String(reader.result ?? ""));
+          const items = parseRis(text);
           upsertReferenceItems(items);
-          window.alert(`Imported ${items.length} RIS references.`);
+          showRibbonToast(`Imported ${items.length} RIS references.`);
         } catch (error) {
           console.error("[References] import ris failed", error);
-          window.alert("Failed to import RIS.");
+          showRibbonToast("Failed to import RIS.");
         }
-      };
-      reader.readAsText(file);
+      }
     });
-    input.click();
   },
   "citation.import.csljson.openDialog"() {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = ".json,application/json";
-    input.addEventListener("change", () => {
-      const file = input.files?.[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
+    openFileImportDialog({
+      title: "Import CSL JSON",
+      accept: ".json,application/json",
+      hint: "Select a CSL JSON file to import.",
+      onLoad: (_file, text) => {
         try {
-          const raw = JSON.parse(String(reader.result ?? "")) as any;
+          const raw = JSON.parse(text) as any;
           const itemsRaw = Array.isArray(raw) ? raw : Array.isArray(raw?.items) ? raw.items : [];
           const items = itemsRaw
             .map((it: any) => ({
@@ -3936,15 +4704,13 @@ export const commandMap: Record<string, CommandHandler> = {
             .filter((it: any) => it.itemKey);
           upsertReferenceItems(items);
           refsInfo("[References] imported CSL-JSON items", { count: items.length });
-          window.alert(`Imported ${items.length} references.`);
+          showRibbonToast(`Imported ${items.length} references.`);
         } catch (error) {
           console.error("[References] import CSL-JSON failed", error);
-          window.alert("Failed to import CSL JSON.");
+          showRibbonToast("Failed to import CSL JSON.");
         }
-      };
-      reader.readAsText(file);
+      }
     });
-    input.click();
   },
   "citation.citeKey.insert.openDialog"(editor) {
     promptAndInsertCiteKey(editor);
@@ -3993,7 +4759,7 @@ export const commandMap: Record<string, CommandHandler> = {
       ensureBibliographyStore();
       // Always rebuild references as the last pages and force a clean page boundary.
       removeTrailingReferencesByBreak(editor);
-      insertReferencesAsNewLastPages(editor, label, keys);
+      await insertReferencesAsNewLastPages(editor, label, keys);
       await refreshCitationsAndBibliography(editor);
     })();
   },
@@ -4051,7 +4817,7 @@ export const commandMap: Record<string, CommandHandler> = {
       refsInfo("[References] insert bibliography", { itemKeys: keys });
       ensureBibliographyStore();
       removeTrailingReferencesByBreak(editor);
-      insertReferencesAsNewLastPages(editor, "References", keys);
+      await insertReferencesAsNewLastPages(editor, "References", keys);
       await refreshCitationsAndBibliography(editor);
     })();
   },
@@ -4062,7 +4828,7 @@ export const commandMap: Record<string, CommandHandler> = {
       const rawKeys = fromStore.length ? fromStore : collectDocumentCitationKeys(editor);
       const keys = collectOrderedCitedItemKeys(editor, rawKeys);
       removeTrailingReferencesByBreak(editor);
-      insertReferencesAsNewLastPages(editor, "References", keys);
+      await insertReferencesAsNewLastPages(editor, "References", keys);
       await refreshCitationsAndBibliography(editor);
     })();
   },
@@ -4080,96 +4846,129 @@ export const commandMap: Record<string, CommandHandler> = {
     void exportBibliographyJson();
   },
   "research.smartLookup.open"() {
-    openSourcesPanel();
+    const handle = getEditorHandle();
+    openDirectQuoteLookupPanelLazy(handle);
   },
   "research.library.search.open"() {
-    openSourcesPanel();
+    const handle = getEditorHandle();
+    openDirectQuoteLookupPanelLazy(handle);
   },
   "research.doi.openDialog"() {
     ensureReferencesLibrary();
-    const raw = window.prompt("Enter DOI (e.g. 10.1000/xyz123)");
-    if (!raw) return;
-    const doi = raw.trim();
-    if (!doi) return;
-    const library = getReferencesLibrarySync();
-    const itemKey = buildReferenceItemKey(doi, library.itemsByKey);
-    const url = doi.startsWith("http") ? doi : `https://doi.org/${doi}`;
-    upsertReferenceItems([
-      {
-        itemKey,
-        title: doi,
-        url
+    openSingleInputDialog({
+      title: "Lookup DOI",
+      label: "DOI",
+      placeholder: "e.g. 10.1000/xyz123",
+      onApply: (value) => {
+        const doi = value.trim();
+        if (!doi) return;
+        const library = getReferencesLibrarySync();
+        const itemKey = buildReferenceItemKey(doi, library.itemsByKey);
+        const url = doi.startsWith("http") ? doi : `https://doi.org/${doi}`;
+        upsertReferenceItems([
+          {
+            itemKey,
+            title: doi,
+            url
+          }
+        ]);
+        showRibbonToast(`Added DOI source: ${itemKey}`);
+        openSourcesPanel();
       }
-    ]);
-    window.alert(`Added DOI source: ${itemKey}`);
-    openSourcesPanel();
+    });
   },
   "research.url.openDialog"() {
     ensureReferencesLibrary();
-    const raw = window.prompt("Enter URL");
-    if (!raw) return;
-    const url = raw.trim();
-    if (!url) return;
-    const library = getReferencesLibrarySync();
-    const itemKey = buildReferenceItemKey(url, library.itemsByKey);
-    upsertReferenceItems([
-      {
-        itemKey,
-        title: url,
-        url
+    openSingleInputDialog({
+      title: "Open URL",
+      label: "URL",
+      placeholder: "https://example.com",
+      onApply: (value) => {
+        const url = value.trim();
+        if (!url) return;
+        const library = getReferencesLibrarySync();
+        const itemKey = buildReferenceItemKey(url, library.itemsByKey);
+        upsertReferenceItems([
+          {
+            itemKey,
+            title: url,
+            url
+          }
+        ]);
+        showRibbonToast(`Added URL source: ${itemKey}`);
+        openSourcesPanel();
       }
-    ]);
-    window.alert(`Added URL source: ${itemKey}`);
-    openSourcesPanel();
+    });
   },
   "research.resolveCitation.openDialog"() {
     ensureReferencesLibrary();
-    const raw = window.prompt("Paste citation text");
-    if (!raw) return;
-    const text = raw.trim();
-    if (!text) return;
-    const library = getReferencesLibrarySync();
-    const itemKey = buildReferenceItemKey(text, library.itemsByKey);
-    upsertReferenceItems([
-      {
-        itemKey,
-        title: text
+    openSingleInputDialog({
+      title: "Resolve Citation",
+      label: "Citation text",
+      placeholder: "Paste a full citation or reference text",
+      multiline: true,
+      onApply: (value) => {
+        const text = value.trim();
+        if (!text) return;
+        const library = getReferencesLibrarySync();
+        const itemKey = buildReferenceItemKey(text, library.itemsByKey);
+        upsertReferenceItems([
+          {
+            itemKey,
+            title: text
+          }
+        ]);
+        showRibbonToast(`Added citation: ${itemKey}`);
+        openSourcesPanel();
       }
-    ]);
-    window.alert(`Added citation: ${itemKey}`);
-    openSourcesPanel();
+    });
   },
   "index.mark.openDialog"(editor) {
-    const raw = window.prompt("Index entry", "");
-    if (raw === null) return;
-    const term = raw.trim();
-    if (!term) return;
-    chainWithSafeFocus(editor).insertContent(`[[index:${term}]] `).run();
+    openSingleInputDialog({
+      title: "Mark Index Entry",
+      label: "Index entry",
+      placeholder: "e.g. Public international law",
+      onApply: (value) => {
+        const term = value.trim();
+        if (!term) return;
+        chainWithSafeFocus(editor).insertContent(`[[index:${term}]] `).run();
+      }
+    });
   },
   "index.insert.openDialog"(editor) {
     const entries = collectMarkerEntries(editor.state.doc, "index");
     insertIndexSection(editor, "Index", entries);
   },
   "index.automark.openDialog"(editor) {
-    const raw = window.prompt("AutoMark terms (comma-separated)", "");
-    if (!raw) return;
-    const terms = raw
-      .split(",")
-      .map((t) => t.trim())
-      .filter(Boolean);
-    if (!terms.length) return;
-    const markers = terms.map((term) => `[[index:${term}]]`).join(" ");
-    chainWithSafeFocus(editor).insertContent(`${markers} `).run();
+    openSingleInputDialog({
+      title: "AutoMark Index Terms",
+      label: "Terms (comma-separated)",
+      placeholder: "e.g. cyber, attribution, proportionality",
+      onApply: (value) => {
+        const terms = value
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean);
+        if (!terms.length) return;
+        const markers = terms.map((term) => `[[index:${term}]]`).join(" ");
+        chainWithSafeFocus(editor).insertContent(`${markers} `).run();
+      }
+    });
   },
   "index.preview.toggle"() {
-    window.alert("Index preview is inline; markers are visible in the document.");
+    showRibbonToast("Index preview is inline; markers are visible in the document.");
   },
   "toa.mark.openDialog"(editor) {
-    const raw = window.prompt("Authority entry", "");
-    if (raw === null) return;
-    const term = raw.trim();
-    if (!term) return;
-    chainWithSafeFocus(editor).insertContent(`[[toa:${term}]] `).run();
+    openSingleInputDialog({
+      title: "Mark Authority Entry",
+      label: "Authority entry",
+      placeholder: "e.g. Convention on Cybercrime",
+      onApply: (value) => {
+        const term = value.trim();
+        if (!term) return;
+        chainWithSafeFocus(editor).insertContent(`[[toa:${term}]] `).run();
+      }
+    });
   },
   "toa.insert.openDialog"(editor) {
     const entries = collectMarkerEntries(editor.state.doc, "toa");
@@ -4179,14 +4978,18 @@ export const commandMap: Record<string, CommandHandler> = {
     commandMap["toa.insert.openDialog"](editor);
   },
   "toa.export.openMenu"() {
-    const choice = window.prompt("Export Table of Authorities as JSON or CSV?", "json");
-    if (!choice) return;
-    const mode = choice.trim().toLowerCase();
-    if (mode.startsWith("c")) {
-      commandMap["toa.export.csv.openDialog"]();
-    } else {
-      commandMap["toa.export.json.openDialog"]();
-    }
+    openToaExportDialog({
+      onApply: (mode) => {
+        const handle = getEditorHandle();
+        if (!handle) return;
+        const editor = handle.getEditor();
+        if (mode === "csv") {
+          commandMap["toa.export.csv.openDialog"](editor);
+        } else {
+          commandMap["toa.export.json.openDialog"](editor);
+        }
+      }
+    });
   },
   "toa.export.json.openDialog"() {
     const handle = getEditorHandle();
@@ -4267,36 +5070,47 @@ export const commandMap: Record<string, CommandHandler> = {
     chainWithSafeFocus(editor).insertContent(template.document as any).run();
   },
   "insert.equation.insertInline"(editor, args) {
-    const raw = typeof args?.text === "string" ? args.text : window.prompt("Inline equation (LaTeX)", "");
-    if (raw === null) return;
+    const raw = typeof args?.text === "string" ? args.text : "";
     const value = String(raw ?? "").trim();
-    if (!value) return;
-    chainWithSafeFocus(editor).insertContent(`$${value}$`).run();
+    if (value) {
+      chainWithSafeFocus(editor).insertContent(`$${value}$`).run();
+      return;
+    }
+    openEquationDialog({
+      mode: "inline",
+      onApply: (next) => {
+        chainWithSafeFocus(editor).insertContent(`$${next}$`).run();
+      }
+    });
   },
   "insert.equation.insertDisplay"(editor, args) {
-    const raw = typeof args?.text === "string" ? args.text : window.prompt("Display equation (LaTeX)", "");
-    if (raw === null) return;
+    const raw = typeof args?.text === "string" ? args.text : "";
     const value = String(raw ?? "").trim();
-    if (!value) return;
-    chainWithSafeFocus(editor).insertContent(`\n$$${value}$$\n`).run();
+    if (value) {
+      chainWithSafeFocus(editor).insertContent(`\n$$${value}$$\n`).run();
+      return;
+    }
+    openEquationDialog({
+      mode: "display",
+      onApply: (next) => {
+        chainWithSafeFocus(editor).insertContent(`\n$$${next}$$\n`).run();
+      }
+    });
   },
   "insert.symbol.insert"(editor, args) {
     const raw = typeof args?.codepoint === "string" ? args.codepoint : "";
     const codepoint = raw.trim();
     if (!codepoint) {
-      const fallback = window.prompt("Symbol codepoint (hex)", "");
-      if (!fallback) return;
-      const parsed = Number.parseInt(fallback.trim(), 16);
-      if (!Number.isFinite(parsed)) {
-        window.alert("Invalid codepoint.");
-        return;
-      }
-      chainWithSafeFocus(editor).insertContent(String.fromCodePoint(parsed)).run();
+      openSymbolDialog({
+        onApply: (parsed) => {
+          chainWithSafeFocus(editor).insertContent(String.fromCodePoint(parsed)).run();
+        }
+      });
       return;
     }
     const parsed = Number.parseInt(codepoint, 16);
     if (!Number.isFinite(parsed)) {
-      window.alert("Invalid codepoint.");
+      showRibbonToast("Invalid codepoint.");
       return;
     }
     chainWithSafeFocus(editor).insertContent(String.fromCodePoint(parsed)).run();
@@ -4411,38 +5225,10 @@ ${synonyms.join(', ')}`);
     commandMap["review.translate.selection"](editor);
   },
   "review.translate.selection"(editor) {
-    const { from, to } = editor.state.selection;
-    if (from === to) {
-      window.alert("Select text to translate.");
-      return;
-    }
-    const original = editor.state.doc.textBetween(from, to, " ");
-    const translated = window.prompt("Translated text", original);
-    if (translated === null) return;
-    const next = String(translated).trim();
-    if (!next) return;
-    chainWithSafeFocus(editor).insertContentAt({ from, to }, next).run();
+    void runAiTranslation(editor, "selection");
   },
   "review.translate.document"(editor) {
-    const translated = window.prompt("Translated document text");
-    if (translated === null) return;
-    const text = String(translated ?? "").trim();
-    if (!text) return;
-    const paragraphs = text
-      .split(/\n+/)
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((line) => ({ type: "paragraph", content: [{ type: "text", text: line }] }));
-    const doc = {
-      type: "doc",
-      content: [
-        {
-          type: "page",
-          content: paragraphs.length ? paragraphs : [{ type: "paragraph" }]
-        }
-      ]
-    };
-    editor.commands.setContent(doc);
+    void runAiTranslation(editor, "document");
   },
   "review.language.openDialog"() {
     const current = window.localStorage?.getItem("leditor.proofingLanguage") ?? "en-US";
@@ -4467,10 +5253,13 @@ ${synonyms.join(', ')}`);
     const choice = window.prompt("Delete current or all comments? (current/all)", "current");
     if (!choice) return;
     const key = choice.trim().toLowerCase();
+    const handle = getEditorHandle();
+    if (!handle) return;
+    const editor = handle.getEditor();
     if (key.startsWith("a")) {
-      commandMap["review.comment.delete.all"]();
+      commandMap["review.comment.delete.all"](editor);
     } else {
-      commandMap["review.comment.delete.current"]();
+      commandMap["review.comment.delete.current"](editor);
     }
   },
   "review.comment.delete.current"() {
@@ -4753,20 +5542,71 @@ Paragraphs: ${stats.paragraphs}`);
     const layout = getLayoutController();
     layout?.updatePagination();
   },
+  "pageSetup.columns.openDialog"(editor) {
+    const currentFromDoc =
+      typeof (editor.state.doc.attrs as any)?.columns === "number"
+        ? (editor.state.doc.attrs as any).columns
+        : Number((editor.state.doc.attrs as any)?.columns);
+    const currentCount = Number.isFinite(currentFromDoc) ? currentFromDoc : getLayoutColumns();
+    const gapIn = getColumnGapIn();
+    const widthIn = getColumnWidthIn();
+    const contentWidthIn = getContentWidthIn();
+    openColumnsDialog({
+      currentCount,
+      currentGapIn: gapIn,
+      currentWidthIn: widthIn,
+      contentWidthIn,
+      scope: "document",
+      onApply: ({ count, gapIn: nextGap, widthIn: nextWidth, scope }) => {
+        commandMap.SetSectionColumns(editor, {
+          count,
+          gapIn: nextGap,
+          widthIn: nextWidth,
+          scope
+        });
+      }
+    });
+  },
   SetSectionColumns(editor, args) {
     const count = typeof args?.count === "number" ? args.count : Number(args?.count);
     if (!Number.isFinite(count)) {
       throw new Error('SetSectionColumns requires { count: number }');
     }
+    const normalizedCount = Math.max(1, Math.min(4, Math.floor(count))) as 1 | 2 | 3 | 4;
+    if (typeof window !== "undefined") {
+      (window as any).__leditorDisableColumns = normalizedCount > 1 ? false : true;
+    }
+    const scope = typeof args?.scope === "string" ? args.scope : "document";
+    let gapIn = parseOptionalNumber((args as any)?.gapIn ?? (args as any)?.gap);
+    let widthIn = parseOptionalNumber((args as any)?.widthIn ?? (args as any)?.width);
+    if (gapIn != null && gapIn < 0) gapIn = null;
+    if (widthIn != null && widthIn <= 0) widthIn = null;
+    if (scope === "section") {
+      const applied = applySectionColumnSettings(editor, { count: normalizedCount, gapIn, widthIn });
+      if (applied) {
+        showRibbonToast("Section columns updated.");
+        return;
+      }
+      showRibbonToast("Unable to update section; applied to document.");
+    }
     const tiptap = getTiptap(editor);
     if (!tiptap?.commands?.setPageColumns) {
       throw new Error("TipTap setPageColumns command unavailable");
     }
-    const ok = tiptap.commands.setPageColumns({ count });
+    const gapValue = gapIn == null ? undefined : gapIn;
+    const widthValue = widthIn == null ? undefined : widthIn;
+    const ok = tiptap.commands.setPageColumns({
+      count: normalizedCount,
+      gapIn: gapValue,
+      widthIn: widthValue
+    });
     if (!ok) {
       throw new Error("setPageColumns command failed");
     }
-    setSectionColumns(count);
+    setSectionColumns(normalizedCount, {
+      gapIn: gapValue,
+      widthIn: widthValue
+    });
   },
   SetLineNumbering(editor, args) {
     const mode = typeof args?.mode === "string" ? args.mode : "none";

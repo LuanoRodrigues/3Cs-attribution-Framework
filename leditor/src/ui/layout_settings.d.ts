@@ -36,6 +36,8 @@ export declare const getMarginValues: () => MarginValues;
 export declare const getMarginValuesCm: () => MarginValuesCm;
 export declare const getLayoutColumns: () => number;
 export declare const getColumnMode: () => ColumnMode;
+export declare const getColumnGapIn: () => number;
+export declare const getColumnWidthIn: () => number | null;
 export declare const setPageSize: (sizeId?: string, overrides?: {
     widthMm?: number;
     heightMm?: number;
@@ -44,7 +46,12 @@ export declare const setPageOrientation: (orientation: Orientation) => void;
 export declare const setPageMargins: (margins: Partial<MarginValues | MarginValuesCm>) => void;
 export declare const setMarginsPreset: (preset: "normal" | "moderate" | "narrow" | "wide") => void;
 export declare const resetMargins: () => void;
-export declare const setSectionColumns: (count: number) => void;
+export declare const setSectionColumns: (count: number, options?: {
+    gapIn?: number;
+    widthIn?: number | null;
+} | undefined) => void;
+export declare const setColumnGap: (gapIn: number) => void;
+export declare const setColumnWidth: (widthIn: number | null) => void;
 export declare const setColumnMode: (mode: ColumnMode) => void;
 export declare const subscribeToLayoutChanges: (listener: (state: {
     orientation: Orientation;
@@ -56,4 +63,6 @@ export declare const subscribeToLayoutChanges: (listener: (state: {
     };
     columns: number;
     columnsMode: ColumnMode;
+    columnGapIn: number;
+    columnWidthIn: number | null;
 }) => void) => () => void;

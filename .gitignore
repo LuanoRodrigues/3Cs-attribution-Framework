@@ -56,3 +56,13 @@ Thumbs.db
 Plans/
 leditor/Plans/
 my-electron-app/Plans/
+
+core/
+coder_state_paper.fixed.json
+coder_state_paper.repaired.json
+leditor/.tmp_audit/
+leditor/Reports/
+leditor/coder_state_content.json
+leditor/expected_fragments.json
+leditor/pagination_*
+leditor/pagination_debug_run.txt

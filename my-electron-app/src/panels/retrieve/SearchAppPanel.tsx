@@ -38,9 +38,12 @@ export class SearchAppPanel {
   private doiOnly: HTMLInputElement;
   private abstractOnly: HTMLInputElement;
   private statusLine: HTMLElement;
+  private pageLine: HTMLElement;
+  private errorBanner: HTMLElement;
   private grid: DataGrid;
   private loadMoreBtn: HTMLButtonElement;
   private prevBtn: HTMLButtonElement;
+  private exportSelect: HTMLSelectElement;
 
   private records: RetrieveRecord[] = [];
   private totalCount = 0;
@@ -182,9 +185,36 @@ export class SearchAppPanel {
     );
     controls.append(filterRow);
 
+    this.errorBanner = document.createElement("div");
+    this.errorBanner.className = "retrieve-status";
+    this.errorBanner.style.color = "#b91c1c";
+    this.errorBanner.style.display = "none";
+    this.errorBanner.textContent = "";
+
     this.statusLine = document.createElement("div");
     this.statusLine.className = "retrieve-status";
     this.statusLine.textContent = "Run a search to load results. Select a row to view details on the right.";
+
+    this.pageLine = document.createElement("div");
+    this.pageLine.className = "retrieve-status";
+    this.pageLine.style.opacity = "0.75";
+    this.pageLine.textContent = "";
+
+    const exportRow = document.createElement("div");
+    exportRow.className = "control-row";
+    exportRow.style.gap = "8px";
+    this.exportSelect = document.createElement("select");
+    ["csv", "xlsx", "ris"].forEach((fmt) => {
+      const opt = document.createElement("option");
+      opt.value = fmt;
+      opt.textContent = fmt.toUpperCase();
+      this.exportSelect.appendChild(opt);
+    });
+    const exportBtn = document.createElement("button");
+    exportBtn.className = "ribbon-button";
+    exportBtn.textContent = "Export current";
+    exportBtn.addEventListener("click", () => this.exportCurrent());
+    exportRow.append(this.exportSelect, exportBtn);
 
     this.grid = new DataGrid();
     this.grid.element.style.flex = "1";
@@ -204,7 +234,7 @@ export class SearchAppPanel {
     content.style.flexDirection = "column";
     content.append(gridHost);
 
-    this.element.append(header, controls, this.statusLine, content);
+    this.element.append(header, controls, exportRow, this.errorBanner, this.statusLine, this.pageLine, content);
 
     this.onGridClick = (event: MouseEvent) => {
       const target = event.target as HTMLElement | null;
@@ -268,9 +298,11 @@ export class SearchAppPanel {
       const response = await commandInternal("retrieve", "fetch_from_source", payload);
       if (response?.status !== "ok") {
         console.error("[SearchAppPanel.tsx][handleSearch][debug] retrieve search failed", response);
-        this.updateStatus(response?.message ?? "Search failed (unknown error).");
+        this.showError(response?.message ?? "Search failed (unknown error). Check API keys or rate limits.");
+        this.updateStatus(response?.message ?? "Search failed.");
         return;
       }
+      this.hideError();
       const items = (response?.items ?? []) as RetrieveRecord[];
       this.lastProvider = response?.provider ?? this.lastProvider ?? payload.provider;
       this.totalCount = response?.total ?? this.totalCount;
@@ -396,6 +428,16 @@ export class SearchAppPanel {
     this.statusLine.textContent = message;
   }
 
+  private showError(message: string): void {
+    this.errorBanner.textContent = message;
+    this.errorBanner.style.display = "block";
+  }
+
+  private hideError(): void {
+    this.errorBanner.textContent = "";
+    this.errorBanner.style.display = "none";
+  }
+
   private updateLoadMoreVisibility(): void {
     if (this.nextCursor !== undefined && this.nextCursor !== null) {
       this.loadMoreBtn.style.display = "inline-flex";
@@ -403,18 +445,23 @@ export class SearchAppPanel {
       this.loadMoreBtn.style.display = "none";
     }
     this.prevBtn.disabled = this.paginationStack.length <= 1;
+    const currentPage = this.paginationStack.length;
+    const totalKnown = this.totalCount ? ` • ${this.records.length} / ${this.totalCount}` : ` • ${this.records.length}`;
+    this.pageLine.textContent = `Page ${currentPage}${totalKnown}`;
   }
 
   private renderTable(): void {
-    const columns = ["Title", "Authors", "Year", "Source", "DOI", "URL", "Citations"];
+    const columns = ["Title", "Authors", "Year", "Venue", "Source", "DOI", "URL", "Citations", "OA"];
     const rows = this.records.map((record) => [
       record.title,
       record.authors?.join("; ") ?? "",
       record.year ?? "",
+      (record as any).venue ?? (record as any).journal ?? "",
       record.source,
       record.doi ?? "",
       record.url ?? "",
-      typeof record.citationCount === "number" ? record.citationCount : ""
+      typeof record.citationCount === "number" ? record.citationCount : "",
+      record.openAccess?.status ?? ""
     ]);
     this.grid.setData(columns, rows);
     this.grid.autoFitColumns(60);
@@ -430,6 +477,19 @@ export class SearchAppPanel {
   private applySelection(record?: RetrieveRecord): void {
     retrieveContext.setActiveRecord(record);
     document.dispatchEvent(new CustomEvent("retrieve:search-selection", { detail: { record } }));
+  }
+
+  private exportCurrent(): void {
+    if (!this.records.length) {
+      this.updateStatus("No rows to export.");
+      return;
+    }
+    const format = this.exportSelect.value as "csv" | "xlsx" | "ris";
+    if (window.retrieveBridge?.library?.export) {
+      void window.retrieveBridge.library.export({ rows: this.records, format, targetPath: "" }).then((res) => {
+        this.updateStatus(res?.message ?? `Exported (${format.toUpperCase()}).`);
+      });
+    }
   }
 
   private populateProviders(selected: RetrieveProviderId): void {

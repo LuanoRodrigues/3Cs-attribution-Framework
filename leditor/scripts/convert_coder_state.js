@@ -27,8 +27,8 @@ const LEDOC_BUNDLE_FILES = {
 };
 
 // Toggle the default input path by commenting/uncommenting one line below.
- const DEFAULT_SOURCE_PATH = "\\\\wsl.localhost\\Ubuntu-22.04\\home\\pantera\\projects\\TEIA\\coder_state_paper.json";
-//const DEFAULT_SOURCE_PATH = "./coder_state.json";
+// const DEFAULT_SOURCE_PATH = "\\\\wsl.localhost\\Ubuntu-22.04\\home\\pantera\\projects\\TEIA\\coder_state_paper.json";
+const DEFAULT_SOURCE_PATH = "./coder_state.json";
 
 const normalizeError = (error) => (error instanceof Error ? error.message : String(error));
 
@@ -40,6 +40,25 @@ const decodeEntities = (value) =>
     .replace(/&gt;/gi, ">")
     .replace(/&quot;/gi, '"')
     .replace(/&#39;/gi, "'");
+
+const isSafeAnchorHref = (value) => {
+  const href = String(value ?? "").trim();
+  if (!href) return false;
+  if (href.startsWith("#")) return true;
+  return /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(href);
+};
+
+const normalizeAnchorHref = (attrs) => {
+  const rawHref = String(attrs.href ?? "").trim();
+  const dqid =
+    attrs["data-dqid"] ?? attrs["data-quote-id"] ?? attrs["data-quote_id"] ?? "";
+  const dqHref = dqid ? `dq://${dqid}` : "";
+  if (isSafeAnchorHref(rawHref)) return rawHref;
+  if (isSafeAnchorHref(dqHref)) return dqHref;
+  const origHref = String(attrs["data-orig-href"] ?? "").trim();
+  if (isSafeAnchorHref(origHref)) return origHref;
+  return "#";
+};
 
 const parseHtmlTree = (html) => {
   const doc = parseDocument(html, {
@@ -369,12 +388,7 @@ const inlineFromNodes = (nodes, activeMarks = []) => {
     if (tag === "sup") nextMarks.push({ type: "superscript" });
     if (tag === "sub") nextMarks.push({ type: "subscript" });
     if (tag === "a") {
-      const fallbackHref =
-        attrs.href ||
-        attrs["data-orig-href"] ||
-        (attrs["data-dqid"] ? `dq://${attrs["data-dqid"]}` : null) ||
-        attrs["data-key"] ||
-        null;
+      const fallbackHref = normalizeAnchorHref(attrs);
       const markAttrs = {
         href: fallbackHref,
         title: attrs.title ?? null,

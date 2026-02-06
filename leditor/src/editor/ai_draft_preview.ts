@@ -285,6 +285,10 @@ const buildDecorations = (state: EditorState, draft: DraftState): DecorationSet 
             el.title = `Original:\n${original}\n\nClick to accept/reject`;
             el.contentEditable = "false";
             el.setAttribute("data-ai-draft-repl", "true");
+            el.setAttribute("data-ai-draft-key", key);
+            if (typeof item.n === "number") {
+              el.setAttribute("data-ai-draft-n", String(item.n));
+            }
             const detail: DraftActionEvent = {
               action: "accept",
               n: typeof item.n === "number" ? item.n : undefined,
@@ -397,6 +401,10 @@ const buildDecorations = (state: EditorState, draft: DraftState): DecorationSet 
             el.title = `Original:\n${seg.oldText}\n\nClick to accept/reject`;
             el.contentEditable = "false";
             el.setAttribute("data-ai-draft-repl", "true");
+            el.setAttribute("data-ai-draft-key", itemKey);
+            if (typeof item.n === "number") {
+              el.setAttribute("data-ai-draft-n", String(item.n));
+            }
             const detail: DraftActionEvent = {
               action: "accept",
               n: typeof item.n === "number" ? item.n : undefined,

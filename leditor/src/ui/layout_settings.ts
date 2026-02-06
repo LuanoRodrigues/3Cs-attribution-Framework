@@ -5,6 +5,8 @@ import {
   setMarginsPreset as docSetMarginsPreset,
   setMarginsCustom as docSetMarginsCustom,
   setColumns as docSetColumns,
+  setColumnGap as docSetColumnGap,
+  setColumnWidth as docSetColumnWidth,
   setFootnoteGap as docSetFootnoteGap,
   setFootnoteMaxHeightRatio as docSetFootnoteMaxHeightRatio,
   setFootnoteSeparator as docSetFootnoteSeparator
@@ -82,7 +84,7 @@ type LayoutState = {
   orientation: Orientation;
   marginsCm: MarginValuesCm;
   pageSize: PageSizeDefinition;
-  columns: { mode: ColumnMode; count: number };
+  columns: { mode: ColumnMode; count: number; gapIn: number; widthIn: number | null };
 };
 
 type LayoutChangeListener = (state: {
@@ -92,13 +94,15 @@ type LayoutChangeListener = (state: {
   pageSize: PageSizeDefinition & { widthMm: number; heightMm: number };
   columns: number;
   columnsMode: ColumnMode;
+  columnGapIn: number;
+  columnWidthIn: number | null;
 }) => void;
 
 const layoutState: LayoutState = {
   orientation: "portrait",
   marginsCm: { ...MARGIN_PRESETS.normal.margins },
   pageSize: PAGE_SIZE_DEFINITIONS[0],
-  columns: { mode: "one", count: 1 }
+  columns: { mode: "one", count: 1, gapIn: 0.25, widthIn: null }
 };
 
 const layoutListeners = new Set<LayoutChangeListener>();
@@ -115,6 +119,8 @@ const snapshotStateForListeners = (): {
   pageSize: PageSizeDefinition & { widthMm: number; heightMm: number };
   columns: number;
   columnsMode: ColumnMode;
+  columnGapIn: number;
+  columnWidthIn: number | null;
 } => {
   const { orientation, pageSize, marginsCm } = layoutState;
   const columns = shouldForceSingleColumn() ? { count: 1, mode: "one" as ColumnMode } : layoutState.columns;
@@ -137,7 +143,9 @@ const snapshotStateForListeners = (): {
       heightMm: mmFromCm(heightCm)
     },
     columns: columns.count,
-    columnsMode: columns.mode
+    columnsMode: columns.mode,
+    columnGapIn: layoutState.columns.gapIn,
+    columnWidthIn: layoutState.columns.widthIn
   };
 };
 
@@ -179,6 +187,10 @@ export const getMarginValuesCm = (): MarginValuesCm => ({ ...layoutState.margins
 export const getLayoutColumns = (): number => (shouldForceSingleColumn() ? 1 : layoutState.columns.count);
 
 export const getColumnMode = (): ColumnMode => layoutState.columns.mode;
+
+export const getColumnGapIn = (): number => layoutState.columns.gapIn;
+
+export const getColumnWidthIn = (): number | null => layoutState.columns.widthIn;
 
 export const setPageSize = (sizeId?: string, overrides?: { widthMm?: number; heightMm?: number }): void => {
   withLayoutUpdate(() => {
@@ -265,7 +277,10 @@ export const resetMargins = (): void => {
   setMarginsPreset("normal");
 };
 
-export const setSectionColumns = (count: number): void => {
+export const setSectionColumns = (
+  count: number,
+  options?: { gapIn?: number; widthIn?: number | null }
+): void => {
   const forceSingle = shouldForceSingleColumn();
   const normalized = forceSingle ? 1 : Math.max(1, Math.min(4, Math.floor(count)));
   const mode: ColumnMode = forceSingle
@@ -278,8 +293,34 @@ export const setSectionColumns = (count: number): void => {
           ? "three"
           : "three";
   withLayoutUpdate(() => {
-    layoutState.columns = { count: normalized, mode };
+    const nextGapIn =
+      typeof options?.gapIn === "number" && Number.isFinite(options.gapIn) && options.gapIn >= 0
+        ? options.gapIn
+        : layoutState.columns.gapIn;
+    const nextWidthIn =
+      options?.widthIn !== undefined
+        ? typeof options.widthIn === "number" && Number.isFinite(options.widthIn) && options.widthIn > 0
+          ? options.widthIn
+          : null
+        : layoutState.columns.widthIn;
+    layoutState.columns = { ...layoutState.columns, count: normalized, mode, gapIn: nextGapIn, widthIn: nextWidthIn };
     docSetColumns(normalized);
+    docSetColumnGap(nextGapIn);
+    docSetColumnWidth(nextWidthIn);
+  });
+};
+
+export const setColumnGap = (gapIn: number): void => {
+  withLayoutUpdate(() => {
+    layoutState.columns = { ...layoutState.columns, gapIn };
+    docSetColumnGap(gapIn);
+  });
+};
+
+export const setColumnWidth = (widthIn: number | null): void => {
+  withLayoutUpdate(() => {
+    layoutState.columns = { ...layoutState.columns, widthIn };
+    docSetColumnWidth(widthIn);
   });
 };
 
@@ -288,7 +329,7 @@ export const setColumnMode = (mode: ColumnMode): void => {
   const count = forceSingle ? 1 : mode === "one" ? 1 : mode === "two" ? 2 : mode === "three" ? 3 : 2;
   const normalizedMode: ColumnMode = forceSingle ? "one" : mode;
   withLayoutUpdate(() => {
-    layoutState.columns = { count, mode: normalizedMode };
+    layoutState.columns = { ...layoutState.columns, count, mode: normalizedMode };
     docSetColumns(count);
   });
 };
@@ -303,7 +344,7 @@ export const subscribeToLayoutChanges = (listener: LayoutChangeListener): (() =>
 
 const initializeDocumentLayoutState = (): void => {
   if (shouldForceSingleColumn()) {
-    layoutState.columns = { count: 1, mode: "one" };
+    layoutState.columns = { ...layoutState.columns, count: 1, mode: "one" };
   }
   docSetPageSizePreset(layoutState.pageSize.id);
   docSetOrientation(layoutState.orientation);
@@ -314,6 +355,8 @@ const initializeDocumentLayoutState = (): void => {
     left: cmToInches(layoutState.marginsCm.left)
   });
   docSetColumns(layoutState.columns.count);
+  docSetColumnGap(layoutState.columns.gapIn);
+  docSetColumnWidth(layoutState.columns.widthIn);
 };
 
 initializeDocumentLayoutState();

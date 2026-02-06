@@ -21,6 +21,27 @@ type PanelContextItem =
   | { type: "label"; label: string }
   | { type: "separator" };
 
+export type PanelGridPresetId = string;
+export type PanelGridPreset = {
+  id: PanelGridPresetId;
+  roundLayout: boolean;
+  layoutHint:
+    | {
+        mode: "centeredSingle";
+        panelId: PanelId;
+        maxWidthPx: number;
+      }
+    | {
+        mode: "centeredGrid";
+        maxWidthFrac?: number;
+        maxWidthPx?: number;
+      }
+    | null;
+  collapsed: Partial<Record<PanelId, boolean>>;
+  ratios: Partial<Record<PanelId, number>>;
+  fixedPanelSizes?: Partial<Record<PanelId, number>>;
+};
+
 export class PanelGrid {
   private panels = new Map<PanelId, PanelRecord>();
   private root?: HTMLElement;
@@ -50,6 +71,7 @@ export class PanelGrid {
   private panelTree: PanelNode;
   private panelsV2Enabled: boolean;
   private roundLayout = false;
+  private activePresetId: PanelGridPresetId | null = null;
   private layoutHint:
     | {
         mode: "centeredSingle";
@@ -65,7 +87,8 @@ export class PanelGrid {
     | null = null;
   private fixedPanelSizes: Partial<Record<PanelId, number>> = {
     panel1: 320,
-    panel2: 360
+    panel2: 360,
+    panel4: 380
   };
 
   constructor(private container: HTMLElement, options?: { panelsV2Enabled?: boolean }) {
@@ -138,13 +161,6 @@ export class PanelGrid {
     shell.dataset.minimized = "false";
     shell.dataset.collapsed = "false";
 
-    const tabs = document.createElement("div");
-    tabs.className = "panel-tabs panel-tabs--tiny";
-    tabs.setAttribute("aria-label", `${definition.title} tabs`);
-    const tabButton = this.createTabButton(definition.id, definition.title, "pane-1");
-    tabs.appendChild(tabButton);
-    tabButton.classList.add("is-active");
-
     const content = document.createElement("div");
     content.className = "panel-content";
     if (definition.anchorId) {
@@ -161,7 +177,6 @@ export class PanelGrid {
     }
     content.appendChild(pane);
 
-    shell.appendChild(tabs);
     shell.appendChild(content);
 
     return { shell, content: pane };
@@ -194,10 +209,14 @@ export class PanelGrid {
     this.panels.forEach((record, panelId) => {
       const { shell } = record;
       shell.addEventListener("contextmenu", (event) => this.handleContextMenu(event as MouseEvent, panelId));
-      const tabs = shell.querySelector<HTMLElement>(".panel-tabs");
-      if (tabs) {
-        tabs.addEventListener("pointerdown", (event) => this.handleChromePointerDown(event as PointerEvent, panelId));
-      }
+      // Floating panels (pop-outs) need a drag handle. With a chrome-less layout,
+      // use the panel shell as the handle unless interacting with a control inside.
+      shell.addEventListener("pointerdown", (event) => {
+        const target = event.target as HTMLElement | null;
+        if (!target) return;
+        if (target.closest("button, a, input, textarea, select, [role='button'], [contenteditable='true']")) return;
+        this.handleChromePointerDown(event as PointerEvent, panelId);
+      });
     });
   }
 
@@ -358,6 +377,9 @@ export class PanelGrid {
       return;
     }
     if (collapsed) {
+      // Hide means: fully remove from workspace, including any floating state.
+      this.state.undocked[panelId] = false;
+      this.state.floatingPositions[panelId] = null;
       this.state.lastRatios[panelId] = this.state.ratios[panelId];
       this.state.ratios[panelId] = 0;
       this.state.collapsed[panelId] = true;
@@ -372,6 +394,7 @@ export class PanelGrid {
       targetShell.dataset.collapsed = "false";
       targetShell.classList.remove("panel-shell--collapsed");
     }
+    this.applyFloatingState();
     this.applySizes();
     this.updateGutterVisibility();
     this.persistState();
@@ -523,17 +546,6 @@ export class PanelGrid {
     contentContainer.appendChild(firstPane);
     contentContainer.appendChild(gutter);
     contentContainer.appendChild(secondPane);
-
-    const tabs = shell.querySelector(".panel-tabs");
-    if (tabs) {
-      const secondTab = this.createTabButton(`${panelId}-split`, `${record.definition.title} B`, "pane-2");
-      tabs.appendChild(secondTab);
-      const firstTab = tabs.querySelector<HTMLButtonElement>(".panel-tab");
-      if (firstTab) {
-        firstTab.classList.add("is-active");
-        this.activatePane(firstTab);
-      }
-    }
     firstPane.classList.add("is-active");
     this.applyInnerSplitRatio(contentContainer, orientation, 0.5);
   }
@@ -652,10 +664,6 @@ export class PanelGrid {
 
   private buildContextMenuItems(targetId?: PanelId): PanelContextItem[] {
     const items: PanelContextItem[] = [];
-    const minimized = Object.entries(this.state.collapsed)
-      .filter(([, collapsed]) => collapsed)
-      .map(([panelId]) => panelId as PanelId);
-    let visiblePanels: PanelDefinition[] = [];
     if (targetId) {
       const definition = this.getDefinitionFor(targetId);
       if (definition) {
@@ -681,7 +689,7 @@ export class PanelGrid {
           type: "action",
           action: collapsed ? "restore" : "minimize",
           panelId: targetId,
-          label: collapsed ? `Restore ${title}` : `Minimize ${title}`
+          label: collapsed ? `Show ${title}` : `Hide ${title}`
         });
         items.push({
           type: "action",
@@ -709,35 +717,19 @@ export class PanelGrid {
       }
     }
     if (!targetId) {
-      visiblePanels = this.registry.filter(
-        (definition) => !this.state.collapsed[definition.id] && !this.state.undocked[definition.id]
-      );
-
-      if (visiblePanels.length) {
-        items.push({ type: "label", label: "Hide panels" });
-        visiblePanels.forEach((definition) => {
+      items.push({ type: "label", label: "Panels" });
+      this.registry
+        .filter((definition) => /^panel[1-4]$/.test(definition.id))
+        .sort((a, b) => a.index - b.index)
+        .forEach((definition) => {
+          const collapsed = Boolean(this.state.collapsed[definition.id]);
           items.push({
             type: "action",
-            action: "minimize",
+            action: collapsed ? "restore" : "minimize",
             panelId: definition.id,
-            label: `Hide ${definition.title}`
+            label: collapsed ? `Show ${definition.title}` : `Hide ${definition.title}`
           });
         });
-      }
-    }
-    if (minimized.length) {
-      items.push({ type: "label", label: "Restore minimized panels" });
-      minimized.forEach((panelId) => {
-        const definition = this.getDefinitionFor(panelId);
-        if (definition) {
-          items.push({
-            type: "action",
-            action: "restore",
-            panelId,
-            label: `Restore ${definition.title}`
-          });
-        }
-      });
     }
     return items;
   }
@@ -1026,6 +1018,48 @@ export class PanelGrid {
 
   public setPanelsV2Enabled(enabled: boolean): void {
     this.panelsV2Enabled = enabled;
+  }
+
+  public applyPreset(preset: PanelGridPreset): void {
+    // Single source of truth per page/action (deterministic; no cross-page carryover).
+    this.activePresetId = preset.id;
+    this.resetPanelPlacement();
+    this.roundLayout = Boolean(preset.roundLayout);
+    this.layoutHint = preset.layoutHint ?? null;
+
+    if (this.roundLayout) {
+      // Reset fixed widths to deterministic defaults each time this preset is applied.
+      this.fixedPanelSizes = {
+        panel1: 320,
+        panel2: 360,
+        panel4: 380,
+        ...(preset.fixedPanelSizes || {})
+      };
+    } else {
+      // Do not inherit any fixed widths from round layouts.
+      this.fixedPanelSizes = {};
+    }
+
+    // Apply visibility first so collapsed panels truly disappear.
+    this.registryIds().forEach((panelId) => {
+      const shouldCollapse = Boolean(preset.collapsed?.[panelId]);
+      this.state.collapsed[panelId] = shouldCollapse;
+      if (shouldCollapse) {
+        this.state.lastRatios[panelId] = this.state.lastRatios[panelId] ?? this.state.ratios[panelId] ?? 0;
+        this.state.ratios[panelId] = 0;
+      }
+      const shell = this.panels.get(panelId)?.shell;
+      if (shell) {
+        shell.dataset.minimized = shouldCollapse ? "true" : "false";
+        shell.dataset.collapsed = shouldCollapse ? "true" : "false";
+        shell.classList.toggle("panel-shell--collapsed", shouldCollapse);
+      }
+    });
+
+    this.setRatios(preset.ratios || {});
+    this.applySizes();
+    this.updateGutterVisibility();
+    this.persistState();
   }
 
   // Make page navigation deterministic by clearing any "floating/undocked" carryover

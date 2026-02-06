@@ -6,6 +6,9 @@ const UnderlineMark = Mark.create({
     return {
       underlineStyle: {
         default: "single"
+      },
+      underlineColor: {
+        default: null
       }
     };
   },
@@ -17,7 +20,25 @@ const UnderlineMark = Mark.create({
         getAttrs: (value) => {
           if (typeof value !== "string") return false;
           if (!value.includes("underline")) return false;
-          return value.includes("double") ? { underlineStyle: "double" } : {};
+          const attrs: Record<string, string> = {};
+          if (value.includes("double")) attrs.underlineStyle = "double";
+          if (value.includes("dotted")) attrs.underlineStyle = "dotted";
+          if (value.includes("dashed")) attrs.underlineStyle = "dashed";
+          return attrs;
+        }
+      },
+      {
+        style: "text-decoration-style",
+        getAttrs: (value) => {
+          if (typeof value !== "string" || !value.trim()) return false;
+          return { underlineStyle: value.trim() };
+        }
+      },
+      {
+        style: "text-decoration-color",
+        getAttrs: (value) => {
+          if (typeof value !== "string" || !value.trim()) return false;
+          return { underlineColor: value.trim() };
         }
       }
     ];
@@ -25,11 +46,15 @@ const UnderlineMark = Mark.create({
   renderHTML({ HTMLAttributes }) {
     const existingStyle = (HTMLAttributes.style ?? "").trim();
     const underlineStyle = HTMLAttributes.underlineStyle ?? "single";
+    const underlineColor = HTMLAttributes.underlineColor;
     const styles: string[] = [];
     if (existingStyle) styles.push(existingStyle.replace(/;$/, ""));
     styles.push("text-decoration: underline");
-    if (underlineStyle === "double") {
-      styles.push("text-decoration-style: double");
+    if (underlineStyle && underlineStyle !== "single") {
+      styles.push(`text-decoration-style: ${underlineStyle}`);
+    }
+    if (underlineColor) {
+      styles.push(`text-decoration-color: ${underlineColor}`);
     }
     const style = `${styles.join("; ")};`;
     return ["span", mergeAttributes(HTMLAttributes, { style }), 0];

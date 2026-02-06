@@ -1,3 +1,5 @@
+import type { Schema, Node as ProseMirrorNode, Fragment } from "@tiptap/pm/model";
+import { DOMSerializer, Fragment as PMFragment } from "@tiptap/pm/model";
 import type { FootnoteRenderEntry } from "./model.ts";
 
 export type PageFootnoteState = {
@@ -12,7 +14,7 @@ type RenderItem = {
   entry: FootnoteRenderEntry;
   continuation: boolean;
   fragment: "primary" | "continuation";
-  text: string;
+  content: Fragment;
   number: string;
 };
 
@@ -33,7 +35,19 @@ const ensureList = (container: HTMLElement, className = "leditor-footnote-list")
   return list;
 };
 
-const syncRow = (row: HTMLElement, item: RenderItem) => {
+const renderFragment = (container: HTMLElement, fragment: Fragment, serializer: DOMSerializer) => {
+  container.replaceChildren();
+  if (!fragment || fragment.size === 0) return;
+  const dom = serializer.serializeFragment(fragment);
+  container.appendChild(dom);
+};
+
+const syncRow = (
+  row: HTMLElement,
+  item: RenderItem,
+  serializer: DOMSerializer,
+  opts?: { skipContent?: boolean }
+) => {
   const entry = item.entry;
   row.dataset.footnoteId = entry.footnoteId;
   row.dataset.footnoteFragment = item.fragment;
@@ -49,26 +63,16 @@ const syncRow = (row: HTMLElement, item: RenderItem) => {
   text.dataset.footnoteId = entry.footnoteId;
   text.dataset.footnoteFragment = item.fragment;
   text.dataset.placeholder = "Type footnote…";
-  const isReadOnly = entry.source === "citation" || item.fragment === "continuation";
-  text.contentEditable = isReadOnly ? "false" : "true";
-  text.tabIndex = isReadOnly ? -1 : 0;
-  text.setAttribute("spellcheck", isReadOnly ? "false" : "true");
+  text.contentEditable = "false";
+  text.tabIndex = entry.source === "citation" ? -1 : 0;
+  text.setAttribute("spellcheck", entry.source === "citation" ? "false" : "true");
 
-  // Do not clobber the user's caret: avoid rewriting text while this entry is actively focused.
-  const active = document.activeElement as HTMLElement | null;
-  const isActive =
-    active?.classList?.contains("leditor-footnote-entry-text") &&
-    (active.getAttribute("data-footnote-id") || "").trim() === entry.footnoteId &&
-    active.getAttribute("contenteditable") === "true";
-  if (isActive) return;
-  const next = item.text ?? "";
-  const current = text.textContent ?? "";
-  if (current !== next) {
-    text.textContent = next;
-  }
+  if (opts?.skipContent) return;
+  if (text.dataset.leditorEditor === "true") return;
+  renderFragment(text, item.content, serializer);
 };
 
-const buildRow = (item: RenderItem): HTMLElement => {
+const buildRow = (item: RenderItem, serializer: DOMSerializer): HTMLElement => {
   const entry = item.entry;
   const row = document.createElement("div");
   row.className = "leditor-footnote-entry";
@@ -82,7 +86,7 @@ const buildRow = (item: RenderItem): HTMLElement => {
   row.dataset.footnoteFragment = item.fragment;
   const number = document.createElement("span");
   number.className = "leditor-footnote-entry-number";
-  const text = document.createElement("span");
+  const text = document.createElement("div");
   text.className = "leditor-footnote-entry-text";
   text.dataset.footnoteId = entry.footnoteId;
   text.dataset.footnoteFragment = item.fragment;
@@ -91,15 +95,17 @@ const buildRow = (item: RenderItem): HTMLElement => {
   text.setAttribute("spellcheck", entry.source === "citation" ? "false" : "true");
   row.appendChild(number);
   row.appendChild(text);
-  syncRow(row, item);
+  syncRow(row, item, serializer);
   return row;
 };
 
 const renderEntries = (
   container: HTMLElement,
   items: RenderItem[],
+  serializer: DOMSerializer,
   prefixLabel?: string,
-  suffixLabel?: string
+  suffixLabel?: string,
+  opts?: { activeFootnoteId?: string | null }
 ) => {
   if (items.length === 0) {
     // Keep the footnote area visible only when editing footnotes.
@@ -161,8 +167,14 @@ const renderEntries = (
     const entry = item.entry;
     const selector = `.leditor-footnote-entry[data-footnote-id="${entry.footnoteId}"][data-footnote-fragment="${item.fragment}"]`;
     const existing = list.querySelector<HTMLElement>(selector);
-    const row = existing ?? buildRow(item);
-    syncRow(row, item);
+    const row = existing ?? buildRow(item, serializer);
+    const skipContent = Boolean(
+      opts?.activeFootnoteId &&
+        item.fragment === "primary" &&
+        entry.source !== "citation" &&
+        opts.activeFootnoteId === entry.footnoteId
+    );
+    syncRow(row, item, serializer, { skipContent });
     if (row !== cursor) {
       list.insertBefore(row, cursor);
     } else {
@@ -181,8 +193,7 @@ const renderEntries = (
     try {
       (window as any).__leditorFootnoteRendered = {
         count: document.querySelectorAll(".leditor-footnote-entry-text").length,
-        ids: items.map((item) => item.entry.footnoteId),
-        textById: Object.fromEntries(items.map((item) => [item.entry.footnoteId, item.text ?? ""]))
+        ids: items.map((item) => item.entry.footnoteId)
       };
     } catch {
       // ignore debug state failures
@@ -260,10 +271,74 @@ const getMaxFootnoteHeight = (state: PageFootnoteState): number => {
   return max;
 };
 
+const normalizeEntryContent = (entry: FootnoteRenderEntry, schema: Schema): Fragment => {
+  if (entry.body && entry.body.content && entry.body.content.size > 0) {
+    return entry.body.content;
+  }
+  const paragraph = schema.nodes.paragraph;
+  if (!paragraph) return PMFragment.empty;
+  const trimmed = (entry.text || "").trim();
+  if (!trimmed) {
+    return PMFragment.fromArray([paragraph.create()]);
+  }
+  return PMFragment.fromArray([paragraph.create(null, schema.text(trimmed))]);
+};
+
+const splitContentByBlocks = (
+  content: Fragment,
+  measureList: HTMLElement,
+  row: HTMLElement,
+  contentEl: HTMLElement,
+  serializer: DOMSerializer,
+  maxHeight: number
+): { head: Fragment; tail: Fragment; headHeight: number } | null => {
+  const blocks: ProseMirrorNode[] = [];
+  content.forEach((child) => blocks.push(child));
+  if (blocks.length === 0) return null;
+
+  const headBlocks: ProseMirrorNode[] = [];
+  let overflowIndex = -1;
+  let headHeight = measureList.scrollHeight;
+  for (let i = 0; i < blocks.length; i += 1) {
+    const block = blocks[i];
+    const dom = serializer.serializeNode(block) as HTMLElement;
+    contentEl.appendChild(dom);
+    const height = measureList.scrollHeight;
+    if (height <= maxHeight) {
+      headBlocks.push(block);
+      headHeight = height;
+      continue;
+    }
+    contentEl.removeChild(dom);
+    overflowIndex = i;
+    break;
+  }
+
+  if (overflowIndex === -1) {
+    return { head: content, tail: PMFragment.empty, headHeight };
+  }
+
+  if (headBlocks.length === 0) {
+    headBlocks.push(blocks[overflowIndex]);
+    overflowIndex += 1;
+    const dom = serializer.serializeNode(headBlocks[0]) as HTMLElement;
+    contentEl.appendChild(dom);
+    headHeight = measureList.scrollHeight;
+  }
+
+  const tailBlocks = overflowIndex < blocks.length ? blocks.slice(overflowIndex) : [];
+  return {
+    head: PMFragment.fromArray(headBlocks),
+    tail: PMFragment.fromArray(tailBlocks),
+    headHeight
+  };
+};
+
 const measureFittedItems = (
   container: HTMLElement,
   items: RenderItem[],
   maxHeight: number,
+  serializer: DOMSerializer,
   opts?: { prefixLabel?: string; suffixLabel?: string }
 ): { fitted: RenderItem[]; overflow: RenderItem[]; height: number } => {
   if (items.length === 0 || maxHeight <= 0) {
@@ -305,85 +380,48 @@ const measureFittedItems = (
   }
   const fitted: RenderItem[] = [];
   let overflow: RenderItem[] = [];
-  let lastHeight = 0;
-  const splitIntoSegments = (value: string): string[] => {
-    if (!value) return [];
-    const segments = value.match(/\s*\S+/g);
-    return segments ?? [];
-  };
+  let lastHeight = measureList.scrollHeight;
   for (let i = 0; i < items.length; i += 1) {
     const item = items[i];
-    const row = buildRow(item);
+    const row = buildRow(item, serializer);
     measureList.appendChild(row);
     const height = measureList.scrollHeight;
-    if (height <= Math.max(0, maxHeight - suffixReserve)) {
+    const limit = Math.max(0, maxHeight - suffixReserve);
+    if (height <= limit) {
       fitted.push(item);
       lastHeight = height;
       continue;
     }
-    // overflow
     measureList.removeChild(row);
-    const available = Math.max(0, Math.max(0, maxHeight - suffixReserve) - lastHeight);
-    const text = item.text ?? "";
-    if (available <= 0 || !text) {
+    const available = Math.max(0, limit - lastHeight);
+    if (available <= 0) {
       overflow = items.slice(i);
       break;
     }
-    const segments = splitIntoSegments(text);
-    if (segments.length === 0) {
+    const splitRow = buildRow({ ...item, content: PMFragment.empty }, serializer);
+    measureList.appendChild(splitRow);
+    const contentEl = splitRow.querySelector<HTMLElement>(".leditor-footnote-entry-text");
+    if (!contentEl) {
       overflow = items.slice(i);
       break;
     }
-    let low = 1;
-    let high = segments.length;
-    let best = 0;
-    const testRow = buildRow(item);
-    const textEl = testRow.querySelector<HTMLElement>(".leditor-footnote-entry-text");
-    if (!textEl) {
+    const split = splitContentByBlocks(item.content, measureList, splitRow, contentEl, serializer, limit);
+    if (!split) {
+      measureList.removeChild(splitRow);
       overflow = items.slice(i);
       break;
     }
-    measureList.appendChild(testRow);
-    while (low <= high) {
-      const mid = Math.floor((low + high) / 2);
-      textEl.textContent = segments.slice(0, mid).join("");
-      const h = measureList.scrollHeight;
-      if (h <= Math.max(0, maxHeight - suffixReserve)) {
-        best = mid;
-        low = mid + 1;
-      } else {
-        high = mid - 1;
-      }
-    }
-    if (best <= 0) {
-      best = 1;
-    }
-    const headText = segments.slice(0, best).join("");
-    const tailText = segments.slice(best).join("");
-    textEl.textContent = headText;
-    const headHeight = measureList.scrollHeight;
-    if (headHeight > Math.max(0, maxHeight - suffixReserve) && fitted.length === 0) {
-      // fallback: allow this fragment even if it slightly exceeds; prevents deadlock
-      fitted.push({ ...item, text: headText });
-    } else {
-      fitted.push({
-        ...item,
-        text: headText
-      });
-    }
-    measureList.removeChild(testRow);
-    if (tailText) {
-      const tailItem: RenderItem = {
-        ...item,
-        fragment: "continuation",
-        continuation: true,
-        number: "",
-        text: tailText
-      };
-      overflow = [tailItem, ...items.slice(i + 1)];
-    } else {
-      overflow = items.slice(i + 1);
-    }
+    const headItem: RenderItem = { ...item, content: split.head };
+    fitted.push(headItem);
+    lastHeight = split.headHeight;
+    const tailItem: RenderItem = {
+      ...item,
+      fragment: "continuation",
+      continuation: true,
+      number: "",
+      content: split.tail
+    };
+    overflow = split.tail.size > 0 ? [tailItem, ...items.slice(i + 1)] : items.slice(i + 1);
     break;
   }
   const height = measureList.scrollHeight;
@@ -394,7 +432,10 @@ const measureFittedItems = (
 export const paginateWithFootnotes = (params: {
   entries: FootnoteRenderEntry[];
   pageStates: PageFootnoteState[];
+  schema: Schema;
+  activeFootnoteId?: string | null;
 }) => {
+  const serializer = DOMSerializer.fromSchema(params.schema);
   const grouped = new Map<number, FootnoteRenderEntry[]>();
   params.entries.forEach((entry) => {
     const list = grouped.get(entry.pageIndex) ?? [];
@@ -411,7 +452,7 @@ export const paginateWithFootnotes = (params: {
         entry,
         continuation: false,
         fragment: "primary",
-        text: entry.text || "",
+        content: normalizeEntryContent(entry, params.schema),
         number: entry.number || ""
       }))
     ];
@@ -426,11 +467,11 @@ export const paginateWithFootnotes = (params: {
     const lineHeight = Number.parseFloat(lineHeightRaw || "0");
     const safeLine = Number.isFinite(lineHeight) && lineHeight > 0 ? lineHeight : 18;
     const safeMaxListHeight = maxListHeight > 0 ? maxListHeight : Math.max(16, Math.round(safeLine * 2));
-    let measurement = measureFittedItems(state.footnoteContainer, items, safeMaxListHeight, {
+    let measurement = measureFittedItems(state.footnoteContainer, items, safeMaxListHeight, serializer, {
       prefixLabel: hasCarry ? CONTINUED_FROM_LABEL : ""
     });
     if (measurement.overflow.length > 0) {
-      const withSuffix = measureFittedItems(state.footnoteContainer, items, safeMaxListHeight, {
+      const withSuffix = measureFittedItems(state.footnoteContainer, items, safeMaxListHeight, serializer, {
         prefixLabel: hasCarry ? CONTINUED_FROM_LABEL : "",
         suffixLabel: CONTINUED_TO_LABEL
       });
@@ -443,38 +484,13 @@ export const paginateWithFootnotes = (params: {
       fitted = [items[0]];
       overflow = items.slice(1);
     }
-    if (isFootnoteDebug()) {
-      const key = "leditorFootnoteDebugLogged";
-      if (!state.footnoteContainer.dataset[key]) {
-        state.footnoteContainer.dataset[key] = "1";
-        const pageRect = state.pageElement.getBoundingClientRect();
-        const scale = getPageScale(state.pageElement);
-        const containerRect = state.footnoteContainer.getBoundingClientRect();
-        const payload = {
-          pageIndex: state.pageIndex,
-          items: items.length,
-          fitted: fitted.length,
-          overflow: overflow.length,
-          forcedVisibility,
-          maxHeight,
-          maxListHeight,
-          safeMaxListHeight,
-          pageRect: { w: pageRect.width, h: pageRect.height, scale },
-          container: {
-            clientW: state.footnoteContainer.clientWidth,
-            clientH: state.footnoteContainer.clientHeight,
-            rectW: containerRect.width,
-            rectH: containerRect.height
-          }
-        };
-        console.info("[Footnote][paginate]", JSON.stringify(payload));
-      }
-    }
     renderEntries(
       state.footnoteContainer,
       fitted,
+      serializer,
       hasCarry ? CONTINUED_FROM_LABEL : "",
-      overflow.length > 0 && !forcedVisibility ? CONTINUED_TO_LABEL : ""
+      overflow.length > 0 && !forcedVisibility ? CONTINUED_TO_LABEL : "",
+      { activeFootnoteId: params.activeFootnoteId }
     );
     carry = overflow;
     state.continuationContainer.classList.remove("leditor-footnote-continuation--active");

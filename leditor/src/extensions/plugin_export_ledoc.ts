@@ -16,7 +16,9 @@ import { getCurrentPageSize, getMarginValuesCm } from "../ui/layout_settings.ts"
 import { reconcileFootnotes } from "../uipagination/footnotes/registry.ts";
 import { exportSourceChecksThreadForLedoc } from "../ui/source_checks_thread.ts";
 import { exportAgentHistoryForLedoc } from "../ui/agent_history.ts";
+import { exportLlmCacheForLedoc } from "../ui/llm_cache.ts";
 import { debugFootnoteIdState } from "../uipagination/footnotes/footnote_id_generator.ts";
+import { getFootnoteBodyPlainText } from "./extension_footnote_body.ts";
 
 const triggerExport = (request: ExportLedocRequest) => {
   const handler = getHostAdapter()?.exportLEDOC;
@@ -43,6 +45,17 @@ const collectFootnotes = (editorHandle: EditorHandle): LedocFootnoteEntry[] => {
   const numbering = reconcileFootnotes(editor.state.doc as any).numbering;
   const seen = new Set<string>();
   const entries: LedocFootnoteEntry[] = [];
+  const footnoteBodyType = editor.state.schema.nodes.footnoteBody;
+  const bodyTextById = new Map<string, string>();
+  if (footnoteBodyType) {
+    editor.state.doc.descendants((node) => {
+      if (node.type !== footnoteBodyType) return true;
+      const id = typeof (node.attrs as any)?.footnoteId === "string" ? String((node.attrs as any).footnoteId).trim() : "";
+      if (!id || bodyTextById.has(id)) return true;
+      bodyTextById.set(id, getFootnoteBodyPlainText(node));
+      return true;
+    });
+  }
   editor.state.doc.descendants((node) => {
     if (node.type.name !== "footnote") return true;
     const id = typeof (node.attrs as any)?.footnoteId === "string" ? String((node.attrs as any).footnoteId).trim() : "";
@@ -56,7 +69,9 @@ const collectFootnotes = (editorHandle: EditorHandle): LedocFootnoteEntry[] => {
     const rawIndex = numbering.get(id);
     const index = typeof rawIndex === "number" ? rawIndex : Number(rawIndex);
     const safeIndex = Number.isFinite(index) ? index : entries.length + 1;
-    const text = typeof (node.attrs as any)?.text === "string" ? String((node.attrs as any).text) : "";
+    const attrText = typeof (node.attrs as any)?.text === "string" ? String((node.attrs as any).text) : "";
+    const bodyText = bodyTextById.get(id) ?? "";
+    const text = bodyText.trim().length > 0 ? bodyText : attrText;
     entries.push({ id, text, index: safeIndex });
     return true;
   });
@@ -108,6 +123,7 @@ const buildLegacyPayloadV1 = (editorHandle: EditorHandle) => {
   const marginsCm = getMarginValuesCm();
   const sourceChecksThread = exportSourceChecksThreadForLedoc();
   const agentHistory = exportAgentHistoryForLedoc();
+  const llmCache = exportLlmCacheForLedoc();
   return {
     document: editorHandle.getJSON(),
     meta: {
@@ -131,10 +147,11 @@ const buildLegacyPayloadV1 = (editorHandle: EditorHandle) => {
       footnotes: collectFootnotes(editorHandle)
     },
     history:
-      (sourceChecksThread && typeof sourceChecksThread === "object") || agentHistory
+      (sourceChecksThread && typeof sourceChecksThread === "object") || agentHistory || llmCache
         ? {
             ...(sourceChecksThread && typeof sourceChecksThread === "object" ? { sourceChecksThread } : {}),
-            ...(agentHistory ? { agentHistory } : {})
+            ...(agentHistory ? { agentHistory } : {}),
+            ...(llmCache ? { llmCache } : {})
           }
         : undefined
   };
@@ -148,6 +165,7 @@ const buildBundlePayloadV2 = (editorHandle: EditorHandle): LedocBundlePayload =>
   const idState = debugFootnoteIdState();
   const sourceChecksThread = exportSourceChecksThreadForLedoc();
   const agentHistory = exportAgentHistoryForLedoc();
+  const llmCache = exportLlmCacheForLedoc();
   const meta: LedocBundleMetaFile = {
     version: LEDOC_BUNDLE_VERSION,
     title: host.documentTitle || "Untitled document",
@@ -176,7 +194,8 @@ const buildBundlePayloadV2 = (editorHandle: EditorHandle): LedocBundlePayload =>
     ...(sourceChecksThread && typeof sourceChecksThread === "object"
       ? { sourceChecksThread }
       : {}),
-    ...(agentHistory ? { agentHistory } : {})
+    ...(agentHistory ? { agentHistory } : {}),
+    ...(llmCache ? { llmCache } : {})
   };
   return {
     version: LEDOC_BUNDLE_VERSION,

@@ -64,6 +64,60 @@ type AgentStreamUpdate = {
   tool?: string;
 };
 
+type LexiconStreamUpdate = {
+  requestId: string;
+  kind: "delta" | "done" | "error";
+  delta?: string;
+  message?: string;
+};
+
+type SubstantiateStreamUpdate = {
+  requestId: string;
+  kind: "index" | "item" | "done" | "error";
+  item?: Record<string, unknown>;
+  total?: number;
+  completed?: number;
+  skipped?: number;
+  index?: { total?: number; skipped?: number };
+  message?: string;
+};
+
+type DirectQuoteSearchResult = {
+  dqid: string;
+  title?: string;
+  author?: string;
+  year?: string;
+  source?: string;
+  page?: number;
+  directQuote?: string;
+  paraphrase?: string;
+  score?: number;
+};
+
+type DirectQuoteSearchResponse = {
+  success: boolean;
+  results?: DirectQuoteSearchResult[];
+  scanned?: number;
+  total?: number;
+  skipped?: number;
+  error?: string;
+};
+
+type DirectQuoteFilterOption = { value: string; count: number };
+
+type DirectQuoteFilterResponse = {
+  success: boolean;
+  evidenceTypes?: DirectQuoteFilterOption[];
+  themes?: DirectQuoteFilterOption[];
+  researchQuestions?: DirectQuoteFilterOption[];
+  authors?: DirectQuoteFilterOption[];
+  years?: DirectQuoteFilterOption[];
+  scanned?: number;
+  total?: number;
+  skipped?: number;
+  error?: string;
+};
+
 type LlmStatusResult = {
   success: boolean;
   providers?: Array<{
@@ -146,6 +200,22 @@ declare global {
       closeFootnotePanel?: () => void;
       registerFootnoteHandlers?: (handlers: FootnoteHandlerSet) => void;
       prefetchDirectQuotes?: (request: { lookupPath: string; dqids: string[] }) => Promise<{ success: boolean; error?: string }>;
+      searchDirectQuotes?: (request: {
+        lookupPath: string;
+        query: string;
+        limit?: number;
+        maxScan?: number;
+        filters?: {
+          evidenceTypes?: string[];
+          themes?: string[];
+          researchQuestions?: string[];
+          authors?: string[];
+          years?: number[];
+          yearFrom?: number;
+          yearTo?: number;
+        };
+      }) => Promise<DirectQuoteSearchResponse>;
+      getDirectQuoteFilters?: (request: { lookupPath: string; maxScan?: number }) => Promise<DirectQuoteFilterResponse>;
       exportPDF?: (request: ExportPdfRequest) => Promise<ExportPdfResult>;
       exportDOCX?: (request: ExportDocxRequest) => Promise<ExportDocxResult>;
       importDOCX?: (request: ImportDocxRequest) => Promise<ImportDocxResult>;
@@ -173,15 +243,18 @@ declare global {
       agentRequest?: (request: { requestId?: string; payload: AgentRequestPayload }) => Promise<AgentRequestResult>;
       agentCancel?: (request: { requestId: string }) => Promise<{ success: boolean; cancelled?: boolean; error?: string }>;
       onAgentStreamUpdate?: (handler: (payload: AgentStreamUpdate) => void) => () => void;
+      onLexiconStreamUpdate?: (handler: (payload: LexiconStreamUpdate) => void) => () => void;
+      onSubstantiateStreamUpdate?: (handler: (payload: SubstantiateStreamUpdate) => void) => () => void;
       getAiStatus?: () => Promise<{ success: boolean; hasApiKey?: boolean; model?: string; modelFromEnv?: boolean; error?: string }>;
       getLlmStatus?: () => Promise<LlmStatusResult>;
       getLlmCatalog?: () => Promise<LlmCatalogResult>;
       checkSources?: (request: { requestId?: string; payload: Record<string, unknown> }) => Promise<Record<string, unknown>>;
       substantiateAnchors?: (request: {
         requestId?: string;
+        stream?: boolean;
         payload: Record<string, unknown>;
       }) => Promise<Record<string, unknown>>;
-      lexicon?: (request: { requestId?: string; payload: Record<string, unknown> }) => Promise<Record<string, unknown>>;
+      lexicon?: (request: { requestId?: string; payload: Record<string, unknown>; stream?: boolean }) => Promise<Record<string, unknown>>;
       getInstalledAddins?: () => Promise<InstalledAddin[]>;
       installedAddins?: InstalledAddin[];
     };

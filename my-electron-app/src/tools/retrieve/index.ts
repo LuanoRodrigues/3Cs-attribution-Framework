@@ -1,7 +1,7 @@
 import { SearchPanel } from "../../panels/retrieve/SearchPanel";
 import { CitationsPanel } from "../../panels/retrieve/CitationsPanel";
 import { CitationGraphPanel } from "../../panels/retrieve/CitationGraphPanel";
-import type { RetrieveQuery, RetrieveRecord } from "../../shared/types/retrieve";
+import type { RetrieveCitationNetwork, RetrieveQuery, RetrieveRecord } from "../../shared/types/retrieve";
 import type { ToolDefinition, ToolHandle } from "../../registry/toolRegistry";
 
 export function createRetrieveTool(): ToolDefinition {
@@ -44,7 +44,8 @@ export function createRetrieveCitationGraphTool(): ToolDefinition {
     title: "Citation graph",
     create: ({ metadata }): ToolHandle => {
       const record = metadata?.record as RetrieveRecord | undefined;
-      const panel = new CitationGraphPanel(record);
+      const network = metadata?.network as RetrieveCitationNetwork | undefined;
+      const panel = new CitationGraphPanel(record, network);
       return {
         element: panel.element,
         destroy: () => panel.destroy()

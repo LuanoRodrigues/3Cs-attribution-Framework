@@ -94,6 +94,18 @@ const summarizeInvokeRequest = (channel: string, request: unknown): Record<strin
         lookupPathLen: typeof obj?.lookupPath === "string" ? obj.lookupPath.length : 0,
         dqidLen: typeof obj?.dqid === "string" ? obj.dqid.length : 0
       };
+    case "leditor:search-direct-quotes":
+      return {
+        channel,
+        lookupPathLen: typeof obj?.lookupPath === "string" ? obj.lookupPath.length : 0,
+        queryLen: typeof obj?.query === "string" ? obj.query.length : 0,
+        hasFilters: Boolean(obj?.filters && typeof obj.filters === "object")
+      };
+    case "leditor:get-direct-quote-filters":
+      return {
+        channel,
+        lookupPathLen: typeof obj?.lookupPath === "string" ? obj.lookupPath.length : 0
+      };
     case "leditor:prefetch-direct-quotes":
       return {
         channel,
@@ -300,11 +312,35 @@ const onAgentStreamUpdate = (handler: (payload: Record<string, unknown>) => void
   };
 };
 
+const onLexiconStreamUpdate = (handler: (payload: Record<string, unknown>) => void) => {
+  const listener = (_event: any, payload: any) => {
+    if (payload && typeof payload === "object") {
+      handler(payload as Record<string, unknown>);
+    }
+  };
+  ipcRenderer.on("leditor:lexicon-stream-update", listener);
+  return () => {
+    ipcRenderer.off("leditor:lexicon-stream-update", listener);
+  };
+};
+
+const onSubstantiateStreamUpdate = (handler: (payload: Record<string, unknown>) => void) => {
+  const listener = (_event: any, payload: any) => {
+    if (payload && typeof payload === "object") {
+      handler(payload as Record<string, unknown>);
+    }
+  };
+  ipcRenderer.on("leditor:substantiate-stream-update", listener);
+  return () => {
+    ipcRenderer.off("leditor:substantiate-stream-update", listener);
+  };
+};
+
 const checkSources = async (request: { requestId?: string; payload: Record<string, unknown> }) => {
   return invoke<typeof request, any>("leditor:check-sources", request);
 };
 
-const substantiateAnchors = async (request: { requestId?: string; payload: Record<string, unknown> }) => {
+const substantiateAnchors = async (request: { requestId?: string; stream?: boolean; payload: Record<string, unknown> }) => {
   return invoke<typeof request, any>("leditor:substantiate-anchors", request);
 };
 
@@ -326,6 +362,28 @@ const getDirectQuoteEntry = async (request: { lookupPath: string; dqid: string }
 
 const prefetchDirectQuotes = async (request: { lookupPath: string; dqids: string[] }) => {
   return invoke<typeof request, any>("leditor:prefetch-direct-quotes", request);
+};
+
+const searchDirectQuotes = async (request: {
+  lookupPath: string;
+  query: string;
+  limit?: number;
+  maxScan?: number;
+  filters?: {
+    evidenceTypes?: string[];
+    themes?: string[];
+    researchQuestions?: string[];
+    authors?: string[];
+    years?: number[];
+    yearFrom?: number;
+    yearTo?: number;
+  };
+}) => {
+  return invoke<typeof request, any>("leditor:search-direct-quotes", request);
+};
+
+const getDirectQuoteFilters = async (request: { lookupPath: string; maxScan?: number }) => {
+  return invoke<typeof request, any>("leditor:get-direct-quote-filters", request);
 };
 
 const PDF_VIEWER_TOKEN_FLAG = "--pdf-viewer-token=";
@@ -350,8 +408,15 @@ contextBridge.exposeInMainWorld("leditorHost", {
   fileExists,
   getDefaultLEDOCPath,
   writeFile,
+  exportDOCX: (request: { docJson: object; options?: Record<string, unknown> }) =>
+    invoke("leditor:export-docx", request),
+  exportPDF: (request: { html: string; options?: { suggestedPath?: string; prompt?: boolean } }) =>
+    invoke("leditor:export-pdf", request),
   exportLEDOC,
+  importDOCX: (request?: { options?: { sourcePath?: string; prompt?: boolean } }) =>
+    invoke("leditor:import-docx", request ?? {}),
   importLEDOC,
+  insertImage: () => invoke("leditor:insert-image", {}),
   listLedocVersions,
   createLedocVersion,
   restoreLedocVersion,
@@ -361,13 +426,17 @@ contextBridge.exposeInMainWorld("leditorHost", {
   agentRequest,
   agentCancel,
   onAgentStreamUpdate,
+  onLexiconStreamUpdate,
+  onSubstantiateStreamUpdate,
   checkSources,
   substantiateAnchors,
   lexicon,
   openPdfViewer,
   resolvePdfPathForItemKey,
   getDirectQuoteEntry,
-  prefetchDirectQuotes
+  prefetchDirectQuotes,
+  searchDirectQuotes,
+  getDirectQuoteFilters
 });
 
 const onPdfViewerPayload = (handler: (payload: Record<string, unknown>) => void) => {

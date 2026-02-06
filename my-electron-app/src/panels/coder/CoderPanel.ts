@@ -7,13 +7,16 @@ import {
   getFirstParagraphSnippet,
   treeToLines,
   getFolderEditedHtml,
-  snippet80
+  snippet80,
+  DEFAULT_ITEM_TITLE
 } from "./coderState";
 import type { CoderScopeId, CoderState } from "./coderTypes";
 import { CODER_STATUSES, CoderNode, CoderPayload, CoderStatus, FolderNode, ItemNode } from "./coderTypes";
 import { APPEARANCE_KEYS } from "../../config/settingsKeys";
 
 const NODE_MIME = "application/x-annotarium-coder-node";
+type RenderStats = { totalNodes: number; matched: number; matchedVisible: number; matchedIds: string[] };
+type FlatNode = { node: CoderNode; depth: number; path: string[]; matchHit: boolean; hasActiveFilter: boolean };
 
 export interface CoderPanelOptions {
   title?: string;
@@ -65,6 +68,29 @@ export class CoderPanel {
   private dropHint?: HTMLDivElement;
   private toast?: HTMLDivElement;
   private toastTimer?: number;
+  private toastMessage?: HTMLElement;
+  private toastActions?: HTMLElement;
+  private toastUndoHandler?: () => void;
+  private helpOverlay?: HTMLDivElement;
+  private helpVisible = false;
+  private paletteOverlay?: HTMLDivElement;
+  private paletteInput?: HTMLInputElement;
+  private paletteList?: HTMLDivElement;
+  private paletteVisible = false;
+  private paletteIndex = 0;
+  private paletteFiltered: Array<{ id: string; label: string; keywords: string; enabled: boolean; run: () => void }> = [];
+  private diagnosticsOverlay?: HTMLDivElement;
+  private diagnosticsList?: HTMLDivElement;
+  private diagnosticsVisible = false;
+  private diagnostics: Array<{ ts: string; message: string }> = [];
+  private virtualEnabled = false;
+  private virtualNodes: FlatNode[] = [];
+  private virtualIndexById = new Map<string, number>();
+  private virtualRowHeight = 34;
+  private virtualLastStart = -1;
+  private virtualLastEnd = -1;
+  private virtualScrollRaf: number | null = null;
+  private indentPx: number | null = null;
   private lastDelete?: { node: CoderNode; parentId: string | null; index: number }[];
   private confirmDelete = true;
   private settingsMenu?: HTMLDivElement;
@@ -132,7 +158,7 @@ export class CoderPanel {
         this.clearDropTarget();
       }
     });
-    this.treeHost.addEventListener("scroll", () => this.refreshPinnedPreviewPosition());
+    this.treeHost.addEventListener("scroll", () => this.handleTreeScroll());
 
     this.previewTooltip = document.createElement("div");
     this.previewTooltip.className = "coder-preview-tooltip";
@@ -210,6 +236,7 @@ export class CoderPanel {
     this.treeHost.addEventListener("contextmenu", this.treeContextHandler);
 
     this.ensureStyleInjected();
+    this.ensureHelpOverlay();
 
     this.applyEffectsMode();
     this.unsubscribeStore = this.store.subscribe((state) => this.render(state));
@@ -540,23 +567,35 @@ export class CoderPanel {
   }
 
   private render(state: CoderState): void {
+    const renderStart = performance.now();
     const filter = (this.filterInput?.value || "").trim().toLowerCase();
     this.hidePreviewTooltip();
     this.clearHoverClasses();
     this.hoveredPathIds = [];
     this.hoveredRowId = null;
+    const stats: RenderStats = { totalNodes: 0, matched: 0, matchedVisible: 0, matchedIds: [] };
+    const totalNodes = this.countNodes(state.nodes);
+    const useVirtual = this.shouldVirtualize(totalNodes);
+    this.virtualEnabled = useVirtual;
+    this.treeHost.classList.toggle("coder-virtual", useVirtual);
     this.treeHost.innerHTML = "";
-    const stats = { totalNodes: 0, matched: 0, matchedVisible: 0, matchedIds: [] as string[] };
-    const root = document.createDocumentFragment();
     if (state.nodes.length === 0) {
       const empty = document.createElement("div");
       empty.className = "coder-empty";
       empty.textContent = "No sections yet. Add a folder to begin.";
-      root.append(empty);
+      this.treeHost.append(empty);
+    } else if (useVirtual) {
+      const flat = this.buildFlatNodes(state.nodes, filter, stats);
+      this.virtualNodes = flat.nodes;
+      this.virtualIndexById = flat.indexById;
+      this.renderVirtualWindow(true);
     } else {
+      this.virtualNodes = [];
+      this.virtualIndexById = new Map<string, number>();
+      const root = document.createDocumentFragment();
       state.nodes.forEach((node) => root.append(this.renderNode(node, 0, filter, stats, [])));
+      this.treeHost.append(root);
     }
-    this.treeHost.append(root);
     this.matchedIds = stats.matchedIds;
     if (this.nextMatchBtn) {
       this.nextMatchBtn.disabled = this.matchedIds.length === 0;
@@ -567,13 +606,152 @@ export class CoderPanel {
     this.refreshSavedPill();
     this.refreshSelectionPill();
     this.refreshPinnedPreviewPosition();
+    const elapsed = performance.now() - renderStart;
+    if (elapsed > 120) {
+      this.recordDiagnostic(`Render ${Math.round(elapsed)}ms for ${stats.totalNodes} nodes`);
+    }
+  }
+
+  private countNodes(nodes: CoderNode[]): number {
+    let count = 0;
+    const walk = (list: CoderNode[]) => {
+      list.forEach((node) => {
+        count += 1;
+        if (node.type === "folder") {
+          walk(node.children);
+        }
+      });
+    };
+    walk(nodes);
+    return count;
+  }
+
+  private shouldVirtualize(totalNodes: number): boolean {
+    return this.effectsMode === "performance" && totalNodes >= 300;
+  }
+
+  private getIndentPx(): number {
+    if (this.indentPx !== null) return this.indentPx;
+    const raw = window.getComputedStyle(this.treeHost).getPropertyValue("--coder-indent").trim();
+    const parsed = Number.parseFloat(raw);
+    this.indentPx = Number.isFinite(parsed) && parsed > 0 ? parsed : 18;
+    return this.indentPx;
+  }
+
+  private buildFlatNodes(nodes: CoderNode[], filter: string, stats: RenderStats): {
+    nodes: FlatNode[];
+    indexById: Map<string, number>;
+  } {
+    const list: FlatNode[] = [];
+    const indexById = new Map<string, number>();
+    const hasActiveFilter = this.hasActiveFilter(filter);
+
+    const walk = (items: CoderNode[], depth: number, parentPath: string[], includeInOutput: boolean): boolean => {
+      let anyVisible = false;
+      items.forEach((node) => {
+        const matchHit = this.matchesFilter(node, filter);
+        let visible = !hasActiveFilter || !this.showOnlyMatches ? true : matchHit;
+        let childVisible = false;
+        if (node.type === "folder") {
+          const collapsed = this.isFolderCollapsed(node.id);
+          childVisible = walk(node.children, depth + 1, [...parentPath, node.id], includeInOutput && !collapsed);
+          if (hasActiveFilter && childVisible) {
+            visible = true;
+          }
+        }
+        stats.totalNodes += 1;
+        if (matchHit && hasActiveFilter) {
+          stats.matched += 1;
+          stats.matchedIds.push(node.id);
+        }
+        if (visible && matchHit && hasActiveFilter) {
+          stats.matchedVisible += 1;
+        }
+        if (includeInOutput && visible) {
+          const entry: FlatNode = { node, depth, path: parentPath, matchHit, hasActiveFilter };
+          indexById.set(node.id, list.length);
+          list.push(entry);
+        }
+        if (visible) {
+          anyVisible = true;
+        }
+      });
+      return anyVisible;
+    };
+
+    walk(nodes, 0, [], true);
+    return { nodes: list, indexById };
+  }
+
+  private handleTreeScroll(): void {
+    this.refreshPinnedPreviewPosition();
+    if (!this.virtualEnabled) return;
+    if (this.virtualScrollRaf !== null) return;
+    this.virtualScrollRaf = window.requestAnimationFrame(() => {
+      this.virtualScrollRaf = null;
+      this.renderVirtualWindow();
+    });
+  }
+
+  private renderVirtualWindow(force = false): void {
+    if (!this.virtualEnabled) return;
+    const total = this.virtualNodes.length;
+    const viewportHeight = this.treeHost.clientHeight;
+    const scrollTop = this.treeHost.scrollTop;
+    const rowHeight = this.virtualRowHeight || 34;
+    const buffer = 6;
+    const start = Math.max(0, Math.floor(scrollTop / rowHeight) - buffer);
+    const end = Math.min(total, Math.ceil((scrollTop + viewportHeight) / rowHeight) + buffer);
+    if (!force && start === this.virtualLastStart && end === this.virtualLastEnd) {
+      return;
+    }
+    this.virtualLastStart = start;
+    this.virtualLastEnd = end;
+    const prevScroll = this.treeHost.scrollTop;
+    this.treeHost.innerHTML = "";
+    if (total === 0) {
+      const empty = document.createElement("div");
+      empty.className = "coder-empty";
+      empty.textContent = this.hasActiveFilter(this.filterInput?.value || "") ? "No matches found." : "No sections yet.";
+      this.treeHost.append(empty);
+      return;
+    }
+
+    const topSpacer = document.createElement("div");
+    topSpacer.className = "coder-virtual-spacer";
+    topSpacer.style.height = `${start * rowHeight}px`;
+
+    const bottomSpacer = document.createElement("div");
+    bottomSpacer.className = "coder-virtual-spacer";
+    bottomSpacer.style.height = `${(total - end) * rowHeight}px`;
+
+    const listWrap = document.createElement("div");
+    listWrap.className = "coder-virtual-list";
+    for (let i = start; i < end; i += 1) {
+      const entry = this.virtualNodes[i];
+      const row = this.renderFlatRow(entry);
+      listWrap.appendChild(row);
+    }
+    const fragment = document.createDocumentFragment();
+    fragment.append(topSpacer, listWrap, bottomSpacer);
+    this.treeHost.append(fragment);
+    this.treeHost.scrollTop = prevScroll;
+
+    const firstRow = listWrap.firstElementChild as HTMLElement | null;
+    if (firstRow) {
+      const measured = firstRow.getBoundingClientRect().height;
+      if (measured > 8 && Math.abs(measured - this.virtualRowHeight) > 2) {
+        this.virtualRowHeight = measured;
+        this.renderVirtualWindow(true);
+      }
+    }
   }
 
   private renderNode(
     node: CoderNode,
     depth: number,
     filter: string,
-    stats: { totalNodes: number; matched: number; matchedVisible: number; matchedIds: string[] },
+    stats: RenderStats,
     parentPath: string[]
   ): HTMLElement {
     const row = document.createElement("div");
@@ -844,6 +1022,245 @@ export class CoderPanel {
     return row;
   }
 
+  private renderFlatRow = (entry: FlatNode): HTMLElement => {
+    const { node, depth, path, matchHit, hasActiveFilter } = entry;
+    const row = document.createElement("div");
+    row.className = "coder-node";
+    row.dataset.id = node.id;
+    row.dataset.type = node.type;
+    row.dataset.depth = String(depth);
+    row.dataset.path = path.join("/");
+    if (depth === 0) row.classList.add("is-root");
+    if (depth > 0) {
+      row.style.marginLeft = `${depth * this.getIndentPx()}px`;
+    }
+    const isRenaming = this.renamingId === node.id;
+    row.draggable = !isRenaming;
+
+    const rowInner = document.createElement("div");
+    rowInner.className = "coder-row";
+
+    const expander = document.createElement("button");
+    expander.type = "button";
+    expander.className = "coder-expander";
+    const collapsed = node.type === "folder" ? this.isFolderCollapsed(node.id) : false;
+    expander.innerHTML =
+      node.type === "folder"
+        ? collapsed
+          ? `<svg class="coder-expander-icon" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.22 3.97a.75.75 0 0 0 0 1.06L9.19 8l-2.97 2.97a.75.75 0 1 0 1.06 1.06l3.5-3.5a.75.75 0 0 0 0-1.06l-3.5-3.5a.75.75 0 0 0-1.06 0Z" fill="currentColor"/></svg>`
+          : `<svg class="coder-expander-icon" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.97 6.22a.75.75 0 0 1 1.06 0L8 9.19l2.97-2.97a.75.75 0 1 1 1.06 1.06l-3.5 3.5a.75.75 0 0 1-1.06 0l-3.5-3.5a.75.75 0 0 1 0-1.06Z" fill="currentColor"/></svg>`
+        : "";
+    expander.disabled = node.type !== "folder";
+    if (node.type === "folder") {
+      expander.setAttribute("aria-label", collapsed ? "Expand folder" : "Collapse folder");
+      expander.setAttribute("aria-expanded", collapsed ? "false" : "true");
+    }
+    expander.addEventListener("pointerdown", (ev) => {
+      ev.stopPropagation();
+      ev.preventDefault();
+    });
+    expander.addEventListener("mousedown", (ev) => {
+      ev.stopPropagation();
+      ev.preventDefault();
+    });
+    expander.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      if (node.type === "folder") {
+        this.collapseStateTouched = true;
+        this.store.setFolderCollapsed(node.id, !this.isFolderCollapsed(node.id));
+      }
+    });
+
+    const label = document.createElement("div");
+    label.className = "coder-label";
+    if (!this.compactMode) {
+      const dot = document.createElement("span");
+      dot.className = "status-dot";
+      if (node.type === "item") {
+        dot.style.background =
+          node.status === "Included" ? "#22c55e" : node.status === "Maybe" ? "#eab308" : "#ef4444";
+      } else {
+        dot.style.background = "#94a3b8";
+      }
+      label.append(dot);
+    }
+
+    if (isRenaming) {
+      const input = document.createElement("input");
+      input.className = "rename-input";
+      input.value = node.name;
+      input.addEventListener("pointerdown", (ev) => ev.stopPropagation());
+      input.addEventListener("mousedown", (ev) => ev.stopPropagation());
+      input.addEventListener("click", (ev) => ev.stopPropagation());
+      input.addEventListener("dragstart", (ev) => ev.preventDefault());
+      const commit = () => {
+        this.renamingId = null;
+        this.setSelectionSingleSilent(node.id);
+        this.store.rename(node.id, input.value.trim());
+      };
+      const cancel = () => {
+        this.renamingId = null;
+        this.render(this.store.snapshot());
+      };
+      input.addEventListener("blur", commit);
+      input.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter") {
+          ev.preventDefault();
+          commit();
+        } else if (ev.key === "Escape") {
+          ev.preventDefault();
+          cancel();
+        }
+      });
+      label.append(input);
+    } else {
+      const title = document.createElement("span");
+      title.className = "coder-title-text";
+      title.textContent = node.name;
+      label.append(title);
+    }
+
+    const actions = document.createElement("div");
+    actions.style.display = "flex";
+    actions.style.gap = "6px";
+    actions.style.alignItems = "center";
+
+    const rowActions = document.createElement("div");
+    rowActions.className = "coder-row-actions";
+    const mkIconBtn = (labelText: string, titleText: string, handler: () => void) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "coder-icon-btn";
+      btn.textContent = labelText;
+      btn.title = titleText;
+      btn.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        this.setSelectionSingleSilent(node.id);
+        handler();
+      });
+      return btn;
+    };
+    rowActions.append(
+      mkIconBtn("✎", "Rename (F2)", () => this.beginRename(undefined, node)),
+      mkIconBtn("🗑", "Delete (Del)", () => this.deleteSelected())
+    );
+
+    if (node.type === "item") {
+      const pill = document.createElement("span");
+      pill.className = "coder-status";
+      if (node.status === "Maybe") pill.classList.add("maybe");
+      if (node.status === "Excluded") pill.classList.add("excluded");
+      pill.textContent = node.status;
+      actions.append(pill);
+    } else {
+      if (!this.compactMode) {
+        const rollup = this.buildFolderRollup(node);
+        actions.append(rollup);
+        const count = document.createElement("span");
+        count.className = "coder-sync";
+        count.textContent = `${node.children.length} child${node.children.length === 1 ? "" : "ren"}`;
+        actions.append(count);
+      }
+    }
+    if (this.anchorSelection === node.id && this.selection.size > 1) {
+      const anchorBadge = document.createElement("span");
+      anchorBadge.className = "coder-anchor-badge";
+      anchorBadge.textContent = "anchor";
+      actions.append(anchorBadge);
+    }
+    actions.append(rowActions);
+
+    rowInner.append(expander, label, actions);
+    row.append(rowInner);
+
+    if (hasActiveFilter && matchHit) {
+      row.classList.add("is-match");
+    }
+    if (hasActiveFilter && !matchHit) {
+      row.classList.add("is-filtered-out");
+    }
+
+    row.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      if (ev.detail > 1) return;
+      this.hideContextMenu();
+      const meta = ev.metaKey || ev.ctrlKey;
+      const shift = ev.shiftKey;
+      if (shift) {
+        this.selectRange(node.id);
+      } else if (meta) {
+        this.toggleSelection(node.id);
+      } else {
+        this.setSelectionSingle(node.id);
+      }
+      if (node.type === "item" && this.onPayloadSelected && this.selection.size === 1) {
+        this.onPayloadSelected(node.payload);
+      }
+      if (node.type === "item" && this.selection.size === 1 && this.pinPreviewOnClick && !meta && !shift) {
+        this.setPinnedPreview(node, row);
+      } else if (node.type !== "item" && this.previewPinned) {
+        this.clearPinnedPreview();
+      }
+    });
+
+    row.addEventListener("dblclick", (ev) => {
+      ev.stopPropagation();
+      this.setSelectionSingle(node.id);
+      this.beginRename(undefined, node);
+    });
+
+    row.addEventListener("dragstart", (ev) => this.handleDragStart(ev, node.id));
+    row.addEventListener("dragover", (ev) => {
+      ev.stopPropagation();
+      if (!this.showDropHints) {
+        ev.preventDefault();
+        return;
+      }
+      this.handleDragOver(ev, node, row);
+    });
+    row.addEventListener("dragleave", () => {
+      this.clearDropTarget();
+      if (node.type === "item") {
+        this.hidePreviewTooltip();
+      }
+    });
+    row.addEventListener("drop", (ev) => {
+      ev.stopPropagation();
+      this.handleDrop(ev, node);
+    });
+
+    row.addEventListener("mouseenter", () => {
+      if (!this.reducedMotion) {
+        this.applyHoverPath(row, node.id);
+      }
+      if (node.type === "item") {
+        if (this.previewPinned && this.previewPinnedId !== node.id) return;
+        this.showPreviewTooltip(node, row);
+      }
+    });
+    row.addEventListener("mouseleave", () => {
+      if (!this.reducedMotion) {
+        this.clearHoverPath(node.id);
+      }
+      if (node.type === "item") {
+        this.hidePreviewTooltip();
+      }
+    });
+
+    if (this.selection.has(node.id)) {
+      row.classList.add("selected");
+      if (this.primarySelection === node.id) {
+        row.classList.add("selected-primary");
+      }
+      if (this.anchorSelection === node.id && this.selection.size > 1) {
+        row.classList.add("selected-anchor");
+        row.title = "Range anchor";
+      }
+    }
+
+    return row;
+  };
+
   private matchesFilter(node: CoderNode, needle: string): boolean {
     if (!this.hasActiveFilter(needle)) return false;
     const match = (value: unknown): boolean =>
@@ -959,15 +1376,29 @@ export class CoderPanel {
 
   private deriveTitleFromPayload(payload: CoderPayload): string {
     const collapse = (value: string): string => String(value || "").replace(/\s+/g, " ").trim();
-    const snippet80 = (value: string): string => {
-      const t = collapse(value);
-      if (!t) return "";
-      return t.length > 80 ? `${t.slice(0, 80).trimEnd()}…` : t;
+    const firstParagraphFromText = (value: string): string => {
+      const normalized = String(value || "").replace(/\r\n?/g, "\n");
+      const chunks = normalized.split(/\n\s*\n/);
+      for (const chunk of chunks) {
+        if (chunk.trim()) return chunk;
+      }
+      return normalized;
     };
-    const text = snippet80(String((payload.text as string | undefined) || ""));
-    if (text) return text;
+
+    const paraphrase = String((payload.paraphrase as string | undefined) || "").trim();
+    if (paraphrase) return snippet80(paraphrase);
+
+    const directQuote = String((payload.direct_quote as string | undefined) || "").trim();
+    if (directQuote) return snippet80(directQuote);
+
+    const title = String((payload.title as string | undefined) || "").trim();
+    if (title && !this.isPlaceholderTitle(title)) return snippet80(title);
+
+    const text = String((payload.text as string | undefined) || "").trim();
+    if (text) return snippet80(firstParagraphFromText(text));
+
     const html = String((payload.section_html as string | undefined) || (payload.html as string | undefined) || "");
-    if (!html.trim()) return "";
+    if (!html.trim()) return DEFAULT_ITEM_TITLE;
     const stripped = html
       .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, " ")
       .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, " ")
@@ -981,13 +1412,17 @@ export class CoderPanel {
       .replace(/&quot;/gi, "\"")
       .replace(/&#39;/gi, "'")
       .trim();
-    return snippet80(stripped);
+    return snippet80(stripped) || DEFAULT_ITEM_TITLE;
   }
 
   private showPreviewTooltip(node: ItemNode, row: HTMLElement): void {
     if (!this.previewTooltip || !this.previewTitle || !this.previewSnippet) return;
     const payloadTitle = String((node.payload.title as string | undefined) || "").trim();
-    const rawTitle = payloadTitle && !this.isPlaceholderTitle(payloadTitle) ? payloadTitle : node.name || payloadTitle || "Selection";
+    const derivedTitle = this.deriveTitleFromPayload(node.payload);
+    const rawTitle =
+      payloadTitle && !this.isPlaceholderTitle(payloadTitle)
+        ? payloadTitle
+        : node.name || derivedTitle || DEFAULT_ITEM_TITLE;
 
     const payloadText = String((node.payload.text as string | undefined) || "").trim();
     const directQuote = String((node.payload.direct_quote as string | undefined) || "").trim();
@@ -1281,12 +1716,13 @@ export class CoderPanel {
       } else {
         const mode = this.resolveNodeDropMode(ev, target);
         this.setDropTarget(target.id, mode);
+        const action = copy ? "Copy" : "Move";
         const label =
           mode === "into"
-            ? `Drop into “${target.name}”`
+            ? `${action} into “${target.name}”`
             : mode === "before"
-            ? `Drop before “${target.name}”`
-            : `Drop after “${target.name}”`;
+            ? `${action} before “${target.name}”`
+            : `${action} after “${target.name}”`;
         this.showDropHint(ev.clientX, ev.clientY, label, this.buildDropIndexHint(target, mode));
       }
       ev.dataTransfer.dropEffect = hasNode ? (copy ? "copy" : "move") : "copy";
@@ -1318,6 +1754,11 @@ export class CoderPanel {
       if (draggedRaw.includes(target.id)) return;
 
       const filtered = draggedRaw.filter((id) => id && id !== target.id && !this.isAncestor(id, target.id));
+      if (filtered.length === 0) {
+        this.showStatusToast("Cannot move a folder into itself.");
+        this.clearDropTarget();
+        return;
+      }
       const dragged = this.orderIdsByTree(filtered);
       if (dragged.length === 0) return;
 
@@ -1356,6 +1797,7 @@ export class CoderPanel {
       } catch {
         // ignore
       }
+      this.showStatusToast("Drop ignored: unsupported content.");
     } else {
       const parentId = this.buildParentForPayloadDrop(target);
       this.addPayloadNode(payload, parentId);
@@ -1373,6 +1815,11 @@ export class CoderPanel {
       const state = this.store.snapshot();
       const rootFolderId = state.nodes[0]?.type === "folder" ? state.nodes[0].id : null;
       const filtered = draggedRaw.filter((id) => id && (!rootFolderId || id !== rootFolderId));
+      if (filtered.length === 0 && draggedRaw.length > 0) {
+        this.showStatusToast("Cannot move the root folder.");
+        this.clearDropTarget();
+        return;
+      }
       const dragged = this.orderIdsByTree(filtered);
       if (dragged.length === 0) return;
 
@@ -1396,6 +1843,8 @@ export class CoderPanel {
     const { payload } = parseDropPayload(dt);
     if (payload) {
       this.addPayloadNode(payload, null);
+    } else if (dt.types.length) {
+      this.showStatusToast("Drop ignored: unsupported content.");
     }
     this.clearDropTarget();
   }
@@ -1448,14 +1897,37 @@ export class CoderPanel {
   }
 
   private handleGlobalKeyDown(ev: KeyboardEvent): void {
+    if (this.paletteVisible && this.handlePaletteKeyDown(ev)) {
+      return;
+    }
+    if (this.helpVisible && ev.key === "Escape") {
+      ev.preventDefault();
+      this.hideHelpOverlay();
+      return;
+    }
+    const meta = ev.metaKey || ev.ctrlKey;
+    const shift = ev.shiftKey;
+    if (meta && shift && ev.key.toLowerCase() === "p") {
+      ev.preventDefault();
+      this.toggleCommandPalette();
+      return;
+    }
+    if (meta && shift && ev.key.toLowerCase() === "l") {
+      ev.preventDefault();
+      this.toggleDiagnosticsOverlay();
+      return;
+    }
     if (this.isEditingText(ev.target)) return;
+    if (ev.key === "?" || (ev.key === "/" && ev.shiftKey)) {
+      ev.preventDefault();
+      this.toggleHelpOverlay();
+      return;
+    }
     if (this.contextMenu && this.handleContextMenuShortcuts(ev)) {
       return;
     }
     this.hideContextMenu();
     const node = this.selectedNode();
-    const meta = ev.metaKey || ev.ctrlKey;
-    const shift = ev.shiftKey;
     if (ev.key === "Delete" || ev.key === "Backspace") {
       ev.preventDefault();
       this.deleteSelected();
@@ -1533,6 +2005,11 @@ export class CoderPanel {
     if (ev.key === "ArrowUp" && !meta) {
       ev.preventDefault();
       this.moveSelectionBy(-1, shift);
+      return;
+    }
+    if (meta && shift && ev.key === "Home") {
+      ev.preventDefault();
+      this.moveSelectionToRoot();
       return;
     }
     if (ev.key === "Home") {
@@ -1776,6 +2253,9 @@ export class CoderPanel {
   }
 
   private getVisibleNodeIds(): string[] {
+    if (this.virtualEnabled) {
+      return this.virtualNodes.map((entry) => entry.node.id);
+    }
     const nodes = Array.from(this.treeHost.querySelectorAll(".coder-node")) as HTMLElement[];
     return nodes
       .filter((node) => !node.classList.contains("is-hidden") && node.offsetParent !== null)
@@ -1805,8 +2285,17 @@ export class CoderPanel {
 
   private scrollNodeIntoView(nodeId: string): void {
     const target = this.treeHost.querySelector(`[data-id="${nodeId}"]`) as HTMLElement | null;
-    if (!target) return;
-    target.scrollIntoView({ block: "nearest" });
+    if (target) {
+      target.scrollIntoView({ block: "nearest" });
+      return;
+    }
+    if (this.virtualEnabled) {
+      const index = this.virtualIndexById.get(nodeId);
+      if (typeof index === "number") {
+        this.treeHost.scrollTop = index * this.virtualRowHeight;
+        this.renderVirtualWindow(true);
+      }
+    }
   }
 
   private getTopLevelSelected(): string[] {
@@ -1859,6 +2348,22 @@ export class CoderPanel {
     this.anchorSelection = ids[0] ?? null;
     this.render(this.store.snapshot());
     this.scrollNodeIntoView(this.primarySelection ?? ids[0]);
+  }
+
+  private moveSelectionToRoot(): void {
+    const ids = this.getTopLevelSelected();
+    if (!ids.length) return;
+    const state = this.store.snapshot();
+    const rootFolderId = state.nodes[0]?.type === "folder" ? state.nodes[0].id : null;
+    const filtered = rootFolderId ? ids.filter((id) => id !== rootFolderId) : ids;
+    if (!filtered.length) return;
+    const targetIndex = state.nodes.length;
+    this.store.moveMany({ nodeIds: filtered, targetParentId: null, targetIndex });
+    this.selection = new Set(filtered);
+    this.primarySelection = filtered[filtered.length - 1] ?? null;
+    this.anchorSelection = filtered[0] ?? null;
+    this.render(this.store.snapshot());
+    this.scrollNodeIntoView(this.primarySelection ?? filtered[0]);
   }
 
   private handleGlobalClick(event: MouseEvent): void {
@@ -2051,7 +2556,13 @@ export class CoderPanel {
     if (target?.closest?.(".coder-node")) return;
     ev.preventDefault();
     this.setRootDropTarget(true);
-    this.showDropHint(ev.clientX, ev.clientY, "Drop at root", this.buildRootHint());
+    const hasNode = ev.dataTransfer ? ev.dataTransfer.types.includes(NODE_MIME) : false;
+    if (hasNode) {
+      const action = this.isCopyModifierActive(ev) ? "Copy" : "Move";
+      this.showDropHint(ev.clientX, ev.clientY, `${action} to root`, this.buildRootHint());
+    } else {
+      this.showDropHint(ev.clientX, ev.clientY, "Drop at root", this.buildRootHint());
+    }
   }
 
   private ensureDropHint(): HTMLDivElement {
@@ -2085,35 +2596,474 @@ export class CoderPanel {
     this.dropHint.classList.remove("is-visible");
   }
 
+  private ensureHelpOverlay(): void {
+    if (this.helpOverlay) return;
+    const overlay = document.createElement("div");
+    overlay.className = "coder-help-overlay";
+    overlay.addEventListener("click", (ev) => {
+      if (ev.target === overlay) {
+        this.hideHelpOverlay();
+      }
+    });
+
+    const card = document.createElement("div");
+    card.className = "coder-help-card";
+    const header = document.createElement("div");
+    header.className = "coder-help-header";
+    const title = document.createElement("div");
+    title.className = "coder-help-title";
+    title.textContent = "Coder shortcuts";
+    const closeBtn = document.createElement("button");
+    closeBtn.type = "button";
+    closeBtn.className = "coder-help-close";
+    closeBtn.textContent = "Close";
+    closeBtn.addEventListener("click", () => this.hideHelpOverlay());
+    header.append(title, closeBtn);
+
+    const list = document.createElement("div");
+    list.className = "coder-help-list";
+    this.getShortcutList().forEach(({ keys, desc }) => {
+      const row = document.createElement("div");
+      row.className = "coder-help-row";
+      const k = document.createElement("span");
+      k.className = "coder-help-keys";
+      k.textContent = keys;
+      const d = document.createElement("span");
+      d.className = "coder-help-desc";
+      d.textContent = desc;
+      row.append(k, d);
+      list.appendChild(row);
+    });
+
+    card.append(header, list);
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+    this.helpOverlay = overlay;
+  }
+
+  private ensureCommandPalette(): void {
+    if (this.paletteOverlay) return;
+    const overlay = document.createElement("div");
+    overlay.className = "coder-palette-overlay";
+    overlay.addEventListener("click", (ev) => {
+      if (ev.target === overlay) {
+        this.hideCommandPalette();
+      }
+    });
+
+    const card = document.createElement("div");
+    card.className = "coder-palette-card";
+    const input = document.createElement("input");
+    input.type = "text";
+    input.placeholder = "Type a command…";
+    input.className = "coder-palette-input";
+    input.addEventListener("input", () => this.updatePaletteList());
+    input.addEventListener("keydown", (ev) => this.handlePaletteKeyDown(ev));
+
+    const list = document.createElement("div");
+    list.className = "coder-palette-list";
+
+    card.append(input, list);
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+    this.paletteOverlay = overlay;
+    this.paletteInput = input;
+    this.paletteList = list;
+  }
+
+  private toggleCommandPalette(): void {
+    if (!this.paletteOverlay) this.ensureCommandPalette();
+    if (!this.paletteOverlay) return;
+    this.paletteVisible = !this.paletteVisible;
+    this.paletteOverlay.classList.toggle("is-visible", this.paletteVisible);
+    if (this.paletteVisible && this.paletteInput) {
+      this.paletteInput.value = "";
+      this.paletteIndex = 0;
+      this.updatePaletteList();
+      this.paletteInput.focus();
+      this.paletteInput.select();
+    }
+  }
+
+  private hideCommandPalette(): void {
+    if (!this.paletteOverlay) return;
+    this.paletteVisible = false;
+    this.paletteOverlay.classList.remove("is-visible");
+  }
+
+  private handlePaletteKeyDown(ev: KeyboardEvent): boolean {
+    if (!this.paletteVisible) return false;
+    const list = this.paletteFiltered;
+    if (ev.key === "Escape") {
+      ev.preventDefault();
+      this.hideCommandPalette();
+      return true;
+    }
+    if (ev.key === "ArrowDown") {
+      ev.preventDefault();
+      if (list.length) {
+        this.paletteIndex = (this.paletteIndex + 1) % list.length;
+        this.updatePaletteList();
+      }
+      return true;
+    }
+    if (ev.key === "ArrowUp") {
+      ev.preventDefault();
+      if (list.length) {
+        this.paletteIndex = (this.paletteIndex - 1 + list.length) % list.length;
+        this.updatePaletteList();
+      }
+      return true;
+    }
+    if (ev.key === "Enter") {
+      ev.preventDefault();
+      const action = list[this.paletteIndex];
+      if (action && action.enabled) {
+        this.hideCommandPalette();
+        action.run();
+      }
+      return true;
+    }
+    return false;
+  }
+
+  private updatePaletteList(): void {
+    if (!this.paletteList || !this.paletteInput) return;
+    const query = this.paletteInput.value.trim().toLowerCase();
+    const actions = this.getPaletteActions();
+    const filtered = actions.filter((action) => {
+      if (!query) return true;
+      return action.label.toLowerCase().includes(query) || action.keywords.includes(query);
+    });
+    this.paletteFiltered = filtered;
+    if (this.paletteIndex >= filtered.length) this.paletteIndex = 0;
+    this.paletteList.innerHTML = "";
+    filtered.forEach((action, index) => {
+      const row = document.createElement("div");
+      row.className = "coder-palette-row";
+      if (!action.enabled) row.classList.add("is-disabled");
+      if (index === this.paletteIndex) row.classList.add("is-selected");
+      row.textContent = action.label;
+      row.addEventListener("click", () => {
+        if (!action.enabled) return;
+        this.hideCommandPalette();
+        action.run();
+      });
+      this.paletteList?.appendChild(row);
+    });
+    if (filtered.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "coder-palette-empty";
+      empty.textContent = "No matching commands";
+      this.paletteList.appendChild(empty);
+    }
+  }
+
+  private getPaletteActions(): Array<{ id: string; label: string; keywords: string; enabled: boolean; run: () => void }> {
+    const node = this.selectedNode();
+    const hasSelection = Boolean(node);
+    const isFolder = node?.type === "folder";
+    const isItem = node?.type === "item";
+    return [
+      {
+        id: "new-folder",
+        label: "New folder",
+        keywords: "folder section add create",
+        enabled: true,
+        run: () => this.addFolderShortcut(isFolder ? node?.id : this.selectedFolderId())
+      },
+      {
+        id: "new-folder-root",
+        label: "New folder at root",
+        keywords: "folder section root add create",
+        enabled: true,
+        run: () => this.addFolderShortcut(null)
+      },
+      {
+        id: "rename",
+        label: "Rename selection",
+        keywords: "rename edit title",
+        enabled: hasSelection,
+        run: () => node && this.beginRename(undefined, node)
+      },
+      {
+        id: "delete",
+        label: "Delete selection",
+        keywords: "delete remove",
+        enabled: hasSelection,
+        run: () => this.deleteSelected()
+      },
+      {
+        id: "duplicate",
+        label: "Duplicate selection",
+        keywords: "duplicate copy",
+        enabled: hasSelection,
+        run: () => this.duplicateSelection()
+      },
+      {
+        id: "move-root",
+        label: "Move selection to root",
+        keywords: "move root",
+        enabled: hasSelection,
+        run: () => this.moveSelectionToRoot()
+      },
+      {
+        id: "indent",
+        label: "Indent selection",
+        keywords: "indent nest",
+        enabled: hasSelection,
+        run: () => this.indentSelection()
+      },
+      {
+        id: "outdent",
+        label: "Outdent selection",
+        keywords: "outdent unnest",
+        enabled: hasSelection,
+        run: () => this.outdentSelection()
+      },
+      {
+        id: "expand-all",
+        label: "Expand all folders",
+        keywords: "expand open",
+        enabled: true,
+        run: () => this.toggleAllFolders(true)
+      },
+      {
+        id: "collapse-all",
+        label: "Collapse all folders",
+        keywords: "collapse close",
+        enabled: true,
+        run: () => this.toggleAllFolders(false)
+      },
+      {
+        id: "focus-filter",
+        label: "Focus filter",
+        keywords: "filter search",
+        enabled: true,
+        run: () => this.focusFilterInput()
+      },
+      {
+        id: "toggle-note",
+        label: "Toggle note panel",
+        keywords: "note panel",
+        enabled: true,
+        run: () => this.noteBox.classList.toggle("coder-note-visible")
+      },
+      {
+        id: "show-shortcuts",
+        label: "Show shortcuts",
+        keywords: "help shortcuts",
+        enabled: true,
+        run: () => this.toggleHelpOverlay()
+      },
+      {
+        id: "diagnostics",
+        label: "Toggle diagnostics",
+        keywords: "logs diagnostics",
+        enabled: true,
+        run: () => this.toggleDiagnosticsOverlay()
+      },
+      {
+        id: "clear-selection",
+        label: "Clear selection",
+        keywords: "clear selection",
+        enabled: hasSelection,
+        run: () => {
+          this.clearSelection();
+          this.render(this.store.snapshot());
+        }
+      }
+    ];
+  }
+
+  private toggleHelpOverlay(): void {
+    if (!this.helpOverlay) this.ensureHelpOverlay();
+    if (!this.helpOverlay) return;
+    this.helpVisible = !this.helpVisible;
+    this.helpOverlay.classList.toggle("is-visible", this.helpVisible);
+  }
+
+  private hideHelpOverlay(): void {
+    if (!this.helpOverlay) return;
+    this.helpVisible = false;
+    this.helpOverlay.classList.remove("is-visible");
+  }
+
+  private ensureDiagnosticsOverlay(): void {
+    if (this.diagnosticsOverlay) return;
+    const overlay = document.createElement("div");
+    overlay.className = "coder-diag-overlay";
+    overlay.addEventListener("click", (ev) => {
+      if (ev.target === overlay) {
+        this.hideDiagnosticsOverlay();
+      }
+    });
+
+    const card = document.createElement("div");
+    card.className = "coder-diag-card";
+    const header = document.createElement("div");
+    header.className = "coder-diag-header";
+    const title = document.createElement("div");
+    title.className = "coder-diag-title";
+    title.textContent = "Coder diagnostics";
+    const actions = document.createElement("div");
+    actions.className = "coder-diag-actions";
+    const clearBtn = document.createElement("button");
+    clearBtn.type = "button";
+    clearBtn.className = "coder-help-close";
+    clearBtn.textContent = "Clear";
+    clearBtn.addEventListener("click", () => {
+      this.diagnostics = [];
+      this.updateDiagnosticsList();
+    });
+    const closeBtn = document.createElement("button");
+    closeBtn.type = "button";
+    closeBtn.className = "coder-help-close";
+    closeBtn.textContent = "Close";
+    closeBtn.addEventListener("click", () => this.hideDiagnosticsOverlay());
+    actions.append(clearBtn, closeBtn);
+    header.append(title, actions);
+
+    const list = document.createElement("div");
+    list.className = "coder-diag-list";
+
+    card.append(header, list);
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+    this.diagnosticsOverlay = overlay;
+    this.diagnosticsList = list;
+  }
+
+  private toggleDiagnosticsOverlay(): void {
+    if (!this.diagnosticsOverlay) this.ensureDiagnosticsOverlay();
+    if (!this.diagnosticsOverlay) return;
+    this.diagnosticsVisible = !this.diagnosticsVisible;
+    this.diagnosticsOverlay.classList.toggle("is-visible", this.diagnosticsVisible);
+    if (this.diagnosticsVisible) {
+      this.updateDiagnosticsList();
+    }
+  }
+
+  private hideDiagnosticsOverlay(): void {
+    if (!this.diagnosticsOverlay) return;
+    this.diagnosticsVisible = false;
+    this.diagnosticsOverlay.classList.remove("is-visible");
+  }
+
+  private recordDiagnostic(message: string): void {
+    const ts = new Date().toISOString().replace("T", " ").replace("Z", "");
+    this.diagnostics.push({ ts, message });
+    if (this.diagnostics.length > 50) {
+      this.diagnostics = this.diagnostics.slice(this.diagnostics.length - 50);
+    }
+    if (this.diagnosticsVisible) {
+      this.updateDiagnosticsList();
+    }
+  }
+
+  private updateDiagnosticsList(): void {
+    if (!this.diagnosticsList) return;
+    this.diagnosticsList.innerHTML = "";
+    if (this.diagnostics.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "coder-diag-empty";
+      empty.textContent = "No diagnostics recorded yet.";
+      this.diagnosticsList.appendChild(empty);
+      return;
+    }
+    this.diagnostics.forEach((entry) => {
+      const row = document.createElement("div");
+      row.className = "coder-diag-row";
+      const ts = document.createElement("span");
+      ts.className = "coder-diag-ts";
+      ts.textContent = entry.ts;
+      const msg = document.createElement("span");
+      msg.className = "coder-diag-msg";
+      msg.textContent = entry.message;
+      row.append(ts, msg);
+      this.diagnosticsList?.appendChild(row);
+    });
+  }
+
+  private getShortcutList(): Array<{ keys: string; desc: string }> {
+    return [
+      { keys: "?", desc: "Show/hide this shortcuts panel" },
+      { keys: "Ctrl/Cmd + Shift + P", desc: "Open command palette" },
+      { keys: "Ctrl/Cmd + Shift + L", desc: "Open diagnostics panel" },
+      { keys: "Drag", desc: "Move item/folder within the tree" },
+      { keys: "Ctrl/Alt + Drag", desc: "Copy item/folder to target" },
+      { keys: "Delete / Backspace", desc: "Delete selection" },
+      { keys: "F2 or Enter", desc: "Rename selected node" },
+      { keys: "Ctrl/Cmd + N (Shift for root)", desc: "New folder" },
+      { keys: "Arrow Up/Down", desc: "Change selection (Shift extends range)" },
+      { keys: "Ctrl/Cmd + Arrow Up/Down", desc: "Move node up/down within its folder" },
+      { keys: "Ctrl/Cmd + PageUp/PageDown", desc: "Move node to top/bottom of its folder" },
+      { keys: "Ctrl/Cmd + Shift + Home", desc: "Move selection to root" },
+      { keys: "Ctrl/Cmd + Shift + Arrow Right", desc: "Indent selection into previous folder sibling" },
+      { keys: "Ctrl/Cmd + Shift + Arrow Left", desc: "Outdent selection to parent folder" },
+      { keys: "Home / End", desc: "Jump to first/last visible row (Shift extends)" },
+      { keys: "Ctrl/Cmd + D", desc: "Duplicate selection" },
+      { keys: "Ctrl/Cmd + Shift + V", desc: "Paste clipboard as new item" },
+      { keys: "1 / 2 / 3", desc: "Set status: Included / Maybe / Excluded" },
+      { keys: "Ctrl/Cmd + F", desc: "Focus filter" },
+      { keys: "F3 / Shift+F3 (Ctrl/Cmd+G)", desc: "Next / previous match" },
+      { keys: "Space", desc: "Toggle folder expand/collapse" },
+      { keys: "Alt + Arrow Left/Right", desc: "Collapse / expand all folders" },
+      { keys: "Alt + N", desc: "Toggle note panel" }
+    ];
+  }
+
   private showUndoToast(message: string, onUndo: () => void): void {
     if (this.toastTimer) {
       window.clearTimeout(this.toastTimer);
       this.toastTimer = undefined;
     }
-    if (!this.toast) {
-      const toast = document.createElement("div");
-      toast.className = "coder-toast";
-      const msg = document.createElement("span");
-      msg.className = "coder-toast-message";
-      const actions = document.createElement("div");
-      actions.className = "coder-toast-actions";
-      const undo = document.createElement("button");
-      undo.type = "button";
-      undo.className = "coder-btn";
-      undo.textContent = "Undo";
-      undo.addEventListener("click", () => {
-        onUndo();
-        this.hideToast();
-      });
-      actions.append(undo);
-      toast.append(msg, actions);
-      this.element.append(toast);
-      this.toast = toast;
-    }
-    const msg = this.toast.querySelector(".coder-toast-message") as HTMLElement | null;
-    if (msg) msg.textContent = message;
-    this.toast.classList.add("is-visible");
+    this.ensureToast();
+    this.toastUndoHandler = onUndo;
+    if (this.toastMessage) this.toastMessage.textContent = message;
+    if (this.toastActions) this.toastActions.style.display = "flex";
+    this.toast?.classList.add("is-visible");
     this.toastTimer = window.setTimeout(() => this.hideToast(), 6000);
+  }
+
+  private showStatusToast(message: string): void {
+    if (this.toastTimer) {
+      window.clearTimeout(this.toastTimer);
+      this.toastTimer = undefined;
+    }
+    this.ensureToast();
+    this.toastUndoHandler = undefined;
+    if (this.toastMessage) this.toastMessage.textContent = message;
+    if (this.toastActions) this.toastActions.style.display = "none";
+    this.toast?.classList.add("is-visible");
+    this.toastTimer = window.setTimeout(() => this.hideToast(), 4000);
+    this.recordDiagnostic(message);
+  }
+
+  private ensureToast(): void {
+    if (this.toast) return;
+    const toast = document.createElement("div");
+    toast.className = "coder-toast";
+    const msg = document.createElement("span");
+    msg.className = "coder-toast-message";
+    const actions = document.createElement("div");
+    actions.className = "coder-toast-actions";
+    const undo = document.createElement("button");
+    undo.type = "button";
+    undo.className = "coder-btn";
+    undo.textContent = "Undo";
+    undo.addEventListener("click", () => {
+      if (this.toastUndoHandler) {
+        this.toastUndoHandler();
+      }
+      this.hideToast();
+    });
+    actions.append(undo);
+    toast.append(msg, actions);
+    this.element.append(toast);
+    this.toast = toast;
+    this.toastMessage = msg;
+    this.toastActions = actions;
   }
 
   private hideToast(): void {

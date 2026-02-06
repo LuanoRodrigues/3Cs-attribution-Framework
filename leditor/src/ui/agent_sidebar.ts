@@ -10,6 +10,9 @@ import {
 import { appendAgentHistoryMessage, getAgentHistory } from "./agent_history.ts";
 import { Fragment } from "prosemirror-model";
 import agentActionPrompts from "./agent_action_prompts.json";
+import diffMatchPatch from "diff-match-patch";
+import { getSourceCheckState } from "../editor/source_check_badges.ts";
+import { buildLlmCacheKey, getLlmCacheEntry, setLlmCacheEntry } from "./llm_cache.ts";
 
 export type AgentMessage = {
   id: string;
@@ -63,6 +66,9 @@ type SubstantiateSuggestion = {
   rewrite: string;
   stance?: "corroborates" | "refutes" | "mixed" | "uncertain";
   notes?: string;
+  justification?: string;
+  suggestion?: string;
+  diffs?: string;
   matches: SubstantiateMatch[];
   from?: number;
   to?: number;
@@ -395,9 +401,11 @@ export const createAgentSidebar = (
   let pendingActionId: AgentActionId | null = null;
   let substantiateResults: SubstantiateSuggestion[] = [];
   let substantiateError: string | null = null;
+  let substantiateSuppressedKeys = new Set<string>();
   let lastApiMeta: { provider?: string; model?: string; ms?: number; ts: number } | null = null;
   let abortController: AbortController | null = null;
   let activeRequestId: string | null = null;
+  let sourcesLoading = false;
 
   const makeRequestId = () => `agent-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   const makeMessageId = () => `msg-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -478,6 +486,82 @@ export const createAgentSidebar = (
       .replaceAll(">", "&gt;")
       .replaceAll("\"", "&quot;")
       .replaceAll("'", "&#39;");
+
+  const dmp = new (diffMatchPatch as any)();
+
+  const normalizeDiffText = (value: string) => String(value ?? "").replace(/\s+/g, " ").trim();
+
+  const diffByWords = (original: string, proposed: string): Array<[number, string]> => {
+    const base = normalizeDiffText(original);
+    const next = normalizeDiffText(proposed);
+    const aTokens = base ? base.split(/(\s+)/).filter((t) => t.length > 0) : [];
+    const bTokens = next ? next.split(/(\s+)/).filter((t) => t.length > 0) : [];
+    const totalTokens = aTokens.length + bTokens.length;
+    if (!aTokens.length && !bTokens.length) return [[0, ""]];
+    if (totalTokens > 65000) {
+      const diffs = dmp.diff_main(base, next) as Array<[number, string]>;
+      dmp.diff_cleanupSemantic(diffs);
+      return diffs;
+    }
+    const tokenMap = new Map<string, number>();
+    const tokenList: string[] = [];
+    const encode = (tokens: string[]) => {
+      let out = "";
+      for (const token of tokens) {
+        let id = tokenMap.get(token);
+        if (id === undefined) {
+          id = tokenList.length;
+          tokenList.push(token);
+          tokenMap.set(token, id);
+        }
+        out += String.fromCharCode(id);
+      }
+      return out;
+    };
+    const aEncoded = encode(aTokens);
+    const bEncoded = encode(bTokens);
+    let diffs: Array<[number, string]> = [];
+    try {
+      diffs = dmp.diff_main(aEncoded, bEncoded) as Array<[number, string]>;
+      dmp.diff_cleanupSemantic(diffs);
+    } catch {
+      return [[0, next]];
+    }
+    const decoded: Array<[number, string]> = [];
+    for (const [op, text] of diffs) {
+      if (!text) continue;
+      let out = "";
+      for (let i = 0; i < text.length; i += 1) {
+        const token = tokenList[text.charCodeAt(i)] ?? "";
+        out += token;
+      }
+      decoded.push([op, out]);
+    }
+    return decoded;
+  };
+
+  const renderDiff = (target: HTMLElement, original: string, proposed: string) => {
+    target.replaceChildren();
+    let diffs: Array<[number, string]> = [];
+    try {
+      diffs = diffByWords(original, proposed);
+    } catch {
+      diffs = [[0, normalizeDiffText(proposed)]];
+    }
+    for (const [op, text] of diffs) {
+      if (!text) continue;
+      const span = document.createElement("span");
+      if (op === 1) {
+        span.className = "leditor-agent-sidebar__diffIns";
+      } else if (op === -1) {
+        span.className = "leditor-agent-sidebar__diffDel";
+      } else {
+        span.className = "leditor-agent-sidebar__diffEq";
+      }
+      span.textContent = text;
+      target.appendChild(span);
+    }
+  };
 
   type HighlightSpan = { start: number; end: number; kind: "cmd" | "target" | "selection" };
 
@@ -915,6 +999,18 @@ export const createAgentSidebar = (
     statusLine.textContent = String(text || "").trim() || "Ready.";
   };
 
+  const beginSourcesLoading = () => {
+    if (sourcesLoading) return;
+    sourcesLoading = true;
+    setViewMode("sources");
+    setStatus("Loading sources…");
+    renderBoxes();
+  };
+
+  const endSourcesLoading = () => {
+    sourcesLoading = false;
+  };
+
   const truncate = (value: string, maxLen: number) => {
     const s = String(value ?? "").replace(/\s+/g, " ").trim();
     if (s.length <= maxLen) return s;
@@ -1139,11 +1235,11 @@ export const createAgentSidebar = (
       applyAllBtn.textContent = "Apply fixes";
       bindIconAction(applyAllBtn, () => {
         try {
-          editorHandle.execCommand("ai.sourceChecks.applyAllFixes");
+          queueAllSourceRewriteDrafts(threadItems as any[]);
+          setStatus("Drafts queued • Review inline in the document.");
         } catch {
           // ignore
         }
-        renderBoxes();
       });
 
       const dismissAllBtn = document.createElement("button");
@@ -1151,12 +1247,8 @@ export const createAgentSidebar = (
       dismissAllBtn.className = "leditor-source-check-rail__btn";
       dismissAllBtn.textContent = "Dismiss fixes";
       bindIconAction(dismissAllBtn, () => {
-        try {
-          editorHandle.execCommand("ai.sourceChecks.dismissAllFixes");
-        } catch {
-          // ignore
-        }
-        renderBoxes();
+        clearSourceRewriteDrafts();
+        setStatus("Cleared queued rewrites.");
       });
 
       headerBtns.append(clearBtn, applyAllBtn, dismissAllBtn);
@@ -1166,7 +1258,7 @@ export const createAgentSidebar = (
       if (threadItems.length === 0) {
         const empty = document.createElement("div");
         empty.className = "leditor-agent-sidebar__boxEmpty";
-        empty.textContent = "No source checks yet.";
+        empty.textContent = sourcesLoading ? "Loading sources…" : "No source checks yet.";
         boxesEl.appendChild(empty);
         return;
       }
@@ -1251,12 +1343,6 @@ export const createAgentSidebar = (
           const fixSuggestion = typeof it?.fixSuggestion === "string" ? String(it.fixSuggestion) : "";
           const claimRewrite = typeof it?.claimRewrite === "string" ? String(it.claimRewrite) : "";
           const suggestedReplacementKey = typeof it?.suggestedReplacementKey === "string" ? String(it.suggestedReplacementKey) : "";
-          const fixStatus =
-            typeof it?.fixStatus === "string"
-              ? String(it.fixStatus)
-              : verdict === "verified"
-                ? "applied"
-                : "pending";
 
           const row = document.createElement("div");
           row.className = "leditor-source-check-rail__row";
@@ -1292,48 +1378,17 @@ export const createAgentSidebar = (
             const actions = document.createElement("div");
             actions.className = "leditor-source-check-rail__rowFixActions";
 
-            if (fixStatus === "applied") {
-              const tag = document.createElement("span");
-              tag.textContent = "Applied";
-              tag.className = "leditor-source-check-rail__rowFixTag";
-              actions.appendChild(tag);
-            } else if (fixStatus === "dismissed") {
-              const tag = document.createElement("span");
-              tag.textContent = "Dismissed";
-              tag.className = "leditor-source-check-rail__rowFixTag";
-              actions.appendChild(tag);
-            } else {
-              const applyFix = document.createElement("button");
-              applyFix.type = "button";
-              applyFix.className = "leditor-source-check-rail__rowReplace";
-              applyFix.textContent = "Apply rewrite";
-              bindIconAction(applyFix, () => {
-                if (!key) return;
-                try {
-                  editorHandle.execCommand("ai.sourceChecks.applyFix", { key });
-                } catch {
-                  // ignore
-                }
-                renderBoxes();
-                focusAnchor(it?.anchor);
-              });
-
-              const dismissFix = document.createElement("button");
-              dismissFix.type = "button";
-              dismissFix.className = "leditor-source-check-rail__rowReplace";
-              dismissFix.textContent = "Dismiss rewrite";
-              bindIconAction(dismissFix, () => {
-                if (!key) return;
-                try {
-                  editorHandle.execCommand("ai.sourceChecks.dismissFix", { key });
-                } catch {
-                  // ignore
-                }
-                renderBoxes();
-              });
-
-              actions.append(applyFix, dismissFix);
-            }
+            const applyFix = document.createElement("button");
+            applyFix.type = "button";
+            applyFix.className = "leditor-source-check-rail__rowReplace";
+            applyFix.textContent = "Insert rewrite";
+            bindIconAction(applyFix, () => {
+              if (!key) return;
+              queueSourceRewriteDraft({ key, rewrite: claimRewrite, paragraphN: it?.paragraphN });
+              renderBoxes();
+              focusAnchor(it?.anchor);
+            });
+            actions.appendChild(applyFix);
 
             rowMain.appendChild(actions);
           }
@@ -1446,7 +1501,7 @@ export const createAgentSidebar = (
       if (substantiateResults.length === 0) {
         const empty = document.createElement("div");
         empty.className = "leditor-agent-sidebar__boxEmpty";
-        empty.textContent = "No substantiate suggestions yet.";
+        empty.textContent = inflight ? "Loading substantiate…" : "No substantiate suggestions yet.";
         boxesEl.appendChild(empty);
         return;
       }
@@ -1458,14 +1513,44 @@ export const createAgentSidebar = (
         return "Uncertain";
       };
 
-      for (const s of substantiateResults) {
-        const card = document.createElement("div");
-        card.className = "leditor-agent-sidebar__boxCard";
-        card.addEventListener("click", (e) => {
-          if ((e.target as HTMLElement)?.closest?.("button,summary")) return;
-          focusParagraphNumber(s.paragraphN);
-        });
+      const headerRow = document.createElement("div");
+      headerRow.className = "leditor-agent-sidebar__boxHeaderRow";
+      const headerTitle = document.createElement("div");
+      headerTitle.className = "leditor-agent-sidebar__boxHeaderTitle";
+      headerTitle.textContent = "Substantiate suggestions";
+      const headerActions = document.createElement("div");
+      headerActions.className = "leditor-agent-sidebar__boxHeaderActions";
+      const btnRejectAll = document.createElement("button");
+      btnRejectAll.type = "button";
+      btnRejectAll.className = "leditor-agent-sidebar__boxHeaderBtn";
+      btnRejectAll.textContent = "Reject all";
+      btnRejectAll.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        rejectAllPending();
+      });
+      const btnAcceptAll = document.createElement("button");
+      btnAcceptAll.type = "button";
+      btnAcceptAll.className = "leditor-agent-sidebar__boxHeaderBtn leditor-agent-sidebar__boxHeaderBtn--primary";
+      btnAcceptAll.textContent = "Accept all";
+      btnAcceptAll.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        acceptAllPending();
+      });
+      const subApply = (pendingByView as any).substantiate as AgentRunResult["apply"] | null;
+      const hasPending =
+        subApply &&
+        subApply.kind === "batchReplace" &&
+        Array.isArray((subApply as any).items) &&
+        (subApply as any).items.length > 0;
+      btnRejectAll.disabled = !hasPending;
+      btnAcceptAll.disabled = !hasPending;
+      headerActions.append(btnRejectAll, btnAcceptAll);
+      headerRow.append(headerTitle, headerActions);
+      boxesEl.appendChild(headerRow);
 
+      for (const s of substantiateResults) {
         const h = document.createElement("div");
         h.className = "leditor-agent-sidebar__boxHeader";
         h.textContent = `P${s.paragraphN} • ${stanceLabel(s.stance)}`;
@@ -1474,25 +1559,74 @@ export const createAgentSidebar = (
         meta.className = "leditor-agent-sidebar__boxMeta";
         meta.textContent = s.anchorTitle || s.anchorText || "Anchor";
 
-        const body = document.createElement("div");
-        body.className = "leditor-agent-sidebar__boxBody";
-        body.textContent = s.rewrite || s.sentence;
+        const original = String(s.sentence ?? "").replace(/\s+/g, " ").trim();
+        const proposed = String(s.rewrite ?? "").replace(/\s+/g, " ").trim() || original;
+        const canEdit =
+          typeof s.from === "number" &&
+          typeof s.to === "number" &&
+          Number.isFinite(s.from) &&
+          Number.isFinite(s.to) &&
+          s.from < s.to;
 
-        if (s.notes) {
-          const notes = document.createElement("div");
-          notes.className = "leditor-agent-sidebar__subNotes";
-          notes.textContent = s.notes;
-          body.appendChild(notes);
+        const card = document.createElement("div");
+        card.className = "leditor-agent-sidebar__boxCard";
+        card.addEventListener("click", (e) => {
+          if ((e.target as HTMLElement)?.closest?.("button,summary")) return;
+          focusParagraphNumber(s.paragraphN);
+          if (canEdit) {
+            const key = `${s.from}:${s.to}`;
+            ensureSubstantiateDraftItem(s);
+            window.requestAnimationFrame(() => {
+              openDraftPopoverForKey(key);
+            });
+          }
+        });
+
+        const diffBody = document.createElement("div");
+        diffBody.className = "leditor-agent-sidebar__boxBody leditor-agent-sidebar__boxBody--diff";
+        if (original || proposed) {
+          renderDiff(diffBody, original, proposed);
         }
 
-        const original = document.createElement("details");
-        original.className = "leditor-agent-sidebar__subOriginal";
-        const summary = document.createElement("summary");
-        summary.textContent = "Original sentence";
-        const originalText = document.createElement("div");
-        originalText.className = "leditor-agent-sidebar__subOriginalText";
-        originalText.textContent = s.sentence || "(no sentence captured)";
-        original.append(summary, originalText);
+        const editLabel = document.createElement("div");
+        editLabel.className = "leditor-agent-sidebar__subLabel";
+        editLabel.textContent = "Proposed (editable)";
+
+        const proposedEl = document.createElement("div");
+        proposedEl.className = "leditor-agent-sidebar__boxBody leditor-agent-sidebar__boxBody--edit";
+        proposedEl.textContent = proposed;
+        if (original) {
+          proposedEl.title = `Original:\n${original}\n\nClick to edit.`;
+        }
+        if (canEdit) {
+          proposedEl.contentEditable = "true";
+          proposedEl.spellcheck = true;
+          proposedEl.addEventListener("blur", () => {
+            const nextText = proposedEl.textContent ?? "";
+            updateSubstantiateDraftText(s.from as number, s.to as number, nextText);
+          });
+        }
+
+        const noteBlocks: HTMLElement[] = [];
+        const justificationText = s.justification || s.suggestion || s.notes || "";
+        if (justificationText) {
+          const label = document.createElement("div");
+          label.className = "leditor-agent-sidebar__subLabel";
+          label.textContent = "Justification";
+          const body = document.createElement("div");
+          body.className = "leditor-agent-sidebar__subNotes";
+          body.textContent = justificationText;
+          noteBlocks.push(label, body);
+        }
+        if (s.diffs) {
+          const label = document.createElement("div");
+          label.className = "leditor-agent-sidebar__subLabel";
+          label.textContent = "Diff summary";
+          const diffs = document.createElement("div");
+          diffs.className = "leditor-agent-sidebar__subNotes";
+          diffs.textContent = s.diffs;
+          noteBlocks.push(label, diffs);
+        }
 
         const matchesWrap = document.createElement("div");
         matchesWrap.className = "leditor-agent-sidebar__subMatches is-hidden";
@@ -1524,23 +1658,39 @@ export const createAgentSidebar = (
 
         const actions = document.createElement("div");
         actions.className = "leditor-agent-sidebar__boxActions";
+        const hasRange =
+          canEdit &&
+          (() => {
+            if (!subApply) return false;
+            if (subApply.kind === "replaceRange") {
+              return subApply.from === s.from && subApply.to === s.to;
+            }
+            if (subApply.kind === "batchReplace") {
+              return Array.isArray(subApply.items) && subApply.items.some((it) => it.from === s.from && it.to === s.to);
+            }
+            return false;
+          })();
         const reject = document.createElement("button");
         reject.type = "button";
         reject.className = "leditor-agent-sidebar__boxBtn";
         reject.textContent = "Reject";
+        reject.disabled = !hasRange;
         reject.addEventListener("click", (e) => {
           e.preventDefault();
           e.stopPropagation();
-          dropSubstantiateSuggestion(s.key);
+          if (!hasRange) return;
+          rejectPendingItem({ from: s.from, to: s.to });
         });
         const accept = document.createElement("button");
         accept.type = "button";
         accept.className = "leditor-agent-sidebar__boxBtn leditor-agent-sidebar__boxBtn--primary";
-        accept.textContent = "Apply";
+        accept.textContent = "Accept";
+        accept.disabled = !hasRange;
         accept.addEventListener("click", (e) => {
           e.preventDefault();
           e.stopPropagation();
-          applySubstantiateSuggestion(s.key);
+          if (!hasRange) return;
+          acceptPendingItem({ from: s.from, to: s.to });
         });
         const toggle = document.createElement("button");
         toggle.type = "button";
@@ -1553,7 +1703,10 @@ export const createAgentSidebar = (
         });
         actions.append(reject, accept, toggle);
 
-        card.append(h, meta, body, original, matchesWrap, actions);
+        if (hasRange) {
+          card.dataset.pendingKey = `${s.from}:${s.to}`;
+        }
+        card.append(h, meta, diffBody, ...noteBlocks, editLabel, proposedEl, matchesWrap, actions);
         boxesEl.appendChild(card);
       }
 
@@ -1569,10 +1722,41 @@ export const createAgentSidebar = (
       return;
     }
 
+    const headerRow = document.createElement("div");
+    headerRow.className = "leditor-agent-sidebar__boxHeaderRow";
+    const headerTitle = document.createElement("div");
+    headerTitle.className = "leditor-agent-sidebar__boxHeaderTitle";
+    const viewLabel = viewMode.replaceAll("_", " ");
+    headerTitle.textContent = `${viewLabel.slice(0, 1).toUpperCase()}${viewLabel.slice(1)} suggestions`;
+    const headerActions = document.createElement("div");
+    headerActions.className = "leditor-agent-sidebar__boxHeaderActions";
+    const btnRejectAll = document.createElement("button");
+    btnRejectAll.type = "button";
+    btnRejectAll.className = "leditor-agent-sidebar__boxHeaderBtn";
+    btnRejectAll.textContent = "Reject all";
+    btnRejectAll.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      rejectAllPending();
+    });
+    const btnAcceptAll = document.createElement("button");
+    btnAcceptAll.type = "button";
+    btnAcceptAll.className = "leditor-agent-sidebar__boxHeaderBtn leditor-agent-sidebar__boxHeaderBtn--primary";
+    btnAcceptAll.textContent = "Accept all";
+    btnAcceptAll.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      acceptAllPending();
+    });
+    headerActions.append(btnRejectAll, btnAcceptAll);
+    headerRow.append(headerTitle, headerActions);
+    boxesEl.appendChild(headerRow);
+
     const mkCard = (
       title: string,
       subtitle: string,
-      text: string,
+      originalText: string,
+      proposedText: string,
       onAccept: () => void,
       onReject: () => void,
       onFocus?: () => void
@@ -1598,8 +1782,14 @@ export const createAgentSidebar = (
       meta.className = "leditor-agent-sidebar__boxMeta";
       meta.textContent = subtitle;
       const body = document.createElement("div");
-      body.className = "leditor-agent-sidebar__boxBody";
-      body.textContent = text;
+      body.className = "leditor-agent-sidebar__boxBody leditor-agent-sidebar__boxBody--diff";
+      const original = String(originalText ?? "");
+      const proposed = String(proposedText ?? "");
+      if (original || proposed) {
+        renderDiff(body, original, proposed);
+      } else {
+        body.textContent = "";
+      }
       const actions = document.createElement("div");
       actions.className = "leditor-agent-sidebar__boxActions";
       const reject = document.createElement("button");
@@ -1628,40 +1818,49 @@ export const createAgentSidebar = (
     };
 
     if (pending.kind === "batchReplace") {
+      const editor = editorHandle.getEditor();
       for (const it of pending.items) {
-        boxesEl.appendChild(
-          mkCard(
-            `P${it.n}`,
-            `Pending ${viewMode}`,
-            truncate(it.text, 520),
-            () => acceptPendingItem({ n: it.n }),
-            () => rejectPendingItem({ n: it.n })
-           , () => focusParagraphNumber(it.n)
-          )
+        const originalText =
+          typeof it.originalText === "string" && it.originalText.trim()
+            ? it.originalText
+            : editor.state.doc.textBetween(it.from, it.to, "\n");
+        const card = mkCard(
+          `P${it.n}`,
+          `Pending ${viewMode}`,
+          originalText,
+          it.text,
+          () => acceptPendingItem({ n: it.n }),
+          () => rejectPendingItem({ n: it.n }),
+          () => focusParagraphNumber(it.n)
         );
+        card.dataset.pendingKey = `${it.from}:${it.to}`;
+        boxesEl.appendChild(card);
       }
       return;
     }
     if (pending.kind === "replaceRange") {
       const { from, to } = pending;
-      boxesEl.appendChild(
-        mkCard(
-          "Selection",
-          `Pending ${viewMode}`,
-          truncate(pending.text, 520),
-          () => acceptPendingItem({ from, to }),
-          () => rejectPendingItem({ from, to })
-        , () => {
-            try {
-              const editor = editorHandle.getEditor();
-              editor.commands.setTextSelection({ from, to });
-              editor.commands.focus();
-            } catch {
-              // ignore
-            }
+      const editor = editorHandle.getEditor();
+      const originalText = editor.state.doc.textBetween(from, to, "\n");
+      const card = mkCard(
+        "Selection",
+        `Pending ${viewMode}`,
+        originalText,
+        pending.text,
+        () => acceptPendingItem({ from, to }),
+        () => rejectPendingItem({ from, to }),
+        () => {
+          try {
+            const editor = editorHandle.getEditor();
+            editor.commands.setTextSelection({ from, to });
+            editor.commands.focus();
+          } catch {
+            // ignore
           }
-        )
+        }
       );
+      card.dataset.pendingKey = `${from}:${to}`;
+      boxesEl.appendChild(card);
       return;
     }
 
@@ -1669,6 +1868,47 @@ export const createAgentSidebar = (
     empty.className = "leditor-agent-sidebar__boxEmpty";
     empty.textContent = "This edit type is shown inline in the document.";
     boxesEl.appendChild(empty);
+  };
+
+  const findPendingViewByKey = (key: string): SidebarViewId | null => {
+    if (!key) return null;
+    const entries = Object.entries(pendingByView as any) as Array<[SidebarViewId, any]>;
+    for (const [view, apply] of entries) {
+      if (!apply) continue;
+      if (apply.kind === "replaceRange") {
+        if (`${apply.from}:${apply.to}` === key) return view;
+        continue;
+      }
+      if (apply.kind === "batchReplace") {
+        const items = Array.isArray(apply.items) ? apply.items : [];
+        if (items.find((it: any) => `${it.from}:${it.to}` === key)) return view;
+      }
+    }
+    return null;
+  };
+
+  const highlightPendingCard = (key: string) => {
+    if (!key) return;
+    const doHighlight = () => {
+      try {
+        const cards = Array.from(boxesEl.querySelectorAll<HTMLElement>(".leditor-agent-sidebar__boxCard"));
+        for (const el of cards) el.classList.remove("is-selected");
+        const match = cards.find((el) => el.dataset.pendingKey === key);
+        if (match) {
+          match.classList.add("is-selected");
+          match.scrollIntoView({ block: "nearest" });
+        }
+      } catch {
+        // ignore
+      }
+    };
+    const targetView = findPendingViewByKey(key);
+    if (targetView && targetView !== viewMode) {
+      setViewMode(targetView);
+      window.requestAnimationFrame(doHighlight);
+    } else {
+      doHighlight();
+    }
   };
 
   const autoResizeInput = () => {
@@ -1731,6 +1971,7 @@ export const createAgentSidebar = (
     pendingActionId = null;
     substantiateResults = [];
     substantiateError = null;
+    substantiateSuppressedKeys.clear();
     setStatus("Ready.");
     try {
       editorHandle.execCommand("ClearAiDraftPreview");
@@ -2000,39 +2241,145 @@ export const createAgentSidebar = (
     editor.commands.focus();
   };
 
-  const dropSubstantiateSuggestion = (key: string) => {
-    const k = String(key || "").trim();
-    if (!k) return;
-    substantiateResults = substantiateResults.filter((it) => it.key !== k);
-    renderBoxes();
+  const markSubstantiateSuppressedByRange = (from: number, to: number) => {
+    const match = substantiateResults.find((it) => it.from === from && it.to === to);
+    if (match?.key) substantiateSuppressedKeys.add(match.key);
   };
 
-  const applySubstantiateSuggestion = (key: string) => {
-    const k = String(key || "").trim();
-    if (!k) return;
-    const suggestion = substantiateResults.find((it) => it.key === k);
-    if (!suggestion) return;
-    if (typeof suggestion.from !== "number" || typeof suggestion.to !== "number" || !suggestion.rewrite) {
-      addMessage("assistant", "Cannot apply substantiate suggestion: missing target range.");
-      return;
+  const markSubstantiateSuppressedAll = () => {
+    for (const it of substantiateResults) {
+      if (it?.key) substantiateSuppressedKeys.add(it.key);
     }
-    if (suggestion.from >= suggestion.to) {
-      addMessage("assistant", "Cannot apply substantiate suggestion: invalid range.");
-      return;
+  };
+
+  const getRangeOriginalText = (from: number, to: number): string => {
+    try {
+      const editor = editorHandle.getEditor();
+      return String(editor.state.doc.textBetween(from, to, "\n") ?? "");
+    } catch {
+      return "";
     }
-    const editor = editorHandle.getEditor();
-    const current = editor.state.doc.textBetween(suggestion.from, suggestion.to, "\n").replace(/\s+/g, " ").trim();
-    const expected = String(suggestion.sentence || "").replace(/\s+/g, " ").trim();
-    if (expected && current !== expected) {
-      addMessage("assistant", "Paragraph changed since suggestion. Re-run substantiate.");
-      return;
+  };
+
+  const updateSubstantiateDraftText = (from: number, to: number, text: string) => {
+    if (!Number.isFinite(from) || !Number.isFinite(to)) return;
+    const nextText = String(text ?? "").replace(/\s+/g, " ").trim();
+    if (!nextText) return;
+    let updated = false;
+    const apply = (pendingByView as any).substantiate as AgentRunResult["apply"] | null;
+    if (apply) {
+      if (apply.kind === "replaceRange") {
+        if (apply.from === from && apply.to === to) {
+          apply.text = nextText;
+          updated = true;
+        }
+      } else if (apply.kind === "batchReplace") {
+        for (const it of apply.items ?? []) {
+          if (it.from === from && it.to === to) {
+            it.text = nextText;
+            updated = true;
+            break;
+          }
+        }
+      }
+    }
+    if (updated) {
+      substantiateResults = substantiateResults.map((it) =>
+        it.from === from && it.to === to ? { ...it, rewrite: nextText } : it
+      );
+      syncDraftPreview();
+      renderBoxes();
+    }
+  };
+
+  const ensureSubstantiateDraftItem = (entry: SubstantiateSuggestion) => {
+    if (typeof entry.from !== "number" || typeof entry.to !== "number") return false;
+    if (!Number.isFinite(entry.from) || !Number.isFinite(entry.to) || entry.from >= entry.to) return false;
+    const text = String(entry.rewrite ?? "").replace(/\s+/g, " ").trim();
+    if (!text) return false;
+    const current = (pendingByView as any).substantiate as AgentRunResult["apply"] | null;
+    if (!current) {
+      (pendingByView as any).substantiate = {
+        kind: "batchReplace",
+        items: [
+          {
+            n: Number.isFinite(entry.paragraphN) ? entry.paragraphN : 0,
+            from: entry.from,
+            to: entry.to,
+            text,
+            originalText: getRangeOriginalText(entry.from, entry.to)
+          }
+        ]
+      };
+      pending = viewMode === "chat" ? null : ((pendingByView as any)[viewMode] ?? null);
+      syncDraftPreview();
+      return true;
+    }
+    if (current.kind === "replaceRange") {
+      if (current.from === entry.from && current.to === entry.to) return false;
+      (pendingByView as any).substantiate = {
+        kind: "batchReplace",
+        items: [
+          {
+            n: Number.isFinite(entry.paragraphN) ? entry.paragraphN : 0,
+            from: entry.from,
+            to: entry.to,
+            text,
+            originalText: getRangeOriginalText(entry.from, entry.to)
+          },
+          {
+            n: (current as any).n ?? 0,
+            from: current.from,
+            to: current.to,
+            text: current.text,
+            originalText: getRangeOriginalText(current.from, current.to)
+          }
+        ]
+      };
+      pending = viewMode === "chat" ? null : ((pendingByView as any)[viewMode] ?? null);
+      syncDraftPreview();
+      return true;
+    }
+    if (current.kind === "batchReplace") {
+      const items = Array.isArray(current.items) ? current.items : [];
+      if (items.some((it: any) => it.from === entry.from && it.to === entry.to)) return false;
+      items.push({
+        n: Number.isFinite(entry.paragraphN) ? entry.paragraphN : 0,
+        from: entry.from,
+        to: entry.to,
+        text,
+        originalText: getRangeOriginalText(entry.from, entry.to)
+      });
+      current.items = items;
+      pending = viewMode === "chat" ? null : ((pendingByView as any)[viewMode] ?? null);
+      syncDraftPreview();
+      return true;
+    }
+    return false;
+  };
+
+  const openDraftPopoverForKey = (key: string): boolean => {
+    if (!key) return false;
+    const el = document.querySelector<HTMLElement>(`[data-ai-draft-key="${key}"]`);
+    if (!el) return false;
+    try {
+      el.scrollIntoView({ block: "center", inline: "nearest" });
+    } catch {
+      // ignore
     }
     try {
-      applyRangeAsTransaction(suggestion.from, suggestion.to, suggestion.rewrite);
-      dropSubstantiateSuggestion(k);
-    } catch (error) {
-      addMessage("assistant", `Failed to apply suggestion: ${error instanceof Error ? error.message : String(error)}`);
+      const evt = new PointerEvent("pointerdown", { bubbles: true, cancelable: true });
+      el.dispatchEvent(evt);
+      return true;
+    } catch {
+      return false;
     }
+  };
+
+  const dropSubstantiateByRange = (from: number, to: number) => {
+    if (!Number.isFinite(from) || !Number.isFinite(to)) return;
+    markSubstantiateSuppressedByRange(from, to);
+    substantiateResults = substantiateResults.filter((it) => it.from !== from || it.to !== to);
   };
   const syncDraftPreview = () => {
     try {
@@ -2098,6 +2445,9 @@ export const createAgentSidebar = (
         const match = (from !== null && to !== null) ? (apply.from === from && apply.to === to) : true;
         if (!match) continue;
         applyRangeAsTransaction(apply.from, apply.to, apply.text);
+        if (view === "substantiate") {
+          dropSubstantiateByRange(apply.from, apply.to);
+        }
         (pendingByView as any)[view] = null;
         pending = viewMode === "chat" ? null : ((pendingByView as any)[viewMode] ?? null);
         syncDraftPreview();
@@ -2112,6 +2462,9 @@ export const createAgentSidebar = (
           null;
         if (!match) continue;
         applyRangeAsTransaction(match.from, match.to, match.text);
+        if (view === "substantiate") {
+          dropSubstantiateByRange(match.from, match.to);
+        }
         const nextItems = items.filter((it: any) => it !== match);
         (pendingByView as any)[view] = nextItems.length ? { ...apply, items: nextItems } : null;
         pending = viewMode === "chat" ? null : ((pendingByView as any)[viewMode] ?? null);
@@ -2120,6 +2473,31 @@ export const createAgentSidebar = (
         return;
       }
     }
+  };
+
+  const acceptAllPending = () => {
+    if (!pending || viewMode === "chat" || viewMode === "sources") return;
+    applyPending();
+    (pendingByView as any)[viewMode] = null;
+    pending = null;
+    if (viewMode === "substantiate") {
+      markSubstantiateSuppressedAll();
+      substantiateResults = [];
+    }
+    syncDraftPreview();
+    renderBoxes();
+  };
+
+  const rejectAllPending = () => {
+    if (viewMode === "chat" || viewMode === "sources") return;
+    (pendingByView as any)[viewMode] = null;
+    pending = null;
+    if (viewMode === "substantiate") {
+      markSubstantiateSuppressedAll();
+      substantiateResults = [];
+    }
+    syncDraftPreview();
+    renderBoxes();
   };
   const rejectPendingItem = (detail: { n?: number; from?: number; to?: number }) => {
     const n = Number.isFinite(detail.n) ? Number(detail.n) : null;
@@ -2132,6 +2510,9 @@ export const createAgentSidebar = (
       if (apply.kind === "replaceRange") {
         const match = (from !== null && to !== null) ? (apply.from === from && apply.to === to) : true;
         if (!match) continue;
+        if (view === "substantiate") {
+          dropSubstantiateByRange(apply.from, apply.to);
+        }
         (pendingByView as any)[view] = null;
         pending = viewMode === "chat" ? null : ((pendingByView as any)[viewMode] ?? null);
         syncDraftPreview();
@@ -2145,6 +2526,9 @@ export const createAgentSidebar = (
           (n !== null) ? items.find((it: any) => it.n === n) :
           null;
         if (!match) continue;
+        if (view === "substantiate") {
+          dropSubstantiateByRange(match.from, match.to);
+        }
         const nextItems = items.filter((it: any) => it !== match);
         (pendingByView as any)[view] = nextItems.length ? { ...apply, items: nextItems } : null;
         pending = viewMode === "chat" ? null : ((pendingByView as any)[viewMode] ?? null);
@@ -2605,6 +2989,171 @@ export const createAgentSidebar = (
     throw new Error(`AgentSidebar: unknown apply kind "${(pending as any).kind}"`);
   };
 
+  const findSentenceStartInBlock = (state: any, blockFrom: number, pos: number): number => {
+    const doc = state.doc;
+    const left = doc.textBetween(blockFrom, pos, "\n");
+    if (!left) return blockFrom;
+    const re = /[.!?;]\s+(?=[“"'\(\[]?[A-Z])/g;
+    let lastEnd = -1;
+    for (const m of left.matchAll(re)) {
+      const idx = typeof m.index === "number" ? m.index : -1;
+      if (idx < 0) continue;
+      const prev = left.slice(Math.max(0, idx - 3), idx + 1).toLowerCase();
+      const next = left.slice(idx + 1).trimStart();
+      if ((prev.endsWith("p.") || prev.endsWith("pp.")) && /^\d/.test(next)) continue;
+      lastEnd = idx + m[0].length;
+    }
+    return lastEnd >= 0 ? blockFrom + lastEnd : blockFrom;
+  };
+
+  const rangeHasCitationLikeMarks = (state: any, from: number, to: number): boolean => {
+    let found = false;
+    state.doc.nodesBetween(from, to, (node: any) => {
+      if (found) return false;
+      if (!node) return true;
+      if (String(node.type?.name ?? "") === "citation") {
+        found = true;
+        return false;
+      }
+      if (!node.isText || !Array.isArray(node.marks)) return true;
+      for (const m of node.marks) {
+        if (isCitationLikeMark(m)) {
+          found = true;
+          return false;
+        }
+      }
+      return true;
+    });
+    return found;
+  };
+
+  const getParagraphNumberForRange = (from: number, to: number): number | null => {
+    const ranges = listParagraphRanges();
+    const hit = ranges.find((p) => from >= p.from && to <= p.to);
+    return hit ? hit.n : null;
+  };
+
+  const buildSourceRewriteDraft = (key: string, rewrite: string) => {
+    const editor = editorHandle.getEditor();
+    const view = (editor as any)?.view;
+    const state = view?.state;
+    if (!state) return null;
+    const sc = getSourceCheckState(state);
+    const item = sc?.items?.find((it) => String(it?.key) === String(key)) ?? null;
+    if (!item) return null;
+    const docSize = state.doc.content.size;
+    const from = Math.max(0, Math.min(docSize, Math.floor(item.from)));
+    const to = Math.max(0, Math.min(docSize, Math.floor(item.to)));
+    if (to <= from) return null;
+
+    const $pos = state.doc.resolve(from);
+    let depth = $pos.depth;
+    while (depth > 0 && !$pos.node(depth).isTextblock) depth -= 1;
+    const blockNode = $pos.node(depth);
+    const blockPos = $pos.before(depth);
+    const blockFrom = blockPos + 1;
+    const blockTo = blockFrom + blockNode.content.size;
+    if (blockTo <= blockFrom) return null;
+
+    const sentenceStart = findSentenceStartInBlock(state, blockFrom, from);
+    const inBlock = sc?.items?.filter((x: any) => x && x.from >= blockFrom && x.to <= blockTo) ?? [];
+    const inSentence = inBlock.filter((x: any) => x.from >= sentenceStart);
+    const firstCitationFrom = inSentence.reduce(
+      (min: number, x: any) => Math.min(min, Math.floor(x.from)),
+      Number.POSITIVE_INFINITY
+    );
+    if (!Number.isFinite(firstCitationFrom) || firstCitationFrom <= sentenceStart) return null;
+    if (rangeHasCitationLikeMarks(state, sentenceStart, firstCitationFrom)) return null;
+
+    const insert = rewrite.endsWith(" ") ? rewrite : `${rewrite} `;
+    const originalText = state.doc.textBetween(sentenceStart, firstCitationFrom, "\n");
+    return { from: sentenceStart, to: firstCitationFrom, text: insert, originalText };
+  };
+
+  const queueSourceRewriteDraft = (args: { key: string; rewrite: string; paragraphN?: number }) => {
+    const key = String(args.key || "").trim();
+    const rewrite = String(args.rewrite || "").trim();
+    if (!key || !rewrite) return;
+    const draft = buildSourceRewriteDraft(key, rewrite);
+    if (!draft) {
+      addMessage("assistant", "Unable to insert rewrite: could not resolve a safe target range.");
+      return;
+    }
+    const paragraphN = Number.isFinite(args.paragraphN) ? Math.max(1, Math.floor(args.paragraphN!)) : null;
+    const current = (pendingByView as any).sources as AgentRunResult["apply"] | null;
+    let nextApply: AgentRunResult["apply"];
+    if (!current) {
+      nextApply = { kind: "replaceRange", from: draft.from, to: draft.to, text: draft.text };
+    } else if (current.kind === "replaceRange") {
+      const existingN = getParagraphNumberForRange(current.from, current.to) ?? paragraphN ?? 1;
+      const items = [
+        {
+          n: existingN,
+          from: current.from,
+          to: current.to,
+          text: current.text,
+          originalText: editorHandle.getEditor().state.doc.textBetween(current.from, current.to, "\n")
+        },
+        {
+          n: paragraphN ?? existingN,
+          from: draft.from,
+          to: draft.to,
+          text: draft.text,
+          originalText: draft.originalText
+        }
+      ];
+      nextApply = { kind: "batchReplace", items };
+    } else if (current.kind === "batchReplace") {
+      const items = Array.isArray(current.items) ? [...current.items] : [];
+      const existing = items.find((it) => it.from === draft.from && it.to === draft.to) ?? null;
+      if (existing) {
+        existing.text = draft.text;
+        existing.originalText = draft.originalText;
+        if (paragraphN) existing.n = paragraphN;
+      } else {
+        items.push({
+          n: paragraphN ?? (getParagraphNumberForRange(draft.from, draft.to) ?? 1),
+          from: draft.from,
+          to: draft.to,
+          text: draft.text,
+          originalText: draft.originalText
+        });
+      }
+      nextApply = { kind: "batchReplace", items };
+    } else {
+      nextApply = current;
+    }
+    pendingByView = { ...pendingByView, sources: nextApply };
+    pending = viewMode === "chat" ? null : ((pendingByView as any)[viewMode] ?? null);
+    syncDraftPreview();
+    setStatus("Draft ready • Review inline in the document.");
+  };
+
+  const queueAllSourceRewriteDrafts = (items: any[]) => {
+    const byParagraph = new Map<number, any>();
+    for (const it of items) {
+      const key = typeof it?.key === "string" ? String(it.key) : "";
+      const verdict = it?.verdict === "verified" ? "verified" : "needs_review";
+      const rewrite = typeof it?.claimRewrite === "string" ? String(it.claimRewrite).trim() : "";
+      const paragraphN = Number.isFinite(it?.paragraphN) ? Math.max(1, Math.floor(it.paragraphN)) : 0;
+      if (!key || !paragraphN) continue;
+      if (verdict === "verified") continue;
+      if (!rewrite) continue;
+      if (byParagraph.has(paragraphN)) continue;
+      byParagraph.set(paragraphN, { key, rewrite, paragraphN });
+    }
+    const ordered = [...byParagraph.entries()].sort((a, b) => a[0] - b[0]).map(([, v]) => v);
+    for (const entry of ordered) {
+      queueSourceRewriteDraft(entry);
+    }
+  };
+
+  const clearSourceRewriteDrafts = () => {
+    (pendingByView as any).sources = null;
+    pending = viewMode === "chat" ? null : ((pendingByView as any)[viewMode] ?? null);
+    syncDraftPreview();
+  };
+
   const run = async () => {
     if (destroyed) return;
     let instruction = input.value.trim();
@@ -2709,7 +3258,12 @@ export const createAgentSidebar = (
       addMessage("user", rawInstruction);
       input.value = "";
       autoResizeInput();
-      await runSubstantiate();
+      const parsedTargets = parseTargetsFromText(rawInstruction);
+      if (parsedTargets.kind === "paragraphs" || parsedTargets.kind === "section") {
+        await runSubstantiateForParagraphs(parsedTargets.indices);
+      } else {
+        await runSubstantiate();
+      }
       return;
     }
 
@@ -2801,25 +3355,27 @@ export const createAgentSidebar = (
       }
       pending = result.apply ?? null;
       if (pending) {
-        const viewKey =
-          pendingActionId && pendingActionId !== "check_sources" && pendingActionId !== "clear_checks"
-            ? pendingActionId
-            : null;
+        const viewKey = pendingActionId ?? null;
         if (viewKey) {
           pendingByView = { ...pendingByView, [viewKey]: pending };
         }
-        pending = viewMode === "chat" ? null : ((pendingByView as any)[viewMode] ?? pending);
+        const applied = viewMode === "chat" ? null : ((pendingByView as any)[viewMode] ?? pending);
         if (viewKey && viewKey !== viewMode) {
           setViewMode(viewKey as SidebarViewId);
         }
-        const count = pending.kind === "batchReplace" ? pending.items.length : 1;
-        setStatus(`Draft ready • ${count} change(s). Review inline in the document.`);
-        syncDraftPreview();
-        try {
-          draftRail?.update();
-        } catch {
-          // ignore
+        if (applied) {
+          const count = applied.kind === "batchReplace" ? applied.items.length : 1;
+          setStatus(`Draft ready • ${count} change(s). Review inline in the document.`);
+          syncDraftPreview();
+          try {
+            draftRail?.update();
+          } catch {
+            // ignore
+          }
+        } else {
+          pending = null;
         }
+        pending = applied;
       } else {
         const finalText = (result.assistantText || streamBuffer || "(no response)").trim();
         if (streamMessageId) {
@@ -3126,25 +3682,6 @@ export const createAgentSidebar = (
     const text = String(paragraphText ?? "");
     const out = new Map<string, { start: number; end: number; sentence: string; before: string; after: string }>();
     let searchFrom = 0;
-    const findSentenceBounds = (idx: number): { start: number; end: number } => {
-      const clamp = (v: number) => Math.max(0, Math.min(text.length, v));
-      const i = clamp(idx);
-      const leftSlice = text.slice(0, i);
-      const rightSlice = text.slice(i);
-      const leftBoundary = Math.max(
-        leftSlice.lastIndexOf("."),
-        leftSlice.lastIndexOf("?"),
-        leftSlice.lastIndexOf("!"),
-        leftSlice.lastIndexOf(";"),
-        leftSlice.lastIndexOf("\n")
-      );
-      const start = clamp(leftBoundary >= 0 ? leftBoundary + 1 : 0);
-      const rightCandidates = [rightSlice.indexOf("."), rightSlice.indexOf("?"), rightSlice.indexOf("!"), rightSlice.indexOf(";"), rightSlice.indexOf("\n")]
-        .filter((n) => n >= 0)
-        .map((n) => i + n + 1);
-      const end = clamp(rightCandidates.length ? Math.min(...rightCandidates) : text.length);
-      return { start, end };
-    };
     for (const a of anchors) {
       const needle = String(a.text ?? "");
       if (!needle) continue;
@@ -3152,13 +3689,104 @@ export const createAgentSidebar = (
       if (idx < 0) idx = text.indexOf(needle);
       if (idx >= 0) searchFrom = idx + needle.length;
       const anchorIdx = idx >= 0 ? idx : 0;
-      const bounds = findSentenceBounds(anchorIdx);
+      const bounds = findSentenceBoundsAt(text, anchorIdx);
       const sentence = text.slice(bounds.start, bounds.end).replace(/\s+/g, " ").trim();
       const before = text.slice(Math.max(0, anchorIdx - 140), anchorIdx).replace(/\s+/g, " ").trim();
       const after = text.slice(anchorIdx + needle.length, Math.min(text.length, anchorIdx + needle.length + 140)).replace(/\s+/g, " ").trim();
       out.set(String(a.key), { start: bounds.start, end: bounds.end, sentence, before, after });
     }
     return out;
+  };
+
+  const resolveDocPosToTextOffset = (from: number, to: number, targetPos: number): number => {
+    const editor = editorHandle.getEditor();
+    let offset = 0;
+    let done = false;
+    editor.state.doc.nodesBetween(from, to, (node: any, pos: number) => {
+      if (done) return false;
+      if (!node) return true;
+      if (node.isText) {
+        const text = String(node.text ?? "");
+        const endPos = pos + text.length;
+        if (targetPos <= pos) {
+          done = true;
+          return false;
+        }
+        if (targetPos < endPos) {
+          offset += Math.max(0, targetPos - pos);
+          done = true;
+          return false;
+        }
+        offset += text.length;
+        return true;
+      }
+      if (String(node.type?.name ?? "") === "hard_break") {
+        if (targetPos <= pos) {
+          done = true;
+          return false;
+        }
+        if (targetPos <= pos + 1) {
+          offset += 1;
+          done = true;
+          return false;
+        }
+        offset += 1;
+        return true;
+      }
+      return true;
+    });
+    return offset;
+  };
+
+  const findSentenceBoundsAt = (text: string, offset: number): { start: number; end: number } => {
+    const value = String(text ?? "");
+    const clamp = (v: number) => Math.max(0, Math.min(value.length, v));
+    const idx = clamp(Math.floor(offset));
+    const isBoundary = (pos: number): boolean => {
+      const ch = value[pos] ?? "";
+      if (ch === "\n") return true;
+      if (ch !== "." && ch !== "?" && ch !== "!" && ch !== ";" && ch !== ":") return false;
+      const prev = value.slice(Math.max(0, pos - 3), pos + 1).toLowerCase();
+      const next = value.slice(pos + 1).trimStart();
+      if ((prev.endsWith("p.") || prev.endsWith("pp.")) && /^\d/.test(next)) return false;
+      let k = pos + 1;
+      while (k < value.length && /[\"'”’)\]\}]/.test(value[k] ?? "")) k += 1;
+      while (k < value.length && /\s/.test(value[k] ?? "")) k += 1;
+      if (k >= value.length) return true;
+      const nextChar = value[k] ?? "";
+      return /[A-Z]/.test(nextChar);
+    };
+
+    let start = 0;
+    for (let i = idx - 1; i >= 0; i -= 1) {
+      if (isBoundary(i)) {
+        start = i + 1;
+        break;
+      }
+    }
+    let end = value.length;
+    for (let i = idx; i < value.length; i += 1) {
+      if (isBoundary(i)) {
+        end = i + 1;
+        break;
+      }
+    }
+    return { start: clamp(start), end: clamp(end) };
+  };
+
+  const findSentenceBeforeOffset = (text: string, offset: number) => {
+    const value = String(text ?? "");
+    const bounds = findSentenceBoundsAt(value, offset);
+    const end = Math.max(bounds.start, Math.min(bounds.end, Math.floor(offset)));
+    let start = bounds.start;
+    while (start < end && /\s/.test(value[start] ?? "")) start += 1;
+    const segment = value.slice(start, end);
+    const trimmed = segment.replace(/\s+/g, " ").trim();
+    const suffixMatch = segment.match(/\s+$/);
+    const suffix = suffixMatch ? suffixMatch[0] : "";
+    const punctMatch = trimmed.match(/[.!?;:]+$/);
+    const terminalPunct = punctMatch ? punctMatch[0] : "";
+    return { start, end, segment, trimmed, suffix, terminalPunct };
   };
 
   const resolveTextOffsetToDocPos = (from: number, to: number, offset: number): number => {
@@ -3195,10 +3823,12 @@ export const createAgentSidebar = (
       addMessage("system", "No sources to be checked.");
       return;
     }
+    beginSourcesLoading();
     await runCheckSourcesForParagraphs(target.indices);
   };
 
   const runCheckSourcesForParagraphs = async (indices: number[]) => {
+    beginSourcesLoading();
     const ranges = listParagraphRanges();
     const byN = new Map<number, { n: number; from: number; to: number }>();
     for (const r of ranges) byN.set(r.n, r);
@@ -3207,12 +3837,14 @@ export const createAgentSidebar = (
       .filter(Boolean) as Array<{ n: number; from: number; to: number }>;
     if (selected.length === 0) {
       addMessage("system", "No sources to be checked.");
+      endSourcesLoading();
       return;
     }
 
     const host: any = (window as any).leditorHost;
     if (!host || typeof host.checkSources !== "function") {
       addMessage("assistant", "Source checking host bridge unavailable.");
+      endSourcesLoading();
       return;
     }
 
@@ -3281,8 +3913,26 @@ export const createAgentSidebar = (
           }))
         };
         console.info("[agent][check_sources]", { paragraph: paragraph.n, requestPayload });
-        const requestId = `check-${paragraph.n}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-        const result = await host.checkSources({ requestId, payload: requestPayload });
+        const cacheKey = buildLlmCacheKey({
+          fn: "check_sources",
+          provider: requestPayload.provider,
+          model: requestPayload.model,
+          payload: requestPayload
+        });
+        const cached = getLlmCacheEntry(cacheKey);
+        let result: any = cached?.value ?? null;
+        if (!result) {
+          const requestId = `check-${paragraph.n}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+          result = await host.checkSources({ requestId, payload: requestPayload });
+          if (result?.success) {
+            setLlmCacheEntry({
+              key: cacheKey,
+              fn: "check_sources",
+              value: result,
+              meta: { provider: requestPayload.provider, model: requestPayload.model }
+            });
+          }
+        }
         if (!result?.success) {
           addMessage("assistant", result?.error ? String(result.error) : "Source check failed.");
           continue;
@@ -3372,6 +4022,7 @@ export const createAgentSidebar = (
       addMessage("system", `Checked ${allItems.length} source(s).`);
     } finally {
       setInflight(false);
+      endSourcesLoading();
       editorHandle.focus();
     }
   };
@@ -3412,15 +4063,31 @@ export const createAgentSidebar = (
     setInflight(true);
     substantiateResults = [];
     substantiateError = null;
+    substantiateSuppressedKeys = new Set<string>();
+    pendingByView = { ...pendingByView, substantiate: null };
+    pending = viewMode === "chat" ? null : ((pendingByView as any)[viewMode] ?? null);
+    syncDraftPreview();
     setViewMode("substantiate");
     setStatus("Running substantiate…");
     renderBoxes();
+    let streamUnsub: (() => void) | null = null;
     try {
       const editor = editorHandle.getEditor();
       const anchorsPayload: any[] = [];
       const anchorContextByKey = new Map<
         string,
-        { paragraph: { n: number; from: number; to: number }; sentence: string; context: any; anchorText: string; anchorTitle: string }
+        {
+          paragraph: { n: number; from: number; to: number };
+          sentence: string;
+          sentenceSegment: string;
+          sentenceSuffix: string;
+          terminalPunct: string;
+          startOffset: number;
+          endOffset: number;
+          context: any;
+          anchorText: string;
+          anchorTitle: string;
+        }
       >();
       for (const paragraph of selected) {
         const anchorsRaw = collectSourceRefsInRange(paragraph.from, paragraph.to);
@@ -3439,7 +4106,12 @@ export const createAgentSidebar = (
         );
         for (const a of anchors) {
           const ctx = ctxByKey.get(a.key) ?? null;
-          const sentence = typeof ctx?.sentence === "string" ? String(ctx.sentence).trim() : "";
+          const anchorOffset = resolveDocPosToTextOffset(paragraph.from, paragraph.to, a.from);
+          const sentenceInfo = findSentenceBeforeOffset(paragraphTextRaw, anchorOffset);
+          const sentence = sentenceInfo.trimmed;
+          if (!sentence) {
+            continue;
+          }
           const anchorText = String(a?.text ?? "");
           const anchorTitle = String(a?.title ?? "");
           anchorsPayload.push({
@@ -3451,7 +4123,18 @@ export const createAgentSidebar = (
             context: ctx,
             paragraphText
           });
-          anchorContextByKey.set(a.key, { paragraph, sentence, context: ctx, anchorText, anchorTitle });
+          anchorContextByKey.set(a.key, {
+            paragraph,
+            sentence,
+            sentenceSegment: sentenceInfo.segment,
+            sentenceSuffix: sentenceInfo.suffix,
+            terminalPunct: sentenceInfo.terminalPunct,
+            startOffset: sentenceInfo.start,
+            endOffset: sentenceInfo.end,
+            context: sentenceInfo,
+            anchorText,
+            anchorTitle
+          });
         }
       }
 
@@ -3464,14 +4147,191 @@ export const createAgentSidebar = (
 
       const sel = resolveSelectedModelId();
       const requestId = `sub-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+      const streamEnabled = typeof host.onSubstantiateStreamUpdate === "function";
+      const resultsByKey = new Map<string, any>();
+      let streamCompleted = 0;
+      let streamTotal = anchorsPayload.length;
+      let streamIndexSkipped = 0;
+      let streamIndexTotal = 0;
+
+      const updateSubstantiateState = (byKey: Map<string, any>) => {
+        const nextResults: SubstantiateSuggestion[] = [];
+        const applyItems: Array<{ n: number; from: number; to: number; text: string; originalText: string }> = [];
+        for (const [key, context] of anchorContextByKey.entries()) {
+          if (substantiateSuppressedKeys.has(key)) continue;
+          const r = byKey.get(key);
+          if (!r) continue;
+          const sentence = context.sentence;
+          const startOffset = Number.isFinite(context.startOffset) ? context.startOffset : undefined;
+          const endOffset = Number.isFinite(context.endOffset) ? context.endOffset : undefined;
+          const from =
+            typeof startOffset === "number"
+              ? resolveTextOffsetToDocPos(context.paragraph.from, context.paragraph.to, startOffset)
+              : undefined;
+          const to =
+            typeof endOffset === "number"
+              ? resolveTextOffsetToDocPos(context.paragraph.from, context.paragraph.to, endOffset)
+              : undefined;
+          const terminalPunct = context.terminalPunct || "";
+          const suffix = context.sentenceSuffix || "";
+          const rewrite = (() => {
+            let base = typeof r?.rewrite === "string" ? String(r.rewrite) : sentence;
+            base = base.replace(/\s+/g, " ").trim();
+            if (context.anchorText && base.includes(context.anchorText)) {
+              base = base.split(context.anchorText).join("").replace(/\s+/g, " ").trim();
+            }
+            if (!base) base = sentence.replace(/\s+/g, " ").trim();
+            if (terminalPunct && !/[.!?;:]$/.test(base)) {
+              base = base + terminalPunct;
+            }
+            if (suffix) {
+              base = base + suffix;
+            }
+            return base;
+          })();
+          const normalizedSentence = String(sentence ?? "").replace(/\s+/g, " ").trim();
+          const normalizedRewrite = String(rewrite ?? "").replace(/\s+/g, " ").trim();
+          const hasChange = normalizedRewrite && normalizedRewrite !== normalizedSentence;
+          const error = typeof r?.error === "string" ? String(r.error) : "";
+          const justification =
+            typeof r?.justification === "string"
+              ? String(r.justification).trim()
+              : typeof r?.suggestion === "string"
+                ? String(r.suggestion).trim()
+                : typeof r?.notes === "string"
+                  ? String(r.notes).trim()
+                  : "";
+          nextResults.push({
+            key,
+            paragraphN: context.paragraph.n,
+            anchorText: context.anchorText,
+            anchorTitle: context.anchorTitle,
+            sentence,
+            rewrite,
+            stance:
+              r?.stance === "corroborates" || r?.stance === "refutes" || r?.stance === "mixed" || r?.stance === "uncertain"
+                ? r.stance
+                : "uncertain",
+            notes: error ? error : (typeof r?.notes === "string" ? String(r.notes) : undefined),
+            justification: error ? error : (justification || undefined),
+            suggestion: typeof r?.suggestion === "string" ? String(r.suggestion) : undefined,
+            diffs: typeof r?.diffs === "string" ? String(r.diffs) : undefined,
+            matches: Array.isArray(r?.matches) ? r.matches : [],
+            from,
+            to,
+            status: "pending",
+            ...(error ? { error } : {})
+          });
+          if (hasChange && typeof from === "number" && typeof to === "number" && from < to) {
+            const originalText = getRangeOriginalText(from, to) || context.sentenceSegment || sentence || "";
+            applyItems.push({
+              n: Number.isFinite(context.paragraph.n) ? context.paragraph.n : 0,
+              from,
+              to,
+              text: rewrite,
+              originalText
+            });
+          }
+        }
+
+        substantiateResults = nextResults;
+        pendingByView = {
+          ...pendingByView,
+          substantiate: applyItems.length ? { kind: "batchReplace", items: applyItems } : null
+        };
+        pending = viewMode === "chat" ? null : ((pendingByView as any)[viewMode] ?? null);
+        syncDraftPreview();
+        renderBoxes();
+      };
+
+      const updateStatus = (final: boolean) => {
+        const skipped = streamIndexSkipped;
+        const total = streamIndexTotal;
+        const skipNote = skipped > 0 ? ` Skipped ${skipped}${total ? ` of ${total}` : ""} malformed entries.` : "";
+        if (final) {
+          setStatus(`Substantiate ready • ${substantiateResults.length} suggestion(s).${skipNote}`);
+          return;
+        }
+        const totalCount = Math.max(0, streamTotal);
+        const doneCount = Math.min(Math.max(0, streamCompleted), totalCount);
+        setStatus(`Substantiating ${doneCount}/${totalCount}…${skipNote}`);
+      };
+
+      const requestPayload = {
+        provider: sel.provider,
+        model: sel.model,
+        lookupPath,
+        anchors: anchorsPayload,
+        stream: streamEnabled
+      };
+      const cacheKey = buildLlmCacheKey({
+        fn: "substantiate",
+        provider: sel.provider,
+        model: sel.model,
+        payload: requestPayload
+      });
+      const cached = getLlmCacheEntry(cacheKey);
+      if (cached?.value?.success) {
+        const cachedResults = Array.isArray(cached.value?.results) ? cached.value.results : [];
+        for (const r of cachedResults) {
+          const key = typeof r?.key === "string" ? r.key : "";
+          if (!key) continue;
+          resultsByKey.set(key, r);
+        }
+        const skipped = Number((cached.value?.meta as any)?.index?.skipped ?? 0);
+        const total = Number((cached.value?.meta as any)?.index?.total ?? 0);
+        if (Number.isFinite(skipped)) streamIndexSkipped = skipped;
+        if (Number.isFinite(total)) streamIndexTotal = total;
+        updateSubstantiateState(resultsByKey);
+        setViewMode("substantiate");
+        updateStatus(true);
+        return;
+      }
+
+      if (streamEnabled) {
+        streamUnsub = host.onSubstantiateStreamUpdate((payload: any) => {
+          if (!payload || payload.requestId !== requestId) return;
+          const kind = String(payload.kind || "");
+          if (kind === "index") {
+            const total = Number(payload?.total ?? payload?.index?.total ?? 0);
+            const skipped = Number(payload?.skipped ?? payload?.index?.skipped ?? 0);
+            if (Number.isFinite(total)) streamIndexTotal = total;
+            if (Number.isFinite(skipped)) streamIndexSkipped = skipped;
+            updateStatus(false);
+            return;
+          }
+          if (kind === "item") {
+            const item = payload?.item ?? null;
+            const key = typeof item?.key === "string" ? String(item.key) : "";
+            if (key && !substantiateSuppressedKeys.has(key)) {
+              resultsByKey.set(key, item);
+              streamCompleted = Number(payload?.completed ?? resultsByKey.size);
+              updateSubstantiateState(resultsByKey);
+              updateStatus(false);
+            }
+            return;
+          }
+          if (kind === "error") {
+            substantiateError = payload?.message ? String(payload.message) : "Substantiate failed.";
+            addMessage("assistant", substantiateError);
+            setViewMode("substantiate");
+            renderBoxes();
+            return;
+          }
+          if (kind === "done") {
+            streamCompleted = Number(payload?.completed ?? resultsByKey.size);
+            updateStatus(false);
+          }
+        });
+      }
+
+      streamTotal = anchorsPayload.length;
+      updateStatus(false);
+
       const result = await host.substantiateAnchors({
         requestId,
-        payload: {
-          provider: sel.provider,
-          model: sel.model,
-          lookupPath,
-          anchors: anchorsPayload
-        }
+        stream: streamEnabled,
+        payload: requestPayload
       });
 
       if (!result?.success) {
@@ -3481,49 +4341,34 @@ export const createAgentSidebar = (
         renderBoxes();
         return;
       }
+      setLlmCacheEntry({
+        key: cacheKey,
+        fn: "substantiate",
+        value: result,
+        meta: { provider: sel.provider, model: sel.model }
+      });
+      substantiateError = null;
 
       const resultsRaw = Array.isArray(result?.results) ? result.results : [];
-      const byKey = new Map<string, any>();
       for (const r of resultsRaw) {
         const key = typeof r?.key === "string" ? r.key : "";
         if (!key) continue;
-        byKey.set(key, r);
+        resultsByKey.set(key, r);
       }
 
-      const nextResults: SubstantiateSuggestion[] = [];
-      for (const [key, context] of anchorContextByKey.entries()) {
-        const r = byKey.get(key);
-        if (!r) continue;
-        const ctx = context.context ?? null;
-        const sentence = context.sentence;
-        const from =
-          ctx && Number.isFinite(ctx.start) ? resolveTextOffsetToDocPos(context.paragraph.from, context.paragraph.to, Number(ctx.start)) : undefined;
-        const to =
-          ctx && Number.isFinite(ctx.end) ? resolveTextOffsetToDocPos(context.paragraph.from, context.paragraph.to, Number(ctx.end)) : undefined;
-        nextResults.push({
-          key,
-          paragraphN: context.paragraph.n,
-          anchorText: context.anchorText,
-          anchorTitle: context.anchorTitle,
-          sentence,
-          rewrite: typeof r?.rewrite === "string" ? String(r.rewrite) : sentence,
-          stance:
-            r?.stance === "corroborates" || r?.stance === "refutes" || r?.stance === "mixed" || r?.stance === "uncertain"
-              ? r.stance
-              : "uncertain",
-          notes: typeof r?.notes === "string" ? String(r.notes) : undefined,
-          matches: Array.isArray(r?.matches) ? r.matches : [],
-          from,
-          to,
-          status: "pending"
-        });
-      }
-
-      substantiateResults = nextResults;
+      const skipped = Number((result?.meta as any)?.index?.skipped ?? streamIndexSkipped ?? 0);
+      const total = Number((result?.meta as any)?.index?.total ?? streamIndexTotal ?? 0);
+      if (Number.isFinite(skipped)) streamIndexSkipped = skipped;
+      if (Number.isFinite(total)) streamIndexTotal = total;
+      updateSubstantiateState(resultsByKey);
       setViewMode("substantiate");
-      setStatus(`Substantiate ready • ${nextResults.length} suggestion(s).`);
-      renderBoxes();
+      updateStatus(true);
     } finally {
+      try {
+        streamUnsub?.();
+      } catch {
+        // ignore
+      }
       setInflight(false);
       editorHandle.focus();
     }
@@ -3590,6 +4435,17 @@ export const createAgentSidebar = (
       };
       window.addEventListener("leditor:ai-draft-action", onDraftAction as any, { passive: true });
       (controller as any).__onDraftAction = onDraftAction;
+
+      const onDraftFocus = (event: Event) => {
+        const target = event.target as HTMLElement | null;
+        const repl = target?.closest?.("[data-ai-draft-key]") as HTMLElement | null;
+        if (!repl) return;
+        const key = String(repl.getAttribute("data-ai-draft-key") ?? "");
+        if (!key) return;
+        highlightPendingCard(key);
+      };
+      document.addEventListener("pointerdown", onDraftFocus, true);
+      (controller as any).__onDraftFocus = onDraftFocus;
     },
     close() {
       if (destroyed) return;
@@ -3642,6 +4498,13 @@ export const createAgentSidebar = (
         // ignore
       }
       (controller as any).__onDraftAction = null;
+      try {
+        const fn = (controller as any).__onDraftFocus as any;
+        if (fn) document.removeEventListener("pointerdown", fn, true);
+      } catch {
+        // ignore
+      }
+      (controller as any).__onDraftFocus = null;
     },
     toggle() {
       if (destroyed) return;
@@ -3740,6 +4603,13 @@ export const createAgentSidebar = (
         // ignore
       }
       (controller as any).__onDraftAction = null;
+      try {
+        const fn = (controller as any).__onDraftFocus as any;
+        if (fn) document.removeEventListener("pointerdown", fn, true);
+      } catch {
+        // ignore
+      }
+      (controller as any).__onDraftFocus = null;
       sidebar.remove();
     }
   };

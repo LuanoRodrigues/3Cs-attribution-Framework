@@ -62,11 +62,29 @@ export const normalizeLedocBundlePayload = (
   };
 
   const registryRaw = isPlainObject((raw as any).registry) ? ((raw as any).registry as Record<string, unknown>) : {};
+  const agentHistory =
+    isPlainObject((registryRaw as any).agentHistory)
+      ? ((registryRaw as any).agentHistory as any)
+      : isPlainObject((registryRaw as any).agent_history)
+        ? ((registryRaw as any).agent_history as any)
+        : isPlainObject((registryRaw as any).agent)
+          ? ((registryRaw as any).agent as any)
+          : undefined;
+  const llmCache =
+    isPlainObject((registryRaw as any).llmCache)
+      ? ((registryRaw as any).llmCache as any)
+      : isPlainObject((registryRaw as any).llm_cache)
+        ? ((registryRaw as any).llm_cache as any)
+        : isPlainObject((registryRaw as any)?.cache?.llm)
+          ? ((registryRaw as any).cache.llm as any)
+          : undefined;
   const registry: LedocBundleRegistryFile = {
     version: LEDOC_BUNDLE_VERSION,
     footnoteIdState: isPlainObject(registryRaw.footnoteIdState) ? (registryRaw.footnoteIdState as any) : undefined,
     knownFootnotes: Array.isArray(registryRaw.knownFootnotes) ? (registryRaw.knownFootnotes as any) : undefined,
-    sourceChecksThread: isPlainObject(registryRaw.sourceChecksThread) ? (registryRaw.sourceChecksThread as any) : undefined
+    sourceChecksThread: isPlainObject(registryRaw.sourceChecksThread) ? (registryRaw.sourceChecksThread as any) : undefined,
+    agentHistory,
+    llmCache
   };
 
   return { payload: { version: LEDOC_BUNDLE_VERSION, content, meta, layout, registry }, warnings };

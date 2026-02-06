@@ -4,14 +4,19 @@ import type { RetrieveCitationNetwork, RetrieveRecord } from "../../shared/types
 export class CitationGraphPanel {
   readonly element: HTMLElement;
   private frame: HTMLIFrameElement;
-  private payload = buildCitationPayload(undefined);
+  private payload: RetrieveCitationNetwork = buildCitationPayload(undefined) as unknown as RetrieveCitationNetwork;
   private frameLoaded = false;
   private seedId: string | null = null;
   private messageListener: (event: MessageEvent) => void;
+  private highlightListener: (event: Event) => void;
 
-  constructor(record?: RetrieveRecord) {
-    this.payload = buildCitationPayload(record);
-    this.seedId = record?.paperId ?? null;
+  constructor(record?: RetrieveRecord, network?: RetrieveCitationNetwork) {
+    this.payload = (network ?? (buildCitationPayload(record) as unknown as RetrieveCitationNetwork)) as RetrieveCitationNetwork;
+    this.seedId =
+      record?.paperId ??
+      network?.nodes?.find((n) => n.type === "selected")?.id ??
+      network?.nodes?.[0]?.id ??
+      null;
     this.element = document.createElement("div");
     this.element.className = "tool-surface";
     this.element.style.display = "flex";
@@ -89,10 +94,17 @@ export class CitationGraphPanel {
       }
     };
     window.addEventListener("message", this.messageListener);
+    this.highlightListener = (event: Event) => {
+      const detail = (event as CustomEvent<{ paperId?: string }>).detail;
+      const paperId = detail?.paperId;
+      if (!paperId || !this.frame.contentWindow) return;
+      this.frame.contentWindow.postMessage({ type: "selectNode", payload: { id: paperId } }, "*");
+    };
+    window.addEventListener("retrieve:graph-highlight", this.highlightListener);
 
     this.element.append(header, this.frame);
 
-    if (record && window.retrieveBridge?.citationNetwork?.fetch) {
+    if (!network && record && window.retrieveBridge?.citationNetwork?.fetch) {
       void this.fetchBackendPayload(record);
     }
   }
@@ -153,5 +165,6 @@ export class CitationGraphPanel {
 
   destroy(): void {
     window.removeEventListener("message", this.messageListener);
+    window.removeEventListener("retrieve:graph-highlight", this.highlightListener);
   }
 }

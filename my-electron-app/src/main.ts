@@ -3,7 +3,7 @@ import path from "path";
 import net from "net";
 import { randomUUID } from "crypto";
 import os from "os";
-import { app, BrowserWindow, ipcMain, Menu, MenuItemConstructorOptions, shell, dialog } from "electron";
+import { app, BrowserWindow, ipcMain, Menu, MenuItemConstructorOptions, shell, dialog, session } from "electron";
 import { pathToFileURL } from "url";
 import mammoth from "mammoth";
 import JSZip from "jszip";
@@ -27,7 +27,13 @@ import { DATABASE_KEYS, LLM_KEYS } from "./config/settingsKeys";
 import { handleRetrieveCommand, registerRetrieveIpcHandlers } from "./main/ipc/retrieve_ipc";
 import { registerProjectIpcHandlers } from "./main/ipc/project_ipc";
 import { ProjectManager } from "./main/services/projectManager";
-import { invokeVisualiseDescribeSlide, invokeVisualiseExportPptx, invokeVisualisePreview, invokeVisualiseSections } from "./main/services/visualiseBridge";
+import {
+  invokeVisualiseDescribeSlide,
+  invokeVisualiseExportPptx,
+  invokeVisualisePreview,
+  invokeVisualiseSections,
+  resetVisualiseWorker
+} from "./main/services/visualiseBridge";
 import { invokePdfOcr } from "./main/services/pdfOcrBridge";
 import { createCoderTestTree, createPdfTestPayload } from "./test/testFixtures";
 import { getCoderCacheDir } from "./session/sessionPaths";
@@ -1084,10 +1090,14 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
     }
     if (payload?.phase === "visualiser" && payload.action) {
       try {
+        if (payload.action === "cancel_preview") {
+          resetVisualiseWorker();
+          return { status: "ok" };
+        }
         if (payload.action === "run_inputs" || payload.action === "refresh_preview" || payload.action === "build_deck") {
           const body = (payload.payload as Record<string, unknown>) || {};
           const response = await invokeVisualisePreview({
-            table: body.table as any,
+            table: (body.table as any) || undefined,
             include: (body.include as string[]) || [],
             params: (body.params as Record<string, unknown>) || {},
             selection: (body.selection as any) || undefined,
@@ -1117,7 +1127,7 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
             // ignore
           }
           const response = await invokeVisualiseExportPptx({
-            table: body.table as any,
+            table: (body.table as any) || undefined,
             include: (body.include as string[]) || [],
             params: (body.params as Record<string, unknown>) || {},
             selection: (body.selection as any) || undefined,
@@ -1990,6 +2000,30 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
       }
     });
     return { found: paths.length > 0, paths, values };
+  });
+
+  ipcMain.handle("settings:clearCache", async () => {
+    const userData = app.getPath("userData");
+    const targets = ["Cache", "GPUCache", "Code Cache", "DawnCache"];
+    const cleared: string[] = [];
+    const failed: string[] = [];
+    try {
+      await session.defaultSession.clearCache();
+    } catch {
+      // ignore cache clear failures; we still try removing cache folders
+    }
+    targets.forEach((dirName) => {
+      const targetPath = path.join(userData, dirName);
+      try {
+        if (fs.existsSync(targetPath)) {
+          fs.rmSync(targetPath, { recursive: true, force: true });
+          cleared.push(targetPath);
+        }
+      } catch {
+        failed.push(targetPath);
+      }
+    });
+    return { cleared, failed };
   });
 
   ipcMain.handle("settings:open-window", (_event, payload?: { section?: string }) => {

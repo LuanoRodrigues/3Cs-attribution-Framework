@@ -10,7 +10,7 @@ export const COMMAND_ALIASES: Record<string, string> = {
   "paste.special.openDialog": "PasteClean",
   "paste.plainText": "PastePlain",
   "paste.fromWordCleanup": "PasteClean",
-  "paste.autoClean.toggle": "PasteClean",
+  "paste.autoClean.toggle": "PasteAutoCleanToggle",
   "paste.cleanupRules.openDialog": "PasteClean",
   "paste.defaults.openDialog": "Paste",
   "clipboard.cut": "Cut",

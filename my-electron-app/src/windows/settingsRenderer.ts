@@ -300,7 +300,8 @@ import { resolveThemeTokens, themeIds, type ThemeId } from "../renderer/theme/to
         { id: "author", label: "Author details", build: buildAuthorPanel },
         { id: "project", label: "Project defaults", build: buildProjectPanel },
         { id: "appearance", label: "Appearance", build: buildAppearancePanel },
-        { id: "coder-shortcuts", label: "Coder shortcuts", build: buildCoderShortcutsPanel }
+        { id: "coder-shortcuts", label: "Coder shortcuts", build: buildCoderShortcutsPanel },
+        { id: "coder-performance", label: "Coder performance", build: buildCoderPerformancePanel }
       ]
     },
     {
@@ -1044,12 +1045,16 @@ import { resolveThemeTokens, themeIds, type ThemeId } from "../renderer/theme/to
 
     add("Drag", "Move item/folder within the tree");
     add("Ctrl/Alt + Drag", "Copy item/folder to target");
+    add("?", "Show/hide the Coder shortcuts panel");
+    add("Ctrl/Cmd + Shift + P", "Open command palette");
+    add("Ctrl/Cmd + Shift + L", "Open diagnostics panel");
     add("Delete / Backspace", "Delete selection");
     add("F2 or Enter", "Rename selected node");
     add("Ctrl/Cmd + N (Shift for root)", "New folder");
     add("Arrow Up/Down", "Change selection (Shift extends range)");
     add("Ctrl/Cmd + Arrow Up/Down", "Move node up/down within its folder");
     add("Ctrl/Cmd + PageUp/PageDown", "Move node to top/bottom of its folder");
+    add("Ctrl/Cmd + Shift + Home", "Move selection to root");
     add("Ctrl/Cmd + Shift + Arrow Right", "Indent selection into previous folder sibling");
     add("Ctrl/Cmd + Shift + Arrow Left", "Outdent selection to parent folder");
     add("Home / End", "Jump to first/last visible row (Shift extends)");
@@ -1063,6 +1068,50 @@ import { resolveThemeTokens, themeIds, type ThemeId } from "../renderer/theme/to
     add("Alt + N", "Toggle note panel");
 
     card.appendChild(list);
+    panel.appendChild(card);
+  }
+
+  function buildCoderPerformancePanel(panel: HTMLElement) {
+    const card = createPanelCard(
+      "Coder performance",
+      "Clear caches to restore responsiveness without rebooting."
+    );
+    const row = document.createElement("div");
+    row.className = "control-row";
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "action-button";
+    button.textContent = "Clear cache";
+
+    const status = document.createElement("span");
+    status.className = "status-tag";
+    status.textContent = "Ready";
+
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      status.textContent = "Clearing cache...";
+      try {
+        if (!bridge.clearCache) {
+          throw new Error("settingsBridge.clearCache is unavailable");
+        }
+        const result = await bridge.clearCache();
+        if (result?.cleared?.length) {
+          status.textContent = `Cleared ${result.cleared.length} cache folders`;
+        } else if (result?.failed?.length) {
+          status.textContent = "Cache cleared with warnings";
+        } else {
+          status.textContent = "Cache cleared";
+        }
+      } catch {
+        status.textContent = "Cache clear failed";
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    row.append(button, status);
+    card.appendChild(row);
     panel.appendChild(card);
   }
 

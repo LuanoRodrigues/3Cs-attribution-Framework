@@ -5009,6 +5009,16 @@ def load_data_from_source_for_widget(
                       immediately with NO further processing or network calls.
       - cache=False → fetch fresh, process, write cache, and return the fresh result.
     """
+    logger.info(
+        "[Zotero_loader_to_df][debug] load_data_from_source_for_widget called "
+        f"source_type={source_type} collection_name={collection_name} file_path={file_path} cache={cache}"
+    )
+    logger.info(
+        "[Zotero_loader_to_df][debug] env LIBRARY_ID=%s LIBRARY_TYPE=%s API_KEY=%s",
+        os.environ.get("LIBRARY_ID"),
+        os.environ.get("LIBRARY_TYPE"),
+        "***" if os.environ.get("API_KEY") else None,
+    )
     logger = logging.getLogger("DataLoader")
     if not logger.handlers:
         handler = logging.StreamHandler()

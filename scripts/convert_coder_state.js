@@ -38,6 +38,25 @@ const decodeEntities = (value) =>
     .replace(/&quot;/gi, '"')
     .replace(/&#39;/gi, "'");
 
+const isSafeAnchorHref = (value) => {
+  const href = String(value ?? "").trim();
+  if (!href) return false;
+  if (href.startsWith("#")) return true;
+  return /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(href);
+};
+
+const normalizeAnchorHref = (attrs) => {
+  const rawHref = String(attrs.href ?? "").trim();
+  const dqid =
+    attrs["data-dqid"] ?? attrs["data-quote-id"] ?? attrs["data-quote_id"] ?? "";
+  const dqHref = dqid ? `dq://${dqid}` : "";
+  if (isSafeAnchorHref(rawHref)) return rawHref;
+  if (isSafeAnchorHref(dqHref)) return dqHref;
+  const origHref = String(attrs["data-orig-href"] ?? "").trim();
+  if (isSafeAnchorHref(origHref)) return origHref;
+  return "#";
+};
+
 const extractFirstHtml = (state) => {
   const pick = (node) => {
     if (!node || typeof node !== "object") return null;

@@ -19,6 +19,24 @@ const decodeEntities = (value: string): string =>
     .replace(/&quot;/gi, '"')
     .replace(/&#39;/gi, "'");
 
+const isSafeAnchorHref = (value: string | null | undefined): boolean => {
+  const href = String(value ?? "").trim();
+  if (!href) return false;
+  if (href.startsWith("#")) return true;
+  return /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(href);
+};
+
+const normalizeAnchorHref = (attrs: Record<string, string>): string => {
+  const rawHref = String(attrs.href ?? "").trim();
+  const dqid = attrs["data-dqid"] ?? attrs["data-quote-id"] ?? attrs["data-quote_id"] ?? "";
+  const dqHref = dqid ? `dq://${dqid}` : "";
+  if (isSafeAnchorHref(rawHref)) return rawHref;
+  if (isSafeAnchorHref(dqHref)) return dqHref;
+  const origHref = String(attrs["data-orig-href"] ?? "").trim();
+  if (isSafeAnchorHref(origHref)) return origHref;
+  return "#";
+};
+
 type HtmlText = { type: "text"; value: string };
 type HtmlElement = { type: "element"; tag: string; attrs: Record<string, string>; children: HtmlNode[] };
 type HtmlNode = HtmlText | HtmlElement;
@@ -211,12 +229,7 @@ const inlineFromNodes = (nodes: HtmlNode[], activeMarks: PMMark[] = []): PMNode[
     if (tag === "sup") nextMarks.push({ type: "superscript" });
     if (tag === "sub") nextMarks.push({ type: "subscript" });
     if (tag === "a") {
-      const fallbackHref =
-        attrs.href ??
-        attrs["data-orig-href"] ??
-        (attrs["data-dqid"] ? `dq://${attrs["data-dqid"]}` : null) ??
-        attrs["data-key"] ??
-        null;
+      const fallbackHref = normalizeAnchorHref(attrs);
       const markAttrs: Record<string, unknown> = {
         href: fallbackHref,
         title: attrs.title ?? null,

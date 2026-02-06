@@ -68,22 +68,27 @@ const runPythonTask = async (payload: Record<string, unknown>): Promise<Record<s
       resolve({ status: "error", message: error.message });
     });
     child.on("close", (code) => {
-      if (code !== 0 && !stdout.trim()) {
+      const out = stdout.trim();
+      const err = stderr.trim();
+      if (code !== 0 && !out) {
         resolve({
           status: "error",
-          message: stderr.trim() || `python exited with ${code}`
+          message: err || `python exited with ${code}`
         });
         return;
       }
       try {
-        const parsed = JSON.parse(stdout.trim() || "{}");
+        const parsed = JSON.parse(out || "{}");
+        if (err) {
+          parsed.stderr = err;
+        }
         resolve(parsed);
       } catch (error) {
         resolve({
           status: "error",
           message: `Invalid response from python (${error instanceof Error ? error.message : "parse error"})`,
-          raw: stdout.trim(),
-          stderr: stderr.trim()
+          raw: out,
+          stderr: err
         });
       }
     });

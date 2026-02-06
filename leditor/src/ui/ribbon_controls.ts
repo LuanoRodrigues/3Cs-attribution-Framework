@@ -96,6 +96,9 @@ export const createRibbonDropdownButton = (options: RibbonDropdownOptions): HTML
     extraClasses: ["ribbon-dropdown-button"],
     tooltip: options.tooltip ?? options.label
   });
+  const caret = createRibbonIcon("chevronDown");
+  caret.classList.add("ribbon-dropdown-caret");
+  button.appendChild(caret);
   button.setAttribute("aria-haspopup", "menu");
   button.setAttribute("aria-expanded", "false");
   button.dataset.dropdown = "true";

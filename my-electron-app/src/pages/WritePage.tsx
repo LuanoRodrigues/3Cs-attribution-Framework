@@ -8,6 +8,14 @@ const HOST_CLASS = "write-leditor-shell";
 const LIB_STYLE_ENTRY = "lib/index.css";
 const LIB_MODULE_ENTRY = "lib/index.js";
 const BODY_WRITE_CLASS = "write-leditor-active";
+const dbg = (fn: string, msg: string, extra?: Record<string, unknown>) => {
+  const line = `[WritePage.tsx][${fn}][debug] ${msg}`;
+  if (extra) {
+    console.debug(line, extra);
+  } else {
+    console.debug(line);
+  }
+};
 
 type HostPackage = {
   host: HTMLElement;
@@ -132,9 +140,26 @@ async function ensureLibraryLeditorLoaded(): Promise<void> {
     container: hostPackage.host,
     elementId: LEDITOR_MOUNT_ID,
     requireHostContract: true,
-    enableCoderStateImport: false
+    enableCoderStateImport: false,
+    uiScale: 1
   });
   destroyApp = typeof instance?.destroy === "function" ? instance.destroy : api.destroyLeditorApp ?? null;
+
+  const appRoot = hostPackage.host.querySelector(".leditor-app") as HTMLElement | null;
+  if (appRoot) {
+    const hostRect = hostPackage.host.getBoundingClientRect();
+    const appRect = appRoot.getBoundingClientRect();
+    const ribbonHost = appRoot.querySelector(".leditor-ribbon-host") as HTMLElement | null;
+    const ribbonRect = ribbonHost?.getBoundingClientRect() ?? null;
+    const uiScale = getComputedStyle(appRoot).getPropertyValue("--ui-scale").trim();
+    dbg("ensureLibraryLeditorLoaded", "layout probe", { hostRect, appRect, ribbonRect, uiScale });
+    const topLeft = document.elementFromPoint(12, 12) as HTMLElement | null;
+    dbg("ensureLibraryLeditorLoaded", "top-left element", {
+      tag: topLeft?.tagName,
+      id: topLeft?.id,
+      className: topLeft?.className
+    });
+  }
 
   // Load the persisted LEDOC document (coder_state.ledoc) and autosave back into it.
   ledocPath = await (window.leditorHost as any)?.getDefaultLEDOCPath?.().catch(() => null);

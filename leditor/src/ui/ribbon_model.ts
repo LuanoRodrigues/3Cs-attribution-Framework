@@ -69,6 +69,7 @@ export const ribbonRegistry = {
     "paginationMode": "enum",
     "paperSize": "enum",
     "pageMargins": "object",
+    "pageColumns": "number",
     "zoomLevel": "number",
     "viewMode": "enum",
     "trackChanges": "boolean",
@@ -1018,6 +1019,78 @@ export const homeTab = {
                   "command": {
                     "id": "font.underlineColor.openPicker"
                   }
+                },
+                {
+                  "type": "sectionHeader",
+                  "label": "Underline Colors"
+                },
+                {
+                  "type": "colorPalette",
+                  "controlId": "font.underline.palette",
+                  "label": "Theme Colors",
+                  "palette": {
+                    "kind": "static",
+                    "storageKey": "underline",
+                    "rows": [
+                      [
+                        "#000000",
+                        "#1f2937",
+                        "#4b5563",
+                        "#6b7280",
+                        "#9ca3af"
+                      ],
+                      [
+                        "#0f172a",
+                        "#1e3a8a",
+                        "#1d4ed8",
+                        "#2563eb",
+                        "#60a5fa"
+                      ],
+                      [
+                        "#14532d",
+                        "#166534",
+                        "#16a34a",
+                        "#4ade80",
+                        "#86efac"
+                      ],
+                      [
+                        "#7c2d12",
+                        "#9a3412",
+                        "#ea580c",
+                        "#fb923c",
+                        "#fdba74"
+                      ],
+                      [
+                        "#701a75",
+                        "#86198f",
+                        "#c026d3",
+                        "#e879f9",
+                        "#f5d0fe"
+                      ]
+                    ]
+                  },
+                  "command": {
+                    "id": "font.underlineColor.openPicker",
+                    "payloadSchema": {
+                      "value": "string"
+                    }
+                  }
+                },
+                {
+                  "type": "colorPalette",
+                  "controlId": "font.underline.recent",
+                  "label": "Recent Colors",
+                  "palette": {
+                    "kind": "recent",
+                    "storageKey": "underline",
+                    "rows": []
+                  },
+                  "command": {
+                    "id": "font.underlineColor.openPicker",
+                    "payloadSchema": {
+                      "value": "string"
+                    }
+                  }
                 }
               ],
               "collapse": {
@@ -1123,11 +1196,26 @@ export const homeTab = {
               },
               "menu": [
                 {
+                  "controlId": "font.color.automatic",
+                  "label": "Automatic",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "TextColor",
+                    "payloadSchema": {
+                      "value": null
+                    }
+                  }
+                },
+                {
+                  "type": "separator"
+                },
+                {
                   "type": "colorPalette",
                   "controlId": "font.color.palette",
                   "label": "Theme Colors",
                   "palette": {
                     "kind": "static",
+                    "storageKey": "text",
                     "rows": [
                       [
                         "#000000",
@@ -1181,6 +1269,22 @@ export const homeTab = {
                   }
                 },
                 {
+                  "type": "colorPalette",
+                  "controlId": "font.color.recent",
+                  "label": "Recent Colors",
+                  "palette": {
+                    "kind": "recent",
+                    "storageKey": "text",
+                    "rows": []
+                  },
+                  "command": {
+                    "id": "TextColor",
+                    "payloadSchema": {
+                      "value": "string"
+                    }
+                  }
+                },
+                {
                   "type": "separator"
                 },
                 {
@@ -1213,11 +1317,26 @@ export const homeTab = {
               },
               "menu": [
                 {
+                  "controlId": "font.highlight.none",
+                  "label": "No Color",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "HighlightColor",
+                    "payloadSchema": {
+                      "value": null
+                    }
+                  }
+                },
+                {
+                  "type": "separator"
+                },
+                {
                   "type": "colorPalette",
                   "controlId": "font.highlight.palette",
                   "label": "Highlighter",
                   "palette": {
                     "kind": "static",
+                    "storageKey": "highlight",
                     "rows": [
                       [
                         "#ffff00",
@@ -1250,17 +1369,30 @@ export const homeTab = {
                   }
                 },
                 {
-                  "type": "separator"
-                },
-                {
-                  "controlId": "font.highlight.none",
-                  "label": "No Color",
-                  "type": "menuItem",
+                  "type": "colorPalette",
+                  "controlId": "font.highlight.recent",
+                  "label": "Recent Colors",
+                  "palette": {
+                    "kind": "recent",
+                    "storageKey": "highlight",
+                    "rows": []
+                  },
                   "command": {
                     "id": "HighlightColor",
                     "payloadSchema": {
-                      "value": null
+                      "value": "string|null"
                     }
+                  }
+                },
+                {
+                  "type": "separator"
+                },
+                {
+                  "controlId": "font.highlight.more",
+                  "label": "More Colors…",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "HighlightColor"
                   }
                 }
               ],
@@ -3429,6 +3561,60 @@ export const layoutTab = {
                     "args": {
                       "id": "legal"
                     }
+                  }
+                }
+              ],
+              "collapse": {
+                "A": "visible",
+                "B": "iconOnly",
+                "C": "inFlyout"
+              }
+            },
+            {
+              "controlId": "pageSetup.columns",
+              "label": "Columns",
+              "type": "dropdown",
+              "size": "medium",
+              "iconKey": "icon.columns",
+              "command": {
+                "id": "SetSectionColumns"
+              },
+              "state": {
+                "binding": "pageColumns",
+                "kind": "number"
+              },
+              "menu": [
+                {
+                  "controlId": "pageSetup.columns.one",
+                  "label": "One",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "SetSectionColumns",
+                    "args": {
+                      "count": 1
+                    }
+                  }
+                },
+                {
+                  "controlId": "pageSetup.columns.two",
+                  "label": "Two",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "SetSectionColumns",
+                    "args": {
+                      "count": 2
+                    }
+                  }
+                },
+                {
+                  "type": "separator"
+                },
+                {
+                  "controlId": "pageSetup.columns.more",
+                  "label": "More Columns…",
+                  "type": "menuItem",
+                  "command": {
+                    "id": "pageSetup.columns.openDialog"
                   }
                 }
               ],

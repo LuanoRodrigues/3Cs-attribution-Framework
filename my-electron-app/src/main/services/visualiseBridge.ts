@@ -6,7 +6,7 @@ import path from "path";
 import type { DataHubTable } from "../../shared/types/dataHub";
 
 export interface VisualisePreviewRequest {
-  table: DataHubTable;
+  table?: DataHubTable;
   include?: string[];
   params?: Record<string, unknown>;
   selection?: { sections?: string[]; slideIds?: string[] };
@@ -15,7 +15,7 @@ export interface VisualisePreviewRequest {
 }
 
 export interface VisualiseExportPptxRequest {
-  table: DataHubTable;
+  table?: DataHubTable;
   include?: string[];
   params?: Record<string, unknown>;
   selection?: { sections?: string[]; slideIds?: string[] };
@@ -100,7 +100,11 @@ const runPythonTask = async (payload: Record<string, unknown>): Promise<Record<s
     return { status: "error", message: `Missing visualise host script: ${script}` };
   }
   return new Promise((resolve) => {
-    const child = spawn(python, [script], { stdio: ["pipe", "pipe", "pipe"] });
+    const cacheDir = path.join(app.getPath("userData"), "data-hub-cache");
+    const child = spawn(python, [script], {
+      stdio: ["pipe", "pipe", "pipe"],
+      env: { ...process.env, PYTHONUNBUFFERED: "1", DATAHUB_CACHE_DIR: cacheDir }
+    });
     let stdout = "";
     let stderr = "";
     child.stdout.on("data", (chunk) => {
@@ -141,14 +145,135 @@ const runPythonTask = async (payload: Record<string, unknown>): Promise<Record<s
   });
 };
 
+type PendingRequest = { resolve: (value: Record<string, unknown>) => void; reject: (error: Error) => void };
+
+class VisualiseWorker {
+  private child = spawn(resolvePythonBinary(), [resolveHostScript()], {
+    stdio: ["pipe", "pipe", "pipe"],
+    env: {
+      ...process.env,
+      PYTHONUNBUFFERED: "1",
+      VISUALISE_SERVER: "1",
+      DATAHUB_CACHE_DIR: path.join(app.getPath("userData"), "data-hub-cache")
+    }
+  });
+  private stdoutBuf = "";
+  private stdoutExtraLogs: string[] = [];
+  private stderrLogs: string[] = [];
+  private pending: PendingRequest[] = [];
+  private closed = false;
+
+  constructor() {
+    this.child.stdout.on("data", (chunk) => this.handleStdout(chunk.toString()));
+    this.child.stderr.on("data", (chunk) => this.handleStderr(chunk.toString()));
+    this.child.on("error", (error) => this.handleClose(error));
+    this.child.on("close", () => this.handleClose(new Error("visualise worker exited")));
+  }
+
+  public reset(reason = "visualise worker reset"): void {
+    // Reject in-flight requests immediately so callers can recover without waiting.
+    this.handleClose(new Error(reason));
+    try {
+      this.child.kill("SIGKILL");
+    } catch {
+      // ignore
+    }
+  }
+
+  private handleStdout(text: string): void {
+    this.stdoutBuf += text;
+    const lines = this.stdoutBuf.split(/\r?\n/g);
+    this.stdoutBuf = lines.pop() ?? "";
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      const looksJson = trimmed.startsWith("{") && trimmed.endsWith("}");
+      if (!looksJson) {
+        this.stdoutExtraLogs.push(trimmed);
+        continue;
+      }
+      let parsed: Record<string, unknown> | undefined;
+      try {
+        parsed = JSON.parse(trimmed) as Record<string, unknown>;
+      } catch {
+        this.stdoutExtraLogs.push(trimmed);
+        continue;
+      }
+      const req = this.pending.shift();
+      if (!req) {
+        continue;
+      }
+      const pythonLogs = [...this.stdoutExtraLogs, ...this.stderrLogs];
+      this.stdoutExtraLogs = [];
+      this.stderrLogs = [];
+      req.resolve({ ...(parsed as any), pythonLogs });
+    }
+  }
+
+  private handleStderr(text: string): void {
+    this.stderrLogs.push(...splitLines(text));
+    // Cap growth if a request hangs.
+    if (this.stderrLogs.length > 5000) {
+      this.stderrLogs = this.stderrLogs.slice(-2000);
+    }
+  }
+
+  private handleClose(error: Error): void {
+    if (this.closed) return;
+    this.closed = true;
+    const err = error instanceof Error ? error : new Error(String(error));
+    while (this.pending.length) {
+      const req = this.pending.shift();
+      if (req) req.reject(err);
+    }
+  }
+
+  public async send(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    if (this.closed || !this.child.stdin.writable) {
+      throw new Error("visualise worker unavailable");
+    }
+    return new Promise((resolve, reject) => {
+      this.pending.push({ resolve, reject });
+      try {
+        this.child.stdin.write(`${JSON.stringify(payload)}\n`);
+      } catch (error) {
+        this.pending.pop();
+        reject(error instanceof Error ? error : new Error(String(error)));
+      }
+    });
+  }
+}
+
+let worker: VisualiseWorker | null = null;
+
+export const resetVisualiseWorker = (): void => {
+  try {
+    worker?.reset();
+  } finally {
+    worker = null;
+  }
+};
+
+const runPythonTaskPersistent = async (payload: Record<string, unknown>): Promise<Record<string, unknown>> => {
+  try {
+    if (!worker) {
+      worker = new VisualiseWorker();
+    }
+    return await worker.send(payload);
+  } catch (error) {
+    worker = null;
+    return runPythonTask(payload);
+  }
+};
+
 export const invokeVisualiseSections = async (): Promise<Record<string, unknown>> => {
-  return runPythonTask({ action: "sections" });
+  return runPythonTaskPersistent({ action: "sections" });
 };
 
 export const invokeVisualisePreview = async (request: VisualisePreviewRequest): Promise<Record<string, unknown>> => {
-  return runPythonTask({
+  return runPythonTaskPersistent({
     action: "preview",
-    table: request.table,
+    ...(request.table ? { table: request.table } : {}),
     include: request.include ?? [],
     params: request.params ?? {},
     selection: request.selection ?? undefined,
@@ -158,9 +283,9 @@ export const invokeVisualisePreview = async (request: VisualisePreviewRequest): 
 };
 
 export const invokeVisualiseExportPptx = async (request: VisualiseExportPptxRequest): Promise<Record<string, unknown>> => {
-  return runPythonTask({
+  return runPythonTaskPersistent({
     action: "export_pptx",
-    table: request.table,
+    ...(request.table ? { table: request.table } : {}),
     include: request.include ?? [],
     params: request.params ?? {},
     selection: request.selection ?? undefined,
@@ -174,7 +299,7 @@ export const invokeVisualiseExportPptx = async (request: VisualiseExportPptxRequ
 export const invokeVisualiseDescribeSlide = async (
   request: VisualiseDescribeSlideRequest
 ): Promise<Record<string, unknown>> => {
-  return runPythonTask({
+  return runPythonTaskPersistent({
     action: "describe_slide",
     slide: request.slide,
     params: request.params ?? {},

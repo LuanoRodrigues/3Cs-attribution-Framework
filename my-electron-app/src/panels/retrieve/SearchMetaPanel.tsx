@@ -1,5 +1,5 @@
 import { retrieveContext } from "../../state/retrieveContext";
-import type { RetrievePaperSnapshot, RetrieveRecord } from "../../shared/types/retrieve";
+import type { RetrieveCitationNetwork, RetrievePaperSnapshot, RetrieveRecord } from "../../shared/types/retrieve";
 
 export class SearchMetaPanel {
   readonly element: HTMLElement;
@@ -7,12 +7,18 @@ export class SearchMetaPanel {
   private metaEl: HTMLElement;
   private sourceEl: HTMLElement;
   private idsEl: HTMLElement;
+  private venueEl: HTMLElement;
+  private citationsEl: HTMLElement;
+  private oaEl: HTMLElement;
   private abstractEl: HTMLElement;
+  private authorsEl: HTMLElement;
   private openBtn: HTMLButtonElement;
   private oaBtn: HTMLButtonElement;
   private bibBtn: HTMLButtonElement;
   private saveBtn: HTMLButtonElement;
   private graphBtn: HTMLButtonElement;
+  private snowballRefsBtn: HTMLButtonElement;
+  private snowballCitesBtn: HTMLButtonElement;
   private tagList: HTMLElement;
   private tagInput: HTMLInputElement;
   private tagAddBtn: HTMLButtonElement;
@@ -57,6 +63,22 @@ export class SearchMetaPanel {
     this.idsEl.style.opacity = "0.8";
     this.idsEl.style.fontSize = "12px";
 
+    this.venueEl = document.createElement("div");
+    this.venueEl.style.opacity = "0.8";
+    this.venueEl.style.fontSize = "12px";
+
+    this.citationsEl = document.createElement("div");
+    this.citationsEl.style.opacity = "0.8";
+    this.citationsEl.style.fontSize = "12px";
+
+    this.oaEl = document.createElement("div");
+    this.oaEl.style.opacity = "0.8";
+    this.oaEl.style.fontSize = "12px";
+
+    this.authorsEl = document.createElement("div");
+    this.authorsEl.style.opacity = "0.8";
+    this.authorsEl.style.fontSize = "12px";
+
     this.abstractEl = document.createElement("p");
     this.abstractEl.style.margin = "0";
     this.abstractEl.style.whiteSpace = "pre-wrap";
@@ -76,28 +98,53 @@ export class SearchMetaPanel {
     this.graphBtn.disabled = true;
     this.graphBtn.addEventListener("click", () => this.openGraph());
 
+    this.snowballRefsBtn = document.createElement("button");
+    this.snowballRefsBtn.type = "button";
+    this.snowballRefsBtn.className = "ribbon-button";
+    this.snowballRefsBtn.textContent = "Snowball: References";
+    this.snowballRefsBtn.disabled = true;
+    this.snowballRefsBtn.addEventListener("click", () => void this.snowball("references"));
+
+    this.snowballCitesBtn = document.createElement("button");
+    this.snowballCitesBtn.type = "button";
+    this.snowballCitesBtn.className = "ribbon-button";
+    this.snowballCitesBtn.textContent = "Snowball: Citations";
+    this.snowballCitesBtn.disabled = true;
+    this.snowballCitesBtn.addEventListener("click", () => void this.snowball("citations"));
+
     this.saveBtn = document.createElement("button");
     this.saveBtn.type = "button";
     this.saveBtn.className = "ribbon-button";
-    this.saveBtn.textContent = "Save (TODO)";
+    this.saveBtn.textContent = "Save";
     this.saveBtn.disabled = true;
+    this.saveBtn.addEventListener("click", () => void this.saveSelected());
 
     this.bibBtn = document.createElement("button");
     this.bibBtn.type = "button";
     this.bibBtn.className = "ribbon-button";
-    this.bibBtn.textContent = "BibTeX (TODO)";
+    this.bibBtn.textContent = "BibTeX";
     this.bibBtn.disabled = true;
+    this.bibBtn.addEventListener("click", () => void this.copyBibtex());
 
     this.oaBtn = document.createElement("button");
     this.oaBtn.type = "button";
     this.oaBtn.className = "ribbon-button";
-    this.oaBtn.textContent = "OA (TODO)";
+    this.oaBtn.textContent = "OA";
     this.oaBtn.disabled = true;
+    this.oaBtn.addEventListener("click", () => this.openOpenAccess());
 
     const actionRow = document.createElement("div");
     actionRow.className = "control-row";
     actionRow.style.gap = "10px";
-    actionRow.append(this.openBtn, this.saveBtn, this.bibBtn, this.oaBtn, this.graphBtn);
+    actionRow.append(
+      this.openBtn,
+      this.saveBtn,
+      this.bibBtn,
+      this.oaBtn,
+      this.graphBtn,
+      this.snowballRefsBtn,
+      this.snowballCitesBtn
+    );
 
     const tagHeader = document.createElement("h6");
     tagHeader.textContent = "Tags";
@@ -136,6 +183,10 @@ export class SearchMetaPanel {
       this.metaEl,
       this.sourceEl,
       this.idsEl,
+      this.venueEl,
+      this.authorsEl,
+      this.citationsEl,
+      this.oaEl,
       actionRow,
       this.abstractEl,
       tagHeader,
@@ -165,6 +216,8 @@ export class SearchMetaPanel {
     this.saveBtn.disabled = !record;
     this.bibBtn.disabled = !record;
     this.oaBtn.disabled = !record;
+    this.snowballRefsBtn.disabled = !record;
+    this.snowballCitesBtn.disabled = !record;
     this.tagInput.disabled = !record;
     this.tagAddBtn.disabled = !record;
     this.tagList.innerHTML = "";
@@ -174,6 +227,10 @@ export class SearchMetaPanel {
       this.metaEl.textContent = "Select a record in the search table.";
       this.sourceEl.textContent = "";
       this.idsEl.textContent = "";
+      this.venueEl.textContent = "";
+      this.authorsEl.textContent = "";
+      this.citationsEl.textContent = "";
+      this.oaEl.textContent = "";
       this.abstractEl.textContent = "";
       return;
     }
@@ -189,6 +246,15 @@ export class SearchMetaPanel {
     const doi = record.doi ?? "";
     const pid = record.paperId ?? "";
     this.idsEl.textContent = `Paper ID: ${pid || "n/a"}${doi ? ` • DOI: ${doi}` : ""}`;
+    const venue = (record as any).venue ?? (record as any).journal ?? "";
+    this.venueEl.textContent = venue ? `Venue: ${venue}` : "";
+    const authors = Array.isArray(record.authors) ? record.authors.join(", ") : "";
+    this.authorsEl.textContent = authors ? `Authors: ${authors}` : "";
+    const cits = record.citationCount;
+    this.citationsEl.textContent = typeof cits === "number" ? `Citations: ${cits}` : "";
+    const oaStatus = record.openAccess?.status ?? "unknown";
+    const oaUrl = record.openAccess?.url ?? "";
+    this.oaEl.textContent = `Open Access: ${oaStatus}${oaUrl ? ` • ${oaUrl}` : ""}`;
     this.abstractEl.textContent = record.abstract ?? "";
     await this.refreshTagList(record.paperId);
   }
@@ -210,6 +276,102 @@ export class SearchMetaPanel {
     if (!record) return;
     document.dispatchEvent(new CustomEvent("retrieve:open-graph", { detail: { record } }));
   }
+
+  private async saveSelected(): Promise<void> {
+    const record = this.active;
+    if (!record) return;
+    if (window.retrieveBridge?.library?.save) {
+      try {
+        const result = await window.retrieveBridge.library.save({ record });
+        this.metaEl.textContent = result?.message ?? "Saved to library.";
+      } catch (error) {
+        console.error("Save to library failed", error);
+      }
+      return;
+    }
+    const blob = new Blob([JSON.stringify(record, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${record.title?.slice(0, 60) || "record"}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  private async copyBibtex(): Promise<void> {
+    const record = this.active;
+    if (!record) return;
+    const authors = Array.isArray(record.authors) ? record.authors.map((a) => a.replace(/,/g, "")).join(" and ") : "";
+    const key =
+      (record.authors?.[0]?.split(" ").slice(-1)[0] || "item") + (record.year ? String(record.year) : "0000");
+    const journal = (record as any).journal ?? (record as any).venue ?? "";
+    const bib = [
+      "@article{" + key + ",",
+      record.title ? `  title = {${record.title}},` : "",
+      authors ? `  author = {${authors}},` : "",
+      journal ? `  journal = {${journal}},` : "",
+      record.year ? `  year = {${record.year}},` : "",
+      record.doi ? `  doi = {${record.doi}},` : "",
+      record.url ? `  url = {${record.url}},` : "",
+      "}"
+    ]
+      .filter(Boolean)
+      .join("\n");
+    try {
+      await navigator.clipboard.writeText(bib);
+    } catch (error) {
+      console.error("Unable to copy BibTeX", error);
+    }
+  }
+
+  private openOpenAccess(): void {
+    const record = this.active;
+    if (!record) return;
+    const oaUrl = record.openAccess?.url;
+    if (oaUrl) {
+      window.open(oaUrl, "_blank", "noreferrer");
+      return;
+    }
+    if (record.doi && window.retrieveBridge?.oa?.lookup) {
+      void window.retrieveBridge.oa.lookup({ doi: record.doi }).then((result) => {
+        if (result?.url) {
+          this.oaEl.textContent = `Open Access: ${result.status ?? "unknown"} • ${result.url}`;
+          window.open(result.url, "_blank", "noreferrer");
+        } else {
+          this.oaEl.textContent = `Open Access: ${result?.status ?? "unknown"}`;
+        }
+      });
+      return;
+    }
+    if (record.doi) {
+      window.open(`https://doi.org/${record.doi}`, "_blank", "noreferrer");
+    } else if (record.url) {
+      window.open(record.url, "_blank", "noreferrer");
+    }
+  }
+
+  private snowball = async (direction: "references" | "citations"): Promise<void> => {
+    const record = this.active;
+    if (!record) return;
+    if (!window.retrieveBridge?.snowball?.run) {
+      console.error("Snowball bridge not available.");
+      return;
+    }
+    const btn = direction === "references" ? this.snowballRefsBtn : this.snowballCitesBtn;
+    const label = direction === "references" ? "Snowball: References" : "Snowball: Citations";
+    btn.disabled = true;
+    btn.textContent = `${label} (running…)`;
+    try {
+      const network = (await window.retrieveBridge.snowball.run({ record, direction })) as RetrieveCitationNetwork;
+      document.dispatchEvent(new CustomEvent("retrieve:open-graph", { detail: { record, network } }));
+    } catch (error) {
+      console.error(`Snowball ${direction} failed`, error);
+      this.metaEl.textContent = `${label} failed: ${error instanceof Error ? error.message : "Unknown error"}`;
+      this.metaEl.style.color = "#b91c1c";
+    }
+    btn.textContent = label;
+    btn.disabled = !this.active;
+  };
 
   private async refreshTagList(recordId: string): Promise<void> {
     const tags = await this.fetchTagsForRecord(recordId);

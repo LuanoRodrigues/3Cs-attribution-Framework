@@ -1,3 +1,5 @@
+import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
+
 export type FootnoteKind = "footnote" | "endnote";
 
 export type FootnoteRenderEntry = {
@@ -7,4 +9,5 @@ export type FootnoteRenderEntry = {
   kind: FootnoteKind;
   source: "manual" | "citation";
   pageIndex: number;
+  body: ProseMirrorNode | null;
 };

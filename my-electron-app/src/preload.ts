@@ -2,7 +2,13 @@ import { contextBridge, ipcRenderer } from "electron";
 import type { IpcRendererEvent } from "electron";
 import type { SectionLevel } from "./analyse/types";
 import type { SessionData, SessionMenuAction } from "./session/sessionTypes";
-import type { RetrieveCitationNetwork, RetrieveCitationNetworkRequest, RetrievePaperSnapshot } from "./shared/types/retrieve";
+import type {
+  RetrieveCitationNetwork,
+  RetrieveCitationNetworkRequest,
+  RetrievePaperSnapshot,
+  RetrieveSnowballRequest,
+  RetrieveRecord
+} from "./shared/types/retrieve";
 import type { CoderState } from "./panels/coder/coderTypes";
 
 const LEDITOR_HOST_FLAG = "--leditor-host=";
@@ -42,6 +48,18 @@ contextBridge.exposeInMainWorld("retrieveBridge", {
   citationNetwork: {
     fetch: (payload: RetrieveCitationNetworkRequest): Promise<RetrieveCitationNetwork> =>
       ipcRenderer.invoke("retrieve:citation-network", payload)
+  },
+  snowball: {
+    run: (payload: RetrieveSnowballRequest): Promise<RetrieveCitationNetwork> =>
+      ipcRenderer.invoke("retrieve:snowball", payload)
+  },
+  oa: {
+    lookup: (payload: { doi: string }) => ipcRenderer.invoke("retrieve:oa", payload)
+  },
+  library: {
+    save: (payload: { record: RetrieveRecord }) => ipcRenderer.invoke("retrieve:library:save", payload),
+    export: (payload: { rows: RetrieveRecord[]; format: "csv" | "xlsx" | "ris"; targetPath: string }) =>
+      ipcRenderer.invoke("retrieve:export", payload)
   }
 });
 
@@ -84,7 +102,8 @@ contextBridge.exposeInMainWorld("settingsBridge", {
     ipcRenderer.invoke("settings:exportBundle", { zipPath, includeSecrets }),
   importBundle: (zipPath: string) => ipcRenderer.invoke("settings:importBundle", zipPath),
   getPaths: () => ipcRenderer.invoke("settings:getPaths"),
-  openSettingsWindow: (section?: string) => ipcRenderer.invoke("settings:open-window", { section })
+  openSettingsWindow: (section?: string) => ipcRenderer.invoke("settings:open-window", { section }),
+  clearCache: () => ipcRenderer.invoke("settings:clearCache")
 });
 
 ipcRenderer.on("settings:updated", (_event, payload: { key?: string; value?: unknown }) => {

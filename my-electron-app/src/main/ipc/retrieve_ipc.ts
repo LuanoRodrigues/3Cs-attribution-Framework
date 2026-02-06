@@ -7,19 +7,33 @@ import type {
   RetrieveProviderId,
   RetrieveCitationNetwork,
   RetrieveCitationNetworkRequest,
+  RetrieveSnowballRequest,
+  RetrieveSaveRequest,
   RetrieveQuery,
   RetrieveRecord,
   RetrieveSearchResult
 } from "../../shared/types/retrieve";
 import type { DataHubTable } from "../../shared/types/dataHub";
 import { GENERAL_KEYS, ZOTERO_KEYS } from "../../config/settingsKeys";
-import { getSetting, setSetting } from "../../config/settingsFacade";
+import { getAppDataPath, getSetting, setSetting } from "../../config/settingsFacade";
 import { getSecretsVault } from "../../config/secretsVaultInstance";
 import { getProviderSpec, mergeCosResults, type ProviderSearchResult } from "../services/retrieve/providers";
 import { getCachedResult, setCachedResult } from "../services/retrieve/cache";
 import { addTagToPaper, listTagsForPaper, removeTagFromPaper } from "../services/retrieve/tags_db";
 import { buildCitationNetwork } from "../services/retrieve/citation_network";
+import { fetchSemanticSnowball } from "../services/retrieve/snowball";
+import { getUnpaywallEmail } from "../services/retrieve/providers";
+import AdmZip from "adm-zip";
 import { invokeDataHubExportExcel, invokeDataHubListCollections, invokeDataHubLoad } from "../services/dataHubBridge";
+import {
+  fetchZoteroCollectionItems,
+  fetchZoteroCollectionItemsPreview,
+  fetchZoteroCollectionCount,
+  listZoteroCollections,
+  listZoteroCollectionsCached,
+  mergeTables,
+  resolveZoteroCredentialsTs
+} from "../services/retrieve/zotero";
 
 const rateTracker = new Map<RetrieveProviderId, number>();
 
@@ -59,21 +73,118 @@ const toStringOrUndefined = (value: unknown): string | undefined => {
 };
 
 const resolveZoteroCredentials = (): { libraryId: string; libraryType: string; apiKey: string } => {
-  const libraryId = toStringOrUndefined(getSetting<string>(ZOTERO_KEYS.libraryId));
-  const libraryType = toStringOrUndefined(getSetting<string>(ZOTERO_KEYS.libraryType)) ?? "user";
+  const libraryId =
+    toStringOrUndefined(getSetting<string>(ZOTERO_KEYS.libraryId)) ||
+    toStringOrUndefined(process.env.ZOTERO_LIBRARY_ID) ||
+    toStringOrUndefined(process.env.LIBRARY_ID);
+  const libraryType =
+    toStringOrUndefined(getSetting<string>(ZOTERO_KEYS.libraryType)) ||
+    toStringOrUndefined(process.env.ZOTERO_LIBRARY_TYPE) ||
+    toStringOrUndefined(process.env.LIBRARY_TYPE) ||
+    "user";
   if (!libraryId) {
-    throw new Error("Zotero library ID is not configured in settings.");
+    throw new Error("Zotero library ID is not configured in settings or .env (ZOTERO_LIBRARY_ID / LIBRARY_ID).");
   }
   let apiKey: string | undefined;
   try {
     apiKey = getSecretsVault().getSecret(ZOTERO_KEYS.apiKey);
-  } catch (error) {
-    throw new Error(error instanceof Error ? error.message : "Secrets vault unavailable.");
+  } catch {
+    // vault might be locked; fall through to env
   }
+  apiKey =
+    apiKey ||
+    toStringOrUndefined(process.env.ZOTERO_API_KEY) ||
+    toStringOrUndefined(process.env.API_KEY) ||
+    toStringOrUndefined(process.env.ZOTERO_KEY);
   if (!apiKey) {
-    throw new Error("Zotero API key is not configured or vault is locked.");
+    throw new Error("Zotero API key is not configured (settings, secrets vault, or .env ZOTERO_API_KEY/API_KEY).");
   }
   return { libraryId, libraryType, apiKey };
+};
+
+const resolveZoteroCollection = (payload?: Record<string, unknown>): string | undefined => {
+  return (
+    toStringOrUndefined(payload?.collectionName) ||
+    toStringOrUndefined(getSetting<string>(GENERAL_KEYS.collectionName)) ||
+    toStringOrUndefined(getSetting<string>(ZOTERO_KEYS.lastCollection)) ||
+    toStringOrUndefined(process.env.ZOTERO_COLLECTION) ||
+    toStringOrUndefined(process.env.COLLECTION_NAME)
+  );
+};
+
+const resolveDataHubCacheDir = (): string => {
+  return path.join(app.getPath("userData"), "data-hub-cache");
+};
+
+const ensureDataHubLastMarker = (args: {
+  source: { type: "file" | "zotero"; path?: string; collectionName?: string };
+}): void => {
+  const cacheDir = resolveDataHubCacheDir();
+  const lastPath = path.join(cacheDir, "last.json");
+  if (fs.existsSync(lastPath)) {
+    return;
+  }
+  try {
+    fs.mkdirSync(cacheDir, { recursive: true });
+  } catch {
+    // ignore
+  }
+  const payload = {
+    version: 1,
+    writtenAt: new Date().toISOString(),
+    source: args.source
+  };
+  try {
+    fs.writeFileSync(lastPath, JSON.stringify(payload, null, 2), "utf-8");
+  } catch {
+    // ignore: marker is best-effort
+  }
+};
+
+const findMostRecentCachedTable = async (
+  cacheDir: string
+): Promise<{ table: DataHubTable; cacheFilePath: string } | undefined> => {
+  const ignoreNames = new Set([
+    "references.json",
+    "references_library.json",
+    "references.used.json",
+    "references_library.used.json",
+    "last.json"
+  ]);
+  let entries: string[] = [];
+  try {
+    entries = await fs.promises.readdir(cacheDir);
+  } catch {
+    return undefined;
+  }
+  const candidates: Array<{ filePath: string; mtimeMs: number }> = [];
+  for (const name of entries) {
+    const lower = name.toLowerCase();
+    if (!lower.endsWith(".json")) continue;
+    if (ignoreNames.has(lower)) continue;
+    const filePath = path.join(cacheDir, name);
+    try {
+      const stat = await fs.promises.stat(filePath);
+      if (!stat.isFile()) continue;
+      candidates.push({ filePath, mtimeMs: stat.mtimeMs });
+    } catch {
+      // ignore
+    }
+  }
+  candidates.sort((a, b) => b.mtimeMs - a.mtimeMs || a.filePath.localeCompare(b.filePath));
+  for (const candidate of candidates) {
+    try {
+      const raw = await fs.promises.readFile(candidate.filePath, "utf-8");
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      const table = (parsed as any)?.table as DataHubTable | undefined;
+      if (!table || !Array.isArray((table as any).columns) || !Array.isArray((table as any).rows)) continue;
+      if ((table as any).columns.length <= 0 || (table as any).rows.length <= 0) continue;
+      return { table, cacheFilePath: candidate.filePath };
+    } catch {
+      // ignore corrupt caches
+    }
+  }
+  return undefined;
 };
 
 const ensureTablePayload = (payload?: Record<string, unknown>): DataHubTable => {
@@ -372,39 +483,123 @@ export const handleRetrieveCommand = async (
     };
   }
   if (action === "datahub_load_zotero") {
-    const collectionName =
-      toStringOrUndefined(payload?.collectionName) ??
-      toStringOrUndefined(getSetting<string>(GENERAL_KEYS.collectionName)) ??
-      toStringOrUndefined(getSetting<string>(ZOTERO_KEYS.lastCollection)) ??
-      "";
-    let credentials: { libraryId: string; libraryType: string; apiKey: string };
+    const collectionName = resolveZoteroCollection(payload);
+    const collectionKey = toStringOrUndefined(payload?.collectionKey);
+    const cache = payload?.cache !== false;
+    let credentials: { libraryId: string; libraryType: "user" | "group"; apiKey: string };
     try {
-      credentials = resolveZoteroCredentials();
+      credentials = resolveZoteroCredentialsTs();
     } catch (error) {
       return { status: "error", message: error instanceof Error ? error.message : "Zotero credentials unavailable." };
     }
-    if (collectionName) {
-      setSetting(ZOTERO_KEYS.lastCollection, collectionName);
+    const target = collectionKey || collectionName;
+    if (!target) {
+      return { status: "error", message: "Collection key or name is required to load Zotero items." };
     }
-    const result = await invokeDataHubLoad({
-      sourceType: "zotero",
-      collectionName,
-      zotero: credentials
-    });
-    if ((result as Record<string, unknown>)?.status === "error") {
-      return result as Record<string, unknown>;
+    // store last collection as NAME for UI, not key
+    try {
+      const collections = await listZoteroCollectionsCached(credentials as any, resolveDataHubCacheDir());
+      const match =
+        collections.find((c) => c.key === target) ||
+        collections.find((c) => c.name === target) ||
+        collections.find(
+          (c) => c.name.replace(/\s+/g, "").toLowerCase() === target.replace(/\s+/g, "").toLowerCase()
+        );
+      if (!match) {
+        return { status: "error", message: `Collection '${target}' not found.`, available: collections.slice(0, 10) };
+      }
+      const cacheDir = resolveDataHubCacheDir();
+      const { table, cached } = await fetchZoteroCollectionItems(credentials as any, match.key, undefined, cacheDir, cache);
+      setSetting(ZOTERO_KEYS.lastCollection, match.name || match.key);
+      ensureDataHubLastMarker({ source: { type: "zotero", collectionName: match.name || match.key } });
+      return {
+        status: "ok",
+        table,
+        cached,
+        message: cached ? "Loaded from cache." : "Loaded from Zotero.",
+        source: { type: "zotero", collectionName: match.name || match.key }
+      };
+    } catch (error) {
+      return { status: "error", message: error instanceof Error ? error.message : String(error) };
     }
-    return { status: "ok", ...result };
   }
   if (action === "datahub_list_collections") {
-    let credentials: { libraryId: string; libraryType: string; apiKey: string };
     try {
-      credentials = resolveZoteroCredentials();
+      const creds = resolveZoteroCredentialsTs();
+      const collections = await listZoteroCollectionsCached(creds as any, resolveDataHubCacheDir());
+      return { status: "ok", collections };
     } catch (error) {
-      return { status: "error", message: error instanceof Error ? error.message : "Zotero credentials unavailable." };
+      return { status: "error", message: error instanceof Error ? error.message : String(error) };
     }
-    const result = await invokeDataHubListCollections({ zotero: credentials });
-    return { status: "ok", ...result };
+  }
+  if (action === "datahub_zotero_tree") {
+    try {
+      const creds = resolveZoteroCredentialsTs();
+      const cacheDir = resolveDataHubCacheDir();
+      const collections = await listZoteroCollectionsCached(creds as any, cacheDir);
+      return { status: "ok", collections };
+    } catch (error) {
+      return { status: "error", message: error instanceof Error ? error.message : String(error) };
+    }
+  }
+  if (action === "datahub_zotero_items") {
+    const target = toStringOrUndefined(payload?.collectionKey) || toStringOrUndefined(payload?.collectionName);
+    if (!target) {
+      return { status: "error", message: "collectionKey or collectionName required." };
+    }
+    try {
+      const creds = resolveZoteroCredentialsTs();
+      const collections = await listZoteroCollectionsCached(creds as any, resolveDataHubCacheDir());
+      const match =
+        collections.find((c) => c.key === target) ||
+        collections.find((c) => c.name === target) ||
+        collections.find((c) => c.name.replace(/\s+/g, "").toLowerCase() === target.replace(/\s+/g, "").toLowerCase());
+      if (!match) {
+        return { status: "error", message: `Collection '${target}' not found.` };
+      }
+      const items = await fetchZoteroCollectionItemsPreview(creds as any, match.key);
+      return { status: "ok", items, collectionKey: match.key };
+    } catch (error) {
+      return { status: "error", message: error instanceof Error ? error.message : String(error) };
+    }
+  }
+  if (action === "datahub_zotero_count") {
+    const target = toStringOrUndefined(payload?.collectionKey);
+    if (!target) {
+      return { status: "error", message: "collectionKey required." };
+    }
+    try {
+      const creds = resolveZoteroCredentialsTs();
+      const count = await fetchZoteroCollectionCount(creds as any, target, resolveDataHubCacheDir());
+      return { status: "ok", key: target, count };
+    } catch (error) {
+      return { status: "error", message: error instanceof Error ? error.message : String(error) };
+    }
+  }
+  if (action === "datahub_load_zotero_multi") {
+    const keys = Array.isArray(payload?.collectionKeys) ? (payload?.collectionKeys as string[]) : [];
+    if (!keys.length) {
+      return { status: "error", message: "collectionKeys required." };
+    }
+    try {
+      const creds = resolveZoteroCredentialsTs();
+      const cacheDir = resolveDataHubCacheDir();
+      const tables: DataHubTable[] = [];
+      for (const key of keys) {
+        const { table } = await fetchZoteroCollectionItems(creds as any, key, undefined, cacheDir, false);
+        if (table) tables.push(table);
+      }
+      const merged = mergeTables(tables);
+      return {
+        status: "ok",
+        table: merged,
+        cached: false,
+        message: `Loaded ${tables.length} collections from Zotero.`,
+        source: { type: "zotero", collectionName: keys.join(",") }
+      };
+    } catch (error) {
+      return { status: "error", message: error instanceof Error ? error.message : String(error) };
+    }
   }
   if (action === "datahub_load_file") {
     let filePath = toStringOrUndefined(payload?.filePath);
@@ -426,6 +621,7 @@ export const handleRetrieveCommand = async (
     if ((result as Record<string, unknown>)?.status === "error") {
       return result as Record<string, unknown>;
     }
+    ensureDataHubLastMarker({ source: { type: "file", path: filePath } });
     return { status: "ok", ...result };
   }
   if (action === "datahub_load_excel") {
@@ -442,13 +638,23 @@ export const handleRetrieveCommand = async (
     if ((resultLoad as Record<string, unknown>)?.status === "error") {
       return resultLoad as Record<string, unknown>;
     }
+    ensureDataHubLastMarker({ source: { type: "file", path: filePath } });
     return { status: "ok", ...resultLoad };
   }
   if (action === "datahub_load_last") {
-    const cacheDir = path.join(app.getPath("userData"), "data-hub-cache");
+    const cacheDir = resolveDataHubCacheDir();
     const lastPath = path.join(cacheDir, "last.json");
     if (!fs.existsSync(lastPath)) {
-      return { status: "error", message: "No cached data found. Load data in Retrieve first.", cacheDir };
+      const fallback = await findMostRecentCachedTable(cacheDir);
+      if (fallback) {
+        return {
+          status: "ok",
+          table: fallback.table,
+          source: { type: "file", path: fallback.cacheFilePath },
+          message: "Loaded last cached table (fallback)."
+        };
+      }
+      return { status: "error", message: "No cached data found.", cacheDir };
     }
     let last: Record<string, unknown> | undefined;
     try {
@@ -459,6 +665,20 @@ export const handleRetrieveCommand = async (
         message: `Failed to read cache marker: ${error instanceof Error ? error.message : String(error)}`,
         cacheDir
       };
+    }
+    // Prefer loading the cached table directly when available (fast + does not require original file/network).
+    const cachePath = toStringOrUndefined(last?.cachePath);
+    if (cachePath && fs.existsSync(cachePath)) {
+      try {
+        const raw = await fs.promises.readFile(cachePath, "utf-8");
+        const parsed = JSON.parse(raw) as Record<string, unknown>;
+        const table = (parsed as any)?.table as DataHubTable | undefined;
+        if (table && Array.isArray((table as any).columns) && Array.isArray((table as any).rows)) {
+          return { status: "ok", table, source: (last?.source as any) ?? undefined, last };
+        }
+      } catch {
+        // fall back to re-loading from source below
+      }
     }
     const source = (last?.source ?? {}) as Record<string, unknown>;
     const sourceType = toStringOrUndefined(source.type);
@@ -599,4 +819,167 @@ export const registerRetrieveIpcHandlers = (options: { search?: (query: Retrieve
     }
     return buildCitationNetwork(payload.record);
   });
+  ipcMain.handle("retrieve:snowball", async (_event, payload: RetrieveSnowballRequest) => {
+    if (!payload?.record) {
+      throw new Error("Snowball request missing record.");
+    }
+    return await fetchSemanticSnowball(payload.record, payload.direction);
+  });
+  ipcMain.handle("retrieve:oa", async (_event, payload: { doi?: string }) => {
+    const doi = (payload?.doi || "").trim();
+    if (!doi) {
+      throw new Error("OA lookup requires a DOI.");
+    }
+    const email = getUnpaywallEmail();
+    if (!email) {
+      throw new Error("UNPAYWALL_EMAIL is not configured in .env or settings.");
+    }
+    const url = `https://api.unpaywall.org/v2/${encodeURIComponent(doi)}`;
+    const res = await fetch(`${url}?email=${encodeURIComponent(email)}`);
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      throw new Error(`Unpaywall HTTP ${res.status}: ${txt.slice(0, 120)}`);
+    }
+    const json = (await res.json()) as any;
+    const best = json?.best_oa_location;
+    const oaUrl = best?.url_for_pdf || best?.url || json?.oa_locations?.[0]?.url_for_pdf || json?.oa_locations?.[0]?.url;
+    const status = json?.is_oa ? "open" : "closed";
+    const license = best?.license || json?.license;
+    return { status, url: oaUrl, license };
+  });
+  ipcMain.handle("retrieve:library:save", async (_event, payload: { record: RetrieveRecord }) => {
+    if (!payload?.record) {
+      throw new Error("Save request missing record.");
+    }
+    // Reuse tags_db to persist minimal snapshot + tags table; store JSON for now.
+    const snapshot: RetrievePaperSnapshot = {
+      paperId: payload.record.paperId,
+      title: payload.record.title,
+      doi: payload.record.doi,
+      url: payload.record.url,
+      source: payload.record.source,
+      year: payload.record.year
+    };
+    addTagToPaper(snapshot, "__saved__");
+    const base = getAppDataPath();
+    const outDir = path.join(base, "retrieve", "library");
+    fs.mkdirSync(outDir, { recursive: true });
+    const fileName = `${snapshot.paperId || snapshot.doi || "record"}.json`.replace(/[\\/:]+/g, "_");
+    fs.writeFileSync(path.join(outDir, fileName), JSON.stringify(payload.record, null, 2), "utf-8");
+    return { status: "ok", message: "Saved to library cache." };
+  });
+  ipcMain.handle(
+    "retrieve:export",
+    async (_event, payload: { rows: RetrieveRecord[]; format: "csv" | "xlsx" | "ris"; targetPath?: string }) => {
+      if (!payload?.rows || !Array.isArray(payload.rows) || payload.rows.length === 0) {
+        throw new Error("Export request missing rows.");
+      }
+      const rows = payload.rows;
+      const format = payload.format;
+      const defaultDir = path.join(getAppDataPath(), "retrieve", "exports");
+      fs.mkdirSync(defaultDir, { recursive: true });
+      const fallbackName = `export-${Date.now()}.${format === "xlsx" ? "csv" : format}`;
+      const target = payload.targetPath && payload.targetPath.trim() ? payload.targetPath : path.join(defaultDir, fallbackName);
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      if (format === "csv") {
+        const cols = ["title", "authors", "year", "venue", "doi", "url", "source", "abstract"];
+        const escape = (v: unknown) => {
+          if (v === null || v === undefined) return "";
+          const s = String(Array.isArray(v) ? v.join("; ") : v);
+          if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+          return s;
+        };
+        const lines = [cols.join(",")];
+        rows.forEach((r) => lines.push(cols.map((c) => escape((r as any)[c])).join(",")));
+        fs.writeFileSync(target, lines.join("\n"), "utf-8");
+      } else if (format === "ris") {
+        const toRis = (r: RetrieveRecord) => {
+          const lines: string[] = ["TY  - JOUR"];
+          if (r.title) lines.push(`TI  - ${r.title}`);
+          if (r.authors) r.authors.forEach((a) => lines.push(`AU  - ${a}`));
+          if (r.year) lines.push(`PY  - ${r.year}`);
+          const venue = (r as any).venue ?? (r as any).journal;
+          if (venue) lines.push(`JO  - ${venue}`);
+          if (r.doi) lines.push(`DO  - ${r.doi}`);
+          if (r.url) lines.push(`UR  - ${r.url}`);
+          if (r.abstract) lines.push(`AB  - ${r.abstract}`);
+          lines.push("ER  - ");
+          return lines.join("\n");
+        };
+        fs.writeFileSync(target, rows.map(toRis).join("\n"), "utf-8");
+      } else if (format === "xlsx") {
+        const zip = new AdmZip();
+        const workbook = `<?xml version="1.0" encoding="UTF-8"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetData>
+    ROWS_PLACEHOLDER
+  </sheetData>
+</worksheet>`;
+        const cols = ["title", "authors", "year", "venue", "doi", "url", "source", "abstract"];
+        const esc = (v: unknown) => {
+          if (v === null || v === undefined) return "";
+          const s = String(Array.isArray(v) ? v.join("; ") : v);
+          return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        };
+        const rowsXml: string[] = [];
+        const row = (idx: number, cells: string[]) =>
+          `<row r="${idx}">${cells
+            .map(
+              (val, i) =>
+                `<c r="${String.fromCharCode(65 + i)}${idx}" t="inlineStr"><is><t>${val}</t></is></c>`
+            )
+            .join("")}</row>`;
+        rowsXml.push(row(1, cols.map((c) => esc(c))));
+        rows.forEach((r, i) => rowsXml.push(row(i + 2, cols.map((c) => esc((r as any)[c])))));
+        const sheetXml = workbook.replace("ROWS_PLACEHOLDER", rowsXml.join(""));
+        zip.addFile("xl/worksheets/sheet1.xml", Buffer.from(sheetXml, "utf8"));
+        zip.addFile(
+          "[Content_Types].xml",
+          Buffer.from(
+            `<?xml version="1.0" encoding="UTF-8"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+</Types>`,
+            "utf8"
+          )
+        );
+        zip.addFile(
+          "xl/workbook.xml",
+          Buffer.from(
+            `<?xml version="1.0" encoding="UTF-8"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheets>
+    <sheet name="results" sheetId="1" r:id="rId1"/>
+  </sheets>
+</workbook>`,
+            "utf8"
+          )
+        );
+        zip.addFile(
+          "_rels/.rels",
+          Buffer.from(
+            `<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`,
+            "utf8"
+          )
+        );
+        zip.addFile(
+          "xl/_rels/workbook.xml.rels",
+          Buffer.from(
+            `<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+</Relationships>`,
+            "utf8"
+          )
+        );
+        zip.writeZip(target);
+      }
+      return { status: "ok", message: `Exported ${rows.length} rows to ${target}` };
+    }
+  );
 };

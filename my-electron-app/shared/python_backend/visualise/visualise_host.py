@@ -78,6 +78,81 @@ def _coerce_table(table: Dict[str, Any]):
         return pd.DataFrame()
     return pd.DataFrame(rows, columns=[str(c) for c in cols])
 
+def _is_table_payload(table: Any) -> bool:
+    try:
+        return isinstance(table, dict) and isinstance(table.get("columns"), list) and isinstance(table.get("rows"), list)
+    except Exception:
+        return False
+
+
+def _load_last_table_from_datahub_cache(*, logs: list[str]) -> Dict[str, Any] | None:
+    """
+    Best-effort fallback when the renderer didn't pass a table.
+    Reads Electron's DataHub cache marker and returns the cached `{columns, rows}` table.
+    """
+    try:
+        import os
+        from pathlib import Path
+
+        # Prefer explicit env (main-process can set this), then XDG-style default used by Electron on Linux.
+        candidates: list[Path] = []
+        env = str(os.environ.get("DATAHUB_CACHE_DIR") or "").strip()
+        if env:
+            candidates.append(Path(env).expanduser())
+        xdg_config = Path(os.environ.get("XDG_CONFIG_HOME") or (Path.home() / ".config"))
+        candidates.append(xdg_config / "my-electron-app" / "data-hub-cache")
+
+        for cache_dir in candidates:
+            last_path = cache_dir / "last.json"
+            if not last_path.exists():
+                continue
+            try:
+                last = json.loads(last_path.read_text(encoding="utf-8"))
+            except Exception as exc:
+                logs.append(f"[visualise][cache][warn] failed to read {last_path}: {exc}")
+                continue
+            cache_path = str((last or {}).get("cachePath") or "").strip()
+            if cache_path:
+                p = Path(cache_path).expanduser()
+                if p.exists():
+                    try:
+                        payload = json.loads(p.read_text(encoding="utf-8"))
+                        table = payload.get("table") if isinstance(payload, dict) else None
+                        if _is_table_payload(table):
+                            logs.append(f"[visualise][cache][loaded] {p}")
+                            return table  # type: ignore[return-value]
+                    except Exception as exc:
+                        logs.append(f"[visualise][cache][warn] failed to read cached table {p}: {exc}")
+            # Fallback: scan cache dir for any table json.
+            try:
+                newest: tuple[float, Path] | None = None
+                for cand in cache_dir.glob("*.json"):
+                    if cand.name.lower() in {
+                        "references.json",
+                        "references_library.json",
+                        "references.used.json",
+                        "references_library.used.json",
+                        "last.json",
+                    }:
+                        continue
+                    try:
+                        m = cand.stat().st_mtime
+                        if newest is None or m > newest[0]:
+                            newest = (m, cand)
+                    except Exception:
+                        continue
+                if newest is not None:
+                    payload = json.loads(newest[1].read_text(encoding="utf-8"))
+                    table = payload.get("table") if isinstance(payload, dict) else None
+                    if _is_table_payload(table):
+                        logs.append(f"[visualise][cache][loaded] {newest[1]}")
+                        return table  # type: ignore[return-value]
+            except Exception:
+                continue
+    except Exception as exc:
+        logs.append(f"[visualise][cache][warn] datahub cache load failed: {exc}")
+    return None
+
 
 def _schema_and_sections() -> dict:
     schema = [
@@ -175,6 +250,14 @@ def _schema_and_sections() -> dict:
         {"type": "number", "key": "max_nodes_for_ngram_network", "label": "Max nodes (ngram net)", "default": 30, "min": 10, "max": 150},
         {"type": "number", "key": "num_ngrams_for_heatmap_cols", "label": "N-grams (heatmap cols)", "default": 25, "min": 5, "max": 50},
         {"type": "number", "key": "num_docs_for_heatmap_rows", "label": "Docs (heatmap rows)", "default": 30, "min": 5, "max": 100},
+        # Geo & sector
+        {"type": "text", "key": "country_tag", "label": "Geo country column/tag", "default": "country"},
+        {"type": "text", "key": "sector_tag", "label": "Geo sector column/tag", "default": "theme"},
+        {"type": "number", "key": "top_countries", "label": "Top countries", "default": 30, "min": 5, "max": 200},
+        # Thematic & method
+        {"type": "text", "key": "phase_tag", "label": "Phase column/tag", "default": "phase_focus_value"},
+        {"type": "text", "key": "year_col", "label": "Year column", "default": "year"},
+        {"type": "number", "key": "topn_cols", "label": "Cross-tab max columns", "default": 14, "min": 5, "max": 50},
         # Back-compat keys (older UI)
         {"type": "number", "key": "top_ngram", "label": "Top n-gram (legacy)", "default": 20, "min": 5, "max": 200},
         {
@@ -199,7 +282,6 @@ def _schema_and_sections() -> dict:
         {"id": "Temporal_analysis", "label": "Temporal analysis", "hint": "Trends over time."},
         {"id": "Research_design", "label": "Research design", "hint": "Design outputs and mix."},
         {"id": "Thematic_method", "label": "Thematic & method", "hint": "Cross-tabs and phase mapping."},
-        {"id": "Profiles", "label": "Profiles", "hint": "Feature profiles and summaries."},
         {"id": "Categorical_keywords", "label": "Categorical keywords", "hint": "Categorical keyword outputs."},
     ]
     return {"schema": schema, "sections": sections}
@@ -928,13 +1010,30 @@ def _run_preview(
         elif sec == "Geo_sector":
             try:
                 p = dict(params or {})
+                # Prefer explicit user config, else choose columns that exist (and log choices).
+                raw_country = str(p.get("country_tag") or "").strip()
+                raw_sector = str(p.get("sector_tag") or "").strip()
+                if not raw_country:
+                    for cand in ("country_focus_value", "country", "affiliation_country"):
+                        if cand in df.columns:
+                            raw_country = cand
+                            break
+                if not raw_sector:
+                    for cand in ("sector_focus_value", "sector", "theme"):
+                        if cand in df.columns:
+                            raw_sector = cand
+                            break
+                if raw_country and raw_country not in df.columns:
+                    logs.append(f"[visualise][Geo_sector][warn] country_tag '{raw_country}' not in df.columns")
+                if raw_sector and raw_sector not in df.columns:
+                    logs.append(f"[visualise][Geo_sector][warn] sector_tag '{raw_sector}' not in df.columns")
                 payload = visual.add_geo_and_sector_section(
                     prs,
                     df,
                     collection_name=collection_name,
                     slide_notes=slide_notes,
-                    country_tag=str(p.get("country_tag") or "country_focus_value"),
-                    sector_tag=str(p.get("sector_tag") or "sector_focus_value"),
+                    country_tag=raw_country or str(p.get("country_tag") or "country_focus_value"),
+                    sector_tag=raw_sector or str(p.get("sector_tag") or "sector_focus_value"),
                     top_countries=int(p.get("top_countries", 30) or 30),
                     return_payload=True,
                     export=False,
@@ -975,14 +1074,27 @@ def _run_preview(
         elif sec == "Thematic_method":
             try:
                 p = dict(params or {})
+                phase_tag = str(p.get("phase_tag") or "").strip()
+                if not phase_tag:
+                    for cand in ("phase_focus_value", "phase", "mission_phase", "phase_focus"):
+                        if cand in df.columns:
+                            phase_tag = cand
+                            break
+                year_col = str(p.get("year_col") or "").strip()
+                if not year_col:
+                    for cand in ("year", "publication_year", "year_numeric"):
+                        if cand in df.columns:
+                            year_col = cand
+                            break
                 payload = visual.add_thematic_and_method_section(
                     prs,
                     df,
                     collection_name=collection_name,
                     slide_notes=slide_notes,
                     cross_tabs=p.get("cross_tabs") if isinstance(p.get("cross_tabs"), list) else None,
-                    phase_tag=str(p.get("phase_tag") or "phase_focus_value"),
-                    year_col=str(p.get("year_col") or "publication_year"),
+                    phase_tag=phase_tag or str(p.get("phase_tag") or "phase_focus_value"),
+                    year_col=year_col or str(p.get("year_col") or "publication_year"),
+                    topn_cols=int(p.get("topn_cols", 14) or 14),
                     return_payload=True,
                     export=False,
                     progress_callback=_cb,
@@ -994,14 +1106,7 @@ def _run_preview(
                 logs.append(traceback.format_exc())
                 slides.append(_error_slide(sec, exc))
         elif sec == "Profiles":
-            try:
-                payload = visual.analyze_feature_profile(df, params or {}, _cb, return_payload=True, export=False)
-                slides.extend(_flatten_slides(payload, section=sec))
-                logs.append(f"[visualise][section][ok] Profiles")
-            except Exception as exc:
-                logs.append(f"[visualise][section][error] Profiles: {exc}")
-                logs.append(traceback.format_exc())
-                slides.append(_error_slide(sec, exc))
+            logs.append("[visualise][section][warn] Profiles section disabled (removed from UI).")
         elif sec == "Categorical_keywords":
             try:
                 p = dict(defaults["categorical"], **(params or {}))
@@ -1139,93 +1244,128 @@ def _run_preview(
 
 
 def main() -> None:
-    payload = _read_payload()
-    action = str(payload.get("action") or "")
-    if action == "sections":
-        print(_safe_json({"status": "ok", **_schema_and_sections()}))
-        return
+    import os
+    import sys
 
-    if action == "preview":
-        table = payload.get("table") or {}
-        params = payload.get("params") or {}
-        include = payload.get("include") or []
-        selection = payload.get("selection") if isinstance(payload.get("selection"), dict) else None
-        collection_name = str(payload.get("collectionName") or "Collection")
-        mode = str(payload.get("mode") or "")
-        df = _coerce_table(table)
-        deck, logs = _run_preview(
-            df,
-            params,
-            [str(s) for s in include if str(s).strip()],
-            collection_name,
-            mode=mode,
-            selection=selection,
-        )
-        print(_safe_json({"status": "ok", "deck": deck, "logs": logs}))
-        return
+    def _handle(payload: dict) -> dict:
+        action = str(payload.get("action") or "")
+        if action == "sections":
+            return {"status": "ok", **_schema_and_sections()}
 
-    if action == "export_pptx":
-        table = payload.get("table") or {}
-        params = payload.get("params") or {}
-        include = payload.get("include") or []
-        selection = payload.get("selection") if isinstance(payload.get("selection"), dict) else None
-        collection_name = str(payload.get("collectionName") or "Collection")
-        outp_raw = str(payload.get("outputPath") or "").strip()
-        notes_overrides = payload.get("notesOverrides") if isinstance(payload.get("notesOverrides"), dict) else {}
-        rendered_images = payload.get("renderedImages") if isinstance(payload.get("renderedImages"), dict) else {}
-        if not outp_raw:
-            print(_safe_json({"status": "error", "message": "Missing outputPath"}))
-            return
-        df = _coerce_table(table)
-        mode = "build_pptx"
-        deck, logs = _run_preview(
-            df,
-            params,
-            [str(s) for s in include if str(s).strip()],
-            collection_name,
-            mode=mode,
-            selection=selection,
-        )
-        slides = deck.get("slides") if isinstance(deck, dict) else None
-        slides_list = slides if isinstance(slides, list) else []
-        # Apply per-slide notes overrides (from UI "Describe" opt-in).
-        try:
-            for s in slides_list:
-                if not isinstance(s, dict):
-                    continue
-                sid = str(s.get("slide_id") or "").strip()
-                if sid and sid in notes_overrides:
-                    s["notes"] = str(notes_overrides.get(sid) or "").strip()
-                if sid and sid in rendered_images and str(rendered_images.get(sid) or "").strip():
-                    s["img"] = str(rendered_images.get(sid) or "").strip()
-        except Exception as exc:
-            logs.append(f"[visualise][notes_override][warn] {exc}")
-            logs.append(traceback.format_exc())
-
-        slide_notes = str(params.get("slide_notes", "false")).strip().lower() in {"1", "true", "yes", "y", "on"} or bool(notes_overrides)
-        try:
-            saved = _export_pptx_from_slides(
-                [s for s in slides_list if isinstance(s, dict)],
-                output_path=Path(outp_raw).expanduser().resolve(),
-                slide_notes=slide_notes,
-                logs=logs,
+        if action == "preview":
+            table = payload.get("table") or {}
+            params = payload.get("params") or {}
+            include = payload.get("include") or []
+            selection = payload.get("selection") if isinstance(payload.get("selection"), dict) else None
+            collection_name = str(payload.get("collectionName") or "Collection")
+            mode = str(payload.get("mode") or "")
+            cache_logs: list[str] = []
+            if not _is_table_payload(table):
+                cached = _load_last_table_from_datahub_cache(logs=cache_logs)
+                if cached is not None:
+                    table = cached
+            df = _coerce_table(table)
+            deck, logs = _run_preview(
+                df,
+                params,
+                [str(s) for s in include if str(s).strip()],
+                collection_name,
+                mode=mode,
+                selection=selection,
             )
-            print(_safe_json({"status": "ok", "path": str(saved), "logs": logs}))
-        except Exception as exc:
-            logs.append(f"[visualise][export_pptx][fatal] {exc}")
-            logs.append(traceback.format_exc())
-            print(_safe_json({"status": "error", "message": str(exc), "logs": logs}))
+            return {"status": "ok", "deck": deck, "logs": [*cache_logs, *logs]}
+
+        if action == "export_pptx":
+            table = payload.get("table") or {}
+            params = payload.get("params") or {}
+            include = payload.get("include") or []
+            selection = payload.get("selection") if isinstance(payload.get("selection"), dict) else None
+            collection_name = str(payload.get("collectionName") or "Collection")
+            outp_raw = str(payload.get("outputPath") or "").strip()
+            notes_overrides = payload.get("notesOverrides") if isinstance(payload.get("notesOverrides"), dict) else {}
+            rendered_images = payload.get("renderedImages") if isinstance(payload.get("renderedImages"), dict) else {}
+            if not outp_raw:
+                return {"status": "error", "message": "Missing outputPath"}
+            cache_logs: list[str] = []
+            if not _is_table_payload(table):
+                cached = _load_last_table_from_datahub_cache(logs=cache_logs)
+                if cached is not None:
+                    table = cached
+            df = _coerce_table(table)
+            mode = "build_pptx"
+            deck, logs = _run_preview(
+                df,
+                params,
+                [str(s) for s in include if str(s).strip()],
+                collection_name,
+                mode=mode,
+                selection=selection,
+            )
+            logs = [*cache_logs, *logs]
+            slides = deck.get("slides") if isinstance(deck, dict) else None
+            slides_list = slides if isinstance(slides, list) else []
+            # Apply per-slide notes overrides (from UI "Describe" opt-in).
+            try:
+                for s in slides_list:
+                    if not isinstance(s, dict):
+                        continue
+                    sid = str(s.get("slide_id") or "").strip()
+                    if sid and sid in notes_overrides:
+                        s["notes"] = str(notes_overrides.get(sid) or "").strip()
+                    if sid and sid in rendered_images and str(rendered_images.get(sid) or "").strip():
+                        s["img"] = str(rendered_images.get(sid) or "").strip()
+            except Exception as exc:
+                logs.append(f"[visualise][notes_override][warn] {exc}")
+                logs.append(traceback.format_exc())
+
+            slide_notes = str(params.get("slide_notes", "false")).strip().lower() in {"1", "true", "yes", "y", "on"} or bool(notes_overrides)
+            try:
+                saved = _export_pptx_from_slides(
+                    [s for s in slides_list if isinstance(s, dict)],
+                    output_path=Path(outp_raw).expanduser().resolve(),
+                    slide_notes=slide_notes,
+                    logs=logs,
+                )
+                return {"status": "ok", "path": str(saved), "logs": logs}
+            except Exception as exc:
+                logs.append(f"[visualise][export_pptx][fatal] {exc}")
+                logs.append(traceback.format_exc())
+                return {"status": "error", "message": str(exc), "logs": logs}
+
+        if action == "describe_slide":
+            slide = payload.get("slide") if isinstance(payload.get("slide"), dict) else {}
+            params = payload.get("params") if isinstance(payload.get("params"), dict) else {}
+            collection_name = str(payload.get("collectionName") or "Collection")
+            text, logs = _describe_slide(slide, collection_name=collection_name, params=params)
+            return {"status": "ok", "description": text, "logs": logs}
+
+        return {"status": "error", "message": f"unknown_action:{action}"}
+
+    if str(os.environ.get("VISUALISE_SERVER") or "").strip() in {"1", "true", "yes", "on"}:
+        for line in sys.stdin:
+            raw = (line or "").strip()
+            if not raw:
+                continue
+            try:
+                incoming = json.loads(raw)
+            except Exception as exc:
+                sys.stdout.write(_safe_json({"status": "error", "message": f"invalid_json:{exc}"}) + "\n")
+                sys.stdout.flush()
+                continue
+            try:
+                out = _handle(incoming if isinstance(incoming, dict) else {})
+            except Exception as exc:
+                out = {"status": "error", "message": str(exc), "trace": traceback.format_exc()}
+            sys.stdout.write(_safe_json(out) + "\n")
+            sys.stdout.flush()
         return
 
-    if action == "describe_slide":
-        slide = payload.get("slide") if isinstance(payload.get("slide"), dict) else {}
-        params = payload.get("params") if isinstance(payload.get("params"), dict) else {}
-        collection_name = str(payload.get("collectionName") or "Collection")
-        text, logs = _describe_slide(slide, collection_name=collection_name, params=params)
-        print(_safe_json({"status": "ok", "description": text, "logs": logs}))
-        return
-
-    print(_safe_json({"status": "error", "message": f"unknown_action:{action}"}))
+    payload = _read_payload()
+    try:
+        out = _handle(payload if isinstance(payload, dict) else {})
+    except Exception as exc:
+        out = {"status": "error", "message": str(exc), "trace": traceback.format_exc()}
+    print(_safe_json(out))
 
 
 if __name__ == "__main__":

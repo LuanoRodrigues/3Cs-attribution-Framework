@@ -25,12 +25,15 @@ import "./style_mini_app.css";
 import "./agent_sidebar.css";
 import "./agent_fab.css";
 import "./ai_settings.css";
+import "./ribbon_dialogs.css";
 import "./paragraph_grid.css";
 import "./ai_draft_preview.css";
 import "./ai_draft_rail.css";
 import "./feedback_hub.css";
 import "./source_check_badges.css";
 import "./source_check_rail.css";
+import "./comments_panel.css";
+import "./track_changes.css";
 import "./references.css";
 import "./references_overlay.css";
 import { mountA4Layout, type A4LayoutController } from "./a4_layout.ts";
@@ -47,12 +50,32 @@ import { getCurrentPageSize, getMarginValues } from "../ui/layout_settings.ts";
 import { registerLibrarySmokeChecks } from "../plugins/librarySmokeChecks.ts";
 import { getHostContract } from "./host_contract.ts";
 import { ensureReferencesLibrary, resolveCitationTitle } from "./references/library.ts";
-import { installDirectQuotePdfOpenHandler } from "./direct_quote_pdf.ts";
 import { perfMark, perfMeasure, perfSummaryOnce } from "./perf.ts";
 import { getHostAdapter, setHostAdapter, type HostAdapter } from "../host/host_adapter.ts";
 import { THEME_CHANGE_EVENT } from "./theme_events.ts";
 import { ribbonDebugLog } from "./ribbon_debug.ts";
 import { subscribeSourceChecksThread } from "./source_checks_thread.ts";
+import { mountCommentsPanel } from "./comments_panel.ts";
+
+let directQuotePdfHandlerInstalled = false;
+let directQuotePdfHandlerInstalling: Promise<void> | null = null;
+const ensureDirectQuotePdfHandler = (): Promise<void> => {
+  if (directQuotePdfHandlerInstalled) return Promise.resolve();
+  if (!directQuotePdfHandlerInstalling) {
+    directQuotePdfHandlerInstalling = import("./direct_quote_pdf.ts")
+      .then(({ installDirectQuotePdfOpenHandler }) => {
+        installDirectQuotePdfOpenHandler();
+        directQuotePdfHandlerInstalled = true;
+      })
+      .catch((error) => {
+        console.error("[DirectQuote] lazy PDF handler load failed", error);
+      })
+      .finally(() => {
+        directQuotePdfHandlerInstalling = null;
+      });
+  }
+  return directQuotePdfHandlerInstalling ?? Promise.resolve();
+};
 
 const ensureProcessEnv = (): Record<string, string | undefined> | undefined => {
   if (typeof globalThis === "undefined") {
@@ -1677,6 +1700,32 @@ export const mountEditor = async () => {
       return "";
     };
 
+    const isSafeAnchorHref = (value: string): boolean => {
+      const href = String(value || "").trim();
+      if (!href) return false;
+      if (href.startsWith("#")) return true;
+      return /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(href);
+    };
+
+    const hasCitationMeta = (anchor: HTMLElement): boolean =>
+      Boolean(
+        pickAttr(anchor, "data-dqid") ||
+          pickAttr(anchor, "data-quote-id") ||
+          pickAttr(anchor, "data-quote_id") ||
+          pickAttr(anchor, "data-key") ||
+          pickAttr(anchor, "data-orig-href")
+      );
+
+    const normalizeCitationHref = (anchor: HTMLElement): string => {
+      const raw = pickAttr(anchor, "href");
+      const dqid = extractDqid(anchor, raw);
+      if (dqid) return `dq://${dqid}`;
+      if (isSafeAnchorHref(raw)) return raw;
+      const orig = pickAttr(anchor, "data-orig-href");
+      if (isSafeAnchorHref(orig)) return orig;
+      return "#";
+    };
+
     const ensureTitle = (el: HTMLElement, hrefHint?: string) => {
       if (el.getAttribute("title")) return;
       const quoteText = pickAttr(el, "data-quote-text");
@@ -1763,6 +1812,18 @@ export const mountEditor = async () => {
         if (!scopeRoot.contains(target)) return;
         const anchor = target.closest("a") as HTMLAnchorElement | null;
         if (!anchor) return;
+        if (hasCitationMeta(anchor)) {
+          const normalized = normalizeCitationHref(anchor);
+          const current = (anchor.getAttribute("href") || "").trim();
+          if (normalized && normalized !== current) {
+            anchor.setAttribute("href", normalized);
+          }
+          if (normalized === "#" || !isSafeAnchorHref(normalized)) {
+            ev.preventDefault();
+            if (proseRoot.contains(anchor)) ev.stopPropagation();
+            return;
+          }
+        }
         const handled = isHandledAnchor(anchor);
         if (!handled) return;
         const inProseMirror = proseRoot.contains(anchor);
@@ -1790,6 +1851,18 @@ export const mountEditor = async () => {
         if (!scopeRoot.contains(target)) return;
         const anchor = target.closest("a") as HTMLAnchorElement | null;
         if (!anchor) return;
+        if (hasCitationMeta(anchor)) {
+          const normalized = normalizeCitationHref(anchor);
+          const current = (anchor.getAttribute("href") || "").trim();
+          if (normalized && normalized !== current) {
+            anchor.setAttribute("href", normalized);
+          }
+          if (normalized === "#" || !isSafeAnchorHref(normalized)) {
+            ev.preventDefault();
+            if (proseRoot.contains(anchor)) ev.stopPropagation();
+            return;
+          }
+        }
         const handled = isHandledAnchor(anchor);
         if (!handled) return;
         // Prevent selection/caret changes and stop ProseMirror from consuming the interaction.
@@ -1823,6 +1896,20 @@ export const mountEditor = async () => {
         }
         const anchor = target.closest("a") as HTMLAnchorElement | null;
         if (!anchor) return;
+        if (hasCitationMeta(anchor)) {
+          const normalized = normalizeCitationHref(anchor);
+          const current = (anchor.getAttribute("href") || "").trim();
+          if (normalized && normalized !== current) {
+            anchor.setAttribute("href", normalized);
+          }
+          if (normalized === "#" || !isSafeAnchorHref(normalized)) {
+            ev.preventDefault();
+            if (proseRoot.contains(anchor)) {
+              ev.stopPropagation();
+            }
+            return;
+          }
+        }
         const handled = isHandledAnchor(anchor);
         if (!handled) {
           if ((window as any).__leditorPdfDebug) {
@@ -1870,7 +1957,23 @@ export const mountEditor = async () => {
   debugInfo("[LEditor][schema][marks]", schemaMarks);
   debugInfo("[LEditor][schema][anchor]", { present: Boolean(tiptapEditor.schema.marks.anchor) });
   attachCitationHandlers(document, tiptapEditor.view.dom, appRoot, signal);
-  installDirectQuotePdfOpenHandler();
+  if (!directQuotePdfHandlerInstalled) {
+    const bootstrapDirectQuoteHandler = (event: Event) => {
+      const detail = (event as CustomEvent<any>).detail;
+      const dqid = typeof detail?.dqid === "string" ? detail.dqid.trim() : "";
+      if (!dqid) return;
+      window.removeEventListener("leditor-anchor-click", bootstrapDirectQuoteHandler);
+      const detailCopy = detail && typeof detail === "object" ? { ...detail } : detail;
+      void ensureDirectQuotePdfHandler().then(() => {
+        try {
+          window.dispatchEvent(new CustomEvent("leditor-anchor-click", { detail: detailCopy, bubbles: true }));
+        } catch (error) {
+          console.error("[DirectQuote] re-dispatch failed", error);
+        }
+      });
+    };
+    window.addEventListener("leditor-anchor-click", bootstrapDirectQuoteHandler);
+  }
   try {
     const probeHtml =
       "<p>Probe <a href=\"dq://probe\" data-key=\"PROBE\" title=\"probe\">(Probe)</a> tail</p>";
@@ -1949,6 +2052,7 @@ export const mountEditor = async () => {
   window.codexLog?.write("[PHASE3_OK]");
   mountStatusBar(handle, layout, { parent: appRoot });
   mountAgentFab(handle, appRoot, signal);
+  mountCommentsPanel(handle);
   attachContextMenu(handle, tiptapEditor.view.dom, tiptapEditor);
   setMountedAppState({
     abortController,
@@ -2202,7 +2306,10 @@ export const mountEditor = async () => {
         debugInfo("[Phase23] Skipping DOCX auto-export (host export handler unavailable)");
         return;
       }
-      throw new Error(`Phase23 DOCX export failed: ${exportResult?.error ?? "unknown error"}`);
+      debugInfo("[Phase23] Skipping DOCX auto-export (non-fatal error)", {
+        error: exportResult?.error ?? "unknown error"
+      });
+      return;
     }
   } else {
     debugInfo("[Phase23] Skipping DOCX auto-export (host export handler unavailable)");

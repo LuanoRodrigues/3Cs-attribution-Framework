@@ -93,6 +93,9 @@ export function createScreenWidget(): ToolDefinition {
     create: (): ToolHandle => {
       const wrap = document.createElement("div");
       wrap.className = "tool-surface";
+      wrap.style.borderLeft = "3px solid transparent";
+      wrap.style.paddingLeft = "10px";
+      wrap.tabIndex = 0;
 
       const header = document.createElement("div");
       header.className = "tool-header";
@@ -135,6 +138,11 @@ export function createScreenWidget(): ToolDefinition {
       progress.style.color = "var(--muted, #94a3b8)";
       progress.textContent = "0% coded";
 
+      const shuffleLabel = document.createElement("div");
+      shuffleLabel.style.fontSize = "11px";
+      shuffleLabel.style.color = "var(--muted, #94a3b8)";
+      shuffleLabel.textContent = "Order: shuffled";
+
       const headerRight = document.createElement("div");
       headerRight.style.display = "inline-flex";
       headerRight.style.alignItems = "center";
@@ -157,10 +165,18 @@ export function createScreenWidget(): ToolDefinition {
       shuffleBtn.style.gap = "6px";
       shuffleBtn.style.padding = "6px 10px";
 
-      headerRight.append(blindToggle, shuffleBtn, prevBtn, nextBtn, counter, progress);
+      headerRight.append(blindToggle, shuffleBtn, prevBtn, nextBtn, counter, progress, shuffleLabel);
 
       header.append(title, headerRight);
       wrap.append(header, status);
+
+      const shortcutHint = document.createElement("div");
+      shortcutHint.style.fontSize = "11px";
+      shortcutHint.style.color = "var(--muted, #94a3b8)";
+      shortcutHint.style.margin = "4px 0 0 0";
+      shortcutHint.style.opacity = "0.6";
+      shortcutHint.textContent = "Click here for keyboard shortcuts.";
+      wrap.appendChild(shortcutHint);
 
       const body = document.createElement("div");
       body.style.display = "flex";
@@ -314,7 +330,7 @@ export function createScreenWidget(): ToolDefinition {
       const applyLlmBtn = document.createElement("button");
       applyLlmBtn.type = "button";
       applyLlmBtn.className = "ribbon-button";
-      applyLlmBtn.textContent = "Apply LLM suggestion";
+      applyLlmBtn.textContent = "Apply LLM decision";
       applyLlmBtn.style.padding = "6px 10px";
 
       const clearCodesBtn = document.createElement("button");
@@ -329,7 +345,13 @@ export function createScreenWidget(): ToolDefinition {
       jumpUncodedBtn.textContent = "Jump to next uncoded";
       jumpUncodedBtn.style.padding = "6px 10px";
 
-      llmActions.append(applyLlmBtn, clearCodesBtn, jumpUncodedBtn);
+      const jumpPrevUncodedBtn = document.createElement("button");
+      jumpPrevUncodedBtn.type = "button";
+      jumpPrevUncodedBtn.className = "ribbon-button";
+      jumpPrevUncodedBtn.textContent = "Jump to previous uncoded";
+      jumpPrevUncodedBtn.style.padding = "6px 10px";
+
+      llmActions.append(applyLlmBtn, clearCodesBtn, jumpUncodedBtn, jumpPrevUncodedBtn);
       llmBox.appendChild(llmActions);
 
       const codesBox = document.createElement("div");
@@ -385,6 +407,9 @@ export function createScreenWidget(): ToolDefinition {
       let activeDecision: "include" | "exclude" | "maybe" | "uncoded" = "uncoded";
       let blindMode = false;
       let rowOrder: number[] = [];
+      let shuffleSeed = "";
+      let shuffleKey = "";
+      let rowOrderSeed = "";
       let currentState: RetrieveDataHubState | undefined;
       let persistTimer: number | null = null;
       let codedCount = 0;
@@ -411,9 +436,60 @@ export function createScreenWidget(): ToolDefinition {
         }, 250);
       };
 
-      const ensureRowOrder = (length: number): void => {
-        if (rowOrder.length === length) return;
+      const hashSeed = (input: string): number => {
+        let h = 2166136261;
+        for (let i = 0; i < input.length; i++) {
+          h ^= input.charCodeAt(i);
+          h = Math.imul(h, 16777619);
+        }
+        return h >>> 0;
+      };
+
+      const mulberry32 = (seed: number): (() => number) => {
+        let t = seed >>> 0;
+        return () => {
+          t += 0x6d2b79f5;
+          let r = Math.imul(t ^ (t >>> 15), 1 | t);
+          r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
+          return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+        };
+      };
+
+      const makeSeed = (): string => {
+        const buf = new Uint32Array(1);
+        const rand = window.crypto?.getRandomValues(buf)[0] ?? Math.floor(Math.random() * 0xffffffff);
+        return `${Date.now().toString(36)}-${rand.toString(36)}`;
+      };
+
+      const computeShuffleKey = (state?: RetrieveDataHubState): string => {
+        if (!state) return "screen:shuffle:unknown";
+        const keyPart = state.filePath || state.collectionName || state.sourceType || "unknown";
+        return `screen:shuffle:${keyPart}`;
+      };
+
+      const applyShuffleSeed = (length: number): void => {
+        if (!length) {
+          rowOrder = [];
+          rowOrderSeed = "";
+          return;
+        }
+        const seedNum = hashSeed(shuffleSeed || "default");
+        const rng = mulberry32(seedNum);
         rowOrder = Array.from({ length }, (_v, idx) => idx);
+        for (let i = length - 1; i > 0; i--) {
+          const j = Math.floor(rng() * (i + 1));
+          [rowOrder[i], rowOrder[j]] = [rowOrder[j], rowOrder[i]];
+        }
+        rowOrderSeed = shuffleSeed;
+        shuffleLabel.textContent = shuffleSeed ? `Seed: ${shuffleSeed.slice(0, 8)}` : "Order: shuffled";
+      };
+
+      const ensureRowOrder = (length: number): void => {
+        if (rowOrder.length === length && shuffleSeed && rowOrderSeed === shuffleSeed) return;
+        if (!shuffleSeed) {
+          shuffleSeed = makeSeed();
+        }
+        applyShuffleSeed(length);
       };
 
       const rowIndexAt = (viewIndex: number): number => {
@@ -424,13 +500,15 @@ export function createScreenWidget(): ToolDefinition {
         const rows = currentState?.table?.rows ?? [];
         const len = rows.length;
         if (!len) return;
-        rowOrder = Array.from({ length: len }, (_v, idx) => idx);
-        for (let i = len - 1; i > 0; i--) {
-          const buf = new Uint32Array(1);
-          const rand = (window.crypto?.getRandomValues(buf)[0] ?? Math.random() * 0xffffffff) / 0xffffffff;
-          const j = Math.floor(rand * (i + 1));
-          [rowOrder[i], rowOrder[j]] = [rowOrder[j], rowOrder[i]];
+        shuffleSeed = makeSeed();
+        if (shuffleKey) {
+          try {
+            window.sessionStorage.setItem(shuffleKey, shuffleSeed);
+          } catch {
+            // ignore
+          }
         }
+        applyShuffleSeed(len);
         setActiveIndex(0, "screen");
         render();
       };
@@ -456,11 +534,43 @@ export function createScreenWidget(): ToolDefinition {
                 ? "#facc15"
                 : "transparent";
         decisionBadge.style.background = badgeColor;
+        wrap.style.borderLeft = badgeColor === "transparent" ? "3px solid transparent" : `3px solid ${badgeColor}`;
       };
 
       const updateBlindUi = (): void => {
         blindToggle.textContent = blindMode ? "Blind: On" : "Blind: Off";
         llmBox.style.display = blindMode ? "none" : "block";
+      };
+
+      const updateShortcutHint = (focused: boolean): void => {
+        if (focused) {
+          shortcutHint.textContent =
+            "Shortcuts: I include • E exclude • M maybe • N next • P prev • J next uncoded • K prev uncoded";
+          shortcutHint.style.opacity = "1";
+        } else {
+          shortcutHint.textContent = "Click here for keyboard shortcuts.";
+          shortcutHint.style.opacity = "0.6";
+        }
+      };
+
+      const readLlmDecision = (record: Record<string, unknown>): string => {
+        const direct = String(record.llm_screen_decision ?? "").trim();
+        if (direct) return direct;
+        const status = String(record.status ?? record.llm_status ?? record.llm_decision ?? "").trim();
+        return status;
+      };
+
+      const readLlmJustification = (record: Record<string, unknown>): string => {
+        const direct = String(record.llm_screen_justification ?? "").trim();
+        if (direct) return direct;
+        const justification = String(
+          record.justification ??
+            record.llm_justification ??
+            record.reason ??
+            record.rationale ??
+            ""
+        ).trim();
+        return justification;
       };
 
       const setActiveIndex = (next: number, source?: ScreenActiveEventDetail["source"]): void => {
@@ -510,6 +620,7 @@ export function createScreenWidget(): ToolDefinition {
           updateBlindUi();
           llmCodes.textContent = "—";
           llmComment.textContent = "";
+          shuffleLabel.textContent = "Order: shuffled";
           return;
         }
 
@@ -554,10 +665,18 @@ export function createScreenWidget(): ToolDefinition {
         blindMode = ["1", "true", "yes", "on"].includes(blindRaw);
         updateBlindUi();
 
-        const llmDecisionVal = getStringCell(cols, row, SCREEN_LLM_DECISION_COL);
-        const llmJustificationVal = getStringCell(cols, row, SCREEN_LLM_JUSTIFICATION_COL);
+        const llmDecisionVal = readLlmDecision(record);
+        const llmJustificationVal = readLlmJustification(record);
+        const llmColor =
+          llmDecisionVal.toLowerCase() === "include"
+            ? "var(--accent, #60a5fa)"
+            : llmDecisionVal.toLowerCase() === "exclude"
+              ? "#ef4444"
+              : llmDecisionVal.toLowerCase() === "maybe"
+                ? "#facc15"
+                : "var(--border)";
         llmCodes.innerHTML = llmDecisionVal
-          ? `<span style="padding:3px 8px;border-radius:8px;background:rgba(255,255,255,0.08);border:1px solid var(--border);text-transform:capitalize;">${escapeHtml(llmDecisionVal)}</span>`
+          ? `<span style="padding:3px 8px;border-radius:8px;background:rgba(255,255,255,0.08);border:1px solid ${llmColor};text-transform:capitalize;">${escapeHtml(llmDecisionVal)}</span>`
           : "No LLM decision";
         llmComment.textContent = llmJustificationVal || "";
 
@@ -587,6 +706,18 @@ export function createScreenWidget(): ToolDefinition {
         }
         const rows = currentState.table?.rows ?? [];
         activeIndex = clampIndex(activeIndex, rows.length);
+        shuffleKey = computeShuffleKey(currentState);
+        try {
+          const stored = window.sessionStorage.getItem(shuffleKey);
+          if (stored) {
+            shuffleSeed = stored;
+          } else {
+            shuffleSeed = makeSeed();
+            window.sessionStorage.setItem(shuffleKey, shuffleSeed);
+          }
+        } catch {
+          shuffleSeed = shuffleSeed || makeSeed();
+        }
         ensureRowOrder(rows.length);
         render();
       };
@@ -650,11 +781,19 @@ export function createScreenWidget(): ToolDefinition {
         if (!table) return;
         const row = table.rows[rowIndexAt(activeIndex)];
         if (!row) return;
-        const llmDecisionVal = getStringCell(table.columns, row, SCREEN_LLM_DECISION_COL);
-        const llmJustificationVal = getStringCell(table.columns, row, SCREEN_LLM_JUSTIFICATION_COL);
-        codesInput.value = llmDecisionVal;
-        commentInput.value = llmJustificationVal;
-        updateCellFromInputs();
+        const record = tableRowToRecord(table.columns, row);
+        const llmDecisionVal = readLlmDecision(record);
+        const llmJustificationVal = readLlmJustification(record);
+        if (llmDecisionVal) {
+          const normalized = llmDecisionVal.toLowerCase();
+          if (normalized === "include" || normalized === "exclude" || normalized === "maybe") {
+            setDecision(normalized);
+          }
+        }
+        if (llmJustificationVal) {
+          commentInput.value = llmJustificationVal;
+          updateCellFromInputs();
+        }
       };
 
       const clearUserCodes = (): void => {
@@ -679,6 +818,55 @@ export function createScreenWidget(): ToolDefinition {
         }
       };
 
+      const jumpToPrevUncoded = (): void => {
+        const table = currentState?.table;
+        if (!table) return;
+        const rows = table.rows ?? [];
+        const len = rows.length;
+        const start = activeIndex - 1;
+        for (let i = 0; i < len; i++) {
+          const idx = (start - i + len) % len;
+          const decision = getStringCell(table.columns, rows[rowIndexAt(idx)], SCREEN_DECISION_COL).toLowerCase();
+          if (!decision || decision === "uncoded") {
+            setActiveIndex(idx, "screen");
+            return;
+          }
+        }
+      };
+
+      const handleKeyDown = (event: KeyboardEvent): void => {
+        const target = event.target as HTMLElement | null;
+        if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
+          return;
+        }
+        if (!wrap.contains(document.activeElement)) {
+          return;
+        }
+        const key = event.key.toLowerCase();
+        if (key === "i") {
+          event.preventDefault();
+          setDecision("include");
+        } else if (key === "e") {
+          event.preventDefault();
+          setDecision("exclude");
+        } else if (key === "m") {
+          event.preventDefault();
+          setDecision("maybe");
+        } else if (key === "n") {
+          event.preventDefault();
+          setActiveIndex(activeIndex + 1, "screen");
+        } else if (key === "p") {
+          event.preventDefault();
+          setActiveIndex(activeIndex - 1, "screen");
+        } else if (key === "j") {
+          event.preventDefault();
+          jumpToNextUncoded();
+        } else if (key === "k") {
+          event.preventDefault();
+          jumpToPrevUncoded();
+        }
+      };
+
       prevBtn.addEventListener("click", () => setActiveIndex(activeIndex - 1, "screen"));
       nextBtn.addEventListener("click", () => setActiveIndex(activeIndex + 1, "screen"));
       includeBtn.addEventListener("click", () => setDecision("include"));
@@ -689,6 +877,15 @@ export function createScreenWidget(): ToolDefinition {
       applyLlmBtn.addEventListener("click", applyLlmToUser);
       clearCodesBtn.addEventListener("click", clearUserCodes);
       jumpUncodedBtn.addEventListener("click", jumpToNextUncoded);
+      jumpPrevUncodedBtn.addEventListener("click", jumpToPrevUncoded);
+      document.addEventListener("keydown", handleKeyDown);
+      wrap.addEventListener("focusin", () => updateShortcutHint(true));
+      wrap.addEventListener("focusout", (event) => {
+        const next = event.relatedTarget as Node | null;
+        if (!next || !wrap.contains(next)) {
+          updateShortcutHint(false);
+        }
+      });
 
       codesInput.addEventListener("input", updateCellFromInputs);
       commentInput.addEventListener("input", updateCellFromInputs);
@@ -709,6 +906,7 @@ export function createScreenWidget(): ToolDefinition {
           document.removeEventListener("retrieve:datahub-updated", handleDataHubUpdated);
           document.removeEventListener("retrieve:datahub-restore", handleDataHubRestore);
           document.removeEventListener(SCREEN_ACTIVE_EVENT, handleActiveEvent);
+          document.removeEventListener("keydown", handleKeyDown);
           if (persistTimer) {
             window.clearTimeout(persistTimer);
             persistTimer = null;

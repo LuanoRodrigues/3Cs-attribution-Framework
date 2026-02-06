@@ -1,6 +1,7 @@
 import type { RetrieveProviderId, RetrieveQuery, RetrieveRecord } from "../../../shared/types/retrieve";
 import { DATABASE_KEYS } from "../../../config/settingsKeys";
 import { getSecretsVault } from "../../../config/secretsVaultInstance";
+import { sanitizeSecret } from "./util";
 
 const USER_AGENT = "Annotarium/1.0";
 const SEMANTIC_SEARCH_URL = "https://api.semanticscholar.org/graph/v1/paper/search";
@@ -9,13 +10,6 @@ const OPENALEX_SEARCH_URL = "https://api.openalex.org/works";
 const ELSEVIER_SEARCH_URL = "https://api.elsevier.com/content/search/scopus";
 const WOS_SEARCH_URL = "https://api.clarivate.com/apis/wos-starter/v1/documents";
 const UNPAYWALL_BASE_URL = "https://api.unpaywall.org/v2";
-
-const sanitizeSecret = (value: unknown): string => {
-  if (typeof value !== "string") {
-    return "";
-  }
-  return value.replace(/^['"\s]+|['"\s]+$/g, "").trim();
-};
 
 const readVaultSecret = (name: string): string => {
   try {
@@ -35,7 +29,8 @@ const getElsevierKey = (): string =>
 
 const getWosKey = (): string => readVaultSecret(DATABASE_KEYS.wosKey) || sanitizeSecret(process.env.WOS_API_KEY) || sanitizeSecret(process.env.wos_api_key);
 
-const getUnpaywallEmail = (): string => sanitizeSecret(process.env.UNPAYWALL_EMAIL) || sanitizeSecret(process.env.unpaywall_email);
+export const getUnpaywallEmail = (): string =>
+  sanitizeSecret(process.env.UNPAYWALL_EMAIL) || sanitizeSecret(process.env.unpaywall_email);
 const COS_MERGE_ORDER: RetrieveProviderId[] = ["semantic_scholar", "openalex", "crossref"];
 
 export interface ProviderHeaders {

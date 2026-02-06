@@ -33,6 +33,7 @@ export class SearchPanel {
   private sortSelect: HTMLSelectElement;
   private limitInput: HTMLInputElement;
   private statusLine: HTMLElement;
+  private pageLine: HTMLElement;
   private resultsList: HTMLElement;
   private loadMoreBtn: HTMLButtonElement;
   private changeHandlers: Array<(query: RetrieveQuery) => void> = [];
@@ -122,6 +123,11 @@ export class SearchPanel {
     this.statusLine.className = "retrieve-status";
     this.statusLine.textContent = "Results will appear here after running a search.";
 
+    this.pageLine = document.createElement("div");
+    this.pageLine.className = "retrieve-status";
+    this.pageLine.style.opacity = "0.75";
+    this.pageLine.textContent = "";
+
     this.resultsList = document.createElement("div");
     this.resultsList.className = "retrieve-results-list";
 
@@ -138,7 +144,7 @@ export class SearchPanel {
 
     const resultsWrapper = document.createElement("div");
     resultsWrapper.className = "retrieve-results";
-    resultsWrapper.append(this.statusLine, this.resultsList, loadMoreRow);
+    resultsWrapper.append(this.statusLine, this.pageLine, this.resultsList, loadMoreRow);
 
     this.element.append(header, searchBlock, dbBlock, resultsWrapper);
 
@@ -440,6 +446,10 @@ export class SearchPanel {
     } else {
       this.loadMoreBtn.style.display = "none";
     }
+    const pageSize = this.parseNumber(this.limitInput.value) ?? 25;
+    const currentPage = Math.max(1, Math.ceil(this.records.length / Math.max(1, pageSize)));
+    const totalKnown = this.totalCount ? ` • ${this.records.length} / ${this.totalCount}` : ` • ${this.records.length}`;
+    this.pageLine.textContent = `Page ${currentPage} (size ${pageSize})${totalKnown}`;
   }
 
   private async refreshTagList(recordId: string, container: HTMLElement): Promise<void> {

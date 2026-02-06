@@ -40,10 +40,13 @@ import { commandMap } from "./command_map.ts";
 import AlignExtension from "../extensions/extension_align.ts";
 import IndentExtension from "../extensions/extension_indent.ts";
 import SpacingExtension from "../extensions/extension_spacing.ts";
+import ParagraphBordersExtension from "../extensions/extension_paragraph_borders.ts";
 import FontFamilyMark from "../extensions/extension_font_family.ts";
 import FontSizeMark from "../extensions/extension_font_size.ts";
 import TextColorMark from "../extensions/extension_text_color.ts";
 import HighlightColorMark from "../extensions/extension_highlight_color.ts";
+import TextShadowMark from "../extensions/extension_text_shadow.ts";
+import TextOutlineMark from "../extensions/extension_text_outline.ts";
 import UnderlineMark from "../extensions/extension_underline.ts";
 import StrikethroughMark from "../extensions/extension_strikethrough.ts";
 import SuperscriptMark from "../extensions/extension_superscript.ts";
@@ -53,6 +56,7 @@ import CitationNode from "../extensions/extension_citation.ts";
 import AnchorMark from "../extensions/extension_anchor.ts";
 import AnchorMarker from "../extensions/extension_anchor_marker.ts";
 import FootnoteExtension from "../extensions/extension_footnote.ts";
+import { HeadingWithToc } from "../extensions/extension_heading_toc.ts";
 import PageBreakExtension from "../extensions/extension_page_break.ts";
 import ImageExtension from "../extensions/extension_image.ts";
 import MergeTagExtension from "../extensions/extension_merge_tag.ts";
@@ -302,6 +306,41 @@ const sanitizeClipboardHTML = (html: string) => {
   return doc.body?.innerHTML.trim() ?? "";
 };
 
+const PREF_AUTO_LINK = "leditor.autoLink";
+const PREF_PASTE_AUTO_CLEAN = "leditor.pasteAutoClean";
+
+const readBoolPref = (key: string, fallback = false): boolean => {
+  try {
+    const raw = window.localStorage?.getItem(key);
+    if (raw == null) return fallback;
+    return raw === "1" || raw.toLowerCase() === "true";
+  } catch {
+    return fallback;
+  }
+};
+
+const URL_PATTERN = /(https?:\/\/[^\s]+|mailto:[^\s]+)/gi;
+
+const linkifyPlainText = (text: string) => {
+  const nodes: Array<{ type: string; text: string; marks?: Array<{ type: string; attrs?: Record<string, unknown> }> }> = [];
+  let lastIndex = 0;
+  URL_PATTERN.lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = URL_PATTERN.exec(text)) !== null) {
+    const start = match.index;
+    const url = match[0];
+    if (start > lastIndex) {
+      nodes.push({ type: "text", text: text.slice(lastIndex, start) });
+    }
+    nodes.push({ type: "text", text: url, marks: [{ type: "link", attrs: { href: url } }] });
+    lastIndex = start + url.length;
+  }
+  if (lastIndex < text.length) {
+    nodes.push({ type: "text", text: text.slice(lastIndex) });
+  }
+  return nodes.length ? nodes : [{ type: "text", text }];
+};
+
 export const LEditor = {
   /**
    * Initializes the editor within the DOM element `config.elementId`.
@@ -321,7 +360,7 @@ export const LEditor = {
     // (seen as `Cannot read properties of null (reading 'removeChild')` in DropCursorView.setCursor).
     // We can reintroduce a patched dropcursor later via a custom extension.
     starterKitOptions.dropcursor = false;
-    starterKitOptions.heading = { levels: [1, 2, 3, 4, 5, 6] };
+    starterKitOptions.heading = false;
     starterKitOptions.underline = false;
     starterKitOptions.link = false;
     starterKitOptions.document = false;
@@ -334,9 +373,11 @@ export const LEditor = {
         PageNode,
         PagePagination,
         StarterKit.configure(starterKitOptions),
+        HeadingWithToc.configure({ levels: [1, 2, 3, 4, 5, 6] }),
         AlignExtension,
         IndentExtension,
         SpacingExtension,
+        ParagraphBordersExtension,
 	        directionExtension,
 	        visualExtension,
 	        paragraphGridExtension,
@@ -346,6 +387,8 @@ export const LEditor = {
         FontSizeMark,
         TextColorMark,
         HighlightColorMark,
+        TextShadowMark,
+        TextOutlineMark,
         lexiconHighlightExtension,
         UnderlineMark,
         StrikethroughMark,
@@ -390,24 +433,116 @@ export const LEditor = {
       ],
       content: ""
     });
+    const appRoot = document.getElementById("leditor-app");
+    if (appRoot) {
+      appRoot.classList.add("leditor-app--loading");
+    }
+    const markAppReady = () => {
+      if (appRoot) {
+        appRoot.classList.remove("leditor-app--loading");
+      }
+    };
+    const waitForFonts = async () => {
+      const fontsReady = (document as any)?.fonts?.ready as Promise<void> | undefined;
+      if (!fontsReady) return;
+      await Promise.race([
+        fontsReady,
+        new Promise<void>((resolve) => {
+          window.setTimeout(resolve, 1500);
+        })
+      ]);
+    };
+    const waitForA4Ready = async (timeoutMs = 5000) => {
+      await new Promise<void>((resolve) => {
+        let done = false;
+        const finish = () => {
+          if (done) return;
+          done = true;
+          observer.disconnect();
+          resolve();
+        };
+        const hasA4 = () => {
+          const page = document.querySelector<HTMLElement>(".leditor-page");
+          const content = document.querySelector<HTMLElement>(".leditor-page-content");
+          if (!page || !content) return false;
+          return page.clientHeight > 0 && content.clientHeight > 0;
+        };
+        const start = performance.now();
+        const check = () => {
+          if (hasA4()) {
+            finish();
+            return;
+          }
+          if (performance.now() - start > timeoutMs) {
+            finish();
+            return;
+          }
+          window.requestAnimationFrame(check);
+        };
+        const observer = new MutationObserver(() => {
+          if (!done) {
+            check();
+          }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+        check();
+      });
+    };
+    void (async () => {
+      try {
+        await waitForFonts();
+      } catch {
+        // ignore font readiness errors
+      }
+      try {
+        await waitForA4Ready();
+      } catch {
+        // ignore A4 readiness errors
+      }
+      try {
+        editor.view.dom.dispatchEvent(new CustomEvent("leditor:pagination-request"));
+      } catch {
+        // ignore pagination dispatch errors
+      }
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(markAppReady);
+      });
+    })();
 	    const handlePaste = (event: ClipboardEvent) => {
 	      const clipboardData = event.clipboardData;
 	      if (!clipboardData) {
 	        return;
 	      }
+	      const insertPlainText = (plain: string) => {
+	        const autoLink = readBoolPref(PREF_AUTO_LINK, false);
+	        if (autoLink) {
+	          editor.commands.insertContent(linkifyPlainText(plain));
+	          return;
+	        }
+	        editor.commands.insertContent(plain);
+	      };
 	      const eAny = event as any;
 	      const plainOnly = !!(eAny.getModifierState?.("Shift") ?? eAny.shiftKey);
 	      if (plainOnly) {
 	        const plain = clipboardData.getData("text/plain");
 	        if (plain) {
 	          event.preventDefault();
-	          editor.commands.insertContent(plain);
+	          insertPlainText(plain);
 	          return;
 	        }
 	      }
 	      const html = clipboardData.getData("text/html");
 	      if (!html) {
 	        return;
+	      }
+	      const autoClean = readBoolPref(PREF_PASTE_AUTO_CLEAN, false);
+	      if (!autoClean) {
+	        const plain = clipboardData.getData("text/plain");
+	        if (plain) {
+	          event.preventDefault();
+	          insertPlainText(plain);
+	          return;
+	        }
 	      }
 	      const sanitized = sanitizeClipboardHTML(html);
       if (!sanitized && !clipboardData.getData("text/plain")) {
@@ -421,7 +556,7 @@ export const LEditor = {
       }
       const plain = clipboardData.getData("text/plain");
       if (plain) {
-        editor.commands.insertContent(plain);
+        insertPlainText(plain);
       }
     };
     editor.view.dom.addEventListener("paste", handlePaste);

@@ -1,6 +1,7 @@
 import { ToolRegistry } from "../registry/toolRegistry";
 import { PanelGrid } from "../layout/PanelGrid";
 import { DEFAULT_PANEL_PARTS, type PanelId } from "../layout/panelRegistry";
+import { PANEL_PRESETS } from "../layout/presets";
 import { TabRibbon, TabId } from "../layout/TabRibbon";
 import type { LayoutSnapshot } from "../panels/PanelLayoutRoot";
 import { PanelToolManager } from "../panels/PanelToolManager";
@@ -16,6 +17,8 @@ import { createVisualiserTool } from "../tools/visualiser";
 import { createWriteTool } from "../tools/write";
 import { createCoderTool } from "../tools/coder";
 import { createScreenWidget } from "../tools/screen";
+import { createAnalysePdfTabsTool } from "../tools/analysePdfTabs";
+import { createScreenPdfViewerTool } from "../tools/screenPdfs";
 import { dispatchAnalyseCommand } from "../analyse/commandDispatcher";
 import { AnalyseWorkspace } from "../analyse/workspace";
 import { AnalyseStore } from "../analyse/store";
@@ -33,6 +36,7 @@ import { initAnalyseAudioController } from "./analyseAudio";
 import { initPerfOverlay } from "./perfOverlay";
 import { readRetrieveQueryDefaults, writeRetrieveQueryDefaults } from "../state/retrieveQueryDefaults";
 import type { RetrieveProviderId, RetrieveSort } from "../shared/types/retrieve";
+import { applyPayloadToViewer, ensurePdfViewerFrame, syncAllPdfViewersTheme } from "../pdfViewer/integration";
 
 interface PdfSelectionNotification {
   text: string;
@@ -81,11 +85,11 @@ registry.register(createWriteTool());
 registry.register(createVisualiserTool());
 registry.register(createCoderTool());
 registry.register(createScreenWidget());
+registry.register(createAnalysePdfTabsTool());
+registry.register(createScreenPdfViewerTool());
 void initThemeManager();
 window.addEventListener("settings:updated", () => {
-  if (pdfViewerIframe) {
-    syncPdfViewerTheme(pdfViewerIframe);
-  }
+  syncAllPdfViewersTheme();
 });
 
 const ribbonHeader = document.getElementById("app-tab-header") as HTMLElement;
@@ -221,7 +225,6 @@ const TEST_PDF_PATH_OVERRIDES: Record<string, string> = {
   "C:\\Users\\luano\\Zotero\\storage\\5MYV4X6F\\Williamson - 2024 - Do Proxies Provide Plausible Deniability Evidence from Experiments on Three Surveys.pdf":
     TEST_PDF_ASSET_URL
 };
-let pdfViewerIframe: HTMLIFrameElement | null = null;
 let lastPdfSelectionKey = "";
 const PDF_SELECTION_AUTO_COPY_KEY = GENERAL_KEYS.pdfSelectionAutoCopy;
 const SETTINGS_UPDATED_EVENT = "settings:updated";
@@ -279,6 +282,61 @@ const panelTools = new PanelToolManager({
   hosts: { panel2: toolHost },
   onPanelLayoutChange: (panelId, snapshot) => {
     savePanelLayout(panelId, snapshot);
+  },
+  onPanelFocusChange: (_panelId, _toolId, toolType, metadata) => {
+    if (!toolType) return;
+    // Clicking a tool tab should restore the same panel layout that the original
+    // "open" action would have applied (IDE-like deterministic workspace).
+    try {
+      const presetId = String((metadata as any)?.layoutPresetId || "");
+      const applyPresetId = (id: string) => {
+        const preset = PANEL_PRESETS[id];
+        if (preset) panelGrid.applyPreset(preset);
+      };
+
+      switch (toolType) {
+        case "write-leditor":
+          applyPresetId("write:main");
+          break;
+        case "code-panel":
+          applyPresetId("code:main");
+          break;
+        case "visualiser":
+          applyPresetId("visualiser:main");
+          break;
+        case "screen":
+          applyPresetId("screen:main");
+          // Ensure the Screen PDF viewer tab exists in panel 3.
+          if (!screenPdfViewerToolId || !panelTools.getToolPanel(screenPdfViewerToolId)) {
+            panelTools.ensureToolHost("panel3", { replaceContent: true });
+            screenPdfViewerToolId = panelTools.spawnTool("screen-pdf-viewer", { panelId: "panel3" });
+          }
+          break;
+        case "retrieve-datahub":
+          applyPresetId("retrieve:datahub");
+          break;
+        case "retrieve":
+        case "retrieve-search-app":
+          applyPresetId("retrieve:search-empty");
+          break;
+        case "retrieve-search-meta":
+          applyPresetId("retrieve:search-selected");
+          break;
+        case "retrieve-citation-graph":
+          applyPresetId("retrieve:search-graph");
+          break;
+        case "analyse-pdf-tabs":
+          // If the pdf tab was spawned from Analyse, restore the last-known round layout if present.
+          if (presetId) applyPresetId(presetId);
+          break;
+        default:
+          // no-op: other tools can opt in by passing metadata.layoutPresetId
+          if (presetId) applyPresetId(presetId);
+          break;
+      }
+    } catch (err) {
+      console.warn("[panel-focus] unable to apply preset for tool tab", { toolType, err });
+    }
   }
 });
 const layoutRoot = panelTools.getRoot("panel2");
@@ -321,55 +379,49 @@ let analyseAudioController: ReturnType<typeof initAnalyseAudioController> | null
 
 let lastRoundWideLayout = false;
 const setRatiosForRound = (action: AnalyseAction) => {
-  const isCorpus = action === "analyse/open_corpus";
-  const isR1 = action === "analyse/open_sections_r1";
-  const isPhases = action === "analyse/open_phases";
-  const isR2 = action === "analyse/open_sections_r2";
-  const isR3 = action === "analyse/open_sections_r3";
-
   // Keep the current layout while opening the PDF viewer (it temporarily takes over a panel).
-  if (action === "analyse/open_pdf_viewer" && lastRoundWideLayout) {
-    return;
-  }
+  if (action === "analyse/open_pdf_viewer" && lastRoundWideLayout) return;
 
-  // Ensure page switches don't inherit floating/undocked panels from other pages.
-  panelGrid.resetPanelPlacement();
-
-  if (isCorpus || isR1 || isPhases) {
-    // Panel 1: filters (2/6)
-    // Panel 2: cards (3/6) centered with 1/12 margins on each side (total free space 1/6).
-    panelGrid.setRoundLayout(false);
-    panelGrid.setLayoutHint({ mode: "centeredGrid", maxWidthFrac: 5 / 6 });
-    panelGrid.setCollapsed("panel1", false);
-    panelGrid.setCollapsed("panel2", false);
-    panelGrid.setCollapsed("panel3", true);
-    panelGrid.setCollapsed("panel4", true);
-    panelGrid.setRatios({ panel1: 2, panel2: 3, panel3: 0, panel4: 0 });
+  if (action === "analyse/open_dashboard") {
+    panelGrid.applyPreset(PANEL_PRESETS["analyse:dashboard"]);
     lastRoundWideLayout = false;
     return;
   }
-
-  if (isR2 || isR3) {
-    // Round 2/3:
-    // Panel 1: filters (1/6)
-    // Panel 2: cards (1/6)
-    // Panel 3: sections (2/6)
-    // Panel 4: coder (2/6)
-    panelGrid.setRoundLayout(true);
-    panelGrid.setLayoutHint(null);
-    panelGrid.setCollapsed("panel1", false);
-    panelGrid.setCollapsed("panel2", false);
-    panelGrid.setCollapsed("panel3", false);
-    panelGrid.setCollapsed("panel4", false);
-    panelGrid.setRatios({ panel1: 1, panel2: 1, panel3: 2, panel4: 2 });
+  if (action === "analyse/open_corpus") {
+    panelGrid.applyPreset(PANEL_PRESETS["analyse:corpus"]);
+    lastRoundWideLayout = false;
+    return;
+  }
+  if (action === "analyse/open_sections_r1") {
+    panelGrid.applyPreset(PANEL_PRESETS["analyse:r1"]);
+    lastRoundWideLayout = false;
+    return;
+  }
+  if (action === "analyse/open_phases") {
+    panelGrid.applyPreset(PANEL_PRESETS["analyse:phases"]);
+    lastRoundWideLayout = false;
+    return;
+  }
+  if (action === "analyse/open_sections_r2") {
+    panelGrid.applyPreset(PANEL_PRESETS["analyse:r2"]);
+    lastRoundWideLayout = true;
+    return;
+  }
+  if (action === "analyse/open_sections_r3") {
+    panelGrid.applyPreset(PANEL_PRESETS["analyse:r3"]);
     lastRoundWideLayout = true;
     return;
   }
 
+  // Fallback: restore the default workspace parts.
   lastRoundWideLayout = false;
-  panelGrid.setRoundLayout(false);
-  panelGrid.setLayoutHint(null);
-  panelGrid.setRatios({ ...DEFAULT_PANEL_PARTS });
+  panelGrid.applyPreset({
+    id: "default",
+    roundLayout: false,
+    layoutHint: null,
+    collapsed: { panel1: false, panel2: false, panel3: false, panel4: false },
+    ratios: { ...DEFAULT_PANEL_PARTS }
+  });
 };
 
 const ensureAnalyseCoderPanel = (): void => {
@@ -573,17 +625,18 @@ document.addEventListener("analyse-render-pdf", (event) => {
   };
 
   const targetPanel = typeof detail.preferredPanel === "number" ? detail.preferredPanel : 4;
+  const panelId = targetPanel === 1 ? "panel1" : targetPanel === 2 ? "panel2" : targetPanel === 3 ? "panel3" : "panel4";
   panelGrid.ensurePanelVisible(targetPanel);
-  const panel = panelGrid.getPanelContent(targetPanel);
-  if (!panel) return;
-  panel.innerHTML = "";
-  panel.style.pointerEvents = "auto";
-  panel.style.position = "relative";
-  panel.style.display = "flex";
-  panel.style.flexDirection = "column";
-  panel.style.height = "100%";
-
-  renderPdfTabs(panel, payload, rawPayload);
+  panelTools.ensureToolHost(panelId, { replaceContent: true });
+  // Each click opens a new tab; previous viewers remain accessible.
+  const analyseState = analyseStore.getState();
+  const layoutPresetId =
+    analyseState.activeRound === "r3" ? "analyse:r3" : analyseState.activeRound === "r2" ? "analyse:r2" : "analyse:r1";
+  const toolId = panelTools.spawnTool("analyse-pdf-tabs", {
+    panelId,
+    metadata: { payload, rawPayload, layoutPresetId }
+  });
+  panelTools.focusTool(toolId);
 });
 
 // Ensure Dashboard is the first page when Analyse opens
@@ -613,6 +666,7 @@ const tabOrder: TabId[] = [
   "tools"
 ];
 const sectionToolIds: Partial<Record<TabId, string>> = {};
+let screenPdfViewerToolId: string | null = null;
 
 let activeTab: TabId = "export";
 
@@ -648,6 +702,12 @@ const tabRibbon = new TabRibbon({
     activeTab = tabId;
     if (tabId !== "tools") {
       panelGrid.ensurePanelVisible(2);
+    }
+    if (showAnalyse) {
+      // Entering Analyse should always start from a clean, single-panel dashboard layout
+      // (no carryover like retrieve citation graph splitting the workspace).
+      panelGrid.applyPreset(PANEL_PRESETS["analyse:dashboard"]);
+      analyseWorkspace.openPageByAction("analyse/open_dashboard");
     }
     if (!showAnalyse && tabId !== "tools") {
       // Keep tools mounted per tab to avoid expensive teardown/recreate on tab switches.
@@ -720,8 +780,8 @@ document.addEventListener("retrieve:ensure-panel2", () => {
 });
 
 document.addEventListener("retrieve:open-graph", (event) => {
-  const detail = (event as CustomEvent<{ record?: RetrieveRecord }>).detail;
-  openRetrieveGraph(detail?.record);
+  const detail = (event as CustomEvent<{ record?: RetrieveRecord; network?: unknown }>).detail;
+  openRetrieveGraph(detail?.record, detail?.network);
 });
 
 document.addEventListener("retrieve:close-graph", () => {
@@ -732,8 +792,7 @@ document.addEventListener("retrieve:close-graph", () => {
     ensureRetrieveSearchMetaTool();
   } else {
     setRetrieveLayout("search-empty");
-    panelTools.clearPanelTools("panel4");
-    retrieveMetaToolId = undefined;
+    closeRetrieveMetaTool();
   }
 });
 
@@ -741,13 +800,16 @@ document.addEventListener("retrieve:search-selection", (event) => {
   const detail = (event as CustomEvent<{ record?: RetrieveRecord }>).detail;
   retrieveSearchSelectedRecord = detail?.record;
   if (!retrieveSearchSelectedRecord) {
-    panelTools.clearPanelTools("panel4");
-    retrieveMetaToolId = undefined;
+    closeRetrieveMetaTool();
     setRetrieveLayout("search-empty");
     return;
   }
   if (retrieveGraphToolId) {
-    // Keep graph open; selection changes can still update the node highlight in future.
+    if (retrieveSearchSelectedRecord?.paperId) {
+      document.dispatchEvent(
+        new CustomEvent("retrieve:graph-highlight", { detail: { paperId: retrieveSearchSelectedRecord.paperId } })
+      );
+    }
     return;
   }
   setRetrieveLayout("search-selected");
@@ -1254,14 +1316,22 @@ interface PdfOcrRequestMessage {
   payload?: { fileUrl?: string } | null;
 }
 
+function findPdfViewerIframeBySource(source: MessageEventSource | null): HTMLIFrameElement | null {
+  if (!source) return null;
+  const iframes = document.querySelectorAll<HTMLIFrameElement>("iframe[data-pdf-app-viewer='true']");
+  for (let i = 0; i < iframes.length; i += 1) {
+    const iframe = iframes[i];
+    if (iframe && iframe.contentWindow === source) return iframe;
+  }
+  return null;
+}
+
 function handlePdfSelectionMessage(event: MessageEvent): void {
   const data = (event.data as PdfSelectionMessage | undefined) || null;
   if (!data || data.type !== "pdf-selection") {
     return;
   }
-  if (event.source !== pdfViewerIframe?.contentWindow) {
-    return;
-  }
+  if (!findPdfViewerIframeBySource(event.source)) return;
   void processPdfSelection(data.payload ?? null);
 }
 
@@ -1285,9 +1355,8 @@ async function handlePdfOcrRequest(event: MessageEvent): Promise<void> {
   if (!data || data.type !== "pdf-ocr-request") {
     return;
   }
-  if (event.source !== pdfViewerIframe?.contentWindow) {
-    return;
-  }
+  const iframe = findPdfViewerIframeBySource(event.source);
+  if (!iframe) return;
   const fileUrl = data.payload?.fileUrl || "";
   const pdfPath = fileUrlToPath(fileUrl);
   if (!pdfPath || !window.commandBridge?.dispatch) {
@@ -1298,16 +1367,17 @@ async function handlePdfOcrRequest(event: MessageEvent): Promise<void> {
     action: "ocr",
     payload: { pdfPath }
   })) as any;
-  if (!pdfViewerIframe?.contentWindow) return;
+  const targetWin = iframe.contentWindow;
+  if (!targetWin) return;
   if (!result || result.status !== "ok" || !result.pdfPath) {
     const message = (result && (result.message || result.error)) ? String(result.message || result.error) : "OCR failed";
-    pdfViewerIframe.contentWindow.postMessage(
+    targetWin.postMessage(
       { type: "pdf-ocr-error", payload: { message } },
       "*"
     );
     return;
   }
-  pdfViewerIframe.contentWindow.postMessage(
+  targetWin.postMessage(
     { type: "pdf-ocr-ready", payload: { pdfPath: result.pdfPath } },
     "*"
   );
@@ -1496,8 +1566,7 @@ function handleAction(action: RibbonAction): void {
     ensureRetrieveDataHubTool({ replace: !retrieveDataHubToolId });
     closeRetrieveGraph();
     retrieveSearchSelectedRecord = undefined;
-    panelTools.clearPanelTools("panel4");
-    retrieveMetaToolId = undefined;
+    closeRetrieveMetaTool();
     window.setTimeout(() => {
       document.dispatchEvent(
         new CustomEvent("retrieve-datahub-command", {
@@ -1512,8 +1581,7 @@ function handleAction(action: RibbonAction): void {
     setRetrieveLayout("search-empty");
     closeRetrieveGraph();
     retrieveSearchSelectedRecord = undefined;
-    panelTools.clearPanelTools("panel4");
-    retrieveMetaToolId = undefined;
+    closeRetrieveMetaTool();
     ensureRetrieveSearchAppTool();
     return;
   }
@@ -1528,6 +1596,7 @@ function handleAction(action: RibbonAction): void {
     panelGrid.ensurePanelVisible(2);
     setRetrieveLayout("search-empty");
     closeRetrieveGraph();
+    closeRetrieveMetaTool();
     ensureRetrieveSearchAppTool();
     return;
   }
@@ -1539,6 +1608,7 @@ function handleAction(action: RibbonAction): void {
     panelGrid.ensurePanelVisible(2);
     setRetrieveLayout("search-empty");
     closeRetrieveGraph();
+    closeRetrieveMetaTool();
     ensureRetrieveSearchAppTool();
     return;
   }
@@ -1564,6 +1634,7 @@ function handleAction(action: RibbonAction): void {
     panelGrid.ensurePanelVisible(2);
     setRetrieveLayout("search-empty");
     closeRetrieveGraph();
+    closeRetrieveMetaTool();
     ensureRetrieveSearchAppTool();
     return;
   }
@@ -1577,6 +1648,7 @@ function handleAction(action: RibbonAction): void {
     panelGrid.ensurePanelVisible(2);
     setRetrieveLayout("search-empty");
     closeRetrieveGraph();
+    closeRetrieveMetaTool();
     ensureRetrieveSearchAppTool();
     return;
   }
@@ -1585,7 +1657,7 @@ function handleAction(action: RibbonAction): void {
     if (payload?.toolType) {
       const panelId = (payload.panelId as PanelId | undefined) ?? "panel2";
       panelTools.ensureToolHost(panelId, { replaceContent: true });
-      panelTools.clearPanelTools(panelId);
+      // Open tools as tabs (do not wipe out previous widgets/tools).
       const id = panelTools.spawnTool(payload.toolType, { panelId, metadata: payload.metadata });
       panelTools.focusTool(id);
       const index = PANEL_INDEX_BY_ID[panelId];
@@ -1804,567 +1876,11 @@ function updateScreenStatus(response?: RibbonCommandResponse): void {
   screenStatusEl.textContent = "Record status unavailable";
 }
 
-const pdfViewerRetry = new WeakMap<HTMLIFrameElement, number>();
-const mapAppThemeToPdfTheme = (theme: string): string => {
-  const t = (theme || "").toLowerCase();
-  if (t === "high-contrast" || t === "highcontrast") return "highcontrast";
-  if (t === "light") return "paper";
-  if (t === "warm") return "sepia";
-  if (t === "colorful") return "paper";
-  if (t === "cold" || t === "dark" || t === "system") return "midnight";
-  return ["midnight", "dim", "paper", "sepia", "highcontrast"].includes(t) ? t : "midnight";
-};
-
-const getAppThemeId = (): string => {
-  const docTheme = document.documentElement.dataset.theme;
-  if (docTheme) return docTheme;
-  try {
-    const raw = window.localStorage.getItem("appearance.theme");
-    if (raw) return raw;
-  } catch {
-    // ignore
-  }
-  return "system";
-};
-
-const readRootCssVar = (name: string): string => {
-  const value = getComputedStyle(document.documentElement).getPropertyValue(name);
-  return value ? value.trim() : "";
-};
-
-const buildPdfViewerUiTokens = (): Record<string, string> => {
-  const bg = readRootCssVar("--bg");
-  const panel = readRootCssVar("--panel");
-  const panel2 = readRootCssVar("--panel-2");
-  const surface = readRootCssVar("--surface");
-  const surfaceMuted = readRootCssVar("--surface-muted");
-  const border = readRootCssVar("--border");
-  const borderSoft = readRootCssVar("--border-soft");
-  const text = readRootCssVar("--text");
-  const muted = readRootCssVar("--muted");
-  const accent = readRootCssVar("--accent");
-  const shadowOverlay = readRootCssVar("--shadow-overlay") || readRootCssVar("--shadow");
-  const shadowAmbient = readRootCssVar("--shadow-ambient") || readRootCssVar("--shadow");
-
-  return {
-    "--bg0": bg || "#0b0f14",
-    "--bg1": panel || "#0f141b",
-    "--bg2": panel2 || "#151c26",
-    "--panel": surface || panel || "#0f141b",
-    "--panel2": surfaceMuted || panel2 || "#151c26",
-    "--stroke": border || "rgba(226, 232, 240, 0.14)",
-    "--stroke2": borderSoft || "rgba(226, 232, 240, 0.08)",
-    "--txt": text || "#e8eef5",
-    "--muted": muted || "#a8b3c3",
-    "--muted2": muted || "#a8b3c3",
-    "--accent": accent || "#10a37f",
-    "--shadow": shadowOverlay || "0 30px 80px rgba(0, 0, 0, 0.45)",
-    "--shadow2": shadowAmbient || "0 8px 24px rgba(0, 0, 0, 0.18)"
-  };
-};
-
-const syncPdfViewerUiTokens = (iframe: HTMLIFrameElement): void => {
-  const vars = buildPdfViewerUiTokens();
-  const win =
-    iframe.contentWindow as (Window & { PDF_APP?: { setUiTokens?: (vars: Record<string, string>) => string } }) | null;
-
-  try {
-    if (win?.PDF_APP && typeof win.PDF_APP.setUiTokens === "function") {
-      win.PDF_APP.setUiTokens(vars);
-      return;
-    }
-  } catch {
-    // ignore
-  }
-
-  try {
-    const doc = iframe.contentDocument;
-    if (!doc) return;
-    Object.entries(vars).forEach(([k, v]) => doc.documentElement.style.setProperty(k, v));
-  } catch {
-    // ignore
-  }
-};
-
-const syncPdfViewerTheme = (iframe: HTMLIFrameElement): void => {
-  const win = iframe.contentWindow as Window & { PDF_APP?: { setTheme?: (t: string) => string } };
-  if (win?.PDF_APP && typeof win.PDF_APP.setTheme === "function") {
-    win.PDF_APP.setTheme(mapAppThemeToPdfTheme(getAppThemeId()));
-  }
-  syncPdfViewerUiTokens(iframe);
-};
-
-function renderPdfTabs(panel: HTMLElement, payload: PdfTestPayload, rawPayload?: any): void {
-  const rawData = rawPayload || payload;
-  const citations = rawData?.citations || rawData?.meta?.citations;
-  const references = rawData?.references || rawData?.meta?.references;
-  panel.innerHTML = "";
-
-  const tabsWrap = document.createElement("div");
-  tabsWrap.style.display = "flex";
-  tabsWrap.style.gap = "6px";
-  tabsWrap.style.padding = "6px 8px";
-  tabsWrap.style.borderBottom = "1px solid var(--border, #1f2937)";
-
-  const views: Record<string, HTMLElement> = {};
-  const tabIds: Array<{ id: string; label: string }> = [
-    { id: "pdf", label: "PDF" },
-    { id: "raw", label: "Raw data" },
-    { id: "cit", label: "Citations" },
-    { id: "ref", label: "References" }
-  ];
-
-  const contentWrap = document.createElement("div");
-  contentWrap.style.flex = "1 1 auto";
-  contentWrap.style.minHeight = "0";
-  contentWrap.style.display = "flex";
-  contentWrap.style.flexDirection = "column";
-
-  tabIds.forEach((t, idx) => {
-    const btn = document.createElement("button");
-    btn.className = "button-ghost";
-    btn.textContent = t.label;
-    btn.style.padding = "6px 10px";
-    btn.style.borderRadius = "10px";
-    btn.style.border = "1px solid var(--border, #1f2937)";
-    btn.style.background = idx === 0 ? "color-mix(in srgb, var(--panel-2) 85%, transparent)" : "transparent";
-    btn.addEventListener("click", () => {
-      tabIds.forEach((x) => {
-        const v = views[x.id];
-        if (v) v.style.display = x.id === t.id ? "flex" : "none";
-      });
-      tabsWrap.querySelectorAll("button").forEach((b) => {
-        b instanceof HTMLButtonElement &&
-          (b.style.background =
-            b === btn ? "color-mix(in srgb, var(--panel-2) 85%, transparent)" : "transparent");
-      });
-    });
-    tabsWrap.appendChild(btn);
-
-    const view = document.createElement("div");
-    view.style.flex = "1 1 auto";
-    view.style.minHeight = "0";
-    view.style.display = idx === 0 ? "flex" : "none";
-    view.style.flexDirection = "column";
-    view.style.padding = "8px";
-    view.style.gap = "10px";
-    view.style.overflow = "hidden";
-    views[t.id] = view;
-    contentWrap.appendChild(view);
-  });
-
-  // PDF view
-  const pdfView = views["pdf"];
-  if (pdfView) {
-    const header = document.createElement("div");
-    header.className = "status-bar";
-    header.textContent = `${payload.title || "PDF"} · ${payload.pdf_path}`;
-    pdfView.appendChild(header);
-
-    const iframe = ensurePdfViewerFrame(pdfView);
-    iframe.style.zIndex = "1";
-    iframe.style.flex = "1 1 auto";
-    iframe.style.height = "100%";
-    iframe.style.minHeight = "0";
-    iframe.style.width = "100%";
-    applyPayloadToViewer(iframe, payload);
-  }
-
-  // Raw data view (preview HTML)
-  const rawView = views["raw"];
-  if (rawView) {
-    rawView.style.overflow = "auto";
-    rawView.innerHTML = buildRawHtml(rawData);
-  }
-
-  const asBlock = (val: unknown, emptyLabel: string) => {
-    const pre = document.createElement("pre");
-    pre.style.whiteSpace = "pre-wrap";
-    pre.style.margin = "0";
-    if (val === undefined || val === null || val === "" || (Array.isArray(val) && val.length === 0)) {
-      pre.textContent = emptyLabel;
-    } else {
-      pre.textContent = typeof val === "string" ? val : JSON.stringify(val, null, 2);
-    }
-    return pre;
-  };
-
-  // Citations view
-  const citView = views["cit"];
-  if (citView) {
-    citView.style.overflow = "auto";
-    citView.appendChild(asBlock(citations, "No citations"));
-  }
-
-  // References view
-  const refView = views["ref"];
-  if (refView) {
-    refView.style.overflow = "auto";
-    refView.appendChild(asBlock(references, "No references"));
-  }
-
-  panel.appendChild(tabsWrap);
-  panel.appendChild(contentWrap);
-}
-
-function buildRawHtml(pl: any): string {
-  const basePayload = pl && pl.raw ? pl.raw : pl;
-  let parsedPayload: any = {};
-  const payloadJson = basePayload?.payload_json;
-  if (typeof payloadJson === "string" && payloadJson.trim().startsWith("{") && payloadJson.trim().endsWith("}")) {
-    try {
-      parsedPayload = JSON.parse(payloadJson);
-    } catch {
-      parsedPayload = {};
-    }
-  }
-  const raw = { ...parsedPayload, ...basePayload, ...(pl?.meta || {}) };
-  const norm = (v: any) => (v === null || v === undefined ? "" : String(v).trim());
-  const esc = (s: string) =>
-    s
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
-
-  const looksHtml = (s: string) => {
-    const t = s.trim().toLowerCase();
-    return ["<section", "<p", "<div", "<h1", "<h2", "<h3", "<h4"].some((k) => t.includes(k));
-  };
-
-  const extractSection = (src: any): { body: string; isHtml: boolean } => {
-    const sh = norm(src.section_html || src.html || "");
-    const st = norm(src.section_text || "");
-    if (sh) return { body: sh, isHtml: true };
-    if (st) return { body: st, isHtml: looksHtml(st) };
-    const dq = norm(src.direct_quote_clean || src.direct_quote || src.paraphrase || "");
-    if (dq) return { body: dq, isHtml: false };
-    return { body: "", isHtml: false };
-  };
-
-  const injectDqidIntoHref = (htmlFragment: string): string => {
-    if (!htmlFragment) return "";
-    try {
-      const doc = new DOMParser().parseFromString(htmlFragment, "text/html");
-      doc.querySelectorAll("a").forEach((a) => {
-        const dqid =
-          a.getAttribute("data-dqid") ||
-          a.getAttribute("data-quote_id") ||
-          a.getAttribute("data-quote-id") ||
-          "";
-        if (!dqid) return;
-        const href = (a.getAttribute("href") || "").trim();
-        if (href.startsWith("dq://")) return;
-        a.setAttribute("href", `dq://${dqid}`);
-      });
-      return doc.body.innerHTML;
-    } catch {
-      return htmlFragment;
-    }
-  };
-
-  const section = extractSection(raw);
-
-  const author = norm(raw.first_author_last || raw.author_summary || raw.author);
-  const year = norm(raw.year);
-  const title = norm(raw.title);
-  const source = norm(raw.source);
-  const page = norm(raw.page);
-  const url = norm(raw.url);
-  const route = norm(raw.route);
-
-  const biblioBits: string[] = [];
-  if (author && year) biblioBits.push(`${author} (${year})`);
-  else if (author) biblioBits.push(author);
-  else if (year) biblioBits.push(year);
-  if (title) biblioBits.push(`“${title}”`);
-  if (source) biblioBits.push(source);
-  if (page) biblioBits.push(`p. ${page}`);
-  const biblio = biblioBits.join(" · ");
-
-  const potTheme = norm(raw.potential_theme || raw.overarching_theme || "");
-  const evType = norm(raw.evidence_type || "");
-  const evTypeNorm = norm(raw.evidence_type_norm || "");
-  const paraphrase = norm(raw.paraphrase || "");
-  const researcherComment = norm(raw.researcher_comment || raw.research_comment || "");
-  const theme = norm(raw.theme || "");
-  const goldTheme = norm(raw.gold_theme || "");
-  const itemKey = norm(raw.item_key || "");
-  const pdfPath = norm(raw.pdf_path || "");
-  const rq = norm(raw.rq_question || "");
-  const potentialThemes = Array.isArray(raw.all_potential_themes)
-    ? raw.all_potential_themes.join(", ")
-    : norm(raw.all_potential_themes || "");
-
-  const headerBits: string[] = [];
-  if (biblio) {
-    const bHtml = url ? `<a href="${esc(url)}">${esc(biblio)}</a>` : esc(biblio);
-    headerBits.push(`<p class="dq-biblio">${bHtml}</p>`);
-  }
-  if (potTheme) headerBits.push(`<p><span class="dq-label">Theme:</span> ${esc(potTheme)}</p>`);
-  if (evType) headerBits.push(`<p><span class="dq-label">Evidence type:</span> ${esc(evType)}</p>`);
-  if (evTypeNorm) headerBits.push(`<p><span class="dq-label">Evidence (norm):</span> ${esc(evTypeNorm)}</p>`);
-  if (paraphrase) headerBits.push(`<p><span class="dq-label">Paraphrase:</span> ${esc(paraphrase)}</p>`);
-  if (researcherComment)
-    headerBits.push(`<p><span class="dq-label">Researcher comment:</span> ${esc(researcherComment)}</p>`);
-
-  const metaFields: Array<[string, string]> = [
-    ["Route", route],
-    ["Research question", rq],
-    ["Gold theme", goldTheme],
-    ["Theme", theme],
-    ["Potential theme", potTheme],
-    ["All potential themes", potentialThemes],
-    ["Evidence type (norm)", evTypeNorm],
-    ["Evidence type", evType],
-    ["Item key", itemKey],
-    ["Page", page],
-    ["Source", source],
-    ["URL", url],
-    ["PDF path", pdfPath]
-  ].filter(([, v]) => v) as Array<[string, string]>;
-
-  const metaHtml =
-    metaFields.length > 0
-      ? `<div class="meta-grid">${metaFields
-          .map(
-            ([k, v]) =>
-              `<div class="meta-row"><div class="meta-key">${esc(k)}</div><div class="meta-val">${esc(v)}</div></div>`
-          )
-          .join("")}</div>`
-      : "";
-
-  const headerHtml =
-    headerBits.length || metaHtml
-      ? `<div class="dq-header">${headerBits.join("")}${metaHtml}</div>`
-      : "";
-
-  let bodyHtml = "";
-  if (section.body) {
-    if (section.isHtml) {
-      bodyHtml = injectDqidIntoHref(section.body);
-    } else {
-      const escBody = esc(section.body).replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br/>");
-      bodyHtml = `<p>${escBody}</p>`;
-    }
-  }
-
-  const css = `
-           html, body {
-               background:var(--bg, #0A0E14);
-               margin:0;
-               padding:0;
-               font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
-               color:var(--text, #E7ECF3);
-               -webkit-font-smoothing:antialiased;
-               -moz-osx-font-smoothing:grayscale;
-           }
-
-           .preview-wrap {
-               background: linear-gradient(to bottom, var(--panel-2, #0F1420) 0%, var(--panel, #0C1220) 100%);
-               margin:4px 0 8px 0;
-               padding:10px 12px 16px 12px;
-               border-radius:14px;
-               border:1px solid var(--border, #1B2233);
-           }
-
-           h1,h2,h3,h4 {
-               margin: 0.6em 0 0.35em;
-               color:var(--text, #FFFFFF);
-               line-height:1.3;
-               font-weight:600;
-           }
-
-           p {
-               margin: 0.35em 0;
-               color:var(--text, #E7ECF3);
-               font-size:13px;
-               line-height:1.6;
-               text-align:justify;
-           }
-
-           .pdf-section {
-               margin: 0.35em 0;
-               color:var(--muted, #D7DEE8);
-           }
-
-           a {
-               color:var(--link, #9CB8FF);
-               text-decoration: underline;
-           }
-           a:hover {
-               text-decoration: none;
-           }
-
-           mark {
-               background: color-mix(in srgb, var(--accent, #FFD166) 25%, transparent);
-               color:var(--text, #FFFBEA);
-               padding:0 3px;
-               border-radius:3px;
-               box-shadow:0 0 10px color-mix(in srgb, var(--accent, #FFD166) 35%, transparent);
-           }
-
-           ul,ol {
-               padding-left: 1.2rem;
-               margin: 0.35rem 0 0.35rem 1.2rem;
-               color:var(--muted, #D7DEE8);
-           }
-
-           li {
-               margin: 0.25em 0;
-               line-height:1.5;
-               text-align:justify;
-           }
-
-           blockquote {
-               border-left:3px solid color-mix(in srgb, var(--accent, #7dd3fc) 60%, transparent);
-               background:var(--surface-muted, rgba(15,20,32,0.9));
-               padding:8px 10px;
-               margin:8px 0;
-               color:var(--text, #F5F7FA);
-               font-size:13px;
-               line-height:1.55;
-           }
-
-           .dq-header {
-               margin-bottom:10px;
-               padding:8px 10px;
-               border-radius:10px;
-               border:1px solid color-mix(in srgb, var(--accent, #7dd3fc) 30%, transparent);
-               background:var(--surface-muted, rgba(255,255,255,0.03));
-           }
-
-           .dq-header p {
-               margin: 0.25em 0;
-               font-size:12px;
-               line-height:1.5;
-               text-align:justify;
-               color:var(--text, #E7ECF3);
-           }
-
-           .dq-label {
-               font-weight:600;
-               color:var(--text, #E7ECF3);
-           }
-
-           .dq-biblio {
-               font-weight:600;
-               color:var(--text, #E7ECF3);
-           }
-
-           .dq-body-separator {
-               border-top:1px solid var(--border, #1B2233);
-               margin:10px 0 8px 0;
-           }
-
-           pre {
-               white-space: pre-wrap;
-               word-break: break-word;
-               margin: 0.35em 0;
-               color:var(--text, #E7ECF3);
-               font-size:12px;
-               line-height:1.55;
-               background: var(--surface-muted, rgba(255,255,255,0.03));
-               border: 1px solid var(--border, #1B2233);
-               border-radius: 10px;
-               padding: 10px;
-           }
-           .meta-grid { display:grid; grid-template-columns: minmax(140px, 180px) 1fr; gap:6px 12px; align-items:flex-start; }
-           .meta-row { display:contents; }
-           .meta-key { font-size:12px; color:var(--muted, #9fb1c7); font-weight:600; }
-           .meta-val { font-size:12px; color:var(--text, #e7ecf3); }
-           `;
-
-  const inner =
-    headerHtml && bodyHtml
-      ? `${headerHtml}<div class="dq-body-separator"></div>${bodyHtml}`
-      : headerHtml + bodyHtml;
-
-  return `<style>${css}</style><div class="preview-wrap">${inner}</div>`;
-}
-
-function ensurePdfViewerFrame(host: HTMLElement): HTMLIFrameElement {
-  let iframe = host.querySelector<HTMLIFrameElement>("iframe.pdf-test-viewer");
-  if (!iframe) {
-    iframe = document.createElement("iframe");
-    iframe.className = "pdf-test-viewer";
-    const theme = mapAppThemeToPdfTheme(getAppThemeId());
-    const url = new URL(TEST_PDF_VIEWER_URL);
-    url.searchParams.set("theme", theme);
-    url.searchParams.set("sidebar", "0");
-    iframe.src = url.toString();
-    iframe.style.width = "100%";
-    iframe.style.height = "100%";
-    iframe.style.border = "0";
-    iframe.style.background = "var(--panel, #0f172a)";
-    iframe.title = "PDF Viewer";
-    host.appendChild(iframe);
-  }
-  pdfViewerIframe = iframe;
-  return iframe;
-}
-
 function resolveTestPdfPath(requested?: string): string | undefined {
   if (!requested) {
     return undefined;
   }
   return TEST_PDF_PATH_OVERRIDES[requested] ?? requested;
-}
-
-function applyPayloadToViewer(iframe: HTMLIFrameElement, payload: PdfTestPayload): void {
-  const viewerPayload: PdfTestPayload = {
-    ...payload,
-    pdf_path: resolveTestPdfPath(payload.pdf_path) ?? payload.pdf_path
-  };
-  const tryApply = (): boolean => {
-    const win = iframe.contentWindow as Window & { PDF_APP?: { loadFromPayload?: (payload: PdfTestPayload) => string } };
-    if (!win) {
-      return false;
-    }
-    const pdfApp = win.PDF_APP;
-    if (pdfApp && typeof pdfApp.loadFromPayload === 'function') {
-      pdfApp.loadFromPayload(viewerPayload);
-      syncPdfViewerTheme(iframe);
-      return true;
-    }
-    return false;
-  };
-
-  if (tryApply()) {
-    pdfViewerRetry.delete(iframe);
-    return;
-  }
-
-  const existingInterval = pdfViewerRetry.get(iframe);
-  if (existingInterval !== undefined) {
-    window.clearInterval(existingInterval);
-    pdfViewerRetry.delete(iframe);
-  }
-
-  let intervalId: number | undefined;
-
-  function cleanup(): void {
-    iframe.removeEventListener('load', onLoad);
-    if (intervalId !== undefined) {
-      window.clearInterval(intervalId);
-      intervalId = undefined;
-    }
-    pdfViewerRetry.delete(iframe);
-  }
-
-  function onLoad(): void {
-    if (tryApply()) {
-      cleanup();
-    }
-  }
-
-  iframe.addEventListener('load', onLoad);
-  intervalId = window.setInterval(() => {
-    if (tryApply()) {
-      cleanup();
-    }
-  }, 250);
-  pdfViewerRetry.set(iframe, intervalId);
 }
 function getTestPanelContent(actionName: string): HTMLElement | null {
   const target = actionName === "open_pdf" ? 3 : actionName === "open_coder" ? 1 : null;
@@ -2389,10 +1905,6 @@ function ensureSectionTool(tabId: TabId, options?: { replace?: boolean }): void 
   if (!config) {
     return;
   }
-  // Ensure deterministic layout when switching tabs/tools.
-  panelGrid.resetPanelPlacement();
-  // Reset layout hint unless explicitly set per-tab below.
-  panelGrid.setLayoutHint(null);
   if (options?.replace) {
     panelTools.clearPanelTools("panel2");
     Object.entries(sectionToolIds).forEach(([key, toolId]) => {
@@ -2402,55 +1914,38 @@ function ensureSectionTool(tabId: TabId, options?: { replace?: boolean }): void 
       }
     });
   }
+  if (tabId === "retrieve") {
+    // Default retrieve entry: DataHub.
+    panelGrid.applyPreset(PANEL_PRESETS["retrieve:datahub"]);
+    panelGrid.ensurePanelVisible(2);
+  }
   if (tabId === "write") {
     console.info("[WRITE][NAV] clicked Write tab; ensuring editor in panel 2");
-    // Use the full workspace for writing by collapsing the other panels.
-    panelGrid.setRoundLayout(false);
-    panelGrid.setLayoutHint(null);
-    panelGrid.setCollapsed("panel1", true);
-    panelGrid.setCollapsed("panel3", true);
-    panelGrid.setCollapsed("panel4", true);
-    panelGrid.setCollapsed("panel2", false);
-    panelGrid.setRatios({ panel1: 0, panel2: 6, panel3: 0, panel4: 0 });
+    panelGrid.applyPreset(PANEL_PRESETS["write:main"]);
     panelGrid.ensurePanelVisible(2);
     debugLogPanelState(2, "after Write click");
     ensureWriteToolTab();
   }
   if (tabId === "code") {
-    // Center the code panel with empty space around.
-    panelGrid.setRoundLayout(false);
-    panelGrid.setCollapsed("panel1", true);
-    panelGrid.setCollapsed("panel3", true);
-    panelGrid.setCollapsed("panel4", true);
-    panelGrid.setCollapsed("panel2", false);
-    panelGrid.setRatios({ panel1: 0, panel2: 3, panel3: 0, panel4: 0 });
-    panelGrid.setLayoutHint({ mode: "centeredSingle", panelId: "panel2", maxWidthPx: 1100 });
+    panelGrid.applyPreset(PANEL_PRESETS["code:main"]);
     panelGrid.ensurePanelVisible(2);
   }
   if (tabId === "screen") {
-    // Focus screening work into Panels 2–3.
-    panelGrid.setRoundLayout(false);
-    panelGrid.setCollapsed("panel1", true);
-    panelGrid.setCollapsed("panel4", true);
-    panelGrid.setCollapsed("panel2", false);
-    panelGrid.setCollapsed("panel3", false);
-    // Use ratios that satisfy PanelGrid.ensurePanelRatio() minimums while remaining 50/50.
-    panelGrid.setRatios({ panel1: 0, panel2: 3, panel3: 3, panel4: 0 });
+    panelGrid.applyPreset(PANEL_PRESETS["screen:main"]);
     panelGrid.ensurePanelVisible(2);
     panelGrid.ensurePanelVisible(3);
-    // Force Panel 3 to be replaced when Screen is selected (Screen tool will load the current row's pdf_path).
-    const panel3 = panelGrid.getPanelContent(3);
-    if (panel3) {
-      panel3.innerHTML = "";
-      const iframe = document.createElement("iframe");
-      iframe.title = "PDF Viewer";
-      iframe.style.width = "100%";
-      iframe.style.height = "100%";
-      iframe.style.border = "0";
-      iframe.style.display = "block";
-      iframe.src = TEST_PDF_VIEWER_URL;
-      panel3.appendChild(iframe);
-      (window as any).__screenPdfViewerIframe = iframe;
+    // Panel 3: PDF viewer as a tool tab (so previous widgets remain as tabs).
+    try {
+      panelTools.ensureToolHost("panel3", { replaceContent: true });
+      if (screenPdfViewerToolId && !panelTools.getToolPanel(screenPdfViewerToolId)) {
+        screenPdfViewerToolId = null;
+      }
+      if (!screenPdfViewerToolId) {
+        screenPdfViewerToolId = panelTools.spawnTool("screen-pdf-viewer", { panelId: "panel3" });
+      }
+      panelTools.focusTool(screenPdfViewerToolId);
+    } catch (err) {
+      console.warn("[screen] unable to ensure screen pdf viewer tool", err);
     }
   }
   const existing = sectionToolIds[tabId];
@@ -2527,8 +2022,10 @@ function ensureRetrieveSearchAppTool(): void {
 
 function ensureRetrieveSearchMetaTool(options?: { replace?: boolean }): void {
   if (options?.replace) {
-    panelTools.clearPanelTools("panel4");
-    retrieveMetaToolId = undefined;
+    if (retrieveMetaToolId) {
+      panelTools.closeTool(retrieveMetaToolId);
+      retrieveMetaToolId = undefined;
+    }
   }
   if (retrieveMetaToolId) {
     scheduleRaf(() => panelTools.focusTool(retrieveMetaToolId!));
@@ -2539,68 +2036,55 @@ function ensureRetrieveSearchMetaTool(options?: { replace?: boolean }): void {
   scheduleRaf(() => panelTools.focusTool(id));
 }
 
-function setRetrieveLayout(mode: "datahub" | "search-empty" | "search-selected" | "search-graph"): void {
-  panelGrid.resetPanelPlacement();
-  panelGrid.setRoundLayout(false);
-  panelGrid.setCollapsed("panel1", true);
-  // panel4 used as "meta" in search-selected mode; collapsed by default.
-  panelGrid.setCollapsed("panel4", true);
+function closeRetrieveMetaTool(): void {
+  if (!retrieveMetaToolId) return;
+  panelTools.closeTool(retrieveMetaToolId);
+  retrieveMetaToolId = undefined;
+}
 
+function setRetrieveLayout(mode: "datahub" | "search-empty" | "search-selected" | "search-graph"): void {
   if (mode === "datahub") {
-    panelGrid.setCollapsed("panel3", true);
-    panelGrid.setCollapsed("panel2", false);
-    panelGrid.setRatios({ panel1: 0, panel2: 3, panel3: 0, panel4: 0 });
-    panelGrid.setLayoutHint({ mode: "centeredSingle", panelId: "panel2", maxWidthPx: 1400 });
+    panelGrid.applyPreset(PANEL_PRESETS["retrieve:datahub"]);
     panelGrid.ensurePanelVisible(2);
     return;
   }
 
   if (mode === "search-empty") {
-    // Search-only: full width panel 2.
-    panelGrid.setCollapsed("panel3", true);
-    panelGrid.setCollapsed("panel2", false);
-    panelGrid.setCollapsed("panel4", true);
-    panelGrid.setRatios({ panel1: 0, panel2: 6, panel3: 0, panel4: 0 });
-    panelGrid.setLayoutHint(null);
+    panelGrid.applyPreset(PANEL_PRESETS["retrieve:search-empty"]);
     panelGrid.ensurePanelVisible(2);
     return;
   }
 
-  // Search-selected and search-graph should use full width (no centered single hint).
-  panelGrid.setLayoutHint(null);
-  panelGrid.setCollapsed("panel2", false);
-
   if (mode === "search-selected") {
-    panelGrid.setCollapsed("panel3", true);
-    panelGrid.setCollapsed("panel4", false);
-    // 6/7 for panel 2, 1/7 for right meta.
-    panelGrid.setRatios({ panel1: 0, panel2: 6, panel3: 0, panel4: 1 });
+    panelGrid.applyPreset(PANEL_PRESETS["retrieve:search-selected"]);
     panelGrid.ensurePanelVisible(2);
     panelGrid.ensurePanelVisible(4);
     return;
   }
 
-  // Graph mode: hide meta (panel 4), show panel 3 under panel 2 (3/6).
-  panelGrid.setCollapsed("panel4", true);
-  panelGrid.setCollapsed("panel3", false);
-  panelGrid.setRatios({ panel1: 0, panel2: 3, panel3: 3, panel4: 0 });
+  panelGrid.applyPreset(PANEL_PRESETS["retrieve:search-graph"]);
   panelGrid.ensurePanelVisible(2);
   panelGrid.ensurePanelVisible(3);
 }
 
-function openRetrieveGraph(record?: RetrieveRecord): void {
+function openRetrieveGraph(record?: RetrieveRecord, network?: unknown): void {
   if (!record) {
     return;
   }
   setRetrieveLayout("search-graph");
   panelTools.ensureToolHost("panel3", { replaceContent: true });
-  panelTools.clearPanelTools("panel3");
-  retrieveGraphToolId = panelTools.spawnTool("retrieve-citation-graph", { panelId: "panel3", metadata: { record } });
+  // Open graph as a new tab (do not wipe out previous tools).
+  retrieveGraphToolId = panelTools.spawnTool("retrieve-citation-graph", {
+    panelId: "panel3",
+    metadata: { record, network }
+  });
   panelTools.focusTool(retrieveGraphToolId);
 }
 
 function closeRetrieveGraph(): void {
-  panelTools.clearPanelTools("panel3");
+  if (retrieveGraphToolId) {
+    panelTools.closeTool(retrieveGraphToolId);
+  }
   retrieveGraphToolId = undefined;
   panelGrid.setCollapsed("panel3", true);
   panelGrid.setRatios({ panel3: 0 });
@@ -2637,15 +2121,7 @@ function sectionToolConfig(
 }
 
 function ensureVisualiserPanelsVisible(): void {
-  panelGrid.resetPanelPlacement();
-  // Visualiser uses Panels 1/2/3 only, with a narrow side context + wide center + narrow status.
-  panelGrid.setRoundLayout(false);
-  panelGrid.setLayoutHint(null);
-  panelGrid.setCollapsed("panel4", true);
-  panelGrid.setCollapsed("panel1", false);
-  panelGrid.setCollapsed("panel2", false);
-  panelGrid.setCollapsed("panel3", false);
-  panelGrid.setRatios({ panel1: 1, panel2: 4, panel3: 1, panel4: 0 });
+  panelGrid.applyPreset(PANEL_PRESETS["visualiser:main"]);
   panelGrid.ensurePanelVisible(1);
   panelGrid.ensurePanelVisible(2);
   panelGrid.ensurePanelVisible(3);

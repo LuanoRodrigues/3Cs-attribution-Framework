@@ -11,7 +11,7 @@ export interface PanelToolManagerOptions {
   panelIds: PanelId[];
   hosts?: PanelHostMap;
   onPanelLayoutChange?: (panelId: PanelId, snapshot: LayoutSnapshot) => void;
-  onPanelFocusChange?: (panelId: PanelId, toolId?: string, toolType?: string) => void;
+  onPanelFocusChange?: (panelId: PanelId, toolId?: string, toolType?: string, metadata?: Record<string, unknown>) => void;
 }
 
 const TOOL_TAB_MIME = "application/x-annotarium-tool-tab";
@@ -55,7 +55,7 @@ export class PanelToolManager {
       const root = new PanelLayoutRoot(host, options.registry, {
         panelId,
         onLayoutChange: (snapshot) => this.handleLayoutChange(panelId, snapshot),
-        onFocusChange: (toolId, toolType) => options.onPanelFocusChange?.(panelId, toolId, toolType)
+        onFocusChange: (toolId, toolType, metadata) => options.onPanelFocusChange?.(panelId, toolId, toolType, metadata)
       });
       this.roots.set(panelId, root);
       this.indexLayout(panelId, root.serialize());
@@ -243,7 +243,7 @@ export class PanelToolManager {
           }
           if (payload.toolType) {
             this.ensureToolHost(panelId, { replaceContent: true });
-            this.clearPanelTools(panelId);
+            // Buttons / drops should add tools as tabs (IDE-style), not replace/erase existing tools.
             const id = this.spawnTool(payload.toolType, { panelId, metadata: payload.metadata });
             this.focusTool(id);
           }

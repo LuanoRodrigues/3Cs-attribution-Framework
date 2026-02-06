@@ -188,6 +188,22 @@ export const normalizeLedocToBundle = (
     const metaRaw = isPlainObject((raw as any).meta) ? ((raw as any).meta as any) : {};
     const layoutRaw = isPlainObject((raw as any).layout) ? ((raw as any).layout as any) : {};
     const registryRaw = isPlainObject((raw as any).registry) ? ((raw as any).registry as any) : {};
+    const agentHistory =
+      isPlainObject(registryRaw?.agentHistory)
+        ? registryRaw.agentHistory
+        : isPlainObject(registryRaw?.agent_history)
+          ? registryRaw.agent_history
+          : isPlainObject(registryRaw?.agent)
+            ? registryRaw.agent
+            : undefined;
+    const llmCache =
+      isPlainObject(registryRaw?.llmCache)
+        ? registryRaw.llmCache
+        : isPlainObject(registryRaw?.llm_cache)
+          ? registryRaw.llm_cache
+          : isPlainObject(registryRaw?.cache?.llm)
+            ? registryRaw.cache.llm
+            : undefined;
 
     const payload: LedocBundlePayload = {
       version: LEDOC_BUNDLE_VERSION,
@@ -218,7 +234,9 @@ export const normalizeLedocToBundle = (
         version: LEDOC_BUNDLE_VERSION,
         footnoteIdState: isPlainObject(registryRaw.footnoteIdState) ? registryRaw.footnoteIdState : undefined,
         knownFootnotes: Array.isArray(registryRaw.knownFootnotes) ? registryRaw.knownFootnotes : undefined,
-        sourceChecksThread: isPlainObject(registryRaw.sourceChecksThread) ? registryRaw.sourceChecksThread : undefined
+        sourceChecksThread: isPlainObject(registryRaw.sourceChecksThread) ? registryRaw.sourceChecksThread : undefined,
+        agentHistory,
+        llmCache
       }
     };
     return { payload, warnings };
@@ -276,7 +294,21 @@ export const normalizeLedocToBundle = (
       version: LEDOC_BUNDLE_VERSION,
       ...(isPlainObject((legacy as any)?.history?.sourceChecksThread)
         ? { sourceChecksThread: (legacy as any).history.sourceChecksThread }
-        : {})
+        : {}),
+      ...(isPlainObject((legacy as any)?.history?.agentHistory)
+        ? { agentHistory: (legacy as any).history.agentHistory }
+        : isPlainObject((legacy as any)?.history?.agent_history)
+          ? { agentHistory: (legacy as any).history.agent_history }
+          : isPlainObject((legacy as any)?.history?.agent)
+            ? { agentHistory: (legacy as any).history.agent }
+            : {}),
+      ...(isPlainObject((legacy as any)?.history?.llmCache)
+        ? { llmCache: (legacy as any).history.llmCache }
+        : isPlainObject((legacy as any)?.history?.llm_cache)
+          ? { llmCache: (legacy as any).history.llm_cache }
+          : isPlainObject((legacy as any)?.history?.cache?.llm)
+            ? { llmCache: (legacy as any).history.cache.llm }
+            : {})
     }
   };
   return { payload, warnings };

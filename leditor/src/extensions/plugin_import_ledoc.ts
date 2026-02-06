@@ -5,6 +5,7 @@ import { getHostAdapter } from "../host/host_adapter.ts";
 import { getPageSizeDefinitions, setPageMargins, setPageSize } from "../ui/layout_settings.ts";
 import { loadSourceChecksThreadFromLedoc } from "../ui/source_checks_thread.ts";
 import { loadAgentHistoryFromLedoc } from "../ui/agent_history.ts";
+import { loadLlmCacheFromLedoc } from "../ui/llm_cache.ts";
 import { LEDOC_BUNDLE_VERSION } from "../ledoc/format.ts";
 import { normalizeLedocBundlePayload } from "../ledoc/bundle.ts";
 
@@ -158,6 +159,7 @@ registerPlugin({
             return;
           }
           const payload: any = result.payload ?? null;
+          let llmCacheContainer: unknown = null;
           if (payload && payload.version === LEDOC_BUNDLE_VERSION && payload.content) {
             const normalized = normalizeLedocBundlePayload(payload);
             editorHandle.setContent(normalized.payload.content, { format: "json" });
@@ -165,6 +167,7 @@ registerPlugin({
             if (normalized.warnings.length) {
               console.warn("ImportLEDOC bundle warnings", normalized.warnings);
             }
+            llmCacheContainer = normalized.payload.registry;
             try {
               loadSourceChecksThreadFromLedoc(normalized.payload.registry);
             } catch {
@@ -183,6 +186,12 @@ registerPlugin({
             if (payload?.settings) {
               applySettings(payload.settings);
             }
+            llmCacheContainer = payload?.history;
+          }
+          try {
+            loadLlmCacheFromLedoc(llmCacheContainer);
+          } catch {
+            // ignore
           }
           persistLastLedocPath(result);
           applyImportedTitle(result);
@@ -217,6 +226,7 @@ registerPlugin({
           return Promise.reject(new Error(result.error ?? "ImportLEDOC failed"));
         }
         const payload: any = result.payload ?? null;
+        let llmCacheContainer: unknown = null;
         if (payload && payload.version === LEDOC_BUNDLE_VERSION && payload.content) {
           const normalized = normalizeLedocBundlePayload(payload);
           editorHandle.setContent(normalized.payload.content, { format: "json" });
@@ -224,6 +234,7 @@ registerPlugin({
           if (normalized.warnings.length) {
             console.warn("ImportLEDOC bundle warnings", normalized.warnings);
           }
+          llmCacheContainer = normalized.payload.registry;
           try {
             loadSourceChecksThreadFromLedoc(normalized.payload.registry);
           } catch {
@@ -239,6 +250,12 @@ registerPlugin({
           if (payload?.settings) {
             applySettings(payload.settings);
           }
+          llmCacheContainer = payload?.history;
+        }
+        try {
+          loadLlmCacheFromLedoc(llmCacheContainer);
+        } catch {
+          // ignore
         }
         persistLastLedocPath(result);
         applyImportedTitle(result);

@@ -31,6 +31,9 @@ export interface RetrieveRecord {
   year?: number;
   doi?: string;
   url?: string;
+  venue?: string;
+  journal?: string;
+  externalIds?: Record<string, string>;
   abstract?: string;
   source: RetrieveProviderId;
   citationCount?: number;
@@ -94,4 +97,19 @@ export interface RetrieveCitationNetwork {
 
 export interface RetrieveCitationNetworkRequest {
   record: RetrieveRecord;
+}
+
+export interface RetrieveSnowballRequest {
+  record: RetrieveRecord;
+  direction: "references" | "citations";
+}
+
+export interface RetrieveSaveRequest {
+  record: RetrieveRecord;
+}
+
+export interface RetrieveExportRequest {
+  rows: RetrieveRecord[];
+  format: "csv" | "xlsx" | "ris";
+  targetPath: string;
 }

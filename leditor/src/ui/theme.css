@@ -144,6 +144,15 @@
   cursor: not-allowed;
 }
 
+.leditor-ui-btn--ghost {
+  background: transparent;
+  box-shadow: none;
+}
+
+.leditor-ui-btn--ghost:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ui-surface-2) 70%, transparent);
+}
+
 .leditor-ui-overlay {
   position: fixed;
   inset: 0;

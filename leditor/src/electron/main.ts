@@ -3,6 +3,8 @@ import crypto from "crypto";
 import fs from "fs";
 import path from "path";
 import readline from "readline";
+import { pathToFileURL } from "url";
+import mammoth from "mammoth";
 import OpenAI from "openai";
 import { z } from "zod";
 import type { AiSettings } from "./shared/ai";
@@ -149,6 +151,31 @@ const resolveRepoRelativePath = (value: string): string => {
   return trimmed;
 };
 
+const resolveRepoRoot = (): string => {
+  try {
+    return path.resolve(app.getAppPath(), "..");
+  } catch {
+    return app.getAppPath();
+  }
+};
+
+const resolveDocxExporterPath = (): string => {
+  const candidates = [
+    path.join(app.getAppPath(), "lib", "docx_exporter.js"),
+    path.join(app.getAppPath(), "..", "lib", "docx_exporter.js"),
+    path.join(app.getAppPath(), "..", "leditor", "lib", "docx_exporter.js"),
+    path.join(resolveRepoRoot(), "leditor", "lib", "docx_exporter.js")
+  ];
+  for (const candidate of candidates) {
+    try {
+      if (fs.existsSync(candidate)) return candidate;
+    } catch {
+      // ignore
+    }
+  }
+  return candidates[0];
+};
+
 const installAppMenu = (): void => {
   // We ship a Word-like in-app ribbon; disable the native Electron menu bar.
   // On macOS this also removes the top application menu.
@@ -192,6 +219,19 @@ const summarizeIpcRequest = (channel: string, request: unknown): Record<string, 
         documentTextLen: typeof payload?.document?.text === "string" ? payload.document.text.length : 0,
         historyLen: Array.isArray(payload?.history) ? payload.history.length : 0,
         targetsLen: Array.isArray(payload?.targets) ? payload.targets.length : 0
+      };
+    }
+    case "leditor:lexicon": {
+      const payload = obj?.payload as any;
+      return {
+        channel,
+        requestId: typeof obj?.requestId === "string" ? obj.requestId : undefined,
+        stream: Boolean(obj?.stream || payload?.stream),
+        mode: typeof payload?.mode === "string" ? payload.mode : "unknown",
+        provider: typeof payload?.provider === "string" ? payload.provider : "unknown",
+        model: typeof payload?.model === "string" ? payload.model : "unknown",
+        textLen: typeof payload?.text === "string" ? payload.text.length : 0,
+        sentenceLen: typeof payload?.sentence === "string" ? payload.sentence.length : 0
       };
     }
     case "leditor:open-pdf-viewer":
@@ -396,11 +436,15 @@ const callOpenAiCompatibleChat = async (args: {
   model: string;
   messages: Array<{ role: "system" | "user" | "assistant"; content: string }>;
   temperature?: number;
+  maxOutputTokens?: number;
   signal?: AbortSignal;
 }): Promise<string> => {
   const url = `${args.baseUrl.replace(/\/+$/, "")}/chat/completions`;
   const body: any = { model: args.model, messages: args.messages };
   if (typeof args.temperature === "number") body.temperature = args.temperature;
+  if (Number.isFinite(args.maxOutputTokens)) {
+    body.max_tokens = Math.max(1, Math.floor(Number(args.maxOutputTokens)));
+  }
   const json = await fetchJson(url, {
     method: "POST",
     headers: { Authorization: `Bearer ${args.apiKey}`, "Content-Type": "application/json" },
@@ -417,6 +461,7 @@ const callGeminiGenerateContent = async (args: {
   system: string;
   input: string;
   temperature?: number;
+  maxOutputTokens?: number;
   signal?: AbortSignal;
 }): Promise<string> => {
   const base = "https://generativelanguage.googleapis.com/v1beta";
@@ -426,8 +471,11 @@ const callGeminiGenerateContent = async (args: {
   const body: any = {
     contents: [{ role: "user", parts: [{ text: combined }] }]
   };
-  if (typeof args.temperature === "number") {
-    body.generationConfig = { temperature: args.temperature };
+  if (typeof args.temperature === "number" || Number.isFinite(args.maxOutputTokens)) {
+    body.generationConfig = {
+      ...(typeof args.temperature === "number" ? { temperature: args.temperature } : {}),
+      ...(Number.isFinite(args.maxOutputTokens) ? { maxOutputTokens: Math.max(1, Math.floor(args.maxOutputTokens!)) } : {})
+    };
   }
   const json = await fetchJson(url, {
     method: "POST",
@@ -450,6 +498,9 @@ const callLlmText = async (args: {
   system: string;
   input: string;
   temperature?: number;
+  maxOutputTokens?: number;
+  stream?: boolean;
+  onStreamDelta?: (delta: string) => void;
   signal?: AbortSignal;
 }): Promise<string> => {
   const provider = args.provider;
@@ -462,14 +513,40 @@ const callLlmText = async (args: {
       if (!isCodex && allowTemperature && typeof args.temperature === "number") {
         body.temperature = args.temperature;
       }
+      if (Number.isFinite(args.maxOutputTokens)) {
+        body.max_output_tokens = Math.max(1, Math.floor(Number(args.maxOutputTokens)));
+      }
+      if (args.stream) body.stream = true;
       return client.responses.create(body, { signal: args.signal });
     };
     try {
+      if (args.stream && typeof args.onStreamDelta === "function") {
+        const stream: any = await createResponse(true);
+        let output = "";
+        for await (const event of stream) {
+          if (event?.type === "response.output_text.delta" && typeof event.delta === "string") {
+            output += event.delta;
+            args.onStreamDelta(event.delta);
+          }
+        }
+        return output.trim();
+      }
       const response: any = await createResponse(true);
       return String(response?.output_text ?? "").trim();
     } catch (error) {
       const msg = normalizeError(error);
       if (msg.includes("Unsupported parameter") && msg.includes("'temperature'")) {
+        if (args.stream && typeof args.onStreamDelta === "function") {
+          const stream: any = await createResponse(false);
+          let output = "";
+          for await (const event of stream) {
+            if (event?.type === "response.output_text.delta" && typeof event.delta === "string") {
+              output += event.delta;
+              args.onStreamDelta(event.delta);
+            }
+          }
+          return output.trim();
+        }
         const response: any = await createResponse(false);
         return String(response?.output_text ?? "").trim();
       }
@@ -490,6 +567,7 @@ const callLlmText = async (args: {
         model: args.model,
         messages,
         temperature: args.temperature,
+        maxOutputTokens: args.maxOutputTokens,
         signal: args.signal
       });
     } catch (error) {
@@ -502,6 +580,7 @@ const callLlmText = async (args: {
           model: args.model,
           messages,
           temperature: args.temperature,
+          maxOutputTokens: args.maxOutputTokens,
           signal: args.signal
         });
       }
@@ -520,6 +599,7 @@ const callLlmText = async (args: {
       model: args.model,
       messages,
       temperature: args.temperature,
+      maxOutputTokens: args.maxOutputTokens,
       signal: args.signal
     });
   }
@@ -531,6 +611,7 @@ const callLlmText = async (args: {
     system: args.system,
     input: args.input,
     temperature: args.temperature,
+    maxOutputTokens: args.maxOutputTokens,
     signal: args.signal
   });
 };
@@ -763,8 +844,8 @@ const runOpenAiAgentWorkflow = async (args: {
     const factory = tool ?? createTool;
     if (typeof factory !== "function") return null;
     const parameters = z.object({
-      includeJson: z.boolean().optional(),
-      includeText: z.boolean().optional()
+      includeJson: z.boolean().nullable(),
+      includeText: z.boolean().nullable()
     });
     return factory({
       name: "fetch_document",
@@ -964,7 +1045,7 @@ const runOpenAiAgentWorkflow = async (args: {
           ? generalAgent
           : editAgent;
   const result = (await withRetry(
-    () => run(selectedAgent, userInput, { signal: args.signal, onEvent }),
+    () => run(selectedAgent, userInput, { signal: args.signal, onEvent, stream: Boolean(onEvent) }),
     1
   )) as any;
   const output = result?.finalOutput;
@@ -1850,6 +1931,422 @@ export const getDirectQuotePayload = async (lookupPath: string, dqid: string): P
   }
 };
 
+const normalizeSearchText = (value: string): string =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+
+const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const extractQueryParts = (query: string): { tokens: string[]; phrases: string[] } => {
+  const phrases: string[] = [];
+  const seen = new Set<string>();
+  const addPhrase = (raw: string) => {
+    const normalized = normalizeSearchText(raw);
+    if (!normalized || seen.has(normalized)) return;
+    phrases.push(normalized);
+    seen.add(normalized);
+  };
+  const quotedRe = /"([^"]+)"|'([^']+)'/g;
+  let m: RegExpExecArray | null;
+  while ((m = quotedRe.exec(query))) {
+    addPhrase(m[1] || m[2] || "");
+  }
+  const scrubbed = query.replace(quotedRe, " ");
+  const tokens = normalizeSearchText(scrubbed)
+    .split(" ")
+    .map((t) => t.trim())
+    .filter((t) => t.length >= 2);
+  return { tokens, phrases };
+};
+
+const buildSearchFields = (raw: any) => {
+  const title = normalizeSearchText(raw?.title || raw?.title_clean || "");
+  const author = normalizeSearchText(raw?.author_summary || raw?.author || "");
+  const year = normalizeSearchText(raw?.year || "");
+  const source = normalizeSearchText(raw?.source || "");
+  const directQuote = normalizeSearchText(raw?.direct_quote_clean || raw?.direct_quote || "");
+  const paraphrase = normalizeSearchText(raw?.paraphrase || "");
+  const combined = [title, author, year, source, directQuote, paraphrase].filter(Boolean).join(" ").slice(0, 8000);
+  return { title, author, year, source, directQuote, paraphrase, combined };
+};
+
+const joinField = (value: unknown): string => {
+  if (Array.isArray(value)) {
+    return value.map((v) => String(v ?? "")).join(" ");
+  }
+  if (typeof value === "object" && value !== null) {
+    return Object.values(value as Record<string, unknown>).map((v) => String(v ?? "")).join(" ");
+  }
+  return String(value ?? "");
+};
+
+const scoreMatch = (
+  fields: ReturnType<typeof buildSearchFields>,
+  tokens: string[],
+  phrases: string[]
+): { score: number; matched: number } => {
+  let score = 0;
+  let matched = 0;
+  const check = (hay: string, token: string): number => {
+    if (!hay || !token) return 0;
+    if (!hay.includes(token)) return 0;
+    const wordRe = new RegExp(`\\b${escapeRegExp(token)}\\b`, "i");
+    return wordRe.test(hay) ? 1 : 0;
+  };
+
+  for (const token of tokens) {
+    let tokenScore = 0;
+    tokenScore += fields.title.includes(token) ? 6 + check(fields.title, token) * 2 : 0;
+    tokenScore += fields.author.includes(token) ? 4 : 0;
+    tokenScore += fields.source.includes(token) ? 3 : 0;
+    tokenScore += fields.directQuote.includes(token) ? 4 : 0;
+    tokenScore += fields.paraphrase.includes(token) ? 3 : 0;
+    tokenScore += fields.year.includes(token) ? 2 : 0;
+    if (tokenScore > 0) matched += 1;
+    score += tokenScore;
+  }
+
+  for (const phrase of phrases) {
+    if (!fields.combined.includes(phrase)) {
+      return { score: 0, matched: 0 };
+    }
+    const phraseScore =
+      (fields.title.includes(phrase) ? 10 : 0) +
+      (fields.directQuote.includes(phrase) ? 6 : 0) +
+      (fields.paraphrase.includes(phrase) ? 4 : 0) +
+      (fields.author.includes(phrase) ? 3 : 0) +
+      (fields.source.includes(phrase) ? 3 : 0);
+    score += phraseScore || 5;
+  }
+
+  return { score, matched };
+};
+
+type DirectQuoteFilterOption = { value: string; count: number };
+type DirectQuoteFilterResponse = {
+  evidenceTypes: DirectQuoteFilterOption[];
+  themes: DirectQuoteFilterOption[];
+  researchQuestions: DirectQuoteFilterOption[];
+  authors: DirectQuoteFilterOption[];
+  years: DirectQuoteFilterOption[];
+  scanned: number;
+  total: number;
+  skipped: number;
+};
+
+const filterCache = new Map<string, { mtimeMs: number; maxScan: number; payload: DirectQuoteFilterResponse }>();
+
+const splitGenericList = (raw: string): string[] =>
+  raw
+    .split(/[;|]/g)
+    .map((v) => v.trim())
+    .filter(Boolean);
+
+const splitResearchQuestions = (raw: string): string[] =>
+  raw
+    .split(/[;,|]/g)
+    .map((v) => v.trim())
+    .filter(Boolean);
+
+const normalizeFilterValue = (value: string): string => value.replace(/\s+/g, " ").trim();
+
+const addCount = (map: Map<string, { value: string; count: number }>, raw: string) => {
+  const cleaned = normalizeFilterValue(raw);
+  if (!cleaned) return;
+  const key = normalizeSearchText(cleaned);
+  if (!key) return;
+  const existing = map.get(key);
+  if (existing) {
+    existing.count += 1;
+    return;
+  }
+  map.set(key, { value: cleaned, count: 1 });
+};
+
+const addListCounts = (map: Map<string, { value: string; count: number }>, values: string[]) => {
+  values.forEach((v) => addCount(map, v));
+};
+
+const collectDirectQuoteFilters = async (args: {
+  lookupPath: string;
+  maxScan?: number;
+}): Promise<DirectQuoteFilterResponse> => {
+  const target = normalizeFsPath(args.lookupPath);
+  const maxScanRaw = Number(args.maxScan);
+  const maxScan = Number.isFinite(maxScanRaw) && maxScanRaw <= 0 ? 0 : Math.max(1, maxScanRaw || 5000);
+  if (!target) {
+    return { evidenceTypes: [], themes: [], researchQuestions: [], authors: [], years: [], scanned: 0, total: 0, skipped: 0 };
+  }
+  let stat: fs.Stats | null = null;
+  try {
+    stat = await fs.promises.stat(target);
+  } catch {
+    stat = null;
+  }
+  const mtimeMs = stat?.mtimeMs ?? 0;
+  const cacheKey = `${target}::${mtimeMs}::${maxScan}`;
+  const cached = filterCache.get(cacheKey);
+  if (cached && cached.mtimeMs === mtimeMs && cached.maxScan === maxScan) {
+    return cached.payload;
+  }
+
+  const positions = await ensureDqidIndex(target);
+  const total = positions.size;
+  const evidenceMap = new Map<string, { value: string; count: number }>();
+  const themeMap = new Map<string, { value: string; count: number }>();
+  const rqMap = new Map<string, { value: string; count: number }>();
+  const authorMap = new Map<string, { value: string; count: number }>();
+  const yearMap = new Map<string, { value: string; count: number }>();
+  let scanned = 0;
+  let skipped = 0;
+
+  const fd = await fs.promises.open(target, "r");
+  try {
+    for (const [_id, keyPos] of positions.entries()) {
+      if (maxScan > 0 && scanned >= maxScan) break;
+      const valueStart = await computeValueStartPos(fd, keyPos);
+      if (valueStart == null) continue;
+      let raw: any = null;
+      try {
+        raw = (await readJsonValueAtWithHandle(fd, valueStart)) as any;
+      } catch {
+        skipped += 1;
+        continue;
+      }
+      scanned += 1;
+      if (!raw || typeof raw !== "object") continue;
+
+      const evidenceRaw = joinField(raw?.evidence_type ?? raw?.evidenceType ?? raw?.evidence ?? raw?.evidence_kind ?? "");
+      const themeRaw = joinField(raw?.overarching_theme ?? raw?.overarchingTheme ?? raw?.theme ?? raw?.themes ?? raw?.topic ?? "");
+      const rqRaw = joinField(
+        raw?.research_questions ??
+          raw?.researchQuestions ??
+          raw?.research_question ??
+          raw?.researchQuestion ??
+          raw?.rq ??
+          raw?.research_question_id ??
+          ""
+      );
+      const authorRaw = joinField(raw?.author_summary ?? raw?.author ?? raw?.authors ?? raw?.author_list ?? "");
+      const yearRaw = joinField(raw?.year ?? raw?.publication_year ?? raw?.published_year ?? raw?.date_year ?? "");
+
+      if (evidenceRaw) addListCounts(evidenceMap, splitGenericList(evidenceRaw));
+      if (themeRaw) addListCounts(themeMap, splitGenericList(themeRaw));
+      if (rqRaw) addListCounts(rqMap, splitResearchQuestions(rqRaw));
+      if (authorRaw) addListCounts(authorMap, splitGenericList(authorRaw));
+      if (yearRaw) {
+        const match = String(yearRaw).match(/(19|20)\d{2}/);
+        if (match) {
+          addCount(yearMap, match[0]);
+        }
+      }
+    }
+  } finally {
+    await fd.close();
+  }
+
+  const toSortedOptions = (map: Map<string, { value: string; count: number }>, limit: number) => {
+    const list = Array.from(map.values());
+    list.sort((a, b) => {
+      if (b.count === a.count) return a.value.localeCompare(b.value);
+      return b.count - a.count;
+    });
+    return list.slice(0, limit);
+  };
+
+  const toSortedYears = (map: Map<string, { value: string; count: number }>, limit: number) => {
+    const list = Array.from(map.values());
+    list.sort((a, b) => {
+      const ay = Number.parseInt(a.value, 10) || 0;
+      const by = Number.parseInt(b.value, 10) || 0;
+      if (by === ay) return b.count - a.count;
+      return by - ay;
+    });
+    return list.slice(0, limit);
+  };
+
+  const payload: DirectQuoteFilterResponse = {
+    evidenceTypes: toSortedOptions(evidenceMap, 80),
+    themes: toSortedOptions(themeMap, 120),
+    researchQuestions: toSortedOptions(rqMap, 120),
+    authors: toSortedOptions(authorMap, 200),
+    years: toSortedYears(yearMap, 200),
+    scanned,
+    total,
+    skipped
+  };
+  filterCache.set(cacheKey, { mtimeMs, maxScan, payload });
+  return payload;
+};
+
+const searchDirectQuoteLookup = async (args: {
+  lookupPath: string;
+  query: string;
+  limit?: number;
+  maxScan?: number;
+  filters?: {
+    evidenceTypes?: string[];
+    themes?: string[];
+    researchQuestions?: string[];
+    authors?: string[];
+    years?: number[];
+    yearFrom?: number;
+    yearTo?: number;
+  };
+}): Promise<{ results: any[]; scanned: number; total: number; skipped: number }> => {
+  const target = normalizeFsPath(args.lookupPath);
+  const query = String(args.query || "").trim();
+  const parts = extractQueryParts(query);
+  const tokens = parts.tokens;
+  const phrases = parts.phrases;
+  if (!target || (!tokens.length && !phrases.length)) return { results: [], scanned: 0, total: 0, skipped: 0 };
+
+  const positions = await ensureDqidIndex(target);
+  const total = positions.size;
+  const limit = Math.max(1, Math.min(100, Number(args.limit) || 25));
+  const requestedMaxScan = Number(args.maxScan);
+  const maxScan =
+    Number.isFinite(requestedMaxScan) && requestedMaxScan <= 0
+      ? total
+      : Math.max(limit, Math.min(total, Number(args.maxScan) || 5000));
+  const results: any[] = [];
+  let scanned = 0;
+  let skipped = 0;
+  const filters = args.filters ?? {};
+  const normalizeStringArray = (value: unknown): string[] => {
+    if (Array.isArray(value)) {
+      return value.map((v) => String(v ?? "")).filter(Boolean);
+    }
+    if (typeof value === "string" && value.trim()) return [value.trim()];
+    return [];
+  };
+  const normalizeNumberArray = (value: unknown): number[] => {
+    if (Array.isArray(value)) {
+      return value.map((v) => Number.parseInt(String(v ?? ""), 10)).filter((n) => Number.isFinite(n));
+    }
+    if (typeof value === "number" && Number.isFinite(value)) return [value];
+    if (typeof value === "string" && value.trim()) {
+      const parsed = Number.parseInt(value, 10);
+      return Number.isFinite(parsed) ? [parsed] : [];
+    }
+    return [];
+  };
+  const normalizeFilterList = (values: string[]): string[] =>
+    values.map((v) => normalizeSearchText(v)).filter(Boolean);
+  const filterEvidence = normalizeFilterList(
+    normalizeStringArray((filters as any).evidenceTypes ?? (filters as any).evidenceType)
+  );
+  const filterTheme = normalizeFilterList(
+    normalizeStringArray((filters as any).themes ?? (filters as any).theme)
+  );
+  const filterRQ = normalizeFilterList(
+    normalizeStringArray((filters as any).researchQuestions ?? (filters as any).researchQuestion)
+  );
+  const filterAuthor = normalizeFilterList(
+    normalizeStringArray((filters as any).authors ?? (filters as any).author)
+  );
+  const filterYears = normalizeNumberArray((filters as any).years ?? (filters as any).year);
+  const filterYearFrom = Number.isFinite((filters as any).yearFrom) ? Number((filters as any).yearFrom) : null;
+  const filterYearTo = Number.isFinite((filters as any).yearTo) ? Number((filters as any).yearTo) : null;
+
+  const matchField = (value: unknown, needle: string): boolean => {
+    if (!needle) return true;
+    const normalized = normalizeSearchText(String(value ?? ""));
+    return normalized.includes(needle);
+  };
+  const matchAny = (value: unknown, needles: string[]): boolean => {
+    if (!needles.length) return true;
+    return needles.some((needle) => matchField(value, needle));
+  };
+
+  const extractField = (raw: any, keys: string[]): string => {
+    for (const key of keys) {
+      if (raw && key in raw) {
+        const value = joinField(raw[key]);
+        if (value) return value;
+      }
+    }
+    return "";
+  };
+
+  const fd = await fs.promises.open(target, "r");
+  try {
+    for (const [id, keyPos] of positions.entries()) {
+      if (scanned >= maxScan) break;
+      const valueStart = await computeValueStartPos(fd, keyPos);
+      if (valueStart == null) continue;
+      let raw: any = null;
+      try {
+        raw = (await readJsonValueAtWithHandle(fd, valueStart)) as any;
+      } catch {
+        skipped += 1;
+        continue;
+      }
+      scanned += 1;
+      if (!raw || typeof raw !== "object") continue;
+      if (filterEvidence.length > 0) {
+        const evidence = extractField(raw, ["evidence_type", "evidenceType", "evidence", "evidence_kind"]);
+        if (!matchAny(evidence, filterEvidence)) continue;
+      }
+      if (filterTheme.length > 0) {
+        const theme = extractField(raw, ["overarching_theme", "overarchingTheme", "theme", "themes", "topic"]);
+        if (!matchAny(theme, filterTheme)) continue;
+      }
+      if (filterRQ.length > 0) {
+        const rq = extractField(raw, [
+          "research_questions",
+          "researchQuestions",
+          "research_question",
+          "researchQuestion",
+          "rq",
+          "research_question_id"
+        ]);
+        if (!matchAny(rq, filterRQ)) continue;
+      }
+      if (filterAuthor.length > 0) {
+        const author = extractField(raw, ["author_summary", "author", "authors", "author_list"]);
+        if (!matchAny(author, filterAuthor)) continue;
+      }
+      if (filterYears.length > 0 || filterYearFrom !== null || filterYearTo !== null) {
+        const rawYear = extractField(raw, ["year", "publication_year", "published_year", "date_year"]);
+        const year = Number.parseInt(String(rawYear || "").trim(), 10);
+        if (!Number.isFinite(year)) continue;
+        if (filterYears.length > 0 && !filterYears.includes(year)) continue;
+        if (filterYearFrom !== null && year < filterYearFrom) continue;
+        if (filterYearTo !== null && year > filterYearTo) continue;
+      }
+
+      const fields = buildSearchFields(raw);
+      if (!fields.combined) continue;
+      const { score, matched } = scoreMatch(fields, tokens, phrases);
+      if (tokens.length && matched < tokens.length) continue;
+      if (score <= 0) continue;
+      results.push({
+        dqid: String(id),
+        title: typeof raw?.title === "string" ? raw.title : typeof raw?.title_clean === "string" ? raw.title_clean : undefined,
+        author: typeof raw?.author_summary === "string" ? raw.author_summary : typeof raw?.author === "string" ? raw.author : undefined,
+        year: typeof raw?.year === "string" ? raw.year : undefined,
+        source: typeof raw?.source === "string" ? raw.source : undefined,
+        page: Number.isFinite(raw?.page) ? Number(raw.page) : undefined,
+        directQuote:
+          typeof raw?.direct_quote_clean === "string"
+            ? raw.direct_quote_clean
+            : typeof raw?.direct_quote === "string"
+              ? raw.direct_quote
+              : undefined,
+        paraphrase: typeof raw?.paraphrase === "string" ? raw.paraphrase : undefined,
+        score
+      });
+    }
+  } finally {
+    await fd.close();
+  }
+  results.sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0));
+  return { results: results.slice(0, limit), scanned, total, skipped };
+};
+
 type EmbeddingIndexItem = {
   id: string;
   title: string;
@@ -1873,6 +2370,7 @@ type EmbeddingIndex = {
   building: boolean;
   total: number;
   processed: number;
+  skipped: number;
   builtAt: number;
   lastError?: string;
 };
@@ -1911,6 +2409,7 @@ const loadEmbeddingIndexFromDisk = async (args: {
     const buf = await fs.promises.readFile(binPath);
     const dims = Math.max(1, Number(meta.dims) || 0);
     const items = Array.isArray(meta.items) ? (meta.items as EmbeddingIndexItem[]) : [];
+    const skipped = Number.isFinite(meta.skipped) ? Number(meta.skipped) : 0;
     const vec = new Float32Array(buf.buffer, buf.byteOffset, Math.floor(buf.byteLength / 4));
     if (items.length * dims !== vec.length) return null;
     const index: EmbeddingIndex = {
@@ -1925,6 +2424,7 @@ const loadEmbeddingIndexFromDisk = async (args: {
       building: false,
       total: items.length,
       processed: items.length,
+      skipped,
       builtAt: Number(meta.builtAt) || Date.now()
     };
     return index;
@@ -1946,6 +2446,7 @@ const saveEmbeddingIndexToDisk = async (index: EmbeddingIndex): Promise<void> =>
       model: index.model,
       dims: index.dims,
       builtAt: index.builtAt,
+      skipped: index.skipped,
       items: index.items
     };
     await fs.promises.writeFile(metaPath, JSON.stringify(meta));
@@ -1983,7 +2484,7 @@ const ensureEmbeddingIndex = async (args: {
   const mtimeMs = stat?.mtimeMs ?? 0;
   const key = makeEmbeddingCacheKey(target, args.model, mtimeMs);
   const cached = embeddingIndexCache.get(key);
-  if (cached && cached.ready) return cached;
+  if (cached && cached.ready && !cached.lastError) return cached;
   const inflight = embeddingIndexInflight.get(key);
   if (inflight) return inflight;
 
@@ -2006,6 +2507,7 @@ const ensureEmbeddingIndex = async (args: {
       building: true,
       total: 0,
       processed: 0,
+      skipped: 0,
       builtAt: Date.now()
     };
     embeddingIndexCache.set(key, index);
@@ -2014,6 +2516,7 @@ const ensureEmbeddingIndex = async (args: {
     index.total = positions.size;
     const items: EmbeddingIndexItem[] = [];
     const titles: string[] = [];
+    let skipped = 0;
     const fd = await fs.promises.open(target, "r");
     try {
       let seen = 0;
@@ -2021,9 +2524,17 @@ const ensureEmbeddingIndex = async (args: {
         const valueStart = await computeValueStartPos(fd, keyPos);
         if (valueStart == null) {
           seen += 1;
+          skipped += 1;
           continue;
         }
-        const raw = (await readJsonValueAtWithHandle(fd, valueStart)) as any;
+        let raw: any = null;
+        try {
+          raw = await readJsonValueAtWithHandle(fd, valueStart);
+        } catch {
+          seen += 1;
+          skipped += 1;
+          continue;
+        }
         const title = normalizeEmbeddingText(raw?.title ?? "");
         if (title) {
           items.push({
@@ -2037,6 +2548,8 @@ const ensureEmbeddingIndex = async (args: {
             paraphrase: typeof raw?.paraphrase === "string" ? raw.paraphrase : undefined
           });
           titles.push(title);
+        } else {
+          skipped += 1;
         }
         seen += 1;
         if (seen % 500 === 0) {
@@ -2044,6 +2557,10 @@ const ensureEmbeddingIndex = async (args: {
         }
       }
       index.processed = seen;
+      index.skipped = skipped;
+      if (skipped > 0) {
+        console.info("[substantiate] skipped malformed entries", { skipped, total: index.total });
+      }
     } finally {
       await fd.close();
     }
@@ -2107,6 +2624,7 @@ const ensureEmbeddingIndex = async (args: {
         building: false,
         total: 0,
         processed: 0,
+        skipped: 0,
         builtAt: Date.now(),
         lastError: msg
       };
@@ -2945,9 +3463,10 @@ app.whenReady().then(() => {
   registerIpc(
     "leditor:substantiate-anchors",
     async (
-      _event,
+      event,
       request: {
         requestId?: string;
+        stream?: boolean;
         payload: {
           provider?: string;
           model?: string;
@@ -2958,8 +3477,21 @@ app.whenReady().then(() => {
       }
     ) => {
       const started = Date.now();
+      const requestId = typeof request?.requestId === "string" ? String(request.requestId) : "";
+      let stream = false;
+      let streamDone = false;
+      let sendStream = (_update: Record<string, unknown>) => {};
       try {
         const payload = request?.payload as any;
+        stream = Boolean((request as any)?.stream || payload?.stream);
+        sendStream = (update: Record<string, unknown>) => {
+          if (!stream || !requestId) return;
+          try {
+            event.sender.send("leditor:substantiate-stream-update", { requestId, ...update });
+          } catch {
+            // ignore
+          }
+        };
         const rawProvider = typeof payload?.provider === "string" ? String(payload.provider).trim() : "";
         const provider: LlmProviderId =
           rawProvider === "openai" || rawProvider === "deepseek" || rawProvider === "mistral" || rawProvider === "gemini"
@@ -2976,16 +3508,29 @@ app.whenReady().then(() => {
         const llmApiKey = getProviderApiKey(provider, undefined);
         if (!llmApiKey) {
           const envKey = getProviderEnvKeyName(provider);
+          sendStream({ kind: "error", message: `Missing ${envKey} in environment.` });
           return { success: false, error: `Missing ${envKey} in environment.` };
         }
         const embeddingApiKey = getProviderApiKey("openai", undefined);
         if (!embeddingApiKey) {
           const envKey = getProviderEnvKeyName("openai");
+          sendStream({ kind: "error", message: `Missing ${envKey} in environment.` });
           return { success: false, error: `Missing ${envKey} in environment.` };
         }
 
+        console.info("[substantiate] request", {
+          lookupPath,
+          model,
+          embeddingModel,
+          anchors: anchors.length
+        });
+
         const index = await ensureEmbeddingIndex({ lookupPath, model: embeddingModel, apiKey: embeddingApiKey });
-        if (index.lastError) return { success: false, error: index.lastError };
+        if (index.lastError) {
+          sendStream({ kind: "error", message: index.lastError });
+          return { success: false, error: index.lastError };
+        }
+        sendStream({ kind: "index", index: { total: index.total, skipped: index.skipped }, total: index.total, skipped: index.skipped });
 
         const queryTexts = anchors.map((a: any) => {
           const title = normalizeEmbeddingText(a?.title ?? "");
@@ -3004,14 +3549,17 @@ app.whenReady().then(() => {
         const system = [
           "You are an academic writing assistant inside an offline editor.",
           "Rewrite ONE sentence to make the claim more precise and substantiated using the matched evidence.",
-          "Preserve the anchor token EXACTLY as provided (verbatim string).",
+          "Rewrite the sentence immediately preceding the anchor.",
+          "Do NOT include the anchor text in the rewrite; it will remain after the sentence.",
           "Do NOT add or remove citations or anchors.",
           "If matches conflict, narrow/qualify the claim or note uncertainty.",
-          'Return STRICT JSON only: {"rewrite":string,"stance":"corroborates"|"refutes"|"mixed"|"uncertain","notes":string}.',
-          "rewrite must be a single sentence."
+          'Return STRICT JSON only: {"rewrite":string,"stance":"corroborates"|"refutes"|"mixed"|"uncertain","justification":string,"diffs":string}.',
+          "rewrite must be a single sentence.",
+          "justification must be one short sentence (<= 240 chars)."
         ].join("\n");
 
         const results: any[] = [];
+        let completed = 0;
         for (let i = 0; i < anchors.length; i += 1) {
           const anchor = anchors[i] ?? {};
           const anchorText = String(anchor?.text ?? "");
@@ -3035,6 +3583,10 @@ app.whenReady().then(() => {
           let rewrite = sentence;
           let stance = "uncertain";
           let notes = "";
+          let suggestion = "";
+          let justification = "";
+          let diffs = "";
+          let errorMessage = "";
           if (sentence && anchorText) {
             const input = JSON.stringify(
               {
@@ -3046,21 +3598,42 @@ app.whenReady().then(() => {
               null,
               2
             );
-            const raw = await callLlmText({ provider, apiKey: llmApiKey, model, system, input, signal: undefined });
-            const parsed = parseStrictJsonObject(raw);
-            if (parsed && typeof parsed === "object") {
-              const candidate = typeof parsed.rewrite === "string" ? String(parsed.rewrite).trim() : "";
-              if (candidate) rewrite = candidate;
-              const s = typeof parsed.stance === "string" ? String(parsed.stance).trim().toLowerCase() : "";
-              if (s === "corroborates" || s === "refutes" || s === "mixed" || s === "uncertain") stance = s;
-              notes = typeof parsed.notes === "string" ? String(parsed.notes).trim() : "";
+            console.info("[substantiate]", {
+              key: String(anchor?.key ?? ""),
+              paragraphN: Number(anchor?.paragraphN) || undefined,
+              input: input.slice(0, 1200)
+            });
+            try {
+              const raw = await callLlmText({ provider, apiKey: llmApiKey, model, system, input, signal: undefined });
+              console.info("[substantiate]", {
+                key: String(anchor?.key ?? ""),
+                output: raw.slice(0, 800)
+              });
+              const parsed = parseStrictJsonObject(raw);
+              if (parsed && typeof parsed === "object") {
+                const candidate = typeof parsed.rewrite === "string" ? String(parsed.rewrite).trim() : "";
+                if (candidate) rewrite = candidate;
+                const s = typeof parsed.stance === "string" ? String(parsed.stance).trim().toLowerCase() : "";
+                if (s === "corroborates" || s === "refutes" || s === "mixed" || s === "uncertain") stance = s;
+                justification = typeof parsed.justification === "string" ? String(parsed.justification).trim() : "";
+                suggestion = typeof parsed.suggestion === "string" ? String(parsed.suggestion).trim() : "";
+                diffs = typeof parsed.diffs === "string" ? String(parsed.diffs).trim() : "";
+                notes = typeof parsed.notes === "string" ? String(parsed.notes).trim() : "";
+                if (!justification) justification = suggestion || notes;
+                if (!notes) notes = justification || suggestion;
+                if (diffs) notes = notes ? `${notes} ${diffs}`.trim() : diffs;
+              }
+            } catch (error) {
+              errorMessage = normalizeError(error);
             }
           }
-          if (anchorText && rewrite && !rewrite.includes(anchorText)) {
-            rewrite = sentence || rewrite;
+          if (errorMessage) {
+            notes = errorMessage;
+            suggestion = "";
+            diffs = "";
+            stance = "uncertain";
           }
-
-          results.push({
+          const item = {
             key: String(anchor?.key ?? ""),
             paragraphN: Number(anchor?.paragraphN) || undefined,
             anchorText,
@@ -3069,21 +3642,45 @@ app.whenReady().then(() => {
             rewrite,
             stance,
             notes,
-            matches
-          });
+            suggestion,
+            justification,
+            diffs,
+            matches,
+            ...(errorMessage ? { error: errorMessage } : {})
+          };
+          results.push(item);
+          completed += 1;
+          sendStream({ kind: "item", item, completed, total: anchors.length });
         }
+        sendStream({ kind: "done", completed, total: anchors.length });
+        streamDone = true;
 
         return {
           success: true,
           results,
-          meta: { provider, model, embeddingModel, ms: Date.now() - started }
+          meta: {
+            provider,
+            model,
+            embeddingModel,
+            ms: Date.now() - started,
+            index: { total: index.total, skipped: index.skipped }
+          }
         };
       } catch (error) {
+        sendStream({ kind: "error", message: normalizeError(error) });
         return {
           success: false,
           error: normalizeError(error),
           meta: { provider: "openai" as const, ms: Date.now() - started }
         };
+      } finally {
+        if (stream && requestId && !streamDone) {
+          try {
+            event.sender.send("leditor:substantiate-stream-update", { requestId, kind: "done" });
+          } catch {
+            // ignore
+          }
+        }
       }
     }
   );
@@ -3091,9 +3688,10 @@ app.whenReady().then(() => {
   registerIpc(
     "leditor:lexicon",
     async (
-      _event,
+      event,
       request: {
         requestId?: string;
+        stream?: boolean;
         payload: { provider?: string; model?: string; mode: string; text: string; sentence?: string };
       }
     ) => {
@@ -3107,7 +3705,18 @@ app.whenReady().then(() => {
             : "openai";
         const mode = String(payload?.mode ?? "").toLowerCase();
         const text = String(payload?.text ?? "").trim();
-        const sentence = typeof payload?.sentence === "string" ? String(payload.sentence).trim() : "";
+        const sentenceRaw = typeof payload?.sentence === "string" ? String(payload.sentence).trim() : "";
+        const clip = (value: string, max: number) =>
+          value.length > max ? `${value.slice(0, max)}...` : value;
+        dbg("lexicon", "request", {
+          requestId: request?.requestId,
+          stream: Boolean(request?.stream || payload?.stream),
+          provider,
+          model: payload?.model,
+          mode,
+          text: clip(text, 160),
+          sentence: clip(sentenceRaw, 200)
+        });
         if (mode !== "synonyms" && mode !== "antonyms" && mode !== "definition" && mode !== "define" && mode !== "explain") {
           return { success: false, error: 'lexicon: payload.mode must be "synonyms" | "antonyms" | "definition" | "explain"' };
         }
@@ -3122,72 +3731,133 @@ app.whenReady().then(() => {
 
         const isDefinition = mode === "definition" || mode === "define";
         const isExplain = mode === "explain";
+        const sentence =
+          sentenceRaw.length > (isExplain ? 800 : 320)
+            ? sentenceRaw.slice(0, isExplain ? 800 : 320).trim()
+            : sentenceRaw;
         const system = isDefinition
           ? [
-              "You are a deterministic dictionary helper inside an offline academic editor.",
-              "You will be given a selected word/phrase and the full sentence it appears in.",
-              "Return STRICT JSON only (no markdown): {\"assistantText\":string,\"definition\":string}.",
-              "definition must be 1–2 sentences, written for the given sentence context.",
-              "Do NOT include bullets, numbering, or quotes unless they are part of the definition itself."
+              "You are a dictionary helper inside an offline academic editor.",
+              "Given a selection and its sentence, return ONLY the definition text.",
+              "Definition: 1 sentence, <= 25 words, no bullets, no quotes."
             ].join("\n")
           : isExplain
             ? [
-                "You are a deterministic explainer inside an offline academic editor.",
-                "You will be given a selected word/phrase and the full paragraph it appears in.",
-                "Return STRICT JSON only (no markdown): {\"assistantText\":string,\"explanation\":string}.",
-                "explanation must be 2–4 sentences explaining what the selection means in THIS paragraph.",
-                "Do NOT quote large parts of the paragraph; focus on meaning and role in context.",
-                "Do NOT use bullets or numbering."
+                "You are an explainer inside an offline academic editor.",
+                "Given a selection and its paragraph, return ONLY the explanation text.",
+                "Explanation: 1-2 sentences, <= 40 words, no bullets, no quotes."
               ].join("\n")
             : [
-                "You are a deterministic thesaurus helper inside an offline academic editor.",
-                "You will be given a selected word/phrase and the full sentence it appears in.",
-                "Return STRICT JSON only (no markdown): {\"assistantText\":string,\"suggestions\":string[]}.",
-                "suggestions MUST contain exactly 5 short replacement candidates (no numbering, no quotes).",
-                "Each suggestion must be a direct replacement for the selected text that still fits the sentence.",
-                "Do not repeat the input text."
+                "You are a thesaurus helper inside an offline academic editor.",
+                "Given a selection and its sentence, return STRICT JSON only:",
+                "{\"suggestions\":string[]}",
+                "Exactly 5 short replacements, 1-2 words each, no numbering or quotes.",
+                "Each suggestion must fit the sentence and not repeat the input."
               ].join("\n");
 
-        const user = JSON.stringify(
-          {
-            mode: isDefinition ? "definition" : mode,
-            selection: text,
-            sentence
-          },
-          null,
-          2
-        );
+        const user =
+          (isExplain ? "paragraph" : "sentence") + ": " + sentence + "\n" + "selection: " + text;
 
-        const raw = await callLlmText({ provider, apiKey, model, system, input: user, signal: undefined });
-        const start = raw.indexOf("{");
-        const end = raw.lastIndexOf("}");
-        if (start === -1 || end === -1 || end <= start) {
-          throw new Error("lexicon: model response was not JSON.");
+        const maxOutputTokens = isDefinition ? 80 : isExplain ? 130 : 90;
+        const stream = Boolean((request as any)?.stream || payload?.stream);
+        const raw = await callLlmText({
+          provider,
+          apiKey,
+          model,
+          system,
+          input: user,
+          signal: undefined,
+          maxOutputTokens,
+          stream: stream && provider === "openai",
+          onStreamDelta: (delta) => {
+            if (request?.requestId) {
+              try {
+                event.sender.send("leditor:lexicon-stream-update", {
+                  requestId: request.requestId,
+                  kind: "delta",
+                  delta
+                });
+              } catch {
+                // ignore stream send errors
+              }
+            }
+          }
+        });
+
+        if (stream && request?.requestId) {
+          try {
+            event.sender.send("leditor:lexicon-stream-update", {
+              requestId: request.requestId,
+              kind: "done"
+            });
+          } catch {
+            // ignore
+          }
         }
-        const parsed = JSON.parse(raw.slice(start, end + 1));
+
+        const cleanText = (value: string, maxWords: number) => {
+          const trimmed = String(value || "").replace(/\s+/g, " ").trim();
+          if (!trimmed) return "";
+          const words = trimmed.split(" ");
+          if (words.length <= maxWords) return trimmed;
+          return words.slice(0, maxWords).join(" ").replace(/[.,;:]+$/g, "");
+        };
+
+        const parseJsonMaybe = (value: string) => {
+          try {
+            return extractFirstJsonObject(value);
+          } catch {
+            return null;
+          }
+        };
+
+        const parsed = parseJsonMaybe(raw);
         const suggestionsRaw = Array.isArray(parsed?.suggestions) ? parsed.suggestions : [];
-        const suggestions = isDefinition
+        const suggestions = isDefinition || isExplain
           ? []
           : suggestionsRaw
               .map((s: any) => (typeof s === "string" ? s : ""))
               .map((s: string) => s.replace(/\s+/g, " ").trim())
               .filter((s: string) => s && s.toLowerCase() !== text.toLowerCase())
+              .map((s: string) => s.split(/\s+/).slice(0, 2).join(" "))
               .slice(0, 5);
-        const definition = isDefinition
-          ? (typeof parsed?.definition === "string" ? parsed.definition.replace(/\s+/g, " ").trim() : "")
-          : "";
-        const explanation = isExplain
-          ? (typeof parsed?.explanation === "string" ? parsed.explanation.replace(/\s+/g, " ").trim() : "")
-          : "";
-        return {
+        const definition = isDefinition ? cleanText(parsed?.definition ?? raw, 25) : "";
+        const explanation = isExplain ? cleanText(parsed?.explanation ?? raw, 40) : "";
+        const result = {
           success: true,
-          assistantText: typeof parsed?.assistantText === "string" ? parsed.assistantText : "",
+          assistantText: "",
           suggestions,
           ...(definition ? { definition } : {}),
           ...(explanation ? { explanation } : {}),
           meta: { provider, model, ms: Date.now() - started }
         };
+        dbg("lexicon", "result", {
+          requestId: request?.requestId,
+          success: true,
+          mode,
+          suggestions: suggestions.length ? suggestions : undefined,
+          definition: definition ? clip(definition, 200) : undefined,
+          explanation: explanation ? clip(explanation, 200) : undefined,
+          ms: result?.meta?.ms
+        });
+        return result;
       } catch (error) {
+        if (request?.requestId) {
+          try {
+            event.sender.send("leditor:lexicon-stream-update", {
+              requestId: request.requestId,
+              kind: "error",
+              message: normalizeError(error)
+            });
+          } catch {
+            // ignore
+          }
+        }
+        dbg("lexicon", "result", {
+          requestId: request?.requestId,
+          success: false,
+          error: normalizeError(error)
+        });
         return {
           success: false,
           error: normalizeError(error),
@@ -3213,6 +3883,142 @@ app.whenReady().then(() => {
       await fs.promises.mkdir(path.dirname(targetPath), { recursive: true });
       await fs.promises.writeFile(targetPath, request.data, "utf-8");
       return { success: true };
+    } catch (error) {
+      return { success: false, error: normalizeError(error) };
+    }
+  });
+
+  registerIpc("leditor:export-docx", async (_event, request: { docJson: object; options?: any }) => {
+    try {
+      const repoRoot = resolveRepoRoot();
+      const docJson = request?.docJson ?? {};
+      const options = request?.options ?? {};
+      const promptUser = options.prompt ?? true;
+      let filePath = options.suggestedPath as string | undefined;
+      if (promptUser || !filePath) {
+        const result = await dialog.showSaveDialog({
+          title: "Export to DOCX",
+          defaultPath: path.join(app.getPath("documents"), "document.docx"),
+          filters: [{ name: "Word Document", extensions: ["docx"] }]
+        });
+        if (result.canceled || !result.filePath) {
+          return { success: false, error: "Export canceled" };
+        }
+        filePath = result.filePath;
+      } else if (!path.isAbsolute(filePath)) {
+        filePath = path.join(repoRoot, filePath);
+      }
+      if (!filePath) {
+        return { success: false, error: "No path provided" };
+      }
+      const docxExporterPath = resolveDocxExporterPath();
+      const { buildDocxBuffer } = require(docxExporterPath) as {
+        buildDocxBuffer: (docJson: object, options?: any) => Promise<Buffer>;
+      };
+      const buffer = await buildDocxBuffer(docJson, options);
+      fs.mkdirSync(path.dirname(filePath), { recursive: true });
+      fs.writeFileSync(filePath, buffer);
+      const stats = fs.statSync(filePath);
+      if (stats.size <= 0) {
+        return { success: false, error: "DOCX file is empty" };
+      }
+      return { success: true, filePath, bytes: stats.size };
+    } catch (error) {
+      return { success: false, error: normalizeError(error) };
+    }
+  });
+
+  registerIpc("leditor:export-pdf", async (_event, request: { html?: string; options?: { suggestedPath?: string; prompt?: boolean } }) => {
+    try {
+      const repoRoot = resolveRepoRoot();
+      const html = (request?.html || "").trim();
+      if (!html) {
+        return { success: false, error: "No HTML payload provided" };
+      }
+      const options = request?.options ?? {};
+      const promptUser = options.prompt ?? true;
+      let filePath = options.suggestedPath as string | undefined;
+      if (!filePath || promptUser) {
+        const result = await dialog.showSaveDialog({
+          title: "Export to PDF",
+          defaultPath: filePath || path.join(app.getPath("documents"), `document-${Date.now()}.pdf`),
+          filters: [{ name: "PDF Document", extensions: ["pdf"] }]
+        });
+        if (result.canceled || !result.filePath) {
+          return { success: false, error: "Export canceled" };
+        }
+        filePath = result.filePath;
+      }
+      if (!filePath) {
+        return { success: false, error: "No path provided" };
+      }
+      const pdfWindow = new BrowserWindow({
+        show: false,
+        webPreferences: {
+          offscreen: true,
+          sandbox: true
+        }
+      });
+      try {
+        await pdfWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+        const data = await pdfWindow.webContents.printToPDF({
+          printBackground: true,
+          pageSize: "A4"
+        });
+        await fs.promises.writeFile(filePath, data);
+        return { success: true, filePath, bytes: data.length };
+      } finally {
+        if (!pdfWindow.isDestroyed()) {
+          pdfWindow.destroy();
+        }
+      }
+    } catch (error) {
+      return { success: false, error: normalizeError(error) };
+    }
+  });
+
+  registerIpc("leditor:import-docx", async (_event, request: { options?: { sourcePath?: string; prompt?: boolean } }) => {
+    try {
+      const options = request?.options ?? {};
+      let sourcePath = options.sourcePath;
+      if (!sourcePath || (options.prompt ?? true)) {
+        const result = await dialog.showOpenDialog({
+          title: "Import DOCX",
+          properties: ["openFile"],
+          filters: [{ name: "Word Document", extensions: ["docx"] }]
+        });
+        if (result.canceled || result.filePaths.length === 0 || !result.filePaths[0]) {
+          return { success: false, error: "Import canceled" };
+        }
+        sourcePath = result.filePaths[0];
+      }
+      if (!sourcePath) {
+        return { success: false, error: "No document selected" };
+      }
+      const buffer = await fs.promises.readFile(sourcePath);
+      const result = await mammoth.convertToHtml({ buffer });
+      return { success: true, html: result.value, filePath: sourcePath };
+    } catch (error) {
+      return { success: false, error: normalizeError(error) };
+    }
+  });
+
+  registerIpc("leditor:insert-image", async () => {
+    try {
+      const result = await dialog.showOpenDialog({
+        title: "Insert Image",
+        properties: ["openFile"],
+        filters: [
+          { name: "Images", extensions: ["png", "jpg", "jpeg", "gif", "webp", "svg"] },
+          { name: "All files", extensions: ["*"] }
+        ]
+      });
+      if (result.canceled || result.filePaths.length === 0 || !result.filePaths[0]) {
+        return { success: false, error: "Image selection canceled" };
+      }
+      const filePath = result.filePaths[0];
+      const url = pathToFileURL(path.resolve(filePath)).href;
+      return { success: true, url };
     } catch (error) {
       return { success: false, error: normalizeError(error) };
     }
@@ -3705,6 +4511,61 @@ app.whenReady().then(() => {
       return { success: false, found: 0 };
     }
   });
+
+  registerIpc(
+    "leditor:search-direct-quotes",
+    async (
+      _event,
+      request: {
+        lookupPath: string;
+        query: string;
+        limit?: number;
+        maxScan?: number;
+        filters?: {
+          evidenceType?: string;
+          theme?: string;
+          researchQuestion?: string;
+          author?: string;
+          yearFrom?: number;
+          yearTo?: number;
+        };
+      }
+    ) => {
+      try {
+        const lookupPath = normalizeFsPath(request.lookupPath);
+        const query = String(request.query || "").trim();
+        if (!lookupPath || !query) {
+          return { success: false, error: "lookupPath and query are required" };
+        }
+        const { results, scanned, total, skipped } = await searchDirectQuoteLookup({
+          lookupPath,
+          query,
+          limit: request.limit,
+          maxScan: request.maxScan,
+          filters: request.filters
+        });
+        return { success: true, results, scanned, total, skipped };
+      } catch (error) {
+        console.warn("[leditor][directquote] search failed", { error: normalizeError(error) });
+        return { success: false, error: normalizeError(error) };
+      }
+    }
+  );
+
+  registerIpc(
+    "leditor:get-direct-quote-filters",
+    async (_event, request: { lookupPath: string; maxScan?: number }) => {
+      try {
+        const lookupPath = normalizeFsPath(request.lookupPath);
+        if (!lookupPath) return { success: false, error: "lookupPath required" };
+        const payload = await collectDirectQuoteFilters({ lookupPath, maxScan: request.maxScan });
+        return { success: true, ...payload };
+      } catch (error) {
+        console.warn("[leditor][directquote] filter load failed", { error: normalizeError(error) });
+        return { success: false, error: normalizeError(error) };
+      }
+    }
+  );
 
   createWindow();
   app.on("activate", () => {

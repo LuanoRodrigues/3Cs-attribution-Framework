@@ -960,13 +960,32 @@ export function renderSectionsPage(
 
   const renderPreview = (panel: HTMLElement, section: SectionRecord) => {
     panel.innerHTML = "";
+    const baseTitle = section.title || section.id;
     const normalizedHtml = (section.html || "<p><em>No section HTML.</em></p>").replace(/id=["']section-title["']/gi, "");
+    const stripLeadingDuplicateHeadings = (html: string, title: string) => {
+      const normTitle = (title || "").trim().replace(/\s+/g, " ").toLowerCase();
+      if (!normTitle) return html;
+      const tmp = document.createElement("div");
+      tmp.innerHTML = html;
+      while (tmp.firstElementChild) {
+        const first = tmp.firstElementChild as HTMLElement;
+        if (!/^H[1-4]$/.test(first.tagName)) break;
+        const t = (first.textContent || "").trim().replace(/\s+/g, " ").toLowerCase();
+        if (t && t === normTitle) {
+          first.remove();
+          continue;
+        }
+        break;
+      }
+      return tmp.innerHTML;
+    };
+    const cleanedHtml = stripLeadingDuplicateHeadings(normalizedHtml, baseTitle);
     const body = document.createElement("div");
     body.className = "preview-content academic-section__body";
     body.innerHTML = `
-      <h4>${section.title || section.id}</h4>
+      <h4>${baseTitle}</h4>
       ${section.route ? `<p class="academic-section__route">${section.route}</p>` : ""}
-      ${normalizedHtml}
+      ${cleanedHtml}
     `;
     body.addEventListener("click", (ev) => {
       const target = ev.target as HTMLElement | null;

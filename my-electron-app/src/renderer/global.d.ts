@@ -77,6 +77,21 @@ declare global {
       citationNetwork: {
         fetch: (payload: { record: RetrieveRecord }) => Promise<import("../shared/types/retrieve").RetrieveCitationNetwork>;
       };
+      snowball: {
+        run: (payload: { record: RetrieveRecord; direction: "references" | "citations" }) => Promise<
+          import("../shared/types/retrieve").RetrieveCitationNetwork
+        >;
+      };
+      oa: {
+        lookup: (payload: { doi: string }) => Promise<{ status?: string; url?: string; license?: string }>;
+      };
+      library: {
+        save: (payload: { record: RetrieveRecord }) => Promise<{ status: string; message?: string }>;
+        export: (payload: { rows: RetrieveRecord[]; format: "csv" | "xlsx" | "ris"; targetPath: string }) => Promise<{
+          status: string;
+          message?: string;
+        }>;
+      };
     };
     settingsBridge?: {
       getAll: () => Promise<Record<string, unknown>>;
@@ -90,6 +105,7 @@ declare global {
       importBundle: (zipPath: string) => Promise<{ success: boolean }>;
       getPaths: () => Promise<{ appDataPath: string; configPath: string; settingsFilePath: string; exportPath: string }>;
       openSettingsWindow: (section?: string) => Promise<{ status: string }>;
+      clearCache: () => Promise<{ cleared: string[]; failed: string[] }>;
     };
     leditorHost?: {
       exportDOCX: (request: { docJson: object; options?: Record<string, unknown> }) => Promise<unknown>;

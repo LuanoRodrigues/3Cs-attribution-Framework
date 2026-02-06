@@ -19,6 +19,7 @@ const ICON_CREATORS = {
   superscript: () => fluentSvg("TextSuperscript20Filled"),
   subscript: () => fluentSvg("TextSubscript20Filled"),
   changeCase: () => fluentSvg("TextCaseTitle20Filled"),
+  close: () => fluentSvg("Dismiss20Filled"),
   textEffects: () => fluentSvg("TextEffects20Filled"),
   highlight: () => fluentSvg("HighlightAccent20Filled"),
   textColor: () => fluentSvg("ColorLine20Filled"),

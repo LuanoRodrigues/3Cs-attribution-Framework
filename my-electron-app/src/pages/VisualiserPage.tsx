@@ -136,6 +136,7 @@ const EXPORT_PANEL_HTML = `
             <button class="btn" id="btnCopyStatus" type="button">Copy status</button>
             <button class="btn" id="btnClearStatus" type="button">Clear status</button>
             <button class="btn" id="btnRefresh" type="button">Refresh preview</button>
+            <button class="btn" id="btnCancelPreview" type="button" disabled>Cancel loading</button>
             <button class="btn" id="btnDescribe" type="button">Describe</button>
           </div>
           <div id="describeBox" style="margin-top:10px;border:1px solid var(--border);border-radius:10px;background:var(--surface-muted);padding:10px;">
@@ -168,6 +169,10 @@ export class VisualiserPage {
   private slideIndex = 0;
   private deckAll: Array<Record<string, unknown>> = [];
   private deck: Array<Record<string, unknown>> = [];
+  private currentTableSignature: string | null = null;
+  private sectionDecks = new Map<string, Array<Record<string, unknown>>>();
+  private previewRunToken = 0;
+  private previewBackgroundLoading = false;
   private deckVersion = 0;
   private thumbCache = new Map<string, string>();
   private thumbQueue: Array<() => Promise<void>> = [];
@@ -209,6 +214,15 @@ export class VisualiserPage {
 
   constructor(mount: HTMLElement) {
     this.mount = mount;
+    // Visualiser side panels (panel1/panel3) are singleton surfaces; avoid multiple instances fighting over them.
+    const prev = VisualiserPage.activeInstance;
+    if (prev && prev !== this) {
+      try {
+        prev.destroy();
+      } catch {
+        // ignore
+      }
+    }
     VisualiserPage.activeInstance = this;
     this.sectionsHost = VisualiserPage.findPanelContent("panel1");
     this.exportHost = VisualiserPage.findPanelContent("panel3");
@@ -262,9 +276,16 @@ export class VisualiserPage {
       this.exportPlaceholder = this.exportHost?.innerHTML || this.exportPlaceholder;
       this.renderSectionsPanel();
       this.renderExportPanel();
+      this.updateCancelButtonState();
+      this.resizePlot();
       return;
     }
 
+    // Avoid Plotly resize work when the Visualiser tab is not active.
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+      this.resizeObserver = null;
+    }
     if (this.sectionsHost) {
       this.sectionsHost.innerHTML = this.sectionsPlaceholder;
     }
@@ -388,9 +409,13 @@ export class VisualiserPage {
       }
       const source = (response as any).source as { type?: string; path?: string; collectionName?: string } | undefined;
       const sourceType = source?.type === "zotero" ? "zotero" : "file";
+      const isDataFilePath = (p: string): boolean => {
+        const lower = String(p || "").toLowerCase();
+        return /\.(csv|tsv|xls|xlsx|xlsm)$/.test(lower);
+      };
       const nextState: RetrieveDataHubState = {
         sourceType,
-        filePath: sourceType === "file" ? source?.path : undefined,
+        filePath: sourceType === "file" && source?.path && isDataFilePath(source.path) ? source.path : undefined,
         collectionName: sourceType === "zotero" ? source?.collectionName : undefined,
         table,
         loadedAt: new Date().toISOString()
@@ -485,6 +510,11 @@ export class VisualiserPage {
     table: DataHubTable,
     source: "session" | "event"
   ): void {
+    const signature = this.buildTableSignature(table);
+    if (signature && signature === this.currentTableSignature) {
+      return;
+    }
+    this.currentTableSignature = signature;
     this.currentTable = {
       columns: table.columns.slice(),
       rows: table.rows.map((row) => row.slice())
@@ -523,6 +553,16 @@ export class VisualiserPage {
       this.deckAll = [];
       this.deck = [];
       void this.runVisualiser();
+    }
+  }
+
+  private buildTableSignature(table: DataHubTable | undefined): string {
+    if (!table) return "";
+    try {
+      const head = table.rows.slice(0, 2);
+      return JSON.stringify({ columns: table.columns, rows: table.rows.length, head });
+    } catch {
+      return `${table.columns.length}:${table.rows.length}`;
     }
   }
 
@@ -595,9 +635,42 @@ export class VisualiserPage {
   private isVisualSlide(slide: Record<string, unknown> | undefined): boolean {
     if (!slide) return false;
     const s: any = slide;
-    if (s.fig_json) return true;
+    const fig = this.parseFigJsonQuiet(s.fig_json);
+    if (fig) {
+      const data = Array.isArray((fig as any).data)
+        ? (fig as any).data
+        : Array.isArray(fig)
+          ? fig
+          : [];
+      if (Array.isArray(data) && data.length > 0) {
+        return true;
+      }
+      // Some slides are "layout-only" visuals (cards, callouts, error messages) using annotations/shapes.
+      const layout = (fig as any).layout;
+      if (layout && typeof layout === "object") {
+        const ann = (layout as any).annotations;
+        const shapes = (layout as any).shapes;
+        const images = (layout as any).images;
+        if (Array.isArray(ann) && ann.length > 0) return true;
+        if (Array.isArray(shapes) && shapes.length > 0) return true;
+        if (Array.isArray(images) && images.length > 0) return true;
+      }
+    }
     const img = String(s.img ?? s.thumb_img ?? "").trim();
     return Boolean(img);
+  }
+
+  private parseFigJsonQuiet(value: unknown): unknown {
+    if (!value) return undefined;
+    if (typeof value !== "string") return value;
+    const text = value.trim();
+    if (!text) return undefined;
+    if (!(text.startsWith("{") || text.startsWith("["))) return undefined;
+    try {
+      return JSON.parse(text) as unknown;
+    } catch {
+      return undefined;
+    }
   }
 
   private getVisualSlideIndices(deck: Array<Record<string, unknown>>): number[] {
@@ -998,6 +1071,7 @@ export class VisualiserPage {
     this.attachListener(this.exportHost.querySelector("#btnRunInputs"), "click", this.handleRunInputs);
     this.attachListener(this.exportHost.querySelector("#btnBuild"), "click", this.handleBuild);
     this.attachListener(this.exportHost.querySelector("#btnRefresh"), "click", this.handleRefreshClick);
+    this.attachListener(this.exportHost.querySelector("#btnCancelPreview"), "click", this.handleCancelPreviewClick);
     this.attachListener(this.exportHost.querySelector("#btnCopyStatus"), "click", this.handleCopyStatus);
     this.attachListener(this.exportHost.querySelector("#btnClearStatus"), "click", this.handleClearStatus);
     this.attachListener(this.exportHost.querySelector("#btnDescribe"), "click", this.handleDescribeClick);
@@ -1011,6 +1085,7 @@ export class VisualiserPage {
       this.attachListener(text as unknown as HTMLElement, "input", this.handleDescribeTextInput);
     }
     this.refreshDescribeBox();
+    this.updateCancelButtonState();
   }
 
   private getActiveSlideNoteKey(): string {
@@ -1463,12 +1538,11 @@ ${dots}
         "streamtube",
         "volume",
         "isosurface",
-        "indicator",
         "table"
       ];
       if (types.some((t: string) => blocked.includes(t))) return false;
       // Allow common 2D traces.
-      const allowed = ["bar", "scatter", "pie", "histogram", "box", "violin", "heatmap"];
+      const allowed = ["bar", "scatter", "pie", "histogram", "box", "violin", "heatmap", "indicator"];
       return types.every((t: string) => allowed.includes(t));
     } catch {
       return false;
@@ -1496,18 +1570,30 @@ ${dots}
       const rawData = Array.isArray(figJson?.data) ? figJson.data : Array.isArray(figJson) ? figJson : [];
       const data = this.applyCategoricalPaletteToData(rawData);
       const layout = figJson.layout || {};
+      const m = layout.margin || {};
+      const toNum = (v: unknown, fallback: number) => (typeof v === "number" && Number.isFinite(v) ? v : fallback);
+      const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
+      const safeMargin = {
+        l: clamp(toNum(m.l, 34), 26, Math.round(THUMB_W * 0.40)),
+        r: clamp(toNum(m.r, 28), 22, Math.round(THUMB_W * 0.36)),
+        t: clamp(toNum(m.t, 18), 18, Math.round(THUMB_H * 0.30)),
+        b: clamp(toNum(m.b, 34), 26, Math.round(THUMB_H * 0.36)),
+        pad: Math.max(0, toNum(m.pad, 2)),
+        autoexpand: true
+      };
       const finalLayout = {
         ...layout,
         title: undefined,
         paper_bgcolor: palette.panel,
         plot_bgcolor: palette.panel,
         font: { ...(layout.font || {}), color: palette.text },
-        margin: layout.margin ?? { l: 34, r: 28, t: 18, b: 34 },
+        margin: safeMargin,
         width: THUMB_W,
         height: THUMB_H,
         autosize: false
       };
-      await Plotly.newPlot(container, data, finalLayout, {
+      const themedLayout = this.applyThemeToLayoutArt(finalLayout, palette);
+      await Plotly.newPlot(container, data, themedLayout, {
         displayModeBar: false,
         staticPlot: true,
         responsive: false
@@ -1963,6 +2049,100 @@ ${dots}
     ];
   }
 
+  private applyThemeToLayoutArt(layout: any, palette: { panel: string; text: string; muted: string }): any {
+    if (!layout || typeof layout !== "object") return layout;
+
+    const hexToRgba = (hex: string, alpha: number): string => {
+      const h = String(hex || "").trim().replace(/^#/, "");
+      const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
+      if (full.length !== 6) return `rgba(148,163,184,${alpha})`;
+      const r = parseInt(full.slice(0, 2), 16);
+      const g = parseInt(full.slice(2, 4), 16);
+      const b = parseInt(full.slice(4, 6), 16);
+      return `rgba(${r},${g},${b},${alpha})`;
+    };
+
+    const parseRgb = (
+      value: unknown
+    ): { r: number; g: number; b: number; a: number; neutral: boolean } | null => {
+      const v = String(value ?? "").trim().toLowerCase();
+      if (!v) return null;
+      const named: Record<string, string> = {
+        white: "rgb(255,255,255)",
+        black: "rgb(0,0,0)",
+        transparent: "rgba(0,0,0,0)"
+      };
+      const s = (named[v] || v).replace(/\s+/g, "");
+      const hex = s.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+      if (hex) {
+        const h = hex[1];
+        const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
+        const r = parseInt(full.slice(0, 2), 16);
+        const g = parseInt(full.slice(2, 4), 16);
+        const b = parseInt(full.slice(4, 6), 16);
+        return { r, g, b, a: 1, neutral: Math.abs(r - g) < 12 && Math.abs(r - b) < 12 && Math.abs(g - b) < 12 };
+      }
+      const rgb = s.match(/^rgb\((\d+),(\d+),(\d+)\)$/i);
+      if (rgb) {
+        const r = Number(rgb[1]);
+        const g = Number(rgb[2]);
+        const b = Number(rgb[3]);
+        return { r, g, b, a: 1, neutral: Math.abs(r - g) < 12 && Math.abs(r - b) < 12 && Math.abs(g - b) < 12 };
+      }
+      const rgba = s.match(/^rgba\((\d+),(\d+),(\d+),([0-9.]+)\)$/i);
+      if (rgba) {
+        const r = Number(rgba[1]);
+        const g = Number(rgba[2]);
+        const b = Number(rgba[3]);
+        const a = Number(rgba[4]);
+        return { r, g, b, a: Number.isFinite(a) ? a : 1, neutral: Math.abs(r - g) < 12 && Math.abs(r - b) < 12 && Math.abs(g - b) < 12 };
+      }
+      return null;
+    };
+
+    const brightness = (c: { r: number; g: number; b: number }): number => 0.299 * c.r + 0.587 * c.g + 0.114 * c.b;
+
+    const out: any = { ...layout };
+    // Force figure backgrounds to match the app theme (Python defaults often hardcode white).
+    out.paper_bgcolor = palette.panel;
+    out.plot_bgcolor = palette.panel;
+
+    if (Array.isArray(out.annotations)) {
+      out.annotations = out.annotations.map((ann: any) => {
+        const font = ann && ann.font && typeof ann.font === "object" ? { ...ann.font } : {};
+        const parsed = parseRgb(font.color);
+        if (!parsed) {
+          font.color = palette.text;
+          return { ...ann, font };
+        }
+        // Many backend figures use neutral dark greys/blacks that become unreadable on dark themes.
+        if (parsed.neutral) {
+          const b = brightness(parsed);
+          font.color = b < 80 ? palette.text : palette.muted;
+        }
+        return { ...ann, font };
+      });
+    }
+
+    if (Array.isArray(out.shapes)) {
+      out.shapes = out.shapes.map((shape: any) => {
+        const fillParsed = parseRgb(shape?.fillcolor);
+        const lineColor = shape?.line && typeof shape.line === "object" ? (shape.line as any).color : undefined;
+        const lineParsed = parseRgb(lineColor);
+        const next: any = { ...shape };
+        if (fillParsed && fillParsed.neutral && brightness(fillParsed) > 210) {
+          next.fillcolor = hexToRgba(palette.text, 0.06);
+        }
+        if (lineParsed && lineParsed.neutral && brightness(lineParsed) > 170) {
+          next.line = { ...(next.line || {}), color: hexToRgba(palette.muted, 0.35) };
+        }
+        return next;
+      });
+    }
+
+    return out;
+  }
+
   private buildCategoricalPalette(n: number): string[] {
     const base = [
       ...this.getPlotlyColorway(),
@@ -1996,6 +2176,15 @@ ${dots}
     }
     const out = traces.map((t) => (t && typeof t === "object" ? { ...(t as any) } : t));
     const paletteLine = "rgba(148,163,184,0.32)";
+    const basePalette = this.buildCategoricalPalette(64);
+    const colorForLabel = (raw: unknown): string => {
+      const label = String(raw ?? "").trim();
+      if (!label) return basePalette[0] || "#5b9bff";
+      const h = this.hashString(label.toLowerCase());
+      const n = Number.parseInt(h.slice(-8), 16);
+      if (!Number.isFinite(n) || n < 0) return basePalette[0] || "#5b9bff";
+      return basePalette[n % basePalette.length] || "#5b9bff";
+    };
 
     out.forEach((trace: any) => {
       if (!trace || typeof trace !== "object") return;
@@ -2011,8 +2200,7 @@ ${dots}
         const existing = (marker as any).color;
         const hasArrayColors = Array.isArray(existing) && existing.length === cats.length;
         if (!hasArrayColors) {
-          const colors = this.buildCategoricalPalette(cats.length);
-          (marker as any).color = colors;
+          (marker as any).color = cats.map((c: string) => colorForLabel(c));
         }
         if (!(marker as any).line) {
           (marker as any).line = { color: paletteLine, width: 1 };
@@ -2031,7 +2219,7 @@ ${dots}
         const existing = (marker as any).colors;
         const hasArrayColors = Array.isArray(existing) && existing.length === labels.length;
         if (!hasArrayColors) {
-          (marker as any).colors = this.buildCategoricalPalette(labels.length);
+          (marker as any).colors = labels.map((l: string) => colorForLabel(l));
         }
         trace.marker = marker;
       }
@@ -2066,6 +2254,9 @@ ${dots}
 
   private resizePlotNow(): void {
     if (!this.plotHost) {
+      return;
+    }
+    if (this.getActiveRibbonTab() !== "visualiser") {
       return;
     }
     if (this.currentTab !== "slide") {
@@ -2134,6 +2325,13 @@ ${dots}
     }
   }
 
+  private updateCancelButtonState(): void {
+    const btn = this.exportHost?.querySelector<HTMLButtonElement>("#btnCancelPreview");
+    if (!btn) return;
+    const active = Boolean(this.previewBackgroundLoading || this.loadingDeck);
+    btn.disabled = !active;
+  }
+
   private setStatus(message: string): void {
     const primary = this.mount.querySelector<HTMLElement>("#status");
     if (primary) {
@@ -2143,6 +2341,7 @@ ${dots}
     if (detail) {
       detail.textContent = message;
     }
+    this.updateCancelButtonState();
   }
 
   private logPlotDiag(): void {
@@ -2406,7 +2605,7 @@ ${dots}
     try {
       const raw = window.localStorage.getItem("visualiser.deck.cache");
       if (!raw) return;
-      const parsed = JSON.parse(raw) as Record<string, Array<Record<string, unknown>>>;
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
       if (!parsed || typeof parsed !== "object") return;
       if (!(key in parsed)) return;
       delete parsed[key];
@@ -2459,6 +2658,19 @@ ${dots}
     void this.runVisualiser(true);
   };
 
+  private handleCancelPreviewClick = (): void => {
+    // Stop any in-flight background section loading, and reset the python worker to abort long-running tasks.
+    this.previewRunToken += 1;
+    this.previewBackgroundLoading = false;
+    this.loadingDeck = false;
+    this.updateCancelButtonState();
+    void this.sendVisualiserCommand("cancel_preview");
+    this.setStatus("Preview loading canceled.");
+    this.renderThumbs();
+    this.renderSlide();
+    this.updateSummary();
+  };
+
   private getCollectionNameForExport(): string {
     const state = (window as unknown as { __retrieveDataHubState?: RetrieveDataHubState }).__retrieveDataHubState;
     const fromState = typeof state?.collectionName === "string" ? state.collectionName.trim() : "";
@@ -2493,6 +2705,14 @@ ${dots}
     if (!include.length) {
       this.setStatus(hasExplicitSlideSelection ? "Select at least one slide." : "Select at least one section.");
       return;
+    }
+    // Ensure selected sections are present in the preview deck so we can render PNGs for export reliably.
+    if (!hasExplicitSlideSelection) {
+      const missing = include.filter((sec) => !this.sectionDecks.has(sec));
+      if (missing.length) {
+        this.appendWarnLog(`Preparing ${missing.length} section(s) for export…`);
+        await this.runVisualiserLazyPreview({ include, previousSlideKey: "", previousSectionId: "" });
+      }
     }
     const params = this.readParams();
     const collectionName = this.getCollectionNameForExport();
@@ -2558,7 +2778,6 @@ ${dots}
     this.setStatus("Building PPTX…");
 
     const response = await this.sendVisualiserCommand("export_pptx", {
-      table: this.currentTable,
       include,
       params,
       selection,
@@ -2671,17 +2890,29 @@ ${dots}
       const rawData = Array.isArray(figJson?.data) ? figJson.data : Array.isArray(figJson) ? figJson : [];
       const data = this.applyCategoricalPaletteToData(rawData);
       const layout = figJson.layout || {};
+      const m = layout.margin || {};
+      const toNum = (v: unknown, fallback: number) => (typeof v === "number" && Number.isFinite(v) ? v : fallback);
+      const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
+      const safeMargin = {
+        l: clamp(toNum(m.l, 80), 56, Math.round(W * 0.38)),
+        r: clamp(toNum(m.r, 60), 56, Math.round(W * 0.34)),
+        t: clamp(toNum(m.t, 80), 44, Math.round(H * 0.28)),
+        b: clamp(toNum(m.b, 80), 56, Math.round(H * 0.34)),
+        pad: Math.max(0, toNum(m.pad, 4)),
+        autoexpand: true
+      };
       const finalLayout = {
         ...layout,
         paper_bgcolor: palette.panel,
         plot_bgcolor: palette.panel,
         font: { ...(layout.font || {}), color: palette.text },
-        margin: layout.margin ?? { l: 80, r: 60, t: 80, b: 80 },
+        margin: safeMargin,
         width: W,
         height: H,
         autosize: false
       };
-      await Plotly.newPlot(container, data, finalLayout, {
+      const themedLayout = this.applyThemeToLayoutArt(finalLayout, palette);
+      await Plotly.newPlot(container, data, themedLayout, {
         displayModeBar: false,
         staticPlot: true,
         responsive: false
@@ -2745,6 +2976,10 @@ ${dots}
       this.renderSlide();
       this.updateSummary();
       this.setStatus("Select at least one section.");
+      return;
+    }
+    if (!isBuild) {
+      await this.runVisualiserLazyPreview({ include, previousSlideKey, previousSectionId });
       return;
     }
     this.loadingDeck = true;
@@ -2887,6 +3122,190 @@ ${dots}
     this.setStatus("Visualiser ready");
   }
 
+  private async runVisualiserLazyPreview(args: {
+    include: string[];
+    previousSlideKey: string;
+    previousSectionId: string;
+  }): Promise<void> {
+    if (!this.currentTable) {
+      this.setStatus("Load data in Retrieve first.");
+      return;
+    }
+    const token = (this.previewRunToken += 1);
+    const include = args.include.slice();
+    const params = this.readParams();
+    const ordered = this.sections.length ? this.sections.map((s) => s.id).filter((id) => include.includes(id)) : include;
+
+    this.previewBackgroundLoading = false;
+    this.sectionDecks.clear();
+    this.updateCancelButtonState();
+
+    const tryRestoreFromCache = (sectionId: string): boolean => {
+      const cacheKey = this.buildCacheKey(this.currentTable!, [sectionId], params);
+      const cached = this.readDeckCache(cacheKey);
+      if (cached && cached.length) {
+        this.sectionDecks.set(sectionId, this.normalizeDeck(cached, "cache"));
+        return true;
+      }
+      return false;
+    };
+
+    // Warm-load from per-section cache to show something instantly.
+    ordered.forEach((sec) => {
+      tryRestoreFromCache(sec);
+    });
+    this.rebuildDeckFromSections();
+
+    // If we already have visuals, render immediately without blocking on python.
+    if (this.deckAll.length) {
+      const resolved = this.resolveSlideIndexAfterRun({
+        previousSlideKey: args.previousSlideKey,
+        previousSectionId: args.previousSectionId
+      });
+      this.slideIndex = Math.max(0, Math.min(resolved, Math.max(0, this.deck.length - 1)));
+      this.snapToFirstVisualSlide();
+      this.renderSectionsList();
+      this.renderThumbs();
+      this.renderSlide();
+      this.updateSummary();
+      this.setStatus("Visualiser ready (cache)");
+    } else {
+      this.loadingDeck = true;
+      this.setStatus("Loading visuals…");
+      this.renderThumbs();
+      this.renderSlide();
+    }
+
+    // Fetch missing sections sequentially (cheap with the persistent python worker).
+    const missing = ordered.filter((sec) => !this.sectionDecks.has(sec));
+    if (!missing.length) {
+      this.loadingDeck = false;
+      this.setStatus("Visualiser ready");
+      this.previewBackgroundLoading = false;
+      this.updateCancelButtonState();
+      return;
+    }
+    this.previewBackgroundLoading = true;
+    this.updateCancelButtonState();
+    for (let i = 0; i < missing.length; i += 1) {
+      if (token !== this.previewRunToken) {
+        return;
+      }
+      const sec = missing[i];
+      this.setStatus(`Loading ${sec} (${i + 1}/${missing.length})…`);
+      let response: any;
+      try {
+        response = await this.sendVisualiserCommand("run_inputs", {
+          // Omit table for performance; python loads the last cached DF from disk.
+          include: [sec],
+          params,
+          mode: "run_inputs",
+          collectionName: this.getCollectionNameForExport()
+        });
+      } catch (error) {
+        if (token !== this.previewRunToken) {
+          return;
+        }
+        this.appendWarnLog(`Section failed: ${sec} (${error instanceof Error ? error.message : String(error)})`);
+        continue;
+      }
+      if (token !== this.previewRunToken) {
+        return;
+      }
+      if (!response || response.status !== "ok") {
+        this.appendWarnLog(`Section failed: ${sec}`);
+        const pythonLogs = (response as any)?.pythonLogs;
+        if (Array.isArray(pythonLogs)) {
+          pythonLogs.forEach((line) => {
+            if (typeof line === "string" && line.trim()) this.appendVisualiserLog(line, "warn");
+          });
+        }
+        continue;
+      }
+      const pythonLogs = (response as any).pythonLogs;
+      if (Array.isArray(pythonLogs)) {
+        pythonLogs.forEach((line) => {
+          if (typeof line === "string" && line.trim()) {
+            const l = line.toLowerCase();
+            const level = l.includes("traceback") || l.includes("exception") || l.includes("error") ? "error" : l.includes("warn") ? "warn" : "info";
+            this.appendVisualiserLog(line, level);
+          }
+        });
+      }
+      const logs = (response as any).logs;
+      if (Array.isArray(logs)) {
+        logs.forEach((line) => {
+          if (typeof line === "string" && line.trim()) this.appendVisualiserLog(line, "info");
+        });
+      }
+      const deck = (response as any).deck?.slides || [];
+      const slides = this.normalizeDeck(Array.isArray(deck) ? deck : [], "run");
+      this.sectionDecks.set(sec, slides);
+      // Persist per-section deck cache.
+      try {
+        const cacheKey = this.buildCacheKey(this.currentTable!, [sec], params);
+        this.writeDeckCache(cacheKey, slides);
+      } catch {
+        // ignore
+      }
+
+      const previousKey = args.previousSlideKey;
+      const previousSec = args.previousSectionId;
+      const hadFocus = Boolean(previousKey || previousSec);
+      this.rebuildDeckFromSections();
+      if (hadFocus) {
+        const resolved = this.resolveSlideIndexAfterRun({
+          previousSlideKey: previousKey,
+          previousSectionId: previousSec
+        });
+        this.slideIndex = Math.max(0, Math.min(resolved, Math.max(0, this.deck.length - 1)));
+        this.snapToFirstVisualSlide();
+      }
+      this.deckVersion += 1;
+      this.resetThumbPipeline();
+      this.renderSectionsList();
+      this.renderThumbs();
+      this.renderSlide();
+      this.updateSummary();
+      this.loadingDeck = false;
+      await this.yieldToUi();
+    }
+    if (token === this.previewRunToken) {
+      this.previewBackgroundLoading = false;
+      this.loadingDeck = false;
+      this.updateCancelButtonState();
+      this.setStatus("Visualiser ready");
+    }
+  }
+
+  private rebuildDeckFromSections(): void {
+    const ordered = this.sections.length ? this.sections.map((s) => s.id) : [];
+    const out: Array<Record<string, unknown>> = [];
+    const seen = new Set<string>();
+    const pushSlides = (slides: Array<Record<string, unknown>>) => {
+      slides.forEach((s) => {
+        const key = this.buildSlideKey(s);
+        if (key && seen.has(key)) return;
+        if (key) seen.add(key);
+        out.push(s);
+      });
+    };
+    if (ordered.length) {
+      ordered.forEach((sec) => {
+        const slides = this.sectionDecks.get(sec);
+        if (slides && slides.length) pushSlides(slides);
+      });
+      // Append any decks for unknown sections.
+      this.sectionDecks.forEach((slides, sec) => {
+        if (!ordered.includes(sec) && slides.length) pushSlides(slides);
+      });
+    } else {
+      this.sectionDecks.forEach((slides) => pushSlides(slides));
+    }
+    this.deckAll = out;
+    this.deck = this.applyPreviewFilter(this.deckAll);
+  }
+
   private resolveSlideIndexAfterRun(args: { previousSlideKey: string; previousSectionId: string }): number {
     const prevKey = String(args.previousSlideKey || "").trim();
     if (prevKey) {
@@ -3005,11 +3424,18 @@ ${dots}
       const safeMargin = (() => {
         const m = (baseLayout as any).margin || {};
         const toNum = (v: unknown, fallback: number) => (typeof v === "number" && Number.isFinite(v) ? v : fallback);
+        const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
+        const w = Math.max(640, Math.round(rect.width || 0));
+        const h = Math.max(420, Math.round(rect.height || 0));
+        const maxL = Math.max(140, Math.round(w * 0.38));
+        const maxR = Math.max(140, Math.round(w * 0.34));
+        const maxT = Math.max(120, Math.round(h * 0.28));
+        const maxB = Math.max(140, Math.round(h * 0.34));
         return {
-          l: Math.max(36, toNum(m.l, 52)),
-          r: Math.max(44, toNum(m.r, 64)),
-          t: Math.max(26, toNum(m.t, 36)),
-          b: Math.max(36, toNum(m.b, 56)),
+          l: clamp(toNum(m.l, 52), 36, maxL),
+          r: clamp(toNum(m.r, 64), 44, maxR),
+          t: clamp(toNum(m.t, 36), 26, maxT),
+          b: clamp(toNum(m.b, 56), 36, maxB),
           pad: Math.max(0, toNum(m.pad, 4)),
           autoexpand: true
         };
@@ -3028,8 +3454,8 @@ ${dots}
       const layout: any = {
         ...baseLayout,
         autosize: true,
-        paper_bgcolor: (baseLayout as any).paper_bgcolor ?? palette.panel,
-        plot_bgcolor: (baseLayout as any).plot_bgcolor ?? palette.panel,
+        paper_bgcolor: palette.panel,
+        plot_bgcolor: palette.panel,
         margin: safeMargin,
         font: { ...(baseLayout as any).font, color: (baseLayout as any)?.font?.color ?? palette.text },
         colorway: Array.isArray((baseLayout as any).colorway) && (baseLayout as any).colorway.length ? (baseLayout as any).colorway : colorway,
@@ -3092,7 +3518,8 @@ ${dots}
         }
       };
       const uirevision = String((slide as any)?.slide_id ?? this.buildSlideKey(slide) ?? this.slideIndex);
-      const finalLayout = { ...layout, dragmode: (layout as any).dragmode ?? "pan", uirevision };
+      const themedLayout = this.applyThemeToLayoutArt(layout, palette);
+      const finalLayout = { ...themedLayout, dragmode: (themedLayout as any).dragmode ?? "pan", uirevision };
       const hasPlot = this.plotHost.classList.contains("js-plotly-plot");
       const plotlyAny = Plotly as any;
       const plotFn = hasPlot && typeof plotlyAny.react === "function" ? plotlyAny.react : plotlyAny.newPlot;
@@ -3134,7 +3561,17 @@ ${dots}
           .replaceAll(">", "&gt;")}</div>` : "";
         this.plotHost.innerHTML = `<div style="padding:12px;color:var(--text);">${heading}<ul style="margin:0 0 0 16px;padding:0;color:var(--muted);line-height:1.35;">${items}</ul></div>`;
       } else {
-        this.plotHost.innerHTML = `<div style="padding:12px;color:var(--muted);">No figure on this slide.</div>`;
+        const hasTable = Boolean(this.findTableHtmlForSlide(slide));
+        this.plotHost.innerHTML = hasTable
+          ? `<div style="padding:12px;color:var(--muted);display:flex;flex-direction:column;gap:10px;">
+               <div>No figure on this slide, but a table is available.</div>
+               <div><button class="btn" id="btnShowTable" type="button">Show table</button></div>
+             </div>`
+          : `<div style="padding:12px;color:var(--muted);">No figure on this slide.</div>`;
+        const btn = this.plotHost.querySelector<HTMLButtonElement>("#btnShowTable");
+        if (btn) {
+          btn.addEventListener("click", () => this.setTab("table"));
+        }
       }
       }
     }
@@ -3233,9 +3670,9 @@ ${dots}
     if (!w.PlotlyConfig || typeof w.PlotlyConfig !== "object") {
       w.PlotlyConfig = {};
     }
-    // Plotly geo traces may fetch topojson; keep it explicit so CSP can allowlist it.
+    // Plotly choropleths may fetch topojson; keep it local to avoid CSP/network issues.
     if (!w.PlotlyConfig.topojsonURL) {
-      w.PlotlyConfig.topojsonURL = "https://cdn.plot.ly/";
+      w.PlotlyConfig.topojsonURL = "./plotly-topojson/";
     }
   }
 
@@ -3319,18 +3756,43 @@ ${dots}
     try {
       const raw = window.localStorage.getItem("visualiser.deck.cache");
       if (!raw) return null;
-      const parsed = JSON.parse(raw) as Record<string, Array<Record<string, unknown>>>;
-      return parsed[key] || null;
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      const entry = (parsed as any)[key];
+      if (Array.isArray(entry)) {
+        return entry as Array<Record<string, unknown>>;
+      }
+      if (entry && typeof entry === "object") {
+        const deck = (entry as any).deck;
+        if (Array.isArray(deck)) {
+          return deck as Array<Record<string, unknown>>;
+        }
+      }
+      return null;
     } catch {
       return null;
     }
   }
 
   private writeDeckCache(key: string, deck: Array<Record<string, unknown>>): void {
+    const MAX_ENTRIES = 40;
     try {
       const raw = window.localStorage.getItem("visualiser.deck.cache");
-      const parsed = raw ? (JSON.parse(raw) as Record<string, Array<Record<string, unknown>>>) : {};
-      parsed[key] = deck;
+      const parsed = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
+      (parsed as any)[key] = { deck, t: Date.now() };
+      const keys = Object.keys(parsed);
+      if (keys.length > MAX_ENTRIES) {
+        const scored = keys
+          .map((k) => {
+            const v = (parsed as any)[k];
+            const t = v && typeof v === "object" && typeof (v as any).t === "number" ? Number((v as any).t) : 0;
+            return { k, t };
+          })
+          .sort((a, b) => a.t - b.t);
+        const dropN = Math.max(0, scored.length - MAX_ENTRIES);
+        for (let i = 0; i < dropN; i += 1) {
+          delete (parsed as any)[scored[i].k];
+        }
+      }
       window.localStorage.setItem("visualiser.deck.cache", JSON.stringify(parsed));
     } catch {
       // ignore cache errors

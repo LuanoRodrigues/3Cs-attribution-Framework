@@ -7,6 +7,8 @@ type LayoutState = {
   marginsPresetId: string;
   marginsCustomIn: { top: number; right: number; bottom: number; left: number } | null;
   columnsCount: number;
+  columnGapIn: number;
+  columnWidthIn: number | null;
   gutterIn: number;
   gutterPositionId: "left" | "top";
   headerDistanceIn: number;
@@ -39,6 +41,8 @@ const state: LayoutState = {
   marginsPresetId: spec.margins.defaultPresetId,
   marginsCustomIn: null,
   columnsCount: 1,
+  columnGapIn: 0.25,
+  columnWidthIn: null,
   gutterIn: spec.margins.gutter.defaultIn,
   gutterPositionId: spec.margins.gutter.defaultPositionId as "left" | "top",
   headerDistanceIn: spec.headerFooter.default.headerDistanceIn,
@@ -132,6 +136,24 @@ export const setColumns = (count: number): void => {
     throw new Error("Column count must be at least 1.");
   }
   state.columnsCount = shouldForceSingleColumn() ? 1 : count;
+};
+
+export const setColumnGap = (valueIn: number): void => {
+  if (!Number.isFinite(valueIn) || valueIn < 0) {
+    throw new Error("Column gap must be a finite non-negative number.");
+  }
+  state.columnGapIn = valueIn;
+};
+
+export const setColumnWidth = (valueIn: number | null): void => {
+  if (valueIn === null) {
+    state.columnWidthIn = null;
+    return;
+  }
+  if (!Number.isFinite(valueIn) || valueIn <= 0) {
+    throw new Error("Column width must be a finite positive number.");
+  }
+  state.columnWidthIn = valueIn;
 };
 
 export const setGutter = (values: {
@@ -255,6 +277,11 @@ export const applyDocumentLayoutTokens = (root: HTMLElement): void => {
   root.style.setProperty("--page-margin-outside", `${computePx(marginRight)}px`);
   const columnsCount = shouldForceSingleColumn() ? 1 : state.columnsCount;
   root.style.setProperty("--page-columns", String(columnsCount));
+  root.style.setProperty("--page-column-gap", `${computePx(state.columnGapIn)}px`);
+  root.style.setProperty(
+    "--page-column-width",
+    state.columnWidthIn != null ? `${computePx(state.columnWidthIn)}px` : "auto"
+  );
   root.style.setProperty("--page-footnote-gap", `${computePx(state.footnoteGapIn)}px`);
   root.style.setProperty("--footnote-max-height-ratio", String(state.footnoteMaxHeightRatio));
   root.style.setProperty("--footnote-separator-height", `${computePx(state.footnoteSeparatorHeightIn)}px`);

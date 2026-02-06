@@ -571,6 +571,18 @@ def add_data_summary_slides(
         height=720,
         showlegend=False,
     )
+    # Ensure the "card grid" is treated as a real Plotly figure everywhere (thumb snapshot/export paths often
+    # key off trace types). This trace is invisible and does not affect layout.
+    fig.add_trace(
+        go.Scatter(
+            x=[0],
+            y=[0],
+            mode="markers",
+            marker={"opacity": 0},
+            hoverinfo="skip",
+            showlegend=False,
+        )
+    )
 
     # Grid geometry in paper coords
     left_x0, left_x1 = 0.03, 0.49
@@ -785,9 +797,6 @@ def shape_scope(
       1) Publications by year
       2) Distribution by document type
       3) Split by publisher type
-      4) Distribution by country focus
-      5) Number of studies by phase_focus
-      6) Number of studies by sector_focus
 
     Tables and figures are centered and constrained to fit the slide.
     """
@@ -864,7 +873,16 @@ def shape_scope(
         if "document_type_value" in frame.columns:
             s = frame["document_type_value"].astype(str).str.strip()
             if s.notna().any():
-                return s
+                # Guard against coded/ordinal doc-type columns (e.g. 0..N) that render as numbers.
+                # If it mostly looks numeric, prefer the human-readable type columns instead.
+                try:
+                    non_empty = s.replace("nan", "").replace("None", "").replace("", pd.NA).dropna()
+                    if not non_empty.empty:
+                        frac_numeric = float(non_empty.str.fullmatch(r"\d+").mean())
+                        if frac_numeric < 0.8:
+                            return s
+                except Exception:
+                    return s
         for cand in ("document_type", "item_type", "itemType", "item type", "type"):
             if cand in frame.columns:
                 s = frame[cand].astype(str).str.strip()
@@ -1335,6 +1353,20 @@ def shape_scope(
         "Count",
     )
 
+    # Removed by request: Country focus / Phase focus / Sector focus graphs.
+    # Keep the earlier 3 scope plots only.
+    _cb("Scope slides completed.")
+
+    if preview_slides is not None:
+        fig_json_n = sum(1 for s in preview_slides if isinstance(s, dict) and s.get("fig_json") is not None)
+        fig_html_n = sum(1 for s in preview_slides if isinstance(s, dict) and str(s.get("fig_html") or "").strip())
+        print(
+            f"[shape_scope] export={export} return_payload={return_payload} slides={len(preview_slides)} fig_json={fig_json_n} fig_html={fig_html_n}"
+        )
+        return {"slides": preview_slides, "index": 0}
+
+    return None
+
     # ===================== 4) Country focus =====================
     _cb("Country focus distribution — Top 20")
 
@@ -1593,7 +1625,7 @@ def _plot_co_authorship_network(df: pd.DataFrame, params: dict) -> tuple[pd.Data
     import plotly.graph_objects as go
 
     # ---- params & defaults ----
-    min_collaborations = int(params.get("min_collaborations", 2))
+    min_collaborations = int(params.get("min_collaborations", 1))
     top_n_nodes = int(params.get("top_n_authors", 50))
     layout = str(params.get("layout", "force")).lower()
     iterations = int(params.get("iterations", 50))
@@ -1633,17 +1665,45 @@ def _plot_co_authorship_network(df: pd.DataFrame, params: dict) -> tuple[pd.Data
         [{"Source": a, "Target": b, "Weight": w} for (a, b), w in edge_counts.items()]
     )
     if edges_df.empty:
-        fig = go.Figure().add_annotation(
-            text="No co-authorship edges found.", showarrow=False
+        # Fallback: still show something useful for collaboration even when all papers are single-authored.
+        counts = series.apply(lambda xs: len(xs) if isinstance(xs, (list, tuple, set)) else 0)
+        dist = (
+            pd.DataFrame({"Authors per document": counts})
+            .value_counts()
+            .rename_axis(["Authors per document"])
+            .reset_index(name="Count")
+            .sort_values("Authors per document")
+            .reset_index(drop=True)
+        )
+        fig = go.Figure()
+        fig.add_bar(x=dist["Authors per document"], y=dist["Count"])
+        fig.update_layout(
+            title="Authorship per document (no co-authorship edges)",
+            xaxis_title="Authors per document",
+            yaxis_title="Count",
+            margin=dict(l=60, r=40, t=40, b=60),
         )
         return edges_df, fig
 
     # threshold by min_collaborations
     edges_df = edges_df.loc[edges_df["Weight"] >= min_collaborations].copy()
     if edges_df.empty:
-        fig = go.Figure().add_annotation(
-            text=f"No collaborations with frequency ≥ {min_collaborations}.",
-            showarrow=False
+        counts = series.apply(lambda xs: len(xs) if isinstance(xs, (list, tuple, set)) else 0)
+        dist = (
+            pd.DataFrame({"Authors per document": counts})
+            .value_counts()
+            .rename_axis(["Authors per document"])
+            .reset_index(name="Count")
+            .sort_values("Authors per document")
+            .reset_index(drop=True)
+        )
+        fig = go.Figure()
+        fig.add_bar(x=dist["Authors per document"], y=dist["Count"])
+        fig.update_layout(
+            title=f"Authorship per document (no edges ≥ {min_collaborations})",
+            xaxis_title="Authors per document",
+            yaxis_title="Count",
+            margin=dict(l=60, r=40, t=40, b=60),
         )
         return edges_df, fig
 
@@ -4094,7 +4154,26 @@ def add_thematic_and_method_section(
             return {"slides": preview_slides, "index": 0}
         return None
 
-    cross_tabs = cross_tabs or [["focus_type_value", "publisher_type"], ["empirical_theoretical", "sector_focus_value"]]
+    if not cross_tabs:
+        # Prefer legacy pairs when present, otherwise pick reasonable fallbacks based on available columns.
+        legacy = [["focus_type_value", "publisher_type"], ["empirical_theoretical", "sector_focus_value"]]
+        present: list[list[str]] = []
+        for a, b in legacy:
+            if a in df.columns and b in df.columns:
+                present.append([a, b])
+        if not present:
+            fallbacks = [
+                ["theme", "item_type"],
+                ["theme", "country"],
+                ["item_type", "country"],
+                ["item_type", "source"],
+                ["theme", "source"],
+            ]
+            for a, b in fallbacks:
+                if a in df.columns and b in df.columns:
+                    present.append([a, b])
+                    break
+        cross_tabs = present
 
     # ---- Cross-tabs
     for (row_col, col_col) in cross_tabs:
@@ -5103,119 +5182,13 @@ def _make_department_sunburst(df: pd.DataFrame,
     fig.update_layout(margin=dict(l=0, r=0, t=60, b=0))
     return fig
 def _make_world_map(df: pd.DataFrame, *, by_authors: bool = False) -> go.Figure:
-    cc = _country_counts(df, by_authors=by_authors)
-    if cc.empty:
-        return go.Figure().add_annotation(text="No country data.", showarrow=False)
+    """
+    Offline-first geo view.
 
-    s = cc["country"].astype(str).str.strip()
-    key = (
-        s.str.lower()
-        .str.replace(".", "", regex=False)
-        .str.replace("_", " ", regex=False)
-        .str.replace("-", " ", regex=False)
-        .str.replace(r"\s+", " ", regex=True)
-        .str.strip()
-    )
-
-    iso3_map = {
-        # US / UK / common aliases
-        "us": "USA",
-        "u s": "USA",
-        "usa": "USA",
-        "united states": "USA",
-        "united states of america": "USA",
-
-        "uk": "GBR",
-        "u k": "GBR",
-        "gb": "GBR",
-        "gbr": "GBR",
-        "great britain": "GBR",
-        "united kingdom": "GBR",
-        "england": "GBR",
-        "scotland": "GBR",
-        "wales": "GBR",
-        "northern ireland": "GBR",
-
-        # Europe (common)
-        "france": "FRA",
-        "germany": "DEU",
-        "netherlands": "NLD",
-        "belgium": "BEL",
-        "switzerland": "CHE",
-        "sweden": "SWE",
-        "norway": "NOR",
-        "denmark": "DNK",
-        "finland": "FIN",
-        "ireland": "IRL",
-        "italy": "ITA",
-        "spain": "ESP",
-        "portugal": "PRT",
-        "austria": "AUT",
-        "poland": "POL",
-        "czechia": "CZE",
-        "czech republic": "CZE",
-        "greece": "GRC",
-        "hungary": "HUN",
-        "romania": "ROU",
-        "bulgaria": "BGR",
-        "ukraine": "UKR",
-
-        # Eurasia / Middle East
-        "russia": "RUS",
-        "russian federation": "RUS",
-        "turkey": "TUR",
-        "israel": "ISR",
-        "iran": "IRN",
-        "united arab emirates": "ARE",
-        "uae": "ARE",
-        "saudi arabia": "SAU",
-
-        # Asia-Pacific
-        "china": "CHN",
-        "people s republic of china": "CHN",
-        "japan": "JPN",
-        "south korea": "KOR",
-        "korea republic of": "KOR",
-        "republic of korea": "KOR",
-        "india": "IND",
-        "singapore": "SGP",
-        "australia": "AUS",
-        "new zealand": "NZL",
-
-        # Americas
-        "canada": "CAN",
-        "mexico": "MEX",
-        "brazil": "BRA",
-        "argentina": "ARG",
-        "chile": "CHL",
-
-        # Africa
-        "south africa": "ZAF",
-    }
-
-    iso3 = key.map(iso3_map)
-
-    # Pass through already-ISO3 codes (e.g., "USA", "GBR") if present in source data
-    already_iso3 = s.str.upper().str.match(r"^[A-Z]{3}$")
-    iso3 = iso3.where(~already_iso3, s.str.upper())
-
-    out = cc.assign(iso3=iso3).dropna(subset=["iso3"])
-    if out.empty:
-        return go.Figure().add_annotation(text="No mappable country data.", showarrow=False)
-
-    fig = px.choropleth(
-        out,
-        locations="iso3",
-        locationmode="ISO-3",
-        color="count",
-        color_continuous_scale="Plasma",
-        title=("Authors" if by_authors else "Publications") + " by Country",
-    )
-    fig.update_layout(
-        margin=dict(l=0, r=0, t=60, b=0),
-        coloraxis_colorbar=dict(title="Count"),
-    )
-    return fig
+    NOTE: Plotly choropleths typically require loading external topojson (often blocked by CSP/offline).
+    Use a scattergeo "bubble map" instead.
+    """
+    return _make_bubble_map(df, by_authors=by_authors)
 
 
 
@@ -6341,10 +6314,16 @@ def _profile_plot_scorecard(profile_df: pd.DataFrame, params: dict) -> tuple[pd.
     entity_name = params.get("feature_value", "Profile")
 
     total_pubs = len(profile_df)
-    total_cites = int(profile_df['citations'].sum())
-    first_year_val = profile_df['year'].min()
-    last_year_val = profile_df['year'].max()
-    active_years_str = f"{int(first_year_val)} - {int(last_year_val)}" if pd.notna(first_year_val) else "N/A"
+    cit_col = "citations" if "citations" in profile_df.columns else None
+    cites = pd.to_numeric(profile_df[cit_col], errors="coerce").fillna(0.0) if cit_col else pd.Series([0.0] * len(profile_df))
+    total_cites = int(float(cites.sum())) if not cites.empty else 0
+    year_col = "year" if "year" in profile_df.columns else None
+    years = pd.to_numeric(profile_df[year_col], errors="coerce") if year_col else pd.Series([pd.NA] * len(profile_df))
+    first_year_val = years.min()
+    last_year_val = years.max()
+    active_years_str = (
+        f"{int(first_year_val)} - {int(last_year_val)}" if pd.notna(first_year_val) and pd.notna(last_year_val) else "N/A"
+    )
 
     fig = go.Figure()
     fig.add_trace(go.Indicator(mode="number", value=total_pubs, title={"text": "Total Publications"},
@@ -6365,9 +6344,19 @@ def _profile_plot_scorecard(profile_df: pd.DataFrame, params: dict) -> tuple[pd.
         table_df = author_stats[['TotalPublications', 'TotalCitations', 'H-Index']].T.reset_index()
         table_df.columns = ['Metric', 'Value']
     else:
-        fig.add_trace(go.Indicator(mode="text", text=active_years_str, title={"text": "Active Period"},
-                                   domain={'row': 0, 'column': 2}))
-        fig.update_layout(grid={'rows': 1, 'columns': 3, 'pattern': "independent"})
+        # Indicator doesn't support arbitrary text values reliably; use an annotation instead.
+        fig.update_layout(grid={'rows': 1, 'columns': 2, 'pattern': "independent"})
+        fig.add_annotation(
+            text=f"Active period: {active_years_str}",
+            xref="paper",
+            yref="paper",
+            x=0.98,
+            y=0.5,
+            xanchor="right",
+            yanchor="middle",
+            showarrow=False,
+            font=dict(size=16),
+        )
 
     fig.update_layout(title_text=f"Key Metrics for: {entity_name}")
     return table_df, fig

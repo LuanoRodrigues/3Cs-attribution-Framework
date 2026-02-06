@@ -17,7 +17,7 @@ export interface LayoutSnapshot {
 export interface PanelLayoutRootOptions {
   panelId?: string;
   onLayoutChange?: (snapshot: LayoutSnapshot) => void;
-  onFocusChange?: (toolId?: string, toolType?: string) => void;
+  onFocusChange?: (toolId?: string, toolType?: string, metadata?: Record<string, unknown>) => void;
 }
 
 const TOOL_TYPE_ALIASES: Record<string, string> = {
@@ -36,7 +36,7 @@ export class PanelLayoutRoot {
   private activeToolId?: string;
   private panelId?: string;
   private onLayoutChange?: (snapshot: LayoutSnapshot) => void;
-  private onFocusChange?: (toolId?: string, toolType?: string) => void;
+  private onFocusChange?: (toolId?: string, toolType?: string, metadata?: Record<string, unknown>) => void;
 
   constructor(container: HTMLElement, registry: ToolRegistry, options: PanelLayoutRootOptions = {}) {
     this.container = container;
@@ -189,7 +189,7 @@ export class PanelLayoutRoot {
   private emitFocus(): void {
     if (!this.onFocusChange) return;
     const tool = this.states.find((state) => state.id === this.activeToolId);
-    this.onFocusChange(this.activeToolId, tool?.toolType);
+    this.onFocusChange(this.activeToolId, tool?.toolType, tool?.metadata);
   }
 
   private findExistingState(toolType: string, title: string): ToolState | undefined {

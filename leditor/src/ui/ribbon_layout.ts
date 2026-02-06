@@ -8,6 +8,7 @@ import { createRibbonButton, createRibbonDropdownButton } from "./ribbon_control
 import { createRibbonIcon, type RibbonIconName } from "./ribbon_icons.ts";
 import { Menu, MenuItem, MenuSeparator, setMenuPortal } from "./ribbon_menu.ts";
 import { SplitButton } from "./ribbon_split_button.ts";
+import { getRecentColors, pushRecentColor } from "./ribbon_dialogs.ts";
 import { getTemplates } from "../templates/index.ts";
 import { getStyleTemplates, openStyleMiniApp } from "./style_mini_app.ts";
 import { tabLayouts } from "./tab_layouts.ts";
@@ -476,7 +477,7 @@ const applyControlDataAttributes = (
   }
   if (control.command?.args && typeof control.command.args === "object") {
     const args = control.command.args as Record<string, unknown>;
-    const value = args.id ?? args.style ?? args.value;
+    const value = args.id ?? args.style ?? args.value ?? args.count;
     if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
       element.dataset.stateValue = String(value);
     }
@@ -959,20 +960,12 @@ const renderDynamicMenu = (menu: Menu, ctx: BuildContext, item: ControlConfig): 
 
 const createMenuItemButton = (menu: Menu, ctx: BuildContext, item: ControlConfig, toggle = false): HTMLButtonElement => {
   const rawLabel = item.label ?? item.controlId ?? "";
+  const baseArgs = buildCommandArgs(item.command);
   const button = MenuItem({
     label: rawLabel,
     onSelect: () => {
-      const baseArgs = buildCommandArgs(item.command);
       menu.close();
-      if (!baseArgs && (item.command?.id === "TextColor" || item.command?.id === "HighlightColor")) {
-        const raw = window.prompt("Enter a hex color (e.g. #1f2937)");
-        if (!raw) {
-          return;
-        }
-        runMenuCommand(ctx, item.command, { value: raw.trim() });
-      } else {
-        runMenuCommand(ctx, item.command, undefined);
-      }
+      runMenuCommand(ctx, item.command, undefined);
     }
   });
   if (item.controlId?.startsWith("font.style.")) {
@@ -989,6 +982,36 @@ const createMenuItemButton = (menu: Menu, ctx: BuildContext, item: ControlConfig
     sample.className = "leditor-menu-item__sample";
     sample.textContent = "AaBbCc";
     button.append(label, sample);
+  }
+  if (item.controlId?.startsWith("font.effects.")) {
+    const effect = item.controlId.slice("font.effects.".length);
+    if (effect === "shadow" || effect === "outline") {
+      button.classList.add("leditor-menu-item--effect-preview");
+      button.dataset.effect = effect;
+      button.textContent = "";
+      const label = document.createElement("span");
+      label.className = "leditor-menu-item__label";
+      label.textContent = rawLabel;
+      const sample = document.createElement("span");
+      sample.className = "leditor-menu-item__sample";
+      sample.textContent = "AaBbCc";
+      button.append(label, sample);
+    }
+  }
+  if (item.controlId?.startsWith("paragraph.borders.")) {
+    const preset = typeof baseArgs?.preset === "string" ? baseArgs.preset : "";
+    const allowed = new Set(["none", "bottom", "top", "left", "right", "all", "outside", "inside"]);
+    if (allowed.has(preset)) {
+      button.classList.add("leditor-menu-item--border");
+      button.textContent = "";
+      const preview = document.createElement("span");
+      preview.className = "leditor-menu-item__border";
+      preview.dataset.borderPreset = preset;
+      const label = document.createElement("span");
+      label.className = "leditor-menu-item__label";
+      label.textContent = rawLabel;
+      button.append(preview, label);
+    }
   }
   if (toggle) {
     button.setAttribute("aria-checked", "false");
@@ -1015,14 +1038,39 @@ const createColorPalette = (menu: Menu, ctx: BuildContext, item: ControlConfig):
   const palette = document.createElement("div");
   palette.className = "leditor-color-picker-palette";
   applyControlDataAttributes(palette, item);
-  const colors =
+  const rows = Array.isArray(item.palette?.rows)
+    ? item.palette?.rows.filter((row) => Array.isArray(row))
+    : [];
+  const paletteKind = item.palette?.kind ?? "static";
+  const storageKey = (item.palette as any)?.storageKey ?? item.controlId ?? "colors";
+  let colors: string[] =
     (item as any).colors ??
-    (Array.isArray(item.palette?.rows)
-      ? item.palette?.rows.flat().filter((entry) => typeof entry === "string")
-      : []);
+    (rows.length ? rows.flat().filter((entry) => typeof entry === "string") : []);
+  if (paletteKind === "recent") {
+    colors = getRecentColors(storageKey);
+  }
+  const columns = rows.length
+    ? Math.max(...rows.map((row) => row.filter((entry) => typeof entry === "string").length))
+    : 5;
+  if (Number.isFinite(columns) && columns > 0) {
+    palette.style.setProperty("--palette-columns", String(columns));
+  }
+  if (item.label) {
+    const title = document.createElement("div");
+    title.className = "leditor-color-picker-title";
+    title.textContent = item.label;
+    palette.appendChild(title);
+  }
   const command = item.command;
   if (colors.length && !menu.element.dataset.defaultColor) {
     menu.element.dataset.defaultColor = colors[0];
+  }
+  if (!colors.length) {
+    const empty = document.createElement("div");
+    empty.className = "leditor-color-picker-empty";
+    empty.textContent = "No recent colors";
+    palette.appendChild(empty);
+    return palette;
   }
   colors.forEach((color: string) => {
     const swatch = document.createElement("button");
@@ -1030,7 +1078,10 @@ const createColorPalette = (menu: Menu, ctx: BuildContext, item: ControlConfig):
     swatch.className = "leditor-color-picker-swatch";
     swatch.style.setProperty("--swatch-color", color);
     swatch.title = color;
+    swatch.dataset.menuItem = "true";
+    swatch.dataset.stateValue = color;
     swatch.addEventListener("click", () => {
+      pushRecentColor(storageKey, color);
       const payload: Record<string, unknown> = {};
       if (command?.args && typeof command.args === "object") {
         Object.assign(payload, command.args);
@@ -1507,6 +1558,12 @@ const buildControl = (
       const chevron = createRibbonIcon("chevronDown");
       chevron.classList.add("ribbon-dropdown-chevron");
       button.appendChild(chevron);
+    }
+    if (control.type === "colorPicker") {
+      button.classList.add("ribbon-color-button");
+      const indicator = document.createElement("span");
+      indicator.className = "ribbon-color-indicator";
+      button.appendChild(indicator);
     }
     ensureControlIcon(button, requiredIcon);
     applyControlDataAttributes(button, control, control.size ?? "medium");
@@ -2726,7 +2783,7 @@ export const renderRibbonLayout = (
             return;
           }
           lastMap.set(element, serialized);
-          if (element.dataset.controlType === "dropdown") {
+          if (element.dataset.controlType === "dropdown" || element.dataset.controlType === "colorPicker") {
             if (typeof value === "string") {
               if (element.dataset.value !== value) {
                 element.dataset.value = value;
@@ -2765,6 +2822,16 @@ export const renderRibbonLayout = (
                   delete (menu.element as any).dataset.selectedValue;
                 }
               }
+              }
+            }
+            if (element.dataset.controlType === "colorPicker") {
+              const swatchValue = typeof value === "string" && value.trim() ? value.trim() : "";
+              if (swatchValue) {
+                element.style.setProperty("--ribbon-color", swatchValue);
+                element.classList.remove("is-color-empty");
+              } else {
+                element.style.removeProperty("--ribbon-color");
+                element.classList.add("is-color-empty");
               }
             }
           }

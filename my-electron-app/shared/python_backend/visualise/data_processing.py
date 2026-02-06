@@ -7870,119 +7870,13 @@ def _centroid(country: str) -> tuple[float | None, float | None]:
 #  Choropleth  — world-map of publications / authors
 # ═══════════════════════════════════════════════════════════════════
 def _make_world_map(df: pd.DataFrame, *, by_authors: bool = False) -> go.Figure:
-    cc = _country_counts(df, by_authors=by_authors)
-    if cc.empty:
-        return go.Figure().add_annotation(text="No country data.", showarrow=False)
+    """
+    World map helper used by the renderer.
 
-    s = cc["country"].astype(str).str.strip()
-    key = (
-        s.str.lower()
-        .str.replace(".", "", regex=False)
-        .str.replace("_", " ", regex=False)
-        .str.replace("-", " ", regex=False)
-        .str.replace(r"\s+", " ", regex=True)
-        .str.strip()
-    )
-
-    iso3_map = {
-        # US / UK / common aliases
-        "us": "USA",
-        "u s": "USA",
-        "usa": "USA",
-        "united states": "USA",
-        "united states of america": "USA",
-
-        "uk": "GBR",
-        "u k": "GBR",
-        "gb": "GBR",
-        "gbr": "GBR",
-        "great britain": "GBR",
-        "united kingdom": "GBR",
-        "england": "GBR",
-        "scotland": "GBR",
-        "wales": "GBR",
-        "northern ireland": "GBR",
-
-        # Europe (common)
-        "france": "FRA",
-        "germany": "DEU",
-        "netherlands": "NLD",
-        "belgium": "BEL",
-        "switzerland": "CHE",
-        "sweden": "SWE",
-        "norway": "NOR",
-        "denmark": "DNK",
-        "finland": "FIN",
-        "ireland": "IRL",
-        "italy": "ITA",
-        "spain": "ESP",
-        "portugal": "PRT",
-        "austria": "AUT",
-        "poland": "POL",
-        "czechia": "CZE",
-        "czech republic": "CZE",
-        "greece": "GRC",
-        "hungary": "HUN",
-        "romania": "ROU",
-        "bulgaria": "BGR",
-        "ukraine": "UKR",
-
-        # Eurasia / Middle East
-        "russia": "RUS",
-        "russian federation": "RUS",
-        "turkey": "TUR",
-        "israel": "ISR",
-        "iran": "IRN",
-        "united arab emirates": "ARE",
-        "uae": "ARE",
-        "saudi arabia": "SAU",
-
-        # Asia-Pacific
-        "china": "CHN",
-        "people s republic of china": "CHN",
-        "japan": "JPN",
-        "south korea": "KOR",
-        "korea republic of": "KOR",
-        "republic of korea": "KOR",
-        "india": "IND",
-        "singapore": "SGP",
-        "australia": "AUS",
-        "new zealand": "NZL",
-
-        # Americas
-        "canada": "CAN",
-        "mexico": "MEX",
-        "brazil": "BRA",
-        "argentina": "ARG",
-        "chile": "CHL",
-
-        # Africa
-        "south africa": "ZAF",
-    }
-
-    iso3 = key.map(iso3_map)
-
-    # Pass through already-ISO3 codes (e.g., "USA", "GBR") if present in source data
-    already_iso3 = s.str.upper().str.match(r"^[A-Z]{3}$")
-    iso3 = iso3.where(~already_iso3, s.str.upper())
-
-    out = cc.assign(iso3=iso3).dropna(subset=["iso3"])
-    if out.empty:
-        return go.Figure().add_annotation(text="No mappable country data.", showarrow=False)
-
-    fig = px.choropleth(
-        out,
-        locations="iso3",
-        locationmode="ISO-3",
-        color="count",
-        color_continuous_scale="Plasma",
-        title=("Authors" if by_authors else "Publications") + " by Country",
-    )
-    fig.update_layout(
-        margin=dict(l=0, r=0, t=60, b=0),
-        coloraxis_colorbar=dict(title="Count"),
-    )
-    return fig
+    NOTE: Plotly choropleth world maps require loading external topojson (often blocked by CSP/offline).
+    We default to an offline-safe scattergeo bubble-map instead.
+    """
+    return _make_bubble_map(df, by_authors=by_authors)
 
 
 

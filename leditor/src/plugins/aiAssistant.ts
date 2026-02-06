@@ -2,6 +2,7 @@ import { registerPlugin } from "../api/plugin_registry.ts";
 import type { EditorHandle } from "../api/leditor.ts";
 import { getHostAdapter } from "../host/host_adapter.ts";
 import { getAiSettings } from "../ui/ai_settings.ts";
+import { buildLlmCacheKey, getLlmCacheEntry, setLlmCacheEntry } from "../ui/llm_cache.ts";
 
 const log = (action: string) => window.codexLog?.write(`[AI_ASSISTANT] ${action}`);
 
@@ -26,18 +27,37 @@ const requestAssistant = async (
   if (!host?.agentRequest) {
     return { ok: false, assistantText: "AI host bridge unavailable." };
   }
-  const requestId = `assistant-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   const sel = getSelectionText(editorHandle);
-  const result = await host.agentRequest({
-    requestId,
-    payload: {
-      scope: "selection",
-      instruction,
-      selection: sel,
-      history: [],
-      settings: getAiSettings()
-    }
+  const payload = {
+    scope: "selection" as const,
+    instruction,
+    selection: sel,
+    history: [],
+    settings: getAiSettings()
+  };
+  const cacheKey = buildLlmCacheKey({
+    fn: "assistant.request",
+    provider: payload.settings?.provider,
+    model: payload.settings?.model,
+    payload
   });
+  const cached = getLlmCacheEntry(cacheKey);
+  let result: any = cached?.value ?? null;
+  if (!result) {
+    const requestId = `assistant-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    result = await host.agentRequest({
+      requestId,
+      payload
+    });
+    if (result?.success) {
+      setLlmCacheEntry({
+        key: cacheKey,
+        fn: "assistant.request",
+        value: result,
+        meta: result?.meta
+      });
+    }
+  }
   if (!result?.success) {
     return { ok: false, assistantText: result?.error ? String(result.error) : "AI request failed." };
   }

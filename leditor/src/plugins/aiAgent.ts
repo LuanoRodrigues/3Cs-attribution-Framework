@@ -15,6 +15,7 @@ import {
   type AgentProgressEvent
 } from "../ui/agent_sidebar.ts";
 import { appendAgentHistoryMessage, getAgentHistory } from "../ui/agent_history.ts";
+import { buildLlmCacheKey, getLlmCacheEntry, setLlmCacheEntry } from "../ui/llm_cache.ts";
 
 type AgentContext = {
   scope: "selection" | "document";
@@ -508,6 +509,17 @@ const runAgent = async (
   }
 
   const runBridge = async (ctx: AgentContext) => {
+    const cacheKey = buildLlmCacheKey({
+      fn: "agent.run",
+      provider: ctx.settings?.provider ?? settings?.provider,
+      model: ctx.settings?.model ?? settings?.model,
+      payload: ctx
+    });
+    const cached = getLlmCacheEntry(cacheKey);
+    if (cached?.value?.success) {
+      progress?.("Cache hit.");
+      return cached.value;
+    }
     let unsubscribe: (() => void) | null = null;
     if (requestId && bridge.run && bridge.onUpdate) {
       unsubscribe = bridge.onUpdate((update) => {
@@ -525,10 +537,18 @@ const runAgent = async (
       });
     }
     try {
-      if (bridge.run) {
-        return await bridge.run({ requestId, payload: ctx });
+      const result = bridge.run
+        ? await bridge.run({ requestId, payload: ctx })
+        : await bridge.request({ requestId, payload: ctx });
+      if (result?.success) {
+        setLlmCacheEntry({
+          key: cacheKey,
+          fn: "agent.run",
+          value: result,
+          meta: result?.meta
+        });
       }
-      return await bridge.request({ requestId, payload: ctx });
+      return result;
     } finally {
       if (unsubscribe) {
         try {

@@ -369,6 +369,9 @@ def _load_zotero(payload: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any]], str
     if not library_id or not api_key:
         return None, "Zotero credentials missing."
 
+    def _norm_join(s: str) -> str:
+        return " ".join("".join(ch.lower() if ch.isalnum() else " " for ch in s).split())
+
     try:
         from pyzotero import zotero
     except Exception as exc:
@@ -387,16 +390,38 @@ def _load_zotero(payload: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any]], str
         if collection_name:
             collections = client.collections()
             collection_key = None
+            available = []
+            norm_target = _norm_join(collection_name)
             for coll in collections:
                 data = coll.get("data", {})
-                if str(data.get("name") or "").strip().lower() == collection_name.lower():
-                    collection_key = coll.get("key")
+                key = str(coll.get("key") or "").strip()
+                name = str(data.get("name") or "").strip()
+                if key:
+                    available.append(f"{key}:{name}")
+                if (
+                    name.lower() == collection_name.lower()
+                    or key.lower() == collection_name.lower()
+                    or _norm_join(name) == norm_target
+                ):
+                    collection_key = key
                     break
+            if not collection_key:
+                # fallback: partial contains match on normalized name
+                for coll in collections:
+                    data = coll.get("data", {})
+                    key = str(coll.get("key") or "").strip()
+                    name = str(data.get("name") or "").strip()
+                    if norm_target and norm_target in _norm_join(name):
+                        collection_key = key
+                        break
+            sys.stderr.write(f"[datahub_host][zotero] requested='{collection_name}' available_first10={available[:10]}\n")
             if collection_key:
+                sys.stderr.write(f"[datahub_host][zotero] using collection key {collection_key}\n")
                 items = client.collection_items(collection_key, limit=limit)
             else:
-                return None, f"Collection '{collection_name}' not found."
+                return None, f"Collection '{collection_name}' not found. Available: {', '.join(available[:10])}"
         else:
+            sys.stderr.write("[datahub_host][zotero] no collection specified; fetching all items\n")
             items = client.items(limit=limit)
     except Exception as exc:
         return None, f"Zotero fetch failed: {exc}"
@@ -576,25 +601,28 @@ def main() -> None:
                 cached = _load_cache(cache_dir, cache_key)
                 if cached:
                     cached_table = _sanitize_table_dict(cached.get("table"))
-                    try:
-                        if cached_table:
+                    has_rows = bool(cached_table and isinstance(cached_table.get("rows"), list) and len(cached_table.get("rows")) > 0)
+                    if has_rows:
+                        try:
                             _write_references_cache(cache_dir, cached_table)
-                    except Exception:
-                        pass
-                    _write_last_cache_info(cache_dir, cache_key, {"type": "zotero", "collectionName": collection_name})
-                    if max_rows is not None and isinstance(cached_table, dict):
-                        cached_table = {
-                            "columns": cached_table.get("columns", []),
-                            "rows": list(cached_table.get("rows", []))[:max_rows],
-                        }
-                    sys.stdout.write(_safe_json({
-                        "status": "ok",
-                        "table": cached_table,
-                        "message": "Loaded from cache.",
-                        "cached": True,
-                        "source": {"type": "zotero", "collectionName": collection_name}
-                    }))
-                    return
+                        except Exception:
+                            pass
+                        _write_last_cache_info(cache_dir, cache_key, {"type": "zotero", "collectionName": collection_name})
+                        if max_rows is not None and isinstance(cached_table, dict):
+                            cached_table = {
+                                "columns": cached_table.get("columns", []),
+                                "rows": list(cached_table.get("rows", []))[:max_rows],
+                            }
+                        sys.stdout.write(_safe_json({
+                            "status": "ok",
+                            "table": cached_table,
+                            "message": "Loaded from cache.",
+                            "cached": True,
+                            "source": {"type": "zotero", "collectionName": collection_name}
+                        }))
+                        return
+                    else:
+                        sys.stderr.write(f"[datahub_host][zotero] cache hit but empty for {collection_name}; refetching.\n")
             # Always fetch the full dataset for caching + references; apply maxRows only to the UI table.
             payload_full = dict(payload)
             if "maxRows" in payload_full:

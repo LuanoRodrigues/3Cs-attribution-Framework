@@ -23,6 +23,8 @@ type PageLayoutAttrs = {
   marginsLeftCm: number;
   columns: number;
   columnsMode: ColumnsMode;
+  columnGapIn?: number;
+  columnWidthIn?: number | null;
   lineNumbering?: string;
   hyphenation?: string;
 };
@@ -38,7 +40,9 @@ const defaultLayout: PageLayoutAttrs = {
   marginsBottomCm: 2.54,
   marginsLeftCm: 2.54,
   columns: 1,
-  columnsMode: "one"
+  columnsMode: "one",
+  columnGapIn: 0.25,
+  columnWidthIn: null
 };
 
 const parseToCm = (value: number | string | undefined, fallback: number): number => {
@@ -79,6 +83,8 @@ const PageLayoutExtension = Extension.create({
           marginsLeftCm: { default: defaultLayout.marginsLeftCm },
           columns: { default: defaultLayout.columns },
           columnsMode: { default: defaultLayout.columnsMode },
+          columnGapIn: { default: defaultLayout.columnGapIn },
+          columnWidthIn: { default: defaultLayout.columnWidthIn },
           lineNumbering: { default: "none" },
           hyphenation: { default: "none" }
         }
@@ -123,14 +129,26 @@ const PageLayoutExtension = Extension.create({
         (orientation: Orientation) =>
           updateDocAttrs((attrs) => ({ ...attrs, orientation })),
       setPageColumns:
-        (input: { count: number; mode?: ColumnsMode }) =>
+        (input: { count: number; mode?: ColumnsMode; gapIn?: number; widthIn?: number | null }) =>
           updateDocAttrs((attrs) => {
             const forceSingle = shouldForceSingleColumn();
             const normalized = forceSingle ? 1 : Math.max(1, Math.min(4, Math.floor(input.count)));
+            const gapIn =
+              typeof input.gapIn === "number" && Number.isFinite(input.gapIn)
+                ? input.gapIn
+                : attrs.columnGapIn ?? defaultLayout.columnGapIn;
+            const widthIn =
+              input.widthIn !== undefined
+                ? typeof input.widthIn === "number" && Number.isFinite(input.widthIn) && input.widthIn > 0
+                  ? input.widthIn
+                  : null
+                : attrs.columnWidthIn ?? defaultLayout.columnWidthIn;
             return {
               ...attrs,
               columns: normalized,
-              columnsMode: forceSingle ? "one" : input.mode ?? defaultLayout.columnsMode
+              columnsMode: forceSingle ? "one" : input.mode ?? defaultLayout.columnsMode,
+              columnGapIn: gapIn,
+              columnWidthIn: widthIn
             };
           }),
       setLineNumbering:

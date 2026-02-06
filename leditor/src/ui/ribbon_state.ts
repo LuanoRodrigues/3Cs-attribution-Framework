@@ -17,6 +17,7 @@ import {
 import { isVisualBlocksEnabled } from "../editor/visual.ts";
 import { isSourceChecksVisible, subscribeSourceChecksThread } from "./source_checks_thread.ts";
 import { ribbonTraceCall } from "./ribbon_debugger.ts";
+import { parseSectionMeta } from "../editor/section_state.ts";
 
 const STATE_CONTRACT = (loadRibbonRegistry().stateContract ?? {}) as Record<string, string>;
 export type RibbonStateContract = typeof STATE_CONTRACT;
@@ -26,6 +27,28 @@ export type RibbonStateSnapshot = Partial<Record<RibbonStateKey, unknown>>;
 export type RibbonStateListener = (state: RibbonStateSnapshot) => void;
 
 const STATE_KEYS = Object.keys(STATE_CONTRACT) as RibbonStateKey[];
+
+const PREF_AUTO_LINK = "leditor.autoLink";
+const PREF_PASTE_AUTO_CLEAN = "leditor.pasteAutoClean";
+const PREF_EVENT_NAME = "leditor:ribbon-preferences";
+
+const readBoolPref = (key: string, fallback = false): boolean => {
+  try {
+    const raw = window.localStorage?.getItem(key);
+    if (raw == null) return fallback;
+    return raw === "1" || raw.toLowerCase() === "true";
+  } catch {
+    return fallback;
+  }
+};
+
+let trackChangesActive = false;
+if (typeof window !== "undefined") {
+  window.addEventListener("leditor:track-changes", (event) => {
+    const detail = (event as CustomEvent).detail as { active?: boolean } | undefined;
+    trackChangesActive = Boolean(detail?.active);
+  });
+}
 
 export const readBinding = (snapshot: RibbonStateSnapshot, bindingKey: RibbonStateKey): unknown => {
   return snapshot[bindingKey];
@@ -82,6 +105,8 @@ const stateSelectors: Partial<
   },
   fontColor: (editor) => readMarkAttribute(editor, "textColor", "color"),
   highlightColor: (editor) => readMarkAttribute(editor, "highlightColor", "highlight"),
+  textShadow: (editor) => editor.isActive("textShadow"),
+  textOutline: (editor) => editor.isActive("textOutline"),
   lineSpacing: (editor) => {
     const block = getSelectionBlockDescriptor(editor);
     return block?.attrs?.lineHeight ?? null;
@@ -126,17 +151,44 @@ const stateSelectors: Partial<
     const layout = getLayoutController();
     return layout?.getPageCount?.() ?? 1;
   },
-  autoLink: () => false,
+  pageColumns: (editor) => {
+    const { from } = editor.state.selection;
+    let sectionColumns: number | null = null;
+    editor.state.doc.nodesBetween(0, from, (node) => {
+      if (node.type.name !== "page_break") return true;
+      const kind = typeof node.attrs?.kind === "string" ? node.attrs.kind : "";
+      if (!kind.startsWith("section_")) return true;
+      const meta = parseSectionMeta(node.attrs?.sectionSettings);
+      sectionColumns = typeof meta.columns === "number" ? meta.columns : null;
+      return true;
+    });
+    if (typeof sectionColumns === "number" && Number.isFinite(sectionColumns)) {
+      return sectionColumns;
+    }
+    const raw = (editor.state.doc.attrs as any)?.columns;
+    if (typeof raw === "number" && Number.isFinite(raw)) return raw;
+    if (typeof raw === "string") {
+      const parsed = Number(raw);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+    return 1;
+  },
+  autoLink: () => readBoolPref(PREF_AUTO_LINK, false),
   tableDrawMode: () => false,
   responsiveTableDefault: () => false,
   textBoxDrawMode: () => false,
   formatPainter: () => false,
-  pasteAutoClean: () => false,
+  pasteAutoClean: () => readBoolPref(PREF_PASTE_AUTO_CLEAN, false),
   findRegex: () => false,
   findMatchCase: () => false,
   findWholeWords: () => false,
-  borders: () => null,
+  borders: (editor) => {
+    const block = getSelectionBlockDescriptor(editor);
+    const preset = block?.attrs?.borderPreset;
+    return typeof preset === "string" ? preset : null;
+  },
   shading: () => null,
+  trackChanges: () => trackChangesActive,
   citationStyle: (editor) => {
     const styleId = editor.state.doc.attrs?.citationStyleId;
     if (typeof styleId === "string") return styleId;
@@ -150,6 +202,9 @@ export class RibbonStateBus {
   private listeners = new Set<RibbonStateListener>();
   private pendingUpdate: number | NodeJS.Timeout | null = null;
   private unsubscribeSourceChecks: (() => void) | null = null;
+  private readonly handlePrefChange = (): void => {
+    this.scheduleUpdate();
+  };
 
   private readonly handleSelectionChange = (): void => {
     this.scheduleUpdate();
@@ -159,6 +214,10 @@ export class RibbonStateBus {
     this.updateState();
     this.editorHandle.on("selectionChange", this.handleSelectionChange);
     this.editorHandle.on("change", this.handleSelectionChange);
+    if (typeof window !== "undefined") {
+      window.addEventListener(PREF_EVENT_NAME, this.handlePrefChange);
+      window.addEventListener("leditor:track-changes", this.handlePrefChange);
+    }
     // Keep ribbon toggle bindings in sync with non-editor state (source checks visibility + thread).
     try {
       this.unsubscribeSourceChecks = subscribeSourceChecksThread(() => this.scheduleUpdate());
@@ -173,6 +232,10 @@ export class RibbonStateBus {
       this.editorHandle.off("change", this.handleSelectionChange);
     } catch {
       // ignore
+    }
+    if (typeof window !== "undefined") {
+      window.removeEventListener(PREF_EVENT_NAME, this.handlePrefChange);
+      window.removeEventListener("leditor:track-changes", this.handlePrefChange);
     }
     try {
       this.unsubscribeSourceChecks?.();

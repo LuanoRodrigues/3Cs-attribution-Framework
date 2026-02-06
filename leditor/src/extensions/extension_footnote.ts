@@ -54,6 +54,7 @@ class FootnoteNodeView implements FootnoteNodeViewAPI {
   private readonly getPos: () => number | null | undefined;
   private readonly root: HTMLElement;
   private readonly marker: HTMLElement;
+  private markerTitle: string | null = null;
 
   constructor({ node, view, getPos }: FootnoteNodeViewProps) {
     this.node = node;
@@ -103,6 +104,7 @@ class FootnoteNodeView implements FootnoteNodeViewAPI {
     this.marker = document.createElement("sup");
     this.marker.className = "leditor-footnote-marker";
     this.marker.setAttribute("aria-label", "Footnote");
+    this.setMarkerTitle(typeof node.attrs?.title === "string" ? node.attrs.title : null);
     this.marker.addEventListener("click", (event) => {
       event.preventDefault();
       // A4 layout owns the footnote UI. Trigger a focus request instead of opening a legacy popover.
@@ -116,6 +118,19 @@ class FootnoteNodeView implements FootnoteNodeViewAPI {
 
     footnoteRegistry.set(this.footnoteId, this);
     this.syncNumberFromDoc();
+  }
+
+  private setMarkerTitle(value: string | null) {
+    const next = typeof value === "string" ? value.trim() : "";
+    if (next && next !== this.markerTitle) {
+      this.marker.title = next;
+      this.markerTitle = next;
+      return;
+    }
+    if (!next && this.markerTitle) {
+      this.marker.removeAttribute("title");
+      this.markerTitle = null;
+    }
   }
 
   private syncNumberFromDoc() {
@@ -237,6 +252,7 @@ class FootnoteNodeView implements FootnoteNodeViewAPI {
     const kind: FootnoteKind = rawKind === "endnote" ? "endnote" : "footnote";
     const id = nextId;
     if (id) registerFootnoteId(id, kind);
+    this.setMarkerTitle(typeof node.attrs?.title === "string" ? node.attrs.title : null);
     this.syncNumberFromDoc();
     return true;
   }
@@ -346,6 +362,9 @@ const FootnoteExtension = TiptapNode.create({
       citationId: {
         default: null
       },
+      title: {
+        default: null
+      },
       // Legacy fallback for footnote text. The canonical text now lives in `footnoteBody` nodes.
       text: {
         default: ""
@@ -361,10 +380,12 @@ const FootnoteExtension = TiptapNode.create({
           const rawTextAttr = (node.getAttribute("data-footnote-text") || "").trim();
           const rawText =
             rawTextAttr.length > 0 ? rawTextAttr : (node.textContent || "").trim();
+          const title = node.getAttribute("data-footnote-title") || node.getAttribute("title") || null;
           return {
             footnoteId: node.getAttribute("data-footnote-id") || null,
             kind: node.getAttribute("data-footnote-kind") ?? "footnote",
             citationId: node.getAttribute("data-citation-id") || null,
+            title,
             text: rawText
           };
         }
@@ -383,6 +404,10 @@ const FootnoteExtension = TiptapNode.create({
     }
     if (HTMLAttributes.footnoteId) {
       attrs["data-footnote-id"] = HTMLAttributes.footnoteId;
+    }
+    if (typeof HTMLAttributes.title === "string" && HTMLAttributes.title.trim().length > 0) {
+      attrs["data-footnote-title"] = HTMLAttributes.title.trim();
+      attrs.title = HTMLAttributes.title.trim();
     }
     if (typeof HTMLAttributes.text === "string" && HTMLAttributes.text.trim().length > 0) {
       attrs["data-footnote-text"] = HTMLAttributes.text;

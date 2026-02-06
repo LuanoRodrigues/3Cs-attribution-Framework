@@ -163,6 +163,35 @@ export function ensureScreenColumns(state?: RetrieveDataHubState): { state?: Ret
   ensureColumn(SCREEN_LLM_DECISION_COL);
   ensureColumn(SCREEN_LLM_JUSTIFICATION_COL);
 
+  const statusIdx = findColumnIndexCaseInsensitive(nextColumns, "status");
+  const justificationIdx = findColumnIndexCaseInsensitive(nextColumns, "justification");
+  const llmDecisionIdx = nextColumns.indexOf(SCREEN_LLM_DECISION_COL);
+  const llmJustificationIdx = nextColumns.indexOf(SCREEN_LLM_JUSTIFICATION_COL);
+  if (llmDecisionIdx >= 0 && statusIdx >= 0) {
+    nextRows.forEach((row) => {
+      const current = row[llmDecisionIdx];
+      if (current === null || current === undefined || String(current).trim() === "") {
+        const fallback = row[statusIdx];
+        if (fallback !== null && fallback !== undefined && String(fallback).trim() !== "") {
+          row[llmDecisionIdx] = fallback;
+          changed = true;
+        }
+      }
+    });
+  }
+  if (llmJustificationIdx >= 0 && justificationIdx >= 0) {
+    nextRows.forEach((row) => {
+      const current = row[llmJustificationIdx];
+      if (current === null || current === undefined || String(current).trim() === "") {
+        const fallback = row[justificationIdx];
+        if (fallback !== null && fallback !== undefined && String(fallback).trim() !== "") {
+          row[llmJustificationIdx] = fallback;
+          changed = true;
+        }
+      }
+    });
+  }
+
   if (!changed) return { state, changed: false };
   return {
     state: {
