@@ -1203,7 +1203,7 @@
    ========================= */
 .leditor-ribbon .leditor-menu {
   display: none;
-  min-width: 220px;
+  min-width: 240px;
   font-family: var(--r-font-family);
   font-size: 12px;
   line-height: 1.3;
@@ -1230,6 +1230,41 @@
   letter-spacing: 0.01em;
 }
 
+.leditor-ribbon .leditor-menu-item__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.leditor-ribbon .leditor-menu-item__leading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.leditor-ribbon .leditor-menu-item__icon {
+  width: 16px;
+  height: 16px;
+  color: var(--r-muted);
+  flex: 0 0 auto;
+}
+
+.leditor-ribbon .leditor-menu-item__meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--r-muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.leditor-ribbon .leditor-menu-item__shortcut {
+  font-variant-numeric: tabular-nums;
+}
+
 .leditor-ribbon .leditor-menu-item:hover:not(:disabled),
 .leditor-ribbon .leditor-menu-item:focus-visible:not(:disabled) {
   background: var(--r-ctl-bg-hover);
@@ -1251,6 +1286,9 @@
   font-size: 12.5px;
   font-weight: 600;
   color: var(--r-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .leditor-ribbon .leditor-menu-item-description {

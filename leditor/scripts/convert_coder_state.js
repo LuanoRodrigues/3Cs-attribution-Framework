@@ -525,8 +525,36 @@ const lastNonWhitespaceChar = (node) => {
   return null;
 };
 
+const startsWithWhitespace = (node) => {
+  if (!node || !Array.isArray(node.content)) return false;
+  for (const child of node.content) {
+    if (child?.type !== "text") continue;
+    const text = String(child.text ?? "");
+    if (!text) continue;
+    return /^[\s\u00A0\u2000-\u200B]/.test(text);
+  }
+  return false;
+};
+
+const isEmptyParagraphBlock = (node) => {
+  if (!node || node.type !== "paragraph") return false;
+  const content = Array.isArray(node.content) ? node.content : [];
+  if (content.length === 0) return true;
+  for (const child of content) {
+    if (!child) continue;
+    if (child.type === "text") {
+      if (String(child.text ?? "").trim().length > 0) return false;
+      continue;
+    }
+    if (child.type === "anchorMarker") continue;
+    return false;
+  }
+  return true;
+};
+
 const mergeContinuationParagraphs = (blocks) => {
   const out = [];
+  let pendingEmpty = [];
   const trimLeadingWhitespace = (node) => {
     if (!node || !Array.isArray(node.content)) return node;
     const trimmed = [];
@@ -557,6 +585,10 @@ const mergeContinuationParagraphs = (blocks) => {
     return false;
   };
   for (const block of blocks) {
+    if (block?.type === "paragraph" && isEmptyParagraphBlock(block)) {
+      pendingEmpty.push(block);
+      continue;
+    }
     if (block?.type === "paragraph" && out.length) {
       const prev = out[out.length - 1];
       if (prev?.type === "paragraph") {
@@ -564,18 +596,30 @@ const mergeContinuationParagraphs = (blocks) => {
         const last = lastNonWhitespaceChar(prev);
         const startsLower = typeof first === "string" && /[a-z]/.test(first);
         const startsPunct = typeof first === "string" && /[),.;:\]]/.test(first);
+        const startsSpace = startsWithWhitespace(block);
         const prevTerminal = typeof last === "string" && /[.!?]/.test(last);
-        if (!prevTerminal && (startsLower || startsPunct)) {
+        if (!prevTerminal && (startsSpace || startsLower || startsPunct)) {
           let next = block;
           if (endsWithSpace(prev)) {
             next = trimLeadingWhitespace(block);
+          } else if (!startsPunct && !startsSpace) {
+            prev.content = [...(prev.content || []), { type: "text", text: " " }];
           }
           prev.content = [...(prev.content || []), ...(next.content || [])];
+          pendingEmpty = [];
           continue;
         }
       }
     }
+    if (pendingEmpty.length) {
+      out.push(...pendingEmpty);
+      pendingEmpty = [];
+    }
     out.push(block);
+  }
+  if (pendingEmpty.length) {
+    out.push(...pendingEmpty);
+    pendingEmpty = [];
   }
   return out;
 };
@@ -812,7 +856,7 @@ async function main() {
       for (const n of nodes) visit(n, 1);
     }
 
-    const mergedBlocks = mergeLeadingSpaceParagraphs(allBlocks);
+    const mergedBlocks = mergeContinuationParagraphs(mergeLeadingSpaceParagraphs(allBlocks));
 
     if (mergedBlocks.length === 0) {
       console.error("[convert] No content blocks found.");

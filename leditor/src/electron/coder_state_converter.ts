@@ -319,8 +319,36 @@ const lastNonWhitespaceChar = (node: PMNode | undefined): string | null => {
   return null;
 };
 
+const startsWithWhitespace = (node: PMNode | undefined): boolean => {
+  if (!node?.content) return false;
+  for (const child of node.content) {
+    if (child?.type !== "text") continue;
+    const text = String(child.text ?? "");
+    if (!text) continue;
+    return /^[\s\u00A0\u2000-\u200B]/.test(text);
+  }
+  return false;
+};
+
+const isEmptyParagraphBlock = (node: PMNode | undefined): boolean => {
+  if (!node || node.type !== "paragraph") return false;
+  const content = node.content ?? [];
+  if (content.length === 0) return true;
+  for (const child of content) {
+    if (!child) continue;
+    if (child.type === "text") {
+      if (String(child.text ?? "").trim().length > 0) return false;
+      continue;
+    }
+    if (child.type === "anchorMarker") continue;
+    return false;
+  }
+  return true;
+};
+
 const mergeContinuationParagraphs = (blocks: PMNode[]): PMNode[] => {
   const out: PMNode[] = [];
+  let pendingEmpty: PMNode[] = [];
   const trimLeadingWhitespace = (node: PMNode): PMNode => {
     if (!node?.content) return node;
     const trimmed: PMNode[] = [];
@@ -351,6 +379,10 @@ const mergeContinuationParagraphs = (blocks: PMNode[]): PMNode[] => {
     return false;
   };
   for (const block of blocks) {
+    if (block?.type === "paragraph" && isEmptyParagraphBlock(block)) {
+      pendingEmpty.push(block);
+      continue;
+    }
     if (block?.type === "paragraph" && out.length) {
       const prev = out[out.length - 1];
       if (prev?.type === "paragraph") {
@@ -360,19 +392,31 @@ const mergeContinuationParagraphs = (blocks: PMNode[]): PMNode[] => {
           typeof first === "string" && first.length === 1 && /[a-z]/.test(first);
         const startsPunct =
           typeof first === "string" && first.length === 1 && /[),.;:\]]/.test(first);
+        const startsSpace = startsWithWhitespace(block);
         const prevTerminal =
           typeof last === "string" && last.length === 1 && /[.!?]/.test(last);
-        if (!prevTerminal && (startsLower || startsPunct)) {
+        if (!prevTerminal && (startsSpace || startsLower || startsPunct)) {
           let next = block;
           if (endsWithSpace(prev)) {
             next = trimLeadingWhitespace(block);
+          } else if (!startsPunct && !startsSpace) {
+            prev.content = [...(prev.content || []), { type: "text", text: " " }];
           }
           prev.content = [...(prev.content || []), ...(next.content || [])];
+          pendingEmpty = [];
           continue;
         }
       }
     }
+    if (pendingEmpty.length) {
+      out.push(...pendingEmpty);
+      pendingEmpty = [];
+    }
     out.push(block);
+  }
+  if (pendingEmpty.length) {
+    out.push(...pendingEmpty);
+    pendingEmpty = [];
   }
   return out;
 };
@@ -615,7 +659,7 @@ export const convertCoderStateToLedoc = async (
       for (const n of nodes) visit(n, 1);
     }
 
-    const mergedBlocks = mergeLeadingSpaceParagraphs(allBlocks);
+    const mergedBlocks = mergeContinuationParagraphs(mergeLeadingSpaceParagraphs(allBlocks));
 
     if (mergedBlocks.length === 0) {
       warnings.push("No content blocks found; created an empty document.");

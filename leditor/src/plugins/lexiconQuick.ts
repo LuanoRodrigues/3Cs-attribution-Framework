@@ -2,6 +2,7 @@ import { registerPlugin } from "../api/plugin_registry.ts";
 import type { EditorHandle } from "../api/leditor.ts";
 import { getAiSettings } from "../ui/ai_settings.ts";
 import { buildLlmCacheKey, getLlmCacheEntry, setLlmCacheEntry } from "../ui/llm_cache.ts";
+import { stableStringify } from "../shared/persona.ts";
 
 type LexiconMode = "synonyms" | "antonyms" | "definition" | "explain";
 
@@ -19,6 +20,7 @@ const getCacheKey = (args: {
   sentence: string;
   provider: string;
   model: string;
+  personaKey: string;
 }) => JSON.stringify(args);
 
 const getCached = (key: string): any | null => {
@@ -618,12 +620,14 @@ const runLexicon = async (editorHandle: EditorHandle, mode: LexiconMode, title: 
   }
 
   const settings = getAiSettings();
+  const personaKey = stableStringify(settings.personaConfig ?? {});
   const payload = {
     provider: settings.provider,
     model: settings.model,
     mode,
     text: selectedText,
-    sentence: context
+    sentence: context,
+    personaConfig: settings.personaConfig
   };
   logLexicon("request", {
     mode,
@@ -637,7 +641,8 @@ const runLexicon = async (editorHandle: EditorHandle, mode: LexiconMode, title: 
     text: selectedText,
     sentence: context,
     provider: settings.provider,
-    model: settings.model
+    model: settings.model,
+    personaKey
   });
   const llmCacheKey = buildLlmCacheKey({
     fn: "lexicon",

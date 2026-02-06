@@ -35,7 +35,7 @@
     "build:lib:global": "npx esbuild scripts/lib-global-entry.ts --bundle --platform=browser --format=esm --sourcemap --outfile=dist/lib/leditor.global.mjs --loader:.ttf=dataurl --loader:.woff=dataurl --loader:.woff2=dataurl --loader:.html=text --loader:.csl=text --loader:.xml=text --alias:node:fs/promises=./scripts/shims/fs-promises.js --external:@simonwep/pickr/dist/pickr.min.css",
     "build:lib": "npm run build:lib:esm && npm run build:lib:global && npm run build:lib:cjs",
     "build:public": "node scripts/copy-public.js",
-    "build:electron": "tsc --project tsconfig.electron.json",
+    "build:electron": "tsc --project tsconfig.electron.json && node scripts/copy-personas.js",
     "build": "npm run generate:templates && npm run build:renderer && npm run build:public && npm run build:electron",
     "ribbon:validate": "node -e \"console.log('ribbon:validate removed (JSON ribbon deprecated)')\"",
     "test:pagination": "node scripts/pagination_fixture.mjs",

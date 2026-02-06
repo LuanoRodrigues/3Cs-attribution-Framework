@@ -432,6 +432,7 @@ export const createAgentSidebar = (
     suggestions?: string[];
     selected?: string;
     error?: string;
+    raw?: string;
   };
   type DictionarySelection = {
     from: number;
@@ -1462,16 +1463,17 @@ export const createAgentSidebar = (
             updateDictionaryEntry(search.id, mode, { status: "error", error: String(result?.error || "Lookup failed") });
             return;
           }
+          const raw = typeof result?.raw === "string" ? String(result.raw).trim() : "";
           if (mode === "definition") {
             const text = typeof result?.definition === "string" ? String(result.definition).trim() : "";
             logDictionary("result", { mode, text: clip(text, 200) });
-            updateDictionaryEntry(search.id, mode, { status: "success", text });
+            updateDictionaryEntry(search.id, mode, { status: "success", text, raw });
             return;
           }
           if (mode === "explain") {
             const text = typeof result?.explanation === "string" ? String(result.explanation).trim() : "";
             logDictionary("result", { mode, text: clip(text, 200) });
-            updateDictionaryEntry(search.id, mode, { status: "success", text });
+            updateDictionaryEntry(search.id, mode, { status: "success", text, raw });
             return;
           }
           const suggestions = Array.isArray(result?.suggestions) ? result.suggestions : [];
@@ -1481,7 +1483,7 @@ export const createAgentSidebar = (
             .filter(Boolean);
           const opts = normalizeSuggestions(rawOpts, selection.text);
           logDictionary("result", { mode, suggestions: opts });
-          updateDictionaryEntry(search.id, mode, { status: "success", suggestions: opts });
+          updateDictionaryEntry(search.id, mode, { status: "success", suggestions: opts, raw });
         })
         .catch((error: any) => {
           logDictionary("error", { mode, error: String(error?.message || "Lookup failed") });
@@ -1613,6 +1615,12 @@ export const createAgentSidebar = (
           body.textContent = "Run a lookup to see results.";
         }
         content.appendChild(body);
+        if (activeEntry.raw && (activeEntry.status === "success" || activeEntry.status === "error")) {
+          const debug = document.createElement("div");
+          debug.className = "leditor-agent-sidebar__dictDebug";
+          debug.textContent = `Debug response:\n${activeEntry.raw}`;
+          content.appendChild(debug);
+        }
         content.addEventListener("pointerdown", (e) => {
           const target = e.target as HTMLElement | null;
           if (target && target.closest("button")) return;
@@ -1621,6 +1629,7 @@ export const createAgentSidebar = (
       } else {
         const list = document.createElement("div");
         list.className = "leditor-agent-sidebar__dictOptionList";
+        let debug: HTMLDivElement | null = null;
         if (activeEntry.status === "loading") {
           const loading = document.createElement("div");
           loading.className = "leditor-agent-sidebar__dictEmpty";
@@ -1638,6 +1647,11 @@ export const createAgentSidebar = (
             empty.className = "leditor-agent-sidebar__dictEmpty";
             empty.textContent = "No results.";
             list.appendChild(empty);
+            if (activeEntry.raw) {
+              debug = document.createElement("div");
+              debug.className = "leditor-agent-sidebar__dictDebug";
+              debug.textContent = `Debug response:\n${activeEntry.raw}`;
+            }
           } else {
             for (const opt of options) {
               const row = document.createElement("button");
@@ -1693,7 +1707,11 @@ export const createAgentSidebar = (
           }
         });
         acceptRow.appendChild(acceptBtn);
-        content.append(list, acceptRow);
+        if (debug) {
+          content.append(list, debug, acceptRow);
+        } else {
+          content.append(list, acceptRow);
+        }
       }
 
       wrapper.append(header, historyRow, tabs, content);
@@ -2848,12 +2866,32 @@ export const createAgentSidebar = (
     const editor = editorHandle.getEditor();
     const state = editor.state;
     const baseDoc = state.doc;
+    const buildFallbackTextNode = (doc: any, rangeFrom: number, rangeTo: number, value: string) => {
+      const schema = doc.type?.schema ?? editor.state.schema;
+      let marks: any[] = [];
+      doc.nodesBetween(rangeFrom, rangeTo, (node: any) => {
+        if (!node?.isText) return true;
+        marks = Array.isArray(node.marks) ? node.marks : [];
+        return false;
+      });
+      if (!marks.length) {
+        try {
+          const $from = doc.resolve(rangeFrom);
+          marks = Array.isArray($from.marks()) ? $from.marks() : [];
+        } catch {
+          marks = [];
+        }
+      }
+      return schema.text(String(value ?? ""), marks);
+    };
     const fragment = buildTextblockReplacementFragment(baseDoc, from, to, text);
     if (!fragment) {
       // Fallback: if not an exact textblock replacement, still prevent citation loss.
       assertAnchorsPreserved(baseDoc, from, to, text);
     }
-    const tr = fragment ? state.tr.replaceWith(from, to, fragment as any) : state.tr.insertText(text, from, to);
+    const tr = fragment
+      ? state.tr.replaceWith(from, to, fragment as any)
+      : state.tr.replaceWith(from, to, buildFallbackTextNode(baseDoc, from, to, text) as any);
     tr.setMeta("leditor-ai", { kind: "agent", ts: Date.now() });
     editor.view.dispatch(tr);
     editor.commands.focus();
@@ -2887,6 +2925,24 @@ export const createAgentSidebar = (
     const editor = editorHandle.getEditor();
     const state = editor.state;
     const baseDoc = state.doc;
+    const buildFallbackTextNode = (doc: any, rangeFrom: number, rangeTo: number, value: string) => {
+      const schema = doc.type?.schema ?? editor.state.schema;
+      let marks: any[] = [];
+      doc.nodesBetween(rangeFrom, rangeTo, (node: any) => {
+        if (!node?.isText) return true;
+        marks = Array.isArray(node.marks) ? node.marks : [];
+        return false;
+      });
+      if (!marks.length) {
+        try {
+          const $from = doc.resolve(rangeFrom);
+          marks = Array.isArray($from.marks()) ? $from.marks() : [];
+        } catch {
+          marks = [];
+        }
+      }
+      return schema.text(String(value ?? ""), marks);
+    };
     const sorted = [...items].sort((a, b) => b.from - a.from);
     let tr = state.tr;
     for (const item of sorted) {
@@ -2894,7 +2950,9 @@ export const createAgentSidebar = (
       if (!fragment) {
         assertAnchorsPreserved(baseDoc, item.from, item.to, item.text);
       }
-      tr = fragment ? tr.replaceWith(item.from, item.to, fragment as any) : tr.insertText(item.text, item.from, item.to);
+      tr = fragment
+        ? tr.replaceWith(item.from, item.to, fragment as any)
+        : tr.replaceWith(item.from, item.to, buildFallbackTextNode(baseDoc, item.from, item.to, item.text) as any);
     }
     tr.setMeta("leditor-ai", { kind: "agent", ts: Date.now(), items: sorted.length });
     editor.view.dispatch(tr);

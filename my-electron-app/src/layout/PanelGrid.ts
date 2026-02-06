@@ -87,8 +87,7 @@ export class PanelGrid {
     | null = null;
   private fixedPanelSizes: Partial<Record<PanelId, number>> = {
     panel1: 320,
-    panel2: 360,
-    panel4: 380
+    panel2: 360
   };
 
   constructor(private container: HTMLElement, options?: { panelsV2Enabled?: boolean }) {
@@ -1032,7 +1031,6 @@ export class PanelGrid {
       this.fixedPanelSizes = {
         panel1: 320,
         panel2: 360,
-        panel4: 380,
         ...(preset.fixedPanelSizes || {})
       };
     } else {

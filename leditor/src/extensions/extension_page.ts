@@ -751,6 +751,7 @@ const paragraphEndsWithSpace = (node: ProseMirrorNode): boolean => {
 };
 
 const dbg = (fn: string, msg: string) => {
+  if (!debugEnabled()) return;
   console.debug(`[extension_page.ts][${fn}][debug] ${msg}`);
 };
 
@@ -770,6 +771,27 @@ const paragraphStartsWithWhitespace = (node: ProseMirrorNode): boolean => {
     return false;
   }
   return false;
+};
+
+const paragraphIsEmpty = (node: ProseMirrorNode): boolean => {
+  if (!node || node.type?.name !== "paragraph") return false;
+  if (node.childCount === 0) return true;
+  for (let i = 0; i < node.childCount; i += 1) {
+    const child = node.child(i);
+    if (child.isText) {
+      const text = child.text ?? "";
+      if (text.trim().length > 0) return false;
+      continue;
+    }
+    const childType = child.type?.name;
+    const isSkippableInline =
+      childType === "anchorMarker" ||
+      (child.isInline && child.isLeaf && (!child.textContent || child.textContent.length === 0));
+    if (isSkippableInline) continue;
+    if (child.textContent && child.textContent.trim().length > 0) return false;
+    return false;
+  }
+  return true;
 };
 
 const trimLeadingWhitespaceNodes = (nodes: ProseMirrorNode[], schema: any): ProseMirrorNode[] => {
@@ -873,30 +895,44 @@ const mergeContinuationParagraphs = (state: any, pageType: any): any | null => {
   let mergedCount = 0;
   for (let i = paras.length - 1; i >= 1; i -= 1) {
     const curr = paras[i];
-    const prev = paras[i - 1];
-    if (curr.pagePos !== prev.pagePos) continue;
-    if (curr.pos !== prev.pos + prev.node.nodeSize) continue;
-    if (!paragraphStartsWithContinuation(curr.node)) continue;
-    if (paragraphEndsWithTerminal(prev.node)) continue;
-    const schema = prev.node.type.schema;
-    const prevChildren: ProseMirrorNode[] = [];
-    normalizeParagraphInline(prev.node, schema).forEach((child) => prevChildren.push(child));
-    let nextChildren: ProseMirrorNode[] = [];
-    normalizeParagraphInline(curr.node, schema).forEach((child) => nextChildren.push(child));
-    if (nodesEndWithSpace(prevChildren)) {
-      nextChildren = trimLeadingWhitespaceNodes(nextChildren, schema);
-    } else if (!paragraphStartsWithPunct(curr.node) && !paragraphStartsWithWhitespace(curr.node)) {
-      prevChildren.push(schema.text(" "));
-    }
-    const mergedChildren = [...prevChildren, ...nextChildren];
-    const mergedPara = prev.node.type.create(prev.node.attrs, Fragment.fromArray(mergedChildren), prev.node.marks);
-    const from = prev.pos;
-    const to = curr.pos + curr.node.nodeSize;
-    try {
-      tr = tr.replaceWith(from, to, mergedPara);
-      mergedCount += 1;
-    } catch {
-      // ignore merge failures
+    if (paragraphIsEmpty(curr.node)) continue;
+    let j = i - 1;
+    while (j >= 0) {
+      const candidate = paras[j];
+      const next = paras[j + 1];
+      if (candidate.pagePos !== curr.pagePos) break;
+      if (next.pos !== candidate.pos + candidate.node.nodeSize) break;
+      if (paragraphIsEmpty(candidate.node)) {
+        j -= 1;
+        continue;
+      }
+      if (!paragraphStartsWithContinuation(curr.node)) break;
+      if (paragraphEndsWithTerminal(candidate.node)) break;
+      const schema = candidate.node.type.schema;
+      const prevChildren: ProseMirrorNode[] = [];
+      normalizeParagraphInline(candidate.node, schema).forEach((child) => prevChildren.push(child));
+      let nextChildren: ProseMirrorNode[] = [];
+      normalizeParagraphInline(curr.node, schema).forEach((child) => nextChildren.push(child));
+      if (nodesEndWithSpace(prevChildren)) {
+        nextChildren = trimLeadingWhitespaceNodes(nextChildren, schema);
+      } else if (!paragraphStartsWithPunct(curr.node) && !paragraphStartsWithWhitespace(curr.node)) {
+        prevChildren.push(schema.text(" "));
+      }
+      const mergedChildren = [...prevChildren, ...nextChildren];
+      const mergedPara = candidate.node.type.create(
+        candidate.node.attrs,
+        Fragment.fromArray(mergedChildren),
+        candidate.node.marks
+      );
+      const from = candidate.pos;
+      const to = curr.pos + curr.node.nodeSize;
+      try {
+        tr = tr.replaceWith(from, to, mergedPara);
+        mergedCount += 1;
+      } catch {
+        // ignore merge failures
+      }
+      break;
     }
   }
   if (mergedCount > 0) {
@@ -3796,12 +3832,26 @@ const paginateView = (
       view.state.doc.childCount <= 3 &&
       memo.lastFlattenDocSize !== docSize
     ) {
+      if (debugEnabled()) {
+        logDebug("flatten eligible", {
+          pageCount: view.state.doc.childCount,
+          docSize,
+          lastExternalChangeAt: memo.lastExternalChangeAt,
+          lastFlattenAt: memo.lastFlattenAt
+        });
+      }
       const flattened = flattenPagesForReflow(view.state, pageType, {
         normalizeShortParagraphs: false
       });
       memo.lastFlattenAt = now;
       memo.lastFlattenDocSize = docSize;
       if (flattened) {
+        if (debugEnabled()) {
+          logDebug("flatten applied", {
+            pageCount: view.state.doc.childCount,
+            docSize
+          });
+        }
         dispatchPagination(view, flattened);
         return;
       }
@@ -5269,9 +5319,12 @@ export const PagePagination = Extension.create({
             return meta?.source !== "pagination";
           });
           lastMutationWasDelete = nonPaginationTransactions.some((tr) => isDeleteTransaction(tr));
+          const externalDocChange = nonPaginationTransactions.some((tr) => tr.docChanged);
           const hasPaginationOnly = transactions.length > 0 && nonPaginationTransactions.length === 0;
-          if (!hasPaginationOnly && transactions.length > 0) {
+          if (externalDocChange) {
             paginationMemo.lastExternalChangeAt = performance.now();
+          } else if (!hasPaginationOnly && transactions.length > 0 && debugEnabled()) {
+            dbg("appendTransaction", "non-pagination selection-only transaction; skipping external change timestamp");
           }
           return wrapDocInPage(newState);
         },
@@ -5281,7 +5334,10 @@ export const PagePagination = Extension.create({
           const shouldSuppressPagination = () => {
             try {
               const until = (window as any).__leditorDisablePaginationUntil;
-              return typeof until === "number" && Number.isFinite(until) && performance.now() < until;
+              if (typeof until !== "number" || !Number.isFinite(until)) return false;
+              // Never suppress the very first pagination pass (single-page docs need a split).
+              if (editorView.state.doc.childCount <= 1) return false;
+              return performance.now() < until;
             } catch {
               return false;
             }

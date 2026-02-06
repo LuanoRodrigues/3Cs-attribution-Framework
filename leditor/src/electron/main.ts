@@ -8,6 +8,8 @@ import mammoth from "mammoth";
 import OpenAI from "openai";
 import { z } from "zod";
 import type { AiSettings } from "./shared/ai";
+import personasLibraryRaw from "../ui/personas.json";
+import { compilePersonaConfig, legacyStyleToGlobalParams, normalizePersonaConfig, type PersonaLibrary } from "../shared/persona";
 import { applyEditsToText, extractParagraphsFromMarkedText, normalizeEdits, type AgentEdit } from "./agent_utils";
 import {
   LEDOC_BUNDLE_VERSION,
@@ -25,6 +27,7 @@ const DEFAULT_LEDOC_FILENAME = "coder_state.ledoc";
 const DEFAULT_EMBEDDING_MODEL = (process.env.LEDITOR_EMBEDDING_MODEL || "text-embedding-3-small").trim();
 const EMBEDDING_BATCH_SIZE = Math.max(8, Math.min(256, Number(process.env.LEDITOR_EMBEDDING_BATCH_SIZE) || 64));
 const EMBEDDING_TOP_K = Math.max(3, Math.min(12, Number(process.env.LEDITOR_EMBEDDING_TOP_K) || 6));
+const PERSONA_LIBRARY = personasLibraryRaw as PersonaLibrary;
 
 // Avoid GPU-process crashes in environments without stable GPU/driver support.
 app.disableHardwareAcceleration();
@@ -435,13 +438,11 @@ const callOpenAiCompatibleChat = async (args: {
   apiKey: string;
   model: string;
   messages: Array<{ role: "system" | "user" | "assistant"; content: string }>;
-  temperature?: number;
   maxOutputTokens?: number;
   signal?: AbortSignal;
 }): Promise<string> => {
   const url = `${args.baseUrl.replace(/\/+$/, "")}/chat/completions`;
   const body: any = { model: args.model, messages: args.messages };
-  if (typeof args.temperature === "number") body.temperature = args.temperature;
   if (Number.isFinite(args.maxOutputTokens)) {
     body.max_tokens = Math.max(1, Math.floor(Number(args.maxOutputTokens)));
   }
@@ -460,7 +461,6 @@ const callGeminiGenerateContent = async (args: {
   model: string;
   system: string;
   input: string;
-  temperature?: number;
   maxOutputTokens?: number;
   signal?: AbortSignal;
 }): Promise<string> => {
@@ -471,9 +471,8 @@ const callGeminiGenerateContent = async (args: {
   const body: any = {
     contents: [{ role: "user", parts: [{ text: combined }] }]
   };
-  if (typeof args.temperature === "number" || Number.isFinite(args.maxOutputTokens)) {
+  if (Number.isFinite(args.maxOutputTokens)) {
     body.generationConfig = {
-      ...(typeof args.temperature === "number" ? { temperature: args.temperature } : {}),
       ...(Number.isFinite(args.maxOutputTokens) ? { maxOutputTokens: Math.max(1, Math.floor(args.maxOutputTokens!)) } : {})
     };
   }
@@ -497,7 +496,6 @@ const callLlmText = async (args: {
   model: string;
   system: string;
   input: string;
-  temperature?: number;
   maxOutputTokens?: number;
   stream?: boolean;
   onStreamDelta?: (delta: string) => void;
@@ -508,11 +506,8 @@ const callLlmText = async (args: {
     const client = getOpenAiClient(args.apiKey);
     if (!client) throw new Error("Missing OPENAI_API_KEY.");
     const isCodex = /^codex-/i.test(args.model);
-    const createResponse = async (allowTemperature: boolean) => {
+    const createResponse = async () => {
       const body: any = { model: args.model, instructions: args.system, input: args.input };
-      if (!isCodex && allowTemperature && typeof args.temperature === "number") {
-        body.temperature = args.temperature;
-      }
       if (Number.isFinite(args.maxOutputTokens)) {
         body.max_output_tokens = Math.max(1, Math.floor(Number(args.maxOutputTokens)));
       }
@@ -521,7 +516,7 @@ const callLlmText = async (args: {
     };
     try {
       if (args.stream && typeof args.onStreamDelta === "function") {
-        const stream: any = await createResponse(true);
+        const stream: any = await createResponse();
         let output = "";
         for await (const event of stream) {
           if (event?.type === "response.output_text.delta" && typeof event.delta === "string") {
@@ -531,25 +526,9 @@ const callLlmText = async (args: {
         }
         return output.trim();
       }
-      const response: any = await createResponse(true);
+      const response: any = await createResponse();
       return String(response?.output_text ?? "").trim();
     } catch (error) {
-      const msg = normalizeError(error);
-      if (msg.includes("Unsupported parameter") && msg.includes("'temperature'")) {
-        if (args.stream && typeof args.onStreamDelta === "function") {
-          const stream: any = await createResponse(false);
-          let output = "";
-          for await (const event of stream) {
-            if (event?.type === "response.output_text.delta" && typeof event.delta === "string") {
-              output += event.delta;
-              args.onStreamDelta(event.delta);
-            }
-          }
-          return output.trim();
-        }
-        const response: any = await createResponse(false);
-        return String(response?.output_text ?? "").trim();
-      }
       throw error;
     }
   }
@@ -566,7 +545,6 @@ const callLlmText = async (args: {
         apiKey: args.apiKey,
         model: args.model,
         messages,
-        temperature: args.temperature,
         maxOutputTokens: args.maxOutputTokens,
         signal: args.signal
       });
@@ -579,7 +557,6 @@ const callLlmText = async (args: {
           apiKey: args.apiKey,
           model: args.model,
           messages,
-          temperature: args.temperature,
           maxOutputTokens: args.maxOutputTokens,
           signal: args.signal
         });
@@ -598,7 +575,6 @@ const callLlmText = async (args: {
       apiKey: args.apiKey,
       model: args.model,
       messages,
-      temperature: args.temperature,
       maxOutputTokens: args.maxOutputTokens,
       signal: args.signal
     });
@@ -610,7 +586,6 @@ const callLlmText = async (args: {
     model: args.model,
     system: args.system,
     input: args.input,
-    temperature: args.temperature,
     maxOutputTokens: args.maxOutputTokens,
     signal: args.signal
   });
@@ -734,7 +709,6 @@ const runCompatAgentWorkflow = async (args: {
   provider: LlmProviderId;
   apiKey: string;
   model: string;
-  temperature: number;
   signal?: AbortSignal;
 }): Promise<{ assistantText: string; applyText?: string; operations: AgentOperation[] }> => {
   const { system, user } = buildAgentPrompt(args.payload);
@@ -757,7 +731,6 @@ const runCompatAgentWorkflow = async (args: {
     model: args.model,
     system,
     input: inputText,
-    temperature: args.temperature,
     signal: args.signal
   });
   const parsed = extractFirstJsonObject(raw);
@@ -819,7 +792,6 @@ const runOpenAiAgentWorkflow = async (args: {
   payload: AgentRequestPayload;
   apiKey: string;
   model: string;
-  temperature: number;
   signal?: AbortSignal;
   onStream?: (update: AgentStreamUpdate) => void;
 }): Promise<{ assistantText: string; operations: AgentOperation[]; citations?: any[]; actions?: any[]; route?: string }> => {
@@ -900,8 +872,7 @@ const runOpenAiAgentWorkflow = async (args: {
       "Return JSON: {\"instruction\": string}."
     ].join("\n"),
     model: args.model,
-    outputType: rewriteSchema,
-    modelSettings: { temperature: 0 }
+    outputType: rewriteSchema
   });
 
   const classifyAgent = new Agent({
@@ -914,8 +885,7 @@ const runOpenAiAgentWorkflow = async (args: {
       "needsCode: true ONLY if calculation or code execution is required to answer."
     ].join("\n"),
     model: args.model,
-    outputType: classifySchema,
-    modelSettings: { temperature: 0 }
+    outputType: classifySchema
   });
 
   let rewrittenInstruction = args.payload.instruction;
@@ -986,8 +956,7 @@ const runOpenAiAgentWorkflow = async (args: {
     instructions: basePrompt.system,
     model: args.model,
     tools: tools.length ? tools : undefined,
-    outputType: outputSchema,
-    modelSettings: { temperature: args.temperature }
+    outputType: outputSchema
   });
   const internalQaAgent = new Agent({
     name: "internalQA",
@@ -997,8 +966,7 @@ const runOpenAiAgentWorkflow = async (args: {
       ...(docTool ? [docTool] : []),
       ...(typeof webSearchTool === "function" ? [webSearchTool({ userLocation: { type: "approximate" } })] : [])
     ],
-    outputType: outputSchema,
-    modelSettings: { temperature: args.temperature }
+    outputType: outputSchema
   });
   const externalFactAgent = new Agent({
     name: "externalFactFinding",
@@ -1009,16 +977,14 @@ const runOpenAiAgentWorkflow = async (args: {
       ...(typeof webSearchTool === "function" ? [webSearchTool({ userLocation: { type: "approximate" } })] : []),
       ...(typeof codeInterpreterTool === "function" ? [codeInterpreterTool()] : [])
     ],
-    outputType: outputSchema,
-    modelSettings: { temperature: args.temperature }
+    outputType: outputSchema
   });
   const generalAgent = new Agent({
     name: "generalAssistant",
     instructions: generalPrompt,
     model: args.model,
     tools: tools.length ? tools : undefined,
-    outputType: outputSchema,
-    modelSettings: { temperature: args.temperature }
+    outputType: outputSchema
   });
 
   const onStream = typeof args.onStream === "function" ? args.onStream : null;
@@ -1078,13 +1044,12 @@ const buildAgentPrompt = (payload: AgentRequestPayload): { system: string; user:
     throw new Error('agent-request: scope must be "selection" | "document"');
   }
 
-  const audienceRaw = typeof (payload.settings as any)?.audience === "string" ? String((payload.settings as any).audience) : "";
-  const audience =
-    audienceRaw === "general" || audienceRaw === "knowledgeable" || audienceRaw === "expert" ? audienceRaw : "expert";
-  const formalityRaw = typeof (payload.settings as any)?.formality === "string" ? String((payload.settings as any).formality) : "";
-  const formality =
-    formalityRaw === "casual" || formalityRaw === "neutral" || formalityRaw === "formal" ? formalityRaw : "formal";
-  const styleLine = `Style: audience=${audience}; formality=${formality}.`;
+  const legacyGlobal = legacyStyleToGlobalParams((payload.settings as any) ?? {});
+  const personaConfig = normalizePersonaConfig((payload.settings as any)?.personaConfig, PERSONA_LIBRARY, legacyGlobal);
+  const compiledPersona = compilePersonaConfig(personaConfig, PERSONA_LIBRARY);
+  const personaConfigLine = `PersonaConfig JSON: ${compiledPersona.configJson}`;
+  const personaHashLine = `PersonaConfig Hash: ${compiledPersona.hash}.`;
+  const personaDirectivesLine = `PersonaDirectives:\n${compiledPersona.directives}`;
   const actionIdRaw = typeof payload.actionId === "string" ? payload.actionId.trim() : "";
   const actionLine = actionIdRaw ? `Action: ${actionIdRaw}. Follow this action unless it conflicts with the instruction.` : "";
 
@@ -1098,7 +1063,9 @@ const buildAgentPrompt = (payload: AgentRequestPayload): { system: string; user:
 
   const system = [
     "You are an AI writing assistant embedded in an offline desktop academic editor.",
-    styleLine,
+    personaConfigLine,
+    personaHashLine,
+    personaDirectivesLine,
     actionLine,
     "Return STRICT JSON only (no markdown, no backticks, no extra keys).",
     'Schema: {"assistantText": string, "operations": Array<Operation>, "edits"?: Array<Edit>}.',
@@ -1217,7 +1184,6 @@ const runAgentRequestInternal = async (
         : "openai";
     const fallback = getDefaultModelForProvider(provider);
     const model = String(settings?.model || "").trim() || fallback.model || (provider === "openai" ? "codex-mini-latest" : "");
-    const temperature = typeof settings?.temperature === "number" ? settings.temperature : 0.2;
     const apiKey = getProviderApiKey(provider, settings?.apiKey);
     if (!apiKey) {
       const envKey = getProviderEnvKeyName(provider);
@@ -1245,7 +1211,6 @@ const runAgentRequestInternal = async (
             payload,
             apiKey,
             model,
-            temperature,
             signal: abortController.signal,
             onStream
           })
@@ -1254,7 +1219,6 @@ const runAgentRequestInternal = async (
             provider,
             apiKey,
             model,
-            temperature,
             signal: abortController.signal
           });
 
@@ -3766,6 +3730,8 @@ app.whenReady().then(() => {
         const mode = String(payload?.mode ?? "").toLowerCase();
         const text = String(payload?.text ?? "").trim();
         const sentenceRaw = typeof payload?.sentence === "string" ? String(payload.sentence).trim() : "";
+        const personaConfig = normalizePersonaConfig(payload?.personaConfig, PERSONA_LIBRARY, legacyStyleToGlobalParams(payload ?? {}));
+        const personaDirectives = compilePersonaConfig(personaConfig, PERSONA_LIBRARY).directives;
         const clip = (value: string, max: number) =>
           value.length > max ? `${value.slice(0, max)}...` : value;
         dbg("lexicon", "request", {
@@ -3795,20 +3761,27 @@ app.whenReady().then(() => {
           sentenceRaw.length > (isExplain ? 800 : 320)
             ? sentenceRaw.slice(0, isExplain ? 800 : 320).trim()
             : sentenceRaw;
+        const personaBlock = [
+          "Persona directives (apply to tone/word choice only; never change output format or length constraints):",
+          personaDirectives
+        ].join("\n");
         const system = isDefinition
           ? [
               "You are a dictionary helper inside an offline academic editor.",
+              personaBlock,
               "Given a selection and its sentence, return ONLY the definition text.",
               "Definition: 1 sentence, <= 25 words, no bullets, no quotes."
             ].join("\n")
           : isExplain
             ? [
                 "You are an explainer inside an offline academic editor.",
+                personaBlock,
                 "Given a selection and its paragraph, return ONLY the explanation text.",
                 "Explanation: 1-2 sentences, <= 40 words, no bullets, no quotes."
               ].join("\n")
             : [
                 "You are a thesaurus helper inside an offline academic editor.",
+                personaBlock,
                 "Given a selection and its sentence, return STRICT JSON only:",
                 "{\"suggestions\":string[]}",
                 "Exactly 5 short replacements, 1-2 words each, no numbering or quotes.",

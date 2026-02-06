@@ -1928,6 +1928,9 @@ export const mountA4Layout = (
   const getTargetGridMode = () => (viewMode === "two-page" ? "grid-2" : determineGridMode(zoomValue));
   const logPageStackState = (label: string) => {
     try {
+      if (!(window as any).__leditorPaginationDebug && !(window as any).__leditorA4LayoutDebug) {
+        return;
+      }
       const stackStyle = getComputedStyle(pageStack);
       const overlayStyle = getComputedStyle(overlayLayer);
       const info = {
@@ -2734,10 +2737,11 @@ export const mountA4Layout = (
       footnotePaginationArmed = false;
     } catch {
       // ignore
-	    } finally {
+    } finally {
       footnoteMode = false;
       try {
         (window as any).__leditorFootnoteMode = false;
+        (window as any).__leditorDisablePaginationUntil = 0;
       } catch {
         // ignore
       }

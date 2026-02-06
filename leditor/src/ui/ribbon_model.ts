@@ -3849,6 +3849,8 @@ export const referencesTab = {
                   "type": "menuItem",
                   "controlId": "toc.tableOfContents.auto1",
                   "label": "Automatic Table 1",
+                  "description": "Classic multi-level table with leader dots.",
+                  "shortcut": "Ctrl+Alt+T",
                   "iconKey": "icon.tocAuto",
                   "command": {
                     "id": "toc.insert.template",
@@ -3861,6 +3863,8 @@ export const referencesTab = {
                   "type": "menuItem",
                   "controlId": "toc.tableOfContents.auto2",
                   "label": "Automatic Table 2",
+                  "description": "Compact style with bold headings.",
+                  "shortcut": "Ctrl+Alt+Shift+T",
                   "iconKey": "icon.tocAuto",
                   "command": {
                     "id": "toc.insert.template",
@@ -3876,6 +3880,8 @@ export const referencesTab = {
                   "type": "menuItem",
                   "controlId": "toc.tableOfContents.custom",
                   "label": "Custom Table of Contents…",
+                  "description": "Build a TOC from current headings.",
+                  "shortcut": "Ctrl+Alt+C",
                   "iconKey": "icon.tocCustom",
                   "command": {
                     "id": "toc.insert.custom.openDialog"
@@ -3888,6 +3894,8 @@ export const referencesTab = {
                   "type": "menuItem",
                   "controlId": "toc.tableOfContents.remove",
                   "label": "Remove Table of Contents",
+                  "description": "Delete the current table of contents.",
+                  "shortcut": "Ctrl+Alt+Shift+R",
                   "iconKey": "icon.remove",
                   "command": {
                     "id": "toc.remove"
@@ -3920,6 +3928,8 @@ export const referencesTab = {
                   "type": "menuItem",
                   "controlId": "toc.addText.none",
                   "label": "Do Not Show in TOC",
+                  "description": "Exclude this heading from the TOC.",
+                  "shortcut": "Alt+Shift+0",
                   "command": {
                     "id": "toc.addText.setLevel",
                     "args": {
@@ -3931,6 +3941,8 @@ export const referencesTab = {
                   "type": "menuItem",
                   "controlId": "toc.addText.level1",
                   "label": "Level 1",
+                  "description": "Set heading to TOC level 1.",
+                  "shortcut": "Alt+Shift+1",
                   "command": {
                     "id": "toc.addText.setLevel",
                     "args": {
@@ -3942,6 +3954,8 @@ export const referencesTab = {
                   "type": "menuItem",
                   "controlId": "toc.addText.level2",
                   "label": "Level 2",
+                  "description": "Set heading to TOC level 2.",
+                  "shortcut": "Alt+Shift+2",
                   "command": {
                     "id": "toc.addText.setLevel",
                     "args": {
@@ -3953,6 +3967,8 @@ export const referencesTab = {
                   "type": "menuItem",
                   "controlId": "toc.addText.level3",
                   "label": "Level 3",
+                  "description": "Set heading to TOC level 3.",
+                  "shortcut": "Alt+Shift+3",
                   "command": {
                     "id": "toc.addText.setLevel",
                     "args": {
@@ -3988,6 +4004,8 @@ export const referencesTab = {
                   "type": "menuItem",
                   "controlId": "toc.updateTable.pageNumbers",
                   "label": "Update page numbers only",
+                  "description": "Refresh pagination without rewriting text.",
+                  "shortcut": "Ctrl+Alt+U",
                   "command": {
                     "id": "toc.update",
                     "args": {
@@ -3999,6 +4017,8 @@ export const referencesTab = {
                   "type": "menuItem",
                   "controlId": "toc.updateTable.all",
                   "label": "Update entire table",
+                  "description": "Rebuild entries and page numbers.",
+                  "shortcut": "Ctrl+Alt+Shift+U",
                   "command": {
                     "id": "toc.update",
                     "args": {
@@ -4103,6 +4123,8 @@ export const referencesTab = {
                   "type": "menuItem",
                   "controlId": "footnotes.nextFootnote.next",
                   "label": "Next Footnote",
+                  "description": "Jump to the next footnote marker.",
+                  "shortcut": "Alt+Shift+N",
                   "command": {
                     "id": "footnote.navigate",
                     "args": {
@@ -4114,6 +4136,8 @@ export const referencesTab = {
                   "type": "menuItem",
                   "controlId": "footnotes.nextFootnote.prev",
                   "label": "Previous Footnote",
+                  "description": "Jump to the previous footnote marker.",
+                  "shortcut": "Alt+Shift+P",
                   "command": {
                     "id": "footnote.navigate",
                     "args": {
@@ -4207,6 +4231,8 @@ export const referencesTab = {
                   "type": "menuItem",
                   "controlId": "research.doiLookup.doi",
                   "label": "Lookup DOI…",
+                  "description": "Add a DOI reference.",
+                  "shortcut": "Ctrl+Alt+D",
                   "command": {
                     "id": "research.doi.openDialog"
                   }
@@ -4215,6 +4241,8 @@ export const referencesTab = {
                   "type": "menuItem",
                   "controlId": "research.doiLookup.url",
                   "label": "Open URL…",
+                  "description": "Add a URL reference.",
+                  "shortcut": "Ctrl+Alt+L",
                   "command": {
                     "id": "research.url.openDialog"
                   }
@@ -4226,6 +4254,8 @@ export const referencesTab = {
                   "type": "menuItem",
                   "controlId": "research.doiLookup.resolveCitation",
                   "label": "Paste and resolve citation…",
+                  "description": "Capture a citation from text.",
+                  "shortcut": "Ctrl+Alt+Shift+V",
                   "command": {
                     "id": "research.resolveCitation.openDialog"
                   }
@@ -4302,6 +4332,8 @@ export const referencesTab = {
                   "type": "menuItem",
                   "controlId": "cite.insertCitation.addSource",
                   "label": "Add New Source…",
+                  "description": "Create a new library entry.",
+                  "shortcut": "Ctrl+Alt+S",
                   "command": {
                     "id": "citation.source.add.openDialog"
                   }
@@ -4310,6 +4342,8 @@ export const referencesTab = {
                   "type": "menuItem",
                   "controlId": "cite.insertCitation.addPlaceholder",
                   "label": "Add New Placeholder…",
+                  "description": "Insert a placeholder citation tag.",
+                  "shortcut": "Ctrl+Alt+Shift+P",
                   "command": {
                     "id": "citation.placeholder.add.openDialog"
                   }
@@ -4321,6 +4355,8 @@ export const referencesTab = {
                   "type": "menuItem",
                   "controlId": "cite.insertCitation.manageSources",
                   "label": "Update…",
+                  "description": "Refresh citations and bibliography.",
+                  "shortcut": "Ctrl+Alt+R",
                   "command": {
                     "id": "citation.sources.update.openDialog"
                   }
@@ -4367,6 +4403,8 @@ export const referencesTab = {
                   "type": "menuItem",
                   "controlId": "cite.style.cslImport",
                   "label": "CSL: Import style…",
+                  "description": "Add a CSL style file.",
+                  "shortcut": "Ctrl+Alt+I",
                   "command": {
                     "id": "citation.csl.import.openDialog"
                   }
@@ -4375,6 +4413,8 @@ export const referencesTab = {
                   "type": "menuItem",
                   "controlId": "cite.style.cslManage",
                   "label": "CSL: Manage styles…",
+                  "description": "View or delete imported styles.",
+                  "shortcut": "Ctrl+Alt+M",
                   "command": {
                     "id": "citation.csl.manage.openDialog"
                   }
@@ -4407,6 +4447,8 @@ export const referencesTab = {
                   "type": "menuItem",
                   "controlId": "cite.bibliography.bibliography",
                   "label": "Bibliography",
+                  "description": "Insert a Bibliography section.",
+                  "shortcut": "Ctrl+Alt+B",
                   "command": {
                     "id": "bibliography.insert",
                     "args": {
@@ -4418,6 +4460,8 @@ export const referencesTab = {
                   "type": "menuItem",
                   "controlId": "cite.bibliography.worksCited",
                   "label": "Works Cited",
+                  "description": "Insert a Works Cited section.",
+                  "shortcut": "Ctrl+Alt+W",
                   "command": {
                     "id": "bibliography.insert",
                     "args": {
@@ -4429,6 +4473,8 @@ export const referencesTab = {
                   "type": "menuItem",
                   "controlId": "cite.bibliography.references",
                   "label": "References",
+                  "description": "Insert a References section.",
+                  "shortcut": "Ctrl+Alt+F",
                   "command": {
                     "id": "bibliography.insert",
                     "args": {
@@ -4443,6 +4489,8 @@ export const referencesTab = {
                   "type": "menuItem",
                   "controlId": "cite.bibliography.field",
                   "label": "Insert Bibliography Field…",
+                  "description": "Insert a live bibliography field.",
+                  "shortcut": "Ctrl+Alt+Shift+B",
                   "command": {
                     "id": "bibliography.insert.field"
                   }
@@ -4454,6 +4502,8 @@ export const referencesTab = {
                   "type": "menuItem",
                   "controlId": "cite.bibliography.exportBibtex",
                   "label": "Export bibliography (BibTeX)…",
+                  "description": "Download references as BibTeX.",
+                  "shortcut": "Ctrl+Alt+Shift+X",
                   "command": {
                     "id": "bibliography.export.bibtex.openDialog"
                   }
@@ -4462,6 +4512,8 @@ export const referencesTab = {
                   "type": "menuItem",
                   "controlId": "cite.bibliography.exportJson",
                   "label": "Export bibliography (JSON)…",
+                  "description": "Download references as JSON.",
+                  "shortcut": "Ctrl+Alt+Shift+J",
                   "command": {
                     "id": "bibliography.export.json.openDialog"
                   }
@@ -4521,6 +4573,8 @@ export const referencesTab = {
                   "type": "menuItem",
                   "controlId": "cite.citeKey.insert",
                   "label": "Insert citekey…",
+                  "description": "Insert a citekey placeholder.",
+                  "shortcut": "Ctrl+Alt+K",
                   "command": {
                     "id": "citation.citeKey.insert.openDialog"
                   }
@@ -4529,6 +4583,8 @@ export const referencesTab = {
                   "type": "menuItem",
                   "controlId": "cite.citeKey.resolveAll",
                   "label": "Resolve citekeys in document",
+                  "description": "Convert all citekeys to citations.",
+                  "shortcut": "Ctrl+Alt+Shift+K",
                   "command": {
                     "id": "citation.citeKey.resolveAll"
                   }
@@ -4540,6 +4596,8 @@ export const referencesTab = {
                   "type": "menuItem",
                   "controlId": "cite.citeKey.inspect",
                   "label": "Citation Inspector…",
+                  "description": "Review citation sources.",
+                  "shortcut": "Ctrl+Alt+Shift+I",
                   "command": {
                     "id": "citation.inspect.openPane"
                   }
@@ -4572,6 +4630,8 @@ export const referencesTab = {
                   "type": "menuItem",
                   "controlId": "cite.importBibtex.bibtex",
                   "label": "Import BibTeX…",
+                  "description": "Load references from .bib.",
+                  "shortcut": "Ctrl+Alt+B",
                   "command": {
                     "id": "citation.import.bibtex.openDialog"
                   }
@@ -4580,6 +4640,8 @@ export const referencesTab = {
                   "type": "menuItem",
                   "controlId": "cite.importBibtex.ris",
                   "label": "Import RIS…",
+                  "description": "Load references from .ris.",
+                  "shortcut": "Ctrl+Alt+R",
                   "command": {
                     "id": "citation.import.ris.openDialog"
                   }
@@ -4588,6 +4650,8 @@ export const referencesTab = {
                   "type": "menuItem",
                   "controlId": "cite.importBibtex.csljson",
                   "label": "Import CSL JSON…",
+                  "description": "Load references from CSL JSON.",
+                  "shortcut": "Ctrl+Alt+J",
                   "command": {
                     "id": "citation.import.csljson.openDialog"
                   }
@@ -4811,6 +4875,8 @@ export const referencesTab = {
                   "type": "menuItem",
                   "controlId": "toa.export.json",
                   "label": "Export (JSON)…",
+                  "description": "Download table as JSON.",
+                  "shortcut": "Ctrl+Alt+Shift+J",
                   "command": {
                     "id": "toa.export.json.openDialog"
                   }
@@ -4819,6 +4885,8 @@ export const referencesTab = {
                   "type": "menuItem",
                   "controlId": "toa.export.csv",
                   "label": "Export (CSV)…",
+                  "description": "Download table as CSV.",
+                  "shortcut": "Ctrl+Alt+Shift+C",
                   "command": {
                     "id": "toa.export.csv.openDialog"
                   }

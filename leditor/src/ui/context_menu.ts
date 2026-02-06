@@ -13,7 +13,7 @@ declare global {
 
 type ContextType = "text" | "link" | "table";
 
-type ContextGroup = "agent" | "dictionary" | "ref";
+type ContextGroup = "agent" | "sections" | "dictionary" | "ref";
 
 type MenuItem = {
   label: string;
@@ -92,13 +92,16 @@ const buildMenuGroups = (context: ContextType): Record<ContextGroup, MenuItem[]>
     { label: "Shorten", command: "agent.action", args: { id: "shorten" } },
     { label: "Proofread", command: "agent.action", args: { id: "proofread" } },
     { label: "Substantiate", command: "agent.action", args: { id: "substantiate" } },
+    { label: "Check sources", command: "agent.action", args: { id: "check_sources" } },
+    { label: "Clear checks", command: "agent.action", args: { id: "clear_checks" } }
+  ];
+
+  const sectionItems: MenuItem[] = [
     { label: "Abstract", command: "agent.action", args: { id: "abstract" } },
     { label: "Introduction", command: "agent.action", args: { id: "introduction" } },
     { label: "Findings", command: "agent.action", args: { id: "findings" } },
     { label: "Recommendations", command: "agent.action", args: { id: "recommendations" } },
-    { label: "Conclusion", command: "agent.action", args: { id: "conclusion" } },
-    { label: "Check sources", command: "agent.action", args: { id: "check_sources" } },
-    { label: "Clear checks", command: "agent.action", args: { id: "clear_checks" } }
+    { label: "Conclusion", command: "agent.action", args: { id: "conclusion" } }
   ];
 
   const dictionaryItems: MenuItem[] = [
@@ -125,13 +128,13 @@ const buildMenuGroups = (context: ContextType): Record<ContextGroup, MenuItem[]>
   ];
 
   if (context === "link") {
-    return { agent: agentItems, dictionary: dictionaryItems, ref: refItemsLink };
+    return { agent: agentItems, sections: sectionItems, dictionary: dictionaryItems, ref: refItemsLink };
   }
   if (context === "table") {
     // Context menu is intentionally simplified. Table/formatting actions are removed per product UX.
-    return { agent: [], dictionary: [], ref: [] };
+    return { agent: [], sections: [], dictionary: [], ref: [] };
   }
-  return { agent: agentItems, dictionary: dictionaryItems, ref: refItemsText };
+  return { agent: agentItems, sections: sectionItems, dictionary: dictionaryItems, ref: refItemsText };
 };
 
 const getSelectionSnapshot = (editor: Editor) => {
@@ -282,11 +285,13 @@ export const attachContextMenu = (handle: EditorHandle, editorDom: HTMLElement, 
 
     const tAgent = tab("agent", "Agent");
     tAgent.dataset.group = "agent";
+    const tSections = tab("sections", "Sections");
+    tSections.dataset.group = "sections";
     const tDict = tab("dictionary", "Dictionary");
     tDict.dataset.group = "dictionary";
     const tRef = tab("ref", "Ref");
     tRef.dataset.group = "ref";
-    header.append(tAgent, tDict, tRef);
+    header.append(tAgent, tSections, tDict, tRef);
 
     menuEl.append(header, itemsEl);
     renderItems();

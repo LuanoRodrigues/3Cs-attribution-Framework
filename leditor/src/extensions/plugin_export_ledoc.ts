@@ -180,6 +180,22 @@ const trimLeadingWhitespace = (content: any[]): any[] => {
   return out;
 };
 
+const isEmptyParagraphBlock = (block: any): boolean => {
+  if (!block || block.type !== "paragraph") return false;
+  const content = Array.isArray(block.content) ? block.content : [];
+  if (content.length === 0) return true;
+  for (const child of content) {
+    if (!child) continue;
+    if (child.type === "text") {
+      if (String(child.text ?? "").trim().length > 0) return false;
+      continue;
+    }
+    if (child.type === "anchorMarker") continue;
+    return false;
+  }
+  return true;
+};
+
 const normalizeContinuationParagraphs = (doc: any): any => {
   if (!doc || typeof doc !== "object") return doc;
   if (!Array.isArray(doc.content)) return doc;
@@ -187,7 +203,12 @@ const normalizeContinuationParagraphs = (doc: any): any => {
   for (const node of doc.content) {
     if (!node || node.type !== "page" || !Array.isArray(node.content)) continue;
     const merged: any[] = [];
+    let pendingEmpty: any[] = [];
     for (const block of node.content) {
+      if (block?.type === "paragraph" && isEmptyParagraphBlock(block)) {
+        pendingEmpty.push(block);
+        continue;
+      }
       if (block?.type === "paragraph" && merged.length) {
         const prev = merged[merged.length - 1];
         if (prev?.type === "paragraph") {
@@ -208,11 +229,20 @@ const normalizeContinuationParagraphs = (doc: any): any => {
             }
             prev.content = [...prevContent, ...nextContent];
             changed = true;
+            pendingEmpty = [];
             continue;
           }
         }
       }
+      if (pendingEmpty.length) {
+        merged.push(...pendingEmpty);
+        pendingEmpty = [];
+      }
       merged.push(block);
+    }
+    if (pendingEmpty.length) {
+      merged.push(...pendingEmpty);
+      pendingEmpty = [];
     }
     if (merged.length !== node.content.length) {
       node.content = merged;

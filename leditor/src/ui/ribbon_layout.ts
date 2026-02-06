@@ -910,6 +910,7 @@ const renderDynamicMenu = (menu: Menu, ctx: BuildContext, item: ControlConfig): 
           const nextStyle = typeof entry.payload?.id === "string" ? entry.payload.id : "";
           const button = MenuItem({
             label: entry.label,
+            description: entry.description,
             onSelect: () => {
               runMenuCommand(ctx, item.command, entry.payload);
               menu.close();
@@ -921,17 +922,6 @@ const renderDynamicMenu = (menu: Menu, ctx: BuildContext, item: ControlConfig): 
           }
           if (typeof currentStyle === "string" && nextStyle && currentStyle === nextStyle) {
             button.classList.add("is-selected");
-          }
-          button.textContent = "";
-          const title = document.createElement("span");
-          title.className = "leditor-menu-item-title";
-          title.textContent = entry.label;
-          button.appendChild(title);
-          if (entry.description) {
-            const detail = document.createElement("span");
-            detail.className = "leditor-menu-item-description";
-            detail.textContent = entry.description;
-            button.appendChild(detail);
           }
           container.appendChild(button);
         });
@@ -961,8 +951,15 @@ const renderDynamicMenu = (menu: Menu, ctx: BuildContext, item: ControlConfig): 
 const createMenuItemButton = (menu: Menu, ctx: BuildContext, item: ControlConfig, toggle = false): HTMLButtonElement => {
   const rawLabel = item.label ?? item.controlId ?? "";
   const baseArgs = buildCommandArgs(item.command);
+  const shortcut = typeof item.shortcut === "string" ? item.shortcut : undefined;
+  const description = typeof item.description === "string" ? item.description : undefined;
+  const iconName = resolveIconForControl(item);
+  const iconEl = iconName ? createRibbonIcon(iconName) : undefined;
   const button = MenuItem({
     label: rawLabel,
+    description,
+    shortcut,
+    icon: iconEl,
     onSelect: () => {
       menu.close();
       runMenuCommand(ctx, item.command, undefined);

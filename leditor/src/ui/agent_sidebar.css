@@ -843,6 +843,20 @@
   cursor: not-allowed;
 }
 
+.leditor-agent-sidebar__dictDebug {
+  margin-top: 8px;
+  border-radius: 10px;
+  border: 1px dashed rgba(15, 23, 42, 0.2);
+  background: rgba(15, 23, 42, 0.04);
+  padding: 8px 10px;
+  font-size: 10px;
+  line-height: 1.4;
+  color: rgba(15, 23, 42, 0.7);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .leditor-agent-sidebar__sections {
   display: flex;
   flex-direction: column;
@@ -990,6 +1004,12 @@
   border-color: rgba(59, 130, 246, 0.45);
   background: rgba(59, 130, 246, 0.28);
   color: rgba(240, 240, 240, 0.9);
+}
+
+.leditor-app.theme-dark .leditor-agent-sidebar__dictDebug {
+  border-color: rgba(148, 163, 184, 0.35);
+  background: rgba(15, 23, 42, 0.4);
+  color: rgba(226, 232, 240, 0.85);
 }
 
 .leditor-agent-sidebar__messages.is-hidden {

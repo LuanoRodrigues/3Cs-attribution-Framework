@@ -5,6 +5,8 @@ type MenuItemOptions = {
   onSelect?: () => void;
   disabled?: boolean;
   shortcut?: string;
+  description?: string;
+  icon?: HTMLElement;
 };
 
 let menuPortal: HTMLElement | null = null;
@@ -153,10 +155,35 @@ export const MenuItem = (options: MenuItemOptions): HTMLButtonElement => {
   button.setAttribute("role", "menuitem");
   button.dataset.menuItem = "true";
   button.textContent = "";
+  const row = document.createElement("div");
+  row.className = "leditor-menu-item__row";
+  const leading = document.createElement("span");
+  leading.className = "leditor-menu-item__leading";
+  if (options.icon) {
+    options.icon.classList.add("leditor-menu-item__icon");
+    leading.appendChild(options.icon);
+  }
   const title = document.createElement("span");
   title.className = "leditor-menu-item-title";
   title.textContent = options.label;
-  button.appendChild(title);
+  leading.appendChild(title);
+  row.appendChild(leading);
+  if (options.shortcut) {
+    const meta = document.createElement("span");
+    meta.className = "leditor-menu-item__meta";
+    const shortcut = document.createElement("span");
+    shortcut.className = "leditor-menu-item__shortcut";
+    shortcut.textContent = options.shortcut;
+    meta.appendChild(shortcut);
+    row.appendChild(meta);
+  }
+  button.appendChild(row);
+  if (options.description) {
+    const detail = document.createElement("span");
+    detail.className = "leditor-menu-item-description";
+    detail.textContent = options.description;
+    button.appendChild(detail);
+  }
   if (options.shortcut) {
     button.setAttribute("data-shortcut", options.shortcut);
   }
