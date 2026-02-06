@@ -3927,9 +3927,7 @@ def add_geo_and_sector_section(
     Geographic & sectoral coverage (payload form).
 
     Slides returned:
-      1) Country focus (Top countries) — Figure + table
-      2) Sector coverage (%) — Figure + table
-      3) Government missions (optional) — Figure + table (if a mission column exists)
+      1) Government missions (optional) — Figure + table (if a mission column exists)
     """
     import json
     import re
@@ -3973,74 +3971,7 @@ def add_geo_and_sector_section(
             return {"slides": preview_slides, "index": 0}
         return None
 
-    # ---- Countries
-    if country_tag in df.columns:
-        cexp = _explode_tags(df[country_tag])
-        ccounts = cexp.value_counts().rename_axis("Country").reset_index(name="Count")
-        ccounts = ccounts.sort_values("Count", ascending=False).reset_index(drop=True)
-        topN = int(top_countries) if int(top_countries) > 0 else 30
-        ctbl = ccounts.head(topN).copy()
-        fig_c = px.bar(
-            ctbl.sort_values("Count", ascending=True),
-            x="Count",
-            y="Country",
-            orientation="h",
-            text="Count",
-            title=f"{collection_name} · Country focus (Top {len(ctbl)})",
-        )
-        fig_c.update_traces(textposition="outside", marker_line_width=0.5, marker_line_color="rgba(0,0,0,0.15)")
-        xmax = float(np.nanmax(pd.to_numeric(ctbl["Count"], errors="coerce"))) if len(ctbl) else 0.0
-        if np.isfinite(xmax) and xmax > 0:
-            fig_c.update_xaxes(range=[0, xmax * 1.18])
-        fig_c.update_layout(margin=dict(l=160, r=140, t=70, b=60))
-
-        if preview_slides is not None:
-            preview_slides.append(
-                {
-                    "title": "Geo — Country focus",
-                    "fig_json": _fig_json(fig_c),
-                    "table_html": _table_html(ctbl),
-                    "notes": f"Tag column: {country_tag}." if slide_notes else "",
-                }
-            )
-
-    # ---- Sectors (%)
-    if sector_tag in df.columns:
-        sexp = _explode_tags(df[sector_tag])
-        if not sexp.empty:
-            sc = (
-                sexp.value_counts(normalize=True)
-                .mul(100.0)
-                .round(1)
-                .rename_axis("Sector")
-                .reset_index(name="%")
-            )
-            sc["Sector"] = sc["Sector"].astype(str).map(lambda x: re.sub(r"\s+", " ", x).strip())
-            sc_plot = sc.sort_values("%", ascending=True)
-            sc_plot["Label"] = sc_plot["%"].map(lambda v: f"{float(v):.1f}%")
-            fig_s = px.bar(
-                sc_plot,
-                x="%",
-                y="Sector",
-                orientation="h",
-                text="Label",
-                title=f"{collection_name} · Sector coverage (%)",
-            )
-            fig_s.update_traces(textposition="outside", marker_line_width=0.5, marker_line_color="rgba(0,0,0,0.15)")
-            xmax = float(np.nanmax(pd.to_numeric(sc_plot["%"], errors="coerce"))) if len(sc_plot) else 0.0
-            if np.isfinite(xmax) and xmax > 0:
-                fig_s.update_xaxes(range=[0, xmax * 1.22])
-            fig_s.update_layout(margin=dict(l=160, r=170, t=70, b=60))
-
-            if preview_slides is not None:
-                preview_slides.append(
-                    {
-                        "title": "Sector — Coverage (%)",
-                        "fig_json": _fig_json(fig_s),
-                        "table_html": _table_html(sc),
-                        "notes": f"Tag column: {sector_tag}." if slide_notes else "",
-                    }
-                )
+    # Removed by request: Geo country focus + sector coverage plots.
 
     # ---- Missions (optional)
     mission_col = next((c for c in ("mission", "mission_title", "government_mission", "mission_name") if c in df.columns), None)
@@ -6773,9 +6704,18 @@ def _plot_ngram_cooccurrence_network(
     return edge_df, fig
 
 
-def _plot_ngram_heatmap_by_authors(df: pd.DataFrame, data_source: str, ngram_n: int,
-                                   top_n_ngrams: int, zotero_client, cache_name: str) -> tuple[pd.DataFrame, go.Figure]:
-    """Reusable heatmap of n-gram frequency by authors."""
+def _plot_ngram_heatmap_by_authors(
+    df: pd.DataFrame,
+    data_source: str,
+    ngram_n: int,
+    top_n_ngrams: int,
+    zotero_client,
+    cache_name: str,
+    *,
+    max_rows: int | None = None,
+    max_cols: int | None = None,
+) -> tuple[pd.DataFrame, go.Figure]:
+    """Reusable heatmap of n-gram frequency by authors (rows) and n-grams (cols)."""
     author_map = defaultdict(Counter)
     for _, row in df.iterrows():
         authors = row.get('authors', 'Unknown')
@@ -6807,7 +6747,8 @@ def _plot_ngram_heatmap_by_authors(df: pd.DataFrame, data_source: str, ngram_n: 
         fig = go.Figure().add_annotation(text="No data for heatmap.", showarrow=False)
         return pd.DataFrame(columns=['Author','Ngram','Frequency']), fig
 
-    top_ngrams = [ng for ng, _ in overall_counts.most_common(top_n_ngrams)]
+    cols = int(max_cols) if isinstance(max_cols, int) and max_cols > 0 else int(top_n_ngrams)
+    top_ngrams = [ng for ng, _ in overall_counts.most_common(cols)]
 
     heat_rows = []
     for author, cnt in author_map.items():
@@ -6817,6 +6758,10 @@ def _plot_ngram_heatmap_by_authors(df: pd.DataFrame, data_source: str, ngram_n: 
         heat_rows.append(row)
     df_heat = pd.DataFrame(heat_rows).set_index('Author')
     df_heat = df_heat.loc[(df_heat > 0).any(axis=1)]
+
+    # Limit rows to the most active authors to keep the heatmap readable.
+    if isinstance(max_rows, int) and max_rows > 0 and len(df_heat.index) > max_rows:
+        df_heat = df_heat.assign(_total=df_heat.sum(axis=1)).sort_values("_total", ascending=False).head(int(max_rows)).drop(columns=["_total"])
 
     if df_heat.empty:
         fig = go.Figure().add_annotation(text="No data for heatmap.", showarrow=False)
@@ -6965,45 +6910,135 @@ def analyze_ngrams(
         )
 
     elif plot_type == "ngram_evolution_time_series":
-        ngrams_by_year = _get_ngram_data_by_year(
-            df,
-            source,
-            ngram_n,
-            zotero_client_for_pdf,
-            collection_name_for_cache,
-            progress_callback,
-        )
+        # Evolution of n-grams over time:
+        # - If user provides `specific_ngrams_to_track`, we track those exact n-gram strings.
+        # - Otherwise we track the top-N n-grams (overall) by frequency.
+        import numpy as np
+        import plotly.graph_objects as go
 
-        if not ngrams_by_year:
-            table_df, fig = _empty("No data for evolution.")
+        def _safe_year_series(frame: "pd.DataFrame") -> "pd.Series":
+            for cand in ("year", "publication_year", "year_numeric", "Year"):
+                if cand in frame.columns:
+                    s = pd.to_numeric(frame[cand], errors="coerce")
+                    if s.notna().any():
+                        return s
+            return pd.Series([np.nan] * len(frame), index=frame.index)
+
+        years = _safe_year_series(df).dropna()
+        if years.empty:
+            table_df, fig = _empty("No year data for evolution.")
         else:
-            records = []
-            for year, ng_list in ngrams_by_year.items():
-                for ng in (ng_list or []):
-                    records.append({"year": year, "controlled_vocabulary_terms": ng})
-            df_for_trends = pd.DataFrame.from_records(records)
+            df2 = df.copy()
+            df2["_year"] = pd.to_numeric(_safe_year_series(df2), errors="coerce")
+            df2 = df2.dropna(subset=["_year"])
+            if df2.empty:
+                table_df, fig = _empty("No valid year data for evolution.")
+            else:
+                df2["_year"] = df2["_year"].astype(int)
 
-            wot_params = {
-                "data_source": "controlled_vocabulary_terms",
-                "num_top_words": int(params.get("num_top_ngrams_for_evolution", 7)),
-            }
+                specific = params.get("specific_ngrams_to_track") or []
+                if isinstance(specific, str):
+                    specific = [specific]
+                specific_ngrams = [str(x).strip().lower() for x in specific if str(x).strip()]
 
-            out = analyze_words_over_time(
-                df_for_trends,
-                wot_params,
-                progress_callback,
-                zotero_client_for_pdf,
-                collection_name_for_cache,
-                export=export,
-                return_payload=return_payload,
-            )
+                # If no explicit list, pick top-N by overall frequency.
+                if not specific_ngrams:
+                    all_ngrams = []
+                    for _, row in df2.iterrows():
+                        if source == "abstract":
+                            text = str(row.get("abstract", "") or "")
+                        elif source == "title":
+                            text = str(row.get("title", "") or "")
+                        elif source == "controlled_vocabulary_terms":
+                            kws = row.get("controlled_vocabulary_terms", [])
+                            if isinstance(kws, (list, tuple, set)):
+                                text = " ".join(k for k in kws if isinstance(k, str))
+                            else:
+                                text = str(kws or "")
+                        elif source == "fulltext":
+                            tokens = get_text_corpus_from_df(
+                                pd.DataFrame([row]),
+                                source,
+                                collection_name_for_cache,
+                                zotero_client_for_pdf,
+                                None,
+                            )
+                            text = " ".join(tokens) if isinstance(tokens, list) else str(tokens or "")
+                        else:
+                            text = ""
+                        all_ngrams.extend(_get_ngrams_from_text(text, ngram_n))
+                    counts = Counter(all_ngrams)
+                    filtered = [(ng, c) for ng, c in counts.items() if int(c) >= min_freq]
+                    filtered.sort(key=lambda x: int(x[1]), reverse=True)
+                    k = int(params.get("num_top_ngrams_for_evolution", 7) or 7)
+                    specific_ngrams = [str(ng).strip().lower() for ng, _ in filtered[:k]]
 
-            if isinstance(out, dict) and "slides" in out:
-                return out
+                if not specific_ngrams:
+                    table_df, fig = _empty("No n-grams available for evolution.")
+                else:
+                    # Count occurrences per year for the chosen n-grams.
+                    series_by_ngram: dict[str, dict[int, int]] = {ng: {} for ng in specific_ngrams}
+                    years_sorted = sorted(df2["_year"].unique().tolist())
 
-            table_df, fig = out
+                    for _, row in df2.iterrows():
+                        y = int(row["_year"])
+                        if source == "abstract":
+                            text = str(row.get("abstract", "") or "")
+                        elif source == "title":
+                            text = str(row.get("title", "") or "")
+                        elif source == "controlled_vocabulary_terms":
+                            kws = row.get("controlled_vocabulary_terms", [])
+                            if isinstance(kws, (list, tuple, set)):
+                                text = " ".join(k for k in kws if isinstance(k, str))
+                            else:
+                                text = str(kws or "")
+                        elif source == "fulltext":
+                            tokens = get_text_corpus_from_df(
+                                pd.DataFrame([row]),
+                                source,
+                                collection_name_for_cache,
+                                zotero_client_for_pdf,
+                                None,
+                            )
+                            text = " ".join(tokens) if isinstance(tokens, list) else str(tokens or "")
+                        else:
+                            text = ""
+
+                        ngs = [str(n).strip().lower() for n in _get_ngrams_from_text(text, ngram_n)]
+                        if not ngs:
+                            continue
+                        c = Counter(ngs)
+                        for ng in specific_ngrams:
+                            if ng in c:
+                                series_by_ngram[ng][y] = int(series_by_ngram[ng].get(y, 0) + int(c[ng]))
+
+                    # Build table + plotly fig.
+                    rows = []
+                    for y in years_sorted:
+                        row = {"Year": int(y)}
+                        for ng in specific_ngrams:
+                            row[ng] = int(series_by_ngram.get(ng, {}).get(int(y), 0))
+                        rows.append(row)
+                    table_df = pd.DataFrame.from_records(rows)
+
+                    fig = go.Figure()
+                    for ng in specific_ngrams:
+                        fig.add_scatter(
+                            x=table_df["Year"],
+                            y=table_df[ng],
+                            mode="lines+markers",
+                            name=ng,
+                        )
+                    fig.update_layout(
+                        title=f"N-grams over time (n={ngram_n})",
+                        xaxis_title="Year",
+                        yaxis_title="Count",
+                        margin=dict(l=60, r=40, t=80, b=60),
+                    )
 
     elif plot_type == "ngram_frequency_heatmap":
+        cols = int(params.get("num_ngrams_for_heatmap_cols", top_n) or top_n)
+        rows = int(params.get("num_docs_for_heatmap_rows", 30) or 30)
         table_df, fig = _plot_ngram_heatmap_by_authors(
             df,
             source,
@@ -7011,6 +7046,8 @@ def analyze_ngrams(
             top_n,
             zotero_client_for_pdf,
             collection_name_for_cache,
+            max_rows=rows,
+            max_cols=cols,
         )
 
     else:
@@ -7939,7 +7976,15 @@ def authors_overview(
 
         return slide
 
-    def _add_figure_slide(title_text: str, fig, notes: str = ""):
+    def _table_html(df0: "pd.DataFrame | None") -> str:
+        if df0 is None or type(df0) is not pd.DataFrame or df0.empty:
+            return "<div>No data available.</div>"
+        try:
+            return df0.head(60).to_html(index=False, escape=True)
+        except Exception:
+            return "<div>Unable to render table.</div>"
+
+    def _add_figure_slide(title_text: str, fig, *, table_df: "pd.DataFrame | None" = None, notes: str = ""):
         """
         ###1. accept plotly Figure; accept tuple(fig, ...) by taking first element
         ###2. render plotly -> png into slide
@@ -8035,7 +8080,9 @@ def authors_overview(
 
         if preview_slides is not None:
             fig_json_str = json.dumps(fig.to_plotly_json(), cls=PlotlyJSONEncoder)
-            preview_slides.append({"title": title_text, "fig_json": fig_json_str, "table_html": "", "notes": notes or ""})
+            preview_slides.append(
+                {"title": title_text, "fig_json": fig_json_str, "table_html": _table_html(table_df), "notes": notes or ""}
+            )
             preview_figs.append(fig_json_str)
 
         return slide
@@ -8073,45 +8120,35 @@ def authors_overview(
         params = {"plot_type": pt}
         stats_df, fig = analyze_author_impact(df, params, progress_callback or (lambda *_: None))
 
-        table_title = f"{collection_name} · Author Impact — {pt} — Table"
         fig_title = f"{collection_name} · Author Impact — {pt} — Figure"
 
-        _add_table_slide(table_title, stats_df, notes=f"Source: analyze_author_impact(plot_type='{pt}').")
-        _add_figure_slide(fig_title, fig, notes=f"Figure: analyze_author_impact(plot_type='{pt}').")
+        _add_figure_slide(fig_title, fig, table_df=stats_df, notes=f"Source: analyze_author_impact(plot_type='{pt}').")
 
     _cb("Building collaboration slides")
     for pt in collaboration_plot_types:
         params = {"plot_type": pt}
         tab_df, fig = analyze_author_collaboration(df, params, progress_callback or (lambda *_: None))
 
-        table_title = f"{collection_name} · Author Collaboration — {pt} — Table"
         fig_title = f"{collection_name} · Author Collaboration — {pt} — Figure"
 
-        _add_table_slide(table_title, tab_df, notes=f"Source: analyze_author_collaboration(plot_type='{pt}').")
-        _add_figure_slide(fig_title, fig, notes=f"Source: analyze_author_collaboration(plot_type='{pt}').")
+        _add_figure_slide(fig_title, fig, table_df=tab_df, notes=f"Source: analyze_author_collaboration(plot_type='{pt}').")
 
     _cb("Building trend slides")
     for pt in trends_plot_types:
         params = {"plot_type": pt}
         tab_df, fig = analyze_author_trends(df, params, progress_callback or (lambda *_: None))
 
-        table_title = f"{collection_name} · Author Trends — {pt} — Table"
         fig_title = f"{collection_name} · Author Trends — {pt} — Figure"
 
-        _add_table_slide(table_title, tab_df, notes=f"Source: analyze_author_trends(plot_type='{pt}').")
-        _add_figure_slide(fig_title, fig, notes=f"Figure: analyze_author_trends(plot_type='{pt}').")
+        _add_figure_slide(fig_title, fig, table_df=tab_df, notes=f"Source: analyze_author_trends(plot_type='{pt}').")
 
     _cb("Building Lotka slides")
     lotka_df, lotka_fig = analyze_lotkas_law(df, {}, progress_callback)
 
-    _add_table_slide(
-        f"{collection_name} · Lotka's Law — Table",
-        lotka_df,
-        notes="Source: analyze_lotkas_law(). Table is the observed productivity distribution.",
-    )
     _add_figure_slide(
         f"{collection_name} · Lotka's Law — Figure",
         lotka_fig,
+        table_df=lotka_df,
         notes="Source: analyze_lotkas_law(). Log-log plot of observed proportions and (if fitted) predicted curves.",
     )
 

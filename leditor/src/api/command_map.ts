@@ -43,6 +43,15 @@ import {
   showRibbonToast,
   pushRecentColor
 } from "../ui/ribbon_dialogs.ts";
+import {
+  openAccessibilityPopover,
+  openTranslatePopover,
+  openProofingLanguagePopover,
+  openCommentsDeletePopover,
+  openMarkupPopover,
+  openRestrictEditingPopover,
+  openInfoPopover
+} from "../ui/review_dialogs.ts";
 import { runLexiconCommand, closeLexiconPopup } from "../ui/lexicon";
 import { openVersionHistoryModal } from "../ui/version_history_modal.ts";
 import { buildLlmCacheKey, getLlmCacheEntry, setLlmCacheEntry } from "../ui/llm_cache.ts";
@@ -212,17 +221,19 @@ const emitPrefChange = (): void => {
 
 const PREF_TRANSLATE_LANG = "leditor.translate.language";
 
-const promptTranslateLanguage = (): string | null => {
+const readTranslateLanguage = (): string => {
   try {
-    const current = window.localStorage?.getItem(PREF_TRANSLATE_LANG) ?? "Spanish";
-    const next = window.prompt("Translate to language (e.g. Spanish)", current);
-    if (next === null) return null;
-    const value = next.trim();
-    if (!value) return null;
-    window.localStorage?.setItem(PREF_TRANSLATE_LANG, value);
-    return value;
+    return window.localStorage?.getItem(PREF_TRANSLATE_LANG) ?? "Spanish";
   } catch {
-    return null;
+    return "Spanish";
+  }
+};
+
+const writeTranslateLanguage = (value: string): void => {
+  try {
+    window.localStorage?.setItem(PREF_TRANSLATE_LANG, value);
+  } catch {
+    // ignore
   }
 };
 
@@ -244,19 +255,18 @@ const setDocumentFromPlainText = (editor: Editor, text: string) => {
   editor.commands.setContent(doc);
 };
 
-const runAiTranslation = async (editor: Editor, scope: "selection" | "document") => {
+const runAiTranslation = async (editor: Editor, scope: "selection" | "document", language: string) => {
   const host = getHostAdapter();
   if (!host?.agentRequest) {
-    window.alert("AI host bridge unavailable.");
+    showRibbonToast("AI host bridge unavailable.");
     return;
   }
-  const language = promptTranslateLanguage();
   if (!language) return;
   const settings = getAiSettings();
   if (scope === "selection") {
     const { from, to } = editor.state.selection;
     if (from === to) {
-      window.alert("Select text to translate.");
+      showRibbonToast("Select text to translate.");
       return;
     }
     const original = editor.state.doc.textBetween(from, to, " ");
@@ -284,7 +294,7 @@ const runAiTranslation = async (editor: Editor, scope: "selection" | "document")
       }
     }
     if (!result?.success) {
-      window.alert(result?.error ? String(result.error) : "Translation failed.");
+      showRibbonToast(result?.error ? String(result.error) : "Translation failed.");
       return;
     }
     const ops = Array.isArray(result.operations)
@@ -324,7 +334,7 @@ const runAiTranslation = async (editor: Editor, scope: "selection" | "document")
     }
   }
   if (!result?.success) {
-    window.alert(result?.error ? String(result.error) : "Translation failed.");
+    showRibbonToast(result?.error ? String(result.error) : "Translation failed.");
     return;
   }
   const ops = Array.isArray(result.operations)
@@ -3506,21 +3516,65 @@ export const commandMap: Record<string, CommandHandler> = {
   "agent.sidebar.toggle"() {
     const handle = window.leditor;
     if (!handle) {
-      window.alert("Agent sidebar unavailable.");
+      openInfoPopover({ title: "Agent", message: "Agent sidebar unavailable." });
       return;
     }
     handle.execCommand("agent.sidebar.toggle");
   },
+  "agent.dictionary.open"(editor, args?: { mode?: string }) {
+    const handle = window.leditor;
+    if (!handle) {
+      openInfoPopover({ title: "Dictionary", message: "Dictionary sidebar unavailable." });
+      return;
+    }
+    handle.execCommand("agent.dictionary.open", args);
+  },
   "lexicon.define"(editor) {
+    const handle = window.leditor;
+    if (handle) {
+      try {
+        handle.execCommand("agent.dictionary.open", { mode: "definition" });
+        return;
+      } catch {
+        // ignore
+      }
+    }
     void runLexiconCommand(editor, "definition");
   },
   "lexicon.explain"(editor) {
+    const handle = window.leditor;
+    if (handle) {
+      try {
+        handle.execCommand("agent.dictionary.open", { mode: "explain" });
+        return;
+      } catch {
+        // ignore
+      }
+    }
     void runLexiconCommand(editor, "explain");
   },
   "lexicon.synonyms"(editor) {
+    const handle = window.leditor;
+    if (handle) {
+      try {
+        handle.execCommand("agent.dictionary.open", { mode: "synonyms" });
+        return;
+      } catch {
+        // ignore
+      }
+    }
     void runLexiconCommand(editor, "synonyms");
   },
   "lexicon.antonyms"(editor) {
+    const handle = window.leditor;
+    if (handle) {
+      try {
+        handle.execCommand("agent.dictionary.open", { mode: "antonyms" });
+        return;
+      } catch {
+        // ignore
+      }
+    }
     void runLexiconCommand(editor, "antonyms");
   },
   "lexicon.close"() {
@@ -5208,36 +5262,34 @@ ${synonyms.join(', ')}`);
     if (imageMissingAlt > 0) {
       issues.push(`${imageMissingAlt} image(s) missing alt text.`);
     }
-    if (!issues.length) {
-      window.alert("No obvious accessibility issues detected.");
-      return;
-    }
-    window.alert(`Accessibility check:\n\n${issues.join("\n")}`);
+    openAccessibilityPopover(issues);
   },
   "review.translate.open"(editor) {
-    const mode = window.prompt("Translate selection or document? (selection/document)", "selection");
-    if (!mode) return;
-    const key = mode.trim().toLowerCase();
-    if (key.startsWith("d")) {
-      commandMap["review.translate.document"](editor);
-      return;
-    }
-    commandMap["review.translate.selection"](editor);
+    openTranslatePopover({
+      language: readTranslateLanguage(),
+      onApply: ({ language, scope }) => {
+        writeTranslateLanguage(language);
+        void runAiTranslation(editor, scope, language);
+      }
+    });
   },
-  "review.translate.selection"(editor) {
-    void runAiTranslation(editor, "selection");
+  "review.translate.selection"(editor, args) {
+    const language = typeof args?.language === "string" ? args.language : readTranslateLanguage();
+    void runAiTranslation(editor, "selection", language);
   },
-  "review.translate.document"(editor) {
-    void runAiTranslation(editor, "document");
+  "review.translate.document"(editor, args) {
+    const language = typeof args?.language === "string" ? args.language : readTranslateLanguage();
+    void runAiTranslation(editor, "document", language);
   },
   "review.language.openDialog"() {
     const current = window.localStorage?.getItem("leditor.proofingLanguage") ?? "en-US";
-    const next = window.prompt("Proofing language (e.g. en-US)", current);
-    if (next === null) return;
-    const value = next.trim();
-    if (!value) return;
-    window.localStorage?.setItem("leditor.proofingLanguage", value);
-    window.alert(`Proofing language set to ${value}`);
+    openProofingLanguagePopover({
+      current,
+      onApply: (value) => {
+        window.localStorage?.setItem("leditor.proofingLanguage", value);
+        showRibbonToast(`Proofing language set to ${value}`);
+      }
+    });
   },
   "review.comment.add"() {
     if (tryExecHandleCommand("CommentsNew")) return;
@@ -5250,17 +5302,17 @@ ${synonyms.join(', ')}`);
     }
   },
   "review.comment.delete.openMenu"() {
-    const choice = window.prompt("Delete current or all comments? (current/all)", "current");
-    if (!choice) return;
-    const key = choice.trim().toLowerCase();
     const handle = getEditorHandle();
     if (!handle) return;
     const editor = handle.getEditor();
-    if (key.startsWith("a")) {
-      commandMap["review.comment.delete.all"](editor);
-    } else {
-      commandMap["review.comment.delete.current"](editor);
-    }
+    openCommentsDeletePopover({
+      onDeleteCurrent: () => {
+        commandMap["review.comment.delete.current"](editor);
+      },
+      onDeleteAll: () => {
+        commandMap["review.comment.delete.all"](editor);
+      }
+    });
   },
   "review.comment.delete.current"() {
     if (tryExecHandleCommand("CommentsDelete")) return;
@@ -5316,25 +5368,34 @@ ${synonyms.join(', ')}`);
     tryExecHandleCommand("NextChange");
   },
   "review.markup.openMenu"() {
-    const mode = window.prompt("Markup mode (simple/all/none)", "simple");
-    if (!mode) return;
-    commandMap["review.markup.set"](undefined as any, { mode });
+    const current = window.localStorage?.getItem("leditor.markupMode") ?? "simple";
+    openMarkupPopover({
+      current: current === "all" || current === "none" ? current : "simple",
+      onApply: (mode) => {
+        commandMap["review.markup.set"](undefined as any, { mode });
+      }
+    });
   },
   "review.markup.set"(_editor, args) {
     const raw = typeof args?.mode === "string" ? args.mode : typeof args?.value === "string" ? args.value : "";
     const mode = raw.trim().toLowerCase() || "simple";
     window.localStorage?.setItem("leditor.markupMode", mode);
-    window.alert(`Markup mode set to ${mode}.`);
+    showRibbonToast(`Markup mode set to ${mode}.`);
   },
   "review.restrictEditing.open"(editor) {
     const next = !editor.isEditable;
-    editor.setEditable(!next);
-    const appRoot = document.getElementById("leditor-app");
-    if (appRoot) {
-      appRoot.classList.toggle("leditor-restrict-editing", next);
-    }
-    window.localStorage?.setItem("leditor.restrictEditing", next ? "1" : "0");
-    window.alert(next ? "Editing restricted." : "Editing enabled.");
+    openRestrictEditingPopover({
+      isRestricted: next,
+      onApply: () => {
+        editor.setEditable(!next);
+        const appRoot = document.getElementById("leditor-app");
+        if (appRoot) {
+          appRoot.classList.toggle("leditor-restrict-editing", next);
+        }
+        window.localStorage?.setItem("leditor.restrictEditing", next ? "1" : "0");
+        showRibbonToast(next ? "Editing restricted." : "Editing enabled.");
+      }
+    });
   },
 
   ReadAloud(editor) {

@@ -69,10 +69,10 @@ const tokenizeHtml = (html: string): HtmlNode[] => {
   const parseAttrs = (rawAttrs?: string): Record<string, string> => {
     const out: Record<string, string> = {};
     if (!rawAttrs) return out;
-    const attrRe = /([^\s=]+)\s*=\s*"([^"]*)"/g;
+    const attrRe = /([^\s=]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g;
     let m: RegExpExecArray | null;
     while ((m = attrRe.exec(rawAttrs)) !== null) {
-      out[m[1]] = m[2];
+      out[m[1]] = m[2] ?? m[3] ?? "";
     }
     return out;
   };
@@ -101,19 +101,25 @@ const tokenizeHtml = (html: string): HtmlNode[] => {
   return root.children;
 };
 
+const extractOwnHtml = (node: any): string | null => {
+  if (!node || typeof node !== "object") return null;
+  const html =
+    typeof node.edited_html === "string"
+      ? node.edited_html
+      : typeof node.editedHtml === "string"
+        ? node.editedHtml
+        : typeof node.payload?.html === "string"
+          ? node.payload.html
+          : null;
+  return html && html.trim().length > 0 ? html : null;
+};
+
 const extractFirstHtml = (state: any): string | null => {
   if (!state || typeof state !== "object") return null;
   const pick = (node: any): string | null => {
     if (!node || typeof node !== "object") return null;
-    const html =
-      typeof node.edited_html === "string"
-        ? node.edited_html
-        : typeof node.editedHtml === "string"
-          ? node.editedHtml
-          : typeof node.payload?.html === "string"
-            ? node.payload.html
-            : null;
-    if (html && html.trim().length > 0) return html;
+    const html = extractOwnHtml(node);
+    if (html) return html;
     if (Array.isArray(node.nodes)) {
       for (const child of node.nodes) {
         const found = pick(child);
@@ -210,6 +216,167 @@ const sanitizeForParsing = (html: string): string =>
 const hasStyle = (style: string | undefined, needle: string): boolean =>
   typeof style === "string" ? style.toLowerCase().includes(needle) : false;
 
+const inlineHasText = (content: PMNode[]): boolean =>
+  content.some((node) => node?.type === "text" && String(node.text || "").trim().length > 0);
+
+const marksEqual = (a?: PMMark[], b?: PMMark[]): boolean => {
+  if (a === b) return true;
+  if (!a || !b || a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    const left = a[i];
+    const right = b[i];
+    if (left?.type !== right?.type) return false;
+    const leftAttrs = left?.attrs ?? null;
+    const rightAttrs = right?.attrs ?? null;
+    if (leftAttrs === rightAttrs) continue;
+    if (!leftAttrs || !rightAttrs) return false;
+    if (JSON.stringify(leftAttrs) !== JSON.stringify(rightAttrs)) return false;
+  }
+  return true;
+};
+
+const normalizeInlineContent = (content: PMNode[]): PMNode[] => {
+  const out: PMNode[] = [];
+  for (const node of content) {
+    if (!node) continue;
+    if (node.type === "text") {
+      const text = String(node.text || "").replace(/\s+/g, " ");
+      if (!text) continue;
+      const prev = out[out.length - 1];
+      if (prev?.type === "text" && marksEqual(prev.marks, node.marks)) {
+        prev.text = `${prev.text ?? ""}${text}`;
+      } else {
+        out.push({ ...node, text });
+      }
+      continue;
+    }
+    out.push(node);
+  }
+  while (out.length && out[0].type === "text" && !String(out[0].text || "").trim()) out.shift();
+  while (out.length && out[out.length - 1].type === "text" && !String(out[out.length - 1].text || "").trim()) out.pop();
+  return out;
+};
+
+const mergeLeadingSpaceParagraphs = (blocks: PMNode[]): PMNode[] => {
+  const out: PMNode[] = [];
+  const lastTextNode = (node: PMNode | undefined): PMNode | null => {
+    if (!node?.content) return null;
+    for (let i = node.content.length - 1; i >= 0; i -= 1) {
+      const child = node.content[i];
+      if (child?.type === "text") return child;
+    }
+    return null;
+  };
+  const firstTextNode = (node: PMNode | undefined): PMNode | null => {
+    if (!node?.content) return null;
+    for (const child of node.content) {
+      if (child?.type === "text") return child;
+    }
+    return null;
+  };
+  for (const block of blocks) {
+    if (block?.type === "paragraph" && out.length) {
+      const prev = out[out.length - 1];
+      if (prev?.type === "paragraph") {
+        const first = firstTextNode(block);
+        if (first && typeof first.text === "string" && /^\s+/.test(first.text)) {
+          const prevLast = lastTextNode(prev);
+          if (prevLast && typeof prevLast.text === "string" && /\s$/.test(prevLast.text)) {
+            first.text = first.text.replace(/^\s+/, "");
+          }
+          prev.content = [...(prev.content || []), ...(block.content || [])];
+          continue;
+        }
+      }
+    }
+    out.push(block);
+  }
+  return out;
+};
+
+const firstNonWhitespaceChar = (node: PMNode | undefined): string | null => {
+  if (!node?.content) return null;
+  for (const child of node.content) {
+    if (child?.type !== "text") continue;
+    const text = String(child.text ?? "");
+    if (!text) continue;
+    const match = text.match(/[^\s\u00A0\u2000-\u200B]/);
+    if (match) return match[0];
+  }
+  return null;
+};
+
+const lastNonWhitespaceChar = (node: PMNode | undefined): string | null => {
+  if (!node?.content) return null;
+  for (let i = node.content.length - 1; i >= 0; i -= 1) {
+    const child = node.content[i];
+    if (child?.type !== "text") continue;
+    const text = String(child.text ?? "");
+    if (!text) continue;
+    const match = text.match(/[^\s\u00A0\u2000-\u200B](?!.*[^\s\u00A0\u2000-\u200B])/);
+    if (match) return match[0];
+  }
+  return null;
+};
+
+const mergeContinuationParagraphs = (blocks: PMNode[]): PMNode[] => {
+  const out: PMNode[] = [];
+  const trimLeadingWhitespace = (node: PMNode): PMNode => {
+    if (!node?.content) return node;
+    const trimmed: PMNode[] = [];
+    let trimming = true;
+    for (const child of node.content) {
+      if (!trimming || child?.type !== "text") {
+        trimmed.push(child);
+        if (child?.type !== "text") trimming = false;
+        continue;
+      }
+      const text = String(child.text ?? "");
+      const nextText = text.replace(/^[\s\u00A0\u2000-\u200B]+/, "");
+      if (!nextText) continue;
+      trimmed.push({ ...child, text: nextText });
+      trimming = false;
+    }
+    return { ...node, content: trimmed };
+  };
+  const endsWithSpace = (node: PMNode): boolean => {
+    if (!node?.content) return false;
+    for (let i = node.content.length - 1; i >= 0; i -= 1) {
+      const child = node.content[i];
+      if (child?.type !== "text") continue;
+      const text = String(child.text ?? "");
+      if (!text) continue;
+      return /\s$/.test(text);
+    }
+    return false;
+  };
+  for (const block of blocks) {
+    if (block?.type === "paragraph" && out.length) {
+      const prev = out[out.length - 1];
+      if (prev?.type === "paragraph") {
+        const first = firstNonWhitespaceChar(block);
+        const last = lastNonWhitespaceChar(prev);
+        const startsLower =
+          typeof first === "string" && first.length === 1 && /[a-z]/.test(first);
+        const startsPunct =
+          typeof first === "string" && first.length === 1 && /[),.;:\]]/.test(first);
+        const prevTerminal =
+          typeof last === "string" && last.length === 1 && /[.!?]/.test(last);
+        if (!prevTerminal && (startsLower || startsPunct)) {
+          let next = block;
+          if (endsWithSpace(prev)) {
+            next = trimLeadingWhitespace(block);
+          }
+          prev.content = [...(prev.content || []), ...(next.content || [])];
+          continue;
+        }
+      }
+    }
+    out.push(block);
+  }
+  return out;
+};
+
 const inlineFromNodes = (nodes: HtmlNode[], activeMarks: PMMark[] = []): PMNode[] => {
   const out: PMNode[] = [];
   for (const node of nodes) {
@@ -248,7 +415,7 @@ const inlineFromNodes = (nodes: HtmlNode[], activeMarks: PMMark[] = []): PMNode[
       nextMarks.push({ type: "anchor", attrs: markAttrs });
     }
     if (tag === "br") {
-      out.push({ type: "hardBreak" });
+      out.push({ type: "text", text: " ", marks: activeMarks.length ? activeMarks : undefined });
       continue;
     }
     out.push(...inlineFromNodes(node.children, nextMarks));
@@ -263,15 +430,21 @@ const blockFromElement = (el: HtmlNode): PMNode | null => {
   const inline = () => inlineFromNodes(el.children);
   if (tag === "h1" || tag === "h2" || tag === "h3" || tag === "h4" || tag === "h5" || tag === "h6") {
     const level = Number.parseInt(tag.slice(1), 10) || 1;
-    return { type: "heading", attrs: { level }, content: inline() };
+    const content = normalizeInlineContent(inline());
+    if (!inlineHasText(content)) return null;
+    return { type: "heading", attrs: { level }, content };
   }
-  if (tag === "p" || tag === "div" || tag === "section" || tag === "article") {
-    const content = inline();
-    return { type: "paragraph", attrs: paragraphAttrs(), content: content.length ? content : undefined };
+  if (tag === "p") {
+    const content = normalizeInlineContent(inline());
+    if (!inlineHasText(content)) return null;
+    return { type: "paragraph", attrs: paragraphAttrs(), content };
+  }
+  if (tag === "div" || tag === "section" || tag === "article") {
+    return null;
   }
   if (tag === "li") {
     const blocks: PMNode[] = [];
-    let pendingInline = inlineFromNodes(element.children);
+    let pendingInline = normalizeInlineContent(inlineFromNodes(element.children));
     if (pendingInline.length) {
       blocks.push({ type: "paragraph", attrs: paragraphAttrs(), content: pendingInline });
       pendingInline = [];
@@ -286,13 +459,13 @@ const blockFromElement = (el: HtmlNode): PMNode | null => {
   }
   // Inline-only container: descend.
   if (tag === "span") {
-    const content = inlineFromNodes([el]);
-    if (!content.length) return null;
+    const content = normalizeInlineContent(inlineFromNodes([el]));
+    if (!inlineHasText(content)) return null;
     return { type: "paragraph", attrs: paragraphAttrs(), content };
   }
   // Unknown: flatten children as inline into a paragraph.
-  const fallback = inlineFromNodes(el.children);
-  if (fallback.length) {
+  const fallback = normalizeInlineContent(inlineFromNodes(el.children));
+  if (inlineHasText(fallback)) {
     return { type: "paragraph", attrs: paragraphAttrs(), content: fallback };
   }
   return null;
@@ -316,25 +489,44 @@ const htmlToBlocks = (html: string): PMNode[] => {
   const sanitized = sanitizeForParsing(html);
   const tree = tokenizeHtml(sanitized);
   const blocks: PMNode[] = [];
+  let inlineBuffer: PMNode[] = [];
+  const flushInline = () => {
+    if (!inlineBuffer.length) return;
+    const content = normalizeInlineContent(inlineBuffer);
+    inlineBuffer = [];
+    if (!inlineHasText(content)) return;
+    blocks.push({ type: "paragraph", attrs: paragraphAttrs(), content });
+  };
   const walk = (nodes: HtmlNode[]) => {
     for (const n of nodes) {
       if (n.type === "text") {
-        const text = n.value.trim();
-        if (text) {
-          blocks.push({
-            type: "paragraph",
-            attrs: paragraphAttrs(),
-            content: [{ type: "text", text }]
-          });
+        const text = n.value.replace(/\s+/g, " ");
+        if (text.trim()) {
+          inlineBuffer.push({ type: "text", text });
         }
         continue;
       }
+      const element = n as HtmlElement;
+      const tag = element.tag.toLowerCase();
+      if (tag === "div" || tag === "section" || tag === "article" || tag === "body" || tag === "html") {
+        walk(element.children || []);
+        continue;
+      }
       const block = blockFromElement(n);
-      if (block) blocks.push(block);
+      if (block) {
+        flushInline();
+        blocks.push(block);
+        continue;
+      }
+      if (Array.isArray(element.children) && element.children.length > 0) {
+        walk(element.children);
+      }
     }
   };
   walk(tree);
-  return blocks.length ? blocks : [{ type: "paragraph", attrs: paragraphAttrs(), content: [] }];
+  flushInline();
+  const normalizedBlocks = mergeContinuationParagraphs(mergeLeadingSpaceParagraphs(blocks));
+  return normalizedBlocks.length ? normalizedBlocks : [{ type: "paragraph", attrs: paragraphAttrs(), content: [] }];
 };
 
 const buildDocument = (blocks: PMNode[], title: string): any => {
@@ -384,9 +576,15 @@ export const convertCoderStateToLedoc = async (
     const title = extractTitle(state, fallbackTitle);
 
     const nodes = Array.isArray(state.nodes) ? state.nodes : [];
+    const visited = new Set<string>();
 
     const visit = (node: any, depth: number) => {
       if (!node || typeof node !== "object") return;
+      const nodeId = typeof node.id === "string" ? node.id : null;
+      if (nodeId) {
+        if (visited.has(nodeId)) return;
+        visited.add(nodeId);
+      }
       const name = typeof node.name === "string" ? node.name.trim() : "";
       const isFolder = node.type === "folder";
       if (isFolder && name) {
@@ -398,13 +596,13 @@ export const convertCoderStateToLedoc = async (
         });
       }
       if (!isFolder) {
-        const html = extractFirstHtml(node);
+        const html = extractOwnHtml(node);
         if (html) {
           allBlocks.push(...htmlToBlocks(html));
         }
       }
       const children = Array.isArray(node.children) ? node.children : [];
-      const nested = Array.isArray(node.nodes) ? node.nodes : [];
+      const nested = children.length === 0 && Array.isArray(node.nodes) ? node.nodes : [];
       for (const child of [...children, ...nested]) {
         visit(child, depth + (isFolder ? 1 : 0));
       }
@@ -417,11 +615,13 @@ export const convertCoderStateToLedoc = async (
       for (const n of nodes) visit(n, 1);
     }
 
-    if (allBlocks.length === 0) {
+    const mergedBlocks = mergeLeadingSpaceParagraphs(allBlocks);
+
+    if (mergedBlocks.length === 0) {
       warnings.push("No content blocks found; created an empty document.");
     }
 
-    const document = buildDocument(allBlocks, title);
+    const document = buildDocument(mergedBlocks, title);
     const now = new Date().toISOString();
     const payload = {
       version: LEDOC_BUNDLE_VERSION,

@@ -52,6 +52,8 @@ export interface ControlConfig {
   widget?: string;
   source?: string;
   state?: { binding: string; kind?: string };
+  description?: string;
+  shortcut?: string;
   collapse?: Record<string, string>;
   enabledWhen?: string;
   presets?: number[];

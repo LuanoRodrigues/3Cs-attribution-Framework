@@ -143,10 +143,22 @@ contextBridge.exposeInMainWorld("sessionBridge", {
 });
 
 contextBridge.exposeInMainWorld("coderBridge", {
-  savePayload: (payload: { scopeId?: string; nodeId: string; data: Record<string, unknown> }) =>
-    ipcRenderer.invoke("coder:save-payload", payload),
-  loadState: (payload: { scopeId?: string }) => ipcRenderer.invoke("coder:load-state", payload),
-  saveState: (payload: { scopeId?: string; state: CoderState }) => ipcRenderer.invoke("coder:save-state", payload)
+  savePayload: (payload: {
+    scopeId?: string;
+    nodeId: string;
+    data: Record<string, unknown>;
+    projectPath?: string;
+    statePath?: string;
+  }) => ipcRenderer.invoke("coder:save-payload", payload),
+  loadState: (payload: { scopeId?: string; projectPath?: string; statePath?: string; name?: string }) =>
+    ipcRenderer.invoke("coder:load-state", payload),
+  saveState: (payload: { scopeId?: string; state: CoderState; projectPath?: string; statePath?: string; name?: string }) =>
+    ipcRenderer.invoke("coder:save-state", payload),
+  pickSavePath: (payload: { scopeId?: string; projectPath?: string; statePath?: string; name?: string }) =>
+    ipcRenderer.invoke("coder:pick-save-path", payload),
+  listStates: (payload: { scopeId?: string; projectPath?: string }) => ipcRenderer.invoke("coder:list-states", payload),
+  resolveStatePath: (payload: { scopeId?: string; projectPath?: string; name?: string }) =>
+    ipcRenderer.invoke("coder:resolve-state-path", payload)
 });
 
 let footnoteHandlers: { open?: () => void; toggle?: () => void; close?: () => void } | null = null;

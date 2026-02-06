@@ -586,6 +586,15 @@ const openDefinition = (args: {
 };
 
 const runLexicon = async (editorHandle: EditorHandle, mode: LexiconMode, title: string) => {
+  try {
+    const handle = (window as any).leditor as EditorHandle | undefined;
+    if (handle && typeof handle.execCommand === "function") {
+      handle.execCommand("agent.dictionary.open", { mode });
+      return;
+    }
+  } catch {
+    // fallback to popup flow
+  }
   const editor = editorHandle.getEditor();
   const sel = editor.state.selection;
   const from = Math.min(sel.from, sel.to);

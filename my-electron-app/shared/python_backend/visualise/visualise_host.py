@@ -212,6 +212,14 @@ def _schema_and_sections() -> dict:
             "placeholder": "semicolon or newline separated…",
         },
         {
+            "type": "textarea",
+            "key": "specific_ngrams_to_track",
+            "label": "Specific n-grams (evolution, optional)",
+            "default": "",
+            "asList": True,
+            "placeholder": "Use when N-gram plot is 'Evolution over time' (semicolon or newline separated)…",
+        },
+        {
             "type": "select",
             "key": "wordcloud_colormap",
             "label": "Word cloud colormap",
@@ -250,10 +258,6 @@ def _schema_and_sections() -> dict:
         {"type": "number", "key": "max_nodes_for_ngram_network", "label": "Max nodes (ngram net)", "default": 30, "min": 10, "max": 150},
         {"type": "number", "key": "num_ngrams_for_heatmap_cols", "label": "N-grams (heatmap cols)", "default": 25, "min": 5, "max": 50},
         {"type": "number", "key": "num_docs_for_heatmap_rows", "label": "Docs (heatmap rows)", "default": 30, "min": 5, "max": 100},
-        # Geo & sector
-        {"type": "text", "key": "country_tag", "label": "Geo country column/tag", "default": "country"},
-        {"type": "text", "key": "sector_tag", "label": "Geo sector column/tag", "default": "theme"},
-        {"type": "number", "key": "top_countries", "label": "Top countries", "default": 30, "min": 5, "max": 200},
         # Thematic & method
         {"type": "text", "key": "phase_tag", "label": "Phase column/tag", "default": "phase_focus_value"},
         {"type": "text", "key": "year_col", "label": "Year column", "default": "year"},
@@ -278,7 +282,6 @@ def _schema_and_sections() -> dict:
         {"id": "Words_and_topics", "label": "Words and topics", "hint": "Keywords, n-grams, topic signals."},
         {"id": "Ngrams", "label": "N-grams", "hint": "N-gram frequency and co-occurrence."},
         {"id": "Affiliations_geo", "label": "Affiliations (geo)", "hint": "Institutions and geography."},
-        {"id": "Geo_sector", "label": "Geo & sector", "hint": "Country and sector coverage."},
         {"id": "Temporal_analysis", "label": "Temporal analysis", "hint": "Trends over time."},
         {"id": "Research_design", "label": "Research design", "hint": "Design outputs and mix."},
         {"id": "Thematic_method", "label": "Thematic & method", "hint": "Cross-tabs and phase mapping."},
@@ -1008,43 +1011,7 @@ def _run_preview(
                 logs.append(traceback.format_exc())
                 slides.append(_error_slide(sec, exc))
         elif sec == "Geo_sector":
-            try:
-                p = dict(params or {})
-                # Prefer explicit user config, else choose columns that exist (and log choices).
-                raw_country = str(p.get("country_tag") or "").strip()
-                raw_sector = str(p.get("sector_tag") or "").strip()
-                if not raw_country:
-                    for cand in ("country_focus_value", "country", "affiliation_country"):
-                        if cand in df.columns:
-                            raw_country = cand
-                            break
-                if not raw_sector:
-                    for cand in ("sector_focus_value", "sector", "theme"):
-                        if cand in df.columns:
-                            raw_sector = cand
-                            break
-                if raw_country and raw_country not in df.columns:
-                    logs.append(f"[visualise][Geo_sector][warn] country_tag '{raw_country}' not in df.columns")
-                if raw_sector and raw_sector not in df.columns:
-                    logs.append(f"[visualise][Geo_sector][warn] sector_tag '{raw_sector}' not in df.columns")
-                payload = visual.add_geo_and_sector_section(
-                    prs,
-                    df,
-                    collection_name=collection_name,
-                    slide_notes=slide_notes,
-                    country_tag=raw_country or str(p.get("country_tag") or "country_focus_value"),
-                    sector_tag=raw_sector or str(p.get("sector_tag") or "sector_focus_value"),
-                    top_countries=int(p.get("top_countries", 30) or 30),
-                    return_payload=True,
-                    export=False,
-                    progress_callback=_cb,
-                )
-                slides.extend(_flatten_slides(payload, section=sec))
-                logs.append(f"[visualise][section][ok] Geo_sector")
-            except Exception as exc:
-                logs.append(f"[visualise][section][error] Geo_sector: {exc}")
-                logs.append(traceback.format_exc())
-                slides.append(_error_slide(sec, exc))
+            logs.append("[visualise][section][warn] Geo_sector section disabled (removed from UI).")
         elif sec == "Temporal_analysis":
             try:
                 p = dict(defaults["temporal"], **(params or {}))

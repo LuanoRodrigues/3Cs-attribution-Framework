@@ -750,6 +750,236 @@ const paragraphEndsWithSpace = (node: ProseMirrorNode): boolean => {
   return false;
 };
 
+const dbg = (fn: string, msg: string) => {
+  console.debug(`[extension_page.ts][${fn}][debug] ${msg}`);
+};
+
+const paragraphStartsWithWhitespace = (node: ProseMirrorNode): boolean => {
+  for (let i = 0; i < node.childCount; i += 1) {
+    const child = node.child(i);
+    if (child.isText) {
+      const text = child.text ?? "";
+      if (!text) continue;
+      return /^[\s\u00A0\u2000-\u200B]/.test(text);
+    }
+    const childType = child.type?.name;
+    const isSkippableInline =
+      childType === "anchorMarker" ||
+      (child.isInline && child.isLeaf && (!child.textContent || child.textContent.length === 0));
+    if (isSkippableInline) continue;
+    return false;
+  }
+  return false;
+};
+
+const trimLeadingWhitespaceNodes = (nodes: ProseMirrorNode[], schema: any): ProseMirrorNode[] => {
+  const out = [...nodes];
+  for (let i = 0; i < out.length; i += 1) {
+    const child = out[i];
+    if (!child) continue;
+    if (child.isText) {
+      const text = child.text ?? "";
+      const trimmed = text.replace(/^[\s\u00A0\u2000-\u200B]+/, "");
+      if (!trimmed) {
+        out.splice(i, 1);
+        i -= 1;
+        continue;
+      }
+      if (trimmed !== text) {
+        out[i] = schema.text(trimmed, child.marks);
+      }
+      break;
+    }
+    const childType = child.type?.name;
+    const isSkippableInline =
+      childType === "anchorMarker" ||
+      (child.isInline && child.isLeaf && (!child.textContent || child.textContent.length === 0));
+    if (isSkippableInline) continue;
+    break;
+  }
+  return out;
+};
+
+const nodesEndWithSpace = (nodes: ProseMirrorNode[]): boolean => {
+  for (let i = nodes.length - 1; i >= 0; i -= 1) {
+    const child = nodes[i];
+    if (!child?.isText) continue;
+    const text = child.text ?? "";
+    if (!text) continue;
+    return /\s$/.test(text);
+  }
+  return false;
+};
+
+const paragraphFirstNonWhitespaceChar = (node: ProseMirrorNode): string | null => {
+  for (let i = 0; i < node.childCount; i += 1) {
+    const child = node.child(i);
+    if (!child.isText) continue;
+    const text = child.text ?? "";
+    if (!text) continue;
+    const match = text.match(/[^\s\u00A0\u2000-\u200B]/);
+    if (match) return match[0];
+  }
+  return null;
+};
+
+const paragraphLastNonWhitespaceChar = (node: ProseMirrorNode): string | null => {
+  for (let i = node.childCount - 1; i >= 0; i -= 1) {
+    const child = node.child(i);
+    if (!child.isText) continue;
+    const text = child.text ?? "";
+    if (!text) continue;
+    const match = text.match(/[^\s\u00A0\u2000-\u200B](?!.*[^\s\u00A0\u2000-\u200B])/);
+    if (match) return match[0];
+  }
+  return null;
+};
+
+const paragraphStartsWithContinuation = (node: ProseMirrorNode): boolean => {
+  if (paragraphStartsWithWhitespace(node)) return true;
+  const first = paragraphFirstNonWhitespaceChar(node);
+  if (!first) return false;
+  if (/[a-z]/.test(first)) return true;
+  return /[),.;:!?\]]/.test(first);
+};
+
+const paragraphEndsWithTerminal = (node: ProseMirrorNode): boolean => {
+  const last = paragraphLastNonWhitespaceChar(node);
+  if (!last) return false;
+  return /[.!?]/.test(last);
+};
+
+const mergeContinuationParagraphs = (state: any, pageType: any): any | null => {
+  const doc = state.doc;
+  if (!doc) return null;
+  type ParaInfo = { pos: number; node: ProseMirrorNode; pagePos: number };
+  const paras: ParaInfo[] = [];
+  doc.nodesBetween(0, doc.content.size, (node: any, pos: number) => {
+    if (!node?.isTextblock || node.type?.name !== "paragraph") return;
+    let $pos;
+    try {
+      $pos = doc.resolve(pos);
+    } catch {
+      return;
+    }
+    const pageDepth = findPageDepth($pos, pageType);
+    if (pageDepth < 0) return;
+    if ($pos.depth !== pageDepth + 1) return;
+    const pagePos = $pos.before(pageDepth);
+    paras.push({ pos, node, pagePos });
+  });
+  if (paras.length < 2) return null;
+  let tr = state.tr;
+  let mergedCount = 0;
+  for (let i = paras.length - 1; i >= 1; i -= 1) {
+    const curr = paras[i];
+    const prev = paras[i - 1];
+    if (curr.pagePos !== prev.pagePos) continue;
+    if (curr.pos !== prev.pos + prev.node.nodeSize) continue;
+    if (!paragraphStartsWithContinuation(curr.node)) continue;
+    if (paragraphEndsWithTerminal(prev.node)) continue;
+    const schema = prev.node.type.schema;
+    const prevChildren: ProseMirrorNode[] = [];
+    normalizeParagraphInline(prev.node, schema).forEach((child) => prevChildren.push(child));
+    let nextChildren: ProseMirrorNode[] = [];
+    normalizeParagraphInline(curr.node, schema).forEach((child) => nextChildren.push(child));
+    if (nodesEndWithSpace(prevChildren)) {
+      nextChildren = trimLeadingWhitespaceNodes(nextChildren, schema);
+    } else if (!paragraphStartsWithPunct(curr.node) && !paragraphStartsWithWhitespace(curr.node)) {
+      prevChildren.push(schema.text(" "));
+    }
+    const mergedChildren = [...prevChildren, ...nextChildren];
+    const mergedPara = prev.node.type.create(prev.node.attrs, Fragment.fromArray(mergedChildren), prev.node.marks);
+    const from = prev.pos;
+    const to = curr.pos + curr.node.nodeSize;
+    try {
+      tr = tr.replaceWith(from, to, mergedPara);
+      mergedCount += 1;
+    } catch {
+      // ignore merge failures
+    }
+  }
+  if (mergedCount > 0) {
+    dbg("mergeContinuationParagraphs", `merged ${mergedCount} continuation paragraph(s)`);
+  }
+  return mergedCount > 0 ? tr : null;
+};
+
+const mergeLeadingWhitespaceParagraphs = (state: any, pageType: any): any | null => {
+  const doc = state.doc;
+  if (!doc) return null;
+  type ParaInfo = { pos: number; node: ProseMirrorNode; pagePos: number };
+  const paras: ParaInfo[] = [];
+  doc.nodesBetween(0, doc.content.size, (node: any, pos: number) => {
+    if (!node?.isTextblock || node.type?.name !== "paragraph") return;
+    let $pos;
+    try {
+      $pos = doc.resolve(pos);
+    } catch {
+      return;
+    }
+    const pageDepth = findPageDepth($pos, pageType);
+    if (pageDepth < 0) return;
+    if ($pos.depth !== pageDepth + 1) return;
+    const pagePos = $pos.before(pageDepth);
+    paras.push({ pos, node, pagePos });
+  });
+  if (paras.length < 2) return null;
+  const runs: Array<{ start: number; end: number }> = [];
+  let i = 0;
+  while (i < paras.length - 1) {
+    const start = paras[i];
+    let j = i + 1;
+    while (j < paras.length) {
+      const prev = paras[j - 1];
+      const next = paras[j];
+      if (next.pagePos !== prev.pagePos) break;
+      if (next.pos !== prev.pos + prev.node.nodeSize) break;
+      if (!paragraphStartsWithWhitespace(next.node)) break;
+      j += 1;
+    }
+    if (j > i + 1) {
+      runs.push({ start: i, end: j - 1 });
+      i = j;
+      continue;
+    }
+    i += 1;
+  }
+  if (!runs.length) return null;
+  let tr = state.tr;
+  let mergedCount = 0;
+  for (let r = runs.length - 1; r >= 0; r -= 1) {
+    const run = runs[r];
+    const first = paras[run.start];
+    const last = paras[run.end];
+    const schema = first.node.type.schema;
+    const mergedChildren: ProseMirrorNode[] = [];
+    for (let p = run.start; p <= run.end; p += 1) {
+      const para = paras[p].node;
+      const fragChildren: ProseMirrorNode[] = [];
+      normalizeParagraphInline(para, schema).forEach((child) => fragChildren.push(child));
+      let normalized = fragChildren;
+      if (mergedChildren.length > 0 && nodesEndWithSpace(mergedChildren)) {
+        normalized = trimLeadingWhitespaceNodes(fragChildren, schema);
+      }
+      mergedChildren.push(...normalized);
+    }
+    const mergedPara = first.node.type.create(first.node.attrs, Fragment.fromArray(mergedChildren), first.node.marks);
+    const from = first.pos;
+    const to = last.pos + last.node.nodeSize;
+    try {
+      tr = tr.replaceWith(from, to, mergedPara);
+      mergedCount += run.end - run.start;
+    } catch {
+      // ignore merge failures
+    }
+  }
+  if (mergedCount > 0) {
+    dbg("mergeLeadingWhitespaceParagraphs", `merged ${mergedCount} paragraph(s) starting with whitespace`);
+  }
+  return mergedCount > 0 ? tr : null;
+};
+
 const normalizeBrokenLines = (
   state: any,
   pageType: any,
@@ -3543,6 +3773,18 @@ const paginateView = (
     if (anchorCleanup) {
       logDebug("stripped anchor-only blocks");
       dispatchPagination(view, anchorCleanup);
+      return;
+    }
+    const leadingMerge = mergeLeadingWhitespaceParagraphs(view.state, pageType);
+    if (leadingMerge) {
+      leadingMerge.setMeta(paginationKey, { source: "pagination", op: "mergeWhitespace" });
+      dispatchPagination(view, leadingMerge);
+      return;
+    }
+    const continuationMerge = mergeContinuationParagraphs(view.state, pageType);
+    if (continuationMerge) {
+      continuationMerge.setMeta(paginationKey, { source: "pagination", op: "mergeContinuation" });
+      dispatchPagination(view, continuationMerge);
       return;
     }
     // Flatten only immediately after an external doc change (e.g. setContent), never after pagination splits.

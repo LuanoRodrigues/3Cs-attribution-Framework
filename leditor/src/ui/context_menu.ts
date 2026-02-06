@@ -92,6 +92,11 @@ const buildMenuGroups = (context: ContextType): Record<ContextGroup, MenuItem[]>
     { label: "Shorten", command: "agent.action", args: { id: "shorten" } },
     { label: "Proofread", command: "agent.action", args: { id: "proofread" } },
     { label: "Substantiate", command: "agent.action", args: { id: "substantiate" } },
+    { label: "Abstract", command: "agent.action", args: { id: "abstract" } },
+    { label: "Introduction", command: "agent.action", args: { id: "introduction" } },
+    { label: "Findings", command: "agent.action", args: { id: "findings" } },
+    { label: "Recommendations", command: "agent.action", args: { id: "recommendations" } },
+    { label: "Conclusion", command: "agent.action", args: { id: "conclusion" } },
     { label: "Check sources", command: "agent.action", args: { id: "check_sources" } },
     { label: "Clear checks", command: "agent.action", args: { id: "clear_checks" } }
   ];
@@ -194,6 +199,7 @@ export const attachContextMenu = (handle: EditorHandle, editorDom: HTMLElement, 
     closeMenu();
     const groups = buildMenuGroups(context);
     const selection = getSelectionSnapshot(editor);
+    const selectionRange = { from: editor.state.selection.from, to: editor.state.selection.to };
     const hasSelection = Boolean(selection.text || selection.html);
     const anyItems = Object.values(groups).some((list) => list.length > 0);
     if (!anyItems) return;
@@ -246,6 +252,17 @@ export const attachContextMenu = (handle: EditorHandle, editorDom: HTMLElement, 
           if (button.disabled) {
             closeMenu();
             return;
+          }
+          if (item.requireSelection) {
+            try {
+              const from = Math.min(selectionRange.from, selectionRange.to);
+              const to = Math.max(selectionRange.from, selectionRange.to);
+              if (from !== to) {
+                editor.commands.setTextSelection?.({ from, to });
+              }
+            } catch {
+              // ignore
+            }
           }
           if (item.action) {
             dispatchContextAction(item.action, editor);

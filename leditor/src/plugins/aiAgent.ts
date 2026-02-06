@@ -575,27 +575,60 @@ const runAgent = async (
       .trim();
 
   const genMatch =
-    instructionRaw.match(/\b(?:create|write|generate)\s+(?:an?\s+)?(abstract|introduction|conclusion)\b/i) ??
-    instructionRaw.match(/^\s*(abstract|introduction|conclusion)\b/i);
-  if (genMatch?.[1]) {
-    const kind = normalizeTitle(genMatch[1]);
-    const title = kind === "abstract" ? "Abstract" : kind === "introduction" ? "Introduction" : "Conclusion";
+    instructionRaw.match(/\b(?:create|write|generate)\s+(?:an?\s+|the\s+)?(abstract|introduction|findings|recommendations|conclusion)\b/i) ??
+    instructionRaw.match(/^\s*(abstract|introduction|findings|recommendations|conclusion)\b/i);
+  const sectionActionHint = typeof request.actionId === "string" ? normalizeTitle(request.actionId) : "";
+  const sectionKindRaw = genMatch?.[1] ? normalizeTitle(genMatch[1]) : "";
+  const sectionKind =
+    sectionActionHint === "abstract" ||
+    sectionActionHint === "introduction" ||
+    sectionActionHint === "findings" ||
+    sectionActionHint === "recommendations" ||
+    sectionActionHint === "conclusion"
+      ? sectionActionHint
+      : sectionKindRaw;
+  if (sectionKind) {
+    const title =
+      sectionKind === "abstract"
+        ? "Abstract"
+        : sectionKind === "introduction"
+          ? "Introduction"
+          : sectionKind === "findings"
+            ? "Findings"
+            : sectionKind === "recommendations"
+              ? "Recommendations"
+              : "Conclusion";
     const labelPrefix = `${title} —`;
-    const existing =
-      allParagraphs.find((p) => normalizeTitle(p.text).startsWith(normalizeTitle(labelPrefix))) ?? null;
+    const findByLabel = (label: string) =>
+      allParagraphs.find((p) => normalizeTitle(p.text).startsWith(normalizeTitle(`${label} —`))) ?? null;
+    const existing = findByLabel(title);
     let target = existing;
     if (!target) {
       try {
         const first = allParagraphs[0] ?? null;
         const last = allParagraphs[allParagraphs.length - 1] ?? null;
+        const abstractP = findByLabel("Abstract");
+        const introP = findByLabel("Introduction");
+        const findingsP = findByLabel("Findings");
+        const recsP = findByLabel("Recommendations");
+        const conclusionP = findByLabel("Conclusion");
         let insertPos = first ? first.from - 1 : 0;
-        if (kind === "introduction") {
-          const abstractP =
-            allParagraphs.find((p) => normalizeTitle(p.text).startsWith(normalizeTitle("Abstract —"))) ?? null;
-          if (abstractP) insertPos = abstractP.to + 1;
-        }
-        if (kind === "conclusion") {
-          insertPos = last ? last.to + 1 : editor.state.doc.content.size;
+        if (sectionKind === "introduction") {
+          insertPos = abstractP ? abstractP.to + 1 : insertPos;
+        } else if (sectionKind === "findings") {
+          insertPos = introP ? introP.to + 1 : abstractP ? abstractP.to + 1 : insertPos;
+        } else if (sectionKind === "recommendations") {
+          insertPos = findingsP
+            ? findingsP.to + 1
+            : introP
+              ? introP.to + 1
+              : abstractP
+                ? abstractP.to + 1
+                : insertPos;
+        } else if (sectionKind === "conclusion") {
+          const anchor =
+            recsP ?? findingsP ?? introP ?? abstractP ?? conclusionP ?? last;
+          insertPos = anchor ? anchor.to + 1 : editor.state.doc.content.size;
         }
         const inserted = ensureLabeledParagraph(editor, title, insertPos);
         ({ paragraphs: allParagraphs, sectionToIndices, sectionTitleByNumber } = listParagraphTargets(editor));
@@ -605,14 +638,19 @@ const runAgent = async (
       }
     }
     if (!target) return { assistantText: `Unable to locate ${title} target paragraph.` };
-    const rest = stripPrefix(instructionRaw, genMatch[0] ?? "");
+    const rest = stripPrefix(instructionRaw, genMatch?.[0] ?? "");
     const extra = rest ? ` Constraints: ${rest}` : "";
-    const instruction =
-      kind === "abstract"
-        ? `Write an academic abstract for the whole document.${extra} Replace only paragraph P${target.n}. Keep the prefix "${labelPrefix} " exactly at the start.`
-        : kind === "introduction"
-          ? `Write an introduction for the whole document.${extra} Replace only paragraph P${target.n}. Keep the prefix "${labelPrefix} " exactly at the start.`
-          : `Write a conclusion for the whole document.${extra} Replace only paragraph P${target.n}. Keep the prefix "${labelPrefix} " exactly at the start.`;
+    const instructionBase =
+      sectionKind === "abstract"
+        ? "Write an academic abstract for the whole document."
+        : sectionKind === "introduction"
+          ? "Write an introduction for the whole document."
+          : sectionKind === "findings"
+            ? "Write a findings section for the whole document."
+            : sectionKind === "recommendations"
+              ? "Write a recommendations section for the whole document."
+              : "Write a conclusion for the whole document.";
+    const instruction = `${instructionBase}${extra} Replace only paragraph P${target.n}. Keep the prefix "${labelPrefix} " exactly at the start.`;
     const indices = [target.n];
     const indexSet = new Set(indices);
     const targets = allParagraphs.filter((p) => indexSet.has(p.n));
@@ -640,7 +678,6 @@ const runAgent = async (
       documentJson: editor.getJSON(),
       document: {
         text: allParagraphs
-          .slice(0, 200)
           .map((p) => [`<<<P:${p.n}>>>`, p.text, ""].join("\n"))
           .join("\n")
       }
@@ -815,6 +852,23 @@ registerPlugin({
       }
       sidebar.runAction(id);
       log(`action ${id}`);
+      editorHandle.focus();
+    },
+    "agent.dictionary.open"(editorHandle: EditorHandle, args?: { mode?: unknown }) {
+      const sidebar = ensureSidebar(editorHandle);
+      const modeRaw = typeof args?.mode === "string" ? String(args.mode).trim().toLowerCase() : "";
+      const mode =
+        modeRaw === "definition" || modeRaw === "define"
+          ? "definition"
+          : modeRaw === "explain"
+            ? "explain"
+            : modeRaw === "synonyms"
+              ? "synonyms"
+              : modeRaw === "antonyms"
+                ? "antonyms"
+                : undefined;
+      sidebar.openDictionary(mode as any);
+      log(`dictionary.open ${mode ?? "all"}`);
       editorHandle.focus();
     }
   }

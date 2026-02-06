@@ -8,7 +8,8 @@ import {
   treeToLines,
   getFolderEditedHtml,
   snippet80,
-  DEFAULT_ITEM_TITLE
+  DEFAULT_ITEM_TITLE,
+  createFolder
 } from "./coderState";
 import type { CoderScopeId, CoderState } from "./coderTypes";
 import { CODER_STATUSES, CoderNode, CoderPayload, CoderStatus, FolderNode, ItemNode } from "./coderTypes";
@@ -23,6 +24,7 @@ export interface CoderPanelOptions {
   initialTree?: CoderNode[];
   onPayloadSelected?: (payload: CoderPayload) => void;
   scopeId?: CoderScopeId;
+  projectPath?: string;
   onStateLoaded?: (info: { baseDir: string; statePath: string }) => void;
 }
 
@@ -35,6 +37,9 @@ export class CoderPanel {
   private syncPill!: HTMLElement;
   private selectionPill!: HTMLElement;
   private filterPill!: HTMLElement;
+  private titleText?: HTMLElement;
+  private defaultTitle: string;
+  private projectPath: string | null = null;
   private filterInput!: HTMLInputElement;
   private filterStatus!: HTMLElement;
   private noteBox: HTMLDivElement;
@@ -83,6 +88,9 @@ export class CoderPanel {
   private diagnosticsList?: HTMLDivElement;
   private diagnosticsVisible = false;
   private diagnostics: Array<{ ts: string; message: string }> = [];
+  private fileOverlay?: HTMLDivElement;
+  private fileList?: HTMLDivElement;
+  private fileInput?: HTMLInputElement;
   private virtualEnabled = false;
   private virtualNodes: FlatNode[] = [];
   private virtualIndexById = new Map<string, number>();
@@ -119,6 +127,8 @@ export class CoderPanel {
     this.scopeId = options?.scopeId;
     this.stateLoadedCallback = options?.onStateLoaded;
     this.store = new CoderStore(undefined, this.scopeId);
+    this.projectPath = (options as any)?.projectPath ?? (window as any)?.currentProjectPath ?? null;
+    this.store.setProjectPath(this.projectPath);
     this.confirmDelete = this.readConfirmDelete();
     this.effectsMode = this.readEffectsMode();
     const defaultEffectsOn = this.effectsMode === "full";
@@ -146,7 +156,8 @@ export class CoderPanel {
     this.element.addEventListener("contextmenu", (ev) => ev.preventDefault());
     this.updateSurfaceClasses();
 
-    const header = this.buildHeader(options?.title ?? "Coder");
+    this.defaultTitle = options?.title ?? "Coder";
+    const header = this.buildHeader(this.defaultTitle);
     const filterRow = this.buildFilterRow();
     const actions = this.buildActions();
 
@@ -337,6 +348,9 @@ export class CoderPanel {
     this.dropHint?.remove();
     this.toast?.remove();
     this.settingsMenu?.remove();
+    this.fileOverlay?.remove();
+    this.paletteOverlay?.remove();
+    this.diagnosticsOverlay?.remove();
     this.cleanupDragGhost();
     this.element.remove();
   }
@@ -346,7 +360,10 @@ export class CoderPanel {
     wrap.className = "coder-header";
     const heading = document.createElement("div");
     heading.className = "coder-title";
-    heading.textContent = title;
+    const titleEl = document.createElement("span");
+    titleEl.className = "coder-title-text";
+    titleEl.textContent = title;
+    this.titleText = titleEl;
 
     this.savedPill = document.createElement("span");
     this.savedPill.className = "coder-pill";
@@ -366,7 +383,7 @@ export class CoderPanel {
     this.filterPill.textContent = "Status: I ? ×";
     this.filterPill.style.display = "none";
 
-    heading.append(this.savedPill, this.syncPill, this.selectionPill, this.filterPill);
+    heading.append(titleEl, this.savedPill, this.syncPill, this.selectionPill, this.filterPill);
     const settings = document.createElement("button");
     settings.type = "button";
     settings.className = "coder-gear";
@@ -379,6 +396,52 @@ export class CoderPanel {
 
     wrap.append(heading, settings);
     return wrap;
+  }
+
+  private updateCoderTitle(metaTitle?: string, statePath?: string): void {
+    if (!this.titleText) return;
+    const cleanedMeta = String(metaTitle || "").trim();
+    if (cleanedMeta) {
+      this.titleText.textContent = cleanedMeta;
+      return;
+    }
+    const base = statePath ? statePath.split(/[\\/]/).pop() : "";
+    if (base) {
+      this.titleText.textContent = base.replace(/\.json$/i, "");
+      return;
+    }
+    this.titleText.textContent = this.defaultTitle;
+  }
+
+  private deriveTitleFromPath(statePath: string): string {
+    const base = statePath.split(/[\\/]/).pop() || "";
+    const trimmed = base.replace(/\.json$/i, "");
+    return trimmed || this.defaultTitle;
+  }
+
+  private lastStateStorageKey(): string {
+    const scope = this.scopeId ? String(this.scopeId) : "global";
+    const project = this.projectPath
+      ? String(this.projectPath).replace(/[^a-zA-Z0-9_-]+/g, "-")
+      : "default";
+    return `coder.lastStatePath::${scope}::${project}`;
+  }
+
+  private readLastOpenedStatePath(): string | null {
+    try {
+      const raw = localStorage.getItem(this.lastStateStorageKey());
+      return raw ? String(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private writeLastOpenedStatePath(statePath: string): void {
+    try {
+      localStorage.setItem(this.lastStateStorageKey(), statePath);
+    } catch {
+      // ignore storage errors
+    }
   }
 
   private buildFilterRow(): HTMLElement {
@@ -523,11 +586,36 @@ export class CoderPanel {
     const statusM = mkBtn("?", "Mark Maybe (2)", () => this.setStatus("Maybe"));
     const statusX = mkBtn("×", "Mark Excluded (3)", () => this.setStatus("Excluded"));
 
+    const openBtn = mkBtn("Open", "Open another coder file", () => {
+      void this.openFileManager();
+    });
+    const saveAs = mkBtn("Save As", "Save current coder as a new file", () => {
+      void this.saveAsPrompt();
+    });
+    const newFile = mkBtn("New", "Create a new coder file", () => {
+      void this.createNewCoderFromPrompt();
+    });
+
     const expSave = mkBtn("Save HTML", "Export selection to HTML file (Ctrl/Cmd+E)", () => this.saveHtml());
     const expCopy = mkBtn("Copy HTML", "Copy selection HTML", () => this.copyHtml());
     const expPrev = mkBtn("Preview", "Preview exported HTML (Ctrl/Cmd+P)", () => this.previewHtml());
 
-    row.append(newFolder, rename, moveUp, moveDown, del, statusI, statusM, statusX, expSave, expCopy, expPrev);
+    row.append(
+      newFolder,
+      rename,
+      moveUp,
+      moveDown,
+      del,
+      statusI,
+      statusM,
+      statusX,
+      openBtn,
+      saveAs,
+      newFile,
+      expSave,
+      expCopy,
+      expPrev
+    );
     return row;
   }
 
@@ -2985,6 +3073,207 @@ export class CoderPanel {
     });
   }
 
+  private ensureFileOverlay(): void {
+    if (this.fileOverlay) return;
+    const overlay = document.createElement("div");
+    overlay.className = "coder-file-overlay";
+    overlay.addEventListener("click", (ev) => {
+      if (ev.target === overlay) {
+        this.hideFileOverlay();
+      }
+    });
+
+    const card = document.createElement("div");
+    card.className = "coder-file-card";
+    const header = document.createElement("div");
+    header.className = "coder-file-header";
+    const title = document.createElement("div");
+    title.className = "coder-file-title";
+    title.textContent = "Coder files";
+    const closeBtn = document.createElement("button");
+    closeBtn.type = "button";
+    closeBtn.className = "coder-help-close";
+    closeBtn.textContent = "Close";
+    closeBtn.addEventListener("click", () => this.hideFileOverlay());
+    header.append(title, closeBtn);
+
+    const list = document.createElement("div");
+    list.className = "coder-file-list";
+
+    const footer = document.createElement("div");
+    footer.className = "coder-file-footer";
+    const input = document.createElement("input");
+    input.type = "text";
+    input.placeholder = "New coder name…";
+    input.className = "coder-file-input";
+    const createBtn = document.createElement("button");
+    createBtn.type = "button";
+    createBtn.className = "coder-btn";
+    createBtn.textContent = "Create new";
+    createBtn.addEventListener("click", () => {
+      const name = input.value.trim();
+      void this.createNewCoder(name);
+    });
+    footer.append(input, createBtn);
+
+    card.append(header, list, footer);
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+    this.fileOverlay = overlay;
+    this.fileList = list;
+    this.fileInput = input;
+  }
+
+  private showFileOverlay(): void {
+    if (!this.fileOverlay) this.ensureFileOverlay();
+    if (!this.fileOverlay) return;
+    this.fileOverlay.classList.add("is-visible");
+  }
+
+  private hideFileOverlay(): void {
+    if (!this.fileOverlay) return;
+    this.fileOverlay.classList.remove("is-visible");
+  }
+
+  private async openFileManager(): Promise<void> {
+    const bridge = window.coderBridge;
+    if (!bridge?.listStates) {
+      this.showStatusToast("File manager unavailable.");
+      return;
+    }
+    this.ensureFileOverlay();
+    if (!this.fileList) return;
+    this.fileList.innerHTML = "";
+    this.showFileOverlay();
+    if (this.fileInput) {
+      this.fileInput.value = "";
+    }
+    try {
+      const result = await bridge.listStates({ scopeId: this.scopeId, projectPath: this.projectPath ?? undefined });
+      const files = result?.files || [];
+      const activePath = this.loadedStatePath ?? this.store.getStatePathOverride();
+      if (!files.length) {
+        const empty = document.createElement("div");
+        empty.className = "coder-file-empty";
+        empty.textContent = "No coder files yet.";
+        this.fileList.appendChild(empty);
+      } else {
+        files.forEach((file) => {
+          const row = document.createElement("div");
+          row.className = "coder-file-row";
+          if (activePath && file.path === activePath) {
+            row.classList.add("is-active");
+          }
+          const name = document.createElement("div");
+          name.className = "coder-file-name";
+          name.textContent = file.name;
+          const meta = document.createElement("div");
+          meta.className = "coder-file-meta";
+          meta.textContent = new Date(file.updatedUtc).toLocaleString();
+          const openBtn = document.createElement("button");
+          openBtn.type = "button";
+          openBtn.className = "coder-btn";
+          openBtn.textContent = "Open";
+          openBtn.addEventListener("click", () => {
+            void this.openCoderState(file.path);
+          });
+          row.append(name, meta, openBtn);
+          this.fileList?.appendChild(row);
+        });
+      }
+    } catch (error) {
+      console.warn("[CoderPanel] Unable to load coder files", error);
+      const empty = document.createElement("div");
+      empty.className = "coder-file-empty";
+      empty.textContent = "Unable to load coder files.";
+      this.fileList.appendChild(empty);
+    }
+  }
+
+  private async saveAsPrompt(): Promise<void> {
+    const bridge = window.coderBridge;
+    if (!bridge?.pickSavePath) {
+      this.showStatusToast("Save As unavailable.");
+      return;
+    }
+    const suggestedName = this.titleText?.textContent || "";
+    const resolved = await bridge.pickSavePath({
+      scopeId: this.scopeId,
+      projectPath: this.projectPath ?? undefined,
+      statePath: this.loadedStatePath ?? this.store.getStatePathOverride() ?? undefined,
+      name: suggestedName || undefined
+    });
+    if (!resolved?.statePath) {
+      return;
+    }
+    this.store.setStatePathOverride(resolved.statePath);
+    const name = this.deriveTitleFromPath(resolved.statePath);
+    await this.store.persistNow("saveAs", name);
+    this.loadedStatePath = resolved.statePath;
+    this.loadedBaseDir = resolved.baseDir;
+    this.updateCoderTitle(name, resolved.statePath);
+    this.writeLastOpenedStatePath(resolved.statePath);
+    if (this.syncPill) {
+      this.syncPill.title = `Loaded from ${resolved.statePath}`;
+    }
+  }
+
+  private async createNewCoderFromPrompt(): Promise<void> {
+    const name = window.prompt("New coder name…", "");
+    if (!name) return;
+    await this.createNewCoder(name.trim());
+  }
+
+  private async createNewCoder(name: string): Promise<void> {
+    if (!name) {
+      this.showStatusToast("Enter a name to create a coder file.");
+      return;
+    }
+    const bridge = window.coderBridge;
+    if (!bridge?.resolveStatePath) {
+      this.showStatusToast("Create file unavailable.");
+      return;
+    }
+    const resolved = await bridge.resolveStatePath({
+      scopeId: this.scopeId,
+      projectPath: this.projectPath ?? undefined,
+      name
+    });
+    if (!resolved?.statePath) {
+      this.showStatusToast("Unable to create coder file.");
+      return;
+    }
+    this.store.setStatePathOverride(resolved.statePath);
+    const root = createFolder("My collection");
+    this.store.replaceTree([root], { source: "newFile", skipPersist: true });
+    await this.store.persistNow("newFile", name);
+    this.loadedStatePath = resolved.statePath;
+    this.loadedBaseDir = resolved.baseDir;
+    this.updateCoderTitle(name, resolved.statePath);
+    this.writeLastOpenedStatePath(resolved.statePath);
+    if (this.syncPill) {
+      this.syncPill.title = `Loaded from ${resolved.statePath}`;
+    }
+    this.hideFileOverlay();
+  }
+
+  private async openCoderState(statePath: string): Promise<void> {
+    const result = await this.store.loadFromDiskAt(statePath);
+    if (!result) {
+      this.showStatusToast("Unable to open coder file.");
+      return;
+    }
+    this.loadedStatePath = result.statePath;
+    this.loadedBaseDir = result.baseDir;
+    this.updateCoderTitle(result.metaTitle, result.statePath);
+    this.writeLastOpenedStatePath(result.statePath);
+    if (this.syncPill) {
+      this.syncPill.title = `Loaded from ${result.statePath}`;
+    }
+    this.ensureInitialCollapsed();
+    this.hideFileOverlay();
+  }
+
   private getShortcutList(): Array<{ keys: string; desc: string }> {
     return [
       { keys: "?", desc: "Show/hide this shortcuts panel" },
@@ -3421,7 +3710,13 @@ export class CoderPanel {
       const bridge = window.coderBridge;
       if (!bridge) return;
       bridge
-        .savePayload({ scopeId: this.scopeId, nodeId: node.id, data })
+        .savePayload({
+          scopeId: this.scopeId,
+          nodeId: node.id,
+          data,
+          projectPath: this.projectPath ?? undefined,
+          statePath: this.loadedStatePath ?? this.store.getStatePathOverride() ?? undefined
+        })
         .then((result) => {
           if (result.baseDir) {
             console.info(`[CODER][PAYLOAD] saved ${result.baseDir}/${node.id}`);
@@ -3453,7 +3748,15 @@ export class CoderPanel {
   }
 
   private hydratePersistentState(): void {
-    void this.store.loadFromDisk().then((result) => {
+    const load = async (): Promise<void> => {
+      const lastPath = this.readLastOpenedStatePath();
+      let result = null as Awaited<ReturnType<CoderStore["loadFromDisk"]>> | null;
+      if (lastPath) {
+        result = await this.store.loadFromDiskAt(lastPath);
+      }
+      if (!result) {
+        result = await this.store.loadFromDisk();
+      }
       if (!result) {
         if (this.fallbackTree && this.fallbackTree.length) {
           this.store.replaceTree(this.fallbackTree);
@@ -3463,6 +3766,8 @@ export class CoderPanel {
       }
       this.loadedStatePath = result.statePath;
       this.loadedBaseDir = result.baseDir;
+      this.updateCoderTitle(result.metaTitle, result.statePath);
+      this.writeLastOpenedStatePath(result.statePath);
       this.ensureInitialCollapsed();
       if (this.syncPill) {
         this.syncPill.title = `Loaded from ${result.statePath}`;
@@ -3477,7 +3782,8 @@ export class CoderPanel {
       if (treeLines.length > 0) {
         console.info(`[CODER][TREE]\n${treeLines.join("\n")}`);
       }
-    });
+    };
+    void load();
   }
 
   private ensureInitialCollapsed(): void {

@@ -152,7 +152,11 @@ export const MenuItem = (options: MenuItemOptions): HTMLButtonElement => {
   button.className = "leditor-menu-item";
   button.setAttribute("role", "menuitem");
   button.dataset.menuItem = "true";
-  button.textContent = options.label;
+  button.textContent = "";
+  const title = document.createElement("span");
+  title.className = "leditor-menu-item-title";
+  title.textContent = options.label;
+  button.appendChild(title);
   if (options.shortcut) {
     button.setAttribute("data-shortcut", options.shortcut);
   }

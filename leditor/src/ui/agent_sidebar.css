@@ -642,6 +642,356 @@
   display: none;
 }
 
+.leditor-agent-sidebar__dict {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.leditor-agent-sidebar__dictHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.leditor-agent-sidebar__dictHeaderLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.leditor-agent-sidebar__dictTitle {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.leditor-agent-sidebar__dictSelection {
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.86);
+  color: rgba(15, 23, 42, 0.8);
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.leditor-agent-sidebar__dictHeaderActions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.leditor-agent-sidebar__dictBtn {
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 11px;
+  cursor: pointer;
+  border: 1px solid rgba(37, 99, 235, 0.22);
+  background: rgba(37, 99, 235, 0.08);
+  color: rgba(15, 23, 42, 0.85);
+}
+
+.leditor-agent-sidebar__dictBtn:hover {
+  background: rgba(37, 99, 235, 0.14);
+  border-color: rgba(37, 99, 235, 0.32);
+}
+
+.leditor-agent-sidebar__dictBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.leditor-agent-sidebar__dictNotice {
+  font-size: 12px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px dashed rgba(15, 23, 42, 0.18);
+  background: rgba(15, 23, 42, 0.04);
+  color: rgba(15, 23, 42, 0.75);
+}
+
+.leditor-agent-sidebar__dictHistory {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.leditor-agent-sidebar__dictHistoryLabel {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  opacity: 0.65;
+}
+
+.leditor-agent-sidebar__dictHistoryList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.leditor-agent-sidebar__dictHistoryItem {
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.16);
+  background: rgba(255, 255, 255, 0.86);
+  padding: 3px 8px;
+  font-size: 10px;
+  cursor: pointer;
+  max-width: 140px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.leditor-agent-sidebar__dictHistoryItem.is-active {
+  border-color: rgba(37, 99, 235, 0.45);
+  background: rgba(37, 99, 235, 0.12);
+  font-weight: 600;
+}
+
+.leditor-agent-sidebar__dictTabs {
+  display: flex;
+  gap: 6px;
+  background: rgba(15, 23, 42, 0.04);
+  padding: 6px;
+  border-radius: 12px;
+}
+
+.leditor-agent-sidebar__dictTab {
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 11px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  background: transparent;
+  color: rgba(15, 23, 42, 0.7);
+}
+
+.leditor-agent-sidebar__dictTab.is-active {
+  border-color: rgba(37, 99, 235, 0.4);
+  background: rgba(37, 99, 235, 0.12);
+  color: rgba(15, 23, 42, 0.9);
+  font-weight: 600;
+}
+
+.leditor-agent-sidebar__dictPane {
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.92);
+  padding: 12px;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+}
+
+.leditor-agent-sidebar__dictPane.is-error {
+  border-color: rgba(239, 68, 68, 0.28);
+  background: rgba(239, 68, 68, 0.06);
+}
+
+.leditor-agent-sidebar__dictCardBody {
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgba(23, 23, 23, 0.86);
+}
+
+.leditor-agent-sidebar__dictOptionList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.leditor-agent-sidebar__dictOption {
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.9);
+  padding: 8px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.leditor-agent-sidebar__dictOption.is-selected {
+  border-color: rgba(37, 99, 235, 0.5);
+  background: rgba(37, 99, 235, 0.12);
+  font-weight: 600;
+}
+
+.leditor-agent-sidebar__dictAcceptRow {
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.leditor-agent-sidebar__dictAcceptBtn {
+  border-radius: 10px;
+  border: 1px solid rgba(37, 99, 235, 0.32);
+  background: rgba(37, 99, 235, 0.16);
+  padding: 7px 12px;
+  font-size: 11px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.leditor-agent-sidebar__dictAcceptBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.leditor-agent-sidebar__sections {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+}
+
+.leditor-agent-sidebar__sectionsHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.leditor-agent-sidebar__sectionsTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(15, 23, 42, 0.95);
+}
+
+.leditor-agent-sidebar__sectionsSubtitle {
+  font-size: 11px;
+  color: var(--agent-muted);
+  line-height: 1.4;
+}
+
+.leditor-agent-sidebar__sectionsGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.leditor-agent-sidebar__sectionCard {
+  background: var(--agent-surface);
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+}
+
+.leditor-agent-sidebar__sectionLabel {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: rgba(15, 23, 42, 0.95);
+}
+
+.leditor-agent-sidebar__sectionHelper {
+  font-size: 11px;
+  color: var(--agent-muted);
+  line-height: 1.45;
+}
+
+.leditor-agent-sidebar__sectionBtn {
+  align-self: flex-start;
+  appearance: none;
+  border: 1px solid rgba(37, 99, 235, 0.35);
+  background: rgba(37, 99, 235, 0.12);
+  color: rgba(30, 64, 175, 0.95);
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.leditor-agent-sidebar__sectionBtn:hover {
+  background: rgba(37, 99, 235, 0.2);
+  border-color: rgba(37, 99, 235, 0.5);
+  color: rgba(30, 58, 138, 1);
+}
+
+.leditor-agent-sidebar__dictEmpty {
+  font-size: 11px;
+  opacity: 0.75;
+}
+
+.leditor-app.theme-dark .leditor-agent-sidebar__dictSelection {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(240, 240, 240, 0.88);
+}
+
+.leditor-app.theme-dark .leditor-agent-sidebar__dictBtn {
+  border-color: rgba(59, 130, 246, 0.32);
+  background: rgba(59, 130, 246, 0.16);
+  color: rgba(240, 240, 240, 0.9);
+}
+
+.leditor-app.theme-dark .leditor-agent-sidebar__dictBtn:hover {
+  background: rgba(59, 130, 246, 0.22);
+  border-color: rgba(59, 130, 246, 0.42);
+}
+
+.leditor-app.theme-dark .leditor-agent-sidebar__dictNotice {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(240, 240, 240, 0.75);
+}
+
+.leditor-app.theme-dark .leditor-agent-sidebar__dictHistoryItem {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(240, 240, 240, 0.9);
+}
+
+.leditor-app.theme-dark .leditor-agent-sidebar__dictTabs {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.leditor-app.theme-dark .leditor-agent-sidebar__dictTab {
+  color: rgba(240, 240, 240, 0.7);
+}
+
+.leditor-app.theme-dark .leditor-agent-sidebar__dictTab.is-active {
+  background: rgba(59, 130, 246, 0.22);
+  border-color: rgba(59, 130, 246, 0.45);
+  color: rgba(240, 240, 240, 0.95);
+}
+
+.leditor-app.theme-dark .leditor-agent-sidebar__dictPane {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(24, 28, 36, 0.92);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
+}
+
+.leditor-app.theme-dark .leditor-agent-sidebar__dictCardBody {
+  color: rgba(240, 240, 240, 0.9);
+}
+
+.leditor-app.theme-dark .leditor-agent-sidebar__dictOption {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(240, 240, 240, 0.9);
+}
+
+.leditor-app.theme-dark .leditor-agent-sidebar__dictOption.is-selected {
+  border-color: rgba(59, 130, 246, 0.5);
+  background: rgba(59, 130, 246, 0.2);
+}
+
+.leditor-app.theme-dark .leditor-agent-sidebar__dictAcceptBtn {
+  border-color: rgba(59, 130, 246, 0.45);
+  background: rgba(59, 130, 246, 0.28);
+  color: rgba(240, 240, 240, 0.9);
+}
+
 .leditor-agent-sidebar__messages.is-hidden {
   display: none;
 }
@@ -917,6 +1267,30 @@
   display: inline-flex;
   gap: 6px;
   align-items: center;
+}
+
+.leditor-agent-sidebar__boxHeaderBadge {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  padding: 3px 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  background: rgba(15, 23, 42, 0.04);
+  color: rgba(15, 23, 42, 0.78);
+  white-space: nowrap;
+}
+
+.leditor-agent-sidebar__boxHeaderBadge.is-ok {
+  border-color: rgba(34, 197, 94, 0.35);
+  background: rgba(34, 197, 94, 0.12);
+  color: rgba(21, 128, 61, 0.95);
+}
+
+.leditor-agent-sidebar__boxHeaderBadge.is-fail {
+  border-color: rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.12);
+  color: rgba(185, 28, 28, 0.95);
 }
 
 .leditor-agent-sidebar__boxHeaderBtn {

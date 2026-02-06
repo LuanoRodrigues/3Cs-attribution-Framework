@@ -116,6 +116,111 @@ const buildDefaultOptions = (): ExportLedocOptions => {
   };
 };
 
+const firstNonWhitespaceChar = (content: any[]): string | null => {
+  for (const child of content || []) {
+    if (child?.type !== "text") continue;
+    const text = String(child.text ?? "");
+    if (!text) continue;
+    const match = text.match(/[^\s\u00A0\u2000-\u200B]/);
+    if (match) return match[0];
+  }
+  return null;
+};
+
+const lastNonWhitespaceChar = (content: any[]): string | null => {
+  for (let i = (content || []).length - 1; i >= 0; i -= 1) {
+    const child = content[i];
+    if (child?.type !== "text") continue;
+    const text = String(child.text ?? "");
+    if (!text) continue;
+    const match = text.match(/[^\s\u00A0\u2000-\u200B](?!.*[^\s\u00A0\u2000-\u200B])/);
+    if (match) return match[0];
+  }
+  return null;
+};
+
+const startsWithWhitespace = (content: any[]): boolean => {
+  for (const child of content || []) {
+    if (child?.type !== "text") continue;
+    const text = String(child.text ?? "");
+    if (!text) continue;
+    return /^[\s\u00A0\u2000-\u200B]/.test(text);
+  }
+  return false;
+};
+
+const endsWithSpace = (content: any[]): boolean => {
+  for (let i = (content || []).length - 1; i >= 0; i -= 1) {
+    const child = content[i];
+    if (child?.type !== "text") continue;
+    const text = String(child.text ?? "");
+    if (!text) continue;
+    return /\s$/.test(text);
+  }
+  return false;
+};
+
+const trimLeadingWhitespace = (content: any[]): any[] => {
+  const out = [...(content || [])];
+  for (let i = 0; i < out.length; i += 1) {
+    const child = out[i];
+    if (child?.type !== "text") continue;
+    const text = String(child.text ?? "");
+    const trimmed = text.replace(/^[\s\u00A0\u2000-\u200B]+/, "");
+    if (!trimmed) {
+      out.splice(i, 1);
+      i -= 1;
+      continue;
+    }
+    if (trimmed !== text) {
+      out[i] = { ...child, text: trimmed };
+    }
+    break;
+  }
+  return out;
+};
+
+const normalizeContinuationParagraphs = (doc: any): any => {
+  if (!doc || typeof doc !== "object") return doc;
+  if (!Array.isArray(doc.content)) return doc;
+  let changed = false;
+  for (const node of doc.content) {
+    if (!node || node.type !== "page" || !Array.isArray(node.content)) continue;
+    const merged: any[] = [];
+    for (const block of node.content) {
+      if (block?.type === "paragraph" && merged.length) {
+        const prev = merged[merged.length - 1];
+        if (prev?.type === "paragraph") {
+          const prevContent = Array.isArray(prev.content) ? prev.content : [];
+          const currContent = Array.isArray(block.content) ? block.content : [];
+          const first = firstNonWhitespaceChar(currContent);
+          const last = lastNonWhitespaceChar(prevContent);
+          const startsLower = typeof first === "string" && /[a-z]/.test(first);
+          const startsPunct = typeof first === "string" && /[),.;:!?\]]/.test(first);
+          const startsSpace = startsWithWhitespace(currContent);
+          const prevTerminal = typeof last === "string" && /[.!?]/.test(last);
+          if (!prevTerminal && (startsSpace || startsLower || startsPunct)) {
+            let nextContent = currContent;
+            if (endsWithSpace(prevContent)) {
+              nextContent = trimLeadingWhitespace(currContent);
+            } else if (!startsPunct && !startsSpace) {
+              prevContent.push({ type: "text", text: " " });
+            }
+            prev.content = [...prevContent, ...nextContent];
+            changed = true;
+            continue;
+          }
+        }
+      }
+      merged.push(block);
+    }
+    if (merged.length !== node.content.length) {
+      node.content = merged;
+    }
+  }
+  return changed ? doc : doc;
+};
+
 const buildLegacyPayloadV1 = (editorHandle: EditorHandle) => {
   const host = getHostContract();
   const now = new Date().toISOString();
@@ -197,9 +302,10 @@ const buildBundlePayloadV2 = (editorHandle: EditorHandle): LedocBundlePayload =>
     ...(agentHistory ? { agentHistory } : {}),
     ...(llmCache ? { llmCache } : {})
   };
+  const content = normalizeContinuationParagraphs(editorHandle.getJSON());
   return {
     version: LEDOC_BUNDLE_VERSION,
-    content: editorHandle.getJSON(),
+    content,
     meta,
     layout,
     registry

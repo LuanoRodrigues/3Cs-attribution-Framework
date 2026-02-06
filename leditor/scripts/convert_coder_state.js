@@ -69,14 +69,20 @@ const parseHtmlTree = (html) => {
   return Array.isArray(doc.children) ? doc.children : [];
 };
 
+const extractOwnHtml = (node) => {
+  if (!node || typeof node !== "object") return null;
+  const candidates = [];
+  if (typeof node.edited_html === "string") candidates.push(node.edited_html);
+  if (typeof node.editedHtml === "string") candidates.push(node.editedHtml);
+  if (typeof node.payload?.html === "string") candidates.push(node.payload.html);
+  const html = candidates.find((value) => typeof value === "string" && value.trim().length > 0) || null;
+  return html;
+};
+
 const extractFirstHtml = (state) => {
   const pick = (node) => {
     if (!node || typeof node !== "object") return null;
-    const candidates = [];
-    if (typeof node.edited_html === "string") candidates.push(node.edited_html);
-    if (typeof node.editedHtml === "string") candidates.push(node.editedHtml);
-    if (typeof node.payload?.html === "string") candidates.push(node.payload.html);
-    const html = candidates.find((value) => typeof value === "string" && value.trim().length > 0) || null;
+    const html = extractOwnHtml(node);
     if (html) return html;
     const collections = [node.nodes, node.children];
     for (const col of collections) {
@@ -457,6 +463,123 @@ const blockFromElement = (el) => {
   return null;
 };
 
+const mergeLeadingSpaceParagraphs = (blocks) => {
+  const out = [];
+  const lastTextNode = (node) => {
+    if (!node || !Array.isArray(node.content)) return null;
+    for (let i = node.content.length - 1; i >= 0; i -= 1) {
+      const child = node.content[i];
+      if (child?.type === "text") return child;
+    }
+    return null;
+  };
+  const firstTextNode = (node) => {
+    if (!node || !Array.isArray(node.content)) return null;
+    for (const child of node.content) {
+      if (child?.type === "text") return child;
+    }
+    return null;
+  };
+  for (const block of blocks) {
+    if (block?.type === "paragraph" && out.length) {
+      const prev = out[out.length - 1];
+      if (prev?.type === "paragraph") {
+        const first = firstTextNode(block);
+        if (first && typeof first.text === "string" && /^\\s+/.test(first.text)) {
+          const prevLast = lastTextNode(prev);
+          if (prevLast && typeof prevLast.text === "string" && /\\s$/.test(prevLast.text)) {
+            first.text = first.text.replace(/^\\s+/, "");
+          }
+          prev.content = [...(prev.content || []), ...(block.content || [])];
+          continue;
+        }
+      }
+    }
+    out.push(block);
+  }
+  return out;
+};
+
+const firstNonWhitespaceChar = (node) => {
+  if (!node || !Array.isArray(node.content)) return null;
+  for (const child of node.content) {
+    if (child?.type !== "text") continue;
+    const text = String(child.text ?? "");
+    if (!text) continue;
+    const match = text.match(/[^\s\u00A0\u2000-\u200B]/);
+    if (match) return match[0];
+  }
+  return null;
+};
+
+const lastNonWhitespaceChar = (node) => {
+  if (!node || !Array.isArray(node.content)) return null;
+  for (let i = node.content.length - 1; i >= 0; i -= 1) {
+    const child = node.content[i];
+    if (child?.type !== "text") continue;
+    const text = String(child.text ?? "");
+    if (!text) continue;
+    const match = text.match(/[^\s\u00A0\u2000-\u200B](?!.*[^\s\u00A0\u2000-\u200B])/);
+    if (match) return match[0];
+  }
+  return null;
+};
+
+const mergeContinuationParagraphs = (blocks) => {
+  const out = [];
+  const trimLeadingWhitespace = (node) => {
+    if (!node || !Array.isArray(node.content)) return node;
+    const trimmed = [];
+    let trimming = true;
+    for (const child of node.content) {
+      if (!trimming || child?.type !== "text") {
+        trimmed.push(child);
+        if (child?.type !== "text") trimming = false;
+        continue;
+      }
+      const text = String(child.text ?? "");
+      const nextText = text.replace(/^[\s\u00A0\u2000-\u200B]+/, "");
+      if (!nextText) continue;
+      trimmed.push({ ...child, text: nextText });
+      trimming = false;
+    }
+    return { ...node, content: trimmed };
+  };
+  const endsWithSpace = (node) => {
+    if (!node || !Array.isArray(node.content)) return false;
+    for (let i = node.content.length - 1; i >= 0; i -= 1) {
+      const child = node.content[i];
+      if (child?.type !== "text") continue;
+      const text = String(child.text ?? "");
+      if (!text) continue;
+      return /\s$/.test(text);
+    }
+    return false;
+  };
+  for (const block of blocks) {
+    if (block?.type === "paragraph" && out.length) {
+      const prev = out[out.length - 1];
+      if (prev?.type === "paragraph") {
+        const first = firstNonWhitespaceChar(block);
+        const last = lastNonWhitespaceChar(prev);
+        const startsLower = typeof first === "string" && /[a-z]/.test(first);
+        const startsPunct = typeof first === "string" && /[),.;:\]]/.test(first);
+        const prevTerminal = typeof last === "string" && /[.!?]/.test(last);
+        if (!prevTerminal && (startsLower || startsPunct)) {
+          let next = block;
+          if (endsWithSpace(prev)) {
+            next = trimLeadingWhitespace(block);
+          }
+          prev.content = [...(prev.content || []), ...(next.content || [])];
+          continue;
+        }
+      }
+    }
+    out.push(block);
+  }
+  return out;
+};
+
 const htmlToBlocks = (html) => {
   const sanitized = sanitizeForParsing(html);
   const tree = parseHtmlTree(sanitized);
@@ -504,7 +627,8 @@ const htmlToBlocks = (html) => {
   };
   walk(tree);
   flushInlineBuffer();
-  return blocks.length ? blocks : [{ type: "paragraph", attrs: paragraphAttrs(), content: [] }];
+  const merged = mergeContinuationParagraphs(mergeLeadingSpaceParagraphs(blocks));
+  return merged.length ? merged : [{ type: "paragraph", attrs: paragraphAttrs(), content: [] }];
 };
 
 const readOptionalPackageVersion = () => {
@@ -669,7 +793,7 @@ async function main() {
         });
       }
       if (!isFolder) {
-        const html = extractFirstHtml(node);
+        const html = extractOwnHtml(node);
         if (html) {
           allBlocks.push(...htmlToBlocks(html));
         }
@@ -688,12 +812,14 @@ async function main() {
       for (const n of nodes) visit(n, 1);
     }
 
-    if (allBlocks.length === 0) {
+    const mergedBlocks = mergeLeadingSpaceParagraphs(allBlocks);
+
+    if (mergedBlocks.length === 0) {
       console.error("[convert] No content blocks found.");
       process.exit(1);
     }
 
-    const document = buildDocument(allBlocks);
+    const document = buildDocument(mergedBlocks);
     const stamp = new Date().toISOString();
     writeLedocBundle({
       targetDir: targetPath,

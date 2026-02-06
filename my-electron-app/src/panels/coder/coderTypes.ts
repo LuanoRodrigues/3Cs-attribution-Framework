@@ -39,6 +39,7 @@ export interface PersistentCoderState {
   state: CoderState;
   baseDir: string;
   statePath: string;
+  metaTitle?: string;
 }
 
 export interface MoveSpec {

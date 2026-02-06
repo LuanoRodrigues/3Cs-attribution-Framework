@@ -36,7 +36,7 @@ import {
 } from "./main/services/visualiseBridge";
 import { invokePdfOcr } from "./main/services/pdfOcrBridge";
 import { createCoderTestTree, createPdfTestPayload } from "./test/testFixtures";
-import { getCoderCacheDir } from "./session/sessionPaths";
+import { getCoderCacheDir, CODER_DIR_NAME } from "./session/sessionPaths";
 import type { SessionMenuAction } from "./session/sessionTypes";
 import { openSettingsWindow } from "./windows/settingsWindow";
 import { applyDefaultZoomFactor } from "./windows/windowZoom";
@@ -275,6 +275,18 @@ function sanitizeNodeId(nodeId: string): string {
   return nodeId.replace(/[^a-zA-Z0-9_-]+/g, "_");
 }
 
+function sanitizeCoderFileName(name: string): string {
+  const trimmed = String(name || "").trim();
+  const base = trimmed
+    .replace(/[^\w\s-]+/g, "")
+    .replace(/\s+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^-+|-+$/g, "")
+    .replace(/^_+|_+$/g, "");
+  const fallback = base || `coder_${Date.now().toString(16)}`;
+  return fallback.toLowerCase().endsWith(".json") ? fallback : `${fallback}.json`;
+}
+
 function notifySettingsUpdated(payload: { key?: string; value?: unknown }): void {
   BrowserWindow.getAllWindows().forEach((win) => {
     if (win.isDestroyed()) {
@@ -301,16 +313,19 @@ function formatPayload(payload?: unknown): string {
 
 const CODER_STATE_FILE = "coder_state.json";
 const CODER_STATE_VERSION = 2;
+const DEFAULT_CODER_ITEM_TITLE = "Untitled";
 const DEFAULT_CODER_STATE_PATH_WINDOWS = "\\\\wsl.localhost\\Ubuntu-22.04\\home\\pantera\\projects\\TEIA\\coder_state.json";
 
 function getCoderStatePathOverride(): string | null {
   const fromEnv = String(process.env.CODER_STATE_PATH || "").trim();
   if (fromEnv) return fromEnv;
-  if (process.platform === "win32") return DEFAULT_CODER_STATE_PATH_WINDOWS;
   return null;
 }
 
-function resolveCoderPaths(scopeId?: string): { coderDir: string; statePath: string; payloadDir: string } {
+function resolveCoderPaths(
+  scopeId?: string,
+  options?: { projectPath?: string; statePath?: string; name?: string }
+): { coderDir: string; statePath: string; payloadDir: string } {
   const override = getCoderStatePathOverride();
   if (override) {
     const statePath = override;
@@ -318,9 +333,24 @@ function resolveCoderPaths(scopeId?: string): { coderDir: string; statePath: str
     const payloadDir = path.join(coderDir, "payloads");
     return { coderDir, statePath, payloadDir };
   }
+  const projectPath = options?.projectPath ? path.resolve(options.projectPath) : null;
+  if (!projectPath && process.platform === "win32") {
+    const statePath = DEFAULT_CODER_STATE_PATH_WINDOWS;
+    const coderDir = path.dirname(statePath);
+    const payloadDir = path.join(coderDir, "payloads");
+    return { coderDir, statePath, payloadDir };
+  }
   const scope = sanitizeScopeId(scopeId);
-  const coderDir = path.join(getCoderCacheDir(), scope);
-  const statePath = path.join(coderDir, CODER_STATE_FILE);
+  const coderDir = projectPath ? path.join(projectPath, CODER_DIR_NAME) : path.join(getCoderCacheDir(), scope);
+  const statePath = (() => {
+    if (options?.statePath) {
+      return path.isAbsolute(options.statePath) ? options.statePath : path.join(coderDir, options.statePath);
+    }
+    if (options?.name) {
+      return path.join(coderDir, sanitizeCoderFileName(options.name));
+    }
+    return path.join(coderDir, CODER_STATE_FILE);
+  })();
   const payloadDir = path.join(coderDir, "payloads");
   return { coderDir, statePath, payloadDir };
 }
@@ -561,13 +591,17 @@ function blocksFromHtml(html: string): any[] {
   return blocks.length ? blocks : [{ type: "paragraph", content: [{ type: "text", text: "" }] }];
 }
 
-function toPersistentCoderStatePayload(value: Record<string, unknown>, existing?: Record<string, unknown>): Record<string, unknown> {
+function toPersistentCoderStatePayload(
+  value: Record<string, unknown>,
+  existing?: Record<string, unknown>,
+  metaTitleOverride?: string
+): Record<string, unknown> {
   const normalized = normalizeCoderStatePayload(value);
   const now = new Date().toISOString();
   const existingMeta = (existing && typeof existing.meta === "object" && existing.meta) ? (existing.meta as any) : undefined;
   const incomingMeta = (normalized as any).meta && typeof (normalized as any).meta === "object" ? (normalized as any).meta : undefined;
   const meta = {
-    title: String((incomingMeta as any)?.title || existingMeta?.title || (Array.isArray((normalized as any).nodes) && (normalized as any).nodes[0]?.name) || "Coder"),
+    title: String(metaTitleOverride || (incomingMeta as any)?.title || existingMeta?.title || (Array.isArray((normalized as any).nodes) && (normalized as any).nodes[0]?.name) || "Coder"),
     created_utc: String((incomingMeta as any)?.created_utc || existingMeta?.created_utc || now),
     last_modified_utc: now,
     page_size: String((incomingMeta as any)?.page_size || existingMeta?.page_size || "A4"),
@@ -607,7 +641,7 @@ function toPersistentCoderStatePayload(value: Record<string, unknown>, existing?
     const htmlNormalized = normalizeDropHtml(htmlRaw);
     const textFromHtml = decodeEntities(stripHtmlTags(htmlNormalized || htmlRaw));
     const text = String(payloadAny.text || textFromHtml || "");
-    const title = String(node.title || node.name || payloadAny.title || snippet80(text) || "Selection");
+    const title = String(node.title || node.name || payloadAny.title || snippet80(text) || DEFAULT_CODER_ITEM_TITLE);
     const payload = {
       ...payloadAny,
       title: snippet80(payloadAny.title || title),
@@ -624,8 +658,8 @@ function toPersistentCoderStatePayload(value: Record<string, unknown>, existing?
       id,
       parent_id,
       parentId: parent_id || null,
-      title: snippet80(title) || "Selection",
-      name: snippet80(node.name || node.title || title) || "Selection",
+      title: snippet80(title) || DEFAULT_CODER_ITEM_TITLE,
+      name: snippet80(node.name || node.title || title) || DEFAULT_CODER_ITEM_TITLE,
       status: String(node.status || "include"),
       note: String(node.note || ""),
       edited_html: String(node.edited_html || node.editedHtml || ""),
@@ -1736,9 +1770,23 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
     };
   });
 
-  ipcMain.handle("coder:save-payload", async (_event, payload: { scopeId?: string; nodeId: string; data: Record<string, unknown> }) => {
+  ipcMain.handle(
+    "coder:save-payload",
+    async (
+      _event,
+      payload: {
+        scopeId?: string;
+        nodeId: string;
+        data: Record<string, unknown>;
+        projectPath?: string;
+        statePath?: string;
+      }
+    ) => {
     try {
-      const { payloadDir } = resolveCoderPaths(payload?.scopeId);
+      const { payloadDir } = resolveCoderPaths(payload?.scopeId, {
+        projectPath: payload?.projectPath,
+        statePath: payload?.statePath
+      });
       await fs.promises.mkdir(payloadDir, { recursive: true });
       const safeNodeId = sanitizeNodeId(payload.nodeId);
       const jsonPath = path.join(payloadDir, `${safeNodeId}.json`);
@@ -1751,10 +1799,15 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
       console.warn("Failed to save coder payload", error);
       return { baseDir: "", nodeId: payload?.nodeId || "" };
     }
-  });
+    }
+  );
 
-  ipcMain.handle("coder:load-state", async (_event, payload: { scopeId?: string }) => {
-    const { coderDir, statePath: primaryPath } = resolveCoderPaths(payload?.scopeId);
+  ipcMain.handle("coder:load-state", async (_event, payload: { scopeId?: string; projectPath?: string; statePath?: string; name?: string }) => {
+    const { coderDir, statePath: primaryPath } = resolveCoderPaths(payload?.scopeId, {
+      projectPath: payload?.projectPath,
+      statePath: payload?.statePath,
+      name: payload?.name
+    });
     if ((global as any).__coder_state_cache?.[primaryPath]) {
       return (global as any).__coder_state_cache[primaryPath];
     }
@@ -1762,9 +1815,10 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
       await fs.promises.mkdir(coderDir, { recursive: true });
       const raw = await fs.promises.readFile(primaryPath, "utf-8");
       const parsed = JSON.parse(raw);
+      const metaTitle = typeof parsed?.meta?.title === "string" ? String(parsed.meta.title) : "";
       const normalized = normalizeCoderStatePayload(parsed);
       console.info(`[CODER][STATE] load ${primaryPath}`);
-      const payloadOut = { state: normalized, baseDir: coderDir, statePath: primaryPath };
+      const payloadOut = { state: normalized, baseDir: coderDir, statePath: primaryPath, metaTitle };
       (global as any).__coder_state_cache = (global as any).__coder_state_cache || {};
       (global as any).__coder_state_cache[primaryPath] = payloadOut;
       return payloadOut;
@@ -1773,13 +1827,37 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
         console.warn(`[CODER][STATE] load failed ${primaryPath}`, error);
         return null;
       }
+      // If we are in a project scope and no file exists yet, try legacy cache location.
+      if (payload?.projectPath) {
+        try {
+          const legacy = resolveCoderPaths(payload?.scopeId);
+          const rawLegacy = await fs.promises.readFile(legacy.statePath, "utf-8");
+          const parsedLegacy = JSON.parse(rawLegacy);
+          const metaTitle = typeof parsedLegacy?.meta?.title === "string" ? String(parsedLegacy.meta.title) : "";
+          const normalized = normalizeCoderStatePayload(parsedLegacy);
+          const toWrite = toPersistentCoderStatePayload(normalized, parsedLegacy, metaTitle);
+          await fs.promises.mkdir(coderDir, { recursive: true });
+          await atomicWriteJson(primaryPath, JSON.stringify(toWrite, null, 2));
+          const payloadOut = { state: normalizeCoderStatePayload(normalized), baseDir: coderDir, statePath: primaryPath, metaTitle };
+          (global as any).__coder_state_cache = (global as any).__coder_state_cache || {};
+          (global as any).__coder_state_cache[primaryPath] = payloadOut;
+          console.info(`[CODER][STATE] migrated ${legacy.statePath} -> ${primaryPath}`);
+          return payloadOut;
+        } catch {
+          // ignore migration failures; fall through to missing
+        }
+      }
       console.info(`[CODER][STATE] load missing ${primaryPath}`);
       return null;
     }
   });
 
-  ipcMain.handle("coder:save-state", async (_event, payload: { scopeId?: string; state?: Record<string, unknown> }) => {
-    const { coderDir, statePath: primaryPath } = resolveCoderPaths(payload?.scopeId);
+  ipcMain.handle("coder:save-state", async (_event, payload: { scopeId?: string; state?: Record<string, unknown>; projectPath?: string; statePath?: string; name?: string }) => {
+    const { coderDir, statePath: primaryPath } = resolveCoderPaths(payload?.scopeId, {
+      projectPath: payload?.projectPath,
+      statePath: payload?.statePath,
+      name: payload?.name
+    });
     try {
       await fs.promises.mkdir(coderDir, { recursive: true });
       const raw = payload?.state ? payload.state : createDefaultCoderState();
@@ -1790,16 +1868,72 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
       } catch {
         existing = undefined;
       }
-      const toWrite = toPersistentCoderStatePayload(raw, existing);
+      const toWrite = toPersistentCoderStatePayload(raw, existing, payload?.name);
       const encoded = JSON.stringify(toWrite, null, 2);
       await atomicWriteJson(primaryPath, encoded);
       console.info(`[CODER][STATE] save ${primaryPath}`);
       (global as any).__coder_state_cache = (global as any).__coder_state_cache || {};
-      (global as any).__coder_state_cache[primaryPath] = { state: toWrite, baseDir: coderDir, statePath: primaryPath };
+      const metaTitle = typeof (toWrite as any)?.meta?.title === "string" ? String((toWrite as any).meta.title) : "";
+      (global as any).__coder_state_cache[primaryPath] = { state: toWrite, baseDir: coderDir, statePath: primaryPath, metaTitle };
     } catch (error) {
       console.warn(`[CODER][STATE] save failed ${primaryPath}`, error);
     }
     return { baseDir: coderDir, statePath: primaryPath };
+  });
+
+  ipcMain.handle("coder:pick-save-path", async (_event, payload: { scopeId?: string; projectPath?: string; statePath?: string; name?: string }) => {
+    const { coderDir, statePath: defaultPath } = resolveCoderPaths(payload?.scopeId, {
+      projectPath: payload?.projectPath,
+      statePath: payload?.statePath,
+      name: payload?.name
+    });
+    await fs.promises.mkdir(coderDir, { recursive: true });
+    const result = await dialog.showSaveDialog({
+      title: "Save Coder As",
+      defaultPath,
+      filters: [{ name: "Coder File", extensions: ["json"] }]
+    });
+    if (result.canceled || !result.filePath) {
+      return null;
+    }
+    const filePath = result.filePath.toLowerCase().endsWith(".json") ? result.filePath : `${result.filePath}.json`;
+    return { baseDir: coderDir, statePath: filePath };
+  });
+
+  ipcMain.handle("coder:list-states", async (_event, payload: { scopeId?: string; projectPath?: string }) => {
+    const { coderDir } = resolveCoderPaths(payload?.scopeId, { projectPath: payload?.projectPath });
+    try {
+      await fs.promises.mkdir(coderDir, { recursive: true });
+      const entries = await fs.promises.readdir(coderDir, { withFileTypes: true });
+      const files = await Promise.all(
+        entries
+          .filter((entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".json"))
+          .map(async (entry) => {
+            const fullPath = path.join(coderDir, entry.name);
+            const stat = await fs.promises.stat(fullPath);
+            return {
+              name: entry.name.replace(/\.json$/i, ""),
+              fileName: entry.name,
+              path: fullPath,
+              updatedUtc: stat.mtime.toISOString()
+            };
+          })
+      );
+      files.sort((a, b) => b.updatedUtc.localeCompare(a.updatedUtc));
+      return { baseDir: coderDir, files };
+    } catch (error) {
+      console.warn("[CODER][STATE] list failed", error);
+      return { baseDir: coderDir, files: [] as Array<{ name: string; fileName: string; path: string; updatedUtc: string }> };
+    }
+  });
+
+  ipcMain.handle("coder:resolve-state-path", async (_event, payload: { scopeId?: string; projectPath?: string; name?: string }) => {
+    const { coderDir, statePath } = resolveCoderPaths(payload?.scopeId, {
+      projectPath: payload?.projectPath,
+      name: payload?.name
+    });
+    await fs.promises.mkdir(coderDir, { recursive: true });
+    return { baseDir: coderDir, statePath };
   });
 
   registerRetrieveIpcHandlers({

@@ -527,7 +527,7 @@ export const handleRetrieveCommand = async (
     try {
       const creds = resolveZoteroCredentialsTs();
       const collections = await listZoteroCollectionsCached(creds as any, resolveDataHubCacheDir());
-      return { status: "ok", collections };
+      return { status: "ok", collections, profile: { libraryId: creds.libraryId, libraryType: creds.libraryType } };
     } catch (error) {
       return { status: "error", message: error instanceof Error ? error.message : String(error) };
     }
@@ -537,7 +537,7 @@ export const handleRetrieveCommand = async (
       const creds = resolveZoteroCredentialsTs();
       const cacheDir = resolveDataHubCacheDir();
       const collections = await listZoteroCollectionsCached(creds as any, cacheDir);
-      return { status: "ok", collections };
+      return { status: "ok", collections, profile: { libraryId: creds.libraryId, libraryType: creds.libraryType } };
     } catch (error) {
       return { status: "error", message: error instanceof Error ? error.message : String(error) };
     }
@@ -584,17 +584,22 @@ export const handleRetrieveCommand = async (
     try {
       const creds = resolveZoteroCredentialsTs();
       const cacheDir = resolveDataHubCacheDir();
+      const cache = payload?.cache !== false;
       const tables: DataHubTable[] = [];
+      let cachedAny = false;
       for (const key of keys) {
-        const { table } = await fetchZoteroCollectionItems(creds as any, key, undefined, cacheDir, false);
+        const { table, cached } = await fetchZoteroCollectionItems(creds as any, key, undefined, cacheDir, cache);
         if (table) tables.push(table);
+        if (cached) cachedAny = true;
       }
       const merged = mergeTables(tables);
       return {
         status: "ok",
         table: merged,
-        cached: false,
-        message: `Loaded ${tables.length} collections from Zotero.`,
+        cached: cachedAny,
+        message: cachedAny
+          ? `Loaded ${tables.length} collections from cache.`
+          : `Loaded ${tables.length} collections from Zotero.`,
         source: { type: "zotero", collectionName: keys.join(",") }
       };
     } catch (error) {

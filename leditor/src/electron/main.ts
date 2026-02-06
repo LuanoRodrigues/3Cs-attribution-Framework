@@ -3472,6 +3472,7 @@ app.whenReady().then(() => {
           model?: string;
           embeddingModel?: string;
           lookupPath?: string;
+          requests?: any[];
           anchors?: any[];
         };
       }
@@ -3501,9 +3502,36 @@ app.whenReady().then(() => {
         const model = String(payload?.model || "").trim() || fallback.model || (provider === "openai" ? "codex-mini-latest" : "");
         const embeddingModel = String(payload?.embeddingModel || DEFAULT_EMBEDDING_MODEL).trim() || DEFAULT_EMBEDDING_MODEL;
         const lookupPath = String(payload?.lookupPath ?? "").trim();
-        const anchors = Array.isArray(payload?.anchors) ? payload.anchors : [];
+        const rawRequests = Array.isArray(payload?.requests)
+          ? payload.requests
+          : Array.isArray(payload?.anchors)
+            ? payload.anchors
+            : [];
+        const requests = rawRequests
+          .map((r: any) => {
+            if (r && Array.isArray(r.anchors)) {
+              return {
+                key: String(r.key ?? ""),
+                paragraphN: Number(r.paragraphN) || undefined,
+                anchors: r.anchors,
+                oldText: typeof r.oldText === "string" ? r.oldText : typeof r.old_text === "string" ? r.old_text : "",
+                paragraphText: typeof r.paragraphText === "string" ? r.paragraphText : ""
+              };
+            }
+            const anchorText = String(r?.text ?? "");
+            const anchorTitle = String(r?.title ?? "");
+            const sentence = typeof r?.sentence === "string" ? String(r.sentence).trim() : "";
+            return {
+              key: String(r?.key ?? ""),
+              paragraphN: Number(r?.paragraphN) || undefined,
+              anchors: [{ text: anchorText, title: anchorTitle }],
+              oldText: sentence,
+              paragraphText: typeof r?.paragraphText === "string" ? r.paragraphText : ""
+            };
+          })
+          .filter((r: any) => r && typeof r.key === "string" && r.key.trim());
         if (!lookupPath) return { success: false, error: "substantiate: lookupPath required" };
-        if (!anchors.length) return { success: true, results: [] };
+        if (!requests.length) return { success: true, results: [] };
 
         const llmApiKey = getProviderApiKey(provider, undefined);
         if (!llmApiKey) {
@@ -3522,7 +3550,7 @@ app.whenReady().then(() => {
           lookupPath,
           model,
           embeddingModel,
-          anchors: anchors.length
+          requests: requests.length
         });
 
         const index = await ensureEmbeddingIndex({ lookupPath, model: embeddingModel, apiKey: embeddingApiKey });
@@ -3532,12 +3560,15 @@ app.whenReady().then(() => {
         }
         sendStream({ kind: "index", index: { total: index.total, skipped: index.skipped }, total: index.total, skipped: index.skipped });
 
-        const queryTexts = anchors.map((a: any) => {
-          const title = normalizeEmbeddingText(a?.title ?? "");
-          if (title) return title;
-          const sentence = normalizeEmbeddingText(a?.sentence ?? "");
-          if (sentence) return sentence;
-          const fallbackText = normalizeEmbeddingText(a?.text ?? "");
+        const queryTexts = requests.map((r: any) => {
+          const anchors = Array.isArray(r?.anchors) ? r.anchors : [];
+          const titles = anchors
+            .map((a: any) => normalizeEmbeddingText(a?.title ?? ""))
+            .filter((t: string) => t);
+          if (titles.length) return titles.join(" | ").slice(0, 1200);
+          const oldText = normalizeEmbeddingText(r?.oldText ?? r?.old_text ?? "");
+          if (oldText) return oldText;
+          const fallbackText = normalizeEmbeddingText(anchors[0]?.text ?? "");
           return fallbackText || "unknown";
         });
         const queryEmbeddings = await callOpenAiEmbeddings({
@@ -3549,23 +3580,27 @@ app.whenReady().then(() => {
         const system = [
           "You are an academic writing assistant inside an offline editor.",
           "Rewrite ONE sentence to make the claim more precise and substantiated using the matched evidence.",
-          "Rewrite the sentence immediately preceding the anchor.",
+          "Rewrite the sentence immediately preceding the anchor(s).",
           "Do NOT include the anchor text in the rewrite; it will remain after the sentence.",
           "Do NOT add or remove citations or anchors.",
           "If matches conflict, narrow/qualify the claim or note uncertainty.",
-          'Return STRICT JSON only: {"rewrite":string,"stance":"corroborates"|"refutes"|"mixed"|"uncertain","justification":string,"diffs":string}.',
+          "You will be given old_text. Return old_text EXACTLY as provided.",
+          'Return STRICT JSON only: {"old_text":string,"rewrite":string,"stance":"corroborates"|"refutes"|"mixed"|"uncertain","justification":string,"diffs":string}.',
           "rewrite must be a single sentence.",
-          "justification must be one short sentence (<= 240 chars)."
+          "justification must be two sentences (<= 300 chars total)."
         ].join("\n");
 
         const results: any[] = [];
         let completed = 0;
-        for (let i = 0; i < anchors.length; i += 1) {
-          const anchor = anchors[i] ?? {};
-          const anchorText = String(anchor?.text ?? "");
-          const anchorTitle = String(anchor?.title ?? "");
-          const sentence = String(anchor?.sentence ?? "");
-          const paragraphText = String(anchor?.paragraphText ?? "");
+        for (let i = 0; i < requests.length; i += 1) {
+          const req = requests[i] ?? {};
+          const anchors = Array.isArray(req?.anchors) ? req.anchors : [];
+          const anchorMeta = anchors.map((a: any) => ({
+            text: String(a?.text ?? ""),
+            title: String(a?.title ?? "")
+          }));
+          const oldText = typeof req?.oldText === "string" ? String(req.oldText) : typeof req?.old_text === "string" ? String(req.old_text) : "";
+          const paragraphText = String(req?.paragraphText ?? "");
           const qvec = normalizeVectorInPlace(queryEmbeddings[i] ?? []);
           const matchesRaw = qvec.length ? searchEmbeddingIndex(index, qvec, EMBEDDING_TOP_K) : [];
           const matches = matchesRaw.map((m) => ({
@@ -3580,48 +3615,73 @@ app.whenReady().then(() => {
             score: m.score
           }));
 
-          let rewrite = sentence;
+          let rewrite = oldText;
           let stance = "uncertain";
           let notes = "";
           let suggestion = "";
           let justification = "";
           let diffs = "";
           let errorMessage = "";
-          if (sentence && anchorText) {
+          if (oldText && anchorMeta.length > 0) {
             const input = JSON.stringify(
               {
-                anchor: { text: anchorText, title: anchorTitle },
-                sentence,
-                paragraph: paragraphText.slice(0, 1200),
-                matches: matches.slice(0, 4)
+                anchors: anchorMeta,
+                old_text: oldText,
+                content: paragraphText.slice(0, 1600),
+                matches: matches.slice(0, 6)
               },
               null,
               2
             );
             console.info("[substantiate]", {
-              key: String(anchor?.key ?? ""),
-              paragraphN: Number(anchor?.paragraphN) || undefined,
+              key: String(req?.key ?? ""),
+              paragraphN: Number(req?.paragraphN) || undefined,
               input: input.slice(0, 1200)
             });
             try {
               const raw = await callLlmText({ provider, apiKey: llmApiKey, model, system, input, signal: undefined });
               console.info("[substantiate]", {
-                key: String(anchor?.key ?? ""),
+                key: String(req?.key ?? ""),
                 output: raw.slice(0, 800)
               });
               const parsed = parseStrictJsonObject(raw);
+              let returnedOldText = "";
               if (parsed && typeof parsed === "object") {
+                returnedOldText =
+                  typeof parsed.old_text === "string"
+                    ? String(parsed.old_text)
+                    : typeof parsed.oldText === "string"
+                      ? String(parsed.oldText)
+                      : "";
+                if (returnedOldText && returnedOldText !== oldText) {
+                  console.info("[substantiate]", {
+                    key: String(req?.key ?? ""),
+                    note: "old_text_mismatch",
+                    expected: oldText.slice(0, 400),
+                    received: returnedOldText.slice(0, 400)
+                  });
+                }
                 const candidate = typeof parsed.rewrite === "string" ? String(parsed.rewrite).trim() : "";
                 if (candidate) rewrite = candidate;
                 const s = typeof parsed.stance === "string" ? String(parsed.stance).trim().toLowerCase() : "";
                 if (s === "corroborates" || s === "refutes" || s === "mixed" || s === "uncertain") stance = s;
-                justification = typeof parsed.justification === "string" ? String(parsed.justification).trim() : "";
+                const rawJustification = typeof parsed.justification === "string" ? String(parsed.justification).trim() : "";
+                const sentences = rawJustification.match(/[^.!?]+[.!?]+/g) ?? [];
+                if (sentences.length >= 2) {
+                  justification = `${sentences[0]}`.trim() + " " + `${sentences[1]}`.trim();
+                } else {
+                  justification = rawJustification;
+                }
                 suggestion = typeof parsed.suggestion === "string" ? String(parsed.suggestion).trim() : "";
                 diffs = typeof parsed.diffs === "string" ? String(parsed.diffs).trim() : "";
                 notes = typeof parsed.notes === "string" ? String(parsed.notes).trim() : "";
                 if (!justification) justification = suggestion || notes;
                 if (!notes) notes = justification || suggestion;
                 if (diffs) notes = notes ? `${notes} ${diffs}`.trim() : diffs;
+              }
+              if (returnedOldText && returnedOldText !== oldText) {
+                // Use returned old_text for downstream matching if it exists.
+                req.oldText = returnedOldText;
               }
             } catch (error) {
               errorMessage = normalizeError(error);
@@ -3634,11 +3694,11 @@ app.whenReady().then(() => {
             stance = "uncertain";
           }
           const item = {
-            key: String(anchor?.key ?? ""),
-            paragraphN: Number(anchor?.paragraphN) || undefined,
-            anchorText,
-            anchorTitle,
-            sentence,
+            key: String(req?.key ?? ""),
+            paragraphN: Number(req?.paragraphN) || undefined,
+            anchors: anchorMeta,
+            oldText: typeof req?.oldText === "string" ? String(req.oldText) : oldText,
+            old_text: typeof req?.oldText === "string" ? String(req.oldText) : oldText,
             rewrite,
             stance,
             notes,
@@ -3650,9 +3710,9 @@ app.whenReady().then(() => {
           };
           results.push(item);
           completed += 1;
-          sendStream({ kind: "item", item, completed, total: anchors.length });
+          sendStream({ kind: "item", item, completed, total: requests.length });
         }
-        sendStream({ kind: "done", completed, total: anchors.length });
+        sendStream({ kind: "done", completed, total: requests.length });
         streamDone = true;
 
         return {
@@ -3812,7 +3872,28 @@ app.whenReady().then(() => {
         };
 
         const parsed = parseJsonMaybe(raw);
-        const suggestionsRaw = Array.isArray(parsed?.suggestions) ? parsed.suggestions : [];
+        const fallbackParseSuggestions = (value: string): string[] => {
+          const rawText = String(value || "");
+          const hasJsonStart = /[{\[]/.test(rawText);
+          let cleaned = rawText;
+          if (hasJsonStart) {
+            cleaned = cleaned.replace(/^[^{\[]+/, "").replace(/[}\]]+$/g, "");
+          }
+          cleaned = cleaned
+            .replace(/\"suggestions\"\s*:\s*\[/i, "")
+            .replace(/^suggestions\s*:\s*/i, "")
+            .replace(/\]/g, "")
+            .replace(/[•·\-]\s*/g, "")
+            .replace(/\d+\.\s*/g, "")
+            .replace(/\n+/g, ",");
+          return cleaned
+            .split(/[,;]/)
+            .map((s) => s.replace(/^[\s"']+|[\s"']+$/g, ""))
+            .map((s) => s.replace(/\s+/g, " ").trim())
+            .filter(Boolean);
+        };
+        const suggestionsRaw =
+          Array.isArray(parsed?.suggestions) ? parsed.suggestions : fallbackParseSuggestions(raw);
         const suggestions = isDefinition || isExplain
           ? []
           : suggestionsRaw
@@ -3823,10 +3904,20 @@ app.whenReady().then(() => {
               .slice(0, 5);
         const definition = isDefinition ? cleanText(parsed?.definition ?? raw, 25) : "";
         const explanation = isExplain ? cleanText(parsed?.explanation ?? raw, 40) : "";
+        if (!isDefinition && !isExplain && suggestions.length === 0) {
+          dbg("lexicon", "empty-suggestions", {
+            requestId: request?.requestId,
+            mode,
+            parsed: Boolean(parsed),
+            raw: clip(raw, 320)
+          });
+        }
+        const rawDebug = clip(raw, 800);
         const result = {
           success: true,
           assistantText: "",
           suggestions,
+          raw: rawDebug,
           ...(definition ? { definition } : {}),
           ...(explanation ? { explanation } : {}),
           meta: { provider, model, ms: Date.now() - started }

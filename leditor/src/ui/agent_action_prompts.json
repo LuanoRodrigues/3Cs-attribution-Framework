@@ -20,7 +20,26 @@
     "proofread": {
       "label": "Proofread",
       "prompt": "Proofread for grammar, punctuation, and style. Keep meaning. Keep citations/anchors EXACTLY unchanged."
+    },
+    "abstract": {
+      "label": "Abstract",
+      "prompt": "Write the Abstract section for the entire document. Summarize the purpose, method, key findings, and contribution in a single, cohesive paragraph (150–220 words). Use only information from the document. Do NOT invent citations or facts; if you reuse an existing citation, keep its anchor text EXACTLY as in the document."
+    },
+    "introduction": {
+      "label": "Introduction",
+      "prompt": "Write the Introduction section for the entire document. Provide context, state the problem, clarify the research question or objective, and preview the structure. Return one polished paragraph (180–280 words). Use only the document’s content. Do NOT invent citations or facts; preserve any reused citation anchors EXACTLY."
+    },
+    "findings": {
+      "label": "Findings",
+      "prompt": "Write the Findings section for the entire document. Present the core results/claims clearly and objectively in one paragraph (180–280 words). Use only evidence from the document. Do NOT invent citations or facts; preserve any reused citation anchors EXACTLY."
+    },
+    "recommendations": {
+      "label": "Recommendations",
+      "prompt": "Write the Recommendations section for the entire document. Provide actionable, prioritized recommendations grounded in the document’s findings, in one paragraph (180–280 words). Use only information from the document. Do NOT invent citations or facts; preserve any reused citation anchors EXACTLY."
+    },
+    "conclusion": {
+      "label": "Conclusion",
+      "prompt": "Write the Conclusion section for the entire document. Synthesize the main contribution, restate the significance, and close with implications or next steps in one paragraph (150–220 words). Use only the document’s content. Do NOT invent citations or facts; preserve any reused citation anchors EXACTLY."
     }
   }
 }
-

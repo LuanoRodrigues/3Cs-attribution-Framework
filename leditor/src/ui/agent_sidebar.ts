@@ -82,6 +82,11 @@ export type AgentActionId =
   | "shorten"
   | "substantiate"
   | "proofread"
+  | "abstract"
+  | "introduction"
+  | "findings"
+  | "recommendations"
+  | "conclusion"
   | "check_sources"
   | "clear_checks";
 
@@ -91,6 +96,7 @@ export type AgentSidebarController = {
   toggle: () => void;
   isOpen: () => boolean;
   runAction: (actionId: AgentActionId) => void;
+  openDictionary: (mode?: "definition" | "explain" | "synonyms" | "antonyms") => void;
   destroy: () => void;
 };
 
@@ -167,7 +173,16 @@ export const createAgentSidebar = (
   const headerRight = document.createElement("div");
   headerRight.className = "leditor-agent-sidebar__headerRight";
 
-  type SidebarViewId = "chat" | "refine" | "paraphrase" | "shorten" | "proofread" | "substantiate" | "sources";
+  type SidebarViewId =
+    | "chat"
+    | "dictionary"
+    | "sections"
+    | "refine"
+    | "paraphrase"
+    | "shorten"
+    | "proofread"
+    | "substantiate"
+    | "sources";
   let viewMode: SidebarViewId = "chat";
 
   const viewTabs = document.createElement("div");
@@ -394,7 +409,9 @@ export const createAgentSidebar = (
     paraphrase: null,
     shorten: null,
     proofread: null,
+    sections: null,
     substantiate: null,
+    dictionary: null,
     sources: null
   };
   let sourceFocusKey: string | null = null;
@@ -402,10 +419,41 @@ export const createAgentSidebar = (
   let substantiateResults: SubstantiateSuggestion[] = [];
   let substantiateError: string | null = null;
   let substantiateSuppressedKeys = new Set<string>();
+  let substantiatePreviewState: "applied" | "failed" | null = null;
+  let substantiatePreviewRaf = 0;
   let lastApiMeta: { provider?: string; model?: string; ms?: number; ts: number } | null = null;
   let abortController: AbortController | null = null;
   let activeRequestId: string | null = null;
   let sourcesLoading = false;
+  type DictionaryMode = "definition" | "explain" | "synonyms" | "antonyms";
+  type DictionaryEntry = {
+    status: "idle" | "loading" | "success" | "error";
+    text?: string;
+    suggestions?: string[];
+    selected?: string;
+    error?: string;
+  };
+  type DictionarySelection = {
+    from: number;
+    to: number;
+    text: string;
+    sentence: string;
+    blockText: string;
+  };
+  type DictionarySearch = {
+    id: string;
+    createdAt: number;
+    selection: DictionarySelection;
+    entries: Record<DictionaryMode, DictionaryEntry>;
+  };
+  const DICT_CONTEXT_LIMIT = 800;
+  const dictionaryModes: DictionaryMode[] = ["definition", "explain", "synonyms", "antonyms"];
+  let dictionaryActiveMode: DictionaryMode = "synonyms";
+  let dictionarySelection: DictionarySelection | null = null;
+  let dictionaryNotice: string | null = null;
+  let dictionaryHistory: DictionarySearch[] = [];
+  let dictionaryActiveId: string | null = null;
+  let dictionarySkipNextAutoLookup = false;
 
   const makeRequestId = () => `agent-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   const makeMessageId = () => `msg-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -432,6 +480,11 @@ export const createAgentSidebar = (
     { id: "shorten", label: "Shorten", aliases: ["/s", "/shorten"] },
     { id: "proofread", label: "Proofread", aliases: ["/pr", "/proofread"] },
     { id: "substantiate", label: "Substantiate", aliases: ["/sub", "/substantiate"] },
+    { id: "abstract", label: "Abstract", aliases: ["/abstract", "/abs"] },
+    { id: "introduction", label: "Introduction", aliases: ["/intro", "/introduction"] },
+    { id: "findings", label: "Findings", aliases: ["/findings", "/results"] },
+    { id: "recommendations", label: "Recommendations", aliases: ["/recs", "/recommendations"] },
+    { id: "conclusion", label: "Conclusion", aliases: ["/conclusion", "/conc"] },
     { id: "check_sources", label: "Check sources", aliases: ["/cs", "/check", "/check-sources", "/check sources", "/checksources"] },
     { id: "clear_checks", label: "Clear checks", aliases: ["/cc", "/clear", "/clear-checks", "/clear checks", "/clearchecks"] }
   ];
@@ -466,6 +519,11 @@ export const createAgentSidebar = (
     if (/\B\/shorten\b/.test(text) || /\bshorten\b/.test(text)) return "shorten";
     if (/\B\/proofread\b/.test(text) || /\bproofread\b/.test(text)) return "proofread";
     if (/\B\/substantiate\b/.test(text) || /\bsubstantiate\b/.test(text)) return "substantiate";
+    if (/\B\/abstract\b/.test(text) || /\babstract\b/.test(text)) return "abstract";
+    if (/\B\/intro\b/.test(text) || /\B\/introduction\b/.test(text) || /\bintroduction\b/.test(text)) return "introduction";
+    if (/\B\/findings\b/.test(text) || /\B\/results\b/.test(text) || /\bfindings\b/.test(text)) return "findings";
+    if (/\B\/recs\b/.test(text) || /\B\/recommendations\b/.test(text) || /\brecommendations\b/.test(text)) return "recommendations";
+    if (/\B\/conclusion\b/.test(text) || /\B\/conc\b/.test(text) || /\bconclusion\b/.test(text)) return "conclusion";
     if (
       /\B\/check(?:\s+sources)?\b/.test(text) ||
       /\bcheck\s+sources?\b/.test(text) ||
@@ -582,10 +640,10 @@ export const createAgentSidebar = (
     };
 
     // Commands (plain words and slash forms).
-    addMatches(/\B\/(?:refine|paraphrase|shorten|proofread|substantiate)\b/gi, "cmd");
+    addMatches(/\B\/(?:refine|paraphrase|shorten|proofread|substantiate|abstract|intro(?:duction)?|findings|results|recs|recommendations|conclusion|conc)\b/gi, "cmd");
     addMatches(/\B\/check(?:\s+sources)?\b/gi, "cmd");
     addMatches(/\B\/clear(?:\s+checks)?\b/gi, "cmd");
-    addMatches(/\b(?:refine|paraphrase|shorten|proofread|substantiate)\b/gi, "cmd");
+    addMatches(/\b(?:refine|paraphrase|shorten|proofread|substantiate|abstract|introduction|findings|recommendations|conclusion)\b/gi, "cmd");
     addMatches(/\bcheck\s+sources\b/gi, "cmd");
 
     // Targets: sections + paragraphs (various forms).
@@ -698,6 +756,14 @@ export const createAgentSidebar = (
       { re: /\B\/shorten\b/gi, id: "shorten" },
       { re: /\B\/proofread\b/gi, id: "proofread" },
       { re: /\B\/substantiate\b/gi, id: "substantiate" },
+      { re: /\B\/abstract\b/gi, id: "abstract" },
+      { re: /\B\/intro(?:duction)?\b/gi, id: "introduction" },
+      { re: /\B\/findings\b/gi, id: "findings" },
+      { re: /\B\/results\b/gi, id: "findings" },
+      { re: /\B\/recs\b/gi, id: "recommendations" },
+      { re: /\B\/recommendations\b/gi, id: "recommendations" },
+      { re: /\B\/conclusion\b/gi, id: "conclusion" },
+      { re: /\B\/conc\b/gi, id: "conclusion" },
       { re: /\B\/check(?:\s+sources)?\b/gi, id: "check_sources" },
       { re: /\B\/clear(?:\s+checks)?\b/gi, id: "clear_checks" },
       { re: /\brefine\b/gi, id: "refine" },
@@ -705,6 +771,11 @@ export const createAgentSidebar = (
       { re: /\bshorten\b/gi, id: "shorten" },
       { re: /\bproofread\b/gi, id: "proofread" },
       { re: /\bsubstantiate\b/gi, id: "substantiate" },
+      { re: /\babstract\b/gi, id: "abstract" },
+      { re: /\bintroduction\b/gi, id: "introduction" },
+      { re: /\bfindings\b/gi, id: "findings" },
+      { re: /\brecommendations\b/gi, id: "recommendations" },
+      { re: /\bconclusion\b/gi, id: "conclusion" },
       { re: /\bcheck sources\b/gi, id: "check_sources" }
     ];
 
@@ -862,6 +933,11 @@ export const createAgentSidebar = (
       "shorten",
       "proofread",
       "substantiate",
+      "abstract",
+      "introduction",
+      "findings",
+      "recommendations",
+      "conclusion",
       "check_sources",
       "clear_checks"
     ];
@@ -929,6 +1005,11 @@ export const createAgentSidebar = (
       { id: "shorten", label: "Shorten" },
       { id: "proofread", label: "Proofread" },
       { id: "substantiate", label: "Substantiate" },
+      { id: "abstract", label: "Abstract" },
+      { id: "introduction", label: "Introduction" },
+      { id: "findings", label: "Findings" },
+      { id: "recommendations", label: "Recommendations" },
+      { id: "conclusion", label: "Conclusion" },
       { id: "check_sources", label: "Check sources" },
       { id: "clear_checks", label: "Clear checks" }
     ];
@@ -1063,12 +1144,12 @@ export const createAgentSidebar = (
     viewMode = next;
     if (next === "sources") {
       setActionMode("check_sources");
-    } else if (next === "chat") {
+    } else if (next === "chat" || next === "dictionary" || next === "sections") {
       setActionMode("auto");
     } else {
       setActionMode(next);
     }
-    pending = next === "chat" ? null : ((pendingByView as any)[next] ?? null);
+    pending = next === "chat" || next === "dictionary" ? null : ((pendingByView as any)[next] ?? null);
     if (next === "sources") {
       try {
         setSourceChecksVisible(true);
@@ -1080,12 +1161,20 @@ export const createAgentSidebar = (
     // tab button classes updated in renderViewTabs()
     renderViewTabs();
     renderBoxes();
+    if (next === "dictionary") {
+      if (!dictionarySkipNextAutoLookup) {
+        runDictionaryLookup();
+      }
+      dictionarySkipNextAutoLookup = false;
+    }
   };
 
   const renderViewTabs = () => {
     viewTabs.replaceChildren();
     const tabs: Array<{ id: SidebarViewId; label: string }> = [
       { id: "chat", label: "Chat" },
+      { id: "dictionary", label: "Dictionary" },
+      { id: "sections", label: "Sections" },
       { id: "refine", label: "Refine" },
       { id: "paraphrase", label: "Paraphrase" },
       { id: "shorten", label: "Shorten" },
@@ -1115,6 +1204,292 @@ export const createAgentSidebar = (
   // (initial render previously relied on setViewMode, which might not run before first paint).
   renderViewTabs();
 
+  const selectionHasAnchors = (from: number, to: number): boolean => {
+    try {
+      const editor = editorHandle.getEditor();
+      const doc = editor.state.doc;
+      const anchorMark = editor.schema.marks.anchor ?? null;
+      const linkMark = editor.schema.marks.link ?? null;
+      let found = false;
+      doc.nodesBetween(from, to, (node: any) => {
+        if (!node) return true;
+        if (String(node.type?.name ?? "") === "citation") {
+          found = true;
+          return false;
+        }
+        if (!node.isText) return true;
+        const marks = Array.isArray(node.marks) ? node.marks : [];
+        for (const m of marks) {
+          if (anchorMark && m.type === anchorMark) {
+            found = true;
+            return false;
+          }
+          if (linkMark && m.type === linkMark) {
+            const attrs = m.attrs ?? {};
+            const href = typeof attrs?.href === "string" ? attrs.href : "";
+            const looksLikeCitation = Boolean(
+              attrs?.dataKey ||
+                attrs?.itemKey ||
+                attrs?.dataItemKey ||
+                attrs?.dataDqid ||
+                attrs?.dataQuoteId ||
+                attrs?.dataQuoteText
+            );
+            if (looksLikeCitation) {
+              found = true;
+              return false;
+            }
+            if (href && /^(dq|cite|citegrp):\/\//i.test(href)) {
+              found = true;
+              return false;
+            }
+          }
+        }
+        return true;
+      });
+      return found;
+    } catch {
+      return false;
+    }
+  };
+
+  const getSentenceForSelection = (from: number): { sentence: string; blockText: string } => {
+    const editor = editorHandle.getEditor();
+    const doc = editor.state.doc;
+    const pos = doc.resolve(from);
+    let depth = pos.depth;
+    while (depth > 0 && !pos.node(depth).isTextblock) depth -= 1;
+    const blockNode = pos.node(depth);
+    const blockPos = pos.before(depth);
+    const blockFrom = blockPos + 1;
+    const blockTo = blockFrom + blockNode.content.size;
+    const blockText = doc.textBetween(blockFrom, blockTo, "\n").replace(/\s+/g, " ").trim();
+    if (!blockText) return { sentence: "", blockText: "" };
+
+    const leftText = doc.textBetween(blockFrom, from, "\n").replace(/\s+/g, " ");
+    const offset = Math.max(0, Math.min(blockText.length, leftText.length));
+    const clamp = (v: number) => Math.max(0, Math.min(blockText.length, v));
+
+    const left = blockText.slice(0, offset);
+    const right = blockText.slice(offset);
+    const boundaryRe = /[.!?;]\s+(?=[“"'\(\[]?[A-Z0-9])/g;
+    let start = 0;
+    for (const m of left.matchAll(boundaryRe)) {
+      const idx = typeof m.index === "number" ? m.index : -1;
+      if (idx < 0) continue;
+      const prev = left.slice(Math.max(0, idx - 3), idx + 1).toLowerCase();
+      const next = left.slice(idx + 1).trimStart();
+      if ((prev.endsWith("p.") || prev.endsWith("pp.")) && /^\d/.test(next)) continue;
+      start = idx + m[0].length;
+    }
+    start = clamp(start);
+
+    const nextCandidates = Array.from(right.matchAll(/[.!?;]/g))
+      .map((m) => (typeof m.index === "number" ? m.index : -1))
+      .filter((n) => n >= 0)
+      .map((n) => offset + n + 1);
+    const end = clamp(nextCandidates.length ? Math.min(...nextCandidates) : blockText.length);
+
+    return { sentence: blockText.slice(start, end).replace(/\s+/g, " ").trim(), blockText };
+  };
+
+  const clampDictionaryContext = (text: string) => {
+    if (!text) return text;
+    if (text.length <= DICT_CONTEXT_LIMIT) return text;
+    return text.slice(0, DICT_CONTEXT_LIMIT).trim();
+  };
+
+  const normalizeSuggestions = (suggestions: string[], selectedText: string) => {
+    const seen = new Set<string>();
+    const output: string[] = [];
+    const target = selectedText.trim().toLowerCase();
+    for (const raw of suggestions) {
+      const next = String(raw || "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .split(/\s+/)
+        .slice(0, 2)
+        .join(" ");
+      if (!next) continue;
+      if (next.toLowerCase() === target) continue;
+      const key = next.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      output.push(next);
+      if (output.length >= 5) break;
+    }
+    return output;
+  };
+
+  const clip = (value: string, max: number) => (value.length > max ? `${value.slice(0, max)}...` : value);
+  const logDictionary = (phase: "request" | "result" | "error", detail: Record<string, unknown>) => {
+    try {
+      window.codexLog?.write(`[dictionary:${phase}] ${JSON.stringify(detail)}`);
+    } catch {
+      // ignore
+    }
+    try {
+      // eslint-disable-next-line no-console
+      console.info("[dictionary]", phase, detail);
+    } catch {
+      // ignore
+    }
+  };
+
+  const getDictionarySelection = (): DictionarySelection | null => {
+    try {
+      const editor = editorHandle.getEditor();
+      const sel = editor.state.selection;
+      const from = Math.min(sel.from, sel.to);
+      const to = Math.max(sel.from, sel.to);
+      if (from === to) return null;
+      if (selectionHasAnchors(from, to)) return null;
+      const text = editor.state.doc.textBetween(from, to, "\n").trim();
+      if (!text) return null;
+      const { sentence, blockText } = getSentenceForSelection(from);
+      return { from, to, text, sentence, blockText };
+    } catch {
+      return null;
+    }
+  };
+
+  const highlightDictionarySelection = (selection?: DictionarySelection | null) => {
+    const next = selection ?? dictionarySelection;
+    if (!next) return;
+    try {
+      const editor = editorHandle.getEditor();
+      editor.commands.setTextSelection?.({ from: next.from, to: next.to });
+      editor.commands.setLexiconHighlight?.({ from: next.from, to: next.to });
+      editor.commands.focus();
+    } catch {
+      // ignore
+    }
+  };
+
+  const getActiveDictionarySearch = (): DictionarySearch | null =>
+    dictionaryActiveId ? dictionaryHistory.find((s) => s.id === dictionaryActiveId) ?? null : null;
+
+  const setActiveDictionarySearch = (search: DictionarySearch) => {
+    dictionaryActiveId = search.id;
+    dictionarySelection = search.selection;
+    dictionaryNotice = null;
+  };
+
+  const updateDictionaryEntry = (searchId: string, mode: DictionaryMode, entry: DictionaryEntry) => {
+    const search = dictionaryHistory.find((s) => s.id === searchId);
+    if (!search) return;
+    search.entries = { ...search.entries, [mode]: entry };
+    if (dictionaryActiveId === searchId && viewMode === "dictionary") {
+      renderBoxes();
+    }
+  };
+
+  const ensureDictionarySearch = (selection: DictionarySelection): DictionarySearch => {
+    const existing = dictionaryHistory.find(
+      (s) =>
+        s.selection.from === selection.from &&
+        s.selection.to === selection.to &&
+        s.selection.text === selection.text
+    );
+    if (existing) {
+      dictionaryHistory = [existing, ...dictionaryHistory.filter((s) => s.id !== existing.id)];
+      setActiveDictionarySearch(existing);
+      return existing;
+    }
+    const search: DictionarySearch = {
+      id: `dict-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+      createdAt: Date.now(),
+      selection,
+      entries: {
+        definition: { status: "idle" },
+        explain: { status: "idle" },
+        synonyms: { status: "idle" },
+        antonyms: { status: "idle" }
+      }
+    };
+    dictionaryHistory = [search, ...dictionaryHistory].slice(0, 25);
+    setActiveDictionarySearch(search);
+    return search;
+  };
+
+  const runDictionaryLookup = (modes: DictionaryMode[] = dictionaryModes) => {
+    const selection = getDictionarySelection();
+    if (!selection) {
+      dictionarySelection = null;
+      dictionaryNotice = "Select a word or phrase in the document to look it up.";
+      logDictionary("error", { reason: "no-selection" });
+      if (viewMode === "dictionary") renderBoxes();
+      return;
+    }
+
+    const search = ensureDictionarySearch(selection);
+    const settings = getAiSettings();
+
+    for (const mode of modes) {
+      const current = search.entries[mode];
+      updateDictionaryEntry(search.id, mode, {
+        status: "loading",
+        selected: current?.selected
+      });
+      const context = clampDictionaryContext(selection.blockText || selection.sentence);
+      logDictionary("request", {
+        mode,
+        provider: settings.provider,
+        model: settings.model,
+        selection: clip(selection.text, 160),
+        contextLen: context.length,
+        requestId: search.id
+      });
+      const payload = {
+        provider: settings.provider,
+        model: settings.model,
+        mode,
+        text: selection.text,
+        sentence: context
+      };
+      const requestId = `lex-dict-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}-${mode}`;
+      const host: any = (window as any).leditorHost;
+      if (!host || typeof host.lexicon !== "function") {
+        logDictionary("error", { mode, error: "host.lexicon unavailable" });
+        updateDictionaryEntry(search.id, mode, { status: "error", error: "Dictionary unavailable in this host." });
+        continue;
+      }
+      void host
+        .lexicon({ requestId, payload })
+        .then((result: any) => {
+          if (!result?.success) {
+            logDictionary("error", { mode, error: String(result?.error || "Lookup failed") });
+            updateDictionaryEntry(search.id, mode, { status: "error", error: String(result?.error || "Lookup failed") });
+            return;
+          }
+          if (mode === "definition") {
+            const text = typeof result?.definition === "string" ? String(result.definition).trim() : "";
+            logDictionary("result", { mode, text: clip(text, 200) });
+            updateDictionaryEntry(search.id, mode, { status: "success", text });
+            return;
+          }
+          if (mode === "explain") {
+            const text = typeof result?.explanation === "string" ? String(result.explanation).trim() : "";
+            logDictionary("result", { mode, text: clip(text, 200) });
+            updateDictionaryEntry(search.id, mode, { status: "success", text });
+            return;
+          }
+          const suggestions = Array.isArray(result?.suggestions) ? result.suggestions : [];
+          const rawOpts = suggestions
+            .map((s: any) => (typeof s === "string" ? s : typeof s?.text === "string" ? s.text : ""))
+            .map((s: string) => s.trim())
+            .filter(Boolean);
+          const opts = normalizeSuggestions(rawOpts, selection.text);
+          logDictionary("result", { mode, suggestions: opts });
+          updateDictionaryEntry(search.id, mode, { status: "success", suggestions: opts });
+        })
+        .catch((error: any) => {
+          logDictionary("error", { mode, error: String(error?.message || "Lookup failed") });
+          updateDictionaryEntry(search.id, mode, { status: "error", error: String(error?.message || "Lookup failed") });
+        });
+    }
+  };
+
   const renderBoxes = () => {
     const showBoxes = viewMode !== "chat";
     messagesEl.classList.toggle("is-hidden", showBoxes);
@@ -1124,6 +1499,255 @@ export const createAgentSidebar = (
     if (!showBoxes) return;
 
     boxesEl.replaceChildren();
+
+    if (viewMode === "dictionary") {
+      const wrapper = document.createElement("div");
+      wrapper.className = "leditor-agent-sidebar__dict";
+
+      const activeSearch = getActiveDictionarySearch();
+      const activeEntry = activeSearch?.entries?.[dictionaryActiveMode] ?? { status: "idle" };
+      const selectionLabel = activeSearch?.selection.text || dictionarySelection?.text || "Select text in the document";
+
+      const header = document.createElement("div");
+      header.className = "leditor-agent-sidebar__dictHeader";
+      const headerLeft = document.createElement("div");
+      headerLeft.className = "leditor-agent-sidebar__dictHeaderLeft";
+      const title = document.createElement("div");
+      title.className = "leditor-agent-sidebar__dictTitle";
+      title.textContent = "Dictionary";
+      const selectionBadge = document.createElement("div");
+      selectionBadge.className = "leditor-agent-sidebar__dictSelection";
+      selectionBadge.textContent = selectionLabel;
+      headerLeft.append(title, selectionBadge);
+
+      const headerActions = document.createElement("div");
+      headerActions.className = "leditor-agent-sidebar__dictHeaderActions";
+      const lookupBtn = document.createElement("button");
+      lookupBtn.type = "button";
+      lookupBtn.className = "leditor-agent-sidebar__dictBtn";
+      lookupBtn.textContent = "Lookup";
+      lookupBtn.disabled = !dictionarySelection && !getDictionarySelection();
+      lookupBtn.addEventListener("click", () => {
+        runDictionaryLookup([dictionaryActiveMode]);
+      });
+      const refreshBtn = document.createElement("button");
+      refreshBtn.type = "button";
+      refreshBtn.className = "leditor-agent-sidebar__dictBtn";
+      refreshBtn.textContent = "Lookup all";
+      refreshBtn.disabled = !dictionarySelection && !getDictionarySelection();
+      refreshBtn.addEventListener("click", () => {
+        runDictionaryLookup();
+      });
+      headerActions.append(lookupBtn, refreshBtn);
+      header.append(headerLeft, headerActions);
+
+      const historyRow = document.createElement("div");
+      historyRow.className = "leditor-agent-sidebar__dictHistory";
+      if (dictionaryHistory.length) {
+        const historyLabel = document.createElement("div");
+        historyLabel.className = "leditor-agent-sidebar__dictHistoryLabel";
+        historyLabel.textContent = "History";
+        const historyList = document.createElement("div");
+        historyList.className = "leditor-agent-sidebar__dictHistoryList";
+        for (const search of dictionaryHistory) {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "leditor-agent-sidebar__dictHistoryItem";
+          btn.textContent = search.selection.text;
+          const active = search.id === dictionaryActiveId;
+          btn.classList.toggle("is-active", active);
+          btn.addEventListener("click", () => {
+            setActiveDictionarySearch(search);
+            highlightDictionarySelection(search.selection);
+            renderBoxes();
+          });
+          historyList.appendChild(btn);
+        }
+        historyRow.append(historyLabel, historyList);
+      }
+
+      const tabs = document.createElement("div");
+      tabs.className = "leditor-agent-sidebar__dictTabs";
+      const tabLabel = (mode: DictionaryMode) =>
+        mode === "definition" ? "Define" : mode === "explain" ? "Explain" : mode === "synonyms" ? "Synonyms" : "Antonyms";
+      for (const mode of dictionaryModes) {
+        const tab = document.createElement("button");
+        tab.type = "button";
+        tab.className = "leditor-agent-sidebar__dictTab";
+        tab.textContent = tabLabel(mode);
+        const active = mode === dictionaryActiveMode;
+        tab.classList.toggle("is-active", active);
+        tab.addEventListener("click", () => {
+          dictionaryActiveMode = mode;
+          renderBoxes();
+          const entry = activeSearch?.entries?.[mode];
+          if (entry?.status === "idle") runDictionaryLookup([mode]);
+        });
+        tabs.appendChild(tab);
+      }
+
+      if (dictionaryNotice) {
+        const notice = document.createElement("div");
+        notice.className = "leditor-agent-sidebar__dictNotice";
+        notice.textContent = dictionaryNotice;
+        wrapper.append(header, historyRow, tabs, notice);
+        boxesEl.appendChild(wrapper);
+        return;
+      }
+
+      const content = document.createElement("div");
+      content.className = "leditor-agent-sidebar__dictPane";
+
+      if (dictionaryActiveMode === "definition" || dictionaryActiveMode === "explain") {
+        const body = document.createElement("div");
+        body.className = "leditor-agent-sidebar__dictCardBody";
+        if (activeEntry.status === "loading") {
+          body.textContent = "Loading...";
+          content.classList.add("is-loading");
+        } else if (activeEntry.status === "error") {
+          body.textContent = activeEntry.error || "Lookup failed.";
+          content.classList.add("is-error");
+        } else if (activeEntry.status === "success") {
+          body.textContent = activeEntry.text || "No result.";
+        } else {
+          body.textContent = "Run a lookup to see results.";
+        }
+        content.appendChild(body);
+        content.addEventListener("pointerdown", (e) => {
+          const target = e.target as HTMLElement | null;
+          if (target && target.closest("button")) return;
+          highlightDictionarySelection();
+        });
+      } else {
+        const list = document.createElement("div");
+        list.className = "leditor-agent-sidebar__dictOptionList";
+        if (activeEntry.status === "loading") {
+          const loading = document.createElement("div");
+          loading.className = "leditor-agent-sidebar__dictEmpty";
+          loading.textContent = "Loading...";
+          list.appendChild(loading);
+        } else if (activeEntry.status === "error") {
+          const error = document.createElement("div");
+          error.className = "leditor-agent-sidebar__dictEmpty";
+          error.textContent = activeEntry.error || "Lookup failed.";
+          list.appendChild(error);
+        } else if (activeEntry.status === "success") {
+          const options = Array.isArray(activeEntry.suggestions) ? activeEntry.suggestions : [];
+          if (!options.length) {
+            const empty = document.createElement("div");
+            empty.className = "leditor-agent-sidebar__dictEmpty";
+            empty.textContent = "No results.";
+            list.appendChild(empty);
+          } else {
+            for (const opt of options) {
+              const row = document.createElement("button");
+              row.type = "button";
+              row.className = "leditor-agent-sidebar__dictOption";
+              row.textContent = opt;
+              const isSelected = activeEntry.selected === opt;
+              row.classList.toggle("is-selected", isSelected);
+              row.addEventListener("click", () => {
+                if (!activeSearch) return;
+                updateDictionaryEntry(activeSearch.id, dictionaryActiveMode, {
+                  ...activeEntry,
+                  status: "success",
+                  selected: opt
+                });
+                highlightDictionarySelection();
+              });
+              list.appendChild(row);
+            }
+          }
+        } else {
+          const idle = document.createElement("div");
+          idle.className = "leditor-agent-sidebar__dictEmpty";
+          idle.textContent = "Run a lookup to see results.";
+          list.appendChild(idle);
+        }
+
+        const acceptRow = document.createElement("div");
+        acceptRow.className = "leditor-agent-sidebar__dictAcceptRow";
+        const acceptBtn = document.createElement("button");
+        acceptBtn.type = "button";
+        acceptBtn.className = "leditor-agent-sidebar__dictAcceptBtn";
+        acceptBtn.textContent = "Accept replacement";
+        acceptBtn.disabled = !activeEntry.selected || activeEntry.status !== "success";
+        acceptBtn.addEventListener("click", () => {
+          if (!activeEntry.selected || !activeSearch) return;
+          const editor = editorHandle.getEditor();
+          const replacement = activeEntry.selected;
+          const sel = activeSearch.selection;
+          try {
+            editor.view.dispatch(editor.state.tr.insertText(replacement, sel.from, sel.to));
+            const nextSelection = {
+              ...sel,
+              text: replacement,
+              to: sel.from + replacement.length
+            };
+            activeSearch.selection = nextSelection;
+            dictionarySelection = nextSelection;
+            highlightDictionarySelection(nextSelection);
+            renderBoxes();
+          } catch {
+            // ignore
+          }
+        });
+        acceptRow.appendChild(acceptBtn);
+        content.append(list, acceptRow);
+      }
+
+      wrapper.append(header, historyRow, tabs, content);
+      boxesEl.appendChild(wrapper);
+      return;
+    }
+
+    if (viewMode === "sections") {
+      const wrapper = document.createElement("div");
+      wrapper.className = "leditor-agent-sidebar__sections";
+
+      const header = document.createElement("div");
+      header.className = "leditor-agent-sidebar__sectionsHeader";
+      const title = document.createElement("div");
+      title.className = "leditor-agent-sidebar__sectionsTitle";
+      title.textContent = "Sections";
+      const subtitle = document.createElement("div");
+      subtitle.className = "leditor-agent-sidebar__sectionsSubtitle";
+      subtitle.textContent =
+        "Create or refine core sections using the entire document. Each button writes or updates the section in place.";
+      header.append(title, subtitle);
+
+      const grid = document.createElement("div");
+      grid.className = "leditor-agent-sidebar__sectionsGrid";
+      const sections: Array<{ id: AgentActionId; label: string; helper: string }> = [
+        { id: "abstract", label: "Abstract", helper: "Concise summary of purpose, method, and key findings." },
+        { id: "introduction", label: "Introduction", helper: "Context, problem framing, and roadmap." },
+        { id: "findings", label: "Findings", helper: "Core results or claims drawn from the document." },
+        { id: "recommendations", label: "Recommendations", helper: "Actionable implications or next steps." },
+        { id: "conclusion", label: "Conclusion", helper: "Synthesize contributions and close the argument." }
+      ];
+      for (const s of sections) {
+        const card = document.createElement("div");
+        card.className = "leditor-agent-sidebar__sectionCard";
+        const label = document.createElement("div");
+        label.className = "leditor-agent-sidebar__sectionLabel";
+        label.textContent = s.label;
+        const helper = document.createElement("div");
+        helper.className = "leditor-agent-sidebar__sectionHelper";
+        helper.textContent = s.helper;
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "leditor-agent-sidebar__sectionBtn";
+        btn.textContent = "Draft section";
+        btn.addEventListener("click", () => {
+          controller.runAction(s.id);
+        });
+        card.append(label, helper, btn);
+        grid.appendChild(card);
+      }
+
+      wrapper.append(header, grid);
+      boxesEl.appendChild(wrapper);
+    }
 
     if (viewMode === "sources") {
       const threadItems = getSourceChecksThread().items ?? [];
@@ -1520,6 +2144,12 @@ export const createAgentSidebar = (
       headerTitle.textContent = "Substantiate suggestions";
       const headerActions = document.createElement("div");
       headerActions.className = "leditor-agent-sidebar__boxHeaderActions";
+      if (substantiatePreviewState) {
+        const badge = document.createElement("div");
+        badge.className = `leditor-agent-sidebar__boxHeaderBadge${substantiatePreviewState === "applied" ? " is-ok" : " is-fail"}`;
+        badge.textContent = substantiatePreviewState === "applied" ? "Inline preview applied" : "Inline preview failed";
+        headerActions.appendChild(badge);
+      }
       const btnRejectAll = document.createElement("button");
       btnRejectAll.type = "button";
       btnRejectAll.className = "leditor-agent-sidebar__boxHeaderBtn";
@@ -1965,6 +2595,7 @@ export const createAgentSidebar = (
       paraphrase: null,
       shorten: null,
       proofread: null,
+      sections: null,
       substantiate: null,
       sources: null
     };
@@ -2208,7 +2839,12 @@ export const createAgentSidebar = (
     }
   };
 
-  const applyRangeAsTransaction = (from: number, to: number, text: string) => {
+  const applyRangeAsTransaction = (
+    from: number,
+    to: number,
+    text: string,
+    meta?: { source?: string; n?: number | null }
+  ) => {
     const editor = editorHandle.getEditor();
     const state = editor.state;
     const baseDoc = state.doc;
@@ -2221,9 +2857,33 @@ export const createAgentSidebar = (
     tr.setMeta("leditor-ai", { kind: "agent", ts: Date.now() });
     editor.view.dispatch(tr);
     editor.commands.focus();
+    if (meta?.source === "substantiate") {
+      try {
+        const beforeText = normalizeDiffText(baseDoc.textBetween(from, to, "\n"));
+        const expected = normalizeDiffText(text);
+        const afterDoc = editor.state.doc;
+        const probeEnd = Math.min(afterDoc.content.size, from + Math.max(8, expected.length + 16));
+        const afterText = normalizeDiffText(afterDoc.textBetween(from, probeEnd, "\n"));
+        const ok = expected ? afterText.includes(expected.slice(0, Math.min(40, expected.length))) : false;
+        console.info("[substantiate] applied", {
+          from,
+          to,
+          n: meta?.n ?? undefined,
+          ok,
+          expected: expected.slice(0, 160),
+          before: beforeText.slice(0, 160),
+          after: afterText.slice(0, 160)
+        });
+      } catch (error) {
+        console.warn("[substantiate] applied_log_failed", error);
+      }
+    }
   };
 
-  const applyBatchAsTransaction = (items: Array<{ from: number; to: number; text: string }>) => {
+  const applyBatchAsTransaction = (
+    items: Array<{ from: number; to: number; text: string }>,
+    meta?: { source?: string }
+  ) => {
     const editor = editorHandle.getEditor();
     const state = editor.state;
     const baseDoc = state.doc;
@@ -2239,6 +2899,29 @@ export const createAgentSidebar = (
     tr.setMeta("leditor-ai", { kind: "agent", ts: Date.now(), items: sorted.length });
     editor.view.dispatch(tr);
     editor.commands.focus();
+    if (meta?.source === "substantiate") {
+      try {
+        const afterDoc = editor.state.doc;
+        const sample = sorted.slice(0, 3).map((it) => {
+          const expected = normalizeDiffText(it.text);
+          const probeEnd = Math.min(afterDoc.content.size, it.from + Math.max(8, expected.length + 16));
+          const afterText = normalizeDiffText(afterDoc.textBetween(it.from, probeEnd, "\n"));
+          const ok = expected ? afterText.includes(expected.slice(0, Math.min(40, expected.length))) : false;
+          const beforeText = normalizeDiffText(baseDoc.textBetween(it.from, it.to, "\n"));
+          return {
+            from: it.from,
+            to: it.to,
+            ok,
+            expected: expected.slice(0, 120),
+            before: beforeText.slice(0, 120),
+            after: afterText.slice(0, 120)
+          };
+        });
+        console.info("[substantiate] applied_batch", { count: sorted.length, sample });
+      } catch (error) {
+        console.warn("[substantiate] applied_batch_log_failed", error);
+      }
+    }
   };
 
   const markSubstantiateSuppressedByRange = (from: number, to: number) => {
@@ -2421,13 +3104,51 @@ export const createAgentSidebar = (
         addApply(apply);
       }
 
+      const hasSubstantiatePending = Boolean((pendingByView as any).substantiate);
+      const prevPreviewState = substantiatePreviewState;
       if (!items.length) {
         editorHandle.execCommand("ClearAiDraftPreview");
+        if (hasSubstantiatePending) {
+          substantiatePreviewState = null;
+        }
+        if (prevPreviewState !== substantiatePreviewState && viewMode === "substantiate") {
+          renderBoxes();
+        }
         return;
       }
       editorHandle.execCommand("SetAiDraftPreview", { items });
-    } catch {
-      // ignore
+      if (hasSubstantiatePending) {
+        substantiatePreviewState = "applied";
+        console.info("[substantiate] draft_preview_set", { items: items.length });
+        if (substantiatePreviewRaf) {
+          window.cancelAnimationFrame(substantiatePreviewRaf);
+        }
+        substantiatePreviewRaf = window.requestAnimationFrame(() => {
+          substantiatePreviewRaf = 0;
+          try {
+            const nodes = document.querySelectorAll<HTMLElement>("[data-ai-draft-repl]");
+            const count = nodes.length;
+            console.info("[substantiate] preview_dom", { count });
+          } catch (error) {
+            console.warn("[substantiate] preview_dom_failed", error);
+          }
+        });
+      }
+      if (prevPreviewState !== substantiatePreviewState && viewMode === "substantiate") {
+        renderBoxes();
+      }
+    } catch (error) {
+      try {
+        if ((pendingByView as any).substantiate) {
+          substantiatePreviewState = "failed";
+          if (viewMode === "substantiate") {
+            renderBoxes();
+          }
+        }
+        console.warn("[substantiate] draft_preview_failed", error);
+      } catch {
+        // ignore
+      }
     }
   };
 
@@ -2444,7 +3165,7 @@ export const createAgentSidebar = (
       if (apply.kind === "replaceRange") {
         const match = (from !== null && to !== null) ? (apply.from === from && apply.to === to) : true;
         if (!match) continue;
-        applyRangeAsTransaction(apply.from, apply.to, apply.text);
+        applyRangeAsTransaction(apply.from, apply.to, apply.text, view === "substantiate" ? { source: "substantiate", n: (apply as any).n ?? null } : undefined);
         if (view === "substantiate") {
           dropSubstantiateByRange(apply.from, apply.to);
         }
@@ -2461,7 +3182,7 @@ export const createAgentSidebar = (
           (n !== null) ? items.find((it: any) => it.n === n) :
           null;
         if (!match) continue;
-        applyRangeAsTransaction(match.from, match.to, match.text);
+        applyRangeAsTransaction(match.from, match.to, match.text, view === "substantiate" ? { source: "substantiate", n: (match as any).n ?? null } : undefined);
         if (view === "substantiate") {
           dropSubstantiateByRange(match.from, match.to);
         }
@@ -2476,8 +3197,8 @@ export const createAgentSidebar = (
   };
 
   const acceptAllPending = () => {
-    if (!pending || viewMode === "chat" || viewMode === "sources") return;
-    applyPending();
+    if (!pending || viewMode === "chat" || viewMode === "dictionary" || viewMode === "sources") return;
+    applyPending(viewMode === "substantiate" ? { source: "substantiate" } : undefined);
     (pendingByView as any)[viewMode] = null;
     pending = null;
     if (viewMode === "substantiate") {
@@ -2489,7 +3210,7 @@ export const createAgentSidebar = (
   };
 
   const rejectAllPending = () => {
-    if (viewMode === "chat" || viewMode === "sources") return;
+    if (viewMode === "chat" || viewMode === "dictionary" || viewMode === "sources") return;
     (pendingByView as any)[viewMode] = null;
     pending = null;
     if (viewMode === "substantiate") {
@@ -2959,11 +3680,11 @@ export const createAgentSidebar = (
     };
   };
 
-  const applyPending = () => {
+  const applyPending = (meta?: { source?: string }) => {
     if (!pending) return;
     const editor = editorHandle.getEditor();
     if (pending.kind === "replaceRange") {
-      applyRangeAsTransaction(pending.from, pending.to, pending.text);
+      applyRangeAsTransaction(pending.from, pending.to, pending.text, meta);
       return;
     }
     if (pending.kind === "setDocument") {
@@ -2983,7 +3704,7 @@ export const createAgentSidebar = (
           throw new Error(`Document changed since draft for paragraph ${item.n}. Re-run the agent.`);
         }
       }
-      applyBatchAsTransaction(items.map((it) => ({ from: it.from, to: it.to, text: it.text })));
+      applyBatchAsTransaction(items.map((it) => ({ from: it.from, to: it.to, text: it.text })), meta);
       return;
     }
     throw new Error(`AgentSidebar: unknown apply kind "${(pending as any).kind}"`);
@@ -3337,6 +4058,13 @@ export const createAgentSidebar = (
       abortController = new AbortController();
       activeRequestId = makeRequestId();
       pendingActionId = forcedAction ?? null;
+      if (pendingActionId && isSectionAction(pendingActionId)) {
+        console.info("[agent][sections] input", {
+          requestId: activeRequestId,
+          action: pendingActionId,
+          instruction
+        });
+      }
       const result = await options.runAgent(request, editorHandle, progress, abortController.signal, activeRequestId);
       if (abortController.signal.aborted) {
         addMessage("assistant", "Cancelled.");
@@ -3355,11 +4083,19 @@ export const createAgentSidebar = (
       }
       pending = result.apply ?? null;
       if (pending) {
-        const viewKey = pendingActionId ?? null;
+        const viewKey =
+          pendingActionId && isSectionAction(pendingActionId)
+            ? ("sections" as SidebarViewId)
+            : (pendingActionId as SidebarViewId | null);
         if (viewKey) {
           pendingByView = { ...pendingByView, [viewKey]: pending };
         }
-        const applied = viewMode === "chat" ? null : ((pendingByView as any)[viewMode] ?? pending);
+        const applied =
+          viewKey === "sections"
+            ? pending
+            : viewMode === "chat"
+              ? null
+              : ((pendingByView as any)[viewMode] ?? pending);
         if (viewKey && viewKey !== viewMode) {
           setViewMode(viewKey as SidebarViewId);
         }
@@ -3376,6 +4112,14 @@ export const createAgentSidebar = (
           pending = null;
         }
         pending = applied;
+        if (pendingActionId && isSectionAction(pendingActionId)) {
+          console.info("[agent][sections] output", {
+            requestId: activeRequestId,
+            action: pendingActionId,
+            applyKind: pending?.kind ?? null,
+            assistantText: result.assistantText ?? ""
+          });
+        }
       } else {
         const finalText = (result.assistantText || streamBuffer || "(no response)").trim();
         if (streamMessageId) {
@@ -3384,6 +4128,14 @@ export const createAgentSidebar = (
           addMessage("assistant", finalText);
         }
         appendAgentHistoryMessage({ role: "assistant", content: finalText });
+        if (pendingActionId && isSectionAction(pendingActionId)) {
+          console.info("[agent][sections] output", {
+            requestId: activeRequestId,
+            action: pendingActionId,
+            applyKind: null,
+            assistantText: finalText
+          });
+        }
       }
     } catch (error) {
       addMessage("assistant", `Error: ${error instanceof Error ? error.message : String(error)}`);
@@ -3549,7 +4301,20 @@ export const createAgentSidebar = (
     return prompt;
   };
 
+  const isSectionAction = (actionId: AgentActionId): boolean =>
+    actionId === "abstract" ||
+    actionId === "introduction" ||
+    actionId === "findings" ||
+    actionId === "recommendations" ||
+    actionId === "conclusion";
+
   const applyActionTemplate = (actionId: AgentActionId) => {
+    if (isSectionAction(actionId)) {
+      const prompt = getActionPrompt(actionId);
+      input.value = prompt;
+      void run();
+      return;
+    }
     const target = getIndicesForCurrentSelectionOrCursor();
     if (!target) {
       addMessage("system", "Select text or place cursor in a paragraph, then run an action.");
@@ -3559,21 +4324,6 @@ export const createAgentSidebar = (
     const prompt = getActionPrompt(actionId);
     input.value = `${spec} ${prompt}`;
     void run();
-  };
-
-  const selectionHasAnchors = (from: number, to: number): boolean => {
-    const editor = editorHandle.getEditor();
-    let found = false;
-    editor.state.doc.nodesBetween(from, to, (node: any) => {
-      if (!node?.isText) return true;
-      const marks = Array.isArray(node.marks) ? node.marks : [];
-      if (marks.some((m: any) => isCitationLikeMark(m))) {
-        found = true;
-        return false;
-      }
-      return true;
-    });
-    return found;
   };
 
   const collectAnchorsInRange = (from: number, to: number) => {
@@ -3673,6 +4423,195 @@ export const createAgentSidebar = (
 
   const collectSourceRefsInRange = (from: number, to: number) => {
     return [...collectAnchorsInRange(from, to), ...collectCitationsInRange(from, to)];
+  };
+
+  const cssEscape = (value: string) => {
+    const raw = String(value ?? "");
+    const esc = (window as any).CSS?.escape;
+    if (typeof esc === "function") return esc(raw);
+    return raw.replace(/["\\]/g, "\\$&");
+  };
+
+  const findAnchorDomElement = (anchor: {
+    from: number;
+    text: string;
+    href: string;
+    dataKey: string;
+    dataDqid: string;
+    dataQuoteId: string;
+  }): HTMLElement | null => {
+    const editor = editorHandle.getEditor();
+    const view = (editor as any)?.view;
+    if (!view) return null;
+    try {
+      const domAt = view.domAtPos(anchor.from);
+      const baseNode = domAt?.node as any;
+      let el: HTMLElement | null = null;
+      if (baseNode instanceof HTMLElement) el = baseNode;
+      else if (baseNode?.parentElement) el = baseNode.parentElement as HTMLElement;
+      if (el) {
+        const closest = el.closest?.(
+          "[data-dqid],[data-quote-id],[data-key],[data-item-key],a[href^='dq://'],a[href^='cite://'],a[href^='citegrp://']"
+        );
+        if (closest) return closest as HTMLElement;
+      }
+    } catch {
+      // ignore
+    }
+    const root = view.dom as HTMLElement | null;
+    if (!root) return null;
+    const selectors: string[] = [];
+    if (anchor.dataDqid) selectors.push(`[data-dqid="${cssEscape(anchor.dataDqid)}"]`);
+    if (anchor.dataQuoteId) selectors.push(`[data-quote-id="${cssEscape(anchor.dataQuoteId)}"]`);
+    if (anchor.dataKey) selectors.push(`[data-key="${cssEscape(anchor.dataKey)}"]`, `[data-item-key="${cssEscape(anchor.dataKey)}"]`);
+    if (anchor.href) selectors.push(`a[href="${cssEscape(anchor.href)}"]`);
+    const selector = selectors.filter(Boolean).join(",");
+    if (!selector) return null;
+    try {
+      const nodes = Array.from(root.querySelectorAll<HTMLElement>(selector));
+      if (nodes.length === 1) return nodes[0];
+      if (nodes.length > 1) {
+        const needle = normalizeDiffText(anchor.text);
+        const match = nodes.find((el) => {
+          const txt = normalizeDiffText(el.textContent ?? "");
+          return needle ? txt.includes(needle) : false;
+        });
+        return match ?? nodes[0] ?? null;
+      }
+    } catch {
+      // ignore
+    }
+    const needleRaw = String(anchor.text ?? "");
+    const needleNorm = normalizeDiffText(needleRaw);
+    if (!needleRaw && !needleNorm) return null;
+    try {
+      const selectorFallback =
+        "[data-dqid],[data-quote-id],[data-key],[data-item-key],a[href^='dq://'],a[href^='cite://'],a[href^='citegrp://']";
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      let bestEl: HTMLElement | null = null;
+      let bestDist = Number.POSITIVE_INFINITY;
+      while (walker.nextNode()) {
+        const node = walker.currentNode as Text;
+        const raw = String(node.nodeValue ?? "");
+        if (!raw) continue;
+        const idx = needleRaw ? raw.indexOf(needleRaw) : -1;
+        const rawMatch = idx >= 0;
+        const normMatch = !rawMatch && needleNorm ? normalizeDiffText(raw).includes(needleNorm) : false;
+        if (!rawMatch && !normMatch) continue;
+        const parent = node.parentElement;
+        if (!parent) continue;
+        const candidate = parent.closest(selectorFallback) ?? parent;
+        if (rawMatch) {
+          let pos: number | null = null;
+          try {
+            pos = view.posAtDOM(node, idx);
+          } catch {
+            pos = null;
+          }
+          if (typeof pos === "number") {
+            const dist = Math.abs(pos - anchor.from);
+            if (dist < bestDist) {
+              bestDist = dist;
+              bestEl = candidate as HTMLElement;
+            }
+            continue;
+          }
+        }
+        if (!bestEl) {
+          bestEl = candidate as HTMLElement;
+        }
+      }
+      return bestEl;
+    } catch {
+      // ignore
+    }
+    return null;
+  };
+
+  const resolveDomOffsetToDocPos = (rootEl: HTMLElement, offset: number): number | null => {
+    const editor = editorHandle.getEditor();
+    const view = (editor as any)?.view;
+    if (!view) return null;
+    let remaining = Math.max(0, Math.floor(offset));
+    const walker = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
+    while (walker.nextNode()) {
+      const node = walker.currentNode;
+      if (node.nodeType === Node.TEXT_NODE) {
+        const text = String((node as Text).nodeValue ?? "");
+        if (remaining <= text.length) {
+          try {
+            return view.posAtDOM(node, remaining);
+          } catch {
+            return null;
+          }
+        }
+        remaining -= text.length;
+        continue;
+      }
+      if (node.nodeType === Node.ELEMENT_NODE && (node as HTMLElement).tagName === "BR") {
+        if (remaining <= 1) {
+          const parent = node.parentNode as HTMLElement | null;
+          if (!parent) return null;
+          const idx = Array.prototype.indexOf.call(parent.childNodes, node);
+          try {
+            return view.posAtDOM(parent, Math.max(0, idx + 1));
+          } catch {
+            return null;
+          }
+        }
+        remaining -= 1;
+      }
+    }
+    try {
+      return view.posAtDOM(rootEl, rootEl.childNodes.length);
+    } catch {
+      return null;
+    }
+  };
+
+  const resolveAnchorDomContext = (anchor: {
+    from: number;
+    text: string;
+    href: string;
+    dataKey: string;
+    dataDqid: string;
+    dataQuoteId: string;
+  }) => {
+    const anchorEl = findAnchorDomElement(anchor);
+    if (!anchorEl) return null;
+    const paragraphEl = anchorEl.closest?.("p") as HTMLElement | null;
+    if (!paragraphEl) return null;
+    if (anchorEl === paragraphEl) return null;
+    const paragraphText = String(paragraphEl.textContent ?? "");
+    if (!paragraphText) return null;
+    try {
+      const range = document.createRange();
+      range.selectNodeContents(paragraphEl);
+      range.setEndBefore(anchorEl);
+      const beforeText = range.toString();
+      const anchorOffset = beforeText.length;
+      const bounds = findSentenceBoundsAt(paragraphText, anchorOffset);
+      const sentenceStart = bounds.start;
+      const rawSlice = paragraphText.slice(sentenceStart, anchorOffset);
+      const oldTextRaw = rawSlice.replace(/\s+$/g, "");
+      const oldTextModel = oldTextRaw.replace(/\s+/g, " ").trim();
+      const from = resolveDomOffsetToDocPos(paragraphEl, sentenceStart);
+      const to = resolveDomOffsetToDocPos(paragraphEl, anchorOffset);
+      if (!Number.isFinite(from) || !Number.isFinite(to) || (from as number) >= (to as number)) {
+        return null;
+      }
+      return {
+        paragraphText,
+        oldTextRaw,
+        oldTextModel,
+        anchorOffset,
+        sentenceStart,
+        from: Number(from),
+        to: Number(to)
+      };
+    } catch {
+      return null;
+    }
   };
 
   const extractCitationContext = (
@@ -3793,12 +4732,14 @@ export const createAgentSidebar = (
     const editor = editorHandle.getEditor();
     let remaining = Math.max(0, Math.floor(offset));
     let resolved = from;
+    let resolvedSet = false;
     editor.state.doc.nodesBetween(from, to, (node: any, pos: number) => {
       if (!node) return true;
       if (node.isText) {
         const text = String(node.text ?? "");
         if (remaining <= text.length) {
           resolved = pos + remaining;
+          resolvedSet = true;
           return false;
         }
         remaining -= text.length;
@@ -3807,6 +4748,7 @@ export const createAgentSidebar = (
       if (String(node.type?.name ?? "") === "hard_break") {
         if (remaining <= 1) {
           resolved = pos + 1;
+          resolvedSet = true;
           return false;
         }
         remaining -= 1;
@@ -3814,6 +4756,9 @@ export const createAgentSidebar = (
       }
       return true;
     });
+    if (!resolvedSet && remaining > 0) {
+      return to;
+    }
     return resolved;
   };
 
@@ -4064,6 +5009,7 @@ export const createAgentSidebar = (
     substantiateResults = [];
     substantiateError = null;
     substantiateSuppressedKeys = new Set<string>();
+    substantiatePreviewState = null;
     pendingByView = { ...pendingByView, substantiate: null };
     pending = viewMode === "chat" ? null : ((pendingByView as any)[viewMode] ?? null);
     syncDraftPreview();
@@ -4078,63 +5024,132 @@ export const createAgentSidebar = (
         string,
         {
           paragraph: { n: number; from: number; to: number };
-          sentence: string;
-          sentenceSegment: string;
-          sentenceSuffix: string;
-          terminalPunct: string;
-          startOffset: number;
-          endOffset: number;
-          context: any;
+          paragraphText: string;
+          paragraphTextRaw: string;
+          oldTextRaw: string;
+          oldTextModel: string;
+          sentenceStartOffset: number;
+          anchorStartOffset: number;
+          dom?: {
+            paragraphText: string;
+            oldTextRaw: string;
+            oldTextModel: string;
+            anchorOffset: number;
+            sentenceStart: number;
+            from: number;
+            to: number;
+          };
+          anchors: Array<{ key: string; text: string; title: string; startOffset: number; endOffset: number }>;
           anchorText: string;
           anchorTitle: string;
+          anchorTexts: string[];
         }
       >();
       for (const paragraph of selected) {
         const anchorsRaw = collectSourceRefsInRange(paragraph.from, paragraph.to);
         const paragraphTextRaw = editor.state.doc.textBetween(paragraph.from, paragraph.to, "\n");
         const paragraphText = paragraphTextRaw.trim();
-        const anchors = anchorsRaw.map((a, idx) => {
-          const base = String(a?.href || a?.dataDqid || a?.dataKey || a?.text || "").replace(/\s+/g, " ").trim();
-          const baseShort = base.length > 72 ? `${base.slice(0, 71)}…` : base;
-          const stableKey = `P${paragraph.n}:${baseShort}:${idx + 1}`;
-          return { ...a, key: stableKey };
-        });
+        const anchors = anchorsRaw
+          .map((a, idx) => {
+            const base = String(a?.href || a?.dataDqid || a?.dataKey || a?.text || "").replace(/\s+/g, " ").trim();
+            const baseShort = base.length > 72 ? `${base.slice(0, 71)}…` : base;
+            const stableKey = `P${paragraph.n}:${baseShort}:${idx + 1}`;
+            const anchorText = String(a?.text ?? "");
+            const startOffset = resolveDocPosToTextOffset(paragraph.from, paragraph.to, a.from);
+            const endOffset = startOffset + anchorText.length;
+            const sentenceBounds = findSentenceBoundsAt(paragraphTextRaw, startOffset);
+            return { ...a, key: stableKey, startOffset, endOffset, sentenceBounds };
+          })
+          .sort((a, b) => a.startOffset - b.startOffset);
         if (anchors.length === 0) continue;
-        const ctxByKey = extractCitationContext(
-          paragraphTextRaw,
-          anchors.map((a) => ({ key: a.key, text: a.text }))
-        );
-        for (const a of anchors) {
-          const ctx = ctxByKey.get(a.key) ?? null;
-          const anchorOffset = resolveDocPosToTextOffset(paragraph.from, paragraph.to, a.from);
-          const sentenceInfo = findSentenceBeforeOffset(paragraphTextRaw, anchorOffset);
-          const sentence = sentenceInfo.trimmed;
-          if (!sentence) {
-            continue;
+
+        const isGapOnlyPunct = (value: string) =>
+          String(value ?? "").replace(/[\s,;:()\[\]{}"“”‘’'`~–—-]+/g, "") === "";
+
+        let i = 0;
+        while (i < anchors.length) {
+          const first = anchors[i]!;
+          const sentenceBounds = first.sentenceBounds;
+          const group: typeof anchors = [first];
+          let prev = first;
+          let j = i + 1;
+          while (j < anchors.length) {
+            const next = anchors[j]!;
+            const sameSentence =
+              next.sentenceBounds?.start === sentenceBounds?.start &&
+              next.sentenceBounds?.end === sentenceBounds?.end;
+            if (!sameSentence) break;
+            const gap = paragraphTextRaw.slice(prev.endOffset, next.startOffset);
+            if (!isGapOnlyPunct(gap)) break;
+            group.push(next);
+            prev = next;
+            j += 1;
           }
-          const anchorText = String(a?.text ?? "");
-          const anchorTitle = String(a?.title ?? "");
-          anchorsPayload.push({
-            key: a.key,
-            paragraphN: paragraph.n,
-            text: anchorText,
-            title: anchorTitle,
-            sentence,
-            context: ctx,
-            paragraphText
+
+          const sentenceStartOffset = Number.isFinite(sentenceBounds?.start) ? Number(sentenceBounds.start) : 0;
+          const anchorStartOffset = first.startOffset;
+          const rawSlice = paragraphTextRaw.slice(sentenceStartOffset, anchorStartOffset);
+          const oldTextRaw = rawSlice.replace(/\s+$/g, "");
+          const oldTextModel = oldTextRaw.replace(/\s+/g, " ").trim();
+          const domContext = resolveAnchorDomContext({
+            from: first.from,
+            text: String(first.text ?? ""),
+            href: String(first.href ?? ""),
+            dataKey: String(first.dataKey ?? ""),
+            dataDqid: String(first.dataDqid ?? ""),
+            dataQuoteId: String(first.dataQuoteId ?? "")
           });
-          anchorContextByKey.set(a.key, {
-            paragraph,
-            sentence,
-            sentenceSegment: sentenceInfo.segment,
-            sentenceSuffix: sentenceInfo.suffix,
-            terminalPunct: sentenceInfo.terminalPunct,
-            startOffset: sentenceInfo.start,
-            endOffset: sentenceInfo.end,
-            context: sentenceInfo,
-            anchorText,
-            anchorTitle
-          });
+          if (!domContext) {
+            console.info("[substantiate] dom_context_missing", { key: String(first.key ?? ""), paragraphN: paragraph.n });
+          }
+          const oldTextPayload = domContext?.oldTextRaw || oldTextRaw || oldTextModel;
+          const hasOldText = Boolean(domContext?.oldTextModel || oldTextModel);
+          if (hasOldText) {
+            const groupKey =
+              group.length > 1 ? `P${paragraph.n}:grp:${first.key}:${group.length}` : String(first.key);
+            const groupAnchors = group.map((a) => ({
+              key: String(a.key ?? ""),
+              text: String(a.text ?? ""),
+              title: String(a.title ?? ""),
+              startOffset: a.startOffset,
+              endOffset: a.endOffset
+            }));
+            const anchorTexts = groupAnchors.map((a) => a.text).filter(Boolean);
+            const anchorTitles = groupAnchors.map((a) => a.title).filter(Boolean);
+            const anchorTitle = anchorTitles.length
+              ? anchorTitles.join(" • ")
+              : group.length > 1
+                ? `Multiple citations (${group.length})`
+                : "";
+            const anchorText = anchorTexts.length ? anchorTexts.join(" ") : "";
+
+            const paragraphTextPayload = domContext?.paragraphText
+              ? String(domContext.paragraphText).trim()
+              : paragraphText;
+            anchorsPayload.push({
+              key: groupKey,
+              paragraphN: paragraph.n,
+              anchors: groupAnchors.map((a) => ({ text: a.text, title: a.title })),
+              oldText: oldTextPayload,
+              paragraphText: paragraphTextPayload
+            });
+            anchorContextByKey.set(groupKey, {
+              paragraph,
+              paragraphText,
+              paragraphTextRaw,
+              oldTextRaw,
+              oldTextModel,
+              sentenceStartOffset,
+              anchorStartOffset,
+              dom: domContext ?? undefined,
+              anchors: groupAnchors,
+              anchorText,
+              anchorTitle,
+              anchorTexts
+            });
+          }
+
+          i = j;
         }
       }
 
@@ -4143,6 +5158,21 @@ export const createAgentSidebar = (
         setViewMode("substantiate");
         renderBoxes();
         return;
+      }
+
+      try {
+        console.info("[substantiate] input", {
+          paragraphs: selected.map((p) => p.n),
+          requests: anchorsPayload.length,
+          sample: anchorsPayload.slice(0, 3).map((r) => ({
+            key: r.key,
+            paragraphN: r.paragraphN,
+            oldText: String(r.oldText ?? "").slice(0, 180),
+            anchors: Array.isArray(r.anchors) ? r.anchors.map((a: any) => a?.text).filter(Boolean) : []
+          }))
+        });
+      } catch {
+        // ignore
       }
 
       const sel = resolveSelectedModelId();
@@ -4157,40 +5187,167 @@ export const createAgentSidebar = (
       const updateSubstantiateState = (byKey: Map<string, any>) => {
         const nextResults: SubstantiateSuggestion[] = [];
         const applyItems: Array<{ n: number; from: number; to: number; text: string; originalText: string }> = [];
+        const locateOldTextRange = (paragraphTextRaw: string, needleRaw: string, anchorStartOffset: number) => {
+          const needle = String(needleRaw ?? "");
+          if (!needle) return null;
+          const maxIdx = Math.max(0, Math.min(paragraphTextRaw.length, anchorStartOffset));
+          const idx = paragraphTextRaw.lastIndexOf(needle, maxIdx);
+          if (idx < 0) return null;
+          return { start: idx, end: idx + needle.length };
+        };
+        const normalizedCache = new Map<string, { norm: string; map: number[] }>();
+        const buildNormalizedMap = (value: string) => {
+          const cached = normalizedCache.get(value);
+          if (cached) return cached;
+          const raw = String(value ?? "");
+          let norm = "";
+          const map: number[] = [];
+          let inWs = false;
+          for (let i = 0; i < raw.length; i += 1) {
+            const ch = raw[i] ?? "";
+            if (/\s/.test(ch)) {
+              if (!inWs) {
+                norm += " ";
+                map.push(i);
+                inWs = true;
+              }
+              continue;
+            }
+            inWs = false;
+            norm += ch;
+            map.push(i);
+          }
+          const built = { norm, map };
+          normalizedCache.set(value, built);
+          return built;
+        };
+        const normalizedIndexForRawOffset = (map: number[], rawOffset: number) => {
+          if (!map.length) return -1;
+          let lo = 0;
+          let hi = map.length - 1;
+          let ans = -1;
+          const target = Math.max(0, Math.floor(rawOffset));
+          while (lo <= hi) {
+            const mid = Math.floor((lo + hi) / 2);
+            const v = map[mid] ?? 0;
+            if (v <= target) {
+              ans = mid;
+              lo = mid + 1;
+            } else {
+              hi = mid - 1;
+            }
+          }
+          return ans;
+        };
+        const locateOldTextRangeNormalized = (paragraphTextRaw: string, needleRaw: string, anchorStartOffset: number) => {
+          const needleNorm = normalizeDiffText(needleRaw);
+          if (!needleNorm) return null;
+          const { norm, map } = buildNormalizedMap(paragraphTextRaw);
+          if (!norm) return null;
+          const anchorNormIdx = normalizedIndexForRawOffset(map, anchorStartOffset);
+          const maxIdx = anchorNormIdx >= 0 ? anchorNormIdx : norm.length - 1;
+          const idx = norm.lastIndexOf(needleNorm, maxIdx);
+          if (idx < 0) return null;
+          const startRaw = map[idx] ?? 0;
+          const endNormIdx = idx + needleNorm.length - 1;
+          const endRaw = endNormIdx >= 0 ? (map[endNormIdx] ?? startRaw) + 1 : startRaw + needleNorm.length;
+          return { start: startRaw, end: endRaw };
+        };
+        const clampOffset = (value: number, max: number) => Math.max(0, Math.min(max, value));
         for (const [key, context] of anchorContextByKey.entries()) {
           if (substantiateSuppressedKeys.has(key)) continue;
           const r = byKey.get(key);
           if (!r) continue;
-          const sentence = context.sentence;
-          const startOffset = Number.isFinite(context.startOffset) ? context.startOffset : undefined;
-          const endOffset = Number.isFinite(context.endOffset) ? context.endOffset : undefined;
-          const from =
-            typeof startOffset === "number"
+          const rawOldText =
+            typeof r?.old_text === "string"
+              ? String(r.old_text)
+              : typeof r?.oldText === "string"
+                ? String(r.oldText)
+                : context.dom?.oldTextRaw || context.oldTextRaw || context.oldTextModel;
+          const domContext = context.dom;
+          let from: number | undefined;
+          let to: number | undefined;
+          let sentenceRaw = "";
+          if (domContext && Number.isFinite(domContext.from) && Number.isFinite(domContext.to) && domContext.from < domContext.to) {
+            from = domContext.from;
+            to = domContext.to;
+            sentenceRaw = getRangeOriginalText(from, to);
+            console.info("[substantiate] range_dom", {
+              key,
+              paragraphN: context.paragraph.n,
+              from,
+              to
+            });
+          }
+          const candidates = [context.oldTextRaw, rawOldText, context.oldTextModel]
+            .map((v) => (typeof v === "string" ? v : ""))
+            .filter((v) => normalizeDiffText(v).length > 0);
+          let range: { start: number; end: number } | null = null;
+          let fallbackStartOffset: number | null = null;
+          let fallbackEndOffset: number | null = null;
+          if (!from || !to) {
+            for (const candidate of candidates) {
+              range = locateOldTextRange(context.paragraphTextRaw, candidate, context.anchorStartOffset);
+              if (range) break;
+            }
+            if (!range) {
+              for (const candidate of candidates) {
+                range = locateOldTextRangeNormalized(context.paragraphTextRaw, candidate, context.anchorStartOffset);
+                if (range) break;
+              }
+            }
+            const maxLen = context.paragraphTextRaw.length;
+            const startOffset = clampOffset(range ? range.start : context.sentenceStartOffset, maxLen);
+            const endFallback = context.sentenceStartOffset + context.oldTextRaw.length;
+            const endOffset = clampOffset(range ? range.end : endFallback, maxLen);
+            fallbackStartOffset = startOffset;
+            fallbackEndOffset = endOffset;
+            const safeEndOffset = Math.max(startOffset, endOffset);
+            from = Number.isFinite(startOffset)
               ? resolveTextOffsetToDocPos(context.paragraph.from, context.paragraph.to, startOffset)
               : undefined;
-          const to =
-            typeof endOffset === "number"
-              ? resolveTextOffsetToDocPos(context.paragraph.from, context.paragraph.to, endOffset)
+            to = Number.isFinite(safeEndOffset)
+              ? resolveTextOffsetToDocPos(context.paragraph.from, context.paragraph.to, safeEndOffset)
               : undefined;
-          const terminalPunct = context.terminalPunct || "";
-          const suffix = context.sentenceSuffix || "";
-          const rewrite = (() => {
-            let base = typeof r?.rewrite === "string" ? String(r.rewrite) : sentence;
-            base = base.replace(/\s+/g, " ").trim();
-            if (context.anchorText && base.includes(context.anchorText)) {
-              base = base.split(context.anchorText).join("").replace(/\s+/g, " ").trim();
+            sentenceRaw =
+              Number.isFinite(startOffset) && Number.isFinite(safeEndOffset)
+                ? context.paragraphTextRaw.slice(startOffset, safeEndOffset)
+                : context.oldTextRaw;
+          }
+          const sentence = normalizeDiffText(sentenceRaw);
+          if (!domContext && !range) {
+            console.info("[substantiate] range_fallback", {
+              key,
+              paragraphN: context.paragraph.n,
+              anchorStartOffset: context.anchorStartOffset,
+              fallbackStart: fallbackStartOffset ?? undefined,
+              fallbackEnd: fallbackEndOffset ?? undefined
+            });
+          }
+          if (typeof from === "number" && typeof to === "number" && from < to) {
+            const originalFromDoc = getRangeOriginalText(from, to);
+            const normalizedOriginal = normalizeDiffText(originalFromDoc);
+            if (normalizedOriginal && sentence && normalizedOriginal !== sentence) {
+              console.info("[substantiate] range_mismatch", {
+                key,
+                paragraphN: context.paragraph.n,
+                from,
+                to,
+                expected: sentence.slice(0, 160),
+                actual: normalizedOriginal.slice(0, 160)
+              });
             }
-            if (!base) base = sentence.replace(/\s+/g, " ").trim();
-            if (terminalPunct && !/[.!?;:]$/.test(base)) {
-              base = base + terminalPunct;
+          }
+          let rewrite = typeof r?.rewrite === "string" ? String(r.rewrite) : sentence;
+          rewrite = normalizeDiffText(rewrite);
+          for (const t of context.anchorTexts) {
+            if (t && rewrite.includes(t)) {
+              rewrite = normalizeDiffText(rewrite.split(t).join(" "));
             }
-            if (suffix) {
-              base = base + suffix;
-            }
-            return base;
-          })();
-          const normalizedSentence = String(sentence ?? "").replace(/\s+/g, " ").trim();
-          const normalizedRewrite = String(rewrite ?? "").replace(/\s+/g, " ").trim();
+          }
+          if (!rewrite) rewrite = sentence;
+          const normalizedSentence = sentence;
+          const normalizedRewrite = rewrite;
           const hasChange = normalizedRewrite && normalizedRewrite !== normalizedSentence;
           const error = typeof r?.error === "string" ? String(r.error) : "";
           const justification =
@@ -4222,8 +5379,18 @@ export const createAgentSidebar = (
             status: "pending",
             ...(error ? { error } : {})
           });
+          console.info("[substantiate] output", {
+            key,
+            paragraphN: context.paragraph.n,
+            stance:
+              r?.stance === "corroborates" || r?.stance === "refutes" || r?.stance === "mixed" || r?.stance === "uncertain"
+                ? r.stance
+                : "uncertain",
+            hasChange,
+            rewrite: rewrite.slice(0, 240)
+          });
           if (hasChange && typeof from === "number" && typeof to === "number" && from < to) {
-            const originalText = getRangeOriginalText(from, to) || context.sentenceSegment || sentence || "";
+            const originalText = getRangeOriginalText(from, to) || sentenceRaw || sentence || "";
             applyItems.push({
               n: Number.isFinite(context.paragraph.n) ? context.paragraph.n : 0,
               from,
@@ -4233,6 +5400,16 @@ export const createAgentSidebar = (
             });
           }
         }
+
+        console.info("[substantiate] preview_items", {
+          count: applyItems.length,
+          sample: applyItems.slice(0, 3).map((it) => ({
+            n: it.n,
+            from: it.from,
+            to: it.to,
+            text: String(it.text ?? "").slice(0, 120)
+          }))
+        });
 
         substantiateResults = nextResults;
         pendingByView = {
@@ -4261,7 +5438,7 @@ export const createAgentSidebar = (
         provider: sel.provider,
         model: sel.model,
         lookupPath,
-        anchors: anchorsPayload,
+        requests: anchorsPayload,
         stream: streamEnabled
       };
       const cacheKey = buildLlmCacheKey({
@@ -4538,7 +5715,20 @@ export const createAgentSidebar = (
         void runSubstantiate();
         return;
       }
+      if (isSectionAction(actionId)) {
+        setViewMode("chat");
+      }
       applyActionTemplate(actionId);
+    },
+    openDictionary(mode?: DictionaryMode) {
+      if (destroyed) return;
+      if (!open) controller.open();
+      if (mode) {
+        dictionaryActiveMode = mode;
+      }
+      dictionarySkipNextAutoLookup = true;
+      setViewMode("dictionary");
+      runDictionaryLookup(mode ? [mode] : dictionaryModes);
     },
     destroy() {
       if (destroyed) return;

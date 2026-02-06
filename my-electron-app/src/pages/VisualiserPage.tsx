@@ -118,8 +118,14 @@ const EXPORT_PANEL_HTML = `
           <div class="section-title">Inputs</div>
         </header>
         <div class="section-body" id="optionsHost">
+          <div id="optionsFormHost"></div>
           <div class="row visualiser-button-row visualiser-button-row--inputs">
             <button class="btn" id="btnRunInputs" type="button">Run</button>
+            <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-left:auto;">
+              <input type="checkbox" id="chkAutoRun" />
+              Auto-run
+            </label>
+            <button class="btn" id="btnResetInputs" type="button">Reset</button>
           </div>
           <div class="log visualiser-log header-log visualiser-log-panel" id="visualiserLog">
             <div class="visualiser-log-placeholder">No visualiser logs yet.</div>
@@ -157,6 +163,9 @@ const EXPORT_PANEL_HTML = `
 `;
 
 export class VisualiserPage {
+  private static readonly DECK_CACHE_VERSION = "v3";
+  private static readonly PARAMS_STORAGE_KEY = "visualiser.params.v1";
+  private static readonly AUTORUN_STORAGE_KEY = "visualiser.autorun.v1";
   private mount: HTMLElement;
   private sectionsHost: HTMLElement | null;
   private exportHost: HTMLElement | null;
@@ -211,6 +220,8 @@ export class VisualiserPage {
   private lastActiveThumbIdx: number | null = null;
   private slideDescriptions = new Map<string, string>();
   private static activeInstance: VisualiserPage | null = null;
+  private autoRunTimer: number | null = null;
+  private suppressAutoRun = false;
 
   constructor(mount: HTMLElement) {
     this.mount = mount;
@@ -946,27 +957,14 @@ export class VisualiserPage {
   };
 
   private renderOptions(): void {
-    const host = this.exportHost?.querySelector<HTMLElement>("#optionsHost");
-    if (!host) return;
-    const row = host.querySelector<HTMLElement>(".row");
-    if (row) row.remove();
+    const formHost = this.exportHost?.querySelector<HTMLElement>("#optionsFormHost");
+    if (!formHost) return;
+    formHost.innerHTML = "";
     if (!this.schema.length) {
       return;
     }
-    const form = document.createElement("div");
-    form.style.display = "grid";
-    form.style.gridTemplateColumns = "repeat(auto-fit, minmax(160px, 1fr))";
-    form.style.gap = "8px";
-    this.schema.forEach((field) => {
-      const wrap = document.createElement("label");
-      wrap.style.display = "flex";
-      wrap.style.flexDirection = "column";
-      wrap.style.gap = "4px";
-      const title = document.createElement("span");
-      title.textContent = field.label;
-      title.style.fontSize = "12px";
-      title.style.color = "var(--muted)";
-      let input: HTMLElement;
+
+    const buildInput = (field: (typeof this.schema)[number]): HTMLElement => {
       if (field.type === "select" && field.options) {
         const sel = document.createElement("select");
         field.options.forEach((opt) => {
@@ -976,8 +974,9 @@ export class VisualiserPage {
           sel.appendChild(option);
         });
         if (field.default !== undefined) sel.value = String(field.default);
-        input = sel;
-      } else if (field.type === "textarea") {
+        return sel;
+      }
+      if (field.type === "textarea") {
         const ta = document.createElement("textarea");
         ta.rows = 4;
         const placeholder = String((field as any).placeholder ?? "").trim();
@@ -988,37 +987,277 @@ export class VisualiserPage {
         if ((field as any).asList) {
           ta.setAttribute("data-param-as-list", "1");
         }
-        input = ta;
-      } else {
-        const inp = document.createElement("input");
-        inp.type = field.type === "number" ? "number" : "text";
-        if (field.min !== undefined) inp.min = String(field.min);
-        if (field.max !== undefined) inp.max = String(field.max);
-        if (field.default !== undefined) inp.value = String(field.default);
-        input = inp;
+        return ta;
       }
-      input.setAttribute("data-param-key", field.key);
-      input.style.padding = "6px 8px";
-      input.style.borderRadius = "8px";
-      input.style.border = "1px solid var(--border)";
-      input.style.background = "var(--panel)";
-      input.style.color = "var(--text)";
-      wrap.append(title, input);
-      form.appendChild(wrap);
+      const inp = document.createElement("input");
+      inp.type = field.type === "number" ? "number" : "text";
+      if (field.min !== undefined) inp.min = String(field.min);
+      if (field.max !== undefined) inp.max = String(field.max);
+      if (field.default !== undefined) inp.value = String(field.default);
+      return inp;
+    };
+
+    const groupForKey = (key: string): string => {
+      if (key === "data_source" || key === "words_topics_view") return "Text";
+      if (
+        key === "word_plot_type" ||
+        key === "top_n_words" ||
+        key === "max_words" ||
+        key === "min_frequency" ||
+        key === "min_cooccurrence" ||
+        key === "min_keyword_frequency" ||
+        key === "max_nodes_for_plot" ||
+        key === "num_top_words" ||
+        key === "specific_words_to_track" ||
+        key === "wordcloud_colormap" ||
+        key === "contour_width" ||
+        key === "contour_color"
+      )
+        return "Words";
+      if (
+        key === "ngram_plot_type" ||
+        key === "ngram_n" ||
+        key === "top_n_ngrams" ||
+        key === "num_top_ngrams_for_evolution" ||
+        key === "specific_ngrams_to_track" ||
+        key === "min_ngram_cooccurrence" ||
+        key === "max_nodes_for_ngram_network" ||
+        key === "num_ngrams_for_heatmap_cols" ||
+        key === "num_docs_for_heatmap_rows"
+      )
+        return "N-grams";
+      if (key === "top_n_authors" || key === "production_top_n") return "Authors";
+      return "Other";
+    };
+
+    const groups = new Map<string, Array<(typeof this.schema)[number]>>();
+    this.schema.forEach((field) => {
+      const group = groupForKey(field.key);
+      if (!groups.has(group)) groups.set(group, []);
+      groups.get(group)!.push(field);
     });
-    host.appendChild(form);
-    const rowWrap = document.createElement("div");
-    rowWrap.className = "row";
-    rowWrap.style.marginTop = "10px";
-    rowWrap.style.display = "flex";
-    rowWrap.style.gap = "6px";
-    const run = document.createElement("button");
-    run.className = "btn";
-    run.type = "button";
-    run.textContent = "Run";
-    run.addEventListener("click", this.handleRunInputs);
-    rowWrap.appendChild(run);
-    host.appendChild(rowWrap);
+
+    const orderedGroups = ["Text", "Words", "N-grams", "Authors", "Other"].filter((g) => groups.has(g));
+    orderedGroups.forEach((group) => {
+      const details = document.createElement("details");
+      details.open = group === "Text" || group === "Words" || group === "N-grams";
+      details.style.border = "1px solid var(--border)";
+      details.style.borderRadius = "10px";
+      details.style.padding = "8px 10px";
+      details.style.background = "var(--surface-muted)";
+      details.style.marginBottom = "8px";
+
+      const summary = document.createElement("summary");
+      summary.textContent = group;
+      summary.style.cursor = "pointer";
+      summary.style.fontWeight = "700";
+      summary.style.fontSize = "12px";
+      summary.style.color = "var(--text)";
+      summary.style.marginBottom = "6px";
+      details.appendChild(summary);
+
+      const grid = document.createElement("div");
+      grid.style.display = "grid";
+      grid.style.gridTemplateColumns = "repeat(auto-fit, minmax(160px, 1fr))";
+      grid.style.gap = "8px";
+
+      groups.get(group)!.forEach((field) => {
+        const wrap = document.createElement("label");
+        wrap.style.display = "flex";
+        wrap.style.flexDirection = "column";
+        wrap.style.gap = "4px";
+        wrap.setAttribute("data-param-wrap", field.key);
+        const title = document.createElement("span");
+        title.textContent = field.label;
+        title.style.fontSize = "12px";
+        title.style.color = "var(--muted)";
+        const input = buildInput(field);
+        input.setAttribute("data-param-key", field.key);
+        (input as HTMLElement).style.padding = "6px 8px";
+        (input as HTMLElement).style.borderRadius = "8px";
+        (input as HTMLElement).style.border = "1px solid var(--border)";
+        (input as HTMLElement).style.background = "var(--panel)";
+        (input as HTMLElement).style.color = "var(--text)";
+        wrap.append(title, input);
+        grid.appendChild(wrap);
+      });
+
+      details.appendChild(grid);
+      formHost.appendChild(details);
+    });
+
+    this.suppressAutoRun = true;
+    try {
+      this.restoreParamsFromStorage();
+      this.syncAutoRunCheckbox();
+      this.applyOptionsVisibility();
+    } finally {
+      this.suppressAutoRun = false;
+    }
+  }
+
+  private restoreParamsFromStorage(): void {
+    try {
+      const raw = window.localStorage.getItem(VisualiserPage.PARAMS_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      if (!parsed || typeof parsed !== "object") return;
+      const host = this.exportHost?.querySelector<HTMLElement>("#optionsHost");
+      if (!host) return;
+      const allowed = new Set(this.schema.map((s) => s.key));
+      const nodes = host.querySelectorAll<HTMLElement>("[data-param-key]");
+      nodes.forEach((node) => {
+        const key = String(node.getAttribute("data-param-key") || "");
+        if (!key || !allowed.has(key) || !(key in parsed)) return;
+        const value = (parsed as any)[key];
+        if (node instanceof HTMLInputElement) {
+          if (node.type === "number") node.value = value === undefined || value === null ? "" : String(value);
+          else node.value = value === undefined || value === null ? "" : String(value);
+        } else if (node instanceof HTMLSelectElement) {
+          node.value = value === undefined || value === null ? "" : String(value);
+        } else if (node instanceof HTMLTextAreaElement) {
+          if (node.getAttribute("data-param-as-list") === "1" && Array.isArray(value)) {
+            node.value = value.join("\n");
+          } else {
+            node.value = value === undefined || value === null ? "" : String(value);
+          }
+        }
+      });
+    } catch {
+      // ignore
+    }
+  }
+
+  private persistParamsToStorage(params: Record<string, unknown>): void {
+    try {
+      const allowed = new Set(this.schema.map((s) => s.key));
+      const next: Record<string, unknown> = {};
+      Object.entries(params).forEach(([key, value]) => {
+        if (!allowed.has(key)) return;
+        if (value === undefined) return;
+        next[key] = value;
+      });
+      window.localStorage.setItem(VisualiserPage.PARAMS_STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      // ignore
+    }
+  }
+
+  private syncAutoRunCheckbox(): void {
+    const chk = this.exportHost?.querySelector<HTMLInputElement>("#chkAutoRun");
+    if (!chk) return;
+    try {
+      const raw = window.localStorage.getItem(VisualiserPage.AUTORUN_STORAGE_KEY);
+      chk.checked = raw === "1";
+    } catch {
+      chk.checked = false;
+    }
+  }
+
+  private isAutoRunEnabled(): boolean {
+    const chk = this.exportHost?.querySelector<HTMLInputElement>("#chkAutoRun");
+    return Boolean(chk?.checked);
+  }
+
+  private scheduleAutoRun(): void {
+    if (this.autoRunTimer) {
+      window.clearTimeout(this.autoRunTimer);
+      this.autoRunTimer = null;
+    }
+    if (!this.isAutoRunEnabled()) return;
+    this.autoRunTimer = window.setTimeout(() => {
+      this.autoRunTimer = null;
+      if (!this.currentTable) {
+        return;
+      }
+      void this.runVisualiser();
+    }, 450);
+  }
+
+  private applyOptionsVisibility(): void {
+    if (!this.exportHost) return;
+    const host = this.exportHost.querySelector<HTMLElement>("#optionsHost");
+    if (!host) return;
+
+    const getValue = (key: string): string => {
+      const node = host.querySelector<HTMLElement>(`[data-param-key='${CSS.escape(key)}']`);
+      if (!node) return "";
+      if (node instanceof HTMLInputElement || node instanceof HTMLSelectElement || node instanceof HTMLTextAreaElement) {
+        return String(node.value ?? "");
+      }
+      return "";
+    };
+
+    const view = getValue("words_topics_view") || "both";
+    const wordPlot = getValue("word_plot_type") || "bar_vertical";
+    const ngramPlot = getValue("ngram_plot_type") || "bar_chart";
+
+    const showWords = view === "words" || view === "both" || view === "";
+    const showNgrams = view === "ngrams" || view === "both";
+
+    const setWrap = (key: string, visible: boolean): void => {
+      const wrap = host.querySelector<HTMLElement>(`[data-param-wrap='${CSS.escape(key)}']`);
+      if (wrap) wrap.style.display = visible ? "" : "none";
+    };
+
+    // Words
+    [
+      "word_plot_type",
+      "top_n_words",
+      "max_words",
+      "min_frequency",
+      "min_cooccurrence",
+      "min_keyword_frequency",
+      "max_nodes_for_plot",
+      "num_top_words",
+      "specific_words_to_track",
+      "wordcloud_colormap",
+      "contour_width",
+      "contour_color"
+    ].forEach((k) => setWrap(k, showWords));
+
+    const isWordCloud = wordPlot === "word_cloud";
+    const isWordBar = wordPlot === "bar_vertical" || wordPlot === "bar_horizontal" || wordPlot === "treemap" || wordPlot === "heatmap";
+    const isWordNetwork = wordPlot === "cooccurrence_network";
+    const isWordsOverTime = wordPlot === "words_over_time";
+
+    setWrap("top_n_words", showWords && isWordBar);
+    setWrap("max_words", showWords && isWordCloud);
+    setWrap("wordcloud_colormap", showWords && isWordCloud);
+    setWrap("contour_width", showWords && isWordCloud);
+    setWrap("contour_color", showWords && isWordCloud);
+    setWrap("min_frequency", showWords && (isWordBar || isWordNetwork));
+    setWrap("min_cooccurrence", showWords && isWordNetwork);
+    setWrap("min_keyword_frequency", showWords && isWordNetwork);
+    setWrap("max_nodes_for_plot", showWords && isWordNetwork);
+    setWrap("num_top_words", showWords && isWordsOverTime);
+    setWrap("specific_words_to_track", showWords && isWordsOverTime);
+
+    // N-grams
+    [
+      "ngram_plot_type",
+      "ngram_n",
+      "top_n_ngrams",
+      "num_top_ngrams_for_evolution",
+      "specific_ngrams_to_track",
+      "min_ngram_cooccurrence",
+      "max_nodes_for_ngram_network",
+      "num_ngrams_for_heatmap_cols",
+      "num_docs_for_heatmap_rows"
+    ].forEach((k) => setWrap(k, showNgrams));
+
+    const isNgramBar = ngramPlot === "bar_chart";
+    const isNgramEvolution = ngramPlot === "ngram_evolution_time_series";
+    const isNgramNetwork = ngramPlot === "ngram_cooccurrence_network";
+    const isNgramHeatmap = ngramPlot === "ngram_frequency_heatmap";
+
+    setWrap("top_n_ngrams", showNgrams && isNgramBar);
+    setWrap("num_top_ngrams_for_evolution", showNgrams && isNgramEvolution);
+    setWrap("specific_ngrams_to_track", showNgrams && isNgramEvolution);
+    setWrap("min_ngram_cooccurrence", showNgrams && isNgramNetwork);
+    setWrap("max_nodes_for_ngram_network", showNgrams && isNgramNetwork);
+    setWrap("num_ngrams_for_heatmap_cols", showNgrams && isNgramHeatmap);
+    setWrap("num_docs_for_heatmap_rows", showNgrams && isNgramHeatmap);
   }
 
   private readParams(): Record<string, unknown> {
@@ -1069,6 +1308,16 @@ export class VisualiserPage {
       return;
     }
     this.attachListener(this.exportHost.querySelector("#btnRunInputs"), "click", this.handleRunInputs);
+    const inputsHost = this.exportHost.querySelector<HTMLElement>("#optionsHost");
+    if (inputsHost) {
+      this.attachListener(inputsHost, "input", this.handleOptionsInputChange as unknown as EventListener);
+      this.attachListener(inputsHost, "change", this.handleOptionsInputChange as unknown as EventListener);
+    }
+    this.attachListener(this.exportHost.querySelector("#btnResetInputs"), "click", this.handleResetInputs);
+    const auto = this.exportHost.querySelector<HTMLInputElement>("#chkAutoRun");
+    if (auto) {
+      this.attachListener(auto as unknown as HTMLElement, "change", this.handleAutoRunToggle as unknown as EventListener);
+    }
     this.attachListener(this.exportHost.querySelector("#btnBuild"), "click", this.handleBuild);
     this.attachListener(this.exportHost.querySelector("#btnRefresh"), "click", this.handleRefreshClick);
     this.attachListener(this.exportHost.querySelector("#btnCancelPreview"), "click", this.handleCancelPreviewClick);
@@ -1087,6 +1336,66 @@ export class VisualiserPage {
     this.refreshDescribeBox();
     this.updateCancelButtonState();
   }
+
+  private handleAutoRunToggle = (): void => {
+    const chk = this.exportHost?.querySelector<HTMLInputElement>("#chkAutoRun");
+    if (!chk) return;
+    try {
+      window.localStorage.setItem(VisualiserPage.AUTORUN_STORAGE_KEY, chk.checked ? "1" : "0");
+    } catch {
+      // ignore
+    }
+    if (chk.checked) {
+      this.scheduleAutoRun();
+    } else if (this.autoRunTimer) {
+      window.clearTimeout(this.autoRunTimer);
+      this.autoRunTimer = null;
+    }
+  };
+
+  private handleResetInputs = (): void => {
+    if (!this.exportHost) return;
+    const host = this.exportHost.querySelector<HTMLElement>("#optionsHost");
+    if (!host) return;
+    this.suppressAutoRun = true;
+    try {
+      this.schema.forEach((field) => {
+        const node = host.querySelector<HTMLElement>(`[data-param-key='${CSS.escape(field.key)}']`);
+        if (!node) return;
+        const value = field.default ?? "";
+        if (node instanceof HTMLInputElement || node instanceof HTMLSelectElement) {
+          node.value = String(value);
+        } else if (node instanceof HTMLTextAreaElement) {
+          node.value = String(value ?? "");
+        }
+      });
+      try {
+        window.localStorage.removeItem(VisualiserPage.PARAMS_STORAGE_KEY);
+      } catch {
+        // ignore
+      }
+      this.applyOptionsVisibility();
+    } finally {
+      this.suppressAutoRun = false;
+    }
+  };
+
+  private handleOptionsInputChange = (event: Event): void => {
+    const target = event.target as HTMLElement | null;
+    if (!target || !this.exportHost) return;
+    if (!target.closest("[data-param-key]") && !(target as any).getAttribute?.("data-param-key")) {
+      // For select/input nested in label, closest may miss; check direct attr.
+      if (!target.getAttribute?.("data-param-key")) {
+        return;
+      }
+    }
+    this.applyOptionsVisibility();
+    if (!this.suppressAutoRun) {
+      const params = this.readParams();
+      this.persistParamsToStorage(params);
+      this.scheduleAutoRun();
+    }
+  };
 
   private getActiveSlideNoteKey(): string {
     const slide = this.deck[this.slideIndex] as any;
@@ -2189,6 +2498,8 @@ ${dots}
     out.forEach((trace: any) => {
       if (!trace || typeof trace !== "object") return;
       const type = String(trace.type || "scatter");
+      const traceLabel = String(trace.name ?? trace.legendgroup ?? "").trim();
+      const traceColor = traceLabel ? colorForLabel(traceLabel) : "";
       if (type === "bar") {
         const orient = String(trace.orientation || "v");
         const catsRaw = orient === "h" ? trace.y : trace.x;
@@ -2222,6 +2533,56 @@ ${dots}
           (marker as any).colors = labels.map((l: string) => colorForLabel(l));
         }
         trace.marker = marker;
+        return;
+      }
+
+      // For multi-trace charts, Plotly usually encodes categories as separate traces (each with a legend name).
+      // If upstream doesn't provide colors, ensure each trace is visually distinct and stable across figures.
+      if (type === "scatter" || type === "scattergl") {
+        if (!traceColor) return;
+        const marker = trace.marker && typeof trace.marker === "object" ? { ...trace.marker } : {};
+        const line = trace.line && typeof trace.line === "object" ? { ...trace.line } : {};
+        if (!marker.color) marker.color = traceColor;
+        if (!marker.line) marker.line = { color: paletteLine, width: 1 };
+        if (!line.color) line.color = traceColor;
+        trace.marker = marker;
+        trace.line = line;
+        return;
+      }
+
+      if (type === "box" || type === "violin" || type === "histogram") {
+        if (!traceColor) return;
+        const marker = trace.marker && typeof trace.marker === "object" ? { ...trace.marker } : {};
+        const line = trace.line && typeof trace.line === "object" ? { ...trace.line } : {};
+        if (!marker.color) marker.color = traceColor;
+        if (!(marker as any).line) (marker as any).line = { color: paletteLine, width: 1 };
+        if (!line.color) line.color = traceColor;
+        if (!trace.fillcolor && (type === "box" || type === "violin")) {
+          // Lighten fill by using rgba; Plotly accepts 'rgba(r,g,b,a)' but we only have hex/hsl.
+          // Use the traceColor as-is; the theme/layout will handle background contrast.
+          trace.fillcolor = traceColor;
+          trace.opacity = typeof trace.opacity === "number" ? trace.opacity : 0.35;
+        }
+        trace.marker = marker;
+        trace.line = line;
+        return;
+      }
+
+      if (type === "heatmap") {
+        // Heatmaps usually encode categories along x/y; ensure a readable colorscale on dark themes.
+        // If upstream provides a colorscale, keep it.
+        if (trace.colorscale) return;
+        // A compact, perceptually-uniform sequential scale that reads well on dark backgrounds.
+        trace.colorscale = [
+          [0.0, "#0b1220"],
+          [0.15, "#16325c"],
+          [0.35, "#2563eb"],
+          [0.55, "#22c55e"],
+          [0.75, "#f59e0b"],
+          [1.0, "#ef4444"]
+        ];
+        trace.reversescale = Boolean(trace.reversescale);
+        return;
       }
     });
     return out;
@@ -2603,13 +2964,20 @@ ${dots}
 
   private deleteDeckCache(key: string): void {
     try {
-      const raw = window.localStorage.getItem("visualiser.deck.cache");
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as Record<string, unknown>;
-      if (!parsed || typeof parsed !== "object") return;
-      if (!(key in parsed)) return;
-      delete parsed[key];
-      window.localStorage.setItem("visualiser.deck.cache", JSON.stringify(parsed));
+      const storageKeys = [
+        `visualiser.deck.cache:${VisualiserPage.DECK_CACHE_VERSION}`,
+        // Back-compat cleanup for pre-versioned caches.
+        "visualiser.deck.cache"
+      ];
+      storageKeys.forEach((storageKey) => {
+        const raw = window.localStorage.getItem(storageKey);
+        if (!raw) return;
+        const parsed = JSON.parse(raw) as Record<string, unknown>;
+        if (!parsed || typeof parsed !== "object") return;
+        if (!(key in parsed)) return;
+        delete (parsed as any)[key];
+        window.localStorage.setItem(storageKey, JSON.stringify(parsed));
+      });
     } catch {
       // ignore cache errors
     }
@@ -2646,6 +3014,7 @@ ${dots}
   }
 
   private handleRunInputs = (): void => {
+    this.persistParamsToStorage(this.readParams());
     void this.runVisualiser();
   };
 
@@ -2655,6 +3024,7 @@ ${dots}
 
   private handleRefreshClick = (): void => {
     this.setStatus("Refresh preview requested (build deck).");
+    this.persistParamsToStorage(this.readParams());
     void this.runVisualiser(true);
   };
 
@@ -3743,6 +4113,7 @@ ${dots}
   ): string {
     const head = table.rows.slice(0, 5);
     const payload = {
+      v: VisualiserPage.DECK_CACHE_VERSION,
       columns: table.columns,
       rows: table.rows.length,
       head,
@@ -3754,7 +4125,7 @@ ${dots}
 
   private readDeckCache(key: string): Array<Record<string, unknown>> | null {
     try {
-      const raw = window.localStorage.getItem("visualiser.deck.cache");
+      const raw = window.localStorage.getItem(`visualiser.deck.cache:${VisualiserPage.DECK_CACHE_VERSION}`);
       if (!raw) return null;
       const parsed = JSON.parse(raw) as Record<string, unknown>;
       const entry = (parsed as any)[key];
@@ -3776,7 +4147,7 @@ ${dots}
   private writeDeckCache(key: string, deck: Array<Record<string, unknown>>): void {
     const MAX_ENTRIES = 40;
     try {
-      const raw = window.localStorage.getItem("visualiser.deck.cache");
+      const raw = window.localStorage.getItem(`visualiser.deck.cache:${VisualiserPage.DECK_CACHE_VERSION}`);
       const parsed = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
       (parsed as any)[key] = { deck, t: Date.now() };
       const keys = Object.keys(parsed);
@@ -3793,7 +4164,7 @@ ${dots}
           delete (parsed as any)[scored[i].k];
         }
       }
-      window.localStorage.setItem("visualiser.deck.cache", JSON.stringify(parsed));
+      window.localStorage.setItem(`visualiser.deck.cache:${VisualiserPage.DECK_CACHE_VERSION}`, JSON.stringify(parsed));
     } catch {
       // ignore cache errors
     }

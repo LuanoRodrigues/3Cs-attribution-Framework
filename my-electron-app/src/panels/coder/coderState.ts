@@ -238,6 +238,8 @@ export class CoderStore {
   private readonly scopeId?: CoderScopeId;
   private lastStatePath: string | null = null;
   private lastBaseDir: string | null = null;
+  private statePathOverride: string | null = null;
+  private projectPath: string | null = null;
   private persistTimer: number | null = null;
   private persistPendingState: CoderState | null = null;
   private persistPendingSource: string | undefined;
@@ -276,6 +278,22 @@ export class CoderStore {
         }
       });
     }
+  }
+
+  setStatePathOverride(path: string | null): void {
+    this.statePathOverride = path ? String(path) : null;
+  }
+
+  getStatePathOverride(): string | null {
+    return this.statePathOverride;
+  }
+
+  setProjectPath(path: string | null): void {
+    this.projectPath = path ? String(path) : null;
+  }
+
+  getProjectPath(): string | null {
+    return this.projectPath;
   }
 
   subscribe(listener: (state: CoderState) => void): () => void {
@@ -519,12 +537,32 @@ export class CoderStore {
   }
 
   async loadFromDisk(): Promise<PersistentCoderState | null> {
-    const result = await loadPersistentCoderState(this.scopeId);
+    const result = await loadPersistentCoderState(this.scopeId, {
+      statePath: this.statePathOverride ?? undefined,
+      projectPath: this.projectPath ?? undefined
+    });
     if (!result) return null;
     this.lastBaseDir = result.baseDir;
     this.lastStatePath = result.statePath;
     this.replaceTree(result.state.nodes, {
       source: "loadFromDisk",
+      skipPersist: true,
+      collapsedIds: result.state.collapsedIds
+    });
+    return result;
+  }
+
+  async loadFromDiskAt(statePath: string): Promise<PersistentCoderState | null> {
+    const result = await loadPersistentCoderState(this.scopeId, {
+      statePath,
+      projectPath: this.projectPath ?? undefined
+    });
+    if (!result) return null;
+    this.lastBaseDir = result.baseDir;
+    this.lastStatePath = result.statePath;
+    this.setStatePathOverride(result.statePath);
+    this.replaceTree(result.state.nodes, {
+      source: "loadFromDiskAt",
       skipPersist: true,
       collapsedIds: result.state.collapsedIds
     });
@@ -582,7 +620,10 @@ export class CoderStore {
   }
 
   private persistState(state: CoderState, source?: string): void {
-    savePersistentCoderState(state, this.scopeId)
+    savePersistentCoderState(state, this.scopeId, {
+      statePath: this.statePathOverride ?? undefined,
+      projectPath: this.projectPath ?? undefined
+    })
       .then((result) => {
         if (!result) return;
         if (result.statePath) {
@@ -607,6 +648,33 @@ export class CoderStore {
       .catch((error) => {
         console.warn("[CoderStore] Failed to persist coder state", error);
       });
+  }
+
+  async persistNow(source?: string, nameOverride?: string): Promise<void> {
+    const result = await savePersistentCoderState(this.state, this.scopeId, {
+      statePath: this.statePathOverride ?? undefined,
+      projectPath: this.projectPath ?? undefined,
+      name: nameOverride
+    });
+    if (!result) return;
+    if (result.statePath) {
+      this.lastStatePath = result.statePath;
+    }
+    if (result.baseDir) {
+      this.lastBaseDir = result.baseDir;
+    }
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("coder:stateSaved", {
+          detail: {
+            scopeId: this.scopeId ?? null,
+            statePath: this.lastStatePath,
+            baseDir: this.lastBaseDir,
+            source: source || null
+          }
+        })
+      );
+    }
   }
 
   getLastStatePath(): string | null {
@@ -835,21 +903,30 @@ function ensureStateStructure(candidate: unknown): CoderState {
   return createRootState();
 }
 
-type BridgeLoadResponse = { state: unknown; baseDir: string; statePath: string };
+type BridgeLoadResponse = { state: unknown; baseDir: string; statePath: string; metaTitle?: string };
 type BridgeSaveResponse = { baseDir: string; statePath: string };
+type BridgeStateOptions = { statePath?: string; projectPath?: string; name?: string };
 
-export async function loadPersistentCoderState(scopeId?: CoderScopeId): Promise<PersistentCoderState | null> {
+export async function loadPersistentCoderState(
+  scopeId?: CoderScopeId,
+  options?: BridgeStateOptions
+): Promise<PersistentCoderState | null> {
   if (typeof window === "undefined" || !window.coderBridge?.loadState) {
     return null;
   }
   try {
-    const result = (await window.coderBridge.loadState({ scopeId })) as BridgeLoadResponse | null;
+    const result = (await window.coderBridge.loadState({
+      scopeId,
+      statePath: options?.statePath,
+      projectPath: options?.projectPath,
+      name: options?.name
+    })) as BridgeLoadResponse | null;
     if (!result || !result.state) {
       return null;
     }
     const normalized = ensureStateStructure(result.state);
     console.info(`[CODER][STATE] loaded ${result.statePath}`);
-    return { state: normalized, baseDir: result.baseDir, statePath: result.statePath };
+    return { state: normalized, baseDir: result.baseDir, statePath: result.statePath, metaTitle: (result as any).metaTitle };
   } catch (error) {
     console.warn("[CoderState] Unable to load persisted coder state", error);
     return null;
@@ -858,13 +935,20 @@ export async function loadPersistentCoderState(scopeId?: CoderScopeId): Promise<
 
 export async function savePersistentCoderState(
   state: CoderState,
-  scopeId?: CoderScopeId
+  scopeId?: CoderScopeId,
+  options?: BridgeStateOptions
 ): Promise<BridgeSaveResponse | null> {
   if (typeof window === "undefined" || !window.coderBridge?.saveState) {
     return null;
   }
   try {
-    const result = (await window.coderBridge.saveState({ scopeId, state })) as BridgeSaveResponse | null;
+    const result = (await window.coderBridge.saveState({
+      scopeId,
+      state,
+      statePath: options?.statePath,
+      projectPath: options?.projectPath,
+      name: options?.name
+    })) as BridgeSaveResponse | null;
     if (result?.statePath) {
       console.info(`[CODER][STATE] saved ${result.statePath}`);
     }

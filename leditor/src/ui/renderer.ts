@@ -18,6 +18,7 @@ import { debugInfo, debugWarn } from "../utils/debug.ts";
 import "@fontsource/source-sans-3/400.css";
 import "@fontsource/source-sans-3/600.css";
 import "@fontsource/source-serif-4/600.css";
+import "sweetalert2/dist/sweetalert2.min.css";
 import "./theme.css";
 import "./ribbon.css";
 import "./home.css";

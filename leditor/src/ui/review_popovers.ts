@@ -2,7 +2,7 @@ import { autoUpdate, computePosition, flip, offset, shift } from "@floating-ui/d
 
 type ReviewCardAction = {
   label: string;
-  onSelect: () => void;
+  onSelect: () => void | boolean;
 };
 
 type ReviewCardOptions = {
@@ -54,7 +54,8 @@ export const showReviewCard = (options: ReviewCardOptions): void => {
       button.className = "leditor-review-card-action";
       button.textContent = action.label;
       button.addEventListener("click", () => {
-        action.onSelect();
+        const result = action.onSelect();
+        if (result === false) return;
         closeActivePopover();
       });
       footer.appendChild(button);
