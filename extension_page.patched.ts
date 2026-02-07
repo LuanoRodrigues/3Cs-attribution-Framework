@@ -1,0 +1,6354 @@
+import { Extension, Node, mergeAttributes } from "@tiptap/core";
+import Document from "@tiptap/extension-document";
+import { Plugin, PluginKey, Selection, TextSelection } from "@tiptap/pm/state";
+import { Fragment, Node as ProseMirrorNode } from "@tiptap/pm/model";
+import { splitBlock } from "@tiptap/pm/commands";
+import { canJoin, canSplit } from "@tiptap/pm/transform";
+import { PaginationScheduler } from "../ui/pagination/scheduler.ts";
+
+const PAGE_CLASS = "leditor-page";
+const PAGE_SELECTOR = `.${PAGE_CLASS}[data-page]`;
+const PAGE_INNER_CLASS = "leditor-page-inner";
+const PAGE_HEADER_CLASS = "leditor-page-header";
+const PAGE_CONTENT_CLASS = "leditor-page-content";
+const PAGE_FOOTER_CLASS = "leditor-page-footer";
+const PAGE_FOOTNOTES_CLASS = "leditor-page-footnotes";
+const PAGE_FOOTNOTE_CONTINUATION_CLASS = "leditor-footnote-continuation";
+
+const paginationKey = new PluginKey("leditor-page-pagination");
+const debugEnabled = (): boolean => {
+  if (typeof window === "undefined") return false;
+  return (window as typeof window & { __leditorPaginationDebug?: boolean }).__leditorPaginationDebug === true;
+};
+
+const shouldLogMessage = (message: string): boolean => {
+  if (!debugEnabled()) return false;
+  const verbose =
+    typeof window !== "undefined" &&
+    (window as typeof window & { __leditorPaginationDebugVerbose?: boolean })
+      .__leditorPaginationDebugVerbose === true;
+  if (verbose) return true;
+  const importantPrefixes = [
+    "manual page split",
+    "manual page join",
+    "splitting page",
+    "joining pages",
+    "split failed",
+    "join threw",
+    "pagination lock",
+    "page content height is non-positive"
+  ];
+  return importantPrefixes.some((prefix) => message.startsWith(prefix));
+};
+
+const logDebug = (message: string, detail?: Record<string, unknown>) => {
+  if (!shouldLogMessage(message)) return;
+  if (detail) {
+    const useJson =
+      typeof window !== "undefined" &&
+      (window as typeof window & { __leditorPaginationDebugJson?: boolean })
+        .__leditorPaginationDebugJson === true;
+    if (useJson) {
+      try {
+        console.info(`[PaginationDebug] ${message} ${JSON.stringify(detail)}`);
+      } catch {
+        console.info(`[PaginationDebug] ${message}`, detail);
+      }
+    } else {
+      console.info(`[PaginationDebug] ${message}`, detail);
+    }
+    return;
+  }
+  console.info(`[PaginationDebug] ${message}`);
+};
+
+const isTraceEnabled = (): boolean => {
+  if (typeof window === "undefined") return false;
+  const g = window as any;
+  return g.__leditorPaginationTraceEnabled === true || debugEnabled();
+};
+
+const recordPaginationTrace = (event: string, detail?: Record<string, unknown>) => {
+  if (!isTraceEnabled()) return;
+  try {
+    const g = window as any;
+    if (!Array.isArray(g.__leditorPaginationTrace)) {
+      g.__leditorPaginationTrace = [];
+    }
+    const entry = {
+      ts: performance.now(),
+      event,
+      ...(detail || {})
+    };
+    g.__leditorPaginationTrace.push(entry);
+    const maxLen = typeof g.__leditorPaginationTraceLimit === "number" ? g.__leditorPaginationTraceLimit : 200;
+    if (g.__leditorPaginationTrace.length > maxLen) {
+      g.__leditorPaginationTrace.splice(0, g.__leditorPaginationTrace.length - maxLen);
+    }
+  } catch {
+    // ignore trace errors
+  }
+};
+
+const shouldSuppressPaginationRun = (view?: any): boolean => {
+  try {
+    const until = (window as any).__leditorDisablePaginationUntil;
+    if (typeof until !== "number" || !Number.isFinite(until)) return false;
+    if (view?.state?.doc?.childCount <= 1) return false;
+    return performance.now() < until;
+  } catch {
+    return false;
+  }
+};
+
+const shouldForceSingleColumn = (): boolean =>
+  typeof window !== "undefined" && (window as any).__leditorDisableColumns !== false;
+
+const enforceSingleColumnContent = (content: HTMLElement | null, force = false) => {
+  if (!content) return;
+  if (!force && !shouldForceSingleColumn()) return;
+  const priority = force ? "important" : "";
+  content.style.setProperty("columns", "auto 1", priority);
+  content.style.setProperty("column-count", "1", priority);
+  content.style.setProperty("column-gap", "0px", priority);
+  content.style.setProperty("column-fill", "auto", priority);
+  content.style.setProperty("column-width", "auto", priority);
+};
+
+const shouldLogBlockMetrics = (): boolean => {
+  if (!debugEnabled()) return false;
+  return (window as any).__leditorPaginationDebugBlocks === true;
+};
+
+const getPageIndexForContent = (content: HTMLElement): number | null => {
+  const page =
+    content.closest<HTMLElement>(PAGE_SELECTOR) ??
+    content.closest<HTMLElement>(`.${PAGE_CLASS}`);
+  if (!page) return null;
+  const raw = page.dataset.pageIndex;
+  const parsed = raw ? Number.parseInt(raw, 10) : NaN;
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const markPreserveScroll = () => {
+  try {
+    (window as any).__leditorPreserveScrollOnNextPagination = true;
+  } catch {
+    // ignore
+  }
+};
+
+const dispatchPagination = (view: any, tr: any) => {
+  markPreserveScroll();
+  try {
+    const memo = (view as any).__leditorPaginationMemo as PaginationMemo | undefined;
+    const meta = tr?.getMeta?.(paginationKey) as { source?: string; op?: string } | undefined;
+    if (meta?.op) {
+      recordPaginationTrace(`dispatch:${meta.op}`, {
+        source: meta.source ?? "unknown",
+        pos: (meta as any).pos ?? null,
+        manual: (meta as any).manual ?? null,
+        docSize: tr?.doc?.content?.size ?? null
+      });
+    }
+    if (memo && meta?.source === "pagination") {
+      const now = performance.now();
+      const docSize = tr?.doc?.content?.size ?? memo.lastDocSize ?? 0;
+      const op = meta.op;
+      const posRaw = (meta as any).pos;
+      const pos = Number.isFinite(posRaw) ? Number(posRaw) : null;
+      const manual = (meta as any).manual === true;
+
+      if (op === "split" || op === "pullup") {
+        if (memo.lastPaginationOnlyAt === 0 || now - memo.lastPaginationOnlyAt > 1200) {
+          memo.lastPaginationOnlySplitCount = 0;
+        }
+        memo.lastPaginationOnlyAt = now;
+        memo.lastPaginationOnlyDocSize = docSize;
+        memo.lastPaginationOnlySplitCount += 1;
+      } else {
+        memo.lastPaginationOnlyAt = now;
+        memo.lastPaginationOnlyDocSize = docSize;
+      }
+
+      if (op === "split") {
+        if (pos != null) {
+          memo.lastSplitPos = pos;
+          memo.lastSplitAttemptPos = pos;
+          if (manual) {
+            lockJoinForSplit(memo, pos, "manual", docSize);
+          }
+        }
+        memo.lastSplitAt = now;
+        if (manual) {
+          memo.lastSplitReason = "manual";
+        }
+      }
+
+      if (op === "pullup") {
+        if (pos != null) {
+          memo.lastSplitPos = pos;
+          memo.lastSplitAttemptPos = pos;
+        }
+        memo.lastSplitAt = now;
+        memo.lastSplitReason = "pullup";
+      }
+
+      if (op === "join") {
+        if (pos != null) {
+          memo.lastJoinPos = pos;
+        }
+        memo.lastJoinAt = now;
+        memo.lastJoinDocSize = docSize;
+      }
+    }
+  } catch {
+    // ignore
+  }
+  view.dispatch(tr);
+};
+
+const logPaginationStats = (view: any, label: string) => {
+  if (!debugEnabled()) return;
+  if (
+    typeof window !== "undefined" &&
+    (window as typeof window & { __leditorPaginationDebugVerbose?: boolean })
+      .__leditorPaginationDebugVerbose !== true
+  ) {
+    return;
+  }
+  const domPages = Array.from(view.dom.querySelectorAll(PAGE_SELECTOR)).filter(
+    (node): node is HTMLElement => node instanceof HTMLElement
+  );
+  const overlays = Array.from(view.dom.querySelectorAll(`.${PAGE_INNER_CLASS}`)).filter(
+    (node): node is HTMLElement => node instanceof HTMLElement
+  );
+  const firstContent = domPages[0]?.querySelector(`.${PAGE_CONTENT_CLASS}`) as HTMLElement | null;
+  const contentStyle = firstContent ? getComputedStyle(firstContent) : null;
+  const paddingBottom = contentStyle ? Number.parseFloat(contentStyle.paddingBottom || "0") || 0 : null;
+  console.info(`[PaginationDebug] ${label}`, {
+    domPageCount: domPages.length,
+    docPageCount: view.state.doc.childCount,
+    overlayPageCount: overlays.length,
+    pageContentHeight: firstContent?.clientHeight ?? null,
+    pageContentPaddingBottom: paddingBottom,
+    editorScrollHeight: view.dom.scrollHeight
+  });
+};
+
+const getNumericStyle = (element: HTMLElement, prop: string): number => {
+  const raw = getComputedStyle(element).getPropertyValue(prop).trim();
+  const parsed = Number.parseFloat(raw);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const getRelativeBox = (
+  element: HTMLElement,
+  content: HTMLElement
+): { top: number; bottom: number; left: number; right: number } => {
+  if (element.offsetParent === content) {
+    const top = element.offsetTop;
+    const left = element.offsetLeft;
+    return {
+      top,
+      left,
+      bottom: top + element.offsetHeight,
+      right: left + element.offsetWidth
+    };
+  }
+  const contentRect = content.getBoundingClientRect();
+  const scale = getContentScale(content);
+  const rect = element.getBoundingClientRect();
+  return {
+    top: (rect.top - contentRect.top) / scale,
+    bottom: (rect.bottom - contentRect.top) / scale,
+    left: (rect.left - contentRect.left) / scale,
+    right: (rect.right - contentRect.left) / scale
+  };
+};
+
+const isEmptyBlockElement = (el: HTMLElement): boolean => {
+  const text = (el.textContent || "").replace(/\u00a0/g, " ").trim();
+  if (text.length > 0) return false;
+  const br = el.querySelector("br");
+  if (br) return true;
+  const children = Array.from(el.children || []);
+  if (children.length === 0) return true;
+  return children.every((child) => child.tagName === "BR");
+};
+
+const getBlockBottom = (
+  element: HTMLElement,
+  content: HTMLElement,
+  fallbackLineHeight: number
+): { bottom: number; box: { top: number; bottom: number; left: number; right: number } } => {
+  const box = getRelativeBox(element, content);
+  let height = box.bottom - box.top;
+  if (height <= 0 && isEmptyBlockElement(element)) {
+    if (fallbackLineHeight > 0) {
+      height = fallbackLineHeight;
+    } else {
+      const lh = getLineHeightPx(element, content);
+      if (lh > 0) height = lh;
+    }
+  }
+  return {
+    box,
+    bottom: box.top + Math.max(0, height)
+  };
+};
+
+const getContentMetrics = (
+  content: HTMLElement
+): { usableHeight: number; paddingBottom: number; baseHeight: number } => {
+  const style = getComputedStyle(content);
+  const paddingBottom = Number.parseFloat(style.paddingBottom || "0") || 0;
+  // Prefer clientHeight and rect/scale; avoid computed style heights that inflate under transforms.
+  let baseHeight = content.clientHeight || 0;
+  if (baseHeight <= 0) {
+    const scrollHeight = content.scrollHeight || 0;
+    if (scrollHeight > 0) {
+      baseHeight = scrollHeight;
+    }
+  }
+  if (baseHeight <= 0) {
+    const rect = content.getBoundingClientRect();
+    const scale = getContentScale(content);
+    if (rect.height > 0 && scale > 0) {
+      baseHeight = rect.height / scale;
+    }
+  }
+  if (baseHeight <= 0) {
+    const heightRaw = Number.parseFloat(style.height || "");
+    const maxHeightRaw = Number.parseFloat(style.maxHeight || "");
+    baseHeight =
+      (Number.isFinite(heightRaw) && heightRaw > 0
+        ? heightRaw
+        : Number.isFinite(maxHeightRaw) && maxHeightRaw > 0
+          ? maxHeightRaw
+          : 0) || 0;
+  }
+  if (baseHeight <= 0) {
+    const tokenHeight = Number.parseFloat(style.getPropertyValue("--doc-content-height") || "");
+    if (Number.isFinite(tokenHeight) && tokenHeight > 0) {
+      baseHeight = tokenHeight;
+    }
+  }
+  let usableHeight = Math.max(0, baseHeight - paddingBottom);
+  const lineHeight = getLineHeightPx(content, content);
+  if (Number.isFinite(lineHeight) && lineHeight > 0 && usableHeight > lineHeight) {
+    const snapped = Math.floor(usableHeight / lineHeight) * lineHeight;
+    if (snapped >= lineHeight * 0.5) {
+      usableHeight = snapped;
+      baseHeight = usableHeight + paddingBottom;
+    }
+  }
+  return { usableHeight, paddingBottom, baseHeight };
+};
+
+const getContentScale = (content: HTMLElement): number => {
+  const rect = content.getBoundingClientRect();
+  const style = getComputedStyle(content);
+  let base = content.clientHeight || 0;
+  if (base <= 0) {
+    const scrollHeight = content.scrollHeight || 0;
+    if (scrollHeight > 0) {
+      base = scrollHeight;
+    }
+  }
+  if (base <= 0) {
+    const heightRaw = Number.parseFloat(style.height || "");
+    const maxHeightRaw = Number.parseFloat(style.maxHeight || "");
+    base =
+      (Number.isFinite(heightRaw) && heightRaw > 0
+        ? heightRaw
+        : Number.isFinite(maxHeightRaw) && maxHeightRaw > 0
+          ? maxHeightRaw
+          : rect.height) || 0;
+  }
+  if (!Number.isFinite(rect.height) || rect.height <= 0 || base <= 0) return 1;
+  const scale = rect.height / base;
+  return Number.isFinite(scale) && scale > 0 ? scale : 1;
+};
+
+const hasOnlyPages = (doc: any, pageType: any): boolean => {
+  if (!doc || doc.childCount === 0) return false;
+  for (let i = 0; i < doc.childCount; i += 1) {
+    if (doc.child(i).type !== pageType) return false;
+  }
+  return true;
+};
+
+const wrapDocInPage = (state: any): any | null => {
+  const pageType = state.schema.nodes.page;
+  if (!pageType) return null;
+  if (hasOnlyPages(state.doc, pageType)) return null;
+  let hasPageChild = false;
+  for (let i = 0; i < state.doc.childCount; i += 1) {
+    if (state.doc.child(i).type === pageType) {
+      hasPageChild = true;
+      break;
+    }
+  }
+  if (hasPageChild) return null;
+  const pageNode = pageType.create(null, state.doc.content);
+  const docNode = state.schema.topNodeType.create(state.doc.attrs, pageNode);
+  return state.tr.replaceWith(0, state.doc.content.size, docNode.content);
+};
+
+const findPageDepth = ($pos: any, pageType: any): number => {
+  for (let depth = $pos.depth; depth > 0; depth -= 1) {
+    if ($pos.node(depth).type === pageType) {
+      return depth;
+    }
+  }
+  return -1;
+};
+
+const findBlockDepth = ($pos: any, minDepth: number): number => {
+  for (let depth = $pos.depth; depth > minDepth; depth -= 1) {
+    const node = $pos.node(depth);
+    if (node?.isBlock) return depth;
+  }
+  return minDepth + 1;
+};
+
+const shouldSplitAfter = (el: HTMLElement): boolean => {
+  if (el.classList.contains("leditor-break")) {
+    const kind = (el.dataset.breakKind || "").toLowerCase();
+    if (kind === "page" || kind === "column") return true;
+    if (kind === "section" || kind.startsWith("section_")) return true;
+    return false;
+  }
+  if (hasForcedBreakAfter(el)) return true;
+  return false;
+};
+
+const hasForcedBreakValue = (value: string | null | undefined): boolean => {
+  if (!value) return false;
+  const normalized = String(value).toLowerCase();
+  if (!normalized || normalized.includes("auto") || normalized.includes("avoid")) return false;
+  return /(page|column|left|right|recto|verso|always)/.test(normalized);
+};
+
+const hasForcedBreakBefore = (el: HTMLElement): boolean => {
+  if (el.classList.contains("leditor-break")) return false;
+  const style = getComputedStyle(el);
+  const breakBefore = (style as any).breakBefore || style.getPropertyValue("break-before");
+  const pageBreakBefore = (style as any).pageBreakBefore || style.getPropertyValue("page-break-before");
+  return hasForcedBreakValue(breakBefore) || hasForcedBreakValue(pageBreakBefore);
+};
+
+const hasForcedBreakAfter = (el: HTMLElement): boolean => {
+  if (el.classList.contains("leditor-break")) return false;
+  const style = getComputedStyle(el);
+  const breakAfter = (style as any).breakAfter || style.getPropertyValue("break-after");
+  const pageBreakAfter = (style as any).pageBreakAfter || style.getPropertyValue("page-break-after");
+  return hasForcedBreakValue(breakAfter) || hasForcedBreakValue(pageBreakAfter);
+};
+
+const isHeadingTag = (tag: string): boolean => {
+  if (tag.length === 2 && tag.startsWith("H")) {
+    const level = Number(tag.slice(1));
+    return Number.isFinite(level) && level >= 1 && level <= 6;
+  }
+  return false;
+};
+
+const isHeadingElement = (el: HTMLElement): boolean => isHeadingTag(el.tagName.toUpperCase());
+
+const LINE_SPLIT_SELECTOR = "p, li, blockquote, pre";
+
+const isLineSplitTag = (tag: string): boolean =>
+  tag === "P" || tag === "LI" || tag === "BLOCKQUOTE" || tag === "PRE";
+
+const isDivLineSplitCandidate = (el: HTMLElement): boolean => {
+  const tag = el.tagName.toUpperCase();
+  if (tag !== "DIV") return false;
+  const dataType =
+    (el.getAttribute("data-node-type") || el.getAttribute("data-type") || "").toLowerCase();
+  if (dataType === "paragraph" || dataType === "heading") return true;
+  // If the div contains a real block child, defer to that child instead of splitting the div.
+  if (el.querySelector(BLOCK_SELECTOR)) return false;
+  const text = (el.textContent || "").trim();
+  return text.length > 0;
+};
+
+const getLineSplitRoot = (el: HTMLElement): HTMLElement | null => {
+  if (isLineSplitElement(el)) return el;
+  const tag = el.tagName.toUpperCase();
+  if (tag === "UL" || tag === "OL") {
+    const nested = el.querySelector<HTMLElement>(LINE_SPLIT_SELECTOR);
+    return nested ? getLineSplitRoot(nested) : null;
+  }
+  if (tag === "LI" || tag === "BLOCKQUOTE") {
+    const nested = el.querySelector<HTMLElement>(
+      ":scope > p, :scope > pre"
+    );
+    return nested ?? el;
+  }
+  if (isLineSplitTag(tag)) return el;
+  if (isDivLineSplitCandidate(el)) return el;
+  const fallback = el.querySelector<HTMLElement>(LINE_SPLIT_SELECTOR);
+  return fallback ? getLineSplitRoot(fallback) : null;
+};
+
+const findLineSplitTargetByRects = (
+  content: HTMLElement,
+  bottomLimit: number,
+  tolerance: number
+): HTMLElement | null => {
+  const contentRect = content.getBoundingClientRect();
+  const scale = getContentScale(content);
+  const candidates = Array.from(content.querySelectorAll<HTMLElement>(LINE_SPLIT_SELECTOR));
+  const divCandidates = Array.from(content.querySelectorAll<HTMLElement>("div")).filter((el) =>
+    isDivLineSplitCandidate(el)
+  );
+  const all: HTMLElement[] = [];
+  const seen = new Set<HTMLElement>();
+  const push = (el: HTMLElement) => {
+    if (seen.has(el)) return;
+    seen.add(el);
+    all.push(el);
+  };
+  if (isLineSplitElement(content)) {
+    push(content);
+  }
+  candidates.forEach(push);
+  divCandidates.forEach(push);
+  for (const candidate of all) {
+    const rects = collectLineRects(candidate);
+    if (!rects.length) continue;
+    let maxBottom = -Infinity;
+    let minTop = Infinity;
+    for (const rect of rects) {
+      const relTop = (rect.top - contentRect.top) / scale;
+      const relBottom = (rect.bottom - contentRect.top) / scale;
+      if (relTop < minTop) minTop = relTop;
+      if (relBottom > maxBottom) maxBottom = relBottom;
+    }
+    if (maxBottom <= bottomLimit + tolerance) continue;
+    return candidate;
+  }
+  return null;
+};
+
+const hasKeepWithNext = (el: HTMLElement): boolean => {
+  if (el.dataset.keepWithNext === "true" || el.classList.contains("leditor-keep-with-next")) {
+    return true;
+  }
+  const style = getComputedStyle(el);
+  const breakAfter = (style as any).breakAfter || style.getPropertyValue("break-after");
+  const pageBreakAfter = (style as any).pageBreakAfter || style.getPropertyValue("page-break-after");
+  const normalized = `${breakAfter || ""} ${pageBreakAfter || ""}`.toLowerCase();
+  return normalized.includes("avoid");
+};
+
+const hasBreakInsideAvoid = (el: HTMLElement): boolean => {
+  if (el.dataset.keepTogether === "true" || el.classList.contains("leditor-keep-together")) {
+    return true;
+  }
+  const style = getComputedStyle(el);
+  const breakInside = (style as any).breakInside || style.getPropertyValue("break-inside");
+  const pageBreakInside = (style as any).pageBreakInside || style.getPropertyValue("page-break-inside");
+  const normalized = `${breakInside || ""} ${pageBreakInside || ""}`.toLowerCase();
+  return normalized.includes("avoid");
+};
+
+const isSplittableBlock = (el: HTMLElement): boolean => {
+  const tag = el.tagName.toUpperCase();
+  if (hasBreakInsideAvoid(el)) return false;
+  return isLineSplitTag(tag);
+};
+
+const isFootnoteContainerElement = (el: HTMLElement): boolean => {
+  if (el.classList.contains("leditor-footnotes-container")) return true;
+  if (el.classList.contains("leditor-footnote-body")) return true;
+  if (el.dataset.footnotesContainer === "true") return true;
+  if (el.dataset.footnoteBody === "true") return true;
+  return false;
+};
+
+const isBlockCandidate = (el: HTMLElement): boolean => {
+  const tag = el.tagName.toUpperCase();
+  if (isLineSplitTag(tag) || isHeadingTag(tag)) return true;
+  if (isDivLineSplitCandidate(el)) return true;
+  if (tag === "UL" || tag === "OL" || tag === "TABLE" || tag === "FIGURE" || tag === "HR") return true;
+  if (el.classList.contains("leditor-break") || el.dataset.break === "true") return true;
+  return false;
+};
+
+const BLOCK_SELECTOR = [
+  "p",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "li",
+  "blockquote",
+  "pre",
+  "table",
+  "figure",
+  "hr",
+  ".leditor-break"
+].join(", ");
+
+const collectBlockChildren = (root: HTMLElement, out: HTMLElement[]) => {
+  const children = Array.from(root.children);
+  for (const child of children) {
+    if (!(child instanceof HTMLElement)) continue;
+    if (isFootnoteContainerElement(child)) continue;
+    if (isBlockCandidate(child)) {
+      out.push(child);
+      continue;
+    }
+    if (child.children.length > 0) {
+      collectBlockChildren(child, out);
+    }
+  }
+};
+
+const getContentChildren = (content: HTMLElement): HTMLElement[] => {
+  let container: HTMLElement = content;
+  if (content.children.length === 1) {
+    const only = content.children[0];
+    if (
+      only instanceof HTMLElement &&
+      (only.classList.contains("ProseMirror") || only.getAttribute("contenteditable") === "true")
+    ) {
+      container = only;
+    }
+  }
+  const rawBlocks = Array.from(container.querySelectorAll<HTMLElement>(BLOCK_SELECTOR))
+    .filter((el) => el instanceof HTMLElement)
+    .filter((el) => el.closest(`.${PAGE_CONTENT_CLASS}`) === content)
+    .filter((el) => !isFootnoteContainerElement(el))
+    .filter((el) => !el.closest("[data-footnotes-container], .leditor-footnotes-container, [data-footnote-body], .leditor-footnote-body"));
+  const filtered = rawBlocks.filter((el) => {
+    let parent = el.parentElement;
+    while (parent && parent !== container) {
+      if (parent instanceof HTMLElement) {
+        if (isFootnoteContainerElement(parent)) return false;
+        if (parent.matches?.(BLOCK_SELECTOR)) return false;
+      }
+      parent = parent.parentElement;
+    }
+    return true;
+  });
+  if (filtered.length > 0) {
+    return filtered;
+  }
+  const out: HTMLElement[] = [];
+  collectBlockChildren(container, out);
+  return out;
+};
+
+const ANCHOR_MARKER_SELECTOR = "a[name], a[id]";
+
+const isAnchorOnlyElement = (el: HTMLElement): boolean => {
+  const text = (el.textContent ?? "").trim();
+  if (text.length > 0) return false;
+  return Boolean(el.querySelector(ANCHOR_MARKER_SELECTOR));
+};
+
+const isAnchorOnlyContent = (content: HTMLElement): boolean => {
+  const children = getContentChildren(content);
+  if (children.length === 0) return true;
+  return children.every((child) => isAnchorOnlyElement(child));
+};
+
+// Require extra slack before joining to avoid split/join oscillation at boundaries.
+const DEFAULT_JOIN_BUFFER_PX = 12;
+const DELETE_JOIN_BUFFER_PX = 0;
+const MIN_SECTION_LINES = 1;
+const MIN_UNDERFILL_LINES = 4;
+const MIN_UNDERFILL_RATIO = 0.7;
+const CRITICAL_UNDERFILL_LINES = 3;
+const CRITICAL_UNDERFILL_RATIO = 0.35;
+const MIN_LINE_SPLIT_TAIL_LINES = 1;
+const MIN_LINE_SPLIT_HEAD_LINES = 1;
+const BOTTOM_GUARD_PX = 8;
+const PREFER_FILL_GUARD_PX = 2;
+const JOIN_SPLIT_SUPPRESS_MS = 2500;
+const PAGINATION_ONLY_SPLIT_LIMIT = 64;
+const PAGINATION_DEBUG_LAYER_CLASS = "leditor-pagination-debug-layer";
+const PAGINATION_DEBUG_LINE_CLASS = "leditor-pagination-debug-line";
+const PAGINATION_DEBUG_RECT_CLASS = "leditor-pagination-debug-rect";
+const BASELINE_PAD_VAR = "--page-baseline-pad";
+const LINE_FIT_PAD_VAR = "--page-line-fit-pad";
+
+const getBottomGuardPx = (content: HTMLElement, lineHeight?: number | null): number => {
+  const lh = typeof lineHeight === "number" && Number.isFinite(lineHeight) ? lineHeight : 0;
+  const lhGuardPx = lh > 0 ? lh * 0.35 : 0;
+  const cssGuard = getNumericStyle(content, "--page-footnote-guard");
+  const base = Math.max(BOTTOM_GUARD_PX, lhGuardPx, cssGuard);
+  let preferFill = false;
+  try {
+    const until = (window as any).__leditorPaginationPreferFillUntil;
+    preferFill = typeof until === "number" && until > performance.now();
+  } catch {
+    preferFill = false;
+  }
+  if (!preferFill || cssGuard > 0) return base;
+  const minGuard = Math.max(PREFER_FILL_GUARD_PX, lh > 0 ? lh * 0.12 : 0);
+  return Math.min(base, minGuard);
+};
+
+const isLineSplitElement = (el: HTMLElement): boolean => {
+  const tag = el.tagName.toUpperCase();
+  if (isLineSplitTag(tag)) return true;
+  return isDivLineSplitCandidate(el);
+};
+const isFootnoteStorageNode = (node: ProseMirrorNode | null | undefined): boolean => {
+  const name = node?.type?.name;
+  return name === "footnotesContainer" || name === "footnoteBody";
+};
+
+const pageEndsWithManualBreak = (pageNode: ProseMirrorNode | null | undefined): boolean => {
+  if (!pageNode?.content) return false;
+  for (let i = pageNode.childCount - 1; i >= 0; i -= 1) {
+    const child = pageNode.child(i);
+    if (isFootnoteStorageNode(child)) continue;
+    return child.type?.name === "page_break";
+  }
+  return false;
+};
+
+const pageStartsWithManualBreak = (pageNode: ProseMirrorNode | null | undefined): boolean => {
+  if (!pageNode?.content) return false;
+  for (let i = 0; i < pageNode.childCount; i += 1) {
+    const child = pageNode.child(i);
+    if (isFootnoteStorageNode(child)) continue;
+    return child.type?.name === "page_break";
+  }
+  return false;
+};
+
+const hasManualBreakBoundary = (doc: any, pageType: any, joinPos: number, view?: any): boolean => {
+  try {
+    const resolved = doc.resolve(joinPos);
+    const before = resolved.nodeBefore;
+    const after = resolved.nodeAfter;
+    if (!before || !after || before.type !== pageType || after.type !== pageType) return false;
+    if (pageEndsWithManualBreak(before) || pageStartsWithManualBreak(after)) return true;
+    if (!view) return false;
+    const afterIndex = resolved.index(0);
+    const beforeIndex = Math.max(0, afterIndex - 1);
+    const beforePage = view.dom?.querySelector?.(
+      `.${PAGE_CLASS}[data-page-index="${beforeIndex}"]`
+    ) as HTMLElement | null;
+    const afterPage = view.dom?.querySelector?.(
+      `.${PAGE_CLASS}[data-page-index="${afterIndex}"]`
+    ) as HTMLElement | null;
+    const beforeContent = beforePage?.querySelector?.(`.${PAGE_CONTENT_CLASS}`) as HTMLElement | null;
+    const afterContent = afterPage?.querySelector?.(`.${PAGE_CONTENT_CLASS}`) as HTMLElement | null;
+    if (beforeContent) {
+      const beforeChildren = getContentChildren(beforeContent);
+      const last = beforeChildren[beforeChildren.length - 1] ?? null;
+      if (last && hasForcedBreakAfter(last)) return true;
+    }
+    if (afterContent) {
+      const afterChildren = getContentChildren(afterContent);
+      const first = afterChildren[0] ?? null;
+      if (first && hasForcedBreakBefore(first)) return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+};
+
+const trimLeadingWhitespaceAtPageStart = (tr: any, pagePos: number, pageType: any) => {
+  try {
+    const pageNode = tr.doc.nodeAt(pagePos);
+    if (!pageNode || pageNode.type !== pageType) return;
+    let trimmed = false;
+    pageNode.descendants((node: any, pos: number) => {
+      if (trimmed) return false;
+      if (!node?.isTextblock) return true;
+      const isHeading = node.type?.name === "heading";
+      let trimFrom: number | null = null;
+      let trimTo: number | null = null;
+      let foundNonWhitespace = false;
+      node.forEach((child: any, offset: number) => {
+        if (foundNonWhitespace) return;
+        if (child?.isText) {
+          const text = child.text ?? "";
+          const match = text.match(/^[\s\u00A0\u2000-\u200B]+/);
+          if (!match || match[0].length === 0) {
+            foundNonWhitespace = true;
+            return;
+          }
+          if (trimFrom == null) {
+            trimFrom = pagePos + pos + 1 + offset;
+          }
+          const sliceEnd = pagePos + pos + 1 + offset + match[0].length;
+          trimTo = sliceEnd;
+          if (match[0].length < text.length) {
+            foundNonWhitespace = true;
+          }
+          return;
+        }
+        const childType = child?.type?.name;
+        const isSkippableInline =
+          childType === "anchorMarker" ||
+          (child?.isInline && child?.isLeaf && (!child.textContent || child.textContent.length === 0));
+        if (isSkippableInline) {
+          return;
+        }
+        if (trimFrom == null) {
+          foundNonWhitespace = true;
+          return;
+        }
+        foundNonWhitespace = true;
+      });
+      if (trimFrom != null && trimTo != null && trimTo > trimFrom) {
+        tr.delete(trimFrom, trimTo);
+        trimmed = true;
+        return false;
+      }
+      if (!foundNonWhitespace) {
+        return true;
+      }
+      if (isHeading) {
+        return true;
+      }
+      trimmed = true;
+      return false;
+    });
+  } catch {
+    // ignore trimming failures
+  }
+};
+
+const getPagePosAtBoundary = (doc: any, pageType: any, boundaryPos: number): number | null => {
+  try {
+    const $pos = doc.resolve(boundaryPos);
+    if ($pos.nodeAfter?.type === pageType) return boundaryPos;
+    if ($pos.nodeBefore?.type === pageType) {
+      return boundaryPos - $pos.nodeBefore.nodeSize;
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+};
+
+const isAnchorOnlyTextblock = (node: ProseMirrorNode): boolean => {
+  if (!node?.isTextblock) return false;
+  if (node.textContent.trim().length > 0) return false;
+  let hasAnchorMarker = false;
+  let hasOther = false;
+  node.forEach((child) => {
+    if (child.type?.name === "anchorMarker") {
+      hasAnchorMarker = true;
+      return;
+    }
+    if (child.isText) {
+      if (child.text?.trim()) {
+        hasOther = true;
+      }
+      return;
+    }
+    if (child.type?.name === "hardBreak") {
+      hasOther = true;
+      return;
+    }
+    if (child.childCount > 0 || child.isLeaf) {
+      hasOther = true;
+    }
+  });
+  return hasAnchorMarker && !hasOther;
+};
+
+const stripAnchorOnlyBlocks = (state: any, pageType: any): any | null => {
+  const doc = state.doc;
+  if (!doc) return null;
+  const pages = new Map<number, { hasNonAnchor: boolean; ranges: Array<{ from: number; to: number }> }>();
+  doc.nodesBetween(0, doc.content.size, (node: any, pos: number) => {
+    if (!node?.isTextblock) return;
+    let $pos;
+    try {
+      $pos = doc.resolve(pos);
+    } catch {
+      return;
+    }
+    const pageDepth = findPageDepth($pos, pageType);
+    if (pageDepth < 0) return;
+    const pageStart = $pos.start(pageDepth);
+    let entry = pages.get(pageStart);
+    if (!entry) {
+      entry = { hasNonAnchor: false, ranges: [] };
+      pages.set(pageStart, entry);
+    }
+    if (isAnchorOnlyTextblock(node)) {
+      entry.ranges.push({ from: pos, to: pos + node.nodeSize });
+    } else if (node.textContent.trim().length > 0 || node.childCount > 0) {
+      entry.hasNonAnchor = true;
+    }
+  });
+  if (!pages.size) return null;
+  let tr = state.tr;
+  let changed = false;
+  const ranges: Array<{ from: number; to: number }> = [];
+  for (const entry of pages.values()) {
+    if (!entry.hasNonAnchor || entry.ranges.length === 0) continue;
+    ranges.push(...entry.ranges);
+  }
+  if (!ranges.length) return null;
+  ranges.sort((a, b) => b.from - a.from);
+  for (const range of ranges) {
+    try {
+      if (range.to > range.from) {
+        tr = tr.delete(range.from, range.to);
+        changed = true;
+      }
+    } catch {
+      // ignore delete failures
+    }
+  }
+  return changed ? tr : null;
+};
+
+const collectParagraphText = (node: ProseMirrorNode): string => {
+  return (node.textContent ?? "").replace(/\s+/g, " ").trim();
+};
+
+const countHardBreaks = (node: ProseMirrorNode): number => {
+  let count = 0;
+  node.forEach((child) => {
+    if (child.type?.name === "hardBreak") count += 1;
+  });
+  return count;
+};
+
+const normalizeParagraphInline = (node: ProseMirrorNode, schema: any): Fragment => {
+  const children: ProseMirrorNode[] = [];
+  node.forEach((child) => {
+    if (child.type?.name === "hardBreak") {
+      const last = children[children.length - 1];
+      const lastText = last?.isText ? (last.text ?? "") : "";
+      if (!lastText.endsWith(" ")) {
+        children.push(schema.text(" "));
+      }
+      return;
+    }
+    if (child.isText) {
+      const last = children[children.length - 1];
+      if (last?.isText && last.marks?.length === child.marks?.length) {
+        let sameMarks = true;
+        for (let i = 0; i < (last.marks?.length || 0); i += 1) {
+          if (!last.marks[i].eq(child.marks[i])) {
+            sameMarks = false;
+            break;
+          }
+        }
+        if (sameMarks) {
+          const mergedText = `${last.text ?? ""}${child.text ?? ""}`;
+          children[children.length - 1] = schema.text(mergedText, last.marks);
+          return;
+        }
+      }
+    }
+    children.push(child);
+  });
+  return Fragment.fromArray(children);
+};
+
+const paragraphStartsWithPunct = (node: ProseMirrorNode): boolean => {
+  for (let i = 0; i < node.childCount; i += 1) {
+    const child = node.child(i);
+    if (!child.isText) continue;
+    const text = (child.text ?? "").trim();
+    if (!text) continue;
+    return /^[,.;:!?)]/.test(text);
+  }
+  return false;
+};
+
+const paragraphEndsWithSpace = (node: ProseMirrorNode): boolean => {
+  for (let i = node.childCount - 1; i >= 0; i -= 1) {
+    const child = node.child(i);
+    if (!child.isText) continue;
+    const text = child.text ?? "";
+    if (!text) continue;
+    return /\s$/.test(text);
+  }
+  return false;
+};
+
+const dbg = (fn: string, msg: string) => {
+  if (!debugEnabled()) return;
+  console.debug(`[extension_page.ts][${fn}][debug] ${msg}`);
+};
+
+const paragraphStartsWithWhitespace = (node: ProseMirrorNode): boolean => {
+  for (let i = 0; i < node.childCount; i += 1) {
+    const child = node.child(i);
+    if (child.isText) {
+      const text = child.text ?? "";
+      if (!text) continue;
+      return /^[\s\u00A0\u2000-\u200B]/.test(text);
+    }
+    const childType = child.type?.name;
+    const isSkippableInline =
+      childType === "anchorMarker" ||
+      (child.isInline && child.isLeaf && (!child.textContent || child.textContent.length === 0));
+    if (isSkippableInline) continue;
+    return false;
+  }
+  return false;
+};
+
+const paragraphIsEmpty = (node: ProseMirrorNode): boolean => {
+  if (!node || node.type?.name !== "paragraph") return false;
+  if (node.childCount === 0) return true;
+  for (let i = 0; i < node.childCount; i += 1) {
+    const child = node.child(i);
+    if (child.isText) {
+      const text = child.text ?? "";
+      if (text.trim().length > 0) return false;
+      continue;
+    }
+    const childType = child.type?.name;
+    const isSkippableInline =
+      childType === "anchorMarker" ||
+      (child.isInline && child.isLeaf && (!child.textContent || child.textContent.length === 0));
+    if (isSkippableInline) continue;
+    if (child.textContent && child.textContent.trim().length > 0) return false;
+    return false;
+  }
+  return true;
+};
+
+const trimLeadingWhitespaceNodes = (nodes: ProseMirrorNode[], schema: any): ProseMirrorNode[] => {
+  const out = [...nodes];
+  for (let i = 0; i < out.length; i += 1) {
+    const child = out[i];
+    if (!child) continue;
+    if (child.isText) {
+      const text = child.text ?? "";
+      const trimmed = text.replace(/^[\s\u00A0\u2000-\u200B]+/, "");
+      if (!trimmed) {
+        out.splice(i, 1);
+        i -= 1;
+        continue;
+      }
+      if (trimmed !== text) {
+        out[i] = schema.text(trimmed, child.marks);
+      }
+      break;
+    }
+    const childType = child.type?.name;
+    const isSkippableInline =
+      childType === "anchorMarker" ||
+      (child.isInline && child.isLeaf && (!child.textContent || child.textContent.length === 0));
+    if (isSkippableInline) continue;
+    break;
+  }
+  return out;
+};
+
+const nodesEndWithSpace = (nodes: ProseMirrorNode[]): boolean => {
+  for (let i = nodes.length - 1; i >= 0; i -= 1) {
+    const child = nodes[i];
+    if (!child?.isText) continue;
+    const text = child.text ?? "";
+    if (!text) continue;
+    return /\s$/.test(text);
+  }
+  return false;
+};
+
+const paragraphFirstNonWhitespaceChar = (node: ProseMirrorNode): string | null => {
+  for (let i = 0; i < node.childCount; i += 1) {
+    const child = node.child(i);
+    if (!child.isText) continue;
+    const text = child.text ?? "";
+    if (!text) continue;
+    const match = text.match(/[^\s\u00A0\u2000-\u200B]/);
+    if (match) return match[0];
+  }
+  return null;
+};
+
+const paragraphLastNonWhitespaceChar = (node: ProseMirrorNode): string | null => {
+  for (let i = node.childCount - 1; i >= 0; i -= 1) {
+    const child = node.child(i);
+    if (!child.isText) continue;
+    const text = child.text ?? "";
+    if (!text) continue;
+    const match = text.match(/[^\s\u00A0\u2000-\u200B](?!.*[^\s\u00A0\u2000-\u200B])/);
+    if (match) return match[0];
+  }
+  return null;
+};
+
+const paragraphText = (node: ProseMirrorNode): string => {
+  let out = "";
+  for (let i = 0; i < node.childCount; i += 1) {
+    const child = node.child(i);
+    if (!child.isText) continue;
+    out += child.text ?? "";
+  }
+  return out;
+};
+
+const paragraphIsCitationOnly = (node: ProseMirrorNode): boolean => {
+  const text = paragraphText(node).trim();
+  if (!text) return false;
+  if (!/^[\[(]/.test(text)) return false;
+  if (!/[\])](\.)?$/.test(text)) return false;
+  if (!/\d/.test(text)) return false;
+  return text.length <= 180;
+};
+
+const paragraphStartsWithContinuation = (node: ProseMirrorNode): boolean => {
+  if (paragraphStartsWithWhitespace(node)) return true;
+  const first = paragraphFirstNonWhitespaceChar(node);
+  if (!first) return false;
+  if (/[a-z]/.test(first)) return true;
+  return /[\(\)\[\],.;:!?]/.test(first);
+};
+
+const paragraphEndsWithTerminal = (node: ProseMirrorNode): boolean => {
+  const last = paragraphLastNonWhitespaceChar(node);
+  if (!last) return false;
+  return /[.!?]/.test(last);
+};
+
+const mergeContinuationParagraphs = (state: any, pageType: any): any | null => {
+  const doc = state.doc;
+  if (!doc) return null;
+  type ParaInfo = { pos: number; node: ProseMirrorNode; pagePos: number };
+  const paras: ParaInfo[] = [];
+  doc.nodesBetween(0, doc.content.size, (node: any, pos: number) => {
+    if (!node?.isTextblock || node.type?.name !== "paragraph") return;
+    let $pos;
+    try {
+      $pos = doc.resolve(pos);
+    } catch {
+      return;
+    }
+    const pageDepth = findPageDepth($pos, pageType);
+    if (pageDepth < 0) return;
+    if ($pos.depth !== pageDepth + 1) return;
+    const pagePos = $pos.before(pageDepth);
+    paras.push({ pos, node, pagePos });
+  });
+  if (paras.length < 2) return null;
+  let tr = state.tr;
+  let mergedCount = 0;
+  for (let i = paras.length - 1; i >= 1; i -= 1) {
+    const curr = paras[i];
+    if (paragraphIsEmpty(curr.node)) continue;
+    let j = i - 1;
+    while (j >= 0) {
+      const candidate = paras[j];
+      const next = paras[j + 1];
+      if (candidate.pagePos !== curr.pagePos) break;
+      if (next.pos !== candidate.pos + candidate.node.nodeSize) break;
+      if (paragraphIsEmpty(candidate.node)) {
+        j -= 1;
+        continue;
+      }
+      const citationOnly = paragraphIsCitationOnly(curr.node);
+      if (!paragraphStartsWithContinuation(curr.node) && !citationOnly) break;
+      if (paragraphEndsWithTerminal(candidate.node) && !citationOnly) break;
+      const schema = candidate.node.type.schema;
+      const prevChildren: ProseMirrorNode[] = [];
+      normalizeParagraphInline(candidate.node, schema).forEach((child) => prevChildren.push(child));
+      let nextChildren: ProseMirrorNode[] = [];
+      normalizeParagraphInline(curr.node, schema).forEach((child) => nextChildren.push(child));
+      if (nodesEndWithSpace(prevChildren)) {
+        nextChildren = trimLeadingWhitespaceNodes(nextChildren, schema);
+      } else if (!paragraphStartsWithPunct(curr.node) && !paragraphStartsWithWhitespace(curr.node)) {
+        prevChildren.push(schema.text(" "));
+      }
+      const mergedChildren = [...prevChildren, ...nextChildren];
+      const mergedPara = candidate.node.type.create(
+        candidate.node.attrs,
+        Fragment.fromArray(mergedChildren),
+        candidate.node.marks
+      );
+      const from = candidate.pos;
+      const to = curr.pos + curr.node.nodeSize;
+      try {
+        tr = tr.replaceWith(from, to, mergedPara);
+        mergedCount += 1;
+      } catch {
+        // ignore merge failures
+      }
+      break;
+    }
+  }
+  if (mergedCount > 0) {
+    dbg("mergeContinuationParagraphs", `merged ${mergedCount} continuation paragraph(s)`);
+  }
+  return mergedCount > 0 ? tr : null;
+};
+
+const isHeadingOnlyPage = (pageNode: ProseMirrorNode): boolean => {
+  if (!pageNode?.content) return false;
+  let headingCount = 0;
+  let hasMajorHeading = false;
+  let hasOther = false;
+  pageNode.forEach((child) => {
+    if (isFootnoteStorageNode(child)) return;
+    const name = child.type?.name;
+    if (name === "page_break") {
+      hasOther = true;
+      return;
+    }
+    if (name === "heading") {
+      headingCount += 1;
+      const level = Number((child.attrs as any)?.level ?? 1);
+      if (level <= 2) hasMajorHeading = true;
+      return;
+    }
+    if (child.isTextblock || child.isBlock || child.childCount > 0) {
+      hasOther = true;
+    }
+  });
+  if (hasOther || headingCount === 0) return false;
+  if (hasMajorHeading) return false;
+  return true;
+};
+
+const mergeHeadingOnlyPages = (state: any, pageType: any): any | null => {
+  const doc = state.doc;
+  if (!doc || doc.childCount < 2) return null;
+  let pos = 0;
+  for (let i = 0; i < doc.childCount - 1; i += 1) {
+    const page = doc.child(i);
+    if (page.type !== pageType) {
+      pos += page.nodeSize;
+      continue;
+    }
+    const next = doc.child(i + 1);
+    if (next.type !== pageType) {
+      pos += page.nodeSize;
+      continue;
+    }
+    if (!isHeadingOnlyPage(page)) {
+      pos += page.nodeSize;
+      continue;
+    }
+    if (pageEndsWithManualBreak(page) || pageStartsWithManualBreak(next)) {
+      pos += page.nodeSize;
+      continue;
+    }
+    const joinPos = pos + page.nodeSize;
+    if (canJoin(doc, joinPos)) {
+      const tr = state.tr.join(joinPos);
+      tr.setMeta(paginationKey, { source: "pagination", op: "join", pos: joinPos });
+      return tr;
+    }
+    pos += page.nodeSize;
+  }
+  return null;
+};
+
+const getPageTextMetrics = (
+  pageNode: ProseMirrorNode
+): { blockCount: number; textLen: number; hasManualBreak: boolean; hasMajorHeading: boolean } => {
+  let blockCount = 0;
+  let textLen = 0;
+  let hasManualBreak = false;
+  let hasMajorHeading = false;
+  pageNode.forEach((child) => {
+    if (isFootnoteStorageNode(child)) return;
+    const name = child.type?.name;
+    if (name === "page_break") {
+      hasManualBreak = true;
+      return;
+    }
+    if (name === "heading") {
+      const level = Number((child.attrs as any)?.level ?? 1);
+      if (level <= 2) hasMajorHeading = true;
+    }
+    if (child.isBlock || child.isTextblock || child.childCount > 0) {
+      blockCount += 1;
+      if (typeof child.textContent === "string") {
+        textLen += child.textContent.trim().length;
+      } else if (child.childCount > 0) {
+        textLen += child.textBetween(0, child.content.size, "\n", "\n").trim().length;
+      }
+    }
+  });
+  return { blockCount, textLen, hasManualBreak, hasMajorHeading };
+};
+
+const mergeSparsePages = (state: any, pageType: any): any | null => {
+  const doc = state.doc;
+  if (!doc || doc.childCount < 2) return null;
+  let pos = 0;
+  for (let i = 0; i < doc.childCount - 1; i += 1) {
+    const page = doc.child(i);
+    if (page.type !== pageType) {
+      pos += page.nodeSize;
+      continue;
+    }
+    const next = doc.child(i + 1);
+    if (next.type !== pageType) {
+      pos += page.nodeSize;
+      continue;
+    }
+    if (pageEndsWithManualBreak(page) || pageStartsWithManualBreak(next)) {
+      pos += page.nodeSize;
+      continue;
+    }
+    const { blockCount, textLen, hasManualBreak, hasMajorHeading } = getPageTextMetrics(page);
+    if (hasManualBreak) {
+      pos += page.nodeSize;
+      continue;
+    }
+    if (hasMajorHeading && blockCount <= 2) {
+      pos += page.nodeSize;
+      continue;
+    }
+    const sparseByBlocks = blockCount <= 2 && textLen <= 900;
+    const sparseByText = blockCount <= 4 && textLen > 0 && textLen <= 500;
+    const sparseByEmpty = blockCount === 0;
+    if (!(sparseByEmpty || sparseByBlocks || sparseByText)) {
+      pos += page.nodeSize;
+      continue;
+    }
+    const joinPos = pos + page.nodeSize;
+    if (canJoin(doc, joinPos)) {
+      const tr = state.tr.join(joinPos);
+      tr.setMeta(paginationKey, { source: "pagination", op: "join", pos: joinPos });
+      return tr;
+    }
+    pos += page.nodeSize;
+  }
+  return null;
+};
+
+const moveTrailingHeadingToNextPage = (state: any, pageType: any): any | null => {
+  const doc = state.doc;
+  if (!doc || doc.childCount < 2) return null;
+  let pos = 0;
+  for (let i = 0; i < doc.childCount - 1; i += 1) {
+    const page = doc.child(i);
+    if (page.type !== pageType) {
+      pos += page.nodeSize;
+      continue;
+    }
+    const next = doc.child(i + 1);
+    if (next.type !== pageType) {
+      pos += page.nodeSize;
+      continue;
+    }
+    if (pageEndsWithManualBreak(page) || pageStartsWithManualBreak(next)) {
+      pos += page.nodeSize;
+      continue;
+    }
+    const { blockCount, textLen, hasManualBreak, hasMajorHeading } = getPageTextMetrics(page);
+    if (hasManualBreak) {
+      pos += page.nodeSize;
+      continue;
+    }
+    if (hasMajorHeading && blockCount <= 2) {
+      pos += page.nodeSize;
+      continue;
+    }
+    if (!(blockCount <= 4 && textLen <= 900)) {
+      pos += page.nodeSize;
+      continue;
+    }
+    let offset = 0;
+    let lastBlock: ProseMirrorNode | null = null;
+    let lastBlockPos: number | null = null;
+    page.forEach((child) => {
+      const childPos = pos + offset + 1;
+      offset += child.nodeSize;
+      if (isFootnoteStorageNode(child)) return;
+      if (child.type?.name === "page_break") return;
+      if (child.isBlock || child.isTextblock || child.childCount > 0) {
+        lastBlock = child;
+        lastBlockPos = childPos;
+      }
+    });
+    if (!lastBlock || lastBlock.type?.name !== "heading" || lastBlockPos == null) {
+      pos += page.nodeSize;
+      continue;
+    }
+    const deleteFrom = lastBlockPos;
+    const deleteTo = lastBlockPos + lastBlock.nodeSize;
+    let tr = state.tr.delete(deleteFrom, deleteTo);
+    const nextPagePos = pos + page.nodeSize;
+    const insertPos = tr.mapping.map(nextPagePos + 1);
+    try {
+      tr = tr.insert(insertPos, lastBlock);
+    } catch {
+      pos += page.nodeSize;
+      continue;
+    }
+    tr.setMeta(paginationKey, { source: "pagination", op: "moveHeading", pos: insertPos });
+    return tr;
+  }
+  return null;
+};
+
+const mergeLeadingWhitespaceParagraphs = (state: any, pageType: any): any | null => {
+  const doc = state.doc;
+  if (!doc) return null;
+  type ParaInfo = { pos: number; node: ProseMirrorNode; pagePos: number };
+  const paras: ParaInfo[] = [];
+  doc.nodesBetween(0, doc.content.size, (node: any, pos: number) => {
+    if (!node?.isTextblock || node.type?.name !== "paragraph") return;
+    let $pos;
+    try {
+      $pos = doc.resolve(pos);
+    } catch {
+      return;
+    }
+    const pageDepth = findPageDepth($pos, pageType);
+    if (pageDepth < 0) return;
+    if ($pos.depth !== pageDepth + 1) return;
+    const pagePos = $pos.before(pageDepth);
+    paras.push({ pos, node, pagePos });
+  });
+  if (paras.length < 2) return null;
+  const runs: Array<{ start: number; end: number }> = [];
+  let i = 0;
+  while (i < paras.length - 1) {
+    const start = paras[i];
+    let j = i + 1;
+    while (j < paras.length) {
+      const prev = paras[j - 1];
+      const next = paras[j];
+      if (next.pagePos !== prev.pagePos) break;
+      if (next.pos !== prev.pos + prev.node.nodeSize) break;
+      if (!paragraphStartsWithWhitespace(next.node)) break;
+      j += 1;
+    }
+    if (j > i + 1) {
+      runs.push({ start: i, end: j - 1 });
+      i = j;
+      continue;
+    }
+    i += 1;
+  }
+  if (!runs.length) return null;
+  let tr = state.tr;
+  let mergedCount = 0;
+  for (let r = runs.length - 1; r >= 0; r -= 1) {
+    const run = runs[r];
+    const first = paras[run.start];
+    const last = paras[run.end];
+    const schema = first.node.type.schema;
+    const mergedChildren: ProseMirrorNode[] = [];
+    for (let p = run.start; p <= run.end; p += 1) {
+      const para = paras[p].node;
+      const fragChildren: ProseMirrorNode[] = [];
+      normalizeParagraphInline(para, schema).forEach((child) => fragChildren.push(child));
+      let normalized = fragChildren;
+      if (mergedChildren.length > 0 && nodesEndWithSpace(mergedChildren)) {
+        normalized = trimLeadingWhitespaceNodes(fragChildren, schema);
+      }
+      mergedChildren.push(...normalized);
+    }
+    const mergedPara = first.node.type.create(first.node.attrs, Fragment.fromArray(mergedChildren), first.node.marks);
+    const from = first.pos;
+    const to = last.pos + last.node.nodeSize;
+    try {
+      tr = tr.replaceWith(from, to, mergedPara);
+      mergedCount += run.end - run.start;
+    } catch {
+      // ignore merge failures
+    }
+  }
+  if (mergedCount > 0) {
+    dbg("mergeLeadingWhitespaceParagraphs", `merged ${mergedCount} paragraph(s) starting with whitespace`);
+  }
+  return mergedCount > 0 ? tr : null;
+};
+
+const stripLeadingEmptyParagraphs = (state: any, pageType: any): any | null => {
+  const doc = state.doc;
+  if (!doc) return null;
+  const ranges: Array<{ from: number; to: number }> = [];
+  let pos = 0;
+  for (let i = 0; i < doc.childCount; i += 1) {
+    const page = doc.child(i);
+    const pagePos = pos;
+    pos += page.nodeSize;
+    if (!page || page.type !== pageType) continue;
+    const pageStart = pagePos + 1;
+    let offset = 0;
+    for (let j = 0; j < page.childCount; j += 1) {
+      const child = page.child(j);
+      if (isFootnoteStorageNode(child)) {
+        offset += child.nodeSize;
+        continue;
+      }
+      if (child.type?.name === "page_break") {
+        offset += child.nodeSize;
+        continue;
+      }
+      if (child.type?.name === "paragraph" && paragraphIsEmpty(child)) {
+        const from = pageStart + offset;
+        const to = from + child.nodeSize;
+        ranges.push({ from, to });
+        offset += child.nodeSize;
+        continue;
+      }
+      break;
+    }
+  }
+  if (!ranges.length) return null;
+  let tr = state.tr;
+  ranges
+    .sort((a, b) => b.from - a.from)
+    .forEach((range) => {
+      try {
+        tr = tr.delete(range.from, range.to);
+      } catch {
+        // ignore failed deletes
+      }
+    });
+  return tr;
+};
+
+const normalizeBrokenLines = (
+  state: any,
+  pageType: any,
+  options?: { forceShortRuns?: boolean }
+): any | null => {
+  return null;
+  /*
+  const doc = state.doc;
+  if (!doc) return null;
+  type ParaInfo = {
+    pos: number;
+    node: ProseMirrorNode;
+    pageIndex: number;
+    isShort: boolean;
+    wordCount: number;
+    text: string;
+    hardBreaks: number;
+  };
+  const paras: ParaInfo[] = [];
+  let totalParas = 0;
+  let shortParas = 0;
+  let hardBreakParas = 0;
+  let shortRunParas = 0;
+  doc.nodesBetween(0, doc.content.size, (node: any, pos: number) => {
+    if (!node?.isTextblock || node.type?.name !== "paragraph") return;
+    let $pos;
+    try {
+      $pos = doc.resolve(pos);
+    } catch {
+      return;
+    }
+    const pageDepth = findPageDepth($pos, pageType);
+    if (pageDepth < 0) return;
+    if ($pos.depth !== pageDepth + 1) return;
+    const text = collectParagraphText(node);
+    const wordCount = text ? text.split(/\s+/).filter(Boolean).length : 0;
+    const isShort = wordCount > 0 && wordCount <= 3 && text.length <= 24;
+    const hardBreaks = countHardBreaks(node);
+    totalParas += 1;
+    if (isShort) shortParas += 1;
+    if (hardBreaks >= 2) hardBreakParas += 1;
+    paras.push({
+      pos,
+      node,
+      pageIndex: $pos.index(0),
+      isShort,
+      wordCount,
+      text,
+      hardBreaks
+    });
+  });
+  if (totalParas < 4) return null;
+  const shortRatio = totalParas > 0 ? shortParas / totalParas : 0;
+  const forceShortRuns = options?.forceShortRuns ?? false;
+  const shouldNormalize = forceShortRuns || shortRatio >= 0.45 || hardBreakParas >= 4;
+  if (!shouldNormalize) return null;
+  let tr = state.tr;
+  let changed = false;
+  const mergedRanges: Array<{ from: number; to: number }> = [];
+
+  const runs: ParaInfo[][] = [];
+  let current: ParaInfo[] = [];
+  for (let i = 0; i < paras.length; i += 1) {
+    const prev = current[current.length - 1];
+    const next = paras[i];
+    if (
+      prev &&
+      next.pageIndex === prev.pageIndex &&
+      next.pos === prev.pos + prev.node.nodeSize
+    ) {
+      current.push(next);
+    } else {
+      if (current.length) runs.push(current);
+      current = [next];
+    }
+  }
+  if (current.length) runs.push(current);
+
+  for (let i = runs.length - 1; i >= 0; i -= 1) {
+    const run = runs[i];
+    if (run.length < (forceShortRuns ? 2 : 5)) continue;
+    const shortCount = run.filter((p) => p.isShort).length;
+    const avgWords =
+      run.reduce((sum, p) => sum + p.wordCount, 0) / Math.max(1, run.length);
+    if (!forceShortRuns && shortCount / run.length < 0.7 && avgWords > 2.5) continue;
+    const start = run[0].pos;
+    const end = run[run.length - 1].pos + run[run.length - 1].node.nodeSize;
+    const schema = run[0].node.type.schema;
+    const mergedChildren: ProseMirrorNode[] = [];
+    for (let r = 0; r < run.length; r += 1) {
+      const para = run[r].node;
+      const normalized = normalizeParagraphInline(para, schema);
+      const fragChildren: ProseMirrorNode[] = [];
+      normalized.forEach((child) => fragChildren.push(child));
+      if (fragChildren.length) {
+        mergedChildren.push(...fragChildren);
+      }
+      const isLast = r === run.length - 1;
+      if (!isLast) {
+        const endsWithSpace = paragraphEndsWithSpace(para);
+        const nextStartsWithPunct = paragraphStartsWithPunct(run[r + 1].node);
+        if (!endsWithSpace && !nextStartsWithPunct) {
+          mergedChildren.push(schema.text(" "));
+        }
+      }
+    }
+    const merged = run[0].node.type.create(run[0].node.attrs, Fragment.fromArray(mergedChildren), run[0].node.marks);
+    try {
+      tr = tr.replaceWith(start, end, merged);
+      changed = true;
+      mergedRanges.push({ from: start, to: end });
+    } catch {
+      // ignore merge failures
+    }
+  }
+
+  const mergedContains = (pos: number) =>
+    mergedRanges.some((range) => pos >= range.from && pos < range.to);
+
+  for (let i = paras.length - 1; i >= 0; i -= 1) {
+    const para = paras[i];
+    if (mergedContains(para.pos)) continue;
+    if (para.hardBreaks < 2) continue;
+    const schema = para.node.type.schema;
+    const normalized = normalizeParagraphInline(para.node, schema);
+    const fragChildren: ProseMirrorNode[] = [];
+    normalized.forEach((child) => fragChildren.push(child));
+    const newNode = para.node.type.create(para.node.attrs, Fragment.fromArray(fragChildren), para.node.marks);
+    try {
+      tr = tr.replaceWith(para.pos, para.pos + para.node.nodeSize, newNode);
+      changed = true;
+    } catch {
+      // ignore replace failures
+    }
+  }
+
+  return changed ? tr : null;
+  */
+};
+
+const hasManualBreaks = (doc: any): boolean => {
+  let found = false;
+  doc.nodesBetween(0, doc.content.size, (node: any) => {
+    if (node?.type?.name === "page_break") {
+      found = true;
+      return false;
+    }
+    return true;
+  });
+  return found;
+};
+
+const flattenPagesForReflow = (
+  state: any,
+  pageType: any,
+  options?: { normalizeShortParagraphs?: boolean }
+): any | null => {
+  const doc = state.doc;
+  if (!doc || doc.childCount <= 1) return null;
+  if (hasManualBreaks(doc)) return null;
+  const normalizeShort = options?.normalizeShortParagraphs ?? false;
+  const mergedNodes: ProseMirrorNode[] = [];
+  let storedFootnotes: ProseMirrorNode[] = [];
+  const flushShortRun = (
+    run: ProseMirrorNode[],
+    schema: any
+  ) => {
+    if (!run.length) return;
+    if (!normalizeShort || run.length === 1) {
+      mergedNodes.push(...run);
+      return;
+    }
+    const mergedChildren: ProseMirrorNode[] = [];
+    for (let i = 0; i < run.length; i += 1) {
+      const para = run[i];
+      const normalized = normalizeParagraphInline(para, schema);
+      const fragChildren: ProseMirrorNode[] = [];
+      normalized.forEach((child) => fragChildren.push(child));
+      if (fragChildren.length) mergedChildren.push(...fragChildren);
+      const isLast = i === run.length - 1;
+      if (!isLast) {
+        const endsWithSpace = paragraphEndsWithSpace(para);
+        const nextStartsWithPunct = paragraphStartsWithPunct(run[i + 1]);
+        if (!endsWithSpace && !nextStartsWithPunct) {
+          mergedChildren.push(schema.text(" "));
+        }
+      }
+    }
+    const mergedPara = run[0].type.create(run[0].attrs, Fragment.fromArray(mergedChildren), run[0].marks);
+    mergedNodes.push(mergedPara);
+  };
+  let shortRun: ProseMirrorNode[] = [];
+  const isShortPara = (node: ProseMirrorNode): boolean => {
+    if (!node?.isTextblock || node.type?.name !== "paragraph") return false;
+    const text = collectParagraphText(node);
+    const words = text ? text.split(/\s+/).filter(Boolean).length : 0;
+    return words > 0 && words <= 3 && text.length <= 28;
+  };
+  for (let i = 0; i < doc.childCount; i += 1) {
+    const child = doc.child(i);
+    if (!child || child.type !== pageType) return null;
+    const storage = collectFootnoteStorage(child.content);
+    if (!storedFootnotes.length && storage.length) {
+      storedFootnotes = storage;
+    }
+    const stripped = stripFootnoteStorage(child.content);
+    stripped.forEach((node) => {
+      if (normalizeShort && isShortPara(node)) {
+        shortRun.push(node);
+        return;
+      }
+      if (shortRun.length) {
+        flushShortRun(shortRun, node.type.schema);
+        shortRun = [];
+      }
+      if (normalizeShort && node.type?.name === "paragraph") {
+        const normalized = normalizeParagraphInline(node, node.type.schema);
+        const fragChildren: ProseMirrorNode[] = [];
+        normalized.forEach((childNode) => fragChildren.push(childNode));
+        const updated = node.type.create(node.attrs, Fragment.fromArray(fragChildren), node.marks);
+        mergedNodes.push(updated);
+      } else {
+        mergedNodes.push(node);
+      }
+    });
+  }
+  if (shortRun.length) {
+    flushShortRun(shortRun, shortRun[0].type.schema);
+    shortRun = [];
+  }
+  if (!mergedNodes.length) return null;
+  if (storedFootnotes.length) {
+    mergedNodes.push(...storedFootnotes);
+  }
+  const pageAttrs = doc.child(0)?.attrs ?? null;
+  const mergedPage = pageType.create(pageAttrs, Fragment.fromArray(mergedNodes));
+  const replacement = Fragment.fromArray([mergedPage]);
+  let tr = state.tr.replaceWith(0, doc.content.size, replacement);
+  try {
+    const mapped = tr.mapping.map(state.selection.from);
+    const resolved = tr.doc.resolve(Math.max(0, Math.min(tr.doc.content.size, mapped)));
+    tr = tr.setSelection(Selection.near(resolved, 1));
+  } catch {
+    // ignore selection mapping failures
+  }
+  return tr;
+};
+
+const stripFootnoteStorage = (content: Fragment): Fragment => {
+  const nodes: ProseMirrorNode[] = [];
+  content.forEach((node) => {
+    if (isFootnoteStorageNode(node)) return;
+    nodes.push(node);
+  });
+  return Fragment.fromArray(nodes);
+};
+
+const collectFootnoteStorage = (content: Fragment): ProseMirrorNode[] => {
+  const nodes: ProseMirrorNode[] = [];
+  content.forEach((node) => {
+    if (isFootnoteStorageNode(node)) {
+      nodes.push(node);
+    }
+  });
+  return nodes;
+};
+
+const hasFootnoteStorage = (content: Fragment): boolean => {
+  let found = false;
+  content.forEach((node) => {
+    if (isFootnoteStorageNode(node)) found = true;
+  });
+  return found;
+};
+
+const splitPageNode = (
+  tr: any,
+  pagePos: number,
+  pageNode: ProseMirrorNode,
+  splitOffset: number,
+  pageType: any
+): any | null => {
+  const adjustForFootnoteStorage = (node: ProseMirrorNode, offset: number): number => {
+    let cursor = 0;
+    let lastNonFootnoteEnd = 0;
+    let storageStart: number | null = null;
+    node.content.forEach((child) => {
+      const start = cursor;
+      const end = cursor + child.nodeSize;
+      if (isFootnoteStorageNode(child)) {
+        if (storageStart == null) storageStart = start;
+        if (offset > start && offset < end) {
+          offset = start;
+        }
+      } else {
+        lastNonFootnoteEnd = end;
+      }
+      cursor = end;
+    });
+    if (storageStart != null && offset > storageStart && lastNonFootnoteEnd > 0) {
+      offset = Math.min(offset, lastNonFootnoteEnd);
+    }
+    return offset;
+  };
+
+  splitOffset = adjustForFootnoteStorage(pageNode, splitOffset);
+  if (!pageNode || splitOffset <= 0 || splitOffset >= pageNode.content.size) {
+    if (debugEnabled()) {
+      logDebug("manual split invalid offset", {
+        splitOffset,
+        contentSize: pageNode?.content?.size ?? null
+      });
+    }
+    return null;
+  }
+  const storedFootnotes = collectFootnoteStorage(pageNode.content);
+  const applyFootnoteStorage = (left: Fragment, right: Fragment) => {
+    let nextLeft = left;
+    let nextRight = stripFootnoteStorage(right);
+    if (storedFootnotes.length && !hasFootnoteStorage(nextLeft)) {
+      nextLeft = nextLeft.append(Fragment.fromArray(storedFootnotes));
+    }
+    return { left: nextLeft, right: nextRight };
+  };
+  const sliceAt = (offset: number) => {
+    const rawLeft = pageNode.content.cut(0, offset);
+    const rawRight = pageNode.content.cut(offset);
+    return applyFootnoteStorage(rawLeft, rawRight);
+  };
+  let { left, right } = sliceAt(splitOffset);
+  if (left.childCount === 0 || right.childCount === 0) {
+    const boundaries: number[] = [];
+    let acc = 0;
+    pageNode.content.forEach((child) => {
+      acc += child.nodeSize;
+      if (acc > 0 && acc < pageNode.content.size) boundaries.push(acc);
+    });
+    let fallbackOffset: number | null = null;
+    let bestDistance = Infinity;
+    for (const candidate of boundaries) {
+      const attempt = sliceAt(candidate);
+      if (attempt.left.childCount === 0 || attempt.right.childCount === 0) continue;
+      const distance = Math.abs(candidate - splitOffset);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        fallbackOffset = candidate;
+      }
+    }
+    if (fallbackOffset != null) {
+      ({ left, right } = sliceAt(fallbackOffset));
+      splitOffset = fallbackOffset;
+    }
+  }
+  if (left.childCount === 0 || right.childCount === 0) {
+    if (debugEnabled()) {
+      logDebug("manual split empty side", {
+        splitOffset,
+        leftCount: left.childCount,
+        rightCount: right.childCount
+      });
+    }
+    return null;
+  }
+  const leftPage = pageType.create(pageNode.attrs, left);
+  const rightPage = pageType.create(pageNode.attrs, right);
+  const replacement = Fragment.fromArray([leftPage, rightPage]);
+  const nextTr = tr.replaceWith(pagePos, pagePos + pageNode.nodeSize, replacement);
+  try {
+    const newPagePos = pagePos + leftPage.nodeSize;
+    trimLeadingWhitespaceAtPageStart(nextTr, newPagePos, pageType);
+  } catch {
+    // ignore
+  }
+  return nextTr;
+};
+
+const markPaginationSplitId = (
+  tr: any,
+  splitPos: number,
+  splitId: string
+): void => {
+  try {
+    const mapped = tr.mapping.map(splitPos);
+    const $mapped = tr.doc.resolve(mapped);
+    const before = $mapped.nodeBefore;
+    const after = $mapped.nodeAfter;
+    if (before?.type?.name === "paragraph" && after?.type?.name === "paragraph") {
+      const beforePos = mapped - before.nodeSize;
+      const afterPos = mapped;
+      const beforeAttrs = { ...(before.attrs as any), paginationSplitId: splitId };
+      const afterAttrs = { ...(after.attrs as any), paginationSplitId: splitId };
+      tr.setNodeMarkup(beforePos, before.type, beforeAttrs, before.marks);
+      tr.setNodeMarkup(afterPos, after.type, afterAttrs, after.marks);
+    }
+  } catch {
+    // ignore split marker failures
+  }
+};
+
+const setSafeSelection = (tr: any, pos: number, bias = 1): void => {
+  try {
+    const bounded = Math.max(0, Math.min(tr.doc.content.size, pos));
+    const resolved = tr.doc.resolve(bounded);
+    if (resolved.parent?.inlineContent) {
+      tr.setSelection(TextSelection.create(tr.doc, resolved.pos));
+      return;
+    }
+    tr.setSelection(Selection.near(resolved, bias));
+  } catch (error) {
+    logDebug("selection map failed", { pos, error: String(error) });
+  }
+};
+
+const resolvePageBoundaryPos = (
+  doc: any,
+  pageType: any,
+  pageDepth: number,
+  mappedPos: number
+): { pos: number; resolved: any } | null => {
+  const offsets = [0, -1, 1, -2, 2, -3, 3, -4, 4];
+  for (const offset of offsets) {
+    const candidate = mappedPos + offset;
+    if (candidate <= 0 || candidate >= doc.content.size) continue;
+    const $cand = doc.resolve(candidate);
+    if (findPageDepth($cand, pageType) !== pageDepth) continue;
+    if ($cand.depth === pageDepth) {
+      return { pos: candidate, resolved: $cand };
+    }
+    if ($cand.depth > pageDepth) {
+      try {
+        const before = $cand.before($cand.depth);
+        const after = $cand.after($cand.depth);
+        const boundaryCandidates = [before, after];
+        for (const boundary of boundaryCandidates) {
+          if (boundary <= 0 || boundary >= doc.content.size) continue;
+          const $boundary = doc.resolve(boundary);
+          if ($boundary.depth === pageDepth) {
+            return { pos: boundary, resolved: $boundary };
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }
+  return null;
+};
+
+const resolveBlockBoundaryPos = (
+  doc: any,
+  pageType: any,
+  pageDepth: number,
+  mappedPos: number
+): { pos: number; resolved: any } | null => {
+  try {
+    const $pos = doc.resolve(mappedPos);
+    if (findPageDepth($pos, pageType) !== pageDepth) return null;
+    if ($pos.depth <= pageDepth) {
+      return { pos: mappedPos, resolved: $pos };
+    }
+    const blockDepth = findBlockDepth($pos, pageDepth);
+    const candidates: number[] = [];
+    if ($pos.depth >= blockDepth) {
+      try {
+        candidates.push($pos.before(blockDepth));
+      } catch {
+        // ignore
+      }
+      try {
+        candidates.push($pos.after(blockDepth));
+      } catch {
+        // ignore
+      }
+    }
+    candidates.push(mappedPos);
+    for (const candidate of candidates) {
+      if (candidate <= 0 || candidate >= doc.content.size) continue;
+      const $cand = doc.resolve(candidate);
+      if ($cand.depth === pageDepth) {
+        return { pos: candidate, resolved: $cand };
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+};
+
+const attemptManualPageSplit = (
+  trBase: any,
+  splitPos: number,
+  pageDepth: number,
+  pageType: any,
+  selectionFrom: number | null,
+  splitId?: string
+): any | null => {
+  try {
+    const $split = trBase.doc.resolve(splitPos);
+    const resolvedPageDepth = findPageDepth($split, pageType);
+    if (resolvedPageDepth < 0) return null;
+    const effectivePageDepth = resolvedPageDepth !== pageDepth ? resolvedPageDepth : pageDepth;
+    const pageNode = $split.node(effectivePageDepth);
+    const pagePos = $split.before(effectivePageDepth);
+    const pageStart = $split.start(effectivePageDepth);
+    let splitOffset = splitPos - pageStart;
+    const contentSize = pageNode?.content?.size ?? 0;
+    if (contentSize > 2 && (splitOffset <= 0 || splitOffset >= contentSize)) {
+      const boundaries: number[] = [];
+      let acc = 0;
+      pageNode.content.forEach((child: ProseMirrorNode) => {
+        acc += child.nodeSize;
+        if (acc > 0 && acc < pageNode.content.size) boundaries.push(acc);
+      });
+      let nearest: number | null = null;
+      let best = Infinity;
+      for (const candidate of boundaries) {
+        const dist = Math.abs(candidate - splitOffset);
+        if (dist < best) {
+          best = dist;
+          nearest = candidate;
+        }
+      }
+      if (nearest != null) {
+        if (debugEnabled()) {
+          logDebug("manual split nudged to boundary", {
+            splitOffset,
+            nudged: nearest,
+            pageDepth: effectivePageDepth,
+            contentSize
+          });
+        }
+        splitOffset = nearest;
+      }
+    }
+    if (debugEnabled()) {
+      logDebug("manual page split attempt", {
+        splitPos,
+        splitOffset,
+        pageStart,
+        pageDepth: effectivePageDepth,
+        contentSize: pageNode?.content?.size ?? null
+      });
+    }
+    const trReplace = splitPageNode(trBase, pagePos, pageNode, splitOffset, pageType);
+    if (!trReplace) {
+      logDebug("manual page split failed", {
+        splitPos,
+        splitOffset,
+        pageStart,
+        pageDepth: effectivePageDepth,
+        contentSize: pageNode?.content?.size ?? null
+      });
+      return null;
+    }
+    if (debugEnabled()) {
+      logDebug("manual page split success", {
+        splitPos,
+        pageDepth: effectivePageDepth,
+        newPageCount: trReplace.doc?.childCount ?? null
+      });
+    }
+    const trimPagePos = getPagePosAtBoundary(trReplace.doc, pageType, splitPos);
+    if (trimPagePos != null) {
+      trimLeadingWhitespaceAtPageStart(trReplace, trimPagePos, pageType);
+    }
+    if (splitId) {
+      markPaginationSplitId(trReplace, splitPos, splitId);
+    }
+    if (typeof selectionFrom === "number" && selectionFrom >= splitPos) {
+      const mapped = trReplace.mapping.map(selectionFrom);
+      setSafeSelection(trReplace, mapped);
+    }
+    trReplace.setMeta(paginationKey, { source: "pagination", op: "split", pos: splitPos, manual: true });
+    return trReplace;
+  } catch (error) {
+    logDebug("manual page split threw", { splitPos, error: String(error) });
+    return null;
+  }
+};
+
+const attemptManualTextblockSplit = (trBase: any, splitPos: number): any | null => {
+  try {
+    const $split = trBase.doc.resolve(splitPos);
+    const parent = $split.parent;
+    if (!parent?.isTextblock) return null;
+    const parentStart = $split.start($split.depth);
+    const parentEnd = $split.end($split.depth);
+    if (splitPos <= parentStart + 1 || splitPos >= parentEnd - 1) return null;
+    const offset = $split.parentOffset;
+    if (offset <= 0 || offset >= parent.content.size) return null;
+    const left = parent.copy(parent.content.cut(0, offset));
+    const right = parent.copy(parent.content.cut(offset, parent.content.size));
+    const nodePos = $split.before($split.depth);
+    return trBase.replaceWith(nodePos, nodePos + parent.nodeSize, [left, right]);
+  } catch {
+    return null;
+  }
+};
+
+const attemptManualPageJoin = (
+  trBase: any,
+  joinPos: number,
+  pageType: any,
+  selectionFrom: number | null
+): any | null => {
+  try {
+    const doc = trBase.doc;
+    const $pos = doc.resolve(joinPos);
+    const before = $pos.nodeBefore;
+    const after = $pos.nodeAfter;
+    if (!before || !after || before.type !== pageType || after.type !== pageType) return null;
+    const beforePos = joinPos - before.nodeSize;
+    const afterPos = joinPos;
+    let left = before.content;
+    let right = after.content;
+    const leftStored = collectFootnoteStorage(left);
+    const rightStored = collectFootnoteStorage(right);
+    left = stripFootnoteStorage(left);
+    right = stripFootnoteStorage(right);
+    let merged = left.append(right);
+    const storage = leftStored.length > 0 ? leftStored : rightStored;
+    if (storage.length > 0) {
+      merged = merged.append(Fragment.fromArray(storage));
+    }
+    if (merged.childCount === 0) return null;
+    const mergedPage = pageType.create(before.attrs, merged);
+    const tr = trBase.replaceWith(beforePos, afterPos + after.nodeSize, mergedPage);
+    if (typeof selectionFrom === "number") {
+      const mapped = tr.mapping.map(selectionFrom);
+      setSafeSelection(tr, mapped);
+    }
+    tr.setMeta(paginationKey, { source: "pagination", op: "join", pos: joinPos, manual: true });
+    return tr;
+  } catch (error) {
+    logDebug("manual page join threw", { joinPos, error: String(error) });
+    return null;
+  }
+};
+
+const ensureDebugLayer = (content: HTMLElement): HTMLElement => {
+  let layer = content.querySelector<HTMLElement>(`.${PAGINATION_DEBUG_LAYER_CLASS}`);
+  if (layer) return layer;
+  layer = document.createElement("div");
+  layer.className = PAGINATION_DEBUG_LAYER_CLASS;
+  layer.style.position = "absolute";
+  layer.style.left = "0";
+  layer.style.top = "0";
+  layer.style.right = "0";
+  layer.style.bottom = "0";
+  layer.style.pointerEvents = "none";
+  layer.style.zIndex = "20";
+  if (!content.style.position || content.style.position === "static") {
+    content.style.position = "relative";
+  }
+  content.appendChild(layer);
+  return layer;
+};
+
+const renderDebugLine = (content: HTMLElement, lineRect: LineRect) => {
+  if (!debugEnabled()) return;
+  const contentRect = content.getBoundingClientRect();
+  const layer = ensureDebugLayer(content);
+  const existingLine = layer.querySelectorAll(`.${PAGINATION_DEBUG_LINE_CLASS}`);
+  existingLine.forEach((node) => node.remove());
+  const existingRect = layer.querySelectorAll(`.${PAGINATION_DEBUG_RECT_CLASS}`);
+  existingRect.forEach((node) => node.remove());
+  const line = document.createElement("div");
+  line.className = PAGINATION_DEBUG_LINE_CLASS;
+  line.style.position = "absolute";
+  line.style.left = "0";
+  line.style.right = "0";
+  line.style.top = `${Math.max(0, lineRect.bottom - contentRect.top)}px`;
+  line.style.borderTop = "1px dashed rgba(255, 0, 0, 0.75)";
+  const rect = document.createElement("div");
+  rect.className = PAGINATION_DEBUG_RECT_CLASS;
+  rect.style.position = "absolute";
+  rect.style.left = `${Math.max(0, lineRect.left - contentRect.left)}px`;
+  rect.style.top = `${Math.max(0, lineRect.top - contentRect.top)}px`;
+  rect.style.width = `${Math.max(0, lineRect.width)}px`;
+  rect.style.height = `${Math.max(0, lineRect.height)}px`;
+  rect.style.background = "rgba(255, 0, 0, 0.08)";
+  rect.style.border = "1px solid rgba(255, 0, 0, 0.35)";
+  layer.appendChild(rect);
+  layer.appendChild(line);
+};
+
+const renderDebugLimit = (content: HTMLElement, bottomLimit: number) => {
+  if (!debugEnabled()) return;
+  const layer = ensureDebugLayer(content);
+  const existing = layer.querySelectorAll(".leditor-pagination-debug-limit");
+  existing.forEach((node) => node.remove());
+  const limit = document.createElement("div");
+  limit.className = "leditor-pagination-debug-limit";
+  limit.style.position = "absolute";
+  limit.style.left = "0";
+  limit.style.right = "0";
+  limit.style.top = `${Math.max(0, bottomLimit)}px`;
+  limit.style.borderTop = "1px dotted rgba(0, 120, 255, 0.6)";
+  limit.style.pointerEvents = "none";
+  layer.appendChild(limit);
+};
+
+const describePos = (doc: any, pos: number) => {
+  try {
+    const $pos = doc.resolve(pos);
+    const path = [];
+    for (let depth = 0; depth <= $pos.depth; depth += 1) {
+      const node = $pos.node(depth);
+      if (!node) continue;
+      path.push({
+        depth,
+        type: node.type?.name,
+        index: depth === 0 ? $pos.index(depth) : $pos.index(depth),
+        start: depth === 0 ? 0 : $pos.start(depth),
+        end: depth === 0 ? doc.content.size : $pos.end(depth)
+      });
+    }
+    return { pos, depth: $pos.depth, parent: $pos.parent?.type?.name, parentOffset: $pos.parentOffset, path };
+  } catch (error) {
+    return { pos, error: String(error) };
+  }
+};
+
+type LineRect = {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+  width: number;
+  height: number;
+};
+
+const collectTextNodes = (root: HTMLElement): Text[] => {
+  const nodes: Text[] = [];
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode: (node) => {
+      if (!(node instanceof Text)) return NodeFilter.FILTER_REJECT;
+      if (!node.data || !node.data.trim()) return NodeFilter.FILTER_SKIP;
+      const parent = node.parentElement;
+      if (parent) {
+        if (isFootnoteContainerElement(parent)) return NodeFilter.FILTER_SKIP;
+        if (
+          parent.closest(
+            "[data-footnotes-container], .leditor-footnotes-container, [data-footnote-body], .leditor-footnote-body"
+          )
+        ) {
+          return NodeFilter.FILTER_SKIP;
+        }
+      }
+      return NodeFilter.FILTER_ACCEPT;
+    }
+  });
+  let current = walker.nextNode();
+  while (current) {
+    if (current instanceof Text) nodes.push(current);
+    current = walker.nextNode();
+  }
+  return nodes;
+};
+
+const collectLineRects = (root: HTMLElement): LineRect[] => {
+  const textNodes = collectTextNodes(root);
+  const raw: LineRect[] = [];
+  for (const node of textNodes) {
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    const rects = Array.from(range.getClientRects());
+    for (const rect of rects) {
+      if (!rect || rect.height <= 0 || rect.width <= 0) continue;
+      raw.push({
+        left: rect.left,
+        right: rect.right,
+        top: rect.top,
+        bottom: rect.bottom,
+        width: rect.width,
+        height: rect.height
+      });
+    }
+  }
+  if (!raw.length) return [];
+  raw.sort((a, b) => a.top - b.top || a.left - b.left);
+  const lines: LineRect[] = [];
+  const tolerance = 1;
+  for (const rect of raw) {
+    const last = lines[lines.length - 1];
+    if (last && Math.abs(rect.top - last.top) <= tolerance) {
+      const left = Math.min(last.left, rect.left);
+      const right = Math.max(last.right, rect.right);
+      const top = Math.min(last.top, rect.top);
+      const bottom = Math.max(last.bottom, rect.bottom);
+      last.left = left;
+      last.right = right;
+      last.top = top;
+      last.bottom = bottom;
+      last.width = right - left;
+      last.height = bottom - top;
+    } else {
+      lines.push({ ...rect });
+    }
+  }
+  return lines;
+};
+
+const parseLineCount = (raw: string | null | undefined, fallback: number) => {
+  const trimmed = (raw ?? "").trim();
+  const parsed = Number.parseInt(trimmed, 10);
+  if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  return fallback;
+};
+
+const getWidowOrphanLimits = (content: HTMLElement, block: HTMLElement) => {
+  const contentStyle = getComputedStyle(content);
+  const blockStyle = getComputedStyle(block);
+  const widowRaw =
+    contentStyle.getPropertyValue("--widow-lines") ||
+    blockStyle.getPropertyValue("--widow-lines") ||
+    "";
+  const orphanRaw =
+    contentStyle.getPropertyValue("--orphan-lines") ||
+    blockStyle.getPropertyValue("--orphan-lines") ||
+    "";
+  return {
+    widowLines: parseLineCount(widowRaw, 1),
+    orphanLines: parseLineCount(orphanRaw, 1)
+  };
+};
+
+const clampTrailingWordOffset = (text: string, offset: number): number => {
+  const safeOffset = Math.max(0, Math.min(offset, text.length));
+  if (!text || safeOffset <= 0) return safeOffset;
+  // Prefer splitting after the last fully visible word to avoid
+  // leaving early gaps at the end of a page.
+  let end = safeOffset;
+  while (end > 0 && /\s/.test(text[end - 1] ?? "")) end -= 1;
+  if (end <= 0) return safeOffset;
+  let forward = end;
+  while (forward < text.length && !/\s/.test(text[forward] ?? "")) forward += 1;
+  if (forward > safeOffset) return forward;
+  return end;
+};
+
+const resolveInlinePos = (view: any, pos: number, blockStart: number, blockEnd: number): number | null => {
+  const doc = view.state.doc;
+  const clamp = (value: number) =>
+    Math.max(blockStart + 1, Math.min(blockEnd - 1, value));
+  const isInline = (value: number) => {
+    const $pos = doc.resolve(value);
+    return $pos.parent.inlineContent;
+  };
+  let candidate = clamp(pos);
+  if (isInline(candidate)) return candidate;
+  for (let step = 1; step <= 8; step += 1) {
+    const left = clamp(candidate - step);
+    if (isInline(left)) return left;
+    const right = clamp(candidate + step);
+    if (isInline(right)) return right;
+  }
+  try {
+    const $pos = doc.resolve(candidate);
+    const near = Selection.near($pos, 1);
+    const nearPos = clamp((near as any)?.from ?? candidate);
+    if (isInline(nearPos)) return nearPos;
+  } catch {
+    // ignore
+  }
+  return null;
+};
+
+const findNearestSplittablePos = (
+  doc: any,
+  pos: number,
+  blockStart: number,
+  blockEnd: number,
+  depth: number,
+  maxScan = 96
+): number | null => {
+  const clamp = (value: number) =>
+    Math.max(blockStart + 1, Math.min(blockEnd - 1, value));
+  const start = clamp(pos);
+  const limit = Math.max(0, Math.min(maxScan, blockEnd - blockStart - 2));
+  for (let delta = 0; delta <= limit; delta += 1) {
+    const left = start - delta;
+    if (left > blockStart + 1 && canSplit(doc, left, depth)) {
+      return left;
+    }
+    const right = start + delta;
+    if (right < blockEnd - 1 && canSplit(doc, right, depth)) {
+      return right;
+    }
+  }
+  return null;
+};
+
+const findSplitPosByRange = (
+  view: any,
+  lineRoot: HTMLElement,
+  maxBottom: number
+): number | null => {
+  const textNodes = collectTextNodes(lineRoot);
+  if (!textNodes.length) return null;
+  const lengths = textNodes.map((node) => node.nodeValue?.length ?? 0);
+  const total = lengths.reduce((acc, len) => acc + len, 0);
+  if (total < 2) return null;
+  const resolveDomOffset = (offset: number): { node: Text; offset: number } | null => {
+    let remaining = Math.max(0, Math.min(total, offset));
+    for (let i = 0; i < textNodes.length; i += 1) {
+      const len = lengths[i];
+      if (remaining <= len) {
+        return { node: textNodes[i], offset: remaining };
+      }
+      remaining -= len;
+    }
+    const last = textNodes[textNodes.length - 1];
+    return last ? { node: last, offset: lengths[lengths.length - 1] } : null;
+  };
+  const range = document.createRange();
+  try {
+    range.setStart(lineRoot, 0);
+  } catch {
+    // ignore
+  }
+  let low = 1;
+  let high = total - 1;
+  let best: number | null = null;
+  let safety = 0;
+  while (low <= high && safety < 48) {
+    safety += 1;
+    const mid = Math.floor((low + high) / 2);
+    const target = resolveDomOffset(mid);
+    if (!target) break;
+    try {
+      range.setEnd(target.node, target.offset);
+    } catch {
+      high = mid - 1;
+      continue;
+    }
+    const rect = range.getBoundingClientRect();
+    if (!rect || rect.height <= 0) {
+      high = mid - 1;
+      continue;
+    }
+    if (rect.bottom <= maxBottom) {
+      best = mid;
+      low = mid + 1;
+    } else {
+      high = mid - 1;
+    }
+  }
+  if (best == null) return null;
+  const resolved = resolveDomOffset(best);
+  if (!resolved) return null;
+  try {
+    const pos = view.posAtDOM(resolved.node, resolved.offset);
+    return typeof pos === "number" && pos > 0 ? pos : null;
+  } catch {
+    return null;
+  }
+};
+
+const lockJoinForSplit = (
+  memo: PaginationMemo,
+  pos: number,
+  reason: "keepWithNext" | "overflow" | "manual" | "pullup" | "underfill",
+  docSize: number
+) => {
+  memo.lockedJoinPos.set(pos, { docSize, at: performance.now(), reason });
+};
+
+const markJoin = (memo: PaginationMemo, joinPos: number, docSize: number) => {
+  memo.lastJoinPos = joinPos;
+  memo.lastJoinAt = performance.now();
+  memo.lastJoinDocSize = docSize;
+};
+
+const attemptLineSplitPageSplit = (
+  view: any,
+  splitPos: number,
+  pageDepth: number,
+  pageType: any,
+  splitReason: "keepWithNext" | "overflow" | "manual",
+  memo: PaginationMemo,
+  markPaginationSplit: boolean
+): any | null => {
+  try {
+    const state = view.state;
+    const selectionFrom = state.selection?.from ?? null;
+    const $split = state.doc.resolve(splitPos);
+    const blockDepth = findBlockDepth($split, pageDepth);
+    // Split at the paragraph depth (block depth), not relative depth.
+    const paragraphDepth = Math.max(1, blockDepth - pageDepth);
+    const blockStart = $split.start(blockDepth);
+    const blockEnd = $split.end(blockDepth);
+    let splitCandidate = splitPos;
+    if (!canSplit(state.doc, splitCandidate, paragraphDepth)) {
+      const nearest = findNearestSplittablePos(state.doc, splitCandidate, blockStart, blockEnd, paragraphDepth);
+      if (!nearest) {
+        const manualFallback = attemptManualPageSplit(state.tr, splitCandidate, pageDepth, pageType, selectionFrom);
+        if (manualFallback) {
+          manualFallback.setMeta(paginationKey, { source: "pagination", op: "split", pos: splitCandidate });
+          memo.lastSplitPos = splitCandidate;
+          memo.lastSplitAttemptPos = splitCandidate;
+          memo.lastSplitAt = performance.now();
+          memo.lastSplitReason = splitReason;
+          if (splitReason === "keepWithNext") {
+            memo.lockedJoinPos.set(splitCandidate, {
+              docSize: state.doc.content.size,
+              at: memo.lastSplitAt,
+              reason: splitReason
+            });
+          }
+          if (typeof selectionFrom === "number" && selectionFrom >= splitCandidate) {
+            const mapped = manualFallback.mapping.map(selectionFrom);
+            setSafeSelection(manualFallback, mapped);
+          }
+          return manualFallback;
+        }
+        return null;
+      }
+      splitCandidate = nearest;
+    }
+    let tr: any | null = null;
+    try {
+      tr = state.tr.split(splitCandidate, paragraphDepth);
+    } catch (error) {
+      logDebug("line split paragraph threw", { splitCandidate, paragraphDepth, error: String(error) });
+      tr = null;
+    }
+    if (!tr) {
+      tr = attemptManualTextblockSplit(state.tr, splitCandidate);
+      if (tr) {
+        logDebug("line split manual textblock", { splitCandidate });
+      }
+    }
+    if (!tr) {
+      const manualFallback = attemptManualPageSplit(state.tr, splitCandidate, pageDepth, pageType, selectionFrom);
+      if (manualFallback) {
+        manualFallback.setMeta(paginationKey, { source: "pagination", op: "split", pos: splitCandidate });
+        memo.lastSplitPos = splitCandidate;
+        memo.lastSplitAttemptPos = splitCandidate;
+        memo.lastSplitAt = performance.now();
+        memo.lastSplitReason = splitReason;
+        if (splitReason === "keepWithNext") {
+          memo.lockedJoinPos.set(splitCandidate, {
+            docSize: state.doc.content.size,
+            at: memo.lastSplitAt,
+            reason: splitReason
+          });
+        }
+        if (typeof selectionFrom === "number" && selectionFrom >= splitCandidate) {
+          const mapped = manualFallback.mapping.map(selectionFrom);
+          setSafeSelection(manualFallback, mapped);
+        }
+        return manualFallback;
+      }
+      return null;
+    }
+    const mappedSplit = tr.mapping.map(splitCandidate, -1);
+    const boundaryInfo = resolvePageBoundaryPos(tr.doc, pageType, pageDepth, mappedSplit);
+    let boundaryPos = boundaryInfo?.pos ?? mappedSplit;
+    const boundaryResolved = boundaryInfo?.resolved ?? tr.doc.resolve(boundaryPos);
+    let pageStart = 0;
+    let pageEnd = 0;
+    try {
+      pageStart = boundaryResolved.start(pageDepth);
+      pageEnd = boundaryResolved.end(pageDepth);
+    } catch {
+      // ignore
+    }
+    if (boundaryPos <= pageStart || boundaryPos >= pageEnd) {
+      // Try to nudge to a nearby page-depth boundary.
+      const altInfo = resolvePageBoundaryPos(tr.doc, pageType, pageDepth, boundaryPos + 1);
+      if (altInfo && altInfo.pos > pageStart && altInfo.pos < pageEnd) {
+        boundaryPos = altInfo.pos;
+      } else {
+        // Fall back to splitting the page directly at the mapped line split position.
+        const manual = attemptManualPageSplit(tr, mappedSplit, pageDepth, pageType, selectionFrom);
+        if (manual) {
+          manual.setMeta(paginationKey, { source: "pagination", op: "split", pos: mappedSplit });
+          memo.lastSplitPos = mappedSplit;
+          memo.lastSplitAttemptPos = splitCandidate;
+          memo.lastSplitAt = performance.now();
+          memo.lastSplitReason = splitReason;
+          if (splitReason === "keepWithNext") {
+            memo.lockedJoinPos.set(mappedSplit, {
+              docSize: state.doc.content.size,
+              at: memo.lastSplitAt,
+              reason: splitReason
+            });
+          }
+          if (typeof selectionFrom === "number" && selectionFrom >= splitCandidate) {
+            const mapped = manual.mapping.map(selectionFrom);
+            setSafeSelection(manual, mapped);
+          }
+          return manual;
+        }
+        return null;
+      }
+    }
+    let didSplit = false;
+    if (canSplit(tr.doc, boundaryPos, 1)) {
+      try {
+        tr = tr.split(boundaryPos, 1);
+        didSplit = true;
+      } catch (error) {
+        logDebug("line split page-only threw", { boundaryPos, error: String(error) });
+      }
+    }
+    if (!didSplit) {
+      const boundaryDepth = Math.max(1, boundaryResolved.depth - pageDepth);
+      const boundaryTypes: Array<{ type: any; attrs?: any } | null> = new Array(boundaryDepth).fill(null);
+      boundaryTypes[0] = { type: pageType };
+      for (let i = 1; i < boundaryDepth; i += 1) {
+        const depthAt = pageDepth + i;
+        if (depthAt > boundaryResolved.depth) break;
+        const nodeAt = boundaryResolved.node(depthAt);
+        if (!nodeAt) break;
+        boundaryTypes[i] = { type: nodeAt.type, attrs: nodeAt.attrs };
+      }
+      if (canSplit(tr.doc, boundaryPos, boundaryDepth, boundaryTypes as any)) {
+        try {
+          tr = tr.split(boundaryPos, boundaryDepth, boundaryTypes as any);
+          didSplit = true;
+        } catch (error) {
+          logDebug("line split boundary threw", { boundaryPos, boundaryDepth, error: String(error) });
+        }
+      }
+    }
+    if (!didSplit) {
+    const manual =
+        attemptManualPageSplit(tr, boundaryPos, pageDepth, pageType, selectionFrom) ??
+        attemptManualPageSplit(tr, mappedSplit, pageDepth, pageType, selectionFrom);
+      if (manual) {
+        tr = manual;
+        didSplit = true;
+      }
+    }
+    if (!didSplit) return null;
+    tr.setMeta(paginationKey, { source: "pagination", op: "split", pos: boundaryPos });
+    memo.lastSplitPos = boundaryPos;
+    memo.lastSplitAttemptPos = splitCandidate;
+    memo.lastSplitAt = performance.now();
+    memo.lastSplitReason = splitReason;
+    if (splitReason === "keepWithNext") {
+      memo.lockedJoinPos.set(boundaryPos, {
+        docSize: state.doc.content.size,
+        at: memo.lastSplitAt,
+        reason: splitReason
+      });
+    }
+    if (typeof selectionFrom === "number" && selectionFrom >= splitCandidate) {
+      const mapped = tr.mapping.map(selectionFrom);
+      setSafeSelection(tr, mapped);
+    }
+    if (markPaginationSplit) {
+      const splitId = `ps-${memo.splitIdCounter++}`;
+      const mapped = tr.mapping.map(boundaryPos);
+      const $mapped = tr.doc.resolve(mapped);
+      const before = $mapped.nodeBefore;
+      const after = $mapped.nodeAfter;
+      if (before?.type?.name === "paragraph" && after?.type?.name === "paragraph") {
+        const beforePos = mapped - before.nodeSize;
+        const afterPos = mapped;
+        const beforeAttrs = { ...(before.attrs as any), paginationSplitId: splitId };
+        const afterAttrs = { ...(after.attrs as any), paginationSplitId: splitId };
+        tr.setNodeMarkup(beforePos, before.type, beforeAttrs, before.marks);
+        tr.setNodeMarkup(afterPos, after.type, afterAttrs, after.marks);
+      }
+    }
+    return tr;
+  } catch (error) {
+    logDebug("line split pagination threw", { splitPos, error: String(error) });
+    return null;
+  }
+};
+
+const hasAnchorMark = (node: any): boolean => {
+  if (!node?.isText) return false;
+  const marks = node.marks ?? [];
+  return marks.some((mark: any) => mark?.type?.name === "anchor");
+};
+
+const isAnchorInlineNode = (node: any): boolean => node?.type?.name === "anchorMarker";
+
+const hasAnchorOnlyTail = (parent: any, offset: number): boolean => {
+  let hasAnchor = false;
+  let hasNonAnchor = false;
+  try {
+    parent.nodesBetween(offset, parent.content.size, (node: any) => {
+      if (!node) return;
+      if (node.isText) {
+        const text = node.text ?? "";
+        if (!text.trim()) return;
+        if (hasAnchorMark(node)) {
+          hasAnchor = true;
+        } else {
+          hasNonAnchor = true;
+        }
+        return;
+      }
+      if (node.type?.name === "anchorMarker") {
+        hasAnchor = true;
+        return;
+      }
+      if (node.isLeaf || node.childCount > 0) {
+        hasNonAnchor = true;
+      }
+    });
+  } catch {
+    return false;
+  }
+  return hasAnchor && !hasNonAnchor;
+};
+
+const adjustSplitPosForAnchors = (
+  doc: any,
+  pos: number,
+  blockStart: number,
+  blockEnd: number
+): number => {
+  try {
+    const $pos = doc.resolve(pos);
+    const parent = $pos.parent;
+    if (!parent?.inlineContent) return pos;
+    const offset = $pos.parentOffset;
+    const before = parent.childBefore(offset);
+    const after = parent.childAfter(offset);
+    const start = $pos.start($pos.depth);
+    const hasAnchor = (node: any) => isAnchorInlineNode(node) || hasAnchorMark(node);
+    if (after?.node && hasAnchor(after.node)) {
+      const nextPos = start + after.offset;
+      if (nextPos > blockStart + 1 && nextPos < blockEnd - 1) {
+        return nextPos;
+      }
+    }
+    if (before?.node && hasAnchor(before.node)) {
+      const prevPos = start + before.offset;
+      if (prevPos > blockStart + 1 && prevPos < blockEnd - 1) {
+        return prevPos;
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return pos;
+};
+
+const findLineSplitPos = (
+  view: any,
+  pageType: any,
+  pageDepth: number,
+  content: HTMLElement,
+  block: HTMLElement
+): number | null => {
+  const { usableHeight } = getContentMetrics(content);
+  if (usableHeight <= 0) return null;
+  const contentRect = content.getBoundingClientRect();
+  const scale = getContentScale(content);
+  const baseLineHeight = getLineHeightPx(content, content);
+  const lineHeight = getLineHeightPx(block, content);
+  const guardPx = getBottomGuardPx(content, baseLineHeight || lineHeight);
+  const bottomLimit = Math.max(0, usableHeight - guardPx);
+  const lineRoot = (() => {
+    const direct = getLineSplitRoot(block);
+    if (direct && isLineSplitElement(direct)) return direct;
+    const descendant = findOverflowDescendant(block, content, bottomLimit, 1);
+    if (descendant && isLineSplitElement(descendant)) return descendant;
+    return null;
+  })();
+  if (!lineRoot) return null;
+  const lineHeightRoot = getLineHeightPx(lineRoot, content);
+  const guardPxRoot = getBottomGuardPx(content, baseLineHeight || lineHeightRoot);
+  const bottomLimitRoot = Math.max(0, usableHeight - guardPxRoot);
+  const maxBottomAbs = contentRect.top + bottomLimitRoot * scale;
+  const lineRects = collectLineRects(lineRoot);
+  const rangePos = findSplitPosByRange(view, lineRoot, maxBottomAbs);
+  let lastVisibleIndex = -1;
+  if (lineRects.length > 0) {
+    for (let i = 0; i < lineRects.length; i += 1) {
+      const relBottom = (lineRects[i].bottom - contentRect.top) / scale;
+      if (relBottom <= bottomLimitRoot) {
+        lastVisibleIndex = i;
+      }
+    }
+  }
+  if (lastVisibleIndex < 0 && !rangePos) return null;
+  const { widowLines, orphanLines } = getWidowOrphanLimits(content, block);
+  const enforcedWidowLines = Math.max(widowLines, MIN_LINE_SPLIT_TAIL_LINES);
+  const enforcedOrphanLines = Math.max(orphanLines, MIN_LINE_SPLIT_HEAD_LINES);
+  const chooseTargetIndex = (minWidows: number, minOrphans: number): number | null => {
+    let target = lastVisibleIndex;
+    if (minWidows > 0) {
+      const minIndexForWidow = lineRects.length - minWidows - 1;
+      if (minIndexForWidow < 0) return null;
+      target = Math.min(target, minIndexForWidow);
+    }
+    if (target < 0) return null;
+    if (minOrphans > 0 && target + 1 < minOrphans) return null;
+    return target;
+  };
+  let targetIndex = chooseTargetIndex(enforcedWidowLines, enforcedOrphanLines);
+  if (targetIndex == null && (enforcedWidowLines > 1 || enforcedOrphanLines > 1)) {
+    targetIndex = chooseTargetIndex(1, 1);
+    if (debugEnabled()) {
+      logDebug("line split relax widows/orphans", {
+        enforcedWidowLines,
+        enforcedOrphanLines,
+        relaxedTargetIndex: targetIndex
+      });
+    }
+  }
+  let lineRect: LineRect | null = null;
+  if (targetIndex != null && lineRects.length > 0) {
+    lineRect = lineRects[targetIndex];
+    renderDebugLine(content, lineRect);
+    if (debugEnabled()) {
+      logDebug("line split rect", {
+        rect: {
+          left: lineRect.left,
+          top: lineRect.top,
+          right: lineRect.right,
+          bottom: lineRect.bottom,
+          width: lineRect.width,
+          height: lineRect.height
+        }
+      });
+    }
+  }
+  const x = lineRect
+    ? Math.max(lineRect.left + 1, Math.min(lineRect.right - 1, lineRect.left + lineRect.width - 1))
+    : Math.max(contentRect.left + 2, contentRect.left + 2);
+  const y = lineRect ? Math.max(lineRect.top + 1, lineRect.bottom - 1) : contentRect.top + 2;
+  const rawBlockPos = view.posAtDOM(lineRoot, 0);
+  const blockPos = Math.max(0, Math.min(rawBlockPos + 1, view.state.doc.content.size));
+  const blockResolved = view.state.doc.resolve(blockPos);
+  const blockDepth = findBlockDepth(blockResolved, pageDepth);
+  if (blockResolved.depth < blockDepth) return null;
+  const blockStart = blockResolved.start(blockDepth);
+  const blockEnd = blockResolved.end(blockDepth);
+  const tryCoordsAtPos = (): number | null => {
+    if (typeof view.coordsAtPos !== "function") return null;
+    let low = blockStart + 1;
+    let high = blockEnd - 1;
+    let best: number | null = null;
+    let safety = 0;
+    while (low <= high && safety < 64) {
+      safety += 1;
+      const mid = Math.floor((low + high) / 2);
+      try {
+        const rect = view.coordsAtPos(mid);
+        if (rect.bottom <= maxBottomAbs) {
+          best = mid;
+          low = mid + 1;
+        } else {
+          high = mid - 1;
+        }
+      } catch {
+        high = mid - 1;
+      }
+    }
+    return best;
+  };
+  let pos = rangePos;
+  if (!pos) {
+    pos = tryCoordsAtPos();
+  }
+  if (!pos && lineRect) {
+    const coords = view.posAtCoords({ left: x, top: y });
+    pos = coords && typeof coords.pos === "number" ? coords.pos : null;
+  }
+  if (!pos && debugEnabled()) {
+    logDebug("line split posAtCoords failed", { x, y });
+  }
+  if (!pos) return null;
+  if (pos <= blockStart + 1) {
+    const fallback = tryCoordsAtPos();
+    if (fallback) pos = fallback;
+    if (pos <= blockStart + 1) {
+      const rangeFallback = findSplitPosByRange(view, lineRoot, maxBottomAbs);
+      if (rangeFallback) pos = rangeFallback;
+    }
+  }
+  if (pos >= blockEnd) {
+    const fallback = tryCoordsAtPos();
+    if (fallback) pos = fallback;
+    if (pos >= blockEnd) {
+      const rangeFallback = findSplitPosByRange(view, lineRoot, maxBottomAbs);
+      if (rangeFallback) pos = rangeFallback;
+    }
+    if (pos >= blockEnd) {
+      pos = Math.max(blockStart + 2, blockEnd - 2);
+    }
+  }
+  if (pos <= blockStart + 1) {
+    if (debugEnabled()) {
+      logDebug("line split pos outside block", {
+        pos,
+        blockStart,
+        blockEnd,
+        blockDepth,
+        pageDepth
+      });
+    }
+    return null;
+  }
+  const inlinePos = resolveInlinePos(view, pos, blockStart, blockEnd);
+  if (inlinePos == null) return null;
+  pos = inlinePos;
+  if (pos == null) return null;
+  const resolved = view.state.doc.resolve(pos);
+  if (findPageDepth(resolved, pageType) !== pageDepth) {
+    if (debugEnabled()) {
+      logDebug("line split pos wrong page depth", {
+        pos,
+        resolvedDepth: resolved.depth,
+        pageDepth
+      });
+    }
+    return null;
+  }
+  if (resolved.parent?.isTextblock) {
+    const parentText = resolved.parent.textBetween(0, resolved.parent.content.size, "\n", "\n");
+    const parentOffset = resolved.parentOffset;
+    const adjustedOffset = clampTrailingWordOffset(parentText, parentOffset);
+    const parentStart = resolved.start(resolved.depth);
+    const adjustedPos = parentStart + adjustedOffset;
+    if (adjustedPos > blockStart + 1 && adjustedPos < blockEnd - 1) {
+      pos = adjustedPos;
+    }
+  }
+  const anchorAdjusted = adjustSplitPosForAnchors(view.state.doc, pos!, blockStart, blockEnd);
+  if (anchorAdjusted != null) {
+    pos = anchorAdjusted;
+  }
+  // Avoid leaving anchor-only tails (e.g., lone citation lines) on the next page.
+  try {
+    const tailResolved = view.state.doc.resolve(pos);
+    if (tailResolved.parent?.isTextblock) {
+      const parent = tailResolved.parent;
+      const parentText = parent.textBetween(0, parent.content.size, "\n", "\n");
+      const tailOffset = tailResolved.parentOffset;
+      const tailText = parentText.slice(tailOffset).trim();
+      const minTailChars = 12;
+      const anchorOnlyTail = hasAnchorOnlyTail(parent, tailOffset);
+      if ((anchorOnlyTail || tailText.length < minTailChars) && tailOffset > 0) {
+        const desiredOffset = Math.max(0, tailOffset - minTailChars);
+        const adjustedOffset = clampTrailingWordOffset(parentText, desiredOffset);
+        const parentStart = tailResolved.start(tailResolved.depth);
+        const candidatePos = parentStart + adjustedOffset;
+        if (candidatePos > blockStart + 1 && candidatePos < blockEnd - 1) {
+          pos = candidatePos;
+        }
+      }
+    }
+  } catch {
+    // ignore tail adjustments
+  }
+  return pos;
+};
+
+const findLineSplitPosForRemaining = (
+  view: any,
+  pageType: any,
+  pageDepth: number,
+  content: HTMLElement,
+  lineRoot: HTMLElement,
+  remainingPx: number
+): number | null => {
+  if (remainingPx <= 0) return null;
+  const contentRect = content.getBoundingClientRect();
+  const scale = getContentScale(content);
+  const maxBottomAbs = contentRect.top + remainingPx * scale;
+  let pos = findSplitPosByRange(view, lineRoot, maxBottomAbs);
+  if (pos == null) return null;
+  let rawBlockPos = 0;
+  try {
+    rawBlockPos = view.posAtDOM(lineRoot, 0);
+  } catch {
+    return null;
+  }
+  const blockPos = Math.max(0, Math.min(rawBlockPos + 1, view.state.doc.content.size));
+  const blockResolved = view.state.doc.resolve(blockPos);
+  const blockDepth = findBlockDepth(blockResolved, pageDepth);
+  if (blockResolved.depth < blockDepth) return null;
+  const blockStart = blockResolved.start(blockDepth);
+  const blockEnd = blockResolved.end(blockDepth);
+  if (pos <= blockStart + 1) return null;
+  if (pos >= blockEnd) pos = Math.max(blockStart + 2, blockEnd - 2);
+  const inlinePos = resolveInlinePos(view, pos, blockStart, blockEnd);
+  if (inlinePos == null) return null;
+  pos = inlinePos;
+  const resolved = view.state.doc.resolve(pos);
+  if (findPageDepth(resolved, pageType) !== pageDepth) return null;
+  if (resolved.parent?.isTextblock) {
+    const parentText = resolved.parent.textBetween(0, resolved.parent.content.size, "\n", "\n");
+    const parentOffset = resolved.parentOffset;
+    const adjustedOffset = clampTrailingWordOffset(parentText, parentOffset);
+    const parentStart = resolved.start(resolved.depth);
+    const adjustedPos = parentStart + adjustedOffset;
+    if (adjustedPos > blockStart + 1 && adjustedPos < blockEnd - 1) {
+      pos = adjustedPos;
+    }
+  }
+  const anchorAdjusted = adjustSplitPosForAnchors(view.state.doc, pos!, blockStart, blockEnd);
+  if (anchorAdjusted != null) {
+    pos = anchorAdjusted;
+  }
+  return pos;
+};
+
+const attemptUnderfilledPullUp = (
+  view: any,
+  pageType: any,
+  pageIndex: number,
+  joinPos: number,
+  remaining: number,
+  lineHeight: number
+): { tr: any; splitPos: number } | null => {
+  if (remaining <= Math.max(lineHeight * 0.8, 6)) return null;
+  const pages = Array.from(view.dom.querySelectorAll(PAGE_SELECTOR)).filter(
+    (node): node is HTMLElement => node instanceof HTMLElement
+  );
+  const page = pages[pageIndex];
+  const nextPage = pages[pageIndex + 1];
+  if (!page || !nextPage) return null;
+  const nextContent = nextPage.querySelector(`.${PAGE_CONTENT_CLASS}`) as HTMLElement | null;
+  if (!nextContent) return null;
+  const nextChildren = getContentChildren(nextContent);
+  if (!nextChildren.length) return null;
+  const fallbackLineHeight = getLineHeightPx(nextContent, nextContent) || 16;
+  const measureBlockHeight = (el: HTMLElement): number => {
+    const { box, bottom } = getBlockBottom(el, nextContent, fallbackLineHeight);
+    const marginTop = parseFloat(getComputedStyle(el).marginTop || "0") || 0;
+    const marginBottom = parseFloat(getComputedStyle(el).marginBottom || "0") || 0;
+    return (bottom - box.top) + marginTop + marginBottom;
+  };
+  const resolveAfterBlock = (el: HTMLElement): number | null => {
+    try {
+      const rawPos = view.posAtDOM(el, 0);
+      const pos = Math.max(0, Math.min(rawPos, view.state.doc.content.size));
+      const resolved = view.state.doc.resolve(pos);
+      const depth = findPageDepth(resolved, pageType);
+      if (depth < 0) return null;
+      const childDepth = depth + 1;
+      if (resolved.depth < childDepth) return null;
+      return resolved.after(childDepth);
+    } catch {
+      return null;
+    }
+  };
+  const firstChild = nextChildren[0] ?? null;
+  const secondChild = nextChildren[1] ?? null;
+  let lineRootOverride: HTMLElement | null = null;
+  let blockSplitPos: number | null = null;
+  if (firstChild) {
+    const firstHeight = measureBlockHeight(firstChild);
+    if (isHeadingElement(firstChild) && hasKeepWithNext(firstChild) && secondChild) {
+      const secondHeight = measureBlockHeight(secondChild);
+      if (remaining >= firstHeight + secondHeight - 1) {
+        blockSplitPos = resolveAfterBlock(secondChild);
+      } else {
+        const secondLineRoot = getLineSplitRoot(secondChild);
+        if (secondLineRoot && isLineSplitElement(secondLineRoot)) {
+          const secondLineHeight = getLineHeightPx(secondLineRoot, nextContent);
+          const minSecondLine = Math.max(secondLineHeight * 0.85, 8);
+          if (remaining >= firstHeight + minSecondLine) {
+            lineRootOverride = secondLineRoot;
+          }
+        }
+      }
+    } else if (remaining >= firstHeight - 1) {
+      blockSplitPos = resolveAfterBlock(firstChild);
+    }
+  }
+  if (blockSplitPos != null && blockSplitPos > joinPos + 1) {
+    let trJoin = attemptManualPageJoin(view.state.tr, joinPos, pageType, view.state.selection.from);
+    if (!trJoin && canJoin(view.state.doc, joinPos)) {
+      try {
+        trJoin = view.state.tr.join(joinPos);
+        trJoin.setMeta(paginationKey, { source: "pagination", op: "join", pos: joinPos });
+      } catch {
+        trJoin = null;
+      }
+    }
+    if (trJoin) {
+      const mappedBlockSplit = trJoin.mapping.map(blockSplitPos, -1);
+      const trSplit = attemptManualPageSplit(
+        trJoin,
+        mappedBlockSplit,
+        findPageDepth(trJoin.doc.resolve(Math.max(0, mappedBlockSplit - 1)), pageType),
+        pageType,
+        view.state.selection.from
+      );
+      if (trSplit) return { tr: trSplit, splitPos: mappedBlockSplit };
+    }
+  }
+  const lineRoot = lineRootOverride ?? (() => {
+    for (const child of nextChildren) {
+      const candidate = isLineSplitElement(child) ? child : getLineSplitRoot(child);
+      if (candidate && isLineSplitElement(candidate)) return candidate;
+    }
+    return null;
+  })();
+  if (!lineRoot) return null;
+  const pageDepth = findPageDepth(view.state.doc.resolve(joinPos - 1), pageType);
+  if (pageDepth < 0) return null;
+  const splitPos = findLineSplitPosForRemaining(
+    view,
+    pageType,
+    pageDepth,
+    nextContent,
+    lineRoot,
+    remaining
+  );
+  if (!splitPos) return null;
+  let trJoin = attemptManualPageJoin(view.state.tr, joinPos, pageType, view.state.selection.from);
+  if (!trJoin && canJoin(view.state.doc, joinPos)) {
+    try {
+      trJoin = view.state.tr.join(joinPos);
+      trJoin.setMeta(paginationKey, { source: "pagination", op: "join", pos: joinPos });
+    } catch {
+      trJoin = null;
+    }
+  }
+  if (!trJoin) return null;
+  const mappedSplit = trJoin.mapping.map(splitPos, -1);
+  const trSplit = attemptManualPageSplit(
+    trJoin,
+    mappedSplit,
+    pageDepth,
+    pageType,
+    view.state.selection.from
+  );
+  if (!trSplit) return null;
+  return { tr: trSplit, splitPos: mappedSplit };
+};
+
+const getPageContentElement = (view: any, selection: Selection): HTMLElement | null => {
+  try {
+    const domAt = view.domAtPos(selection.from);
+    const domNode = domAt?.node as unknown as globalThis.Node | null;
+    const element = domNode instanceof HTMLElement ? domNode : (domNode as any)?.parentElement ?? null;
+    const content = element?.closest?.(`.${PAGE_CONTENT_CLASS}`) as HTMLElement | null;
+    if (content) return content;
+  } catch {
+    // ignore
+  }
+  try {
+    const pageIndex = selection.$from?.index?.(0);
+    if (Number.isFinite(pageIndex)) {
+      return view.dom.querySelector(
+        `.${PAGE_CLASS}[data-page-index="${pageIndex}"] .${PAGE_CONTENT_CLASS}`
+      ) as HTMLElement | null;
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+};
+
+const SELECTION_BLOCK_SELECTOR = "p, li, blockquote, pre, h1, h2, h3, h4, h5, h6";
+
+const getSelectionBlockElement = (view: any, selection: Selection): HTMLElement | null => {
+  try {
+    const domAt = view.domAtPos(selection.from);
+    const domNode = domAt?.node as unknown as globalThis.Node | null;
+    const element = domNode instanceof HTMLElement ? domNode : (domNode as any)?.parentElement ?? null;
+    if (!element) return null;
+    const block = element.closest(SELECTION_BLOCK_SELECTOR) as HTMLElement | null;
+    if (!block) return null;
+    const content = block.closest(`.${PAGE_CONTENT_CLASS}`) as HTMLElement | null;
+    if (!content) return null;
+    return block;
+  } catch {
+    return null;
+  }
+};
+
+const TABLE_ROW_SELECTOR = "tr";
+
+const getTableElement = (el: HTMLElement | null | undefined): HTMLTableElement | null => {
+  if (!el) return null;
+  if (el.tagName.toUpperCase() === "TABLE") return el as HTMLTableElement;
+  return el.closest("table");
+};
+
+const findTableDepth = ($pos: any, minDepth: number): number | null => {
+  for (let depth = $pos.depth; depth > minDepth; depth -= 1) {
+    const node = $pos.node(depth);
+    if (node?.type?.name === "table") return depth;
+  }
+  return null;
+};
+
+const splitTableNode = (
+  trBase: any,
+  tablePos: number,
+  tableNode: ProseMirrorNode,
+  splitOffset: number
+): any | null => {
+  try {
+    if (!tableNode || splitOffset <= 0 || splitOffset >= tableNode.content.size) return null;
+    const left = tableNode.content.cut(0, splitOffset);
+    let right = tableNode.content.cut(splitOffset);
+    if (left.size === 0 || right.size === 0) return null;
+    const isHeaderRowNode = (row: ProseMirrorNode | null): boolean => {
+      if (!row || !row.isBlock) return false;
+      let hasHeader = false;
+      let allHeader = true;
+      row.forEach((cell) => {
+        const isHeader = cell.type?.name === "tableHeader";
+        if (isHeader) {
+          hasHeader = true;
+        } else {
+          allHeader = false;
+        }
+      });
+      return hasHeader && allHeader;
+    };
+    const headerRow = (() => {
+      if (tableNode.childCount === 0) return null;
+      const first = tableNode.child(0);
+      return isHeaderRowNode(first) ? first : null;
+    })();
+    if (headerRow) {
+      const rightFirst = right.childCount > 0 ? right.child(0) : null;
+      if (!isHeaderRowNode(rightFirst)) {
+        const rows: ProseMirrorNode[] = [headerRow.copy(headerRow.content)];
+        right.forEach((row) => rows.push(row));
+        right = Fragment.fromArray(rows);
+      }
+    }
+    const leftTable = tableNode.type.create(tableNode.attrs, left);
+    const rightTable = tableNode.type.create(tableNode.attrs, right);
+    const replacement = Fragment.fromArray([leftTable, rightTable]);
+    return trBase.replaceWith(tablePos, tablePos + tableNode.nodeSize, replacement);
+  } catch (error) {
+    logDebug("manual table split threw", { tablePos, splitOffset, error: String(error) });
+    return null;
+  }
+};
+
+const findTableSplitPos = (
+  view: any,
+  pageType: any,
+  pageDepth: number,
+  content: HTMLElement,
+  tableEl: HTMLTableElement
+): number | null => {
+  const rows = Array.from(tableEl.querySelectorAll<HTMLElement>(TABLE_ROW_SELECTOR));
+  if (rows.length <= 1) return null;
+  const { usableHeight } = getContentMetrics(content);
+  if (usableHeight <= 0) return null;
+  const scale = getContentScale(content);
+  const guardPx = Math.max(getBottomGuardPx(content, null), 1);
+  const contentRect = content.getBoundingClientRect();
+  const maxBottom = contentRect.top + usableHeight * scale - guardPx * scale;
+  let lastVisible = -1;
+  for (let i = 0; i < rows.length; i += 1) {
+    const rect = rows[i].getBoundingClientRect();
+    if (!rect || rect.height <= 0) continue;
+    if (rect.bottom <= maxBottom) lastVisible = i;
+  }
+  if (lastVisible < 0 || lastVisible >= rows.length - 1) return null;
+  const row = rows[lastVisible];
+  let rowPos = 0;
+  try {
+    rowPos = view.posAtDOM(row, 0);
+  } catch {
+    return null;
+  }
+  if (rowPos <= 0) return null;
+  const rowResolved = view.state.doc.resolve(rowPos);
+  if (findPageDepth(rowResolved, pageType) !== pageDepth) return null;
+  const rowDepth = rowResolved.depth;
+  const rowNode = rowResolved.node(rowDepth);
+  if (!rowNode) return null;
+  let rowStart = 0;
+  try {
+    rowStart = rowResolved.before(rowDepth);
+  } catch {
+    return null;
+  }
+  const rowEnd = rowStart + rowNode.nodeSize;
+  return rowEnd > rowStart ? rowEnd : null;
+};
+
+const isSelectionAtPageStart = (
+  state: any,
+  pageType: any,
+  pageDepth: number,
+  selectionFrom: number
+): boolean => {
+  try {
+    const $from = state.doc.resolve(selectionFrom);
+    const pageStart = $from.start(pageDepth);
+    if ($from.parentOffset === 0) {
+      try {
+        const pageNode = $from.node(pageDepth);
+        let firstBlockPos: number | null = null;
+        pageNode.forEach((child, offset) => {
+          if (firstBlockPos != null) return;
+          if (isFootnoteStorageNode(child)) return;
+          if (child.type?.name === "page_break") return;
+          if (child.isBlock || child.isTextblock || child.childCount > 0) {
+            firstBlockPos = pageStart + 1 + offset;
+          }
+        });
+        if (firstBlockPos != null) {
+          const currentBlockPos = $from.before(pageDepth + 1);
+          if (currentBlockPos === firstBlockPos) return true;
+        }
+      } catch {
+        // ignore block lookup failures
+      }
+      const startSel = Selection.near(state.doc.resolve(pageStart + 1), 1);
+      if (startSel && startSel.from === selectionFrom) return true;
+      return $from.index(pageDepth) === 0;
+    }
+    let hasContentBefore = false;
+    state.doc.nodesBetween(pageStart + 1, selectionFrom, (node: any) => {
+      if (hasContentBefore) return false;
+      if (node?.type?.name === "anchorMarker") return true;
+      if (node?.type?.name === "hardBreak") return true;
+      if (node?.isText) {
+        if ((node.text ?? "").trim().length > 0) {
+          hasContentBefore = true;
+          return false;
+        }
+        return true;
+      }
+      if (node?.isInline && node?.isLeaf) {
+        hasContentBefore = true;
+        return false;
+      }
+      return true;
+    });
+    return !hasContentBefore;
+  } catch {
+    return false;
+  }
+};
+
+const isCursorOnLastVisibleLine = (
+  view: any,
+  selection: Selection,
+  content: HTMLElement,
+  block: HTMLElement
+): boolean => {
+  const lineRoot = getLineSplitRoot(block) ?? (isHeadingElement(block) ? block : null);
+  if (!lineRoot) return false;
+  if (!isLineSplitElement(lineRoot) && !isHeadingElement(lineRoot)) return false;
+  const lineRects = collectLineRects(lineRoot);
+  if (!lineRects.length) return false;
+  const { usableHeight } = getContentMetrics(content);
+  if (usableHeight <= 0) return false;
+  const scale = getContentScale(content);
+  const lineHeightRaw = getComputedStyle(lineRoot).lineHeight;
+  const lineHeight = Number.parseFloat(lineHeightRaw || "0");
+  const guardPx = getBottomGuardPx(content, lineHeight);
+  const contentRect = content.getBoundingClientRect();
+  const maxBottom = contentRect.top + usableHeight * scale - guardPx * scale;
+  let lastVisibleIndex = -1;
+  for (let i = 0; i < lineRects.length; i += 1) {
+    if (lineRects[i].bottom <= maxBottom) {
+      lastVisibleIndex = i;
+    }
+  }
+  if (lastVisibleIndex < 0) return false;
+  const lastLine = lineRects[lastVisibleIndex];
+  const remaining = maxBottom - lastLine.bottom;
+  const minRemaining = Number.isFinite(lineHeight) && lineHeight > 0 ? lineHeight * 0.4 : guardPx;
+  if (remaining > minRemaining) return false;
+  let coords: { top: number; bottom: number } | null = null;
+  try {
+    coords = view.coordsAtPos(selection.from, -1);
+  } catch {
+    return false;
+  }
+  if (!coords) return false;
+  const y = coords.bottom;
+  const tolerance = 1;
+  let currentIndex = -1;
+  for (let i = 0; i < lineRects.length; i += 1) {
+    if (y >= lineRects[i].top - tolerance && y <= lineRects[i].bottom + tolerance) {
+      currentIndex = i;
+      break;
+    }
+  }
+  return currentIndex === lastVisibleIndex;
+};
+
+const isCursorNearPageBottom = (
+  view: any,
+  selection: Selection,
+  content: HTMLElement,
+  block: HTMLElement
+): boolean => {
+  const { usableHeight } = getContentMetrics(content);
+  if (usableHeight <= 0) return false;
+  const scale = getContentScale(content);
+  const lineHeightRaw = getComputedStyle(block).lineHeight;
+  const lineHeight = Number.parseFloat(lineHeightRaw || "0");
+  const guardPx = getBottomGuardPx(content, lineHeight);
+  const contentRect = content.getBoundingClientRect();
+  const maxBottom = contentRect.top + usableHeight * scale - guardPx * scale;
+  let coords: { top: number; bottom: number } | null = null;
+  try {
+    coords = view.coordsAtPos(selection.from, -1);
+  } catch {
+    return false;
+  }
+  if (!coords) return false;
+  const slack = Number.isFinite(lineHeight) && lineHeight > 0 ? lineHeight * 0.6 : 12;
+  return coords.bottom >= maxBottom - slack;
+};
+
+const handlePageBoundaryBackspace = (view: any): boolean => {
+  const { state } = view;
+  const selection = state.selection;
+  if (!selection || !selection.empty) return false;
+  const pageType = state.schema.nodes.page;
+  if (!pageType) return false;
+  const $from = selection.$from;
+  const pageDepth = findPageDepth($from, pageType);
+  if (pageDepth < 0) return false;
+  if (!isSelectionAtPageStart(state, pageType, pageDepth, selection.from)) return false;
+  const pageIndex = $from.index(0);
+  if (pageIndex <= 0) return false;
+  const joinPos = getJoinPosForPageIndex(state.doc, pageType, pageIndex);
+  if (joinPos == null || joinPos <= 0) return false;
+  let tr = attemptManualPageJoin(state.tr, joinPos, pageType, selection.from);
+  if (!tr && canJoin(state.doc, joinPos)) {
+    try {
+      tr = state.tr.join(joinPos);
+      tr.setMeta(paginationKey, { source: "pagination", op: "join", pos: joinPos });
+    } catch {
+      tr = null;
+    }
+  }
+  if (tr) {
+    try {
+      (window as any).__leditorPreserveScrollOnNextPagination = true;
+    } catch {
+      // ignore
+    }
+    view.dispatch(tr);
+    return true;
+  }
+  try {
+    const prevSel = Selection.near(state.doc.resolve(Math.max(0, joinPos - 1)), -1);
+    if (prevSel) {
+      try {
+        (window as any).__leditorPreserveScrollOnNextPagination = true;
+      } catch {
+        // ignore
+      }
+      const trMove = state.tr.setSelection(prevSel);
+      view.dispatch(trMove);
+      return true;
+    }
+  } catch {
+    // ignore
+  }
+  return false;
+};
+
+const isSelectionAtPageEnd = (
+  state: any,
+  pageType: any,
+  pageDepth: number,
+  selectionFrom: number
+): boolean => {
+  try {
+    const $from = state.doc.resolve(selectionFrom);
+    if (findPageDepth($from, pageType) !== pageDepth) return false;
+    const pageNode = $from.node(pageDepth);
+    let endOffset = pageNode.content.size;
+    let cursor = 0;
+    pageNode.content.forEach((child: ProseMirrorNode) => {
+      const start = cursor;
+      const end = cursor + child.nodeSize;
+      if (isFootnoteStorageNode(child)) {
+        if (start < endOffset) endOffset = start;
+      }
+      cursor = end;
+    });
+    const pageStart = $from.start(pageDepth);
+    const pageEnd = pageStart + endOffset;
+    const endSel = Selection.near(state.doc.resolve(Math.max(0, pageEnd - 1)), -1);
+    if (endSel && endSel.from === selectionFrom) return true;
+    return selectionFrom >= pageEnd - 1;
+  } catch {
+    return false;
+  }
+};
+
+const handlePageBoundaryEnter = (view: any): boolean => {
+  const { state } = view;
+  const selection = state.selection;
+  if (!selection || !selection.empty) return false;
+  const pageType = state.schema.nodes.page;
+  if (!pageType) return false;
+  const $from = selection.$from;
+  const pageDepth = findPageDepth($from, pageType);
+  if (pageDepth < 0) return false;
+  const content = getPageContentElement(view, selection);
+  if (!content) return false;
+  const block = getSelectionBlockElement(view, selection);
+  if (!block) return false;
+  const atPageEnd = isSelectionAtPageEnd(state, pageType, pageDepth, selection.from);
+  if (!atPageEnd) {
+    if (!isCursorOnLastVisibleLine(view, selection, content, block)) {
+      if (!isCursorNearPageBottom(view, selection, content, block)) return false;
+    }
+  }
+  let trSplit: any | null = null;
+  const didSplit = splitBlock(state, (tr) => {
+    trSplit = tr;
+  }, view);
+  if (!didSplit || !trSplit) return false;
+  try {
+    (window as any).__leditorUserSplitAt = performance.now();
+  } catch {
+    // ignore
+  }
+  const nextSelection = trSplit.selection as Selection;
+  const $next = nextSelection.$from;
+  const nextPageDepth = findPageDepth($next, pageType);
+  if (nextPageDepth === pageDepth) {
+    try {
+      const splitPos = nextSelection.from;
+      const splitResolved = trSplit.doc.resolve(splitPos);
+      const splitPageDepth = findPageDepth(splitResolved, pageType);
+      if (splitPageDepth >= 0) {
+        const manualSplit = attemptManualPageSplit(
+          trSplit,
+          splitPos,
+          splitPageDepth,
+          pageType,
+          selection.from
+        );
+        if (manualSplit) {
+          try {
+            (window as any).__leditorPreserveScrollOnNextPagination = true;
+          } catch {
+            // ignore
+          }
+          view.dispatch(manualSplit);
+          return true;
+        }
+      }
+    } catch {
+      // ignore manual split failures
+    }
+  }
+  if (nextPageDepth < 0) {
+    try {
+      (window as any).__leditorPreserveScrollOnNextPagination = true;
+    } catch {
+      // ignore
+    }
+    view.dispatch(trSplit);
+    return true;
+  }
+  let splitPos: number | null = null;
+  for (let depth = $next.depth; depth > nextPageDepth; depth -= 1) {
+    try {
+      if ($next.index(depth - 1) > 0) {
+        splitPos = $next.before(depth);
+        break;
+      }
+    } catch {
+      // ignore invalid depth
+    }
+  }
+  if (typeof splitPos !== "number" || splitPos <= 0) {
+    try {
+      (window as any).__leditorPreserveScrollOnNextPagination = true;
+    } catch {
+      // ignore
+    }
+    view.dispatch(trSplit);
+    return true;
+  }
+  let pageStart = 0;
+  let pageEnd = 0;
+  try {
+    pageStart = $next.start(nextPageDepth);
+    pageEnd = $next.end(nextPageDepth);
+  } catch {
+    try {
+      (window as any).__leditorPreserveScrollOnNextPagination = true;
+    } catch {
+      // ignore
+    }
+    view.dispatch(trSplit);
+    return true;
+  }
+  if (splitPos <= pageStart || splitPos >= pageEnd) {
+    try {
+      (window as any).__leditorPreserveScrollOnNextPagination = true;
+    } catch {
+      // ignore
+    }
+    view.dispatch(trSplit);
+    return true;
+  }
+  const manualSplit = attemptManualPageSplit(trSplit, splitPos, nextPageDepth, pageType, nextSelection.from);
+  try {
+    (window as any).__leditorPreserveScrollOnNextPagination = true;
+  } catch {
+    // ignore
+  }
+  view.dispatch(manualSplit ?? trSplit);
+  return true;
+};
+
+const isDeleteStep = (step: any): boolean => {
+  if (!step || typeof step.from !== "number" || typeof step.to !== "number") return false;
+  if (step.to <= step.from) return false;
+  const sliceSize =
+    typeof step.slice?.size === "number"
+      ? step.slice.size
+      : typeof step.slice?.content?.size === "number"
+        ? step.slice.content.size
+        : null;
+  return sliceSize === 0;
+};
+
+const isDeleteTransaction = (tr: any): boolean => {
+  if (!tr || !Array.isArray(tr.steps)) return false;
+  return tr.steps.some((step: any) => isDeleteStep(step));
+};
+
+const isInsertStep = (step: any): boolean => {
+  if (!step) return false;
+  const sliceSize =
+    typeof step.slice?.size === "number"
+      ? step.slice.size
+      : typeof step.slice?.content?.size === "number"
+        ? step.slice.content.size
+        : null;
+  if (!sliceSize || sliceSize <= 0) return false;
+  if (typeof step.from === "number" && typeof step.to === "number") {
+    if (step.to < step.from) return false;
+  }
+  return true;
+};
+
+const isInsertTransaction = (tr: any): boolean => {
+  if (!tr || !Array.isArray(tr.steps)) return false;
+  return tr.steps.some((step: any) => isInsertStep(step));
+};
+
+const findOverflowDescendant = (
+  container: HTMLElement,
+  content: HTMLElement,
+  bottomLimit: number,
+  tolerance: number
+): HTMLElement | null => {
+  const candidates = Array.from(container.querySelectorAll<HTMLElement>(LINE_SPLIT_SELECTOR));
+  const divCandidates = Array.from(container.querySelectorAll<HTMLElement>("div")).filter(
+    (el) => isDivLineSplitCandidate(el)
+  );
+  const allCandidates: HTMLElement[] = [];
+  const pushUnique = (el: HTMLElement) => {
+    if (allCandidates.includes(el)) return;
+    allCandidates.push(el);
+  };
+  if (isLineSplitElement(container)) {
+    pushUnique(container);
+  }
+  candidates.forEach(pushUnique);
+  divCandidates.forEach(pushUnique);
+  let best: HTMLElement | null = null;
+  let bestTop = -Infinity;
+  for (const candidate of allCandidates) {
+    const box = getRelativeBox(candidate, content);
+    if (!box || (box.bottom - box.top) <= 0) continue;
+    const top = box.top;
+    const bottom = box.bottom;
+    if (bottom > bottomLimit + tolerance && top < bottomLimit - tolerance) {
+      if (top > bestTop) {
+        bestTop = top;
+        best = candidate;
+      }
+    }
+  }
+  return best;
+};
+
+const findSplitTarget = (
+  content: HTMLElement,
+  tolerance = 1
+): { target: HTMLElement; after: boolean; reason: "keepWithNext" | "overflow" | "manual" } | null => {
+  enforceSingleColumnContent(content, true);
+  const { usableHeight } = getContentMetrics(content);
+  if (usableHeight <= 0) {
+    logDebug("page content height is non-positive", { usableHeight });
+    return null;
+  }
+  const contentRect = content.getBoundingClientRect();
+  const scale = getContentScale(content);
+  const guardPx = Math.max(getBottomGuardPx(content, null), 1);
+  let bottomLimit = Math.max(0, usableHeight - guardPx);
+  const lineHeight = getLineHeightPx(content, content);
+  if (Number.isFinite(lineHeight) && lineHeight > 0) {
+    const snapped = Math.floor((bottomLimit + 0.01) / lineHeight) * lineHeight;
+    if (snapped >= lineHeight * 0.5) {
+      bottomLimit = Math.max(0, snapped);
+    }
+  }
+  if (debugEnabled()) {
+    renderDebugLimit(content, bottomLimit);
+  }
+  const children = getContentChildren(content);
+  const clientWidth = content.clientWidth || 0;
+  if (clientWidth > 0) {
+    const rightShiftThreshold = clientWidth * 0.55;
+    for (const child of children) {
+      const box = getRelativeBox(child, content);
+      if (box.left > rightShiftThreshold) {
+        logDebug("horizontal flow split", {
+          pageIndex: getPageIndexForContent(content),
+          clientWidth,
+          left: box.left,
+          right: box.right
+        });
+        try {
+          (window as any).__leditorPaginationOverflowAt = performance.now();
+        } catch {
+          // ignore
+        }
+        return { target: child, after: false, reason: "overflow" };
+      }
+    }
+  }
+  if (shouldLogBlockMetrics()) {
+    const contentStyle = getComputedStyle(content);
+    const pageIndex = getPageIndexForContent(content);
+    const clientHeight = content.clientHeight;
+    const scrollWidth = content.scrollWidth;
+    const scrollHeight = content.scrollHeight;
+    const maxRows = typeof (window as any).__leditorPaginationDebugBlocksLimit === "number"
+      ? (window as any).__leditorPaginationDebugBlocksLimit
+      : 40;
+    const rows = children.slice(0, Math.max(0, maxRows)).map((child, index) => {
+      const box = getRelativeBox(child, content);
+      const marginBottom = parseFloat(getComputedStyle(child).marginBottom || "0") || 0;
+      const top = box.top;
+      const bottom = box.bottom + marginBottom;
+      const left = box.left;
+      const right = box.right;
+      const preview = (child.textContent || "").trim().slice(0, 60);
+      return {
+        index,
+        tag: child.tagName,
+        top,
+        bottom,
+        left,
+        right,
+        height: box.bottom - box.top,
+        width: box.right - box.left,
+        marginBottom,
+        overflowBottom: bottom > bottomLimit + tolerance,
+        rightShift: left > clientWidth * 0.55,
+        preview
+      };
+    });
+    const rightShiftCount = rows.filter((row) => row.rightShift).length;
+    logDebug("split diagnostics", {
+      pageIndex,
+      usableHeight,
+      bottomLimit,
+      guardPx,
+      scale,
+      clientWidth,
+      clientHeight,
+      scrollWidth,
+      scrollHeight,
+      columnCount: contentStyle.columnCount,
+      columnGap: contentStyle.columnGap,
+      columnWidth: (contentStyle as any).columnWidth,
+      columns: (contentStyle as any).columns,
+      inOverlay: Boolean(content.closest(".leditor-page-overlay") || content.closest(".leditor-page-overlays")),
+      rightShiftCount,
+      sample: rows
+    });
+    if (rightShiftCount > 0) {
+      logDebug("horizontal flow detected", {
+        pageIndex,
+        rightShiftCount,
+        sample: rows.filter((row) => row.rightShift).slice(0, 10)
+      });
+    }
+  }
+  let lastBottom = 0;
+  const fallbackLineHeight = Number.isFinite(lineHeight) && lineHeight > 0 ? lineHeight : 16;
+  for (let i = 0; i < children.length; i += 1) {
+    const child = children[i];
+    if (hasForcedBreakBefore(child)) {
+      if (i === 0) {
+        continue;
+      }
+      return { target: child, after: false, reason: "manual" };
+    }
+    if (shouldSplitAfter(child)) {
+      logDebug("manual break forces split", { tag: child.tagName, index: i });
+      return { target: child, after: true, reason: "manual" };
+    }
+    const marginBottom = parseFloat(getComputedStyle(child).marginBottom || "0") || 0;
+    const { box, bottom: rawBottom } = getBlockBottom(child, content, fallbackLineHeight);
+    let bottom = rawBottom + marginBottom;
+    if (marginBottom > 0 && box.bottom <= bottomLimit + tolerance) {
+      if (bottom > bottomLimit + tolerance) {
+        bottom = rawBottom;
+      }
+    }
+    lastBottom = Math.max(lastBottom, bottom);
+    if (bottom > bottomLimit + tolerance) {
+      if (i === 0) {
+        logDebug("overflow on first block; skipping split", {
+          tag: child.tagName,
+          bottom,
+          contentHeight: usableHeight,
+          bottomLimit,
+          tolerance
+        });
+        return null;
+      }
+      const prev = children[i - 1] ?? null;
+      const prevKeepWithNext = prev && !shouldSplitAfter(prev) && hasKeepWithNext(prev);
+      const overflowDescendant =
+        !isSplittableBlock(child) && child.querySelector(LINE_SPLIT_SELECTOR)
+          ? findOverflowDescendant(child, content, bottomLimit, tolerance)
+          : null;
+      let splitCandidate = overflowDescendant ?? child;
+      let lineSplitCandidate: HTMLElement | null = null;
+      if (isLineSplitElement(splitCandidate)) {
+        lineSplitCandidate = splitCandidate;
+      } else {
+        const lineRoot = getLineSplitRoot(splitCandidate);
+        if (lineRoot && isLineSplitElement(lineRoot)) {
+          lineSplitCandidate = lineRoot;
+        }
+      }
+      if (prev && prevKeepWithNext) {
+        const prevIndex = i - 1;
+        const isFirstBlock = prevIndex <= 0;
+        const splitForMetrics = lineSplitCandidate ?? (isSplittableBlock(splitCandidate) ? splitCandidate : null);
+        if (splitForMetrics) {
+          const prevMarginBottom = parseFloat(getComputedStyle(prev).marginBottom || "0") || 0;
+          const prevBox = getRelativeBox(prev, content);
+          const prevBottom = prevBox.bottom + prevMarginBottom;
+          const remainingAfterHeading = bottomLimit - prevBottom;
+          const childLineHeightRaw = getComputedStyle(splitForMetrics).lineHeight;
+          const childLineHeight = Number.parseFloat(childLineHeightRaw || "0");
+          const linePx = Number.isFinite(childLineHeight) && childLineHeight > 0 ? childLineHeight : 18;
+          const minLinesPx = linePx * MIN_SECTION_LINES;
+          const minSingleLinePx = linePx * 0.85;
+          if (isFirstBlock) {
+            logDebug("keep-with-next: avoid orphan heading at page start", {
+              headingTag: prev.tagName,
+              headingIndex: prevIndex,
+              overflowTag: splitForMetrics.tagName,
+              overflowIndex: i,
+              remainingAfterHeading,
+              minLinesPx
+            });
+          } else if (remainingAfterHeading >= Math.min(minLinesPx, minSingleLinePx)) {
+            logDebug("keep-with-next: allowing split inside paragraph", {
+              headingTag: prev.tagName,
+              headingIndex: prevIndex,
+              overflowTag: splitForMetrics.tagName,
+              overflowIndex: i,
+              remainingAfterHeading,
+              minLinesPx,
+              minSingleLinePx
+            });
+          } else {
+            logDebug("keep-with-next: moving heading to next page", {
+              headingTag: prev.tagName,
+              headingIndex: prevIndex,
+              overflowTag: splitForMetrics.tagName,
+              overflowIndex: i,
+              remainingAfterHeading,
+              minLinesPx
+            });
+            if (!isFirstBlock) {
+              return { target: prev, after: false, reason: "keepWithNext" };
+            }
+          }
+        } else {
+          logDebug("keep-with-next: moving heading to next page", {
+            headingTag: prev.tagName,
+            headingIndex: prevIndex,
+            overflowTag: splitCandidate.tagName,
+            overflowIndex: i
+          });
+          if (!isFirstBlock) {
+            return { target: prev, after: false, reason: "keepWithNext" };
+          }
+        }
+      }
+      const finalCandidate = lineSplitCandidate ?? splitCandidate;
+      logDebug("overflow split target", {
+        tag: finalCandidate.tagName,
+        index: i,
+        bottom,
+        contentHeight: usableHeight,
+        bottomLimit,
+        overflowDelta: Math.round((bottom - bottomLimit) * 10) / 10,
+        tolerance: Math.round(tolerance * 10) / 10
+      });
+      try {
+        (window as any).__leditorPaginationOverflowAt = performance.now();
+      } catch {
+        // ignore
+      }
+      return { target: finalCandidate, after: false, reason: "overflow" };
+    }
+  }
+  const lineBottom = getLastContentBottom(content);
+  if (lineBottom > bottomLimit + tolerance) {
+    const rectFallback = findLineSplitTargetByRects(content, bottomLimit, tolerance);
+    if (rectFallback) {
+      logDebug("overflow split target (line rect fallback)", {
+        tag: rectFallback.tagName,
+        bottom: lineBottom,
+        contentHeight: usableHeight,
+        bottomLimit,
+        tolerance: Math.round(tolerance * 10) / 10
+      });
+      try {
+        (window as any).__leditorPaginationOverflowAt = performance.now();
+      } catch {
+        // ignore
+      }
+      return { target: rectFallback, after: false, reason: "overflow" };
+    }
+    const lastChild = children[children.length - 1] ?? null;
+    if (lastChild) {
+      logDebug("overflow split target (line bottom fallback)", {
+        tag: lastChild.tagName,
+        bottom: lineBottom,
+        contentHeight: usableHeight,
+        bottomLimit,
+        tolerance: Math.round(tolerance * 10) / 10
+      });
+      try {
+        (window as any).__leditorPaginationOverflowAt = performance.now();
+      } catch {
+        // ignore
+      }
+      return { target: lastChild, after: false, reason: "overflow" };
+    }
+  }
+  if (debugEnabled()) {
+    logDebug("no split target", {
+      contentHeight: usableHeight,
+      bottomLimit,
+      scrollHeight: content.scrollHeight,
+      lastBottom,
+      bottomGap: bottomLimit - lastBottom
+    });
+  }
+  return null;
+};
+
+const findJoinBoundary = (
+  view: any,
+  pageType: any,
+  tolerance = 1,
+  joinBufferPx = DEFAULT_JOIN_BUFFER_PX
+): number | null => {
+  const pages = Array.from(view.dom.querySelectorAll(PAGE_SELECTOR)).filter(
+    (node): node is HTMLElement => node instanceof HTMLElement
+  );
+  if (pages.length < 2) return null;
+  for (let i = 0; i < pages.length - 1; i += 1) {
+    const page = pages[i];
+    const nextPage = pages[i + 1];
+    const content = page.querySelector(`.${PAGE_CONTENT_CLASS}`) as HTMLElement | null;
+    const nextContent = nextPage.querySelector(`.${PAGE_CONTENT_CLASS}`) as HTMLElement | null;
+    if (!content || !nextContent) continue;
+    const nextChildren = getContentChildren(nextContent);
+    const nextFirst = nextChildren[0] ?? null;
+    if (!nextFirst) continue;
+    const lastChildren = getContentChildren(content);
+    const last = lastChildren.length > 0 ? lastChildren[lastChildren.length - 1] : null;
+    if (last && shouldSplitAfter(last)) {
+      continue;
+    }
+    if (nextFirst && hasForcedBreakBefore(nextFirst)) {
+      return null;
+    }
+    const { usableHeight } = getContentMetrics(content);
+    const lastMarginBottom = last ? parseFloat(getComputedStyle(last).marginBottom || "0") || 0 : 0;
+    const lastBox = last ? getRelativeBox(last, content) : null;
+    const used = lastBox ? lastBox.bottom + lastMarginBottom : 0;
+    const remaining = usableHeight - used;
+    const nextMarginTop = parseFloat(getComputedStyle(nextFirst).marginTop || "0") || 0;
+    const nextMarginBottom = parseFloat(getComputedStyle(nextFirst).marginBottom || "0") || 0;
+    const nextFirstBox = getRelativeBox(nextFirst, nextContent);
+    let nextHeight = (nextFirstBox.bottom - nextFirstBox.top) + nextMarginTop + nextMarginBottom;
+    if (isHeadingElement(nextFirst)) {
+      const nextSecond = nextFirst.nextElementSibling as HTMLElement | null;
+      if (nextSecond) {
+        const nextSecondMarginTop = parseFloat(getComputedStyle(nextSecond).marginTop || "0") || 0;
+        const nextSecondMarginBottom = parseFloat(getComputedStyle(nextSecond).marginBottom || "0") || 0;
+        const nextSecondBox = getRelativeBox(nextSecond, nextContent);
+        nextHeight += (nextSecondBox.bottom - nextSecondBox.top) + nextSecondMarginTop + nextSecondMarginBottom;
+      }
+    }
+    if (remaining + tolerance >= nextHeight + joinBufferPx) {
+      let pos = 0;
+      for (let idx = 0; idx <= i; idx += 1) {
+        const child = view.state.doc.child(idx);
+        if (!child || child.type !== pageType) return null;
+        pos += child.nodeSize;
+      }
+      return pos;
+    }
+  }
+  return null;
+};
+
+const getLineHeightPx = (el: HTMLElement, fallbackEl?: HTMLElement): number => {
+  const style = getComputedStyle(el);
+  const raw = style.lineHeight;
+  let parsed = Number.parseFloat(raw || "");
+  const fontSize = Number.parseFloat(style.fontSize || "");
+  const cssLine = Number.parseFloat(style.getPropertyValue("--page-line-height") || "");
+  const cssRatio = Number.isFinite(cssLine) && cssLine > 0 ? cssLine : NaN;
+  const inlineRaw = (el as HTMLElement).style?.lineHeight || "";
+  const inlineUnitless = inlineRaw && !inlineRaw.includes("px") ? Number.parseFloat(inlineRaw) : NaN;
+  const fallbackStyle = fallbackEl ? getComputedStyle(fallbackEl) : null;
+  const fallbackFont = fallbackStyle ? Number.parseFloat(fallbackStyle.fontSize || "") : NaN;
+  const fallbackLine = fallbackStyle ? Number.parseFloat(fallbackStyle.lineHeight || "") : NaN;
+  const fallbackBase =
+    Number.isFinite(fallbackLine) && fallbackLine > 0
+      ? fallbackLine
+      : Number.isFinite(fallbackFont) && fallbackFont > 0
+        ? fallbackFont * 1.2
+        : Number.isFinite(fontSize) && fontSize > 0
+          ? fontSize * 1.2
+          : 18;
+  if (Number.isFinite(inlineUnitless) && inlineUnitless > 0 && Number.isFinite(fontSize) && fontSize > 0) {
+    parsed = inlineUnitless * fontSize;
+  }
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    if (Number.isFinite(cssRatio) && Number.isFinite(fontSize) && fontSize > 0) {
+      parsed = cssRatio * fontSize;
+    } else {
+      parsed = fallbackBase;
+    }
+  }
+  if (Number.isFinite(fontSize) && fontSize > 0) {
+    const ratio = parsed / fontSize;
+    const snapTargets = [1, 1.15, 1.2, 1.5, 2];
+    for (const target of snapTargets) {
+      if (Math.abs(ratio - target) <= 0.06) {
+        parsed = target * fontSize;
+        break;
+      }
+    }
+    const maxReasonable = fontSize * 2.4;
+    if (parsed > maxReasonable) parsed = fallbackBase;
+  }
+  if (parsed > 120) parsed = fallbackBase;
+  if (parsed < 8) parsed = Math.max(8, fallbackBase);
+  parsed = Math.round(parsed * 10) / 10;
+  return parsed;
+};
+
+const getLastContentBottom = (content: HTMLElement): number => {
+  const contentRect = content.getBoundingClientRect();
+  const scale = getContentScale(content);
+  const lineRects = collectLineRects(content);
+  if (lineRects.length > 0) {
+    let lastBottom = 0;
+    for (const rect of lineRects) {
+      if (rect.bottom < contentRect.top) continue;
+      const relBottom = (rect.bottom - contentRect.top) / scale;
+      if (relBottom > lastBottom) lastBottom = relBottom;
+    }
+    if (lastBottom > 0) return lastBottom;
+  }
+  const children = getContentChildren(content);
+  if (!children.length) return 0;
+  let lastBottom = 0;
+  const fallbackLineHeight = getLineHeightPx(content, content) || 16;
+  for (const child of children) {
+    const marginBottom = parseFloat(getComputedStyle(child).marginBottom || "0") || 0;
+    const { bottom } = getBlockBottom(child, content, fallbackLineHeight);
+    const bottomWithMargin = bottom + marginBottom;
+    if (bottomWithMargin > lastBottom) lastBottom = bottomWithMargin;
+  }
+  return lastBottom;
+};
+
+const findUnderfilledJoin = (
+  view: any,
+  pageType: any,
+  options?: {
+    aggressive?: boolean;
+    anchorIndex?: number | null;
+    allowFirstPage?: boolean;
+    preferLocal?: boolean;
+  }
+): { joinPos: number; remaining: number; fillRatio: number; lineHeight: number; pageIndex: number } | null => {
+  const pages = Array.from(view.dom.querySelectorAll(PAGE_SELECTOR)).filter(
+    (node): node is HTMLElement => node instanceof HTMLElement
+  );
+  if (pages.length < 2) return null;
+  const aggressive = Boolean(options?.aggressive);
+  const minUnderfillLines = aggressive ? Math.max(MIN_UNDERFILL_LINES, 6) : MIN_UNDERFILL_LINES;
+  const minUnderfillRatio = aggressive ? Math.max(MIN_UNDERFILL_RATIO, 0.8) : MIN_UNDERFILL_RATIO;
+  let best: { joinPos: number; remaining: number; fillRatio: number; lineHeight: number; pageIndex: number } | null = null;
+  const anchorIndex =
+    typeof options?.anchorIndex === "number" && Number.isFinite(options.anchorIndex)
+      ? Math.max(0, Math.min(pages.length - 2, Math.floor(options.anchorIndex)))
+      : 0;
+  const preferLocal = options?.preferLocal === true;
+  const localIndex =
+    anchorIndex > 0
+      ? Math.max(0, Math.min(pages.length - 2, anchorIndex - 1))
+      : 0;
+  const considerCandidate = (candidate: {
+    joinPos: number;
+    remaining: number;
+    fillRatio: number;
+    lineHeight: number;
+    pageIndex: number;
+  }) => {
+    if (!best) {
+      best = candidate;
+      return;
+    }
+    if (candidate.fillRatio < best.fillRatio - 0.05) {
+      best = candidate;
+      return;
+    }
+    if (candidate.fillRatio <= best.fillRatio && candidate.remaining > best.remaining + candidate.lineHeight) {
+      best = candidate;
+    }
+  };
+  const evaluatePage = (i: number): {
+    joinPos: number;
+    remaining: number;
+    fillRatio: number;
+    lineHeight: number;
+    pageIndex: number;
+  } | null => {
+    const page = pages[i];
+    const content = page.querySelector(`.${PAGE_CONTENT_CLASS}`) as HTMLElement | null;
+    if (!content) return null;
+    const children = getContentChildren(content);
+    if (!children.length) return null;
+    const headingOnly = children.every((child) => isHeadingElement(child));
+    const hasMajorHeading = children.some(
+      (child) => isHeadingElement(child) && (child.tagName === "H1" || child.tagName === "H2")
+    );
+    if (i === 0 && hasMajorHeading && !options?.allowFirstPage) return null;
+    const last = children[children.length - 1] ?? null;
+    if (last && shouldSplitAfter(last) && !headingOnly) return null;
+    const contentText = (content.textContent || "").replace(/\s+/g, " ").trim();
+    const contentTextLen = contentText.length;
+    let lastBottom = getLastContentBottom(content);
+    if ((!Number.isFinite(lastBottom) || lastBottom <= 0) && children.length > 0) {
+      const lastChild = children[children.length - 1] ?? null;
+      if (lastChild) {
+        try {
+          const marginBottom = parseFloat(getComputedStyle(lastChild).marginBottom || "0") || 0;
+          const box = getRelativeBox(lastChild, content);
+          lastBottom = Math.max(0, box.bottom + marginBottom);
+        } catch {
+          // ignore fallback failures
+        }
+      }
+    }
+    let lineHeight = getLineHeightPx(content, content);
+    if (!Number.isFinite(lineHeight) || lineHeight <= 0) {
+      lineHeight = 16;
+    }
+    const minFill = Math.max(lineHeight * minUnderfillLines, lineHeight + 4);
+    const { usableHeight } = getContentMetrics(content);
+    let fillRatio = usableHeight > 0 ? lastBottom / usableHeight : 1;
+    let remaining = usableHeight - lastBottom;
+    const metricsMissing =
+      !Number.isFinite(usableHeight) ||
+      usableHeight <= 0 ||
+      !Number.isFinite(lastBottom) ||
+      lastBottom <= 0;
+    const shortTextThreshold = aggressive ? 900 : 700;
+    const shortText = contentTextLen > 0 && contentTextLen <= shortTextThreshold;
+    const structuralUnderfill =
+      headingOnly ||
+      children.length <= 2 ||
+      (children.length <= 4 && shortText) ||
+      (children.length === 3 &&
+        children.every((child) => {
+          if (isHeadingElement(child)) return true;
+          const text = (child.textContent || "").trim();
+          return text.length <= 80;
+        }));
+    if (metricsMissing) {
+      remaining = Math.max(lineHeight * 10, 96);
+      fillRatio = 0.1;
+    }
+    const nextPage = pages[i + 1] ?? null;
+    const nextContent = nextPage?.querySelector(`.${PAGE_CONTENT_CLASS}`) as HTMLElement | null;
+    const nextChildren = nextContent ? getContentChildren(nextContent) : [];
+    const nextFirst = nextChildren[0] ?? null;
+    const nextFirstIsKeepHeading =
+      Boolean(nextFirst && isHeadingElement(nextFirst) && hasKeepWithNext(nextFirst));
+    if (nextFirst && hasForcedBreakBefore(nextFirst)) {
+      return null;
+    }
+    const nextFirstLineHeight = nextFirst ? getLineHeightPx(nextFirst) : 0;
+    const orphanHeadingPull =
+      Boolean(last && isHeadingElement(last) && nextFirst && isLineSplitElement(nextFirst)) &&
+      remaining >= Math.max(nextFirstLineHeight * 0.6, 6);
+    if (nextFirstIsKeepHeading && remaining < Math.max(nextFirstLineHeight * 1.6, lineHeight * 1.4)) {
+      return null;
+    }
+    if (debugEnabled() && (headingOnly || children.length <= 2)) {
+      logDebug("underfill scan", {
+        pageIndex: i,
+        childTags: children.map((child) => child.tagName),
+        contentTextLen,
+        lastBottom,
+        remaining,
+        lineHeight,
+        usableHeight,
+        nextFirstTag: nextFirst?.tagName ?? null,
+        orphanHeadingPull
+      });
+    }
+    const underfillByGap = lastBottom < minFill;
+    const underfillByRatio = fillRatio < minUnderfillRatio && remaining >= minFill;
+    if (metricsMissing && structuralUnderfill) {
+      const joinPos = getJoinPosForPageIndex(view.state.doc, pageType, i + 1);
+      if (joinPos != null && joinPos > 0) {
+        logDebug("underfilled page join candidate (structural)", {
+          pageIndex: i,
+          joinPos,
+          remaining,
+          fillRatio
+        });
+        return { joinPos, remaining, fillRatio, lineHeight, pageIndex: i };
+      }
+    }
+    if (lastBottom > 0 && (underfillByGap || underfillByRatio)) {
+      const joinPos = getJoinPosForPageIndex(view.state.doc, pageType, i + 1);
+      if (joinPos != null && joinPos > 0) {
+        logDebug("underfilled page join candidate", {
+          pageIndex: i,
+          joinPos,
+          lastBottom,
+          minFill,
+          fillRatio
+        });
+        return { joinPos, remaining, fillRatio, lineHeight, pageIndex: i };
+      }
+    }
+    if (orphanHeadingPull) {
+      const joinPos = getJoinPosForPageIndex(view.state.doc, pageType, i + 1);
+      if (joinPos != null && joinPos > 0) {
+        logDebug("underfilled join (orphan heading)", {
+          pageIndex: i,
+          joinPos,
+          remaining,
+          lineHeight: nextFirstLineHeight
+        });
+        return { joinPos, remaining, fillRatio, lineHeight, pageIndex: i };
+      }
+    }
+    return null;
+  };
+
+  if (preferLocal && pages.length > 1) {
+    const candidate = evaluatePage(localIndex);
+    if (candidate) {
+      const softMinFill = Math.max(candidate.lineHeight * 0.85, 8);
+      if (candidate.remaining >= softMinFill && candidate.fillRatio < 0.98) {
+        return candidate;
+      }
+    }
+  }
+
+  for (let offset = 0; offset < pages.length - 1; offset += 1) {
+    const i = (anchorIndex + offset) % (pages.length - 1);
+    const candidate = evaluatePage(i);
+    if (candidate) considerCandidate(candidate);
+  }
+  return best;
+};
+
+const findCriticalUnderfillJoin = (view: any, pageType: any): number | null => {
+  const pages = Array.from(view.dom.querySelectorAll(PAGE_SELECTOR)).filter(
+    (node): node is HTMLElement => node instanceof HTMLElement
+  );
+  if (pages.length < 2) return null;
+  for (let i = 0; i < pages.length - 1; i += 1) {
+    const page = pages[i];
+    const content = page.querySelector(`.${PAGE_CONTENT_CLASS}`) as HTMLElement | null;
+    if (!content) continue;
+    const children = getContentChildren(content);
+    if (!children.length) continue;
+    const last = children[children.length - 1] ?? null;
+    const lastBottom = getLastContentBottom(content);
+    const lineHeight = getLineHeightPx(content, content);
+    const minFill = Math.max(lineHeight * CRITICAL_UNDERFILL_LINES, lineHeight + 2);
+    const { usableHeight } = getContentMetrics(content);
+    const fillRatio = usableHeight > 0 ? lastBottom / usableHeight : 1;
+    if (lastBottom > 0 && (lastBottom < minFill || fillRatio < CRITICAL_UNDERFILL_RATIO)) {
+      const joinPos = getJoinPosForPageIndex(view.state.doc, pageType, i + 1);
+      if (joinPos != null && joinPos > 0) {
+        logDebug("critical underfilled page join", {
+          pageIndex: i,
+          joinPos,
+          lastBottom,
+          minFill,
+          fillRatio
+        });
+        return joinPos;
+      }
+    }
+  }
+  return null;
+};
+
+const isUnderfilledDoc = (view: any): boolean => {
+  const pages = Array.from(view.dom.querySelectorAll(PAGE_SELECTOR)).filter(
+    (node): node is HTMLElement => node instanceof HTMLElement
+  );
+  if (pages.length < 4) return false;
+  let total = 0;
+  let underfilled = 0;
+  for (const page of pages) {
+    const content = page.querySelector(`.${PAGE_CONTENT_CLASS}`) as HTMLElement | null;
+    if (!content) continue;
+    const children = getContentChildren(content);
+    if (!children.length) continue;
+    const lastBottom = getLastContentBottom(content);
+    if (lastBottom <= 0) continue;
+    const lineHeight = getLineHeightPx(children[children.length - 1] ?? content);
+    total += 1;
+    if (lastBottom < Math.max(lineHeight * 2.2, lineHeight + 6)) {
+      underfilled += 1;
+    }
+  }
+  if (total < 3) return false;
+  return underfilled / total >= 0.5;
+};
+
+const refreshContentMetrics = (view: any) => {
+  const contents = Array.from(view.dom.querySelectorAll(`.${PAGE_CONTENT_CLASS}`)).filter(
+    (node): node is HTMLElement => node instanceof HTMLElement
+  );
+  for (const content of contents) {
+    try {
+      enforceSingleColumnContent(content);
+      getContentMetrics(content);
+    } catch {
+      // ignore
+    }
+  }
+};
+
+const getJoinPosForPageIndex = (doc: any, pageType: any, pageIndex: number): number | null => {
+  if (!doc || pageIndex <= 0) return null;
+  let pos = 0;
+  for (let i = 0; i < doc.childCount; i += 1) {
+    const child = doc.child(i);
+    if (!child || child.type !== pageType) return null;
+    if (i === pageIndex) return pos;
+    pos += child.nodeSize;
+  }
+  return null;
+};
+
+const findEmptyPageRange = (doc: any, pageType: any): { from: number; to: number } | null => {
+  let pos = 0;
+  for (let i = 0; i < doc.childCount; i += 1) {
+    const child = doc.child(i);
+    const from = pos;
+    const to = pos + child.nodeSize;
+    pos = to;
+    if (child.type !== pageType) continue;
+    if (child.content.size === 0) {
+      return { from, to };
+    }
+  }
+  return null;
+};
+
+type PaginationMemo = {
+  lastSplitPos: number | null;
+  lastSplitAttemptPos: number | null;
+  lastSplitAt: number;
+  lastSplitReason: "keepWithNext" | "overflow" | "manual" | "pullup" | null;
+  lastJoinPos: number | null;
+  lastJoinAt: number;
+  lastJoinDocSize: number;
+  lastExternalChangeAt: number;
+  lastDocSize: number;
+  lastNormalizeAt: number;
+  lastNormalizeDocSize: number;
+  lastFlattenAt: number;
+  lastFlattenDocSize: number;
+  autoNormalizeOnceDone: boolean;
+  lockedJoinPos: Map<number, { docSize: number; at: number; reason: string }>;
+  splitIdCounter: number;
+  runWindowStart: number;
+  runCount: number;
+  paginationSuppressedAt: number;
+  lastPageCount: number;
+  pageCountGrowth: number;
+  lastPaginationOnlyAt: number;
+  lastPaginationOnlyDocSize: number;
+  lastPaginationOnlySplitCount: number;
+  preferFillUntil: number;
+  pendingJoinRetryId: number | null;
+  typingDeferUntil: number;
+};
+
+const paginateView = (
+  view: any,
+  runningRef: { value: boolean },
+  memo: PaginationMemo,
+  options?: { preferJoin?: boolean; preferFill?: boolean }
+) => {
+  if (runningRef.value) return;
+  (view as any).__leditorPaginationMemo = memo;
+  const pageType = view.state.schema.nodes.page;
+  if (!pageType) return;
+  if (shouldSuppressPaginationRun(view)) {
+    recordPaginationTrace("paginate:suppressed", {
+      pageCount: view.state.doc.childCount,
+      docSize: view.state.doc.content.size
+    });
+    return;
+  }
+  const isFootnoteOrigin = () => {
+    try {
+      const origin = (window as any).__leditorPaginationOrigin;
+      const at = (window as any).__leditorPaginationOriginAt;
+      return origin === "footnotes" && typeof at === "number" && performance.now() - at < 1500;
+    } catch {
+      return false;
+    }
+  };
+  const isSetContentOrigin = () => {
+    try {
+      const at = (window as any).__leditorLastSetContentAt;
+      return typeof at === "number" && performance.now() - at < 5000;
+    } catch {
+      return false;
+    }
+  };
+  const shouldSkipFlatten = () => {
+    try {
+      return (window as any).__leditorDisableFlatten === true;
+    } catch {
+      return false;
+    }
+  };
+  const now = performance.now();
+  const isRecentOverflow = () => {
+    try {
+      const overflowAt = (window as any).__leditorPaginationOverflowAt;
+      if (
+        typeof overflowAt === "number" &&
+        Number.isFinite(overflowAt) &&
+        overflowAt > 0 &&
+        now - overflowAt < 4000
+      ) {
+        return true;
+      }
+    } catch {
+      // ignore
+    }
+    try {
+      const footnoteAt = (window as any).__leditorFootnoteLayoutChangedAt;
+      if (
+        typeof footnoteAt === "number" &&
+        Number.isFinite(footnoteAt) &&
+        footnoteAt > 0 &&
+        now - footnoteAt < 1500
+      ) {
+        return true;
+      }
+    } catch {
+      // ignore
+    }
+    try {
+      const fonts = (document as any).fonts;
+      if (fonts && typeof fonts.status === "string" && fonts.status === "loading") {
+        return true;
+      }
+    } catch {
+      // ignore
+    }
+    return false;
+  };
+  const lastInputAt = (window as any).__leditorLastUserInputAt;
+  const burstMsRaw = (window as any).__leditorPaginationTypingBurstMs;
+  const deferMsRaw = (window as any).__leditorPaginationTypingDeferMs;
+  const burstMs = Number.isFinite(burstMsRaw) ? Math.max(0, Number(burstMsRaw)) : 120;
+  const deferMs = Number.isFinite(deferMsRaw) ? Math.max(0, Number(deferMsRaw)) : 140;
+  const typingBurst = burstMs > 0 && typeof lastInputAt === "number" && now - lastInputAt < burstMs;
+  if (typingBurst && deferMs > 0) {
+    if (memo.typingDeferUntil <= now) {
+      memo.typingDeferUntil = now + deferMs;
+      try {
+        window.setTimeout(() => {
+          try {
+            view.dom.dispatchEvent(new CustomEvent("leditor:pagination-request", { bubbles: true }));
+          } catch {
+            // ignore
+          }
+        }, deferMs);
+      } catch {
+        // ignore
+      }
+    }
+    return;
+  }
+  memo.typingDeferUntil = 0;
+  const preferFill = Boolean(options?.preferFill) || memo.preferFillUntil > now;
+  if (preferFill) {
+    try {
+      const until = (window as any).__leditorPaginationPreferFillUntil;
+      const next = now + 600;
+      (window as any).__leditorPaginationPreferFillUntil =
+        typeof until === "number" && until > next ? until : next;
+    } catch {
+      // ignore
+    }
+  }
+  refreshContentMetrics(view);
+  const currentPageCount = view.state.doc.childCount;
+  const currentDocSize = view.state.doc.content.size;
+  if (isFootnoteOrigin() && memo.lastPageCount > 0) {
+    const growingWithoutDocChange = currentPageCount > memo.lastPageCount && currentDocSize === memo.lastDocSize;
+    if (growingWithoutDocChange) {
+      memo.pageCountGrowth += 1;
+      if (memo.pageCountGrowth >= 12) {
+        memo.paginationSuppressedAt = memo.lastExternalChangeAt;
+        return;
+      }
+    } else {
+      memo.pageCountGrowth = 0;
+    }
+  }
+  memo.lastPageCount = currentPageCount;
+  if (isFootnoteOrigin() && memo.paginationSuppressedAt > 0 && memo.lastExternalChangeAt <= memo.paginationSuppressedAt) {
+    return;
+  }
+  if (isFootnoteOrigin() && memo.paginationSuppressedAt > 0 && memo.lastExternalChangeAt > memo.paginationSuppressedAt) {
+    memo.paginationSuppressedAt = 0;
+    memo.runWindowStart = now;
+    memo.runCount = 0;
+    memo.lastPaginationOnlySplitCount = 0;
+  }
+  const paginationOnlyActive =
+    memo.lastPaginationOnlyAt > memo.lastExternalChangeAt &&
+    memo.lastPaginationOnlyDocSize === currentDocSize &&
+    now - memo.lastPaginationOnlyAt < 1200;
+  if (paginationOnlyActive && memo.lastPaginationOnlySplitCount >= PAGINATION_ONLY_SPLIT_LIMIT) {
+    if (debugEnabled()) {
+      logDebug("pagination lock (split limit reached in pagination-only cycle)", {
+        docSize: currentDocSize,
+        lastExternalChangeAt: memo.lastExternalChangeAt,
+        lastPaginationOnlyAt: memo.lastPaginationOnlyAt,
+        splitCount: memo.lastPaginationOnlySplitCount
+      });
+    }
+    return;
+  }
+  if (isFootnoteOrigin() && now - memo.lastExternalChangeAt > 200) {
+    if (memo.runWindowStart === 0 || now - memo.runWindowStart > 1600) {
+      memo.runWindowStart = now;
+      memo.runCount = 0;
+    }
+    memo.runCount += 1;
+    if (memo.runCount > 4) {
+      memo.paginationSuppressedAt = memo.lastExternalChangeAt;
+      return;
+    }
+  } else if (isFootnoteOrigin()) {
+    memo.runWindowStart = now;
+    memo.runCount = 0;
+  }
+  const selection = view.state.selection;
+  const selectionIndex = selection ? selection.$from.index(0) : -1;
+  recordPaginationTrace("paginate:start", {
+    pageCount: view.state.doc.childCount,
+    docSize: view.state.doc.content.size,
+    selectionIndex
+  });
+  logDebug("paginate start", {
+    pageCount: view.state.doc.childCount,
+    selectionIndex
+  });
+  logPaginationStats(view, "paginate start");
+  runningRef.value = true;
+  try {
+    const docSize = view.state.doc.content.size;
+    memo.lastDocSize = docSize;
+    const trWrap = wrapDocInPage(view.state);
+    if (trWrap) {
+      logDebug("wrapped doc in page");
+      dispatchPagination(view, trWrap);
+      return;
+    }
+    const anchorCleanup = stripAnchorOnlyBlocks(view.state, pageType);
+    if (anchorCleanup) {
+      logDebug("stripped anchor-only blocks");
+      dispatchPagination(view, anchorCleanup);
+      return;
+    }
+    const leadingEmpty = stripLeadingEmptyParagraphs(view.state, pageType);
+    if (leadingEmpty) {
+      logDebug("stripped leading empty paragraphs");
+      dispatchPagination(view, leadingEmpty);
+      return;
+    }
+    const leadingMerge = mergeLeadingWhitespaceParagraphs(view.state, pageType);
+    if (leadingMerge) {
+      leadingMerge.setMeta(paginationKey, { source: "pagination", op: "mergeWhitespace" });
+      dispatchPagination(view, leadingMerge);
+      return;
+    }
+    const holdMerges =
+      (memo.lastSplitAt > 0 && now - memo.lastSplitAt < JOIN_SPLIT_SUPPRESS_MS) || isRecentOverflow();
+    if (holdMerges && debugEnabled()) {
+      logDebug("skip merge (recent split/overflow)", {
+        lastSplitAt: memo.lastSplitAt,
+        overflowHold: isRecentOverflow()
+      });
+    }
+    if (!holdMerges) {
+      const continuationMerge = mergeContinuationParagraphs(view.state, pageType);
+      if (continuationMerge) {
+        continuationMerge.setMeta(paginationKey, { source: "pagination", op: "mergeContinuation" });
+        dispatchPagination(view, continuationMerge);
+        return;
+      }
+      const headingMerge = mergeHeadingOnlyPages(view.state, pageType);
+      if (headingMerge) {
+        logDebug("merged heading-only page");
+        dispatchPagination(view, headingMerge);
+        return;
+      }
+      // NOTE: Avoid doc-only sparse-page merges here.
+      // The heuristic merge can reintroduce overflow and cause join/split oscillations while
+      // layout is still settling (fonts/columns/footnotes).
+
+      const headingMove = moveTrailingHeadingToNextPage(view.state, pageType);
+      if (headingMove) {
+        logDebug("moved trailing heading");
+        dispatchPagination(view, headingMove);
+        return;
+      }
+    }
+    // Flatten only immediately after an external doc change (e.g. setContent), never after pagination splits.
+    const flattenEligible =
+      isSetContentOrigin() &&
+      !shouldSkipFlatten() &&
+      memo.lastExternalChangeAt > memo.lastFlattenAt &&
+      (memo.lastFlattenAt === 0 || now - memo.lastExternalChangeAt < 12000);
+    if (
+      flattenEligible &&
+      view.state.doc.childCount > 1 &&
+      memo.lastFlattenDocSize !== docSize
+    ) {
+      if (debugEnabled()) {
+        logDebug("flatten eligible", {
+          pageCount: view.state.doc.childCount,
+          docSize,
+          lastExternalChangeAt: memo.lastExternalChangeAt,
+          lastFlattenAt: memo.lastFlattenAt
+        });
+      }
+      const flattened = flattenPagesForReflow(view.state, pageType, {
+        normalizeShortParagraphs: false
+      });
+      memo.lastFlattenAt = now;
+      memo.lastFlattenDocSize = docSize;
+      if (flattened) {
+        if (debugEnabled()) {
+          logDebug("flatten applied", {
+            pageCount: view.state.doc.childCount,
+            docSize
+          });
+        }
+        dispatchPagination(view, flattened);
+        return;
+      }
+    }
+    const pages = Array.from(view.dom.querySelectorAll(PAGE_SELECTOR)).filter(
+      (node): node is HTMLElement => node instanceof HTMLElement
+    );
+    logDebug("page nodes before split", {
+      domPageCount: pages.length,
+      docPageCount: view.state.doc.childCount,
+      overlayPages: view.dom.querySelectorAll(`.${PAGE_INNER_CLASS}`).length
+    });
+    if (pages.length > 1) {
+      let anchorOnlyIndex = -1;
+      for (let i = 0; i < pages.length; i += 1) {
+        const page = pages[i];
+        const content = page.querySelector(`.${PAGE_CONTENT_CLASS}`) as HTMLElement | null;
+        if (!content) continue;
+        if (isAnchorOnlyContent(content)) {
+          anchorOnlyIndex = i;
+          break;
+        }
+      }
+      if (anchorOnlyIndex >= 0) {
+        const joinIndex = anchorOnlyIndex === 0 ? 1 : anchorOnlyIndex;
+        const joinPos = getJoinPosForPageIndex(view.state.doc, pageType, joinIndex);
+        if (joinPos != null && joinPos > 0) {
+          if (hasManualBreakBoundary(view.state.doc, pageType, joinPos, view)) {
+            logDebug("skip join (manual break boundary)", { joinPos });
+            return;
+          }
+          logDebug("joining anchor-only page", { anchorOnlyIndex, joinIndex, joinPos });
+          let tr = attemptManualPageJoin(view.state.tr, joinPos, pageType, view.state.selection.from);
+          if (!tr && canJoin(view.state.doc, joinPos)) {
+            try {
+              tr = view.state.tr.join(joinPos);
+              tr.setMeta(paginationKey, { source: "pagination", op: "join", pos: joinPos });
+            } catch {
+              tr = null;
+            }
+          }
+          if (tr) {
+            memo.lastSplitPos = null;
+            memo.lastSplitAttemptPos = null;
+            memo.lastSplitAt = 0;
+            memo.lastSplitReason = null;
+            memo.lockedJoinPos.delete(joinPos);
+            markJoin(memo, joinPos, docSize);
+            dispatchPagination(view, tr);
+            return;
+          }
+        }
+      }
+    }
+    const skipJoin = document.documentElement.classList.contains("leditor-footnote-editing");
+    const joinNow = performance.now();
+    const setContentOrigin = isSetContentOrigin();
+    const userSplitAt =
+      (window as typeof window & { __leditorUserSplitAt?: number }).__leditorUserSplitAt ?? 0;
+    const recentUserSplit = userSplitAt > 0 && joinNow - userSplitAt < 1200;
+    const preferJoin = Boolean(options?.preferJoin);
+    const recentSplitHold =
+      memo.lastSplitReason != null && joinNow - memo.lastSplitAt < JOIN_SPLIT_SUPPRESS_MS;
+    const recentExternalChange =
+      memo.lastExternalChangeAt > 0 && joinNow - memo.lastExternalChangeAt < 200 && !paginationOnlyActive;
+    const allowAutoJoin =
+      !skipJoin &&
+      (preferJoin || setContentOrigin) &&
+      (!recentSplitHold || preferJoin) &&
+      !recentUserSplit &&
+      (!paginationOnlyActive || setContentOrigin) &&
+      !isRecentOverflow();
+    const allowPullUp = allowAutoJoin;
+    const allowJoin = allowAutoJoin && (!recentSplitHold || preferJoin);
+    const allowCriticalJoin = allowAutoJoin && (!recentSplitHold || preferJoin);
+    if (recentSplitHold && memo.pendingJoinRetryId == null) {
+      try {
+        memo.pendingJoinRetryId = window.setTimeout(() => {
+          memo.pendingJoinRetryId = null;
+          try {
+            view.dom.dispatchEvent(new CustomEvent("leditor:pagination-request", { bubbles: true }));
+          } catch {
+            // ignore
+          }
+        }, JOIN_SPLIT_SUPPRESS_MS + 50);
+      } catch {
+        // ignore
+      }
+    }
+    if (!allowJoin && debugEnabled()) {
+      logDebug("skip join (recent user split)", { recentUserSplit, preferJoin, recentSplitHold });
+    }
+    for (const page of pages) {
+      const content = page.querySelector(`.${PAGE_CONTENT_CLASS}`) as HTMLElement | null;
+      if (!content) continue;
+      const split = findSplitTarget(content);
+      if (!split) continue;
+      const pos = view.posAtDOM(split.target, 0);
+      const resolved = view.state.doc.resolve(pos);
+      const pageDepth = findPageDepth(resolved, pageType);
+      if (!Number.isFinite(pageDepth) || pageDepth < 0) continue;
+      const childDepth = pageDepth + 1;
+      if (resolved.depth < childDepth) continue;
+      let splitPos = split.after ? resolved.after(childDepth) : resolved.before(childDepth);
+      if (splitPos <= 0) continue;
+      if (
+        ((memo.lastSplitPos != null && Math.abs(memo.lastSplitPos - splitPos) <= 2) ||
+          (memo.lastSplitAttemptPos != null && Math.abs(memo.lastSplitAttemptPos - splitPos) <= 2)) &&
+        memo.lastSplitReason === split.reason &&
+        now - memo.lastSplitAt < JOIN_SPLIT_SUPPRESS_MS
+      ) {
+        logDebug("skip split (recent same pos)", { splitPos, reason: split.reason });
+        continue;
+      }
+      if (split.reason === "overflow") {
+        const tableEl = getTableElement(split.target);
+        const tableSplitPos =
+          tableEl && typeof view.posAtDOM === "function"
+            ? findTableSplitPos(view, pageType, pageDepth, content, tableEl)
+            : null;
+        if (typeof tableSplitPos === "number" && tableSplitPos > 0) {
+          const tableSplitResolved = view.state.doc.resolve(tableSplitPos);
+          const tableDepth = findTableDepth(tableSplitResolved, pageDepth);
+          if (tableDepth != null) {
+            const tableSplitDepth = Math.max(1, tableSplitResolved.depth - tableDepth + 1);
+            let trTable: any | null = null;
+            try {
+              const tableNode = tableSplitResolved.node(tableDepth);
+              const tablePos = tableSplitResolved.before(tableDepth);
+              const tableStart = tableSplitResolved.start(tableDepth);
+              const splitOffset = tableSplitPos - tableStart;
+              trTable = splitTableNode(view.state.tr, tablePos, tableNode, splitOffset);
+            } catch (error) {
+              logDebug("manual table split failed", { error: String(error) });
+            }
+            if (!trTable && canSplit(view.state.doc, tableSplitPos, tableSplitDepth)) {
+              try {
+                trTable = view.state.tr.split(tableSplitPos, tableSplitDepth);
+              } catch (error) {
+                logDebug("table split failed", {
+                  tableSplitPos,
+                  tableSplitDepth,
+                  error: String(error)
+                });
+              }
+            }
+            if (trTable) {
+              const from = view.state.selection.from;
+              const mappedPos = trTable.mapping.map(tableSplitPos, 1);
+              const boundaryInfo = resolvePageBoundaryPos(trTable.doc, pageType, pageDepth, mappedPos);
+              const pageBoundaryPos = boundaryInfo?.pos ?? mappedPos;
+              const boundaryResolved = boundaryInfo?.resolved ?? trTable.doc.resolve(pageBoundaryPos);
+              let didSplit = false;
+              if (canSplit(trTable.doc, pageBoundaryPos, 1)) {
+                try {
+                  trTable = trTable.split(pageBoundaryPos, 1);
+                  didSplit = true;
+                } catch (error) {
+                  logDebug("table page split (page-only) failed", {
+                    pageBoundaryPos,
+                    error: String(error)
+                  });
+                }
+              }
+              if (!didSplit) {
+                const boundaryDepth = Math.max(1, boundaryResolved.depth - pageDepth);
+                const boundaryTypes: Array<{ type: any; attrs?: any } | null> = new Array(boundaryDepth).fill(null);
+                boundaryTypes[0] = { type: pageType };
+                for (let i = 1; i < boundaryDepth; i += 1) {
+                  const depthAt = pageDepth + i;
+                  if (depthAt > boundaryResolved.depth) break;
+                  const nodeAt = boundaryResolved.node(depthAt);
+                  if (!nodeAt) break;
+                  boundaryTypes[i] = { type: nodeAt.type, attrs: nodeAt.attrs };
+                }
+                if (canSplit(trTable.doc, pageBoundaryPos, boundaryDepth, boundaryTypes as any)) {
+                  try {
+                    trTable = trTable.split(pageBoundaryPos, boundaryDepth, boundaryTypes as any);
+                    didSplit = true;
+                  } catch (error) {
+                    logDebug("table page split (boundary) failed", {
+                      pageBoundaryPos,
+                      boundaryDepth,
+                      error: String(error)
+                    });
+                  }
+                }
+              }
+              if (didSplit) {
+                trTable.setMeta(paginationKey, { source: "pagination", op: "split", pos: pageBoundaryPos });
+                if (from >= tableSplitPos) {
+                  const mapped = trTable.mapping.map(from);
+                  setSafeSelection(trTable, mapped);
+                }
+                memo.lastSplitPos = pageBoundaryPos;
+                memo.lastSplitAttemptPos = pageBoundaryPos;
+                memo.lastSplitAt = performance.now();
+                memo.lastSplitReason = split.reason;
+                dispatchPagination(view, trTable);
+                return;
+              }
+              const manualPageSplit = attemptManualPageSplit(
+                trTable,
+                pageBoundaryPos,
+                pageDepth,
+                pageType,
+                view.state.selection.from
+              );
+              if (manualPageSplit) {
+                memo.lastSplitPos = pageBoundaryPos;
+                memo.lastSplitAttemptPos = pageBoundaryPos;
+                memo.lastSplitAt = performance.now();
+                memo.lastSplitReason = split.reason;
+                dispatchPagination(view, manualPageSplit);
+                return;
+              }
+              logDebug("table split page boundary failed", { tableSplitPos, pageBoundaryPos });
+            }
+          }
+        }
+      }
+      let forceLineSplit = false;
+      const lineSplitTarget = (() => {
+        if (isSplittableBlock(split.target)) return split.target;
+        const root = getLineSplitRoot(split.target);
+        return root && isLineSplitElement(root) ? root : null;
+      })();
+      if (
+        (split.reason === "overflow" || split.reason === "keepWithNext") &&
+        lineSplitTarget &&
+        typeof view.posAtCoords === "function"
+      ) {
+        try {
+          const lineSplitPos = findLineSplitPos(view, pageType, pageDepth, content, lineSplitTarget);
+          if (typeof lineSplitPos === "number" && lineSplitPos > 0) {
+            splitPos = lineSplitPos;
+            forceLineSplit = true;
+            if (debugEnabled()) {
+              logDebug("overflow line split pos", {
+                splitPos,
+                pageDepth,
+                targetTag: lineSplitTarget.tagName,
+                targetIndex: lineSplitTarget.dataset?.nodeIndex ?? null
+              });
+            }
+          }
+        } catch {
+          // ignore coordinate split failures and fall back to block split
+        }
+      }
+      const splitResolved = view.state.doc.resolve(splitPos);
+      if (!Number.isFinite(pageDepth) || splitResolved.depth < pageDepth) {
+        logDebug("split position not at page boundary", {
+          splitPos,
+          depth: splitResolved.depth,
+          pageDepth
+        });
+        continue;
+      }
+      let markPaginationSplit = false;
+      let blockNode: any = null;
+      let blockStart = 0;
+      let blockEnd = 0;
+      let blockDepth = findBlockDepth(splitResolved, pageDepth);
+      let insideBlock = false;
+      if (splitResolved.depth >= blockDepth) {
+        try {
+          blockNode = splitResolved.node(blockDepth);
+          blockStart = splitResolved.start(blockDepth);
+          blockEnd = splitResolved.end(blockDepth);
+          insideBlock = splitPos > blockStart && splitPos < blockEnd;
+          markPaginationSplit = blockNode?.type?.name === "paragraph" && insideBlock;
+        } catch {
+          // ignore invalid depth calculations; skip pagination split marker
+        }
+      }
+      if (insideBlock && (splitPos <= blockStart + 1 || splitPos >= blockEnd - 1)) {
+        const safePos = Math.max(blockStart + 1, Math.min(blockEnd - 1, splitPos));
+        if (safePos !== splitPos) {
+          splitPos = safePos;
+        }
+      }
+      const safeResolved = splitPos === splitResolved.pos ? splitResolved : view.state.doc.resolve(splitPos);
+      if (safeResolved !== splitResolved) {
+        blockDepth = findBlockDepth(safeResolved, pageDepth);
+        if (safeResolved.depth >= blockDepth) {
+          try {
+            blockNode = safeResolved.node(blockDepth);
+            blockStart = safeResolved.start(blockDepth);
+            blockEnd = safeResolved.end(blockDepth);
+            insideBlock = splitPos > blockStart && splitPos < blockEnd;
+            markPaginationSplit = blockNode?.type?.name === "paragraph" && insideBlock;
+          } catch {
+            // ignore
+          }
+        }
+      }
+      // Guard against splitting at the very start/end of a page. Since page.content is "block+",
+      // splitting at pageStart/pageEnd would create an empty page and ProseMirror will throw.
+      let pageStart = 0;
+      let pageEnd = 0;
+      try {
+        pageStart = splitResolved.start(pageDepth);
+        pageEnd = splitResolved.end(pageDepth);
+      } catch {
+        logDebug("skipping split due to invalid page depth", { splitPos, pageDepth });
+        continue;
+      }
+      if (splitPos === pageStart || splitPos === pageEnd) {
+        // Try the opposite boundary relative to the target block before giving up.
+        const altSplitPos = split.after ? resolved.before(childDepth) : resolved.after(childDepth);
+        const altResolved = altSplitPos > 0 ? view.state.doc.resolve(altSplitPos) : null;
+        const altPageStart = altResolved && altResolved.depth >= pageDepth ? altResolved.start(pageDepth) : null;
+        const altPageEnd = altResolved && altResolved.depth >= pageDepth ? altResolved.end(pageDepth) : null;
+        const altIsValid =
+          altResolved &&
+          altResolved.depth === pageDepth &&
+          altSplitPos !== altPageStart &&
+          altSplitPos !== altPageEnd;
+        if (altIsValid) {
+          logDebug("adjusting split away from empty page boundary", { splitPos, altSplitPos, pageStart, pageEnd });
+          splitPos = altSplitPos;
+        } else {
+          logDebug("skipping split at empty page boundary", { splitPos, pageStart, pageEnd });
+          continue;
+        }
+      }
+      let depth = 1;
+      if (insideBlock && blockNode) {
+        depth = Math.max(1, blockDepth - pageDepth + 1);
+      }
+      if (depth <= 0) continue;
+      const typesAfter: Array<{ type: any; attrs?: any } | null> = new Array(depth).fill(null);
+      typesAfter[0] = { type: pageType };
+      if (depth > 1 && insideBlock) {
+        for (let i = 1; i < depth; i += 1) {
+          const depthAt = pageDepth + i;
+          if (depthAt > safeResolved.depth) break;
+          const nodeAt = safeResolved.node(depthAt);
+          if (!nodeAt) break;
+          typesAfter[i] = { type: nodeAt.type, attrs: nodeAt.attrs };
+        }
+      }
+      let canSplitAtPos = canSplit(view.state.doc, splitPos, depth, typesAfter as any);
+      let preferDefaultTypes = false;
+      if (forceLineSplit && !canSplitAtPos) {
+        const manualFallback = attemptManualPageSplit(
+          view.state.tr,
+          splitPos,
+          pageDepth,
+          pageType,
+          view.state.selection.from
+        );
+        if (manualFallback) {
+          manualFallback.setMeta(paginationKey, { source: "pagination", op: "split", pos: splitPos });
+          memo.lastSplitPos = splitPos;
+          memo.lastSplitAttemptPos = splitPos;
+          memo.lastSplitAt = performance.now();
+          memo.lastSplitReason = split.reason;
+          lockJoinForSplit(memo, splitPos, split.reason, docSize);
+          const trimPagePos = getPagePosAtBoundary(manualFallback.doc, pageType, splitPos);
+          if (trimPagePos != null) {
+            trimLeadingWhitespaceAtPageStart(manualFallback, trimPagePos, pageType);
+          }
+          dispatchPagination(view, manualFallback);
+          return;
+        }
+      }
+      if (forceLineSplit) {
+        const lineSplit = attemptLineSplitPageSplit(
+          view,
+          splitPos,
+          pageDepth,
+          pageType,
+          split.reason,
+          memo,
+          markPaginationSplit
+        );
+        if (lineSplit) {
+          dispatchPagination(view, lineSplit);
+          return;
+        }
+        // LO-style: split paragraph at a measured line position, then split the page.
+        const paragraphDepth = Math.max(1, blockDepth - pageDepth);
+        const blockStartPos = insideBlock ? blockStart + 1 : splitPos;
+        const blockEndPos = insideBlock ? blockEnd - 1 : splitPos;
+        const searchLimit = 24;
+        let splitCandidate: number | null = null;
+        if (splitPos > blockStartPos && splitPos < blockEndPos) {
+          if (canSplit(view.state.doc, splitPos, paragraphDepth)) {
+            splitCandidate = splitPos;
+          }
+        }
+        for (let delta = 0; delta <= searchLimit && !splitCandidate; delta += 1) {
+          const left = splitPos - delta;
+          const right = splitPos + delta;
+          if (left > blockStartPos && left < blockEndPos && canSplit(view.state.doc, left, paragraphDepth)) {
+            splitCandidate = left;
+            break;
+          }
+          if (right > blockStartPos && right < blockEndPos && canSplit(view.state.doc, right, paragraphDepth)) {
+            splitCandidate = right;
+            break;
+          }
+        }
+        if (splitCandidate) {
+          if (debugEnabled()) {
+            logDebug("line split candidate", {
+              splitCandidate,
+              paragraphDepth,
+              blockDepth,
+              pageDepth,
+              blockStartPos,
+              blockEndPos
+            });
+          }
+          const manualSplitId = markPaginationSplit ? `ps-${memo.splitIdCounter++}` : null;
+          const boundaryAtCandidate = resolvePageBoundaryPos(
+            view.state.doc,
+            pageType,
+            pageDepth,
+            splitCandidate
+          );
+          const manualSplit =
+            boundaryAtCandidate && boundaryAtCandidate.pos === splitCandidate
+              ? attemptManualPageSplit(
+                  view.state.tr,
+                  splitCandidate,
+                  pageDepth,
+                  pageType,
+                  view.state.selection.from,
+                  manualSplitId ?? undefined
+                )
+              : null;
+          if (manualSplit) {
+            manualSplit.setMeta(paginationKey, { source: "pagination", op: "split", pos: splitCandidate });
+            memo.lastSplitPos = splitCandidate;
+            memo.lastSplitAttemptPos = splitCandidate;
+            memo.lastSplitAt = performance.now();
+            memo.lastSplitReason = split.reason;
+            lockJoinForSplit(memo, splitCandidate, split.reason, docSize);
+            const from = view.state.selection.from;
+            const trimPagePos = getPagePosAtBoundary(manualSplit.doc, pageType, splitCandidate);
+            if (trimPagePos != null) {
+              trimLeadingWhitespaceAtPageStart(manualSplit, trimPagePos, pageType);
+            }
+            if (from >= splitCandidate) {
+              const mapped = manualSplit.mapping.map(from);
+              setSafeSelection(manualSplit, mapped);
+            }
+            dispatchPagination(view, manualSplit);
+            return;
+          }
+          let trLine: any | null = null;
+          try {
+            trLine = view.state.tr.split(splitCandidate, paragraphDepth);
+          } catch (error) {
+            logDebug("line split paragraph threw", {
+              splitCandidate,
+              paragraphDepth,
+              error: String(error)
+            });
+            trLine = null;
+          }
+          if (!trLine) {
+            trLine = attemptManualTextblockSplit(view.state.tr, splitCandidate);
+            if (trLine && debugEnabled()) {
+              logDebug("line split manual textblock", { splitCandidate, paragraphDepth });
+            }
+          }
+          if (!trLine) {
+            continue;
+          }
+          const mappedSplit = trLine.mapping.map(splitCandidate, -1);
+          // If splitting the paragraph already created a page boundary, accept it immediately.
+          const pageBoundaryResolved = trLine.doc.resolve(mappedSplit);
+          const boundaryBefore = pageBoundaryResolved.nodeBefore;
+          const boundaryAfter = pageBoundaryResolved.nodeAfter;
+          if (boundaryBefore?.type === pageType && boundaryAfter?.type === pageType) {
+            trLine.setMeta(paginationKey, { source: "pagination", op: "split", pos: mappedSplit });
+            memo.lastSplitPos = mappedSplit;
+            memo.lastSplitAttemptPos = splitCandidate;
+            memo.lastSplitAt = performance.now();
+            memo.lastSplitReason = split.reason;
+            lockJoinForSplit(memo, mappedSplit, split.reason, docSize);
+            const from = view.state.selection.from;
+            const trimPagePos = getPagePosAtBoundary(trLine.doc, pageType, mappedSplit);
+            if (trimPagePos != null) {
+              trimLeadingWhitespaceAtPageStart(trLine, trimPagePos, pageType);
+            }
+            if (from >= splitCandidate) {
+              const mapped = trLine.mapping.map(from);
+              setSafeSelection(trLine, mapped);
+            }
+            dispatchPagination(view, trLine);
+            return;
+          }
+          const manualLineSplit = attemptManualPageSplit(
+            trLine,
+            mappedSplit,
+            pageDepth,
+            pageType,
+            view.state.selection.from,
+            manualSplitId ?? undefined
+          );
+          if (manualLineSplit) {
+            manualLineSplit.setMeta(paginationKey, { source: "pagination", op: "split", pos: mappedSplit });
+            memo.lastSplitPos = mappedSplit;
+            memo.lastSplitAttemptPos = splitCandidate;
+            memo.lastSplitAt = performance.now();
+            memo.lastSplitReason = split.reason;
+            lockJoinForSplit(memo, mappedSplit, split.reason, docSize);
+            const from = view.state.selection.from;
+            const trimPagePos = getPagePosAtBoundary(manualLineSplit.doc, pageType, mappedSplit);
+            if (trimPagePos != null) {
+              trimLeadingWhitespaceAtPageStart(manualLineSplit, trimPagePos, pageType);
+            }
+            if (from >= splitCandidate) {
+              const mapped = manualLineSplit.mapping.map(from);
+              setSafeSelection(manualLineSplit, mapped);
+            }
+            dispatchPagination(view, manualLineSplit);
+            return;
+          }
+          const mappedPosLeft = trLine.mapping.map(splitCandidate, -1);
+          const mappedPosRight = trLine.mapping.map(splitCandidate, 1);
+          const boundaryInfoPrimary = resolveBlockBoundaryPos(
+            trLine.doc,
+            pageType,
+            pageDepth,
+            mappedPosRight
+          );
+          const boundaryInfoSecondary =
+            boundaryInfoPrimary ??
+            resolveBlockBoundaryPos(trLine.doc, pageType, pageDepth, mappedPosLeft) ??
+            resolveBlockBoundaryPos(trLine.doc, pageType, pageDepth, mappedSplit) ??
+            resolvePageBoundaryPos(trLine.doc, pageType, pageDepth, mappedSplit);
+          if (!boundaryInfoSecondary) {
+            logDebug("line split boundary missing", {
+              splitCandidate,
+              mappedPosLeft,
+              mappedPosRight,
+              mappedSplit
+            });
+          }
+          const pageBoundaryPos = boundaryInfoSecondary?.pos ?? mappedPosLeft;
+          const boundaryResolved =
+            boundaryInfoSecondary?.resolved ?? trLine.doc.resolve(pageBoundaryPos);
+          if (debugEnabled()) {
+            logDebug("line split boundary", {
+              splitCandidate,
+              mappedPosLeft,
+              mappedPosRight,
+              pageBoundaryPos,
+              mappedDepth: boundaryResolved.depth,
+              pageDepth
+            });
+          }
+          let didSplit = false;
+          const boundaryCandidates = Array.from(
+            new Set(
+              [pageBoundaryPos, mappedSplit, mappedPosLeft, mappedPosRight].filter(
+                (value) => Number.isFinite(value as number) && (value as number) > 0
+              )
+            )
+          ) as number[];
+          for (const candidate of boundaryCandidates) {
+            if (didSplit) break;
+            // First try splitting only the page node (no explicit types).
+            if (canSplit(trLine.doc, candidate, 1)) {
+              try {
+                trLine = trLine.split(candidate, 1);
+                didSplit = true;
+              } catch (error) {
+                logDebug("line split page-only threw", {
+                  pageBoundaryPos: candidate,
+                  error: String(error)
+                });
+              }
+            }
+          }
+          if (!didSplit) {
+            const boundaryDepth = Math.max(1, boundaryResolved.depth - pageDepth);
+            const boundaryTypes: Array<{ type: any; attrs?: any } | null> = new Array(boundaryDepth).fill(null);
+            boundaryTypes[0] = { type: pageType };
+            for (let i = 1; i < boundaryDepth; i += 1) {
+              const depthAt = pageDepth + i;
+              if (depthAt > boundaryResolved.depth) break;
+              const nodeAt = boundaryResolved.node(depthAt);
+              if (!nodeAt) break;
+              boundaryTypes[i] = { type: nodeAt.type, attrs: nodeAt.attrs };
+            }
+            for (const candidate of boundaryCandidates) {
+              if (didSplit) break;
+              if (canSplit(trLine.doc, candidate, boundaryDepth, boundaryTypes as any)) {
+                try {
+                  trLine = trLine.split(candidate, boundaryDepth, boundaryTypes as any);
+                  didSplit = true;
+                } catch (error) {
+                  logDebug("line split boundary threw", {
+                    pageBoundaryPos: candidate,
+                    boundaryDepth,
+                    error: String(error)
+                  });
+                }
+              }
+            }
+          }
+          if (didSplit) {
+            trLine.setMeta(paginationKey, { source: "pagination", op: "split", pos: pageBoundaryPos });
+            const from = view.state.selection.from;
+            const trimPagePos = getPagePosAtBoundary(trLine.doc, pageType, pageBoundaryPos);
+            if (trimPagePos != null) {
+              trimLeadingWhitespaceAtPageStart(trLine, trimPagePos, pageType);
+            }
+            if (from >= splitCandidate) {
+              const mapped = trLine.mapping.map(from);
+              setSafeSelection(trLine, mapped);
+            }
+            memo.lastSplitPos = pageBoundaryPos;
+            memo.lastSplitAttemptPos = splitCandidate;
+            memo.lastSplitAt = performance.now();
+            memo.lastSplitReason = split.reason;
+            lockJoinForSplit(memo, pageBoundaryPos, split.reason, docSize);
+            dispatchPagination(view, trLine);
+            return;
+          }
+          // Manual page replacement fallback (bypass ProseMirror split constraints).
+          try {
+            const manualCandidates =
+              boundaryCandidates.length > 0
+                ? boundaryCandidates
+                : [pageBoundaryPos].filter((value) => Number.isFinite(value) && value > 0);
+            for (const candidate of manualCandidates) {
+              const candidateResolved = trLine.doc.resolve(candidate);
+              const candidatePageDepth = findPageDepth(candidateResolved, pageType);
+              if (candidatePageDepth < 0) continue;
+              const pageNode = candidateResolved.node(candidatePageDepth);
+              const pageStart = candidateResolved.start(candidatePageDepth);
+              const pagePos = candidateResolved.before(candidatePageDepth);
+              const splitOffset = candidate - pageStart;
+              let trReplace = splitPageNode(trLine, pagePos, pageNode, splitOffset, pageType);
+              if (!trReplace) continue;
+              trReplace.setMeta(paginationKey, { source: "pagination", op: "split", pos: candidate });
+              const from = view.state.selection.from;
+              const trimPagePos = getPagePosAtBoundary(trReplace.doc, pageType, candidate);
+              if (trimPagePos != null) {
+                trimLeadingWhitespaceAtPageStart(trReplace, trimPagePos, pageType);
+              }
+              if (from >= splitCandidate) {
+                const mapped = trReplace.mapping.map(from);
+                setSafeSelection(trReplace, mapped);
+              }
+              memo.lastSplitPos = candidate;
+              memo.lastSplitAttemptPos = splitCandidate;
+              memo.lastSplitAt = performance.now();
+              memo.lastSplitReason = split.reason;
+              lockJoinForSplit(memo, candidate, split.reason, docSize);
+              dispatchPagination(view, trReplace);
+              return;
+            }
+          } catch (error) {
+            logDebug("manual page split failed", { error: String(error) });
+          }
+          logDebug("line split candidate rejected", {
+            splitCandidate,
+            paragraphDepth,
+            blockDepth,
+            pageDepth,
+            mappedDepth: boundaryResolved.depth,
+            pageBoundaryPos,
+            mappedPosLeftContext: describePos(trLine.doc, mappedPosLeft),
+            mappedPosRightContext: describePos(trLine.doc, mappedPosRight),
+            boundaryPosContext: describePos(trLine.doc, pageBoundaryPos)
+          });
+        }
+      }
+      if (!canSplitAtPos && insideBlock) {
+        const fallbackPos = split.after ? resolved.after(childDepth) : resolved.before(childDepth);
+        if (fallbackPos > 0 && fallbackPos !== splitPos) {
+          const fallbackDepth = 1;
+          const fallbackTypes = [{ type: pageType }];
+          if (canSplit(view.state.doc, fallbackPos, fallbackDepth, fallbackTypes as any)) {
+            logDebug("fallback to block boundary split", { splitPos, fallbackPos });
+            splitPos = fallbackPos;
+            depth = fallbackDepth;
+            typesAfter.length = 0;
+            typesAfter.push(...fallbackTypes);
+            canSplitAtPos = true;
+          }
+        }
+      }
+      if (!canSplitAtPos && insideBlock) {
+        // Some schemas allow the split when using implicit types/attrs.
+        if (canSplit(view.state.doc, splitPos, depth)) {
+          logDebug("fallback to default split types", { splitPos, depth });
+          canSplitAtPos = true;
+          preferDefaultTypes = true;
+        }
+      }
+      if (!canSplitAtPos && insideBlock) {
+        // Two-step fallback: split the paragraph first, then split the page at the new boundary.
+        const paragraphDepth = Math.max(1, blockDepth - pageDepth);
+        if (canSplit(view.state.doc, splitPos, paragraphDepth)) {
+          let trFallback = view.state.tr.split(splitPos, paragraphDepth);
+          // Map to the left side of the split to preserve a page-depth boundary.
+          const mappedPos = trFallback.mapping.map(splitPos, -1);
+          const mappedResolved = trFallback.doc.resolve(mappedPos);
+          // After splitting the paragraph, mappedPos is the boundary between the two blocks.
+          let pageBoundaryPos = mappedPos;
+          let didSplit = false;
+          if (canSplit(trFallback.doc, pageBoundaryPos, 1)) {
+            try {
+              trFallback = trFallback.split(pageBoundaryPos, 1);
+              didSplit = true;
+              logDebug("fallback to two-step split", { splitPos, paragraphDepth, mappedPos, boundaryDepth: 1 });
+            } catch (error) {
+              logDebug("fallback split page-only threw", {
+                pageBoundaryPos,
+                error: String(error)
+              });
+            }
+          }
+          if (!didSplit) {
+            const boundaryDepth = Math.max(1, mappedResolved.depth - pageDepth);
+            const boundaryTypes: Array<{ type: any; attrs?: any } | null> = new Array(boundaryDepth).fill(null);
+            boundaryTypes[0] = { type: pageType };
+            for (let i = 1; i < boundaryDepth; i += 1) {
+              const depthAt = pageDepth + i;
+              if (depthAt > mappedResolved.depth) break;
+              const nodeAt = mappedResolved.node(depthAt);
+              if (!nodeAt) break;
+              boundaryTypes[i] = { type: nodeAt.type, attrs: nodeAt.attrs };
+            }
+            if (canSplit(trFallback.doc, pageBoundaryPos, boundaryDepth, boundaryTypes as any)) {
+              logDebug("fallback to two-step split", { splitPos, paragraphDepth, mappedPos, boundaryDepth });
+              try {
+                trFallback = trFallback.split(pageBoundaryPos, boundaryDepth, boundaryTypes as any);
+                didSplit = true;
+              } catch (error) {
+                logDebug("fallback boundary split threw", {
+                  pageBoundaryPos,
+                  boundaryDepth,
+                  error: String(error)
+                });
+              }
+            }
+          }
+          if (didSplit) {
+            trFallback.setMeta(paginationKey, { source: "pagination", op: "split", pos: pageBoundaryPos });
+            const from = view.state.selection.from;
+            const trimPagePos = getPagePosAtBoundary(trFallback.doc, pageType, pageBoundaryPos);
+            if (trimPagePos != null) {
+              trimLeadingWhitespaceAtPageStart(trFallback, trimPagePos, pageType);
+            }
+            if (from >= splitPos) {
+              const mapped = trFallback.mapping.map(from);
+              setSafeSelection(trFallback, mapped);
+            }
+            memo.lastSplitPos = pageBoundaryPos;
+            memo.lastSplitAttemptPos = splitPos;
+            memo.lastSplitAt = performance.now();
+            memo.lastSplitReason = split.reason;
+            lockJoinForSplit(memo, pageBoundaryPos, split.reason, docSize);
+            dispatchPagination(view, trFallback);
+            return;
+          }
+          // Manual page replacement fallback (bypass ProseMirror split constraints).
+          try {
+            const pageNode = mappedResolved.node(pageDepth);
+            const pageStart = mappedResolved.start(pageDepth);
+            const pagePos = mappedResolved.before(pageDepth);
+            const splitOffset = pageBoundaryPos - pageStart;
+            let trReplace = splitPageNode(trFallback, pagePos, pageNode, splitOffset, pageType);
+            if (trReplace) {
+              trReplace.setMeta(paginationKey, { source: "pagination", op: "split", pos: pageBoundaryPos });
+              const from = view.state.selection.from;
+              const trimPagePos = getPagePosAtBoundary(trReplace.doc, pageType, pageBoundaryPos);
+              if (trimPagePos != null) {
+                trimLeadingWhitespaceAtPageStart(trReplace, trimPagePos, pageType);
+              }
+              if (from >= splitPos) {
+                const mapped = trReplace.mapping.map(from);
+                setSafeSelection(trReplace, mapped);
+              }
+              memo.lastSplitPos = pageBoundaryPos;
+              memo.lastSplitAttemptPos = splitPos;
+              memo.lastSplitAt = performance.now();
+              memo.lastSplitReason = split.reason;
+              lockJoinForSplit(memo, pageBoundaryPos, split.reason, docSize);
+              dispatchPagination(view, trReplace);
+              return;
+            }
+          } catch (error) {
+            logDebug("manual fallback split failed", { error: String(error) });
+          }
+          logDebug("fallback two-step split rejected", {
+            splitPos,
+            paragraphDepth,
+            blockDepth,
+            pageDepth,
+            mappedDepth: mappedResolved.depth,
+            pageBoundaryPos
+          });
+        }
+      }
+      if (!canSplitAtPos) {
+        const manualSplitId = markPaginationSplit ? `ps-${memo.splitIdCounter++}` : null;
+        let appliedSplitPos = splitPos;
+        let manualSplit = attemptManualPageSplit(
+          view.state.tr,
+          splitPos,
+          pageDepth,
+          pageType,
+          view.state.selection.from,
+          manualSplitId ?? undefined
+        );
+        if (!manualSplit) {
+          const boundaryPos = split.after ? resolved.after(childDepth) : resolved.before(childDepth);
+          if (boundaryPos > 0 && boundaryPos !== splitPos) {
+            manualSplit = attemptManualPageSplit(
+              view.state.tr,
+              boundaryPos,
+              pageDepth,
+              pageType,
+              view.state.selection.from,
+              manualSplitId ?? undefined
+            );
+            if (manualSplit) {
+              appliedSplitPos = boundaryPos;
+              logDebug("fallback to block boundary manual split", { splitPos, boundaryPos });
+            }
+          }
+        }
+        if (manualSplit) {
+          const trimPagePos = getPagePosAtBoundary(manualSplit.doc, pageType, appliedSplitPos);
+          if (trimPagePos != null) {
+            trimLeadingWhitespaceAtPageStart(manualSplit, trimPagePos, pageType);
+          }
+          memo.lastSplitPos = appliedSplitPos;
+          memo.lastSplitAttemptPos = appliedSplitPos;
+          memo.lastSplitAt = performance.now();
+          memo.lastSplitReason = split.reason;
+          lockJoinForSplit(memo, appliedSplitPos, split.reason, docSize);
+          dispatchPagination(view, manualSplit);
+          return;
+        }
+        logDebug("skip split (canSplit=false)", { splitPos, depth, pageDepth });
+        continue;
+      }
+      const from = view.state.selection.from;
+      const manualSplitId = markPaginationSplit ? `ps-${memo.splitIdCounter++}` : null;
+      const manualSplit = attemptManualPageSplit(
+        view.state.tr,
+        splitPos,
+        pageDepth,
+        pageType,
+        from,
+        manualSplitId ?? undefined
+      );
+      if (manualSplit) {
+        manualSplit.setMeta(paginationKey, { source: "pagination", op: "split", pos: splitPos });
+        const trimPagePos = getPagePosAtBoundary(manualSplit.doc, pageType, splitPos);
+        if (trimPagePos != null) {
+          trimLeadingWhitespaceAtPageStart(manualSplit, trimPagePos, pageType);
+        }
+        memo.lastSplitPos = splitPos;
+        memo.lastSplitAttemptPos = splitPos;
+        memo.lastSplitAt = performance.now();
+        memo.lastSplitReason = split.reason;
+        lockJoinForSplit(memo, splitPos, split.reason, docSize);
+        if (from >= splitPos) {
+          const mapped = manualSplit.mapping.map(from);
+          setSafeSelection(manualSplit, mapped);
+        }
+        dispatchPagination(view, manualSplit);
+        return;
+      }
+      logDebug("splitting page", { splitPos, depth, selectionFrom: from, reason: split.reason });
+      let tr: any | null = null;
+      try {
+        tr = preferDefaultTypes ? view.state.tr.split(splitPos, depth) : view.state.tr.split(splitPos, depth, typesAfter as any);
+      } catch (error) {
+        logDebug("split failed", {
+          splitPos,
+          depth,
+          pageDepth,
+          reason: split.reason,
+          error: String(error)
+        });
+        // Fallback: split at the block boundary (before/after) instead of inside the block.
+        try {
+          const fallbackPos = split.after ? resolved.after(childDepth) : resolved.before(childDepth);
+          if (fallbackPos > 0 && fallbackPos !== splitPos) {
+            const fallbackDepth = 1;
+            const fallbackTypes = [{ type: pageType }];
+            if (canSplit(view.state.doc, fallbackPos, fallbackDepth, fallbackTypes as any)) {
+              logDebug("split fallback to block boundary", { fallbackPos, fallbackDepth });
+              tr = view.state.tr.split(fallbackPos, fallbackDepth, fallbackTypes as any);
+              splitPos = fallbackPos;
+            }
+          }
+        } catch (fallbackError) {
+          logDebug("split fallback failed", { splitPos, error: String(fallbackError) });
+        }
+      }
+      if (!tr) continue;
+      tr.setMeta(paginationKey, { source: "pagination", op: "split", pos: splitPos });
+      let splitBoundaryPos: number | null = null;
+      try {
+        const mapped = tr.mapping.map(splitPos);
+        const $mapped = tr.doc.resolve(mapped);
+        const mappedPageDepth = findPageDepth($mapped, pageType);
+        if (mappedPageDepth >= 0) {
+          const beforeBoundary = $mapped.before(mappedPageDepth);
+          const afterBoundary = $mapped.after(mappedPageDepth);
+          splitBoundaryPos = afterBoundary > 0 ? afterBoundary : beforeBoundary > 0 ? beforeBoundary : null;
+        }
+      } catch {
+        splitBoundaryPos = null;
+      }
+      const trimPagePos = getPagePosAtBoundary(tr.doc, pageType, splitBoundaryPos ?? splitPos);
+      if (trimPagePos != null) {
+        trimLeadingWhitespaceAtPageStart(tr, trimPagePos, pageType);
+      }
+      memo.lastSplitPos = splitBoundaryPos ?? splitPos;
+      memo.lastSplitAttemptPos = splitPos;
+      memo.lastSplitAt = performance.now();
+      memo.lastSplitReason = split.reason;
+      if (markPaginationSplit) {
+        const splitId = `ps-${memo.splitIdCounter++}`;
+        const mapped = tr.mapping.map(splitPos);
+        const $mapped = tr.doc.resolve(mapped);
+        const before = $mapped.nodeBefore;
+        const after = $mapped.nodeAfter;
+        if (before?.type?.name === "paragraph" && after?.type?.name === "paragraph") {
+          const beforePos = mapped - before.nodeSize;
+          const afterPos = mapped;
+          const beforeAttrs = { ...(before.attrs as any), paginationSplitId: splitId };
+          const afterAttrs = { ...(after.attrs as any), paginationSplitId: splitId };
+          tr.setNodeMarkup(beforePos, before.type, beforeAttrs, before.marks);
+          tr.setNodeMarkup(afterPos, after.type, afterAttrs, after.marks);
+        }
+      }
+      lockJoinForSplit(memo, splitBoundaryPos ?? splitPos, split.reason, docSize);
+      if (from >= splitPos) {
+        const mapped = tr.mapping.map(from);
+        logDebug("moving selection after split", { from, mapped });
+        setSafeSelection(tr, mapped);
+      }
+      dispatchPagination(view, tr);
+      return;
+    }
+    if (allowCriticalJoin) {
+      const criticalJoinPos = findCriticalUnderfillJoin(view, pageType);
+      if (criticalJoinPos != null) {
+        if (hasManualBreakBoundary(view.state.doc, pageType, criticalJoinPos, view)) {
+          logDebug("skip join (manual break boundary)", { joinPos: criticalJoinPos });
+          return;
+        }
+        const recentSplitSamePos =
+          memo.lastSplitPos != null &&
+          Math.abs(memo.lastSplitPos - criticalJoinPos) <= 20 &&
+          now - memo.lastSplitAt < JOIN_SPLIT_SUPPRESS_MS &&
+          (memo.lastSplitReason === "overflow" ||
+            memo.lastSplitReason === "keepWithNext" ||
+            memo.lastSplitReason === "pullup" ||
+            memo.lastSplitReason === "manual");
+        if (recentSplitSamePos) {
+          logDebug("skip join (recent overflow split)", { joinPos: criticalJoinPos });
+        } else {
+        if (memo.lockedJoinPos.has(criticalJoinPos)) {
+          memo.lockedJoinPos.delete(criticalJoinPos);
+        }
+        let tr = attemptManualPageJoin(view.state.tr, criticalJoinPos, pageType, view.state.selection.from);
+        if (!tr && canJoin(view.state.doc, criticalJoinPos)) {
+          try {
+            tr = view.state.tr.join(criticalJoinPos);
+            tr.setMeta(paginationKey, { source: "pagination", op: "join", pos: criticalJoinPos });
+          } catch {
+            tr = null;
+          }
+        }
+        if (tr) {
+          memo.lastSplitPos = null;
+          memo.lastSplitAttemptPos = null;
+          memo.lastSplitAt = 0;
+          memo.lastSplitReason = null;
+          memo.lockedJoinPos.delete(criticalJoinPos);
+          markJoin(memo, criticalJoinPos, docSize);
+          dispatchPagination(view, tr);
+          return;
+        }
+        }
+      }
+    }
+    {
+      const underfilledJoin = findUnderfilledJoin(view, pageType, {
+        aggressive: setContentOrigin,
+        anchorIndex: setContentOrigin ? null : selectionIndex,
+        allowFirstPage: preferJoin
+      });
+      if (underfilledJoin != null) {
+        const { joinPos, remaining, fillRatio, lineHeight, pageIndex } = underfilledJoin;
+        if (hasManualBreakBoundary(view.state.doc, pageType, joinPos, view)) {
+          logDebug("skip join (manual break boundary)", { joinPos });
+          return;
+        }
+        const severeUnderfill =
+          remaining > Math.max(lineHeight * 6, 72) || fillRatio < 0.75;
+        const recentSplitAny =
+          memo.lastSplitReason != null &&
+          now - memo.lastSplitAt < JOIN_SPLIT_SUPPRESS_MS;
+        const allowUnderfillJoin =
+          allowPullUp || allowCriticalJoin || severeUnderfill || setContentOrigin;
+        if (!allowUnderfillJoin) {
+          return;
+        }
+        if (paginationOnlyActive && !severeUnderfill && !setContentOrigin) {
+          logDebug("skip join (pagination-only)", { joinPos, remaining, fillRatio });
+          return;
+        }
+        if (recentSplitAny && !severeUnderfill) {
+          logDebug("skip join (recent split)", { joinPos, remaining, fillRatio });
+          return;
+        }
+        const lockCandidates = [joinPos, joinPos - 1, joinPos + 1, joinPos - 2, joinPos + 2];
+        let lock: { docSize: number; at: number; reason: string } | null = null;
+        for (const candidate of lockCandidates) {
+          if (candidate > 0) {
+            const stored = memo.lockedJoinPos.get(candidate);
+            if (stored) {
+              lock = stored;
+              break;
+            }
+          }
+        }
+        const lockAge = lock ? now - lock.at : 0;
+        const lockSameDoc = Boolean(lock);
+        const lockHoldMs =
+          lock && (lock.reason === "keepWithNext" || lock.reason === "pullup" || lock.reason === "underfill")
+            ? 5000
+            : 2500;
+        const lockActive = Boolean(lock && lockAge < lockHoldMs);
+        const pullUp = attemptUnderfilledPullUp(view, pageType, pageIndex, joinPos, remaining, lineHeight);
+        if (pullUp) {
+          const { tr, splitPos } = pullUp;
+          tr.setMeta(paginationKey, { source: "pagination", op: "pullup", pos: splitPos });
+          const trimPagePos = getPagePosAtBoundary(tr.doc, pageType, splitPos);
+          if (trimPagePos != null) {
+            trimLeadingWhitespaceAtPageStart(tr, trimPagePos, pageType);
+          }
+          const mapped = tr.mapping.map(view.state.selection.from);
+          setSafeSelection(tr, mapped);
+          memo.lastSplitPos = splitPos;
+          memo.lastSplitAttemptPos = splitPos;
+          memo.lastSplitAt = now;
+          memo.lastSplitReason = "pullup";
+          lockJoinForSplit(memo, splitPos, "pullup", docSize);
+          lockJoinForSplit(memo, joinPos, "underfill", docSize);
+          dispatchPagination(view, tr);
+          return;
+        }
+        if (!allowPullUp && !severeUnderfill) {
+          return;
+        }
+        const recentJoinSamePos =
+          memo.lastJoinPos != null &&
+          Math.abs(memo.lastJoinPos - joinPos) <= 2 &&
+          now - memo.lastJoinAt < JOIN_SPLIT_SUPPRESS_MS &&
+          memo.lastJoinDocSize === docSize;
+        if (recentJoinSamePos) {
+          logDebug("skip join (recent join)", { joinPos, remaining, fillRatio });
+          return;
+        }
+        const paginationOnlySplit =
+          paginationOnlyActive &&
+          memo.lastSplitPos != null &&
+          now - memo.lastSplitAt < JOIN_SPLIT_SUPPRESS_MS &&
+          memo.lastDocSize === docSize;
+        if (paginationOnlySplit) {
+          logDebug("skip join (pagination-only recent split)", { joinPos });
+          return;
+        }
+        const recentSplitSamePos =
+          memo.lastSplitPos != null &&
+          Math.abs(memo.lastSplitPos - joinPos) <= 20 &&
+          now - memo.lastSplitAt < JOIN_SPLIT_SUPPRESS_MS &&
+          (memo.lastSplitReason === "overflow" ||
+            memo.lastSplitReason === "keepWithNext" ||
+            memo.lastSplitReason === "pullup" ||
+            memo.lastSplitReason === "manual");
+        if (recentSplitSamePos) {
+          logDebug("skip join (recent overflow split)", { joinPos, remaining, fillRatio });
+          // Skip join to avoid split/join oscillation at the same boundary.
+          return;
+        }
+        if (
+          (memo.lastSplitReason === "overflow" ||
+            memo.lastSplitReason === "keepWithNext" ||
+            memo.lastSplitReason === "pullup" ||
+            memo.lastSplitReason === "manual") &&
+          now - memo.lastSplitAt < JOIN_SPLIT_SUPPRESS_MS
+        ) {
+          logDebug("skip join (recent overflow split)", { joinPos, remaining, fillRatio });
+          return;
+        }
+        if (lockActive && !severeUnderfill) {
+          logDebug("skip join (locked underfill)", { joinPos, lockAge, remaining, fillRatio });
+          return;
+        }
+        // Keep join locks briefly even across pagination-only doc size changes.
+        if (!lock || severeUnderfill || !lockSameDoc) {
+          let tr = attemptManualPageJoin(view.state.tr, joinPos, pageType, view.state.selection.from);
+          if (!tr && canJoin(view.state.doc, joinPos)) {
+            try {
+              tr = view.state.tr.join(joinPos);
+              tr.setMeta(paginationKey, { source: "pagination", op: "join", pos: joinPos });
+            } catch {
+              tr = null;
+            }
+          }
+          if (tr) {
+            memo.lastSplitPos = null;
+            memo.lastSplitAttemptPos = null;
+            memo.lastSplitAt = 0;
+            memo.lastSplitReason = null;
+            memo.lockedJoinPos.delete(joinPos);
+            markJoin(memo, joinPos, docSize);
+            dispatchPagination(view, tr);
+            return;
+          }
+        }
+      }
+      if (!preferJoin && recentUserSplit) {
+        logDebug("skip join (layout settling)", { recentUserSplit });
+        return;
+      }
+      const joinBufferPx = options?.preferJoin ? DELETE_JOIN_BUFFER_PX : DEFAULT_JOIN_BUFFER_PX;
+      if (options?.preferJoin && selection) {
+        try {
+          const $from = selection.$from;
+          const pageIndex = $from.index(0);
+          if ($from.parentOffset === 0 && pageIndex > 0) {
+            const joinPos = getJoinPosForPageIndex(view.state.doc, pageType, pageIndex);
+            if (joinPos !== null) {
+              if (hasManualBreakBoundary(view.state.doc, pageType, joinPos, view)) {
+                logDebug("skip join (manual break boundary)", { joinPos });
+                return;
+              }
+              try {
+                const prevPage = pages[pageIndex - 1] as HTMLElement | undefined;
+                const prevContent = prevPage?.querySelector?.(`.${PAGE_CONTENT_CLASS}`) as HTMLElement | null;
+                if (prevContent) {
+                  const { usableHeight } = getContentMetrics(prevContent);
+                  const lastBottom = getLastContentBottom(prevContent);
+                  const lineHeight = getLineHeightPx(prevContent, prevContent) || 16;
+                  const remaining = usableHeight - lastBottom;
+                  const pullUp = attemptUnderfilledPullUp(
+                    view,
+                    pageType,
+                    pageIndex - 1,
+                    joinPos,
+                    remaining,
+                    lineHeight
+                  );
+                  if (pullUp) {
+                    pullUp.tr.setMeta(paginationKey, { source: "pagination", op: "pullup", pos: pullUp.splitPos });
+                    dispatchPagination(view, pullUp.tr);
+                    return;
+                  }
+                }
+              } catch {
+                // ignore pull-up failures
+              }
+              const manualJoin = attemptManualPageJoin(
+                view.state.tr,
+                joinPos,
+                pageType,
+                view.state.selection.from
+              );
+              if (manualJoin) {
+                memo.lastSplitPos = null;
+                memo.lastSplitAttemptPos = null;
+                memo.lastSplitAt = 0;
+                memo.lastSplitReason = null;
+                memo.lockedJoinPos.delete(joinPos);
+                markJoin(memo, joinPos, docSize);
+                dispatchPagination(view, manualJoin);
+                return;
+              }
+              if (canJoin(view.state.doc, joinPos)) {
+                try {
+                  const trJoin = view.state.tr.join(joinPos);
+                  trJoin.setMeta(paginationKey, { source: "pagination", op: "join", pos: joinPos });
+                  memo.lastSplitPos = null;
+                  memo.lastSplitAttemptPos = null;
+                  memo.lastSplitAt = 0;
+                  memo.lastSplitReason = null;
+                  memo.lockedJoinPos.delete(joinPos);
+                  markJoin(memo, joinPos, docSize);
+                  dispatchPagination(view, trJoin);
+                  return;
+                } catch {
+                  // ignore failed join attempt
+                }
+              }
+            }
+          }
+        } catch {
+          // ignore join-from-selection failures
+        }
+      }
+      if (allowPullUp) {
+        const joinPos = findJoinBoundary(view, pageType, 1, joinBufferPx);
+        if (joinPos !== null) {
+          if (hasManualBreakBoundary(view.state.doc, pageType, joinPos, view)) {
+            logDebug("skip join (manual break boundary)", { joinPos });
+            return;
+          }
+          const lockPosCandidates = [joinPos, joinPos - 1, joinPos + 1, joinPos - 2, joinPos + 2];
+          let lock: { docSize: number; at: number; reason: string } | null = null;
+          let lockPos: number | null = null;
+          if (!preferJoin) {
+          for (const pos of lockPosCandidates) {
+            const candidate = memo.lockedJoinPos.get(pos);
+            if (candidate) {
+              lock = candidate;
+              lockPos = pos;
+              break;
+          }
+        }
+      }
+          if (lock) {
+            const age = now - lock.at;
+            if (age < 1200) {
+              logDebug("skip join (locked boundary)", { joinPos, lockPos, reason: lock.reason, age });
+              return;
+            }
+            memo.lockedJoinPos.delete(lockPos as number);
+          }
+        }
+        if (joinPos === null) {
+          return;
+        }
+        const recentlySplitSamePos =
+          memo.lastSplitPos !== null &&
+          Math.abs(memo.lastSplitPos - joinPos) <= 2 &&
+          memo.lastSplitAt > memo.lastExternalChangeAt;
+        if (recentlySplitSamePos && !preferJoin) {
+          if (memo.lastSplitReason === "keepWithNext") {
+            logDebug("skip join (keep-with-next lock)", { joinPos });
+          } else {
+            logDebug("skip join (recent split)", { joinPos });
+          }
+          return;
+        }
+        const joinResolved = view.state.doc.resolve(joinPos);
+        const joinBefore = joinResolved.nodeBefore;
+        const joinAfter = joinResolved.nodeAfter;
+        if (!joinBefore || !joinAfter || joinBefore.type !== pageType || joinAfter.type !== pageType) {
+          logDebug("skip join (non-page boundary)", {
+            joinPos,
+            before: joinBefore?.type?.name ?? null,
+            after: joinAfter?.type?.name ?? null
+          });
+          return;
+        }
+        if (!canJoin(view.state.doc, joinPos)) {
+          const manualJoin = attemptManualPageJoin(
+            view.state.tr,
+            joinPos,
+            pageType,
+            view.state.selection.from
+          );
+          if (manualJoin) {
+            memo.lastSplitPos = null;
+            memo.lastSplitAttemptPos = null;
+            memo.lastSplitAt = 0;
+            memo.lastSplitReason = null;
+            memo.lockedJoinPos.delete(joinPos);
+            dispatchPagination(view, manualJoin);
+            return;
+          }
+          logDebug("skip join (canJoin=false)", { joinPos });
+          return;
+        }
+        logDebug("joining pages", { joinPos });
+        let tr: any | null = null;
+        try {
+          tr = view.state.tr.join(joinPos);
+        } catch (error) {
+          logDebug("join threw", { joinPos, error: String(error) });
+          tr = attemptManualPageJoin(view.state.tr, joinPos, pageType, view.state.selection.from);
+        }
+        if (!tr) return;
+        tr.setMeta(paginationKey, { source: "pagination", op: "join", pos: joinPos });
+        memo.lastSplitPos = null;
+        memo.lastSplitAttemptPos = null;
+        memo.lastSplitAt = 0;
+        memo.lastSplitReason = null;
+        memo.lockedJoinPos.delete(joinPos);
+        markJoin(memo, joinPos, docSize);
+        try {
+          const mappedJoinPos = tr.mapping.map(joinPos);
+          const $mapped = tr.doc.resolve(mappedJoinPos);
+          const before = $mapped.nodeBefore;
+          const after = $mapped.nodeAfter;
+          if (before?.type?.name === "paragraph" && after?.type?.name === "paragraph") {
+            const beforeId = (before.attrs as any)?.paginationSplitId ?? null;
+            const afterId = (after.attrs as any)?.paginationSplitId ?? null;
+            if (beforeId && beforeId === afterId && canJoin(tr.doc, mappedJoinPos)) {
+              tr.join(mappedJoinPos);
+              const mergedPos = mappedJoinPos - before.nodeSize;
+              const merged = tr.doc.nodeAt(mergedPos);
+              if (merged?.type?.name === "paragraph") {
+                const mergedAttrs = { ...(merged.attrs as any) };
+                delete mergedAttrs.paginationSplitId;
+                tr.setNodeMarkup(mergedPos, merged.type, mergedAttrs, merged.marks);
+              }
+              logDebug("merged pagination-split paragraph", { joinPos: mappedJoinPos, splitId: beforeId });
+            }
+          }
+        } catch {
+          // ignore merge failures
+        }
+        dispatchPagination(view, tr);
+        return;
+      }
+    }
+    const emptyRange = findEmptyPageRange(view.state.doc, pageType);
+    if (emptyRange && view.state.doc.childCount > 1) {
+      logDebug("dropping empty page", emptyRange);
+      const tr = view.state.tr.delete(emptyRange.from, emptyRange.to);
+      dispatchPagination(view, tr);
+    }
+  } finally {
+    runningRef.value = false;
+  }
+};
+
+export const PageDocument = Document.extend({
+  content: "page+",
+  addAttributes() {
+    return {
+      citationStyleId: {
+        default: "apa"
+      },
+      citationLocale: {
+        default: "en-US"
+      },
+      footnoteNumbering: {
+        default: "document"
+      },
+      footnoteNumberFormat: {
+        default: "decimal"
+      },
+      footnoteNumberPrefix: {
+        default: ""
+      },
+      footnoteNumberSuffix: {
+        default: ""
+      },
+      endnoteNumberFormat: {
+        default: "decimal"
+      },
+      endnoteNumberPrefix: {
+        default: ""
+      },
+      endnoteNumberSuffix: {
+        default: ""
+      }
+    };
+  }
+});
+
+export const PageNode = Node.create({
+  name: "page",
+  group: "page",
+  content: "block+",
+  defining: true,
+  isolating: false,
+  parseHTML() {
+    return [
+      { tag: "div[data-page]" },
+      { tag: `div.${PAGE_CLASS}` }
+    ];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ["div", mergeAttributes(HTMLAttributes, { "data-page": "true", class: PAGE_CLASS }), 0];
+  },
+  addNodeView() {
+    return (props: any) => {
+      const view = props?.view;
+      const getPos = props?.getPos;
+      let lastPageIndex: number | null = null;
+      const page = document.createElement("div");
+      const computePageIndex = () => {
+        try {
+          const pos = typeof getPos === "function" ? getPos() : null;
+          if (typeof pos === "number" && view?.state?.doc) {
+            const $pos = view.state.doc.resolve(pos);
+            const nextIndex = $pos.index(0);
+            if (Number.isFinite(nextIndex) && nextIndex !== lastPageIndex) {
+              lastPageIndex = nextIndex;
+              page.dataset.pageIndex = String(nextIndex);
+            }
+            return;
+          }
+        } catch {
+          // ignore
+        }
+      };
+      page.className = PAGE_CLASS;
+      page.setAttribute("data-page", "true");
+      computePageIndex();
+      const inner = document.createElement("div");
+      inner.className = PAGE_INNER_CLASS;
+      const header = document.createElement("div");
+      header.className = PAGE_HEADER_CLASS;
+      header.setAttribute("aria-hidden", "true");
+      header.contentEditable = "false";
+      header.style.top = "var(--doc-header-distance, 48px)";
+      header.style.bottom = "auto";
+      header.style.left = "var(--local-page-margin-left, var(--page-margin-left))";
+      header.style.right = "var(--local-page-margin-right, var(--page-margin-right))";
+      header.style.height = "var(--header-height)";
+      const content = document.createElement("div");
+      content.className = PAGE_CONTENT_CLASS;
+      enforceSingleColumnContent(content);
+      const continuation = document.createElement("div");
+      continuation.className = PAGE_FOOTNOTE_CONTINUATION_CLASS;
+      continuation.setAttribute("aria-hidden", "true");
+      continuation.contentEditable = "false";
+      const footnotes = document.createElement("div");
+      footnotes.className = PAGE_FOOTNOTES_CLASS;
+      footnotes.setAttribute("aria-hidden", "true");
+      footnotes.contentEditable = "false";
+      footnotes.style.top = "auto";
+      footnotes.style.left = "var(--local-page-margin-left, var(--page-margin-left))";
+      footnotes.style.right = "var(--local-page-margin-right, var(--page-margin-right))";
+      footnotes.style.bottom = "calc(var(--doc-footer-distance, 48px) + var(--footer-height))";
+      footnotes.style.minHeight = "var(--footnote-area-height)";
+      const footer = document.createElement("div");
+      footer.className = PAGE_FOOTER_CLASS;
+      footer.setAttribute("aria-hidden", "true");
+      footer.contentEditable = "false";
+      footer.style.top = "auto";
+      footer.style.left = "var(--local-page-margin-left, var(--page-margin-left))";
+      footer.style.right = "var(--local-page-margin-right, var(--page-margin-right))";
+      footer.style.bottom = "var(--doc-footer-distance, 48px)";
+      footer.style.height = "var(--footer-height)";
+
+      inner.appendChild(header);
+      inner.appendChild(content);
+      inner.appendChild(continuation);
+      inner.appendChild(footnotes);
+      inner.appendChild(footer);
+      page.appendChild(inner);
+      return {
+        dom: page,
+        contentDOM: content,
+        update(node: any) {
+          if (!node || node.type?.name !== "page") return false;
+          computePageIndex();
+          return true;
+        }
+      };
+    };
+  }
+});
+
+export const PagePagination = Extension.create({
+  name: "pagePagination",
+  addProseMirrorPlugins() {
+    let lastMutationWasDelete = false;
+    let lastMutationWasInsert = false;
+  const paginationMemo: PaginationMemo = {
+      lastSplitPos: null,
+      lastSplitAttemptPos: null,
+      lastSplitAt: 0,
+      lastSplitReason: null,
+      lastJoinPos: null,
+      lastJoinAt: 0,
+      lastJoinDocSize: 0,
+      lastExternalChangeAt: 0,
+      lastDocSize: 0,
+      lastNormalizeAt: 0,
+      lastNormalizeDocSize: 0,
+      lastFlattenAt: 0,
+      lastFlattenDocSize: 0,
+      autoNormalizeOnceDone: false,
+      lockedJoinPos: new Map(),
+      splitIdCounter: 1,
+      runWindowStart: 0,
+      runCount: 0,
+      paginationSuppressedAt: 0,
+      lastPageCount: 0,
+      pageCountGrowth: 0,
+      lastPaginationOnlyAt: 0,
+      lastPaginationOnlyDocSize: 0,
+      lastPaginationOnlySplitCount: 0,
+      preferFillUntil: 0,
+      pendingJoinRetryId: null,
+      typingDeferUntil: 0
+    };
+    return [
+      new Plugin({
+        key: paginationKey,
+        props: {
+          handleKeyDown(view, event) {
+            if (event.defaultPrevented || event.isComposing) return false;
+            if (!event.metaKey && !event.ctrlKey && !event.altKey) {
+              const isTypingKey =
+                event.key === "Enter" ||
+                event.key === "Backspace" ||
+                event.key === "Delete" ||
+                event.key.length === 1;
+              if (isTypingKey) {
+                try {
+                  (window as any).__leditorPaginationPreferFillUntil = performance.now() + 600;
+                } catch {
+                  // ignore
+                }
+              }
+            }
+            if (event.key === "Backspace") {
+              if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return false;
+              if (handlePageBoundaryBackspace(view)) {
+                event.preventDefault();
+                return true;
+              }
+            }
+            if (event.key === "Enter") {
+              if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return false;
+              if (handlePageBoundaryEnter(view)) {
+                event.preventDefault();
+                return true;
+              }
+            }
+            return false;
+          }
+        },
+        appendTransaction(transactions, _oldState, newState) {
+          const nonPaginationTransactions = transactions.filter((tr) => {
+            const meta = tr.getMeta(paginationKey) as { source?: string } | undefined;
+            return meta?.source !== "pagination";
+          });
+          lastMutationWasDelete = nonPaginationTransactions.some((tr) => isDeleteTransaction(tr));
+          lastMutationWasInsert = nonPaginationTransactions.some(
+            (tr) => tr.docChanged && isInsertTransaction(tr) && !isDeleteTransaction(tr)
+          );
+          const externalDocChange = nonPaginationTransactions.some((tr) => tr.docChanged);
+          const hasPaginationOnly = transactions.length > 0 && nonPaginationTransactions.length === 0;
+          if (externalDocChange) {
+            paginationMemo.lastExternalChangeAt = performance.now();
+            if (lastMutationWasInsert) {
+              paginationMemo.preferFillUntil = Math.max(paginationMemo.preferFillUntil, performance.now() + 800);
+            }
+          } else if (!hasPaginationOnly && transactions.length > 0 && debugEnabled()) {
+            dbg("appendTransaction", "non-pagination selection-only transaction; skipping external change timestamp");
+          }
+          return wrapDocInPage(newState);
+        },
+        view(editorView) {
+          // pagination debug log removed
+          try {
+            (window as any).__leditorDumpPaginationTrace = () =>
+              Array.isArray((window as any).__leditorPaginationTrace)
+                ? [...(window as any).__leditorPaginationTrace]
+                : [];
+          } catch {
+            // ignore
+          }
+          const running = { value: false };
+          const startupAt = typeof (window as any).__leditorStartupAt === "number"
+            ? (window as any).__leditorStartupAt
+            : performance.now();
+          let firstRunLogged = false;
+          const scheduler = new PaginationScheduler({
+            root: editorView.dom as HTMLElement,
+            onRun: () => {
+              logPaginationStats(editorView, "scheduler run");
+              paginateView(editorView, running, paginationMemo, {
+                preferJoin: lastMutationWasDelete,
+                preferFill: lastMutationWasInsert
+              });
+              lastMutationWasDelete = false;
+              lastMutationWasInsert = false;
+              if (!firstRunLogged) {
+                firstRunLogged = true;
+                console.info("[Startup] first pagination run", {
+                  ms: Math.round(performance.now() - startupAt)
+                });
+              }
+            },
+            onSettled: () => {
+              try {
+                editorView.dom.dispatchEvent(
+                  new CustomEvent("leditor:layout-settled", {
+                    bubbles: true,
+                    detail: { source: "pagination" }
+                  })
+                );
+              } catch {
+                // ignore
+              }
+            },
+            throttleMs: 50,
+            settleMs: 220
+          });
+          const handleExternalPaginationRequest = () => {
+            scheduler.request();
+          };
+          logPaginationStats(editorView, "scheduler mounted");
+          scheduler.request();
+          editorView.dom.addEventListener(
+            "leditor:pagination-request",
+            handleExternalPaginationRequest as EventListener
+          );
+          return {
+            update(view, prevState) {
+              if (view.state.doc.eq(prevState.doc)) return;
+              logPaginationStats(view, "scheduler queue");
+              scheduler.request();
+            },
+            destroy() {
+              editorView.dom.removeEventListener(
+                "leditor:pagination-request",
+                handleExternalPaginationRequest as EventListener
+              );
+              scheduler.dispose();
+            }
+          };
+        }
+      })
+    ];
+  }
+});
