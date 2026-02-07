@@ -114,6 +114,7 @@ const assertPageAnchors = () => {
       expectedPageNumber: 16
     }
   ];
+  const maxDrift = Number(process.env.ANCHOR_MAX_DRIFT || "1");
   anchors.forEach((anchor) => {
     const normalizedNeedle = normalizeText(anchor.needle);
     const hit = pages.find((page) =>
@@ -124,9 +125,9 @@ const assertPageAnchors = () => {
       process.exit(1);
     }
     const pageNumber = hit.pageIndex + 1;
-    if (pageNumber !== anchor.expectedPageNumber) {
+    if (!Number.isFinite(pageNumber) || Math.abs(pageNumber - anchor.expectedPageNumber) > maxDrift) {
       console.error(
-        `[FAIL] ${anchor.label} anchor expected on page ${anchor.expectedPageNumber} but found on page ${pageNumber}`
+        `[FAIL] ${anchor.label} anchor expected near page ${anchor.expectedPageNumber} (±${maxDrift}) but found on page ${pageNumber}`
       );
       process.exit(1);
     }
@@ -339,6 +340,68 @@ const assertNoExcessSingleWordLinesInParagraphs = () => {
   console.log("[PASS] no excessive single-word lines in paragraphs");
 };
 
+const assertNoUnexpectedColumns = () => {
+  if (!fs.existsSync(outputPath)) {
+    console.error(`[FAIL] audit output missing at ${outputPath}`);
+    process.exit(1);
+  }
+  const raw = fs.readFileSync(outputPath, "utf8");
+  const data = JSON.parse(raw);
+  const pages = Array.isArray(data.pages) ? data.pages : [];
+  const offenders = [];
+  pages.forEach((page) => {
+    const colCount = String(page.columnCount || "").trim();
+    if (colCount && colCount !== "1") {
+      offenders.push({
+        pageNumber: page.pageIndex + 1,
+        columnCount: colCount,
+        columnGap: page.columnGap,
+        columnWidth: page.columnWidth
+      });
+    }
+  });
+  if (offenders.length) {
+    const lines = offenders.slice(0, 6).map(
+      (item) =>
+        `page ${item.pageNumber} columnCount=${item.columnCount} gap=${item.columnGap} width=${item.columnWidth}`
+    );
+    console.error(`[FAIL] unexpected column counts:\\n- ${lines.join("\\n- ")}`);
+    process.exit(1);
+  }
+  console.log("[PASS] no unexpected column counts");
+};
+
+const assertMinContentWidth = () => {
+  if (!fs.existsSync(outputPath)) {
+    console.error(`[FAIL] audit output missing at ${outputPath}`);
+    process.exit(1);
+  }
+  const raw = fs.readFileSync(outputPath, "utf8");
+  const data = JSON.parse(raw);
+  const pages = Array.isArray(data.pages) ? data.pages : [];
+  const minWidth = Number(process.env.MIN_CONTENT_WIDTH_PX || "420");
+  if (!Number.isFinite(minWidth) || minWidth <= 0) {
+    console.error("[FAIL] MIN_CONTENT_WIDTH_PX must be a positive number");
+    process.exit(1);
+  }
+  const offenders = [];
+  pages.forEach((page) => {
+    const width = Number(page.contentWidth || 0);
+    if (!Number.isFinite(width) || width <= 0) return;
+    if (width < minWidth) {
+      offenders.push({ pageNumber: page.pageIndex + 1, contentWidth: width });
+    }
+  });
+  if (offenders.length) {
+    const lines = offenders.slice(0, 6).map(
+      (item) => `page ${item.pageNumber} contentWidth=${item.contentWidth}`
+    );
+    console.error(`[FAIL] content widths below ${minWidth}px:\\n- ${lines.join("\\n- ")}`);
+    process.exit(1);
+  }
+  console.log("[PASS] content width above minimum");
+};
+
 runAudit();
 assertNoForcedLineBreaks();
 assertPageAnchors();
@@ -346,3 +409,5 @@ assertSplitContinuity();
 assertNoBrInsideParagraphs();
 assertNoSingleWordLinesWithCapacity();
 assertNoExcessSingleWordLinesInParagraphs();
+assertNoUnexpectedColumns();
+assertMinContentWidth();

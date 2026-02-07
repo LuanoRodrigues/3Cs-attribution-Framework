@@ -1141,7 +1141,7 @@ html, body {
   line-height: 0;
   border: 0;
   text-align: center;
-  font-size: 11px;
+  font-size: 0;
   color: var(--ui-muted-strong);
   pointer-events: none;
   overflow: visible;
@@ -1164,6 +1164,8 @@ html, body {
   transform: translate(-50%, -50%);
   background: var(--ui-bg);
   padding: 0 8px;
+  font-size: 11px;
+  line-height: 1;
   white-space: nowrap;
 }
 .leditor-break, .leditor-break::before, .leditor-break::after {
@@ -1352,7 +1354,7 @@ html, body {
   line-height: 0;
   border: 0;
   text-align: center;
-  font-size: 11px;
+  font-size: 0;
   color: var(--ui-muted-strong);
   pointer-events: none;
   overflow: visible;
@@ -1377,7 +1379,8 @@ html, body {
   padding: 0 12px;
   background: var(--page-bg);
   color: var(--ui-text);
-  font-size: 10px;
+  font-size: 11px;
+  line-height: 1;
   font-weight: 600;
   white-space: nowrap;
 }

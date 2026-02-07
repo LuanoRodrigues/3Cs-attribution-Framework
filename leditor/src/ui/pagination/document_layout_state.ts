@@ -286,9 +286,16 @@ export const applyDocumentLayoutTokens = (root: HTMLElement): void => {
   root.style.setProperty("--footnote-max-height-ratio", String(state.footnoteMaxHeightRatio));
   root.style.setProperty("--footnote-separator-height", `${computePx(state.footnoteSeparatorHeightIn)}px`);
   root.style.setProperty("--footnote-separator-color", state.footnoteSeparatorColor);
+  const inlineSplitPolicy = spec.pagination?.inlineSplit;
   const flowRules = spec.pagination?.flowRules;
-  if (flowRules) {
-    root.style.setProperty("--widow-lines", String(flowRules.widowsMinLines));
-    root.style.setProperty("--orphan-lines", String(flowRules.orphansMinLines));
+  const widowsMinLines = inlineSplitPolicy?.widowsMinLines ?? flowRules?.widowsMinLines;
+  const orphansMinLines = inlineSplitPolicy?.orphansMinLines ?? flowRules?.orphansMinLines;
+  if (!Number.isFinite(widowsMinLines) || (widowsMinLines as number) < 1) {
+    throw new Error("DocumentLayoutSpec widowsMinLines is missing or invalid.");
   }
+  if (!Number.isFinite(orphansMinLines) || (orphansMinLines as number) < 1) {
+    throw new Error("DocumentLayoutSpec orphansMinLines is missing or invalid.");
+  }
+  root.style.setProperty("--widow-lines", String(widowsMinLines));
+  root.style.setProperty("--orphan-lines", String(orphansMinLines));
 };

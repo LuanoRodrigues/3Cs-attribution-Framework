@@ -566,6 +566,9 @@ const run = async () => {
             const nbspChar = String.fromCharCode(160);
             const contentRect = content.getBoundingClientRect();
             const style = getComputedStyle(content);
+            const columnCount = style.columnCount;
+            const columnGap = style.columnGap;
+            const columnWidth = style.columnWidth;
             const paddingBottom = parseFloat(style.paddingBottom || "0") || 0;
             const lineHeight = resolveLineHeightPx(style);
             const rectHeight = contentRect.height || 0;
@@ -708,6 +711,10 @@ const run = async () => {
               maxLines,
               usedLines,
               remainingLines,
+              contentWidth,
+              columnCount,
+              columnGap,
+              columnWidth,
               rectHeight,
               clientHeight,
               offsetHeight,

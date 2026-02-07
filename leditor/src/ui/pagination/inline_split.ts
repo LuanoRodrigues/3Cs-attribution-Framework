@@ -7,14 +7,12 @@ export type InlineSplitResult = {
 type InlineSplitOptions = {
   block: HTMLElement;
   pageContent: HTMLElement;
+  maxLines: number;
   lineHeightPx: number;
   paddingBottomPx: number;
-  maxLines: number;
-  usedLinesBefore: number;
-  minHeadLines: number;
-  minTailLines: number;
   preferWordBoundary: boolean;
-  measureMode: "replace" | "append";
+  orphansMinLines: number;
+  widowsMinLines: number;
 };
 
 const getTextNodes = (root: HTMLElement): Text[] => {
@@ -63,62 +61,38 @@ const deleteBeforeIndex = (root: HTMLElement, index: number): void => {
   }
 };
 
-const computeUsedLines = (scrollHeightPx: number, paddingBottomPx: number, lineHeightPx: number): number => {
-  if (!Number.isFinite(scrollHeightPx) || !Number.isFinite(paddingBottomPx) || !Number.isFinite(lineHeightPx)) {
-    throw new Error("computeUsedLines requires finite inputs.");
-  }
-  if (lineHeightPx <= 0) {
-    throw new Error("computeUsedLines requires a positive line height.");
-  }
-  const raw = (scrollHeightPx - paddingBottomPx) / lineHeightPx;
-  if (!Number.isFinite(raw)) return 0;
-  return Math.max(0, Math.ceil(raw));
+const computeUsedLines = (pageContent: HTMLElement, lineHeightPx: number, paddingBottomPx: number): number => {
+  const rawHeight = pageContent.scrollHeight - paddingBottomPx;
+  if (!Number.isFinite(rawHeight) || rawHeight <= 0) return 0;
+  return Math.ceil(rawHeight / lineHeightPx);
 };
 
-const withProbe = <T>(
-  pageContent: HTMLElement,
-  probe: HTMLElement,
-  mode: "replace" | "append",
-  fn: () => T
-): T => {
-  if (mode === "append") {
-    pageContent.appendChild(probe);
-    try {
-      return fn();
-    } finally {
-      probe.remove();
-    }
-  }
-  const existing = Array.from(pageContent.childNodes);
-  pageContent.replaceChildren(probe);
-  try {
-    return fn();
-  } finally {
-    pageContent.replaceChildren(...existing);
-  }
+const computeBlockLines = (block: HTMLElement, lineHeightPx: number): number => {
+  const height = block.scrollHeight;
+  if (!Number.isFinite(height) || height <= 0) return 0;
+  return Math.max(1, Math.round(height / lineHeightPx));
 };
 
-const measurePageLines = (
-  probe: HTMLElement,
+const measureHeadFits = (
+  headProbe: HTMLElement,
   pageContent: HTMLElement,
-  paddingBottomPx: number,
+  maxLines: number,
   lineHeightPx: number,
-  mode: "replace" | "append"
-): number =>
-  withProbe(pageContent, probe, mode, () =>
-    computeUsedLines(pageContent.scrollHeight, paddingBottomPx, lineHeightPx)
-  );
+  paddingBottomPx: number
+): { fits: boolean; usedLines: number; headLines: number } => {
+  pageContent.appendChild(headProbe);
+  const usedLines = computeUsedLines(pageContent, lineHeightPx, paddingBottomPx);
+  const headLines = computeBlockLines(headProbe, lineHeightPx);
+  headProbe.remove();
+  return { fits: usedLines <= maxLines, usedLines, headLines };
+};
 
-const measureBlockLines = (
-  probe: HTMLElement,
-  pageContent: HTMLElement,
-  lineHeightPx: number
-): number =>
-  withProbe(pageContent, probe, "replace", () => {
-    const raw = probe.scrollHeight / lineHeightPx;
-    if (!Number.isFinite(raw)) return 0;
-    return Math.max(1, Math.round(raw));
-  });
+const measureTailLines = (tailProbe: HTMLElement, pageContent: HTMLElement, lineHeightPx: number): number => {
+  pageContent.appendChild(tailProbe);
+  const lines = computeBlockLines(tailProbe, lineHeightPx);
+  tailProbe.remove();
+  return lines;
+};
 
 const buildSplitCandidates = (text: string, preferWordBoundary: boolean): number[] => {
   const length = text.length;
@@ -126,138 +100,113 @@ const buildSplitCandidates = (text: string, preferWordBoundary: boolean): number
   if (!preferWordBoundary) {
     return Array.from({ length: length - 1 }, (_, index) => index + 1);
   }
-  let indices: number[] = [];
-  if (typeof Intl !== "undefined" && typeof Intl.Segmenter === "function") {
-    const segmenter = new Intl.Segmenter(undefined, { granularity: "word" });
-    for (const segment of segmenter.segment(text)) {
-      const end = segment.index + segment.segment.length;
-      if (end > 0 && end < length) {
-        indices.push(end);
+  const indices: number[] = [];
+  for (let i = 0; i < length; i += 1) {
+    const ch = text[i];
+    if (ch === " " || ch === "\n" || ch === "\t") {
+      if (i + 1 < length) {
+        indices.push(i + 1);
       }
     }
   }
   if (indices.length === 0) {
-    for (let i = 0; i < length; i += 1) {
-      const ch = text[i];
-      if (ch === " " || ch === "\n" || ch === "\t") {
-        if (i + 1 < length) {
-          indices.push(i + 1);
-        }
-      }
-    }
+    return Array.from({ length: length - 1 }, (_, index) => index + 1);
   }
-  if (indices.length === 0) {
-    indices = Array.from({ length: length - 1 }, (_, index) => index + 1);
-  }
-  return Array.from(new Set(indices)).sort((a, b) => a - b);
+  return indices;
 };
 
-export const splitBlockInline = (options: InlineSplitOptions): InlineSplitResult => {
+export const splitBlockInline = (options: InlineSplitOptions): InlineSplitResult | null => {
   const {
     block,
     pageContent,
+    maxLines,
     lineHeightPx,
     paddingBottomPx,
-    maxLines,
-    usedLinesBefore,
-    minHeadLines,
-    minTailLines,
     preferWordBoundary,
-    measureMode
+    orphansMinLines,
+    widowsMinLines
   } = options;
-  if (lineHeightPx <= 0 || !Number.isFinite(lineHeightPx)) {
+
+  if (!Number.isFinite(maxLines) || maxLines < 1) {
+    throw new Error("Inline split requires a positive maxLines.");
+  }
+  if (!Number.isFinite(lineHeightPx) || lineHeightPx <= 0) {
     throw new Error("Inline split requires a positive lineHeightPx.");
   }
   if (!Number.isFinite(paddingBottomPx) || paddingBottomPx < 0) {
     throw new Error("Inline split requires a non-negative paddingBottomPx.");
   }
-  if (!Number.isFinite(maxLines) || maxLines <= 0) {
-    throw new Error("Inline split requires a positive maxLines.");
+  if (!Number.isFinite(orphansMinLines) || orphansMinLines < 1) {
+    throw new Error("Inline split requires a positive orphansMinLines.");
   }
-  if (!Number.isFinite(usedLinesBefore) || usedLinesBefore < 0) {
-    throw new Error("Inline split requires a non-negative usedLinesBefore.");
+  if (!Number.isFinite(widowsMinLines) || widowsMinLines < 1) {
+    throw new Error("Inline split requires a positive widowsMinLines.");
   }
-  if (!Number.isFinite(minHeadLines) || !Number.isFinite(minTailLines)) {
-    throw new Error("Inline split requires finite widow/orphan constraints.");
-  }
-  if (minHeadLines < 0 || minTailLines < 0) {
-    throw new Error("Inline split requires non-negative widow/orphan constraints.");
-  }
-  const remainingLines = maxLines - usedLinesBefore;
-  if (!Number.isFinite(remainingLines) || remainingLines <= 0) {
-    throw new Error("Inline split requires remaining line capacity.");
-  }
+
   const textNodes = getTextNodes(block);
   if (textNodes.length === 0) {
-    throw new Error("Inline split requires text nodes.");
+    return null;
   }
   const totalLength = getTextLength(textNodes);
   if (totalLength <= 1) {
-    throw new Error("Inline split requires a longer text block.");
+    return null;
   }
   const text = block.textContent ?? "";
   if (text.length !== totalLength) {
-    throw new Error("Inline split text length mismatch.");
+    return null;
   }
   const candidates = buildSplitCandidates(text, preferWordBoundary);
   if (candidates.length === 0) {
-    throw new Error("Inline split has no candidate boundaries.");
+    return null;
   }
 
-  let bestCandidateIndex = -1;
+  let bestIndex = -1;
   let low = 0;
   let high = candidates.length - 1;
   while (low <= high) {
     const mid = Math.floor((low + high) / 2);
     const splitIndex = candidates[mid];
-    const probe = block.cloneNode(true) as HTMLElement;
-    deleteAfterIndex(probe, splitIndex);
-    const usedLinesAfter = measurePageLines(probe, pageContent, paddingBottomPx, lineHeightPx, measureMode);
-    if (usedLinesAfter <= maxLines) {
-      bestCandidateIndex = mid;
-      low = mid + 1;
-    } else {
+
+    const headProbe = block.cloneNode(true) as HTMLElement;
+    headProbe.classList.add("leditor-split-fragment--head");
+    deleteAfterIndex(headProbe, splitIndex);
+
+    const { fits, headLines } = measureHeadFits(headProbe, pageContent, maxLines, lineHeightPx, paddingBottomPx);
+    if (!fits) {
       high = mid - 1;
+      continue;
     }
-  }
-
-  if (bestCandidateIndex < 0) {
-    throw new Error("Inline split could not find a fitting split point.");
-  }
-
-  const originalNodeId = block.dataset.leditorNodeId || null;
-  for (let i = bestCandidateIndex; i >= 0; i -= 1) {
-    const splitIndex = candidates[i];
-    const head = block.cloneNode(true) as HTMLElement;
-    const tail = block.cloneNode(true) as HTMLElement;
-    deleteAfterIndex(head, splitIndex);
-    deleteBeforeIndex(tail, splitIndex);
-
-    if (!head.textContent || !tail.textContent) {
+    if (headLines < orphansMinLines) {
+      high = mid - 1;
       continue;
     }
 
-    const headLines = measureBlockLines(head, pageContent, lineHeightPx);
-    if (headLines < minHeadLines) {
-      break;
-    }
-    const tailLines = measureBlockLines(tail, pageContent, lineHeightPx);
-    if (tailLines < minTailLines) {
-      continue;
-    }
-    const usedLinesAfter = measurePageLines(head, pageContent, paddingBottomPx, lineHeightPx, measureMode);
-    if (usedLinesAfter > maxLines) {
+    const tailProbe = block.cloneNode(true) as HTMLElement;
+    deleteBeforeIndex(tailProbe, splitIndex);
+    const tailLines = measureTailLines(tailProbe, pageContent, lineHeightPx);
+    if (tailLines < widowsMinLines) {
+      high = mid - 1;
       continue;
     }
 
-    head.classList.add("leditor-split-fragment--head");
-    tail.classList.add("leditor-split-fragment--tail");
-    if (originalNodeId) {
-      head.dataset.leditorNodeId = originalNodeId;
-      tail.dataset.leditorNodeId = `${originalNodeId}:cont:${splitIndex}`;
-    }
-    return { head, tail, splitIndex };
+    bestIndex = splitIndex;
+    low = mid + 1;
   }
 
-  throw new Error("Inline split could not satisfy widow/orphan constraints.");
+  if (bestIndex <= 0 || bestIndex >= totalLength) {
+    return null;
+  }
+
+  const head = block.cloneNode(true) as HTMLElement;
+  const tail = block.cloneNode(true) as HTMLElement;
+  head.classList.add("leditor-split-fragment--head");
+  tail.classList.add("leditor-split-fragment--tail");
+  deleteAfterIndex(head, bestIndex);
+  deleteBeforeIndex(tail, bestIndex);
+
+  if (!head.textContent || !tail.textContent) {
+    return null;
+  }
+
+  return { head, tail, splitIndex: bestIndex };
 };

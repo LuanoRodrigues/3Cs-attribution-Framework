@@ -296,8 +296,8 @@ export const documentLayoutSpec = {
         ".leditor-keep-together"
       ] as readonly string[],
       headingSelectors: ["h1", "h2", "h3", "h4", "h5", "h6"] as readonly string[],
-      atomicSelectors: ["table", "figure", "img", "pre", ".leditor-keep-together"] as readonly string[],
-      atomicInitially: ["table", "figure", "img", "pre", ".leditor-keep-together"] as readonly string[],
+      atomicSelectors: ["ul", "ol", "table", "figure", "img", "pre", ".leditor-keep-together"] as readonly string[],
+      atomicInitially: ["ul", "ol", "table", "figure", "img", "pre", ".leditor-keep-together"] as readonly string[],
       manualBreakHandling: "Break nodes end the current page immediately.",
       overflowHandling:
         "If a block overflows an empty page, trigger inlineSplit if eligible; else mark unsplittable."
@@ -305,6 +305,10 @@ export const documentLayoutSpec = {
     inlineSplit: {
       enabled: true,
       eligibleSelectors: ["p", "li", "blockquote"] as readonly string[],
+      widowsMinLines: 2,
+      orphansMinLines: 2,
+      headingKeepWithNext: true,
+      headingMinNextLines: 1,
       splitPolicy: {
         boundaryPreference: "word",
         fallback: "character",

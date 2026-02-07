@@ -1,7 +1,7 @@
 import { getDocumentLayoutSpec } from "./document_layout_state.ts";
 import type { PageHost } from "./page_host.ts";
-import { derivePageMetrics } from "./page_metrics.ts";
-import { saveSelectionBookmark, restoreSelectionBookmark } from "./selection_bookmark.ts";
+import { derivePageMetrics, type PageMetrics } from "./page_metrics.ts";
+import { saveSelectionBookmark, restoreSelectionBookmark, type SelectionBookmark } from "./selection_bookmark.ts";
 import { splitBlockInline, type InlineSplitResult } from "./inline_split.ts";
 import { allocateSectionId, parseSectionMeta, type SectionMeta } from "../../editor/section_state";
 
@@ -12,16 +12,26 @@ type PaginatorOptions = {
   onPageCountChange?: (count: number) => void;
 };
 
+type BuiltPage = {
+  nextCursor: number;
+  lastConsumed: HTMLElement | null;
+  endedByHardBreak: boolean;
+};
+
 export class Paginator {
   private spec = getDocumentLayoutSpec();
   private pageableSelectors: string[];
   private breakSelectors: string[];
   private sectionBreakSelectors: string[];
   private inlineSplitSelectors: string[];
-  private inlineSplitEnabled: boolean;
   private headingSelectors: string[];
   private atomicSelectors: string[];
-  private flowRules: NonNullable<ReturnType<typeof getDocumentLayoutSpec>["pagination"]>["flowRules"];
+
+  private inlineSplitEnabled: boolean;
+  private widowsMinLines: number;
+  private orphansMinLines: number;
+  private headingKeepWithNext: boolean;
+  private headingMinNextLines: number;
 
   constructor(private options: PaginatorOptions) {
     if (!options.root) {
@@ -42,38 +52,43 @@ export class Paginator {
     if (!sectionBreaks || sectionBreaks.length === 0) {
       throw new Error("Paginator requires section break selectors.");
     }
+
+    const headingSelectors = this.spec.pagination?.blockPagination?.headingSelectors;
+    if (!headingSelectors || headingSelectors.length === 0) {
+      throw new Error("Paginator requires heading selectors.");
+    }
+    const atomicSelectors = this.spec.pagination?.blockPagination?.atomicSelectors;
+    if (!atomicSelectors || atomicSelectors.length === 0) {
+      throw new Error("Paginator requires atomic selectors.");
+    }
+
     const inlineSplit = this.spec.pagination?.inlineSplit;
     if (!inlineSplit) {
       throw new Error("Paginator requires inline split configuration.");
-    }
-    const flowRules = this.spec.pagination?.flowRules;
-    if (!flowRules) {
-      throw new Error("Paginator requires pagination flow rules.");
     }
     const inlineSelectors = inlineSplit.eligibleSelectors;
     if (!inlineSelectors || inlineSelectors.length === 0) {
       throw new Error("Paginator requires inline split selectors.");
     }
-    const blockPagination = this.spec.pagination?.blockPagination;
-    if (!blockPagination) {
-      throw new Error("Paginator requires block pagination configuration.");
+    if (!Number.isFinite(inlineSplit.widowsMinLines) || inlineSplit.widowsMinLines < 1) {
+      throw new Error("Paginator requires inlineSplit.widowsMinLines >= 1.");
     }
-    const headingSelectors = blockPagination.headingSelectors;
-    if (!headingSelectors || headingSelectors.length === 0) {
-      throw new Error("Paginator requires heading selectors.");
+    if (!Number.isFinite(inlineSplit.orphansMinLines) || inlineSplit.orphansMinLines < 1) {
+      throw new Error("Paginator requires inlineSplit.orphansMinLines >= 1.");
     }
-    const atomicSelectors = blockPagination.atomicSelectors;
-    if (!atomicSelectors || atomicSelectors.length === 0) {
-      throw new Error("Paginator requires atomic selectors.");
-    }
+
     this.pageableSelectors = Array.from(pageable);
     this.breakSelectors = Array.from(breaks);
     this.sectionBreakSelectors = Array.from(sectionBreaks);
     this.inlineSplitSelectors = Array.from(inlineSelectors);
-    this.inlineSplitEnabled = inlineSplit.enabled;
     this.headingSelectors = Array.from(headingSelectors);
     this.atomicSelectors = Array.from(atomicSelectors);
-    this.flowRules = flowRules;
+
+    this.inlineSplitEnabled = inlineSplit.enabled;
+    this.widowsMinLines = inlineSplit.widowsMinLines;
+    this.orphansMinLines = inlineSplit.orphansMinLines;
+    this.headingKeepWithNext = inlineSplit.headingKeepWithNext !== false;
+    this.headingMinNextLines = inlineSplit.headingMinNextLines ?? 1;
   }
 
   paginate(): void {
@@ -92,8 +107,55 @@ export class Paginator {
 
     blocks.forEach((block) => block.remove());
     this.clearPagesFromIndex(0);
-    const result = this.paginateBlocks(blocks, 0, 0, currentSectionId, currentSectionMeta);
-    this.options.pageHost.ensurePageCount(Math.max(1, result.usedPages.length));
+
+    let cursor = 0;
+    let pageIndex = 0;
+    const usedPages: HTMLElement[] = [];
+    while (cursor < blocks.length) {
+      this.options.pageHost.ensurePageCount(pageIndex + 1);
+      const content = this.options.pageHost.getPageContents()[pageIndex];
+      if (!content) {
+        throw new Error(`Missing page content for index ${pageIndex}.`);
+      }
+      content.replaceChildren();
+      const pageElement = content.closest<HTMLElement>(".leditor-page");
+      if (!pageElement) {
+        throw new Error("Paginator requires a page element.");
+      }
+
+      const metrics = derivePageMetrics({
+        page: pageElement,
+        pageContent: content,
+        pageStack: this.options.pageStack
+      });
+      const maxLines = this.computeMaxLines(metrics);
+
+      this.applySectionMetadata(pageElement, currentSectionId, currentSectionMeta);
+
+      const built = this.buildPage({
+        blocks,
+        startCursor: cursor,
+        pageContent: content,
+        metrics,
+        maxLines,
+        bookmark
+      });
+
+      cursor = built.nextCursor;
+
+      const lastBlock = built.lastConsumed;
+      if (lastBlock && this.isSectionBreak(lastBlock)) {
+        const meta = parseSectionMeta(lastBlock.dataset.sectionSettings);
+        currentSectionMeta = meta;
+        currentSectionId = allocateSectionId();
+      }
+
+      usedPages.push(content);
+      pageIndex = this.applyParityPadding(pageIndex, lastBlock, usedPages);
+      pageIndex += 1;
+    }
+
+    this.options.pageHost.ensurePageCount(Math.max(1, usedPages.length));
     this.notifyPageCount();
     restoreSelectionBookmark(this.options.root, bookmark);
   }
@@ -107,234 +169,163 @@ export class Paginator {
     if (startIndex < 0) {
       throw new Error("Dirty block not found during pagination.");
     }
-    const pageIndex = this.findPageIndexForBlock(dirtyBlock);
-    if (pageIndex < 0) {
+    const startPageIndex = this.findPageIndexForBlock(dirtyBlock);
+    if (startPageIndex < 0) {
       throw new Error("Dirty block page index not found.");
     }
+
     blocks.slice(startIndex).forEach((block) => block.remove());
-    this.clearPagesFromIndex(pageIndex);
-    const result = this.paginateBlocks(blocks, startIndex, pageIndex, currentSectionId, currentSectionMeta);
-    this.options.pageHost.ensurePageCount(Math.max(1, result.nextPageIndex));
+    this.clearPagesFromIndex(startPageIndex);
+
+    let cursor = startIndex;
+    let pageIndex = startPageIndex;
+    const usedPages: HTMLElement[] = [];
+    while (cursor < blocks.length) {
+      this.options.pageHost.ensurePageCount(pageIndex + 1);
+      const content = this.options.pageHost.getPageContents()[pageIndex];
+      if (!content) {
+        throw new Error(`Missing page content for index ${pageIndex}.`);
+      }
+      content.replaceChildren();
+      const pageElement = content.closest<HTMLElement>(".leditor-page");
+      if (!pageElement) {
+        throw new Error("Paginator requires a page element.");
+      }
+
+      const metrics = derivePageMetrics({
+        page: pageElement,
+        pageContent: content,
+        pageStack: this.options.pageStack
+      });
+      const maxLines = this.computeMaxLines(metrics);
+
+      this.applySectionMetadata(pageElement, currentSectionId, currentSectionMeta);
+
+      const built = this.buildPage({
+        blocks,
+        startCursor: cursor,
+        pageContent: content,
+        metrics,
+        maxLines,
+        bookmark
+      });
+
+      cursor = built.nextCursor;
+
+      const lastBlock = built.lastConsumed;
+      if (lastBlock && this.isSectionBreak(lastBlock)) {
+        const meta = parseSectionMeta(lastBlock.dataset.sectionSettings);
+        currentSectionMeta = meta;
+        currentSectionId = allocateSectionId();
+      }
+
+      usedPages.push(content);
+      pageIndex = this.applyParityPadding(pageIndex, lastBlock, usedPages);
+      pageIndex += 1;
+    }
+
+    this.options.pageHost.ensurePageCount(Math.max(1, pageIndex));
     this.notifyPageCount();
     restoreSelectionBookmark(this.options.root, bookmark);
+  }
+
+  private buildPage(args: {
+    blocks: HTMLElement[];
+    startCursor: number;
+    pageContent: HTMLElement;
+    metrics: PageMetrics;
+    maxLines: number;
+    bookmark: SelectionBookmark;
+  }): BuiltPage {
+    const { blocks, startCursor, pageContent, metrics, maxLines, bookmark } = args;
+
+    let cursor = startCursor;
+    let endedByHardBreak = false;
+
+    while (cursor < blocks.length) {
+      const block = blocks[cursor];
+
+      if (this.isManualBreak(block) || this.isForcedSectionBreak(block)) {
+        pageContent.appendChild(block);
+        cursor += 1;
+        endedByHardBreak = true;
+        break;
+      }
+
+      pageContent.appendChild(block);
+      if (this.fitsLineBudget(pageContent, metrics, maxLines)) {
+        cursor += 1;
+        continue;
+      }
+      block.remove();
+
+      if (this.headingKeepWithNext && this.isHeading(block) && pageContent.children.length > 0) {
+        break;
+      }
+
+      if (this.isAtomic(block)) {
+        if (pageContent.children.length === 0) {
+          pageContent.appendChild(block);
+          cursor += 1;
+        }
+        break;
+      }
+
+      if (this.inlineSplitEnabled && this.isInlineSplitEligible(block)) {
+        const usedLines = this.computeUsedLines(pageContent, metrics);
+        const remainingLines = maxLines - usedLines;
+        const minHead = pageContent.children.length === 0 ? 1 : this.orphansMinLines;
+        const minTail = pageContent.children.length === 0 ? 1 : this.widowsMinLines;
+
+        if (remainingLines < minHead && pageContent.children.length > 0) {
+          break;
+        }
+
+        const split = this.applyInlineSplit(block, pageContent, metrics, maxLines, minHead, minTail);
+        if (!split) {
+          if (pageContent.children.length === 0) {
+            pageContent.appendChild(block);
+            cursor += 1;
+          }
+          break;
+        }
+
+        this.applySplitNodeIdsAndRemapBookmark(bookmark, block, split);
+        blocks[cursor] = split.head;
+        blocks.splice(cursor + 1, 0, split.tail);
+
+        pageContent.appendChild(split.head);
+        cursor += 1;
+        break;
+      }
+
+      if (pageContent.children.length === 0) {
+        pageContent.appendChild(block);
+        cursor += 1;
+      }
+      break;
+    }
+
+    if (this.headingKeepWithNext && !endedByHardBreak && cursor < blocks.length) {
+      const last = pageContent.lastElementChild as HTMLElement | null;
+      if (last && this.isHeading(last)) {
+        last.remove();
+        cursor -= 1;
+        if (pageContent.children.length === 0) {
+          pageContent.appendChild(last);
+          cursor += 1;
+        }
+      }
+    }
+
+    const lastConsumed = pageContent.lastElementChild as HTMLElement | null;
+    return { nextCursor: cursor, lastConsumed, endedByHardBreak };
   }
 
   private notifyPageCount(): void {
     if (this.options.onPageCountChange) {
       this.options.onPageCountChange(this.options.pageHost.getPageContents().length);
     }
-  }
-
-  private paginateBlocks(
-    blocks: HTMLElement[],
-    startIndex: number,
-    startPageIndex: number,
-    currentSectionId: string,
-    currentSectionMeta: SectionMeta
-  ): {
-    usedPages: HTMLElement[];
-    nextPageIndex: number;
-    currentSectionId: string;
-    currentSectionMeta: SectionMeta;
-  } {
-    let cursor = startIndex;
-    let pageIndex = startPageIndex;
-    const usedPages: HTMLElement[] = [];
-
-    while (cursor < blocks.length) {
-      this.options.pageHost.ensurePageCount(pageIndex + 1);
-      const pageContents = this.options.pageHost.getPageContents();
-      const content = pageContents[pageIndex];
-      if (!content) {
-        throw new Error(`Missing page content for index ${pageIndex}.`);
-      }
-      content.replaceChildren();
-      const metrics = derivePageMetrics({
-        page: content.closest(".leditor-page") as HTMLElement,
-        pageContent: content,
-        pageStack: this.options.pageStack
-      });
-      const maxLines = this.computeMaxLines(metrics);
-      const pageElement = content.closest<HTMLElement>(".leditor-page");
-      if (!pageElement) {
-        throw new Error("Paginator requires a page element for section metadata.");
-      }
-      this.applySectionMetadata(pageElement, currentSectionId, currentSectionMeta);
-
-      let usedLines = 0;
-      let pageHasContent = false;
-      let pageEndedByHardBreak = false;
-      let lastConsumedIndex = -1;
-      let lastConsumedBlock: HTMLElement | null = null;
-
-      while (cursor < blocks.length) {
-        const block = blocks[cursor];
-
-        if (this.isManualBreak(block) || this.isForcedSectionBreak(block)) {
-          content.appendChild(block);
-          lastConsumedIndex = cursor;
-          lastConsumedBlock = block;
-          cursor += 1;
-          pageHasContent = true;
-          pageEndedByHardBreak = true;
-          break;
-        }
-
-        content.appendChild(block);
-        const usedAfter = this.computeUsedLines(content, metrics);
-        if (usedAfter <= maxLines) {
-          usedLines = usedAfter;
-          pageHasContent = true;
-          lastConsumedIndex = cursor;
-          lastConsumedBlock = block;
-          cursor += 1;
-
-          if (
-            this.flowRules.headingKeepWithNext &&
-            this.isHeading(block) &&
-            cursor < blocks.length
-          ) {
-            const nextBlock = blocks[cursor];
-            const remainingLines = maxLines - usedLines;
-            if (
-              remainingLines < this.flowRules.headingMinNextLines &&
-              !this.isManualBreak(nextBlock) &&
-              !this.isForcedSectionBreak(nextBlock)
-            ) {
-              content.removeChild(block);
-              cursor -= 1;
-              usedLines = this.computeUsedLines(content, metrics);
-              pageHasContent = content.children.length > 0;
-              lastConsumedBlock = pageHasContent
-                ? (content.lastElementChild as HTMLElement | null)
-                : null;
-              lastConsumedIndex = pageHasContent ? cursor - 1 : -1;
-              break;
-            }
-          }
-          continue;
-        }
-
-        content.removeChild(block);
-
-        if (this.isHeading(block)) {
-          if (!pageHasContent) {
-            content.appendChild(block);
-            usedLines = this.computeUsedLines(content, metrics);
-            pageHasContent = true;
-            lastConsumedIndex = cursor;
-            lastConsumedBlock = block;
-            cursor += 1;
-          }
-          break;
-        }
-
-        if (this.isAtomic(block)) {
-          if (!pageHasContent) {
-            content.appendChild(block);
-            usedLines = this.computeUsedLines(content, metrics);
-            pageHasContent = true;
-            lastConsumedIndex = cursor;
-            lastConsumedBlock = block;
-            cursor += 1;
-          }
-          break;
-        }
-
-        if (this.inlineSplitEnabled && this.isInlineSplitEligible(block)) {
-          if (pageHasContent) {
-            const remainingLines = maxLines - usedLines;
-            if (remainingLines >= this.flowRules.orphansMinLines) {
-              const split = this.tryInlineSplit(
-                block,
-                content,
-                metrics,
-                usedLines,
-                maxLines,
-                "append",
-                this.flowRules.orphansMinLines
-              );
-              if (split) {
-                blocks[cursor] = split.head;
-                blocks.splice(cursor + 1, 0, split.tail);
-                content.appendChild(split.head);
-                usedLines = this.computeUsedLines(content, metrics);
-                pageHasContent = true;
-                lastConsumedIndex = cursor;
-                lastConsumedBlock = split.head;
-                cursor += 1;
-              }
-            }
-            break;
-          }
-
-          const relaxedMinHeadLines = Math.max(1, Math.min(this.flowRules.orphansMinLines, maxLines));
-          const split = this.tryInlineSplit(
-            block,
-            content,
-            metrics,
-            0,
-            maxLines,
-            "replace",
-            relaxedMinHeadLines
-          );
-          if (split) {
-            blocks[cursor] = split.head;
-            blocks.splice(cursor + 1, 0, split.tail);
-            content.appendChild(split.head);
-            usedLines = this.computeUsedLines(content, metrics);
-            pageHasContent = true;
-            lastConsumedIndex = cursor;
-            lastConsumedBlock = split.head;
-            cursor += 1;
-          } else {
-            content.appendChild(block);
-            usedLines = this.computeUsedLines(content, metrics);
-            pageHasContent = true;
-            lastConsumedIndex = cursor;
-            lastConsumedBlock = block;
-            cursor += 1;
-          }
-          break;
-        }
-
-        if (!pageHasContent) {
-          content.appendChild(block);
-          usedLines = this.computeUsedLines(content, metrics);
-          pageHasContent = true;
-          lastConsumedIndex = cursor;
-          lastConsumedBlock = block;
-          cursor += 1;
-        }
-        break;
-      }
-
-      if (this.flowRules.headingKeepWithNext && !pageEndedByHardBreak && cursor < blocks.length) {
-        const nextBlock = blocks[cursor];
-        if (!this.isManualBreak(nextBlock) && !this.isForcedSectionBreak(nextBlock)) {
-          const lastNonBreak = this.getLastNonBreakChild(content);
-          if (lastNonBreak && this.isHeading(lastNonBreak)) {
-            if (content.children.length > 1 && lastConsumedIndex >= 0) {
-              content.removeChild(lastNonBreak);
-              cursor = lastConsumedIndex;
-              lastConsumedIndex = cursor - 1;
-              lastConsumedBlock = content.lastElementChild as HTMLElement | null;
-            }
-          }
-        }
-      }
-
-      if (lastConsumedBlock && this.isSectionBreak(lastConsumedBlock)) {
-        const meta = parseSectionMeta(lastConsumedBlock.dataset.sectionSettings);
-        currentSectionMeta = meta;
-        currentSectionId = allocateSectionId();
-      }
-      usedPages.push(content);
-      pageIndex = this.applyParityPadding(pageIndex, lastConsumedBlock, usedPages);
-      pageIndex += 1;
-    }
-
-    return { usedPages, nextPageIndex: pageIndex, currentSectionId, currentSectionMeta };
   }
 
   private collectBlocks(): HTMLElement[] {
@@ -378,10 +369,7 @@ export class Paginator {
   }
 
   private isPageable(node: HTMLElement): boolean {
-    if (this.pageableSelectors.some((selector) => node.matches(selector))) {
-      return true;
-    }
-    return false;
+    return this.pageableSelectors.some((selector) => node.matches(selector));
   }
 
   private isManualBreak(node: HTMLElement): boolean {
@@ -390,6 +378,14 @@ export class Paginator {
 
   private isSectionBreak(node: HTMLElement): boolean {
     return this.sectionBreakSelectors.some((selector) => node.matches(selector));
+  }
+
+  private isHeading(node: HTMLElement): boolean {
+    return this.headingSelectors.some((selector) => node.matches(selector));
+  }
+
+  private isAtomic(node: HTMLElement): boolean {
+    return this.atomicSelectors.some((selector) => node.matches(selector));
   }
 
   private getSectionBreakKind(node: HTMLElement): string | null {
@@ -416,50 +412,23 @@ export class Paginator {
     return this.inlineSplitSelectors.some((selector) => node.matches(selector));
   }
 
-  private isHeading(node: HTMLElement): boolean {
-    return this.headingSelectors.some((selector) => node.matches(selector));
+  private computeMaxLines(metrics: PageMetrics): number {
+    const available = metrics.contentHeightPx - metrics.paddingBottomPx + metrics.tolerancePx;
+    if (!Number.isFinite(available) || available <= 0) {
+      throw new Error("Page has non-positive available height for line budgeting.");
+    }
+    const maxLines = Math.floor(available / metrics.lineHeightPx);
+    return Math.max(1, maxLines);
   }
 
-  private isAtomic(node: HTMLElement): boolean {
-    return this.atomicSelectors.some((selector) => node.matches(selector));
+  private computeUsedLines(pageContent: HTMLElement, metrics: PageMetrics): number {
+    const rawHeight = pageContent.scrollHeight - metrics.paddingBottomPx;
+    if (!Number.isFinite(rawHeight) || rawHeight <= 0) return 0;
+    return Math.ceil(rawHeight / metrics.lineHeightPx);
   }
 
-  private computeMaxLines(metrics: ReturnType<typeof derivePageMetrics>): number {
-    const lineHeightPx = metrics.lineHeightPx;
-    if (!Number.isFinite(lineHeightPx) || lineHeightPx <= 0) {
-      throw new Error("Paginator requires a positive line height.");
-    }
-    const raw = (metrics.contentHeightPx - metrics.paddingBottomPx + metrics.tolerancePx) / lineHeightPx;
-    if (!Number.isFinite(raw)) {
-      throw new Error("Paginator failed to compute max lines.");
-    }
-    return Math.max(0, Math.floor(raw));
-  }
-
-  private computeUsedLines(
-    pageContent: HTMLElement,
-    metrics: ReturnType<typeof derivePageMetrics>
-  ): number {
-    const lineHeightPx = metrics.lineHeightPx;
-    if (!Number.isFinite(lineHeightPx) || lineHeightPx <= 0) {
-      throw new Error("Paginator requires a positive line height.");
-    }
-    const raw = (pageContent.scrollHeight - metrics.paddingBottomPx) / lineHeightPx;
-    if (!Number.isFinite(raw)) return 0;
-    return Math.max(0, Math.ceil(raw));
-  }
-
-  private getLastNonBreakChild(content: HTMLElement): HTMLElement | null {
-    const children = Array.from(content.children).filter(
-      (node): node is HTMLElement => node instanceof HTMLElement
-    );
-    for (let i = children.length - 1; i >= 0; i -= 1) {
-      const child = children[i];
-      if (!this.isManualBreak(child) && !this.isSectionBreak(child)) {
-        return child;
-      }
-    }
-    return null;
+  private fitsLineBudget(pageContent: HTMLElement, metrics: PageMetrics, maxLines: number): boolean {
+    return this.computeUsedLines(pageContent, metrics) <= maxLines;
   }
 
   private applyParityPadding(
@@ -491,44 +460,142 @@ export class Paginator {
     return blankIndex;
   }
 
-  private tryInlineSplit(
+  private applyInlineSplit(
     block: HTMLElement,
     pageContent: HTMLElement,
-    metrics: ReturnType<typeof derivePageMetrics>,
-    usedLinesBefore: number,
+    metrics: PageMetrics,
     maxLines: number,
-    measureMode: "replace" | "append",
-    minHeadLines: number
+    minHeadLines: number,
+    minTailLines: number
   ): InlineSplitResult | null {
     if (!this.inlineSplitEnabled) {
-      return null;
+      throw new Error("Inline split is disabled in spec.");
     }
     if (!this.isInlineSplitEligible(block)) {
-      return null;
+      throw new Error("Block is not eligible for inline split.");
     }
-    try {
-      return splitBlockInline({
-        block,
-        pageContent,
-        lineHeightPx: metrics.lineHeightPx,
-        paddingBottomPx: metrics.paddingBottomPx,
-        maxLines,
-        usedLinesBefore,
-        minHeadLines,
-        minTailLines: this.flowRules.widowsMinLines,
-        preferWordBoundary: true,
-        measureMode
-      });
-    } catch {
-      return null;
-    }
+    return splitBlockInline({
+      block,
+      pageContent,
+      maxLines,
+      lineHeightPx: metrics.lineHeightPx,
+      paddingBottomPx: metrics.paddingBottomPx,
+      preferWordBoundary: true,
+      orphansMinLines: minHeadLines,
+      widowsMinLines: minTailLines
+    });
   }
 
-  private applySectionMetadata(
-    page: HTMLElement,
-    sectionId: string,
-    meta: SectionMeta
+  private getNodePath(base: Node, target: Node): number[] {
+    const path: number[] = [];
+    let current: Node | null = target;
+    while (current && current !== base) {
+      const parent: ParentNode | null = current.parentNode;
+      if (!parent) {
+        throw new Error("Selection path cannot be resolved to base node.");
+      }
+      const index = Array.from(parent.childNodes).indexOf(current as ChildNode);
+      if (index < 0) {
+        throw new Error("Selection node index not found.");
+      }
+      path.push(index);
+      current = parent as Node;
+    }
+    if (current !== base) {
+      throw new Error("Selection path base mismatch.");
+    }
+    return path.reverse();
+  }
+
+  private resolveNodePath(base: Node, path: number[]): Node {
+    let current: Node = base;
+    for (const index of path) {
+      const child = current.childNodes[index];
+      if (!child) {
+        throw new Error("Selection path resolution failed.");
+      }
+      current = child;
+    }
+    return current;
+  }
+
+  private getTextNodes(root: HTMLElement): Text[] {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+    const nodes: Text[] = [];
+    let current = walker.nextNode();
+    while (current) {
+      nodes.push(current as Text);
+      current = walker.nextNode();
+    }
+    return nodes;
+  }
+
+  private computeAbsoluteTextOffset(base: HTMLElement, locator: { path: number[]; offset: number }): number {
+    const node = this.resolveNodePath(base, locator.path);
+    if (node.nodeType !== Node.TEXT_NODE) {
+      throw new Error("Selection remap requires a Text node container.");
+    }
+    const nodes = this.getTextNodes(base);
+    let total = 0;
+    for (const textNode of nodes) {
+      if (textNode === node) {
+        const value = textNode.nodeValue ?? "";
+        if (locator.offset < 0 || locator.offset > value.length) {
+          throw new Error("Selection offset is out of bounds.");
+        }
+        return total + locator.offset;
+      }
+      total += (textNode.nodeValue ?? "").length;
+    }
+    throw new Error("Selection remap text node not found.");
+  }
+
+  private locateTextOffset(base: HTMLElement, absoluteIndex: number): { path: number[]; offset: number } {
+    const nodes = this.getTextNodes(base);
+    let remaining = absoluteIndex;
+    for (const textNode of nodes) {
+      const value = textNode.nodeValue ?? "";
+      if (remaining <= value.length) {
+        return { path: this.getNodePath(base, textNode), offset: remaining };
+      }
+      remaining -= value.length;
+    }
+    throw new Error("Selection remap absolute index is out of bounds.");
+  }
+
+  private applySplitNodeIdsAndRemapBookmark(
+    bookmark: SelectionBookmark,
+    originalBlock: HTMLElement,
+    split: InlineSplitResult
   ): void {
+    const originalId = (originalBlock.dataset.leditorNodeId || "").trim();
+    if (!originalId) {
+      return;
+    }
+
+    const tailId = `${originalId}:cont:${split.splitIndex}`;
+    split.head.dataset.leditorNodeId = originalId;
+    split.tail.dataset.leditorNodeId = tailId;
+
+    const remapLocator = (locator: { nodeId: string | null; path: number[]; offset: number }): void => {
+      if (locator.nodeId !== originalId) return;
+
+      const abs = this.computeAbsoluteTextOffset(originalBlock, locator);
+      const inTail = abs >= split.splitIndex;
+      const target = inTail ? split.tail : split.head;
+      const targetIndex = inTail ? abs - split.splitIndex : abs;
+      const mapped = this.locateTextOffset(target, targetIndex);
+
+      locator.nodeId = inTail ? tailId : originalId;
+      locator.path = mapped.path;
+      locator.offset = mapped.offset;
+    };
+
+    remapLocator(bookmark.anchor);
+    remapLocator(bookmark.focus);
+  }
+
+  private applySectionMetadata(page: HTMLElement, sectionId: string, meta: SectionMeta): void {
     page.dataset.sectionId = sectionId;
     page.dataset.sectionSettings = JSON.stringify(meta);
   }

@@ -33,6 +33,30 @@ const readPx = (value: string, label: string): number => {
   return parsed;
 };
 
+const readLineHeightPx = (lineHeightValue: string, fontSizeValue: string): number => {
+  const raw = (lineHeightValue || "").trim();
+  if (raw === "normal") {
+    throw new Error('Computed line-height is "normal"; set an explicit line-height for deterministic pagination.');
+  }
+  if (raw.endsWith("px")) {
+    const px = readPx(raw, "lineHeight");
+    if (px <= 0) {
+      throw new Error("Computed lineHeightPx must be positive.");
+    }
+    return px;
+  }
+  const multiplier = Number.parseFloat(raw);
+  if (!Number.isFinite(multiplier) || multiplier <= 0) {
+    throw new Error(`Invalid CSS line-height value: "${lineHeightValue}".`);
+  }
+  const fontSizePx = readPx(fontSizeValue, "fontSize");
+  const px = multiplier * fontSizePx;
+  if (!Number.isFinite(px) || px <= 0) {
+    throw new Error("Computed lineHeightPx must be positive.");
+  }
+  return px;
+};
+
 const resolveCssLength = (value: string, anchor: HTMLElement): number => {
   const probe = document.createElement("div");
   probe.style.position = "absolute";
@@ -79,20 +103,7 @@ export const derivePageMetrics = ({ page, pageContent, pageStack }: PageMetricsI
     throw new Error("Page content has non-positive dimensions.");
   }
   const contentStyle = getComputedStyle(pageContent);
-  const rawLineHeight = contentStyle.lineHeight.trim();
-  let lineHeightPx: number | null = null;
-  if (rawLineHeight.endsWith("px")) {
-    lineHeightPx = readPx(rawLineHeight, "lineHeight");
-  } else {
-    const unitless = Number.parseFloat(rawLineHeight);
-    if (Number.isFinite(unitless) && unitless > 0) {
-      const fontSizePx = readPx(contentStyle.fontSize, "fontSize");
-      lineHeightPx = unitless * fontSizePx;
-    }
-  }
-  if (!Number.isFinite(lineHeightPx) || lineHeightPx <= 0) {
-    throw new Error(`Computed lineHeight is invalid: ${contentStyle.lineHeight}`);
-  }
+  const lineHeightPx = readLineHeightPx(contentStyle.lineHeight, contentStyle.fontSize);
   const paddingBottomPx = readPx(contentStyle.paddingBottom, "paddingBottom");
   if (!Number.isFinite(paddingBottomPx) || paddingBottomPx < 0) {
     throw new Error(`Computed paddingBottom is invalid: ${contentStyle.paddingBottom}`);
