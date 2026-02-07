@@ -35,6 +35,7 @@ const resolvePythonBinary = (): string => {
 const resolveHostScript = (): string => {
   const appPath = app.getAppPath();
   const candidates = [
+    path.join(appPath, "dist", "backend", "datahub_host.py"),
     path.join(appPath, "backend", "datahub_host.py"),
     path.join(appPath, "src", "pages", "retrieve", "datahub_host.py"),
     path.join(appPath, "..", "src", "pages", "retrieve", "datahub_host.py"),

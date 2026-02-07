@@ -128,6 +128,7 @@ const shouldForceSingleColumn = (): boolean =>
 const enforceSingleColumnStyle = (content: HTMLElement | null, force = false) => {
   if (!content) return;
   if (!force && !shouldForceSingleColumn()) return;
+  content.style.setProperty("columns", "auto 1", "important");
   content.style.setProperty("column-count", "1", "important");
   content.style.setProperty("column-gap", "0px", "important");
   content.style.setProperty("column-fill", "auto", "important");
@@ -1468,6 +1469,7 @@ html, body {
   overflow: hidden;
   pointer-events: auto;
   hyphens: var(--page-hyphens, manual);
+  columns: auto 1 !important;
   column-count: 1 !important;
   column-gap: 0 !important;
   column-width: auto !important;
@@ -2755,7 +2757,7 @@ export const mountA4Layout = (
       if (footnoteMode) {
         footnotePaginationArmed = true;
         requestEditorPagination();
-        requestPagination();
+        requestPagination("footnote:idle");
       }
     }, FOOTNOTE_PAGINATION_IDLE_MS);
   };
@@ -4143,12 +4145,14 @@ export const mountA4Layout = (
             setFootnoteLayoutVars(pageContent, reservePx, effectiveBottomPx, gapPx, guardPx);
             const prevHeight = footnoteHeightCache.get(pageIndex);
             const appliedHeight = reservePx;
-          if (prevHeight === undefined || Math.abs(appliedHeight - prevHeight) >= FOOTNOTE_HEIGHT_DIRTY_THRESHOLD) {
-            footnoteHeightCache.set(pageIndex, appliedHeight);
-            earliestDirtyPage = earliestDirtyPage === null ? pageIndex : Math.min(earliestDirtyPage, pageIndex);
-            layoutChanged = true;
-            if (reservePx > 0) flashFootnoteReflow(pageIndex);
-          }
+            if (prevHeight === undefined || Math.abs(appliedHeight - prevHeight) >= FOOTNOTE_HEIGHT_DIRTY_THRESHOLD) {
+              footnoteHeightCache.set(pageIndex, appliedHeight);
+              if (appliedHeight > 0) {
+                earliestDirtyPage = earliestDirtyPage === null ? pageIndex : Math.min(earliestDirtyPage, pageIndex);
+                layoutChanged = true;
+                flashFootnoteReflow(pageIndex);
+              }
+            }
             updateFootnoteDebugData(container, { appliedHeight, overlap: false });
           }
           return;
@@ -4359,6 +4363,15 @@ export const mountA4Layout = (
         if (!shouldPaginate) return;
         if (!footnotePaginationArmed && signature && signature === lastFootnotePaginationDocSignature) return;
         if ((window as any).__leditorDisablePaginationUntil) return;
+        if ((window as any).__leditorPaginationDebug) {
+          console.info("[PaginationDebug] footnote pagination request", {
+            earliestDirtyPage,
+            signature,
+            attempts: footnotePaginationAttempts,
+            cooldownUntil: Math.round(footnotePaginationCooldownUntil),
+            pageCount: getPageStackPages().length
+          });
+        }
         // Repaginate immediately so body text yields space as soon as footnotes grow.
         footnotePaginationArmed = false;
         if (footnoteTypingPaginationTimer != null) {
@@ -4380,7 +4393,7 @@ export const mountA4Layout = (
           // ignore
         }
         requestEditorPagination();
-        requestPagination();
+        requestPagination("footnote:height");
       }
 	    });
 	  }
@@ -5249,7 +5262,21 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
       const pageColumns = rootStyle.getPropertyValue("--page-columns").trim();
       {
         const contents = editorEl.querySelectorAll<HTMLElement>(".leditor-page-content");
-        contents.forEach((content) => enforceSingleColumnStyle(content, true));
+        let overflowDetected = false;
+        contents.forEach((content) => {
+          enforceSingleColumnStyle(content, true);
+          if (!overflowDetected) {
+            const overflow = content.scrollWidth - content.clientWidth;
+            if (Number.isFinite(overflow) && overflow > 2) overflowDetected = true;
+          }
+        });
+        if (overflowDetected) {
+          try {
+            (window as any).__leditorPaginationOverflowAt = performance.now();
+          } catch {
+            // ignore
+          }
+        }
       }
       if (window.__leditorPaginationDebug && isPaginationDebugVerbose()) {
         console.info("[PaginationDebug] css tokens", {
@@ -5450,7 +5477,7 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
     }
   };
 
-  function requestPagination() {
+  function requestPagination(reason = "unspecified") {
     const now = performance.now();
     const docSignature =
       lastFootnoteDocSignature ||
@@ -5467,6 +5494,17 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
     paginationRequestCount += 1;
     if (paginationRequestCount > PAGINATION_REQUEST_LIMIT) return;
     if (paginationQueued) return;
+    if ((window as any).__leditorPaginationDebug) {
+      try {
+        console.info("[a4_layout.ts][requestPagination][debug] request", {
+          reason,
+          docSignature,
+          count: paginationRequestCount
+        });
+      } catch {
+        // ignore
+      }
+    }
     paginationQueued = true;
     window.requestAnimationFrame(() => {
       paginationQueued = false;
@@ -5496,18 +5534,18 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
     };
     const timeoutId = window.setTimeout(() => {
       release();
-      requestPagination();
+      requestPagination("fonts:timeout");
     }, 1500);
     fonts.ready
       .then(() => {
         window.clearTimeout(timeoutId);
         release();
-        requestPagination();
+        requestPagination("fonts:ready");
       })
       .catch(() => {
         window.clearTimeout(timeoutId);
         release();
-        requestPagination();
+        requestPagination("fonts:error");
       });
   };
   armInitialPaginationAfterFonts();
@@ -5528,7 +5566,7 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
     }
     manualContentFrameHeight = clampContentFrameHeight(value);
     updateContentHeight();
-    requestPagination();
+    requestPagination("content-frame:set");
   };
 
   const adjustContentFrameHeight = (delta: number) => {
@@ -5540,13 +5578,13 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
       CONTENT_FRAME_MAX_PX;
     manualContentFrameHeight = clampContentFrameHeight(base + delta);
     updateContentHeight();
-    requestPagination();
+    requestPagination("content-frame:adjust");
   };
 
   const resetContentFrameHeight = () => {
     manualContentFrameHeight = null;
     updateContentHeight();
-    requestPagination();
+    requestPagination("content-frame:reset");
   };
 
   marginUpdate = updatePagination;
@@ -7242,6 +7280,14 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
           if (reset) parts.push("RESET");
         }
       }
+      if (node.type?.name === "footnoteBody") {
+        const id = typeof node.attrs?.footnoteId === "string" ? String(node.attrs.footnoteId).trim() : "";
+        if (!id) return true;
+        const rawKind = typeof node.attrs?.kind === "string" ? String(node.attrs.kind) : "footnote";
+        const kind: FootnoteKind = rawKind === "endnote" ? "endnote" : "footnote";
+        parts.push(`BODY:${kind}:${id}`);
+        return true;
+      }
       if (node.type?.name !== "footnote") return true;
       const id = typeof node.attrs?.footnoteId === "string" ? String(node.attrs.footnoteId).trim() : "";
       const rawKind = typeof node.attrs?.kind === "string" ? String(node.attrs.kind) : "footnote";
@@ -7284,6 +7330,7 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
   let lastPaginationDocSignature = computePaginationDocSignature(attachedEditorHandle?.getEditor?.()?.state?.doc);
   const pageObserver = new MutationObserver(() => {
     scheduleFootnoteLayoutVarSync();
+    if ((window as any).__leditorDisablePaginationUntil) return;
     if (suspendPageObserver || paginationQueued || footnoteMode || headerFooterMode) return;
     const editorInstance = attachedEditorHandle?.getEditor?.() ?? null;
     const nextSignature = computePaginationDocSignature(editorInstance?.state?.doc);
@@ -7294,7 +7341,7 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
       return;
     }
     lastPaginationDocSignature = nextSignature;
-    requestPagination();
+    requestPagination("dom:mutation");
   });
   pageObserver.observe(editorEl, { childList: true, subtree: true });
 

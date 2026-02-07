@@ -43,9 +43,11 @@ const resolveHostScript = (): string => {
   const appPath = app.getAppPath();
   const pythonBackendPath = path.join(appPath, "shared", "python_backend", "visualise", "visualise_host.py");
   const candidates = [
+    path.join(appPath, "dist", "shared", "python_backend", "visualise", "visualise_host.py"),
     pythonBackendPath,
     path.join(appPath, "..", "shared", "python_backend", "visualise", "visualise_host.py"),
     path.join(appPath, "..", "..", "shared", "python_backend", "visualise", "visualise_host.py"),
+    path.join(appPath, "dist", "backend", "visualise_host.py"),
     path.join(appPath, "backend", "visualise_host.py"),
     path.join(appPath, "src", "pages", "visualise", "visualise_host.py"),
     path.join(appPath, "..", "src", "pages", "visualise", "visualise_host.py"),

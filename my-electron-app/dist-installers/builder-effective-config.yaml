@@ -1,0 +1,26 @@
+directories:
+  output: dist-installers
+  buildResources: build
+appId: com.teia.annotarium
+productName: Annotarium
+asar: false
+files:
+  - filter:
+      - dist/**
+      - node_modules/**
+      - package.json
+mac:
+  target:
+    - dmg
+  icon: ../leditor/assets/icons/leditor.icns
+  category: public.app-category.productivity
+win:
+  target:
+    - nsis
+  icon: ../leditor/assets/icons/leditor.ico
+fileAssociations:
+  - ext: ledoc
+    name: Annotarium Document
+    description: Annotarium LEDOC bundle
+    icon: ../leditor/assets/icons/ledoc.ico
+electronVersion: 40.0.0

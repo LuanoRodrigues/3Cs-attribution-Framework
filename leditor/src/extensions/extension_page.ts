@@ -104,12 +104,15 @@ const shouldSuppressPaginationRun = (view?: any): boolean => {
 const shouldForceSingleColumn = (): boolean =>
   typeof window !== "undefined" && (window as any).__leditorDisableColumns !== false;
 
-const enforceSingleColumnContent = (content: HTMLElement | null) => {
-  if (!content || !shouldForceSingleColumn()) return;
-  content.style.columnCount = "1";
-  content.style.columnGap = "0px";
-  content.style.columnFill = "auto";
-  content.style.columnWidth = "auto";
+const enforceSingleColumnContent = (content: HTMLElement | null, force = false) => {
+  if (!content) return;
+  if (!force && !shouldForceSingleColumn()) return;
+  const priority = force ? "important" : "";
+  content.style.setProperty("columns", "auto 1", priority);
+  content.style.setProperty("column-count", "1", priority);
+  content.style.setProperty("column-gap", "0px", priority);
+  content.style.setProperty("column-fill", "auto", priority);
+  content.style.setProperty("column-width", "auto", priority);
 };
 
 const shouldLogBlockMetrics = (): boolean => {
@@ -3670,7 +3673,7 @@ const findSplitTarget = (
   content: HTMLElement,
   tolerance = 1
 ): { target: HTMLElement; after: boolean; reason: "keepWithNext" | "overflow" | "manual" } | null => {
-  enforceSingleColumnContent(content);
+  enforceSingleColumnContent(content, true);
   const { usableHeight } = getContentMetrics(content);
   if (usableHeight <= 0) {
     logDebug("page content height is non-positive", { usableHeight });
@@ -3691,10 +3694,25 @@ const findSplitTarget = (
     renderDebugLimit(content, bottomLimit);
   }
   const children = getContentChildren(content);
+  const clientWidth = content.clientWidth || 0;
+  if (clientWidth > 0) {
+    const rightShiftThreshold = clientWidth * 0.55;
+    for (const child of children) {
+      const box = getRelativeBox(child, content);
+      if (box.left > rightShiftThreshold) {
+        logDebug("horizontal flow split", {
+          pageIndex: getPageIndexForContent(content),
+          clientWidth,
+          left: box.left,
+          right: box.right
+        });
+        return { target: child, after: false, reason: "overflow" };
+      }
+    }
+  }
   if (shouldLogBlockMetrics()) {
     const contentStyle = getComputedStyle(content);
     const pageIndex = getPageIndexForContent(content);
-    const clientWidth = content.clientWidth;
     const clientHeight = content.clientHeight;
     const scrollWidth = content.scrollWidth;
     const scrollHeight = content.scrollHeight;
@@ -4410,6 +4428,15 @@ const paginateView = (
     }
   };
   const now = performance.now();
+  const isRecentOverflow = () => {
+    try {
+      const at = (window as any).__leditorPaginationOverflowAt;
+      if (typeof at !== "number" || !Number.isFinite(at)) return false;
+      return now - at < 4000;
+    } catch {
+      return false;
+    }
+  };
   const lastInputAt = (window as any).__leditorLastUserInputAt;
   const burstMsRaw = (window as any).__leditorPaginationTypingBurstMs;
   const deferMsRaw = (window as any).__leditorPaginationTypingDeferMs;
@@ -4539,29 +4566,39 @@ const paginateView = (
       dispatchPagination(view, leadingMerge);
       return;
     }
-    const continuationMerge = mergeContinuationParagraphs(view.state, pageType);
-    if (continuationMerge) {
-      continuationMerge.setMeta(paginationKey, { source: "pagination", op: "mergeContinuation" });
-      dispatchPagination(view, continuationMerge);
-      return;
+    const holdMerges =
+      (memo.lastSplitAt > 0 && now - memo.lastSplitAt < JOIN_SPLIT_SUPPRESS_MS) || isRecentOverflow();
+    if (holdMerges && debugEnabled()) {
+      logDebug("skip merge (recent split/overflow)", {
+        lastSplitAt: memo.lastSplitAt,
+        overflowHold: isRecentOverflow()
+      });
     }
-    const headingMerge = mergeHeadingOnlyPages(view.state, pageType);
-    if (headingMerge) {
-      logDebug("merged heading-only page");
-      dispatchPagination(view, headingMerge);
-      return;
-    }
-    const sparseMerge = mergeSparsePages(view.state, pageType);
-    if (sparseMerge) {
-      logDebug("merged sparse page");
-      dispatchPagination(view, sparseMerge);
-      return;
-    }
-    const headingMove = moveTrailingHeadingToNextPage(view.state, pageType);
-    if (headingMove) {
-      logDebug("moved trailing heading");
-      dispatchPagination(view, headingMove);
-      return;
+    if (!holdMerges) {
+      const continuationMerge = mergeContinuationParagraphs(view.state, pageType);
+      if (continuationMerge) {
+        continuationMerge.setMeta(paginationKey, { source: "pagination", op: "mergeContinuation" });
+        dispatchPagination(view, continuationMerge);
+        return;
+      }
+      const headingMerge = mergeHeadingOnlyPages(view.state, pageType);
+      if (headingMerge) {
+        logDebug("merged heading-only page");
+        dispatchPagination(view, headingMerge);
+        return;
+      }
+      const sparseMerge = mergeSparsePages(view.state, pageType);
+      if (sparseMerge) {
+        logDebug("merged sparse page");
+        dispatchPagination(view, sparseMerge);
+        return;
+      }
+      const headingMove = moveTrailingHeadingToNextPage(view.state, pageType);
+      if (headingMove) {
+        logDebug("moved trailing heading");
+        dispatchPagination(view, headingMove);
+        return;
+      }
     }
     // Flatten only immediately after an external doc change (e.g. setContent), never after pagination splits.
     const flattenEligible =
@@ -4664,7 +4701,8 @@ const paginateView = (
       (preferJoin || setContentOrigin) &&
       (!recentSplitHold || preferJoin) &&
       !recentUserSplit &&
-      (!paginationOnlyActive || setContentOrigin);
+      (!paginationOnlyActive || setContentOrigin) &&
+      !isRecentOverflow();
     const allowPullUp = allowAutoJoin;
     const allowJoin = allowAutoJoin && (!recentSplitHold || preferJoin);
     const allowCriticalJoin = allowAutoJoin && (!recentSplitHold || preferJoin);

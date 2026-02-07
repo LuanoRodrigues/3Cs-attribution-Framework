@@ -4496,6 +4496,22 @@ export const commandMap: Record<string, CommandHandler> = {
     // After insertion, the editor selection should be positioned just after the marker. Preserve it as the
     // "return point" when exiting footnote mode.
     focusFootnoteById(result.footnoteId, result.postInsertSelection);
+    try {
+      window.dispatchEvent(new CustomEvent("leditor:footnotes-refresh"));
+    } catch {
+      // ignore
+    }
+    try {
+      window.requestAnimationFrame(() => {
+        try {
+          window.dispatchEvent(new CustomEvent("leditor:footnotes-refresh"));
+        } catch {
+          // ignore
+        }
+      });
+    } catch {
+      // ignore
+    }
   },
   "footnote.insert"(editor) {
     commandMap.InsertFootnote(editor);
@@ -4518,6 +4534,22 @@ export const commandMap: Record<string, CommandHandler> = {
     }
     const result = insertManagedFootnote(editor, "endnote", text, selectionSnapshot);
     focusFootnoteById(result.footnoteId, result.postInsertSelection);
+    try {
+      window.dispatchEvent(new CustomEvent("leditor:footnotes-refresh"));
+    } catch {
+      // ignore
+    }
+    try {
+      window.requestAnimationFrame(() => {
+        try {
+          window.dispatchEvent(new CustomEvent("leditor:footnotes-refresh"));
+        } catch {
+          // ignore
+        }
+      });
+    } catch {
+      // ignore
+    }
   },
   "endnote.insert"(editor) {
     commandMap.InsertEndnote(editor);

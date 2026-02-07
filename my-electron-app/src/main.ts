@@ -2394,6 +2394,7 @@ function resolvePythonBinary(): string {
 function resolveAnalyseAiHostScript(): string {
   const appPath = app.getAppPath();
   const candidates = [
+    path.join(appPath, "dist", "shared", "python_backend", "analyse", "analyse_ai_host.py"),
     path.join(appPath, "shared", "python_backend", "analyse", "analyse_ai_host.py"),
     path.join(appPath, "..", "shared", "python_backend", "analyse", "analyse_ai_host.py"),
     path.join(appPath, "..", "..", "shared", "python_backend", "analyse", "analyse_ai_host.py")

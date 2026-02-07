@@ -663,6 +663,7 @@ export const LEditor = {
             __leditorPaginationOrigin?: string;
             __leditorPaginationOriginAt?: number;
             __leditorLastSetContentAt?: number;
+            __leditorDisablePaginationUntil?: number;
           };
           const now = performance.now();
           g.__leditorPaginationOrigin = "setContent";
@@ -671,6 +672,44 @@ export const LEditor = {
         } catch {
           // ignore
         }
+        const queuePostSetContentPagination = () => {
+          if (typeof window === "undefined") return;
+          const viewDom = (editor?.view?.dom as HTMLElement | null) ?? null;
+          if (!viewDom) return;
+          const token = performance.now() + 2000;
+          try {
+            (window as any).__leditorDisablePaginationUntil = token;
+          } catch {
+            // ignore
+          }
+          const release = () => {
+            try {
+              if ((window as any).__leditorDisablePaginationUntil === token) {
+                (window as any).__leditorDisablePaginationUntil = 0;
+              }
+            } catch {
+              // ignore
+            }
+            try {
+              viewDom.dispatchEvent(new CustomEvent("leditor:pagination-request", { bubbles: true }));
+            } catch {
+              // ignore
+            }
+          };
+          const timeoutId = window.setTimeout(release, 1200);
+          const fonts = (document as any).fonts;
+          if (fonts && typeof fonts.ready?.then === "function") {
+            fonts.ready
+              .then(() => {
+                window.clearTimeout(timeoutId);
+                release();
+              })
+              .catch(() => {
+                window.clearTimeout(timeoutId);
+                release();
+              });
+          }
+        };
         const ensureFootnoteIds = () => {
           try {
             const footnoteType = editor.state.schema.nodes.footnote;
@@ -872,6 +911,7 @@ export const LEditor = {
           } catch {
             // ignore
           }
+          queuePostSetContentPagination();
           return;
         }
         if (opts.format === "markdown") {
@@ -887,6 +927,7 @@ export const LEditor = {
           } catch {
             // ignore
           }
+          queuePostSetContentPagination();
           return;
         }
         if (opts.format === "json") {
@@ -899,6 +940,7 @@ export const LEditor = {
           } catch {
             // ignore
           }
+          queuePostSetContentPagination();
           return;
         }
         throw new Error(`LEditor.setContent: unsupported format "${opts.format}"`);
