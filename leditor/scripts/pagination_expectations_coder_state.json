@@ -5,6 +5,18 @@
       "pageNumber": 2,
       "match": "contains",
       "mustInclude": "rather than a strict state-actor link"
+    },
+    {
+      "label": "page13_attribution_uncertainty",
+      "pageNumber": 13,
+      "match": "contains",
+      "mustInclude": "Attribution uncertainty creates concrete alliance dilemmas"
+    },
+    {
+      "label": "page16_institutional_frictions",
+      "pageNumber": 16,
+      "match": "contains",
+      "mustInclude": "Cross-border legal and institutional frictions"
     }
   ]
 }

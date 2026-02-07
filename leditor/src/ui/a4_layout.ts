@@ -166,8 +166,8 @@ const ensureStyles = () => {
   --heading4-break-after: avoid;
   --heading5-break-after: avoid;
   --heading6-break-after: avoid;
-  --widow-lines: 1;
-  --orphan-lines: 1;
+  --widow-lines: 2;
+  --orphan-lines: 2;
   --header-height: 0.5in;
   --footer-height: 0.5in;
   --header-offset: 0px;
@@ -1135,11 +1135,16 @@ html, body {
 
 .leditor-break {
   position: relative;
-  margin: 16px 0;
-  padding: 6px 0;
+  margin: 0;
+  padding: 0;
+  height: 0;
+  line-height: 0;
+  border: 0;
   text-align: center;
   font-size: 11px;
   color: var(--ui-muted-strong);
+  pointer-events: none;
+  overflow: visible;
 }
 
 .leditor-break::before {
@@ -1147,16 +1152,19 @@ html, body {
   position: absolute;
   left: 0;
   right: 0;
-  top: 50%;
+  top: 0;
   border-top: var(--page-break-line-height) var(--page-break-line-style) var(--page-break-line-color);
-  transform: translateY(-50%);
 }
 
 .leditor-break::after {
   content: attr(data-break-label);
-  position: relative;
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translate(-50%, -50%);
   background: var(--ui-bg);
   padding: 0 8px;
+  white-space: nowrap;
 }
 .leditor-break, .leditor-break::before, .leditor-break::after {
   display: none;
@@ -1338,33 +1346,40 @@ html, body {
 
 .leditor-break {
   position: relative;
-  margin: 18px 0;
-  padding: 6px 0;
+  margin: 0;
+  padding: 0;
+  height: 0;
+  line-height: 0;
+  border: 0;
   text-align: center;
   font-size: 11px;
   color: var(--ui-muted-strong);
   pointer-events: none;
+  overflow: visible;
 }
 
 .leditor-break::before {
   content: "";
   position: absolute;
-  top: 50%;
+  top: 0;
   left: 0;
   right: 0;
   border-top: var(--page-break-line-height) var(--page-break-line-style) var(--page-break-line-color);
-  transform: translateY(-50%);
 }
 
 .leditor-break::after {
   content: attr(data-break-label);
   display: inline-block;
-  position: relative;
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translate(-50%, -50%);
   padding: 0 12px;
   background: var(--page-bg);
   color: var(--ui-text);
   font-size: 10px;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 /* Hide internal "start bibliography on new page" breaks. */
@@ -1466,6 +1481,10 @@ html, body {
   white-space: normal !important;
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+.leditor-page-content .leditor-split-fragment--head {
+  margin-bottom: 0 !important;
 }
 
 .leditor-page-content a,

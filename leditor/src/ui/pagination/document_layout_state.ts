@@ -286,4 +286,9 @@ export const applyDocumentLayoutTokens = (root: HTMLElement): void => {
   root.style.setProperty("--footnote-max-height-ratio", String(state.footnoteMaxHeightRatio));
   root.style.setProperty("--footnote-separator-height", `${computePx(state.footnoteSeparatorHeightIn)}px`);
   root.style.setProperty("--footnote-separator-color", state.footnoteSeparatorColor);
+  const flowRules = spec.pagination?.flowRules;
+  if (flowRules) {
+    root.style.setProperty("--widow-lines", String(flowRules.widowsMinLines));
+    root.style.setProperty("--orphan-lines", String(flowRules.orphansMinLines));
+  }
 };

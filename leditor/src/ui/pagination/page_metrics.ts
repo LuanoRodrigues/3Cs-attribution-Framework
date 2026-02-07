@@ -7,6 +7,8 @@ type PageMetrics = {
   pageHeightPx: number;
   contentWidthPx: number;
   contentHeightPx: number;
+  lineHeightPx: number;
+  paddingBottomPx: number;
   marginTopPx: number;
   marginRightPx: number;
   marginBottomPx: number;
@@ -76,6 +78,25 @@ export const derivePageMetrics = ({ page, pageContent, pageStack }: PageMetricsI
   if (contentWidthPx <= 0 || contentHeightPx <= 0) {
     throw new Error("Page content has non-positive dimensions.");
   }
+  const contentStyle = getComputedStyle(pageContent);
+  const rawLineHeight = contentStyle.lineHeight.trim();
+  let lineHeightPx: number | null = null;
+  if (rawLineHeight.endsWith("px")) {
+    lineHeightPx = readPx(rawLineHeight, "lineHeight");
+  } else {
+    const unitless = Number.parseFloat(rawLineHeight);
+    if (Number.isFinite(unitless) && unitless > 0) {
+      const fontSizePx = readPx(contentStyle.fontSize, "fontSize");
+      lineHeightPx = unitless * fontSizePx;
+    }
+  }
+  if (!Number.isFinite(lineHeightPx) || lineHeightPx <= 0) {
+    throw new Error(`Computed lineHeight is invalid: ${contentStyle.lineHeight}`);
+  }
+  const paddingBottomPx = readPx(contentStyle.paddingBottom, "paddingBottom");
+  if (!Number.isFinite(paddingBottomPx) || paddingBottomPx < 0) {
+    throw new Error(`Computed paddingBottom is invalid: ${contentStyle.paddingBottom}`);
+  }
   const marginTopPx = Math.max(0, contentRect.top - pageRect.top);
   const marginRightPx = Math.max(0, pageRect.right - contentRect.right);
   const marginBottomPx = Math.max(0, pageRect.bottom - contentRect.bottom);
@@ -108,6 +129,8 @@ export const derivePageMetrics = ({ page, pageContent, pageStack }: PageMetricsI
     pageHeightPx,
     contentWidthPx,
     contentHeightPx,
+    lineHeightPx,
+    paddingBottomPx,
     marginTopPx,
     marginRightPx,
     marginBottomPx,

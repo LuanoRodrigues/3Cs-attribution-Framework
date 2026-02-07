@@ -259,6 +259,12 @@ export const documentLayoutSpec = {
       tolerancePx: 1,
       batching: { useRaf: true, useBinarySearchFit: true }
     },
+    flowRules: {
+      orphansMinLines: 2,
+      widowsMinLines: 2,
+      headingKeepWithNext: true,
+      headingMinNextLines: 1
+    },
     contentRectComputation: {
       deriveFrom: "pageSize + margins + orientation + gutter",
       includeHeaderFooterInContentHeight: false,
@@ -281,19 +287,24 @@ export const documentLayoutSpec = {
         "ul",
         "ol",
         "table",
+        "figure",
+        "img",
         "blockquote",
         "pre",
         "hr",
-        ".leditor-break"
+        ".leditor-break",
+        ".leditor-keep-together"
       ] as readonly string[],
-      atomicInitially: ["ul", "ol", "table"] as readonly string[],
+      headingSelectors: ["h1", "h2", "h3", "h4", "h5", "h6"] as readonly string[],
+      atomicSelectors: ["table", "figure", "img", "pre", ".leditor-keep-together"] as readonly string[],
+      atomicInitially: ["table", "figure", "img", "pre", ".leditor-keep-together"] as readonly string[],
       manualBreakHandling: "Break nodes end the current page immediately.",
       overflowHandling:
         "If a block overflows an empty page, trigger inlineSplit if eligible; else mark unsplittable."
     },
     inlineSplit: {
       enabled: true,
-      eligibleSelectors: ["p", "li", "blockquote", "h1", "h2", "h3", "h4", "h5", "h6"] as readonly string[],
+      eligibleSelectors: ["p", "li", "blockquote"] as readonly string[],
       splitPolicy: {
         boundaryPreference: "word",
         fallback: "character",

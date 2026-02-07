@@ -1440,13 +1440,11 @@ export const mountEditor = async () => {
   };
   const applyPayloadToPdfViewer = (iframe: HTMLIFrameElement, payload: Record<string, unknown>) => {
     pendingPdfPayload = payload;
-    const postPayload = (): boolean => {
+    const postPayload = (): void => {
       try {
         iframe.contentWindow?.postMessage({ type: "leditor:pdf-payload", payload }, "*");
-        return true;
       } catch (error) {
         console.warn("[leditor][pdf] postMessage failed", error);
-        return false;
       }
     };
     const tryApply = (): boolean => {
@@ -1462,8 +1460,8 @@ export const mountEditor = async () => {
           console.warn("[leditor][pdf] PDF_APP.loadFromPayload failed", error);
         }
       }
-      const posted = postPayload();
-      return posted && pdfFrameLoaded;
+      postPayload();
+      return false;
     };
 
     if (tryApply()) {
@@ -2311,9 +2309,6 @@ export const mountEditor = async () => {
 	              }) => Promise<any>;
 	            }).__leditorAutoExportLEDOC;
 	            if (!exporter) return;
-	            console.debug(
-	              `[renderer.ts][ledocAutosave][debug] export requested: reason=${reason} pathLen=${targetPath.length}`
-	            );
 	            // IMPORTANT: export-ledoc prompts if the path is missing. For autosave we must set it.
 	            void exporter({ targetPath, suggestedPath: targetPath, prompt: false })
 	              .then((result) => {

@@ -12,11 +12,6 @@ type PaginatorOptions = {
   onPageCountChange?: (count: number) => void;
 };
 
-type PageRange = {
-  start: number;
-  end: number;
-};
-
 export class Paginator {
   private spec = getDocumentLayoutSpec();
   private pageableSelectors: string[];
@@ -24,6 +19,9 @@ export class Paginator {
   private sectionBreakSelectors: string[];
   private inlineSplitSelectors: string[];
   private inlineSplitEnabled: boolean;
+  private headingSelectors: string[];
+  private atomicSelectors: string[];
+  private flowRules: NonNullable<ReturnType<typeof getDocumentLayoutSpec>["pagination"]>["flowRules"];
 
   constructor(private options: PaginatorOptions) {
     if (!options.root) {
@@ -48,15 +46,34 @@ export class Paginator {
     if (!inlineSplit) {
       throw new Error("Paginator requires inline split configuration.");
     }
+    const flowRules = this.spec.pagination?.flowRules;
+    if (!flowRules) {
+      throw new Error("Paginator requires pagination flow rules.");
+    }
     const inlineSelectors = inlineSplit.eligibleSelectors;
     if (!inlineSelectors || inlineSelectors.length === 0) {
       throw new Error("Paginator requires inline split selectors.");
+    }
+    const blockPagination = this.spec.pagination?.blockPagination;
+    if (!blockPagination) {
+      throw new Error("Paginator requires block pagination configuration.");
+    }
+    const headingSelectors = blockPagination.headingSelectors;
+    if (!headingSelectors || headingSelectors.length === 0) {
+      throw new Error("Paginator requires heading selectors.");
+    }
+    const atomicSelectors = blockPagination.atomicSelectors;
+    if (!atomicSelectors || atomicSelectors.length === 0) {
+      throw new Error("Paginator requires atomic selectors.");
     }
     this.pageableSelectors = Array.from(pageable);
     this.breakSelectors = Array.from(breaks);
     this.sectionBreakSelectors = Array.from(sectionBreaks);
     this.inlineSplitSelectors = Array.from(inlineSelectors);
     this.inlineSplitEnabled = inlineSplit.enabled;
+    this.headingSelectors = Array.from(headingSelectors);
+    this.atomicSelectors = Array.from(atomicSelectors);
+    this.flowRules = flowRules;
   }
 
   paginate(): void {
@@ -75,58 +92,8 @@ export class Paginator {
 
     blocks.forEach((block) => block.remove());
     this.clearPagesFromIndex(0);
-
-    let cursor = 0;
-    let pageIndex = 0;
-    const usedPages: HTMLElement[] = [];
-    while (cursor < blocks.length) {
-      this.options.pageHost.ensurePageCount(pageIndex + 1);
-      const pageContents = this.options.pageHost.getPageContents();
-      const content = pageContents[pageIndex];
-      if (!content) {
-        throw new Error(`Missing page content for index ${pageIndex}.`);
-      }
-      content.replaceChildren();
-      const metrics = derivePageMetrics({
-        page: content.closest(".leditor-page") as HTMLElement,
-        pageContent: content,
-        pageStack: this.options.pageStack
-      });
-      const range = this.findPageRange(
-        blocks,
-        cursor,
-        content,
-        metrics.contentHeightPx,
-        metrics.tolerancePx
-      );
-      const pageElement = content.closest<HTMLElement>(".leditor-page");
-      if (!pageElement) {
-        throw new Error("Paginator requires a page element for section metadata.");
-      }
-      this.applySectionMetadata(pageElement, currentSectionId, currentSectionMeta);
-      if (range.end <= range.start) {
-        const block = blocks[cursor];
-        const split = this.applyInlineSplit(block, content, metrics.contentHeightPx, metrics.tolerancePx);
-        blocks[cursor] = split.head;
-        blocks.splice(cursor + 1, 0, split.tail);
-        content.appendChild(split.head);
-        cursor += 1;
-      } else {
-        content.append(...blocks.slice(range.start, range.end));
-        cursor = range.end;
-      }
-      const lastBlock = blocks[cursor - 1] ?? null;
-      if (lastBlock && this.isSectionBreak(lastBlock)) {
-        const meta = parseSectionMeta(lastBlock.dataset.sectionSettings);
-        currentSectionMeta = meta;
-        currentSectionId = allocateSectionId();
-      }
-      usedPages.push(content);
-      pageIndex = this.applyParityPadding(pageIndex, lastBlock, usedPages);
-      pageIndex += 1;
-    }
-
-    this.options.pageHost.ensurePageCount(Math.max(1, usedPages.length));
+    const result = this.paginateBlocks(blocks, 0, 0, currentSectionId, currentSectionMeta);
+    this.options.pageHost.ensurePageCount(Math.max(1, result.usedPages.length));
     this.notifyPageCount();
     restoreSelectionBookmark(this.options.root, bookmark);
   }
@@ -146,58 +113,8 @@ export class Paginator {
     }
     blocks.slice(startIndex).forEach((block) => block.remove());
     this.clearPagesFromIndex(pageIndex);
-
-    let cursor = startIndex;
-    let targetPageIndex = pageIndex;
-    const usedPages: HTMLElement[] = [];
-    while (cursor < blocks.length) {
-      this.options.pageHost.ensurePageCount(targetPageIndex + 1);
-      const pageContents = this.options.pageHost.getPageContents();
-      const content = pageContents[targetPageIndex];
-      if (!content) {
-        throw new Error(`Missing page content for index ${targetPageIndex}.`);
-      }
-      content.replaceChildren();
-      const metrics = derivePageMetrics({
-        page: content.closest(".leditor-page") as HTMLElement,
-        pageContent: content,
-        pageStack: this.options.pageStack
-      });
-      const range = this.findPageRange(
-        blocks,
-        cursor,
-        content,
-        metrics.contentHeightPx,
-        metrics.tolerancePx
-      );
-      const pageElement = content.closest<HTMLElement>(".leditor-page");
-      if (!pageElement) {
-        throw new Error("Paginator requires a page element for section metadata.");
-      }
-      this.applySectionMetadata(pageElement, currentSectionId, currentSectionMeta);
-      if (range.end <= range.start) {
-        const block = blocks[cursor];
-        const split = this.applyInlineSplit(block, content, metrics.contentHeightPx, metrics.tolerancePx);
-        blocks[cursor] = split.head;
-        blocks.splice(cursor + 1, 0, split.tail);
-        content.appendChild(split.head);
-        cursor += 1;
-      } else {
-        content.append(...blocks.slice(range.start, range.end));
-        cursor = range.end;
-      }
-      const lastBlock = blocks[cursor - 1] ?? null;
-      if (lastBlock && this.isSectionBreak(lastBlock)) {
-        const meta = parseSectionMeta(lastBlock.dataset.sectionSettings);
-        currentSectionMeta = meta;
-        currentSectionId = allocateSectionId();
-      }
-      usedPages.push(content);
-      targetPageIndex = this.applyParityPadding(targetPageIndex, lastBlock, usedPages);
-      targetPageIndex += 1;
-    }
-
-    this.options.pageHost.ensurePageCount(Math.max(1, targetPageIndex));
+    const result = this.paginateBlocks(blocks, startIndex, pageIndex, currentSectionId, currentSectionMeta);
+    this.options.pageHost.ensurePageCount(Math.max(1, result.nextPageIndex));
     this.notifyPageCount();
     restoreSelectionBookmark(this.options.root, bookmark);
   }
@@ -206,6 +123,218 @@ export class Paginator {
     if (this.options.onPageCountChange) {
       this.options.onPageCountChange(this.options.pageHost.getPageContents().length);
     }
+  }
+
+  private paginateBlocks(
+    blocks: HTMLElement[],
+    startIndex: number,
+    startPageIndex: number,
+    currentSectionId: string,
+    currentSectionMeta: SectionMeta
+  ): {
+    usedPages: HTMLElement[];
+    nextPageIndex: number;
+    currentSectionId: string;
+    currentSectionMeta: SectionMeta;
+  } {
+    let cursor = startIndex;
+    let pageIndex = startPageIndex;
+    const usedPages: HTMLElement[] = [];
+
+    while (cursor < blocks.length) {
+      this.options.pageHost.ensurePageCount(pageIndex + 1);
+      const pageContents = this.options.pageHost.getPageContents();
+      const content = pageContents[pageIndex];
+      if (!content) {
+        throw new Error(`Missing page content for index ${pageIndex}.`);
+      }
+      content.replaceChildren();
+      const metrics = derivePageMetrics({
+        page: content.closest(".leditor-page") as HTMLElement,
+        pageContent: content,
+        pageStack: this.options.pageStack
+      });
+      const maxLines = this.computeMaxLines(metrics);
+      const pageElement = content.closest<HTMLElement>(".leditor-page");
+      if (!pageElement) {
+        throw new Error("Paginator requires a page element for section metadata.");
+      }
+      this.applySectionMetadata(pageElement, currentSectionId, currentSectionMeta);
+
+      let usedLines = 0;
+      let pageHasContent = false;
+      let pageEndedByHardBreak = false;
+      let lastConsumedIndex = -1;
+      let lastConsumedBlock: HTMLElement | null = null;
+
+      while (cursor < blocks.length) {
+        const block = blocks[cursor];
+
+        if (this.isManualBreak(block) || this.isForcedSectionBreak(block)) {
+          content.appendChild(block);
+          lastConsumedIndex = cursor;
+          lastConsumedBlock = block;
+          cursor += 1;
+          pageHasContent = true;
+          pageEndedByHardBreak = true;
+          break;
+        }
+
+        content.appendChild(block);
+        const usedAfter = this.computeUsedLines(content, metrics);
+        if (usedAfter <= maxLines) {
+          usedLines = usedAfter;
+          pageHasContent = true;
+          lastConsumedIndex = cursor;
+          lastConsumedBlock = block;
+          cursor += 1;
+
+          if (
+            this.flowRules.headingKeepWithNext &&
+            this.isHeading(block) &&
+            cursor < blocks.length
+          ) {
+            const nextBlock = blocks[cursor];
+            const remainingLines = maxLines - usedLines;
+            if (
+              remainingLines < this.flowRules.headingMinNextLines &&
+              !this.isManualBreak(nextBlock) &&
+              !this.isForcedSectionBreak(nextBlock)
+            ) {
+              content.removeChild(block);
+              cursor -= 1;
+              usedLines = this.computeUsedLines(content, metrics);
+              pageHasContent = content.children.length > 0;
+              lastConsumedBlock = pageHasContent
+                ? (content.lastElementChild as HTMLElement | null)
+                : null;
+              lastConsumedIndex = pageHasContent ? cursor - 1 : -1;
+              break;
+            }
+          }
+          continue;
+        }
+
+        content.removeChild(block);
+
+        if (this.isHeading(block)) {
+          if (!pageHasContent) {
+            content.appendChild(block);
+            usedLines = this.computeUsedLines(content, metrics);
+            pageHasContent = true;
+            lastConsumedIndex = cursor;
+            lastConsumedBlock = block;
+            cursor += 1;
+          }
+          break;
+        }
+
+        if (this.isAtomic(block)) {
+          if (!pageHasContent) {
+            content.appendChild(block);
+            usedLines = this.computeUsedLines(content, metrics);
+            pageHasContent = true;
+            lastConsumedIndex = cursor;
+            lastConsumedBlock = block;
+            cursor += 1;
+          }
+          break;
+        }
+
+        if (this.inlineSplitEnabled && this.isInlineSplitEligible(block)) {
+          if (pageHasContent) {
+            const remainingLines = maxLines - usedLines;
+            if (remainingLines >= this.flowRules.orphansMinLines) {
+              const split = this.tryInlineSplit(
+                block,
+                content,
+                metrics,
+                usedLines,
+                maxLines,
+                "append",
+                this.flowRules.orphansMinLines
+              );
+              if (split) {
+                blocks[cursor] = split.head;
+                blocks.splice(cursor + 1, 0, split.tail);
+                content.appendChild(split.head);
+                usedLines = this.computeUsedLines(content, metrics);
+                pageHasContent = true;
+                lastConsumedIndex = cursor;
+                lastConsumedBlock = split.head;
+                cursor += 1;
+              }
+            }
+            break;
+          }
+
+          const relaxedMinHeadLines = Math.max(1, Math.min(this.flowRules.orphansMinLines, maxLines));
+          const split = this.tryInlineSplit(
+            block,
+            content,
+            metrics,
+            0,
+            maxLines,
+            "replace",
+            relaxedMinHeadLines
+          );
+          if (split) {
+            blocks[cursor] = split.head;
+            blocks.splice(cursor + 1, 0, split.tail);
+            content.appendChild(split.head);
+            usedLines = this.computeUsedLines(content, metrics);
+            pageHasContent = true;
+            lastConsumedIndex = cursor;
+            lastConsumedBlock = split.head;
+            cursor += 1;
+          } else {
+            content.appendChild(block);
+            usedLines = this.computeUsedLines(content, metrics);
+            pageHasContent = true;
+            lastConsumedIndex = cursor;
+            lastConsumedBlock = block;
+            cursor += 1;
+          }
+          break;
+        }
+
+        if (!pageHasContent) {
+          content.appendChild(block);
+          usedLines = this.computeUsedLines(content, metrics);
+          pageHasContent = true;
+          lastConsumedIndex = cursor;
+          lastConsumedBlock = block;
+          cursor += 1;
+        }
+        break;
+      }
+
+      if (this.flowRules.headingKeepWithNext && !pageEndedByHardBreak && cursor < blocks.length) {
+        const nextBlock = blocks[cursor];
+        if (!this.isManualBreak(nextBlock) && !this.isForcedSectionBreak(nextBlock)) {
+          const lastNonBreak = this.getLastNonBreakChild(content);
+          if (lastNonBreak && this.isHeading(lastNonBreak)) {
+            if (content.children.length > 1 && lastConsumedIndex >= 0) {
+              content.removeChild(lastNonBreak);
+              cursor = lastConsumedIndex;
+              lastConsumedIndex = cursor - 1;
+              lastConsumedBlock = content.lastElementChild as HTMLElement | null;
+            }
+          }
+        }
+      }
+
+      if (lastConsumedBlock && this.isSectionBreak(lastConsumedBlock)) {
+        const meta = parseSectionMeta(lastConsumedBlock.dataset.sectionSettings);
+        currentSectionMeta = meta;
+        currentSectionId = allocateSectionId();
+      }
+      usedPages.push(content);
+      pageIndex = this.applyParityPadding(pageIndex, lastConsumedBlock, usedPages);
+      pageIndex += 1;
+    }
+
+    return { usedPages, nextPageIndex: pageIndex, currentSectionId, currentSectionMeta };
   }
 
   private collectBlocks(): HTMLElement[] {
@@ -287,50 +416,50 @@ export class Paginator {
     return this.inlineSplitSelectors.some((selector) => node.matches(selector));
   }
 
-  private findPageRange(
-    blocks: HTMLElement[],
-    start: number,
-    pageContent: HTMLElement,
-    contentHeightPx: number,
-    tolerancePx: number
-  ): PageRange {
-    const breakIndex = this.findManualOrSectionBreak(blocks, start);
-    const limit = breakIndex >= 0 ? breakIndex + 1 : blocks.length;
-    const canFit = (end: number): boolean => {
-      pageContent.replaceChildren(...blocks.slice(start, end));
-      const height = pageContent.scrollHeight;
-      return height <= contentHeightPx + tolerancePx;
-    };
-
-    let low = start;
-    let high = limit;
-    while (low < high) {
-      const mid = Math.ceil((low + high) / 2);
-      if (canFit(mid)) {
-        low = mid;
-      } else {
-        high = mid - 1;
-      }
-    }
-
-    const fitEnd = low;
-    if (breakIndex >= 0 && fitEnd < breakIndex + 1) {
-      return { start, end: Math.max(start, fitEnd) };
-    }
-    if (breakIndex >= 0) {
-      const finalEnd = Math.max(start + 1, breakIndex + 1);
-      return { start, end: finalEnd };
-    }
-    return { start, end: Math.max(start, fitEnd) };
+  private isHeading(node: HTMLElement): boolean {
+    return this.headingSelectors.some((selector) => node.matches(selector));
   }
 
-  private findManualOrSectionBreak(blocks: HTMLElement[], start: number): number {
-    for (let i = start; i < blocks.length; i += 1) {
-      if (this.isManualBreak(blocks[i]) || this.isForcedSectionBreak(blocks[i])) {
-        return i;
+  private isAtomic(node: HTMLElement): boolean {
+    return this.atomicSelectors.some((selector) => node.matches(selector));
+  }
+
+  private computeMaxLines(metrics: ReturnType<typeof derivePageMetrics>): number {
+    const lineHeightPx = metrics.lineHeightPx;
+    if (!Number.isFinite(lineHeightPx) || lineHeightPx <= 0) {
+      throw new Error("Paginator requires a positive line height.");
+    }
+    const raw = (metrics.contentHeightPx - metrics.paddingBottomPx + metrics.tolerancePx) / lineHeightPx;
+    if (!Number.isFinite(raw)) {
+      throw new Error("Paginator failed to compute max lines.");
+    }
+    return Math.max(0, Math.floor(raw));
+  }
+
+  private computeUsedLines(
+    pageContent: HTMLElement,
+    metrics: ReturnType<typeof derivePageMetrics>
+  ): number {
+    const lineHeightPx = metrics.lineHeightPx;
+    if (!Number.isFinite(lineHeightPx) || lineHeightPx <= 0) {
+      throw new Error("Paginator requires a positive line height.");
+    }
+    const raw = (pageContent.scrollHeight - metrics.paddingBottomPx) / lineHeightPx;
+    if (!Number.isFinite(raw)) return 0;
+    return Math.max(0, Math.ceil(raw));
+  }
+
+  private getLastNonBreakChild(content: HTMLElement): HTMLElement | null {
+    const children = Array.from(content.children).filter(
+      (node): node is HTMLElement => node instanceof HTMLElement
+    );
+    for (let i = children.length - 1; i >= 0; i -= 1) {
+      const child = children[i];
+      if (!this.isManualBreak(child) && !this.isSectionBreak(child)) {
+        return child;
       }
     }
-    return -1;
+    return null;
   }
 
   private applyParityPadding(
@@ -362,25 +491,37 @@ export class Paginator {
     return blankIndex;
   }
 
-  private applyInlineSplit(
+  private tryInlineSplit(
     block: HTMLElement,
     pageContent: HTMLElement,
-    contentHeightPx: number,
-    tolerancePx: number
-  ): InlineSplitResult {
+    metrics: ReturnType<typeof derivePageMetrics>,
+    usedLinesBefore: number,
+    maxLines: number,
+    measureMode: "replace" | "append",
+    minHeadLines: number
+  ): InlineSplitResult | null {
     if (!this.inlineSplitEnabled) {
-      throw new Error("Inline split is disabled in spec.");
+      return null;
     }
     if (!this.isInlineSplitEligible(block)) {
-      throw new Error("Block is not eligible for inline split.");
+      return null;
     }
-    return splitBlockInline({
-      block,
-      pageContent,
-      contentHeightPx,
-      tolerancePx,
-      preferWordBoundary: true
-    });
+    try {
+      return splitBlockInline({
+        block,
+        pageContent,
+        lineHeightPx: metrics.lineHeightPx,
+        paddingBottomPx: metrics.paddingBottomPx,
+        maxLines,
+        usedLinesBefore,
+        minHeadLines,
+        minTailLines: this.flowRules.widowsMinLines,
+        preferWordBoundary: true,
+        measureMode
+      });
+    } catch {
+      return null;
+    }
   }
 
   private applySectionMetadata(

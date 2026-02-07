@@ -235,6 +235,14 @@ const coercePayload = (raw: unknown, dqid: string): DirectQuotePayload | null =>
   return { dqid, direct_quote: String(raw) };
 };
 
+const logPdfCandidates = (label: string, data: Record<string, unknown>): void => {
+  try {
+    console.info(label, data);
+  } catch {
+    // ignore logging failures
+  }
+};
+
 const resolveLookupPath = async (): Promise<string | null> => {
   const contract = getHostContract();
   const configured = String(contract?.inputs?.directQuoteJsonPath || "").trim();
@@ -313,6 +321,16 @@ export const installDirectQuotePdfOpenHandler = (opts?: { coderStatePath?: strin
         }
         console.info("[leditor][directquote] click", { dqid, lookupPath, anchorId: detail?.anchorId || "" });
         const raw = await host.getDirectQuoteEntry({ lookupPath, dqid });
+        if (raw && typeof raw === "object") {
+          const rawAny = raw as any;
+          logPdfCandidates("[leditor][directquote][raw-pdf]", {
+            dqid,
+            pdf_path: describePdfRef(rawAny.pdf_path),
+            pdf: describePdfRef(rawAny.pdf),
+            source: describePdfRef(rawAny.source),
+            item_key: rawAny.item_key ?? rawAny.itemKey ?? null
+          });
+        }
         const payload = coercePayload(raw, dqid);
         if (!payload) {
           console.warn("[leditor][directquote] dqid not found", { dqid, lookupPath });
@@ -331,6 +349,13 @@ export const installDirectQuotePdfOpenHandler = (opts?: { coderStatePath?: strin
             ?.trim() ||
           "";
         const sourceCandidate = safeString((payload as any).source).trim();
+        logPdfCandidates("[leditor][directquote][pdf-candidates:initial]", {
+          dqid,
+          itemKey: itemKey || null,
+          pdf_path: describePdfRef(payload.pdf_path),
+          pdf: describePdfRef(payload.pdf),
+          source: describePdfRef(sourceCandidate)
+        });
         if (!(payload as any).pdf_path && !(payload as any).pdf && sourceCandidate) {
           payload.pdf_path = sourceCandidate;
         }
@@ -345,6 +370,11 @@ export const installDirectQuotePdfOpenHandler = (opts?: { coderStatePath?: strin
           if (typeof resolvedPdf === "string" && resolvedPdf.trim()) {
             payload.pdf_path = resolvedPdf.trim();
           }
+          logPdfCandidates("[leditor][directquote][pdf-candidates:resolved]", {
+            dqid,
+            itemKey: itemKey || null,
+            resolved: describePdfRef(resolvedPdf)
+          });
         }
         const finalPdfCandidate = safeString(payload.pdf_path ?? payload.pdf ?? sourceCandidate).trim();
         if (!looksLikePdfRef(finalPdfCandidate)) {
@@ -361,6 +391,13 @@ export const installDirectQuotePdfOpenHandler = (opts?: { coderStatePath?: strin
             payload.pdf_path = posix;
           }
         }
+        logPdfCandidates("[leditor][directquote][pdf-candidates:final]", {
+          dqid,
+          itemKey: itemKey || null,
+          finalRaw: describePdfRef(finalPdfCandidate),
+          pdf_path: describePdfRef(payload.pdf_path),
+          pdf: describePdfRef(payload.pdf)
+        });
         console.info("[leditor][directquote] open-pdf", {
           dqid,
           itemKey: itemKey || null,

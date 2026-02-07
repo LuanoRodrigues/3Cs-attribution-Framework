@@ -509,31 +509,54 @@ const run = async () => {
               return null;
             }
           };
+          const resolveLineHeightPx = (style) => {
+            const raw = String(style.lineHeight || "").trim();
+            const fontSize = parseFloat(style.fontSize || "0") || 16;
+            let parsed = 0;
+            if (raw.endsWith("px")) {
+              parsed = parseFloat(raw) || 0;
+            } else {
+              const unitless = parseFloat(raw);
+              if (Number.isFinite(unitless) && unitless > 0) {
+                parsed = unitless * fontSize;
+              }
+            }
+            if (!Number.isFinite(parsed) || parsed <= 0) {
+              parsed = fontSize * 1.2;
+            }
+            return parsed;
+          };
+          const computeMaxLines = (contentHeight, paddingBottom, lineHeight) => {
+            const tolerancePx = 1;
+            if (!Number.isFinite(lineHeight) || lineHeight <= 0) return 0;
+            const raw = (contentHeight - paddingBottom + tolerancePx) / lineHeight;
+            if (!Number.isFinite(raw)) return 0;
+            return Math.max(0, Math.floor(raw));
+          };
+          const computeUsedLines = (scrollHeight, paddingBottom, lineHeight) => {
+            if (!Number.isFinite(lineHeight) || lineHeight <= 0) return 0;
+            const raw = (scrollHeight - paddingBottom) / lineHeight;
+            if (!Number.isFinite(raw)) return 0;
+            return Math.max(0, Math.ceil(raw));
+          };
           const getContentMetrics = (content) => {
             if (!content) return null;
             const style = getComputedStyle(content);
             const paddingBottom = parseFloat(style.paddingBottom || "0") || 0;
-            const lineHeightRaw = style.lineHeight || "0";
-            const rootFontSize = parseFloat(getComputedStyle(document.body).fontSize || "0") || 16;
-            const fontSize = parseFloat(style.fontSize || "0") || rootFontSize || 16;
-            let lineHeight =
-              lineHeightRaw === "normal"
-                ? fontSize * 1.2
-                : Number.isFinite(parseFloat(lineHeightRaw))
-                  ? parseFloat(lineHeightRaw)
-                  : fontSize * 1.2;
-            if (!Number.isFinite(lineHeight) || lineHeight <= 0) lineHeight = fontSize * 1.2;
+            const lineHeight = resolveLineHeightPx(style);
             const rect = content.getBoundingClientRect();
             const tokenHeight = parseFloat(style.getPropertyValue("--doc-content-height") || "");
             const baseHeight =
               content.clientHeight ||
-              content.scrollHeight ||
               rect.height ||
               parseFloat(style.height || "0") ||
               (Number.isFinite(tokenHeight) ? tokenHeight : 0) ||
               0;
             const usableHeight = Math.max(0, baseHeight - paddingBottom);
-            return { usableHeight, paddingBottom, lineHeight };
+            const maxLines = computeMaxLines(baseHeight, paddingBottom, lineHeight);
+            const usedLines = computeUsedLines(content.scrollHeight || 0, paddingBottom, lineHeight);
+            const remainingLines = Math.max(0, maxLines - usedLines);
+            return { usableHeight, paddingBottom, lineHeight, maxLines, usedLines, remainingLines };
           };
           const pageReports = pages.map((page, pageIndex) => {
             const content = page.querySelector(".leditor-page-content");
@@ -543,28 +566,22 @@ const run = async () => {
             const contentRect = content.getBoundingClientRect();
             const style = getComputedStyle(content);
             const paddingBottom = parseFloat(style.paddingBottom || "0") || 0;
-            const lineHeightRaw = style.lineHeight || "0";
-            const rootFontSize = parseFloat(getComputedStyle(document.body).fontSize || "0") || 16;
-            const fontSize = parseFloat(style.fontSize || "0") || rootFontSize || 16;
-            let lineHeight =
-              lineHeightRaw === "normal"
-                ? fontSize * 1.2
-                : Number.isFinite(parseFloat(lineHeightRaw))
-                  ? parseFloat(lineHeightRaw)
-                  : fontSize * 1.2;
-            if (!Number.isFinite(lineHeight) || lineHeight <= 0) lineHeight = fontSize * 1.2;
+            const lineHeight = resolveLineHeightPx(style);
             const rectHeight = contentRect.height || 0;
             const clientHeight = content.clientHeight || 0;
             const offsetHeight = content.offsetHeight || 0;
             const scrollHeight = content.scrollHeight || 0;
             const tokenHeight = parseFloat(style.getPropertyValue("--doc-content-height") || "");
             const baseHeight =
-              rectHeight ||
               clientHeight ||
+              rectHeight ||
               parseFloat(style.height || "0") ||
               (Number.isFinite(tokenHeight) ? tokenHeight : 0) ||
               0;
             const usableHeight = Math.max(0, baseHeight - paddingBottom);
+            const maxLines = computeMaxLines(baseHeight, paddingBottom, lineHeight);
+            const usedLines = computeUsedLines(scrollHeight, paddingBottom, lineHeight);
+            const remainingLines = Math.max(0, maxLines - usedLines);
             const contentWidth = contentRect.width || content.clientWidth || 0;
             const getVisualLineRects = (element) => {
               if (!element) return [];
@@ -657,8 +674,8 @@ const run = async () => {
                 : lastLineBottom > 0
                   ? lastLineBottom
                   : lastBottom;
-            const fillRatio = usableHeight ? Math.min(1, effectiveBottom / usableHeight) : 0;
-            const spacePx = Math.max(0, usableHeight - effectiveBottom);
+            const fillRatio = maxLines > 0 ? Math.min(1, usedLines / maxLines) : 0;
+            const spacePx = Math.max(0, remainingLines * lineHeight);
             return {
               pageIndex,
               blockCount: blocks.length,
@@ -678,6 +695,9 @@ const run = async () => {
               avgLineWidth,
               contentHeight: usableHeight,
               paddingBottom,
+              maxLines,
+              usedLines,
+              remainingLines,
               rectHeight,
               clientHeight,
               offsetHeight,
@@ -688,7 +708,7 @@ const run = async () => {
               fillRatio,
               lineHeight,
               spacePx,
-              hasSpaceForLine: lineHeight > 0 ? spacePx >= lineHeight * 0.9 : false,
+              hasSpaceForLine: remainingLines >= 1,
               blocks: blockEntries,
               rawText,
               fullText
@@ -705,20 +725,10 @@ const run = async () => {
             const page2Content = getPageContent(1);
             const page1Metrics = getContentMetrics(page1Content);
             if (page1Metrics && pageReports[0]) {
-              const baselineBottom =
-                typeof pageReports[0].lastVisibleLineBottom === "number" && pageReports[0].lastVisibleLineBottom > 0
-                  ? pageReports[0].lastVisibleLineBottom
-                  : typeof pageReports[0].lastLineBottom === "number" && pageReports[0].lastLineBottom > 0
-                    ? pageReports[0].lastLineBottom
-                    : pageReports[0].lastBottom;
-              const spacePx = page1Metrics.usableHeight - baselineBottom;
+              const spacePx = Math.max(0, (page1Metrics.remainingLines || 0) * (page1Metrics.lineHeight || 0));
               result.page1.spacePx = spacePx;
               result.page1.lineHeight = page1Metrics.lineHeight;
-              if (Number.isFinite(page1Metrics.lineHeight) && page1Metrics.lineHeight > 0) {
-                result.page1.hasSpaceForLine = spacePx >= page1Metrics.lineHeight * 0.9;
-              } else {
-                result.page1.hasSpaceForLine = false;
-              }
+              result.page1.hasSpaceForLine = (page1Metrics.remainingLines || 0) >= 1;
             }
             const page2TextBefore = pageReports[1] ? pageReports[1].fullText : "";
             const lastNode = findTextNode(page1Content, false);
