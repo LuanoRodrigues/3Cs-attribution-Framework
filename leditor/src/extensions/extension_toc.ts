@@ -3,6 +3,7 @@ import { TextSelection } from "@tiptap/pm/state";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 
 export type TocEntry = {
+  id?: string;
   text: string;
   level: number;
   pos: number;
@@ -13,10 +14,12 @@ const normalizeEntries = (value: unknown): TocEntry[] => {
   const entries: TocEntry[] = [];
   for (const item of value) {
     if (!item || typeof item !== "object") continue;
+    const id = typeof (item as TocEntry).id === "string" ? (item as TocEntry).id : undefined;
     const text = typeof (item as TocEntry).text === "string" ? (item as TocEntry).text : "";
     const level = Number((item as TocEntry).level);
     const pos = Number((item as TocEntry).pos);
     entries.push({
+      ...(id ? { id } : {}),
       text: text.trim() || "Untitled",
       level: Number.isFinite(level) ? Math.max(1, Math.min(6, Math.floor(level))) : 1,
       pos: Number.isFinite(pos) ? Math.max(0, Math.floor(pos)) : 0

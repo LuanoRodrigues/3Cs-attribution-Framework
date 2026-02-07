@@ -7,8 +7,6 @@ export type AiProvider = "openai" | "deepseek" | "mistral" | "gemini";
 export type AiSettings = {
   apiKey: string;
   provider: AiProvider;
-  model: string;
-  chunkSize: number;
-  defaultScope: AiScope;
   personaConfig: PersonaConfig;
+  modelByProvider?: Partial<Record<AiProvider, string>>;
 };

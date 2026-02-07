@@ -284,7 +284,7 @@ const mergeLeadingSpaceParagraphs = (blocks: PMNode[]): PMNode[] => {
           if (prevLast && typeof prevLast.text === "string" && /\s$/.test(prevLast.text)) {
             first.text = first.text.replace(/^\s+/, "");
           }
-          prev.content = [...(prev.content || []), ...(block.content || [])];
+          prev.content = normalizeInlineContent([...(prev.content || []), ...(block.content || [])]);
           continue;
         }
       }

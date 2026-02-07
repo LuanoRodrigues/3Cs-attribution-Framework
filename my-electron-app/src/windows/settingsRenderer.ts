@@ -577,7 +577,7 @@ import { resolveThemeTokens, themeIds, type ThemeId } from "../renderer/theme/to
     const input = document.createElement("input");
     input.type = "text";
     input.readOnly = true;
-    input.placeholder = "#2f74ff";
+    input.placeholder = "#2b579a";
     input.setAttribute("aria-label", "Accent color value");
     input.style.display = "none";
     fieldInputs[APPEARANCE_KEYS.accent] = input;
@@ -593,18 +593,18 @@ import { resolveThemeTokens, themeIds, type ThemeId } from "../renderer/theme/to
     swatchGrid.className = "accent-swatch-grid";
 
     const palette = [
-      "#2563eb",
-      "#0ea5e9",
-      "#06b6d4",
-      "#10b981",
-      "#22c55e",
-      "#84cc16",
-      "#eab308",
-      "#f97316",
-      "#ef4444",
-      "#ec4899",
-      "#a855f7",
-      "#64748b"
+      "#2b579a",
+      "#3f6fb5",
+      "#5b9bd5",
+      "#4472c4",
+      "#70ad47",
+      "#ffc000",
+      "#ed7d31",
+      "#c00000",
+      "#7030a0",
+      "#00b0f0",
+      "#a5a5a5",
+      "#7f7f7f"
     ];
 
     const normalize = (value: string) => {
@@ -1335,6 +1335,6 @@ import { resolveThemeTokens, themeIds, type ThemeId } from "../renderer/theme/to
 
   function setStatus(message: string, isError?: boolean) {
     statusLine.textContent = message;
-    statusLine.style.color = isError ? "#b91c1c" : "#6b7280";
+    statusLine.style.color = isError ? "#b91c1c" : "var(--muted, rgba(0, 0, 0, 0.60))";
   }
 })();

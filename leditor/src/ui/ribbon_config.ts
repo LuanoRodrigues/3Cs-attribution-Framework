@@ -262,6 +262,41 @@ const validateReferencesCommands = (tab: TabConfig): void => {
   }
 };
 
+const normalizeShortcut = (value: string): string => {
+  return value.replace(/\s+/g, "").toLowerCase();
+};
+
+const validateShortcutDefinitions = (tab: TabConfig): void => {
+  const seen = new Set<string>();
+  const visit = (control: ControlConfig) => {
+    if (typeof control.shortcut === "string") {
+      if (!control.command?.id) {
+        console.warn("[Ribbon] shortcut without command:", {
+          tab: tab.tabId,
+          controlId: control.controlId,
+          shortcut: control.shortcut
+        });
+      }
+      const normalized = normalizeShortcut(control.shortcut);
+      if (seen.has(normalized)) {
+        console.warn("[Ribbon] duplicate shortcut:", {
+          tab: tab.tabId,
+          controlId: control.controlId,
+          shortcut: control.shortcut
+        });
+      } else {
+        seen.add(normalized);
+      }
+    }
+    collectNestedControls(control).forEach((nested) => visit(nested));
+  };
+  tab.groups.forEach((group) => {
+    group.clusters.forEach((cluster) => {
+      cluster.controls.forEach((control) => visit(control));
+    });
+  });
+};
+
 const traverseControls = (
   control: ControlConfig,
   context: string,
@@ -326,6 +361,7 @@ export const loadTabConfig = (source: string): TabConfig => {
   }
   ensureIconKeys(config);
   validateIconOnlyControls(config);
+  validateShortcutDefinitions(config);
   return config;
 };
 

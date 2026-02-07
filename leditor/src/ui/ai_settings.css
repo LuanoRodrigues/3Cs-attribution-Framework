@@ -5,9 +5,9 @@
   transform: translateX(-50%);
   width: min(760px, 94vw);
   max-height: min(85vh, 760px);
-  background: #fefdf9;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  background: var(--ui-surface);
+  border: var(--ui-border);
+  box-shadow: var(--ui-shadow-2);
   border-radius: 16px;
   padding: 16px;
   z-index: 980;
@@ -16,12 +16,12 @@
   gap: 12px;
   font-family: "Georgia", "Times New Roman", serif;
   overflow: hidden;
-  --persona-surface: #fffaf0;
-  --persona-surface-2: #f7efe2;
-  --persona-border: rgba(0, 0, 0, 0.12);
-  --persona-text: #2f2a22;
-  --persona-muted: #6c6459;
-  --persona-accent: #b9792c;
+  --persona-surface: var(--ui-surface);
+  --persona-surface-2: var(--ui-surface-2);
+  --persona-border: var(--ui-border-color);
+  --persona-text: var(--ui-text);
+  --persona-muted: var(--ui-muted);
+  --persona-accent: var(--ui-accent);
 }
 
 .leditor-ai-settings-panel.is-open {
@@ -45,8 +45,8 @@
 }
 
 .leditor-ai-settings-panel__close {
-  background: rgba(223, 207, 172, 0.9);
-  border: 1px solid rgba(139, 115, 85, 0.35);
+  background: color-mix(in srgb, var(--ui-surface-2) 85%, transparent);
+  border: 1px solid var(--ui-border-color);
   border-radius: 8px;
   padding: 4px 10px;
   cursor: pointer;
@@ -78,7 +78,7 @@
 .leditor-ai-settings-panel__select {
   padding: 6px 10px;
   border-radius: 8px;
-  border: 1px solid rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--ui-border-color);
   font-family: "Georgia", "Times New Roman", serif;
   font-size: 14px;
 }
@@ -104,7 +104,7 @@
   width: 60px;
   padding: 4px 6px;
   border-radius: 8px;
-  border: 1px solid rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--ui-border-color);
   text-align: center;
 }
 
@@ -113,8 +113,8 @@
   gap: 4px;
   padding: 4px;
   border-radius: 999px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  background: rgba(255, 255, 255, 0.70);
+  border: 1px solid var(--ui-border-color);
+  background: color-mix(in srgb, var(--ui-surface) 70%, transparent);
 }
 
 .leditor-ai-settings-panel__segBtn {
@@ -124,23 +124,73 @@
   padding: 6px 10px;
   border-radius: 999px;
   font-size: 12px;
-  color: rgba(41, 41, 41, 0.92);
+  color: var(--ui-text);
 }
 
 .leditor-ai-settings-panel__segBtn:hover {
-  background: rgba(255, 255, 255, 0.92);
+  background: color-mix(in srgb, var(--ui-surface) 92%, transparent);
 }
 
 .leditor-ai-settings-panel__segBtn.is-active {
-  background: rgba(37, 99, 235, 0.12);
-  border: 1px solid rgba(37, 99, 235, 0.22);
-  color: rgba(29, 78, 216, 0.95);
+  background: color-mix(in srgb, var(--ui-accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ui-accent) 35%, transparent);
+  color: var(--ui-accent);
 }
 
 .leditor-ai-settings-panel__status {
   font-size: 11px;
-  color: #4a4a4a;
+  color: var(--ui-muted-strong);
   min-height: 16px;
+}
+
+.leditor-ai-settings-panel__defaults {
+  border: var(--ui-border-soft);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: linear-gradient(180deg, var(--ui-surface), var(--ui-surface-2));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.leditor-ai-settings-panel__defaultsTitle {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--ui-muted);
+}
+
+.leditor-ai-settings-panel__defaultsList {
+  display: grid;
+  gap: 8px;
+}
+
+.leditor-ai-settings-panel__defaultsRow {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(180px, 240px);
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.leditor-ai-settings-panel__defaultsName {
+  font-weight: 600;
+  color: var(--ui-text);
+}
+
+.leditor-ai-settings-panel__defaultsModel {
+  font-family: "SFMono-Regular", "Consolas", "Liberation Mono", "Menlo", monospace;
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.leditor-ai-settings-panel__defaultsRow .leditor-ai-settings-panel__select {
+  width: 100%;
+}
+
+.leditor-ai-settings-panel__defaultsHint {
+  font-size: 12px;
+  opacity: 0.7;
 }
 
 .leditor-ai-settings-panel__persona {
@@ -192,9 +242,9 @@
 }
 
 .leditor-ai-settings-panel__tab.is-active {
-  background: rgba(183, 121, 44, 0.16);
-  border-color: rgba(183, 121, 44, 0.4);
-  color: #6b3b0b;
+  background: color-mix(in srgb, var(--ui-accent) 12%, transparent);
+  border-color: color-mix(in srgb, var(--ui-accent) 35%, transparent);
+  color: var(--ui-accent);
 }
 
 .leditor-ai-settings-panel__tabBody {
@@ -238,8 +288,8 @@
 }
 
 .leditor-ai-settings-panel__personaCard.is-selected {
-  border-color: rgba(183, 121, 44, 0.5);
-  box-shadow: 0 8px 20px rgba(183, 121, 44, 0.18);
+  border-color: color-mix(in srgb, var(--ui-accent) 50%, transparent);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--ui-accent) 18%, transparent);
 }
 
 .leditor-ai-settings-panel__personaCardTitle {
@@ -254,7 +304,7 @@
 
 .leditor-ai-settings-panel__personaCardThesis {
   font-size: 12px;
-  color: #4b3f2f;
+  color: var(--ui-muted-strong);
 }
 
 .leditor-ai-settings-panel__tagRow {
@@ -269,7 +319,7 @@
   letter-spacing: 0.08em;
   padding: 2px 6px;
   border-radius: 999px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--ui-border-color);
   color: var(--persona-muted);
 }
 
@@ -327,7 +377,7 @@
   width: 70px;
   padding: 4px 6px;
   border-radius: 8px;
-  border: 1px solid rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--ui-border-color);
   font-size: 12px;
 }
 
@@ -391,7 +441,7 @@
 .leditor-ai-settings-panel__meter {
   width: 100%;
   height: 6px;
-  background: rgba(0, 0, 0, 0.08);
+  background: color-mix(in srgb, var(--ui-text) 8%, transparent);
   border-radius: 999px;
   overflow: hidden;
 }
@@ -399,12 +449,12 @@
 .leditor-ai-settings-panel__meterFill {
   height: 100%;
   width: 0;
-  background: rgba(183, 121, 44, 0.6);
+  background: color-mix(in srgb, var(--ui-accent) 60%, transparent);
 }
 
 .leditor-ai-settings-panel__previewText {
   font-size: 11px;
-  background: #fcf7ee;
+  background: color-mix(in srgb, var(--ui-surface-2) 80%, transparent);
   border-radius: 12px;
   border: 1px solid var(--persona-border);
   padding: 10px;
@@ -419,7 +469,7 @@
   padding: 10px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 11px;
-  background: #fcf7ee;
+  background: color-mix(in srgb, var(--ui-surface-2) 80%, transparent);
 }
 
 .leditor-ai-settings-panel__profileRow {
@@ -457,9 +507,9 @@
   flex-direction: column;
   gap: 6px;
   padding: 8px 10px;
-  border: 1px dashed rgba(0, 0, 0, 0.16);
+  border: 1px dashed color-mix(in srgb, var(--ui-text) 18%, transparent);
   border-radius: 12px;
-  background: #fff8ec;
+  background: color-mix(in srgb, var(--ui-surface-2) 80%, transparent);
 }
 
 .leditor-ai-settings-panel__toggle {
@@ -503,7 +553,7 @@
 .leditor-ai-settings-panel__personaIcon {
   width: 18px;
   height: 18px;
-  color: #8a5a1a;
+  color: var(--persona-accent);
   flex: 0 0 auto;
 }
 

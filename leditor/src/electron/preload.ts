@@ -46,6 +46,7 @@ const summarizeInvokeRequest = (channel: string, request: unknown): Record<strin
       };
     }
     case "leditor:read-file":
+    case "leditor:read-binary-file":
     case "leditor:file-exists":
       return { channel, sourcePathLen: typeof obj?.sourcePath === "string" ? obj.sourcePath.length : 0 };
     case "leditor:write-file":
@@ -222,6 +223,10 @@ dbg("init", "ui scale ready", { uiScale });
 
 const readFile = async (request: { sourcePath: string }) => {
   return invoke<typeof request, any>("leditor:read-file", request);
+};
+
+const readBinaryFile = async (request: { sourcePath: string; maxBytes?: number }) => {
+  return invoke<typeof request, any>("leditor:read-binary-file", request);
 };
 
 const fileExists = async (request: { sourcePath: string }) => {
@@ -405,6 +410,7 @@ contextBridge.exposeInMainWorld("leditorHost", {
   getLlmStatus,
   getLlmCatalog,
   readFile,
+  readBinaryFile,
   fileExists,
   getDefaultLEDOCPath,
   writeFile,

@@ -90,6 +90,7 @@ const buildMenuGroups = (context: ContextType): Record<ContextGroup, MenuItem[]>
     { label: "Refine", command: "agent.action", args: { id: "refine" } },
     { label: "Paraphrase", command: "agent.action", args: { id: "paraphrase" } },
     { label: "Shorten", command: "agent.action", args: { id: "shorten" } },
+    { label: "Shorten block", command: "agent.action", args: { id: "shorten", mode: "block" } },
     { label: "Proofread", command: "agent.action", args: { id: "proofread" } },
     { label: "Substantiate", command: "agent.action", args: { id: "substantiate" } },
     { label: "Check sources", command: "agent.action", args: { id: "check_sources" } },
@@ -99,6 +100,7 @@ const buildMenuGroups = (context: ContextType): Record<ContextGroup, MenuItem[]>
   const sectionItems: MenuItem[] = [
     { label: "Abstract", command: "agent.action", args: { id: "abstract" } },
     { label: "Introduction", command: "agent.action", args: { id: "introduction" } },
+    { label: "Methodology", command: "agent.action", args: { id: "methodology" } },
     { label: "Findings", command: "agent.action", args: { id: "findings" } },
     { label: "Recommendations", command: "agent.action", args: { id: "recommendations" } },
     { label: "Conclusion", command: "agent.action", args: { id: "conclusion" } }

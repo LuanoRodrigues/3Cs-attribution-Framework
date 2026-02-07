@@ -6293,6 +6293,241 @@ def _profile_plot_scorecard(profile_df: pd.DataFrame, params: dict) -> tuple[pd.
     return table_df, fig
 
 
+def _year_bucket_label(year: int, bucket: int) -> int:
+    try:
+        b = int(bucket)
+    except Exception:
+        b = 1
+    if b <= 1:
+        return int(year)
+    return int((int(year) // b) * b)
+
+
+def _extract_controlled_vocab_terms(entry: object) -> list[str]:
+    """
+    Parse controlled_vocabulary_terms into human terms.
+
+    Preference:
+      - keep "#theme:..." items (suffix) as primary terms
+      - keep plain tokens without ':' (legacy keywords)
+      - ignore other "prefix:..." tags (affiliation/test/etc) by default
+    """
+    items: list[str] = []
+    if entry is None:
+        return items
+    if isinstance(entry, (list, tuple, set)):
+        raw_parts = [str(x) for x in entry if isinstance(x, (str, int, float))]
+    else:
+        raw_parts = re.split(r"[;\n]+", str(entry))
+    for raw in raw_parts:
+        s = str(raw or "").strip()
+        if not s:
+            continue
+        lower = s.lower()
+        if ": " in lower:
+            # normalize accidental ": " spacing
+            s = re.sub(r":\s+", ":", s)
+            lower = s.lower()
+        if lower.startswith("#theme:") and ":" in s:
+            items.append(s.split(":", 1)[1].strip())
+            continue
+        if ":" not in s and not lower.startswith("#"):
+            items.append(s.strip())
+            continue
+    return [t for t in (x.strip().lower() for x in items) if t]
+
+
+def _tokens_for_row(
+    row: pd.Series,
+    *,
+    data_source: str,
+    zotero_client_for_pdf=None,
+    collection_name_for_cache: str | None = None,
+) -> list[str]:
+    source = str(data_source or "controlled_vocabulary_terms").strip().lower()
+    if source == "title":
+        return preprocess_text(str(row.get("title", "") or ""))
+    if source == "abstract":
+        return get_text_corpus_from_df(pd.DataFrame([row]), "abstract", collection_name_for_cache, zotero_client_for_pdf, None)
+    if source == "fulltext":
+        return get_text_corpus_from_df(pd.DataFrame([row]), "fulltext", collection_name_for_cache, zotero_client_for_pdf, None)
+    if source == "controlled_vocabulary_terms":
+        return _extract_controlled_vocab_terms(row.get("controlled_vocabulary_terms"))
+    return []
+
+
+def analyze_word_frequency_heatmap_over_time(
+    df: pd.DataFrame,
+    params: dict,
+    progress_callback=None,
+    *,
+    zotero_client_for_pdf=None,
+    collection_name_for_cache: str | None = None,
+) -> tuple[pd.DataFrame, go.Figure]:
+    """
+    Offline-safe frequency heatmap of top terms over time (year-bucket × term).
+    """
+
+    def _cb(msg: str):
+        if progress_callback:
+            try:
+                progress_callback(f"WordHeatmap: {msg}")
+            except Exception:
+                pass
+        logging.info(f"WordHeatmap: {msg}")
+
+    if df is None or not isinstance(df, pd.DataFrame) or df.empty:
+        fig = go.Figure().add_annotation(text="No data.", showarrow=False)
+        return pd.DataFrame(), fig
+
+    data_source = str(params.get("data_source", "controlled_vocabulary_terms") or "controlled_vocabulary_terms")
+    top_n = int(params.get("top_n_words", 30) or 30)
+    min_freq = int(params.get("min_frequency", 2) or 2)
+    bucket = int(params.get("year_bucket", 1) or 1)
+
+    if "year" not in df.columns:
+        fig = go.Figure().add_annotation(text="Missing 'year' column.", showarrow=False)
+        return pd.DataFrame(), fig
+
+    df2 = df.copy()
+    df2["_year"] = pd.to_numeric(df2["year"], errors="coerce")
+    df2 = df2.dropna(subset=["_year"])
+    if df2.empty:
+        fig = go.Figure().add_annotation(text="No valid years.", showarrow=False)
+        return pd.DataFrame(), fig
+
+    df2["_year"] = df2["_year"].astype(int)
+    df2["_bucket"] = df2["_year"].apply(lambda y: _year_bucket_label(int(y), bucket))
+
+    _cb(f"Tokenizing docs for heatmap (source='{data_source}', bucket={bucket})…")
+    token_rows: list[tuple[int, list[str]]] = []
+    overall = Counter()
+    for _, row in df2.iterrows():
+        toks = _tokens_for_row(
+            row,
+            data_source=data_source,
+            zotero_client_for_pdf=zotero_client_for_pdf,
+            collection_name_for_cache=collection_name_for_cache,
+        )
+        toks = [t for t in toks if isinstance(t, str) and t.strip()]
+        if not toks:
+            continue
+        b = int(row["_bucket"])
+        token_rows.append((b, toks))
+        overall.update(toks)
+
+    if not overall:
+        fig = go.Figure().add_annotation(text="No tokens found.", showarrow=False)
+        return pd.DataFrame(), fig
+
+    terms = [w for (w, c) in overall.most_common(max(10, top_n * 3)) if int(c) >= int(min_freq)]
+    terms = terms[:top_n]
+    if not terms:
+        fig = go.Figure().add_annotation(text="No terms meet min_frequency.", showarrow=False)
+        return pd.DataFrame(), fig
+
+    buckets = sorted({b for b, _ in token_rows})
+    counts: dict[int, Counter] = {b: Counter() for b in buckets}
+    for b, toks in token_rows:
+        c = Counter(toks)
+        for t in terms:
+            if t in c:
+                counts[b][t] += int(c[t])
+
+    table_rows: list[dict[str, object]] = []
+    for b in buckets:
+        row: dict[str, object] = {"Year": int(b)}
+        for t in terms:
+            row[t] = int(counts[b].get(t, 0))
+        table_rows.append(row)
+    table_df = pd.DataFrame.from_records(table_rows)
+
+    heat = table_df.set_index("Year").T
+    fig = px.imshow(
+        heat,
+        aspect="auto",
+        text_auto=False,
+        color_continuous_scale="Blues",
+        labels={"x": "Year", "y": "Term", "color": "Count"},
+        title=f"Term frequency over time (bucket={bucket})",
+    )
+    fig.update_layout(margin=dict(l=80, r=40, t=80, b=60))
+    fig.update_xaxes(side="bottom")
+    return table_df, fig
+
+
+def analyze_term_diversity_over_time(
+    df: pd.DataFrame,
+    params: dict,
+    progress_callback=None,
+    *,
+    zotero_client_for_pdf=None,
+    collection_name_for_cache: str | None = None,
+) -> tuple[pd.DataFrame, go.Figure]:
+    """
+    Number of unique terms per year-bucket.
+    """
+
+    def _cb(msg: str):
+        if progress_callback:
+            try:
+                progress_callback(f"WordDiversity: {msg}")
+            except Exception:
+                pass
+        logging.info(f"WordDiversity: {msg}")
+
+    if df is None or not isinstance(df, pd.DataFrame) or df.empty:
+        fig = go.Figure().add_annotation(text="No data.", showarrow=False)
+        return pd.DataFrame(), fig
+
+    data_source = str(params.get("data_source", "controlled_vocabulary_terms") or "controlled_vocabulary_terms")
+    bucket = int(params.get("year_bucket", 1) or 1)
+    if "year" not in df.columns:
+        fig = go.Figure().add_annotation(text="Missing 'year' column.", showarrow=False)
+        return pd.DataFrame(), fig
+
+    df2 = df.copy()
+    df2["_year"] = pd.to_numeric(df2["year"], errors="coerce")
+    df2 = df2.dropna(subset=["_year"])
+    if df2.empty:
+        fig = go.Figure().add_annotation(text="No valid years.", showarrow=False)
+        return pd.DataFrame(), fig
+
+    df2["_year"] = df2["_year"].astype(int)
+    df2["_bucket"] = df2["_year"].apply(lambda y: _year_bucket_label(int(y), bucket))
+
+    _cb(f"Computing diversity (source='{data_source}', bucket={bucket})…")
+    unique_by_bucket: dict[int, set[str]] = defaultdict(set)
+    for _, row in df2.iterrows():
+        toks = _tokens_for_row(
+            row,
+            data_source=data_source,
+            zotero_client_for_pdf=zotero_client_for_pdf,
+            collection_name_for_cache=collection_name_for_cache,
+        )
+        toks = [t for t in toks if isinstance(t, str) and t.strip()]
+        if not toks:
+            continue
+        b = int(row["_bucket"])
+        unique_by_bucket[b].update(toks)
+
+    rows = [{"Year": int(b), "UniqueTerms": int(len(s))} for b, s in sorted(unique_by_bucket.items())]
+    table_df = pd.DataFrame.from_records(rows)
+    if table_df.empty:
+        fig = go.Figure().add_annotation(text="No tokens found.", showarrow=False)
+        return pd.DataFrame(), fig
+
+    fig = go.Figure()
+    fig.add_scatter(x=table_df["Year"], y=table_df["UniqueTerms"], mode="lines+markers", name="Unique terms")
+    fig.update_layout(
+        title=f"Term diversity over time (bucket={bucket})",
+        xaxis_title="Year",
+        yaxis_title="Unique terms",
+        margin=dict(l=60, r=40, t=80, b=60),
+    )
+    return table_df, fig
+
+
 def _profile_plot_radar(profile_df: pd.DataFrame, params: dict) -> tuple[pd.DataFrame, go.Figure]:
     """Creates a multi-dimensional 'fingerprint' radar chart."""
     entity_name = params.get("feature_value", "Profile")
@@ -6783,6 +7018,97 @@ def _plot_ngram_heatmap_by_authors(
     return table_df, fig
 
 
+def _plot_ngram_heatmap_by_yearbucket(
+    df: pd.DataFrame,
+    *,
+    data_source: str,
+    ngram_n: int,
+    top_n: int,
+    min_freq: int,
+    year_bucket: int,
+    zotero_client_for_pdf=None,
+    collection_name_for_cache: str | None = None,
+    max_cols: int | None = None,
+) -> tuple[pd.DataFrame, go.Figure]:
+    if "year" not in df.columns:
+        fig = go.Figure().add_annotation(text="Missing 'year' column.", showarrow=False)
+        return pd.DataFrame(), fig
+
+    df2 = df.copy()
+    df2["_year"] = pd.to_numeric(df2["year"], errors="coerce")
+    df2 = df2.dropna(subset=["_year"])
+    if df2.empty:
+        fig = go.Figure().add_annotation(text="No valid years.", showarrow=False)
+        return pd.DataFrame(), fig
+    df2["_year"] = df2["_year"].astype(int)
+    df2["_bucket"] = df2["_year"].apply(lambda y: _year_bucket_label(int(y), int(year_bucket) if year_bucket else 1))
+
+    overall = Counter()
+    by_bucket: dict[int, Counter] = defaultdict(Counter)
+
+    for _, row in df2.iterrows():
+        b = int(row["_bucket"])
+        if data_source == "abstract":
+            text = str(row.get("abstract", "") or "")
+        elif data_source == "title":
+            text = str(row.get("title", "") or "")
+        elif data_source == "controlled_vocabulary_terms":
+            kws = _extract_controlled_vocab_terms(row.get("controlled_vocabulary_terms"))
+            text = " ".join(kws)
+        elif data_source == "fulltext":
+            tokens = get_text_corpus_from_df(
+                pd.DataFrame([row]),
+                "fulltext",
+                collection_name_for_cache,
+                zotero_client_for_pdf,
+                None,
+            )
+            text = " ".join(tokens) if isinstance(tokens, list) else str(tokens or "")
+        else:
+            text = ""
+        if not text.strip():
+            continue
+        ngs = _get_ngrams_from_text(text, int(ngram_n))
+        if not ngs:
+            continue
+        c = Counter([str(n).strip().lower() for n in ngs])
+        by_bucket[b].update(c)
+        overall.update(c)
+
+    if not overall:
+        fig = go.Figure().add_annotation(text="No n-grams found.", showarrow=False)
+        return pd.DataFrame(), fig
+
+    cols = int(max_cols) if isinstance(max_cols, int) and max_cols > 0 else int(top_n)
+    top_ngrams = [ng for (ng, cnt) in overall.most_common(max(10, cols * 3)) if int(cnt) >= int(min_freq)]
+    top_ngrams = top_ngrams[:cols]
+    if not top_ngrams:
+        fig = go.Figure().add_annotation(text="No n-grams meet min_frequency.", showarrow=False)
+        return pd.DataFrame(), fig
+
+    buckets = sorted(by_bucket.keys())
+    rows = []
+    for b in buckets:
+        row: dict[str, object] = {"Year": int(b)}
+        for ng in top_ngrams:
+            row[ng] = int(by_bucket[b].get(ng, 0))
+        rows.append(row)
+    table_df = pd.DataFrame.from_records(rows)
+    heat = table_df.set_index("Year").T
+
+    fig = px.imshow(
+        heat,
+        aspect="auto",
+        text_auto=False,
+        color_continuous_scale="Blues",
+        labels={"x": "Year", "y": "N-gram", "color": "Count"},
+        title=f"N-gram frequency over time (n={ngram_n}, bucket={year_bucket})",
+    )
+    fig.update_layout(margin=dict(l=100, r=40, t=80, b=60))
+    fig.update_xaxes(side="bottom")
+    return table_df, fig
+
+
 def analyze_ngrams(
     df: "pd.DataFrame",
     params: dict,
@@ -7038,17 +7364,32 @@ def analyze_ngrams(
 
     elif plot_type == "ngram_frequency_heatmap":
         cols = int(params.get("num_ngrams_for_heatmap_cols", top_n) or top_n)
-        rows = int(params.get("num_docs_for_heatmap_rows", 30) or 30)
-        table_df, fig = _plot_ngram_heatmap_by_authors(
-            df,
-            source,
-            ngram_n,
-            top_n,
-            zotero_client_for_pdf,
-            collection_name_for_cache,
-            max_rows=rows,
-            max_cols=cols,
-        )
+        year_bucket = int(params.get("year_bucket", 1) or 1)
+        try:
+            table_df, fig = _plot_ngram_heatmap_by_yearbucket(
+                df,
+                data_source=str(source),
+                ngram_n=int(ngram_n),
+                top_n=int(top_n),
+                min_freq=int(min_freq),
+                year_bucket=int(year_bucket),
+                zotero_client_for_pdf=zotero_client_for_pdf,
+                collection_name_for_cache=collection_name_for_cache,
+                max_cols=int(cols),
+            )
+        except Exception:
+            # Fallback to author heatmap if anything goes wrong.
+            rows = int(params.get("num_docs_for_heatmap_rows", 30) or 30)
+            table_df, fig = _plot_ngram_heatmap_by_authors(
+                df,
+                source,
+                ngram_n,
+                top_n,
+                zotero_client_for_pdf,
+                collection_name_for_cache,
+                max_rows=rows,
+                max_cols=cols,
+            )
 
     else:
         _cb(f"Unknown plot type '{plot_type}', defaulting to bar chart.")
@@ -7628,6 +7969,8 @@ def analyze_wordanalysis_dispatcher(
             return "cooccurrence_network"
         if pt in {"words_over_time", "time_series", "trend"}:
             return "words_over_time"
+        if pt in {"term_diversity_over_time", "diversity_over_time", "term_diversity"}:
+            return "term_diversity_over_time"
         return "freq_words"
 
     analysis = _dispatch_key()
@@ -7752,11 +8095,11 @@ def analyze_wordanalysis_dispatcher(
         return table_df, fig_obj
 
     if analysis == "heatmap":
-        table_df, fig_obj = analyze_keyword_heatmap(
+        table_df, fig_obj = analyze_word_frequency_heatmap_over_time(
             df,
             params,
             progress_callback=progress_callback,
-            zotero_client=zotero_client_for_pdf,
+            zotero_client_for_pdf=zotero_client_for_pdf,
             collection_name_for_cache=collection_name_for_cache,
         )
         if fig_obj is None:
@@ -7764,7 +8107,26 @@ def analyze_wordanalysis_dispatcher(
         title = "Word Analysis — Frequency Heatmap"
         notes = ""
         if slide_notes:
-            notes = f"Source: analyze_keyword_heatmap(data_source='{data_source}')."
+            notes = f"Source: analyze_word_frequency_heatmap_over_time(data_source='{data_source}')."
+        if preview_slides is not None:
+            _append_slide(title, table_df, fig=fig_obj, img=None, notes=notes)
+            return _payload_return(preview_slides, payload, 0)
+        return table_df, fig_obj
+
+    if analysis == "term_diversity_over_time":
+        table_df, fig_obj = analyze_term_diversity_over_time(
+            df,
+            params,
+            progress_callback=progress_callback,
+            zotero_client_for_pdf=zotero_client_for_pdf,
+            collection_name_for_cache=collection_name_for_cache,
+        )
+        if fig_obj is None:
+            fig_obj = _as_message_fig("No diversity figure returned.")
+        title = "Word Analysis — Term Diversity Over Time"
+        notes = ""
+        if slide_notes:
+            notes = f"Source: analyze_term_diversity_over_time(data_source='{data_source}')."
         if preview_slides is not None:
             _append_slide(title, table_df, fig=fig_obj, img=None, notes=notes)
             return _payload_return(preview_slides, payload, 0)

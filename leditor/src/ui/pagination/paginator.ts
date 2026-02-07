@@ -265,7 +265,16 @@ export class Paginator {
 
   private getSectionBreakKind(node: HTMLElement): string | null {
     if (!this.isSectionBreak(node)) return null;
-    return node.getAttribute("data-kind") || node.dataset.kind || null;
+    const explicit = node.getAttribute("data-kind") || node.dataset.kind || null;
+    if (explicit) return explicit;
+    const breakKind = node.getAttribute("data-break-kind") || node.dataset.breakKind || null;
+    if (!breakKind) return null;
+    const normalized = breakKind.trim().toLowerCase();
+    if (normalized === "section_next") return "nextPage";
+    if (normalized === "section_even") return "evenPage";
+    if (normalized === "section_odd") return "oddPage";
+    if (normalized === "section_continuous") return "continuous";
+    return null;
   }
 
   private isForcedSectionBreak(node: HTMLElement): boolean {

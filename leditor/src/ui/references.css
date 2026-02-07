@@ -1,7 +1,7 @@
 .leditor-references-panel {
   padding: 12px 16px;
-  background: #fffaf1;
-  border: 1px solid #d8cba8;
+  background: var(--ui-surface-2);
+  border: var(--ui-border);
   border-radius: 8px;
 }
 
@@ -9,11 +9,11 @@
   margin: 0 0 8px;
   font-size: 14px;
   font-family: "Georgia", "Times New Roman", serif;
-  color: #5f4f35;
+  color: var(--ui-muted);
 }
 
 .leditor-citation-anchor {
-  color: #2a3b6f;
+  color: var(--ui-link);
   text-decoration: none;
   display: inline;
   user-select: text;

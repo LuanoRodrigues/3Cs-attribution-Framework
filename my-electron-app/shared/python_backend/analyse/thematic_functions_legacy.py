@@ -1881,7 +1881,7 @@ def export_pyr_all_artifacts(
     def _render_academic_css() -> str:
         return """
     :root{
-      --bg:#ffffff;--fg:#111827;--muted:#6b7280;--accent:#0f766e;--link:#0a66c2;--card:#f8fafc;--border:#e5e7eb
+      --bg:#ffffff;--fg:#1e1e1e;--muted:#5a5a5a;--accent:#2b579a;--link:#0563c1;--card:#f8f8f8;--border:#d0d0d0
     }
     @media (prefers-color-scheme: dark){
       :root{--bg:#0b0f17;--fg:#e5e7eb;--muted:#94a3b8;--accent:#14b8a6;--link:#60a5fa;--card:#0f1624;--border:#1f2937}

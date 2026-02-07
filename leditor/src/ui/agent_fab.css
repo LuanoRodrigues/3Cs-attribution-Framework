@@ -5,9 +5,9 @@
   width: 56px;
   height: 56px;
   border-radius: 16px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
+  border: var(--ui-border);
+  background: color-mix(in srgb, var(--ui-surface) 92%, transparent);
+  box-shadow: var(--ui-shadow-2);
   z-index: 940;
   display: inline-flex;
   align-items: center;
@@ -18,7 +18,7 @@
 }
 
 .leditor-agent-fab:hover {
-  background: rgba(255, 255, 255, 0.98);
+  background: color-mix(in srgb, var(--ui-surface) 98%, transparent);
 }
 
 .leditor-agent-fab:active {
@@ -28,22 +28,10 @@
 .leditor-agent-fab svg {
   width: 22px;
   height: 22px;
-  color: rgba(27, 27, 27, 0.92);
-}
-
-.leditor-app.leditor-app--theme-dark .leditor-agent-fab,
-.leditor-app.leditor-app--dark .leditor-agent-fab {
-  border-color: rgba(255, 255, 255, 0.14);
-  background: rgba(15, 23, 42, 0.78);
-}
-
-.leditor-app.leditor-app--theme-dark .leditor-agent-fab svg,
-.leditor-app.leditor-app--dark .leditor-agent-fab svg {
-  color: rgba(247, 247, 247, 0.92);
+  color: var(--ui-text);
 }
 
 /* When sidebar is open, keep the FAB on the document side (not under the sidebar). */
 .leditor-app.leditor-app--agent-open .leditor-agent-fab {
   right: calc(360px + 18px);
 }
-

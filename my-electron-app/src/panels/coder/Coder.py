@@ -192,7 +192,7 @@ class CoderTree(QTreeWidget):
             background: transparent; border: none; margin: 0;
         }
         QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
-            background: rgba(15, 23, 42, 30%); min-height: 22px; min-width: 22px;
+            background: rgba(0, 0, 0, 0.30); min-height: 22px; min-width: 22px;
             border-radius: 6px;
         }
         QScrollBar::add-line, QScrollBar::sub-line { height: 0; width: 0; }

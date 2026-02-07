@@ -36,32 +36,32 @@
 
   <style>
     :root{
-      --bg0:#f6f7fb;
-      --bg1:#eef2f7;
+      --bg0:#f3f2f1;
+      --bg1:#f8f8f8;
 
       --panel: rgba(255,255,255,0.92);
       --panel2: rgba(255,255,255,0.84);
       --panel3: rgba(255,255,255,0.76);
 
-      --border: rgba(15,23,42,0.12);
-      --border2: rgba(15,23,42,0.08);
+      --border: rgba(0,0,0,0.14);
+      --border2: rgba(0,0,0,0.08);
 
-      --text:#0f172a;
-      --muted:#64748b;
-      --soft:#94a3b8;
+      --text:#1e1e1e;
+      --muted:#5a5a5a;
+      --soft:#8a8a8a;
 
       --shadow: rgba(0,0,0,0.10);
 
-      --accent:#2563eb;
-      --accent2:#1d4ed8;
-      --accentSoft: rgba(37,99,235,0.14);
+      --accent:#2b579a;
+      --accent2:#3f6fb5;
+      --accentSoft: rgba(43,87,154,0.14);
 
-      --chipBg:#eef2ff;
-      --chipText:#3730a3;
+      --chipBg:#e7ecf5;
+      --chipText:#244b86;
 
-      --hot1:#1f3a5f;
-      --hot2:#2b6cb0;
-      --hot3:#f59e0b;
+      --hot1:#244b86;
+      --hot2:#3f6fb5;
+      --hot3:#ffc000;
 
       --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
       --sans: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
@@ -319,7 +319,7 @@
 #lpTitle{
   font-size: 14px;
   font-weight: 800;
-  color: #111827;
+  color: var(--text);
 }
 
 #lpSearch{
@@ -375,7 +375,7 @@
 .lpMain{
   font-size: 12.5px;
   font-weight: 750;
-  color: #111827;
+  color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -439,7 +439,7 @@
   font-size: 13px;
   font-weight: 850;
   line-height: 1.2;
-  color: #111827;
+  color: var(--text);
   margin-bottom: 8px;
 }
 
@@ -468,7 +468,7 @@
   font-family: var(--sans);
   font-size: 12.5px;
   line-height: 1.55;
-  color: #111827;
+  color: var(--text);
 
   text-align: justify;
   text-justify: inter-word;
@@ -549,7 +549,7 @@
       font-size: 12px;
       text-transform: uppercase;
       letter-spacing: 0.06em;
-      color: #111827;
+      color: var(--text);
     }
 
     .muted{ color: var(--muted); }
@@ -561,7 +561,7 @@
       align-items: start;
     }
     .k{ color: var(--muted); font-size: 11.5px; padding-top: 1px; }
-    .v{ color: #111827; overflow-wrap: anywhere; }
+    .v{ color: var(--text); overflow-wrap: anywhere; }
 
     .link{
       color: var(--accent);
@@ -575,7 +575,7 @@
       background: #ffffff;
       border-radius: 12px;
       padding: 10px;
-      color: #111827;
+      color: var(--text);
     }
 
     #abstractText{
@@ -655,7 +655,7 @@
       border: 1px solid rgba(15,23,42,0.12);
       border-radius: 999px;
       background: #ffffff;
-      color: #111827;
+      color: var(--text);
       font-size: 12px;
       box-shadow: 0 10px 22px rgba(0,0,0,0.05);
     }
@@ -939,7 +939,7 @@ function ui_make(){
   state.style.borderRadius = "12px";
   state.style.background = "rgba(255,255,255,0.92)";
   state.style.border = "1px solid rgba(15,23,42,0.12)";
-  state.style.color = "#0f172a";
+  state.style.color = "#1e1e1e";
   state.style.fontFamily = "system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif";
   state.style.fontSize = "12.5px";
   state.style.display = "none";
@@ -1220,9 +1220,9 @@ function lightenHex(hex, amt01){
 }
 
 const NODE_PALETTE = [
-  "#0ea5e9", "#22c55e", "#a855f7", "#f97316",
-  "#ef4444", "#14b8a6", "#eab308", "#6366f1",
-  "#f43f5e", "#84cc16"
+  "#2b579a", "#5b9bd5", "#70ad47", "#ffc000",
+  "#ed7d31", "#c00000", "#7030a0", "#4472c4",
+  "#a5a5a5", "#00b0f0"
 ];
 function pickNodeBaseColor(d){
   const fos = Array.isArray(d && d.fieldsOfStudy) && d.fieldsOfStudy.length ? String(d.fieldsOfStudy[0] || "") : "";
@@ -1265,7 +1265,7 @@ function svgAvatarDataUri(initials, baseHex){
   <circle cx="48" cy="48" r="47" fill="url(#g)" />
   <text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle"
         font-family="system-ui, -apple-system, Segoe UI, Roboto, Arial"
-        font-size="34" font-weight="700" fill="#0f172a">${txt}</text>
+        font-size="34" font-weight="700" fill="#1e1e1e">${txt}</text>
 </svg>`;
   return "data:image/svg+xml;utf8," + encodeURIComponent(svg);
 }
@@ -1884,7 +1884,7 @@ const layoutPreferred = (window.layoutPreferred === "cola" || window.layoutPrefe
 
     "font-size": 12,
     "font-weight": 600,
-    "color": "#0f172a",
+    "color": "#1e1e1e",
     "text-wrap": "wrap",
     "text-max-width": 210,
     "text-valign": "center",
@@ -1909,7 +1909,7 @@ const layoutPreferred = (window.layoutPreferred === "cola" || window.layoutPrefe
 {
   selector: "node[isSeed]",
   style: {
-    "border-color": "#111827",
+    "border-color": "#1e1e1e",
     "border-width": 4,
     "border-opacity": 0.95,
     "border-style": "double"

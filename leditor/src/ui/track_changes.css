@@ -1,0 +1,26 @@
+.leditor-change {
+  position: relative;
+  padding: 0 1px;
+  border-radius: 2px;
+}
+
+.leditor-change--insert {
+  background: var(--ui-success-bg);
+  box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--ui-success) 60%, transparent);
+}
+
+.leditor-change--delete {
+  background: var(--ui-danger-bg);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--ui-danger) 90%, transparent);
+}
+
+.leditor-app.theme-dark .leditor-change--insert {
+  background: var(--ui-success-bg);
+  box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--ui-success) 55%, transparent);
+}
+
+.leditor-app.theme-dark .leditor-change--delete {
+  background: var(--ui-danger-bg);
+  text-decoration-color: color-mix(in srgb, var(--ui-danger) 90%, transparent);
+}

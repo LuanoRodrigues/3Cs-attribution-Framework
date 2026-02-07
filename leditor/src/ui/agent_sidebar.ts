@@ -9,6 +9,7 @@ import {
 } from "./source_checks_thread.ts";
 import { appendAgentHistoryMessage, getAgentHistory } from "./agent_history.ts";
 import { Fragment } from "prosemirror-model";
+import { TextSelection } from "prosemirror-state";
 import agentActionPrompts from "./agent_action_prompts.json";
 import diffMatchPatch from "diff-match-patch";
 import { getSourceCheckState } from "../editor/source_check_badges.ts";
@@ -24,6 +25,7 @@ export type AgentMessage = {
 export type AgentRunRequest = {
   instruction: string;
   actionId?: AgentActionId;
+  selection?: { from: number; to: number };
 };
 
 export type AgentProgressEvent =
@@ -36,18 +38,20 @@ export type AgentRunResult = {
   assistantText: string;
   meta?: { provider?: string; model?: string; ms?: number };
   apply?:
-    | { kind: "replaceRange"; from: number; to: number; text: string }
-    | { kind: "setDocument"; doc: object }
-    | { kind: "insertAtCursor"; text: string }
+    | { kind: "replaceRange"; from: number; to: number; text: string; autoApply?: boolean }
+    | { kind: "setDocument"; doc: object; autoApply?: boolean }
+    | { kind: "insertAtCursor"; text: string; autoApply?: boolean }
     | {
         kind: "batchReplace";
-        items: Array<{ n: number; from: number; to: number; text: string; originalText: string }>;
+        items: Array<{ n: number; from: number; to: number; text: string; originalText: string; anchorInsertions?: SubstantiateAnchorInsertion[] }>;
+        autoApply?: boolean;
       };
 };
 
 type SubstantiateMatch = {
   dqid: string;
   title: string;
+  itemKey?: string;
   author?: string;
   year?: string;
   source?: string;
@@ -55,6 +59,30 @@ type SubstantiateMatch = {
   directQuote?: string;
   paraphrase?: string;
   score?: number;
+};
+
+type SubstantiateAnchorSpec = {
+  dqid: string;
+  dataKey: string;
+  dataQuoteId: string;
+  text: string;
+  title: string;
+  href?: string;
+  dataDqid?: string;
+  dataQuoteText?: string;
+  dataOrigHref?: string;
+};
+
+type SubstantiateAnchorEdits = {
+  action: "none" | "add_anchor_only" | "append_clause_after_anchor" | "prepend_clause_before_anchor";
+  clause?: string;
+  anchors: SubstantiateAnchorSpec[];
+};
+
+type SubstantiateAnchorInsertion = {
+  pos: number;
+  prefix: string;
+  anchors: SubstantiateAnchorSpec[];
 };
 
 type SubstantiateSuggestion = {
@@ -70,6 +98,7 @@ type SubstantiateSuggestion = {
   suggestion?: string;
   diffs?: string;
   matches: SubstantiateMatch[];
+  anchorEdits?: SubstantiateAnchorEdits;
   from?: number;
   to?: number;
   status?: "pending" | "applied" | "dismissed";
@@ -84,6 +113,7 @@ export type AgentActionId =
   | "proofread"
   | "abstract"
   | "introduction"
+  | "methodology"
   | "findings"
   | "recommendations"
   | "conclusion"
@@ -95,7 +125,9 @@ export type AgentSidebarController = {
   close: () => void;
   toggle: () => void;
   isOpen: () => boolean;
-  runAction: (actionId: AgentActionId) => void;
+  openView: (view: "chat" | "dictionary" | "sections" | "sources") => void;
+  runAction: (actionId: AgentActionId, options?: { mode?: "block" }) => void;
+  runSectionsBatch: () => void;
   openDictionary: (mode?: "definition" | "explain" | "synonyms" | "antonyms") => void;
   destroy: () => void;
 };
@@ -416,6 +448,7 @@ export const createAgentSidebar = (
   };
   let sourceFocusKey: string | null = null;
   let pendingActionId: AgentActionId | null = null;
+  let sectionBatchMode = false;
   let substantiateResults: SubstantiateSuggestion[] = [];
   let substantiateError: string | null = null;
   let substantiateSuppressedKeys = new Set<string>();
@@ -483,6 +516,7 @@ export const createAgentSidebar = (
     { id: "substantiate", label: "Substantiate", aliases: ["/sub", "/substantiate"] },
     { id: "abstract", label: "Abstract", aliases: ["/abstract", "/abs"] },
     { id: "introduction", label: "Introduction", aliases: ["/intro", "/introduction"] },
+    { id: "methodology", label: "Methodology", aliases: ["/methods", "/methodology"] },
     { id: "findings", label: "Findings", aliases: ["/findings", "/results"] },
     { id: "recommendations", label: "Recommendations", aliases: ["/recs", "/recommendations"] },
     { id: "conclusion", label: "Conclusion", aliases: ["/conclusion", "/conc"] },
@@ -522,6 +556,7 @@ export const createAgentSidebar = (
     if (/\B\/substantiate\b/.test(text) || /\bsubstantiate\b/.test(text)) return "substantiate";
     if (/\B\/abstract\b/.test(text) || /\babstract\b/.test(text)) return "abstract";
     if (/\B\/intro\b/.test(text) || /\B\/introduction\b/.test(text) || /\bintroduction\b/.test(text)) return "introduction";
+    if (/\B\/methods\b/.test(text) || /\B\/methodology\b/.test(text) || /\bmethodology\b/.test(text)) return "methodology";
     if (/\B\/findings\b/.test(text) || /\B\/results\b/.test(text) || /\bfindings\b/.test(text)) return "findings";
     if (/\B\/recs\b/.test(text) || /\B\/recommendations\b/.test(text) || /\brecommendations\b/.test(text)) return "recommendations";
     if (/\B\/conclusion\b/.test(text) || /\B\/conc\b/.test(text) || /\bconclusion\b/.test(text)) return "conclusion";
@@ -641,10 +676,10 @@ export const createAgentSidebar = (
     };
 
     // Commands (plain words and slash forms).
-    addMatches(/\B\/(?:refine|paraphrase|shorten|proofread|substantiate|abstract|intro(?:duction)?|findings|results|recs|recommendations|conclusion|conc)\b/gi, "cmd");
+    addMatches(/\B\/(?:refine|paraphrase|shorten|proofread|substantiate|abstract|intro(?:duction)?|methods|methodology|findings|results|recs|recommendations|conclusion|conc)\b/gi, "cmd");
     addMatches(/\B\/check(?:\s+sources)?\b/gi, "cmd");
     addMatches(/\B\/clear(?:\s+checks)?\b/gi, "cmd");
-    addMatches(/\b(?:refine|paraphrase|shorten|proofread|substantiate|abstract|introduction|findings|recommendations|conclusion)\b/gi, "cmd");
+    addMatches(/\b(?:refine|paraphrase|shorten|proofread|substantiate|abstract|introduction|methodology|findings|recommendations|conclusion)\b/gi, "cmd");
     addMatches(/\bcheck\s+sources\b/gi, "cmd");
 
     // Targets: sections + paragraphs (various forms).
@@ -700,6 +735,16 @@ export const createAgentSidebar = (
     if (cursor < text.length) out += escapeHtml(text.slice(cursor));
     // Preserve caret position by rendering newlines and spaces.
     return out.replaceAll("\n", "<br/>").replaceAll("  ", " &nbsp;");
+  };
+
+  const stripLeadingParagraphMarker = (value: string, paragraphN: number): string => {
+    if (!Number.isFinite(paragraphN)) return String(value ?? "");
+    const n = String(Math.max(0, Math.floor(paragraphN)));
+    if (!n || n === "0") return String(value ?? "");
+    const text = String(value ?? "");
+    const re = new RegExp(`^\\s*${n}[.)-]?\\s*(?=[A-Za-z])`);
+    if (!re.test(text)) return text;
+    return text.replace(re, "");
   };
 
   const updateInputOverlay = () => {
@@ -759,6 +804,8 @@ export const createAgentSidebar = (
       { re: /\B\/substantiate\b/gi, id: "substantiate" },
       { re: /\B\/abstract\b/gi, id: "abstract" },
       { re: /\B\/intro(?:duction)?\b/gi, id: "introduction" },
+      { re: /\B\/methods\b/gi, id: "methodology" },
+      { re: /\B\/methodology\b/gi, id: "methodology" },
       { re: /\B\/findings\b/gi, id: "findings" },
       { re: /\B\/results\b/gi, id: "findings" },
       { re: /\B\/recs\b/gi, id: "recommendations" },
@@ -774,6 +821,7 @@ export const createAgentSidebar = (
       { re: /\bsubstantiate\b/gi, id: "substantiate" },
       { re: /\babstract\b/gi, id: "abstract" },
       { re: /\bintroduction\b/gi, id: "introduction" },
+      { re: /\bmethodology\b/gi, id: "methodology" },
       { re: /\bfindings\b/gi, id: "findings" },
       { re: /\brecommendations\b/gi, id: "recommendations" },
       { re: /\bconclusion\b/gi, id: "conclusion" },
@@ -821,27 +869,21 @@ export const createAgentSidebar = (
     return label || (providerId === "openai" ? "OpenAI" : providerId === "deepseek" ? "DeepSeek" : providerId === "mistral" ? "Mistral" : providerId === "gemini" ? "Gemini" : providerId);
   };
 
-  const getModelLabel = (providerId: string, modelId: string): string => {
-    const provider = (Array.isArray(llmCatalog?.providers) ? llmCatalog!.providers : []).find(
-      (p) => String(p.id) === providerId
-    );
-    const models = Array.isArray(provider?.models) ? (provider!.models as CatalogModel[]) : [];
-    const found = models.find((m) => String(m.id) === modelId);
-    const label = typeof found?.label === "string" ? found.label : "";
-    return label || modelId;
+  const resolveSelectedProvider = (): { provider: string; envKey?: string; hasKey?: boolean } => {
+    const provider = String((currentSettings as any)?.provider ?? "openai");
+    const status = getProviderStatus(provider);
+    return { provider, envKey: status?.envKey, hasKey: status?.hasApiKey };
   };
 
-  const resolveSelectedModelId = (): { provider: string; model: string; envKey?: string; hasKey?: boolean } => {
-    const provider = String((currentSettings as any)?.provider ?? "openai");
-    const explicitModel = String(currentSettings?.model ?? "").trim();
-    const status = getProviderStatus(provider);
-    const model = explicitModel || String(status?.defaultModel ?? "").trim() || "codex-mini-latest";
-    return { provider, model, envKey: status?.envKey, hasKey: status?.hasApiKey };
+  const resolveSelectedModel = (providerId: string): string | undefined => {
+    const raw = (currentSettings as any)?.modelByProvider as Record<string, unknown> | undefined;
+    const model = typeof raw?.[providerId] === "string" ? String(raw?.[providerId]).trim() : "";
+    return model || undefined;
   };
 
   const renderModelPickerLabel = () => {
-    const sel = resolveSelectedModelId();
-    modelPickerLabel.textContent = `${getProviderLabel(sel.provider)} • ${getModelLabel(sel.provider, sel.model)}`;
+    const sel = resolveSelectedProvider();
+    modelPickerLabel.textContent = `Provider: ${getProviderLabel(sel.provider)}`;
   };
 
   const closeModelMenu = () => {
@@ -859,40 +901,35 @@ export const createAgentSidebar = (
     const providers = Array.isArray(llmCatalog?.providers) ? llmCatalog!.providers : [];
     for (const provider of providers) {
       const providerId = String(provider.id);
-      const groupTitle = document.createElement("div");
-      groupTitle.className = "leditor-agent-sidebar__modelGroupTitle";
-      groupTitle.textContent = getProviderLabel(providerId);
-      modelMenu.appendChild(groupTitle);
-
       const status = getProviderStatus(providerId);
       const hasKey = status ? Boolean(status.hasApiKey) : true;
-      const models = Array.isArray(provider.models) ? (provider.models as CatalogModel[]) : [];
-      for (const model of models) {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "leditor-agent-sidebar__modelOption";
-        btn.setAttribute("role", "menuitem");
-        btn.disabled = !hasKey;
 
-        const name = document.createElement("div");
-        name.className = "leditor-agent-sidebar__modelOptionName";
-        name.textContent = getModelLabel(providerId, String(model.id));
-        const desc = document.createElement("div");
-        desc.className = "leditor-agent-sidebar__modelOptionDesc";
-        desc.textContent = typeof model.description === "string" ? model.description : "";
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "leditor-agent-sidebar__modelOption";
+      btn.setAttribute("role", "menuitem");
+      btn.disabled = !hasKey;
 
-        btn.append(name, desc);
-        btn.addEventListener("click", () => {
-          setAiSettings({ provider: providerId as any, model: String(model.id) } as any);
-          closeModelMenu();
-        });
-        modelMenu.appendChild(btn);
-      }
+      const name = document.createElement("div");
+      name.className = "leditor-agent-sidebar__modelOptionName";
+      name.textContent = getProviderLabel(providerId);
+      const desc = document.createElement("div");
+      desc.className = "leditor-agent-sidebar__modelOptionDesc";
+      desc.textContent = hasKey
+        ? "Uses provider defaults."
+        : `Missing ${status?.envKey ? String(status.envKey) : "API key"}.`;
+
+      btn.append(name, desc);
+      btn.addEventListener("click", () => {
+        setAiSettings({ provider: providerId as any } as any);
+        closeModelMenu();
+      });
+      modelMenu.appendChild(btn);
     }
     if (!providers.length) {
       const empty = document.createElement("div");
       empty.className = "leditor-agent-sidebar__modelEmpty";
-      empty.textContent = "Models unavailable in this host.";
+      empty.textContent = "Providers unavailable in this host.";
       modelMenu.appendChild(empty);
     }
   };
@@ -936,6 +973,7 @@ export const createAgentSidebar = (
       "substantiate",
       "abstract",
       "introduction",
+      "methodology",
       "findings",
       "recommendations",
       "conclusion",
@@ -1000,14 +1038,16 @@ export const createAgentSidebar = (
 
   const renderPlusMenu = () => {
     plusMenu.replaceChildren();
-    const entries: Array<{ id: Exclude<ActionMode, "auto">; label: string }> = [
+    const entries: Array<{ id: Exclude<ActionMode, "auto">; label: string; mode?: "block" }> = [
       { id: "refine", label: "Refine" },
       { id: "paraphrase", label: "Paraphrase" },
       { id: "shorten", label: "Shorten" },
+      { id: "shorten", label: "Shorten Block", mode: "block" },
       { id: "proofread", label: "Proofread" },
       { id: "substantiate", label: "Substantiate" },
       { id: "abstract", label: "Abstract" },
       { id: "introduction", label: "Introduction" },
+      { id: "methodology", label: "Methodology" },
       { id: "findings", label: "Findings" },
       { id: "recommendations", label: "Recommendations" },
       { id: "conclusion", label: "Conclusion" },
@@ -1023,6 +1063,10 @@ export const createAgentSidebar = (
       row.addEventListener("click", () => {
         closePlusMenu();
         setActionMode(entry.id);
+        if (entry.id === "shorten" && entry.mode === "block") {
+          controller.runAction(entry.id, { mode: "block" });
+          return;
+        }
         insertIntoComposer(actionIdToSlashToken(entry.id));
       });
       plusMenu.appendChild(row);
@@ -1300,6 +1344,130 @@ export const createAgentSidebar = (
     return text.slice(0, DICT_CONTEXT_LIMIT).trim();
   };
 
+  const DICT_STOPWORDS = new Set([
+    "a","an","the","and","or","but","if","then","else","when","while","for","to","from","by","with","of","on","in","at",
+    "is","are","was","were","be","been","being","as","that","this","these","those","it","its","their","there","here","we",
+    "you","your","our","they","them","he","she","his","her","i","me","my","mine","ours","yours","theirs","not","no","yes",
+    "can","could","should","would","may","might","must","will","shall","do","does","did","done","has","have","had","into",
+    "over","under","about","between","among","within","without","after","before","during","because","so","such","than","also",
+    "each","every","some","any","all","most","more","less","many","much","few","several","per","via","etc","etc.","vs","vs."
+  ]);
+
+  type TokenInfo = { raw: string; lower: string; isStop: boolean; score: number };
+  const tokenizeContext = (text: string): TokenInfo[] => {
+    const tokens = String(text || "").match(/\b[A-Za-z][A-Za-z'-]{2,}\b/g) ?? [];
+    return tokens.map((raw) => {
+      const lower = raw.toLowerCase();
+      const isStop = DICT_STOPWORDS.has(lower);
+      let score = raw.length;
+      if (raw.includes("-")) score += 3;
+      if (/^[A-Z]/.test(raw)) score += 1;
+      if (/(tion|ment|ance|ence|ism|ity|ology|graphy|phoria|phile|phobic)$/i.test(raw)) score += 2;
+      if (raw.length >= 9) score += 2;
+      return { raw, lower, isStop, score };
+    });
+  };
+
+  const extractKeywordCandidates = (context: string, selection: string): string[] => {
+    const tokens = tokenizeContext(context);
+    const sel = selection.trim().toLowerCase();
+    const freq = new Map<string, { word: string; count: number; score: number }>();
+    for (const token of tokens) {
+      if (token.isStop) continue;
+      if (sel && token.lower === sel) continue;
+      if (!/^[a-z][a-z'-]{2,}$/i.test(token.raw)) continue;
+      const entry = freq.get(token.lower);
+      if (entry) {
+        entry.count += 1;
+      } else {
+        freq.set(token.lower, { word: token.raw, count: 1, score: token.score });
+      }
+    }
+    return Array.from(freq.values())
+      .sort((a, b) => b.score - a.score || b.count - a.count || a.word.localeCompare(b.word))
+      .map((e) => e.word);
+  };
+
+  const extractConceptPhrases = (context: string, selection: string): string[] => {
+    const tokens = tokenizeContext(context);
+    const sel = selection.trim().toLowerCase();
+    const phrases: Array<{ text: string; score: number }> = [];
+    const maxN = 3;
+    for (let i = 0; i < tokens.length; i += 1) {
+      for (let n = 2; n <= maxN; n += 1) {
+        const slice = tokens.slice(i, i + n);
+        if (slice.length < n) continue;
+        const first = slice[0]!;
+        const last = slice[slice.length - 1]!;
+        if (first.isStop || last.isStop) continue;
+        const phrase = slice.map((t) => t.raw).join(" ");
+        const lower = phrase.toLowerCase();
+        if (sel && lower.includes(sel)) continue;
+        const score = slice.reduce((acc, t) => acc + t.score, 0) + (n === 3 ? 3 : 0);
+        if (score < 14) continue;
+        phrases.push({ text: phrase, score });
+      }
+    }
+    phrases.sort((a, b) => b.score - a.score || a.text.localeCompare(b.text));
+    const unique: string[] = [];
+    const seen = new Set<string>();
+    for (const p of phrases) {
+      const key = p.text.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      unique.push(p.text);
+      if (unique.length >= 3) break;
+    }
+    return unique;
+  };
+
+  const buildDictionaryFollowUps = (selection: DictionarySelection, mode: DictionaryMode): string[] => {
+    const contextRaw = clampDictionaryContext(selection.blockText || selection.sentence || "");
+    const context = String(contextRaw || "").replace(/\s+/g, " ").trim();
+    const term = selection.text || "";
+    if (!context || !term) return [];
+    if (mode === "definition") {
+      let words = extractKeywordCandidates(context, term).filter((w) => w.length >= 7).slice(0, 3);
+      if (!words.length) {
+        words = extractKeywordCandidates(context, term).filter((w) => w.length >= 4).slice(0, 3);
+      }
+      if (!words.length && term) words = [term];
+      return words.map((w) => `Define "${w}".`);
+    }
+    const phrases = extractConceptPhrases(context, term);
+    const fallback = extractKeywordCandidates(context, term)
+      .filter((w) => w.length >= 6)
+      .slice(0, 3);
+    const mergedRaw = [...phrases, ...fallback];
+    const seen = new Set<string>();
+    let merged: string[] = [];
+    for (const item of mergedRaw) {
+      const key = item.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      merged.push(item);
+      if (merged.length >= 3) break;
+    }
+    if (!merged.length && term) merged = [term];
+    return merged.map((w) => `Explain "${w}" in simple terms.`);
+  };
+
+  const buildDictionaryContextDetails = (selection: DictionarySelection): HTMLElement | null => {
+    const raw = clampDictionaryContext(selection.blockText || selection.sentence || "");
+    const context = String(raw || "").replace(/\s+/g, " ").trim();
+    if (!context) return null;
+    const details = document.createElement("details");
+    details.className = "leditor-agent-sidebar__dictContext";
+    const summary = document.createElement("summary");
+    summary.className = "leditor-agent-sidebar__dictContextSummary";
+    summary.textContent = "Context …more";
+    const body = document.createElement("div");
+    body.className = "leditor-agent-sidebar__dictContextBody";
+    body.textContent = context;
+    details.append(summary, body);
+    return details;
+  };
+
   const normalizeSuggestions = (suggestions: string[], selectedText: string) => {
     const seen = new Set<string>();
     const output: string[] = [];
@@ -1423,27 +1591,27 @@ export const createAgentSidebar = (
       return;
     }
 
-    const search = ensureDictionarySearch(selection);
-    const settings = getAiSettings();
+      const search = ensureDictionarySearch(selection);
+      const settings = getAiSettings();
+      const model = resolveSelectedModel(settings.provider);
 
-    for (const mode of modes) {
-      const current = search.entries[mode];
-      updateDictionaryEntry(search.id, mode, {
-        status: "loading",
-        selected: current?.selected
+      for (const mode of modes) {
+        const current = search.entries[mode];
+        updateDictionaryEntry(search.id, mode, {
+          status: "loading",
+          selected: current?.selected
       });
       const context = clampDictionaryContext(selection.blockText || selection.sentence);
       logDictionary("request", {
         mode,
         provider: settings.provider,
-        model: settings.model,
         selection: clip(selection.text, 160),
         contextLen: context.length,
         requestId: search.id
       });
       const payload = {
         provider: settings.provider,
-        model: settings.model,
+        ...(model ? { model } : {}),
         mode,
         text: selection.text,
         sentence: context
@@ -1601,8 +1769,20 @@ export const createAgentSidebar = (
       content.className = "leditor-agent-sidebar__dictPane";
 
       if (dictionaryActiveMode === "definition" || dictionaryActiveMode === "explain") {
+        const entry = document.createElement("div");
+        entry.className = "leditor-agent-sidebar__dictEntry";
+        const entryHead = document.createElement("div");
+        entryHead.className = "leditor-agent-sidebar__dictEntryHead";
+        const entryWord = document.createElement("div");
+        entryWord.className = "leditor-agent-sidebar__dictEntryWord";
+        entryWord.textContent = activeSearch?.selection.text || dictionarySelection?.text || "Selection";
+        const entrySense = document.createElement("div");
+        entrySense.className = "leditor-agent-sidebar__dictEntrySense";
+        entrySense.textContent = dictionaryActiveMode === "definition" ? "Definition" : "Explanation";
+        entryHead.append(entryWord, entrySense);
+
         const body = document.createElement("div");
-        body.className = "leditor-agent-sidebar__dictCardBody";
+        body.className = "leditor-agent-sidebar__dictEntryText";
         if (activeEntry.status === "loading") {
           body.textContent = "Loading...";
           content.classList.add("is-loading");
@@ -1614,12 +1794,50 @@ export const createAgentSidebar = (
         } else {
           body.textContent = "Run a lookup to see results.";
         }
-        content.appendChild(body);
+        const contextDetails = activeSearch?.selection
+          ? buildDictionaryContextDetails(activeSearch.selection)
+          : dictionarySelection
+            ? buildDictionaryContextDetails(dictionarySelection)
+            : null;
+        entry.append(entryHead, body);
+        if (contextDetails) {
+          entry.appendChild(contextDetails);
+        }
+        content.appendChild(entry);
         if (activeEntry.raw && (activeEntry.status === "success" || activeEntry.status === "error")) {
           const debug = document.createElement("div");
           debug.className = "leditor-agent-sidebar__dictDebug";
           debug.textContent = `Debug response:\n${activeEntry.raw}`;
           content.appendChild(debug);
+        }
+        const followUps =
+          activeEntry.status === "success" &&
+          (dictionaryActiveMode === "definition" || dictionaryActiveMode === "explain") &&
+          activeSearch
+            ? buildDictionaryFollowUps(activeSearch.selection, dictionaryActiveMode)
+            : [];
+        if (followUps.length) {
+          const followUpWrap = document.createElement("div");
+          followUpWrap.className = "leditor-agent-sidebar__dictFollowUp";
+          const followUpLabel = document.createElement("div");
+          followUpLabel.className = "leditor-agent-sidebar__dictFollowUpLabel";
+          followUpLabel.textContent = "Follow-up questions";
+          const followUpList = document.createElement("div");
+          followUpList.className = "leditor-agent-sidebar__dictFollowUpList";
+          for (const q of followUps) {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "leditor-agent-sidebar__dictFollowUpBtn";
+            btn.textContent = q;
+            btn.addEventListener("click", () => {
+              setViewMode("chat");
+              input.value = q;
+              input.focus();
+            });
+            followUpList.appendChild(btn);
+          }
+          followUpWrap.append(followUpLabel, followUpList);
+          content.appendChild(followUpWrap);
         }
         content.addEventListener("pointerdown", (e) => {
           const target = e.target as HTMLElement | null;
@@ -1700,7 +1918,13 @@ export const createAgentSidebar = (
             };
             activeSearch.selection = nextSelection;
             dictionarySelection = nextSelection;
-            highlightDictionarySelection(nextSelection);
+            try {
+              editor.commands.setTextSelection?.({ from: nextSelection.from, to: nextSelection.to });
+              editor.commands.clearLexiconHighlight?.();
+              editor.commands.focus();
+            } catch {
+              // ignore
+            }
             renderBoxes();
           } catch {
             // ignore
@@ -1734,11 +1958,23 @@ export const createAgentSidebar = (
         "Create or refine core sections using the entire document. Each button writes or updates the section in place.";
       header.append(title, subtitle);
 
+      const bulk = document.createElement("div");
+      bulk.className = "leditor-agent-sidebar__sectionsBulk";
+      const bulkBtn = document.createElement("button");
+      bulkBtn.type = "button";
+      bulkBtn.className = "leditor-agent-sidebar__sectionsBulkBtn";
+      bulkBtn.textContent = "Draft all sections";
+      bulkBtn.addEventListener("click", () => {
+        void runSectionBatch();
+      });
+      bulk.appendChild(bulkBtn);
+
       const grid = document.createElement("div");
       grid.className = "leditor-agent-sidebar__sectionsGrid";
       const sections: Array<{ id: AgentActionId; label: string; helper: string }> = [
         { id: "abstract", label: "Abstract", helper: "Concise summary of purpose, method, and key findings." },
         { id: "introduction", label: "Introduction", helper: "Context, problem framing, and roadmap." },
+        { id: "methodology", label: "Methodology", helper: "Research design, data, and analytic approach." },
         { id: "findings", label: "Findings", helper: "Core results or claims drawn from the document." },
         { id: "recommendations", label: "Recommendations", helper: "Actionable implications or next steps." },
         { id: "conclusion", label: "Conclusion", helper: "Synthesize contributions and close the argument." }
@@ -1763,7 +1999,7 @@ export const createAgentSidebar = (
         grid.appendChild(card);
       }
 
-      wrapper.append(header, grid);
+      wrapper.append(header, bulk, grid);
       boxesEl.appendChild(wrapper);
     }
 
@@ -2143,7 +2379,7 @@ export const createAgentSidebar = (
       if (substantiateResults.length === 0) {
         const empty = document.createElement("div");
         empty.className = "leditor-agent-sidebar__boxEmpty";
-        empty.textContent = inflight ? "Loading substantiate…" : "No substantiate suggestions yet.";
+        empty.textContent = inflight ? "Loading substantiate…" : "No substantiate suggestions.";
         boxesEl.appendChild(empty);
         return;
       }
@@ -2207,6 +2443,22 @@ export const createAgentSidebar = (
         meta.className = "leditor-agent-sidebar__boxMeta";
         meta.textContent = s.anchorTitle || s.anchorText || "Anchor";
 
+        let anchorHint: HTMLElement | null = null;
+        const anchorAction = s.anchorEdits?.action;
+        if (anchorAction && anchorAction !== "none") {
+          anchorHint = document.createElement("div");
+          anchorHint.className = "leditor-agent-sidebar__subLabel";
+          if (anchorAction === "add_anchor_only") {
+            anchorHint.textContent = "Anchor-only (adds citation)";
+          } else if (anchorAction === "prepend_clause_before_anchor") {
+            anchorHint.textContent = "Clause + anchor (before citations)";
+          } else if (anchorAction === "append_clause_after_anchor") {
+            anchorHint.textContent = "Clause + anchor (after citations)";
+          } else {
+            anchorHint.textContent = "Anchor update";
+          }
+        }
+
         const original = String(s.sentence ?? "").replace(/\s+/g, " ").trim();
         const proposed = String(s.rewrite ?? "").replace(/\s+/g, " ").trim() || original;
         const canEdit =
@@ -2265,6 +2517,22 @@ export const createAgentSidebar = (
           body.className = "leditor-agent-sidebar__subNotes";
           body.textContent = justificationText;
           noteBlocks.push(label, body);
+        }
+        const anchorList = Array.isArray(s.anchorEdits?.anchors) ? s.anchorEdits?.anchors : [];
+        if (anchorList.length > 0) {
+          const label = document.createElement("div");
+          label.className = "leditor-agent-sidebar__subLabel";
+          label.textContent = "Anchors to add";
+          const box = document.createElement("div");
+          box.className = "leditor-agent-sidebar__anchorBox";
+          for (const anchor of anchorList) {
+            const item = document.createElement("div");
+            item.className = "leditor-agent-sidebar__anchorItem";
+            item.textContent = String(anchor?.text ?? "").trim();
+            item.title = String(anchor?.title ?? anchor?.text ?? "").trim();
+            box.appendChild(item);
+          }
+          noteBlocks.push(label, box);
         }
         if (s.diffs) {
           const label = document.createElement("div");
@@ -2354,7 +2622,12 @@ export const createAgentSidebar = (
         if (hasRange) {
           card.dataset.pendingKey = `${s.from}:${s.to}`;
         }
-        card.append(h, meta, diffBody, ...noteBlocks, editLabel, proposedEl, matchesWrap, actions);
+        if (anchorHint) {
+          card.append(h, meta, anchorHint);
+        } else {
+          card.append(h, meta);
+        }
+        card.append(diffBody, ...noteBlocks, editLabel, proposedEl, matchesWrap, actions);
         boxesEl.appendChild(card);
       }
 
@@ -2795,6 +3068,121 @@ export const createAgentSidebar = (
     }
   };
 
+  const pickPrimaryAuthor = (value: string): string => {
+    const raw = String(value ?? "").trim();
+    if (!raw) return "";
+    const parts = raw.split(/;|\band\b|\s&\s/i).map((part) => part.trim()).filter(Boolean);
+    if (parts.length > 0) return parts[0] ?? raw;
+    return raw;
+  };
+
+  const formatAnchorTextFromMatch = (match: SubstantiateMatch | null, fallbackText: string): string => {
+    const author = typeof match?.author === "string" ? pickPrimaryAuthor(match.author) : "";
+    const year = typeof match?.year === "string" ? match.year.trim() : "";
+    const page = Number.isFinite(match?.page) ? String(match?.page) : "";
+    const parts = [author, year, page ? `p. ${page}` : ""].filter(Boolean);
+    if (parts.length) return `(${parts.join(", ")})`;
+    return fallbackText;
+  };
+
+  const normalizeAnchorEditsFromResult = (
+    raw: any,
+    matches: SubstantiateMatch[]
+  ): SubstantiateAnchorEdits | null => {
+    if (!raw || typeof raw !== "object") return null;
+    const source = raw.anchorEdits && typeof raw.anchorEdits === "object" ? raw.anchorEdits : raw;
+    const actionRaw = typeof source.action === "string" ? source.action.trim().toLowerCase() : "";
+    const action =
+      actionRaw === "add_anchor_only" || actionRaw === "append_clause_after_anchor" || actionRaw === "prepend_clause_before_anchor"
+        ? (actionRaw as SubstantiateAnchorEdits["action"])
+        : "none";
+    if (action === "none") return null;
+    const anchorsRaw = Array.isArray(source.anchors) ? source.anchors : [];
+    if (!anchorsRaw.length) return null;
+    const byDqid = new Map(matches.map((m) => [String(m?.dqid ?? ""), m]));
+    const anchors: SubstantiateAnchorSpec[] = anchorsRaw
+      .map((a: any) => {
+        const dqid = String(a?.dqid ?? a?.dataQuoteId ?? a?.dataDqid ?? "").trim();
+        if (!dqid) return null;
+        const match = byDqid.get(dqid) ?? null;
+        if (!match) return null;
+        const dataKey = String(a?.dataKey ?? match?.itemKey ?? match?.dqid ?? "").trim();
+        const dataQuoteId = String(a?.dataQuoteId ?? dqid).trim();
+        const title = String(a?.title ?? match?.directQuote ?? match?.paraphrase ?? match?.title ?? "").trim();
+        const fallbackText = typeof a?.text === "string" ? a.text.trim() : "";
+        const text = formatAnchorTextFromMatch(match, fallbackText);
+        if (!text) return null;
+        const safeTitle = title || fallbackText || text;
+        const href = String(a?.href ?? (dqid ? `dq://${dqid}` : "")).trim();
+        const dataDqid = String(a?.dataDqid ?? "").trim();
+        const dataQuoteText = String(a?.dataQuoteText ?? "").trim();
+        const dataOrigHref = String(a?.dataOrigHref ?? "").trim();
+        return { dqid, dataKey, dataQuoteId, text, title: safeTitle, href, dataDqid, dataQuoteText, dataOrigHref };
+      })
+      .filter(Boolean) as SubstantiateAnchorSpec[];
+    if (!anchors.length) return null;
+    const clause = typeof source.clause === "string" ? source.clause.trim() : "";
+    return { action, clause, anchors };
+  };
+
+  const computeInsertionOffsetAfterAnchors = (text: string, anchorEndOffset: number): number => {
+    const raw = String(text ?? "");
+    let idx = Math.max(0, Math.min(raw.length, Math.floor(anchorEndOffset)));
+    while (idx < raw.length && /[)\]\}"'”’]/.test(raw[idx] ?? "")) idx += 1;
+    while (idx < raw.length && /[.!?]/.test(raw[idx] ?? "")) idx += 1;
+    while (idx < raw.length && /\s/.test(raw[idx] ?? "")) idx += 1;
+    return idx;
+  };
+
+  const buildAnchorInsertionPrefix = (text: string, offset: number, clauseRaw: string): string => {
+    const raw = String(text ?? "");
+    const clause = String(clauseRaw ?? "").trim();
+    const prevChar = offset > 0 ? raw[offset - 1] : "";
+    const clauseStartsWithPunct = clause ? /^[,.;:!?)]/.test(clause) : false;
+    const needsLeadingSpace = prevChar && !/\s/.test(prevChar) && !clauseStartsWithPunct;
+    let prefix = needsLeadingSpace ? " " : "";
+    if (clause) {
+      prefix += clause;
+      if (!/\s$/.test(prefix)) prefix += " ";
+    } else if (!prefix && prevChar && !/\s/.test(prevChar)) {
+      prefix = " ";
+    }
+    return prefix;
+  };
+
+  const buildSubstantiateAnchorInsertions = (args: {
+    context: {
+      paragraph: { from: number; to: number };
+      paragraphTextRaw: string;
+      anchors: Array<{ startOffset: number; endOffset: number }>;
+    };
+    edits: SubstantiateAnchorEdits;
+  }): SubstantiateAnchorInsertion[] => {
+    const { context, edits } = args;
+    if (!edits?.anchors?.length) return [];
+    const offsets = context.anchors.map((a) => ({ start: a.startOffset, end: a.endOffset }));
+    if (!offsets.length) return [];
+    const groupStartOffset = Math.min(...offsets.map((o) => o.start));
+    const groupEndOffset = Math.max(...offsets.map((o) => o.end));
+    const paragraphTextRaw = context.paragraphTextRaw;
+    const insertOffset =
+      edits.action === "prepend_clause_before_anchor"
+        ? groupStartOffset
+        : edits.action === "append_clause_after_anchor"
+          ? computeInsertionOffsetAfterAnchors(paragraphTextRaw, groupEndOffset)
+          : groupEndOffset;
+    const insertPos = resolveTextOffsetToDocPos(context.paragraph.from, context.paragraph.to, insertOffset);
+    const clause = edits.action === "add_anchor_only" ? "" : edits.clause ?? "";
+    const prefix = buildAnchorInsertionPrefix(paragraphTextRaw, insertOffset, clause);
+    return [
+      {
+        pos: insertPos,
+        prefix,
+        anchors: edits.anchors
+      }
+    ];
+  };
+
 
 
   const isCitationLikeMark = (mark: any): boolean => {
@@ -2861,11 +3249,40 @@ export const createAgentSidebar = (
     from: number,
     to: number,
     text: string,
-    meta?: { source?: string; n?: number | null }
+    meta?: { source?: string; n?: number | null; anchorInsertions?: SubstantiateAnchorInsertion[] }
   ) => {
     const editor = editorHandle.getEditor();
     const state = editor.state;
     const baseDoc = state.doc;
+    const getMarksAtPos = (doc: any, pos: number) => {
+      try {
+        const $pos = doc.resolve(pos);
+        return Array.isArray($pos.marks()) ? $pos.marks() : [];
+      } catch {
+        return [];
+      }
+    };
+    const buildAnchorMark = (schema: any, anchor: SubstantiateAnchorSpec) => {
+      const markType = schema?.marks?.anchor ?? schema?.marks?.link;
+      if (!markType) return null;
+      const dqid = String(anchor?.dqid ?? "");
+      const dataKey = String(anchor?.dataKey ?? "");
+      const dataQuoteId = String(anchor?.dataQuoteId ?? dqid);
+      const href = String(anchor?.href ?? (dqid ? `dq://${dqid}` : ""));
+      const title = String(anchor?.title ?? "");
+      const dataDqid = String(anchor?.dataDqid ?? "");
+      const dataQuoteText = String(anchor?.dataQuoteText ?? "");
+      const dataOrigHref = String(anchor?.dataOrigHref ?? dataKey);
+      return markType.create({
+        href,
+        title,
+        dataKey,
+        dataQuoteId,
+        dataDqid,
+        dataQuoteText,
+        dataOrigHref
+      });
+    };
     const buildFallbackTextNode = (doc: any, rangeFrom: number, rangeTo: number, value: string) => {
       const schema = doc.type?.schema ?? editor.state.schema;
       let marks: any[] = [];
@@ -2892,6 +3309,32 @@ export const createAgentSidebar = (
     const tr = fragment
       ? state.tr.replaceWith(from, to, fragment as any)
       : state.tr.replaceWith(from, to, buildFallbackTextNode(baseDoc, from, to, text) as any);
+    if (meta?.anchorInsertions?.length) {
+      const schema = baseDoc.type?.schema ?? editor.state.schema;
+      for (const insertion of meta.anchorInsertions) {
+        if (!insertion || !Number.isFinite(insertion.pos)) continue;
+        let pos = tr.mapping.map(insertion.pos);
+        const prefix = String(insertion.prefix ?? "");
+        if (prefix) {
+          const marks = getMarksAtPos(tr.doc, pos);
+          tr.insert(pos, schema.text(prefix, marks));
+          pos += prefix.length;
+        }
+        const anchors = Array.isArray(insertion.anchors) ? insertion.anchors : [];
+        for (let i = 0; i < anchors.length; i += 1) {
+          const anchor = anchors[i];
+          const anchorText = String(anchor?.text ?? "");
+          if (!anchorText) continue;
+          const mark = buildAnchorMark(schema, anchor);
+          tr.insert(pos, mark ? schema.text(anchorText, [mark]) : schema.text(anchorText));
+          pos += anchorText.length;
+          if (i < anchors.length - 1) {
+            tr.insert(pos, schema.text(" "));
+            pos += 1;
+          }
+        }
+      }
+    }
     tr.setMeta("leditor-ai", { kind: "agent", ts: Date.now() });
     editor.view.dispatch(tr);
     editor.commands.focus();
@@ -3117,6 +3560,44 @@ export const createAgentSidebar = (
     }
   };
 
+  const focusAtPos = (pos: number) => {
+    if (!Number.isFinite(pos)) return;
+    const editor = editorHandle.getEditor();
+    try {
+      const doc = editor.state.doc;
+      const safePos = Math.max(1, Math.min(doc.content.size - 1, pos));
+      const tr = editor.state.tr.setSelection(TextSelection.create(doc, safePos)).scrollIntoView();
+      editor.view.dispatch(tr);
+      editor.view.focus();
+      console.info("[agent][sections][debug]", {
+        label: "focus",
+        requested: pos,
+        safePos,
+        ok: true
+      });
+    } catch {
+      try {
+        editor.commands.setTextSelection?.({ from: pos, to: pos });
+        editor.commands.focus();
+        console.info("[agent][sections][debug]", {
+          label: "focus",
+          requested: pos,
+          safePos: pos,
+          ok: true,
+          fallback: true
+        });
+      } catch (error) {
+        console.warn("[agent][sections][debug]", {
+          label: "focus",
+          requested: pos,
+          ok: false,
+          error: error instanceof Error ? error.message : String(error)
+        });
+        // ignore
+      }
+    }
+  };
+
   const dropSubstantiateByRange = (from: number, to: number) => {
     if (!Number.isFinite(from) || !Number.isFinite(to)) return;
     markSubstantiateSuppressedByRange(from, to);
@@ -3223,7 +3704,14 @@ export const createAgentSidebar = (
       if (apply.kind === "replaceRange") {
         const match = (from !== null && to !== null) ? (apply.from === from && apply.to === to) : true;
         if (!match) continue;
-        applyRangeAsTransaction(apply.from, apply.to, apply.text, view === "substantiate" ? { source: "substantiate", n: (apply as any).n ?? null } : undefined);
+        applyRangeAsTransaction(
+          apply.from,
+          apply.to,
+          apply.text,
+          view === "substantiate"
+            ? { source: "substantiate", n: (apply as any).n ?? null, anchorInsertions: (apply as any).anchorInsertions }
+            : undefined
+        );
         if (view === "substantiate") {
           dropSubstantiateByRange(apply.from, apply.to);
         }
@@ -3240,7 +3728,14 @@ export const createAgentSidebar = (
           (n !== null) ? items.find((it: any) => it.n === n) :
           null;
         if (!match) continue;
-        applyRangeAsTransaction(match.from, match.to, match.text, view === "substantiate" ? { source: "substantiate", n: (match as any).n ?? null } : undefined);
+        applyRangeAsTransaction(
+          match.from,
+          match.to,
+          match.text,
+          view === "substantiate"
+            ? { source: "substantiate", n: (match as any).n ?? null, anchorInsertions: (match as any).anchorInsertions }
+            : undefined
+        );
         if (view === "substantiate") {
           dropSubstantiateByRange(match.from, match.to);
         }
@@ -3762,6 +4257,18 @@ export const createAgentSidebar = (
           throw new Error(`Document changed since draft for paragraph ${item.n}. Re-run the agent.`);
         }
       }
+      const hasAnchorInsertions = items.some(
+        (it: any) => Array.isArray(it.anchorInsertions) && it.anchorInsertions.length > 0
+      );
+      if (hasAnchorInsertions) {
+        for (const item of items) {
+          applyRangeAsTransaction(item.from, item.to, item.text, {
+            ...(meta ?? {}),
+            anchorInsertions: (item as any).anchorInsertions
+          });
+        }
+        return;
+      }
       applyBatchAsTransaction(items.map((it) => ({ from: it.from, to: it.to, text: it.text })), meta);
       return;
     }
@@ -3933,10 +4440,17 @@ export const createAgentSidebar = (
     syncDraftPreview();
   };
 
-  const run = async () => {
+  type RunOverrides = {
+    actionId?: AgentActionId;
+    selection?: { from: number; to: number };
+  };
+
+  const run = async (overrides?: RunOverrides) => {
     if (destroyed) return;
     let instruction = input.value.trim();
     const modeAction: ActionMode = actionMode;
+    const overrideAction = overrides?.actionId ?? null;
+    const overrideSelection = overrides?.selection ?? null;
     if (!instruction) {
       if (modeAction === "check_sources") {
         setViewMode("sources");
@@ -3961,7 +4475,7 @@ export const createAgentSidebar = (
         return;
       }
       if (modeAction !== "auto") {
-        applyActionTemplate(modeAction);
+        await applyActionTemplate(modeAction);
         return;
       }
       return;
@@ -3972,7 +4486,10 @@ export const createAgentSidebar = (
     let forcedAction: AgentActionId | null = null;
     let actionFromText: AgentActionId | null = null;
 
-    if (inlineSlash) {
+    if (overrideAction) {
+      forcedAction = overrideAction;
+      actionFromText = overrideAction;
+    } else if (inlineSlash) {
       const normalizedAll = normalizeSlash(instruction);
       const isOnlyCommand = inlineSlash.start === 0 && normalizeSlash(inlineSlash.token) === normalizedAll;
       if (isOnlyCommand) {
@@ -4081,7 +4598,10 @@ export const createAgentSidebar = (
     updateInputOverlay();
     setInflight(true);
     try {
-      clearPending();
+      const preservePending = Boolean(sectionBatchMode && forcedAction && isSectionAction(forcedAction));
+      if (!preservePending) {
+        clearPending();
+      }
       let streamMessageId: string | null = null;
       let streamBuffer = "";
       const progress = (event: AgentProgressEvent | string) => {
@@ -4112,7 +4632,11 @@ export const createAgentSidebar = (
             break;
         }
       };
-      const request: AgentRunRequest = { instruction, actionId: forcedAction ?? undefined };
+      const request: AgentRunRequest = {
+        instruction,
+        actionId: forcedAction ?? undefined,
+        ...(overrideSelection ? { selection: overrideSelection } : {})
+      };
       abortController = new AbortController();
       activeRequestId = makeRequestId();
       pendingActionId = forcedAction ?? null;
@@ -4140,7 +4664,62 @@ export const createAgentSidebar = (
         }
       }
       pending = result.apply ?? null;
-      if (pending) {
+      const autoApply = Boolean(pending && (pending as any).autoApply);
+      if (pending && autoApply) {
+        const label = pendingActionId ? actionLabel(pendingActionId) : "Section";
+        const prevPending = pending;
+        let focusFrom: number | null = null;
+        if (pending.kind === "replaceRange") {
+          focusFrom = pending.from;
+        } else if (pending.kind === "batchReplace" && pending.items.length) {
+          focusFrom = pending.items.reduce((min, it) => Math.min(min, it.from), pending.items[0]!.from);
+        }
+        try {
+          applyPending();
+          setStatus(`${label} applied.`);
+          if (focusFrom != null) {
+            focusAtPos(focusFrom);
+          }
+        } catch (error) {
+          addMessage("assistant", `Error: ${error instanceof Error ? error.message : String(error)}`);
+        } finally {
+          pending = prevPending;
+          pendingActionId = null;
+          pending = viewMode === "chat" ? null : ((pendingByView as any)[viewMode] ?? null);
+          syncDraftPreview();
+          renderBoxes();
+          try {
+            draftRail?.update();
+          } catch {
+            // ignore
+          }
+        }
+        return;
+      }
+      const isBatchSection = Boolean(sectionBatchMode && pendingActionId && isSectionAction(pendingActionId));
+      if (pending && isBatchSection) {
+        const merged = mergeSectionApply((pendingByView as any).sections ?? null, pending);
+        pendingByView = { ...pendingByView, sections: merged };
+        pending = viewMode === "sections" ? merged : pending;
+        const count = merged.kind === "batchReplace" ? merged.items.length : 1;
+        const label = pendingActionId ? actionLabel(pendingActionId) : "Section";
+        setStatus(`Queued ${label} • ${count} section draft(s) queued.`);
+        syncDraftPreview();
+        renderBoxes();
+        try {
+          draftRail?.update();
+        } catch {
+          // ignore
+        }
+        if (pendingActionId && isSectionAction(pendingActionId)) {
+          console.info("[agent][sections] output", {
+            requestId: activeRequestId,
+            action: pendingActionId,
+            applyKind: merged?.kind ?? null,
+            assistantText: result.assistantText ?? ""
+          });
+        }
+      } else if (pending) {
         const viewKey =
           pendingActionId && isSectionAction(pendingActionId)
             ? ("sections" as SidebarViewId)
@@ -4349,6 +4928,12 @@ export const createAgentSidebar = (
     return { indices: [at.n], from: at.from, to: at.to };
   };
 
+  const getSelectionRangeForAction = (): { from: number; to: number } | null => {
+    const target = getIndicesForCurrentSelectionOrCursor();
+    if (!target) return null;
+    return { from: target.from, to: target.to };
+  };
+
   const getActionPrompt = (actionId: AgentActionId): string => {
     const actions: any = (agentActionPrompts as any)?.actions ?? {};
     const entry = actions[actionId];
@@ -4362,15 +4947,50 @@ export const createAgentSidebar = (
   const isSectionAction = (actionId: AgentActionId): boolean =>
     actionId === "abstract" ||
     actionId === "introduction" ||
+    actionId === "methodology" ||
     actionId === "findings" ||
     actionId === "recommendations" ||
     actionId === "conclusion";
 
-  const applyActionTemplate = (actionId: AgentActionId) => {
+  const mergeSectionApply = (
+    base: AgentRunResult["apply"] | null,
+    next: AgentRunResult["apply"]
+  ): AgentRunResult["apply"] => {
+    if (!base) return next;
+    if (base.kind !== "batchReplace" || next.kind !== "batchReplace") {
+      return next;
+    }
+    const items = [...base.items];
+    const seen = new Set(items.map((it) => `${it.from}:${it.to}`));
+    for (const item of next.items) {
+      const key = `${item.from}:${item.to}`;
+      if (seen.has(key)) continue;
+      items.push(item);
+      seen.add(key);
+    }
+    items.sort((a, b) => a.n - b.n);
+    return { kind: "batchReplace", items };
+  };
+
+  const applyActionTemplate = async (
+    actionId: AgentActionId,
+    options?: { selectionBlock?: boolean }
+  ) => {
     if (isSectionAction(actionId)) {
       const prompt = getActionPrompt(actionId);
       input.value = prompt;
-      void run();
+      await run();
+      return;
+    }
+    if (options?.selectionBlock) {
+      const range = getSelectionRangeForAction();
+      if (!range) {
+        addMessage("system", "Select text or place cursor in a paragraph, then run an action.");
+        return;
+      }
+      const prompt = `${getActionPrompt(actionId)} Treat the selection as a single block.`;
+      input.value = prompt;
+      await run({ actionId, selection: range });
       return;
     }
     const target = getIndicesForCurrentSelectionOrCursor();
@@ -4381,7 +5001,53 @@ export const createAgentSidebar = (
     const spec = formatIndexSpec(target.indices);
     const prompt = getActionPrompt(actionId);
     input.value = `${spec} ${prompt}`;
-    void run();
+    await run();
+  };
+
+  const runSectionBatch = async () => {
+    if (sectionBatchMode) return;
+    clearPending();
+    sectionBatchMode = true;
+    setViewMode("sections");
+    addMessage(
+      "system",
+      "Drafting all sections. This may take a moment; drafts will be queued for review in the Sections tab."
+    );
+    const sequence: AgentActionId[] = [
+      "abstract",
+      "introduction",
+      "methodology",
+      "findings",
+      "recommendations",
+      "conclusion"
+    ];
+    try {
+      for (const id of sequence) {
+        setStatus(`Drafting ${actionLabel(id)}...`);
+        await applyActionTemplate(id);
+      }
+    } finally {
+      sectionBatchMode = false;
+      pending = (pendingByView as any).sections ?? null;
+      pendingActionId = null;
+      const count = pending?.kind === "batchReplace" ? pending.items.length : pending ? 1 : 0;
+      setStatus(
+        count
+          ? `Drafts queued • ${count} section change(s). Review inline in the document.`
+          : "No section drafts created."
+      );
+      addMessage(
+        "system",
+        count ? "All section drafts are queued. Review them in the Sections tab." : "No section drafts were created."
+      );
+      syncDraftPreview();
+      renderBoxes();
+      try {
+        draftRail?.update();
+      } catch {
+        // ignore
+      }
+    }
   };
 
   const collectAnchorsInRange = (from: number, to: number) => {
@@ -4898,10 +5564,11 @@ export const createAgentSidebar = (
           });
           continue;
         }
-        const sel = resolveSelectedModelId();
+        const sel = resolveSelectedProvider();
+        const model = resolveSelectedModel(sel.provider);
         const requestPayload = {
           provider: sel.provider,
-          model: sel.model,
+          ...(model ? { model } : {}),
           paragraphN: paragraph.n,
           paragraphText,
           anchors: anchors.map((a) => ({
@@ -4919,7 +5586,6 @@ export const createAgentSidebar = (
         const cacheKey = buildLlmCacheKey({
           fn: "check_sources",
           provider: requestPayload.provider,
-          model: requestPayload.model,
           payload: requestPayload
         });
         const cached = getLlmCacheEntry(cacheKey);
@@ -4932,7 +5598,7 @@ export const createAgentSidebar = (
               key: cacheKey,
               fn: "check_sources",
               value: result,
-              meta: { provider: requestPayload.provider, model: requestPayload.model }
+              meta: { provider: requestPayload.provider }
             });
           }
         }
@@ -4981,7 +5647,6 @@ export const createAgentSidebar = (
           upsertSourceChecksFromRun({
             paragraphN: paragraph.n,
             provider: requestPayload.provider,
-            model: requestPayload.model,
             anchors: requestPayload.anchors,
             checksByKey: byKey
           });
@@ -5097,7 +5762,17 @@ export const createAgentSidebar = (
             from: number;
             to: number;
           };
-          anchors: Array<{ key: string; text: string; title: string; startOffset: number; endOffset: number }>;
+          anchors: Array<{
+            key: string;
+            text: string;
+            title: string;
+            href: string;
+            dataKey: string;
+            dataDqid: string;
+            dataQuoteId: string;
+            startOffset: number;
+            endOffset: number;
+          }>;
           anchorText: string;
           anchorTitle: string;
           anchorTexts: string[];
@@ -5160,7 +5835,8 @@ export const createAgentSidebar = (
           if (!domContext) {
             console.info("[substantiate] dom_context_missing", { key: String(first.key ?? ""), paragraphN: paragraph.n });
           }
-          const oldTextPayload = domContext?.oldTextRaw || oldTextRaw || oldTextModel;
+          const oldTextPayloadRaw = domContext?.oldTextRaw || oldTextRaw || oldTextModel;
+          const oldTextPayload = stripLeadingParagraphMarker(oldTextPayloadRaw, paragraph.n);
           const hasOldText = Boolean(domContext?.oldTextModel || oldTextModel);
           if (hasOldText) {
             const groupKey =
@@ -5169,6 +5845,10 @@ export const createAgentSidebar = (
               key: String(a.key ?? ""),
               text: String(a.text ?? ""),
               title: String(a.title ?? ""),
+              href: String(a.href ?? ""),
+              dataKey: String(a.dataKey ?? ""),
+              dataDqid: String(a.dataDqid ?? ""),
+              dataQuoteId: String(a.dataQuoteId ?? ""),
               startOffset: a.startOffset,
               endOffset: a.endOffset
             }));
@@ -5181,13 +5861,21 @@ export const createAgentSidebar = (
                 : "";
             const anchorText = anchorTexts.length ? anchorTexts.join(" ") : "";
 
-            const paragraphTextPayload = domContext?.paragraphText
+            const paragraphTextPayloadRaw = domContext?.paragraphText
               ? String(domContext.paragraphText).trim()
               : paragraphText;
+            const paragraphTextPayload = stripLeadingParagraphMarker(paragraphTextPayloadRaw, paragraph.n);
             anchorsPayload.push({
               key: groupKey,
               paragraphN: paragraph.n,
-              anchors: groupAnchors.map((a) => ({ text: a.text, title: a.title })),
+              anchors: groupAnchors.map((a) => ({
+                text: a.text,
+                title: a.title,
+                href: a.href,
+                dataKey: a.dataKey,
+                dataDqid: a.dataDqid,
+                dataQuoteId: a.dataQuoteId
+              })),
               oldText: oldTextPayload,
               paragraphText: paragraphTextPayload
             });
@@ -5233,7 +5921,8 @@ export const createAgentSidebar = (
         // ignore
       }
 
-      const sel = resolveSelectedModelId();
+      const sel = resolveSelectedProvider();
+      const model = resolveSelectedModel(sel.provider);
       const requestId = `sub-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
       const streamEnabled = typeof host.onSubstantiateStreamUpdate === "function";
       const resultsByKey = new Map<string, any>();
@@ -5241,10 +5930,18 @@ export const createAgentSidebar = (
       let streamTotal = anchorsPayload.length;
       let streamIndexSkipped = 0;
       let streamIndexTotal = 0;
+      let noSubstantiateNoticeSent = false;
 
       const updateSubstantiateState = (byKey: Map<string, any>) => {
         const nextResults: SubstantiateSuggestion[] = [];
-        const applyItems: Array<{ n: number; from: number; to: number; text: string; originalText: string }> = [];
+        const applyItems: Array<{
+          n: number;
+          from: number;
+          to: number;
+          text: string;
+          originalText: string;
+          anchorInsertions?: SubstantiateAnchorInsertion[];
+        }> = [];
         const locateOldTextRange = (paragraphTextRaw: string, needleRaw: string, anchorStartOffset: number) => {
           const needle = String(needleRaw ?? "");
           if (!needle) return null;
@@ -5405,8 +6102,31 @@ export const createAgentSidebar = (
           }
           if (!rewrite) rewrite = sentence;
           const normalizedSentence = sentence;
-          const normalizedRewrite = rewrite;
-          const hasChange = normalizedRewrite && normalizedRewrite !== normalizedSentence;
+          let normalizedRewrite = rewrite;
+          const stance =
+            r?.stance === "corroborates" || r?.stance === "refutes" || r?.stance === "mixed" || r?.stance === "uncertain"
+              ? r.stance
+              : "uncertain";
+          let anchorEdits = normalizeAnchorEditsFromResult(r, Array.isArray(r?.matches) ? r.matches : []);
+          if (anchorEdits && stance !== "corroborates" && stance !== "refutes") {
+            anchorEdits = null;
+          }
+          if (anchorEdits && anchorEdits.action === "add_anchor_only") {
+            rewrite = normalizedSentence;
+          }
+          normalizedRewrite = normalizeDiffText(rewrite);
+          const anchorInsertions = anchorEdits
+            ? buildSubstantiateAnchorInsertions({
+                context: {
+                  paragraph: context.paragraph,
+                  paragraphTextRaw: context.paragraphTextRaw,
+                  anchors: context.anchors
+                },
+                edits: anchorEdits
+              })
+            : [];
+          const hasChange =
+            Boolean(normalizedRewrite && normalizedRewrite !== normalizedSentence) || anchorInsertions.length > 0;
           const error = typeof r?.error === "string" ? String(r.error) : "";
           const justification =
             typeof r?.justification === "string"
@@ -5416,6 +6136,9 @@ export const createAgentSidebar = (
                 : typeof r?.notes === "string"
                   ? String(r.notes).trim()
                   : "";
+          if (!hasChange && !error) {
+            continue;
+          }
           nextResults.push({
             key,
             paragraphN: context.paragraph.n,
@@ -5423,15 +6146,13 @@ export const createAgentSidebar = (
             anchorTitle: context.anchorTitle,
             sentence,
             rewrite,
-            stance:
-              r?.stance === "corroborates" || r?.stance === "refutes" || r?.stance === "mixed" || r?.stance === "uncertain"
-                ? r.stance
-                : "uncertain",
+            stance,
             notes: error ? error : (typeof r?.notes === "string" ? String(r.notes) : undefined),
             justification: error ? error : (justification || undefined),
             suggestion: typeof r?.suggestion === "string" ? String(r.suggestion) : undefined,
             diffs: typeof r?.diffs === "string" ? String(r.diffs) : undefined,
             matches: Array.isArray(r?.matches) ? r.matches : [],
+            anchorEdits: anchorEdits ?? undefined,
             from,
             to,
             status: "pending",
@@ -5454,7 +6175,8 @@ export const createAgentSidebar = (
               from,
               to,
               text: rewrite,
-              originalText
+              originalText,
+              ...(anchorInsertions.length ? { anchorInsertions } : {})
             });
           }
         }
@@ -5484,7 +6206,15 @@ export const createAgentSidebar = (
         const total = streamIndexTotal;
         const skipNote = skipped > 0 ? ` Skipped ${skipped}${total ? ` of ${total}` : ""} malformed entries.` : "";
         if (final) {
-          setStatus(`Substantiate ready • ${substantiateResults.length} suggestion(s).${skipNote}`);
+          if (substantiateResults.length === 0) {
+            setStatus(`No substantiate suggestions.${skipNote}`);
+            if (!noSubstantiateNoticeSent) {
+              addMessage("assistant", "No substantiate suggestions.");
+              noSubstantiateNoticeSent = true;
+            }
+          } else {
+            setStatus(`Substantiate ready • ${substantiateResults.length} suggestion(s).${skipNote}`);
+          }
           return;
         }
         const totalCount = Math.max(0, streamTotal);
@@ -5494,7 +6224,7 @@ export const createAgentSidebar = (
 
       const requestPayload = {
         provider: sel.provider,
-        model: sel.model,
+        ...(model ? { model } : {}),
         lookupPath,
         requests: anchorsPayload,
         stream: streamEnabled
@@ -5502,7 +6232,6 @@ export const createAgentSidebar = (
       const cacheKey = buildLlmCacheKey({
         fn: "substantiate",
         provider: sel.provider,
-        model: sel.model,
         payload: requestPayload
       });
       const cached = getLlmCacheEntry(cacheKey);
@@ -5580,7 +6309,7 @@ export const createAgentSidebar = (
         key: cacheKey,
         fn: "substantiate",
         value: result,
-        meta: { provider: sel.provider, model: sel.model }
+        meta: { provider: sel.provider }
       });
       substantiateError = null;
 
@@ -5749,7 +6478,14 @@ export const createAgentSidebar = (
     isOpen() {
       return open;
     },
-    runAction(actionId: AgentActionId) {
+    openView(view) {
+      if (destroyed) return;
+      if (!open) controller.open();
+      const next =
+        view === "chat" || view === "dictionary" || view === "sections" || view === "sources" ? view : "chat";
+      setViewMode(next as SidebarViewId);
+    },
+    runAction(actionId: AgentActionId, options?: { mode?: "block" }) {
       if (destroyed) return;
       if (!open) controller.open();
       if (actionId === "clear_checks") {
@@ -5773,10 +6509,20 @@ export const createAgentSidebar = (
         void runSubstantiate();
         return;
       }
+      if (actionId === "shorten" && options?.mode === "block") {
+        void applyActionTemplate(actionId, { selectionBlock: true });
+        return;
+      }
       if (isSectionAction(actionId)) {
         setViewMode("chat");
       }
-      applyActionTemplate(actionId);
+      void applyActionTemplate(actionId);
+    },
+    runSectionsBatch() {
+      if (destroyed) return;
+      if (!open) controller.open();
+      setViewMode("sections");
+      void runSectionBatch();
     },
     openDictionary(mode?: DictionaryMode) {
       if (destroyed) return;
@@ -6112,11 +6858,8 @@ export const createAgentSidebar = (
     } else if (host && typeof host.getAiStatus === "function") {
       // Backward compatibility (OpenAI-only hosts).
       try {
-        const status: any = await host.getAiStatus();
-        const hasApiKey = Boolean(status?.hasApiKey);
-        const model = String(status?.model || "").trim();
-        const modelFromEnv = Boolean(status?.modelFromEnv);
-        // env status is reflected by disabling providers/models without keys in the model menu.
+        await host.getAiStatus();
+        // env status is reflected by disabling providers without keys in the provider menu.
       } catch {
         // ignore
       }

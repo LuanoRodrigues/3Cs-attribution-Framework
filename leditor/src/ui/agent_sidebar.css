@@ -7,15 +7,15 @@
   max-width: 40vw;
   display: none;
   flex-direction: column;
-  --agent-accent: #2563eb;
-  --agent-accent-strong: #1d4ed8;
-  --agent-text: #0f172a;
-  --agent-muted: rgba(15, 23, 42, 0.62);
-  --agent-surface: rgba(255, 255, 255, 0.98);
-  --agent-surface-2: rgba(248, 250, 252, 0.98);
-  background: #f7f8fb;
-  border-left: 1px solid rgba(15, 23, 42, 0.10);
-  box-shadow: -8px 0 20px rgba(15, 23, 42, 0.12);
+  --agent-accent: var(--ui-accent);
+  --agent-accent-strong: var(--ui-accent-strong);
+  --agent-text: var(--ui-text);
+  --agent-muted: var(--ui-muted);
+  --agent-surface: var(--ui-surface);
+  --agent-surface-2: var(--ui-surface-2);
+  background: var(--agent-surface-2);
+  border-left: 1px solid color-mix(in srgb, var(--agent-text) 12%, transparent);
+  box-shadow: -8px 0 20px color-mix(in srgb, var(--agent-text) 12%, transparent);
   z-index: 950;
   font-family: "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
   color: var(--agent-text);
@@ -38,9 +38,9 @@
   flex-direction: column;
   align-items: stretch;
   gap: 0;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.12);
-  background: rgba(250, 251, 252, 0.98);
-  box-shadow: 0 8px 14px rgba(15, 23, 42, 0.06);
+  border-bottom: 1px solid color-mix(in srgb, var(--agent-text) 12%, transparent);
+  background: var(--agent-surface);
+  box-shadow: 0 8px 14px color-mix(in srgb, var(--agent-text) 6%, transparent);
 }
 
 .leditor-agent-sidebar__headerTop {
@@ -56,7 +56,7 @@
   font-weight: 600;
   letter-spacing: 0.2px;
   text-transform: none;
-  color: rgba(15, 23, 42, 0.92);
+  color: var(--agent-text);
 }
 
 .leditor-agent-sidebar__headerRight {
@@ -69,7 +69,7 @@
   display: flex;
   align-items: center;
   padding: 6px 10px 10px 10px;
-  border-top: 1px solid rgba(15, 23, 42, 0.06);
+  border-top: 1px solid color-mix(in srgb, var(--agent-text) 8%, transparent);
 }
 
 .leditor-agent-sidebar__viewTabs {
@@ -83,8 +83,8 @@
   scrollbar-width: thin;
   padding: 4px;
   border-radius: 8px;
-  background: rgba(15, 23, 42, 0.04);
-  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.05);
+  background: color-mix(in srgb, var(--agent-surface-2) 85%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--agent-text) 8%, transparent);
 }
 
 .leditor-agent-sidebar__viewTabs::-webkit-scrollbar {
@@ -92,12 +92,12 @@
 }
 
 .leditor-agent-sidebar__viewTabs::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.18);
+  background: color-mix(in srgb, var(--agent-text) 18%, transparent);
   border-radius: 999px;
 }
 
 .leditor-app.theme-dark .leditor-agent-sidebar__viewTabs::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.18);
+  background: color-mix(in srgb, var(--agent-surface) 18%, transparent);
   border-radius: 999px;
 }
 
@@ -107,7 +107,7 @@
   appearance: none;
   border: 1px solid transparent;
   background: transparent;
-  color: rgba(15, 23, 42, 0.7);
+  color: var(--agent-muted);
   padding: 5px 8px;
   font-size: 11px;
   line-height: 1;
@@ -120,30 +120,30 @@
 
 
 .leditor-agent-sidebar__viewTab:hover {
-  color: rgba(15, 23, 42, 0.95);
-  background: rgba(37, 99, 235, 0.10);
-  border-color: rgba(37, 99, 235, 0.2);
+  color: var(--agent-text);
+  background: color-mix(in srgb, var(--agent-accent) 12%, transparent);
+  border-color: color-mix(in srgb, var(--agent-accent) 25%, transparent);
 }
 
 .leditor-agent-sidebar__viewTab.is-active {
-  color: rgba(15, 23, 42, 0.98);
-  background: rgba(37, 99, 235, 0.16);
-  border-color: rgba(37, 99, 235, 0.35);
+  color: var(--agent-text);
+  background: color-mix(in srgb, var(--agent-accent) 18%, transparent);
+  border-color: color-mix(in srgb, var(--agent-accent) 35%, transparent);
   font-weight: 600;
   box-shadow: none;
 }
 
 .leditor-app.theme-dark .leditor-agent-sidebar__viewTab {
-  color: rgba(240, 240, 240, 0.8);
+  color: var(--agent-muted);
 }
 
 .leditor-app.theme-dark .leditor-agent-sidebar__viewTab:hover {
-  color: rgba(255, 255, 255, 0.92);
+  color: var(--agent-text);
 }
 
 .leditor-app.theme-dark .leditor-agent-sidebar__viewTab.is-active {
-  color: rgba(255, 255, 255, 0.98);
-  border-bottom-color: rgba(96, 165, 250, 0.9);
+  color: var(--agent-text);
+  border-bottom-color: var(--agent-accent);
 }
 
 .leditor-agent-sidebar__headerBottom {
@@ -167,8 +167,8 @@
   min-width: 0;
   font-size: 11px;
   color: var(--agent-muted);
-  background: rgba(15, 23, 42, 0.04);
-  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: color-mix(in srgb, var(--agent-text) 5%, transparent);
+  border: 1px solid color-mix(in srgb, var(--agent-text) 10%, transparent);
   border-radius: 6px;
   padding: 4px 6px;
   align-self: flex-start;
@@ -190,8 +190,8 @@
   user-select: none;
   padding: 4px 6px;
   border-radius: 6px;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid color-mix(in srgb, var(--agent-text) 12%, transparent);
+  background: color-mix(in srgb, var(--agent-surface) 90%, transparent);
 }
 
 .leditor-agent-sidebar__numbersToggle input[type="checkbox"] {
@@ -199,8 +199,8 @@
   width: 28px;
   height: 14px;
   border-radius: 8px;
-  border: 1px solid rgba(15, 23, 42, 0.2);
-  background: rgba(15, 23, 42, 0.15);
+  border: 1px solid color-mix(in srgb, var(--agent-text) 20%, transparent);
+  background: color-mix(in srgb, var(--agent-text) 16%, transparent);
   position: relative;
   cursor: pointer;
 }
@@ -213,14 +213,14 @@
   width: 10px;
   height: 10px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.18);
+  background: color-mix(in srgb, var(--agent-surface) 96%, transparent);
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--agent-text) 18%, transparent);
   transition: transform 160ms ease;
 }
 
 .leditor-agent-sidebar__numbersToggle input[type="checkbox"]:checked {
-  background: rgba(37, 99, 235, 0.55);
-  border-color: rgba(37, 99, 235, 0.7);
+  background: color-mix(in srgb, var(--agent-accent) 55%, transparent);
+  border-color: color-mix(in srgb, var(--agent-accent) 70%, transparent);
 }
 
 .leditor-agent-sidebar__numbersToggle input[type="checkbox"]:checked::after {
@@ -236,8 +236,8 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid rgba(15, 23, 42, 0.14);
-  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid color-mix(in srgb, var(--agent-text) 14%, transparent);
+  background: color-mix(in srgb, var(--agent-surface) 92%, transparent);
   border-radius: 6px;
   padding: 5px 8px;
   font-size: 11px;
@@ -246,7 +246,7 @@
 }
 
 .leditor-agent-sidebar__actionPickerBtn:hover {
-  background: rgba(255, 255, 255, 0.92);
+  background: color-mix(in srgb, var(--agent-surface) 92%, transparent);
 }
 
 .leditor-agent-sidebar__actionPickerLabel {
@@ -255,7 +255,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   font-size: 11px;
-  color: rgba(15, 23, 42, 0.9);
+  color: color-mix(in srgb, var(--agent-text) 90%, transparent);
 }
 
 .leditor-agent-sidebar__actionMenu {
@@ -267,9 +267,9 @@
   max-height: 260px;
   overflow: auto;
   border-radius: 8px;
-  border: 1px solid rgba(15, 23, 42, 0.14);
-  background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 10px 18px rgba(15, 23, 42, 0.14);
+  border: 1px solid color-mix(in srgb, var(--agent-text) 14%, transparent);
+  background: color-mix(in srgb, var(--agent-surface) 98%, transparent);
+  box-shadow: 0 10px 18px color-mix(in srgb, var(--agent-text) 14%, transparent);
   padding: 6px;
   z-index: 6;
 }
@@ -287,8 +287,8 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid rgba(15, 23, 42, 0.14);
-  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid color-mix(in srgb, var(--agent-text) 14%, transparent);
+  background: color-mix(in srgb, var(--agent-surface) 92%, transparent);
   border-radius: 6px;
   padding: 5px 8px;
   font-size: 11px;
@@ -297,7 +297,7 @@
 }
 
 .leditor-agent-sidebar__modelPickerBtn:hover {
-  background: rgba(255, 255, 255, 0.92);
+  background: color-mix(in srgb, var(--agent-surface) 92%, transparent);
 }
 
 .leditor-agent-sidebar__modelPickerLabel {
@@ -306,12 +306,12 @@
   overflow: hidden;
   text-overflow: ellipsis;
   font-size: 11px;
-  color: rgba(15, 23, 42, 0.9);
+  color: color-mix(in srgb, var(--agent-text) 90%, transparent);
 }
 
 .leditor-agent-sidebar__modelPickerChevron {
   flex: 0 0 auto;
-  color: rgba(120, 120, 120, 0.9);
+  color: color-mix(in srgb, var(--agent-text) 90%, transparent);
 }
 
 .leditor-agent-sidebar__modelMenu {
@@ -323,9 +323,9 @@
   max-height: 260px;
   overflow: auto;
   border-radius: 8px;
-  border: 1px solid rgba(15, 23, 42, 0.14);
-  background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 10px 18px rgba(15, 23, 42, 0.14);
+  border: 1px solid color-mix(in srgb, var(--agent-text) 14%, transparent);
+  background: color-mix(in srgb, var(--agent-surface) 98%, transparent);
+  box-shadow: 0 10px 18px color-mix(in srgb, var(--agent-text) 14%, transparent);
   padding: 6px;
   z-index: 5;
 }
@@ -352,8 +352,8 @@
 }
 
 .leditor-agent-sidebar__modelOption:hover {
-  background: rgba(37, 99, 235, 0.08);
-  border-color: rgba(37, 99, 235, 0.2);
+  background: color-mix(in srgb, var(--agent-accent) 8%, transparent);
+  border-color: color-mix(in srgb, var(--agent-accent) 20%, transparent);
 }
 
 .leditor-agent-sidebar__modelOption:disabled {
@@ -364,7 +364,7 @@
 .leditor-agent-sidebar__modelOptionName {
   font-size: 12px;
   font-weight: 600;
-  color: rgba(35, 35, 35, 0.94);
+  color: var(--agent-text);
 }
 
 .leditor-agent-sidebar__modelOptionDesc {
@@ -385,26 +385,26 @@
   opacity: 0.85;
   padding: 4px 8px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid color-mix(in srgb, var(--agent-text) 12%, transparent);
+  background: color-mix(in srgb, var(--agent-surface) 85%, transparent);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .leditor-agent-sidebar__apiBadge.is-ok {
-  border-color: rgba(16, 185, 129, 0.35);
-  background: rgba(16, 185, 129, 0.12);
+  border-color: color-mix(in srgb, var(--ui-success) 35%, transparent);
+  background: color-mix(in srgb, var(--ui-success) 12%, transparent);
 }
 
 .leditor-agent-sidebar__apiBadge.is-missing {
-  border-color: rgba(239, 68, 68, 0.32);
-  background: rgba(239, 68, 68, 0.08);
+  border-color: color-mix(in srgb, var(--ui-danger) 32%, transparent);
+  background: color-mix(in srgb, var(--ui-danger) 8%, transparent);
 }
 
 .leditor-agent-sidebar__close {
-  border: 1px solid rgba(15, 23, 42, 0.14);
-  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid color-mix(in srgb, var(--agent-text) 14%, transparent);
+  background: color-mix(in srgb, var(--agent-surface) 90%, transparent);
   border-radius: 6px;
   padding: 5px 10px;
   font-size: 11px;
@@ -412,14 +412,14 @@
 }
 
 .leditor-agent-sidebar__close:hover {
-  background: rgba(37, 99, 235, 0.10);
-  border-color: rgba(37, 99, 235, 0.28);
+  background: color-mix(in srgb, var(--agent-accent) 10%, transparent);
+  border-color: color-mix(in srgb, var(--agent-accent) 28%, transparent);
 }
 
 .leditor-agent-sidebar__lexiconPanel {
   margin-top: 10px;
   padding-top: 10px;
-  border-top: 1px dashed rgba(0, 0, 0, 0.12);
+  border-top: 1px dashed color-mix(in srgb, var(--agent-text) 12%, transparent);
 }
 
 .leditor-agent-sidebar__lexiconPanel.is-hidden {
@@ -444,12 +444,12 @@
   padding: 6px 10px;
   font-size: 12px;
   cursor: pointer;
-  border: 1px solid rgba(37, 99, 235, 0.26);
-  background: rgba(37, 99, 235, 0.10);
+  border: 1px solid color-mix(in srgb, var(--agent-accent) 30%, transparent);
+  background: color-mix(in srgb, var(--agent-accent) 12%, transparent);
 }
 
 .leditor-agent-sidebar__lexiconBtn:hover {
-  background: rgba(37, 99, 235, 0.16);
+  background: color-mix(in srgb, var(--agent-accent) 18%, transparent);
 }
 
 .leditor-lexicon-popup {
@@ -458,31 +458,57 @@
   width: 280px;
   max-width: calc(100vw - 16px);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.98);
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.18);
+  background: color-mix(in srgb, var(--agent-surface) 96%, transparent);
+  border: 1px solid color-mix(in srgb, var(--agent-text) 12%, transparent);
+  box-shadow: 0 14px 30px color-mix(in srgb, var(--agent-text) 18%, transparent);
   overflow: hidden;
   pointer-events: auto;
   font-size: 12px;
 }
 
+.leditor-lexicon-popup.is-definition,
+.leditor-lexicon-popup.is-explain {
+  width: 320px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--agent-surface) 98%, transparent), color-mix(in srgb, var(--agent-surface-2) 70%, transparent));
+  border-color: color-mix(in srgb, var(--agent-text) 14%, transparent);
+  position: relative;
+}
+
+.leditor-lexicon-popup.is-definition::before,
+.leditor-lexicon-popup.is-explain::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--agent-accent) 40%, transparent);
+  opacity: 0.7;
+}
+
 .leditor-app.theme-dark .leditor-lexicon-popup {
-  background: rgba(24, 28, 36, 0.98);
-  border-color: rgba(255, 255, 255, 0.14);
+  background: color-mix(in srgb, var(--agent-surface) 92%, transparent);
+  border-color: color-mix(in srgb, var(--agent-text) 14%, transparent);
 }
 
 .leditor-lexicon-popup__header {
   padding: 10px 12px 8px 12px;
-  color: rgba(23, 23, 23, 0.9);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  color: var(--agent-text);
+  border-bottom: 1px solid color-mix(in srgb, var(--agent-text) 10%, transparent);
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
+.leditor-lexicon-popup.is-definition .leditor-lexicon-popup__header,
+.leditor-lexicon-popup.is-explain .leditor-lexicon-popup__header {
+  padding-left: 18px;
+}
+
 .leditor-app.theme-dark .leditor-lexicon-popup__header {
-  color: rgba(240, 240, 240, 0.9);
-  border-bottom-color: rgba(255, 255, 255, 0.10);
+  color: var(--agent-text);
+  border-bottom-color: color-mix(in srgb, var(--agent-text) 12%, transparent);
 }
 
 .leditor-lexicon-popup__headword {
@@ -499,14 +525,71 @@
   opacity: 0.7;
 }
 
+.leditor-lexicon-popup.is-definition .leditor-lexicon-popup__headword,
+.leditor-lexicon-popup.is-explain .leditor-lexicon-popup__headword {
+  font-family: "Georgia", "Times New Roman", serif;
+}
+
+.leditor-lexicon-popup__context {
+  padding: 6px 12px 0 12px;
+}
+
+.leditor-lexicon-popup.is-definition .leditor-lexicon-popup__context,
+.leditor-lexicon-popup.is-explain .leditor-lexicon-popup__context {
+  padding-left: 18px;
+}
+
+.leditor-lexicon-popup__contextSummary {
+  cursor: pointer;
+  font-size: 10px;
+  color: var(--agent-muted);
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-weight: 600;
+}
+
+.leditor-lexicon-popup__contextSummary::-webkit-details-marker {
+  display: none;
+}
+
+.leditor-lexicon-popup__contextSummary::after {
+  content: "▾";
+  font-size: 10px;
+  opacity: 0.7;
+  transition: transform 120ms ease;
+}
+
+.leditor-lexicon-popup__context[open] .leditor-lexicon-popup__contextSummary::after {
+  transform: rotate(180deg);
+}
+
+.leditor-lexicon-popup__contextBody {
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--agent-text) 85%, transparent);
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--agent-text) 4%, transparent);
+}
+
 .leditor-lexicon-popup__helper {
   padding: 6px 12px 0 12px;
   font-size: 11px;
-  color: rgba(23, 23, 23, 0.6);
+  color: var(--agent-muted);
+}
+
+.leditor-lexicon-popup.is-definition .leditor-lexicon-popup__helper,
+.leditor-lexicon-popup.is-explain .leditor-lexicon-popup__helper {
+  padding-left: 18px;
 }
 
 .leditor-app.theme-dark .leditor-lexicon-popup__helper {
-  color: rgba(240, 240, 240, 0.6);
+  color: var(--agent-muted);
 }
 
 .leditor-lexicon-popup__list {
@@ -524,78 +607,90 @@
 .leditor-lexicon-popup__body {
   padding: 10px 12px;
   line-height: 1.45;
-  color: rgba(23, 23, 23, 0.84);
+  color: var(--agent-text);
+}
+
+.leditor-lexicon-popup.is-definition .leditor-lexicon-popup__body,
+.leditor-lexicon-popup.is-explain .leditor-lexicon-popup__body {
+  padding-left: 18px;
+}
+
+.leditor-lexicon-popup.is-definition .leditor-lexicon-popup__body,
+.leditor-lexicon-popup.is-explain .leditor-lexicon-popup__body {
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .leditor-app.theme-dark .leditor-lexicon-popup__body {
-  color: rgba(240, 240, 240, 0.88);
+  color: var(--agent-text);
 }
 
 .leditor-lexicon-popup__chip {
   text-align: left;
   border-radius: 999px;
-  border: 1px solid rgba(37, 99, 235, 0.22);
-  background: rgba(37, 99, 235, 0.08);
+  border: 1px solid color-mix(in srgb, var(--agent-accent) 25%, transparent);
+  background: color-mix(in srgb, var(--agent-accent) 10%, transparent);
   padding: 6px 10px;
   font-size: 12px;
   cursor: pointer;
-  color: rgba(23, 23, 23, 0.86);
+  color: var(--agent-text);
 }
 
 .leditor-app.theme-dark .leditor-lexicon-popup__chip {
-  background: rgba(59, 130, 246, 0.16);
-  border-color: rgba(59, 130, 246, 0.32);
-  color: rgba(240, 240, 240, 0.9);
+  background: color-mix(in srgb, var(--agent-accent) 18%, transparent);
+  border-color: color-mix(in srgb, var(--agent-accent) 35%, transparent);
+  color: var(--agent-text);
 }
 
 .leditor-lexicon-popup__chip:hover {
-  background: rgba(37, 99, 235, 0.16);
-  border-color: rgba(37, 99, 235, 0.36);
+  background: color-mix(in srgb, var(--agent-accent) 18%, transparent);
+  border-color: color-mix(in srgb, var(--agent-accent) 40%, transparent);
 }
 
 .leditor-lexicon-popup__chip:focus {
   outline: none;
-  background: rgba(37, 99, 235, 0.22);
-  border-color: rgba(37, 99, 235, 0.42);
+  background: color-mix(in srgb, var(--agent-accent) 22%, transparent);
+  border-color: color-mix(in srgb, var(--agent-accent) 45%, transparent);
 }
 
 .leditor-lexicon-popup__footer {
   display: flex;
   justify-content: flex-end;
   padding: 8px 10px 10px 10px;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  border-top: 1px solid color-mix(in srgb, var(--agent-text) 8%, transparent);
 }
 
 .leditor-app.theme-dark .leditor-lexicon-popup__footer {
-  border-top-color: rgba(255, 255, 255, 0.08);
+  border-top-color: color-mix(in srgb, var(--agent-text) 10%, transparent);
 }
 
 .leditor-lexicon-popup__action {
   text-align: left;
   border-radius: 10px;
-  border: 1px solid rgba(15, 23, 42, 0.14);
-  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid color-mix(in srgb, var(--agent-text) 14%, transparent);
+  background: color-mix(in srgb, var(--agent-surface) 85%, transparent);
   padding: 6px 10px;
   font-size: 11px;
   cursor: pointer;
-  color: rgba(15, 23, 42, 0.85);
+  color: var(--agent-text);
 }
 
 .leditor-app.theme-dark .leditor-lexicon-popup__action {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.16);
-  color: rgba(240, 240, 240, 0.9);
+  background: color-mix(in srgb, var(--agent-surface-2) 80%, transparent);
+  border-color: color-mix(in srgb, var(--agent-text) 16%, transparent);
+  color: var(--agent-text);
 }
 
 .leditor-lexicon-popup__action:hover {
-  background: rgba(37, 99, 235, 0.10);
-  border-color: rgba(37, 99, 235, 0.24);
+  background: color-mix(in srgb, var(--agent-accent) 12%, transparent);
+  border-color: color-mix(in srgb, var(--agent-accent) 28%, transparent);
 }
 
 .leditor-lexicon-popup__action:focus {
   outline: none;
-  background: rgba(37, 99, 235, 0.14);
-  border-color: rgba(37, 99, 235, 0.32);
+  background: color-mix(in srgb, var(--agent-accent) 16%, transparent);
+  border-color: color-mix(in srgb, var(--agent-accent) 35%, transparent);
 }
 
 .leditor-agent-sidebar__checkboxRow {
@@ -610,7 +705,7 @@
 .leditor-agent-sidebar__checkboxRow input[type="checkbox"] {
   width: 14px;
   height: 14px;
-  accent-color: rgba(37, 99, 235, 0.95);
+  accent-color: color-mix(in srgb, var(--agent-accent) 95%, transparent);
 }
 
 .leditor-agent-sidebar__panel {
@@ -672,9 +767,9 @@
   font-size: 11px;
   padding: 4px 8px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: rgba(255, 255, 255, 0.86);
-  color: rgba(15, 23, 42, 0.8);
+  border: 1px solid color-mix(in srgb, var(--agent-text) 12%, transparent);
+  background: color-mix(in srgb, var(--agent-surface) 86%, transparent);
+  color: color-mix(in srgb, var(--agent-text) 80%, transparent);
   max-width: 100%;
   white-space: nowrap;
   overflow: hidden;
@@ -692,14 +787,14 @@
   padding: 6px 10px;
   font-size: 11px;
   cursor: pointer;
-  border: 1px solid rgba(37, 99, 235, 0.22);
-  background: rgba(37, 99, 235, 0.08);
-  color: rgba(15, 23, 42, 0.85);
+  border: 1px solid color-mix(in srgb, var(--agent-accent) 22%, transparent);
+  background: color-mix(in srgb, var(--agent-accent) 8%, transparent);
+  color: color-mix(in srgb, var(--agent-text) 85%, transparent);
 }
 
 .leditor-agent-sidebar__dictBtn:hover {
-  background: rgba(37, 99, 235, 0.14);
-  border-color: rgba(37, 99, 235, 0.32);
+  background: color-mix(in srgb, var(--agent-accent) 14%, transparent);
+  border-color: color-mix(in srgb, var(--agent-accent) 32%, transparent);
 }
 
 .leditor-agent-sidebar__dictBtn:disabled {
@@ -711,9 +806,9 @@
   font-size: 12px;
   padding: 8px 10px;
   border-radius: 10px;
-  border: 1px dashed rgba(15, 23, 42, 0.18);
-  background: rgba(15, 23, 42, 0.04);
-  color: rgba(15, 23, 42, 0.75);
+  border: 1px dashed color-mix(in srgb, var(--agent-text) 18%, transparent);
+  background: color-mix(in srgb, var(--agent-text) 4%, transparent);
+  color: color-mix(in srgb, var(--agent-text) 75%, transparent);
 }
 
 .leditor-agent-sidebar__dictHistory {
@@ -739,8 +834,8 @@
 
 .leditor-agent-sidebar__dictHistoryItem {
   border-radius: 999px;
-  border: 1px solid rgba(15, 23, 42, 0.16);
-  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid color-mix(in srgb, var(--agent-text) 16%, transparent);
+  background: color-mix(in srgb, var(--agent-surface) 86%, transparent);
   padding: 3px 8px;
   font-size: 10px;
   cursor: pointer;
@@ -751,15 +846,15 @@
 }
 
 .leditor-agent-sidebar__dictHistoryItem.is-active {
-  border-color: rgba(37, 99, 235, 0.45);
-  background: rgba(37, 99, 235, 0.12);
+  border-color: color-mix(in srgb, var(--agent-accent) 45%, transparent);
+  background: color-mix(in srgb, var(--agent-accent) 12%, transparent);
   font-weight: 600;
 }
 
 .leditor-agent-sidebar__dictTabs {
   display: flex;
   gap: 6px;
-  background: rgba(15, 23, 42, 0.04);
+  background: color-mix(in srgb, var(--agent-text) 4%, transparent);
   padding: 6px;
   border-radius: 12px;
 }
@@ -771,33 +866,123 @@
   cursor: pointer;
   border: 1px solid transparent;
   background: transparent;
-  color: rgba(15, 23, 42, 0.7);
+  color: color-mix(in srgb, var(--agent-text) 70%, transparent);
 }
 
 .leditor-agent-sidebar__dictTab.is-active {
-  border-color: rgba(37, 99, 235, 0.4);
-  background: rgba(37, 99, 235, 0.12);
-  color: rgba(15, 23, 42, 0.9);
+  border-color: color-mix(in srgb, var(--agent-accent) 40%, transparent);
+  background: color-mix(in srgb, var(--agent-accent) 12%, transparent);
+  color: color-mix(in srgb, var(--agent-text) 90%, transparent);
   font-weight: 600;
 }
 
 .leditor-agent-sidebar__dictPane {
   border-radius: 14px;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: rgba(255, 255, 255, 0.92);
-  padding: 12px;
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+  border: 1px solid color-mix(in srgb, var(--agent-text) 12%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--agent-surface) 96%, transparent), color-mix(in srgb, var(--agent-surface-2) 70%, transparent));
+  padding: 12px 12px 12px 16px;
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--agent-text) 8%, transparent);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.leditor-agent-sidebar__dictPane::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--agent-accent) 40%, transparent);
+  opacity: 0.7;
 }
 
 .leditor-agent-sidebar__dictPane.is-error {
-  border-color: rgba(239, 68, 68, 0.28);
-  background: rgba(239, 68, 68, 0.06);
+  border-color: color-mix(in srgb, var(--ui-danger) 28%, transparent);
+  background: color-mix(in srgb, var(--ui-danger) 6%, transparent);
 }
 
-.leditor-agent-sidebar__dictCardBody {
+.leditor-agent-sidebar__dictEntry {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.leditor-agent-sidebar__dictEntryHead {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.leditor-agent-sidebar__dictEntryWord {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  font-family: "Georgia", "Times New Roman", serif;
+  color: var(--agent-text);
+}
+
+.leditor-agent-sidebar__dictEntrySense {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: color-mix(in srgb, var(--agent-text) 60%, transparent);
+  font-style: italic;
+}
+
+.leditor-agent-sidebar__dictEntryText {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--agent-text);
+  font-family: "Georgia", "Times New Roman", serif;
+  white-space: pre-wrap;
+}
+
+.leditor-agent-sidebar__dictContext {
+  margin-top: 8px;
+  border-top: 1px dashed color-mix(in srgb, var(--agent-text) 14%, transparent);
+  padding-top: 8px;
+}
+
+.leditor-agent-sidebar__dictContextSummary {
+  cursor: pointer;
+  font-size: 11px;
+  color: color-mix(in srgb, var(--agent-text) 60%, transparent);
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-weight: 600;
+}
+
+.leditor-agent-sidebar__dictContextSummary::-webkit-details-marker {
+  display: none;
+}
+
+.leditor-agent-sidebar__dictContextSummary::after {
+  content: "▾";
+  font-size: 10px;
+  opacity: 0.7;
+  transition: transform 120ms ease;
+}
+
+.leditor-agent-sidebar__dictContext[open] .leditor-agent-sidebar__dictContextSummary::after {
+  transform: rotate(180deg);
+}
+
+.leditor-agent-sidebar__dictContextBody {
+  margin-top: 6px;
   font-size: 12px;
   line-height: 1.5;
-  color: rgba(23, 23, 23, 0.86);
+  color: color-mix(in srgb, var(--agent-text) 80%, transparent);
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--agent-text) 4%, transparent);
 }
 
 .leditor-agent-sidebar__dictOptionList {
@@ -808,8 +993,8 @@
 
 .leditor-agent-sidebar__dictOption {
   border-radius: 10px;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid color-mix(in srgb, var(--agent-text) 12%, transparent);
+  background: color-mix(in srgb, var(--agent-surface) 90%, transparent);
   padding: 8px 10px;
   font-size: 12px;
   cursor: pointer;
@@ -817,8 +1002,8 @@
 }
 
 .leditor-agent-sidebar__dictOption.is-selected {
-  border-color: rgba(37, 99, 235, 0.5);
-  background: rgba(37, 99, 235, 0.12);
+  border-color: color-mix(in srgb, var(--agent-accent) 50%, transparent);
+  background: color-mix(in srgb, var(--agent-accent) 12%, transparent);
   font-weight: 600;
 }
 
@@ -830,8 +1015,8 @@
 
 .leditor-agent-sidebar__dictAcceptBtn {
   border-radius: 10px;
-  border: 1px solid rgba(37, 99, 235, 0.32);
-  background: rgba(37, 99, 235, 0.16);
+  border: 1px solid color-mix(in srgb, var(--agent-accent) 32%, transparent);
+  background: color-mix(in srgb, var(--agent-accent) 16%, transparent);
   padding: 7px 12px;
   font-size: 11px;
   cursor: pointer;
@@ -843,15 +1028,70 @@
   cursor: not-allowed;
 }
 
+.leditor-agent-sidebar__dictFollowUp {
+  margin-top: 6px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--agent-text) 12%, transparent);
+  background: color-mix(in srgb, var(--agent-text) 3%, transparent);
+  padding: 10px 12px 10px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+}
+
+.leditor-agent-sidebar__dictFollowUp::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--agent-accent) 35%, transparent);
+  opacity: 0.6;
+}
+
+.leditor-agent-sidebar__dictFollowUpLabel {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--agent-text) 65%, transparent);
+}
+
+.leditor-agent-sidebar__dictFollowUpList {
+  display: grid;
+  gap: 6px;
+}
+
+.leditor-agent-sidebar__dictFollowUpBtn {
+  text-align: left;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--agent-accent) 30%, transparent);
+  background: color-mix(in srgb, var(--agent-accent) 10%, transparent);
+  padding: 7px 10px;
+  font-size: 11px;
+  line-height: 1.4;
+  cursor: pointer;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--agent-text) 90%, transparent);
+}
+
+.leditor-agent-sidebar__dictFollowUpBtn:hover {
+  background: color-mix(in srgb, var(--agent-accent) 18%, transparent);
+  border-color: color-mix(in srgb, var(--agent-accent) 50%, transparent);
+}
+
 .leditor-agent-sidebar__dictDebug {
   margin-top: 8px;
   border-radius: 10px;
-  border: 1px dashed rgba(15, 23, 42, 0.2);
-  background: rgba(15, 23, 42, 0.04);
+  border: 1px dashed color-mix(in srgb, var(--agent-text) 20%, transparent);
+  background: color-mix(in srgb, var(--agent-text) 4%, transparent);
   padding: 8px 10px;
   font-size: 10px;
   line-height: 1.4;
-  color: rgba(15, 23, 42, 0.7);
+  color: color-mix(in srgb, var(--agent-text) 70%, transparent);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   white-space: pre-wrap;
   word-break: break-word;
@@ -873,13 +1113,36 @@
 .leditor-agent-sidebar__sectionsTitle {
   font-size: 13px;
   font-weight: 600;
-  color: rgba(15, 23, 42, 0.95);
+  color: color-mix(in srgb, var(--agent-text) 95%, transparent);
 }
 
 .leditor-agent-sidebar__sectionsSubtitle {
   font-size: 11px;
   color: var(--agent-muted);
   line-height: 1.4;
+}
+
+.leditor-agent-sidebar__sectionsBulk {
+  display: flex;
+}
+
+.leditor-agent-sidebar__sectionsBulkBtn {
+  width: 100%;
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--agent-accent) 45%, transparent);
+  background: color-mix(in srgb, var(--agent-accent) 16%, transparent);
+  color: color-mix(in srgb, var(--agent-accent-strong) 95%, transparent);
+  padding: 7px 10px;
+  font-size: 11.5px;
+  font-weight: 600;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.leditor-agent-sidebar__sectionsBulkBtn:hover {
+  background: color-mix(in srgb, var(--agent-accent) 22%, transparent);
+  border-color: color-mix(in srgb, var(--agent-accent) 60%, transparent);
 }
 
 .leditor-agent-sidebar__sectionsGrid {
@@ -890,19 +1153,19 @@
 
 .leditor-agent-sidebar__sectionCard {
   background: var(--agent-surface);
-  border: 1px solid rgba(15, 23, 42, 0.12);
+  border: 1px solid color-mix(in srgb, var(--agent-text) 12%, transparent);
   border-radius: 12px;
   padding: 10px 12px;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--agent-text) 8%, transparent);
 }
 
 .leditor-agent-sidebar__sectionLabel {
   font-size: 12.5px;
   font-weight: 600;
-  color: rgba(15, 23, 42, 0.95);
+  color: color-mix(in srgb, var(--agent-text) 95%, transparent);
 }
 
 .leditor-agent-sidebar__sectionHelper {
@@ -914,9 +1177,9 @@
 .leditor-agent-sidebar__sectionBtn {
   align-self: flex-start;
   appearance: none;
-  border: 1px solid rgba(37, 99, 235, 0.35);
-  background: rgba(37, 99, 235, 0.12);
-  color: rgba(30, 64, 175, 0.95);
+  border: 1px solid color-mix(in srgb, var(--agent-accent) 35%, transparent);
+  background: color-mix(in srgb, var(--agent-accent) 12%, transparent);
+  color: color-mix(in srgb, var(--agent-accent-strong) 95%, transparent);
   padding: 5px 10px;
   font-size: 11px;
   font-weight: 600;
@@ -926,9 +1189,9 @@
 }
 
 .leditor-agent-sidebar__sectionBtn:hover {
-  background: rgba(37, 99, 235, 0.2);
-  border-color: rgba(37, 99, 235, 0.5);
-  color: rgba(30, 58, 138, 1);
+  background: color-mix(in srgb, var(--agent-accent) 20%, transparent);
+  border-color: color-mix(in srgb, var(--agent-accent) 50%, transparent);
+  color: color-mix(in srgb, var(--agent-accent-strong) 100%, transparent);
 }
 
 .leditor-agent-sidebar__dictEmpty {
@@ -937,79 +1200,102 @@
 }
 
 .leditor-app.theme-dark .leditor-agent-sidebar__dictSelection {
-  border-color: rgba(255, 255, 255, 0.16);
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(240, 240, 240, 0.88);
+  border-color: color-mix(in srgb, var(--agent-text) 16%, transparent);
+  background: color-mix(in srgb, var(--agent-surface) 85%, transparent);
+  color: var(--agent-text);
 }
 
 .leditor-app.theme-dark .leditor-agent-sidebar__dictBtn {
-  border-color: rgba(59, 130, 246, 0.32);
-  background: rgba(59, 130, 246, 0.16);
-  color: rgba(240, 240, 240, 0.9);
+  border-color: color-mix(in srgb, var(--agent-accent) 35%, transparent);
+  background: color-mix(in srgb, var(--agent-accent) 18%, transparent);
+  color: var(--agent-text);
 }
 
 .leditor-app.theme-dark .leditor-agent-sidebar__dictBtn:hover {
-  background: rgba(59, 130, 246, 0.22);
-  border-color: rgba(59, 130, 246, 0.42);
+  background: color-mix(in srgb, var(--agent-accent) 24%, transparent);
+  border-color: color-mix(in srgb, var(--agent-accent) 45%, transparent);
 }
 
 .leditor-app.theme-dark .leditor-agent-sidebar__dictNotice {
-  border-color: rgba(255, 255, 255, 0.16);
-  background: rgba(255, 255, 255, 0.05);
-  color: rgba(240, 240, 240, 0.75);
+  border-color: color-mix(in srgb, var(--agent-text) 16%, transparent);
+  background: color-mix(in srgb, var(--agent-surface-2) 80%, transparent);
+  color: var(--agent-muted);
 }
 
 .leditor-app.theme-dark .leditor-agent-sidebar__dictHistoryItem {
-  border-color: rgba(255, 255, 255, 0.18);
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(240, 240, 240, 0.9);
+  border-color: color-mix(in srgb, var(--agent-text) 18%, transparent);
+  background: color-mix(in srgb, var(--agent-surface) 88%, transparent);
+  color: var(--agent-text);
 }
 
 .leditor-app.theme-dark .leditor-agent-sidebar__dictTabs {
-  background: rgba(255, 255, 255, 0.06);
+  background: color-mix(in srgb, var(--agent-surface-2) 80%, transparent);
 }
 
 .leditor-app.theme-dark .leditor-agent-sidebar__dictTab {
-  color: rgba(240, 240, 240, 0.7);
+  color: var(--agent-muted);
 }
 
 .leditor-app.theme-dark .leditor-agent-sidebar__dictTab.is-active {
-  background: rgba(59, 130, 246, 0.22);
-  border-color: rgba(59, 130, 246, 0.45);
-  color: rgba(240, 240, 240, 0.95);
+  background: color-mix(in srgb, var(--agent-accent) 22%, transparent);
+  border-color: color-mix(in srgb, var(--agent-accent) 45%, transparent);
+  color: var(--agent-text);
 }
 
 .leditor-app.theme-dark .leditor-agent-sidebar__dictPane {
-  border-color: rgba(255, 255, 255, 0.14);
-  background: rgba(24, 28, 36, 0.92);
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
+  border-color: color-mix(in srgb, var(--agent-text) 14%, transparent);
+  background: var(--agent-surface);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--agent-text) 28%, transparent);
 }
 
-.leditor-app.theme-dark .leditor-agent-sidebar__dictCardBody {
-  color: rgba(240, 240, 240, 0.9);
+.leditor-app.theme-dark .leditor-agent-sidebar__dictEntryText {
+  color: var(--agent-text);
+}
+
+.leditor-app.theme-dark .leditor-agent-sidebar__dictContextSummary {
+  color: var(--agent-muted);
+}
+
+.leditor-app.theme-dark .leditor-agent-sidebar__dictContextBody {
+  color: color-mix(in srgb, var(--agent-text) 85%, transparent);
 }
 
 .leditor-app.theme-dark .leditor-agent-sidebar__dictOption {
-  border-color: rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(240, 240, 240, 0.9);
+  border-color: color-mix(in srgb, var(--agent-text) 14%, transparent);
+  background: color-mix(in srgb, var(--agent-surface-2) 80%, transparent);
+  color: var(--agent-text);
 }
 
 .leditor-app.theme-dark .leditor-agent-sidebar__dictOption.is-selected {
-  border-color: rgba(59, 130, 246, 0.5);
-  background: rgba(59, 130, 246, 0.2);
+  border-color: color-mix(in srgb, var(--agent-accent) 50%, transparent);
+  background: color-mix(in srgb, var(--agent-accent) 22%, transparent);
 }
 
 .leditor-app.theme-dark .leditor-agent-sidebar__dictAcceptBtn {
-  border-color: rgba(59, 130, 246, 0.45);
-  background: rgba(59, 130, 246, 0.28);
-  color: rgba(240, 240, 240, 0.9);
+  border-color: color-mix(in srgb, var(--agent-accent) 45%, transparent);
+  background: color-mix(in srgb, var(--agent-accent) 28%, transparent);
+  color: var(--agent-text);
+}
+
+.leditor-app.theme-dark .leditor-agent-sidebar__dictFollowUp {
+  border-color: color-mix(in srgb, var(--agent-text) 16%, transparent);
+  background: color-mix(in srgb, var(--agent-surface-2) 80%, transparent);
+}
+
+.leditor-app.theme-dark .leditor-agent-sidebar__dictFollowUpLabel {
+  color: var(--agent-muted);
+}
+
+.leditor-app.theme-dark .leditor-agent-sidebar__dictFollowUpBtn {
+  border-color: color-mix(in srgb, var(--agent-accent) 45%, transparent);
+  background: color-mix(in srgb, var(--agent-accent) 22%, transparent);
+  color: var(--agent-text);
 }
 
 .leditor-app.theme-dark .leditor-agent-sidebar__dictDebug {
-  border-color: rgba(148, 163, 184, 0.35);
-  background: rgba(15, 23, 42, 0.4);
-  color: rgba(226, 232, 240, 0.85);
+  border-color: color-mix(in srgb, var(--agent-text) 20%, transparent);
+  background: color-mix(in srgb, var(--agent-surface-2) 70%, transparent);
+  color: var(--agent-muted);
 }
 
 .leditor-agent-sidebar__messages.is-hidden {
@@ -1028,8 +1314,8 @@
 
 .leditor-agent-sidebar__suggestionsPanel {
   flex: 0 0 auto;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
-  background: rgba(255, 255, 255, 0.35);
+  border-top: 1px solid color-mix(in srgb, var(--agent-text) 6%, transparent);
+  background: color-mix(in srgb, var(--agent-surface) 35%, transparent);
 }
 
 .leditor-agent-sidebar__suggestionsHeader {
@@ -1069,8 +1355,8 @@
   gap: 8px;
   padding: 6px 8px;
   border-radius: 10px;
-  border: 1px solid rgba(0, 0, 0, 0.10);
-  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid color-mix(in srgb, var(--agent-text) 10%, transparent);
+  background: color-mix(in srgb, var(--agent-surface) 72%, transparent);
 }
 
 .leditor-agent-sidebar__draftTop {
@@ -1091,8 +1377,8 @@
   margin: 0;
   padding: 8px 10px;
   border-radius: 10px;
-  border: 1px dashed rgba(0, 0, 0, 0.18);
-  background: rgba(15, 23, 42, 0.05);
+  border: 1px dashed color-mix(in srgb, var(--agent-text) 18%, transparent);
+  background: color-mix(in srgb, var(--agent-text) 5%, transparent);
   font-size: 11px;
   line-height: 1.28;
   white-space: pre-wrap;
@@ -1115,8 +1401,8 @@
   margin: 8px 0 0 0;
   padding: 8px 10px;
   border-radius: 10px;
-  border: 1px solid rgba(0, 0, 0, 0.10);
-  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid color-mix(in srgb, var(--agent-text) 10%, transparent);
+  background: color-mix(in srgb, var(--agent-text) 3%, transparent);
   font-size: 11px;
   line-height: 1.28;
   white-space: pre-wrap;
@@ -1129,6 +1415,27 @@
   margin-top: 6px;
   font-size: 11px;
   opacity: 0.75;
+}
+
+.leditor-agent-sidebar__anchorBox {
+  margin-top: 6px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--agent-text) 12%, transparent);
+  background: color-mix(in srgb, var(--agent-text) 4%, transparent);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.leditor-agent-sidebar__anchorItem {
+  font-size: 11px;
+  padding: 3px 6px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--agent-text) 12%, transparent);
+  background: color-mix(in srgb, var(--agent-text) 6%, transparent);
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .leditor-agent-sidebar__subOriginal {
@@ -1146,8 +1453,8 @@
   margin: 6px 0 0 0;
   padding: 8px 10px;
   border-radius: 10px;
-  border: 1px solid rgba(0, 0, 0, 0.10);
-  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid color-mix(in srgb, var(--agent-text) 10%, transparent);
+  background: color-mix(in srgb, var(--agent-text) 3%, transparent);
   font-size: 11px;
   line-height: 1.28;
   white-space: pre-wrap;
@@ -1167,8 +1474,8 @@
 
 .leditor-agent-sidebar__subMatch {
   border-radius: 10px;
-  border: 1px solid rgba(0, 0, 0, 0.10);
-  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid color-mix(in srgb, var(--agent-text) 10%, transparent);
+  background: color-mix(in srgb, var(--agent-surface) 78%, transparent);
   padding: 8px 10px;
   font-size: 11px;
   line-height: 1.28;
@@ -1207,45 +1514,45 @@
   padding: 6px 10px;
   font-size: 12px;
   cursor: pointer;
-  border: 1px solid rgba(0, 0, 0, 0.14);
-  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid color-mix(in srgb, var(--agent-text) 14%, transparent);
+  background: color-mix(in srgb, var(--agent-surface) 86%, transparent);
 }
 
 .leditor-agent-sidebar__draftApply {
-  border-color: rgba(16, 185, 129, 0.35);
-  background: rgba(16, 185, 129, 0.12);
+  border-color: color-mix(in srgb, var(--ui-success) 35%, transparent);
+  background: color-mix(in srgb, var(--ui-success) 12%, transparent);
 }
 
 .leditor-agent-sidebar__draftReject {
-  border-color: rgba(239, 68, 68, 0.3);
-  background: rgba(239, 68, 68, 0.1);
+  border-color: color-mix(in srgb, var(--ui-danger) 30%, transparent);
+  background: color-mix(in srgb, var(--ui-danger) 10%, transparent);
 }
 
 .leditor-agent-sidebar__msg {
-  border: 1px solid rgba(15, 23, 42, 0.1);
+  border: 1px solid color-mix(in srgb, var(--agent-text) 10%, transparent);
   border-radius: 10px;
   padding: 8px 10px;
-  background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 6px 10px rgba(15, 23, 42, 0.08);
+  background: color-mix(in srgb, var(--agent-surface) 98%, transparent);
+  box-shadow: 0 6px 10px color-mix(in srgb, var(--agent-text) 8%, transparent);
   max-width: 96%;
 }
 
 .leditor-agent-sidebar__msg--assistant {
   align-self: flex-start;
-  background: rgba(243, 246, 251, 0.98);
-  border-color: rgba(15, 23, 42, 0.12);
+  background: color-mix(in srgb, var(--agent-surface) 98%, transparent);
+  border-color: color-mix(in srgb, var(--agent-text) 12%, transparent);
 }
 
 .leditor-agent-sidebar__msg--system {
   align-self: stretch;
-  background: rgba(16, 185, 129, 0.08);
-  border-color: rgba(16, 185, 129, 0.2);
+  background: color-mix(in srgb, var(--ui-success) 8%, transparent);
+  border-color: color-mix(in srgb, var(--ui-success) 20%, transparent);
 }
 
 .leditor-agent-sidebar__msg--user {
   align-self: flex-end;
-  background: rgba(37, 99, 235, 0.12);
-  border-color: rgba(37, 99, 235, 0.28);
+  background: color-mix(in srgb, var(--agent-accent) 12%, transparent);
+  border-color: color-mix(in srgb, var(--agent-accent) 28%, transparent);
 }
 
 .leditor-agent-sidebar__msgMeta {
@@ -1261,12 +1568,12 @@
 }
 
 .leditor-agent-sidebar__boxEmpty {
-  border: 1px dashed rgba(15, 23, 42, 0.2);
-  background: rgba(255, 255, 255, 0.9);
+  border: 1px dashed color-mix(in srgb, var(--agent-text) 20%, transparent);
+  background: color-mix(in srgb, var(--agent-surface) 90%, transparent);
   border-radius: 10px;
   padding: 12px;
   font-size: 11.5px;
-  color: rgba(15, 23, 42, 0.7);
+  color: color-mix(in srgb, var(--agent-text) 70%, transparent);
 }
 
 .leditor-agent-sidebar__boxHeaderRow {
@@ -1280,7 +1587,7 @@
 .leditor-agent-sidebar__boxHeaderTitle {
   font-size: 12px;
   font-weight: 600;
-  color: rgba(15, 23, 42, 0.8);
+  color: color-mix(in srgb, var(--agent-text) 80%, transparent);
 }
 
 .leditor-agent-sidebar__boxHeaderActions {
@@ -1295,27 +1602,27 @@
   letter-spacing: 0.2px;
   padding: 3px 6px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 23, 42, 0.14);
-  background: rgba(15, 23, 42, 0.04);
-  color: rgba(15, 23, 42, 0.78);
+  border: 1px solid color-mix(in srgb, var(--agent-text) 14%, transparent);
+  background: color-mix(in srgb, var(--agent-text) 4%, transparent);
+  color: color-mix(in srgb, var(--agent-text) 78%, transparent);
   white-space: nowrap;
 }
 
 .leditor-agent-sidebar__boxHeaderBadge.is-ok {
-  border-color: rgba(34, 197, 94, 0.35);
-  background: rgba(34, 197, 94, 0.12);
-  color: rgba(21, 128, 61, 0.95);
+  border-color: color-mix(in srgb, var(--ui-success) 35%, transparent);
+  background: color-mix(in srgb, var(--ui-success) 12%, transparent);
+  color: color-mix(in srgb, var(--ui-success) 95%, transparent);
 }
 
 .leditor-agent-sidebar__boxHeaderBadge.is-fail {
-  border-color: rgba(239, 68, 68, 0.35);
-  background: rgba(239, 68, 68, 0.12);
-  color: rgba(185, 28, 28, 0.95);
+  border-color: color-mix(in srgb, var(--ui-danger) 35%, transparent);
+  background: color-mix(in srgb, var(--ui-danger) 12%, transparent);
+  color: color-mix(in srgb, var(--ui-danger) 95%, transparent);
 }
 
 .leditor-agent-sidebar__boxHeaderBtn {
-  border: 1px solid rgba(15, 23, 42, 0.14);
-  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid color-mix(in srgb, var(--agent-text) 14%, transparent);
+  background: color-mix(in srgb, var(--agent-surface) 92%, transparent);
   border-radius: 6px;
   padding: 4px 8px;
   font-size: 11px;
@@ -1323,63 +1630,63 @@
 }
 
 .leditor-agent-sidebar__boxHeaderBtn:hover {
-  background: rgba(37, 99, 235, 0.1);
-  border-color: rgba(37, 99, 235, 0.25);
+  background: color-mix(in srgb, var(--agent-accent) 10%, transparent);
+  border-color: color-mix(in srgb, var(--agent-accent) 25%, transparent);
 }
 
 .leditor-agent-sidebar__boxHeaderBtn--primary {
-  border-color: rgba(37, 99, 235, 0.35);
-  background: rgba(37, 99, 235, 0.16);
-  color: rgba(15, 23, 42, 0.95);
+  border-color: color-mix(in srgb, var(--agent-accent) 35%, transparent);
+  background: color-mix(in srgb, var(--agent-accent) 16%, transparent);
+  color: color-mix(in srgb, var(--agent-text) 95%, transparent);
 }
 
 .leditor-agent-sidebar__boxCard {
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid color-mix(in srgb, var(--agent-text) 12%, transparent);
+  background: color-mix(in srgb, var(--agent-surface) 95%, transparent);
   border-radius: 10px;
   padding: 10px 10px 8px 10px;
-  box-shadow: 0 8px 14px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 8px 14px color-mix(in srgb, var(--agent-text) 8%, transparent);
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
 .leditor-agent-sidebar__boxCard.is-selected {
-  border-color: rgba(37, 99, 235, 0.45);
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16), 0 8px 14px rgba(15, 23, 42, 0.08);
+  border-color: color-mix(in srgb, var(--agent-accent) 45%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--agent-accent) 16%, transparent), 0 8px 14px color-mix(in srgb, var(--agent-text) 8%, transparent);
 }
 
 .leditor-agent-sidebar__boxHeader {
   font-size: 12px;
   font-weight: 700;
-  color: rgba(15, 23, 42, 0.9);
+  color: color-mix(in srgb, var(--agent-text) 90%, transparent);
 }
 
 .leditor-agent-sidebar__boxMeta {
   font-size: 11px;
-  color: rgba(15, 23, 42, 0.6);
+  color: color-mix(in srgb, var(--agent-text) 60%, transparent);
 }
 
 .leditor-agent-sidebar__boxBody {
   font-size: 12px;
   line-height: 1.4;
   white-space: pre-wrap;
-  background: rgba(15, 23, 42, 0.03);
+  background: color-mix(in srgb, var(--agent-text) 3%, transparent);
   border-radius: 8px;
   padding: 6px 8px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
+  border: 1px solid color-mix(in srgb, var(--agent-text) 8%, transparent);
 }
 
 .leditor-agent-sidebar__boxBody--diff {
-  background: rgba(37, 99, 235, 0.06);
-  border-color: rgba(37, 99, 235, 0.18);
+  background: color-mix(in srgb, var(--agent-accent) 6%, transparent);
+  border-color: color-mix(in srgb, var(--agent-accent) 18%, transparent);
   word-break: break-word;
 }
 
 .leditor-agent-sidebar__boxBody--edit {
-  background: rgba(15, 23, 42, 0.04);
-  border-color: rgba(15, 23, 42, 0.12);
-  color: rgba(15, 23, 42, 0.88);
+  background: color-mix(in srgb, var(--agent-text) 4%, transparent);
+  border-color: color-mix(in srgb, var(--agent-text) 12%, transparent);
+  color: color-mix(in srgb, var(--agent-text) 88%, transparent);
 }
 
 .leditor-agent-sidebar__boxBody--edit[contenteditable="true"] {
@@ -1387,8 +1694,8 @@
 }
 
 .leditor-agent-sidebar__boxBody--edit[contenteditable="true"]:focus {
-  outline: 2px solid rgba(15, 23, 42, 0.18);
-  background: rgba(15, 23, 42, 0.06);
+  outline: 2px solid color-mix(in srgb, var(--agent-text) 18%, transparent);
+  background: color-mix(in srgb, var(--agent-text) 6%, transparent);
 }
 
 .leditor-agent-sidebar__subLabel {
@@ -1397,25 +1704,25 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: rgba(15, 23, 42, 0.55);
+  color: color-mix(in srgb, var(--agent-text) 55%, transparent);
 }
 
 .leditor-agent-sidebar__diffEq {
-  color: rgba(15, 23, 42, 0.82);
+  color: color-mix(in srgb, var(--agent-text) 82%, transparent);
 }
 
 .leditor-agent-sidebar__diffIns {
-  color: rgba(29, 78, 216, 0.95);
-  background: rgba(37, 99, 235, 0.16);
+  color: color-mix(in srgb, var(--agent-accent) 95%, transparent);
+  background: color-mix(in srgb, var(--agent-accent) 16%, transparent);
   text-decoration: underline;
-  text-decoration-color: rgba(37, 99, 235, 0.65);
+  text-decoration-color: color-mix(in srgb, var(--agent-accent) 65%, transparent);
   border-radius: 4px;
   padding: 0 1px;
 }
 
 .leditor-agent-sidebar__diffDel {
-  color: rgba(185, 28, 28, 0.9);
-  background: rgba(239, 68, 68, 0.12);
+  color: color-mix(in srgb, var(--ui-danger) 90%, transparent);
+  background: color-mix(in srgb, var(--ui-danger) 12%, transparent);
   text-decoration: line-through;
   text-decoration-thickness: 1.2px;
   border-radius: 4px;
@@ -1429,8 +1736,8 @@
 }
 
 .leditor-agent-sidebar__boxBtn {
-  border: 1px solid rgba(15, 23, 42, 0.14);
-  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid color-mix(in srgb, var(--agent-text) 14%, transparent);
+  background: color-mix(in srgb, var(--agent-surface) 90%, transparent);
   border-radius: 6px;
   padding: 4px 10px;
   font-size: 11px;
@@ -1438,21 +1745,21 @@
 }
 
 .leditor-agent-sidebar__boxBtn--primary {
-  border-color: rgba(37, 99, 235, 0.35);
-  background: rgba(37, 99, 235, 0.16);
-  color: rgba(15, 23, 42, 0.95);
+  border-color: color-mix(in srgb, var(--agent-accent) 35%, transparent);
+  background: color-mix(in srgb, var(--agent-accent) 16%, transparent);
+  color: color-mix(in srgb, var(--agent-text) 95%, transparent);
 }
 
 .leditor-agent-sidebar__boxBtn:hover {
-  background: rgba(37, 99, 235, 0.1);
-  border-color: rgba(37, 99, 235, 0.25);
+  background: color-mix(in srgb, var(--agent-accent) 10%, transparent);
+  border-color: color-mix(in srgb, var(--agent-accent) 25%, transparent);
 }
 
 .leditor-agent-sidebar__footer {
   flex: 0 0 auto;
-  border-top: 1px solid rgba(15, 23, 42, 0.12);
-  background: rgba(250, 251, 252, 0.98);
-  box-shadow: 0 -10px 16px rgba(15, 23, 42, 0.06);
+  border-top: 1px solid color-mix(in srgb, var(--agent-text) 12%, transparent);
+  background: color-mix(in srgb, var(--agent-surface) 98%, transparent);
+  box-shadow: 0 -10px 16px color-mix(in srgb, var(--agent-text) 6%, transparent);
 }
 
 .leditor-agent-sidebar__footerMeta {
@@ -1486,9 +1793,9 @@
   width: 30px;
   height: 30px;
   border-radius: 6px;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: rgba(255, 255, 255, 0.9);
-  color: rgba(13, 13, 13, 0.95);
+  border: 1px solid color-mix(in srgb, var(--agent-text) 12%, transparent);
+  background: color-mix(in srgb, var(--agent-surface) 90%, transparent);
+  color: color-mix(in srgb, var(--agent-text) 95%, transparent);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1496,8 +1803,8 @@
 }
 
 .leditor-agent-sidebar__iconBtn:hover:not(:disabled) {
-  background: rgba(37, 99, 235, 0.12);
-  border-color: rgba(37, 99, 235, 0.25);
+  background: color-mix(in srgb, var(--agent-accent) 12%, transparent);
+  border-color: color-mix(in srgb, var(--agent-accent) 25%, transparent);
 }
 
 .leditor-agent-sidebar__iconBtn:disabled {
@@ -1512,11 +1819,11 @@
 }
 
 .leditor-agent-sidebar__inputShell {
-  border: 1px solid rgba(15, 23, 42, 0.14);
-  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid color-mix(in srgb, var(--agent-text) 14%, transparent);
+  background: color-mix(in srgb, var(--agent-surface) 98%, transparent);
   border-radius: 8px;
   padding: 6px 8px;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.8), 0 4px 8px rgba(15, 23, 42, 0.08);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--agent-surface) 80%, transparent), 0 4px 8px color-mix(in srgb, var(--agent-text) 8%, transparent);
 }
 
 .leditor-agent-sidebar__inputGrid {
@@ -1536,9 +1843,9 @@
   gap: 4px;
   padding: 6px;
   border-radius: 8px;
-  border: 1px solid rgba(15, 23, 42, 0.14);
-  background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 10px 18px rgba(15, 23, 42, 0.14);
+  border: 1px solid color-mix(in srgb, var(--agent-text) 14%, transparent);
+  background: color-mix(in srgb, var(--agent-surface) 98%, transparent);
+  box-shadow: 0 10px 18px color-mix(in srgb, var(--agent-text) 14%, transparent);
 }
 
 .leditor-agent-sidebar__slashMenu.is-hidden {
@@ -1547,8 +1854,8 @@
 
 .leditor-agent-sidebar__slashItem {
   width: 100%;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: rgba(248, 250, 252, 0.8);
+  border: 1px solid color-mix(in srgb, var(--agent-text) 12%, transparent);
+  background: color-mix(in srgb, var(--agent-surface) 80%, transparent);
   border-radius: 6px;
   padding: 6px 8px;
   font-size: 11px;
@@ -1558,8 +1865,8 @@
 
 .leditor-agent-sidebar__slashItem.is-selected,
 .leditor-agent-sidebar__slashItem:hover {
-  border-color: rgba(37, 99, 235, 0.28);
-  background: rgba(37, 99, 235, 0.10);
+  border-color: color-mix(in srgb, var(--agent-accent) 28%, transparent);
+  background: color-mix(in srgb, var(--agent-accent) 10%, transparent);
 }
 
 .leditor-agent-sidebar__cmdLink {
@@ -1567,14 +1874,14 @@
   padding: 0;
   margin: 0;
   background: transparent;
-  color: rgba(37, 99, 235, 0.95);
+  color: color-mix(in srgb, var(--agent-accent) 95%, transparent);
   cursor: pointer;
   text-decoration: underline;
   font: inherit;
 }
 
 .leditor-agent-sidebar__cmdLink:hover {
-  color: rgba(29, 78, 216, 1);
+  color: color-mix(in srgb, var(--agent-accent) 100%, transparent);
 }
 
 .leditor-agent-sidebar__input {
@@ -1591,7 +1898,7 @@
   border: 0;
   background: transparent;
   color: transparent;
-  caret-color: var(--ui-text, #1b1b1b);
+  caret-color: var(--ui-text);
   box-sizing: border-box;
   grid-column: 1 / 2;
   grid-row: 1 / 2;
@@ -1615,28 +1922,28 @@
   box-sizing: border-box;
   grid-column: 1 / 2;
   grid-row: 1 / 2;
-  color: var(--ui-text, #1b1b1b);
+  color: var(--ui-text);
 }
 
 .leditor-agent-sidebar__hl {
-  color: var(--ui-text, #1b1b1b);
+  color: var(--ui-text);
 }
 
 .leditor-agent-sidebar__hl--cmd,
 .leditor-agent-sidebar__hl--target {
-  color: rgba(37, 99, 235, 0.95);
+  color: color-mix(in srgb, var(--agent-accent) 95%, transparent);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
 .leditor-agent-sidebar__hl--target {
-  background: rgba(37, 99, 235, 0.08);
+  background: color-mix(in srgb, var(--agent-accent) 8%, transparent);
   border-radius: 4px;
   padding: 0 1px;
 }
 
 .leditor-agent-sidebar__hl--selection {
-  background: rgba(37, 99, 235, 0.22);
+  background: color-mix(in srgb, var(--agent-accent) 22%, transparent);
   border-radius: 4px;
 }
 
@@ -1645,9 +1952,9 @@
   width: 30px;
   height: 30px;
   border-radius: 6px;
-  border: 1px solid rgba(37, 99, 235, 0.35);
-  background: linear-gradient(180deg, rgba(37, 99, 235, 0.9), rgba(37, 99, 235, 0.78));
-  color: rgba(255, 255, 255, 0.98);
+  border: 1px solid color-mix(in srgb, var(--agent-accent) 35%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--agent-accent) 90%, transparent), color-mix(in srgb, var(--agent-accent) 78%, transparent));
+  color: var(--ui-accent-contrast);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -1655,23 +1962,23 @@
 }
 
 .leditor-agent-sidebar__sendIcon {
-  box-shadow: 0 6px 10px rgba(37, 99, 235, 0.22);
+  box-shadow: 0 6px 10px color-mix(in srgb, var(--agent-accent) 22%, transparent);
 }
 
 .leditor-agent-sidebar__sendIcon:hover:not(:disabled) {
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.95), rgba(59, 130, 246, 0.95));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--agent-accent) 95%, transparent), color-mix(in srgb, var(--agent-accent-strong) 95%, transparent));
 }
 
 .leditor-agent-sidebar__cancelIcon:hover:not(:disabled) {
-  background: rgba(239, 68, 68, 0.18);
+  background: color-mix(in srgb, var(--ui-danger) 18%, transparent);
 }
 
 .leditor-agent-sidebar__sendIcon:disabled {
   opacity: 0.55;
   cursor: default;
-  background: rgba(15, 23, 42, 0.12);
-  border-color: rgba(15, 23, 42, 0.2);
-  color: rgba(15, 23, 42, 0.6);
+  background: color-mix(in srgb, var(--agent-text) 12%, transparent);
+  border-color: color-mix(in srgb, var(--agent-text) 20%, transparent);
+  color: var(--agent-muted);
   box-shadow: none;
 }
 
@@ -1717,9 +2024,9 @@
   gap: 4px;
   padding: 6px;
   border-radius: 8px;
-  border: 1px solid rgba(15, 23, 42, 0.14);
-  background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 10px 18px rgba(15, 23, 42, 0.14);
+  border: 1px solid color-mix(in srgb, var(--agent-text) 14%, transparent);
+  background: color-mix(in srgb, var(--agent-surface) 98%, transparent);
+  box-shadow: 0 10px 18px color-mix(in srgb, var(--agent-text) 14%, transparent);
   z-index: 20;
 }
 
@@ -1729,8 +2036,8 @@
 
 .leditor-agent-sidebar__plusItem {
   width: 100%;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: rgba(248, 250, 252, 0.8);
+  border: 1px solid color-mix(in srgb, var(--agent-text) 12%, transparent);
+  background: color-mix(in srgb, var(--agent-surface) 80%, transparent);
   border-radius: 6px;
   padding: 6px 8px;
   font-size: 11px;
@@ -1739,8 +2046,8 @@
 }
 
 .leditor-agent-sidebar__plusItem:hover {
-  border-color: rgba(37, 99, 235, 0.28);
-  background: rgba(37, 99, 235, 0.10);
+  border-color: color-mix(in srgb, var(--agent-accent) 28%, transparent);
+  background: color-mix(in srgb, var(--agent-accent) 10%, transparent);
 }
 
 

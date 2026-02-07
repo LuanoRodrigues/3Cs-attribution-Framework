@@ -57,6 +57,7 @@ import { THEME_CHANGE_EVENT } from "./theme_events.ts";
 import { ribbonDebugLog } from "./ribbon_debug.ts";
 import { subscribeSourceChecksThread } from "./source_checks_thread.ts";
 import { mountCommentsPanel } from "./comments_panel.ts";
+import { runUiSmokeChecks } from "./regression.ts";
 
 let directQuotePdfHandlerInstalled = false;
 let directQuotePdfHandlerInstalling: Promise<void> | null = null;
@@ -1358,6 +1359,80 @@ export const mountEditor = async () => {
   let pdfFrameLoaded = false;
   let pendingPdfPayload: Record<string, unknown> | null = null;
   const pdfViewerRetry = new WeakMap<HTMLIFrameElement, number>();
+  const looksLikeBase64Pdf = (value: string): boolean => {
+    const raw = String(value || "").trim();
+    if (!raw) return false;
+    if (!/^[A-Za-z0-9+/]+=*$/.test(raw)) return false;
+    return raw.length > 256;
+  };
+  const isPdfDataCandidate = (value: string): boolean =>
+    /^data:application\/pdf/i.test(value) || looksLikeBase64Pdf(value);
+  const shouldInlinePdf = (value: string): boolean => {
+    const raw = String(value || "").trim();
+    if (!raw) return false;
+    if (isPdfDataCandidate(raw)) return false;
+    if (/^https?:\/\//i.test(raw)) return false;
+    return true;
+  };
+  const fileUrlToPath = (value: string): string => {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    if (!/^file:\/\//i.test(raw)) return raw;
+    let cleaned = raw.replace(/^file:\/\//i, "");
+    try {
+      cleaned = decodeURIComponent(cleaned);
+    } catch {
+      // ignore decode failures
+    }
+    if (cleaned.startsWith("/") && /^[A-Za-z]:\//.test(cleaned.slice(1))) {
+      cleaned = cleaned.slice(1);
+    }
+    return cleaned;
+  };
+  const toPosixPathFromWindows = (value: string): string => {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    const norm = raw.replace(/\\/g, "/");
+    const match = norm.match(/^([A-Za-z]):\/(.*)$/);
+    if (!match) return raw;
+    const isWindowsHost = (() => {
+      try {
+        const plat = String(
+          (navigator && (navigator as any).userAgentData && (navigator as any).userAgentData.platform) ||
+            navigator.platform ||
+            ""
+        );
+        const ua = String(navigator.userAgent || "");
+        return /win/i.test(plat) || /windows/i.test(ua);
+      } catch {
+        return false;
+      }
+    })();
+    if (isWindowsHost) return raw;
+    const drive = String(match[1] || "").toLowerCase();
+    const rest = String(match[2] || "");
+    return `/mnt/${drive}/${rest}`;
+  };
+  const maybeInlinePdfPayload = async (payload: Record<string, unknown>): Promise<void> => {
+    const host = (window as any).leditorHost;
+    if (!host?.readBinaryFile) return;
+    const pdfRef = String((payload as any).pdf || (payload as any).pdf_path || "").trim();
+    if (!shouldInlinePdf(pdfRef)) return;
+    const sourcePath = toPosixPathFromWindows(fileUrlToPath(pdfRef));
+    if (!sourcePath) return;
+    try {
+      console.info("[leditor][pdf-inline] attempt", { path: sourcePath });
+      const res = await host.readBinaryFile({ sourcePath, maxBytes: 80 * 1024 * 1024 });
+      if (res?.success && res?.dataBase64) {
+        (payload as any).pdf = `data:application/pdf;base64,${res.dataBase64}`;
+        console.info("[leditor][pdf-inline] ok", { bytes: res.bytes ?? null });
+      } else {
+        console.warn("[leditor][pdf-inline] failed", { error: res?.error || "unknown" });
+      }
+    } catch {
+      console.warn("[leditor][pdf-inline] failed", { error: "exception" });
+    }
+  };
   const ensurePdfIframeLoaded = () => {
     if (pdfIframe.src) return;
     // Use the full-featured TEIA PDF viewer (pdf.js-based) shipped into `dist/public/PDF_Viewer/`.
@@ -1365,19 +1440,30 @@ export const mountEditor = async () => {
   };
   const applyPayloadToPdfViewer = (iframe: HTMLIFrameElement, payload: Record<string, unknown>) => {
     pendingPdfPayload = payload;
+    const postPayload = (): boolean => {
+      try {
+        iframe.contentWindow?.postMessage({ type: "leditor:pdf-payload", payload }, "*");
+        return true;
+      } catch (error) {
+        console.warn("[leditor][pdf] postMessage failed", error);
+        return false;
+      }
+    };
     const tryApply = (): boolean => {
       const win = iframe.contentWindow as (Window & { PDF_APP?: { loadFromPayload?: (payload: any) => unknown } }) | null;
-      const pdfApp = win?.PDF_APP;
-      if (pdfApp && typeof pdfApp.loadFromPayload === "function") {
+      if (win) {
         try {
-          pdfApp.loadFromPayload(payload);
-          return true;
+          const pdfApp = (win as any).PDF_APP;
+          if (pdfApp && typeof pdfApp.loadFromPayload === "function") {
+            pdfApp.loadFromPayload(payload);
+            return true;
+          }
         } catch (error) {
           console.warn("[leditor][pdf] PDF_APP.loadFromPayload failed", error);
-          return false;
         }
       }
-      return false;
+      const posted = postPayload();
+      return posted && pdfFrameLoaded;
     };
 
     if (tryApply()) {
@@ -1428,6 +1514,11 @@ export const mountEditor = async () => {
     ensurePdfIframeLoaded();
     appRoot.classList.add("leditor-pdf-open");
     applyPayloadToPdfViewer(pdfIframe, payload);
+    void maybeInlinePdfPayload(payload).then(() => {
+      if ((payload as any).pdf && isPdfDataCandidate(String((payload as any).pdf))) {
+        applyPayloadToPdfViewer(pdfIframe, payload);
+      }
+    });
     // Ensure pagination reacts to the reduced width.
     try {
       layout?.updatePagination();
@@ -1458,6 +1549,11 @@ export const mountEditor = async () => {
       if (!data || typeof data !== "object") return;
       if (data.type === "leditor:pdf-close") {
         closeEmbeddedPdf();
+      } else if (data.type === "leditor:pdf-viewer-ready") {
+        pdfFrameLoaded = true;
+        if (pendingPdfPayload) {
+          applyPayloadToPdfViewer(pdfIframe, pendingPdfPayload);
+        }
       }
     },
     { signal }
@@ -2067,6 +2163,7 @@ export const mountEditor = async () => {
 
   if (featureFlags.startupSmokeChecksEnabled) {
     editorHandle.execCommand("debugDumpJson");
+    runUiSmokeChecks();
   }
   window.__logCoderNode = () => {
     if (lastCoderStateNode && lastCoderStatePath) {

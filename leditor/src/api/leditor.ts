@@ -366,6 +366,12 @@ export const LEditor = {
     starterKitOptions.document = false;
     // Debug: silenced noisy ribbon logs.
 
+    const startupAt = performance.now();
+    try {
+      (window as any).__leditorStartupAt = startupAt;
+    } catch {
+      // ignore
+    }
     const editor = new Editor({
       element: mountEl,
       extensions: [
@@ -452,6 +458,26 @@ export const LEditor = {
         })
       ]);
     };
+    const waitForLayoutSettled = async (timeoutMs = 4500) => {
+      await new Promise<void>((resolve) => {
+        let done = false;
+        const finish = (reason: string) => {
+          if (done) return;
+          done = true;
+          editor.view?.dom?.removeEventListener("leditor:layout-settled", handler as EventListener);
+          if (reason) {
+            console.info("[Startup] layout settled", {
+              reason,
+              ms: Math.round(performance.now() - startupAt)
+            });
+          }
+          resolve();
+        };
+        const handler = () => finish("event");
+        editor.view?.dom?.addEventListener("leditor:layout-settled", handler as EventListener, { once: true });
+        window.setTimeout(() => finish("timeout"), timeoutMs);
+      });
+    };
     const waitForA4Ready = async (timeoutMs = 5000) => {
       await new Promise<void>((resolve) => {
         let done = false;
@@ -491,18 +517,21 @@ export const LEditor = {
     void (async () => {
       try {
         await waitForFonts();
+        console.info("[Startup] fonts ready", {
+          ms: Math.round(performance.now() - startupAt)
+        });
       } catch {
         // ignore font readiness errors
       }
       try {
-        await waitForA4Ready();
+        try {
+          editor.view.dom.dispatchEvent(new CustomEvent("leditor:pagination-request"));
+        } catch {
+          // ignore pagination dispatch errors
+        }
+        await Promise.race([waitForLayoutSettled(), waitForA4Ready()]);
       } catch {
         // ignore A4 readiness errors
-      }
-      try {
-        editor.view.dom.dispatchEvent(new CustomEvent("leditor:pagination-request"));
-      } catch {
-        // ignore pagination dispatch errors
       }
       window.requestAnimationFrame(() => {
         window.requestAnimationFrame(markAppReady);
@@ -626,6 +655,19 @@ export const LEditor = {
         try {
           resetFootnoteCounter();
           clearFootnoteRegistry();
+        } catch {
+          // ignore
+        }
+        try {
+          const g = window as typeof window & {
+            __leditorPaginationOrigin?: string;
+            __leditorPaginationOriginAt?: number;
+            __leditorLastSetContentAt?: number;
+          };
+          const now = performance.now();
+          g.__leditorPaginationOrigin = "setContent";
+          g.__leditorPaginationOriginAt = now;
+          g.__leditorLastSetContentAt = now;
         } catch {
           // ignore
         }

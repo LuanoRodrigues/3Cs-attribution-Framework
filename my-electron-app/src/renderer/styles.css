@@ -2,23 +2,23 @@
 @import "./ui-primitives.css";
 
 :root {
-  --bg: #030712;
-  --panel: #070b16;
-  --panel-2: #0f172a;
-  --surface: rgba(6, 11, 27, 0.85);
-  --surface-muted: rgba(15, 23, 42, 0.75);
-  --accent: #5dd5ff;
-  --accent-2: #38bdf8;
-  --text: #f1f5f9;
-  --muted: #9fb2c8;
-  --border: rgba(255, 255, 255, 0.12);
+  --bg: #1e1e1e;
+  --panel: #252526;
+  --panel-2: #2d2d2d;
+  --surface: rgba(37, 37, 38, 0.92);
+  --surface-muted: rgba(45, 45, 45, 0.86);
+  --accent: #5b9bd5;
+  --accent-2: #2b579a;
+  --text: rgba(255, 255, 255, 0.92);
+  --muted: rgba(255, 255, 255, 0.65);
+  --border: rgba(255, 255, 255, 0.14);
   --border-soft: rgba(255, 255, 255, 0.08);
-  --shadow: 0 25px 70px rgba(2, 6, 23, 0.8);
-  --card-border: rgba(14, 165, 233, 0.35);
-  --gradient-1: rgba(56, 189, 248, 0.22);
-  --gradient-2: rgba(14, 165, 233, 0.24);
-  --ribbon: rgba(6, 11, 27, 0.92);
-  --focus: rgba(34, 211, 238, 0.45);
+  --shadow: 0 25px 70px rgba(0, 0, 0, 0.72);
+  --card-border: rgba(91, 155, 213, 0.35);
+  --gradient-1: rgba(91, 155, 213, 0.22);
+  --gradient-2: rgba(43, 87, 154, 0.20);
+  --ribbon: rgba(30, 30, 30, 0.94);
+  --focus: rgba(91, 155, 213, 0.45);
   --ribbon-header-height: 40px;
   --ribbon-height: 180px;
   --panel-maxHeight: calc(100vh - var(--ribbon-height));
@@ -33,13 +33,13 @@
   --shadow-level-2: var(--shadow-overlay);
   --app-shell-height: calc(100vh / var(--app-scale));
   --workspace-shell-height: calc(var(--app-shell-height) - var(--ribbon-height));
-  --highlight: #60a5fa;
-  --link: #5dd5ff;
-  --link-hover: #38bdf8;
-  --sidebar-bg: #0c1424;
-  --paper-border: #242c3b;
-  --paper-text: #e8edf5;
-  --paper-muted: #b9c3cf;
+  --highlight: #5b9bd5;
+  --link: #9dc3e6;
+  --link-hover: #b4d1ee;
+  --sidebar-bg: #242526;
+  --paper-border: #3a3a3a;
+  --paper-text: #f3f2f1;
+  --paper-muted: #b6b6b6;
   --danger: #f87171;
   --success: #34d399;
   --app-scale: 1;
@@ -196,7 +196,7 @@ body.panel-drop-active iframe {
 
 .session-block {
   background: var(--surface);
-  border: 1px solid rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-soft);
   border-radius: 24px;
   padding: 28px 30px;
   display: flex;
@@ -210,7 +210,7 @@ body.panel-drop-active iframe {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, transparent, rgba(15, 23, 42, 0.75));
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--text) 20%, transparent));
   pointer-events: none;
 }
 
@@ -230,9 +230,9 @@ body.panel-drop-active iframe {
 
 .session-input-label input {
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--border);
   padding: 14px 18px;
-  background: rgba(15, 23, 42, 0.8);
+  background: color-mix(in srgb, var(--panel) 85%, transparent);
   color: var(--text);
   font-size: 15px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
@@ -241,7 +241,7 @@ body.panel-drop-active iframe {
 .session-input-label input:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.16);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
 .session-control-row {

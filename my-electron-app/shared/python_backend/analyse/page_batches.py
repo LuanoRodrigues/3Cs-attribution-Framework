@@ -2716,14 +2716,14 @@ class L1BatchesPage(QWidget):
             return html.escape(s or "")
 
         css = """
-        body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; margin: 32px; color:#0f172a; }
+        body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; margin: 32px; color:#1e1e1e; }
         h1 { margin: 0 0 16px; font-size: 24px; }
         .card { background:#fff; border-radius:12px; box-shadow:0 6px 18px rgba(0,0,0,0.08); padding:16px; margin:14px 0; max-width: 980px; }
         .pill { display:inline-block; padding:2px 8px; border-radius:999px; background:#eef2ff; color:#3730a3; font-size:12px; margin-right:8px; }
         .meta { color:#64748b; font-size:13px; margin-top:8px; }
         blockquote { border-left:4px solid rgba(125,211,252,0.75); background:rgba(241,245,249,0.6); padding:8px 12px; margin:10px 0; border-radius:8px; }
         .rc { color:#334155; font-size:13px; margin-top:8px; }
-        a { color:#2563eb; text-decoration:none; } a:hover { text-decoration:underline; }
+        a { color:#2b579a; text-decoration:none; } a:hover { text-decoration:underline; }
         """
 
         parts = [f"""<!doctype html>

@@ -4,8 +4,8 @@ import type { EditorHandle } from "../api/leditor.ts";
 import type { AiSettings } from "../types/ai.ts";
 import { getAiSettings } from "../ui/ai_settings.ts";
 import { getHostAdapter } from "../host/host_adapter.ts";
-import { TextSelection } from "prosemirror-state";
 import { Fragment } from "prosemirror-model";
+import { TextSelection } from "prosemirror-state";
 import {
   createAgentSidebar,
   type AgentRunRequest,
@@ -63,6 +63,7 @@ type AgentBridge = {
 };
 
 const log = (action: string) => window.codexLog?.write(`[AI_AGENT] ${action}`);
+const DEFAULT_CHUNK_LIMIT = 12000;
 
 const getAgentBridge = (): AgentBridge | null => {
   const host = getHostAdapter();
@@ -165,40 +166,61 @@ const listParagraphTargets = (
   return { paragraphs: targets, sectionToIndices, sectionTitleByNumber };
 };
 
+const normalizeInsertPos = (editor: Editor, insertPosRaw: number): number => {
+  const doc = editor.state.doc;
+  const schema: any = (editor as any).schema;
+  const pageType = schema?.nodes?.page;
+  const clamp = (n: number, a: number, b: number) => Math.max(a, Math.min(b, n));
+  let insertPos = clamp(Number(insertPosRaw) || 0, 0, doc.content.size);
+
+  try {
+    if (pageType) {
+      const ranges: Array<{ from: number; to: number }> = [];
+      doc.descendants((node, pos) => {
+        if (node?.type === pageType) {
+          ranges.push({ from: pos + 1, to: pos + node.nodeSize - 1 });
+          return false;
+        }
+        return true;
+      });
+      if (ranges.length) {
+        const match = ranges.find((r) => insertPos >= r.from && insertPos <= r.to) ?? ranges[ranges.length - 1]!;
+        insertPos = clamp(insertPos, match.from, match.to);
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  try {
+    const $pos = doc.resolve(insertPos);
+    if ($pos.parent?.isTextblock) {
+      insertPos = $pos.after($pos.depth);
+    }
+  } catch {
+    // ignore
+  }
+
+  return clamp(insertPos, 0, doc.content.size);
+};
+
 const ensureHeadingAndEmptyParagraph = (
   editor: Editor,
   titleRaw: string,
-  insertPosRaw: number
+  insertPosRaw: number,
+  headingLevelRaw: number
 ): { from: number; to: number } => {
   const schema: any = (editor as any).schema;
   const headingType = schema?.nodes?.heading;
   const paragraphType = schema?.nodes?.paragraph;
-  const pageType = schema?.nodes?.page;
   if (!headingType || !paragraphType || typeof schema?.text !== "function") {
     throw new Error("Schema missing heading/paragraph.");
   }
 
   const title = String(titleRaw || "").trim() || "Untitled";
-  const doc = editor.state.doc;
-  const clamp = (n: number, a: number, b: number) => Math.max(a, Math.min(b, n));
-  let insertPos = clamp(Number(insertPosRaw) || 0, 0, doc.content.size);
-
-  // Prefer inserting inside a page node so schema constraints are satisfied.
-  try {
-    if (pageType) {
-      const $pos = doc.resolve(insertPos);
-      for (let d = $pos.depth; d >= 0; d -= 1) {
-        if ($pos.node(d)?.type === pageType) {
-          insertPos = clamp(insertPos, $pos.start(d), $pos.end(d));
-          break;
-        }
-      }
-    }
-  } catch {
-    // ignore; use clamped insertPos
-  }
-
-  const heading = headingType.create({ level: 1 }, [schema.text(title)]);
+  const insertPos = normalizeInsertPos(editor, insertPosRaw);
+  const level = Math.max(1, Math.min(6, Number(headingLevelRaw ?? 1) || 1));
+  const heading = headingType.create({ level }, [schema.text(title)]);
   const paragraph = paragraphType.createAndFill() ?? paragraphType.create({});
   const fragment = Fragment.fromArray([heading, paragraph]);
 
@@ -460,30 +482,26 @@ const parseTargetSpec = (
   return parseLeadingParagraphSpec(instructionRaw, maxParagraph);
 };
 
-const ensureLabeledParagraph = (
+const ensureEmptyParagraphAt = (
   editor: Editor,
-  title: string,
-  insertAt: number
-): { paragraphFrom: number; paragraphTo: number; selectionFrom: number; selectionTo: number } => {
-  const { state } = editor;
-  const { schema } = state;
-  const paragraphType = schema.nodes.paragraph;
-  if (!paragraphType) throw new Error("Schema missing paragraph.");
-  const label = String(title || "").trim() || "Note";
-  const paragraphNode = paragraphType.create(null, schema.text(`${label} — `));
-  const insertPos = Math.max(0, Math.min(state.doc.content.size, insertAt));
-  const fragment = Fragment.fromArray([paragraphNode]);
-  const tr = state.tr.insert(insertPos, fragment);
-  const paraPos = insertPos;
-  const paragraphFrom = paraPos + 1;
-  const paragraphTo = paraPos + paragraphNode.nodeSize - 1;
-  const selectionFrom = paragraphFrom + `${label} — `.length;
-  const selectionTo = selectionFrom;
-  tr.setSelection(TextSelection.create(tr.doc, selectionFrom, selectionTo));
-  tr.setMeta("leditor-ai", { kind: "agent", ts: Date.now(), op: "insertLabeledParagraph" });
+  insertPosRaw: number
+): { from: number; to: number } => {
+  const schema: any = (editor as any).schema;
+  const paragraphType = schema?.nodes?.paragraph;
+  if (!paragraphType) {
+    throw new Error("Schema missing paragraph.");
+  }
+
+  const insertPos = normalizeInsertPos(editor, insertPosRaw);
+
+  const paragraph = paragraphType.createAndFill() ?? paragraphType.create({});
+  const fragment = Fragment.fromArray([paragraph]);
+  let tr = editor.state.tr.insert(insertPos, fragment);
+  tr = tr.setMeta("addToHistory", true);
   editor.view.dispatch(tr);
-  editor.commands.focus();
-  return { paragraphFrom, paragraphTo, selectionFrom, selectionTo };
+
+  const paragraphPos = insertPos;
+  return { from: paragraphPos + 1, to: paragraphPos + paragraph.nodeSize - 1 };
 };
 
 const runAgent = async (
@@ -512,7 +530,6 @@ const runAgent = async (
     const cacheKey = buildLlmCacheKey({
       fn: "agent.run",
       provider: ctx.settings?.provider ?? settings?.provider,
-      model: ctx.settings?.model ?? settings?.model,
       payload: ctx
     });
     const cached = getLlmCacheEntry(cacheKey);
@@ -562,8 +579,49 @@ const runAgent = async (
 
   const settings = getAiSettings();
   let { paragraphs: allParagraphs, sectionToIndices, sectionTitleByNumber } = listParagraphTargets(editor);
-  if (allParagraphs.length === 0) {
-    return { assistantText: "No paragraphs found." };
+
+  const selectionOverride = request.selection;
+  if (selectionOverride && Number.isFinite(selectionOverride.from) && Number.isFinite(selectionOverride.to)) {
+    const from = Math.min(selectionOverride.from, selectionOverride.to);
+    const to = Math.max(selectionOverride.from, selectionOverride.to);
+    if (from === to) {
+      return { assistantText: "Select text to edit." };
+    }
+    const selectionText = editor.state.doc.textBetween(from, to, "\n");
+    if (!selectionText.trim()) {
+      return { assistantText: "Selection is empty." };
+    }
+    if (signal?.aborted) {
+      return { assistantText: "Cancelled." };
+    }
+    const ctx: AgentContext = {
+      scope: "selection",
+      instruction: instructionRaw,
+      actionId: request.actionId,
+      selection: { from, to, text: selectionText },
+      history: getAgentHistory(),
+      settings
+    };
+    const result = await runBridge(ctx);
+    if (signal?.aborted) {
+      return { assistantText: "Cancelled." };
+    }
+    if (!result?.success) {
+      return { assistantText: result?.error ? String(result.error) : "Agent request failed.", meta: result?.meta };
+    }
+    const ops = Array.isArray(result.operations) ? result.operations : [];
+    const replaceOp = ops.find((op) => op && op.op === "replaceSelection" && typeof (op as any).text === "string") as
+      | { op: "replaceSelection"; text: string }
+      | undefined;
+    const replaceText =
+      replaceOp?.text ??
+      (typeof (result as any).applyText === "string" ? String((result as any).applyText) : "");
+    const assistantText = String(result.assistantText || "").trim() || "(no response)";
+    appendAgentHistoryMessage({ role: "assistant", content: assistantText });
+    if (!replaceText || !replaceText.trim()) {
+      return { assistantText, meta: result?.meta };
+    }
+    return { assistantText, meta: result?.meta, apply: { kind: "replaceRange", from, to, text: replaceText } };
   }
 
   const normalizeTitle = (t: string) => String(t || "").trim().toLowerCase();
@@ -573,15 +631,44 @@ const runAgent = async (
       .replace(/^[\s:–—-]+/, "")
       .replace(/\s+/g, " ")
       .trim();
+  type HeadingTarget = { from: number; to: number; title: string; level: number };
+  const getHeadingAnchors = (): { headings: HeadingTarget[]; firstHeading: HeadingTarget | null; introHeading: HeadingTarget | null } => {
+    const headings: HeadingTarget[] = [];
+    let firstHeading: HeadingTarget | null = null;
+    let introHeading: HeadingTarget | null = null;
+    const excludedParentTypes = new Set([
+      "tableCell",
+      "tableHeader",
+      "table_cell",
+      "table_header",
+      "footnoteBody"
+    ]);
+    editor.state.doc.nodesBetween(0, editor.state.doc.content.size, (node, pos, parent) => {
+      if (!node || node.type?.name !== "heading") return true;
+      const parentName = parent?.type?.name;
+      if (parentName && excludedParentTypes.has(parentName)) return true;
+      const title = String(node.textContent || "").trim();
+      const level = Math.max(1, Math.min(6, Number((node.attrs as any)?.level ?? 1) || 1));
+      const from = pos;
+      const to = pos + node.nodeSize;
+      const entry = { from, to, title, level };
+      headings.push(entry);
+      if (!firstHeading) firstHeading = entry;
+      if (!introHeading && normalizeTitle(title) === "introduction") introHeading = entry;
+      return true;
+    });
+    return { headings, firstHeading, introHeading };
+  };
 
   const genMatch =
-    instructionRaw.match(/\b(?:create|write|generate)\s+(?:an?\s+|the\s+)?(abstract|introduction|findings|recommendations|conclusion)\b/i) ??
-    instructionRaw.match(/^\s*(abstract|introduction|findings|recommendations|conclusion)\b/i);
+    instructionRaw.match(/\b(?:create|write|generate)\s+(?:an?\s+|the\s+)?(abstract|introduction|methodology|findings|recommendations|conclusion)\b/i) ??
+    instructionRaw.match(/^\s*(abstract|introduction|methodology|findings|recommendations|conclusion)\b/i);
   const sectionActionHint = typeof request.actionId === "string" ? normalizeTitle(request.actionId) : "";
   const sectionKindRaw = genMatch?.[1] ? normalizeTitle(genMatch[1]) : "";
   const sectionKind =
     sectionActionHint === "abstract" ||
     sectionActionHint === "introduction" ||
+    sectionActionHint === "methodology" ||
     sectionActionHint === "findings" ||
     sectionActionHint === "recommendations" ||
     sectionActionHint === "conclusion"
@@ -593,50 +680,234 @@ const runAgent = async (
         ? "Abstract"
         : sectionKind === "introduction"
           ? "Introduction"
+          : sectionKind === "methodology"
+            ? "Methodology"
           : sectionKind === "findings"
             ? "Findings"
             : sectionKind === "recommendations"
               ? "Recommendations"
               : "Conclusion";
-    const labelPrefix = `${title} —`;
-    const findByLabel = (label: string) =>
-      allParagraphs.find((p) => normalizeTitle(p.text).startsWith(normalizeTitle(`${label} —`))) ?? null;
-    const existing = findByLabel(title);
-    let target = existing;
-    if (!target) {
+    const { headings, firstHeading, introHeading } = getHeadingAnchors();
+    const findHeadingByTitle = (label: string) =>
+      headings.find((h) => normalizeTitle(h.title) === normalizeTitle(label)) ?? null;
+    const findNextHeading = (heading: HeadingTarget) => {
+      const idx = headings.indexOf(heading);
+      if (idx < 0) return null;
+      return headings[idx + 1] ?? null;
+    };
+    const findParagraphUnderHeading = (heading: HeadingTarget) => {
+      const nextHeading = findNextHeading(heading);
+      return (
+        allParagraphs.find(
+          (p) =>
+            p.type === "paragraph" &&
+            p.from > heading.to &&
+            (!nextHeading || p.from < nextHeading.from)
+        ) ?? null
+      );
+    };
+    const headingHasContent = (heading: HeadingTarget) => Boolean(findParagraphUnderHeading(heading));
+    const getSectionEndPos = (heading: HeadingTarget) => {
+      const idx = headings.indexOf(heading);
+      if (idx < 0) return editor.state.doc.content.size;
+      const level = heading.level;
+      for (let i = idx + 1; i < headings.length; i += 1) {
+        const candidate = headings[i]!;
+        if (candidate.level <= level) return candidate.from;
+      }
+      return editor.state.doc.content.size;
+    };
+    const logSectionDebug = (label: string, data: Record<string, unknown>) => {
       try {
-        const first = allParagraphs[0] ?? null;
-        const last = allParagraphs[allParagraphs.length - 1] ?? null;
-        const abstractP = findByLabel("Abstract");
-        const introP = findByLabel("Introduction");
-        const findingsP = findByLabel("Findings");
-        const recsP = findByLabel("Recommendations");
-        const conclusionP = findByLabel("Conclusion");
-        let insertPos = first ? first.from - 1 : 0;
-        if (sectionKind === "introduction") {
-          insertPos = abstractP ? abstractP.to + 1 : insertPos;
-        } else if (sectionKind === "findings") {
-          insertPos = introP ? introP.to + 1 : abstractP ? abstractP.to + 1 : insertPos;
-        } else if (sectionKind === "recommendations") {
-          insertPos = findingsP
-            ? findingsP.to + 1
-            : introP
-              ? introP.to + 1
-              : abstractP
-                ? abstractP.to + 1
-                : insertPos;
-        } else if (sectionKind === "conclusion") {
-          const anchor =
-            recsP ?? findingsP ?? introP ?? abstractP ?? conclusionP ?? last;
-          insertPos = anchor ? anchor.to + 1 : editor.state.doc.content.size;
+        console.info("[agent][sections][debug]", { label, ...data });
+      } catch {
+        // ignore
+      }
+    };
+    const describePos = (pos: number) => {
+      const doc = editor.state.doc;
+      const safe = Math.max(0, Math.min(doc.content.size, pos));
+      try {
+        const $pos = doc.resolve(safe);
+        const before = $pos.nodeBefore;
+        const after = $pos.nodeAfter;
+        return {
+          pos: safe,
+          depth: $pos.depth,
+          parent: $pos.parent?.type?.name ?? null,
+          before: before?.type?.name ?? null,
+          after: after?.type?.name ?? null,
+          beforeText: before?.textContent ? String(before.textContent).slice(0, 80) : "",
+          afterText: after?.textContent ? String(after.textContent).slice(0, 80) : ""
+        };
+      } catch {
+        return { pos: safe };
+      }
+    };
+    const findPrevHeading = (pos: number) =>
+      headings.filter((h) => h.from < pos).slice(-1)[0] ?? null;
+    const findNextHeadingByPos = (pos: number) =>
+      headings.find((h) => h.from > pos) ?? null;
+
+    const existingHeading = findHeadingByTitle(title);
+    let createdHeading = false;
+    let target = existingHeading ? findParagraphUnderHeading(existingHeading) : null;
+    if (!existingHeading || !target) {
+      try {
+        const firstParagraph = allParagraphs[0] ?? null;
+        const abstractH = findHeadingByTitle("Abstract");
+        const introH = findHeadingByTitle("Introduction");
+        const methodologyH = findHeadingByTitle("Methodology");
+        const findingsH = findHeadingByTitle("Findings");
+        const recsH = findHeadingByTitle("Recommendations");
+        const conclusionH = findHeadingByTitle("Conclusion");
+        const defaultHeadingLevel =
+          introHeading?.level ??
+          firstHeading?.level ??
+          1;
+        const docEnd = editor.state.doc.content.size;
+        const insertDefault = firstParagraph ? firstParagraph.from - 1 : 0;
+        const beforeIntro = introHeading ? introHeading.from : null;
+        const beforeRecs = recsH ? recsH.from : null;
+        const beforeConclusion = conclusionH ? conclusionH.from : null;
+        let insertPos = insertDefault;
+        if (!existingHeading) {
+          const firstEmptyHeading = headings.find((h) => !findParagraphUnderHeading(h)) ?? null;
+          if (sectionKind === "abstract") {
+            if (firstEmptyHeading) {
+              insertPos = firstEmptyHeading.to;
+            } else if (introHeading && beforeIntro != null) {
+              insertPos = beforeIntro;
+            } else if (firstHeading) {
+              insertPos = getSectionEndPos(firstHeading);
+            } else {
+              insertPos = insertDefault;
+            }
+          } else if (sectionKind === "introduction") {
+            if (abstractH) {
+              insertPos = getSectionEndPos(abstractH);
+            } else if (firstHeading) {
+              insertPos = getSectionEndPos(firstHeading);
+            } else {
+              insertPos = insertDefault;
+            }
+          } else if (sectionKind === "methodology") {
+            if (introH) {
+              insertPos = getSectionEndPos(introH);
+            } else if (abstractH) {
+              insertPos = getSectionEndPos(abstractH);
+            } else if (firstHeading) {
+              insertPos = headingHasContent(firstHeading) ? getSectionEndPos(firstHeading) : firstHeading.to;
+            } else {
+              insertPos = insertDefault;
+            }
+          } else if (sectionKind === "findings") {
+            const lowerBound = methodologyH
+              ? getSectionEndPos(methodologyH)
+              : introH
+                ? getSectionEndPos(introH)
+                : abstractH
+                  ? getSectionEndPos(abstractH)
+                  : firstHeading
+                    ? (headingHasContent(firstHeading) ? getSectionEndPos(firstHeading) : firstHeading.to)
+                    : insertDefault;
+            const anchor = [beforeRecs, beforeConclusion]
+              .filter((pos): pos is number => typeof pos === "number" && Number.isFinite(pos))
+              .sort((a, b) => a - b)[0];
+            insertPos = anchor != null && anchor > lowerBound ? anchor : lowerBound;
+          } else if (sectionKind === "recommendations") {
+            const lowerBound = findingsH
+              ? getSectionEndPos(findingsH)
+              : methodologyH
+                ? getSectionEndPos(methodologyH)
+                : introH
+                  ? getSectionEndPos(introH)
+                  : abstractH
+                    ? getSectionEndPos(abstractH)
+                    : firstHeading
+                      ? (headingHasContent(firstHeading) ? getSectionEndPos(firstHeading) : firstHeading.to)
+                      : insertDefault;
+            insertPos = beforeConclusion != null && beforeConclusion > lowerBound ? beforeConclusion : lowerBound;
+          } else if (sectionKind === "conclusion") {
+            if (recsH) {
+              insertPos = getSectionEndPos(recsH);
+            } else if (findingsH) {
+              insertPos = getSectionEndPos(findingsH);
+            } else if (methodologyH) {
+              insertPos = getSectionEndPos(methodologyH);
+            } else if (introH) {
+              insertPos = getSectionEndPos(introH);
+            } else if (abstractH) {
+              insertPos = getSectionEndPos(abstractH);
+            } else {
+              insertPos = docEnd;
+            }
+          }
+          const safeInsert = normalizeInsertPos(editor, insertPos);
+          logSectionDebug("insert", {
+            section: sectionKind,
+            title,
+            insertPos,
+            safeInsertPos: safeInsert,
+            prevHeading: (() => {
+              const h = findPrevHeading(safeInsert);
+              return h ? { title: h.title, from: h.from, to: h.to, level: h.level } : null;
+            })(),
+            nextHeading: (() => {
+              const h = findNextHeadingByPos(safeInsert);
+              return h ? { title: h.title, from: h.from, to: h.to, level: h.level } : null;
+            })(),
+            at: describePos(safeInsert)
+          });
+          const inserted = ensureHeadingAndEmptyParagraph(editor, title, insertPos, defaultHeadingLevel);
+          createdHeading = true;
+          ({ paragraphs: allParagraphs, sectionToIndices, sectionTitleByNumber } = listParagraphTargets(editor));
+          target = allParagraphs.find((p) => p.from === inserted.from) ?? null;
+          if (!target) {
+            const nextHeading = findHeadingByTitle(title);
+            target = nextHeading ? findParagraphUnderHeading(nextHeading) : null;
+          }
+          if (target) {
+            try {
+              const tr = editor.state.tr
+                .setSelection(TextSelection.create(editor.state.doc, target.from))
+                .scrollIntoView();
+              editor.view.dispatch(tr);
+              editor.view.focus();
+              console.info("[agent][sections][debug]", {
+                label: "focus_after_insert",
+                ok: true,
+                pos: target.from
+              });
+            } catch (error) {
+              console.warn("[agent][sections][debug]", {
+                label: "focus_after_insert",
+                ok: false,
+                error: error instanceof Error ? error.message : String(error)
+              });
+            }
+          }
+        } else {
+          logSectionDebug("existing_heading_no_paragraph", {
+            section: sectionKind,
+            title,
+            heading: { title: existingHeading.title, from: existingHeading.from, to: existingHeading.to, level: existingHeading.level },
+            at: describePos(existingHeading.to)
+          });
+          const inserted = ensureEmptyParagraphAt(editor, existingHeading.to);
+          ({ paragraphs: allParagraphs, sectionToIndices, sectionTitleByNumber } = listParagraphTargets(editor));
+          target = allParagraphs.find((p) => p.from === inserted.from) ?? null;
         }
-        const inserted = ensureLabeledParagraph(editor, title, insertPos);
-        ({ paragraphs: allParagraphs, sectionToIndices, sectionTitleByNumber } = listParagraphTargets(editor));
-        target = allParagraphs.find((p) => p.from === inserted.paragraphFrom) ?? null;
       } catch (e) {
         return { assistantText: `Failed to insert ${title}: ${e instanceof Error ? e.message : String(e)}` };
       }
     }
+    logSectionDebug("target", {
+      section: sectionKind,
+      title,
+      createdHeading,
+      target: target ? { n: target.n, from: target.from, to: target.to, type: target.type } : null
+    });
     if (!target) return { assistantText: `Unable to locate ${title} target paragraph.` };
     const rest = stripPrefix(instructionRaw, genMatch?.[0] ?? "");
     const extra = rest ? ` Constraints: ${rest}` : "";
@@ -645,12 +916,14 @@ const runAgent = async (
         ? "Write an academic abstract for the whole document."
         : sectionKind === "introduction"
           ? "Write an introduction for the whole document."
+          : sectionKind === "methodology"
+            ? "Write a methodology section for the whole document."
           : sectionKind === "findings"
             ? "Write a findings section for the whole document."
             : sectionKind === "recommendations"
               ? "Write a recommendations section for the whole document."
               : "Write a conclusion for the whole document.";
-    const instruction = `${instructionBase}${extra} Replace only paragraph P${target.n}. Keep the prefix "${labelPrefix} " exactly at the start.`;
+    const instruction = `${instructionBase}${extra} Replace only paragraph P${target.n}.`;
     const indices = [target.n];
     const indexSet = new Set(indices);
     const targets = allParagraphs.filter((p) => indexSet.has(p.n));
@@ -693,15 +966,6 @@ const runAgent = async (
       const n = Number((op as any).n);
       let text = typeof (op as any).text === "string" ? (op as any).text : "";
       if (!Number.isFinite(n) || !text.trim()) continue;
-      // Ensure the generated paragraph keeps its label prefix for stability.
-      if (n === target.n) {
-        const want = `${labelPrefix} `;
-        if (!normalizeTitle(text).startsWith(normalizeTitle(labelPrefix))) {
-          text = `${want}${text.trim()}`;
-        } else if (!text.startsWith(want)) {
-          text = `${want}${text.replace(new RegExp(`^${labelPrefix}\\s*[-—–]?\\s*`, "i"), "").trim()}`;
-        }
-      }
       const t = chunk.find((p) => p.n === n);
       if (!t) continue;
       if (text.trim() !== t.text.trim()) {
@@ -713,6 +977,10 @@ const runAgent = async (
     return edits.length === 0
       ? { assistantText, meta: result?.meta }
       : { assistantText, meta: result?.meta, apply: { kind: "batchReplace", items: edits } };
+  }
+
+  if (allParagraphs.length === 0) {
+    return { assistantText: "No paragraphs found." };
   }
 
   const parsed = parseTargetSpec(instructionRaw, allParagraphs, sectionToIndices, sectionTitleByNumber, editor);
@@ -736,7 +1004,7 @@ const runAgent = async (
     return { assistantText: `Too many paragraphs (${targets.length}). Narrow the list (max ${MAX_PARAGRAPHS}).` };
   }
 
-  const chunkLimit = typeof settings?.chunkSize === "number" && settings.chunkSize > 2000 ? settings.chunkSize : 12000;
+  const chunkLimit = DEFAULT_CHUNK_LIMIT;
   const chunks: ParagraphTarget[][] = [];
   let cur: ParagraphTarget[] = [];
   let curLen = 0;
@@ -844,14 +1112,36 @@ registerPlugin({
       log(`sidebar.toggle -> ${sidebar.isOpen() ? "open" : "closed"}`);
       editorHandle.focus();
     },
-    "agent.action"(editorHandle: EditorHandle, args?: { id?: unknown }) {
+    "agent.view.open"(editorHandle: EditorHandle, args?: { view?: unknown }) {
+      const sidebar = ensureSidebar(editorHandle);
+      const viewRaw = typeof args?.view === "string" ? String(args.view).trim().toLowerCase() : "";
+      const view =
+        viewRaw === "chat" || viewRaw === "dictionary" || viewRaw === "sections" || viewRaw === "sources"
+          ? (viewRaw as "chat" | "dictionary" | "sections" | "sources")
+          : null;
+      if (!view) {
+        throw new Error('agent.view.open requires args.view ("chat" | "dictionary" | "sections" | "sources")');
+      }
+      sidebar.openView(view);
+      log(`view.open ${view}`);
+      editorHandle.focus();
+    },
+    "agent.action"(editorHandle: EditorHandle, args?: { id?: unknown; mode?: unknown }) {
       const sidebar = ensureSidebar(editorHandle);
       const id = typeof args?.id === "string" ? (args.id as AgentActionId) : null;
       if (!id) {
         throw new Error('agent.action requires args.id (e.g. "refine")');
       }
-      sidebar.runAction(id);
+      const modeRaw = typeof args?.mode === "string" ? String(args.mode).trim().toLowerCase() : "";
+      const mode = modeRaw === "block" ? "block" : undefined;
+      sidebar.runAction(id, mode ? { mode } : undefined);
       log(`action ${id}`);
+      editorHandle.focus();
+    },
+    "agent.sections.runAll"(editorHandle: EditorHandle) {
+      const sidebar = ensureSidebar(editorHandle);
+      sidebar.runSectionsBatch();
+      log("sections.runAll");
       editorHandle.focus();
     },
     "agent.dictionary.open"(editorHandle: EditorHandle, args?: { mode?: unknown }) {

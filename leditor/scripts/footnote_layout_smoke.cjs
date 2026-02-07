@@ -185,6 +185,11 @@ const run = async () => {
         // Exit footnote mode to modify body content.
         window.dispatchEvent(new CustomEvent("leditor:footnote-exit"));
         await new Promise((r) => setTimeout(r, 200));
+        const entryAfterExit = document.querySelector(
+          '.leditor-footnote-entry-text[data-footnote-id="' + footnoteId + '"]'
+        );
+        const ariaReadOnlyAfterExit = entryAfterExit?.getAttribute("aria-readonly") ?? null;
+        const contentEditableAfterExit = entryAfterExit?.getAttribute("contenteditable") ?? null;
 
         // Add big paragraph to stress layout.
         editor.commands.insertContent(para(lorem.repeat(26)));
@@ -196,6 +201,8 @@ const run = async () => {
         const entry2 = document.querySelector(
           '.leditor-footnote-entry-text[data-footnote-id="' + footnoteId + '"]'
         );
+        const ariaReadOnlyWhileActive = entry2?.getAttribute("aria-readonly") ?? null;
+        const contentEditableWhileActive = entry2?.getAttribute("contenteditable") ?? null;
         if (entry2) {
           entry2.textContent = "Footnote expansion. " + lorem.repeat(6);
           entry2.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText" }));
@@ -233,7 +240,11 @@ const run = async () => {
           activeIsFootnote,
           markerIsSup,
           selectionDeltaOk,
-          caretReturnedToBody
+          caretReturnedToBody,
+          ariaReadOnlyAfterExit,
+          contentEditableAfterExit,
+          ariaReadOnlyWhileActive,
+          contentEditableWhileActive
         };
       })();
       `,
@@ -383,6 +394,42 @@ const run = async () => {
       throw new Error("Footnote layout smoke check failed");
     }
 
+    const nonA4Result = await win.webContents.executeJavaScript(
+      `
+      (async () => {
+        const editor = window.leditor?.getEditor?.();
+        if (!editor || !window.leditor) return { ok: false, reason: "no editor" };
+        const blocked = new Set([".leditor-page-stack", ".leditor-page-overlays", ".leditor-a4-canvas"]);
+        const originalQuery = document.querySelector.bind(document);
+        const originalDispatch = window.dispatchEvent.bind(window);
+        let focusEvents = 0;
+        document.querySelector = (selector) => {
+          if (blocked.has(selector)) return null;
+          return originalQuery(selector);
+        };
+        window.dispatchEvent = (event) => {
+          if (event && event.type === "leditor:footnote-focus") focusEvents += 1;
+          return originalDispatch(event);
+        };
+        try {
+          window.leditor.execCommand("InsertFootnote");
+          await new Promise((r) => setTimeout(r, 200));
+        } catch (error) {
+          return { ok: false, reason: "insert failed", error: String(error) };
+        } finally {
+          document.querySelector = originalQuery;
+          window.dispatchEvent = originalDispatch;
+        }
+        return { ok: focusEvents === 0, focusEvents };
+      })();
+      `,
+      true
+    );
+    if (!nonA4Result || !nonA4Result.ok) {
+      console.error("[FAIL] non-A4 focus delegation check", nonA4Result);
+      throw new Error("Non-A4 focus delegation check failed");
+    }
+
     const consistencyChecks = [];
     if (flowResult.markerPageIndex !== flowResult.footnotePageIndex) {
       consistencyChecks.push("footnote entry not on same page as marker");
@@ -398,6 +445,15 @@ const run = async () => {
     }
     if (!flowResult.caretReturnedToBody) {
       consistencyChecks.push("caret did not return to body after click");
+    }
+    if (flowResult.ariaReadOnlyAfterExit !== "true") {
+      consistencyChecks.push("footnote entry did not set aria-readonly after exit");
+    }
+    if (flowResult.ariaReadOnlyWhileActive === "true") {
+      consistencyChecks.push("footnote entry retained aria-readonly while active");
+    }
+    if (flowResult.contentEditableWhileActive === "false") {
+      consistencyChecks.push("footnote entry remained contenteditable=false while active");
     }
     if (consistencyChecks.length > 0) {
       console.warn("[WARN] footnote flow checks", consistencyChecks, flowResult);

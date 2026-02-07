@@ -282,7 +282,7 @@ export function createScreenWidget(): ToolDefinition {
 
       const decisionStatus = document.createElement("div");
       decisionStatus.style.fontSize = "12px";
-      decisionStatus.style.color = "var(--muted, #94a3b8)";
+      decisionStatus.style.color = "var(--muted, rgba(255, 255, 255, 0.65))";
       decisionStatus.textContent = "Uncoded";
 
       decisionRow.append(includeBtn, excludeBtn, maybeBtn);
@@ -301,7 +301,7 @@ export function createScreenWidget(): ToolDefinition {
       llmHeading.style.fontWeight = "800";
       llmHeading.style.fontSize = "12px";
       llmHeading.style.letterSpacing = "0.22px";
-      llmHeading.style.color = "var(--muted, #94a3b8)";
+      llmHeading.style.color = "var(--muted, rgba(255, 255, 255, 0.65))";
       llmHeading.style.textTransform = "uppercase";
       llmHeading.style.marginBottom = "6px";
 
@@ -311,12 +311,12 @@ export function createScreenWidget(): ToolDefinition {
       llmCodes.style.gap = "8px";
       llmCodes.style.fontWeight = "700";
       llmCodes.style.fontSize = "13px";
-      llmCodes.style.color = "var(--text, #e2e8f0)";
+      llmCodes.style.color = "var(--text, rgba(255, 255, 255, 0.92))";
       llmCodes.textContent = "—";
 
       const llmComment = document.createElement("div");
       llmComment.style.fontSize = "12px";
-      llmComment.style.color = "var(--muted, #94a3b8)";
+      llmComment.style.color = "var(--muted, rgba(255, 255, 255, 0.65))";
       llmComment.textContent = "";
 
       llmBox.append(llmHeading, llmCodes, llmComment);
@@ -517,7 +517,7 @@ export function createScreenWidget(): ToolDefinition {
         const setBtn = (btn: HTMLButtonElement, match: string) => {
           const active = activeDecision === match;
           btn.style.background = active ? btn.dataset.color ?? "var(--panel)" : "transparent";
-          btn.style.color = active ? "#0b1220" : "var(--text, #e2e8f0)";
+          btn.style.color = active ? "#1e1e1e" : "var(--text, rgba(255, 255, 255, 0.92))";
           btn.style.borderColor = active ? "transparent" : btn.dataset.color ?? "var(--border)";
         };
         setBtn(includeBtn, "include");
@@ -527,7 +527,7 @@ export function createScreenWidget(): ToolDefinition {
           activeDecision === "uncoded" ? "Uncoded" : `Decision: ${activeDecision}`;
         const badgeColor =
           activeDecision === "include"
-            ? "var(--accent, #60a5fa)"
+            ? "var(--accent, #5b9bd5)"
             : activeDecision === "exclude"
               ? "#ef4444"
               : activeDecision === "maybe"

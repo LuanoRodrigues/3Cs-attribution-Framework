@@ -139,7 +139,7 @@ export const openStyleMiniApp = (
     bold: editor.isActive("bold"),
     italic: editor.isActive("italic"),
     underline: editor.isActive("underline"),
-    textColor: typeof attrsColor?.color === "string" ? attrsColor.color : "#0f172a",
+    textColor: typeof attrsColor?.color === "string" ? attrsColor.color : "#1e1e1e",
     textAlign: ((): StyleDialogValues["textAlign"] => {
       const raw = (typeof attrsPara?.textAlign === "string" ? attrsPara.textAlign : undefined) ??
         (typeof attrsHead?.textAlign === "string" ? attrsHead.textAlign : undefined) ??

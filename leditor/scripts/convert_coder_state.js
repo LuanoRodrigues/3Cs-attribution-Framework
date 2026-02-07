@@ -552,6 +552,23 @@ const isEmptyParagraphBlock = (node) => {
   return true;
 };
 
+const paragraphText = (node) => {
+  if (!node || !Array.isArray(node.content)) return "";
+  return node.content
+    .filter((child) => child?.type === "text")
+    .map((child) => String(child.text ?? ""))
+    .join("");
+};
+
+const isCitationOnly = (node) => {
+  const text = paragraphText(node).trim();
+  if (!text) return false;
+  if (!/^[\[(]/.test(text)) return false;
+  if (!/[\])](\.)?$/.test(text)) return false;
+  if (!/\d/.test(text)) return false;
+  return text.length <= 180;
+};
+
 const mergeContinuationParagraphs = (blocks) => {
   const out = [];
   let pendingEmpty = [];
@@ -595,10 +612,12 @@ const mergeContinuationParagraphs = (blocks) => {
         const first = firstNonWhitespaceChar(block);
         const last = lastNonWhitespaceChar(prev);
         const startsLower = typeof first === "string" && /[a-z]/.test(first);
-        const startsPunct = typeof first === "string" && /[),.;:\]]/.test(first);
+        const startsPunct = typeof first === "string" && /[\(\)\[\],.;:\]]/.test(first);
         const startsSpace = startsWithWhitespace(block);
         const prevTerminal = typeof last === "string" && /[.!?]/.test(last);
-        if (!prevTerminal && (startsSpace || startsLower || startsPunct)) {
+        const citationOnly = isCitationOnly(block);
+        const startsContinuation = startsSpace || startsLower || startsPunct || citationOnly;
+        if ((!prevTerminal || citationOnly) && startsContinuation) {
           let next = block;
           if (endsWithSpace(prev)) {
             next = trimLeadingWhitespace(block);
@@ -620,6 +639,33 @@ const mergeContinuationParagraphs = (blocks) => {
   if (pendingEmpty.length) {
     out.push(...pendingEmpty);
     pendingEmpty = [];
+  }
+  return out;
+};
+
+const dedupeAdjacentParagraphs = (blocks) => {
+  const out = [];
+  let lastNorm = null;
+  const paragraphText = (node) => {
+    if (!node || !Array.isArray(node.content)) return "";
+    return node.content
+      .filter((child) => child?.type === "text")
+      .map((child) => String(child.text ?? ""))
+      .join("");
+  };
+  const normalize = (text) => String(text ?? "").replace(/\\s+/g, " ").trim().toLowerCase();
+  for (const block of blocks) {
+    if (block?.type === "paragraph") {
+      const norm = normalize(paragraphText(block));
+      if (norm && norm === lastNorm) {
+        continue;
+      }
+      lastNorm = norm || null;
+      out.push(block);
+      continue;
+    }
+    lastNorm = null;
+    out.push(block);
   }
   return out;
 };
@@ -672,7 +718,8 @@ const htmlToBlocks = (html) => {
   walk(tree);
   flushInlineBuffer();
   const merged = mergeContinuationParagraphs(mergeLeadingSpaceParagraphs(blocks));
-  return merged.length ? merged : [{ type: "paragraph", attrs: paragraphAttrs(), content: [] }];
+  const deduped = dedupeAdjacentParagraphs(merged);
+  return deduped.length ? deduped : [{ type: "paragraph", attrs: paragraphAttrs(), content: [] }];
 };
 
 const readOptionalPackageVersion = () => {
@@ -856,7 +903,9 @@ async function main() {
       for (const n of nodes) visit(n, 1);
     }
 
-    const mergedBlocks = mergeContinuationParagraphs(mergeLeadingSpaceParagraphs(allBlocks));
+    const mergedBlocks = dedupeAdjacentParagraphs(
+      mergeContinuationParagraphs(mergeLeadingSpaceParagraphs(allBlocks))
+    );
 
     if (mergedBlocks.length === 0) {
       console.error("[convert] No content blocks found.");

@@ -129,6 +129,13 @@ declare global {
       insertImage: () => Promise<unknown>;
       getDefaultLEDOCPath: () => Promise<string>;
       readFile: (request: { sourcePath: string }) => Promise<{ success: boolean; data?: string; error?: string }>;
+      readBinaryFile?: (request: { sourcePath: string; maxBytes?: number }) => Promise<{
+        success: boolean;
+        dataBase64?: string;
+        bytes?: number;
+        filePath?: string;
+        error?: string;
+      }>;
       writeFile: (request: { targetPath: string; data: string }) => Promise<{ success: boolean; error?: string }>;
       getAiStatus: () => Promise<unknown>;
       registerFootnoteHandlers: (handlers: { open?: () => void; toggle?: () => void; close?: () => void }) => void;

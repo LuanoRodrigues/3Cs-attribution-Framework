@@ -160,6 +160,17 @@ def _schema_and_sections() -> dict:
         {"type": "number", "key": "production_top_n", "label": "Production top N", "default": 10, "min": 3, "max": 50},
         {
             "type": "select",
+            "key": "year_bucket",
+            "label": "Year bucket",
+            "default": 1,
+            "options": [
+                {"label": "1 year", "value": "1"},
+                {"label": "2 years", "value": "2"},
+                {"label": "5 years", "value": "5"},
+            ],
+        },
+        {
+            "type": "select",
             "key": "data_source",
             "label": "Text source",
             "default": "controlled_vocabulary_terms",
@@ -194,6 +205,7 @@ def _schema_and_sections() -> dict:
                 {"label": "Frequency heatmap", "value": "heatmap"},
                 {"label": "Co-occurrence network", "value": "cooccurrence_network"},
                 {"label": "Words over time", "value": "words_over_time"},
+                {"label": "Term diversity over time", "value": "term_diversity_over_time"},
             ],
         },
         {"type": "number", "key": "top_n_words", "label": "Top N words", "default": 30, "min": 5, "max": 500},
@@ -979,7 +991,8 @@ def _run_preview(
             try:
                 p0 = dict(params or {})
                 p = dict(defaults["ngrams"], **p0)
-                if "plot_type" not in p and "ngram_plot_type" in p0:
+                # UI uses `ngram_plot_type`; always honor it over defaults.
+                if "ngram_plot_type" in p0:
                     p["plot_type"] = p0.get("ngram_plot_type")
                 if "data_source" not in p and "data_source" in p0:
                     p["data_source"] = p0.get("data_source")

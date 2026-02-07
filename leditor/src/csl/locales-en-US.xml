@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Minimal en-US CSL locale for citeproc-js.
+  This is not a full CSL locale file, but it includes the common terms and
+  date formats needed for typical academic styles in English.
+-->
+<locale xmlns="http://purl.org/net/xbiblio/csl" xml:lang="en-US">
+  <style-options punctuation-in-quote="false"/>
+  <date form="text">
+    <date-part name="month" form="long" suffix=" "/>
+    <date-part name="day" suffix=", "/>
+    <date-part name="year"/>
+  </date>
+  <date form="numeric">
+    <date-part name="month" form="numeric-leading-zeros" suffix="/"/>
+    <date-part name="day" form="numeric-leading-zeros" suffix="/"/>
+    <date-part name="year"/>
+  </date>
+  <terms>
+    <term name="accessed">accessed</term>
+    <term name="and">and</term>
+    <term name="anonymous">anonymous</term>
+    <term name="anonymous" form="short">anon.</term>
+    <term name="at">at</term>
+    <term name="available at">available at</term>
+    <term name="chapter">chapter</term>
+    <term name="chapter" form="short">chap.</term>
+    <term name="circa">circa</term>
+    <term name="circa" form="short">c.</term>
+    <term name="edition">edition</term>
+    <term name="edition" form="short">ed.</term>
+    <term name="editor">editor</term>
+    <term name="editor" form="short">ed.</term>
+    <term name="editors">editors</term>
+    <term name="editors" form="short">eds.</term>
+    <term name="et-al">et al.</term>
+    <term name="ibid">ibid.</term>
+    <term name="in">in</term>
+    <term name="issue">issue</term>
+    <term name="issue" form="short">no.</term>
+    <term name="locator">locator</term>
+    <term name="month">month</term>
+    <term name="n.d.">n.d.</term>
+    <term name="no date">no date</term>
+    <term name="no date" form="short">n.d.</term>
+    <term name="number">number</term>
+    <term name="number" form="short">no.</term>
+    <term name="page">page</term>
+    <term name="page" form="short">p.</term>
+    <term name="page-range-delimiter">-</term>
+    <term name="pages">pages</term>
+    <term name="pages" form="short">pp.</term>
+    <term name="paragraph">paragraph</term>
+    <term name="paragraph" form="short">para.</term>
+    <term name="section">section</term>
+    <term name="section" form="short">sec.</term>
+    <term name="supplement">supplement</term>
+    <term name="translator">translator</term>
+    <term name="translator" form="short">trans.</term>
+    <term name="translators">translators</term>
+    <term name="translators" form="short">trans.</term>
+    <term name="version">version</term>
+    <term name="volume">volume</term>
+    <term name="volume" form="short">vol.</term>
+    <term name="volumes">volumes</term>
+    <term name="volumes" form="short">vols.</term>
+  </terms>
+</locale>
+

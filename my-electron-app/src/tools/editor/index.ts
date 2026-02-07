@@ -345,8 +345,8 @@ export function createEditorTool(): ToolDefinition {
         Object.assign(modal.style, {
           position: "fixed",
           inset: "10%",
-          background: "#0f172a",
-          border: "1px solid #1f2937",
+          background: "#252526",
+          border: "1px solid rgba(255, 255, 255, 0.14)",
           padding: "12px",
           zIndex: 9999,
           borderRadius: "12px",
@@ -361,8 +361,8 @@ export function createEditorTool(): ToolDefinition {
         area.value = value;
         area.style.width = "100%";
         area.style.height = "100%";
-        area.style.background = "#0b1220";
-        area.style.color = "#e5e7eb";
+        area.style.background = "#2d2d2d";
+        area.style.color = "rgba(255, 255, 255, 0.92)";
         const close = document.createElement("button");
         close.textContent = "Close";
         close.className = "ribbon-button";

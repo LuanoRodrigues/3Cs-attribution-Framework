@@ -76,6 +76,64 @@ const readTextViaHost = async (filePath: string): Promise<string> => {
 
 const safeString = (value: unknown): string => (value == null ? "" : String(value));
 
+const isPdfDataUrl = (value: string): boolean => /^data:application\/pdf/i.test(value);
+
+const looksLikeBase64Pdf = (value: string): boolean => {
+  const raw = safeString(value).trim();
+  if (!raw) return false;
+  if (!/^[A-Za-z0-9+/]+=*$/.test(raw)) return false;
+  return raw.length > 256;
+};
+
+const describePdfRef = (value: unknown): string | null => {
+  const raw = safeString(value).trim();
+  if (!raw) return null;
+  if (isPdfDataUrl(raw)) return "data:application/pdf;base64,(inline)";
+  if (looksLikeBase64Pdf(raw)) return "[base64-pdf]";
+  return raw;
+};
+
+const fileUrlToPath = (value: string): string => {
+  const raw = safeString(value).trim();
+  if (!raw) return "";
+  if (!/^file:\/\//i.test(raw)) return raw;
+  let cleaned = raw.replace(/^file:\/\//i, "");
+  try {
+    cleaned = decodeURIComponent(cleaned);
+  } catch {
+    // ignore decode failures
+  }
+  if (cleaned.startsWith("/") && /^[A-Za-z]:\//.test(cleaned.slice(1))) {
+    cleaned = cleaned.slice(1);
+  }
+  return cleaned;
+};
+
+const toPosixPathFromWindows = (value: string): string => {
+  const raw = safeString(value).trim();
+  if (!raw) return "";
+  const norm = raw.replace(/\\/g, "/");
+  const match = norm.match(/^([A-Za-z]):\/(.*)$/);
+  if (!match) return raw;
+  const isWindowsHost = (() => {
+    try {
+      const plat = String(
+        (navigator && (navigator as any).userAgentData && (navigator as any).userAgentData.platform) ||
+          navigator.platform ||
+          ""
+      );
+      const ua = String(navigator.userAgent || "");
+      return /win/i.test(plat) || /windows/i.test(ua);
+    } catch {
+      return false;
+    }
+  })();
+  if (isWindowsHost) return raw;
+  const drive = String(match[1] || "").toLowerCase();
+  const rest = String(match[2] || "");
+  return `/mnt/${drive}/${rest}`;
+};
+
 const looksLikePdfRef = (value: unknown): boolean => {
   const raw = safeString(value).trim();
   if (!raw) return false;
@@ -85,6 +143,39 @@ const looksLikePdfRef = (value: unknown): boolean => {
   if (lower.startsWith("file://")) return lower.includes(".pdf");
   const cleaned = raw.split(/[?#]/)[0].trim().toLowerCase();
   return cleaned.endsWith(".pdf");
+};
+
+const shouldInlinePdf = (value: string): boolean => {
+  const raw = safeString(value).trim();
+  if (!raw) return false;
+  if (isPdfDataUrl(raw) || looksLikeBase64Pdf(raw)) return false;
+  if (/^https?:\/\//i.test(raw)) return false;
+  return true;
+};
+
+const maybeInlinePdfPayload = async (payload: DirectQuotePayload): Promise<void> => {
+  const host = (window as any).leditorHost;
+  if (!host?.readBinaryFile) {
+    console.info("[leditor][pdf-inline] readBinaryFile unavailable");
+    return;
+  }
+  const pdfRef = safeString(payload.pdf_path ?? payload.pdf ?? "").trim();
+  if (!pdfRef || !shouldInlinePdf(pdfRef)) return;
+  const sourcePathRaw = fileUrlToPath(pdfRef);
+  const sourcePath = toPosixPathFromWindows(sourcePathRaw);
+  if (!sourcePath) return;
+  try {
+    console.info("[leditor][pdf-inline] inline attempt", { path: sourcePath });
+    const res = await host.readBinaryFile({ sourcePath, maxBytes: 80 * 1024 * 1024 });
+    if (res?.success && res?.dataBase64) {
+      payload.pdf = `data:application/pdf;base64,${res.dataBase64}`;
+      console.info("[leditor][pdf-inline] inline ok", { bytes: res.bytes ?? null });
+    } else {
+      console.warn("[leditor][pdf-inline] inline failed", { error: res?.error || "unknown" });
+    }
+  } catch {
+    console.warn("[leditor][pdf-inline] inline failed", { error: "exception" });
+  }
 };
 
 const parsePageFromHref = (href: string): number | undefined => {
@@ -156,7 +247,7 @@ const openPdfViewer = async (payload: DirectQuotePayload): Promise<void> => {
   if (host?.openPdfViewer) {
     console.info("[leditor][pdf] invoking host.openPdfViewer", {
       dqid: payload.dqid ?? null,
-      pdf_path: (payload as any).pdf_path ?? (payload as any).pdf ?? null,
+      pdf_path: describePdfRef((payload as any).pdf_path ?? (payload as any).pdf),
       page: (payload as any).page ?? null
     });
     const res = await host.openPdfViewer({ payload });
@@ -260,14 +351,24 @@ export const installDirectQuotePdfOpenHandler = (opts?: { coderStatePath?: strin
           // Avoid feeding obviously-not-a-path values (e.g. journal/source strings) into the iframe src.
           delete (payload as any).pdf_path;
           delete (payload as any).pdf;
+        } else if (!(payload as any).pdf_path && (payload as any).pdf) {
+          // The embedded PDF viewer prefers `pdf_path`; keep compatibility with payloads using `pdf`.
+          (payload as any).pdf_path = (payload as any).pdf;
+        }
+        if (payload.pdf_path && typeof payload.pdf_path === "string") {
+          const posix = toPosixPathFromWindows(payload.pdf_path);
+          if (posix && posix !== payload.pdf_path) {
+            payload.pdf_path = posix;
+          }
         }
         console.info("[leditor][directquote] open-pdf", {
           dqid,
           itemKey: itemKey || null,
-          pdf_path: payload.pdf_path || payload.pdf || null,
+          pdf_path: describePdfRef(payload.pdf_path || payload.pdf),
           page: payload.page ?? null,
           lookupPath
         });
+        await maybeInlinePdfPayload(payload);
         if (openEmbeddedPdfPanel(payload)) {
           return;
         }

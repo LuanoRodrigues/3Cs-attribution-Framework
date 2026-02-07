@@ -11,22 +11,22 @@
 
         /* Theme tokens (renderer overwrites these from settings). */
         --app-scale: 1;
-        --bg: #f6f7fb;
-        --panel: #fbfcff;
-        --panel-2: #f1f4fa;
+        --bg: #f3f2f1;
+        --panel: #ffffff;
+        --panel-2: #f8f8f8;
         --surface: rgba(255, 255, 255, 0.92);
-        --surface-muted: rgba(243, 246, 252, 0.92);
-        --border: rgba(17, 24, 39, 0.12);
-        --border-soft: rgba(17, 24, 39, 0.08);
-        --accent: #2563eb;
-        --accent-2: #0f56b3;
+        --surface-muted: rgba(248, 248, 248, 0.92);
+        --border: rgba(0, 0, 0, 0.14);
+        --border-soft: rgba(0, 0, 0, 0.08);
+        --accent: #2b579a;
+        --accent-2: #3f6fb5;
         --gradient-1: color-mix(in srgb, var(--accent) 14%, transparent);
         --gradient-2: color-mix(in srgb, var(--accent-2) 12%, transparent);
-        --text: #111827;
-        --muted: #4b5563;
-        --shadow-ambient: 0 8px 24px rgba(15, 23, 42, 0.12);
-        --shadow-elevated: 0 18px 60px rgba(15, 23, 42, 0.12);
-        --shadow-overlay: 0 30px 80px rgba(15, 23, 42, 0.22);
+        --text: #1e1e1e;
+        --muted: rgba(0, 0, 0, 0.60);
+        --shadow-ambient: 0 8px 24px rgba(0, 0, 0, 0.12);
+        --shadow-elevated: 0 18px 60px rgba(0, 0, 0, 0.12);
+        --shadow-overlay: 0 30px 80px rgba(0, 0, 0, 0.22);
 
         /* Density/effects defaults (renderer overwrites these from settings). */
         --panel-radius: 18px;
@@ -80,7 +80,7 @@
         width: 22px;
         height: 22px;
         border-radius: 6px;
-        border: 1px solid rgba(15, 23, 42, 0.2);
+        border: 1px solid var(--border);
         cursor: pointer;
         display: inline-flex;
         align-items: center;
@@ -88,7 +88,7 @@
       }
 
       .accent-swatch[aria-pressed="true"] {
-        outline: 2px solid rgba(37, 99, 235, 0.75);
+        outline: 2px solid color-mix(in srgb, var(--accent) 75%, transparent);
         outline-offset: 2px;
       }
 
@@ -97,7 +97,7 @@
         height: 8px;
         border-radius: 999px;
         background: rgba(255, 255, 255, 0.95);
-        box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.15);
+        box-shadow: 0 0 0 1px color-mix(in srgb, var(--text) 20%, transparent);
       }
 
       .settings-shell {
@@ -157,7 +157,7 @@
 
       .nav-button.active {
         background: var(--accent-soft);
-        border-color: rgba(37, 99, 235, 0.3);
+        border-color: color-mix(in srgb, var(--accent) 30%, transparent);
         color: var(--accent);
       }
 
@@ -352,12 +352,12 @@
       }
 
       .json-view {
-        background: #111827;
+        background: var(--panel-2);
         border: 1px solid var(--border);
         border-radius: 12px;
         padding: 12px;
         font-size: 12px;
-        color: #e2e8f0;
+        color: var(--text);
         white-space: pre-wrap;
         max-height: 260px;
         overflow: auto;

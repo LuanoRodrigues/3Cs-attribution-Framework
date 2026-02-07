@@ -38,7 +38,6 @@ const requestAssistant = async (
   const cacheKey = buildLlmCacheKey({
     fn: "assistant.request",
     provider: payload.settings?.provider,
-    model: payload.settings?.model,
     payload
   });
   const cached = getLlmCacheEntry(cacheKey);

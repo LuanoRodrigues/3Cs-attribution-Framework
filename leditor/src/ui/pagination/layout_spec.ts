@@ -170,12 +170,25 @@ export const documentLayoutSpec = {
       ".leditor-break[data-break-kind='section'][data-kind='nextPage']",
       ".leditor-break[data-break-kind='section'][data-kind='continuous']",
       ".leditor-break[data-break-kind='section'][data-kind='oddPage']",
-      ".leditor-break[data-break-kind='section'][data-kind='evenPage']"
+      ".leditor-break[data-break-kind='section'][data-kind='evenPage']",
+      ".leditor-break[data-break-kind='section_next']",
+      ".leditor-break[data-break-kind='section_continuous']",
+      ".leditor-break[data-break-kind='section_odd']",
+      ".leditor-break[data-break-kind='section_even']"
     ] as readonly string[],
     normalizedAttributes: {
       breakKindAttr: "data-break-kind",
       sectionKindAttr: "data-kind",
-      supportedSectionKinds: ["nextPage", "continuous", "oddPage", "evenPage"] as readonly string[]
+      supportedSectionKinds: [
+        "nextPage",
+        "continuous",
+        "oddPage",
+        "evenPage",
+        "section_next",
+        "section_continuous",
+        "section_odd",
+        "section_even"
+      ] as readonly string[]
     },
     behavior: {
       pageBreak: {

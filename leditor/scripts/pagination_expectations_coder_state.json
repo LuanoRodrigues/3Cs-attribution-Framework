@@ -1,0 +1,10 @@
+{
+  "fragments": [
+    {
+      "label": "page2_should_include_paragraph_continuation",
+      "pageNumber": 2,
+      "match": "contains",
+      "mustInclude": "rather than a strict state-actor link"
+    }
+  ]
+}

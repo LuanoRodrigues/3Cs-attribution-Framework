@@ -16,7 +16,14 @@ import { showAllowedElementsInspector } from "../ui/allowed_elements_inspector.t
 import { SANITIZE_OPTIONS } from "../plugins/pasteCleaner.ts";
 import { openCitationPicker, type CitationPickerResult } from "../ui/references/picker.ts";
 import { openSourcesPanel } from "../ui/references/sources_panel.ts";
-import { ensureReferencesLibrary, upsertReferenceItems, getReferencesLibrarySync } from "../ui/references/library.ts";
+import {
+  ensureReferencesLibrary,
+  upsertReferenceItems,
+  getReferencesLibrarySync,
+  refreshReferencesLibrary,
+  pushRecentReference,
+  type ReferenceItem
+} from "../ui/references/library.ts";
 import { getHostContract } from "../ui/host_contract.ts";
 import { getHostAdapter } from "../host/host_adapter.ts";
 import { createSearchPanel } from "../ui/search_panel.ts";
@@ -40,6 +47,8 @@ import {
   openTocAddTextDialog,
   openTocUpdateDialog,
   openToaExportDialog,
+  openReferenceManagerDialog,
+  openReferenceConflictDialog,
   showRibbonToast,
   pushRecentColor
 } from "../ui/ribbon_dialogs.ts";
@@ -281,7 +290,6 @@ const runAiTranslation = async (editor: Editor, scope: "selection" | "document",
     const cacheKey = buildLlmCacheKey({
       fn: "translate.selection",
       provider: settings.provider,
-      model: settings.model,
       payload
     });
     const cached = getLlmCacheEntry(cacheKey);
@@ -321,7 +329,6 @@ const runAiTranslation = async (editor: Editor, scope: "selection" | "document",
   const cacheKey = buildLlmCacheKey({
     fn: "translate.document",
     provider: settings.provider,
-    model: settings.model,
     payload
   });
   const cached = getLlmCacheEntry(cacheKey);
@@ -1043,6 +1050,11 @@ const insertCitationNode = (
     return;
   }
   editor.view.dispatch(tr.scrollIntoView());
+  result.itemKeys.forEach((key) => {
+    if (key) {
+      pushRecentReference(key);
+    }
+  });
 };
 
 const MAX_FOOTNOTE_FOCUS_ATTEMPTS = 90;
@@ -1110,7 +1122,12 @@ const focusFootnoteById = (id: string, selectionSnapshot?: StoredSelection | nul
   if (typeof window === "undefined" || typeof document === "undefined") return;
   // In A4 layout mode, a4_layout.ts owns focusing (it waits for the footnote rows to render).
   // Avoid running our own retry loop here, which spams logs and can fight the layout controller.
-  if (document.querySelector(".leditor-page-footnotes")) {
+  const hasA4Layout = Boolean(
+    document.querySelector(".leditor-page-stack") ||
+      document.querySelector(".leditor-page-overlays") ||
+      document.querySelector(".leditor-a4-canvas")
+  );
+  if (hasA4Layout) {
     if ((window as any).__leditorFootnoteDebug) {
       console.info("[Footnote][focus] delegated to A4 layout", { id });
     }
@@ -1973,6 +1990,36 @@ const setCitationLocaleCommand: CommandHandler = (editor) => {
 
 const normalizeReferenceItemKey = (value: string): string => value.trim().toUpperCase();
 
+type ReferenceConflict = {
+  itemKey: string;
+  existing: ReferenceItem;
+  incoming: ReferenceItem;
+};
+
+const splitReferenceImport = (items: ReferenceItem[]) => {
+  const library = getReferencesLibrarySync();
+  const existingKeys = new Set(Object.keys(library.itemsByKey));
+  const seen = new Map<string, ReferenceItem>();
+  Object.values(library.itemsByKey).forEach((item) => {
+    seen.set(item.itemKey, item);
+  });
+  const unique: ReferenceItem[] = [];
+  const duplicates: ReferenceConflict[] = [];
+  items.forEach((raw) => {
+    const key = normalizeReferenceItemKey(raw.itemKey ?? "");
+    if (!key) return;
+    const incoming = { ...raw, itemKey: key };
+    const existing = seen.get(key);
+    if (existing) {
+      duplicates.push({ itemKey: key, existing, incoming });
+      return;
+    }
+    unique.push(incoming);
+    seen.set(key, incoming);
+  });
+  return { unique, duplicates, existingKeys };
+};
+
 const buildReferenceItemKey = (seed: string, existing: Record<string, unknown>): string => {
   const cleaned = String(seed || "")
     .toUpperCase()
@@ -2408,6 +2455,7 @@ import type { BreakKind } from "../extensions/extension_page_break.ts";
 export type CommandHandler = (editor: Editor, args?: any) => void;
 
 type TocEntry = {
+  id?: string;
   text: string;
   level: number;
   pos: number;
@@ -2423,6 +2471,44 @@ export const readCitationStyle = (editor?: Editor): string => {
   return CITATION_STYLE_DEFAULT;
 };
 
+const buildTocId = (): string => {
+  try {
+    if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+      return `toc-${crypto.randomUUID()}`;
+    }
+  } catch {
+    // ignore
+  }
+  return `toc-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+};
+
+const ensureHeadingTocIds = (editor: Editor): void => {
+  const headingType = editor.schema.nodes.heading;
+  if (!headingType) return;
+  const used = new Set<string>();
+  const tr = editor.state.tr;
+  let changed = false;
+  editor.state.doc.descendants((node, pos) => {
+    if (node.type !== headingType) return true;
+    const raw = typeof (node.attrs as any)?.tocId === "string" ? String((node.attrs as any).tocId).trim() : "";
+    if (raw && !used.has(raw)) {
+      used.add(raw);
+      return true;
+    }
+    let nextId = "";
+    while (!nextId || used.has(nextId)) {
+      nextId = buildTocId();
+    }
+    used.add(nextId);
+    tr.setNodeMarkup(pos, headingType, { ...node.attrs, tocId: nextId });
+    changed = true;
+    return true;
+  });
+  if (changed) {
+    editor.view.dispatch(tr);
+  }
+};
+
 const collectHeadingEntries = (editor: Editor): TocEntry[] => {
   const entries: TocEntry[] = [];
   editor.state.doc.descendants((node, pos) => {
@@ -2430,12 +2516,14 @@ const collectHeadingEntries = (editor: Editor): TocEntry[] => {
       if (node.attrs?.tocExclude) {
         return true;
       }
+      const tocId = typeof (node.attrs as any)?.tocId === "string" ? String((node.attrs as any).tocId).trim() : "";
       const level = Number(node.attrs?.level ?? 1);
       const text = (node.textContent ?? "").trim();
       if (text.length === 0) {
         return true;
       }
       entries.push({
+        ...(tocId ? { id: tocId } : {}),
         text,
         level: Math.max(1, Math.min(6, level)),
         pos
@@ -2451,10 +2539,12 @@ const normalizeTocEntries = (value: unknown): TocEntry[] => {
   const entries: TocEntry[] = [];
   for (const item of value) {
     if (!item || typeof item !== "object") continue;
+    const id = typeof (item as TocEntry).id === "string" ? (item as TocEntry).id : undefined;
     const text = typeof (item as TocEntry).text === "string" ? (item as TocEntry).text : "";
     const level = Number((item as TocEntry).level);
     const pos = Number((item as TocEntry).pos);
     entries.push({
+      ...(id ? { id } : {}),
       text: text.trim() || "Untitled",
       level: Number.isFinite(level) ? Math.max(1, Math.min(6, Math.floor(level))) : 1,
       pos: Number.isFinite(pos) ? Math.max(0, Math.floor(pos)) : 0
@@ -2540,13 +2630,23 @@ const updateTocNodes = (
       if (mode === "pageNumbers") {
         const existing = normalizeTocEntries(node.attrs?.entries);
         const map = new Map<string, TocEntry[]>();
+        const idMap = new Map<string, TocEntry>();
         entries.forEach((entry) => {
+          if (entry.id) {
+            idMap.set(entry.id, entry);
+          }
           const key = `${entry.level}|${entry.text.toLowerCase()}`;
           const list = map.get(key) ?? [];
           list.push(entry);
           map.set(key, list);
         });
         nextEntries = existing.map((entry) => {
+          if (entry.id && idMap.has(entry.id)) {
+            const match = idMap.get(entry.id);
+            if (match) {
+              return { ...entry, pos: match.pos };
+            }
+          }
           const key = `${entry.level}|${entry.text.toLowerCase()}`;
           const list = map.get(key);
           if (list && list.length) {
@@ -3520,6 +3620,30 @@ export const commandMap: Record<string, CommandHandler> = {
       return;
     }
     handle.execCommand("agent.sidebar.toggle");
+  },
+  "agent.view.open"(_editor, args?: { view?: string }) {
+    const handle = window.leditor;
+    if (!handle) {
+      openInfoPopover({ title: "Agent", message: "Agent sidebar unavailable." });
+      return;
+    }
+    handle.execCommand("agent.view.open", args);
+  },
+  "agent.action"(_editor, args?: { id?: string }) {
+    const handle = window.leditor;
+    if (!handle) {
+      openInfoPopover({ title: "Agent", message: "Agent sidebar unavailable." });
+      return;
+    }
+    handle.execCommand("agent.action", args);
+  },
+  "agent.sections.runAll"() {
+    const handle = window.leditor;
+    if (!handle) {
+      openInfoPopover({ title: "Agent", message: "Agent sidebar unavailable." });
+      return;
+    }
+    handle.execCommand("agent.sections.runAll");
   },
   "agent.dictionary.open"(editor, args?: { mode?: string }) {
     const handle = window.leditor;
@@ -4529,6 +4653,7 @@ export const commandMap: Record<string, CommandHandler> = {
   },
 
   InsertTOC(editor, args) {
+    ensureHeadingTocIds(editor);
     const entries = collectHeadingEntries(editor);
     const style =
       typeof args?.id === "string"
@@ -4540,6 +4665,7 @@ export const commandMap: Record<string, CommandHandler> = {
   },
 
   UpdateTOC(editor, args) {
+    ensureHeadingTocIds(editor);
     const entries = collectHeadingEntries(editor);
     const mode = args?.mode === "pageNumbers" || args?.mode === "all" ? args.mode : null;
     const runUpdate = (nextMode: "pageNumbers" | "all") => {
@@ -4697,6 +4823,26 @@ export const commandMap: Record<string, CommandHandler> = {
       }
     });
   },
+  "citation.manager.openDialog"(editor) {
+    void (async () => {
+      try {
+        await refreshReferencesLibrary();
+      } catch {
+        // ignore refresh errors
+      }
+      openReferenceManagerDialog({
+        onInsert: (itemKey) => {
+          commandMap["citation.insert.direct"](editor, { itemKey });
+        },
+        onOpenPicker: () => {
+          handleInsertCitationCommand(editor);
+        },
+        onAddSource: () => {
+          commandMap["citation.source.add.openDialog"](editor);
+        }
+      });
+    })();
+  },
   "citation.placeholder.add.openDialog"(editor) {
     chainWithSafeFocus(editor).insertContent("(citation)").run();
   },
@@ -4705,11 +4851,28 @@ export const commandMap: Record<string, CommandHandler> = {
       title: "Import BibTeX",
       accept: ".bib,text/plain",
       hint: "Select a BibTeX (.bib) file to import.",
+      maxSizeMb: 8,
       onLoad: (_file, text) => {
         try {
           const items = parseBibtex(text);
-          upsertReferenceItems(items);
-          showRibbonToast(`Imported ${items.length} BibTeX references.`);
+          const { unique, duplicates, existingKeys } = splitReferenceImport(items);
+          if (duplicates.length) {
+            const usedKeys = new Set<string>([...existingKeys, ...unique.map((item) => item.itemKey)]);
+            openReferenceConflictDialog({
+              duplicates,
+              usedKeys,
+              onApply: ({ resolved, skipped }) => {
+                const merged = [...unique, ...resolved];
+                upsertReferenceItems(merged);
+                showRibbonToast(
+                  `Imported ${merged.length} BibTeX references${skipped.length ? ` (${skipped.length} skipped)` : ""}.`
+                );
+              }
+            });
+            return;
+          }
+          upsertReferenceItems(unique);
+          showRibbonToast(`Imported ${unique.length} BibTeX references.`);
         } catch (error) {
           console.error("[References] import bibtex failed", error);
           showRibbonToast("Failed to import BibTeX.");
@@ -4722,11 +4885,28 @@ export const commandMap: Record<string, CommandHandler> = {
       title: "Import RIS",
       accept: ".ris,text/plain",
       hint: "Select a RIS (.ris) file to import.",
+      maxSizeMb: 8,
       onLoad: (_file, text) => {
         try {
           const items = parseRis(text);
-          upsertReferenceItems(items);
-          showRibbonToast(`Imported ${items.length} RIS references.`);
+          const { unique, duplicates, existingKeys } = splitReferenceImport(items);
+          if (duplicates.length) {
+            const usedKeys = new Set<string>([...existingKeys, ...unique.map((item) => item.itemKey)]);
+            openReferenceConflictDialog({
+              duplicates,
+              usedKeys,
+              onApply: ({ resolved, skipped }) => {
+                const merged = [...unique, ...resolved];
+                upsertReferenceItems(merged);
+                showRibbonToast(
+                  `Imported ${merged.length} RIS references${skipped.length ? ` (${skipped.length} skipped)` : ""}.`
+                );
+              }
+            });
+            return;
+          }
+          upsertReferenceItems(unique);
+          showRibbonToast(`Imported ${unique.length} RIS references.`);
         } catch (error) {
           console.error("[References] import ris failed", error);
           showRibbonToast("Failed to import RIS.");
@@ -4739,6 +4919,7 @@ export const commandMap: Record<string, CommandHandler> = {
       title: "Import CSL JSON",
       accept: ".json,application/json",
       hint: "Select a CSL JSON file to import.",
+      maxSizeMb: 12,
       onLoad: (_file, text) => {
         try {
           const raw = JSON.parse(text) as any;
@@ -4756,9 +4937,26 @@ export const commandMap: Record<string, CommandHandler> = {
               csl: it && typeof it === "object" ? it : undefined
             }))
             .filter((it: any) => it.itemKey);
-          upsertReferenceItems(items);
-          refsInfo("[References] imported CSL-JSON items", { count: items.length });
-          showRibbonToast(`Imported ${items.length} references.`);
+          const { unique, duplicates, existingKeys } = splitReferenceImport(items);
+          if (duplicates.length) {
+            const usedKeys = new Set<string>([...existingKeys, ...unique.map((item) => item.itemKey)]);
+            openReferenceConflictDialog({
+              duplicates,
+              usedKeys,
+              onApply: ({ resolved, skipped }) => {
+                const merged = [...unique, ...resolved];
+                upsertReferenceItems(merged);
+                refsInfo("[References] imported CSL-JSON items", { count: merged.length });
+                showRibbonToast(
+                  `Imported ${merged.length} references${skipped.length ? ` (${skipped.length} skipped)` : ""}.`
+                );
+              }
+            });
+            return;
+          }
+          upsertReferenceItems(unique);
+          refsInfo("[References] imported CSL-JSON items", { count: unique.length });
+          showRibbonToast(`Imported ${unique.length} references.`);
         } catch (error) {
           console.error("[References] import CSL-JSON failed", error);
           showRibbonToast("Failed to import CSL JSON.");

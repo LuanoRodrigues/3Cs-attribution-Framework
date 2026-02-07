@@ -1,0 +1,300 @@
+.leditor-direct-quote-panel {
+  flex: 0 0 clamp(280px, 30vw, 420px);
+  min-width: 0;
+  min-height: 0;
+  display: none;
+  flex-direction: column;
+  border-left: 1px solid var(--ui-border-color);
+  background: var(--ui-surface);
+  box-sizing: border-box;
+  padding: 12px 14px;
+  gap: 10px;
+}
+
+.leditor-app.theme-dark .leditor-direct-quote-panel {
+  border-left-color: var(--ui-border-color);
+  background: var(--ui-surface);
+}
+
+.leditor-direct-quote-panel.is-open {
+  display: flex;
+}
+
+.leditor-direct-quote-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.leditor-direct-quote-title {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.leditor-direct-quote-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.leditor-direct-quote-options {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--ui-muted);
+}
+
+.leditor-direct-quote-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.leditor-direct-quote-toggle {
+  accent-color: var(--ui-accent);
+}
+
+.leditor-direct-quote-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.leditor-direct-quote-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border-radius: 10px;
+  border: 1px solid var(--ui-border-color);
+  padding: 8px 10px;
+  font-size: 13px;
+  background: var(--ui-surface);
+  color: var(--ui-text);
+}
+
+.leditor-app.theme-dark .leditor-direct-quote-input {
+  border-color: var(--ui-border-color);
+  background: color-mix(in srgb, var(--ui-surface-2) 80%, transparent);
+}
+
+.leditor-direct-quote-status {
+  font-size: 12px;
+  color: var(--ui-muted);
+}
+
+.leditor-direct-quote-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px dashed var(--ui-border-color);
+  background: color-mix(in srgb, var(--ui-surface-2) 45%, transparent);
+}
+
+.leditor-app.theme-dark .leditor-direct-quote-filters {
+  border-color: var(--ui-border-color);
+}
+
+.leditor-direct-quote-filters.is-collapsed .leditor-direct-quote-filters__grid {
+  display: none;
+}
+
+.leditor-direct-quote-filters__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.leditor-direct-quote-filters__title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ui-muted);
+}
+
+.leditor-direct-quote-filters__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.leditor-direct-quote-filters__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.leditor-direct-quote-filter {
+  border: 1px solid var(--ui-border-color);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ui-surface) 70%, transparent);
+  font-size: 11px;
+  color: var(--ui-muted);
+  padding: 6px 8px;
+  position: relative;
+}
+
+.leditor-direct-quote-filter[open] {
+  background: color-mix(in srgb, var(--ui-surface-2) 70%, transparent);
+  z-index: 2;
+}
+
+.leditor-direct-quote-filter__summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-weight: 600;
+  color: var(--ui-text);
+}
+
+.leditor-direct-quote-filter__summary::-webkit-details-marker {
+  display: none;
+}
+
+.leditor-direct-quote-filter__summary::after {
+  content: "▾";
+  font-size: 11px;
+  color: var(--ui-muted);
+}
+
+.leditor-direct-quote-filter[open] .leditor-direct-quote-filter__summary::after {
+  content: "▴";
+}
+
+.leditor-direct-quote-filter__panel {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.leditor-direct-quote-filter__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.leditor-direct-quote-filter__list {
+  max-height: 160px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-right: 2px;
+  scrollbar-gutter: stable;
+}
+
+.leditor-direct-quote-filter__option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--ui-text);
+}
+
+.leditor-direct-quote-filter__empty {
+  font-size: 11px;
+  color: var(--ui-muted);
+  padding: 4px;
+}
+
+.leditor-direct-quote-filter .leditor-ui-input,
+.leditor-direct-quote-filter .leditor-ui-select {
+  height: 26px;
+  width: 100%;
+}
+
+.leditor-direct-quote-results {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.leditor-direct-quote-empty {
+  border: 1px dashed var(--ui-border-color);
+  border-radius: 10px;
+  padding: 12px;
+  text-align: center;
+  color: var(--ui-muted);
+}
+
+.leditor-direct-quote-card {
+  border: 1px solid var(--ui-border-color);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--ui-surface) 85%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.leditor-app.theme-dark .leditor-direct-quote-card {
+  border-color: var(--ui-border-color);
+  background: color-mix(in srgb, var(--ui-surface-2) 80%, transparent);
+}
+
+.leditor-direct-quote-card__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.leditor-direct-quote-card__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-text);
+}
+
+.leditor-direct-quote-card__score {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ui-accent) 18%, transparent);
+  color: var(--ui-text);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.leditor-direct-quote-card__meta {
+  font-size: 12px;
+  color: var(--ui-muted);
+  margin-left: auto;
+}
+
+.leditor-direct-quote-card__quote {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-left: 3px solid color-mix(in srgb, var(--ui-accent) 65%, transparent);
+  background: color-mix(in srgb, var(--ui-surface-2) 65%, transparent);
+  border-radius: 10px;
+  font-size: 12px;
+  color: var(--ui-muted);
+  line-height: 1.45;
+}
+
+.leditor-direct-quote-card__quoteBody {
+  font-style: italic;
+}
+
+.leditor-direct-quote-card__actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}

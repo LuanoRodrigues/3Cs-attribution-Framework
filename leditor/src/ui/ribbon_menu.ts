@@ -1,4 +1,5 @@
 import { autoUpdate, computePosition, flip, offset, shift } from "@floating-ui/dom";
+import { createRibbonIcon } from "./ribbon_icons.ts";
 
 type MenuItemOptions = {
   label: string;
@@ -36,6 +37,15 @@ export class Menu {
     if (this.isOpen) return;
     this.isOpen = true;
     this.anchor = anchor ?? null;
+    if (anchor) {
+      const label =
+        anchor.getAttribute("aria-label") ||
+        anchor.getAttribute("data-tooltip") ||
+        anchor.getAttribute("title");
+      if (label) {
+        this.element.setAttribute("aria-label", label);
+      }
+    }
     if (!this.element.isConnected) {
       const container = menuPortal ?? document.body;
       container.appendChild(this.element);
@@ -159,31 +169,36 @@ export const MenuItem = (options: MenuItemOptions): HTMLButtonElement => {
   row.className = "leditor-menu-item__row";
   const leading = document.createElement("span");
   leading.className = "leditor-menu-item__leading";
-  if (options.icon) {
-    options.icon.classList.add("leditor-menu-item__icon");
-    leading.appendChild(options.icon);
+  const icon = options.icon ?? createRibbonIcon("more");
+  icon.classList.add("leditor-menu-item__icon");
+  if (!options.icon) {
+    icon.classList.add("leditor-menu-item__icon--placeholder");
   }
+  leading.appendChild(icon);
   const title = document.createElement("span");
   title.className = "leditor-menu-item-title";
   title.textContent = options.label;
   leading.appendChild(title);
   row.appendChild(leading);
-  if (options.shortcut) {
-    const meta = document.createElement("span");
-    meta.className = "leditor-menu-item__meta";
-    const shortcut = document.createElement("span");
-    shortcut.className = "leditor-menu-item__shortcut";
-    shortcut.textContent = options.shortcut;
-    meta.appendChild(shortcut);
-    row.appendChild(meta);
+  const meta = document.createElement("span");
+  meta.className = "leditor-menu-item__meta";
+  const shortcut = document.createElement("span");
+  shortcut.className = "leditor-menu-item__shortcut";
+  shortcut.textContent = options.shortcut ?? "";
+  if (!options.shortcut) {
+    meta.classList.add("is-empty");
+    shortcut.setAttribute("aria-hidden", "true");
   }
+  meta.appendChild(shortcut);
+  row.appendChild(meta);
   button.appendChild(row);
-  if (options.description) {
-    const detail = document.createElement("span");
-    detail.className = "leditor-menu-item-description";
-    detail.textContent = options.description;
-    button.appendChild(detail);
+  const detail = document.createElement("span");
+  detail.className = "leditor-menu-item-description";
+  detail.textContent = options.description ?? "";
+  if (!options.description) {
+    detail.classList.add("is-empty");
   }
+  button.appendChild(detail);
   if (options.shortcut) {
     button.setAttribute("data-shortcut", options.shortcut);
   }

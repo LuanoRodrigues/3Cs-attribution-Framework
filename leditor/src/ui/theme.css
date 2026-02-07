@@ -22,22 +22,119 @@
   --ui-d2: var(--r-d2, 180ms);
 
   /* Semantic colors (prefer ribbon token palette when present) */
-  --ui-bg: var(--r-bg, #f6f7f9);
+  --ui-bg: var(--r-bg, #f3f2f1);
   --ui-surface: var(--r-surface, #ffffff);
-  --ui-surface-2: var(--r-surface-2, #f1f3f6);
+  --ui-surface-2: var(--r-surface-2, #f8f8f8);
+  --ui-surface-3: var(--r-surface-3, #f5f5f5);
+  --ui-surface-4: var(--r-surface-4, #eef2f7);
   --ui-text: var(--r-text, rgba(0, 0, 0, 0.88));
-  --ui-muted: var(--r-muted, rgba(0, 0, 0, 0.60));
-  --ui-accent: var(--r-accent, #2563eb);
-  --ui-focus: var(--r-focus, #2563eb);
+  --ui-text-strong: var(--r-text-strong, rgba(0, 0, 0, 0.96));
+  --ui-text-inverse: var(--r-text-inverse, #ffffff);
+  --ui-muted: var(--r-muted, rgba(0, 0, 0, 0.58));
+  --ui-muted-strong: var(--r-muted-strong, rgba(0, 0, 0, 0.72));
+  --ui-accent: var(--r-accent, #2b579a);
+  --ui-accent-strong: var(--r-accent-strong, #1f4d8b);
+  --ui-accent-contrast: var(--r-accent-contrast, #ffffff);
+  --ui-focus: var(--r-focus, var(--ui-accent));
+  --ui-link: var(--r-link, #0563c1);
+  --ui-link-hover: var(--r-link-hover, #0b5ea8);
+  --ui-link-underline: var(--r-link-underline, #0563c1);
+  --ui-success: var(--r-success, #107c41);
+  --ui-warning: var(--r-warning, #b26a00);
+  --ui-danger: var(--r-danger, #b91c1c);
+  --ui-info: var(--r-info, #2b579a);
 
   --ui-border-color: color-mix(in srgb, var(--ui-text) 14%, transparent);
   --ui-border: 1px solid var(--ui-border-color);
   --ui-border-soft: 1px solid color-mix(in srgb, var(--ui-text) 10%, transparent);
+  --ui-border-strong: 1px solid color-mix(in srgb, var(--ui-text) 22%, transparent);
+  --ui-accent-soft: color-mix(in srgb, var(--ui-accent) 12%, transparent);
+  --ui-accent-soft-2: color-mix(in srgb, var(--ui-accent) 18%, transparent);
+  --ui-accent-soft-3: color-mix(in srgb, var(--ui-accent) 24%, transparent);
+  --ui-accent-border: color-mix(in srgb, var(--ui-accent) 28%, transparent);
+  --ui-accent-border-strong: color-mix(in srgb, var(--ui-accent) 45%, transparent);
+  --ui-accent-glow: color-mix(in srgb, var(--ui-accent) 20%, transparent);
+  --ui-link-bg: color-mix(in srgb, var(--ui-link) 10%, transparent);
+  --ui-link-border: color-mix(in srgb, var(--ui-link) 24%, transparent);
+  --ui-success-bg: color-mix(in srgb, var(--ui-success) 18%, transparent);
+  --ui-success-border: color-mix(in srgb, var(--ui-success) 35%, transparent);
+  --ui-warning-bg: color-mix(in srgb, var(--ui-warning) 22%, transparent);
+  --ui-warning-border: color-mix(in srgb, var(--ui-warning) 35%, transparent);
+  --ui-danger-bg: color-mix(in srgb, var(--ui-danger) 16%, transparent);
+  --ui-danger-border: color-mix(in srgb, var(--ui-danger) 35%, transparent);
+  --ui-highlight: rgba(255, 255, 255, 0.7);
+  --ui-tooltip-bg: rgba(17, 17, 17, 0.9);
+  --ui-tooltip-text: #ffffff;
 
-  --ui-shadow-1: 0 1px 2px rgba(15, 23, 42, 0.10), 0 10px 28px rgba(15, 23, 42, 0.10);
-  --ui-shadow-2: 0 2px 6px rgba(15, 23, 42, 0.14), 0 18px 44px rgba(15, 23, 42, 0.16);
+  --ui-shadow-1: 0 1px 2px color-mix(in srgb, var(--ui-text) 10%, transparent),
+    0 10px 28px color-mix(in srgb, var(--ui-text) 10%, transparent);
+  --ui-shadow-2: 0 2px 6px color-mix(in srgb, var(--ui-text) 14%, transparent),
+    0 18px 44px color-mix(in srgb, var(--ui-text) 16%, transparent);
   --ui-backdrop: rgba(10, 12, 16, 0.60);
   --ui-backdrop-strong: rgba(10, 12, 16, 0.78);
+}
+
+.leditor-app.theme-light,
+.leditor-app--theme-light {
+  --ui-bg: #f3f2f1;
+  --ui-surface: #ffffff;
+  --ui-surface-2: #f8f8f8;
+  --ui-surface-3: #f5f5f5;
+  --ui-surface-4: #eef2f7;
+  --ui-text: rgba(0, 0, 0, 0.88);
+  --ui-text-strong: rgba(0, 0, 0, 0.96);
+  --ui-text-inverse: #ffffff;
+  --ui-muted: rgba(0, 0, 0, 0.58);
+  --ui-muted-strong: rgba(0, 0, 0, 0.72);
+  --ui-accent: #2b579a;
+  --ui-accent-strong: #1f4d8b;
+  --ui-accent-contrast: #ffffff;
+  --ui-focus: #2b579a;
+  --ui-link: #0563c1;
+  --ui-link-hover: #0b5ea8;
+  --ui-link-underline: #0563c1;
+  --ui-success: #107c41;
+  --ui-warning: #b26a00;
+  --ui-danger: #b91c1c;
+  --ui-info: #2b579a;
+  --ui-backdrop: rgba(0, 0, 0, 0.35);
+  --ui-backdrop-strong: rgba(0, 0, 0, 0.55);
+  --ui-highlight: rgba(255, 255, 255, 0.7);
+  --ui-tooltip-bg: rgba(17, 17, 17, 0.9);
+  --ui-tooltip-text: #ffffff;
+}
+
+.leditor-app.theme-dark,
+.leditor-app--theme-dark,
+.leditor-app--dark {
+  --ui-bg: #1e1e1e;
+  --ui-surface: #252526;
+  --ui-surface-2: #2d2d2d;
+  --ui-surface-3: #323232;
+  --ui-surface-4: #3a3a3a;
+  --ui-text: rgba(255, 255, 255, 0.92);
+  --ui-text-strong: rgba(255, 255, 255, 0.98);
+  --ui-text-inverse: #f7f7f7;
+  --ui-muted: rgba(255, 255, 255, 0.65);
+  --ui-muted-strong: rgba(255, 255, 255, 0.78);
+  --ui-accent: #5b9bd5;
+  --ui-accent-strong: #79b6e8;
+  --ui-accent-contrast: #0b1626;
+  --ui-focus: #5b9bd5;
+  --ui-link: #9dc3e6;
+  --ui-link-hover: #c2ddf0;
+  --ui-link-underline: #9dc3e6;
+  --ui-success: #4ade80;
+  --ui-warning: #fbbf24;
+  --ui-danger: #f87171;
+  --ui-info: #5b9bd5;
+  --ui-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.55), 0 10px 28px rgba(0, 0, 0, 0.55);
+  --ui-shadow-2: 0 2px 6px rgba(0, 0, 0, 0.60), 0 18px 44px rgba(0, 0, 0, 0.62);
+  --ui-backdrop: rgba(0, 0, 0, 0.65);
+  --ui-backdrop-strong: rgba(0, 0, 0, 0.78);
+  --ui-highlight: rgba(255, 255, 255, 0.08);
+  --ui-tooltip-bg: rgba(0, 0, 0, 0.88);
+  --ui-tooltip-text: #ffffff;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -123,7 +220,7 @@
   padding: 6px 10px;
   height: 30px;
   cursor: pointer;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  box-shadow: inset 0 1px 0 var(--ui-highlight);
   transition: transform var(--ui-d1) var(--ui-ease), border-color var(--ui-d1) var(--ui-ease),
     background var(--ui-d1) var(--ui-ease), box-shadow var(--ui-d1) var(--ui-ease);
 }
@@ -195,7 +292,7 @@
   padding: 6px 10px;
   font-size: 12px;
   cursor: pointer;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  box-shadow: inset 0 1px 0 var(--ui-highlight);
   transition: transform var(--ui-d1) var(--ui-ease), border-color var(--ui-d1) var(--ui-ease),
     background var(--ui-d1) var(--ui-ease), box-shadow var(--ui-d1) var(--ui-ease);
 }
@@ -208,6 +305,51 @@
 .leditor-review-card-action:active:not(:disabled) {
   transform: translateY(0);
   box-shadow: inset 0 2px 8px color-mix(in srgb, var(--ui-text) 10%, transparent);
+}
+
+/* SweetAlert2 alignment */
+.swal2-container {
+  font-family: var(--ui-font-family);
+}
+
+.swal2-popup {
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  border-radius: var(--ui-radius-md);
+  box-shadow: var(--ui-shadow-2);
+  padding: 18px 18px 16px;
+}
+
+.swal2-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ui-text);
+}
+
+.swal2-html-container {
+  font-size: 12px;
+  color: var(--ui-muted);
+}
+
+.swal2-actions {
+  gap: 10px;
+}
+
+.swal2-confirm,
+.swal2-cancel {
+  border-radius: var(--ui-radius-sm);
+  border: var(--ui-border);
+  font-size: 12px;
+  padding: 6px 12px;
+}
+
+.swal2-confirm {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--ui-accent) 18%, transparent), transparent);
+  color: var(--ui-text);
+}
+
+.swal2-cancel {
+  background: transparent;
 }
 
 .leditor-review-card-stack {
@@ -265,7 +407,7 @@
 
 .leditor-review-card-error {
   font-size: 11px;
-  color: #b91c1c;
+  color: var(--ui-danger);
   min-height: 14px;
 }
 
@@ -282,10 +424,10 @@
 .leditor-review-swal {
   font-family: var(--ui-font-family);
   color: var(--ui-text);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--ui-surface) 92%, #ffffff), var(--ui-surface-2));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--ui-surface) 92%, var(--ui-surface-3)), var(--ui-surface-2));
   border-radius: 16px;
   border: 1px solid color-mix(in srgb, var(--ui-text) 12%, transparent);
-  box-shadow: 0 22px 60px rgba(15, 23, 42, 0.28);
+  box-shadow: 0 22px 60px color-mix(in srgb, var(--ui-text) 28%, transparent);
   padding: 14px 18px 16px;
   position: relative;
   overflow: hidden;
@@ -300,7 +442,7 @@
   position: absolute;
   inset: 0 0 auto 0;
   height: 4px;
-  background: linear-gradient(90deg, #1d4ed8, #22c55e);
+  background: linear-gradient(90deg, var(--ui-accent-strong), var(--ui-success));
 }
 
 .leditor-review-swal .swal2-title {
@@ -308,7 +450,7 @@
   font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.3px;
-  color: #0f172a;
+  color: var(--ui-text);
 }
 
 .leditor-review-swal .swal2-html-container {
@@ -339,26 +481,28 @@
   appearance: none;
   border-radius: var(--ui-radius-sm);
   border: 1px solid color-mix(in srgb, var(--ui-text) 16%, transparent);
-  background: linear-gradient(180deg, #f8fafc, #e2e8f0);
-  color: #0f172a;
+  background: linear-gradient(180deg, var(--ui-surface), var(--ui-surface-2));
+  color: var(--ui-text);
   padding: 6px 12px;
   font-size: 12px;
   cursor: pointer;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  box-shadow: inset 0 1px 0 var(--ui-highlight);
   transition: transform var(--ui-d1) var(--ui-ease), border-color var(--ui-d1) var(--ui-ease),
     background var(--ui-d1) var(--ui-ease), box-shadow var(--ui-d1) var(--ui-ease);
 }
 
 .leditor-review-swal__confirm {
-  border-color: rgba(37, 99, 235, 0.65);
-  background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
-  color: #fff;
+  border-color: var(--ui-accent-border-strong);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--ui-accent) 85%, var(--ui-surface)),
+    var(--ui-accent-strong)
+  );
+  color: var(--ui-accent-contrast);
 }
 
 .leditor-review-swal__deny {
-  border-color: rgba(15, 118, 110, 0.5);
-  background: linear-gradient(180deg, #ecfeff 0%, #dbeafe 100%);
-  color: #0f172a;
+  border-color: color-mix(in srgb, var(--ui-accent) 25%, var(--ui-border-color));
 }
 
 .leditor-review-swal__confirm:hover,
@@ -421,8 +565,8 @@
 }
 
 .leditor-review-swal .swal2-validation-message {
-  background: rgba(248, 113, 113, 0.12);
-  color: #991b1b;
+  background: var(--ui-danger-bg);
+  color: var(--ui-danger);
   border-radius: 8px;
   font-size: 11px;
 }
@@ -807,12 +951,12 @@
   width: calc(var(--page-width-mm, 210) * 1mm);
   min-height: calc(var(--page-height-mm, 297) * 1mm);
   max-width: calc(100% - 40px);
-  background: #fff;
+  background: var(--ui-surface);
   border: 1px solid color-mix(in srgb, var(--ui-text) 16%, transparent);
   border-radius: 12px;
   padding: 24px;
   box-sizing: border-box;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--ui-shadow-2);
   position: relative;
   display: flex;
   flex-direction: column;
@@ -1256,14 +1400,14 @@
 
 /* Temporary green selection highlight used by Dictionary actions (define/synonyms/antonyms). */
 .leditor-lexicon-highlight {
-  background: rgba(16, 185, 129, 0.18);
+  background: var(--ui-success-bg);
   border-radius: 3px;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
 }
 
 .leditor-app.theme-dark .leditor-lexicon-highlight {
-  background: rgba(16, 185, 129, 0.22);
+  background: var(--ui-success-bg);
 }
 
 /* Virtual multi-range / block selections. */
@@ -1274,26 +1418,26 @@
 }
 
 .leditor-virtual-selection--add {
-  background: rgba(59, 130, 246, 0.2);
+  background: color-mix(in srgb, var(--ui-accent) 20%, transparent);
 }
 
 .leditor-virtual-selection--block {
-  background: rgba(245, 158, 11, 0.22);
+  background: var(--ui-warning-bg);
 }
 
 .leditor-app.theme-dark .leditor-virtual-selection--add {
-  background: rgba(59, 130, 246, 0.28);
+  background: color-mix(in srgb, var(--ui-accent) 28%, transparent);
 }
 
 .leditor-app.theme-dark .leditor-virtual-selection--block {
-  background: rgba(245, 158, 11, 0.28);
+  background: var(--ui-warning-bg);
 }
 
 
 @keyframes leditor-paragraph-n-flash {
-  0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.0); transform: translateY(0); }
-  25% { box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.22); transform: translateY(-0.5px); }
-  100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.0); transform: translateY(0); }
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ui-accent) 0%, transparent); transform: translateY(0); }
+  25% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--ui-accent) 22%, transparent); transform: translateY(-0.5px); }
+  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ui-accent) 0%, transparent); transform: translateY(0); }
 }
 
 .leditor-paragraph-grid__n.leditor-paragraph-grid__n--flash {

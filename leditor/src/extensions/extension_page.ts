@@ -62,6 +62,45 @@ const logDebug = (message: string, detail?: Record<string, unknown>) => {
   console.info(`[PaginationDebug] ${message}`);
 };
 
+const isTraceEnabled = (): boolean => {
+  if (typeof window === "undefined") return false;
+  const g = window as any;
+  return g.__leditorPaginationTraceEnabled === true || debugEnabled();
+};
+
+const recordPaginationTrace = (event: string, detail?: Record<string, unknown>) => {
+  if (!isTraceEnabled()) return;
+  try {
+    const g = window as any;
+    if (!Array.isArray(g.__leditorPaginationTrace)) {
+      g.__leditorPaginationTrace = [];
+    }
+    const entry = {
+      ts: performance.now(),
+      event,
+      ...(detail || {})
+    };
+    g.__leditorPaginationTrace.push(entry);
+    const maxLen = typeof g.__leditorPaginationTraceLimit === "number" ? g.__leditorPaginationTraceLimit : 200;
+    if (g.__leditorPaginationTrace.length > maxLen) {
+      g.__leditorPaginationTrace.splice(0, g.__leditorPaginationTrace.length - maxLen);
+    }
+  } catch {
+    // ignore trace errors
+  }
+};
+
+const shouldSuppressPaginationRun = (view?: any): boolean => {
+  try {
+    const until = (window as any).__leditorDisablePaginationUntil;
+    if (typeof until !== "number" || !Number.isFinite(until)) return false;
+    if (view?.state?.doc?.childCount <= 1) return false;
+    return performance.now() < until;
+  } catch {
+    return false;
+  }
+};
+
 const shouldForceSingleColumn = (): boolean =>
   typeof window !== "undefined" && (window as any).__leditorDisableColumns !== false;
 
@@ -101,6 +140,14 @@ const dispatchPagination = (view: any, tr: any) => {
   try {
     const memo = (view as any).__leditorPaginationMemo as PaginationMemo | undefined;
     const meta = tr?.getMeta?.(paginationKey) as { source?: string; op?: string } | undefined;
+    if (meta?.op) {
+      recordPaginationTrace(`dispatch:${meta.op}`, {
+        source: meta.source ?? "unknown",
+        pos: (meta as any).pos ?? null,
+        manual: (meta as any).manual ?? null,
+        docSize: tr?.doc?.content?.size ?? null
+      });
+    }
     if (memo && meta?.source === "pagination") {
       const now = performance.now();
       const docSize = tr?.doc?.content?.size ?? memo.lastDocSize ?? 0;
@@ -181,6 +228,37 @@ const getRelativeBox = (
   };
 };
 
+const isEmptyBlockElement = (el: HTMLElement): boolean => {
+  const text = (el.textContent || "").replace(/\u00a0/g, " ").trim();
+  if (text.length > 0) return false;
+  const br = el.querySelector("br");
+  if (br) return true;
+  const children = Array.from(el.children || []);
+  if (children.length === 0) return true;
+  return children.every((child) => child.tagName === "BR");
+};
+
+const getBlockBottom = (
+  element: HTMLElement,
+  content: HTMLElement,
+  fallbackLineHeight: number
+): { bottom: number; box: { top: number; bottom: number; left: number; right: number } } => {
+  const box = getRelativeBox(element, content);
+  let height = box.bottom - box.top;
+  if (height <= 0 && isEmptyBlockElement(element)) {
+    if (fallbackLineHeight > 0) {
+      height = fallbackLineHeight;
+    } else {
+      const lh = getLineHeightPx(element, content);
+      if (lh > 0) height = lh;
+    }
+  }
+  return {
+    box,
+    bottom: box.top + Math.max(0, height)
+  };
+};
+
 const getContentMetrics = (
   content: HTMLElement
 ): { usableHeight: number; paddingBottom: number; baseHeight: number } => {
@@ -210,6 +288,12 @@ const getContentMetrics = (
         : Number.isFinite(maxHeightRaw) && maxHeightRaw > 0
           ? maxHeightRaw
           : 0) || 0;
+  }
+  if (baseHeight <= 0) {
+    const tokenHeight = Number.parseFloat(style.getPropertyValue("--doc-content-height") || "");
+    if (Number.isFinite(tokenHeight) && tokenHeight > 0) {
+      baseHeight = tokenHeight;
+    }
   }
   let usableHeight = Math.max(0, baseHeight - paddingBottom);
   const lineHeight = getLineHeightPx(content, content);
@@ -297,7 +381,31 @@ const shouldSplitAfter = (el: HTMLElement): boolean => {
     if (kind === "section" || kind.startsWith("section_")) return true;
     return false;
   }
+  if (hasForcedBreakAfter(el)) return true;
   return false;
+};
+
+const hasForcedBreakValue = (value: string | null | undefined): boolean => {
+  if (!value) return false;
+  const normalized = String(value).toLowerCase();
+  if (!normalized || normalized.includes("auto") || normalized.includes("avoid")) return false;
+  return /(page|column|left|right|recto|verso|always)/.test(normalized);
+};
+
+const hasForcedBreakBefore = (el: HTMLElement): boolean => {
+  if (el.classList.contains("leditor-break")) return false;
+  const style = getComputedStyle(el);
+  const breakBefore = (style as any).breakBefore || style.getPropertyValue("break-before");
+  const pageBreakBefore = (style as any).pageBreakBefore || style.getPropertyValue("page-break-before");
+  return hasForcedBreakValue(breakBefore) || hasForcedBreakValue(pageBreakBefore);
+};
+
+const hasForcedBreakAfter = (el: HTMLElement): boolean => {
+  if (el.classList.contains("leditor-break")) return false;
+  const style = getComputedStyle(el);
+  const breakAfter = (style as any).breakAfter || style.getPropertyValue("break-after");
+  const pageBreakAfter = (style as any).pageBreakAfter || style.getPropertyValue("page-break-after");
+  return hasForcedBreakValue(breakAfter) || hasForcedBreakValue(pageBreakAfter);
 };
 
 const isHeadingTag = (tag: string): boolean => {
@@ -523,6 +631,7 @@ const CRITICAL_UNDERFILL_RATIO = 0.35;
 const MIN_LINE_SPLIT_TAIL_LINES = 1;
 const MIN_LINE_SPLIT_HEAD_LINES = 1;
 const BOTTOM_GUARD_PX = 8;
+const PREFER_FILL_GUARD_PX = 2;
 const JOIN_SPLIT_SUPPRESS_MS = 2500;
 const PAGINATION_ONLY_SPLIT_LIMIT = 64;
 const PAGINATION_DEBUG_LAYER_CLASS = "leditor-pagination-debug-layer";
@@ -535,7 +644,17 @@ const getBottomGuardPx = (content: HTMLElement, lineHeight?: number | null): num
   const lh = typeof lineHeight === "number" && Number.isFinite(lineHeight) ? lineHeight : 0;
   const lhGuardPx = lh > 0 ? lh * 0.35 : 0;
   const cssGuard = getNumericStyle(content, "--page-footnote-guard");
-  return Math.max(BOTTOM_GUARD_PX, lhGuardPx, cssGuard);
+  const base = Math.max(BOTTOM_GUARD_PX, lhGuardPx, cssGuard);
+  let preferFill = false;
+  try {
+    const until = (window as any).__leditorPaginationPreferFillUntil;
+    preferFill = typeof until === "number" && until > performance.now();
+  } catch {
+    preferFill = false;
+  }
+  if (!preferFill || cssGuard > 0) return base;
+  const minGuard = Math.max(PREFER_FILL_GUARD_PX, lh > 0 ? lh * 0.12 : 0);
+  return Math.min(base, minGuard);
 };
 
 const isLineSplitElement = (el: HTMLElement): boolean => {
@@ -546,6 +665,60 @@ const isLineSplitElement = (el: HTMLElement): boolean => {
 const isFootnoteStorageNode = (node: ProseMirrorNode | null | undefined): boolean => {
   const name = node?.type?.name;
   return name === "footnotesContainer" || name === "footnoteBody";
+};
+
+const pageEndsWithManualBreak = (pageNode: ProseMirrorNode | null | undefined): boolean => {
+  if (!pageNode?.content) return false;
+  for (let i = pageNode.childCount - 1; i >= 0; i -= 1) {
+    const child = pageNode.child(i);
+    if (isFootnoteStorageNode(child)) continue;
+    return child.type?.name === "page_break";
+  }
+  return false;
+};
+
+const pageStartsWithManualBreak = (pageNode: ProseMirrorNode | null | undefined): boolean => {
+  if (!pageNode?.content) return false;
+  for (let i = 0; i < pageNode.childCount; i += 1) {
+    const child = pageNode.child(i);
+    if (isFootnoteStorageNode(child)) continue;
+    return child.type?.name === "page_break";
+  }
+  return false;
+};
+
+const hasManualBreakBoundary = (doc: any, pageType: any, joinPos: number, view?: any): boolean => {
+  try {
+    const resolved = doc.resolve(joinPos);
+    const before = resolved.nodeBefore;
+    const after = resolved.nodeAfter;
+    if (!before || !after || before.type !== pageType || after.type !== pageType) return false;
+    if (pageEndsWithManualBreak(before) || pageStartsWithManualBreak(after)) return true;
+    if (!view) return false;
+    const afterIndex = resolved.index(0);
+    const beforeIndex = Math.max(0, afterIndex - 1);
+    const beforePage = view.dom?.querySelector?.(
+      `.${PAGE_CLASS}[data-page-index="${beforeIndex}"]`
+    ) as HTMLElement | null;
+    const afterPage = view.dom?.querySelector?.(
+      `.${PAGE_CLASS}[data-page-index="${afterIndex}"]`
+    ) as HTMLElement | null;
+    const beforeContent = beforePage?.querySelector?.(`.${PAGE_CONTENT_CLASS}`) as HTMLElement | null;
+    const afterContent = afterPage?.querySelector?.(`.${PAGE_CONTENT_CLASS}`) as HTMLElement | null;
+    if (beforeContent) {
+      const beforeChildren = getContentChildren(beforeContent);
+      const last = beforeChildren[beforeChildren.length - 1] ?? null;
+      if (last && hasForcedBreakAfter(last)) return true;
+    }
+    if (afterContent) {
+      const afterChildren = getContentChildren(afterContent);
+      const first = afterChildren[0] ?? null;
+      if (first && hasForcedBreakBefore(first)) return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
 };
 
 const trimLeadingWhitespaceAtPageStart = (tr: any, pagePos: number, pageType: any) => {
@@ -723,6 +896,23 @@ const normalizeParagraphInline = (node: ProseMirrorNode, schema: any): Fragment 
       }
       return;
     }
+    if (child.isText) {
+      const last = children[children.length - 1];
+      if (last?.isText && last.marks?.length === child.marks?.length) {
+        let sameMarks = true;
+        for (let i = 0; i < (last.marks?.length || 0); i += 1) {
+          if (!last.marks[i].eq(child.marks[i])) {
+            sameMarks = false;
+            break;
+          }
+        }
+        if (sameMarks) {
+          const mergedText = `${last.text ?? ""}${child.text ?? ""}`;
+          children[children.length - 1] = schema.text(mergedText, last.marks);
+          return;
+        }
+      }
+    }
     children.push(child);
   });
   return Fragment.fromArray(children);
@@ -857,12 +1047,31 @@ const paragraphLastNonWhitespaceChar = (node: ProseMirrorNode): string | null =>
   return null;
 };
 
+const paragraphText = (node: ProseMirrorNode): string => {
+  let out = "";
+  for (let i = 0; i < node.childCount; i += 1) {
+    const child = node.child(i);
+    if (!child.isText) continue;
+    out += child.text ?? "";
+  }
+  return out;
+};
+
+const paragraphIsCitationOnly = (node: ProseMirrorNode): boolean => {
+  const text = paragraphText(node).trim();
+  if (!text) return false;
+  if (!/^[\[(]/.test(text)) return false;
+  if (!/[\])](\.)?$/.test(text)) return false;
+  if (!/\d/.test(text)) return false;
+  return text.length <= 180;
+};
+
 const paragraphStartsWithContinuation = (node: ProseMirrorNode): boolean => {
   if (paragraphStartsWithWhitespace(node)) return true;
   const first = paragraphFirstNonWhitespaceChar(node);
   if (!first) return false;
   if (/[a-z]/.test(first)) return true;
-  return /[),.;:!?\]]/.test(first);
+  return /[\(\)\[\],.;:!?]/.test(first);
 };
 
 const paragraphEndsWithTerminal = (node: ProseMirrorNode): boolean => {
@@ -906,8 +1115,9 @@ const mergeContinuationParagraphs = (state: any, pageType: any): any | null => {
         j -= 1;
         continue;
       }
-      if (!paragraphStartsWithContinuation(curr.node)) break;
-      if (paragraphEndsWithTerminal(candidate.node)) break;
+      const citationOnly = paragraphIsCitationOnly(curr.node);
+      if (!paragraphStartsWithContinuation(curr.node) && !citationOnly) break;
+      if (paragraphEndsWithTerminal(candidate.node) && !citationOnly) break;
       const schema = candidate.node.type.schema;
       const prevChildren: ProseMirrorNode[] = [];
       normalizeParagraphInline(candidate.node, schema).forEach((child) => prevChildren.push(child));
@@ -939,6 +1149,209 @@ const mergeContinuationParagraphs = (state: any, pageType: any): any | null => {
     dbg("mergeContinuationParagraphs", `merged ${mergedCount} continuation paragraph(s)`);
   }
   return mergedCount > 0 ? tr : null;
+};
+
+const isHeadingOnlyPage = (pageNode: ProseMirrorNode): boolean => {
+  if (!pageNode?.content) return false;
+  let headingCount = 0;
+  let hasMajorHeading = false;
+  let hasOther = false;
+  pageNode.forEach((child) => {
+    if (isFootnoteStorageNode(child)) return;
+    const name = child.type?.name;
+    if (name === "page_break") {
+      hasOther = true;
+      return;
+    }
+    if (name === "heading") {
+      headingCount += 1;
+      const level = Number((child.attrs as any)?.level ?? 1);
+      if (level <= 2) hasMajorHeading = true;
+      return;
+    }
+    if (child.isTextblock || child.isBlock || child.childCount > 0) {
+      hasOther = true;
+    }
+  });
+  if (hasOther || headingCount === 0) return false;
+  if (hasMajorHeading) return false;
+  return true;
+};
+
+const mergeHeadingOnlyPages = (state: any, pageType: any): any | null => {
+  const doc = state.doc;
+  if (!doc || doc.childCount < 2) return null;
+  let pos = 0;
+  for (let i = 0; i < doc.childCount - 1; i += 1) {
+    const page = doc.child(i);
+    if (page.type !== pageType) {
+      pos += page.nodeSize;
+      continue;
+    }
+    const next = doc.child(i + 1);
+    if (next.type !== pageType) {
+      pos += page.nodeSize;
+      continue;
+    }
+    if (!isHeadingOnlyPage(page)) {
+      pos += page.nodeSize;
+      continue;
+    }
+    if (pageEndsWithManualBreak(page) || pageStartsWithManualBreak(next)) {
+      pos += page.nodeSize;
+      continue;
+    }
+    const joinPos = pos + page.nodeSize;
+    if (canJoin(doc, joinPos)) {
+      const tr = state.tr.join(joinPos);
+      tr.setMeta(paginationKey, { source: "pagination", op: "join", pos: joinPos });
+      return tr;
+    }
+    pos += page.nodeSize;
+  }
+  return null;
+};
+
+const getPageTextMetrics = (
+  pageNode: ProseMirrorNode
+): { blockCount: number; textLen: number; hasManualBreak: boolean; hasMajorHeading: boolean } => {
+  let blockCount = 0;
+  let textLen = 0;
+  let hasManualBreak = false;
+  let hasMajorHeading = false;
+  pageNode.forEach((child) => {
+    if (isFootnoteStorageNode(child)) return;
+    const name = child.type?.name;
+    if (name === "page_break") {
+      hasManualBreak = true;
+      return;
+    }
+    if (name === "heading") {
+      const level = Number((child.attrs as any)?.level ?? 1);
+      if (level <= 2) hasMajorHeading = true;
+    }
+    if (child.isBlock || child.isTextblock || child.childCount > 0) {
+      blockCount += 1;
+      if (typeof child.textContent === "string") {
+        textLen += child.textContent.trim().length;
+      } else if (child.childCount > 0) {
+        textLen += child.textBetween(0, child.content.size, "\n", "\n").trim().length;
+      }
+    }
+  });
+  return { blockCount, textLen, hasManualBreak, hasMajorHeading };
+};
+
+const mergeSparsePages = (state: any, pageType: any): any | null => {
+  const doc = state.doc;
+  if (!doc || doc.childCount < 2) return null;
+  let pos = 0;
+  for (let i = 0; i < doc.childCount - 1; i += 1) {
+    const page = doc.child(i);
+    if (page.type !== pageType) {
+      pos += page.nodeSize;
+      continue;
+    }
+    const next = doc.child(i + 1);
+    if (next.type !== pageType) {
+      pos += page.nodeSize;
+      continue;
+    }
+    if (pageEndsWithManualBreak(page) || pageStartsWithManualBreak(next)) {
+      pos += page.nodeSize;
+      continue;
+    }
+    const { blockCount, textLen, hasManualBreak, hasMajorHeading } = getPageTextMetrics(page);
+    if (hasManualBreak) {
+      pos += page.nodeSize;
+      continue;
+    }
+    if (hasMajorHeading && blockCount <= 2) {
+      pos += page.nodeSize;
+      continue;
+    }
+    const sparseByBlocks = blockCount <= 2 && textLen <= 900;
+    const sparseByText = blockCount <= 4 && textLen > 0 && textLen <= 500;
+    const sparseByEmpty = blockCount === 0;
+    if (!(sparseByEmpty || sparseByBlocks || sparseByText)) {
+      pos += page.nodeSize;
+      continue;
+    }
+    const joinPos = pos + page.nodeSize;
+    if (canJoin(doc, joinPos)) {
+      const tr = state.tr.join(joinPos);
+      tr.setMeta(paginationKey, { source: "pagination", op: "join", pos: joinPos });
+      return tr;
+    }
+    pos += page.nodeSize;
+  }
+  return null;
+};
+
+const moveTrailingHeadingToNextPage = (state: any, pageType: any): any | null => {
+  const doc = state.doc;
+  if (!doc || doc.childCount < 2) return null;
+  let pos = 0;
+  for (let i = 0; i < doc.childCount - 1; i += 1) {
+    const page = doc.child(i);
+    if (page.type !== pageType) {
+      pos += page.nodeSize;
+      continue;
+    }
+    const next = doc.child(i + 1);
+    if (next.type !== pageType) {
+      pos += page.nodeSize;
+      continue;
+    }
+    if (pageEndsWithManualBreak(page) || pageStartsWithManualBreak(next)) {
+      pos += page.nodeSize;
+      continue;
+    }
+    const { blockCount, textLen, hasManualBreak, hasMajorHeading } = getPageTextMetrics(page);
+    if (hasManualBreak) {
+      pos += page.nodeSize;
+      continue;
+    }
+    if (hasMajorHeading && blockCount <= 2) {
+      pos += page.nodeSize;
+      continue;
+    }
+    if (!(blockCount <= 4 && textLen <= 900)) {
+      pos += page.nodeSize;
+      continue;
+    }
+    let offset = 0;
+    let lastBlock: ProseMirrorNode | null = null;
+    let lastBlockPos: number | null = null;
+    page.forEach((child) => {
+      const childPos = pos + offset + 1;
+      offset += child.nodeSize;
+      if (isFootnoteStorageNode(child)) return;
+      if (child.type?.name === "page_break") return;
+      if (child.isBlock || child.isTextblock || child.childCount > 0) {
+        lastBlock = child;
+        lastBlockPos = childPos;
+      }
+    });
+    if (!lastBlock || lastBlock.type?.name !== "heading" || lastBlockPos == null) {
+      pos += page.nodeSize;
+      continue;
+    }
+    const deleteFrom = lastBlockPos;
+    const deleteTo = lastBlockPos + lastBlock.nodeSize;
+    let tr = state.tr.delete(deleteFrom, deleteTo);
+    const nextPagePos = pos + page.nodeSize;
+    const insertPos = tr.mapping.map(nextPagePos + 1);
+    try {
+      tr = tr.insert(insertPos, lastBlock);
+    } catch {
+      pos += page.nodeSize;
+      continue;
+    }
+    tr.setMeta(paginationKey, { source: "pagination", op: "moveHeading", pos: insertPos });
+    return tr;
+  }
+  return null;
 };
 
 const mergeLeadingWhitespaceParagraphs = (state: any, pageType: any): any | null => {
@@ -1014,6 +1427,52 @@ const mergeLeadingWhitespaceParagraphs = (state: any, pageType: any): any | null
     dbg("mergeLeadingWhitespaceParagraphs", `merged ${mergedCount} paragraph(s) starting with whitespace`);
   }
   return mergedCount > 0 ? tr : null;
+};
+
+const stripLeadingEmptyParagraphs = (state: any, pageType: any): any | null => {
+  const doc = state.doc;
+  if (!doc) return null;
+  const ranges: Array<{ from: number; to: number }> = [];
+  let pos = 0;
+  for (let i = 0; i < doc.childCount; i += 1) {
+    const page = doc.child(i);
+    const pagePos = pos;
+    pos += page.nodeSize;
+    if (!page || page.type !== pageType) continue;
+    const pageStart = pagePos + 1;
+    let offset = 0;
+    for (let j = 0; j < page.childCount; j += 1) {
+      const child = page.child(j);
+      if (isFootnoteStorageNode(child)) {
+        offset += child.nodeSize;
+        continue;
+      }
+      if (child.type?.name === "page_break") {
+        offset += child.nodeSize;
+        continue;
+      }
+      if (child.type?.name === "paragraph" && paragraphIsEmpty(child)) {
+        const from = pageStart + offset;
+        const to = from + child.nodeSize;
+        ranges.push({ from, to });
+        offset += child.nodeSize;
+        continue;
+      }
+      break;
+    }
+  }
+  if (!ranges.length) return null;
+  let tr = state.tr;
+  ranges
+    .sort((a, b) => b.from - a.from)
+    .forEach((range) => {
+      try {
+        tr = tr.delete(range.from, range.to);
+      } catch {
+        // ignore failed deletes
+      }
+    });
+  return tr;
 };
 
 const normalizeBrokenLines = (
@@ -1754,6 +2213,17 @@ const collectTextNodes = (root: HTMLElement): Text[] => {
     acceptNode: (node) => {
       if (!(node instanceof Text)) return NodeFilter.FILTER_REJECT;
       if (!node.data || !node.data.trim()) return NodeFilter.FILTER_SKIP;
+      const parent = node.parentElement;
+      if (parent) {
+        if (isFootnoteContainerElement(parent)) return NodeFilter.FILTER_SKIP;
+        if (
+          parent.closest(
+            "[data-footnotes-container], .leditor-footnotes-container, [data-footnote-body], .leditor-footnote-body"
+          )
+        ) {
+          return NodeFilter.FILTER_SKIP;
+        }
+      }
       return NodeFilter.FILTER_ACCEPT;
     }
   });
@@ -2533,11 +3003,12 @@ const attemptUnderfilledPullUp = (
   if (!nextContent) return null;
   const nextChildren = getContentChildren(nextContent);
   if (!nextChildren.length) return null;
+  const fallbackLineHeight = getLineHeightPx(nextContent, nextContent) || 16;
   const measureBlockHeight = (el: HTMLElement): number => {
-    const box = getRelativeBox(el, nextContent);
+    const { box, bottom } = getBlockBottom(el, nextContent, fallbackLineHeight);
     const marginTop = parseFloat(getComputedStyle(el).marginTop || "0") || 0;
     const marginBottom = parseFloat(getComputedStyle(el).marginBottom || "0") || 0;
-    return (box.bottom - box.top) + marginTop + marginBottom;
+    return (bottom - box.top) + marginTop + marginBottom;
   };
   const resolveAfterBlock = (el: HTMLElement): number | null => {
     try {
@@ -2800,6 +3271,24 @@ const isSelectionAtPageStart = (
     const $from = state.doc.resolve(selectionFrom);
     const pageStart = $from.start(pageDepth);
     if ($from.parentOffset === 0) {
+      try {
+        const pageNode = $from.node(pageDepth);
+        let firstBlockPos: number | null = null;
+        pageNode.forEach((child, offset) => {
+          if (firstBlockPos != null) return;
+          if (isFootnoteStorageNode(child)) return;
+          if (child.type?.name === "page_break") return;
+          if (child.isBlock || child.isTextblock || child.childCount > 0) {
+            firstBlockPos = pageStart + 1 + offset;
+          }
+        });
+        if (firstBlockPos != null) {
+          const currentBlockPos = $from.before(pageDepth + 1);
+          if (currentBlockPos === firstBlockPos) return true;
+        }
+      } catch {
+        // ignore block lookup failures
+      }
       const startSel = Selection.near(state.doc.resolve(pageStart + 1), 1);
       if (startSel && startSel.from === selectionFrom) return true;
       return $from.index(pageDepth) === 0;
@@ -2808,6 +3297,7 @@ const isSelectionAtPageStart = (
     state.doc.nodesBetween(pageStart + 1, selectionFrom, (node: any) => {
       if (hasContentBefore) return false;
       if (node?.type?.name === "anchorMarker") return true;
+      if (node?.type?.name === "hardBreak") return true;
       if (node?.isText) {
         if ((node.text ?? "").trim().length > 0) {
           hasContentBefore = true;
@@ -3119,6 +3609,26 @@ const isDeleteTransaction = (tr: any): boolean => {
   return tr.steps.some((step: any) => isDeleteStep(step));
 };
 
+const isInsertStep = (step: any): boolean => {
+  if (!step) return false;
+  const sliceSize =
+    typeof step.slice?.size === "number"
+      ? step.slice.size
+      : typeof step.slice?.content?.size === "number"
+        ? step.slice.content.size
+        : null;
+  if (!sliceSize || sliceSize <= 0) return false;
+  if (typeof step.from === "number" && typeof step.to === "number") {
+    if (step.to < step.from) return false;
+  }
+  return true;
+};
+
+const isInsertTransaction = (tr: any): boolean => {
+  if (!tr || !Array.isArray(tr.steps)) return false;
+  return tr.steps.some((step: any) => isInsertStep(step));
+};
+
 const findOverflowDescendant = (
   container: HTMLElement,
   content: HTMLElement,
@@ -3242,18 +3752,25 @@ const findSplitTarget = (
     }
   }
   let lastBottom = 0;
+  const fallbackLineHeight = Number.isFinite(lineHeight) && lineHeight > 0 ? lineHeight : 16;
   for (let i = 0; i < children.length; i += 1) {
     const child = children[i];
+    if (hasForcedBreakBefore(child)) {
+      if (i === 0) {
+        continue;
+      }
+      return { target: child, after: false, reason: "manual" };
+    }
     if (shouldSplitAfter(child)) {
       logDebug("manual break forces split", { tag: child.tagName, index: i });
       return { target: child, after: true, reason: "manual" };
     }
     const marginBottom = parseFloat(getComputedStyle(child).marginBottom || "0") || 0;
-    const box = getRelativeBox(child, content);
-    let bottom = box.bottom + marginBottom;
+    const { box, bottom: rawBottom } = getBlockBottom(child, content, fallbackLineHeight);
+    let bottom = rawBottom + marginBottom;
     if (marginBottom > 0 && box.bottom <= bottomLimit + tolerance) {
       if (bottom > bottomLimit + tolerance) {
-        bottom = box.bottom;
+        bottom = rawBottom;
       }
     }
     lastBottom = Math.max(lastBottom, bottom);
@@ -3416,6 +3933,9 @@ const findJoinBoundary = (
     if (last && shouldSplitAfter(last)) {
       continue;
     }
+    if (nextFirst && hasForcedBreakBefore(nextFirst)) {
+      return null;
+    }
     const { usableHeight } = getContentMetrics(content);
     const lastMarginBottom = last ? parseFloat(getComputedStyle(last).marginBottom || "0") || 0 : 0;
     const lastBox = last ? getRelativeBox(last, content) : null;
@@ -3511,53 +4031,168 @@ const getLastContentBottom = (content: HTMLElement): number => {
   const children = getContentChildren(content);
   if (!children.length) return 0;
   let lastBottom = 0;
+  const fallbackLineHeight = getLineHeightPx(content, content) || 16;
   for (const child of children) {
     const marginBottom = parseFloat(getComputedStyle(child).marginBottom || "0") || 0;
-    const box = getRelativeBox(child, content);
-    const bottom = box.bottom + marginBottom;
-    if (bottom > lastBottom) lastBottom = bottom;
+    const { bottom } = getBlockBottom(child, content, fallbackLineHeight);
+    const bottomWithMargin = bottom + marginBottom;
+    if (bottomWithMargin > lastBottom) lastBottom = bottomWithMargin;
   }
   return lastBottom;
 };
 
 const findUnderfilledJoin = (
   view: any,
-  pageType: any
+  pageType: any,
+  options?: {
+    aggressive?: boolean;
+    anchorIndex?: number | null;
+    allowFirstPage?: boolean;
+    preferLocal?: boolean;
+  }
 ): { joinPos: number; remaining: number; fillRatio: number; lineHeight: number; pageIndex: number } | null => {
   const pages = Array.from(view.dom.querySelectorAll(PAGE_SELECTOR)).filter(
     (node): node is HTMLElement => node instanceof HTMLElement
   );
   if (pages.length < 2) return null;
-  for (let i = 0; i < pages.length - 1; i += 1) {
+  const aggressive = Boolean(options?.aggressive);
+  const minUnderfillLines = aggressive ? Math.max(MIN_UNDERFILL_LINES, 6) : MIN_UNDERFILL_LINES;
+  const minUnderfillRatio = aggressive ? Math.max(MIN_UNDERFILL_RATIO, 0.8) : MIN_UNDERFILL_RATIO;
+  let best: { joinPos: number; remaining: number; fillRatio: number; lineHeight: number; pageIndex: number } | null = null;
+  const anchorIndex =
+    typeof options?.anchorIndex === "number" && Number.isFinite(options.anchorIndex)
+      ? Math.max(0, Math.min(pages.length - 2, Math.floor(options.anchorIndex)))
+      : 0;
+  const preferLocal = options?.preferLocal === true;
+  const localIndex =
+    anchorIndex > 0
+      ? Math.max(0, Math.min(pages.length - 2, anchorIndex - 1))
+      : 0;
+  const considerCandidate = (candidate: {
+    joinPos: number;
+    remaining: number;
+    fillRatio: number;
+    lineHeight: number;
+    pageIndex: number;
+  }) => {
+    if (!best) {
+      best = candidate;
+      return;
+    }
+    if (candidate.fillRatio < best.fillRatio - 0.05) {
+      best = candidate;
+      return;
+    }
+    if (candidate.fillRatio <= best.fillRatio && candidate.remaining > best.remaining + candidate.lineHeight) {
+      best = candidate;
+    }
+  };
+  const evaluatePage = (i: number): {
+    joinPos: number;
+    remaining: number;
+    fillRatio: number;
+    lineHeight: number;
+    pageIndex: number;
+  } | null => {
     const page = pages[i];
     const content = page.querySelector(`.${PAGE_CONTENT_CLASS}`) as HTMLElement | null;
-    if (!content) continue;
+    if (!content) return null;
     const children = getContentChildren(content);
-    if (!children.length) continue;
+    if (!children.length) return null;
     const headingOnly = children.every((child) => isHeadingElement(child));
+    const hasMajorHeading = children.some(
+      (child) => isHeadingElement(child) && (child.tagName === "H1" || child.tagName === "H2")
+    );
+    if (i === 0 && hasMajorHeading && !options?.allowFirstPage) return null;
     const last = children[children.length - 1] ?? null;
-    if (last && shouldSplitAfter(last) && !headingOnly) continue;
-    const lastBottom = getLastContentBottom(content);
-    const lineHeight = getLineHeightPx(content, content);
-    const minFill = Math.max(lineHeight * MIN_UNDERFILL_LINES, lineHeight + 4);
+    if (last && shouldSplitAfter(last) && !headingOnly) return null;
+    const contentText = (content.textContent || "").replace(/\s+/g, " ").trim();
+    const contentTextLen = contentText.length;
+    let lastBottom = getLastContentBottom(content);
+    if ((!Number.isFinite(lastBottom) || lastBottom <= 0) && children.length > 0) {
+      const lastChild = children[children.length - 1] ?? null;
+      if (lastChild) {
+        try {
+          const marginBottom = parseFloat(getComputedStyle(lastChild).marginBottom || "0") || 0;
+          const box = getRelativeBox(lastChild, content);
+          lastBottom = Math.max(0, box.bottom + marginBottom);
+        } catch {
+          // ignore fallback failures
+        }
+      }
+    }
+    let lineHeight = getLineHeightPx(content, content);
+    if (!Number.isFinite(lineHeight) || lineHeight <= 0) {
+      lineHeight = 16;
+    }
+    const minFill = Math.max(lineHeight * minUnderfillLines, lineHeight + 4);
     const { usableHeight } = getContentMetrics(content);
-    const fillRatio = usableHeight > 0 ? lastBottom / usableHeight : 1;
-    const remaining = usableHeight - lastBottom;
+    let fillRatio = usableHeight > 0 ? lastBottom / usableHeight : 1;
+    let remaining = usableHeight - lastBottom;
+    const metricsMissing =
+      !Number.isFinite(usableHeight) ||
+      usableHeight <= 0 ||
+      !Number.isFinite(lastBottom) ||
+      lastBottom <= 0;
+    const shortTextThreshold = aggressive ? 900 : 700;
+    const shortText = contentTextLen > 0 && contentTextLen <= shortTextThreshold;
+    const structuralUnderfill =
+      headingOnly ||
+      children.length <= 2 ||
+      (children.length <= 4 && shortText) ||
+      (children.length === 3 &&
+        children.every((child) => {
+          if (isHeadingElement(child)) return true;
+          const text = (child.textContent || "").trim();
+          return text.length <= 80;
+        }));
+    if (metricsMissing) {
+      remaining = Math.max(lineHeight * 10, 96);
+      fillRatio = 0.1;
+    }
     const nextPage = pages[i + 1] ?? null;
     const nextContent = nextPage?.querySelector(`.${PAGE_CONTENT_CLASS}`) as HTMLElement | null;
     const nextChildren = nextContent ? getContentChildren(nextContent) : [];
     const nextFirst = nextChildren[0] ?? null;
     const nextFirstIsKeepHeading =
       Boolean(nextFirst && isHeadingElement(nextFirst) && hasKeepWithNext(nextFirst));
+    if (nextFirst && hasForcedBreakBefore(nextFirst)) {
+      return null;
+    }
     const nextFirstLineHeight = nextFirst ? getLineHeightPx(nextFirst) : 0;
     const orphanHeadingPull =
       Boolean(last && isHeadingElement(last) && nextFirst && isLineSplitElement(nextFirst)) &&
       remaining >= Math.max(nextFirstLineHeight * 0.6, 6);
     if (nextFirstIsKeepHeading && remaining < Math.max(nextFirstLineHeight * 1.6, lineHeight * 1.4)) {
-      continue;
+      return null;
+    }
+    if (debugEnabled() && (headingOnly || children.length <= 2)) {
+      logDebug("underfill scan", {
+        pageIndex: i,
+        childTags: children.map((child) => child.tagName),
+        contentTextLen,
+        lastBottom,
+        remaining,
+        lineHeight,
+        usableHeight,
+        nextFirstTag: nextFirst?.tagName ?? null,
+        orphanHeadingPull
+      });
     }
     const underfillByGap = lastBottom < minFill;
-    const underfillByRatio = fillRatio < MIN_UNDERFILL_RATIO && remaining >= minFill;
+    const underfillByRatio = fillRatio < minUnderfillRatio && remaining >= minFill;
+    if (metricsMissing && structuralUnderfill) {
+      const joinPos = getJoinPosForPageIndex(view.state.doc, pageType, i + 1);
+      if (joinPos != null && joinPos > 0) {
+        logDebug("underfilled page join candidate (structural)", {
+          pageIndex: i,
+          joinPos,
+          remaining,
+          fillRatio
+        });
+        return { joinPos, remaining, fillRatio, lineHeight, pageIndex: i };
+      }
+    }
     if (lastBottom > 0 && (underfillByGap || underfillByRatio)) {
       const joinPos = getJoinPosForPageIndex(view.state.doc, pageType, i + 1);
       if (joinPos != null && joinPos > 0) {
@@ -3583,8 +4218,25 @@ const findUnderfilledJoin = (
         return { joinPos, remaining, fillRatio, lineHeight, pageIndex: i };
       }
     }
+    return null;
+  };
+
+  if (preferLocal && pages.length > 1) {
+    const candidate = evaluatePage(localIndex);
+    if (candidate) {
+      const softMinFill = Math.max(candidate.lineHeight * 0.85, 8);
+      if (candidate.remaining >= softMinFill && candidate.fillRatio < 0.98) {
+        return candidate;
+      }
+    }
   }
-  return null;
+
+  for (let offset = 0; offset < pages.length - 1; offset += 1) {
+    const i = (anchorIndex + offset) % (pages.length - 1);
+    const candidate = evaluatePage(i);
+    if (candidate) considerCandidate(candidate);
+  }
+  return best;
 };
 
 const findCriticalUnderfillJoin = (view: any, pageType: any): number | null => {
@@ -3711,6 +4363,7 @@ type PaginationMemo = {
   lastPaginationOnlyAt: number;
   lastPaginationOnlyDocSize: number;
   lastPaginationOnlySplitCount: number;
+  preferFillUntil: number;
   pendingJoinRetryId: number | null;
 };
 
@@ -3718,12 +4371,19 @@ const paginateView = (
   view: any,
   runningRef: { value: boolean },
   memo: PaginationMemo,
-  options?: { preferJoin?: boolean }
+  options?: { preferJoin?: boolean; preferFill?: boolean }
 ) => {
   if (runningRef.value) return;
   (view as any).__leditorPaginationMemo = memo;
   const pageType = view.state.schema.nodes.page;
   if (!pageType) return;
+  if (shouldSuppressPaginationRun(view)) {
+    recordPaginationTrace("paginate:suppressed", {
+      pageCount: view.state.doc.childCount,
+      docSize: view.state.doc.content.size
+    });
+    return;
+  }
   const isFootnoteOrigin = () => {
     try {
       const origin = (window as any).__leditorPaginationOrigin;
@@ -3733,7 +4393,33 @@ const paginateView = (
       return false;
     }
   };
+  const isSetContentOrigin = () => {
+    try {
+      const at = (window as any).__leditorLastSetContentAt;
+      return typeof at === "number" && performance.now() - at < 5000;
+    } catch {
+      return false;
+    }
+  };
+  const shouldSkipFlatten = () => {
+    try {
+      return (window as any).__leditorDisableFlatten === true;
+    } catch {
+      return false;
+    }
+  };
   const now = performance.now();
+  const preferFill = Boolean(options?.preferFill) || memo.preferFillUntil > now;
+  if (preferFill) {
+    try {
+      const until = (window as any).__leditorPaginationPreferFillUntil;
+      const next = now + 600;
+      (window as any).__leditorPaginationPreferFillUntil =
+        typeof until === "number" && until > next ? until : next;
+    } catch {
+      // ignore
+    }
+  }
   refreshContentMetrics(view);
   const currentPageCount = view.state.doc.childCount;
   const currentDocSize = view.state.doc.content.size;
@@ -3790,6 +4476,11 @@ const paginateView = (
   }
   const selection = view.state.selection;
   const selectionIndex = selection ? selection.$from.index(0) : -1;
+  recordPaginationTrace("paginate:start", {
+    pageCount: view.state.doc.childCount,
+    docSize: view.state.doc.content.size,
+    selectionIndex
+  });
   logDebug("paginate start", {
     pageCount: view.state.doc.childCount,
     selectionIndex
@@ -3811,6 +4502,12 @@ const paginateView = (
       dispatchPagination(view, anchorCleanup);
       return;
     }
+    const leadingEmpty = stripLeadingEmptyParagraphs(view.state, pageType);
+    if (leadingEmpty) {
+      logDebug("stripped leading empty paragraphs");
+      dispatchPagination(view, leadingEmpty);
+      return;
+    }
     const leadingMerge = mergeLeadingWhitespaceParagraphs(view.state, pageType);
     if (leadingMerge) {
       leadingMerge.setMeta(paginationKey, { source: "pagination", op: "mergeWhitespace" });
@@ -3823,13 +4520,33 @@ const paginateView = (
       dispatchPagination(view, continuationMerge);
       return;
     }
+    const headingMerge = mergeHeadingOnlyPages(view.state, pageType);
+    if (headingMerge) {
+      logDebug("merged heading-only page");
+      dispatchPagination(view, headingMerge);
+      return;
+    }
+    const sparseMerge = mergeSparsePages(view.state, pageType);
+    if (sparseMerge) {
+      logDebug("merged sparse page");
+      dispatchPagination(view, sparseMerge);
+      return;
+    }
+    const headingMove = moveTrailingHeadingToNextPage(view.state, pageType);
+    if (headingMove) {
+      logDebug("moved trailing heading");
+      dispatchPagination(view, headingMove);
+      return;
+    }
     // Flatten only immediately after an external doc change (e.g. setContent), never after pagination splits.
     const flattenEligible =
-      memo.lastExternalChangeAt > memo.lastFlattenAt && now - memo.lastExternalChangeAt < 600;
+      isSetContentOrigin() &&
+      !shouldSkipFlatten() &&
+      memo.lastExternalChangeAt > memo.lastFlattenAt &&
+      (memo.lastFlattenAt === 0 || now - memo.lastExternalChangeAt < 12000);
     if (
       flattenEligible &&
       view.state.doc.childCount > 1 &&
-      view.state.doc.childCount <= 3 &&
       memo.lastFlattenDocSize !== docSize
     ) {
       if (debugEnabled()) {
@@ -3879,6 +4596,10 @@ const paginateView = (
         const joinIndex = anchorOnlyIndex === 0 ? 1 : anchorOnlyIndex;
         const joinPos = getJoinPosForPageIndex(view.state.doc, pageType, joinIndex);
         if (joinPos != null && joinPos > 0) {
+          if (hasManualBreakBoundary(view.state.doc, pageType, joinPos, view)) {
+            logDebug("skip join (manual break boundary)", { joinPos });
+            return;
+          }
           logDebug("joining anchor-only page", { anchorOnlyIndex, joinIndex, joinPos });
           let tr = attemptManualPageJoin(view.state.tr, joinPos, pageType, view.state.selection.from);
           if (!tr && canJoin(view.state.doc, joinPos)) {
@@ -3904,6 +4625,7 @@ const paginateView = (
     }
     const skipJoin = document.documentElement.classList.contains("leditor-footnote-editing");
     const joinNow = performance.now();
+    const setContentOrigin = isSetContentOrigin();
     const userSplitAt =
       (window as typeof window & { __leditorUserSplitAt?: number }).__leditorUserSplitAt ?? 0;
     const recentUserSplit = userSplitAt > 0 && joinNow - userSplitAt < 1200;
@@ -3912,10 +4634,15 @@ const paginateView = (
       memo.lastSplitReason != null && joinNow - memo.lastSplitAt < JOIN_SPLIT_SUPPRESS_MS;
     const recentExternalChange =
       memo.lastExternalChangeAt > 0 && joinNow - memo.lastExternalChangeAt < 200 && !paginationOnlyActive;
-    const allowAutoJoin = !skipJoin && preferJoin && !recentSplitHold && !recentUserSplit && !paginationOnlyActive;
+    const allowAutoJoin =
+      !skipJoin &&
+      (preferJoin || setContentOrigin) &&
+      (!recentSplitHold || preferJoin) &&
+      !recentUserSplit &&
+      (!paginationOnlyActive || setContentOrigin);
     const allowPullUp = allowAutoJoin;
-    const allowJoin = allowAutoJoin && !recentSplitHold;
-    const allowCriticalJoin = allowAutoJoin && !recentSplitHold;
+    const allowJoin = allowAutoJoin && (!recentSplitHold || preferJoin);
+    const allowCriticalJoin = allowAutoJoin && (!recentSplitHold || preferJoin);
     if (recentSplitHold && memo.pendingJoinRetryId == null) {
       try {
         memo.pendingJoinRetryId = window.setTimeout(() => {
@@ -4797,6 +5524,10 @@ const paginateView = (
     if (allowCriticalJoin) {
       const criticalJoinPos = findCriticalUnderfillJoin(view, pageType);
       if (criticalJoinPos != null) {
+        if (hasManualBreakBoundary(view.state.doc, pageType, criticalJoinPos, view)) {
+          logDebug("skip join (manual break boundary)", { joinPos: criticalJoinPos });
+          return;
+        }
         const recentSplitSamePos =
           memo.lastSplitPos != null &&
           Math.abs(memo.lastSplitPos - criticalJoinPos) <= 20 &&
@@ -4833,15 +5564,32 @@ const paginateView = (
         }
       }
     }
-    if (allowPullUp || allowCriticalJoin) {
-      const underfilledJoin = findUnderfilledJoin(view, pageType);
+    {
+      const underfilledJoin = findUnderfilledJoin(view, pageType, {
+        aggressive: setContentOrigin,
+        anchorIndex: setContentOrigin ? null : selectionIndex,
+        allowFirstPage: preferJoin
+      });
       if (underfilledJoin != null) {
         const { joinPos, remaining, fillRatio, lineHeight, pageIndex } = underfilledJoin;
+        if (hasManualBreakBoundary(view.state.doc, pageType, joinPos, view)) {
+          logDebug("skip join (manual break boundary)", { joinPos });
+          return;
+        }
         const severeUnderfill =
-          remaining > Math.max(lineHeight * 6, 72) || fillRatio < 0.85;
+          remaining > Math.max(lineHeight * 6, 72) || fillRatio < 0.75;
         const recentSplitAny =
           memo.lastSplitReason != null &&
           now - memo.lastSplitAt < JOIN_SPLIT_SUPPRESS_MS;
+        const allowUnderfillJoin =
+          allowPullUp || allowCriticalJoin || severeUnderfill || setContentOrigin;
+        if (!allowUnderfillJoin) {
+          return;
+        }
+        if (paginationOnlyActive && !severeUnderfill && !setContentOrigin) {
+          logDebug("skip join (pagination-only)", { joinPos, remaining, fillRatio });
+          return;
+        }
         if (recentSplitAny && !severeUnderfill) {
           logDebug("skip join (recent split)", { joinPos, remaining, fillRatio });
           return;
@@ -4966,6 +5714,35 @@ const paginateView = (
           if ($from.parentOffset === 0 && pageIndex > 0) {
             const joinPos = getJoinPosForPageIndex(view.state.doc, pageType, pageIndex);
             if (joinPos !== null) {
+              if (hasManualBreakBoundary(view.state.doc, pageType, joinPos, view)) {
+                logDebug("skip join (manual break boundary)", { joinPos });
+                return;
+              }
+              try {
+                const prevPage = pages[pageIndex - 1] as HTMLElement | undefined;
+                const prevContent = prevPage?.querySelector?.(`.${PAGE_CONTENT_CLASS}`) as HTMLElement | null;
+                if (prevContent) {
+                  const { usableHeight } = getContentMetrics(prevContent);
+                  const lastBottom = getLastContentBottom(prevContent);
+                  const lineHeight = getLineHeightPx(prevContent, prevContent) || 16;
+                  const remaining = usableHeight - lastBottom;
+                  const pullUp = attemptUnderfilledPullUp(
+                    view,
+                    pageType,
+                    pageIndex - 1,
+                    joinPos,
+                    remaining,
+                    lineHeight
+                  );
+                  if (pullUp) {
+                    pullUp.tr.setMeta(paginationKey, { source: "pagination", op: "pullup", pos: pullUp.splitPos });
+                    dispatchPagination(view, pullUp.tr);
+                    return;
+                  }
+                }
+              } catch {
+                // ignore pull-up failures
+              }
               const manualJoin = attemptManualPageJoin(
                 view.state.tr,
                 joinPos,
@@ -5007,6 +5784,10 @@ const paginateView = (
       if (allowPullUp) {
         const joinPos = findJoinBoundary(view, pageType, 1, joinBufferPx);
         if (joinPos !== null) {
+          if (hasManualBreakBoundary(view.state.doc, pageType, joinPos, view)) {
+            logDebug("skip join (manual break boundary)", { joinPos });
+            return;
+          }
           const lockPosCandidates = [joinPos, joinPos - 1, joinPos + 1, joinPos - 2, joinPos + 2];
           let lock: { docSize: number; at: number; reason: string } | null = null;
           let lockPos: number | null = null;
@@ -5263,6 +6044,7 @@ export const PagePagination = Extension.create({
   name: "pagePagination",
   addProseMirrorPlugins() {
     let lastMutationWasDelete = false;
+    let lastMutationWasInsert = false;
   const paginationMemo: PaginationMemo = {
       lastSplitPos: null,
       lastSplitAttemptPos: null,
@@ -5288,6 +6070,7 @@ export const PagePagination = Extension.create({
       lastPaginationOnlyAt: 0,
       lastPaginationOnlyDocSize: 0,
       lastPaginationOnlySplitCount: 0,
+      preferFillUntil: 0,
       pendingJoinRetryId: null
     };
     return [
@@ -5296,6 +6079,20 @@ export const PagePagination = Extension.create({
         props: {
           handleKeyDown(view, event) {
             if (event.defaultPrevented || event.isComposing) return false;
+            if (!event.metaKey && !event.ctrlKey && !event.altKey) {
+              const isTypingKey =
+                event.key === "Enter" ||
+                event.key === "Backspace" ||
+                event.key === "Delete" ||
+                event.key.length === 1;
+              if (isTypingKey) {
+                try {
+                  (window as any).__leditorPaginationPreferFillUntil = performance.now() + 600;
+                } catch {
+                  // ignore
+                }
+              }
+            }
             if (event.key === "Backspace") {
               if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return false;
               if (handlePageBoundaryBackspace(view)) {
@@ -5319,10 +6116,16 @@ export const PagePagination = Extension.create({
             return meta?.source !== "pagination";
           });
           lastMutationWasDelete = nonPaginationTransactions.some((tr) => isDeleteTransaction(tr));
+          lastMutationWasInsert = nonPaginationTransactions.some(
+            (tr) => tr.docChanged && isInsertTransaction(tr) && !isDeleteTransaction(tr)
+          );
           const externalDocChange = nonPaginationTransactions.some((tr) => tr.docChanged);
           const hasPaginationOnly = transactions.length > 0 && nonPaginationTransactions.length === 0;
           if (externalDocChange) {
             paginationMemo.lastExternalChangeAt = performance.now();
+            if (lastMutationWasInsert) {
+              paginationMemo.preferFillUntil = Math.max(paginationMemo.preferFillUntil, performance.now() + 800);
+            }
           } else if (!hasPaginationOnly && transactions.length > 0 && debugEnabled()) {
             dbg("appendTransaction", "non-pagination selection-only transaction; skipping external change timestamp");
           }
@@ -5330,34 +6133,56 @@ export const PagePagination = Extension.create({
         },
         view(editorView) {
           // pagination debug log removed
+          try {
+            (window as any).__leditorDumpPaginationTrace = () =>
+              Array.isArray((window as any).__leditorPaginationTrace)
+                ? [...(window as any).__leditorPaginationTrace]
+                : [];
+          } catch {
+            // ignore
+          }
           const running = { value: false };
-          const shouldSuppressPagination = () => {
-            try {
-              const until = (window as any).__leditorDisablePaginationUntil;
-              if (typeof until !== "number" || !Number.isFinite(until)) return false;
-              // Never suppress the very first pagination pass (single-page docs need a split).
-              if (editorView.state.doc.childCount <= 1) return false;
-              return performance.now() < until;
-            } catch {
-              return false;
-            }
-          };
+          const startupAt = typeof (window as any).__leditorStartupAt === "number"
+            ? (window as any).__leditorStartupAt
+            : performance.now();
+          let firstRunLogged = false;
           const scheduler = new PaginationScheduler({
             root: editorView.dom as HTMLElement,
             onRun: () => {
               logPaginationStats(editorView, "scheduler run");
-              paginateView(editorView, running, paginationMemo, { preferJoin: lastMutationWasDelete });
+              paginateView(editorView, running, paginationMemo, {
+                preferJoin: lastMutationWasDelete,
+                preferFill: lastMutationWasInsert
+              });
               lastMutationWasDelete = false;
-            }
+              lastMutationWasInsert = false;
+              if (!firstRunLogged) {
+                firstRunLogged = true;
+                console.info("[Startup] first pagination run", {
+                  ms: Math.round(performance.now() - startupAt)
+                });
+              }
+            },
+            onSettled: () => {
+              try {
+                editorView.dom.dispatchEvent(
+                  new CustomEvent("leditor:layout-settled", {
+                    bubbles: true,
+                    detail: { source: "pagination" }
+                  })
+                );
+              } catch {
+                // ignore
+              }
+            },
+            throttleMs: 50,
+            settleMs: 220
           });
           const handleExternalPaginationRequest = () => {
-            if (shouldSuppressPagination()) return;
             scheduler.request();
           };
           logPaginationStats(editorView, "scheduler mounted");
-          if (!shouldSuppressPagination()) {
-            scheduler.request();
-          }
+          scheduler.request();
           editorView.dom.addEventListener(
             "leditor:pagination-request",
             handleExternalPaginationRequest as EventListener
@@ -5365,7 +6190,6 @@ export const PagePagination = Extension.create({
           return {
             update(view, prevState) {
               if (view.state.doc.eq(prevState.doc)) return;
-              if (shouldSuppressPagination()) return;
               logPaginationStats(view, "scheduler queue");
               scheduler.request();
             },

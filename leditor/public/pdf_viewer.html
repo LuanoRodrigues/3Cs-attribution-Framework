@@ -7,22 +7,22 @@
     <style>
       :root {
         color-scheme: light dark;
-        --bg: #f6f7f9;
-        --fg: rgba(15, 23, 42, 0.92);
-        --muted: rgba(15, 23, 42, 0.62);
-        --panel: rgba(15, 23, 42, 0.04);
-        --border: rgba(15, 23, 42, 0.12);
-        --accent: #2563eb;
-        --shadow: 0 1px 2px rgba(15, 23, 42, 0.08), 0 10px 28px rgba(15, 23, 42, 0.12);
+        --bg: #f3f2f1;
+        --fg: rgba(0, 0, 0, 0.88);
+        --muted: rgba(0, 0, 0, 0.60);
+        --panel: rgba(0, 0, 0, 0.04);
+        --border: rgba(0, 0, 0, 0.12);
+        --accent: #2b579a;
+        --shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 10px 28px rgba(0, 0, 0, 0.12);
       }
 
       html[data-theme="dark"] {
-        --bg: #0b1020;
-        --fg: rgba(248, 250, 252, 0.92);
-        --muted: rgba(226, 232, 240, 0.68);
+        --bg: #1e1e1e;
+        --fg: rgba(255, 255, 255, 0.92);
+        --muted: rgba(255, 255, 255, 0.65);
         --panel: rgba(255, 255, 255, 0.06);
         --border: rgba(255, 255, 255, 0.14);
-        --accent: #7aa6ff;
+        --accent: #5b9bd5;
         --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 18px 48px rgba(0, 0, 0, 0.55);
       }
       body {
@@ -65,7 +65,7 @@
         background: #fff;
       }
       html[data-theme="dark"] iframe {
-        background: #0b0d13;
+        background: #1e1e1e;
       }
       .pill {
         border: 1px solid var(--border);
@@ -131,6 +131,17 @@
           const blob = new Blob([bytes], { type: "application/pdf" });
           return URL.createObjectURL(blob);
         };
+        const looksLikeBase64Pdf = (value) => {
+          const raw = String(value || "").trim();
+          if (!raw) return false;
+          if (!/^[A-Za-z0-9+/]+=*$/.test(raw)) return false;
+          return raw.length > 256;
+        };
+        const isPdfDataCandidate = (value) => {
+          const raw = String(value || "").trim();
+          if (!raw) return false;
+          return /^data:application\/pdf/i.test(raw) || looksLikeBase64Pdf(raw);
+        };
 
         const applyPayload = (payload) => {
           if (!payload || typeof payload !== "object") {
@@ -140,21 +151,26 @@
           const dqid = String(payload.dqid || "").trim();
           $("dqidPill").textContent = dqid ? "dqid: " + dqid : "direct quote";
 
-          const pdfPath = String(payload.pdf_path || payload.pdf || "").trim();
+          const pdfAlt = String(payload.pdf || "").trim();
+          const pdfPath = String(payload.pdf_path || "").trim();
+          const pdfRef = isPdfDataCandidate(pdfAlt) ? pdfAlt : (pdfPath || pdfAlt || "");
           const page = payload.page != null ? String(payload.page).trim() : "";
-          $("meta").textContent = pdfPath ? pdfPath : "No pdf_path/pdf in payload.";
+          const metaLabel = pdfRef
+            ? (isPdfDataCandidate(pdfRef) ? "inline pdf data (base64)" : pdfRef)
+            : "No pdf_path/pdf in payload.";
+          $("meta").textContent = metaLabel;
 
-          if (!pdfPath) {
+          if (!pdfRef) {
             setError("Payload missing pdf_path/pdf.");
             return;
           }
-          let src = pdfPath;
-          if (/^data:application\/pdf/i.test(pdfPath)) {
-            src = pdfPath;
-          } else if (/^[A-Za-z0-9+/]+=*$/.test(pdfPath) && pdfPath.length > 256) {
-            src = makeBlobUrlFromBase64(pdfPath);
+          let src = pdfRef;
+          if (/^data:application\/pdf/i.test(pdfRef)) {
+            src = pdfRef;
+          } else if (looksLikeBase64Pdf(pdfRef)) {
+            src = makeBlobUrlFromBase64(pdfRef);
           } else {
-            src = toFileUrl(pdfPath);
+            src = toFileUrl(pdfRef);
           }
           if (page) {
             src += (src.includes("#") ? "&" : "#") + "page=" + encodeURIComponent(page);

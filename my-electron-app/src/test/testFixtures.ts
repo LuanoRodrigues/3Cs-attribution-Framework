@@ -7,6 +7,7 @@
 export interface PdfTestPayload {
   item_key: string;
   pdf_path: string;
+  pdf?: string;
   url: string;
   author_summary: string;
   first_author_last: string;

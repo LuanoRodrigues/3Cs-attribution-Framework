@@ -1,8 +1,8 @@
 body {
   margin: 0;
   font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
-  background: #040714;
-  color: #e5e7eb;
+  background: #1e1e1e;
+  color: rgba(255, 255, 255, 0.92);
 }
 
 .citations-root {
@@ -21,7 +21,7 @@ body {
 
 .citations-root header p {
   margin: 4px 0 0;
-  color: #94a3b8;
+  color: rgba(255, 255, 255, 0.65);
   font-size: 13px;
 }
 
@@ -33,8 +33,8 @@ body {
 
 .citation-card {
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: #252526;
   padding: 12px;
   display: flex;
   flex-direction: column;
@@ -42,8 +42,8 @@ body {
 }
 
 .citation-card.active {
-  border-color: #22d3ee;
-  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.4);
+  border-color: #5b9bd5;
+  box-shadow: 0 0 0 1px rgba(91, 155, 213, 0.35);
 }
 
 .citation-card h3 {
@@ -53,7 +53,7 @@ body {
 
 .citation-card p {
   margin: 0;
-  color: #cbd5f5;
+  color: rgba(255, 255, 255, 0.75);
   font-size: 13px;
   line-height: 1.4;
 }
@@ -62,5 +62,5 @@ body {
   display: flex;
   justify-content: space-between;
   font-size: 12px;
-  color: #94a3b8;
+  color: rgba(255, 255, 255, 0.55);
 }

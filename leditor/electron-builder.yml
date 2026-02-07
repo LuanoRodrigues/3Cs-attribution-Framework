@@ -1,0 +1,18 @@
+appId: com.leditor.app
+productName: LEditor
+icon: assets/icons/leditor.png
+files:
+  - dist/**
+  - assets/**
+  - package.json
+mac:
+  icon: assets/icons/leditor.icns
+win:
+  icon: assets/icons/leditor.ico
+linux:
+  icon: assets/icons/leditor.png
+fileAssociations:
+  - ext: ledoc
+    name: LEditor Document
+    description: LEditor document bundle
+    icon: assets/icons/ledoc.ico

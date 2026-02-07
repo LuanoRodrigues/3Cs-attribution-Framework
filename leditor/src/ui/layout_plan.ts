@@ -127,17 +127,17 @@ const layoutPlan = {
       "tokenOverrides": {
         "dark": {
           "colors": {
-            "bg": "rgba(25, 27, 33, 0.96)",
-            "surface": "rgba(18, 18, 20, 0.95)",
-            "surface2": "rgba(255, 255, 255, 0.05)",
+            "bg": "#1e1e1e",
+            "surface": "#252526",
+            "surface2": "#2d2d2d",
             "text": "rgba(255,255,255,0.92)",
-            "muted": "rgba(255,255,255,0.68)",
+            "muted": "rgba(255,255,255,0.65)",
             "disabled": "rgba(255,255,255,0.38)",
             "hover": "rgba(255,255,255,0.06)",
             "pressed": "rgba(255,255,255,0.10)",
-            "accent": "#7aa6ff",
-            "selected": "rgba(122,166,255,0.18)",
-            "focus": "#7aa6ff"
+            "accent": "#5b9bd5",
+            "selected": "rgba(91,155,213,0.18)",
+            "focus": "#5b9bd5"
           },
           "border": "1px solid rgba(255,255,255,0.12)",
           "divider": "1px solid rgba(255,255,255,0.10)",
@@ -180,17 +180,17 @@ const layoutPlan = {
       "panelTopInset": "0px"
     },
     "colors": {
-      "bg": "#f6f7f9",
+      "bg": "#f3f2f1",
       "surface": "#ffffff",
-      "surface2": "#f1f3f6",
+      "surface2": "#f8f8f8",
       "text": "rgba(0,0,0,0.88)",
-      "muted": "rgba(0,0,0,0.60)",
-      "disabled": "rgba(0,0,0,0.35)",
-      "hover": "rgba(0,0,0,0.06)",
+      "muted": "rgba(0,0,0,0.58)",
+      "disabled": "rgba(0,0,0,0.32)",
+      "hover": "rgba(0,0,0,0.05)",
       "pressed": "rgba(0,0,0,0.10)",
-      "accent": "#2563eb",
-      "selected": "rgba(37,99,235,0.14)",
-      "focus": "#2563eb"
+      "accent": "#2b579a",
+      "selected": "rgba(43,87,154,0.14)",
+      "focus": "#2b579a"
     },
     "motion": {
       "ease": "cubic-bezier(.2,.8,.2,1)",

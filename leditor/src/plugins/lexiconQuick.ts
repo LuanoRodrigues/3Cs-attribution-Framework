@@ -621,9 +621,10 @@ const runLexicon = async (editorHandle: EditorHandle, mode: LexiconMode, title: 
 
   const settings = getAiSettings();
   const personaKey = stableStringify(settings.personaConfig ?? {});
+  const model = settings.modelByProvider?.[settings.provider];
   const payload = {
     provider: settings.provider,
-    model: settings.model,
+    ...(typeof model === "string" && model ? { model } : {}),
     mode,
     text: selectedText,
     sentence: context,
@@ -632,7 +633,6 @@ const runLexicon = async (editorHandle: EditorHandle, mode: LexiconMode, title: 
   logLexicon("request", {
     mode,
     provider: settings.provider,
-    model: settings.model,
     text: clip(selectedText, 160),
     sentence: clip(context, 200)
   });
@@ -641,13 +641,12 @@ const runLexicon = async (editorHandle: EditorHandle, mode: LexiconMode, title: 
     text: selectedText,
     sentence: context,
     provider: settings.provider,
-    model: settings.model,
+    model: model || "",
     personaKey
   });
   const llmCacheKey = buildLlmCacheKey({
     fn: "lexicon",
     provider: settings.provider,
-    model: settings.model,
     payload
   });
   const cached = getLlmCacheEntry(llmCacheKey)?.value ?? getCached(cacheKey);
@@ -726,7 +725,7 @@ const runLexicon = async (editorHandle: EditorHandle, mode: LexiconMode, title: 
           key: llmCacheKey,
           fn: "lexicon",
           value: result,
-          meta: { provider: settings.provider, model: settings.model }
+          meta: { provider: settings.provider }
         });
       }
     }

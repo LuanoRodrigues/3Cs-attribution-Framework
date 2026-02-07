@@ -24,6 +24,8 @@ export type ReferencesLibrary = {
 const LIBRARY_STORAGE_KEY = "leditor.references.library";
 const LIBRARY_FILENAME = "references_library.json";
 const LEGACY_FILENAME = "references.json";
+const RECENT_STORAGE_KEY = "leditor.references.recent";
+const RECENT_LIMIT = 8;
 
 let cachedLibrary: ReferencesLibrary | null = null;
 let loadPromise: Promise<ReferencesLibrary> | null = null;
@@ -130,6 +132,37 @@ const loadFromStorage = (): ReferencesLibrary | null => {
   } catch {
     return null;
   }
+};
+
+export const getRecentReferenceKeys = (): string[] => {
+  try {
+    const raw = window.localStorage?.getItem(RECENT_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((value) => typeof value === "string" && value.trim().length > 0);
+  } catch {
+    return [];
+  }
+};
+
+export const pushRecentReference = (itemKey: string): void => {
+  const normalized = itemKey.trim();
+  if (!normalized) return;
+  const list = getRecentReferenceKeys().filter((key) => key !== normalized);
+  list.unshift(normalized);
+  const next = list.slice(0, RECENT_LIMIT);
+  try {
+    window.localStorage?.setItem(RECENT_STORAGE_KEY, JSON.stringify(next));
+  } catch {
+    // ignore
+  }
+};
+
+export const getRecentReferenceItems = (): ReferenceItem[] => {
+  const library = getReferencesLibrarySync();
+  const keys = getRecentReferenceKeys();
+  return keys.map((key) => library.itemsByKey[key]).filter(Boolean) as ReferenceItem[];
 };
 
 const persistLibrary = (library: ReferencesLibrary): void => {

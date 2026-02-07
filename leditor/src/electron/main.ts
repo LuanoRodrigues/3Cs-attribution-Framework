@@ -49,6 +49,13 @@ type LlmProviderId = "openai" | "deepseek" | "mistral" | "gemini";
 type LlmCatalogModel = { id: string; label: string; description?: string };
 type LlmCatalogProvider = { id: LlmProviderId; label: string; envKey: string; models: LlmCatalogModel[] };
 
+const DEFAULT_MODEL_BY_PROVIDER: Record<LlmProviderId, string> = {
+  openai: "codex-mini-latest",
+  deepseek: "deepseek-chat",
+  mistral: "mistral-small-latest",
+  gemini: "gemini-2.5-flash"
+};
+
 const normalizeError = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 const randomToken = (): string => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 
@@ -179,6 +186,14 @@ const resolveDocxExporterPath = (): string => {
   return candidates[0];
 };
 
+const resolveAppIconPath = (): string => {
+  const iconPath = path.join(app.getAppPath(), "assets", "icons", "leditor.png");
+  if (!fs.existsSync(iconPath)) {
+    throw new Error(`[leditor] app icon missing at ${iconPath}`);
+  }
+  return iconPath;
+};
+
 const installAppMenu = (): void => {
   // We ship a Word-like in-app ribbon; disable the native Electron menu bar.
   // On macOS this also removes the top application menu.
@@ -239,6 +254,10 @@ const summarizeIpcRequest = (channel: string, request: unknown): Record<string, 
     }
     case "leditor:open-pdf-viewer":
       return { channel, payloadKeys: obj?.payload && typeof obj.payload === "object" ? Object.keys(obj.payload).length : 0 };
+    case "leditor:read-binary-file":
+    case "leditor:read-file":
+    case "leditor:file-exists":
+      return { channel, sourcePathLen: typeof obj?.sourcePath === "string" ? obj.sourcePath.length : 0 };
     case "leditor:resolve-pdf-path":
       return {
         channel,
@@ -337,10 +356,10 @@ const getCatalog = (): LlmCatalogProvider[] => [
     label: "OpenAI",
     envKey: "OPENAI_API_KEY",
     models: [
-      { id: "codex-mini-latest", label: "Codex Mini", description: "Deterministic edits" },
       { id: "gpt-5-mini", label: "GPT-5 Mini", description: "Fast and responsive" },
       { id: "gpt-5", label: "GPT-5", description: "Reliable general model" },
-      { id: "gpt-5.1", label: "GPT-5.1", description: "Advanced reasoning" }
+      { id: "o3-mini", label: "O3 Mini", description: "Compact reasoning" },
+      { id: "codex-mini-latest", label: "Codex Mini", description: "Deterministic edits" }
     ]
   },
   {
@@ -349,7 +368,9 @@ const getCatalog = (): LlmCatalogProvider[] => [
     envKey: "DEEP_SEEK_API_KEY",
     models: [
       { id: "deepseek-chat", label: "DeepSeek Chat", description: "General chat" },
-      { id: "deepseek-reasoner", label: "DeepSeek Reasoner", description: "Reasoning-focused" }
+      { id: "deepseek-coder", label: "DeepSeek Coder", description: "Code-focused" },
+      { id: "deepseek-reasoner", label: "DeepSeek Reasoner", description: "Reasoning-focused" },
+      { id: "deepseek-r1", label: "DeepSeek R1", description: "Advanced reasoning" }
     ]
   },
   {
@@ -368,9 +389,10 @@ const getCatalog = (): LlmCatalogProvider[] => [
     label: "Gemini",
     envKey: "LU_GEMINI_API_KEY",
     models: [
-      { id: "gemini-2.5-flash", label: "Gemini Flash", description: "Excellent all-rounder" },
-      { id: "gemini-2.5-pro", label: "Gemini Pro", description: "Flagship model" },
-      { id: "gemini-3-pro-preview", label: "Gemini 3 Pro Preview", description: "Preview" }
+      { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash", description: "Excellent all-rounder" },
+      { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro", description: "Flagship model" },
+      { id: "gemini-1.5-flash", label: "Gemini 1.5 Flash", description: "Fast and efficient" },
+      { id: "gemini-1.5-pro", label: "Gemini 1.5 Pro", description: "High quality" }
     ]
   }
 ];
@@ -406,8 +428,11 @@ const getDefaultModelForProvider = (provider: LlmProviderId): { model: string; m
   if (fromEnv) return { model: fromEnv, modelFromEnv: true };
   const catalog = getCatalog();
   const entry = catalog.find((p) => p.id === provider);
-  const first = entry?.models?.[0]?.id || (provider === "openai" ? "codex-mini-latest" : "");
-  return { model: first, modelFromEnv: false };
+  const preferred = DEFAULT_MODEL_BY_PROVIDER[provider];
+  const hasPreferred = Boolean(preferred && entry?.models?.some((m) => m.id === preferred));
+  const fallback = hasPreferred ? preferred : entry?.models?.[0]?.id;
+  const model = fallback || (provider === "openai" ? "codex-mini-latest" : "");
+  return { model, modelFromEnv: false };
 };
 
 const extractFirstJsonObject = (text: string): any => {
@@ -490,6 +515,26 @@ const callGeminiGenerateContent = async (args: {
   return String(json?.candidates?.[0]?.content?.text ?? "").trim();
 };
 
+const extractResponseText = (response: any): string => {
+  if (!response) return "";
+  const direct = typeof response?.output_text === "string" ? response.output_text.trim() : "";
+  if (direct) return direct;
+  const outputs = Array.isArray(response?.output) ? response.output : [];
+  const parts: string[] = [];
+  for (const out of outputs) {
+    if (typeof out?.text === "string") parts.push(out.text);
+    const content = Array.isArray(out?.content) ? out.content : [];
+    for (const item of content) {
+      if (typeof item?.text === "string") parts.push(item.text);
+      else if (typeof item?.output_text === "string") parts.push(item.output_text);
+      else if (typeof item?.value === "string") parts.push(item.value);
+      else if (typeof item?.json === "string") parts.push(item.json);
+      else if (item?.json && typeof item.json === "object") parts.push(JSON.stringify(item.json));
+    }
+  }
+  return parts.join("").trim();
+};
+
 const callLlmText = async (args: {
   provider: LlmProviderId;
   apiKey: string;
@@ -500,6 +545,7 @@ const callLlmText = async (args: {
   stream?: boolean;
   onStreamDelta?: (delta: string) => void;
   signal?: AbortSignal;
+  textFormat?: any;
 }): Promise<string> => {
   const provider = args.provider;
   if (provider === "openai") {
@@ -511,6 +557,9 @@ const callLlmText = async (args: {
       if (Number.isFinite(args.maxOutputTokens)) {
         body.max_output_tokens = Math.max(1, Math.floor(Number(args.maxOutputTokens)));
       }
+      if (args.textFormat) {
+        body.text = { format: args.textFormat };
+      }
       if (args.stream) body.stream = true;
       return client.responses.create(body, { signal: args.signal });
     };
@@ -518,16 +567,40 @@ const callLlmText = async (args: {
       if (args.stream && typeof args.onStreamDelta === "function") {
         const stream: any = await createResponse();
         let output = "";
+        let sawDelta = false;
         for await (const event of stream) {
-          if (event?.type === "response.output_text.delta" && typeof event.delta === "string") {
-            output += event.delta;
-            args.onStreamDelta(event.delta);
+          const type = String(event?.type || "");
+          if (type === "response.output_text.delta" || type === "response.output_json.delta") {
+            const delta = event?.delta;
+            if (typeof delta === "string") {
+              sawDelta = true;
+              output += delta;
+              args.onStreamDelta(delta);
+            } else if (delta && typeof delta === "object") {
+              const text = JSON.stringify(delta);
+              sawDelta = true;
+              output += text;
+              args.onStreamDelta(text);
+            }
+          } else if (!sawDelta && (type === "response.output_text.done" || type === "response.output_json.done")) {
+            const doneText =
+              typeof event?.text === "string"
+                ? event.text
+                : event?.json && typeof event.json === "object"
+                  ? JSON.stringify(event.json)
+                  : typeof event?.json === "string"
+                    ? event.json
+                    : "";
+            if (doneText) {
+              output += doneText;
+              args.onStreamDelta(doneText);
+            }
           }
         }
         return output.trim();
       }
       const response: any = await createResponse();
-      return String(response?.output_text ?? "").trim();
+      return extractResponseText(response);
     } catch (error) {
       throw error;
     }
@@ -725,20 +798,32 @@ const runCompatAgentWorkflow = async (args: {
     .map((m) => `${m.role.toUpperCase()}: ${m.content}`)
     .join("\n");
   const inputText = historyBlock ? `Conversation history:\n${historyBlock}\n\n${user}` : user;
-  const raw = await callLlmText({
-    provider: args.provider,
-    apiKey: args.apiKey,
-    model: args.model,
-    system,
-    input: inputText,
-    signal: args.signal
-  });
-  const parsed = extractFirstJsonObject(raw);
-  const assistantText = typeof parsed?.assistantText === "string" ? parsed.assistantText : "";
-  const operationsRaw = Array.isArray(parsed?.operations) ? parsed.operations : [];
-  const applyText = typeof parsed?.applyText === "string" ? parsed.applyText : "";
-  const editsRaw = Array.isArray(parsed?.edits) ? parsed.edits : [];
-  const operations = operationsRaw
+  const isSectionAction = isSectionActionId(typeof args.payload.actionId === "string" ? args.payload.actionId : "");
+  const runOnce = async (input: string): Promise<{
+    assistantText: string;
+    operationsRaw: any[];
+    applyText: string;
+    editsRaw: any[];
+  }> => {
+    const raw = await callLlmText({
+      provider: args.provider,
+      apiKey: args.apiKey,
+      model: args.model,
+      system,
+      input,
+      signal: args.signal
+    });
+    const parsed = extractFirstJsonObject(raw);
+    return {
+      assistantText: typeof parsed?.assistantText === "string" ? parsed.assistantText : "",
+      operationsRaw: Array.isArray(parsed?.operations) ? parsed.operations : [],
+      applyText: typeof parsed?.applyText === "string" ? parsed.applyText : "",
+      editsRaw: Array.isArray(parsed?.edits) ? parsed.edits : []
+    };
+  };
+
+  let { assistantText, operationsRaw, applyText, editsRaw } = await runOnce(inputText);
+  let operations = operationsRaw
     .map((op: any) => {
       const kind = String(op?.op || "");
       if (kind === "replaceSelection" && typeof op?.text === "string") {
@@ -754,7 +839,7 @@ const runCompatAgentWorkflow = async (args: {
     })
     .filter(Boolean) as AgentOperation[];
 
-  const edits = editsRaw
+  let edits = editsRaw
     .map((e: any) => ({
       action: String(e?.action || ""),
       start: Number(e?.start),
@@ -762,6 +847,40 @@ const runCompatAgentWorkflow = async (args: {
       text: typeof e?.text === "string" ? e.text : String(e?.text ?? "")
     }))
     .filter((e: any) => e.action === "replace" && Number.isFinite(e.start) && Number.isFinite(e.end)) as AgentEdit[];
+
+  if (isSectionAction && operations.length === 0 && edits.length === 0 && !applyText) {
+    const repairInput = [
+      inputText,
+      "",
+      "IMPORTANT: Your previous response omitted operations.",
+      "Return STRICT JSON ONLY with non-empty operations that replace the specified paragraph(s).",
+      "Do not include any explanation outside JSON."
+    ].join("\n");
+    ({ assistantText, operationsRaw, applyText, editsRaw } = await runOnce(repairInput));
+    operations = operationsRaw
+      .map((op: any) => {
+        const kind = String(op?.op || "");
+        if (kind === "replaceSelection" && typeof op?.text === "string") {
+          return { op: "replaceSelection" as const, text: op.text };
+        }
+        if (kind === "replaceParagraph" && Number.isFinite(op?.n) && typeof op?.text === "string") {
+          return { op: "replaceParagraph" as const, n: Number(op.n), text: op.text };
+        }
+        if (kind === "replaceDocument" && typeof op?.text === "string") {
+          return { op: "replaceDocument" as const, text: op.text };
+        }
+        return null;
+      })
+      .filter(Boolean) as AgentOperation[];
+    edits = editsRaw
+      .map((e: any) => ({
+        action: String(e?.action || ""),
+        start: Number(e?.start),
+        end: Number(e?.end),
+        text: typeof e?.text === "string" ? e.text : String(e?.text ?? "")
+      }))
+      .filter((e: any) => e.action === "replace" && Number.isFinite(e.start) && Number.isFinite(e.end)) as AgentEdit[];
+  }
 
   if (edits.length > 0) {
     try {
@@ -852,15 +971,23 @@ const runOpenAiAgentWorkflow = async (args: {
   const outputSchema = z.object({
     assistantText: z.string(),
     operations: z.array(operationSchema),
-    edits: z.array(editSchema).optional(),
-    citations: z.array(z.object({ url: z.string().optional(), title: z.string().optional(), snippet: z.string().optional() })).optional(),
-    actions: z.array(z.object({ type: z.string(), payload: z.any().optional() })).optional()
+    edits: z.array(editSchema).nullable(),
+    citations: z
+      .array(
+        z.object({
+          url: z.string().nullable(),
+          title: z.string().nullable(),
+          snippet: z.string().nullable()
+        })
+      )
+      .nullable(),
+    actions: z.array(z.object({ type: z.string(), payload: z.any().nullable() })).nullable()
   });
   const classifySchema = z.object({
-    route: z.enum(["edit", "internal_qa", "external_fact", "general"]).default("edit"),
-    needsSearch: z.boolean().default(false),
-    needsCode: z.boolean().default(false),
-    reason: z.string().optional()
+    route: z.enum(["edit", "internal_qa", "external_fact", "general"]),
+    needsSearch: z.boolean(),
+    needsCode: z.boolean(),
+    reason: z.string().nullable()
   });
 
   const rewriteSchema = z.object({ instruction: z.string() });
@@ -1010,13 +1137,42 @@ const runOpenAiAgentWorkflow = async (args: {
         : classification.route === "general"
           ? generalAgent
           : editAgent;
-  const result = (await withRetry(
-    () => run(selectedAgent, userInput, { signal: args.signal, onEvent, stream: Boolean(onEvent) }),
-    1
-  )) as any;
-  const output = result?.finalOutput;
+  const runOnce = async (stream: boolean): Promise<{ result: any; output: any; streamError?: unknown }> => {
+    const result = (await withRetry(
+      () => run(selectedAgent, userInput, { signal: args.signal, onEvent: stream ? onEvent : undefined, stream }),
+      1
+    )) as any;
+    let streamError: unknown = null;
+    if (result && typeof result === "object" && "completed" in result) {
+      try {
+        await result.completed;
+      } catch (error) {
+        streamError = error;
+      }
+    }
+    const output = result?.finalOutput;
+    return { result, output, streamError };
+  };
+
+  const wantsStream = Boolean(onEvent);
+  let { result, output, streamError } = await runOnce(wantsStream);
+  if (
+    wantsStream &&
+    (!output || typeof output.assistantText !== "string" || !Array.isArray(output.operations)) &&
+    !args.signal?.aborted
+  ) {
+    const errText = normalizeError(streamError ?? (result as any)?.error ?? "streaming_failed");
+    agentDbg("streaming_failed_retry_non_stream", {
+      requestId: args.requestId,
+      route: classification.route,
+      error: errText
+    });
+    onStream?.({ requestId: args.requestId || "", kind: "status", message: "Streaming failed. Retrying..." });
+    ({ result, output, streamError } = await runOnce(false));
+  }
   if (!output || typeof output.assistantText !== "string" || !Array.isArray(output.operations)) {
-    throw new Error("Agent response missing final output.");
+    const errText = normalizeError(streamError ?? (result as any)?.error ?? "unknown_error");
+    throw new Error(`Agent response missing final output. ${errText}`);
   }
   const outputEdits = Array.isArray((output as any).edits)
     ? ((output as any).edits as AgentEdit[])
@@ -1032,6 +1188,18 @@ const runOpenAiAgentWorkflow = async (args: {
     actions: Array.isArray((output as any).actions) ? (output as any).actions : undefined,
     route: classification.route
   };
+};
+
+const isSectionActionId = (value: string): boolean => {
+  const normalized = String(value || "").trim().toLowerCase();
+  return (
+    normalized === "abstract" ||
+    normalized === "introduction" ||
+    normalized === "methodology" ||
+    normalized === "findings" ||
+    normalized === "recommendations" ||
+    normalized === "conclusion"
+  );
 };
 
 const buildAgentPrompt = (payload: AgentRequestPayload): { system: string; user: string } => {
@@ -1052,6 +1220,9 @@ const buildAgentPrompt = (payload: AgentRequestPayload): { system: string; user:
   const personaDirectivesLine = `PersonaDirectives:\n${compiledPersona.directives}`;
   const actionIdRaw = typeof payload.actionId === "string" ? payload.actionId.trim() : "";
   const actionLine = actionIdRaw ? `Action: ${actionIdRaw}. Follow this action unless it conflicts with the instruction.` : "";
+  const forceEditsLine = isSectionActionId(actionIdRaw)
+    ? "This request is a section draft/update. You MUST return at least one operation."
+    : "";
 
   const hasTargets = Array.isArray(payload.targets) && payload.targets.length > 0;
   const operationSchemaLines =
@@ -1068,7 +1239,7 @@ const buildAgentPrompt = (payload: AgentRequestPayload): { system: string; user:
     personaDirectivesLine,
     actionLine,
     "Return STRICT JSON only (no markdown, no backticks, no extra keys).",
-    'Schema: {"assistantText": string, "operations": Array<Operation>, "edits"?: Array<Edit>}.',
+    'Schema: {"assistantText": string, "operations": Array<Operation>, "edits": Array<Edit> | null}.',
     "Operation is one of:",
     ...operationSchemaLines,
     "Edit is: {\"action\":\"replace\",\"start\":number,\"end\":number,\"text\":string} with offsets relative to the provided text block.",
@@ -1076,7 +1247,9 @@ const buildAgentPrompt = (payload: AgentRequestPayload): { system: string; user:
     "If the instruction is NOT a request to modify text (e.g. user asks a question), return operations: [] and answer in assistantText.",
     "You may return edits instead of operations. If edits is present, operations may be [].",
     "Never include surrounding quotes in text fields; return raw text."
-  ].join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   if (scope === "selection") {
     const sel = payload.selection;
@@ -1084,10 +1257,6 @@ const buildAgentPrompt = (payload: AgentRequestPayload): { system: string; user:
       throw new Error("agent-request: selection.text is required for selection scope");
     }
     const selected = sel.text;
-    const chunkHint =
-      typeof payload.settings?.chunkSize === "number" && payload.settings.chunkSize > 0
-        ? `Chunk limit: ${payload.settings.chunkSize} characters.`
-        : "";
     const userParts = [
       "Task: Apply the instruction to the TARGET TEXT.",
       "If the instruction is not requesting a text change, answer in assistantText and return operations: [].",
@@ -1098,9 +1267,6 @@ const buildAgentPrompt = (payload: AgentRequestPayload): { system: string; user:
       "TARGET TEXT (rewrite this):",
       selected
     ];
-    if (chunkHint) {
-      userParts.push("", chunkHint);
-    }
     const user = userParts.join("\n");
     return { system, user };
   }
@@ -1110,10 +1276,6 @@ const buildAgentPrompt = (payload: AgentRequestPayload): { system: string; user:
     throw new Error("agent-request: document.text is required for document scope");
   }
   const targets = Array.isArray(payload.targets) ? payload.targets : [];
-  const chunkHint =
-    typeof payload.settings?.chunkSize === "number" && payload.settings.chunkSize > 0
-      ? `Chunk limit: ${payload.settings.chunkSize} characters.`
-      : "";
   const targetHint =
     targets.length > 0
       ? [
@@ -1142,10 +1304,19 @@ const buildAgentPrompt = (payload: AgentRequestPayload): { system: string; user:
             .filter(Boolean)
         ].join("\n")
       : "";
-  const userParts = ["Task:", targetHint, "Instruction:", instruction, metaBlock, "", "DOCUMENT TEXT:", doc.text];
-  if (chunkHint) {
-    userParts.push("", chunkHint);
-  }
+  const userParts = [
+    "Task:",
+    targetHint,
+    isSectionActionId(actionIdRaw)
+      ? "This is a drafting action. You MUST return operations that replace the target paragraph(s)."
+      : "",
+    "Instruction:",
+    instruction,
+    metaBlock,
+    "",
+    "DOCUMENT TEXT:",
+    doc.text
+  ].filter(Boolean);
   const user = userParts.join("\n");
   return { system, user };
 };
@@ -1183,7 +1354,14 @@ const runAgentRequestInternal = async (
         ? (rawProvider as LlmProviderId)
         : "openai";
     const fallback = getDefaultModelForProvider(provider);
-    const model = String(settings?.model || "").trim() || fallback.model || (provider === "openai" ? "codex-mini-latest" : "");
+    const settingsModel =
+      settings && typeof (settings as any)?.modelByProvider?.[provider] === "string"
+        ? String((settings as any).modelByProvider[provider]).trim()
+        : "";
+    const model =
+      settingsModel ||
+      fallback.model ||
+      (provider === "openai" ? "codex-mini-latest" : "");
     const apiKey = getProviderApiKey(provider, settings?.apiKey);
     if (!apiKey) {
       const envKey = getProviderEnvKeyName(provider);
@@ -1457,12 +1635,36 @@ const convertWslUncPath = (value: string): string => {
   return trimmed;
 };
 
-const normalizeFsPath = (value: string): string => {
+const convertWindowsDrivePath = (value: string): string => {
   const trimmed = String(value || "").trim();
   if (!trimmed) return "";
-  if (trimmed.startsWith("\\\\")) {
-    return convertWslUncPath(trimmed);
+  const normalized = trimmed.replace(/\\/g, "/");
+  const match = normalized.match(/^([A-Za-z]):\/(.*)$/);
+  if (!match) return trimmed;
+  if (process.platform === "win32") return trimmed;
+  const drive = String(match[1] || "").toLowerCase();
+  const rest = String(match[2] || "");
+  return `/mnt/${drive}/${rest}`;
+};
+
+const normalizeFsPath = (value: string): string => {
+  let trimmed = String(value || "").trim();
+  if (!trimmed) return "";
+  if (/^file:\/\//i.test(trimmed)) {
+    trimmed = trimmed.replace(/^file:\/\//i, "");
+    try {
+      trimmed = decodeURIComponent(trimmed);
+    } catch {
+      // ignore decode failures
+    }
+    if (trimmed.startsWith("/") && /^[A-Za-z]:\//.test(trimmed.slice(1))) {
+      trimmed = trimmed.slice(1);
+    }
   }
+  if (trimmed.startsWith("\\\\")) {
+    trimmed = convertWslUncPath(trimmed);
+  }
+  trimmed = convertWindowsDrivePath(trimmed);
   return trimmed;
 };
 
@@ -2289,6 +2491,7 @@ const searchDirectQuoteLookup = async (args: {
       if (score <= 0) continue;
       results.push({
         dqid: String(id),
+        itemKey: typeof raw?.item_key === "string" ? raw.item_key : typeof raw?.itemKey === "string" ? raw.itemKey : undefined,
         title: typeof raw?.title === "string" ? raw.title : typeof raw?.title_clean === "string" ? raw.title_clean : undefined,
         author: typeof raw?.author_summary === "string" ? raw.author_summary : typeof raw?.author === "string" ? raw.author : undefined,
         year: typeof raw?.year === "string" ? raw.year : undefined,
@@ -2314,6 +2517,7 @@ const searchDirectQuoteLookup = async (args: {
 type EmbeddingIndexItem = {
   id: string;
   title: string;
+  itemKey?: string;
   author?: string;
   year?: string;
   source?: string;
@@ -2355,6 +2559,11 @@ const normalizeEmbeddingText = (value: string): string =>
     .replace(/\s+/g, " ")
     .replace(/[“”]/g, '"')
     .replace(/[‘’]/g, "'")
+    .trim();
+
+const normalizeDiffText = (value: string): string =>
+  String(value || "")
+    .replace(/\s+/g, " ")
     .trim();
 
 const loadEmbeddingIndexFromDisk = async (args: {
@@ -2504,6 +2713,7 @@ const ensureEmbeddingIndex = async (args: {
           items.push({
             id,
             title,
+            itemKey: typeof raw?.item_key === "string" ? raw.item_key : typeof raw?.itemKey === "string" ? raw.itemKey : undefined,
             author: typeof raw?.author_summary === "string" ? raw.author_summary : undefined,
             year: typeof raw?.year === "string" ? raw.year : undefined,
             source: typeof raw?.source === "string" ? raw.source : undefined,
@@ -3034,6 +3244,7 @@ const createWindow = () => {
     useContentSize: true,
     autoHideMenuBar: true,
     frame: true,
+    icon: resolveAppIconPath(),
     webPreferences: {
       preload: path.join(app.getAppPath(), "dist", "electron", "preload.js"),
       contextIsolation: true,
@@ -3543,16 +3754,112 @@ app.whenReady().then(() => {
 
         const system = [
           "You are an academic writing assistant inside an offline editor.",
-          "Rewrite ONE sentence to make the claim more precise and substantiated using the matched evidence.",
-          "Rewrite the sentence immediately preceding the anchor(s).",
-          "Do NOT include the anchor text in the rewrite; it will remain after the sentence.",
-          "Do NOT add or remove citations or anchors.",
-          "If matches conflict, narrow/qualify the claim or note uncertainty.",
+          "Goal: decide whether the matched evidence directly supports or refutes the claim in old_text.",
+          "If evidence supports/refutes, propose the minimal change plus anchors; otherwise do not propose a change.",
+          "Rewrite the sentence immediately preceding the anchor(s). Do NOT include any anchor/citation text in the rewrite.",
+          "Choose ONE action:",
+          "- add_anchor_only: use when evidence fully corroborates; rewrite must equal old_text; only add anchor(s) next to the existing anchors.",
+          "- append_clause_after_anchor: use when evidence partially corroborates or refutes; add a short clause AFTER the existing anchors, then add anchor(s) for that clause. Refutations MUST use this.",
+          "- prepend_clause_before_anchor: use when evidence partially corroborates and a short clause fits BEFORE the existing anchors.",
+          "- none: use when evidence is mixed/uncertain or does not support/refute.",
+          "Clause must be <= 20 words, no quotes, no citations.",
+          "Anchors must come ONLY from matches. For each anchor include dqid, dataKey (match.itemKey), dataQuoteId (match.dqid), title (prefer match.directQuote or paraphrase), and text formatted as (Author, Year, p. Page). If match.author has multiple authors, use ONLY the first listed author.",
           "You will be given old_text. Return old_text EXACTLY as provided.",
-          'Return STRICT JSON only: {"old_text":string,"rewrite":string,"stance":"corroborates"|"refutes"|"mixed"|"uncertain","justification":string,"diffs":string}.',
+          'Return STRICT JSON only: {"old_text":string,"rewrite":string,"stance":"corroborates"|"refutes"|"mixed"|"uncertain","justification":string,"diffs":string,"action":"add_anchor_only"|"append_clause_after_anchor"|"prepend_clause_before_anchor"|"none","clause":string,"anchors":object[]}.',
           "rewrite must be a single sentence.",
           "justification must be two sentences (<= 300 chars total)."
         ].join("\n");
+
+        const pickPrimaryAuthor = (value: string): string => {
+          const raw = String(value ?? "").trim();
+          if (!raw) return "";
+          const parts = raw.split(/;|\band\b|\s&\s/i).map((part) => part.trim()).filter(Boolean);
+          if (parts.length > 0) return parts[0] ?? raw;
+          return raw;
+        };
+
+        const formatAnchorText = (match: any, fallbackText: string): string => {
+          const author = typeof match?.author === "string" ? pickPrimaryAuthor(match.author) : "";
+          const year = typeof match?.year === "string" ? match.year.trim() : "";
+          const page = Number.isFinite(match?.page) ? String(match.page) : "";
+          const parts = [author, year, page ? `p. ${page}` : ""].filter(Boolean);
+          if (parts.length) return `(${parts.join(", ")})`;
+          return fallbackText;
+        };
+
+        const normalizeAnchorEdits = (parsed: any, matches: any[]) => {
+          if (!parsed || typeof parsed !== "object") return null;
+          const rawAction =
+            typeof parsed.action === "string"
+              ? parsed.action
+              : typeof parsed.anchor_action === "string"
+                ? parsed.anchor_action
+                : "";
+          const action = rawAction.trim().toLowerCase();
+          const normalizedAction =
+            action === "add_anchor_only" || action === "append_clause_after_anchor" || action === "prepend_clause_before_anchor"
+              ? action
+              : "none";
+          const rawAnchors = Array.isArray(parsed.anchors)
+            ? parsed.anchors
+            : Array.isArray(parsed.anchor)
+              ? parsed.anchor
+              : [];
+          if (!rawAnchors.length || normalizedAction === "none") return null;
+          const byDqid = new Map(matches.map((m) => [String(m?.dqid ?? ""), m]));
+          const anchors = rawAnchors
+            .map((raw: any) => {
+              const dqid = String(raw?.dqid ?? raw?.dataQuoteId ?? raw?.dataDqid ?? raw?.id ?? "").trim();
+              if (!dqid) return null;
+              const match = byDqid.get(dqid);
+              if (!match) return null;
+              const dataKey = String(raw?.dataKey ?? match?.itemKey ?? match?.dqid ?? "").trim();
+              const dataQuoteId = String(raw?.dataQuoteId ?? dqid).trim();
+              const title = String(raw?.title ?? match?.directQuote ?? match?.paraphrase ?? match?.title ?? "").trim();
+              const textFallback = typeof raw?.text === "string" ? raw.text.trim() : "";
+              const text = formatAnchorText(match, textFallback);
+              if (!text) return null;
+              const safeTitle = title || textFallback || text;
+              const href = typeof raw?.href === "string" && raw.href ? raw.href : dqid ? `dq://${dqid}` : "";
+              return { dqid, dataKey, dataQuoteId, title: safeTitle, text, href };
+            })
+            .filter(Boolean);
+          if (!anchors.length) return null;
+          const clause = typeof parsed.clause === "string" ? parsed.clause.trim() : "";
+          return { action: normalizedAction, clause, anchors };
+        };
+
+        const normalizeAuthorToken = (value: string): string =>
+          String(value ?? "")
+            .toLowerCase()
+            .replace(/[^a-z0-9\s]/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+
+        const extractAuthorTokens = (value: string): string[] => {
+          const raw = String(value ?? "");
+          if (!raw) return [];
+          const withoutParens = raw.replace(/[()]/g, " ");
+          const beforeYear = withoutParens.split(/\b\d{4}\b/)[0] ?? "";
+          const beforePage = beforeYear.split(/\bp\.\b/i)[0] ?? beforeYear;
+          const parts = beforePage
+            .split(/;|&|\band\b|,/i)
+            .map((part) => part.trim())
+            .filter(Boolean);
+          const tokens: string[] = [];
+          for (const part of parts) {
+            const normalized = normalizeAuthorToken(part);
+            if (normalized) tokens.push(normalized);
+            const pieces = part.split(/\s+/).filter(Boolean);
+            if (pieces.length) {
+              const last = normalizeAuthorToken(pieces[pieces.length - 1] ?? "");
+              if (last) tokens.push(last);
+            }
+          }
+          return Array.from(new Set(tokens.filter((t) => t.length >= 3)));
+        };
+
+        const escapeRegex = (value: string): string => String(value ?? "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
         const results: any[] = [];
         let completed = 0;
@@ -3561,7 +3868,11 @@ app.whenReady().then(() => {
           const anchors = Array.isArray(req?.anchors) ? req.anchors : [];
           const anchorMeta = anchors.map((a: any) => ({
             text: String(a?.text ?? ""),
-            title: String(a?.title ?? "")
+            title: String(a?.title ?? ""),
+            href: String(a?.href ?? ""),
+            dataKey: String(a?.dataKey ?? ""),
+            dataDqid: String(a?.dataDqid ?? ""),
+            dataQuoteId: String(a?.dataQuoteId ?? "")
           }));
           const oldText = typeof req?.oldText === "string" ? String(req.oldText) : typeof req?.old_text === "string" ? String(req.old_text) : "";
           const paragraphText = String(req?.paragraphText ?? "");
@@ -3570,6 +3881,7 @@ app.whenReady().then(() => {
           const matches = matchesRaw.map((m) => ({
             dqid: m.item.id,
             title: m.item.title,
+            itemKey: m.item.itemKey,
             author: m.item.author,
             year: m.item.year,
             source: m.item.source,
@@ -3579,12 +3891,77 @@ app.whenReady().then(() => {
             score: m.score
           }));
 
+          const anchorDqids = new Set<string>();
+          const anchorDataKeys = new Set<string>();
+          const anchorAuthorTokens = new Set<string>();
+          const extractDqidFromHref = (hrefRaw: string): string => {
+            const href = String(hrefRaw ?? "").trim();
+            if (href.startsWith("dq://")) return href.slice("dq://".length).trim().toLowerCase();
+            const m = href.match(/[?#&](?:dqid|quote_id|quote-id)=([^&#]+)/i);
+            if (m && m[1]) return decodeURIComponent(m[1]).trim().toLowerCase();
+            return "";
+          };
+          for (const a of anchorMeta) {
+            const dataKey = String(a?.dataKey ?? "").trim();
+            if (dataKey) anchorDataKeys.add(dataKey);
+            const dqid =
+              String(a?.dataQuoteId ?? a?.dataDqid ?? "").trim().toLowerCase() ||
+              extractDqidFromHref(String(a?.href ?? ""));
+            if (dqid) anchorDqids.add(dqid);
+            const anchorTextTokens = extractAuthorTokens(String(a?.text ?? ""));
+            anchorTextTokens.forEach((t) => anchorAuthorTokens.add(t));
+          }
+          if (anchorDqids.size > 0) {
+            for (const dqid of anchorDqids) {
+              try {
+                const entry = await getDirectQuotePayload(lookupPath, dqid);
+                const authorRaw =
+                  typeof (entry as any)?.author_summary === "string"
+                    ? (entry as any).author_summary
+                    : typeof (entry as any)?.author === "string"
+                      ? (entry as any).author
+                      : "";
+                if (authorRaw) {
+                  const tokens = extractAuthorTokens(authorRaw);
+                  tokens.forEach((t) => anchorAuthorTokens.add(t));
+                }
+              } catch {
+                // ignore
+              }
+            }
+          }
+          const isSameAuthor = (authorRaw: string): boolean => {
+            const normalized = normalizeAuthorToken(authorRaw);
+            if (!normalized || anchorAuthorTokens.size === 0) return false;
+            for (const token of anchorAuthorTokens) {
+              if (!token) continue;
+              if (normalized === token) return true;
+              if (normalized.includes(token) || token.includes(normalized)) return true;
+              try {
+                const re = new RegExp(`\\b${escapeRegex(token)}\\b`);
+                if (re.test(normalized)) return true;
+              } catch {
+                // ignore
+              }
+            }
+            return false;
+          };
+          const filteredMatches = matches.filter((m) => {
+            const matchDqid = String(m?.dqid ?? "").trim().toLowerCase();
+            const matchKey = String(m?.itemKey ?? "").trim();
+            if (matchDqid && anchorDqids.has(matchDqid)) return false;
+            if (matchKey && anchorDataKeys.has(matchKey)) return false;
+            if (m?.author && isSameAuthor(String(m.author))) return false;
+            return true;
+          });
+
           let rewrite = oldText;
           let stance = "uncertain";
           let notes = "";
           let suggestion = "";
           let justification = "";
           let diffs = "";
+          let anchorEdits: any | null = null;
           let errorMessage = "";
           if (oldText && anchorMeta.length > 0) {
             const input = JSON.stringify(
@@ -3592,7 +3969,7 @@ app.whenReady().then(() => {
                 anchors: anchorMeta,
                 old_text: oldText,
                 content: paragraphText.slice(0, 1600),
-                matches: matches.slice(0, 6)
+                matches: filteredMatches.slice(0, 6)
               },
               null,
               2
@@ -3629,6 +4006,19 @@ app.whenReady().then(() => {
                 if (candidate) rewrite = candidate;
                 const s = typeof parsed.stance === "string" ? String(parsed.stance).trim().toLowerCase() : "";
                 if (s === "corroborates" || s === "refutes" || s === "mixed" || s === "uncertain") stance = s;
+                const rawAction =
+                  typeof parsed.action === "string"
+                    ? String(parsed.action).trim().toLowerCase()
+                    : typeof parsed.anchor_action === "string"
+                      ? String(parsed.anchor_action).trim().toLowerCase()
+                      : "";
+                const action =
+                  rawAction === "add_anchor_only" ||
+                  rawAction === "append_clause_after_anchor" ||
+                  rawAction === "prepend_clause_before_anchor" ||
+                  rawAction === "none"
+                    ? rawAction
+                    : "";
                 const rawJustification = typeof parsed.justification === "string" ? String(parsed.justification).trim() : "";
                 const sentences = rawJustification.match(/[^.!?]+[.!?]+/g) ?? [];
                 if (sentences.length >= 2) {
@@ -3642,6 +4032,29 @@ app.whenReady().then(() => {
                 if (!justification) justification = suggestion || notes;
                 if (!notes) notes = justification || suggestion;
                 if (diffs) notes = notes ? `${notes} ${diffs}`.trim() : diffs;
+                if (stance !== "corroborates" && stance !== "refutes") {
+                  rewrite = returnedOldText || oldText;
+                }
+                anchorEdits = normalizeAnchorEdits(parsed, filteredMatches);
+                if (anchorEdits && stance !== "corroborates" && stance !== "refutes") {
+                  anchorEdits = null;
+                }
+                if (anchorEdits && stance === "refutes" && anchorEdits.action !== "append_clause_after_anchor") {
+                  anchorEdits = { ...anchorEdits, action: "append_clause_after_anchor" };
+                }
+                if (anchorEdits && anchorEdits.action === "add_anchor_only") {
+                  rewrite = returnedOldText || oldText;
+                }
+                if (action === "none") {
+                  rewrite = returnedOldText || oldText;
+                  stance = "uncertain";
+                  anchorEdits = null;
+                }
+                const normOld = normalizeDiffText(returnedOldText || oldText);
+                const normRewrite = normalizeDiffText(rewrite);
+                if (!anchorEdits && normRewrite && normOld && normRewrite === normOld) {
+                  stance = "uncertain";
+                }
               }
               if (returnedOldText && returnedOldText !== oldText) {
                 // Use returned old_text for downstream matching if it exists.
@@ -3656,6 +4069,7 @@ app.whenReady().then(() => {
             suggestion = "";
             diffs = "";
             stance = "uncertain";
+            anchorEdits = null;
           }
           const item = {
             key: String(req?.key ?? ""),
@@ -3669,7 +4083,8 @@ app.whenReady().then(() => {
             suggestion,
             justification,
             diffs,
-            matches,
+            ...(anchorEdits ? { anchorEdits } : {}),
+            matches: filteredMatches,
             ...(errorMessage ? { error: errorMessage } : {})
           };
           results.push(item);
@@ -3757,9 +4172,12 @@ app.whenReady().then(() => {
 
         const isDefinition = mode === "definition" || mode === "define";
         const isExplain = mode === "explain";
+        const isThesaurus = !isDefinition && !isExplain;
+        const thesaurusKind = mode === "antonyms" ? "antonyms" : "synonyms";
+        const contextLimit = isExplain ? 800 : 480;
         const sentence =
-          sentenceRaw.length > (isExplain ? 800 : 320)
-            ? sentenceRaw.slice(0, isExplain ? 800 : 320).trim()
+          sentenceRaw.length > contextLimit
+            ? sentenceRaw.slice(0, contextLimit).trim()
             : sentenceRaw;
         const personaBlock = [
           "Persona directives (apply to tone/word choice only; never change output format or length constraints):",
@@ -3769,30 +4187,64 @@ app.whenReady().then(() => {
           ? [
               "You are a dictionary helper inside an offline academic editor.",
               personaBlock,
-              "Given a selection and its sentence, return ONLY the definition text.",
-              "Definition: 1 sentence, <= 25 words, no bullets, no quotes."
+              "Return a dictionary-style definition of the selection as used in the sentence.",
+              "Pick the sense that best matches the provided context (do NOT list multiple senses).",
+              "Definition: 1 short sentence, 8-18 words, no bullets, no quotes, no preface."
             ].join("\n")
           : isExplain
             ? [
                 "You are an explainer inside an offline academic editor.",
                 personaBlock,
-                "Given a selection and its paragraph, return ONLY the explanation text.",
-                "Explanation: 1-2 sentences, <= 40 words, no bullets, no quotes."
+                "Return a plain-language explanation of the selection as used in the paragraph.",
+                "Explain the meaning, not the full sentence; avoid quoting the context.",
+                "Explanation: 2-3 sentences, <= 200 words total, no bullets, no quotes, no preface."
               ].join("\n")
             : [
                 "You are a thesaurus helper inside an offline academic editor.",
                 personaBlock,
-                "Given a selection and its sentence, return STRICT JSON only:",
+                "Given a selection and its context, return STRICT JSON only:",
                 "{\"suggestions\":string[]}",
-                "Exactly 5 short replacements, 1-2 words each, no numbering or quotes.",
-                "Each suggestion must fit the sentence and not repeat the input."
+                `Exactly 5 short ${thesaurusKind}, 1-2 words each, no numbering or quotes.`,
+                "Each suggestion must be a DROP-IN replacement for the selection in context.",
+                "Preserve grammatical form (tense/number), register, and casing.",
+                "If the selection is capitalized or uppercase, match the casing.",
+                "Do not include extra punctuation or explanations."
               ].join("\n");
 
         const user =
-          (isExplain ? "paragraph" : "sentence") + ": " + sentence + "\n" + "selection: " + text;
+          (isExplain ? "paragraph" : "context") +
+          ": " +
+          sentence +
+          "\n" +
+          "selection: " +
+          text +
+          "\n" +
+          "mode: " +
+          mode;
 
-        const maxOutputTokens = isDefinition ? 80 : isExplain ? 130 : 90;
+        const maxOutputTokens = isDefinition ? 60 : isExplain ? 260 : 90;
         const stream = Boolean((request as any)?.stream || payload?.stream);
+        const textFormat =
+          provider === "openai" && isThesaurus
+            ? {
+                type: "json_schema",
+                name: "lexicon_suggestions",
+                strict: true,
+                schema: {
+                  type: "object",
+                  additionalProperties: false,
+                  required: ["suggestions"],
+                  properties: {
+                    suggestions: {
+                      type: "array",
+                      minItems: 5,
+                      maxItems: 5,
+                      items: { type: "string" }
+                    }
+                  }
+                }
+              }
+            : undefined;
         const raw = await callLlmText({
           provider,
           apiKey,
@@ -3801,6 +4253,7 @@ app.whenReady().then(() => {
           input: user,
           signal: undefined,
           maxOutputTokens,
+          textFormat,
           stream: stream && provider === "openai",
           onStreamDelta: (delta) => {
             if (request?.requestId) {
@@ -3876,7 +4329,17 @@ app.whenReady().then(() => {
               .map((s: string) => s.split(/\s+/).slice(0, 2).join(" "))
               .slice(0, 5);
         const definition = isDefinition ? cleanText(parsed?.definition ?? raw, 25) : "";
-        const explanation = isExplain ? cleanText(parsed?.explanation ?? raw, 40) : "";
+        const sentenceCount = (value: string) =>
+          String(value || "")
+            .split(/[.!?]+/)
+            .map((s) => s.trim())
+            .filter(Boolean).length;
+        let explanation = isExplain ? cleanText(parsed?.explanation ?? raw, 200) : "";
+        if (isExplain && explanation && sentenceCount(explanation) < 2) {
+          const filler = "This usage reflects the specific sense intended in the surrounding text.";
+          const merged = `${explanation.replace(/\s+$/g, "")} ${filler}`;
+          explanation = cleanText(merged, 200);
+        }
         if (!isDefinition && !isExplain && suggestions.length === 0) {
           dbg("lexicon", "empty-suggestions", {
             requestId: request?.requestId,
@@ -3936,6 +4399,28 @@ app.whenReady().then(() => {
       const sourcePath = normalizeFsPath(request.sourcePath);
       const data = await fs.promises.readFile(sourcePath, "utf-8");
       return { success: true, data, filePath: sourcePath };
+    } catch (error) {
+      return { success: false, error: normalizeError(error) };
+    }
+  });
+
+  registerIpc("leditor:read-binary-file", async (_event, request: { sourcePath: string; maxBytes?: number }) => {
+    try {
+      const sourcePath = normalizeFsPath(request.sourcePath);
+      const maxBytes = Number.isFinite(request.maxBytes) ? Number(request.maxBytes) : 0;
+      if (maxBytes > 0) {
+        const stat = await fs.promises.stat(sourcePath);
+        if (stat.size > maxBytes) {
+          return { success: false, error: "File exceeds size limit", bytes: stat.size };
+        }
+      }
+      const buffer = await fs.promises.readFile(sourcePath);
+      return {
+        success: true,
+        dataBase64: buffer.toString("base64"),
+        bytes: buffer.length,
+        filePath: sourcePath
+      };
     } catch (error) {
       return { success: false, error: normalizeError(error) };
     }
@@ -4405,6 +4890,7 @@ app.whenReady().then(() => {
         height: 900,
         backgroundColor: "#f6f2e7",
         autoHideMenuBar: true,
+        icon: resolveAppIconPath(),
         webPreferences: {
           preload: path.join(app.getAppPath(), "dist", "electron", "preload.js"),
           contextIsolation: true,

@@ -167,6 +167,10 @@ const readFile = async (request: { sourcePath: string }) => {
   return ipcRenderer.invoke("leditor:read-file", request);
 };
 
+const readBinaryFile = async (request: { sourcePath: string; maxBytes?: number }) => {
+  return ipcRenderer.invoke("leditor:read-binary-file", request);
+};
+
 const writeFile = async (request: { targetPath: string; data: string }) => {
   return ipcRenderer.invoke("leditor:write-file", request);
 };
@@ -206,5 +210,6 @@ const writeFile = async (request: { targetPath: string; data: string }) => {
   insertImage: () => ipcRenderer.invoke("leditor:insert-image"),
   getDefaultLEDOCPath: () => ipcRenderer.invoke("leditor:get-default-ledoc-path"),
   readFile,
+  readBinaryFile,
   writeFile
 });

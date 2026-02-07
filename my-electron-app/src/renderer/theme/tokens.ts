@@ -71,29 +71,29 @@ const themes: Record<NonSystemThemeId, ThemeTokens> = {
   dark: {
     name: "Dark",
 
-    // Deep ink base (not pure black). A touch of cool undertone for modern “editor dark”.
-    bg: "#0b0f14",
-    panel: "#0f141b",
-    panel2: "#151c26",
-    surface: "rgba(17, 24, 39, 0.88)",
-    surfaceMuted: "rgba(22, 30, 46, 0.78)",
+    // Word-like dark theme
+    bg: "#1e1e1e",
+    panel: "#252526",
+    panel2: "#2d2d2d",
+    surface: "rgba(37, 37, 38, 0.92)",
+    surfaceMuted: "rgba(45, 45, 45, 0.86)",
 
-    text: "#e8eef5",
-    muted: "#a8b3c3",
+    text: "rgba(255, 255, 255, 0.92)",
+    muted: "rgba(255, 255, 255, 0.65)",
 
-    border: "rgba(226, 232, 240, 0.14)",
-    borderSoft: "rgba(226, 232, 240, 0.08)",
-    cardBorder: "rgba(16, 163, 127, 0.30)",
+    border: "rgba(255, 255, 255, 0.14)",
+    borderSoft: "rgba(255, 255, 255, 0.08)",
+    cardBorder: "rgba(91, 155, 213, 0.30)",
 
-    // OpenAI-ish teal family
-    accent: "#10a37f",
-    accent2: "#22c55e",
+    // Word blue family
+    accent: "#5b9bd5",
+    accent2: "#2b579a",
 
     shadow: "0 24px 72px rgba(0, 0, 0, 0.70)",
-    gradient1: "rgba(16, 163, 127, 0.22)",
-    gradient2: "rgba(59, 130, 246, 0.18)",
-    ribbon: "rgba(13, 18, 26, 0.92)",
-    focus: "rgba(16, 163, 127, 0.42)",
+    gradient1: "rgba(91, 155, 213, 0.22)",
+    gradient2: "rgba(43, 87, 154, 0.18)",
+    ribbon: "rgba(30, 30, 30, 0.94)",
+    focus: "rgba(91, 155, 213, 0.45)",
 
     // Rich editor-like spectrum (balanced against bg)
     red: "#ff5c7a",
@@ -101,41 +101,41 @@ const themes: Record<NonSystemThemeId, ThemeTokens> = {
     yellow: "#ffd166",
     green: "#2ee59d",
     cyan: "#2dd4bf",
-    blue: "#60a5fa",
+    blue: "#5b9bd5",
     purple: "#a78bfa",
 
     danger: "#ff5c7a",
     warning: "#ffd166",
     success: "#2ee59d",
-    info: "#60a5fa"
+    info: "#5b9bd5"
   },
 
   light: {
     name: "Light",
 
-    // Soft “document” base; avoids harsh #fff everywhere.
-    bg: "#f6f7fb",
-    panel: "#fbfcff",
-    panel2: "#f1f4fa",
+    // Word-like light theme
+    bg: "#f3f2f1",
+    panel: "#ffffff",
+    panel2: "#f8f8f8",
     surface: "rgba(255, 255, 255, 0.92)",
-    surfaceMuted: "rgba(243, 246, 252, 0.92)",
+    surfaceMuted: "rgba(248, 248, 248, 0.92)",
 
-    text: "#111827",
-    muted: "#4b5563",
+    text: "#1e1e1e",
+    muted: "rgba(0, 0, 0, 0.60)",
 
-    border: "rgba(17, 24, 39, 0.12)",
-    borderSoft: "rgba(17, 24, 39, 0.08)",
-    cardBorder: "rgba(37, 99, 235, 0.18)",
+    border: "rgba(0, 0, 0, 0.14)",
+    borderSoft: "rgba(0, 0, 0, 0.08)",
+    cardBorder: "rgba(43, 87, 154, 0.20)",
 
-    // Calm blue family (professional, not “neon primary”)
-    accent: "#2563eb",
-    accent2: "#0f56b3",
+    // Word blue family
+    accent: "#2b579a",
+    accent2: "#3f6fb5",
 
-    shadow: "0 18px 60px rgba(15, 23, 42, 0.12)",
-    gradient1: "rgba(37, 99, 235, 0.14)",
-    gradient2: "rgba(99, 102, 241, 0.12)",
-    ribbon: "rgba(241, 244, 250, 0.96)",
-    focus: "rgba(37, 99, 235, 0.26)",
+    shadow: "0 18px 60px rgba(0, 0, 0, 0.12)",
+    gradient1: "rgba(43, 87, 154, 0.14)",
+    gradient2: "rgba(63, 111, 181, 0.12)",
+    ribbon: "rgba(243, 242, 241, 0.96)",
+    focus: "rgba(43, 87, 154, 0.26)",
 
     // Spectrum tuned to read on light surfaces without looking childish
     red: "#dc2626",
@@ -143,13 +143,13 @@ const themes: Record<NonSystemThemeId, ThemeTokens> = {
     yellow: "#ca8a04",
     green: "#16a34a",
     cyan: "#0f766e",
-    blue: "#2563eb",
+    blue: "#2b579a",
     purple: "#7c3aed",
 
     danger: "#dc2626",
     warning: "#ca8a04",
     success: "#16a34a",
-    info: "#2563eb"
+    info: "#2b579a"
   },
 
   "high-contrast": {

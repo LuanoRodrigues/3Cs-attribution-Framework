@@ -7,9 +7,9 @@
   gap: 8px;
   padding: 8px 9px;
   border-radius: 12px;
-  background: rgba(250, 250, 250, 0.97);
-  border: 1px solid rgba(0, 0, 0, 0.10);
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.10);
+  background: color-mix(in srgb, var(--ui-surface) 94%, transparent);
+  border: 1px solid var(--ui-border-color);
+  box-shadow: var(--ui-shadow-1);
   pointer-events: auto;
   backdrop-filter: blur(8px);
   z-index: 46;
@@ -22,7 +22,7 @@
 .leditor-feedback-hub__title {
   font-size: 12px;
   font-weight: 750;
-  color: rgba(23, 23, 23, 0.92);
+  color: var(--ui-text);
   user-select: none;
 }
 
@@ -34,9 +34,9 @@
 .leditor-feedback-hub__tab {
   cursor: pointer;
   user-select: none;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  background: rgba(255, 255, 255, 0.75);
-  color: rgba(23, 23, 23, 0.80);
+  border: 1px solid var(--ui-border-color);
+  background: color-mix(in srgb, var(--ui-surface) 85%, transparent);
+  color: var(--ui-muted);
   border-radius: 999px;
   padding: 4px 10px;
   font-size: 12px;
@@ -44,18 +44,18 @@
 }
 
 .leditor-feedback-hub__tab:hover {
-  background: rgba(255, 255, 255, 0.92);
+  background: color-mix(in srgb, var(--ui-surface) 92%, transparent);
 }
 
 .leditor-feedback-hub__tab.is-active {
-  border-color: rgba(37, 99, 235, 0.30);
-  background: rgba(37, 99, 235, 0.12);
-  color: rgba(30, 64, 175, 1);
+  border-color: color-mix(in srgb, var(--ui-accent) 40%, var(--ui-border-color));
+  background: color-mix(in srgb, var(--ui-accent) 16%, transparent);
+  color: var(--ui-accent);
 }
 
 .leditor-feedback-hub__counts {
   font-size: 11px;
-  color: rgba(23, 23, 23, 0.64);
+  color: var(--ui-muted);
   user-select: none;
   min-height: 14px;
 }
@@ -69,9 +69,9 @@
 .leditor-feedback-hub__btn {
   cursor: pointer;
   user-select: none;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  background: rgba(255, 255, 255, 0.92);
-  color: rgba(23, 23, 23, 0.86);
+  border: 1px solid var(--ui-border-color);
+  background: color-mix(in srgb, var(--ui-surface) 92%, transparent);
+  color: var(--ui-text);
   border-radius: 10px;
   padding: 5px 8px;
   font-size: 11px;
@@ -79,43 +79,42 @@
 }
 
 .leditor-feedback-hub__btn:hover {
-  background: rgba(245, 245, 245, 0.96);
+  background: color-mix(in srgb, var(--ui-surface-2) 80%, transparent);
 }
 
 .leditor-feedback-hub__btn--primary {
-  border-color: rgba(37, 99, 235, 0.30);
-  background: rgba(37, 99, 235, 0.12);
-  color: rgba(30, 64, 175, 1);
+  border-color: color-mix(in srgb, var(--ui-accent) 40%, var(--ui-border-color));
+  background: color-mix(in srgb, var(--ui-accent) 16%, transparent);
+  color: var(--ui-accent);
 }
 
 .leditor-feedback-hub__btn--primary:hover {
-  background: rgba(37, 99, 235, 0.16);
+  background: color-mix(in srgb, var(--ui-accent) 22%, transparent);
 }
 
 .leditor-app.theme-dark .leditor-feedback-hub {
-  background: rgba(24, 28, 36, 0.92);
-  border-color: rgba(255, 255, 255, 0.14);
+  background: color-mix(in srgb, var(--ui-surface) 90%, transparent);
+  border-color: var(--ui-border-color);
 }
 
 .leditor-app.theme-dark .leditor-feedback-hub__title {
-  color: rgba(240, 240, 240, 0.92);
+  color: var(--ui-text);
 }
 
 .leditor-app.theme-dark .leditor-feedback-hub__tab,
 .leditor-app.theme-dark .leditor-feedback-hub__btn {
-  border-color: rgba(255, 255, 255, 0.14);
-  background: rgba(17, 17, 17, 0.65);
-  color: rgba(247, 247, 247, 0.84);
+  border-color: var(--ui-border-color);
+  background: color-mix(in srgb, var(--ui-surface-2) 80%, transparent);
+  color: var(--ui-text);
 }
 
 .leditor-app.theme-dark .leditor-feedback-hub__tab.is-active,
 .leditor-app.theme-dark .leditor-feedback-hub__btn--primary {
-  border-color: rgba(59, 130, 246, 0.40);
-  background: rgba(59, 130, 246, 0.22);
-  color: rgba(219, 234, 254, 1);
+  border-color: color-mix(in srgb, var(--ui-accent) 45%, var(--ui-border-color));
+  background: color-mix(in srgb, var(--ui-accent) 22%, transparent);
+  color: var(--ui-accent);
 }
 
 .leditor-app.theme-dark .leditor-feedback-hub__counts {
-  color: rgba(247, 247, 247, 0.66);
+  color: var(--ui-muted);
 }
-

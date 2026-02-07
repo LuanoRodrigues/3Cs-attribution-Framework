@@ -2,6 +2,7 @@ import { ToolRegistry } from "../registry/toolRegistry";
 import { PanelGrid } from "../layout/PanelGrid";
 import { DEFAULT_PANEL_PARTS, type PanelId } from "../layout/panelRegistry";
 import { PANEL_PRESETS } from "../layout/presets";
+import { ROUTES, type RouteId } from "../layout/routes";
 import { TabRibbon, TabId } from "../layout/TabRibbon";
 import type { LayoutSnapshot } from "../panels/PanelLayoutRoot";
 import { PanelToolManager } from "../panels/PanelToolManager";
@@ -341,6 +342,48 @@ const panelTools = new PanelToolManager({
 });
 const layoutRoot = panelTools.getRoot("panel2");
 
+let activeRouteId: RouteId | null = null;
+
+function applyRoute(routeId: RouteId, options?: { skipEnsureTools?: boolean }): void {
+  const route = ROUTES[routeId];
+  if (!route) {
+    console.warn("[route] unknown routeId", routeId);
+    return;
+  }
+  activeRouteId = routeId;
+
+  const preset = PANEL_PRESETS[route.presetId];
+  if (preset) {
+    panelGrid.applyPreset(preset);
+  }
+
+  // Enforce: only widgets/tools for the last-clicked route remain.
+  (["panel1", "panel2", "panel3", "panel4"] as PanelId[]).forEach((panelId) => {
+    const allowed = route.allowedToolTypesByPanel[panelId] ?? [];
+    panelTools.closePanelToolsExceptTypes(panelId, allowed);
+  });
+
+  if (options?.skipEnsureTools) {
+    return;
+  }
+
+  // Ensure required tools exist for the route.
+  (route.ensureTools || []).forEach((spec) => {
+    try {
+      panelTools.ensureToolHost(spec.panelId, { replaceContent: true });
+      const id = panelTools.spawnTool(spec.toolType, {
+        panelId: spec.panelId,
+        metadata: { ...(spec.metadata || {}), layoutPresetId: route.presetId }
+      });
+      if (spec.focus) {
+        panelTools.focusTool(id);
+      }
+    } catch (err) {
+      console.warn("[route] unable to ensure tool", { routeId, spec, err });
+    }
+  });
+}
+
 attachGlobalCoderDragSources();
 
 const scheduleIdle = (task: () => void, timeout = 120): void => {
@@ -360,7 +403,7 @@ function ensureWriteToolTab(): void {
   const existing = layoutRoot.serialize().tabs.find((t) => t.toolType === "write-leditor");
   if (!existing) {
     console.info("[WRITE][INIT] auto-spawn write-leditor in panel 2");
-    panelTools.spawnTool("write-leditor", { panelId: "panel2" });
+    panelTools.spawnTool("write-leditor", { panelId: "panel2", metadata: { layoutPresetId: "write:main" } });
     panelGrid.ensurePanelVisible(2);
     debugLogPanelState(2, "after auto-spawn write");
   }
@@ -383,32 +426,32 @@ const setRatiosForRound = (action: AnalyseAction) => {
   if (action === "analyse/open_pdf_viewer" && lastRoundWideLayout) return;
 
   if (action === "analyse/open_dashboard") {
-    panelGrid.applyPreset(PANEL_PRESETS["analyse:dashboard"]);
+    applyRoute("analyse:dashboard");
     lastRoundWideLayout = false;
     return;
   }
   if (action === "analyse/open_corpus") {
-    panelGrid.applyPreset(PANEL_PRESETS["analyse:corpus"]);
+    applyRoute("analyse:corpus");
     lastRoundWideLayout = false;
     return;
   }
   if (action === "analyse/open_sections_r1") {
-    panelGrid.applyPreset(PANEL_PRESETS["analyse:r1"]);
+    applyRoute("analyse:r1");
     lastRoundWideLayout = false;
     return;
   }
   if (action === "analyse/open_phases") {
-    panelGrid.applyPreset(PANEL_PRESETS["analyse:phases"]);
+    applyRoute("analyse:phases");
     lastRoundWideLayout = false;
     return;
   }
   if (action === "analyse/open_sections_r2") {
-    panelGrid.applyPreset(PANEL_PRESETS["analyse:r2"]);
+    applyRoute("analyse:r2");
     lastRoundWideLayout = true;
     return;
   }
   if (action === "analyse/open_sections_r3") {
-    panelGrid.applyPreset(PANEL_PRESETS["analyse:r3"]);
+    applyRoute("analyse:r3");
     lastRoundWideLayout = true;
     return;
   }
@@ -706,7 +749,7 @@ const tabRibbon = new TabRibbon({
     if (showAnalyse) {
       // Entering Analyse should always start from a clean, single-panel dashboard layout
       // (no carryover like retrieve citation graph splitting the workspace).
-      panelGrid.applyPreset(PANEL_PRESETS["analyse:dashboard"]);
+      applyRoute("analyse:dashboard");
       analyseWorkspace.openPageByAction("analyse/open_dashboard");
     }
     if (!showAnalyse && tabId !== "tools") {
@@ -774,13 +817,12 @@ ensureWriteToolTab();
 ensureRetrieveDataHubTool({ replace: true });
 
 document.addEventListener("retrieve:ensure-panel2", () => {
-  panelGrid.ensurePanelVisible(2);
-  // Keep tool instance to avoid expensive remounting.
-  ensureRetrieveDataHubTool();
+  applyRoute("retrieve:datahub");
 });
 
 document.addEventListener("retrieve:open-graph", (event) => {
   const detail = (event as CustomEvent<{ record?: RetrieveRecord; network?: unknown }>).detail;
+  applyRoute("retrieve:graph", { skipEnsureTools: true });
   openRetrieveGraph(detail?.record, detail?.network);
 });
 
@@ -788,11 +830,9 @@ document.addEventListener("retrieve:close-graph", () => {
   closeRetrieveGraph();
   const record = retrieveSearchSelectedRecord;
   if (record) {
-    setRetrieveLayout("search-selected");
-    ensureRetrieveSearchMetaTool();
+    applyRoute("retrieve:search-selected");
   } else {
-    setRetrieveLayout("search-empty");
-    closeRetrieveMetaTool();
+    applyRoute("retrieve:search");
   }
 });
 
@@ -800,8 +840,7 @@ document.addEventListener("retrieve:search-selection", (event) => {
   const detail = (event as CustomEvent<{ record?: RetrieveRecord }>).detail;
   retrieveSearchSelectedRecord = detail?.record;
   if (!retrieveSearchSelectedRecord) {
-    closeRetrieveMetaTool();
-    setRetrieveLayout("search-empty");
+    applyRoute("retrieve:search");
     return;
   }
   if (retrieveGraphToolId) {
@@ -812,8 +851,7 @@ document.addEventListener("retrieve:search-selection", (event) => {
     }
     return;
   }
-  setRetrieveLayout("search-selected");
-  ensureRetrieveSearchMetaTool();
+  applyRoute("retrieve:search-selected");
 });
 
 document.addEventListener("ribbon:action", (event) => {
@@ -1446,7 +1484,7 @@ function ensurePdfSelectionToastElement(): HTMLElement {
   color: var(--text, #eff6ff);
   font-size: 13px;
   font-weight: 500;
-  box-shadow: var(--shadow, 0 24px 48px rgba(15, 23, 42, 0.65));
+  box-shadow: var(--shadow, 0 24px 48px rgba(0, 0, 0, 0.65));
   opacity: 0;
   transform: translateY(10px);
   transition: opacity 200ms ease, transform 200ms ease;
@@ -1561,12 +1599,9 @@ function handleAction(action: RibbonAction): void {
     action.command.action.startsWith("datahub_")
   ) {
     // DataHub actions always target the dedicated DataHub tool in panel 2.
-    panelGrid.ensurePanelVisible(2);
-    setRetrieveLayout("datahub");
+    applyRoute("retrieve:datahub");
     ensureRetrieveDataHubTool({ replace: !retrieveDataHubToolId });
-    closeRetrieveGraph();
     retrieveSearchSelectedRecord = undefined;
-    closeRetrieveMetaTool();
     window.setTimeout(() => {
       document.dispatchEvent(
         new CustomEvent("retrieve-datahub-command", {
@@ -1577,12 +1612,8 @@ function handleAction(action: RibbonAction): void {
     return;
   }
   if (action.command.phase === "retrieve" && action.command.action === "retrieve_open_query_builder") {
-    panelGrid.ensurePanelVisible(2);
-    setRetrieveLayout("search-empty");
-    closeRetrieveGraph();
     retrieveSearchSelectedRecord = undefined;
-    closeRetrieveMetaTool();
-    ensureRetrieveSearchAppTool();
+    applyRoute("retrieve:search");
     return;
   }
   if (action.command.phase === "retrieve" && action.command.action === "retrieve_set_provider") {
@@ -1593,11 +1624,7 @@ function handleAction(action: RibbonAction): void {
     );
     if (raw === null) return;
     writeRetrieveQueryDefaults({ provider: raw.trim() as RetrieveProviderId });
-    panelGrid.ensurePanelVisible(2);
-    setRetrieveLayout("search-empty");
-    closeRetrieveGraph();
-    closeRetrieveMetaTool();
-    ensureRetrieveSearchAppTool();
+    applyRoute("retrieve:search");
     return;
   }
   if (action.command.phase === "retrieve" && action.command.action === "retrieve_set_sort") {
@@ -1605,11 +1632,7 @@ function handleAction(action: RibbonAction): void {
     const raw = window.prompt(`Sort (relevance, year)\n\nCurrent: ${defaults.sort}`, String(defaults.sort));
     if (raw === null) return;
     writeRetrieveQueryDefaults({ sort: raw.trim() as RetrieveSort });
-    panelGrid.ensurePanelVisible(2);
-    setRetrieveLayout("search-empty");
-    closeRetrieveGraph();
-    closeRetrieveMetaTool();
-    ensureRetrieveSearchAppTool();
+    applyRoute("retrieve:search");
     return;
   }
   if (action.command.phase === "retrieve" && action.command.action === "retrieve_set_year_range") {
@@ -1632,10 +1655,7 @@ function handleAction(action: RibbonAction): void {
       });
     }
     panelGrid.ensurePanelVisible(2);
-    setRetrieveLayout("search-empty");
-    closeRetrieveGraph();
-    closeRetrieveMetaTool();
-    ensureRetrieveSearchAppTool();
+    applyRoute("retrieve:search");
     return;
   }
   if (action.command.phase === "retrieve" && action.command.action === "retrieve_set_limit") {
@@ -1646,10 +1666,7 @@ function handleAction(action: RibbonAction): void {
     if (!Number.isFinite(n) || n <= 0) return;
     writeRetrieveQueryDefaults({ limit: Math.floor(n) });
     panelGrid.ensurePanelVisible(2);
-    setRetrieveLayout("search-empty");
-    closeRetrieveGraph();
-    closeRetrieveMetaTool();
-    ensureRetrieveSearchAppTool();
+    applyRoute("retrieve:search");
     return;
   }
   if (action.command.phase === "tools" && action.command.action === "open_tool") {
@@ -1772,7 +1789,7 @@ function renderPdfTestPanel(payload?: PdfTestPayload): void {
   viewerHost.style.minHeight = "360px";
   viewerHost.style.borderRadius = "12px";
   viewerHost.style.overflow = "hidden";
-  viewerHost.style.background = "var(--panel, #0f172a)";
+  viewerHost.style.background = "var(--panel, #252526)";
   const iframe = ensurePdfViewerFrame(viewerHost);
   applyPayloadToViewer(iframe, payload);
   wrapper.appendChild(viewerHost);
@@ -1916,24 +1933,19 @@ function ensureSectionTool(tabId: TabId, options?: { replace?: boolean }): void 
   }
   if (tabId === "retrieve") {
     // Default retrieve entry: DataHub.
-    panelGrid.applyPreset(PANEL_PRESETS["retrieve:datahub"]);
-    panelGrid.ensurePanelVisible(2);
+    applyRoute("retrieve:datahub");
   }
   if (tabId === "write") {
     console.info("[WRITE][NAV] clicked Write tab; ensuring editor in panel 2");
-    panelGrid.applyPreset(PANEL_PRESETS["write:main"]);
-    panelGrid.ensurePanelVisible(2);
+    applyRoute("write:main");
     debugLogPanelState(2, "after Write click");
     ensureWriteToolTab();
   }
   if (tabId === "code") {
-    panelGrid.applyPreset(PANEL_PRESETS["code:main"]);
-    panelGrid.ensurePanelVisible(2);
+    applyRoute("code:main");
   }
   if (tabId === "screen") {
-    panelGrid.applyPreset(PANEL_PRESETS["screen:main"]);
-    panelGrid.ensurePanelVisible(2);
-    panelGrid.ensurePanelVisible(3);
+    applyRoute("screen:main");
     // Panel 3: PDF viewer as a tool tab (so previous widgets remain as tabs).
     try {
       panelTools.ensureToolHost("panel3", { replaceContent: true });
@@ -1972,7 +1984,7 @@ function ensureSectionTool(tabId: TabId, options?: { replace?: boolean }): void 
   sectionToolIds[tabId] = id;
   scheduleRaf(() => panelTools.focusTool(id));
   if (tabId === "visualiser") {
-    ensureVisualiserPanelsVisible();
+    applyRoute("visualiser:main");
   }
 }
 
@@ -1984,11 +1996,14 @@ function ensureRetrieveDataHubTool(options?: { replace?: boolean }): void {
     retrieveSearchAppToolId = undefined;
     delete sectionToolIds["retrieve"];
   }
+  if (retrieveDataHubToolId && !panelTools.getToolPanel(retrieveDataHubToolId)) {
+    retrieveDataHubToolId = undefined;
+  }
   if (retrieveDataHubToolId) {
     scheduleRaf(() => panelTools.focusTool(retrieveDataHubToolId!));
     return;
   }
-  const id = panelTools.spawnTool("retrieve-datahub", { panelId: "panel2" });
+  const id = panelTools.spawnTool("retrieve-datahub", { panelId: "panel2", metadata: { layoutPresetId: "retrieve:datahub" } });
   retrieveDataHubToolId = id;
   scheduleRaf(() => panelTools.focusTool(id));
 }
@@ -2005,17 +2020,20 @@ function ensureRetrieveQueryBuilderTool(options?: { replace?: boolean }): void {
     scheduleRaf(() => panelTools.focusTool(retrieveQueryToolId!));
     return;
   }
-  const id = panelTools.spawnTool("retrieve", { panelId: "panel2" });
+  const id = panelTools.spawnTool("retrieve", { panelId: "panel2", metadata: { layoutPresetId: "retrieve:search-empty" } });
   retrieveQueryToolId = id;
   scheduleRaf(() => panelTools.focusTool(id));
 }
 
 function ensureRetrieveSearchAppTool(): void {
+  if (retrieveSearchAppToolId && !panelTools.getToolPanel(retrieveSearchAppToolId)) {
+    retrieveSearchAppToolId = undefined;
+  }
   if (retrieveSearchAppToolId) {
     scheduleRaf(() => panelTools.focusTool(retrieveSearchAppToolId!));
     return;
   }
-  const id = panelTools.spawnTool("retrieve-search-app", { panelId: "panel2" });
+  const id = panelTools.spawnTool("retrieve-search-app", { panelId: "panel2", metadata: { layoutPresetId: "retrieve:search-empty" } });
   retrieveSearchAppToolId = id;
   scheduleRaf(() => panelTools.focusTool(id));
 }
@@ -2031,7 +2049,7 @@ function ensureRetrieveSearchMetaTool(options?: { replace?: boolean }): void {
     scheduleRaf(() => panelTools.focusTool(retrieveMetaToolId!));
     return;
   }
-  const id = panelTools.spawnTool("retrieve-search-meta", { panelId: "panel4" });
+  const id = panelTools.spawnTool("retrieve-search-meta", { panelId: "panel4", metadata: { layoutPresetId: "retrieve:search-selected" } });
   retrieveMetaToolId = id;
   scheduleRaf(() => panelTools.focusTool(id));
 }

@@ -84,6 +84,7 @@ type SubstantiateStreamUpdate = {
 
 type DirectQuoteSearchResult = {
   dqid: string;
+  itemKey?: string;
   title?: string;
   author?: string;
   year?: string;
@@ -187,6 +188,9 @@ declare global {
     };
     __logCoderNode?: () => void;
     __leditorPaginationDebug?: boolean;
+    __leditorPaginationOrigin?: string;
+    __leditorPaginationOriginAt?: number;
+    __leditorLastSetContentAt?: number;
     __leditorRibbonDebug?: boolean;
     __leditorRibbonDebugTab?: string;
     __leditorRibbonDebugVerbose?: boolean;
@@ -238,6 +242,13 @@ declare global {
       getDefaultLEDOCPath?: () => Promise<string>;
       fileExists?: (request: { sourcePath: string }) => Promise<{ exists?: boolean; error?: string }>;
       readFile?: (request: { sourcePath: string }) => Promise<HostReadFileResult>;
+      readBinaryFile?: (request: { sourcePath: string; maxBytes?: number }) => Promise<{
+        success: boolean;
+        dataBase64?: string;
+        bytes?: number;
+        filePath?: string;
+        error?: string;
+      }>;
       writeFile?: (request: { targetPath: string; data: string }) => Promise<HostWriteFileResult>;
       agentRun?: (request: { requestId?: string; payload: AgentRequestPayload }) => Promise<AgentRequestResult>;
       agentRequest?: (request: { requestId?: string; payload: AgentRequestPayload }) => Promise<AgentRequestResult>;

@@ -162,6 +162,10 @@ const ensureStyles = () => {
   --heading1-break-before: page;
   --heading1-break-after: avoid;
   --heading2-break-after: avoid;
+  --heading3-break-after: avoid;
+  --heading4-break-after: avoid;
+  --heading5-break-after: avoid;
+  --heading6-break-after: avoid;
   --widow-lines: 1;
   --orphan-lines: 1;
   --header-height: 0.5in;
@@ -180,46 +184,42 @@ const ensureStyles = () => {
   --page-line-fit-pad: 4px;
   --footnote-max-height-ratio: 1;
   --footnote-separator-height: 1px;
-  --footnote-separator-color: rgba(0, 0, 0, 0.25);
+  --footnote-separator-color: color-mix(in srgb, var(--ui-text) 25%, transparent);
   --footnote-spacing: 6px;
   --footnote-font-size: 11px;
   --page-break-line-height: 1px;
   --page-break-line-style: dashed;
-  --page-break-line-color: rgba(46, 46, 46, 0.45);
+  --page-break-line-color: color-mix(in srgb, var(--ui-text) 45%, transparent);
   --page-bg-light: #ffffff;
-  --page-bg-dark: #1b1b1b;
+  --page-bg-dark: #2d2d2d;
   --page-bg: var(--page-bg-light);
-  --page-border-color: rgba(0, 0, 0, 0.12);
-  --page-border-color-dark: rgba(255, 255, 255, 0.16);
+  --page-border-color: color-mix(in srgb, var(--ui-text) 14%, transparent);
+  --page-border-color-dark: color-mix(in srgb, var(--ui-text) 18%, transparent);
   --page-border-width: 1px;
-  --page-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
-  --page-shadow-dark: 0 16px 40px rgba(0, 0, 0, 0.55);
+  --page-shadow: 0 16px 40px color-mix(in srgb, #000000 20%, transparent);
+  --page-shadow-dark: 0 16px 40px color-mix(in srgb, #000000 55%, transparent);
   --page-gap: 12px;
   --page-margin-inside: 2.5cm;
   --page-margin-outside: 2.5cm;
-  --column-separator-color: rgba(0, 0, 0, 0.25);
+  --column-separator-color: color-mix(in srgb, var(--ui-text) 25%, transparent);
   --page-column-gap: 24px;
-  --page-canvas-bg: radial-gradient(circle at 18% 18%, #f8f9fb 0%, #e9ecf3 45%, #d8dbe6 90%);
-  --page-canvas-bg-dark: radial-gradient(circle at 30% 16%, #1d2431 0%, #141924 55%, #0c1018 100%);
+  --page-canvas-bg: var(--ui-bg);
+  --page-canvas-bg-dark: var(--ui-bg);
   --min-zoom: 0.3;
   --max-zoom: 3;
   --zoom-step: 0.1;
   --page-zoom: 1;
   --ruler-height: 24px;
-  --ruler-color: rgba(0, 0, 0, 0.55);
-  --ruler-bg: rgba(255, 255, 255, 0.7);
-  --ruler-border: rgba(0, 0, 0, 0.2);
+  --ruler-color: color-mix(in srgb, var(--ui-text) 55%, transparent);
+  --ruler-bg: color-mix(in srgb, var(--ui-surface) 70%, transparent);
+  --ruler-border: color-mix(in srgb, var(--ui-text) 20%, transparent);
   --page-font-family: "Times New Roman", "Times", "Georgia", serif;
   --page-font-size: 12pt;
   --page-line-height: 1.0;
-  --page-body-color: #1c1c1c;
-  --page-header-color: #2d2d2d;
-  --page-footer-color: #3a3a3a;
-  --page-footnote-color: #4c4c4c;
-  --ui-surface: rgba(255, 255, 255, 0.9);
-  --ui-surface-dark: rgba(24, 28, 36, 0.85);
-  --ui-text: #1b1b1b;
-  --ui-text-inverse: #f7f7f7;
+  --page-body-color: color-mix(in srgb, var(--ui-text) 92%, transparent);
+  --page-header-color: color-mix(in srgb, var(--ui-text) 78%, transparent);
+  --page-footer-color: color-mix(in srgb, var(--ui-text) 70%, transparent);
+  --page-footnote-color: color-mix(in srgb, var(--ui-text) 60%, transparent);
   /* UI scaling is handled by --ui-scale set by renderer bootstrap. */
   --ui-scale: 1;
 }
@@ -261,7 +261,7 @@ html, body {
   top: 50%;
   width: 28px;
   height: 28px;
-  border: 2px solid rgba(0, 0, 0, 0.18);
+  border: 2px solid color-mix(in srgb, var(--ui-text) 18%, transparent);
   border-top-color: var(--ui-text);
   border-radius: 999px;
   transform: translate(-50%, -60%) rotate(0deg);
@@ -293,7 +293,7 @@ html, body {
   position: sticky;
   top: 0;
   z-index: 1000;
-  background: var(--r-bg);
+  background: var(--ui-bg);
 }
 
 .leditor-doc-shell {
@@ -345,8 +345,8 @@ html, body {
   max-width: 760px;
   display: none;
   flex-direction: column;
-  background: rgba(10, 14, 20, 0.92);
-  border-left: 1px solid rgba(148, 163, 184, 0.25);
+  background: var(--ui-bg);
+  border-left: 1px solid var(--ui-border-color);
   overflow: hidden;
 }
 
@@ -360,12 +360,12 @@ html, body {
   align-items: center;
   gap: 12px;
   padding: 10px 12px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
-  color: #f1f5f9;
+  border-bottom: 1px solid var(--ui-border-color);
+  color: var(--ui-text);
   position: sticky;
   top: 0;
   z-index: 2;
-  background: rgba(10, 14, 20, 0.92);
+  background: var(--ui-surface);
 }
 
 .leditor-pdf-title {
@@ -380,9 +380,9 @@ html, body {
 
 .leditor-pdf-close {
   flex: 0 0 auto;
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  background: rgba(255, 255, 255, 0.06);
-  color: #f1f5f9;
+  border: 1px solid var(--ui-border-color);
+  background: color-mix(in srgb, var(--ui-surface-2) 80%, transparent);
+  color: var(--ui-text);
   font-size: 12px;
   padding: 6px 10px;
   border-radius: 8px;
@@ -390,7 +390,7 @@ html, body {
 }
 
 .leditor-pdf-close:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: color-mix(in srgb, var(--ui-surface-2) 92%, transparent);
 }
 
 /* Legacy PDF pane frame (kept scoped so it doesn't override the embedded split PDF panel). */
@@ -399,7 +399,7 @@ html, body {
   min-height: 0;
   width: 100%;
   border: 0;
-  background: #0b1220;
+  background: var(--ui-bg);
 }
 
 .leditor-toc {
@@ -408,13 +408,13 @@ html, body {
   padding: 18px 24px;
   border-radius: 12px;
   background: var(--ui-surface);
-  border: 1px solid rgba(0, 0, 0, 0.2);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12);
+  border: var(--ui-border);
+  box-shadow: var(--ui-shadow-1);
 }
 .leditor-toc[data-toc-style="auto2"] {
-  background: rgba(235, 243, 255, 0.85);
-  border-color: rgba(30, 126, 234, 0.35);
-  box-shadow: 0 12px 32px rgba(30, 126, 234, 0.15);
+  background: var(--ui-surface-2);
+  border-color: color-mix(in srgb, var(--ui-accent) 35%, var(--ui-border-color));
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--ui-accent) 20%, transparent);
 }
 .leditor-toc-title {
   font-size: 16px;
@@ -435,23 +435,24 @@ html, body {
   font-size: 14px;
   background: none;
   cursor: pointer;
-  border-bottom: 1px dashed rgba(0, 0, 0, 0.15);
+  border-bottom: 1px dashed color-mix(in srgb, var(--ui-text) 15%, transparent);
   color: var(--ui-text);
 }
 .leditor-toc-entry:last-child {
   border-bottom: none;
 }
 .leditor-toc-entry:hover {
-  color: #1c64f2;
+  color: var(--ui-accent);
 }
 .leditor-toc[data-toc-style="auto2"] .leditor-toc-entry {
-  border-bottom-color: rgba(30, 126, 234, 0.4);
+  border-bottom-color: color-mix(in srgb, var(--ui-accent) 40%, transparent);
 }
 
 .leditor-app .ProseMirror a,
 .leditor-app .ProseMirror a * {
-  color: #1d4ed8;
+  color: var(--ui-link);
   text-decoration: underline;
+  text-decoration-color: var(--ui-link-underline);
   text-decoration-thickness: 1px;
   text-underline-offset: 2px;
   cursor: pointer;
@@ -460,37 +461,24 @@ html, body {
 .leditor-app .ProseMirror a.leditor-citation-anchor {
   display: inline-flex;
   align-items: baseline;
-  background: rgba(29, 78, 216, 0.07);
-  border: 1px solid rgba(29, 78, 216, 0.18);
+  background: var(--ui-link-bg);
+  border: 1px solid var(--ui-link-border);
   border-radius: 6px;
   padding: 1px 5px;
   transition: background 120ms ease, border-color 120ms ease, transform 80ms ease;
 }
 .leditor-app .ProseMirror a.leditor-citation-anchor:hover {
-  background: rgba(29, 78, 216, 0.10);
-  border-color: rgba(29, 78, 216, 0.28);
+  background: color-mix(in srgb, var(--ui-link) 14%, transparent);
+  border-color: color-mix(in srgb, var(--ui-link) 32%, transparent);
 }
 .leditor-app .ProseMirror a.leditor-citation-anchor:active {
   transform: translateY(1px);
 }
 
-.leditor-app.theme-dark .ProseMirror a,
-.leditor-app.theme-dark .ProseMirror a * {
-  color: #93c5fd;
-}
-.leditor-app.theme-dark .ProseMirror a.leditor-citation-anchor {
-  background: rgba(147, 197, 253, 0.12);
-  border-color: rgba(147, 197, 253, 0.22);
-}
-.leditor-app.theme-dark .ProseMirror a.leditor-citation-anchor:hover {
-  background: rgba(147, 197, 253, 0.16);
-  border-color: rgba(147, 197, 253, 0.30);
-}
-
 @keyframes leditor-citation-flash {
-  0% { box-shadow: 0 0 0 0 rgba(93, 213, 255, 0.0); transform: translateY(0); }
-  20% { box-shadow: 0 0 0 3px rgba(93, 213, 255, 0.30); transform: translateY(-0.5px); }
-  100% { box-shadow: 0 0 0 0 rgba(93, 213, 255, 0.0); transform: translateY(0); }
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ui-accent) 0%, transparent); transform: translateY(0); }
+  20% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--ui-accent) 30%, transparent); transform: translateY(-0.5px); }
+  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ui-accent) 0%, transparent); transform: translateY(0); }
 }
 
 .leditor-app .ProseMirror a.leditor-citation-anchor.leditor-citation-anchor--flash {
@@ -514,12 +502,12 @@ html, body {
   --page-canvas-bg: var(--page-canvas-bg-dark);
   --page-border-color: var(--page-border-color-dark);
   --page-shadow: var(--page-shadow-dark);
-  --page-body-color: #f4f6f8;
-  --page-header-color: #f1f3f5;
-  --page-footer-color: #d7d8e4;
-  --page-footnote-color: #c1c4cf;
+  --page-body-color: var(--ui-text);
+  --page-header-color: color-mix(in srgb, var(--ui-text) 88%, transparent);
+  --page-footer-color: color-mix(in srgb, var(--ui-text) 80%, transparent);
+  --page-footnote-color: color-mix(in srgb, var(--ui-text) 72%, transparent);
   color-scheme: dark;
-  color: var(--ui-text-inverse);
+  color: var(--ui-text);
   background: var(--page-canvas-bg);
 }
 
@@ -734,7 +722,7 @@ html, body {
 }
 
 .leditor-endnote-empty {
-  color: rgba(0, 0, 0, 0.45);
+  color: color-mix(in srgb, var(--ui-text) 45%, transparent);
   font-size: 11px;
   font-style: italic;
 }
@@ -801,7 +789,7 @@ html, body {
 /* Visual debug: flash page background when footnote reflow triggers. */
 .leditor-page.leditor-footnote-reflow,
 .leditor-page .leditor-footnote-reflow {
-  outline: 2px solid rgba(96, 165, 250, 0.8);
+  outline: 2px solid color-mix(in srgb, var(--ui-accent) 80%, transparent);
   outline-offset: 4px;
   transition: outline 0.2s ease-out;
 }
@@ -812,7 +800,7 @@ html, body {
   left: var(--local-page-margin-left, var(--page-margin-left));
   right: var(--local-page-margin-right, var(--page-margin-right));
   bottom: calc(var(--local-page-margin-bottom, var(--page-margin-bottom)) + var(--footer-height) + var(--footer-offset) + var(--footnote-area-height));
-  border: 1px dashed rgba(200, 40, 40, 0.65);
+  border: 1px dashed color-mix(in srgb, var(--ui-danger) 65%, transparent);
   border-radius: 2px;
   pointer-events: none;
   display: none;
@@ -824,18 +812,18 @@ html, body {
 }
 
 .leditor-debug-margins .leditor-margins-frame {
-  outline: 1px dashed rgba(200, 40, 40, 0.35);
+  outline: 1px dashed color-mix(in srgb, var(--ui-danger) 35%, transparent);
   outline-offset: -1px;
 }
 
 .leditor-debug-footnotes .leditor-page-content {
-  outline: 2px solid rgba(59, 130, 246, 0.55);
+  outline: 2px solid color-mix(in srgb, var(--ui-accent) 55%, transparent);
   outline-offset: -2px;
 }
 
 .leditor-debug-footnotes .leditor-page-stack .leditor-page-footnotes {
-  outline: 2px solid rgba(16, 185, 129, 0.6);
-  background: rgba(16, 185, 129, 0.05);
+  outline: 2px solid color-mix(in srgb, var(--ui-success) 60%, transparent);
+  background: color-mix(in srgb, var(--ui-success) 5%, transparent);
 }
 
 .leditor-debug-footnotes .leditor-page-stack .leditor-page-footnotes::after {
@@ -845,9 +833,9 @@ html, body {
   top: -16px;
   font-size: 10px;
   font-weight: 600;
-  color: #047857;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: var(--ui-success);
+  background: color-mix(in srgb, var(--ui-surface) 92%, transparent);
+  border: 1px solid var(--ui-success-border);
   border-radius: 6px;
   padding: 2px 6px;
   pointer-events: none;
@@ -1027,6 +1015,26 @@ html, body {
   break-after: var(--heading2-break-after, avoid);
 }
 
+#editor .ProseMirror h3 {
+  page-break-after: var(--heading3-break-after, avoid);
+  break-after: var(--heading3-break-after, avoid);
+}
+
+#editor .ProseMirror h4 {
+  page-break-after: var(--heading4-break-after, avoid);
+  break-after: var(--heading4-break-after, avoid);
+}
+
+#editor .ProseMirror h5 {
+  page-break-after: var(--heading5-break-after, avoid);
+  break-after: var(--heading5-break-after, avoid);
+}
+
+#editor .ProseMirror h6 {
+  page-break-after: var(--heading6-break-after, avoid);
+  break-after: var(--heading6-break-after, avoid);
+}
+
 #editor .ProseMirror p {
   widows: var(--widow-lines, 2);
   orphans: var(--orphan-lines, 2);
@@ -1099,8 +1107,8 @@ html, body {
 }
 
 .leditor-comment {
-  background: rgba(255, 229, 100, 0.35);
-  border-bottom: 2px solid rgba(245, 158, 11, 0.9);
+  background: var(--ui-warning-bg);
+  border-bottom: 2px solid color-mix(in srgb, var(--ui-warning) 90%, transparent);
   border-radius: 2px;
   padding: 0 1px;
   position: relative;
@@ -1117,10 +1125,10 @@ html, body {
   max-width: 280px;
   padding: 6px 10px;
   border-radius: 6px;
-  background: rgba(17, 17, 17, 0.9);
-  color: #ffffff;
+  background: var(--ui-tooltip-bg);
+  color: var(--ui-tooltip-text);
   font-size: 12px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 6px 18px color-mix(in srgb, #000000 35%, transparent);
   z-index: 20;
   white-space: pre-wrap;
 }
@@ -1131,7 +1139,7 @@ html, body {
   padding: 6px 0;
   text-align: center;
   font-size: 11px;
-  color: #4a4a4a;
+  color: var(--ui-muted-strong);
 }
 
 .leditor-break::before {
@@ -1147,7 +1155,7 @@ html, body {
 .leditor-break::after {
   content: attr(data-break-label);
   position: relative;
-  background: #f7f3e9;
+  background: var(--ui-bg);
   padding: 0 8px;
 }
 .leditor-break, .leditor-break::before, .leditor-break::after {
@@ -1223,13 +1231,13 @@ html, body {
 }
 
 .leditor-app.theme-dark .leditor-ruler {
-  background: rgba(255, 255, 255, 0.06);
-  border-bottom-color: rgba(255, 255, 255, 0.2);
-  color: var(--ui-text-inverse);
+  background: color-mix(in srgb, var(--ui-surface) 60%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--ui-text) 20%, transparent);
+  color: var(--ui-text);
 }
 
 .leditor-app.theme-dark .leditor-ruler-tick {
-  border-left-color: rgba(255, 255, 255, 0.2);
+  border-left-color: color-mix(in srgb, var(--ui-text) 20%, transparent);
 }
 .leditor-app:not(.leditor-app--show-ruler) .leditor-ruler {
   display: none;
@@ -1334,7 +1342,7 @@ html, body {
   padding: 6px 0;
   text-align: center;
   font-size: 11px;
-  color: rgba(34, 34, 34, 0.75);
+  color: var(--ui-muted-strong);
   pointer-events: none;
 }
 
@@ -1354,7 +1362,7 @@ html, body {
   position: relative;
   padding: 0 12px;
   background: var(--page-bg);
-  color: rgba(34, 34, 34, 0.85);
+  color: var(--ui-text);
   font-size: 10px;
   font-weight: 600;
 }
@@ -1452,9 +1460,21 @@ html, body {
 }
 
 .leditor-page-content p,
-.leditor-page-content li,
+.leditor-page-content li {
+  max-width: 100%;
+  box-sizing: border-box;
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .leditor-page-content a,
-.leditor-page-content span {
+.leditor-page-content span,
+.leditor-page-content em,
+.leditor-page-content i,
+.leditor-page-content strong,
+.leditor-page-content b {
+  display: inline;
   max-width: 100%;
   box-sizing: border-box;
   white-space: normal !important;
@@ -1921,6 +1941,10 @@ export const mountA4Layout = (
   let suspendPageObserver = false;
   // NOTE: scrolling happens on the layout host (doc shell), not the canvas itself.
   let lastUserScrollAt = 0;
+  let lastUserInputAt = 0;
+  const markUserInput = () => {
+    lastUserInputAt = performance.now();
+  };
   appRoot.addEventListener("scroll", () => {
     lastUserScrollAt = performance.now();
   });
@@ -2673,7 +2697,7 @@ export const mountA4Layout = (
 
   const pendingFootnoteSourceSelection = new Map<string, StoredSelection>();
   let lastFootnoteExitAt = 0;
-  let footnoteFocusRetryToken = 0;
+	  let footnoteFocusRetryToken = 0;
 	  let suppressBodyFocusUntil = 0;
 	  let footnoteTypingPaginationTimer: number | null = null;
 	  let lastFootnoteInputAt = 0;
@@ -2682,6 +2706,32 @@ export const mountA4Layout = (
   // (or just inserted a footnote). This prevents pagination/focus oscillation loops caused by
   // 1px layout jitter while the footnote editor is focused.
   let footnotePaginationArmed = false;
+  const FOOTNOTE_PAGINATION_IDLE_MS = 520;
+  const suppressFootnotePagination = (durationMs = FOOTNOTE_PAGINATION_IDLE_MS) => {
+    try {
+      (window as any).__leditorDisablePaginationUntil = performance.now() + durationMs;
+    } catch {
+      // ignore
+    }
+  };
+  const resumeFootnotePaginationSoon = () => {
+    if (footnoteTypingPaginationTimer != null) {
+      window.clearTimeout(footnoteTypingPaginationTimer);
+    }
+    footnoteTypingPaginationTimer = window.setTimeout(() => {
+      footnoteTypingPaginationTimer = null;
+      try {
+        (window as any).__leditorDisablePaginationUntil = 0;
+      } catch {
+        // ignore
+      }
+      if (footnoteMode) {
+        footnotePaginationArmed = true;
+        requestEditorPagination();
+        requestPagination();
+      }
+    }, FOOTNOTE_PAGINATION_IDLE_MS);
+  };
 
 		  const enterFootnoteMode = (footnoteId: string, sourceSelection?: StoredSelection | null) => {
 		    if (!footnoteId) return;
@@ -2706,6 +2756,8 @@ export const mountA4Layout = (
 		      // Allow a single responsive repagination right after entering footnote mode so the body can
 		      // make room for the footnote area (Word-like).
 		      footnotePaginationArmed = true;
+          suppressFootnotePagination();
+          resumeFootnotePaginationSoon();
 	    }
     if (activeNoteEditor && activeNoteEditor.kind === "endnote") {
       destroyActiveNoteEditor();
@@ -3123,7 +3175,9 @@ export const mountA4Layout = (
         .map((entry) => {
           const trimmed = (entry.text || "").trim();
           const bodySize = entry.body?.content?.size ?? 0;
-          const textSig = `${trimmed.length}:${trimmed.slice(0, 80)}`;
+          const head = trimmed.slice(0, 80);
+          const tail = trimmed.slice(Math.max(0, trimmed.length - 80));
+          const textSig = `${trimmed.length}:${head}:${tail}`;
           return `${entry.kind}:${entry.footnoteId}:${entry.number}:${entry.pageIndex}:${entry.source}:${bodySize}:${textSig}`;
         })
       ].join("|");
@@ -3224,6 +3278,7 @@ export const mountA4Layout = (
           text.dataset.placeholder = "Type footnote…";
           text.contentEditable = "false";
           text.tabIndex = entry.source === "citation" ? -1 : 0;
+          text.setAttribute("aria-readonly", "true");
           text.setAttribute("role", "textbox");
           text.setAttribute("spellcheck", entry.source === "citation" ? "false" : "true");
           if (serializer && entry.body && entry.body.content.size > 0) {
@@ -3570,6 +3625,8 @@ export const mountA4Layout = (
     view.dispatch(tr);
     footnotePaginationArmed = true;
     lastFootnoteInputAt = Date.now();
+    suppressFootnotePagination();
+    resumeFootnotePaginationSoon();
     scheduleFootnoteHeightMeasurement();
     scheduleFootnoteUpdate();
   };
@@ -3633,6 +3690,17 @@ export const mountA4Layout = (
       }
     });
     view.dom.classList.add("leditor-footnote-editor");
+    view.dom.addEventListener("focusin", () => {
+      suppressFootnotePagination();
+      resumeFootnotePaginationSoon();
+    });
+    view.dom.addEventListener("keydown", () => {
+      suppressFootnotePagination();
+      resumeFootnotePaginationSoon();
+    });
+    view.dom.addEventListener("focusout", () => {
+      resumeFootnotePaginationSoon();
+    });
     activeNoteEditor = { footnoteId, kind, view, host, body: bodyNode };
     return activeNoteEditor;
   };
@@ -3872,6 +3940,7 @@ export const mountA4Layout = (
   let footnoteLayoutSyncRaf = 0;
   const requestEditorPagination = () => {
     try {
+      if ((window as any).__leditorDisablePaginationUntil) return;
       const editorInstance = attachedEditorHandle?.getEditor?.() ?? null;
       const viewDom = (editorInstance?.view?.dom as HTMLElement | null) ?? null;
       const target = viewDom ?? editorEl;
@@ -4036,6 +4105,7 @@ export const mountA4Layout = (
           } else {
             container.classList.remove("leditor-page-footnotes--active");
             container.setAttribute("aria-hidden", "true");
+            container.style.minHeight = "";
             container.style.height = "0px";
           }
           container.style.overflowY = "hidden";
@@ -4261,6 +4331,7 @@ export const mountA4Layout = (
         const shouldPaginate = !footnoteMode || footnotePaginationArmed;
         if (!shouldPaginate) return;
         if (!footnotePaginationArmed && signature && signature === lastFootnotePaginationDocSignature) return;
+        if ((window as any).__leditorDisablePaginationUntil) return;
         // Repaginate immediately so body text yields space as soon as footnotes grow.
         footnotePaginationArmed = false;
         if (footnoteTypingPaginationTimer != null) {
@@ -4749,7 +4820,10 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
     if (!footnoteMode && !headerFooterMode) {
       const activeEl = document.activeElement as HTMLElement | null;
       if (!activeEl || !editorEl.contains(activeEl)) {
-        prose.focus({ preventScroll: true });
+        const now = performance.now();
+        if (now - lastUserInputAt > 500) {
+          prose.focus({ preventScroll: true });
+        }
       }
     }
 	    updateHeaderFooterEditability();
@@ -5120,6 +5194,13 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
     try {
       syncHyphenation();
       const rootStyle = getComputedStyle(document.documentElement);
+      if (paginationEnabled && viewMode === "single") {
+        try {
+          (window as any).__leditorDisableColumns = true;
+        } catch {
+          // ignore
+        }
+      }
       const pageColumns = rootStyle.getPropertyValue("--page-columns").trim();
       {
         const contents = editorEl.querySelectorAll<HTMLElement>(".leditor-page-content");
@@ -5252,7 +5333,7 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
         appRoot.scrollTop = scrollTopBefore;
         appRoot.scrollLeft = scrollLeftBefore;
       }
-      if (!didInitialCenter && now - lastUserScrollAt >= 250) {
+      if (!didInitialCenter && now - lastUserScrollAt >= 250 && now - lastUserInputAt >= 500) {
         didInitialCenter = true;
         // Defer to allow layout sizing (scrollWidth/clientWidth) to settle.
         window.requestAnimationFrame(() => centerDocHorizontally());
@@ -5705,6 +5786,22 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
 
   const handleKeydown = (event: KeyboardEvent) => {
     const keyTarget = event.target as HTMLElement | null;
+    if (
+      keyTarget &&
+      keyTarget.closest(".ProseMirror") &&
+      !event.metaKey &&
+      !event.ctrlKey &&
+      !event.altKey
+    ) {
+      const isTypingKey =
+        event.key === "Enter" ||
+        event.key === "Backspace" ||
+        event.key === "Delete" ||
+        event.key.length === 1;
+      if (isTypingKey) {
+        markUserInput();
+      }
+    }
     if (event.key === "Escape") {
       if (headerFooterMode) {
         event.preventDefault();

@@ -11,16 +11,16 @@
       color-scheme: light dark;
 
       /* "UI" vars are optionally injected by the parent app. */
-      --ui-bg: #f6f7f9;
+      --ui-bg: #f3f2f1;
       --ui-surface: #ffffff;
-      --ui-surface-2: #f1f3f6;
+      --ui-surface-2: #f8f8f8;
       --ui-text: rgba(0, 0, 0, 0.88);
       --ui-muted: rgba(0, 0, 0, 0.60);
-      --ui-accent: #2563eb;
-      --ui-border: rgba(15, 23, 42, 0.14);
-      --ui-border-2: rgba(15, 23, 42, 0.12);
-      --ui-shadow-lg: 0 18px 48px rgba(15, 23, 42, 0.16);
-      --ui-shadow-md: 0 8px 22px rgba(15, 23, 42, 0.14);
+      --ui-accent: #2b579a;
+      --ui-border: color-mix(in srgb, var(--ui-text) 14%, transparent);
+      --ui-border-2: color-mix(in srgb, var(--ui-text) 10%, transparent);
+      --ui-shadow-lg: 0 18px 48px color-mix(in srgb, var(--ui-text) 16%, transparent);
+      --ui-shadow-md: 0 8px 22px color-mix(in srgb, var(--ui-text) 14%, transparent);
 
       /* Legacy palette maps to the injected UI vars. */
       --bg0: var(--ui-bg);
@@ -61,17 +61,17 @@
     }
 
     html[data-theme="dark"]{
-      --ui-bg: #0b1020;
-      --ui-surface: rgba(255, 255, 255, 0.06);
-      --ui-surface-2: rgba(255, 255, 255, 0.10);
+      --ui-bg: #1e1e1e;
+      --ui-surface: #252526;
+      --ui-surface-2: #2d2d2d;
       --ui-text: rgba(248, 250, 252, 0.92);
       --ui-muted: rgba(226, 232, 240, 0.68);
-      --ui-accent: #7aa6ff;
+      --ui-accent: #5b9bd5;
       --ui-border: rgba(255, 255, 255, 0.14);
       --ui-border-2: rgba(255, 255, 255, 0.12);
       --ui-shadow-lg: 0 18px 52px rgba(0,0,0,.55);
       --ui-shadow-md: 0 8px 22px rgba(0,0,0,.35);
-      --a2: color-mix(in srgb, var(--ui-accent) 62%, #0b1020);
+      --a2: color-mix(in srgb, var(--ui-accent) 62%, #1e1e1e);
     }
 
     html, body {

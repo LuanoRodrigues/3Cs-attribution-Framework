@@ -4,6 +4,78 @@ import type { EditorHandle } from "../api/leditor.ts";
 import { getOrientation } from "../ui/layout_settings.ts";
 import { toggleInsertMode } from "../editor/input_modes.ts";
 import { openContextMenuAtSelection } from "./context_menu.ts";
+import { collectNestedControls, loadRibbonModel, type ControlConfig } from "./ribbon_config.ts";
+
+const normalizeShortcut = (value: string): string | null => {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const cleaned = trimmed.replace(/\s+/g, "");
+  const parts = cleaned.split("+").filter(Boolean);
+  if (!parts.length) return null;
+  const keyMap: Record<string, string> = {
+    cmd: "meta",
+    command: "meta",
+    meta: "meta",
+    ctrl: "ctrl",
+    control: "ctrl",
+    alt: "alt",
+    option: "alt",
+    shift: "shift",
+    esc: "escape",
+    del: "delete",
+    ins: "insert",
+    pgup: "pageup",
+    pgdn: "pagedown",
+    pageup: "pageup",
+    pagedown: "pagedown"
+  };
+  const mapped = parts.map((part) => {
+    const lower = part.toLowerCase();
+    if (keyMap[lower]) return keyMap[lower];
+    if (/^f\d{1,2}$/i.test(part)) return lower;
+    if (lower.length === 1) return lower;
+    return lower;
+  });
+  return mapped.join("+");
+};
+
+const collectShortcutControls = (control: ControlConfig, list: ControlConfig[]) => {
+  if (typeof control.shortcut === "string" && control.command?.id) {
+    list.push(control);
+  }
+  collectNestedControls(control).forEach((nested) => collectShortcutControls(nested, list));
+};
+
+const buildRibbonShortcutBindings = (editorHandle: EditorHandle) => {
+  const model = loadRibbonModel();
+  const controls: ControlConfig[] = [];
+  model.orderedTabs.forEach((tab) => {
+    tab.groups.forEach((group) => {
+      group.clusters.forEach((cluster) => {
+        cluster.controls.forEach((control) => collectShortcutControls(control, controls));
+      });
+    });
+  });
+  const bindings: Record<string, (event: KeyboardEvent) => boolean> = {};
+  const seen = new Set<string>();
+  controls.forEach((control) => {
+    const shortcut = normalizeShortcut(control.shortcut ?? "");
+    if (!shortcut || seen.has(shortcut)) return;
+    seen.add(shortcut);
+    const commandId = control.command?.id;
+    const args = control.command?.args;
+    if (!commandId) return;
+    bindings[shortcut] = () => {
+      try {
+        editorHandle.execCommand(commandId as any, args as any);
+      } catch (error) {
+        console.warn(`[Shortcuts] ribbon shortcut failed: ${commandId}`, error);
+      }
+      return true;
+    };
+  });
+  return bindings;
+};
 
 export const initGlobalShortcuts = (editorHandle: EditorHandle): (() => void) => {
   const exec = (id: string, args?: unknown) => {
@@ -13,7 +85,7 @@ export const initGlobalShortcuts = (editorHandle: EditorHandle): (() => void) =>
       console.warn(`[Shortcuts] command failed: ${id}`, error);
     }
   };
-  const handler = tinykeys(window, {
+  const baseBindings: Record<string, (event: KeyboardEvent) => boolean> = {
     "mod+s": () => {
       dispatchCommand(editorHandle, "Save");
       return true;
@@ -174,6 +246,12 @@ export const initGlobalShortcuts = (editorHandle: EditorHandle): (() => void) =>
       }
       return true;
     }
+  };
+  const ribbonBindings = buildRibbonShortcutBindings(editorHandle);
+  Object.keys(ribbonBindings).forEach((key) => {
+    if (baseBindings[key]) return;
+    baseBindings[key] = ribbonBindings[key];
   });
+  const handler = tinykeys(window, baseBindings);
   return () => handler();
 };

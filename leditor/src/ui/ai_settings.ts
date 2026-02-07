@@ -15,6 +15,53 @@ const PROFILE_STORAGE_KEY = "leditor.ai.persona.profiles";
 const MAX_STACK = 4;
 const DIRECTIVE_BUDGET = 2000;
 
+const PROVIDERS = ["openai", "deepseek", "mistral", "gemini"] as const;
+type ProviderId = (typeof PROVIDERS)[number];
+
+const PROVIDER_LABELS: Record<ProviderId, string> = {
+  openai: "OpenAI",
+  deepseek: "DeepSeek",
+  mistral: "Mistral",
+  gemini: "Gemini"
+};
+
+const MODEL_OPTIONS_BY_PROVIDER: Record<ProviderId, string[]> = {
+  openai: ["gpt-5-mini", "gpt-5", "o3-mini", "codex-mini-latest"],
+  deepseek: ["deepseek-chat", "deepseek-coder", "deepseek-reasoner", "deepseek-r1"],
+  mistral: ["mistral-small-latest", "mistral-medium-latest", "mistral-large-latest", "codestral-latest"],
+  gemini: ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-1.5-flash", "gemini-1.5-pro"]
+};
+
+const DEFAULT_MODEL_BY_PROVIDER: Record<ProviderId, string> = {
+  openai: "codex-mini-latest",
+  deepseek: "deepseek-chat",
+  mistral: "mistral-small-latest",
+  gemini: "gemini-2.5-flash"
+};
+
+const buildDefaultModelByProvider = (): Record<ProviderId, string> => {
+  const out = {} as Record<ProviderId, string>;
+  for (const provider of PROVIDERS) {
+    const preferred = DEFAULT_MODEL_BY_PROVIDER[provider];
+    const list = MODEL_OPTIONS_BY_PROVIDER[provider];
+    out[provider] = list.includes(preferred) ? preferred : list[0];
+  }
+  return out;
+};
+
+const normalizeModelByProvider = (value: unknown): Record<ProviderId, string> => {
+  const base = buildDefaultModelByProvider();
+  if (!value || typeof value !== "object") return base;
+  const raw = value as Record<string, unknown>;
+  for (const provider of PROVIDERS) {
+    const candidate = raw[provider];
+    if (typeof candidate === "string" && MODEL_OPTIONS_BY_PROVIDER[provider].includes(candidate)) {
+      base[provider] = candidate;
+    }
+  }
+  return base;
+};
+
 const PERSONA_LIBRARY = personasLibraryRaw as PersonaLibrary;
 const PERSONA_ICON_PATHS: Record<string, string[]> = {
   person_shield: [
@@ -110,10 +157,8 @@ const saveProfiles = (profiles: PersonaProfile[]) => {
 const DEFAULT_SETTINGS: AiSettings = {
   apiKey: "",
   provider: "openai",
-  model: "codex-mini-latest",
-  chunkSize: 32000,
-  defaultScope: "selection",
-  personaConfig: normalizePersonaConfig(DEFAULT_PERSONA_CONFIG, PERSONA_LIBRARY)
+  personaConfig: normalizePersonaConfig(DEFAULT_PERSONA_CONFIG, PERSONA_LIBRARY),
+  modelByProvider: buildDefaultModelByProvider()
 };
 
 const parseStoredSettings = (): AiSettings => {
@@ -138,19 +183,8 @@ const parseStoredSettings = (): AiSettings => {
         }
         return DEFAULT_SETTINGS.provider;
       })(),
-      model: (() => {
-        const rawModel = typeof parsed.model === "string" ? parsed.model.trim() : "";
-        if (!rawModel) return DEFAULT_SETTINGS.model;
-        if (rawModel === "gpt-4o-mini") return "gpt-5-mini";
-        if (rawModel === "gpt-4o") return "gpt-5";
-        return rawModel;
-      })(),
-      chunkSize: Number.isFinite(parsed.chunkSize) ? Number(parsed.chunkSize) : DEFAULT_SETTINGS.chunkSize,
-      defaultScope:
-        parsed.defaultScope === "selection" || parsed.defaultScope === "document"
-          ? parsed.defaultScope
-          : DEFAULT_SETTINGS.defaultScope,
-      personaConfig
+      personaConfig,
+      modelByProvider: normalizeModelByProvider((parsed as any).modelByProvider)
     };
   } catch {
     return DEFAULT_SETTINGS;
@@ -269,6 +303,51 @@ export const createAISettingsPanel = (): AiSettingsPanelController => {
   const envStatus = document.createElement("div");
   envStatus.className = "leditor-ai-settings-panel__status";
   envStatus.style.opacity = "0.85";
+  const syncStatus = (message = "Saved.") => {
+    status.textContent = message;
+    window.setTimeout(() => {
+      status.textContent = "";
+    }, 1200);
+  };
+  const defaultsSection = document.createElement("section");
+  defaultsSection.className = "leditor-ai-settings-panel__defaults";
+  const defaultsTitle = document.createElement("div");
+  defaultsTitle.className = "leditor-ai-settings-panel__defaultsTitle";
+  defaultsTitle.textContent = "Default models";
+  const defaultsList = document.createElement("div");
+  defaultsList.className = "leditor-ai-settings-panel__defaultsList";
+  defaultsSection.append(defaultsTitle, defaultsList);
+  const modelSelects = new Map<ProviderId, HTMLSelectElement>();
+
+  const buildDefaultModelControls = () => {
+    defaultsList.replaceChildren();
+    for (const provider of PROVIDERS) {
+      const row = document.createElement("div");
+      row.className = "leditor-ai-settings-panel__defaultsRow";
+      const name = document.createElement("div");
+      name.className = "leditor-ai-settings-panel__defaultsName";
+      name.textContent = PROVIDER_LABELS[provider] ?? provider;
+      const select = document.createElement("select");
+      select.className = "leditor-ai-settings-panel__select";
+      for (const modelId of MODEL_OPTIONS_BY_PROVIDER[provider]) {
+        const option = document.createElement("option");
+        option.value = modelId;
+        option.textContent = modelId;
+        select.appendChild(option);
+      }
+      select.addEventListener("change", () => {
+        const current = getAiSettings();
+        const next = normalizeModelByProvider(current.modelByProvider);
+        next[provider] = select.value;
+        setAiSettings({ modelByProvider: next } as any);
+        syncStatus("Saved.");
+      });
+      modelSelects.set(provider, select);
+      row.append(name, select);
+      defaultsList.appendChild(row);
+    }
+  };
+  buildDefaultModelControls();
 
   const personaSection = document.createElement("section");
   personaSection.className = "leditor-ai-settings-panel__persona";
@@ -527,24 +606,20 @@ export const createAISettingsPanel = (): AiSettingsPanelController => {
 
   exportPanel.append(exportSummary, exportJson, copyBtn, importLabel, importJson, importBtn, profileRow, profileList);
 
-  form.append(
-    personaSection,
-    envStatus,
-    status
-  );
+  form.append(defaultsSection, personaSection, envStatus, status);
 
   panel.append(header, form);
   root.appendChild(panel);
 
   const applySettingsToForm = (settings: AiSettings) => {
+    const defaults = normalizeModelByProvider(settings.modelByProvider);
+    for (const provider of PROVIDERS) {
+      const select = modelSelects.get(provider);
+      if (select) {
+        select.value = defaults[provider];
+      }
+    }
     renderPersonaPanel(settings);
-  };
-
-  const syncStatus = (message = "Saved.") => {
-    status.textContent = message;
-    window.setTimeout(() => {
-      status.textContent = "";
-    }, 1200);
   };
 
   const refreshEnvStatus = async () => {

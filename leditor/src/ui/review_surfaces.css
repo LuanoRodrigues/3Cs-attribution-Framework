@@ -1,6 +1,6 @@
 .leditor-review-surface {
-  border: 1px solid #cfc3a4;
-  background: #fffdf7;
+  border: 1px solid #d0d0d0;
+  background: #f3f2f1;
   padding: 10px 12px;
   border-radius: 6px;
 }
@@ -10,5 +10,5 @@
   font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #6b5b3b;
+  color: #5a5a5a;
 }

@@ -52,6 +52,12 @@ const PageBreakExtension = Node.create({
       "data-break-label": label,
       class: `leditor-break leditor-break-${kind}`
     };
+    if (kind.startsWith("section_")) {
+      const raw = kind.slice("section_".length);
+      const normalized =
+        raw === "next" ? "nextPage" : raw === "odd" ? "oddPage" : raw === "even" ? "evenPage" : raw;
+      attrs["data-kind"] = normalized;
+    }
     if (sectionId) {
       attrs["data-section-id"] = String(sectionId);
     }

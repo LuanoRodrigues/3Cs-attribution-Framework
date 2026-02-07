@@ -60,15 +60,21 @@ const syncRow = (
   if (number) number.textContent = item.number ?? "";
   const text = row.querySelector<HTMLElement>(".leditor-footnote-entry-text");
   if (!text) return;
+  const isActiveEditor = text.dataset.leditorEditor === "true";
   text.dataset.footnoteId = entry.footnoteId;
   text.dataset.footnoteFragment = item.fragment;
   text.dataset.placeholder = "Type footnote…";
-  text.contentEditable = "false";
-  text.tabIndex = entry.source === "citation" ? -1 : 0;
-  text.setAttribute("spellcheck", entry.source === "citation" ? "false" : "true");
+  if (!isActiveEditor) {
+    text.contentEditable = "false";
+    text.tabIndex = entry.source === "citation" ? -1 : 0;
+    text.setAttribute("aria-readonly", "true");
+    text.setAttribute("spellcheck", entry.source === "citation" ? "false" : "true");
+  } else {
+    text.removeAttribute("aria-readonly");
+  }
 
   if (opts?.skipContent) return;
-  if (text.dataset.leditorEditor === "true") return;
+  if (isActiveEditor) return;
   renderFragment(text, item.content, serializer);
 };
 

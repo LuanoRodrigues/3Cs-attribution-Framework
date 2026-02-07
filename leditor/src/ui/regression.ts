@@ -1,4 +1,5 @@
 import type { EditorHandle } from "../api/leditor.ts";
+import { collectNestedControls, loadRibbonModel } from "./ribbon_config.ts";
 
 const safeExec = (handle: EditorHandle, command: string, args?: any) => {
   try {
@@ -26,4 +27,32 @@ export const runRegressionRoutine = (editorHandle: EditorHandle) => {
   safeExec(editorHandle, "Redo");
   safeExec(editorHandle, "ClearFormatting");
   return editorHandle.getJSON();
+};
+
+export const runUiSmokeChecks = (): void => {
+  try {
+    const model = loadRibbonModel();
+    const menuItems: any[] = [];
+    model.orderedTabs.forEach((tab) => {
+      tab.groups.forEach((group) => {
+        group.clusters.forEach((cluster) => {
+          cluster.controls.forEach((control) => {
+            if (control.type === "menuItem") menuItems.push(control);
+            collectNestedControls(control).forEach((nested) => {
+              if (nested.type === "menuItem") menuItems.push(nested);
+            });
+          });
+        });
+      });
+    });
+    const missingDescriptions = menuItems.filter((item) => !item.description);
+    const missingShortcuts = menuItems.filter((item) => !item.shortcut);
+    console.info("[Regression] ribbon menu items", {
+      total: menuItems.length,
+      missingDescriptions: missingDescriptions.length,
+      missingShortcuts: missingShortcuts.length
+    });
+  } catch (error) {
+    console.warn("[Regression] ribbon smoke check failed", error);
+  }
 };

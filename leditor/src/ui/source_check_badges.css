@@ -2,43 +2,43 @@
 
 .leditor-source-check--verified {
   background: transparent;
-  border-bottom: 1px solid rgba(16, 185, 129, 0.28);
+  border-bottom: 1px solid var(--ui-success-border);
 }
 
 .leditor-source-check--needsReview {
   background: transparent;
-  border-bottom: 1px solid rgba(239, 68, 68, 0.28);
+  border-bottom: 1px solid var(--ui-danger-border);
 }
 
 .leditor-source-check--anchor.leditor-source-check--verified {
-  color: rgba(37, 99, 235, 0.95);
+  color: var(--ui-accent);
 }
 
 .leditor-source-check--anchor.leditor-source-check--needsReview {
-  color: rgba(239, 68, 68, 0.88);
+  color: var(--ui-danger);
 }
 
 /* Inline badge/note widgets were removed in favor of the right-side feedback rail. */
 
 /* When the citation atom node is decorated, the class is applied on the <a.leditor-citation-anchor>. */
 .leditor-citation-anchor.leditor-source-check--verified {
-  color: rgba(37, 99, 235, 0.95) !important;
+  color: var(--ui-accent) !important;
 }
 
 .leditor-citation-anchor.leditor-source-check--needsReview {
-  color: rgba(239, 68, 68, 0.88) !important;
+  color: var(--ui-danger) !important;
 }
 
 .leditor-citation-anchor.leditor-source-check--selected,
 .leditor-source-check--selected {
-  outline: 2px solid rgba(37, 99, 235, 0.45);
+  outline: 2px solid color-mix(in srgb, var(--ui-accent) 45%, transparent);
   outline-offset: 2px;
   border-radius: 6px;
-  background: rgba(37, 99, 235, 0.10);
+  background: color-mix(in srgb, var(--ui-accent) 10%, transparent);
 }
 
 .leditor-source-check--pulse {
-  outline: 2px solid rgba(37, 99, 235, 0.45);
+  outline: 2px solid color-mix(in srgb, var(--ui-accent) 45%, transparent);
   outline-offset: 2px;
   border-radius: 4px;
   animation: leditor-source-check-pulse 1.2s ease-out 1;
@@ -46,8 +46,8 @@
 }
 
 .leditor-citation-anchor.leditor-source-check--pulse {
-  background: rgba(37, 99, 235, 0.10);
-  border-bottom-color: rgba(37, 99, 235, 0.65) !important;
+  background: color-mix(in srgb, var(--ui-accent) 10%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--ui-accent) 65%, transparent) !important;
 }
 
 /* Inline fix suggestion widget (shown only when source checks are visible). */
@@ -60,9 +60,9 @@
 }
 
 .leditor-source-check-fix__chip {
-  border: 1px solid rgba(37, 99, 235, 0.25);
-  background: rgba(37, 99, 235, 0.08);
-  color: rgba(37, 99, 235, 0.92);
+  border: 1px solid color-mix(in srgb, var(--ui-accent) 25%, transparent);
+  background: color-mix(in srgb, var(--ui-accent) 8%, transparent);
+  color: var(--ui-accent);
   border-radius: 999px;
   padding: 1px 8px;
   font-size: 11px;
@@ -70,7 +70,7 @@
   cursor: pointer;
 }
 .leditor-source-check-fix__chip:hover {
-  background: rgba(37, 99, 235, 0.12);
+  background: color-mix(in srgb, var(--ui-accent) 12%, transparent);
 }
 
 /* Portal popover so it never gets clipped by A4 page overflow. */
@@ -81,26 +81,26 @@
   max-width: calc(100vw - 16px);
   padding: 10px 10px 8px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.98);
-  border: 1px solid rgba(0, 0, 0, 0.10);
-  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.16);
+  background: color-mix(in srgb, var(--ui-surface) 96%, transparent);
+  border: 1px solid var(--ui-border-color);
+  box-shadow: var(--ui-shadow-2);
   overflow: hidden;
   pointer-events: auto;
 }
 
 .leditor-app.theme-dark .leditor-source-check-fix-popover {
-  background: rgba(24, 28, 36, 0.98);
-  border-color: rgba(255, 255, 255, 0.14);
+  background: color-mix(in srgb, var(--ui-surface) 90%, transparent);
+  border-color: var(--ui-border-color);
 }
 
 .leditor-source-check-fix-popover__text {
   font-size: 11.5px;
   line-height: 1.25;
-  color: rgba(23, 23, 23, 0.88);
+  color: var(--ui-text);
   white-space: pre-wrap;
 }
 .leditor-app.theme-dark .leditor-source-check-fix-popover__text {
-  color: rgba(240, 240, 240, 0.92);
+  color: var(--ui-text);
 }
 
 .leditor-source-check-fix-popover__actions {
@@ -111,9 +111,9 @@
 }
 
 .leditor-source-check-fix-popover__btn {
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  background: rgba(255, 255, 255, 0.95);
-  color: rgba(23, 23, 23, 0.86);
+  border: 1px solid var(--ui-border-color);
+  background: color-mix(in srgb, var(--ui-surface) 92%, transparent);
+  color: var(--ui-text);
   border-radius: 10px;
   padding: 5px 8px;
   font-size: 11px;
@@ -121,31 +121,31 @@
   cursor: pointer;
 }
 .leditor-app.theme-dark .leditor-source-check-fix-popover__btn {
-  border-color: rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(240, 240, 240, 0.9);
+  border-color: var(--ui-border-color);
+  background: color-mix(in srgb, var(--ui-surface-2) 80%, transparent);
+  color: var(--ui-text);
 }
 
 .leditor-source-check-fix-popover__btn--primary {
-  border-color: rgba(37, 99, 235, 0.30);
-  background: rgba(37, 99, 235, 0.92);
-  color: white;
+  border-color: color-mix(in srgb, var(--ui-accent) 40%, var(--ui-border-color));
+  background: color-mix(in srgb, var(--ui-accent) 75%, transparent);
+  color: var(--ui-accent-contrast);
 }
 .leditor-source-check-fix-popover__btn--primary:hover {
-  background: rgba(37, 99, 235, 1);
+  background: color-mix(in srgb, var(--ui-accent) 85%, transparent);
 }
 
 @keyframes leditor-source-check-pulse {
   0% {
-    outline-color: rgba(37, 99, 235, 0.0);
-    box-shadow: 0 0 0 rgba(37, 99, 235, 0.0);
+    outline-color: color-mix(in srgb, var(--ui-accent) 0%, transparent);
+    box-shadow: 0 0 0 color-mix(in srgb, var(--ui-accent) 0%, transparent);
   }
   30% {
-    outline-color: rgba(37, 99, 235, 0.55);
-    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+    outline-color: color-mix(in srgb, var(--ui-accent) 55%, transparent);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--ui-accent) 12%, transparent);
   }
   100% {
-    outline-color: rgba(37, 99, 235, 0.0);
-    box-shadow: 0 0 0 rgba(37, 99, 235, 0.0);
+    outline-color: color-mix(in srgb, var(--ui-accent) 0%, transparent);
+    box-shadow: 0 0 0 color-mix(in srgb, var(--ui-accent) 0%, transparent);
   }
 }

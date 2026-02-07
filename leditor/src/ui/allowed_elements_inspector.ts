@@ -11,7 +11,7 @@ const ensureStyles = (): void => {
 .allowed-elements-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.6);
+  background: var(--ui-backdrop);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -20,14 +20,15 @@ const ensureStyles = (): void => {
 .allowed-elements-panel {
   width: min(760px, 90vw);
   max-height: 90vh;
-  background: #f9fafb;
+  background: var(--ui-surface);
   border-radius: 14px;
   padding: 24px;
-  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
+  box-shadow: var(--ui-shadow-2);
   display: flex;
   flex-direction: column;
   gap: 16px;
   overflow: hidden;
+  color: var(--ui-text);
 }
 .allowed-elements-panel header {
   display: flex;
@@ -41,7 +42,7 @@ const ensureStyles = (): void => {
   background: transparent;
   cursor: pointer;
   font-size: 0.9rem;
-  color: #111827;
+  color: var(--ui-text);
 }
 .allowed-elements-content {
   overflow: auto;
@@ -49,17 +50,17 @@ const ensureStyles = (): void => {
   gap: 12px;
 }
 .allowed-elements-section {
-  border: 1px solid rgba(15, 23, 42, 0.1);
+  border: var(--ui-border);
   border-radius: 10px;
   padding: 12px 16px;
-  background: #fff;
+  background: var(--ui-surface);
 }
 .allowed-elements-section h3 {
   margin: 0 0 6px;
   font-size: 0.85rem;
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  color: #6b7280;
+  color: var(--ui-muted);
 }
 .allowed-elements-section ul {
   margin: 0;
@@ -71,7 +72,7 @@ const ensureStyles = (): void => {
   margin-bottom: 4px;
 }
 .allowed-elements-section code {
-  background: rgba(15, 23, 42, 0.06);
+  background: color-mix(in srgb, var(--ui-text) 8%, transparent);
   border-radius: 4px;
   padding: 0 6px;
   font-size: 0.85rem;

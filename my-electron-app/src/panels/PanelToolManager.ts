@@ -2,6 +2,7 @@ import type { PanelGrid } from "../layout/PanelGrid";
 import { PANEL_REGISTRY, type PanelId } from "../layout/panelRegistry";
 import { PanelLayoutRoot, type LayoutSnapshot } from "./PanelLayoutRoot";
 import type { ToolRegistry } from "../registry/toolRegistry";
+import type { ToolState } from "./PanelLayoutRoot";
 
 type PanelHostMap = Partial<Record<PanelId, HTMLElement>>;
 
@@ -119,6 +120,37 @@ export class PanelToolManager {
       }
     });
     return result;
+  }
+
+  listPanelToolStates(panelId: PanelId): ToolState[] {
+    const root = this.roots.get(panelId);
+    if (!root) return [];
+    return root.serialize().tabs;
+  }
+
+  closePanelToolsExceptTypes(panelId: PanelId, allowedToolTypes: string[]): void {
+    const allow = new Set((allowedToolTypes || []).filter(Boolean));
+    const root = this.roots.get(panelId);
+    if (!root) return;
+    const snapshot = root.serialize();
+    snapshot.tabs.forEach((tab) => {
+      if (!allow.has(tab.toolType)) {
+        this.closeTool(tab.id);
+      }
+    });
+  }
+
+  closeToolsByType(toolType: string): void {
+    this.panelIds.forEach((panelId) => {
+      const root = this.roots.get(panelId);
+      if (!root) return;
+      const snapshot = root.serialize();
+      snapshot.tabs.forEach((tab) => {
+        if (tab.toolType === toolType) {
+          this.closeTool(tab.id);
+        }
+      });
+    });
   }
 
   spawnTool(toolType: string, options?: { panelId?: PanelId; metadata?: Record<string, unknown> }): string {

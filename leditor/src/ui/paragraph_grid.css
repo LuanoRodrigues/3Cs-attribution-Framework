@@ -22,19 +22,19 @@
   font-family: "Source Sans 3", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
   font-size: 11px;
   line-height: 1.35;
-  color: rgba(27, 27, 27, 0.55);
+  color: var(--ui-muted);
   font-variant-numeric: tabular-nums;
   user-select: none;
   pointer-events: none;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  border-right: 1px solid rgba(0, 0, 0, 0.12);
+  border-right: 1px solid var(--ui-border-color);
 }
 
 .leditor-app.leditor-app--paragraph-grid .leditor-paragraph-grid__n.leditor-paragraph-grid__n--heading {
   font-weight: 700;
-  color: rgba(27, 27, 27, 0.72);
+  color: var(--ui-text);
 }
 
 .leditor-app.leditor-app--paragraph-grid .leditor-paragraph-grid__n::after {
@@ -44,21 +44,5 @@
   right: 0;
   bottom: 0;
   height: 1px;
-  background: rgba(0, 0, 0, 0.06);
-}
-
-.leditor-app.leditor-app--paragraph-grid.leditor-app--theme-dark .leditor-paragraph-grid__n,
-.leditor-app.leditor-app--paragraph-grid.leditor-app--dark .leditor-paragraph-grid__n {
-  color: rgba(247, 247, 247, 0.55);
-  border-right-color: rgba(255, 255, 255, 0.14);
-}
-
-.leditor-app.leditor-app--paragraph-grid.leditor-app--theme-dark .leditor-paragraph-grid__n.leditor-paragraph-grid__n--heading,
-.leditor-app.leditor-app--paragraph-grid.leditor-app--dark .leditor-paragraph-grid__n.leditor-paragraph-grid__n--heading {
-  color: rgba(247, 247, 247, 0.72);
-}
-
-.leditor-app.leditor-app--paragraph-grid.leditor-app--theme-dark .leditor-paragraph-grid__n::after,
-.leditor-app.leditor-app--paragraph-grid.leditor-app--dark .leditor-paragraph-grid__n::after {
-  background: rgba(255, 255, 255, 0.08);
+  background: color-mix(in srgb, var(--ui-text) 6%, transparent);
 }

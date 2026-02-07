@@ -222,6 +222,7 @@ export class VisualiserPage {
   private static activeInstance: VisualiserPage | null = null;
   private autoRunTimer: number | null = null;
   private suppressAutoRun = false;
+  private plotRenderToken = 0;
 
   constructor(mount: HTMLElement) {
     this.mount = mount;
@@ -998,7 +999,7 @@ export class VisualiserPage {
     };
 
     const groupForKey = (key: string): string => {
-      if (key === "data_source" || key === "words_topics_view") return "Text";
+      if (key === "year_bucket" || key === "data_source" || key === "words_topics_view") return "Text";
       if (
         key === "word_plot_type" ||
         key === "top_n_words" ||
@@ -1220,6 +1221,8 @@ export class VisualiserPage {
     const isWordBar = wordPlot === "bar_vertical" || wordPlot === "bar_horizontal" || wordPlot === "treemap" || wordPlot === "heatmap";
     const isWordNetwork = wordPlot === "cooccurrence_network";
     const isWordsOverTime = wordPlot === "words_over_time";
+    const isWordDiversity = wordPlot === "term_diversity_over_time";
+    const isWordHeatmap = wordPlot === "heatmap";
 
     setWrap("top_n_words", showWords && isWordBar);
     setWrap("max_words", showWords && isWordCloud);
@@ -1258,6 +1261,11 @@ export class VisualiserPage {
     setWrap("max_nodes_for_ngram_network", showNgrams && isNgramNetwork);
     setWrap("num_ngrams_for_heatmap_cols", showNgrams && isNgramHeatmap);
     setWrap("num_docs_for_heatmap_rows", showNgrams && isNgramHeatmap);
+
+    const needsYearBucket =
+      (showWords && (isWordsOverTime || isWordHeatmap || isWordDiversity)) ||
+      (showNgrams && (isNgramEvolution || isNgramHeatmap));
+    setWrap("year_bucket", needsYearBucket);
   }
 
   private readParams(): Record<string, unknown> {
@@ -2461,7 +2469,7 @@ ${dots}
       "#a855f7",
       "#f59e0b",
       "#10b981",
-      "#3b82f6",
+      "#2b579a",
       "#e11d48",
       "#84cc16",
       "#14b8a6"
@@ -2574,12 +2582,12 @@ ${dots}
         if (trace.colorscale) return;
         // A compact, perceptually-uniform sequential scale that reads well on dark backgrounds.
         trace.colorscale = [
-          [0.0, "#0b1220"],
-          [0.15, "#16325c"],
-          [0.35, "#2563eb"],
-          [0.55, "#22c55e"],
-          [0.75, "#f59e0b"],
-          [1.0, "#ef4444"]
+          [0.0, "#1e1e1e"],
+          [0.15, "#244b86"],
+          [0.35, "#2b579a"],
+          [0.55, "#70ad47"],
+          [0.75, "#ffc000"],
+          [1.0, "#c00000"]
         ];
         trace.reversescale = Boolean(trace.reversescale);
         return;
@@ -3762,6 +3770,7 @@ ${dots}
 
   private renderSlide(): void {
     if (!this.plotHost) return;
+    const renderToken = (this.plotRenderToken += 1);
     if (this.loadingDeck) {
       this.plotHost.innerHTML = `<div class="visualiser-loading"><div class="spinner"></div><div>Loading visuals…</div></div>`;
       return;
@@ -3895,11 +3904,17 @@ ${dots}
       const plotFn = hasPlot && typeof plotlyAny.react === "function" ? plotlyAny.react : plotlyAny.newPlot;
       void plotFn(this.plotHost, data, finalLayout, config)
         .then(() => {
+          if (renderToken !== this.plotRenderToken) {
+            return;
+          }
           this.setStatus(title || "Rendered");
           this.installPlotResizeObserver();
           this.resizePlot();
         })
         .catch((error: unknown) => {
+          if (renderToken !== this.plotRenderToken) {
+            return;
+          }
           this.setStatus("Plot render failed.");
           this.appendIssueLog(
             `Plotly render failed: ${error instanceof Error ? error.message : String(error)}`
@@ -3913,9 +3928,14 @@ ${dots}
           // ignore
         }
       }
+      // Ensure non-Plotly slides (img/bullets) don't keep triggering Plotly resize logic.
+      this.plotHost.classList.remove("js-plotly-plot");
       if (img) {
         const safe = img.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
         this.plotHost.innerHTML = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--panel);"><img src="${safe}" alt="figure" style="max-width:100%;max-height:100%;width:100%;height:100%;object-fit:contain;"/></div>`;
+        if (renderToken === this.plotRenderToken) {
+          this.setStatus(title || "Rendered");
+        }
       } else {
       const bullets = Array.isArray((slide as any)?.bullets) ? ((slide as any).bullets as unknown[]) : [];
       if (bullets.length) {

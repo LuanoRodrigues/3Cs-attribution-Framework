@@ -686,10 +686,10 @@
 	    /* Viewer log UI removed for production UX */
     /* -------- Theme System -------- */
 :root{
-  --ui-bg: #0A0E14;
-  --ui-panel: rgba(255,255,255,0.03);
-  --ui-text: #d1d5db;
-  --ui-muted: rgba(209,213,219,0.75);
+  --ui-bg: #1e1e1e;
+  --ui-panel: rgba(255,255,255,0.06);
+  --ui-text: rgba(255,255,255,0.92);
+  --ui-muted: rgba(255,255,255,0.65);
 
   /* PDF visual treatment */
   --pdf-filter: none;        /* applied to canvas only */
@@ -710,26 +710,26 @@
 
 /* Themes */
 #app[data-theme="midnight"]{
-  --ui-bg: #0A0E14;
-  --ui-panel: rgba(255,255,255,0.03);
-  --ui-text: #d1d5db;
-  --ui-muted: rgba(209,213,219,0.75);
+  --ui-bg: #1e1e1e;
+  --ui-panel: rgba(255,255,255,0.06);
+  --ui-text: rgba(255,255,255,0.92);
+  --ui-muted: rgba(255,255,255,0.65);
   --pdf-filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(1.05);
 }
 
 #app[data-theme="dim"]{
-  --ui-bg: #0A0E14;
-  --ui-panel: rgba(255,255,255,0.03);
-  --ui-text: #d1d5db;
-  --ui-muted: rgba(209,213,219,0.75);
+  --ui-bg: #1e1e1e;
+  --ui-panel: rgba(255,255,255,0.06);
+  --ui-text: rgba(255,255,255,0.92);
+  --ui-muted: rgba(255,255,255,0.65);
   --pdf-filter: brightness(0.78) contrast(1.05);
 }
 
 #app[data-theme="paper"]{
-  --ui-bg: #F3F4F6;
+  --ui-bg: #f3f2f1;
   --ui-panel: rgba(0,0,0,0.04);
-  --ui-text: #111827;
-  --ui-muted: rgba(17,24,39,0.70);
+  --ui-text: #1e1e1e;
+  --ui-muted: rgba(0,0,0,0.60);
   --pdf-filter: none;
 }
 
@@ -1195,12 +1195,13 @@ function ensureAnnotationsBridgeReady(){
       let lastPayloadFocus = null;
       let payloadFocusTimer = null;
       let ocrRequested = false;
+      let fileData = null;
 
 
-	      function toFileUrlFromWindowsPath(p){
-	        const s = String(p || "");
-	        const norm = s.replace(/\\/g, "/");
-	        const m = norm.match(/^([A-Za-z]):\/(.*)$/);
+      function toFileUrlFromWindowsPath(p){
+        const s = String(p || "");
+        const norm = s.replace(/\\/g, "/");
+        const m = norm.match(/^([A-Za-z]):\/(.*)$/);
 	        const isWindowsHost = (() => {
 	          try {
 	            const plat = String(
@@ -1220,10 +1221,73 @@ function ensureAnnotationsBridgeReady(){
 	          const rest = String(m[2] || "");
 	          const posix = `/mnt/${drive}/${rest}`;
 	          return "file://" + encodeURI(posix);
-	        }
-	        const enc = encodeURI(norm);
-	        return "file:///" + enc;
-	      }
+        }
+        const enc = encodeURI(norm);
+        return "file:///" + enc;
+      }
+
+      function convertWslPath(value){
+        const trimmed = String(value || "").replace(/^\\\\+/, "");
+        const segments = trimmed.split(/[\\/]+/).filter(Boolean);
+        const head = String(segments[0] || "").toLowerCase();
+        if (segments.length >= 3 && (head === "wsl$" || head === "wsl.localhost")) {
+          return "/" + segments.slice(2).join("/");
+        }
+        return value;
+      }
+
+      function looksLikeBase64Pdf(value){
+        const raw = String(value || "").trim();
+        if (!raw) return false;
+        if (!/^[A-Za-z0-9+/]+=*$/.test(raw)) return false;
+        return raw.length > 256;
+      }
+
+      function isPdfDataCandidate(value){
+        const raw = String(value || "").trim();
+        if (!raw) return false;
+        return /^data:application\/pdf/i.test(raw) || looksLikeBase64Pdf(raw);
+      }
+
+      function makeBlobUrlFromBase64(b64){
+        const raw = atob(String(b64 || "").replace(/^data:application\/pdf;base64,/i, ""));
+        const bytes = new Uint8Array(raw.length);
+        for (let i = 0; i < raw.length; i += 1) bytes[i] = raw.charCodeAt(i);
+        const blob = new Blob([bytes], { type: "application/pdf" });
+        return URL.createObjectURL(blob);
+      }
+
+      function normalizePdfRef(value){
+        const raw = String(value || "").trim();
+        if (!raw) return "";
+        const converted = String(convertWslPath(raw) || "").trim();
+        if (!converted) return "";
+        if (/^data:application\/pdf/i.test(converted)) return converted;
+        if (/^https?:\/\//i.test(converted)) return converted;
+        if (/^file:\/\//i.test(converted)) {
+          if (/^file:\/\/[A-Za-z]:\//i.test(converted)) {
+            return "file:///" + converted.slice("file://".length);
+          }
+          return converted;
+        }
+        if (looksLikeBase64Pdf(converted)) return makeBlobUrlFromBase64(converted);
+        if (converted.startsWith("/")) return "file://" + encodeURI(converted);
+        return toFileUrlFromWindowsPath(converted);
+      }
+
+      function decodePdfData(value){
+        const raw = String(value || "").trim();
+        if (!raw) return null;
+        const b64 = raw.replace(/^data:application\/pdf;base64,/i, "");
+        try {
+          const bin = atob(b64);
+          const bytes = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i += 1) bytes[i] = bin.charCodeAt(i);
+          return bytes;
+        } catch {
+          return null;
+        }
+      }
 
       function requestOcrIfNeeded(reason, page){
         if (ocrRequested) return;
@@ -2794,6 +2858,7 @@ _setActiveFindBox();
 
         loadFromUrl: (url, page = 1) => {
           fileUrl = String(url || "");
+          fileData = null;
           pageJump = parseInt(page || 1, 10) || 1;
           pendingPayloadFocus = null;
           currentPayload = null;
@@ -2804,9 +2869,13 @@ _setActiveFindBox();
 
         loadFromPayload: (payload) => {
           currentPayload = payload;
-
-          const winPath = String(payload.pdf_path);
-          fileUrl = winPath.startsWith("file:///") ? winPath : toFileUrlFromWindowsPath(winPath);
+          const pdfAlt = String(payload.pdf || "").trim();
+          const pdfPath = String(payload.pdf_path || "").trim();
+          const pdfSource = String(payload.source || "").trim();
+          const inlineData = isPdfDataCandidate(pdfAlt) ? pdfAlt : "";
+          const pdfRef = inlineData ? inlineData : (pdfPath || pdfAlt || pdfSource || "");
+          fileUrl = normalizePdfRef(pdfPath || pdfSource || pdfRef);
+          fileData = inlineData ? decodePdfData(inlineData) : null;
 
           pageJump = parseInt(String(payload.page || 1), 10) || 1;
 
@@ -3733,7 +3802,7 @@ document.addEventListener("keydown", async (ev) => {
         // Load persisted PDF theme (canvas-only)
         loadPdfTheme();
 
-        if (!fileUrl) {
+        if (!fileUrl && !fileData) {
           setStatus("Ready (no file)");
           logWarn("No ?file= provided.");
           return;
@@ -3741,12 +3810,14 @@ document.addEventListener("keydown", async (ev) => {
 
         setStatus("Loading…");
 
-        const loadingTask = pdfjsLib.getDocument({
-          url: fileUrl,
-          disableRange: true,
-          disableStream: true,
-          disableAutoFetch: true,
-        });
+        const loadingTask = fileData
+          ? pdfjsLib.getDocument({ data: fileData })
+          : pdfjsLib.getDocument({
+              url: fileUrl,
+              disableRange: true,
+              disableStream: true,
+              disableAutoFetch: true,
+            });
 
         pdfDoc = await loadingTask.promise;
 

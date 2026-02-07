@@ -2210,6 +2210,48 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
   });
 
   const normalizeError = (error: unknown): string => (error instanceof Error ? error.message : String(error));
+  const convertWslUncPath = (value: string): string => {
+    const trimmed = String(value || "").trim();
+    if (!trimmed) return "";
+    const normalized = trimmed.replace(/^\\\\+/, "");
+    const segments = normalized.split(/[\\/]+/).filter(Boolean);
+    const head = String(segments[0] || "").toLowerCase();
+    if ((head === "wsl$" || head === "wsl.localhost") && segments.length >= 3) {
+      return `/${segments.slice(2).join("/")}`;
+    }
+    return trimmed;
+  };
+  const convertWindowsDrivePath = (value: string): string => {
+    const trimmed = String(value || "").trim();
+    if (!trimmed) return "";
+    const normalized = trimmed.replace(/\\/g, "/");
+    const match = normalized.match(/^([A-Za-z]):\/(.*)$/);
+    if (!match) return trimmed;
+    if (process.platform === "win32") return trimmed;
+    const drive = String(match[1] || "").toLowerCase();
+    const rest = String(match[2] || "");
+    return `/mnt/${drive}/${rest}`;
+  };
+  const normalizeFsPath = (value: string): string => {
+    let trimmed = String(value || "").trim();
+    if (!trimmed) return "";
+    if (/^file:\/\//i.test(trimmed)) {
+      trimmed = trimmed.replace(/^file:\/\//i, "");
+      try {
+        trimmed = decodeURIComponent(trimmed);
+      } catch {
+        // ignore decode failures
+      }
+      if (trimmed.startsWith("/") && /^[A-Za-z]:\//.test(trimmed.slice(1))) {
+        trimmed = trimmed.slice(1);
+      }
+    }
+    if (trimmed.startsWith("\\\\")) {
+      trimmed = convertWslUncPath(trimmed);
+    }
+    trimmed = convertWindowsDrivePath(trimmed);
+    return trimmed;
+  };
   ipcMain.handle("leditor:read-file", async (_event, request: { sourcePath: string }) => {
     const logRefs = (filePath: string, raw: string): void => {
       try {
@@ -2247,6 +2289,28 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
           // ignore and fall through
         }
       }
+      return { success: false, error: normalizeError(error) };
+    }
+  });
+
+  ipcMain.handle("leditor:read-binary-file", async (_event, request: { sourcePath: string; maxBytes?: number }) => {
+    try {
+      const sourcePath = normalizeFsPath(request.sourcePath);
+      const maxBytes = Number.isFinite(request.maxBytes) ? Number(request.maxBytes) : 0;
+      if (maxBytes > 0) {
+        const stat = await fs.promises.stat(sourcePath);
+        if (stat.size > maxBytes) {
+          return { success: false, error: "File exceeds size limit", bytes: stat.size };
+        }
+      }
+      const buffer = await fs.promises.readFile(sourcePath);
+      return {
+        success: true,
+        dataBase64: buffer.toString("base64"),
+        bytes: buffer.length,
+        filePath: sourcePath
+      };
+    } catch (error) {
       return { success: false, error: normalizeError(error) };
     }
   });
