@@ -269,6 +269,7 @@ const buildDecorations = (state: EditorState, draft: DraftState): DecorationSet 
       const key = `${from}:${to}`;
       const original = typeof item.originalText === "string" ? item.originalText : state.doc.textBetween(from, to, "\n");
       const proposed = String(item.proposedText ?? "");
+      const originalSnippet = sanitizeSnippet(original, 360);
       decos.push(
         Decoration.inline(from, to, {
           class: "leditor-ai-draft-hidden",
@@ -282,10 +283,11 @@ const buildDecorations = (state: EditorState, draft: DraftState): DecorationSet 
             const el = document.createElement("span");
             el.className = "leditor-ai-draft-repl";
             el.textContent = proposed;
-            el.title = `Original:\n${original}\n\nClick to accept/reject`;
+            el.title = originalSnippet;
             el.contentEditable = "false";
             el.setAttribute("data-ai-draft-repl", "true");
             el.setAttribute("data-ai-draft-key", key);
+            el.setAttribute("data-ai-draft-original", originalSnippet);
             if (typeof item.n === "number") {
               el.setAttribute("data-ai-draft-n", String(item.n));
             }
@@ -380,6 +382,9 @@ const buildDecorations = (state: EditorState, draft: DraftState): DecorationSet 
     const chunks = splitByProportions(proposedPlain, lengths);
 
     const itemKey = `${from}:${to}`;
+    const originalFull =
+      typeof item.originalText === "string" ? item.originalText : state.doc.textBetween(from, to, "\n");
+    const originalSnippet = sanitizeSnippet(originalFull, 360);
     for (let i = 0; i < plainSegments.length; i += 1) {
       const seg = plainSegments[i];
       const newChunk = String(chunks[i] ?? "");
@@ -398,10 +403,11 @@ const buildDecorations = (state: EditorState, draft: DraftState): DecorationSet 
             const el = document.createElement("span");
             el.className = "leditor-ai-draft-repl";
             el.textContent = newChunk;
-            el.title = `Original:\n${seg.oldText}\n\nClick to accept/reject`;
+            el.title = originalSnippet;
             el.contentEditable = "false";
             el.setAttribute("data-ai-draft-repl", "true");
             el.setAttribute("data-ai-draft-key", itemKey);
+            el.setAttribute("data-ai-draft-original", originalSnippet);
             if (typeof item.n === "number") {
               el.setAttribute("data-ai-draft-n", String(item.n));
             }

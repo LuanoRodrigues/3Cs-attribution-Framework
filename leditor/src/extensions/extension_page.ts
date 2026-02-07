@@ -4365,6 +4365,7 @@ type PaginationMemo = {
   lastPaginationOnlySplitCount: number;
   preferFillUntil: number;
   pendingJoinRetryId: number | null;
+  typingDeferUntil: number;
 };
 
 const paginateView = (
@@ -4409,6 +4410,30 @@ const paginateView = (
     }
   };
   const now = performance.now();
+  const lastInputAt = (window as any).__leditorLastUserInputAt;
+  const burstMsRaw = (window as any).__leditorPaginationTypingBurstMs;
+  const deferMsRaw = (window as any).__leditorPaginationTypingDeferMs;
+  const burstMs = Number.isFinite(burstMsRaw) ? Math.max(0, Number(burstMsRaw)) : 120;
+  const deferMs = Number.isFinite(deferMsRaw) ? Math.max(0, Number(deferMsRaw)) : 140;
+  const typingBurst = burstMs > 0 && typeof lastInputAt === "number" && now - lastInputAt < burstMs;
+  if (typingBurst && deferMs > 0) {
+    if (memo.typingDeferUntil <= now) {
+      memo.typingDeferUntil = now + deferMs;
+      try {
+        window.setTimeout(() => {
+          try {
+            view.dom.dispatchEvent(new CustomEvent("leditor:pagination-request", { bubbles: true }));
+          } catch {
+            // ignore
+          }
+        }, deferMs);
+      } catch {
+        // ignore
+      }
+    }
+    return;
+  }
+  memo.typingDeferUntil = 0;
   const preferFill = Boolean(options?.preferFill) || memo.preferFillUntil > now;
   if (preferFill) {
     try {
@@ -6071,7 +6096,8 @@ export const PagePagination = Extension.create({
       lastPaginationOnlyDocSize: 0,
       lastPaginationOnlySplitCount: 0,
       preferFillUntil: 0,
-      pendingJoinRetryId: null
+      pendingJoinRetryId: null,
+      typingDeferUntil: 0
     };
     return [
       new Plugin({

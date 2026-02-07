@@ -770,6 +770,12 @@
   gap: 4px;
 }
 
+.leditor-context-menu__itemGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .leditor-context-menu__item {
   border: 0;
   background: transparent;
@@ -778,6 +784,37 @@
   border-radius: 8px;
   cursor: pointer;
   color: var(--ui-text);
+}
+
+.leditor-context-menu__item--group {
+  font-weight: 650;
+  position: relative;
+}
+
+.leditor-context-menu__item--group::after {
+  content: "▸";
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  color: var(--ui-muted);
+}
+
+.leditor-context-menu__item--group[aria-expanded="true"]::after {
+  content: "▾";
+}
+
+.leditor-context-menu__itemChildren {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 12px;
+}
+
+.leditor-context-menu__item--child {
+  font-size: 12px;
+  padding: 6px 10px;
 }
 
 .leditor-context-menu__item:hover:not(:disabled) {

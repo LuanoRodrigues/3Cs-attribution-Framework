@@ -1040,10 +1040,13 @@ export const createAgentSidebar = (
     plusMenu.replaceChildren();
     const entries: Array<{ id: Exclude<ActionMode, "auto">; label: string; mode?: "block" }> = [
       { id: "refine", label: "Refine" },
+      { id: "refine", label: "Refine Block", mode: "block" },
       { id: "paraphrase", label: "Paraphrase" },
+      { id: "paraphrase", label: "Paraphrase Block", mode: "block" },
       { id: "shorten", label: "Shorten" },
       { id: "shorten", label: "Shorten Block", mode: "block" },
       { id: "proofread", label: "Proofread" },
+      { id: "proofread", label: "Proofread Block", mode: "block" },
       { id: "substantiate", label: "Substantiate" },
       { id: "abstract", label: "Abstract" },
       { id: "introduction", label: "Introduction" },
@@ -1063,7 +1066,10 @@ export const createAgentSidebar = (
       row.addEventListener("click", () => {
         closePlusMenu();
         setActionMode(entry.id);
-        if (entry.id === "shorten" && entry.mode === "block") {
+        if (
+          entry.mode === "block" &&
+          (entry.id === "refine" || entry.id === "paraphrase" || entry.id === "shorten" || entry.id === "proofread")
+        ) {
           controller.runAction(entry.id, { mode: "block" });
           return;
         }
@@ -3245,6 +3251,57 @@ export const createAgentSidebar = (
     }
   };
 
+  const splitTextByProportions = (value: string, lengths: number[]): string[] => {
+    const input = String(value ?? "");
+    if (lengths.length <= 1) return [input];
+    const total = lengths.reduce((acc, n) => acc + Math.max(0, n), 0);
+    if (total <= 0) {
+      const chunk = input;
+      return [chunk, ...lengths.slice(1).map(() => "")];
+    }
+    const out: string[] = [];
+    let idx = 0;
+    for (let i = 0; i < lengths.length; i += 1) {
+      if (i === lengths.length - 1) {
+        out.push(input.slice(idx));
+        break;
+      }
+      const share = Math.max(0, lengths[i]) / total;
+      const target = idx + Math.floor(input.length * share);
+      const limit = Math.max(idx, Math.min(input.length, target));
+      let cut = input.lastIndexOf(" ", limit);
+      if (cut < idx) cut = input.indexOf(" ", limit);
+      if (cut < 0) cut = limit;
+      out.push(input.slice(idx, cut));
+      idx = cut;
+    }
+    while (out.length < lengths.length) out.push("");
+    if (out.length > lengths.length) {
+      const extra = out.slice(lengths.length - 1).join("");
+      out.length = lengths.length;
+      out[lengths.length - 1] = `${out[lengths.length - 1]}${extra}`;
+    }
+    return out;
+  };
+
+  const splitDraftTextByParagraphs = (text: string, originals: string[]): string[] => {
+    const count = originals.length;
+    const normalized = String(text ?? "").replace(/\r\n/g, "\n").trim();
+    if (count <= 1) return [normalized];
+    if (!normalized) return originals.map(() => "");
+    const byBlank = normalized.split(/\n{2,}/);
+    if (byBlank.length === count) return byBlank;
+    const byLine = normalized.split(/\n/);
+    if (byLine.length === count) return byLine;
+    const lengths = originals.map((s) => s.length);
+    return splitTextByProportions(normalized, lengths);
+  };
+
+  const resolveParagraphRangesForSpan = (from: number, to: number) => {
+    const ranges = listParagraphRanges();
+    return ranges.filter((p) => p.to >= from && p.from <= to);
+  };
+
   const applyRangeAsTransaction = (
     from: number,
     to: number,
@@ -3301,6 +3358,18 @@ export const createAgentSidebar = (
       }
       return schema.text(String(value ?? ""), marks);
     };
+    const paragraphs = resolveParagraphRangesForSpan(from, to);
+    if (paragraphs.length > 1) {
+      const originals = paragraphs.map((p) => baseDoc.textBetween(p.from, p.to, "\n"));
+      const chunks = splitDraftTextByParagraphs(text, originals);
+      const items = paragraphs.map((p, i) => ({
+        from: p.from,
+        to: p.to,
+        text: String(chunks[i] ?? "").trim()
+      }));
+      applyBatchAsTransaction(items, meta?.source ? { source: meta.source } : undefined);
+      return;
+    }
     const fragment = buildTextblockReplacementFragment(baseDoc, from, to, text);
     if (!fragment) {
       // Fallback: if not an exact textblock replacement, still prevent citation loss.
@@ -4931,7 +5000,13 @@ export const createAgentSidebar = (
   const getSelectionRangeForAction = (): { from: number; to: number } | null => {
     const target = getIndicesForCurrentSelectionOrCursor();
     if (!target) return null;
-    return { from: target.from, to: target.to };
+    const ranges = listParagraphRanges();
+    if (!ranges.length) return { from: target.from, to: target.to };
+    const selected = ranges.filter((p) => target.indices.includes(p.n));
+    if (!selected.length) return { from: target.from, to: target.to };
+    const from = Math.min(...selected.map((p) => p.from));
+    const to = Math.max(...selected.map((p) => p.to));
+    return { from, to };
   };
 
   const getActionPrompt = (actionId: AgentActionId): string => {
@@ -4988,7 +5063,7 @@ export const createAgentSidebar = (
         addMessage("system", "Select text or place cursor in a paragraph, then run an action.");
         return;
       }
-      const prompt = `${getActionPrompt(actionId)} Treat the selection as a single block.`;
+      const prompt = `${getActionPrompt(actionId)} Treat the selection as a single block. Preserve paragraph breaks; separate paragraphs with a blank line.`;
       input.value = prompt;
       await run({ actionId, selection: range });
       return;
@@ -6509,7 +6584,10 @@ export const createAgentSidebar = (
         void runSubstantiate();
         return;
       }
-      if (actionId === "shorten" && options?.mode === "block") {
+      if (
+        options?.mode === "block" &&
+        (actionId === "refine" || actionId === "paraphrase" || actionId === "shorten" || actionId === "proofread")
+      ) {
         void applyActionTemplate(actionId, { selectionBlock: true });
         return;
       }

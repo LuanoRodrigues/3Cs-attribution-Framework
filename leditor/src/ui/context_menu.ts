@@ -17,10 +17,11 @@ type ContextGroup = "agent" | "sections" | "dictionary" | "ref";
 
 type MenuItem = {
   label: string;
-  command: string;
+  command?: string;
   args?: any;
   action?: string;
   requireSelection?: boolean;
+  children?: MenuItem[];
 };
 
 type PhaseFlags = {
@@ -86,12 +87,19 @@ const tableSizes = [
 ];
 
 const buildMenuGroups = (context: ContextType): Record<ContextGroup, MenuItem[]> => {
+  const blockGroup = (id: string, label: string): MenuItem => ({
+    label,
+    children: [
+      { label: "Paragraph", command: "agent.action", args: { id } },
+      { label: "Paragraphs", command: "agent.action", args: { id, mode: "block" } }
+    ]
+  });
+
   const agentItems: MenuItem[] = [
-    { label: "Refine", command: "agent.action", args: { id: "refine" } },
-    { label: "Paraphrase", command: "agent.action", args: { id: "paraphrase" } },
-    { label: "Shorten", command: "agent.action", args: { id: "shorten" } },
-    { label: "Shorten block", command: "agent.action", args: { id: "shorten", mode: "block" } },
-    { label: "Proofread", command: "agent.action", args: { id: "proofread" } },
+    blockGroup("refine", "Refine"),
+    blockGroup("paraphrase", "Paraphrase"),
+    blockGroup("shorten", "Shorten"),
+    blockGroup("proofread", "Proofread"),
     { label: "Substantiate", command: "agent.action", args: { id: "substantiate" } },
     { label: "Check sources", command: "agent.action", args: { id: "check_sources" } },
     { label: "Clear checks", command: "agent.action", args: { id: "clear_checks" } }
@@ -170,6 +178,7 @@ const dispatchContextAction = (action: string, editor: Editor) => {
 export const attachContextMenu = (handle: EditorHandle, editorDom: HTMLElement, editor: Editor) => {
   let menuEl: HTMLDivElement | null = null;
   let activeGroup: ContextGroup = "agent";
+  let expandedGroup: string | null = null;
 
   // Word-like right-click behavior: when right-clicking inside an existing range selection, do not
   // collapse/move the selection before opening the context menu.
@@ -202,6 +211,7 @@ export const attachContextMenu = (handle: EditorHandle, editorDom: HTMLElement, 
     if (!context) return;
     event.preventDefault();
     closeMenu();
+    expandedGroup = null;
     const groups = buildMenuGroups(context);
     const selection = getSelectionSnapshot(editor);
     const selectionRange = { from: editor.state.selection.from, to: editor.state.selection.to };
@@ -247,6 +257,67 @@ export const attachContextMenu = (handle: EditorHandle, editorDom: HTMLElement, 
       itemsEl.replaceChildren();
       const items = groups[activeGroup] ?? [];
       for (const item of items) {
+        if (item.children && item.children.length) {
+          const group = document.createElement("div");
+          group.className = "leditor-context-menu__itemGroup";
+          const groupBtn = document.createElement("button");
+          groupBtn.type = "button";
+          groupBtn.className = "leditor-context-menu__item leditor-context-menu__item--group";
+          groupBtn.textContent = item.label;
+          const isOpen = expandedGroup === item.label;
+          groupBtn.setAttribute("aria-expanded", isOpen ? "true" : "false");
+          groupBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            expandedGroup = isOpen ? null : item.label;
+            renderItems();
+          });
+          group.appendChild(groupBtn);
+          if (isOpen) {
+            const childWrap = document.createElement("div");
+            childWrap.className = "leditor-context-menu__itemChildren";
+            for (const child of item.children) {
+              const childBtn = document.createElement("button");
+              childBtn.type = "button";
+              childBtn.className = "leditor-context-menu__item leditor-context-menu__item--child";
+              childBtn.textContent = child.label;
+              const disabled = Boolean(child.requireSelection && !hasSelection);
+              childBtn.disabled = disabled;
+              childBtn.addEventListener("click", () => {
+                if (childBtn.disabled) {
+                  closeMenu();
+                  return;
+                }
+                if (child.requireSelection) {
+                  try {
+                    const from = Math.min(selectionRange.from, selectionRange.to);
+                    const to = Math.max(selectionRange.from, selectionRange.to);
+                    if (from !== to) {
+                      editor.commands.setTextSelection?.({ from, to });
+                    }
+                  } catch {
+                    // ignore
+                  }
+                }
+                if (child.action) {
+                  dispatchContextAction(child.action, editor);
+                  recordAction(context);
+                  closeMenu();
+                  return;
+                }
+                if (child.command) {
+                  handle.execCommand(child.command, child.args);
+                  recordAction(context);
+                }
+                closeMenu();
+              });
+              childWrap.appendChild(childBtn);
+            }
+            group.appendChild(childWrap);
+          }
+          itemsEl.appendChild(group);
+          continue;
+        }
         const button = document.createElement("button");
         button.type = "button";
         button.className = "leditor-context-menu__item";

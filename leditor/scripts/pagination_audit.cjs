@@ -162,6 +162,7 @@ const run = async () => {
   const minAvgLen = Number.parseFloat(process.env.MIN_AVG_LINE_LEN || "18");
   const minLines = Number.parseInt(process.env.MIN_LINES_PER_PAGE || "6", 10);
   const minFillRatio = Number.parseFloat(process.env.MIN_FILL_RATIO || "0.35");
+  const maxRemainingLines = Number.parseInt(process.env.MAX_REMAINING_LINES || "2", 10);
   const allowHeadless = process.env.LEDITOR_HEADLESS === "1";
 
   const docJson = readContentJson(inputLedoc);
@@ -611,6 +612,11 @@ const run = async () => {
               const rect = block.getBoundingClientRect();
               lastBottom = Math.max(lastBottom, rect.bottom - contentRect.top);
               const text = (block.innerText || "").split(nbspChar).join(" ");
+              const normalizedText = text.replace(/\s+/g, " ").trim();
+              const wordCount = normalizedText.length ? normalizedText.split(/\s+/).length : 0;
+              const textLength = normalizedText.length;
+              const nodeId = block.getAttribute("data-leditor-node-id") || null;
+              const isBreak = block.classList?.contains("leditor-break") || false;
               const lineTexts = text
                 .split("\\n")
                 .map((line) => line.replace(/\\s+/g, " ").trim())
@@ -642,6 +648,10 @@ const run = async () => {
                 index: blockIndex,
                 tag: block.tagName,
                 className: block.className || "",
+                wordCount,
+                textLength,
+                nodeId,
+                isBreak,
                 lineCount: visualLineCount,
                 brCount: blockBrCount,
                 singleWordLines: blockSingleWordLines,
@@ -859,9 +869,16 @@ const run = async () => {
       const minLinesForPage = isSection ? Math.max(3, Math.round(minLines * 0.6)) : minLines;
       const minAvgLenForPage = isSection ? minAvgLen * 0.6 : minAvgLen;
       const minFillForPage = isSection ? minFillRatio * 0.6 : minFillRatio;
+      const maxRemainingForPage = isSection
+        ? Math.max(2, Math.round(maxRemainingLines * 1.5))
+        : maxRemainingLines;
       if (page.totalLines < minLinesForPage) return true;
       if (page.avgLineLen < minAvgLenForPage) return true;
-      if (page.fillRatio < minFillForPage) return true;
+      if (Number.isFinite(page.remainingLines) && Number.isFinite(page.maxLines) && page.maxLines > 0) {
+        if (page.remainingLines > maxRemainingForPage) return true;
+      } else if (page.fillRatio < minFillForPage) {
+        return true;
+      }
       if (page.shortLines > 3 || page.singleWordLines > 3) return true;
       if (typeof page.narrowLineRatio === "number" && page.narrowLineRatio > 0.25) return true;
       if (typeof page.narrowLineCount === "number" && page.narrowLineCount > 4) return true;

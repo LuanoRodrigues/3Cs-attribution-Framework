@@ -1465,9 +1465,9 @@ html, body {
   overflow: hidden;
   pointer-events: auto;
   hyphens: var(--page-hyphens, manual);
-  column-count: 1;
-  column-gap: 0;
-  column-width: auto;
+  column-count: 1 !important;
+  column-gap: 0 !important;
+  column-width: auto !important;
   column-fill: auto;
   min-width: 0;
   word-break: normal;
@@ -1963,6 +1963,11 @@ export const mountA4Layout = (
   let lastUserInputAt = 0;
   const markUserInput = () => {
     lastUserInputAt = performance.now();
+    try {
+      (window as any).__leditorLastUserInputAt = lastUserInputAt;
+    } catch {
+      // ignore
+    }
   };
   appRoot.addEventListener("scroll", () => {
     lastUserScrollAt = performance.now();
@@ -4840,7 +4845,13 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
       const activeEl = document.activeElement as HTMLElement | null;
       if (!activeEl || !editorEl.contains(activeEl)) {
         const now = performance.now();
-        if (now - lastUserInputAt > 500) {
+        const typingRecently = now - lastUserInputAt < 1200;
+        const activeNeutral =
+          !activeEl ||
+          activeEl === document.body ||
+          activeEl === document.documentElement ||
+          activeEl === appRoot;
+        if (activeNeutral && (typingRecently || now - lastUserInputAt > 500)) {
           prose.focus({ preventScroll: true });
         }
       }
@@ -5210,10 +5221,22 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
     suspendPageObserver = true;
     const scrollTopBefore = appRoot.scrollTop;
     const scrollLeftBefore = appRoot.scrollLeft;
+    const bodyCaretBefore = (() => {
+      if (footnoteMode || headerFooterMode) return null;
+      const editorInstance = attachedEditorHandle?.getEditor?.() ?? null;
+      const view = editorInstance?.view ?? null;
+      const prose = (view?.dom as HTMLElement | null) ?? null;
+      if (!view || !prose || !prose.isConnected) return null;
+      const activeEl = document.activeElement as HTMLElement | null;
+      const activeInProse = Boolean(activeEl && (activeEl === prose || prose.contains(activeEl)));
+      if (!activeInProse) return null;
+      captureBodySelection("pagination:before");
+      return { activeInProse: true };
+    })();
     try {
       syncHyphenation();
       const rootStyle = getComputedStyle(document.documentElement);
-      if (paginationEnabled && viewMode === "single") {
+      if (paginationEnabled) {
         try {
           (window as any).__leditorDisableColumns = true;
         } catch {
@@ -5384,6 +5407,31 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
       // That causes a feedback loop (pagination -> steal focus -> re-focus -> pagination) which
       // presents to the user as blinking and caret loss. Footnote focus should only be driven by
       // explicit user actions and the one-shot insert flow.
+      if (bodyCaretBefore?.activeInProse && !footnoteMode && !headerFooterMode) {
+        const editorInstance = attachedEditorHandle?.getEditor?.() ?? null;
+        const view = editorInstance?.view ?? null;
+        const prose = (view?.dom as HTMLElement | null) ?? null;
+        const activeEl = document.activeElement as HTMLElement | null;
+        const activeNeutral =
+          !activeEl ||
+          activeEl === document.body ||
+          activeEl === document.documentElement ||
+          activeEl === appRoot;
+        const activeInProseNow = Boolean(activeEl && prose && (activeEl === prose || prose.contains(activeEl)));
+        let selectionInlineOk = true;
+        if (view) {
+          try {
+            const selFrom = typeof (view.state.selection as any)?.from === "number" ? view.state.selection.from : 0;
+            const $from = view.state.doc.resolve(Math.max(0, Math.min(view.state.doc.content.size, selFrom)));
+            selectionInlineOk = !!$from.parent.inlineContent;
+          } catch {
+            selectionInlineOk = true;
+          }
+        }
+        if ((!activeInProseNow && activeNeutral) || (activeInProseNow && !selectionInlineOk)) {
+          restoreBodySelection("pagination");
+        }
+      }
       if (suspendPageObserverReleaseHandle) {
         try {
           window.cancelAnimationFrame(suspendPageObserverReleaseHandle);
@@ -5422,6 +5470,44 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
       updatePagination();
     });
   }
+  let initialPaginationArmed = false;
+  const armInitialPaginationAfterFonts = () => {
+    if (initialPaginationArmed) return;
+    initialPaginationArmed = true;
+    const fonts = (document as any).fonts;
+    if (!fonts || typeof fonts.ready?.then !== "function") return;
+    const token = performance.now() + 5000;
+    try {
+      (window as any).__leditorDisablePaginationUntil = token;
+    } catch {
+      // ignore
+    }
+    const release = () => {
+      try {
+        if ((window as any).__leditorDisablePaginationUntil === token) {
+          (window as any).__leditorDisablePaginationUntil = 0;
+        }
+      } catch {
+        // ignore
+      }
+    };
+    const timeoutId = window.setTimeout(() => {
+      release();
+      requestPagination();
+    }, 1500);
+    fonts.ready
+      .then(() => {
+        window.clearTimeout(timeoutId);
+        release();
+        requestPagination();
+      })
+      .catch(() => {
+        window.clearTimeout(timeoutId);
+        release();
+        requestPagination();
+      });
+  };
+  armInitialPaginationAfterFonts();
 
   let zoomQueued = false;
   const requestZoomUpdate = () => {
@@ -5899,6 +5985,14 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
     // Escape handling is above to work even when a footnote/inner editor has focus.
   };
 
+  const handleBeforeInput = (event: InputEvent) => {
+    const target = event.target as HTMLElement | null;
+    if (!target) return;
+    if (target.closest(".ProseMirror")) {
+      markUserInput();
+    }
+  };
+
 	  let lastProseStealAt = 0;
 	  const handleDocumentFocusIn = (event: FocusEvent) => {
 	    // Body editability failsafe: if ProseMirror ever ends up focused while not editable,
@@ -5970,6 +6064,7 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
   // destroy (crash, hot reload, devtools reload), duplicate listeners cause focus/selection loops
   // and visible UI flicker.
   const globalKeydownKey = "__leditorA4DocKeydownHandler";
+  const globalBeforeInputKey = "__leditorA4DocBeforeInputHandler";
   const globalSelectionChangeKey = "__leditorA4DocSelectionChangeHandler";
   const globalFocusInKey = "__leditorA4DocFocusInHandler";
   const globalPointerDownKey = "__leditorA4DocPointerDownHandler";
@@ -5981,6 +6076,11 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
   if (existingDocKeydown) document.removeEventListener("keydown", existingDocKeydown);
   (window as any)[globalKeydownKey] = handleKeydown;
   document.addEventListener("keydown", handleKeydown);
+
+  const existingBeforeInput = (window as any)[globalBeforeInputKey] as ((e: InputEvent) => void) | undefined;
+  if (existingBeforeInput) document.removeEventListener("beforeinput", existingBeforeInput, true);
+  (window as any)[globalBeforeInputKey] = handleBeforeInput;
+  document.addEventListener("beforeinput", handleBeforeInput, true);
 
   const existingSelectionChange = (window as any)[globalSelectionChangeKey] as (() => void) | undefined;
   if (existingSelectionChange) document.removeEventListener("selectionchange", existingSelectionChange);
@@ -6187,7 +6287,9 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
 		              const r = pageContent.getBoundingClientRect();
 		              return Math.min(Math.max(rawY, r.top + 4), r.bottom - 4);
 		            })();
-		            const coordsPos = getCoordsPosFromPoint(view, x, y, pageContent);
+            const coordsPos =
+              getCoordsPosFromPoint(view, x, y, pageContent) ??
+              getLineEndPosFromPoint(view, x, y, pageContent, null);
 			            const coordsFarFromBefore =
 			              selectionFromBefore != null && coordsPos != null
 			                ? Math.abs(coordsPos - selectionFromBefore) > 2
@@ -6630,6 +6732,42 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
     return inlinePos;
   };
 
+  const getLineEndPosFromPoint = (
+    view: any,
+    x: number,
+    y: number,
+    pageContent?: HTMLElement | null,
+    limitBlock?: HTMLElement | null
+  ) => {
+    if (!pageContent) return null;
+    const rect = pageContent.getBoundingClientRect();
+    const clampedY = Math.min(Math.max(y, rect.top + 2), rect.bottom - 2);
+    let scanX = rect.right - 4;
+    const step = Math.max(6, Math.min(16, rect.width / 18));
+    while (scanX >= rect.left + 4) {
+      const coords = view.posAtCoords?.({ left: scanX, top: clampedY }) ?? null;
+      if (typeof coords?.pos === "number") {
+        const inlinePos = resolveInlinePos(view, coords.pos, 1);
+        if (inlinePos != null) {
+          return limitBlock ? clampPosToBlock(view, inlinePos, limitBlock) : inlinePos;
+        }
+      }
+      scanX -= step;
+    }
+    if (limitBlock) {
+      try {
+        const blockPos = view.posAtDOM(limitBlock, limitBlock.childNodes.length);
+        const inline = resolveInlinePos(view, blockPos, 1);
+        if (inline != null) {
+          return clampPosToBlock(view, inline, limitBlock);
+        }
+      } catch {
+        // ignore
+      }
+    }
+    return null;
+  };
+
   const getLineStep = (view: any) => {
     const style = getComputedStyle(view.dom);
     const fontSize = Number.parseFloat(style.fontSize || "14");
@@ -6767,7 +6905,6 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
   const handleDocumentClick = (event: MouseEvent) => {
     if (footnoteMode || headerFooterMode) return;
     if (event.button !== 0) return;
-    if (selectionHoldActive()) return;
     let target = event.target as HTMLElement | null;
     if (!target) return;
 
@@ -6820,11 +6957,15 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
     })();
 
     const targetBlock = target.closest(CLICK_BLOCK_SELECTOR) as HTMLElement | null;
-    const coordsPos = getCoordsPosFromPoint(view, x, y, pageContent, targetBlock);
+    const coordsPos =
+      getCoordsPosFromPoint(view, x, y, pageContent, targetBlock) ??
+      getLineEndPosFromPoint(view, x, y, pageContent, targetBlock);
     if (coordsPos == null) return;
 
     const clickCount = typeof event.detail === "number" ? event.detail : 1;
+    const holdSelection = selectionHoldActive();
     if (clickCount >= 2) {
+      if (holdSelection) return;
       armSelectionHold(600);
       const kind = clickCount >= 4 ? "paragraph" : clickCount >= 3 ? "sentence" : "word";
       scheduleMultiClickSelection(
@@ -6847,15 +6988,16 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
       selection.from !== selection.to;
     // Word-like: any single, unmodified click collapses an existing range to the click point.
     if (selectionIsRange && !modifierHeld && clickCount <= 1) {
-      if (selectionHoldActive()) {
+      const now = Date.now();
+      const newClickAfterSelection = lastPointerDownAt > lastPointerSelectionAt + 12;
+      const suppressCollapse =
+        !newClickAfterSelection &&
+        ((pointerSelectionRange && now - lastPointerSelectionAt < 450) ||
+          (lastPointerDragAt > 0 && now - lastPointerDragAt < 450));
+      if (holdSelection && !newClickAfterSelection) {
         return;
       }
-      const now = Date.now();
-      if (
-        (pointerSelectionRange && now - lastPointerSelectionAt < 450) ||
-        (lastPointerDragAt > 0 && now - lastPointerDragAt < 450) ||
-        (lastPointerUpAt > 0 && now - lastPointerUpAt < 350)
-      ) {
+      if (suppressCollapse) {
         pointerSelectionRange = false;
         return;
       }
@@ -7295,6 +7437,11 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
       if (existingDocKeydown) {
         document.removeEventListener("keydown", existingDocKeydown);
         if (existingDocKeydown === handleKeydown) delete (window as any)[globalKeydownKey];
+      }
+      const existingBeforeInput = (window as any)[globalBeforeInputKey] as ((e: InputEvent) => void) | undefined;
+      if (existingBeforeInput) {
+        document.removeEventListener("beforeinput", existingBeforeInput, true);
+        if (existingBeforeInput === handleBeforeInput) delete (window as any)[globalBeforeInputKey];
       }
       const existingSelectionChange = (window as any)[globalSelectionChangeKey] as (() => void) | undefined;
       if (existingSelectionChange) {

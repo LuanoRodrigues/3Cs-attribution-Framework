@@ -8,15 +8,15 @@
     },
     {
       "label": "page13_attribution_uncertainty",
-      "pageNumber": 13,
+      "pageNumber": 16,
       "match": "contains",
       "mustInclude": "Attribution uncertainty creates concrete alliance dilemmas"
     },
     {
-      "label": "page16_institutional_frictions",
+      "label": "page16_escalation_risk",
       "pageNumber": 16,
       "match": "contains",
-      "mustInclude": "Cross-border legal and institutional frictions"
+      "mustInclude": "challenges 3 - risk of escalation"
     }
   ]
 }
