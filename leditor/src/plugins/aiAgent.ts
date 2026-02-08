@@ -610,7 +610,7 @@ const runAgent = async (
       return { assistantText: result?.error ? String(result.error) : "Agent request failed.", meta: result?.meta };
     }
     const ops = Array.isArray(result.operations) ? result.operations : [];
-    const replaceOp = ops.find((op) => op && op.op === "replaceSelection" && typeof (op as any).text === "string") as
+    const replaceOp = ops.find((op: any) => op && op.op === "replaceSelection" && typeof (op as any).text === "string") as
       | { op: "replaceSelection"; text: string }
       | undefined;
     const replaceText =

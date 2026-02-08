@@ -48,6 +48,8 @@ export type AgentRunResult = {
       };
 };
 
+type AgentApply = NonNullable<AgentRunResult["apply"]>;
+
 type SubstantiateMatch = {
   dqid: string;
   title: string;
@@ -435,8 +437,8 @@ export const createAgentSidebar = (
   let messages: AgentMessage[] = [];
   let inflight = false;
   let destroyed = false;
-  let pending: AgentRunResult["apply"] | null = null;
-  let pendingByView: Partial<Record<SidebarViewId, AgentRunResult["apply"] | null>> = {
+  let pending: AgentApply | null = null;
+  let pendingByView: Partial<Record<SidebarViewId, AgentApply | null>> = {
     refine: null,
     paraphrase: null,
     shorten: null,
@@ -5027,10 +5029,7 @@ export const createAgentSidebar = (
     actionId === "recommendations" ||
     actionId === "conclusion";
 
-  const mergeSectionApply = (
-    base: AgentRunResult["apply"] | null,
-    next: AgentRunResult["apply"]
-  ): AgentRunResult["apply"] => {
+  const mergeSectionApply = (base: AgentApply | null, next: AgentApply): AgentApply => {
     if (!base) return next;
     if (base.kind !== "batchReplace" || next.kind !== "batchReplace") {
       return next;

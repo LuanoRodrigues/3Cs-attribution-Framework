@@ -193,6 +193,55 @@ const run = async () => {
         };
 
         let pageCount = await waitForStablePages();
+        const samplePageCounts = async () => {
+          const history = [];
+          const epochs = [];
+          const maxBlockOffsetRatioHistory = [];
+          const maxScrollLeftHistory = [];
+          const maxScrollRatioHistory = [];
+          for (let i = 0; i < 20; i += 1) {
+            history.push(document.querySelectorAll(".leditor-page").length);
+            epochs.push(window.__leditorFootnoteLayoutEpoch ?? null);
+            let maxBlockOffsetLeft = 0;
+            let maxContentWidth = 0;
+            let maxScrollLeft = 0;
+            let maxScrollRatio = 0;
+            const contents = Array.from(document.querySelectorAll(".leditor-page-content"));
+            contents.forEach((content) => {
+              const contentWidth = content.clientWidth || 0;
+              if (contentWidth > maxContentWidth) maxContentWidth = contentWidth;
+              const scrollWidth = content.scrollWidth || 0;
+              if (contentWidth > 0) {
+                maxScrollRatio = Math.max(maxScrollRatio, scrollWidth / contentWidth);
+              }
+              maxScrollLeft = Math.max(maxScrollLeft, content.scrollLeft || 0);
+              const blocks = Array.from(content.children);
+              blocks.forEach((block) => {
+                const offsetLeft = Number.isFinite(block.offsetLeft) ? block.offsetLeft : 0;
+                if (offsetLeft > maxBlockOffsetLeft) maxBlockOffsetLeft = offsetLeft;
+              });
+            });
+            const ratio = maxContentWidth > 0 ? maxBlockOffsetLeft / maxContentWidth : 0;
+            maxBlockOffsetRatioHistory.push(ratio);
+            maxScrollLeftHistory.push(maxScrollLeft);
+            maxScrollRatioHistory.push(maxScrollRatio);
+            await new Promise((r) => setTimeout(r, 120));
+          }
+          return {
+            history,
+            epochs,
+            maxBlockOffsetRatioHistory,
+            maxScrollLeftHistory,
+            maxScrollRatioHistory
+          };
+        };
+        const {
+          history: pageCountHistory,
+          epochs: footnoteEpochHistory,
+          maxBlockOffsetRatioHistory,
+          maxScrollLeftHistory,
+          maxScrollRatioHistory
+        } = await samplePageCounts();
         if (pageCount < 2 || (${forcePages} > 0 && pageCount < ${forcePages})) {
           const target = Math.max(2, ${forcePages} || 2);
           const lorem =
@@ -211,14 +260,195 @@ const run = async () => {
         const pageReports = pages.map((page, pageIndex) => {
           const content = page.querySelector(".leditor-page-content");
           if (!content) return { pageIndex, error: "missing content" };
+          const pageIndexAttr = page.getAttribute("data-page-index");
           const blocks = Array.from(content.children);
           const contentRect = content.getBoundingClientRect();
           const style = getComputedStyle(content);
+          const styleAttr = content.getAttribute("style") || "";
           const pageStyle = getComputedStyle(page);
+          const pageStyleAttr = page.getAttribute("style") || "";
+          const prose = content.querySelector(".ProseMirror");
+          const proseStyle = prose ? getComputedStyle(prose) : null;
+          const rootProse = page.closest("#editor")?.querySelector(".ProseMirror") || null;
+          const rootProseStyle = rootProse ? getComputedStyle(rootProse) : null;
           const paddingBottom = parseFloat(style.paddingBottom || "0") || 0;
           const baseHeight = content.clientHeight || parseFloat(style.height || "0") || 0;
           const usableHeight = Math.max(0, baseHeight - paddingBottom);
           const baseWidth = content.clientWidth || parseFloat(style.width || "0") || 0;
+          const scrollWidth = content.scrollWidth || 0;
+          const scrollHeight = content.scrollHeight || 0;
+          const scrollLeft = content.scrollLeft || 0;
+          const scrollDelta = Math.max(0, scrollWidth - baseWidth);
+          const scrollRatio = baseWidth > 0 ? scrollWidth / baseWidth : 0;
+          let maxRightDelta = 0;
+          let maxRightLeft = null;
+          let maxRightRight = null;
+          let maxOffsetLeft = 0;
+          let maxOffsetTag = null;
+          let maxOffsetText = null;
+          let maxOffsetStyles = null;
+          let maxOffsetChain = null;
+          let maxBlockOffsetLeft = 0;
+          let maxBlockOffsetTag = null;
+          let maxBlockOffsetText = null;
+          blocks.forEach((block) => {
+            const offsetLeft = Number.isFinite(block.offsetLeft) ? block.offsetLeft : 0;
+            if (offsetLeft > maxBlockOffsetLeft) {
+              maxBlockOffsetLeft = offsetLeft;
+              maxBlockOffsetTag = block.tagName;
+              maxBlockOffsetText = (block.textContent || "").trim().slice(0, 120) || null;
+            }
+          });
+          let maxRightTag = null;
+          let maxRightClass = null;
+          let maxRightId = null;
+          let maxRightStyleAttr = null;
+          let maxRightText = null;
+          let maxRightStyles = null;
+          let maxRightChain = null;
+          let columnAnomalies = [];
+          try {
+            const nodes = Array.from(content.querySelectorAll("*")).slice(0, 1200);
+            nodes.forEach((node) => {
+              const rect = node.getBoundingClientRect();
+              const offsetLeft = Number.isFinite(node.offsetLeft) ? node.offsetLeft : 0;
+              if (offsetLeft > maxOffsetLeft) {
+                maxOffsetLeft = offsetLeft;
+                maxOffsetTag = node.tagName;
+                maxOffsetText = (node.textContent || "").trim().slice(0, 140) || null;
+                try {
+                  const os = getComputedStyle(node);
+                  maxOffsetStyles = {
+                    display: os.display,
+                    position: os.position,
+                    whiteSpace: os.whiteSpace,
+                    overflowWrap: os.overflowWrap,
+                    wordBreak: os.wordBreak,
+                    columnCount: os.columnCount,
+                    columns: os.columns,
+                    transform: os.transform,
+                    left: os.left,
+                    right: os.right,
+                    marginLeft: os.marginLeft,
+                    paddingLeft: os.paddingLeft,
+                    styleAttr: node.getAttribute("style") || null
+                  };
+                  try {
+                    const chain = [];
+                    let cursor = node;
+                    let depth = 0;
+                    while (cursor && depth < 6) {
+                      const rect = cursor.getBoundingClientRect();
+                      const style = getComputedStyle(cursor);
+                      chain.push({
+                        tag: cursor.tagName,
+                        className: cursor.className || null,
+                        id: cursor.id || null,
+                        left: rect.left,
+                        right: rect.right,
+                        width: rect.width,
+                        position: style.position,
+                        display: style.display,
+                        float: style.cssFloat,
+                        transform: style.transform
+                      });
+                      cursor = cursor.parentElement;
+                      depth += 1;
+                    }
+                    maxOffsetChain = chain;
+                  } catch {
+                    maxOffsetChain = null;
+                  }
+                } catch {
+                  maxOffsetStyles = null;
+                }
+              }
+              const delta = rect.right - contentRect.left;
+              if (delta > maxRightDelta) {
+                maxRightDelta = delta;
+                maxRightLeft = rect.left;
+                maxRightRight = rect.right;
+                maxRightTag = node.tagName;
+                maxRightClass = node.className || null;
+                const cs = getComputedStyle(node);
+                maxRightId = node.id || null;
+                maxRightStyleAttr = node.getAttribute("style") || null;
+                maxRightText = (node.textContent || "").trim().slice(0, 180) || null;
+                maxRightStyles = {
+                  whiteSpace: cs.whiteSpace,
+                  overflowWrap: cs.overflowWrap,
+                  wordBreak: cs.wordBreak,
+                  columnCount: cs.columnCount,
+                  columnSpan: cs.columnSpan,
+                  display: cs.display,
+                  position: cs.position,
+                  direction: cs.direction,
+                  writingMode: cs.writingMode,
+                  float: cs.cssFloat,
+                  left: cs.left,
+                  right: cs.right,
+                  marginLeft: cs.marginLeft,
+                  paddingLeft: cs.paddingLeft,
+                  textIndent: cs.textIndent,
+                  width: cs.width,
+                  minWidth: cs.minWidth,
+                  maxWidth: cs.maxWidth,
+                  transform: cs.transform,
+                  styleAttr: node.getAttribute("style") || null
+                };
+                try {
+                  const offsetParent = node.offsetParent;
+                  maxRightStyles.offsetLeft = Number.isFinite(node.offsetLeft) ? node.offsetLeft : null;
+                  maxRightStyles.offsetTop = Number.isFinite(node.offsetTop) ? node.offsetTop : null;
+                  maxRightStyles.offsetParentTag = offsetParent ? offsetParent.tagName : null;
+                  maxRightStyles.offsetParentClass = offsetParent ? offsetParent.className : null;
+                } catch {
+                  // ignore
+                }
+                try {
+                  const chain = [];
+                  let cursor = node;
+                  let depth = 0;
+                  while (cursor && depth < 6) {
+                    const rect = cursor.getBoundingClientRect();
+                    const style = getComputedStyle(cursor);
+                      chain.push({
+                        tag: cursor.tagName,
+                        className: cursor.className || null,
+                        id: cursor.id || null,
+                        left: rect.left,
+                        right: rect.right,
+                        width: rect.width,
+                        position: style.position,
+                        display: style.display,
+                        float: style.cssFloat,
+                        transform: style.transform
+                      });
+                    cursor = cursor.parentElement;
+                    depth += 1;
+                  }
+                  maxRightChain = chain;
+                } catch {
+                  maxRightChain = null;
+                }
+              }
+              if (columnAnomalies.length < 5) {
+                const cs = getComputedStyle(node);
+                const columnCount = cs.columnCount;
+                const columns = cs.columns;
+                if (columnCount && columnCount !== "1" && columnCount !== "auto") {
+                  columnAnomalies.push({
+                    tag: node.tagName,
+                    className: node.className || null,
+                    columnCount,
+                    columns
+                  });
+                }
+              }
+            });
+          } catch {
+            // ignore
+          }
           const lineEntries = [];
           const blockEntries = [];
           let lastBottom = 0;
@@ -257,21 +487,103 @@ const run = async () => {
             totalLines > 0
               ? lineEntries.reduce((sum, line) => sum + (line.len || 0), 0) / totalLines
               : 0;
+          const maxLineWidth =
+            totalLines > 0
+              ? Math.max(...lineEntries.map((line) => Number.isFinite(line.width) ? line.width : 0))
+              : 0;
           const shortLines = lineEntries.filter((line) => (line.len || 0) <= 3).length;
           const shortLineRatio = totalLines > 0 ? shortLines / totalLines : 0;
           const fillRatio = usableHeight > 0 ? Math.min(1, lastBottom / usableHeight) : 0;
 
+          const proseRect = prose ? prose.getBoundingClientRect() : null;
+          const proseComputed = prose ? getComputedStyle(prose) : null;
+          const proseMeta = proseComputed
+            ? {
+                width: proseComputed.width,
+                minWidth: proseComputed.minWidth,
+                maxWidth: proseComputed.maxWidth,
+                position: proseComputed.position,
+                left: proseComputed.left,
+                right: proseComputed.right,
+                marginLeft: proseComputed.marginLeft,
+                transform: proseComputed.transform
+              }
+            : null;
+
           return {
             pageIndex,
+            pageIndexAttr,
             blockCount: blocks.length,
             totalLines,
             avgLineLen: avgLen,
+            maxLineWidth,
             shortLineRatio,
             contentHeight: usableHeight,
             paddingBottom,
             contentWidth: baseWidth,
+            contentScrollWidth: scrollWidth,
+            contentScrollHeight: scrollHeight,
+            contentScrollDelta: scrollDelta,
+            contentScrollRatio: scrollRatio,
+            contentScrollLeft: scrollLeft,
+            contentColumnCount: style.columnCount || null,
+            contentColumns: style.columns || null,
+            contentColumnWidth: style.columnWidth || null,
+            contentColumnGap: style.columnGap || null,
+            contentColumnFill: style.columnFill || null,
+            contentDisplay: style.display || null,
+            contentFlow: style.gridAutoFlow || null,
+            contentFlexDirection: style.flexDirection || null,
+            contentFlexWrap: style.flexWrap || null,
+            contentWhiteSpace: style.whiteSpace || null,
+            contentOverflowWrap: style.overflowWrap || null,
+            contentWordBreak: style.wordBreak || null,
+            contentWritingMode: style.writingMode || null,
+            contentDirection: style.direction || null,
+            contentTransform: style.transform || null,
+            contentStyleAttr: styleAttr || null,
+            pageColumns: pageStyle.columns || null,
+            pageColumnCount: pageStyle.columnCount || null,
+            pageColumnWidth: pageStyle.columnWidth || null,
+            pageColumnGap: pageStyle.columnGap || null,
+            pageStyleAttr: pageStyleAttr || null,
+            proseColumnCount: proseStyle ? proseStyle.columnCount : null,
+            proseRect: proseRect
+              ? {
+                  left: proseRect.left,
+                  right: proseRect.right,
+                  width: proseRect.width
+                }
+              : null,
+            proseMeta,
+            rootProseDisplay: rootProseStyle ? rootProseStyle.display : null,
+            rootProseWhiteSpace: rootProseStyle ? rootProseStyle.whiteSpace : null,
+            rootProseOverflowWrap: rootProseStyle ? rootProseStyle.overflowWrap : null,
+            maxRightDelta,
+            maxRightLeft,
+            maxRightRight,
+            maxOffsetLeft,
+            maxOffsetTag,
+            maxOffsetText,
+            maxOffsetStyles,
+            maxOffsetChain,
+            maxBlockOffsetLeft,
+            maxBlockOffsetTag,
+            maxBlockOffsetText,
+            maxRightTag,
+            maxRightClass,
+            maxRightId,
+            maxRightStyleAttr,
+            maxRightText,
+            maxRightStyles,
+            maxRightChain,
+            columnAnomalies,
             contentRectWidth: contentRect.width,
+            contentRectLeft: contentRect.left,
+            contentRectRight: contentRect.right,
             pageRectWidth: page.getBoundingClientRect().width,
+            pageRectLeft: page.getBoundingClientRect().left,
+            pageRectRight: page.getBoundingClientRect().right,
             marginLeft: pageStyle.getPropertyValue("--local-page-margin-left") || "",
             marginRight: pageStyle.getPropertyValue("--local-page-margin-right") || "",
             lastBottom,
@@ -303,7 +615,17 @@ const run = async () => {
           })
           .filter(Boolean);
 
-        return { ok: true, pageCount, pages: pageReports, suspects };
+        return {
+          ok: true,
+          pageCount,
+          pageCountHistory,
+          footnoteEpochHistory,
+          maxBlockOffsetRatioHistory,
+          maxScrollLeftHistory,
+          maxScrollRatioHistory,
+          pages: pageReports,
+          suspects
+        };
       })();
       `,
       true

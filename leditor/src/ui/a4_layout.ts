@@ -24,6 +24,7 @@ import { featureFlags } from "../ui/feature_flags.ts";
 import type { EditorHandle } from "../api/leditor.ts";
 import { reconcileFootnotes } from "../uipagination/footnotes/registry.ts";
 import { paginateWithFootnotes, type PageFootnoteState } from "../uipagination/footnotes/paginate_with_footnotes.ts";
+import { noteFootnoteLayoutChanged } from "./pagination_engine/controller.ts";
 import { EditorState, Selection, TextSelection } from "@tiptap/pm/state";
 import { EditorView } from "@tiptap/pm/view";
 import { DOMSerializer, Fragment as PMFragment, type Node as ProseMirrorNode } from "@tiptap/pm/model";
@@ -125,14 +126,42 @@ const measureTextWidth = (text: string, size = 12) => {
 const shouldForceSingleColumn = (): boolean =>
   typeof window !== "undefined" && (window as any).__leditorDisableColumns !== false;
 
+const applyColumnStyles = (target: HTMLElement, priority = "important") => {
+  target.style.setProperty("columns", "auto 1", priority);
+  target.style.setProperty("column-count", "1", priority);
+  target.style.setProperty("column-gap", "0px", priority);
+  target.style.setProperty("column-fill", "auto", priority);
+  target.style.setProperty("column-width", "auto", priority);
+};
+
+const applyWidthClamp = (target: HTMLElement, priority = "important") => {
+  target.style.setProperty("max-width", "100%", priority);
+  target.style.setProperty("min-width", "0", priority);
+};
+
+const getColumnRoot = (content: HTMLElement): HTMLElement | null => {
+  if (content.children.length === 1) {
+    const only = content.children[0];
+    if (
+      only instanceof HTMLElement &&
+      (only.classList.contains("ProseMirror") || only.getAttribute("contenteditable") === "true")
+    ) {
+      return only;
+    }
+  }
+  const candidate = content.querySelector<HTMLElement>(":scope > .ProseMirror");
+  return candidate ?? null;
+};
+
 const enforceSingleColumnStyle = (content: HTMLElement | null, force = false) => {
   if (!content) return;
   if (!force && !shouldForceSingleColumn()) return;
-  content.style.setProperty("columns", "auto 1", "important");
-  content.style.setProperty("column-count", "1", "important");
-  content.style.setProperty("column-gap", "0px", "important");
-  content.style.setProperty("column-fill", "auto", "important");
-  content.style.setProperty("column-width", "auto", "important");
+  applyColumnStyles(content);
+  const inner = getColumnRoot(content);
+  if (inner && inner !== content) {
+    applyColumnStyles(inner);
+    applyWidthClamp(inner);
+  }
 };
 
 const ensureStyles = () => {
@@ -1474,13 +1503,37 @@ html, body {
   column-gap: 0 !important;
   column-width: auto !important;
   column-fill: auto;
+  -webkit-columns: auto 1 !important;
+  -webkit-column-count: 1 !important;
+  -webkit-column-gap: 0 !important;
+  -webkit-column-width: auto !important;
+  -webkit-column-fill: auto;
   min-width: 0;
-  word-break: normal;
-  overflow-wrap: normal;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .leditor-page-content p,
 .leditor-page-content li {
+  max-width: 100%;
+  box-sizing: border-box;
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.leditor-page-content * {
+  columns: auto 1 !important;
+  column-count: 1 !important;
+  column-gap: 0 !important;
+  column-width: auto !important;
+  column-span: none !important;
+  -webkit-columns: auto 1 !important;
+  -webkit-column-count: 1 !important;
+  -webkit-column-gap: 0 !important;
+  -webkit-column-width: auto !important;
+  -webkit-column-span: none !important;
   max-width: 100%;
   box-sizing: border-box;
   white-space: normal !important;
@@ -1521,7 +1574,7 @@ html, body {
 
 .leditor-page-content pre,
 .leditor-page-content code {
-  white-space: pre-wrap;
+  white-space: pre-wrap !important;
   word-break: break-word;
 }
 
@@ -4274,7 +4327,7 @@ export const mountA4Layout = (
       // Mark global footnote layout churn so pagination can avoid join loops while height settles.
       if (layoutChanged) {
         try {
-          (window as any).__leditorFootnoteLayoutChangedAt = performance.now();
+          noteFootnoteLayoutChanged();
         } catch {
           // ignore
         }
@@ -4757,6 +4810,31 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
     window.cancelAnimationFrame(footnoteHeightHandle);
     footnoteHeightHandle = 0;
   }
+
+  // Reset per-page footnote layout caches when rebuilding overlays/pages.
+  // Otherwise, stale heights can be applied to re-indexed pages, producing large
+  // blank gaps and triggering join/split oscillations.
+  footnoteLayoutVarsByPage.clear();
+  footnoteHeightCache.clear();
+  footnoteStackHeightHistory.length = 0;
+  try {
+    (window as any).__leditorFootnoteLayoutChangedAt = performance.now();
+  } catch {
+    // ignore
+  }
+  // Clear any previously applied per-page footnote CSS vars on the editor pages.
+  try {
+    const nodes = editorEl.querySelectorAll<HTMLElement>(".leditor-page, .leditor-page-content");
+    nodes.forEach((node) => {
+      node.style.removeProperty("--page-footnote-height");
+      node.style.removeProperty("--page-footnote-gap");
+      node.style.removeProperty("--page-footnote-guard");
+      node.style.removeProperty("--effective-margin-bottom");
+    });
+  } catch {
+    // ignore
+  }
+
     if (paginationEnabled) {
     Array.from(pageStack.children).forEach((child) => {
       if (child !== editorEl) child.remove();
@@ -5265,11 +5343,19 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
         let overflowDetected = false;
         contents.forEach((content) => {
           enforceSingleColumnStyle(content, true);
+          if (content.scrollLeft) {
+            content.scrollLeft = 0;
+          }
           if (!overflowDetected) {
             const overflow = content.scrollWidth - content.clientWidth;
             if (Number.isFinite(overflow) && overflow > 2) overflowDetected = true;
           }
         });
+        try {
+          (window as any).__leditorPaginationOverflowActive = overflowDetected;
+        } catch {
+          // ignore
+        }
         if (overflowDetected) {
           try {
             (window as any).__leditorPaginationOverflowAt = performance.now();
@@ -7592,18 +7678,6 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
 };
 
 export type { A4LayoutController, A4ViewMode };
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

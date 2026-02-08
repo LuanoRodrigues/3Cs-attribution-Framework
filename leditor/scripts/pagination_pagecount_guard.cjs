@@ -13,6 +13,7 @@ const outputPath = outArg
   : path.join(repoRoot, "pagination_pagecount_guard.json");
 
 const minPageCount = Number.parseInt(process.env.MIN_PAGE_COUNT || "20", 10);
+const expectedPageCount = Number.parseInt(process.env.EXPECTED_PAGE_COUNT || "25", 10);
 
 const runSmoke = () => {
   if (!fs.existsSync(electronBin)) {
@@ -48,6 +49,37 @@ const assertPageCount = () => {
       `[FAIL] page count ${pageCount} is not greater than ${minPageCount} (check for horizontal flow/columns)`
     );
     process.exit(1);
+  }
+  if (Number.isFinite(expectedPageCount) && expectedPageCount > 0 && pageCount !== expectedPageCount) {
+    console.error(
+      `[FAIL] page count ${pageCount} does not match expected ${expectedPageCount}`
+    );
+    process.exit(1);
+  }
+  const history = Array.isArray(data.pageCountHistory) ? data.pageCountHistory : [];
+  const detectAbab = (values) => {
+    if (values.length < 4) return false;
+    for (let i = 0; i + 3 < values.length; i += 1) {
+      const a = values[i];
+      const b = values[i + 1];
+      const c = values[i + 2];
+      const d = values[i + 3];
+      if (a === c && b === d && a !== b) return true;
+    }
+    return false;
+  };
+  if (history.length > 0 && detectAbab(history)) {
+    console.error(`[FAIL] page count oscillation detected (ABAB pattern)`);
+    process.exit(1);
+  }
+  if (Array.isArray(data.footnoteEpochHistory)) {
+    const epochs = data.footnoteEpochHistory.filter((v) => Number.isFinite(v));
+    if (epochs.length > 1) {
+      const delta = Math.max(...epochs) - Math.min(...epochs);
+      if (delta > 2) {
+        console.warn(`[WARN] footnote epochs changed ${delta} times during smoke run`);
+      }
+    }
   }
   console.log(`[PASS] page count ${pageCount} is greater than ${minPageCount}`);
 };

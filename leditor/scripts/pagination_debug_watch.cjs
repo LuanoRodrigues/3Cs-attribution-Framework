@@ -63,6 +63,19 @@ const readContentJson = (ledocPath) => {
 const run = async () => {
   const cliArgs = process.argv.slice(2).filter((arg) => typeof arg === "string");
   const positional = cliArgs.filter((arg) => !arg.startsWith("-"));
+  const getFlagValue = (flag) => {
+    const direct = cliArgs.find((arg) => arg.startsWith(`${flag}=`));
+    if (direct) return direct.slice(flag.length + 1);
+    const idx = cliArgs.indexOf(flag);
+    if (idx >= 0 && cliArgs[idx + 1] && !cliArgs[idx + 1].startsWith("-")) {
+      return cliArgs[idx + 1];
+    }
+    return null;
+  };
+  const docJsonFlag =
+    getFlagValue("--doc-json") || getFlagValue("--doc") || getFlagValue("--input-json");
+  const outputFlag = getFlagValue("--output") || getFlagValue("--out");
+  const resolvedDocJson = docJsonFlag ? path.resolve(docJsonFlag) : null;
   const resolveIfLedoc = (value) => {
     if (!value) return null;
     const resolved = path.resolve(value);
@@ -72,7 +85,14 @@ const run = async () => {
     return null;
   };
   const ledocArg = positional.map(resolveIfLedoc).find((value) => value) || null;
-  const outputArg = positional.find((value) => value && value.endsWith(".json")) || null;
+  const outputArg =
+    outputFlag ||
+    positional.find((value) => {
+      if (!value || !value.endsWith(".json")) return false;
+      if (!resolvedDocJson) return true;
+      return path.resolve(value) !== resolvedDocJson;
+    }) ||
+    null;
   const inputLedoc = ledocArg || path.join(repoRoot, "..", "coder_state.ledoc");
   const outputPath = outputArg ? path.resolve(outputArg) : path.join(repoRoot, "pagination_debug_watch.json");
 
@@ -80,7 +100,7 @@ const run = async () => {
   const sampleMs = Number.parseInt(process.env.PAGINATION_DEBUG_SAMPLE_MS || "250", 10);
   const enableBlocks = process.env.PAGINATION_DEBUG_BLOCKS === "1";
 
-  const docJson = readContentJson(inputLedoc);
+  const docJson = resolvedDocJson ? JSON.parse(fs.readFileSync(resolvedDocJson, "utf8")) : readContentJson(inputLedoc);
 
   const tmpRoot = path.join(repoRoot, ".tmp_debug");
   try {
@@ -208,12 +228,20 @@ const run = async () => {
             docChildCount: typeof doc?.childCount === "number" ? doc.childCount : null,
             maxScrollRatio: Math.round(maxRatio * 1000) / 1000,
             maxFootnoteHeight,
+            overflowActive: window.__leditorPaginationOverflowActive ?? null,
+            overflowAt: window.__leditorPaginationOverflowAt ?? null,
             continuousMode: document.getElementById("leditor-app")?.classList.contains("leditor-app--pagination-continuous") || false,
             paginationOrigin: window.__leditorPaginationOrigin || null,
             paginationOriginAt: window.__leditorPaginationOriginAt || null,
             lastSetContentAt: window.__leditorLastSetContentAt || null,
+            footnoteLayoutEpoch: window.__leditorFootnoteLayoutEpoch || null,
             footnoteLayoutChangedAt: window.__leditorFootnoteLayoutChangedAt || null,
-            disablePaginationUntil: window.__leditorDisablePaginationUntil || null
+            disablePaginationUntil: window.__leditorDisablePaginationUntil || null,
+            engineSnapshotSig: window.__leditorPaginationLastSnapshotSig || null,
+            enginePhase: window.__leditorPaginationLastPhase || null,
+            engineAction: window.__leditorPaginationLastAction || null,
+            engineOverflowPages: window.__leditorPaginationLastOverflowPages || null,
+            engineStable: window.__leditorPaginationLastStable ?? null
           };
         })();
         `,
@@ -244,11 +272,35 @@ const run = async () => {
       samples,
       trace
     };
+    const pageCounts = samples.map((s) => Number.isFinite(s.pageCountDoc) ? s.pageCountDoc : s.pageCountDom);
+    const hasAbab = (() => {
+      if (pageCounts.length < 6) return false;
+      let cycles = 0;
+      for (let i = 0; i + 3 < pageCounts.length; i += 1) {
+        const a = pageCounts[i];
+        const b = pageCounts[i + 1];
+        const c = pageCounts[i + 2];
+        const d = pageCounts[i + 3];
+        if (a === c && b === d && a !== b) {
+          cycles += 1;
+          if (cycles > 1) return true;
+        }
+      }
+      return false;
+    })();
+    if (hasAbab) {
+      report.ababOscillation = true;
+      report.traceTail = trace.slice(-40);
+    }
     fs.writeFileSync(outputPath, JSON.stringify(report, null, 2), "utf8");
     console.log(`[PASS] pagination debug watch report written: ${outputPath}`);
 
     clearTimeout(killTimer);
     await win.close();
+    if (hasAbab) {
+      app.exit(1);
+      return;
+    }
     app.exit(0);
   } catch (error) {
     clearTimeout(killTimer);

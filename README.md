@@ -126,6 +126,14 @@ Main code:
 - `my-electron-app/src/pages/SettingsPage.tsx`
 - `my-electron-app/src/windows/settings*`
 
+**Pagination Notes**
+- Issue: hidden right-column / horizontal flow caused page count collapse. Solution: force single-column CSS on `.leditor-page-content` and the inner ProseMirror root, clamp widths, and add overflow detection that stamps `__leditorPaginationOverflowAt`.
+- Issue: page count oscillation (e.g., 27↔28) from unstable merges/joins. Solution: removed `mergeSparsePages` call, added ABAB oscillation detection in pagination guards, and introduced a two-phase engine (overflow split first, underfill join later).
+- Issue: large bottom whitespace from stale per-page footnote reserves after page rebuilds. Solution: clear footnote layout caches and reset per-page CSS vars in `renderPages`, and track footnote layout epochs for diagnostics.
+- Issue: horizontal overflow was hard to reproduce in CI. Solution: added `pagination_horizontal_flow_guard.cjs` and expanded `pagination_smoke.cjs` to emit scroll widths, right-edge deltas, and offending node metadata.
+- Issue: hard-to-debug pagination churn. Solution: added `pagination_debug_watch.cjs`, `pagination_debug_analyze.cjs`, and `pagination_oscillation_guard.cjs` with trace/epoch sampling.
+- Current known issue: some documents still collapse to a single page with content flowing to the right (horizontal overflow). This remains the top priority to fix.
+
 ## Running locally
 
 ### Prerequisites

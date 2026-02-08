@@ -87,7 +87,7 @@ export class Paginator {
     this.inlineSplitEnabled = inlineSplit.enabled;
     this.widowsMinLines = inlineSplit.widowsMinLines;
     this.orphansMinLines = inlineSplit.orphansMinLines;
-    this.headingKeepWithNext = inlineSplit.headingKeepWithNext !== false;
+    this.headingKeepWithNext = Boolean(inlineSplit.headingKeepWithNext);
     this.headingMinNextLines = inlineSplit.headingMinNextLines ?? 1;
   }
 
