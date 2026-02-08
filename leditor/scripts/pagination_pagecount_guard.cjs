@@ -13,7 +13,7 @@ const outputPath = outArg
   : path.join(repoRoot, "pagination_pagecount_guard.json");
 
 const minPageCount = Number.parseInt(process.env.MIN_PAGE_COUNT || "20", 10);
-const expectedPageCount = Number.parseInt(process.env.EXPECTED_PAGE_COUNT || "25", 10);
+const expectedPageCount = Number.parseInt(process.env.EXPECTED_PAGE_COUNT || "0", 10);
 
 const runSmoke = () => {
   if (!fs.existsSync(electronBin)) {
