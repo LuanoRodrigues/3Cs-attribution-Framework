@@ -125,6 +125,7 @@ const evaluateExpectations = (pages, expectations) => {
   const defaultMaxFreeLines = readEnvNumber("LEDITOR_MAX_WHITESPACE_LINES") ?? 6;
   const allowMidWordSplitGlobal = process.env.LEDITOR_ALLOW_MIDWORD_SPLIT === "1";
   const allowAnchorSplitGlobal = process.env.LEDITOR_ALLOW_ANCHOR_SPLIT === "1";
+  const allowCharacterSplitGlobal = process.env.LEDITOR_ALLOW_CHARACTER_SPLIT === "1";
   const defaultMaxParaSplitFreeLines =
     readEnvNumber("LEDITOR_MAX_PARAGRAPH_SPLIT_FREE_LINES") ?? 2;
   expectations.forEach((expect) => {
@@ -255,6 +256,14 @@ const evaluateExpectations = (pages, expectations) => {
         reason: "anchorSplit at boundary"
       });
     }
+    const allowCharacterSplit = expect.allowCharacterSplit === true || allowCharacterSplitGlobal;
+    if (!allowCharacterSplit && page.characterSplitCount > 0) {
+      failures.push({
+        label,
+        pageIndex: resolvedIndex,
+        reason: `characterSplitCount ${page.characterSplitCount}`
+      });
+    }
     const maxParaSplitFreeLines = Number.isFinite(expect.maxParagraphSplitFreeLines)
       ? expect.maxParagraphSplitFreeLines
       : defaultMaxParaSplitFreeLines;
@@ -291,14 +300,16 @@ const evaluateExpectations = (pages, expectations) => {
       });
     });
   }
-  pages.forEach((page) => {
-    if (!page?.characterSplitCount) return;
-    failures.push({
-      label: `charsplit_page_${page.pageNumber}`,
-      pageIndex: page.pageIndex,
-      reason: `characterSplitCount ${page.characterSplitCount}`
+  if (!allowCharacterSplitGlobal) {
+    pages.forEach((page) => {
+      if (!page?.characterSplitCount) return;
+      failures.push({
+        label: `charsplit_page_${page.pageNumber}`,
+        pageIndex: page.pageIndex,
+        reason: `characterSplitCount ${page.characterSplitCount}`
+      });
     });
-  });
+  }
   return failures;
 };
 
