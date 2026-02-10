@@ -38,52 +38,66 @@ export const runPaginationEngine = (
   _options: { preferJoin?: boolean; preferFill?: boolean } | undefined,
   paginationKey: PluginKey
 ): Transaction | null => {
+  const applyColumnClamp = (target: HTMLElement, widthPx?: number) => {
+    target.style.setProperty("columns", "auto", "important");
+    target.style.setProperty("column-count", "auto", "important");
+    target.style.setProperty("column-gap", "0px", "important");
+    target.style.setProperty("column-width", "auto", "important");
+    target.style.setProperty("column-fill", "auto", "important");
+    target.style.setProperty("-webkit-columns", "auto", "important");
+    target.style.setProperty("-webkit-column-count", "auto", "important");
+    target.style.setProperty("-webkit-column-gap", "0px", "important");
+    target.style.setProperty("-webkit-column-width", "auto", "important");
+    target.style.setProperty("-webkit-column-fill", "auto", "important");
+    target.style.setProperty("max-width", "100%", "important");
+    target.style.setProperty("min-width", "0", "important");
+    target.style.setProperty("overflow-x", "hidden", "important");
+    if (Number.isFinite(widthPx) && widthPx && widthPx > 0) {
+      const width = `${widthPx}px`;
+      target.style.setProperty("width", width, "important");
+      target.style.setProperty("max-width", width, "important");
+    }
+  };
+
   const enforceSingleColumn = () => {
+    const root = view.dom as HTMLElement;
+    applyColumnClamp(root);
+    if (root.parentElement) {
+      applyColumnClamp(root.parentElement);
+    }
     const contents = Array.from(view.dom.querySelectorAll<HTMLElement>(".leditor-page-content"));
+    const handled = new Set<HTMLElement>();
     contents.forEach((content) => {
       const inner =
         (content.children.length === 1 && content.children[0] instanceof HTMLElement
           ? (content.children[0] as HTMLElement)
           : content.querySelector<HTMLElement>(":scope > .ProseMirror")) ?? null;
+      const page = content.closest<HTMLElement>(".leditor-page");
+      const pageInner = content.closest<HTMLElement>(".leditor-page-inner");
       const clientWidth = content.clientWidth;
       const scrollWidth = content.scrollWidth;
       const overflow = clientWidth > 0 ? scrollWidth - clientWidth > 2 : false;
       if (content.scrollLeft) {
         content.scrollLeft = 0;
       }
+      if (page && !handled.has(page)) {
+        handled.add(page);
+        applyColumnClamp(page);
+      }
+      if (pageInner && !handled.has(pageInner)) {
+        handled.add(pageInner);
+        applyColumnClamp(pageInner);
+      }
       if (!overflow) return;
       content.style.setProperty("white-space", "normal", "important");
       content.style.setProperty("overflow-wrap", "anywhere", "important");
       content.style.setProperty("word-break", "break-all", "important");
-      content.style.setProperty("overflow-x", "hidden", "important");
-      content.style.setProperty("max-width", "100%", "important");
-      content.style.setProperty("min-width", "0", "important");
-      content.style.setProperty("columns", "auto 1", "important");
-      content.style.setProperty("column-count", "1", "important");
-      content.style.setProperty("column-gap", "0px", "important");
-      content.style.setProperty("column-width", "auto", "important");
-      content.style.setProperty("-webkit-columns", "auto 1", "important");
-      content.style.setProperty("-webkit-column-count", "1", "important");
-      content.style.setProperty("-webkit-column-gap", "0px", "important");
-      content.style.setProperty("-webkit-column-width", "auto", "important");
-      content.style.setProperty("-webkit-column-fill", "auto", "important");
+      applyColumnClamp(content, clientWidth);
       if (inner) {
-        inner.style.setProperty("columns", "auto 1", "important");
-        inner.style.setProperty("column-count", "1", "important");
-        inner.style.setProperty("column-gap", "0px", "important");
-        inner.style.setProperty("column-width", "auto", "important");
-        inner.style.setProperty("-webkit-columns", "auto 1", "important");
-        inner.style.setProperty("-webkit-column-count", "1", "important");
-        inner.style.setProperty("-webkit-column-gap", "0px", "important");
-        inner.style.setProperty("-webkit-column-width", "auto", "important");
-        inner.style.setProperty("-webkit-column-fill", "auto", "important");
+        applyColumnClamp(inner, clientWidth);
         inner.style.setProperty("white-space", "normal", "important");
         inner.style.setProperty("overflow-wrap", "anywhere", "important");
         inner.style.setProperty("word-break", "break-all", "important");
-        if (clientWidth > 0) {
-          inner.style.setProperty("width", `${clientWidth}px`, "important");
-          inner.style.setProperty("max-width", `${clientWidth}px`, "important");
-        }
       }
       try {
         const wrapNodes = Array.from(content.querySelectorAll<HTMLElement>("p, li, blockquote"));
@@ -99,8 +113,11 @@ export const runPaginationEngine = (
     });
   };
   enforceSingleColumn();
+  const snapshotRoot =
+    (view.dom as HTMLElement)?.closest?.(".leditor-page-stack") ??
+    (document.querySelector<HTMLElement>(".leditor-page-stack") ?? document.documentElement);
   const snapshot = buildPaginationSnapshot({
-    root: view.dom as HTMLElement,
+    root: snapshotRoot,
     recentSplitAt: memo.lastSplitAt ?? null
   });
   const overflowPages = snapshot.pageChromeByIndex

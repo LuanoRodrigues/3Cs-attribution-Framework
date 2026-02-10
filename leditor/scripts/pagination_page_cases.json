@@ -1,0 +1,65 @@
+{
+  "pages": [
+    {
+      "label": "page1_not_heading_only",
+      "pageIndex": 0,
+      "minParagraphs": 1,
+      "minWordCount": 60,
+      "minFillRatioBottom": 0.6
+    },
+    {
+      "label": "page2_not_heading_only",
+      "pageIndex": 1,
+      "minParagraphs": 1,
+      "minWordCount": 60,
+      "minFillRatioBottom": 0.6
+    },
+    {
+      "label": "page3_more_than_heading_plus_one_para",
+      "pageIndex": 2,
+      "minParagraphs": 2,
+      "minWordCount": 80,
+      "minFillRatioBottom": 0.6
+    },
+    {
+      "label": "page4_more_than_two_paragraphs",
+      "pageIndex": 3,
+      "minParagraphs": 3,
+      "minWordCount": 120,
+      "minFillRatioBottom": 0.6
+    },
+    {
+      "label": "page8_min_fill",
+      "pageIndex": 7,
+      "minFillRatioBottom": 0.6
+    },
+    {
+      "label": "page14_min_fill",
+      "pageIndex": 13,
+      "minFillRatioBottom": 0.6
+    },
+    {
+      "label": "page15_min_fill",
+      "pageIndex": 14,
+      "minFillRatioBottom": 0.6
+    },
+    {
+      "label": "page16_min_fill",
+      "pageIndex": 15,
+      "minFillRatioBottom": 0.6
+    },
+    {
+      "label": "page19_not_single_paragraph",
+      "pageIndex": 18,
+      "minParagraphs": 2,
+      "minWordCount": 80,
+      "minFillRatioBottom": 0.6
+    },
+    {
+      "label": "last_page_no_overflow",
+      "pageIndexFromEnd": 1,
+      "maxOverflowPx": 2,
+      "maxHorizontalOverflowPx": 2
+    }
+  ]
+}

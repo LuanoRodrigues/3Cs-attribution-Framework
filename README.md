@@ -127,12 +127,15 @@ Main code:
 - `my-electron-app/src/windows/settings*`
 
 **Pagination Notes**
+- Background: pagination should behave like a mini layout agent (LibreOffice/Word‑style) with deterministic, stable outputs across runs. Stability is a first-class goal, not a best-effort.
 - Issue: hidden right-column / horizontal flow caused page count collapse. Solution: force single-column CSS on `.leditor-page-content` and the inner ProseMirror root, clamp widths, and add overflow detection that stamps `__leditorPaginationOverflowAt`.
 - Issue: page count oscillation (e.g., 27↔28) from unstable merges/joins. Solution: removed `mergeSparsePages` call, added ABAB oscillation detection in pagination guards, and introduced a two-phase engine (overflow split first, underfill join later).
 - Issue: large bottom whitespace from stale per-page footnote reserves after page rebuilds. Solution: clear footnote layout caches and reset per-page CSS vars in `renderPages`, and track footnote layout epochs for diagnostics.
 - Issue: horizontal overflow was hard to reproduce in CI. Solution: added `pagination_horizontal_flow_guard.cjs` and expanded `pagination_smoke.cjs` to emit scroll widths, right-edge deltas, and offending node metadata.
+- Issue: pages appear to overflow into a right-hand column instead of flowing vertically; each page holds a full column and the “excess” appears to the right. Solution: reset multicol formatting (`columns` / `column-count` / `column-width`) to `auto` on `.leditor-page`, `.leditor-page-inner`, `.leditor-page-content`, and the paginated ProseMirror root; neutralize column breaks in pagination mode; add horizontal-flow guards that verify no shifted blocks or scroll-left drift.
+- Issue: inline splits at the bottom of a page could continue content to the right (page-sized columns), so pages stop overflowing vertically. Solution: treat right-shifted blocks as horizontal overflow inside the pagination snapshot so the engine splits before the shifted column even when `scrollWidth` does not exceed `clientWidth`, and clamp column properties back to `auto` when overflow is detected.
 - Issue: hard-to-debug pagination churn. Solution: added `pagination_debug_watch.cjs`, `pagination_debug_analyze.cjs`, and `pagination_oscillation_guard.cjs` with trace/epoch sampling.
-- Current known issue: some documents still collapse to a single page with content flowing to the right (horizontal overflow). This remains the top priority to fix.
+- Recovery: if a document is already paginated and shows extreme skew (e.g., 1–10 words on early pages and thousands on the last), run `view.pagination.reflow` to flatten and reflow pages, then re‑paginate from a clean slate.
 
 ## Running locally
 

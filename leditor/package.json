@@ -39,6 +39,8 @@
     "build": "npm run generate:templates && npm run build:renderer && npm run build:public && npm run build:electron",
     "ribbon:validate": "node -e \"console.log('ribbon:validate removed (JSON ribbon deprecated)')\"",
     "test:pagination": "node scripts/pagination_fixture.mjs",
+    "test:layout-v2": "node scripts/layout_v2_snapshot.mjs",
+    "test:layout-v2:compare": "node scripts/layout_v2_snapshot_compare.mjs",
     "lint:icons": "node scripts/check-icons.js"
   },
   "devDependencies": {

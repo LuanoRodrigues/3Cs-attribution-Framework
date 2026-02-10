@@ -1,0 +1,23 @@
+.leditor-page {
+  position: relative;
+  border: 1px solid #d0d0d0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  background: white;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.leditor-page-body {
+  position: absolute;
+}
+
+.leditor-page-header,
+.leditor-page-footer,
+.leditor-page-footnotes {
+  position: absolute;
+}
+
+.leditor-fragment {
+  display: inline-block;
+  white-space: pre-wrap;
+}

@@ -39,25 +39,62 @@ const AnchorMark = Mark.create({
           if (!hasHref && !hasCitation && hasName && text.trim().length === 0) {
             return false;
           }
+          const parseEmbeddedMeta = (hrefRaw: string | null) => {
+            if (!hrefRaw) return { href: hrefRaw, meta: null };
+            const hashIndex = hrefRaw.indexOf("#");
+            if (hashIndex < 0) return { href: hrefRaw, meta: null };
+            const base = hrefRaw.slice(0, hashIndex);
+            const fragment = hrefRaw.slice(hashIndex + 1);
+            if (!fragment) return { href: hrefRaw, meta: null };
+            const parts = fragment.split("&").filter(Boolean);
+            let metaRaw: string | null = null;
+            const kept: string[] = [];
+            for (const part of parts) {
+              if (part.startsWith("leditor=")) {
+                metaRaw = part.slice("leditor=".length);
+                continue;
+              }
+              kept.push(part);
+            }
+            let meta: Record<string, unknown> | null = null;
+            if (metaRaw) {
+              try {
+                const decoded = decodeURIComponent(metaRaw);
+                const parsed = JSON.parse(decoded);
+                if (parsed && typeof parsed === "object") meta = parsed as Record<string, unknown>;
+              } catch {
+                meta = null;
+              }
+            }
+            const rebuilt = kept.length ? `${base}#${kept.join("&")}` : base;
+            return { href: rebuilt || hrefRaw, meta };
+          };
+
+          const { href, meta } = parseEmbeddedMeta(node.getAttribute("href"));
           const dqid =
+            (meta?.dataDqid as string | undefined) ||
             node.getAttribute("data-dqid") ||
             node.getAttribute("data-quote-id") ||
             node.getAttribute("data-quote_id") ||
             "";
+          const titleAttr = node.getAttribute("title");
           return {
-            href: node.getAttribute("href"),
-            title: node.getAttribute("title"),
+            href,
+            title: titleAttr || (meta?.title ? String(meta.title) : null),
             target: node.getAttribute("target"),
             rel: node.getAttribute("rel"),
             name: node.getAttribute("name"),
             id: node.getAttribute("id"),
-            dataKey: node.getAttribute("data-key"),
-            dataOrigHref: node.getAttribute("data-orig-href"),
-            dataQuoteId: node.getAttribute("data-quote-id") || node.getAttribute("data-quote_id"),
+            dataKey: (meta?.dataKey as string | undefined) || node.getAttribute("data-key"),
+            dataOrigHref: (meta?.dataOrigHref as string | undefined) || node.getAttribute("data-orig-href"),
+            dataQuoteId:
+              (meta?.dataQuoteId as string | undefined) ||
+              node.getAttribute("data-quote-id") ||
+              node.getAttribute("data-quote_id"),
             dataDqid: dqid,
-            dataQuoteText: node.getAttribute("data-quote-text"),
-            itemKey: node.getAttribute("item-key"),
-            dataItemKey: node.getAttribute("data-item-key")
+            dataQuoteText: (meta?.dataQuoteText as string | undefined) || node.getAttribute("data-quote-text"),
+            itemKey: (meta?.itemKey as string | undefined) || node.getAttribute("item-key"),
+            dataItemKey: (meta?.dataItemKey as string | undefined) || node.getAttribute("data-item-key")
           };
         }
       }

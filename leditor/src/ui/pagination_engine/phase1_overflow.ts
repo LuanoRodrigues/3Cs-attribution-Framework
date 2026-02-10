@@ -97,6 +97,11 @@ export const phase1Overflow = (
   }
   const target = findSplitTarget(view, content, snapshot, policy);
   if (!target) return null;
+  // Delegate line-splittable blocks to the legacy splitter (handles inline line splits).
+  const tag = target.target?.tagName?.toUpperCase?.() ?? "";
+  if (tag === "P" || tag === "LI" || tag === "BLOCKQUOTE" || tag === "PRE") {
+    return null;
+  }
   let splitPos = target.pos;
   if (!Number.isFinite(splitPos) || splitPos <= 0) return null;
   let resolved = view.state.doc.resolve(splitPos);

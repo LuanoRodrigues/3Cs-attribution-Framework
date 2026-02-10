@@ -103,7 +103,26 @@ export const derivePageMetrics = ({ page, pageContent, pageStack }: PageMetricsI
     throw new Error("Page content has non-positive dimensions.");
   }
   const contentStyle = getComputedStyle(pageContent);
-  const lineHeightPx = readLineHeightPx(contentStyle.lineHeight, contentStyle.fontSize);
+  const resolveLineHeight = (el: HTMLElement | null): number | null => {
+    if (!el) return null;
+    try {
+      const style = getComputedStyle(el);
+      return readLineHeightPx(style.lineHeight, style.fontSize);
+    } catch {
+      return null;
+    }
+  };
+  let lineHeightPx = resolveLineHeight(pageContent) ?? 0;
+  const sample =
+    pageContent.querySelector<HTMLElement>("p, li, blockquote, pre") ??
+    pageContent.querySelector<HTMLElement>("h1, h2, h3, h4, h5, h6");
+  const sampleLineHeightPx = resolveLineHeight(sample);
+  if (Number.isFinite(sampleLineHeightPx) && sampleLineHeightPx && sampleLineHeightPx > 0) {
+    lineHeightPx = sampleLineHeightPx;
+  }
+  if (!Number.isFinite(lineHeightPx) || lineHeightPx <= 0) {
+    throw new Error("Computed lineHeightPx must be positive.");
+  }
   const paddingBottomPx = readPx(contentStyle.paddingBottom, "paddingBottom");
   if (!Number.isFinite(paddingBottomPx) || paddingBottomPx < 0) {
     throw new Error(`Computed paddingBottom is invalid: ${contentStyle.paddingBottom}`);

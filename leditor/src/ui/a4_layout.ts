@@ -127,8 +127,8 @@ const shouldForceSingleColumn = (): boolean =>
   typeof window !== "undefined" && (window as any).__leditorDisableColumns !== false;
 
 const applyColumnStyles = (target: HTMLElement, priority = "important") => {
-  target.style.setProperty("columns", "auto 1", priority);
-  target.style.setProperty("column-count", "1", priority);
+  target.style.setProperty("columns", "auto", priority);
+  target.style.setProperty("column-count", "auto", priority);
   target.style.setProperty("column-gap", "0px", priority);
   target.style.setProperty("column-fill", "auto", priority);
   target.style.setProperty("column-width", "auto", priority);
@@ -1003,6 +1003,16 @@ html, body {
   flex-direction: column;
   align-items: center;
   gap: var(--page-gap);
+  columns: auto !important;
+  column-count: auto !important;
+  column-gap: 0 !important;
+  column-width: auto !important;
+  column-fill: auto;
+  -webkit-columns: auto !important;
+  -webkit-column-count: auto !important;
+  -webkit-column-gap: 0 !important;
+  -webkit-column-width: auto !important;
+  -webkit-column-fill: auto;
 }
 .leditor-app:not(.leditor-app--pagination-continuous) #editor .ProseMirror > * {
   align-self: stretch;
@@ -1421,6 +1431,11 @@ html, body {
 .leditor-break[data-break-kind="page"][data-section-id="bibliography"]::after {
   display: none;
 }
+
+.leditor-break[data-break-kind="column"] {
+  break-before: auto !important;
+  column-break-before: auto !important;
+}
 `;
   style.textContent += `
 .leditor-page-inner {
@@ -1428,6 +1443,16 @@ html, body {
   inset: 0;
   padding: 0;
   box-sizing: border-box;
+  columns: auto !important;
+  column-count: auto !important;
+  column-gap: 0 !important;
+  column-width: auto !important;
+  column-fill: auto;
+  -webkit-columns: auto !important;
+  -webkit-column-count: auto !important;
+  -webkit-column-gap: 0 !important;
+  -webkit-column-width: auto !important;
+  -webkit-column-fill: auto;
 }
 
 .leditor-page-header,
@@ -1446,6 +1471,19 @@ html, body {
   opacity: 1;
   pointer-events: auto;
   box-sizing: border-box;
+}
+
+.leditor-page {
+  columns: auto !important;
+  column-count: auto !important;
+  column-gap: 0 !important;
+  column-width: auto !important;
+  column-fill: auto;
+  -webkit-columns: auto !important;
+  -webkit-column-count: auto !important;
+  -webkit-column-gap: 0 !important;
+  -webkit-column-width: auto !important;
+  -webkit-column-fill: auto;
 }
 
 .leditor-page-header {
@@ -1498,13 +1536,13 @@ html, body {
   overflow: hidden;
   pointer-events: auto;
   hyphens: var(--page-hyphens, manual);
-  columns: auto 1 !important;
-  column-count: 1 !important;
+  columns: auto !important;
+  column-count: auto !important;
   column-gap: 0 !important;
   column-width: auto !important;
   column-fill: auto;
-  -webkit-columns: auto 1 !important;
-  -webkit-column-count: 1 !important;
+  -webkit-columns: auto !important;
+  -webkit-column-count: auto !important;
   -webkit-column-gap: 0 !important;
   -webkit-column-width: auto !important;
   -webkit-column-fill: auto;
@@ -1524,13 +1562,13 @@ html, body {
 }
 
 .leditor-page-content * {
-  columns: auto 1 !important;
-  column-count: 1 !important;
+  columns: auto !important;
+  column-count: auto !important;
   column-gap: 0 !important;
   column-width: auto !important;
   column-span: none !important;
-  -webkit-columns: auto 1 !important;
-  -webkit-column-count: 1 !important;
+  -webkit-columns: auto !important;
+  -webkit-column-count: auto !important;
   -webkit-column-gap: 0 !important;
   -webkit-column-width: auto !important;
   -webkit-column-span: none !important;
@@ -4020,13 +4058,25 @@ export const mountA4Layout = (
   let footnoteLayoutSyncHandle = 0;
   let footnoteLayoutSyncRetries = 0;
   let footnoteLayoutSyncRaf = 0;
-  const requestEditorPagination = () => {
+  let paginationRetryHandle = 0;
+  const requestEditorPagination = (reason = "unspecified") => {
     try {
-      if ((window as any).__leditorDisablePaginationUntil) return;
+      const until = (window as any).__leditorDisablePaginationUntil;
+      if (typeof until === "number" && Number.isFinite(until) && performance.now() < until) {
+        if (paginationRetryHandle) return;
+        const delay = Math.min(5000, Math.max(60, Math.round(until - performance.now()) + 80));
+        paginationRetryHandle = window.setTimeout(() => {
+          paginationRetryHandle = 0;
+          requestEditorPagination("retry");
+        }, delay);
+        return;
+      }
       const editorInstance = attachedEditorHandle?.getEditor?.() ?? null;
       const viewDom = (editorInstance?.view?.dom as HTMLElement | null) ?? null;
       const target = viewDom ?? editorEl;
-      target.dispatchEvent(new CustomEvent("leditor:pagination-request", { bubbles: true }));
+      target.dispatchEvent(
+        new CustomEvent("leditor:pagination-request", { bubbles: true, detail: { reason } })
+      );
     } catch {
       // ignore
     }
@@ -5618,20 +5668,22 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
         // ignore
       }
     };
-    const timeoutId = window.setTimeout(() => {
+    const afterRelease = (reason: string) => {
       release();
-      requestPagination("fonts:timeout");
+      requestEditorPagination(`fonts:${reason}`);
+      requestPagination(`fonts:${reason}`);
+    };
+    const timeoutId = window.setTimeout(() => {
+      afterRelease("timeout");
     }, 1500);
     fonts.ready
       .then(() => {
         window.clearTimeout(timeoutId);
-        release();
-        requestPagination("fonts:ready");
+        afterRelease("ready");
       })
       .catch(() => {
         window.clearTimeout(timeoutId);
-        release();
-        requestPagination("fonts:error");
+        afterRelease("error");
       });
   };
   armInitialPaginationAfterFonts();
@@ -7678,10 +7730,3 @@ const applySectionStyling = (page: HTMLElement, sectionInfo: PageSectionInfo | n
 };
 
 export type { A4LayoutController, A4ViewMode };
-
-
-
-
-
-
-

@@ -70,3 +70,8 @@ leditor/coder_state_content.json
 leditor/expected_fragments.json
 leditor/pagination_*
 leditor/pagination_debug_run.txt
+leditor/scripts/.layout_v2_snapshot.bundle.mjs
+leditor/docs/test_documents/layout_v2_snapshot.current.json
+leditor/.tmp_page_cases/
+leditor/img_9.png
+leditor/img_10.png

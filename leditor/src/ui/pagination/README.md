@@ -2,6 +2,10 @@
 
 This README documents the deterministic pagination contract currently enforced by the pagination engine.
 
+## Background (Stability Goal)
+
+Pagination is treated as a mini layout agent (LibreOffice/Word‑style): deterministic, stable across runs, and resilient to layout timing. A document should never end up with pages that contain only a few words unless explicitly forced by a manual break or a heading rule.
+
 ## Core Definitions
 
 For each page, pagination uses the following measured values:
@@ -90,10 +94,18 @@ This ensures "show page breaks" never changes pagination.
 
 ## Columns
 
-Paged mode is forced to a single column:
+Paged mode disables multicol layout:
 
-- `.leditor-page-content` uses `column-count: 1` with `!important`.
+- `.leditor-page-content` (and descendants) reset `columns` / `column-count` / `column-width` to `auto` with `!important`.
 - Column leaks are guarded in tests.
+
+## Recovery / Reflow
+
+If a document arrives already paginated (multiple `page` nodes) and page word counts are severely skewed (e.g., early pages with 1–10 words and later pages with thousands), reflow from a clean slate:
+
+- `window.leditor.execCommand("view.pagination.reflow")`
+
+This flattens pages and triggers a re‑pagination pass. It preserves manual page breaks when present.
 
 ## Tests and Guards
 

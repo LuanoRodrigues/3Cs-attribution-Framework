@@ -1,0 +1,13 @@
+{
+  "name": "layout_v2_basic",
+  "paragraphs": [
+    "This is a layout-v2 fixture paragraph designed to exercise multi-page pagination. It repeats a sentence to generate enough content for several pages. This is a layout-v2 fixture paragraph designed to exercise multi-page pagination. It repeats a sentence to generate enough content for several pages. This is a layout-v2 fixture paragraph designed to exercise multi-page pagination. It repeats a sentence to generate enough content for several pages.",
+    "Second paragraph with more repeated content to force line wrapping and additional page flow. Second paragraph with more repeated content to force line wrapping and additional page flow. Second paragraph with more repeated content to force line wrapping and additional page flow. Second paragraph with more repeated content to force line wrapping and additional page flow.",
+    "Third paragraph adds extra text to test paragraph spacing and stacking. Third paragraph adds extra text to test paragraph spacing and stacking. Third paragraph adds extra text to test paragraph spacing and stacking. Third paragraph adds extra text to test paragraph spacing and stacking.",
+    "Fourth paragraph continues the flow for pagination testing. Fourth paragraph continues the flow for pagination testing. Fourth paragraph continues the flow for pagination testing. Fourth paragraph continues the flow for pagination testing.",
+    "Fifth paragraph with enough content to spill into another page and validate that the paginator splits blocks when the body frame overflows. Fifth paragraph with enough content to spill into another page and validate that the paginator splits blocks when the body frame overflows.",
+    "Sixth paragraph to ensure the fixture has substantial volume. Sixth paragraph to ensure the fixture has substantial volume. Sixth paragraph to ensure the fixture has substantial volume. Sixth paragraph to ensure the fixture has substantial volume.",
+    "Seventh paragraph for additional overflow. Seventh paragraph for additional overflow. Seventh paragraph for additional overflow. Seventh paragraph for additional overflow.",
+    "Eighth paragraph closes the fixture with enough content to produce a stable multi-page output. Eighth paragraph closes the fixture with enough content to produce a stable multi-page output."
+  ]
+}

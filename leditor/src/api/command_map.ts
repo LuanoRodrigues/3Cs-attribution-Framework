@@ -3559,6 +3559,21 @@ export const commandMap: Record<string, CommandHandler> = {
   "view.paginationMode.openMenu"() {
     // No-op; menu handled by UI.
   },
+  "view.pagination.reflow"(editor) {
+    try {
+      (window as any).__leditorForcePaginationReflow = true;
+    } catch {
+      // ignore
+    }
+    try {
+      const viewDom = (editor?.view?.dom as HTMLElement | null) ?? null;
+      viewDom?.dispatchEvent(
+        new CustomEvent("leditor:pagination-request", { bubbles: true, detail: { reason: "reflow" } })
+      );
+    } catch {
+      // ignore
+    }
+  },
   "view.page.goto"(_editor, args) {
     const dir = args?.dir;
     if (dir !== "next" && dir !== "prev") {

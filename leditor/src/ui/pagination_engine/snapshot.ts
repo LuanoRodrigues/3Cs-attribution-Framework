@@ -18,11 +18,13 @@ export type PageChromeMetrics = {
   footnoteGapPx: number;
   footnoteHeightPx: number;
   footnoteGuardPx: number;
+  bottomLimitPx: number;
   lineHeightPx: number;
   tolerancePx: number;
   bodyHeightPx: number;
   maxLines: number;
   usedLines: number;
+  usedLinesRaw: number;
   overflowLines: number;
   freeLines: number;
   horizontalOverflow: boolean;
@@ -74,15 +76,69 @@ const isRecent = (ts: unknown, windowMs: number): boolean => {
   return performance.now() - ts < windowMs;
 };
 
+const detectRightShift = (
+  content: HTMLElement,
+  contentWidthPx: number,
+  scale: number,
+  selectors: string[]
+): boolean => {
+  if (contentWidthPx <= 0) return false;
+  const contentRect = content.getBoundingClientRect();
+  const scaleFromRect =
+    contentRect.width > 0 && contentWidthPx > 0 ? contentRect.width / contentWidthPx : 1;
+  const effectiveScale = Number.isFinite(scaleFromRect) && scaleFromRect > 0
+    ? scaleFromRect
+    : (Number.isFinite(scale) && scale > 0 ? scale : 1);
+  const selector = selectors.length ? selectors.join(",") : "*";
+  const blocks = Array.from(content.querySelectorAll<HTMLElement>(selector)).filter(
+    (el) => el.closest(".leditor-page-content") === content
+  );
+  if (blocks.length === 0) return false;
+  const leftThreshold = contentWidthPx * 0.6;
+  const rightThreshold = contentWidthPx * 1.3;
+  for (const block of blocks) {
+    const rect = block.getBoundingClientRect();
+    const left = (rect.left - contentRect.left) / effectiveScale;
+    const right = (rect.right - contentRect.left) / effectiveScale;
+    if (left > leftThreshold || right > rightThreshold) {
+      return true;
+    }
+  }
+  return false;
+};
+
+const measureUsedHeight = (content: HTMLElement, selectors: string[], scale = 1): number => {
+  const selector = selectors.length ? selectors.join(",") : "*";
+  const contentRect = content.getBoundingClientRect();
+  const blocks = Array.from(content.querySelectorAll<HTMLElement>(selector)).filter(
+    (el) => el.closest(".leditor-page-content") === content
+  );
+  if (!blocks.length) return 0;
+  let maxBottom = 0;
+  blocks.forEach((block) => {
+    const rect = block.getBoundingClientRect();
+    const marginBottom = Number.parseFloat(getComputedStyle(block).marginBottom || "0") || 0;
+    const scaled = rect.bottom - contentRect.top;
+    const bottom = (scale > 0 ? scaled / scale : scaled) + marginBottom;
+    if (bottom > maxBottom) maxBottom = bottom;
+  });
+  return Math.max(0, maxBottom);
+};
+
 export const buildPaginationSnapshot = (params: {
   root?: HTMLElement | null;
   recentSplitAt?: number | null;
 } = {}): PaginationSnapshot => {
   const root = params.root ?? document.documentElement;
   const policy = getPaginationPolicy();
-  const pages = Array.from(
-    root.querySelectorAll<HTMLElement>(`.${documentLayoutSpec.pagination?.pageClass ?? "leditor-page"}`)
-  );
+  const pageSelector = `.${documentLayoutSpec.pagination?.pageClass ?? "leditor-page"}`;
+  let pages = Array.from(root.querySelectorAll<HTMLElement>(pageSelector));
+  if (pages.length <= 1 && root !== document.documentElement) {
+    const docPages = Array.from(document.documentElement.querySelectorAll<HTMLElement>(pageSelector));
+    if (docPages.length > pages.length) {
+      pages = docPages;
+    }
+  }
   const pageChromeByIndex: PageChromeMetrics[] = [];
   const pageHeightPxToken = readCssPx(root, "--page-height", 0);
   const pageWidthPxToken = readCssPx(root, "--page-width", 0);
@@ -135,17 +191,32 @@ export const buildPaginationSnapshot = (params: {
     const contentHeightPx = content ? Math.max(0, content.clientHeight) : Math.max(0, pageHeightPx - marginTopPx - marginBottomPx);
     const paddingBottomPx = content ? readPx(getComputedStyle(content).paddingBottom, 0) : 0;
     const bodyHeightPx = Math.max(0, contentHeightPx);
+    const guardFromLine = lineHeightPx > 0 ? lineHeightPx * 0.35 : 0;
+    const guardFloorPx = Math.max(8, guardFromLine, footnoteGuardPx);
+    const usableHeightPx = Math.max(0, bodyHeightPx - paddingBottomPx);
+    const bottomLimitPx = Math.max(0, usableHeightPx - guardFloorPx);
     const maxLines =
       lineHeightPx > 0
-        ? Math.max(0, Math.floor((bodyHeightPx - paddingBottomPx + tolerancePx) / lineHeightPx))
+        ? Math.max(0, Math.floor((bottomLimitPx + tolerancePx) / lineHeightPx))
         : 0;
     const scrollHeightPx = content ? Math.max(0, content.scrollHeight) : 0;
     const clientWidthPx = content ? Math.max(0, content.clientWidth) : 0;
     const scrollWidthPx = content ? Math.max(0, content.scrollWidth) : 0;
-    const horizontalOverflow = clientWidthPx > 0 ? scrollWidthPx - clientWidthPx > 2 : false;
+    const usedHeightPx =
+      content && scrollHeightPx <= contentHeightPx + 1
+        ? measureUsedHeight(content, policy.selectors.pageable, scale)
+        : scrollHeightPx;
+    let horizontalOverflow = clientWidthPx > 0 ? scrollWidthPx - clientWidthPx > 2 : false;
+    if (!horizontalOverflow && content && clientWidthPx > 0) {
+      horizontalOverflow = detectRightShift(content, clientWidthPx, scale, policy.selectors.pageable);
+    }
+    const usedLinesRaw =
+      lineHeightPx > 0 ? Math.max(0, Math.ceil((usedHeightPx - paddingBottomPx) / lineHeightPx)) : 0;
     const usedLines =
-      lineHeightPx > 0 ? Math.max(0, Math.ceil((scrollHeightPx - paddingBottomPx) / lineHeightPx)) : 0;
-    const overflowLines = Math.max(0, usedLines - maxLines, horizontalOverflow ? 1 : 0);
+      lineHeightPx > 0
+        ? Math.max(0, Math.ceil(Math.min(usedHeightPx, bottomLimitPx) / lineHeightPx))
+        : 0;
+    const overflowLines = Math.max(0, usedLinesRaw - maxLines, horizontalOverflow ? 1 : 0);
     const freeLines = Math.max(0, maxLines - usedLines);
 
     pageChromeByIndex.push({
@@ -163,11 +234,13 @@ export const buildPaginationSnapshot = (params: {
       footnoteGapPx,
       footnoteHeightPx,
       footnoteGuardPx,
+      bottomLimitPx,
       lineHeightPx,
       tolerancePx,
       bodyHeightPx,
       maxLines,
       usedLines,
+      usedLinesRaw,
       overflowLines,
       freeLines,
       horizontalOverflow
