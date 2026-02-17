@@ -4794,6 +4794,189 @@ def _unwrap_softwraps(md: str) -> str:
 
     return "\n".join(out)
 
+
+_REPARSE_PIPELINE_UTILS: Dict[str, Any] | None = None
+_REPARSE_PIPELINE_UTILS_LOAD_ERR: str | None = None
+
+
+def _style_to_bucket_for_pdf(style: Any) -> str:
+    s = str(style or "").strip().lower()
+    if s == "numeric":
+        return "numeric"
+    if s == "author_year":
+        return "author_year"
+    if s in {"tex_superscript", "hybrid", "superscript", "tex_default", "default", "tex"}:
+        return "tex"
+    return "unknown"
+
+
+def _normalize_bucket_stats_for_pdf(stats: Any) -> Dict[str, Any]:
+    if not isinstance(stats, dict):
+        return {
+            "intext_total": 0.0,
+            "success_occurrences": 0.0,
+            "success_unique": 0.0,
+            "bib_unique_total": 0.0,
+            "occurrence_match_rate": 0.0,
+            "bib_coverage_rate": 0.0,
+            "success_percentage": 0.0,
+            "style": None,
+        }
+    out = {}
+    for key in (
+        "intext_total",
+        "success_occurrences",
+        "success_unique",
+        "bib_unique_total",
+        "occurrence_match_rate",
+        "bib_coverage_rate",
+        "success_percentage",
+    ):
+        v = stats.get(key)
+        out[key] = float(v) if isinstance(v, (int, float)) else 0.0
+    out["style"] = stats.get("style")
+    return out
+
+
+def _fallback_citation_summary(link_out: Any) -> Dict[str, Any]:
+    if not isinstance(link_out, dict):
+        empty = _normalize_bucket_stats_for_pdf(None)
+        return {
+            "style": "unknown",
+            "dominant_bucket": "unknown",
+            "dominant": empty,
+            "buckets": {"footnotes": empty, "tex": empty, "numeric": empty, "author_year": empty},
+        }
+
+    foot = _normalize_bucket_stats_for_pdf((link_out.get("footnotes") or {}).get("stats"))
+    tex = _normalize_bucket_stats_for_pdf((link_out.get("tex") or {}).get("total"))
+    num = _normalize_bucket_stats_for_pdf((link_out.get("numeric") or {}).get("total"))
+    ay = _normalize_bucket_stats_for_pdf((link_out.get("author_year") or {}).get("total"))
+    buckets = {"footnotes": foot, "tex": tex, "numeric": num, "author_year": ay}
+
+    style = str(link_out.get("style") or "unknown")
+    dominant_bucket = _style_to_bucket_for_pdf(style)
+    if dominant_bucket == "unknown":
+        ranked = sorted(
+            ("tex", "numeric", "author_year"),
+            key=lambda k: buckets[k].get("success_occurrences", 0.0),
+            reverse=True,
+        )
+        dominant_bucket = ranked[0]
+
+    return {
+        "style": style,
+        "dominant_bucket": dominant_bucket,
+        "dominant": buckets.get(dominant_bucket, _normalize_bucket_stats_for_pdf(None)),
+        "buckets": buckets,
+    }
+
+
+def _load_reparse_pipeline_utils() -> Dict[str, Any]:
+    global _REPARSE_PIPELINE_UTILS, _REPARSE_PIPELINE_UTILS_LOAD_ERR
+    if _REPARSE_PIPELINE_UTILS is not None:
+        return _REPARSE_PIPELINE_UTILS
+    if _REPARSE_PIPELINE_UTILS_LOAD_ERR:
+        return {}
+
+    try:
+        import importlib.util as _importlib_util
+
+        here = Path(__file__).resolve()
+        module_path = None
+        for parent in [here.parent, *list(here.parents)]:
+            candidate = parent / "scripts" / "reparse_footnotes_dataset.py"
+            if candidate.exists():
+                module_path = candidate
+                break
+
+        if module_path is None:
+            _REPARSE_PIPELINE_UTILS_LOAD_ERR = "reparse_footnotes_dataset.py not found"
+            return {}
+
+        spec = _importlib_util.spec_from_file_location("reparse_pipeline_utils_runtime", module_path)
+        if spec is None or spec.loader is None:
+            _REPARSE_PIPELINE_UTILS_LOAD_ERR = f"unable to import from {module_path}"
+            return {}
+
+        module = _importlib_util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        required = (
+            "summarize_link_output",
+            "validate_heading_structure",
+            "extract_document_metadata",
+            "build_validations",
+        )
+        funcs: Dict[str, Any] = {}
+        for name in required:
+            fn = getattr(module, name, None)
+            if not callable(fn):
+                _REPARSE_PIPELINE_UTILS_LOAD_ERR = f"missing callable: {name}"
+                return {}
+            funcs[name] = fn
+
+        _REPARSE_PIPELINE_UTILS = funcs
+        return funcs
+    except Exception as exc:
+        _REPARSE_PIPELINE_UTILS_LOAD_ERR = f"{type(exc).__name__}: {exc}"
+        return {}
+
+
+def _normalize_refs_list(refs: Any) -> List[str]:
+    if isinstance(refs, list):
+        out: List[str] = []
+        for item in refs:
+            if isinstance(item, str) and item.strip():
+                out.append(item.strip())
+        return out
+    if isinstance(refs, str) and refs.strip():
+        return [refs.strip()]
+    return []
+
+
+def _compute_citation_metadata_validation(
+    *,
+    full_text: str,
+    references: Any,
+    link_out: Any,
+) -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
+    refs_list = _normalize_refs_list(references)
+    summary = _fallback_citation_summary(link_out)
+    metadata: Dict[str, Any] = {}
+    validation: Dict[str, Any] = {}
+
+    if not isinstance(link_out, dict):
+        return summary, metadata, validation
+
+    utils = _load_reparse_pipeline_utils()
+    if not utils:
+        return summary, metadata, validation
+
+    try:
+        summary = utils["summarize_link_output"](link_out)
+    except Exception:
+        summary = _fallback_citation_summary(link_out)
+
+    try:
+        heading_validation = utils["validate_heading_structure"](full_text, refs_list)
+        metadata = utils["extract_document_metadata"](
+            full_text=full_text,
+            references=refs_list,
+            heading_validation=heading_validation,
+        )
+        validation = utils["build_validations"](
+            full_text=full_text,
+            references=refs_list,
+            link_out=link_out,
+            current_summary=summary,
+            metadata=metadata,
+        )
+    except Exception as exc:
+        validation = {"metadata_validation_error": f"{type(exc).__name__}: {exc}"}
+
+    return summary, metadata, validation
+
 # --- Main PDF Processing Function ---
 
 
@@ -4825,6 +5008,7 @@ def process_pdf(
 
     cache_file = Path(_cache_path(pdf_path))
     full_md = None
+    raw_full_md = None
     logs_md: Dict[str, Any] = {}  # parser diagnostics (dict)
     references: List[str] | str = ""
 
@@ -4844,6 +5028,103 @@ def process_pdf(
         except Exception:
             return len((text or "").split())
 
+    def _extract_numbered_footnotes_fallback(md_text: str) -> Dict[str, str]:
+        items: Dict[str, str] = {}
+        cur_idx: str | None = None
+        buf: List[str] = []
+
+        def flush_current() -> None:
+            nonlocal cur_idx, buf
+            if cur_idx and buf:
+                merged = " ".join(part.strip() for part in buf if part.strip()).strip()
+                if merged:
+                    items[cur_idx] = merged
+            cur_idx = None
+            buf = []
+
+        start_re = re.compile(
+            r'^\s*(?:\$\s*(?:\{\s*\}\s*)?\^\{\d{1,4}\}\s*\$)?\s*(\d{1,4})\s+(.*\S.*)$'
+        )
+        stop_re = re.compile(r'^\s*(?:#{1,6}\s+|Mandiant\s+APT1$|www\.mandiant\.com$)', re.I)
+        hint_re = re.compile(r'\b(?:https?://|accessed\b|(19|20)\d{2})', re.I)
+
+        for line in (md_text or "").splitlines():
+            raw = line.strip()
+            if not raw:
+                flush_current()
+                continue
+            m = start_re.match(raw)
+            if m:
+                idx, rest = m.group(1), m.group(2).strip()
+                if hint_re.search(rest):
+                    flush_current()
+                    cur_idx = idx
+                    buf = [rest]
+                    continue
+            if cur_idx is not None:
+                if stop_re.match(raw):
+                    flush_current()
+                    continue
+                buf.append(raw)
+                if len(" ".join(buf)) > 4000:
+                    flush_current()
+        flush_current()
+        return items
+
+    def _enrich_link_with_footnote_fallback(link_out: Any, md_text: str) -> Any:
+        if not isinstance(link_out, dict):
+            return link_out
+        footnotes_bucket = link_out.setdefault("footnotes", {})
+        if not isinstance(footnotes_bucket, dict):
+            return link_out
+        items_obj = footnotes_bucket.get("items")
+        existing_items = items_obj if isinstance(items_obj, dict) else {}
+        if existing_items:
+            return link_out
+        fallback_items = _extract_numbered_footnotes_fallback(md_text)
+        stats_obj = footnotes_bucket.get("stats")
+        stats = stats_obj if isinstance(stats_obj, dict) else {}
+        missing_idx_vals = stats.get("missing_intext_indices") if isinstance(stats, dict) else []
+        candidate_missing: List[str] = []
+        if isinstance(missing_idx_vals, list):
+            for v in missing_idx_vals:
+                sv = str(v).strip()
+                if sv.isdigit():
+                    candidate_missing.append(sv)
+        if not fallback_items and not candidate_missing:
+            return link_out
+        for miss in candidate_missing:
+            fallback_items.setdefault(miss, "[Missing footnote text in OCR markdown]")
+        footnotes_bucket["items"] = fallback_items
+        intext = footnotes_bucket.get("intext")
+        intext_list = intext if isinstance(intext, list) else []
+        for hit in intext_list:
+            if not isinstance(hit, dict):
+                continue
+            idx = str(hit.get("index") or "")
+            if idx and not hit.get("footnote") and idx in fallback_items:
+                hit["footnote"] = fallback_items[idx]
+        stats_obj = footnotes_bucket.get("stats")
+        stats = stats_obj if isinstance(stats_obj, dict) else {}
+        intext_total = len([h for h in intext_list if isinstance(h, dict)])
+        success_occurrences = len([h for h in intext_list if isinstance(h, dict) and h.get("footnote")])
+        success_unique = len({str(h.get("index")) for h in intext_list if isinstance(h, dict) and h.get("footnote")})
+        bib_total = len(fallback_items)
+        stats.update(
+            {
+                "intext_total": intext_total,
+                "success_occurrences": success_occurrences,
+                "success_unique": success_unique,
+                "bib_unique_total": bib_total,
+                "occurrence_match_rate": (success_occurrences / intext_total) if intext_total else 0.0,
+                "bib_coverage_rate": (success_unique / bib_total) if bib_total else 0.0,
+                "success_percentage": (success_occurrences / intext_total) * 100 if intext_total else 0.0,
+                "style": stats.get("style") or "footnotes",
+            }
+        )
+        footnotes_bucket["stats"] = stats
+        return link_out
+
     # --- 1) Cache lookup ---
     cached_data = None
     if cache_file.is_file() and cache_file.stat().st_size > 0:
@@ -4853,25 +5134,69 @@ def process_pdf(
 
             # backfill older caches with flat_text/citations/summary if missing
             if "full_text" in cached_data:
-                if "citations" not in cached_data or "flat_text" not in cached_data:
+                cached_full_text = cached_data.get("full_text", "")
+                cached_raw_text = cached_data.get("raw_full_text", cached_full_text)
+                if "raw_full_text" not in cached_data:
+                    cached_data["raw_full_text"] = cached_raw_text
+                cached_references = cached_data.get("references", [])
+                cached_citations = cached_data.get("citations")
+                has_structured_citations = (
+                    isinstance(cached_citations, dict)
+                    and any(k in cached_citations for k in ("footnotes", "tex", "numeric", "author_year"))
+                )
+                footnote_items_count = 0
+                footnote_intext_count = 0
+                if isinstance(cached_citations, dict):
+                    foot_bucket = cached_citations.get("footnotes")
+                    if isinstance(foot_bucket, dict):
+                        items = foot_bucket.get("items")
+                        if isinstance(items, dict):
+                            footnote_items_count = len(items)
+                        intext = foot_bucket.get("intext")
+                        if isinstance(intext, list):
+                            footnote_intext_count = len(intext)
+                needs_citation_refresh = (
+                    "citations" not in cached_data
+                    or "flat_text" not in cached_data
+                    or not has_structured_citations
+                    or footnote_items_count < 20
+                    or (footnote_items_count >= 20 and footnote_intext_count <= 3)
+                )
+
+                if needs_citation_refresh:
                     try:
-                        _cit = link_citations_to_footnotes({
-                            "full_text": cached_data.get("full_text", ""),
-                            "references": cached_data.get("references", []),
-                        })
+                        _cit = link_citations_to_footnotes(cached_raw_text, cached_references)
+                        _cit = _enrich_link_with_footnote_fallback(_cit, cached_raw_text)
                         cached_data["citations"] = _cit
-                        cached_data["flat_text"] = _cit.get("flat_text", cached_data.get("full_text", ""))
+                        cached_data["flat_text"] = _cit.get("flat_text", cached_full_text)
                     except Exception:
-                        cached_data.setdefault("citations", {"total": {}, "results": [], "flat_text": cached_data.get("full_text", "")})
-                        cached_data.setdefault("flat_text", cached_data.get("full_text", ""))
+                        cached_data.setdefault("citations", {"total": {}, "results": [], "flat_text": cached_full_text})
+                        cached_data.setdefault("flat_text", cached_full_text)
 
                 if "summary" not in cached_data:
-                    ft = cached_data.get("full_text", "")
+                    ft = cached_full_text
                     fl = cached_data.get("flat_text", ft)
                     cached_data["summary"] = {
                         "full_text": {"words": _word_count(ft), "tokens": _count_tokens(ft)},
                         "flat_text": {"words": _word_count(fl), "tokens": _count_tokens(fl)},
                     }
+
+                if (
+                    "citation_summary" not in cached_data
+                    or "metadata" not in cached_data
+                    or "validation" not in cached_data
+                ):
+                    _citation_summary, _metadata, _validation = _compute_citation_metadata_validation(
+                        full_text=cached_raw_text,
+                        references=cached_references,
+                        link_out=cached_data.get("citations", {}),
+                    )
+                    if "citation_summary" not in cached_data:
+                        cached_data["citation_summary"] = _citation_summary
+                    if "metadata" not in cached_data:
+                        cached_data["metadata"] = _metadata
+                    if "validation" not in cached_data:
+                        cached_data["validation"] = _validation
 
                 # Always keep cache file tidy
                 cache_file.write_text(json.dumps(cached_data, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -4883,6 +5208,7 @@ def process_pdf(
             # Otherwise we will recompute – decide what to do with full_text.
             if not cache and cache_full and cached_data and cached_data.get("full_text"):
                 full_md = cached_data["full_text"]
+                raw_full_md = cached_data.get("raw_full_text", full_md)
                 references = cached_data.get("references", [])
                 print("[LOG] Will reuse cached full_text (cache_full=True) and recompute sections/metadata.")
 
@@ -5036,6 +5362,7 @@ def process_pdf(
                     segments[pos_map[orig_page]] = text
 
         full_md = "\n\n".join(segments)
+        raw_full_md = full_md
         # drop images
         full_md = re.sub(r'!\[.*?\]\(.*?\)', '', full_md)
         # vendor preamble cleaner
@@ -5059,9 +5386,16 @@ def process_pdf(
     parse_text = full_md
 
     # Link citations to footnotes (uses original, un-stripped text for flat view)
-    link_out = link_citations_to_footnotes(full_md, references)
+    citation_input_text = raw_full_md or full_md
+    link_out = link_citations_to_footnotes(citation_input_text, references)
+    link_out = _enrich_link_with_footnote_fallback(link_out, citation_input_text)
     flat_text = link_out.get("flat_text", full_md)
     html_full = convert_citations_to_html(flat_text, link_out)
+    citation_summary, metadata, validation = _compute_citation_metadata_validation(
+        full_text=citation_input_text,
+        references=references,
+        link_out=link_out,
+    )
 
     # --- 4) Parsing & Section Cleaning (from parse_text, not flat) ---
     toc, sections, logs_md = parse_markdown_to_final_sections(flat_text)
@@ -5104,6 +5438,7 @@ def process_pdf(
     result_to_cache: Dict[str, Any] = {}
     if cleaned_sections:
         result_to_cache.update({
+            "raw_full_text": raw_full_md or full_md,
             "full_text": full_md,
             "flat_text": flat_text,
             "html": html_full,
@@ -5113,6 +5448,9 @@ def process_pdf(
             "word_count": flat_words,
             "references": references,
             "citations": link_out,
+            "citation_summary": citation_summary,
+            "metadata": metadata,
+            "validation": validation,
             "summary": summary,
             "payload": payload,
             "summary_log": summary_log
@@ -5120,10 +5458,15 @@ def process_pdf(
 
     else:
         result_to_cache.update({
+            "raw_full_text": raw_full_md or full_md,
             "full_text": full_md,
             "flat_text": flat_text,
             "html": html_full,
+            "references": references,
             "citations": link_out,
+            "citation_summary": citation_summary,
+            "metadata": metadata,
+            "validation": validation,
             "summary": summary,
             "payload": payload,
             "summary_log": summary_log
@@ -5134,6 +5477,7 @@ def process_pdf(
     cache_file.write_text(json.dumps(result_to_cache, ensure_ascii=False, indent=2), encoding="utf-8")
 
     return {
+        "raw_full_text": result_to_cache.get("raw_full_text", full_md),
         "full_text": full_md,
         "flat_text": result_to_cache.get("flat_text", full_md),
         "html": result_to_cache.get("html", convert_citations_to_html(full_md, link_out)),
@@ -5143,6 +5487,9 @@ def process_pdf(
         "word_count": full_words,
         "references": result_to_cache.get("references", []),
         "citations": result_to_cache.get("citations", {"total": {}, "results": [], "flat_text": full_md}),
+        "citation_summary": result_to_cache.get("citation_summary", citation_summary),
+        "metadata": result_to_cache.get("metadata", metadata),
+        "validation": result_to_cache.get("validation", validation),
         "summary": result_to_cache.get("summary", summary),
         "payload": payload,
         "summary_log": summary_log

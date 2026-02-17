@@ -1,0 +1,57 @@
+{
+  "workspaceId": "eec3b011-45d6-4a36-9848-1ffd6f0bb7ff",
+  "ownerRunId": "20260213T110301_a754307fd04d",
+  "concurrency": 5,
+  "createdAt": 1770839273971,
+  "updatedAt": 1770980581396,
+  "items": [
+    {
+      "id": "pending-plan-plans_pending_little_engine_md-1",
+      "planPath": "Plans/pending/little_engine.md",
+      "agent": "build",
+      "scope": [
+        "src",
+        "packages",
+        "tests",
+        "docs"
+      ],
+      "status": "failed",
+      "attempts": 0,
+      "createdAt": 1770980581366,
+      "updatedAt": 1770980581368,
+      "error": "plan file missing from Plans/pending"
+    },
+    {
+      "id": "pending-plan-plans_pending_mini_engine_v2_improvement_plan_2026_02_09_md-2",
+      "planPath": "Plans/pending/mini_engine_v2_improvement_plan_2026-02-09.md",
+      "agent": "build",
+      "scope": [
+        "src",
+        "packages",
+        "tests",
+        "docs"
+      ],
+      "status": "failed",
+      "attempts": 0,
+      "createdAt": 1770980581366,
+      "updatedAt": 1770980581368,
+      "error": "plan file missing from Plans/pending"
+    },
+    {
+      "id": "pending-plan-plans_pending_mini_engine_v2_md-3",
+      "planPath": "Plans/pending/mini_engine_v2.md",
+      "agent": "build",
+      "scope": [
+        "src",
+        "packages",
+        "tests",
+        "docs"
+      ],
+      "status": "failed",
+      "attempts": 0,
+      "createdAt": 1770980581366,
+      "updatedAt": 1770980581368,
+      "error": "plan file missing from Plans/pending"
+    }
+  ]
+}

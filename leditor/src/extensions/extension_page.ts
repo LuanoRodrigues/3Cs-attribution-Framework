@@ -705,6 +705,7 @@ const KEEP_OVERRIDE_UNDERFILL_RATIO = 0.25;
 const KEEP_OVERRIDE_UNDERFILL_LINES = 10;
 const MAX_FREE_LINES = 4;
 const MAX_FREE_LINES_RATIO = 0.08;
+const MIN_LINE_CHARS = 5;
 const MIN_LINE_SPLIT_TAIL_LINES = 1;
 const MIN_LINE_SPLIT_HEAD_LINES = 1;
 const BOTTOM_GUARD_PX = 8;
@@ -772,6 +773,31 @@ const getMaxFreeLines = (): number =>
 
 const getMaxFreeLinesRatio = (): number =>
   getPaginationNumber("__leditorPaginationMaxFreeLinesRatio", MAX_FREE_LINES_RATIO, { min: 0.05, max: 0.3 });
+
+const getMinLineChars = (): number =>
+  getPaginationNumber("__leditorPaginationMinLineChars", MIN_LINE_CHARS, { min: 2, max: 24 });
+
+const estimateCharWidth = (el: HTMLElement): number => {
+  try {
+    const style = getComputedStyle(el);
+    const fontSize = Number.parseFloat(style.fontSize || "0") || 0;
+    const font = style.font || "";
+    if (font) {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.font = font;
+        const sample = "abcdefghijklmnopqrstuvwxyz";
+        const width = ctx.measureText(sample).width;
+        if (width > 0) return width / sample.length;
+      }
+    }
+    if (fontSize > 0) return fontSize * 0.55;
+  } catch {
+    // ignore
+  }
+  return 7;
+};
 
 const isLineSplitElement = (el: HTMLElement): boolean => {
   const tag = el.tagName.toUpperCase();
@@ -2474,6 +2500,48 @@ const clampTrailingWordOffset = (text: string, offset: number): number => {
   return end;
 };
 
+const isWordChar = (ch: string): boolean => /[\p{L}\p{N}]/u.test(ch || "");
+const isPunctuation = (ch: string): boolean => /[.,;:!?]/.test(ch || "");
+const isClosingPunct = (ch: string): boolean => /[\"'”’)\]]/.test(ch || "");
+
+const adjustSplitPosForPunctuation = (
+  doc: any,
+  pos: number,
+  blockStart: number,
+  blockEnd: number
+): number => {
+  try {
+    const $pos = doc.resolve(pos);
+    const parent = $pos.parent;
+    if (!parent?.isTextblock) return pos;
+    const text = parent.textBetween(0, parent.content.size, "\n", "\n");
+    const offset = $pos.parentOffset;
+    if (offset <= 0 || offset >= text.length) return pos;
+    const before = text[offset - 1] ?? "";
+    const after = text[offset] ?? "";
+    if (isWordChar(before) && isPunctuation(after)) {
+      let newOffset = Math.min(text.length, offset + 1);
+      while (newOffset < text.length && (isPunctuation(text[newOffset]) || isClosingPunct(text[newOffset]))) {
+        newOffset += 1;
+      }
+      const parentStart = $pos.start($pos.depth);
+      const candidate = parentStart + newOffset;
+      if (candidate > blockStart + 1 && candidate < blockEnd - 1) return candidate;
+    }
+    if (/[.!?]/.test(before) && /[a-z]/.test(after)) {
+      let desired = Math.min(text.length, offset + 1);
+      while (desired < text.length && /\s/.test(text[desired])) desired += 1;
+      const adjustedOffset = clampTrailingWordOffset(text, desired);
+      const parentStart = $pos.start($pos.depth);
+      const candidate = parentStart + adjustedOffset;
+      if (candidate > blockStart + 1 && candidate < blockEnd - 1) return candidate;
+    }
+  } catch {
+    // ignore
+  }
+  return pos;
+};
+
 const resolveInlinePos = (view: any, pos: number, blockStart: number, blockEnd: number): number | null => {
   const doc = view.state.doc;
   const clamp = (value: number) =>
@@ -2862,13 +2930,13 @@ const adjustSplitPosForAnchors = (
     const start = $pos.start($pos.depth);
     const hasAnchor = (node: any) => isAnchorInlineNode(node) || hasAnchorMark(node);
     if (after?.node && hasAnchor(after.node)) {
-      const nextPos = start + after.offset;
+      const nextPos = start + after.offset + after.node.nodeSize;
       if (nextPos > blockStart + 1 && nextPos < blockEnd - 1) {
         return nextPos;
       }
     }
     if (before?.node && hasAnchor(before.node)) {
-      const prevPos = start + before.offset;
+      const prevPos = start + before.offset + before.node.nodeSize;
       if (prevPos > blockStart + 1 && prevPos < blockEnd - 1) {
         return prevPos;
       }
@@ -2942,6 +3010,21 @@ const findLineSplitPos = (
         enforcedOrphanLines,
         relaxedTargetIndex: targetIndex
       });
+    }
+  }
+  if (targetIndex != null && lineRects.length > 0) {
+    const minLineChars = getMinLineChars();
+    const minLineWidth = minLineChars > 0 ? estimateCharWidth(lineRoot) * minLineChars : 0;
+    if (minLineWidth > 0 && lineRects[targetIndex].width < minLineWidth) {
+      let adjusted = targetIndex;
+      while (adjusted > 0 && lineRects[adjusted].width < minLineWidth) {
+        if (enforcedOrphanLines > 0 && adjusted + 1 < enforcedOrphanLines) {
+          adjusted = targetIndex;
+          break;
+        }
+        adjusted -= 1;
+      }
+      targetIndex = adjusted;
     }
   }
   let lineRect: LineRect | null = null;
@@ -3067,6 +3150,10 @@ const findLineSplitPos = (
   if (anchorAdjusted != null) {
     pos = anchorAdjusted;
   }
+  const punctAdjusted = adjustSplitPosForPunctuation(view.state.doc, pos!, blockStart, blockEnd);
+  if (punctAdjusted != null) {
+    pos = punctAdjusted;
+  }
   // Avoid leaving anchor-only tails (e.g., lone citation lines) on the next page.
   try {
     const tailResolved = view.state.doc.resolve(pos);
@@ -3104,7 +3191,22 @@ const findLineSplitPosForRemaining = (
   if (remainingPx <= 0) return null;
   const contentRect = content.getBoundingClientRect();
   const scale = getContentScale(content);
-  const maxBottomAbs = contentRect.top + remainingPx * scale;
+  let maxBottomAbs = contentRect.top + remainingPx * scale;
+  const lineRects = collectLineRects(lineRoot);
+  if (lineRects.length > 0) {
+    const minLineChars = getMinLineChars();
+    const minLineWidth = minLineChars > 0 ? estimateCharWidth(lineRoot) * minLineChars : 0;
+    if (minLineWidth > 0) {
+      let lastVisibleIndex = -1;
+      for (let i = 0; i < lineRects.length; i += 1) {
+        if (lineRects[i].bottom <= maxBottomAbs) lastVisibleIndex = i;
+      }
+      if (lastVisibleIndex > 0 && lineRects[lastVisibleIndex].width < minLineWidth) {
+        const prevBottom = lineRects[lastVisibleIndex - 1].bottom;
+        maxBottomAbs = Math.min(maxBottomAbs, prevBottom - 1);
+      }
+    }
+  }
   let pos = findSplitPosByRange(view, lineRoot, maxBottomAbs);
   if (pos == null) return null;
   let rawBlockPos = 0;
@@ -3139,6 +3241,10 @@ const findLineSplitPosForRemaining = (
   const anchorAdjusted = adjustSplitPosForAnchors(view.state.doc, pos!, blockStart, blockEnd);
   if (anchorAdjusted != null) {
     pos = anchorAdjusted;
+  }
+  const punctAdjusted = adjustSplitPosForPunctuation(view.state.doc, pos!, blockStart, blockEnd);
+  if (punctAdjusted != null) {
+    pos = punctAdjusted;
   }
   return pos;
 };

@@ -1822,8 +1822,9 @@ export function renderSectionsPage(
           console.warn("[analyse][perf][batches-load][slow]", { ms: elapsed, count: batches.length });
         }
         scheduleIdle(() => {
-          void loadSections(runPath, "r2");
-          void loadSections(runPath, "r3");
+          // Warm paged paths without materializing full R2/R3 arrays in renderer memory.
+          void loadSectionsPage(runPath, "r2", 0, 1);
+          void loadSectionsPage(runPath, "r3", 0, 1);
         });
       } else {
         remotePagerMode = true;

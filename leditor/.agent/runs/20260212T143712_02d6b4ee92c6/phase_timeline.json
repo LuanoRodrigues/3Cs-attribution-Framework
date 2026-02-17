@@ -1,0 +1,55 @@
+{
+  "runId": "20260212T143712_02d6b4ee92c6",
+  "workspaceId": "eec3b011-45d6-4a36-9848-1ffd6f0bb7ff",
+  "updatedAt": 1770907032634,
+  "items": [
+    {
+      "phase": "started",
+      "status": "running",
+      "ts": 1770907032542,
+      "detail": "run started (auto)"
+    },
+    {
+      "phase": "routed",
+      "status": "running",
+      "ts": 1770907032550,
+      "detail": "pending plans query"
+    },
+    {
+      "phase": "model",
+      "status": "running",
+      "ts": 1770907032552,
+      "detail": "scanning pending plans"
+    },
+    {
+      "phase": "tools",
+      "status": "running",
+      "ts": 1770907032555,
+      "detail": "pending plans scan"
+    },
+    {
+      "phase": "tools",
+      "status": "running",
+      "ts": 1770907032558,
+      "detail": "pending plans scan complete",
+      "progress": {
+        "current": 0,
+        "total": 0,
+        "label": "scan complete",
+        "etaMs": 0
+      }
+    },
+    {
+      "phase": "completed",
+      "status": "completed",
+      "ts": 1770907032634,
+      "detail": "pending plans query completed",
+      "progress": {
+        "current": 0,
+        "total": 0,
+        "label": "scan complete",
+        "etaMs": 0
+      }
+    }
+  ]
+}

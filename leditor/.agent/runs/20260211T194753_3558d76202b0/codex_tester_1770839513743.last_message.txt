@@ -1,0 +1,5 @@
+Completed: I updated the layout snapshot test harness and ran the relevant validations for this run; they pass.
+
+I changed `scripts/layout_v2_snapshot.mjs` and `scripts/layout_v2_snapshot_compare.mjs`, and added `scripts/layout_v2_ts_runtime.mjs` so layout-v2 tests run offline without `esbuild`.
+
+Passing commands: `npm run test:layout-v2`, `npm run test:layout-v2:compare`, `npm run test:pagination`.

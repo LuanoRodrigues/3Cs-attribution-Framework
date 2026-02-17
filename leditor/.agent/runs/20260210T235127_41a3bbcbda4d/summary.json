@@ -1,0 +1,26 @@
+{
+  "header": {
+    "runId": "20260210T235127_41a3bbcbda4d",
+    "workspaceId": "eec3b011-45d6-4a36-9848-1ffd6f0bb7ff",
+    "workspaceDir": "/home/pantera/projects/TEIA/leditor",
+    "startedAt": 1770767487078,
+    "requestedAgent": "auto",
+    "capabilities": {
+      "can_edit": true,
+      "can_exec": true,
+      "can_delete": false,
+      "writeScope": [
+        "src",
+        "packages",
+        "tests",
+        "docs"
+      ]
+    },
+    "backend": "openai"
+  },
+  "status": "started",
+  "finishedAt": null,
+  "durationMs": null,
+  "turns": 0,
+  "toolCalls": 0
+}

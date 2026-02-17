@@ -90,21 +90,21 @@ export const runPaginationEngine = (
       }
       if (!overflow) return;
       content.style.setProperty("white-space", "normal", "important");
-      content.style.setProperty("overflow-wrap", "anywhere", "important");
-      content.style.setProperty("word-break", "break-all", "important");
+      content.style.setProperty("overflow-wrap", "normal", "important");
+      content.style.setProperty("word-break", "normal", "important");
       applyColumnClamp(content, clientWidth);
       if (inner) {
         applyColumnClamp(inner, clientWidth);
         inner.style.setProperty("white-space", "normal", "important");
-        inner.style.setProperty("overflow-wrap", "anywhere", "important");
-        inner.style.setProperty("word-break", "break-all", "important");
+        inner.style.setProperty("overflow-wrap", "normal", "important");
+        inner.style.setProperty("word-break", "normal", "important");
       }
       try {
         const wrapNodes = Array.from(content.querySelectorAll<HTMLElement>("p, li, blockquote"));
         wrapNodes.forEach((node) => {
           node.style.setProperty("white-space", "normal", "important");
-          node.style.setProperty("overflow-wrap", "anywhere", "important");
-          node.style.setProperty("word-break", "break-word", "important");
+          node.style.setProperty("overflow-wrap", "normal", "important");
+          node.style.setProperty("word-break", "normal", "important");
           node.style.setProperty("max-width", "100%", "important");
         });
       } catch {

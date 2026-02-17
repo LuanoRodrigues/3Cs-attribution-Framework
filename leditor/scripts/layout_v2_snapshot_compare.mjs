@@ -1,12 +1,10 @@
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { readFileSync, existsSync } from "node:fs";
-import { build } from "esbuild";
+import { prepareLayoutV2Entry } from "./layout_v2_ts_runtime.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "..");
-const entry = path.join(__dirname, "layout_v2_snapshot_entry.ts");
-const outFile = path.join(__dirname, ".layout_v2_snapshot.bundle.mjs");
 const baselinePath = path.join(repoRoot, "docs", "test_documents", "layout_v2_snapshot.json");
 const currentPath = path.join(repoRoot, "docs", "test_documents", "layout_v2_snapshot.current.json");
 
@@ -25,18 +23,10 @@ const summarize = (snapshot) => {
   });
 };
 
-await build({
-  entryPoints: [entry],
-  bundle: true,
-  platform: "node",
-  format: "esm",
-  target: "es2022",
-  outfile: outFile,
-  sourcemap: false
-});
+const entryUrl = prepareLayoutV2Entry(repoRoot);
 
 process.env.LAYOUT_V2_SNAPSHOT_OUT = currentPath;
-const mod = await import(`${pathToFileURL(outFile).href}?t=${Date.now()}`);
+const mod = await import(`${entryUrl}?t=${Date.now()}`);
 if (typeof mod.run !== "function") {
   throw new Error("layout_v2_snapshot_entry did not export run()");
 }

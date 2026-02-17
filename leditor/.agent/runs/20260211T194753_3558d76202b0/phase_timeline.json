@@ -1,0 +1,73 @@
+{
+  "runId": "20260211T194753_3558d76202b0",
+  "workspaceId": "eec3b011-45d6-4a36-9848-1ffd6f0bb7ff",
+  "updatedAt": 1770839994048,
+  "items": [
+    {
+      "phase": "started",
+      "status": "running",
+      "ts": 1770839273996,
+      "detail": "run started (build)"
+    },
+    {
+      "phase": "routed",
+      "status": "running",
+      "ts": 1770839274569,
+      "detail": "explicit user selection"
+    },
+    {
+      "phase": "model",
+      "status": "running",
+      "ts": 1770839274573,
+      "detail": "turn 1"
+    },
+    {
+      "phase": "tools",
+      "status": "running",
+      "ts": 1770839274578,
+      "detail": "tool codex_exec"
+    },
+    {
+      "phase": "tools",
+      "status": "running",
+      "ts": 1770839484588,
+      "detail": "tool codex_exec running"
+    },
+    {
+      "phase": "tools",
+      "status": "running",
+      "ts": 1770839513730,
+      "detail": "tool codex_exec ok"
+    },
+    {
+      "phase": "model",
+      "status": "running",
+      "ts": 1770839513736,
+      "detail": "turn 2"
+    },
+    {
+      "phase": "tools",
+      "status": "running",
+      "ts": 1770839513740,
+      "detail": "tool codex_exec"
+    },
+    {
+      "phase": "tools",
+      "status": "running",
+      "ts": 1770839963774,
+      "detail": "tool codex_exec running"
+    },
+    {
+      "phase": "tools",
+      "status": "running",
+      "ts": 1770839993634,
+      "detail": "tool codex_exec ok"
+    },
+    {
+      "phase": "completed",
+      "status": "completed",
+      "ts": 1770839994048,
+      "detail": "run completed"
+    }
+  ]
+}

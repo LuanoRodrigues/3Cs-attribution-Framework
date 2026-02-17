@@ -992,8 +992,8 @@ html, body {
   line-height: var(--page-line-height);
   color: var(--page-body-color);
   min-height: 1px;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  overflow-wrap: normal;
+  word-break: normal;
   caret-color: currentColor;
   overflow: hidden;
 }
@@ -1129,8 +1129,8 @@ html, body {
   max-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
 #editor .ProseMirror figure,
@@ -1548,8 +1548,9 @@ html, body {
   -webkit-column-fill: auto;
   min-width: 0;
   white-space: normal;
-  word-break: break-word;
-  overflow-wrap: anywhere;
+  word-break: normal;
+  overflow-wrap: normal;
+  text-wrap: pretty;
 }
 
 .leditor-page-content p,
@@ -1557,8 +1558,9 @@ html, body {
   max-width: 100%;
   box-sizing: border-box;
   white-space: normal !important;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  overflow-wrap: normal;
+  word-break: normal;
+  text-wrap: pretty;
 }
 
 .leditor-page-content * {
@@ -1575,8 +1577,9 @@ html, body {
   max-width: 100%;
   box-sizing: border-box;
   white-space: normal !important;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  overflow-wrap: normal;
+  word-break: normal;
+  text-wrap: pretty;
 }
 
 .leditor-page-content .leditor-split-fragment--head {
@@ -1593,8 +1596,9 @@ html, body {
   max-width: 100%;
   box-sizing: border-box;
   white-space: normal !important;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  overflow-wrap: normal;
+  word-break: normal;
+  text-wrap: pretty;
 }
 
 .leditor-page-content h1,
@@ -1606,14 +1610,16 @@ html, body {
   max-width: 100%;
   box-sizing: border-box;
   white-space: normal !important;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  overflow-wrap: normal;
+  word-break: normal;
+  text-wrap: pretty;
 }
 
 .leditor-page-content pre,
 .leditor-page-content code {
   white-space: pre-wrap !important;
-  word-break: break-word;
+  word-break: normal;
+  overflow-wrap: normal;
 }
 
 .leditor-page-content * {

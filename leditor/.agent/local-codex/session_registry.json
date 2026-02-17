@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "workspaceId": "eec3b011-45d6-4a36-9848-1ffd6f0bb7ff",
+  "updatedAt": 1771167153948,
+  "nextCodexIndex": 2,
+  "primaryWorkerId": "eec3b011-45d6-4a36-9848-1ffd6f0bb7ff:C1",
+  "moduleToWorker": {},
+  "workers": [
+    {
+      "workerId": "eec3b011-45d6-4a36-9848-1ffd6f0bb7ff:C1",
+      "codexNumber": "C1",
+      "kind": "primary",
+      "status": "ready",
+      "createdAt": 1771058095372,
+      "lastUsedAt": 1771058095372
+    }
+  ]
+}

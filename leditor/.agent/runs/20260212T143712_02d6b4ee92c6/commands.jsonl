@@ -1,0 +1,2 @@
+{"ts":1770907032554,"tool":"pending_plans_scan","callId":"f9028a1f-ff14-4f3a-8ccb-426b52a2b329","args":"Plans/pending recursive scan in /home/pantera/projects/TEIA/leditor"}
+{"ts":1770907032557,"tool":"pending_plans_scan","callId":"f9028a1f-ff14-4f3a-8ccb-426b52a2b329","ok":true,"result":"{\"count\":0,\"paths\":[]}","durationMs":0}

@@ -1,0 +1,2 @@
+{"ts":1770839273978,"tool":"pending_plan_batch","callId":"1bfc8691-0514-4ca2-874c-7d969b4b8bea","args":"plans=2 runnable=2 concurrency=3"}
+{"ts":1770840496123,"tool":"pending_plan_batch","callId":"1bfc8691-0514-4ca2-874c-7d969b4b8bea","ok":true,"result":"{\"plans\":2,\"runnable\":2,\"ok\":2,\"failed\":0,\"running\":0}","durationMs":1222144}

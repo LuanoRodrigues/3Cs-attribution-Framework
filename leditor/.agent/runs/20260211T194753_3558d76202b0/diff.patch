@@ -1,0 +1,1626 @@
+diff --git a/leditor/scripts/layout_v2_snapshot.mjs b/leditor/scripts/layout_v2_snapshot.mjs
+index 2d27d38..3834b1b 100644
+--- a/leditor/scripts/layout_v2_snapshot.mjs
++++ b/leditor/scripts/layout_v2_snapshot.mjs
+@@ -1,23 +1,12 @@
+ import path from "node:path";
+-import { fileURLToPath, pathToFileURL } from "node:url";
+-import { build } from "esbuild";
++import { fileURLToPath } from "node:url";
++import { prepareLayoutV2Entry } from "./layout_v2_ts_runtime.mjs";
+ 
+ const __dirname = path.dirname(fileURLToPath(import.meta.url));
+ const repoRoot = path.resolve(__dirname, "..");
+-const entry = path.join(__dirname, "layout_v2_snapshot_entry.ts");
+-const outFile = path.join(__dirname, ".layout_v2_snapshot.bundle.mjs");
++const entryUrl = prepareLayoutV2Entry(repoRoot);
+ 
+-await build({
+-  entryPoints: [entry],
+-  bundle: true,
+-  platform: "node",
+-  format: "esm",
+-  target: "es2022",
+-  outfile: outFile,
+-  sourcemap: false
+-});
+-
+-const mod = await import(`${pathToFileURL(outFile).href}?t=${Date.now()}`);
++const mod = await import(`${entryUrl}?t=${Date.now()}`);
+ if (typeof mod.run === "function") {
+   mod.run();
+ } else {
+diff --git a/leditor/scripts/layout_v2_snapshot_compare.mjs b/leditor/scripts/layout_v2_snapshot_compare.mjs
+index 0e80041..c02aca7 100644
+--- a/leditor/scripts/layout_v2_snapshot_compare.mjs
++++ b/leditor/scripts/layout_v2_snapshot_compare.mjs
+@@ -1,12 +1,10 @@
+ import path from "node:path";
+-import { fileURLToPath, pathToFileURL } from "node:url";
++import { fileURLToPath } from "node:url";
+ import { readFileSync, existsSync } from "node:fs";
+-import { build } from "esbuild";
++import { prepareLayoutV2Entry } from "./layout_v2_ts_runtime.mjs";
+ 
+ const __dirname = path.dirname(fileURLToPath(import.meta.url));
+ const repoRoot = path.resolve(__dirname, "..");
+-const entry = path.join(__dirname, "layout_v2_snapshot_entry.ts");
+-const outFile = path.join(__dirname, ".layout_v2_snapshot.bundle.mjs");
+ const baselinePath = path.join(repoRoot, "docs", "test_documents", "layout_v2_snapshot.json");
+ const currentPath = path.join(repoRoot, "docs", "test_documents", "layout_v2_snapshot.current.json");
+ 
+@@ -25,18 +23,10 @@ const summarize = (snapshot) => {
+   });
+ };
+ 
+-await build({
+-  entryPoints: [entry],
+-  bundle: true,
+-  platform: "node",
+-  format: "esm",
+-  target: "es2022",
+-  outfile: outFile,
+-  sourcemap: false
+-});
++const entryUrl = prepareLayoutV2Entry(repoRoot);
+ 
+ process.env.LAYOUT_V2_SNAPSHOT_OUT = currentPath;
+-const mod = await import(`${pathToFileURL(outFile).href}?t=${Date.now()}`);
++const mod = await import(`${entryUrl}?t=${Date.now()}`);
+ if (typeof mod.run !== "function") {
+   throw new Error("layout_v2_snapshot_entry did not export run()");
+ }
+diff --git a/leditor/scripts/pagination_page_cases.cjs b/leditor/scripts/pagination_page_cases.cjs
+index 76f98ce..41508c6 100644
+--- a/leditor/scripts/pagination_page_cases.cjs
++++ b/leditor/scripts/pagination_page_cases.cjs
+@@ -120,14 +120,21 @@ const normalizeExpectations = (pages) => {
+ 
+ const evaluateExpectations = (pages, expectations) => {
+   const failures = [];
+-  const defaultMaxWhiteSpaceRatio = readEnvNumber("LEDITOR_MAX_WHITESPACE_RATIO") ?? 0.2;
++  const defaultMaxWhiteSpaceRatio = readEnvNumber("LEDITOR_MAX_WHITESPACE_RATIO") ?? 0.25;
+   const defaultMaxWhiteSpacePx = readEnvNumber("LEDITOR_MAX_WHITESPACE_PX");
+-  const defaultMaxFreeLines = readEnvNumber("LEDITOR_MAX_WHITESPACE_LINES") ?? 6;
++  const defaultMaxFreeLines = readEnvNumber("LEDITOR_MAX_WHITESPACE_LINES") ?? 12;
++  const sparseMinWordCount = readEnvNumber("LEDITOR_SPARSE_MIN_WORDS") ?? 80;
++  const sparseMaxFillRatioBottom = readEnvNumber("LEDITOR_SPARSE_MAX_FILL_RATIO_BOTTOM") ?? 0.35;
++  const sparseMaxFreeLines = readEnvNumber("LEDITOR_SPARSE_MAX_FREE_LINES") ?? 18;
++  const minLineChars = readEnvNumber("LEDITOR_MIN_LINE_CHARS") ?? 5;
++  const maxShortLines = readEnvNumber("LEDITOR_MAX_SHORT_LINES") ?? 0;
++  const allowSentenceCaseSplitGlobal = process.env.LEDITOR_ALLOW_SENTENCE_CASE_SPLIT === "1";
++  const allowPunctuationSplitGlobal = process.env.LEDITOR_ALLOW_PUNCTUATION_SPLIT === "1";
+   const allowMidWordSplitGlobal = process.env.LEDITOR_ALLOW_MIDWORD_SPLIT === "1";
+   const allowAnchorSplitGlobal = process.env.LEDITOR_ALLOW_ANCHOR_SPLIT === "1";
+   const allowCharacterSplitGlobal = process.env.LEDITOR_ALLOW_CHARACTER_SPLIT === "1";
+   const defaultMaxParaSplitFreeLines =
+-    readEnvNumber("LEDITOR_MAX_PARAGRAPH_SPLIT_FREE_LINES") ?? 2;
++    readEnvNumber("LEDITOR_MAX_PARAGRAPH_SPLIT_FREE_LINES") ?? Math.max(2, defaultMaxFreeLines - 2);
+   expectations.forEach((expect) => {
+     const resolvedIndex = (() => {
+       if (Number.isFinite(expect.pageIndex)) return expect.pageIndex;
+@@ -264,6 +271,31 @@ const evaluateExpectations = (pages, expectations) => {
+         reason: `characterSplitCount ${page.characterSplitCount}`
+       });
+     }
++    const allowSentenceCaseSplit =
++      expect.allowSentenceCaseSplit === true || allowSentenceCaseSplitGlobal;
++    if (!allowSentenceCaseSplit && page.sentenceCaseViolation) {
++      failures.push({
++        label,
++        pageIndex: resolvedIndex,
++        reason: `sentenceCaseViolation (${page.sentenceCaseBeforeChar || ""}|${page.sentenceCaseAfterChar || ""})`
++      });
++    }
++    const allowPunctuationSplit =
++      expect.allowPunctuationSplit === true || allowPunctuationSplitGlobal;
++    if (!allowPunctuationSplit && page.punctuationSplit) {
++      failures.push({
++        label,
++        pageIndex: resolvedIndex,
++        reason: `punctuationSplit (${page.punctuationSplitPrevChar || ""}|${page.punctuationSplitChar || ""})`
++      });
++    }
++    if (Number.isFinite(maxShortLines) && Number.isFinite(minLineChars) && page.shortLineCount > maxShortLines) {
++      failures.push({
++        label,
++        pageIndex: resolvedIndex,
++        reason: `shortLineCount ${page.shortLineCount} > maxShortLines ${maxShortLines} (minLineChars ${minLineChars})`
++      });
++    }
+     const maxParaSplitFreeLines = Number.isFinite(expect.maxParagraphSplitFreeLines)
+       ? expect.maxParagraphSplitFreeLines
+       : defaultMaxParaSplitFreeLines;
+@@ -310,6 +342,48 @@ const evaluateExpectations = (pages, expectations) => {
+       });
+     });
+   }
++  if (!allowSentenceCaseSplitGlobal) {
++    pages.forEach((page) => {
++      if (!page?.sentenceCaseViolation) return;
++      failures.push({
++        label: `sentencecase_page_${page.pageNumber}`,
++        pageIndex: page.pageIndex,
++        reason: `sentenceCaseViolation (${page.sentenceCaseBeforeChar || ""}|${page.sentenceCaseAfterChar || ""})`
++      });
++    });
++  }
++  if (!allowPunctuationSplitGlobal) {
++    pages.forEach((page) => {
++      if (!page?.punctuationSplit) return;
++      failures.push({
++        label: `punctsplit_page_${page.pageNumber}`,
++        pageIndex: page.pageIndex,
++        reason: `punctuationSplit (${page.punctuationSplitPrevChar || ""}|${page.punctuationSplitChar || ""})`
++      });
++    });
++  }
++  pages.forEach((page) => {
++    if (!page) return;
++    const manualBreak = page.breakManual === true || page.breakRule === "manual";
++    if (manualBreak) return;
++    const sparseByFreeLines =
++      Number.isFinite(sparseMaxFreeLines) &&
++      Number.isFinite(sparseMinWordCount) &&
++      page.freeLines >= sparseMaxFreeLines &&
++      page.wordCount < sparseMinWordCount;
++    const sparseByFill =
++      Number.isFinite(sparseMaxFillRatioBottom) &&
++      Number.isFinite(sparseMinWordCount) &&
++      page.fillRatioBottom <= sparseMaxFillRatioBottom &&
++      page.wordCount < sparseMinWordCount;
++    if (sparseByFreeLines || sparseByFill) {
++      failures.push({
++        label: `sparse_page_${page.pageNumber}`,
++        pageIndex: page.pageIndex,
++        reason: `sparsePage freeLines=${page.freeLines} fillRatioBottom=${page.fillRatioBottom} wordCount=${page.wordCount}`
++      });
++    }
++  });
+   return failures;
+ };
+ 
+@@ -369,6 +443,7 @@ const run = async ({ ledocPath, outputPath, expectations, expectationsPath }) =>
+     const payload = JSON.stringify(docJson);
+     const payloadBase64 = Buffer.from(payload, "utf8").toString("base64");
+     const disableFlatten = process.env.LEDITOR_DISABLE_FLATTEN === "1";
++    const minLineChars = readEnvNumber("LEDITOR_MIN_LINE_CHARS") ?? 5;
+     const setupResult = await win.webContents.executeJavaScript(
+       `
+       (() => {
+@@ -420,6 +495,7 @@ const run = async ({ ledocPath, outputPath, expectations, expectationsPath }) =>
+     const report = await win.webContents.executeJavaScript(
+       `
+       (async () => {
++        try {
+         const PAGE_QUERY = ${JSON.stringify(PAGE_QUERY)};
+         const PAGE_FALLBACK_QUERY = ${JSON.stringify(PAGE_FALLBACK_QUERY)};
+         const getPages = () => {
+@@ -482,16 +558,17 @@ const run = async ({ ledocPath, outputPath, expectations, expectationsPath }) =>
+         const manualBreakAtEnd = {};
+         const manualBreakAtStart = {};
+         const boundaryPosByIndex = {};
++        const pageBoundaryInfo = {};
++        const isFootnoteNode = (node) => {
++          const name = node?.type?.name;
++          return name === "footnotesContainer" || name === "footnoteBody";
++        };
+         if (doc && pageType && Number.isFinite(doc.childCount)) {
+           let pos = 0;
+           for (let i = 0; i < doc.childCount; i += 1) {
+             const child = doc.child(i);
+             if (!child || child.type !== pageType) break;
+             boundaryPosByIndex[i] = pos;
+-            const isFootnoteNode = (node) => {
+-              const name = node?.type?.name;
+-              return name === "footnotesContainer" || name === "footnoteBody";
+-            };
+             const pageEndsWithBreak = (pageNode) => {
+               for (let c = pageNode.childCount - 1; c >= 0; c -= 1) {
+                 const node = pageNode.child(c);
+@@ -543,6 +620,7 @@ const run = async ({ ledocPath, outputPath, expectations, expectationsPath }) =>
+           return best.reason || op || null;
+         };
+         const isWordChar = (ch) => /[\\p{L}\\p{N}]/u.test(ch || "");
++        const isPunctuation = (ch) => /[.,;:!?]/.test(ch || "");
+         const isHyphen = (ch) =>
+           ch === "-" || ch === "\\u2010" || ch === "\\u2011" || ch === "\\u00ad" || ch === "\\u2212";
+         const getChar = (from, to) => {
+@@ -555,7 +633,207 @@ const run = async ({ ledocPath, outputPath, expectations, expectationsPath }) =>
+         const hasAnchorMark = (node) =>
+           Boolean(node?.marks && node.marks.some((mark) => mark?.type?.name === "anchor"));
+         const isAnchorNode = (node) => node?.type?.name === "anchorMarker";
++        const hasAnchorInNode = (node) => {
++          if (!node) return false;
++          if (hasAnchorMark(node) || isAnchorNode(node)) return true;
++          if (!node.childCount) return false;
++          for (let i = 0; i < node.childCount; i += 1) {
++            if (hasAnchorInNode(node.child(i))) return true;
++          }
++          return false;
++        };
++        const findFirstTextblock = (node) => {
++          if (!node) return null;
++          if (node.isTextblock) return node;
++          if (!node.childCount) return null;
++          for (let i = 0; i < node.childCount; i += 1) {
++            const child = node.child(i);
++            if (isFootnoteNode(child)) continue;
++            if (child.type?.name === "page_break") continue;
++            const found = findFirstTextblock(child);
++            if (found) return found;
++          }
++          return null;
++        };
++        const findLastTextblock = (node) => {
++          if (!node) return null;
++          if (node.isTextblock) return node;
++          if (!node.childCount) return null;
++          for (let i = node.childCount - 1; i >= 0; i -= 1) {
++            const child = node.child(i);
++            if (isFootnoteNode(child)) continue;
++            if (child.type?.name === "page_break") continue;
++            const found = findLastTextblock(child);
++            if (found) return found;
++          }
++          return null;
++        };
++        const getBlockText = (node) => {
++          if (!node) return "";
++          try {
++            return node.textBetween(0, node.content.size, "\\n", "\\n");
++          } catch {
++            return "";
++          }
++        };
++        if (doc && pageType && Number.isFinite(doc.childCount)) {
++          for (let i = 0; i < doc.childCount; i += 1) {
++            const child = doc.child(i);
++            if (!child || child.type !== pageType) break;
++            const first = findFirstTextblock(child);
++            const last = findLastTextblock(child);
++            pageBoundaryInfo[i] = {
++              firstSplitId: first?.attrs?.paginationSplitId ?? null,
++              lastSplitId: last?.attrs?.paginationSplitId ?? null,
++              firstText: getBlockText(first),
++              lastText: getBlockText(last),
++              firstHasAnchor: hasAnchorInNode(first),
++              lastHasAnchor: hasAnchorInNode(last)
++            };
++          }
++        }
+         const normalize = (value) => String(value || "").replace(/\\u00a0/g, " ").replace(/\\s+/g, " ").trim();
++        const MIN_LINE_CHARS = ${minLineChars};
++        const getCanvas = (() => {
++          let canvas = null;
++          return () => {
++            if (!canvas) canvas = document.createElement("canvas");
++            return canvas;
++          };
++        })();
++        const estimateCharWidth = (el) => {
++          try {
++            const style = window.getComputedStyle(el);
++            const font = style.fontWeight + " " + style.fontSize + " " + style.fontFamily;
++            const canvas = getCanvas();
++            const ctx = canvas.getContext("2d");
++            if (!ctx) return 7;
++            ctx.font = font;
++            const sample = "abcdefghijklmnopqrstuvwxyz";
++            const width = ctx.measureText(sample).width;
++            return width > 0 ? width / sample.length : 7;
++          } catch {
++            return 7;
++          }
++        };
++        const countShortLines = (blocks, minChars) => {
++          if (!Array.isArray(blocks) || !blocks.length) return { shortLineCount: 0, shortLineExamples: [] };
++          const shortLines = [];
++          blocks.forEach((block) => {
++            if (!block) return;
++            let range;
++            try {
++              range = document.createRange();
++              range.selectNodeContents(block);
++            } catch {
++              return;
++            }
++            const rects = Array.from(range.getClientRects());
++            if (!rects.length) return;
++            const avgChar = estimateCharWidth(block);
++            const lines = [];
++            rects.forEach((rect) => {
++              let line = lines.find((entry) => Math.abs(entry.top - rect.top) <= 1);
++              if (!line) {
++                line = { top: rect.top, width: 0 };
++                lines.push(line);
++              }
++              line.width += rect.width;
++            });
++            lines.sort((a, b) => a.top - b.top);
++            const lastLine = lines[lines.length - 1];
++            if (lastLine) {
++              const estChars = avgChar > 0 ? lastLine.width / avgChar : 0;
++              if (estChars > 0 && estChars < minChars) {
++                shortLines.push(estChars);
++              }
++            }
++          });
++          return {
++            shortLineCount: shortLines.length,
++            shortLineExamples: shortLines.slice(0, 5)
++          };
++        };
++        const countWordSplits = (root) => {
++          const result = {
++            characterSplitCount: 0,
++            midWordSplitCount: 0,
++            examples: []
++          };
++          if (!root) return result;
++          if (typeof document.createTreeWalker !== "function" || typeof document.createRange !== "function") {
++            return result;
++          }
++          const filter = typeof NodeFilter !== "undefined" ? NodeFilter.SHOW_TEXT : 4;
++          let walker;
++          let range;
++          try {
++            walker = document.createTreeWalker(root, filter, null);
++            range = document.createRange();
++          } catch {
++            return result;
++          }
++          const wordRegex = /[\\p{L}\\p{N}]{2,}/gu;
++          let scanned = 0;
++          let node = walker.nextNode();
++          while (node) {
++            const text = node.nodeValue || "";
++            if (text && /[\\p{L}\\p{N}]/u.test(text)) {
++              wordRegex.lastIndex = 0;
++              let match = wordRegex.exec(text);
++              while (match) {
++                const word = match[0];
++                if (word.length >= 4) {
++                  try {
++                    range.setStart(node, match.index);
++                    range.setEnd(node, match.index + word.length);
++                  } catch {
++                    match = wordRegex.exec(text);
++                    continue;
++                  }
++                  const rects = Array.from(range.getClientRects());
++                  if (rects.length > 1) {
++                    result.midWordSplitCount += 1;
++                    const firstTop = rects.reduce((min, rect) => Math.min(min, rect.top), rects[0].top);
++                    let low = match.index;
++                    let high = match.index + word.length - 1;
++                    let best = match.index;
++                    let safety = 0;
++                    while (low <= high && safety < 32) {
++                      safety += 1;
++                      const mid = Math.floor((low + high) / 2);
++                      try {
++                        range.setStart(node, match.index);
++                        range.setEnd(node, mid + 1);
++                      } catch {
++                        high = mid - 1;
++                        continue;
++                      }
++                      const midRects = Array.from(range.getClientRects());
++                      const lastRect = midRects.length ? midRects[midRects.length - 1] : null;
++                      if (lastRect && Math.abs(lastRect.top - firstTop) <= 0.5) {
++                        best = mid + 1;
++                        low = mid + 1;
++                      } else {
++                        high = mid - 1;
++                      }
++                    }
++                    const tailLen = match.index + word.length - best;
++                    if (tailLen === 1) {
++                      result.characterSplitCount += 1;
++                      if (result.examples.length < 3) result.examples.push(word);
++                    }
++                    scanned += 1;
++                    if (scanned > 800) return result;
++                  }
++                }
++                match = wordRegex.exec(text);
++              }
++            }
++            node = walker.nextNode();
++          }
++          return result;
++        };
+         const summaries = pages.map((page, index) => {
+           const datasetIndexRaw = page?.dataset?.pageIndex ?? "";
+           const datasetIndex = datasetIndexRaw !== "" ? Number.parseInt(datasetIndexRaw, 10) : null;
+@@ -564,10 +842,26 @@ const run = async ({ ledocPath, outputPath, expectations, expectationsPath }) =>
+           const blocks = content
+             ? Array.from(content.querySelectorAll("p, h1, h2, h3, h4, h5, h6, li, blockquote, pre, table, figure, hr, .leditor-break"))
+             : [];
++          const shortLineData = countShortLines(blocks, MIN_LINE_CHARS);
+           const contentStyle = content ? window.getComputedStyle(content) : null;
+           const lineHeightRaw = contentStyle ? contentStyle.lineHeight : "";
+           const paddingBottomRaw = contentStyle ? contentStyle.paddingBottom : "";
+-          const lineHeight = Number.parseFloat(lineHeightRaw || "0");
++          let lineHeight = Number.parseFloat(lineHeightRaw || "0");
++          const sample =
++            content?.querySelector("p, li, blockquote, pre") ??
++            content?.querySelector("h1, h2, h3, h4, h5, h6");
++          if (sample) {
++            const sampleStyle = window.getComputedStyle(sample);
++            const sampleLineHeight = Number.parseFloat(sampleStyle.lineHeight || "0");
++            if (Number.isFinite(sampleLineHeight) && sampleLineHeight > 0) {
++              lineHeight = sampleLineHeight;
++            } else {
++              const sampleFontSize = Number.parseFloat(sampleStyle.fontSize || "0");
++              if (Number.isFinite(sampleFontSize) && sampleFontSize > 0 && (!Number.isFinite(lineHeight) || lineHeight <= 0)) {
++                lineHeight = sampleFontSize * 1.2;
++              }
++            }
++          }
+           const paddingBottom = Number.parseFloat(paddingBottomRaw || "0") || 0;
+           const tagCounts = {};
+           blocks.forEach((block) => {
+@@ -650,7 +944,9 @@ const run = async ({ ledocPath, outputPath, expectations, expectationsPath }) =>
+               ? Math.max(0, Math.ceil(Math.min(lastBottom, bottomLimit) / lineHeight))
+               : 0;
+           const freeLines = Math.max(0, maxLines - usedLines);
++          const firstBlock = blocks.length ? blocks[0] : null;
+           const lastBlock = blocks.length ? blocks[blocks.length - 1] : null;
++          const firstBlockTag = firstBlock ? (firstBlock.classList?.contains("leditor-break") ? ".leditor-break" : firstBlock.tagName) : null;
+           const lastBlockTag = lastBlock ? (lastBlock.classList?.contains("leditor-break") ? ".leditor-break" : lastBlock.tagName) : null;
+           const lastBlockText = lastBlock ? normalize(lastBlock.textContent || "").slice(0, 80) : "";
+           const boundaryPos = boundaryPosByIndex[index] ?? null;
+@@ -663,36 +959,68 @@ const run = async ({ ledocPath, outputPath, expectations, expectationsPath }) =>
+                 ? "manual"
+                 : (findBreakReason(boundaryPos) ?? null);
+           const rawLines = rawText.split(/\\r?\\n/);
+-          let lineWordSplitCount = 0;
+           let singleCharLineCount = 0;
+           const charSplitLines = [];
+           for (let i = 0; i < rawLines.length; i += 1) {
+             const line = rawLines[i].trim();
++            if (!line) continue;
+             if (line.length === 1 && isWordChar(line)) {
+               singleCharLineCount += 1;
+               if (charSplitLines.length < 3) charSplitLines.push(line);
+             }
+-            if (i < rawLines.length - 1) {
+-              const next = rawLines[i + 1].trim();
+-              if (!line || !next) continue;
+-              const lastChar = line.slice(-1);
+-              const nextChar = next.slice(0, 1);
+-              if (isWordChar(lastChar) && isWordChar(nextChar) && !isHyphen(lastChar)) {
+-                lineWordSplitCount += 1;
+-                if (charSplitLines.length < 3) {
+-                  charSplitLines.push(`${line.slice(-6)}|${next.slice(0, 6)}`);
+-                }
+-              }
+-            }
+           }
+-          const characterSplitCount = lineWordSplitCount + singleCharLineCount;
+-          let midWordSplit = false;
++          const rangeSplits = content
++            ? countWordSplits(content)
++            : { characterSplitCount: 0, midWordSplitCount: 0, examples: [] };
++          let characterSplitCount = singleCharLineCount + rangeSplits.characterSplitCount;
++          if (rangeSplits.examples?.length) {
++            rangeSplits.examples.forEach((example) => {
++              if (charSplitLines.length < 3) charSplitLines.push(example);
++            });
++          }
++          let midWordSplit = rangeSplits.midWordSplitCount > 0;
+           let anchorSplit = false;
+           let splitBeforeChar = "";
+           let splitAfterChar = "";
+           let splitBeforeText = "";
+           let splitAfterText = "";
+           let paragraphSplitAtBoundary = false;
++          const boundaryInfo = pageBoundaryInfo[index] || {};
++          const prevBoundaryInfo = pageBoundaryInfo[index - 1] || {};
++          const prevLastText = String(prevBoundaryInfo.lastText || "").trim();
++          const currFirstText = String(boundaryInfo.firstText || "").trim();
++          const prevLastChar = prevLastText.slice(-1);
++          const currFirstChar = currFirstText.slice(0, 1);
++          const splitIdMatch =
++            boundaryInfo.firstSplitId != null &&
++            boundaryInfo.firstSplitId === prevBoundaryInfo.lastSplitId;
++          if (splitIdMatch) {
++            paragraphSplitAtBoundary = true;
++            if (isWordChar(prevLastChar) && isWordChar(currFirstChar) && !isHyphen(prevLastChar)) {
++              midWordSplit = true;
++            }
++            anchorSplit = Boolean(prevBoundaryInfo.lastHasAnchor || boundaryInfo.firstHasAnchor);
++            const firstToken = currFirstText.split(/\\s+/).filter(Boolean)[0] || "";
++            if (firstToken.length === 1 && isWordChar(firstToken) && isWordChar(prevLastChar)) {
++              characterSplitCount += 1;
++              if (charSplitLines.length < 3) charSplitLines.push(firstToken);
++            }
++          }
++          if (!paragraphSplitAtBoundary && prevLastText && currFirstText) {
++            const prevLower = /[\\p{Ll}]$/u.test(prevLastText);
++            const currLower = /^[\\p{Ll}]/u.test(currFirstText);
++            if (prevLower && currLower) {
++              paragraphSplitAtBoundary = true;
++            }
++          }
++          if (prevLastChar) {
++            splitBeforeChar = prevLastChar;
++            splitBeforeText = prevLastText.slice(-6);
++          }
++          if (currFirstChar) {
++            splitAfterChar = currFirstChar;
++            splitAfterText = currFirstText.slice(0, 6);
++          }
+           if (
+             doc &&
+             Number.isFinite(boundaryPos) &&
+@@ -701,30 +1029,64 @@ const run = async ({ ledocPath, outputPath, expectations, expectationsPath }) =>
+           ) {
+             const before = getChar(Math.max(0, boundaryPos - 1), boundaryPos);
+             const after = getChar(boundaryPos, Math.min(doc.content.size, boundaryPos + 1));
+-            splitBeforeChar = before ? before.slice(-1) : "";
+-            splitAfterChar = after ? after.slice(0, 1) : "";
+-            splitBeforeText = getChar(Math.max(0, boundaryPos - 6), boundaryPos);
+-            splitAfterText = getChar(boundaryPos, Math.min(doc.content.size, boundaryPos + 6));
++            const boundaryBeforeChar = before ? before.slice(-1) : "";
++            const boundaryAfterChar = after ? after.slice(0, 1) : "";
++            if (!splitBeforeChar) splitBeforeChar = boundaryBeforeChar;
++            if (!splitAfterChar) splitAfterChar = boundaryAfterChar;
++            if (!splitBeforeText) splitBeforeText = getChar(Math.max(0, boundaryPos - 6), boundaryPos);
++            if (!splitAfterText) splitAfterText = getChar(boundaryPos, Math.min(doc.content.size, boundaryPos + 6));
+             midWordSplit =
+-              isWordChar(splitBeforeChar) &&
+-              isWordChar(splitAfterChar) &&
+-              !isHyphen(splitBeforeChar);
++              midWordSplit ||
++              (isWordChar(boundaryBeforeChar) &&
++                isWordChar(boundaryAfterChar) &&
++                !isHyphen(boundaryBeforeChar));
+             try {
+               const $pos = doc.resolve(boundaryPos);
+               const beforeNode = $pos.nodeBefore;
+               const afterNode = $pos.nodeAfter;
+               anchorSplit =
++                anchorSplit ||
+                 hasAnchorMark(beforeNode) ||
+                 hasAnchorMark(afterNode) ||
+                 isAnchorNode(beforeNode) ||
+                 isAnchorNode(afterNode);
+               if ($pos.parent?.isTextblock) {
+-                paragraphSplitAtBoundary = Boolean(beforeNode?.isText && afterNode?.isText);
++                paragraphSplitAtBoundary =
++                  paragraphSplitAtBoundary ||
++                  Boolean(beforeNode?.isText && afterNode?.isText);
+               }
+             } catch {
+               // ignore
+             }
+           }
++          const firstLetter = (() => {
++            for (let i = 0; i < currFirstText.length; i += 1) {
++              const ch = currFirstText[i];
++              if (/[A-Za-z]/.test(ch)) return ch;
++            }
++            return "";
++          })();
++          const lastNonSpace = (() => {
++            for (let i = prevLastText.length - 1; i >= 0; i -= 1) {
++              const ch = prevLastText[i];
++              if (!/\s/.test(ch)) return ch;
++            }
++            return "";
++          })();
++          const firstNonSpace = (() => {
++            for (let i = 0; i < currFirstText.length; i += 1) {
++              const ch = currFirstText[i];
++              if (!/\s/.test(ch)) return ch;
++            }
++            return "";
++          })();
++          const sentenceCaseViolation =
++            !(/^H[1-6]$/.test(firstBlockTag || "")) &&
++            /[.!?]/.test(lastNonSpace) &&
++            firstLetter &&
++            /[a-z]/.test(firstLetter);
++          const punctuationSplit =
++            Boolean(firstNonSpace) && isPunctuation(firstNonSpace) && isWordChar(prevLastChar);
+           return {
+             pageIndex: index,
+             pageNumber: index + 1,
+@@ -748,6 +1110,7 @@ const run = async ({ ledocPath, outputPath, expectations, expectationsPath }) =>
+             scale,
+             guardPx,
+             whiteSpacePx: Math.round(whiteSpacePx * 10) / 10,
++            bottomWhitespacePx: Math.round(whiteSpacePx * 10) / 10,
+             whiteSpaceRatio: Math.round(whiteSpaceRatio * 1000) / 1000,
+             overflowBlockIndex,
+             overflowBlockTag,
+@@ -760,6 +1123,7 @@ const run = async ({ ledocPath, outputPath, expectations, expectationsPath }) =>
+             usedLines,
+             maxLines,
+             freeLines,
++            firstBlockTag,
+             lastBlockTag,
+             lastBlockText,
+             breakRule,
+@@ -772,10 +1136,17 @@ const run = async ({ ledocPath, outputPath, expectations, expectationsPath }) =>
+             splitBeforeText,
+             splitAfterText,
+             paragraphSplitAtBoundary,
+-            lineWordSplitCount,
+             singleCharLineCount,
+             characterSplitCount,
+             characterSplitLines: charSplitLines,
++            shortLineCount: shortLineData.shortLineCount,
++            shortLineExamples: shortLineData.shortLineExamples,
++            sentenceCaseViolation,
++            sentenceCaseBeforeChar: lastNonSpace,
++            sentenceCaseAfterChar: firstLetter,
++            punctuationSplit,
++            punctuationSplitChar: firstNonSpace,
++            punctuationSplitPrevChar: prevLastChar,
+             contentBox: contentRect
+               ? { width: Math.round(contentRect.width * 10) / 10, height: Math.round(contentRect.height * 10) / 10 }
+               : null
+@@ -835,6 +1206,9 @@ const run = async ({ ledocPath, outputPath, expectations, expectationsPath }) =>
+           phase2UnderfillMeta: window.__leditorPhase2UnderfillMeta ?? null,
+           phase2UnderfillFailures: window.__leditorPhase2UnderfillFailures ?? null
+         };
++        } catch (err) {
++          return { ok: false, reason: String(err && err.message ? err.message : err) };
++        }
+       })();
+       `,
+       true
+diff --git a/leditor/src/extensions/extension_page.ts b/leditor/src/extensions/extension_page.ts
+index 6338ffc..de3d27a 100644
+--- a/leditor/src/extensions/extension_page.ts
++++ b/leditor/src/extensions/extension_page.ts
+@@ -705,6 +705,7 @@ const KEEP_OVERRIDE_UNDERFILL_RATIO = 0.25;
+ const KEEP_OVERRIDE_UNDERFILL_LINES = 10;
+ const MAX_FREE_LINES = 4;
+ const MAX_FREE_LINES_RATIO = 0.08;
++const MIN_LINE_CHARS = 5;
+ const MIN_LINE_SPLIT_TAIL_LINES = 1;
+ const MIN_LINE_SPLIT_HEAD_LINES = 1;
+ const BOTTOM_GUARD_PX = 8;
+@@ -773,6 +774,31 @@ const getMaxFreeLines = (): number =>
+ const getMaxFreeLinesRatio = (): number =>
+   getPaginationNumber("__leditorPaginationMaxFreeLinesRatio", MAX_FREE_LINES_RATIO, { min: 0.05, max: 0.3 });
+ 
++const getMinLineChars = (): number =>
++  getPaginationNumber("__leditorPaginationMinLineChars", MIN_LINE_CHARS, { min: 2, max: 24 });
++
++const estimateCharWidth = (el: HTMLElement): number => {
++  try {
++    const style = getComputedStyle(el);
++    const fontSize = Number.parseFloat(style.fontSize || "0") || 0;
++    const font = style.font || "";
++    if (font) {
++      const canvas = document.createElement("canvas");
++      const ctx = canvas.getContext("2d");
++      if (ctx) {
++        ctx.font = font;
++        const sample = "abcdefghijklmnopqrstuvwxyz";
++        const width = ctx.measureText(sample).width;
++        if (width > 0) return width / sample.length;
++      }
++    }
++    if (fontSize > 0) return fontSize * 0.55;
++  } catch {
++    // ignore
++  }
++  return 7;
++};
++
+ const isLineSplitElement = (el: HTMLElement): boolean => {
+   const tag = el.tagName.toUpperCase();
+   if (isLineSplitTag(tag)) return true;
+@@ -2474,6 +2500,48 @@ const clampTrailingWordOffset = (text: string, offset: number): number => {
+   return end;
+ };
+ 
++const isWordChar = (ch: string): boolean => /[\p{L}\p{N}]/u.test(ch || "");
++const isPunctuation = (ch: string): boolean => /[.,;:!?]/.test(ch || "");
++const isClosingPunct = (ch: string): boolean => /[\"'”’)\]]/.test(ch || "");
++
++const adjustSplitPosForPunctuation = (
++  doc: any,
++  pos: number,
++  blockStart: number,
++  blockEnd: number
++): number => {
++  try {
++    const $pos = doc.resolve(pos);
++    const parent = $pos.parent;
++    if (!parent?.isTextblock) return pos;
++    const text = parent.textBetween(0, parent.content.size, "\n", "\n");
++    const offset = $pos.parentOffset;
++    if (offset <= 0 || offset >= text.length) return pos;
++    const before = text[offset - 1] ?? "";
++    const after = text[offset] ?? "";
++    if (isWordChar(before) && isPunctuation(after)) {
++      let newOffset = Math.min(text.length, offset + 1);
++      while (newOffset < text.length && (isPunctuation(text[newOffset]) || isClosingPunct(text[newOffset]))) {
++        newOffset += 1;
++      }
++      const parentStart = $pos.start($pos.depth);
++      const candidate = parentStart + newOffset;
++      if (candidate > blockStart + 1 && candidate < blockEnd - 1) return candidate;
++    }
++    if (/[.!?]/.test(before) && /[a-z]/.test(after)) {
++      let desired = Math.min(text.length, offset + 1);
++      while (desired < text.length && /\s/.test(text[desired])) desired += 1;
++      const adjustedOffset = clampTrailingWordOffset(text, desired);
++      const parentStart = $pos.start($pos.depth);
++      const candidate = parentStart + adjustedOffset;
++      if (candidate > blockStart + 1 && candidate < blockEnd - 1) return candidate;
++    }
++  } catch {
++    // ignore
++  }
++  return pos;
++};
++
+ const resolveInlinePos = (view: any, pos: number, blockStart: number, blockEnd: number): number | null => {
+   const doc = view.state.doc;
+   const clamp = (value: number) =>
+@@ -2862,13 +2930,13 @@ const adjustSplitPosForAnchors = (
+     const start = $pos.start($pos.depth);
+     const hasAnchor = (node: any) => isAnchorInlineNode(node) || hasAnchorMark(node);
+     if (after?.node && hasAnchor(after.node)) {
+-      const nextPos = start + after.offset;
++      const nextPos = start + after.offset + after.node.nodeSize;
+       if (nextPos > blockStart + 1 && nextPos < blockEnd - 1) {
+         return nextPos;
+       }
+     }
+     if (before?.node && hasAnchor(before.node)) {
+-      const prevPos = start + before.offset;
++      const prevPos = start + before.offset + before.node.nodeSize;
+       if (prevPos > blockStart + 1 && prevPos < blockEnd - 1) {
+         return prevPos;
+       }
+@@ -2944,6 +3012,21 @@ const findLineSplitPos = (
+       });
+     }
+   }
++  if (targetIndex != null && lineRects.length > 0) {
++    const minLineChars = getMinLineChars();
++    const minLineWidth = minLineChars > 0 ? estimateCharWidth(lineRoot) * minLineChars : 0;
++    if (minLineWidth > 0 && lineRects[targetIndex].width < minLineWidth) {
++      let adjusted = targetIndex;
++      while (adjusted > 0 && lineRects[adjusted].width < minLineWidth) {
++        if (enforcedOrphanLines > 0 && adjusted + 1 < enforcedOrphanLines) {
++          adjusted = targetIndex;
++          break;
++        }
++        adjusted -= 1;
++      }
++      targetIndex = adjusted;
++    }
++  }
+   let lineRect: LineRect | null = null;
+   if (targetIndex != null && lineRects.length > 0) {
+     lineRect = lineRects[targetIndex];
+@@ -3067,6 +3150,10 @@ const findLineSplitPos = (
+   if (anchorAdjusted != null) {
+     pos = anchorAdjusted;
+   }
++  const punctAdjusted = adjustSplitPosForPunctuation(view.state.doc, pos!, blockStart, blockEnd);
++  if (punctAdjusted != null) {
++    pos = punctAdjusted;
++  }
+   // Avoid leaving anchor-only tails (e.g., lone citation lines) on the next page.
+   try {
+     const tailResolved = view.state.doc.resolve(pos);
+@@ -3104,7 +3191,22 @@ const findLineSplitPosForRemaining = (
+   if (remainingPx <= 0) return null;
+   const contentRect = content.getBoundingClientRect();
+   const scale = getContentScale(content);
+-  const maxBottomAbs = contentRect.top + remainingPx * scale;
++  let maxBottomAbs = contentRect.top + remainingPx * scale;
++  const lineRects = collectLineRects(lineRoot);
++  if (lineRects.length > 0) {
++    const minLineChars = getMinLineChars();
++    const minLineWidth = minLineChars > 0 ? estimateCharWidth(lineRoot) * minLineChars : 0;
++    if (minLineWidth > 0) {
++      let lastVisibleIndex = -1;
++      for (let i = 0; i < lineRects.length; i += 1) {
++        if (lineRects[i].bottom <= maxBottomAbs) lastVisibleIndex = i;
++      }
++      if (lastVisibleIndex > 0 && lineRects[lastVisibleIndex].width < minLineWidth) {
++        const prevBottom = lineRects[lastVisibleIndex - 1].bottom;
++        maxBottomAbs = Math.min(maxBottomAbs, prevBottom - 1);
++      }
++    }
++  }
+   let pos = findSplitPosByRange(view, lineRoot, maxBottomAbs);
+   if (pos == null) return null;
+   let rawBlockPos = 0;
+@@ -3140,6 +3242,10 @@ const findLineSplitPosForRemaining = (
+   if (anchorAdjusted != null) {
+     pos = anchorAdjusted;
+   }
++  const punctAdjusted = adjustSplitPosForPunctuation(view.state.doc, pos!, blockStart, blockEnd);
++  if (punctAdjusted != null) {
++    pos = punctAdjusted;
++  }
+   return pos;
+ };
+ 
+diff --git a/leditor/src/ui/a4_layout.ts b/leditor/src/ui/a4_layout.ts
+index 666a048..fdc908c 100644
+--- a/leditor/src/ui/a4_layout.ts
++++ b/leditor/src/ui/a4_layout.ts
+@@ -992,8 +992,8 @@ html, body {
+   line-height: var(--page-line-height);
+   color: var(--page-body-color);
+   min-height: 1px;
+-  overflow-wrap: anywhere;
+-  word-break: break-word;
++  overflow-wrap: normal;
++  word-break: normal;
+   caret-color: currentColor;
+   overflow: hidden;
+ }
+@@ -1129,8 +1129,8 @@ html, body {
+   max-width: 0;
+   overflow: hidden;
+   text-overflow: ellipsis;
+-  overflow-wrap: anywhere;
+-  word-break: break-word;
++  overflow-wrap: normal;
++  word-break: normal;
+ }
+ 
+ #editor .ProseMirror figure,
+@@ -1548,8 +1548,9 @@ html, body {
+   -webkit-column-fill: auto;
+   min-width: 0;
+   white-space: normal;
+-  word-break: break-word;
+-  overflow-wrap: anywhere;
++  word-break: normal;
++  overflow-wrap: normal;
++  text-wrap: pretty;
+ }
+ 
+ .leditor-page-content p,
+@@ -1557,8 +1558,9 @@ html, body {
+   max-width: 100%;
+   box-sizing: border-box;
+   white-space: normal !important;
+-  overflow-wrap: anywhere;
+-  word-break: break-word;
++  overflow-wrap: normal;
++  word-break: normal;
++  text-wrap: pretty;
+ }
+ 
+ .leditor-page-content * {
+@@ -1575,8 +1577,9 @@ html, body {
+   max-width: 100%;
+   box-sizing: border-box;
+   white-space: normal !important;
+-  overflow-wrap: anywhere;
+-  word-break: break-word;
++  overflow-wrap: normal;
++  word-break: normal;
++  text-wrap: pretty;
+ }
+ 
+ .leditor-page-content .leditor-split-fragment--head {
+@@ -1593,8 +1596,9 @@ html, body {
+   max-width: 100%;
+   box-sizing: border-box;
+   white-space: normal !important;
+-  overflow-wrap: anywhere;
+-  word-break: break-word;
++  overflow-wrap: normal;
++  word-break: normal;
++  text-wrap: pretty;
+ }
+ 
+ .leditor-page-content h1,
+@@ -1606,14 +1610,16 @@ html, body {
+   max-width: 100%;
+   box-sizing: border-box;
+   white-space: normal !important;
+-  overflow-wrap: anywhere;
+-  word-break: break-word;
++  overflow-wrap: normal;
++  word-break: normal;
++  text-wrap: pretty;
+ }
+ 
+ .leditor-page-content pre,
+ .leditor-page-content code {
+   white-space: pre-wrap !important;
+-  word-break: break-word;
++  word-break: normal;
++  overflow-wrap: normal;
+ }
+ 
+ .leditor-page-content * {
+diff --git a/leditor/src/ui/pagination_engine/controller.ts b/leditor/src/ui/pagination_engine/controller.ts
+index bb4d969..2c146a7 100644
+--- a/leditor/src/ui/pagination_engine/controller.ts
++++ b/leditor/src/ui/pagination_engine/controller.ts
+@@ -90,21 +90,21 @@ export const runPaginationEngine = (
+       }
+       if (!overflow) return;
+       content.style.setProperty("white-space", "normal", "important");
+-      content.style.setProperty("overflow-wrap", "anywhere", "important");
+-      content.style.setProperty("word-break", "break-all", "important");
++      content.style.setProperty("overflow-wrap", "normal", "important");
++      content.style.setProperty("word-break", "normal", "important");
+       applyColumnClamp(content, clientWidth);
+       if (inner) {
+         applyColumnClamp(inner, clientWidth);
+         inner.style.setProperty("white-space", "normal", "important");
+-        inner.style.setProperty("overflow-wrap", "anywhere", "important");
+-        inner.style.setProperty("word-break", "break-all", "important");
++        inner.style.setProperty("overflow-wrap", "normal", "important");
++        inner.style.setProperty("word-break", "normal", "important");
+       }
+       try {
+         const wrapNodes = Array.from(content.querySelectorAll<HTMLElement>("p, li, blockquote"));
+         wrapNodes.forEach((node) => {
+           node.style.setProperty("white-space", "normal", "important");
+-          node.style.setProperty("overflow-wrap", "anywhere", "important");
+-          node.style.setProperty("word-break", "break-word", "important");
++          node.style.setProperty("overflow-wrap", "normal", "important");
++          node.style.setProperty("word-break", "normal", "important");
+           node.style.setProperty("max-width", "100%", "important");
+         });
+       } catch {
+diff --git a/leditor/src/ui/pagination_engine/phase2_underfill.ts b/leditor/src/ui/pagination_engine/phase2_underfill.ts
+index ee80e4c..554f55d 100644
+--- a/leditor/src/ui/pagination_engine/phase2_underfill.ts
++++ b/leditor/src/ui/pagination_engine/phase2_underfill.ts
+@@ -44,6 +44,44 @@ const recordFail = (detail: Record<string, unknown>) => {
+   }
+ };
+ 
++const isFootnoteStorageNode = (node: any): boolean => {
++  const name = node?.type?.name;
++  return name === "footnotesContainer" || name === "footnoteBody";
++};
++
++const pageEndsWithManualBreak = (pageNode: any): boolean => {
++  if (!pageNode?.content) return false;
++  for (let i = pageNode.childCount - 1; i >= 0; i -= 1) {
++    const child = pageNode.child(i);
++    if (isFootnoteStorageNode(child)) continue;
++    return child.type?.name === "page_break";
++  }
++  return false;
++};
++
++const pageStartsWithManualBreak = (pageNode: any): boolean => {
++  if (!pageNode?.content) return false;
++  for (let i = 0; i < pageNode.childCount; i += 1) {
++    const child = pageNode.child(i);
++    if (isFootnoteStorageNode(child)) continue;
++    return child.type?.name === "page_break";
++  }
++  return false;
++};
++
++const hasManualBreakBoundary = (doc: any, pageType: any, joinPos: number): boolean => {
++  try {
++    const resolved = doc.resolve(joinPos);
++    const before = resolved.nodeBefore;
++    const after = resolved.nodeAfter;
++    if (!before || !after || before.type !== pageType || after.type !== pageType) return false;
++    if (pageEndsWithManualBreak(before) || pageStartsWithManualBreak(after)) return true;
++  } catch {
++    // ignore
++  }
++  return false;
++};
++
+ const scheduleUnderfillFollowup = (view: EditorView) => {
+   try {
+     const g = window as any;
+@@ -70,6 +108,8 @@ const scheduleUnderfillFollowup = (view: EditorView) => {
+ 
+ const MAX_FREE_LINES = 4;
+ const MAX_FREE_LINES_RATIO = 0.08;
++const MIN_LINE_CHARS = 5;
++const MAX_PARAGRAPH_SPLIT_FREE_LINES = 7;
+ 
+ const readPaginationNumber = (key: string, fallback: number, options?: { min?: number; max?: number }): number => {
+   let value = fallback;
+@@ -90,8 +130,56 @@ const getMaxFreeLines = (): number =>
+ const getMaxFreeLinesRatio = (): number =>
+   readPaginationNumber("__leditorPaginationMaxFreeLinesRatio", MAX_FREE_LINES_RATIO, { min: 0.05, max: 0.3 });
+ 
++const getMinLineChars = (): number =>
++  readPaginationNumber("__leditorPaginationMinLineChars", MIN_LINE_CHARS, { min: 2, max: 24 });
++
++const estimateCharWidth = (el: HTMLElement): number => {
++  try {
++    const style = getComputedStyle(el);
++    const fontSize = Number.parseFloat(style.fontSize || "0") || 0;
++    const font = style.font || "";
++    if (font) {
++      const canvas = document.createElement("canvas");
++      const ctx = canvas.getContext("2d");
++      if (ctx) {
++        ctx.font = font;
++        const sample = "abcdefghijklmnopqrstuvwxyz";
++        const width = ctx.measureText(sample).width;
++        if (width > 0) return width / sample.length;
++      }
++    }
++    if (fontSize > 0) return fontSize * 0.55;
++  } catch {
++    // ignore
++  }
++  return 7;
++};
++
++const resolveLineHeightPx = (el: HTMLElement | null, fallback: number): number => {
++  if (!el) return fallback;
++  try {
++    const style = getComputedStyle(el);
++    const raw = Number.parseFloat(style.lineHeight || "");
++    if (Number.isFinite(raw) && raw > 0) return raw;
++    const fontSize = Number.parseFloat(style.fontSize || "");
++    if (Number.isFinite(fontSize) && fontSize > 0) return fontSize * 1.2;
++  } catch {
++    // ignore
++  }
++  return fallback;
++};
++
++const getMaxParagraphSplitFreeLines = (): number =>
++  readPaginationNumber("__leditorPaginationMaxParagraphSplitFreeLines", MAX_PARAGRAPH_SPLIT_FREE_LINES, {
++    min: 0,
++    max: 12
++  });
++
+ const getPageContent = (view: EditorView, index: number): HTMLElement | null => {
+-  const pages = Array.from(view.dom.querySelectorAll<HTMLElement>(".leditor-page"));
++  const root =
++    (view.dom as HTMLElement)?.closest?.(".leditor-page-stack") ??
++    document.documentElement;
++  const pages = Array.from(root.querySelectorAll<HTMLElement>(".leditor-page"));
+   const byIndex = pages.find((page) => {
+     const raw = page.dataset.pageIndex ?? "";
+     const parsed = raw ? Number.parseInt(raw, 10) : Number.NaN;
+@@ -163,6 +251,50 @@ const clampTrailingWordOffset = (text: string, offset: number): number => {
+   return end;
+ };
+ 
++const isWordChar = (ch: string): boolean => /[\p{L}\p{N}]/u.test(ch || "");
++const isHyphen = (ch: string): boolean =>
++  ch === "-" || ch === "\u2010" || ch === "\u2011" || ch === "\u00ad" || ch === "\u2212";
++const isPunctuation = (ch: string): boolean => /[.,;:!?]/.test(ch || "");
++const isClosingPunct = (ch: string): boolean => /[\"'”’)\]]/.test(ch || "");
++
++const adjustSplitPosForWords = (doc: any, pos: number): number => {
++  try {
++    const resolved = doc.resolve(pos);
++    if (!resolved.parent?.isTextblock) return pos;
++    const parentText = resolved.parent.textBetween(0, resolved.parent.content.size, "\n", "\n");
++    const offset = resolved.parentOffset;
++    if (offset <= 0 || offset >= parentText.length) return pos;
++    const before = parentText[offset - 1] ?? "";
++    const after = parentText[offset] ?? "";
++    if (isWordChar(before) && isWordChar(after) && !isHyphen(before)) {
++      const adjustedOffset = clampTrailingWordOffset(parentText, offset);
++      const parentStart = resolved.start(resolved.depth);
++      const adjustedPos = parentStart + adjustedOffset;
++      if (adjustedPos > 0 && adjustedPos < doc.content.size) return adjustedPos;
++    }
++    if (isWordChar(before) && isPunctuation(after)) {
++      let newOffset = Math.min(parentText.length, offset + 1);
++      while (newOffset < parentText.length && (isPunctuation(parentText[newOffset]) || isClosingPunct(parentText[newOffset]))) {
++        newOffset += 1;
++      }
++      const parentStart = resolved.start(resolved.depth);
++      const candidate = parentStart + newOffset;
++      if (candidate > 0 && candidate < doc.content.size) return candidate;
++    }
++    if (/[.!?]/.test(before) && /[a-z]/.test(after)) {
++      let desired = Math.min(parentText.length, offset + 1);
++      while (desired < parentText.length && /\s/.test(parentText[desired])) desired += 1;
++      const adjustedOffset = clampTrailingWordOffset(parentText, desired);
++      const parentStart = resolved.start(resolved.depth);
++      const candidate = parentStart + adjustedOffset;
++      if (candidate > 0 && candidate < doc.content.size) return candidate;
++    }
++  } catch {
++    // ignore
++  }
++  return pos;
++};
++
+ const adjustSplitPosForAnchors = (doc: any, pos: number, blockStart: number, blockEnd: number): number => {
+   try {
+     const $pos = doc.resolve(pos);
+@@ -174,11 +306,11 @@ const adjustSplitPosForAnchors = (doc: any, pos: number, blockStart: number, blo
+     const start = $pos.start($pos.depth);
+     const hasAnchor = (node: any) => isAnchorInlineNode(node) || hasAnchorMark(node);
+     if (after?.node && hasAnchor(after.node)) {
+-      const nextPos = start + after.offset;
++      const nextPos = start + after.offset + after.node.nodeSize;
+       if (nextPos > blockStart + 1 && nextPos < blockEnd - 1) return nextPos;
+     }
+     if (before?.node && hasAnchor(before.node)) {
+-      const prevPos = start + before.offset;
++      const prevPos = start + before.offset + before.node.nodeSize;
+       if (prevPos > blockStart + 1 && prevPos < blockEnd - 1) return prevPos;
+     }
+   } catch {
+@@ -269,7 +401,22 @@ const findLineSplitPosForRemaining = (
+   if (remainingPx <= 0) return null;
+   const contentRect = content.getBoundingClientRect();
+   const scale = getContentScale(content);
+-  const maxBottomAbs = contentRect.top + remainingPx * scale;
++  let maxBottomAbs = contentRect.top + remainingPx * scale;
++  const lineRects = collectLineRects(lineRoot);
++  if (lineRects.length > 0) {
++    const minLineChars = getMinLineChars();
++    const minLineWidth = minLineChars > 0 ? estimateCharWidth(lineRoot) * minLineChars : 0;
++    if (minLineWidth > 0) {
++      let lastVisibleIndex = -1;
++      for (let i = 0; i < lineRects.length; i += 1) {
++        if (lineRects[i].bottom <= maxBottomAbs) lastVisibleIndex = i;
++      }
++      if (lastVisibleIndex > 0 && lineRects[lastVisibleIndex].width < minLineWidth) {
++        const prevBottom = lineRects[lastVisibleIndex - 1].bottom;
++        maxBottomAbs = Math.min(maxBottomAbs, prevBottom - 1);
++      }
++    }
++  }
+   let pos = findSplitPosByRange(view, lineRoot, maxBottomAbs);
+   if (!pos) return null;
+   let blockStart = 0;
+@@ -307,6 +454,34 @@ const findLineSplitPosForRemaining = (
+       }
+       const anchorAdjusted = adjustSplitPosForAnchors(view.state.doc, pos, blockStart, blockEnd);
+       if (anchorAdjusted != null) pos = anchorAdjusted;
++      pos = adjustSplitPosForWords(view.state.doc, pos);
++      if (resolved.parent?.isTextblock) {
++        const parentText = resolved.parent.textBetween(0, resolved.parent.content.size, "\n", "\n");
++        const tailOffset = resolved.parentOffset;
++        const tailText = parentText.slice(tailOffset).trim();
++        const minTailChars = 12;
++        if (tailText.length < minTailChars && tailOffset > 0) {
++          const desiredOffset = Math.max(0, tailOffset - minTailChars);
++          const adjustedOffset = clampTrailingWordOffset(parentText, desiredOffset);
++          const parentStart = resolved.start(resolved.depth);
++          const candidatePos = parentStart + adjustedOffset;
++          if (candidatePos > blockStart + 1 && candidatePos < blockEnd - 1) {
++            pos = candidatePos;
++          }
++        }
++        const headText = parentText.slice(0, tailOffset).trimEnd();
++        const headLine = headText.split("\n").pop()?.trim() ?? "";
++        const minHeadChars = 8;
++        if (headLine && headLine.length < minHeadChars && tailOffset > minHeadChars) {
++          const desiredOffset = Math.max(0, tailOffset - minHeadChars);
++          const adjustedOffset = clampTrailingWordOffset(parentText, desiredOffset);
++          const parentStart = resolved.start(resolved.depth);
++          const candidatePos = parentStart + adjustedOffset;
++          if (candidatePos > blockStart + 1 && candidatePos < blockEnd - 1) {
++            pos = candidatePos;
++          }
++        }
++      }
+     } catch {
+       // ignore
+     }
+@@ -339,14 +514,16 @@ const resolvePageSplitPos = (doc: any, pos: number, typesAfter: Array<{ type: an
+   for (const offset of offsets) {
+     const candidate = pos + offset;
+     if (candidate <= 0 || candidate >= doc.content.size) continue;
+-    if (canSplit(doc, candidate, 1, typesAfter as any)) return candidate;
++    const adjusted = adjustSplitPosForWords(doc, candidate);
++    if (canSplit(doc, adjusted, 1, typesAfter as any)) return adjusted;
+   }
+   return null;
+ };
+ 
+ const attemptDeepPageSplit = (tr: Transaction, pos: number, pageType: any): Transaction | null => {
+   try {
+-    const resolved = tr.doc.resolve(pos);
++    const adjustedPos = adjustSplitPosForWords(tr.doc, pos);
++    const resolved = tr.doc.resolve(adjustedPos);
+     const pageDepth = findPageDepth(resolved, pageType);
+     if (pageDepth < 0) return null;
+     const depth = Math.max(1, resolved.depth - pageDepth);
+@@ -359,11 +536,11 @@ const attemptDeepPageSplit = (tr: Transaction, pos: number, pageType: any): Tran
+       if (!nodeAt) break;
+       typesAfter[i] = { type: nodeAt.type, attrs: nodeAt.attrs };
+     }
+-    if (canSplit(tr.doc, pos, depth, typesAfter as any)) {
+-      return tr.split(pos, depth, typesAfter as any);
++    if (canSplit(tr.doc, adjustedPos, depth, typesAfter as any)) {
++      return tr.split(adjustedPos, depth, typesAfter as any);
+     }
+-    if (canSplit(tr.doc, pos, depth)) {
+-      return tr.split(pos, depth);
++    if (canSplit(tr.doc, adjustedPos, depth)) {
++      return tr.split(adjustedPos, depth);
+     }
+   } catch {
+     // ignore
+@@ -430,17 +607,135 @@ export const phase2Underfill = (
+     }
+     return null;
+   }
++  const lastIndex = pages.length - 1;
++  if (lastIndex > 0) {
++    const prevContent = getPageContent(view, lastIndex - 1);
++    const lastContent = getPageContent(view, lastIndex);
++    if (prevContent && lastContent) {
++      const prevScale = getContentScale(prevContent);
++      const lastScale = getContentScale(lastContent);
++      const prevStyle = getComputedStyle(prevContent);
++      const lastStyle = getComputedStyle(lastContent);
++      const prevLineHeightRaw = Number.parseFloat(prevStyle.lineHeight || "0");
++      const lastLineHeightRaw = Number.parseFloat(lastStyle.lineHeight || "0");
++      const prevLineHeightPx = Number.isFinite(prevLineHeightRaw) && prevLineHeightRaw > 0 ? prevLineHeightRaw : 16;
++      const lastLineHeightPx = Number.isFinite(lastLineHeightRaw) && lastLineHeightRaw > 0 ? lastLineHeightRaw : prevLineHeightPx || 16;
++      const prevPaddingBottom = Number.parseFloat(prevStyle.paddingBottom || "0") || 0;
++      const lastPaddingBottom = Number.parseFloat(lastStyle.paddingBottom || "0") || 0;
++      const prevGuardCss = Number.parseFloat(prevStyle.getPropertyValue("--page-footnote-guard") || "0") || 0;
++      const lastGuardCss = Number.parseFloat(lastStyle.getPropertyValue("--page-footnote-guard") || "0") || 0;
++      const prevGuardPx = Math.max(8, prevLineHeightPx * 0.35, prevGuardCss);
++      const lastGuardPx = Math.max(8, lastLineHeightPx * 0.35, lastGuardCss);
++      const prevUsableHeight = Math.max(0, prevContent.clientHeight - prevPaddingBottom);
++      const lastUsableHeight = Math.max(0, lastContent.clientHeight - lastPaddingBottom);
++      const prevBottomLimit = Math.max(0, prevUsableHeight - prevGuardPx);
++      const lastBottomLimit = Math.max(0, lastUsableHeight - lastGuardPx);
++      const prevBlocks = collectBlocks(prevContent, policy.selectors.pageable);
++      const lastBlocks = collectBlocks(lastContent, policy.selectors.pageable);
++      const prevLastBottom = measureLastBottom(prevBlocks, prevContent, prevScale);
++      const lastLastBottom = measureLastBottom(lastBlocks, lastContent, lastScale);
++      const prevRemainingPx = Math.max(0, prevBottomLimit - Math.min(prevLastBottom, prevBottomLimit));
++      const prevRemainingLines = prevLineHeightPx > 0 ? Math.max(0, Math.floor(prevRemainingPx / prevLineHeightPx)) : 0;
++      const prevMaxLines = prevLineHeightPx > 0 ? Math.max(0, Math.floor(prevBottomLimit / prevLineHeightPx)) : 0;
++      const lastMaxLines = lastLineHeightPx > 0 ? Math.max(0, Math.floor(lastBottomLimit / lastLineHeightPx)) : 0;
++      const prevUsedLines =
++        prevLineHeightPx > 0
++          ? Math.max(0, Math.ceil(Math.min(prevLastBottom, prevBottomLimit) / prevLineHeightPx))
++          : 0;
++      const lastUsedLines =
++        lastLineHeightPx > 0
++          ? Math.max(0, Math.ceil(Math.min(lastLastBottom, lastBottomLimit) / lastLineHeightPx))
++          : 0;
++      const joinPos = pages[lastIndex - 1].pos + pages[lastIndex - 1].node.nodeSize;
++      if (
++        lastUsedLines > 0 &&
++        prevRemainingLines >= lastUsedLines + 1 &&
++        canJoin(view.state.doc, joinPos) &&
++        !hasManualBreakBoundary(view.state.doc, pageType, joinPos)
++      ) {
++        const tr = view.state.tr.join(joinPos);
++        tr.setMeta(paginationKey, { source: "pagination", op: "join", pos: joinPos, reason: "tail-merge" });
++        scheduleUnderfillFollowup(view);
++        return tr;
++      }
++      const desiredLastLines = Math.max(6, Math.ceil(lastMaxLines * 0.45));
++      const minPrevLines = Math.max(6, Math.ceil(prevMaxLines * 0.4));
++      const pushLines = Math.min(
++        Math.max(0, prevUsedLines - minPrevLines),
++        Math.max(0, desiredLastLines - lastUsedLines)
++      );
++      if (
++        pushLines > 0 &&
++        canJoin(view.state.doc, joinPos) &&
++        !hasManualBreakBoundary(view.state.doc, pageType, joinPos)
++      ) {
++        const keepLines = Math.max(minPrevLines, prevUsedLines - pushLines);
++        const keepPx = keepLines * prevLineHeightPx;
++        let acc = 0;
++        let splitBlock: HTMLElement | null = null;
++        for (const block of prevBlocks) {
++          acc += measureBlockHeightPx(block, prevContent, prevScale);
++          if (acc >= keepPx) {
++            splitBlock = block;
++            break;
++          }
++        }
++        let splitPos: number | null = null;
++        if (splitBlock) {
++          splitPos = findLineSplitPosForRemaining(view, prevContent, splitBlock, keepPx);
++        }
++        if (!splitPos && prevBlocks.length) {
++          splitPos = resolveAfterBlock(view, pageType, prevBlocks[Math.max(0, prevBlocks.length - 1)]);
++        }
++        if (splitPos && splitPos > 0) {
++          let tr = view.state.tr.join(joinPos);
++          let mappedSplit = tr.mapping.map(splitPos, -1);
++          const typesAfter = [{ type: pageType }];
++          const pageSplitPos = resolvePageSplitPos(tr.doc, mappedSplit, typesAfter);
++          if (pageSplitPos) {
++            tr = tr.split(pageSplitPos, 1, typesAfter as any);
++            tr.setMeta(paginationKey, { source: "pagination", op: "pullup", pos: pageSplitPos, reason: "tail-push" });
++            scheduleUnderfillFollowup(view);
++            return tr;
++          }
++        }
++      }
++    }
++  }
++  let best: { tr: Transaction; score: number; pageIndex: number } | null = null;
+   for (let i = 0; i < pages.length - 1; i += 1) {
+     const currentContent = getPageContent(view, i);
+     const nextContent = getPageContent(view, i + 1);
+-    if (!currentContent || !nextContent) continue;
++    if (!currentContent || !nextContent) {
++      try {
++        const g = window as any;
++        if (!g.__leditorPhase2UnderfillDebug) {
++          g.__leditorPhase2UnderfillDebug = {
++            pageIndex: i,
++            reason: "missingContent",
++            hasCurrent: Boolean(currentContent),
++            hasNext: Boolean(nextContent)
++          };
++        }
++      } catch {
++        // ignore
++      }
++      continue;
++    }
+     const currentScale = getContentScale(currentContent);
+     const nextScale = getContentScale(nextContent);
+     const currentBlocks = collectBlocks(currentContent, policy.selectors.pageable);
+     const currentStyle = getComputedStyle(currentContent);
+     const lineHeightRaw = Number.parseFloat(currentStyle.lineHeight || "0");
+-    const lineHeightPx =
+-      Number.isFinite(lineHeightRaw) && lineHeightRaw > 0 ? lineHeightRaw : 16;
++    let lineHeightPx =
++      Number.isFinite(lineHeightRaw) && lineHeightRaw > 0 ? lineHeightRaw : 0;
++    if (!Number.isFinite(lineHeightPx) || lineHeightPx <= 0) {
++      lineHeightPx = resolveLineHeightPx(
++        currentContent.querySelector<HTMLElement>("p, li, blockquote, pre") ??
++          currentContent.querySelector<HTMLElement>("h1, h2, h3, h4, h5, h6"),
++        16
++      );
++    }
+     const paddingBottom = Number.parseFloat(currentStyle.paddingBottom || "0") || 0;
+     const guardCss = Number.parseFloat(currentStyle.getPropertyValue("--page-footnote-guard") || "0") || 0;
+     const guardPx = Math.max(8, lineHeightPx * 0.35, guardCss);
+@@ -456,8 +751,15 @@ export const phase2Underfill = (
+ 
+     const nextStyle = getComputedStyle(nextContent);
+     const nextLineHeightRaw = Number.parseFloat(nextStyle.lineHeight || "0");
+-    const nextLineHeightPx =
+-      Number.isFinite(nextLineHeightRaw) && nextLineHeightRaw > 0 ? nextLineHeightRaw : lineHeightPx || 16;
++    let nextLineHeightPx =
++      Number.isFinite(nextLineHeightRaw) && nextLineHeightRaw > 0 ? nextLineHeightRaw : 0;
++    if (!Number.isFinite(nextLineHeightPx) || nextLineHeightPx <= 0) {
++      nextLineHeightPx = resolveLineHeightPx(
++        nextContent.querySelector<HTMLElement>("p, li, blockquote, pre") ??
++          nextContent.querySelector<HTMLElement>("h1, h2, h3, h4, h5, h6"),
++        lineHeightPx || 16
++      );
++    }
+     const nextPaddingBottom = Number.parseFloat(nextStyle.paddingBottom || "0") || 0;
+     const nextGuardCss = Number.parseFloat(nextStyle.getPropertyValue("--page-footnote-guard") || "0") || 0;
+     const nextGuardPx = Math.max(8, nextLineHeightPx * 0.35, nextGuardCss);
+@@ -471,13 +773,65 @@ export const phase2Underfill = (
+       nextLineHeightPx > 0
+         ? Math.max(0, Math.ceil(Math.min(nextLastBottom, nextBottomLimit) / nextLineHeightPx))
+         : 0;
+-    if (nextUsedLines <= 0) continue;
++    let effectiveNextUsedLines = nextUsedLines;
++    if (effectiveNextUsedLines <= 0 && nextBlocks.length > 0) {
++      const fallbackHeight = measureBlockHeightPx(nextBlocks[0], nextContent, nextScale);
++      if (nextLineHeightPx > 0) {
++        effectiveNextUsedLines = Math.max(1, Math.ceil(fallbackHeight / nextLineHeightPx));
++      } else {
++        effectiveNextUsedLines = 1;
++      }
++    }
++    if (effectiveNextUsedLines <= 0) {
++      recordFail({
++        pageIndex: i,
++        reason: "nextUsedLines",
++        remainingLines,
++        maxFreeLines: 0,
++        nextUsedLines
++      });
++      continue;
++    }
+ 
+     const maxFreeLines =
+       maxLines > 0
+         ? Math.max(getMaxFreeLines(), Math.ceil(maxLines * getMaxFreeLinesRatio()))
+         : getMaxFreeLines();
+-    if (remainingLines <= maxFreeLines) {
++    try {
++      const g = window as any;
++      if (!g.__leditorPhase2UnderfillDebug) {
++        g.__leditorPhase2UnderfillDebug = {
++          pageIndex: i,
++          remainingLines,
++          maxFreeLines,
++          nextUsedLines,
++          effectiveNextUsedLines,
++          nextBlocks: nextBlocks.length
++        };
++      }
++    } catch {
++      // ignore
++    }
++    const overrideKeep = remainingLines >= maxFreeLines + 1;
++    const maxParagraphSplitFreeLines = getMaxParagraphSplitFreeLines();
++    const isLastPage = i + 1 === pages.length - 1;
++    let allowLineSplit = maxParagraphSplitFreeLines >= 0;
++    if (isLastPage) allowLineSplit = false;
++    const joinPos = pages[i].pos + pages[i].node.nodeSize;
++    const fullJoinPossible =
++      remainingLines >= effectiveNextUsedLines + 1 &&
++      canJoin(view.state.doc, joinPos) &&
++      !hasManualBreakBoundary(view.state.doc, pageType, joinPos);
++    if (fullJoinPossible) {
++      const tr = view.state.tr.join(joinPos);
++      tr.setMeta(paginationKey, { source: "pagination", op: "join", pos: joinPos, reason: "underfill-full" });
++      const score = remainingLines + effectiveNextUsedLines + maxFreeLines;
++      if (!best || score > best.score) {
++        best = { tr, score, pageIndex: i };
++      }
++      continue;
++    }
++    if (remainingLines < maxFreeLines) {
+       recordTrace("phase2:underfill-skip", {
+         pageIndex: i,
+         remainingLines,
+@@ -525,12 +879,12 @@ export const phase2Underfill = (
+       continue;
+     }
+ 
+-    const minTailLinesRatio = 0.4;
++    const minTailLinesRatio = isLastPage ? 0.55 : 0.3;
+     const minTailLines = Math.max(4, Math.ceil(nextMaxLines * minTailLinesRatio));
+-    const maxPullLinesByRatio = Math.max(0, Math.floor(nextUsedLines * 0.6));
++    const maxPullLinesByRatio = Math.max(0, Math.floor(effectiveNextUsedLines * (isLastPage ? 0.4 : 0.7)));
+     const maxPullLines = Math.max(
+       0,
+-      Math.min(remainingLines - 1, nextUsedLines - minTailLines, maxPullLinesByRatio)
++      Math.min(remainingLines - 1, effectiveNextUsedLines - minTailLines, maxPullLinesByRatio)
+     );
+     if (maxPullLines <= 0) {
+       recordFail({
+@@ -558,7 +912,7 @@ export const phase2Underfill = (
+       }
+       continue;
+     }
+-    const desiredPullLines = Math.max(1, remainingLines - maxFreeLines);
++    const desiredPullLines = Math.max(2, remainingLines - maxFreeLines + 2);
+     const targetPullLines = Math.min(maxPullLines, desiredPullLines);
+     if (targetPullLines <= 0) {
+       recordFail({
+@@ -573,33 +927,60 @@ export const phase2Underfill = (
+       continue;
+     }
+     const targetPullPx = targetPullLines * lineHeightPx;
++    const maxPullPx = maxPullLines * lineHeightPx;
+     let usedPx = 0;
++    let usedMaxPx = 0;
+     let lastFit: HTMLElement | null = null;
++    let lastFitMax: HTMLElement | null = null;
+     let nextBlock: HTMLElement | null = null;
+     for (const block of blocks) {
+       const heightPx = measureBlockHeightPx(block, nextContent, nextScale);
+       if (usedPx + heightPx <= targetPullPx) {
+         usedPx += heightPx;
+         lastFit = block;
+-        continue;
++      } else if (!nextBlock) {
++        nextBlock = block;
+       }
+-      nextBlock = block;
+-      break;
++      if (usedMaxPx + heightPx <= maxPullPx) {
++        usedMaxPx += heightPx;
++        lastFitMax = block;
++      } else if (nextBlock) {
++        break;
++      }
++    }
++    if (!lastFitMax) {
++      allowLineSplit = true;
+     }
+     const headingKeep = policy.numeric.headingKeepWithNext === true;
+     const headingMinLines = Math.max(1, Math.floor(policy.numeric.headingMinNextLines ?? 1));
+     let splitPos: number | null = null;
+-    if (nextBlock && isLineSplitTag(nextBlock.tagName.toUpperCase())) {
++    const firstBlock = blocks[0] ?? null;
++    const secondBlock = blocks[1] ?? null;
++    const firstIsHeading =
++      firstBlock && /^H[1-6]$/.test(firstBlock.tagName.toUpperCase());
++    if (!splitPos && firstIsHeading && headingKeep && secondBlock) {
++      const headingHeight = measureBlockHeightPx(firstBlock, nextContent, nextScale);
++      const remainingForSecond = targetPullPx - headingHeight;
++      if (remainingForSecond >= Math.max(lineHeightPx * 0.6, headingMinLines * lineHeightPx)) {
++        if (measureBlockHeightPx(secondBlock, nextContent, nextScale) <= remainingForSecond) {
++          splitPos = resolveAfterBlock(view, pageType, secondBlock);
++        } else if (isLineSplitTag(secondBlock.tagName.toUpperCase())) {
++          splitPos = findLineSplitPosForRemaining(view, nextContent, secondBlock, remainingForSecond);
++        }
++      }
++    }
++    if (allowLineSplit && nextBlock && isLineSplitTag(nextBlock.tagName.toUpperCase())) {
+       const minNextPx = headingMinLines * lineHeightPx;
+       const remainingPx = targetPullPx;
+       if (remainingPx >= Math.max(lineHeightPx * 0.6, minNextPx)) {
+         splitPos = findLineSplitPosForRemaining(view, nextContent, nextBlock, targetPullPx);
+       }
+     }
+-    if (!splitPos && lastFit) {
+-      const lastTag = lastFit.tagName.toUpperCase();
++    const fallbackFit = lastFit ?? lastFitMax;
++    if (!splitPos && fallbackFit) {
++      const lastTag = fallbackFit.tagName.toUpperCase();
+       const lastIsHeading = /^H[1-6]$/.test(lastTag);
+-      if (lastIsHeading && headingKeep) {
++      if (lastIsHeading && headingKeep && !overrideKeep) {
+         recordFail({
+           pageIndex: i,
+           reason: "headingKeep",
+@@ -611,8 +992,8 @@ export const phase2Underfill = (
+         });
+         continue;
+       }
+-      splitPos = resolveAfterBlock(view, pageType, lastFit);
+-    } else if (!splitPos) {
++      splitPos = resolveAfterBlock(view, pageType, fallbackFit);
++    } else if (!splitPos && allowLineSplit) {
+       const first = blocks[0];
+       if (first && isLineSplitTag(first.tagName.toUpperCase())) {
+         splitPos = findLineSplitPosForRemaining(view, nextContent, first, targetPullPx);
+@@ -646,7 +1027,6 @@ export const phase2Underfill = (
+       continue;
+     }
+ 
+-    const joinPos = pages[i].pos + pages[i].node.nodeSize;
+     if (!canJoin(view.state.doc, joinPos)) {
+       recordFail({
+         pageIndex: i,
+@@ -739,8 +1119,11 @@ export const phase2Underfill = (
+       } catch {
+         // ignore
+       }
+-      scheduleUnderfillFollowup(view);
+-      return tr;
++      const score = remainingLines - maxFreeLines;
++      if (!best || score > best.score) {
++        best = { tr, score, pageIndex: i };
++      }
++      continue;
+     }
+     tr = tr.split(pageSplitPos, 1, typesAfter as any);
+     tr.setMeta(paginationKey, { source: "pagination", op: "pullup", pos: pageSplitPos, reason: "underfill" });
+@@ -762,8 +1145,19 @@ export const phase2Underfill = (
+     } catch {
+       // ignore
+     }
++    const score = remainingLines - maxFreeLines;
++    if (!best || score > best.score) {
++      best = { tr, score, pageIndex: i };
++    }
++  }
++  if (best) {
+     scheduleUnderfillFollowup(view);
+-    return tr;
++    try {
++      (window as any).__leditorPhase2UnderfillCursor = best.pageIndex;
++    } catch {
++      // ignore
++    }
++    return best.tr;
+   }
+   return null;
+ };

@@ -1,0 +1,39 @@
+{
+  "header": {
+    "runId": "20260211T130155_494f2f173c02",
+    "workspaceId": "eec3b011-45d6-4a36-9848-1ffd6f0bb7ff",
+    "workspaceDir": "/home/pantera/projects/TEIA/leditor",
+    "startedAt": 1770814915478,
+    "requestedAgent": "auto",
+    "selectedAgent": "planner",
+    "capabilities": {
+      "can_edit": true,
+      "can_exec": false,
+      "can_delete": false,
+      "writeScope": [
+        "src",
+        "packages",
+        "tests",
+        "docs",
+        "Plans"
+      ]
+    },
+    "backend": "codex_exec"
+  },
+  "status": "completed",
+  "finishedAt": 1770815016087,
+  "durationMs": 100352,
+  "turns": 1,
+  "toolCalls": 1,
+  "finalOutputChars": 332,
+  "verify": {
+    "status": "pending",
+    "command": "verify skipped: can_exec=false",
+    "exitCode": null
+  },
+  "worktree": {
+    "baseBranch": "main",
+    "branch": "autopilot/main/leditor-20260211",
+    "dir": "/home/pantera/projects/TEIA/.agent/autopilot/worktrees/leditor/20260211T130155_494f2f173c02"
+  }
+}

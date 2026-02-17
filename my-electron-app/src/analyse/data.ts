@@ -274,9 +274,8 @@ export async function addAudioCacheEntries(
 
 export function warmAnalyseRun(runPath: string): void {
   if (!runPath) return;
-  // Fire-and-forget warmup to reduce first interaction latency.
-  void loadBatches(runPath);
-  void loadSections(runPath, "r2");
-  void loadSections(runPath, "r3");
-  void loadDirectQuoteLookup(runPath);
+  // Warm lightweight paged/indexed paths only; full dataset preloads can exhaust heap on large corpora.
+  void loadBatchPayloadsPage(runPath, 0, 1);
+  void loadSectionsPage(runPath, "r2", 0, 1);
+  void loadSectionsPage(runPath, "r3", 0, 1);
 }

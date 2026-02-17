@@ -1,0 +1,231 @@
+You are running in Codex CLI non-interactive mode with direct access to the workspace.
+
+Workspace: /home/pantera/projects/TEIA/.agent/autopilot/worktrees/leditor/20260211T195954_b20398e18718/leditor
+
+Follow the agent role instructions below. Do not ask questions.
+
+
+
+You are Build: a senior engineer agent working inside a sandboxed workspace.
+
+Objective:
+- Implement the user's request in the codebase.
+- Prefer minimal, coherent changes over large refactors unless explicitly requested.
+
+Operational rules:
+- If you need to inspect files, call fs_list and fs_read_text.
+- When editing, prefer reading the current file and then writing the full replacement with fs_write_text.
+- Validate by running commands with exec (e.g. `npm test`, `npm run build`, `npm run lint`) when appropriate.
+- If a tool is denied (e.g. for secrets), do not attempt to bypass; explain and proceed without it.
+- Do not ask clarification questions. If details are missing, make reasonable assumptions and proceed.
+
+Safety rules:
+- Never attempt to access .git, .agent, node_modules, or secret files (.env, keys). Tools will deny these paths.
+- Do not run destructive commands. Only use exec for build/test/lint and simple repo inspection.
+
+Quality bar:
+- Keep changes consistent with existing style.
+- After edits, run at least one validation command unless the user explicitly says not to.
+
+Before each tool call, briefly explain why you are calling it (one sentence).
+
+
+
+User request:
+
+Implement the referenced pending plan.
+Plan file: Plans/pending/plan_20260211T081515_227acb861877.md
+Read and follow the plan.
+Continue from current repository state. Do not redo work that is already complete.
+Implement now; do not create a new plan unless required by missing data.
+Run relevant tests and report outcomes.
+
+## Context Pack
+Use the following retrieved context while implementing. Prefer concrete fixes over speculative planning.
+
+Plan context (Plans/pending/plan_20260211T081515_227acb861877.md):
+```md
+# ExecPlan: Verify Visibility of `leditor` Source (`src/`)
+
+## Goal
+Provide a definitive, evidence-based answer to: "can you see leditor src?" by checking whether `src/` is present and readable in the workspace, then reporting the result concisely.
+
+## Success Criteria
+1. The executor determines whether `src/` exists at workspace root.
+2. The executor confirms readability (or clearly reports failure mode).
+3. The final response includes concrete evidence: absolute/relative path, file count (if present), and representative paths.
+4. No repository code is modified as part of this task.
+
+## Constraints
+- Follow repo AGENTS.md constraints: desktop/offline posture, no unsafe runtime behavior, no unrelated refactors.
+- Scope discipline: only inspect files relevant to confirming `src/` visibility.
+- Prefer deterministic shell checks over manual judgment.
+- Keep operations read-only.
+
+## Purpose / Outcomes
+- Outcome A: Unambiguous yes/no on visibility of `src/`.
+- Outcome B: Short factual inventory to prove result.
+- Outcome C: Clear failure symptom if visibility fails (missing directory, permission issue, or empty tree).
+
+## Scope + Non-Goals
+### In Scope (exact paths)
+- `src/` (read-only inspection of directory and descendants)
+- `AGENTS.md` (read-only constraints reference, if needed during execution)
+- `Plans/pending/plan_20260211T081515_227acb861877.md` (progress updates only)
+
+### Non-Goals
+- No feature implementation.
+- No source-code edits in `src/`.
+- No packaging/build/test refactors.
+- No network access or cloud integration.
+
+## Architecture Sketch
+1. Workspace Probe
+2. Source Directory Existence Check
+3. Source Tree Enumeration
+4. Evidence Synthesis
+5. User-Facing Answer
+
+Data flow:
+`filesystem checks -> deterministic evidence (exists/readable/file list/count) -> concise yes/no response`
+
+## Tool Schema Inventory
+### Primary CLI tools
+- `pwd`
+  - Input: none
+  - Output: current absolute workspace path
+  - Purpose: confirm execution root
+- `test -d src`
+  - Input: relative path `src`
+  - Output: exit code (`0` if directory exists)
+  - Purpose: deterministic existence check
+- `test -r src`
+  - Input: relative path `src`
+  - Output: exit code (`0` if readable)
+  - Purpose: deterministic readability check
+- `rg --files src`
+  - Input: path root `src`
+  - Output: newline-delimited file list
+  - Purpose: fast inventory of source files
+- `wc -l`
+  - Input: piped file list
+  - Output: integer count
+  - Purpose: quantified evidence for visibility
+- Fallback if `rg` unavailable: `find src -type f`
+
+## Safety Model
+- Read-only command set only (`pwd`, `test`, `rg`, `find`, `wc`, `ls`).
+- No file writes outside progress updates in this plan file.
+- No destructive git commands.
+- Fail fast: if `src/` does not exist/read, report explicitly rather than inferring.
+- No hidden fallbacks that mask missing paths.
+
+## Milestones (Commands + Acceptance Criteria)
+1. **M1: Confirm execution context**
+   - Commands:
+     - `pwd`
+     - `ls -la`
+   - Acceptance criteria:
+     - Workspace path resolves to project root.
+     - Root listing is available for context.
+
+2. **M2: Verify `src/` existence and readability**
+   - Commands:
+     - `test -d src`
+     - `test -r src`
+     - `ls -la src`
+   - Acceptance criteria:
+     - `test -d src` succeeds OR failure is captured as final answer.
+     - If present, `ls -la src` returns directory contents without permission error.
+
+3. **M3: Enumerate source files deterministically**
+   - Commands:
+     - `rg --files src | wc -l`
+     - `rg --files src | sed -n '1,25p'`
+     - Fallback (only if needed): `find src -type f | wc -l`
+   - Acceptance criteria:
+     - A non-ambiguous file count is produced.
+     - At least several representative file paths are captured (or zero count explicitly reported).
+
+4. **M4: Produce user answer**
+   - Commands:
+     - none (response synthesis step)
+   - Acceptance criteria:
+     - Response includes: yes/no, checked path, file count, representative files, and any constraints/errors.
+
+## Steps (Numbered, Paths, Target Symbols)
+1. Probe workspace root and validate current directory context.
+   - Paths: `.`
+   - Target symbols: N/A
+2. Check `src/` existence/readability with deterministic exit-code checks.
+   - Paths: `src/`
+   - Target symbols: N/A
+3. Build lightweight inventory for evidence (count + sample paths).
+   - Paths: `src/`
+   - Target symbols: N/A
+4. Deliver concise final answer to user question with evidence.
+   - Paths: N/A (response only)
+   - Target symbols: N/A
+
+## Risk Notes
+- **Risk:** Wrong working directory yields false "missing `src/`".
+  - **Detection:** `pwd` mismatch with expected repo path.
+- **Risk:** Permission issue misread as missing directory.
+  - **Detection:** `test -d` pass but `ls`/`test -r` fail.
+- **Risk:** Empty `src/` interpreted as inaccessible.
+  - **Detection:** `test -d` and `test -r` pass with file count `0`.
+
+## Validation (Executor Runs)
+- `pwd`
+- `test -d src`
+- `test -r src`
+- `rg --files src | wc -l`
+- `rg --files
+```
+Recent failing run context (20260210):
+- status: error
+summary excerpt:
+```json
+{
+  "header": {
+    "runId": "20260210T235127_41a3bbcbda4d",
+    "workspaceId": "eec3b011-45d6-4a36-9848-1ffd6f0bb7ff",
+    "workspaceDir": "/home/pantera/projects/TEIA/leditor",
+    "startedAt": 1770767487078,
+    "requestedAgent": "auto",
+    "capabilities": {
+      "can_edit": true,
+      "can_exec": true,
+      "can_delete": false,
+      "writeScope": [
+        "src",
+        "packages",
+        "tests",
+        "docs"
+      ]
+    },
+    "backend": "openai"
+  },
+  "status": "started",
+  "finishedAt": null,
+  "durationMs": null,
+  "turns": 0,
+  "toolCalls": 0
+}
+```
+
+
+
+Response contract (user-facing console):
+
+- Start with a direct answer to the user's question.
+
+- Keep answers concise and useful.
+
+- For objective/status questions, return only requested facts (no boilerplate sections).
+
+- Avoid generic sections like 'Summary of changes', 'Tests run', 'Files touched' unless explicitly requested.
+
+- Verbose diagnostics belong in logs/artifacts, not in the main answer.
+
+- Never include sections titled 'Relevant tests/validation run', 'Command executed', or trailing 'AGENT>' prompts.

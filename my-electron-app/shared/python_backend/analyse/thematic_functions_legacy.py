@@ -8,13 +8,20 @@ import pandas as pd
 import torch
 from tqdm import tqdm
 
-from Z_Corpus_analysis.PDF_widget import PdfViewer
 from general.app_constants import MAIN_APP_CACHE_DIR
 from bibliometric_analysis_tool.utils.Zotero_loader_to_df import find_text_page_and_section
-from extract_pdf_ui import process_pdf
-from gpt_api import _process_batch_for
+from data_processing import process_pdf
+from core.utils.calling_models import _process_batch_for, call_models_old_backin
 from datetime import datetime
 from pydantic import BaseModel, Field
+
+import difflib
+from collections import  Counter
+
+from sentence_transformers import SentenceTransformer
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.preprocessing import normalize
+from sklearn.neighbors import NearestNeighbors
 
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -31,10 +38,6 @@ import re
 # ------------------------------------------------------------
 # Core public entrypoint
 # ------------------------------------------------------------
-
-
-
-from core.utils.calling_models import call_models_old_backin
 
 # ==============================
 # Core: extract_themes_and_hierarchy
@@ -97,14 +100,6 @@ else:
 
 
 # =========================  Global Utilities, Embeddings & Clustering (full replacement)  =========================
-
-import difflib
-from collections import  Counter
-
-from sentence_transformers import SentenceTransformer
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.preprocessing import normalize
-from sklearn.neighbors import NearestNeighbors
 
 #
 # analysis_prompts = {
@@ -731,6 +726,45 @@ def build_quote_hits_from_jobs(
     if not callable(progress_cb):
         progress_cb = None
 
+    def _is_blank(v: Any) -> bool:
+        if v is None:
+            return True
+        if isinstance(v, str):
+            return not bool(v.strip())
+        if isinstance(v, (list, tuple, set, dict)):
+            return len(v) == 0
+        return False
+
+    def _pdf_parse_payload(parsed: Any) -> Dict[str, Any]:
+        out: Dict[str, Any] = {
+            "citations": None,
+            "references": None,
+            "footnotes": None,
+            "pdf_metadata": None,
+            "citation_summary": None,
+            "validation": None,
+        }
+        if not isinstance(parsed, dict):
+            return out
+
+        citations_obj = parsed.get("citations")
+        references_obj = parsed.get("references")
+        metadata_obj = parsed.get("metadata")
+        summary_obj = parsed.get("citation_summary")
+        validation_obj = parsed.get("validation")
+
+        footnotes_obj = None
+        if isinstance(citations_obj, dict):
+            footnotes_obj = citations_obj.get("footnotes")
+
+        out["citations"] = citations_obj
+        out["references"] = references_obj
+        out["footnotes"] = footnotes_obj
+        out["pdf_metadata"] = metadata_obj
+        out["citation_summary"] = summary_obj
+        out["validation"] = validation_obj
+        return out
+
     def _iter_pairs() -> Iterable[Tuple[str, str]]:
         for job, _prompt in jobs:
             payloads = job.get("payloads") or []
@@ -768,13 +802,18 @@ def build_quote_hits_from_jobs(
                 pdf_to_items[pdf_path] = mapping
             mapping[ik] = qset
 
+    pdf_parse_by_path: Dict[str, Dict[str, Any]] = {}
     for pdf_path_candidate in pdf_to_items.keys():
-        _ = process_pdf(
-            pdf_path_candidate,
-            cache=True,
-            cache_full=True,
-            core_sections=True,
-        )
+        try:
+            parsed_pdf = process_pdf(
+                pdf_path_candidate,
+                cache=True,
+                cache_full=True,
+                core_sections=True,
+            )
+            pdf_parse_by_path[pdf_path_candidate] = _pdf_parse_payload(parsed_pdf)
+        except Exception:
+            pdf_parse_by_path[pdf_path_candidate] = _pdf_parse_payload({})
 
     out: Dict[str, Dict[str, Dict[str, Any]]] = {}
 
@@ -812,6 +851,7 @@ def build_quote_hits_from_jobs(
         item_map: Dict[str, Set[str]],
     ) -> Dict[str, Dict[str, Dict[str, Any]]]:
         local_out: Dict[str, Dict[str, Dict[str, Any]]] = {}
+        pdf_parse_info = pdf_parse_by_path.get(pdf_path, {})
         for item_key, qset in item_map.items():
             per_item: Dict[str, Dict[str, Any]] = {}
             for q_clean in qset:
@@ -824,12 +864,42 @@ def build_quote_hits_from_jobs(
                     cache_full=True,
                 )
 
+                citations_obj = hit.get("citations")
+                references_obj = hit.get("references")
+                if _is_blank(citations_obj):
+                    citations_obj = pdf_parse_info.get("citations")
+                if _is_blank(references_obj):
+                    references_obj = pdf_parse_info.get("references")
+
+                footnotes_obj = hit.get("footnotes")
+                if _is_blank(footnotes_obj):
+                    if isinstance(citations_obj, dict):
+                        footnotes_obj = citations_obj.get("footnotes")
+                if _is_blank(footnotes_obj):
+                    footnotes_obj = pdf_parse_info.get("footnotes")
+
+                pdf_metadata_obj = hit.get("pdf_metadata")
+                if _is_blank(pdf_metadata_obj):
+                    pdf_metadata_obj = pdf_parse_info.get("pdf_metadata")
+
+                citation_summary_obj = hit.get("citation_summary")
+                if _is_blank(citation_summary_obj):
+                    citation_summary_obj = pdf_parse_info.get("citation_summary")
+
+                validation_obj = hit.get("validation")
+                if _is_blank(validation_obj):
+                    validation_obj = pdf_parse_info.get("validation")
+
                 per_item[q_clean] = {
                     "page": hit.get("page"),
                     "section_title": hit.get("section_title"),
                     "section_text": hit.get("section_text"),
-                    "citations": hit.get("citations"),
-                    "references": hit.get("references"),
+                    "citations": citations_obj,
+                    "references": references_obj,
+                    "footnotes": footnotes_obj,
+                    "pdf_metadata": pdf_metadata_obj,
+                    "citation_summary": citation_summary_obj,
+                    "validation": validation_obj,
                 }
 
                 if bar is not None:
@@ -1172,351 +1242,7 @@ def _normalize_direct_quote_lookup(dql) -> dict:
             key_str = str(k)
         out[key_str] = v
     return out
-#
-# def _enrich_batch_records_from_jobs(
-#     jobs: list,
-#     df: Optional[pd.DataFrame],
-#     quote_hits: dict | None = None,
-# ) -> Tuple[List[dict], Dict[str, int]]:
-#     """
-#     Build a flat list of evidence records (for export) from the batch jobs we sent
-#     to Round-1.
-#
-#     This version is robust to BOTH:
-#       - legacy shape: jobs == [ (job_dict, prompt_str), ... ]
-#       - new shape:    jobs == [ job_dict, job_dict, ... ]
-#
-#     It also tolerates quote_hits in two shapes:
-#       A) { item_key: { "<direct_quote_text>": { "page": 12, "section_title": "...", ... } } }
-#       B) { item_key: 4, ... }   (just hit counts, no page data)
-#     """
-#
-#
-#     from concurrent.futures import ThreadPoolExecutor, as_completed
-#
-#     try:
-#         from tqdm.auto import tqdm as _tqdm
-#     except Exception:
-#         _tqdm = None
-#
-#     # ---------------------------
-#     # helpers copied / updated
-#     # ---------------------------
-#
-#     def _score_bucket_of(rec: dict) -> str:
-#         sb = rec.get("score_bucket")
-#         if isinstance(sb, (int, str)) and str(sb).strip():
-#             return str(sb).strip()
-#         try:
-#             v = int(float(rec.get("relevance_score", 5)))
-#         except Exception:
-#             v = 5
-#         v = max(1, min(5, v))
-#         return str(v)
-#
-#     def _mint_dqid(item_key: str, ev: dict) -> str:
-#         import hashlib as _hash
-#         anchor = (
-#             ev.get("direct_quote")
-#             or ev.get("paraphrase")
-#             or ev.get("researcher_comment")
-#             or ""
-#         )
-#         if not isinstance(anchor, str):
-#             try:
-#                 anchor = json.dumps(anchor, ensure_ascii=False)
-#             except Exception:
-#                 anchor = str(anchor)
-#         anchor = anchor.strip()
-#         base = f"{item_key}||{anchor}"
-#         return _hash.md5(base.encode("utf-8")).hexdigest()[:10]
-#
-#     def _clean_quote(val) -> str:
-#         # coerce any type (dict/list/etc) into a single-line string
-#         if not isinstance(val, str):
-#             try:
-#                 val = json.dumps(val, ensure_ascii=False)
-#             except Exception:
-#                 val = str(val or "")
-#         s = (
-#             val.replace("“", '"').replace("”", '"')
-#                .replace("’", "'").replace("‘", "'")
-#         )
-#         # collapse whitespace
-#         return " ".join(s.split())
-#
-#     def _meta_fields(job_dict: dict) -> tuple[str, str, str, str]:
-#         """
-#         Extract rq_label, gold_theme, route_label, potential_theme_hint
-#         from BOTH legacy job shape and new 'metadata' job shape.
-#         """
-#         md = job_dict.get("metadata", {}) or {}
-#
-#         rq_label = (
-#             job_dict.get("rq_question")
-#             or job_dict.get("rq")
-#             or md.get("layer2_key")
-#             or ""
-#         )
-#
-#         gold_theme = (
-#             job_dict.get("theme")
-#             or job_dict.get("gold_theme")
-#             or md.get("theme_label")
-#             or "(merged_small_themes)"
-#         )
-#
-#         route_label = (
-#             job_dict.get("route")
-#             or md.get("layer_structure")
-#             or ""
-#         )
-#
-#         potential_theme_hint = (
-#             job_dict.get("potential_theme")
-#             or ""
-#         )
-#
-#         return (
-#             str(rq_label).strip(),
-#             str(gold_theme).strip() or "(merged_small_themes)",
-#             str(route_label).strip(),
-#             str(potential_theme_hint).strip(),
-#         )
-#
-#     def _iter_payload_context(norm_jobs: list[tuple[dict, str]]):
-#         """
-#         Yield tuples that let worker build each evidence row.
-#         Each norm_job is (job_dict, prompt_str).
-#         """
-#         for job_dict, _prompt_str in norm_jobs:
-#             rq_label, gold_theme, route_label, pot_theme_hint = _meta_fields(job_dict)
-#             for ev in (job_dict.get("payloads") or []):
-#                 yield rq_label, gold_theme, route_label, pot_theme_hint, ev
-#
-#     # Normalize `jobs` into [(job_dict, prompt_str), ...]
-#     norm_jobs: list[tuple[dict, str]] = []
-#     for j in (jobs or []):
-#         if isinstance(j, tuple):
-#             # Legacy shape: (job_dict, prompt_str)
-#             if len(j) >= 1 and isinstance(j[0], dict):
-#                 job_dict = j[0]
-#                 prompt_str = j[1] if len(j) > 1 and isinstance(j[1], str) else ""
-#                 norm_jobs.append((job_dict, prompt_str))
-#         elif isinstance(j, dict):
-#             # New shape: just the job dict; pull some prompt-ish text if helpful
-#             job_dict = j
-#             prompt_str = (
-#                 j.get("analysis_prompt")
-#                 or j.get("prompt")
-#                 or j.get("writer_prompt")
-#                 or ""
-#             )
-#             norm_jobs.append((job_dict, prompt_str))
-#         else:
-#             # not something we understand, skip
-#             continue
-#
-#     # Build static lookups once
-#     meta_idx = _build_meta_index_for_batches(df)
-#     pdf_lookup = _build_pdf_lookup_for_batches(df)
-#
-#     log: Dict[str, int] = {
-#         "ready": 0,
-#         "attempted": 0,
-#         "succeeded": 0,
-#         "failed": 0,
-#         "missing_pdf": 0,
-#         "missing_text": 0,
-#         "file_not_found": 0,
-#     }
-#
-#     # total number of evidence payload rows (for tqdm)
-#     total_payloads = sum(
-#         len((job_dict or {}).get("payloads") or [])
-#         for (job_dict, _p) in norm_jobs
-#     )
-#
-#     bar = (
-#         _tqdm(
-#             total=total_payloads,
-#             desc="Hydrate from quote_hits",
-#             unit="item",
-#             dynamic_ncols=True,
-#         )
-#         if (_tqdm and total_payloads > 0)
-#         else None
-#     )
-#
-#     def _worker(rq_label, gold_theme, route_label, potential_theme_hint, ev):
-#         """
-#         Turn one evidence row (ev) + its job-level context into
-#         a clean export record.
-#         Also pulls page/section info if available.
-#         """
-#         local = {
-#             "ready": 0,
-#             "attempted": 0,
-#             "succeeded": 0,
-#             "failed": 0,
-#             "missing_pdf": 0,
-#             "missing_text": 0,
-#             "file_not_found": 0,
-#         }
-#
-#         item_key = (ev.get("item_key") or "").strip()
-#         dqid = (ev.get("direct_quote_id") or _mint_dqid(item_key, ev))
-#
-#         ptheme = (
-#             ev.get("theme")
-#             or ev.get("potential_theme")
-#             or potential_theme_hint
-#             or ""
-#         )
-#         ptheme = ptheme.strip() or "(unspecified)"
-#
-#         etype = (ev.get("evidence_type") or "mixed").strip().lower()
-#         sbucket = _score_bucket_of(ev)
-#
-#         # defaults; we try to enrich below
-#         page = None
-#         section_title = None
-#         section_text = None
-#
-#         pdf_path = pdf_lookup.get(item_key)
-#         direct_quote = _clean_quote(ev.get("direct_quote") or "")
-#
-#         if not direct_quote:
-#             local["missing_text"] += 1
-#         elif not pdf_path:
-#             # We can't even say where in the PDF this came from
-#             local["missing_pdf"] += 1
-#         else:
-#             # This evidence row is theoretically enrichable
-#             local["ready"] += 1
-#
-#             if isinstance(quote_hits, dict):
-#                 qh_item = quote_hits.get(item_key)
-#                 if isinstance(qh_item, dict):
-#                     hit = qh_item.get(direct_quote) or {}
-#                     pg = hit.get("page")
-#                     if isinstance(pg, int):
-#                         page = pg
-#                     section_title = hit.get("section_title")
-#                     section_text = hit.get("section_html")
-#
-#                     local["attempted"] += 1
-#                     # did we actually get anything?
-#                     if (
-#                         page is not None
-#                         or (section_title not in (None, ""))
-#                         or (section_text not in (None, ""))
-#                     ):
-#                         local["succeeded"] += 1
-#                     else:
-#                         local["failed"] += 1
-#                 else:
-#                     # qh_item was just an int count; no detail
-#                     local["attempted"] += 1
-#                     local["failed"] += 1
-#             else:
-#                 # no quote_hits structure at all
-#                 local["failed"] += 1
-#
-#         rec = {
-#             "rq": rq_label,
-#             "rq_question": rq_label,
-#             "gold_theme": gold_theme,
-#             "overarching_theme": gold_theme,
-#             "route": route_label,
-#             "item_key": item_key,
-#             "direct_quote_id": dqid,
-#             "direct_quote": ev.get("direct_quote"),
-#             "paraphrase": ev.get("paraphrase"),
-#             "researcher_comment": ev.get("researcher_comment"),
-#             "evidence_type": etype,
-#             "evidence_type_norm": etype,
-#             "potential_theme": ptheme,
-#             "payload_theme": ptheme,
-#             "score_bucket": sbucket,
-#             "relevance_score": ev.get("relevance_score"),
-#             "payload_json": json.dumps(ev, ensure_ascii=False),
-#             "page": page,
-#             "section_title": section_title,
-#             "section_text": section_text,
-#         }
-#
-#         # Add bibliographic/meta info from df if we have it
-#         md = meta_idx.get(item_key, {})
-#         if md:
-#             if "author_summary" in md:
-#                 rec["author_summary"] = md["author_summary"]
-#             if "first_author_last" in md:
-#                 rec["first_author_last"] = md["first_author_last"]
-#             if "year" in md:
-#                 rec["year"] = md["year"]
-#             if "title" in md:
-#                 rec["title"] = md["title"]
-#             if "source" in md:
-#                 rec["source"] = md["source"]
-#             if "url" in md:
-#                 rec["url"] = md["url"]
-#
-#         return rec, local
-#
-#     # ---------------------------
-#     # Threaded fanout
-#     # ---------------------------
-#
-#     max_workers = max(1, int(os.environ.get("PDF_FINDER_THREADS", "8")))
-#     backlog_cap = max_workers * 8
-#
-#     records: List[dict] = []
-#     futures = []
-#
-#     with ThreadPoolExecutor(max_workers=max_workers) as exe:
-#         iterator = _iter_payload_context(norm_jobs)
-#
-#         # warm-start the queue
-#         for _ in range(min(backlog_cap, total_payloads)):
-#             try:
-#                 futures.append(exe.submit(_worker, *next(iterator)))
-#             except StopIteration:
-#                 break
-#
-#         # streaming consumption / refill
-#         for ctx in iterator:
-#             if futures:
-#                 for done in as_completed(futures, timeout=None):
-#                     try:
-#                         rec, local = done.result()
-#                         records.append(rec)
-#                         for k, v in local.items():
-#                             log[k] += v
-#                     except Exception:
-#                         log["failed"] += 1
-#                     if bar is not None:
-#                         bar.update(1)
-#                     futures.remove(done)
-#                     break
-#             futures.append(exe.submit(_worker, *ctx))
-#
-#         # drain leftovers
-#         for done in as_completed(futures):
-#             try:
-#                 rec, local = done.result()
-#                 records.append(rec)
-#                 for k, v in local.items():
-#                     log[k] += v
-#             except Exception:
-#                 log["failed"] += 1
-#             if bar is not None:
-#                 bar.update(1)
-#
-#     if bar is not None:
-#         bar.close()
-#
-#     return records, log
+
 def export_pyr_all_artifacts(
     jobs: List[Tuple[Dict[str, Any], str]],
     sections: List[Dict[str, Any]],
@@ -3294,55 +3020,6 @@ def _labels_for_ev(ev: Dict[str, Any]) -> List[str]:
         if isinstance(q, str) and q.strip():
             out.append(_norm_label(q))
     return out
-
-# # ----- small helpers -----
-# def _ensure_list(x):
-#     if x is None: return []
-#     return x if isinstance(x, list) else [x]
-#
-# def _collect_idx_to_label_from_metadata_rq_lines(md: Dict[str, Any]) -> Dict[int, str]:
-#     """
-#     Parse metadata.rq_lines entries like '0: question text'.
-#     """
-#     out: Dict[int, str] = {}
-#     for line in _ensure_list(md.get("rq_lines")):
-#         if not isinstance(line, str):
-#             continue
-#         m = re.match(r"\s*(\d+)\s*:\s*(.+)$", line.strip())
-#         if m:
-#             idx = int(m.group(1))
-#             lab = m.group(2).strip()
-#             if lab:
-#                 out.setdefault(idx, lab)
-#     return out
-#
-# def _merge_idx_label(dst: Dict[int, str], src: Dict[int, str]) -> None:
-#     """
-#     First writer wins: only set label if idx is not present yet.
-#     """
-#     for k, v in (src or {}).items():
-#         if k not in dst and isinstance(v, str) and v.strip():
-#             dst[k] = v.strip()
-#
-# def _indices_for_ev(ev: Dict[str, Any]) -> List[int]:
-#     idxs: List[int] = []
-#     for r in _ensure_list(ev.get("relevant_rqs")):
-#         if isinstance(r, dict) and isinstance(r.get("index"), int):
-#             idxs.append(int(r["index"]))
-#     return idxs
-#
-# def _labels_for_ev(ev: Dict[str, Any]) -> List[str]:
-#     labs: List[str] = []
-#     for r in _ensure_list(ev.get("relevant_rqs")):
-#         if isinstance(r, dict):
-#             q = (r.get("question") or "").strip()
-#             if q:
-#                 labs.append(q)
-#         elif isinstance(r, str) and r.strip():
-#             labs.append(r.strip())
-#     return labs
-# # ----- end helpers -----
-
 
 def partition_results_by_rq_index(
     results_by_item: Dict[str, Dict[str, Any]]
@@ -12649,6 +12326,12 @@ def process_rq_theme_claims(
                         "page": r.get("page"),
                         "section_title": r.get("section_title"),
                         "section_text": r.get("section_text"),
+                        "citations": r.get("citations"),
+                        "references": r.get("references"),
+                        "footnotes": r.get("footnotes"),
+                        "pdf_metadata": r.get("pdf_metadata"),
+                        "citation_summary": r.get("citation_summary"),
+                        "validation": r.get("validation"),
                         "theme": r.get("theme") or r.get("potential_theme"),
                     }
                 ik = r.get("item_key")
@@ -14157,9 +13840,35 @@ round1_direct_quote_cache =True
 
     cache_path = cache_dir / ("quote_hits_map__" + pdf_sig + ".json")
 
+    def _hits_map_has_process_pdf_fields(hm: Any) -> bool:
+        if not isinstance(hm, dict) or not hm:
+            return False
+        saw_quote = False
+        for _ik, per_quote in hm.items():
+            if not isinstance(per_quote, dict):
+                continue
+            for _dq, hit_blob in per_quote.items():
+                if not isinstance(hit_blob, dict):
+                    continue
+                saw_quote = True
+                if any(k in hit_blob for k in ("footnotes", "pdf_metadata", "citation_summary", "validation")):
+                    return True
+        return not saw_quote
+
     if round1_direct_quote_cache and cache_path.is_file():
         with open(str(cache_path), "r", encoding="utf-8") as f:
             hits_map = json.load(f)
+        if not _hits_map_has_process_pdf_fields(hits_map):
+            hits_map = build_quote_hits_from_jobs(
+                jobs=jobs_flat,
+                df=df,
+                pdf_lookup=pdf_lookup_map,
+                threads=32,
+            )
+            tmp_path = cache_dir / ("quote_hits_map__" + pdf_sig + ".json.tmp")
+            with open(str(tmp_path), "w", encoding="utf-8") as f:
+                json.dump(hits_map, f, ensure_ascii=False, indent=2)
+            os.replace(str(tmp_path), str(cache_path))
     else:
         hits_map = build_quote_hits_from_jobs(
             jobs=jobs_flat,
@@ -14209,6 +13918,19 @@ round1_direct_quote_cache =True
                 section_text_val = rec.get("section_text")
                 citations_val = rec.get("citations")
                 references_val = rec.get("references")
+                footnotes_val = rec.get("footnotes")
+                pdf_metadata_val = rec.get("pdf_metadata")
+                citation_summary_val = rec.get("citation_summary")
+                validation_val = rec.get("validation")
+
+                def _is_blank_enrichment(v: Any) -> bool:
+                    if v is None:
+                        return True
+                    if isinstance(v, str):
+                        return not bool(v.strip())
+                    if isinstance(v, (list, tuple, set, dict)):
+                        return len(v) == 0
+                    return False
 
                 if item_key and direct_quote_clean and isinstance(hits_map, dict):
                     h_for_item = hits_map.get(item_key) or {}
@@ -14221,10 +13943,20 @@ round1_direct_quote_cache =True
                             section_title_val = h.get("section_title")
                         if not section_text_val:
                             section_text_val = h.get("section_text")
-                        if citations_val is None:
+                        if _is_blank_enrichment(citations_val):
                             citations_val = h.get("citations")
-                        if references_val is None:
+                        if _is_blank_enrichment(references_val):
                             references_val = h.get("references")
+                        if _is_blank_enrichment(footnotes_val):
+                            footnotes_val = h.get("footnotes")
+                        if _is_blank_enrichment(footnotes_val) and isinstance(citations_val, dict):
+                            footnotes_val = citations_val.get("footnotes")
+                        if _is_blank_enrichment(pdf_metadata_val):
+                            pdf_metadata_val = h.get("pdf_metadata")
+                        if _is_blank_enrichment(citation_summary_val):
+                            citation_summary_val = h.get("citation_summary")
+                        if _is_blank_enrichment(validation_val):
+                            validation_val = h.get("validation")
 
                 if page_val is None:
                     page_val = 0
@@ -14248,6 +13980,10 @@ round1_direct_quote_cache =True
                 rec_h["section_text"] = section_text_val
                 rec_h["citations"] = citations_val
                 rec_h["references"] = references_val
+                rec_h["footnotes"] = footnotes_val
+                rec_h["pdf_metadata"] = pdf_metadata_val
+                rec_h["citation_summary"] = citation_summary_val
+                rec_h["validation"] = validation_val
 
                 rec_h["theme"] = theme_val
                 if direct_quote_raw is not None:
@@ -14278,6 +14014,10 @@ round1_direct_quote_cache =True
                     "section_text": rec_h.get("section_text"),
                     "citations": rec_h.get("citations"),
                     "references": rec_h.get("references"),
+                    "footnotes": rec_h.get("footnotes"),
+                    "pdf_metadata": rec_h.get("pdf_metadata"),
+                    "citation_summary": rec_h.get("citation_summary"),
+                    "validation": rec_h.get("validation"),
                     "year": rec_h.get("year"),
                     "route": rec_h.get("route"),
                     "item_key": rec_h.get("item_key"),
@@ -14367,6 +14107,12 @@ round1_direct_quote_cache =True
                             "page": page_val_for_dql,
                             "section_title": _norm_str(rec.get("section_title")),
                             "section_text": _norm_str(rec.get("section_text")),
+                            "citations": rec.get("citations"),
+                            "references": rec.get("references"),
+                            "footnotes": rec.get("footnotes"),
+                            "pdf_metadata": rec.get("pdf_metadata"),
+                            "citation_summary": rec.get("citation_summary"),
+                            "validation": rec.get("validation"),
                             "rq_question": _norm_str(rec.get("rq_question")) or _norm_str(rec.get("_rq_question")),
                             "overarching_theme": _norm_str(rec.get("overarching_theme")) or _norm_str(
                                 rec.get("_overarching_theme")
@@ -15323,498 +15069,6 @@ def batching_widget_data(
     }
 
 
-# def batching_widget_data(
-#     *,
-#     grouped: Dict[str, Any],
-#     batch_size: int,
-#     overlap: int,
-#     prompt: str,
-#     filters: Optional[Dict[str, Any]] = None,
-#     dates: Optional[str] = None,
-#     route_prompts: Optional[Dict[str, str]] = None,
-#     framework_analysis: Optional[bool] = None,
-# ) -> Dict[str, Any]:
-#     """
-#     ###1. route detection
-#     ###2. helpers
-#     ###3. theme extraction and batching
-#     ###4. prompt assembly (framework-aware)
-#     ###5. return plan
-#     """
-#
-#     def _has_any(x: Any) -> bool:
-#         if x is None:
-#             return False
-#         if isinstance(x, str):
-#             return bool(x.strip())
-#         if isinstance(x, (list, tuple, set)):
-#             return len(x) > 0
-#         return bool(x)
-#
-#     def _deduce_route(filters_: Dict[str, Any], dates_str: str | None) -> str:
-#         years_f = filters_.get("years")
-#         authors_f = filters_.get("authors")
-#         dates_clean = (dates_str or "").strip()
-#         if _has_any(years_f) or (dates_clean and dates_clean.lower() != "none"):
-#             return "year → rq → theme" if _has_any(years_f) else "date_range → rq → theme"
-#         if _has_any(authors_f):
-#             return "author → rq → theme"
-#         return "rq → theme"
-#
-#     filters = filters or {}
-#     route_str = _deduce_route(filters, dates)
-#
-#     all_groups = grouped.get("groups", {}) or {}
-#     if not isinstance(all_groups, dict):
-#         all_groups = {}
-#
-#     tiny_threshold = min(batch_size // 2, overlap)
-#
-#     def _sanitize_user_hint(h: str) -> str:
-#         h = (h or "").strip()
-#         if not h:
-#             return ""
-#         if len(h) > 2000:
-#             h = h[:2000]
-#         lower = h.lower()
-#         bad_frags = [
-#             "ignore previous instructions",
-#             "disregard the above instructions",
-#             "you are no longer",
-#             "you are chatgpt",
-#             "system prompt",
-#             "<|endoftext|>",
-#         ]
-#         if any(f in lower for f in bad_frags):
-#             h = "[USER CONTEXT / NOT A SYSTEM OVERRIDE]\n" + h
-#         return h
-#
-#     user_hint = _sanitize_user_hint(prompt)
-#
-#     def _extract_theme_buckets(
-#         rq_bucket: Dict[str, Any]
-#     ) -> Tuple[List[Tuple[str, List[dict]]], "OrderedDict[str, int]"]:
-#         tmp_list: List[Tuple[str, List[dict]]] = []
-#         tmp_counts: Dict[str, int] = {}
-#
-#         if not isinstance(rq_bucket, dict):
-#             rq_bucket = {}
-#
-#         if all(isinstance(v, list) for v in rq_bucket.values()):
-#             for theme_name, recs in rq_bucket.items():
-#                 label = (theme_name or "").strip() or "(unspecified)"
-#                 lst = recs or []
-#                 tmp_list.append((label, lst))
-#                 tmp_counts[label] = len(lst)
-#         else:
-#             for gold_name, gold_val in rq_bucket.items():
-#                 gold_label = (gold_name or "").strip() or "(unspecified)"
-#                 if isinstance(gold_val, dict):
-#                     for theme_name, recs in gold_val.items():
-#                         inner_label = f"{gold_label} / {(theme_name or '').strip() or '(unspecified)'}"
-#                         lst = recs or []
-#                         tmp_list.append((inner_label, lst))
-#                         tmp_counts[inner_label] = len(lst)
-#                 elif isinstance(gold_val, list):
-#                     lst = gold_val or []
-#                     tmp_list.append((gold_label, lst))
-#                     tmp_counts[gold_label] = len(lst)
-#
-#         tmp_list_sorted = sorted(tmp_list, key=lambda p: p[0].lower())
-#         ordered_counts = OrderedDict(sorted(tmp_counts.items(), key=lambda kv: kv[0].lower()))
-#         return tmp_list_sorted, ordered_counts
-#
-#     def _balanced_sizes(total: int, k: int) -> List[int]:
-#         sizes: List[int] = []
-#         remaining = total
-#         buckets_left = k
-#         while buckets_left > 0:
-#             sz = (remaining + buckets_left - 1) // buckets_left
-#             sizes.append(sz)
-#             remaining -= sz
-#             buckets_left -= 1
-#         return sizes
-#
-#     def _plan_theme_chunks(
-#         recs: List[dict],
-#         batch_size_local: int,
-#         overlap_local: int,
-#         tiny_thr_local: int,
-#     ) -> Tuple[List[List[dict]], bool]:
-#         n = len(recs)
-#         if n <= 0:
-#             return ([], True)
-#
-#         limit_single = batch_size_local + overlap_local
-#         double_limit = batch_size_local * 2
-#
-#         if n < tiny_thr_local:
-#             return ([], True)
-#
-#         if n <= limit_single:
-#             return ([recs], False)
-#
-#         if n < double_limit:
-#             mid = (n + 1) // 2
-#             return ([recs[:mid], recs[mid:]], False)
-#
-#         base_batches = max(1, n // batch_size_local)
-#         if base_batches < 2:
-#             base_batches = 2
-#
-#         sizes = _balanced_sizes(n, base_batches)
-#         out_chunks: List[List[dict]] = []
-#         idx = 0
-#         for sz in sizes:
-#             out_chunks.append(recs[idx: idx + sz])
-#             idx += sz
-#         return (out_chunks, False)
-#
-#     def _merge_tiny_themes(
-#         tiny_theme_list: List[Tuple[str, List[dict]]],
-#         batch_size_local: int,
-#     ) -> List[Tuple[List[dict], OrderedDict]]:
-#         merged_batches: List[Tuple[List[dict], OrderedDict]] = []
-#         cur_payload: List[dict] = []
-#         cur_breakdown: OrderedDict[str, int] = OrderedDict()
-#         for (tlabel, trecs) in tiny_theme_list:
-#             if cur_payload and (len(cur_payload) + len(trecs) > batch_size_local):
-#                 merged_batches.append((cur_payload, cur_breakdown))
-#                 cur_payload = []
-#                 cur_breakdown = OrderedDict()
-#             cur_payload.extend(trecs)
-#             cur_breakdown[tlabel] = cur_breakdown.get(tlabel, 0) + len(trecs)
-#         if cur_payload:
-#             merged_batches.append((cur_payload, cur_breakdown))
-#         return merged_batches
-#
-#     def _majority_evidence_type(records: List[dict]) -> str:
-#         counts: Dict[str, int] = {}
-#         for r in records or []:
-#             raw = r.get("evidence_type")
-#             et = raw.strip().lower() if isinstance(raw, str) else "mixed"
-#             if not et:
-#                 et = "mixed"
-#             counts[et] = counts.get(et, 0) + 1
-#         if not counts:
-#             return "mixed"
-#         return max(counts.items(), key=lambda kv: kv[1])[0]
-#
-#     final_batches: List[Dict[str, Any]] = []
-#     layer1_overview: List[Dict[str, Any]] = []
-#
-#     for layer1_key, rq_map in all_groups.items():
-#         if not isinstance(rq_map, dict):
-#             rq_map = {}
-#
-#         rq_overview_list: List[Dict[str, Any]] = []
-#
-#         for rq_key, rq_bucket in rq_map.items():
-#             theme_list_sorted, theme_counts_ordered = _extract_theme_buckets(
-#                 rq_bucket if isinstance(rq_bucket, dict) else {}
-#             )
-#
-#             rq_overview_list.append({"rq_key": rq_key, "themes": theme_counts_ordered})
-#
-#             planned_per_theme: List[Tuple[str, List[List[dict]], bool, int]] = []
-#             tiny_themes: List[Tuple[str, List[dict]]] = []
-#
-#             for (theme_label, recs_for_theme) in theme_list_sorted:
-#                 chunks, is_tiny_flag = _plan_theme_chunks(
-#                     recs_for_theme, batch_size, overlap, tiny_threshold
-#                 )
-#                 total_items = len(recs_for_theme)
-#                 if is_tiny_flag:
-#                     tiny_themes.append((theme_label, recs_for_theme))
-#                     planned_per_theme.append((theme_label, [], True, total_items))
-#                 else:
-#                     planned_per_theme.append((theme_label, chunks, False, total_items))
-#
-#             merged_tiny_batches = _merge_tiny_themes(tiny_themes, batch_size)
-#
-#             for (theme_label, chunks, is_tiny_flag, total_items) in planned_per_theme:
-#                 if is_tiny_flag:
-#                     continue
-#
-#                 theme_batch_count = max(1, len(chunks))
-#                 batch_idx_local = 1
-#
-#                 for chunk_payload in chunks:
-#                     etype_majority = _majority_evidence_type(chunk_payload)
-#
-#                     # --- per-theme batch: analysis_prompt + combined_prompt (framework-aware, only add user extra when user_prompt non-empty) ---
-#                     framework_flag = True if framework_analysis is None else bool(framework_analysis)
-#                     analysis_prompt = ""
-#                     if framework_flag:
-#                         analysis_prompt = analysis_prompts[
-#                             {
-#                                 "layer1_mode": (
-#                                     "temporal" if route_str.startswith(("date_range", "year"))
-#                                     else ("author" if route_str.startswith("author") else "theme")
-#                                 ),
-#                                 "rq": rq_key or "",
-#                                 "layer1_key": layer1_key,
-#                                 "theme_label": theme_label,
-#                                 "framework_analysis": True,
-#                             }
-#                         ]
-#                         if isinstance(prompt, str) and prompt.strip() and isinstance(user_hint,
-#                                                                                      str) and user_hint.strip():
-#                             analysis_prompt = analysis_prompt.rstrip() + "\n\nEXTRA CONTEXT FROM USER (do not override structure):\n" + user_hint.strip()
-#
-#                     writer_rules = PYR_L1_PROMPT.format(
-#                         research_question=rq_key or "(no RQ)",
-#                         overarching_theme=theme_label,
-#                         evidence_type=etype_majority,
-#                     )
-#
-#                     route_context = (
-#                         "ROUTE CONTEXT (do not include this heading or bullet text in the output HTML):\n"
-#                         f"- route={route_str}\n"
-#                         f"- layer1_key={layer1_key}\n"
-#                         f"- rq={rq_key}\n"
-#                         f"- theme={theme_label}\n"
-#                         f"- evidence_type={etype_majority}\n\n"
-#                         "PAYLOAD(JSON) DESCRIPTION:\n"
-#                         "You will receive a JSON array named PAYLOAD(JSON). Each item has:\n"
-#                         "  • \"direct_quote\" (verbatim text),\n"
-#                         "  • \"paraphrase\" (researcher paraphrase),\n"
-#                         "  • \"researcher_comment\" (analytic note),\n"
-#                         "  • \"theme\" (the item's potential theme),\n"
-#                         "  • \"item_key\" (unique source ID),\n"
-#                         "  • \"direct_quote_id\" (unique anchor ID).\n\n"
-#                         "Use those fields as evidence when writing.\n\n"
-#                     )
-#
-#                     combined_prompt = (
-#                                           (analysis_prompt.rstrip() + "\n\n") if (
-#                                                       framework_flag and isinstance(analysis_prompt,
-#                                                                                     str) and analysis_prompt.strip()) else ""
-#                                       ) + route_context + writer_rules
-#
-#                     def _slug(s: str) -> str:
-#                         """
-#                         ###1. lowercase
-#                         ###2. keep [a-z0-9]+ and convert others to single '-'
-#                         ###3. trim leading/trailing '-'
-#                         """
-#                         import re
-#                         s2 = (s or "").lower()
-#                         s2 = re.sub(r"[^a-z0-9]+", "-", s2)
-#                         s2 = re.sub(r"-{2,}", "-", s2)
-#                         return s2.strip("-")
-#
-#                     batch_meta = {
-#                         "layer1_key": layer1_key,
-#                         "layer2_key": rq_key,
-#                         "theme_label": theme_label,
-#                         "layer_structure": route_str,
-#                         "theme_total": total_items,
-#                         "batch_index": batch_idx_local,
-#                         "batch_count": theme_batch_count,
-#                         "theme_counts_in_layer2": theme_counts_ordered,
-#                         "batch_size_limit": batch_size,
-#                         "overlap_slack": overlap,
-#                         "merged_theme_breakdown": None,
-#                         "collection_suffix": f"{_slug(layer1_key)}__{_slug(route_str)}__b{batch_idx_local:02d}",
-#                         "collection_route_index": f"{_slug(route_str)}__b{batch_idx_local:02d}",
-#                     }
-#
-#                     chunk_payload_norm = [
-#                         {
-#                             **(r or {}),
-#                             "direct_quote": (r.get("direct_quote") or ""),
-#                             "paraphrase": (r.get("paraphrase") or ""),
-#                             "researcher_comment": (r.get("researcher_comment") or ""),
-#                             "theme": (r.get("theme") or r.get("payload_theme") or r.get(
-#                                 "potential_theme") or "(unspecified)"),
-#                             "potential_theme": (r.get("potential_theme") or ""),
-#                             "item_key": (r.get("item_key") or ""),
-#                             "direct_quote_id": (r.get("direct_quote_id") or ""),
-#                         }
-#                         for r in (chunk_payload or [])
-#                     ]
-#
-#                     final_batches.append(
-#                         {
-#                             "metadata": batch_meta,
-#                             "prompt": combined_prompt,
-#                             "analysis_prompt": analysis_prompt,
-#                             "writer_prompt": writer_rules,
-#                             "payloads": chunk_payload_norm,
-#                         }
-#                     )
-#
-#                     batch_idx_local += 1
-#
-#             for merged_payloads, breakdown_map in merged_tiny_batches:
-#                 etype_majority = _majority_evidence_type(merged_payloads)
-#                 theme_label_for_display = "(merged_small_themes)"
-#
-#                 analysis_prompt = analysis_prompts[
-#                     {
-#                         "layer1_mode": "temporal" if route_str.startswith(("date_range", "year")) else (
-#                             "author" if route_str.startswith("author") else "theme"
-#                         ),
-#                         "rq": rq_key or "",
-#                         "layer1_key": layer1_key,
-#                         "theme_label": theme_label_for_display,
-#                         "framework_analysis": True if framework_analysis is None else bool(framework_analysis),
-#                     }
-#                 ]
-#                 if isinstance(user_hint, str) and user_hint.strip():
-#                     analysis_prompt = (
-#                         analysis_prompt.rstrip()
-#                         + "\n\nEXTRA CONTEXT FROM USER (do not override structure):\n"
-#                         + user_hint.strip()
-#                     )
-#
-#                 writer_rules = PYR_L1_PROMPT.format(
-#                     research_question=rq_key or "(no RQ)",
-#                     overarching_theme=theme_label_for_display,
-#                     evidence_type=etype_majority,
-#                 )
-#
-#                 route_context = (
-#                     "ROUTE CONTEXT (do not include this heading or bullet text in the output HTML):\n"
-#                     f"- route={route_str}\n"
-#                     f"- layer1_key={layer1_key}\n"
-#                     f"- rq={rq_key}\n"
-#                     f"- theme={theme_label_for_display}\n"
-#                     f"- evidence_type={etype_majority}\n\n"
-#                     "PAYLOAD(JSON) DESCRIPTION:\n"
-#                     "You will receive a JSON array named PAYLOAD(JSON). Each item has:\n"
-#                     "  • \"direct_quote\" (verbatim text),\n"
-#                     "  • \"paraphrase\" (researcher paraphrase),\n"
-#                     "  • \"researcher_comment\" (analytic note),\n"
-#                     "  • \"theme\" (the item's potential theme),\n"
-#                     "  • \"item_key\" (unique source ID),\n"
-#                     "  • \"direct_quote_id\" (unique anchor ID).\n\n"
-#                     "Use those fields as evidence when writing.\n\n"
-#                 )
-#
-#                 combined_prompt = analysis_prompt.rstrip() + "\n\n" + route_context + writer_rules
-#
-#                 def _slug(s: str) -> str:
-#                     """
-#                     ###1. lowercase
-#                     ###2. keep [a-z0-9]+ and convert others to single '-'
-#                     ###3. trim leading/trailing '-'
-#                     """
-#                     import re
-#                     s2 = (s or "").lower()
-#                     s2 = re.sub(r"[^a-z0-9]+", "-", s2)
-#                     s2 = re.sub(r"-{2,}", "-", s2)
-#                     return s2.strip("-")
-#
-#                 batch_meta = {
-#                     "layer1_key": layer1_key,
-#                     "layer2_key": rq_key,
-#                     "theme_label": theme_label_for_display,
-#                     "layer_structure": route_str,
-#                     "theme_total": sum(breakdown_map.values()),
-#                     "batch_index": None,
-#                     "batch_count": None,
-#                     "theme_counts_in_layer2": theme_counts_ordered,
-#                     "batch_size_limit": batch_size,
-#                     "overlap_slack": overlap,
-#                     "merged_theme_breakdown": breakdown_map,
-#                     "collection_suffix": f"{_slug(layer1_key)}__{_slug(route_str)}__merged",
-#                     "collection_route_index": f"{_slug(route_str)}__merged",
-#                 }
-#
-#                 final_batches.append(
-#                     {
-#                         "metadata": batch_meta,
-#                         "prompt": combined_prompt,
-#                         "analysis_prompt": analysis_prompt,
-#                         "writer_prompt": writer_rules,
-#                         "payloads": [
-#                             {
-#                                 **(r or {}),
-#                                 "direct_quote": (r.get("direct_quote") or ""),
-#                                 "paraphrase": (r.get("paraphrase") or ""),
-#                                 "researcher_comment": (r.get("researcher_comment") or ""),
-#                                 "theme": (r.get("theme") or r.get("payload_theme") or r.get(
-#                                     "potential_theme") or "(unspecified)"),
-#                                 "potential_theme": (r.get("potential_theme") or ""),
-#                                 "item_key": (r.get("item_key") or ""),
-#                                 "direct_quote_id": (r.get("direct_quote_id") or ""),
-#                                 "author_summary": (r.get("author_summary") or ""),
-#                                 "first_author_last": (r.get("first_author_last") or ""),
-#                                 "year": (r.get("year") or ""),
-#                                 "title": (r.get("title") or ""),
-#                                 "source": (r.get("source") or r.get("publicationTitle") or ""),
-#                                 "url": (r.get("url") or ""),
-#                                 "page": (r.get("page") or ""),
-#                                 "section_title": (r.get("section_title") or ""),
-#                                 "section_text": (r.get("section_text") or ""),
-#                                 "score_bucket": (r.get("score_bucket") or ""),
-#                                 "relevance_score": (
-#                                     r.get("relevance_score") if r.get("relevance_score") is not None else ""),
-#                                 "payload_json": (r.get("payload_json") or ""),
-#                                 "route": (r.get("route") or ""),
-#                                 "gold_theme": (r.get("gold_theme") or ""),
-#                                 "rq_question": (r.get("rq_question") or r.get("_rq_question") or ""),
-#                                 "overarching_theme": (r.get("overarching_theme") or r.get("_overarching_theme") or ""),
-#                             }
-#                             for r in (chunk_payload or [])
-#                         ],
-#                     }
-#                 )
-#
-#                 # ... later (merged_tiny_batches) ...
-#
-#                 final_batches.append(
-#                     {
-#                         "metadata": batch_meta,
-#                         "prompt": combined_prompt,
-#                         "analysis_prompt": analysis_prompt,
-#                         "writer_prompt": writer_rules,
-#                         "payloads": [
-#                             {
-#                                 **(r or {}),
-#                                 "direct_quote": (r.get("direct_quote") or ""),
-#                                 "paraphrase": (r.get("paraphrase") or ""),
-#                                 "researcher_comment": (r.get("researcher_comment") or ""),
-#                                 "theme": (r.get("theme") or r.get("payload_theme") or r.get(
-#                                     "potential_theme") or "(unspecified)"),
-#                                 "potential_theme": (r.get("potential_theme") or ""),
-#                                 "item_key": (r.get("item_key") or ""),
-#                                 "direct_quote_id": (r.get("direct_quote_id") or ""),
-#                                 "author_summary": (r.get("author_summary") or ""),
-#                                 "first_author_last": (r.get("first_author_last") or ""),
-#                                 "year": (r.get("year") or ""),
-#                                 "title": (r.get("title") or ""),
-#                                 "source": (r.get("source") or r.get("publicationTitle") or ""),
-#                                 "url": (r.get("url") or ""),
-#                                 "page": (r.get("page") or ""),
-#                                 "section_title": (r.get("section_title") or ""),
-#                                 "section_text": (r.get("section_text") or ""),
-#                                 "score_bucket": (r.get("score_bucket") or ""),
-#                                 "relevance_score": (
-#                                     r.get("relevance_score") if r.get("relevance_score") is not None else ""),
-#                                 "payload_json": (r.get("payload_json") or ""),
-#                                 "route": (r.get("route") or ""),
-#                                 "gold_theme": (r.get("gold_theme") or ""),
-#                                 "rq_question": (r.get("rq_question") or r.get("_rq_question") or ""),
-#                                 "overarching_theme": (r.get("overarching_theme") or r.get("_overarching_theme") or ""),
-#                             }
-#                             for r in (merged_payloads or [])
-#                         ],
-#                     }
-#                 )
-#
-#         layer1_overview.append({"layer1_key": layer1_key, "rqs": rq_overview_list})
-#
-#     return {
-#         "route": route_str,
-#         "batch_size": batch_size,
-#         "overlap": overlap,
-#         "total_batches": len(final_batches),
-#         "layer1_overview": layer1_overview,
-#         "batches": final_batches,
-#     }
 
 class _R2Config(BaseModel):
     gold_placeholder: str = "NA"
@@ -17181,190 +16435,3 @@ def batching_widget_data_round2(
 
 
 
-
-
-import sys
-from pathlib import Path
-
-from PyQt6.QtCore import Qt, QUrl, QUrlQuery
-from PyQt6.QtWidgets import QApplication, QLineEdit, QMainWindow, QPushButton, QToolBar, QVBoxLayout, QWidget
-from PyQt6.QtWebEngineCore import QWebEngineProfile, QWebEngineSettings, QWebEnginePage
-from PyQt6.QtWebEngineWidgets import QWebEngineView
-
-#
-# class ConsoleLoggingPage(QWebEnginePage):
-#     def javaScriptConsoleMessage(self, level, message, line_number, source_id):
-#         print(f"[JS][{level.name}] {source_id}:{line_number} {message}")
-#
-#
-# class PdfViewer(QWidget):
-#     """
-#     QWebEngine-based PDF.js viewer using a local viewer.html entrypoint:
-#
-#       viewer.html?file=<URL-ENCODED-PDF-URL>#page=<N>
-#
-#     Encoding is handled via QUrlQuery (no QUrl.UrlFormattingOption.FullyEncoded).
-#     """
-#
-#     def __init__(self, parent: QWidget | None = None, *, viewer_html_path: str | Path):
-#         super().__init__(parent)
-#
-#         self._viewer_html_path = Path(viewer_html_path).resolve()
-#         self._viewer_url = QUrl.fromLocalFile(str(self._viewer_html_path))
-#
-#         self._view = QWebEngineView(self)
-#         self._view.setObjectName("PdfViewerWebView")
-#         self._view.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-#
-#         self._page = ConsoleLoggingPage(self._view)
-#         self._view.setPage(self._page)
-#
-#         self._view.loadFinished.connect(self._on_load_finished)
-#
-#         layout = QVBoxLayout(self)
-#         layout.setContentsMargins(0, 0, 0, 0)
-#         layout.addWidget(self._view)
-#
-#         self._current_pdf_path: str = ""
-#         self._current_page: int = 1
-#         self._current_label: str = ""
-#
-#         self._configure_webengine()
-#
-#         self._view.setUrl(self._viewer_url)
-#     def _on_load_finished(self, ok: bool) -> None:
-#         print(f"[PDFVIEW][loadFinished] ok={ok} url={self._view.url().toString()}")
-#         self._run("console.log('viewer readyState=', document.readyState);")
-#         self._run("console.log('has pdfjsLib=', typeof window.pdfjsLib);")
-#         self._run("console.log('has PDF_APP=', typeof window.PDF_APP);")
-#
-#     def _configure_webengine(self) -> None:
-#         s = self._view.settings()
-#
-#         s.setAttribute(QWebEngineSettings.WebAttribute.PdfViewerEnabled, False)
-#         s.setAttribute(QWebEngineSettings.WebAttribute.JavascriptEnabled, True)
-#         s.setAttribute(QWebEngineSettings.WebAttribute.LocalStorageEnabled, True)
-#
-#         s.setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessFileUrls, True)
-#         s.setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessRemoteUrls, True)
-#
-#         s.setAttribute(QWebEngineSettings.WebAttribute.JavascriptCanAccessClipboard, True)
-#         s.setAttribute(QWebEngineSettings.WebAttribute.ScrollAnimatorEnabled, True)
-#
-#         profile = self._view.page().profile()
-#         profile.setHttpCacheType(QWebEngineProfile.HttpCacheType.MemoryHttpCache)
-#         profile.setPersistentCookiesPolicy(QWebEngineProfile.PersistentCookiesPolicy.NoPersistentCookies)
-#
-#     # ---------------- Public API ----------------
-#
-#     def load_path(self, pdf_path: str, *, page: int = 1, label: str | None = None) -> None:
-#         p = str(pdf_path or "").strip()
-#         if not p:
-#             return
-#
-#         path_obj = Path(p)
-#         if not path_obj.exists():
-#             return
-#
-#         self._current_pdf_path = str(path_obj)
-#         self._current_page = max(1, int(page or 1))
-#         self._current_label = (label or self._current_pdf_path).replace("\\", "/")
-#
-#         self._view.setUrl(self._build_viewer_url(self._current_pdf_path, self._current_page))
-#
-#     def go_to_page_1_based(self, page: int) -> None:
-#         p = max(1, int(page or 1))
-#         self._current_page = p
-#
-#         js = (
-#             "(() => {"
-#             f"  const p = {p};"
-#             "  const inp = document.getElementById('pageNum');"
-#             "  if (inp) inp.value = String(p);"
-#             "  window.location.hash = 'page=' + String(p);"
-#             "  return 'OK_HASH';"
-#             "})()"
-#         )
-#         self._run(js)
-#
-#     def zoom_in(self) -> None:
-#         self._run("document.getElementById('btnZoomIn').click();")
-#
-#     def zoom_out(self) -> None:
-#         self._run("document.getElementById('btnZoomOut').click();")
-#
-#     def fit_width(self) -> None:
-#         self._run("document.getElementById('btnFitWidth').click();")
-#
-#     # ---------------- Internals ----------------
-#
-#     def _build_viewer_url(self, pdf_path: str, page: int) -> QUrl:
-#         pdf_url = QUrl.fromLocalFile(str(Path(pdf_path).resolve()))
-#         p = max(1, int(page or 1))
-#
-#         u = QUrl(self._viewer_url)
-#         q = QUrlQuery()
-#         q.addQueryItem("file", pdf_url.toString())
-#         u.setQuery(q)
-#         u.setFragment("page=" + str(p))
-#         return u
-#
-#     def _run(self, js: str) -> None:
-#         self._view.page().runJavaScript(js)
-#
-#     @property
-#     def webview(self) -> QWebEngineView:
-#         return self._view
-#
-
-class MainWindow(QMainWindow):
-    def __init__(self, payload: dict):
-        super().__init__()
-
-        self.setWindowTitle("Qt PDF Viewer (PDF.js)")
-        self.resize(1200, 800)
-
-        self._payload = payload
-
-        viewer_html = Path(__file__).resolve().parent / "resources" / "viewer.html"
-
-        self._viewer = PdfViewer(self, viewer_html_path=viewer_html)
-        self.setCentralWidget(self._viewer)
-
-        tb = QToolBar("PDF")
-        tb.setMovable(False)
-        self.addToolBar(tb)
-
-        self._btn_prev = QPushButton("Prev")
-        self._btn_next = QPushButton("Next")
-        self._page = QLineEdit("1")
-        self._page.setFixedWidth(60)
-        self._page.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        self._btn_zoom_out = QPushButton("−")
-        self._btn_zoom_in = QPushButton("+")
-        self._btn_fit = QPushButton("Fit width")
-
-        tb.addWidget(self._btn_prev)
-        tb.addWidget(self._page)
-        tb.addWidget(self._btn_next)
-        tb.addSeparator()
-        tb.addWidget(self._btn_zoom_out)
-        tb.addWidget(self._btn_zoom_in)
-        tb.addWidget(self._btn_fit)
-
-
-        self._btn_zoom_in.clicked.connect(self._viewer.zoom_in)
-        self._btn_zoom_out.clicked.connect(self._viewer.zoom_out)
-        self._btn_fit.clicked.connect(self._viewer.fit_width)
-
-        self._page.setText(str(int(self._payload["page"] or 1)))
-        self._viewer.load_payload(self._payload, label=self._payload["title"])
-
-
-payload={'item_key': 'G2JMAAXE', 'pdf_path': 'C:\\Users\\luano\\Zotero\\storage\\Q95G65KK\\G2JMAAXE.pdf', 'url': 'https://heinonline.org/HOL/Page?public=true&handle=hein.journals/zlw64&div=30&start_page=396&collection=journals&set_as_cursor=320&men_tab=srchresults', 'author_summary': 'Sa Kaiser; M Mejia-Kaiser', 'first_author_last': 'Kaiser', 'year': '2015', 'title': 'Cyber security in air and space law', 'source': 'Zeitschrift Fur Luft- Und Weltraumrecht - German Journal of Air and Space Law', 'page': 9, 'section_title': 'IV. Private and Criminal Air Law', 'section_text': '<section class="pdf-section"><h3>IV. Private and Criminal Air Law</h3>\n<p>Different to the shortcomings of civil aviation regulations in regard to cyber security, the existing legal regimes of private and criminal liability in civil aviation provide already for damage compensation, independent of the root cause and the attribution to an identifiable offender. The Warsaw Convention of $1929$ and the Montreal Convention of $1999$ have established a non-fault based private law liability regime for damage sustained on-board and the Rome Convention of $1952$ and comparable national legislations for damage sustained on the ground. In order to provide a comprehensive protective cover for persons and property, these regimes apply also in case of criminal or terrorist attacks, whether committed by physical means or through cyber space. However, these liability regimes put a special burden on air operators and their insurers, who have to bear the risk of terror and criminal attacks against civil aviation with almost no possibility to take recourse against the perpetrators.\nIn the realm of criminal law, Article 1 of the Montreal Convention of $1971$ is so broadly worded that it also accommodates cyber interference and attacks, when they compromise the safety of an aircraft or cause damage. However, <mark>criminal prosecution is contingent upon the attribution of the criminal act to an identifiable offender, which poses forensic complications in the case of acts committed through cyber space</mark>.</p>\n<h1>C. Space Law</h1>\n<p>In space activities three areas are vulnerable to cyber interference: - the terrestrial segment - the space segment and - peripheral systems necessary for the operation of space systems, like those operated by space agencies, satellite integrators, space debris data bases and conjunction assessment centres.\nSpace systems have been victims of unauthorized cyber activities in various ways. For example, the computer systems of the terrestrial segments (e.g. earth stations receiving or sending data) can become the gateways for such activities. Also air gapped space segments have been objects of unauthorized cyber activities. The use of radio signals is another method of gaining unauthorized electronic access to a space system. This can be achieved through electromagnetic signals directed to a satellite, for example by placing transmission antennas close to existing ones with direct access to space segments.\nDifferent to cyber activities directed against space systems, the networks of space agencies or other institutions involved in space programs can also be targeted. Such activities can divulge sensitive information on the design and operation of current or future space systems and be misused for creating dedicated malware to cause further damage.\nUnauthorized cyber activities may have various effects on space systems, depending if they are intended: - to access or retrieve information produced by the payload of a space object (e.g. data generated by a remote sensing or communication satellite without authorisation); - to disrupt the transmission of information (by degrading or altering the data or blocking the transmission or reception, e.g. of communication, navigation or remote sensing signals); - to damage or destroy a space object\'s on board computer systems, software or hardware (e.g. through malware); - to seize a space object by manipulating its flight control, possibly resulting in damage to the space object itself and also to third parties (e.g. depletion of limited satellite resources, changing the attitude control or trajectory of the space object to cause profit loss, collisions with another space object, launch accidents or atmospheric re-entry and damage on the surface of the Earth or to aircraft in flight.</p>\n<h1>I. State Responsibility and Liability for Space Activities</h1>\n<p>Due to the high risks to the Earth\'s environment, and persons and property on the Earth and the catastrophic damage that may unfold on the surface of the Earth with only short warning time, space activities are considered as Jet Propulsion Laboratory also suffered an attack that compromised its computer network; see 2012 Annual Report to Congress of the U.S.-China Economic and Security Commission, $112^{\\text {th }}$ Congress, $2^{\\text {nd }}$ Session (Nov. 2012), Section II, China\'s Cyber Activities, 155.\nA satellite\'s \'attitude control\' is necessary to maintain sensors and other instruments aligned in a specific position, in order to perform certain tasks as maintaining communication with Earth stations. See 6.2.4.2. Attitude Control, ITU, Handbook on Satellite Communications, (2002), 369-370.\nIn such scenarios, the perpetrator needs to possess specific knowledge on confidential information of a satellite\'s hardware, command structure, signal frequency, modulation, data rate, etc. Huber, DLR, personal communication with the author, 9 October 2013. In the present trend of confidential information theft, there is a growing probability of acquiring information to manipulate the flight control of space objects for unauthorized seizure.\n\'Damage\' is defined in Liability Convention Art. 1 (a) as \'[...]loss of life, personal injury or other impairment of health; loss of or damage to property of States or of persons, natural or juridical, or property of international intergovernmental organizations $[\\ldots]$.\n\'[...] any damage is likely to occur swiftly and may often be catastrophic.\' Lyall / Larsen, Space Law, A Treatise (2009), 66.\n\'ultra-hazardous\' activities. The Outer Space Treaty of $1967$ and the Liability Convention of $1973$ establish therefore a special framework for State responsibility and liability for outer space activities. Under Article VI of the Outer Space Treaty, States Parties accept responsibility for \'national activities in outer space\', regardless if they are performed by governmental agencies or non-governmental entities and they accept the primary responsibility for authorizing and continuously supervising such activities. This provision is complemented by Article 2 of the Liability Convention that establishes launching States as absolutely liable towards the States that incurred damage on their territory or aircraft in flight.\nAlthough the term \'activities in outer space\' is interpreted broadly, during the treaty negotiations in the 1960s cyber activities were not considered, because the Internet did not exist and malicious cyber activities affecting completely segregated computer space systems were unheard of. Responsibility and liability will become the main point of conflict when unauthorized cyber activities affect space objects. One of the assumptions underlying Article VI and of the Outer Space Treaty is that the launching State has flight control of Lachs, The Law of Outer Space, An Experience in Contemporary Law-Making, XIII, 113-124 (1972, reprinted in 2010). The United Nations International Law Commission considers space activities as ultra-hazardous because the inherent risks of damage to Earth\'s environment, persons and property; see UN International Law Commission, Draft articles on Prevention of Transboundary Harm from Hazardous Activities, with commentaries, (2001), p. 149- 150.\nTreaty on Principles Governing the Activities of States in the Exploration and Use of Outer Space, Including the Moon and Other Celestial Bodies, entered into force Oct. 10 1967, 18 U.S.T. 2410, 610 U.N.T.S. 205.\nConvention on International Liability for Damage Caused by Space Objects, entered into force Oct. 9 1973, 24 U.S.T. 2389, 961 U.N.T.S. 187.\nGerhard, Article VI, Outer Space Treaty, in: Hobe / Schmidt-Tedd / Schrogl (eds.), Cologne Commentary on Space Law (2009), vol. 1, at 105-106.\nSmith / Kerrest, Article II, Liability Convention, in: Hobe / Schmidt-Tedd / Schrogl (eds.), Cologne Commentary on Space Law (2013), vol. 2, 118-119.\nArt. VI of the Outer Space Treaty, supra note 41: \'States Party to the Treaty shall bear international responsibility for national activities in outer space [...] whether such activities are carried on by governmental agencies or by non-governmental entities and for assuring that national activities are carried out in conformity with the provisions of set for in the present Treaty. The activities of non-governmental entities in outer space [...] shall require authorization and continuing supervision by the appropriate State Party to the Treaty [...]\'.\n\'Launching State\' is defined in Art. 1 (c) of the Liability Convention as \'(i) A State which launches or procures the launching of a space object; (ii) A State from whose territory or facility a space object is launched\'.\nArt. 2 of the Liability Convention: \'A launching State shall be absolutely liable to pay compensation for damages caused by its space object on the surface of the Earth or to aircraft in flight.\'\nHobe, Art I, Outer Space Treaty, in: Cologne Commentary on Space Law, supra note 3, p. 34.\nits space objects or, at least, supervises a national entity which has command and control. Unauthorized interference by a third party or State has so far not been part of this concept. Two scenarios need to be distinguished: unauthorized cyber activities against the flight control or the payload control of a space object.</p>\n<h1>II. Flight Control</h1>\n<p>Interference with the flight control of a space object can be achieved by unauthorized cyber activities, either with direct access to the space segment or through the terrestrial segment or peripheral systems. In case a malicious cyber-activity interferes with the flight control of a space object and causes catastrophic damage on the surface of the Earth to the launching State or to another State, the launching State of this space object would be deemed responsible under Article VI of the Outer Space Treaty and liable for the compensation of damages under the Liability Convention. The existing space law regime puts an unfair burden on the launching State, which becomes responsible for malicious cyber activities that it did not authorize, suffers the loss of its space object and also faces an obligation for third party damage compensation. Therefore the following solutions are proposed to adjust and to re-allocate responsibilities and liabilities when the vertiginous evolution of cyber activities results in damage through space activities as lex ferenda: form in cyber activities that seize a space object without the authorization of the launching State. 2. The authorization and supervision of States under Article VI of the Outer Space Treaty need to be expanded to cover cyber security of flight control. National legislation and enforcement need to set the legal parameters of States\' \'continued supervision\', possibly by reference to international technical recommendations, to protect space systems against unauthorized cyber activities, like ITU recommendations or standards of the International Organization for Standardization (ISO) and the International Electrotechnical Commission (IEC).\nsponsible". United States Diplomatic and Consular Staff in Tehran Judgement (United States of America v. Iran) I.C.J. Rep. 1980, para. 74.\n"When confronted with public accusations from the United States about its cyber espionage, Beijing attempted to refute the evidence, in part, by pointing to the anonymity of cyberspace and the lack of verifiable technical forensic data. The Chinese government\'s statements were similar to its responses to previous foreign allegations of cyber espionage", id. 246. Despite these accusations, China"[...] suffers the largest number of cyberattacks in the world"and some of past important malicious cyber activities originated from the US. Singer and Friedman, Cybersecurity and Cyberwar, 2014, at 139-140.</p>\n<h1>III. Payload Control</h1>\n<p>Unauthorized cyber activities can also interfere with the payload of a space object by stealing, hampering or denying access to payload signals, for example communication, navigation or remote sensing information. Conversely to flight control, which has a direct effect on the physical disposition of a space object, payload signals do not fall under the responsibility regime of Article VI of the Outer Space Treaty and the liability regime under the Liability Convention. Both regimes do not apply to payload signals and their information content. For payload signals transmitted by radio or through fixed lines of terrestrial networks, the rules of the International Telecommunication Union (ITU) apply instead as lex specialis. Notably, under Article 36 of the ITU Convention:"States accept no responsibility towards users of the international telecommunication services, particularly as regards claims for damages". Even though payload functionalities do not have an effect on the physical disposition of a spacecraft, cyber security measures are needed for the protection of privacy and intellectual property of payload data and information.</p>\n</section>', 'rq_question': '0: What legal and policy problems does cyber attribution create for states? (e.g., Legal thresholds, escalation and mis-signalling risks, deterrence credibility)', 'overarching_theme': '(evidence grouped without gold)', 'gold_theme': None, 'route': 'HIGH', 'theme': 'attribution_challenges', 'potential_theme': 'attribution_challenges', 'evidence_type': 'limitation', 'evidence_type_norm': None, 'direct_quote': 'criminal prosecution is contingent upon the attribution of the criminal act to an identifiable offender, which poses forensic complications in the case of acts committed through cyber space', 'direct_quote_clean': 'criminal prosecution is contingent upon the attribution of the criminal act to an identifiable offender, which poses forensic complications in the case of acts committed through cyber space', 'paraphrase': 'Criminal prosecution requires attributing the cyber act to an identifiable perpetrator, which is forensically difficult for cyberspace incidents (relevant to legal thresholds and evidentiary barriers).', 'researcher_comment': 'This statement identifies attribution as a gating legal threshold for criminal liability and explicitly links it to forensic limits in cyber cases. It directly bears on legal problems states face when attribution is uncertain. The text does not detail which forensic techniques are deficient or mitigation measures.'}
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    w = MainWindow(payload)
-    w.show()
-    sys.exit(app.exec())

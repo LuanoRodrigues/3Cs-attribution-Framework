@@ -1,0 +1,150 @@
+{
+  "header": {
+    "runId": "20260211T195954_b20398e18718",
+    "workspaceId": "eec3b011-45d6-4a36-9848-1ffd6f0bb7ff",
+    "workspaceDir": "/home/pantera/projects/TEIA/leditor",
+    "startedAt": 1770839994070,
+    "requestedAgent": "build",
+    "selectedAgent": "build",
+    "capabilities": {
+      "can_edit": true,
+      "can_exec": true,
+      "can_delete": false,
+      "writeScope": [
+        "src",
+        "packages",
+        "tests",
+        "docs"
+      ]
+    },
+    "backend": "codex_exec"
+  },
+  "status": "completed",
+  "finishedAt": 1770840496087,
+  "durationMs": 501605,
+  "turns": 2,
+  "toolCalls": 2,
+  "finalOutputChars": 879,
+  "verify": {
+    "status": "passed",
+    "command": "tester agent executed",
+    "exitCode": 0
+  },
+  "phase": "completed",
+  "phaseUpdatedAt": 1770840496079,
+  "phaseTrail": [
+    "started",
+    "routed",
+    "model",
+    "tools",
+    "completed"
+  ],
+  "phaseTimeline": [
+    {
+      "phase": "started",
+      "status": "running",
+      "ts": 1770839994074,
+      "detail": "run started (build)"
+    },
+    {
+      "phase": "routed",
+      "status": "running",
+      "ts": 1770839994452,
+      "detail": "explicit user selection"
+    },
+    {
+      "phase": "model",
+      "status": "running",
+      "ts": 1770839994456,
+      "detail": "turn 1"
+    },
+    {
+      "phase": "tools",
+      "status": "running",
+      "ts": 1770839994461,
+      "detail": "tool codex_exec"
+    },
+    {
+      "phase": "tools",
+      "status": "running",
+      "ts": 1770840114468,
+      "detail": "tool codex_exec running"
+    },
+    {
+      "phase": "tools",
+      "status": "running",
+      "ts": 1770840127837,
+      "detail": "tool codex_exec ok"
+    },
+    {
+      "phase": "model",
+      "status": "running",
+      "ts": 1770840127843,
+      "detail": "turn 2"
+    },
+    {
+      "phase": "tools",
+      "status": "running",
+      "ts": 1770840127849,
+      "detail": "tool codex_exec"
+    },
+    {
+      "phase": "tools",
+      "status": "running",
+      "ts": 1770840487872,
+      "detail": "tool codex_exec running"
+    },
+    {
+      "phase": "tools",
+      "status": "running",
+      "ts": 1770840495668,
+      "detail": "tool codex_exec ok"
+    },
+    {
+      "phase": "completed",
+      "status": "completed",
+      "ts": 1770840496079,
+      "detail": "run completed"
+    }
+  ],
+  "definitionOfDone": {
+    "passed": true,
+    "checks": [
+      {
+        "id": "summary",
+        "ok": true,
+        "detail": "summary.json present"
+      },
+      {
+        "id": "commands",
+        "ok": true,
+        "detail": "commands.jsonl present"
+      },
+      {
+        "id": "diff",
+        "ok": true,
+        "detail": "diff.patch present"
+      },
+      {
+        "id": "verify-log",
+        "ok": true,
+        "detail": "verify.log present"
+      },
+      {
+        "id": "verify-status",
+        "ok": true,
+        "detail": "verification passed"
+      },
+      {
+        "id": "response",
+        "ok": true,
+        "detail": "response is execution-oriented"
+      }
+    ]
+  },
+  "worktree": {
+    "baseBranch": "main",
+    "branch": "autopilot/main/leditor-20260211-mligescd",
+    "dir": "/home/pantera/projects/TEIA/.agent/autopilot/worktrees/leditor/20260211T195954_b20398e18718"
+  }
+}

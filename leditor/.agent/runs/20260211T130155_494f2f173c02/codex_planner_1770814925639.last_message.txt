@@ -1,0 +1,3 @@
+Created the plan at `Plans/pending/plan_20260211T130155.md`.
+
+It includes the required ExecPlan sections, deterministic pagination invariant testing, explicit handling for paragraph splitting/citation-anchor splitting/punctuation orphaning, and a capped 5-pass iteration loop that records what was missing and improved on each pass.

@@ -1,0 +1,72 @@
+{
+  "runId": "20260213T110301_a754307fd04d",
+  "workspaceId": "eec3b011-45d6-4a36-9848-1ffd6f0bb7ff",
+  "updatedAt": 1770980581534,
+  "items": [
+    {
+      "phase": "started",
+      "status": "running",
+      "ts": 1770980581291,
+      "detail": "run started (auto) · pending plan Plans/pending/little_engine.md"
+    },
+    {
+      "phase": "routed",
+      "status": "running",
+      "ts": 1770980581370,
+      "detail": "pending plan batch routed (parallel)"
+    },
+    {
+      "phase": "model",
+      "status": "running",
+      "ts": 1770980581381,
+      "detail": "pending plan batch planning"
+    },
+    {
+      "phase": "tools",
+      "status": "running",
+      "ts": 1770980581391,
+      "detail": "pending plan batch queued",
+      "progress": {
+        "current": 3,
+        "total": 3,
+        "completed": 0,
+        "failed": 3,
+        "running": 0,
+        "queued": 0,
+        "label": "pending plan batch queued"
+      }
+    },
+    {
+      "phase": "tools",
+      "status": "running",
+      "ts": 1770980581452,
+      "detail": "pending plan batch finished",
+      "progress": {
+        "current": 3,
+        "total": 3,
+        "completed": 0,
+        "failed": 3,
+        "running": 0,
+        "queued": 0,
+        "label": "pending plan batch finished",
+        "etaMs": 0
+      }
+    },
+    {
+      "phase": "error",
+      "status": "error",
+      "ts": 1770980581534,
+      "detail": "pending plan batch completed with failures",
+      "progress": {
+        "current": 3,
+        "total": 3,
+        "completed": 0,
+        "failed": 3,
+        "running": 0,
+        "queued": 0,
+        "label": "pending plan batch finished",
+        "etaMs": 0
+      }
+    }
+  ]
+}

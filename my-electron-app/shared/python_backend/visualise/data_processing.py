@@ -16,7 +16,7 @@ for entry in (BASE_DIR, REPO_ROOT):
         sys.path.insert(0, entry_str)
 
 
-from python_backend.core.utils.calling_models import _process_batch_for, _get_prompt_details
+# from core.utils.calling_models import _process_batch_for, _get_prompt_details
 
 
 def _get_en_english():
@@ -4948,7 +4948,6 @@ def _unwrap_softwraps(md: str) -> str:
 
 # --- Main PDF Processing Function ---
 
-
 def process_pdf(
         pdf_path: str,
         cache: bool = False,
@@ -4970,13 +4969,27 @@ def process_pdf(
 
     We still persist the new result back to the same cache file at the end.
     """
+
+    # --- Mistral OCR Cache Lookup ---
+    # Set the Mistral cache directory to match submit_mistral_ocr3_batch
+    from pathlib import Path
+    home = Path.home()
+    base = home / "annotarium" / "cache" / "mistral"
+    files_dir = base / "files"
+    mistral_cache_base = files_dir
+
+    from pathlib import Path
+
+    pdf_path = str(Path(pdf_path).expanduser().resolve())
     if not pdf_path.lower().endswith(".pdf"):
         raise ValueError("Source must be a PDF file.")
 
     llm4_kwargs = {"page_chunks": True, "write_images": False}
 
     cache_file = Path(_cache_path(pdf_path))
+
     full_md = None
+    segments = []
     logs_md: Dict[str, Any] = {}  # parser diagnostics (dict)
     references: List[str] | str = ""
 
@@ -5000,6 +5013,7 @@ def process_pdf(
     cached_data = None
     if cache_file.is_file() and cache_file.stat().st_size > 0:
         print(f"[LOG] (cache) Found cache at {cache_file}")
+        import json
         try:
             cached_data = json.loads(cache_file.read_text(encoding="utf-8"))
 
@@ -5029,12 +5043,14 @@ def process_pdf(
                 cache_file.write_text(json.dumps(cached_data, ensure_ascii=False, indent=2), encoding="utf-8")
 
             # Fast return: full cached object allowed?
-            if cache and cached_data and cached_data.get("sections"):
+            if cache and cached_data and cached_data.get("sections") and cached_data.get("pages_text"):
                 return cached_data
 
             # Otherwise we will recompute – decide what to do with full_text.
-            if not cache and cache_full and cached_data and cached_data.get("full_text"):
+            if not cache and cache_full and cached_data and cached_data.get("full_text") and cached_data.get(
+                    "pages_text"):
                 full_md = cached_data["full_text"]
+                segments = cached_data["pages_text"]
                 references = cached_data.get("references", [])
                 print("[LOG] Will reuse cached full_text (cache_full=True) and recompute sections/metadata.")
 
@@ -5057,29 +5073,80 @@ def process_pdf(
         doc.close()
 
         segments = [""] * len(page_list)
-        needs_ocr: List[int] = []
+        pos_map = {p: i for i, p in enumerate(page_list)}
 
-        for pos, pidx in enumerate(page_list):
-            try:
-                txt = pymupdf4llm.to_markdown(pdf_path, pages=[pidx], **llm4_kwargs)
-                if txt:
-                    segments[pos] = txt.strip()
-                else:
-                    raise ValueError("No embedded text")
-            except Exception:
-                needs_ocr.append(pidx)
+        needs_ocr = list(page_list)
+        print(f"[LOG] OCR-first mode: attempting OCR for {len(needs_ocr)} pages.")
 
-        if needs_ocr:
-            print(f"[LOG] Found {len(needs_ocr)} pages requiring OCR.")
+        from pathlib import Path
+        import hashlib
+        import json
 
-            # Map original page index -> position in segments
-            pos_map = {p: i for i, p in enumerate(page_list)}
+        home = Path.home()
+        base = home / "annotarium" / "cache" / "mistral"
+        files_dir = base / "files"
+        mistral_cache_base = files_dir
 
-            # throttle large sets first
-            if len(needs_ocr) > 150:
-                needs_ocr = needs_ocr[:60] + needs_ocr[-60:]
-            if len(needs_ocr) > 300:
-                needs_ocr = needs_ocr[:250]
+        ocr_text_by_page = {}
+
+        def _hash_key_path(p: str) -> str:
+            p2 = os.path.normpath(p)
+            p2 = os.path.normcase(p2)
+            return p2
+
+        hash_candidates = [
+            pdf_path,
+            _hash_key_path(pdf_path),
+            pdf_path.replace("/", "\\"),
+            _hash_key_path(pdf_path.replace("/", "\\")),
+        ]
+
+        mistral_cache_file = None
+        for cand in hash_candidates:
+            h = hashlib.sha256(cand.encode("utf-8")).hexdigest()
+            f = mistral_cache_base / f"{h}.json"
+            if f.is_file():
+                mistral_cache_file = f
+                break
+
+        cached_pages = None
+        if mistral_cache_file and mistral_cache_file.is_file():
+            cached = json.loads(mistral_cache_file.read_text(encoding="utf-8"))
+
+            cached_pages = (
+                cached
+                .get("response", {})
+                .get("response", {})
+                .get("body", {})
+                .get("pages", [])
+            )
+
+            if cached_pages:
+                print(f"[LOG] Found Mistral per-file cache with {len(cached_pages)} pages: {mistral_cache_file}")
+            else:
+                print(f"[WARNING] Mistral cache found but contains no pages: {mistral_cache_file}")
+
+        if cached_pages:
+            by_index = {p.get("index"): p for p in cached_pages if isinstance(p, dict)}
+            for orig_page in needs_ocr:
+                page_info = by_index.get(orig_page)
+                if not page_info:
+                    continue
+                text = (page_info.get("markdown") or page_info.get("text") or "").strip()
+                if text:
+                    ocr_text_by_page[orig_page] = text
+                    segments[pos_map[orig_page]] = text
+            print(f"[LOG] Reused Mistral OCR cache for {len(ocr_text_by_page)} pages.")
+
+        still_needs_ocr = [p for p in needs_ocr if p not in ocr_text_by_page]
+
+        if still_needs_ocr:
+            print(f"[LOG] {len(still_needs_ocr)} pages still require OCR (not in Mistral cache).")
+
+            if len(still_needs_ocr) > 150:
+                still_needs_ocr = still_needs_ocr[:60] + still_needs_ocr[-60:]
+            if len(still_needs_ocr) > 300:
+                still_needs_ocr = still_needs_ocr[:250]
 
             def split_batches_by_size(pages: list[int], max_pages: int = 40) -> list[list[int]]:
                 batches: list[list[int]] = []
@@ -5099,7 +5166,8 @@ def process_pdf(
                             return b""
                         return d.tobytes()
                     finally:
-                        s.close(); d.close()
+                        s.close()
+                        d.close()
 
                 def ensure_under_cap(pg_list: list[int]):
                     if not pg_list:
@@ -5107,22 +5175,38 @@ def process_pdf(
                     pdf_bytes = build_pdf_bytes(pg_list)
                     if not pdf_bytes:
                         return
-                    if len(pdf_bytes) <= 47 * 1024 * 1024:
-                        batches.append(pg_list); return
+                    if len(pdf_bytes) <= 25 * 1024 * 1024:
+                        batches.append(pg_list)
+                        return
+
                     if len(pg_list) == 1:
-                        batches.append(pg_list); return
+                        batches.append(pg_list)
+                        return
                     mid = len(pg_list) // 2
-                    ensure_under_cap(pg_list[:mid]); ensure_under_cap(pg_list[mid:])
+                    ensure_under_cap(pg_list[:mid])
+                    ensure_under_cap(pg_list[mid:])
 
                 for i in range(0, len(pages), max_pages):
                     ensure_under_cap(pages[i:i + max_pages])
+
                 return batches
 
-            client = Mistral(api_key=api_key)
-            all_batches = split_batches_by_size(needs_ocr, max_pages=40)
-            print(f"[LOG] OCR will run in {len(all_batches)} batch(es).")
+            import httpx
+            from mistralai import Mistral
+            from mistralai.utils import BackoffStrategy, RetryConfig
 
-            ocr_text_by_page: dict[int, str] = {}
+            http_client = httpx.Client(
+                timeout=httpx.Timeout(180.0, connect=30.0),
+                limits=httpx.Limits(max_connections=5, max_keepalive_connections=0),
+            )
+
+            client = Mistral(
+                api_key=mistral_key,
+                client=http_client,
+                retry_config=RetryConfig("backoff", BackoffStrategy(1, 50, 1.1, 100), False),
+            )
+            all_batches = split_batches_by_size(still_needs_ocr, max_pages=20)
+            print(f"[LOG] OCR will run in {len(all_batches)} batch(es) for {len(still_needs_ocr)} pages.")
 
             for bi, batch in enumerate(all_batches, 1):
                 src, dst = fitz.open(pdf_path), fitz.open()
@@ -5134,14 +5218,19 @@ def process_pdf(
                             print(f"[WARNING] insert_pdf failed on page {p}: {ex}")
                     else:
                         print(f"[WARNING] Skipping page {p} – out of bounds")
+
                 if dst.page_count == 0:
                     print(f"[WARNING] Batch {bi} had no valid pages; skipping.")
-                    src.close(); dst.close(); continue
-                pdf_bytes = dst.tobytes()
-                src.close(); dst.close()
+                    src.close()
+                    dst.close()
+                    continue
 
-                print(f"[LOG] Uploading OCR batch {bi}/{len(all_batches)} "
-                      f"({len(batch)} pages, {len(pdf_bytes) / 1024 / 1024:.2f} MB)")
+                pdf_bytes = dst.tobytes()
+                src.close()
+                dst.close()
+
+                print(
+                    f"[LOG] Uploading OCR batch {bi}/{len(all_batches)} ({len(batch)} pages, {len(pdf_bytes) / 1024 / 1024:.2f} MB)")
 
                 upload = client.files.upload(
                     file={"file_name": f"ocr_batch_{bi}.pdf", "content": pdf_bytes},
@@ -5161,18 +5250,15 @@ def process_pdf(
                         status = getattr(e, "status", None)
                         if status == 429:
                             print(f"[WARNING] OCR rate limit hit, sleeping for {delay:.2f}s...")
-                            time.sleep(delay); continue
-                        elif status == 400:
-                            if len(batch) > 1:
-                                print("[WARNING] Batch still too large for OCR; splitting and retrying.")
-                                mid = len(batch) // 2
-                                all_batches[bi - 1:bi] = [batch[:mid], batch[mid:]]
-                                ocr_resp = None
-                                break
-                            else:
-                                raise
-                        else:
-                            raise
+                            time.sleep(delay)
+                            continue
+                        if status == 400 and len(batch) > 1:
+                            print("[WARNING] Batch too large for OCR; splitting.")
+                            mid = len(batch) // 2
+                            all_batches[bi - 1:bi] = [batch[:mid], batch[mid:]]
+                            ocr_resp = None
+                            break
+                        raise
 
                 if not ocr_resp:
                     continue
@@ -5180,12 +5266,25 @@ def process_pdf(
                 results = ocr_resp.model_dump().get("pages", [])
                 for i, page_info in enumerate(results):
                     orig_page = batch[i] if i < len(batch) else batch[-1]
-                    text = (page_info.get("markdown") or page_info.get("text", "")).strip()
-                    ocr_text_by_page[orig_page] = text
+                    text = (page_info.get("markdown") or page_info.get("text") or "").strip()
+                    if text:
+                        ocr_text_by_page[orig_page] = text
+                        segments[pos_map[orig_page]] = text
 
-            for orig_page, text in ocr_text_by_page.items():
-                if text:
-                    segments[pos_map[orig_page]] = text
+        missing_after_ocr = [p for p in page_list if not (segments[pos_map[p]] or "").strip()]
+        if missing_after_ocr:
+            print(
+                f"[WARNING] OCR is failing/incomplete for {len(missing_after_ocr)} pages; using llm4 fallback (embedded extraction).")
+
+
+
+            for pidx in missing_after_ocr:
+                # page = fitz.open(pdf_path)[pidx]
+                # text = pymupdf_layout.get_page_text(page, output="markdown")
+                # if (text or "").strip():
+                #     segments[pos_map[pidx]] = text.strip()
+                # else:
+                    print(f"[WARNING] llm4 fallback produced no text on page {pidx}.")
 
         full_md = "\n\n".join(segments)
         # drop images
@@ -5211,17 +5310,27 @@ def process_pdf(
     parse_text = full_md
 
     # Link citations to footnotes (uses original, un-stripped text for flat view)
+    t0 = time.perf_counter()
+    print("[LOG] Stage: link citations/footnotes")
     link_out = link_citations_to_footnotes(full_md, references)
     flat_text = link_out.get("flat_text", full_md)
-    html_full = convert_citations_to_html(flat_text, link_out)
+    t1 = time.perf_counter()
+    print(f"[LOG] Stage complete: link citations/footnotes ({t1 - t0:.2f}s)")
 
-    # --- 4) Parsing & Section Cleaning (from parse_text, not flat) ---
+    print("[LOG] Stage: parse markdown into sections")
+    t2 = time.perf_counter()
     toc, sections, logs_md = parse_markdown_to_final_sections(flat_text)
-    print(f"[LOG] Raw parse created {len(sections)} top-level sections. Cleaning...")
+    t3 = time.perf_counter()
+    print(f"[LOG] Stage complete: parse markdown ({t3 - t2:.2f}s)")
+    print(f"[LOG] Raw parse created {len(sections)} top-level sections. Cleaning.")
 
+    print("[LOG] Stage: extract intro/conclusion + payload")
+    t4 = time.perf_counter()
     intro_data = extract_intro_conclusion_pdf_text(
         full_text=parse_text, raw_secs=sections, processing_log=logs_md, core_sections=core_sections
     )
+    t5 = time.perf_counter()
+    print(f"[LOG] Stage complete: extract intro/conclusion ({t5 - t4:.2f}s)")
 
     payload = intro_data.get("payload")
     summary_log = intro_data.get("summary_log")
@@ -5258,7 +5367,6 @@ def process_pdf(
         result_to_cache.update({
             "full_text": full_md,
             "flat_text": flat_text,
-            "html": html_full,
             "toc": [(1, title) for title in cleaned_sections.keys()],
             "sections": cleaned_sections,
             "process_log": processing_log,
@@ -5267,18 +5375,29 @@ def process_pdf(
             "citations": link_out,
             "summary": summary,
             "payload": payload,
-            "summary_log": summary_log
+            "summary_log": summary_log,
+            "pages_text": segments,
         })
 
+
     else:
+
         result_to_cache.update({
+
             "full_text": full_md,
+
             "flat_text": flat_text,
-            "html": html_full,
+
             "citations": link_out,
+
             "summary": summary,
+
             "payload": payload,
-            "summary_log": summary_log
+
+            "summary_log": summary_log,
+
+            "pages_text": segments,
+
         })
 
     # Always re-write cache with the latest recomputation (even when cache=False)
@@ -5288,7 +5407,6 @@ def process_pdf(
     return {
         "full_text": full_md,
         "flat_text": result_to_cache.get("flat_text", full_md),
-        "html": result_to_cache.get("html", convert_citations_to_html(full_md, link_out)),
         "toc": result_to_cache.get("toc", []),
         "sections": result_to_cache.get("sections", {}),
         "process_log": processing_log,
@@ -5297,23 +5415,10 @@ def process_pdf(
         "citations": result_to_cache.get("citations", {"total": {}, "results": [], "flat_text": full_md}),
         "summary": result_to_cache.get("summary", summary),
         "payload": payload,
-        "summary_log": summary_log
+        "summary_log": summary_log,
+        "pages_text": result_to_cache["pages_text"],
     }
 
-    """
-    Append *markdown* to <project_root>/<filename>.
-    Creates the file and its parent folder if needed.
-    """
-    # location: one level *above* the current .py file  →  project root
-    project_root = Path(__file__).resolve().parent
-    toc_path = project_root / filename          # e.g.  .../TOC.md
-
-    toc_path.parent.mkdir(parents=True, exist_ok=True)  # safe: no error if exists
-
-    with toc_path.open("a", encoding="utf-8") as f:     # 'a' → append, no overwrite
-        f.write(markdown)
-        if not markdown.endswith("\n"):
-            f.write("\n")
 
 def append_toc(markdown: str, filename: str = "TOC.md") -> None:
     """

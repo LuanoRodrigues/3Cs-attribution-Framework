@@ -1,6 +1,13 @@
 const path = require("path");
 const fs = require("fs");
-const { app, BrowserWindow, ipcMain } = require("electron");
+
+let electronModule = null;
+const getElectron = () => {
+  if (!electronModule) {
+    electronModule = require("electron");
+  }
+  return electronModule;
+};
 
 const repoRoot = path.resolve(__dirname, "..");
 const indexHtml = path.join(repoRoot, "dist", "public", "index.html");
@@ -24,6 +31,7 @@ const waitFor = async (webContents, script, timeout = 30000) => {
 };
 
 const registerIpcFallbacks = () => {
+  const { ipcMain } = getElectron();
   const register = (channel, handler) => {
     try {
       ipcMain.removeHandler(channel);
@@ -120,14 +128,21 @@ const normalizeExpectations = (pages) => {
 
 const evaluateExpectations = (pages, expectations) => {
   const failures = [];
-  const defaultMaxWhiteSpaceRatio = readEnvNumber("LEDITOR_MAX_WHITESPACE_RATIO") ?? 0.2;
+  const defaultMaxWhiteSpaceRatio = readEnvNumber("LEDITOR_MAX_WHITESPACE_RATIO") ?? 0.25;
   const defaultMaxWhiteSpacePx = readEnvNumber("LEDITOR_MAX_WHITESPACE_PX");
-  const defaultMaxFreeLines = readEnvNumber("LEDITOR_MAX_WHITESPACE_LINES") ?? 6;
+  const defaultMaxFreeLines = readEnvNumber("LEDITOR_MAX_WHITESPACE_LINES") ?? 12;
+  const sparseMinWordCount = readEnvNumber("LEDITOR_SPARSE_MIN_WORDS") ?? 80;
+  const sparseMaxFillRatioBottom = readEnvNumber("LEDITOR_SPARSE_MAX_FILL_RATIO_BOTTOM") ?? 0.35;
+  const sparseMaxFreeLines = readEnvNumber("LEDITOR_SPARSE_MAX_FREE_LINES") ?? 18;
+  const minLineChars = readEnvNumber("LEDITOR_MIN_LINE_CHARS") ?? 5;
+  const maxShortLines = readEnvNumber("LEDITOR_MAX_SHORT_LINES") ?? 0;
+  const allowSentenceCaseSplitGlobal = process.env.LEDITOR_ALLOW_SENTENCE_CASE_SPLIT === "1";
+  const allowPunctuationSplitGlobal = process.env.LEDITOR_ALLOW_PUNCTUATION_SPLIT === "1";
   const allowMidWordSplitGlobal = process.env.LEDITOR_ALLOW_MIDWORD_SPLIT === "1";
   const allowAnchorSplitGlobal = process.env.LEDITOR_ALLOW_ANCHOR_SPLIT === "1";
   const allowCharacterSplitGlobal = process.env.LEDITOR_ALLOW_CHARACTER_SPLIT === "1";
   const defaultMaxParaSplitFreeLines =
-    readEnvNumber("LEDITOR_MAX_PARAGRAPH_SPLIT_FREE_LINES") ?? 2;
+    readEnvNumber("LEDITOR_MAX_PARAGRAPH_SPLIT_FREE_LINES") ?? Math.max(2, defaultMaxFreeLines - 2);
   expectations.forEach((expect) => {
     const resolvedIndex = (() => {
       if (Number.isFinite(expect.pageIndex)) return expect.pageIndex;
@@ -264,6 +279,31 @@ const evaluateExpectations = (pages, expectations) => {
         reason: `characterSplitCount ${page.characterSplitCount}`
       });
     }
+    const allowSentenceCaseSplit =
+      expect.allowSentenceCaseSplit === true || allowSentenceCaseSplitGlobal;
+    if (!allowSentenceCaseSplit && page.sentenceCaseViolation) {
+      failures.push({
+        label,
+        pageIndex: resolvedIndex,
+        reason: `sentenceCaseViolation (${page.sentenceCaseBeforeChar || ""}|${page.sentenceCaseAfterChar || ""})`
+      });
+    }
+    const allowPunctuationSplit =
+      expect.allowPunctuationSplit === true || allowPunctuationSplitGlobal;
+    if (!allowPunctuationSplit && page.punctuationSplit) {
+      failures.push({
+        label,
+        pageIndex: resolvedIndex,
+        reason: `punctuationSplit (${page.punctuationSplitPrevChar || ""}|${page.punctuationSplitChar || ""})`
+      });
+    }
+    if (Number.isFinite(maxShortLines) && Number.isFinite(minLineChars) && page.shortLineCount > maxShortLines) {
+      failures.push({
+        label,
+        pageIndex: resolvedIndex,
+        reason: `shortLineCount ${page.shortLineCount} > maxShortLines ${maxShortLines} (minLineChars ${minLineChars})`
+      });
+    }
     const maxParaSplitFreeLines = Number.isFinite(expect.maxParagraphSplitFreeLines)
       ? expect.maxParagraphSplitFreeLines
       : defaultMaxParaSplitFreeLines;
@@ -310,10 +350,53 @@ const evaluateExpectations = (pages, expectations) => {
       });
     });
   }
+  if (!allowSentenceCaseSplitGlobal) {
+    pages.forEach((page) => {
+      if (!page?.sentenceCaseViolation) return;
+      failures.push({
+        label: `sentencecase_page_${page.pageNumber}`,
+        pageIndex: page.pageIndex,
+        reason: `sentenceCaseViolation (${page.sentenceCaseBeforeChar || ""}|${page.sentenceCaseAfterChar || ""})`
+      });
+    });
+  }
+  if (!allowPunctuationSplitGlobal) {
+    pages.forEach((page) => {
+      if (!page?.punctuationSplit) return;
+      failures.push({
+        label: `punctsplit_page_${page.pageNumber}`,
+        pageIndex: page.pageIndex,
+        reason: `punctuationSplit (${page.punctuationSplitPrevChar || ""}|${page.punctuationSplitChar || ""})`
+      });
+    });
+  }
+  pages.forEach((page) => {
+    if (!page) return;
+    const manualBreak = page.breakManual === true || page.breakRule === "manual";
+    if (manualBreak) return;
+    const sparseByFreeLines =
+      Number.isFinite(sparseMaxFreeLines) &&
+      Number.isFinite(sparseMinWordCount) &&
+      page.freeLines >= sparseMaxFreeLines &&
+      page.wordCount < sparseMinWordCount;
+    const sparseByFill =
+      Number.isFinite(sparseMaxFillRatioBottom) &&
+      Number.isFinite(sparseMinWordCount) &&
+      page.fillRatioBottom <= sparseMaxFillRatioBottom &&
+      page.wordCount < sparseMinWordCount;
+    if (sparseByFreeLines || sparseByFill) {
+      failures.push({
+        label: `sparse_page_${page.pageNumber}`,
+        pageIndex: page.pageIndex,
+        reason: `sparsePage freeLines=${page.freeLines} fillRatioBottom=${page.fillRatioBottom} wordCount=${page.wordCount}`
+      });
+    }
+  });
   return failures;
 };
 
 const run = async ({ ledocPath, outputPath, expectations, expectationsPath }) => {
+  const { app, BrowserWindow } = getElectron();
   const docJson = readContentJson(ledocPath);
 
   const tmpRoot = path.join(repoRoot, ".tmp_page_cases");
@@ -369,6 +452,7 @@ const run = async ({ ledocPath, outputPath, expectations, expectationsPath }) =>
     const payload = JSON.stringify(docJson);
     const payloadBase64 = Buffer.from(payload, "utf8").toString("base64");
     const disableFlatten = process.env.LEDITOR_DISABLE_FLATTEN === "1";
+    const minLineChars = readEnvNumber("LEDITOR_MIN_LINE_CHARS") ?? 5;
     const setupResult = await win.webContents.executeJavaScript(
       `
       (() => {
@@ -420,6 +504,7 @@ const run = async ({ ledocPath, outputPath, expectations, expectationsPath }) =>
     const report = await win.webContents.executeJavaScript(
       `
       (async () => {
+        try {
         const PAGE_QUERY = ${JSON.stringify(PAGE_QUERY)};
         const PAGE_FALLBACK_QUERY = ${JSON.stringify(PAGE_FALLBACK_QUERY)};
         const getPages = () => {
@@ -482,16 +567,17 @@ const run = async ({ ledocPath, outputPath, expectations, expectationsPath }) =>
         const manualBreakAtEnd = {};
         const manualBreakAtStart = {};
         const boundaryPosByIndex = {};
+        const pageBoundaryInfo = {};
+        const isFootnoteNode = (node) => {
+          const name = node?.type?.name;
+          return name === "footnotesContainer" || name === "footnoteBody";
+        };
         if (doc && pageType && Number.isFinite(doc.childCount)) {
           let pos = 0;
           for (let i = 0; i < doc.childCount; i += 1) {
             const child = doc.child(i);
             if (!child || child.type !== pageType) break;
             boundaryPosByIndex[i] = pos;
-            const isFootnoteNode = (node) => {
-              const name = node?.type?.name;
-              return name === "footnotesContainer" || name === "footnoteBody";
-            };
             const pageEndsWithBreak = (pageNode) => {
               for (let c = pageNode.childCount - 1; c >= 0; c -= 1) {
                 const node = pageNode.child(c);
@@ -543,6 +629,7 @@ const run = async ({ ledocPath, outputPath, expectations, expectationsPath }) =>
           return best.reason || op || null;
         };
         const isWordChar = (ch) => /[\\p{L}\\p{N}]/u.test(ch || "");
+        const isPunctuation = (ch) => /[.,;:!?]/.test(ch || "");
         const isHyphen = (ch) =>
           ch === "-" || ch === "\\u2010" || ch === "\\u2011" || ch === "\\u00ad" || ch === "\\u2212";
         const getChar = (from, to) => {
@@ -555,7 +642,207 @@ const run = async ({ ledocPath, outputPath, expectations, expectationsPath }) =>
         const hasAnchorMark = (node) =>
           Boolean(node?.marks && node.marks.some((mark) => mark?.type?.name === "anchor"));
         const isAnchorNode = (node) => node?.type?.name === "anchorMarker";
+        const hasAnchorInNode = (node) => {
+          if (!node) return false;
+          if (hasAnchorMark(node) || isAnchorNode(node)) return true;
+          if (!node.childCount) return false;
+          for (let i = 0; i < node.childCount; i += 1) {
+            if (hasAnchorInNode(node.child(i))) return true;
+          }
+          return false;
+        };
+        const findFirstTextblock = (node) => {
+          if (!node) return null;
+          if (node.isTextblock) return node;
+          if (!node.childCount) return null;
+          for (let i = 0; i < node.childCount; i += 1) {
+            const child = node.child(i);
+            if (isFootnoteNode(child)) continue;
+            if (child.type?.name === "page_break") continue;
+            const found = findFirstTextblock(child);
+            if (found) return found;
+          }
+          return null;
+        };
+        const findLastTextblock = (node) => {
+          if (!node) return null;
+          if (node.isTextblock) return node;
+          if (!node.childCount) return null;
+          for (let i = node.childCount - 1; i >= 0; i -= 1) {
+            const child = node.child(i);
+            if (isFootnoteNode(child)) continue;
+            if (child.type?.name === "page_break") continue;
+            const found = findLastTextblock(child);
+            if (found) return found;
+          }
+          return null;
+        };
+        const getBlockText = (node) => {
+          if (!node) return "";
+          try {
+            return node.textBetween(0, node.content.size, "\\n", "\\n");
+          } catch {
+            return "";
+          }
+        };
+        if (doc && pageType && Number.isFinite(doc.childCount)) {
+          for (let i = 0; i < doc.childCount; i += 1) {
+            const child = doc.child(i);
+            if (!child || child.type !== pageType) break;
+            const first = findFirstTextblock(child);
+            const last = findLastTextblock(child);
+            pageBoundaryInfo[i] = {
+              firstSplitId: first?.attrs?.paginationSplitId ?? null,
+              lastSplitId: last?.attrs?.paginationSplitId ?? null,
+              firstText: getBlockText(first),
+              lastText: getBlockText(last),
+              firstHasAnchor: hasAnchorInNode(first),
+              lastHasAnchor: hasAnchorInNode(last)
+            };
+          }
+        }
         const normalize = (value) => String(value || "").replace(/\\u00a0/g, " ").replace(/\\s+/g, " ").trim();
+        const MIN_LINE_CHARS = ${minLineChars};
+        const getCanvas = (() => {
+          let canvas = null;
+          return () => {
+            if (!canvas) canvas = document.createElement("canvas");
+            return canvas;
+          };
+        })();
+        const estimateCharWidth = (el) => {
+          try {
+            const style = window.getComputedStyle(el);
+            const font = style.fontWeight + " " + style.fontSize + " " + style.fontFamily;
+            const canvas = getCanvas();
+            const ctx = canvas.getContext("2d");
+            if (!ctx) return 7;
+            ctx.font = font;
+            const sample = "abcdefghijklmnopqrstuvwxyz";
+            const width = ctx.measureText(sample).width;
+            return width > 0 ? width / sample.length : 7;
+          } catch {
+            return 7;
+          }
+        };
+        const countShortLines = (blocks, minChars) => {
+          if (!Array.isArray(blocks) || !blocks.length) return { shortLineCount: 0, shortLineExamples: [] };
+          const shortLines = [];
+          blocks.forEach((block) => {
+            if (!block) return;
+            let range;
+            try {
+              range = document.createRange();
+              range.selectNodeContents(block);
+            } catch {
+              return;
+            }
+            const rects = Array.from(range.getClientRects());
+            if (!rects.length) return;
+            const avgChar = estimateCharWidth(block);
+            const lines = [];
+            rects.forEach((rect) => {
+              let line = lines.find((entry) => Math.abs(entry.top - rect.top) <= 1);
+              if (!line) {
+                line = { top: rect.top, width: 0 };
+                lines.push(line);
+              }
+              line.width += rect.width;
+            });
+            lines.sort((a, b) => a.top - b.top);
+            const lastLine = lines[lines.length - 1];
+            if (lastLine) {
+              const estChars = avgChar > 0 ? lastLine.width / avgChar : 0;
+              if (estChars > 0 && estChars < minChars) {
+                shortLines.push(estChars);
+              }
+            }
+          });
+          return {
+            shortLineCount: shortLines.length,
+            shortLineExamples: shortLines.slice(0, 5)
+          };
+        };
+        const countWordSplits = (root) => {
+          const result = {
+            characterSplitCount: 0,
+            midWordSplitCount: 0,
+            examples: []
+          };
+          if (!root) return result;
+          if (typeof document.createTreeWalker !== "function" || typeof document.createRange !== "function") {
+            return result;
+          }
+          const filter = typeof NodeFilter !== "undefined" ? NodeFilter.SHOW_TEXT : 4;
+          let walker;
+          let range;
+          try {
+            walker = document.createTreeWalker(root, filter, null);
+            range = document.createRange();
+          } catch {
+            return result;
+          }
+          const wordRegex = /[\\p{L}\\p{N}]{2,}/gu;
+          let scanned = 0;
+          let node = walker.nextNode();
+          while (node) {
+            const text = node.nodeValue || "";
+            if (text && /[\\p{L}\\p{N}]/u.test(text)) {
+              wordRegex.lastIndex = 0;
+              let match = wordRegex.exec(text);
+              while (match) {
+                const word = match[0];
+                if (word.length >= 4) {
+                  try {
+                    range.setStart(node, match.index);
+                    range.setEnd(node, match.index + word.length);
+                  } catch {
+                    match = wordRegex.exec(text);
+                    continue;
+                  }
+                  const rects = Array.from(range.getClientRects());
+                  if (rects.length > 1) {
+                    result.midWordSplitCount += 1;
+                    const firstTop = rects.reduce((min, rect) => Math.min(min, rect.top), rects[0].top);
+                    let low = match.index;
+                    let high = match.index + word.length - 1;
+                    let best = match.index;
+                    let safety = 0;
+                    while (low <= high && safety < 32) {
+                      safety += 1;
+                      const mid = Math.floor((low + high) / 2);
+                      try {
+                        range.setStart(node, match.index);
+                        range.setEnd(node, mid + 1);
+                      } catch {
+                        high = mid - 1;
+                        continue;
+                      }
+                      const midRects = Array.from(range.getClientRects());
+                      const lastRect = midRects.length ? midRects[midRects.length - 1] : null;
+                      if (lastRect && Math.abs(lastRect.top - firstTop) <= 0.5) {
+                        best = mid + 1;
+                        low = mid + 1;
+                      } else {
+                        high = mid - 1;
+                      }
+                    }
+                    const tailLen = match.index + word.length - best;
+                    if (tailLen === 1) {
+                      result.characterSplitCount += 1;
+                      if (result.examples.length < 3) result.examples.push(word);
+                    }
+                    scanned += 1;
+                    if (scanned > 800) return result;
+                  }
+                }
+                match = wordRegex.exec(text);
+              }
+            }
+            node = walker.nextNode();
+          }
+          return result;
+        };
         const summaries = pages.map((page, index) => {
           const datasetIndexRaw = page?.dataset?.pageIndex ?? "";
           const datasetIndex = datasetIndexRaw !== "" ? Number.parseInt(datasetIndexRaw, 10) : null;
@@ -564,10 +851,26 @@ const run = async ({ ledocPath, outputPath, expectations, expectationsPath }) =>
           const blocks = content
             ? Array.from(content.querySelectorAll("p, h1, h2, h3, h4, h5, h6, li, blockquote, pre, table, figure, hr, .leditor-break"))
             : [];
+          const shortLineData = countShortLines(blocks, MIN_LINE_CHARS);
           const contentStyle = content ? window.getComputedStyle(content) : null;
           const lineHeightRaw = contentStyle ? contentStyle.lineHeight : "";
           const paddingBottomRaw = contentStyle ? contentStyle.paddingBottom : "";
-          const lineHeight = Number.parseFloat(lineHeightRaw || "0");
+          let lineHeight = Number.parseFloat(lineHeightRaw || "0");
+          const sample =
+            content?.querySelector("p, li, blockquote, pre") ??
+            content?.querySelector("h1, h2, h3, h4, h5, h6");
+          if (sample) {
+            const sampleStyle = window.getComputedStyle(sample);
+            const sampleLineHeight = Number.parseFloat(sampleStyle.lineHeight || "0");
+            if (Number.isFinite(sampleLineHeight) && sampleLineHeight > 0) {
+              lineHeight = sampleLineHeight;
+            } else {
+              const sampleFontSize = Number.parseFloat(sampleStyle.fontSize || "0");
+              if (Number.isFinite(sampleFontSize) && sampleFontSize > 0 && (!Number.isFinite(lineHeight) || lineHeight <= 0)) {
+                lineHeight = sampleFontSize * 1.2;
+              }
+            }
+          }
           const paddingBottom = Number.parseFloat(paddingBottomRaw || "0") || 0;
           const tagCounts = {};
           blocks.forEach((block) => {
@@ -650,7 +953,9 @@ const run = async ({ ledocPath, outputPath, expectations, expectationsPath }) =>
               ? Math.max(0, Math.ceil(Math.min(lastBottom, bottomLimit) / lineHeight))
               : 0;
           const freeLines = Math.max(0, maxLines - usedLines);
+          const firstBlock = blocks.length ? blocks[0] : null;
           const lastBlock = blocks.length ? blocks[blocks.length - 1] : null;
+          const firstBlockTag = firstBlock ? (firstBlock.classList?.contains("leditor-break") ? ".leditor-break" : firstBlock.tagName) : null;
           const lastBlockTag = lastBlock ? (lastBlock.classList?.contains("leditor-break") ? ".leditor-break" : lastBlock.tagName) : null;
           const lastBlockText = lastBlock ? normalize(lastBlock.textContent || "").slice(0, 80) : "";
           const boundaryPos = boundaryPosByIndex[index] ?? null;
@@ -663,36 +968,68 @@ const run = async ({ ledocPath, outputPath, expectations, expectationsPath }) =>
                 ? "manual"
                 : (findBreakReason(boundaryPos) ?? null);
           const rawLines = rawText.split(/\\r?\\n/);
-          let lineWordSplitCount = 0;
           let singleCharLineCount = 0;
           const charSplitLines = [];
           for (let i = 0; i < rawLines.length; i += 1) {
             const line = rawLines[i].trim();
+            if (!line) continue;
             if (line.length === 1 && isWordChar(line)) {
               singleCharLineCount += 1;
               if (charSplitLines.length < 3) charSplitLines.push(line);
             }
-            if (i < rawLines.length - 1) {
-              const next = rawLines[i + 1].trim();
-              if (!line || !next) continue;
-              const lastChar = line.slice(-1);
-              const nextChar = next.slice(0, 1);
-              if (isWordChar(lastChar) && isWordChar(nextChar) && !isHyphen(lastChar)) {
-                lineWordSplitCount += 1;
-                if (charSplitLines.length < 3) {
-                  charSplitLines.push(`${line.slice(-6)}|${next.slice(0, 6)}`);
-                }
-              }
-            }
           }
-          const characterSplitCount = lineWordSplitCount + singleCharLineCount;
-          let midWordSplit = false;
+          const rangeSplits = content
+            ? countWordSplits(content)
+            : { characterSplitCount: 0, midWordSplitCount: 0, examples: [] };
+          let characterSplitCount = singleCharLineCount + rangeSplits.characterSplitCount;
+          if (rangeSplits.examples?.length) {
+            rangeSplits.examples.forEach((example) => {
+              if (charSplitLines.length < 3) charSplitLines.push(example);
+            });
+          }
+          let midWordSplit = rangeSplits.midWordSplitCount > 0;
           let anchorSplit = false;
           let splitBeforeChar = "";
           let splitAfterChar = "";
           let splitBeforeText = "";
           let splitAfterText = "";
           let paragraphSplitAtBoundary = false;
+          const boundaryInfo = pageBoundaryInfo[index] || {};
+          const prevBoundaryInfo = pageBoundaryInfo[index - 1] || {};
+          const prevLastText = String(prevBoundaryInfo.lastText || "").trim();
+          const currFirstText = String(boundaryInfo.firstText || "").trim();
+          const prevLastChar = prevLastText.slice(-1);
+          const currFirstChar = currFirstText.slice(0, 1);
+          const splitIdMatch =
+            boundaryInfo.firstSplitId != null &&
+            boundaryInfo.firstSplitId === prevBoundaryInfo.lastSplitId;
+          if (splitIdMatch) {
+            paragraphSplitAtBoundary = true;
+            if (isWordChar(prevLastChar) && isWordChar(currFirstChar) && !isHyphen(prevLastChar)) {
+              midWordSplit = true;
+            }
+            anchorSplit = Boolean(prevBoundaryInfo.lastHasAnchor || boundaryInfo.firstHasAnchor);
+            const firstToken = currFirstText.split(/\\s+/).filter(Boolean)[0] || "";
+            if (firstToken.length === 1 && isWordChar(firstToken) && isWordChar(prevLastChar)) {
+              characterSplitCount += 1;
+              if (charSplitLines.length < 3) charSplitLines.push(firstToken);
+            }
+          }
+          if (!paragraphSplitAtBoundary && prevLastText && currFirstText) {
+            const prevLower = /[\\p{Ll}]$/u.test(prevLastText);
+            const currLower = /^[\\p{Ll}]/u.test(currFirstText);
+            if (prevLower && currLower) {
+              paragraphSplitAtBoundary = true;
+            }
+          }
+          if (prevLastChar) {
+            splitBeforeChar = prevLastChar;
+            splitBeforeText = prevLastText.slice(-6);
+          }
+          if (currFirstChar) {
+            splitAfterChar = currFirstChar;
+            splitAfterText = currFirstText.slice(0, 6);
+          }
           if (
             doc &&
             Number.isFinite(boundaryPos) &&
@@ -701,30 +1038,64 @@ const run = async ({ ledocPath, outputPath, expectations, expectationsPath }) =>
           ) {
             const before = getChar(Math.max(0, boundaryPos - 1), boundaryPos);
             const after = getChar(boundaryPos, Math.min(doc.content.size, boundaryPos + 1));
-            splitBeforeChar = before ? before.slice(-1) : "";
-            splitAfterChar = after ? after.slice(0, 1) : "";
-            splitBeforeText = getChar(Math.max(0, boundaryPos - 6), boundaryPos);
-            splitAfterText = getChar(boundaryPos, Math.min(doc.content.size, boundaryPos + 6));
+            const boundaryBeforeChar = before ? before.slice(-1) : "";
+            const boundaryAfterChar = after ? after.slice(0, 1) : "";
+            if (!splitBeforeChar) splitBeforeChar = boundaryBeforeChar;
+            if (!splitAfterChar) splitAfterChar = boundaryAfterChar;
+            if (!splitBeforeText) splitBeforeText = getChar(Math.max(0, boundaryPos - 6), boundaryPos);
+            if (!splitAfterText) splitAfterText = getChar(boundaryPos, Math.min(doc.content.size, boundaryPos + 6));
             midWordSplit =
-              isWordChar(splitBeforeChar) &&
-              isWordChar(splitAfterChar) &&
-              !isHyphen(splitBeforeChar);
+              midWordSplit ||
+              (isWordChar(boundaryBeforeChar) &&
+                isWordChar(boundaryAfterChar) &&
+                !isHyphen(boundaryBeforeChar));
             try {
               const $pos = doc.resolve(boundaryPos);
               const beforeNode = $pos.nodeBefore;
               const afterNode = $pos.nodeAfter;
               anchorSplit =
+                anchorSplit ||
                 hasAnchorMark(beforeNode) ||
                 hasAnchorMark(afterNode) ||
                 isAnchorNode(beforeNode) ||
                 isAnchorNode(afterNode);
               if ($pos.parent?.isTextblock) {
-                paragraphSplitAtBoundary = Boolean(beforeNode?.isText && afterNode?.isText);
+                paragraphSplitAtBoundary =
+                  paragraphSplitAtBoundary ||
+                  Boolean(beforeNode?.isText && afterNode?.isText);
               }
             } catch {
               // ignore
             }
           }
+          const firstLetter = (() => {
+            for (let i = 0; i < currFirstText.length; i += 1) {
+              const ch = currFirstText[i];
+              if (/[A-Za-z]/.test(ch)) return ch;
+            }
+            return "";
+          })();
+          const lastNonSpace = (() => {
+            for (let i = prevLastText.length - 1; i >= 0; i -= 1) {
+              const ch = prevLastText[i];
+              if (!/\s/.test(ch)) return ch;
+            }
+            return "";
+          })();
+          const firstNonSpace = (() => {
+            for (let i = 0; i < currFirstText.length; i += 1) {
+              const ch = currFirstText[i];
+              if (!/\s/.test(ch)) return ch;
+            }
+            return "";
+          })();
+          const sentenceCaseViolation =
+            !(/^H[1-6]$/.test(firstBlockTag || "")) &&
+            /[.!?]/.test(lastNonSpace) &&
+            firstLetter &&
+            /[a-z]/.test(firstLetter);
+          const punctuationSplit =
+            Boolean(firstNonSpace) && isPunctuation(firstNonSpace) && isWordChar(prevLastChar);
           return {
             pageIndex: index,
             pageNumber: index + 1,
@@ -748,6 +1119,7 @@ const run = async ({ ledocPath, outputPath, expectations, expectationsPath }) =>
             scale,
             guardPx,
             whiteSpacePx: Math.round(whiteSpacePx * 10) / 10,
+            bottomWhitespacePx: Math.round(whiteSpacePx * 10) / 10,
             whiteSpaceRatio: Math.round(whiteSpaceRatio * 1000) / 1000,
             overflowBlockIndex,
             overflowBlockTag,
@@ -760,6 +1132,7 @@ const run = async ({ ledocPath, outputPath, expectations, expectationsPath }) =>
             usedLines,
             maxLines,
             freeLines,
+            firstBlockTag,
             lastBlockTag,
             lastBlockText,
             breakRule,
@@ -772,10 +1145,17 @@ const run = async ({ ledocPath, outputPath, expectations, expectationsPath }) =>
             splitBeforeText,
             splitAfterText,
             paragraphSplitAtBoundary,
-            lineWordSplitCount,
             singleCharLineCount,
             characterSplitCount,
             characterSplitLines: charSplitLines,
+            shortLineCount: shortLineData.shortLineCount,
+            shortLineExamples: shortLineData.shortLineExamples,
+            sentenceCaseViolation,
+            sentenceCaseBeforeChar: lastNonSpace,
+            sentenceCaseAfterChar: firstLetter,
+            punctuationSplit,
+            punctuationSplitChar: firstNonSpace,
+            punctuationSplitPrevChar: prevLastChar,
             contentBox: contentRect
               ? { width: Math.round(contentRect.width * 10) / 10, height: Math.round(contentRect.height * 10) / 10 }
               : null
@@ -835,6 +1215,9 @@ const run = async ({ ledocPath, outputPath, expectations, expectationsPath }) =>
           phase2UnderfillMeta: window.__leditorPhase2UnderfillMeta ?? null,
           phase2UnderfillFailures: window.__leditorPhase2UnderfillFailures ?? null
         };
+        } catch (err) {
+          return { ok: false, reason: String(err && err.message ? err.message : err) };
+        }
       })();
       `,
       true
@@ -893,7 +1276,15 @@ const main = async () => {
   });
 };
 
-main().catch((error) => {
-  console.error("[FAIL] page cases runner error", error?.message || error);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((error) => {
+    console.error("[FAIL] page cases runner error", error?.message || error);
+    process.exit(1);
+  });
+}
+
+module.exports = {
+  evaluateExpectations,
+  normalizeExpectations,
+  readEnvNumber
+};

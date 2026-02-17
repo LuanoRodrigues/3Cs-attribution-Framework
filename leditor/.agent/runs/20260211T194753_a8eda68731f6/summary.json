@@ -1,0 +1,185 @@
+{
+  "header": {
+    "runId": "20260211T194753_a8eda68731f6",
+    "workspaceId": "eec3b011-45d6-4a36-9848-1ffd6f0bb7ff",
+    "workspaceDir": "/home/pantera/projects/TEIA/leditor",
+    "startedAt": 1770839273957,
+    "requestedAgent": "auto",
+    "selectedAgent": "build",
+    "capabilities": {
+      "can_edit": true,
+      "can_exec": true,
+      "can_delete": false,
+      "writeScope": [
+        "src",
+        "packages",
+        "tests",
+        "docs"
+      ]
+    },
+    "backend": "codex_exec"
+  },
+  "status": "completed",
+  "finishedAt": 1770840496149,
+  "durationMs": 1222192,
+  "turns": 1,
+  "toolCalls": 1,
+  "finalOutputChars": 510,
+  "pendingPlanExecution": {
+    "plans": 2,
+    "runnable": 2,
+    "concurrency": 3,
+    "ok": 2,
+    "failed": 0,
+    "running": 0,
+    "queued": 0,
+    "archived": 2,
+    "recoveredRunning": 0,
+    "autoClosedRuns": 0,
+    "missingPlans": 0,
+    "results": [
+      {
+        "planPath": "Plans/pending/plan_20260210T235127_41a3bbcbda4d.md",
+        "agent": "build",
+        "ok": true,
+        "runId": "20260211T194753_3558d76202b0",
+        "archivedPath": "Plans/legacy/plan_20260210T235127_41a3bbcbda4d.md"
+      },
+      {
+        "planPath": "Plans/pending/plan_20260211T081515_227acb861877.md",
+        "agent": "build",
+        "ok": true,
+        "runId": "20260211T195954_b20398e18718",
+        "archivedPath": "Plans/legacy/plan_20260211T081515_227acb861877.md"
+      }
+    ]
+  },
+  "verify": {
+    "status": "passed",
+    "command": "pending plan batch execution",
+    "exitCode": 0
+  },
+  "phase": "tools",
+  "phaseUpdatedAt": 1770840496120,
+  "phaseTrail": [
+    "started",
+    "routed",
+    "model",
+    "tools"
+  ],
+  "phaseTimeline": [
+    {
+      "phase": "started",
+      "status": "running",
+      "ts": 1770839273961,
+      "detail": "run started (auto)"
+    },
+    {
+      "phase": "routed",
+      "status": "running",
+      "ts": 1770839273972,
+      "detail": "pending plan batch routed (parallel)"
+    },
+    {
+      "phase": "model",
+      "status": "running",
+      "ts": 1770839273975,
+      "detail": "pending plan batch planning"
+    },
+    {
+      "phase": "tools",
+      "status": "running",
+      "ts": 1770839273979,
+      "detail": "pending plan batch queued",
+      "progress": {
+        "current": 0,
+        "total": 2,
+        "completed": 0,
+        "failed": 0,
+        "running": 0,
+        "queued": 2,
+        "label": "pending plan batch queued"
+      }
+    },
+    {
+      "phase": "tools",
+      "status": "running",
+      "ts": 1770839273989,
+      "detail": "running Plans/pending/plan_20260210T235127_41a3bbcbda4d.md",
+      "progress": {
+        "current": 0,
+        "total": 2,
+        "completed": 0,
+        "failed": 0,
+        "running": 1,
+        "queued": 1,
+        "label": "running Plans/pending/plan_20260210T235127_41a3bbcbda4d.md",
+        "etaMs": 10
+      }
+    },
+    {
+      "phase": "tools",
+      "status": "running",
+      "ts": 1770839994062,
+      "detail": "completed Plans/pending/plan_20260210T235127_41a3bbcbda4d.md",
+      "progress": {
+        "current": 1,
+        "total": 2,
+        "completed": 1,
+        "failed": 0,
+        "running": 0,
+        "queued": 1,
+        "label": "completed Plans/pending/plan_20260210T235127_41a3bbcbda4d.md",
+        "etaMs": 720083
+      }
+    },
+    {
+      "phase": "tools",
+      "status": "running",
+      "ts": 1770839994067,
+      "detail": "running Plans/pending/plan_20260211T081515_227acb861877.md",
+      "progress": {
+        "current": 1,
+        "total": 2,
+        "completed": 1,
+        "failed": 0,
+        "running": 1,
+        "queued": 0,
+        "label": "running Plans/pending/plan_20260211T081515_227acb861877.md",
+        "etaMs": 720088
+      }
+    },
+    {
+      "phase": "tools",
+      "status": "running",
+      "ts": 1770840496114,
+      "detail": "completed Plans/pending/plan_20260211T081515_227acb861877.md",
+      "progress": {
+        "current": 2,
+        "total": 2,
+        "completed": 2,
+        "failed": 0,
+        "running": 0,
+        "queued": 0,
+        "label": "completed Plans/pending/plan_20260211T081515_227acb861877.md",
+        "etaMs": 0
+      }
+    },
+    {
+      "phase": "tools",
+      "status": "running",
+      "ts": 1770840496120,
+      "detail": "pending plan batch finished",
+      "progress": {
+        "current": 2,
+        "total": 2,
+        "completed": 2,
+        "failed": 0,
+        "running": 0,
+        "queued": 0,
+        "label": "pending plan batch finished",
+        "etaMs": 0
+      }
+    }
+  ]
+}

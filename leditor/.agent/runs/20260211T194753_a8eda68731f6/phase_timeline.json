@@ -1,0 +1,136 @@
+{
+  "runId": "20260211T194753_a8eda68731f6",
+  "workspaceId": "eec3b011-45d6-4a36-9848-1ffd6f0bb7ff",
+  "updatedAt": 1770840496151,
+  "items": [
+    {
+      "phase": "started",
+      "status": "running",
+      "ts": 1770839273961,
+      "detail": "run started (auto)"
+    },
+    {
+      "phase": "routed",
+      "status": "running",
+      "ts": 1770839273972,
+      "detail": "pending plan batch routed (parallel)"
+    },
+    {
+      "phase": "model",
+      "status": "running",
+      "ts": 1770839273975,
+      "detail": "pending plan batch planning"
+    },
+    {
+      "phase": "tools",
+      "status": "running",
+      "ts": 1770839273979,
+      "detail": "pending plan batch queued",
+      "progress": {
+        "current": 0,
+        "total": 2,
+        "completed": 0,
+        "failed": 0,
+        "running": 0,
+        "queued": 2,
+        "label": "pending plan batch queued"
+      }
+    },
+    {
+      "phase": "tools",
+      "status": "running",
+      "ts": 1770839273989,
+      "detail": "running Plans/pending/plan_20260210T235127_41a3bbcbda4d.md",
+      "progress": {
+        "current": 0,
+        "total": 2,
+        "completed": 0,
+        "failed": 0,
+        "running": 1,
+        "queued": 1,
+        "label": "running Plans/pending/plan_20260210T235127_41a3bbcbda4d.md",
+        "etaMs": 10
+      }
+    },
+    {
+      "phase": "tools",
+      "status": "running",
+      "ts": 1770839994062,
+      "detail": "completed Plans/pending/plan_20260210T235127_41a3bbcbda4d.md",
+      "progress": {
+        "current": 1,
+        "total": 2,
+        "completed": 1,
+        "failed": 0,
+        "running": 0,
+        "queued": 1,
+        "label": "completed Plans/pending/plan_20260210T235127_41a3bbcbda4d.md",
+        "etaMs": 720083
+      }
+    },
+    {
+      "phase": "tools",
+      "status": "running",
+      "ts": 1770839994067,
+      "detail": "running Plans/pending/plan_20260211T081515_227acb861877.md",
+      "progress": {
+        "current": 1,
+        "total": 2,
+        "completed": 1,
+        "failed": 0,
+        "running": 1,
+        "queued": 0,
+        "label": "running Plans/pending/plan_20260211T081515_227acb861877.md",
+        "etaMs": 720088
+      }
+    },
+    {
+      "phase": "tools",
+      "status": "running",
+      "ts": 1770840496114,
+      "detail": "completed Plans/pending/plan_20260211T081515_227acb861877.md",
+      "progress": {
+        "current": 2,
+        "total": 2,
+        "completed": 2,
+        "failed": 0,
+        "running": 0,
+        "queued": 0,
+        "label": "completed Plans/pending/plan_20260211T081515_227acb861877.md",
+        "etaMs": 0
+      }
+    },
+    {
+      "phase": "tools",
+      "status": "running",
+      "ts": 1770840496120,
+      "detail": "pending plan batch finished",
+      "progress": {
+        "current": 2,
+        "total": 2,
+        "completed": 2,
+        "failed": 0,
+        "running": 0,
+        "queued": 0,
+        "label": "pending plan batch finished",
+        "etaMs": 0
+      }
+    },
+    {
+      "phase": "completed",
+      "status": "completed",
+      "ts": 1770840496151,
+      "detail": "pending plan batch completed",
+      "progress": {
+        "current": 2,
+        "total": 2,
+        "completed": 2,
+        "failed": 0,
+        "running": 0,
+        "queued": 0,
+        "label": "pending plan batch finished",
+        "etaMs": 0
+      }
+    }
+  ]
+}

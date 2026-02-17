@@ -1,0 +1,36 @@
+{
+  "header": {
+    "runId": "20260211T195954_b20398e18718",
+    "workspaceId": "eec3b011-45d6-4a36-9848-1ffd6f0bb7ff",
+    "workspaceDir": "/home/pantera/projects/TEIA/leditor",
+    "startedAt": 1770839994070,
+    "requestedAgent": "build",
+    "selectedAgent": "build",
+    "capabilities": {
+      "can_edit": true,
+      "can_exec": true,
+      "can_delete": false,
+      "writeScope": [
+        "src",
+        "packages",
+        "tests",
+        "docs"
+      ]
+    },
+    "backend": "codex_exec"
+  },
+  "turns": 0,
+  "toolCalls": 0,
+  "inputItems": [],
+  "capabilities": {
+    "can_edit": true,
+    "can_exec": true,
+    "can_delete": false,
+    "writeScope": [
+      "src",
+      "packages",
+      "tests",
+      "docs"
+    ]
+  }
+}

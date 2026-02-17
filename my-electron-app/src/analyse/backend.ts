@@ -309,6 +309,94 @@ function streamJsonArray(filePath: string, maxItems = 20000): Record<string, unk
   return out;
 }
 
+function scanJsonArrayObjects(
+  filePath: string,
+  onObject: (entry: Record<string, unknown>, index: number) => void
+): void {
+  const fd = fs.openSync(filePath, "r");
+  const chunkSize = 4 * 1024 * 1024;
+  const buffer = Buffer.alloc(chunkSize);
+  let buf = "";
+  let inString = false;
+  let escape = false;
+  let depth = 0;
+  let index = 0;
+
+  try {
+    while (true) {
+      const bytesRead = fs.readSync(fd, buffer, 0, chunkSize, null);
+      if (bytesRead === 0) break;
+      const chunk = buffer.toString("utf8", 0, bytesRead);
+      for (const ch of chunk) {
+        if (inString) {
+          buf += ch;
+          if (escape) {
+            escape = false;
+          } else if (ch === "\\") {
+            escape = true;
+          } else if (ch === "\"") {
+            inString = false;
+          }
+          continue;
+        }
+        if (ch === "\"") {
+          inString = true;
+          buf += ch;
+          continue;
+        }
+        if (ch === "{") {
+          depth += 1;
+          buf += ch;
+          continue;
+        }
+        if (ch === "}") {
+          depth -= 1;
+          buf += ch;
+          if (depth === 0) {
+            try {
+              const parsed = JSON.parse(buf);
+              if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+                onObject(parsed as Record<string, unknown>, index);
+                index += 1;
+              }
+            } catch {
+              // ignore malformed chunks and continue scanning
+            }
+            buf = "";
+          }
+          continue;
+        }
+        if (depth > 0) {
+          buf += ch;
+        }
+      }
+    }
+  } finally {
+    fs.closeSync(fd);
+  }
+}
+
+function countJsonArrayItems(filePath: string): number {
+  let count = 0;
+  scanJsonArrayObjects(filePath, () => {
+    count += 1;
+  });
+  return count;
+}
+
+function summariseBatchFile(filePath: string): { batchCount: number; payloadCount: number } {
+  const groups = new Set<string>();
+  let payloadCount = 0;
+  scanJsonArrayObjects(filePath, (entry, idx) => {
+    payloadCount += 1;
+    const rq = safeString(entry.rq_question ?? entry.rq);
+    const over = safeString(entry.overarching_theme ?? entry.gold_theme ?? entry.theme ?? entry.potential_theme);
+    const key = `${rq}::${over}` || `batch_${idx + 1}`;
+    groups.add(key);
+  });
+  return { batchCount: groups.size, payloadCount };
+}
+
 function streamJsonArrayPage(
   filePath: string,
   offset: number,
@@ -1698,12 +1786,52 @@ export async function summariseRun(runPath: string): Promise<RunMetrics> {
     return { batches: 0, sectionsR1: 0, sectionsR2: 0, sectionsR3: 0 };
   }
   console.info("[analyse][summariseRun]", { runPath });
-  const [batches, s1, s2, s3] = await Promise.all([
-    loadBatches(runPath).then((v) => v.length).catch(() => 0),
-    loadSections(runPath, "r1").then((v) => v.length).catch(() => 0),
-    loadSections(runPath, "r2").then((v) => v.length).catch(() => 0),
-    loadSections(runPath, "r3").then((v) => v.length).catch(() => 0),
-  ]);
+  const datasets = buildDatasetHandles(runPath);
+
+  let batches = 0;
+  let fallbackR1Count = 0;
+  if (datasets.batches) {
+    try {
+      const summary = summariseBatchFile(datasets.batches);
+      batches = summary.batchCount;
+      fallbackR1Count = summary.payloadCount;
+    } catch (error) {
+      console.warn("[analyse][summariseRun][batches-count-failed]", { runPath, error: String(error) });
+    }
+  }
+
+  const s1 = (() => {
+    if (datasets.sectionsR1) {
+      try {
+        return countJsonArrayItems(datasets.sectionsR1);
+      } catch (error) {
+        console.warn("[analyse][summariseRun][r1-count-failed]", { runPath, error: String(error) });
+        return 0;
+      }
+    }
+    return fallbackR1Count;
+  })();
+
+  const s2 = (() => {
+    if (!datasets.sectionsR2) return 0;
+    try {
+      return countJsonArrayItems(datasets.sectionsR2);
+    } catch (error) {
+      console.warn("[analyse][summariseRun][r2-count-failed]", { runPath, error: String(error) });
+      return 0;
+    }
+  })();
+
+  const s3 = (() => {
+    if (!datasets.sectionsR3) return 0;
+    try {
+      return countJsonArrayItems(datasets.sectionsR3);
+    } catch (error) {
+      console.warn("[analyse][summariseRun][r3-count-failed]", { runPath, error: String(error) });
+      return 0;
+    }
+  })();
+
   return {
     batches,
     sectionsR1: s1,
