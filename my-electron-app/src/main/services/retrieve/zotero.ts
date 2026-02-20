@@ -34,6 +34,12 @@ export interface ZoteroItemPreview {
   attachments?: number;
   pdfs?: number;
   hasPdf?: boolean;
+  zoteroSelectUrl?: string;
+  firstPdfKey?: string;
+  firstPdfTitle?: string;
+  firstPdfPath?: string;
+  notes?: number;
+  annotations?: number;
 }
 
 export interface ZoteroCount {
@@ -71,6 +77,10 @@ export const resolveZoteroCredentialsTs = (): ZoteroCredentials => {
 const zoteroBase = (creds: ZoteroCredentials): string => {
   const typePath = creds.libraryType === "group" ? "groups" : "users";
   return `https://api.zotero.org/${typePath}/${encodeURIComponent(creds.libraryId)}`;
+};
+
+const zoteroLibraryPrefix = (creds: ZoteroCredentials): string => {
+  return creds.libraryType === "group" ? `groups/${creds.libraryId}` : "library";
 };
 
 const authHeaders = (creds: ZoteroCredentials): Record<string, string> => ({
@@ -359,7 +369,7 @@ export const fetchZoteroCollectionItemsPreview = async (
     )}/items?limit=${limit}&start=${start}&include=children&itemType=-attachment`;
     const res = await fetch(url, { headers: authHeaders(creds) });
     if (!res.ok) throw new Error(`Items HTTP ${res.status}`);
-    const data = (await res.json()) as Array<{ key: string; data: any; children?: Array<{ data?: any }> }>;
+    const data = (await res.json()) as Array<{ key: string; data: any; children?: Array<{ key?: string; data?: any }> }>;
     (data || []).forEach((item) => {
       const d = item.data || {};
       const creators = Array.isArray(d.creators)
@@ -370,6 +380,11 @@ export const fetchZoteroCollectionItemsPreview = async (
       const children = Array.isArray(item.children) ? item.children : [];
       let attachments = 0;
       let pdfs = 0;
+      let notes = 0;
+      let annotations = 0;
+      let firstPdfKey = "";
+      let firstPdfTitle = "";
+      let firstPdfFilename = "";
       children.forEach((child) => {
         const cd = child?.data || {};
         if (cd.itemType === "attachment") {
@@ -378,9 +393,24 @@ export const fetchZoteroCollectionItemsPreview = async (
           const filename = String(cd.filename || cd.title || "").toLowerCase();
           if (ct.includes("pdf") || filename.endsWith(".pdf")) {
             pdfs += 1;
+            if (!firstPdfKey) {
+              firstPdfKey = String(child?.key || "");
+              firstPdfTitle = String(cd.title || cd.filename || "");
+              firstPdfFilename = String(cd.filename || "");
+            }
           }
+          return;
+        }
+        if (cd.itemType === "note") {
+          notes += 1;
+          return;
+        }
+        if (cd.itemType === "annotation") {
+          annotations += 1;
         }
       });
+      const firstPdfPath = firstPdfKey ? findLocalPdfPath(firstPdfKey, firstPdfFilename) : "";
+      const libraryPrefix = zoteroLibraryPrefix(creds);
       items.push({
         key: item.key,
         title: d.title || "",
@@ -393,7 +423,13 @@ export const fetchZoteroCollectionItemsPreview = async (
         publicationTitle: d.publicationTitle || "",
         attachments,
         pdfs,
-        hasPdf: pdfs > 0
+        hasPdf: pdfs > 0,
+        zoteroSelectUrl: `zotero://select/${libraryPrefix}/items/${item.key}`,
+        firstPdfKey: firstPdfKey || undefined,
+        firstPdfTitle: firstPdfTitle || undefined,
+        firstPdfPath: firstPdfPath || undefined,
+        notes: notes || 0,
+        annotations: annotations || 0
       });
     });
     start += limit;
