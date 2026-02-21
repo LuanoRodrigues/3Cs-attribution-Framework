@@ -1,0 +1,87 @@
+{
+  "startedAt": "2026-02-21T12:06:35.784Z",
+  "scenario": {
+    "collectionKeyword": "framework",
+    "initialCommand": "code this collection about cyber attribution and frameworks and models",
+    "feedback": "Could you refine the questions for literature review contribution and strengths/weaknesses of each framework?",
+    "approve": "yes",
+    "waitMs": 120000
+  },
+  "steps": [
+    {
+      "at": "2026-02-21T12:06:35.785Z",
+      "name": "renderer-ready",
+      "ok": true,
+      "detail": "chat form + collections tree detected"
+    },
+    {
+      "at": "2026-02-21T12:06:36.741Z",
+      "name": "await-tree-lines",
+      "ok": true,
+      "detail": "rows=156"
+    },
+    {
+      "at": "2026-02-21T12:06:36.801Z",
+      "name": "select-collection",
+      "ok": true,
+      "detail": "016_framework_model_NA"
+    },
+    {
+      "at": "2026-02-21T12:06:38.009Z",
+      "name": "send-initial-command",
+      "ok": true,
+      "detail": "code this collection about cyber attribution and frameworks and models"
+    },
+    {
+      "at": "2026-02-21T12:07:00.551Z",
+      "name": "await-initial-questions",
+      "ok": true,
+      "detail": "I will prepare screening + coding for '016_framework_model_NA'.\n\nInclusion criteria (draft):\n(auto draft unavailable)\n\nExclusion criteria (draft):\n(auto draft unavailable)\n\nResearch questions:\n1. What key dimensions and components do existing cyber attribution frameworks and models use to assign responsibility (e.g., technical indicators, behavioral patterns, threat actor TTPs, temporal/geopolitical context)?\n2. What empirical evidence exists on the accuracy, reliability, and validation methods of cyber attribution frameworks and models, and how are performance metrics reported (e.g., true positive/false positive rates, confidence scoring)?\n3. What study designs, data sources, and evaluative methods are used to develop or validate cyber attribution frameworks (e.g., case studies, controlled experiments, ground-truth datasets, expert elicitation), and how do these affect generalizability?\n4. What common limitations, biases, uncertainties, or adversarial challenges are reported in the literature about cyber attribution frameworks and models (e.g., data sparsity, false attribution, obfuscation by actors, confirmation bias)?\n5. How do legal, ethical, and policy considerations (e.g., evidentiary standards, attribution thresholds, disclosure practices) influence the design, adoption, and reporting of cyber attribution frameworks and models?\n\nReply with 'yes' to run, 'no' to cancel, or send modified questions (3-5)."
+    },
+    {
+      "at": "2026-02-21T12:07:00.554Z",
+      "name": "send-feedback",
+      "ok": true,
+      "detail": "Could you refine the questions for literature review contribution and strengths/weaknesses of each framework?"
+    },
+    {
+      "at": "2026-02-21T12:07:00.555Z",
+      "name": "await-refined-questions",
+      "ok": true,
+      "detail": "I will prepare screening + coding for '016_framework_model_NA'.\n\nInclusion criteria (draft):\n(auto draft unavailable)\n\nExclusion criteria (draft):\n(auto draft unavailable)\n\nResearch questions:\n1. What key dimensions and components do existing cyber attribution frameworks and models use to assign responsibility (e.g., technical indicators, behavioral patterns, threat actor TTPs, temporal/geopolitical context)?\n2. What empirical evidence exists on the accuracy, reliability, and validation methods of cyber attribution frameworks and models, and how are performance metrics reported (e.g., true positive/false positive rates, confidence scoring)?\n3. What study designs, data sources, and evaluative methods are used to develop or validate cyber attribution frameworks (e.g., case studies, controlled experiments, ground-truth datasets, expert elicitation), and how do these affect generalizability?\n4. What common limitations, biases, uncertainties, or adversarial challenges are reported in the literature about cyber attribution frameworks and models (e.g., data sparsity, false attribution, obfuscation by actors, confirmation bias)?\n5. How do legal, ethical, and policy considerations (e.g., evidentiary standards, attribution thresholds, disclosure practices) influence the design, adoption, and reporting of cyber attribution frameworks and models?\n\nReply with 'yes' to run, 'no' to cancel, or send modified questions (3-5)."
+    },
+    {
+      "at": "2026-02-21T12:07:00.556Z",
+      "name": "send-approval",
+      "ok": false,
+      "detail": "chat input disabled (pending)"
+    }
+  ],
+  "transcript": [
+    {
+      "role": "assistant",
+      "tone": "",
+      "text": "Agent ready. Send a command to organize collections by tag."
+    },
+    {
+      "role": "user",
+      "tone": "",
+      "text": "code this collection about cyber attribution and frameworks and models"
+    },
+    {
+      "role": "assistant",
+      "tone": "",
+      "text": "I will prepare screening + coding for '016_framework_model_NA'.\n\nInclusion criteria (draft):\n(auto draft unavailable)\n\nExclusion criteria (draft):\n(auto draft unavailable)\n\nResearch questions:\n1. What key dimensions and components do existing cyber attribution frameworks and models use to assign responsibility (e.g., technical indicators, behavioral patterns, threat actor TTPs, temporal/geopolitical context)?\n2. What empirical evidence exists on the accuracy, reliability, and validation methods of cyber attribution frameworks and models, and how are performance metrics reported (e.g., true positive/false positive rates, confidence scoring)?\n3. What study designs, data sources, and evaluative methods are used to develop or validate cyber attribution frameworks (e.g., case studies, controlled experiments, ground-truth datasets, expert elicitation), and how do these affect generalizability?\n4. What common limitations, biases, uncertainties, or adversarial challenges are reported in the literature about cyber attribution frameworks and models (e.g., data sparsity, false attribution, obfuscation by actors, confirmation bias)?\n5. How do legal, ethical, and policy considerations (e.g., evidentiary standards, attribution thresholds, disclosure practices) influence the design, adoption, and reporting of cyber attribution frameworks and models?\n\nReply with 'yes' to run, 'no' to cancel, or send modified questions (3-5)."
+    },
+    {
+      "role": "user",
+      "tone": "",
+      "text": "Could you refine the questions for literature review contribution and strengths/weaknesses of each framework?"
+    }
+  ],
+  "status": "failed",
+  "error": "chat input disabled (pending)",
+  "statusLine": "Awaiting question approval in chat.",
+  "selectedCollection": "Collection\n      Name016_framework_model_NAParent Key(root)Version274154Subcollections0Items in Panel0Items in Tree Cache0\n      \n        Open in Zotero",
+  "finishedAt": "2026-02-21T12:07:00.557Z"
+}

@@ -1,0 +1,2257 @@
+{
+  "generated_at_utc": "2026-02-14T01:03:01.469744+00:00",
+  "dataset_dir": "/home/pantera/projects/TEIA/python_backend_legacy/dataset",
+  "options": {
+    "types": "json",
+    "limit": 10,
+    "hash_only": true,
+    "prefer_pages_text": true,
+    "write_updated_md": false,
+    "suppress_parser_logs": true
+  },
+  "summary": {
+    "documents_total": 10,
+    "documents_ok": 10,
+    "documents_failed": 0,
+    "documents_with_baseline": 0,
+    "source_type_counts": {
+      "raw_json": 10
+    },
+    "detected_style_counts": {
+      "author_year": 1,
+      "superscript": 5,
+      "hybrid": 2,
+      "tex_superscript": 2
+    },
+    "dominant_bucket_counts": {
+      "author_year": 1,
+      "tex": 9
+    },
+    "weighted_occurrence_match_rate_after": 1.0,
+    "weighted_bib_coverage_rate_after": 0.24676850763807284,
+    "docs_with_intext": 7,
+    "docs_at_100_success_percentage": 7,
+    "docs_below_100_success_percentage": 0,
+    "docs_with_no_intext": 3,
+    "docs_with_bib_entries": 9,
+    "docs_at_100_bib_coverage": 0,
+    "validator_style_mismatch_docs": 0,
+    "validator_heading_issue_docs": 1,
+    "validator_missing_preceding_docs": 5,
+    "validator_unresolved_link_docs": 0,
+    "validator_flag_counts": {
+      "meta_missing_abstract_and_keywords": 9,
+      "meta_missing_contact_email": 5,
+      "meta_missing_persistent_identifier": 7,
+      "missing_preceding_text": 5,
+      "missing_reference_heading": 6,
+      "meta_missing_authors": 1,
+      "meta_low_metadata_coverage": 1,
+      "low_bib_coverage": 3,
+      "meta_low_email_author_link_rate": 2,
+      "meta_missing_affiliations": 2,
+      "footnotes_bucket_unresolved": 1,
+      "heading_numbering_parent_violation": 1
+    },
+    "metadata_docs_evaluated": 10,
+    "metadata_presence_rates": {
+      "title": 1.0,
+      "authors": 0.9,
+      "affiliations": 0.5,
+      "emails": 0.4,
+      "orcids": 0.0,
+      "abstract": 0.1,
+      "keywords": 0.1,
+      "venue": 0.9,
+      "identifier": 0.3
+    },
+    "metadata_avg_authors_per_doc": 1.4,
+    "metadata_avg_affiliations_per_doc": 0.6,
+    "metadata_avg_keywords_per_doc": 0.5,
+    "metadata_avg_core_coverage": 0.65,
+    "metadata_avg_email_author_link_rate_docs_with_email": 0.5,
+    "metadata_core_coverage_distribution_docs": {
+      "full_100": 1,
+      "ge_80": 3,
+      "ge_60_lt_80": 3,
+      "lt_60": 4
+    },
+    "metadata_validator_flag_counts": {
+      "meta_missing_abstract_and_keywords": 9,
+      "meta_missing_contact_email": 5,
+      "meta_missing_persistent_identifier": 7,
+      "meta_missing_authors": 1,
+      "meta_low_metadata_coverage": 1,
+      "meta_low_email_author_link_rate": 2,
+      "meta_missing_affiliations": 2
+    },
+    "weighted_occurrence_match_rate_before": 0.0,
+    "baseline_delta_by_success_occurrences_docs": {
+      "improved": 0,
+      "regressed": 0,
+      "unchanged": 0
+    },
+    "baseline_delta_by_success_percentage_docs": {
+      "improved": 0,
+      "regressed": 0,
+      "unchanged": 0
+    },
+    "failed_files": []
+  },
+  "records": [
+    {
+      "file": "python_backend_legacy/dataset/003405b70c26a0b2ef1ada1c4e2d07c3b83fe450b217876169de5aa9c5e2b234.json",
+      "source_type": "raw_json",
+      "pages_count": 13,
+      "rebuilt_from_pages": true,
+      "text_chars": 29907,
+      "references_count": 1,
+      "references_chars": 13661,
+      "baseline": null,
+      "current": {
+        "style": "author_year",
+        "dominant_bucket": "author_year",
+        "dominant": {
+          "intext_total": 0.0,
+          "success_occurrences": 0.0,
+          "success_unique": 0.0,
+          "bib_unique_total": 198.0,
+          "occurrence_match_rate": 0.0,
+          "bib_coverage_rate": 0.0,
+          "success_percentage": 0.0,
+          "missing_intext_expected_total": 0,
+          "highest_intext_index": 0,
+          "missing_footnotes_for_seen_total": 0,
+          "uncited_footnote_total": 0,
+          "style": "author_year"
+        },
+        "buckets": {
+          "footnotes": {
+            "intext_total": 0.0,
+            "success_occurrences": 0.0,
+            "success_unique": 0.0,
+            "bib_unique_total": 0.0,
+            "occurrence_match_rate": 0.0,
+            "bib_coverage_rate": 0.0,
+            "success_percentage": 0.0,
+            "missing_intext_expected_total": 0.0,
+            "highest_intext_index": 0.0,
+            "missing_footnotes_for_seen_total": 0.0,
+            "uncited_footnote_total": 0.0,
+            "style": "footnotes"
+          },
+          "tex": {
+            "intext_total": 0.0,
+            "success_occurrences": 0.0,
+            "success_unique": 0.0,
+            "bib_unique_total": 64.0,
+            "occurrence_match_rate": 0.0,
+            "bib_coverage_rate": 0.0,
+            "success_percentage": 0.0,
+            "missing_intext_expected_total": 0,
+            "highest_intext_index": 0,
+            "missing_footnotes_for_seen_total": 0,
+            "uncited_footnote_total": 0,
+            "style": "numeric"
+          },
+          "numeric": {
+            "intext_total": 0.0,
+            "success_occurrences": 0.0,
+            "success_unique": 0.0,
+            "bib_unique_total": 64.0,
+            "occurrence_match_rate": 0.0,
+            "bib_coverage_rate": 0.0,
+            "success_percentage": 0.0,
+            "missing_intext_expected_total": 0,
+            "highest_intext_index": 0,
+            "missing_footnotes_for_seen_total": 0,
+            "uncited_footnote_total": 0,
+            "style": "numeric"
+          },
+          "author_year": {
+            "intext_total": 0.0,
+            "success_occurrences": 0.0,
+            "success_unique": 0.0,
+            "bib_unique_total": 198.0,
+            "occurrence_match_rate": 0.0,
+            "bib_coverage_rate": 0.0,
+            "success_percentage": 0.0,
+            "missing_intext_expected_total": 0,
+            "highest_intext_index": 0,
+            "missing_footnotes_for_seen_total": 0,
+            "uncited_footnote_total": 0,
+            "style": "author_year"
+          }
+        }
+      },
+      "metadata": {
+        "title": "Country in Focus",
+        "subtitle": "## Ten Years after the Estonian Cyberattacks",
+        "document_type": "journal_article",
+        "venue": "Herzog, Stephen. (2017). Ten years after the estonian cyberattacks: defense and adaptation in the age of digital insecurity. Georgetown Journal of International Affairs, 18(3), 67-78.",
+        "publication_year": 2007,
+        "authors": [
+          "Stephen Herzog"
+        ],
+        "affiliations": [],
+        "emails": [],
+        "orcids": [],
+        "corresponding_author_line": "",
+        "abstract": "",
+        "keywords": [],
+        "publication_dates": {},
+        "identifiers": {
+          "doi": [],
+          "issn": [],
+          "isbn": [],
+          "arxiv": [],
+          "pmid": [],
+          "pmcid": [],
+          "urls": [
+            "https://heinonline.org/HOL/License"
+          ]
+        },
+        "references_block_count": 1,
+        "references_entries_estimated": 64,
+        "heading_count": 20,
+        "max_heading_level": 3
+      },
+      "validation": {
+        "dominant_quality": {
+          "intext_total": 0,
+          "index_coverage": 0.0,
+          "intext_citation_coverage": 0.0,
+          "preceding_text_coverage": 0.0,
+          "footnote_coverage": 0.0,
+          "unique_index_count": 0
+        },
+        "footnotes_quality": {
+          "intext_total": 0,
+          "index_coverage": 0.0,
+          "intext_citation_coverage": 0.0,
+          "preceding_text_coverage": 0.0,
+          "footnote_coverage": 0.0,
+          "unique_index_count": 0,
+          "items_total": 0
+        },
+        "style_validation": {
+          "detected_style": "author_year",
+          "recommended_style": "unknown",
+          "aligned": true,
+          "signals": {
+            "superscript_hits": 14,
+            "superscript_definition_lines": 0,
+            "numeric_bracket_hits": 0,
+            "numeric_endnote_lines": 0,
+            "author_year_hits": 0
+          }
+        },
+        "coverage_validation": {
+          "dominant_bib_total": 198.0,
+          "dominant_bib_coverage_rate": 0.0,
+          "dominant_link_target": "bibliography",
+          "dominant_unresolved_flag": "unresolved_reference_links"
+        },
+        "heading_validation": {
+          "heading_count": 20,
+          "max_heading_level": 3,
+          "level_jump_violations": 0,
+          "numbering_parent_violations": 0,
+          "has_reference_heading": true,
+          "has_subheadings": true
+        },
+        "metadata_validation": {
+          "field_presence": {
+            "title": true,
+            "authors": true,
+            "affiliations": false,
+            "emails": false,
+            "orcids": false,
+            "abstract": false,
+            "keywords": false,
+            "venue": true,
+            "persistent_identifier": false,
+            "headings": true
+          },
+          "counts": {
+            "authors": 1,
+            "affiliations": 0,
+            "emails": 0,
+            "orcids": 0,
+            "keywords": 0,
+            "doi": 0,
+            "issn": 0,
+            "isbn": 0,
+            "arxiv": 0,
+            "pmid": 0,
+            "pmcid": 0,
+            "urls": 1
+          },
+          "coverage": {
+            "core_coverage": 0.5,
+            "email_author_link_rate": 0.0
+          },
+          "flags": [
+            "meta_missing_abstract_and_keywords",
+            "meta_missing_contact_email",
+            "meta_missing_persistent_identifier"
+          ]
+        },
+        "flags": [
+          "meta_missing_abstract_and_keywords",
+          "meta_missing_contact_email",
+          "meta_missing_persistent_identifier"
+        ]
+      }
+    },
+    {
+      "file": "python_backend_legacy/dataset/01f1633087008065730cb6235ce84446d42df32db584e7e45f4265a73f2635e7.json",
+      "source_type": "raw_json",
+      "pages_count": 39,
+      "rebuilt_from_pages": true,
+      "text_chars": 107368,
+      "references_count": 0,
+      "references_chars": 0,
+      "baseline": null,
+      "current": {
+        "style": "superscript",
+        "dominant_bucket": "tex",
+        "dominant": {
+          "intext_total": 362.0,
+          "success_occurrences": 362.0,
+          "success_unique": 181.0,
+          "bib_unique_total": 196.0,
+          "occurrence_match_rate": 1.0,
+          "bib_coverage_rate": 0.923469387755102,
+          "success_percentage": 100.0,
+          "missing_intext_expected_total": 0,
+          "highest_intext_index": 0,
+          "missing_footnotes_for_seen_total": 0,
+          "uncited_footnote_total": 0,
+          "style": "superscript"
+        },
+        "buckets": {
+          "footnotes": {
+            "intext_total": 0.0,
+            "success_occurrences": 0.0,
+            "success_unique": 0.0,
+            "bib_unique_total": 0.0,
+            "occurrence_match_rate": 0.0,
+            "bib_coverage_rate": 0.0,
+            "success_percentage": 0.0,
+            "missing_intext_expected_total": 0.0,
+            "highest_intext_index": 0.0,
+            "missing_footnotes_for_seen_total": 0.0,
+            "uncited_footnote_total": 0.0,
+            "style": "footnotes"
+          },
+          "tex": {
+            "intext_total": 362.0,
+            "success_occurrences": 362.0,
+            "success_unique": 181.0,
+            "bib_unique_total": 196.0,
+            "occurrence_match_rate": 1.0,
+            "bib_coverage_rate": 0.923469387755102,
+            "success_percentage": 100.0,
+            "missing_intext_expected_total": 0,
+            "highest_intext_index": 0,
+            "missing_footnotes_for_seen_total": 0,
+            "uncited_footnote_total": 0,
+            "style": "superscript"
+          },
+          "numeric": {
+            "intext_total": 6.0,
+            "success_occurrences": 0.0,
+            "success_unique": 0.0,
+            "bib_unique_total": 0.0,
+            "occurrence_match_rate": 0.0,
+            "bib_coverage_rate": 0.0,
+            "success_percentage": 0.0,
+            "missing_intext_expected_total": 0,
+            "highest_intext_index": 0,
+            "missing_footnotes_for_seen_total": 0,
+            "uncited_footnote_total": 0,
+            "style": "numeric"
+          },
+          "author_year": {
+            "intext_total": 0.0,
+            "success_occurrences": 0.0,
+            "success_unique": 0.0,
+            "bib_unique_total": 0.0,
+            "occurrence_match_rate": 0.0,
+            "bib_coverage_rate": 0.0,
+            "success_percentage": 0.0,
+            "missing_intext_expected_total": 0,
+            "highest_intext_index": 0,
+            "missing_footnotes_for_seen_total": 0,
+            "uncited_footnote_total": 0,
+            "style": "author_year"
+          }
+        }
+      },
+      "metadata": {
+        "title": "CYBER NEUTRALITY: A TEXTUAL ANALYSIS OF TRADITIONAL JUS IN BELLO NEUTRALITY RULES THROUGH A PURPOSE-BASED LENS",
+        "subtitle": "## MAJOR ZACHARY P. AUGUSTINE",
+        "document_type": "journal_article",
+        "venue": "Maj Zachary P. Augustine, Judge Advocate, United States Air Force (LL.M., Space, Cyber and Telecommunications Law, University of Nebraska-Lincoln (2013); J.D., summa cum laude, Northern Illinois University School of Law (2008); B.S., Distinguished Graduate, United States Air Force Academy (2002)) is currently deployed to the Combined Air Operations Center, Al Udeid AB, Qatar and permanently assigned as the Chief of Cyber Operations Law, 24th Air Force/Air Force Cyber Command, Joint Base San Antonio-Lackland, Texas. Previous assignments include Acquisitions Officer, Los Angeles Air Force Base, CA; Chief of Military Justice and Chief of Legal Assistance, 28th Bomb Wing, Ellsworth AFB, SD; Chief of Civil Law and Chief of Operations Law, 18th Wing, Kadena AB, Okinawa, Japan. This article was submitted in partial satisfaction of the requirements for the degree of Master of Laws in Space, Cyber, and Telecommunications Law at the University of Nebraska School of Law. The author wishes to thank the faculty and staff at the University of Nebraska for their keen insight into the cyber domain and excellent feedback in drafting this article. The views expressed in this article are solely those of the author and do not reflect the official policy or position of the United States Air Force, Department of Defense, or U.S. Government.",
+        "publication_year": 1907,
+        "authors": [],
+        "affiliations": [],
+        "emails": [],
+        "orcids": [],
+        "corresponding_author_line": "",
+        "abstract": "",
+        "keywords": [],
+        "publication_dates": {},
+        "identifiers": {
+          "doi": [],
+          "issn": [],
+          "isbn": [],
+          "arxiv": [],
+          "pmid": [],
+          "pmcid": [],
+          "urls": [
+            "https://heinonline.org/HOL/License",
+            "http://www.history.army.mil/html/books/072/72-18/CMH_Pub_72-18.pdf",
+            "http://www.history.army.mil/html/books/070/70-89-1/cmhPub_70-89.pdf",
+            "http://articles.washingtonpost.com/2012-06-03/opinions/35462276_1_cyber-security-computer-worm-nuclear-enrichment",
+            "http://www.washingtontimes.com/news/2012/apr/25/us-seen-as-iran-cyberarmy-target/?page=all",
+            "http://www.washingtonpost.com/world/national-security/us-said-to-be-target-of-massive-cyber-espionage-campaign/2013/02/10/7b4687d8-6fc1-11e2-aa58-243de81040ba_print.html",
+            "http://articles.washingtonpost.com/2012-06-01/world/35459494_1_nuclear-program-stuxnet-senior-iranian-officials",
+            "http://www.washingtonpost.com/world/national-security/pentagon-to-boost-cybersecurity",
+            "http://www.state.gov/documents/organization/218912.pdf",
+            "http://www.pcmag.com/encyclopedia_term/0,2542,t=botnet&amp;i=38866,00.asp",
+            "http://www.un.org/en/members/index.shtml",
+            "http://www.globalpolicy.org/images/pdfs/Changing_Patterns_in_the_Use_of_the_Veto_as_of_August_2012.pdf",
+            "http://www.nato.int/cps/en/natolive/nato_countries.htm"
+          ]
+        },
+        "references_block_count": 0,
+        "references_entries_estimated": 0,
+        "heading_count": 22,
+        "max_heading_level": 3
+      },
+      "validation": {
+        "dominant_quality": {
+          "intext_total": 362,
+          "index_coverage": 1.0,
+          "intext_citation_coverage": 1.0,
+          "preceding_text_coverage": 0.26795580110497236,
+          "footnote_coverage": 1.0,
+          "unique_index_count": 181
+        },
+        "footnotes_quality": {
+          "intext_total": 0,
+          "index_coverage": 0.0,
+          "intext_citation_coverage": 0.0,
+          "preceding_text_coverage": 0.0,
+          "footnote_coverage": 0.0,
+          "unique_index_count": 0,
+          "items_total": 0
+        },
+        "style_validation": {
+          "detected_style": "superscript",
+          "recommended_style": "superscript",
+          "aligned": true,
+          "signals": {
+            "superscript_hits": 389,
+            "superscript_definition_lines": 181,
+            "numeric_bracket_hits": 6,
+            "numeric_endnote_lines": 14,
+            "author_year_hits": 0
+          }
+        },
+        "coverage_validation": {
+          "dominant_bib_total": 196.0,
+          "dominant_bib_coverage_rate": 0.923469387755102,
+          "dominant_link_target": "footnotes",
+          "dominant_unresolved_flag": "unresolved_footnote_links"
+        },
+        "heading_validation": {
+          "heading_count": 22,
+          "max_heading_level": 3,
+          "level_jump_violations": 0,
+          "numbering_parent_violations": 0,
+          "has_reference_heading": false,
+          "has_subheadings": true
+        },
+        "metadata_validation": {
+          "field_presence": {
+            "title": true,
+            "authors": false,
+            "affiliations": false,
+            "emails": false,
+            "orcids": false,
+            "abstract": false,
+            "keywords": false,
+            "venue": true,
+            "persistent_identifier": false,
+            "headings": true
+          },
+          "counts": {
+            "authors": 0,
+            "affiliations": 0,
+            "emails": 0,
+            "orcids": 0,
+            "keywords": 0,
+            "doi": 0,
+            "issn": 0,
+            "isbn": 0,
+            "arxiv": 0,
+            "pmid": 0,
+            "pmcid": 0,
+            "urls": 13
+          },
+          "coverage": {
+            "core_coverage": 0.3333333333333333,
+            "email_author_link_rate": 0.0
+          },
+          "flags": [
+            "meta_missing_authors",
+            "meta_missing_abstract_and_keywords",
+            "meta_missing_persistent_identifier",
+            "meta_low_metadata_coverage"
+          ]
+        },
+        "flags": [
+          "missing_preceding_text",
+          "missing_reference_heading",
+          "meta_missing_authors",
+          "meta_missing_abstract_and_keywords",
+          "meta_missing_persistent_identifier",
+          "meta_low_metadata_coverage"
+        ]
+      }
+    },
+    {
+      "file": "python_backend_legacy/dataset/02dd7fdc3d38cbdc38c6bd81882ff62ea9b8774880c7f7e40d9c27cf9e0d9be0.json",
+      "source_type": "raw_json",
+      "pages_count": 29,
+      "rebuilt_from_pages": true,
+      "text_chars": 75717,
+      "references_count": 0,
+      "references_chars": 0,
+      "baseline": null,
+      "current": {
+        "style": "superscript",
+        "dominant_bucket": "tex",
+        "dominant": {
+          "intext_total": 6.0,
+          "success_occurrences": 6.0,
+          "success_unique": 3.0,
+          "bib_unique_total": 17.0,
+          "occurrence_match_rate": 1.0,
+          "bib_coverage_rate": 0.17647058823529413,
+          "success_percentage": 100.0,
+          "missing_intext_expected_total": 0,
+          "highest_intext_index": 0,
+          "missing_footnotes_for_seen_total": 0,
+          "uncited_footnote_total": 0,
+          "style": "superscript"
+        },
+        "buckets": {
+          "footnotes": {
+            "intext_total": 0.0,
+            "success_occurrences": 0.0,
+            "success_unique": 0.0,
+            "bib_unique_total": 90.0,
+            "occurrence_match_rate": 0.0,
+            "bib_coverage_rate": 0.0,
+            "success_percentage": 0.0,
+            "missing_intext_expected_total": 0.0,
+            "highest_intext_index": 0.0,
+            "missing_footnotes_for_seen_total": 0.0,
+            "uncited_footnote_total": 90.0,
+            "style": "footnotes"
+          },
+          "tex": {
+            "intext_total": 6.0,
+            "success_occurrences": 6.0,
+            "success_unique": 3.0,
+            "bib_unique_total": 17.0,
+            "occurrence_match_rate": 1.0,
+            "bib_coverage_rate": 0.17647058823529413,
+            "success_percentage": 100.0,
+            "missing_intext_expected_total": 0,
+            "highest_intext_index": 0,
+            "missing_footnotes_for_seen_total": 0,
+            "uncited_footnote_total": 0,
+            "style": "superscript"
+          },
+          "numeric": {
+            "intext_total": 1.0,
+            "success_occurrences": 1.0,
+            "success_unique": 1.0,
+            "bib_unique_total": 90.0,
+            "occurrence_match_rate": 1.0,
+            "bib_coverage_rate": 0.011111111111111112,
+            "success_percentage": 100.0,
+            "missing_intext_expected_total": 0,
+            "highest_intext_index": 0,
+            "missing_footnotes_for_seen_total": 0,
+            "uncited_footnote_total": 0,
+            "style": "numeric"
+          },
+          "author_year": {
+            "intext_total": 0.0,
+            "success_occurrences": 0.0,
+            "success_unique": 0.0,
+            "bib_unique_total": 117.0,
+            "occurrence_match_rate": 0.0,
+            "bib_coverage_rate": 0.0,
+            "success_percentage": 0.0,
+            "missing_intext_expected_total": 0,
+            "highest_intext_index": 0,
+            "missing_footnotes_for_seen_total": 0,
+            "uncited_footnote_total": 0,
+            "style": "author_year"
+          }
+        }
+      },
+      "metadata": {
+        "title": "An International Attribution Mechanism for Hostile Cyber Operations",
+        "subtitle": "## CONTENTS",
+        "document_type": "unknown",
+        "venue": "The thoughts and opinions expressed are those of the authors and not necessarily those of the U.S. government, the U.S. Department of the Navy, or the U.S. Naval War College.",
+        "publication_year": 2013,
+        "authors": [
+          "Yuval Shany",
+          "Michael N. Schmitt"
+        ],
+        "affiliations": [
+          "Hersch Lauterpacht Chair in Public International Law and Director of CyberLaw Program at the Federmann Cyber Security Research Center, Hebrew University; Vice-President for Research, Israel Democracy Institute."
+        ],
+        "emails": [],
+        "orcids": [],
+        "corresponding_author_line": "",
+        "abstract": "",
+        "keywords": [],
+        "publication_dates": {
+          "submitted": "the 2019"
+        },
+        "identifiers": {
+          "doi": [],
+          "issn": [
+            "ISSN 2375-2831"
+          ],
+          "isbn": [],
+          "arxiv": [],
+          "pmid": [],
+          "pmcid": [],
+          "urls": [
+            "https://heinonline.org/HOL/License",
+            "https://www.un.org/sg/en/content/sg/speeches/2020-01-22/remarks-general-assembly-priorities-for-2020",
+            "https://obamawhitehouse.archives.gov/the-press-office/2015/02/13/remarks-president-cybersecurity-and-consumer-protection-summit",
+            "https://www.chathamhouse.org/event/cyber-and-international-law-21st-century",
+            "https://www.defense.gouv.fr/content/download/567648/9770527/file/international+law+applied+to+operations+in+cyberspace.pdf",
+            "https://www.government.nl/documents/parliamentary-documents/2019/09/26/letter-to-the-parliament-on-the-international-legal-order-in-cyberspace",
+            "https://www.dfat.gov.au/publications/international-relations/international-cyber-engagement-strategy/aices/chapters/annexes.html#Annex-A",
+            "https://www.dfat.gov.au/publications/international-relations/international-cyber-engagement-strategy/aices/chapters/2019_international_law_supplement.html",
+            "https://www.un.org/disarmament/group-of-governmental-experts",
+            "https://www.un.org/disarmament/open-ended-working-group",
+            "https://www.cfr.org/report/increasing-international-cooperation-cybersecurity-and-adapting-cyber-norms",
+            "https://cyberpeaceinstitute.org/who-we-are",
+            "https://cyberpeaceinstitute.org/about-us/accountability",
+            "https://csrcl.huji.ac.il/event/attributing-cyber-attacks",
+            "https://csrcl.huji.ac.il/event/attribution-workshop",
+            "https://ccdcoe.org/library/publications/european-union-establishes-a-sanction-regime-for-cyber-attacks",
+            "https://www.ohchr.org/EN/HRBodies/HRC/Pages/ListHRCMandat.aspx",
+            "https://spinternet.ohchr.org/ViewAllCountryMandates.aspx",
+            "https://www.ohchr.org/EN/HRBodies/TBPetitions/Pages/HRTBPetitions.aspx"
+          ]
+        },
+        "references_block_count": 0,
+        "references_entries_estimated": 0,
+        "heading_count": 9,
+        "max_heading_level": 2
+      },
+      "validation": {
+        "dominant_quality": {
+          "intext_total": 6,
+          "index_coverage": 1.0,
+          "intext_citation_coverage": 1.0,
+          "preceding_text_coverage": 0.16666666666666666,
+          "footnote_coverage": 1.0,
+          "unique_index_count": 3
+        },
+        "footnotes_quality": {
+          "intext_total": 0,
+          "index_coverage": 0.0,
+          "intext_citation_coverage": 0.0,
+          "preceding_text_coverage": 0.0,
+          "footnote_coverage": 0.0,
+          "unique_index_count": 0,
+          "items_total": 90
+        },
+        "style_validation": {
+          "detected_style": "superscript",
+          "recommended_style": "superscript",
+          "aligned": true,
+          "signals": {
+            "superscript_hits": 79,
+            "superscript_definition_lines": 3,
+            "numeric_bracket_hits": 12,
+            "numeric_endnote_lines": 90,
+            "author_year_hits": 0
+          }
+        },
+        "coverage_validation": {
+          "dominant_bib_total": 17.0,
+          "dominant_bib_coverage_rate": 0.17647058823529413,
+          "dominant_link_target": "footnotes",
+          "dominant_unresolved_flag": "unresolved_footnote_links"
+        },
+        "heading_validation": {
+          "heading_count": 9,
+          "max_heading_level": 2,
+          "level_jump_violations": 0,
+          "numbering_parent_violations": 0,
+          "has_reference_heading": false,
+          "has_subheadings": true
+        },
+        "metadata_validation": {
+          "field_presence": {
+            "title": true,
+            "authors": true,
+            "affiliations": true,
+            "emails": false,
+            "orcids": false,
+            "abstract": false,
+            "keywords": false,
+            "venue": true,
+            "persistent_identifier": true,
+            "headings": true
+          },
+          "counts": {
+            "authors": 2,
+            "affiliations": 1,
+            "emails": 0,
+            "orcids": 0,
+            "keywords": 0,
+            "doi": 0,
+            "issn": 1,
+            "isbn": 0,
+            "arxiv": 0,
+            "pmid": 0,
+            "pmcid": 0,
+            "urls": 19
+          },
+          "coverage": {
+            "core_coverage": 0.8333333333333334,
+            "email_author_link_rate": 0.0
+          },
+          "flags": [
+            "meta_missing_abstract_and_keywords",
+            "meta_missing_contact_email"
+          ]
+        },
+        "flags": [
+          "missing_preceding_text",
+          "low_bib_coverage",
+          "missing_reference_heading",
+          "meta_missing_abstract_and_keywords",
+          "meta_missing_contact_email"
+        ]
+      }
+    },
+    {
+      "file": "python_backend_legacy/dataset/03092dca8cc24e2624208d831c777ab72f62e9ab0f476395582e71edefe9539d.json",
+      "source_type": "raw_json",
+      "pages_count": 14,
+      "rebuilt_from_pages": true,
+      "text_chars": 53139,
+      "references_count": 0,
+      "references_chars": 0,
+      "baseline": null,
+      "current": {
+        "style": "superscript",
+        "dominant_bucket": "tex",
+        "dominant": {
+          "intext_total": 126.0,
+          "success_occurrences": 126.0,
+          "success_unique": 63.0,
+          "bib_unique_total": 91.0,
+          "occurrence_match_rate": 1.0,
+          "bib_coverage_rate": 0.6923076923076923,
+          "success_percentage": 100.0,
+          "missing_intext_expected_total": 0,
+          "highest_intext_index": 0,
+          "missing_footnotes_for_seen_total": 0,
+          "uncited_footnote_total": 0,
+          "style": "superscript"
+        },
+        "buckets": {
+          "footnotes": {
+            "intext_total": 0.0,
+            "success_occurrences": 0.0,
+            "success_unique": 0.0,
+            "bib_unique_total": 0.0,
+            "occurrence_match_rate": 0.0,
+            "bib_coverage_rate": 0.0,
+            "success_percentage": 0.0,
+            "missing_intext_expected_total": 0.0,
+            "highest_intext_index": 0.0,
+            "missing_footnotes_for_seen_total": 0.0,
+            "uncited_footnote_total": 0.0,
+            "style": "footnotes"
+          },
+          "tex": {
+            "intext_total": 126.0,
+            "success_occurrences": 126.0,
+            "success_unique": 63.0,
+            "bib_unique_total": 91.0,
+            "occurrence_match_rate": 1.0,
+            "bib_coverage_rate": 0.6923076923076923,
+            "success_percentage": 100.0,
+            "missing_intext_expected_total": 0,
+            "highest_intext_index": 0,
+            "missing_footnotes_for_seen_total": 0,
+            "uncited_footnote_total": 0,
+            "style": "superscript"
+          },
+          "numeric": {
+            "intext_total": 0.0,
+            "success_occurrences": 0.0,
+            "success_unique": 0.0,
+            "bib_unique_total": 0.0,
+            "occurrence_match_rate": 0.0,
+            "bib_coverage_rate": 0.0,
+            "success_percentage": 0.0,
+            "missing_intext_expected_total": 0,
+            "highest_intext_index": 0,
+            "missing_footnotes_for_seen_total": 0,
+            "uncited_footnote_total": 0,
+            "style": "numeric"
+          },
+          "author_year": {
+            "intext_total": 0.0,
+            "success_occurrences": 0.0,
+            "success_unique": 0.0,
+            "bib_unique_total": 25.0,
+            "occurrence_match_rate": 0.0,
+            "bib_coverage_rate": 0.0,
+            "success_percentage": 0.0,
+            "missing_intext_expected_total": 0,
+            "highest_intext_index": 0,
+            "missing_footnotes_for_seen_total": 0,
+            "uncited_footnote_total": 0,
+            "style": "author_year"
+          }
+        }
+      },
+      "metadata": {
+        "title": "HARVARD NATIONAL SECURITY JOURNAL",
+        "subtitle": "## ONLINE FEATURES",
+        "document_type": "journal_article",
+        "venue": "# HARVARD NATIONAL SECURITY JOURNAL",
+        "publication_year": 2010,
+        "authors": [
+          "By Daniel Garrie"
+        ],
+        "affiliations": [],
+        "emails": [
+          "shane.reeves@usma.edu"
+        ],
+        "orcids": [],
+        "corresponding_author_line": "",
+        "abstract": "",
+        "keywords": [],
+        "publication_dates": {},
+        "identifiers": {
+          "doi": [],
+          "issn": [],
+          "isbn": [],
+          "arxiv": [],
+          "pmid": [],
+          "pmcid": [],
+          "urls": [
+            "http://www.mckinsey.com/insights/business_technology/the_rising_strategic_risks_of_cyberattacks",
+            "http://ssrn.com/abstract=2734419",
+            "http://www.bloomberg.com/news/articles/2014-08-27/fbi-said-to-be-probing-whether-russia-tied-to-jpmorgan-hacking",
+            "http://www.nytimes.com/2014/12/18/world/asia/us-links-north-korea-to-sony-hacking.html?_r=1",
+            "www.cnn.com/2014/05/20/world/asia/china-unit-61398",
+            "http://www.npr.org/2013/02/19/172373133/report-links-cyber-attacks-on-u-s-to-chinas-military",
+            "http://www.washingtonpost.com/business/technology/vast-majority-of-global-cyber-espionage-emanates-from-china-report-finds/2013/04/22/61f52486-ab5f-11e2-b6fdba6f5f26d70e_story.html",
+            "http://fas.org/sgp/crs/natsec/R43955.pdf",
+            "http://abcnews.go.com/Business/anthem-cyber-attack-things-happen-personal-information/story?id=28747729",
+            "https://ssrn.com/abstract=2734419",
+            "http://hir.harvard.edu/bin-laden-and-awlaki-lawful-targets",
+            "http://www.icrc.org/eng/resources/documents/misc/57jnuu.htm",
+            "http://legal.un.org/ilc/texts/instruments/english/commentaries/9_6_2001.pdf",
+            "http://justsecurity.org/18460/international-humanitarian-law-cyber-attacks-sony-v-north-korea",
+            "http://www.pcworld.com/article/261850/manual_examines_how_international_law_applies_to_cyberwarfare.html"
+          ]
+        },
+        "references_block_count": 0,
+        "references_entries_estimated": 0,
+        "heading_count": 11,
+        "max_heading_level": 3
+      },
+      "validation": {
+        "dominant_quality": {
+          "intext_total": 126,
+          "index_coverage": 1.0,
+          "intext_citation_coverage": 1.0,
+          "preceding_text_coverage": 0.1984126984126984,
+          "footnote_coverage": 1.0,
+          "unique_index_count": 63
+        },
+        "footnotes_quality": {
+          "intext_total": 0,
+          "index_coverage": 0.0,
+          "intext_citation_coverage": 0.0,
+          "preceding_text_coverage": 0.0,
+          "footnote_coverage": 0.0,
+          "unique_index_count": 0,
+          "items_total": 0
+        },
+        "style_validation": {
+          "detected_style": "superscript",
+          "recommended_style": "superscript",
+          "aligned": true,
+          "signals": {
+            "superscript_hits": 134,
+            "superscript_definition_lines": 63,
+            "numeric_bracket_hits": 0,
+            "numeric_endnote_lines": 0,
+            "author_year_hits": 0
+          }
+        },
+        "coverage_validation": {
+          "dominant_bib_total": 91.0,
+          "dominant_bib_coverage_rate": 0.6923076923076923,
+          "dominant_link_target": "footnotes",
+          "dominant_unresolved_flag": "unresolved_footnote_links"
+        },
+        "heading_validation": {
+          "heading_count": 11,
+          "max_heading_level": 3,
+          "level_jump_violations": 0,
+          "numbering_parent_violations": 0,
+          "has_reference_heading": false,
+          "has_subheadings": true
+        },
+        "metadata_validation": {
+          "field_presence": {
+            "title": true,
+            "authors": true,
+            "affiliations": false,
+            "emails": true,
+            "orcids": false,
+            "abstract": false,
+            "keywords": false,
+            "venue": true,
+            "persistent_identifier": false,
+            "headings": true
+          },
+          "counts": {
+            "authors": 1,
+            "affiliations": 0,
+            "emails": 1,
+            "orcids": 0,
+            "keywords": 0,
+            "doi": 0,
+            "issn": 0,
+            "isbn": 0,
+            "arxiv": 0,
+            "pmid": 0,
+            "pmcid": 0,
+            "urls": 15
+          },
+          "coverage": {
+            "core_coverage": 0.6666666666666666,
+            "email_author_link_rate": 0.0
+          },
+          "flags": [
+            "meta_missing_abstract_and_keywords",
+            "meta_missing_persistent_identifier",
+            "meta_low_email_author_link_rate"
+          ]
+        },
+        "flags": [
+          "missing_preceding_text",
+          "missing_reference_heading",
+          "meta_missing_abstract_and_keywords",
+          "meta_missing_persistent_identifier",
+          "meta_low_email_author_link_rate"
+        ]
+      }
+    },
+    {
+      "file": "python_backend_legacy/dataset/03640a730b45ecf77e2829db267886d4ef373cf952fe952220d2bdb181b2a809.json",
+      "source_type": "raw_json",
+      "pages_count": 43,
+      "rebuilt_from_pages": true,
+      "text_chars": 97678,
+      "references_count": 1,
+      "references_chars": 73114,
+      "baseline": null,
+      "current": {
+        "style": "hybrid",
+        "dominant_bucket": "tex",
+        "dominant": {
+          "intext_total": 75.0,
+          "success_occurrences": 75.0,
+          "success_unique": 75.0,
+          "bib_unique_total": 374.0,
+          "occurrence_match_rate": 1.0,
+          "bib_coverage_rate": 0.20053475935828877,
+          "success_percentage": 100.0,
+          "missing_intext_expected_total": 109.0,
+          "highest_intext_index": 184.0,
+          "missing_footnotes_for_seen_total": 0.0,
+          "uncited_footnote_total": 112.0,
+          "style": "hybrid"
+        },
+        "buckets": {
+          "footnotes": {
+            "intext_total": 0.0,
+            "success_occurrences": 0.0,
+            "success_unique": 0.0,
+            "bib_unique_total": 0.0,
+            "occurrence_match_rate": 0.0,
+            "bib_coverage_rate": 0.0,
+            "success_percentage": 0.0,
+            "missing_intext_expected_total": 0.0,
+            "highest_intext_index": 0.0,
+            "missing_footnotes_for_seen_total": 0.0,
+            "uncited_footnote_total": 0.0,
+            "style": "footnotes"
+          },
+          "tex": {
+            "intext_total": 75.0,
+            "success_occurrences": 75.0,
+            "success_unique": 75.0,
+            "bib_unique_total": 374.0,
+            "occurrence_match_rate": 1.0,
+            "bib_coverage_rate": 0.20053475935828877,
+            "success_percentage": 100.0,
+            "missing_intext_expected_total": 109.0,
+            "highest_intext_index": 184.0,
+            "missing_footnotes_for_seen_total": 0.0,
+            "uncited_footnote_total": 112.0,
+            "style": "hybrid"
+          },
+          "numeric": {
+            "intext_total": 187.0,
+            "success_occurrences": 187.0,
+            "success_unique": 186.0,
+            "bib_unique_total": 187.0,
+            "occurrence_match_rate": 1.0,
+            "bib_coverage_rate": 0.9946524064171123,
+            "success_percentage": 100.0,
+            "missing_intext_expected_total": 0,
+            "highest_intext_index": 0,
+            "missing_footnotes_for_seen_total": 0,
+            "uncited_footnote_total": 0,
+            "style": "numeric"
+          },
+          "author_year": {
+            "intext_total": 0.0,
+            "success_occurrences": 0.0,
+            "success_unique": 0.0,
+            "bib_unique_total": 351.0,
+            "occurrence_match_rate": 0.0,
+            "bib_coverage_rate": 0.0,
+            "success_percentage": 0.0,
+            "missing_intext_expected_total": 0,
+            "highest_intext_index": 0,
+            "missing_footnotes_for_seen_total": 0,
+            "uncited_footnote_total": 0,
+            "style": "author_year"
+          }
+        }
+      },
+      "metadata": {
+        "title": "THE CYBER DEFENSE REVIEW",
+        "subtitle": "Reconsidering the Consequences for State-Sponsored Hostile Cyber Operations Under International Law",
+        "document_type": "journal_article",
+        "venue": "# THE CYBER DEFENSE REVIEW",
+        "publication_year": 2018,
+        "authors": [
+          "Dr. Catherine Lotrionte"
+        ],
+        "affiliations": [
+          "Published by: Army Cyber Institute",
+          "Army Cyber Institute is collaborating with JSTOR to digitize, preserve and extend access to The Cyber Defense Review"
+        ],
+        "emails": [
+          "support@jstor.org"
+        ],
+        "orcids": [],
+        "corresponding_author_line": "",
+        "abstract": "",
+        "keywords": [],
+        "publication_dates": {},
+        "identifiers": {
+          "doi": [
+            "10.2307/26491225"
+          ],
+          "issn": [],
+          "isbn": [],
+          "arxiv": [],
+          "pmid": [],
+          "pmcid": [],
+          "urls": [
+            "https://www.jstor.org/stable/10.2307/26491225",
+            "https://www.jstor.org/stable/10.2307/26491225?seq=1&amp;cid=pdf-reference#references_tab_contents",
+            "https://about.jstor.org/terms"
+          ]
+        },
+        "references_block_count": 1,
+        "references_entries_estimated": 187,
+        "heading_count": 34,
+        "max_heading_level": 2
+      },
+      "validation": {
+        "dominant_quality": {
+          "intext_total": 75,
+          "index_coverage": 1.0,
+          "intext_citation_coverage": 1.0,
+          "preceding_text_coverage": 1.0,
+          "footnote_coverage": 1.0,
+          "unique_index_count": 75
+        },
+        "footnotes_quality": {
+          "intext_total": 0,
+          "index_coverage": 0.0,
+          "intext_citation_coverage": 0.0,
+          "preceding_text_coverage": 0.0,
+          "footnote_coverage": 0.0,
+          "unique_index_count": 0,
+          "items_total": 0
+        },
+        "style_validation": {
+          "detected_style": "hybrid",
+          "recommended_style": "numeric",
+          "aligned": true,
+          "signals": {
+            "superscript_hits": 0,
+            "superscript_definition_lines": 0,
+            "numeric_bracket_hits": 187,
+            "numeric_endnote_lines": 0,
+            "author_year_hits": 0
+          }
+        },
+        "coverage_validation": {
+          "dominant_bib_total": 374.0,
+          "dominant_bib_coverage_rate": 0.20053475935828877,
+          "dominant_link_target": "footnotes",
+          "dominant_unresolved_flag": "unresolved_footnote_links"
+        },
+        "heading_validation": {
+          "heading_count": 34,
+          "max_heading_level": 2,
+          "level_jump_violations": 0,
+          "numbering_parent_violations": 0,
+          "has_reference_heading": true,
+          "has_subheadings": true
+        },
+        "metadata_validation": {
+          "field_presence": {
+            "title": true,
+            "authors": true,
+            "affiliations": true,
+            "emails": true,
+            "orcids": false,
+            "abstract": false,
+            "keywords": false,
+            "venue": true,
+            "persistent_identifier": true,
+            "headings": true
+          },
+          "counts": {
+            "authors": 1,
+            "affiliations": 2,
+            "emails": 1,
+            "orcids": 0,
+            "keywords": 0,
+            "doi": 1,
+            "issn": 0,
+            "isbn": 0,
+            "arxiv": 0,
+            "pmid": 0,
+            "pmcid": 0,
+            "urls": 3
+          },
+          "coverage": {
+            "core_coverage": 0.8333333333333334,
+            "email_author_link_rate": 0.0
+          },
+          "flags": [
+            "meta_missing_abstract_and_keywords",
+            "meta_low_email_author_link_rate"
+          ]
+        },
+        "flags": [
+          "low_bib_coverage",
+          "meta_missing_abstract_and_keywords",
+          "meta_low_email_author_link_rate"
+        ]
+      }
+    },
+    {
+      "file": "python_backend_legacy/dataset/037497fb1509e0fbd0753da6e5181775894b1117970ec1dae72df4b990dc3fd9.json",
+      "source_type": "raw_json",
+      "pages_count": 12,
+      "rebuilt_from_pages": true,
+      "text_chars": 38782,
+      "references_count": 0,
+      "references_chars": 0,
+      "baseline": null,
+      "current": {
+        "style": "tex_superscript",
+        "dominant_bucket": "tex",
+        "dominant": {
+          "intext_total": 0.0,
+          "success_occurrences": 0.0,
+          "success_unique": 0.0,
+          "bib_unique_total": 0.0,
+          "occurrence_match_rate": 0.0,
+          "bib_coverage_rate": 0.0,
+          "success_percentage": 0.0,
+          "missing_intext_expected_total": 0.0,
+          "highest_intext_index": 0.0,
+          "missing_footnotes_for_seen_total": 0.0,
+          "uncited_footnote_total": 0.0,
+          "style": "tex_superscript"
+        },
+        "buckets": {
+          "footnotes": {
+            "intext_total": 0.0,
+            "success_occurrences": 0.0,
+            "success_unique": 0.0,
+            "bib_unique_total": 0.0,
+            "occurrence_match_rate": 0.0,
+            "bib_coverage_rate": 0.0,
+            "success_percentage": 0.0,
+            "missing_intext_expected_total": 0.0,
+            "highest_intext_index": 0.0,
+            "missing_footnotes_for_seen_total": 0.0,
+            "uncited_footnote_total": 0.0,
+            "style": "footnotes"
+          },
+          "tex": {
+            "intext_total": 0.0,
+            "success_occurrences": 0.0,
+            "success_unique": 0.0,
+            "bib_unique_total": 0.0,
+            "occurrence_match_rate": 0.0,
+            "bib_coverage_rate": 0.0,
+            "success_percentage": 0.0,
+            "missing_intext_expected_total": 0.0,
+            "highest_intext_index": 0.0,
+            "missing_footnotes_for_seen_total": 0.0,
+            "uncited_footnote_total": 0.0,
+            "style": "tex_superscript"
+          },
+          "numeric": {
+            "intext_total": 0.0,
+            "success_occurrences": 0.0,
+            "success_unique": 0.0,
+            "bib_unique_total": 0.0,
+            "occurrence_match_rate": 0.0,
+            "bib_coverage_rate": 0.0,
+            "success_percentage": 0.0,
+            "missing_intext_expected_total": 0,
+            "highest_intext_index": 0,
+            "missing_footnotes_for_seen_total": 0,
+            "uncited_footnote_total": 0,
+            "style": "numeric"
+          },
+          "author_year": {
+            "intext_total": 0.0,
+            "success_occurrences": 0.0,
+            "success_unique": 0.0,
+            "bib_unique_total": 0.0,
+            "occurrence_match_rate": 0.0,
+            "bib_coverage_rate": 0.0,
+            "success_percentage": 0.0,
+            "missing_intext_expected_total": 0,
+            "highest_intext_index": 0,
+            "missing_footnotes_for_seen_total": 0,
+            "uncited_footnote_total": 0,
+            "style": "author_year"
+          }
+        }
+      },
+      "metadata": {
+        "title": "Untangling Attribution: Moving to Accountability in Cyberspace",
+        "subtitle": "Prepared statement by",
+        "document_type": "unknown",
+        "venue": "The Council on Foreign Relations takes no institutional positions on policy issues and has no affiliation with the U.S. government. All statements of fact and expressions of opinion contained herein are the sole responsibility of the author.",
+        "publication_year": 2010,
+        "authors": [
+          "Robert K. Knake",
+          "Rayburn House Office Building"
+        ],
+        "affiliations": [],
+        "emails": [],
+        "orcids": [],
+        "corresponding_author_line": "",
+        "abstract": "",
+        "keywords": [],
+        "publication_dates": {},
+        "identifiers": {
+          "doi": [],
+          "issn": [],
+          "isbn": [],
+          "arxiv": [],
+          "pmid": [],
+          "pmcid": [],
+          "urls": []
+        },
+        "references_block_count": 0,
+        "references_entries_estimated": 0,
+        "heading_count": 8,
+        "max_heading_level": 2
+      },
+      "validation": {
+        "dominant_quality": {
+          "intext_total": 0,
+          "index_coverage": 0.0,
+          "intext_citation_coverage": 0.0,
+          "preceding_text_coverage": 0.0,
+          "footnote_coverage": 0.0,
+          "unique_index_count": 0
+        },
+        "footnotes_quality": {
+          "intext_total": 0,
+          "index_coverage": 0.0,
+          "intext_citation_coverage": 0.0,
+          "preceding_text_coverage": 0.0,
+          "footnote_coverage": 0.0,
+          "unique_index_count": 0,
+          "items_total": 0
+        },
+        "style_validation": {
+          "detected_style": "tex_superscript",
+          "recommended_style": "unknown",
+          "aligned": true,
+          "signals": {
+            "superscript_hits": 0,
+            "superscript_definition_lines": 0,
+            "numeric_bracket_hits": 0,
+            "numeric_endnote_lines": 4,
+            "author_year_hits": 0
+          }
+        },
+        "coverage_validation": {
+          "dominant_bib_total": 0.0,
+          "dominant_bib_coverage_rate": 0.0,
+          "dominant_link_target": "footnotes",
+          "dominant_unresolved_flag": "unresolved_footnote_links"
+        },
+        "heading_validation": {
+          "heading_count": 8,
+          "max_heading_level": 2,
+          "level_jump_violations": 0,
+          "numbering_parent_violations": 0,
+          "has_reference_heading": false,
+          "has_subheadings": true
+        },
+        "metadata_validation": {
+          "field_presence": {
+            "title": true,
+            "authors": true,
+            "affiliations": false,
+            "emails": false,
+            "orcids": false,
+            "abstract": false,
+            "keywords": false,
+            "venue": true,
+            "persistent_identifier": false,
+            "headings": true
+          },
+          "counts": {
+            "authors": 2,
+            "affiliations": 0,
+            "emails": 0,
+            "orcids": 0,
+            "keywords": 0,
+            "doi": 0,
+            "issn": 0,
+            "isbn": 0,
+            "arxiv": 0,
+            "pmid": 0,
+            "pmcid": 0,
+            "urls": 0
+          },
+          "coverage": {
+            "core_coverage": 0.5,
+            "email_author_link_rate": 0.0
+          },
+          "flags": [
+            "meta_missing_abstract_and_keywords",
+            "meta_missing_affiliations",
+            "meta_missing_contact_email",
+            "meta_missing_persistent_identifier"
+          ]
+        },
+        "flags": [
+          "missing_reference_heading",
+          "meta_missing_abstract_and_keywords",
+          "meta_missing_affiliations",
+          "meta_missing_contact_email",
+          "meta_missing_persistent_identifier"
+        ]
+      }
+    },
+    {
+      "file": "python_backend_legacy/dataset/03d628e763229d646aeb8c82b4d78be0f5120e31a1fde479dbc33f888ca05eaf.json",
+      "source_type": "raw_json",
+      "pages_count": 53,
+      "rebuilt_from_pages": true,
+      "text_chars": 89410,
+      "references_count": 1,
+      "references_chars": 11322,
+      "baseline": null,
+      "current": {
+        "style": "superscript",
+        "dominant_bucket": "tex",
+        "dominant": {
+          "intext_total": 148.0,
+          "success_occurrences": 148.0,
+          "success_unique": 84.0,
+          "bib_unique_total": 101.0,
+          "occurrence_match_rate": 1.0,
+          "bib_coverage_rate": 0.8316831683168316,
+          "success_percentage": 100.0,
+          "missing_intext_expected_total": 0,
+          "highest_intext_index": 0,
+          "missing_footnotes_for_seen_total": 0,
+          "uncited_footnote_total": 0,
+          "style": "superscript"
+        },
+        "buckets": {
+          "footnotes": {
+            "intext_total": 6.0,
+            "success_occurrences": 0.0,
+            "success_unique": 0.0,
+            "bib_unique_total": 0.0,
+            "occurrence_match_rate": 0.0,
+            "bib_coverage_rate": 0.0,
+            "success_percentage": 0.0,
+            "missing_intext_expected_total": 8984.0,
+            "highest_intext_index": 8990.0,
+            "missing_footnotes_for_seen_total": 6.0,
+            "uncited_footnote_total": 0.0,
+            "style": "footnotes"
+          },
+          "tex": {
+            "intext_total": 148.0,
+            "success_occurrences": 148.0,
+            "success_unique": 84.0,
+            "bib_unique_total": 101.0,
+            "occurrence_match_rate": 1.0,
+            "bib_coverage_rate": 0.8316831683168316,
+            "success_percentage": 100.0,
+            "missing_intext_expected_total": 0,
+            "highest_intext_index": 0,
+            "missing_footnotes_for_seen_total": 0,
+            "uncited_footnote_total": 0,
+            "style": "superscript"
+          },
+          "numeric": {
+            "intext_total": 0.0,
+            "success_occurrences": 0.0,
+            "success_unique": 0.0,
+            "bib_unique_total": 0.0,
+            "occurrence_match_rate": 0.0,
+            "bib_coverage_rate": 0.0,
+            "success_percentage": 0.0,
+            "missing_intext_expected_total": 0,
+            "highest_intext_index": 0,
+            "missing_footnotes_for_seen_total": 0,
+            "uncited_footnote_total": 0,
+            "style": "numeric"
+          },
+          "author_year": {
+            "intext_total": 1.0,
+            "success_occurrences": 0.0,
+            "success_unique": 0.0,
+            "bib_unique_total": 92.0,
+            "occurrence_match_rate": 0.0,
+            "bib_coverage_rate": 0.0,
+            "success_percentage": 0.0,
+            "missing_intext_expected_total": 0,
+            "highest_intext_index": 0,
+            "missing_footnotes_for_seen_total": 0,
+            "uncited_footnote_total": 0,
+            "style": "author_year"
+          }
+        }
+      },
+      "metadata": {
+        "title": "Trust, interdependence, and power in cyber statecraft",
+        "subtitle": "",
+        "document_type": "unknown",
+        "venue": "",
+        "publication_year": null,
+        "authors": [
+          "Ahana Datta"
+        ],
+        "affiliations": [
+          "University College London, London, UK"
+        ],
+        "emails": [
+          "ahana.datta.20@ucl.ac.uk"
+        ],
+        "orcids": [],
+        "corresponding_author_line": "",
+        "abstract": "",
+        "keywords": [],
+        "publication_dates": {},
+        "identifiers": {
+          "doi": [],
+          "issn": [],
+          "isbn": [],
+          "arxiv": [],
+          "pmid": [],
+          "pmcid": [],
+          "urls": []
+        },
+        "references_block_count": 1,
+        "references_entries_estimated": 86,
+        "heading_count": 12,
+        "max_heading_level": 3
+      },
+      "validation": {
+        "dominant_quality": {
+          "intext_total": 148,
+          "index_coverage": 1.0,
+          "intext_citation_coverage": 1.0,
+          "preceding_text_coverage": 0.6081081081081081,
+          "footnote_coverage": 1.0,
+          "unique_index_count": 84
+        },
+        "footnotes_quality": {
+          "intext_total": 6,
+          "index_coverage": 1.0,
+          "intext_citation_coverage": 1.0,
+          "preceding_text_coverage": 1.0,
+          "footnote_coverage": 0.0,
+          "unique_index_count": 6,
+          "items_total": 0
+        },
+        "style_validation": {
+          "detected_style": "superscript",
+          "recommended_style": "superscript",
+          "aligned": true,
+          "signals": {
+            "superscript_hits": 155,
+            "superscript_definition_lines": 83,
+            "numeric_bracket_hits": 5,
+            "numeric_endnote_lines": 0,
+            "author_year_hits": 1
+          }
+        },
+        "coverage_validation": {
+          "dominant_bib_total": 101.0,
+          "dominant_bib_coverage_rate": 0.8316831683168316,
+          "dominant_link_target": "footnotes",
+          "dominant_unresolved_flag": "unresolved_footnote_links"
+        },
+        "heading_validation": {
+          "heading_count": 12,
+          "max_heading_level": 3,
+          "level_jump_violations": 0,
+          "numbering_parent_violations": 5,
+          "has_reference_heading": true,
+          "has_subheadings": true
+        },
+        "metadata_validation": {
+          "field_presence": {
+            "title": true,
+            "authors": true,
+            "affiliations": true,
+            "emails": true,
+            "orcids": false,
+            "abstract": false,
+            "keywords": false,
+            "venue": false,
+            "persistent_identifier": false,
+            "headings": true
+          },
+          "counts": {
+            "authors": 1,
+            "affiliations": 1,
+            "emails": 1,
+            "orcids": 0,
+            "keywords": 0,
+            "doi": 0,
+            "issn": 0,
+            "isbn": 0,
+            "arxiv": 0,
+            "pmid": 0,
+            "pmcid": 0,
+            "urls": 0
+          },
+          "coverage": {
+            "core_coverage": 0.6666666666666666,
+            "email_author_link_rate": 1.0
+          },
+          "flags": [
+            "meta_missing_abstract_and_keywords",
+            "meta_missing_persistent_identifier"
+          ]
+        },
+        "flags": [
+          "missing_preceding_text",
+          "footnotes_bucket_unresolved",
+          "heading_numbering_parent_violation",
+          "meta_missing_abstract_and_keywords",
+          "meta_missing_persistent_identifier"
+        ]
+      }
+    },
+    {
+      "file": "python_backend_legacy/dataset/0411f53fe6c4329dcaecf3e3eaa519c57d758f3e83d0ff1698b8449c23228452.json",
+      "source_type": "raw_json",
+      "pages_count": 43,
+      "rebuilt_from_pages": true,
+      "text_chars": 119471,
+      "references_count": 0,
+      "references_chars": 0,
+      "baseline": null,
+      "current": {
+        "style": "tex_superscript",
+        "dominant_bucket": "tex",
+        "dominant": {
+          "intext_total": 0.0,
+          "success_occurrences": 0.0,
+          "success_unique": 0.0,
+          "bib_unique_total": 371.0,
+          "occurrence_match_rate": 0.0,
+          "bib_coverage_rate": 0.0,
+          "success_percentage": 0.0,
+          "missing_intext_expected_total": 0.0,
+          "highest_intext_index": 0.0,
+          "missing_footnotes_for_seen_total": 0.0,
+          "uncited_footnote_total": 371.0,
+          "style": "tex_superscript"
+        },
+        "buckets": {
+          "footnotes": {
+            "intext_total": 0.0,
+            "success_occurrences": 0.0,
+            "success_unique": 0.0,
+            "bib_unique_total": 371.0,
+            "occurrence_match_rate": 0.0,
+            "bib_coverage_rate": 0.0,
+            "success_percentage": 0.0,
+            "missing_intext_expected_total": 0.0,
+            "highest_intext_index": 0.0,
+            "missing_footnotes_for_seen_total": 0.0,
+            "uncited_footnote_total": 371.0,
+            "style": "footnotes"
+          },
+          "tex": {
+            "intext_total": 0.0,
+            "success_occurrences": 0.0,
+            "success_unique": 0.0,
+            "bib_unique_total": 371.0,
+            "occurrence_match_rate": 0.0,
+            "bib_coverage_rate": 0.0,
+            "success_percentage": 0.0,
+            "missing_intext_expected_total": 0.0,
+            "highest_intext_index": 0.0,
+            "missing_footnotes_for_seen_total": 0.0,
+            "uncited_footnote_total": 371.0,
+            "style": "tex_superscript"
+          },
+          "numeric": {
+            "intext_total": 0.0,
+            "success_occurrences": 0.0,
+            "success_unique": 0.0,
+            "bib_unique_total": 371.0,
+            "occurrence_match_rate": 0.0,
+            "bib_coverage_rate": 0.0,
+            "success_percentage": 0.0,
+            "missing_intext_expected_total": 0,
+            "highest_intext_index": 0,
+            "missing_footnotes_for_seen_total": 0,
+            "uncited_footnote_total": 0,
+            "style": "numeric"
+          },
+          "author_year": {
+            "intext_total": 0.0,
+            "success_occurrences": 0.0,
+            "success_unique": 0.0,
+            "bib_unique_total": 121.0,
+            "occurrence_match_rate": 0.0,
+            "bib_coverage_rate": 0.0,
+            "success_percentage": 0.0,
+            "missing_intext_expected_total": 0,
+            "highest_intext_index": 0,
+            "missing_footnotes_for_seen_total": 0,
+            "uncited_footnote_total": 0,
+            "style": "author_year"
+          }
+        }
+      },
+      "metadata": {
+        "title": "Mind the Gap(s) – The Need to Resolve Uncertainties in the International Law of Cyber Warfare",
+        "subtitle": "VIRGINIA JOURNAL OF INTERNATIONAL LAW",
+        "document_type": "journal_article",
+        "venue": "Shahaf, Shiran. (2023). Mind the gap(s) the need to resolve uncertainties in the international law of cyber warfare. Virginia Journal of International Law, 63(2), 209-250.",
+        "publication_year": 2023,
+        "authors": [
+          "SHIRAN SHAHAF",
+          "B. Sovereignty",
+          "IV. LEGAL CYNICISM"
+        ],
+        "affiliations": [],
+        "emails": [],
+        "orcids": [],
+        "corresponding_author_line": "",
+        "abstract": "",
+        "keywords": [],
+        "publication_dates": {},
+        "identifiers": {
+          "doi": [],
+          "issn": [],
+          "isbn": [],
+          "arxiv": [],
+          "pmid": [],
+          "pmcid": [],
+          "urls": [
+            "https://heinonline.org/HOL/License",
+            "https://info.publicintelligence.net/DoD-JointCyberTerms.pdf",
+            "https://casebook.icrc.org/glossary/cyber-warfare",
+            "https://www.af.mil/News/Article-Display/Article/127803/fighting-in-cyberspace-means-cyber-domain-dominance"
+          ]
+        },
+        "references_block_count": 0,
+        "references_entries_estimated": 0,
+        "heading_count": 23,
+        "max_heading_level": 2
+      },
+      "validation": {
+        "dominant_quality": {
+          "intext_total": 0,
+          "index_coverage": 0.0,
+          "intext_citation_coverage": 0.0,
+          "preceding_text_coverage": 0.0,
+          "footnote_coverage": 0.0,
+          "unique_index_count": 0
+        },
+        "footnotes_quality": {
+          "intext_total": 0,
+          "index_coverage": 0.0,
+          "intext_citation_coverage": 0.0,
+          "preceding_text_coverage": 0.0,
+          "footnote_coverage": 0.0,
+          "unique_index_count": 0,
+          "items_total": 371
+        },
+        "style_validation": {
+          "detected_style": "tex_superscript",
+          "recommended_style": "unknown",
+          "aligned": true,
+          "signals": {
+            "superscript_hits": 228,
+            "superscript_definition_lines": 0,
+            "numeric_bracket_hits": 1,
+            "numeric_endnote_lines": 371,
+            "author_year_hits": 0
+          }
+        },
+        "coverage_validation": {
+          "dominant_bib_total": 371.0,
+          "dominant_bib_coverage_rate": 0.0,
+          "dominant_link_target": "footnotes",
+          "dominant_unresolved_flag": "unresolved_footnote_links"
+        },
+        "heading_validation": {
+          "heading_count": 23,
+          "max_heading_level": 2,
+          "level_jump_violations": 0,
+          "numbering_parent_violations": 0,
+          "has_reference_heading": false,
+          "has_subheadings": true
+        },
+        "metadata_validation": {
+          "field_presence": {
+            "title": true,
+            "authors": true,
+            "affiliations": false,
+            "emails": false,
+            "orcids": false,
+            "abstract": false,
+            "keywords": false,
+            "venue": true,
+            "persistent_identifier": false,
+            "headings": true
+          },
+          "counts": {
+            "authors": 3,
+            "affiliations": 0,
+            "emails": 0,
+            "orcids": 0,
+            "keywords": 0,
+            "doi": 0,
+            "issn": 0,
+            "isbn": 0,
+            "arxiv": 0,
+            "pmid": 0,
+            "pmcid": 0,
+            "urls": 4
+          },
+          "coverage": {
+            "core_coverage": 0.5,
+            "email_author_link_rate": 0.0
+          },
+          "flags": [
+            "meta_missing_abstract_and_keywords",
+            "meta_missing_affiliations",
+            "meta_missing_contact_email",
+            "meta_missing_persistent_identifier"
+          ]
+        },
+        "flags": [
+          "missing_reference_heading",
+          "meta_missing_abstract_and_keywords",
+          "meta_missing_affiliations",
+          "meta_missing_contact_email",
+          "meta_missing_persistent_identifier"
+        ]
+      }
+    },
+    {
+      "file": "python_backend_legacy/dataset/04a8f917d910dabe8e35360e6d8a4af05c04154a8a3b883aa5b6c6b0197eb6bc.json",
+      "source_type": "raw_json",
+      "pages_count": 17,
+      "rebuilt_from_pages": true,
+      "text_chars": 98391,
+      "references_count": 1,
+      "references_chars": 21455,
+      "baseline": null,
+      "current": {
+        "style": "hybrid",
+        "dominant_bucket": "tex",
+        "dominant": {
+          "intext_total": 1.0,
+          "success_occurrences": 1.0,
+          "success_unique": 1.0,
+          "bib_unique_total": 332.0,
+          "occurrence_match_rate": 1.0,
+          "bib_coverage_rate": 0.0030120481927710845,
+          "success_percentage": 100.0,
+          "missing_intext_expected_total": 12.0,
+          "highest_intext_index": 13.0,
+          "missing_footnotes_for_seen_total": 0.0,
+          "uncited_footnote_total": 165.0,
+          "style": "hybrid"
+        },
+        "buckets": {
+          "footnotes": {
+            "intext_total": 0.0,
+            "success_occurrences": 0.0,
+            "success_unique": 0.0,
+            "bib_unique_total": 0.0,
+            "occurrence_match_rate": 0.0,
+            "bib_coverage_rate": 0.0,
+            "success_percentage": 0.0,
+            "missing_intext_expected_total": 0.0,
+            "highest_intext_index": 0.0,
+            "missing_footnotes_for_seen_total": 0.0,
+            "uncited_footnote_total": 0.0,
+            "style": "footnotes"
+          },
+          "tex": {
+            "intext_total": 1.0,
+            "success_occurrences": 1.0,
+            "success_unique": 1.0,
+            "bib_unique_total": 332.0,
+            "occurrence_match_rate": 1.0,
+            "bib_coverage_rate": 0.0030120481927710845,
+            "success_percentage": 100.0,
+            "missing_intext_expected_total": 12.0,
+            "highest_intext_index": 13.0,
+            "missing_footnotes_for_seen_total": 0.0,
+            "uncited_footnote_total": 165.0,
+            "style": "hybrid"
+          },
+          "numeric": {
+            "intext_total": 139.0,
+            "success_occurrences": 139.0,
+            "success_unique": 118.0,
+            "bib_unique_total": 166.0,
+            "occurrence_match_rate": 1.0,
+            "bib_coverage_rate": 0.7108433734939759,
+            "success_percentage": 100.0,
+            "missing_intext_expected_total": 0,
+            "highest_intext_index": 0,
+            "missing_footnotes_for_seen_total": 0,
+            "uncited_footnote_total": 0,
+            "style": "numeric"
+          },
+          "author_year": {
+            "intext_total": 0.0,
+            "success_occurrences": 0.0,
+            "success_unique": 0.0,
+            "bib_unique_total": 193.0,
+            "occurrence_match_rate": 0.0,
+            "bib_coverage_rate": 0.0,
+            "success_percentage": 0.0,
+            "missing_intext_expected_total": 0,
+            "highest_intext_index": 0,
+            "missing_footnotes_for_seen_total": 0,
+            "uncited_footnote_total": 0,
+            "style": "author_year"
+          }
+        }
+      },
+      "metadata": {
+        "title": "Research Paper",
+        "subtitle": "# Cyber conflict or democracy “hacked”? How cyber operations enhance information warfare",
+        "document_type": "journal_article",
+        "venue": "JOURNAL OF CYBERSECURITY",
+        "publication_year": 2019,
+        "authors": [
+          "Christopher Whyte",
+          "Public Affairs"
+        ],
+        "affiliations": [
+          "L. Douglas Wilder School of Government and Public Affairs, Virginia Commonwealth University"
+        ],
+        "emails": [
+          "cewhyte@vcu.edu"
+        ],
+        "orcids": [],
+        "corresponding_author_line": "Correspondence address. Virginia Commonwealth University. Tel: 5713380442; E-mail: cewhyte@vcu.edu",
+        "abstract": "Are cyber-enabled information warfare (IW) campaigns uniquely threatening when compared with traditional influence operations undertaken by state actors? Or is the recent “hacking” of Western democracies simply old wine in new—but fundamentally similar—bottles? This article draws on classical theories of democratic functionality from the political science and communications studies fields to deconstruct the aims and effects of cyber-enabled IW. I describe democracies as information systems wherein the moderating functions of democratic discourse and policy deliberation rely on robust mechanisms for asserting the credibility, origination, and quality of information. Whereas the institutions of democracy are often compromised in ways that force failures of the system’s moderating dynamics, influence operations in the digital age act to subvert the traditional mechanisms of democratic functionality in new ways. Sophisticated digital age information operations create a multifaceted attribution challenge to the target state that amounts to unprecedented uncertainty about the nature and scope of the threat. However, the promise of cyber-enabled IW capabilities emerges more from the rewiring of modern democratic information environments around new media platforms than it does from the cyber conflict faculties of state actors. Rather, cyber operations act as an adjunct modifier of IW abilities that allow belligerent governments to secure new sources of private information, to divert attention from other pillars of IW campaigns, to compromise the capabilities of domestic counterintelligence assets and to tacitly coerce important members of society. Key words: cyber operations, information warfare, election hacking, political interference, political warfare Since the end of the Cold War, few threats to national security have so completely captured the attention of pundits, politicians, and citizens in Western countries as having ongoing cyber-enabled influence operations prosecuted by the Russian Federation, Iran, and other belligerent foreign powers. In particular, concern over election “hacking” and the prospect of democratic processes compromised have together amounted to extraordinary efforts across North America and Europe to better secure critical information infrastructure, develop systems to counter disinformation proliferation and—in some cases—politicize the nature and intentions of foreign actors. At the heart of fear, outrage and political tension on the subject of foreign intervention into Western democratic processes is the role of cyber tools and techniques in enabling campaigns where information is the primary weapon of choice. Many prominent voices have explicitly and consistently labeled interference in 2016 and beyond as acts of cyber warfare. Senator Diane Feinstein, for instance, notably stated that “[w]hat we’re talking about is a cataclysmic change. What we’re talking about is the beginning of cyber warfare” [1]. Likewise, in 2017, former Vice President Dick Cheney argued that “Putin’s conduct … has to do with cyber warfare, cyberattack on the United States—the fact that he used his capabilities in the cyber area to try to influence our election … Putin and his government, his organization, interfere[d] in major ways with our basic fundamental democratic processes. In some quarters, that would be considered an act of war” [2]. And prominent recent scholarship that directly takes up the question of foreign influence in © The Author(s) 2020. Published by Oxford University Press. This is an Open Access article distributed under the terms of the Creative Commons Attribution License (http://creativecommons.org/licenses/by/4.0/), which permits unrestricted reuse, distribution, and reproduction in any medium, provided the original work is properly cited. the American democracy labeled the manipulative use of social media by a foreign power “a cyberattack” [3]. And yet, clearly, that the ultimate shape of such interference is the direct result of cyber conflict processes is up for debate [4--11]. From at least one perspective, the problem certainly “is” part and parcel of the broader challenges posed by the rising tides of international cyber conflict wherein the Internet has brought with it a series of new opportunities for prospective foreign meddlers and a plethora of problems—including challenges of protecting significant national security assets that are privately owned—for national security planners to address. But the vulnerabilities that most concern pundits, scholars, and policymakers alike when it comes to election hacking are invariably not those inherent in network systems. In spite of the obvious cybersecurity challenges bound up in protecting critical infrastructure and political institutions from unwarranted assault, the problem is also obviously about the agency and function of those innumerable information platforms that now form the substantive backbone of democratic discourse [12]. Cyber-enabled information operations are clearly of unique concern for modern democratic societies [13--17]. However, in spite of consensus among many military, intelligence, and security policy professionals that cyber is simply a new method of delivery and dissemination, the exact nature of the threat has been grappled with by scholars in a surprisingly limited fashion. Belligerent cyber attackers and the information systems upon which they operate are clearly related elements of the thing but there remains a pressing need to better unpack the relationship between conflictual digital actions and the national security implications of how core societal functions are increasingly defined by the broad-scoped integration of evolving digital technologies. Are cyber-supported information campaigns uniquely threatening vis-à-vis traditional influence operations undertaken by state actors? If so, are cyber operations themselves the determining factor? Or, conversely, is the “hacking” of Western democracies simply old wine in new—but fundamentally similar—bottles? In this article, I link theoretical frameworks prominent in studies of democratic function and political communication to notions of information assurance common in computer science to explain why information warfare (IW) in its most recent, cyber-enabled manifestations poses a unique threat to modern digital democracies. Specifically, I argue that the integrity of democratic systems of discourse and governance can be thought of in much the same way that cybersecurity specialists and computer engineers think of the security of information systems. For democracy to function in an effective fashion, information needs to be made available to the public in such a manner that adjudication on the credibility, origination, and quality thereof is possible. While such an argument may seem to largely emerge from the metaphor of the “marketplace of ideas” (MOIs) that guides public opinion toward prudent—if not necessarily accurate or “truthful”—deliberative outcomes, this broad conceptualization of democratic functionality gels with the several modern, prominent theories of democracy at work in political science [22--24]. In the “marketplace of ideas” metaphor, countervailing institutions—from a free press to elected representatives, public experts and declassified intelligence products—frame, interpret and disseminate information in such a way that the policy outputs of deliberation on any given issue are invariably characterized by some degree of moderation. This idea lies at the heart of many theories of domestic and international politics, not least theories on democratic peace and policy prudence [25--28]. In more well-grounded empirical theories of democratic functionality—such as Achen and Bartel's group theory of democracy—such forces play a significant role in determining the degree to which social identity or retrospective analyses of leadership play out at the ballot box. Thus, the notional significance of such information conditions to the targeting strategies of sophisticated IW operators seems well-founded. This essay argues that the information revolution based around Internet-enabled platforms and technologies has transformed the mechanisms of information assurance in democratic states and effectively degraded the natural resiliency of democratic processes to manipulative information operations. The “hacking” of democratic elections and discourse today is not simply the use of computer network exploitation techniques to enhance the traditional toolkit of foreign interference; rather, it primarily involves the widespread manipulation and compromise of the algorithmic nature of information platforms that, today, dictate the nature of information circulation within democracies. In addition to the muting of democracies' mechanisms of information assurance, the intended result is to generate an attribution challenge within the target state wherein the nature of disruption is difficult to ascertain. This effect is similar to what information security researchers refer to as a “Byzantine fault” in an information system, where the fact of systemic compromise is difficult to ascertain and appears as arbitrary to the casual observer [29]. Such a dynamic dampens the capacity of the democratic MOIs for self-correction and opens space for a foreign belligerent to shape sociopolitical outcomes. The remaining sections of this article describe how influence operations have been deployed to hack democratic electorates—not elections themselves, necessarily—by muting the inoculating effect of countervailing mechanisms of democratic moderation in the West in recent years, focusing particularly on the case of Russian interference during the 2015--16 presidential election season in the USA. Within the theoretical framework posed, the degree to which “democracy hacking” is a function of cyber operations is clear. Though broad-scoped use of private information to saturate information channels and shape media narratives “did” significantly benefit from the outputs of cyber operations, the grounds for success of Russia's interference campaigns were ultimately the information systems that are today part and parcel of the substrate of democratic discourse. Much as has been argued of cyberwar in this and other forums, computer network operations are simply an adjunct modifier of broader conflict that enhances the broader effort to influence Western politics. They do so in four ways. First, cyber operations provide unprecedented access to a multitude of private information taken from the servers of political operators, government personnel, and private citizens. Such material clearly extended the frontier of possibilities for those responsible for the design of influence attacks conducted across the West over the past half decade. Second, such actions divert popular attention from other tools of IW at work. Cyber operations are often executed and framed so as to play on enduring fears in both public and expert settings about the gravity of cyber issues. In practice, information about cyber operations is regularly leaked and framed so as to encourage the proliferation of narratives of digital doom that mask the appearance of other forms of threat to national security. Often, this involves the inception of diversionary threats to the target state, such as a potential disruption of national election infrastructures. In this way, the value of cyber operations is the constitution of symbolic threats rather than threats that significantly promise to aid broader political warfare campaigns. At the same time, such operations in this context perpetuate scholarly overemphasis on cyber doom, which is then reflected in the public domain in a series of ways. Third, cyber operations might distract and consume the resources of security entities tasked with combat digital aggression, particularly where lines of communication and responsibility for countering hybrid threats are unclear within national defense establishments. Finally, and perhaps most importantly, cyber operations help belligerent foreign actors attack the credibility of democracies' information assurance mechanisms. They do so in at least two ways. First, disruptive cyber operations are often a critical element of efforts to prevent prominent democratic voices from taking a direct role in combating disinformation and digital antagonism, not least because data breaches can naturally constitute a tacit coercive signal. For the general public, nonspecific knowledge of such external influence can diminish trust in important stakeholders. Second, both cyber operations and the image of broad-scoped vulnerability they encourage aid in the facilitation of popular information malaise wherein public trust in the origination and quality of information being forwarded by pundits, experts, and fellow citizens alike diminishes in line with the intensity and diversity of apparent sources of interference. With cyber operations specifically, implied or demonstrated compromise of systems critical to electoral integrity—up to and including election systems themselves—might achieve such an effect. What follows is divided into six sections. After outlining the broad shape “election hacking,” “democracy hacking,” I put forward the model of democratic functionality as that of an information system and draw on classical theories of democratic operation to suggest a theoretical framework for understanding the aims and impacts of sophisticated cyber-enabled IW efforts. Then, I deconstruct the multipronged case of Russian interference in Western democracies since 2014 via reference to the various mechanisms of marketplace information assurance proposed by the framework. Thereafter, I use this understanding of the nature and form of cyber-enabled IW efforts to adjudicate on the operational and strategic significance of cyber operations amidst other digital developments, before concluding with implications for scholars and practitioners.",
+        "keywords": [
+          "cyber operations",
+          "information warfare",
+          "election hacking",
+          "political interference",
+          "political warfare"
+        ],
+        "publication_dates": {
+          "received": "29 October 2019",
+          "revised": "9 April 2020",
+          "accepted": "19 May 2020"
+        },
+        "identifiers": {
+          "doi": [
+            "10.1093/cybsec/tyaa013"
+          ],
+          "issn": [],
+          "isbn": [],
+          "arxiv": [],
+          "pmid": [],
+          "pmcid": [],
+          "urls": [
+            "http://creativecommons.org/licenses/by/4.0"
+          ]
+        },
+        "references_block_count": 1,
+        "references_entries_estimated": 166,
+        "heading_count": 21,
+        "max_heading_level": 3
+      },
+      "validation": {
+        "dominant_quality": {
+          "intext_total": 1,
+          "index_coverage": 1.0,
+          "intext_citation_coverage": 1.0,
+          "preceding_text_coverage": 1.0,
+          "footnote_coverage": 1.0,
+          "unique_index_count": 1
+        },
+        "footnotes_quality": {
+          "intext_total": 0,
+          "index_coverage": 0.0,
+          "intext_citation_coverage": 0.0,
+          "preceding_text_coverage": 0.0,
+          "footnote_coverage": 0.0,
+          "unique_index_count": 0,
+          "items_total": 0
+        },
+        "style_validation": {
+          "detected_style": "hybrid",
+          "recommended_style": "numeric",
+          "aligned": true,
+          "signals": {
+            "superscript_hits": 5,
+            "superscript_definition_lines": 3,
+            "numeric_bracket_hits": 104,
+            "numeric_endnote_lines": 0,
+            "author_year_hits": 0
+          }
+        },
+        "coverage_validation": {
+          "dominant_bib_total": 332.0,
+          "dominant_bib_coverage_rate": 0.0030120481927710845,
+          "dominant_link_target": "footnotes",
+          "dominant_unresolved_flag": "unresolved_footnote_links"
+        },
+        "heading_validation": {
+          "heading_count": 21,
+          "max_heading_level": 3,
+          "level_jump_violations": 0,
+          "numbering_parent_violations": 0,
+          "has_reference_heading": true,
+          "has_subheadings": true
+        },
+        "metadata_validation": {
+          "field_presence": {
+            "title": true,
+            "authors": true,
+            "affiliations": true,
+            "emails": true,
+            "orcids": false,
+            "abstract": true,
+            "keywords": true,
+            "venue": true,
+            "persistent_identifier": true,
+            "headings": true
+          },
+          "counts": {
+            "authors": 2,
+            "affiliations": 1,
+            "emails": 1,
+            "orcids": 0,
+            "keywords": 5,
+            "doi": 1,
+            "issn": 0,
+            "isbn": 0,
+            "arxiv": 0,
+            "pmid": 0,
+            "pmcid": 0,
+            "urls": 1
+          },
+          "coverage": {
+            "core_coverage": 1.0,
+            "email_author_link_rate": 1.0
+          },
+          "flags": []
+        },
+        "flags": [
+          "low_bib_coverage"
+        ]
+      }
+    },
+    {
+      "file": "python_backend_legacy/dataset/0667c49a4b4ecd3c48f709a537a16e5d68ce198e8c7ce904a810718d43502163.json",
+      "source_type": "raw_json",
+      "pages_count": 18,
+      "rebuilt_from_pages": true,
+      "text_chars": 57566,
+      "references_count": 0,
+      "references_chars": 0,
+      "baseline": null,
+      "current": {
+        "style": "superscript",
+        "dominant_bucket": "tex",
+        "dominant": {
+          "intext_total": 26.0,
+          "success_occurrences": 26.0,
+          "success_unique": 13.0,
+          "bib_unique_total": 22.0,
+          "occurrence_match_rate": 1.0,
+          "bib_coverage_rate": 0.5909090909090909,
+          "success_percentage": 100.0,
+          "missing_intext_expected_total": 0,
+          "highest_intext_index": 0,
+          "missing_footnotes_for_seen_total": 0,
+          "uncited_footnote_total": 0,
+          "style": "superscript"
+        },
+        "buckets": {
+          "footnotes": {
+            "intext_total": 0.0,
+            "success_occurrences": 0.0,
+            "success_unique": 0.0,
+            "bib_unique_total": 87.0,
+            "occurrence_match_rate": 0.0,
+            "bib_coverage_rate": 0.0,
+            "success_percentage": 0.0,
+            "missing_intext_expected_total": 0.0,
+            "highest_intext_index": 0.0,
+            "missing_footnotes_for_seen_total": 0.0,
+            "uncited_footnote_total": 87.0,
+            "style": "footnotes"
+          },
+          "tex": {
+            "intext_total": 26.0,
+            "success_occurrences": 26.0,
+            "success_unique": 13.0,
+            "bib_unique_total": 22.0,
+            "occurrence_match_rate": 1.0,
+            "bib_coverage_rate": 0.5909090909090909,
+            "success_percentage": 100.0,
+            "missing_intext_expected_total": 0,
+            "highest_intext_index": 0,
+            "missing_footnotes_for_seen_total": 0,
+            "uncited_footnote_total": 0,
+            "style": "superscript"
+          },
+          "numeric": {
+            "intext_total": 0.0,
+            "success_occurrences": 0.0,
+            "success_unique": 0.0,
+            "bib_unique_total": 87.0,
+            "occurrence_match_rate": 0.0,
+            "bib_coverage_rate": 0.0,
+            "success_percentage": 0.0,
+            "missing_intext_expected_total": 0,
+            "highest_intext_index": 0,
+            "missing_footnotes_for_seen_total": 0,
+            "uncited_footnote_total": 0,
+            "style": "numeric"
+          },
+          "author_year": {
+            "intext_total": 0.0,
+            "success_occurrences": 0.0,
+            "success_unique": 0.0,
+            "bib_unique_total": 77.0,
+            "occurrence_match_rate": 0.0,
+            "bib_coverage_rate": 0.0,
+            "success_percentage": 0.0,
+            "missing_intext_expected_total": 0,
+            "highest_intext_index": 0,
+            "missing_footnotes_for_seen_total": 0,
+            "uncited_footnote_total": 0,
+            "style": "author_year"
+          }
+        }
+      },
+      "metadata": {
+        "title": "INTRODUCTION",
+        "subtitle": "J.D., Georgetown University Law Center.",
+        "document_type": "journal_article",
+        "venue": "Book Review",
+        "publication_year": 2018,
+        "authors": [
+          "Syed Hamza Mannan"
+        ],
+        "affiliations": [
+          "CYBER MERCENARIES: THE STATE, HACKERS, AND POWER. By Tim Maurer. New York and Cambridge: CAMBRIDGE UNIVERSITY PRESS, 2018. Pp. 259. $29.99"
+        ],
+        "emails": [],
+        "orcids": [],
+        "corresponding_author_line": "",
+        "abstract": "",
+        "keywords": [],
+        "publication_dates": {},
+        "identifiers": {
+          "doi": [],
+          "issn": [],
+          "isbn": [],
+          "arxiv": [],
+          "pmid": [],
+          "pmcid": [],
+          "urls": [
+            "https://perma.cc/T5NY-W96G",
+            "https://perma.cc/AK86-NE7P",
+            "https://perma.cc/5ZQD-WR4X",
+            "https://perma.cc/EQ24-A792",
+            "https://perma.cc/F2Y8-ZWNS",
+            "https://perma.cc/NQ6C-8D4F",
+            "https://perma.cc/G7M2-34BU",
+            "https://perma.cc/LWE6-G6ZD",
+            "https://perma.cc/L5KF-7FZ7",
+            "https://perma.cc/RNM9-SNTC",
+            "https://perma.cc/TF62-4Z8F"
+          ]
+        },
+        "references_block_count": 0,
+        "references_entries_estimated": 0,
+        "heading_count": 11,
+        "max_heading_level": 2
+      },
+      "validation": {
+        "dominant_quality": {
+          "intext_total": 26,
+          "index_coverage": 1.0,
+          "intext_citation_coverage": 1.0,
+          "preceding_text_coverage": 0.23076923076923078,
+          "footnote_coverage": 1.0,
+          "unique_index_count": 13
+        },
+        "footnotes_quality": {
+          "intext_total": 0,
+          "index_coverage": 0.0,
+          "intext_citation_coverage": 0.0,
+          "preceding_text_coverage": 0.0,
+          "footnote_coverage": 0.0,
+          "unique_index_count": 0,
+          "items_total": 87
+        },
+        "style_validation": {
+          "detected_style": "superscript",
+          "recommended_style": "superscript",
+          "aligned": true,
+          "signals": {
+            "superscript_hits": 102,
+            "superscript_definition_lines": 13,
+            "numeric_bracket_hits": 0,
+            "numeric_endnote_lines": 87,
+            "author_year_hits": 0
+          }
+        },
+        "coverage_validation": {
+          "dominant_bib_total": 22.0,
+          "dominant_bib_coverage_rate": 0.5909090909090909,
+          "dominant_link_target": "footnotes",
+          "dominant_unresolved_flag": "unresolved_footnote_links"
+        },
+        "heading_validation": {
+          "heading_count": 11,
+          "max_heading_level": 2,
+          "level_jump_violations": 0,
+          "numbering_parent_violations": 0,
+          "has_reference_heading": false,
+          "has_subheadings": true
+        },
+        "metadata_validation": {
+          "field_presence": {
+            "title": true,
+            "authors": true,
+            "affiliations": true,
+            "emails": false,
+            "orcids": false,
+            "abstract": false,
+            "keywords": false,
+            "venue": true,
+            "persistent_identifier": false,
+            "headings": true
+          },
+          "counts": {
+            "authors": 1,
+            "affiliations": 1,
+            "emails": 0,
+            "orcids": 0,
+            "keywords": 0,
+            "doi": 0,
+            "issn": 0,
+            "isbn": 0,
+            "arxiv": 0,
+            "pmid": 0,
+            "pmcid": 0,
+            "urls": 11
+          },
+          "coverage": {
+            "core_coverage": 0.6666666666666666,
+            "email_author_link_rate": 0.0
+          },
+          "flags": [
+            "meta_missing_abstract_and_keywords",
+            "meta_missing_contact_email",
+            "meta_missing_persistent_identifier"
+          ]
+        },
+        "flags": [
+          "missing_preceding_text",
+          "missing_reference_heading",
+          "meta_missing_abstract_and_keywords",
+          "meta_missing_contact_email",
+          "meta_missing_persistent_identifier"
+        ]
+      }
+    }
+  ]
+}

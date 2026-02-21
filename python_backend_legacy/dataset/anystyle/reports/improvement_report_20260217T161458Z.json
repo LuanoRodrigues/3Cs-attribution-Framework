@@ -1,0 +1,112 @@
+{
+  "timestamp_utc": "20260217T161458Z",
+  "workspace": "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle",
+  "dataset_dir": "/home/pantera/projects/TEIA/python_backend_legacy/dataset",
+  "baseline_model": "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/models/custom_v2.mod",
+  "candidate_model": "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/models/custom_auto_20260217T161458Z.mod",
+  "steps": [
+    {
+      "name": "use_human_gold",
+      "cmd": [],
+      "cwd": null,
+      "output": "using /home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/training/gold_labels.human.xml with sequences=102"
+    },
+    {
+      "name": "split_gold_labels",
+      "cmd": [
+        "python3",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/split_gold_labels.py",
+        "--input",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/training/gold_labels.human.xml",
+        "--train-out",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/training/train.pipeline.xml",
+        "--dev-out",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/training/dev.pipeline.xml",
+        "--dev-ratio",
+        "0.2",
+        "--seed",
+        "42"
+      ],
+      "cwd": "/home/pantera/projects/TEIA",
+      "output": "input=/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/training/gold_labels.human.xml\ntotal=102\ntrain=82\ndev=20\ntrain_xml=/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/training/train.pipeline.xml\ndev_xml=/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/training/dev.pipeline.xml\n"
+    },
+    {
+      "name": "train_candidate",
+      "cmd": [
+        "/home/pantera/projects/TEIA/annotarium/scripts/anystyle.sh",
+        "train",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/training/train.pipeline.xml",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/models/custom_auto_20260217T161458Z.mod"
+      ],
+      "cwd": "/home/pantera/projects/TEIA/annotarium",
+      "output": "INFO [2026-02-17 16:14:59 +0000] wapiti: load patterns\nINFO [2026-02-17 16:14:59 +0000] wapiti: initialize model\nINFO [2026-02-17 16:14:59 +0000] wapiti: nb train:    82\nINFO [2026-02-17 16:14:59 +0000] wapiti: nb labels:   8\nINFO [2026-02-17 16:14:59 +0000] wapiti: nb blocks:   11937\nINFO [2026-02-17 16:14:59 +0000] wapiti: nb features: 97992\nINFO [2026-02-17 16:14:59 +0000] wapiti: training model with l-bfgs\nINFO [2026-02-17 16:15:00 +0000] wapiti: compacting model\nINFO [2026-02-17 16:15:00 +0000] wapiti:     - Scan the model\n\nINFO [2026-02-17 16:15:00 +0000] wapiti:     - Compact it\n\nINFO [2026-02-17 16:15:00 +0000] wapiti:    11300 observations removed\nINFO [2026-02-17 16:15:00 +0000] wapiti:    90976 features removed\n"
+    },
+    {
+      "name": "check_candidate_on_dev_pipeline",
+      "cmd": [
+        "/home/pantera/projects/TEIA/annotarium/scripts/anystyle.sh",
+        "-P",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/models/custom_auto_20260217T161458Z.mod",
+        "check",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/training/dev.pipeline.xml"
+      ],
+      "cwd": "/home/pantera/projects/TEIA/annotarium",
+      "output": "Checking dev.pipeline.xml.........   3 seq  15.00%     11 tok  3.00%  0s\n"
+    },
+    {
+      "name": "check_candidate_on_benchmark",
+      "cmd": [
+        "/home/pantera/projects/TEIA/annotarium/scripts/anystyle.sh",
+        "-P",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/models/custom_auto_20260217T161458Z.mod",
+        "check",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/training/dev.v3.xml"
+      ],
+      "cwd": "/home/pantera/projects/TEIA/annotarium",
+      "output": "Checking dev.v3.xml...............  30 seq  85.71%    166 tok 25.08%  0s\n"
+    },
+    {
+      "name": "check_baseline_on_benchmark",
+      "cmd": [
+        "/home/pantera/projects/TEIA/annotarium/scripts/anystyle.sh",
+        "-P",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/models/custom_v2.mod",
+        "check",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/training/dev.v3.xml"
+      ],
+      "cwd": "/home/pantera/projects/TEIA/annotarium",
+      "output": "Checking dev.v3.xml...............   ✓                                0s\n"
+    }
+  ],
+  "summary": {
+    "benchmark_dev": "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/training/dev.v3.xml",
+    "candidate_dev": {
+      "seq_errors": 3,
+      "seq_error_pct": 15.0,
+      "tok_errors": 11,
+      "tok_error_pct": 3.0,
+      "raw": "Checking dev.pipeline.xml.........   3 seq  15.00%     11 tok  3.00%  0s"
+    },
+    "candidate_benchmark": {
+      "seq_errors": 30,
+      "seq_error_pct": 85.71,
+      "tok_errors": 166,
+      "tok_error_pct": 25.08,
+      "raw": "Checking dev.v3.xml...............  30 seq  85.71%    166 tok 25.08%  0s"
+    },
+    "baseline_benchmark": {
+      "seq_errors": 0,
+      "seq_error_pct": 0.0,
+      "tok_errors": 0,
+      "tok_error_pct": 0.0,
+      "raw": "Checking dev.v3.xml...............   ✓                                0s"
+    },
+    "kfold": null,
+    "decision": "keep_baseline",
+    "promotion_blocked": false,
+    "promotion_block_reason": "",
+    "human_gold_used": true,
+    "human_gold_count": 102,
+    "promoted_path": null
+  }
+}

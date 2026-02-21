@@ -65,6 +65,41 @@ declare global {
     commandBridge?: {
       dispatch: (payload: { phase: string; action: string; payload?: unknown }) => Promise<unknown>;
     };
+    agentBridge?: {
+      run: (payload: { text: string; context?: Record<string, unknown> }) => Promise<{
+        status: string;
+        reply?: string;
+        message?: string;
+        action?: { phase: string; action: string; payload?: Record<string, unknown> };
+      }>;
+      resolveIntent: (payload: { text: string; context?: Record<string, unknown> }) => Promise<{
+        status: string;
+        message?: string;
+        intent?: Record<string, unknown>;
+      }>;
+      executeIntent: (payload: { intent: Record<string, unknown>; context?: Record<string, unknown>; confirm?: boolean }) => Promise<{
+        status: string;
+        message?: string;
+        result?: Record<string, unknown>;
+        function?: string;
+      }>;
+      getFeatures: () => Promise<{ status: string; tabs?: unknown[]; message?: string }>;
+      refineCodingQuestions: (payload: {
+        currentQuestions?: string[];
+        feedback?: string;
+        contextText?: string;
+      }) => Promise<{ status: string; message?: string; questions?: string[] }>;
+      generateEligibilityCriteria: (payload: {
+        userText?: string;
+        collectionName?: string;
+        contextText?: string;
+        researchQuestions?: string[];
+      }) => Promise<{ status: string; message?: string; inclusion_criteria?: string[]; exclusion_criteria?: string[] }>;
+      getIntentStats: () => Promise<{ status: string; stats?: Record<string, unknown>; message?: string }>;
+      getWorkflowBatchJobs: () => Promise<{ status: string; jobs?: Record<string, unknown>[]; message?: string }>;
+      clearWorkflowBatchJobs: () => Promise<{ status: string; cleared?: number; message?: string }>;
+      getFeatureHealthCheck: () => Promise<{ status: string; health?: Record<string, unknown>; message?: string }>;
+    };
     appBridge?: {
       ping: () => string;
     };

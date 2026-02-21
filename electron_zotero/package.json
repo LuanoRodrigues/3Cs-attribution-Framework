@@ -1,0 +1,22 @@
+{
+  "name": "electron-zotero-ui",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Internal Zotero Electron UI for Back_end_assis",
+  "main": "main.js",
+  "scripts": {
+    "build": "node -e \"console.log('No build step required for electron_zotero.')\"",
+    "lint": "node -e \"console.log('No lint config yet for electron_zotero.')\"",
+    "typecheck": "node -e \"console.log('No typecheck step configured for electron_zotero (JavaScript-only project).')\"",
+    "test:intent-router": "node main/intent_router_smoke.cjs",
+    "test:intent-router:extended": "INTENT_ROUTER_EXTENDED=1 node main/intent_router_smoke.cjs --extended",
+    "start": "electron .",
+    "dev": "electron ."
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "electron": "^31.7.7"
+  }
+}

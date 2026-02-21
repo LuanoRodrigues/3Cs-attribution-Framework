@@ -71,6 +71,30 @@
       </div>
     </div>
   </div>
+  <button id="agentChatFab" class="agent-chat-fab" type="button" aria-label="Open agent chat" title="Agent Chat">
+    <span class="agent-chat-fab-icon" aria-hidden="true">✦</span>
+  </button>
+  <section id="agentChatDock" class="agent-chat-dock" aria-hidden="true">
+    <div class="agent-chat-head">
+      <strong>Agent Console</strong>
+      <div class="agent-chat-head-actions">
+        <button id="btnAgentChatClear" type="button">Clear</button>
+        <button id="btnAgentChatClose" type="button">Close</button>
+      </div>
+    </div>
+    <div id="agentChatMessages" class="agent-chat-messages"></div>
+    <form id="agentChatForm" class="agent-chat-form">
+      <input
+        id="agentChatInput"
+        type="text"
+        placeholder="Ask the agent to help with Zotero workflows..."
+        autocomplete="off"
+      />
+      <div class="agent-chat-controls">
+        <button id="btnAgentChatSend" type="submit">Send</button>
+      </div>
+    </form>
+  </section>
   <script src="./renderer.js"></script>
 </body>
 </html>

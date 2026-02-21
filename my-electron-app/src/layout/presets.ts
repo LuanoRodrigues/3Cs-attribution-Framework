@@ -75,6 +75,13 @@ export const PANEL_PRESETS: Record<string, PanelGridPreset> = {
     collapsed: { panel1: true, panel2: false, panel3: true, panel4: true },
     ratios: { panel1: 0, panel2: 3, panel3: 0, panel4: 0 }
   },
+  "retrieve:zotero": {
+    id: "retrieve:zotero",
+    roundLayout: false,
+    layoutHint: null,
+    collapsed: { panel1: false, panel2: false, panel3: false, panel4: true },
+    ratios: { panel1: 2, panel2: 3, panel3: 2, panel4: 0 }
+  },
   "retrieve:search-empty": {
     id: "retrieve:search-empty",
     roundLayout: false,

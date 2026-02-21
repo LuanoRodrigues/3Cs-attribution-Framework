@@ -25,12 +25,15 @@ export interface ZoteroItemPreview {
   key: string;
   title: string;
   authors: string;
+  date?: string;
   year?: string;
   itemType?: string;
   doi?: string;
   url?: string;
   abstract?: string;
   publicationTitle?: string;
+  tags?: string[];
+  collections?: string[];
   attachments?: number;
   pdfs?: number;
   hasPdf?: boolean;
@@ -364,12 +367,12 @@ export const fetchZoteroCollectionItemsPreview = async (
   let start = 0;
   const items: ZoteroItemPreview[] = [];
   while (true) {
-    const url = `${zoteroBase(creds)}/collections/${encodeURIComponent(
-      collectionKey
-    )}/items?limit=${limit}&start=${start}&include=children&itemType=-attachment`;
+    // Use the stable top-level items endpoint. Some Zotero APIs/libraries return HTTP 400
+    // for `include=children` + `itemType=-attachment` combinations.
+    const url = `${zoteroBase(creds)}/collections/${encodeURIComponent(collectionKey)}/items/top?limit=${limit}&start=${start}`;
     const res = await fetch(url, { headers: authHeaders(creds) });
     if (!res.ok) throw new Error(`Items HTTP ${res.status}`);
-    const data = (await res.json()) as Array<{ key: string; data: any; children?: Array<{ key?: string; data?: any }> }>;
+    const data = (await res.json()) as Array<{ key: string; data: any }>;
     (data || []).forEach((item) => {
       const d = item.data || {};
       const creators = Array.isArray(d.creators)
@@ -377,59 +380,36 @@ export const fetchZoteroCollectionItemsPreview = async (
             .map((c: any) => `${c.firstName || ""} ${c.lastName || ""}`.trim())
             .filter(Boolean)
         : [];
-      const children = Array.isArray(item.children) ? item.children : [];
-      let attachments = 0;
-      let pdfs = 0;
-      let notes = 0;
-      let annotations = 0;
-      let firstPdfKey = "";
-      let firstPdfTitle = "";
-      let firstPdfFilename = "";
-      children.forEach((child) => {
-        const cd = child?.data || {};
-        if (cd.itemType === "attachment") {
-          attachments += 1;
-          const ct = String(cd.contentType || "").toLowerCase();
-          const filename = String(cd.filename || cd.title || "").toLowerCase();
-          if (ct.includes("pdf") || filename.endsWith(".pdf")) {
-            pdfs += 1;
-            if (!firstPdfKey) {
-              firstPdfKey = String(child?.key || "");
-              firstPdfTitle = String(cd.title || cd.filename || "");
-              firstPdfFilename = String(cd.filename || "");
-            }
-          }
-          return;
-        }
-        if (cd.itemType === "note") {
-          notes += 1;
-          return;
-        }
-        if (cd.itemType === "annotation") {
-          annotations += 1;
-        }
-      });
-      const firstPdfPath = firstPdfKey ? findLocalPdfPath(firstPdfKey, firstPdfFilename) : "";
+      const tags = Array.isArray(d.tags)
+        ? d.tags.map((tag: any) => String(tag?.tag || "").trim()).filter(Boolean)
+        : [];
+      const collections = Array.isArray(d.collections)
+        ? d.collections.map((entry: any) => String(entry || "").trim()).filter(Boolean)
+        : [];
+      const attachments = typeof d.numChildren === "number" ? d.numChildren : 0;
       const libraryPrefix = zoteroLibraryPrefix(creds);
       items.push({
         key: item.key,
         title: d.title || "",
         authors: creators.join("; "),
-        year: d.date || "",
+        date: d.date ? String(d.date) : "",
+        year: d.date ? String(d.date).slice(0, 4) : "",
         itemType: d.itemType || "",
         doi: d.DOI || d.doi || "",
         url: d.url || "",
         abstract: d.abstractNote || "",
         publicationTitle: d.publicationTitle || "",
+        tags,
+        collections,
         attachments,
-        pdfs,
-        hasPdf: pdfs > 0,
+        pdfs: 0,
+        hasPdf: false,
         zoteroSelectUrl: `zotero://select/${libraryPrefix}/items/${item.key}`,
-        firstPdfKey: firstPdfKey || undefined,
-        firstPdfTitle: firstPdfTitle || undefined,
-        firstPdfPath: firstPdfPath || undefined,
-        notes: notes || 0,
-        annotations: annotations || 0
+        firstPdfKey: undefined,
+        firstPdfTitle: undefined,
+        firstPdfPath: undefined,
+        notes: 0,
+        annotations: 0
       });
     });
     start += limit;

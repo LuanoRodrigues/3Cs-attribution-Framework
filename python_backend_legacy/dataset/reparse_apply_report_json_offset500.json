@@ -1,0 +1,195 @@
+{
+  "generated_at_utc": "2026-02-14T08:29:07.649659+00:00",
+  "dataset_dir": "/home/pantera/projects/TEIA/python_backend_legacy/dataset",
+  "options": {
+    "types": "json",
+    "limit": 100,
+    "offset": 500,
+    "hash_only": true,
+    "prefer_pages_text": true,
+    "raw_target_key": "reparse_enriched",
+    "raw_top_level": true,
+    "dry_run": false,
+    "skip_existing": true,
+    "per_file_timeout_seconds": 30,
+    "suppress_parser_logs": true
+  },
+  "summary": {
+    "documents_total": 17,
+    "documents_ok": 17,
+    "documents_failed": 0,
+    "documents_skipped": 0
+  },
+  "results": [
+    {
+      "file": "python_backend_legacy/dataset/f84b6c84dd7c0a42782825ad8a5c15183c1d5835ce6ecccc2adacc57e0eb050a.json",
+      "source_type": "raw_json",
+      "pages_count": 44,
+      "text_chars": 182044,
+      "references_count": 0,
+      "style": "superscript",
+      "dominant_bucket": "tex",
+      "dry_run": false
+    },
+    {
+      "file": "python_backend_legacy/dataset/f8bc0e7630430619724cb6a4515f2e1eba6d8243c4a0da8bfb7c72e52b78e68e.json",
+      "source_type": "raw_json",
+      "pages_count": 11,
+      "text_chars": 35019,
+      "references_count": 0,
+      "style": "superscript",
+      "dominant_bucket": "tex",
+      "dry_run": false
+    },
+    {
+      "file": "python_backend_legacy/dataset/f8fb3a339e195c4eb164fd6af5d1ac7984ffd8bbf39b84c3acb0e0b7bcf3e53a.json",
+      "source_type": "raw_json",
+      "pages_count": 9,
+      "text_chars": 30838,
+      "references_count": 1,
+      "style": "author_year",
+      "dominant_bucket": "author_year",
+      "dry_run": false
+    },
+    {
+      "file": "python_backend_legacy/dataset/f936bc5885b2922cb3eb989c06e41523f892a885a832fb17b7acfbcf2dec5d68.json",
+      "source_type": "raw_json",
+      "pages_count": 16,
+      "text_chars": 34467,
+      "references_count": 1,
+      "style": "author_year",
+      "dominant_bucket": "author_year",
+      "dry_run": false
+    },
+    {
+      "file": "python_backend_legacy/dataset/f9837f0d994534c1717669cf3faa56e8bd7c0a36c398958cf43fbcd57c8d1c15.json",
+      "source_type": "raw_json",
+      "pages_count": 21,
+      "text_chars": 39110,
+      "references_count": 1,
+      "style": "author_year",
+      "dominant_bucket": "author_year",
+      "dry_run": false
+    },
+    {
+      "file": "python_backend_legacy/dataset/fab4e13f1e97c6615617959bdd52bbada5557164d92a9cf2e33922dd90007bdc.json",
+      "source_type": "raw_json",
+      "pages_count": 23,
+      "text_chars": 72979,
+      "references_count": 0,
+      "style": "superscript",
+      "dominant_bucket": "tex",
+      "dry_run": false
+    },
+    {
+      "file": "python_backend_legacy/dataset/faf7f3e5c6f4d74e8a8718cd9dba82194c38f5ca3b1c0579d5bf6c357c993d69.json",
+      "source_type": "raw_json",
+      "pages_count": 56,
+      "text_chars": 164292,
+      "references_count": 0,
+      "style": "superscript",
+      "dominant_bucket": "tex",
+      "dry_run": false
+    },
+    {
+      "file": "python_backend_legacy/dataset/fb84c64d7127956ceea5b6f03c0d16857bb357fce1391a3cf2b4fe87083c7f3d.json",
+      "source_type": "raw_json",
+      "pages_count": 26,
+      "text_chars": 54655,
+      "references_count": 0,
+      "style": "superscript",
+      "dominant_bucket": "tex",
+      "dry_run": false
+    },
+    {
+      "file": "python_backend_legacy/dataset/fc1618986aa8d3baa535e7e2ada1d341956b1850187793b54afa93570abdced2.json",
+      "source_type": "raw_json",
+      "pages_count": 19,
+      "text_chars": 79544,
+      "references_count": 1,
+      "style": "tex_superscript",
+      "dominant_bucket": "tex",
+      "dry_run": false
+    },
+    {
+      "file": "python_backend_legacy/dataset/fc62cc90f1758c9dc2e784ef4f13a45bb83115ba7fb37b0bbedffd7be8b2e322.json",
+      "source_type": "raw_json",
+      "pages_count": 13,
+      "text_chars": 29988,
+      "references_count": 1,
+      "style": "author_year",
+      "dominant_bucket": "author_year",
+      "dry_run": false
+    },
+    {
+      "file": "python_backend_legacy/dataset/fd24bab7a930f5d3039bff0b41c9331d8669be53f2483559d2470cfc290465de.json",
+      "source_type": "raw_json",
+      "pages_count": 26,
+      "text_chars": 62210,
+      "references_count": 1,
+      "style": "author_year",
+      "dominant_bucket": "author_year",
+      "dry_run": false
+    },
+    {
+      "file": "python_backend_legacy/dataset/fe31bd57b22d3b63fbb0144229380c52111d9b048541906b5ca04c59c2232ef5.json",
+      "source_type": "raw_json",
+      "pages_count": 37,
+      "text_chars": 94101,
+      "references_count": 0,
+      "style": "hybrid",
+      "dominant_bucket": "tex",
+      "dry_run": false
+    },
+    {
+      "file": "python_backend_legacy/dataset/fe7e16662643ff9422582d71b4dc47cd341d24703abcf51edfbd1fe5e6f3c328.json",
+      "source_type": "raw_json",
+      "pages_count": 20,
+      "text_chars": 59132,
+      "references_count": 1,
+      "style": "author_year",
+      "dominant_bucket": "author_year",
+      "dry_run": false
+    },
+    {
+      "file": "python_backend_legacy/dataset/fedb0f453bbfb8ec03908c911ccdb0703249b28c2bfa99c3cae88731b299f33b.json",
+      "source_type": "raw_json",
+      "pages_count": 41,
+      "text_chars": 104780,
+      "references_count": 0,
+      "style": "hybrid",
+      "dominant_bucket": "tex",
+      "dry_run": false
+    },
+    {
+      "file": "python_backend_legacy/dataset/ff4ac170cec401bdcad2471f2fc7c7cca34f0abf458e54747e2eecbb0dcdd59b.json",
+      "source_type": "raw_json",
+      "pages_count": 15,
+      "text_chars": 33570,
+      "references_count": 0,
+      "style": "superscript",
+      "dominant_bucket": "tex",
+      "dry_run": false
+    },
+    {
+      "file": "python_backend_legacy/dataset/ff8b6b8ab197bc69e91b5b65c40401ff67aa04c6e5a0c6e5e773de2881a5003d.json",
+      "source_type": "raw_json",
+      "pages_count": 24,
+      "text_chars": 67761,
+      "references_count": 0,
+      "style": "superscript",
+      "dominant_bucket": "tex",
+      "dry_run": false
+    },
+    {
+      "file": "python_backend_legacy/dataset/fff0b998dfd006a11a8ddbc3f78670fff61fb751815c5f51ffa0d21a08e30849.json",
+      "source_type": "raw_json",
+      "pages_count": 39,
+      "text_chars": 108622,
+      "references_count": 0,
+      "style": "superscript",
+      "dominant_bucket": "tex",
+      "dry_run": false
+    }
+  ]
+}

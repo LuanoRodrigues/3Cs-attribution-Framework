@@ -1,0 +1,20 @@
+[
+  {
+    "custom_id": "pyr_e7ff3c179b22ee49",
+    "meta": {
+      "custom_id": "pyr_e7ff3c179b22ee49",
+      "rq": "0: How are cyber attribution frameworks and models used?",
+      "gold_theme": "Cyber Attribution",
+      "potential_theme": "(unspecified)",
+      "evidence_type": "framework",
+      "route": "theme",
+      "route_value": "all",
+      "page": "",
+      "section_title": "",
+      "section_text": "",
+      "item_key": "",
+      "url": ""
+    },
+    "section_html": "<h3 id=\"section-title\">Synthetic Section</h3><p data-tags=\"models;frameworks\" id=\"p1\">Synthetic analysis paragraph from payload.</p><p data-tags=\"models\" id=\"p2\">Second synthetic paragraph across evidence.</p><p id=\"conclusion\">Synthetic conclusion.</p><!-- coverage used=[] unused=[] -->"
+  }
+]

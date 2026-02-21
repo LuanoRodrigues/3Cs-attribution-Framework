@@ -1,0 +1,314 @@
+{
+  "timestamp_utc": "20260217T160238Z",
+  "workspace": "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle",
+  "dataset_dir": "/home/pantera/projects/TEIA/python_backend_legacy/dataset",
+  "baseline_model": "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/models/custom_v2.mod",
+  "candidate_model": "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/models/custom_auto_20260217T160238Z.mod",
+  "steps": [
+    {
+      "name": "build_training_data",
+      "cmd": [
+        "python3",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/build_training_data.py",
+        "--dataset-dir",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset",
+        "--workspace-dir",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle",
+        "--anystyle-cmd",
+        "/home/pantera/projects/TEIA/annotarium/scripts/anystyle.sh",
+        "--build-draft-xml"
+      ],
+      "cwd": "/home/pantera/projects/TEIA",
+      "output": "dataset_dir=/home/pantera/projects/TEIA/python_backend_legacy/dataset\njson_files_scanned=555\ndocs_with_extracted_refs=137\nreferences_exported=6966\nreferences_txt=/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/exports/references_raw.txt\nreferences_tsv=/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/exports/references_with_source.tsv\ndraft_xml_status=ok\ndraft_xml=/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/training/training-data.draft.xml\n"
+    },
+    {
+      "name": "create_gold_labels",
+      "cmd": [
+        "python3",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/create_gold_labels.py",
+        "--workspace-dir",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle",
+        "--anystyle-cmd",
+        "/home/pantera/projects/TEIA/annotarium/scripts/anystyle.sh",
+        "--max-refs",
+        "2500"
+      ],
+      "cwd": "/home/pantera/projects/TEIA",
+      "output": "input_tsv=/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/exports/references_with_source.tsv\nreferences_kept=2500\nseed_txt=/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/training/gold_labels.seed.txt\nreview_tsv=/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/training/gold_labels.review.tsv\nseed_xml=/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/training/gold_labels.seed.xml\ngold_xml=/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/training/gold_labels.xml\nnote=gold_labels.xml is an auto-labeled seed; finalize by reviewing gold_labels.review.tsv\n"
+    },
+    {
+      "name": "curate_gold_labels",
+      "cmd": [
+        "python3",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/curate_gold_labels.py",
+        "--input",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/training/gold_labels.xml",
+        "--output",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/training/gold_labels.pipeline.xml"
+      ],
+      "cwd": "/home/pantera/projects/TEIA",
+      "output": "input=/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/training/gold_labels.xml\noutput=/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/training/gold_labels.pipeline.xml\nsequences=1937\nfields_cleaned=5385\nempty_fields_dropped=0\nsplit_title_fixes=1\nnoisy_sequences_dropped=563\n"
+    },
+    {
+      "name": "split_gold_labels",
+      "cmd": [
+        "python3",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/split_gold_labels.py",
+        "--input",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/training/gold_labels.pipeline.xml",
+        "--train-out",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/training/train.pipeline.xml",
+        "--dev-out",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/training/dev.pipeline.xml",
+        "--dev-ratio",
+        "0.2",
+        "--seed",
+        "42"
+      ],
+      "cwd": "/home/pantera/projects/TEIA",
+      "output": "input=/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/training/gold_labels.pipeline.xml\ntotal=1937\ntrain=1550\ndev=387\ntrain_xml=/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/training/train.pipeline.xml\ndev_xml=/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/training/dev.pipeline.xml\n"
+    },
+    {
+      "name": "train_candidate",
+      "cmd": [
+        "/home/pantera/projects/TEIA/annotarium/scripts/anystyle.sh",
+        "train",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/training/train.pipeline.xml",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/models/custom_auto_20260217T160238Z.mod"
+      ],
+      "cwd": "/home/pantera/projects/TEIA/annotarium",
+      "output": "INFO [2026-02-17 16:03:12 +0000] wapiti: load patterns\nINFO [2026-02-17 16:03:12 +0000] wapiti: initialize model\nINFO [2026-02-17 16:03:12 +0000] wapiti: nb train:    1550\nINFO [2026-02-17 16:03:12 +0000] wapiti: nb labels:   19\nINFO [2026-02-17 16:03:12 +0000] wapiti: nb blocks:   106458\nINFO [2026-02-17 16:03:12 +0000] wapiti: nb features: 2042918\nINFO [2026-02-17 16:03:12 +0000] wapiti: training model with l-bfgs\nINFO [2026-02-17 16:03:51 +0000] wapiti: compacting model\nINFO [2026-02-17 16:03:51 +0000] wapiti:     - Scan the model\n\nINFO [2026-02-17 16:03:51 +0000] wapiti:     - Compact it\n\nINFO [2026-02-17 16:03:51 +0000] wapiti:   102516 observations removed\nINFO [2026-02-17 16:03:51 +0000] wapiti:  1951775 features removed\n"
+    },
+    {
+      "name": "check_candidate_on_dev_pipeline",
+      "cmd": [
+        "/home/pantera/projects/TEIA/annotarium/scripts/anystyle.sh",
+        "-P",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/models/custom_auto_20260217T160238Z.mod",
+        "check",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/training/dev.pipeline.xml"
+      ],
+      "cwd": "/home/pantera/projects/TEIA/annotarium",
+      "output": "Checking dev.pipeline.xml.........  83 seq  21.45%    361 tok  4.38%  1s\n"
+    },
+    {
+      "name": "check_candidate_on_benchmark",
+      "cmd": [
+        "/home/pantera/projects/TEIA/annotarium/scripts/anystyle.sh",
+        "-P",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/models/custom_auto_20260217T160238Z.mod",
+        "check",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/training/dev.v3.xml"
+      ],
+      "cwd": "/home/pantera/projects/TEIA/annotarium",
+      "output": "Checking dev.v3.xml...............   ✓                                0s\n"
+    },
+    {
+      "name": "check_baseline_on_benchmark",
+      "cmd": [
+        "/home/pantera/projects/TEIA/annotarium/scripts/anystyle.sh",
+        "-P",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/models/custom_v2.mod",
+        "check",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/training/dev.v3.xml"
+      ],
+      "cwd": "/home/pantera/projects/TEIA/annotarium",
+      "output": "Checking dev.v3.xml...............   ✓                                0s\n"
+    },
+    {
+      "name": "kfold_train_fold_1",
+      "cmd": [
+        "/home/pantera/projects/TEIA/annotarium/scripts/anystyle.sh",
+        "train",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/tmp/kfold_20260217T160238Z/train_fold1.xml",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/tmp/kfold_20260217T160238Z/candidate_fold1.mod"
+      ],
+      "cwd": "/home/pantera/projects/TEIA/annotarium",
+      "output": "INFO [2026-02-17 16:03:57 +0000] wapiti: load patterns\nINFO [2026-02-17 16:03:58 +0000] wapiti: initialize model\nINFO [2026-02-17 16:03:58 +0000] wapiti: nb train:    1291\nINFO [2026-02-17 16:03:58 +0000] wapiti: nb labels:   19\nINFO [2026-02-17 16:03:58 +0000] wapiti: nb blocks:   92656\nINFO [2026-02-17 16:03:58 +0000] wapiti: nb features: 1779236\nINFO [2026-02-17 16:03:58 +0000] wapiti: training model with l-bfgs\nINFO [2026-02-17 16:04:27 +0000] wapiti: compacting model\nINFO [2026-02-17 16:04:27 +0000] wapiti:     - Scan the model\n\nINFO [2026-02-17 16:04:27 +0000] wapiti:     - Compact it\n\nINFO [2026-02-17 16:04:27 +0000] wapiti:    88932 observations removed\nINFO [2026-02-17 16:04:27 +0000] wapiti:  1693318 features removed\n"
+    },
+    {
+      "name": "kfold_check_candidate_fold_1",
+      "cmd": [
+        "/home/pantera/projects/TEIA/annotarium/scripts/anystyle.sh",
+        "-P",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/tmp/kfold_20260217T160238Z/candidate_fold1.mod",
+        "check",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/tmp/kfold_20260217T160238Z/test_fold1.xml"
+      ],
+      "cwd": "/home/pantera/projects/TEIA/annotarium",
+      "output": "Checking test_fold1.xml........... 141 seq  21.83%    643 tok  4.61%  1s\n"
+    },
+    {
+      "name": "kfold_check_baseline_fold_1",
+      "cmd": [
+        "/home/pantera/projects/TEIA/annotarium/scripts/anystyle.sh",
+        "-P",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/models/custom_v2.mod",
+        "check",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/tmp/kfold_20260217T160238Z/test_fold1.xml"
+      ],
+      "cwd": "/home/pantera/projects/TEIA/annotarium",
+      "output": "Checking test_fold1.xml...........  75 seq  11.61%    316 tok  2.26%  1s\n"
+    },
+    {
+      "name": "kfold_train_fold_2",
+      "cmd": [
+        "/home/pantera/projects/TEIA/annotarium/scripts/anystyle.sh",
+        "train",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/tmp/kfold_20260217T160238Z/train_fold2.xml",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/tmp/kfold_20260217T160238Z/candidate_fold2.mod"
+      ],
+      "cwd": "/home/pantera/projects/TEIA/annotarium",
+      "output": "INFO [2026-02-17 16:04:34 +0000] wapiti: load patterns\nINFO [2026-02-17 16:04:35 +0000] wapiti: initialize model\nINFO [2026-02-17 16:04:35 +0000] wapiti: nb train:    1291\nINFO [2026-02-17 16:04:35 +0000] wapiti: nb labels:   18\nINFO [2026-02-17 16:04:35 +0000] wapiti: nb blocks:   92902\nINFO [2026-02-17 16:04:35 +0000] wapiti: nb features: 1689084\nINFO [2026-02-17 16:04:35 +0000] wapiti: training model with l-bfgs\nINFO [2026-02-17 16:05:00 +0000] wapiti: compacting model\nINFO [2026-02-17 16:05:00 +0000] wapiti:     - Scan the model\n\nINFO [2026-02-17 16:05:00 +0000] wapiti:     - Compact it\n\nINFO [2026-02-17 16:05:00 +0000] wapiti:    88651 observations removed\nINFO [2026-02-17 16:05:00 +0000] wapiti:  1598634 features removed\n"
+    },
+    {
+      "name": "kfold_check_candidate_fold_2",
+      "cmd": [
+        "/home/pantera/projects/TEIA/annotarium/scripts/anystyle.sh",
+        "-P",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/tmp/kfold_20260217T160238Z/candidate_fold2.mod",
+        "check",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/tmp/kfold_20260217T160238Z/test_fold2.xml"
+      ],
+      "cwd": "/home/pantera/projects/TEIA/annotarium",
+      "output": "Checking test_fold2.xml........... 149 seq  23.07%    686 tok  5.04%  1s\n"
+    },
+    {
+      "name": "kfold_check_baseline_fold_2",
+      "cmd": [
+        "/home/pantera/projects/TEIA/annotarium/scripts/anystyle.sh",
+        "-P",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/models/custom_v2.mod",
+        "check",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/tmp/kfold_20260217T160238Z/test_fold2.xml"
+      ],
+      "cwd": "/home/pantera/projects/TEIA/annotarium",
+      "output": "Checking test_fold2.xml...........  22 seq   3.41%     69 tok  0.51%  2s\n"
+    },
+    {
+      "name": "kfold_train_fold_3",
+      "cmd": [
+        "/home/pantera/projects/TEIA/annotarium/scripts/anystyle.sh",
+        "train",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/tmp/kfold_20260217T160238Z/train_fold3.xml",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/tmp/kfold_20260217T160238Z/candidate_fold3.mod"
+      ],
+      "cwd": "/home/pantera/projects/TEIA/annotarium",
+      "output": "INFO [2026-02-17 16:05:09 +0000] wapiti: load patterns\nINFO [2026-02-17 16:05:09 +0000] wapiti: initialize model\nINFO [2026-02-17 16:05:09 +0000] wapiti: nb train:    1292\nINFO [2026-02-17 16:05:09 +0000] wapiti: nb labels:   19\nINFO [2026-02-17 16:05:09 +0000] wapiti: nb blocks:   92019\nINFO [2026-02-17 16:05:09 +0000] wapiti: nb features: 1768577\nINFO [2026-02-17 16:05:09 +0000] wapiti: training model with l-bfgs\nINFO [2026-02-17 16:05:36 +0000] wapiti: compacting model\nINFO [2026-02-17 16:05:36 +0000] wapiti:     - Scan the model\n\nINFO [2026-02-17 16:05:36 +0000] wapiti:     - Compact it\n\nINFO [2026-02-17 16:05:36 +0000] wapiti:    88797 observations removed\nINFO [2026-02-17 16:05:36 +0000] wapiti:  1692197 features removed\n"
+    },
+    {
+      "name": "kfold_check_candidate_fold_3",
+      "cmd": [
+        "/home/pantera/projects/TEIA/annotarium/scripts/anystyle.sh",
+        "-P",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/tmp/kfold_20260217T160238Z/candidate_fold3.mod",
+        "check",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/tmp/kfold_20260217T160238Z/test_fold3.xml"
+      ],
+      "cwd": "/home/pantera/projects/TEIA/annotarium",
+      "output": "Checking test_fold3.xml........... 139 seq  21.55%    529 tok  3.64%  1s\n"
+    },
+    {
+      "name": "kfold_check_baseline_fold_3",
+      "cmd": [
+        "/home/pantera/projects/TEIA/annotarium/scripts/anystyle.sh",
+        "-P",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/models/custom_v2.mod",
+        "check",
+        "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/tmp/kfold_20260217T160238Z/test_fold3.xml"
+      ],
+      "cwd": "/home/pantera/projects/TEIA/annotarium",
+      "output": "Checking test_fold3.xml...........  16 seq   2.48%     25 tok  0.17%  2s\n"
+    }
+  ],
+  "summary": {
+    "benchmark_dev": "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/training/dev.v3.xml",
+    "candidate_dev": {
+      "seq_errors": 83,
+      "seq_error_pct": 21.45,
+      "tok_errors": 361,
+      "tok_error_pct": 4.38,
+      "raw": "Checking dev.pipeline.xml.........  83 seq  21.45%    361 tok  4.38%  1s"
+    },
+    "candidate_benchmark": {
+      "seq_errors": 0,
+      "seq_error_pct": 0.0,
+      "tok_errors": 0,
+      "tok_error_pct": 0.0,
+      "raw": "Checking dev.v3.xml...............   ✓                                0s"
+    },
+    "baseline_benchmark": {
+      "seq_errors": 0,
+      "seq_error_pct": 0.0,
+      "tok_errors": 0,
+      "tok_error_pct": 0.0,
+      "raw": "Checking dev.v3.xml...............   ✓                                0s"
+    },
+    "kfold": {
+      "folds": 3,
+      "candidate_folds": [
+        {
+          "seq_errors": 141,
+          "seq_error_pct": 21.83,
+          "tok_errors": 643,
+          "tok_error_pct": 4.61,
+          "raw": "Checking test_fold1.xml........... 141 seq  21.83%    643 tok  4.61%  1s"
+        },
+        {
+          "seq_errors": 149,
+          "seq_error_pct": 23.07,
+          "tok_errors": 686,
+          "tok_error_pct": 5.04,
+          "raw": "Checking test_fold2.xml........... 149 seq  23.07%    686 tok  5.04%  1s"
+        },
+        {
+          "seq_errors": 139,
+          "seq_error_pct": 21.55,
+          "tok_errors": 529,
+          "tok_error_pct": 3.64,
+          "raw": "Checking test_fold3.xml........... 139 seq  21.55%    529 tok  3.64%  1s"
+        }
+      ],
+      "baseline_folds": [
+        {
+          "seq_errors": 75,
+          "seq_error_pct": 11.61,
+          "tok_errors": 316,
+          "tok_error_pct": 2.26,
+          "raw": "Checking test_fold1.xml...........  75 seq  11.61%    316 tok  2.26%  1s"
+        },
+        {
+          "seq_errors": 22,
+          "seq_error_pct": 3.41,
+          "tok_errors": 69,
+          "tok_error_pct": 0.51,
+          "raw": "Checking test_fold2.xml...........  22 seq   3.41%     69 tok  0.51%  2s"
+        },
+        {
+          "seq_errors": 16,
+          "seq_error_pct": 2.48,
+          "tok_errors": 25,
+          "tok_error_pct": 0.17,
+          "raw": "Checking test_fold3.xml...........  16 seq   2.48%     25 tok  0.17%  2s"
+        }
+      ],
+      "candidate_avg": {
+        "seq_errors": 143,
+        "seq_error_pct": 22.150000000000002,
+        "tok_errors": 619,
+        "tok_error_pct": 4.430000000000001,
+        "raw": "kfold_avg_over_3"
+      },
+      "baseline_avg": {
+        "seq_errors": 38,
+        "seq_error_pct": 5.833333333333333,
+        "tok_errors": 137,
+        "tok_error_pct": 0.9799999999999999,
+        "raw": "kfold_avg_over_3"
+      },
+      "kfold_dir": "/home/pantera/projects/TEIA/python_backend_legacy/dataset/anystyle/tmp/kfold_20260217T160238Z"
+    },
+    "decision": "keep_baseline",
+    "promoted_path": null
+  }
+}

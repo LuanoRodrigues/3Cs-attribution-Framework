@@ -50,8 +50,24 @@ export const RetrieveTab: RibbonTab = {
       label: "Zotero",
       hint: "Load records from Zotero.",
       iconId: "retrieve-import",
-      group: "Data Loader",
+      group: "Zotero Loader",
       command: { phase: "retrieve", action: "datahub_load_zotero" }
+    },
+    {
+      id: "retrieve-zotero-refresh",
+      label: "Refresh",
+      hint: "Refresh Zotero tree and items.",
+      iconId: "retrieve-import",
+      group: "Zotero Loader",
+      command: { phase: "retrieve", action: "zotero_refresh_tree" }
+    },
+    {
+      id: "retrieve-zotero-load-selected",
+      label: "Load Collection",
+      hint: "Load selected Zotero collection to Data Hub.",
+      iconId: "retrieve-import",
+      group: "Zotero Loader",
+      command: { phase: "retrieve", action: "zotero_load_selected_collection" }
     },
     {
       id: "retrieve-load-local",

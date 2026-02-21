@@ -1,0 +1,70 @@
+{
+  "total": 7,
+  "pass": 7,
+  "fail": 0,
+  "rows": [
+    {
+      "i": 0,
+      "prompt": "create a subfolder frameworks and filter all the items talking about frameworks in cyber attribution",
+      "want": "workflow",
+      "ok": true,
+      "intentId": "workflow.create_subfolder_by_topic",
+      "targetFunction": "workflow.create_subfolder_by_topic",
+      "error": ""
+    },
+    {
+      "i": 1,
+      "prompt": "read the items/articles/documents/papers and retrieve only those talking about frameworks",
+      "want": "workflow",
+      "ok": true,
+      "intentId": "workflow.create_subfolder_by_topic",
+      "targetFunction": "workflow.create_subfolder_by_topic",
+      "error": ""
+    },
+    {
+      "i": 2,
+      "prompt": "make folder legal_attribution under current collection with papers about legal attribution",
+      "want": "workflow",
+      "ok": true,
+      "intentId": "workflow.create_subfolder_by_topic",
+      "targetFunction": "workflow.create_subfolder_by_topic",
+      "error": ""
+    },
+    {
+      "i": 3,
+      "prompt": "scan current collection and keep only papers about technical attribution in a subcollection",
+      "want": "workflow",
+      "ok": true,
+      "intentId": "workflow.create_subfolder_by_topic",
+      "targetFunction": "workflow.create_subfolder_by_topic",
+      "error": ""
+    },
+    {
+      "i": 4,
+      "prompt": "find papers about attribution evidence standards",
+      "want": "workflow",
+      "ok": true,
+      "intentId": "workflow.create_subfolder_by_topic",
+      "targetFunction": "workflow.create_subfolder_by_topic",
+      "error": ""
+    },
+    {
+      "i": 5,
+      "prompt": "please export csv for active collection",
+      "want": "feature:export_collection_to_csv",
+      "ok": true,
+      "intentId": "feature.run",
+      "targetFunction": "export_collection_to_csv",
+      "error": ""
+    },
+    {
+      "i": 6,
+      "prompt": "download pdfs from selected collection",
+      "want": "feature:download_pdfs_from_collections",
+      "ok": true,
+      "intentId": "feature.run",
+      "targetFunction": "download_pdfs_from_collections",
+      "error": ""
+    }
+  ]
+}

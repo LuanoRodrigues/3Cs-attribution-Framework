@@ -1,0 +1,128 @@
+{
+  "status": "ok",
+  "total": 10,
+  "pass": 9,
+  "fail": 1,
+  "results": [
+    {
+      "i": 0,
+      "ok": true,
+      "want": "workflow",
+      "gotIntent": "workflow.create_subfolder_by_topic",
+      "gotFeature": "workflow.create_subfolder_by_topic",
+      "needsClarification": false,
+      "question": "",
+      "topic": "frameworks",
+      "subfolderName": "frameworks",
+      "error": ""
+    },
+    {
+      "i": 1,
+      "ok": true,
+      "want": "workflow",
+      "gotIntent": "workflow.create_subfolder_by_topic",
+      "gotFeature": "workflow.create_subfolder_by_topic",
+      "needsClarification": true,
+      "question": "Can I create a subfolder entitled \"Frameworks\" filtering only articles talking about \"frameworks\"?",
+      "topic": "frameworks",
+      "subfolderName": "",
+      "error": ""
+    },
+    {
+      "i": 2,
+      "ok": true,
+      "want": "workflow",
+      "gotIntent": "workflow.create_subfolder_by_topic",
+      "gotFeature": "workflow.create_subfolder_by_topic",
+      "needsClarification": false,
+      "question": "",
+      "topic": "legal attribution",
+      "subfolderName": "legal_attribution",
+      "error": ""
+    },
+    {
+      "i": 3,
+      "ok": true,
+      "want": "workflow",
+      "gotIntent": "workflow.create_subfolder_by_topic",
+      "gotFeature": "workflow.create_subfolder_by_topic",
+      "needsClarification": true,
+      "question": "Can I create a subfolder entitled \"technical_attribution\" filtering only articles talking about \"technical attribution\"?",
+      "topic": "technical attribution",
+      "subfolderName": "",
+      "error": ""
+    },
+    {
+      "i": 4,
+      "ok": true,
+      "want": "workflow",
+      "gotIntent": "workflow.create_subfolder_by_topic",
+      "gotFeature": "workflow.create_subfolder_by_topic",
+      "needsClarification": true,
+      "question": "Can I create a subfolder entitled \"Threat Intel Frameworks\" filtering only articles talking about \"threat intel frameworks\"?",
+      "topic": "threat intel frameworks",
+      "subfolderName": "",
+      "error": ""
+    },
+    {
+      "i": 5,
+      "ok": true,
+      "want": "workflow",
+      "gotIntent": "workflow.create_subfolder_by_topic",
+      "gotFeature": "workflow.create_subfolder_by_topic",
+      "needsClarification": true,
+      "question": "Can I create a subfolder entitled \"Policy frameworks\" filtering only articles talking about \"policy frameworks\"?",
+      "topic": "policy frameworks",
+      "subfolderName": "",
+      "error": ""
+    },
+    {
+      "i": 6,
+      "ok": false,
+      "want": "workflow",
+      "gotIntent": "",
+      "gotFeature": "",
+      "needsClarification": false,
+      "question": "",
+      "topic": "",
+      "subfolderName": "",
+      "error": "timeout"
+    },
+    {
+      "i": 7,
+      "ok": true,
+      "want": "workflow",
+      "gotIntent": "workflow.create_subfolder_by_topic",
+      "gotFeature": "workflow.create_subfolder_by_topic",
+      "needsClarification": true,
+      "question": "Can I create a subfolder entitled \"Attribution Evidence Standards\" filtering only articles talking about \"attribution evidence standards\"?",
+      "topic": "attribution evidence standards",
+      "subfolderName": "",
+      "error": ""
+    },
+    {
+      "i": 8,
+      "ok": true,
+      "want": "feature",
+      "gotIntent": "feature.run",
+      "gotFeature": "export_collection_to_csv",
+      "needsClarification": true,
+      "question": "Where would you like the CSV saved? Please provide a full file path or a filename (e.g., /Downloads/my_collection.csv or my_collection.csv).",
+      "topic": "",
+      "subfolderName": "",
+      "error": ""
+    },
+    {
+      "i": 9,
+      "ok": true,
+      "want": "feature",
+      "gotIntent": "feature.run",
+      "gotFeature": "download_pdfs_from_collections",
+      "needsClarification": true,
+      "question": "Where should I save the downloaded PDFs? Please provide an output folder path (e.g., /Users/you/Downloads/ZoteroPdfs).",
+      "topic": "",
+      "subfolderName": "",
+      "error": ""
+    }
+  ]
+}

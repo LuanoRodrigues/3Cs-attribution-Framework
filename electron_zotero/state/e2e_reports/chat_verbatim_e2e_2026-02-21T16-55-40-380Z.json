@@ -1,0 +1,65 @@
+{
+  "startedAt": "2026-02-21T16:53:37.425Z",
+  "scenario": {
+    "collectionKeyword": "framework",
+    "initialCommand": "code this collection about cyber attribution and frameworks and models",
+    "feedback": "Could you refine the questions for literature review contribution and strengths/weaknesses of each framework?",
+    "approve": "yes",
+    "waitMs": 120000,
+    "executionWaitMs": 300000
+  },
+  "steps": [
+    {
+      "at": "2026-02-21T16:53:37.427Z",
+      "name": "renderer-ready",
+      "ok": true,
+      "detail": "chat form + collections tree detected"
+    },
+    {
+      "at": "2026-02-21T16:53:38.235Z",
+      "name": "await-tree-lines",
+      "ok": true,
+      "detail": "rows=79"
+    },
+    {
+      "at": "2026-02-21T16:53:38.301Z",
+      "name": "select-collection",
+      "ok": true,
+      "detail": "another_Test_methodology_Modeling/framework"
+    },
+    {
+      "at": "2026-02-21T16:53:39.511Z",
+      "name": "send-initial-command",
+      "ok": true,
+      "detail": "code this collection about cyber attribution and frameworks and models"
+    },
+    {
+      "at": "2026-02-21T16:55:40.379Z",
+      "name": "await-initial-questions",
+      "ok": false,
+      "detail": "timeout waiting for assistant message"
+    }
+  ],
+  "transcript": [
+    {
+      "role": "assistant",
+      "tone": "",
+      "text": "Agent ready. Send a command to organize collections by tag."
+    },
+    {
+      "role": "user",
+      "tone": "",
+      "text": "code this collection about cyber attribution and frameworks and models"
+    },
+    {
+      "role": "assistant",
+      "tone": "",
+      "text": "I need a bit more detail:\n- Do you have a preferred coding schema or variables to extract (e.g., study type, model type, evidence types, validation metrics, uncertainty handling, data sources)?\n- What output format do you want for the coded data (CSV, Zotero tags/notes, JSON, or a coded spreadsheet)?\n- Do you want coding limited to English-language items or include other languages?\n- Any date range or specific subtopics to prioritize (e.g., nation-state attribution, ML-based attribution, legal frameworks)?"
+    }
+  ],
+  "status": "failed",
+  "error": "timeout waiting for assistant message",
+  "statusLine": "Intent needs clarification.",
+  "selectedCollection": "Collection\n      Nameanother_Test_methodology_Modeling/frameworkParent KeyRK5GDU4EVersion188927Subcollections0Items in Panel0Items in Tree Cache0\n      \n        Open in Zotero",
+  "finishedAt": "2026-02-21T16:55:40.380Z"
+}

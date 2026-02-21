@@ -37,6 +37,30 @@ contextBridge.exposeInMainWorld("commandBridge", {
   dispatch: (payload: { phase: string; action: string; payload?: unknown }) => ipcRenderer.invoke("command:dispatch", payload)
 });
 
+contextBridge.exposeInMainWorld("agentBridge", {
+  run: (payload: { text: string; context?: Record<string, unknown> }) => ipcRenderer.invoke("agent:run", payload),
+  resolveIntent: (payload: { text: string; context?: Record<string, unknown> }) =>
+    ipcRenderer.invoke("agent:intent-resolve", payload),
+  executeIntent: (payload: { intent: Record<string, unknown>; context?: Record<string, unknown>; confirm?: boolean }) =>
+    ipcRenderer.invoke("agent:intent-execute", payload),
+  getFeatures: () => ipcRenderer.invoke("agent:features"),
+  refineCodingQuestions: (payload: {
+    currentQuestions?: string[];
+    feedback?: string;
+    contextText?: string;
+  }) => ipcRenderer.invoke("agent:refine-coding-questions", payload),
+  generateEligibilityCriteria: (payload: {
+    userText?: string;
+    collectionName?: string;
+    contextText?: string;
+    researchQuestions?: string[];
+  }) => ipcRenderer.invoke("agent:generate-eligibility-criteria", payload),
+  getIntentStats: () => ipcRenderer.invoke("agent:get-intent-stats"),
+  getWorkflowBatchJobs: () => ipcRenderer.invoke("agent:get-workflow-batch-jobs"),
+  clearWorkflowBatchJobs: () => ipcRenderer.invoke("agent:clear-workflow-batch-jobs"),
+  getFeatureHealthCheck: () => ipcRenderer.invoke("agent:feature-health-check")
+});
+
 contextBridge.exposeInMainWorld("retrieveBridge", {
   tags: {
     list: (paperId: string) => ipcRenderer.invoke("retrieve:tags:list", paperId),

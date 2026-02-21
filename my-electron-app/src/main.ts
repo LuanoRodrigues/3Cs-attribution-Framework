@@ -56,6 +56,9 @@ import {
   summariseRun
 } from "./analyse/backend";
 import { executeRetrieveSearch } from "./main/ipc/retrieve_ipc";
+import { FeatureWorker } from "./main/agent/featureWorker";
+import { groupedFeatures, getFeatureByFunctionName } from "./main/agent/featureRegistry";
+import { resolveIntentForCommand } from "./main/agent/intent";
 
 let mainWindow: BrowserWindow | null = null;
 let secretsVault: ReturnType<typeof getSecretsVault> | null = null;
@@ -175,6 +178,37 @@ let analysePool: WorkerPool | null = null;
 let retrievePool: WorkerPool | null = null;
 const analyseCache = new LruCache<unknown>(24);
 const retrieveCache = new LruCache<unknown>(12);
+const featureWorker = new FeatureWorker();
+let zoteroSignatures: Record<string, { functionName?: string; args?: Array<{ key?: string; type?: string; required?: boolean; default?: unknown }> }> | null = null;
+const intentTelemetry = {
+  requests: 0,
+  workflowIntents: 0,
+  featureIntents: 0,
+  legacyIntents: 0,
+  executed: 0,
+  failed: 0,
+  fallbackUsed: 0,
+  llmSuccess: 0,
+  llmFailures: 0
+};
+type WorkflowBatchJob = {
+  id: string;
+  functionName: string;
+  status: "queued" | "running" | "done" | "failed";
+  phase: string;
+  startedAt: number;
+  endedAt?: number;
+  args: Record<string, unknown>;
+  result?: unknown;
+  error?: string;
+};
+const workflowBatchJobs: WorkflowBatchJob[] = [];
+
+function bumpIntentTelemetry(
+  key: keyof typeof intentTelemetry
+): void {
+  intentTelemetry[key] += 1;
+}
 
 function cacheKey(method: string, args: unknown[]): string {
   try {
@@ -205,6 +239,351 @@ function requirePools(): { analysePool: WorkerPool; retrievePool: WorkerPool } {
 function getLogPath(): string {
   const targetDir = app.isPackaged ? app.getPath("userData") : path.join(app.getAppPath(), "..");
   return path.join(targetDir, ".codex_logs", "editor.log");
+}
+
+function findMainPyScript(scriptName: string): string {
+  const candidates = [
+    path.join(__dirname, "main", "py", scriptName),
+    path.join(__dirname, "py", scriptName),
+    path.join(process.cwd(), "my-electron-app", "src", "main", "py", scriptName),
+    path.join(process.cwd(), "src", "main", "py", scriptName)
+  ];
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return candidates[0];
+}
+
+async function loadZoteroSignatures(): Promise<Record<string, { functionName?: string; args?: Array<{ key?: string; type?: string; required?: boolean; default?: unknown }> }>> {
+  if (zoteroSignatures && Object.keys(zoteroSignatures).length) return zoteroSignatures;
+  const pythonCmd = process.env.PYTHON_BIN || "python3";
+  const scriptPath = findMainPyScript("get_zotero_signatures.py");
+  const result = await new Promise<{ status: string; signatures?: Record<string, any>; message?: string }>((resolve) => {
+    const child = spawn(pythonCmd, [scriptPath], { cwd: process.cwd(), env: process.env, stdio: ["ignore", "pipe", "pipe"] });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (chunk) => {
+      stdout += String(chunk || "");
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += String(chunk || "");
+    });
+    child.on("error", (error) => {
+      resolve({ status: "error", message: String(error?.message || error) });
+    });
+    child.on("exit", () => {
+      try {
+        const parsed = JSON.parse(stdout || "{}");
+        if (parsed?.status === "ok" && parsed?.signatures && typeof parsed.signatures === "object") {
+          resolve({ status: "ok", signatures: parsed.signatures });
+        } else {
+          resolve({ status: "error", message: parsed?.message || stderr || "Invalid signatures output." });
+        }
+      } catch {
+        resolve({ status: "error", message: stderr || "Could not parse signatures output." });
+      }
+    });
+  });
+  if (result.status !== "ok") {
+    throw new Error(result.message || "Failed to load Zotero signatures.");
+  }
+  zoteroSignatures = result.signatures || {};
+  return zoteroSignatures;
+}
+
+function resolveFeatureDescriptor(
+  functionName: string,
+  signatures: Record<string, { functionName?: string; args?: Array<{ key?: string; type?: string; required?: boolean; default?: unknown }> }>
+): { functionName: string; args: Array<{ key?: string; type?: string; required?: boolean; default?: unknown }> } | null {
+  const listed = getFeatureByFunctionName(functionName, signatures);
+  if (listed) {
+    return {
+      functionName: listed.functionName,
+      args: Array.isArray(listed.args) ? listed.args : []
+    };
+  }
+  const sig = signatures?.[functionName];
+  if (!sig) return null;
+  return {
+    functionName,
+    args: Array.isArray(sig.args) ? sig.args : []
+  };
+}
+
+const INTENT_LLM_MODEL = String(process.env.OPENAI_MODEL || process.env.CODEX_MODEL || "gpt-5-mini").trim() || "gpt-5-mini";
+
+function parseResearchQuestionsInput(rawText: string): string[] {
+  const raw = String(rawText || "").trim();
+  if (!raw) return [];
+  const lines = raw.split(/\n+/).map((line) => String(line || "").trim()).filter(Boolean);
+  const numbered = lines
+    .map((line) => {
+      const m = line.match(/^\s*(\d+)[\)\].:\-]\s*(.+)$/);
+      return m ? String(m[2] || "").trim() : "";
+    })
+    .filter(Boolean);
+  const fallback = raw
+    .split(/[;\n]+/)
+    .map((s) => String(s || "").replace(/^\s*[-*]\s*/, "").trim())
+    .filter(Boolean);
+  return (numbered.length ? numbered : fallback).slice(0, 5);
+}
+
+function generateResearchQuestionsFromTopic(topicRaw: string): string[] {
+  const topic = String(topicRaw || "").trim() || "the selected topic";
+  return [
+    `How is ${topic} conceptually defined across the literature?`,
+    `What frameworks and models are used to analyze ${topic}?`,
+    `What evidence and methods are used to support claims about ${topic}?`,
+    `What major limitations or disagreements appear in current approaches to ${topic}?`,
+    `What policy or practice implications are identified regarding ${topic}?`
+  ];
+}
+
+async function resolveCodingIntentWithLlm(text: string, context: Record<string, unknown>): Promise<{ status: string; data?: any; message?: string }> {
+  const apiKey = getOpenAiApiKey();
+  if (!apiKey) return { status: "error", message: "OPENAI_API_KEY is not configured." };
+  const schema = {
+    type: "object",
+    additionalProperties: false,
+    required: ["is_coding_request", "confidence", "research_questions", "screening", "needsClarification", "clarificationQuestions"],
+    properties: {
+      is_coding_request: { type: "boolean" },
+      confidence: { type: "number", minimum: 0, maximum: 1 },
+      research_questions: { type: "array", minItems: 0, maxItems: 5, items: { type: "string" } },
+      context: { type: "string" },
+      screening: { type: "boolean" },
+      needsClarification: { type: "boolean" },
+      clarificationQuestions: { type: "array", minItems: 0, maxItems: 6, items: { type: "string" } }
+    }
+  };
+  const body = {
+    model: INTENT_LLM_MODEL,
+    messages: [
+      {
+        role: "system",
+        content:
+          "You extract coding intents for a Zotero coding workflow. If request is coding, return 3-5 research questions. Screening defaults to true unless user explicitly disables."
+      },
+      {
+        role: "user",
+        content: JSON.stringify({
+          text: String(text || ""),
+          selected_collection_name: String(context?.selectedCollectionName || ""),
+          selected_collection_key: String(context?.selectedCollectionKey || "")
+        })
+      }
+    ],
+    tools: [{ type: "function", function: { name: "resolve_coding_intent", description: "Resolve coding intent.", parameters: schema, strict: true } }],
+    tool_choice: { type: "function", function: { name: "resolve_coding_intent" } }
+  };
+  const baseUrl = getOpenAiBaseUrl().replace(/\/+$/, "");
+  const res = await fetch(`${baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify(body)
+  });
+  const raw = await res.text();
+  if (!res.ok) return { status: "error", message: `Coding intent LLM HTTP ${res.status}: ${raw.slice(0, 400)}` };
+  let parsed: any = null;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return { status: "error", message: "Coding intent LLM returned non-JSON body." };
+  }
+  const argsText =
+    parsed?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments ||
+    parsed?.choices?.[0]?.message?.function_call?.arguments ||
+    "";
+  if (!String(argsText || "").trim()) return { status: "error", message: "Coding intent LLM returned no tool arguments." };
+  try {
+    return { status: "ok", data: JSON.parse(argsText) };
+  } catch {
+    return { status: "error", message: "Coding intent tool arguments are not valid JSON." };
+  }
+}
+
+async function callOpenAiIntentResolver(
+  text: string,
+  context: Record<string, unknown>,
+  featureCatalog: Array<{ functionName: string; label: string; group: string; tab: string; requiredArgs: string[] }>
+): Promise<{ status: string; intent?: any; message?: string }> {
+  const apiKey = getOpenAiApiKey();
+  if (!apiKey) return { status: "error", message: "OPENAI_API_KEY is not configured." };
+  const schema = {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      intentId: { type: "string", enum: ["workflow.create_subfolder_by_topic", "feature.run", "agent.legacy_command"] },
+      targetFunction: { type: "string" },
+      confidence: { type: "number", minimum: 0, maximum: 1 },
+      riskLevel: { type: "string", enum: ["safe", "confirm", "high"] },
+      needsClarification: { type: "boolean" },
+      clarificationQuestions: { type: "array", items: { type: "string" }, minItems: 0, maxItems: 6 },
+      args: { type: "object" }
+    },
+    required: ["intentId", "targetFunction", "confidence", "riskLevel", "needsClarification", "clarificationQuestions", "args"]
+  };
+  const body = {
+    model: INTENT_LLM_MODEL,
+    messages: [
+      {
+        role: "system",
+        content:
+          "You are an intent router for Zotero workflows. Use workflow.create_subfolder_by_topic for topic-filter/subfolder requests; otherwise map to feature.run when possible, else agent.legacy_command."
+      },
+      {
+        role: "user",
+        content: JSON.stringify({
+          user_text: String(text || ""),
+          context: {
+            selectedCollectionKey: String(context?.selectedCollectionKey || ""),
+            selectedCollectionName: String(context?.selectedCollectionName || "")
+          },
+          available_features: featureCatalog
+        })
+      }
+    ],
+    tools: [{ type: "function", function: { name: "resolve_intent", description: "Resolve user intent.", parameters: schema, strict: true } }],
+    tool_choice: { type: "function", function: { name: "resolve_intent" } }
+  };
+  const baseUrl = getOpenAiBaseUrl().replace(/\/+$/, "");
+  const res = await fetch(`${baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify(body)
+  });
+  const raw = await res.text();
+  if (!res.ok) return { status: "error", message: `Intent LLM HTTP ${res.status}: ${raw.slice(0, 400)}` };
+  let parsed: any = null;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return { status: "error", message: "Intent LLM returned non-JSON body." };
+  }
+  const argsText =
+    parsed?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments ||
+    parsed?.choices?.[0]?.message?.function_call?.arguments ||
+    "";
+  if (!String(argsText || "").trim()) return { status: "error", message: "Intent LLM returned no tool arguments." };
+  try {
+    return { status: "ok", intent: JSON.parse(argsText) };
+  } catch {
+    return { status: "error", message: "Intent LLM tool arguments are not valid JSON." };
+  }
+}
+
+async function refineCodingQuestionsWithLlm(payload: {
+  currentQuestions?: string[];
+  feedback?: string;
+  contextText?: string;
+}): Promise<{ status: string; questions?: string[]; message?: string }> {
+  const apiKey = getOpenAiApiKey();
+  const current = Array.isArray(payload?.currentQuestions)
+    ? payload.currentQuestions.map((q) => String(q || "").trim()).filter(Boolean)
+    : [];
+  const feedback = String(payload?.feedback || "").trim();
+  if (!feedback) return { status: "error", message: "feedback is required." };
+  if (!apiKey) {
+    const fallback = parseResearchQuestionsInput(feedback);
+    return fallback.length >= 3 ? { status: "ok", questions: fallback.slice(0, 5) } : { status: "error", message: "LLM unavailable and fallback parse failed." };
+  }
+  const baseUrl = getOpenAiBaseUrl().replace(/\/+$/, "");
+  const body = {
+    model: INTENT_LLM_MODEL,
+    input: [
+      {
+        role: "user",
+        content: [{ type: "input_text", text: JSON.stringify({ current, feedback, contextText: String(payload?.contextText || "") }) }]
+      }
+    ],
+    instructions:
+      "Revise research questions for evidence coding. Return JSON: {\"questions\":[\"...\",\"...\",\"...\"]} with 3 to 5 concise, high-quality questions.",
+    max_output_tokens: 300
+  };
+  const out = await fetchJson(`${baseUrl}/responses`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  const text = String(out?.output_text || "").trim();
+  try {
+    const parsed = JSON.parse(text);
+    const questions = Array.isArray(parsed?.questions) ? parsed.questions.map((q: unknown) => String(q || "").trim()).filter(Boolean).slice(0, 5) : [];
+    if (questions.length >= 3) return { status: "ok", questions };
+  } catch {
+    // ignore
+  }
+  const parsedFallback = parseResearchQuestionsInput(text || feedback);
+  if (parsedFallback.length >= 3) return { status: "ok", questions: parsedFallback.slice(0, 5) };
+  return { status: "error", message: "Could not produce valid 3-5 questions." };
+}
+
+async function generateEligibilityCriteriaWithLlm(payload: {
+  userText?: string;
+  collectionName?: string;
+  contextText?: string;
+  researchQuestions?: string[];
+}): Promise<{ status: string; inclusion_criteria?: string[]; exclusion_criteria?: string[]; message?: string }> {
+  const apiKey = getOpenAiApiKey();
+  const researchQuestions = Array.isArray(payload?.researchQuestions)
+    ? payload.researchQuestions.map((q) => String(q || "").trim()).filter(Boolean)
+    : [];
+  if (!apiKey) {
+    return {
+      status: "ok",
+      inclusion_criteria: [
+        "Directly addresses at least one research question.",
+        "Contains explicit framework/model/method details relevant to the topic.",
+        "Provides analyzable evidence (empirical, conceptual, or policy-grounded)."
+      ],
+      exclusion_criteria: [
+        "Out of scope for the research questions or topic.",
+        "No substantive evidence or methodological detail.",
+        "Duplicate or non-scholarly/insufficiently documented source."
+      ]
+    };
+  }
+  const baseUrl = getOpenAiBaseUrl().replace(/\/+$/, "");
+  const body = {
+    model: INTENT_LLM_MODEL,
+    input: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "input_text",
+            text: JSON.stringify({
+              userText: String(payload?.userText || ""),
+              collectionName: String(payload?.collectionName || ""),
+              contextText: String(payload?.contextText || ""),
+              researchQuestions
+            })
+          }
+        ]
+      }
+    ],
+    instructions:
+      "Generate screening criteria for literature coding. Return JSON with keys inclusion_criteria and exclusion_criteria, each 3-8 short bullets.",
+    max_output_tokens: 300
+  };
+  const out = await fetchJson(`${baseUrl}/responses`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  const text = String(out?.output_text || "").trim();
+  try {
+    const parsed = JSON.parse(text);
+    const inclusion = Array.isArray(parsed?.inclusion_criteria) ? parsed.inclusion_criteria.map((x: unknown) => String(x || "").trim()).filter(Boolean) : [];
+    const exclusion = Array.isArray(parsed?.exclusion_criteria) ? parsed.exclusion_criteria.map((x: unknown) => String(x || "").trim()).filter(Boolean) : [];
+    if (inclusion.length && exclusion.length) {
+      return { status: "ok", inclusion_criteria: inclusion, exclusion_criteria: exclusion };
+    }
+  } catch {
+    // ignore
+  }
+  return { status: "error", message: "Failed to generate criteria." };
 }
 
 function appendLogEntry(entry: string): void {
@@ -1225,6 +1604,412 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
       return { status: "ok" };
     }
     return { status: "ok" };
+  });
+
+  ipcMain.handle("agent:features", async () => {
+    try {
+      const signatures = await loadZoteroSignatures();
+      return { status: "ok", tabs: groupedFeatures(signatures) };
+    } catch (error) {
+      return { status: "error", message: normalizeError(error) };
+    }
+  });
+
+  ipcMain.handle("agent:intent-resolve", async (_event, payload: { text?: string; context?: Record<string, unknown> }) => {
+    try {
+      bumpIntentTelemetry("requests");
+      const signatures = await loadZoteroSignatures();
+      const text = String(payload?.text || "").trim();
+      const context = (payload?.context || {}) as Record<string, unknown>;
+
+      if (/\b(code|coding|verbatim|evidence)\b/i.test(text)) {
+        const codingLlm = await resolveCodingIntentWithLlm(text, context);
+        if (codingLlm?.status === "ok" && codingLlm?.data?.is_coding_request === true) {
+          const questions = Array.isArray(codingLlm.data.research_questions)
+            ? codingLlm.data.research_questions.map((q: unknown) => String(q || "").trim()).filter(Boolean).slice(0, 5)
+            : [];
+          const topic = text.match(/about\s+(.+?)(?:\.|$)/i)?.[1] || "";
+          const fallbackQuestions = questions.length ? questions : generateResearchQuestionsFromTopic(String(topic || "the selected topic"));
+          const collectionName = String(context?.selectedCollectionName || "").trim();
+          const clarificationQuestions: string[] = [];
+          if (!collectionName) clarificationQuestions.push("Select a collection before coding.");
+          if (fallbackQuestions.length < 3) clarificationQuestions.push("I need 3 to 5 research questions.");
+          return {
+            status: "ok",
+            intent: {
+              intentId: "feature.run",
+              targetFunction: "Verbatim_Evidence_Coding",
+              confidence: Number.isFinite(Number(codingLlm.data.confidence)) ? Number(codingLlm.data.confidence) : 0.86,
+              riskLevel: "confirm",
+              needsClarification: clarificationQuestions.length > 0,
+              clarificationQuestions,
+              args: {
+                dir_base: "./running_tests",
+                collection_name: collectionName,
+                research_questions: fallbackQuestions.slice(0, 5),
+                prompt_key: "code_pdf_page",
+                screening: codingLlm.data.screening !== false,
+                context: String(codingLlm.data.context || "").trim()
+              }
+            }
+          };
+        }
+      }
+
+      const tabGroups = groupedFeatures(signatures);
+      const flatCatalog: Array<{ functionName: string; label: string; group: string; tab: string; requiredArgs: string[] }> = [];
+      tabGroups.forEach((tab) => {
+        tab.groups.forEach((group) => {
+          group.features.forEach((feature) => {
+            flatCatalog.push({
+              functionName: String(feature.functionName || ""),
+              label: String(feature.label || ""),
+              group: String(group.group || ""),
+              tab: String(tab.tab || ""),
+              requiredArgs: Array.isArray(feature.args)
+                ? feature.args.filter((arg) => arg?.required).map((arg) => String(arg?.key || "")).filter(Boolean)
+                : []
+            });
+          });
+        });
+      });
+      const llmResolved = await callOpenAiIntentResolver(text, context, flatCatalog);
+      if (llmResolved?.status === "ok" && llmResolved?.intent && typeof llmResolved.intent === "object") {
+        bumpIntentTelemetry("llmSuccess");
+        const intent = llmResolved.intent as Record<string, unknown>;
+        const intentId = String(intent?.intentId || "").trim();
+        if (intentId === "workflow.create_subfolder_by_topic") {
+          bumpIntentTelemetry("workflowIntents");
+          const rawArgs = (intent?.args || {}) as Record<string, unknown>;
+          const parentIdentifier =
+            String(rawArgs.parentIdentifier || "").trim() ||
+            String(context.selectedCollectionKey || "").trim() ||
+            String(context.selectedCollectionName || "").trim();
+          const topic = String(rawArgs.topic || "").trim();
+          const subfolderNameRaw = String(rawArgs.subfolderName || "").trim() || topic;
+          const subfolderName = subfolderNameRaw.replace(/\s+/g, "_").toLowerCase();
+          return {
+            status: "ok",
+            intent: {
+              intentId: "workflow.create_subfolder_by_topic",
+              targetFunction: "workflow-create-subfolder-by-topic",
+              confidence: Number.isFinite(Number(intent?.confidence)) ? Number(intent?.confidence) : 0.82,
+              riskLevel: "confirm",
+              needsClarification: !parentIdentifier || !topic,
+              clarificationQuestions: !parentIdentifier
+                ? ["Select a collection before creating a topic subfolder."]
+                : !topic
+                  ? ["Provide the topic to filter for."]
+                  : [],
+              args: {
+                parentIdentifier,
+                topic,
+                subfolderName,
+                confidenceThreshold: Number.isFinite(Number(rawArgs.confidenceThreshold)) ? Number(rawArgs.confidenceThreshold) : 0.6,
+                maxItems: Number.isFinite(Number(rawArgs.maxItems)) ? Number(rawArgs.maxItems) : 0
+              }
+            }
+          };
+        }
+        if (intentId === "feature.run") bumpIntentTelemetry("featureIntents");
+        if (intentId === "agent.legacy_command") bumpIntentTelemetry("legacyIntents");
+        return { status: "ok", intent };
+      }
+      bumpIntentTelemetry("llmFailures");
+
+      const fallback = resolveIntentForCommand(text, context, signatures);
+      const fallbackIntentId = String(fallback?.intent?.intentId || "");
+      if (fallbackIntentId === "workflow.create_subfolder_by_topic") bumpIntentTelemetry("workflowIntents");
+      else if (fallbackIntentId === "feature.run") bumpIntentTelemetry("featureIntents");
+      else if (fallbackIntentId === "agent.legacy_command") bumpIntentTelemetry("legacyIntents");
+      bumpIntentTelemetry("fallbackUsed");
+      return fallback;
+    } catch (error) {
+      bumpIntentTelemetry("failed");
+      return { status: "error", message: normalizeError(error) };
+    }
+  });
+
+  ipcMain.handle(
+    "agent:intent-execute",
+    async (_event, payload: { intent?: Record<string, unknown>; context?: Record<string, unknown>; confirm?: boolean }) => {
+      try {
+        const intent = payload?.intent || {};
+        const intentId = String(intent?.intentId || "").trim();
+        if (!intentId) return { status: "error", message: "intent.intentId is required." };
+        const now = Date.now();
+        const jobId = randomUUID();
+
+        if (intentId === "workflow.create_subfolder_by_topic") {
+          const args = ((intent?.args as Record<string, unknown>) || {});
+          const topic = String(args.topic || "").trim();
+          const subfolderName = String(args.subfolderName || topic).trim() || "topic";
+          const collectionName =
+            String(args.parentIdentifier || "").trim() ||
+            String((payload?.context as Record<string, unknown> | undefined)?.selectedCollectionName || "").trim();
+          if (!collectionName) return { status: "error", message: "Selected collection is required for workflow execution." };
+          if (!topic) return { status: "error", message: "Workflow topic is required." };
+          const job: WorkflowBatchJob = {
+            id: jobId,
+            functionName: "workflow.create_subfolder_by_topic",
+            status: "running",
+            phase: "Enqueue topic classification",
+            startedAt: now,
+            args
+          };
+          workflowBatchJobs.unshift(job);
+          if (workflowBatchJobs.length > 200) workflowBatchJobs.length = 200;
+          try {
+            const enqueueFeature = resolveFeatureDescriptor("enqueue_topic_classification_for_collection", await loadZoteroSignatures());
+            const applyFeature = resolveFeatureDescriptor("apply_topic_batch_results", await loadZoteroSignatures());
+            if (!enqueueFeature || !applyFeature) {
+              throw new Error("Workflow features are unavailable. Expected enqueue/apply topic functions.");
+            }
+            const enqueueResult = await featureWorker.run({
+              functionName: enqueueFeature.functionName,
+              argsSchema: Array.isArray(enqueueFeature.args) ? enqueueFeature.args : [],
+              argsValues: {
+                collection_name: collectionName,
+                topic_query: topic
+              },
+              execute: true
+            });
+            if (enqueueResult?.status !== "ok") {
+              throw new Error(String(enqueueResult?.message || "Topic enqueue failed."));
+            }
+            job.phase = "Apply topic batch results";
+            const applyResult = await featureWorker.run({
+              functionName: applyFeature.functionName,
+              argsSchema: Array.isArray(applyFeature.args) ? applyFeature.args : [],
+              argsValues: {
+                collection_name: collectionName,
+                topic_query: topic,
+                subfolder_name: subfolderName,
+                min_confidence: Number.isFinite(Number(args.confidenceThreshold)) ? Number(args.confidenceThreshold) : 0.6
+              },
+              execute: true
+            });
+            job.status = applyResult?.status === "ok" ? "done" : "failed";
+            job.phase = applyResult?.status === "ok" ? "Completed" : "Apply failed";
+            job.result = { enqueue: enqueueResult, apply: applyResult };
+            if (applyResult?.status !== "ok") {
+              job.error = String(applyResult?.message || "Apply topic batch results failed.");
+              job.endedAt = Date.now();
+              bumpIntentTelemetry("failed");
+              return { status: "error", message: job.error, job };
+            }
+            job.endedAt = Date.now();
+            bumpIntentTelemetry("executed");
+            return {
+              status: "ok",
+              function: "workflow.create_subfolder_by_topic",
+              result: {
+                reply: `Workflow completed for topic '${topic}' in '${collectionName}'.`,
+                enqueue: enqueueResult,
+                apply: applyResult
+              },
+              job
+            };
+          } catch (error) {
+            job.status = "failed";
+            job.phase = "Failed";
+            job.error = normalizeError(error);
+            job.endedAt = Date.now();
+            bumpIntentTelemetry("failed");
+            return { status: "error", message: job.error, job };
+          }
+        }
+
+        if (intentId === "feature.run") {
+          const functionName = String(intent?.targetFunction || "").trim();
+          if (!functionName) return { status: "error", message: "target function is required." };
+          const signatures = await loadZoteroSignatures();
+          const feature = resolveFeatureDescriptor(functionName, signatures);
+          if (!feature) return { status: "error", message: `Unknown feature: ${functionName}` };
+
+          const result = await featureWorker.run({
+            functionName,
+            argsSchema: Array.isArray(feature.args) ? feature.args : [],
+            argsValues: (intent?.args as Record<string, unknown>) || {},
+            execute: true
+          });
+          if (result?.status === "ok") bumpIntentTelemetry("executed");
+          else bumpIntentTelemetry("failed");
+          return result;
+        }
+
+        if (intentId === "agent.legacy_command") {
+          const text = String((intent?.args as Record<string, unknown> | undefined)?.text || "").toLowerCase();
+          if (/\brefresh\b/.test(text) && /\bzotero|collection|tree|item\b/.test(text)) {
+            return {
+              status: "ok",
+              function: "legacy.refresh",
+              result: { reply: "Refreshing Zotero collections and items.", action: "zotero_refresh_tree" }
+            };
+          }
+          if (/\b(load|import)\b/.test(text) && /\bcollection\b/.test(text)) {
+            return {
+              status: "ok",
+              function: "legacy.load_collection",
+              result: { reply: "Loading selected collection into Data Hub.", action: "zotero_load_selected_collection" }
+            };
+          }
+          return { status: "ok", function: "legacy.noop", result: { reply: "No executable legacy action resolved." } };
+        }
+
+        return { status: "error", message: `Unsupported intent: ${intentId}` };
+      } catch (error) {
+        return { status: "error", message: normalizeError(error) };
+      }
+    }
+  );
+
+  ipcMain.handle("agent:run", async (_event, payload: { text?: string; context?: Record<string, unknown> }) => {
+    try {
+      const signatures = await loadZoteroSignatures();
+      const intentOut = resolveIntentForCommand(
+        String(payload?.text || ""),
+        payload?.context || {},
+        signatures
+      );
+      if (intentOut?.status !== "ok" || !intentOut.intent) {
+        return { status: "error", message: intentOut?.message || "Could not resolve intent." };
+      }
+      if (intentOut.intent.needsClarification) {
+        return {
+          status: "ok",
+          reply: Array.isArray(intentOut.intent.clarificationQuestions)
+            ? intentOut.intent.clarificationQuestions.join("\n")
+            : "Need clarification."
+        };
+      }
+      if (String(intentOut.intent.intentId || "") === "agent.legacy_command") {
+        const text = String((intentOut.intent.args as Record<string, unknown> | undefined)?.text || "").toLowerCase();
+        if (/\brefresh\b/.test(text) && /\bzotero|collection|tree|item\b/.test(text)) {
+          return {
+            status: "ok",
+            reply: "Refreshing Zotero collections and items.",
+            action: { phase: "retrieve", action: "zotero_refresh_tree", payload: {} }
+          };
+        }
+        if (/\b(load|import)\b/.test(text) && /\bcollection\b/.test(text)) {
+          return {
+            status: "ok",
+            reply: "Loading selected collection into Data Hub.",
+            action: { phase: "retrieve", action: "zotero_load_selected_collection", payload: {} }
+          };
+        }
+        return { status: "ok", reply: "No executable legacy action resolved." };
+      }
+      if (String(intentOut.intent.intentId || "") === "workflow.create_subfolder_by_topic") {
+        const args = (intentOut.intent.args as Record<string, unknown>) || {};
+        const enqueueFeature = resolveFeatureDescriptor("enqueue_topic_classification_for_collection", signatures);
+        if (!enqueueFeature) {
+          return { status: "error", message: "Workflow enqueue feature unavailable." };
+        }
+        const collectionName =
+          String(args.parentIdentifier || "").trim() ||
+          String((payload?.context as Record<string, unknown> | undefined)?.selectedCollectionName || "").trim();
+        const topic = String(args.topic || "").trim();
+        const execWorkflow = await featureWorker.run({
+          functionName: enqueueFeature.functionName,
+          argsSchema: Array.isArray(enqueueFeature.args) ? enqueueFeature.args : [],
+          argsValues: {
+            collection_name: collectionName,
+            topic_query: topic
+          },
+          execute: true
+        });
+        if (execWorkflow?.status === "ok") {
+          return { status: "ok", reply: "Workflow queued successfully.", result: execWorkflow };
+        }
+        return { status: "error", message: String(execWorkflow?.message || "Workflow failed.") };
+      }
+      const functionName = String(intentOut.intent.targetFunction || "");
+      const feature = resolveFeatureDescriptor(functionName, signatures);
+      if (!feature) {
+        return { status: "error", message: `Unknown feature: ${functionName}` };
+      }
+      const exec = await featureWorker.run({
+        functionName,
+        argsSchema: Array.isArray(feature.args) ? feature.args : [],
+        argsValues: intentOut.intent.args || {},
+        execute: true
+      });
+      if (exec?.status === "ok") return { status: "ok", reply: "Command executed successfully.", result: exec };
+      return { status: "error", message: exec?.message || "Execution failed." };
+    } catch (error) {
+      return { status: "error", message: normalizeError(error) };
+    }
+  });
+
+  ipcMain.handle(
+    "agent:refine-coding-questions",
+    async (
+      _event,
+      payload: {
+        currentQuestions?: string[];
+        feedback?: string;
+        contextText?: string;
+      }
+    ) => {
+      try {
+        return await refineCodingQuestionsWithLlm(payload || {});
+      } catch (error) {
+        return { status: "error", message: normalizeError(error) };
+      }
+    }
+  );
+
+  ipcMain.handle(
+    "agent:generate-eligibility-criteria",
+    async (
+      _event,
+      payload: {
+        userText?: string;
+        collectionName?: string;
+        contextText?: string;
+        researchQuestions?: string[];
+      }
+    ) => {
+      try {
+        return await generateEligibilityCriteriaWithLlm(payload || {});
+      } catch (error) {
+        return { status: "error", message: normalizeError(error) };
+      }
+    }
+  );
+
+  ipcMain.handle("agent:get-intent-stats", async () => {
+    return {
+      status: "ok",
+      stats: {
+        ...intentTelemetry,
+        workflowJobs: workflowBatchJobs.length
+      }
+    };
+  });
+
+  ipcMain.handle("agent:get-workflow-batch-jobs", async () => {
+    return {
+      status: "ok",
+      jobs: workflowBatchJobs.map((job) => ({ ...job }))
+    };
+  });
+
+  ipcMain.handle("agent:clear-workflow-batch-jobs", async () => {
+    const count = workflowBatchJobs.length;
+    workflowBatchJobs.length = 0;
+    return { status: "ok", cleared: count };
+  });
+
+  ipcMain.handle("agent:feature-health-check", async () => {
+    try {
+      const health = await featureWorker.health();
+      return { status: "ok", health };
+    } catch (error) {
+      return { status: "error", message: normalizeError(error) };
+    }
   });
 
   ipcMain.handle("leditor:export-docx", async (_event, request: { docJson: object; options?: any }) => {

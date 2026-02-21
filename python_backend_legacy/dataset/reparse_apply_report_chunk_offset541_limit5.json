@@ -1,0 +1,73 @@
+{
+  "generated_at_utc": "2026-02-14T08:19:53.405917+00:00",
+  "dataset_dir": "/home/pantera/projects/TEIA/python_backend_legacy/dataset",
+  "options": {
+    "types": "both",
+    "limit": 5,
+    "offset": 541,
+    "hash_only": true,
+    "prefer_pages_text": false,
+    "raw_target_key": "reparse_enriched",
+    "raw_top_level": false,
+    "dry_run": false,
+    "per_file_timeout_seconds": 45,
+    "suppress_parser_logs": true
+  },
+  "summary": {
+    "documents_total": 5,
+    "documents_ok": 5,
+    "documents_failed": 0
+  },
+  "results": [
+    {
+      "file": "python_backend_legacy/dataset/003405b70c26a0b2ef1ada1c4e2d07c3b83fe450b217876169de5aa9c5e2b234.json",
+      "source_type": "raw_json",
+      "pages_count": 13,
+      "text_chars": 29907,
+      "references_count": 1,
+      "style": "author_year",
+      "dominant_bucket": "author_year",
+      "dry_run": false
+    },
+    {
+      "file": "python_backend_legacy/dataset/01f1633087008065730cb6235ce84446d42df32db584e7e45f4265a73f2635e7.json",
+      "source_type": "raw_json",
+      "pages_count": 39,
+      "text_chars": 107368,
+      "references_count": 0,
+      "style": "superscript",
+      "dominant_bucket": "tex",
+      "dry_run": false
+    },
+    {
+      "file": "python_backend_legacy/dataset/02dd7fdc3d38cbdc38c6bd81882ff62ea9b8774880c7f7e40d9c27cf9e0d9be0.json",
+      "source_type": "raw_json",
+      "pages_count": 29,
+      "text_chars": 75717,
+      "references_count": 0,
+      "style": "superscript",
+      "dominant_bucket": "tex",
+      "dry_run": false
+    },
+    {
+      "file": "python_backend_legacy/dataset/03092dca8cc24e2624208d831c777ab72f62e9ab0f476395582e71edefe9539d.json",
+      "source_type": "raw_json",
+      "pages_count": 14,
+      "text_chars": 53139,
+      "references_count": 0,
+      "style": "superscript",
+      "dominant_bucket": "tex",
+      "dry_run": false
+    },
+    {
+      "file": "python_backend_legacy/dataset/03640a730b45ecf77e2829db267886d4ef373cf952fe952220d2bdb181b2a809.json",
+      "source_type": "raw_json",
+      "pages_count": 43,
+      "text_chars": 97678,
+      "references_count": 1,
+      "style": "hybrid",
+      "dominant_bucket": "tex",
+      "dry_run": false
+    }
+  ]
+}

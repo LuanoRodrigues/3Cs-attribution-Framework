@@ -1,0 +1,641 @@
+{
+  "generated_at_utc": "2026-02-14T08:24:45.061141+00:00",
+  "dataset_dir": "/home/pantera/projects/TEIA/python_backend_legacy/dataset",
+  "options": {
+    "types": "md",
+    "limit": 100,
+    "offset": 100,
+    "hash_only": true,
+    "prefer_pages_text": true,
+    "raw_target_key": "reparse_enriched",
+    "raw_top_level": false,
+    "dry_run": false,
+    "skip_existing": true,
+    "per_file_timeout_seconds": 30,
+    "suppress_parser_logs": true
+  },
+  "summary": {
+    "documents_total": 100,
+    "documents_ok": 4,
+    "documents_failed": 0,
+    "documents_skipped": 96
+  },
+  "results": [
+    {
+      "file": "python_backend_legacy/dataset/30da901fff9fa665f385f0407063c894f6b001f8759b4ebcf1ecbf1285aa9a9b.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/311213eb3965c97437d3abbb96e1598732d33547f80575789239047fa367bde8.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/31ff2df1b2fcfdc2f37ca9822183fa91d3fcecb47cfbd769d894da488fe5a411.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/325ee6922cc846badcff7a22fe7163871e4d409bbfb5baf05fb80231a5d01745.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/330226a106f6a3ff26d8cd015cb2288c9c01b46cc987168fcf69dcf31b32a521.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/335ca9d4275d23761db40303c2031ef27343c7d3edc9cc03b44b466a598f505e.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/33cdf91167886f63d9026339fcbc9433fc3191e053aaca69ccc578c193c7eb50.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/34038e37615aea77ace79a2279e00b5c853b007a52fe5f9355ce1adf34ab7859.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/35f262ae7aa9a8513588581829c14db0213d765742a888a9704bbdf2f0e6ac65.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/35ff6cfc9e5dfd7478e353c28b7aabdbd1be5239b9cf6c39d3949ce66fe3edef.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/37dfc58a2840c11befc47539240f0716fcc712e22b825b62668b05bdbdc123d2.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/37f9eeb238fc7543ba1c370633c37bac39a34f54ca025a45ecae933e0bf2ba33.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/388050ee5b82e975679ee8dee1b83b577829b2d39975967fa2be3b403dcc5af0.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/38c96dcb425489bf23fd6385f406072304d7906b90c4bebb3ea43c9299d0562f.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/39c4d5dd7ff54bce519334771578d5785b55cc98bf6cd8c14b48de7dd2ebd76d.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/39ff7e96c17718f36aea1e7c8a3d6268eb6a838e18d3cf1aee9e1e89203aff42.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/3a3dcae1538f3f80fbb3a382c602d656f00398507c99dccac0f8320a944813f5.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/3a79c76f9c087fceb3b5f5ab1be793e91f2cdaafa68782e369446225bc6a088b.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/3a9cfefe47478ca51a9c02fddd1d8ab7e79a713509134cea80cc2f5bed6e55bf.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/3aaf0dde6f89b6e0761f5e6c919a2607229ffe94c05dd37b5b8c58c3f4fa1634.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/3ab86f3da305822673bcd22b289403da164b9bee75bf4c6667b6dd8b7055bf27.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/3aeb5f2e4b4a2eb379af706fe0e40065a436b9ebaf904e343ba284e8f7e2d9dc.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/3b37ca8aeb155dcf3fc6389e80bd96735181e613c4be3080930aa894a81e2692.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/3b77031876bb37cb2e04aa725cf457cce2ee3c9ab103e86b330d29ec1afb823d.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/3bb2e1ea97e89bd328ba7a69a786c6983c42c7894a39a71cca0162413375c521.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/3c1089290776ac0897d343920e61e92f4f193f553b66db1a6961cb82ca5486f8.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/3c4dec5cce2321353a743894a02c5f397be41c1b53713271319f40787905f548.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/3cae5fa782093609dc5721a98b278b24f907f99d276d75172414518695c35b9d.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/3cd47bd06607a84b04ddb3424cc69bd6bc3d59249474eaee884868ea08a66310.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/3d6992f89220fb929ba509b0a54706a626e0ca989d52db147047128fe730ab87.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/3e135443bdb1e5ae995d3efc266136f30cd4e4d239d639e52aefc0ed76e9c8bb.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/3eb9ee15340a6a408529592586bab9a0de2e859aa8f476bcbb6858a3b37cda3c.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/3ef7c4d3a4bd83844127b899dd724daa6c111a03fce5af9ce5aade6f3e7e4814.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/3fe4bfa4814b5f1886527fe69eb8bb8f05b4732fa6700c87afde617d036c80d4.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/3ff0e50d468c0c46fe05b2f3a3efa8e6b6d732d9c76989b1eccb8e83e92476c8.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/401b1d55f8f57409ff4307121c61814887362c0cfc81a38aa608c0a3df144236.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/405c8cdc14ed3c4fde3be99e519ddf90310a17b2b6e6cd27255c526c023b8eb2.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/414e657d8ef4e0a64cb7deb0eabba52fcfe7cfced8b95389fe82b85b65cf4816.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/4166d34d7f6ec20c05890cfb47ba683edec67ea040636b34d268453fdbf23cad.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/41d7c5d69c7df6684de2b08f12b8fc40ce088fecad1758d411e121f4accff2ca.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/41ea6cdd278d989ed65c8330da08c551a4f4f345b5d5717e5131360bb1c3b829.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/42c795f5e11697c5f04912425245874d542332805d21eab7b410f63175bb2ffc.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/42fbed08cec78199a9155b7c1bfafea2f563d7e6ab8960cd3e72cdddbcd00de5.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/4319796fe1461f75caad920b39aa21d2157e14cef05084038549dde788370495.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/443ed646e9c48bb627af599c9a0620372c287b6e11310a64ee0c341c373f456b.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/4465f4c6da53ac793e139f76019b2ae000883bbf730bd79aad2fee976fea489d.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/44d8db34713e21c93a8bf04c827a1c0ea5e0a0aa8936cdee36df148b7a9ca573.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/456bd41e1aa24b41152cb16a9b937c802cbc102a34015ffb66a072d41eb59df6.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/457eba2169721f48df02cf44e1e20ce4bd2ee0c8953a3c9ca629a90cb99b68e2.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/45c46ec9bddd56e5ec11be85e0c93c0bf90884ed65d3b3eeda7a993571d96a68.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/45e731002fb0f2d0f9a2339bea70a380c24dc09962f8c15d65bdb6a84b020664.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/46be5e52f0aff945daffd3145106e62b3e4fe58abe8835271a171b5be37751b4.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/47249b71ba9d57c31efb5eec2aa6739a52706181e64c827e81e72376d8ffce3d.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/47b9b2aed52a9045fb718498383ee1cf4bf8e570d0d808530523f1fc1093236e.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/47dfb71740f326cd71be3bad174735b4e61ddde398792af7728a0b5a7f1171c1.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/480ccb79a85a9503240f11017bdcc773aca56aa34bd4c1c3c210ea46b00afe09.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/49943298deee89b3b4d5edea83e02805d91f4bb8e56a8eae4c0869529559ade8.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/49deff0d0a0df243e66991433043b44eeda88aa43d6b20aa96b4e1d032c919e2.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/4a76e534a5ec25f8cc3b9e2afda83cc658d61ef99a36182c45a2f597df229fa8.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/4ca0f63266c4c38aba69f667965f7557b2cd6783918a3ef382fd59b03d82c908.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/4cb3e2e5dfc90e6e949ead8f682fdf9113eeea354597d1405564f3a35c1d09e0.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/4cfddc4931428842fdb349d149a059e9a80e540a4d1bd58aa8f3bf19957393f4.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/4d5252a9f7f45f478f93df5a2385d9e27435972ac5bbb14f4ca7ef929e38c382.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/4d6dd402c07345e8679b2a92b1514a87caaef0697130ad0c36414673b846f4dc.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/4d967e505d488c966c2529c6eb7ba6f890863872ebd4322901e723fb1f5916d3.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/4db73a478733bd2f6aae3bd8c31d392683e3365f158589d6390953f91218cb83.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/4e5da7822711c56f958ee3fe1ec8f1d71304582a359702473e6eddbde3659de8.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/4f2780eb820eb07483ca371530b73bf3de090baa48931a36567ad6809e08a1bf.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/4f4b922e8f715e8d69226cbc70e5fdaa9006f83561fb6a60e9c560ec200cecc2.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/5017b476644603a86a7863dc3b2df325402dfe705ca7f7beb3fc3d4a15fce929.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/50f3ae92da9f6014fe68e72f6b2565657f9109dc1c2ded828a6d112977f883d2.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/518286cc91420a71938de09b651e49be22726c7b071e07ae013c73a3bfc92011.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/51dad565cedbe73342bf4d49bfed7a176deeee4b4863239c9d7921cff4c05dca.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/52aa604cbf11509996db1c8bdc84f334b3a058f2e11238ae94554c4e2dfe16ad.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/53c366476180722c36035f41234eff5f20bf2fcc688dfcda1c15375b849a1592.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/547108a640b710ff1c6831aaeb19b93bd8e16b3e7fb04538e6fff73d4d3ee452.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/5504c5002d4f4cffde5be59f0dced46ff0d9d8ab3561edd4e95941bbc95b60bd.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/55f70725a017e549e6543a0d905d6dd4cf51c5c273b5e3effe97058ee9a98bce.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/5737065da9822d1f11f140141627b14625b1b530e0ac07ad865b0703afe1def6.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/577fd3e2855aed5cef4b8fc3894df7c6551f4844e28213753e1ee2e51796e978.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/57cc1006827102d7765cf07658efd9dc9c344c375fea9975a5346cf6e13de88d.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/590a6b8228a54b80914b292bdfd60ab84f95cba4465b47606971b30aa2e359f9.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/5936d1bc3a59a05dc3503b256016e280a96e5a8a1294893e2fe4150728fd0f26.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/59473e6a4bd630d1b959ec49ce8de300f7e674708c0b36450b7cfc6aad4dac5c.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/5ab8895fe5c0376ab7310385eb6e3f3fa4e0c0b92887e08290e2df6b7b1315e4.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/5aeb981d406d7644df3c4ce32e4f02849f295d91e85a16e879f60c23f0c1cf05.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/5b4021c185f884e56c77c7fdc6efadd842f4101abf1de68da876b4bedb44acbd.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/5b5c9a6ba760c19a3533eb311b3960a47456ef1fe07a8b42c6ae429ffc138202.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/5c1cc0569173576731cdce68c6ce57efa37a509b799a785d16594a1671f494ed.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/5c1f245c9765839fcedde7a2dc339b6bae701f3b167ced21a6adabe236a5ad6f.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/5c2ddce23335750ba0376b1540185ee44cd272a343b2d20cb251facf601ddf2f.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/5c6a0254bdcb8deaced07d494fda7fed002d0507cf14b488746e95a555e298f5.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/5ca6f5a4ff03b522a19829127e58ca97a17f8eef4e6a3e71c2c130eb36c9954f.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/5d7a2bf870586b4761634edf56e13bfc01993cb33db1fb88cbfe6611be75a3c8.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/5daa1f3e37adbd7a1b5032434e8350f9cfa0895130b584eac6b090fb46173e0e.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/5de9f527fca63e859cd02e2cd63dd6515aceb921daaa4295a69ac098960be48f.md",
+      "source_type": "md_cache",
+      "skipped": true,
+      "reason": "already_complete"
+    },
+    {
+      "file": "python_backend_legacy/dataset/5e136e6a76b739b1fb3068c5e6eb64025b9d605ff5379161df6cbf7b2d59c0ce.md",
+      "source_type": "md_cache",
+      "pages_count": 29,
+      "text_chars": 38788,
+      "references_count": 0,
+      "style": "superscript",
+      "dominant_bucket": "tex",
+      "dry_run": false
+    },
+    {
+      "file": "python_backend_legacy/dataset/5e7ab5ad15344bbce586c11d7f7e394d6c95edda7f74e25f9dfb257ac36d3d11.md",
+      "source_type": "md_cache",
+      "pages_count": 18,
+      "text_chars": 56098,
+      "references_count": 0,
+      "style": "superscript",
+      "dominant_bucket": "tex",
+      "dry_run": false
+    },
+    {
+      "file": "python_backend_legacy/dataset/5eca2bf9adeea9071bbd23364872f0f011eebe3c478a21591def6116f4961c53.md",
+      "source_type": "md_cache",
+      "pages_count": 32,
+      "text_chars": 94311,
+      "references_count": 0,
+      "style": "superscript",
+      "dominant_bucket": "tex",
+      "dry_run": false
+    },
+    {
+      "file": "python_backend_legacy/dataset/5f1a0ece965ac566e4682e24d85127aa58d2654db80c1eb31e46cccfeb5db344.md",
+      "source_type": "md_cache",
+      "pages_count": 13,
+      "text_chars": 39581,
+      "references_count": 0,
+      "style": "numeric",
+      "dominant_bucket": "numeric",
+      "dry_run": false
+    }
+  ]
+}

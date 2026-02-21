@@ -9,6 +9,7 @@ export type RouteId =
   | "analyse:r3"
   | "analyse:phases"
   | "retrieve:datahub"
+  | "retrieve:zotero"
   | "retrieve:search"
   | "retrieve:search-selected"
   | "retrieve:graph"
@@ -71,6 +72,21 @@ export const ROUTES: Record<RouteId, RouteDefinition> = {
     allowedToolTypesByPanel: { panel2: ["retrieve-datahub"], panel4: [] },
     ensureTools: [{ toolType: "retrieve-datahub", panelId: "panel2", focus: true, metadata: { layoutPresetId: "retrieve:datahub" } }]
   },
+  "retrieve:zotero": {
+    id: "retrieve:zotero",
+    presetId: "retrieve:zotero",
+    allowedToolTypesByPanel: {
+      panel1: ["retrieve-zotero-collections"],
+      panel2: ["retrieve-zotero-items"],
+      panel3: ["retrieve-zotero-detail"],
+      panel4: []
+    },
+    ensureTools: [
+      { toolType: "retrieve-zotero-collections", panelId: "panel1", metadata: { layoutPresetId: "retrieve:zotero" } },
+      { toolType: "retrieve-zotero-items", panelId: "panel2", focus: true, metadata: { layoutPresetId: "retrieve:zotero" } },
+      { toolType: "retrieve-zotero-detail", panelId: "panel3", metadata: { layoutPresetId: "retrieve:zotero" } }
+    ]
+  },
   "retrieve:search": {
     id: "retrieve:search",
     presetId: "retrieve:search-empty",
@@ -122,4 +138,3 @@ export const ROUTES: Record<RouteId, RouteDefinition> = {
     ensureTools: [{ toolType: "code-panel", panelId: "panel2", focus: true, metadata: { layoutPresetId: "code:main" } }]
   }
 };
-

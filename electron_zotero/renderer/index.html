@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Zotero Internal Electron UI</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <section class="ribbon" id="ribbon">
+      <div class="ribbon-topbar">
+        <button id="btnWorkspaceHome" type="button" class="workspace-tab active" data-workspace-tab="home">Home</button>
+        <div class="ribbon-tabs" id="ribbonTabs"></div>
+        <button id="btnWorkspaceBatches" type="button" class="workspace-tab" data-workspace-tab="batches">Batches</button>
+        <div class="ribbon-controls">
+          <label class="meta" for="accessLevelSelect">Access</label>
+          <select id="accessLevelSelect">
+            <option value="safe">Safe</option>
+            <option value="advanced">Advanced</option>
+            <option value="expert">Expert</option>
+          </select>
+          <button id="btnDownloadPdfs">Download PDFs</button>
+          <button id="btnFeatureHealth">Health</button>
+          <button id="btnFeatureDryHarness">Dry Harness</button>
+        </div>
+      </div>
+      <div class="ribbon-groups" id="ribbonGroups"></div>
+    </section>
+
+    <main class="layout" id="layoutRoot">
+      <section class="panel panel-collections" id="paneCollections">
+        <div class="panel-header">
+          <h2>Collections</h2>
+          <input id="collectionSearch" type="search" placeholder="Search folder/subfolder/key/item" />
+        </div>
+        <div id="collectionsTree" class="tree"></div>
+      </section>
+      <div class="layout-splitter" id="splitterLeft" aria-hidden="true"></div>
+
+      <section class="panel panel-items" id="paneItems">
+        <div class="panel-header">
+          <h2>Items</h2>
+          <input id="itemSearch" type="search" placeholder="Search title/authors/doi/type" />
+        </div>
+        <div class="panel-actions">
+          <span id="itemsMeta" class="meta">No collection selected</span>
+          <div id="itemsActiveFilters" class="items-active-filters"></div>
+        </div>
+        <div id="itemsList" class="list" tabindex="0"></div>
+      </section>
+      <div class="layout-splitter" id="splitterRight" aria-hidden="true"></div>
+
+      <section class="panel panel-detail" id="paneDetails">
+        <div class="inspector-shell">
+          <div class="inspector-content">
+            <div class="meta" id="activeSelection">No active selection</div>
+            <div id="selectedItem" class="inspector-pane is-active">No item selected</div>
+            <div id="selectedCollection" class="inspector-pane">No collection selected</div>
+            <div id="childrenList" class="inspector-pane">No children loaded</div>
+          </div>
+          <div class="inspector-tabs-rail">
+            <button id="btnInspectorTabItem" class="inspector-tab-btn active" type="button" data-inspector-tab="item" title="Info" data-icon="file-text">Info</button>
+            <button id="btnInspectorTabMetadata" class="inspector-tab-btn" type="button" data-inspector-tab="metadata" title="Metadata" data-icon="tag">Metadata</button>
+            <button id="btnInspectorTabCollection" class="inspector-tab-btn" type="button" data-inspector-tab="collection" title="Collection" data-icon="folder">Collection</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <main class="layout workspace-view is-hidden" id="batchesLayout">
+      <section class="panel panel-collections">
+        <div class="panel-header">
+          <h2>Batches</h2>
+          <button id="btnBatchesRefresh">Refresh</button>
+        </div>
+        <div id="batchesList" class="list batch-list"></div>
+      </section>
+      <div class="layout-splitter" aria-hidden="true"></div>
+
+      <section class="panel panel-items">
+        <div class="panel-header">
+          <h2>Batch Rows</h2>
+          <span id="batchRowsMeta" class="meta">No batch selected</span>
+        </div>
+        <div id="batchRowsTable" class="list batch-table-wrap"></div>
+      </section>
+      <div class="layout-splitter" aria-hidden="true"></div>
+
+      <section class="panel panel-detail">
+        <div class="panel-header">
+          <h2>Batch Detail</h2>
+          <button id="btnBatchDetailRefresh">Reload detail</button>
+        </div>
+        <div id="batchDetailPanel" class="inspector-pane is-active">No batch selected</div>
+      </section>
+    </main>
+
+    <footer class="statusbar" id="statusLine">Ready.</footer>
+    <div class="toast-host" id="toastHost" aria-live="polite"></div>
+    <div id="contextMenu" class="context-menu" role="menu" aria-hidden="true"></div>
+
+    <div id="advancedSearchModal" class="modal-backdrop hidden" aria-hidden="true">
+      <div class="modal">
+        <div class="modal-head">
+          <h3>Advanced Search</h3>
+          <button id="btnAdvancedSearchClose">Close</button>
+        </div>
+        <div class="modal-body">
+          <input id="advancedSearchInput" type="search" placeholder="Search across cached items" />
+          <div class="panel-actions">
+            <button id="btnAdvancedSearchRun">Run</button>
+            <button id="btnAdvancedSearchSave">Save Search</button>
+            <select id="savedSearchSelect"></select>
+            <button id="btnSavedSearchDelete">Delete Saved</button>
+          </div>
+          <div id="advancedSearchMeta" class="meta">No query run yet.</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="commandPalette" class="modal-backdrop hidden" aria-hidden="true">
+      <div class="modal">
+        <div class="modal-head">
+          <h3>Command Palette</h3>
+          <button id="btnCommandPaletteClose">Close</button>
+        </div>
+        <div class="modal-body">
+          <div class="meta">Use menu shortcuts or click a command.</div>
+          <div id="commandList" class="command-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="featureRunModal" class="modal-backdrop hidden" aria-hidden="true">
+      <div class="modal modal-wide">
+        <div class="modal-head">
+          <h3 id="featureRunTitle">Run Feature</h3>
+          <button id="btnFeatureRunClose">Close</button>
+        </div>
+        <div class="modal-body">
+          <div id="featureRunSchema" class="meta"></div>
+          <form id="featureRunForm" class="feature-form"></form>
+          <div class="panel-actions">
+            <button id="btnFeatureDryRun">Dry Run</button>
+            <button id="btnFeatureExecute">Execute</button>
+            <button id="btnFeatureQueue">Queue</button>
+            <button id="btnFeatureReplay">Replay Last</button>
+          </div>
+          <div class="panel-actions">
+            <span class="meta">History</span>
+            <select id="featureHistorySelect"></select>
+          </div>
+          <div id="featureRunResultMeta" class="meta"></div>
+          <div id="featureRunArtifacts" class="panel-actions"></div>
+          <pre id="featureRunOutput" class="detail-pre">No run yet.</pre>
+        </div>
+      </div>
+    </div>
+
+    <div id="featureJobsPanel" class="jobs-panel is-hidden">
+      <div class="jobs-head">
+        <strong>Feature Jobs</strong>
+        <button id="btnRefreshJobs">Refresh</button>
+      </div>
+      <div id="featureJobsList" class="jobs-list"></div>
+    </div>
+
+    <div id="batchMonitorPanel" class="batch-monitor-panel is-hidden">
+      <div class="batch-monitor-head">
+        <strong>Batch Monitor</strong>
+        <div class="batch-monitor-head-actions">
+          <button id="btnBatchMonitorClear" type="button">Clear</button>
+          <button id="btnBatchMonitorHide" type="button" data-icon="chevron-down" title="Hide list">Hide</button>
+          <button id="btnBatchMonitorClose" type="button" title="Close">X</button>
+          <button id="btnBatchMonitorRefresh" type="button">Refresh now</button>
+          <span id="batchMonitorBadge" class="batch-monitor-badge">0 running</span>
+        </div>
+      </div>
+      <div id="batchMonitorList" class="batch-monitor-list"></div>
+    </div>
+
+    <button id="agentChatFab" class="agent-chat-fab" type="button" aria-label="Open agent chat" title="Agent Chat">
+      <span class="agent-chat-fab-icon" aria-hidden="true">✦</span>
+    </button>
+
+    <section id="agentChatDock" class="agent-chat-dock" aria-hidden="true">
+      <div class="agent-chat-head">
+        <strong>Agent Console</strong>
+        <div class="agent-chat-head-actions">
+          <button id="btnAgentChatClear" type="button">Clear</button>
+          <button id="btnAgentChatClose" type="button">Close</button>
+        </div>
+      </div>
+      <div id="agentChatMessages" class="agent-chat-messages"></div>
+      <form id="agentChatForm" class="agent-chat-form">
+        <input
+          id="agentChatInput"
+          type="text"
+          placeholder="Example: create subfolder inside folder frameworks, getting only items with framework tag"
+          autocomplete="off"
+        />
+        <div class="agent-chat-controls">
+          <button id="btnAgentChatSend" type="submit">Send</button>
+        </div>
+      </form>
+    </section>
+
+    <div id="batchDoneModal" class="modal-backdrop hidden" aria-hidden="true">
+      <div class="modal">
+        <div class="modal-head">
+          <h3>Batch Completed</h3>
+          <button id="btnBatchDoneClose">Close</button>
+        </div>
+        <div class="modal-body">
+          <div id="batchDoneSummary" class="meta">No batch result yet.</div>
+        </div>
+      </div>
+    </div>
+
+    <script src="./commands/registry.js"></script>
+    <script src="./search/querySchema.js"></script>
+    <script src="./search/savedSearchStore.js"></script>
+    <script src="./virtual/virtualList.js"></script>
+    <script src="./voice/runtime.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>

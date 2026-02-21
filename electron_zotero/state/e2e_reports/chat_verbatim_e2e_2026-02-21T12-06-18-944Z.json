@@ -1,0 +1,36 @@
+{
+  "startedAt": "2026-02-21T12:06:18.939Z",
+  "scenario": {
+    "collectionKeyword": "framework",
+    "initialCommand": "code this collection about cyber attribution and frameworks and models",
+    "feedback": "Could you refine the questions for literature review contribution and strengths/weaknesses of each framework?",
+    "approve": "yes",
+    "waitMs": 120000
+  },
+  "steps": [
+    {
+      "at": "2026-02-21T12:06:18.942Z",
+      "name": "renderer-ready",
+      "ok": true,
+      "detail": "chat form + collections tree detected"
+    },
+    {
+      "at": "2026-02-21T12:06:18.942Z",
+      "name": "select-collection",
+      "ok": false,
+      "detail": "no tree lines found"
+    }
+  ],
+  "transcript": [
+    {
+      "role": "assistant",
+      "tone": "",
+      "text": "Agent ready. Send a command to organize collections by tag."
+    }
+  ],
+  "status": "failed",
+  "error": "no tree lines found",
+  "statusLine": "Ready.",
+  "selectedCollection": "No collection selected.",
+  "finishedAt": "2026-02-21T12:06:18.944Z"
+}

@@ -67,6 +67,8 @@ import type { RetrieveRecord } from "../shared/types/retrieve";
 import { createRetrieveCitationGraphTool, createRetrieveCitationsTool, createRetrieveTool } from "../tools/retrieve";
 import { createRetrieveSearchAppTool } from "../tools/retrieveSearchApp";
 import { createRetrieveSearchMetaTool } from "../tools/retrieveSearchMeta";
+import { createRetrieveZoteroCollectionsTool, createRetrieveZoteroItemsTool, createRetrieveZoteroDetailTool } from "../tools/retrieveZotero";
+import { retrieveZoteroContext } from "../state/retrieveZoteroContext";
 
 const registry = new ToolRegistry();
 registry.register(createPdfTool());
@@ -77,6 +79,9 @@ registry.register(createVizTool());
 registry.register(createRetrieveTool());
 registry.register(createRetrieveSearchAppTool());
 registry.register(createRetrieveSearchMetaTool());
+registry.register(createRetrieveZoteroCollectionsTool());
+registry.register(createRetrieveZoteroItemsTool());
+registry.register(createRetrieveZoteroDetailTool());
 registry.register(createRetrieveCitationsTool());
 registry.register(createRetrieveCitationGraphTool());
 registry.register(createRetrieveDataHubTool());
@@ -97,6 +102,14 @@ const ribbonHeader = document.getElementById("app-tab-header") as HTMLElement;
 const ribbonActions = document.getElementById("app-tab-actions") as HTMLElement;
 const panelGridContainer = document.getElementById("panel-grid-container") as HTMLElement;
 const ribbonElement = document.getElementById("app-ribbon") as HTMLElement | null;
+const agentChatFab = document.getElementById("agentChatFab") as HTMLButtonElement | null;
+const agentChatDock = document.getElementById("agentChatDock") as HTMLElement | null;
+const agentChatMessages = document.getElementById("agentChatMessages") as HTMLElement | null;
+const agentChatForm = document.getElementById("agentChatForm") as HTMLFormElement | null;
+const agentChatInput = document.getElementById("agentChatInput") as HTMLInputElement | null;
+const btnAgentChatSend = document.getElementById("btnAgentChatSend") as HTMLButtonElement | null;
+const btnAgentChatClose = document.getElementById("btnAgentChatClose") as HTMLButtonElement | null;
+const btnAgentChatClear = document.getElementById("btnAgentChatClear") as HTMLButtonElement | null;
 const PANEL_INDEX_BY_ID: Record<PanelId, number> = {
   panel1: 1,
   panel2: 2,
@@ -314,14 +327,19 @@ const panelTools = new PanelToolManager({
           }
           break;
         case "retrieve-datahub":
-          applyPresetId("retrieve:datahub");
+          applyPresetId(presetId || "retrieve:datahub");
           break;
         case "retrieve":
         case "retrieve-search-app":
-          applyPresetId("retrieve:search-empty");
+          applyPresetId(presetId || "retrieve:search-empty");
           break;
         case "retrieve-search-meta":
           applyPresetId("retrieve:search-selected");
+          break;
+        case "retrieve-zotero-collections":
+        case "retrieve-zotero-items":
+        case "retrieve-zotero-detail":
+          applyPresetId("retrieve:zotero");
           break;
         case "retrieve-citation-graph":
           applyPresetId("retrieve:search-graph");
@@ -344,6 +362,392 @@ const layoutRoot = panelTools.getRoot("panel2");
 
 let activeRouteId: RouteId | null = null;
 
+type AgentChatMessage = {
+  role: "user" | "assistant";
+  text: string;
+  tone?: "error";
+  at: number;
+};
+
+const agentChatState: {
+  open: boolean;
+  pending: boolean;
+  messages: AgentChatMessage[];
+  pendingIntent: Record<string, unknown> | null;
+  pendingConfirmation: { type: "coding_questions"; intent: Record<string, unknown> } | null;
+} = {
+  open: false,
+  pending: false,
+  messages: [],
+  pendingIntent: null,
+  pendingConfirmation: null
+};
+
+function shouldShowAgentChat(): boolean {
+  return activeRouteId === "retrieve:zotero";
+}
+
+function renderAgentChatMessages(): void {
+  if (!agentChatMessages) return;
+  agentChatMessages.innerHTML = "";
+  const fragment = document.createDocumentFragment();
+  agentChatState.messages.forEach((entry) => {
+    const row = document.createElement("div");
+    row.className = `agent-chat-msg ${entry.role}${entry.tone ? ` ${entry.tone}` : ""}`;
+    row.textContent = entry.text || "(empty)";
+    const meta = document.createElement("div");
+    meta.className = "agent-chat-meta";
+    const stamp = new Date(entry.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    meta.textContent = `${entry.role === "user" ? "You" : "Agent"} • ${stamp}`;
+    row.appendChild(meta);
+    fragment.appendChild(row);
+  });
+  agentChatMessages.appendChild(fragment);
+  agentChatMessages.scrollTop = agentChatMessages.scrollHeight;
+}
+
+function pushAgentChatMessage(role: "user" | "assistant", text: string, tone?: "error"): void {
+  agentChatState.messages.push({ role, text: String(text || "").trim(), tone, at: Date.now() });
+  if (agentChatState.messages.length > 60) {
+    agentChatState.messages = agentChatState.messages.slice(-60);
+  }
+  renderAgentChatMessages();
+}
+
+function setAgentChatPending(pending: boolean): void {
+  agentChatState.pending = pending;
+  if (agentChatInput) agentChatInput.disabled = pending;
+  if (btnAgentChatSend) btnAgentChatSend.disabled = pending;
+}
+
+function setAgentChatOpen(open: boolean): void {
+  if (!agentChatDock || !agentChatFab) return;
+  agentChatState.open = open === true;
+  agentChatDock.classList.toggle("open", agentChatState.open);
+  agentChatDock.setAttribute("aria-hidden", agentChatState.open ? "false" : "true");
+  agentChatFab.setAttribute("aria-label", agentChatState.open ? "Hide agent chat" : "Open agent chat");
+  if (agentChatState.open && agentChatInput) {
+    window.setTimeout(() => {
+      agentChatInput.focus();
+      agentChatInput.select();
+    }, 0);
+  }
+}
+
+function syncAgentChatVisibility(): void {
+  if (!agentChatFab || !agentChatDock) return;
+  const visible = shouldShowAgentChat();
+  agentChatFab.style.display = visible ? "" : "none";
+  agentChatDock.style.display = visible ? "" : "none";
+  if (!visible) {
+    setAgentChatOpen(false);
+  }
+}
+
+function buildAgentContextPayload(): Record<string, unknown> {
+  const state = retrieveZoteroContext.getState();
+  const selectedCollection = retrieveZoteroContext.getSelectedCollection();
+  const selectedItem = retrieveZoteroContext.getSelectedItem();
+  return {
+    routeId: activeRouteId || "",
+    selectedCollectionKey: state.selectedCollectionKey || "",
+    selectedCollectionName: selectedCollection?.name || "",
+    selectedItemKey: selectedItem?.key || "",
+    status: state.status || "",
+    itemsCount: state.items.length,
+    activeTags: state.activeTags
+  };
+}
+
+function isChatAffirmative(text: string): boolean {
+  const v = String(text || "").trim().toLowerCase();
+  return ["yes", "y", "ok", "confirm", "approved", "approve", "go", "run"].includes(v);
+}
+
+function isChatNegative(text: string): boolean {
+  const v = String(text || "").trim().toLowerCase();
+  return ["no", "n", "cancel", "stop", "reject"].includes(v);
+}
+
+function parseResearchQuestionsInput(text: string): string[] {
+  const raw = String(text || "").trim();
+  if (!raw) return [];
+  const lines = raw
+    .split(/\n+/)
+    .map((line) => String(line || "").trim())
+    .filter(Boolean);
+  const numbered = lines
+    .map((line) => {
+      const m = line.match(/^\s*(\d+)[\)\].:\-]\s*(.+)$/);
+      return m ? String(m[2] || "").trim() : "";
+    })
+    .filter(Boolean);
+  const fallback = raw
+    .split(/[;\n]+/)
+    .map((s) => String(s || "").replace(/^\s*[-*]\s*/, "").trim())
+    .filter(Boolean);
+  return (numbered.length ? numbered : fallback).slice(0, 5);
+}
+
+async function executeResolvedIntent(intent: Record<string, unknown>): Promise<void> {
+  if (!window.agentBridge?.executeIntent) {
+    pushAgentChatMessage("assistant", "Agent execute bridge unavailable.", "error");
+    setAgentChatPending(false);
+    return;
+  }
+  const preflight = Array.isArray(intent?.preflightIntents) ? (intent.preflightIntents as Record<string, unknown>[]) : [];
+  for (const pre of preflight) {
+    const preRes = await window.agentBridge.executeIntent({
+      intent: pre,
+      confirm: true,
+      context: buildAgentContextPayload()
+    });
+    if (preRes?.status !== "ok") {
+      setAgentChatPending(false);
+      pushAgentChatMessage("assistant", String(preRes?.message || "Preflight execution failed."), "error");
+      return;
+    }
+  }
+  const res = await window.agentBridge.executeIntent({
+    intent,
+    confirm: true,
+    context: buildAgentContextPayload()
+  });
+  setAgentChatPending(false);
+
+  if (res?.status !== "ok") {
+    pushAgentChatMessage("assistant", String(res?.message || "Intent execution failed."), "error");
+    return;
+  }
+
+  agentChatState.pendingIntent = null;
+  const result = (res?.result || {}) as Record<string, unknown>;
+  const functionName = String(res?.function || "");
+  if (functionName === "legacy.refresh" || String(result?.action || "") === "zotero_refresh_tree") {
+    applyRoute("retrieve:zotero");
+    void retrieveZoteroContext.loadTree();
+    pushAgentChatMessage("assistant", String(result?.reply || "Refreshing Zotero collections and items."));
+    return;
+  }
+  if (functionName === "legacy.load_collection" || String(result?.action || "") === "zotero_load_selected_collection") {
+    applyRoute("retrieve:zotero");
+    void retrieveZoteroContext.loadSelectedCollectionToDataHub();
+    pushAgentChatMessage("assistant", String(result?.reply || "Loading selected collection into Data Hub."));
+    return;
+  }
+  if (functionName === "workflow.create_subfolder_by_topic") {
+    applyRoute("retrieve:zotero");
+    void retrieveZoteroContext.loadTree();
+    pushAgentChatMessage("assistant", String(result?.reply || "Topic workflow completed."));
+    return;
+  }
+
+  if (String(result?.function || res?.function || "") === "Verbatim_Evidence_Coding" || String(intent?.targetFunction || "") === "Verbatim_Evidence_Coding") {
+    pushAgentChatMessage("assistant", "Verbatim_Evidence_Coding executed.");
+    return;
+  }
+  pushAgentChatMessage("assistant", "Command executed successfully.");
+}
+
+async function runAgentChatCommand(text: string): Promise<void> {
+  pushAgentChatMessage("user", text);
+  if (!window.agentBridge?.resolveIntent || !window.agentBridge?.executeIntent) {
+    pushAgentChatMessage("assistant", "Agent bridge is unavailable.", "error");
+    return;
+  }
+
+  if (agentChatState.pendingConfirmation) {
+    if (isChatAffirmative(text)) {
+      const pending = agentChatState.pendingConfirmation;
+      agentChatState.pendingConfirmation = null;
+      setAgentChatPending(true);
+      await executeResolvedIntent(pending.intent);
+      return;
+    }
+    if (isChatNegative(text)) {
+      agentChatState.pendingConfirmation = null;
+      setAgentChatPending(false);
+      pushAgentChatMessage("assistant", "Coding run canceled.");
+      return;
+    }
+    const pendingIntent = agentChatState.pendingConfirmation.intent;
+    const currentQuestions = Array.isArray((pendingIntent?.args as Record<string, unknown>)?.research_questions)
+      ? (((pendingIntent?.args as Record<string, unknown>).research_questions as unknown[]).map((q) => String(q || "").trim()).filter(Boolean))
+      : [];
+    let revised: string[] = [];
+    if (window.agentBridge?.refineCodingQuestions) {
+      const ref = await window.agentBridge.refineCodingQuestions({
+        currentQuestions,
+        feedback: text,
+        contextText: String((pendingIntent?.args as Record<string, unknown>)?.context || "")
+      });
+      if (ref?.status === "ok" && Array.isArray(ref?.questions) && ref.questions.length >= 3) {
+        revised = ref.questions.slice(0, 5).map((q) => String(q || "").trim()).filter(Boolean);
+      }
+    }
+    if (!revised.length) {
+      const fallback = parseResearchQuestionsInput(text);
+      if (fallback.length >= 3 && fallback.length <= 5) revised = fallback.slice(0, 5);
+    }
+    if (revised.length >= 3 && revised.length <= 5) {
+      const args = ((pendingIntent?.args as Record<string, unknown>) || {});
+      pendingIntent.args = { ...args, research_questions: revised };
+      const screeningEnabled = (pendingIntent?.args as Record<string, unknown>)?.screening !== false;
+      if (screeningEnabled && window.agentBridge?.generateEligibilityCriteria) {
+        const regen = await window.agentBridge.generateEligibilityCriteria({
+          userText: text,
+          collectionName: String((pendingIntent?.args as Record<string, unknown>)?.collection_name || ""),
+          contextText: String((pendingIntent?.args as Record<string, unknown>)?.context || ""),
+          researchQuestions: revised
+        });
+        if (regen?.status === "ok") {
+          const inclusion = Array.isArray(regen?.inclusion_criteria)
+            ? regen.inclusion_criteria.map((x) => String(x || "").trim()).filter(Boolean)
+            : [];
+          const exclusion = Array.isArray(regen?.exclusion_criteria)
+            ? regen.exclusion_criteria.map((x) => String(x || "").trim()).filter(Boolean)
+            : [];
+          if (inclusion.length && exclusion.length) {
+            pendingIntent.preflightIntents = [
+              {
+                intentId: "feature.run",
+                targetFunction: "set_eligibility_criteria",
+                confidence: 0.9,
+                riskLevel: "confirm",
+                needsClarification: false,
+                clarificationQuestions: [],
+                args: {
+                  collection_name: String((pendingIntent?.args as Record<string, unknown>)?.collection_name || ""),
+                  inclusion_criteria: inclusion.join("\n"),
+                  exclusion_criteria: exclusion.join("\n"),
+                  eligibility_prompt_key: "paper_screener_abs_policy",
+                  context: String((pendingIntent?.args as Record<string, unknown>)?.context || ""),
+                  research_questions: revised
+                }
+              }
+            ];
+          }
+        }
+      }
+      pushAgentChatMessage(
+        "assistant",
+        `Updated research questions:\n${revised.map((q, i) => `${i + 1}. ${q}`).join("\n")}\n\nReply with 'yes' to run or 'no' to cancel.`
+      );
+      return;
+    }
+    pushAgentChatMessage("assistant", "I could not infer a valid 3-5 question set. Reply with clearer question edits.");
+    return;
+  }
+
+  setAgentChatPending(true);
+  try {
+    const resolved = await window.agentBridge.resolveIntent({
+      text,
+      context: {
+        ...buildAgentContextPayload(),
+        pendingIntent: agentChatState.pendingIntent || null
+      }
+    });
+    if (resolved?.status !== "ok" || !resolved?.intent) {
+      pushAgentChatMessage("assistant", String(resolved?.message || "Could not resolve command intent."), "error");
+      return;
+    }
+    const intent = resolved.intent;
+    if ((intent?.needsClarification as boolean) === true) {
+      agentChatState.pendingIntent = intent;
+      const qList = Array.isArray(intent?.clarificationQuestions) ? intent.clarificationQuestions : [];
+      pushAgentChatMessage("assistant", qList.length ? `I need more detail:\n- ${qList.join("\n- ")}` : "I need more details.");
+      return;
+    }
+
+    if (String(intent?.intentId || "") === "feature.run" && String(intent?.targetFunction || "") === "Verbatim_Evidence_Coding") {
+      const args = (intent?.args as Record<string, unknown>) || {};
+      const questions = Array.isArray(args.research_questions)
+        ? (args.research_questions as unknown[]).map((q) => String(q || "").trim()).filter(Boolean)
+        : [];
+      const collectionName = String(args.collection_name || "").trim() || "(selected collection)";
+      const screeningEnabled = args.screening !== false;
+      if (questions.length >= 3 && questions.length <= 5) {
+        if (screeningEnabled && window.agentBridge?.generateEligibilityCriteria) {
+          const eligibilityDraft = await window.agentBridge.generateEligibilityCriteria({
+            userText: text,
+            collectionName,
+            contextText: String(args.context || ""),
+            researchQuestions: questions
+          });
+          if (eligibilityDraft?.status === "ok") {
+            const inclusion = Array.isArray(eligibilityDraft?.inclusion_criteria)
+              ? eligibilityDraft.inclusion_criteria.map((x) => String(x || "").trim()).filter(Boolean)
+              : [];
+            const exclusion = Array.isArray(eligibilityDraft?.exclusion_criteria)
+              ? eligibilityDraft.exclusion_criteria.map((x) => String(x || "").trim()).filter(Boolean)
+              : [];
+            if (inclusion.length && exclusion.length) {
+              intent.preflightIntents = [
+                {
+                  intentId: "feature.run",
+                  targetFunction: "set_eligibility_criteria",
+                  confidence: 0.9,
+                  riskLevel: "confirm",
+                  needsClarification: false,
+                  clarificationQuestions: [],
+                  args: {
+                    collection_name: collectionName,
+                    inclusion_criteria: inclusion.join("\n"),
+                    exclusion_criteria: exclusion.join("\n"),
+                    eligibility_prompt_key: "paper_screener_abs_policy",
+                    context: String(args.context || ""),
+                    research_questions: questions
+                  }
+                }
+              ];
+            }
+          }
+        }
+        pushAgentChatMessage(
+          "assistant",
+          `I will run Verbatim_Evidence_Coding for '${collectionName}'.\nScreening: ${screeningEnabled ? "enabled" : "disabled"}.\n\nResearch questions:\n${questions
+            .map((q, i) => `${i + 1}. ${q}`)
+            .join("\n")}\n\nReply with 'yes' to run, 'no' to cancel, or send revised questions (3-5).`
+        );
+        agentChatState.pendingConfirmation = { type: "coding_questions", intent };
+        return;
+      }
+    }
+
+    await executeResolvedIntent(intent);
+  } catch (error) {
+    pushAgentChatMessage("assistant", String((error as Error)?.message || error || "Agent command failed."), "error");
+  } finally {
+    setAgentChatPending(false);
+  }
+}
+
+function initAgentChatUi(): void {
+  if (!agentChatFab || !agentChatDock || !agentChatForm || !agentChatInput || !btnAgentChatClose || !btnAgentChatClear) {
+    return;
+  }
+  if (!agentChatState.messages.length) {
+    pushAgentChatMessage("assistant", "Agent ready. Send a command to organize collections by tag.");
+  }
+  agentChatFab.addEventListener("click", () => setAgentChatOpen(!agentChatState.open));
+  btnAgentChatClose.addEventListener("click", () => setAgentChatOpen(false));
+  btnAgentChatClear.addEventListener("click", () => {
+    agentChatState.messages = [];
+    agentChatState.pendingIntent = null;
+    agentChatState.pendingConfirmation = null;
+    renderAgentChatMessages();
+  });
+  agentChatForm.addEventListener("submit", (ev) => {
+    ev.preventDefault();
+    const text = String(agentChatInput.value || "").trim();
+    if (!text || agentChatState.pending) return;
+    agentChatInput.value = "";
+    void runAgentChatCommand(text);
+  });
+  syncAgentChatVisibility();
+}
+
 function applyRoute(routeId: RouteId, options?: { skipEnsureTools?: boolean }): void {
   const route = ROUTES[routeId];
   if (!route) {
@@ -351,6 +755,9 @@ function applyRoute(routeId: RouteId, options?: { skipEnsureTools?: boolean }): 
     return;
   }
   activeRouteId = routeId;
+  document.documentElement.classList.toggle("zotero-parity-mode", routeId === "retrieve:zotero");
+  document.body.classList.toggle("zotero-parity-mode", routeId === "retrieve:zotero");
+  syncAgentChatVisibility();
 
   const preset = PANEL_PRESETS[route.presetId];
   if (preset) {
@@ -799,6 +1206,7 @@ const sessionManager = new SessionManager({
 });
 
 void sessionManager.initialize();
+initAgentChatUi();
 
 if (window.sessionBridge) {
   window.sessionBridge.onMenuAction((action: SessionMenuAction) => {
@@ -1598,7 +2006,16 @@ function handleAction(action: RibbonAction): void {
     typeof action.command.action === "string" &&
     action.command.action.startsWith("datahub_")
   ) {
-    // DataHub actions always target the dedicated DataHub tool in panel 2.
+    const commandAction = action.command.action;
+    const zoteroAction = commandAction === "datahub_load_zotero" || commandAction === "datahub_load_zotero_multi";
+    if (zoteroAction) {
+      // Zotero now uses its own dedicated 3-panel workspace (collections, items, detail).
+      applyRoute("retrieve:zotero");
+      retrieveSearchSelectedRecord = undefined;
+      void retrieveZoteroContext.loadTree();
+      return;
+    }
+    // Non-Zotero DataHub actions still target the DataHub tool in panel 2.
     applyRoute("retrieve:datahub");
     ensureRetrieveDataHubTool({ replace: !retrieveDataHubToolId });
     retrieveSearchSelectedRecord = undefined;
@@ -1614,6 +2031,18 @@ function handleAction(action: RibbonAction): void {
   if (action.command.phase === "retrieve" && action.command.action === "retrieve_open_query_builder") {
     retrieveSearchSelectedRecord = undefined;
     applyRoute("retrieve:search");
+    return;
+  }
+  if (action.command.phase === "retrieve" && action.command.action === "zotero_refresh_tree") {
+    applyRoute("retrieve:zotero");
+    retrieveSearchSelectedRecord = undefined;
+    void retrieveZoteroContext.loadTree();
+    return;
+  }
+  if (action.command.phase === "retrieve" && action.command.action === "zotero_load_selected_collection") {
+    applyRoute("retrieve:zotero");
+    retrieveSearchSelectedRecord = undefined;
+    void retrieveZoteroContext.loadSelectedCollectionToDataHub();
     return;
   }
   if (action.command.phase === "retrieve" && action.command.action === "retrieve_set_provider") {

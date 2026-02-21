@@ -1,0 +1,61 @@
+{
+  "generated_at_utc": "2026-02-14T08:03:19.554232+00:00",
+  "dataset_dir": "/home/pantera/projects/TEIA/python_backend_legacy/dataset",
+  "options": {
+    "types": "both",
+    "limit": 4,
+    "hash_only": true,
+    "prefer_pages_text": true,
+    "raw_target_key": "reparse_enriched",
+    "raw_top_level": false,
+    "dry_run": true,
+    "suppress_parser_logs": true
+  },
+  "summary": {
+    "documents_total": 4,
+    "documents_ok": 4,
+    "documents_failed": 0
+  },
+  "results": [
+    {
+      "file": "python_backend_legacy/dataset/0021cbf6a99df1e3e04046110849b6466dfdf54db24ca4a2a58ddf8769ab4a8f.md",
+      "source_type": "md_cache",
+      "pages_count": 25,
+      "text_chars": 67627,
+      "references_count": 0,
+      "style": "superscript",
+      "dominant_bucket": "tex",
+      "dry_run": true
+    },
+    {
+      "file": "python_backend_legacy/dataset/00fc386954c3e7323534d09373bb4505018d2a7d32c64aab72b1dc193f8e6f40.md",
+      "source_type": "md_cache",
+      "pages_count": 52,
+      "text_chars": 173994,
+      "references_count": 0,
+      "style": "superscript",
+      "dominant_bucket": "tex",
+      "dry_run": true
+    },
+    {
+      "file": "python_backend_legacy/dataset/012fab1b5a6afd010a7f3218507dcc5c400f78afe85d087dcd654df2d3035cce.md",
+      "source_type": "md_cache",
+      "pages_count": 24,
+      "text_chars": 81047,
+      "references_count": 1,
+      "style": "superscript",
+      "dominant_bucket": "tex",
+      "dry_run": true
+    },
+    {
+      "file": "python_backend_legacy/dataset/01419252373776fccc94124c8eff73cd18ffc06b8e79d776140394e20e8c985b.md",
+      "source_type": "md_cache",
+      "pages_count": 24,
+      "text_chars": 39508,
+      "references_count": 1,
+      "style": "author_year",
+      "dominant_bucket": "author_year",
+      "dry_run": true
+    }
+  ]
+}

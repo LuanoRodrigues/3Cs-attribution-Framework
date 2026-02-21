@@ -768,6 +768,15 @@ body.panel-drop-active iframe {
   padding: 0; /* let the visualiser add its own spacing */
 }
 
+/* New Zotero 3-panel workspace:
+   disable content-visibility containment to avoid Chromium paint-layer overlays
+   seen during rapid panel route switches. */
+.tool-surface.zotero-tool-surface {
+  content-visibility: visible;
+  contain: none;
+  contain-intrinsic-size: auto;
+}
+
 .notes-editor, .timeline, .viz-grid {
   background: rgba(255,255,255,0.02);
   border: 1px solid var(--border);
@@ -2481,6 +2490,13 @@ kbd { background: color-mix(in srgb, var(--surface) 10%, transparent); }
   background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 88%, #0b1020) 0%, var(--panel) 100%);
 }
 
+/* Legacy DataHub Zotero picker is retired. If stale DOM survives hot reload/session restore,
+   force-hide it so it cannot sit as an overlay above the new Zotero workspace. */
+.retrieve-datahub .zotero-picker {
+  display: none !important;
+  pointer-events: none !important;
+}
+
 .zotero-picker-header {
   display: flex;
   align-items: center;
@@ -2746,6 +2762,482 @@ kbd { background: color-mix(in srgb, var(--surface) 10%, transparent); }
   margin-bottom: 6px;
 }
 
+/* Zotero parity workspace */
+html.zotero-parity-mode,
+body.zotero-parity-mode {
+  --zotero-surface-0: rgba(8, 13, 22, 0.94);
+  --zotero-surface-1: rgba(12, 20, 33, 0.78);
+  --zotero-surface-2: rgba(18, 29, 47, 0.72);
+  --zotero-border: rgba(147, 171, 200, 0.2);
+  --zotero-border-strong: rgba(102, 183, 255, 0.42);
+  --zotero-text: #e8f0ff;
+  --zotero-muted: #91a4c2;
+  --zotero-accent: #66b7ff;
+  font-family: "Space Grotesk", "Segoe UI", sans-serif;
+}
+
+.zotero-parity-mode .panel-shell {
+  background: linear-gradient(180deg, rgba(16, 26, 43, 0.98), rgba(10, 17, 30, 0.96));
+  border: 1px solid var(--zotero-border);
+  border-radius: 12px;
+  box-shadow: 0 16px 32px rgba(2, 8, 18, 0.34);
+}
+
+.zotero-parity-mode .panel-content,
+.zotero-parity-mode .panel-pane,
+.zotero-parity-mode .panel-tool-host,
+.zotero-parity-mode .tool-surface.zotero-tool-surface {
+  background: transparent;
+  color: var(--zotero-text);
+}
+
+.zotero-parity-mode .tool-surface.zotero-tool-surface {
+  padding: 0;
+  overflow: hidden;
+}
+
+.zotero-panel-header {
+  padding: 10px;
+  border-bottom: 1px solid var(--zotero-border);
+  gap: 6px;
+}
+
+.zotero-panel-header h2 {
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  font-weight: 600;
+}
+
+.zotero-actions {
+  padding: 10px;
+  gap: 8px;
+  min-height: 36px;
+  justify-content: flex-start;
+}
+
+.zotero-status {
+  padding: 0 10px;
+  color: var(--zotero-muted);
+  font-size: 11px;
+}
+
+.zotero-tree-block,
+.zotero-tags-block {
+  margin: 6px 10px 0;
+  border: 1px solid var(--zotero-border);
+  background: rgba(12, 20, 33, 0.16);
+  border-radius: 8px;
+  min-height: 0;
+}
+
+.zotero-block-title {
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(147, 171, 200, 0.12);
+  color: var(--zotero-muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.zotero-tree-list {
+  max-height: 42vh;
+  overflow: auto;
+  padding: 6px;
+}
+
+.zotero-tree-row-v2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  border-radius: 8px;
+  margin: 2px 0;
+}
+
+.zotero-tree-row-v2:hover {
+  background: rgba(102, 183, 255, 0.1);
+}
+
+.zotero-tree-row-v2.is-selected {
+  background: rgba(102, 183, 255, 0.17);
+  border: 1px solid rgba(102, 183, 255, 0.38);
+}
+
+.zotero-expander {
+  width: 16px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(188, 204, 229, 0.92);
+  box-shadow: none;
+  transform: none;
+  line-height: 14px;
+  font-size: 11px;
+}
+
+.zotero-expander:hover {
+  background: rgba(102, 183, 255, 0.14);
+  border: none;
+  box-shadow: none;
+  transform: none;
+}
+
+.zotero-expander:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.zotero-node-icon {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  border: 1px solid rgba(153, 188, 255, 0.48);
+  background: rgba(153, 188, 255, 0.18);
+}
+
+.zotero-node-icon.is-collection {
+  border-color: rgba(102, 183, 255, 0.56);
+  background: rgba(102, 183, 255, 0.2);
+}
+
+.zotero-node-label {
+  border: none;
+  background: transparent;
+  color: var(--zotero-text);
+  text-align: left;
+  width: 100%;
+  padding: 3px 0;
+  cursor: pointer;
+  font-size: 10px;
+  line-height: 1.25;
+  font-weight: 500;
+}
+
+.zotero-match {
+  background: rgba(255, 196, 77, 0.4);
+  color: #fff6c9;
+  border-radius: 3px;
+  padding: 0 1px;
+}
+
+.zotero-tag-facets {
+  padding: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.zotero-tag-chip-v2 {
+  border: 1px solid hsl(var(--tag-hue) 65% 58% / 0.58);
+  background: hsl(var(--tag-hue) 55% 50% / 0.22);
+  color: var(--zotero-text);
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 10px;
+  box-shadow: none;
+  transform: none;
+}
+
+.zotero-tag-chip-v2.is-active {
+  border-color: rgba(255, 255, 255, 0.68);
+  box-shadow: 0 0 0 2px rgba(102, 183, 255, 0.25), 0 6px 14px rgba(0, 0, 0, 0.28);
+}
+
+.zotero-search-input {
+  min-width: 220px;
+  background: rgba(12, 20, 33, 0.72);
+  border: 1px solid rgba(147, 171, 200, 0.3);
+  color: var(--zotero-text);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 11px;
+}
+
+.zotero-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0 10px 10px;
+  overflow: auto;
+  min-height: 0;
+}
+
+.zotero-card-head {
+  display: grid;
+  grid-template-columns: 2.2fr 1.4fr 0.6fr 0.9fr 1.4fr;
+  gap: 8px;
+  padding: 6px 8px;
+  margin: 0 10px;
+  border-radius: 8px 8px 0 0;
+  border-bottom: 1px solid rgba(147, 171, 200, 0.3);
+  background: rgba(10, 16, 28, 0.98);
+  color: var(--zotero-muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.zotero-item-row-v2 {
+  border: none;
+  border-bottom: 1px solid rgba(147, 171, 200, 0.12);
+  border-radius: 0;
+  background: rgba(10, 16, 28, 0.16);
+  color: var(--zotero-text);
+  padding: 6px 8px;
+  margin: 0;
+  text-align: left;
+  cursor: pointer;
+  display: grid;
+  grid-template-columns: 2.2fr 1.4fr 0.6fr 0.9fr 1.4fr;
+  gap: 8px;
+  box-shadow: none;
+  transform: none;
+}
+
+.zotero-item-row-v2:hover {
+  background: rgba(102, 183, 255, 0.1);
+  border-color: rgba(147, 171, 200, 0.12);
+}
+
+.zotero-card-list .zotero-item-row-v2:nth-child(even):not(.is-selected) {
+  background: rgba(147, 171, 200, 0.03);
+}
+
+.zotero-item-row-v2.is-selected {
+  outline: 1px solid rgba(102, 183, 255, 0.56);
+  outline-offset: -1px;
+  box-shadow: inset 2px 0 0 rgba(102, 183, 255, 0.9);
+  background: rgba(102, 183, 255, 0.2);
+}
+
+.zotero-item-row-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 12px;
+  min-width: 0;
+}
+
+.zotero-item-row-col {
+  color: var(--zotero-muted);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.zotero-item-row-meta {
+  grid-column: 1 / -1;
+  margin-top: 1px;
+  font-size: 11px;
+  color: var(--zotero-muted);
+}
+
+.zotero-book-icon {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  background: rgba(165, 198, 255, 0.95);
+  box-shadow: inset 0 0 0 1px rgba(10, 20, 32, 0.55);
+  flex: 0 0 12px;
+}
+
+.zotero-detail-layout {
+  display: grid;
+  grid-template-columns: 1fr 48px;
+  gap: 0;
+  min-height: 0;
+  flex: 1;
+  padding: 0;
+}
+
+.zotero-vertical-tabs {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 6px;
+  background: rgba(8, 12, 20, 0.5);
+}
+
+.zotero-vertical-tabs--right {
+  border-left: 1px solid rgba(147, 171, 200, 0.22);
+}
+
+.zotero-vtab {
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid rgba(147, 171, 200, 0.34);
+  background: rgba(19, 29, 44, 0.45);
+  color: inherit;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: none;
+  transform: none;
+  overflow: hidden;
+  font-size: 0;
+}
+
+.zotero-vtab-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--zotero-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.zotero-vtab-icon svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+.zotero-vtab-label {
+  display: none;
+}
+
+.zotero-vtab.is-active {
+  border-color: rgba(102, 183, 255, 0.65);
+  background: rgba(102, 183, 255, 0.2);
+}
+
+.zotero-vtab.is-active .zotero-vtab-icon {
+  color: var(--zotero-text);
+}
+
+.zotero-vtab:hover {
+  border-color: rgba(102, 183, 255, 0.48);
+  box-shadow: none;
+  transform: none;
+}
+
+.zotero-detail-pane {
+  min-height: 0;
+  overflow: auto;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: rgba(10, 15, 24, 0.95);
+  border: none;
+  border-radius: 0;
+}
+
+.zotero-detail-pane .zotero-block-title {
+  background: rgba(12, 20, 33, 0.16);
+  border: 1px solid rgba(147, 171, 200, 0.24);
+  border-radius: 8px;
+  margin-top: 6px;
+}
+
+.zotero-detail-title-v2 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.zotero-detail-grid {
+  display: grid;
+  gap: 3px;
+}
+
+.zotero-kv-row {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 8px;
+  padding: 3px 0;
+  border-bottom: 1px solid rgba(147, 171, 200, 0.12);
+  border-left: 2px solid transparent;
+  padding-left: 6px;
+}
+
+.zotero-kv-key {
+  display: inline-flex;
+  align-items: center;
+  color: var(--zotero-muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.zotero-kv-val {
+  color: var(--zotero-text);
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.zotero-abstract {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+  border: 1px solid rgba(102, 183, 255, 0.28);
+  border-radius: 12px;
+  padding: 10px;
+  background: linear-gradient(180deg, rgba(11, 18, 30, 0.95), rgba(8, 13, 22, 0.95));
+  white-space: pre-wrap;
+  color: #dfe9f8;
+}
+
+.zotero-collection-summary {
+  margin-bottom: 10px;
+  color: var(--zotero-text);
+}
+
+.zotero-collection-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.zotero-collection-row {
+  border: 1px solid rgba(147, 171, 200, 0.24);
+  border-radius: 8px;
+  padding: 8px;
+  background: rgba(12, 20, 33, 0.16);
+  color: var(--zotero-text);
+  font-size: 11px;
+}
+
+.zotero-tags-pane {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.zotero-extra-box {
+  margin: 0;
+  padding: 10px;
+  border: 1px solid rgba(102, 183, 255, 0.28);
+  border-radius: 8px;
+  background: rgba(6, 12, 21, 0.78);
+  color: var(--zotero-text);
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+
+.zotero-inline-editor {
+  width: 100%;
+  border: 1px solid rgba(102, 183, 255, 0.45);
+  border-radius: 8px;
+  background: rgba(18, 29, 47, 0.88);
+  color: var(--zotero-text);
+  padding: 6px 8px;
+  font-size: 11px;
+  font: inherit;
+}
+
 .zotero-items-empty {
   font-size: 12px;
   color: var(--muted);
@@ -2799,6 +3291,154 @@ kbd { background: color-mix(in srgb, var(--surface) 10%, transparent); }
 .zotero-badge-pdf {
   background: color-mix(in srgb, #60a5fa 30%, transparent);
   color: var(--text);
+}
+
+.agent-chat-fab {
+  position: fixed;
+  right: 12px;
+  bottom: 278px;
+  width: 54px;
+  height: 54px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 96;
+  background:
+    radial-gradient(circle at 28% 24%, rgba(164, 214, 255, 0.85), transparent 48%),
+    linear-gradient(145deg, #2f6ac8, #1d4f9c);
+  border: 1px solid rgba(126, 190, 255, 0.5);
+  box-shadow: 0 14px 30px rgba(12, 28, 55, 0.45);
+}
+
+.agent-chat-fab:hover {
+  transform: translateY(-2px) scale(1.03);
+  border-color: rgba(150, 206, 255, 0.8);
+}
+
+.agent-chat-fab-icon {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.agent-chat-dock {
+  position: fixed;
+  right: 12px;
+  bottom: 106px;
+  width: min(560px, 72vw);
+  max-height: min(58vh, 560px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  border-radius: 12px;
+  border: 1px solid var(--border-soft);
+  background: rgba(9, 16, 27, 0.97);
+  box-shadow: 0 20px 44px rgba(4, 12, 22, 0.55);
+  overflow: hidden;
+  transform: translateY(16px);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 95;
+  transition: transform 0.14s ease, opacity 0.14s ease;
+}
+
+.agent-chat-dock.open {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.agent-chat-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-soft);
+  background: rgba(13, 23, 38, 0.95);
+}
+
+.agent-chat-head-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.agent-chat-head-actions button {
+  padding: 5px 8px;
+  font-size: 11px;
+}
+
+.agent-chat-messages {
+  min-height: 170px;
+  max-height: 100%;
+  overflow: auto;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.agent-chat-msg {
+  border: 1px solid rgba(147, 171, 200, 0.26);
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: rgba(18, 28, 44, 0.84);
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+
+.agent-chat-msg.user {
+  border-color: rgba(102, 183, 255, 0.42);
+  background: rgba(52, 94, 148, 0.35);
+}
+
+.agent-chat-msg.assistant {
+  border-color: rgba(47, 211, 157, 0.42);
+}
+
+.agent-chat-msg.error {
+  border-color: rgba(255, 111, 120, 0.5);
+  background: rgba(92, 35, 42, 0.4);
+}
+
+.agent-chat-meta {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.agent-chat-form {
+  border-top: 1px solid var(--border-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+}
+
+.agent-chat-form input[type="text"] {
+  border: 1px solid var(--border-soft);
+  background: rgba(13, 22, 36, 0.95);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.agent-chat-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+@media (max-width: 1200px) {
+  .agent-chat-dock {
+    left: 12px;
+    width: auto;
+  }
+  .agent-chat-fab {
+    bottom: 250px;
+  }
 }
 
 .zotero-detail-title {
