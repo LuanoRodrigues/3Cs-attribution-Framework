@@ -1,0 +1,44 @@
+{
+  "files": [
+    {
+      "id": "apt29_hammertoss_stealthy_tactics_define_a",
+      "label": "apt29-hammertoss-stealthy-tactics-define-a.pdf",
+      "pdfPath": "/home/pantera/projects/TEIA/annotarium/Reports/apt29-hammertoss-stealthy-tactics-define-a.pdf",
+      "reportPath": "/home/pantera/projects/TEIA/annotarium/outputs/reports/apt29_hammertoss_stealthy_tactics_define_a_report.json",
+      "lastRunAt": "2026-02-22T10:15:08.178Z",
+      "lastStatus": "PASS"
+    },
+    {
+      "id": "fireeye_rpt_apt37_02_20_2018",
+      "label": "Fireeye_rpt_APT37(02-20-2018).pdf",
+      "pdfPath": "/home/pantera/projects/TEIA/annotarium/Reports/Fireeye_rpt_APT37(02-20-2018).pdf",
+      "reportPath": "/home/pantera/projects/TEIA/annotarium/outputs/reports/fireeye_rpt_apt37_02_20_2018_report.json",
+      "lastRunAt": "2026-02-22T10:15:08.450Z",
+      "lastStatus": "PASS"
+    },
+    {
+      "id": "mandiant_2013_apt1_exposing_one_of_china_s_cyber_espionage_units",
+      "label": "Mandiant - 2013 - APT1 Exposing One of China's Cyber Espionage Units.pdf",
+      "pdfPath": "/home/pantera/projects/TEIA/annotarium/Reports/Mandiant - 2013 - APT1 Exposing One of China's Cyber Espionage Units.pdf",
+      "reportPath": "/home/pantera/projects/TEIA/annotarium/outputs/reports/mandiant_2013_apt1_exposing_one_of_china_s_cyber_espionage_units_report.json",
+      "lastRunAt": "2026-02-22T10:15:08.954Z",
+      "lastStatus": "PASS"
+    },
+    {
+      "id": "mandiant_2017_apt28_at_the_center_of_the_storm",
+      "label": "Mandiant - 2017 - APT28 At the Center of the Storm.pdf",
+      "pdfPath": "/home/pantera/projects/TEIA/annotarium/Reports/Mandiant - 2017 - APT28 At the Center of the Storm.pdf",
+      "reportPath": "/home/pantera/projects/TEIA/annotarium/outputs/reports/mandiant_2017_apt28_at_the_center_of_the_storm_report.json",
+      "lastRunAt": "2026-02-22T10:15:09.274Z",
+      "lastStatus": "PASS"
+    },
+    {
+      "id": "panda_crowdstrike_intelligence_report",
+      "label": "Panda - CrowdStrike Intelligence Report.pdf",
+      "pdfPath": "/home/pantera/projects/TEIA/annotarium/Reports/Panda - CrowdStrike Intelligence Report.pdf",
+      "reportPath": "/home/pantera/projects/TEIA/annotarium/outputs/reports/panda_crowdstrike_intelligence_report_report.json",
+      "lastRunAt": "2026-02-22T10:15:09.630Z",
+      "lastStatus": "PASS"
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "name": "threec-electron-viewer",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Electron viewer/editor for Three-C report dashboards",
+  "author": "Luano Rodrigues",
+  "license": "MIT",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "release": "electron-builder --publish always"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:LuanoRodrigues/3Cs-attribution-Framework.git"
+  },
+  "build": {
+    "appId": "com.luanorodrigues.threecviewer",
+    "productName": "3Cs Attribution Framework",
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer.html",
+      "backend/**/*",
+      "pipeline_files.json",
+      "threec_viewer_widget (1).py",
+      "package.json"
+    ],
+    "directories": {
+      "output": "dist-installers"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ]
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ]
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "LuanoRodrigues",
+        "repo": "3Cs-attribution-Framework"
+      }
+    ]
+  },
+  "devDependencies": {
+    "electron": "^31.7.7",
+    "electron-builder": "^26.0.12"
+  },
+  "dependencies": {
+    "update-electron-app": "^3.1.1"
+  }
+}

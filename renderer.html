@@ -1,0 +1,3177 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Three-C Electron Viewer</title>
+  <style>
+    :root {
+      --ui-scale: 1.75;
+      --compact-gap: 6px;
+      --bg: #02050b;
+      --panel: #060a12;
+      --panel-soft: #0b1220;
+      --line: #1e293b;
+      --text: #dbe6f3;
+      --muted: #7f8ea3;
+      --accent: #0ea5a0;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+      --err: #ef4444;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle at 20% 0%, #0a1020 0%, #050912 32%, #02050b 100%);
+      color: var(--text);
+      font-family: "Segoe UI", "Noto Sans", sans-serif;
+    }
+
+    .app {
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      gap: var(--compact-gap);
+      height: calc(100% / var(--ui-scale));
+      width: calc(100% / var(--ui-scale));
+      padding: 8px;
+      transform: scale(var(--ui-scale));
+      transform-origin: top left;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: color-mix(in oklab, var(--panel) 95%, black);
+    }
+
+    .btn {
+      border: 1px solid #475569;
+      background: var(--panel-soft);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 7px 12px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 13px;
+    }
+
+    .btn:hover { border-color: var(--accent); }
+    .btn.primary { border-color: color-mix(in oklab, var(--accent) 70%, white); }
+
+    .path {
+      margin-left: auto;
+      color: var(--muted);
+      font-size: 12px;
+      max-width: 50%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .status {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 13px;
+      color: var(--muted);
+      background: color-mix(in oklab, var(--panel) 95%, black);
+      min-height: 40px;
+      display: flex;
+      align-items: center;
+    }
+    .status.ok { color: var(--ok); }
+    .status.warn { color: var(--warn); }
+    .status.err { color: var(--err); }
+
+    .mini-progress {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px 10px;
+      background: color-mix(in oklab, var(--panel) 95%, black);
+      display: none;
+    }
+
+    .mini-progress.active {
+      display: block;
+    }
+
+    .mini-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+      font-size: 12px;
+      color: #cbd5e1;
+    }
+
+    .mini-head .label {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 70%;
+    }
+
+    .mini-head .pct {
+      color: #93c5fd;
+      font-weight: 700;
+    }
+
+    .mini-bar {
+      width: 100%;
+      height: 8px;
+      border-radius: 999px;
+      background: #0f172a;
+      border: 1px solid #334155;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+
+    .mini-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #14b8a6, #38bdf8);
+      transition: width 180ms ease;
+    }
+
+    .mini-phases {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 4px 8px;
+      font-size: 11px;
+    }
+
+    .mini-phase {
+      color: #94a3b8;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .mini-phase.done {
+      color: #86efac;
+    }
+
+    .mini-phase.running {
+      color: #7dd3fc;
+    }
+
+    .mini-phase.fail {
+      color: #fca5a5;
+    }
+
+    .main {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: var(--compact-gap);
+      min-height: 0;
+      height: 100%;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      padding: 4px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: color-mix(in oklab, var(--panel) 95%, black);
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+
+    .tab-btn {
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--muted);
+      border-radius: 8px;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 13px;
+    }
+
+    .tab-btn.active {
+      color: var(--text);
+      border-color: color-mix(in oklab, var(--accent) 60%, #475569);
+      background: color-mix(in oklab, var(--panel-soft) 92%, black);
+    }
+
+    .panel {
+      display: none;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: color-mix(in oklab, var(--panel) 96%, black);
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .panel.active {
+      display: block;
+      height: 100%;
+    }
+
+    .panel-scroll {
+      height: 100%;
+      overflow: auto;
+      padding: 12px;
+    }
+
+    .figure-wrap {
+      height: calc(100vh - 220px);
+      min-height: 720px;
+      padding: 10px;
+      overflow: auto;
+    }
+
+    iframe {
+      display: block;
+      width: 100%;
+      height: calc(100vh - 240px);
+      min-height: 700px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #040812;
+    }
+
+    .dash-layout {
+      display: grid;
+      grid-template-columns: 320px 1fr 420px;
+      gap: 8px;
+      height: calc(100vh - 240px);
+      min-height: 700px;
+      padding: 8px;
+    }
+
+    .dash-list {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #060a12;
+      padding: 10px;
+      overflow: auto;
+    }
+
+    .dash-list h3 {
+      margin: 0 0 8px 0;
+      font-size: 13px;
+      color: #93c5fd;
+    }
+
+    .dash-item {
+      border: 1px solid #334155;
+      border-radius: 8px;
+      background: #0b1220;
+      padding: 8px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .dash-item.active {
+      border-color: #14b8a6;
+      box-shadow: 0 0 0 1px #14b8a6 inset;
+    }
+
+    .dash-item.disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .dash-view {
+      min-width: 0;
+      min-height: 0;
+    }
+
+    .dash-detail {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #060a12;
+      padding: 10px;
+      overflow: auto;
+      min-width: 0;
+    }
+
+    .dash-detail h3 {
+      margin: 0 0 8px 0;
+      font-size: 13px;
+      color: #93c5fd;
+    }
+
+    .doc-facts {
+      border: 1px solid #334155;
+      border-radius: 8px;
+      background: #0b1220;
+      padding: 8px;
+      margin-bottom: 8px;
+      font-size: 12px;
+    }
+
+    .doc-facts-title {
+      color: #93c5fd;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .doc-facts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px 8px;
+    }
+
+    .doc-facts-cell {
+      color: #cbd5e1;
+    }
+
+    .detail-tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+
+    .detail-tab-btn {
+      border: 1px solid #334155;
+      background: #0b1220;
+      color: #cbd5e1;
+      border-radius: 7px;
+      padding: 6px 8px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .detail-tab-btn.active {
+      border-color: #14b8a6;
+      color: #ecfeff;
+      background: #0f172a;
+    }
+
+    .detail-panel {
+      display: none;
+    }
+
+    .detail-panel.active {
+      display: block;
+    }
+
+    .corr-summary {
+      border: 1px solid #334155;
+      border-radius: 8px;
+      background: #0b1220;
+      padding: 8px;
+      margin-bottom: 10px;
+      font-size: 12px;
+      color: #cbd5e1;
+    }
+
+    .corr-card {
+      border: 1px solid #334155;
+      border-radius: 8px;
+      background: #0b1220;
+      padding: 8px;
+      margin-bottom: 10px;
+      font-size: 12px;
+    }
+
+    .corr-card h4 {
+      margin: 0 0 6px 0;
+      font-size: 12px;
+      color: #f8fafc;
+    }
+
+    .corr-metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .corr-metric {
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 6px;
+      background: #0f172a;
+    }
+
+    .corr-metric .k {
+      color: #94a3b8;
+      font-size: 11px;
+      margin-bottom: 2px;
+    }
+
+    .corr-metric .v {
+      color: #e2e8f0;
+      font-weight: 600;
+    }
+
+    .corr-sources {
+      border-top: 1px solid #1f2937;
+      padding-top: 6px;
+    }
+
+    .corr-source {
+      border: 1px solid #334155;
+      border-radius: 6px;
+      background: #0f172a;
+      padding: 6px;
+      margin-top: 6px;
+    }
+
+    .corr-source.excluded {
+      border-color: #7f1d1d;
+      background: #1a0f13;
+    }
+
+    .corr-source-id {
+      color: #7dd3fc;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 11px;
+    }
+
+    .corr-source-title {
+      color: #e2e8f0;
+      margin-top: 3px;
+    }
+
+    .corr-source-url {
+      color: #94a3b8;
+      margin-top: 2px;
+      word-break: break-all;
+    }
+
+    .corr-source-flag {
+      color: #fca5a5;
+      margin-top: 2px;
+      font-size: 11px;
+    }
+
+    .qa-list {
+      border-top: 1px solid #1f2937;
+      margin-top: 8px;
+      padding-top: 8px;
+      display: grid;
+      gap: 6px;
+    }
+
+    .qa-row {
+      border: 1px solid #334155;
+      border-radius: 6px;
+      background: #0f172a;
+      padding: 6px;
+    }
+
+    .qa-q {
+      color: #cbd5e1;
+      font-size: 11px;
+      margin-bottom: 4px;
+    }
+
+    .qa-a {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #e2e8f0;
+      font-size: 11px;
+    }
+
+    .qa-badge {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.2px;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+      background: #111827;
+    }
+
+    .qa-badge.yes {
+      border-color: #14532d;
+      background: #052e1a;
+      color: #86efac;
+    }
+
+    .qa-badge.partial {
+      border-color: #78350f;
+      background: #3b2410;
+      color: #fdba74;
+    }
+
+    .qa-badge.no {
+      border-color: #7f1d1d;
+      background: #3a1111;
+      color: #fca5a5;
+    }
+
+    .chain-card {
+      border: 1px solid #334155;
+      border-radius: 8px;
+      background: #0b1220;
+      padding: 8px;
+      margin-bottom: 10px;
+      font-size: 12px;
+    }
+
+    .chain-card h4 {
+      margin: 0 0 6px 0;
+      font-size: 12px;
+      color: #f8fafc;
+    }
+
+    .chain-grid {
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      gap: 8px;
+      align-items: start;
+    }
+
+    .chain-radar {
+      border: 1px solid #334155;
+      border-radius: 6px;
+      background: #0f172a;
+      padding: 6px;
+    }
+
+    .chain-vars {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .chain-var {
+      border: 1px solid #334155;
+      border-radius: 6px;
+      background: #0f172a;
+      padding: 6px;
+    }
+
+    .chain-links {
+      margin-top: 8px;
+      border-top: 1px solid #1f2937;
+      padding-top: 6px;
+    }
+
+    .primitive {
+      border: 1px solid #3b4557;
+      border-radius: 8px;
+      padding: 8px;
+      background: #0f172a;
+      color: #d1d5db;
+      font-size: 12px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    details.node {
+      border: 1px solid #3b4557;
+      border-radius: 8px;
+      padding: 6px 8px;
+      background: #0f172a;
+    }
+
+    details.node > summary {
+      cursor: pointer;
+      color: #93c5fd;
+      font-weight: 600;
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+
+    .raw {
+      width: 100%;
+      height: calc(100vh - 240px);
+      min-height: 700px;
+      border: 1px solid #475569;
+      border-radius: 10px;
+      background: #0f172a;
+      color: var(--text);
+      padding: 12px;
+      font-size: 12px;
+      line-height: 1.4;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      resize: none;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+
+    .pipeline-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    .table-wrap {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
+      background: #0f172a;
+    }
+
+    table.tbl {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    .tbl th,
+    .tbl td {
+      padding: 8px 10px;
+      border-bottom: 1px solid #263246;
+      vertical-align: top;
+    }
+
+    .tbl th {
+      color: #93c5fd;
+      text-align: left;
+      background: #0b1220;
+    }
+
+    .tbl tr:last-child td {
+      border-bottom: none;
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      word-break: break-all;
+    }
+
+    .log {
+      margin-top: 10px;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      background: #0b1220;
+      color: #cbd5e1;
+      padding: 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.35;
+      height: 260px;
+      overflow: auto;
+      white-space: pre-wrap;
+    }
+
+    .badge {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.4;
+      border: 1px solid #334155;
+      margin-right: 4px;
+      margin-bottom: 4px;
+      white-space: nowrap;
+    }
+
+    .badge.idle { background: #1f2937; color: #94a3b8; }
+    .badge.running { background: #0c4a6e; color: #bae6fd; border-color: #0369a1; }
+    .badge.pass { background: #14532d; color: #bbf7d0; border-color: #16a34a; }
+    .badge.fail { background: #7f1d1d; color: #fecaca; border-color: #ef4444; }
+    .badge.warn { background: #78350f; color: #fde68a; border-color: #f59e0b; }
+
+    .central-layout {
+      display: grid;
+      grid-template-columns: 280px 1fr 1fr;
+      gap: 10px;
+      min-height: calc(100vh - 280px);
+    }
+
+    .central-filter,
+    .central-cards,
+    .central-detail {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #0f172a;
+      padding: 10px;
+      min-height: 0;
+      overflow: auto;
+    }
+
+    .central-filter h3,
+    .central-cards h3,
+    .central-detail h3 {
+      margin: 0 0 10px 0;
+      font-size: 14px;
+      color: #93c5fd;
+    }
+
+    .f-label {
+      display: block;
+      font-size: 12px;
+      color: #cbd5e1;
+      margin: 10px 0 4px;
+    }
+
+    .f-input {
+      width: 100%;
+      border: 1px solid #475569;
+      border-radius: 8px;
+      background: #111827;
+      color: var(--text);
+      padding: 8px;
+      font-size: 12px;
+    }
+
+    .central-cards-list {
+      display: grid;
+      gap: 10px;
+      padding-bottom: 10px;
+    }
+
+    .central-card {
+      border: 1px solid #334155;
+      border-radius: 10px;
+      background: #111827;
+      padding: 10px;
+      cursor: pointer;
+    }
+
+    .central-card.active {
+      border-color: #14b8a6;
+      box-shadow: 0 0 0 1px #14b8a6 inset;
+    }
+
+    .central-card h4 {
+      margin: 0 0 6px 0;
+      font-size: 13px;
+      color: #e2e8f0;
+    }
+
+    .card-meta {
+      font-size: 12px;
+      color: #94a3b8;
+      margin-bottom: 8px;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .chip {
+      border: 1px solid #475569;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 11px;
+      color: #cbd5e1;
+      background: #1f2937;
+    }
+
+    blockquote.cq {
+      margin: 8px 0 0 0;
+      border-left: 3px solid #14b8a6;
+      padding: 8px 10px;
+      background: #0b1220;
+      color: #d1d5db;
+      font-size: 12px;
+      max-height: 110px;
+      overflow: auto;
+    }
+
+    .central-detail-body pre {
+      border: 1px solid #334155;
+      border-radius: 8px;
+      background: #0b1220;
+      padding: 10px;
+      color: #cbd5e1;
+      font-size: 12px;
+      overflow: auto;
+      max-height: 320px;
+    }
+
+    .linked-grid {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .linked-item {
+      border: 1px solid #334155;
+      border-radius: 8px;
+      background: #0b1220;
+      padding: 8px;
+      font-size: 12px;
+      color: #cbd5e1;
+    }
+
+    .rtable-wrap {
+      overflow: auto;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      margin-top: 8px;
+    }
+
+    .rtable {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      background: #0b1220;
+    }
+
+    .rtable th,
+    .rtable td {
+      border: 1px solid #334155;
+      padding: 6px 8px;
+      text-align: left;
+      vertical-align: top;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .rtable th {
+      background: #1f2937;
+      color: #e2e8f0;
+      font-weight: 700;
+    }
+
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .gallery-item {
+      border: 1px solid #334155;
+      border-radius: 8px;
+      background: #0b1220;
+      padding: 6px;
+      font-size: 11px;
+      color: #cbd5e1;
+    }
+
+    .gallery-item img {
+      display: block;
+      width: 100%;
+      height: 110px;
+      object-fit: cover;
+      border-radius: 6px;
+      border: 1px solid #334155;
+      margin-bottom: 6px;
+    }
+
+    .img-missing {
+      display: none;
+      border: 1px dashed #ef4444;
+      border-radius: 6px;
+      padding: 8px;
+      font-size: 11px;
+      color: #fecaca;
+      background: #7f1d1d22;
+      margin-top: 6px;
+    }
+
+    .carousel {
+      border: 1px solid #334155;
+      border-radius: 8px;
+      background: #02050b;
+      padding: 8px;
+      margin-top: 8px;
+    }
+
+    .carousel-stage {
+      height: 320px;
+      min-height: 240px;
+      max-height: 46vh;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      background: #0b1220;
+      overflow: auto;
+      padding: 8px;
+    }
+
+    .carousel-item {
+      display: none;
+      height: 100%;
+    }
+
+    .carousel-item.active {
+      display: block;
+    }
+
+    .carousel-item img {
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      display: block;
+      margin: 0 auto;
+      background: #02050b;
+    }
+
+    .carousel-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .carousel-count {
+      color: #94a3b8;
+      font-size: 12px;
+      min-width: 72px;
+      text-align: center;
+    }
+
+    @media (max-width: 1100px) {
+      .dash-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .central-layout {
+        grid-template-columns: 1fr;
+      }
+
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="toolbar">
+      <button class="btn primary" id="runPipelineBtn">Run Pipeline (Selected)</button>
+      <button class="btn" id="rescoreBtn">Rescore</button>
+      <button class="btn" id="addPdfBtn">Add PDFs</button>
+      <button class="btn" id="loadSelectedBtn">Load Selected Report</button>
+      <button class="btn" id="buildBtn">Rebuild Figures</button>
+      <button class="btn" id="reloadBtn">Reload JSON</button>
+      <button class="btn" id="validateBtn">Validate</button>
+      <button class="btn primary" id="saveBtn">Save To JSON</button>
+      <button class="btn" id="refreshRawBtn">Sync Raw From Model</button>
+      <div class="path" id="inputPath"></div>
+    </div>
+
+    <div class="status" id="status">Initializing...</div>
+    <div class="mini-progress" id="miniProgress">
+      <div class="mini-head">
+        <div class="label" id="miniProgressLabel">Pipeline idle</div>
+        <div class="pct" id="miniProgressPct">0%</div>
+      </div>
+      <div class="mini-bar"><div class="mini-fill" id="miniProgressFill"></div></div>
+      <div class="mini-phases" id="miniProgressPhases"></div>
+    </div>
+
+    <div class="main">
+      <div class="tabs" id="tabs">
+        <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
+        <button class="tab-btn" data-tab="pipeline">Pipeline</button>
+        <button class="tab-btn" data-tab="central">Centralized</button>
+        <button class="tab-btn" data-tab="raw">Raw JSON</button>
+      </div>
+
+      <section class="panel active" id="panel-dashboard">
+        <div class="dash-layout">
+          <aside class="dash-list">
+            <h3>Loaded PDFs</h3>
+            <div id="dashPdfList"></div>
+          </aside>
+          <div class="dash-view">
+            <iframe id="viewerFrame" title="Three-C dashboard"></iframe>
+          </div>
+          <aside class="dash-detail">
+            <h3>Scoring Detail</h3>
+            <div id="docFacts" class="doc-facts"></div>
+            <div class="detail-tabs">
+              <button class="detail-tab-btn active" data-detail-tab="credibility">Credibility</button>
+              <button class="detail-tab-btn" data-detail-tab="clarity">Clarity</button>
+              <button class="detail-tab-btn" data-detail-tab="chain">Chain of Custody</button>
+              <button class="detail-tab-btn" data-detail-tab="stats">Stats</button>
+            </div>
+            <div id="credDetailPanel" class="detail-panel active"></div>
+            <div id="clarityDetailPanel" class="detail-panel"></div>
+            <div id="chainDetailPanel" class="detail-panel"></div>
+            <div id="statsDetailPanel" class="detail-panel"></div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="panel" id="panel-pipeline">
+        <div class="panel-scroll">
+          <div class="hint">Insert PDFs and run complete pipeline: markdown, extraction, source/reference validation, scoring, and figure rendering.</div>
+          <div class="pipeline-actions">
+            <button class="btn" id="refreshFileListBtn">Refresh List</button>
+            <button class="btn" id="runPipelineTabBtn">Run Pipeline (Selected)</button>
+            <button class="btn" id="openReportBtn">Load Selected Report</button>
+          </div>
+          <div class="table-wrap">
+            <table class="tbl">
+              <thead>
+                <tr>
+                  <th style="width: 36px;"></th>
+                  <th>PDF</th>
+                  <th>Metadata</th>
+                  <th>Status</th>
+                  <th>Stages</th>
+                  <th>Last Run</th>
+                  <th>Report JSON</th>
+                </tr>
+              </thead>
+              <tbody id="pipelineTableBody"></tbody>
+            </table>
+          </div>
+          <div class="log" id="pipelineLog"></div>
+        </div>
+      </section>
+
+      <section class="panel" id="panel-central">
+        <div class="panel-scroll">
+          <div class="hint">Filter and review claims, sources, and artifacts in a centralized workspace.</div>
+          <div class="central-layout">
+            <aside class="central-filter">
+              <h3>Filters</h3>
+              <label class="f-label">Category</label>
+              <select id="centralType" class="f-input">
+                <option value="all">All</option>
+                <option value="claim">Claims</option>
+                <option value="source">Sources</option>
+                <option value="artifact">Artifacts</option>
+              </select>
+              <label class="f-label">Search</label>
+              <input id="centralSearch" class="f-input" type="text" placeholder="Search text..." />
+              <label class="f-label">Section Heading (Claims)</label>
+              <select id="centralHeading" class="f-input"></select>
+              <label class="f-label">Tag / Component (Claims)</label>
+              <select id="centralTag" class="f-input"></select>
+              <button class="btn" id="centralResetBtn">Reset Filters</button>
+            </aside>
+
+            <section class="central-cards">
+              <h3>Cards</h3>
+              <div id="centralCards" class="central-cards-list"></div>
+            </section>
+
+            <section class="central-detail">
+              <h3>Details</h3>
+              <div id="centralDetail" class="central-detail-body"></div>
+            </section>
+          </div>
+        </div>
+      </section>
+
+
+      <section class="panel" id="panel-raw">
+        <div class="panel-scroll">
+          <div class="hint">Edit complete JSON directly, then Validate and Save.</div>
+          <textarea class="raw" id="rawJson"></textarea>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const runPipelineBtn = document.getElementById('runPipelineBtn');
+    const rescoreBtn = document.getElementById('rescoreBtn');
+    const addPdfBtn = document.getElementById('addPdfBtn');
+    const loadSelectedBtn = document.getElementById('loadSelectedBtn');
+    const buildBtn = document.getElementById('buildBtn');
+    const reloadBtn = document.getElementById('reloadBtn');
+    const validateBtn = document.getElementById('validateBtn');
+    const saveBtn = document.getElementById('saveBtn');
+    const refreshRawBtn = document.getElementById('refreshRawBtn');
+    const inputPathEl = document.getElementById('inputPath');
+    const statusEl = document.getElementById('status');
+    const viewerFrame = document.getElementById('viewerFrame');
+    const dashPdfListEl = document.getElementById('dashPdfList');
+    const credDetailPanelEl = document.getElementById('credDetailPanel');
+    const clarityDetailPanelEl = document.getElementById('clarityDetailPanel');
+    const chainDetailPanelEl = document.getElementById('chainDetailPanel');
+    const statsDetailPanelEl = document.getElementById('statsDetailPanel');
+    const docFactsEl = document.getElementById('docFacts');
+    const tabsEl = document.getElementById('tabs');
+    const rawJsonEl = document.getElementById('rawJson');
+    const refreshFileListBtn = document.getElementById('refreshFileListBtn');
+    const runPipelineTabBtn = document.getElementById('runPipelineTabBtn');
+    const openReportBtn = document.getElementById('openReportBtn');
+    const pipelineTableBody = document.getElementById('pipelineTableBody');
+    const pipelineLog = document.getElementById('pipelineLog');
+    const miniProgressEl = document.getElementById('miniProgress');
+    const miniProgressLabelEl = document.getElementById('miniProgressLabel');
+    const miniProgressPctEl = document.getElementById('miniProgressPct');
+    const miniProgressFillEl = document.getElementById('miniProgressFill');
+    const miniProgressPhasesEl = document.getElementById('miniProgressPhases');
+    const centralTypeEl = document.getElementById('centralType');
+    const centralSearchEl = document.getElementById('centralSearch');
+    const centralHeadingEl = document.getElementById('centralHeading');
+    const centralTagEl = document.getElementById('centralTag');
+    const centralResetBtn = document.getElementById('centralResetBtn');
+    const centralCardsEl = document.getElementById('centralCards');
+    const centralDetailEl = document.getElementById('centralDetail');
+
+    let reportData = null;
+    let reportPath = '';
+    let outHtmlPath = '';
+    let dirty = false;
+    let pipelineFiles = [];
+    let selectedPdfPath = '';
+    let dashboardAggregateActive = false;
+    let portfolioSummaryData = null;
+    let activePipelineRunId = '';
+    const pipelineRuntime = {};
+    const STAGES = [
+      '01_pdf_to_md',
+      '02_schema_extraction',
+      '02b_source_inference',
+      '03_validation',
+      '04_score_full_icj',
+      '05_score_icj_v3',
+      '06_figures',
+    ];
+    const STAGE_LABELS = {
+      '01_pdf_to_md': '1. Convert PDF to Markdown + images/tables',
+      '02_schema_extraction': '2. Extract claims/sources/artifacts evidence',
+      '02b_source_inference': '3. Infer source institutions',
+      '03_validation': '4. Validate references and schema integrity',
+      '04_score_full_icj': '5. Score ICJ core model',
+      '05_score_icj_v3': '6. Score ICJ v3 (cred/corr/clarity detail)',
+      '06_figures': '7. Render dashboard figures',
+    };
+    let centralSelectedId = '';
+    let activeDetailTab = 'credibility';
+
+    function setStatus(text, kind = '') {
+      statusEl.textContent = text;
+      statusEl.className = `status ${kind}`.trim();
+    }
+
+    function renderMiniProgress(pdfPath = '', stageHint = '') {
+      if (!miniProgressEl) return;
+      const rt = ensureRuntime(pdfPath || selectedPdfPath);
+      if (!rt) {
+        miniProgressEl.classList.remove('active');
+        return;
+      }
+
+      const statuses = STAGES.map((s) => rt.stages[s] || 'idle');
+      const doneCount = statuses.filter((s) => s === 'pass' || s === 'warn' || s === 'fail').length;
+      const failCount = statuses.filter((s) => s === 'fail').length;
+      const runningStage = STAGES.find((s) => (rt.stages[s] || 'idle') === 'running') || '';
+      const pct = Math.round((doneCount / STAGES.length) * 100);
+
+      const labelPdf = pipelineFiles.find((f) => f.pdfPath === (pdfPath || selectedPdfPath))?.label || '';
+      const labelBase = labelPdf || pdfPath || selectedPdfPath || 'Pipeline';
+      const label = runningStage
+        ? `${labelBase} · ${STAGE_LABELS[runningStage] || runningStage}`
+        : (stageHint || `${labelBase} · ${failCount > 0 ? 'failed' : (doneCount === STAGES.length ? 'completed' : 'waiting')}`);
+
+      miniProgressLabelEl.textContent = label;
+      miniProgressPctEl.textContent = `${pct}%`;
+      miniProgressFillEl.style.width = `${pct}%`;
+      miniProgressPhasesEl.innerHTML = STAGES.map((s) => {
+        const st = rt.stages[s] || 'idle';
+        const cls = st === 'running' ? 'running' : (st === 'fail' ? 'fail' : (st === 'pass' || st === 'warn' ? 'done' : ''));
+        return `<div class="mini-phase ${cls}">${escHtml(STAGE_LABELS[s] || s)}</div>`;
+      }).join('');
+
+      const active = rt.runState === 'running' || doneCount > 0;
+      miniProgressEl.classList.toggle('active', active);
+    }
+
+    function renderDocumentFacts() {
+      if (!docFactsEl) return;
+      if (dashboardAggregateActive) {
+        const ready = pipelineFiles.filter((f) => f.reportPath && f.metadata);
+        if (!ready.length) {
+          docFactsEl.innerHTML = '<div class="doc-facts-title">Document Facts</div><div class="primitive">No ready reports.</div>';
+          return;
+        }
+        const sums = ready.reduce((acc, f) => {
+          const m = f.metadata || {};
+          acc.pages += Number(m.pages || 0);
+          acc.tables += Number(m.tables || 0);
+          acc.images += Number(m.images || 0);
+          acc.figures += Number(m.figures || 0);
+          acc.claims += Number(m.claims || 0);
+          acc.sources += Number(m.sources || 0);
+          acc.artifacts += Number(m.artifacts || 0);
+          return acc;
+        }, { pages: 0, tables: 0, images: 0, figures: 0, claims: 0, sources: 0, artifacts: 0 });
+        docFactsEl.innerHTML = [
+          '<div class="doc-facts-title">Document Facts (Aggregate)</div>',
+          `<div style="color:#94a3b8;margin-bottom:6px;">reports: ${ready.length}</div>`,
+          '<div class="doc-facts-grid">',
+          `<div class="doc-facts-cell">pages: ${sums.pages}</div>`,
+          `<div class="doc-facts-cell">tables: ${sums.tables}</div>`,
+          `<div class="doc-facts-cell">images: ${sums.images}</div>`,
+          `<div class="doc-facts-cell">figures: ${sums.figures}</div>`,
+          `<div class="doc-facts-cell">claims: ${sums.claims}</div>`,
+          `<div class="doc-facts-cell">sources: ${sums.sources}</div>`,
+          `<div class="doc-facts-cell">artifacts: ${sums.artifacts}</div>`,
+          '</div>',
+        ].join('');
+        return;
+      }
+
+      const current = pipelineFiles.find((f) => f.reportPath && reportPath && f.reportPath === reportPath) || null;
+      const m = current && current.metadata ? current.metadata : null;
+      if (!m) {
+        docFactsEl.innerHTML = '<div class="doc-facts-title">Document Facts</div><div class="primitive">Metadata unavailable.</div>';
+        return;
+      }
+      docFactsEl.innerHTML = [
+        '<div class="doc-facts-title">Document Facts</div>',
+        current ? `<div style="color:#94a3b8;margin-bottom:6px;">${escHtml(current.label || 'report')}</div>` : '',
+        '<div class="doc-facts-grid">',
+        `<div class="doc-facts-cell">pages: ${Number(m.pages || 0)}</div>`,
+        `<div class="doc-facts-cell">tables: ${Number(m.tables || 0)}</div>`,
+        `<div class="doc-facts-cell">images: ${Number(m.images || 0)}</div>`,
+        `<div class="doc-facts-cell">figures: ${Number(m.figures || 0)}</div>`,
+        `<div class="doc-facts-cell">claims: ${Number(m.claims || 0)}</div>`,
+        `<div class="doc-facts-cell">sources: ${Number(m.sources || 0)}</div>`,
+        `<div class="doc-facts-cell">artifacts: ${Number(m.artifacts || 0)}</div>`,
+        '</div>',
+      ].join('');
+    }
+
+    function fileUri(p) {
+      const normalized = p.replaceAll('\\\\', '/');
+      return `file://${normalized}`;
+    }
+
+    function markDirty(v = true) {
+      dirty = v;
+      if (dirty) {
+        if (!statusEl.classList.contains('err')) {
+          setStatus('Unsaved changes in memory. Save to write back to JSON file.', 'warn');
+        }
+      }
+    }
+
+    function getByPath(obj, path) {
+      let cur = obj;
+      for (const seg of path) {
+        if (cur == null) {
+          return undefined;
+        }
+        cur = cur[seg];
+      }
+      return cur;
+    }
+
+    function setByPath(obj, path, value) {
+      let cur = obj;
+      for (let i = 0; i < path.length - 1; i += 1) {
+        cur = cur[path[i]];
+      }
+      cur[path[path.length - 1]] = value;
+    }
+
+    function pathLabel(path) {
+      return path.map((x) => String(x)).join('.');
+    }
+
+    function appendPipelineLog(msg) {
+      const ts = new Date().toISOString();
+      const line = `[${ts}] ${msg}`;
+      const next = `${pipelineLog.textContent || ''}${line}\n`;
+      pipelineLog.textContent = next.length > 30000 ? next.slice(next.length - 30000) : next;
+      pipelineLog.scrollTop = pipelineLog.scrollHeight;
+    }
+
+    function ensureRuntime(pdfPath) {
+      if (!pdfPath) return null;
+      if (!pipelineRuntime[pdfPath]) {
+        pipelineRuntime[pdfPath] = {
+          runState: 'idle',
+          stages: Object.fromEntries(STAGES.map((s) => [s, 'idle'])),
+          currentStage: '',
+          lastEventAtMs: 0,
+          lastStallWarnAtMs: 0,
+        };
+      }
+      return pipelineRuntime[pdfPath];
+    }
+
+    function badgeClass(status) {
+      if (status === 'running') return 'running';
+      if (status === 'READY') return 'pass';
+      if (status === 'MISSING') return 'fail';
+      if (status === 'pass' || status === 'PASS') return 'pass';
+      if (status === 'fail' || status === 'FAIL') return 'fail';
+      if (status === 'warn' || status === 'WARNING') return 'warn';
+      return 'idle';
+    }
+
+    function stageShort(stageId) {
+      return String(stageId || '').replace(/^0?(\d+)_/, 'S$1 ');
+    }
+
+    function bindPipelineProgressListener() {
+      window.threecApp.onPipelineProgress((ev) => {
+        if (!ev || typeof ev !== 'object') return;
+        if (activePipelineRunId && ev.runId && ev.runId !== activePipelineRunId) return;
+        const rt = ensureRuntime(ev.pdfPath || selectedPdfPath);
+        const nowMs = Date.now();
+        if (rt) rt.lastEventAtMs = nowMs;
+
+        if (ev.event === 'batch_started') {
+          appendPipelineLog(`[batch] started total=${ev.total || 0} mode=${ev.batchMode ? 'batch' : 'single'}`);
+          setStatus(`Batch pipeline started (${ev.total || 0} PDFs).`, '');
+          return;
+        }
+        if (ev.event === 'batch_file_started') {
+          appendPipelineLog(`[batch] ${ev.index || '?'} / ${ev.total || '?'} started: ${ev.pdfPath || ''}`);
+          setStatus(`Batch running ${ev.index || '?'} / ${ev.total || '?'}`, '');
+          return;
+        }
+        if (ev.event === 'batch_file_finished') {
+          if (ev.ok) appendPipelineLog(`[batch] ${ev.index || '?'} / ${ev.total || '?'} finished OK: ${ev.pdfPath || ''}`);
+          else appendPipelineLog(`[batch] ${ev.index || '?'} / ${ev.total || '?'} failed: ${ev.pdfPath || ''} | ${ev.message || ''}`);
+          return;
+        }
+        if (ev.event === 'batch_completed') {
+          appendPipelineLog(`[batch] completed ok=${ev.okCount || 0} fail=${ev.failCount || 0}`);
+          if ((ev.failCount || 0) > 0) {
+            setStatus(`Batch completed with failures: ok=${ev.okCount || 0}, fail=${ev.failCount || 0}`, 'warn');
+          } else {
+            setStatus(`Batch completed: ${ev.okCount || 0} succeeded.`, 'ok');
+          }
+          return;
+        }
+
+        if (ev.event === 'pipeline_started') {
+          if (rt) {
+            rt.runState = 'running';
+            for (const s of STAGES) rt.stages[s] = 'idle';
+            rt.currentStage = '';
+            rt.lastStallWarnAtMs = 0;
+          }
+          renderPipelineTable();
+          renderMiniProgress(ev.pdfPath, 'Pipeline started');
+          appendPipelineLog(`Run ${ev.runId} started for ${ev.pdfPath || ''}`);
+          setStatus(`Pipeline started: ${ev.pdfPath || ''}`, '');
+          return;
+        }
+
+        if (ev.event === 'stage_started') {
+          if (rt) {
+            rt.runState = 'running';
+            rt.stages[ev.stageId] = 'running';
+            rt.currentStage = ev.stageId || '';
+            rt.lastStallWarnAtMs = 0;
+          }
+          renderPipelineTable();
+          renderMiniProgress(ev.pdfPath, STAGE_LABELS[ev.stageId] || ev.stageId);
+          appendPipelineLog(`${ev.stageId} started`);
+          setStatus(`Running ${ev.stageId}...`, '');
+          return;
+        }
+
+        if (ev.event === 'stage_log') {
+          const chunk = String(ev.chunk || '').trim();
+          if (chunk.length > 0) {
+            appendPipelineLog(`${ev.stageId} ${ev.stream}: ${chunk}`);
+          }
+          return;
+        }
+
+        if (ev.event === 'stage_pid') {
+          appendPipelineLog(`${ev.stageId} pid=${ev.pid || 'n/a'}`);
+          return;
+        }
+
+        if (ev.event === 'stage_heartbeat') {
+          appendPipelineLog(`${ev.stageId} heartbeat: ${ev.elapsed_sec || '?'}s | ${ev.hint || 'processing'}`);
+          setStatus(`Running ${ev.stageId}... ${ev.elapsed_sec || '?'}s`, '');
+          return;
+        }
+
+        if (ev.event === 'stage_finished') {
+          if (rt) {
+            rt.stages[ev.stageId] = ev.ok ? 'pass' : 'fail';
+            if (rt.currentStage === ev.stageId) rt.currentStage = '';
+          }
+          renderPipelineTable();
+          renderMiniProgress(ev.pdfPath);
+          appendPipelineLog(`${ev.stageId} finished ok=${ev.ok} code=${ev.code} output=${ev.output || ''}`);
+          return;
+        }
+
+        if (ev.event === 'stage_warning') {
+          if (rt) {
+            rt.stages[ev.stageId] = 'warn';
+            if (rt.currentStage === ev.stageId) rt.currentStage = '';
+          }
+          renderPipelineTable();
+          renderMiniProgress(ev.pdfPath);
+          appendPipelineLog(`${ev.stageId} warning: ${ev.message || ''}`);
+          return;
+        }
+
+        if (ev.event === 'pipeline_failed') {
+          if (rt) {
+            rt.runState = 'fail';
+            rt.currentStage = '';
+          }
+          renderPipelineTable();
+          renderMiniProgress(ev.pdfPath, 'Pipeline failed');
+          appendPipelineLog(`Pipeline failed at ${ev.stageId}: ${ev.message || ''}`);
+          setStatus(`Pipeline failed at ${ev.stageId}`, 'err');
+          activePipelineRunId = '';
+          return;
+        }
+
+        if (ev.event === 'pipeline_completed') {
+          if (rt) {
+            rt.runState = 'pass';
+            rt.currentStage = '';
+          }
+          renderPipelineTable();
+          renderMiniProgress(ev.pdfPath, 'Pipeline completed');
+          appendPipelineLog(`Pipeline completed: report=${ev.reportPath || ''} score=${ev.overall_score ?? 'n/a'}`);
+          activePipelineRunId = '';
+        }
+      });
+    }
+
+    function startProgressWatchdog() {
+      const STALL_MS = 45000;
+      const REPEAT_WARN_MS = 30000;
+      window.setInterval(() => {
+        const now = Date.now();
+        for (const [pdfPath, rt] of Object.entries(pipelineRuntime)) {
+          if (!rt || rt.runState !== 'running') continue;
+          const last = Number(rt.lastEventAtMs || 0);
+          if (!last) continue;
+          const idleFor = now - last;
+          if (idleFor < STALL_MS) continue;
+          const lastWarn = Number(rt.lastStallWarnAtMs || 0);
+          if (lastWarn && (now - lastWarn) < REPEAT_WARN_MS) continue;
+          rt.lastStallWarnAtMs = now;
+          const label = pipelineFiles.find((f) => f.pdfPath === pdfPath)?.label || pdfPath;
+          const stage = rt.currentStage || 'unknown_stage';
+          const sec = Math.round(idleFor / 1000);
+          appendPipelineLog(`[watchdog] no progress for ${sec}s at ${stage} | ${label}`);
+          setStatus(`No pipeline progress for ${sec}s at ${stage}. Check pipeline log.`, 'warn');
+        }
+      }, 10000);
+    }
+
+    function createPrimitive(value) {
+      const el = document.createElement('div');
+      el.className = 'primitive';
+      el.textContent = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+      return el;
+    }
+
+    function createNodeEditor(value, path) {
+      if (typeof value === 'string') {
+        const ta = document.createElement('textarea');
+        ta.className = 'str';
+        ta.value = value;
+        ta.addEventListener('input', () => {
+          setByPath(reportData, path, ta.value);
+          markDirty(true);
+        });
+        return ta;
+      }
+
+      if (value === null || typeof value === 'number' || typeof value === 'boolean') {
+        return createPrimitive(value);
+      }
+
+      if (Array.isArray(value)) {
+        const details = document.createElement('details');
+        details.className = 'node';
+        details.open = false;
+        const summary = document.createElement('summary');
+        summary.textContent = `Array(${value.length})`;
+        details.appendChild(summary);
+
+        const wrap = document.createElement('div');
+        wrap.style.display = 'grid';
+        wrap.style.gap = '8px';
+
+        value.forEach((item, idx) => {
+          const row = document.createElement('div');
+          row.className = 'field';
+
+          const key = document.createElement('div');
+          key.className = 'k';
+          key.textContent = `[${idx}]`;
+
+          const val = document.createElement('div');
+          val.className = 'v';
+          val.appendChild(createNodeEditor(item, [...path, idx]));
+
+          row.appendChild(key);
+          row.appendChild(val);
+          wrap.appendChild(row);
+        });
+
+        details.appendChild(wrap);
+        return details;
+      }
+
+      const details = document.createElement('details');
+      details.className = 'node';
+      details.open = true;
+      const summary = document.createElement('summary');
+      summary.textContent = 'Object';
+      details.appendChild(summary);
+
+      const wrap = document.createElement('div');
+      wrap.style.display = 'grid';
+      wrap.style.gap = '8px';
+
+      Object.keys(value).forEach((k) => {
+        const row = document.createElement('div');
+        row.className = 'field';
+
+        const key = document.createElement('div');
+        key.className = 'k';
+        key.textContent = k;
+
+        const val = document.createElement('div');
+        val.className = 'v';
+        val.appendChild(createNodeEditor(value[k], [...path, k]));
+
+        row.appendChild(key);
+        row.appendChild(val);
+        wrap.appendChild(row);
+      });
+
+      details.appendChild(wrap);
+      return details;
+    }
+
+    function sectionArray(path) {
+      const arr = getByPath(reportData, path);
+      return Array.isArray(arr) ? arr : [];
+    }
+
+    function escHtml(value) {
+      return String(value || '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
+
+    function truncate(s, n = 260) {
+      const t = String(s || '');
+      if (t.length <= n) return t;
+      return `${t.slice(0, n)}...`;
+    }
+
+    function centralItems() {
+      const claims = sectionArray(['raw_extraction', 'stage2_claim_extraction', 'attribution_claims']).map((c, idx) => {
+        const stmt = c.claim_statement || {};
+        const attr = c.attribution || {};
+        const loc = stmt.location || {};
+        return {
+          id: `claim:${c.claim_id || idx}`,
+          kind: 'claim',
+          heading: String(loc.section_heading || 'Unspecified section'),
+          title: `${attr.attributed_to_type || 'unknown'}: ${attr.attributed_to_name || 'unattributed'}`,
+          tags: Array.isArray(c.claim_components_asserted) ? c.claim_components_asserted : [],
+          quote: String(stmt.verbatim_text || ''),
+          searchBlob: JSON.stringify(c).toLowerCase(),
+          raw: c,
+        };
+      });
+
+      const sources = sectionArray(['raw_extraction', 'stage1_markdown_parse', 'global_indices', 'sources']).map((s, idx) => ({
+        id: `source:${s.source_id || idx}`,
+        kind: 'source',
+        heading: String(s.source_type || 'source'),
+        title: String(s.title || s.publication_or_venue || s.source_id || `Source ${idx + 1}`),
+        tags: [String(s.entity_name || ''), String(s.year || '')].filter(Boolean),
+        quote: '',
+        searchBlob: JSON.stringify(s).toLowerCase(),
+        raw: s,
+      }));
+
+      const artifacts = sectionArray(['raw_extraction', 'stage1_markdown_parse', 'global_indices', 'artifacts']).map((a, idx) => ({
+        id: `artifact:${a.artifact_type || idx}:${idx}`,
+        kind: 'artifact',
+        heading: String(a.artifact_type || 'artifact'),
+        title: `${a.artifact_type || 'artifact'} · count ${a.count ?? 0}`,
+        tags: Array.isArray(a.example_values) ? a.example_values.slice(0, 4) : [],
+        quote: String(a.notes || ''),
+        searchBlob: JSON.stringify(a).toLowerCase(),
+        raw: a,
+      }));
+
+      return [...claims, ...sources, ...artifacts];
+    }
+
+    function populateCentralFilterOptions(items) {
+      const claimItems = items.filter((x) => x.kind === 'claim');
+      const headings = Array.from(new Set(claimItems.map((x) => x.heading).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+      const tags = Array.from(
+        new Set(
+          claimItems.flatMap((x) => (Array.isArray(x.tags) ? x.tags : [])).map((t) => String(t).trim()).filter(Boolean),
+        ),
+      ).sort((a, b) => a.localeCompare(b));
+
+      const headingCurrent = centralHeadingEl.value || 'all';
+      const tagCurrent = centralTagEl.value || 'all';
+
+      centralHeadingEl.innerHTML = ['<option value="all">All headings</option>', ...headings.map((h) => `<option value="${escHtml(h)}">${escHtml(h)}</option>`)].join('');
+      centralTagEl.innerHTML = ['<option value="all">All tags</option>', ...tags.map((t) => `<option value="${escHtml(t)}">${escHtml(t)}</option>`)].join('');
+
+      if (Array.from(centralHeadingEl.options).some((o) => o.value === headingCurrent)) centralHeadingEl.value = headingCurrent;
+      if (Array.from(centralTagEl.options).some((o) => o.value === tagCurrent)) centralTagEl.value = tagCurrent;
+    }
+
+    function centralFilteredItems(items) {
+      const type = centralTypeEl.value || 'all';
+      const q = (centralSearchEl.value || '').trim().toLowerCase();
+      const heading = centralHeadingEl.value || 'all';
+      const tag = centralTagEl.value || 'all';
+
+      return items.filter((item) => {
+        if (type !== 'all' && item.kind !== type) return false;
+        if (q && !item.searchBlob.includes(q) && !String(item.title || '').toLowerCase().includes(q)) return false;
+        if (item.kind === 'claim' && heading !== 'all' && item.heading !== heading) return false;
+        if (item.kind === 'claim' && tag !== 'all' && !(item.tags || []).includes(tag)) return false;
+        return true;
+      });
+    }
+
+    function findArtifactLinkedObjects(artifact) {
+      const enrichment = (reportData && reportData.enrichment) ? reportData.enrichment : null;
+      if (enrichment && Array.isArray(enrichment.artifact_links)) {
+        const links = enrichment.artifact_links.find((x) => String(x.artifact_type || '').toLowerCase() === String(artifact.artifact_type || '').toLowerCase());
+        const allTables = Array.isArray(enrichment.tables) ? enrichment.tables : [];
+        const allFigures = Array.isArray(enrichment.figures) ? enrichment.figures : [];
+        const tableSet = new Set((links && links.linked_table_ids) || []);
+        const figureSet = new Set((links && links.linked_figure_ids) || []);
+        const tables = allTables.filter((t) => tableSet.has(String(t.object_id || '')));
+        const figures = allFigures.filter((f) => figureSet.has(String(f.object_id || '')));
+        const imagePaths = Array.isArray(links?.linked_image_paths) ? links.linked_image_paths : [];
+        return { tables, figures, imagePaths, allTables, allFigures };
+      }
+
+      const pages = sectionArray(['raw_extraction', 'stage1_markdown_parse', 'pages']);
+      const artifactType = String(artifact.artifact_type || '').toLowerCase();
+      const exemplars = Array.isArray(artifact.example_values)
+        ? artifact.example_values.slice(0, 6).map((x) => String(x).toLowerCase())
+        : [];
+
+      const probeHit = (txt) => {
+        const t = String(txt || '').toLowerCase();
+        if (!t) return false;
+        if (artifactType && t.includes(artifactType)) return true;
+        for (const v of exemplars) {
+          if (v && t.includes(v)) return true;
+        }
+        return false;
+      };
+
+      const tables = [];
+      const figures = [];
+      for (const p of pages) {
+        for (const t of (p.tables || [])) {
+          const blob = [t.caption_verbatim, t.table_markdown, t.table_text_verbatim, t.notes].join(' ');
+          if (probeHit(blob)) tables.push(t);
+        }
+        for (const f of (p.figures_images || [])) {
+          const blob = [f.caption_verbatim, f.alt_text, f.analyst_description, f.notes].join(' ');
+          if (probeHit(blob)) figures.push(f);
+        }
+      }
+      return { tables, figures, imagePaths: [], allTables: tables, allFigures: figures };
+    }
+
+    function parseMarkdownTable(md) {
+      const lines = String(md || '')
+        .split('\n')
+        .map((x) => x.trim())
+        .filter((x) => x.includes('|'));
+      if (lines.length < 2) return null;
+      const cleanLine = (line) => {
+        const src = line.replace(/^\||\|$/g, '');
+        return src.split('|').map((c) => c.trim());
+      };
+      const sepLike = (line) => /^[:\-\|\s]+$/.test(line);
+
+      const header = cleanLine(lines[0]);
+      let bodyStart = 1;
+      if (lines.length > 1 && sepLike(lines[1])) bodyStart = 2;
+      const rows = [];
+      for (let i = bodyStart; i < lines.length; i += 1) {
+        if (sepLike(lines[i])) continue;
+        const cells = cleanLine(lines[i]);
+        if (cells.length === 0) continue;
+        rows.push(cells);
+      }
+      if (!header.length && !rows.length) return null;
+      return { header, rows };
+    }
+
+    function renderTableHtmlFromObject(tableObj) {
+      const parsed = parseMarkdownTable(tableObj.table_markdown || tableObj.table_text_verbatim || '');
+      if (!parsed) {
+        return `<pre>${escHtml(String(tableObj.table_markdown || tableObj.table_text_verbatim || ''))}</pre>`;
+      }
+      const thead = `<tr>${parsed.header.map((h) => `<th>${escHtml(h)}</th>`).join('')}</tr>`;
+      const tbody = parsed.rows
+        .map((r) => `<tr>${r.map((c) => `<td>${escHtml(c)}</td>`).join('')}</tr>`)
+        .join('');
+      return `<div class="rtable-wrap"><table class="rtable"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`;
+    }
+
+    function findClaimLinkedObjects(claim) {
+      const enrichment = (reportData && reportData.enrichment) ? reportData.enrichment : null;
+      if (!enrichment) return { tables: [], figures: [], imagePaths: [] };
+
+      const tables = Array.isArray(enrichment.tables) ? enrichment.tables : [];
+      const figures = Array.isArray(enrichment.figures) ? enrichment.figures : [];
+      const stmt = claim.claim_statement || {};
+      const loc = stmt.location || {};
+      const claimHeading = String(loc.section_heading || '').toLowerCase();
+      const claimText = String(stmt.verbatim_text || '').toLowerCase();
+      const attr = claim.attribution || {};
+      const attrName = String(attr.attributed_to_name || '').toLowerCase();
+
+      const tokens = Array.from(
+        new Set(
+          claimText
+            .split(/[^a-z0-9]+/i)
+            .map((t) => t.trim().toLowerCase())
+            .filter((t) => t.length >= 4),
+        ),
+      ).slice(0, 20);
+
+      const scoreBlob = (blob, heading) => {
+        const b = String(blob || '').toLowerCase();
+        let s = 0;
+        if (claimHeading && String(heading || '').toLowerCase() === claimHeading) s += 4;
+        if (attrName && b.includes(attrName)) s += 3;
+        for (const t of tokens) if (b.includes(t)) s += 1;
+        return s;
+      };
+
+      const tScored = tables
+        .map((t) => {
+          const blob = [t.caption_verbatim, t.table_markdown, t.table_text_verbatim, t.notes].join(' ');
+          return { score: scoreBlob(blob, t.section_heading), obj: t };
+        })
+        .filter((x) => x.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 8)
+        .map((x) => x.obj);
+
+      const fScored = figures
+        .map((f) => {
+          const blob = [f.caption_verbatim, f.alt_text, f.analyst_description, f.notes].join(' ');
+          return { score: scoreBlob(blob, f.section_heading), obj: f };
+        })
+        .filter((x) => x.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 10)
+        .map((x) => x.obj);
+
+      const imagePaths = fScored.map((f) => f.resolved_image_path).filter(Boolean);
+      return { tables: tScored, figures: fScored, imagePaths };
+    }
+
+    function buildImageCarouselHtml(paths, keyPrefix) {
+      const items = (paths || []).filter(Boolean);
+      if (!items.length) return '<div class="linked-item">No images available.</div>';
+      const slides = items
+        .map((p, i) => {
+          const pathText = escHtml(String(p));
+          const active = i === 0 ? 'active' : '';
+          return `<div class="carousel-item ${active}" data-index="${i}"><img src="${fileUri(String(p))}" alt="evidence image" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" /><div class="img-missing">Image not found on disk: ${pathText}</div><div class="mono" style="margin-top:6px;">${pathText}</div></div>`;
+        })
+        .join('');
+      return [
+        `<div class="carousel" data-carousel="${escHtml(keyPrefix)}" data-total="${items.length}" data-index="0">`,
+        `<div class="carousel-stage">${slides}</div>`,
+        '<div class="carousel-controls">',
+        '<button class="btn" data-carousel-prev="1">Previous</button>',
+        `<div class="carousel-count">1/${items.length}</div>`,
+        '<button class="btn" data-carousel-next="1">Next</button>',
+        '</div>',
+        '</div>',
+      ].join('');
+    }
+
+    function buildTableCarouselHtml(tables, keyPrefix) {
+      const items = (tables || []);
+      if (!items.length) return '<div class="linked-item">No tables available.</div>';
+      const slides = items
+        .map((t, i) => {
+          const active = i === 0 ? 'active' : '';
+          return `<div class="carousel-item ${active}" data-index="${i}"><div style="margin-bottom:6px;"><strong>Table ${escHtml(t.object_id || '')}</strong> · ${escHtml(truncate(t.caption_verbatim || t.table_text_verbatim || t.notes || '', 180))}</div>${renderTableHtmlFromObject(t)}</div>`;
+        })
+        .join('');
+      return [
+        `<div class="carousel" data-carousel="${escHtml(keyPrefix)}" data-total="${items.length}" data-index="0">`,
+        `<div class="carousel-stage">${slides}</div>`,
+        '<div class="carousel-controls">',
+        '<button class="btn" data-carousel-prev="1">Previous</button>',
+        `<div class="carousel-count">1/${items.length}</div>`,
+        '<button class="btn" data-carousel-next="1">Next</button>',
+        '</div>',
+        '</div>',
+      ].join('');
+    }
+
+    function initDetailCarousels() {
+      const carousels = centralDetailEl.querySelectorAll('.carousel');
+      for (const c of carousels) {
+        if (c.dataset.bound === '1') continue;
+        c.dataset.bound = '1';
+
+        const update = () => {
+          const total = Number(c.dataset.total || '0');
+          let idx = Number(c.dataset.index || '0');
+          if (idx < 0) idx = 0;
+          if (idx >= total) idx = Math.max(0, total - 1);
+          c.dataset.index = String(idx);
+
+          const slides = c.querySelectorAll('.carousel-item');
+          slides.forEach((s, i) => s.classList.toggle('active', i === idx));
+          const count = c.querySelector('.carousel-count');
+          if (count) count.textContent = `${Math.min(idx + 1, Math.max(total, 1))}/${Math.max(total, 1)}`;
+        };
+
+        const prev = c.querySelector('[data-carousel-prev]');
+        const next = c.querySelector('[data-carousel-next]');
+        if (prev) {
+          prev.addEventListener('click', () => {
+            const total = Number(c.dataset.total || '0');
+            if (total <= 1) return;
+            const idx = Number(c.dataset.index || '0');
+            c.dataset.index = String((idx - 1 + total) % total);
+            update();
+          });
+        }
+        if (next) {
+          next.addEventListener('click', () => {
+            const total = Number(c.dataset.total || '0');
+            if (total <= 1) return;
+            const idx = Number(c.dataset.index || '0');
+            c.dataset.index = String((idx + 1) % total);
+            update();
+          });
+        }
+        update();
+      }
+    }
+
+    function renderCentralDetail(item) {
+      if (!item) {
+        centralDetailEl.innerHTML = '<div class="primitive">Select a card to inspect details.</div>';
+        return;
+      }
+      const raw = item.raw || {};
+      const jsonBlock = `<pre>${escHtml(JSON.stringify(raw, null, 2))}</pre>`;
+
+      if (item.kind === 'claim') {
+        const linked = findClaimLinkedObjects(raw);
+        const tableCarousel = buildTableCarouselHtml(linked.tables, `claim_tables_${Date.now()}`);
+        const claimImagePaths = linked.imagePaths && linked.imagePaths.length
+          ? linked.imagePaths
+          : linked.figures.map((f) => f.resolved_image_path).filter(Boolean);
+        const imgCarousel = buildImageCarouselHtml(claimImagePaths, `claim_imgs_${Date.now()}`);
+
+        centralDetailEl.innerHTML = [
+          jsonBlock,
+          '<div class="linked-grid">',
+          `<div class="linked-item"><strong>Claim-linked tables:</strong> ${linked.tables.length}</div>`,
+          tableCarousel,
+          `<div class="linked-item"><strong>Claim-linked figures/images:</strong> ${linked.figures.length}</div>`,
+          imgCarousel,
+          '</div>',
+        ].join('');
+        initDetailCarousels();
+        return;
+      }
+
+      if (item.kind !== 'artifact') {
+        centralDetailEl.innerHTML = jsonBlock;
+        return;
+      }
+
+      const linked = findArtifactLinkedObjects(raw);
+      const tableCarousel = buildTableCarouselHtml(linked.tables, `artifact_tables_${Date.now()}`);
+      const figHtml = linked.figures
+        .map((f) => `<div class="linked-item"><strong>Figure ${escHtml(f.object_id || '')}</strong><br>${escHtml(truncate(f.caption_verbatim || f.analyst_description || f.notes || '', 300))}</div>`)
+        .join('');
+      const imgPaths = linked.imagePaths || [];
+      const normSig = (p) => {
+        const s = String(p || '');
+        const base = s.split(/[\\/]/).pop() || s;
+        return base.toLowerCase().replace(/\d+/g, '#');
+      };
+      const galleryMap = new Map();
+      for (const p of imgPaths) {
+        const sig = normSig(p);
+        if (!galleryMap.has(sig)) galleryMap.set(sig, p);
+      }
+      const galleryPaths = Array.from(galleryMap.values()).slice(0, 24);
+      const galleryHtml = galleryPaths
+        .map((p) => {
+          const fileName = (String(p).split(/[\\/]/).pop()) || 'image';
+          return `<div class="gallery-item"><img src="${fileUri(String(p))}" alt="artifact image" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" /><div class="img-missing">Missing image: ${escHtml(fileName)}</div><div class="mono">${escHtml(fileName)}</div></div>`;
+        })
+        .join('');
+
+      const imgCarousel = buildImageCarouselHtml(imgPaths, `artifact_imgs_${Date.now()}`);
+      const allTableCarousel = buildTableCarouselHtml(linked.allTables || [], `artifact_alltables_${Date.now()}`);
+
+      centralDetailEl.innerHTML = [
+        jsonBlock,
+        '<div class="linked-grid">',
+        `<div class="linked-item"><strong>Linked tables:</strong> ${linked.tables.length}</div>`,
+        tableCarousel,
+        `<div class="linked-item"><strong>Linked figures/images:</strong> ${linked.figures.length}</div>`,
+        figHtml || '<div class="linked-item">No directly matched figures/images.</div>',
+        `<div class="linked-item"><strong>Evidence Gallery (unique):</strong> ${galleryPaths.length}</div>`,
+        galleryHtml ? `<div class="gallery-grid">${galleryHtml}</div>` : '<div class="linked-item">No gallery images available.</div>',
+        `<div class="linked-item"><strong>Resolved image paths:</strong> ${(linked.imagePaths || []).length}</div>`,
+        imgCarousel,
+        `<div class="linked-item"><strong>All markdown tables in report:</strong> ${(linked.allTables || []).length}</div>`,
+        allTableCarousel,
+        '</div>',
+      ].join('');
+      initDetailCarousels();
+    }
+
+    function renderCentralizedWorkspace() {
+      if (!reportData || typeof reportData !== 'object') {
+        centralCardsEl.innerHTML = '<div class="primitive">No report loaded.</div>';
+        centralDetailEl.innerHTML = '<div class="primitive">No report loaded.</div>';
+        return;
+      }
+
+      const items = centralItems();
+      populateCentralFilterOptions(items);
+      const filtered = centralFilteredItems(items);
+
+      if (!centralSelectedId || !filtered.some((x) => x.id === centralSelectedId)) {
+        centralSelectedId = filtered.length ? filtered[0].id : '';
+      }
+
+      if (filtered.length === 0) {
+        centralCardsEl.innerHTML = '<div class="primitive">No cards match current filters.</div>';
+        renderCentralDetail(null);
+        return;
+      }
+
+      centralCardsEl.innerHTML = filtered
+        .map((item) => {
+          const chips = (item.tags || []).map((t) => `<span class="chip">${escHtml(t)}</span>`).join('');
+          const quote = item.quote ? `<blockquote class="cq">${escHtml(item.quote)}</blockquote>` : '';
+          return [
+            `<article class="central-card ${item.id === centralSelectedId ? 'active' : ''}" data-central-id="${escHtml(item.id)}">`,
+            `<h4>${escHtml(item.title)}</h4>`,
+            `<div class="card-meta">${escHtml(item.kind.toUpperCase())} · ${escHtml(item.heading || '')}</div>`,
+            chips ? `<div class="chips">${chips}</div>` : '',
+            quote,
+            '</article>',
+          ].join('');
+        })
+        .join('');
+
+      for (const el of centralCardsEl.querySelectorAll('.central-card')) {
+        el.addEventListener('click', () => {
+          centralSelectedId = el.dataset.centralId || '';
+          renderCentralizedWorkspace();
+        });
+      }
+
+      const selected = filtered.find((x) => x.id === centralSelectedId) || filtered[0];
+      renderCentralDetail(selected);
+    }
+
+    function renderCards(container, titlePrefix, path) {
+      container.innerHTML = '';
+      const arr = sectionArray(path);
+
+      if (arr.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'primitive';
+        empty.textContent = `No elements found at ${pathLabel(path)}`;
+        container.appendChild(empty);
+        return;
+      }
+
+      arr.forEach((item, idx) => {
+        const card = document.createElement('article');
+        card.className = 'card';
+
+        const head = document.createElement('div');
+        head.className = 'card-head';
+
+        const left = document.createElement('div');
+        const label = item && typeof item === 'object' && (item.claim_id || item.source_id || item.artifact_type);
+        left.textContent = `${titlePrefix} ${idx + 1}${label ? ` · ${label}` : ''}`;
+
+        const right = document.createElement('div');
+        right.style.color = 'var(--muted)';
+        right.style.fontSize = '12px';
+        right.textContent = pathLabel([...path, idx]);
+
+        head.appendChild(left);
+        head.appendChild(right);
+
+        const body = document.createElement('div');
+        body.className = 'card-body';
+
+        if (item && typeof item === 'object') {
+          Object.keys(item).forEach((k) => {
+            const row = document.createElement('div');
+            row.className = 'field';
+
+            const key = document.createElement('div');
+            key.className = 'k';
+            key.textContent = k;
+
+            const val = document.createElement('div');
+            val.className = 'v';
+            val.appendChild(createNodeEditor(item[k], [...path, idx, k]));
+
+            row.appendChild(key);
+            row.appendChild(val);
+            body.appendChild(row);
+          });
+        } else {
+          const row = document.createElement('div');
+          row.className = 'field';
+          const key = document.createElement('div');
+          key.className = 'k';
+          key.textContent = '[value]';
+          const val = document.createElement('div');
+          val.className = 'v';
+          val.appendChild(createNodeEditor(item, [...path, idx]));
+          row.appendChild(key);
+          row.appendChild(val);
+          body.appendChild(row);
+        }
+
+        card.appendChild(head);
+        card.appendChild(body);
+        container.appendChild(card);
+      });
+    }
+
+    function renderAllEditors() {
+      rawJsonEl.value = JSON.stringify(reportData, null, 2);
+      renderCentralizedWorkspace();
+      renderDashboardPdfList();
+      renderCredibilityPanel();
+      renderClarityPanel();
+      renderChainPanel();
+      renderStatsPanel();
+    }
+
+    function activateDetailTab(name) {
+      activeDetailTab = ['credibility', 'clarity', 'chain', 'stats'].includes(name) ? name : 'credibility';
+      for (const btn of document.querySelectorAll('.detail-tab-btn')) {
+        btn.classList.toggle('active', btn.dataset.detailTab === activeDetailTab);
+      }
+      if (credDetailPanelEl) credDetailPanelEl.classList.toggle('active', activeDetailTab === 'credibility');
+      if (clarityDetailPanelEl) clarityDetailPanelEl.classList.toggle('active', activeDetailTab === 'clarity');
+      if (chainDetailPanelEl) chainDetailPanelEl.classList.toggle('active', activeDetailTab === 'chain');
+      if (statsDetailPanelEl) statsDetailPanelEl.classList.toggle('active', activeDetailTab === 'stats');
+    }
+
+    function corroborationClaims() {
+      if (!reportData || typeof reportData !== 'object') return [];
+      const scores = reportData.scores || {};
+      const v4 = scores.full_icj_v4;
+      if (v4 && Array.isArray(v4.claims)) return v4.claims;
+      const v3 = scores.full_icj_v3;
+      if (v3 && Array.isArray(v3.claims)) return v3.claims;
+      return [];
+    }
+
+    function sourceIndexById() {
+      const idx = {};
+      const rawSources = sectionArray(['raw_extraction', 'stage1_markdown_parse', 'global_indices', 'sources']);
+      for (const s of rawSources) {
+        const sid = String(s.source_id || '').trim();
+        if (!sid) continue;
+        idx[sid] = {
+          source_id: sid,
+          title: String(s.title || s.publication_or_venue || sid),
+          url: String(s.url_or_identifier || ''),
+          source_type: String(s.source_type || ''),
+        };
+      }
+      return idx;
+    }
+
+    function inferCorroborationSourceClass(meta) {
+      const url = String((meta && (meta.url || meta.url_or_identifier)) || '').toLowerCase();
+      const title = String((meta && meta.title) || '').toLowerCase();
+      const dom = (() => {
+        try {
+          if (!url) return '';
+          const u = new URL(url);
+          return String(u.hostname || '').toLowerCase();
+        } catch (_err) {
+          return '';
+        }
+      })();
+
+      if (!url) return { label: 'auto_source_or_internal', weight: 0.0, eligible: false };
+      if (/(washingtonpost|nytimes|theguardian|bbc|cnn|reuters|apnews|wsj|ft|bloomberg)\./.test(dom)) {
+        return { label: 'newspaper', weight: 0.0, eligible: false };
+      }
+      if (/(un\.org|nato\.int|europa\.eu|osce\.org|oecd\.org)/.test(dom) || /(united nations|nato|european union|osce|oecd|international court)/.test(title)) {
+        return { label: 'international_institution', weight: 1.0, eligible: true };
+      }
+      if (/(house\.gov|\.gov$|\.mil$)/.test(dom) || /(government|ministry|department|intelligence|committee|hearing|parliament|congress)/.test(title)) {
+        return { label: 'official_government', weight: 0.75, eligible: true };
+      }
+      if (/(rand\.org|csis\.org|brookings\.edu|carnegie\.org|project2049\.net)/.test(dom) || /(think tank|institute|policy center|research center)/.test(title)) {
+        return { label: 'think_tank', weight: 0.5, eligible: true };
+      }
+      if (/(\.edu$|springer\.com|ieeexplore|sciencedirect\.com|nature\.com)/.test(dom) || /(journal|proceedings|doi|peer review|peer-reviewed)/.test(title)) {
+        return { label: 'peer_reviewed_academic', weight: 1.0, eligible: true };
+      }
+      return { label: 'other_source', weight: 0.4, eligible: true };
+    }
+
+    function inferCredibilitySourceClass(meta) {
+      const rawType = String((meta && meta.source_type) || '').toLowerCase();
+      const url = String((meta && (meta.url || meta.url_or_identifier)) || '').toLowerCase();
+      const title = String((meta && meta.title) || '').toLowerCase();
+      const dom = (() => {
+        try {
+          if (!url) return '';
+          const u = new URL(url);
+          return String(u.hostname || '').toLowerCase();
+        } catch (_err) {
+          return '';
+        }
+      })();
+
+      if (rawType === 'internal_document_section') return { label: 'auto_source_or_internal', weight: 0.0, eligible: false };
+      if (rawType === 'press_media') return { label: 'newspaper', weight: 0.0, eligible: false };
+      if (rawType === 'international_institution' || rawType === 'judicial') return { label: 'international_institution', weight: 1.0, eligible: true };
+      if (rawType === 'academic') return { label: 'peer_reviewed_academic', weight: 1.0, eligible: true };
+      if (rawType === 'government') return { label: 'official_government', weight: 0.75, eligible: true };
+      if (rawType === 'ngo') return { label: 'ngo', weight: 0.65, eligible: true };
+
+      if (!url) return { label: 'auto_source_or_internal', weight: 0.0, eligible: false };
+      if (/(un\.org|nato\.int|europa\.eu|osce\.org|oecd\.org)/.test(dom) || /(united nations|nato|european union|osce|oecd|international court)/.test(title)) {
+        return { label: 'international_institution', weight: 1.0, eligible: true };
+      }
+      if (/(\.edu$|springer\.com|ieeexplore|sciencedirect\.com|nature\.com)/.test(dom) || /(journal|proceedings|doi|peer review|peer-reviewed)/.test(title)) {
+        return { label: 'peer_reviewed_academic', weight: 1.0, eligible: true };
+      }
+      if (/(rand\.org|csis\.org|brookings\.edu|carnegie\.org|project2049\.net)/.test(dom) || /(think tank|institute|policy center|research center)/.test(title)) {
+        return { label: 'think_tank', weight: 0.7, eligible: true };
+      }
+      if (/(washingtonpost|nytimes|theguardian|bbc|cnn|reuters|apnews|wsj|ft|bloomberg)\./.test(dom)) {
+        return { label: 'newspaper', weight: 0.0, eligible: false };
+      }
+      if (/(house\.gov|\.gov$|\.mil$)/.test(dom) || /(government|ministry|department|intelligence|committee|hearing|parliament|congress)/.test(title)) {
+        return { label: 'official_government', weight: 0.75, eligible: true };
+      }
+      return { label: 'other_source', weight: 0.45, eligible: true };
+    }
+
+    function buildCorroborationSection(claims, srcIdx) {
+      if (!claims.length) {
+        return '<div class="primitive">No corroboration claim scores found in `scores.full_icj_v4.claims` or `scores.full_icj_v3.claims`.</div>';
+      }
+
+      const avg = claims.reduce((acc, c) => acc + Number(((c.scores || {}).corroboration_0_100) || 0), 0) / claims.length;
+      const corroborated = claims.filter((c) => Number(((c.scores || {}).corroboration_0_100) || 0) > 0).length;
+
+      const parts = [];
+      parts.push(
+        `<div class="corr-summary">` +
+          `<div><strong>Claims:</strong> ${claims.length}</div>` +
+          `<div><strong>Corroborated (>0):</strong> ${corroborated}</div>` +
+          `<div><strong>Corroboration mean:</strong> ${avg.toFixed(2)}</div>` +
+        `</div>`,
+      );
+
+      for (const c of claims) {
+        const cid = String(c.claim_id || '');
+        const stmt = String(((c.claim_statement || {}).text) || '');
+        const s = c.scores || {};
+        const d = (c.score_details || {}).corroboration || {};
+        const corr = Number(s.corroboration_0_100 || 0);
+        const corrRaw = Number(s.corroboration_raw_0_100 || s.corroboration_0_100 || 0);
+        const coverage = Number(d.claim_coverage_factor || 0);
+        const linked = Array.isArray(c.sources_supporting_claim) ? c.sources_supporting_claim.map((x) => String(x)) : [];
+        const excluded = new Set(Array.isArray(d.excluded_source_ids) ? d.excluded_source_ids.map((x) => String(x)) : []);
+
+        const sourceRows = linked.length
+          ? linked.map((sid) => {
+              const meta = srcIdx[sid] || { source_id: sid, title: sid, url: '', source_type: '' };
+              const inferred = inferCorroborationSourceClass(meta);
+              const isExcluded = excluded.has(sid);
+              return [
+                `<div class="corr-source ${isExcluded ? 'excluded' : ''}">`,
+                `<div class="corr-source-id">` +
+                  `${escHtml(meta.source_id || sid)}` +
+                  ` · ${escHtml(inferred.label)}` +
+                  `${meta.source_type ? ` · raw:${escHtml(meta.source_type)}` : ''}` +
+                `</div>`,
+                `<div class="corr-source-title">${escHtml(meta.title || sid)}</div>`,
+                meta.url ? `<div class="corr-source-url">${escHtml(meta.url)}</div>` : '',
+                `<div class="corr-source-url">weight=${Number(inferred.weight || 0).toFixed(2)} · eligible=${inferred.eligible ? 'yes' : 'no'}</div>`,
+                isExcluded ? `<div class="corr-source-flag">Excluded from corroboration weighting</div>` : '',
+                `</div>`,
+              ].join('');
+            }).join('')
+          : '<div class="primitive">No linked sources for this claim.</div>';
+
+        parts.push(
+          `<div class="corr-card" data-corr-claim-id="${escHtml(cid)}">` +
+            `<h4>${escHtml(cid)} · corroboration ${corr.toFixed(2)}</h4>` +
+            `<div class="corr-metrics">` +
+              `<div class="corr-metric"><div class="k">Raw</div><div class="v">${corrRaw.toFixed(2)}</div></div>` +
+              `<div class="corr-metric"><div class="k">Calibrated</div><div class="v">${corr.toFixed(2)}</div></div>` +
+              `<div class="corr-metric"><div class="k">Coverage factor</div><div class="v">${coverage.toFixed(3)}</div></div>` +
+              `<div class="corr-metric"><div class="k">Eligible/Raw sources</div><div class="v">${Number(d.eligible_source_count || 0)} / ${Number(d.raw_source_count || linked.length)}</div></div>` +
+            `</div>` +
+            `<div class="corr-sources"><strong>Sources</strong>${sourceRows}</div>` +
+            `<div style="margin-top:8px;color:#94a3b8;">${escHtml(truncate(stmt, 220))}</div>` +
+          `</div>`,
+        );
+      }
+      return parts.join('');
+    }
+
+    function renderCorroborationPanel() {
+      const claims = corroborationClaims();
+      const srcIdx = sourceIndexById();
+      return buildCorroborationSection(claims, srcIdx);
+    }
+
+    function renderCredibilityPanel() {
+      if (!credDetailPanelEl) return;
+      const claims = corroborationClaims();
+      if (!claims.length) {
+        credDetailPanelEl.innerHTML = '<div class="primitive">No credibility claim scores found in `scores.full_icj_v4.claims` or `scores.full_icj_v3.claims`.</div>';
+        return;
+      }
+
+      const srcIdx = sourceIndexById();
+      const avg = claims.reduce((acc, c) => acc + Number(((c.scores || {}).credibility_0_100) || 0), 0) / claims.length;
+      const covered = claims.filter((c) => Number((((c.score_details || {}).credibility || {}).has_high_cred_source) || 0) === 1).length;
+
+      const parts = [];
+      parts.push(
+        `<div class="corr-summary">` +
+          `<div><strong>Claims:</strong> ${claims.length}</div>` +
+          `<div><strong>Claims with high-cred source:</strong> ${covered}</div>` +
+          `<div><strong>Credibility mean:</strong> ${avg.toFixed(2)}</div>` +
+        `</div>`,
+      );
+
+      for (const c of claims) {
+        const cid = String(c.claim_id || '');
+        const stmt = String(((c.claim_statement || {}).text) || '');
+        const s = c.scores || {};
+        const d = (c.score_details || {}).credibility || {};
+        const cred = Number(s.credibility_0_100 || 0);
+        const credRaw = Number(s.credibility_raw_0_100 || s.credibility_0_100 || 0);
+        const coverage = Number(d.claim_coverage_factor || 0);
+        const linked = Array.isArray(c.sources_supporting_claim) ? c.sources_supporting_claim.map((x) => String(x)) : [];
+        const highCred = Number(d.has_high_cred_source || 0) === 1;
+
+        const sourceRows = linked.length
+          ? linked.map((sid) => {
+              const meta = srcIdx[sid] || { source_id: sid, title: sid, url: '', source_type: '' };
+              const inferred = inferCredibilitySourceClass(meta);
+              return [
+                `<div class="corr-source">`,
+                `<div class="corr-source-id">` +
+                  `${escHtml(meta.source_id || sid)}` +
+                  ` · ${escHtml(inferred.label)}` +
+                  `${meta.source_type ? ` · raw:${escHtml(meta.source_type)}` : ''}` +
+                `</div>`,
+                `<div class="corr-source-title">${escHtml(meta.title || sid)}</div>`,
+                meta.url ? `<div class="corr-source-url">${escHtml(meta.url)}</div>` : '',
+                `<div class="corr-source-url">weight=${Number(inferred.weight || 0).toFixed(2)} · eligible=${inferred.eligible ? 'yes' : 'no'}</div>`,
+                `</div>`,
+              ].join('');
+            }).join('')
+          : '<div class="primitive">No linked sources for this claim.</div>';
+
+        parts.push(
+          `<div class="corr-card" data-corr-claim-id="${escHtml(cid)}">` +
+            `<h4>${escHtml(cid)} · credibility ${cred.toFixed(2)}</h4>` +
+            `<div class="corr-metrics">` +
+              `<div class="corr-metric"><div class="k">Raw</div><div class="v">${credRaw.toFixed(2)}</div></div>` +
+              `<div class="corr-metric"><div class="k">Calibrated</div><div class="v">${cred.toFixed(2)}</div></div>` +
+              `<div class="corr-metric"><div class="k">Coverage factor</div><div class="v">${coverage.toFixed(3)}</div></div>` +
+              `<div class="corr-metric"><div class="k">Eligible/Raw sources</div><div class="v">${Number(d.eligible_source_count || 0)} / ${Number(d.raw_source_count || linked.length)}</div></div>` +
+              `<div class="corr-metric"><div class="k">Quality mean/top</div><div class="v">${Number(d.quality_mean || 0).toFixed(3)} / ${Number(d.quality_top || 0).toFixed(3)}</div></div>` +
+              `<div class="corr-metric"><div class="k">High-cred source</div><div class="v">${highCred ? 'yes' : 'no'}</div></div>` +
+            `</div>` +
+            `<div class="corr-sources"><strong>Sources</strong>${sourceRows}</div>` +
+            `<div style="margin-top:8px;color:#94a3b8;">${escHtml(truncate(stmt, 220))}</div>` +
+          `</div>`,
+        );
+      }
+
+      const corrSubsection = renderCorroborationPanel();
+      parts.push(
+        `<div class="corr-card">` +
+          `<h4>Corroboration (Credibility Subcomponent)</h4>` +
+          `<div style="color:#94a3b8;margin-bottom:8px;">Corroboration is computed separately and merged into top-level credibility with fixed weighting.</div>` +
+          `${corrSubsection}` +
+        `</div>`,
+      );
+      credDetailPanelEl.innerHTML = parts.join('');
+      for (const el of credDetailPanelEl.querySelectorAll('.corr-card[data-corr-claim-id]')) {
+        el.addEventListener('click', () => {
+          const claimId = el.getAttribute('data-corr-claim-id') || '';
+          focusClaimInCentral(claimId);
+        });
+      }
+    }
+
+    function renderClarityPanel() {
+      if (!clarityDetailPanelEl) return;
+      const claims = corroborationClaims();
+      if (!claims.length) {
+        clarityDetailPanelEl.innerHTML = '<div class="primitive">No clarity claim scores found in `scores.full_icj_v4.claims` or `scores.full_icj_v3.claims`.</div>';
+        return;
+      }
+
+      const avg = claims.reduce((acc, c) => acc + Number(((c.scores || {}).clarity_0_100) || 0), 0) / claims.length;
+      const high = claims.filter((c) => Number(((c.scores || {}).clarity_0_100) || 0) >= 70).length;
+      const low = claims.filter((c) => Number(((c.scores || {}).clarity_0_100) || 0) < 40).length;
+      const qAns = claims.map((c) => String((((c.score_details || {}).clarity || {}).questions || {}).attribution_clarity?.answer || 'no').toLowerCase());
+      const qYes = qAns.filter((x) => x === 'yes').length;
+      const qPartial = qAns.filter((x) => x === 'partial').length;
+      const qNo = qAns.filter((x) => x === 'no').length;
+
+      const badge = (ans) => {
+        const a = String(ans || 'no').toLowerCase();
+        const cls = a === 'yes' || a === 'partial' || a === 'no' ? a : 'no';
+        return `<span class="qa-badge ${cls}">${escHtml(cls)}</span>`;
+      };
+
+      const parts = [];
+      parts.push(
+        `<div class="corr-summary">` +
+          `<div><strong>Claims:</strong> ${claims.length}</div>` +
+          `<div><strong>Clarity mean:</strong> ${avg.toFixed(2)}</div>` +
+          `<div><strong>High clarity (>=70):</strong> ${high}</div>` +
+          `<div><strong>Low clarity (<40):</strong> ${low}</div>` +
+          `<div><strong>Q1 attribution clear:</strong> yes ${qYes} · partial ${qPartial} · no ${qNo}</div>` +
+        `</div>`,
+      );
+
+      for (const c of claims) {
+        const cid = String(c.claim_id || '');
+        const s = c.scores || {};
+        const d = (c.score_details || {}).clarity || {};
+        const stmt = String(((c.claim_statement || {}).text) || '');
+        const clarity = Number(s.clarity_0_100 || 0);
+        const act = Number(d.act_specificity || 0);
+        const actor = Number(d.actor_specificity || 0);
+        const link = Number(d.link_specificity || 0);
+        const actClaim = Number(d.act_claim || 0);
+        const actEvidence = Number(d.act_evidence || 0);
+        const actorClaim = Number(d.actor_claim || 0);
+        const actorEvidence = Number(d.actor_evidence || 0);
+        const linkClaim = Number(d.link_claim || 0);
+        const linkEvidence = Number(d.link_evidence || 0);
+        const stateClaimFlag = Number(d.state_claim_flag || 0);
+        const stateLinkFlag = Number(d.state_link_evidence_flag || 0);
+        const gap = Number(d.state_actor_gap_penalty || 0);
+        const legalGap = Number(d.legal_path_gap_penalty || 0);
+        const organPath = Number(d.organ_path_clarity || 0);
+        const controlPath = Number(d.control_path_clarity || 0);
+        const duePath = Number(d.due_diligence_path_clarity || 0);
+        const pathMax = Number(d.legal_path_max || 0);
+        const pathCoverage = Number(d.legal_path_coverage || 0);
+        const evidence = Number(s.evidence_weight_0_100 || 0);
+        const support = Number(s.evidence_support_0_1 || 0);
+        const qs = d.questions || {};
+        const q1 = qs.attribution_clarity || {};
+        const q2 = qs.responsibility_mode_clarity || {};
+        const q3 = qs.due_diligence_clarity || {};
+        const modes = d.responsibility_modes || {};
+        const mOrgan = modes.conducted_by_state_organs || {};
+        const mControl = modes.non_state_actors_under_state_control || {};
+        const mDue = modes.state_due_diligence_failure || {};
+
+        const qaHtml = [
+          `<div class="qa-row"><div class="qa-q">${escHtml(String(q1.question || 'Is attribution to State X for attack Z clear?'))}</div><div class="qa-a">${badge(q1.answer)}<span>score ${Number(q1.score_0_1 || 0).toFixed(3)}</span></div></div>`,
+          `<div class="qa-row"><div class="qa-q">${escHtml(String(q2.question || 'Is the state-responsibility mode clear?'))}</div><div class="qa-a">${badge(q2.answer)}<span>score ${Number(q2.score_0_1 || 0).toFixed(3)}</span></div></div>`,
+          `<div class="qa-row"><div class="qa-q">${escHtml(String(q3.question || 'Is due diligence failure clear?'))}</div><div class="qa-a">${badge(q3.answer)}<span>score ${Number(q3.score_0_1 || 0).toFixed(3)}</span></div></div>`,
+        ].join('');
+
+        parts.push(
+          `<div class="corr-card" data-corr-claim-id="${escHtml(cid)}">` +
+            `<h4>${escHtml(cid)} · clarity ${clarity.toFixed(2)}</h4>` +
+            `<div class="corr-metrics">` +
+              `<div class="corr-metric"><div class="k">act_specificity</div><div class="v">${act.toFixed(3)}</div></div>` +
+              `<div class="corr-metric"><div class="k">actor_specificity</div><div class="v">${actor.toFixed(3)}</div></div>` +
+              `<div class="corr-metric"><div class="k">link_specificity</div><div class="v">${link.toFixed(3)}</div></div>` +
+              `<div class="corr-metric"><div class="k">act claim/evidence</div><div class="v">${actClaim.toFixed(3)} / ${actEvidence.toFixed(3)}</div></div>` +
+              `<div class="corr-metric"><div class="k">actor claim/evidence</div><div class="v">${actorClaim.toFixed(3)} / ${actorEvidence.toFixed(3)}</div></div>` +
+              `<div class="corr-metric"><div class="k">link claim/evidence</div><div class="v">${linkClaim.toFixed(3)} / ${linkEvidence.toFixed(3)}</div></div>` +
+              `<div class="corr-metric"><div class="k">state claim/evidence-link</div><div class="v">${stateClaimFlag} / ${stateLinkFlag}</div></div>` +
+              `<div class="corr-metric"><div class="k">organ path</div><div class="v">${organPath.toFixed(3)}</div></div>` +
+              `<div class="corr-metric"><div class="k">control path</div><div class="v">${controlPath.toFixed(3)}</div></div>` +
+              `<div class="corr-metric"><div class="k">due diligence path</div><div class="v">${duePath.toFixed(3)}</div></div>` +
+              `<div class="corr-metric"><div class="k">legal path max/coverage</div><div class="v">${pathMax.toFixed(3)} / ${pathCoverage.toFixed(3)}</div></div>` +
+              `<div class="corr-metric"><div class="k">state_actor_gap_penalty</div><div class="v">${gap.toFixed(3)}</div></div>` +
+              `<div class="corr-metric"><div class="k">legal_path_gap_penalty</div><div class="v">${legalGap.toFixed(3)}</div></div>` +
+              `<div class="corr-metric"><div class="k">mode: state organs</div><div class="v">${Number(mOrgan.score_0_1 || 0).toFixed(3)} · ${escHtml(String(mOrgan.answer || 'no'))}</div></div>` +
+              `<div class="corr-metric"><div class="k">mode: non-state control</div><div class="v">${Number(mControl.score_0_1 || 0).toFixed(3)} · ${escHtml(String(mControl.answer || 'no'))}</div></div>` +
+              `<div class="corr-metric"><div class="k">mode: due diligence</div><div class="v">${Number(mDue.score_0_1 || 0).toFixed(3)} · ${escHtml(String(mDue.answer || 'no'))}</div></div>` +
+              `<div class="corr-metric"><div class="k">evidence_weight</div><div class="v">${evidence.toFixed(2)}</div></div>` +
+              `<div class="corr-metric"><div class="k">evidence_support</div><div class="v">${support.toFixed(3)}</div></div>` +
+            `</div>` +
+            `<div class="qa-list">${qaHtml}</div>` +
+            `<div style="margin-top:8px;color:#94a3b8;">${escHtml(truncate(stmt, 260))}</div>` +
+          `</div>`,
+        );
+      }
+
+      clarityDetailPanelEl.innerHTML = parts.join('');
+      for (const el of clarityDetailPanelEl.querySelectorAll('.corr-card[data-corr-claim-id]')) {
+        el.addEventListener('click', () => {
+          const claimId = el.getAttribute('data-corr-claim-id') || '';
+          focusClaimInCentral(claimId);
+        });
+      }
+    }
+
+    function custodyRadarSvg(metrics) {
+      const keys = ['provenance', 'integrity', 'time_anchors', 'artifact_identifiers', 'versioning'];
+      const vals = keys.map((k) => Math.max(0, Math.min(1, Number(metrics[k] || 0))));
+      const size = 160;
+      const cx = 80;
+      const cy = 80;
+      const r = 58;
+      const pts = [];
+      const axis = [];
+      const labels = [];
+      for (let i = 0; i < keys.length; i += 1) {
+        const ang = (-Math.PI / 2) + ((Math.PI * 2 * i) / keys.length);
+        const ox = cx + (Math.cos(ang) * r);
+        const oy = cy + (Math.sin(ang) * r);
+        const px = cx + (Math.cos(ang) * r * vals[i]);
+        const py = cy + (Math.sin(ang) * r * vals[i]);
+        pts.push(`${px.toFixed(2)},${py.toFixed(2)}`);
+        axis.push(`<line x1="${cx}" y1="${cy}" x2="${ox.toFixed(2)}" y2="${oy.toFixed(2)}" stroke="#334155" stroke-width="1"/>`);
+        labels.push(`<text x="${(cx + Math.cos(ang) * 70).toFixed(2)}" y="${(cy + Math.sin(ang) * 70).toFixed(2)}" fill="#94a3b8" font-size="9" text-anchor="middle">${escHtml(keys[i])}</text>`);
+      }
+      return [
+        `<svg viewBox="0 0 ${size} ${size}" width="100%" height="160" role="img" aria-label="custody radar">`,
+        `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#1f2937" stroke-width="1"/>`,
+        `<circle cx="${cx}" cy="${cy}" r="${(r * 0.66).toFixed(2)}" fill="none" stroke="#1f2937" stroke-width="1"/>`,
+        `<circle cx="${cx}" cy="${cy}" r="${(r * 0.33).toFixed(2)}" fill="none" stroke="#1f2937" stroke-width="1"/>`,
+        axis.join(''),
+        `<polygon points="${pts.join(' ')}" fill="rgba(20,184,166,0.35)" stroke="#14b8a6" stroke-width="1.5"/>`,
+        labels.join(''),
+        `</svg>`,
+      ].join('');
+    }
+
+    function renderChainPanel() {
+      if (!chainDetailPanelEl) return;
+      if (!reportData || typeof reportData !== 'object') {
+        chainDetailPanelEl.innerHTML = '<div class="primitive">No report loaded.</div>';
+        return;
+      }
+      const scoreRoot = (reportData.scores || {});
+      const claims = (((scoreRoot.full_icj_v4 || {}).claims || ((scoreRoot.full_icj_v3 || {}).claims) || []));
+      const rawClaims = sectionArray(['raw_extraction', 'stage2_claim_extraction', 'attribution_claims']);
+      const rawById = {};
+      for (const c of rawClaims) {
+        rawById[String(c.claim_id || '')] = c;
+      }
+
+      if (!Array.isArray(claims) || claims.length === 0) {
+        chainDetailPanelEl.innerHTML = '<div class="primitive">No chain-of-custody scoring found in `scores.full_icj_v4.claims` or `scores.full_icj_v3.claims`.</div>';
+        return;
+      }
+
+      const blocks = [];
+      for (const c of claims) {
+        const cid = String(c.claim_id || '');
+        const s = c.scores || {};
+        const d = (c.score_details || {}).custody || {};
+        const raw = rawById[cid] || {};
+        const chain = (((raw.six_c || {}).chain_of_custody) || {});
+        const cred = (((raw.six_c || {}).credibility) || {});
+        const artifacts = Array.isArray(chain.artifact_inventory) ? chain.artifact_inventory : [];
+        const artifactRows = artifacts.slice(0, 8).map((a) => `${escHtml(String(a.artifact_type || 'artifact'))} (${Number(a.count || 0)})`).join(', ');
+        const supports = Array.isArray(cred.sources_supporting_claim) ? cred.sources_supporting_claim : [];
+        const sourceIds = supports.map((x) => String(x.source_id || '')).filter(Boolean).slice(0, 10).join(', ');
+
+        blocks.push(
+          `<div class="chain-card" data-corr-claim-id="${escHtml(cid)}">` +
+            `<h4>${escHtml(cid)} · custody ${(Number(s.custody_0_100 || 0) / 100).toFixed(3)}</h4>` +
+            `<div class="chain-grid">` +
+              `<div class="chain-radar">${custodyRadarSvg(d)}</div>` +
+              `<div class="chain-vars">` +
+                `<div class="chain-var"><div class="k">provenance</div><div class="v">${Number(d.provenance || 0).toFixed(3)}</div></div>` +
+                `<div class="chain-var"><div class="k">integrity</div><div class="v">${Number(d.integrity || 0).toFixed(3)}</div></div>` +
+                `<div class="chain-var"><div class="k">time_anchors</div><div class="v">${Number(d.time_anchors || 0).toFixed(3)}</div></div>` +
+                `<div class="chain-var"><div class="k">artifact_identifiers</div><div class="v">${Number(d.artifact_identifiers || 0).toFixed(3)}</div></div>` +
+                `<div class="chain-var"><div class="k">versioning</div><div class="v">${Number(d.versioning || 0).toFixed(3)}</div></div>` +
+                `<div class="chain-var"><div class="k">evidence items</div><div class="v">${Array.isArray(chain.evidence_items) ? chain.evidence_items.length : 0}</div></div>` +
+              `</div>` +
+            `</div>` +
+            `<div class="chain-links">` +
+              `<div><strong>Artifacts:</strong> ${artifactRows || 'none'}</div>` +
+              `<div style="margin-top:4px;"><strong>Supporting source IDs:</strong> ${sourceIds || 'none'}</div>` +
+            `</div>` +
+          `</div>`,
+        );
+      }
+      chainDetailPanelEl.innerHTML = blocks.join('');
+      for (const el of chainDetailPanelEl.querySelectorAll('.chain-card[data-corr-claim-id]')) {
+        el.addEventListener('click', () => {
+          const claimId = el.getAttribute('data-corr-claim-id') || '';
+          focusClaimInCentral(claimId);
+        });
+      }
+    }
+
+    function renderStatsPanel() {
+      if (!statsDetailPanelEl) return;
+      if (!dashboardAggregateActive) {
+        statsDetailPanelEl.innerHTML = '<div class="primitive">Stats are available in Aggregate mode. Select "All PDFs (Aggregated)".</div>';
+        return;
+      }
+      const s = portfolioSummaryData;
+      if (!s || typeof s !== 'object') {
+        statsDetailPanelEl.innerHTML = '<div class="primitive">No aggregated stats loaded yet.</div>';
+        return;
+      }
+
+      const totals = s.aggregated_totals || {};
+      const avgs = s.aggregated_averages_per_document || {};
+      const avgScores = s.average_scores_0_1 || {};
+      const avgProxy = s.average_proxy_support_metrics || {};
+      const cv = s.cv_scores_0_1 || {};
+      const ci = s.bootstrap_95ci || {};
+      const scoreCi = ci.scores_0_1 || {};
+      const proxyCi = ci.proxy_support_metrics || {};
+      const rows = Array.isArray(s.documents) ? s.documents : [];
+
+      const card = (title, body) => `<div class="corr-card"><h4>${escHtml(title)}</h4>${body}</div>`;
+      const kv = (obj, digits = 4) => Object.keys(obj || {}).map((k) => {
+        const v = Number(obj[k]);
+        const txt = Number.isFinite(v) ? v.toFixed(digits) : String(obj[k]);
+        return `<div class="corr-metric"><div class="k">${escHtml(k)}</div><div class="v">${escHtml(txt)}</div></div>`;
+      }).join('');
+      const ciBlock = (obj) => Object.keys(obj || {}).map((k) => {
+        const x = obj[k] || {};
+        const m = Number(x.mean || 0);
+        const lo = Number(x.ci95_low || 0);
+        const hi = Number(x.ci95_high || 0);
+        return `<div class="corr-metric"><div class="k">${escHtml(k)}</div><div class="v">${m.toFixed(4)} [${lo.toFixed(4)}, ${hi.toFixed(4)}]</div></div>`;
+      }).join('');
+
+      const docsTable = [
+        '<div class="rtable-wrap"><table class="rtable"><thead><tr>',
+        '<th>Document</th><th>Status</th><th>Pages</th><th>Claims</th><th>Sources</th><th>Artifacts</th><th>Coverage</th><th>F2</th>',
+        '</tr></thead><tbody>',
+        ...rows.map((d) => {
+          const m = d.metrics || {};
+          const p = m.proxy_support_metrics || {};
+          return `<tr><td>${escHtml(String(d.label || d.id || 'doc'))}</td><td>${escHtml(String(d.status || 'UNKNOWN'))}</td><td>${Number(m.pages || 0)}</td><td>${Number(m.claims || 0)}</td><td>${Number(m.sources || 0)}</td><td>${Number(m.artifacts || 0)}</td><td>${Number(p.weighted_coverage_ratio || 0).toFixed(4)}</td><td>${Number(p.weighted_f2_proxy || 0).toFixed(4)}</td></tr>`;
+        }),
+        '</tbody></table></div>',
+      ].join('');
+
+      statsDetailPanelEl.innerHTML = [
+        `<div class="corr-summary"><div><strong>Documents:</strong> ${Number(s.document_count || 0)}</div></div>`,
+        card('Totals', `<div class="corr-metrics">${kv(totals, 0)}</div>`),
+        card('Averages Per Document', `<div class="corr-metrics">${kv(avgs, 2)}</div>`),
+        card('Average Scores (0-1)', `<div class="corr-metrics">${kv(avgScores, 4)}</div>`),
+        card('Proxy Support Metrics', `<div class="corr-metrics">${kv(avgProxy, 4)}</div>`),
+        card('Coefficient of Variation', `<div class="corr-metrics">${kv(cv, 4)}</div>`),
+        card('Bootstrap 95% CI (Scores)', `<div class="corr-metrics">${ciBlock(scoreCi)}</div>`),
+        card('Bootstrap 95% CI (Proxy)', `<div class="corr-metrics">${ciBlock(proxyCi)}</div>`),
+        card('Documents', docsTable),
+      ].join('');
+    }
+
+    async function refreshPortfolioSummary() {
+      try {
+        const res = await window.threecApp.buildPortfolioSummary();
+        portfolioSummaryData = (res && res.data && typeof res.data === 'object') ? res.data : null;
+      } catch (_err) {
+        portfolioSummaryData = null;
+      }
+      renderStatsPanel();
+    }
+
+    function focusClaimInCentral(claimId) {
+      const cid = String(claimId || '').trim();
+      if (!cid) return;
+
+      centralTypeEl.value = 'claim';
+      centralSearchEl.value = cid;
+      centralHeadingEl.value = 'all';
+      centralTagEl.value = 'all';
+      centralSelectedId = `claim:${cid}`;
+
+      activateTab('central');
+      renderCentralizedWorkspace();
+
+      const activeCard = Array.from(centralCardsEl.querySelectorAll('.central-card')).find(
+        (node) => node.getAttribute('data-central-id') === centralSelectedId,
+      );
+      if (activeCard && typeof activeCard.scrollIntoView === 'function') {
+        activeCard.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+      setStatus(`Focused claim ${cid} in Centralized workspace.`, 'ok');
+    }
+
+    function validateCurrentData() {
+      const issues = [];
+
+      if (!reportData || typeof reportData !== 'object' || Array.isArray(reportData)) {
+        issues.push('Root payload must be a JSON object.');
+      }
+
+      const claims = sectionArray(['raw_extraction', 'stage2_claim_extraction', 'attribution_claims']);
+      const sources = sectionArray(['raw_extraction', 'stage1_markdown_parse', 'global_indices', 'sources']);
+      const artifacts = sectionArray(['raw_extraction', 'stage1_markdown_parse', 'global_indices', 'artifacts']);
+
+      if (!claims.length) issues.push('No claims found.');
+      if (!sources.length) issues.push('No sources found.');
+      if (!artifacts.length) issues.push('No artifacts found.');
+
+      try {
+        JSON.stringify(reportData);
+      } catch (err) {
+        issues.push(`JSON serialization error: ${err.message}`);
+      }
+
+      return issues;
+    }
+
+    async function loadReport(path = '') {
+      const result = await window.threecApp.getReportData(path);
+      reportPath = result.path;
+      reportData = result.data;
+      inputPathEl.textContent = `Locked input: ${reportPath}`;
+      renderAllEditors();
+      markDirty(false);
+      setStatus(`Loaded report JSON: ${reportPath}`, 'ok');
+    }
+
+    async function refreshViewer(inputPath = '', outputPath = '') {
+      setStatus('Rebuilding figures from current report JSON...', '');
+      try {
+        const result = await window.threecApp.buildViewer(inputPath || reportPath, outputPath);
+        outHtmlPath = result.outHtmlPath;
+        viewerFrame.src = fileUri(outHtmlPath);
+        dashboardAggregateActive = false;
+        portfolioSummaryData = null;
+        renderDashboardPdfList();
+        renderDocumentFacts();
+        renderStatsPanel();
+        setStatus(`Figures loaded: ${outHtmlPath}`, 'ok');
+      } catch (err) {
+        setStatus(`Build failed: ${err && err.message ? err.message : String(err)}`, 'err');
+      }
+    }
+
+    function renderPipelineTable() {
+      pipelineTableBody.innerHTML = '';
+      if (!pipelineFiles.length) {
+        const row = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 7;
+        td.textContent = 'No PDF files configured.';
+        row.appendChild(td);
+        pipelineTableBody.appendChild(row);
+        return;
+      }
+
+      for (const file of pipelineFiles) {
+        const tr = document.createElement('tr');
+
+        const tdSel = document.createElement('td');
+        const radio = document.createElement('input');
+        radio.type = 'radio';
+        radio.name = 'selectedPdf';
+        radio.checked = selectedPdfPath === file.pdfPath;
+        radio.addEventListener('change', () => {
+          selectedPdfPath = file.pdfPath;
+        });
+        tdSel.appendChild(radio);
+        tr.appendChild(tdSel);
+
+        const tdPdf = document.createElement('td');
+        tdPdf.innerHTML = `<div>${file.label || 'PDF'}</div><div class="mono">${file.pdfPath || ''}</div>`;
+        tr.appendChild(tdPdf);
+
+        const tdMeta = document.createElement('td');
+        const m = file.metadata || null;
+        tdMeta.innerHTML = m
+          ? `<div>p:${Number(m.pages || 0)}${Number.isFinite(Number(m.extracted_pages)) ? ` (ext:${Number(m.extracted_pages || 0)})` : ''} t:${Number(m.tables || 0)} img:${Number(m.images || 0)} fig:${Number(m.figures || 0)}</div><div>c:${Number(m.claims || 0)} s:${Number(m.sources || 0)} a:${Number(m.artifacts || 0)}</div>`
+          : '<span style="color:#64748b;">-</span>';
+        tr.appendChild(tdMeta);
+
+        const tdStatus = document.createElement('td');
+        const rt = ensureRuntime(file.pdfPath);
+          if (rt && rt.runState !== 'idle') {
+            const status = rt.runState;
+            tdStatus.innerHTML = `<span class="badge ${badgeClass(status)}">${String(status).toUpperCase()}</span>`;
+          } else {
+            const ready = String(file.readinessStatus || (file.reportPath ? 'READY' : 'MISSING')).toUpperCase();
+            const valid = String(file.validationStatus || 'UNKNOWN').toUpperCase();
+            const score = Number.isFinite(Number((file.metadata || {}).validation_overall_score))
+              ? Number((file.metadata || {}).validation_overall_score).toFixed(2)
+              : '';
+            tdStatus.innerHTML =
+              `<span class="badge ${badgeClass(ready)}">${ready}</span>` +
+              `<span class="badge ${badgeClass(valid)}" style="margin-left:4px;">VAL ${valid}${score ? ` ${score}` : ''}</span>`;
+          }
+        tr.appendChild(tdStatus);
+
+        const tdStages = document.createElement('td');
+        const stageBadges = [];
+        const stages = (rt && rt.stages) || {};
+        for (const stageId of STAGES) {
+          const s = stages[stageId] || 'idle';
+          stageBadges.push(`<span class="badge ${badgeClass(s)}">${stageShort(stageId)}</span>`);
+        }
+        tdStages.innerHTML = stageBadges.join('');
+        tr.appendChild(tdStages);
+
+        const tdLast = document.createElement('td');
+        tdLast.textContent = file.lastRunAt || '-';
+        tr.appendChild(tdLast);
+
+        const tdReport = document.createElement('td');
+        tdReport.className = 'mono';
+        tdReport.textContent = file.reportPath || '-';
+        tr.appendChild(tdReport);
+
+        tr.addEventListener('click', () => {
+          selectedPdfPath = file.pdfPath;
+          renderPipelineTable();
+        });
+        pipelineTableBody.appendChild(tr);
+      }
+    }
+
+    async function refreshPipelineFiles() {
+      const res = await window.threecApp.getFileList();
+      pipelineFiles = Array.isArray(res.files) ? res.files : [];
+      if (!selectedPdfPath && pipelineFiles.length > 0) {
+        selectedPdfPath = pipelineFiles[0].pdfPath;
+      }
+      if (selectedPdfPath && !pipelineFiles.some((f) => f.pdfPath === selectedPdfPath)) {
+        selectedPdfPath = pipelineFiles.length > 0 ? pipelineFiles[0].pdfPath : '';
+      }
+      renderPipelineTable();
+      renderDashboardPdfList();
+      renderDocumentFacts();
+    }
+
+    async function bootstrapReportsAndPipelines() {
+      setStatus('Syncing Reports PDFs and auto-running missing pipelines...', '');
+      appendPipelineLog('Bootstrap start: scanning annotarium/Reports and resolving ready reports.');
+      const result = await window.threecApp.bootstrapReports({ autoRunMissing: true });
+      await refreshPipelineFiles();
+      const failed = Array.isArray(result.runs) ? result.runs.filter((r) => !r.ok).length : 0;
+      const ran = Number(result.ran || 0);
+      const discovered = Number(result.discoveredPdfCount || 0);
+      if (failed > 0) {
+        setStatus(`Bootstrap completed with failures: discovered=${discovered}, ran=${ran}, failed=${failed}.`, 'warn');
+      } else {
+        setStatus(`Bootstrap completed: discovered=${discovered}, auto-ran=${ran}.`, 'ok');
+      }
+      appendPipelineLog(
+        `Bootstrap done: discovered=${discovered} missing_before=${result.missingBeforeRun || 0} ran=${ran} batch=${result.batchMode ? 'yes' : 'no'} failed=${failed}`,
+      );
+    }
+
+    function renderDashboardPdfList() {
+      if (!dashPdfListEl) return;
+      if (!pipelineFiles.length) {
+        dashPdfListEl.innerHTML = '<div class="primitive">No PDFs loaded.</div>';
+        return;
+      }
+      const readyReports = pipelineFiles.filter((f) => !!f.reportPath);
+      const aggregateCard = [
+        `<div class="dash-item ${dashboardAggregateActive ? 'active' : ''} ${readyReports.length < 1 ? 'disabled' : ''}" data-dash-kind="aggregate">`,
+        '<div><strong>All PDFs (Aggregated)</strong></div>',
+        `<div class="mono">${readyReports.length} report(s) ready</div>`,
+        '<div style="margin-top:4px;color:#94a3b8;">combined figures across all generated reports</div>',
+        '</div>',
+      ].join('');
+
+      dashPdfListEl.innerHTML = aggregateCard + pipelineFiles
+        .map((f) => {
+          const active = !dashboardAggregateActive && reportPath && f.reportPath && reportPath === f.reportPath ? 'active' : '';
+          const disabled = !f.reportPath ? 'disabled' : '';
+          return [
+            `<div class="dash-item ${active} ${disabled}" data-dash-pdf="${escHtml(f.pdfPath)}">`,
+            `<div><strong>${escHtml(f.label || 'PDF')}</strong></div>`,
+            `<div class="mono">${escHtml(f.pdfPath || '')}</div>`,
+            `<div style="margin-top:4px;color:#94a3b8;">report: ${f.reportPath ? 'ready' : 'run pipeline first'} | validation: ${escHtml(String(f.validationStatus || (f.reportPath ? 'UNKNOWN' : 'N/A')).toUpperCase())}${Number.isFinite(Number((f.metadata || {}).validation_overall_score)) ? ` (${Number((f.metadata || {}).validation_overall_score).toFixed(2)})` : ''}</div>`,
+            (() => {
+              const m = f.metadata || null;
+              if (!m) return '<div style="margin-top:4px;color:#64748b;">meta: -</div>';
+              return `<div style="margin-top:4px;color:#94a3b8;">pages:${Number(m.pages || 0)}${Number.isFinite(Number(m.extracted_pages)) ? ` (ext:${Number(m.extracted_pages || 0)})` : ''} tables:${Number(m.tables || 0)} images:${Number(m.images || 0)} figures:${Number(m.figures || 0)}</div><div style="color:#94a3b8;">claims:${Number(m.claims || 0)} sources:${Number(m.sources || 0)} artifacts:${Number(m.artifacts || 0)}</div>`;
+            })(),
+            '</div>',
+          ].join('');
+        })
+        .join('');
+
+      for (const el of dashPdfListEl.querySelectorAll('.dash-item')) {
+        el.addEventListener('click', async () => {
+          const kind = el.dataset.dashKind || '';
+          if (kind === 'aggregate') {
+            if (readyReports.length < 1) return;
+            try {
+              setStatus('Building aggregate dashboard figures...', '');
+              const result = await window.threecApp.buildAggregateViewer(readyReports.map((r) => r.reportPath));
+              outHtmlPath = result.outHtmlPath;
+              viewerFrame.src = fileUri(outHtmlPath);
+              dashboardAggregateActive = true;
+              renderDashboardPdfList();
+              renderPipelineTable();
+              renderDocumentFacts();
+              await refreshPortfolioSummary();
+              const skippedCount = Array.isArray(result.skipped) ? result.skipped.length : 0;
+              if (skippedCount > 0) {
+                setStatus(`Loaded aggregate dashboard (${readyReports.length - skippedCount} reports, ${skippedCount} skipped).`, 'warn');
+              } else {
+                setStatus(`Loaded aggregate dashboard (${readyReports.length} reports).`, 'ok');
+              }
+            } catch (err) {
+              setStatus(`Aggregate build failed: ${err && err.message ? err.message : String(err)}`, 'err');
+            }
+            return;
+          }
+          const pdf = el.dataset.dashPdf || '';
+          const item = pipelineFiles.find((x) => x.pdfPath === pdf);
+          if (!item) return;
+          if (!item.reportPath) {
+            await runPipelineForFileAndLoad(item);
+            return;
+          }
+          selectedPdfPath = item.pdfPath;
+          dashboardAggregateActive = false;
+          portfolioSummaryData = null;
+          await loadReport(item.reportPath);
+          await refreshViewer(item.reportPath);
+          renderDashboardPdfList();
+          renderPipelineTable();
+          renderDocumentFacts();
+          renderStatsPanel();
+          setStatus(`Loaded dashboard for ${item.label}`, 'ok');
+        });
+      }
+    }
+
+    function selectedPipelineFile() {
+      return pipelineFiles.find((f) => f.pdfPath === selectedPdfPath) || null;
+    }
+
+    async function runSelectedPipeline() {
+      const selected = selectedPipelineFile();
+      if (!selected) {
+        setStatus('Select a PDF from Pipeline tab before running.', 'warn');
+        return;
+      }
+      if (activePipelineRunId) {
+        setStatus('A pipeline run is already in progress.', 'warn');
+        return;
+      }
+
+      activePipelineRunId = `run_${Date.now()}`;
+      dashboardAggregateActive = false;
+      setStatus(`Running pipeline for: ${selected.label}`, '');
+      const rt = ensureRuntime(selected.pdfPath);
+      if (rt) {
+        rt.runState = 'running';
+        for (const s of STAGES) rt.stages[s] = 'idle';
+      }
+      renderPipelineTable();
+      renderMiniProgress(selected.pdfPath, 'Pipeline queued');
+      appendPipelineLog(`Pipeline start: ${selected.pdfPath}`);
+      try {
+        const result = await window.threecApp.runPipelineForPdf(selected.pdfPath, activePipelineRunId);
+        appendPipelineLog(`Pipeline success: report=${result.reportPath}`);
+
+        await refreshPipelineFiles();
+        await loadReport(result.reportPath);
+        await refreshViewer(result.reportPath, result.outHtmlPath);
+        setStatus(
+          `Pipeline completed: ${selected.label} | cert=${result.validation?.certification || 'UNKNOWN'} | overall=${result.validation?.overall_score ?? 'n/a'}`,
+          'ok',
+        );
+      } catch (err) {
+        appendPipelineLog(`Pipeline failed: ${err && err.message ? err.message : String(err)}`);
+        setStatus(`Pipeline failed: ${err && err.message ? err.message : String(err)}`, 'err');
+        activePipelineRunId = '';
+        await refreshPipelineFiles();
+      }
+    }
+
+    async function runPipelineForFileAndLoad(file) {
+      if (!file || !file.pdfPath) return;
+      if (activePipelineRunId) {
+        setStatus('A pipeline run is already in progress.', 'warn');
+        return;
+      }
+
+      selectedPdfPath = file.pdfPath;
+      dashboardAggregateActive = false;
+      activePipelineRunId = `run_${Date.now()}`;
+      const rt = ensureRuntime(file.pdfPath);
+      if (rt) {
+        rt.runState = 'running';
+        for (const s of STAGES) rt.stages[s] = 'idle';
+      }
+      renderPipelineTable();
+      renderDashboardPdfList();
+      renderMiniProgress(file.pdfPath, 'Pipeline queued');
+      appendPipelineLog(`Auto pipeline start: ${file.pdfPath}`);
+      setStatus(`Auto-running pipeline for ${file.label}...`, '');
+
+      try {
+        const result = await window.threecApp.runPipelineForPdf(file.pdfPath, activePipelineRunId);
+        appendPipelineLog(`Auto pipeline success: report=${result.reportPath}`);
+        await refreshPipelineFiles();
+        await loadReport(result.reportPath);
+        await refreshViewer(result.reportPath, result.outHtmlPath);
+        renderDashboardPdfList();
+        renderPipelineTable();
+        setStatus(`Auto pipeline completed: ${file.label}`, 'ok');
+      } catch (err) {
+        appendPipelineLog(`Auto pipeline failed: ${err && err.message ? err.message : String(err)}`);
+        setStatus(`Auto pipeline failed: ${err && err.message ? err.message : String(err)}`, 'err');
+        activePipelineRunId = '';
+        await refreshPipelineFiles();
+      }
+    }
+
+    async function loadSelectedPipelineReport() {
+      const selected = selectedPipelineFile();
+      if (!selected) {
+        setStatus('Select a PDF from Pipeline tab first.', 'warn');
+        return;
+      }
+      if (!selected.reportPath) {
+        await runPipelineForFileAndLoad(selected);
+        return;
+      }
+      dashboardAggregateActive = false;
+      await loadReport(selected.reportPath);
+      await refreshViewer(selected.reportPath);
+      appendPipelineLog(`Loaded report: ${selected.reportPath}`);
+    }
+
+    async function runRescore() {
+      if (!reportPath) {
+        setStatus('No report loaded to rescore.', 'warn');
+        return;
+      }
+      setStatus('Rescoring current report...', '');
+      appendPipelineLog(`Rescore start: ${reportPath}`);
+      try {
+        const result = await window.threecApp.rescoreReport(reportPath);
+        appendPipelineLog(`Rescore finished: ${result.reportPath}`);
+        appendPipelineLog(`Rescore outputs: full=${result.fullScorePath} v3=${result.scoreV3Path} v3_ok=${result.v3Ok}${result.scoreV4Path ? ` v4=${result.scoreV4Path}` : ''}${typeof result.v4Ok === 'boolean' ? ` v4_ok=${result.v4Ok}` : ''}`);
+        if (result.stderr && result.stderr.v3) {
+          const v3Err = String(result.stderr.v3).trim();
+          if (v3Err.length > 0) appendPipelineLog(`Rescore v3 stderr: ${v3Err}`);
+        }
+        if (result.stderr && result.stderr.v4) {
+          const v4Err = String(result.stderr.v4).trim();
+          if (v4Err.length > 0) appendPipelineLog(`Rescore v4 stderr: ${v4Err}`);
+        }
+        await loadReport(result.reportPath);
+        await refreshViewer(result.reportPath, result.outHtmlPath);
+        setStatus('Rescore completed and figures refreshed.', 'ok');
+      } catch (err) {
+        appendPipelineLog(`Rescore failed: ${err && err.message ? err.message : String(err)}`);
+        setStatus(`Rescore failed: ${err && err.message ? err.message : String(err)}`, 'err');
+      }
+    }
+
+    function activateTab(tabName) {
+      for (const btn of tabsEl.querySelectorAll('.tab-btn')) {
+        btn.classList.toggle('active', btn.dataset.tab === tabName);
+      }
+
+      for (const panel of document.querySelectorAll('.panel')) {
+        panel.classList.toggle('active', panel.id === `panel-${tabName}`);
+      }
+    }
+
+    tabsEl.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('.tab-btn');
+      if (!btn) return;
+      activateTab(btn.dataset.tab);
+    });
+
+    for (const btn of document.querySelectorAll('.detail-tab-btn')) {
+      btn.addEventListener('click', () => {
+        activateDetailTab(btn.dataset.detailTab || 'credibility');
+      });
+    }
+
+    validateBtn.addEventListener('click', () => {
+      try {
+        if (rawJsonEl.value.trim().length > 0) {
+          const parsed = JSON.parse(rawJsonEl.value);
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            reportData = parsed;
+          }
+        }
+
+        const issues = validateCurrentData();
+        if (issues.length === 0) {
+          setStatus('Validation passed. Payload is structurally valid for claims/sources/artifacts.', 'ok');
+        } else {
+          setStatus(`Validation warnings: ${issues.join(' | ')}`, 'warn');
+        }
+      } catch (err) {
+        setStatus(`Validation failed: ${err.message}`, 'err');
+      }
+    });
+
+    saveBtn.addEventListener('click', async () => {
+      try {
+        const parsed = JSON.parse(rawJsonEl.value);
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+          throw new Error('Raw JSON must be an object');
+        }
+        reportData = parsed;
+
+        const issues = validateCurrentData();
+        if (issues.length > 0) {
+          setStatus(`Save blocked by validation warnings: ${issues.join(' | ')}`, 'err');
+          return;
+        }
+
+        await window.threecApp.saveReportData(reportData, reportPath);
+        renderAllEditors();
+        markDirty(false);
+        setStatus(`Saved changes to ${reportPath}`, 'ok');
+      } catch (err) {
+        setStatus(`Save failed: ${err.message}`, 'err');
+      }
+    });
+
+    reloadBtn.addEventListener('click', async () => {
+      await loadReport(reportPath);
+      await refreshViewer();
+    });
+
+    buildBtn.addEventListener('click', async () => {
+      await refreshViewer();
+    });
+
+    refreshRawBtn.addEventListener('click', () => {
+      rawJsonEl.value = JSON.stringify(reportData, null, 2);
+      setStatus('Raw JSON refreshed from current editor model.', 'ok');
+    });
+
+    rawJsonEl.addEventListener('input', () => {
+      markDirty(true);
+    });
+
+    addPdfBtn.addEventListener('click', async () => {
+      try {
+        const out = await window.threecApp.addPdfFiles();
+        await bootstrapReportsAndPipelines();
+        appendPipelineLog(`Added PDFs: ${out.added || 0}`);
+        setStatus(`Added ${out.added || 0} PDF(s) to pipeline list.`, 'ok');
+      } catch (err) {
+        setStatus(`Failed to add PDFs: ${err.message}`, 'err');
+      }
+    });
+
+    runPipelineBtn.addEventListener('click', async () => {
+      await runSelectedPipeline();
+    });
+    rescoreBtn.addEventListener('click', async () => {
+      await runRescore();
+    });
+    runPipelineTabBtn.addEventListener('click', async () => {
+      await runSelectedPipeline();
+    });
+
+    loadSelectedBtn.addEventListener('click', async () => {
+      await loadSelectedPipelineReport();
+    });
+    openReportBtn.addEventListener('click', async () => {
+      await loadSelectedPipelineReport();
+    });
+
+    refreshFileListBtn.addEventListener('click', async () => {
+      await refreshPipelineFiles();
+      appendPipelineLog('Pipeline file list refreshed.');
+    });
+
+    centralTypeEl.addEventListener('change', () => {
+      renderCentralizedWorkspace();
+    });
+    centralSearchEl.addEventListener('input', () => {
+      renderCentralizedWorkspace();
+    });
+    centralHeadingEl.addEventListener('change', () => {
+      renderCentralizedWorkspace();
+    });
+    centralTagEl.addEventListener('change', () => {
+      renderCentralizedWorkspace();
+    });
+    centralResetBtn.addEventListener('click', () => {
+      centralTypeEl.value = 'all';
+      centralSearchEl.value = '';
+      centralHeadingEl.value = 'all';
+      centralTagEl.value = 'all';
+      centralSelectedId = '';
+      renderCentralizedWorkspace();
+    });
+
+    (async () => {
+      try {
+        bindPipelineProgressListener();
+        startProgressWatchdog();
+        await bootstrapReportsAndPipelines();
+        const selected = selectedPipelineFile();
+        if (selected && selected.reportPath) {
+          await loadReport(selected.reportPath);
+        } else {
+          await loadReport();
+        }
+        const defaults = await window.threecApp.getDefaults();
+        outHtmlPath = defaults.outHtmlPath;
+        await refreshViewer();
+        renderMiniProgress(selectedPdfPath || '');
+      } catch (err) {
+        setStatus(`Initialization failed: ${err.message}`, 'err');
+      }
+    })();
+  </script>
+</body>
+</html>
