@@ -1,0 +1,513 @@
+{
+  "generated_at_utc": "2026-02-22T12:23:37Z",
+  "mode": "single",
+  "title": "Annotarium Methodology: APT1: Exposing One of China's Cyber Espionage Units",
+  "input_reports": [
+    "/home/pantera/projects/TEIA/annotarium/outputs/reports/mandiant_2013_apt1_exposing_one_of_china_s_cyber_espionage_units_report.json"
+  ],
+  "template_sections": [
+    {
+      "id": "introduction",
+      "title": "Introduction",
+      "instruction": "Write a narrative introduction that frames the methodological objective and evidentiary philosophy for cyber attribution scoring."
+    },
+    {
+      "id": "data_processing_extraction",
+      "title": "Data Processing and Extraction",
+      "instruction": "Explain PDF ingestion and transformation into markdown with explicit reference to Mistral-based conversion, table/image extraction, and artifact extraction from text/tables/images."
+    },
+    {
+      "id": "references_and_sources",
+      "title": "Reference Parsing and Source Attribution",
+      "instruction": "Explain footnote/reference parsing, citation-to-source linkage, and institution inference from references, including how this improves source quality assessment."
+    },
+    {
+      "id": "scoring_framework",
+      "title": "Scoring Framework (3Cs and Aggregation)",
+      "instruction": "Explain each C axis (Chain of Custody, Credibility including corroboration, and Clarity), claim-level scoring, and claim-to-document aggregation with calibration/validation rationale."
+    },
+    {
+      "id": "validation_assurance",
+      "title": "Validation and Quality Assurance",
+      "instruction": "Explain automated validation checks and quality assurance with agent review and targeted human review on a 10% sample, reporting no observed errors in that reviewed sample."
+    }
+  ],
+  "context_snapshot": {
+    "mode": "single",
+    "report_meta": {
+      "report_path": "/home/pantera/projects/TEIA/annotarium/outputs/reports/mandiant_2013_apt1_exposing_one_of_china_s_cyber_espionage_units_report.json",
+      "report_id": "mandiant_2013_apt1_exposing_one_of_china_s_cyber_espionage_units_report",
+      "generated_at_utc": "2026-02-22T10:18:40.394Z",
+      "document_title": "APT1: Exposing One of China's Cyber Espionage Units",
+      "publication_date": "2013-01-01"
+    },
+    "pipeline_counts": {
+      "pages": 1,
+      "claims": 10,
+      "sources": 10,
+      "artifacts": 6,
+      "citations": 0,
+      "tables": 19,
+      "figures": 29
+    },
+    "source_type_counts": {
+      "internal_document_section": 1,
+      "government": 2,
+      "press_media": 1,
+      "academic": 3,
+      "other": 2,
+      "ngo": 1
+    },
+    "artifact_type_counts": {
+      "domain": 115,
+      "email": 15,
+      "file_name": 5,
+      "hash_md5": 2,
+      "ip": 22,
+      "url": 31
+    },
+    "document_scores_v4": {
+      "belief_weighted_0_100": 0.13,
+      "grounding_avg_0_100": 62.52,
+      "custody_avg_0_100": 52.58,
+      "credibility_avg_0_100": 0.0,
+      "corroboration_avg_0_100": 0.2,
+      "confidence_avg_0_100": 58.09,
+      "clarity_avg_0_100": 51.74,
+      "citation_coverage_sources_0_1": 0.9,
+      "sources_total": 10,
+      "citations_total": 17,
+      "credibility_composite_avg_0_100": 0.1,
+      "bootstrap_95ci": {
+        "belief_weighted_0_100": {
+          "mean": 0.13,
+          "ci95_low": 0.11,
+          "ci95_high": 0.15
+        },
+        "custody_avg_0_100": {
+          "mean": 52.58,
+          "ci95_low": 48.18,
+          "ci95_high": 57.55
+        },
+        "credibility_avg_0_100": {
+          "mean": 0.0,
+          "ci95_low": 0.0,
+          "ci95_high": 0.0
+        },
+        "corroboration_avg_0_100": {
+          "mean": 0.2,
+          "ci95_low": 0.09,
+          "ci95_high": 0.37
+        },
+        "clarity_avg_0_100": {
+          "mean": 51.74,
+          "ci95_low": 46.22,
+          "ci95_high": 56.59
+        }
+      }
+    },
+    "claim_score_preview_v4": [
+      {
+        "claim_id": "C001",
+        "belief_0_100": 0.13,
+        "custody_0_100": 41.22,
+        "credibility_0_100": 0.0,
+        "clarity_0_100": 59.62,
+        "grounding_0_100": 60.66,
+        "evidence_support_0_1": 0.1462
+      },
+      {
+        "claim_id": "C002",
+        "belief_0_100": 0.12,
+        "custody_0_100": 46.47,
+        "credibility_0_100": 0.0,
+        "clarity_0_100": 52.72,
+        "grounding_0_100": 63.02,
+        "evidence_support_0_1": 0.1408
+      },
+      {
+        "claim_id": "C003",
+        "belief_0_100": 0.07,
+        "custody_0_100": 48.7,
+        "credibility_0_100": 0.0,
+        "clarity_0_100": 34.35,
+        "grounding_0_100": 61.82,
+        "evidence_support_0_1": 0.0927
+      },
+      {
+        "claim_id": "C004",
+        "belief_0_100": 0.16,
+        "custody_0_100": 51.81,
+        "credibility_0_100": 0.0,
+        "clarity_0_100": 59.25,
+        "grounding_0_100": 59.8,
+        "evidence_support_0_1": 0.1631
+      },
+      {
+        "claim_id": "C005",
+        "belief_0_100": 0.15,
+        "custody_0_100": 46.97,
+        "credibility_0_100": 0.0,
+        "clarity_0_100": 60.29,
+        "grounding_0_100": 60.74,
+        "evidence_support_0_1": 0.1583
+      },
+      {
+        "claim_id": "C006",
+        "belief_0_100": 0.14,
+        "custody_0_100": 56.05,
+        "credibility_0_100": 0.0,
+        "clarity_0_100": 51.35,
+        "grounding_0_100": 61.68,
+        "evidence_support_0_1": 0.1498
+      },
+      {
+        "claim_id": "C007",
+        "belief_0_100": 0.15,
+        "custody_0_100": 50.16,
+        "credibility_0_100": 0.0,
+        "clarity_0_100": 57.81,
+        "grounding_0_100": 60.7,
+        "evidence_support_0_1": 0.1573
+      },
+      {
+        "claim_id": "C008",
+        "belief_0_100": 0.14,
+        "custody_0_100": 51.74,
+        "credibility_0_100": 0.0,
+        "clarity_0_100": 55.82,
+        "grounding_0_100": 58.2,
+        "evidence_support_0_1": 0.1518
+      },
+      {
+        "claim_id": "C009",
+        "belief_0_100": 0.17,
+        "custody_0_100": 65.23,
+        "credibility_0_100": 0.0,
+        "clarity_0_100": 47.86,
+        "grounding_0_100": 77.11,
+        "evidence_support_0_1": 0.1683
+      },
+      {
+        "claim_id": "C010",
+        "belief_0_100": 0.1,
+        "custody_0_100": 67.49,
+        "credibility_0_100": 0.0,
+        "clarity_0_100": 38.29,
+        "grounding_0_100": 61.46,
+        "evidence_support_0_1": 0.1247
+      }
+    ],
+    "raw_claims_preview": [
+      {
+        "claim_id": "C001",
+        "section_heading": null,
+        "claim_text": "Our analysis has led us to conclude that APT1 is likely government-sponsored and one of the most persistent of China’s cyber threat actors. We believe that APT1 is able to wage such a long-running and extensive cyber espionage campaign in large part because it receives direct government support. In seeking to identify the organization behind this activity, our research found that People’s Liberation Army (PLA’s) U...",
+        "actor": null,
+        "actor_type": null
+      },
+      {
+        "claim_id": "C002",
+        "section_heading": null,
+        "claim_text": "APT1 is believed to be the 2nd Bureau of the People's Liberation Army (PLA) General Staff Department's (GSD) 3rd Department (总参三部二局), which is most commonly known by its Military Unit Cover Designator (MUCD) as Unit 61398 (61398部队).",
+        "actor": null,
+        "actor_type": null
+      },
+      {
+        "claim_id": "C003",
+        "section_heading": null,
+        "claim_text": "APT1 has systematically stolen hundreds of terabytes of data from at least 141 organizations, and has demonstrated the capability and intent to steal from dozens of organizations simultaneously.⁴",
+        "actor": null,
+        "actor_type": null
+      },
+      {
+        "claim_id": "C004",
+        "section_heading": null,
+        "claim_text": "In a State that rigorously monitors Internet use, it is highly unlikely that the Chinese Government is unaware of an attack group that operates from the Pudong New Area of Shanghai. The detection and awareness of APT1 is made even more probable by the sheer scale and sustainment of attacks that we have observed and documented in this report. Therefore the most probable conclusion is that APT1 is able to wage such ...",
+        "actor": null,
+        "actor_type": null
+      },
+      {
+        "claim_id": "C005",
+        "section_heading": null,
+        "claim_text": "The activity we have directly observed likely represents only a small fraction of the cyber espionage that APT1 has conducted. Though our visibility of APT1’s activities is incomplete, we have analyzed the group’s intrusions against nearly 150 victims over seven years. From our unique vantage point responding to victims, we tracked APT1 back to four large networks in Shanghai, two of which are allocated directly t...",
+        "actor": null,
+        "actor_type": null
+      },
+      {
+        "claim_id": "C006",
+        "section_heading": null,
+        "claim_text": "APT1's infrastructure includes FQDNs in addition to the IP addresses discussed above. The FQDNs play an important role in their intrusion campaigns because APT1 embeds FQDNs as C2 addresses within their backdoors. In the last several years we have confirmed 2,551 FQDNs attributed to APT1. Of these, we have redacted FQDNs that implicated victims by name and provided 2,046 in Appendix D. By using FQDNs rather than h...",
+        "actor": null,
+        "actor_type": null
+      },
+      {
+        "claim_id": "C007",
+        "section_heading": null,
+        "claim_text": "Mandiant continues to track dozens of APT groups around the world; however, this report is focused on the most prolific of these groups. We refer to this group as “APT1” and it is one of more than 20 APT groups with origins in China. APT1 is a single organization of operators that has conducted a cyber espionage campaign against a broad range of victims since at least 2006. From our observations, it is one of the ...",
+        "actor": null,
+        "actor_type": null
+      },
+      {
+        "claim_id": "C008",
+        "section_heading": null,
+        "claim_text": "The following sections of this report detail APT1's cyber espionage and data theft operations. The sheer scale and duration of these sustained attacks leave little doubt about the enterprise scale of the organization behind this campaign. We will demonstrate that the nature of APT1's targeted victims and the group's infrastructure and tactics align with the mission and infrastructure of PLA Unit 61398.",
+        "actor": null,
+        "actor_type": null
+      },
+      {
+        "claim_id": "C009",
+        "section_heading": null,
+        "claim_text": "- The first persona, \"UglyGorilla\", has been active in computer network operations since October 2004. His activities include registering domains attributed to APT1 and authoring malware used in APT1 campaigns. \"UglyGorilla\" publicly expressed his interest in China's \"cyber troops\" in January 2004.",
+        "actor": null,
+        "actor_type": null
+      },
+      {
+        "claim_id": "C010",
+        "section_heading": null,
+        "claim_text": "- We have observed both the \"UglyGorilla\" persona and the \"DOTA\" persona using the same shared infrastructure, including FQDNs and IP ranges that we have attributed to APT1.",
+        "actor": null,
+        "actor_type": null
+      }
+    ],
+    "raw_sources_preview": [
+      {
+        "source_id": "SRC0001",
+        "title": "APT1 Executive Summary and Key Findings",
+        "source_type": "internal_document_section",
+        "entity_name": "Mandiant",
+        "publication_or_venue": "Mandiant APT1 Report",
+        "year": 2013,
+        "url_or_identifier": null
+      },
+      {
+        "source_id": "SRC0002",
+        "title": "“Mike Rogers, Statement to the U.S. House, Permanent Select Committee on Intelligence, Open Hearing: Cyber Threats and Ongoing Efforts to Protect the Nation, Hearing, October 4, 2011, ,",
+        "source_type": "government",
+        "entity_name": "U.S. House Permanent Select Committee on Intelligence",
+        "publication_or_venue": "U.S. House Hearing",
+        "year": 2011,
+        "url_or_identifier": "http://intelligence.house.gov/sites/intelligence.house.gov/files/documents/100411CyberHearingRogers.pdf"
+      },
+      {
+        "source_id": "SRC0003",
+        "title": "Chinese hackers suspected in attack on The Post’s computers.",
+        "source_type": "press_media",
+        "entity_name": "The Washington Post",
+        "publication_or_venue": "The Washington Post",
+        "year": 2013,
+        "url_or_identifier": "http://www.washingtonpost.com/business/technology/chinese-hackers-suspected-in-attack-on-the-posts-computers/2013/02/01/d5a44fde-6cb1-11e2-bd36-c0fe61a205f6_story.html"
+      },
+      {
+        "source_id": "SRC0004",
+        "title": "An information hiding method of Word 2007 based on image covering,",
+        "source_type": "academic",
+        "entity_name": "Referenced academic source",
+        "publication_or_venue": "Academic publication",
+        "year": 2010,
+        "url_or_identifier": "http://www.paper.edu.cn/journal/downCount/0490-6756(2010)S1-0031-06"
+      },
+      {
+        "source_id": "SRC0005",
+        "title": "Hebei Chamber of Commerce, Bio of member Wang Weizhong (2012), ,",
+        "source_type": "other",
+        "entity_name": "Referenced source",
+        "publication_or_venue": "Unknown venue",
+        "year": 2012,
+        "url_or_identifier": "http://www.hbsh.org/shej_ejsheqmsg.aspx?mid=26&uid=06010000&aid=06"
+      },
+      {
+        "source_id": "SRC0006",
+        "title": "The Implementation of Overlay File System in Embedded Linux,",
+        "source_type": "academic",
+        "entity_name": "Referenced academic source",
+        "publication_or_venue": "Academic publication",
+        "year": 2006,
+        "url_or_identifier": "http://file.lw23.com/9/98/984/98401889-9da6-4c38-b9d2-5a5202fd1a33.pdf"
+      },
+      {
+        "source_id": "SRC0007",
+        "title": "ADC",
+        "source_type": "other",
+        "entity_name": "Referenced source",
+        "publication_or_venue": "Unknown venue",
+        "year": 2005,
+        "url_or_identifier": "http://file.lw23.com/f/f1/f14/f14e7b60-3d60-4184-a48f-4a50dd21927c.pdf"
+      },
+      {
+        "source_id": "SRC0008",
+        "title": "Quantization Evaluation Algorithm for Attack Graph Based on Node Score,",
+        "source_type": "academic",
+        "entity_name": "Referenced source",
+        "publication_or_venue": "Unknown venue",
+        "year": 2010,
+        "url_or_identifier": "http://www.ecice06.com/CN/article/downloadArticleFile.do?attachType=PDF&id=19627"
+      },
+      {
+        "source_id": "SRC0009",
+        "title": "See for documentation of the contract award to Jiangsu Langhai Construction Engineering Group for Unit 61398's Center Building, among several other buildings;",
+        "source_type": "government",
+        "entity_name": "Referenced source",
+        "publication_or_venue": "Unknown venue",
+        "year": 2013,
+        "url_or_identifier": "http://www.czzbb.net/czzb/YW_Info/YW_ZiGeYS/BaoMingInfo.aspx?YW_RowID=41726&BiaoDuanBH=CZS20091202901&enterprise_id=70362377-3"
+      },
+      {
+        "source_id": "SRC0010",
+        "title": "James C. Mulvenon and Andrew N. D. Yang, editors, The People's Liberation Army as Organization: Reference Volume v1.0, (Santa Monica, CA: RAND Corporation, 2002), 125, ,",
+        "source_type": "ngo",
+        "entity_name": "Referenced source",
+        "publication_or_venue": "Unknown venue",
+        "year": 2002,
+        "url_or_identifier": "http://www.rand.org/pubs/conf_proceedings/CF182.html"
+      }
+    ],
+    "raw_artifacts_preview": [
+      {
+        "artifact_type": "domain",
+        "count": 115,
+        "example_values": [
+          "www.mandiant.com",
+          "intelligence.house.gov",
+          "www.washingtonpost.com",
+          "gov.cn",
+          "project2049.net"
+        ]
+      },
+      {
+        "artifact_type": "email",
+        "count": 15,
+        "example_values": [
+          "kevin.mandia@rocketmail.com",
+          "www.mandiant.com</kevin.mandia@rocketmail.com",
+          "sh-ipmaster@chinaunicom.cn",
+          "uglygorilla@163.com",
+          "email:uglygorilla@163.com"
+        ]
+      },
+      {
+        "artifact_type": "file_name",
+        "count": 5,
+        "example_values": [
+          "100411CyberHearingRogers.pdf",
+          "pla_third_department_sigint_cyber_stokes_lin_hsiao.pdf",
+          "98401889-9da6-4c38-b9d2-5a5202fd1a33.pdf",
+          "f14e7b60-3d60-4184-a48f-4a50dd21927c.pdf",
+          "%E5%85%B3%E4%BA%8E%E6%80%BB%E5%8F%82%E4%B8%89%E9%83%A8%E4%BA%8C%E5%B1%80-%E4%B8%8A%E6%B5%B7005%E4%B8%AD%E5%BF%83%E9%9C%80%E4%BD%B-F%E7%94%A8%E6%88%91%E5%85%AC%E5%8F%B8%E9%80%9A%E4%BF%A1.pdf"
+        ]
+      },
+      {
+        "artifact_type": "hash_md5",
+        "count": 2,
+        "example_values": [
+          "d7aa32b7465f55c368230bb52d52d885",
+          "c1393e77773a48b1eea117a302138554"
+        ]
+      },
+      {
+        "artifact_type": "ip",
+        "count": 22,
+        "example_values": [
+          "223.166.0.0",
+          "223.167.255.255",
+          "58.246.0.0",
+          "58.247.255.255",
+          "112.64.0.0"
+        ]
+      },
+      {
+        "artifact_type": "url",
+        "count": 31,
+        "example_values": [
+          "http://intelligence.house.gov/sites/intelligence.house.gov/files/documents/100411CyberHearingRogers.pdf",
+          "http://www.washingtonpost.com/business/technology/chinese-hackers-suspected-in-attack-on-the-posts-computers/2013/02/01/d5a44fde-6cb1-11e2-bd36-c0fe61a205f6_story.html",
+          "http://www.mandiant.com/resources/download/redline",
+          "http://project2049.net/documents/pla_third_department_sigint_cyber_stokes_lin_hsiao.pdf",
+          "http://www.paper.edu.cn/journal/downCount/0490-6756(2010)S1-0031-06"
+        ]
+      }
+    ],
+    "raw_data_excerpt": {
+      "document_metadata": {
+        "title": "APT1: Exposing One of China's Cyber Espionage Units",
+        "authoring_entity": "Mandiant",
+        "publication_date": "2013-01-01",
+        "publication_date_source": "filename",
+        "publication_date_anchor_role": "other_date",
+        "publication_date_anchor": {
+          "anchor_id": "P000-A999",
+          "extraction_method": "manual_description",
+          "verbatim_text": "Filename contains publication year marker: 'Mandiant - 2013 - APT1 ...'; exact month/day not stated.",
+          "location": {
+            "page_index": 0,
+            "page_label": null,
+            "section_heading": null,
+            "object_id": null
+          },
+          "notes": "Publication date inferred from local metadata/filename heuristic."
+        },
+        "version": "offline_v1",
+        "document_type": "vendor_report",
+        "audience": "mixed",
+        "source_locator": {
+          "source_type": "file",
+          "source_value": "/home/pantera/projects/TEIA/annotarium/outputs/pipeline/mandiant_2013_apt1_exposing_one_of_china_s_cyber_espionage_units/mandiant_2013_apt1_exposing_one_of_china_s_cyber_espionage_units.md"
+        },
+        "input_format": "markdown"
+      },
+      "sample_pages_count": 1,
+      "sample_claims_count": 10,
+      "sample_sources_count": 10,
+      "sample_artifacts_count": 6
+    },
+    "score_version": "v4",
+    "pipeline_methods": {
+      "pdf_to_markdown_primary": "process_pdf_mistral_ocr.py (Mistral OCR/provider-backed conversion)",
+      "pdf_to_markdown_fallback": "offline fallback via PyMuPDF4LLM when provider conversion fails or times out",
+      "table_and_image_extraction": "stage1 markdown parse emits tables and figures/images with anchors",
+      "artifact_extraction": "schema extraction stage emits artifact indices from text/tables/images",
+      "reference_parsing": "citations and footnote-like references are parsed and linked to source registry",
+      "institution_inference": "infer_source_institutions.py using gpt-5-mini (+ optional web fallback)"
+    },
+    "qa_protocol": {
+      "agent_review_enabled": true,
+      "human_sample_fraction": 0.1,
+      "human_sample_observed_error_rate": 0.0,
+      "note": "Human review is targeted and sampled; results reported for reviewed sample."
+    },
+    "methodology_reference_excerpt": "# Methodology\n\n## I. Methodological Position\n\nThis study treats cyber-attribution reporting as an evidentiary exercise rather than a narrative exercise. The central claim is that attribution assessments should be evaluated as structured arguments about State responsibility, not as standalone assertions of confidence. In consequence, the method asks, for each proposition advanced in a report, what evidentiary materials are relied upon, how those materials are connected to the proposition, and whether those connections can bear weight under adversarial scrutiny.\n\nThe analytical posture is therefore jurisprudential. It draws from recurring ICJ evidentiary practice: differential weighting of heterogeneous materials, caution toward single-origin or litigation-shaped records, and preference for convergent indications over repetition. The objective is not to replicate adjudication procedurally, but to translate judicially legible evidentiary logic into a reproducible scoring framework for cyber-attribution dossiers.\n\n## II. Corpus, Record Formation, and Constraints\n\nThe corpus consists of cybersecurity attribution reports in PDF form. Each report is transcribed into markdown and then transformed into a schema-constrained evidentiary record. The schema is strict by design. It separates claims, sources, artifacts, and evidence links into distinct objects and requires explicit anchors for evidentiary references.\n\nThis design choice has methodological significance. It prevents retrospective reconstruction of support through implicit model inference and compels the system to preserve an inspectable chain between proposition and proof. The method thus prioritizes evidentiary legibility over extraction breadth.\n\n## III. Procedural Architecture\n\nThe workflow proceeds in four phases. First, source documents are transcribed from PDF into markdown. Second, markdown is parsed into structured outputs containing metadata, source inventories, artifact inventories, and claim-level analytic blocks. Third, outputs undergo integrity checks. Fourth, validated outputs are scored under an ICJ-inspired weighting model.\n\nTwo procedural commitments govern all phases. The first is determinacy: where possible, deterministic transformations are preferred, and model-assisted components are constrained by schema and post-run verification. The second is persistence: all major intermediate and terminal artifacts are written to disk, so that any score can be reconstructed and contested from the underlying record.\n\n## IV. Integrity Controls as Admissibility Discipline\n\nNo score is produced absent structural integrity of the evidentiary record. In practical terms, runs are failed where identifier collisions occur, where artifact anchors are missing, where citation pathways cannot be traced, or where references resolve to nonexistent entities. These controls function analogously to admissibility discipline: they do not determine substantive truth, but they determine whether the record is fit to carry a substantive weighing exercise.\n\nThis stage is essential to avoid pseudo-precision. Without strict record integrity, downstream numerical outputs risk expressing parser convenience rather than evidentiary strength.\n\n## V. Evidentiary Weight Model\n\n### A. Item-Level Weight\n\nEach evidence item is evaluated along five bounded dimensions: independence, authentication/provenance, methodological soundness, procedural testing, and contemporaneity. Item-level probative force is computed multiplicatively. The multiplicative form is deliberate: strong performance on one dimension cannot fully compensate for critical weakness on another.\n\n### B. Corroboration and Anti-Circularity\n\nCorroboration is not treated as citation volume. Evidence is clustered by origin, origin-level contribution is aggregated with diminishing returns, and claim-level corroboration is then derived from convergence across origins. This implements an anti-circularity rule: repeated downstream reporting of one upstream source does not become independent support merely by repetition.\n\n### C. Core 3Cs\n\nThe principal outputs are the core 3Cs: Chain of Custody, Credibility, and Clarity. Corroboration is preserved as an explicit sub-calculation and audit surface, but it is integrated into the top-level Credibility axis rather than exposed as a separate top-level C.\n\nChain of Custody is modeled as claim-specific evidentiary handling quality, not as raw artifact quantity. In the current implementation, custody is computed from five normalized variables extracted from evidence text: provenance markers, integrity markers, temporal anchors, artifact identifiers, and versioning/update lineage. These dimensions are weighted and combined linearly, then bounded in `[0,1]`, so that the score remains auditable at claim level and cannot be inflated by a single indicator class.\n\nCredibility is modeled as a composite of source-quality support and corroborative convergence for each claim. The source-quality component is derived from source-type quality, the strongest source attached to the claim, source diversity, and domain independence, with a single-source penalty. Internal/auto sources and newspapers are excluded from credibility support. The model gives maximal weight to international institutions/judicial material and peer-reviewed academic material, intermediate weight to official government and NGO material, and lower weight to think-tank/other material.\n\nIn addition, credibility is calibrated at the document level by a weighted claim-coverage factor keyed to high-credibility source support. Let `Cred_raw_i` denote raw credibility for claim `i`, and let `w_i` denote claim gravity weight. Define a credibility-covered claim as one with at least one high-credibility source (`source_quality >= 0.90`). Then:\n\n`credibility_coverage_factor = (Σ w_i over credibility-covered claims) / (Σ w_i over all claims)`\n\nand:\n\n`Cred_i = Cred_raw_i × credibility_coverage_factor`\n\nThis ensures credibility is interpreted as weighted coverage across the claim set rather than isolated source quality in a small subset of claims.\n\nCorroboration is modeled as convergence constrained by support relevance. A claim with broad wording but narrow evidentiary support receives lower corroborative strength, even where artifact volume is high. In the current presentation model, corroboration is retained as a dedicated subscore and then merged into top-level credibility:\n\n`Credibility_top = 0.50 × Credibility_source_quality + 0.50 × Corroboration`\n\nClarity is modeled as legal attribution intelligibility. Operationally, it answers two linked questions: (i) whether attribution of attack `Z` to State `X` is clearly reasoned in the text, and (ii) whether the mode of responsibility is clear under state-responsibility doctrine. The scorer therefore checks not only act–actor–link specificity, but also whether the report clearly indicates one of three legal pathways: attribution through state organs, attribution through non-state actors operating under state direction/control, or state omission/failure of due diligence (knowledge plus failure to prevent within jurisdiction).\n\nIn practice, the clarity panel and score details expose explicit question-level outputs:\n\n- “Is attribution to State X given attack Z clear?”\n- “Was the state’s responsibility pathway clear: direct conduct by official organs, control/direction of non-state operators, or omission/due diligence failure in its territory?”\n- “Is it clear that the state knew of the activity and failed to prevent, investigate, or suppress it (due diligence)?”\n\nIn addition, corroboration is calibrated at the document level by a claim-coverage factor so that corroboration is interpreted as proportionate coverage across the claim set, not absolute citation mass in isolated claims. Let `C_raw_i` denote raw corroboration for claim `i`, and let `w_i` denote the claim gravity weight. Define a corroborated claim as one for which `C_raw_i > 0`. Th..."
+  },
+  "sections": [
+    {
+      "id": "introduction",
+      "title": "Introduction",
+      "html": "<h2>Introduction</h2><p>This methodology formalizes cyber-attribution assessment as a claim-based evidentiary scoring process. Each claim is scored on calibrated C-axes and then aggregated to document-level indicators under explicit weighting assumptions.</p><p>The document-level conclusion is therefore not a direct reading of isolated indicators, but a weighted synthesis of claim-level evidence strength, source quality, and attribution clarity.</p><p>Execution mode: <code>single</code>. The narrative is generated from extracted raw claims, sources, artifacts, and score outputs.</p><p>In this section, the methodology is anchored to extracted evidence counts and score outputs. The current run reports 10 claims, 10 sources, and 6 artifact entries, with document-level indicators such as belief_weighted_0_100=0.13, custody_avg_0_100=52.58, credibility_composite_avg_0_100=0.1, and clarity_avg_0_100=51.74. These values are used as empirical anchors to keep narrative interpretation proportional to observed evidentiary structure.</p><p>In this section, the methodology is anchored to extracted evidence counts and score outputs. The current run reports 10 claims, 10 sources, and 6 artifact entries, with document-level indicators such as belief_weighted_0_100=0.13, custody_avg_0_100=52.58, credibility_composite_avg_0_100=0.1, and clarity_avg_0_100=51.74. These values are used as empirical anchors to keep narrative interpretation proportional to observed evidentiary structure.</p><p>In this section, the methodology is anchored to extracted evidence counts and score outputs. The current run reports 10 claims, 10 sources, and 6 artifact entries, with document-level indicators such as belief_weighted_0_100=0.13, custody_avg_0_100=52.58, credibility_composite_avg_0_100=0.1, and clarity_avg_0_100=51.74. These values are used as empirical anchors to keep narrative interpretation proportional to observed evidentiary structure.</p>",
+      "model": "fallback"
+    },
+    {
+      "id": "data_processing_extraction",
+      "title": "Data Processing and Extraction",
+      "html": "<h2>Data Processing and Extraction</h2><p>The pipeline begins with PDF conversion to markdown using a Mistral-based extractor, followed by structured parsing of tables and figures/images. These extracted representations provide the substrate for downstream artifact identification and evidence anchoring.</p><p>Artifacts are then extracted from textual, tabular, and image-linked content into a normalized registry that preserves provenance and supports later scoring diagnostics.</p><div class=\"wiki-table-wrap\"><table class=\"wiki-table\"><thead><tr><th>Count Field</th><th>Value</th></tr></thead><tbody><tr><td>pages</td><td>1</td></tr><tr><td>claims</td><td>10</td></tr><tr><td>sources</td><td>10</td></tr><tr><td>artifacts</td><td>6</td></tr><tr><td>citations</td><td></td></tr><tr><td>tables</td><td>19</td></tr><tr><td>figures</td><td>29</td></tr></tbody></table></div><div class=\"wiki-table-wrap\"><table class=\"wiki-table\"><thead><tr><th>Method</th><th>Description</th></tr></thead><tbody><tr><td>pdf_to_markdown_primary</td><td>process_pdf_mistral_ocr.py (Mistral OCR/provider-backed conversion)</td></tr><tr><td>pdf_to_markdown_fallback</td><td>offline fallback via PyMuPDF4LLM when provider conversion fails or times out</td></tr><tr><td>table_and_image_extraction</td><td>stage1 markdown parse emits tables and figures/images with anchors</td></tr><tr><td>artifact_extraction</td><td>schema extraction stage emits artifact indices from text/tables/images</td></tr><tr><td>reference_parsing</td><td>citations and footnote-like references are parsed and linked to source registry</td></tr><tr><td>institution_inference</td><td>infer_source_institutions.py using gpt-5-mini (+ optional web fallback)</td></tr></tbody></table></div><p>In this section, the methodology is anchored to extracted evidence counts and score outputs. The current run reports 10 claims, 10 sources, and 6 artifact entries, with document-level indicators such as belief_weighted_0_100=0.13, custody_avg_0_100=52.58, credibility_composite_avg_0_100=0.1, and clarity_avg_0_100=51.74. These values are used as empirical anchors to keep narrative interpretation proportional to observed evidentiary structure.</p>",
+      "model": "fallback"
+    },
+    {
+      "id": "references_and_sources",
+      "title": "Reference Parsing and Source Attribution",
+      "html": "<h2>Reference Parsing and Source Attribution</h2><p>A dedicated reference parser resolves footnote-style and inline references into a source registry, preserving identifiers and citation traceability. This step transforms rhetorical citation into analyzable provenance structure.</p><p>Institution inference is then applied to referenced sources to classify organizational type and improve source-quality modeling in downstream credibility analysis.</p><h3>Source Classes</h3><div class=\"wiki-table-wrap\"><table class=\"wiki-table\"><thead><tr><th>Source Type</th><th>Count</th></tr></thead><tbody><tr><td>academic</td><td>3</td></tr><tr><td>government</td><td>2</td></tr><tr><td>other</td><td>2</td></tr><tr><td>internal_document_section</td><td>1</td></tr><tr><td>ngo</td><td>1</td></tr><tr><td>press_media</td><td>1</td></tr></tbody></table></div><p>In this section, the methodology is anchored to extracted evidence counts and score outputs. The current run reports 10 claims, 10 sources, and 6 artifact entries, with document-level indicators such as belief_weighted_0_100=0.13, custody_avg_0_100=52.58, credibility_composite_avg_0_100=0.1, and clarity_avg_0_100=51.74. These values are used as empirical anchors to keep narrative interpretation proportional to observed evidentiary structure.</p><p>In this section, the methodology is anchored to extracted evidence counts and score outputs. The current run reports 10 claims, 10 sources, and 6 artifact entries, with document-level indicators such as belief_weighted_0_100=0.13, custody_avg_0_100=52.58, credibility_composite_avg_0_100=0.1, and clarity_avg_0_100=51.74. These values are used as empirical anchors to keep narrative interpretation proportional to observed evidentiary structure.</p>",
+      "model": "fallback"
+    },
+    {
+      "id": "scoring_framework",
+      "title": "Scoring Framework (3Cs and Aggregation)",
+      "html": "<h2>Scoring Framework (3Cs and Aggregation)</h2><p>The scoring model evaluates claims across three principal dimensions: Chain of Custody (evidence traceability and handling quality), Credibility (source quality and corroborative support), and Clarity (legal-attribution intelligibility). Each dimension is computed at claim level and then aggregated with calibration controls.</p><p>Validation of scoring behavior is performed by checking that axis-level inputs are present, internally coherent, and traceable to extracted evidence and source structures.</p><div class=\"wiki-table-wrap\"><table class=\"wiki-table\"><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody><tr><td>belief_weighted_0_100</td><td>0.13</td></tr><tr><td>grounding_avg_0_100</td><td>62.52</td></tr><tr><td>custody_avg_0_100</td><td>52.58</td></tr><tr><td>credibility_avg_0_100</td><td></td></tr><tr><td>corroboration_avg_0_100</td><td>0.2</td></tr><tr><td>confidence_avg_0_100</td><td>58.09</td></tr><tr><td>clarity_avg_0_100</td><td>51.74</td></tr><tr><td>citation_coverage_sources_0_1</td><td>0.9</td></tr><tr><td>sources_total</td><td>10</td></tr><tr><td>citations_total</td><td>17</td></tr><tr><td>credibility_composite_avg_0_100</td><td>0.1</td></tr></tbody></table></div><p>In this section, the methodology is anchored to extracted evidence counts and score outputs. The current run reports 10 claims, 10 sources, and 6 artifact entries, with document-level indicators such as belief_weighted_0_100=0.13, custody_avg_0_100=52.58, credibility_composite_avg_0_100=0.1, and clarity_avg_0_100=51.74. These values are used as empirical anchors to keep narrative interpretation proportional to observed evidentiary structure.</p><p>In this section, the methodology is anchored to extracted evidence counts and score outputs. The current run reports 10 claims, 10 sources, and 6 artifact entries, with document-level indicators such as belief_weighted_0_100=0.13, custody_avg_0_100=52.58, credibility_composite_avg_0_100=0.1, and clarity_avg_0_100=51.74. These values are used as empirical anchors to keep narrative interpretation proportional to observed evidentiary structure.</p><p>In this section, the methodology is anchored to extracted evidence counts and score outputs. The current run reports 10 claims, 10 sources, and 6 artifact entries, with document-level indicators such as belief_weighted_0_100=0.13, custody_avg_0_100=52.58, credibility_composite_avg_0_100=0.1, and clarity_avg_0_100=51.74. These values are used as empirical anchors to keep narrative interpretation proportional to observed evidentiary structure.</p><p>In this section, the methodology is anchored to extracted evidence counts and score outputs. The current run reports 10 claims, 10 sources, and 6 artifact entries, with document-level indicators such as belief_weighted_0_100=0.13, custody_avg_0_100=52.58, credibility_composite_avg_0_100=0.1, and clarity_avg_0_100=51.74. These values are used as empirical anchors to keep narrative interpretation proportional to observed evidentiary structure.</p>",
+      "model": "fallback"
+    },
+    {
+      "id": "validation_assurance",
+      "title": "Validation and Quality Assurance",
+      "html": "<h2>Validation and Quality Assurance</h2><p>Quality assurance combines automated agent-driven validation with targeted human review. Automated checks verify schema conformance, reference resolution, and scoring preconditions before outputs are finalized.</p><p>A human review layer is applied to a 10% sample of the data, and the reviewed sample is reported here as having no observed errors, supporting confidence in pipeline consistency.</p><div class=\"wiki-table-wrap\"><table class=\"wiki-table\"><thead><tr><th>QA Parameter</th><th>Value</th></tr></thead><tbody><tr><td>agent_review_enabled</td><td>True</td></tr><tr><td>human_sample_fraction</td><td>0.1</td></tr><tr><td>human_sample_observed_error_rate</td><td></td></tr><tr><td>note</td><td>Human review is targeted and sampled; results reported for reviewed sample.</td></tr></tbody></table></div><p>In this section, the methodology is anchored to extracted evidence counts and score outputs. The current run reports 10 claims, 10 sources, and 6 artifact entries, with document-level indicators such as belief_weighted_0_100=0.13, custody_avg_0_100=52.58, credibility_composite_avg_0_100=0.1, and clarity_avg_0_100=51.74. These values are used as empirical anchors to keep narrative interpretation proportional to observed evidentiary structure.</p><p>In this section, the methodology is anchored to extracted evidence counts and score outputs. The current run reports 10 claims, 10 sources, and 6 artifact entries, with document-level indicators such as belief_weighted_0_100=0.13, custody_avg_0_100=52.58, credibility_composite_avg_0_100=0.1, and clarity_avg_0_100=51.74. These values are used as empirical anchors to keep narrative interpretation proportional to observed evidentiary structure.</p>",
+      "model": "fallback"
+    }
+  ],
+  "html": "<article class=\"wiki-page\">\n<header><h1>Annotarium Methodology: APT1: Exposing One of China's Cyber Espionage Units</h1><div class=\"wiki-meta\">Generated at 2026-02-22T12:23:37Z</div></header>\n<nav class=\"wiki-toc\"><h2>Contents</h2><ol>\n<li><a href=\"#sec-introduction\">Introduction</a></li><li><a href=\"#sec-data_processing_extraction\">Data Processing and Extraction</a></li><li><a href=\"#sec-references_and_sources\">Reference Parsing and Source Attribution</a></li><li><a href=\"#sec-scoring_framework\">Scoring Framework (3Cs and Aggregation)</a></li><li><a href=\"#sec-validation_assurance\">Validation and Quality Assurance</a></li>\n</ol></nav>\n<section class=\"wiki-section\" id=\"sec-introduction\"><h2>Introduction</h2><p>This methodology formalizes cyber-attribution assessment as a claim-based evidentiary scoring process. Each claim is scored on calibrated C-axes and then aggregated to document-level indicators under explicit weighting assumptions.</p><p>The document-level conclusion is therefore not a direct reading of isolated indicators, but a weighted synthesis of claim-level evidence strength, source quality, and attribution clarity.</p><p>Execution mode: <code>single</code>. The narrative is generated from extracted raw claims, sources, artifacts, and score outputs.</p><p>In this section, the methodology is anchored to extracted evidence counts and score outputs. The current run reports 10 claims, 10 sources, and 6 artifact entries, with document-level indicators such as belief_weighted_0_100=0.13, custody_avg_0_100=52.58, credibility_composite_avg_0_100=0.1, and clarity_avg_0_100=51.74. These values are used as empirical anchors to keep narrative interpretation proportional to observed evidentiary structure.</p><p>In this section, the methodology is anchored to extracted evidence counts and score outputs. The current run reports 10 claims, 10 sources, and 6 artifact entries, with document-level indicators such as belief_weighted_0_100=0.13, custody_avg_0_100=52.58, credibility_composite_avg_0_100=0.1, and clarity_avg_0_100=51.74. These values are used as empirical anchors to keep narrative interpretation proportional to observed evidentiary structure.</p><p>In this section, the methodology is anchored to extracted evidence counts and score outputs. The current run reports 10 claims, 10 sources, and 6 artifact entries, with document-level indicators such as belief_weighted_0_100=0.13, custody_avg_0_100=52.58, credibility_composite_avg_0_100=0.1, and clarity_avg_0_100=51.74. These values are used as empirical anchors to keep narrative interpretation proportional to observed evidentiary structure.</p></section>\n<section class=\"wiki-section\" id=\"sec-data_processing_extraction\"><h2>Data Processing and Extraction</h2><p>The pipeline begins with PDF conversion to markdown using a Mistral-based extractor, followed by structured parsing of tables and figures/images. These extracted representations provide the substrate for downstream artifact identification and evidence anchoring.</p><p>Artifacts are then extracted from textual, tabular, and image-linked content into a normalized registry that preserves provenance and supports later scoring diagnostics.</p><div class=\"wiki-table-wrap\"><table class=\"wiki-table\"><thead><tr><th>Count Field</th><th>Value</th></tr></thead><tbody><tr><td>pages</td><td>1</td></tr><tr><td>claims</td><td>10</td></tr><tr><td>sources</td><td>10</td></tr><tr><td>artifacts</td><td>6</td></tr><tr><td>citations</td><td></td></tr><tr><td>tables</td><td>19</td></tr><tr><td>figures</td><td>29</td></tr></tbody></table></div><div class=\"wiki-table-wrap\"><table class=\"wiki-table\"><thead><tr><th>Method</th><th>Description</th></tr></thead><tbody><tr><td>pdf_to_markdown_primary</td><td>process_pdf_mistral_ocr.py (Mistral OCR/provider-backed conversion)</td></tr><tr><td>pdf_to_markdown_fallback</td><td>offline fallback via PyMuPDF4LLM when provider conversion fails or times out</td></tr><tr><td>table_and_image_extraction</td><td>stage1 markdown parse emits tables and figures/images with anchors</td></tr><tr><td>artifact_extraction</td><td>schema extraction stage emits artifact indices from text/tables/images</td></tr><tr><td>reference_parsing</td><td>citations and footnote-like references are parsed and linked to source registry</td></tr><tr><td>institution_inference</td><td>infer_source_institutions.py using gpt-5-mini (+ optional web fallback)</td></tr></tbody></table></div><p>In this section, the methodology is anchored to extracted evidence counts and score outputs. The current run reports 10 claims, 10 sources, and 6 artifact entries, with document-level indicators such as belief_weighted_0_100=0.13, custody_avg_0_100=52.58, credibility_composite_avg_0_100=0.1, and clarity_avg_0_100=51.74. These values are used as empirical anchors to keep narrative interpretation proportional to observed evidentiary structure.</p></section>\n<section class=\"wiki-section\" id=\"sec-references_and_sources\"><h2>Reference Parsing and Source Attribution</h2><p>A dedicated reference parser resolves footnote-style and inline references into a source registry, preserving identifiers and citation traceability. This step transforms rhetorical citation into analyzable provenance structure.</p><p>Institution inference is then applied to referenced sources to classify organizational type and improve source-quality modeling in downstream credibility analysis.</p><h3>Source Classes</h3><div class=\"wiki-table-wrap\"><table class=\"wiki-table\"><thead><tr><th>Source Type</th><th>Count</th></tr></thead><tbody><tr><td>academic</td><td>3</td></tr><tr><td>government</td><td>2</td></tr><tr><td>other</td><td>2</td></tr><tr><td>internal_document_section</td><td>1</td></tr><tr><td>ngo</td><td>1</td></tr><tr><td>press_media</td><td>1</td></tr></tbody></table></div><p>In this section, the methodology is anchored to extracted evidence counts and score outputs. The current run reports 10 claims, 10 sources, and 6 artifact entries, with document-level indicators such as belief_weighted_0_100=0.13, custody_avg_0_100=52.58, credibility_composite_avg_0_100=0.1, and clarity_avg_0_100=51.74. These values are used as empirical anchors to keep narrative interpretation proportional to observed evidentiary structure.</p><p>In this section, the methodology is anchored to extracted evidence counts and score outputs. The current run reports 10 claims, 10 sources, and 6 artifact entries, with document-level indicators such as belief_weighted_0_100=0.13, custody_avg_0_100=52.58, credibility_composite_avg_0_100=0.1, and clarity_avg_0_100=51.74. These values are used as empirical anchors to keep narrative interpretation proportional to observed evidentiary structure.</p></section>\n<section class=\"wiki-section\" id=\"sec-scoring_framework\"><h2>Scoring Framework (3Cs and Aggregation)</h2><p>The scoring model evaluates claims across three principal dimensions: Chain of Custody (evidence traceability and handling quality), Credibility (source quality and corroborative support), and Clarity (legal-attribution intelligibility). Each dimension is computed at claim level and then aggregated with calibration controls.</p><p>Validation of scoring behavior is performed by checking that axis-level inputs are present, internally coherent, and traceable to extracted evidence and source structures.</p><div class=\"wiki-table-wrap\"><table class=\"wiki-table\"><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody><tr><td>belief_weighted_0_100</td><td>0.13</td></tr><tr><td>grounding_avg_0_100</td><td>62.52</td></tr><tr><td>custody_avg_0_100</td><td>52.58</td></tr><tr><td>credibility_avg_0_100</td><td></td></tr><tr><td>corroboration_avg_0_100</td><td>0.2</td></tr><tr><td>confidence_avg_0_100</td><td>58.09</td></tr><tr><td>clarity_avg_0_100</td><td>51.74</td></tr><tr><td>citation_coverage_sources_0_1</td><td>0.9</td></tr><tr><td>sources_total</td><td>10</td></tr><tr><td>citations_total</td><td>17</td></tr><tr><td>credibility_composite_avg_0_100</td><td>0.1</td></tr></tbody></table></div><p>In this section, the methodology is anchored to extracted evidence counts and score outputs. The current run reports 10 claims, 10 sources, and 6 artifact entries, with document-level indicators such as belief_weighted_0_100=0.13, custody_avg_0_100=52.58, credibility_composite_avg_0_100=0.1, and clarity_avg_0_100=51.74. These values are used as empirical anchors to keep narrative interpretation proportional to observed evidentiary structure.</p><p>In this section, the methodology is anchored to extracted evidence counts and score outputs. The current run reports 10 claims, 10 sources, and 6 artifact entries, with document-level indicators such as belief_weighted_0_100=0.13, custody_avg_0_100=52.58, credibility_composite_avg_0_100=0.1, and clarity_avg_0_100=51.74. These values are used as empirical anchors to keep narrative interpretation proportional to observed evidentiary structure.</p><p>In this section, the methodology is anchored to extracted evidence counts and score outputs. The current run reports 10 claims, 10 sources, and 6 artifact entries, with document-level indicators such as belief_weighted_0_100=0.13, custody_avg_0_100=52.58, credibility_composite_avg_0_100=0.1, and clarity_avg_0_100=51.74. These values are used as empirical anchors to keep narrative interpretation proportional to observed evidentiary structure.</p><p>In this section, the methodology is anchored to extracted evidence counts and score outputs. The current run reports 10 claims, 10 sources, and 6 artifact entries, with document-level indicators such as belief_weighted_0_100=0.13, custody_avg_0_100=52.58, credibility_composite_avg_0_100=0.1, and clarity_avg_0_100=51.74. These values are used as empirical anchors to keep narrative interpretation proportional to observed evidentiary structure.</p></section>\n<section class=\"wiki-section\" id=\"sec-validation_assurance\"><h2>Validation and Quality Assurance</h2><p>Quality assurance combines automated agent-driven validation with targeted human review. Automated checks verify schema conformance, reference resolution, and scoring preconditions before outputs are finalized.</p><p>A human review layer is applied to a 10% sample of the data, and the reviewed sample is reported here as having no observed errors, supporting confidence in pipeline consistency.</p><div class=\"wiki-table-wrap\"><table class=\"wiki-table\"><thead><tr><th>QA Parameter</th><th>Value</th></tr></thead><tbody><tr><td>agent_review_enabled</td><td>True</td></tr><tr><td>human_sample_fraction</td><td>0.1</td></tr><tr><td>human_sample_observed_error_rate</td><td></td></tr><tr><td>note</td><td>Human review is targeted and sampled; results reported for reviewed sample.</td></tr></tbody></table></div><p>In this section, the methodology is anchored to extracted evidence counts and score outputs. The current run reports 10 claims, 10 sources, and 6 artifact entries, with document-level indicators such as belief_weighted_0_100=0.13, custody_avg_0_100=52.58, credibility_composite_avg_0_100=0.1, and clarity_avg_0_100=51.74. These values are used as empirical anchors to keep narrative interpretation proportional to observed evidentiary structure.</p><p>In this section, the methodology is anchored to extracted evidence counts and score outputs. The current run reports 10 claims, 10 sources, and 6 artifact entries, with document-level indicators such as belief_weighted_0_100=0.13, custody_avg_0_100=52.58, credibility_composite_avg_0_100=0.1, and clarity_avg_0_100=51.74. These values are used as empirical anchors to keep narrative interpretation proportional to observed evidentiary structure.</p></section>\n</article>"
+}

@@ -1,0 +1,59 @@
+{
+  "files": [
+    {
+      "id": "apt29_hammertoss_stealthy_tactics_define_a",
+      "label": "apt29-hammertoss-stealthy-tactics-define-a.pdf",
+      "pdfPath": "pdfs/apt29-hammertoss-stealthy-tactics-define-a.pdf.pdf",
+      "reportPath": "data/reports/apt29_hammertoss_stealthy_tactics_define_a_report.json",
+      "lastRunAt": "2026-02-22T10:15:08.178Z",
+      "lastStatus": "PASS",
+      "webOutHtmlPath": "reports_results/apt29_hammertoss_stealthy_tactics_define_a_threec_viewer.html",
+      "readinessStatus": "READY",
+      "validationStatus": "PASS"
+    },
+    {
+      "id": "fireeye_rpt_apt37_02_20_2018",
+      "label": "Fireeye_rpt_APT37(02-20-2018).pdf",
+      "pdfPath": "pdfs/Fireeye_rpt_APT37(02-20-2018).pdf.pdf",
+      "reportPath": "data/reports/fireeye_rpt_apt37_02_20_2018_report.json",
+      "lastRunAt": "2026-02-22T10:15:08.450Z",
+      "lastStatus": "PASS",
+      "webOutHtmlPath": "reports_results/fireeye_rpt_apt37_02_20_2018_threec_viewer.html",
+      "readinessStatus": "READY",
+      "validationStatus": "PASS"
+    },
+    {
+      "id": "mandiant_2013_apt1_exposing_one_of_china_s_cyber_espionage_units",
+      "label": "Mandiant - 2013 - APT1 Exposing One of China's Cyber Espionage Units.pdf",
+      "pdfPath": "pdfs/Mandiant - 2013 - APT1 Exposing One of China's Cyber Espionage Units.pdf.pdf",
+      "reportPath": "data/reports/mandiant_2013_apt1_exposing_one_of_china_s_cyber_espionage_units_report.json",
+      "lastRunAt": "2026-02-22T10:15:08.954Z",
+      "lastStatus": "PASS",
+      "webOutHtmlPath": "reports_results/mandiant_2013_apt1_exposing_one_of_china_s_cyber_espionage_units_threec_viewer.html",
+      "readinessStatus": "READY",
+      "validationStatus": "PASS"
+    },
+    {
+      "id": "mandiant_2017_apt28_at_the_center_of_the_storm",
+      "label": "Mandiant - 2017 - APT28 At the Center of the Storm.pdf",
+      "pdfPath": "pdfs/Mandiant - 2017 - APT28 At the Center of the Storm.pdf.pdf",
+      "reportPath": "data/reports/mandiant_2017_apt28_at_the_center_of_the_storm_report.json",
+      "lastRunAt": "2026-02-22T10:15:09.274Z",
+      "lastStatus": "PASS",
+      "webOutHtmlPath": "reports_results/mandiant_2017_apt28_at_the_center_of_the_storm_threec_viewer.html",
+      "readinessStatus": "READY",
+      "validationStatus": "PASS"
+    },
+    {
+      "id": "panda_crowdstrike_intelligence_report",
+      "label": "Panda - CrowdStrike Intelligence Report.pdf",
+      "pdfPath": "pdfs/Panda - CrowdStrike Intelligence Report.pdf.pdf",
+      "reportPath": "data/reports/panda_crowdstrike_intelligence_report_report.json",
+      "lastRunAt": "2026-02-22T10:15:09.630Z",
+      "lastStatus": "PASS",
+      "webOutHtmlPath": "reports_results/panda_crowdstrike_intelligence_report_threec_viewer.html",
+      "readinessStatus": "READY",
+      "validationStatus": "PASS"
+    }
+  ]
+}

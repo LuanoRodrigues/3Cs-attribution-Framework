@@ -1,0 +1,591 @@
+{
+  "generated_at_utc": "2026-02-22T11:31:26Z",
+  "source": "/home/pantera/projects/TEIA/annotarium/threec_electron_viewer/pipeline_files.json",
+  "document_count": 5,
+  "aggregated_totals": {
+    "pages": 5,
+    "images": 0,
+    "tables": 31,
+    "figures": 40,
+    "claims": 38,
+    "sources": 14,
+    "artifacts": 25
+  },
+  "aggregated_averages_per_document": {
+    "pages": 1.0,
+    "images": 0.0,
+    "tables": 6.2,
+    "figures": 8.0,
+    "claims": 7.6,
+    "sources": 2.8,
+    "artifacts": 5.0
+  },
+  "average_scores_0_1": {
+    "chain_of_custody": 0.52182,
+    "credibility": 0.00030000000000000003,
+    "credibility_base": 0.0,
+    "corroboration": 0.0006000000000000001,
+    "clarity": 0.42838000000000004
+  },
+  "average_proxy_support_metrics": {
+    "weighted_coverage_ratio": 0.04,
+    "weighted_precision_proxy": 0.003,
+    "weighted_recall_proxy": 0.040000000000000015,
+    "weighted_f2_proxy": 0.006000000000000002
+  },
+  "cv_scores_0_1": {
+    "chain_of_custody": 0.21489457593551423,
+    "credibility": 2.23606797749979,
+    "credibility_base": 0.0,
+    "corroboration": 2.23606797749979,
+    "clarity": 0.25122872077165803
+  },
+  "covariance_matrix": {
+    "chain_of_custody": {
+      "chain_of_custody": 0.012574546999999997,
+      "credibility": 2.1442499999999993e-05,
+      "credibility_base": 0.0,
+      "corroboration": 4.288499999999999e-05,
+      "clarity": -0.004505357000000001,
+      "claims": -0.134865,
+      "sources": 0.12865499999999994,
+      "artifacts": 0.09739999999999999,
+      "weighted_coverage_ratio": 0.002858999999999999,
+      "weighted_precision_proxy": 0.0002144249999999999,
+      "weighted_recall_proxy": 0.002859,
+      "weighted_f2_proxy": 0.00042885
+    },
+    "credibility": {
+      "chain_of_custody": 2.1442499999999993e-05,
+      "credibility": 4.5000000000000003e-07,
+      "credibility_base": 0.0,
+      "corroboration": 9.000000000000001e-07,
+      "clarity": 4.9995e-05,
+      "claims": 0.0009,
+      "sources": 0.0027000000000000006,
+      "artifacts": 0.000375,
+      "weighted_coverage_ratio": 6.000000000000001e-05,
+      "weighted_precision_proxy": 4.500000000000001e-06,
+      "weighted_recall_proxy": 6.000000000000002e-05,
+      "weighted_f2_proxy": 9.000000000000005e-06
+    },
+    "credibility_base": {
+      "chain_of_custody": 0.0,
+      "credibility": 0.0,
+      "credibility_base": 0.0,
+      "corroboration": 0.0,
+      "clarity": 0.0,
+      "claims": 0.0,
+      "sources": 0.0,
+      "artifacts": 0.0,
+      "weighted_coverage_ratio": 0.0,
+      "weighted_precision_proxy": 0.0,
+      "weighted_recall_proxy": 0.0,
+      "weighted_f2_proxy": 0.0
+    },
+    "corroboration": {
+      "chain_of_custody": 4.288499999999999e-05,
+      "credibility": 9.000000000000001e-07,
+      "credibility_base": 0.0,
+      "corroboration": 1.8000000000000001e-06,
+      "clarity": 9.999e-05,
+      "claims": 0.0018,
+      "sources": 0.005400000000000001,
+      "artifacts": 0.00075,
+      "weighted_coverage_ratio": 0.00012000000000000002,
+      "weighted_precision_proxy": 9.000000000000002e-06,
+      "weighted_recall_proxy": 0.00012000000000000004,
+      "weighted_f2_proxy": 1.800000000000001e-05
+    },
+    "clarity": {
+      "chain_of_custody": -0.004505357000000001,
+      "credibility": 4.9995e-05,
+      "credibility_base": 0.0,
+      "corroboration": 9.999e-05,
+      "clarity": 0.011582356999999996,
+      "claims": 0.30071499999999995,
+      "sources": 0.29996999999999996,
+      "artifacts": -0.009849999999999998,
+      "weighted_coverage_ratio": 0.006665999999999999,
+      "weighted_precision_proxy": 0.0004999499999999999,
+      "weighted_recall_proxy": 0.006666000000000001,
+      "weighted_f2_proxy": 0.0009999
+    },
+    "claims": {
+      "chain_of_custody": -0.134865,
+      "credibility": 0.0009,
+      "credibility_base": 0.0,
+      "corroboration": 0.0018,
+      "clarity": 0.30071499999999995,
+      "claims": 9.299999999999999,
+      "sources": 5.400000000000001,
+      "artifacts": -1.0,
+      "weighted_coverage_ratio": 0.12000000000000004,
+      "weighted_precision_proxy": 0.009,
+      "weighted_recall_proxy": 0.12000000000000002,
+      "weighted_f2_proxy": 0.018000000000000006
+    },
+    "sources": {
+      "chain_of_custody": 0.12865499999999994,
+      "credibility": 0.0027000000000000006,
+      "credibility_base": 0.0,
+      "corroboration": 0.005400000000000001,
+      "clarity": 0.29996999999999996,
+      "claims": 5.400000000000001,
+      "sources": 16.2,
+      "artifacts": 2.25,
+      "weighted_coverage_ratio": 0.36000000000000004,
+      "weighted_precision_proxy": 0.027000000000000003,
+      "weighted_recall_proxy": 0.36000000000000015,
+      "weighted_f2_proxy": 0.05400000000000002
+    },
+    "artifacts": {
+      "chain_of_custody": 0.09739999999999999,
+      "credibility": 0.000375,
+      "credibility_base": 0.0,
+      "corroboration": 0.00075,
+      "clarity": -0.009849999999999998,
+      "claims": -1.0,
+      "sources": 2.25,
+      "artifacts": 2.0,
+      "weighted_coverage_ratio": 0.049999999999999996,
+      "weighted_precision_proxy": 0.0037500000000000007,
+      "weighted_recall_proxy": 0.050000000000000024,
+      "weighted_f2_proxy": 0.007500000000000002
+    },
+    "weighted_coverage_ratio": {
+      "chain_of_custody": 0.002858999999999999,
+      "credibility": 6.000000000000001e-05,
+      "credibility_base": 0.0,
+      "corroboration": 0.00012000000000000002,
+      "clarity": 0.006665999999999999,
+      "claims": 0.12000000000000004,
+      "sources": 0.36000000000000004,
+      "artifacts": 0.049999999999999996,
+      "weighted_coverage_ratio": 0.008,
+      "weighted_precision_proxy": 0.0006,
+      "weighted_recall_proxy": 0.008000000000000004,
+      "weighted_f2_proxy": 0.0012000000000000003
+    },
+    "weighted_precision_proxy": {
+      "chain_of_custody": 0.0002144249999999999,
+      "credibility": 4.500000000000001e-06,
+      "credibility_base": 0.0,
+      "corroboration": 9.000000000000002e-06,
+      "clarity": 0.0004999499999999999,
+      "claims": 0.009,
+      "sources": 0.027000000000000003,
+      "artifacts": 0.0037500000000000007,
+      "weighted_coverage_ratio": 0.0006,
+      "weighted_precision_proxy": 4.5e-05,
+      "weighted_recall_proxy": 0.0006000000000000002,
+      "weighted_f2_proxy": 9.000000000000003e-05
+    },
+    "weighted_recall_proxy": {
+      "chain_of_custody": 0.002859,
+      "credibility": 6.000000000000002e-05,
+      "credibility_base": 0.0,
+      "corroboration": 0.00012000000000000004,
+      "clarity": 0.006666000000000001,
+      "claims": 0.12000000000000002,
+      "sources": 0.36000000000000015,
+      "artifacts": 0.050000000000000024,
+      "weighted_coverage_ratio": 0.008000000000000004,
+      "weighted_precision_proxy": 0.0006000000000000002,
+      "weighted_recall_proxy": 0.008000000000000005,
+      "weighted_f2_proxy": 0.0012000000000000005
+    },
+    "weighted_f2_proxy": {
+      "chain_of_custody": 0.00042885,
+      "credibility": 9.000000000000005e-06,
+      "credibility_base": 0.0,
+      "corroboration": 1.800000000000001e-05,
+      "clarity": 0.0009999,
+      "claims": 0.018000000000000006,
+      "sources": 0.05400000000000002,
+      "artifacts": 0.007500000000000002,
+      "weighted_coverage_ratio": 0.0012000000000000003,
+      "weighted_precision_proxy": 9.000000000000003e-05,
+      "weighted_recall_proxy": 0.0012000000000000005,
+      "weighted_f2_proxy": 0.0001800000000000001
+    }
+  },
+  "spearman_matrix": {
+    "chain_of_custody": {
+      "chain_of_custody": 0.9999999999999998,
+      "credibility": 0.35355339059327373,
+      "credibility_base": 0.0,
+      "corroboration": 0.35355339059327373,
+      "clarity": 0.0,
+      "claims": -0.051298917604257706,
+      "sources": 0.35355339059327373,
+      "artifacts": 0.4472135954999579,
+      "weighted_coverage_ratio": 0.35355339059327373,
+      "weighted_precision_proxy": 0.35355339059327373,
+      "weighted_recall_proxy": 0.35355339059327373,
+      "weighted_f2_proxy": 0.35355339059327373
+    },
+    "credibility": {
+      "chain_of_custody": 0.35355339059327373,
+      "credibility": 0.9999999999999998,
+      "credibility_base": 0.0,
+      "corroboration": 0.9999999999999998,
+      "clarity": 0.7071067811865475,
+      "claims": 0.5441071875825088,
+      "sources": 0.9999999999999998,
+      "artifacts": 0.3952847075210474,
+      "weighted_coverage_ratio": 0.9999999999999998,
+      "weighted_precision_proxy": 0.9999999999999998,
+      "weighted_recall_proxy": 0.9999999999999998,
+      "weighted_f2_proxy": 0.9999999999999998
+    },
+    "credibility_base": {
+      "chain_of_custody": 0.0,
+      "credibility": 0.0,
+      "credibility_base": 0.0,
+      "corroboration": 0.0,
+      "clarity": 0.0,
+      "claims": 0.0,
+      "sources": 0.0,
+      "artifacts": 0.0,
+      "weighted_coverage_ratio": 0.0,
+      "weighted_precision_proxy": 0.0,
+      "weighted_recall_proxy": 0.0,
+      "weighted_f2_proxy": 0.0
+    },
+    "corroboration": {
+      "chain_of_custody": 0.35355339059327373,
+      "credibility": 0.9999999999999998,
+      "credibility_base": 0.0,
+      "corroboration": 0.9999999999999998,
+      "clarity": 0.7071067811865475,
+      "claims": 0.5441071875825088,
+      "sources": 0.9999999999999998,
+      "artifacts": 0.3952847075210474,
+      "weighted_coverage_ratio": 0.9999999999999998,
+      "weighted_precision_proxy": 0.9999999999999998,
+      "weighted_recall_proxy": 0.9999999999999998,
+      "weighted_f2_proxy": 0.9999999999999998
+    },
+    "clarity": {
+      "chain_of_custody": 0.0,
+      "credibility": 0.7071067811865475,
+      "credibility_base": 0.0,
+      "corroboration": 0.7071067811865475,
+      "clarity": 0.9999999999999998,
+      "claims": 0.9746794344808964,
+      "sources": 0.7071067811865475,
+      "artifacts": -0.11180339887498948,
+      "weighted_coverage_ratio": 0.7071067811865475,
+      "weighted_precision_proxy": 0.7071067811865475,
+      "weighted_recall_proxy": 0.7071067811865475,
+      "weighted_f2_proxy": 0.7071067811865475
+    },
+    "claims": {
+      "chain_of_custody": -0.051298917604257706,
+      "credibility": 0.5441071875825088,
+      "credibility_base": 0.0,
+      "corroboration": 0.5441071875825088,
+      "clarity": 0.9746794344808964,
+      "claims": 1.0000000000000002,
+      "sources": 0.5441071875825088,
+      "artifacts": -0.2867696673382022,
+      "weighted_coverage_ratio": 0.5441071875825088,
+      "weighted_precision_proxy": 0.5441071875825088,
+      "weighted_recall_proxy": 0.5441071875825088,
+      "weighted_f2_proxy": 0.5441071875825088
+    },
+    "sources": {
+      "chain_of_custody": 0.35355339059327373,
+      "credibility": 0.9999999999999998,
+      "credibility_base": 0.0,
+      "corroboration": 0.9999999999999998,
+      "clarity": 0.7071067811865475,
+      "claims": 0.5441071875825088,
+      "sources": 0.9999999999999998,
+      "artifacts": 0.3952847075210474,
+      "weighted_coverage_ratio": 0.9999999999999998,
+      "weighted_precision_proxy": 0.9999999999999998,
+      "weighted_recall_proxy": 0.9999999999999998,
+      "weighted_f2_proxy": 0.9999999999999998
+    },
+    "artifacts": {
+      "chain_of_custody": 0.4472135954999579,
+      "credibility": 0.3952847075210474,
+      "credibility_base": 0.0,
+      "corroboration": 0.3952847075210474,
+      "clarity": -0.11180339887498948,
+      "claims": -0.2867696673382022,
+      "sources": 0.3952847075210474,
+      "artifacts": 0.9999999999999998,
+      "weighted_coverage_ratio": 0.3952847075210474,
+      "weighted_precision_proxy": 0.3952847075210474,
+      "weighted_recall_proxy": 0.3952847075210474,
+      "weighted_f2_proxy": 0.3952847075210474
+    },
+    "weighted_coverage_ratio": {
+      "chain_of_custody": 0.35355339059327373,
+      "credibility": 0.9999999999999998,
+      "credibility_base": 0.0,
+      "corroboration": 0.9999999999999998,
+      "clarity": 0.7071067811865475,
+      "claims": 0.5441071875825088,
+      "sources": 0.9999999999999998,
+      "artifacts": 0.3952847075210474,
+      "weighted_coverage_ratio": 0.9999999999999998,
+      "weighted_precision_proxy": 0.9999999999999998,
+      "weighted_recall_proxy": 0.9999999999999998,
+      "weighted_f2_proxy": 0.9999999999999998
+    },
+    "weighted_precision_proxy": {
+      "chain_of_custody": 0.35355339059327373,
+      "credibility": 0.9999999999999998,
+      "credibility_base": 0.0,
+      "corroboration": 0.9999999999999998,
+      "clarity": 0.7071067811865475,
+      "claims": 0.5441071875825088,
+      "sources": 0.9999999999999998,
+      "artifacts": 0.3952847075210474,
+      "weighted_coverage_ratio": 0.9999999999999998,
+      "weighted_precision_proxy": 0.9999999999999998,
+      "weighted_recall_proxy": 0.9999999999999998,
+      "weighted_f2_proxy": 0.9999999999999998
+    },
+    "weighted_recall_proxy": {
+      "chain_of_custody": 0.35355339059327373,
+      "credibility": 0.9999999999999998,
+      "credibility_base": 0.0,
+      "corroboration": 0.9999999999999998,
+      "clarity": 0.7071067811865475,
+      "claims": 0.5441071875825088,
+      "sources": 0.9999999999999998,
+      "artifacts": 0.3952847075210474,
+      "weighted_coverage_ratio": 0.9999999999999998,
+      "weighted_precision_proxy": 0.9999999999999998,
+      "weighted_recall_proxy": 0.9999999999999998,
+      "weighted_f2_proxy": 0.9999999999999998
+    },
+    "weighted_f2_proxy": {
+      "chain_of_custody": 0.35355339059327373,
+      "credibility": 0.9999999999999998,
+      "credibility_base": 0.0,
+      "corroboration": 0.9999999999999998,
+      "clarity": 0.7071067811865475,
+      "claims": 0.5441071875825088,
+      "sources": 0.9999999999999998,
+      "artifacts": 0.3952847075210474,
+      "weighted_coverage_ratio": 0.9999999999999998,
+      "weighted_precision_proxy": 0.9999999999999998,
+      "weighted_recall_proxy": 0.9999999999999998,
+      "weighted_f2_proxy": 0.9999999999999998
+    }
+  },
+  "bootstrap_95ci": {
+    "scores_0_1": {
+      "chain_of_custody": {
+        "mean": 0.52182,
+        "ci95_low": 0.44306,
+        "ci95_high": 0.60232
+      },
+      "credibility": {
+        "mean": 0.00030000000000000003,
+        "ci95_low": 0.0,
+        "ci95_high": 0.0009000000000000001
+      },
+      "credibility_base": {
+        "mean": 0.0,
+        "ci95_low": 0.0,
+        "ci95_high": 0.0
+      },
+      "corroboration": {
+        "mean": 0.0006000000000000001,
+        "ci95_low": 0.0,
+        "ci95_high": 0.0018000000000000002
+      },
+      "clarity": {
+        "mean": 0.42838000000000004,
+        "ci95_low": 0.34008000000000005,
+        "ci95_high": 0.50924
+      }
+    },
+    "proxy_support_metrics": {
+      "weighted_coverage_ratio": {
+        "mean": 0.04,
+        "ci95_low": 0.0,
+        "ci95_high": 0.12000000000000002
+      },
+      "weighted_precision_proxy": {
+        "mean": 0.003,
+        "ci95_low": 0.0,
+        "ci95_high": 0.009000000000000001
+      },
+      "weighted_recall_proxy": {
+        "mean": 0.040000000000000015,
+        "ci95_low": 0.0,
+        "ci95_high": 0.12000000000000004
+      },
+      "weighted_f2_proxy": {
+        "mean": 0.006000000000000002,
+        "ci95_low": 0.0,
+        "ci95_high": 0.018000000000000006
+      }
+    }
+  },
+  "documents": [
+    {
+      "id": "apt29_hammertoss_stealthy_tactics_define_a",
+      "label": "apt29-hammertoss-stealthy-tactics-define-a.pdf",
+      "pdf_path": "/home/pantera/projects/TEIA/annotarium/Reports/apt29-hammertoss-stealthy-tactics-define-a.pdf",
+      "report_path": "/home/pantera/projects/TEIA/annotarium/outputs/reports/apt29_hammertoss_stealthy_tactics_define_a_report.json",
+      "status": "PASS",
+      "last_run_at": "2026-02-22T10:15:08.178Z",
+      "metrics": {
+        "pages": 1,
+        "images": 0,
+        "tables": 2,
+        "figures": 6,
+        "claims": 3,
+        "sources": 1,
+        "artifacts": 6,
+        "scores_0_1": {
+          "chain_of_custody": 0.6817,
+          "credibility": 0.0,
+          "credibility_base": 0.0,
+          "corroboration": 0.0,
+          "clarity": 0.2644
+        },
+        "proxy_support_metrics": {
+          "claims_count": 3,
+          "weighted_coverage_ratio": 0.0,
+          "weighted_precision_proxy": 0.0,
+          "weighted_recall_proxy": 0.0,
+          "weighted_f2_proxy": 0.0
+        }
+      }
+    },
+    {
+      "id": "fireeye_rpt_apt37_02_20_2018",
+      "label": "Fireeye_rpt_APT37(02-20-2018).pdf",
+      "pdf_path": "/home/pantera/projects/TEIA/annotarium/Reports/Fireeye_rpt_APT37(02-20-2018).pdf",
+      "report_path": "/home/pantera/projects/TEIA/annotarium/outputs/reports/fireeye_rpt_apt37_02_20_2018_report.json",
+      "status": "PASS",
+      "last_run_at": "2026-02-22T10:15:08.450Z",
+      "metrics": {
+        "pages": 1,
+        "images": 0,
+        "tables": 3,
+        "figures": 4,
+        "claims": 6,
+        "sources": 1,
+        "artifacts": 4,
+        "scores_0_1": {
+          "chain_of_custody": 0.3875,
+          "credibility": 0.0,
+          "credibility_base": 0.0,
+          "corroboration": 0.0,
+          "clarity": 0.4086
+        },
+        "proxy_support_metrics": {
+          "claims_count": 6,
+          "weighted_coverage_ratio": 0.0,
+          "weighted_precision_proxy": 0.0,
+          "weighted_recall_proxy": 0.0,
+          "weighted_f2_proxy": 0.0
+        }
+      }
+    },
+    {
+      "id": "mandiant_2013_apt1_exposing_one_of_china_s_cyber_espionage_units",
+      "label": "Mandiant - 2013 - APT1 Exposing One of China's Cyber Espionage Units.pdf",
+      "pdf_path": "/home/pantera/projects/TEIA/annotarium/Reports/Mandiant - 2013 - APT1 Exposing One of China's Cyber Espionage Units.pdf",
+      "report_path": "/home/pantera/projects/TEIA/annotarium/outputs/reports/mandiant_2013_apt1_exposing_one_of_china_s_cyber_espionage_units_report.json",
+      "status": "PASS",
+      "last_run_at": "2026-02-22T10:15:08.954Z",
+      "metrics": {
+        "pages": 1,
+        "images": 0,
+        "tables": 19,
+        "figures": 29,
+        "claims": 10,
+        "sources": 10,
+        "artifacts": 6,
+        "scores_0_1": {
+          "chain_of_custody": 0.579,
+          "credibility": 0.0015,
+          "credibility_base": 0.0,
+          "corroboration": 0.003,
+          "clarity": 0.5617
+        },
+        "proxy_support_metrics": {
+          "claims_count": 10,
+          "weighted_coverage_ratio": 0.2,
+          "weighted_precision_proxy": 0.015000000000000001,
+          "weighted_recall_proxy": 0.20000000000000007,
+          "weighted_f2_proxy": 0.03000000000000001
+        }
+      }
+    },
+    {
+      "id": "mandiant_2017_apt28_at_the_center_of_the_storm",
+      "label": "Mandiant - 2017 - APT28 At the Center of the Storm.pdf",
+      "pdf_path": "/home/pantera/projects/TEIA/annotarium/Reports/Mandiant - 2017 - APT28 At the Center of the Storm.pdf",
+      "report_path": "/home/pantera/projects/TEIA/annotarium/outputs/reports/mandiant_2017_apt28_at_the_center_of_the_storm_report.json",
+      "status": "PASS",
+      "last_run_at": "2026-02-22T10:15:09.274Z",
+      "metrics": {
+        "pages": 1,
+        "images": 0,
+        "tables": 7,
+        "figures": 0,
+        "claims": 10,
+        "sources": 1,
+        "artifacts": 3,
+        "scores_0_1": {
+          "chain_of_custody": 0.4815,
+          "credibility": 0.0,
+          "credibility_base": 0.0,
+          "corroboration": 0.0,
+          "clarity": 0.4547
+        },
+        "proxy_support_metrics": {
+          "claims_count": 10,
+          "weighted_coverage_ratio": 0.0,
+          "weighted_precision_proxy": 0.0,
+          "weighted_recall_proxy": 0.0,
+          "weighted_f2_proxy": 0.0
+        }
+      }
+    },
+    {
+      "id": "panda_crowdstrike_intelligence_report",
+      "label": "Panda - CrowdStrike Intelligence Report.pdf",
+      "pdf_path": "/home/pantera/projects/TEIA/annotarium/Reports/Panda - CrowdStrike Intelligence Report.pdf",
+      "report_path": "/home/pantera/projects/TEIA/annotarium/outputs/reports/panda_crowdstrike_intelligence_report_report.json",
+      "status": "PASS",
+      "last_run_at": "2026-02-22T10:15:09.630Z",
+      "metrics": {
+        "pages": 1,
+        "images": 0,
+        "tables": 0,
+        "figures": 1,
+        "claims": 9,
+        "sources": 1,
+        "artifacts": 6,
+        "scores_0_1": {
+          "chain_of_custody": 0.4794,
+          "credibility": 0.0,
+          "credibility_base": 0.0,
+          "corroboration": 0.0,
+          "clarity": 0.4525
+        },
+        "proxy_support_metrics": {
+          "claims_count": 9,
+          "weighted_coverage_ratio": 0.0,
+          "weighted_precision_proxy": 0.0,
+          "weighted_recall_proxy": 0.0,
+          "weighted_f2_proxy": 0.0
+        }
+      }
+    }
+  ]
+}

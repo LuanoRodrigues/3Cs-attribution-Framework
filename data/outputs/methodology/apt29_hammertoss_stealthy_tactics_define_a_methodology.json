@@ -1,0 +1,213 @@
+{
+  "generated_at_utc": "2026-02-22T11:58:08Z",
+  "mode": "single",
+  "title": "Annotarium Methodology: APT1: Exposing One of China's Cyber Espionage Units",
+  "input_reports": [
+    "/home/pantera/projects/TEIA/annotarium/outputs/reports/apt29_hammertoss_stealthy_tactics_define_a_report.json"
+  ],
+  "template_sections": [
+    {
+      "id": "scope",
+      "title": "Scope and Objective",
+      "instruction": "Define the methodological objective in legal-cyber attribution terms and explain what the scoring is intended to measure."
+    },
+    {
+      "id": "pipeline",
+      "title": "Pipeline and Data Lineage",
+      "instruction": "Explain the end-to-end pipeline stages from PDF ingestion to scoring and figures, emphasizing deterministic transforms and lineage."
+    },
+    {
+      "id": "data_model",
+      "title": "Data Model: Claims, Sources, Artifacts, Evidence",
+      "instruction": "Describe the normalized data model and how claims, sources, and artifacts are linked. Include at least one table."
+    },
+    {
+      "id": "chain",
+      "title": "Chain of Custody (C1)",
+      "instruction": "Explain chain of custody scoring variables, formula logic, quality-vs-quantity calibration, and penalties. Include one compact table of factors."
+    },
+    {
+      "id": "credibility",
+      "title": "Credibility (C2, with Corroboration Subcomponent)",
+      "instruction": "Explain source-class weighting, independence, exclusion rules, corroboration as a subcomponent, claim-coverage scaling, and final composition. Include one compact table."
+    },
+    {
+      "id": "clarity",
+      "title": "Clarity (C3)",
+      "instruction": "Explain legal clarity for state attribution pathways: state organs, state control over non-state actors, and due diligence failure. Include question framework and scoring logic."
+    },
+    {
+      "id": "aggregation",
+      "title": "Claim-to-Document Aggregation",
+      "instruction": "Explain claim-level scoring, gravity weighting, saturation/shrinkage/reliability adjustments, and document-level aggregation."
+    },
+    {
+      "id": "portfolio",
+      "title": "Portfolio Aggregation and Statistical Diagnostics",
+      "instruction": "Explain aggregate metrics across documents, covariance/spearman/bootstrap diagnostics, and interpretation guidance."
+    },
+    {
+      "id": "validation",
+      "title": "Validation Gates and Failure Semantics",
+      "instruction": "Explain what validation checks, what FAIL means operationally, and why scoring may still run under fail-soft behavior."
+    }
+  ],
+  "context_snapshot": {
+    "mode": "single",
+    "report_meta": {
+      "report_path": "/home/pantera/projects/TEIA/annotarium/outputs/reports/apt29_hammertoss_stealthy_tactics_define_a_report.json",
+      "report_id": "apt29_hammertoss_stealthy_tactics_define_a_report",
+      "generated_at_utc": "2026-02-21T23:32:41.069Z",
+      "document_title": "APT1: Exposing One of China's Cyber Espionage Units",
+      "publication_date": "2013-01-01"
+    },
+    "pipeline_counts": {
+      "pages": 1,
+      "claims": 3,
+      "sources": 1,
+      "artifacts": 6,
+      "citations": 0,
+      "tables": 2,
+      "figures": 6
+    },
+    "source_type_counts": {
+      "internal_document_section": 1
+    },
+    "artifact_type_counts": {
+      "domain": 9,
+      "email": 1,
+      "file_name": 1,
+      "hash_md5": 1,
+      "hash_sha1": 1,
+      "url": 7
+    },
+    "document_scores_v4": {
+      "belief_weighted_0_100": 0.05,
+      "grounding_avg_0_100": 58.65,
+      "custody_avg_0_100": 61.43,
+      "credibility_avg_0_100": 0.0,
+      "corroboration_avg_0_100": 0.0,
+      "confidence_avg_0_100": 27.1,
+      "clarity_avg_0_100": 24.25,
+      "citation_coverage_sources_0_1": 0.0,
+      "sources_total": 1,
+      "citations_total": 0,
+      "credibility_composite_avg_0_100": 0.0,
+      "bootstrap_95ci": {
+        "belief_weighted_0_100": {
+          "mean": 0.05,
+          "ci95_low": 0.05,
+          "ci95_high": 0.06
+        },
+        "custody_avg_0_100": {
+          "mean": 61.43,
+          "ci95_low": 56.34,
+          "ci95_high": 63.99
+        },
+        "credibility_avg_0_100": {
+          "mean": 0.0,
+          "ci95_low": 0.0,
+          "ci95_high": 0.0
+        },
+        "corroboration_avg_0_100": {
+          "mean": 0.0,
+          "ci95_low": 0.0,
+          "ci95_high": 0.0
+        },
+        "clarity_avg_0_100": {
+          "mean": 24.25,
+          "ci95_low": 22.35,
+          "ci95_high": 27.04
+        }
+      }
+    },
+    "claim_score_preview_v4": [
+      {
+        "claim_id": "C001",
+        "belief_0_100": 0.05,
+        "custody_0_100": 63.99,
+        "credibility_0_100": 0.0,
+        "clarity_0_100": 23.36,
+        "grounding_0_100": 59.01,
+        "evidence_support_0_1": 0.0724
+      },
+      {
+        "claim_id": "C002",
+        "belief_0_100": 0.06,
+        "custody_0_100": 56.34,
+        "credibility_0_100": 0.0,
+        "clarity_0_100": 27.04,
+        "grounding_0_100": 58.14,
+        "evidence_support_0_1": 0.0772
+      },
+      {
+        "claim_id": "C003",
+        "belief_0_100": 0.05,
+        "custody_0_100": 63.97,
+        "credibility_0_100": 0.0,
+        "clarity_0_100": 22.35,
+        "grounding_0_100": 58.8,
+        "evidence_support_0_1": 0.0692
+      }
+    ],
+    "score_version": "v4",
+    "methodology_reference_excerpt": "# Methodology\n\n## I. Methodological Position\n\nThis study treats cyber-attribution reporting as an evidentiary exercise rather than a narrative exercise. The central claim is that attribution assessments should be evaluated as structured arguments about State responsibility, not as standalone assertions of confidence. In consequence, the method asks, for each proposition advanced in a report, what evidentiary materials are relied upon, how those materials are connected to the proposition, and whether those connections can bear weight under adversarial scrutiny.\n\nThe analytical posture is therefore jurisprudential. It draws from recurring ICJ evidentiary practice: differential weighting of heterogeneous materials, caution toward single-origin or litigation-shaped records, and preference for convergent indications over repetition. The objective is not to replicate adjudication procedurally, but to translate judicially legible evidentiary logic into a reproducible scoring framework for cyber-attribution dossiers.\n\n## II. Corpus, Record Formation, and Constraints\n\nThe corpus consists of cybersecurity attribution reports in PDF form. Each report is transcribed into markdown and then transformed into a schema-constrained evidentiary record. The schema is strict by design. It separates claims, sources, artifacts, and evidence links into distinct objects and requires explicit anchors for evidentiary references.\n\nThis design choice has methodological significance. It prevents retrospective reconstruction of support through implicit model inference and compels the system to preserve an inspectable chain between proposition and proof. The method thus prioritizes evidentiary legibility over extraction breadth.\n\n## III. Procedural Architecture\n\nThe workflow proceeds in four phases. First, source documents are transcribed from PDF into markdown. Second, markdown is parsed into structured outputs containing metadata, source inventories, artifact inventories, and claim-level analytic blocks. Third, outputs undergo integrity checks. Fourth, validated outputs are scored under an ICJ-inspired weighting model.\n\nTwo procedural commitments govern all phases. The first is determinacy: where possible, deterministic transformations are preferred, and model-assisted components are constrained by schema and post-run verification. The second is persistence: all major intermediate and terminal artifacts are written to disk, so that any score can be reconstructed and contested from the underlying record.\n\n## IV. Integrity Controls as Admissibility Discipline\n\nNo score is produced absent structural integrity of the evidentiary record. In practical terms, runs are failed where identifier collisions occur, where artifact anchors are missing, where citation pathways cannot be traced, or where references resolve to nonexistent entities. These controls function analogously to admissibility discipline: they do not determine substantive truth, but they determine whether the record is fit to carry a substantive weighing exercise.\n\nThis stage is essential to avoid pseudo-precision. Without strict record integrity, downstream numerical outputs risk expressing parser convenience rather than evidentiary strength.\n\n## V. Evidentiary Weight Model\n\n### A. Item-Level Weight\n\nEach evidence item is evaluated along five bounded dimensions: independence, authentication/provenance, methodological soundness, procedural testing, and contemporaneity. Item-level probative force is computed multiplicatively. The multiplicative form is deliberate: strong performance on one dimension cannot fully compensate for critical weakness on another.\n\n### B. Corroboration and Anti-Circularity\n\nCorroboration is not treated as citation volume. Evidence is clustered by origin, origin-level contribution is aggregated with diminishing returns, and claim-level corroboration is then derived from convergence across origins. This implements an anti-circularity rule: repeated downstream reporting of one upstream source does not become independent support merely by repetition.\n\n### C. Core 3Cs\n\nThe principal outputs are the core 3Cs: Chain of Custody, Credibility, and Clarity. Corroboration is preserved as an explicit sub-calculation and audit surface, but it is integrated into the top-level Credibility axis rather than exposed as a separate top-level C.\n\nChain of Custody is modeled as claim-specific evidentiary handling quality, not as raw artifact quantity. In the current implementation, custody is computed from five normalized variables extracted from evidence text: provenance markers, integrity markers, temporal anchors, artifact identifiers, and versioning/update lineage. These dimensions are weighted and combined linearly, then bounded in `[0,1]`, so that the score remains auditable at claim level and cannot be inflated by a single indicator class.\n\nCredibility is modeled as a composite of source-quality support and corroborative convergence for each claim. The source-quality component is derived from source-type quality, the strongest source attached to the claim, source diversity, and domain independence, with a single-source penalty. Internal/auto sources and newspapers are excluded from credibility support. The model gives maximal weight to international institutions/judicial material and peer-reviewed academic material, intermediate weight to official government and NGO material, and lower weight to think-tank/other material.\n\nIn addition, credibility is calibrated at the document level by a weighted claim-coverage factor keyed to high-credibility source support. Let `Cred_raw_i` denote raw credibility for claim `i`, and let `w_i` denote claim gravity weight. Define a credibility-covered claim as one with at least one high-credibility source (`source_quality >= 0.90`). Then:\n\n`credibility_coverage_factor = (Σ w_i over credibility-covered claims) / (Σ w_i over all claims)`\n\nand:\n\n`Cred_i = Cred_raw_i × credibility_coverage_factor`\n\nThis ensures credibility is interpreted as weighted coverage across the claim set rather than isolated source quality in a small subset of claims.\n\nCorroboration is modeled as convergence constrained by support relevance. A claim with broad wording but narrow evidentiary support receives lower corroborative strength, even where artifact volume is high. In the current presentation model, corroboration is retained as a dedicated subscore and then merged into top-level credibility:\n\n`Credibility_top = 0.50 × Credibility_source_quality + 0.50 × Corroboration`\n\nClarity is modeled as legal attribution intelligibility. Operationally, it answers two linked questions: (i) whether attribution of attack `Z` to State `X` is clearly reasoned in the text, and (ii) whether the mode of responsibility is clear under state-responsibility doctrine. The scorer therefore checks not only act–actor–link specificity, but also whether the report clearly indicates one of three legal pathways: attribution through state organs, attribution through non-state actors operating under state direction/control, or state omission/failure of due diligence (knowledge plus failure to prevent within jurisdiction).\n\nIn practice, the clarity panel and score details expose explicit question-level outputs:\n\n- “Is attribution to State X given attack Z clear?”\n- “Was the state’s responsibility pathway clear: direct conduct by official organs, control/direction of non-state operators, or omission/due diligence failure in its territory?”\n- “Is it clear that the state knew of the activity and failed to prevent, investigate, or suppress it (due diligence)?”\n\nIn addition, corroboration is calibrated at the document level by a claim-coverage factor so that corroboration is interpreted as proportionate coverage across the claim set, not absolute citation mass in isolated claims. Let `C_raw_i` denote raw corroboration for claim `i`, and let `w_i` denote the claim gravity weight. Define a corroborated claim as one for which `C_raw_i > 0`. Th..."
+  },
+  "sections": [
+    {
+      "id": "scope",
+      "title": "Scope and Objective",
+      "html": "<h2>Scope and Objective</h2><p>This methodology formalizes cyber-attribution assessment as a claim-based evidentiary scoring process. Each claim is scored on calibrated C-axes and then aggregated to document-level indicators under explicit weighting assumptions.</p><p>Execution mode: <code>single</code>.</p>",
+      "model": "fallback_parse"
+    },
+    {
+      "id": "pipeline",
+      "title": "Pipeline and Data Lineage",
+      "html": "<h2>Pipeline and Data Lineage</h2><p>The pipeline executes deterministic stages: PDF to markdown, schema extraction, source inference, validation, scoring, and figure rendering. Each stage emits machine-readable artifacts for auditability.</p><div class=\"wiki-table-wrap\"><table class=\"wiki-table\"><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>pages</td><td>1</td></tr><tr><td>claims</td><td>3</td></tr><tr><td>sources</td><td>1</td></tr><tr><td>artifacts</td><td>6</td></tr><tr><td>citations</td><td></td></tr><tr><td>tables</td><td>2</td></tr><tr><td>figures</td><td>6</td></tr></tbody></table></div>",
+      "model": "fallback_parse"
+    },
+    {
+      "id": "data_model",
+      "title": "Data Model: Claims, Sources, Artifacts, Evidence",
+      "html": "<h2>Data Model: Claims, Sources, Artifacts, Evidence</h2><p>Claims provide legal assertions, sources provide provenance context and institutional identity, and artifacts provide technical exhibits. Evidence links claims to sources and artifacts through anchors.</p><h3>Source Classes</h3><div class=\"wiki-table-wrap\"><table class=\"wiki-table\"><thead><tr><th>Source Type</th><th>Count</th></tr></thead><tbody><tr><td>internal_document_section</td><td>1</td></tr></tbody></table></div><h3>Artifact Classes</h3><div class=\"wiki-table-wrap\"><table class=\"wiki-table\"><thead><tr><th>Artifact Type</th><th>Count</th></tr></thead><tbody><tr><td>domain</td><td>9</td></tr><tr><td>url</td><td>7</td></tr><tr><td>email</td><td>1</td></tr><tr><td>file_name</td><td>1</td></tr><tr><td>hash_md5</td><td>1</td></tr><tr><td>hash_sha1</td><td>1</td></tr></tbody></table></div>",
+      "model": "fallback_parse"
+    },
+    {
+      "id": "chain",
+      "title": "Chain of Custody (C1)",
+      "html": "<h2>Chain of Custody (C1)</h2><p>This axis is computed per claim and aggregated to the document level with reliability and shrinkage controls. The values below summarize the current scored output.</p><div class=\"wiki-table-wrap\"><table class=\"wiki-table\"><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody><tr><td>belief_weighted_0_100</td><td>0.05</td></tr><tr><td>grounding_avg_0_100</td><td>58.65</td></tr><tr><td>custody_avg_0_100</td><td>61.43</td></tr><tr><td>credibility_avg_0_100</td><td></td></tr><tr><td>corroboration_avg_0_100</td><td></td></tr><tr><td>confidence_avg_0_100</td><td>27.1</td></tr><tr><td>clarity_avg_0_100</td><td>24.25</td></tr><tr><td>citation_coverage_sources_0_1</td><td></td></tr><tr><td>sources_total</td><td>1</td></tr><tr><td>citations_total</td><td></td></tr><tr><td>credibility_composite_avg_0_100</td><td></td></tr></tbody></table></div>",
+      "model": "fallback_parse"
+    },
+    {
+      "id": "credibility",
+      "title": "Credibility (C2, with Corroboration Subcomponent)",
+      "html": "<h2>Credibility (C2, with Corroboration Subcomponent)</h2><p>This axis is computed per claim and aggregated to the document level with reliability and shrinkage controls. The values below summarize the current scored output.</p><div class=\"wiki-table-wrap\"><table class=\"wiki-table\"><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody><tr><td>belief_weighted_0_100</td><td>0.05</td></tr><tr><td>grounding_avg_0_100</td><td>58.65</td></tr><tr><td>custody_avg_0_100</td><td>61.43</td></tr><tr><td>credibility_avg_0_100</td><td></td></tr><tr><td>corroboration_avg_0_100</td><td></td></tr><tr><td>confidence_avg_0_100</td><td>27.1</td></tr><tr><td>clarity_avg_0_100</td><td>24.25</td></tr><tr><td>citation_coverage_sources_0_1</td><td></td></tr><tr><td>sources_total</td><td>1</td></tr><tr><td>citations_total</td><td></td></tr><tr><td>credibility_composite_avg_0_100</td><td></td></tr></tbody></table></div>",
+      "model": "fallback_parse"
+    },
+    {
+      "id": "clarity",
+      "title": "Clarity (C3)",
+      "html": "<h2>Clarity (C3)</h2><p>This axis is computed per claim and aggregated to the document level with reliability and shrinkage controls. The values below summarize the current scored output.</p><div class=\"wiki-table-wrap\"><table class=\"wiki-table\"><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody><tr><td>belief_weighted_0_100</td><td>0.05</td></tr><tr><td>grounding_avg_0_100</td><td>58.65</td></tr><tr><td>custody_avg_0_100</td><td>61.43</td></tr><tr><td>credibility_avg_0_100</td><td></td></tr><tr><td>corroboration_avg_0_100</td><td></td></tr><tr><td>confidence_avg_0_100</td><td>27.1</td></tr><tr><td>clarity_avg_0_100</td><td>24.25</td></tr><tr><td>citation_coverage_sources_0_1</td><td></td></tr><tr><td>sources_total</td><td>1</td></tr><tr><td>citations_total</td><td></td></tr><tr><td>credibility_composite_avg_0_100</td><td></td></tr></tbody></table></div>",
+      "model": "fallback_parse"
+    },
+    {
+      "id": "aggregation",
+      "title": "Claim-to-Document Aggregation",
+      "html": "<h2>Claim-to-Document Aggregation</h2><p>This axis is computed per claim and aggregated to the document level with reliability and shrinkage controls. The values below summarize the current scored output.</p><div class=\"wiki-table-wrap\"><table class=\"wiki-table\"><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody><tr><td>belief_weighted_0_100</td><td>0.05</td></tr><tr><td>grounding_avg_0_100</td><td>58.65</td></tr><tr><td>custody_avg_0_100</td><td>61.43</td></tr><tr><td>credibility_avg_0_100</td><td></td></tr><tr><td>corroboration_avg_0_100</td><td></td></tr><tr><td>confidence_avg_0_100</td><td>27.1</td></tr><tr><td>clarity_avg_0_100</td><td>24.25</td></tr><tr><td>citation_coverage_sources_0_1</td><td></td></tr><tr><td>sources_total</td><td>1</td></tr><tr><td>citations_total</td><td></td></tr><tr><td>credibility_composite_avg_0_100</td><td></td></tr></tbody></table></div>",
+      "model": "fallback_parse"
+    },
+    {
+      "id": "portfolio",
+      "title": "Portfolio Aggregation and Statistical Diagnostics",
+      "html": "<h2>Portfolio Aggregation and Statistical Diagnostics</h2><p>Portfolio aggregation compares documents under the same scoring model and reports central tendency and dispersion diagnostics.</p><p>No tabular data available for this section.</p>",
+      "model": "fallback_parse"
+    },
+    {
+      "id": "validation",
+      "title": "Validation Gates and Failure Semantics",
+      "html": "<h2>Validation Gates and Failure Semantics</h2><p>Validation checks schema conformance, anchor consistency, and grounding quality. FAIL denotes a quality gate failure, not necessarily runtime interruption. The pipeline can proceed in fail-soft mode to preserve diagnostic visibility.</p>",
+      "model": "fallback_parse"
+    }
+  ],
+  "html": "<article class=\"wiki-page\">\n<header><h1>Annotarium Methodology: APT1: Exposing One of China's Cyber Espionage Units</h1><div class=\"wiki-meta\">Generated at 2026-02-22T11:58:08Z</div></header>\n<nav class=\"wiki-toc\"><h2>Contents</h2><ol>\n<li><a href=\"#sec-scope\">Scope and Objective</a></li><li><a href=\"#sec-pipeline\">Pipeline and Data Lineage</a></li><li><a href=\"#sec-data_model\">Data Model: Claims, Sources, Artifacts, Evidence</a></li><li><a href=\"#sec-chain\">Chain of Custody (C1)</a></li><li><a href=\"#sec-credibility\">Credibility (C2, with Corroboration Subcomponent)</a></li><li><a href=\"#sec-clarity\">Clarity (C3)</a></li><li><a href=\"#sec-aggregation\">Claim-to-Document Aggregation</a></li><li><a href=\"#sec-portfolio\">Portfolio Aggregation and Statistical Diagnostics</a></li><li><a href=\"#sec-validation\">Validation Gates and Failure Semantics</a></li>\n</ol></nav>\n<section class=\"wiki-section\" id=\"sec-scope\"><h2>Scope and Objective</h2><p>This methodology formalizes cyber-attribution assessment as a claim-based evidentiary scoring process. Each claim is scored on calibrated C-axes and then aggregated to document-level indicators under explicit weighting assumptions.</p><p>Execution mode: <code>single</code>.</p></section>\n<section class=\"wiki-section\" id=\"sec-pipeline\"><h2>Pipeline and Data Lineage</h2><p>The pipeline executes deterministic stages: PDF to markdown, schema extraction, source inference, validation, scoring, and figure rendering. Each stage emits machine-readable artifacts for auditability.</p><div class=\"wiki-table-wrap\"><table class=\"wiki-table\"><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>pages</td><td>1</td></tr><tr><td>claims</td><td>3</td></tr><tr><td>sources</td><td>1</td></tr><tr><td>artifacts</td><td>6</td></tr><tr><td>citations</td><td></td></tr><tr><td>tables</td><td>2</td></tr><tr><td>figures</td><td>6</td></tr></tbody></table></div></section>\n<section class=\"wiki-section\" id=\"sec-data_model\"><h2>Data Model: Claims, Sources, Artifacts, Evidence</h2><p>Claims provide legal assertions, sources provide provenance context and institutional identity, and artifacts provide technical exhibits. Evidence links claims to sources and artifacts through anchors.</p><h3>Source Classes</h3><div class=\"wiki-table-wrap\"><table class=\"wiki-table\"><thead><tr><th>Source Type</th><th>Count</th></tr></thead><tbody><tr><td>internal_document_section</td><td>1</td></tr></tbody></table></div><h3>Artifact Classes</h3><div class=\"wiki-table-wrap\"><table class=\"wiki-table\"><thead><tr><th>Artifact Type</th><th>Count</th></tr></thead><tbody><tr><td>domain</td><td>9</td></tr><tr><td>url</td><td>7</td></tr><tr><td>email</td><td>1</td></tr><tr><td>file_name</td><td>1</td></tr><tr><td>hash_md5</td><td>1</td></tr><tr><td>hash_sha1</td><td>1</td></tr></tbody></table></div></section>\n<section class=\"wiki-section\" id=\"sec-chain\"><h2>Chain of Custody (C1)</h2><p>This axis is computed per claim and aggregated to the document level with reliability and shrinkage controls. The values below summarize the current scored output.</p><div class=\"wiki-table-wrap\"><table class=\"wiki-table\"><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody><tr><td>belief_weighted_0_100</td><td>0.05</td></tr><tr><td>grounding_avg_0_100</td><td>58.65</td></tr><tr><td>custody_avg_0_100</td><td>61.43</td></tr><tr><td>credibility_avg_0_100</td><td></td></tr><tr><td>corroboration_avg_0_100</td><td></td></tr><tr><td>confidence_avg_0_100</td><td>27.1</td></tr><tr><td>clarity_avg_0_100</td><td>24.25</td></tr><tr><td>citation_coverage_sources_0_1</td><td></td></tr><tr><td>sources_total</td><td>1</td></tr><tr><td>citations_total</td><td></td></tr><tr><td>credibility_composite_avg_0_100</td><td></td></tr></tbody></table></div></section>\n<section class=\"wiki-section\" id=\"sec-credibility\"><h2>Credibility (C2, with Corroboration Subcomponent)</h2><p>This axis is computed per claim and aggregated to the document level with reliability and shrinkage controls. The values below summarize the current scored output.</p><div class=\"wiki-table-wrap\"><table class=\"wiki-table\"><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody><tr><td>belief_weighted_0_100</td><td>0.05</td></tr><tr><td>grounding_avg_0_100</td><td>58.65</td></tr><tr><td>custody_avg_0_100</td><td>61.43</td></tr><tr><td>credibility_avg_0_100</td><td></td></tr><tr><td>corroboration_avg_0_100</td><td></td></tr><tr><td>confidence_avg_0_100</td><td>27.1</td></tr><tr><td>clarity_avg_0_100</td><td>24.25</td></tr><tr><td>citation_coverage_sources_0_1</td><td></td></tr><tr><td>sources_total</td><td>1</td></tr><tr><td>citations_total</td><td></td></tr><tr><td>credibility_composite_avg_0_100</td><td></td></tr></tbody></table></div></section>\n<section class=\"wiki-section\" id=\"sec-clarity\"><h2>Clarity (C3)</h2><p>This axis is computed per claim and aggregated to the document level with reliability and shrinkage controls. The values below summarize the current scored output.</p><div class=\"wiki-table-wrap\"><table class=\"wiki-table\"><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody><tr><td>belief_weighted_0_100</td><td>0.05</td></tr><tr><td>grounding_avg_0_100</td><td>58.65</td></tr><tr><td>custody_avg_0_100</td><td>61.43</td></tr><tr><td>credibility_avg_0_100</td><td></td></tr><tr><td>corroboration_avg_0_100</td><td></td></tr><tr><td>confidence_avg_0_100</td><td>27.1</td></tr><tr><td>clarity_avg_0_100</td><td>24.25</td></tr><tr><td>citation_coverage_sources_0_1</td><td></td></tr><tr><td>sources_total</td><td>1</td></tr><tr><td>citations_total</td><td></td></tr><tr><td>credibility_composite_avg_0_100</td><td></td></tr></tbody></table></div></section>\n<section class=\"wiki-section\" id=\"sec-aggregation\"><h2>Claim-to-Document Aggregation</h2><p>This axis is computed per claim and aggregated to the document level with reliability and shrinkage controls. The values below summarize the current scored output.</p><div class=\"wiki-table-wrap\"><table class=\"wiki-table\"><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody><tr><td>belief_weighted_0_100</td><td>0.05</td></tr><tr><td>grounding_avg_0_100</td><td>58.65</td></tr><tr><td>custody_avg_0_100</td><td>61.43</td></tr><tr><td>credibility_avg_0_100</td><td></td></tr><tr><td>corroboration_avg_0_100</td><td></td></tr><tr><td>confidence_avg_0_100</td><td>27.1</td></tr><tr><td>clarity_avg_0_100</td><td>24.25</td></tr><tr><td>citation_coverage_sources_0_1</td><td></td></tr><tr><td>sources_total</td><td>1</td></tr><tr><td>citations_total</td><td></td></tr><tr><td>credibility_composite_avg_0_100</td><td></td></tr></tbody></table></div></section>\n<section class=\"wiki-section\" id=\"sec-portfolio\"><h2>Portfolio Aggregation and Statistical Diagnostics</h2><p>Portfolio aggregation compares documents under the same scoring model and reports central tendency and dispersion diagnostics.</p><p>No tabular data available for this section.</p></section>\n<section class=\"wiki-section\" id=\"sec-validation\"><h2>Validation Gates and Failure Semantics</h2><p>Validation checks schema conformance, anchor consistency, and grounding quality. FAIL denotes a quality gate failure, not necessarily runtime interruption. The pipeline can proceed in fail-soft mode to preserve diagnostic visibility.</p></section>\n</article>"
+}

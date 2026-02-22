@@ -1,0 +1,310 @@
+{
+  "evidence_weights": [
+    {
+      "evidence_id": "E-0001",
+      "claim_id": "C001",
+      "I": 0.7866666666666667,
+      "A": 1.0,
+      "M": 0.72,
+      "P": 0.9199999999999999,
+      "T": 0.98,
+      "w": 0.5106662399999999,
+      "origin_id": "ORIG:src0001+src0002+src0003+src0006",
+      "anchors": [
+        {
+          "page": 0,
+          "block_id": "CIT0009"
+        },
+        {
+          "page": 0,
+          "block_id": "CIT0001"
+        },
+        {
+          "page": 0,
+          "block_id": "CIT0002"
+        },
+        {
+          "page": 0,
+          "block_id": "CIT0005"
+        }
+      ]
+    },
+    {
+      "evidence_id": "E-0002",
+      "claim_id": "C002",
+      "I": 0.7866666666666667,
+      "A": 1.0,
+      "M": 0.72,
+      "P": 0.9199999999999999,
+      "T": 0.98,
+      "w": 0.5106662399999999,
+      "origin_id": "ORIG:src0001+src0002+src0003+src0006",
+      "anchors": [
+        {
+          "page": 0,
+          "block_id": "CIT0009"
+        },
+        {
+          "page": 0,
+          "block_id": "CIT0001"
+        },
+        {
+          "page": 0,
+          "block_id": "CIT0002"
+        },
+        {
+          "page": 0,
+          "block_id": "CIT0005"
+        }
+      ]
+    },
+    {
+      "evidence_id": "E-0003",
+      "claim_id": "C003",
+      "I": 0.8366666666666667,
+      "A": 1.0,
+      "M": 0.72,
+      "P": 0.82,
+      "T": 0.98,
+      "w": 0.4840886399999999,
+      "origin_id": "ORIG:src0001+src0002+src0003+src0004",
+      "anchors": [
+        {
+          "page": 0,
+          "block_id": "CIT0001"
+        },
+        {
+          "page": 0,
+          "block_id": "CIT0009"
+        },
+        {
+          "page": 0,
+          "block_id": "CIT0002"
+        },
+        {
+          "page": 0,
+          "block_id": "CIT0005"
+        },
+        {
+          "page": 0,
+          "block_id": "CIT0003"
+        }
+      ]
+    },
+    {
+      "evidence_id": "E-0004",
+      "claim_id": "C004",
+      "I": 0.7866666666666666,
+      "A": 1.0,
+      "M": 0.72,
+      "P": 0.9199999999999999,
+      "T": 0.98,
+      "w": 0.5106662399999998,
+      "origin_id": "ORIG:src0001+src0002+src0003+src0006",
+      "anchors": [
+        {
+          "page": 0,
+          "block_id": "CIT0001"
+        },
+        {
+          "page": 0,
+          "block_id": "CIT0002"
+        },
+        {
+          "page": 0,
+          "block_id": "CIT0009"
+        },
+        {
+          "page": 0,
+          "block_id": "CIT0005"
+        }
+      ]
+    },
+    {
+      "evidence_id": "E-0005",
+      "claim_id": "C005",
+      "I": 0.7866666666666666,
+      "A": 1.0,
+      "M": 0.72,
+      "P": 0.9199999999999999,
+      "T": 0.98,
+      "w": 0.5106662399999998,
+      "origin_id": "ORIG:src0001+src0002+src0003+src0006",
+      "anchors": [
+        {
+          "page": 0,
+          "block_id": "CIT0001"
+        },
+        {
+          "page": 0,
+          "block_id": "CIT0002"
+        },
+        {
+          "page": 0,
+          "block_id": "CIT0009"
+        },
+        {
+          "page": 0,
+          "block_id": "CIT0005"
+        }
+      ]
+    },
+    {
+      "evidence_id": "E-0006",
+      "claim_id": "C006",
+      "I": 0.7866666666666667,
+      "A": 1.0,
+      "M": 0.72,
+      "P": 0.82,
+      "T": 0.98,
+      "w": 0.45515903999999996,
+      "origin_id": "ORIG:src0001+src0002+src0003+src0006",
+      "anchors": [
+        {
+          "page": 0,
+          "block_id": "CIT0001"
+        },
+        {
+          "page": 0,
+          "block_id": "CIT0009"
+        },
+        {
+          "page": 0,
+          "block_id": "CIT0002"
+        },
+        {
+          "page": 0,
+          "block_id": "CIT0005"
+        }
+      ]
+    },
+    {
+      "evidence_id": "E-0007",
+      "claim_id": "C007",
+      "I": 0.8366666666666667,
+      "A": 1.0,
+      "M": 0.72,
+      "P": 0.82,
+      "T": 0.98,
+      "w": 0.4840886399999999,
+      "origin_id": "ORIG:src0001+src0002+src0003+src0004",
+      "anchors": [
+        {
+          "page": 0,
+          "block_id": "CIT0001"
+        },
+        {
+          "page": 0,
+          "block_id": "CIT0009"
+        },
+        {
+          "page": 0,
+          "block_id": "CIT0002"
+        },
+        {
+          "page": 0,
+          "block_id": "CIT0003"
+        },
+        {
+          "page": 0,
+          "block_id": "CIT0005"
+        }
+      ]
+    },
+    {
+      "evidence_id": "E-0008",
+      "claim_id": "C008",
+      "I": 0.7866666666666666,
+      "A": 1.0,
+      "M": 0.72,
+      "P": 0.82,
+      "T": 0.98,
+      "w": 0.4551590399999999,
+      "origin_id": "ORIG:src0001+src0002+src0003+src0006",
+      "anchors": [
+        {
+          "page": 0,
+          "block_id": "CIT0001"
+        },
+        {
+          "page": 0,
+          "block_id": "CIT0009"
+        },
+        {
+          "page": 0,
+          "block_id": "CIT0002"
+        },
+        {
+          "page": 0,
+          "block_id": "CIT0005"
+        }
+      ]
+    },
+    {
+      "evidence_id": "E-0009",
+      "claim_id": "C009",
+      "I": 0.8366666666666667,
+      "A": 1.0,
+      "M": 0.72,
+      "P": 0.82,
+      "T": 0.98,
+      "w": 0.4840886399999999,
+      "origin_id": "ORIG:src0001+src0002+src0003+src0004",
+      "anchors": [
+        {
+          "page": 0,
+          "block_id": "CIT0001"
+        },
+        {
+          "page": 0,
+          "block_id": "CIT0009"
+        },
+        {
+          "page": 0,
+          "block_id": "CIT0002"
+        },
+        {
+          "page": 0,
+          "block_id": "CIT0005"
+        },
+        {
+          "page": 0,
+          "block_id": "CIT0003"
+        }
+      ]
+    },
+    {
+      "evidence_id": "E-0010",
+      "claim_id": "C010",
+      "I": 0.8366666666666667,
+      "A": 1.0,
+      "M": 0.72,
+      "P": 0.82,
+      "T": 0.98,
+      "w": 0.4840886399999999,
+      "origin_id": "ORIG:src0001+src0002+src0003+src0004",
+      "anchors": [
+        {
+          "page": 0,
+          "block_id": "CIT0001"
+        },
+        {
+          "page": 0,
+          "block_id": "CIT0009"
+        },
+        {
+          "page": 0,
+          "block_id": "CIT0002"
+        },
+        {
+          "page": 0,
+          "block_id": "CIT0005"
+        },
+        {
+          "page": 0,
+          "block_id": "CIT0003"
+        }
+      ]
+    }
+  ]
+}

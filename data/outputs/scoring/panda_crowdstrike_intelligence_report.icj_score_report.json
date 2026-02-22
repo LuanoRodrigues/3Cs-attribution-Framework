@@ -1,0 +1,3545 @@
+{
+  "icj_scoring_version": "v1",
+  "inputs": {
+    "document_title": "APT1: Exposing One of China's Cyber Espionage Units",
+    "document_publication_date": "2013-01-01",
+    "claims_count": 9,
+    "profile": "balanced"
+  },
+  "readiness_validation": {
+    "findings": []
+  },
+  "normalized": {
+    "sources": [
+      {
+        "source_id": "SRC0001",
+        "source_kind": "vendor",
+        "title": "APT1 Executive Summary and Key Findings",
+        "authors": [],
+        "authoring_org": "Mandiant",
+        "publisher": "Mandiant",
+        "date_published": "2013-01-01",
+        "url": "",
+        "domain": "",
+        "is_litigation_prepared": 0,
+        "is_single_source": 0,
+        "has_stated_conflict": 0,
+        "has_countervailing_detail": 0,
+        "cites": [],
+        "origin_signature": [
+          "src0001"
+        ]
+      }
+    ],
+    "artifacts": [
+      {
+        "artifact_id": "ART00001",
+        "artifact_type": "email",
+        "value": "van.dehaim@gmail.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00001",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00002",
+        "artifact_type": "domain",
+        "value": "gmail.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00002",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00003",
+        "artifact_type": "domain",
+        "value": "siseau.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00003",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00004",
+        "artifact_type": "domain",
+        "value": "vssigma.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00004",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00005",
+        "artifact_type": "domain",
+        "value": "anfoundation.us",
+        "location": {
+          "page": 0,
+          "block_id": "ART00005",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00006",
+        "artifact_type": "domain",
+        "value": "rwchateau.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00006",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00007",
+        "artifact_type": "domain",
+        "value": "succourtion.org",
+        "location": {
+          "page": 0,
+          "block_id": "ART00007",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00008",
+        "artifact_type": "email",
+        "value": "mike.johnson_mj@yahoo.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00008",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00009",
+        "artifact_type": "domain",
+        "value": "yahoo.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00009",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00010",
+        "artifact_type": "ip",
+        "value": "100.42.216.230",
+        "location": {
+          "page": 0,
+          "block_id": "ART00010",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00011",
+        "artifact_type": "domain",
+        "value": "news.decipherment.net",
+        "location": {
+          "page": 0,
+          "block_id": "ART00011",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00012",
+        "artifact_type": "domain",
+        "value": "res.decipherment.net",
+        "location": {
+          "page": 0,
+          "block_id": "ART00012",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00013",
+        "artifact_type": "domain",
+        "value": "spacenews.botanict.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00013",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00014",
+        "artifact_type": "domain",
+        "value": "spot.decipherment.net",
+        "location": {
+          "page": 0,
+          "block_id": "ART00014",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00015",
+        "artifact_type": "domain",
+        "value": "ujheadph.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00015",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00016",
+        "artifact_type": "domain",
+        "value": "chs.ujheadph.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00016",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00017",
+        "artifact_type": "domain",
+        "value": "imageone.ujheadph.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00017",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00018",
+        "artifact_type": "domain",
+        "value": "img.ujheadph.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00018",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00019",
+        "artifact_type": "domain",
+        "value": "klcg.ujheadph.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00019",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00020",
+        "artifact_type": "domain",
+        "value": "naimap.ujheadph.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00020",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00021",
+        "artifact_type": "domain",
+        "value": "neo.ujheadph.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00021",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00022",
+        "artifact_type": "domain",
+        "value": "newspace.ujheadph.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00022",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00023",
+        "artifact_type": "domain",
+        "value": "pasco.ujheadph.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00023",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00024",
+        "artifact_type": "domain",
+        "value": "decipherment.net",
+        "location": {
+          "page": 0,
+          "block_id": "ART00024",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00025",
+        "artifact_type": "domain",
+        "value": "botanict.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00025",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00026",
+        "artifact_type": "domain",
+        "value": "aolon1ine.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00026",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00027",
+        "artifact_type": "domain",
+        "value": "update8.firefoxupdata.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00027",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00028",
+        "artifact_type": "ip",
+        "value": "31.170.110.163",
+        "location": {
+          "page": 0,
+          "block_id": "ART00028",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00029",
+        "artifact_type": "domain",
+        "value": "strancorproduct.info",
+        "location": {
+          "page": 0,
+          "block_id": "ART00029",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00030",
+        "artifact_type": "url",
+        "value": "http://webcache.googleusercontent.com/search?q=cache:ZZyfzC1Y0UoJ:www.urlquery.net/report",
+        "location": {
+          "page": 0,
+          "block_id": "ART00030",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00031",
+        "artifact_type": "domain",
+        "value": "webcache.googleusercontent.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00031",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00032",
+        "artifact_type": "domain",
+        "value": "www.urlquery.net",
+        "location": {
+          "page": 0,
+          "block_id": "ART00032",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00033",
+        "artifact_type": "email",
+        "value": "cpyy@sina.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00033",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00034",
+        "artifact_type": "domain",
+        "value": "sina.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00034",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00035",
+        "artifact_type": "email",
+        "value": "cpyy@hotmail.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00035",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00036",
+        "artifact_type": "domain",
+        "value": "hotmail.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00036",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00037",
+        "artifact_type": "email",
+        "value": "cpyy.chen@gmail.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00037",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00038",
+        "artifact_type": "email",
+        "value": "cpyy@cpyy.net",
+        "location": {
+          "page": 0,
+          "block_id": "ART00038",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00039",
+        "artifact_type": "domain",
+        "value": "cpyy.net",
+        "location": {
+          "page": 0,
+          "block_id": "ART00039",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00040",
+        "artifact_type": "url",
+        "value": "http://cpiyy.blog.163.com/",
+        "location": {
+          "page": 0,
+          "block_id": "ART00040",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00041",
+        "artifact_type": "domain",
+        "value": "cpiyy.blog.163.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00041",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00042",
+        "artifact_type": "url",
+        "value": "http://www.tianya.cn/1569234/bbs",
+        "location": {
+          "page": 0,
+          "block_id": "ART00042",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00043",
+        "artifact_type": "domain",
+        "value": "www.tianya.cn",
+        "location": {
+          "page": 0,
+          "block_id": "ART00043",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00044",
+        "artifact_type": "domain",
+        "value": "163.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00044",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00045",
+        "artifact_type": "url",
+        "value": "http://bbs.csdn",
+        "location": {
+          "page": 0,
+          "block_id": "ART00045",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00046",
+        "artifact_type": "domain",
+        "value": "www.xcar.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00046",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00047",
+        "artifact_type": "domain",
+        "value": "cpyy.org",
+        "location": {
+          "page": 0,
+          "block_id": "ART00047",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00048",
+        "artifact_type": "domain",
+        "value": "rootkit.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00048",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00049",
+        "artifact_type": "ip",
+        "value": "218.242.252.214",
+        "location": {
+          "page": 0,
+          "block_id": "ART00049",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00050",
+        "artifact_type": "domain",
+        "value": "xfocus.net",
+        "location": {
+          "page": 0,
+          "block_id": "ART00050",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00051",
+        "artifact_type": "email",
+        "value": "xiaobai@openfind.com.cn",
+        "location": {
+          "page": 0,
+          "block_id": "ART00051",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00052",
+        "artifact_type": "domain",
+        "value": "openfind.com.cn",
+        "location": {
+          "page": 0,
+          "block_id": "ART00052",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00053",
+        "artifact_type": "domain",
+        "value": "checalla.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00053",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00054",
+        "artifact_type": "ip",
+        "value": "58.196.156.15",
+        "location": {
+          "page": 0,
+          "block_id": "ART00054",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00055",
+        "artifact_type": "domain",
+        "value": "www.xfocus.net",
+        "location": {
+          "page": 0,
+          "block_id": "ART00055",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00056",
+        "artifact_type": "url",
+        "value": "http://cpyy.vicp.net/",
+        "location": {
+          "page": 0,
+          "block_id": "ART00056",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00057",
+        "artifact_type": "domain",
+        "value": "cpyy.vicp.net",
+        "location": {
+          "page": 0,
+          "block_id": "ART00057",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00058",
+        "artifact_type": "url",
+        "value": "http://bbs.sjtu.edu.cn/bbsanc,path,/groups/GROUP_3/Security/D44039356/D69C6D2AC/D4C11F438/D6DB67E4E/DA69FF663/",
+        "location": {
+          "page": 0,
+          "block_id": "ART00058",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00059",
+        "artifact_type": "domain",
+        "value": "bbs.sjtu.edu.cn",
+        "location": {
+          "page": 0,
+          "block_id": "ART00059",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00060",
+        "artifact_type": "email",
+        "value": "httpchen@gmail.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00060",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00061",
+        "artifact_type": "url",
+        "value": "https://www.google.com/maps/place/31%C2%B017’18.0%22N+121%C2%B027’18.7%22E/@31.2882939,121.4554673,658m/",
+        "location": {
+          "page": 0,
+          "block_id": "ART00061",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00062",
+        "artifact_type": "domain",
+        "value": "www.google.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00062",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00063",
+        "artifact_type": "email",
+        "value": "https://www.google.com/maps/place/31%c2%b017’18.0%22n+121%c2%b027’18.7%22e/@31.2882939,121.4554673,658m",
+        "location": {
+          "page": 0,
+          "block_id": "ART00063",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00064",
+        "artifact_type": "url",
+        "value": "http://www.panoramio.com/user/3305909",
+        "location": {
+          "page": 0,
+          "block_id": "ART00064",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00065",
+        "artifact_type": "domain",
+        "value": "www.panoramio.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00065",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00066",
+        "artifact_type": "url",
+        "value": "http://project2049.net/documents/pla_third_department_sigint_cyber_stokes_lin_hsiao.pdf",
+        "location": {
+          "page": 0,
+          "block_id": "ART00066",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00067",
+        "artifact_type": "domain",
+        "value": "project2049.net",
+        "location": {
+          "page": 0,
+          "block_id": "ART00067",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00068",
+        "artifact_type": "file_name",
+        "value": "pla_third_department_sigint_cyber_stokes_lin_hsiao.pdf",
+        "location": {
+          "page": 0,
+          "block_id": "ART00068",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00069",
+        "artifact_type": "url",
+        "value": "http://www.dfxj.gov.cn/xjapp/wtzyps/wtlzy/wyyjysl/zhc/zyc/bd01d910153ffb4d0115a7c12f70042e.html",
+        "location": {
+          "page": 0,
+          "block_id": "ART00069",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00070",
+        "artifact_type": "domain",
+        "value": "www.dfxj.gov.cn",
+        "location": {
+          "page": 0,
+          "block_id": "ART00070",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00071",
+        "artifact_type": "hash_md5",
+        "value": "bd01d910153ffb4d0115a7c12f70042e",
+        "location": {
+          "page": 0,
+          "block_id": "ART00071",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00072",
+        "artifact_type": "url",
+        "value": "http://project2049.net/documents/china_electronic_intelligence_elint_satellite_developments_easton_stokes.pdf",
+        "location": {
+          "page": 0,
+          "block_id": "ART00072",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00073",
+        "artifact_type": "file_name",
+        "value": "china_electronic_intelligence_elint_satellite_developments_easton_stokes.pdf",
+        "location": {
+          "page": 0,
+          "block_id": "ART00073",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00074",
+        "artifact_type": "hash_md5",
+        "value": "bc4e9dad71b844dd3233cfbbb96c1bd3",
+        "location": {
+          "page": 0,
+          "block_id": "ART00074",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00075",
+        "artifact_type": "hash_md5",
+        "value": "a76419a2fca12427c887895e12a3442b",
+        "location": {
+          "page": 0,
+          "block_id": "ART00075",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00076",
+        "artifact_type": "url",
+        "value": "http://msdn.microsoft.com/en-us/library/windows/desktop/bb759853(v=vs.85).aspx",
+        "location": {
+          "page": 0,
+          "block_id": "ART00076",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00077",
+        "artifact_type": "domain",
+        "value": "msdn.microsoft.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00077",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00078",
+        "artifact_type": "hash_md5",
+        "value": "687424f0923df9049cc3a56c685eb9a5",
+        "location": {
+          "page": 0,
+          "block_id": "ART00078",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00079",
+        "artifact_type": "url",
+        "value": "http://www.microsoft.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00079",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00080",
+        "artifact_type": "domain",
+        "value": "www.microsoft.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00080",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00081",
+        "artifact_type": "url",
+        "value": "http://login.stream-media.net/files/xx11/index.asp?95027775",
+        "location": {
+          "page": 0,
+          "block_id": "ART00081",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00082",
+        "artifact_type": "domain",
+        "value": "login.stream-media.net",
+        "location": {
+          "page": 0,
+          "block_id": "ART00082",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00083",
+        "artifact_type": "hash_md5",
+        "value": "b54e91c234ec0e739ce429f47a317313",
+        "location": {
+          "page": 0,
+          "block_id": "ART00083",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00084",
+        "artifact_type": "hash_md5",
+        "value": "544fca6eb8181f163e2768c81f2ba0b3",
+        "location": {
+          "page": 0,
+          "block_id": "ART00084",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00085",
+        "artifact_type": "domain",
+        "value": "file.anyoffice.info",
+        "location": {
+          "page": 0,
+          "block_id": "ART00085",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00086",
+        "artifact_type": "url",
+        "value": "http://securityxploded.com/iepasswordsecrets.php",
+        "location": {
+          "page": 0,
+          "block_id": "ART00086",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00087",
+        "artifact_type": "domain",
+        "value": "securityxploded.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00087",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00088",
+        "artifact_type": "hash_md5",
+        "value": "4c50457c35e2033b3a03fcbb4adac7b7",
+        "location": {
+          "page": 0,
+          "block_id": "ART00088",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00089",
+        "artifact_type": "hash_md5",
+        "value": "38a2a6782e1af29ca8cb691cf0d29a0d",
+        "location": {
+          "page": 0,
+          "block_id": "ART00089",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00090",
+        "artifact_type": "hash_md5",
+        "value": "08c7b5501df060ccfc3aa5c8c41b452f",
+        "location": {
+          "page": 0,
+          "block_id": "ART00090",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00091",
+        "artifact_type": "email",
+        "value": "intelligence@crowdstrike.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00091",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00092",
+        "artifact_type": "domain",
+        "value": "crowdstrike.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00092",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00093",
+        "artifact_type": "email",
+        "value": "sales@crowdstrike.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00093",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00094",
+        "artifact_type": "domain",
+        "value": "www.crowdstrike.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00094",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      }
+    ],
+    "evidence_items": [
+      {
+        "evidence_id": "E-0001",
+        "evidence_kind": "technical_artifact",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "infrastructure"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.62,
+          "P": 0.52,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00066"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00030"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00040"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00042"
+          }
+        ],
+        "probative_weight": 0.11721335599999999,
+        "claim_id": "C001"
+      },
+      {
+        "evidence_id": "E-0002",
+        "evidence_kind": "technical_artifact",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "infrastructure"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.65,
+          "P": 0.52,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00002"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00003"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00004"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00005"
+          }
+        ],
+        "probative_weight": 0.12288496999999998,
+        "claim_id": "C001"
+      },
+      {
+        "evidence_id": "E-0003",
+        "evidence_kind": "dataset",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "ip"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.56,
+          "P": 0.52,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00010"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00028"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00049"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00054"
+          }
+        ],
+        "probative_weight": 0.10587012799999998,
+        "claim_id": "C001"
+      },
+      {
+        "evidence_id": "E-0004",
+        "evidence_kind": "dataset",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "communications"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.6,
+          "P": 0.52,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00001"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00008"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00033"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00035"
+          }
+        ],
+        "probative_weight": 0.11343227999999995,
+        "claim_id": "C001"
+      },
+      {
+        "evidence_id": "E-0005",
+        "evidence_kind": "dataset",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "communications"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.6,
+          "P": 0.62,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00037"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00033"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00035"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00038"
+          }
+        ],
+        "probative_weight": 0.13524617999999994,
+        "claim_id": "C002"
+      },
+      {
+        "evidence_id": "E-0006",
+        "evidence_kind": "technical_artifact",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "infrastructure"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.62,
+          "P": 0.62,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00066"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00056"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00058"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00072"
+          }
+        ],
+        "probative_weight": 0.13975438599999995,
+        "claim_id": "C002"
+      },
+      {
+        "evidence_id": "E-0007",
+        "evidence_kind": "technical_artifact",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "infrastructure"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.65,
+          "P": 0.62,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00039"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00047"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00057"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00092"
+          }
+        ],
+        "probative_weight": 0.14651669499999997,
+        "claim_id": "C002"
+      },
+      {
+        "evidence_id": "E-0008",
+        "evidence_kind": "dataset",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "ip"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.56,
+          "P": 0.62,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00010"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00028"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00049"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00054"
+          }
+        ],
+        "probative_weight": 0.12622976799999996,
+        "claim_id": "C002"
+      },
+      {
+        "evidence_id": "E-0009",
+        "evidence_kind": "dataset",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "communications"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.6,
+          "P": 0.62,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00001"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00008"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00033"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00035"
+          }
+        ],
+        "probative_weight": 0.13524617999999994,
+        "claim_id": "C003"
+      },
+      {
+        "evidence_id": "E-0010",
+        "evidence_kind": "technical_artifact",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "infrastructure"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.65,
+          "P": 0.62,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00002"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00003"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00004"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00005"
+          }
+        ],
+        "probative_weight": 0.14651669499999997,
+        "claim_id": "C003"
+      },
+      {
+        "evidence_id": "E-0011",
+        "evidence_kind": "technical_artifact",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "infrastructure"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.62,
+          "P": 0.62,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00030"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00040"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00042"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00045"
+          }
+        ],
+        "probative_weight": 0.13975438599999995,
+        "claim_id": "C003"
+      },
+      {
+        "evidence_id": "E-0012",
+        "evidence_kind": "dataset",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "ip"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.56,
+          "P": 0.62,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00010"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00028"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00049"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00054"
+          }
+        ],
+        "probative_weight": 0.12622976799999996,
+        "claim_id": "C003"
+      },
+      {
+        "evidence_id": "E-0013",
+        "evidence_kind": "technical_artifact",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "infrastructure"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.62,
+          "P": 0.62,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00030"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00072"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00040"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00042"
+          }
+        ],
+        "probative_weight": 0.13975438599999995,
+        "claim_id": "C004"
+      },
+      {
+        "evidence_id": "E-0014",
+        "evidence_kind": "technical_artifact",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "infrastructure"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.65,
+          "P": 0.62,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00002"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00003"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00004"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00005"
+          }
+        ],
+        "probative_weight": 0.14651669499999997,
+        "claim_id": "C004"
+      },
+      {
+        "evidence_id": "E-0015",
+        "evidence_kind": "dataset",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "ip"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.56,
+          "P": 0.62,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00010"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00028"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00049"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00054"
+          }
+        ],
+        "probative_weight": 0.12622976799999996,
+        "claim_id": "C004"
+      },
+      {
+        "evidence_id": "E-0016",
+        "evidence_kind": "dataset",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "communications"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.6,
+          "P": 0.62,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00001"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00008"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00033"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00035"
+          }
+        ],
+        "probative_weight": 0.13524617999999994,
+        "claim_id": "C004"
+      },
+      {
+        "evidence_id": "E-0017",
+        "evidence_kind": "technical_artifact",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "infrastructure"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.62,
+          "P": 0.62,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00079"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00081"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00030"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00040"
+          }
+        ],
+        "probative_weight": 0.13975438599999995,
+        "claim_id": "C005"
+      },
+      {
+        "evidence_id": "E-0018",
+        "evidence_kind": "technical_artifact",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "infrastructure"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.65,
+          "P": 0.62,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00080"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00082"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00002"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00003"
+          }
+        ],
+        "probative_weight": 0.14651669499999997,
+        "claim_id": "C005"
+      },
+      {
+        "evidence_id": "E-0019",
+        "evidence_kind": "technical_artifact",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "malware"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.78,
+          "P": 0.62,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00078"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00083"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00071"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00074"
+          }
+        ],
+        "probative_weight": 0.17582003399999996,
+        "claim_id": "C005"
+      },
+      {
+        "evidence_id": "E-0020",
+        "evidence_kind": "dataset",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "communications"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.6,
+          "P": 0.62,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00001"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00008"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00033"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00035"
+          }
+        ],
+        "probative_weight": 0.13524617999999994,
+        "claim_id": "C005"
+      },
+      {
+        "evidence_id": "E-0021",
+        "evidence_kind": "dataset",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "ip"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.56,
+          "P": 0.62,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00010"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00028"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00049"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00054"
+          }
+        ],
+        "probative_weight": 0.12622976799999996,
+        "claim_id": "C005"
+      },
+      {
+        "evidence_id": "E-0022",
+        "evidence_kind": "technical_artifact",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "infrastructure"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.62,
+          "P": 0.52,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00072"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00030"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00040"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00042"
+          }
+        ],
+        "probative_weight": 0.11721335599999999,
+        "claim_id": "C006"
+      },
+      {
+        "evidence_id": "E-0023",
+        "evidence_kind": "dataset",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "communications"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.6,
+          "P": 0.52,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00001"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00008"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00033"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00035"
+          }
+        ],
+        "probative_weight": 0.11343227999999995,
+        "claim_id": "C006"
+      },
+      {
+        "evidence_id": "E-0024",
+        "evidence_kind": "technical_artifact",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "infrastructure"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.65,
+          "P": 0.52,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00002"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00003"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00004"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00005"
+          }
+        ],
+        "probative_weight": 0.12288496999999998,
+        "claim_id": "C006"
+      },
+      {
+        "evidence_id": "E-0025",
+        "evidence_kind": "dataset",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "ip"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.56,
+          "P": 0.52,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00010"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00028"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00049"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00054"
+          }
+        ],
+        "probative_weight": 0.10587012799999998,
+        "claim_id": "C006"
+      },
+      {
+        "evidence_id": "E-0026",
+        "evidence_kind": "dataset",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "communications"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.6,
+          "P": 0.52,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00001"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00008"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00033"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00035"
+          }
+        ],
+        "probative_weight": 0.11343227999999995,
+        "claim_id": "C007"
+      },
+      {
+        "evidence_id": "E-0027",
+        "evidence_kind": "technical_artifact",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "infrastructure"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.65,
+          "P": 0.52,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00002"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00003"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00004"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00005"
+          }
+        ],
+        "probative_weight": 0.12288496999999998,
+        "claim_id": "C007"
+      },
+      {
+        "evidence_id": "E-0028",
+        "evidence_kind": "technical_artifact",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "infrastructure"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.62,
+          "P": 0.52,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00030"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00040"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00042"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00045"
+          }
+        ],
+        "probative_weight": 0.11721335599999999,
+        "claim_id": "C007"
+      },
+      {
+        "evidence_id": "E-0029",
+        "evidence_kind": "dataset",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "ip"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.56,
+          "P": 0.52,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00010"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00028"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00049"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00054"
+          }
+        ],
+        "probative_weight": 0.10587012799999998,
+        "claim_id": "C007"
+      },
+      {
+        "evidence_id": "E-0030",
+        "evidence_kind": "technical_artifact",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "infrastructure"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.62,
+          "P": 0.52,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00030"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00040"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00042"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00045"
+          }
+        ],
+        "probative_weight": 0.11721335599999999,
+        "claim_id": "C008"
+      },
+      {
+        "evidence_id": "E-0031",
+        "evidence_kind": "dataset",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "communications"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.6,
+          "P": 0.52,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00001"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00008"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00033"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00035"
+          }
+        ],
+        "probative_weight": 0.11343227999999995,
+        "claim_id": "C008"
+      },
+      {
+        "evidence_id": "E-0032",
+        "evidence_kind": "technical_artifact",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "infrastructure"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.65,
+          "P": 0.52,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00002"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00003"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00004"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00005"
+          }
+        ],
+        "probative_weight": 0.12288496999999998,
+        "claim_id": "C008"
+      },
+      {
+        "evidence_id": "E-0033",
+        "evidence_kind": "dataset",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "ip"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.56,
+          "P": 0.52,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00010"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00028"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00049"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00054"
+          }
+        ],
+        "probative_weight": 0.10587012799999998,
+        "claim_id": "C008"
+      },
+      {
+        "evidence_id": "E-0034",
+        "evidence_kind": "dataset",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "communications"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.6,
+          "P": 0.52,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00001"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00008"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00033"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00035"
+          }
+        ],
+        "probative_weight": 0.11343227999999995,
+        "claim_id": "C009"
+      },
+      {
+        "evidence_id": "E-0035",
+        "evidence_kind": "technical_artifact",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "infrastructure"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.65,
+          "P": 0.52,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00002"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00003"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00004"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00005"
+          }
+        ],
+        "probative_weight": 0.12288496999999998,
+        "claim_id": "C009"
+      },
+      {
+        "evidence_id": "E-0036",
+        "evidence_kind": "technical_artifact",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "infrastructure"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.62,
+          "P": 0.52,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00030"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00040"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00042"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00045"
+          }
+        ],
+        "probative_weight": 0.11721335599999999,
+        "claim_id": "C009"
+      },
+      {
+        "evidence_id": "E-0037",
+        "evidence_kind": "dataset",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "ip"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.56,
+          "P": 0.52,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00010"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00028"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00049"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00054"
+          }
+        ],
+        "probative_weight": 0.10587012799999998,
+        "claim_id": "C009"
+      }
+    ],
+    "claims": [
+      {
+        "claim_id": "C001",
+        "claim_kind": "intrusion_set_attribution",
+        "claim_text": "to expose a previously undisclosed PLA unit involved in cyberespionage against Western technology companies.",
+        "actor": {
+          "name": "APT1",
+          "level": "None"
+        },
+        "object": {
+          "operation": "intrusion_set",
+          "time_start": "",
+          "time_end": ""
+        },
+        "citations": [],
+        "evidence_ids": [
+          "E-0001",
+          "E-0002",
+          "E-0003",
+          "E-0004"
+        ],
+        "claim_features": {
+          "coherence": 0.48,
+          "confidence_discipline": 0.5700000000000001,
+          "compliance_mapping": 1.0,
+          "allegation_gravity": "medium"
+        }
+      },
+      {
+        "claim_id": "C002",
+        "claim_kind": "mixed",
+        "claim_text": "#### There are several pieces of evidence to indicate that the activity tracked by CrowdStrike as PUTTER PANDA is attributable to a set of actors based in China, operating on behalf of the Chinese People’s Liberation Army (PLA). Specifically, an actor known as cpyy (Chen Ping) appears to have been involved in a number of historical PUTTER PANDA campaigns, during which time he was likely working in Shanghai within the 12th Bureau, 3rd General Staff Department (GSD). PUTTER PANDA has several connections to actors and infrastructure tied to COMMENT PANDA, a group previously attributed to Unit 61398 of the PLA.",
+        "actor": {
+          "name": "APT1 campaign",
+          "level": "None"
+        },
+        "object": {
+          "operation": "mixed",
+          "time_start": "",
+          "time_end": ""
+        },
+        "citations": [],
+        "evidence_ids": [
+          "E-0005",
+          "E-0006",
+          "E-0007",
+          "E-0008"
+        ],
+        "claim_features": {
+          "coherence": 0.6,
+          "confidence_discipline": 0.5700000000000001,
+          "compliance_mapping": 0.3,
+          "allegation_gravity": "medium"
+        }
+      },
+      {
+        "claim_id": "C003",
+        "claim_kind": "mixed",
+        "claim_text": "This particular unit is believed to hack into victim companies throughout the world in order to steal corporate trade",
+        "actor": {
+          "name": "APT1 campaign",
+          "level": "None"
+        },
+        "object": {
+          "operation": "mixed",
+          "time_start": "",
+          "time_end": ""
+        },
+        "citations": [],
+        "evidence_ids": [
+          "E-0009",
+          "E-0010",
+          "E-0011",
+          "E-0012"
+        ],
+        "claim_features": {
+          "coherence": 0.6,
+          "confidence_discipline": 0.5700000000000001,
+          "compliance_mapping": 0.3,
+          "allegation_gravity": "medium"
+        }
+      },
+      {
+        "claim_id": "C004",
+        "claim_kind": "intrusion_set_attribution",
+        "claim_text": "approximately half of which operate out of China and are believed to be tied to the Chinese government. This report is part",
+        "actor": {
+          "name": "APT1",
+          "level": "None"
+        },
+        "object": {
+          "operation": "intrusion_set",
+          "time_start": "",
+          "time_end": ""
+        },
+        "citations": [],
+        "evidence_ids": [
+          "E-0013",
+          "E-0014",
+          "E-0015",
+          "E-0016"
+        ],
+        "claim_features": {
+          "coherence": 0.6,
+          "confidence_discipline": 0.5700000000000001,
+          "compliance_mapping": 0.3,
+          "allegation_gravity": "medium"
+        }
+      },
+      {
+        "claim_id": "C005",
+        "claim_kind": "mixed",
+        "claim_text": "such as “down file success”. Although these are not displayed to the victim, they were likely used by the",
+        "actor": {
+          "name": "APT1 campaign",
+          "level": "None"
+        },
+        "object": {
+          "operation": "mixed",
+          "time_start": "",
+          "time_end": ""
+        },
+        "citations": [],
+        "evidence_ids": [
+          "E-0017",
+          "E-0018",
+          "E-0019",
+          "E-0020",
+          "E-0021"
+        ],
+        "claim_features": {
+          "coherence": 0.6,
+          "confidence_discipline": 0.5700000000000001,
+          "compliance_mapping": 0.3,
+          "allegation_gravity": "medium"
+        }
+      },
+      {
+        "claim_id": "C006",
+        "claim_kind": "mixed",
+        "claim_text": "government and corporations. Rather, China’s decade-long economic espionage campaign is massive and unrelenting.",
+        "actor": {
+          "name": "APT1 campaign",
+          "level": "None"
+        },
+        "object": {
+          "operation": "mixed",
+          "time_start": "",
+          "time_end": ""
+        },
+        "citations": [],
+        "evidence_ids": [
+          "E-0022",
+          "E-0023",
+          "E-0024",
+          "E-0025"
+        ],
+        "claim_features": {
+          "coherence": 0.48,
+          "confidence_discipline": 0.5700000000000001,
+          "compliance_mapping": 0.3,
+          "allegation_gravity": "medium"
+        }
+      },
+      {
+        "claim_id": "C007",
+        "claim_kind": "mixed",
+        "claim_text": "Through widespread espionage campaigns, Chinese threat actors are targeting companies and governments in every",
+        "actor": {
+          "name": "APT1 campaign",
+          "level": "None"
+        },
+        "object": {
+          "operation": "mixed",
+          "time_start": "",
+          "time_end": ""
+        },
+        "citations": [],
+        "evidence_ids": [
+          "E-0026",
+          "E-0027",
+          "E-0028",
+          "E-0029"
+        ],
+        "claim_features": {
+          "coherence": 0.48,
+          "confidence_discipline": 0.5700000000000001,
+          "compliance_mapping": 0.3,
+          "allegation_gravity": "medium"
+        }
+      },
+      {
+        "claim_id": "C008",
+        "claim_kind": "mixed",
+        "claim_text": "The campaign that is the subject of this report further points to espionage activity outside of Unit 61398, and reveals",
+        "actor": {
+          "name": "APT1 campaign",
+          "level": "None"
+        },
+        "object": {
+          "operation": "mixed",
+          "time_start": "",
+          "time_end": ""
+        },
+        "citations": [],
+        "evidence_ids": [
+          "E-0030",
+          "E-0031",
+          "E-0032",
+          "E-0033"
+        ],
+        "claim_features": {
+          "coherence": 0.48,
+          "confidence_discipline": 0.5700000000000001,
+          "compliance_mapping": 0.3,
+          "allegation_gravity": "medium"
+        }
+      },
+      {
+        "claim_id": "C009",
+        "claim_kind": "mixed",
+        "claim_text": "Targeted economic espionage campaigns compromise technological advantage, diminish global competition, and ultimately",
+        "actor": {
+          "name": "APT1 campaign",
+          "level": "None"
+        },
+        "object": {
+          "operation": "mixed",
+          "time_start": "",
+          "time_end": ""
+        },
+        "citations": [],
+        "evidence_ids": [
+          "E-0034",
+          "E-0035",
+          "E-0036",
+          "E-0037"
+        ],
+        "claim_features": {
+          "coherence": 0.48,
+          "confidence_discipline": 0.5700000000000001,
+          "compliance_mapping": 0.3,
+          "allegation_gravity": "medium"
+        }
+      }
+    ]
+  },
+  "scoring": {
+    "claim_scores": [
+      {
+        "claim_id": "C001",
+        "evidence_count": 4,
+        "source_count": 1,
+        "unique_origin_count": 1,
+        "source_unique_origin_count": 1,
+        "evidence_weight_aggregate": 0.3862029087665644,
+        "origin_cluster_weights": {
+          "ORIG:src0001": 0.386203
+        },
+        "penalty_multiplier": 0.85,
+        "penalties": [
+          {
+            "name": "single_source",
+            "factor": 0.85
+          }
+        ],
+        "final_score": 0.328272,
+        "recovered_reference_count": 0,
+        "data_contribution_score": 1.0,
+        "data_contribution_multiplier": 1.0,
+        "core_3c": {
+          "chain_of_custody_provenance": {
+            "score": 0.041241,
+            "band_0_5": 0
+          },
+          "credibility_independence": {
+            "score": 0.5499,
+            "band_0_5": 3
+          },
+          "corroboration_convergence": {
+            "score": 0.633279,
+            "band_0_5": 3
+          }
+        },
+        "chain_provenance_diagnostics": {
+          "context_completeness": 1.0,
+          "integrity_signal": 0.0,
+          "lineage_quality": 0.8,
+          "report_derived_ratio": 0.0,
+          "artifact_traceability": 0.0,
+          "provenance_quality": 0.51,
+          "anchor_quality": 1.0,
+          "chain_disclosure_quality": 0.4,
+          "claim_anchor_alignment": 1.0,
+          "artifact_proximity_hierarchy": 1.0,
+          "artifact_proximity_tiers": {
+            "direct": 1.0,
+            "contextual": 0.0,
+            "local": 0.0,
+            "remote": 0.0
+          }
+        },
+        "claim_support_coverage": 1.0,
+        "six_c_vector": {
+          "credibility": 0.11485,
+          "corroboration": 0.646203,
+          "coherence": 0.48,
+          "confidence_discipline": 0.57,
+          "compliance_mapping": 1.0
+        }
+      },
+      {
+        "claim_id": "C002",
+        "evidence_count": 4,
+        "source_count": 1,
+        "unique_origin_count": 1,
+        "source_unique_origin_count": 1,
+        "evidence_weight_aggregate": 0.44523732786075176,
+        "origin_cluster_weights": {
+          "ORIG:src0001": 0.445237
+        },
+        "penalty_multiplier": 0.85,
+        "penalties": [
+          {
+            "name": "single_source",
+            "factor": 0.85
+          }
+        ],
+        "final_score": 0.378452,
+        "recovered_reference_count": 0,
+        "data_contribution_score": 1.0,
+        "data_contribution_multiplier": 1.0,
+        "core_3c": {
+          "chain_of_custody_provenance": {
+            "score": 0.044201,
+            "band_0_5": 0
+          },
+          "credibility_independence": {
+            "score": 0.4977,
+            "band_0_5": 2
+          },
+          "corroboration_convergence": {
+            "score": 0.691133,
+            "band_0_5": 3
+          }
+        },
+        "chain_provenance_diagnostics": {
+          "context_completeness": 1.0,
+          "integrity_signal": 0.0,
+          "lineage_quality": 0.8,
+          "report_derived_ratio": 0.0,
+          "artifact_traceability": 0.0,
+          "provenance_quality": 0.51,
+          "anchor_quality": 1.0,
+          "chain_disclosure_quality": 0.8,
+          "claim_anchor_alignment": 1.0,
+          "artifact_proximity_hierarchy": 1.0,
+          "artifact_proximity_tiers": {
+            "direct": 1.0,
+            "contextual": 0.0,
+            "local": 0.0,
+            "remote": 0.0
+          }
+        },
+        "claim_support_coverage": 1.0,
+        "six_c_vector": {
+          "credibility": 0.136937,
+          "corroboration": 0.705237,
+          "coherence": 0.6,
+          "confidence_discipline": 0.57,
+          "compliance_mapping": 0.3
+        }
+      },
+      {
+        "claim_id": "C003",
+        "evidence_count": 4,
+        "source_count": 1,
+        "unique_origin_count": 1,
+        "source_unique_origin_count": 1,
+        "evidence_weight_aggregate": 0.44523732786075176,
+        "origin_cluster_weights": {
+          "ORIG:src0001": 0.445237
+        },
+        "penalty_multiplier": 0.85,
+        "penalties": [
+          {
+            "name": "single_source",
+            "factor": 0.85
+          }
+        ],
+        "final_score": 0.378452,
+        "recovered_reference_count": 0,
+        "data_contribution_score": 1.0,
+        "data_contribution_multiplier": 1.0,
+        "core_3c": {
+          "chain_of_custody_provenance": {
+            "score": 0.044201,
+            "band_0_5": 0
+          },
+          "credibility_independence": {
+            "score": 0.4977,
+            "band_0_5": 2
+          },
+          "corroboration_convergence": {
+            "score": 0.691133,
+            "band_0_5": 3
+          }
+        },
+        "chain_provenance_diagnostics": {
+          "context_completeness": 1.0,
+          "integrity_signal": 0.0,
+          "lineage_quality": 0.8,
+          "report_derived_ratio": 0.0,
+          "artifact_traceability": 0.0,
+          "provenance_quality": 0.51,
+          "anchor_quality": 1.0,
+          "chain_disclosure_quality": 0.8,
+          "claim_anchor_alignment": 1.0,
+          "artifact_proximity_hierarchy": 1.0,
+          "artifact_proximity_tiers": {
+            "direct": 1.0,
+            "contextual": 0.0,
+            "local": 0.0,
+            "remote": 0.0
+          }
+        },
+        "claim_support_coverage": 1.0,
+        "six_c_vector": {
+          "credibility": 0.136937,
+          "corroboration": 0.705237,
+          "coherence": 0.6,
+          "confidence_discipline": 0.57,
+          "compliance_mapping": 0.3
+        }
+      },
+      {
+        "claim_id": "C004",
+        "evidence_count": 4,
+        "source_count": 1,
+        "unique_origin_count": 1,
+        "source_unique_origin_count": 1,
+        "evidence_weight_aggregate": 0.44523732786075176,
+        "origin_cluster_weights": {
+          "ORIG:src0001": 0.445237
+        },
+        "penalty_multiplier": 0.85,
+        "penalties": [
+          {
+            "name": "single_source",
+            "factor": 0.85
+          }
+        ],
+        "final_score": 0.378452,
+        "recovered_reference_count": 0,
+        "data_contribution_score": 1.0,
+        "data_contribution_multiplier": 1.0,
+        "core_3c": {
+          "chain_of_custody_provenance": {
+            "score": 0.044201,
+            "band_0_5": 0
+          },
+          "credibility_independence": {
+            "score": 0.4977,
+            "band_0_5": 2
+          },
+          "corroboration_convergence": {
+            "score": 0.691133,
+            "band_0_5": 3
+          }
+        },
+        "chain_provenance_diagnostics": {
+          "context_completeness": 1.0,
+          "integrity_signal": 0.0,
+          "lineage_quality": 0.8,
+          "report_derived_ratio": 0.0,
+          "artifact_traceability": 0.0,
+          "provenance_quality": 0.51,
+          "anchor_quality": 1.0,
+          "chain_disclosure_quality": 0.8,
+          "claim_anchor_alignment": 1.0,
+          "artifact_proximity_hierarchy": 1.0,
+          "artifact_proximity_tiers": {
+            "direct": 1.0,
+            "contextual": 0.0,
+            "local": 0.0,
+            "remote": 0.0
+          }
+        },
+        "claim_support_coverage": 1.0,
+        "six_c_vector": {
+          "credibility": 0.136937,
+          "corroboration": 0.705237,
+          "coherence": 0.6,
+          "confidence_discipline": 0.57,
+          "compliance_mapping": 0.3
+        }
+      },
+      {
+        "claim_id": "C005",
+        "evidence_count": 5,
+        "source_count": 1,
+        "unique_origin_count": 1,
+        "source_unique_origin_count": 1,
+        "evidence_weight_aggregate": 0.5427757197382053,
+        "origin_cluster_weights": {
+          "ORIG:src0001": 0.542776
+        },
+        "penalty_multiplier": 0.85,
+        "penalties": [
+          {
+            "name": "single_source",
+            "factor": 0.85
+          }
+        ],
+        "final_score": 0.461359,
+        "recovered_reference_count": 0,
+        "data_contribution_score": 1.0,
+        "data_contribution_multiplier": 1.0,
+        "core_3c": {
+          "chain_of_custody_provenance": {
+            "score": 0.044201,
+            "band_0_5": 0
+          },
+          "credibility_independence": {
+            "score": 0.4977,
+            "band_0_5": 2
+          },
+          "corroboration_convergence": {
+            "score": 0.78672,
+            "band_0_5": 4
+          }
+        },
+        "chain_provenance_diagnostics": {
+          "context_completeness": 1.0,
+          "integrity_signal": 0.0,
+          "lineage_quality": 0.8,
+          "report_derived_ratio": 0.0,
+          "artifact_traceability": 0.0,
+          "provenance_quality": 0.51,
+          "anchor_quality": 1.0,
+          "chain_disclosure_quality": 0.8,
+          "claim_anchor_alignment": 1.0,
+          "artifact_proximity_hierarchy": 1.0,
+          "artifact_proximity_tiers": {
+            "direct": 1.0,
+            "contextual": 0.0,
+            "local": 0.0,
+            "remote": 0.0
+          }
+        },
+        "claim_support_coverage": 1.0,
+        "six_c_vector": {
+          "credibility": 0.144713,
+          "corroboration": 0.802776,
+          "coherence": 0.6,
+          "confidence_discipline": 0.57,
+          "compliance_mapping": 0.3
+        }
+      },
+      {
+        "claim_id": "C006",
+        "evidence_count": 4,
+        "source_count": 1,
+        "unique_origin_count": 1,
+        "source_unique_origin_count": 1,
+        "evidence_weight_aggregate": 0.3862029087665644,
+        "origin_cluster_weights": {
+          "ORIG:src0001": 0.386203
+        },
+        "penalty_multiplier": 0.85,
+        "penalties": [
+          {
+            "name": "single_source",
+            "factor": 0.85
+          }
+        ],
+        "final_score": 0.328272,
+        "recovered_reference_count": 0,
+        "data_contribution_score": 1.0,
+        "data_contribution_multiplier": 1.0,
+        "core_3c": {
+          "chain_of_custody_provenance": {
+            "score": 0.041241,
+            "band_0_5": 0
+          },
+          "credibility_independence": {
+            "score": 0.4869,
+            "band_0_5": 2
+          },
+          "corroboration_convergence": {
+            "score": 0.633279,
+            "band_0_5": 3
+          }
+        },
+        "chain_provenance_diagnostics": {
+          "context_completeness": 1.0,
+          "integrity_signal": 0.0,
+          "lineage_quality": 0.8,
+          "report_derived_ratio": 0.0,
+          "artifact_traceability": 0.0,
+          "provenance_quality": 0.51,
+          "anchor_quality": 1.0,
+          "chain_disclosure_quality": 0.4,
+          "claim_anchor_alignment": 1.0,
+          "artifact_proximity_hierarchy": 1.0,
+          "artifact_proximity_tiers": {
+            "direct": 1.0,
+            "contextual": 0.0,
+            "local": 0.0,
+            "remote": 0.0
+          }
+        },
+        "claim_support_coverage": 1.0,
+        "six_c_vector": {
+          "credibility": 0.11485,
+          "corroboration": 0.646203,
+          "coherence": 0.48,
+          "confidence_discipline": 0.57,
+          "compliance_mapping": 0.3
+        }
+      },
+      {
+        "claim_id": "C007",
+        "evidence_count": 4,
+        "source_count": 1,
+        "unique_origin_count": 1,
+        "source_unique_origin_count": 1,
+        "evidence_weight_aggregate": 0.3862029087665644,
+        "origin_cluster_weights": {
+          "ORIG:src0001": 0.386203
+        },
+        "penalty_multiplier": 0.85,
+        "penalties": [
+          {
+            "name": "single_source",
+            "factor": 0.85
+          }
+        ],
+        "final_score": 0.328272,
+        "recovered_reference_count": 0,
+        "data_contribution_score": 1.0,
+        "data_contribution_multiplier": 1.0,
+        "core_3c": {
+          "chain_of_custody_provenance": {
+            "score": 0.041241,
+            "band_0_5": 0
+          },
+          "credibility_independence": {
+            "score": 0.4869,
+            "band_0_5": 2
+          },
+          "corroboration_convergence": {
+            "score": 0.633279,
+            "band_0_5": 3
+          }
+        },
+        "chain_provenance_diagnostics": {
+          "context_completeness": 1.0,
+          "integrity_signal": 0.0,
+          "lineage_quality": 0.8,
+          "report_derived_ratio": 0.0,
+          "artifact_traceability": 0.0,
+          "provenance_quality": 0.51,
+          "anchor_quality": 1.0,
+          "chain_disclosure_quality": 0.4,
+          "claim_anchor_alignment": 1.0,
+          "artifact_proximity_hierarchy": 1.0,
+          "artifact_proximity_tiers": {
+            "direct": 1.0,
+            "contextual": 0.0,
+            "local": 0.0,
+            "remote": 0.0
+          }
+        },
+        "claim_support_coverage": 1.0,
+        "six_c_vector": {
+          "credibility": 0.11485,
+          "corroboration": 0.646203,
+          "coherence": 0.48,
+          "confidence_discipline": 0.57,
+          "compliance_mapping": 0.3
+        }
+      },
+      {
+        "claim_id": "C008",
+        "evidence_count": 4,
+        "source_count": 1,
+        "unique_origin_count": 1,
+        "source_unique_origin_count": 1,
+        "evidence_weight_aggregate": 0.3862029087665644,
+        "origin_cluster_weights": {
+          "ORIG:src0001": 0.386203
+        },
+        "penalty_multiplier": 0.85,
+        "penalties": [
+          {
+            "name": "single_source",
+            "factor": 0.85
+          }
+        ],
+        "final_score": 0.328272,
+        "recovered_reference_count": 0,
+        "data_contribution_score": 1.0,
+        "data_contribution_multiplier": 1.0,
+        "core_3c": {
+          "chain_of_custody_provenance": {
+            "score": 0.041241,
+            "band_0_5": 0
+          },
+          "credibility_independence": {
+            "score": 0.4869,
+            "band_0_5": 2
+          },
+          "corroboration_convergence": {
+            "score": 0.633279,
+            "band_0_5": 3
+          }
+        },
+        "chain_provenance_diagnostics": {
+          "context_completeness": 1.0,
+          "integrity_signal": 0.0,
+          "lineage_quality": 0.8,
+          "report_derived_ratio": 0.0,
+          "artifact_traceability": 0.0,
+          "provenance_quality": 0.51,
+          "anchor_quality": 1.0,
+          "chain_disclosure_quality": 0.4,
+          "claim_anchor_alignment": 1.0,
+          "artifact_proximity_hierarchy": 1.0,
+          "artifact_proximity_tiers": {
+            "direct": 1.0,
+            "contextual": 0.0,
+            "local": 0.0,
+            "remote": 0.0
+          }
+        },
+        "claim_support_coverage": 1.0,
+        "six_c_vector": {
+          "credibility": 0.11485,
+          "corroboration": 0.646203,
+          "coherence": 0.48,
+          "confidence_discipline": 0.57,
+          "compliance_mapping": 0.3
+        }
+      },
+      {
+        "claim_id": "C009",
+        "evidence_count": 4,
+        "source_count": 1,
+        "unique_origin_count": 1,
+        "source_unique_origin_count": 1,
+        "evidence_weight_aggregate": 0.3862029087665644,
+        "origin_cluster_weights": {
+          "ORIG:src0001": 0.386203
+        },
+        "penalty_multiplier": 0.85,
+        "penalties": [
+          {
+            "name": "single_source",
+            "factor": 0.85
+          }
+        ],
+        "final_score": 0.328272,
+        "recovered_reference_count": 0,
+        "data_contribution_score": 1.0,
+        "data_contribution_multiplier": 1.0,
+        "core_3c": {
+          "chain_of_custody_provenance": {
+            "score": 0.041241,
+            "band_0_5": 0
+          },
+          "credibility_independence": {
+            "score": 0.4869,
+            "band_0_5": 2
+          },
+          "corroboration_convergence": {
+            "score": 0.633279,
+            "band_0_5": 3
+          }
+        },
+        "chain_provenance_diagnostics": {
+          "context_completeness": 1.0,
+          "integrity_signal": 0.0,
+          "lineage_quality": 0.8,
+          "report_derived_ratio": 0.0,
+          "artifact_traceability": 0.0,
+          "provenance_quality": 0.51,
+          "anchor_quality": 1.0,
+          "chain_disclosure_quality": 0.4,
+          "claim_anchor_alignment": 1.0,
+          "artifact_proximity_hierarchy": 1.0,
+          "artifact_proximity_tiers": {
+            "direct": 1.0,
+            "contextual": 0.0,
+            "local": 0.0,
+            "remote": 0.0
+          }
+        },
+        "claim_support_coverage": 1.0,
+        "six_c_vector": {
+          "credibility": 0.11485,
+          "corroboration": 0.646203,
+          "coherence": 0.48,
+          "confidence_discipline": 0.57,
+          "compliance_mapping": 0.3
+        }
+      }
+    ],
+    "document": {
+      "profile": "balanced",
+      "headline_claim_id": "C001",
+      "headline_vector": {
+        "credibility": 0.11485,
+        "corroboration": 0.646203,
+        "coherence": 0.48,
+        "confidence_discipline": 0.57,
+        "compliance_mapping": 1.0
+      },
+      "coverage_vector_median": {
+        "credibility": 0.11485,
+        "corroboration": 0.646203,
+        "coherence": 0.48,
+        "confidence_discipline": 0.57,
+        "compliance_mapping": 0.3
+      },
+      "overall_claim_score_mean": 0.359786,
+      "overall_claim_score_geometric": 0.357478,
+      "seriousness_gate": {
+        "passed": true,
+        "thresholds": {
+          "overall_claim_score_mean_min": 0.1,
+          "credibility_independence_median_min": 0.4,
+          "corroboration_convergence_median_min": 0.2
+        },
+        "observed": {
+          "overall_claim_score_mean": 0.359786,
+          "credibility_independence_median": 0.4977,
+          "corroboration_convergence_median": 0.633279
+        }
+      }
+    }
+  }
+}

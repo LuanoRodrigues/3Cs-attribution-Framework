@@ -1,0 +1,1828 @@
+{
+  "report_type": "icj_score_report",
+  "report_version": "v4",
+  "document_scores": {
+    "belief_weighted_0_100": 0.08,
+    "grounding_avg_0_100": 53.36,
+    "custody_avg_0_100": 40.65,
+    "credibility_avg_0_100": 0.0,
+    "corroboration_avg_0_100": 0.0,
+    "confidence_avg_0_100": 40.62,
+    "clarity_avg_0_100": 42.34,
+    "citation_coverage_sources_0_1": 0.0,
+    "sources_total": 1,
+    "citations_total": 0,
+    "credibility_composite_avg_0_100": 0.0,
+    "bootstrap_95ci": {
+      "belief_weighted_0_100": {
+        "mean": 0.08,
+        "ci95_low": 0.06,
+        "ci95_high": 0.12
+      },
+      "custody_avg_0_100": {
+        "mean": 40.65,
+        "ci95_low": 32.04,
+        "ci95_high": 51.45
+      },
+      "credibility_avg_0_100": {
+        "mean": 0.0,
+        "ci95_low": 0.0,
+        "ci95_high": 0.0
+      },
+      "corroboration_avg_0_100": {
+        "mean": 0.0,
+        "ci95_low": 0.0,
+        "ci95_high": 0.0
+      },
+      "clarity_avg_0_100": {
+        "mean": 42.34,
+        "ci95_low": 38.71,
+        "ci95_high": 46.49
+      }
+    }
+  },
+  "claims": [
+    {
+      "claim_id": "C001",
+      "allegation_gravity": "medium",
+      "required_threshold_0_1": 0.7,
+      "gravity_weight": 1.2,
+      "claim_statement": {
+        "anchor_id": "C001-A001",
+        "text": "to expose a previously undisclosed PLA unit involved in cyberespionage against Western technology companies."
+      },
+      "evidence": {
+        "evidence_anchor_ids": [
+          "P000-B01",
+          "P000-B06",
+          "P000-B05",
+          "P000-B07"
+        ],
+        "claim_sources": []
+      },
+      "support_anchor_ids": [
+        "P000-B01",
+        "P000-B06",
+        "P000-B05",
+        "P000-B07"
+      ],
+      "sources_supporting_claim": [],
+      "scores": {
+        "grounding_0_100": 50.94,
+        "custody_0_100": 30.77,
+        "credibility_0_100": 0.0,
+        "corroboration_0_100": 0.0,
+        "confidence_0_100": 38.48,
+        "clarity_0_100": 39.51,
+        "evidence_weight_0_100": 19.42,
+        "evidence_support_0_1": 0.0767,
+        "belief_0_100": 0.06,
+        "credibility_raw_0_100": 0.0,
+        "corroboration_raw_0_100": 0.0
+      },
+      "score_details": {
+        "grounding": {
+          "evidence_anchor_count": 4,
+          "evidence_citation_count": 0,
+          "evidence_source_count": 0,
+          "anchor_coverage": 0.6667,
+          "nondup": 0.9637,
+          "evidence_marker_strength": 0.75,
+          "citation_coverage": 0.0,
+          "source_coverage": 0.0
+        },
+        "custody": {
+          "provenance": 0.3,
+          "integrity": 0.3333,
+          "time_anchors": 0.6667,
+          "artifact_identifiers": 0.0,
+          "versioning": 0.25
+        },
+        "credibility": {
+          "raw_source_count": 0,
+          "eligible_source_count": 0,
+          "excluded_sources_count": 0,
+          "source_type_counts": {},
+          "quality_mean": 0.0,
+          "quality_top": 0.0,
+          "source_diversity": 0.0,
+          "domain_independence": 0.0,
+          "single_source_penalty": 1.0,
+          "has_high_cred_source": 0,
+          "high_cred_threshold": 0.9,
+          "claim_coverage_factor": 0.0,
+          "credible_claims_count": 0,
+          "claims_total": 9,
+          "credible_claims_ratio": 0.0,
+          "credible_claims_weighted_ratio": 0.0
+        },
+        "corroboration": {
+          "raw_source_count": 0,
+          "eligible_source_count": 0,
+          "excluded_sources_count": 0,
+          "source_weight_sum": 0.0,
+          "excluded_source_ids": [],
+          "source_type_counts": {},
+          "source_count": 0,
+          "unique_domain_count": 0,
+          "domain_independence": 0.0,
+          "multi_source_factor": 0.0,
+          "domain_independence_effective": 0.0,
+          "source_quantity": 0.0,
+          "source_domain_independence": 0.0,
+          "modality_diversity": 0.0,
+          "modality_diversity_effective": 0.0,
+          "crosscheck_language": 0.0,
+          "crosscheck_language_effective": 0.0,
+          "corroboration_method": 0.0,
+          "claim_coverage_factor": 0.0,
+          "corroborated_claims_count": 0,
+          "claims_total": 9,
+          "corroborated_claims_ratio": 0.0,
+          "corroborated_claims_weighted_ratio": 0.0
+        },
+        "confidence": {
+          "explicitness": 0.5,
+          "uncertainty_transparency": 0.25,
+          "stated_confidence": 0.65,
+          "calibration": 0.4314
+        },
+        "clarity": {
+          "act_specificity": 0.35,
+          "actor_specificity": 0.7833,
+          "link_specificity": 0.4,
+          "act_claim": 0.0,
+          "act_evidence": 1.0,
+          "actor_claim": 0.6667,
+          "actor_evidence": 1.0,
+          "link_claim": 0.0,
+          "link_evidence": 1.0,
+          "state_actor_signal": 0.7,
+          "organ_path_clarity": 0.505,
+          "control_path_clarity": 0.211,
+          "due_diligence_path_clarity": 0.0,
+          "legal_path_max": 0.505,
+          "legal_path_coverage": 0.0,
+          "state_claim_flag": 0,
+          "state_link_evidence_flag": 1,
+          "state_actor_gap_penalty": 0.0,
+          "legal_path_gap_penalty": 0.0,
+          "questions": {
+            "attribution_clarity": {
+              "question": "Is attribution to State X for attack Z clear?",
+              "score_0_1": 0.495,
+              "answer": "partial"
+            },
+            "responsibility_mode_clarity": {
+              "question": "Is the state-responsibility mode clear (organ, control, or due diligence)?",
+              "score_0_1": 0.505,
+              "answer": "partial"
+            },
+            "due_diligence_clarity": {
+              "question": "Is state knowledge plus failure to prevent (due diligence) clear?",
+              "score_0_1": 0.0,
+              "answer": "no"
+            }
+          },
+          "responsibility_modes": {
+            "conducted_by_state_organs": {
+              "score_0_1": 0.505,
+              "answer": "partial"
+            },
+            "non_state_actors_under_state_control": {
+              "score_0_1": 0.211,
+              "answer": "no"
+            },
+            "state_due_diligence_failure": {
+              "score_0_1": 0.0,
+              "answer": "no"
+            }
+          }
+        },
+        "statistical_calibration_v4": {
+          "reliability_factor": 0.5113,
+          "effective_evidence_n": 2.0,
+          "shrinkage_lambda": {
+            "custody": 0.4762,
+            "credibility": 0.4167,
+            "corroboration": 0.3846,
+            "clarity": 0.5263,
+            "confidence": 0.5263
+          },
+          "prior_scores_0_1": {
+            "custody": 0.4794,
+            "credibility": 0.0,
+            "corroboration": 0.0,
+            "clarity": 0.4525,
+            "confidence": 0.4398
+          },
+          "saturation_factors": {
+            "chain_quantity_score": 0.2667,
+            "chain_saturation": 0.4136,
+            "corroboration_source_quantity": 0.0,
+            "corroboration_saturation": 0.0,
+            "credibility_quality_gate": 0.0
+          }
+        }
+      },
+      "scores_raw_v3": {
+        "grounding_0_100": 50.94,
+        "custody_0_100": 31.5,
+        "credibility_0_100": 0.0,
+        "corroboration_0_100": 0.0,
+        "confidence_0_100": 40.44,
+        "clarity_0_100": 41.43,
+        "evidence_weight_0_100": 19.64,
+        "evidence_support_0_1": 0.0814,
+        "belief_0_100": 0.06,
+        "credibility_raw_0_100": 0.0,
+        "corroboration_raw_0_100": 0.0
+      }
+    },
+    {
+      "claim_id": "C002",
+      "allegation_gravity": "medium",
+      "required_threshold_0_1": 0.7,
+      "gravity_weight": 1.2,
+      "claim_statement": {
+        "anchor_id": "C002-A001",
+        "text": "#### There are several pieces of evidence to indicate that the activity tracked by CrowdStrike as PUTTER PANDA is attributable to a set of actors based in China, operating on behalf of the Chinese People’s Liberation Army (PLA). Specifically, an actor known as cpyy (Chen Ping) appears to have been involved in a number of historical PUTTER PANDA campaigns, during which time he was likely working in Shanghai within the 12th Bureau, 3rd General Staff Department (GSD). PUTTER PANDA has several connections to actors and infrastructure tied to COMMENT PANDA, a group previously attributed to Unit 61398 of the PLA."
+      },
+      "evidence": {
+        "evidence_anchor_ids": [
+          "P000-B06",
+          "P000-B01",
+          "P000-B05",
+          "P000-B12",
+          "P000-B02",
+          "P000-B08",
+          "P000-B10",
+          "P000-B09"
+        ],
+        "claim_sources": []
+      },
+      "support_anchor_ids": [
+        "P000-B06",
+        "P000-B01",
+        "P000-B05",
+        "P000-B12",
+        "P000-B02",
+        "P000-B08",
+        "P000-B10",
+        "P000-B09"
+      ],
+      "sources_supporting_claim": [],
+      "scores": {
+        "grounding_0_100": 61.69,
+        "custody_0_100": 73.77,
+        "credibility_0_100": 0.0,
+        "corroboration_0_100": 0.0,
+        "confidence_0_100": 47.43,
+        "clarity_0_100": 56.1,
+        "evidence_weight_0_100": 34.47,
+        "evidence_support_0_1": 0.1934,
+        "belief_0_100": 0.23,
+        "credibility_raw_0_100": 0.0,
+        "corroboration_raw_0_100": 0.0
+      },
+      "score_details": {
+        "grounding": {
+          "evidence_anchor_count": 8,
+          "evidence_citation_count": 0,
+          "evidence_source_count": 0,
+          "anchor_coverage": 1.0,
+          "nondup": 0.9125,
+          "evidence_marker_strength": 0.9219,
+          "citation_coverage": 0.0,
+          "source_coverage": 0.0
+        },
+        "custody": {
+          "provenance": 1.0,
+          "integrity": 1.0,
+          "time_anchors": 1.0,
+          "artifact_identifiers": 1.0,
+          "versioning": 1.0
+        },
+        "credibility": {
+          "raw_source_count": 0,
+          "eligible_source_count": 0,
+          "excluded_sources_count": 0,
+          "source_type_counts": {},
+          "quality_mean": 0.0,
+          "quality_top": 0.0,
+          "source_diversity": 0.0,
+          "domain_independence": 0.0,
+          "single_source_penalty": 1.0,
+          "has_high_cred_source": 0,
+          "high_cred_threshold": 0.9,
+          "claim_coverage_factor": 0.0,
+          "credible_claims_count": 0,
+          "claims_total": 9,
+          "credible_claims_ratio": 0.0,
+          "credible_claims_weighted_ratio": 0.0
+        },
+        "corroboration": {
+          "raw_source_count": 0,
+          "eligible_source_count": 0,
+          "excluded_sources_count": 0,
+          "source_weight_sum": 0.0,
+          "excluded_source_ids": [],
+          "source_type_counts": {},
+          "source_count": 0,
+          "unique_domain_count": 0,
+          "domain_independence": 0.0,
+          "multi_source_factor": 0.0,
+          "domain_independence_effective": 0.0,
+          "source_quantity": 0.0,
+          "source_domain_independence": 0.0,
+          "modality_diversity": 0.0,
+          "modality_diversity_effective": 0.0,
+          "crosscheck_language": 0.0,
+          "crosscheck_language_effective": 0.0,
+          "corroboration_method": 0.0,
+          "claim_coverage_factor": 0.0,
+          "corroborated_claims_count": 0,
+          "claims_total": 9,
+          "corroborated_claims_ratio": 0.0,
+          "corroborated_claims_weighted_ratio": 0.0
+        },
+        "confidence": {
+          "explicitness": 0.5,
+          "uncertainty_transparency": 0.5,
+          "stated_confidence": 0.65,
+          "calibration": 0.6348
+        },
+        "clarity": {
+          "act_specificity": 0.35,
+          "actor_specificity": 1.0,
+          "link_specificity": 1.0,
+          "act_claim": 0.0,
+          "act_evidence": 1.0,
+          "actor_claim": 1.0,
+          "actor_evidence": 1.0,
+          "link_claim": 1.0,
+          "link_evidence": 1.0,
+          "state_actor_signal": 0.85,
+          "organ_path_clarity": 0.745,
+          "control_path_clarity": 0.3498,
+          "due_diligence_path_clarity": 0.0405,
+          "legal_path_max": 0.745,
+          "legal_path_coverage": 0.3333,
+          "state_claim_flag": 1,
+          "state_link_evidence_flag": 1,
+          "state_actor_gap_penalty": 0.0,
+          "legal_path_gap_penalty": 0.0,
+          "questions": {
+            "attribution_clarity": {
+              "question": "Is attribution to State X for attack Z clear?",
+              "score_0_1": 0.74,
+              "answer": "yes"
+            },
+            "responsibility_mode_clarity": {
+              "question": "Is the state-responsibility mode clear (organ, control, or due diligence)?",
+              "score_0_1": 0.745,
+              "answer": "yes"
+            },
+            "due_diligence_clarity": {
+              "question": "Is state knowledge plus failure to prevent (due diligence) clear?",
+              "score_0_1": 0.0405,
+              "answer": "no"
+            }
+          },
+          "responsibility_modes": {
+            "conducted_by_state_organs": {
+              "score_0_1": 0.745,
+              "answer": "yes"
+            },
+            "non_state_actors_under_state_control": {
+              "score_0_1": 0.3498,
+              "answer": "no"
+            },
+            "state_due_diligence_failure": {
+              "score_0_1": 0.0405,
+              "answer": "no"
+            }
+          }
+        },
+        "statistical_calibration_v4": {
+          "reliability_factor": 0.7327,
+          "effective_evidence_n": 4.0,
+          "shrinkage_lambda": {
+            "custody": 0.6452,
+            "credibility": 0.5882,
+            "corroboration": 0.5556,
+            "clarity": 0.6897,
+            "confidence": 0.6897
+          },
+          "prior_scores_0_1": {
+            "custody": 0.4794,
+            "credibility": 0.0,
+            "corroboration": 0.0,
+            "clarity": 0.4525,
+            "confidence": 0.4398
+          },
+          "saturation_factors": {
+            "chain_quantity_score": 1.0,
+            "chain_saturation": 1.0,
+            "corroboration_source_quantity": 0.0,
+            "corroboration_saturation": 0.0,
+            "credibility_quality_gate": 0.0
+          }
+        }
+      },
+      "scores_raw_v3": {
+        "grounding_0_100": 61.69,
+        "custody_0_100": 100.0,
+        "credibility_0_100": 0.0,
+        "corroboration_0_100": 0.0,
+        "confidence_0_100": 54.04,
+        "clarity_0_100": 67.27,
+        "evidence_weight_0_100": 42.34,
+        "evidence_support_0_1": 0.2848,
+        "belief_0_100": 0.68,
+        "credibility_raw_0_100": 0.0,
+        "corroboration_raw_0_100": 0.0
+      }
+    },
+    {
+      "claim_id": "C003",
+      "allegation_gravity": "medium",
+      "required_threshold_0_1": 0.7,
+      "gravity_weight": 1.2,
+      "claim_statement": {
+        "anchor_id": "C003-A001",
+        "text": "This particular unit is believed to hack into victim companies throughout the world in order to steal corporate trade"
+      },
+      "evidence": {
+        "evidence_anchor_ids": [
+          "P000-B01",
+          "P000-B12"
+        ],
+        "claim_sources": []
+      },
+      "support_anchor_ids": [
+        "P000-B01",
+        "P000-B12"
+      ],
+      "sources_supporting_claim": [],
+      "scores": {
+        "grounding_0_100": 45.15,
+        "custody_0_100": 42.22,
+        "credibility_0_100": 0.0,
+        "corroboration_0_100": 0.0,
+        "confidence_0_100": 42.13,
+        "clarity_0_100": 36.39,
+        "evidence_weight_0_100": 21.7,
+        "evidence_support_0_1": 0.079,
+        "belief_0_100": 0.06,
+        "credibility_raw_0_100": 0.0,
+        "corroboration_raw_0_100": 0.0
+      },
+      "score_details": {
+        "grounding": {
+          "evidence_anchor_count": 2,
+          "evidence_citation_count": 0,
+          "evidence_source_count": 0,
+          "anchor_coverage": 0.3333,
+          "nondup": 0.9659,
+          "evidence_marker_strength": 0.875,
+          "citation_coverage": 0.0,
+          "source_coverage": 0.0
+        },
+        "custody": {
+          "provenance": 0.2,
+          "integrity": 0.3333,
+          "time_anchors": 0.5,
+          "artifact_identifiers": 1.0,
+          "versioning": 0.75
+        },
+        "credibility": {
+          "raw_source_count": 0,
+          "eligible_source_count": 0,
+          "excluded_sources_count": 0,
+          "source_type_counts": {},
+          "quality_mean": 0.0,
+          "quality_top": 0.0,
+          "source_diversity": 0.0,
+          "domain_independence": 0.0,
+          "single_source_penalty": 1.0,
+          "has_high_cred_source": 0,
+          "high_cred_threshold": 0.9,
+          "claim_coverage_factor": 0.0,
+          "credible_claims_count": 0,
+          "claims_total": 9,
+          "credible_claims_ratio": 0.0,
+          "credible_claims_weighted_ratio": 0.0
+        },
+        "corroboration": {
+          "raw_source_count": 0,
+          "eligible_source_count": 0,
+          "excluded_sources_count": 0,
+          "source_weight_sum": 0.0,
+          "excluded_source_ids": [],
+          "source_type_counts": {},
+          "source_count": 0,
+          "unique_domain_count": 0,
+          "domain_independence": 0.0,
+          "multi_source_factor": 0.0,
+          "domain_independence_effective": 0.0,
+          "source_quantity": 0.0,
+          "source_domain_independence": 0.0,
+          "modality_diversity": 0.0,
+          "modality_diversity_effective": 0.0,
+          "crosscheck_language": 0.0,
+          "crosscheck_language_effective": 0.0,
+          "corroboration_method": 0.0,
+          "claim_coverage_factor": 0.0,
+          "corroborated_claims_count": 0,
+          "claims_total": 9,
+          "corroborated_claims_ratio": 0.0,
+          "corroborated_claims_weighted_ratio": 0.0
+        },
+        "confidence": {
+          "explicitness": 0.5,
+          "uncertainty_transparency": 0.5,
+          "stated_confidence": 0.65,
+          "calibration": 0.4068
+        },
+        "clarity": {
+          "act_specificity": 0.2333,
+          "actor_specificity": 0.5667,
+          "link_specificity": 0.0667,
+          "act_claim": 0.0,
+          "act_evidence": 0.6667,
+          "actor_claim": 0.3333,
+          "actor_evidence": 1.0,
+          "link_claim": 0.0,
+          "link_evidence": 0.1667,
+          "state_actor_signal": 0.55,
+          "organ_path_clarity": 0.31,
+          "control_path_clarity": 0.1375,
+          "due_diligence_path_clarity": 0.0,
+          "legal_path_max": 0.31,
+          "legal_path_coverage": 0.0,
+          "state_claim_flag": 0,
+          "state_link_evidence_flag": 1,
+          "state_actor_gap_penalty": 0.0,
+          "legal_path_gap_penalty": 0.0,
+          "questions": {
+            "attribution_clarity": {
+              "question": "Is attribution to State X for attack Z clear?",
+              "score_0_1": 0.2833,
+              "answer": "no"
+            },
+            "responsibility_mode_clarity": {
+              "question": "Is the state-responsibility mode clear (organ, control, or due diligence)?",
+              "score_0_1": 0.31,
+              "answer": "no"
+            },
+            "due_diligence_clarity": {
+              "question": "Is state knowledge plus failure to prevent (due diligence) clear?",
+              "score_0_1": 0.0,
+              "answer": "no"
+            }
+          },
+          "responsibility_modes": {
+            "conducted_by_state_organs": {
+              "score_0_1": 0.31,
+              "answer": "no"
+            },
+            "non_state_actors_under_state_control": {
+              "score_0_1": 0.1375,
+              "answer": "no"
+            },
+            "state_due_diligence_failure": {
+              "score_0_1": 0.0,
+              "answer": "no"
+            }
+          }
+        },
+        "statistical_calibration_v4": {
+          "reliability_factor": 0.4911,
+          "effective_evidence_n": 1.0,
+          "shrinkage_lambda": {
+            "custody": 0.3125,
+            "credibility": 0.2632,
+            "corroboration": 0.2381,
+            "clarity": 0.3571,
+            "confidence": 0.3571
+          },
+          "prior_scores_0_1": {
+            "custody": 0.4794,
+            "credibility": 0.0,
+            "corroboration": 0.0,
+            "clarity": 0.4525,
+            "confidence": 0.4398
+          },
+          "saturation_factors": {
+            "chain_quantity_score": 0.7333,
+            "chain_saturation": 0.8519,
+            "corroboration_source_quantity": 0.0,
+            "corroboration_saturation": 0.0,
+            "credibility_quality_gate": 0.0
+          }
+        }
+      },
+      "scores_raw_v3": {
+        "grounding_0_100": 45.15,
+        "custody_0_100": 46.0,
+        "credibility_0_100": 0.0,
+        "corroboration_0_100": 0.0,
+        "confidence_0_100": 47.2,
+        "clarity_0_100": 24.87,
+        "evidence_weight_0_100": 22.83,
+        "evidence_support_0_1": 0.0568,
+        "belief_0_100": 0.04,
+        "credibility_raw_0_100": 0.0,
+        "corroboration_raw_0_100": 0.0
+      }
+    },
+    {
+      "claim_id": "C004",
+      "allegation_gravity": "medium",
+      "required_threshold_0_1": 0.7,
+      "gravity_weight": 1.2,
+      "claim_statement": {
+        "anchor_id": "C004-A001",
+        "text": "approximately half of which operate out of China and are believed to be tied to the Chinese government. This report is part"
+      },
+      "evidence": {
+        "evidence_anchor_ids": [
+          "P000-B02",
+          "P000-B06",
+          "P000-B05",
+          "P000-B01",
+          "P000-B07"
+        ],
+        "claim_sources": []
+      },
+      "support_anchor_ids": [
+        "P000-B02",
+        "P000-B06",
+        "P000-B05",
+        "P000-B01",
+        "P000-B07"
+      ],
+      "sources_supporting_claim": [],
+      "scores": {
+        "grounding_0_100": 55.24,
+        "custody_0_100": 33.74,
+        "credibility_0_100": 0.0,
+        "corroboration_0_100": 0.0,
+        "confidence_0_100": 38.72,
+        "clarity_0_100": 42.43,
+        "evidence_weight_0_100": 21.17,
+        "evidence_support_0_1": 0.0898,
+        "belief_0_100": 0.07,
+        "credibility_raw_0_100": 0.0,
+        "corroboration_raw_0_100": 0.0
+      },
+      "score_details": {
+        "grounding": {
+          "evidence_anchor_count": 5,
+          "evidence_citation_count": 0,
+          "evidence_source_count": 0,
+          "anchor_coverage": 0.8333,
+          "nondup": 0.9455,
+          "evidence_marker_strength": 0.775,
+          "citation_coverage": 0.0,
+          "source_coverage": 0.0
+        },
+        "custody": {
+          "provenance": 0.4,
+          "integrity": 0.5,
+          "time_anchors": 0.6667,
+          "artifact_identifiers": 0.0,
+          "versioning": 0.25
+        },
+        "credibility": {
+          "raw_source_count": 0,
+          "eligible_source_count": 0,
+          "excluded_sources_count": 0,
+          "source_type_counts": {},
+          "quality_mean": 0.0,
+          "quality_top": 0.0,
+          "source_diversity": 0.0,
+          "domain_independence": 0.0,
+          "single_source_penalty": 1.0,
+          "has_high_cred_source": 0,
+          "high_cred_threshold": 0.9,
+          "claim_coverage_factor": 0.0,
+          "credible_claims_count": 0,
+          "claims_total": 9,
+          "credible_claims_ratio": 0.0,
+          "credible_claims_weighted_ratio": 0.0
+        },
+        "corroboration": {
+          "raw_source_count": 0,
+          "eligible_source_count": 0,
+          "excluded_sources_count": 0,
+          "source_weight_sum": 0.0,
+          "excluded_source_ids": [],
+          "source_type_counts": {},
+          "source_count": 0,
+          "unique_domain_count": 0,
+          "domain_independence": 0.0,
+          "multi_source_factor": 0.0,
+          "domain_independence_effective": 0.0,
+          "source_quantity": 0.0,
+          "source_domain_independence": 0.0,
+          "modality_diversity": 0.0,
+          "modality_diversity_effective": 0.0,
+          "crosscheck_language": 0.0,
+          "crosscheck_language_effective": 0.0,
+          "corroboration_method": 0.0,
+          "claim_coverage_factor": 0.0,
+          "corroborated_claims_count": 0,
+          "claims_total": 9,
+          "corroborated_claims_ratio": 0.0,
+          "corroborated_claims_weighted_ratio": 0.0
+        },
+        "confidence": {
+          "explicitness": 0.5,
+          "uncertainty_transparency": 0.25,
+          "stated_confidence": 0.65,
+          "calibration": 0.4593
+        },
+        "clarity": {
+          "act_specificity": 0.35,
+          "actor_specificity": 0.5667,
+          "link_specificity": 0.6,
+          "act_claim": 0.0,
+          "act_evidence": 1.0,
+          "actor_claim": 0.3333,
+          "actor_evidence": 1.0,
+          "link_claim": 0.3333,
+          "link_evidence": 1.0,
+          "state_actor_signal": 0.7,
+          "organ_path_clarity": 0.565,
+          "control_path_clarity": 0.211,
+          "due_diligence_path_clarity": 0.0405,
+          "legal_path_max": 0.565,
+          "legal_path_coverage": 0.3333,
+          "state_claim_flag": 1,
+          "state_link_evidence_flag": 1,
+          "state_actor_gap_penalty": 0.0,
+          "legal_path_gap_penalty": 0.0,
+          "questions": {
+            "attribution_clarity": {
+              "question": "Is attribution to State X for attack Z clear?",
+              "score_0_1": 0.49,
+              "answer": "partial"
+            },
+            "responsibility_mode_clarity": {
+              "question": "Is the state-responsibility mode clear (organ, control, or due diligence)?",
+              "score_0_1": 0.565,
+              "answer": "partial"
+            },
+            "due_diligence_clarity": {
+              "question": "Is state knowledge plus failure to prevent (due diligence) clear?",
+              "score_0_1": 0.0405,
+              "answer": "no"
+            }
+          },
+          "responsibility_modes": {
+            "conducted_by_state_organs": {
+              "score_0_1": 0.565,
+              "answer": "partial"
+            },
+            "non_state_actors_under_state_control": {
+              "score_0_1": 0.211,
+              "answer": "no"
+            },
+            "state_due_diligence_failure": {
+              "score_0_1": 0.0405,
+              "answer": "no"
+            }
+          }
+        },
+        "statistical_calibration_v4": {
+          "reliability_factor": 0.5607,
+          "effective_evidence_n": 2.5,
+          "shrinkage_lambda": {
+            "custody": 0.5319,
+            "credibility": 0.4717,
+            "corroboration": 0.4386,
+            "clarity": 0.5814,
+            "confidence": 0.5814
+          },
+          "prior_scores_0_1": {
+            "custody": 0.4794,
+            "credibility": 0.0,
+            "corroboration": 0.0,
+            "clarity": 0.4525,
+            "confidence": 0.4398
+          },
+          "saturation_factors": {
+            "chain_quantity_score": 0.3333,
+            "chain_saturation": 0.495,
+            "corroboration_source_quantity": 0.0,
+            "corroboration_saturation": 0.0,
+            "credibility_quality_gate": 0.0
+          }
+        }
+      },
+      "scores_raw_v3": {
+        "grounding_0_100": 55.24,
+        "custody_0_100": 39.5,
+        "credibility_0_100": 0.0,
+        "corroboration_0_100": 0.0,
+        "confidence_0_100": 41.28,
+        "clarity_0_100": 47.73,
+        "evidence_weight_0_100": 22.9,
+        "evidence_support_0_1": 0.1093,
+        "belief_0_100": 0.08,
+        "credibility_raw_0_100": 0.0,
+        "corroboration_raw_0_100": 0.0
+      }
+    },
+    {
+      "claim_id": "C005",
+      "allegation_gravity": "medium",
+      "required_threshold_0_1": 0.7,
+      "gravity_weight": 1.2,
+      "claim_statement": {
+        "anchor_id": "C005-A001",
+        "text": "such as “down file success”. Although these are not displayed to the victim, they were likely used by the"
+      },
+      "evidence": {
+        "evidence_anchor_ids": [
+          "P000-B06",
+          "P000-B10",
+          "P000-B12",
+          "P000-B11",
+          "P000-B09"
+        ],
+        "claim_sources": []
+      },
+      "support_anchor_ids": [
+        "P000-B06",
+        "P000-B10",
+        "P000-B12",
+        "P000-B11",
+        "P000-B09"
+      ],
+      "sources_supporting_claim": [],
+      "scores": {
+        "grounding_0_100": 58.29,
+        "custody_0_100": 59.61,
+        "credibility_0_100": 0.0,
+        "corroboration_0_100": 0.0,
+        "confidence_0_100": 43.43,
+        "clarity_0_100": 34.08,
+        "evidence_weight_0_100": 29.54,
+        "evidence_support_0_1": 0.1007,
+        "belief_0_100": 0.08,
+        "credibility_raw_0_100": 0.0,
+        "corroboration_raw_0_100": 0.0
+      },
+      "score_details": {
+        "grounding": {
+          "evidence_anchor_count": 5,
+          "evidence_citation_count": 0,
+          "evidence_source_count": 0,
+          "anchor_coverage": 0.8333,
+          "nondup": 0.973,
+          "evidence_marker_strength": 0.9,
+          "citation_coverage": 0.0,
+          "source_coverage": 0.0
+        },
+        "custody": {
+          "provenance": 0.7,
+          "integrity": 1.0,
+          "time_anchors": 0.5,
+          "artifact_identifiers": 1.0,
+          "versioning": 1.0
+        },
+        "credibility": {
+          "raw_source_count": 0,
+          "eligible_source_count": 0,
+          "excluded_sources_count": 0,
+          "source_type_counts": {},
+          "quality_mean": 0.0,
+          "quality_top": 0.0,
+          "source_diversity": 0.0,
+          "domain_independence": 0.0,
+          "single_source_penalty": 1.0,
+          "has_high_cred_source": 0,
+          "high_cred_threshold": 0.9,
+          "claim_coverage_factor": 0.0,
+          "credible_claims_count": 0,
+          "claims_total": 9,
+          "credible_claims_ratio": 0.0,
+          "credible_claims_weighted_ratio": 0.0
+        },
+        "corroboration": {
+          "raw_source_count": 0,
+          "eligible_source_count": 0,
+          "excluded_sources_count": 0,
+          "source_weight_sum": 0.0,
+          "excluded_source_ids": [],
+          "source_type_counts": {},
+          "source_count": 0,
+          "unique_domain_count": 0,
+          "domain_independence": 0.0,
+          "multi_source_factor": 0.0,
+          "domain_independence_effective": 0.0,
+          "source_quantity": 0.0,
+          "source_domain_independence": 0.0,
+          "modality_diversity": 0.0,
+          "modality_diversity_effective": 0.0,
+          "crosscheck_language": 0.0,
+          "crosscheck_language_effective": 0.0,
+          "corroboration_method": 0.0,
+          "claim_coverage_factor": 0.0,
+          "corroborated_claims_count": 0,
+          "claims_total": 9,
+          "corroborated_claims_ratio": 0.0,
+          "corroborated_claims_weighted_ratio": 0.0
+        },
+        "confidence": {
+          "explicitness": 0.5,
+          "uncertainty_transparency": 0.5,
+          "stated_confidence": 0.65,
+          "calibration": 0.4583
+        },
+        "clarity": {
+          "act_specificity": 0.35,
+          "actor_specificity": 0.35,
+          "link_specificity": 0.4,
+          "act_claim": 0.0,
+          "act_evidence": 1.0,
+          "actor_claim": 0.0,
+          "actor_evidence": 1.0,
+          "link_claim": 0.0,
+          "link_evidence": 1.0,
+          "state_actor_signal": 0.4,
+          "organ_path_clarity": 0.385,
+          "control_path_clarity": 0.164,
+          "due_diligence_path_clarity": 0.0,
+          "legal_path_max": 0.385,
+          "legal_path_coverage": 0.0,
+          "state_claim_flag": 0,
+          "state_link_evidence_flag": 1,
+          "state_actor_gap_penalty": 0.0,
+          "legal_path_gap_penalty": 0.0,
+          "questions": {
+            "attribution_clarity": {
+              "question": "Is attribution to State X for attack Z clear?",
+              "score_0_1": 0.365,
+              "answer": "no"
+            },
+            "responsibility_mode_clarity": {
+              "question": "Is the state-responsibility mode clear (organ, control, or due diligence)?",
+              "score_0_1": 0.385,
+              "answer": "no"
+            },
+            "due_diligence_clarity": {
+              "question": "Is state knowledge plus failure to prevent (due diligence) clear?",
+              "score_0_1": 0.0,
+              "answer": "no"
+            }
+          },
+          "responsibility_modes": {
+            "conducted_by_state_organs": {
+              "score_0_1": 0.385,
+              "answer": "no"
+            },
+            "non_state_actors_under_state_control": {
+              "score_0_1": 0.164,
+              "answer": "no"
+            },
+            "state_due_diligence_failure": {
+              "score_0_1": 0.0,
+              "answer": "no"
+            }
+          }
+        },
+        "statistical_calibration_v4": {
+          "reliability_factor": 0.6645,
+          "effective_evidence_n": 2.5,
+          "shrinkage_lambda": {
+            "custody": 0.5319,
+            "credibility": 0.4717,
+            "corroboration": 0.4386,
+            "clarity": 0.5814,
+            "confidence": 0.5814
+          },
+          "prior_scores_0_1": {
+            "custody": 0.4794,
+            "credibility": 0.0,
+            "corroboration": 0.0,
+            "clarity": 0.4525,
+            "confidence": 0.4398
+          },
+          "saturation_factors": {
+            "chain_quantity_score": 0.9333,
+            "chain_saturation": 0.968,
+            "corroboration_source_quantity": 0.0,
+            "corroboration_saturation": 0.0,
+            "credibility_quality_gate": 0.0
+          }
+        }
+      },
+      "scores_raw_v3": {
+        "grounding_0_100": 58.29,
+        "custody_0_100": 83.5,
+        "credibility_0_100": 0.0,
+        "corroboration_0_100": 0.0,
+        "confidence_0_100": 48.75,
+        "clarity_0_100": 29.5,
+        "evidence_weight_0_100": 36.71,
+        "evidence_support_0_1": 0.1083,
+        "belief_0_100": 0.08,
+        "credibility_raw_0_100": 0.0,
+        "corroboration_raw_0_100": 0.0
+      }
+    },
+    {
+      "claim_id": "C006",
+      "allegation_gravity": "medium",
+      "required_threshold_0_1": 0.7,
+      "gravity_weight": 1.2,
+      "claim_statement": {
+        "anchor_id": "C006-A001",
+        "text": "government and corporations. Rather, China’s decade-long economic espionage campaign is massive and unrelenting."
+      },
+      "evidence": {
+        "evidence_anchor_ids": [
+          "P000-B01",
+          "P000-B06",
+          "P000-B05",
+          "P000-B02"
+        ],
+        "claim_sources": []
+      },
+      "support_anchor_ids": [
+        "P000-B01",
+        "P000-B06",
+        "P000-B05",
+        "P000-B02"
+      ],
+      "sources_supporting_claim": [],
+      "scores": {
+        "grounding_0_100": 54.04,
+        "custody_0_100": 32.56,
+        "credibility_0_100": 0.0,
+        "corroboration_0_100": 0.0,
+        "confidence_0_100": 39.1,
+        "clarity_0_100": 45.77,
+        "evidence_weight_0_100": 20.58,
+        "evidence_support_0_1": 0.0942,
+        "belief_0_100": 0.07,
+        "credibility_raw_0_100": 0.0,
+        "corroboration_raw_0_100": 0.0
+      },
+      "score_details": {
+        "grounding": {
+          "evidence_anchor_count": 4,
+          "evidence_citation_count": 0,
+          "evidence_source_count": 0,
+          "anchor_coverage": 0.6667,
+          "nondup": 0.9623,
+          "evidence_marker_strength": 0.9062,
+          "citation_coverage": 0.0,
+          "source_coverage": 0.0
+        },
+        "custody": {
+          "provenance": 0.4,
+          "integrity": 0.5,
+          "time_anchors": 0.5,
+          "artifact_identifiers": 0.0,
+          "versioning": 0.25
+        },
+        "credibility": {
+          "raw_source_count": 0,
+          "eligible_source_count": 0,
+          "excluded_sources_count": 0,
+          "source_type_counts": {},
+          "quality_mean": 0.0,
+          "quality_top": 0.0,
+          "source_diversity": 0.0,
+          "domain_independence": 0.0,
+          "single_source_penalty": 1.0,
+          "has_high_cred_source": 0,
+          "high_cred_threshold": 0.9,
+          "claim_coverage_factor": 0.0,
+          "credible_claims_count": 0,
+          "claims_total": 9,
+          "credible_claims_ratio": 0.0,
+          "credible_claims_weighted_ratio": 0.0
+        },
+        "corroboration": {
+          "raw_source_count": 0,
+          "eligible_source_count": 0,
+          "excluded_sources_count": 0,
+          "source_weight_sum": 0.0,
+          "excluded_source_ids": [],
+          "source_type_counts": {},
+          "source_count": 0,
+          "unique_domain_count": 0,
+          "domain_independence": 0.0,
+          "multi_source_factor": 0.0,
+          "domain_independence_effective": 0.0,
+          "source_quantity": 0.0,
+          "source_domain_independence": 0.0,
+          "modality_diversity": 0.0,
+          "modality_diversity_effective": 0.0,
+          "crosscheck_language": 0.0,
+          "crosscheck_language_effective": 0.0,
+          "corroboration_method": 0.0,
+          "claim_coverage_factor": 0.0,
+          "corroborated_claims_count": 0,
+          "claims_total": 9,
+          "corroborated_claims_ratio": 0.0,
+          "corroborated_claims_weighted_ratio": 0.0
+        },
+        "confidence": {
+          "explicitness": 0.5,
+          "uncertainty_transparency": 0.25,
+          "stated_confidence": 0.65,
+          "calibration": 0.4715
+        },
+        "clarity": {
+          "act_specificity": 0.7833,
+          "actor_specificity": 0.5667,
+          "link_specificity": 0.4,
+          "act_claim": 0.6667,
+          "act_evidence": 1.0,
+          "actor_claim": 0.3333,
+          "actor_evidence": 1.0,
+          "link_claim": 0.0,
+          "link_evidence": 1.0,
+          "state_actor_signal": 0.7,
+          "organ_path_clarity": 0.635,
+          "control_path_clarity": 0.211,
+          "due_diligence_path_clarity": 0.0405,
+          "legal_path_max": 0.635,
+          "legal_path_coverage": 0.3333,
+          "state_claim_flag": 1,
+          "state_link_evidence_flag": 1,
+          "state_actor_gap_penalty": 0.0,
+          "legal_path_gap_penalty": 0.0,
+          "questions": {
+            "attribution_clarity": {
+              "question": "Is attribution to State X for attack Z clear?",
+              "score_0_1": 0.6033,
+              "answer": "partial"
+            },
+            "responsibility_mode_clarity": {
+              "question": "Is the state-responsibility mode clear (organ, control, or due diligence)?",
+              "score_0_1": 0.635,
+              "answer": "yes"
+            },
+            "due_diligence_clarity": {
+              "question": "Is state knowledge plus failure to prevent (due diligence) clear?",
+              "score_0_1": 0.0405,
+              "answer": "no"
+            }
+          },
+          "responsibility_modes": {
+            "conducted_by_state_organs": {
+              "score_0_1": 0.635,
+              "answer": "yes"
+            },
+            "non_state_actors_under_state_control": {
+              "score_0_1": 0.211,
+              "answer": "no"
+            },
+            "state_due_diligence_failure": {
+              "score_0_1": 0.0405,
+              "answer": "no"
+            }
+          }
+        },
+        "statistical_calibration_v4": {
+          "reliability_factor": 0.524,
+          "effective_evidence_n": 2.0,
+          "shrinkage_lambda": {
+            "custody": 0.4762,
+            "credibility": 0.4167,
+            "corroboration": 0.3846,
+            "clarity": 0.5263,
+            "confidence": 0.5263
+          },
+          "prior_scores_0_1": {
+            "custody": 0.4794,
+            "credibility": 0.0,
+            "corroboration": 0.0,
+            "clarity": 0.4525,
+            "confidence": 0.4398
+          },
+          "saturation_factors": {
+            "chain_quantity_score": 0.2667,
+            "chain_saturation": 0.4136,
+            "corroboration_source_quantity": 0.0,
+            "corroboration_saturation": 0.0,
+            "credibility_quality_gate": 0.0
+          }
+        }
+      },
+      "scores_raw_v3": {
+        "grounding_0_100": 54.04,
+        "custody_0_100": 37.0,
+        "credibility_0_100": 0.0,
+        "corroboration_0_100": 0.0,
+        "confidence_0_100": 41.65,
+        "clarity_0_100": 55.47,
+        "evidence_weight_0_100": 21.91,
+        "evidence_support_0_1": 0.1215,
+        "belief_0_100": 0.1,
+        "credibility_raw_0_100": 0.0,
+        "corroboration_raw_0_100": 0.0
+      }
+    },
+    {
+      "claim_id": "C007",
+      "allegation_gravity": "medium",
+      "required_threshold_0_1": 0.7,
+      "gravity_weight": 1.2,
+      "claim_statement": {
+        "anchor_id": "C007-A001",
+        "text": "Through widespread espionage campaigns, Chinese threat actors are targeting companies and governments in every"
+      },
+      "evidence": {
+        "evidence_anchor_ids": [
+          "P000-B06",
+          "P000-B01",
+          "P000-B02",
+          "P000-B07"
+        ],
+        "claim_sources": []
+      },
+      "support_anchor_ids": [
+        "P000-B06",
+        "P000-B01",
+        "P000-B02",
+        "P000-B07"
+      ],
+      "sources_supporting_claim": [],
+      "scores": {
+        "grounding_0_100": 50.31,
+        "custody_0_100": 29.81,
+        "credibility_0_100": 0.0,
+        "corroboration_0_100": 0.0,
+        "confidence_0_100": 38.47,
+        "clarity_0_100": 41.06,
+        "evidence_weight_0_100": 19.0,
+        "evidence_support_0_1": 0.078,
+        "belief_0_100": 0.06,
+        "credibility_raw_0_100": 0.0,
+        "corroboration_raw_0_100": 0.0
+      },
+      "score_details": {
+        "grounding": {
+          "evidence_anchor_count": 4,
+          "evidence_citation_count": 0,
+          "evidence_source_count": 0,
+          "anchor_coverage": 0.6667,
+          "nondup": 0.9636,
+          "evidence_marker_strength": 0.7188,
+          "citation_coverage": 0.0,
+          "source_coverage": 0.0
+        },
+        "custody": {
+          "provenance": 0.2,
+          "integrity": 0.3333,
+          "time_anchors": 0.6667,
+          "artifact_identifiers": 0.0,
+          "versioning": 0.25
+        },
+        "credibility": {
+          "raw_source_count": 0,
+          "eligible_source_count": 0,
+          "excluded_sources_count": 0,
+          "source_type_counts": {},
+          "quality_mean": 0.0,
+          "quality_top": 0.0,
+          "source_diversity": 0.0,
+          "domain_independence": 0.0,
+          "single_source_penalty": 1.0,
+          "has_high_cred_source": 0,
+          "high_cred_threshold": 0.9,
+          "claim_coverage_factor": 0.0,
+          "credible_claims_count": 0,
+          "claims_total": 9,
+          "credible_claims_ratio": 0.0,
+          "credible_claims_weighted_ratio": 0.0
+        },
+        "corroboration": {
+          "raw_source_count": 0,
+          "eligible_source_count": 0,
+          "excluded_sources_count": 0,
+          "source_weight_sum": 0.0,
+          "excluded_source_ids": [],
+          "source_type_counts": {},
+          "source_count": 0,
+          "unique_domain_count": 0,
+          "domain_independence": 0.0,
+          "multi_source_factor": 0.0,
+          "domain_independence_effective": 0.0,
+          "source_quantity": 0.0,
+          "source_domain_independence": 0.0,
+          "modality_diversity": 0.0,
+          "modality_diversity_effective": 0.0,
+          "crosscheck_language": 0.0,
+          "crosscheck_language_effective": 0.0,
+          "corroboration_method": 0.0,
+          "claim_coverage_factor": 0.0,
+          "corroborated_claims_count": 0,
+          "claims_total": 9,
+          "corroborated_claims_ratio": 0.0,
+          "corroborated_claims_weighted_ratio": 0.0
+        },
+        "confidence": {
+          "explicitness": 0.5,
+          "uncertainty_transparency": 0.25,
+          "stated_confidence": 0.65,
+          "calibration": 0.4339
+        },
+        "clarity": {
+          "act_specificity": 0.5667,
+          "actor_specificity": 0.7833,
+          "link_specificity": 0.4,
+          "act_claim": 0.3333,
+          "act_evidence": 1.0,
+          "actor_claim": 0.6667,
+          "actor_evidence": 1.0,
+          "link_claim": 0.0,
+          "link_evidence": 1.0,
+          "state_actor_signal": 0.4,
+          "organ_path_clarity": 0.45,
+          "control_path_clarity": 0.136,
+          "due_diligence_path_clarity": 0.0405,
+          "legal_path_max": 0.45,
+          "legal_path_coverage": 0.0,
+          "state_claim_flag": 0,
+          "state_link_evidence_flag": 1,
+          "state_actor_gap_penalty": 0.0,
+          "legal_path_gap_penalty": 0.0,
+          "questions": {
+            "attribution_clarity": {
+              "question": "Is attribution to State X for attack Z clear?",
+              "score_0_1": 0.5817,
+              "answer": "partial"
+            },
+            "responsibility_mode_clarity": {
+              "question": "Is the state-responsibility mode clear (organ, control, or due diligence)?",
+              "score_0_1": 0.45,
+              "answer": "partial"
+            },
+            "due_diligence_clarity": {
+              "question": "Is state knowledge plus failure to prevent (due diligence) clear?",
+              "score_0_1": 0.0405,
+              "answer": "no"
+            }
+          },
+          "responsibility_modes": {
+            "conducted_by_state_organs": {
+              "score_0_1": 0.45,
+              "answer": "partial"
+            },
+            "non_state_actors_under_state_control": {
+              "score_0_1": 0.136,
+              "answer": "no"
+            },
+            "state_due_diligence_failure": {
+              "score_0_1": 0.0405,
+              "answer": "no"
+            }
+          }
+        },
+        "statistical_calibration_v4": {
+          "reliability_factor": 0.5055,
+          "effective_evidence_n": 2.0,
+          "shrinkage_lambda": {
+            "custody": 0.4762,
+            "credibility": 0.4167,
+            "corroboration": 0.3846,
+            "clarity": 0.5263,
+            "confidence": 0.5263
+          },
+          "prior_scores_0_1": {
+            "custody": 0.4794,
+            "credibility": 0.0,
+            "corroboration": 0.0,
+            "clarity": 0.4525,
+            "confidence": 0.4398
+          },
+          "saturation_factors": {
+            "chain_quantity_score": 0.2667,
+            "chain_saturation": 0.4136,
+            "corroboration_source_quantity": 0.0,
+            "corroboration_saturation": 0.0,
+            "credibility_quality_gate": 0.0
+          }
+        }
+      },
+      "scores_raw_v3": {
+        "grounding_0_100": 50.31,
+        "custody_0_100": 28.5,
+        "credibility_0_100": 0.0,
+        "corroboration_0_100": 0.0,
+        "confidence_0_100": 40.52,
+        "clarity_0_100": 45.1,
+        "evidence_weight_0_100": 18.61,
+        "evidence_support_0_1": 0.0839,
+        "belief_0_100": 0.06,
+        "credibility_raw_0_100": 0.0,
+        "corroboration_raw_0_100": 0.0
+      }
+    },
+    {
+      "claim_id": "C008",
+      "allegation_gravity": "medium",
+      "required_threshold_0_1": 0.7,
+      "gravity_weight": 1.2,
+      "claim_statement": {
+        "anchor_id": "C008-A001",
+        "text": "The campaign that is the subject of this report further points to espionage activity outside of Unit 61398, and reveals"
+      },
+      "evidence": {
+        "evidence_anchor_ids": [
+          "P000-B01",
+          "P000-B06",
+          "P000-B05",
+          "P000-B02",
+          "P000-B07"
+        ],
+        "claim_sources": []
+      },
+      "support_anchor_ids": [
+        "P000-B01",
+        "P000-B06",
+        "P000-B05",
+        "P000-B02",
+        "P000-B07"
+      ],
+      "sources_supporting_claim": [],
+      "scores": {
+        "grounding_0_100": 55.63,
+        "custody_0_100": 33.75,
+        "credibility_0_100": 0.0,
+        "corroboration_0_100": 0.0,
+        "confidence_0_100": 38.96,
+        "clarity_0_100": 45.66,
+        "evidence_weight_0_100": 21.25,
+        "evidence_support_0_1": 0.097,
+        "belief_0_100": 0.07,
+        "credibility_raw_0_100": 0.0,
+        "corroboration_raw_0_100": 0.0
+      },
+      "score_details": {
+        "grounding": {
+          "evidence_anchor_count": 5,
+          "evidence_citation_count": 0,
+          "evidence_source_count": 0,
+          "anchor_coverage": 0.8333,
+          "nondup": 0.9648,
+          "evidence_marker_strength": 0.775,
+          "citation_coverage": 0.0,
+          "source_coverage": 0.0
+        },
+        "custody": {
+          "provenance": 0.4,
+          "integrity": 0.5,
+          "time_anchors": 0.6667,
+          "artifact_identifiers": 0.0,
+          "versioning": 0.25
+        },
+        "credibility": {
+          "raw_source_count": 0,
+          "eligible_source_count": 0,
+          "excluded_sources_count": 0,
+          "source_type_counts": {},
+          "quality_mean": 0.0,
+          "quality_top": 0.0,
+          "source_diversity": 0.0,
+          "domain_independence": 0.0,
+          "single_source_penalty": 1.0,
+          "has_high_cred_source": 0,
+          "high_cred_threshold": 0.9,
+          "claim_coverage_factor": 0.0,
+          "credible_claims_count": 0,
+          "claims_total": 9,
+          "credible_claims_ratio": 0.0,
+          "credible_claims_weighted_ratio": 0.0
+        },
+        "corroboration": {
+          "raw_source_count": 0,
+          "eligible_source_count": 0,
+          "excluded_sources_count": 0,
+          "source_weight_sum": 0.0,
+          "excluded_source_ids": [],
+          "source_type_counts": {},
+          "source_count": 0,
+          "unique_domain_count": 0,
+          "domain_independence": 0.0,
+          "multi_source_factor": 0.0,
+          "domain_independence_effective": 0.0,
+          "source_quantity": 0.0,
+          "source_domain_independence": 0.0,
+          "modality_diversity": 0.0,
+          "modality_diversity_effective": 0.0,
+          "crosscheck_language": 0.0,
+          "crosscheck_language_effective": 0.0,
+          "corroboration_method": 0.0,
+          "claim_coverage_factor": 0.0,
+          "corroborated_claims_count": 0,
+          "claims_total": 9,
+          "corroborated_claims_ratio": 0.0,
+          "corroborated_claims_weighted_ratio": 0.0
+        },
+        "confidence": {
+          "explicitness": 0.5,
+          "uncertainty_transparency": 0.25,
+          "stated_confidence": 0.65,
+          "calibration": 0.4747
+        },
+        "clarity": {
+          "act_specificity": 0.7833,
+          "actor_specificity": 0.5667,
+          "link_specificity": 0.4,
+          "act_claim": 0.6667,
+          "act_evidence": 1.0,
+          "actor_claim": 0.3333,
+          "actor_evidence": 1.0,
+          "link_claim": 0.0,
+          "link_evidence": 1.0,
+          "state_actor_signal": 0.55,
+          "organ_path_clarity": 0.575,
+          "control_path_clarity": 0.1735,
+          "due_diligence_path_clarity": 0.0405,
+          "legal_path_max": 0.575,
+          "legal_path_coverage": 0.3333,
+          "state_claim_flag": 0,
+          "state_link_evidence_flag": 1,
+          "state_actor_gap_penalty": 0.0,
+          "legal_path_gap_penalty": 0.0,
+          "questions": {
+            "attribution_clarity": {
+              "question": "Is attribution to State X for attack Z clear?",
+              "score_0_1": 0.6033,
+              "answer": "partial"
+            },
+            "responsibility_mode_clarity": {
+              "question": "Is the state-responsibility mode clear (organ, control, or due diligence)?",
+              "score_0_1": 0.575,
+              "answer": "partial"
+            },
+            "due_diligence_clarity": {
+              "question": "Is state knowledge plus failure to prevent (due diligence) clear?",
+              "score_0_1": 0.0405,
+              "answer": "no"
+            }
+          },
+          "responsibility_modes": {
+            "conducted_by_state_organs": {
+              "score_0_1": 0.575,
+              "answer": "partial"
+            },
+            "non_state_actors_under_state_control": {
+              "score_0_1": 0.1735,
+              "answer": "no"
+            },
+            "state_due_diligence_failure": {
+              "score_0_1": 0.0405,
+              "answer": "no"
+            }
+          }
+        },
+        "statistical_calibration_v4": {
+          "reliability_factor": 0.5618,
+          "effective_evidence_n": 2.5,
+          "shrinkage_lambda": {
+            "custody": 0.5319,
+            "credibility": 0.4717,
+            "corroboration": 0.4386,
+            "clarity": 0.5814,
+            "confidence": 0.5814
+          },
+          "prior_scores_0_1": {
+            "custody": 0.4794,
+            "credibility": 0.0,
+            "corroboration": 0.0,
+            "clarity": 0.4525,
+            "confidence": 0.4398
+          },
+          "saturation_factors": {
+            "chain_quantity_score": 0.3333,
+            "chain_saturation": 0.495,
+            "corroboration_source_quantity": 0.0,
+            "corroboration_saturation": 0.0,
+            "credibility_quality_gate": 0.0
+          }
+        }
+      },
+      "scores_raw_v3": {
+        "grounding_0_100": 55.63,
+        "custody_0_100": 39.5,
+        "credibility_0_100": 0.0,
+        "corroboration_0_100": 0.0,
+        "confidence_0_100": 41.74,
+        "clarity_0_100": 54.27,
+        "evidence_weight_0_100": 22.98,
+        "evidence_support_0_1": 0.1247,
+        "belief_0_100": 0.1,
+        "credibility_raw_0_100": 0.0,
+        "corroboration_raw_0_100": 0.0
+      }
+    },
+    {
+      "claim_id": "C009",
+      "allegation_gravity": "medium",
+      "required_threshold_0_1": 0.7,
+      "gravity_weight": 1.2,
+      "claim_statement": {
+        "anchor_id": "C009-A001",
+        "text": "Targeted economic espionage campaigns compromise technological advantage, diminish global competition, and ultimately"
+      },
+      "evidence": {
+        "evidence_anchor_ids": [
+          "P000-B02",
+          "P000-B06",
+          "P000-B01"
+        ],
+        "claim_sources": []
+      },
+      "support_anchor_ids": [
+        "P000-B02",
+        "P000-B06",
+        "P000-B01"
+      ],
+      "sources_supporting_claim": [],
+      "scores": {
+        "grounding_0_100": 48.92,
+        "custody_0_100": 29.61,
+        "credibility_0_100": 0.0,
+        "corroboration_0_100": 0.0,
+        "confidence_0_100": 38.86,
+        "clarity_0_100": 40.08,
+        "evidence_weight_0_100": 18.67,
+        "evidence_support_0_1": 0.0748,
+        "belief_0_100": 0.06,
+        "credibility_raw_0_100": 0.0,
+        "corroboration_raw_0_100": 0.0
+      },
+      "score_details": {
+        "grounding": {
+          "evidence_anchor_count": 3,
+          "evidence_citation_count": 0,
+          "evidence_source_count": 0,
+          "anchor_coverage": 0.5,
+          "nondup": 0.9462,
+          "evidence_marker_strength": 0.875,
+          "citation_coverage": 0.0,
+          "source_coverage": 0.0
+        },
+        "custody": {
+          "provenance": 0.2,
+          "integrity": 0.3333,
+          "time_anchors": 0.5,
+          "artifact_identifiers": 0.0,
+          "versioning": 0.25
+        },
+        "credibility": {
+          "raw_source_count": 0,
+          "eligible_source_count": 0,
+          "excluded_sources_count": 0,
+          "source_type_counts": {},
+          "quality_mean": 0.0,
+          "quality_top": 0.0,
+          "source_diversity": 0.0,
+          "domain_independence": 0.0,
+          "single_source_penalty": 1.0,
+          "has_high_cred_source": 0,
+          "high_cred_threshold": 0.9,
+          "claim_coverage_factor": 0.0,
+          "credible_claims_count": 0,
+          "claims_total": 9,
+          "credible_claims_ratio": 0.0,
+          "credible_claims_weighted_ratio": 0.0
+        },
+        "corroboration": {
+          "raw_source_count": 0,
+          "eligible_source_count": 0,
+          "excluded_sources_count": 0,
+          "source_weight_sum": 0.0,
+          "excluded_source_ids": [],
+          "source_type_counts": {},
+          "source_count": 0,
+          "unique_domain_count": 0,
+          "domain_independence": 0.0,
+          "multi_source_factor": 0.0,
+          "domain_independence_effective": 0.0,
+          "source_quantity": 0.0,
+          "source_domain_independence": 0.0,
+          "modality_diversity": 0.0,
+          "modality_diversity_effective": 0.0,
+          "crosscheck_language": 0.0,
+          "crosscheck_language_effective": 0.0,
+          "corroboration_method": 0.0,
+          "claim_coverage_factor": 0.0,
+          "corroborated_claims_count": 0,
+          "claims_total": 9,
+          "corroborated_claims_ratio": 0.0,
+          "corroborated_claims_weighted_ratio": 0.0
+        },
+        "confidence": {
+          "explicitness": 0.5,
+          "uncertainty_transparency": 0.25,
+          "stated_confidence": 0.65,
+          "calibration": 0.4232
+        },
+        "clarity": {
+          "act_specificity": 0.7833,
+          "actor_specificity": 0.35,
+          "link_specificity": 0.4,
+          "act_claim": 0.6667,
+          "act_evidence": 1.0,
+          "actor_claim": 0.0,
+          "actor_evidence": 1.0,
+          "link_claim": 0.0,
+          "link_evidence": 1.0,
+          "state_actor_signal": 0.4,
+          "organ_path_clarity": 0.515,
+          "control_path_clarity": 0.136,
+          "due_diligence_path_clarity": 0.0405,
+          "legal_path_max": 0.515,
+          "legal_path_coverage": 0.0,
+          "state_claim_flag": 0,
+          "state_link_evidence_flag": 1,
+          "state_actor_gap_penalty": 0.0,
+          "legal_path_gap_penalty": 0.0,
+          "questions": {
+            "attribution_clarity": {
+              "question": "Is attribution to State X for attack Z clear?",
+              "score_0_1": 0.5383,
+              "answer": "partial"
+            },
+            "responsibility_mode_clarity": {
+              "question": "Is the state-responsibility mode clear (organ, control, or due diligence)?",
+              "score_0_1": 0.515,
+              "answer": "partial"
+            },
+            "due_diligence_clarity": {
+              "question": "Is state knowledge plus failure to prevent (due diligence) clear?",
+              "score_0_1": 0.0405,
+              "answer": "no"
+            }
+          },
+          "responsibility_modes": {
+            "conducted_by_state_organs": {
+              "score_0_1": 0.515,
+              "answer": "partial"
+            },
+            "non_state_actors_under_state_control": {
+              "score_0_1": 0.136,
+              "answer": "no"
+            },
+            "state_due_diligence_failure": {
+              "score_0_1": 0.0405,
+              "answer": "no"
+            }
+          }
+        },
+        "statistical_calibration_v4": {
+          "reliability_factor": 0.4683,
+          "effective_evidence_n": 1.5,
+          "shrinkage_lambda": {
+            "custody": 0.4054,
+            "credibility": 0.3488,
+            "corroboration": 0.3191,
+            "clarity": 0.4545,
+            "confidence": 0.4545
+          },
+          "prior_scores_0_1": {
+            "custody": 0.4794,
+            "credibility": 0.0,
+            "corroboration": 0.0,
+            "clarity": 0.4525,
+            "confidence": 0.4398
+          },
+          "saturation_factors": {
+            "chain_quantity_score": 0.2,
+            "chain_saturation": 0.3242,
+            "corroboration_source_quantity": 0.0,
+            "corroboration_saturation": 0.0,
+            "credibility_quality_gate": 0.0
+          }
+        }
+      },
+      "scores_raw_v3": {
+        "grounding_0_100": 48.92,
+        "custody_0_100": 26.0,
+        "credibility_0_100": 0.0,
+        "corroboration_0_100": 0.0,
+        "confidence_0_100": 40.2,
+        "clarity_0_100": 41.63,
+        "evidence_weight_0_100": 17.58,
+        "evidence_support_0_1": 0.0732,
+        "belief_0_100": 0.05,
+        "credibility_raw_0_100": 0.0,
+        "corroboration_raw_0_100": 0.0
+      }
+    }
+  ],
+  "statistical_profile": "reliability_shrinkage_saturation_bootstrap"
+}
