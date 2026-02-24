@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": "{\n  \"classification\": \"Highly Relevant\",\n  \"relevance_score\": \"High\",\n  \"potential_subcategory\": \"International law (jus ad bellum/use of force/self-defense) and attribution/state responsibility in cyber operations\",\n  \"justification\": \"The abstract directly engages legal and policy questions central to cyber conflict attribution: it analyzes thresholds for 'use of force' and 'armed attack' under Articles 2(4) and 51, surveys state practice and judicial decisions (ICJ, NATO), proposes a six-criteria framework for assessing cyber incidents, and addresses attribution and state responsibility (including private actors under effective control). It also analyzes canonical cyber incidents (Estonia 2007, Georgia 2008, Stuxnet 2010) and calls for normative and institutional responses\u2014core concerns for policy/law work on cyber attribution. Although the study is doctrinal and notes empirical limitations, its subject matter and proposed attribution standards make it highly relevant to cyber conflict attribution and related legal/policy debates.\"\n}"
+  },
+  "cached_at": "2026-02-23T20:45:57.487263Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "ZQ7B6FZ2",
+  "function": "classify_by_abs"
+}

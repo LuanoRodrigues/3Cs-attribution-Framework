@@ -1,0 +1,173 @@
+{
+  "generated_at_utc": "2026-02-22T10:15:09Z",
+  "inputs": {
+    "schema": "/home/pantera/projects/TEIA/annotarium/cyber_attribution_markdown_extraction_v2_schema.json",
+    "markdown": "/home/pantera/projects/TEIA/annotarium/outputs/pipeline/mandiant_2017_apt28_at_the_center_of_the_storm/mandiant_2017_apt28_at_the_center_of_the_storm.md",
+    "output": "/home/pantera/projects/TEIA/annotarium/outputs/pipeline/mandiant_2017_apt28_at_the_center_of_the_storm/mandiant_2017_apt28_at_the_center_of_the_storm.output.json"
+  },
+  "certification": "PASS",
+  "overall_score": 91.9865,
+  "score_adjustments": {
+    "base_overall_score": 97.3303,
+    "issue_density_penalty": 5.3438,
+    "weighted_warning_sum": 34.2,
+    "normalized_weighted_warning_sum": 5.3438,
+    "warning_normalization_factor": 6.4,
+    "warning_count": 31,
+    "error_count": 0
+  },
+  "category_scores": {
+    "schema": 100.0,
+    "integrity": 100.0,
+    "tables": 93.7143,
+    "citations": 100.0,
+    "source_years": 100.0,
+    "artifacts": 100.0,
+    "chain_grounding": 100.0,
+    "credibility_grounding": 82.0,
+    "corroboration_grounding": 76.4
+  },
+  "thresholds": {
+    "min_overall_score": 85.0,
+    "min_category_score": 60.0
+  },
+  "hard_failures": [],
+  "findings": [
+    {
+      "severity": "warning",
+      "message": "1/7 tables are verbatim-only fallbacks (unstructured)."
+    },
+    {
+      "severity": "warning",
+      "message": "C001: 1/1 support anchors duplicate claim statement text."
+    },
+    {
+      "severity": "warning",
+      "message": "C001: corroboration uses little anchor diversity across multiple components."
+    },
+    {
+      "severity": "warning",
+      "message": "C001: components missing non-duplicative support anchors: actor_identity, infrastructure_linkage."
+    },
+    {
+      "severity": "warning",
+      "message": "C002: 1/1 support anchors duplicate claim statement text."
+    },
+    {
+      "severity": "warning",
+      "message": "C002: corroboration uses little anchor diversity across multiple components."
+    },
+    {
+      "severity": "warning",
+      "message": "C002: components missing non-duplicative support anchors: command_and_control, timeline_linkage, victimology."
+    },
+    {
+      "severity": "warning",
+      "message": "C003: 1/1 support anchors duplicate claim statement text."
+    },
+    {
+      "severity": "warning",
+      "message": "C003: corroboration uses little anchor diversity across multiple components."
+    },
+    {
+      "severity": "warning",
+      "message": "C003: components missing non-duplicative support anchors: command_and_control, timeline_linkage, victimology."
+    },
+    {
+      "severity": "warning",
+      "message": "C004: 1/1 support anchors duplicate claim statement text."
+    },
+    {
+      "severity": "warning",
+      "message": "C004: corroboration uses little anchor diversity across multiple components."
+    },
+    {
+      "severity": "warning",
+      "message": "C004: components missing non-duplicative support anchors: command_and_control, timeline_linkage, victimology."
+    },
+    {
+      "severity": "warning",
+      "message": "C005: 1/1 support anchors duplicate claim statement text."
+    },
+    {
+      "severity": "warning",
+      "message": "C005: corroboration uses little anchor diversity across multiple components."
+    },
+    {
+      "severity": "warning",
+      "message": "C005: components missing non-duplicative support anchors: actor_identity, infrastructure_linkage."
+    },
+    {
+      "severity": "warning",
+      "message": "C006: 1/1 support anchors duplicate claim statement text."
+    },
+    {
+      "severity": "warning",
+      "message": "C006: corroboration uses little anchor diversity across multiple components."
+    },
+    {
+      "severity": "warning",
+      "message": "C006: components missing non-duplicative support anchors: actor_identity, infrastructure_linkage."
+    },
+    {
+      "severity": "warning",
+      "message": "C007: 1/1 support anchors duplicate claim statement text."
+    },
+    {
+      "severity": "warning",
+      "message": "C007: corroboration uses little anchor diversity across multiple components."
+    },
+    {
+      "severity": "warning",
+      "message": "C007: components missing non-duplicative support anchors: command_and_control, timeline_linkage, victimology."
+    },
+    {
+      "severity": "warning",
+      "message": "C008: 1/1 support anchors duplicate claim statement text."
+    },
+    {
+      "severity": "warning",
+      "message": "C008: corroboration uses little anchor diversity across multiple components."
+    },
+    {
+      "severity": "warning",
+      "message": "C008: components missing non-duplicative support anchors: actor_identity, infrastructure_linkage."
+    },
+    {
+      "severity": "warning",
+      "message": "C009: 1/1 support anchors duplicate claim statement text."
+    },
+    {
+      "severity": "warning",
+      "message": "C009: corroboration uses little anchor diversity across multiple components."
+    },
+    {
+      "severity": "warning",
+      "message": "C009: components missing non-duplicative support anchors: command_and_control, timeline_linkage, victimology."
+    },
+    {
+      "severity": "warning",
+      "message": "C010: 1/1 support anchors duplicate claim statement text."
+    },
+    {
+      "severity": "warning",
+      "message": "C010: corroboration uses little anchor diversity across multiple components."
+    },
+    {
+      "severity": "warning",
+      "message": "C010: components missing non-duplicative support anchors: command_and_control, timeline_linkage, victimology."
+    }
+  ],
+  "summary_counts": {
+    "pages": 1,
+    "tables": 7,
+    "citations": 0,
+    "artifacts": 14,
+    "claims": 10,
+    "sources": 1
+  },
+  "validation_context": {
+    "sparse_evidence_context": true,
+    "sparse_evidence_rule": "source_count<=1 and citation_count==0"
+  }
+}

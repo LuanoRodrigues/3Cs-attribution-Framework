@@ -48,26 +48,34 @@ export const RetrieveTab: RibbonTab = {
     {
       id: "retrieve-load-zotero",
       label: "Zotero",
-      hint: "Load records from Zotero.",
+      hint: "Open the Zotero workspace.",
       iconId: "retrieve-import",
       group: "Zotero Loader",
       command: { phase: "retrieve", action: "datahub_load_zotero" }
     },
     {
-      id: "retrieve-zotero-refresh",
-      label: "Refresh",
-      hint: "Refresh Zotero tree and items.",
+      id: "retrieve-open-batches",
+      label: "Batches",
+      hint: "Open corpus batches.",
       iconId: "retrieve-import",
       group: "Zotero Loader",
-      command: { phase: "retrieve", action: "zotero_refresh_tree" }
+      command: { phase: "retrieve", action: "datahub_open_batches" }
     },
     {
-      id: "retrieve-zotero-load-selected",
-      label: "Load Collection",
-      hint: "Load selected Zotero collection to Data Hub.",
+      id: "retrieve-open-code",
+      label: "Code",
+      hint: "Open the Code workspace.",
       iconId: "retrieve-import",
       group: "Zotero Loader",
-      command: { phase: "retrieve", action: "zotero_load_selected_collection" }
+      command: { phase: "retrieve", action: "datahub_open_code" }
+    },
+    {
+      id: "retrieve-open-screen",
+      label: "Screen",
+      hint: "Open the Screen workspace.",
+      iconId: "retrieve-import",
+      group: "Zotero Loader",
+      command: { phase: "retrieve", action: "datahub_open_screen" }
     },
     {
       id: "retrieve-load-local",

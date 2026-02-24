@@ -1,0 +1,16 @@
+step_id,review_type,stage,task,required_artifact,status,notes
+R0-01,literature,identity,Choose review type and lock topic/RQ,state/reviews/literature_review_context.json,done,Review type literature and RQ fixed in context.
+R0-02,literature,identity,Freeze corpus snapshot,state/reviews/frameworks_collection_snapshot_20260223T192730Z.json,done,7-item frameworks collection frozen.
+R1-01,literature,screening,Finalize inclusion/exclusion criteria,state/reviews/literature_review_criteria.json,done,Criteria authored and persisted.
+R1-02,literature,screening,Complete per-item screening decisions,state/reviews/literature_review_screening_decisions.csv,done,7/7 screened with rationale.
+R1-03,literature,screening,Reconcile counts in context,state/reviews/literature_review_context.json,done,Counts reconciled to 7/7/7/7.
+R2-01,literature,coding_readiness,Build full-text/coding queue,state/reviews/literature_review_fulltext_coding_queue.csv,done,Queue generated for all items.
+R2-02,literature,coding_readiness,Document missing full text,state/reviews/literature_review_fulltext_coding_queue.csv,done,Missing/fulltext flags captured in queue.
+R3-01,literature,coding,Validate coding fields against unified schema,state/reviews/literature_review_coding_validation_report.json,done,Validation executed via unified coding validator (0 errors, 0 warnings).
+R3-02,literature,coding,Normalize themes/tags to controlled vocab,state/reviews/literature_review_coded_evidence_phase5.csv,done,Coded evidence normalized with potential themes and RQ mapping.
+R4-01,literature,writing,Generate themes and section synthesis,state/reviews/literature_review_context.json,done,4 finalized findings themes.
+R4-02,literature,writing,Generate references and notes,state/reviews/literature_review_context.json,done,45 footnotes and 7 references generated.
+R5-01,literature,validation,Run output validator,state/reviews/literature_review_validation_report.json,done,Format/citation/reference validation passed.
+R5-02,literature,validation,Generate traceability matrix,state/reviews/literature_review_traceability.csv,done,Traceability generated.
+R5-03,literature,finalize,Publish final HTML,state/reviews/literature_review_final.html,done,Final HTML produced.
+L-01,literature,literature,Confirm 3-7 findings themes,state/reviews/literature_review_context.json,done,4 findings themes.

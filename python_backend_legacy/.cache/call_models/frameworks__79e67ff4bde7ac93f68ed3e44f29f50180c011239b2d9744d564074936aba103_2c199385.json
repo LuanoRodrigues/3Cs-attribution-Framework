@@ -1,0 +1,326 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "quote": "The prohibition against the threat or use of force is expressly articulated in the Charter of the United Nations (Charter) Article 2, Paragraph 4, and is considered to be a peremptory norm of international law.",
+          "paraphrase": "Article 2(4) of the UN Charter expressly forbids the threat or use of force and is treated as a peremptory norm, forming the baseline legal rule against which alleged cyber uses of force must be measured.",
+          "researcher_comment": "This sentence establishes the primary legal prohibition relevant to jus ad bellum analysis of cyber operations; any claim that a cyber operation breaches jus ad bellum must be assessed against this Article. It does not resolve whether non\u2011kinetic cyber acts qualify as 'force.'",
+          "potential_themes": [
+            "use_of_force"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "article_2_4",
+            "peremptory_norm",
+            "baseline_prohibition"
+          ]
+        },
+        {
+          "quote": "This potential ambiguity has led to debate as to whether the prohibition encompasses armed force or can be extended to economic coercion.",
+          "paraphrase": "There is doctrinal debate on whether the Article 2(4) prohibition covers only armed (physical) force or also extends to economic coercion, which bears directly on whether non\u2011kinetic cyber coercion is encompassed.",
+          "researcher_comment": "Identifies interpretive uncertainty over the scope of 'force'\u2014a core legal question for cyber attribution and response. The passage flags the dispute but does not adjudicate it or cite the state practice needed to settle the question.",
+          "potential_themes": [
+            "use_of_force"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "scope_debate",
+            "economic_coercion",
+            "interpretive_ambiguity"
+          ]
+        },
+        {
+          "quote": "The general consensus is that Article 2(4) refers only to armed force, and economic coercion is not included.",
+          "paraphrase": "The prevailing view is that Article 2(4) applies only to armed force and excludes economic coercion, implying a narrow reading that limits non\u2011kinetic claims under the Charter.",
+          "researcher_comment": "This asserts an orthodox position narrowing Article 2(4)'s reach, which constrains arguments that cyber measures violating economic or political independence constitute prohibited force. The claimed 'consensus' requires verification against actual state practice and opinions.",
+          "potential_themes": [
+            "use_of_force"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "consensus_narrow_scope",
+            "armed_force_exclusive"
+          ]
+        },
+        {
+          "quote": "This issue has led to the practical adoption of an approach to evaluating force that focuses primarily on the consequences, rather than the means employed.",
+          "paraphrase": "Practitioners have adopted an effects-focused approach to assessing whether an act constitutes 'force,' prioritizing consequences over the technical means used, which is highly relevant for cyber incidents.",
+          "researcher_comment": "An effects-based test can capture serious non\u2011kinetic cyber incidents that produce significant consequences; useful analytic pivot for cyber attribution debates. The passage does not specify how to quantify or threshold 'consequences.'",
+          "potential_themes": [
+            "means_vs_effects",
+            "use_of_force"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "framework",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "effects_based_test",
+            "consequence_focused",
+            "means_vs_effects"
+          ]
+        },
+        {
+          "quote": "The Charter\u2019s Article 51 provides that nothing in that document \u201cshall impair the inherent right of... [self-defense] if an armed attack occurs.\u201d",
+          "paraphrase": "Article 51 preserves the inherent right of self\u2011defense in the event of an 'armed attack,' setting the legal trigger for lawful unilateral use of force, including potential cyber responses.",
+          "researcher_comment": "This identifies the legal trigger for self\u2011defense claims; determining whether a cyber operation amounts to an 'armed attack' is therefore decisive for permissibility of responses. The clause itself does not define 'armed attack.'",
+          "potential_themes": [
+            "armed_attack_definition",
+            "use_of_force"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "article_51",
+            "self_defense_trigger",
+            "armed_attack_threshold"
+          ]
+        },
+        {
+          "quote": "As there is no established definition of \u201carmed attack\u201d in the Charter or elsewhere in treaty law, its meaning is also determined by custom.",
+          "paraphrase": "Because 'armed attack' is not defined in treaty law, its content is determined by customary international law, making state practice and opinio juris central to defining when cyber acts qualify.",
+          "researcher_comment": "This highlights that customary practice, not treaty text, will shape the armed-attack threshold\u2014important because state practice on cyber is still evolving, increasing legal uncertainty. The sentence does not list the customary criteria used.",
+          "potential_themes": [
+            "armed_attack_definition",
+            "state_practice"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "customary_definition",
+            "opinio_juris",
+            "definition_gap"
+          ]
+        },
+        {
+          "quote": "It is generally accepted that such an attack is more narrow than the notion of force as prohibited by Article 2(4).",
+          "paraphrase": "The concept of 'armed attack' is generally regarded as narrower than the broader prohibition on the use of force under Article 2(4), limiting occasions in which self\u2011defense is lawful.",
+          "researcher_comment": "This narrows the set of incidents that permit self\u2011defense responses; for cyber, only a subset of harmful cyber operations will meet the 'armed attack' threshold. The wording 'generally accepted' is asserted without empirical backing here.",
+          "potential_themes": [
+            "armed_attack_definition",
+            "use_of_force"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "armed_attack_narrower",
+            "threshold_comparison"
+          ]
+        },
+        {
+          "quote": "The clearest enunciation of the threshold for an armed attack is found in the Nicaragua judgment where the ICJ first distinguished armed attacks as \u201cthe most grave forms of the use of force.\u201d",
+          "paraphrase": "The ICJ in Nicaragua characterized armed attacks as 'the most grave forms of the use of force,' providing a precedent that treats armed attack as an especially serious subset of forceful acts.",
+          "researcher_comment": "Nicaragua's 'most grave' formulation is a central judicial marker for the armed-attack threshold and is often invoked in cyber contexts to argue for an effects\u2011based severity test. The phrase remains indeterminate as to quantitative thresholds.",
+          "potential_themes": [
+            "armed_attack_definition"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "nicaragua_precedent",
+            "most_grave_forms",
+            "judicial_threshold"
+          ]
+        },
+        {
+          "quote": "This wording suggests that the armed force employed must be of a significant magnitude and intensity, perhaps best assessed based on the consequences that result.",
+          "paraphrase": "The 'scale and effects' language implies that an armed attack requires significant magnitude or intensity, best judged by the consequences produced, which can be applied to severe cyber incidents.",
+          "researcher_comment": "Reinforces an effects-oriented threshold; however, 'significant magnitude and intensity' is vague and poses practical evidentiary questions for cyber incidents that cause dispersed or non\u2011physical harms.",
+          "potential_themes": [
+            "armed_attack_definition",
+            "means_vs_effects"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "significance_threshold",
+            "consequence_assessment",
+            "ambiguity_of_significance"
+          ]
+        },
+        {
+          "quote": "As the ICJ has repeatedly emphasized, in addition to being a response to an armed attack, an act of self-defense is subject to meeting the elements of necessity and proportionality.",
+          "paraphrase": "Self\u2011defense measures must satisfy necessity and proportionality in customary international law in addition to responding to an armed attack, constraining lawful countermeasures to cyber operations.",
+          "researcher_comment": "Specifies the two customary-law constraints on self\u2011defense that will govern any cyber counter\u2011action; these criteria are often difficult to operationalize in cyber contexts where harms and attribution are uncertain.",
+          "potential_themes": [
+            "necessity_proportionality"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "necessity_and_proportionality",
+            "self_defense_elements"
+          ]
+        },
+        {
+          "quote": "Webster formulated necessity to require that the instigative events be\"instant, overwhelming, leaving no choice of means, and no moment for deliberation.\"",
+          "paraphrase": "The Caroline standard requires necessity to be 'instant, overwhelming, leaving no choice of means, and no moment for deliberation,' setting a high immediacy bar for lawful self\u2011defense responses that is difficult to meet in many cyber cases.",
+          "researcher_comment": "This classic immediacy test sharply limits preemptive or delayed responses; cyber operations often allow time for attribution and choice of means, creating tension with the Caroline standard. The quoted formulation is the authoritative customary benchmark invoked by analysts.",
+          "potential_themes": [
+            "necessity_proportionality",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "caroline_test",
+            "immediacy_requirement",
+            "necessity_standard"
+          ]
+        },
+        {
+          "quote": "Webster also articulated the proportionality element to require that the response involve \u201cnothing unreasonable or excessive.\u201d",
+          "paraphrase": "Webster defined proportionality to demand that any self\u2011defense response be 'nothing unreasonable or excessive,' limiting responses to what is commensurate with the initial attack.",
+          "researcher_comment": "Frames proportionality in qualitative terms; applying 'nothing unreasonable or excessive' to cyber responses raises measurement problems, especially where harms are non\u2011kinetic or diffuse.",
+          "potential_themes": [
+            "necessity_proportionality"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "proportionality_standard",
+            "excessiveness"
+          ]
+        },
+        {
+          "quote": "Proportionality can be assessed one of two different ways. A qualitative view requires that the response be effectively equal in gravity with regards to casualties, damage, and the nature of the weapons employed.",
+          "paraphrase": "One qualitative approach to proportionality requires responses to be equal in gravity relative to casualties, damage, and weapon type\u2014criteria that present translation challenges for cyber incidents without conventional casualties.",
+          "researcher_comment": "The qualitative metric is rooted in kinetic conceptions of harm and may not map neatly to cyber harms; analysts must therefore consider how to operationalize 'gravity' for non\u2011physical effects.",
+          "potential_themes": [
+            "necessity_proportionality"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "qualitative_proportionality",
+            "gravity_matching",
+            "metric_mismatch"
+          ]
+        },
+        {
+          "quote": "In general, however, a functional approach prevails wherein the focus is on employing a response of an appropriate scale to suitably repel the initial armed attack.",
+          "paraphrase": "A functional (or pragmatic) approach to proportionality prevails, emphasizing responses of an appropriate scale to repel an attack rather than strict equality of means, which is more adaptable to cyber responses.",
+          "researcher_comment": "Functional proportionality offers flexibility for cyber contexts by focusing on effect and scale rather than weapon parity; nonetheless, 'appropriate scale' remains indeterminate and invites political judgment.",
+          "potential_themes": [
+            "necessity_proportionality",
+            "means_vs_effects"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "functional_proportionality",
+            "scale_based_response",
+            "flexible_standard"
+          ]
+        },
+        {
+          "quote": "A possible additional requirement for engaging in self-defense is that the armed attack be undertaken with the \u201cspecific intention of harming\u201d the target that was ultimately attacked.",
+          "paraphrase": "Some jurisprudence suggests an extra requirement that the attacker had a 'specific intention of harming' the victim, which would complicate lawful self\u2011defense claims where intent in cyber operations is opaque.",
+          "researcher_comment": "An intent element would substantially raise the evidentiary bar for victims of cyber incidents because inferring state intent from cyber indicators is often uncertain. The text notes this is an emerging/controversial element.",
+          "potential_themes": [
+            "intent_requirement",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "specific_intent",
+            "intent_element",
+            "attribution_difficulty"
+          ]
+        },
+        {
+          "quote": "The intention element is problematic as it requires the injured state to reliably infer what is essentially the state of mind of the attacking state.",
+          "paraphrase": "Requiring proof of the attacker's intention is problematic because it obliges the victim to infer the attacker's state of mind, creating a significant evidentiary hurdle in cyber attribution.",
+          "researcher_comment": "Directly identifies a core attribution challenge: proving intent; this undermines the feasibility of invoking self\u2011defense where intent is contested or hidden. The passage points out the limitation but does not propose evidentiary standards.",
+          "potential_themes": [
+            "attribution_challenges",
+            "intent_requirement"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "proof_of_intent",
+            "state_of_mind_inference",
+            "attribution_burden"
+          ]
+        },
+        {
+          "quote": "Despite the clear enunciation found in Oil Platforms, this element remains somewhat controversial, and has essentially been rejected by the United States.",
+          "paraphrase": "Although the Oil Platforms judgment articulated an intent requirement, that element remains controversial and has effectively been rejected by the United States, indicating state disagreement on the necessity of proving specific intent for self\u2011defense.",
+          "researcher_comment": "Demonstrates divergence in state practice/opinion on the intent requirement, weakening claims of an uncontested customary rule; for cyber, such divergence increases legal uncertainty about permissible responses. The US rejection should be corroborated with policy statements for synthesis.",
+          "potential_themes": [
+            "state_practice",
+            "intent_requirement"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "contradicts",
+          "open_codes": [
+            "oil_platforms",
+            "us_rejection",
+            "state_disagreement"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-24T15:04:31.603398Z",
+  "collection_name": "frameworks",
+  "custom_id": "79e67ff4bde7ac93f68ed3e44f29f50180c011239b2d9744d564074936aba103",
+  "function": "code_pdf_page"
+}

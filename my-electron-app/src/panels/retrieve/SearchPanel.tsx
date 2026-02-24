@@ -97,7 +97,9 @@ export class SearchPanel {
 
     const searchBtn = document.createElement("button");
     searchBtn.className = "ribbon-button";
+    searchBtn.ariaLabel = "Search";
     searchBtn.textContent = "Search";
+    searchBtn.dataset.voiceAliases = "search papers,find papers,academic search,query";
     searchBtn.addEventListener("click", () => void this.handleSearch());
 
     const searchBlock = document.createElement("div");
@@ -135,6 +137,7 @@ export class SearchPanel {
     this.loadMoreBtn.type = "button";
     this.loadMoreBtn.className = "ribbon-button";
     this.loadMoreBtn.textContent = "Load more results";
+    this.loadMoreBtn.dataset.voiceAliases = "load more results,next page,more results,continue";
     this.loadMoreBtn.style.display = "none";
     this.loadMoreBtn.addEventListener("click", () => void this.handleSearch(true));
 
@@ -332,7 +335,9 @@ export class SearchPanel {
     const tagButton = document.createElement("button");
     tagButton.type = "button";
     tagButton.className = "retrieve-tag-add";
+    tagButton.ariaLabel = "Add tag";
     tagButton.textContent = "Add";
+    tagButton.dataset.voiceAliases = "add tag,tag add,add new tag";
 
     const attemptAddTag = async (): Promise<void> => {
       const value = tagInput.value.trim();
@@ -479,6 +484,8 @@ export class SearchPanel {
     removeBtn.type = "button";
     removeBtn.className = "retrieve-tag-remove";
     removeBtn.textContent = "×";
+    removeBtn.ariaLabel = "Remove tag";
+    removeBtn.dataset.voiceAliases = "remove tag,delete tag,clear tag";
     removeBtn.addEventListener("click", (event) => {
       event.stopPropagation();
       void this.removeTag(recordId, tag, container);

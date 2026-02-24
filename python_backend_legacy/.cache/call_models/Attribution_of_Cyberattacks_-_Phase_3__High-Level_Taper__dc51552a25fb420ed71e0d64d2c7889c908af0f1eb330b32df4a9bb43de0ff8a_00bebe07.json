@@ -1,0 +1,252 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "quote": "More than anything else, however, it is this element of attributability\u2014the reciprocal ability to say \u201cwho did it\u201d\u2014that makes law work.",
+          "paraphrase": "For RQ 0: The author argues that attributability\u2014the reciprocal capacity to identify 'who did it'\u2014is the central condition that enables international law to function effectively.",
+          "researcher_comment": "This is a direct normative-theoretical claim tying attribution to legal effectiveness and enforcement. It frames attribution as a prerequisite for the entire legal edifice; empirical qualification is needed on how much attribution suffices in practice. Useful as a high-level premise for RQ analysis of attribution requirements and legal consequences.",
+          "potential_themes": [
+            "attribution_challenges",
+            "deterrence_mechanisms"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "theory_model",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "attribution_centrality",
+            "reciprocal_attribution"
+          ]
+        },
+        {
+          "quote": "If cyber activity and its sponsor are concealed, however, and verification of compliance is impossible, so too is deterrence\u2076\u2070 and effective legal regulation.",
+          "paraphrase": "For RQ 0: The text states that if cyber operations and their sponsors remain concealed so verification is impossible, then deterrence and enforceable legal regulation become infeasible.",
+          "researcher_comment": "Identifies verification failure as a direct barrier to deterrence and legal regulation\u2014an operational limitation. The claim links technical/forensic limits to normative outcomes; it assumes no alternative enforcement mechanisms (e.g., non-forensic intelligence attribution) will fill the gap.",
+          "potential_themes": [
+            "attribution_challenges",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "limitation",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "verification_barrier",
+            "deterrence_failure"
+          ]
+        },
+        {
+          "quote": "To attribute a cyber attack to a State, it's necessary to establish what computer was used, who was sitting at the computer (if it's not government-owned), and what government or organization that person worked for.",
+          "paraphrase": "For RQ 0: Attribution to a State requires evidence at three levels: the device used, the human operator, and the operator's organizational/state affiliation.",
+          "researcher_comment": "Concrete operationalization of 'attribution' into technical, human and organizational layers; helpful for designing evidentiary standards or attribution protocols. Does not specify evidentiary thresholds or acceptable proof standards for each layer.",
+          "potential_themes": [
+            "attribution_challenges",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "method_operationalization",
+          "argument_type": "definitional",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "three_level_attribution",
+            "technical_human_organizational"
+          ]
+        },
+        {
+          "quote": "Sophisticated cyber attacks of the sort launched by governments normally are extremely difficult to trace at any of those levels.",
+          "paraphrase": "For RQ 0: The author claims that advanced state-linked cyber operations are generally very difficult to trace across device, operator, and sponsor dimensions.",
+          "researcher_comment": "Affirms the practical difficulty of attribution at each level defined above; the claim rests on expert judgment rather than presented empirical measurement. Use cautiously\u2014requires corroboration with forensic and incident-case studies.",
+          "potential_themes": [
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "empirical_finding_qualitative",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "state_level_traceability",
+            "forensic_difficulty"
+          ]
+        },
+        {
+          "quote": "Most experts believe that the possibility of concealment is baked into the structure of the Internet and cannot feasibly be eliminated.",
+          "paraphrase": "For RQ 0: The author reports a view among experts that the Internet's architecture inherently permits concealment, making full elimination of attribution blindspots infeasible.",
+          "researcher_comment": "Frames attribution as not merely a capability gap but a structural limitation of network architecture\u2014an important scope condition for legal and technical remedies. 'Most experts' indicates consensus but is imprecise; empirical validation recommended.",
+          "potential_themes": [
+            "attribution_challenges",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "empirical_finding_qualitative",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "internet_architecture_limit",
+            "structural_concealment"
+          ]
+        },
+        {
+          "quote": "Circumstantial evidence and inferred motives have led experts to suspect State involvement in a number of cyber attacks over recent years, but have not provided the level of probability long thought necessary to justify military retaliation.",
+          "paraphrase": "For RQ 0: The author notes that while circumstantial indicators often suggest State involvement, such evidence typically falls short of the probability threshold required to justify military response.",
+          "researcher_comment": "Highlights the gap between suspicion and the higher evidentiary threshold for force; implies international law/policy requires a high bar before kinetic retaliation. Useful for RQ components on evidentiary thresholds for responses.",
+          "potential_themes": [
+            "evidentiary_standards",
+            "state_responsibility_thresholds"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "qualifies",
+          "open_codes": [
+            "circumstantial_vs_actionable",
+            "threshold_for_force"
+          ]
+        },
+        {
+          "quote": "No verifiable international agreement can regulate the covert writing or storage of computer code useful for launching a clandestine cyber attack.",
+          "paraphrase": "For RQ 0: The author asserts that covert development or storage of attack code cannot be effectively constrained by international agreements because such acts are not verifiable.",
+          "researcher_comment": "Makes a strong claim about the limits of treaty-based regulation absent verification mechanisms; use as a caution against expecting comprehensive arms-control-style cyber treaties. Empirical examples of verifiable vs non-verifiable norms would strengthen the claim.",
+          "potential_themes": [
+            "attribution_challenges",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "nonverifiable_activities",
+            "treaty_verification_impossibility"
+          ]
+        },
+        {
+          "quote": "If, however, the sponsor of a cyber attack can\u2019t be identified because sponsorship of the attack\u2014or the attack itself\u2014is concealed, as is often true of cyber attacks, then the future casts no shadow and no State need be concerned about future rewards or penalties; law can impose no punishment.",
+          "paraphrase": "For RQ 0: The text argues that concealed sponsorship removes future-game incentives for cooperation (no expected penalties), so law cannot credibly impose punishment in cyberspace.",
+          "researcher_comment": "Connects attribution failure to the international-cooperation literature: absent identification, incentive-based compliance collapses. This links attribution to the preconditions for law-making and customary practice formation. Assumes states will behave opportunistically if anonymity persists.",
+          "potential_themes": [
+            "attribution_challenges",
+            "state_responsibility_thresholds"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "theory_model",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "incentive_breakdown",
+            "cooperation_condition"
+          ]
+        },
+        {
+          "quote": "The prohibition against aggression is empty absent an ability to ascertain the aggressor.",
+          "paraphrase": "For RQ 0: The author contends that legal prohibitions on aggression are unenforceable without the practical capacity to identify who committed the aggression.",
+          "researcher_comment": "This is a legal-interpretive observation emphasizing attribution as a precondition for the applicability and enforcement of aggression norms; useful when assessing how cyber anonymity undermines core juridical prohibitions. It is an analytic claim, not a judicial holding.",
+          "potential_themes": [
+            "state_responsibility_thresholds",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "assumption",
+          "argument_type": "legal_interpretive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "aggression_attribution_dependency"
+          ]
+        },
+        {
+          "quote": "Attributability, in contrast, creates reciprocity-induced restraints. It produces greater regularity in conflict management, enhanced predictability in inter-State relations and increased systemic stability.",
+          "paraphrase": "For RQ 0: The author argues that when attackers can be identified, reciprocity (threat of retaliation/legal remedies/reputation) fosters restraint and systemic stability in interstate relations.",
+          "researcher_comment": "Specifies the mechanisms (reciprocity, predictability, legal remedy) through which attribution promotes compliance; theoretically useful for designing policy levers to increase attribution and thereby stability. Empirical testing across case studies would be valuable.",
+          "potential_themes": [
+            "attribution_challenges",
+            "deterrence_mechanisms"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "theory_model",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "reciprocity_restraints",
+            "predictability_stability"
+          ]
+        },
+        {
+          "quote": "If that's the road ahead, gaps or no gaps, we are in for a rough ride.",
+          "paraphrase": "For RQ 0: The author predicts that a future characterized by frequent, often-anonymous cyber attacks will pose serious governance and security challenges regardless of whether legal gaps formally exist.",
+          "researcher_comment": "Concluding prognosis: anonymous/gradual ('drip-drip') cyber conflict yields systemic risks even if law exists. This is a high-level prediction useful for RQ implications and policy urgency, but it is stated without empirical probability estimates.",
+          "potential_themes": [
+            "attribution_challenges"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "theory_model",
+          "argument_type": "predictive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "anonymous_conflict_risk"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-24T17:43:24.608996Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "dc51552a25fb420ed71e0d64d2c7889c908af0f1eb330b32df4a9bb43de0ff8a",
+  "function": "code_pdf_page"
+}

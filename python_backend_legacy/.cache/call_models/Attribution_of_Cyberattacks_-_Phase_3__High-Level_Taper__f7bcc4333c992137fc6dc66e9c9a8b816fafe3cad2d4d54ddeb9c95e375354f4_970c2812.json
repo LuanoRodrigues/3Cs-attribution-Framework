@@ -1,0 +1,111 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "dqid": "U6DF4B74#DQ001",
+          "quote": "Cyberspace has been regarded as the \"fifth domain,\" of equal strategic importance as the land, sea, air and space.",
+          "extraction_type": "definition",
+          "paraphrase": "The author states that cyberspace is regarded as the 'fifth domain', equal in strategic importance to land, sea, air, and space.",
+          "relevance_score": 1,
+          "relevant_rqs": [],
+          "mapped_codes": []
+        },
+        {
+          "dqid": "U6DF4B74#DQ002",
+          "quote": "This article will first outline the trends of cyberspace security, then examine the possible sources of cyber conflicts, and finally explore feasible solutions to maintain stability in cyberspace.",
+          "extraction_type": "method_claim",
+          "paraphrase": "The paper's structure is to (1) outline cyberspace security trends, (2) examine possible sources of cyber conflict, and (3) explore feasible solutions to maintain stability in cyberspace.",
+          "relevance_score": 2,
+          "relevant_rqs": [],
+          "mapped_codes": []
+        },
+        {
+          "dqid": "U6DF4B74#DQ003",
+          "quote": "Moreover, we should also understand and solve cyber military conflicts within the framework of international relations, as cyber relations are a part of them.",
+          "extraction_type": "recommendation",
+          "paraphrase": "The author recommends addressing cyber military conflicts within the framework of international relations because cyber relations are part of interstate relations.",
+          "relevance_score": 2,
+          "relevant_rqs": [],
+          "mapped_codes": []
+        },
+        {
+          "dqid": "U6DF4B74#DQ004",
+          "quote": "In this regard, building more stable and reliable state-to-state relations should be a focus.",
+          "extraction_type": "recommendation",
+          "paraphrase": "The author advises prioritizing the building of more stable and reliable state-to-state relations.",
+          "relevance_score": 2,
+          "relevant_rqs": [],
+          "mapped_codes": []
+        },
+        {
+          "dqid": "U6DF4B74#DQ005",
+          "quote": "Therefore, in order to maintain a normal and good interstate cyber relationship, countries should exercise self-restraint in using cyber tools, and refrain from offensive actions, let alone preemptive strikes.",
+          "extraction_type": "recommendation",
+          "paraphrase": "The author urges states to exercise self-restraint in using cyber tools and to avoid offensive or preemptive cyber actions to preserve interstate cyber relationships.",
+          "relevance_score": 2,
+          "relevant_rqs": [],
+          "mapped_codes": []
+        },
+        {
+          "dqid": "U6DF4B74#DQ006",
+          "quote": "In the meantime, as for the cyberattacks that they suffer from, countries should identify their real nature and respond cautiously.",
+          "extraction_type": "recommendation",
+          "paraphrase": "The author argues that states should carefully identify the true nature of cyberattacks they suffer and respond with caution.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "attribution_challenges",
+            "evidentiary_standards"
+          ]
+        },
+        {
+          "dqid": "U6DF4B74#DQ007",
+          "quote": "On regional and global levels, countries should conduct multilateral dialogues, manage and control potential military conflicts, and engage in cyber arms control to reduce the likelihood of escalating cyber conflicts.",
+          "extraction_type": "recommendation",
+          "paraphrase": "The author recommends that states pursue multilateral dialogue, conflict management, and cyber arms control at regional and global levels to reduce escalation risk.",
+          "relevance_score": 2,
+          "relevant_rqs": [],
+          "mapped_codes": []
+        },
+        {
+          "dqid": "U6DF4B74#DQ008",
+          "quote": "In addition to the above proposals, other policy options are also available, such as promoting confidence-building measures, building international norms, and conducting cyber diplomacy.",
+          "extraction_type": "recommendation",
+          "paraphrase": "The author suggests additional policy options including confidence-building measures, development of international norms, and cyber diplomacy.",
+          "relevance_score": 2,
+          "relevant_rqs": [],
+          "mapped_codes": []
+        },
+        {
+          "dqid": "U6DF4B74#DQ009",
+          "quote": "There might not be a causal relationship between these options and cyber conflict and cyber strategic stability, but in the long run, the former will contribute to the latter in a direct or indirect manner.",
+          "extraction_type": "limitation",
+          "paraphrase": "The author concedes that the proposed policy options may not have a demonstrated causal effect on cyber conflict or strategic stability, though they may contribute indirectly or over time.",
+          "relevance_score": 2,
+          "relevant_rqs": [],
+          "mapped_codes": []
+        },
+        {
+          "dqid": "U6DF4B74#DQ010",
+          "quote": "In short, the international community should adopt a multi-pronged approach and take various measures to resolve cyber conflicts.",
+          "extraction_type": "recommendation",
+          "paraphrase": "The author concludes that the international community should adopt a multi\u2011pronged strategy and multiple measures to resolve cyber conflicts.",
+          "relevance_score": 2,
+          "relevant_rqs": [],
+          "mapped_codes": []
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-24T17:40:51.419526Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "f7bcc4333c992137fc6dc66e9c9a8b816fafe3cad2d4d54ddeb9c95e375354f4",
+  "function": "code_intro_conclusion_extract_core_claims"
+}

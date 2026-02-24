@@ -1,0 +1,71 @@
+{
+  "item_key": "23UXFS4N",
+  "title": "Conflict in cyberspace: how international legal norms can reduce military escalation in cyberspace",
+  "metadata": {
+    "pdf_path": "/mnt/c/Users/luano/Zotero/storage/65PGBJV6/23UXFS4N.pdf",
+    "open_code_count": 77,
+    "evidence_harvest_count": 14,
+    "coding_mode": "open",
+    "overarching_theme": "cyber attribution"
+  },
+  "section_open_coding_results": [
+    {
+      "section_key": "__preamble__ + ## The Current Discussion",
+      "count": 1
+    },
+    {
+      "section_key": "## Important Characteristics of Cyberspace",
+      "count": 1
+    },
+    {
+      "section_key": "## Technical Considerations on Legal Definitions of Offensive Activity + ## The Use of Force and an Armed Attack in Cyberspace",
+      "count": 1
+    },
+    {
+      "section_key": "## Current International Efforts to Reduce Conflict in Cyberspace + ## Dispute around Legal Norms Governing Use of Force",
+      "count": 20
+    },
+    {
+      "section_key": "## The Role of Confidence-Building Measures to Reduce Conflict in Cyberspace",
+      "count": 15
+    },
+    {
+      "section_key": "## Taking Stock and Moving Forward: Bridging the Gap Between Technology and Legal Norms + ## Conclusion + __postscript__",
+      "count": 20
+    }
+  ],
+  "harvest_categories_counts": {
+    "definitions": 2,
+    "main_findings": 4,
+    "method_claims": 2,
+    "stated_limitations": 2,
+    "recommendations_future_work": 7
+  },
+  "harvest_required_categories": {
+    "definitions": 2,
+    "main_findings": 4,
+    "method_claims": 2,
+    "stated_limitations": 2,
+    "recommendations_future_work": 7
+  },
+  "evidence_list_count": 91,
+  "sample_evidence_keys": [
+    "argument_type",
+    "claim_direction",
+    "cluster_match",
+    "dqid",
+    "evidence_type",
+    "extraction_category",
+    "function_summary",
+    "illustrative_skills",
+    "paraphrase",
+    "pdf_path",
+    "potential_themes",
+    "quote",
+    "relevance_score",
+    "researcher_comment",
+    "risk_if_missing",
+    "section_key"
+  ],
+  "item_cache_path": "/home/pantera/projects/TEIA/logs/open_coding_cache/23UXFS4N_code_pdf_page_af9de66d0c.json"
+}

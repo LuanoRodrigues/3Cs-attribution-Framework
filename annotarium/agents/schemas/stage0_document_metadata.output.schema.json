@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "stage0_document_metadata_output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "title",
+    "authoring_entity",
+    "publication_date",
+    "document_type",
+    "source_locator",
+    "input_format"
+  ],
+  "properties": {
+    "title": {"type": ["string", "null"], "minLength": 1},
+    "authoring_entity": {"type": ["string", "null"], "minLength": 1},
+    "publication_date": {"type": ["string", "null"], "format": "date"},
+    "publication_date_source": {"type": ["string", "null"]},
+    "version": {"type": ["string", "null"]},
+    "document_type": {"type": "string", "minLength": 1},
+    "audience": {"type": ["string", "null"]},
+    "source_locator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_type", "source_value"],
+      "properties": {
+        "source_type": {"const": "file"},
+        "source_value": {"type": "string", "minLength": 1}
+      }
+    },
+    "input_format": {
+      "type": "string",
+      "enum": ["markdown", "pdf", "text", "other"]
+    }
+  }
+}

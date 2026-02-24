@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": "{\n  \"classification\": \"Highly Relevant\",\n  \"relevance_score\": \"High\",\n  \"potential_subcategory\": \"Confidence-building measures (CBMs), cyber norms, multistakeholder governance, and multilateral attribution/adjudication mechanisms\",\n  \"justification\": \"The abstract explicitly addresses policy and legal dimensions of cyber conflict: it proposes multistakeholder confidence-building measures, discusses embedding disputed cyber activities within recognized legal and policy frameworks, and explicitly calls for multilateral attribution and adjudication mechanisms. It outlines operational and institutional design elements (membership criteria, rules of behavior, state recognition/protection) and examines feasibility and implementation\u2014making it directly relevant to both cyber conflict attribution and cyber policy/law. While methodological approach is qualitative (policy analysis rather than technical forensics), its focus on governance, norms, incident reporting, and adjudication regimes makes it highly applicable for research and policy work in attribution and legal/political management of cyber operations.\"\n}"
+  },
+  "cached_at": "2026-02-23T21:00:26.908299Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "KQ8YG5VN",
+  "function": "classify_by_abs"
+}

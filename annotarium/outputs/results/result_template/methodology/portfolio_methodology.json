@@ -1,0 +1,1187 @@
+{
+  "generated_at_utc": "2026-02-22T21:14:52Z",
+  "mode": "aggregate",
+  "title": "Annotarium Methodology: Portfolio View (5 documents)",
+  "template_path": "/home/pantera/projects/TEIA/annotarium/docs/methodology_template.json",
+  "input_reports": [
+    "/home/pantera/projects/TEIA/annotarium/outputs/reports/apt29_hammertoss_stealthy_tactics_define_a_report.json",
+    "/home/pantera/projects/TEIA/annotarium/outputs/reports/fireeye_rpt_apt37_02_20_2018_report.json",
+    "/home/pantera/projects/TEIA/annotarium/outputs/reports/mandiant_2013_apt1_exposing_one_of_china_s_cyber_espionage_units_report.json",
+    "/home/pantera/projects/TEIA/annotarium/outputs/reports/mandiant_2017_apt28_at_the_center_of_the_storm_report.json",
+    "/home/pantera/projects/TEIA/annotarium/outputs/reports/panda_crowdstrike_intelligence_report_report.json"
+  ],
+  "template_sections": [
+    {
+      "id": "introduction",
+      "title": "Introduction and Epistemic Framing",
+      "instruction": "Introduce the methodology as an evidentiary framework for cyber attribution under contestation. Explain epistemic posture, burden-sensitive interpretation, and why structured extraction precedes legal inference.",
+      "min_paragraphs": 3,
+      "min_words": 260,
+      "must_include": [
+        "epistemic",
+        "evidentiary",
+        "contestable",
+        "burden-sensitive"
+      ],
+      "context_keys": [
+        "mode",
+        "report_meta",
+        "documents_preview",
+        "methodology_reference_excerpt",
+        "pipeline_methods"
+      ]
+    },
+    {
+      "id": "scope_units",
+      "title": "Scope, Units of Analysis, and Output Semantics",
+      "instruction": "Define units of analysis (claim, source, artifact, evidence item, document) and explain what each output score means and does not mean.",
+      "min_paragraphs": 2,
+      "min_words": 220,
+      "must_include": [
+        "claim",
+        "source",
+        "artifact",
+        "evidence item",
+        "document-level"
+      ],
+      "context_keys": [
+        "mode",
+        "raw_data_excerpt",
+        "pipeline_counts",
+        "document_scores_v4",
+        "claim_score_preview_v4"
+      ]
+    },
+    {
+      "id": "data_ingestion",
+      "title": "Data Ingestion and Corpus Handling",
+      "instruction": "Explain report ingestion, deterministic file handling, and reproducibility guarantees from raw PDF inputs through intermediate artifacts.",
+      "min_paragraphs": 2,
+      "min_words": 200,
+      "must_include": [
+        "deterministic",
+        "reproducibility",
+        "input corpus"
+      ],
+      "context_keys": [
+        "report_meta",
+        "raw_payload_paths",
+        "raw_payload_files",
+        "pipeline_methods",
+        "runtime_libraries"
+      ]
+    },
+    {
+      "id": "pdf_to_markdown",
+      "title": "PDF-to-Markdown Conversion",
+      "instruction": "Explain conversion from PDF to markdown, explicitly describing Mistral-based processing and offline fallback posture as methodological resilience rather than conceptual change.",
+      "min_paragraphs": 2,
+      "min_words": 210,
+      "must_include": [
+        "Mistral",
+        "markdown",
+        "offline fallback",
+        "resilience"
+      ],
+      "context_keys": [
+        "pipeline_methods",
+        "pipeline_counts",
+        "raw_payload_paths",
+        "raw_payload_files"
+      ]
+    },
+    {
+      "id": "structural_parsing",
+      "title": "Structural Parsing of Text, Tables, and Figures",
+      "instruction": "Describe extraction of text blocks, tables, and figures/images with anchors and why anchor-preserving structure is required for auditability.",
+      "min_paragraphs": 2,
+      "min_words": 220,
+      "must_include": [
+        "anchors",
+        "tables",
+        "figures",
+        "auditability"
+      ],
+      "context_keys": [
+        "pipeline_counts",
+        "raw_data_excerpt",
+        "raw_payload_paths",
+        "raw_claims_preview"
+      ]
+    },
+    {
+      "id": "artifact_extraction",
+      "title": "Artifact Extraction and Technical Object Normalization",
+      "instruction": "Explain artifact extraction across modalities, normalization of technical objects, and implications for custody/provenance evaluation.",
+      "min_paragraphs": 2,
+      "min_words": 220,
+      "must_include": [
+        "normalization",
+        "technical objects",
+        "provenance",
+        "modalities"
+      ],
+      "context_keys": [
+        "artifact_type_counts",
+        "raw_artifacts_preview",
+        "pipeline_methods",
+        "document_scores_v4"
+      ]
+    },
+    {
+      "id": "reference_parsing",
+      "title": "Footnote and Reference Parsing",
+      "instruction": "Explain reference and footnote parsing, citation linkage, and resolution from rhetorical citation to analyzable source graph.",
+      "min_paragraphs": 2,
+      "min_words": 220,
+      "must_include": [
+        "footnote",
+        "citation linkage",
+        "source graph"
+      ],
+      "context_keys": [
+        "raw_sources_preview",
+        "source_type_counts",
+        "pipeline_counts",
+        "pipeline_methods"
+      ]
+    },
+    {
+      "id": "institution_inference",
+      "title": "Institution Inference and Source Typology",
+      "instruction": "Explain source institution inference, typology mapping, and how institutional class affects credibility weighting and corroboration eligibility.",
+      "min_paragraphs": 2,
+      "min_words": 210,
+      "must_include": [
+        "institution inference",
+        "source typology",
+        "credibility weighting",
+        "corroboration eligibility"
+      ],
+      "context_keys": [
+        "raw_sources_preview",
+        "source_type_counts",
+        "pipeline_methods",
+        "runtime_libraries"
+      ]
+    },
+    {
+      "id": "claim_evidence_graph",
+      "title": "Claim-Evidence Graph Construction",
+      "instruction": "Describe how claims are linked to evidence, sources, and artifacts, including anchor-level traceability and anti-circularity safeguards.",
+      "min_paragraphs": 2,
+      "min_words": 230,
+      "must_include": [
+        "claim-evidence graph",
+        "traceability",
+        "anti-circularity"
+      ],
+      "context_keys": [
+        "raw_claims_preview",
+        "raw_sources_preview",
+        "raw_artifacts_preview",
+        "claim_score_preview_v4",
+        "scoring_bundle"
+      ]
+    },
+    {
+      "id": "scoring_overview",
+      "title": "Scoring Framework Overview",
+      "instruction": "Present the overall scoring architecture from claim-level axes to document-level synthesis. Clarify separation between extraction outputs and inferential weighting.",
+      "min_paragraphs": 2,
+      "min_words": 230,
+      "must_include": [
+        "claim-level",
+        "document-level",
+        "inferential weighting"
+      ],
+      "context_keys": [
+        "document_scores_v4",
+        "claim_score_preview_v4",
+        "scoring_bundle",
+        "pipeline_methods"
+      ]
+    },
+    {
+      "id": "chain_of_custody",
+      "title": "Chain of Custody Axis",
+      "instruction": "Explain chain-of-custody variables (provenance, integrity, time anchors, artifact identifiers, versioning), quality controls, and penalties.",
+      "min_paragraphs": 3,
+      "min_words": 280,
+      "must_include": [
+        "provenance",
+        "integrity",
+        "time anchors",
+        "versioning",
+        "penalties"
+      ],
+      "context_keys": [
+        "document_scores_v4",
+        "claim_score_preview_v4",
+        "raw_artifacts_preview",
+        "scoring_bundle"
+      ]
+    },
+    {
+      "id": "credibility_corroboration",
+      "title": "Credibility Axis with Corroboration Subcomponent",
+      "instruction": "Explain source hierarchy, independence logic, corroboration rules, claim coverage scaling, and exclusion criteria for low-value source classes.",
+      "min_paragraphs": 3,
+      "min_words": 320,
+      "must_include": [
+        "source hierarchy",
+        "independence",
+        "corroboration",
+        "claim coverage",
+        "exclusion criteria"
+      ],
+      "context_keys": [
+        "source_type_counts",
+        "raw_sources_preview",
+        "document_scores_v4",
+        "claim_score_preview_v4",
+        "scoring_bundle"
+      ]
+    },
+    {
+      "id": "clarity_axis",
+      "title": "Clarity Axis and State Responsibility Pathways",
+      "instruction": "Explain clarity scoring for attribution to state actors through organs, control over non-state actors, and due diligence failure pathways.",
+      "min_paragraphs": 3,
+      "min_words": 300,
+      "must_include": [
+        "state organs",
+        "non-state actors",
+        "control",
+        "due diligence",
+        "state responsibility"
+      ],
+      "context_keys": [
+        "document_scores_v4",
+        "claim_score_preview_v4",
+        "scoring_bundle",
+        "raw_claims_preview"
+      ]
+    },
+    {
+      "id": "aggregation_calibration",
+      "title": "Aggregation, Calibration, and Uncertainty",
+      "instruction": "Explain claim-to-document aggregation, weighting, calibration, and uncertainty handling (e.g., confidence intervals/dispersion diagnostics) in interpretation.",
+      "min_paragraphs": 3,
+      "min_words": 300,
+      "must_include": [
+        "aggregation",
+        "calibration",
+        "uncertainty",
+        "dispersion"
+      ],
+      "context_keys": [
+        "document_scores_v4",
+        "scoring_bundle",
+        "portfolio_summary",
+        "documents_preview"
+      ]
+    },
+    {
+      "id": "validation_quality_assurance",
+      "title": "Validation and Quality Assurance",
+      "instruction": "Explain automated validation gates and QA protocol with agent review and targeted human review on a 10% sample with no observed errors in that sample.",
+      "min_paragraphs": 3,
+      "min_words": 260,
+      "must_include": [
+        "validation gates",
+        "agent review",
+        "human review",
+        "10%",
+        "no observed errors"
+      ],
+      "context_keys": [
+        "validation_bundle",
+        "qa_protocol",
+        "raw_payload_paths",
+        "raw_payload_files"
+      ]
+    },
+    {
+      "id": "limitations_governance",
+      "title": "Limitations, Governance, and Future Refinement",
+      "instruction": "Discuss methodological limits, governance controls, and principled refinement roadmap without overstating certainty.",
+      "min_paragraphs": 2,
+      "min_words": 220,
+      "must_include": [
+        "limitations",
+        "governance",
+        "refinement roadmap"
+      ],
+      "context_keys": [
+        "validation_bundle",
+        "document_scores_v4",
+        "portfolio_summary",
+        "runtime_libraries",
+        "methodology_reference_excerpt"
+      ]
+    }
+  ],
+  "context_snapshot": {
+    "mode": "aggregate",
+    "document_count": 5,
+    "documents_preview": [
+      {
+        "report_path": "/home/pantera/projects/TEIA/annotarium/outputs/reports/apt29_hammertoss_stealthy_tactics_define_a_report.json",
+        "title": "APT1: Exposing One of China's Cyber Espionage Units",
+        "belief_weighted_0_100": 0.05,
+        "custody_avg_0_100": 61.43,
+        "credibility_composite_avg_0_100": 0.0,
+        "clarity_avg_0_100": 24.25,
+        "sources_total": 1,
+        "citations_total": 0,
+        "citation_coverage_sources_0_1": 0.0
+      },
+      {
+        "report_path": "/home/pantera/projects/TEIA/annotarium/outputs/reports/fireeye_rpt_apt37_02_20_2018_report.json",
+        "title": "APT1: Exposing One of China's Cyber Espionage Units",
+        "belief_weighted_0_100": 0.06,
+        "custody_avg_0_100": 34.5,
+        "credibility_composite_avg_0_100": 0.0,
+        "clarity_avg_0_100": 37.11,
+        "sources_total": 1,
+        "citations_total": 0,
+        "citation_coverage_sources_0_1": 0.0
+      },
+      {
+        "report_path": "/home/pantera/projects/TEIA/annotarium/outputs/reports/mandiant_2013_apt1_exposing_one_of_china_s_cyber_espionage_units_report.json",
+        "title": "APT1: Exposing One of China's Cyber Espionage Units",
+        "belief_weighted_0_100": 0.13,
+        "custody_avg_0_100": 52.58,
+        "credibility_composite_avg_0_100": 0.1,
+        "clarity_avg_0_100": 51.74,
+        "sources_total": 10,
+        "citations_total": 17,
+        "citation_coverage_sources_0_1": 0.9
+      },
+      {
+        "report_path": "/home/pantera/projects/TEIA/annotarium/outputs/reports/mandiant_2017_apt28_at_the_center_of_the_storm_report.json",
+        "title": "APT1: Exposing One of China's Cyber Espionage Units",
+        "belief_weighted_0_100": 0.07,
+        "custody_avg_0_100": 42.89,
+        "credibility_composite_avg_0_100": 0.0,
+        "clarity_avg_0_100": 42.24,
+        "sources_total": 1,
+        "citations_total": 0,
+        "citation_coverage_sources_0_1": 0.0
+      },
+      {
+        "report_path": "/home/pantera/projects/TEIA/annotarium/outputs/reports/panda_crowdstrike_intelligence_report_report.json",
+        "title": "APT1: Exposing One of China's Cyber Espionage Units",
+        "belief_weighted_0_100": 0.08,
+        "custody_avg_0_100": 40.65,
+        "credibility_composite_avg_0_100": 0.0,
+        "clarity_avg_0_100": 42.34,
+        "sources_total": 1,
+        "citations_total": 0,
+        "citation_coverage_sources_0_1": 0.0
+      }
+    ],
+    "raw_documents_preview": [
+      {
+        "report_path": "/home/pantera/projects/TEIA/annotarium/outputs/reports/apt29_hammertoss_stealthy_tactics_define_a_report.json",
+        "title": "APT1: Exposing One of China's Cyber Espionage Units",
+        "belief_weighted_0_100": 0.05,
+        "custody_avg_0_100": 61.43,
+        "credibility_composite_avg_0_100": 0.0,
+        "clarity_avg_0_100": 24.25,
+        "sources_total": 1,
+        "citations_total": 0,
+        "citation_coverage_sources_0_1": 0.0
+      },
+      {
+        "report_path": "/home/pantera/projects/TEIA/annotarium/outputs/reports/fireeye_rpt_apt37_02_20_2018_report.json",
+        "title": "APT1: Exposing One of China's Cyber Espionage Units",
+        "belief_weighted_0_100": 0.06,
+        "custody_avg_0_100": 34.5,
+        "credibility_composite_avg_0_100": 0.0,
+        "clarity_avg_0_100": 37.11,
+        "sources_total": 1,
+        "citations_total": 0,
+        "citation_coverage_sources_0_1": 0.0
+      },
+      {
+        "report_path": "/home/pantera/projects/TEIA/annotarium/outputs/reports/mandiant_2013_apt1_exposing_one_of_china_s_cyber_espionage_units_report.json",
+        "title": "APT1: Exposing One of China's Cyber Espionage Units",
+        "belief_weighted_0_100": 0.13,
+        "custody_avg_0_100": 52.58,
+        "credibility_composite_avg_0_100": 0.1,
+        "clarity_avg_0_100": 51.74,
+        "sources_total": 10,
+        "citations_total": 17,
+        "citation_coverage_sources_0_1": 0.9
+      },
+      {
+        "report_path": "/home/pantera/projects/TEIA/annotarium/outputs/reports/mandiant_2017_apt28_at_the_center_of_the_storm_report.json",
+        "title": "APT1: Exposing One of China's Cyber Espionage Units",
+        "belief_weighted_0_100": 0.07,
+        "custody_avg_0_100": 42.89,
+        "credibility_composite_avg_0_100": 0.0,
+        "clarity_avg_0_100": 42.24,
+        "sources_total": 1,
+        "citations_total": 0,
+        "citation_coverage_sources_0_1": 0.0
+      },
+      {
+        "report_path": "/home/pantera/projects/TEIA/annotarium/outputs/reports/panda_crowdstrike_intelligence_report_report.json",
+        "title": "APT1: Exposing One of China's Cyber Espionage Units",
+        "belief_weighted_0_100": 0.08,
+        "custody_avg_0_100": 40.65,
+        "credibility_composite_avg_0_100": 0.0,
+        "clarity_avg_0_100": 42.34,
+        "sources_total": 1,
+        "citations_total": 0,
+        "citation_coverage_sources_0_1": 0.0
+      }
+    ],
+    "portfolio_summary": {
+      "generated_at_utc": "2026-02-22T11:31:26Z",
+      "source": "/home/pantera/projects/TEIA/annotarium/threec_electron_viewer/pipeline_files.json",
+      "document_count": 5,
+      "aggregated_totals": {
+        "pages": 5,
+        "images": 0,
+        "tables": 31,
+        "figures": 40,
+        "claims": 38,
+        "sources": 14,
+        "artifacts": 25
+      },
+      "aggregated_averages_per_document": {
+        "pages": 1.0,
+        "images": 0.0,
+        "tables": 6.2,
+        "figures": 8.0,
+        "claims": 7.6,
+        "sources": 2.8,
+        "artifacts": 5.0
+      },
+      "average_scores_0_1": {
+        "chain_of_custody": 0.52182,
+        "credibility": 0.00030000000000000003,
+        "credibility_base": 0.0,
+        "corroboration": 0.0006000000000000001,
+        "clarity": 0.42838000000000004
+      },
+      "average_proxy_support_metrics": {
+        "weighted_coverage_ratio": 0.04,
+        "weighted_precision_proxy": 0.003,
+        "weighted_recall_proxy": 0.040000000000000015,
+        "weighted_f2_proxy": 0.006000000000000002
+      },
+      "cv_scores_0_1": {
+        "chain_of_custody": 0.21489457593551423,
+        "credibility": 2.23606797749979,
+        "credibility_base": 0.0,
+        "corroboration": 2.23606797749979,
+        "clarity": 0.25122872077165803
+      },
+      "covariance_matrix": {
+        "chain_of_custody": {
+          "chain_of_custody": 0.012574546999999997,
+          "credibility": 2.1442499999999993e-05,
+          "credibility_base": 0.0,
+          "corroboration": 4.288499999999999e-05,
+          "clarity": -0.004505357000000001,
+          "claims": -0.134865,
+          "sources": 0.12865499999999994,
+          "artifacts": 0.09739999999999999,
+          "weighted_coverage_ratio": 0.002858999999999999,
+          "weighted_precision_proxy": 0.0002144249999999999,
+          "weighted_recall_proxy": 0.002859,
+          "weighted_f2_proxy": 0.00042885
+        },
+        "credibility": {
+          "chain_of_custody": 2.1442499999999993e-05,
+          "credibility": 4.5000000000000003e-07,
+          "credibility_base": 0.0,
+          "corroboration": 9.000000000000001e-07,
+          "clarity": 4.9995e-05,
+          "claims": 0.0009,
+          "sources": 0.0027000000000000006,
+          "artifacts": 0.000375,
+          "weighted_coverage_ratio": 6.000000000000001e-05,
+          "weighted_precision_proxy": 4.500000000000001e-06,
+          "weighted_recall_proxy": 6.000000000000002e-05,
+          "weighted_f2_proxy": 9.000000000000005e-06
+        },
+        "credibility_base": {
+          "chain_of_custody": 0.0,
+          "credibility": 0.0,
+          "credibility_base": 0.0,
+          "corroboration": 0.0,
+          "clarity": 0.0,
+          "claims": 0.0,
+          "sources": 0.0,
+          "artifacts": 0.0,
+          "weighted_coverage_ratio": 0.0,
+          "weighted_precision_proxy": 0.0,
+          "weighted_recall_proxy": 0.0,
+          "weighted_f2_proxy": 0.0
+        },
+        "corroboration": {
+          "chain_of_custody": 4.288499999999999e-05,
+          "credibility": 9.000000000000001e-07,
+          "credibility_base": 0.0,
+          "corroboration": 1.8000000000000001e-06,
+          "clarity": 9.999e-05,
+          "claims": 0.0018,
+          "sources": 0.005400000000000001,
+          "artifacts": 0.00075,
+          "weighted_coverage_ratio": 0.00012000000000000002,
+          "weighted_precision_proxy": 9.000000000000002e-06,
+          "weighted_recall_proxy": 0.00012000000000000004,
+          "weighted_f2_proxy": 1.800000000000001e-05
+        },
+        "clarity": {
+          "chain_of_custody": -0.004505357000000001,
+          "credibility": 4.9995e-05,
+          "credibility_base": 0.0,
+          "corroboration": 9.999e-05,
+          "clarity": 0.011582356999999996,
+          "claims": 0.30071499999999995,
+          "sources": 0.29996999999999996,
+          "artifacts": -0.009849999999999998,
+          "weighted_coverage_ratio": 0.006665999999999999,
+          "weighted_precision_proxy": 0.0004999499999999999,
+          "weighted_recall_proxy": 0.006666000000000001,
+          "weighted_f2_proxy": 0.0009999
+        },
+        "claims": {
+          "chain_of_custody": -0.134865,
+          "credibility": 0.0009,
+          "credibility_base": 0.0,
+          "corroboration": 0.0018,
+          "clarity": 0.30071499999999995,
+          "claims": 9.299999999999999,
+          "sources": 5.400000000000001,
+          "artifacts": -1.0,
+          "weighted_coverage_ratio": 0.12000000000000004,
+          "weighted_precision_proxy": 0.009,
+          "weighted_recall_proxy": 0.12000000000000002,
+          "weighted_f2_proxy": 0.018000000000000006
+        },
+        "sources": {
+          "chain_of_custody": 0.12865499999999994,
+          "credibility": 0.0027000000000000006,
+          "credibility_base": 0.0,
+          "corroboration": 0.005400000000000001,
+          "clarity": 0.29996999999999996,
+          "claims": 5.400000000000001,
+          "sources": 16.2,
+          "artifacts": 2.25,
+          "weighted_coverage_ratio": 0.36000000000000004,
+          "weighted_precision_proxy": 0.027000000000000003,
+          "weighted_recall_proxy": 0.36000000000000015,
+          "weighted_f2_proxy": 0.05400000000000002
+        },
+        "artifacts": {
+          "chain_of_custody": 0.09739999999999999,
+          "credibility": 0.000375,
+          "credibility_base": 0.0,
+          "corroboration": 0.00075,
+          "clarity": -0.009849999999999998,
+          "claims": -1.0,
+          "sources": 2.25,
+          "artifacts": 2.0,
+          "weighted_coverage_ratio": 0.049999999999999996,
+          "weighted_precision_proxy": 0.0037500000000000007,
+          "weighted_recall_proxy": 0.050000000000000024,
+          "weighted_f2_proxy": 0.007500000000000002
+        },
+        "weighted_coverage_ratio": {
+          "chain_of_custody": 0.002858999999999999,
+          "credibility": 6.000000000000001e-05,
+          "credibility_base": 0.0,
+          "corroboration": 0.00012000000000000002,
+          "clarity": 0.006665999999999999,
+          "claims": 0.12000000000000004,
+          "sources": 0.36000000000000004,
+          "artifacts": 0.049999999999999996,
+          "weighted_coverage_ratio": 0.008,
+          "weighted_precision_proxy": 0.0006,
+          "weighted_recall_proxy": 0.008000000000000004,
+          "weighted_f2_proxy": 0.0012000000000000003
+        },
+        "weighted_precision_proxy": {
+          "chain_of_custody": 0.0002144249999999999,
+          "credibility": 4.500000000000001e-06,
+          "credibility_base": 0.0,
+          "corroboration": 9.000000000000002e-06,
+          "clarity": 0.0004999499999999999,
+          "claims": 0.009,
+          "sources": 0.027000000000000003,
+          "artifacts": 0.0037500000000000007,
+          "weighted_coverage_ratio": 0.0006,
+          "weighted_precision_proxy": 4.5e-05,
+          "weighted_recall_proxy": 0.0006000000000000002,
+          "weighted_f2_proxy": 9.000000000000003e-05
+        },
+        "weighted_recall_proxy": {
+          "chain_of_custody": 0.002859,
+          "credibility": 6.000000000000002e-05,
+          "credibility_base": 0.0,
+          "corroboration": 0.00012000000000000004,
+          "clarity": 0.006666000000000001,
+          "claims": 0.12000000000000002,
+          "sources": 0.36000000000000015,
+          "artifacts": 0.050000000000000024,
+          "weighted_coverage_ratio": 0.008000000000000004,
+          "weighted_precision_proxy": 0.0006000000000000002,
+          "weighted_recall_proxy": 0.008000000000000005,
+          "weighted_f2_proxy": 0.0012000000000000005
+        },
+        "weighted_f2_proxy": {
+          "chain_of_custody": 0.00042885,
+          "credibility": 9.000000000000005e-06,
+          "credibility_base": 0.0,
+          "corroboration": 1.800000000000001e-05,
+          "clarity": 0.0009999,
+          "claims": 0.018000000000000006,
+          "sources": 0.05400000000000002,
+          "artifacts": 0.007500000000000002,
+          "weighted_coverage_ratio": 0.0012000000000000003,
+          "weighted_precision_proxy": 9.000000000000003e-05,
+          "weighted_recall_proxy": 0.0012000000000000005,
+          "weighted_f2_proxy": 0.0001800000000000001
+        }
+      },
+      "spearman_matrix": {
+        "chain_of_custody": {
+          "chain_of_custody": 0.9999999999999998,
+          "credibility": 0.35355339059327373,
+          "credibility_base": 0.0,
+          "corroboration": 0.35355339059327373,
+          "clarity": 0.0,
+          "claims": -0.051298917604257706,
+          "sources": 0.35355339059327373,
+          "artifacts": 0.4472135954999579,
+          "weighted_coverage_ratio": 0.35355339059327373,
+          "weighted_precision_proxy": 0.35355339059327373,
+          "weighted_recall_proxy": 0.35355339059327373,
+          "weighted_f2_proxy": 0.35355339059327373
+        },
+        "credibility": {
+          "chain_of_custody": 0.35355339059327373,
+          "credibility": 0.9999999999999998,
+          "credibility_base": 0.0,
+          "corroboration": 0.9999999999999998,
+          "clarity": 0.7071067811865475,
+          "claims": 0.5441071875825088,
+          "sources": 0.9999999999999998,
+          "artifacts": 0.3952847075210474,
+          "weighted_coverage_ratio": 0.9999999999999998,
+          "weighted_precision_proxy": 0.9999999999999998,
+          "weighted_recall_proxy": 0.9999999999999998,
+          "weighted_f2_proxy": 0.9999999999999998
+        },
+        "credibility_base": {
+          "chain_of_custody": 0.0,
+          "credibility": 0.0,
+          "credibility_base": 0.0,
+          "corroboration": 0.0,
+          "clarity": 0.0,
+          "claims": 0.0,
+          "sources": 0.0,
+          "artifacts": 0.0,
+          "weighted_coverage_ratio": 0.0,
+          "weighted_precision_proxy": 0.0,
+          "weighted_recall_proxy": 0.0,
+          "weighted_f2_proxy": 0.0
+        },
+        "corroboration": {
+          "chain_of_custody": 0.35355339059327373,
+          "credibility": 0.9999999999999998,
+          "credibility_base": 0.0,
+          "corroboration": 0.9999999999999998,
+          "clarity": 0.7071067811865475,
+          "claims": 0.5441071875825088,
+          "sources": 0.9999999999999998,
+          "artifacts": 0.3952847075210474,
+          "weighted_coverage_ratio": 0.9999999999999998,
+          "weighted_precision_proxy": 0.9999999999999998,
+          "weighted_recall_proxy": 0.9999999999999998,
+          "weighted_f2_proxy": 0.9999999999999998
+        },
+        "clarity": {
+          "chain_of_custody": 0.0,
+          "credibility": 0.7071067811865475,
+          "credibility_base": 0.0,
+          "corroboration": 0.7071067811865475,
+          "clarity": 0.9999999999999998,
+          "claims": 0.9746794344808964,
+          "sources": 0.7071067811865475,
+          "artifacts": -0.11180339887498948,
+          "weighted_coverage_ratio": 0.7071067811865475,
+          "weighted_precision_proxy": 0.7071067811865475,
+          "weighted_recall_proxy": 0.7071067811865475,
+          "weighted_f2_proxy": 0.7071067811865475
+        },
+        "claims": {
+          "chain_of_custody": -0.051298917604257706,
+          "credibility": 0.5441071875825088,
+          "credibility_base": 0.0,
+          "corroboration": 0.5441071875825088,
+          "clarity": 0.9746794344808964,
+          "claims": 1.0000000000000002,
+          "sources": 0.5441071875825088,
+          "artifacts": -0.2867696673382022,
+          "weighted_coverage_ratio": 0.5441071875825088,
+          "weighted_precision_proxy": 0.5441071875825088,
+          "weighted_recall_proxy": 0.5441071875825088,
+          "weighted_f2_proxy": 0.5441071875825088
+        },
+        "sources": {
+          "chain_of_custody": 0.35355339059327373,
+          "credibility": 0.9999999999999998,
+          "credibility_base": 0.0,
+          "corroboration": 0.9999999999999998,
+          "clarity": 0.7071067811865475,
+          "claims": 0.5441071875825088,
+          "sources": 0.9999999999999998,
+          "artifacts": 0.3952847075210474,
+          "weighted_coverage_ratio": 0.9999999999999998,
+          "weighted_precision_proxy": 0.9999999999999998,
+          "weighted_recall_proxy": 0.9999999999999998,
+          "weighted_f2_proxy": 0.9999999999999998
+        },
+        "artifacts": {
+          "chain_of_custody": 0.4472135954999579,
+          "credibility": 0.3952847075210474,
+          "credibility_base": 0.0,
+          "corroboration": 0.3952847075210474,
+          "clarity": -0.11180339887498948,
+          "claims": -0.2867696673382022,
+          "sources": 0.3952847075210474,
+          "artifacts": 0.9999999999999998,
+          "weighted_coverage_ratio": 0.3952847075210474,
+          "weighted_precision_proxy": 0.3952847075210474,
+          "weighted_recall_proxy": 0.3952847075210474,
+          "weighted_f2_proxy": 0.3952847075210474
+        },
+        "weighted_coverage_ratio": {
+          "chain_of_custody": 0.35355339059327373,
+          "credibility": 0.9999999999999998,
+          "credibility_base": 0.0,
+          "corroboration": 0.9999999999999998,
+          "clarity": 0.7071067811865475,
+          "claims": 0.5441071875825088,
+          "sources": 0.9999999999999998,
+          "artifacts": 0.3952847075210474,
+          "weighted_coverage_ratio": 0.9999999999999998,
+          "weighted_precision_proxy": 0.9999999999999998,
+          "weighted_recall_proxy": 0.9999999999999998,
+          "weighted_f2_proxy": 0.9999999999999998
+        },
+        "weighted_precision_proxy": {
+          "chain_of_custody": 0.35355339059327373,
+          "credibility": 0.9999999999999998,
+          "credibility_base": 0.0,
+          "corroboration": 0.9999999999999998,
+          "clarity": 0.7071067811865475,
+          "claims": 0.5441071875825088,
+          "sources": 0.9999999999999998,
+          "artifacts": 0.3952847075210474,
+          "weighted_coverage_ratio": 0.9999999999999998,
+          "weighted_precision_proxy": 0.9999999999999998,
+          "weighted_recall_proxy": 0.9999999999999998,
+          "weighted_f2_proxy": 0.9999999999999998
+        },
+        "weighted_recall_proxy": {
+          "chain_of_custody": 0.35355339059327373,
+          "credibility": 0.9999999999999998,
+          "credibility_base": 0.0,
+          "corroboration": 0.9999999999999998,
+          "clarity": 0.7071067811865475,
+          "claims": 0.5441071875825088,
+          "sources": 0.9999999999999998,
+          "artifacts": 0.3952847075210474,
+          "weighted_coverage_ratio": 0.9999999999999998,
+          "weighted_precision_proxy": 0.9999999999999998,
+          "weighted_recall_proxy": 0.9999999999999998,
+          "weighted_f2_proxy": 0.9999999999999998
+        },
+        "weighted_f2_proxy": {
+          "chain_of_custody": 0.35355339059327373,
+          "credibility": 0.9999999999999998,
+          "credibility_base": 0.0,
+          "corroboration": 0.9999999999999998,
+          "clarity": 0.7071067811865475,
+          "claims": 0.5441071875825088,
+          "sources": 0.9999999999999998,
+          "artifacts": 0.3952847075210474,
+          "weighted_coverage_ratio": 0.9999999999999998,
+          "weighted_precision_proxy": 0.9999999999999998,
+          "weighted_recall_proxy": 0.9999999999999998,
+          "weighted_f2_proxy": 0.9999999999999998
+        }
+      },
+      "bootstrap_95ci": {
+        "scores_0_1": {
+          "chain_of_custody": {
+            "mean": 0.52182,
+            "ci95_low": 0.44306,
+            "ci95_high": 0.60232
+          },
+          "credibility": {
+            "mean": 0.00030000000000000003,
+            "ci95_low": 0.0,
+            "ci95_high": 0.0009000000000000001
+          },
+          "credibility_base": {
+            "mean": 0.0,
+            "ci95_low": 0.0,
+            "ci95_high": 0.0
+          },
+          "corroboration": {
+            "mean": 0.0006000000000000001,
+            "ci95_low": 0.0,
+            "ci95_high": 0.0018000000000000002
+          },
+          "clarity": {
+            "mean": 0.42838000000000004,
+            "ci95_low": 0.34008000000000005,
+            "ci95_high": 0.50924
+          }
+        },
+        "proxy_support_metrics": {
+          "weighted_coverage_ratio": {
+            "mean": 0.04,
+            "ci95_low": 0.0,
+            "ci95_high": 0.12000000000000002
+          },
+          "weighted_precision_proxy": {
+            "mean": 0.003,
+            "ci95_low": 0.0,
+            "ci95_high": 0.009000000000000001
+          },
+          "weighted_recall_proxy": {
+            "mean": 0.040000000000000015,
+            "ci95_low": 0.0,
+            "ci95_high": 0.12000000000000004
+          },
+          "weighted_f2_proxy": {
+            "mean": 0.006000000000000002,
+            "ci95_low": 0.0,
+            "ci95_high": 0.018000000000000006
+          }
+        }
+      },
+      "documents": [
+        {
+          "id": "apt29_hammertoss_stealthy_tactics_define_a",
+          "label": "apt29-hammertoss-stealthy-tactics-define-a.pdf",
+          "pdf_path": "/home/pantera/projects/TEIA/annotarium/Reports/apt29-hammertoss-stealthy-tactics-define-a.pdf",
+          "report_path": "/home/pantera/projects/TEIA/annotarium/outputs/reports/apt29_hammertoss_stealthy_tactics_define_a_report.json",
+          "status": "PASS",
+          "last_run_at": "2026-02-22T10:15:08.178Z",
+          "metrics": {
+            "pages": 1,
+            "images": 0,
+            "tables": 2,
+            "figures": 6,
+            "claims": 3,
+            "sources": 1,
+            "artifacts": 6,
+            "scores_0_1": {
+              "chain_of_custody": 0.6817,
+              "credibility": 0.0,
+              "credibility_base": 0.0,
+              "corroboration": 0.0,
+              "clarity": 0.2644
+            },
+            "proxy_support_metrics": {
+              "claims_count": 3,
+              "weighted_coverage_ratio": 0.0,
+              "weighted_precision_proxy": 0.0,
+              "weighted_recall_proxy": 0.0,
+              "weighted_f2_proxy": 0.0
+            }
+          }
+        },
+        {
+          "id": "fireeye_rpt_apt37_02_20_2018",
+          "label": "Fireeye_rpt_APT37(02-20-2018).pdf",
+          "pdf_path": "/home/pantera/projects/TEIA/annotarium/Reports/Fireeye_rpt_APT37(02-20-2018).pdf",
+          "report_path": "/home/pantera/projects/TEIA/annotarium/outputs/reports/fireeye_rpt_apt37_02_20_2018_report.json",
+          "status": "PASS",
+          "last_run_at": "2026-02-22T10:15:08.450Z",
+          "metrics": {
+            "pages": 1,
+            "images": 0,
+            "tables": 3,
+            "figures": 4,
+            "claims": 6,
+            "sources": 1,
+            "artifacts": 4,
+            "scores_0_1": {
+              "chain_of_custody": 0.3875,
+              "credibility": 0.0,
+              "credibility_base": 0.0,
+              "corroboration": 0.0,
+              "clarity": 0.4086
+            },
+            "proxy_support_metrics": {
+              "claims_count": 6,
+              "weighted_coverage_ratio": 0.0,
+              "weighted_precision_proxy": 0.0,
+              "weighted_recall_proxy": 0.0,
+              "weighted_f2_proxy": 0.0
+            }
+          }
+        },
+        {
+          "id": "mandiant_2013_apt1_exposing_one_of_china_s_cyber_espionage_units",
+          "label": "Mandiant - 2013 - APT1 Exposing One of China's Cyber Espionage Units.pdf",
+          "pdf_path": "/home/pantera/projects/TEIA/annotarium/Reports/Mandiant - 2013 - APT1 Exposing One of China's Cyber Espionage Units.pdf",
+          "report_path": "/home/pantera/projects/TEIA/annotarium/outputs/reports/mandiant_2013_apt1_exposing_one_of_china_s_cyber_espionage_units_report.json",
+          "status": "PASS",
+          "last_run_at": "2026-02-22T10:15:08.954Z",
+          "metrics": {
+            "pages": 1,
+            "images": 0,
+            "tables": 19,
+            "figures": 29,
+            "claims": 10,
+            "sources": 10,
+            "artifacts": 6,
+            "scores_0_1": {
+              "chain_of_custody": 0.579,
+              "credibility": 0.0015,
+              "credibility_base": 0.0,
+              "corroboration": 0.003,
+              "clarity": 0.5617
+            },
+            "proxy_support_metrics": {
+              "claims_count": 10,
+              "weighted_coverage_ratio": 0.2,
+              "weighted_precision_proxy": 0.015000000000000001,
+              "weighted_recall_proxy": 0.20000000000000007,
+              "weighted_f2_proxy": 0.03000000000000001
+            }
+          }
+        },
+        {
+          "id": "mandiant_2017_apt28_at_the_center_of_the_storm",
+          "label": "Mandiant - 2017 - APT28 At the Center of the Storm.pdf",
+          "pdf_path": "/home/pantera/projects/TEIA/annotarium/Reports/Mandiant - 2017 - APT28 At the Center of the Storm.pdf",
+          "report_path": "/home/pantera/projects/TEIA/annotarium/outputs/reports/mandiant_2017_apt28_at_the_center_of_the_storm_report.json",
+          "status": "PASS",
+          "last_run_at": "2026-02-22T10:15:09.274Z",
+          "metrics": {
+            "pages": 1,
+            "images": 0,
+            "tables": 7,
+            "figures": 0,
+            "claims": 10,
+            "sources": 1,
+            "artifacts": 3,
+            "scores_0_1": {
+              "chain_of_custody": 0.4815,
+              "credibility": 0.0,
+              "credibility_base": 0.0,
+              "corroboration": 0.0,
+              "clarity": 0.4547
+            },
+            "proxy_support_metrics": {
+              "claims_count": 10,
+              "weighted_coverage_ratio": 0.0,
+              "weighted_precision_proxy": 0.0,
+              "weighted_recall_proxy": 0.0,
+              "weighted_f2_proxy": 0.0
+            }
+          }
+        },
+        {
+          "id": "panda_crowdstrike_intelligence_report",
+          "label": "Panda - CrowdStrike Intelligence Report.pdf",
+          "pdf_path": "/home/pantera/projects/TEIA/annotarium/Reports/Panda - CrowdStrike Intelligence Report.pdf",
+          "report_path": "/home/pantera/projects/TEIA/annotarium/outputs/reports/panda_crowdstrike_intelligence_report_report.json",
+          "status": "PASS",
+          "last_run_at": "2026-02-22T10:15:09.630Z",
+          "metrics": {
+            "pages": 1,
+            "images": 0,
+            "tables": 0,
+            "figures": 1,
+            "claims": 9,
+            "sources": 1,
+            "artifacts": 6,
+            "scores_0_1": {
+              "chain_of_custody": 0.4794,
+              "credibility": 0.0,
+              "credibility_base": 0.0,
+              "corroboration": 0.0,
+              "clarity": 0.4525
+            },
+            "proxy_support_metrics": {
+              "claims_count": 9,
+              "weighted_coverage_ratio": 0.0,
+              "weighted_precision_proxy": 0.0,
+              "weighted_recall_proxy": 0.0,
+              "weighted_f2_proxy": 0.0
+            }
+          }
+        }
+      ]
+    },
+    "raw_payload_paths": {
+      "portfolio_summary_json": "/home/pantera/projects/TEIA/annotarium/outputs/reports/portfolio_summary.json",
+      "reports": [
+        "/home/pantera/projects/TEIA/annotarium/outputs/reports/apt29_hammertoss_stealthy_tactics_define_a_report.json",
+        "/home/pantera/projects/TEIA/annotarium/outputs/reports/fireeye_rpt_apt37_02_20_2018_report.json",
+        "/home/pantera/projects/TEIA/annotarium/outputs/reports/mandiant_2013_apt1_exposing_one_of_china_s_cyber_espionage_units_report.json",
+        "/home/pantera/projects/TEIA/annotarium/outputs/reports/mandiant_2017_apt28_at_the_center_of_the_storm_report.json",
+        "/home/pantera/projects/TEIA/annotarium/outputs/reports/panda_crowdstrike_intelligence_report_report.json"
+      ]
+    },
+    "raw_payload_files": {
+      "portfolio_summary_json": {
+        "path": "/home/pantera/projects/TEIA/annotarium/outputs/reports/portfolio_summary.json",
+        "exists": true,
+        "size_bytes": 20562
+      }
+    },
+    "runtime_libraries": {
+      "python_version": "3.10.12",
+      "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.35",
+      "python_packages": {
+        "openai": "2.9.0",
+        "pypdf": "6.0.0",
+        "pymupdf4llm": "0.2.9",
+        "pymupdf": "1.26.7",
+        "plotly": "5.18.0"
+      },
+      "viewer_node_packages": {
+        "name": "threec-electron-viewer",
+        "version": "0.1.0",
+        "dependencies": {
+          "update-electron-app": "^3.1.1"
+        },
+        "devDependencies": {
+          "electron": "^31.7.7",
+          "electron-builder": "^26.0.12"
+        }
+      }
+    },
+    "pipeline_methods": {
+      "pdf_to_markdown_primary": "process_pdf_mistral_ocr.py (Mistral OCR/provider-backed conversion)",
+      "pdf_to_markdown_fallback": "offline fallback via PyMuPDF4LLM",
+      "table_and_image_extraction": "stage1 markdown parse",
+      "artifact_extraction": "schema extraction artifact indices",
+      "reference_parsing": "citations + references linked to sources",
+      "institution_inference": "gpt-5-mini institution classification (+ web fallback)"
+    },
+    "qa_protocol": {
+      "agent_review_enabled": true,
+      "human_sample_fraction": 0.1,
+      "human_sample_observed_error_rate": 0.0,
+      "note": "Human review is targeted and sampled; results reported for reviewed sample."
+    },
+    "methodology_reference_excerpt": "# Methodology\n\n## I. Methodological Position\n\nThis study treats cyber-attribution reporting as an evidentiary exercise rather than a narrative exercise. The central claim is that attribution assessments should be evaluated as structured arguments about State responsibility, not as standalone assertions of confidence. In consequence, the method asks, for each proposition advanced in a report, what evidentiary materials are relied upon, how those materials are connected to the proposition, and whether those connections can bear weight under adversarial scrutiny.\n\nThe analytical posture is therefore jurisprudential. It draws from recurring ICJ evidentiary practice: differential weighting of heterogeneous materials, caution toward single-origin or litigation-shaped records, and preference for convergent indications over repetition. The objective is not to replicate adjudication procedurally, but to translate judicially legible evidentiary logic into a reproducible scoring framework for cyber-attribution dossiers.\n\n## II. Corpus, Record Formation, and Constraints\n\nThe corpus consists of cybersecurity attribution reports in PDF form. Each report is transcribed into markdown and then transformed into a schema-constrained evidentiary record. The schema is strict by design. It separates claims, sources, artifacts, and evidence links into distinct objects and requires explicit anchors for evidentiary references.\n\nThis design choice has methodological significance. It prevents retrospective reconstruction of support through implicit model inference and compels the system to preserve an inspectable chain between proposition and proof. The method thus prioritizes evidentiary legibility over extraction breadth.\n\n## III. Procedural Architecture\n\nThe workflow proceeds in four phases. First, source documents are transcribed from PDF into markdown. Second, markdown is parsed into structured outputs containing metadata, source inventories, artifact inventories, and claim-level analytic blocks. Third, outputs undergo integrity checks. Fourth, validated outputs are scored under an ICJ-inspired weighting model.\n\nTwo procedural commitments govern all phases. The first is determinacy: where possible, deterministic transformations are preferred, and model-assisted components are constrained by schema and post-run verification. The second is persistence: all major intermediate and terminal artifacts are written to disk, so that any score can be reconstructed and contested from the underlying record.\n\n## IV. Integrity Controls as Admissibility Discipline\n\nNo score is produced absent structural integrity of the evidentiary record. In practical terms, runs are failed where identifier collisions occur, where artifact anchors are missing, where citation pathways cannot be traced, or where references resolve to nonexistent entities. These controls function analogously to admissibility discipline: they do not determine substantive truth, but they determine whether the record is fit to carry a substantive weighing exercise.\n\nThis stage is essential to avoid pseudo-precision. Without strict record integrity, downstream numerical outputs risk expressing parser convenience rather than evidentiary strength.\n\n## V. Evidentiary Weight Model\n\n### A. Item-Level Weight\n\nEach evidence item is evaluated along five bounded dimensions: independence, authentication/provenance, methodological soundness, procedural testing, and contemporaneity. Item-level probative force is computed multiplicatively. The multiplicative form is deliberate: strong performance on one dimension cannot fully compensate for critical weakness on another.\n\n### B. Corroboration and Anti-Circularity\n\nCorroboration is not treated as citation volume. Evidence is clustered by origin, origin-level contribution is aggregated with diminishing returns, and claim-level corroboration is then derived from convergence across origins. This implements an anti-circularity rule: repeated downstream reporting of one upstream source does not become independent support merely by repetition.\n\n### C. Core 3Cs\n\nThe principal outputs are the core 3Cs: Chain of Custody, Credibility, and Clarity. Corroboration is preserved as an explicit sub-calculation and audit surface, but it is integrated into the top-level Credibility axis rather than exposed as a separate top-level C.\n\nChain of Custody is modeled as claim-specific evidentiary handling quality, not as raw artifact quantity. In the current implementation, custody is computed from five normalized variables extracted from evidence text: provenance markers, integrity markers, temporal anchors, artifact identifiers, and versioning/update lineage. These dimensions are weighted and combined linearly, then bounded in `[0,1]`, so that the score remains auditable at claim level and cannot be inflated by a single indicator class.\n\nCredibility is modeled as a composite of source-quality support and corroborative convergence for each claim. The source-quality component is derived from source-type quality, the strongest source attached to the claim, source diversity, and domain independence, with a single-source penalty. Internal/auto sources and newspapers are excluded from credibility support. The model gives maximal weight to international institutions/judicial material and peer-reviewed academic material, intermediate weight to official government and NGO material, and lower weight to think-tank/other material.\n\nIn addition, credibility is calibrated at the document level by a weighted claim-coverage factor keyed to high-credibility source support. Let `Cred_raw_i` denote raw credibility for claim `i`, and let `w_i` denote claim gravity weight. Define a credibility-covered claim as one with at least one high-credibility source (`source_quality >= 0.90`). Then:\n\n`credibility_coverage_factor = (Σ w_i over credibility-covered claims) / (Σ w_i over all claims)`\n\nand:\n\n`Cred_i = Cred_raw_i × credibility_coverage_factor`\n\nThis ensures credibility is interpreted as weighted coverage across the claim set rather than isolated source quality in a small subset of claims.\n\nCorroboration is modeled as convergence constrained by support relevance. A claim with broad wording but narrow evidentiary support receives lower corroborative strength, even where artifact volume is high. In the current presentation model, corroboration is retained as a dedicated subscore and then merged into top-level credibility:\n\n`Credibility_top = 0.50 × Credibility_source_quality + 0.50 × Corroboration`\n\nClarity is modeled as legal attribution intelligibility. Operationally, it answers two linked questions: (i) whether attribution of attack `Z` to State `X` is clearly reasoned in the text, and (ii) whether the mode of responsibility is clear under state-responsibility doctrine. The scorer therefore checks not only act–actor–link specificity, but also whether the report clearly indicates one of three legal pathways: attribution through state organs, attribution through non-state actors operating under state direction/control, or state omission/failure of due diligence (knowledge plus failure to prevent within jurisdiction).\n\nIn practice, the clarity panel and score details expose explicit question-level outputs:\n\n- “Is attribution to State X given attack Z clear?”\n- “Was the state’s responsibility pathway clear: direct conduct by official organs, control/direction of non-state operators, or omission/due diligence failure in its territory?”\n- “Is it clear that the state knew of the activity and failed to prevent, investigate, or suppress it (due diligence)?”\n\nIn addition, corroboration is calibrated at the document level by a claim-coverage factor so that corroboration is interpreted as proportionate coverage across the claim set, not absolute citation mass in isolated claims. Let `C_raw_i` denote raw corroboration for claim `i`, and let `w_i` denote the claim gravity weight. Define a corroborated claim as one for which `C_raw_i > 0`. Th..."
+  },
+  "sections": [
+    {
+      "id": "introduction",
+      "title": "Introduction and Epistemic Framing",
+      "html": "<h2>Introduction and Epistemic Framing</h2><p>This methodology formalizes cyber-attribution assessment as a claim-based evidentiary scoring process. Each claim is scored on calibrated C-axes and then aggregated to document-level indicators under explicit weighting assumptions.</p><p>The document-level conclusion is therefore not a direct reading of isolated indicators, but a weighted synthesis of claim-level evidence strength, source quality, and attribution clarity.</p><p>Execution mode: <code>aggregate</code>. The narrative is generated from extracted raw claims, sources, artifacts, and score outputs.</p>",
+      "model": "fallback-local"
+    },
+    {
+      "id": "scope_units",
+      "title": "Scope, Units of Analysis, and Output Semantics",
+      "html": "<h2>Scope, Units of Analysis, and Output Semantics</h2><p>Define units of analysis (claim, source, artifact, evidence item, document) and explain what each output score means and does not mean.</p>",
+      "model": "fallback-local"
+    },
+    {
+      "id": "data_ingestion",
+      "title": "Data Ingestion and Corpus Handling",
+      "html": "<h2>Data Ingestion and Corpus Handling</h2><p>Explain report ingestion, deterministic file handling, and reproducibility guarantees from raw PDF inputs through intermediate artifacts.</p>",
+      "model": "fallback-local"
+    },
+    {
+      "id": "pdf_to_markdown",
+      "title": "PDF-to-Markdown Conversion",
+      "html": "<h2>PDF-to-Markdown Conversion</h2><p>Explain conversion from PDF to markdown, explicitly describing Mistral-based processing and offline fallback posture as methodological resilience rather than conceptual change.</p>",
+      "model": "fallback-local"
+    },
+    {
+      "id": "structural_parsing",
+      "title": "Structural Parsing of Text, Tables, and Figures",
+      "html": "<h2>Structural Parsing of Text, Tables, and Figures</h2><p>Describe extraction of text blocks, tables, and figures/images with anchors and why anchor-preserving structure is required for auditability.</p>",
+      "model": "fallback-local"
+    },
+    {
+      "id": "artifact_extraction",
+      "title": "Artifact Extraction and Technical Object Normalization",
+      "html": "<h2>Artifact Extraction and Technical Object Normalization</h2><p>Explain artifact extraction across modalities, normalization of technical objects, and implications for custody/provenance evaluation.</p>",
+      "model": "fallback-local"
+    },
+    {
+      "id": "reference_parsing",
+      "title": "Footnote and Reference Parsing",
+      "html": "<h2>Footnote and Reference Parsing</h2><p>Explain reference and footnote parsing, citation linkage, and resolution from rhetorical citation to analyzable source graph.</p>",
+      "model": "fallback-local"
+    },
+    {
+      "id": "institution_inference",
+      "title": "Institution Inference and Source Typology",
+      "html": "<h2>Institution Inference and Source Typology</h2><p>Explain source institution inference, typology mapping, and how institutional class affects credibility weighting and corroboration eligibility.</p>",
+      "model": "fallback-local"
+    },
+    {
+      "id": "claim_evidence_graph",
+      "title": "Claim-Evidence Graph Construction",
+      "html": "<h2>Claim-Evidence Graph Construction</h2><p>Describe how claims are linked to evidence, sources, and artifacts, including anchor-level traceability and anti-circularity safeguards.</p>",
+      "model": "fallback-local"
+    },
+    {
+      "id": "scoring_overview",
+      "title": "Scoring Framework Overview",
+      "html": "<h2>Scoring Framework Overview</h2><p>Present the overall scoring architecture from claim-level axes to document-level synthesis. Clarify separation between extraction outputs and inferential weighting.</p>",
+      "model": "fallback-local"
+    },
+    {
+      "id": "chain_of_custody",
+      "title": "Chain of Custody Axis",
+      "html": "<h2>Chain of Custody Axis</h2><p>Explain chain-of-custody variables (provenance, integrity, time anchors, artifact identifiers, versioning), quality controls, and penalties.</p>",
+      "model": "fallback-local"
+    },
+    {
+      "id": "credibility_corroboration",
+      "title": "Credibility Axis with Corroboration Subcomponent",
+      "html": "<h2>Credibility Axis with Corroboration Subcomponent</h2><p>Explain source hierarchy, independence logic, corroboration rules, claim coverage scaling, and exclusion criteria for low-value source classes.</p>",
+      "model": "fallback-local"
+    },
+    {
+      "id": "clarity_axis",
+      "title": "Clarity Axis and State Responsibility Pathways",
+      "html": "<h2>Clarity Axis and State Responsibility Pathways</h2><p>Explain clarity scoring for attribution to state actors through organs, control over non-state actors, and due diligence failure pathways.</p>",
+      "model": "fallback-local"
+    },
+    {
+      "id": "aggregation_calibration",
+      "title": "Aggregation, Calibration, and Uncertainty",
+      "html": "<h2>Aggregation, Calibration, and Uncertainty</h2><p>Explain claim-to-document aggregation, weighting, calibration, and uncertainty handling (e.g., confidence intervals/dispersion diagnostics) in interpretation.</p>",
+      "model": "fallback-local"
+    },
+    {
+      "id": "validation_quality_assurance",
+      "title": "Validation and Quality Assurance",
+      "html": "<h2>Validation and Quality Assurance</h2><p>Explain automated validation gates and QA protocol with agent review and targeted human review on a 10% sample with no observed errors in that sample.</p>",
+      "model": "fallback-local"
+    },
+    {
+      "id": "limitations_governance",
+      "title": "Limitations, Governance, and Future Refinement",
+      "html": "<h2>Limitations, Governance, and Future Refinement</h2><p>Discuss methodological limits, governance controls, and principled refinement roadmap without overstating certainty.</p>",
+      "model": "fallback-local"
+    }
+  ],
+  "html": "<article class=\"wiki-page\">\n<header><h1>Annotarium Methodology: Portfolio View (5 documents)</h1><div class=\"wiki-meta\">Generated at 2026-02-22T21:14:52Z</div></header>\n<nav class=\"wiki-toc\"><h2>Contents</h2><ol>\n<li><a href=\"#sec-introduction\">Introduction and Epistemic Framing</a></li><li><a href=\"#sec-scope_units\">Scope, Units of Analysis, and Output Semantics</a></li><li><a href=\"#sec-data_ingestion\">Data Ingestion and Corpus Handling</a></li><li><a href=\"#sec-pdf_to_markdown\">PDF-to-Markdown Conversion</a></li><li><a href=\"#sec-structural_parsing\">Structural Parsing of Text, Tables, and Figures</a></li><li><a href=\"#sec-artifact_extraction\">Artifact Extraction and Technical Object Normalization</a></li><li><a href=\"#sec-reference_parsing\">Footnote and Reference Parsing</a></li><li><a href=\"#sec-institution_inference\">Institution Inference and Source Typology</a></li><li><a href=\"#sec-claim_evidence_graph\">Claim-Evidence Graph Construction</a></li><li><a href=\"#sec-scoring_overview\">Scoring Framework Overview</a></li><li><a href=\"#sec-chain_of_custody\">Chain of Custody Axis</a></li><li><a href=\"#sec-credibility_corroboration\">Credibility Axis with Corroboration Subcomponent</a></li><li><a href=\"#sec-clarity_axis\">Clarity Axis and State Responsibility Pathways</a></li><li><a href=\"#sec-aggregation_calibration\">Aggregation, Calibration, and Uncertainty</a></li><li><a href=\"#sec-validation_quality_assurance\">Validation and Quality Assurance</a></li><li><a href=\"#sec-limitations_governance\">Limitations, Governance, and Future Refinement</a></li>\n</ol></nav>\n<section class=\"wiki-section\" id=\"sec-introduction\"><h2>Introduction and Epistemic Framing</h2><p>This methodology formalizes cyber-attribution assessment as a claim-based evidentiary scoring process. Each claim is scored on calibrated C-axes and then aggregated to document-level indicators under explicit weighting assumptions.</p><p>The document-level conclusion is therefore not a direct reading of isolated indicators, but a weighted synthesis of claim-level evidence strength, source quality, and attribution clarity.</p><p>Execution mode: <code>aggregate</code>. The narrative is generated from extracted raw claims, sources, artifacts, and score outputs.</p></section>\n<section class=\"wiki-section\" id=\"sec-scope_units\"><h2>Scope, Units of Analysis, and Output Semantics</h2><p>Define units of analysis (claim, source, artifact, evidence item, document) and explain what each output score means and does not mean.</p></section>\n<section class=\"wiki-section\" id=\"sec-data_ingestion\"><h2>Data Ingestion and Corpus Handling</h2><p>Explain report ingestion, deterministic file handling, and reproducibility guarantees from raw PDF inputs through intermediate artifacts.</p></section>\n<section class=\"wiki-section\" id=\"sec-pdf_to_markdown\"><h2>PDF-to-Markdown Conversion</h2><p>Explain conversion from PDF to markdown, explicitly describing Mistral-based processing and offline fallback posture as methodological resilience rather than conceptual change.</p></section>\n<section class=\"wiki-section\" id=\"sec-structural_parsing\"><h2>Structural Parsing of Text, Tables, and Figures</h2><p>Describe extraction of text blocks, tables, and figures/images with anchors and why anchor-preserving structure is required for auditability.</p></section>\n<section class=\"wiki-section\" id=\"sec-artifact_extraction\"><h2>Artifact Extraction and Technical Object Normalization</h2><p>Explain artifact extraction across modalities, normalization of technical objects, and implications for custody/provenance evaluation.</p></section>\n<section class=\"wiki-section\" id=\"sec-reference_parsing\"><h2>Footnote and Reference Parsing</h2><p>Explain reference and footnote parsing, citation linkage, and resolution from rhetorical citation to analyzable source graph.</p></section>\n<section class=\"wiki-section\" id=\"sec-institution_inference\"><h2>Institution Inference and Source Typology</h2><p>Explain source institution inference, typology mapping, and how institutional class affects credibility weighting and corroboration eligibility.</p></section>\n<section class=\"wiki-section\" id=\"sec-claim_evidence_graph\"><h2>Claim-Evidence Graph Construction</h2><p>Describe how claims are linked to evidence, sources, and artifacts, including anchor-level traceability and anti-circularity safeguards.</p></section>\n<section class=\"wiki-section\" id=\"sec-scoring_overview\"><h2>Scoring Framework Overview</h2><p>Present the overall scoring architecture from claim-level axes to document-level synthesis. Clarify separation between extraction outputs and inferential weighting.</p></section>\n<section class=\"wiki-section\" id=\"sec-chain_of_custody\"><h2>Chain of Custody Axis</h2><p>Explain chain-of-custody variables (provenance, integrity, time anchors, artifact identifiers, versioning), quality controls, and penalties.</p></section>\n<section class=\"wiki-section\" id=\"sec-credibility_corroboration\"><h2>Credibility Axis with Corroboration Subcomponent</h2><p>Explain source hierarchy, independence logic, corroboration rules, claim coverage scaling, and exclusion criteria for low-value source classes.</p></section>\n<section class=\"wiki-section\" id=\"sec-clarity_axis\"><h2>Clarity Axis and State Responsibility Pathways</h2><p>Explain clarity scoring for attribution to state actors through organs, control over non-state actors, and due diligence failure pathways.</p></section>\n<section class=\"wiki-section\" id=\"sec-aggregation_calibration\"><h2>Aggregation, Calibration, and Uncertainty</h2><p>Explain claim-to-document aggregation, weighting, calibration, and uncertainty handling (e.g., confidence intervals/dispersion diagnostics) in interpretation.</p></section>\n<section class=\"wiki-section\" id=\"sec-validation_quality_assurance\"><h2>Validation and Quality Assurance</h2><p>Explain automated validation gates and QA protocol with agent review and targeted human review on a 10% sample with no observed errors in that sample.</p></section>\n<section class=\"wiki-section\" id=\"sec-limitations_governance\"><h2>Limitations, Governance, and Future Refinement</h2><p>Discuss methodological limits, governance controls, and principled refinement roadmap without overstating certainty.</p></section>\n</article>"
+}

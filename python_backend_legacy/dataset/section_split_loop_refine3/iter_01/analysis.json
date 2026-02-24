@@ -1,0 +1,26 @@
+{
+  "generated_at_utc": "2026-02-22T22:54:14.044074+00:00",
+  "iteration": 1,
+  "weighted_heading_split_score": 0.9870811889507405,
+  "delta_from_previous": 0.0,
+  "standalone_total": 18796.0,
+  "glued_total": 246.0,
+  "docs_ok": 517,
+  "issue_groups": {
+    "plain_heading_runon": 1,
+    "header_then_abstract_runon": 0,
+    "toc_inline_navigation": 0,
+    "numbered_heading_runon": 0
+  },
+  "examples": {
+    "plain_heading_runon": [
+      [
+        "c7e2cce669517337cf3706ce957147465e285dbf403baf1ae52358041623442c.json",
+        "Background. Nation states unleash cyber attacks targeting other nation states (e.g. WannaCry, SolarWinds), termed “offensive cyber operations”. When such aggressions are deemed, according to the UN Charter, to constitute a threat to the pea"
+      ]
+    ],
+    "header_then_abstract_runon": [],
+    "toc_inline_navigation": [],
+    "numbered_heading_runon": []
+  }
+}

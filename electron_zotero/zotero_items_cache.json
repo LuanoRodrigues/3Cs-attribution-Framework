@@ -1,0 +1,1069 @@
+{
+  "frameworks": [
+    {
+      "key": "W63DA6Z6",
+      "version": 344862,
+      "library": {
+        "type": "user",
+        "id": 9047943,
+        "name": "luano",
+        "links": {
+          "alternate": {
+            "href": "https://www.zotero.org/luano",
+            "type": "text/html"
+          }
+        }
+      },
+      "links": {
+        "self": {
+          "href": "https://api.zotero.org/users/9047943/items/W63DA6Z6",
+          "type": "application/json"
+        },
+        "alternate": {
+          "href": "https://www.zotero.org/luano/items/W63DA6Z6",
+          "type": "text/html"
+        },
+        "attachment": {
+          "href": "https://api.zotero.org/users/9047943/items/EGZ3TNAS",
+          "type": "application/json",
+          "attachmentType": "application/pdf",
+          "attachmentSize": 156197
+        }
+      },
+      "meta": {
+        "creatorSummary": "Payne and Finlay",
+        "parsedDate": "2017",
+        "numChildren": 13
+      },
+      "data": {
+        "key": "W63DA6Z6",
+        "version": 344862,
+        "itemType": "journalArticle",
+        "title": "Addressing Obstacles to Cyber-Attribution: A Model Based on State Response to Cyber-Attack",
+        "creators": [
+          {
+            "creatorType": "author",
+            "firstName": "Christian",
+            "lastName": "Payne"
+          },
+          {
+            "creatorType": "author",
+            "firstName": "Lorraine",
+            "lastName": "Finlay"
+          }
+        ],
+        "abstractNote": "The increasing reliance of states on information technology has elevated cyber-attacks into a prominent challenge for international security, yet their unique characteristics and legal ambiguity have hindered the effective application of existing jus ad bellum principles. Recognizing the milestone cyber-incidents such as the 2007 Estonia attacks and the Stuxnet operation against Iran in 2010, this article addresses the critical issue of cyber-attribution and its implications for lawful state responses. The authors argue that without a robust attribution framework, states face a dual risk: either unchecked escalation through misdirected self-defense or paralysis when pursuing peaceful legal redress. Motivated by the lack of consensus in scholarly proposals and the absence of binding international jurisprudence, the study aims to develop a model that aligns attribution requirements with the nature of the victim state’s response, thereby resolving the practical impasse in state practice. Employing a doctrinal analysis of public international law, the article leverages existing state practice, scholarly literature, and principles established in the United Nations Charter, particularly Articles 2(4) and 51. It examines the taxonomy of cyber-attacks—direct intrusion, indirect malware-based assaults, and denial of service operations—and assesses how each challenges traditional notions of the use of force, self-defense, and state responsibility. The findings reveal that the technical complexity and anonymity inherent in cyber operations render high thresholds for attribution essential when invoking self-defense, while the same hurdles impede legal recourse under international adjudication. To reconcile these conflicting demands, the authors propose a dual-tier attribution model: a strict ‘‘effective control’’ or high-evidence standard for self-defense measures to prevent misdirected force, coupled with a strict liability regime governing non-forcible state responses, under which host-state cooperation in evidence gathering constitutes fulfillment of attribution obligations. This framework incentivizes peaceful resolution, discourages unilateral retaliation, and leverages states’ mutual interest in legal cooperation. The novel contribution lies in linking attribution thresholds to the chosen response mechanism, thereby extending established doctrines of effective control and strict liability into the cyber domain. The model provides a structured pathway for victims to pursue legal remedies without being stranded by evidentiary hurdles, while preserving the integrity of self-defense law. The authors acknowledge limitations, including the challenges of enforcing host-state cooperation absent compulsory jurisdiction and the nascent development of international tribunals with mandates over cyber disputes. They also note that their model does not fully address countermeasure doctrines and leaves open questions about reciprocal obligations in transnational data flows. Future research is encouraged to explore mechanisms for compulsory adjudication in cyber-incidents, the role of emerging norms such as those in the Tallinn Manual, and the applicability of countermeasures under international law to refine the proposed attribution model and support its adoption within multilateral treaty frameworks.",
+        "publicationTitle": "The George Washington International Law Review",
+        "publisher": "",
+        "place": "",
+        "date": "2017",
+        "volume": "49",
+        "issue": "3",
+        "section": "",
+        "partNumber": "",
+        "partTitle": "",
+        "pages": "535-568",
+        "series": "",
+        "seriesTitle": "",
+        "seriesText": "",
+        "journalAbbreviation": "Geo. Wash. Int'l L. Rev.",
+        "DOI": "",
+        "citationKey": "payneAddressingObstaclesCyberAttribution2017",
+        "url": "https://www.proquest.com/scholarly-journals/addressing-obstacles-cyber-attribution-model/docview/1914193551/se-2?accountid=14511",
+        "accessDate": "2025-04-10T17:01:55Z",
+        "PMID": "",
+        "PMCID": "",
+        "ISSN": "15349977",
+        "archive": "ProQuest Central; Social Science Premium Collection",
+        "archiveLocation": "1914193551",
+        "shortTitle": "Addressing Obstacles to Cyber-Attribution",
+        "language": "English",
+        "libraryCatalog": "HeinOnline",
+        "callNumber": "",
+        "rights": "",
+        "extra": "Affiliation: Department=School of Engineering and Information Technology, Institution=Murdoch University, Country=\nAffiliation: Department=School of Law, Institution=Murdoch University, Country=\nEntity: jus ad bellum – Doctrine/Framework\nEntity: Estonia – Country\nEntity: Stuxnet attack – Other\nEntity: Iran – Country\nEntity: United States – Country\nEntity: United Kingdom – Country\nEntity: Daniel B. Silver – Person\nEntity: School of Engineering and Information Technology – Institution\nEntity: Murdoch University – Institution\nEntity: School of Law – Institution\nEntity: New York University – Institution\nEntity: National University of Singapore – Institution\nEntity: University of Western Australia – Institution\nEntity: Part I – Other\nEntity: Part II – Other\nEntity: Part III – Other\nEntity: Part IV – Other\nEntity: Part V – Other\nOntology:State\nEpistemology:Doctrinal/Analytic\nArgumentation Logic:Deductive\nEvidence Source Base:Legal Texts, Court Filings/Case Law\nMethods:Doctrinal Analysis\nMethod Type:Doctrinal\nFramework Model:Other:Effective control test\nContribution Type:Framework Proposal\nAttribution Lens Focus:Legal/Doctrinal\nResearch Question/Purpose:Normative\ncitation:6\n\nNA_extract::{\"controlled_vocabulary_terms\": [\"cyber-attack\", \"cyber-attribution\", \"jus ad bellum\", \"international law\", \"state responsibility\", \"self-defence\", \"standard of proof\", \"conflict escalation\", \"countermeasure\", \"state practice\", \"legal uncertainty\"]}\n\n\njustification for Included: cyber-conflict law",
+        "tags": [
+          {
+            "tag": "#theme:cyber attack"
+          },
+          {
+            "tag": "#theme:cyber attribution"
+          },
+          {
+            "tag": "#theme:denial of service"
+          },
+          {
+            "tag": "#theme:doctrinal analysis"
+          },
+          {
+            "tag": "#theme:dual tier attribution model"
+          },
+          {
+            "tag": "#theme:effective control"
+          },
+          {
+            "tag": "#theme:host state cooperation"
+          },
+          {
+            "tag": "#theme:jus ad bellum"
+          },
+          {
+            "tag": "#theme:self-defence"
+          },
+          {
+            "tag": "#theme:state practice"
+          },
+          {
+            "tag": "#theme:state responsibility"
+          },
+          {
+            "tag": "#theme:strict liability"
+          },
+          {
+            "tag": "06_added"
+          },
+          {
+            "tag": "Included_abs:cyber-conflict law"
+          },
+          {
+            "tag": "affiliation:city:None"
+          },
+          {
+            "tag": "affiliation:continent:Oceania"
+          },
+          {
+            "tag": "affiliation:country:Australia"
+          },
+          {
+            "tag": "affiliation:department:School of Engineering and Information Technology"
+          },
+          {
+            "tag": "affiliation:department:School of Law"
+          },
+          {
+            "tag": "affiliation:institution:Murdoch University"
+          },
+          {
+            "tag": "conflict escalation"
+          },
+          {
+            "tag": "countermeasure"
+          },
+          {
+            "tag": "cyber-attack"
+          },
+          {
+            "tag": "cyber-attribution"
+          },
+          {
+            "tag": "international law"
+          },
+          {
+            "tag": "jus ad bellum"
+          },
+          {
+            "tag": "keyword_analysis:attribution",
+            "type": 1
+          },
+          {
+            "tag": "legal uncertainty"
+          },
+          {
+            "tag": "origin:addition"
+          },
+          {
+            "tag": "self-defence"
+          },
+          {
+            "tag": "standard of proof"
+          },
+          {
+            "tag": "state practice"
+          },
+          {
+            "tag": "state responsibility"
+          }
+        ],
+        "collections": [
+          "44Q6VN9A",
+          "ZJ9GI7ID",
+          "6MB68GTN",
+          "FJBT4B2X",
+          "9A6MH2ZN",
+          "C5VUJE9W",
+          "2NDHUBKS",
+          "V3F6SEFH",
+          "JD9ERQ9X",
+          "BHTXVH43",
+          "RHBE8CJD",
+          "ZMQ3NRRE",
+          "K6MRFQSR",
+          "VB5RTI6B",
+          "BQ7PE4FD",
+          "JQMIAZTY",
+          "4S2UF8XX",
+          "UKM6AX6P",
+          "QAJFR7TI",
+          "XKJMBK3K",
+          "NAKVRBQK",
+          "DJ5QMGT8"
+        ],
+        "relations": {
+          "dc:replaces": "http://zotero.org/users/9047943/items/BHCTKN7I"
+        },
+        "dateAdded": "2024-05-10T18:45:24Z",
+        "dateModified": "2026-02-17T14:25:16Z"
+      }
+    },
+    {
+      "key": "N4YNQ2GG",
+      "version": 344849,
+      "library": {
+        "type": "user",
+        "id": 9047943,
+        "name": "luano",
+        "links": {
+          "alternate": {
+            "href": "https://www.zotero.org/luano",
+            "type": "text/html"
+          }
+        }
+      },
+      "links": {
+        "self": {
+          "href": "https://api.zotero.org/users/9047943/items/N4YNQ2GG",
+          "type": "application/json"
+        },
+        "alternate": {
+          "href": "https://www.zotero.org/luano/items/N4YNQ2GG",
+          "type": "text/html"
+        },
+        "attachment": {
+          "href": "https://api.zotero.org/users/9047943/items/ZX43QZLK",
+          "type": "application/json",
+          "attachmentType": "application/pdf",
+          "attachmentSize": 467510
+        }
+      },
+      "meta": {
+        "creatorSummary": "Iasiello",
+        "parsedDate": "2013-06",
+        "numChildren": 8
+      },
+      "data": {
+        "key": "N4YNQ2GG",
+        "version": 344849,
+        "itemType": "conferencePaper",
+        "title": "Cyber attack: A dull tool to shape foreign policy",
+        "creators": [
+          {
+            "creatorType": "author",
+            "firstName": "E",
+            "lastName": "Iasiello"
+          }
+        ],
+        "abstractNote": "Emilio Iasiello’s conference paper “Cyber Attack: A Dull Tool to Shape Foreign Policy” delivers a rigorous multidisciplinary examination of the strategic utility—and limitations—of state-level offensive cyber operations in the pursuit of foreign policy objectives. Structured around three emblematic case studies—the October 2012 distributed denial-of-service (DDoS) attacks on U.S. financial institutions, the 2012 Stuxnet operation against Iran’s Natanz nuclear facility, and the 2007 cyber assault on Estonia’s government networks—Iasiello adopts the working assumption of state sponsorship or proxy orchestration, using intent analysis, circumstantial evidence, and open-source expert testimony in the absence of definitive attribution. The study commences by positioning cyber weapons alongside nuclear arms within the framework of deterrence theory, underscoring the stark contrasts between the transparently monitored development and assured destruction characteristic of nuclear arsenals and the opaque, attribution-resistant nature of cyber capabilities. He argues that the absence of clear attribution, a lack of genuinely destructive “shock” effects analogous to nuclear blasts, and the constrained target base of heavily networked states undermine the credibility and coercive potential of cyber operations. In each case study, despite technical success in disruption and degradation, the cyber campaigns fell short of compelling policy change or deterring adversarial behavior: the U.S. banking sector DDoS incidents produced only transient service interruptions without eliciting concessions; Stuxnet inflicted notable damage on Iranian centrifuges but failed to decelerate Iran’s nuclear ambitions or prompt meaningful diplomatic negotiation; and the Estonia attacks showcased Russia’s cyber coordination yet did not translate into political leverage over the Baltic state or NATO. Iasiello contrasts these empirical insights with prevailing U.S. cyber policy frameworks—namely the 2011 International Strategy for Cyberspace and the Department of Defense’s 2011 Strategy for Operating in Cyberspace—which articulate a holistic approach encompassing diplomatic, informational, military, and economic instruments under international law. Despite the establishment of U.S. Cyber Command and policy proclamations affirming the right to employ “all necessary means” in defense of national interests, Iasiello contends that offensive cyber operations remain largely symbolic, lacking the paradigm-shifting impact required for coercive statecraft. The paper concludes that until a cyber event emerges that both guarantees attribution and generates pervasive strategic fear, states will continue to prioritize traditional diplomatic and military levers over cyber coercion. By bridging technical incident analysis with strategic policy assessment, this work offers a sober reassessment of the nascent role of cyber weapons in modern interstate competition and contributes a valuable multidisciplinary perspective to the study of cyber conflict.",
+        "proceedingsTitle": "2013 5th International Conference on Cyber Conflict (CYCON 2013)",
+        "conferenceName": "2013 5th International Conference on Cyber Conflict (CYCON 2013)",
+        "publisher": "IEEE",
+        "place": "NEW YORK",
+        "date": "2013-06",
+        "eventPlace": "",
+        "volume": "",
+        "issue": "",
+        "numberOfVolumes": "",
+        "pages": "1-18",
+        "series": "",
+        "seriesNumber": "",
+        "DOI": "",
+        "ISBN": "",
+        "citationKey": "iasielloCyberAttackDull2013",
+        "url": "https://ieeexplore.ieee.org/document/6568392",
+        "accessDate": "2024-10-26T17:32:38Z",
+        "ISSN": "",
+        "archive": "",
+        "archiveLocation": "",
+        "shortTitle": "Cyber attack",
+        "language": "en-US",
+        "libraryCatalog": "IEEE Xplore",
+        "callNumber": "",
+        "rights": "",
+        "extra": "Affiliation: None\nEntity: McAfee – Organisation\nEntity: 2007 distributed denial-of-service attack – Event\nEntity: Estonian government networks – GovernmentBody\nEntity: United States – Country\nEntity: Stuxnet – Dataset/Tool\nEntity: Flame – Dataset/Tool\nEntity: Duqu – Dataset/Tool\nEntity: Gauss – Dataset/Tool\nEntity: China – Country\nEntity: Iran – Country\nEntity: Russia – Country\nEntity: North Korea – Country\nOntology:State\nArgumentation Logic:Inductive\nEvidence Source Base:Other:McAfee Report\nMethods:Case Study\nMethod Type:Qualitative\nContribution Type:Conceptual\nAttribution Lens Focus:Strategic/Political\nResearch Question/Purpose:Explanatory\ncitation:None",
+        "tags": [
+          {
+            "tag": "#theme:Stuxnet operation"
+          },
+          {
+            "tag": "#theme:US Cyber Command"
+          },
+          {
+            "tag": "#theme:attribution problem"
+          },
+          {
+            "tag": "#theme:coercive statecraft"
+          },
+          {
+            "tag": "#theme:cyber policy framework"
+          },
+          {
+            "tag": "#theme:cyber weapon"
+          },
+          {
+            "tag": "#theme:deterrence theory"
+          },
+          {
+            "tag": "#theme:distributed denial-of-service attack"
+          },
+          {
+            "tag": "#theme:offensive cyber operation"
+          },
+          {
+            "tag": "#theme:technical incident analysis"
+          },
+          {
+            "tag": "010_for_retrieval"
+          },
+          {
+            "tag": "core_cyber_attribution_corpus"
+          },
+          {
+            "tag": "cyber conflict"
+          },
+          {
+            "tag": "cyber warfare"
+          },
+          {
+            "tag": "deterrence theory"
+          },
+          {
+            "tag": "foreign policy"
+          },
+          {
+            "tag": "included_abs:multidisciplinary cyber conflict"
+          },
+          {
+            "tag": "inclusion:final"
+          },
+          {
+            "tag": "keyword_analysis:attribution",
+            "type": 1
+          },
+          {
+            "tag": "offensive cyber operations"
+          },
+          {
+            "tag": "state-sponsored cyber operations"
+          },
+          {
+            "tag": "test:Included>cyber-conflict policy"
+          },
+          {
+            "tag": "test:Included>multidisciplinary cyber conflict"
+          }
+        ],
+        "collections": [
+          "YWSYVGFR",
+          "44Q6VN9A",
+          "FHL3IJWW",
+          "6T8WW7UT",
+          "S7STPSEI",
+          "XV6P7LQL",
+          "XCHP5XMT",
+          "7VM7Z9X9",
+          "FJBT4B2X",
+          "CJSNEU4U",
+          "P3HS7KLY",
+          "2FG3ER6E",
+          "XCQKISEH",
+          "MD4MZ2K2",
+          "AXMVW2QJ",
+          "2GALNK98",
+          "K47BHW47",
+          "JQMIAZTY",
+          "DKILSWME",
+          "Z7ZR8HCM",
+          "UKM6AX6P",
+          "ICX5RCYM",
+          "2554F9RH",
+          "XKJMBK3K",
+          "NAKVRBQK",
+          "DJ5QMGT8"
+        ],
+        "relations": {
+          "dc:replaces": [
+            "http://zotero.org/users/9047943/items/V9WVKWFN",
+            "http://zotero.org/users/9047943/items/L48INN2C"
+          ]
+        },
+        "dateAdded": "2024-10-26T17:32:38Z",
+        "dateModified": "2026-02-17T14:25:16Z"
+      }
+    },
+    {
+      "key": "MSU2EW6K",
+      "version": 338639,
+      "library": {
+        "type": "user",
+        "id": 9047943,
+        "name": "luano",
+        "links": {
+          "alternate": {
+            "href": "https://www.zotero.org/luano",
+            "type": "text/html"
+          }
+        }
+      },
+      "links": {
+        "self": {
+          "href": "https://api.zotero.org/users/9047943/items/MSU2EW6K",
+          "type": "application/json"
+        },
+        "alternate": {
+          "href": "https://www.zotero.org/luano/items/MSU2EW6K",
+          "type": "text/html"
+        },
+        "attachment": {
+          "href": "https://api.zotero.org/users/9047943/items/DZE7TYWZ",
+          "type": "application/json",
+          "attachmentType": "application/pdf",
+          "attachmentSize": 1045859
+        }
+      },
+      "meta": {
+        "creatorSummary": "Canfil",
+        "parsedDate": "2016",
+        "numChildren": 2
+      },
+      "data": {
+        "key": "MSU2EW6K",
+        "version": 338639,
+        "itemType": "journalArticle",
+        "title": "HONING CYBER ATTRIBUTION: A FRAMEWORK FOR ASSESSING FOREIGN STATE COMPLICITY",
+        "creators": [
+          {
+            "creatorType": "author",
+            "firstName": "Justin Key",
+            "lastName": "Canfil"
+          }
+        ],
+        "abstractNote": "Concerns about state-directed cyber intrusions have grown increasingly prevalent as governments exploit proxy actors to obfuscate involvement, complicating international enforcement and legal accountability in cyberspace. This paper addresses the challenge of attributing state sponsorship when operational tasks are delegated to non-state hackers by proposing a structured framework that refines conventional, technically oriented attribution methods with contextually grounded political and legal indicators. The research matters because gaps in international law, stringent evidentiary burdens, and obstacles to detection threaten to shield sponsoring states from responsibility, undermining the deterrence value of international norms and countermeasures. It aims to identify the specific conditions under which states are likely to outsource cyber operations, articulate a method for integrating these conditions with forensic signals, and answer the question of how to distinguish genuinely state-backed attacks from independent hacktivism without excessive false positives.1 Employing a hybrid analytical methodology that synthesizes international legal analysis, dyadic conflict theory, and proxy warfare scholarship, the author draws on open-source data—such as existing cyber capabilities assessments conducted by intelligence agencies, polling on nationalist sentiment among domestic hacker populations, documented instances of enmity between states, and incident-specific forensic indicators—to operationalize variables like motive, means, opportunity, nationalism salience, and technical skill levels. By inferring approximate values for these variables and applying a process-of-elimination logic, the framework enables investigators to narrow the pool of suspect states in the absence of full technical disclosure. The core finding is that the permissive conditions under which states rationally choose to delegate cyberattacks occupy a much narrower range than commonly assumed, meaning that most attribution challenges can be resolved by identifying overlaps between contextual conditions and forensic markers. This insight not only reduces false positives but also enhances the normative force of attribution judgments by ensuring that only those instances meeting both technical and contextual thresholds are classified as state-sponsored. The paper’s principal contribution is a novel attribution roadmap that integrates legal standards of state responsibility—drawing on the spectrum of control in international law and State Responsibility Articles—with social science indicators of proxy conflict, thereby offering policymakers, legal advocates, and technical analysts a unified model for assessing foreign state complicity. A limitation acknowledged by the author is the potential error in approximating variables such as nationalistic fervor and ideological salience, as well as the reluctance of private cybersecurity firms to disclose breach details, which may constrain the empirical application of the framework. The author suggests that future research could focus on refining measurement techniques for contextual indicators, conducting case studies to empirically validate and calibrate the model against documented cyber incidents, and exploring how evolving international legal norms—such as those articulated in the Tallinn Manual and ILC Articles—might further shape attribution standards and state behavior in proxy-based cyber conflict.",
+        "publicationTitle": "Journal of International Affairs",
+        "publisher": "",
+        "place": "",
+        "date": "Winter 2016",
+        "volume": "70",
+        "issue": "1",
+        "section": "",
+        "partNumber": "",
+        "partTitle": "",
+        "pages": "217-226,10",
+        "series": "",
+        "seriesTitle": "",
+        "seriesText": "",
+        "journalAbbreviation": "",
+        "DOI": "",
+        "citationKey": "canfilHONINGCYBERATTRIBUTION2016",
+        "url": "https://www.proquest.com/scholarly-journals/honing-cyber-attribution-framework-assessing/docview/1855796936/se-2?accountid=14511",
+        "accessDate": "",
+        "PMID": "",
+        "PMCID": "",
+        "ISSN": "0022197X",
+        "archive": "Arts Premium Collection; ProQuest Central; Social Science Premium Collection",
+        "archiveLocation": "1855796936",
+        "shortTitle": "",
+        "language": "English",
+        "libraryCatalog": "",
+        "callNumber": "",
+        "rights": "",
+        "extra": "Ontology: State\nEpistemology: Positivist\nArgumentation Logic: Deductive\nMethods: Other:Formal Modeling\nMethod Type: Other:Formal Modeling\nFramework Model: Other:Cyber Attribution Framework\nContribution Type: Theoretical\nAttribution Lens Focus: Legal/Doctrinal\nResearch Question/Purpose: Explanatory\n\n\njustification for Included: cyber-conflict law",
+        "tags": [
+          {
+            "tag": "06_added"
+          },
+          {
+            "tag": "06_added_min"
+          },
+          {
+            "tag": "Included_abs:cyber-conflict law"
+          },
+          {
+            "tag": "origin:addition"
+          }
+        ],
+        "collections": [
+          "44Q6VN9A",
+          "ZJ9GI7ID",
+          "6MB68GTN",
+          "FJBT4B2X",
+          "9A6MH2ZN",
+          "C5VUJE9W",
+          "2NDHUBKS",
+          "V3F6SEFH",
+          "JD9ERQ9X",
+          "BHTXVH43",
+          "RHBE8CJD",
+          "ZMQ3NRRE",
+          "K6MRFQSR",
+          "VB5RTI6B",
+          "BQ7PE4FD",
+          "JQMIAZTY",
+          "37VWSMJ6"
+        ],
+        "relations": {},
+        "dateAdded": "2024-05-10T18:45:24Z",
+        "dateModified": "2026-02-17T14:25:16Z"
+      }
+    },
+    {
+      "key": "KXZITJ9Q",
+      "version": 338633,
+      "library": {
+        "type": "user",
+        "id": 9047943,
+        "name": "luano",
+        "links": {
+          "alternate": {
+            "href": "https://www.zotero.org/luano",
+            "type": "text/html"
+          }
+        }
+      },
+      "links": {
+        "self": {
+          "href": "https://api.zotero.org/users/9047943/items/KXZITJ9Q",
+          "type": "application/json"
+        },
+        "alternate": {
+          "href": "https://www.zotero.org/luano/items/KXZITJ9Q",
+          "type": "text/html"
+        },
+        "attachment": {
+          "href": "https://api.zotero.org/users/9047943/items/4HV9AJZ6",
+          "type": "application/json",
+          "attachmentType": "application/pdf",
+          "attachmentSize": 211310
+        }
+      },
+      "meta": {
+        "creatorSummary": "Shakarian et al.",
+        "parsedDate": "2015",
+        "numChildren": 7
+      },
+      "data": {
+        "key": "KXZITJ9Q",
+        "version": 338633,
+        "itemType": "bookSection",
+        "title": "Cyber Attribution: An Argumentation-Based Approach",
+        "creators": [
+          {
+            "creatorType": "editor",
+            "firstName": "Sushil",
+            "lastName": "Jajodia"
+          },
+          {
+            "creatorType": "editor",
+            "firstName": "Paulo",
+            "lastName": "Shakarian"
+          },
+          {
+            "creatorType": "editor",
+            "firstName": "V.S.",
+            "lastName": "Subrahmanian"
+          },
+          {
+            "creatorType": "editor",
+            "firstName": "Vipin",
+            "lastName": "Swarup"
+          },
+          {
+            "creatorType": "editor",
+            "firstName": "Cliff",
+            "lastName": "Wang"
+          },
+          {
+            "creatorType": "author",
+            "firstName": "Paulo",
+            "lastName": "Shakarian"
+          },
+          {
+            "creatorType": "author",
+            "firstName": "Gerardo I.",
+            "lastName": "Simari"
+          },
+          {
+            "creatorType": "author",
+            "firstName": "Geoffrey",
+            "lastName": "Moores"
+          },
+          {
+            "creatorType": "author",
+            "firstName": "Simon",
+            "lastName": "Parsons"
+          }
+        ],
+        "abstractNote": "Attributing a cyber-operation through the use of multiple pieces of technical evidence (i.e., malware reverse-engineering and source tracking) and conventional intelligence sources (i.e., human or signals intelligence) is a difficult problem not only due to the effort required to obtain evidence, but the ease with which an adversary can plant false evidence. In this paper, we introduce a formal reasoning system called the InCA (Intelligent Cyber Attribution) framework that is designed to aid an analyst in the attribution of a cyber-operation even when the available information is conflicting and/or uncertain. Our approach combines argumentation-based reasoning, logic programming, and probabilistic models to not only attribute an operation but also explain to the analyst why the system reaches its conclusions.",
+        "bookTitle": "Cyber Warfare",
+        "series": "",
+        "seriesNumber": "",
+        "volume": "56",
+        "numberOfVolumes": "",
+        "edition": "",
+        "date": "2015",
+        "publisher": "Springer International Publishing",
+        "place": "Cham",
+        "originalDate": "",
+        "originalPublisher": "",
+        "originalPlace": "",
+        "format": "",
+        "pages": "151-171",
+        "ISBN": "978-3-319-14038-4 978-3-319-14039-1",
+        "DOI": "",
+        "citationKey": "shakarianCyberAttributionArgumentationBased2015",
+        "url": "https://link.springer.com/10.1007/978-3-319-14039-1_8",
+        "accessDate": "2024-02-22T09:13:46Z",
+        "ISSN": "",
+        "archive": "",
+        "archiveLocation": "",
+        "shortTitle": "Cyber Attribution",
+        "language": "en-US",
+        "libraryCatalog": "DOI.org (Crossref)",
+        "callNumber": "",
+        "rights": "",
+        "extra": "Purely technical",
+        "tags": [
+          {
+            "tag": "01.1_title_Exclusion"
+          },
+          {
+            "tag": "core_cyber_attribution_corpus"
+          },
+          {
+            "tag": "exclude:Purely technical"
+          }
+        ],
+        "collections": [
+          "9372ABEX",
+          "44Q6VN9A",
+          "5PB6PY2T",
+          "6T8WW7UT",
+          "68BXGKI9",
+          "XV6P7LQL",
+          "A5KC8DNR",
+          "2FG3ER6E",
+          "DAWZKHVR",
+          "FQCR7GB4",
+          "XPG37X3W"
+        ],
+        "relations": {
+          "dc:replaces": [
+            "http://zotero.org/users/9047943/items/KVITIES5",
+            "http://zotero.org/users/9047943/items/RE6QJY7W",
+            "http://zotero.org/users/9047943/items/MFY8PTX3",
+            "http://zotero.org/users/9047943/items/V258AZNY",
+            "http://zotero.org/users/9047943/items/7WQI6GHN",
+            "http://zotero.org/users/9047943/items/QAF5LWK8"
+          ]
+        },
+        "dateAdded": "2024-02-22T09:13:56Z",
+        "dateModified": "2026-02-17T14:25:16Z"
+      }
+    },
+    {
+      "key": "DFFJM8XG",
+      "version": 338584,
+      "library": {
+        "type": "user",
+        "id": 9047943,
+        "name": "luano",
+        "links": {
+          "alternate": {
+            "href": "https://www.zotero.org/luano",
+            "type": "text/html"
+          }
+        }
+      },
+      "links": {
+        "self": {
+          "href": "https://api.zotero.org/users/9047943/items/DFFJM8XG",
+          "type": "application/json"
+        },
+        "alternate": {
+          "href": "https://www.zotero.org/luano/items/DFFJM8XG",
+          "type": "text/html"
+        },
+        "attachment": {
+          "href": "https://api.zotero.org/users/9047943/items/C6ZXM7K4",
+          "type": "application/json",
+          "attachmentType": "application/pdf",
+          "attachmentSize": 304206
+        }
+      },
+      "meta": {
+        "creatorSummary": "Limnéll",
+        "parsedDate": "2018",
+        "numChildren": 5
+      },
+      "data": {
+        "key": "DFFJM8XG",
+        "version": 338584,
+        "itemType": "book",
+        "title": "Developing Political Response Framework to Cyber Hostilities",
+        "creators": [
+          {
+            "creatorType": "author",
+            "firstName": "J",
+            "lastName": "Limnéll"
+          },
+          {
+            "creatorType": "editor",
+            "firstName": "M",
+            "lastName": "Lehto"
+          },
+          {
+            "creatorType": "editor",
+            "firstName": "P",
+            "lastName": "Neittaanmaki"
+          }
+        ],
+        "abstractNote": "The debate on both the impacts of cyber attacks and how to respond to them is active, but precedents are a few. At the same time, cybersecurity issues have been catapulted into the highest of high politics: cyberpolitics. The objective of this chapter is to encourage political decision-makers (and others) to create a framework of proportionate ways to respond to different kinds of cyber hostility. The proportionate response is a complicated, situational political question. This chapter creates a context for the contemporary politics of cyber affairs in the world and determines five variables that policymakers need to consider when evaluating appropriate responses to a cyber attack. As offensive cyber activity becomes more prevalent, policymakers will be challenged to develop proportionate responses to disruptive or destructive attacks. There has already been significant pressure to \"do something\" in the light of the alleged state-sponsored attacks. Past experience suggests that most policy responses are ad hoc. This chapter comprehensively analyzes how cyber attacks should be treated as a political question and represents a rough framework for policymakers to build on. The chapter presents five variables that policymakers need to consider when evaluating appropriate responses to cyber hostilities. Combining incident impact, policy options, and other variables, the framework outlines the different levers of cyberpolitics that can be applied in response to the escalating levels of cyber incidents. The response framework is also an integral part of the state's cyber deterrence.",
+        "series": "CYBER SECURITY: POWER AND TECHNOLOGY",
+        "seriesNumber": "",
+        "volume": "93",
+        "numberOfVolumes": "",
+        "edition": "",
+        "date": "2018",
+        "publisher": "",
+        "place": "",
+        "originalDate": "",
+        "originalPublisher": "",
+        "originalPlace": "",
+        "format": "",
+        "numPages": "31",
+        "ISBN": "978-3-319-75307-2",
+        "DOI": "10.1007/978-3-319-75307-2_3",
+        "citationKey": "limnellDevelopingPoliticalResponse2018",
+        "url": "",
+        "accessDate": "",
+        "ISSN": "",
+        "archive": "",
+        "archiveLocation": "WOS:000459669400004",
+        "shortTitle": "",
+        "language": "English",
+        "libraryCatalog": "",
+        "callNumber": "",
+        "rights": "",
+        "extra": "Pages: 48\nRead_Status: New\nRead_Status_Date: 2024-05-15T19:15:30.984Z\nTLDR: This chapter comprehensively analyzes how cyber attacks should be treated as a political question and represents a rough framework for policymakers to build on.",
+        "tags": [
+          {
+            "tag": "New",
+            "type": 1
+          }
+        ],
+        "collections": [
+          "44Q6VN9A"
+        ],
+        "relations": {
+          "dc:replaces": [
+            "http://zotero.org/users/9047943/items/9R2L387Q",
+            "http://zotero.org/users/9047943/items/X5XTSD4V"
+          ]
+        },
+        "dateAdded": "2024-02-19T21:50:14Z",
+        "dateModified": "2026-02-08T14:23:17Z"
+      }
+    },
+    {
+      "key": "7SYEI2R6",
+      "version": 338263,
+      "library": {
+        "type": "user",
+        "id": 9047943,
+        "name": "luano",
+        "links": {
+          "alternate": {
+            "href": "https://www.zotero.org/luano",
+            "type": "text/html"
+          }
+        }
+      },
+      "links": {
+        "self": {
+          "href": "https://api.zotero.org/users/9047943/items/7SYEI2R6",
+          "type": "application/json"
+        },
+        "alternate": {
+          "href": "https://www.zotero.org/luano/items/7SYEI2R6",
+          "type": "text/html"
+        },
+        "attachment": {
+          "href": "https://api.zotero.org/users/9047943/items/33AGGEQJ",
+          "type": "application/json",
+          "attachmentType": "application/pdf",
+          "attachmentSize": 1344597
+        }
+      },
+      "meta": {
+        "creatorSummary": "Smyth",
+        "parsedDate": "2017",
+        "numChildren": 4
+      },
+      "data": {
+        "key": "7SYEI2R6",
+        "version": 338263,
+        "itemType": "thesis",
+        "title": "A multi-disciplinary framework for cyber attribution",
+        "creators": [
+          {
+            "creatorType": "author",
+            "firstName": "Ronald",
+            "lastName": "Smyth"
+          }
+        ],
+        "abstractNote": "test\nThe study addresses the critical challenge of cyber attribution, which is essential for effective cybersecurity but remains hindered by the limitations of purely technical approaches that focus narrowly on Indicators of Compromise (IOC) without resolving the broader origins of attacks. The research problem centers on the lack of a unified framework to integrate diverse data types and specialized analyses required for comprehensive attribution, exacerbated by communication barriers between disciplines. The primary objective is to develop a multidisciplinary framework enabling experts from various fields to contribute to attribution through standardized libraries, thereby filling intelligence gaps and facilitating collaborative analysis. The methodology involves creating a process for developing compatible libraries across technical disciplines, which analysts can use to construct a holistic attribution picture. Key findings demonstrate the framework’s success in real-time intelligence integration, bridging communication gaps between technical and non-technical analysts, and providing a visual tool for briefings. Limitations include the reliance on highly specialized skills and the complexity of harmonizing disparate data types. Future research directions suggest expanding the framework’s applicability to non-technical domains and refining methods to address identified weaknesses in the attribution process. The study’s novelty lies in its interdisciplinary approach, offering a practical solution to a persistent cybersecurity challenge.",
+        "thesisType": "",
+        "university": "",
+        "place": "",
+        "date": "2017",
+        "series": "",
+        "seriesNumber": "",
+        "numPages": "",
+        "DOI": "",
+        "ISBN": "",
+        "citationKey": "smythMultidisciplinaryFrameworkCyber2017",
+        "url": "https://core.ac.uk/download/pdf/287585556.pdf",
+        "accessDate": "2024-02-22T09:21:43Z",
+        "ISSN": "",
+        "archive": "",
+        "archiveLocation": "",
+        "shortTitle": "",
+        "language": "en",
+        "libraryCatalog": "Google Scholar",
+        "callNumber": "",
+        "rights": "",
+        "extra": "Not Relevant:The abstract emphasizes technical challenges in cyber attribution without connecting to policy or legal implications, failing to meet the inclusion criteria for relevance.",
+        "tags": [
+          {
+            "tag": "Technical Attribution Methods/Challenges"
+          }
+        ],
+        "collections": [
+          "44Q6VN9A"
+        ],
+        "relations": {
+          "dc:replaces": [
+            "http://zotero.org/users/9047943/items/HTWVKJUH",
+            "http://zotero.org/users/9047943/items/LYSLX56D",
+            "http://zotero.org/users/9047943/items/EF4XGUR8"
+          ]
+        },
+        "dateAdded": "2024-02-22T09:21:44Z",
+        "dateModified": "2025-04-19T10:41:16Z"
+      }
+    },
+    {
+      "key": "HYLZCIPX",
+      "version": 338297,
+      "library": {
+        "type": "user",
+        "id": 9047943,
+        "name": "luano",
+        "links": {
+          "alternate": {
+            "href": "https://www.zotero.org/luano",
+            "type": "text/html"
+          }
+        }
+      },
+      "links": {
+        "self": {
+          "href": "https://api.zotero.org/users/9047943/items/HYLZCIPX",
+          "type": "application/json"
+        },
+        "alternate": {
+          "href": "https://www.zotero.org/luano/items/HYLZCIPX",
+          "type": "text/html"
+        },
+        "attachment": {
+          "href": "https://api.zotero.org/users/9047943/items/XQP42KDS",
+          "type": "application/json",
+          "attachmentType": "application/pdf",
+          "attachmentSize": 361930
+        }
+      },
+      "meta": {
+        "creatorSummary": "Herald and David",
+        "parsedDate": "2018",
+        "numChildren": 2
+      },
+      "data": {
+        "key": "HYLZCIPX",
+        "version": 338297,
+        "itemType": "conferencePaper",
+        "title": "A Framework for Making Effective Responses to Cyberattacks",
+        "creators": [
+          {
+            "creatorType": "author",
+            "firstName": "NE",
+            "lastName": "Herald"
+          },
+          {
+            "creatorType": "author",
+            "firstName": "MW",
+            "lastName": "David"
+          },
+          {
+            "creatorType": "editor",
+            "firstName": "N",
+            "lastName": "Abe"
+          },
+          {
+            "creatorType": "editor",
+            "firstName": "H",
+            "lastName": "Liu"
+          },
+          {
+            "creatorType": "editor",
+            "firstName": "C",
+            "lastName": "Pu"
+          },
+          {
+            "creatorType": "editor",
+            "firstName": "X",
+            "lastName": "Hu"
+          },
+          {
+            "creatorType": "editor",
+            "firstName": "N",
+            "lastName": "Ahmed"
+          },
+          {
+            "creatorType": "editor",
+            "firstName": "M",
+            "lastName": "Qiao"
+          },
+          {
+            "creatorType": "editor",
+            "firstName": "Y",
+            "lastName": "Song"
+          },
+          {
+            "creatorType": "editor",
+            "firstName": "D",
+            "lastName": "Kossmann"
+          },
+          {
+            "creatorType": "editor",
+            "firstName": "B",
+            "lastName": "Liu"
+          },
+          {
+            "creatorType": "editor",
+            "firstName": "K",
+            "lastName": "Lee"
+          },
+          {
+            "creatorType": "editor",
+            "firstName": "J",
+            "lastName": "Tang"
+          },
+          {
+            "creatorType": "editor",
+            "firstName": "J",
+            "lastName": "He"
+          },
+          {
+            "creatorType": "editor",
+            "firstName": "J",
+            "lastName": "Saltz"
+          }
+        ],
+        "abstractNote": "The process for determining how to respond to a cyberattack involves evaluating many factors, including some with competing risks. Consequentially, decision makers in the private sector and policymakers in the U.S. government (USG) need a framework in order to make effective response decisions. The authors' research identified two competing risks: 1) the risk of not responding forcefully enough to deter a suspected attacker, and 2) responding in a manner that escalates a situation with an attacker. The authors also identified three primary factors that influence these risks: attribution confidence/time, the scale of the attack, and the relationship with the suspected attacker. This paper provides a framework to help decision makers understand how these factors interact to influence the risks associated with potential response options to cyberattacks. The views expressed do not reflect the official policy or position of the National Intelligence University, the Department of Defense, the U.S. Intelligence Community, or the U.S. Government.",
+        "proceedingsTitle": "2018 IEEE International Conference on Big Data (Big Data)",
+        "conferenceName": "2018 IEEE INTERNATIONAL CONFERENCE ON BIG DATA (BIG DATA)",
+        "publisher": "",
+        "place": "",
+        "date": "2018",
+        "eventPlace": "",
+        "volume": "",
+        "issue": "",
+        "numberOfVolumes": "",
+        "pages": "4798-4805",
+        "series": "",
+        "seriesNumber": "",
+        "DOI": "10.1109/BigData.2018.8622537",
+        "ISBN": "2639-1589",
+        "citationKey": "heraldFrameworkMakingEffective2018",
+        "url": "https://ieeexplore.ieee.org/document/8622537",
+        "accessDate": "2025-03-20T17:36:25Z",
+        "ISSN": "",
+        "archive": "",
+        "archiveLocation": "WOS:000468499304127",
+        "shortTitle": "",
+        "language": "English",
+        "libraryCatalog": "IEEE Xplore",
+        "callNumber": "",
+        "rights": "",
+        "extra": "TLDR: The authors’ research identified two competing risks: the risk of not responding forcefully enough to deter a suspected attacker, and responding in a manner that escalates a situation with an attacker.",
+        "tags": [
+          {
+            "tag": "Analysis"
+          },
+          {
+            "tag": "Attribution"
+          },
+          {
+            "tag": "Big Data",
+            "type": 1
+          },
+          {
+            "tag": "Companies",
+            "type": 1
+          },
+          {
+            "tag": "Computer crime",
+            "type": 1
+          },
+          {
+            "tag": "Computer hacking",
+            "type": 1
+          },
+          {
+            "tag": "Cyberattack"
+          },
+          {
+            "tag": "Deterrence"
+          },
+          {
+            "tag": "Escalation"
+          },
+          {
+            "tag": "Government",
+            "type": 1
+          },
+          {
+            "tag": "Market research",
+            "type": 1
+          },
+          {
+            "tag": "Response"
+          },
+          {
+            "tag": "Risk"
+          },
+          {
+            "tag": "databased",
+            "type": 1
+          }
+        ],
+        "collections": [
+          "44Q6VN9A"
+        ],
+        "relations": {
+          "dc:replaces": "http://zotero.org/users/9047943/items/RXWQ4G4W"
+        },
+        "dateAdded": "2025-03-20T16:57:51Z",
+        "dateModified": "2025-04-14T18:47:40Z"
+      }
+    }
+  ]
+}

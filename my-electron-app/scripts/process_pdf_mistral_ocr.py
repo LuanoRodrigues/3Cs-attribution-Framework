@@ -324,6 +324,11 @@ def main() -> int:
         help="Force recomputation instead of default cache-first behavior.",
     )
     parser.add_argument(
+        "--offline-only",
+        action="store_true",
+        help="Skip provider OCR and use local offline PDF text/markdown extraction only.",
+    )
+    parser.add_argument(
         "--write-full-text-md",
         default="",
         help=(
@@ -344,21 +349,23 @@ def main() -> int:
 
     module: Any | None = None
     module_load_error: Exception | None = None
-    try:
-        module = _load_data_processing_module(app_root)
-    except Exception as exc:
-        module_load_error = exc
-        print(
-            f"[WARNING] Could not load data_processing module; using offline fallback. "
-            f"{type(exc).__name__}: {exc}",
-            file=sys.stderr,
-        )
+    process_error: Exception | None = None
+    result: Optional[dict[str, Any]] = None
+
+    if not args.offline_only:
+        try:
+            module = _load_data_processing_module(app_root)
+        except Exception as exc:
+            module_load_error = exc
+            print(
+                f"[WARNING] Could not load data_processing module; using offline fallback. "
+                f"{type(exc).__name__}: {exc}",
+                file=sys.stderr,
+            )
 
     cache_path = Path(module._cache_path(str(pdf_path))) if module is not None else _fallback_cache_path(pdf_path)
 
-    process_error: Exception | None = None
-    result: Optional[dict[str, Any]] = None
-    if module is not None:
+    if module is not None and not args.offline_only:
         api_env_var = getattr(module, "MISTRAL_API_KEY_ENV_VAR", "MISTRAL_API_KEY")
         api_key = os.getenv(api_env_var, "")
         if not api_key:
@@ -423,6 +430,7 @@ def main() -> int:
         "fallback_used": fallback_used,
         "fallback_method": fallback_method or None,
         "fallback_reason": fallback_reason or None,
+        "offline_only": bool(args.offline_only),
     }
     if module_load_error is not None:
         payload["module_load_error"] = f"{type(module_load_error).__name__}: {module_load_error}"

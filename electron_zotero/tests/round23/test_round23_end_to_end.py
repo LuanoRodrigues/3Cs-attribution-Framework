@@ -1,4 +1,5 @@
 import builtins
+import importlib.util
 import json
 import sys
 from pathlib import Path
@@ -8,8 +9,9 @@ import pandas as pd
 
 APP_ROOT = Path(__file__).resolve().parents[2]
 WORKSPACE_ROOT = Path(__file__).resolve().parents[3]
+SHARED_ROOT = WORKSPACE_ROOT / "my-electron-app" / "shared"
 BACKEND_ROOT = WORKSPACE_ROOT / "my-electron-app" / "shared" / "python_backend"
-for path in (APP_ROOT, BACKEND_ROOT):
+for path in (APP_ROOT, SHARED_ROOT, BACKEND_ROOT):
     path_str = str(path)
     if path_str not in sys.path:
         sys.path.insert(0, path_str)
@@ -136,7 +138,15 @@ def _install_round23_import_stubs() -> None:
 
 _install_round23_import_stubs()
 
-import PDF_parsing.thematic_functions as tf
+TF_LEGACY_PATH = BACKEND_ROOT / "analyse" / "thematic_functions_legacy.py"
+_tf_spec = importlib.util.spec_from_file_location(
+    "thematic_functions_legacy_under_test",
+    str(TF_LEGACY_PATH),
+)
+if _tf_spec is None or _tf_spec.loader is None:
+    raise RuntimeError(f"Unable to load thematic_functions_legacy from {TF_LEGACY_PATH}")
+tf = importlib.util.module_from_spec(_tf_spec)
+_tf_spec.loader.exec_module(tf)
 
 
 class _RoundResultsShim:
@@ -275,6 +285,11 @@ def run_round23_test() -> dict:
         "round3_sections_merged": len(res.round3_sections_merged),
         "export_paths": res.export_paths,
     }
+
+    # Quorum default is 15; this synthetic fixture has only 4 payload rows.
+    assert summary["num_batches_round2"] == 0, summary
+    assert summary["outputs_round2"] == 0, summary
+    assert summary["outputs_round3"] == 0, summary
 
     report_path = out_dir / "round23_test_report.json"
     report_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")

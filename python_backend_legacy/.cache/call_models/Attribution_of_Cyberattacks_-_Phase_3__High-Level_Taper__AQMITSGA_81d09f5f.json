@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": "{\n  \"classification\": \"Highly Relevant\",\n  \"relevance_score\": \"High\",\n  \"potential_subcategory\": \"International law and attribution frameworks (evidentiary standards, state responsibility, multilateral cooperation)\",\n  \"justification\": \"The abstract directly addresses credible cyber attribution and its policy/law implications: it ties attribution to Article 51 self-defense and other legal responses, defines audiences and evidentiary thresholds, presents an attribution framework (inner/outer scope; preventive/reactive), analyzes state responsibility and due diligence, critiques existing instruments (e.g., Budapest Convention), and recommends binding norms, secure evidence-sharing, and confidence-building measures. The use of high-profile case studies (GRU/APT28, WADA/OPCW, Stuxnet) and discussion of technical forensics plus geopolitical intelligence corroboration make it centrally relevant to both attribution practice and legal/policy debates.\"\n}"
+  },
+  "cached_at": "2026-02-23T20:48:26.017828Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "AQMITSGA",
+  "function": "classify_by_abs"
+}

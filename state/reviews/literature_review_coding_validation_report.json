@@ -1,0 +1,9 @@
+{
+  "ok": true,
+  "review_type": "literature",
+  "csv": "state/reviews/literature_review_coded_evidence_phase5.csv",
+  "schema": "Research/review_standards/unified_coding_system_v1.json",
+  "rows": 201,
+  "errors": [],
+  "warnings": []
+}

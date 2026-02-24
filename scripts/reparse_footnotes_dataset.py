@@ -248,6 +248,32 @@ PARTIAL_TITLE_RE = re.compile(
     r"(?i)^\s*(?:table of contents|contents|i\.\s*introduction|introduction|chapter\s+\d+|section\s+\d+)\b"
 )
 TOC_DOTS_LINE_RE = re.compile(r"(?m)^[^\n]{0,140}\.{3,}\s*\d+\s*$")
+SECTION_CUE_RE = re.compile(
+    r"(?i)\b("
+    r"abstract|introduction|background|method(?:s|ology)?|results|discussion|"
+    r"conclusion|concluding remarks|references|bibliography|appendix|acknowledg(?:e)?ments?"
+    r")\b"
+)
+HEADING_HASH_RE = re.compile(r"^\s{0,3}#{1,6}\s")
+HEADING_URL_RE = re.compile(r"https?://|www\.", re.I)
+HEADING_EMAIL_RE = re.compile(r"\b\S+@\S+\.\S+\b")
+HEADING_DOI_RE = re.compile(r"\b10\.\d{4,9}/\S+\b", re.I)
+HEADING_SMALLWORDS = {
+    "and",
+    "or",
+    "of",
+    "the",
+    "in",
+    "on",
+    "for",
+    "to",
+    "by",
+    "with",
+    "vs",
+    "vs.",
+    "a",
+    "an",
+}
 
 
 def clean_hein_header(text: str) -> str:
@@ -799,6 +825,100 @@ def normalize_name_candidate(name: str) -> str:
         if not looks_like_person_name(n):
             return ""
     return n
+
+
+def looks_like_section_title(line: str) -> bool:
+    s = str(line or "").strip()
+    if not s:
+        return False
+    if HEADING_HASH_RE.match(s):
+        return True
+    if len(s) > 80:
+        return False
+    if s.endswith((".", "?", "!", ":", ";")):
+        return False
+    if HEADING_URL_RE.search(s) or HEADING_DOI_RE.search(s) or HEADING_EMAIL_RE.search(s):
+        return False
+    toks = re.split(r"\s+", s)
+    if not (1 <= len(toks) <= 10):
+        return False
+    good = 0
+    total = 0
+    for tok in toks:
+        core = tok.strip("–—-:,()[]{}'\"")
+        if not core:
+            continue
+        total += 1
+        if core.lower() in HEADING_SMALLWORDS:
+            good += 1
+        elif len(core) >= 2 and core.isupper():
+            good += 1
+        elif core[0].isupper():
+            good += 1
+    return total > 0 and (good / total) >= 0.7
+
+
+def _is_glued_heading_line(line: str) -> bool:
+    s = str(line or "").strip()
+    if not s:
+        return False
+    if looks_like_section_title(s):
+        return False
+    if len(s.split()) < 12:
+        return False
+    if not SECTION_CUE_RE.search(s):
+        return False
+    if TOC_DOTS_LINE_RE.search(s):
+        return False
+    cue_near_start = bool(
+        re.match(
+            r"(?i)^\s*(?:#{1,6}\s*)?(?:(?:[IVXLCDM]+|\d+(?:\.\d+)*)\s*[.)-]?\s*)?"
+            r"(?:abstract|introduction|background|methods?|methodology|results|discussion|"
+            r"conclusion|concluding remarks|references|bibliography|appendix|acknowledg(?:e)?ments?)\b",
+            s,
+        )
+    )
+    numbered_heading_prefix = bool(
+        re.match(r"^\s*(?:[IVXLCDM]+|\d+(?:\.\d+)*)\s*[.)-]?\s+[A-Za-z]", s)
+    )
+    if not (cue_near_start or numbered_heading_prefix):
+        return False
+    return True
+
+
+def compute_section_split_stats(md_text: str) -> Dict[str, Any]:
+    lines = [ln.rstrip() for ln in (md_text or "").splitlines()]
+    nonempty = [ln for ln in lines if ln.strip()]
+    candidate = 0
+    standalone = 0
+    glued = 0
+    for ln in nonempty:
+        if SECTION_CUE_RE.search(ln) or looks_like_section_title(ln):
+            candidate += 1
+        if looks_like_section_title(ln):
+            standalone += 1
+        elif _is_glued_heading_line(ln):
+            glued += 1
+    denom = standalone + glued
+    return {
+        "lines_nonempty": len(nonempty),
+        "candidate_heading_lines": candidate,
+        "standalone_heading_lines": standalone,
+        "glued_heading_lines": glued,
+        "heading_split_score": (standalone / denom) if denom else 1.0,
+    }
+
+
+def compute_section_split_delta(before: Dict[str, Any], after: Dict[str, Any]) -> Dict[str, float]:
+    b = before if isinstance(before, dict) else {}
+    a = after if isinstance(after, dict) else {}
+    return {
+        "delta_standalone_heading_lines": as_number(a.get("standalone_heading_lines"))
+        - as_number(b.get("standalone_heading_lines")),
+        "delta_glued_heading_lines": as_number(a.get("glued_heading_lines"))
+        - as_number(b.get("glued_heading_lines")),
+        "delta_heading_split_score": as_number(a.get("heading_split_score")) - as_number(b.get("heading_split_score")),
+    }
 
 
 def extract_authors_from_line(line: str) -> List[str]:
@@ -1516,6 +1636,15 @@ def aggregate(records: List[Dict[str, Any]]) -> Dict[str, Any]:
     metadata_authors_total = 0
     metadata_affiliations_total = 0
     metadata_keywords_total = 0
+    section_current_standalone_total = 0.0
+    section_current_glued_total = 0.0
+    section_baseline_standalone_total = 0.0
+    section_baseline_glued_total = 0.0
+    section_docs = 0
+    section_docs_with_baseline = 0
+    section_docs_improved = 0
+    section_docs_regressed = 0
+    section_docs_unchanged = 0
 
     for rec in ok_records:
         source_counts.update([rec.get("source_type", "unknown")])
@@ -1629,6 +1758,29 @@ def aggregate(records: List[Dict[str, Any]]) -> Dict[str, Any]:
                 ]
             )
 
+        section_stats = rec.get("section_split_stats")
+        if isinstance(section_stats, dict):
+            current_section = section_stats.get("flat_text_current")
+            if isinstance(current_section, dict):
+                section_docs += 1
+                section_current_standalone_total += as_number(current_section.get("standalone_heading_lines"))
+                section_current_glued_total += as_number(current_section.get("glued_heading_lines"))
+
+            baseline_section = section_stats.get("flat_text_baseline")
+            if isinstance(current_section, dict) and isinstance(baseline_section, dict):
+                section_docs_with_baseline += 1
+                section_baseline_standalone_total += as_number(baseline_section.get("standalone_heading_lines"))
+                section_baseline_glued_total += as_number(baseline_section.get("glued_heading_lines"))
+                delta_score = as_number(current_section.get("heading_split_score")) - as_number(
+                    baseline_section.get("heading_split_score")
+                )
+                if delta_score > 0:
+                    section_docs_improved += 1
+                elif delta_score < 0:
+                    section_docs_regressed += 1
+                else:
+                    section_docs_unchanged += 1
+
         baseline = rec.get("baseline")
         if not isinstance(baseline, dict):
             continue
@@ -1718,6 +1870,29 @@ def aggregate(records: List[Dict[str, Any]]) -> Dict[str, Any]:
             "improved": improved_pct,
             "regressed": regressed_pct,
             "unchanged": unchanged_pct,
+        },
+        "section_split_stats": {
+            "docs_with_current_flat_text_stats": section_docs,
+            "weighted_heading_split_score_current_flat_text": (
+                section_current_standalone_total / (section_current_standalone_total + section_current_glued_total)
+                if (section_current_standalone_total + section_current_glued_total)
+                else 1.0
+            ),
+            "current_flat_standalone_heading_lines_total": section_current_standalone_total,
+            "current_flat_glued_heading_lines_total": section_current_glued_total,
+            "docs_with_baseline_flat_text_stats": section_docs_with_baseline,
+            "weighted_heading_split_score_baseline_flat_text": (
+                section_baseline_standalone_total / (section_baseline_standalone_total + section_baseline_glued_total)
+                if (section_baseline_standalone_total + section_baseline_glued_total)
+                else 1.0
+            ),
+            "baseline_flat_standalone_heading_lines_total": section_baseline_standalone_total,
+            "baseline_flat_glued_heading_lines_total": section_baseline_glued_total,
+            "baseline_delta_by_heading_split_score_docs": {
+                "improved": section_docs_improved,
+                "regressed": section_docs_regressed,
+                "unchanged": section_docs_unchanged,
+            },
         },
         "failed_files": [r.get("file") for r in failed_records],
     }
@@ -1819,6 +1994,7 @@ def main() -> int:
                 raise ValueError("Top-level JSON is not an object.")
 
             baseline_summary = None
+            baseline_flat_text = ""
             full_text = ""
             references: List[str] = []
             pages_count = 0
@@ -1828,6 +2004,7 @@ def main() -> int:
             if path.suffix == ".md":
                 source_type = "md_cache"
                 baseline_summary = summarize_link_output(obj.get("citations"))
+                baseline_flat_text = str(obj.get("flat_text") or "")
 
                 if args.prefer_pages_text:
                     pages = text_pages_from_md_cache(obj)
@@ -1860,6 +2037,7 @@ def main() -> int:
                 references=references,
                 suppress_parser_logs=not args.no_suppress_parser_logs,
             )
+            flat_text_current = str(link_out.get("flat_text") or full_text)
             current_summary = summarize_link_output(link_out)
             heading_validation = validate_heading_structure(full_text, references)
             metadata = extract_document_metadata(
@@ -1874,6 +2052,17 @@ def main() -> int:
                 current_summary=current_summary,
                 metadata=metadata,
             )
+            section_split_stats: Dict[str, Any] = {
+                "full_text": compute_section_split_stats(full_text),
+                "flat_text_current": compute_section_split_stats(flat_text_current),
+            }
+            if baseline_flat_text.strip():
+                baseline_flat_stats = compute_section_split_stats(baseline_flat_text)
+                section_split_stats["flat_text_baseline"] = baseline_flat_stats
+                section_split_stats["delta_current_minus_baseline"] = compute_section_split_delta(
+                    baseline_flat_stats,
+                    section_split_stats["flat_text_current"],
+                )
 
             record: Dict[str, Any] = {
                 "file": rel_path,
@@ -1887,6 +2076,7 @@ def main() -> int:
                 "current": current_summary,
                 "metadata": metadata,
                 "validation": validation,
+                "section_split_stats": section_split_stats,
             }
 
             if baseline_summary is not None:
@@ -1902,7 +2092,7 @@ def main() -> int:
                 obj["full_text"] = full_text
                 obj["references"] = references
                 obj["citations"] = link_out
-                obj["flat_text"] = link_out.get("flat_text", full_text)
+                obj["flat_text"] = flat_text_current
                 path.write_text(json.dumps(obj, ensure_ascii=False, indent=2), encoding="utf-8")
 
         except Exception as exc:

@@ -1,0 +1,2114 @@
+{
+  "J766INPV": {
+    "metadata": {
+      "item_key": "J766INPV",
+      "title": "Freedom and security in cyberspace: shifting the focus away from military responses towards non-forcible countermeasures and collective threat prevention",
+      "authors": [
+        {
+          "creatorType": "author",
+          "firstName": "R.",
+          "lastName": "Geiss"
+        },
+        {
+          "creatorType": "author",
+          "firstName": "H.",
+          "lastName": "Lahmann"
+        },
+        {
+          "creatorType": "editor",
+          "firstName": "K.",
+          "lastName": "Ziolkowski"
+        }
+      ],
+      "year": "2014",
+      "first_author_last": "Geiss",
+      "pdf_path": "",
+      "source_path": "/home/pantera/projects/TEIA/python_backend_legacy/dataset/3e5a55f09d8a4d21604e5a1006184c8e1eeef04d4b7c9eaab05b789bd67c9398.json",
+      "collection": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+      "prompt_key": "code_pdf_page",
+      "intro_conclusion_prompt_key": "code_intro_conclusion_extract_core_claims",
+      "rq_lines": [
+        "0: What frameworks and models concerning cyber attribution are most cited?"
+      ],
+      "rq_sig": "181628a3ff",
+      "coding_mode": "open",
+      "overarching_theme": "cyber attribution",
+      "rq_scope": [
+        0
+      ],
+      "target_codes": [],
+      "min_relevance": 3,
+      "allowed_evidence_types": [
+        "argument",
+        "descriptive",
+        "empirical",
+        "mixed"
+      ],
+      "zotero_metadata": {
+        "item_type": "bookSection",
+        "title": "Freedom and security in cyberspace: shifting the focus away from military responses towards non-forcible countermeasures and collective threat prevention",
+        "journal": null,
+        "date": "2014",
+        "doi": "",
+        "url": "https://eprints.gla.ac.uk/117422/",
+        "abstract": "Ziolkowski’s 2013 work, “General Principles of Public International Law as Applicable in Cyberspace,” presents a comprehensive doctrinal analysis of how foundational norms governing sovereign behavior translate into the digital domain. Opening with a historical overview, the paper traces the evolution of sovereignty from territorial control over land and airspace to digital jurisdiction over networks and data, arguing that states exercise sovereign rights over cyber infrastructure that they effectively control, including servers, cables, and virtual services within their territory. Building on this, the author examines the principle of non-intervention, demonstrating how unauthorized cyber operations that impair a state’s political independence—through data manipulation, denial-of-service attacks on critical governance systems, or influence operations targeting electoral processes—constitute prohibited interference analogous to coercive measures in kinetic conflict. Central to the analysis is the prohibition on the use of force under Article 2(4) of the UN Charter. Ziolkowski develops a set of threshold criteria—scope, intensity, and effect—that parallel traditional armed force assessments, interpreting high-volume cyber assaults that disrupt critical infrastructure or threaten human security as tantamount to use of force. The discussion then transitions to state responsibility and attribution, exploring classical tests of effective control, overall control, and introducing the notion of virtual control to address the diffuse nature of cyber proxies. Relying on state practice and UN GGE reports, the paper critiques the ambiguity in current attribution standards and proposes that a hybrid test—integrating technical forensic evidence with customary legal benchmarks—offers the greatest reliability for linking operations to attested state actors or their agents. The doctrinal inquiry extends to due diligence obligations, positing that states must not only refrain from sponsoring malicious cyber activities but also proactively prevent non-state actors within their jurisdiction from mounting harmful cyber operations. This emphasis on preventive duties is grounded in customary law and established countermeasure frameworks, and aligns with emerging national strategies that call for domestic regulatory measures and cooperative cyber defense initiatives. In discussing countermeasures and sanctions, Ziolkowski assesses the legality of proportionate responses—ranging from diplomatic protests to economic sanctions and cyber counter-operations—within the scope of permissible reprisals, drawing on case law and Security Council practice to outline the parameters of lawful state behavior. Furthermore, the paper interrogates existing doctrine frameworks such as the Tallinn Manual’s articulation of cyber kill chain stages, the MITRE ATT&CK mapping for threat intelligence, and the OODA loop for decision-making attribution, evaluating their applicability to state practice and suggesting refinements to ensure consistency with international legal principles. Concluding, Ziolkowski offers normative policy guidance for states and multilateral bodies, advocating for standardized attribution protocols, enhanced information sharing, and the development of treaty-based rules to fill identified normative gaps. Ultimately, the study contributes a policy-analytic doctrine that bridges legal theory and practical governance, providing a roadmap for reconciling traditional international law with the complexities of state conduct in cyberspace.",
+        "creators": [
+          {
+            "creatorType": "author",
+            "firstName": "R.",
+            "lastName": "Geiss"
+          },
+          {
+            "creatorType": "author",
+            "firstName": "H.",
+            "lastName": "Lahmann"
+          },
+          {
+            "creatorType": "editor",
+            "firstName": "K.",
+            "lastName": "Ziolkowski"
+          }
+        ],
+        "tags": [
+          "#theme:MITRE ATT&CK",
+          "#theme:Tallinn Manual",
+          "#theme:countermeasure",
+          "#theme:critical infrastructure",
+          "#theme:due diligence obligation",
+          "#theme:hybrid attribution test",
+          "#theme:non-intervention",
+          "#theme:self-defence",
+          "#theme:state responsibility",
+          "#theme:state sovereignty",
+          "#theme:use of force",
+          "#theme:virtual control",
+          "06_added",
+          "LLM_status:maybe:fallback_manual_completion",
+          "Note_Codes",
+          "attribution",
+          "due diligence",
+          "non-intervention",
+          "sovereignty",
+          "state responsibility",
+          "use of force"
+        ]
+      },
+      "process_pdf_metadata": {
+        "title": "FREEDOM AND SECURITY IN CYBERSPACE: SHIFTING THE FOCUS AWAY FROM MILITARY RESPONSES TOWARDS NON-FORCIBLE COUNTERMEASURES AND COLLECTIVE THREAT-PREVENTION",
+        "subtitle": "",
+        "document_type": "journal_article",
+        "venue": "",
+        "publication_year": null,
+        "authors": [
+          "Counteraction in Cyberspace",
+          "Robin Geiß",
+          "Henning Lahmann"
+        ],
+        "affiliations": [],
+        "emails": [],
+        "orcids": [],
+        "corresponding_author_line": "",
+        "abstract": "",
+        "keywords": [],
+        "publication_dates": {},
+        "identifiers": {
+          "doi": [],
+          "issn": [],
+          "isbn": [],
+          "arxiv": [],
+          "pmid": [],
+          "pmcid": [],
+          "urls": [
+            "http://www.infowar-monitor.net/2009/09/tracking-ghostnet-investigating-a-cyber-espionage-network",
+            "http://www.sei.cmu.edu/library/abstracts/reports/02sr009.cfm",
+            "http://www.schneier.com/blog/archives/2010/02/anonymity_and_t_3.html",
+            "http://intelreport.mandiant.com/Mandiant_APT1_Report.pdf",
+            "http://blogs.defensenews.com/intercepts/2013/02/china-cyberwarfare-evidence-now-undeniable-mandiant",
+            "http://jeffreycarr.blogspot.com/2013/02/mandiant-apt1-report-has-critical.html",
+            "http://www.businessinsider.com/mandiant-china-report-questioned-2013-2"
+          ]
+        },
+        "references_block_count": 0,
+        "references_entries_estimated": 0,
+        "heading_count": 14,
+        "max_heading_level": 3,
+        "partial_document": {
+          "is_partial_document": false,
+          "reasons": [
+            "title_looks_like_mid_paragraph_sentence",
+            "no_abstract",
+            "no_identifier"
+          ],
+          "toc_dot_lines": 0
+        }
+      },
+      "process_pdf_metadata_source": "/home/pantera/projects/TEIA/python_backend_legacy/dataset/3e5a55f09d8a4d21604e5a1006184c8e1eeef04d4b7c9eaab05b789bd67c9398.json",
+      "process_pdf_affiliations": [],
+      "process_pdf_emails": [],
+      "process_pdf_identifiers": [
+        "{'doi': [], 'issn': [], 'isbn': [], 'arxiv': [], 'pmid': [], 'pmcid': [], 'urls': ['http://www.infowar-monitor.net/2009/09/tracking-ghostnet-investigating-a-cyber-espionage-network', 'http://www.sei.cmu.edu/library/abstracts/reports/02sr009.cfm', 'http://www.schneier.com/blog/archives/2010/02/anonymity_and_t_3.html', 'http://intelreport.mandiant.com/Mandiant_APT1_Report.pdf', 'http://blogs.defensenews.com/intercepts/2013/02/china-cyberwarfare-evidence-now-undeniable-mandiant', 'http://jeffreycarr.blogspot.com/2013/02/mandiant-apt1-report-has-critical.html', 'http://www.businessinsider.com/mandiant-china-report-questioned-2013-2']}"
+      ],
+      "open_code_count": 20,
+      "evidence_harvest_count": 8,
+      "timestamp": "2026-02-24T17:22:49Z"
+    },
+    "section_open_coding": [
+      {
+        "section_key": "legacy_dataset_text",
+        "evidence": [
+          {
+            "quote": "This chapter argues that, while self-defence certainly cannot be ruled out, the problem of attribution will preclude its proper application in many, if not most, instances.",
+            "paraphrase": "The authors contend that attribution problems will often prevent lawful invocation of self-defence in cyber incidents.",
+            "researcher_comment": "High-level normative claim linking attribution to jus ad bellum practicability. Useful for RQs about legal constraints on forceful cyber responses. The statement is broad ('many, if not most') and not empirically quantified; it rests on subsequent technical and evidentiary arguments in the chapter.",
+            "potential_themes": [
+              "attribution_challenges",
+              "self_defence_limitations"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [],
+            "evidence_type": "limitation",
+            "argument_type": "legal_interpretive",
+            "claim_direction": "supports",
+            "open_codes": [
+              "attribution_precludes_self_defence",
+              "evidentiary_constraint"
+            ],
+            "dqid": "535f98f0fe3d",
+            "section_key": "legacy_dataset_text"
+          },
+          {
+            "quote": "As the technical peculiarities of cyberspace make it entirely possible to hide one’s own identity and to obliterate the traces of one’s actions, how can we ever know who carried out an attack?",
+            "paraphrase": "The technical features of cyberspace enable attackers to hide identity and erase traces, making attribution factually difficult.",
+            "researcher_comment": "Identifies the core technical source of the attribution problem; this is a factual limitation that underpins the chapter's legal analysis. The claim is general and does not distinguish attacker capability levels or investigative resources.",
+            "potential_themes": [
+              "attribution_challenges"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [],
+            "evidence_type": "limitation",
+            "argument_type": "descriptive",
+            "claim_direction": "supports",
+            "open_codes": [
+              "technical_anonymity",
+              "trace_obfuscation"
+            ],
+            "dqid": "eb8df409a7bb",
+            "section_key": "legacy_dataset_text"
+          },
+          {
+            "quote": "The current architecture of the internet and connected networks provides countless loopholes and methods to mask a user’s identity or location; online identities and servers can be hidden, data packet flows and connections can be masked and redirected through multiple servers, and an attacker can hijack a machine belonging to an unaware, innocent individual or organisation in order to use it as a basis for launching cyber attacks.",
+            "paraphrase": "Internet architecture permits proxying, redirection and hijacking of third‑party machines, all of which obscure attacker origin and impede attribution.",
+            "researcher_comment": "Detailed enumeration of technical mechanisms that complicate attribution (proxy chains, hidden servers, hijacked hosts). Strong descriptive support for claims that technical attribution is fragile, but no frequency or success-rate data provided.",
+            "potential_themes": [
+              "attribution_challenges",
+              "third_party_harm"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [],
+            "evidence_type": "limitation",
+            "argument_type": "descriptive",
+            "claim_direction": "supports",
+            "open_codes": [
+              "proxy_chaining",
+              "botnet_hijacking",
+              "packet_redirection"
+            ],
+            "dqid": "306d9b1961cd",
+            "section_key": "legacy_dataset_text"
+          },
+          {
+            "quote": "Even if an attacking computer can be located with sufficient certainty, what remains is the factor which commentators have called the ‘human machine gap’ or ‘entry-point anonymity’; the location of a computer rarely allows for definite conclusions regarding the identity of the individual operating the machine, and it is the latter’s status that ultimately determines attribution pursuant to Articles 4 to 11 of the ILC Articles on State Responsibility.",
+            "paraphrase": "Locating a device does not reliably identify the human operator, creating a 'human–machine gap' that obstructs legal attribution under ILC Articles 4–11.",
+            "researcher_comment": "Connects technical forensics to legal attribution rules: attribution depends on linking human actors (and their state nexus), not merely devices. Implies that device-level traces often fail to meet legal attribution thresholds.",
+            "potential_themes": [
+              "attribution_challenges",
+              "human_machine_gap"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [],
+            "evidence_type": "limitation",
+            "argument_type": "legal_interpretive",
+            "claim_direction": "supports",
+            "open_codes": [
+              "human_machine_gap",
+              "entry_point_anonymity",
+              "ILC_attribution_requirements"
+            ],
+            "dqid": "6d0933cd6449",
+            "section_key": "legacy_dataset_text"
+          },
+          {
+            "quote": "Four formalised standards can nonetheless be identified in international courts’ and tribunals’ jurisprudence in matters concerning State responsibility, and thus also the question concerning responsibility for an armed attack. Those are: the *prima facie* possibility of an asserted fact being true; a preponderance of evidence; the ‘clear and convincing’ evidentiary standard; and proof beyond reasonable doubt.",
+            "paraphrase": "International jurisprudence recognises four evidentiary standards—prima facie, preponderance, clear and convincing, and beyond reasonable doubt—relevant to state responsibility.",
+            "researcher_comment": "Provides a usable typology for coding evidentiary claims in inter-state disputes. Authors treat these as distinct thresholds; the text does not map each standard to specific fora or situations in cyberspace.",
+            "potential_themes": [
+              "evidentiary_standards"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [],
+            "evidence_type": "taxonomy_typology",
+            "argument_type": "definitional",
+            "claim_direction": "neutral",
+            "open_codes": [
+              "evidence_standard_typology",
+              "prima_facie_preponderance_clear_and_convincing_beyond_reasonable_doubt"
+            ],
+            "dqid": "fbc8de2bba9b",
+            "section_key": "legacy_dataset_text"
+          },
+          {
+            "quote": "While it is arguably preponderance of evidence that is the prevailing standard to be met in international litigation in general, as soon as State responsibility is involved the required threshold appears to be considerably higher, shifting towards ‘clear and convincing’.",
+            "paraphrase": "Although preponderance is common generally, allegations of state responsibility typically require a higher 'clear and convincing' evidentiary standard.",
+            "researcher_comment": "Asserts an elevated burden for responsibility claims; author cites ICJ and other jurisprudence. This is central to RQs about legal thresholds for attributing cyber operations, but the exact application may vary by forum.",
+            "potential_themes": [
+              "evidentiary_standards",
+              "state_responsibility_thresholds"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [],
+            "evidence_type": "jurisprudence_case_law",
+            "argument_type": "legal_interpretive",
+            "claim_direction": "supports",
+            "open_codes": [
+              "clear_and_convincing_standard",
+              "heightened_burden_state_responsibility"
+            ],
+            "dqid": "e9c32da2c5a6",
+            "section_key": "legacy_dataset_text"
+          },
+          {
+            "quote": "This standard essentially amounts to the duty to ‘convince the arbiter in question that it is substantially more likely than not that the factual claims that have been made are true.'",
+            "paraphrase": "The 'clear and convincing' standard requires persuading the adjudicator that the asserted facts are substantially more likely than not.",
+            "researcher_comment": "Offers an operationalisable definition of the 'clear and convincing' threshold; helpful for assessing whether technical and intelligence evidence might meet legal proof requirements. The phrase 'substantially more likely than not' remains interpretively fuzzy.",
+            "potential_themes": [
+              "evidentiary_standards"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [],
+            "evidence_type": "definition_conceptual",
+            "argument_type": "definitional",
+            "claim_direction": "neutral",
+            "open_codes": [
+              "clear_and_convincing_definition",
+              "standard_of_proof_explanation"
+            ],
+            "dqid": "447ac878fe5b",
+            "section_key": "legacy_dataset_text"
+          },
+          {
+            "quote": "Even if research such as that undertaken for the Mandiant study does eventually sufficiently prove authorship, it cannot be overlooked that it took their analysts several years to come up with conclusions that they themselves considered sufficiently convincing to be published.",
+            "paraphrase": "High‑profile technical attribution (e.g., Mandiant) sometimes took years to reach publishable confidence, creating timeliness problems for invoking self‑defence.",
+            "researcher_comment": "Concrete case‑based observation showing long attribution timelines; relevant to the immediacy requirement for self‑defence. Authors use this to question whether delayed attribution can justify forceful responses.",
+            "potential_themes": [
+              "case_study_example",
+              "immediacy_requirement"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [],
+            "evidence_type": "case_study_example",
+            "argument_type": "descriptive",
+            "claim_direction": "qualifies",
+            "open_codes": [
+              "long_attribution_timelines",
+              "Mandiant_case",
+              "timeliness_issue"
+            ],
+            "dqid": "f14cde5c4244",
+            "section_key": "legacy_dataset_text"
+          },
+          {
+            "quote": "In cases where ‘the initiator of the attack is not identified until well after the attack’ the criterion of immediacy will usually not be met.",
+            "paraphrase": "If the initiator is identified only much later, the immediacy condition for lawful self‑defence is typically not fulfilled.",
+            "researcher_comment": "Cites the Tallinn Manual's immediacy criterion; directly links attribution delay to jus ad bellum limits. The Manual is an expert text (non‑binding) but influential in practice.",
+            "potential_themes": [
+              "immediacy_requirement",
+              "self_defence_limitations"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [],
+            "evidence_type": "framework",
+            "argument_type": "legal_interpretive",
+            "claim_direction": "supports",
+            "open_codes": [
+              "immediacy_test",
+              "tallinn_manual_immediacy"
+            ],
+            "dqid": "3b7d08bf4805",
+            "section_key": "legacy_dataset_text"
+          },
+          {
+            "quote": "However, the Tallinn Manual suggests that this conclusion may change if there is reason for the victim State to believe that ‘further cyber operations are likely to follow’ – in that case, the State ‘may treat those operations as a “cyber campaign” and continue to act in self-defence’.",
+            "paraphrase": "Tallinn Manual permits treating anticipated or repeated operations as a 'cyber campaign', which can preserve immediacy for self‑defence.",
+            "researcher_comment": "Identifies a doctrinally significant qualification (aggregation/campaign doctrine) that relaxes temporal proximity. Authors warn this risks eroding the temporal limit of self‑defence and fostering escalation.",
+            "potential_themes": [
+              "immediacy_requirement",
+              "accumulation_of_events"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [],
+            "evidence_type": "framework",
+            "argument_type": "legal_interpretive",
+            "claim_direction": "qualifies",
+            "open_codes": [
+              "cyber_campaign_doctrine",
+              "aggregation_of_events",
+              "immediacy_softening"
+            ],
+            "dqid": "8f1d987f55cd",
+            "section_key": "legacy_dataset_text"
+          },
+          {
+            "quote": "The suggestion that the standards of attribution should shift from 'effective control' to 'overall control' does not touch upon the issue of identification.",
+            "paraphrase": "Changing the legal test from 'effective control' to 'overall control' adjusts attribution doctrine but does not solve the factual problem of identifying actors.",
+            "researcher_comment": "Authoritatively rejects a doctrinal fix as sufficient; useful to separate legal standard debates from empirical identification problems. Does not engage with situations where legal standard change might lower proof required in practice.",
+            "potential_themes": [
+              "attribution_standards",
+              "attribution_challenges"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [],
+            "evidence_type": "limitation",
+            "argument_type": "legal_interpretive",
+            "claim_direction": "contradicts",
+            "open_codes": [
+              "effective_vs_overall_control",
+              "identification_gap"
+            ],
+            "dqid": "040733172efe",
+            "section_key": "legacy_dataset_text"
+          },
+          {
+            "quote": "There is widespread agreement that international law as it currently stands applies in cyberspace, and it is beyond any doubt that international law requires attribution.",
+            "paraphrase": "The authors assert that international law governs cyberspace and mandates attribution before resorting to unilateral responses.",
+            "researcher_comment": "States the authors' baseline legal claim: attribution is a binding legal requirement under extant international law. This underpins their argument against lowering evidentiary or attribution requirements.",
+            "potential_themes": [
+              "state_practice_custom",
+              "attribution_challenges"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [],
+            "evidence_type": "state_practice_custom",
+            "argument_type": "legal_interpretive",
+            "claim_direction": "supports",
+            "open_codes": [
+              "international_law_applies_to_cyberspace",
+              "attribution_required"
+            ],
+            "dqid": "f2f01331c81b",
+            "section_key": "legacy_dataset_text"
+          },
+          {
+            "quote": "Article 49(1) of the ILC Articles stipulates that the 'injured State may only take countermeasures against a State which is responsible for an internationally wrongful act in order to induce that State to comply with its obligations'.",
+            "paraphrase": "ILC Article 49(1) restricts countermeasures to acts against a State already responsible for an internationally wrongful act and aimed at inducing compliance.",
+            "researcher_comment": "Provides the principal legal rule limiting countermeasures: responsibility + inducement objective. Practical effect in cyber cases is that countermeasures depend on prior attribution to a State actor.",
+            "potential_themes": [
+              "countermeasures_lawfulness",
+              "state_responsibility_thresholds"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [],
+            "evidence_type": "legal_source_primary",
+            "argument_type": "legal_interpretive",
+            "claim_direction": "supports",
+            "open_codes": [
+              "ILC_article_49",
+              "countermeasure_prerequisites",
+              "induce_compliance"
+            ],
+            "dqid": "bcdbd470fc82",
+            "section_key": "legacy_dataset_text"
+          },
+          {
+            "quote": "Article 50 enumerates certain definite restrictions on countermeasures: they ‘shall not affect the obligation to refrain from the threat or use of force as embodied in the Charter of the United Nations; obligations for the protection of fundamental human rights; obligations of a humanitarian character prohibiting reprisals; other obligations under peremptory norms of general international law’.",
+            "paraphrase": "ILC Article 50 forbids countermeasures that infringe the UN Charter prohibition on force, fundamental human rights, humanitarian prohibitions on reprisals, or peremptory norms.",
+            "researcher_comment": "Identifies non‑derogable limits to countermeasures (including human rights). Especially pertinent to active cyber responses that risk civilian impact or third‑party harm.",
+            "potential_themes": [
+              "countermeasures_limits",
+              "human_rights_constraints"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [],
+            "evidence_type": "legal_source_primary",
+            "argument_type": "legal_interpretive",
+            "claim_direction": "supports",
+            "open_codes": [
+              "ILC_article_50",
+              "human_rights_limit",
+              "jus_cogens_constraints"
+            ],
+            "dqid": "7276b50f5559",
+            "section_key": "legacy_dataset_text"
+          },
+          {
+            "quote": "According to Article 51 of the ILC Articles on State Responsibility, which is considered to reflect customary international law, countermeasures must also be in line with the principle of proportionality or, in the provision’s wording, ‘commensurate with the injury suffered, taking into account the gravity of the internationally wrongful act and the rights in question'.",
+            "paraphrase": "ILC Article 51 requires countermeasures to be proportional—commensurate with the injury and gravity of the wrongful act.",
+            "researcher_comment": "Reiterates proportionality as a central legal constraint; the authors emphasise both quantitative and qualitative factors, which is crucial when assessing cyber countermeasures that may have asymmetric effects.",
+            "potential_themes": [
+              "proportionality",
+              "countermeasures_limits"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [],
+            "evidence_type": "legal_source_primary",
+            "argument_type": "legal_interpretive",
+            "claim_direction": "supports",
+            "open_codes": [
+              "proportionality_requirement",
+              "ILC_article_51",
+              "commensurability"
+            ],
+            "dqid": "19ee1af616de",
+            "section_key": "legacy_dataset_text"
+          },
+          {
+            "quote": "In cases of urgency, however, the injured State may take those measures that are 'necessary to preserve its rights', an exception to the abovementioned paragraph 1(b) as stipulated by paragraph 2 of the same Article.",
+            "paraphrase": "ILC Article 52(2) permits urgent countermeasures necessary to preserve rights, creating a procedural exception to the notification/negotiation rule.",
+            "researcher_comment": "Clarifies that urgency relaxes certain procedural steps but (per the chapter) does not lower substantive evidentiary thresholds; therefore urgency does not obviate attribution requirements.",
+            "potential_themes": [
+              "procedural_vs_urgency",
+              "countermeasures_procedure"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [],
+            "evidence_type": "legal_source_primary",
+            "argument_type": "procedural",
+            "claim_direction": "neutral",
+            "open_codes": [
+              "ILC_article_52",
+              "urgent_countermeasures",
+              "procedural_exception"
+            ],
+            "dqid": "a3d94773e39c",
+            "section_key": "legacy_dataset_text"
+          },
+          {
+            "quote": "The main problem with countermeasures is that, as with self-defence, the remedy is dependent on the attribution of wrongful conduct; the wrongful conduct here not being an armed attack, but rather a cyber attack which violates other international norms such as the prohibition of the use of force pursuant to Article 2(4) of the UN Charter (without reaching the armed attack threshold), or the customary principle of non-intervention. If attribution in order to establish State responsibility of the alleged attacker State is again a precondition, it follows that the same evidentiary standard (appl[",
+            "paraphrase": "Countermeasures in response to cyber attacks also require attributing responsibility to a State, so they face the same evidentiary hurdles as self‑defence.",
+            "researcher_comment": "Concise statement tying countermeasure lawfulness to attribution; authors use this to dismiss claims that countermeasures avoid attribution problems. Note: the legal and factual proof burdens remain the decisive barrier.",
+            "potential_themes": [
+              "attribution_challenges",
+              "evidentiary_standards",
+              "countermeasures_limit"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [],
+            "evidence_type": "limitation",
+            "argument_type": "legal_interpretive",
+            "claim_direction": "supports",
+            "open_codes": [
+              "countermeasures_require_attribution",
+              "evidentiary_parity_with_self_defence"
+            ],
+            "dqid": "e81e1b375040",
+            "section_key": "legacy_dataset_text"
+          },
+          {
+            "quote": "‘Active defences’ are 'proactive measure[s] for detecting or obtaining information as to a cyber-intrusion, cyber-attack, or impending cyber operation, or for determining the origin of an operation that involves launching a pre-emptive, preventive, or cyber-counter operation against the source.'",
+            "paraphrase": "The Tallinn Manual defines active defences as proactive detection and potentially pre‑emptive or counter cyber‑operations against the alleged source.",
+            "researcher_comment": "Provides an operational definition of 'active defence' used in the debate; useful for operationalising what kinds of cyber measures are at issue. The definition foreshadows legal concerns about intrusiveness and collateral effects.",
+            "potential_themes": [
+              "active_defence_risks",
+              "method_design"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [],
+            "evidence_type": "definition_conceptual",
+            "argument_type": "definitional",
+            "claim_direction": "neutral",
+            "open_codes": [
+              "active_defence_definition",
+              "preemptive_cyber_operations"
+            ],
+            "dqid": "fa128b0c5e87",
+            "section_key": "legacy_dataset_text"
+          },
+          {
+            "quote": "As already pointed out by several authors, such action might lead to an uncontrollable threat of malicious code, endangering previously uninvolved third parties.",
+            "paraphrase": "Active defences can trigger uncontrollable spread of malicious code, risking harm to uninvolved third parties.",
+            "researcher_comment": "Identifies a concrete collateral‑risk mechanism (uncontrolled spread) that could render active defences unlawful under ILC Article 50 and related human‑rights constraints. The technical feasibility of containment is a critical empirical question.",
+            "potential_themes": [
+              "active_defence_risks",
+              "third_party_harm"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [],
+            "evidence_type": "limitation",
+            "argument_type": "causal",
+            "claim_direction": "supports",
+            "open_codes": [
+              "mirroring_risk",
+              "uncontrolled_spread",
+              "third_party_casualties"
+            ],
+            "dqid": "738b46c7953f",
+            "section_key": "legacy_dataset_text"
+          },
+          {
+            "quote": "In any case, for it to be justified under the doctrine of necessity, the measure chosen to avert the grave and imminent peril must be the only one available. The case law of international courts and tribunals confirms that it is here where most invocations of the principle ultimately fail.",
+            "paraphrase": "Necessity is available only where the measure is the sole means to avert grave, imminent peril, and courts often reject necessity claims when alternatives exist.",
+            "researcher_comment": "Summarises the strict 'only way' test and its practical blocking effect on invoking necessity for cyber responses. This underlines that necessity is an exceptional, not general, justification for intrusive measures.",
+            "potential_themes": [
+              "necessity_doctrine",
+              "last_resort"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [],
+            "evidence_type": "jurisprudence_case_law",
+            "argument_type": "legal_interpretive",
+            "claim_direction": "supports",
+            "open_codes": [
+              "necessity_only_way_test",
+              "last_resort_requirement",
+              "judicial_skepticism"
+            ],
+            "dqid": "3c4f45c18361",
+            "section_key": "legacy_dataset_text"
+          }
+        ]
+      }
+    ],
+    "evidence_harvesting": [
+      {
+        "dqid": "J766INPV#DQ001",
+        "quote": "inter-State cyber security has unfortunately been treated predominantly as a military issue",
+        "extraction_type": "main_finding",
+        "paraphrase": "The authors argue that inter-State cyber security has been predominantly framed as a military issue, with debate focusing on the permissibility of Article 51 self-defence.",
+        "relevance_score": 5,
+        "relevant_rqs": [
+          {
+            "index": 0
+          }
+        ],
+        "mapped_codes": [
+          "self_defence_limitations"
+        ],
+        "evidence_type": "mixed",
+        "argument_type": "unspecified",
+        "claim_direction": "unspecified",
+        "section_key": "__intro_conclusion_harvest__",
+        "potential_themes": [
+          "main_findings",
+          "self_defence_limitations"
+        ],
+        "cluster_match": [
+          "main_findings"
+        ],
+        "function_summary": "harvested main_findings",
+        "risk_if_missing": "Evidence category omitted from synthesis.",
+        "extraction_category": "main_findings"
+      },
+      {
+        "dqid": "J766INPV#DQ002",
+        "quote": "the problem of attribution will preclude its proper application in many, if not most, instances.",
+        "extraction_type": "main_finding",
+        "paraphrase": "They claim that the problem of attribution will prevent the proper application of self-defence in many, if not most, instances.",
+        "relevance_score": 5,
+        "relevant_rqs": [
+          {
+            "index": 0
+          }
+        ],
+        "mapped_codes": [
+          "attribution_challenges",
+          "self_defence_limitations",
+          "evidentiary_standards"
+        ],
+        "evidence_type": "mixed",
+        "argument_type": "unspecified",
+        "claim_direction": "unspecified",
+        "section_key": "__intro_conclusion_harvest__",
+        "potential_themes": [
+          "main_findings",
+          "attribution_challenges",
+          "self_defence_limitations",
+          "evidentiary_standards"
+        ],
+        "cluster_match": [
+          "main_findings"
+        ],
+        "function_summary": "harvested main_findings",
+        "risk_if_missing": "Evidence category omitted from synthesis.",
+        "extraction_category": "main_findings"
+      },
+      {
+        "dqid": "J766INPV#DQ003",
+        "quote": "Therefore, two other remedies will be analysed that might present an alternative to the prevalent military paradigm of international cyber security: countermeasures and the state of necessity.",
+        "extraction_type": "method_claim",
+        "paraphrase": "The chapter will analyse countermeasures and the state of necessity as alternative legal remedies to the dominant military paradigm in international cyber security.",
+        "relevance_score": 4,
+        "relevant_rqs": [
+          {
+            "index": 0
+          }
+        ],
+        "mapped_codes": [
+          "countermeasures_lawfulness",
+          "necessity_doctrine"
+        ],
+        "evidence_type": "mixed",
+        "argument_type": "unspecified",
+        "claim_direction": "unspecified",
+        "section_key": "__intro_conclusion_harvest__",
+        "potential_themes": [
+          "method_claims",
+          "countermeasures_lawfulness",
+          "necessity_doctrine"
+        ],
+        "cluster_match": [
+          "method_claims"
+        ],
+        "function_summary": "harvested method_claims",
+        "risk_if_missing": "Evidence category omitted from synthesis.",
+        "extraction_category": "method_claims"
+      },
+      {
+        "dqid": "J766INPV#DQ004",
+        "quote": "The chapter provides an outlook on the possibilities of a more comprehensive approach to contemporary security issues that focuses on prevention rather than repression, drawing on States’ international due diligence obligations not to harm others.",
+        "extraction_type": "recommendation",
+        "paraphrase": "They recommend a prevention-focused approach that draws on States' international due diligence obligations, rather than repression or primarily military responses.",
+        "relevance_score": 3,
+        "relevant_rqs": [],
+        "mapped_codes": [
+          "state_practice_custom"
+        ],
+        "evidence_type": "mixed",
+        "argument_type": "unspecified",
+        "claim_direction": "unspecified",
+        "section_key": "__intro_conclusion_harvest__",
+        "potential_themes": [
+          "recommendations_future_work",
+          "state_practice_custom"
+        ],
+        "cluster_match": [
+          "recommendations_future_work"
+        ],
+        "function_summary": "harvested recommendations_future_work",
+        "risk_if_missing": "Evidence category omitted from synthesis.",
+        "extraction_category": "recommendations_future_work"
+      },
+      {
+        "dqid": "J766INPV#DQ005",
+        "quote": "In cyberspace, as in the real world, self-defence is an option of last resort.",
+        "extraction_type": "definition",
+        "paraphrase": "The authors state that self-defence operates as an option of last resort both in cyberspace and in general international law.",
+        "relevance_score": 5,
+        "relevant_rqs": [
+          {
+            "index": 0
+          }
+        ],
+        "mapped_codes": [
+          "last_resort",
+          "self_defence_limitations",
+          "necessity_doctrine"
+        ],
+        "evidence_type": "mixed",
+        "argument_type": "unspecified",
+        "claim_direction": "unspecified",
+        "section_key": "__intro_conclusion_harvest__",
+        "potential_themes": [
+          "definitions",
+          "last_resort",
+          "self_defence_limitations",
+          "necessity_doctrine"
+        ],
+        "cluster_match": [
+          "definitions"
+        ],
+        "function_summary": "harvested definitions",
+        "risk_if_missing": "Evidence category omitted from synthesis.",
+        "extraction_category": "definitions"
+      },
+      {
+        "dqid": "J766INPV#DQ006",
+        "quote": "It has been made clear that both countermeasures and the state of necessity pose unique and very specific legal problems when applied in the context of cyberspace.",
+        "extraction_type": "main_finding",
+        "paraphrase": "They conclude that applying countermeasures and the state of necessity in cyberspace raises distinct and specific legal problems.",
+        "relevance_score": 4,
+        "relevant_rqs": [
+          {
+            "index": 0
+          }
+        ],
+        "mapped_codes": [
+          "countermeasures_limits",
+          "necessity_doctrine"
+        ],
+        "evidence_type": "mixed",
+        "argument_type": "unspecified",
+        "claim_direction": "unspecified",
+        "section_key": "__intro_conclusion_harvest__",
+        "potential_themes": [
+          "main_findings",
+          "countermeasures_limits",
+          "necessity_doctrine"
+        ],
+        "cluster_match": [
+          "main_findings"
+        ],
+        "function_summary": "harvested main_findings",
+        "risk_if_missing": "Evidence category omitted from synthesis.",
+        "extraction_category": "main_findings"
+      },
+      {
+        "dqid": "J766INPV#DQ007",
+        "quote": "Some of these problems can be solved; others could at least be mitigated if non-forcible unilateral responses to cyber incidents of unclear origin that affect other State's interest could be better coordinated and ultimately institutionalised on the basis of an international treaty.",
+        "extraction_type": "recommendation",
+        "paraphrase": "They propose that better coordination and international institutionalisation (via treaty) of non‑forcible unilateral responses to incidents of unclear origin could mitigate some of the legal problems.",
+        "relevance_score": 4,
+        "relevant_rqs": [
+          {
+            "index": 0
+          }
+        ],
+        "mapped_codes": [
+          "countermeasures_procedure",
+          "state_practice_custom"
+        ],
+        "evidence_type": "mixed",
+        "argument_type": "unspecified",
+        "claim_direction": "unspecified",
+        "section_key": "__intro_conclusion_harvest__",
+        "potential_themes": [
+          "recommendations_future_work",
+          "countermeasures_procedure",
+          "state_practice_custom"
+        ],
+        "cluster_match": [
+          "recommendations_future_work"
+        ],
+        "function_summary": "harvested recommendations_future_work",
+        "risk_if_missing": "Evidence category omitted from synthesis.",
+        "extraction_category": "recommendations_future_work"
+      },
+      {
+        "dqid": "J766INPV#DQ008",
+        "quote": "Certainly, in the long run a cogent path would be a much stronger focus on specifying States' due diligence obligations regarding threat prevention and securing the freedom and stability of cyberspace.",
+        "extraction_type": "recommendation",
+        "paraphrase": "They argue that, in the long term, specifying States' due diligence obligations for threat prevention and for securing cyberspace's freedom and stability is a cogent path forward.",
+        "relevance_score": 3,
+        "relevant_rqs": [],
+        "mapped_codes": [
+          "state_practice_custom"
+        ],
+        "evidence_type": "mixed",
+        "argument_type": "unspecified",
+        "claim_direction": "unspecified",
+        "section_key": "__intro_conclusion_harvest__",
+        "potential_themes": [
+          "recommendations_future_work",
+          "state_practice_custom"
+        ],
+        "cluster_match": [
+          "recommendations_future_work"
+        ],
+        "function_summary": "harvested recommendations_future_work",
+        "risk_if_missing": "Evidence category omitted from synthesis.",
+        "extraction_category": "recommendations_future_work"
+      }
+    ],
+    "code_pdf_page": [
+      {
+        "section_key": "legacy_dataset_text",
+        "evidence": [
+          {
+            "quote": "This chapter argues that, while self-defence certainly cannot be ruled out, the problem of attribution will preclude its proper application in many, if not most, instances.",
+            "paraphrase": "The authors contend that attribution problems will often prevent lawful invocation of self-defence in cyber incidents.",
+            "researcher_comment": "High-level normative claim linking attribution to jus ad bellum practicability. Useful for RQs about legal constraints on forceful cyber responses. The statement is broad ('many, if not most') and not empirically quantified; it rests on subsequent technical and evidentiary arguments in the chapter.",
+            "potential_themes": [
+              "attribution_challenges",
+              "self_defence_limitations"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [],
+            "evidence_type": "limitation",
+            "argument_type": "legal_interpretive",
+            "claim_direction": "supports",
+            "open_codes": [
+              "attribution_precludes_self_defence",
+              "evidentiary_constraint"
+            ],
+            "dqid": "535f98f0fe3d",
+            "section_key": "legacy_dataset_text"
+          },
+          {
+            "quote": "As the technical peculiarities of cyberspace make it entirely possible to hide one’s own identity and to obliterate the traces of one’s actions, how can we ever know who carried out an attack?",
+            "paraphrase": "The technical features of cyberspace enable attackers to hide identity and erase traces, making attribution factually difficult.",
+            "researcher_comment": "Identifies the core technical source of the attribution problem; this is a factual limitation that underpins the chapter's legal analysis. The claim is general and does not distinguish attacker capability levels or investigative resources.",
+            "potential_themes": [
+              "attribution_challenges"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [],
+            "evidence_type": "limitation",
+            "argument_type": "descriptive",
+            "claim_direction": "supports",
+            "open_codes": [
+              "technical_anonymity",
+              "trace_obfuscation"
+            ],
+            "dqid": "eb8df409a7bb",
+            "section_key": "legacy_dataset_text"
+          },
+          {
+            "quote": "The current architecture of the internet and connected networks provides countless loopholes and methods to mask a user’s identity or location; online identities and servers can be hidden, data packet flows and connections can be masked and redirected through multiple servers, and an attacker can hijack a machine belonging to an unaware, innocent individual or organisation in order to use it as a basis for launching cyber attacks.",
+            "paraphrase": "Internet architecture permits proxying, redirection and hijacking of third‑party machines, all of which obscure attacker origin and impede attribution.",
+            "researcher_comment": "Detailed enumeration of technical mechanisms that complicate attribution (proxy chains, hidden servers, hijacked hosts). Strong descriptive support for claims that technical attribution is fragile, but no frequency or success-rate data provided.",
+            "potential_themes": [
+              "attribution_challenges",
+              "third_party_harm"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [],
+            "evidence_type": "limitation",
+            "argument_type": "descriptive",
+            "claim_direction": "supports",
+            "open_codes": [
+              "proxy_chaining",
+              "botnet_hijacking",
+              "packet_redirection"
+            ],
+            "dqid": "306d9b1961cd",
+            "section_key": "legacy_dataset_text"
+          },
+          {
+            "quote": "Even if an attacking computer can be located with sufficient certainty, what remains is the factor which commentators have called the ‘human machine gap’ or ‘entry-point anonymity’; the location of a computer rarely allows for definite conclusions regarding the identity of the individual operating the machine, and it is the latter’s status that ultimately determines attribution pursuant to Articles 4 to 11 of the ILC Articles on State Responsibility.",
+            "paraphrase": "Locating a device does not reliably identify the human operator, creating a 'human–machine gap' that obstructs legal attribution under ILC Articles 4–11.",
+            "researcher_comment": "Connects technical forensics to legal attribution rules: attribution depends on linking human actors (and their state nexus), not merely devices. Implies that device-level traces often fail to meet legal attribution thresholds.",
+            "potential_themes": [
+              "attribution_challenges",
+              "human_machine_gap"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [],
+            "evidence_type": "limitation",
+            "argument_type": "legal_interpretive",
+            "claim_direction": "supports",
+            "open_codes": [
+              "human_machine_gap",
+              "entry_point_anonymity",
+              "ILC_attribution_requirements"
+            ],
+            "dqid": "6d0933cd6449",
+            "section_key": "legacy_dataset_text"
+          },
+          {
+            "quote": "Four formalised standards can nonetheless be identified in international courts’ and tribunals’ jurisprudence in matters concerning State responsibility, and thus also the question concerning responsibility for an armed attack. Those are: the *prima facie* possibility of an asserted fact being true; a preponderance of evidence; the ‘clear and convincing’ evidentiary standard; and proof beyond reasonable doubt.",
+            "paraphrase": "International jurisprudence recognises four evidentiary standards—prima facie, preponderance, clear and convincing, and beyond reasonable doubt—relevant to state responsibility.",
+            "researcher_comment": "Provides a usable typology for coding evidentiary claims in inter-state disputes. Authors treat these as distinct thresholds; the text does not map each standard to specific fora or situations in cyberspace.",
+            "potential_themes": [
+              "evidentiary_standards"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [],
+            "evidence_type": "taxonomy_typology",
+            "argument_type": "definitional",
+            "claim_direction": "neutral",
+            "open_codes": [
+              "evidence_standard_typology",
+              "prima_facie_preponderance_clear_and_convincing_beyond_reasonable_doubt"
+            ],
+            "dqid": "fbc8de2bba9b",
+            "section_key": "legacy_dataset_text"
+          },
+          {
+            "quote": "While it is arguably preponderance of evidence that is the prevailing standard to be met in international litigation in general, as soon as State responsibility is involved the required threshold appears to be considerably higher, shifting towards ‘clear and convincing’.",
+            "paraphrase": "Although preponderance is common generally, allegations of state responsibility typically require a higher 'clear and convincing' evidentiary standard.",
+            "researcher_comment": "Asserts an elevated burden for responsibility claims; author cites ICJ and other jurisprudence. This is central to RQs about legal thresholds for attributing cyber operations, but the exact application may vary by forum.",
+            "potential_themes": [
+              "evidentiary_standards",
+              "state_responsibility_thresholds"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [],
+            "evidence_type": "jurisprudence_case_law",
+            "argument_type": "legal_interpretive",
+            "claim_direction": "supports",
+            "open_codes": [
+              "clear_and_convincing_standard",
+              "heightened_burden_state_responsibility"
+            ],
+            "dqid": "e9c32da2c5a6",
+            "section_key": "legacy_dataset_text"
+          },
+          {
+            "quote": "This standard essentially amounts to the duty to ‘convince the arbiter in question that it is substantially more likely than not that the factual claims that have been made are true.'",
+            "paraphrase": "The 'clear and convincing' standard requires persuading the adjudicator that the asserted facts are substantially more likely than not.",
+            "researcher_comment": "Offers an operationalisable definition of the 'clear and convincing' threshold; helpful for assessing whether technical and intelligence evidence might meet legal proof requirements. The phrase 'substantially more likely than not' remains interpretively fuzzy.",
+            "potential_themes": [
+              "evidentiary_standards"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [],
+            "evidence_type": "definition_conceptual",
+            "argument_type": "definitional",
+            "claim_direction": "neutral",
+            "open_codes": [
+              "clear_and_convincing_definition",
+              "standard_of_proof_explanation"
+            ],
+            "dqid": "447ac878fe5b",
+            "section_key": "legacy_dataset_text"
+          },
+          {
+            "quote": "Even if research such as that undertaken for the Mandiant study does eventually sufficiently prove authorship, it cannot be overlooked that it took their analysts several years to come up with conclusions that they themselves considered sufficiently convincing to be published.",
+            "paraphrase": "High‑profile technical attribution (e.g., Mandiant) sometimes took years to reach publishable confidence, creating timeliness problems for invoking self‑defence.",
+            "researcher_comment": "Concrete case‑based observation showing long attribution timelines; relevant to the immediacy requirement for self‑defence. Authors use this to question whether delayed attribution can justify forceful responses.",
+            "potential_themes": [
+              "case_study_example",
+              "immediacy_requirement"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [],
+            "evidence_type": "case_study_example",
+            "argument_type": "descriptive",
+            "claim_direction": "qualifies",
+            "open_codes": [
+              "long_attribution_timelines",
+              "Mandiant_case",
+              "timeliness_issue"
+            ],
+            "dqid": "f14cde5c4244",
+            "section_key": "legacy_dataset_text"
+          },
+          {
+            "quote": "In cases where ‘the initiator of the attack is not identified until well after the attack’ the criterion of immediacy will usually not be met.",
+            "paraphrase": "If the initiator is identified only much later, the immediacy condition for lawful self‑defence is typically not fulfilled.",
+            "researcher_comment": "Cites the Tallinn Manual's immediacy criterion; directly links attribution delay to jus ad bellum limits. The Manual is an expert text (non‑binding) but influential in practice.",
+            "potential_themes": [
+              "immediacy_requirement",
+              "self_defence_limitations"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [],
+            "evidence_type": "framework",
+            "argument_type": "legal_interpretive",
+            "claim_direction": "supports",
+            "open_codes": [
+              "immediacy_test",
+              "tallinn_manual_immediacy"
+            ],
+            "dqid": "3b7d08bf4805",
+            "section_key": "legacy_dataset_text"
+          },
+          {
+            "quote": "However, the Tallinn Manual suggests that this conclusion may change if there is reason for the victim State to believe that ‘further cyber operations are likely to follow’ – in that case, the State ‘may treat those operations as a “cyber campaign” and continue to act in self-defence’.",
+            "paraphrase": "Tallinn Manual permits treating anticipated or repeated operations as a 'cyber campaign', which can preserve immediacy for self‑defence.",
+            "researcher_comment": "Identifies a doctrinally significant qualification (aggregation/campaign doctrine) that relaxes temporal proximity. Authors warn this risks eroding the temporal limit of self‑defence and fostering escalation.",
+            "potential_themes": [
+              "immediacy_requirement",
+              "accumulation_of_events"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [],
+            "evidence_type": "framework",
+            "argument_type": "legal_interpretive",
+            "claim_direction": "qualifies",
+            "open_codes": [
+              "cyber_campaign_doctrine",
+              "aggregation_of_events",
+              "immediacy_softening"
+            ],
+            "dqid": "8f1d987f55cd",
+            "section_key": "legacy_dataset_text"
+          },
+          {
+            "quote": "The suggestion that the standards of attribution should shift from 'effective control' to 'overall control' does not touch upon the issue of identification.",
+            "paraphrase": "Changing the legal test from 'effective control' to 'overall control' adjusts attribution doctrine but does not solve the factual problem of identifying actors.",
+            "researcher_comment": "Authoritatively rejects a doctrinal fix as sufficient; useful to separate legal standard debates from empirical identification problems. Does not engage with situations where legal standard change might lower proof required in practice.",
+            "potential_themes": [
+              "attribution_standards",
+              "attribution_challenges"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [],
+            "evidence_type": "limitation",
+            "argument_type": "legal_interpretive",
+            "claim_direction": "contradicts",
+            "open_codes": [
+              "effective_vs_overall_control",
+              "identification_gap"
+            ],
+            "dqid": "040733172efe",
+            "section_key": "legacy_dataset_text"
+          },
+          {
+            "quote": "There is widespread agreement that international law as it currently stands applies in cyberspace, and it is beyond any doubt that international law requires attribution.",
+            "paraphrase": "The authors assert that international law governs cyberspace and mandates attribution before resorting to unilateral responses.",
+            "researcher_comment": "States the authors' baseline legal claim: attribution is a binding legal requirement under extant international law. This underpins their argument against lowering evidentiary or attribution requirements.",
+            "potential_themes": [
+              "state_practice_custom",
+              "attribution_challenges"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [],
+            "evidence_type": "state_practice_custom",
+            "argument_type": "legal_interpretive",
+            "claim_direction": "supports",
+            "open_codes": [
+              "international_law_applies_to_cyberspace",
+              "attribution_required"
+            ],
+            "dqid": "f2f01331c81b",
+            "section_key": "legacy_dataset_text"
+          },
+          {
+            "quote": "Article 49(1) of the ILC Articles stipulates that the 'injured State may only take countermeasures against a State which is responsible for an internationally wrongful act in order to induce that State to comply with its obligations'.",
+            "paraphrase": "ILC Article 49(1) restricts countermeasures to acts against a State already responsible for an internationally wrongful act and aimed at inducing compliance.",
+            "researcher_comment": "Provides the principal legal rule limiting countermeasures: responsibility + inducement objective. Practical effect in cyber cases is that countermeasures depend on prior attribution to a State actor.",
+            "potential_themes": [
+              "countermeasures_lawfulness",
+              "state_responsibility_thresholds"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [],
+            "evidence_type": "legal_source_primary",
+            "argument_type": "legal_interpretive",
+            "claim_direction": "supports",
+            "open_codes": [
+              "ILC_article_49",
+              "countermeasure_prerequisites",
+              "induce_compliance"
+            ],
+            "dqid": "bcdbd470fc82",
+            "section_key": "legacy_dataset_text"
+          },
+          {
+            "quote": "Article 50 enumerates certain definite restrictions on countermeasures: they ‘shall not affect the obligation to refrain from the threat or use of force as embodied in the Charter of the United Nations; obligations for the protection of fundamental human rights; obligations of a humanitarian character prohibiting reprisals; other obligations under peremptory norms of general international law’.",
+            "paraphrase": "ILC Article 50 forbids countermeasures that infringe the UN Charter prohibition on force, fundamental human rights, humanitarian prohibitions on reprisals, or peremptory norms.",
+            "researcher_comment": "Identifies non‑derogable limits to countermeasures (including human rights). Especially pertinent to active cyber responses that risk civilian impact or third‑party harm.",
+            "potential_themes": [
+              "countermeasures_limits",
+              "human_rights_constraints"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [],
+            "evidence_type": "legal_source_primary",
+            "argument_type": "legal_interpretive",
+            "claim_direction": "supports",
+            "open_codes": [
+              "ILC_article_50",
+              "human_rights_limit",
+              "jus_cogens_constraints"
+            ],
+            "dqid": "7276b50f5559",
+            "section_key": "legacy_dataset_text"
+          },
+          {
+            "quote": "According to Article 51 of the ILC Articles on State Responsibility, which is considered to reflect customary international law, countermeasures must also be in line with the principle of proportionality or, in the provision’s wording, ‘commensurate with the injury suffered, taking into account the gravity of the internationally wrongful act and the rights in question'.",
+            "paraphrase": "ILC Article 51 requires countermeasures to be proportional—commensurate with the injury and gravity of the wrongful act.",
+            "researcher_comment": "Reiterates proportionality as a central legal constraint; the authors emphasise both quantitative and qualitative factors, which is crucial when assessing cyber countermeasures that may have asymmetric effects.",
+            "potential_themes": [
+              "proportionality",
+              "countermeasures_limits"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [],
+            "evidence_type": "legal_source_primary",
+            "argument_type": "legal_interpretive",
+            "claim_direction": "supports",
+            "open_codes": [
+              "proportionality_requirement",
+              "ILC_article_51",
+              "commensurability"
+            ],
+            "dqid": "19ee1af616de",
+            "section_key": "legacy_dataset_text"
+          },
+          {
+            "quote": "In cases of urgency, however, the injured State may take those measures that are 'necessary to preserve its rights', an exception to the abovementioned paragraph 1(b) as stipulated by paragraph 2 of the same Article.",
+            "paraphrase": "ILC Article 52(2) permits urgent countermeasures necessary to preserve rights, creating a procedural exception to the notification/negotiation rule.",
+            "researcher_comment": "Clarifies that urgency relaxes certain procedural steps but (per the chapter) does not lower substantive evidentiary thresholds; therefore urgency does not obviate attribution requirements.",
+            "potential_themes": [
+              "procedural_vs_urgency",
+              "countermeasures_procedure"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [],
+            "evidence_type": "legal_source_primary",
+            "argument_type": "procedural",
+            "claim_direction": "neutral",
+            "open_codes": [
+              "ILC_article_52",
+              "urgent_countermeasures",
+              "procedural_exception"
+            ],
+            "dqid": "a3d94773e39c",
+            "section_key": "legacy_dataset_text"
+          },
+          {
+            "quote": "The main problem with countermeasures is that, as with self-defence, the remedy is dependent on the attribution of wrongful conduct; the wrongful conduct here not being an armed attack, but rather a cyber attack which violates other international norms such as the prohibition of the use of force pursuant to Article 2(4) of the UN Charter (without reaching the armed attack threshold), or the customary principle of non-intervention. If attribution in order to establish State responsibility of the alleged attacker State is again a precondition, it follows that the same evidentiary standard (appl[",
+            "paraphrase": "Countermeasures in response to cyber attacks also require attributing responsibility to a State, so they face the same evidentiary hurdles as self‑defence.",
+            "researcher_comment": "Concise statement tying countermeasure lawfulness to attribution; authors use this to dismiss claims that countermeasures avoid attribution problems. Note: the legal and factual proof burdens remain the decisive barrier.",
+            "potential_themes": [
+              "attribution_challenges",
+              "evidentiary_standards",
+              "countermeasures_limit"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [],
+            "evidence_type": "limitation",
+            "argument_type": "legal_interpretive",
+            "claim_direction": "supports",
+            "open_codes": [
+              "countermeasures_require_attribution",
+              "evidentiary_parity_with_self_defence"
+            ],
+            "dqid": "e81e1b375040",
+            "section_key": "legacy_dataset_text"
+          },
+          {
+            "quote": "‘Active defences’ are 'proactive measure[s] for detecting or obtaining information as to a cyber-intrusion, cyber-attack, or impending cyber operation, or for determining the origin of an operation that involves launching a pre-emptive, preventive, or cyber-counter operation against the source.'",
+            "paraphrase": "The Tallinn Manual defines active defences as proactive detection and potentially pre‑emptive or counter cyber‑operations against the alleged source.",
+            "researcher_comment": "Provides an operational definition of 'active defence' used in the debate; useful for operationalising what kinds of cyber measures are at issue. The definition foreshadows legal concerns about intrusiveness and collateral effects.",
+            "potential_themes": [
+              "active_defence_risks",
+              "method_design"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [],
+            "evidence_type": "definition_conceptual",
+            "argument_type": "definitional",
+            "claim_direction": "neutral",
+            "open_codes": [
+              "active_defence_definition",
+              "preemptive_cyber_operations"
+            ],
+            "dqid": "fa128b0c5e87",
+            "section_key": "legacy_dataset_text"
+          },
+          {
+            "quote": "As already pointed out by several authors, such action might lead to an uncontrollable threat of malicious code, endangering previously uninvolved third parties.",
+            "paraphrase": "Active defences can trigger uncontrollable spread of malicious code, risking harm to uninvolved third parties.",
+            "researcher_comment": "Identifies a concrete collateral‑risk mechanism (uncontrolled spread) that could render active defences unlawful under ILC Article 50 and related human‑rights constraints. The technical feasibility of containment is a critical empirical question.",
+            "potential_themes": [
+              "active_defence_risks",
+              "third_party_harm"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [],
+            "evidence_type": "limitation",
+            "argument_type": "causal",
+            "claim_direction": "supports",
+            "open_codes": [
+              "mirroring_risk",
+              "uncontrolled_spread",
+              "third_party_casualties"
+            ],
+            "dqid": "738b46c7953f",
+            "section_key": "legacy_dataset_text"
+          },
+          {
+            "quote": "In any case, for it to be justified under the doctrine of necessity, the measure chosen to avert the grave and imminent peril must be the only one available. The case law of international courts and tribunals confirms that it is here where most invocations of the principle ultimately fail.",
+            "paraphrase": "Necessity is available only where the measure is the sole means to avert grave, imminent peril, and courts often reject necessity claims when alternatives exist.",
+            "researcher_comment": "Summarises the strict 'only way' test and its practical blocking effect on invoking necessity for cyber responses. This underlines that necessity is an exceptional, not general, justification for intrusive measures.",
+            "potential_themes": [
+              "necessity_doctrine",
+              "last_resort"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [],
+            "evidence_type": "jurisprudence_case_law",
+            "argument_type": "legal_interpretive",
+            "claim_direction": "supports",
+            "open_codes": [
+              "necessity_only_way_test",
+              "last_resort_requirement",
+              "judicial_skepticism"
+            ],
+            "dqid": "3c4f45c18361",
+            "section_key": "legacy_dataset_text"
+          }
+        ]
+      }
+    ],
+    "code_intro_conclusion_extract_core_claims": [
+      {
+        "dqid": "J766INPV#DQ001",
+        "quote": "inter-State cyber security has unfortunately been treated predominantly as a military issue",
+        "extraction_type": "main_finding",
+        "paraphrase": "The authors argue that inter-State cyber security has been predominantly framed as a military issue, with debate focusing on the permissibility of Article 51 self-defence.",
+        "relevance_score": 5,
+        "relevant_rqs": [
+          {
+            "index": 0
+          }
+        ],
+        "mapped_codes": [
+          "self_defence_limitations"
+        ],
+        "evidence_type": "mixed",
+        "argument_type": "unspecified",
+        "claim_direction": "unspecified",
+        "section_key": "__intro_conclusion_harvest__",
+        "potential_themes": [
+          "main_findings",
+          "self_defence_limitations"
+        ],
+        "cluster_match": [
+          "main_findings"
+        ],
+        "function_summary": "harvested main_findings",
+        "risk_if_missing": "Evidence category omitted from synthesis.",
+        "extraction_category": "main_findings"
+      },
+      {
+        "dqid": "J766INPV#DQ002",
+        "quote": "the problem of attribution will preclude its proper application in many, if not most, instances.",
+        "extraction_type": "main_finding",
+        "paraphrase": "They claim that the problem of attribution will prevent the proper application of self-defence in many, if not most, instances.",
+        "relevance_score": 5,
+        "relevant_rqs": [
+          {
+            "index": 0
+          }
+        ],
+        "mapped_codes": [
+          "attribution_challenges",
+          "self_defence_limitations",
+          "evidentiary_standards"
+        ],
+        "evidence_type": "mixed",
+        "argument_type": "unspecified",
+        "claim_direction": "unspecified",
+        "section_key": "__intro_conclusion_harvest__",
+        "potential_themes": [
+          "main_findings",
+          "attribution_challenges",
+          "self_defence_limitations",
+          "evidentiary_standards"
+        ],
+        "cluster_match": [
+          "main_findings"
+        ],
+        "function_summary": "harvested main_findings",
+        "risk_if_missing": "Evidence category omitted from synthesis.",
+        "extraction_category": "main_findings"
+      },
+      {
+        "dqid": "J766INPV#DQ003",
+        "quote": "Therefore, two other remedies will be analysed that might present an alternative to the prevalent military paradigm of international cyber security: countermeasures and the state of necessity.",
+        "extraction_type": "method_claim",
+        "paraphrase": "The chapter will analyse countermeasures and the state of necessity as alternative legal remedies to the dominant military paradigm in international cyber security.",
+        "relevance_score": 4,
+        "relevant_rqs": [
+          {
+            "index": 0
+          }
+        ],
+        "mapped_codes": [
+          "countermeasures_lawfulness",
+          "necessity_doctrine"
+        ],
+        "evidence_type": "mixed",
+        "argument_type": "unspecified",
+        "claim_direction": "unspecified",
+        "section_key": "__intro_conclusion_harvest__",
+        "potential_themes": [
+          "method_claims",
+          "countermeasures_lawfulness",
+          "necessity_doctrine"
+        ],
+        "cluster_match": [
+          "method_claims"
+        ],
+        "function_summary": "harvested method_claims",
+        "risk_if_missing": "Evidence category omitted from synthesis.",
+        "extraction_category": "method_claims"
+      },
+      {
+        "dqid": "J766INPV#DQ004",
+        "quote": "The chapter provides an outlook on the possibilities of a more comprehensive approach to contemporary security issues that focuses on prevention rather than repression, drawing on States’ international due diligence obligations not to harm others.",
+        "extraction_type": "recommendation",
+        "paraphrase": "They recommend a prevention-focused approach that draws on States' international due diligence obligations, rather than repression or primarily military responses.",
+        "relevance_score": 3,
+        "relevant_rqs": [],
+        "mapped_codes": [
+          "state_practice_custom"
+        ],
+        "evidence_type": "mixed",
+        "argument_type": "unspecified",
+        "claim_direction": "unspecified",
+        "section_key": "__intro_conclusion_harvest__",
+        "potential_themes": [
+          "recommendations_future_work",
+          "state_practice_custom"
+        ],
+        "cluster_match": [
+          "recommendations_future_work"
+        ],
+        "function_summary": "harvested recommendations_future_work",
+        "risk_if_missing": "Evidence category omitted from synthesis.",
+        "extraction_category": "recommendations_future_work"
+      },
+      {
+        "dqid": "J766INPV#DQ005",
+        "quote": "In cyberspace, as in the real world, self-defence is an option of last resort.",
+        "extraction_type": "definition",
+        "paraphrase": "The authors state that self-defence operates as an option of last resort both in cyberspace and in general international law.",
+        "relevance_score": 5,
+        "relevant_rqs": [
+          {
+            "index": 0
+          }
+        ],
+        "mapped_codes": [
+          "last_resort",
+          "self_defence_limitations",
+          "necessity_doctrine"
+        ],
+        "evidence_type": "mixed",
+        "argument_type": "unspecified",
+        "claim_direction": "unspecified",
+        "section_key": "__intro_conclusion_harvest__",
+        "potential_themes": [
+          "definitions",
+          "last_resort",
+          "self_defence_limitations",
+          "necessity_doctrine"
+        ],
+        "cluster_match": [
+          "definitions"
+        ],
+        "function_summary": "harvested definitions",
+        "risk_if_missing": "Evidence category omitted from synthesis.",
+        "extraction_category": "definitions"
+      },
+      {
+        "dqid": "J766INPV#DQ006",
+        "quote": "It has been made clear that both countermeasures and the state of necessity pose unique and very specific legal problems when applied in the context of cyberspace.",
+        "extraction_type": "main_finding",
+        "paraphrase": "They conclude that applying countermeasures and the state of necessity in cyberspace raises distinct and specific legal problems.",
+        "relevance_score": 4,
+        "relevant_rqs": [
+          {
+            "index": 0
+          }
+        ],
+        "mapped_codes": [
+          "countermeasures_limits",
+          "necessity_doctrine"
+        ],
+        "evidence_type": "mixed",
+        "argument_type": "unspecified",
+        "claim_direction": "unspecified",
+        "section_key": "__intro_conclusion_harvest__",
+        "potential_themes": [
+          "main_findings",
+          "countermeasures_limits",
+          "necessity_doctrine"
+        ],
+        "cluster_match": [
+          "main_findings"
+        ],
+        "function_summary": "harvested main_findings",
+        "risk_if_missing": "Evidence category omitted from synthesis.",
+        "extraction_category": "main_findings"
+      },
+      {
+        "dqid": "J766INPV#DQ007",
+        "quote": "Some of these problems can be solved; others could at least be mitigated if non-forcible unilateral responses to cyber incidents of unclear origin that affect other State's interest could be better coordinated and ultimately institutionalised on the basis of an international treaty.",
+        "extraction_type": "recommendation",
+        "paraphrase": "They propose that better coordination and international institutionalisation (via treaty) of non‑forcible unilateral responses to incidents of unclear origin could mitigate some of the legal problems.",
+        "relevance_score": 4,
+        "relevant_rqs": [
+          {
+            "index": 0
+          }
+        ],
+        "mapped_codes": [
+          "countermeasures_procedure",
+          "state_practice_custom"
+        ],
+        "evidence_type": "mixed",
+        "argument_type": "unspecified",
+        "claim_direction": "unspecified",
+        "section_key": "__intro_conclusion_harvest__",
+        "potential_themes": [
+          "recommendations_future_work",
+          "countermeasures_procedure",
+          "state_practice_custom"
+        ],
+        "cluster_match": [
+          "recommendations_future_work"
+        ],
+        "function_summary": "harvested recommendations_future_work",
+        "risk_if_missing": "Evidence category omitted from synthesis.",
+        "extraction_category": "recommendations_future_work"
+      },
+      {
+        "dqid": "J766INPV#DQ008",
+        "quote": "Certainly, in the long run a cogent path would be a much stronger focus on specifying States' due diligence obligations regarding threat prevention and securing the freedom and stability of cyberspace.",
+        "extraction_type": "recommendation",
+        "paraphrase": "They argue that, in the long term, specifying States' due diligence obligations for threat prevention and for securing cyberspace's freedom and stability is a cogent path forward.",
+        "relevance_score": 3,
+        "relevant_rqs": [],
+        "mapped_codes": [
+          "state_practice_custom"
+        ],
+        "evidence_type": "mixed",
+        "argument_type": "unspecified",
+        "claim_direction": "unspecified",
+        "section_key": "__intro_conclusion_harvest__",
+        "potential_themes": [
+          "recommendations_future_work",
+          "state_practice_custom"
+        ],
+        "cluster_match": [
+          "recommendations_future_work"
+        ],
+        "function_summary": "harvested recommendations_future_work",
+        "risk_if_missing": "Evidence category omitted from synthesis.",
+        "extraction_category": "recommendations_future_work"
+      }
+    ],
+    "evidence_list": [
+      {
+        "quote": "This chapter argues that, while self-defence certainly cannot be ruled out, the problem of attribution will preclude its proper application in many, if not most, instances.",
+        "paraphrase": "The authors contend that attribution problems will often prevent lawful invocation of self-defence in cyber incidents.",
+        "researcher_comment": "High-level normative claim linking attribution to jus ad bellum practicability. Useful for RQs about legal constraints on forceful cyber responses. The statement is broad ('many, if not most') and not empirically quantified; it rests on subsequent technical and evidentiary arguments in the chapter.",
+        "potential_themes": [
+          "attribution_challenges",
+          "self_defence_limitations"
+        ],
+        "relevance_score": 5,
+        "relevant_rqs": [],
+        "evidence_type": "limitation",
+        "argument_type": "legal_interpretive",
+        "claim_direction": "supports",
+        "open_codes": [
+          "attribution_precludes_self_defence",
+          "evidentiary_constraint"
+        ],
+        "dqid": "535f98f0fe3d",
+        "section_key": "legacy_dataset_text"
+      },
+      {
+        "quote": "As the technical peculiarities of cyberspace make it entirely possible to hide one’s own identity and to obliterate the traces of one’s actions, how can we ever know who carried out an attack?",
+        "paraphrase": "The technical features of cyberspace enable attackers to hide identity and erase traces, making attribution factually difficult.",
+        "researcher_comment": "Identifies the core technical source of the attribution problem; this is a factual limitation that underpins the chapter's legal analysis. The claim is general and does not distinguish attacker capability levels or investigative resources.",
+        "potential_themes": [
+          "attribution_challenges"
+        ],
+        "relevance_score": 5,
+        "relevant_rqs": [],
+        "evidence_type": "limitation",
+        "argument_type": "descriptive",
+        "claim_direction": "supports",
+        "open_codes": [
+          "technical_anonymity",
+          "trace_obfuscation"
+        ],
+        "dqid": "eb8df409a7bb",
+        "section_key": "legacy_dataset_text"
+      },
+      {
+        "quote": "The current architecture of the internet and connected networks provides countless loopholes and methods to mask a user’s identity or location; online identities and servers can be hidden, data packet flows and connections can be masked and redirected through multiple servers, and an attacker can hijack a machine belonging to an unaware, innocent individual or organisation in order to use it as a basis for launching cyber attacks.",
+        "paraphrase": "Internet architecture permits proxying, redirection and hijacking of third‑party machines, all of which obscure attacker origin and impede attribution.",
+        "researcher_comment": "Detailed enumeration of technical mechanisms that complicate attribution (proxy chains, hidden servers, hijacked hosts). Strong descriptive support for claims that technical attribution is fragile, but no frequency or success-rate data provided.",
+        "potential_themes": [
+          "attribution_challenges",
+          "third_party_harm"
+        ],
+        "relevance_score": 5,
+        "relevant_rqs": [],
+        "evidence_type": "limitation",
+        "argument_type": "descriptive",
+        "claim_direction": "supports",
+        "open_codes": [
+          "proxy_chaining",
+          "botnet_hijacking",
+          "packet_redirection"
+        ],
+        "dqid": "306d9b1961cd",
+        "section_key": "legacy_dataset_text"
+      },
+      {
+        "quote": "Even if an attacking computer can be located with sufficient certainty, what remains is the factor which commentators have called the ‘human machine gap’ or ‘entry-point anonymity’; the location of a computer rarely allows for definite conclusions regarding the identity of the individual operating the machine, and it is the latter’s status that ultimately determines attribution pursuant to Articles 4 to 11 of the ILC Articles on State Responsibility.",
+        "paraphrase": "Locating a device does not reliably identify the human operator, creating a 'human–machine gap' that obstructs legal attribution under ILC Articles 4–11.",
+        "researcher_comment": "Connects technical forensics to legal attribution rules: attribution depends on linking human actors (and their state nexus), not merely devices. Implies that device-level traces often fail to meet legal attribution thresholds.",
+        "potential_themes": [
+          "attribution_challenges",
+          "human_machine_gap"
+        ],
+        "relevance_score": 5,
+        "relevant_rqs": [],
+        "evidence_type": "limitation",
+        "argument_type": "legal_interpretive",
+        "claim_direction": "supports",
+        "open_codes": [
+          "human_machine_gap",
+          "entry_point_anonymity",
+          "ILC_attribution_requirements"
+        ],
+        "dqid": "6d0933cd6449",
+        "section_key": "legacy_dataset_text"
+      },
+      {
+        "quote": "Four formalised standards can nonetheless be identified in international courts’ and tribunals’ jurisprudence in matters concerning State responsibility, and thus also the question concerning responsibility for an armed attack. Those are: the *prima facie* possibility of an asserted fact being true; a preponderance of evidence; the ‘clear and convincing’ evidentiary standard; and proof beyond reasonable doubt.",
+        "paraphrase": "International jurisprudence recognises four evidentiary standards—prima facie, preponderance, clear and convincing, and beyond reasonable doubt—relevant to state responsibility.",
+        "researcher_comment": "Provides a usable typology for coding evidentiary claims in inter-state disputes. Authors treat these as distinct thresholds; the text does not map each standard to specific fora or situations in cyberspace.",
+        "potential_themes": [
+          "evidentiary_standards"
+        ],
+        "relevance_score": 5,
+        "relevant_rqs": [],
+        "evidence_type": "taxonomy_typology",
+        "argument_type": "definitional",
+        "claim_direction": "neutral",
+        "open_codes": [
+          "evidence_standard_typology",
+          "prima_facie_preponderance_clear_and_convincing_beyond_reasonable_doubt"
+        ],
+        "dqid": "fbc8de2bba9b",
+        "section_key": "legacy_dataset_text"
+      },
+      {
+        "quote": "While it is arguably preponderance of evidence that is the prevailing standard to be met in international litigation in general, as soon as State responsibility is involved the required threshold appears to be considerably higher, shifting towards ‘clear and convincing’.",
+        "paraphrase": "Although preponderance is common generally, allegations of state responsibility typically require a higher 'clear and convincing' evidentiary standard.",
+        "researcher_comment": "Asserts an elevated burden for responsibility claims; author cites ICJ and other jurisprudence. This is central to RQs about legal thresholds for attributing cyber operations, but the exact application may vary by forum.",
+        "potential_themes": [
+          "evidentiary_standards",
+          "state_responsibility_thresholds"
+        ],
+        "relevance_score": 5,
+        "relevant_rqs": [],
+        "evidence_type": "jurisprudence_case_law",
+        "argument_type": "legal_interpretive",
+        "claim_direction": "supports",
+        "open_codes": [
+          "clear_and_convincing_standard",
+          "heightened_burden_state_responsibility"
+        ],
+        "dqid": "e9c32da2c5a6",
+        "section_key": "legacy_dataset_text"
+      },
+      {
+        "quote": "This standard essentially amounts to the duty to ‘convince the arbiter in question that it is substantially more likely than not that the factual claims that have been made are true.'",
+        "paraphrase": "The 'clear and convincing' standard requires persuading the adjudicator that the asserted facts are substantially more likely than not.",
+        "researcher_comment": "Offers an operationalisable definition of the 'clear and convincing' threshold; helpful for assessing whether technical and intelligence evidence might meet legal proof requirements. The phrase 'substantially more likely than not' remains interpretively fuzzy.",
+        "potential_themes": [
+          "evidentiary_standards"
+        ],
+        "relevance_score": 5,
+        "relevant_rqs": [],
+        "evidence_type": "definition_conceptual",
+        "argument_type": "definitional",
+        "claim_direction": "neutral",
+        "open_codes": [
+          "clear_and_convincing_definition",
+          "standard_of_proof_explanation"
+        ],
+        "dqid": "447ac878fe5b",
+        "section_key": "legacy_dataset_text"
+      },
+      {
+        "quote": "Even if research such as that undertaken for the Mandiant study does eventually sufficiently prove authorship, it cannot be overlooked that it took their analysts several years to come up with conclusions that they themselves considered sufficiently convincing to be published.",
+        "paraphrase": "High‑profile technical attribution (e.g., Mandiant) sometimes took years to reach publishable confidence, creating timeliness problems for invoking self‑defence.",
+        "researcher_comment": "Concrete case‑based observation showing long attribution timelines; relevant to the immediacy requirement for self‑defence. Authors use this to question whether delayed attribution can justify forceful responses.",
+        "potential_themes": [
+          "case_study_example",
+          "immediacy_requirement"
+        ],
+        "relevance_score": 5,
+        "relevant_rqs": [],
+        "evidence_type": "case_study_example",
+        "argument_type": "descriptive",
+        "claim_direction": "qualifies",
+        "open_codes": [
+          "long_attribution_timelines",
+          "Mandiant_case",
+          "timeliness_issue"
+        ],
+        "dqid": "f14cde5c4244",
+        "section_key": "legacy_dataset_text"
+      },
+      {
+        "quote": "In cases where ‘the initiator of the attack is not identified until well after the attack’ the criterion of immediacy will usually not be met.",
+        "paraphrase": "If the initiator is identified only much later, the immediacy condition for lawful self‑defence is typically not fulfilled.",
+        "researcher_comment": "Cites the Tallinn Manual's immediacy criterion; directly links attribution delay to jus ad bellum limits. The Manual is an expert text (non‑binding) but influential in practice.",
+        "potential_themes": [
+          "immediacy_requirement",
+          "self_defence_limitations"
+        ],
+        "relevance_score": 5,
+        "relevant_rqs": [],
+        "evidence_type": "framework",
+        "argument_type": "legal_interpretive",
+        "claim_direction": "supports",
+        "open_codes": [
+          "immediacy_test",
+          "tallinn_manual_immediacy"
+        ],
+        "dqid": "3b7d08bf4805",
+        "section_key": "legacy_dataset_text"
+      },
+      {
+        "quote": "However, the Tallinn Manual suggests that this conclusion may change if there is reason for the victim State to believe that ‘further cyber operations are likely to follow’ – in that case, the State ‘may treat those operations as a “cyber campaign” and continue to act in self-defence’.",
+        "paraphrase": "Tallinn Manual permits treating anticipated or repeated operations as a 'cyber campaign', which can preserve immediacy for self‑defence.",
+        "researcher_comment": "Identifies a doctrinally significant qualification (aggregation/campaign doctrine) that relaxes temporal proximity. Authors warn this risks eroding the temporal limit of self‑defence and fostering escalation.",
+        "potential_themes": [
+          "immediacy_requirement",
+          "accumulation_of_events"
+        ],
+        "relevance_score": 4,
+        "relevant_rqs": [],
+        "evidence_type": "framework",
+        "argument_type": "legal_interpretive",
+        "claim_direction": "qualifies",
+        "open_codes": [
+          "cyber_campaign_doctrine",
+          "aggregation_of_events",
+          "immediacy_softening"
+        ],
+        "dqid": "8f1d987f55cd",
+        "section_key": "legacy_dataset_text"
+      },
+      {
+        "quote": "The suggestion that the standards of attribution should shift from 'effective control' to 'overall control' does not touch upon the issue of identification.",
+        "paraphrase": "Changing the legal test from 'effective control' to 'overall control' adjusts attribution doctrine but does not solve the factual problem of identifying actors.",
+        "researcher_comment": "Authoritatively rejects a doctrinal fix as sufficient; useful to separate legal standard debates from empirical identification problems. Does not engage with situations where legal standard change might lower proof required in practice.",
+        "potential_themes": [
+          "attribution_standards",
+          "attribution_challenges"
+        ],
+        "relevance_score": 4,
+        "relevant_rqs": [],
+        "evidence_type": "limitation",
+        "argument_type": "legal_interpretive",
+        "claim_direction": "contradicts",
+        "open_codes": [
+          "effective_vs_overall_control",
+          "identification_gap"
+        ],
+        "dqid": "040733172efe",
+        "section_key": "legacy_dataset_text"
+      },
+      {
+        "quote": "There is widespread agreement that international law as it currently stands applies in cyberspace, and it is beyond any doubt that international law requires attribution.",
+        "paraphrase": "The authors assert that international law governs cyberspace and mandates attribution before resorting to unilateral responses.",
+        "researcher_comment": "States the authors' baseline legal claim: attribution is a binding legal requirement under extant international law. This underpins their argument against lowering evidentiary or attribution requirements.",
+        "potential_themes": [
+          "state_practice_custom",
+          "attribution_challenges"
+        ],
+        "relevance_score": 5,
+        "relevant_rqs": [],
+        "evidence_type": "state_practice_custom",
+        "argument_type": "legal_interpretive",
+        "claim_direction": "supports",
+        "open_codes": [
+          "international_law_applies_to_cyberspace",
+          "attribution_required"
+        ],
+        "dqid": "f2f01331c81b",
+        "section_key": "legacy_dataset_text"
+      },
+      {
+        "quote": "Article 49(1) of the ILC Articles stipulates that the 'injured State may only take countermeasures against a State which is responsible for an internationally wrongful act in order to induce that State to comply with its obligations'.",
+        "paraphrase": "ILC Article 49(1) restricts countermeasures to acts against a State already responsible for an internationally wrongful act and aimed at inducing compliance.",
+        "researcher_comment": "Provides the principal legal rule limiting countermeasures: responsibility + inducement objective. Practical effect in cyber cases is that countermeasures depend on prior attribution to a State actor.",
+        "potential_themes": [
+          "countermeasures_lawfulness",
+          "state_responsibility_thresholds"
+        ],
+        "relevance_score": 5,
+        "relevant_rqs": [],
+        "evidence_type": "legal_source_primary",
+        "argument_type": "legal_interpretive",
+        "claim_direction": "supports",
+        "open_codes": [
+          "ILC_article_49",
+          "countermeasure_prerequisites",
+          "induce_compliance"
+        ],
+        "dqid": "bcdbd470fc82",
+        "section_key": "legacy_dataset_text"
+      },
+      {
+        "quote": "Article 50 enumerates certain definite restrictions on countermeasures: they ‘shall not affect the obligation to refrain from the threat or use of force as embodied in the Charter of the United Nations; obligations for the protection of fundamental human rights; obligations of a humanitarian character prohibiting reprisals; other obligations under peremptory norms of general international law’.",
+        "paraphrase": "ILC Article 50 forbids countermeasures that infringe the UN Charter prohibition on force, fundamental human rights, humanitarian prohibitions on reprisals, or peremptory norms.",
+        "researcher_comment": "Identifies non‑derogable limits to countermeasures (including human rights). Especially pertinent to active cyber responses that risk civilian impact or third‑party harm.",
+        "potential_themes": [
+          "countermeasures_limits",
+          "human_rights_constraints"
+        ],
+        "relevance_score": 5,
+        "relevant_rqs": [],
+        "evidence_type": "legal_source_primary",
+        "argument_type": "legal_interpretive",
+        "claim_direction": "supports",
+        "open_codes": [
+          "ILC_article_50",
+          "human_rights_limit",
+          "jus_cogens_constraints"
+        ],
+        "dqid": "7276b50f5559",
+        "section_key": "legacy_dataset_text"
+      },
+      {
+        "quote": "According to Article 51 of the ILC Articles on State Responsibility, which is considered to reflect customary international law, countermeasures must also be in line with the principle of proportionality or, in the provision’s wording, ‘commensurate with the injury suffered, taking into account the gravity of the internationally wrongful act and the rights in question'.",
+        "paraphrase": "ILC Article 51 requires countermeasures to be proportional—commensurate with the injury and gravity of the wrongful act.",
+        "researcher_comment": "Reiterates proportionality as a central legal constraint; the authors emphasise both quantitative and qualitative factors, which is crucial when assessing cyber countermeasures that may have asymmetric effects.",
+        "potential_themes": [
+          "proportionality",
+          "countermeasures_limits"
+        ],
+        "relevance_score": 5,
+        "relevant_rqs": [],
+        "evidence_type": "legal_source_primary",
+        "argument_type": "legal_interpretive",
+        "claim_direction": "supports",
+        "open_codes": [
+          "proportionality_requirement",
+          "ILC_article_51",
+          "commensurability"
+        ],
+        "dqid": "19ee1af616de",
+        "section_key": "legacy_dataset_text"
+      },
+      {
+        "quote": "In cases of urgency, however, the injured State may take those measures that are 'necessary to preserve its rights', an exception to the abovementioned paragraph 1(b) as stipulated by paragraph 2 of the same Article.",
+        "paraphrase": "ILC Article 52(2) permits urgent countermeasures necessary to preserve rights, creating a procedural exception to the notification/negotiation rule.",
+        "researcher_comment": "Clarifies that urgency relaxes certain procedural steps but (per the chapter) does not lower substantive evidentiary thresholds; therefore urgency does not obviate attribution requirements.",
+        "potential_themes": [
+          "procedural_vs_urgency",
+          "countermeasures_procedure"
+        ],
+        "relevance_score": 5,
+        "relevant_rqs": [],
+        "evidence_type": "legal_source_primary",
+        "argument_type": "procedural",
+        "claim_direction": "neutral",
+        "open_codes": [
+          "ILC_article_52",
+          "urgent_countermeasures",
+          "procedural_exception"
+        ],
+        "dqid": "a3d94773e39c",
+        "section_key": "legacy_dataset_text"
+      },
+      {
+        "quote": "The main problem with countermeasures is that, as with self-defence, the remedy is dependent on the attribution of wrongful conduct; the wrongful conduct here not being an armed attack, but rather a cyber attack which violates other international norms such as the prohibition of the use of force pursuant to Article 2(4) of the UN Charter (without reaching the armed attack threshold), or the customary principle of non-intervention. If attribution in order to establish State responsibility of the alleged attacker State is again a precondition, it follows that the same evidentiary standard (appl[",
+        "paraphrase": "Countermeasures in response to cyber attacks also require attributing responsibility to a State, so they face the same evidentiary hurdles as self‑defence.",
+        "researcher_comment": "Concise statement tying countermeasure lawfulness to attribution; authors use this to dismiss claims that countermeasures avoid attribution problems. Note: the legal and factual proof burdens remain the decisive barrier.",
+        "potential_themes": [
+          "attribution_challenges",
+          "evidentiary_standards",
+          "countermeasures_limit"
+        ],
+        "relevance_score": 5,
+        "relevant_rqs": [],
+        "evidence_type": "limitation",
+        "argument_type": "legal_interpretive",
+        "claim_direction": "supports",
+        "open_codes": [
+          "countermeasures_require_attribution",
+          "evidentiary_parity_with_self_defence"
+        ],
+        "dqid": "e81e1b375040",
+        "section_key": "legacy_dataset_text"
+      },
+      {
+        "quote": "‘Active defences’ are 'proactive measure[s] for detecting or obtaining information as to a cyber-intrusion, cyber-attack, or impending cyber operation, or for determining the origin of an operation that involves launching a pre-emptive, preventive, or cyber-counter operation against the source.'",
+        "paraphrase": "The Tallinn Manual defines active defences as proactive detection and potentially pre‑emptive or counter cyber‑operations against the alleged source.",
+        "researcher_comment": "Provides an operational definition of 'active defence' used in the debate; useful for operationalising what kinds of cyber measures are at issue. The definition foreshadows legal concerns about intrusiveness and collateral effects.",
+        "potential_themes": [
+          "active_defence_risks",
+          "method_design"
+        ],
+        "relevance_score": 5,
+        "relevant_rqs": [],
+        "evidence_type": "definition_conceptual",
+        "argument_type": "definitional",
+        "claim_direction": "neutral",
+        "open_codes": [
+          "active_defence_definition",
+          "preemptive_cyber_operations"
+        ],
+        "dqid": "fa128b0c5e87",
+        "section_key": "legacy_dataset_text"
+      },
+      {
+        "quote": "As already pointed out by several authors, such action might lead to an uncontrollable threat of malicious code, endangering previously uninvolved third parties.",
+        "paraphrase": "Active defences can trigger uncontrollable spread of malicious code, risking harm to uninvolved third parties.",
+        "researcher_comment": "Identifies a concrete collateral‑risk mechanism (uncontrolled spread) that could render active defences unlawful under ILC Article 50 and related human‑rights constraints. The technical feasibility of containment is a critical empirical question.",
+        "potential_themes": [
+          "active_defence_risks",
+          "third_party_harm"
+        ],
+        "relevance_score": 5,
+        "relevant_rqs": [],
+        "evidence_type": "limitation",
+        "argument_type": "causal",
+        "claim_direction": "supports",
+        "open_codes": [
+          "mirroring_risk",
+          "uncontrolled_spread",
+          "third_party_casualties"
+        ],
+        "dqid": "738b46c7953f",
+        "section_key": "legacy_dataset_text"
+      },
+      {
+        "quote": "In any case, for it to be justified under the doctrine of necessity, the measure chosen to avert the grave and imminent peril must be the only one available. The case law of international courts and tribunals confirms that it is here where most invocations of the principle ultimately fail.",
+        "paraphrase": "Necessity is available only where the measure is the sole means to avert grave, imminent peril, and courts often reject necessity claims when alternatives exist.",
+        "researcher_comment": "Summarises the strict 'only way' test and its practical blocking effect on invoking necessity for cyber responses. This underlines that necessity is an exceptional, not general, justification for intrusive measures.",
+        "potential_themes": [
+          "necessity_doctrine",
+          "last_resort"
+        ],
+        "relevance_score": 5,
+        "relevant_rqs": [],
+        "evidence_type": "jurisprudence_case_law",
+        "argument_type": "legal_interpretive",
+        "claim_direction": "supports",
+        "open_codes": [
+          "necessity_only_way_test",
+          "last_resort_requirement",
+          "judicial_skepticism"
+        ],
+        "dqid": "3c4f45c18361",
+        "section_key": "legacy_dataset_text"
+      },
+      {
+        "dqid": "J766INPV#DQ001",
+        "quote": "inter-State cyber security has unfortunately been treated predominantly as a military issue",
+        "extraction_type": "main_finding",
+        "paraphrase": "The authors argue that inter-State cyber security has been predominantly framed as a military issue, with debate focusing on the permissibility of Article 51 self-defence.",
+        "relevance_score": 5,
+        "relevant_rqs": [
+          {
+            "index": 0
+          }
+        ],
+        "mapped_codes": [
+          "self_defence_limitations"
+        ],
+        "evidence_type": "mixed",
+        "argument_type": "unspecified",
+        "claim_direction": "unspecified",
+        "section_key": "__intro_conclusion_harvest__",
+        "potential_themes": [
+          "main_findings",
+          "self_defence_limitations"
+        ],
+        "cluster_match": [
+          "main_findings"
+        ],
+        "function_summary": "harvested main_findings",
+        "risk_if_missing": "Evidence category omitted from synthesis.",
+        "extraction_category": "main_findings"
+      },
+      {
+        "dqid": "J766INPV#DQ002",
+        "quote": "the problem of attribution will preclude its proper application in many, if not most, instances.",
+        "extraction_type": "main_finding",
+        "paraphrase": "They claim that the problem of attribution will prevent the proper application of self-defence in many, if not most, instances.",
+        "relevance_score": 5,
+        "relevant_rqs": [
+          {
+            "index": 0
+          }
+        ],
+        "mapped_codes": [
+          "attribution_challenges",
+          "self_defence_limitations",
+          "evidentiary_standards"
+        ],
+        "evidence_type": "mixed",
+        "argument_type": "unspecified",
+        "claim_direction": "unspecified",
+        "section_key": "__intro_conclusion_harvest__",
+        "potential_themes": [
+          "main_findings",
+          "attribution_challenges",
+          "self_defence_limitations",
+          "evidentiary_standards"
+        ],
+        "cluster_match": [
+          "main_findings"
+        ],
+        "function_summary": "harvested main_findings",
+        "risk_if_missing": "Evidence category omitted from synthesis.",
+        "extraction_category": "main_findings"
+      },
+      {
+        "dqid": "J766INPV#DQ003",
+        "quote": "Therefore, two other remedies will be analysed that might present an alternative to the prevalent military paradigm of international cyber security: countermeasures and the state of necessity.",
+        "extraction_type": "method_claim",
+        "paraphrase": "The chapter will analyse countermeasures and the state of necessity as alternative legal remedies to the dominant military paradigm in international cyber security.",
+        "relevance_score": 4,
+        "relevant_rqs": [
+          {
+            "index": 0
+          }
+        ],
+        "mapped_codes": [
+          "countermeasures_lawfulness",
+          "necessity_doctrine"
+        ],
+        "evidence_type": "mixed",
+        "argument_type": "unspecified",
+        "claim_direction": "unspecified",
+        "section_key": "__intro_conclusion_harvest__",
+        "potential_themes": [
+          "method_claims",
+          "countermeasures_lawfulness",
+          "necessity_doctrine"
+        ],
+        "cluster_match": [
+          "method_claims"
+        ],
+        "function_summary": "harvested method_claims",
+        "risk_if_missing": "Evidence category omitted from synthesis.",
+        "extraction_category": "method_claims"
+      },
+      {
+        "dqid": "J766INPV#DQ004",
+        "quote": "The chapter provides an outlook on the possibilities of a more comprehensive approach to contemporary security issues that focuses on prevention rather than repression, drawing on States’ international due diligence obligations not to harm others.",
+        "extraction_type": "recommendation",
+        "paraphrase": "They recommend a prevention-focused approach that draws on States' international due diligence obligations, rather than repression or primarily military responses.",
+        "relevance_score": 3,
+        "relevant_rqs": [],
+        "mapped_codes": [
+          "state_practice_custom"
+        ],
+        "evidence_type": "mixed",
+        "argument_type": "unspecified",
+        "claim_direction": "unspecified",
+        "section_key": "__intro_conclusion_harvest__",
+        "potential_themes": [
+          "recommendations_future_work",
+          "state_practice_custom"
+        ],
+        "cluster_match": [
+          "recommendations_future_work"
+        ],
+        "function_summary": "harvested recommendations_future_work",
+        "risk_if_missing": "Evidence category omitted from synthesis.",
+        "extraction_category": "recommendations_future_work"
+      },
+      {
+        "dqid": "J766INPV#DQ005",
+        "quote": "In cyberspace, as in the real world, self-defence is an option of last resort.",
+        "extraction_type": "definition",
+        "paraphrase": "The authors state that self-defence operates as an option of last resort both in cyberspace and in general international law.",
+        "relevance_score": 5,
+        "relevant_rqs": [
+          {
+            "index": 0
+          }
+        ],
+        "mapped_codes": [
+          "last_resort",
+          "self_defence_limitations",
+          "necessity_doctrine"
+        ],
+        "evidence_type": "mixed",
+        "argument_type": "unspecified",
+        "claim_direction": "unspecified",
+        "section_key": "__intro_conclusion_harvest__",
+        "potential_themes": [
+          "definitions",
+          "last_resort",
+          "self_defence_limitations",
+          "necessity_doctrine"
+        ],
+        "cluster_match": [
+          "definitions"
+        ],
+        "function_summary": "harvested definitions",
+        "risk_if_missing": "Evidence category omitted from synthesis.",
+        "extraction_category": "definitions"
+      },
+      {
+        "dqid": "J766INPV#DQ006",
+        "quote": "It has been made clear that both countermeasures and the state of necessity pose unique and very specific legal problems when applied in the context of cyberspace.",
+        "extraction_type": "main_finding",
+        "paraphrase": "They conclude that applying countermeasures and the state of necessity in cyberspace raises distinct and specific legal problems.",
+        "relevance_score": 4,
+        "relevant_rqs": [
+          {
+            "index": 0
+          }
+        ],
+        "mapped_codes": [
+          "countermeasures_limits",
+          "necessity_doctrine"
+        ],
+        "evidence_type": "mixed",
+        "argument_type": "unspecified",
+        "claim_direction": "unspecified",
+        "section_key": "__intro_conclusion_harvest__",
+        "potential_themes": [
+          "main_findings",
+          "countermeasures_limits",
+          "necessity_doctrine"
+        ],
+        "cluster_match": [
+          "main_findings"
+        ],
+        "function_summary": "harvested main_findings",
+        "risk_if_missing": "Evidence category omitted from synthesis.",
+        "extraction_category": "main_findings"
+      },
+      {
+        "dqid": "J766INPV#DQ007",
+        "quote": "Some of these problems can be solved; others could at least be mitigated if non-forcible unilateral responses to cyber incidents of unclear origin that affect other State's interest could be better coordinated and ultimately institutionalised on the basis of an international treaty.",
+        "extraction_type": "recommendation",
+        "paraphrase": "They propose that better coordination and international institutionalisation (via treaty) of non‑forcible unilateral responses to incidents of unclear origin could mitigate some of the legal problems.",
+        "relevance_score": 4,
+        "relevant_rqs": [
+          {
+            "index": 0
+          }
+        ],
+        "mapped_codes": [
+          "countermeasures_procedure",
+          "state_practice_custom"
+        ],
+        "evidence_type": "mixed",
+        "argument_type": "unspecified",
+        "claim_direction": "unspecified",
+        "section_key": "__intro_conclusion_harvest__",
+        "potential_themes": [
+          "recommendations_future_work",
+          "countermeasures_procedure",
+          "state_practice_custom"
+        ],
+        "cluster_match": [
+          "recommendations_future_work"
+        ],
+        "function_summary": "harvested recommendations_future_work",
+        "risk_if_missing": "Evidence category omitted from synthesis.",
+        "extraction_category": "recommendations_future_work"
+      },
+      {
+        "dqid": "J766INPV#DQ008",
+        "quote": "Certainly, in the long run a cogent path would be a much stronger focus on specifying States' due diligence obligations regarding threat prevention and securing the freedom and stability of cyberspace.",
+        "extraction_type": "recommendation",
+        "paraphrase": "They argue that, in the long term, specifying States' due diligence obligations for threat prevention and for securing cyberspace's freedom and stability is a cogent path forward.",
+        "relevance_score": 3,
+        "relevant_rqs": [],
+        "mapped_codes": [
+          "state_practice_custom"
+        ],
+        "evidence_type": "mixed",
+        "argument_type": "unspecified",
+        "claim_direction": "unspecified",
+        "section_key": "__intro_conclusion_harvest__",
+        "potential_themes": [
+          "recommendations_future_work",
+          "state_practice_custom"
+        ],
+        "cluster_match": [
+          "recommendations_future_work"
+        ],
+        "function_summary": "harvested recommendations_future_work",
+        "risk_if_missing": "Evidence category omitted from synthesis.",
+        "extraction_category": "recommendations_future_work"
+      }
+    ]
+  }
+}

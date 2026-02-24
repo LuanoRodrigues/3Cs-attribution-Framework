@@ -1,0 +1,443 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "quote": "the problem of attribution will preclude its proper application in many, if not most, instances.",
+          "paraphrase": "The chapter argues that attribution difficulties will often prevent the proper application of the self-defence doctrine in cyber cases.",
+          "researcher_comment": "Author's central normative claim linking technical attribution problems to the practical inapplicability of Article 51 self-defence in cyberspace. Treat as interpretive conclusion supported by subsequent legal and technical discussion rather than systematic empirical proof.",
+          "potential_themes": [
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "limitation",
+          "argument_type": "legal_interpretive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "attribution_precludes_self_defence",
+            "attribution_limitations"
+          ]
+        },
+        {
+          "quote": "a cyber attack amounts to an armed attack within the scope of Article 51 if its effects are equivalent to those caused by a conventional attack employing kinetic force.",
+          "paraphrase": "The authors report the prevailing view that a cyber operation qualifies as an Article 51 'armed attack' when its effects are equivalent to those of a conventional kinetic attack.",
+          "researcher_comment": "Sets the doctrinal threshold (equivalence-of-effects) relevant to jus ad bellum analysis; narrows the debate toward consequences rather than means. Important background but does not resolve attribution problems.",
+          "potential_themes": [
+            "state_responsibility_thresholds"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "definition_conceptual",
+          "argument_type": "definitional",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "equivalence_test_armed_attack"
+          ]
+        },
+        {
+          "quote": "the greatest challenge for the application of the doctrine of self-defence to the new threats that arrive as a by-product of technological developments is the attribution of \u2018unlawful conduct\u2019.",
+          "paraphrase": "The authors identify attribution of unlawful conduct as the principal obstacle to applying self-defence against cyber threats.",
+          "researcher_comment": "Direct statement that attribution (not definitional threshold) is the key barrier; useful to RQs about why self-defence is problematic in cyberspace. Presented as synthesis of legal and technical points.",
+          "potential_themes": [
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "limitation",
+          "argument_type": "legal_interpretive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "attribution_primary_obstacle"
+          ]
+        },
+        {
+          "quote": "In 1987, the Iran-United States Claims Tribunal asserted that \u2018[i]n order to attribute an act to the State, it is necessary to identify with reasonable certainty the actors and their association with the State\u2019.",
+          "paraphrase": "The Iran\u2013United States Claims Tribunal held that attributing an act to a State requires reasonably certain identification of the actors and their association with the State.",
+          "researcher_comment": "Provides a jurisprudential articulation of attribution elements (identification + association). Persuasive precedent for attribution requirements, though tribunal decisions have varying force across fora.",
+          "potential_themes": [
+            "attribution_challenges",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "jurisprudence_case_law",
+          "argument_type": "legal_interpretive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "identification_association_requirement",
+            "tribunal_attribution_rule"
+          ]
+        },
+        {
+          "quote": "If it cannot be determined which individual has acted, then the provisions on the attribution of such conduct found in the Articles on State Responsibility are not of much use.",
+          "paraphrase": "The authors argue that without identifying the individual actor, the ILC Articles on State Responsibility cannot be effectively applied to cyber incidents.",
+          "researcher_comment": "Connects a factual identification failure to doctrinal inutility: the classic ILC regime presumes a link from individual actor to State. Highlights a legal gap when actors cannot be identified.",
+          "potential_themes": [
+            "attribution_challenges",
+            "state_responsibility_thresholds"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "limitation",
+          "argument_type": "legal_interpretive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "ilc_inapplicability_without_actor",
+            "identification_requirement"
+          ]
+        },
+        {
+          "quote": "Four formalised standards can nonetheless be identified in international courts\u2019 and tribunals\u2019 jurisprudence in matters concerning State responsibility, and thus also the question concerning responsibility for an armed attack. Those are: the *prima facie* possibility of an asserted fact being true; a preponderance of evidence; the \u2018clear and convincing\u2019 evidentiary standard; and proof beyond reasonable doubt.",
+          "paraphrase": "The authors list four evidentiary standards used in international adjudication of state responsibility: prima facie, preponderance, clear and convincing, and proof beyond reasonable doubt.",
+          "researcher_comment": "Explicit taxonomy of evidentiary standards relevant to attribution claims; useful for operationalising RQs about burden and quality of proof. Does not prescribe which standard applies in specific forums.",
+          "potential_themes": [
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "taxonomy_typology",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "evidentiary_standards_list",
+            "standards_taxonomy"
+          ]
+        },
+        {
+          "quote": "as soon as State responsibility is involved the required threshold appears to be considerably higher, shifting towards \u2018clear and convincing\u2019.",
+          "paraphrase": "When state responsibility is alleged, the authors contend the evidentiary threshold generally rises toward 'clear and convincing' evidence.",
+          "researcher_comment": "Elevates the burden for cyber attribution when State responsibility and use-of-force claims are at stake; central to assessing feasibility of legal remedies. This is an interpretive claim drawn from case law patterns.",
+          "potential_themes": [
+            "evidentiary_standards",
+            "state_responsibility_thresholds"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "jurisprudence_case_law",
+          "argument_type": "legal_interpretive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "clear_and_convincing_shift",
+            "higher_threshold_for_state_responsibility"
+          ]
+        },
+        {
+          "quote": "This general pattern seems to have been adopted by the International Court of Justice (ICJ), which generally follows the principle that the more grave an allegation against a State, the higher the standard of proof needs to be.",
+          "paraphrase": "The authors claim the ICJ follows the principle that more serious allegations against a State require higher standards of proof.",
+          "researcher_comment": "Links ICJ practice to the elevated standard; useful when evaluating prospects of successful attribution in international adjudication. Statement is interpretive and based on cited ICJ cases.",
+          "potential_themes": [
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "jurisprudence_case_law",
+          "argument_type": "legal_interpretive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "icj_gravity_standard",
+            "gravity_evidence_correlation"
+          ]
+        },
+        {
+          "quote": "In view of the technical peculiarities of cyberspace, how likely is it to assume that it will be possible for a State that has become the victim of a cyber attack to sufficiently prove authorship?",
+          "paraphrase": "The authors question whether victim States can realistically meet evidentiary requirements to prove authorship given cyberspace's technical characteristics.",
+          "researcher_comment": "Rhetorical formulation of the core tension: high legal proof requirements versus technical attribution limits. Useful for RQs probing feasibility; empirical claims require external technical evidence.",
+          "potential_themes": [
+            "attribution_challenges",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "qualifies",
+          "open_codes": [
+            "authorship_proof_feasibility",
+            "technical_vs_legal_gap"
+          ]
+        },
+        {
+          "quote": "\u2018the determination of the identity or location of an attacker or an attacker\u2019s intermediary\u2019 remains the most critical and to date unresolved obstacle to the application of the traditional regime of self-defence in the context of cyberspace.",
+          "paraphrase": "Identifying the attacker or their intermediary remains the key unresolved obstacle to applying traditional self-defence rules in cyberspace.",
+          "researcher_comment": "Names the specific factual hurdle most commentators treat as decisive; supports the view that attribution\u2014not jus ad bellum thresholds\u2014is the chokepoint. Claim is broad; empirical scope not quantified here.",
+          "potential_themes": [
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "attacker_identity_obstacle",
+            "unresolved_attribution"
+          ]
+        },
+        {
+          "quote": "the location of a computer rarely allows for definite conclusions regarding the identity of the individual operating the machine",
+          "paraphrase": "Locating an attacking computer usually does not suffice to identify the individual operator.",
+          "researcher_comment": "Emphasises the 'human\u2013machine gap' that undermines device-to-person attribution, a critical technical limitation with direct legal consequences for proving State responsibility.",
+          "potential_themes": [
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "human_machine_gap",
+            "location_not_identity"
+          ]
+        },
+        {
+          "quote": "it took their analysts several years to come up with conclusions that they themselves considered sufficiently convincing to be published.",
+          "paraphrase": "The authors note that attribution work (e.g. Mandiant) took analysts years before conclusions were deemed publishable.",
+          "researcher_comment": "Concrete example of the time lag for persuasive attribution claims; demonstrates practical difficulties for immediate self-defence responses. Single case evidence \u2014 illustrative not systematic.",
+          "potential_themes": [
+            "attribution_challenges",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "case_study_example",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "attribution_time_lag",
+            "analyst_certainty_delay"
+          ]
+        },
+        {
+          "quote": "the requirement of immediacy for self-defence to be permitted, meaning the period of time \u2018following the execution of an armed attack within which the victim State may reasonably respond in self-defence\u2019, with one relevant factor inter alia being 'the period necessary to identify the attacker'.",
+          "paraphrase": "The Tallinn Manual frames 'immediacy' as a temporal condition for lawful self-defence and lists the time needed to identify the attacker as a relevant factor.",
+          "researcher_comment": "Shows how temporal legal requirements interact with attribution timelines; Tallinn Manual is influential but non\u2011binding, so its criteria are interpretive rather than authoritative state practice.",
+          "potential_themes": [
+            "evidentiary_standards",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "policy_position",
+          "argument_type": "legal_interpretive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "immediacy_definition",
+            "identification_time_considered"
+          ]
+        },
+        {
+          "quote": "In cases where 'the initiator of the attack is not identified until well after the attack' the criterion of immediacy will usually not be met.",
+          "paraphrase": "If the initiator is identified only well after the attack, the immediacy requirement for lawful self-defence will typically not be satisfied.",
+          "researcher_comment": "Links delayed attribution directly to loss of legal justification for self-defence; critical for RQs on timing and legal permissibility of responses.",
+          "potential_themes": [
+            "evidentiary_standards",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "policy_position",
+          "argument_type": "legal_interpretive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "delayed_identification_undermines_immediacy"
+          ]
+        },
+        {
+          "quote": "the State 'may treat those operations as a \u201ccyber campaign\u201d and continue to act in self-defence'.",
+          "paraphrase": "The Tallinn Manual suggests a State may treat successive cyber operations as a 'cyber campaign' and continue self-defence measures.",
+          "researcher_comment": "Identifies a doctrinal device that can extend the temporal window for self-defence by aggregating incidents; authors warn this risks extending licence to use force and escalation.",
+          "potential_themes": [
+            "evidentiary_standards",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "policy_position",
+          "argument_type": "legal_interpretive",
+          "claim_direction": "qualifies",
+          "open_codes": [
+            "cyber_campaign_concept",
+            "continuing_self_defence"
+          ]
+        },
+        {
+          "quote": "In particular within the cyber context, the issue of uncertain attribution together with a softening of the immediacy requirement could critically raise the danger of escalation of inter-State conflict.",
+          "paraphrase": "The authors warn that uncertain attribution combined with softened immediacy could significantly increase the risk of interstate escalation.",
+          "researcher_comment": "Frames the primary policy risk of relaxing attribution/immediacy constraints; important for normative RQs about costs of legal adaptation. Empirical magnitude of escalation is not assessed here.",
+          "potential_themes": [
+            "attribution_challenges",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "limitation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "escalation_risk_due_to_attribution_uncertainty"
+          ]
+        },
+        {
+          "quote": "The suggestion that the standards of attribution should shift from 'effective control' to 'overall control' does not touch upon the issue of identification.",
+          "paraphrase": "The authors argue that moving the attribution test from 'effective control' to 'overall control' would not address the core problem of identifying the human actor.",
+          "researcher_comment": "Dismisses reform proposals focused on control doctrines as irrelevant to the identification problem; useful for evaluating proposals that target doctrinal tweaks rather than evidentiary or technical solutions.",
+          "potential_themes": [
+            "attribution_challenges",
+            "state_responsibility_thresholds"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "limitation",
+          "argument_type": "legal_interpretive",
+          "claim_direction": "contradicts",
+          "open_codes": [
+            "effective_to_overall_control_insufficient",
+            "identification_not_control_issue"
+          ]
+        },
+        {
+          "quote": "the requirement of adequate attribution of an attack before resorting to self-defence measures is 'a luxury unavailable in the cyber attack era'",
+          "paraphrase": "Some commentators have argued that requiring adequate attribution before exercising self-defence is 'a luxury unavailable in the cyber attack era', a position the authors reject.",
+          "researcher_comment": "Captures a proposed pragmatic shift to lower attribution standards in emergency contexts; authors deem such proposals legally untenable. Important for RQs about normative proposals to relax rules.",
+          "potential_themes": [
+            "evidentiary_standards",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "policy_position",
+          "argument_type": "normative",
+          "claim_direction": "contradicts",
+          "open_codes": [
+            "propose_lower_attribution_standard",
+            "author_rejects_luxury_claim"
+          ]
+        },
+        {
+          "quote": "There is widespread agreement that international law as it currently stands applies in cyberspace, and it is beyond any doubt that international law requires attribution.",
+          "paraphrase": "The authors state there is broad consensus that existing international law governs cyberspace and continues to require attribution for responsibility.",
+          "researcher_comment": "Establishes the legal baseline that attribution remains a required element under current international law; helpful to reject claims that law should be suspended in cyberspace. 'Widespread agreement' is asserted rather than evidenced here.",
+          "potential_themes": [
+            "attribution_challenges",
+            "state_responsibility_thresholds"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "scope_condition",
+          "argument_type": "legal_interpretive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "international_law_applies_cyberspace",
+            "attribution_required"
+          ]
+        },
+        {
+          "quote": "will, in at least the majority of cases, effectively prevent the legal possibility of reaction with military means.",
+          "paraphrase": "The authors contend that, in most cases, evidentiary and technical difficulties will prevent lawful military responses to cyber attacks.",
+          "researcher_comment": "Concluding synthesis: elevated evidentiary standards plus technical attribution limits make military self-defence legally infeasible in most cyber incidents. This is an interpretive policy conclusion rather than quantified empirical finding.",
+          "potential_themes": [
+            "attribution_challenges",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "limitation",
+          "argument_type": "legal_interpretive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "evidentiary_barrier_to_force",
+            "functional_inapplicability_self_defence"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-24T16:58:44.470939Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "16bdce4de2e33c073fd3b0ffac9c70d0b25468e2f435a48026d1fe1ddb6975c3",
+  "function": "code_pdf_page"
+}

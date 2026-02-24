@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="460" viewBox="0 0 960 460" role="img" aria-labelledby="title desc">
+  <title id="title">Score-to-Policy Mapping</title>
+  <desc id="desc">Mapping from C total score to policy outcomes across industry, strategy, and legal tracks.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#4b5563" />
+    </marker>
+    <style>
+      .bg { fill: #ffffff; }
+      .h1 { font-family: "Segoe UI", Arial, sans-serif; font-size: 22px; font-weight: 700; fill: #111827; }
+      .sub { font-family: "Segoe UI", Arial, sans-serif; font-size: 12px; fill: #4b5563; }
+      .box { fill: #f9fafb; stroke: #9ca3af; stroke-width: 1.4; }
+      .box2 { fill: #ffffff; stroke: #9ca3af; stroke-width: 1.2; }
+      .h { font-family: "Segoe UI", Arial, sans-serif; font-size: 13px; font-weight: 700; fill: #111827; }
+      .t { font-family: "Segoe UI", Arial, sans-serif; font-size: 11px; fill: #1f2937; }
+      .l { stroke: #6b7280; stroke-width: 1.8; fill: none; marker-end: url(#arrow); }
+      .tier { font-family: "Segoe UI", Arial, sans-serif; font-size: 11px; font-weight: 700; fill: #111827; }
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="960" height="460" class="bg"/>
+  <text x="480" y="34" class="h1" text-anchor="middle">Figure B. C Total to Policy Outcome Mapping</text>
+  <text x="480" y="52" class="sub" text-anchor="middle">Decision principle: higher evidentiary score supports stronger and more formal policy action.</text>
+
+  <rect x="40" y="90" width="220" height="110" class="box" rx="10"/>
+  <text x="56" y="116" class="h">Input Scores</text>
+  <text x="56" y="136" class="t">C1 Clarity (0-2)</text>
+  <text x="56" y="152" class="t">C2 Chain of Custody (0-2)</text>
+  <text x="56" y="168" class="t">C3 Credibility (0-2)</text>
+  <text x="56" y="186" class="t">Total range: 0-6</text>
+
+  <rect x="320" y="90" width="280" height="180" class="box" rx="10"/>
+  <text x="336" y="116" class="h">Tiering Rule</text>
+  <text x="336" y="138" class="tier">Tier A (0-2): low confidence</text>
+  <text x="336" y="156" class="t">Use precautionary and internal measures.</text>
+  <text x="336" y="180" class="tier">Tier B (3-4): contested/moderate confidence</text>
+  <text x="336" y="198" class="t">Use coordinated mitigation + strategic signaling.</text>
+  <text x="336" y="222" class="tier">Tier C (5-6): robust confidence</text>
+  <text x="336" y="240" class="t">Use formal attribution posture and legal readiness.</text>
+
+  <rect x="660" y="76" width="260" height="108" class="box2" rx="10"/>
+  <text x="676" y="100" class="h">Industry Outcome</text>
+  <text x="676" y="120" class="t">A: hardening + monitoring</text>
+  <text x="676" y="136" class="t">B: sector coordination + advisories</text>
+  <text x="676" y="152" class="t">C: compliance/sanctions readiness</text>
+
+  <rect x="660" y="194" width="260" height="108" class="box2" rx="10"/>
+  <text x="676" y="218" class="h">Strategy Outcome</text>
+  <text x="676" y="238" class="t">A: intelligence collection posture</text>
+  <text x="676" y="254" class="t">B: coalition briefing + signaling</text>
+  <text x="676" y="270" class="t">C: formal response positioning</text>
+
+  <rect x="660" y="312" width="260" height="108" class="box2" rx="10"/>
+  <text x="676" y="336" class="h">Legal Outcome</text>
+  <text x="676" y="356" class="t">A: preserve evidence, no legal claim</text>
+  <text x="676" y="372" class="t">B: legal memo + gap closure</text>
+  <text x="676" y="388" class="t">C: dossier/litigation readiness</text>
+
+  <path class="l" d="M260 145 C286 145, 296 145, 320 145"/>
+  <path class="l" d="M600 145 C626 145, 636 130, 660 130"/>
+  <path class="l" d="M600 175 C626 175, 636 248, 660 248"/>
+  <path class="l" d="M600 205 C626 205, 636 366, 660 366"/>
+
+  <text x="40" y="444" class="sub">Optional rule: apply weights by policy context (for example legal context may weight C2 and C3 more heavily).</text>
+</svg>

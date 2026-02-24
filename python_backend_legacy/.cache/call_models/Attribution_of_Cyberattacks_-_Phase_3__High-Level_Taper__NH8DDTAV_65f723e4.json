@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": "{\n  \"classification\": \"Highly Relevant\",\n  \"relevance_score\": \"High\",\n  \"potential_subcategory\": \"Attribution & State Responsibility in International Cyber Law (Tallinn Manual 2.0) \u2014 Policy, Transparency, and Deterrence\",\n  \"justification\": \"The abstract directly addresses core issues of cyber conflict attribution and international law: it evaluates attribution standards and state responsibility in light of Tallinn Manual 2.0, uses the 2016 DNC intrusion as a case study, traces official statements and intelligence-driven attribution, and proposes legal/policy responses (shared criteria, multilateral agreements, calibrated transparency). These topics squarely fall within policy and legal treatment of cyber attribution and countermeasures. The paper's doctrinal analysis and concrete policy recommendations justify a 'Highly Relevant' / 'High' score despite noted limitations (classified evidence, limited empirical data). Note: the provided inclusion/exclusion criteria were marked 'AUTO DRAFT UNAVAILABLE'; this classification is based on topical relevance to cyber attribution and policy/law as presented in the abstract.\"\n}"
+  },
+  "cached_at": "2026-02-23T20:51:20.094543Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "NH8DDTAV",
+  "function": "classify_by_abs"
+}

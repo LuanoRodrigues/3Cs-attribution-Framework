@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": "{\n  \"classification\": \"Highly Relevant\",\n  \"relevance_score\": \"High\",\n  \"potential_subcategory\": \"Attribution & State Responsibility; jus ad bellum & IHL for proxy cyber operations\",\n  \"justification\": \"The abstract centrally addresses legal attribution of cyber operations using non-state proxies and conducts a doctrinal multilevel analysis of state responsibility, jus ad bellum, and international humanitarian law as applied to cyberspace. It identifies precise legal thresholds (effective control; planning/directing/commanding), legal consequences (state responsibility, reparations, countermeasures, self-defense, international armed conflict), and cites authoritative sources (Tallinn Manual, tribunal decisions), while offering policy guidance for states. These elements make the work directly and substantively relevant to cyber conflict attribution and related policy/law. Note: the prompt's inclusion/exclusion criteria were placeholders ('AUTO DRAFT UNAVAILABLE'), so this classification is based on the abstract's content.\"\n}"
+  },
+  "cached_at": "2026-02-23T20:40:55.047628Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "XBLJM3H9",
+  "function": "classify_by_abs"
+}

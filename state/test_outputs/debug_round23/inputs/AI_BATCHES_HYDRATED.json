@@ -1,0 +1,73 @@
+{
+  "batches": [
+    {
+      "metadata": {
+        "layer1_key": "all",
+        "layer2_key": "0: How are cyber attribution frameworks and models used?",
+        "theme_label": "Cyber Attribution",
+        "layer_structure": "theme",
+        "route_value": "all"
+      },
+      "payloads": [
+        {
+          "item_key": "ITM1",
+          "direct_quote": "Quote text 1 about cyber attribution frameworks and models.",
+          "paraphrase": "Paraphrase 1",
+          "researcher_comment": "Comment 1",
+          "theme": "Framework Typology",
+          "potential_theme": "Model category",
+          "evidence_type": "framework",
+          "direct_quote_id": "DQ01",
+          "rq_question": "How are cyber attribution frameworks and models used?",
+          "overarching_theme": "Cyber Attribution",
+          "relevance_score": 5,
+          "payload_json": "{\"direct_quote_id\": \"DQ01\", \"direct_quote\": \"Quote text 1 about cyber attribution frameworks and models.\", \"paraphrase\": \"Paraphrase 1\", \"researcher_comment\": \"Comment 1\", \"evidence_type\": \"framework\", \"theme\": \"Framework Typology\", \"potential_theme\": \"Model category\", \"item_key\": \"ITM1\", \"author_summary\": null, \"first_author_last\": null, \"year\": null, \"title\": null, \"source\": null, \"url\": null, \"pdf_path\": null, \"page\": null, \"section_title\": null, \"section_text\": null, \"score_bucket\": null, \"relevance_score\": 5, \"route\": null, \"route_value\": null, \"gold_theme\": null, \"rq_question\": \"How are cyber attribution frameworks and models used?\", \"overarching_theme\": \"Cyber Attribution\"}"
+        },
+        {
+          "item_key": "ITM2",
+          "direct_quote": "Quote text 2 about cyber attribution frameworks and models.",
+          "paraphrase": "Paraphrase 2",
+          "researcher_comment": "Comment 2",
+          "theme": "Framework Typology",
+          "potential_theme": "Model category",
+          "evidence_type": "framework",
+          "direct_quote_id": "DQ02",
+          "rq_question": "How are cyber attribution frameworks and models used?",
+          "overarching_theme": "Cyber Attribution",
+          "relevance_score": 5,
+          "payload_json": "{\"direct_quote_id\": \"DQ02\", \"direct_quote\": \"Quote text 2 about cyber attribution frameworks and models.\", \"paraphrase\": \"Paraphrase 2\", \"researcher_comment\": \"Comment 2\", \"evidence_type\": \"framework\", \"theme\": \"Framework Typology\", \"potential_theme\": \"Model category\", \"item_key\": \"ITM2\", \"author_summary\": null, \"first_author_last\": null, \"year\": null, \"title\": null, \"source\": null, \"url\": null, \"pdf_path\": null, \"page\": null, \"section_title\": null, \"section_text\": null, \"score_bucket\": null, \"relevance_score\": 5, \"route\": null, \"route_value\": null, \"gold_theme\": null, \"rq_question\": \"How are cyber attribution frameworks and models used?\", \"overarching_theme\": \"Cyber Attribution\"}"
+        },
+        {
+          "item_key": "ITM3",
+          "direct_quote": "Quote text 3 about cyber attribution frameworks and models.",
+          "paraphrase": "Paraphrase 3",
+          "researcher_comment": "Comment 3",
+          "theme": "Framework Typology",
+          "potential_theme": "Model category",
+          "evidence_type": "framework",
+          "direct_quote_id": "DQ03",
+          "rq_question": "How are cyber attribution frameworks and models used?",
+          "overarching_theme": "Cyber Attribution",
+          "relevance_score": 5,
+          "payload_json": "{\"direct_quote_id\": \"DQ03\", \"direct_quote\": \"Quote text 3 about cyber attribution frameworks and models.\", \"paraphrase\": \"Paraphrase 3\", \"researcher_comment\": \"Comment 3\", \"evidence_type\": \"framework\", \"theme\": \"Framework Typology\", \"potential_theme\": \"Model category\", \"item_key\": \"ITM3\", \"author_summary\": null, \"first_author_last\": null, \"year\": null, \"title\": null, \"source\": null, \"url\": null, \"pdf_path\": null, \"page\": null, \"section_title\": null, \"section_text\": null, \"score_bucket\": null, \"relevance_score\": 5, \"route\": null, \"route_value\": null, \"gold_theme\": null, \"rq_question\": \"How are cyber attribution frameworks and models used?\", \"overarching_theme\": \"Cyber Attribution\"}"
+        },
+        {
+          "item_key": "ITM4",
+          "direct_quote": "Quote text 4 about cyber attribution frameworks and models.",
+          "paraphrase": "Paraphrase 4",
+          "researcher_comment": "Comment 4",
+          "theme": "Framework Typology",
+          "potential_theme": "Model category",
+          "evidence_type": "framework",
+          "direct_quote_id": "DQ04",
+          "rq_question": "How are cyber attribution frameworks and models used?",
+          "overarching_theme": "Cyber Attribution",
+          "relevance_score": 5,
+          "payload_json": "{\"direct_quote_id\": \"DQ04\", \"direct_quote\": \"Quote text 4 about cyber attribution frameworks and models.\", \"paraphrase\": \"Paraphrase 4\", \"researcher_comment\": \"Comment 4\", \"evidence_type\": \"framework\", \"theme\": \"Framework Typology\", \"potential_theme\": \"Model category\", \"item_key\": \"ITM4\", \"author_summary\": null, \"first_author_last\": null, \"year\": null, \"title\": null, \"source\": null, \"url\": null, \"pdf_path\": null, \"page\": null, \"section_title\": null, \"section_text\": null, \"score_bucket\": null, \"relevance_score\": 5, \"route\": null, \"route_value\": null, \"gold_theme\": null, \"rq_question\": \"How are cyber attribution frameworks and models used?\", \"overarching_theme\": \"Cyber Attribution\"}"
+        }
+      ],
+      "prompt": "Synthesize framework/model evidence.",
+      "analysis_prompt": "Synthesize framework/model evidence."
+    }
+  ]
+}

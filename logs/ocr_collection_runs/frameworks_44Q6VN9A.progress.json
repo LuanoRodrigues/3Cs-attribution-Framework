@@ -1,0 +1,31 @@
+{
+  "status": "running",
+  "collection_key": "44Q6VN9A",
+  "total_items": 7,
+  "processed_items": 3,
+  "current_item_key": "KXZITJ9Q",
+  "done": false,
+  "results": [
+    {
+      "item_key": "W63DA6Z6",
+      "pdf_path": "/mnt/c/Users/luano/Zotero/storage/EGZ3TNAS/(Christian Payne, Lorraine Finlay, 2017).pdf",
+      "ok": true,
+      "sections": 7,
+      "error": ""
+    },
+    {
+      "item_key": "N4YNQ2GG",
+      "pdf_path": "/mnt/c/Users/luano/Zotero/storage/ZX43QZLK/Iasiello - 2013 - Cyber attack a dull tool to shape foreign policy.pdf",
+      "ok": true,
+      "sections": 5,
+      "error": ""
+    },
+    {
+      "item_key": "MSU2EW6K",
+      "pdf_path": "/mnt/c/Users/luano/Zotero/storage/DZE7TYWZ/(Justin Key Canfil, 2016).pdf",
+      "ok": true,
+      "sections": 4,
+      "error": ""
+    }
+  ]
+}

@@ -12,7 +12,11 @@ export class ZoteroCollectionsPanel {
   private treeEl: HTMLElement;
   private tagsEl: HTMLElement;
   private statusEl: HTMLElement;
+  private treeTitle: HTMLElement;
+  private tagsTitle: HTMLElement;
   private searchInput: HTMLInputElement;
+  private refreshButton: HTMLButtonElement;
+  private loadSelectedButton: HTMLButtonElement;
   private expanded = new Set<string>();
   private unsubscribe: (() => void) | null = null;
 
@@ -28,28 +32,56 @@ export class ZoteroCollectionsPanel {
     this.searchInput.className = "zotero-search-input";
     this.searchInput.placeholder = "Search collections by name or key";
     this.searchInput.addEventListener("input", () => this.renderTree(retrieveZoteroContext.getState()));
-    searchRow.appendChild(this.searchInput);
+    const zoteroLoaderRibbon = document.createElement("div");
+    zoteroLoaderRibbon.className = "zotero-loader-ribbon";
+
+    this.refreshButton = document.createElement("button");
+    this.refreshButton.type = "button";
+    this.refreshButton.className = "zotero-loader-btn";
+    this.refreshButton.ariaLabel = "Refresh";
+    this.refreshButton.textContent = "Refresh";
+    this.refreshButton.dataset.voiceAliases = "refresh collections,refresh zotero,reload zotero";
+    this.refreshButton.addEventListener("click", () => {
+      if (retrieveZoteroContext.getState().workspaceMode === "batches") {
+        void retrieveZoteroContext.loadBatchesData();
+      } else {
+        void retrieveZoteroContext.loadTree();
+      }
+    });
+
+    this.loadSelectedButton = document.createElement("button");
+    this.loadSelectedButton.type = "button";
+    this.loadSelectedButton.className = "zotero-loader-btn";
+    this.loadSelectedButton.ariaLabel = "Load Collection";
+    this.loadSelectedButton.textContent = "Load Collection";
+    this.loadSelectedButton.dataset.voiceAliases = "load collection,import selected collection,open selected collection";
+    this.loadSelectedButton.addEventListener("click", () => {
+      void retrieveZoteroContext.loadSelectedCollectionToDataHub();
+    });
+
+    zoteroLoaderRibbon.append(this.refreshButton, this.loadSelectedButton);
+    searchRow.append(this.searchInput, zoteroLoaderRibbon);
 
     this.statusEl = document.createElement("div");
     this.statusEl.className = "retrieve-status zotero-status";
 
     const treeBlock = document.createElement("div");
     treeBlock.className = "zotero-tree-block";
-    const treeTitle = document.createElement("div");
-    treeTitle.className = "zotero-block-title";
-    treeTitle.textContent = "Collections";
+    this.treeTitle = document.createElement("div");
+    this.treeTitle.className = "zotero-block-title";
+    this.treeTitle.textContent = "Collections";
     this.treeEl = document.createElement("div");
     this.treeEl.className = "zotero-tree-list";
-    treeBlock.append(treeTitle, this.treeEl);
+    treeBlock.append(this.treeTitle, this.treeEl);
 
     const tagsBlock = document.createElement("div");
     tagsBlock.className = "zotero-tags-block";
-    const tagsTitle = document.createElement("div");
-    tagsTitle.className = "zotero-block-title";
-    tagsTitle.textContent = "Tags";
+    this.tagsTitle = document.createElement("div");
+    this.tagsTitle.className = "zotero-block-title";
+    this.tagsTitle.textContent = "Tags";
     this.tagsEl = document.createElement("div");
     this.tagsEl.className = "zotero-tag-facets";
-    tagsBlock.append(tagsTitle, this.tagsEl);
+    tagsBlock.append(this.tagsTitle, this.tagsEl);
 
     this.element.append(searchRow, this.statusEl, treeBlock, tagsBlock);
 
@@ -65,7 +97,15 @@ export class ZoteroCollectionsPanel {
   }
 
   private render(state: RetrieveZoteroState): void {
+    const batchMode = state.workspaceMode === "batches";
+    this.treeTitle.textContent = batchMode ? "Batches" : "Collections";
+    this.tagsTitle.textContent = batchMode ? "Themes" : "Tags";
+    this.searchInput.placeholder = batchMode ? "Search batches by theme or id" : "Search collections by name or key";
+    this.loadSelectedButton.style.display = batchMode ? "none" : "";
     this.statusEl.textContent = state.error ? `${state.status} ${state.error}` : state.status;
+    this.refreshButton.disabled = Boolean(state.loadingTree || state.runningLoad);
+    this.loadSelectedButton.disabled = Boolean(state.loadingTree || !state.selectedCollectionKey || state.runningLoad);
+    this.refreshButton.textContent = batchMode ? "Reload Batches" : "Refresh";
     this.renderTree(state);
     this.renderTags(state);
   }
@@ -119,6 +159,10 @@ export class ZoteroCollectionsPanel {
       const expander = document.createElement("button");
       expander.type = "button";
       expander.className = "zotero-expander";
+      expander.ariaLabel = rowData.childrenCount ? "Collapse collection" : "Collection item";
+      expander.dataset.voiceAliases = rowData.childrenCount
+        ? "expand collection,collapse collection,collection tree,expand folder"
+        : "collection item";
       expander.textContent = rowData.childrenCount ? (rowData.expanded ? "-" : "+") : "";
       expander.disabled = rowData.childrenCount === 0;
       expander.addEventListener("click", (event) => {
@@ -132,11 +176,14 @@ export class ZoteroCollectionsPanel {
       const icon = document.createElement("span");
       icon.className = `zotero-node-icon ${rowData.childrenCount ? "is-folder" : "is-collection"}`;
 
-      const label = document.createElement("button");
-      label.type = "button";
-      label.className = "zotero-node-label";
-      this.renderHighlightedLabel(label, rowData.collection.name, query);
-      label.addEventListener("click", () => retrieveZoteroContext.selectCollection(rowData.collection.key));
+    const label = document.createElement("button");
+    label.type = "button";
+    label.className = "zotero-node-label";
+    label.ariaLabel = `Open collection ${rowData.collection.name}`;
+    label.dataset.voiceAliases = `open collection,select collection ${rowData.collection.name},collection ${rowData.collection.key}`;
+    const composedLabel = `${rowData.collection.name} (${rowData.collection.key})`;
+    this.renderHighlightedLabel(label, composedLabel, query);
+    label.addEventListener("click", () => retrieveZoteroContext.selectCollection(rowData.collection.key));
 
       row.append(expander, icon, label);
       this.treeEl.appendChild(row);
@@ -189,6 +236,7 @@ export class ZoteroCollectionsPanel {
       const chip = document.createElement("button");
       chip.type = "button";
       chip.className = "zotero-tag-chip-v2";
+      chip.dataset.voiceAliases = `toggle tag ${tag},filter tag ${tag},tag ${tag}`;
       chip.style.setProperty("--tag-hue", String((index * 37) % 360));
       if (state.activeTags.includes(tag)) chip.classList.add("is-active");
       chip.textContent = `${tag} (${count})`;

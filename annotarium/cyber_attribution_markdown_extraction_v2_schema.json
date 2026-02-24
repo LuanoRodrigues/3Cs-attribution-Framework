@@ -1,0 +1,2178 @@
+{
+  "name": "cyber_attribution_markdown_extraction_v2",
+  "strict": true,
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "description": "Extraction-only schema for cyber-attribution analysis from a Markdown representation of a document. No OCR. Produces (1) page/section parse with tables/figures/citations/artifacts and (2) claim-level Six-C data extraction anchored to verbatim text with zero-based page indices. No scores, weights, or banding. v2 adds: publication-date provenance roles, stricter URL normalization fields, and artifact-type specific validation constraints.",
+    "additionalProperties": false,
+    "properties": {
+      "document_metadata": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "authoring_entity": {
+            "type": "string"
+          },
+          "publication_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "publication_date_source": {
+            "type": "string",
+            "enum": [
+              "in_text",
+              "pdf_metadata",
+              "filename",
+              "unknown"
+            ]
+          },
+          "publication_date_anchor_role": {
+            "type": "string",
+            "description": "What the anchor line represents; prevents using an 'accessed date' as the report publication date.",
+            "enum": [
+              "publication_date_statement",
+              "accessed_date",
+              "copyright_date",
+              "other_date",
+              "not_found"
+            ]
+          },
+          "publication_date_anchor": {
+            "$ref": "#/$defs/anchor"
+          },
+          "version": {
+            "type": "string"
+          },
+          "document_type": {
+            "type": "string",
+            "enum": [
+              "vendor_report",
+              "government_attribution_statement",
+              "joint_advisory",
+              "academic_paper",
+              "news_investigation",
+              "legal_memo",
+              "technical_appendix",
+              "mixed"
+            ]
+          },
+          "audience": {
+            "type": "string",
+            "enum": [
+              "technical_defenders",
+              "policy",
+              "legal",
+              "public",
+              "mixed"
+            ]
+          },
+          "source_locator": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "source_type": {
+                "type": "string",
+                "enum": [
+                  "file",
+                  "url",
+                  "dataset_id",
+                  "other"
+                ]
+              },
+              "source_value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "source_type",
+              "source_value"
+            ]
+          },
+          "input_format": {
+            "type": "string",
+            "const": "markdown"
+          }
+        },
+        "required": [
+          "title",
+          "authoring_entity",
+          "publication_date",
+          "publication_date_source",
+          "publication_date_anchor_role",
+          "publication_date_anchor",
+          "document_type",
+          "audience",
+          "source_locator",
+          "input_format"
+        ]
+      },
+      "pipeline_config": {
+        "type": "object",
+        "description": "Extraction configuration for Markdown input. No OCR is used.",
+        "additionalProperties": false,
+        "properties": {
+          "pdf_page_indexing": {
+            "type": "string",
+            "enum": [
+              "zero_based"
+            ]
+          },
+          "page_marker_policy": {
+            "type": "string",
+            "enum": [
+              "explicit_markers_required",
+              "explicit_markers_preferred_fallback_page0",
+              "no_page_markers_single_page0"
+            ]
+          },
+          "marker_examples_expected": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 0,
+            "maxItems": 5
+          },
+          "marker_examples_found": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 0,
+            "maxItems": 10
+          },
+          "extract_tables": {
+            "type": "boolean"
+          },
+          "extract_figures_images": {
+            "type": "boolean"
+          },
+          "extract_citations": {
+            "type": "boolean"
+          },
+          "extract_artifacts": {
+            "type": "boolean"
+          },
+          "max_claims": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "claim_selection_strategy": {
+            "type": "string",
+            "enum": [
+              "all_explicit_attribution_claims",
+              "top_n_by_author_emphasis",
+              "top_n_by_centrality",
+              "user_specified"
+            ]
+          },
+          "include_implicit_claims": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "pdf_page_indexing",
+          "page_marker_policy",
+          "marker_examples_expected",
+          "marker_examples_found",
+          "extract_tables",
+          "extract_figures_images",
+          "extract_citations",
+          "extract_artifacts",
+          "max_claims",
+          "claim_selection_strategy",
+          "include_implicit_claims"
+        ]
+      },
+      "stage1_markdown_parse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "page_count": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "pages": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/$defs/page_parse"
+            }
+          },
+          "global_indices": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "sources": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/source_record"
+                },
+                "minItems": 0
+              },
+              "entities": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/entity_record"
+                },
+                "minItems": 0
+              },
+              "artifacts": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/artifact_index_item"
+                },
+                "minItems": 0
+              }
+            },
+            "required": [
+              "sources",
+              "entities",
+              "artifacts"
+            ]
+          }
+        },
+        "required": [
+          "page_count",
+          "pages",
+          "global_indices"
+        ]
+      },
+      "stage2_claim_extraction": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "attribution_claims": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 100,
+            "items": {
+              "$ref": "#/$defs/claim"
+            }
+          },
+          "document_level_index": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "sources": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/source_record"
+                },
+                "minItems": 0
+              },
+              "entities": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/entity_record"
+                },
+                "minItems": 0
+              }
+            },
+            "required": [
+              "sources",
+              "entities"
+            ]
+          }
+        },
+        "required": [
+          "attribution_claims",
+          "document_level_index"
+        ]
+      }
+    },
+    "required": [
+      "document_metadata",
+      "pipeline_config",
+      "stage1_markdown_parse",
+      "stage2_claim_extraction"
+    ],
+    "allOf": [
+      {
+        "if": {
+          "properties": {
+            "pipeline_config": {
+              "properties": {
+                "page_marker_policy": {
+                  "const": "no_page_markers_single_page0"
+                }
+              },
+              "required": [
+                "page_marker_policy"
+              ]
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "stage1_markdown_parse": {
+              "properties": {
+                "page_count": {
+                  "const": 1
+                }
+              },
+              "required": [
+                "page_count"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "if": {
+          "properties": {
+            "document_metadata": {
+              "properties": {
+                "publication_date_source": {
+                  "const": "in_text"
+                }
+              },
+              "required": [
+                "publication_date_source"
+              ]
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "document_metadata": {
+              "properties": {
+                "publication_date_anchor_role": {
+                  "const": "publication_date_statement"
+                }
+              },
+              "required": [
+                "publication_date_anchor_role"
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "$defs": {
+      "extraction_method": {
+        "type": "string",
+        "enum": [
+          "markdown",
+          "manual_description",
+          "manual_transcription"
+        ]
+      },
+      "location_ref": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "page_index": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "page_label": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "section_heading": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "object_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "page_index",
+          "page_label",
+          "section_heading",
+          "object_id"
+        ]
+      },
+      "anchor": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "anchor_id": {
+            "type": "string",
+            "pattern": "^(P[0-9]{3}|C[0-9]{3})-A[0-9]{3,4}$"
+          },
+          "extraction_method": {
+            "$ref": "#/$defs/extraction_method"
+          },
+          "verbatim_text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2500
+          },
+          "location": {
+            "$ref": "#/$defs/location_ref"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "anchor_id",
+          "extraction_method",
+          "verbatim_text",
+          "location",
+          "notes"
+        ]
+      },
+      "text_block": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "block_id": {
+            "type": "string",
+            "pattern": "^P[0-9]{3}-B[0-9]{2}$"
+          },
+          "extraction_method": {
+            "$ref": "#/$defs/extraction_method"
+          },
+          "text_verbatim": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 8000
+          },
+          "location": {
+            "$ref": "#/$defs/location_ref"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "block_id",
+          "extraction_method",
+          "text_verbatim",
+          "location",
+          "notes"
+        ]
+      },
+      "table_kind": {
+        "type": "string",
+        "enum": [
+          "ioc_list",
+          "data_table",
+          "timeline_table",
+          "matrix",
+          "other"
+        ]
+      },
+      "table_representation": {
+        "type": "string",
+        "enum": [
+          "markdown_table",
+          "cells",
+          "csv",
+          "verbatim_text"
+        ]
+      },
+      "table_object": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "object_id": {
+            "type": "string",
+            "pattern": "^P[0-9]{3}-T[0-9]{2}$"
+          },
+          "caption_verbatim": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 1000
+          },
+          "table_kind": {
+            "$ref": "#/$defs/table_kind"
+          },
+          "representation": {
+            "$ref": "#/$defs/table_representation"
+          },
+          "table_markdown": {
+            "type": "string",
+            "maxLength": 50000
+          },
+          "table_cells": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1
+            },
+            "minItems": 0,
+            "maxItems": 3000
+          },
+          "table_csv": {
+            "type": "string",
+            "maxLength": 50000
+          },
+          "table_text_verbatim": {
+            "type": "string",
+            "maxLength": 50000
+          },
+          "location": {
+            "$ref": "#/$defs/location_ref"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "object_id",
+          "caption_verbatim",
+          "table_kind",
+          "representation",
+          "table_markdown",
+          "table_cells",
+          "table_csv",
+          "table_text_verbatim",
+          "location",
+          "notes"
+        ]
+      },
+      "figure_object": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "object_id": {
+            "type": "string",
+            "pattern": "^P[0-9]{3}-F[0-9]{2}$"
+          },
+          "caption_verbatim": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 1000
+          },
+          "image_ref": {
+            "type": "string"
+          },
+          "alt_text": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "analyst_description": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "location": {
+            "$ref": "#/$defs/location_ref"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "object_id",
+          "caption_verbatim",
+          "image_ref",
+          "alt_text",
+          "analyst_description",
+          "location",
+          "notes"
+        ]
+      },
+      "citation_occurrence": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "citation_id": {
+            "type": "string",
+            "pattern": "^CIT[0-9]{4}$"
+          },
+          "citation_kind": {
+            "type": "string",
+            "const": "bibliographic"
+          },
+          "raw_citation_text": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "raw_identifier": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "normalized_identifier": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[^\\s<>]+$"
+          },
+          "resolved_source_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^SRC[0-9]{4}$"
+          },
+          "anchor": {
+            "$ref": "#/$defs/anchor"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "citation_id",
+          "citation_kind",
+          "raw_citation_text",
+          "raw_identifier",
+          "normalized_identifier",
+          "resolved_source_id",
+          "anchor",
+          "notes"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "normalized_identifier": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "normalized_identifier"
+              ]
+            },
+            "then": {
+              "properties": {
+                "raw_identifier": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "raw_identifier"
+              ]
+            }
+          }
+        ]
+      },
+      "artifact_type": {
+        "type": "string",
+        "enum": [
+          "hash_md5",
+          "hash_sha1",
+          "hash_sha256",
+          "ip",
+          "domain",
+          "url",
+          "email",
+          "cve",
+          "registry_key",
+          "file_path",
+          "file_name",
+          "process_name",
+          "scheduled_task",
+          "command_line",
+          "whois_record",
+          "passive_dns_record",
+          "certificate",
+          "social_media_handle",
+          "social_media_url",
+          "other"
+        ]
+      },
+      "artifact_occurrence": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "artifact_id": {
+            "type": "string",
+            "pattern": "^ART[0-9]{5}$"
+          },
+          "artifact_type": {
+            "$ref": "#/$defs/artifact_type"
+          },
+          "value": {
+            "type": "string",
+            "maxLength": 8000
+          },
+          "normalized_value": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 8000
+          },
+          "anchor": {
+            "$ref": "#/$defs/anchor"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "artifact_id",
+          "artifact_type",
+          "value",
+          "normalized_value",
+          "anchor",
+          "notes"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "artifact_type": {
+                  "const": "hash_md5"
+                }
+              },
+              "required": [
+                "artifact_type"
+              ]
+            },
+            "then": {
+              "properties": {
+                "normalized_value": {
+                  "type": "string",
+                  "pattern": "^[A-Fa-f0-9]{32}$"
+                }
+              },
+              "required": [
+                "normalized_value"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "artifact_type": {
+                  "const": "hash_sha1"
+                }
+              },
+              "required": [
+                "artifact_type"
+              ]
+            },
+            "then": {
+              "properties": {
+                "normalized_value": {
+                  "type": "string",
+                  "pattern": "^[A-Fa-f0-9]{40}$"
+                }
+              },
+              "required": [
+                "normalized_value"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "artifact_type": {
+                  "const": "hash_sha256"
+                }
+              },
+              "required": [
+                "artifact_type"
+              ]
+            },
+            "then": {
+              "properties": {
+                "normalized_value": {
+                  "type": "string",
+                  "pattern": "^[A-Fa-f0-9]{64}$"
+                }
+              },
+              "required": [
+                "normalized_value"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "artifact_type": {
+                  "const": "ip"
+                }
+              },
+              "required": [
+                "artifact_type"
+              ]
+            },
+            "then": {
+              "properties": {
+                "normalized_value": {
+                  "type": "string",
+                  "pattern": "^(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\\.(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\\.(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\\.(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])$"
+                }
+              },
+              "required": [
+                "normalized_value"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "artifact_type": {
+                  "const": "email"
+                }
+              },
+              "required": [
+                "artifact_type"
+              ]
+            },
+            "then": {
+              "properties": {
+                "normalized_value": {
+                  "type": "string",
+                  "pattern": "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"
+                }
+              },
+              "required": [
+                "normalized_value"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "artifact_type": {
+                  "const": "cve"
+                }
+              },
+              "required": [
+                "artifact_type"
+              ]
+            },
+            "then": {
+              "properties": {
+                "normalized_value": {
+                  "type": "string",
+                  "pattern": "^CVE-[0-9]{4}-[0-9]{4,}$"
+                }
+              },
+              "required": [
+                "normalized_value"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "artifact_type": {
+                  "const": "url"
+                }
+              },
+              "required": [
+                "artifact_type"
+              ]
+            },
+            "then": {
+              "properties": {
+                "normalized_value": {
+                  "type": "string",
+                  "pattern": "^(?:https?://)[^\\s<>]+$"
+                }
+              },
+              "required": [
+                "normalized_value"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "artifact_type": {
+                  "const": "file_name"
+                }
+              },
+              "required": [
+                "artifact_type"
+              ]
+            },
+            "then": {
+              "properties": {
+                "normalized_value": {
+                  "type": "string",
+                  "pattern": "^[^\\\\/:*?\"<>|\\s]+\\.(?:exe|dll|pdb|zip|rar|7z|log|txt|doc|docx|pdf|ioc|bat|cmd|ps1)$"
+                }
+              },
+              "required": [
+                "normalized_value"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "artifact_type": {
+                  "const": "domain"
+                }
+              },
+              "required": [
+                "artifact_type"
+              ]
+            },
+            "then": {
+              "properties": {
+                "normalized_value": {
+                  "type": "string",
+                  "pattern": "^(?!.*\\.(?:exe|dll|pdb|zip|rar|7z|log|txt|doc|docx|pdf|ioc|bat|cmd|ps1)$)(?:[A-Za-z0-9-]+\\.)+[A-Za-z]{2,63}$"
+                }
+              },
+              "required": [
+                "normalized_value"
+              ]
+            }
+          }
+        ]
+      },
+      "page_parse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "page_index": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "page_label": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "section_headings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 0,
+            "maxItems": 200
+          },
+          "text_blocks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/text_block"
+            },
+            "minItems": 0,
+            "maxItems": 200
+          },
+          "tables": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/table_object"
+            },
+            "minItems": 0,
+            "maxItems": 100
+          },
+          "figures_images": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/figure_object"
+            },
+            "minItems": 0,
+            "maxItems": 100
+          },
+          "citations_found": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/citation_occurrence"
+            },
+            "minItems": 0,
+            "maxItems": 300
+          },
+          "artifacts_found": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/artifact_occurrence"
+            },
+            "minItems": 0,
+            "maxItems": 5000
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "page_index",
+          "page_label",
+          "section_headings",
+          "text_blocks",
+          "tables",
+          "figures_images",
+          "citations_found",
+          "artifacts_found",
+          "notes"
+        ]
+      },
+      "source_type": {
+        "type": "string",
+        "enum": [
+          "internal_document_section",
+          "vendor_report",
+          "government",
+          "international_institution",
+          "academic",
+          "ngo",
+          "press_media",
+          "judicial",
+          "other"
+        ]
+      },
+      "source_record": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "source_id": {
+            "type": "string",
+            "pattern": "^SRC[0-9]{4}$"
+          },
+          "source_type": {
+            "$ref": "#/$defs/source_type"
+          },
+          "entity_name": {
+            "type": "string"
+          },
+          "year": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1500,
+            "maximum": 2200
+          },
+          "title": {
+            "type": "string"
+          },
+          "publication_or_venue": {
+            "type": "string"
+          },
+          "url_or_identifier": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^(?:https?://)?[^\\s<>]+$"
+          },
+          "cited_in_document": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/location_ref"
+            },
+            "minItems": 0
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_id",
+          "source_type",
+          "entity_name",
+          "year",
+          "title",
+          "publication_or_venue",
+          "url_or_identifier",
+          "cited_in_document",
+          "notes"
+        ]
+      },
+      "entity_record": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "entity_id": {
+            "type": "string",
+            "pattern": "^ENT[0-9]{5}$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "entity_type": {
+            "type": "string",
+            "enum": [
+              "person",
+              "organization",
+              "state",
+              "group",
+              "company",
+              "tool",
+              "malware",
+              "other"
+            ]
+          },
+          "aliases": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 0,
+            "maxItems": 80
+          },
+          "mentions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/location_ref"
+            },
+            "minItems": 0
+          }
+        },
+        "required": [
+          "entity_id",
+          "name",
+          "entity_type",
+          "aliases",
+          "mentions"
+        ]
+      },
+      "artifact_index_item": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "artifact_type": {
+            "$ref": "#/$defs/artifact_type"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "example_values": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 0,
+            "maxItems": 25
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "artifact_type",
+          "count",
+          "example_values",
+          "notes"
+        ]
+      },
+      "claim_type": {
+        "type": "string",
+        "enum": [
+          "intrusion_set_attribution",
+          "campaign_attribution",
+          "incident_attribution",
+          "malware_family_attribution",
+          "cluster_linkage_attribution",
+          "state_responsibility_claim",
+          "mixed"
+        ]
+      },
+      "claim_scope": {
+        "type": "string",
+        "enum": [
+          "intrusion_set",
+          "campaign",
+          "incident",
+          "malware_family",
+          "state_responsibility_claim",
+          "mixed"
+        ]
+      },
+      "explicitness": {
+        "type": "string",
+        "enum": [
+          "explicit",
+          "implicit",
+          "inferred_by_grader"
+        ]
+      },
+      "subject_kind": {
+        "type": "string",
+        "enum": [
+          "intrusion_set",
+          "campaign",
+          "incident",
+          "malware_family",
+          "actor_persona",
+          "other"
+        ]
+      },
+      "attribution_target_type": {
+        "type": "string",
+        "enum": [
+          "state",
+          "state_linked_actor",
+          "criminal_group",
+          "private_company",
+          "individual",
+          "unknown",
+          "other"
+        ]
+      },
+      "attribution_relationship": {
+        "type": "string",
+        "enum": [
+          "responsible",
+          "likely_responsible",
+          "attributed_to",
+          "linked_to",
+          "associated_with",
+          "sponsored_by",
+          "directed_by",
+          "unknown",
+          "other"
+        ]
+      },
+      "claim_component": {
+        "type": "string",
+        "enum": [
+          "event_occurrence",
+          "initial_access_vector",
+          "malware_linkage",
+          "infrastructure_linkage",
+          "ttp_similarity",
+          "timeline_linkage",
+          "victimology",
+          "actor_identity",
+          "state_sponsorship_or_direction",
+          "intent_motive",
+          "command_and_control",
+          "financial_monetization",
+          "other"
+        ]
+      },
+      "claim_subject": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/$defs/subject_kind"
+          },
+          "aliases": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 0,
+            "maxItems": 80
+          }
+        },
+        "required": [
+          "name",
+          "kind",
+          "aliases"
+        ]
+      },
+      "claim_attribution": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "attributed_to_name": {
+            "type": "string"
+          },
+          "attributed_to_type": {
+            "$ref": "#/$defs/attribution_target_type"
+          },
+          "relationship": {
+            "$ref": "#/$defs/attribution_relationship"
+          }
+        },
+        "required": [
+          "attributed_to_name",
+          "attributed_to_type",
+          "relationship"
+        ]
+      },
+      "c_block_quality_checks": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "has_verbatim_anchors": {
+            "type": "boolean"
+          },
+          "has_external_sources": {
+            "type": "boolean"
+          },
+          "has_quantitative_counts": {
+            "type": "boolean"
+          },
+          "has_explicit_limitations": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "has_verbatim_anchors",
+          "has_external_sources",
+          "has_quantitative_counts",
+          "has_explicit_limitations"
+        ]
+      },
+      "c_block_base": {
+        "type": "object",
+        "properties": {
+          "key_questions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "maxItems": 25
+          },
+          "quality_checks": {
+            "$ref": "#/$defs/c_block_quality_checks"
+          },
+          "summary": {
+            "type": "string",
+            "maxLength": 2500
+          }
+        },
+        "required": [
+          "key_questions",
+          "quality_checks",
+          "summary"
+        ]
+      },
+      "artifact_counter": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "artifact_type": {
+            "$ref": "#/$defs/artifact_type"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "supporting_anchors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/anchor"
+            },
+            "minItems": 0,
+            "maxItems": 30
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "artifact_type",
+          "count",
+          "supporting_anchors",
+          "notes"
+        ]
+      },
+      "collection_context": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "collector": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "collection_time_window": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "collection_environment": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "preservation_method": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "collector",
+          "collection_time_window",
+          "collection_environment",
+          "preservation_method"
+        ]
+      },
+      "chain_of_custody_item": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "evidence_purpose": {
+            "type": "string",
+            "enum": [
+              "prove_incident_occurred",
+              "link_incident_to_actor",
+              "link_actor_to_state_or_controller",
+              "other"
+            ]
+          },
+          "evidence_kind": {
+            "$ref": "#/$defs/artifact_type"
+          },
+          "artifact_identifiers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 0,
+            "maxItems": 3000
+          },
+          "collection_context": {
+            "$ref": "#/$defs/collection_context"
+          },
+          "integrity_controls_disclosed": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 0,
+            "maxItems": 50
+          },
+          "tampering_or_spoofing_risks_noted": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 0,
+            "maxItems": 50
+          },
+          "anchors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/anchor"
+            },
+            "minItems": 1,
+            "maxItems": 40
+          },
+          "artifact_counters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/artifact_counter"
+            },
+            "minItems": 0,
+            "maxItems": 200
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "evidence_purpose",
+          "evidence_kind",
+          "artifact_identifiers",
+          "collection_context",
+          "integrity_controls_disclosed",
+          "tampering_or_spoofing_risks_noted",
+          "anchors",
+          "artifact_counters",
+          "notes"
+        ]
+      },
+      "credibility_source_support": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "source_id": {
+            "type": "string",
+            "pattern": "^SRC[0-9]{4}$"
+          },
+          "supports_components": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/claim_component"
+            },
+            "minItems": 0,
+            "maxItems": 30
+          },
+          "supporting_anchors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/anchor"
+            },
+            "minItems": 1,
+            "maxItems": 40
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_id",
+          "supports_components",
+          "supporting_anchors",
+          "notes"
+        ]
+      },
+      "citation_counts": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "total_sources": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "external_sources": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "internal_sources": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "unique_source_entities": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "total_sources",
+          "external_sources",
+          "internal_sources",
+          "unique_source_entities"
+        ]
+      },
+      "corroboration_matrix_row": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "component": {
+            "$ref": "#/$defs/claim_component"
+          },
+          "supported_by_source_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^SRC[0-9]{4}$"
+            },
+            "minItems": 0,
+            "maxItems": 400
+          },
+          "supporting_anchors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/anchor"
+            },
+            "minItems": 0,
+            "maxItems": 80
+          },
+          "source_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "unique_source_entity_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "component",
+          "supported_by_source_ids",
+          "supporting_anchors",
+          "source_count",
+          "unique_source_entity_count",
+          "notes"
+        ]
+      },
+      "argument_step_type": {
+        "type": "string",
+        "enum": [
+          "observation",
+          "premise",
+          "intermediate_inference",
+          "intermediate_conclusion",
+          "final_conclusion",
+          "assumption",
+          "caveat"
+        ]
+      },
+      "argument_step": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "step_id": {
+            "type": "string",
+            "pattern": "^C[0-9]{3}-S[0-9]{2,3}$"
+          },
+          "step_type": {
+            "$ref": "#/$defs/argument_step_type"
+          },
+          "statement": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "supports_component": {
+            "$ref": "#/$defs/claim_component"
+          },
+          "depends_on_step_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 0,
+            "maxItems": 80
+          },
+          "supporting_anchors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/anchor"
+            },
+            "minItems": 0,
+            "maxItems": 60
+          },
+          "supporting_source_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^SRC[0-9]{4}$"
+            },
+            "minItems": 0,
+            "maxItems": 200
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "step_id",
+          "step_type",
+          "statement",
+          "supports_component",
+          "depends_on_step_ids",
+          "supporting_anchors",
+          "supporting_source_ids",
+          "notes"
+        ]
+      },
+      "certainty_polarity": {
+        "type": "string",
+        "enum": [
+          "certainty",
+          "uncertainty",
+          "mixed_or_hedged"
+        ]
+      },
+      "certainty_expression": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "expression": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "polarity": {
+            "$ref": "#/$defs/certainty_polarity"
+          },
+          "applies_to_component": {
+            "$ref": "#/$defs/claim_component"
+          },
+          "anchors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/anchor"
+            },
+            "minItems": 1,
+            "maxItems": 20
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "expression",
+          "polarity",
+          "applies_to_component",
+          "anchors",
+          "notes"
+        ]
+      },
+      "confidence_scale_definition": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "defined_in_document": {
+            "type": "boolean"
+          },
+          "definition_anchors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/anchor"
+            },
+            "minItems": 0,
+            "maxItems": 10
+          }
+        },
+        "required": [
+          "defined_in_document",
+          "definition_anchors"
+        ]
+      },
+      "legal_test": {
+        "type": "string",
+        "enum": [
+          "ilc_asr_article_4_state_organs",
+          "ilc_asr_article_5_entities_exercising_governmental_authority",
+          "ilc_asr_article_6_organs_placed_at_disposal",
+          "ilc_asr_article_7_excess_of_authority",
+          "ilc_asr_article_8_direction_or_control",
+          "effective_control",
+          "overall_control",
+          "due_diligence",
+          "attribution_standard_of_proof",
+          "countermeasures",
+          "use_of_force",
+          "armed_attack",
+          "necessity_proportionality",
+          "other"
+        ]
+      },
+      "legal_reference": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "reference_id": {
+            "type": "string",
+            "pattern": "^LREF[0-9]{4}$"
+          },
+          "framework_or_source": {
+            "type": "string"
+          },
+          "citation_verbatim": {
+            "type": "string",
+            "maxLength": 2500
+          },
+          "anchors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/anchor"
+            },
+            "minItems": 1,
+            "maxItems": 20
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reference_id",
+          "framework_or_source",
+          "citation_verbatim",
+          "anchors",
+          "notes"
+        ]
+      },
+      "legal_mapping_item": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "test": {
+            "$ref": "#/$defs/legal_test"
+          },
+          "addressed_in_text": {
+            "type": "boolean"
+          },
+          "position_verbatim": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 2500
+          },
+          "anchors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/anchor"
+            },
+            "minItems": 0,
+            "maxItems": 40
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "test",
+          "addressed_in_text",
+          "position_verbatim",
+          "anchors",
+          "notes"
+        ]
+      },
+      "chain_of_custody_block": {
+        "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/$defs/c_block_base"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "evidence_items": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/chain_of_custody_item"
+                },
+                "minItems": 0,
+                "maxItems": 300
+              },
+              "artifact_inventory": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/artifact_counter"
+                },
+                "minItems": 0,
+                "maxItems": 300
+              }
+            },
+            "required": [
+              "key_questions",
+              "quality_checks",
+              "summary",
+              "evidence_items",
+              "artifact_inventory"
+            ]
+          }
+        ],
+        "unevaluatedProperties": false
+      },
+      "credibility_block": {
+        "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/$defs/c_block_base"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "sources_index": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/source_record"
+                },
+                "minItems": 1,
+                "maxItems": 800
+              },
+              "sources_supporting_claim": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/credibility_source_support"
+                },
+                "minItems": 0,
+                "maxItems": 800
+              },
+              "citation_counts": {
+                "$ref": "#/$defs/citation_counts"
+              }
+            },
+            "required": [
+              "key_questions",
+              "quality_checks",
+              "summary",
+              "sources_index",
+              "sources_supporting_claim",
+              "citation_counts"
+            ]
+          }
+        ],
+        "unevaluatedProperties": false
+      },
+      "corroboration_block": {
+        "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/$defs/c_block_base"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "corroboration_matrix": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/corroboration_matrix_row"
+                },
+                "minItems": 0,
+                "maxItems": 80
+              }
+            },
+            "required": [
+              "key_questions",
+              "quality_checks",
+              "summary",
+              "corroboration_matrix"
+            ]
+          }
+        ],
+        "unevaluatedProperties": false
+      },
+      "coherence_block": {
+        "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/$defs/c_block_base"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "argument_steps": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/argument_step"
+                },
+                "minItems": 0,
+                "maxItems": 400
+              },
+              "alternative_hypotheses_in_text": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/anchor"
+                },
+                "minItems": 0,
+                "maxItems": 80
+              }
+            },
+            "required": [
+              "key_questions",
+              "quality_checks",
+              "summary",
+              "argument_steps",
+              "alternative_hypotheses_in_text"
+            ]
+          }
+        ],
+        "unevaluatedProperties": false
+      },
+      "confidence_block": {
+        "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/$defs/c_block_base"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "certainty_expressions": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/certainty_expression"
+                },
+                "minItems": 0,
+                "maxItems": 500
+              },
+              "confidence_scale_definition": {
+                "$ref": "#/$defs/confidence_scale_definition"
+              }
+            },
+            "required": [
+              "key_questions",
+              "quality_checks",
+              "summary",
+              "certainty_expressions",
+              "confidence_scale_definition"
+            ]
+          }
+        ],
+        "unevaluatedProperties": false
+      },
+      "compliance_block": {
+        "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/$defs/c_block_base"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "legal_references": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/legal_reference"
+                },
+                "minItems": 0,
+                "maxItems": 300
+              },
+              "legal_mapping": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/legal_mapping_item"
+                },
+                "minItems": 0,
+                "maxItems": 120
+              },
+              "standard_of_proof_language": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/anchor"
+                },
+                "minItems": 0,
+                "maxItems": 30
+              }
+            },
+            "required": [
+              "key_questions",
+              "quality_checks",
+              "summary",
+              "legal_references",
+              "legal_mapping",
+              "standard_of_proof_language"
+            ]
+          }
+        ],
+        "unevaluatedProperties": false
+      },
+      "six_c": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "chain_of_custody": {
+            "$ref": "#/$defs/chain_of_custody_block"
+          },
+          "credibility": {
+            "$ref": "#/$defs/credibility_block"
+          },
+          "corroboration": {
+            "$ref": "#/$defs/corroboration_block"
+          },
+          "coherence": {
+            "$ref": "#/$defs/coherence_block"
+          },
+          "confidence": {
+            "$ref": "#/$defs/confidence_block"
+          },
+          "compliance": {
+            "$ref": "#/$defs/compliance_block"
+          }
+        },
+        "required": [
+          "chain_of_custody",
+          "credibility",
+          "corroboration",
+          "coherence",
+          "confidence",
+          "compliance"
+        ]
+      },
+      "claim_quality_checks": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "has_claim_grounding_anchor": {
+            "type": "boolean"
+          },
+          "has_sources_index": {
+            "type": "boolean"
+          },
+          "has_corroboration_matrix": {
+            "type": "boolean"
+          },
+          "has_argument_steps": {
+            "type": "boolean"
+          },
+          "has_certainty_expressions": {
+            "type": "boolean"
+          },
+          "has_legal_references": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "has_claim_grounding_anchor",
+          "has_sources_index",
+          "has_corroboration_matrix",
+          "has_argument_steps",
+          "has_certainty_expressions",
+          "has_legal_references"
+        ]
+      },
+      "claim": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "claim_id": {
+            "type": "string",
+            "pattern": "^C[0-9]{3}$"
+          },
+          "salience_rank": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "claim_type": {
+            "$ref": "#/$defs/claim_type"
+          },
+          "scope": {
+            "$ref": "#/$defs/claim_scope"
+          },
+          "explicitness": {
+            "$ref": "#/$defs/explicitness"
+          },
+          "claim_statement": {
+            "$ref": "#/$defs/anchor"
+          },
+          "subject": {
+            "$ref": "#/$defs/claim_subject"
+          },
+          "attribution": {
+            "$ref": "#/$defs/claim_attribution"
+          },
+          "claim_components_asserted": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/claim_component"
+            },
+            "minItems": 1,
+            "maxItems": 40
+          },
+          "caveats_or_limitations_in_text": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/anchor"
+            },
+            "minItems": 0,
+            "maxItems": 80
+          },
+          "quality_checks": {
+            "$ref": "#/$defs/claim_quality_checks"
+          },
+          "six_c": {
+            "$ref": "#/$defs/six_c"
+          }
+        },
+        "required": [
+          "claim_id",
+          "salience_rank",
+          "claim_type",
+          "scope",
+          "explicitness",
+          "claim_statement",
+          "subject",
+          "attribution",
+          "claim_components_asserted",
+          "caveats_or_limitations_in_text",
+          "quality_checks",
+          "six_c"
+        ]
+      }
+    }
+  }
+}

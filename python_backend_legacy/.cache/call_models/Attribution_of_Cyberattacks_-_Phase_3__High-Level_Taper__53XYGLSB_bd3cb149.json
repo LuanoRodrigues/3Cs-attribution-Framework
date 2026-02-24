@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": "{\n  \"classification\": \"Highly Relevant\",\n  \"relevance_score\": \"High\",\n  \"potential_subcategory\": \"Public International Law \u2014 State Responsibility & Countermeasures; Attribution and Due Diligence in Cyber Operations; Proportionality and Cyber-Specific Countermeasures (active defense/hack-back); Cyber Election Interference Policy\",\n  \"justification\": \"The abstract directly addresses core legal and policy questions central to cyber conflict attribution and response: attribution difficulties and due-diligence attribution standards; procedural prerequisites for countermeasures; proportionality (proposes a functional proportionality standard and quantitative benchmarks); and recognition of cyber-specific countermeasures (including active defense/hack-back). It situates these issues within public international law, cites state practice (Sony, Estonia), and makes explicit policy recommendations (empirical research, multilateral codification), making it highly applicable to scholarship and policymaking on cyber attribution and legal responses. While doctrinal in form, the piece engages operational and normative aspects critical to attribution and policy/law debates.\"\n}"
+  },
+  "cached_at": "2026-02-23T20:47:41.682579Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "53XYGLSB",
+  "function": "classify_by_abs"
+}

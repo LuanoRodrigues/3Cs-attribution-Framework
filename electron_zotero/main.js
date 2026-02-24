@@ -32,6 +32,7 @@ const AGENT_MAX_SCAN_ITEMS = 2500;
 const INTENT_CLASSIFIER_MODEL = "gpt-5-mini";
 const INTENT_LLM_MODEL = "gpt-5-mini";
 const ZOTERO_HTTP_TIMEOUT_MS = 25 * 1000;
+const COLLECTION_KEY_RE = /^[A-Za-z0-9]{8}$/;
 const OPENAI_BATCH_SYNC_COOLDOWN_MS = 15 * 1000;
 const OPENAI_POSTPROCESS_STALE_MS = 2 * 60 * 1000;
 const OPENAI_POSTPROCESS_TIMEOUT_MS = 20 * 60 * 1000;
@@ -861,6 +862,108 @@ function cleanIdentifier(value) {
     .trim();
 }
 
+function normalizeCollectionIdentifier(context = {}) {
+  const candidateName = cleanIdentifier(context?.selectedCollectionName || "");
+  const candidateKey = cleanIdentifier(context?.selectedCollectionKey || "");
+  if (candidateName) return candidateName;
+  if (COLLECTION_KEY_RE.test(candidateKey)) return candidateKey;
+  return "";
+}
+
+function extractCollectionIdentifierFromText(raw) {
+  const text = cleanIdentifier(raw || "");
+  const match = text.match(/(?:\bcollection\b|\bkey\b)\s+(?:is\s+|:?\s+)?([A-Za-z0-9]{8})(?:\b|$)/i);
+  return String(match?.[1] || "").trim();
+}
+
+function cleanVerbatimDirCandidate(value) {
+  return String(value || "").trim();
+}
+
+function isBlankDirBase(value) {
+  const normalized = cleanVerbatimDirCandidate(value);
+  return !normalized || normalized === "./running_tests";
+}
+
+function resolveVerbatimAnalyseDirBase() {
+  const configured = toString(process.env.ZOTERO_ANALYSE_DIR) || toString(process.env.ANALYSE_DIR);
+  if (configured) return configured;
+  const home = process.env.HOME || process.env.USERPROFILE;
+  return home ? path.join(home, "annotarium", "analyse", "frameworks") : "./running_tests";
+}
+
+function slugVerbatimDirName(value) {
+  const slug = String(value || "")
+    .trim()
+    .replace(/[\\\/]/g, "_")
+    .replace(/[^A-Za-z0-9._-]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 120);
+  return slug;
+}
+
+function resolveVerbatimDirBase(context = {}) {
+  const fallback = resolveVerbatimAnalyseDirBase();
+  const candidates = [
+    "selectedAnalyseRunPath",
+    "analyseRunPath",
+    "runPath",
+    "activeRunPath",
+    "selectedRunPath",
+    "selectedAnalysePath",
+    "selectedAnalyseBaseDir",
+    "analysisBaseDir",
+    "analyseBaseDir",
+    "baseDir",
+    "dir_base"
+  ];
+  for (const key of candidates) {
+    const value = cleanVerbatimDirCandidate(context?.[key]);
+    if (!isBlankDirBase(value)) {
+      return value;
+    }
+  }
+
+  const collectionName = normalizeCollectionIdentifier(context);
+  if (collectionName) {
+    const slug = slugVerbatimDirName(collectionName);
+    if (slug) {
+      return path.join(fallback, slug);
+    }
+  }
+
+  return fallback;
+}
+
+function normalizeVerbatimFeatureContext(functionName, argsValues = {}, context = {}) {
+  if (String(functionName || "") !== "Verbatim_Evidence_Coding") return {};
+  const merged = {};
+  const selectedCollectionName = cleanVerbatimDirCandidate(
+    toString(context?.selectedCollectionName || context?.selectedCollectionKey || argsValues?.collection_name || context?.collection_name)
+  );
+  if (selectedCollectionName) merged.selectedCollectionName = selectedCollectionName;
+  const selectedCollectionKey = cleanVerbatimDirCandidate(
+    toString(context?.selectedCollectionKey || argsValues?.collection_key || context?.collection_key)
+  );
+  if (selectedCollectionKey) merged.selectedCollectionKey = selectedCollectionKey;
+  return merged;
+}
+
+function applyVerbatimDirBase(functionName, argsValues = {}, context = {}) {
+  if (String(functionName || "") !== "Verbatim_Evidence_Coding") return argsValues;
+  const next = argsValues && typeof argsValues === "object" ? { ...argsValues } : {};
+  const current = cleanVerbatimDirCandidate(next?.dir_base);
+  if (!isBlankDirBase(current)) return next;
+  const resolvedContext = {
+    ...context,
+    ...normalizeVerbatimFeatureContext(functionName, argsValues, context)
+  };
+  const resolvedDir = resolveVerbatimDirBase(resolvedContext);
+  if (resolvedDir === current) return next;
+  next.dir_base = resolvedDir;
+  return next;
+}
+
 function tokenizeIntentText(value) {
   return normalizeName(value)
     .replace(/[^a-z0-9]+/g, " ")
@@ -1041,7 +1144,7 @@ function parseEligibilityCriteriaIntent(text, context = {}) {
     /\bexclusion\b/.test(low);
   if (!looksLikeEligibility) return null;
 
-  const collectionName = cleanIdentifier(context?.selectedCollectionName || "");
+  const collectionName = normalizeCollectionIdentifier(context);
   const inclusionMatch =
     raw.match(/(?:inclusion(?:\s+criteria)?\s*[:\-])([\s\S]*?)(?=(?:\n\s*exclusion(?:\s+criteria)?\s*[:\-])|$)/i) ||
     raw.match(/(?:include\s*[:\-])([\s\S]*?)(?=(?:\n\s*exclude\s*[:\-])|$)/i);
@@ -1180,10 +1283,10 @@ function parseVerbatimCodingIntent(text, context = {}) {
   const raw = String(text || "").trim();
   if (!raw) return null;
   const low = raw.toLowerCase();
-  const screening =
-    /\b(no screening|without screening|skip screening|screening false)\b/i.test(raw)
-      ? false
-      : true;
+  const screeningRequested =
+    /\b(screen|screening|eligibility|inclusion|exclusion)\b/i.test(raw) &&
+    !/\b(no screening|without screening|skip screening|screening false|disable screening)\b/i.test(raw);
+  const screening = screeningRequested;
   const looksLikeCoding =
     /\b(?:code|coding)\b/.test(low) &&
     (/\bquestion\b/.test(low) || /\brq\d*\b/.test(low) || /\babout\b/.test(low) || /\bmodels?\b/.test(low) || /\bframeworks?\b/.test(low));
@@ -1225,7 +1328,7 @@ function parseVerbatimCodingIntent(text, context = {}) {
   if (researchQuestions.length > 5) researchQuestions = researchQuestions.slice(0, 5);
   const contextMatch = raw.match(/(?:context|background)\s*[:\-]\s*([\s\S]*?)(?=(?:\n\s*(?:questions?|research questions?)\s*[:\-])|$)/i);
   const codingContext = String(contextMatch?.[1] || "").trim();
-  const collectionName = cleanIdentifier(context?.selectedCollectionName || "");
+  const collectionName = normalizeCollectionIdentifier(context) || extractCollectionIdentifierFromText(raw);
   const clarificationQuestions = [];
   if (!collectionName) clarificationQuestions.push("Select a collection before coding.");
   if (!researchQuestions.length) {
@@ -1243,7 +1346,7 @@ function parseVerbatimCodingIntent(text, context = {}) {
     needsClarification: clarificationQuestions.length > 0,
     clarificationQuestions,
     args: {
-      dir_base: "./running_tests",
+      dir_base: resolveVerbatimDirBase(context),
       collection_name: collectionName,
       research_questions: researchQuestions,
       prompt_key: "code_pdf_page",
@@ -1281,7 +1384,7 @@ async function resolveCodingIntentWithLLM(text, context = {}) {
     "You extract coding intents for a Zotero coding workflow.",
     "If user asks to code/coding their collection/data/literature, set is_coding_request=true.",
     "Return 3 to 5 high-quality research questions focused on the user topic.",
-    "Set screening=true by default. Set screening=false only if user explicitly asks to skip/disable screening.",
+    "Set screening=false by default. Set screening=true only if user explicitly asks to screen/screening/eligibility.",
     "Questions should be suitable for literature review evidence coding.",
     "If topic is unclear, set needsClarification=true and ask concise questions.",
     "Return output only through the tool schema."
@@ -2032,7 +2135,27 @@ async function resolveIntent(text, context = {}) {
       const questions = Array.isArray(codingLlm.data.research_questions)
         ? codingLlm.data.research_questions.map((q) => String(q || "").trim()).filter(Boolean).slice(0, 5)
         : [];
-      const collectionName = cleanIdentifier(context?.selectedCollectionName || "");
+      const topicMatch = raw.match(/about\s+(.+?)(?:[.?!]|$)/i) || raw.match(/(?:on|regarding|concerning)\s+(.+?)(?:[.?!]|$)/i);
+      const topic = cleanIdentifier(topicMatch?.[1] || "");
+      const generatedQuestions = topic
+        ? [
+            `How is ${topic} defined and scoped in the study?`,
+            `Which models or frameworks are used to analyze ${topic}?`,
+            `What evidence is provided to support claims about ${topic}?`,
+            `What limitations or assumptions are identified in the models/frameworks for ${topic}?`,
+            `What policy or strategic implications are derived from findings on ${topic}?`
+          ]
+        : [];
+      let resolvedQuestions = questions.length ? questions : generatedQuestions;
+      if (resolvedQuestions.length > 0 && resolvedQuestions.length < 3 && generatedQuestions.length) {
+        const merged = [...resolvedQuestions];
+        generatedQuestions.forEach((q) => {
+          const key = normalizeName(q);
+          if (!merged.some((x) => normalizeName(x) === key)) merged.push(q);
+        });
+        resolvedQuestions = merged.slice(0, 5);
+      }
+      const collectionName = normalizeCollectionIdentifier(context) || extractCollectionIdentifierFromText(raw);
       const clarificationQuestions = [];
       if (!collectionName) clarificationQuestions.push("Select a collection before coding.");
       if (codingLlm.data.needsClarification === true) {
@@ -2042,7 +2165,7 @@ async function resolveIntent(text, context = {}) {
             : [])
         );
       }
-      if (questions.length < 3) {
+      if (resolvedQuestions.length < 3) {
         clarificationQuestions.push("I need 3 to 5 research questions to run coding.");
       }
       return {
@@ -2055,12 +2178,12 @@ async function resolveIntent(text, context = {}) {
           needsClarification: clarificationQuestions.length > 0,
           clarificationQuestions,
           args: {
-            dir_base: "./running_tests",
+            dir_base: resolveVerbatimDirBase(context),
             collection_name: collectionName,
-            research_questions: questions,
+            research_questions: resolvedQuestions,
             prompt_key: "code_pdf_page",
             context: String(codingLlm.data.context || "").trim(),
-            screening: codingLlm.data.screening !== false
+            screening: codingLlm.data.screening === true
           }
         }
       };
@@ -2190,11 +2313,12 @@ async function resolveIntent(text, context = {}) {
           if (!hasValue && Object.prototype.hasOwnProperty.call(arg, "default")) {
             nextArgs[key] = arg.default;
           }
-          if (!hasValue && key === "collection_name" && context?.selectedCollectionName) {
-            nextArgs[key] = context.selectedCollectionName;
+          if (!hasValue && key === "collection_name") {
+            nextArgs[key] = context?.selectedCollectionName || context?.selectedCollectionKey || "";
           }
-          if (!hasValue && key === "Z_collections" && context?.selectedCollectionName) {
-            nextArgs[key] = [context.selectedCollectionName];
+          if (!hasValue && key === "Z_collections") {
+            const collectionFallback = context?.selectedCollectionName || context?.selectedCollectionKey;
+            if (collectionFallback) nextArgs[key] = [collectionFallback];
           }
           if (!Object.prototype.hasOwnProperty.call(nextArgs, key)) {
             if (arg?.type === "json") nextArgs[key] = {};
@@ -2266,8 +2390,8 @@ async function resolveIntent(text, context = {}) {
   argSchema.forEach((arg) => {
     const key = String(arg?.key || "");
     if (!key) return;
-    if (key === "collection_name" && context?.selectedCollectionName) {
-      args[key] = context.selectedCollectionName;
+    if (key === "collection_name") {
+      args[key] = context?.selectedCollectionName || context?.selectedCollectionKey || "";
       return;
     }
     if (Object.prototype.hasOwnProperty.call(arg, "default")) {
@@ -4825,6 +4949,7 @@ function registerIpc() {
         if (
           toString(process.env.ZOTERO_E2E_CHAT_RUN) === "1" &&
           functionName === "Verbatim_Evidence_Coding" &&
+          !shouldRunVerbatimE2EFull() &&
           dryRun !== true
         ) {
           return {
@@ -4842,10 +4967,11 @@ function registerIpc() {
           };
         }
 
+        const argsValues = applyVerbatimDirBase(functionName, intent?.args, payload?.context || {});
         return await featureWorker.run({
           functionName,
           argsSchema: Array.isArray(feature.args) ? feature.args : [],
-          argsValues: intent?.args || {},
+          argsValues,
           execute: dryRun !== true
         });
       }
@@ -4949,6 +5075,7 @@ function registerIpc() {
     try {
       const functionName = toString(payload?.functionName);
       if (!functionName) return { status: "error", message: "functionName is required." };
+      const argsValues = applyVerbatimDirBase(functionName, payload?.argsValues, payload?.context || {});
       const signatures = await loadZoteroSignatures();
       const feature = resolveFeatureDescriptor(functionName, signatures);
       if (!feature) return { status: "error", message: `Unknown feature: ${functionName}` };
@@ -4959,7 +5086,7 @@ function registerIpc() {
           Array.isArray(payload?.argsSchema) && payload.argsSchema.length
             ? payload.argsSchema
             : (Array.isArray(feature.args) ? feature.args : []),
-        argsValues: payload?.argsValues || {},
+        argsValues,
         execute: payload?.execute !== false
       };
       if (isDestructiveFunction(functionName) && payload?.confirm !== true && payload?.execute !== false) {
@@ -4978,6 +5105,7 @@ function registerIpc() {
     try {
       const functionName = toString(payload?.functionName);
       if (!functionName) return { status: "error", message: "functionName is required." };
+      const argsValues = applyVerbatimDirBase(functionName, payload?.argsValues, payload?.context || {});
       const signatures = await loadZoteroSignatures();
       const feature = resolveFeatureDescriptor(functionName, signatures);
       if (!feature) return { status: "error", message: `Unknown feature: ${functionName}` };
@@ -4993,7 +5121,7 @@ function registerIpc() {
           Array.isArray(payload?.argsSchema) && payload.argsSchema.length
             ? payload.argsSchema
             : (Array.isArray(feature.args) ? feature.args : []),
-        argsValues: payload?.argsValues || {},
+        argsValues,
         execute
       };
 
@@ -5560,9 +5688,24 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, Math.max(1, Number(ms) || 1)));
 }
 
+function getE2EChatDirBase() {
+  const configuredDirBase = toString(process.env.ZOTERO_E2E_CHAT_DIR_BASE);
+  return configuredDirBase || "./running_tests";
+}
+
+function shouldRunVerbatimE2EFull() {
+  return toString(process.env.ZOTERO_E2E_CHAT_FULL_RUN) === "1";
+}
+
+function getE2EChatCollectionKey() {
+  return toString(process.env.ZOTERO_E2E_CHAT_COLLECTION_KEY);
+}
+
 function defaultE2EChatScenario() {
   return {
     collectionKeyword: "framework",
+    collectionKey: getE2EChatCollectionKey(),
+    dirBase: getE2EChatDirBase(),
     initialCommand: "code this collection about cyber attribution and frameworks and models",
     feedback: "Could you focus the questions on literature review contribution and strengths/weaknesses of each framework?",
     approve: "yes",
@@ -5580,6 +5723,8 @@ function parseE2EChatScenario() {
     const base = defaultE2EChatScenario();
     return {
       collectionKeyword: toString(parsed.collectionKeyword) || base.collectionKeyword,
+      collectionKey: toString(parsed.collectionKey) || base.collectionKey,
+      dirBase: toString(parsed.dirBase) || base.dirBase,
       initialCommand: toString(parsed.initialCommand) || base.initialCommand,
       feedback: toString(parsed.feedback) || base.feedback,
       approve: toString(parsed.approve) || base.approve,
@@ -5651,25 +5796,44 @@ async function e2eSendChatMessage(win, text) {
   );
 }
 
-async function e2eSelectCollection(win, keyword) {
+async function e2eSelectCollection(win, target) {
   return await win.webContents.executeJavaScript(
     `(() => {
       const lines = Array.from(document.querySelectorAll(".tree-line"));
       if (!lines.length) return { ok: false, message: "no tree lines found" };
-      const key = ${JSON.stringify(String(keyword || "").toLowerCase())};
+      const collectionKey = ${JSON.stringify(String(target?.collectionKey || "").toLowerCase())};
+      const collectionKeyword = ${JSON.stringify(String(target?.collectionKeyword || "").toLowerCase())};
       const withLabel = lines
         .map((line) => ({ line, labelEl: line.querySelector(".tree-label") }))
         .filter((x) => x.labelEl);
       let target = null;
-      if (key) {
-        const matches = withLabel.filter((x) => String(x.labelEl.textContent || "").toLowerCase().includes(key));
+      if (collectionKey) {
+        target = withLabel.find(
+          (x) =>
+            String(x.line.getAttribute("data-collection-key") || "").toLowerCase() === collectionKey ||
+            String(x.labelEl.textContent || "").toLowerCase().includes(collectionKey)
+        )?.line || null;
+      }
+      if (!target && collectionKeyword) {
+        const matches = withLabel.filter((x) => String(x.labelEl.textContent || "").toLowerCase().includes(collectionKeyword));
         if (matches.length) target = matches[matches.length - 1].line;
+      }
+      if (!target && (collectionKey || collectionKeyword) && typeof selectCollection === "function") {
+        const directKey = collectionKey || collectionKeyword;
+        selectCollection(directKey, { loadItems: true, resetItem: true });
+        const selectedCollection = String(document.getElementById("selectedCollection")?.textContent || "").trim();
+        return {
+          ok: true,
+          label: selectedCollection || "collection selected by key",
+          key: directKey,
+          mode: "select-api"
+        };
       }
       if (!target && withLabel.length) target = withLabel[withLabel.length - 1].line;
       if (!target) target = lines[lines.length - 1];
       target.click();
       const label = String(target.querySelector(".tree-label")?.textContent || "").trim();
-      return { ok: true, label };
+      return { ok: true, label, key: String(target.getAttribute("data-collection-key") || "") };
     })();`,
     true
   );
@@ -5768,7 +5932,10 @@ async function runE2EChatScenario(win) {
     }
     mark("await-tree-lines", true, `rows=${treeLineCount}`);
 
-    const selected = await e2eSelectCollection(win, scenario.collectionKeyword);
+    const selected = await e2eSelectCollection(win, {
+      collectionKeyword: scenario.collectionKeyword,
+      collectionKey: scenario.collectionKey
+    });
     if (!selected?.ok) {
       mark("select-collection", false, selected?.message || "unknown");
       failAndWrite(selected?.message || "collection selection failed");
@@ -5859,7 +6026,9 @@ async function runE2EChatScenario(win) {
         const assistantCount = (Array.isArray(state?.messages) ? state.messages : []).filter((m) => m?.role === "assistant")
           .length;
         if (assistantCount <= baselineExecutionAssistantCount) return false;
-        return String(text || "").trim().length > 0;
+        const lastText = String(text || "").trim();
+        const statusText = String(state?.statusLine || "").toLowerCase();
+        return lastText.length > 0 || statusText.includes("command executed");
       },
       Math.max(120000, Number(scenario.executionWaitMs || 0), scenario.waitMs)
     );
@@ -5870,7 +6039,8 @@ async function runE2EChatScenario(win) {
       return;
     }
     const finalText = String(wait3.message?.text || "");
-    const success = /command executed successfully/i.test(finalText);
+    const statusText = String(wait3.state?.statusLine || "");
+    const success = /command executed successfully/i.test(finalText) || /command executed/i.test(statusText);
     mark("await-execution-result", success, finalText);
     if (success) {
       report.status = "ok";

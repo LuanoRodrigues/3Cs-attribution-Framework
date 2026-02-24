@@ -1,0 +1,838 @@
+[
+  {
+    "item_key": "W63DA6Z6",
+    "section_key": "__preamble__ + Introduction + I. THE NATURE OF CYBER-ATTACK",
+    "response": [
+      {
+        "evidence": [
+          {
+            "direct_quote": "For the purposes of this Article, cyber-attacks are defined as those whereby states utilize computers and information technology as the primary mechanisms to detrimentally impact the interests of another state.",
+            "paraphrase": "The authors define cyber-attacks as state uses of computers/IT primarily intended to harm another state's interests, framing the phenomenon for subsequent analysis (relevant to methods and models).",
+            "researcher_comment": "This is the article's operational definition and delimits the scope to state-based uses of IT as weapons; it excludes non-state actors from the core definition and orients any framework toward state responsibility. Use this when comparing how other works define their object of attribution.",
+            "potential_themes": [
+              "definition"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "definition"
+          },
+          {
+            "direct_quote": "For this reason, for the purposes of this Article, cyber-attacks are instead classified into one or more of three general categories.",
+            "paraphrase": "The authors adopt a three-category classification of cyber-attacks to structure their analysis and models.",
+            "researcher_comment": "This signals their chosen taxonomy as the organizing framework for later attribution discussion; however, it is an author-imposed structure and may not map perfectly to technical or evidentiary practice. Useful for comparing operationalization choices across studies.",
+            "potential_themes": [
+              "taxonomy"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "taxonomy"
+          },
+          {
+            "direct_quote": "First, direct intrusion attacks are those where the attacker directly interacts with a computer system and gains some form of unauthorized access or control.",
+            "paraphrase": "Direct intrusion attacks are defined as attacker interactions yielding unauthorized access or control of a system, one of the taxonomy's categories.",
+            "researcher_comment": "This clear category identifies a class of incidents that attribution frameworks can target with host/network forensic evidence; it implies certain evidence types (access logs, credentials, control channels).",
+            "potential_themes": [
+              "taxonomy"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "taxonomy"
+          },
+          {
+            "direct_quote": "Second, indirect intrusion attacks involve malicious code or\"malware\"that the attacker constructs in order to compromise a set of systems.",
+            "paraphrase": "Indirect intrusion attacks are characterized as attacker-created malware used to compromise systems, forming a second taxonomy category.",
+            "researcher_comment": "Malware-based incidents raise distinct evidentiary issues (code analysis, provenance, propagation paths) that affect attribution methodology; the verbatim spacing/formatting indicates the original text's presentation of 'malware.'",
+            "potential_themes": [
+              "taxonomy",
+              "attribution_challenges"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "taxonomy"
+          },
+          {
+            "direct_quote": "Third, denial of service attacks involve rendering the system unable to provide its expected services.",
+            "paraphrase": "Denial-of-service attacks are defined as actions that prevent systems from delivering expected services, the third taxonomy category.",
+            "researcher_comment": "DoS incidents typically produce different evidence (traffic flows, botnet patterns) and pose particular attribution limits due to distributed intermediaries; classification helps map evidence types to incident types.",
+            "potential_themes": [
+              "taxonomy"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "taxonomy"
+          },
+          {
+            "direct_quote": "Consequently, any attempt at a definitive taxonomy is likely to have a degree of artificiality and be, at best, only temporarily accurate.",
+            "paraphrase": "The authors argue that any definitive taxonomy of cyber-attacks will be somewhat artificial and only temporarily valid.",
+            "researcher_comment": "This is an explicit caveat against rigid operational frameworks and warns that models must accommodate evolving attack methods; highly relevant when assessing the durability of attribution frameworks.",
+            "potential_themes": [
+              "limitation",
+              "taxonomy"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "limitation"
+          },
+          {
+            "direct_quote": "The outcomes and constraints of these methods will generally depend upon the precise details of specific systems and their vulnerabilities.",
+            "paraphrase": "The authors state that attack outcomes and constraints depend on system-specific details and vulnerabilities, implying that evidence is context-dependent.",
+            "researcher_comment": "This highlights that attribution requires system-level technical evidence and that general models may fail without granular system data; relevant to what evidence is needed and how frameworks must be operationalized to incorporate system specifics.",
+            "potential_themes": [
+              "evidentiary_standards",
+              "attribution_challenges"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "finding"
+          },
+          {
+            "direct_quote": "A victim state may simply not have sufficient evidence to prove who attacked it, and indeed may not even know",
+            "paraphrase": "The authors state that victim states often lack sufficient evidence to determine or prove the attacker.",
+            "researcher_comment": "This explicit statement names evidentiary insufficiency as a central barrier to attribution; it directly supports claims about practical limits on state attribution and the need for cooperative evidence-gathering. Note the sentence is truncated in the chunk but the claim is clear.",
+            "potential_themes": [
+              "attribution_challenges",
+              "evidentiary_standards"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              }
+            ],
+            "evidence_type": "limitation"
+          }
+        ]
+      },
+      {
+        "input_tokens": 3048,
+        "output_tokens": 3940,
+        "total_tokens": 6988,
+        "cost_usd": 0.022302,
+        "model": "gpt-5-mini-2025-08-07",
+        "is_batch": true
+      }
+    ]
+  },
+  {
+    "item_key": "W63DA6Z6",
+    "section_key": "II. EXISTING PRINCIPLES OF JUS AD BELLUM",
+    "response": [
+      {
+        "evidence": [
+          {
+            "direct_quote": "As there is no established definition of “armed attack” in the Charter or elsewhere in treaty law, its meaning is also determined by custom.",
+            "paraphrase": "The meaning of \"armed attack\" is derived from customary international law rather than treaty text, informing legal interpretation of attack thresholds (RQ0,RQ1).",
+            "researcher_comment": "This identifies customary law as a primary evidentiary source for defining \"armed attack,\" which matters when mapping legal thresholds onto cyber incidents. It limits reliance on treaty text and emphasizes judicial and state practice as evidence. Useful for coding types of legal evidence but does not specify evidentiary standards for cyber-specific facts.",
+            "potential_themes": [
+              "evidentiary_standards"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "finding"
+          },
+          {
+            "direct_quote": "The clearest enunciation of the threshold for an armed attack is found in the Nicaragua judgment where the ICJ first distinguished armed attacks as “the most grave forms of the use of force.”",
+            "paraphrase": "The ICJ in Nicaragua characterized \"armed attack\" as the most grave forms of force, establishing a judicial benchmark used to operationalize the armed-attack threshold (RQ1,RQ2).",
+            "researcher_comment": "This cites ICJ case law as a methodological anchor for threshold-setting; case law functions as an operational test in legal frameworks. It shows reliance on jurisprudence but leaves ambiguity about application to non-kinetic cyber acts.",
+            "potential_themes": [
+              "evidentiary_standards"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "method"
+          },
+          {
+            "direct_quote": "The ICJ then gave arguably the most concrete judicial test for armed attacks when it stated that they may be distinguished from lesser uses of force ... by their \"scale and effects.\"",
+            "paraphrase": "The ICJ's operative test distinguishes armed attacks from lesser force by evaluating their scale and effects, providing a consequences-based criterion for assessment (RQ1,RQ2).",
+            "researcher_comment": "\"Scale and effects\" offers a concrete, consequences-oriented metric that can be operationalized in frameworks, but is potentially problematic for cyber incidents with diffuse or non-physical effects. It is a clear legal criterion to map to technical impact metrics where possible.",
+            "potential_themes": [
+              "evidentiary_standards",
+              "attribution_challenges"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "framework"
+          },
+          {
+            "direct_quote": "This issue has led to the practical adoption of an approach to evaluating force that focuses primarily on the consequences, rather than the means employed.",
+            "paraphrase": "Legal evaluation of use of force has shifted to focus on consequences rather than the means used, shaping the operational approach to assessing attacks (RQ1,RQ2).",
+            "researcher_comment": "A consequences-focused method permits assessing cyber operations by impact rather than toolkit, which aids operationalization but may exclude significant non-physical harms. It suggests frameworks should prioritize measurable effects when attributing cyber-attacks legally.",
+            "potential_themes": [
+              "evidentiary_standards",
+              "attribution_challenges"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "method"
+          },
+          {
+            "direct_quote": "As the ICJ has repeatedly emphasized, in addition to being a response to an armed attack, an act of self-defense is subject to meeting the elements of necessity and proportionality.",
+            "paraphrase": "Self-defense claims require satisfaction of necessity and proportionality as legal elements alongside the existence of an armed attack, constraining lawful responses (RQ1,RQ2).",
+            "researcher_comment": "Identifies operational constraints (necessity, proportionality) that attribution frameworks must support when assessing lawful countermeasures. These elements demand evidentiary thresholds beyond mere attribution (e.g., timing, scale), complicating operationalization for cyber cases.",
+            "potential_themes": [
+              "evidentiary_standards"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "definition"
+          },
+          {
+            "direct_quote": "Webster formulated necessity to require that the instigative events be \"instant, overwhelming, leaving no choice of means, and no moment for deliberation.\"",
+            "paraphrase": "The Caroline formula defines necessity as requiring immediate, overwhelming threats with no alternative means, imposing a high immediacy threshold for self-defense (RQ1,RQ2).",
+            "researcher_comment": "Offers a historical standard for necessity that can be operationalized as criteria (immediacy, no alternatives) in cyber attribution models, but such strict temporal/immediacy tests are difficult to apply to protracted or covert cyber incidents. Historical provenance strengthens legal weight but may be contested in modern contexts.",
+            "potential_themes": [
+              "evidentiary_standards",
+              "attribution_challenges"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "framework"
+          },
+          {
+            "direct_quote": "Webster also articulated the proportionality element to require that the response involve \"nothing unreasonable or excessive.\"",
+            "paraphrase": "Proportionality requires that a defensive response be not unreasonable or excessive relative to the initial attack, setting a limit on permissible countermeasures (RQ1,RQ2).",
+            "researcher_comment": "Gives a qualitative formulation of proportionality; operationalizing this in cyber contexts demands translation of \"reasonableness\" into measurable metrics. The quote supports the need for proportionality criteria in attribution-to-response decision chains.",
+            "potential_themes": [
+              "evidentiary_standards"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "definition"
+          },
+          {
+            "direct_quote": "Proportionality can be assessed one of two different ways. A qualitative view requires that the response be effectively equal in gravity with regards to casualties, damage, and the nature of the weapons employed. ... however, a functional approach prevails wherein the focus is on employing a response of an appropriate scale to suitably repel the initial armed attack.",
+            "paraphrase": "Courts recognize qualitative and functional approaches to proportionality, with the functional (scale-appropriate response) approach prevailing for assessing whether a response suitably repels an attack (RQ1,RQ2).",
+            "researcher_comment": "This distinction offers two alternative operationalizations: measure-by-equivalence (qualitative) or measure-by-effectiveness/scale (functional). The prevailing functional approach is more adaptable to cyber cases where exact equivalence is infeasible. It provides a concrete pathway for modeling proportional responses in attribution frameworks.",
+            "potential_themes": [
+              "framework_operationalization",
+              "evidentiary_standards"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "framework"
+          },
+          {
+            "direct_quote": "a possible additional requirement for engaging in self-defense is that the armed attack be undertaken with the \"specific intention of harming\" the target that was ultimately attacked.",
+            "paraphrase": "Some jurisprudence posits that self-defense may require proof that the attacker specifically intended to harm the victim state, adding an intent element to lawful response conditions (RQ1,RQ2).",
+            "researcher_comment": "An intention requirement raises the bar for legal justification and directly burdens attribution efforts, since proving specific intent is evidentially demanding—especially in anonymized cyber operations. This functions as a substantive limitation on lawful countermeasures if accepted.",
+            "potential_themes": [
+              "attribution_challenges"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "claim"
+          },
+          {
+            "direct_quote": "The intention element is problematic as it requires the injured state to reliably infer what is essentially the state of mind of the attacking state.",
+            "paraphrase": "Requiring proof of the attacker's specific intent is problematic because it forces the victim to infer the attacker's state of mind, complicating attribution (RQ0,RQ1,RQ2).",
+            "researcher_comment": "This explicitly flags a key limitation for legal operationalization: intent-based requirements are ill-suited to cyber contexts where state-of-mind inferences are fragile. It justifies prioritizing non-intent-based evidentiary pathways in attribution frameworks.",
+            "potential_themes": [
+              "attribution_challenges",
+              "evidentiary_standards"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "limitation"
+          }
+        ]
+      },
+      {
+        "input_tokens": 3347,
+        "output_tokens": 3963,
+        "total_tokens": 7310,
+        "cost_usd": 0.022854,
+        "model": "gpt-5-mini-2025-08-07",
+        "is_batch": true
+      }
+    ]
+  },
+  {
+    "item_key": "W63DA6Z6",
+    "section_key": "III. RESPONSES TO CYBER-ATTACK UNDER INTERNATIONAL LAW",
+    "response": [
+      {
+        "evidence": [
+          {
+            "direct_quote": "In his seminal 1999 paper, Schmitt outlined seven criteria to determine whether a given cyber-attack may constitute a use of force.",
+            "paraphrase": "Schmitt proposed a seven-criteria framework to assess when a cyber-attack constitutes a use of force, which serves as a legal method for characterizing cyber incidents (RQ1, RQ2).",
+            "researcher_comment": "This identifies an explicit, repeatable legal framework used by scholars and practitioners to evaluate cyber incidents; it is normative rather than technical and depends on legal interpretation rather than forensic methods. Its applicability depends on acceptance by states and courts, which is limited by scarce state practice.",
+            "potential_themes": [
+              "framework_adoption",
+              "legal_thresholds"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "framework"
+          },
+          {
+            "direct_quote": "The criteria proposed by Schmitt are: severity, immediacy, directness, invasiveness, measurability, presumptive legitimacy, and responsibility.",
+            "paraphrase": "Schmitt's framework operationalizes cyber-force assessment through seven specific criteria (severity, immediacy, directness, invasiveness, measurability, presumptive legitimacy, responsibility), providing concrete indicators to apply in legal analysis (RQ1, RQ2).",
+            "researcher_comment": "The enumeration gives discrete dimensions that can be mapped to evidentiary requirements (e.g., measurability) and policy questions (e.g., invasiveness). However, these remain qualitative criteria that require translation into standards for technical evidence.",
+            "potential_themes": [
+              "framework_adoption",
+              "evidentiary_standards"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "framework"
+          },
+          {
+            "direct_quote": "To the degree that any rules exist in this emerging area of law where there is no specific jurisprudence or clear state practice,⁹² Schmitt’s criteria on cyber-force are broadly accepted.",
+            "paraphrase": "In the absence of clear jurisprudence or state practice, Schmitt's criteria are broadly accepted as the prevailing legal standard for cyber-force determinations (RQ2).",
+            "researcher_comment": "This indicates de facto community acceptance of the framework, useful for operationalization, but also warns that acceptance is scholarly/consensus-based rather than grounded in judicial or state practice. Synthesis should note this limitation.",
+            "potential_themes": [
+              "framework_adoption",
+              "evidentiary_standards"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "finding"
+          },
+          {
+            "direct_quote": "ARSIWA suggests that if a state directs otherwise illegal actions towards another state that has wronged it, the wrongfulness of those actions will be precluded if they qualify as countermeasures.",
+            "paraphrase": "The ARSIWA framework permits otherwise-illegal acts to be lawful as countermeasures when taken in response to a wrongful act, providing a legal method for state responses to cyber-attacks (RQ1, RQ0).",
+            "researcher_comment": "This cites a primary international-law instrument defining permissible state responses; it is a legal-source type of evidence that would be deployed in legal arguments. Applicability to cyber incidents requires mapping technical acts to ARSIWA categories.",
+            "potential_themes": [
+              "countermeasures",
+              "legal_thresholds"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 0
+              }
+            ],
+            "evidence_type": "framework"
+          },
+          {
+            "direct_quote": "First, the countermeasures must be for the purposes of inducing the responsible state to comply with its international obligations¹⁶² and are limited to the nonperformance of an obligation.",
+            "paraphrase": "Countermeasures under ARSIWA must aim to induce the offending state to comply and are limited to nonperformance of obligations, imposing concrete constraints on lawful responses to cyber-attacks (RQ1).",
+            "researcher_comment": "This specifies operational constraints that any proposed countermeasure must meet, which is essential for legal-method operationalization. The constraint to 'nonperformance' narrows possible cyber responses and raises practical implementation questions for active defenses.",
+            "potential_themes": [
+              "countermeasures",
+              "legal_thresholds"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "limitation"
+          },
+          {
+            "direct_quote": "For these attacks, many basic parameters that are normally readily apparent may remain unclear for some time.",
+            "paraphrase": "Cyber-attacks often leave basic parameters unclear for extended periods, complicating timely characterization and attribution necessary for legal responses (RQ0, RQ1).",
+            "researcher_comment": "This documents an evidentiary limitation: temporal and factual uncertainty in cyber incidents undermines ability to meet legal thresholds (necessity, imminence, attribution). It supports claims that technical forensic methods and standards are critical but often insufficiently timely.",
+            "potential_themes": [
+              "attribution_challenges",
+              "evidentiary_standards"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "limitation"
+          },
+          {
+            "direct_quote": "This approach is essentially a continuation of the consequences-based model for interpreting rules framed in terms of the instrument employed.",
+            "paraphrase": "A consequences-based model—assessing whether cyber effects would qualify as an armed attack if caused kinetically—is used to characterize cyber incidents for legal purposes, informing methods and operationalization (RQ1, RQ2).",
+            "researcher_comment": "This identifies an operational interpretive method (effects-based equivalence) that translates cyber actions into existing legal categories. It is conceptually straightforward but contested and depends on mapping cyber effects to kinetic analogues accurately.",
+            "potential_themes": [
+              "framework_adoption",
+              "legal_thresholds"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "method"
+          },
+          {
+            "direct_quote": "Measurability involves the degree to which the consequences of an event can be ascertained, particularly in a quantitative way, which is largely a function of directness.",
+            "paraphrase": "The 'measurability' criterion requires that consequences of a cyber-event be ascertainable, especially quantitatively, tying legal assessment to the availability of measurable evidence (RQ0, RQ2).",
+            "researcher_comment": "This links a legal criterion directly to evidentiary standards, implying that operationalization requires quantifiable forensic metrics. Practical limits arise where consequences are indirect or diffuse, reducing measurability.",
+            "potential_themes": [
+              "evidentiary_standards",
+              "legal_thresholds"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "definition"
+          },
+          {
+            "direct_quote": "The final criterion involves the notion that state responsibility can be a factor when evaluating cyber-attack as a use of force.",
+            "paraphrase": "Degree of state involvement is a legal criterion for treating a cyber-operation as a use of force, making attribution of state responsibility central to legal characterization (RQ0, RQ2).",
+            "researcher_comment": "This makes state attribution a substantive element of the legal test rather than a separate procedural matter, emphasizing that operational frameworks must incorporate evidence chains linking actors to states; challenges include proxy actors and covert operations.",
+            "potential_themes": [
+              "state_responsibility",
+              "attribution_challenges"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "claim"
+          }
+        ]
+      },
+      {
+        "input_tokens": 7346,
+        "output_tokens": 4571,
+        "total_tokens": 11917,
+        "cost_usd": 0.031588,
+        "model": "gpt-5-mini-2025-08-07",
+        "is_batch": true
+      }
+    ]
+  },
+  {
+    "item_key": "W63DA6Z6",
+    "section_key": "IV. THE ATTRIBUTION OBSTACLE + Conclusion + __postscript__",
+    "response": [
+      {
+        "evidence": [
+          {
+            "direct_quote": "ARSIWA Articles 4\u00031 outline the basic rules of attribution.",
+            "paraphrase": "The ARSIWA articles provide the baseline legal framework for attribution and thus represent a primary methodological source for attributing state responsibility (RQ1, RQ2).",
+            "researcher_comment": "Identifies the specific international legal framework relied upon for attribution analysis; useful when cataloging legal methods. Does not specify how the articles are operationalized for cyber scenarios.",
+            "potential_themes": [
+              "method"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "framework"
+          },
+          {
+            "direct_quote": "ARSIWA Article 8 provides that private conduct will be attributable to a state if those persons act under instruction or the control of that state.",
+            "paraphrase": "Under ARSIWA Article 8, private actors' conduct is attributed to a state when those actors act under the state's instruction or control, a rule relevant to attributing cyber-attacks (RQ1, RQ2).",
+            "researcher_comment": "Sets a concrete legal test for attributing nonstate actors to states; central to debates about cyber-actors and state responsibility. Applicability to loosely organized hackers remains contested in the text.",
+            "potential_themes": [
+              "method",
+              "evidentiary_standards"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "definition"
+          },
+          {
+            "direct_quote": "where a hierarchically-organized group is under the \u000192overall control\u000193 of a state, this will be sufficient to attribute the group\u0019s actions to that state.",
+            "paraphrase": "The ICTY's 'overall control' test attributes a group's actions to a state when the group is under that state's overall control, a legal criterion discussed for cyber attribution (RQ1, RQ2).",
+            "researcher_comment": "Describes an alternative, broader control test used in jurisprudence; important for operationalizing attribution when groups are quasi-hierarchical. The text later notes ICJ rejection of aspects, limiting its uncontested applicability.",
+            "potential_themes": [
+              "method",
+              "attribution_challenges"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "definition"
+          },
+          {
+            "direct_quote": "There is doubt concerning the overall control test as aspects of the ICTY\u0019s dictum have been expressly and comprehensively rejected by the ICJ.",
+            "paraphrase": "The overall control test's legal validity is uncertain because the ICJ has expressly rejected parts of the ICTY dictum, creating doctrinal ambiguity for attribution (RQ1, RQ2).",
+            "researcher_comment": "Flags a jurisprudential conflict that complicates choosing a legal operational test for cyber attribution. This limitation affects legal certainty and the admissibility of the 'overall control' approach in state practice.",
+            "potential_themes": [
+              "evidentiary_standards",
+              "attribution_challenges"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "limitation"
+          },
+          {
+            "direct_quote": "Overall, the ICJ\u0019s judgments suggest that the standard of proof will be commensurate with the seriousness of the allegation.",
+            "paraphrase": "The ICJ applies a variable standard of proof tied to the gravity of allegations, affecting how strong evidence must be to establish attribution (RQ0, RQ1).",
+            "researcher_comment": "Useful for categorizing evidentiary standards used in international adjudication; implies that cyber-attribution may require high proof if consequences are severe. The statement is general and leaves quantitative thresholds undefined.",
+            "potential_themes": [
+              "evidentiary_standards",
+              "confidence_language"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "finding"
+          },
+          {
+            "direct_quote": "The technical properties of cyber-attack make attribution extremely problematic, to the extent that even identifying the ultimate location of the parties involved may be extraordinarily difficult.",
+            "paraphrase": "Cyber-attacks' technical characteristics render technical attribution—and even locating attackers—extremely difficult, limiting available evidence and methods (RQ0, RQ1).",
+            "researcher_comment": "Directly links technical obstacles to limits on usable evidence and methods; supports claims that technical evidence may often be inconclusive. Does not quantify how often or under what conditions attribution is feasible.",
+            "potential_themes": [
+              "attribution_challenges"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "finding"
+          },
+          {
+            "direct_quote": "Attackers have at their disposal a variety of techniques to hide their identity and location, including use of various cryptographic mechanisms and routing their attacks through multiple compromised systems belonging to third parties.",
+            "paraphrase": "Attackers commonly use cryptography and multi-hop routing through compromised third-party systems to obfuscate identity and origin, undermining technical evidence (RQ0, RQ1).",
+            "researcher_comment": "Enumerates specific technical evasion techniques that degrade the probative value of technical traces; important when assessing what evidence types are likely to survive scrutiny. Does not list evidentiary countermeasures or forensic standards.",
+            "potential_themes": [
+              "attribution_challenges",
+              "evidentiary_standards"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "finding"
+          },
+          {
+            "direct_quote": "Dinstein suggests the challenge of technical attribution is merely a temporary obstacle that will likely be overcome with inevitable technological improvement.",
+            "paraphrase": "One scholar (Dinstein) contends technical attribution problems are temporary and will be resolved by future technological advances, a contested assumption about methods (RQ1).",
+            "researcher_comment": "Captures an optimistic methodological assumption about future improvements in attribution capability; the article notes most scholars reject this, so treat as minority view. No empirical basis provided here for the prediction.",
+            "potential_themes": [
+              "assumption"
+            ],
+            "relevance_score": 3,
+            "relevant_rqs": [
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "claim"
+          },
+          {
+            "direct_quote": "However, most scholars expressly or impliedly reject this view. Some note that the architecture of the Internet makes identification inherently difficult.",
+            "paraphrase": "The scholarly consensus rejects the optimism, arguing Internet architecture intrinsically hampers identification and thus limits technical attribution methods (RQ0, RQ1).",
+            "researcher_comment": "Supports the prevailing skeptical assessment of technical methods; strengthens the case that nontechnical evidence may be needed. The statement is aggregate and lacks citation detail in the excerpt.",
+            "potential_themes": [
+              "attribution_challenges"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "finding"
+          },
+          {
+            "direct_quote": "If a lower standard applies, political motivation may be a more useful indicator of the origin of an attack than technical evidence.",
+            "paraphrase": "When legal proof thresholds are low, analysts may rely more on political-motivation evidence than on technical forensic evidence to infer attribution (RQ0, RQ1).",
+            "researcher_comment": "Highlights substitution of political/contextual evidence for weak technical traces under lower evidentiary standards; relevant when cataloging evidence types used in practice. This also raises risks of politicized attributions.",
+            "potential_themes": [
+              "evidentiary_standards",
+              "confidence_language"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "claim"
+          },
+          {
+            "direct_quote": "This Article proposes that these conflicting requirements can be resolved by determining attribution requirements based upon the course of action the victim state chooses to pursue.",
+            "paraphrase": "The author proposes a model that sets attribution requirements conditional on the victim state's chosen response, operationalizing attribution standards by response type (RQ2).",
+            "researcher_comment": "This is a concrete operational proposal for matching evidentiary thresholds to response options; directly relevant to RQ2 about operationalizing frameworks. Implementation specifics and enforcement mechanisms are not detailed here.",
+            "potential_themes": [
+              "recommendation",
+              "framework"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "recommendation"
+          },
+          {
+            "direct_quote": "Under this model, it would then be in an accused host-state's best interests to cooperate with the injured state to resolve the matter.",
+            "paraphrase": "The proposed model creates incentives for host-state cooperation with victims to facilitate evidence-gathering and attribution (RQ2).",
+            "researcher_comment": "Explains a normative mechanism (incentivizing cooperation) by which the model seeks operational effectiveness; assumes victim states can credibly condition standards or outcomes on cooperation.",
+            "potential_themes": [
+              "recommendation",
+              "method"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "recommendation"
+          },
+          {
+            "direct_quote": "In the case of cyber-defense, therefore, the status quo should be maintained and states should continue to be required to meet a strict test\u00151 such as effective control\u00151 when making out attribution for the purposes of self-defense.",
+            "paraphrase": "The author recommends retaining strict attribution tests (e.g., effective control) for claims of self-defense in cyber incidents, specifying operational thresholds tied to response type (RQ1, RQ2).",
+            "researcher_comment": "Advocates a high evidentiary threshold for forceful responses to reduce misattribution risk; directly operationalizes the proposed response-linked framework. The recommendation balances legal caution against practical infeasibility of attribution.",
+            "potential_themes": [
+              "recommendation",
+              "evidentiary_standards"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "recommendation"
+          },
+          {
+            "direct_quote": "Schmitt has therefore advocated a low standard\u00151 an indirect responsibility approach whereby a state will be responsible if it fails to take reasonably available measures to stop cyber-attacks originating in its territory.",
+            "paraphrase": "An alternative approach (Schmitt) advocates a lower standard—indirect responsibility—holding states liable for failure to take reasonable measures to prevent cyber-attacks from their territory, a different operational model for attribution (RQ1, RQ2).",
+            "researcher_comment": "Presents a contrasting operational model that shifts focus to omissions and preventive duties; useful for comparing frameworks. The excerpt notes practical objections to this low-standard approach.",
+            "potential_themes": [
+              "method",
+              "recommendation"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "claim"
+          },
+          {
+            "direct_quote": "Essentially, Proulx\u0019s proposition is one of strict liability that dispenses with the need to establish attribution. Instead, the accused host state bears the onus of demonstrating why it should not be liable.",
+            "paraphrase": "Proulx's strict liability model removes the attribution requirement by placing the burden on the host state to prove it is not liable, representing a specific operational attribution model (RQ2).",
+            "researcher_comment": "Describes a clear, implementable shift in legal burden that operationalizes attribution away from attacker-identification toward host-state obligations. The text notes this model is controversial and may be untenable for self-defense contexts.",
+            "potential_themes": [
+              "recommendation",
+              "assumption"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "framework"
+          }
+        ]
+      },
+      {
+        "input_tokens": 7128,
+        "output_tokens": 4548,
+        "total_tokens": 11676,
+        "cost_usd": 0.031158,
+        "model": "gpt-5-mini-2025-08-07",
+        "is_batch": true
+      }
+    ]
+  }
+]

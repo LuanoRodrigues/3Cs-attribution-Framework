@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": "{\n  \"classification\": \"Highly Relevant\",\n  \"relevance_score\": \"High\",\n  \"potential_subcategory\": \"National cyber-defense policy and legal frameworks (doctrine, use-of-force, SDF authority) and international cyber-defense cooperation\",\n  \"justification\": \"Note: the provided inclusion/exclusion criteria were unavailable ('AUTO DRAFT UNAVAILABLE'); classification is based on the abstract's content and its fit with cyber conflict attribution and policy/law. The article directly addresses legal and policy dimensions of cyber conflict: JMoD organizational and doctrinal reforms, statutory/constitutional constraints (Article 9), gaps in doctrine for active cyber-defense, legal ambiguity between 'armed cyber-attack' and 'use of force', and explicit calls for legal amendments to empower the Self-Defense Forces \u2014 all core issues for cyber conflict law and policy. It also covers international cooperative arrangements (US\u2013Japan treaty, CDPWG) and implications for deterrence, collective defense, and supply-chain security, which are highly pertinent to attribution-to-policy linkages and state response. The abstract is less focused on technical attribution methods, but its emphasis on legal definitions, authority to respond, and doctrine makes it highly relevant to policy/law research on cyber conflict and attribution-related decision-making.\"\n}"
+  },
+  "cached_at": "2026-02-23T20:41:49.483641Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "J4WPKFX4",
+  "function": "classify_by_abs"
+}

@@ -1,0 +1,18 @@
+{
+  "phase": "phase_2_eligibility_criteria_complete",
+  "created_at": "2026-02-23T19:29:08.417Z",
+  "collection_name": "frameworks",
+  "inclusion_criteria": [
+    "Study is explicitly about cyber attribution frameworks/models, or directly contributes methods for cyber attribution decisions.",
+    "Source provides substantive conceptual, methodological, legal, or empirical detail usable for synthesis.",
+    "Source is accessible with sufficient bibliographic and content metadata (title/abstract/full text or coded extract).",
+    "Source contributes to at least one synthesis dimension: evidence types, attribution methods, or framework operationalization."
+  ],
+  "exclusion_criteria": [
+    "Source is out of scope (general cybersecurity without attribution-framework relevance).",
+    "Source lacks analyzable substance (insufficient methodological or argumentative detail).",
+    "Duplicate/near-duplicate record where another version has more complete metadata or content.",
+    "Source has no usable content for coding or synthesis after retrieval checks."
+  ],
+  "screening_note": "Criteria tuned for literature-review synthesis rather than strict systematic review protocol filtering."
+}

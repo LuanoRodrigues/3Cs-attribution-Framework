@@ -1,0 +1,385 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "quote": "Countermeasures may be defined as 'pacific unilateral reactions which are intrinsically unlawful, which are adopted by one or more States against another State, when the former considers that the latter has committed an internationally wrongful act which could justify such a reaction'.",
+          "paraphrase": "The text defines countermeasures as unilateral pacific responses that are intrinsically unlawful but used to respond to an internationally wrongful act by another State.",
+          "researcher_comment": "Provides a concise working definition of 'countermeasures' relevant to assessing lawful cyber responses. Note the tension: intrinsically unlawful yet treated as an instrument of State conduct. Useful baseline for RQs about legal classification of active cyber responses.",
+          "potential_themes": [
+            "countermeasures"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "countermeasure_definition",
+            "unilateral_response",
+            "instrumental_remedy"
+          ]
+        },
+        {
+          "quote": "At the same time countermeasures are a means of triggering the responsibility of the adversary State.",
+          "paraphrase": "Countermeasures function to induce and trigger legal responsibility of the adversary State.",
+          "researcher_comment": "Highlights the enforcement-oriented purpose of countermeasures (not merely justificatory). Relevant when comparing aims of countermeasures vs. punitive or deterrent goals. Does not specify mechanisms for proving responsibility.",
+          "potential_themes": [
+            "countermeasures",
+            "normative_function"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "dual_function",
+            "enforcement",
+            "precluding_wrongfulness"
+          ]
+        },
+        {
+          "quote": "For countermeasures to be considered lawful, Article 49(1) of the ILC Articles stipulates that the 'injured State may only take countermeasures against a State which is responsible for an internationally wrongful act in order to induce that State to comply with its obligations'.",
+          "paraphrase": "Article 49(1) requires that countermeasures be directed at a State responsible for an internationally wrongful act and aim to induce compliance with obligations.",
+          "researcher_comment": "Specifies the legal precondition (responsibility) and permissible objective (inducement to comply), which is critical for evaluating the lawfulness of unilateral cyber measures. Implies high evidentiary and attribution thresholds.",
+          "potential_themes": [
+            "countermeasures",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "framework",
+          "argument_type": "normative",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "article_49_requirements",
+            "state_responsibility",
+            "inducement_goal"
+          ]
+        },
+        {
+          "quote": "First, countermeasures must be aimed at a State that has committed an act that is unlawful under international law.",
+          "paraphrase": "Countermeasures must target a State that has committed an internationally unlawful act.",
+          "researcher_comment": "Reiterates the necessity of an unlawful act by the target State\u2014this foregrounds attribution and proof problems in cyber contexts. Short, clear rule; lacks procedural detail on how unlawfulness must be demonstrated.",
+          "potential_themes": [
+            "evidentiary_standards",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "target_state_requirement",
+            "illegal_act_condition"
+          ]
+        },
+        {
+          "quote": "The main difference is that, unlike self-defence where the other State's unlawful act is predetermined as an 'armed attack', the instrument of countermeasures is valid in response to any wrongful conduct in relation to which it only permits non-forcible responses.",
+          "paraphrase": "Unlike self-defence, countermeasures may respond to any wrongful conduct but are limited to non-forcible measures.",
+          "researcher_comment": "Important comparative distinction: countermeasures are broader in trigger but narrower in means (non-forcible). This constrains use of force in cyber responses characterized as countermeasures.",
+          "potential_themes": [
+            "use_of_force",
+            "countermeasures"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "comparative",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "countermeasures_vs_self_defence",
+            "non_forcible_limit"
+          ]
+        },
+        {
+          "quote": "Article 50 enumerates certain definite restrictions on countermeasures: they \u2018shall not affect the obligation to refrain from the threat or use of force as embodied in the Charter of the United Nations; obligations for the protection of fundamental human rights; obligations of a humanitarian character prohibiting reprisals; other obligations under peremptory norms of general international law\u2019.",
+          "paraphrase": "Article 50 bars countermeasures that conflict with the UN Charter prohibition on force, fundamental human-rights obligations, humanitarian prohibitions on reprisals, and other peremptory norms.",
+          "researcher_comment": "Identifies non-derogable constraints on countermeasures\u2014especially salient for cyber measures that risk civilian harm or resemble force. Establishes legal floors that active cyber tactics must not cross.",
+          "potential_themes": [
+            "human_rights",
+            "use_of_force",
+            "peremptory_norms"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "framework",
+          "argument_type": "normative",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "article_50_limits",
+            "peremptory_norms",
+            "human_rights_restriction"
+          ]
+        },
+        {
+          "quote": "According to Article 51 of the ILC Articles on State Responsibility, which is considered to reflect customary international law, countermeasures must also be in line with the principle of proportionality or, in the provision\u2019s wording, \u2018commensurate with the injury suffered, taking into account the gravity of the internationally wrongful act and the rights in question\u2019.",
+          "paraphrase": "Article 51 requires countermeasures to be proportionate\u2014commensurate with the injury and the gravity of the wrongful act.",
+          "researcher_comment": "Affirms proportionality as a central limiting principle; both quantitative and qualitative factors matter. This is crucial when assessing asymmetric cyber responses that may have outsized impacts.",
+          "potential_themes": [
+            "proportionality",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "framework",
+          "argument_type": "normative",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "article_51_proportionality",
+            "qualitative_considerations"
+          ]
+        },
+        {
+          "quote": "Before starting to take countermeasures an injured State must, according to the first paragraph, \u2018call upon the responsible State [...] to fulfil its obligations under Part Two\u2019.",
+          "paraphrase": "Article 52 requires an injured State to call upon the responsible State to fulfil its obligations before taking countermeasures.",
+          "researcher_comment": "Establishes a procedural precondition (notice/call to comply) that limits immediate unilateral action. Important for RQs on legitimacy and procedural safeguards for cyber countermeasures.",
+          "potential_themes": [
+            "procedural_conditions",
+            "urgent_countermeasures"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "method",
+          "argument_type": "procedural",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "article_52_notification",
+            "preconditions",
+            "offer_to_negotiate"
+          ]
+        },
+        {
+          "quote": "Thus, what is altered in situations of urgency is only a procedural requirement, not the evidentiary standard required to be able to resort to this remedy in the first place.",
+          "paraphrase": "Urgency under Article 52 relaxes only procedural obligations (like notification), not the evidentiary standard for lawful countermeasures.",
+          "researcher_comment": "Counters arguments that urgency permits looser attribution or proof; states may act procedurally faster but still must meet the same legal evidentiary thresholds. This limits 'rapid' active defences justified as countermeasures.",
+          "potential_themes": [
+            "evidentiary_standards",
+            "urgent_countermeasures",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "procedural",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "urgency_procedural_only",
+            "evidence_requirements_unchanged"
+          ]
+        },
+        {
+          "quote": "The main problem with countermeasures is that, as with self-defence, the remedy is dependent on the attribution of wrongful conduct;",
+          "paraphrase": "A core problem is that countermeasures, like self-defence, depend on attribution of wrongful conduct.",
+          "researcher_comment": "Directly identifies attribution as a primary legal obstacle to lawful countermeasures in cyberspace. Central to any RQ on feasibility of unilateral cyber responses; implies technical and legal burdens must be met.",
+          "potential_themes": [
+            "attribution_challenges",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "attribution_dependency",
+            "legal_barrier"
+          ]
+        },
+        {
+          "quote": "proactive measure[s] for detecting or obtaining information as to a cyber-intrusion, cyber-attack, or impending cyber operation, or for determining the origin of an operation that involves launching a pre-emptive, preventive, or cyber-counter operation against the source.",
+          "paraphrase": "The text describes 'active defences' as proactive measures to detect intrusions, determine origin, and possibly launch pre-emptive or counter operations against the source.",
+          "researcher_comment": "Provides a technical/legal definition of 'active defences' relevant to evaluation of offensive cyber tactics. Highlights that origin-determination is an explicit aim, linking back to attribution challenges.",
+          "potential_themes": [
+            "active_defence",
+            "technical_methods"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "active_defence_definition",
+            "origin_detection",
+            "preemptive_option"
+          ]
+        },
+        {
+          "quote": "The existence in contemporary international law of a general duty to prevent attacks originating from a State's own territory against the territory and legally protected interests of other States is widely accepted.",
+          "paraphrase": "Contemporary international law widely accepts a general duty for States to prevent attacks emanating from their territory that harm other States' protected interests.",
+          "researcher_comment": "Establishes duty-to-prevent/due-diligence as an accepted legal norm\u2014important because countermeasures may be justified against failures to prevent, not only the attacker's direct acts. The content of the duty remains context-specific.",
+          "potential_themes": [
+            "duty_to_prevent",
+            "due_diligence"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "duty_to_prevent",
+            "due_diligence_standard"
+          ]
+        },
+        {
+          "quote": "The duty to prevent is an obligation of conduct, not of result.",
+          "paraphrase": "The duty to prevent requires States to take reasonable measures (conduct), but does not obligate them to guarantee results.",
+          "researcher_comment": "Clarifies standard of liability\u2014focuses assessment on measures taken rather than achieving a specified outcome. This lowers the bar for proving failure to prevent compared to proving causation of every attack, but still requires evidence of inadequate conduct.",
+          "potential_themes": [
+            "due_diligence",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "conduct_not_result",
+            "standard_of_care"
+          ]
+        },
+        {
+          "quote": "A State that is the victim of a cyber attack needs to be able to show two things with clear and convincing evidence: that the attack emanated from the territory of the accused State, and that the State failed in its due diligence obligations under the duty to prevent the attack.",
+          "paraphrase": "To rely on countermeasures based on failure to prevent, a victim State must prove with clear and convincing evidence both territorial origin and the accused State's due-diligence failure.",
+          "researcher_comment": "Specifies a high evidentiary burden ('clear and convincing') for invoking countermeasures on failure-to-prevent grounds. This is a practical constraint in cyberspace where technical attribution is often imperfect.",
+          "potential_themes": [
+            "evidentiary_standards",
+            "attribution_challenges",
+            "duty_to_prevent"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "clear_and_convincing_evidence",
+            "territorial_link_requirement",
+            "failure_to_prevent"
+          ]
+        },
+        {
+          "quote": "in the words of a technical expert on the issue, \u2018there is still no \u201csilver bullet\u201d in the hunt for the attackers\u2019.",
+          "paraphrase": "A technical expert states there is no 'silver bullet' method for reliably identifying cyber attackers.",
+          "researcher_comment": "Technical expert opinion underscores practical limits of attribution technology; supports legal argument that conclusive technical proof is often unavailable. This is an expert observation, not empirical quantification of success rates.",
+          "potential_themes": [
+            "attribution_challenges",
+            "technical_limitations"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "no_silver_bullet",
+            "technical_attribution_limit"
+          ]
+        },
+        {
+          "quote": "a comprehensive approach 'that integrates information from all sources, not just technical sources at the scene of the attack', including intelligence or political sources.",
+          "paraphrase": "Public attributions often rely on 'all-source' approaches integrating technical, intelligence, and political information, not solely technical evidence.",
+          "researcher_comment": "Explains why political attributions may be convincing but legally insufficient; highlights divergence between political/public attribution and legal standards of proof required for countermeasures.",
+          "potential_themes": [
+            "attribution_challenges",
+            "evidentiary_standards",
+            "confidence_language"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "all_source_attribution",
+            "political_vs_legal_attribution"
+          ]
+        },
+        {
+          "quote": "'definitely attributing' cyber incidents and violations of international law related thereto is still one of the 'greatest strategic challenges regarding cyber threats'.",
+          "paraphrase": "Definitive attribution of cyber incidents and associated violations of international law remains one of the greatest strategic challenges in cyber threats.",
+          "researcher_comment": "Summarises the strategic significance of attribution problems for legal responses; directly relevant to RQs about feasibility and limits of attribution-dependent remedies.",
+          "potential_themes": [
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "strategic_attribution_challenge",
+            "legal_attribution_difficulty"
+          ]
+        },
+        {
+          "quote": "If a series of cyber attacks occurs over a period of time, the chance of being able to obtain sufficient evidence \u2013 technical and otherwise \u2013 after each instance in order to identify the territory of origin is significantly increased.",
+          "paraphrase": "Repeated cyber attacks over time raise the likelihood of gathering sufficient technical and other evidence to identify territorial origin.",
+          "researcher_comment": "Identifies a practical pathway to overcome attribution limits (accumulation of incidents), though it requires establishing continuity and failure to prevent. Relevant to RQs on the evidentiary effect of repeated campaigns.",
+          "potential_themes": [
+            "evidentiary_standards",
+            "duty_to_prevent",
+            "continuous_breach"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "predictive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "accumulation_of_events",
+            "evidence_by_repetition"
+          ]
+        },
+        {
+          "quote": "Active defences involve the employment of potentially harmful code aimed at the attacker, or even the plain \u2018mirroring\u2019 of malicious data back towards its source.",
+          "paraphrase": "Active defences can include using harmful code against attackers or mirroring malicious traffic back to its source.",
+          "researcher_comment": "Identifies concrete active-defence techniques and their intrinsic risks (spread, collateral damage). Useful for RQs comparing tactics and legal constraints (reversibility, human-rights impact).",
+          "potential_themes": [
+            "active_defence",
+            "third_party_effects"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "harmful_code_use",
+            "mirroring_tactic",
+            "active_response_methods"
+          ]
+        },
+        {
+          "quote": "Article 50(1)(b) of the ILC Articles on State Responsibility explicitly stipulates that \u2018[c]ountermeasures shall not affect obligations for the protection of fundamental human rights\u2019.",
+          "paraphrase": "Article 50(1)(b) prohibits countermeasures that affect obligations to protect fundamental human rights.",
+          "researcher_comment": "Places a clear human-rights constraint on countermeasures: any active cyber response must respect human-rights obligations. This has direct bearing on tactics likely to harm civilian infrastructure.",
+          "potential_themes": [
+            "human_rights",
+            "countermeasures"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "framework",
+          "argument_type": "normative",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "article_50_human_rights",
+            "rights_protection_constraint"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-24T16:37:37.689950Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "58486103c46102a28d7ef24e2a18140096836cb3aff5d5cd36e6d3d77562fdc0",
+  "function": "code_pdf_page"
+}

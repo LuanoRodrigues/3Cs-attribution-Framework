@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": "{\n  \"classification\": \"Highly Relevant\",\n  \"relevance_score\": \"High\",\n  \"potential_subcategory\": \"International Law \u2014 State Responsibility & Attribution (Cyber Policy and Norms)\",\n  \"justification\": \"The abstract directly addresses legal and policy questions central to cyber conflict attribution: it applies the Articles on State Responsibility to cyber operations, develops attribution tests for state and non-state actors, analyzes state practice and a concrete case study (Sony, 2014), and proposes normative/regulatory remedies (standards for private sector involvement, thresholds for countermeasures, multilateral attribution/dispute mechanisms). These elements squarely situate the work within cyber conflict attribution and international policy/law, making it highly relevant.\"\n}"
+  },
+  "cached_at": "2026-02-23T20:45:31.815869Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "VET5RGHX",
+  "function": "classify_by_abs"
+}

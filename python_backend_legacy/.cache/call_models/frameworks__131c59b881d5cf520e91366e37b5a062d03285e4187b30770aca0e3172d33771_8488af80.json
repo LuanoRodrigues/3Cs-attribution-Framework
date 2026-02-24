@@ -1,0 +1,125 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "quote": "For the purposes of this Article, cyber-attacks are defined as those whereby states utilize computers and information technology as the primary mechanisms to detrimentally impact the interests of another state.",
+          "paraphrase": "In response to RQ 0 (Definitions), the article defines cyber-attacks as states' use of computers and information technology as primary mechanisms to harm another state's interests.",
+          "researcher_comment": "This is a state-centric, means-focused definition that frames cyber-attacks as IT employed as a weapon rather than focusing on particular physical targets. The narrow scope shapes the Article's legal analysis but may exclude some kinetic attacks targeting computing infrastructure.",
+          "potential_themes": [
+            "attack_definition",
+            "means_vs_consequences"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "state_centric_definition",
+            "it_as_weapon"
+          ]
+        },
+        {
+          "quote": "As a result, attribution is regarded by many scholars as one of the most significant and immediate practical obstacles to resolving the legal uncertainty surrounding this emerging issue.",
+          "paraphrase": "In response to RQ 1 (Main findings), the article concludes that attribution is widely seen by scholars as the principal immediate obstacle to resolving legal uncertainty about cyber-attacks.",
+          "researcher_comment": "This locates attribution at the center of scholarly concern and justifies the Article's focus on attribution mechanisms. The claim is a synthesis of literature rather than new empirical proof and 'many scholars' is not quantified.",
+          "potential_themes": [
+            "attribution_challenges",
+            "misattribution_risk"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 1
+            }
+          ],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "attribution_as_primary_obstacle",
+            "legal_uncertainty"
+          ]
+        },
+        {
+          "quote": "This Article has analyzed the different approaches to cyber-attribution and proposed a model whereby attribution requirements are linked with the state's response to a cyber-incident.",
+          "paraphrase": "In response to RQ 2 (Method claims), the authors propose a procedural model that links the required standard of attribution to the type of state response chosen after a cyber-incident.",
+          "researcher_comment": "The proposal is procedural: attribution thresholds vary by the response (e.g., strict for forceful self-defense, lower for cooperative legal processes). The Article sketches the model but leaves operational details (evidentiary rules, burden shifts) under-specified.",
+          "potential_themes": [
+            "state_cooperation",
+            "control_tests"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 2
+            }
+          ],
+          "evidence_type": "method",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "attribution_by_response",
+            "tiered_attribution"
+          ]
+        },
+        {
+          "quote": "Issues remain regarding compulsory jurisdiction and enforcement of international tribunal decisions on these issues. Furthermore, the applicability of the law on countermeasures to cyber-attack requires further research.",
+          "paraphrase": "In response to RQ 3 (Stated limitations), the authors acknowledge unresolved questions about compulsory jurisdiction, enforcement of tribunal decisions, and whether countermeasures law applies to cyber-attacks.",
+          "researcher_comment": "These are explicit implementation and doctrinal gaps that could undercut the proposed model's efficacy. The text flags these as areas needing further legal research and practical development.",
+          "potential_themes": [
+            "legal_ambiguity",
+            "countermeasures"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 3
+            }
+          ],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "jurisdictional_gap",
+            "need_research_on_countermeasures"
+          ]
+        },
+        {
+          "quote": "This approach leverages existing international law, discourages states from pursuing retaliatory responses, and incentivizes host states to assist the victims of cyber-attack in identifying the perpetrators.",
+          "paraphrase": "In response to RQ 4 (Recommendations/future work), the paper recommends using existing international law to discourage retaliatory responses and to incentivize host-state cooperation in identifying perpetrators.",
+          "researcher_comment": "This normative recommendation aims to reduce escalation risk by shifting incentives toward cooperation and legal remedies. It assumes states will respond to such incentives; enforcement and verification mechanisms are not detailed.",
+          "potential_themes": [
+            "state_cooperation",
+            "self_defense"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 4
+            }
+          ],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "incentivize_cooperation",
+            "discourage_retaliation",
+            "leverage_existing_law"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-24T16:32:57.431951Z",
+  "collection_name": "frameworks",
+  "custom_id": "131c59b881d5cf520e91366e37b5a062d03285e4187b30770aca0e3172d33771",
+  "function": "code_pdf_page"
+}

@@ -1,0 +1,133 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "dqid": "J766INPV#DQ001",
+          "quote": "inter-State cyber security has unfortunately been treated predominantly as a military issue",
+          "extraction_type": "main_finding",
+          "paraphrase": "The authors argue that inter-State cyber security has been predominantly framed as a military issue, with debate focusing on the permissibility of Article 51 self-defence.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "self_defence_limitations"
+          ]
+        },
+        {
+          "dqid": "J766INPV#DQ002",
+          "quote": "the problem of attribution will preclude its proper application in many, if not most, instances.",
+          "extraction_type": "main_finding",
+          "paraphrase": "They claim that the problem of attribution will prevent the proper application of self-defence in many, if not most, instances.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "attribution_challenges",
+            "self_defence_limitations",
+            "evidentiary_standards"
+          ]
+        },
+        {
+          "dqid": "J766INPV#DQ003",
+          "quote": "Therefore, two other remedies will be analysed that might present an alternative to the prevalent military paradigm of international cyber security: countermeasures and the state of necessity.",
+          "extraction_type": "method_claim",
+          "paraphrase": "The chapter will analyse countermeasures and the state of necessity as alternative legal remedies to the dominant military paradigm in international cyber security.",
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "countermeasures_lawfulness",
+            "necessity_doctrine"
+          ]
+        },
+        {
+          "dqid": "J766INPV#DQ004",
+          "quote": "The chapter provides an outlook on the possibilities of a more comprehensive approach to contemporary security issues that focuses on prevention rather than repression, drawing on States\u2019 international due diligence obligations not to harm others.",
+          "extraction_type": "recommendation",
+          "paraphrase": "They recommend a prevention-focused approach that draws on States' international due diligence obligations, rather than repression or primarily military responses.",
+          "relevance_score": 3,
+          "relevant_rqs": [],
+          "mapped_codes": [
+            "state_practice_custom"
+          ]
+        },
+        {
+          "dqid": "J766INPV#DQ005",
+          "quote": "In cyberspace, as in the real world, self-defence is an option of last resort.",
+          "extraction_type": "definition",
+          "paraphrase": "The authors state that self-defence operates as an option of last resort both in cyberspace and in general international law.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "last_resort",
+            "self_defence_limitations",
+            "necessity_doctrine"
+          ]
+        },
+        {
+          "dqid": "J766INPV#DQ006",
+          "quote": "It has been made clear that both countermeasures and the state of necessity pose unique and very specific legal problems when applied in the context of cyberspace.",
+          "extraction_type": "main_finding",
+          "paraphrase": "They conclude that applying countermeasures and the state of necessity in cyberspace raises distinct and specific legal problems.",
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "countermeasures_limits",
+            "necessity_doctrine"
+          ]
+        },
+        {
+          "dqid": "J766INPV#DQ007",
+          "quote": "Some of these problems can be solved; others could at least be mitigated if non-forcible unilateral responses to cyber incidents of unclear origin that affect other State's interest could be better coordinated and ultimately institutionalised on the basis of an international treaty.",
+          "extraction_type": "recommendation",
+          "paraphrase": "They propose that better coordination and international institutionalisation (via treaty) of non\u2011forcible unilateral responses to incidents of unclear origin could mitigate some of the legal problems.",
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "countermeasures_procedure",
+            "state_practice_custom"
+          ]
+        },
+        {
+          "dqid": "J766INPV#DQ008",
+          "quote": "Certainly, in the long run a cogent path would be a much stronger focus on specifying States' due diligence obligations regarding threat prevention and securing the freedom and stability of cyberspace.",
+          "extraction_type": "recommendation",
+          "paraphrase": "They argue that, in the long term, specifying States' due diligence obligations for threat prevention and for securing cyberspace's freedom and stability is a cogent path forward.",
+          "relevance_score": 3,
+          "relevant_rqs": [],
+          "mapped_codes": [
+            "state_practice_custom"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-24T17:22:49.018927Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "7ad4f60be2a24aac8ab3242407ea72a8d3335cea7a151545fe783c40174f195c",
+  "function": "code_intro_conclusion_extract_core_claims"
+}

@@ -1,0 +1,182 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "dqid": "HRT22LJK#DQ001",
+          "quote": "The difficulty in assessing legality is amplified when analyzing cyber intrusions, because they do not offend the principle of territorial integrity in the same way that sending an actual state agent to gather human intelligence (colloquially referred to as \u201cHUMINT\u201d) would.",
+          "extraction_type": "main_finding",
+          "paraphrase": "The author argues that assessing the legality of cyber intrusions is harder because they do not violate territorial integrity in the same way as physical HUMINT operations.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "attribution_logic"
+          ]
+        },
+        {
+          "dqid": "HRT22LJK#DQ002",
+          "quote": "However, because there is no public multilateral treaty that addresses acts of cyber espionage, recourse must be made to the customary rules to determine the position of espionage under international law.",
+          "extraction_type": "method_claim",
+          "paraphrase": "The author states that, in the absence of a public multilateral treaty on cyber espionage, one must rely on customary international law to determine espionage's legal status.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "framework_usage",
+            "method_design"
+          ]
+        },
+        {
+          "dqid": "HRT22LJK#DQ003",
+          "quote": "At its most basic level, customary law is comprised of the rules that emerge as a matter of past practice amongst nation states, and which come to govern future relations between them.",
+          "extraction_type": "definition",
+          "paraphrase": "The author defines customary law as rules that arise from past state practice and that subsequently govern future interstate relations.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "framework_usage",
+            "evidence_standard"
+          ]
+        },
+        {
+          "dqid": "HRT22LJK#DQ004",
+          "quote": "The Statute of the International Court of Justice defines customary law as \u201cevidence of a general practice accepted as law.\u201d",
+          "extraction_type": "definition",
+          "paraphrase": "The Statute of the International Court of Justice is cited as defining customary law as 'evidence of a general practice accepted as law.'",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "evidence_standard"
+          ]
+        },
+        {
+          "dqid": "HRT22LJK#DQ005",
+          "quote": "It also presupposes that a clear line can be drawn between economic and security interests \u2013 which of course is not true.",
+          "extraction_type": "main_finding",
+          "paraphrase": "The author contends that it is false to presuppose a clear, defensible line between economic and security interests for espionage rules.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "framework_usage",
+            "attribution_logic"
+          ]
+        },
+        {
+          "dqid": "HRT22LJK#DQ006",
+          "quote": "The act, placing nefarious code on the server, is the exact same. It is only the motivation that differs.",
+          "extraction_type": "main_finding",
+          "paraphrase": "The author illustrates that identical cyber acts can be technically the same while differing only in the actor's motivation.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "attribution_logic"
+          ]
+        },
+        {
+          "dqid": "HRT22LJK#DQ007",
+          "quote": "And, in cyberspace, it will be difficult if not impossible to accurately assess the motivation behind any particular act.",
+          "extraction_type": "limitation",
+          "paraphrase": "The paper asserts that in cyberspace it will be difficult, if not impossible, to accurately determine the motivation for a given clandestine act.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "attribution_logic"
+          ]
+        },
+        {
+          "dqid": "HRT22LJK#DQ008",
+          "quote": "Therefore, the notion of setting up a dual regime with permissive rules for security related espionage and restrictive rules for economic espionage rests on top of two fallacies.",
+          "extraction_type": "main_finding",
+          "paraphrase": "The author argues that creating a dual regime\u2014permissive for security espionage and restrictive for economic espionage\u2014is founded on two mistaken assumptions.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "framework_usage"
+          ]
+        },
+        {
+          "dqid": "HRT22LJK#DQ009",
+          "quote": "First, that a target can tell the difference between acts that are economic in nature versus those that are security related, and that there is an actual difference between the two.",
+          "extraction_type": "limitation",
+          "paraphrase": "The first fallacy identified is the assumption that a target can distinguish economic acts from security-related acts and that such a clear difference actually exists.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "attribution_logic"
+          ]
+        },
+        {
+          "dqid": "HRT22LJK#DQ010",
+          "quote": "And second, that a target will be able to ascertain why a particular clandestine cyber act was undertaken.",
+          "extraction_type": "limitation",
+          "paraphrase": "The second fallacy is the assumption that a target can determine the reasons why a clandestine cyber act was carried out.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "attribution_logic"
+          ]
+        },
+        {
+          "dqid": "HRT22LJK#DQ011",
+          "quote": "This bifurcation of espionage related activities is simply not a sustainable way to create realistic rules of the road for espionage in cyber space.",
+          "extraction_type": "recommendation",
+          "paraphrase": "The author concludes that splitting espionage rules into economic versus security categories is not a sustainable basis for realistic cyber espionage norms.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "framework_usage"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-24T17:27:58.231154Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "6ed56944db0297bbd2a9ad4b21b72a45ad47c3ea5d31a2bafc59cbe138bfaa2c",
+  "function": "code_intro_conclusion_extract_core_claims"
+}

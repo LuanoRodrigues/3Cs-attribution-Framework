@@ -1,0 +1,67 @@
+{
+  "startedAt": "2026-02-22T10:09:06.519Z",
+  "scenario": {
+    "collectionKeyword": "framework",
+    "collectionKey": "44Q6VN9A",
+    "dirBase": "/home/pantera/annotarium/analyse",
+    "initialCommand": "code this collection about cyber attribution and frameworks and models",
+    "feedback": "Could you focus the questions on literature review contribution and strengths/weaknesses of each framework?",
+    "approve": "yes",
+    "waitMs": 120000,
+    "executionWaitMs": 300000
+  },
+  "steps": [
+    {
+      "at": "2026-02-22T10:09:06.522Z",
+      "name": "renderer-ready",
+      "ok": true,
+      "detail": "chat form + collections tree detected"
+    },
+    {
+      "at": "2026-02-22T10:09:07.507Z",
+      "name": "await-tree-lines",
+      "ok": true,
+      "detail": "rows=79"
+    },
+    {
+      "at": "2026-02-22T10:09:07.569Z",
+      "name": "select-collection",
+      "ok": true,
+      "detail": "frameworks"
+    },
+    {
+      "at": "2026-02-22T10:09:08.788Z",
+      "name": "send-initial-command",
+      "ok": true,
+      "detail": "code this collection about cyber attribution and frameworks and models"
+    },
+    {
+      "at": "2026-02-22T10:11:08.880Z",
+      "name": "await-initial-questions",
+      "ok": false,
+      "detail": "timeout waiting for assistant message"
+    }
+  ],
+  "transcript": [
+    {
+      "role": "assistant",
+      "tone": "",
+      "text": "Agent ready. Send a command to organize collections by tag."
+    },
+    {
+      "role": "user",
+      "tone": "",
+      "text": "code this collection about cyber attribution and frameworks and models"
+    },
+    {
+      "role": "assistant",
+      "tone": "",
+      "text": "I need a bit more detail:\n- Should coding be at the whole-document level or at finer-grained units (e.g., claims, sections, evidence items)?\n- Do you already have a codebook/taxonomy for frameworks and models, or should I propose a draft codebook for review?\n- What screening criteria should I apply (language, publication date range, document types to include/exclude)?\n- What output format do you want for coded results (Zotero tags/collections, item notes, CSV/Excel export), and do you want automated assistance (e.g., suggestions or NLP-based tagging)?"
+    }
+  ],
+  "status": "failed",
+  "error": "timeout waiting for assistant message",
+  "statusLine": "Intent needs clarification.",
+  "selectedCollection": "Collection\n      NameframeworksParent KeyYIE67ZBPVersion77838Subcollections0Items in Panel7Items in Tree Cache7\n      \n        Open in Zotero",
+  "finishedAt": "2026-02-22T10:11:08.882Z"
+}

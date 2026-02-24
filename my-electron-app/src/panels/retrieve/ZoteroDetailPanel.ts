@@ -103,6 +103,7 @@ export class ZoteroDetailPanel {
     if (this.activeTab === tab) btn.classList.add("is-active");
     btn.title = label;
     btn.setAttribute("aria-label", label);
+    btn.dataset.voiceAliases = `open ${label},${label},open ${label.toLowerCase().replace(/&/g, "and")}`;
     btn.innerHTML = `<span class=\"zotero-vtab-icon\">${iconSvg}</span>`;
     btn.addEventListener("click", () => {
       this.activeTab = tab;

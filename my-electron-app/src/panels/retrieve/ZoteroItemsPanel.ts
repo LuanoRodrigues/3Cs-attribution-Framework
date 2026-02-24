@@ -4,6 +4,7 @@ export class ZoteroItemsPanel {
   readonly element: HTMLElement;
   private listEl: HTMLElement;
   private statusEl: HTMLElement;
+  private tableHead: HTMLElement;
   private searchInput: HTMLInputElement;
   private unsubscribe: (() => void) | null = null;
 
@@ -26,9 +27,9 @@ export class ZoteroItemsPanel {
     this.statusEl = document.createElement("div");
     this.statusEl.className = "retrieve-status zotero-status";
 
-    const tableHead = document.createElement("div");
-    tableHead.className = "zotero-card-head";
-    tableHead.innerHTML = `
+    this.tableHead = document.createElement("div");
+    this.tableHead.className = "zotero-card-head";
+    this.tableHead.innerHTML = `
       <span>Title</span>
       <span>Creator</span>
       <span>Year</span>
@@ -39,7 +40,7 @@ export class ZoteroItemsPanel {
     this.listEl = document.createElement("div");
     this.listEl.className = "zotero-card-list";
 
-    this.element.append(controls, this.statusEl, tableHead, this.listEl);
+    this.element.append(controls, this.statusEl, this.tableHead, this.listEl);
     this.unsubscribe = retrieveZoteroContext.subscribe((state) => this.render(state));
   }
 
@@ -49,8 +50,17 @@ export class ZoteroItemsPanel {
   }
 
   private render(state: RetrieveZoteroState): void {
+    const batchMode = state.workspaceMode === "batches";
+    this.searchInput.placeholder = batchMode
+      ? "Filter payload, theme, evidence, question"
+      : "Filter title, creator, year, DOI";
+    this.tableHead.innerHTML = batchMode
+      ? "<span>Payload</span><span>Theme</span><span>Page</span><span>Evidence</span><span>Question</span>"
+      : "<span>Title</span><span>Creator</span><span>Year</span><span>Type</span><span>Source</span>";
     const selectedCollection = retrieveZoteroContext.getSelectedCollection();
-    const base = selectedCollection?.name ? `Collection: ${selectedCollection.name}` : "No collection selected.";
+    const base = selectedCollection?.name
+      ? `${batchMode ? "Batch" : "Collection"}: ${selectedCollection.name}`
+      : `No ${batchMode ? "batch" : "collection"} selected.`;
     const tagPart = state.activeTags.length ? ` | Tags: ${state.activeTags.join(", ")}` : "";
     this.statusEl.textContent = state.loadingItems ? `Loading items... ${base}` : `${base}${tagPart}`;
 
@@ -89,6 +99,9 @@ export class ZoteroItemsPanel {
     const row = document.createElement("button");
     row.type = "button";
     row.className = "zotero-item-row-v2";
+    const title = item.title || "Untitled";
+    row.ariaLabel = `Select Zotero item ${title}`;
+    row.dataset.voiceAliases = `select item ${title},open item ${title},zotero item ${item.key}`;
     if (selected) row.classList.add("is-selected");
     row.addEventListener("click", () => retrieveZoteroContext.selectItem(item.key));
 

@@ -1,0 +1,13 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": []
+    }
+  },
+  "cached_at": "2026-02-23T23:24:25.178516Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "debug_read_probe_2",
+  "function": "code_pdf_page"
+}

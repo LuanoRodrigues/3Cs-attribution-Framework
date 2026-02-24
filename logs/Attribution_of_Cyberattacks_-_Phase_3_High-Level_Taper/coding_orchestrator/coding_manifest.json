@@ -1,0 +1,18 @@
+{
+  "schema": "coding_manifest_v1",
+  "started_at": "2026-02-23T20:56:50Z",
+  "status": "error",
+  "step_name": "screening",
+  "engine_id": "legacy_screening",
+  "resolved_engine_id": "legacy_screening",
+  "request": {
+    "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+    "collection_key": "",
+    "coding_mode": "screening",
+    "prompt_key": "classify_by_abs",
+    "research_questions_count": 0
+  },
+  "ended_at": "2026-02-23T21:01:26Z",
+  "error": "The read operation timed out",
+  "result_path": "/home/pantera/projects/TEIA/logs/Attribution_of_Cyberattacks_-_Phase_3_High-Level_Taper/coding_orchestrator/coding_result.json"
+}

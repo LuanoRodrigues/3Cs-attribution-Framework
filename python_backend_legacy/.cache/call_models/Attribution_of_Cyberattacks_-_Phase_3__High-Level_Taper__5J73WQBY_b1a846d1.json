@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": "{\n  \"classification\": \"Highly Relevant\",\n  \"relevance_score\": \"High\",\n  \"potential_subcategory\": \"State attribution and international law; policy & norm development\",\n  \"justification\": \"The abstract centrally addresses attribution of state-sponsored cyber operations and its intersection with international law and policy. It analyzes evidentiary standards for state responsibility, political and legal barriers to invoking international law, and discusses concrete reforms (standardized attribution protocols, neutral third-party review, norm formation mechanisms) relevant to policymakers and legal scholars. Use of prominent case studies (WannaCry, NotPetya) and examination of both state and private attribution actors further underscores direct relevance to cyber conflict attribution and policy/law.\"\n}"
+  },
+  "cached_at": "2026-02-23T20:35:42.903276Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "5J73WQBY",
+  "function": "classify_by_abs"
+}

@@ -32,14 +32,18 @@ export class CitationGraphPanel {
     const closeBtn = document.createElement("button");
     closeBtn.type = "button";
     closeBtn.className = "ribbon-button ribbon-button--compact";
+    closeBtn.ariaLabel = "Close graph";
     closeBtn.textContent = "Close";
+    closeBtn.dataset.voiceAliases = "close graph,close citation graph,close";
     closeBtn.addEventListener("click", () => {
       document.dispatchEvent(new CustomEvent("retrieve:close-graph"));
     });
     const backBtn = document.createElement("button");
     backBtn.type = "button";
     backBtn.className = "ribbon-button ribbon-button--compact";
+    backBtn.ariaLabel = "Back";
     backBtn.textContent = "Back";
+    backBtn.dataset.voiceAliases = "back,go back,return";
     backBtn.addEventListener("click", () => {
       document.dispatchEvent(new CustomEvent("retrieve:close-graph"));
     });
@@ -47,7 +51,9 @@ export class CitationGraphPanel {
     const fullscreenBtn = document.createElement("button");
     fullscreenBtn.type = "button";
     fullscreenBtn.className = "ribbon-button ribbon-button--compact";
+    fullscreenBtn.ariaLabel = "Fullscreen graph";
     fullscreenBtn.textContent = "Fullscreen";
+    fullscreenBtn.dataset.voiceAliases = "fullscreen,open full screen,expand graph,fullscreen graph";
     fullscreenBtn.addEventListener("click", () => {
       if (this.frame.requestFullscreen) {
         void this.frame.requestFullscreen().catch(() => undefined);
@@ -59,7 +65,9 @@ export class CitationGraphPanel {
     const detachBtn = document.createElement("button");
     detachBtn.type = "button";
     detachBtn.className = "ribbon-button ribbon-button--compact";
+    detachBtn.ariaLabel = "Detach graph";
     detachBtn.textContent = "Detach";
+    detachBtn.dataset.voiceAliases = "detach graph,open in new window,open external graph";
     detachBtn.addEventListener("click", () => {
       window.open(this.frame.src, "_blank", "noopener,noreferrer");
     });

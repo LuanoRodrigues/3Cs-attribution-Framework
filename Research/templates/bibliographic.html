@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Bibliometric Review: {{ topic }}</title>
+  <style>
+    /* ─────────────────────────────
+       THEME VARIABLES – injected by Jinja2
+       ───────────────────────────── */
+    :root {
+        --body-bg: {{ theme_body_bg           | default('#fdfdfd') }};
+        --text-color: {{ theme_text_color     | default('#333')    }};
+        --heading-color-h1: {{ theme_h1_color | default('#0D47A1') }};
+        --heading-color-h2: {{ theme_h2_color | default('#1A237E') }};
+        --heading-color-h3: {{ theme_h3_color | default('#1E88E5') }};
+        --heading-color-h4: {{ theme_h4_color | default('#42A5F5') }};
+        --link-color: {{ theme_link_color     | default('#1E88E5') }};
+        --link-hover-color: {{ theme_link_hover_color | default('#0D47A1') }};
+        --border-color: {{ theme_border_color | default('#d0d0d0') }};
+        --section-bg: {{ theme_section_bg     | default('#fff')    }};
+        --subsection-border: {{ theme_subsection_border | default('#E3F2FD') }};
+        --table-header-bg: {{ theme_table_header_bg | default('#f0f4f8') }};
+        --table-header-text: {{ theme_table_header_text | default('#2c3e50') }};
+        --table-row-even-bg: {{ theme_table_row_even_bg | default('#f9f9f9') }};
+        --table-row-hover-bg: {{ theme_table_row_hover_bg | default('#e6e6fa') }};
+        --figure-bg: {{ theme_figure_bg       | default('#fff')    }};
+        --ai-analysis-bg: {{ theme_ai_analysis_bg | default('#f0f4f8') }};
+        --ai-analysis-border: {{ theme_ai_analysis_border | default('#7aa0c2') }};
+        --ai-analysis-text-color: {{ theme_ai_analysis_text_color | default('#222') }};
+        --placeholder-text-color: {{ theme_placeholder_text_color | default('#7f8c8d') }};
+        --placeholder-border-color: {{ theme_placeholder_border_color | default('#bdc3c7') }};
+    }
+
+    /* ─────────────────────────────
+       BASE TYPOGRAPHY & LAYOUT
+       ───────────────────────────── */
+    body{
+        font-family: "Georgia","Times New Roman",Times,serif;
+        line-height:1.75;
+        margin:0 auto;
+        max-width:900px;
+        padding:30px;
+        background:var(--body-bg);
+        color:var(--text-color);
+    }
+    h1,h2,h3{
+        font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif;
+        line-height:1.3;font-weight:600;margin-bottom:.8em
+    }
+    h1{font-size:2.4em;margin-top:0;text-align:center;color:var(--heading-color-h1)}
+    h2{font-size:1.9em;margin-top:2.2em;border-bottom:2px solid var(--heading-color-h2);padding-bottom:10px;color:var(--heading-color-h2)}
+    h3{font-size:1.6em;margin-top:2em;border-bottom:1px solid var(--heading-color-h3);padding-bottom:8px;color:var(--heading-color-h3)}
+    h4{font-size:1.25em;color:var(--heading-color-h4);margin-top:1.5em;margin-bottom:.6em;font-weight:600}
+    p{text-align:justify;margin-bottom:1.3em}
+    a{color:var(--link-color);text-decoration:none;font-weight:500}
+    a:hover{color:var(--link-hover-color);text-decoration:underline}
+
+    /* ─────────────────────────────
+       META-BLOCK
+       ───────────────────────────── */
+    .metadata-block{
+        text-align:center;
+        margin-bottom:3em;
+        padding-bottom:1.5em;
+        font-size:.9em;
+        color:var(--placeholder-text-color);
+        border-bottom:1px solid var(--border-color)
+    }
+    .metadata-block p{margin:.4em 0}
+
+    /* ─────────────────────────────
+       FIGURES & PLOTS
+       ───────────────────────────── */
+    figure{
+        margin:30px auto;
+        padding:15px;
+        max-width:100%;
+        background:var(--figure-bg);
+        border:1px solid var(--border-color);
+        box-shadow:0 3px 6px rgba(0,0,0,.07);
+        text-align:center
+    }
+    figure img{max-width:100%;height:auto;border:1px solid var(--border-color);display:block;margin:0 auto 15px}
+    .plot-container>div,.plot-container>iframe{
+        margin:0 auto!important;
+        border:1px solid var(--border-color)
+    }
+    figcaption{font-size:.9em;color:var(--text-color);opacity:.85;margin-top:10px}
+
+    /* ─────────────────────────────
+       TABLES
+       ───────────────────────────── */
+    table.data-table{
+        width:100%;
+        border-collapse:collapse;
+        margin:30px auto;
+        font-size:.9em;
+        border:1px solid var(--border-color)
+    }
+    table.data-table th,table.data-table td{
+        border:1px solid var(--border-color);
+        padding:10px 14px;
+        vertical-align:top;text-align:left
+    }
+    table.data-table th{
+        background:var(--table-header-bg);
+        color:var(--table-header-text);
+        font-weight:600
+    }
+    table.data-table tr:nth-child(even){background:var(--table-row-even-bg)}
+    table.data-table tr:hover{background:var(--table-row-hover-bg)}
+
+    /* ─────────────────────────────
+       AI-GENERATED SECTIONS
+       ───────────────────────────── */
+    .ai-generated-section p{margin-bottom:1.1em}
+    .ai-generated-section h3{
+        font-size:1.3em;
+        color:var(--heading-color-h3);
+        margin:1.2em 0 .5em;
+        border:0
+    }
+    .ai-generated-section h4{
+        font-size:1.1em;
+        color:var(--heading-color-h4);
+        margin:1em 0 .4em;
+        font-weight:600
+    }
+    .ai-figure-analysis{
+        margin-top:20px;
+        padding:15px;
+        background:var(--ai-analysis-bg);
+        border-left:4px solid var(--ai-analysis-border);
+        color:var(--ai-analysis-text-color);
+        font-size:.95em;text-align:justify
+    }
+    .ai-figure-analysis h4{
+        margin:0 0 .7em;
+        font-size:1.15em;
+        color:var(--heading-color-h3);
+        border-bottom:1px dashed var(--ai-analysis-border);
+        padding-bottom:5px
+    }
+
+    /* ─────────────────────────────
+       PLACEHOLDERS
+       ───────────────────────────── */
+    .placeholder-text{
+        font-style:italic;
+        color:var(--placeholder-text-color);
+        border:1px dashed var(--placeholder-border-color);
+        background:var(--section-bg);
+        padding:15px;
+        margin:20px 0;
+        text-align:center
+    }
+
+    /* Smaller helpers */
+    .plot-container{width:100%;overflow-x:auto}
+  </style>
+</head>
+
+<body>
+
+  <h1>Bibliometric Review: {{ topic | default('N/A') }}</h1>
+
+  <!-- ─── METADATA ─────────────────────────────────────────── -->
+  <div class="metadata-block">
+    <p><strong>Authors:</strong> {{ authors_list | default('[Author Name(s) Placeholder]') }}</p>
+    <p><strong>Affiliation(s):</strong> {{ affiliation | default('[Affiliation Placeholder]') }}</p>
+    <p><em>Report Generated: {{ generation_date | default('N/A') }}</em></p>
+    <p>Data Source: {{ data_source_name | default('N/A') }} | Period: {{ date_range | default('N/A') }} |
+       Items Analyzed: {{ analyzed_docs_count | default('N/A') }} (of {{ total_docs_found | default('N/A') }})</p>
+    <p><em>AI Assistance: {{ ai_models_used | default('N/A') }}</em></p>
+  </div>
+
+  <!-- ─── 0. ABSTRACT ──────────────────────────────────────── -->
+  <div class="report-section">
+    <h2>Abstract</h2>
+    <div class="ai-generated-section">
+      {{ ai_abstract | default('<p class="placeholder-text">[Abstract not generated.]</p>') | safe }}
+    </div>
+    {% if top_keywords_list_str %}
+      <p><strong>Keywords:</strong>
+         <em class="keywords-list">{{ top_keywords_list_str }}</em></p>
+    {% endif %}
+  </div>
+
+  <!-- ─── 1. INTRODUCTION ──────────────────────────────────── -->
+  <div class="report-section">
+    <h2>1. Introduction</h2>
+    <div class="ai-generated-section">
+      {{ ai_introduction | default('<p class="placeholder-text">[Introduction not generated.]</p>') | safe }}
+    </div>
+  </div>
+
+  <!-- ─── 2. METHODOLOGY ───────────────────────────────────── -->
+  <div class="report-section">
+    <h2>2. Methodology</h2>
+    <div class="ai-generated-section">
+      {{ ai_methodology_review | default('<p class="placeholder-text">[Methodology not generated.]</p>') | safe }}
+    </div>
+  </div>
+
+  <!-- ─── 3. RESULTS (each subsection separately) ──────────── -->
+  <div class="report-section">
+    <h2>3. Results</h2>
+
+    <!-- 3.1 Publication Trend -->
+    <div class="sub-section">
+      <h3>3.1. Publication Output and Temporal Trends</h3>
+      <p>The evolution of research output on “{{ topic | default('N/A') }}”
+         ({{ date_range | default('N/A') }}) is shown below;
+         the dataset contains {{ analyzed_docs_count | default('N/A') }} items.</p>
+
+      <figure>
+        <div class="plot-container">
+          {% if year_trends_plot_html %}
+            {{ year_trends_plot_html | safe }}
+          {% else %}
+            <p class="placeholder-text">[Annual Publication Trend Plot Unavailable]</p>
+          {% endif %}
+        </div>
+        <figcaption>
+          {{ year_trends_caption | default('<strong>Figure&nbsp;1.</strong> Annual publication output.') | safe }}
+        </figcaption>
+      </figure>
+
+      {% if ai_timeline_analysis %}
+      <div class="ai-figure-analysis">
+        <h4>AI Analysis of Publication Trends:</h4>
+        {{ ai_timeline_analysis | safe }}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- 3.2 Document Types -->
+    <div class="sub-section">
+      <h3>3.2. Document Type Distribution</h3>
+
+      <figure>
+        <div class="plot-container">
+          {% if analyzed_doc_types_plot_html %}
+            {{ analyzed_doc_types_plot_html | safe }}
+          {% else %}
+            <p class="placeholder-text">[Analyzed Document Types Plot Unavailable]</p>
+          {% endif %}
+        </div>
+        <figcaption>
+          {{ analyzed_doc_types_caption | default('<strong>Figure&nbsp;2.</strong> Distribution of document types.') | safe }}
+        </figcaption>
+      </figure>
+
+      {% if ai_analyzed_doc_types_analysis %}
+      <div class="ai-figure-analysis">
+        <h4>AI Analysis of Document Types:</h4>
+        {{ ai_analyzed_doc_types_analysis | safe }}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- 3.3 Leading Authors & Institutions -->
+    <div class="sub-section">
+      <h3>3.3. Leading Authors and Institutions</h3>
+
+      <figure>
+        <div class="plot-container">
+          {% if top_authors_plot_html %}
+            {{ top_authors_plot_html | safe }}
+          {% else %}
+            <p class="placeholder-text">[Top Authors Plot Unavailable]</p>
+          {% endif %}
+        </div>
+        <figcaption>
+          {{ top_authors_caption | default('<strong>Figure&nbsp;3.</strong> Prolific authors.') | safe }}
+        </figcaption>
+      </figure>
+
+      {% if ai_author_graph_analysis %}
+      <div class="ai-figure-analysis">
+        <h4>AI Analysis of Author Landscape:</h4>
+        {{ ai_author_graph_analysis | safe }}
+      </div>
+      {% endif %}
+
+      <figure>
+        <div class="plot-container">
+          {% if top_affiliations_plot_html %}
+            {{ top_affiliations_plot_html | safe }}
+          {% else %}
+            <p class="placeholder-text">[Top Affiliations Plot Unavailable]</p>
+          {% endif %}
+        </div>
+        <figcaption>
+          {{ top_affiliations_caption | default('<strong>Figure&nbsp;4.</strong> Top institutions.') | safe }}
+        </figcaption>
+      </figure>
+
+      {% if ai_top_affiliations_analysis %}
+      <div class="ai-figure-analysis">
+        <h4>AI Analysis of Top Affiliations:</h4>
+        {{ ai_top_affiliations_analysis | safe }}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- 3.4 Geographic distribution, 3.5 Keywords, 3.6 Networks… -->
+    {# … replicate the same pattern for other subsections … #}
+  </div>
+
+  <!-- ─── 4. DISCUSSION ────────────────────────────────────── -->
+  <div class="report-section">
+    <h2>4. Discussion</h2>
+    <div class="ai-generated-section">
+      {{ ai_discussion | default('<p class="placeholder-text">[Discussion not generated.]</p>') | safe }}
+    </div>
+  </div>
+
+  <!-- ─── 5. CONCLUSION ────────────────────────────────────── -->
+  <div class="report-section">
+    <h2>5. Conclusion</h2>
+    <div class="ai-generated-section">
+      {{ ai_conclusion | default('<p class="placeholder-text">[Conclusion not generated.]</p>') | safe }}
+    </div>
+  </div>
+
+  <!-- ─── 6. LIMITATIONS ───────────────────────────────────── -->
+  <div class="report-section">
+    <h2>6. Limitations</h2>
+    <div class="ai-generated-section">
+      {{ ai_limitations | default('<p class="placeholder-text">[Limitations not generated.]</p>') | safe }}
+    </div>
+  </div>
+
+  <!-- ─── 7. REFERENCES ────────────────────────────────────── -->
+  <div id="references-section" class="report-section">
+    <h2>7. References</h2>
+    <p>The analysis used {{ analyzed_docs_count | default('numerous') }} core items.
+       Below is a representative list (up&nbsp;to&nbsp;{{ REFERENCE_LIMIT | default(20) }} records):</p>
+    <ol>
+      {% for ref in references_list %}
+        <li>{{ ref.html_string | safe }}</li>
+      {% else %}
+        <li>No reference data compiled for this report.</li>
+      {% endfor %}
+    </ol>
+  </div>
+
+</body>
+</html>
+
+<!--<!DOCTYPE html>-->
+<!--<html>-->
+<!--<head>-->
+<!--  <meta charset="UTF-8">-->
+<!--  <title>Bibliometric Survey on {{ topic }}</title>-->
+<!--  <style>-->
+<!--    /* -&#45;&#45; Base & Typography -&#45;&#45; */-->
+<!--    body {-->
+<!--        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;-->
+<!--        line-height: 1.7;-->
+<!--        margin: 0 auto; /* Center content */-->
+<!--        max-width: 900px; /* Slightly narrower for better readability */-->
+<!--        padding: 25px;-->
+<!--        color: #333;-->
+<!--        background-color: #fdfdfd; /* Off-white background */-->
+<!--    }-->
+<!--    h1, h2, h3, h4 {-->
+<!--        font-family: "Georgia", "Times New Roman", Times, serif; /* Serif for headings */-->
+<!--        color: #1A237E; /* Dark blue */-->
+<!--        margin-top: 2em;-->
+<!--        margin-bottom: 0.8em;-->
+<!--        line-height: 1.3;-->
+<!--        font-weight: 600;-->
+<!--    }-->
+<!--    h1 { text-align: center; margin-bottom: 1.5em; font-size: 2.2em; color: #0D47A1; /* Slightly different blue */ }-->
+<!--    h2 { border-bottom: 2px solid #42A5F5; /* Lighter blue border */ padding-bottom: 8px; font-size: 1.8em; }-->
+<!--    h3 { border-bottom: 1px solid #90CAF9; /* Even lighter blue border */ padding-bottom: 6px; font-size: 1.5em; color: #1E88E5; }-->
+<!--    h4 { font-size: 1.2em; color: #42A5F5; margin-bottom: 0.6em; font-weight: 600; font-family: sans-serif; /* Sans-serif for H4 */}-->
+<!--    p { margin-bottom: 1.2em; text-align: justify;} /* Justify paragraph text */-->
+<!--    a { color: #1E88E5; text-decoration: none; }-->
+<!--    a:hover { color: #0D47A1; text-decoration: underline; }-->
+<!--    em, i { font-style: italic; } /* Ensure italics */-->
+<!--    strong, b { font-weight: 600; } /* Ensure bold */-->
+
+<!--    /* -&#45;&#45; Layout & Sections -&#45;&#45; */-->
+<!--    .metadata {-->
+<!--        text-align: center;-->
+<!--        margin-bottom: 3em;-->
+<!--        font-size: 0.95em;-->
+<!--        color: #555;-->
+<!--        border-bottom: 1px solid #e0e0e0;-->
+<!--        padding-bottom: 1.5em;-->
+<!--    }-->
+<!--    .metadata p { margin: 0.3em 0; }-->
+<!--    .section-content { margin-bottom: 40px; padding-left: 0; } /* Remove left padding */-->
+<!--    .subsection-content { margin-bottom: 30px; padding-left: 15px; border-left: 3px solid #E3F2FD; /* Light blue border */ margin-left: 5px; /* Small indent for subsection */ }-->
+
+<!--    /* -&#45;&#45; Visual Elements (Figures, Tables) -&#45;&#45; */-->
+<!--    figure {-->
+<!--        margin: 35px auto; /* Centered figure */-->
+<!--        text-align: center;-->
+<!--        border: 1px solid #e0e0e0;-->
+<!--        padding: 15px 15px 10px 15px; /* Adjust padding */-->
+<!--        background-color: #fff;-->
+<!--        box-shadow: 0 2px 5px rgba(0,0,0,0.08);-->
+<!--        max-width: 750px; /* Limit figure width */-->
+<!--    }-->
+<!--    figure img {-->
+<!--        max-width: 100%;-->
+<!--        height: auto;-->
+<!--        border: 1px solid #f0f0f0; /* Lighter border around image */-->
+<!--        display: block; /* Prevent extra space below image */-->
+<!--        margin: 0 auto 10px auto; /* Center image and add bottom margin */-->
+<!--    }-->
+<!--    figcaption {-->
+<!--        font-size: 0.9em;-->
+<!--        color: #666;-->
+<!--        margin-top: 10px;-->
+<!--        font-style: normal; /* Remove italics */-->
+<!--        line-height: 1.5;-->
+<!--        text-align: left; /* Align caption text left */-->
+<!--        padding: 0 5px; /* Small padding for caption */-->
+<!--    }-->
+<!--    figcaption strong { color: #333; } /* Make "Figure X" bold */-->
+
+<!--    table.data-table {-->
+<!--        border-collapse: collapse;-->
+<!--        width: 100%; /* Full width within container */-->
+<!--        margin: 30px auto;-->
+<!--        border: 1px solid #ccc;-->
+<!--        box-shadow: none; /* Remove shadow for cleaner look */-->
+<!--        font-size: 0.88em; /* Slightly smaller table font */-->
+<!--    }-->
+<!--    table.data-table th, table.data-table td {-->
+<!--        border: 1px solid #ddd;-->
+<!--        padding: 10px 12px;-->
+<!--        text-align: left;-->
+<!--        vertical-align: top;-->
+<!--    }-->
+<!--    table.data-table th {-->
+<!--        background-color: #f2f7fb; /* Lighter blue header */-->
+<!--        font-weight: 600;-->
+<!--        color: #2c3e50;-->
+<!--    }-->
+<!--    table.data-table tr:nth-child(even) { background-color: #f9f9f9; }-->
+<!--    table.data-table tr:hover { background-color: #eff4ff; } /* Subtle hover */-->
+<!--    table.data-table td a { font-size: 0.95em; } /* Ensure links are readable */-->
+
+<!--    /* -&#45;&#45; Specific Elements -&#45;&#45; */-->
+<!--    /* Style for AI generated content - Use this class for final generated text */-->
+<!--    .ai-generated-content {-->
+<!--        font-style: normal;-->
+<!--        color: #333; /* Regular text color */-->
+<!--        padding: 5px 0px; /* Minimal padding */-->
+<!--        margin: 15px 0; /* Vertical spacing */-->
+<!--        background-color: transparent; /* No background */-->
+<!--        text-align: justify;-->
+<!--        border: none; /* No border */-->
+<!--    }-->
+<!--    .ai-generated-content p { margin-bottom: 1em; } /* Ensure paragraph spacing */-->
+<!--    .ai-generated-content p:first-child { margin-top: 0; }-->
+<!--    .ai-generated-content p:last-child { margin-bottom: 0; }-->
+<!--    .ai-generated-content strong { font-weight: 600; }-->
+<!--    .ai-generated-content em { font-style: italic; }-->
+<!--    .ai-generated-content ul, .ai-generated-content ol { margin-left: 20px; margin-bottom: 1em;}-->
+<!--    .ai-generated-content li { margin-bottom: 0.5em; }-->
+
+<!--    /* Style for placeholders during development or if AI fails */-->
+<!--     .ai-placeholder {-->
+<!--        font-style: italic; color: #7f8c8d; border: 1px dashed #bdc3c7;-->
+<!--        padding: 15px; margin: 20px 0; background-color: #fdfefe; text-align: center;-->
+<!--    }-->
+
+<!--    .plot-container { width: 100%; max-width: 100%; margin: 0; padding: 0; }-->
+<!--    .keywords { font-weight: 600; color: #0D47A1; }-->
+<!--    .keywords-list { font-style: italic; color: #555; }-->
+<!--    .placeholder-note { color: #888; font-style: italic; font-size: 0.9em; display: block; margin-top: 8px; text-align: center; }-->
+<!--    .network-plot-container { min-height: 450px; margin-bottom: 20px; } /* Keep specific style for network if needed */-->
+
+<!--    /* -&#45;&#45; References List -&#45;&#45; */-->
+<!--    #references ol { list-style-type: decimal; padding-left: 25px; margin-top: 1em; }-->
+<!--    #references li { margin-bottom: 1em; padding-left: 5px; font-size: 0.95em; line-height: 1.6; }-->
+<!--    #references li strong { font-weight: 600; }-->
+<!--    #references li em, #references li i { font-style: italic; }-->
+
+<!--    /* -&#45;&#45; AI Analysis Text below figures -&#45;&#45; */-->
+<!--    .ai-analysis-text { margin-top: 20px; padding: 15px; background-color: #f0f4f8; border-left: 4px solid #7aa0c2; font-size: 0.95em; text-align: justify; }-->
+<!--    .ai-analysis-text h4 { margin-top: 0; color: #1a5276; font-size: 1.1em; text-align: left; font-family: sans-serif; margin-bottom: 0.6em; border: none; padding: 0;} /* Override heading styles */-->
+<!--    .ai-analysis-text p { margin-bottom: 0.5em; }-->
+<!--    .ai-analysis-text strong { font-weight: 600; color: #1a5276;}-->
+<!--    .ai-analysis-text em { font-style: italic; }-->
+<!--  </style>-->
+<!--</head>-->
+<!--<body>-->
+
+<!--<h1>Bibliometric Survey on {{ topic }}</h1>-->
+
+<!--<div class="metadata">-->
+<!--  <p><strong>Authors:</strong> {{ authors_list }}</p>-->
+<!--  <p><strong>Affiliations:</strong> {{ affiliation }}</p>-->
+<!--  <p><em>Report generated on: {{ generation_date }}</em></p>-->
+<!--  <p><em>Data Source: {{ data_source_name }} | Analyzed Period: {{ date_range }}</em></p>-->
+<!--  <p><em>AI Models Used for Narrative Sections: {{ ai_models_used }}</em></p>-->
+<!--</div>-->
+
+<!--<h2>Abstract</h2>-->
+<!--<div class="section-content ai-generated-content">-->
+<!--  {{ ai_abstract | safe }} {# Use safe filter to render HTML tags from AI #}-->
+<!--</div>-->
+<!--<p><span class="keywords">Keywords:</span> <span class="keywords-list">{{ keywords_list }}</span></p> {# List top keywords from Zotero tags #}-->
+
+<!--&lt;!&ndash; 1. INTRODUCTION &ndash;&gt;-->
+<!--<h2>1. Introduction</h2>-->
+<!--<div class="section-content ai-generated-content">-->
+<!--  {{ ai_introduction | safe }} {# Use safe filter #}-->
+<!--</div>-->
+
+<!--&lt;!&ndash; 3. PRELIMINARY DATA COLLECTION &ndash;&gt;-->
+<!--<h2>3. Preliminary Data Collection</h2>-->
+<!--<div class="section-content">-->
+<!--  <p>This section outlines the methodology for assembling the bibliographic dataset. Data was sourced from {{ data_source_name }}, covering the period {{ date_range }}. An initial search identified {{ total_docs_found }} documents related to "{{ topic }}". After filtering based on relevance and document type (primarily journal articles, conference papers, books, book sections, reports, and theses), {{ analyzed_docs_count }} publications were selected for detailed bibliometric analysis.</p>-->
+
+<!--  <h3>3.1 Search Procedure</h3>-->
+<!--  <div class="subsection-content">-->
+<!--    {{ search_strategy_table | safe }} {# Expects HTML table string or placeholder #}-->
+<!--    <figcaption><strong>Table 1.</strong> Search strategy employed (details placeholder).</figcaption>-->
+<!--  </div>-->
+
+<!--  <h3>3.2 Preliminary Search Results</h3>-->
+<!--  <div class="subsection-content">-->
+<!--    <p>The initial dataset comprised various document types. Figure 1 shows the distribution across all identified items before filtering for the main analysis.</p>-->
+<!--     <figure>-->
+<!--       <div class="plot-container">-->
+<!--         {% if overall_doc_types_plot %}-->
+<!--           <img src="{{ overall_doc_types_plot }}" alt="Overall Document Type Distribution Bar Chart">-->
+<!--         {% else %}-->
+<!--            <span class="placeholder-note">[Document Type Distribution Plot Placeholder: Generation Failed or No Data.]</span>-->
+<!--         {% endif %}-->
+<!--       </div>-->
+<!--       <figcaption><strong>Figure 1.</strong> Distribution of all identified document types (N={{ total_docs_found }}).</figcaption>-->
+<!--     </figure>-->
+<!--     &lt;!&ndash; AI Analysis for Overall Doc Types &ndash;&gt;-->
+<!--     {% if ai_overall_doc_types_analysis %}-->
+<!--     <div class="ai-analysis-text"> <h4>AI Analysis of Figure 1:</h4> {{ ai_overall_doc_types_analysis | safe }} </div>-->
+<!--     {% endif %}-->
+<!--     {# -&#45;&#45; Language Table Removed -&#45;&#45; #}-->
+<!--  </div>-->
+
+<!--  <h3>3.3 Exploratory Data Highlights (Publication Trends)</h3>-->
+<!--  <div class="subsection-content">-->
+<!--    <p>The temporal evolution of the <strong>{{ analyzed_docs_count }} publications</strong> selected for detailed analysis is shown below. The analysis covers the years {{ date_range }}.</p>-->
+<!--    <figure>-->
+<!--      <div class="plot-container">-->
+<!--         {# -&#45;&#45; Use Publication Trend Variables -&#45;&#45; #}-->
+<!--         {% if year_trends_line_bar_plot %}-->
+<!--           <img src="{{ year_trends_line_bar_plot }}" alt="Annual Publication Trend Chart for {{ topic }}">-->
+<!--         {% else %}-->
+<!--           <span class="placeholder-note">[Annual Publication Trend Line Chart Placeholder: Generation Failed or Skipped]</span>-->
+<!--         {% endif %}-->
+<!--      </div>-->
+<!--      <figcaption><strong>Figure 2.</strong> Annual publication trend (number of publications per year) for analyzed documents on "{{ topic }}" ({{ date_range }}).</figcaption>-->
+<!--    </figure>-->
+<!--    <figure>-->
+<!--      <div class="plot-container">-->
+<!--        {# -&#45;&#45; Use Publication Trend Variables -&#45;&#45; #}-->
+<!--        {% if year_trends_radar_plot %}-->
+<!--          <img src="{{ year_trends_radar_plot }}" alt="Publication Trend Radar Chart">-->
+<!--        {% else %}-->
+<!--          <span class="placeholder-note">[Publication Trend Radar Chart Placeholder: Generation Failed or Skipped (requires >= 3 years)]</span>-->
+<!--        {% endif %}-->
+<!--      </div>-->
+<!--      <figcaption><strong>Figure 3.</strong> Radar chart illustrating publication intensity across years (Peak year identified as {{ peak_year }}).</figcaption>-->
+<!--    </figure>-->
+<!--    &lt;!&ndash; AI Analysis for Trends &ndash;&gt;-->
+<!--     {% if ai_publication_trend_analysis %}-->
+<!--     <div class="ai-analysis-text"> <h4>AI Analysis of Figures 2 & 3 (Publication Volume):</h4> {{ ai_publication_trend_analysis | safe }} </div>-->
+<!--     {% endif %}-->
+<!--  </div>-->
+<!--</div>-->
+
+<!--&lt;!&ndash; 4. BIBLIOMETRIC SURVEY &ndash;&gt;-->
+<!--<h2>4. Bibliometric Survey</h2>-->
+<!--<div class="section-content">-->
+<!--  <p>This section presents a detailed bibliometric analysis of the curated dataset, comprising {{ analyzed_docs_count }} relevant items published between {{ date_range }}.</p>-->
+
+<!--  <h3>4.1 Analysis Based on Geographic Locations</h3>-->
+<!--  <div class="subsection-content">-->
+<!--    <p>Analysis of the geographic distribution of research contributions, based on the 'place' information available in the publication metadata. Figure 4 shows the top contributing countries identified through this parsing.</p>-->
+<!--    <figure>-->
+<!--      <div class="plot-container">-->
+<!--         {# <span class="placeholder-note">Geographic Map Visualization requires dedicated libraries/data.</span> #}-->
+<!--        {% if top_countries_plot %}-->
+<!--          <img src="{{ top_countries_plot }}" alt="Top Countries Publishing Research Bar Chart">-->
+<!--        {% else %}-->
+<!--          <span class="placeholder-note">[Top Countries Bar Chart Placeholder: Generation Failed or No Country Data Parsed.]</span>-->
+<!--        {% endif %}-->
+<!--      </div>-->
+<!--      <figcaption><strong>Figure 4.</strong> Top contributing countries in "{{ topic }}" research (based on parsed 'place' data).</figcaption>-->
+<!--    </figure>-->
+<!--     &lt;!&ndash; AI Analysis for Countries &ndash;&gt;-->
+<!--     {% if ai_top_countries_analysis %}-->
+<!--     <div class="ai-analysis-text"> <h4>AI Analysis of Figure 4:</h4> {{ ai_top_countries_analysis | safe }} </div>-->
+<!--     {% endif %}-->
+<!--  </div>-->
+
+<!--  <h3>4.2 Statistical Analysis Based on Keywords & Themes</h3>-->
+<!--  <div class="subsection-content">-->
+<!--    <p>Core research themes were identified using two approaches: analyzing keywords (tags) assigned in the Zotero database and generating a word cloud from the titles and abstracts of the analyzed publications.</p>-->
+<!--     <figure>-->
+<!--       <div class="plot-container">-->
+<!--        {% if keyword_wordcloud_plot %}-->
+<!--           <img src="{{ keyword_wordcloud_plot }}" alt="Keyword Word Cloud from Titles/Abstracts">-->
+<!--        {% else %}-->
+<!--           <span class="placeholder-note">[Word Cloud Placeholder: Generation skipped or failed (requires 'wordcloud' & 'nltk' libraries).]</span>-->
+<!--        {% endif %}-->
+<!--       </div>-->
+<!--      <figcaption><strong>Figure 5.</strong> Word cloud generated from processed titles and abstracts, highlighting prominent terms.</figcaption>-->
+<!--    </figure>-->
+<!--     <figure>-->
+<!--       <div class="plot-container">-->
+<!--        {% if top_keywords_plot %}-->
+<!--           <img src="{{ top_keywords_plot }}" alt="Top Keywords Bar Chart from Zotero Tags">-->
+<!--        {% else %}-->
+<!--            <span class="placeholder-note">[Top Keywords Bar Chart Placeholder: Generation Failed or No Keywords Found in Zotero Tags.]</span>-->
+<!--         {% endif %}-->
+<!--      </div>-->
+<!--      <figcaption><strong>Figure 6.</strong> Top keywords based on frequency of assigned tags in the Zotero database.</figcaption>-->
+<!--    </figure>-->
+
+<!--     &lt;!&ndash; AI Analysis for General Keywords &ndash;&gt;-->
+<!--     {% if ai_keyword_analysis %}-->
+<!--     <div class="ai-analysis-text"> <h4>AI Analysis of Figures 5 & 6 (Overall Themes):</h4> {{ ai_keyword_analysis | safe }} </div>-->
+<!--     {% endif %}-->
+<!--     {# <span class="placeholder-note">[Keyword Co-occurrence network analysis not performed.]</span> #}-->
+<!--  </div>-->
+
+<!--  {# -&#45;&#45; Keyword Frequency Analysis Section -&#45;&#45; CHECK VARIABLES HERE -&#45;&#45; #}-->
+<!--  <h3>4.2.1 Keyword Frequency Trend Analysis: '{{ analyzed_keyword }}'</h3>-->
+<!--  <div class="subsection-content">-->
+<!--      <p>This analysis specifically tracks the frequency of the keyword "<strong>{{ analyzed_keyword }}</strong>" (number of occurrences) within the full text of the document corpus (derived from available PDFs) over the analyzed period ({{ date_range }}).</p>-->
+<!--       <figure>-->
+<!--         <div class="plot-container">-->
+<!--           {# -&#45;&#45; Use Keyword Trend Variables -&#45;&#45; #}-->
+<!--           {% if keyword_trend_line_plot %}-->
+<!--             <img src="{{ keyword_trend_line_plot }}" alt="Keyword Frequency Trend Line Chart for {{ analyzed_keyword }}">-->
+<!--           {% else %}-->
+<!--             <span class="placeholder-note">[Keyword Frequency Line Chart Placeholder: Generation Failed or Skipped (requires PDF corpus and keyword data).]</span>-->
+<!--           {% endif %}-->
+<!--         </div>-->
+<!--         <figcaption><strong>Figure 7.</strong> Annual frequency count for the keyword '{{ analyzed_keyword }}' in the document corpus.</figcaption>-->
+<!--       </figure>-->
+<!--        <figure>-->
+<!--         <div class="plot-container">-->
+<!--           {# -&#45;&#45; Use Keyword Trend Variables -&#45;&#45; #}-->
+<!--           {% if keyword_trend_radar_plot %}-->
+<!--             <img src="{{ keyword_trend_radar_plot }}" alt="Keyword Frequency Trend Radar Chart for {{ analyzed_keyword }}">-->
+<!--           {% else %}-->
+<!--             <span class="placeholder-note">[Keyword Frequency Radar Chart Placeholder: Generation Failed or Skipped.]</span>-->
+<!--           {% endif %}-->
+<!--         </div>-->
+<!--         <figcaption><strong>Figure 8.</strong> Radar chart illustrating the trend of '{{ analyzed_keyword }}' frequency over the years.</figcaption>-->
+<!--       </figure>-->
+<!--       &lt;!&ndash; AI Analysis for Keyword Frequency &ndash;&gt;-->
+<!--       {% if ai_keyword_frequency_analysis %}-->
+<!--       <div class="ai-analysis-text"> <h4>AI Analysis of Figures 7 & 8 (Frequency of '{{ analyzed_keyword }}'):</h4> {{ ai_keyword_frequency_analysis | safe }} </div>-->
+<!--       {% endif %}-->
+
+<!--  </div>-->
+
+<!--{# -&#45;&#45; Publication vs Keyword Frequency Section -&#45;&#45; NEW SECTION -&#45;&#45; #}-->
+<!--{# -&#45;&#45; Assign a new figure number -&#45;&#45; #}-->
+<!--{% set comparative_fig_num = 9 %} {# Adjust if needed #}-->
+<!--<h3>4.2.2 Comparative Trend Analysis: Publications vs. '{{ analyzed_keyword }}' Frequency</h3>-->
+<!--<div class="subsection-content">-->
+<!--    <p>This plot compares the overall annual publication output with the frequency (number of occurrences) of the keyword "<strong>{{ analyzed_keyword }}</strong>" within the full text of the document corpus over the analyzed period ({{ date_range }}).</p>-->
+<!--     <figure>-->
+<!--       <div class="plot-container">-->
+<!--         {# -&#45;&#45; Use Comparative Trend Variables -&#45;&#45; #}-->
+<!--         {% if comparative_trends_plot %}-->
+<!--           <img src="{{ comparative_trends_plot }}" alt="Comparative Trend Line Chart for Publications vs. {{ analyzed_keyword }}">-->
+<!--         {% else %}-->
+<!--           <span class="placeholder-note">[Comparative Trend Line Chart Placeholder: Generation Failed or Skipped (requires publication and keyword frequency data).]</span>-->
+<!--         {% endif %}-->
+<!--       </div>-->
+<!--       <figcaption><strong>Figure {{ comparative_fig_num }}.</strong> Comparison of annual publication count and frequency of '{{ analyzed_keyword }}' in the document corpus.</figcaption>-->
+<!--     </figure>-->
+<!--     &lt;!&ndash; AI Analysis for Comparative Frequency &ndash;&gt;-->
+<!--     {% if ai_comparative_trends_analysis %}-->
+<!--     <div class="ai-analysis-text"> <h4>AI Analysis of Figure {{ comparative_fig_num }} (Publications vs. '{{ analyzed_keyword }}'):</h4> {{ ai_comparative_trends_analysis | safe }} </div>-->
+<!--     {% endif %}-->
+<!--</div>-->
+<!--  <h3>4.3 Network Analysis (Co-Authorship)</h3>-->
+<!--  <div class="subsection-content network-plot-container">-->
+<!--    <p>Co-authorship network analysis reveals collaboration patterns among researchers identified in this dataset. Edges connect authors who have co-authored at least <strong>{{ MIN_COAUTH_COLLABORATIONS }}</strong> publication(s) within this collection.</p>-->
+<!--    <figure>-->
+<!--      <div class="plot-container">-->
+<!--         {% if coauthorship_network_plot %}-->
+<!--           <img src="{{ coauthorship_network_plot }}" alt="Co-Authorship Network Visualization">-->
+<!--         {% else %}-->
+<!--           <span class="placeholder-note">[Co-Authorship Network Visualization Placeholder: Generation skipped, requires 'networkx', or graph was empty/too small.]</span>-->
+<!--         {% endif %}-->
+<!--      </div>-->
+<!--      <figcaption><strong>Figure 9.</strong> Co-Authorship network visualization. Node size indicates the author's publication count in this dataset; color intensity indicates the number of distinct collaborators (degree centrality). Edges represent co-authored papers (minimum {{ MIN_COAUTH_COLLABORATIONS }} shown).</figcaption> {# Adjusted figure number #}-->
+<!--    </figure>-->
+<!--    &lt;!&ndash; AI Analysis for Network &ndash;&gt;-->
+<!--     {% if ai_network_analysis %}-->
+<!--     <div class="ai-analysis-text"> <h4>AI Analysis of Figure 9:</h4> {{ ai_network_analysis | safe }} </div>-->
+<!--     {% endif %}-->
+<!--     <span class="placeholder-note">[Citation network analysis requires external data sources or specific Zotero field parsing and was not performed.]</span>-->
+<!--  </div>-->
+
+<!--  <h3>4.4 Statistical Analysis based on Affiliations</h3>-->
+<!--  <div class="subsection-content">-->
+<!--    <p>This analysis identifies the leading research institutions based on the publication output of their affiliated authors, derived from parsed 'institution', 'university', or 'publisher' fields in the metadata.</p>-->
+<!--    <figure>-->
+<!--      <div class="plot-container">-->
+<!--        {% if top_affiliations_plot %}-->
+<!--          <img src="{{ top_affiliations_plot }}" alt="Top Affiliations Bar Chart">-->
+<!--        {% else %}-->
+<!--          <span class="placeholder-note">[Top Affiliations Bar Chart Placeholder: Generation Failed or Affiliation data not available/parsed.]</span>-->
+<!--        {% endif %}-->
+<!--      </div>-->
+<!--      <figcaption><strong>Figure 10.</strong> Top contributing institutions based on publication frequency in the dataset (parsing experimental).</figcaption> {# Adjusted figure number #}-->
+<!--    </figure>-->
+<!--     &lt;!&ndash; AI Analysis for Affiliations &ndash;&gt;-->
+<!--     {% if ai_top_affiliations_analysis %}-->
+<!--     <div class="ai-analysis-text"> <h4>AI Analysis of Figure 10:</h4> {{ ai_top_affiliations_analysis | safe }} </div>-->
+<!--     {% endif %}-->
+<!--  </div>-->
+
+<!--   <h3>4.5 Statistical Analysis based on Subject Areas</h3>-->
+<!--   <div class="subsection-content">-->
+<!--      <p>The primary subject areas can be inferred from the dominant keywords used in the publications. The keyword analysis presented previously (Section 4.2, Figures 5 & 6) provides insights into the disciplinary focus of the research within this collection.</p>-->
+<!--      <figure>-->
+<!--        <div class="plot-container">-->
+<!--           {% if top_keywords_plot %} &lt;!&ndash; Reusing keywords TAG plot &ndash;&gt;-->
+<!--              <img src="{{ top_keywords_plot }}" alt="Top Keywords Bar Chart (Reflecting Subject Focus)">-->
+<!--           {% else %}-->
+<!--              <span class="placeholder-note">[Top Keywords Bar Chart Placeholder: Generation Failed or No Data.]</span>-->
+<!--            {% endif %}-->
+<!--         </div>-->
+<!--         <figcaption><strong>Figure 11.</strong> Top keywords (from Zotero tags) reflecting subject area focus. Refer also to the Word Cloud (Figure 5) for thematic insights from titles/abstracts.</figcaption> {# Adjusted figure number #}-->
+<!--      </figure>-->
+<!--      <span class="placeholder-note">[More sophisticated subject mapping would require external classification systems or richer metadata.]</span>-->
+<!--   </div>-->
+
+
+<!--  <h3>4.6 Statistical Analysis based on Authors</h3>-->
+<!--  <div class="subsection-content">-->
+<!--    <p>Identification of the most frequent contributors to the research area within this dataset, based on standardized author names extracted from the publications.</p>-->
+<!--    <figure>-->
+<!--       <div class="plot-container">-->
+<!--        {% if top_authors_plot %}-->
+<!--           <img src="{{ top_authors_plot }}" alt="Most Frequent Authors Bar Chart">-->
+<!--         {% else %}-->
+<!--            <span class="placeholder-note">[Top Authors Bar Chart Placeholder: Generation Failed or Skipped]</span>-->
+<!--         {% endif %}-->
+<!--      </div>-->
+<!--      <figcaption><strong>Figure 12.</strong> Most frequent authors publishing on "{{ topic }}" within the analyzed dataset.</figcaption> {# Adjusted figure number #}-->
+<!--    </figure>-->
+<!--    &lt;!&ndash; AI Analysis for Authors &ndash;&gt;-->
+<!--     {% if ai_top_authors_analysis %}-->
+<!--     <div class="ai-analysis-text"> <h4>AI Analysis of Figure 12:</h4> {{ ai_top_authors_analysis | safe }} </div>-->
+<!--     {% endif %}-->
+<!--     {# <span class="placeholder-note">[Co-authorship network analysis shown in Section 4.3 provides collaboration insights.]</span> #}-->
+<!--  </div>-->
+
+<!--  <h3>4.7 Statistical Analysis based on Document Types</h3>-->
+<!--  <div class="subsection-content">-->
+<!--    <p>Distribution of the specific document types included in the detailed analysis corpus (N = {{ analyzed_docs_count }}).</p>-->
+<!--    <figure>-->
+<!--       <div class="plot-container">-->
+<!--        {% if analyzed_doc_types_plot %}-->
+<!--          <img src="{{ analyzed_doc_types_plot }}" alt="Analyzed Document Types Bar Chart">-->
+<!--        {% else %}-->
+<!--          <span class="placeholder-note">[Analyzed Document Types Bar Chart Placeholder: Generation Failed or Skipped]</span>-->
+<!--        {% endif %}-->
+<!--      </div>-->
+<!--      <figcaption><strong>Figure 13.</strong> Distribution of analyzed document types.</figcaption> {# Adjusted figure number #}-->
+<!--    </figure>-->
+<!--     &lt;!&ndash; AI Analysis for Analyzed Types &ndash;&gt;-->
+<!--     {% if ai_analyzed_doc_types_analysis %}-->
+<!--     <div class="ai-analysis-text"> <h4>AI Analysis of Figure 13:</h4> {{ ai_analyzed_doc_types_analysis | safe }} </div>-->
+<!--     {% endif %}-->
+<!--  </div>-->
+
+<!--  <h3>4.8 Statistical Analysis based on Source Titles</h3>-->
+<!--  <div class="subsection-content">-->
+<!--    <p>Identification of the primary publication venues (journals, conference proceedings, etc.) where the analyzed items were published.</p>-->
+<!--    <figure>-->
+<!--      <div class="plot-container">-->
+<!--         {% if top_sources_plot %}-->
+<!--           <img src="{{ top_sources_plot }}" alt="Top Publication Sources Bar Chart">-->
+<!--         {% else %}-->
+<!--            <span class="placeholder-note">[Top Sources Bar Chart Placeholder: Generation Failed or Skipped]</span>-->
+<!--         {% endif %}-->
+<!--      </div>-->
+<!--      <figcaption><strong>Figure 14.</strong> Top source titles (journals, conferences, etc.) for publications on "{{ topic }}".</figcaption> {# Adjusted figure number #}-->
+<!--    </figure>-->
+<!--     &lt;!&ndash; AI Analysis for Sources &ndash;&gt;-->
+<!--     {% if ai_top_sources_analysis %}-->
+<!--     <div class="ai-analysis-text"> <h4>AI Analysis of Figure 14:</h4> {{ ai_top_sources_analysis | safe }} </div>-->
+<!--     {% endif %}-->
+<!--  </div>-->
+
+<!--  <h3>4.9 Analysis based on Funding Sponsors</h3>-->
+<!--  <div class="subsection-content">-->
+<!--    <p>Identification of organizations potentially funding research in this domain. Note: This analysis is based on experimental parsing of the 'extra' field in Zotero and may be incomplete or inaccurate.</p>-->
+<!--     <figure>-->
+<!--       <div class="plot-container">-->
+<!--         {% if top_funders_plot %}-->
+<!--          <img src="{{ top_funders_plot }}" alt="Top Funding Sponsors Bar Chart">-->
+<!--        {% else %}-->
+<!--           <span class="placeholder-note">[Funding Sponsor Analysis Placeholder: Generation Failed or Funding data not available/parsed.]</span>-->
+<!--        {% endif %}-->
+<!--      </div>-->
+<!--      <figcaption><strong>Figure 15.</strong> Major funding sponsors identified in the dataset (parsing experimental).</figcaption> {# Adjusted figure number #}-->
+<!--    </figure>-->
+<!--      &lt;!&ndash; AI Analysis for Funders &ndash;&gt;-->
+<!--     {% if ai_top_funders_analysis %}-->
+<!--     <div class="ai-analysis-text"> <h4>AI Analysis of Figure 15:</h4> {{ ai_top_funders_analysis | safe }} </div>-->
+<!--     {% endif %}-->
+<!--  </div>-->
+
+<!--  <h3>4.10 Analysis based on Publication Citations</h3>-->
+<!--  <div class="subsection-content">-->
+<!--    <p>Identification of potentially influential works based on estimated citation counts extracted from the Zotero metadata (e.g., 'extra' field).</p>-->
+<!--    {{ top_cited_papers_table | safe }} {# Display Table 3 #}-->
+<!--    <figcaption><strong>Table 3.</strong> Most cited publications (based on citation data available in {{ data_source_name }} records).</figcaption>-->
+<!--  </div>-->
+<!--</div>-->
+
+<!--&lt;!&ndash; 5. DISCUSSION &ndash;&gt;  {# <&#45;&#45; NEW SECTION, RENUMBERED #}-->
+<!--<h2>5. Discussion</h2>-->
+<!--<div class="section-content ai-generated-content">-->
+<!--  {% if ai_discussion %}-->
+<!--     {{ ai_discussion | safe }}-->
+<!--  {% else %}-->
+<!--     <p class="ai-placeholder">[AI-generated Discussion section could not be generated.]</p>-->
+<!--  {% endif %}-->
+<!--</div>-->
+
+
+<!--&lt;!&ndash; 6. LIMITATIONS OF THIS STUDY &ndash;&gt; {# <&#45;&#45; RENUMBERED #}-->
+<!--<h2>6. Limitations of This Study</h2>-->
+<!--<div class="section-content ai-generated-content">-->
+<!--  {% if ai_limitations %}-->
+<!--    {{ ai_limitations | safe }} {# Use safe filter #}-->
+<!--  {% else %}-->
+<!--     <p class="ai-placeholder">[AI-generated Limitations section could not be generated.]</p>-->
+<!--  {% endif %}-->
+<!--  {# Optional standard text #}-->
+<!--  {# <p><em>Standard Limitations Text: ...</em></p> #}-->
+<!--</div>-->
+
+<!--&lt;!&ndash; 7. CONCLUSION &ndash;&gt; {# <&#45;&#45; RENUMBERED #}-->
+<!--<h2>7. Conclusion</h2>-->
+<!--<div class="section-content ai-generated-content">-->
+<!--  {% if ai_conclusion %}-->
+<!--     {{ ai_conclusion | safe }} {# Use safe filter #}-->
+<!--  {% else %}-->
+<!--     <p class="ai-placeholder">[AI-generated Conclusion section could not be generated.]</p>-->
+<!--  {% endif %}-->
+<!--</div>-->
+
+<!--&lt;!&ndash; 8. REFERENCES &ndash;&gt; {# <&#45;&#45; RENUMBERED #}-->
+<!--<h2 id="references-heading">8. References</h2> {# Adjusted heading number #}-->
+<!--<div id="references" class="section-content"> {# Added ID #}-->
+<!--  <p>The analysis was based on {{ analyzed_docs_count }} core publications. The following list includes the most cited papers and recent publications, representing a sample (up to {{ REFERENCE_LIMIT }} items shown):</p> {# Use REFERENCE_LIMIT if passed #}-->
+<!--  <ol>-->
+<!--    {% for ref in references_list %}-->
+<!--    <li>{{ ref.html_string | safe }}</li> {# Use the pre-formatted HTML string #}-->
+<!--    {% else %}-->
+<!--    <li>No reference data available to display.</li>-->
+<!--    {% endfor %}-->
+<!--  </ol>-->
+<!--  <p><em>A comprehensive bibliography is available from the source Zotero collection used for this analysis.</em></p>-->
+<!--</div>-->
+<!--</body>-->
+<!--</html>-->

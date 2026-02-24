@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": "{\n  \"classification\": \"Highly Relevant\",\n  \"relevance_score\": \"High\",\n  \"potential_subcategory\": \"International law of cyberspace \u2014 attribution, use of force/sovereignty, norms formation (Tallinn Manual / UN GGE)\",\n  \"justification\": \"The abstract directly addresses legal and policy questions central to cyber conflict attribution and international law: ambiguity in norms (sovereignty, prohibited intervention, jus ad bellum/in bello), thresholds for what constitutes a cyber attack, and how states can clarify norms via opinio juris and state practice. It cites and analyzes major policy-relevant instruments and expert work (Tallinn Manual, UN GGE, U.N. Charter, Articles on State Responsibility) and offers recommendations to reduce strategic exploitation of legal grey zones\u2014all core issues for attribution and cyber policy/law. The essay\u2019s normative focus and use of prominent legal sources make it highly relevant despite its acknowledged empirical/data limitations. Note: no specific inclusion/exclusion criteria were provided in the prompt, so classification is based on topical relevance to cyber conflict attribution and policy/law.\"\n}"
+  },
+  "cached_at": "2026-02-23T21:01:19.022449Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "RPGYA5D6",
+  "function": "classify_by_abs"
+}

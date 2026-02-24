@@ -1,0 +1,393 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "quote": "Attributing a cyber-operation through the use of multiple pieces of technical evidence (i.e., malware reverse-engineering and source tracking) and conventional intelligence sources (i.e., human or signals intelligence) is a difficult problem not only due to the effort required to obtain evidence, but the ease with which an adversary can plant false evidence.",
+          "paraphrase": "The authors characterise cyber-attribution as difficult because gathering technical and human intelligence is resource-intensive and adversaries can easily plant false clues, which directly informs research on attribution reliability and evidence integration.",
+          "researcher_comment": "This high-level statement motivates the need for methods that handle scarce, noisy, and deceptive evidence; it is a qualitative claim without empirical quantification. It also justifies combining multiple evidence modalities and modeling deception explicitly. Use as rationale for approaches that represent uncertainty and contested evidence.",
+          "potential_themes": [
+            "attribution_challenges",
+            "deception_modeling"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "evidence_collection_costs",
+            "false_evidence",
+            "adversary_deception"
+          ]
+        },
+        {
+          "quote": "In this paper, we introduce a formal reasoning system called the InCA (Intelligent Cyber Attribution) framework that is designed to aid an analyst in the attribution of a cyber-operation even when the available information is conflicting and/or uncertain.",
+          "paraphrase": "The paper presents InCA, a formal reasoning framework intended to assist analysts in attributing cyber-operations under conditions of conflicting and uncertain information.",
+          "researcher_comment": "This states the system-level contribution: a formal framework for uncertain/conflicting attribution. It frames the remainder of the paper; empirical validation details are not provided here. Important to map later algorithmic choices to this stated goal.",
+          "potential_themes": [
+            "argumentation_frameworks",
+            "probabilistic_models"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "framework",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "InCA_framework",
+            "uncertainty_handling",
+            "conflict_management"
+          ]
+        },
+        {
+          "quote": "Our approach combines argumentation-based reasoning, logic programming, and probabilistic models to not only attribute an operation but also explain to the analyst why the system reaches its conclusions.",
+          "paraphrase": "InCA integrates argumentation, logic programming, and probabilistic modeling to perform attribution and produce explanations for analysts.",
+          "researcher_comment": "Specifies the hybrid methodological approach (symbolic argumentation + probabilistic EM). The claim implies explainability is a design goal but does not detail the integration mechanism here. Computational costs of the hybrid approach are not discussed in this sentence.",
+          "potential_themes": [
+            "argumentation_frameworks",
+            "probabilistic_models",
+            "explainability"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "method",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "hybrid_reasoning",
+            "explainable_attribution",
+            "argumentation_plus_probability"
+          ]
+        },
+        {
+          "quote": "Note that an analyst (or automated system) could assign a probability to statements in the EM column whereas statements in the AM column can be true or false depending on a certain combination (or several possible combinations) of statements from the EM.",
+          "paraphrase": "The environmental model (EM) holds probabilistic statements while the analytical model (AM) contains logical claims whose truth depends on combinations of EM statements.",
+          "researcher_comment": "This clarifies the separation of roles: EM = probabilistic evidence; AM = logical hypotheses derived from EM. It implies a two-layer inference architecture but also introduces combinatorial dependence (several EM combinations can yield an AM truth).",
+          "potential_themes": [
+            "probabilistic_models",
+            "argumentation_frameworks"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "EM_probability_assignments",
+            "AM_logical_dependence",
+            "model_roles"
+          ]
+        },
+        {
+          "quote": "The second one, called the analytical model (AM) is used to analyze competing hypotheses that can account for a given phenomenon (in this case, a cyber-operation).",
+          "paraphrase": "The analytical model (AM) is designed to represent and evaluate competing hypotheses explaining a cyber-operation.",
+          "researcher_comment": "This positions the AM as the hypothesis-evaluation layer, which must support contradictory information and dialectical analysis. It highlights why structured argumentation is appropriate for attribution RQs that involve competing explanations.",
+          "potential_themes": [
+            "argumentation_frameworks"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "analytical_model",
+            "competing_hypotheses",
+            "hypothesis_evaluation"
+          ]
+        },
+        {
+          "quote": "On the contrary, the AM will allow for contradictory information as the system must have the capability to reason about competing explanations for a given cyber-operation.",
+          "paraphrase": "Unlike the EM, the AM permits contradictory information so the system can represent and reason about competing explanations for an operation.",
+          "researcher_comment": "This is a key architectural assumption: consistency enforced in EM but not in AM. The assumption reduces EM complexity but pushes inconsistency handling into AM; it requires careful annotation and may assume curated EM inputs.",
+          "potential_themes": [
+            "belief_revision",
+            "argumentation_frameworks"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "assumption",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "EM_consistency",
+            "AM_inconsistency",
+            "design_choice"
+          ]
+        },
+        {
+          "quote": "A probabilistic formula is written as: f: p \u00b1 \u03b5. Intuitively, this statement is interpreted as \u201cformula f is true with probability between p - \u03b5 and p + \u03b5\u201d\u2014note that we make no statement about the probability distribution over this interval.",
+          "paraphrase": "Probabilistic formulas in the EM are specified as intervals f: p \u00b1 \u03b5, indicating the formula's truth lies within that probability interval without assuming any within-interval distribution.",
+          "researcher_comment": "Interval semantics reduce strong distributional assumptions but make inference a bounds problem; this motivates LP-based methods later. The approach accepts epistemic uncertainty but loses point-probability detail.",
+          "potential_themes": [
+            "probabilistic_models",
+            "uncertainty"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "probability_interval_semantics",
+            "probabilistic_formula",
+            "uncertainty_intervals"
+          ]
+        },
+        {
+          "quote": "The main kind of query that we require for the probabilistic model is the maximum entailment problem: given a knowledge base \u03a0EM and a (non-probabilistic) formula q, identify p, \u03b5 such that all valid probability distributions Pr that satisfy \u03a0EM also satisfy q: p \u00b1 \u03b5",
+          "paraphrase": "EM inference is framed as a maximum-entailment problem: compute tight interval p \u00b1 \u03b5 for query q such that all probability distributions satisfying \u03a0EM also satisfy q.",
+          "researcher_comment": "This reduces probabilistic inference to linear programs (LP-min/LP-max) as described subsequently; scalability depends on number of worlds and integrity constraints. Heuristics are cited but not evaluated here.",
+          "potential_themes": [
+            "inference_methods",
+            "probabilistic_models"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "method",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "maximum_entailment",
+            "LP_inference",
+            "probability_bounds_computation"
+          ]
+        },
+        {
+          "quote": "DeLP with Presumptions (PreDeLP) is a formalism combining Logic Programming with Defeasible Argumentation.",
+          "paraphrase": "The analytical model (AM) uses PreDeLP, which combines logic programming and defeasible argumentation with presumptions.",
+          "researcher_comment": "Identifies the formal argumentation substrate; PreDeLP provides constructs (facts, rules, presumptions) suitable for representing contested intelligence. The claim implies known DeLP semantics are extended here.",
+          "potential_themes": [
+            "argumentation_frameworks",
+            "defeasible_reasoning"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "PreDeLP",
+            "defeasible_logic_programming",
+            "presumptions"
+          ]
+        },
+        {
+          "quote": "Facts are statements about the analysis that can always be considered to be true, while presumptions are statements that may or may not be true.",
+          "paraphrase": "In PreDeLP, facts are treated as incontrovertible, whereas presumptions are defeasible statements that can be overturned.",
+          "researcher_comment": "This distinction underpins argument strength and defeat relations; mapping real-world evidence (which is often uncertain) to these categories is a modelling choice that affects warranting. Analysts must decide which evidence to treat as fact vs presumption.",
+          "potential_themes": [
+            "evidentiary_standards",
+            "argumentation_frameworks"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "fact_vs_presumption",
+            "defeasibility",
+            "evidence_status"
+          ]
+        },
+        {
+          "quote": "While any literal can be used as a presumption in InCA, we specifically require all literals created with the predicate condOp to be defeasible.",
+          "paraphrase": "InCA requires that condOp predicates (statements that an actor conducted an operation) are represented as defeasible presumptions rather than immutable facts.",
+          "researcher_comment": "This is a normative design choice aligning the formalism with intelligence practice: attribution claims are contestable. It also ensures the AM explicitly supports rebuttal/counter-arguments for attribution claims.",
+          "potential_themes": [
+            "argumentation_frameworks",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "assumption",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "condOp_defeasible",
+            "contestable_attribution",
+            "normative_design"
+          ]
+        },
+        {
+          "quote": "Informally, an argument for a particular actor _x_ conducting cyber-operation _y_ is a consistent subset of the analytical model that entails the atom _condOp_ ( _x_, _y_ ).",
+          "paraphrase": "An argument supporting that actor x conducted operation y is defined as a consistent subset of the AM whose rules/presumptions defeasibly entail condOp(x,y).",
+          "researcher_comment": "This formalizes how hypotheses are constructed in AM (minimal supporting set, consistency). The minimality and consistency requirements are important for explainability and for defining defeat relations, but computing minimal supports may be combinatorial.",
+          "potential_themes": [
+            "argumentation_frameworks"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "argument_formation",
+            "condOp_entailment",
+            "minimal_support"
+          ]
+        },
+        {
+          "quote": "In this competition\u2014known as a dialectical process\u2014one argument may defeat another based on a comparison criterion that determines the prevailing argument.",
+          "paraphrase": "Conflicting arguments are resolved by a dialectical process in which a comparison criterion determines which argument defeats another.",
+          "researcher_comment": "Highlights the dynamic resolution mechanism (dialectics) and centrality of the comparison criterion; the choice of criterion (e.g., specificity) will materially affect attribution outcomes. Implementation complexity of full dialectical analysis across many arguments can be high.",
+          "potential_themes": [
+            "dialectical_semantics",
+            "argumentation_frameworks"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "method",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "dialectical_process",
+            "argument_defeat",
+            "comparison_criterion"
+          ]
+        },
+        {
+          "quote": "the default criterion used in classical defeasible logic programming (from which PreDeLP is derived) is generalized specificity",
+          "paraphrase": "PreDeLP's default argument comparison rule is generalized specificity, though the framework allows selecting other criteria.",
+          "researcher_comment": "Generalized specificity prefers arguments that use more precise information, but the paper notes extensions are required when presumptions are present. Choice of criterion should be validated for cyber-attribution domains.",
+          "potential_themes": [
+            "argumentation_frameworks",
+            "comparison_criteria"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "comparative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "generalized_specificity",
+            "criterion_modularity",
+            "presumption_extension"
+          ]
+        },
+        {
+          "quote": "We first introduce the notion of _annotation function_, which associates elements of _\u03a9_ \u222a _\u0398_ \u222a _\u03a6_ with elements of _formulaEM_.",
+          "paraphrase": "The annotation function maps AM constructs (strict rules, facts, presumptions) to formulas over the EM, specifying the worlds in which those AM components hold.",
+          "researcher_comment": "This mapping is the core bridge between probabilistic evidence and defeasible argumentation; learning or specifying the annotation function is identified later as a practical challenge. Annotation accuracy is critical because it determines argument validity across worlds.",
+          "potential_themes": [
+            "annotation_function",
+            "argumentation_frameworks"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "annotation_mapping",
+            "af",
+            "world_conditions"
+          ]
+        },
+        {
+          "quote": "In other words, an argument is valid with respect to w if the rules, facts, and presumptions in that argument are present in w \u2014the argument can then be built from information that is available in that world.",
+          "paraphrase": "An argument is valid in a given EM world only if all its annotated rules, facts, and presumptions hold in that world; validity is world-dependent.",
+          "researcher_comment": "This makes AM argument status contingent on EM worlds, enabling probabilistic assessment of arguments but coupling computational complexity across world enumerations. The approach supports traceability of why an argument applies in particular scenarios.",
+          "potential_themes": [
+            "validity",
+            "annotation_function"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "argument_validity",
+            "world_dependency",
+            "af_support"
+          ]
+        },
+        {
+          "quote": "Hence, the set of worlds in the EM where a literal L in the AM must be true is exactly the set of warranting scenarios\u2014these are the \u201cnecessary\u201d worlds, denoted: nec(L) = { w \u2208 WEM | ( w \u22a2war L ) }.",
+          "paraphrase": "The authors define nec(L) as the set of EM worlds in which AM literal L is warranted (necessarily true); these are the warranting scenarios.",
+          "researcher_comment": "This formal link from argument warrant to specific EM worlds enables mapping logical warrant to probability mass. Computing nec(L) (and poss(L)) may be expensive in large EM state spaces and depends on annotation function fidelity.",
+          "potential_themes": [
+            "warranting_scenarios",
+            "probabilistic_models"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "nec_definition",
+            "warranting_scenario",
+            "necessary_worlds"
+          ]
+        },
+        {
+          "quote": "Hence, for a given InCA framework I, if we are given a probability distribution Pr over the worlds in the EM, then we can compute an upper and lower bound on the probability of literal L (denoted PL,Pr,I) as follows: \u2113L,Pr,I = Pr(w), w \u2208 nec(L) and uL,Pr,I = Pr(w), w \u2208 poss(L)",
+          "paraphrase": "Given a probability distribution over EM worlds, the lower probability of AM literal L equals total Pr mass of nec(L) worlds and the upper equals total mass of poss(L) worlds.",
+          "researcher_comment": "This gives a clear computational recipe to translate EM probabilistic mass into attribution probability bounds. Practically, success depends on obtaining or approximating Pr over EM worlds and computing nec/poss efficiently.",
+          "potential_themes": [
+            "probabilistic_models",
+            "warranting_scenarios"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "method",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "probability_bounds",
+            "nec_poss_mass",
+            "attribution_probability"
+          ]
+        },
+        {
+          "quote": "Given the above definition, we refer to Q = (I,S,O,E) as an attribution query, and A as an answer to Q.",
+          "paraphrase": "An attribution query Q is formalized as the tuple (I,S,O,E) where I is the InCA framework, S suspects, O the operation, and E the observed evidence; the answer A is the most probable suspect per the framework.",
+          "researcher_comment": "This formalization provides an explicit decision problem for attribution and specifies how evidence is incorporated (see earlier: evidence can be added to \u03a0EM at probability 1\u00b10). Extensions to probabilistic evidence are noted but not fully elaborated here.",
+          "potential_themes": [
+            "attribution_queries",
+            "decision_criteria"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "attribution_query",
+            "Q_definition",
+            "most_probable_suspect"
+          ]
+        },
+        {
+          "quote": "Another aspect that can be modeled is deception where, for instance, an actor may leave false clues in a piece of malware to lead an analyst to believe a third party conducted the operation.",
+          "paraphrase": "The framework can model deception scenarios by adding AM rules that represent actors leaving false clues in malware, thereby generating counter-arguments that cause misattribution.",
+          "researcher_comment": "Modeling deception is an explicit capability and is achieved by encoding counter-arguments; its effectiveness depends on the modeler's ability to anticipate plausible deception strategies and annotate them accurately in EM.",
+          "potential_themes": [
+            "deception_modeling",
+            "evidentiary_integration"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "example",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "deception_modeling",
+            "false_clues",
+            "counter_arguments"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-24T15:38:49.851412Z",
+  "collection_name": "frameworks",
+  "custom_id": "abf34b9da3865117510552d53c33f10e17b277ab1ff0555876b72fa308626906",
+  "function": "code_pdf_page"
+}

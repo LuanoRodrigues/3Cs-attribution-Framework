@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": "{\"classification\":\"Highly Relevant\",\"relevance_score\":\"High\",\"potential_subcategory\":\"Attribution & Anonymity; State decision-making and International Cyber Law/Deterrence\",\"justification\":\"The chapter directly addresses core topics in cyber conflict attribution and law/policy: it analyzes anonymity and attribution's effects on state decisions about offensive and defensive cyber operations, integrates legal frameworks (citing Susan Brenner), contrasts real-time detection with post-event attribution, discusses deterrence and cross-domain retaliation, and calls for examination of evolving attribution technologies and international legal norms. Its multidisciplinary decision model and policy-relevant case studies (e.g., Titan Rain) make it highly pertinent to both technical attribution challenges and legal/policy analysis.\"}"
+  },
+  "cached_at": "2026-02-23T20:48:03.977529Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "SDB62I5J",
+  "function": "classify_by_abs"
+}

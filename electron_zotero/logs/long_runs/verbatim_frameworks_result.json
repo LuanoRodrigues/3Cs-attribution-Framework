@@ -1,0 +1,6 @@
+{
+  "status": "error",
+  "message": "extract.json is empty; stopping before theme/round processing.",
+  "extract_path": "/home/pantera/projects/TEIA/electron_zotero/extract.json",
+  "reason": "no_items_or_no_processed_results"
+}

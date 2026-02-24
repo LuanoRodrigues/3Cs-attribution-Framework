@@ -1,0 +1,85 @@
+{
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "eligibility_prompt_key": "paper_screener_abs_policy",
+  "inclusion_criteria": [
+    "AUTO DRAFT UNAVAILABLE"
+  ],
+  "exclusion_criteria": [
+    "AUTO DRAFT UNAVAILABLE"
+  ],
+  "schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "status",
+      "justification",
+      "inclusion_hits",
+      "exclusion_hits",
+      "eligibility_criteria",
+      "coder_prompt"
+    ],
+    "properties": {
+      "status": {
+        "type": "string",
+        "enum": [
+          "include",
+          "exclude",
+          "maybe"
+        ]
+      },
+      "justification": {
+        "type": "string"
+      },
+      "inclusion_hits": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "exclusion_hits": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "eligibility_criteria": {
+        "type": "object",
+        "required": [
+          "inclusion",
+          "exclusion"
+        ],
+        "properties": {
+          "inclusion": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "exclusion": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "coder_prompt": {
+        "type": "string",
+        "const": "You are a rigorous screening coder. Apply inclusion and exclusion criteria exactly. Return valid JSON only."
+      }
+    }
+  },
+  "context": "",
+  "research_questions": [
+    "What frameworks and models are used for cyber attribution?",
+    "How are attribution decisions validated and evidenced?",
+    "What operational constraints affect attribution quality?"
+  ],
+  "dynamic_generation": {
+    "generated": false,
+    "generator": "",
+    "generator_model": "",
+    "notes": ""
+  },
+  "updated_at": "2026-02-23T20:33:22Z"
+}

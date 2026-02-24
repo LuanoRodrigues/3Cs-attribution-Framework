@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": "{\n  \"classification\": \"Highly Relevant\",\n  \"relevance_score\": \"High\",\n  \"potential_subcategory\": \"International law of cyber operations \u2014 due diligence, state responsibility, attribution, and countermeasures\",\n  \"justification\": \"The abstract is directly focused on legal and policy issues central to cyber conflict attribution: it analyzes the due diligence obligation of states when their territory/infrastructure is used for harmful cyber operations, discusses attribution challenges (operations that evade reliable attribution), contrasts due diligence with the necessity doctrine, and explores lawful countermeasures and their limits. It cites relevant policy and normative forums (Tallinn Manual, UN GGE, NATO CCD COE) and uses doctrinal methodology to assess state practice and legal instruments. These elements map squarely to cyber conflict attribution and policy/law concerns, making it highly relevant. (Note: the provided inclusion/exclusion criteria were unavailable; this classification is based on the abstract content.)\"\n}"
+  },
+  "cached_at": "2026-02-23T20:44:42.500908Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "TWS9ZB4Y",
+  "function": "classify_by_abs"
+}

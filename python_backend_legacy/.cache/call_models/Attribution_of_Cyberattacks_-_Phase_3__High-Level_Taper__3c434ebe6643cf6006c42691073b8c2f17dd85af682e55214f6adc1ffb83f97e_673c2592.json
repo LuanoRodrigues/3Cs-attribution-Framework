@@ -1,0 +1,340 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "quote": "As the number of States developing offensive cyber capabilities grew, the conventional wisdom held that this \u201cattribution problem\u201d posed serious\u2014and perhaps insuperable\u2014obstacles to engendering compliance by States with any rules in cyberspace.",
+          "paraphrase": "The authors state that historically attribution difficulties were seen as a central barrier to securing state compliance with cyberspace rules.",
+          "researcher_comment": "Frames attribution as a core structural obstacle to enforcement; this is presented as conventional wisdom rather than systematically tested here. Use this when addressing RQs about why attribution matters for compliance or enforcement design.",
+          "potential_themes": [
+            "attribution_challenges",
+            "compliance"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "attribution_as_barrier",
+            "historical_constraint",
+            "compliance_obstacle"
+          ]
+        },
+        {
+          "quote": "Today, there are public allegations of more than 20 State or State-sponsored cyber operations.",
+          "paraphrase": "The authors report that there are over twenty public accusations of state or state\u2011sponsored cyber operations.",
+          "researcher_comment": "Serves as empirical background showing proliferation of public naming; does not assess the credibility or effects of these allegations. Useful for RQs on frequency and diffusion of public attribution.",
+          "potential_themes": [
+            "exposure",
+            "naming_and_shaming_mechanism"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "accusation_count",
+            "public_naming"
+          ]
+        },
+        {
+          "quote": "All this increased naming, however, has not obviously produced a lot of shame.",
+          "paraphrase": "Despite more public naming of alleged cyber operations, the authors observe this has not clearly produced shame or behavioral change.",
+          "researcher_comment": "Directly challenges a simple naming\u2192shaming causal model and motivates disaggregation; phrase 'not obviously' signals observational claim that needs empirical validation. Relevant to RQs on effectiveness of public attribution.",
+          "potential_themes": [
+            "naming_and_shaming_mechanism",
+            "compliance"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "contradicts",
+          "open_codes": [
+            "naming_without_shaming",
+            "weak_reputational_effects"
+          ]
+        },
+        {
+          "quote": "For international lawyers, the recent spate of accusations is troubling for a different reason\u2014the absence of international law in any of these accusations.",
+          "paraphrase": "The authors argue that many cyber accusations omit international\u2011legal framing, which is problematic from an international law perspective.",
+          "researcher_comment": "Highlights a legal framing gap: accusations are framed politically/morally rather than as legal violations. This matters for RQs about law\u2019s role in attribution and accountability strategies.",
+          "potential_themes": [
+            "customary_international_law",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "legal_absence",
+            "normative_silence"
+          ]
+        },
+        {
+          "quote": "We define a \u201ccyber operation\u201d as the use of information and communication technologies to generate significant losses of confidentiality, integrity, and/or access in a computer system or network.",
+          "paraphrase": "The authors define 'cyber operation' as use of ICTs that causes significant losses to confidentiality, integrity, or access in computer systems.",
+          "researcher_comment": "Provides an explicit operational definition (CIA triad + access) useful for RQ operationalisation; scope deliberately includes both espionage and disruptive attacks.",
+          "potential_themes": [
+            "definition"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "operational_definition",
+            "cia_triad",
+            "scope_includes_espionage"
+          ]
+        },
+        {
+          "quote": "For us, accusations comprise not one or two, but three discrete processes: (i) attribution (the process of associating what happened with a particular author or territory); (ii) exposure (the process of disclosing what happened to third parties); (iii) condemnation (the process of signaling disapproval of what happened).",
+          "paraphrase": "The authors propose a tripartite framework that decomposes accusations into attribution, exposure, and condemnation.",
+          "researcher_comment": "Key analytical framework for disaggregating mechanisms and effects (e.g., naming without shaming). Central for RQs that seek to separate technical attribution from publicity and normative signaling.",
+          "potential_themes": [
+            "attribution_challenges",
+            "exposure",
+            "condemnation"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "framework",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "tripartite_model",
+            "accusation_components",
+            "disaggregation"
+          ]
+        },
+        {
+          "quote": "Attribution is the process of answering the age-old question of \u201cwho did what exactly.\u201d",
+          "paraphrase": "The authors define attribution as the activity of identifying who carried out a cyber operation.",
+          "researcher_comment": "Simple definitional anchor that prepares for later distinctions (machine vs person vs State). Use for RQs on what technical vs legal attribution entails.",
+          "potential_themes": [
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "attribution_definition",
+            "who_did_it"
+          ]
+        },
+        {
+          "quote": "As Rid and Buchanan explain, cyber attributions are not binary\u2014where attribution is possible/impossible\u2014but are situated along a spectrum.",
+          "paraphrase": "The authors state that cyber attribution is a matter of degree rather than a binary determination of possible/impossible.",
+          "researcher_comment": "Crucial for RQs about confidence thresholds and public signalling; implies reporting conventions should include calibrated confidence language. Empirical work needed to map spectrum to policy choices.",
+          "potential_themes": [
+            "attribution_challenges",
+            "confidence_language"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "attribution_spectrum",
+            "confidence_levels"
+          ]
+        },
+        {
+          "quote": "It is possible, moreover, to have attribution at one level (e.g., to a machine, to a person, to a State) but not others.",
+          "paraphrase": "The authors note that attribution can succeed at some levels (machine or individual) while remaining unresolved at the State responsibility level.",
+          "researcher_comment": "This multilevel distinction matters for legal accountability RQs because state responsibility typically requires higher evidentiary standards than technical device attribution.",
+          "potential_themes": [
+            "attribution_challenges",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "multilevel_attribution",
+            "legal_vs_technical"
+          ]
+        },
+        {
+          "quote": "Exposure refers to the publicity an accusation receives.",
+          "paraphrase": "The authors define exposure as how publicly an accusation is communicated.",
+          "researcher_comment": "Defines the second component of their framework; exposure choices (private/semi\u2011private/public) directly affect audience, deterrence, and norm diffusion questions relevant to RQs.",
+          "potential_themes": [
+            "exposure"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "exposure_definition",
+            "publicity_degree"
+          ]
+        },
+        {
+          "quote": "Accusers interested in exposure of a cyber operation must choose what vehicle they will use and what evidence to share.",
+          "paraphrase": "The authors argue that actors seeking to expose cyber operations must select dissemination channels and decide how much evidence to disclose.",
+          "researcher_comment": "Identifies a strategic trade\u2011off: more documentation raises credibility but risks revealing sources/methods or operational information. Relevant to RQs about best practices for public attribution.",
+          "potential_themes": [
+            "exposure",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "evidence_disclosure_tradeoff",
+            "vehicle_choice"
+          ]
+        },
+        {
+          "quote": "On the other hand, at least some attribution appears necessary if an accusation involves compliance, punishment or deterrence.",
+          "paraphrase": "The authors contend that attribution is generally required when accusations aim to secure compliance, impose punishment, or deter others.",
+          "researcher_comment": "Sets a functional boundary: defensive or norm\u2011building exposures may not need attribution, but coercive measures typically do. Important for RQs on when to attribute publicly.",
+          "potential_themes": [
+            "attribution_challenges",
+            "compliance",
+            "deterrence"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "attribution_needed_for_punishment",
+            "functional_boundary"
+          ]
+        },
+        {
+          "quote": "In contrast, exposure is clearly a pre-requisite for accusations designed to shore up defenses and deterrence; if third parties do not know of a cyber operation and of the disapproval of it they can neither defend against it nor are they likely to be deferred from engaging in similar behavior.",
+          "paraphrase": "The authors state that public exposure is required for accusations intended to improve defenses or deter others because third parties must be informed of the threat and the condemnation.",
+          "researcher_comment": "Specifies a causal mechanism linking publicity to both technical defense (IOCs sharing) and political deterrence. Assumes recipients will act on disclosed indicators or reputational signals; empirical validation needed.",
+          "potential_themes": [
+            "exposure",
+            "defense",
+            "deterrence"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "exposure_for_defense",
+            "publicity_enables_deterrence"
+          ]
+        },
+        {
+          "quote": "Condemnation refers to an expression of disapproval.",
+          "paraphrase": "The authors define condemnation as an expression of disapproval of the conduct at issue.",
+          "researcher_comment": "Third component of the framework; condemnation supplies normative content and is variably grounded (law, politics, culture). Relevant to RQs on normative pressure and legal framing.",
+          "potential_themes": [
+            "condemnation"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "condemnation_definition",
+            "normative_signal"
+          ]
+        },
+        {
+          "quote": "As a tool of compliance, accusations require a norm against which the accused's behavior can be measured.",
+          "paraphrase": "The authors argue that accusations aimed at producing compliance presuppose an existing norm to judge the accused's behavior against.",
+          "researcher_comment": "This is a necessary\u2011condition claim: absent a recognized norm, compliance via shaming is unlikely. Use for RQs that test how norm clarity mediates accusation efficacy.",
+          "potential_themes": [
+            "customary_international_law",
+            "compliance"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "norm_requirement",
+            "norm_clarity_importance"
+          ]
+        },
+        {
+          "quote": "International legal accusations pose particular evidentiary challenges. Accusers must tie the accused State to the actual hackers, whether by demonstrating that those hackers were government officials, affiliated with a non-State actor operating under the State\u2019s control, or affiliated with a non-State actor\u2019s operations that are later adopted by the State.",
+          "paraphrase": "The authors state that bringing international\u2011law based accusations requires evidentiary proof connecting the accused State to perpetrators, which is technically and legally challenging.",
+          "researcher_comment": "Specifies a concrete limitation: establishing state responsibility invokes contested legal standards (e.g., effective vs overall control) and high evidentiary cost. Directly relevant to RQs on legal accountability and attribution thresholds.",
+          "potential_themes": [
+            "evidentiary_standards",
+            "customary_international_law"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "state_responsibility_evidence",
+            "control_standards"
+          ]
+        },
+        {
+          "quote": "Agreeing to more standardized attribution methodologies would make it easier for audiences to weigh an accusation's credibility.",
+          "paraphrase": "The authors recommend standardizing attribution methodologies to help audiences assess the credibility of accusations.",
+          "researcher_comment": "Operational recommendation to reduce politicization and increase acceptance of attributions; trade\u2011offs exist around protecting sources/methods. Relevant to RQs on improving acceptance of public attribution.",
+          "potential_themes": [
+            "evidentiary_standards",
+            "recommendation"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "standardize_attribution",
+            "credibility_mechanism"
+          ]
+        },
+        {
+          "quote": "Accusations\u2014and the responses they generate\u2014could advance international law compliance. But the failure of accusations to achieve compliance by an accused does not relegate the law to irrelevancy.",
+          "paraphrase": "The authors argue that accusations and ensuing interactions can help build international legal norms even if they do not immediately change the accused's behavior.",
+          "researcher_comment": "Claims a mechanism for norm\u2011construction (practice + responses \u2192 opinio juris). This justifies studying accusations as inputs to customary law formation rather than only as compliance instruments.",
+          "potential_themes": [
+            "norm_construction",
+            "customary_international_law"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "predictive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "accusations_construct_law",
+            "opinio_juris_process"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-23T23:32:50.114263Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "3c434ebe6643cf6006c42691073b8c2f17dd85af682e55214f6adc1ffb83f97e",
+  "function": "code_pdf_page"
+}

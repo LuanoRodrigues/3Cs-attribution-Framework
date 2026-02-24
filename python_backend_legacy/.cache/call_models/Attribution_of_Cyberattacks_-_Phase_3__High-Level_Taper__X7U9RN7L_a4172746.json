@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": "{\n  \"classification\": \"Highly Relevant\",\n  \"relevance_score\": \"High\",\n  \"potential_subcategory\": \"Institutional design and governance for state-level cyber attribution; international norms and legal frameworks; public\u2013private roles and accountability\",\n  \"justification\": \"The abstract explicitly focuses on institutionalizing cyber-attribution \u2014 a core policy and legal issue \u2014 by surveying and comparing major governance proposals (e.g., Microsoft\u2019s International Attribution Organization, Atlantic Council, RAND, a state cyber court) and by applying established forensic/threat-intelligence models. It addresses governance mechanisms, enforcement roles, stakeholder incentives, and systemic challenges (geopolitical rivalries, trust/capability gaps, private-sector control and conflicts of interest), and proposes a research agenda to build an evidence base for credible transnational attribution institutions. These elements directly engage questions of accountability, deterrence, international norms, and the role of private actors in attribution\u2014all central to cyber conflict attribution and policy/law. The paper\u2019s reliance on secondary sources is a noted limitation but does not reduce its high relevance to policy and legal debates about institutionalizing attribution.\"\n}"
+  },
+  "cached_at": "2026-02-23T20:43:32.969758Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "X7U9RN7L",
+  "function": "classify_by_abs"
+}

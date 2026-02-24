@@ -1,0 +1,455 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "quote": "Politics and law develop much more slowly than technology.",
+          "paraphrase": "Politics and legal systems evolve more slowly than technological development, creating a governance mismatch relevant to RQ 0.",
+          "researcher_comment": "This statement frames a structural pace mismatch that complicates cyber-attribution policy. It is a high-level claim without empirical quantification but useful as a contextual premise for attribution-focused RQs.",
+          "potential_themes": [
+            "legal_technical_gap",
+            "norm_development"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "pace_mismatch",
+            "policy_lag",
+            "governance_gap"
+          ]
+        },
+        {
+          "quote": "Norms in cyberspace only work if the actors believe that they can be accused of doing something wrong which requires attribution.",
+          "paraphrase": "Effective cyber norms require actors' belief they can be held accountable, which depends on attribution; this is relevant to RQ 0.",
+          "researcher_comment": "Directly links attribution to the very enforceability of norms and thus to the central RQ about attribution's role. The claim assumes belief in accountability is sufficient to change behaviour and needs empirical testing.",
+          "potential_themes": [
+            "attribution_challenges",
+            "norms_enforcement"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "attribution_needed_for_norms",
+            "accountability_belief"
+          ]
+        },
+        {
+          "quote": "Norms in a world without attribution are much harder to enforce because we tend to enforce norms by assigning responsibility.",
+          "paraphrase": "Without attribution, enforcing cyber norms becomes much more difficult because enforcement depends on assigning responsibility; relevant to RQ 0.",
+          "researcher_comment": "Specifies the mechanism (assignment of responsibility) that makes attribution a precondition for enforcement. Useful for theorizing enforcement failures, but the excerpt provides no evidence on alternative enforcement models.",
+          "potential_themes": [
+            "attribution_challenges",
+            "norms_enforcement"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "attribution_enforcement_link",
+            "responsibility_assignment"
+          ]
+        },
+        {
+          "quote": "However, given how easy it is to create false flags within cyberspace, this approach has significant limitations.",
+          "paraphrase": "Because false flags are easy to construct online, intuitive victim-based attribution is unreliable; relevant to RQ 0.",
+          "researcher_comment": "Identifies false-flag risk as a concrete technical limitation to non-technical attribution heuristics. The claim points to the need for more rigorous forensic and evidentiary standards.",
+          "potential_themes": [
+            "false_flags",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "limitation",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "false_flag_risk",
+            "heuristic_attribution_limitations"
+          ]
+        },
+        {
+          "quote": "Instead, the most powerful intelligence agencies, such as the NSA, are using a multitude of lawyers to assign attribution.",
+          "paraphrase": "Major intelligence agencies employ legal teams to make formal attribution determinations; relevant to RQ 0.",
+          "researcher_comment": "Describes current practice where attribution is routinized through legal processes inside agencies; implies potential transparency and standardization problems for international norms.",
+          "potential_themes": [
+            "evidentiary_standards",
+            "intelligence_attribution"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "finding",
+          "argument_type": "procedural",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "legalistic_attribution",
+            "agency_practice"
+          ]
+        },
+        {
+          "quote": "However, such methods do not help create mechanisms for developing legal norms at the international level.",
+          "paraphrase": "Agency-level legal attribution practices do not contribute to developing international legal norms for cyberspace; relevant to RQ 0.",
+          "researcher_comment": "Highlights a disjunction between national attribution practices and international norm-building, supporting the need for multilateral, transparent processes. The statement is normative/descriptive but not evidenced here.",
+          "potential_themes": [
+            "norm_development",
+            "international_forums"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "national_practices_vs_international_norms",
+            "attribution_transparency_issue"
+          ]
+        },
+        {
+          "quote": "The two might look identical to an observer, so conveying intent can make the key difference in determining whether something is an offensive move or an intelligence operation.",
+          "paraphrase": "Cyber espionage and cyber attacks can appear identical technically, and communicating intent is essential for classifying operations; relevant to RQ 0.",
+          "researcher_comment": "Emphasises that intent-attribution, not just forensic artefacts, matters for legal/operational classification. Raises the evidentiary problem of how to demonstrate intent in international fora.",
+          "potential_themes": [
+            "intent_attribution",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "comparative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "intent_decisive",
+            "espionage_vs_attack"
+          ]
+        },
+        {
+          "quote": "Inspecting each other's military infrastructure, as was common for nuclear facilities during the Cold War, is basically useless because the intent, and not the technological design, of a cyber operation determines whether it is offensive or defensive.",
+          "paraphrase": "Mutual inspections are ineffective in cyberspace because offensiveness depends on intent rather than technical design; relevant to RQ 0.",
+          "researcher_comment": "Argues that traditional verification mechanisms (inspections) do not translate to cyberspace, undercutting a class of confidence-building measures. This assumes intent cannot be credibly inferred from behaviour or artifacts.",
+          "potential_themes": [
+            "verification_issues",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "comparative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "inspection_limitations",
+            "intent_over_design"
+          ]
+        },
+        {
+          "quote": "First, existing international platforms such as the UN GGE need to receive a stronger mandate that is not limited to a yearly renewal through the UN General assembly.",
+          "paraphrase": "The author recommends giving UN GGE a stronger, more stable mandate beyond annual renewals to support cyber norm development; relevant to RQ 0.",
+          "researcher_comment": "Concrete institutional recommendation to improve continuity and technical capacity in international negotiations. The excerpt does not specify what a stronger mandate would entail or how enforcement would work.",
+          "potential_themes": [
+            "international_forums",
+            "norm_development",
+            "capacity_building"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "strengthen_un_gge",
+            "institutional_reform"
+          ]
+        },
+        {
+          "quote": "By opening the door to internet businesses (such as internet service providers), technology experts, and other non-state actors, future policy decisions are more likely to be technologically feasible to implement.",
+          "paraphrase": "Including ISPs, technologists, and other non-state actors in governance increases the technical feasibility of policies; relevant to RQ 0.",
+          "researcher_comment": "Argues for multistakeholder inclusion to align policy with implementable technical realities. Does not address how to balance representation or commercial incentives.",
+          "potential_themes": [
+            "multistakeholder_inclusion",
+            "capacity_building"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "include_nonstate_actors",
+            "policy_feasibility"
+          ]
+        },
+        {
+          "quote": "Third, once states accept that the inclusion of non-state actors helps reduce conflict potential and increase trust internationally, this process must be accompanied by the establishment of a database with relevant legal and technical terms.",
+          "paraphrase": "The author urges creating a shared legal and technical terms database alongside non-state actor inclusion to build trust and reduce conflict; relevant to RQ 0.",
+          "researcher_comment": "Proposes reducing semantic and jurisdictional friction by standardizing terminology; practical questions remain about curation, governance, and uptake across states and sectors.",
+          "potential_themes": [
+            "norm_development",
+            "evidentiary_standards",
+            "multistakeholder_inclusion"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "recommendation",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "definitions_database",
+            "shared_vocabulary"
+          ]
+        },
+        {
+          "quote": "Fourth, a significant increase in capacity building among current diplomats and policymakers would help them understand the technological characteristics of cyberspace.",
+          "paraphrase": "The author recommends expanding capacity building for diplomats and policymakers so they better grasp cyberspace's technical features; relevant to RQ 0.",
+          "researcher_comment": "Supports targeted training to close the expertise gap between technical and legal/policy communities; the recommendation lacks detail on scope, metrics, and who should fund or deliver training.",
+          "potential_themes": [
+            "capacity_building"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "build_diplomatic_capacity",
+            "interdisciplinary_training"
+          ]
+        },
+        {
+          "quote": "Sixth, by acknowledging the importance of this issue, not just for today but for many generations to come, it is easy to understand why efforts to train future generations of policymakers, lawyers, and technology experts about the interdisciplinary challenges of governing conflict in cyberspace are crucial.",
+          "paraphrase": "Long-term training for future policymakers, lawyers, and technologists in interdisciplinary cyber governance is essential; relevant to RQ 0.",
+          "researcher_comment": "Calls for institutionalizing interdisciplinary education to sustain capability over generations; cites programs but offers no evidence of effectiveness or scalability in the excerpt.",
+          "potential_themes": [
+            "capacity_building",
+            "multistakeholder_inclusion"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "train_future_generations",
+            "interdisciplinary_education"
+          ]
+        },
+        {
+          "quote": "All of the aforementioned steps would improve the conditions under which international legal norms and CBMs can contribute to the reduction of military escalation within cyberspace.",
+          "paraphrase": "Implementing the recommended steps would create conditions for international legal norms and confidence-building measures to reduce military escalation in cyberspace; relevant to RQ 0.",
+          "researcher_comment": "Connects the proposed institutional and capacity reforms to the outcome of reduced escalation. This is a plausible but asserted causal pathway that requires empirical validation.",
+          "potential_themes": [
+            "norm_development",
+            "confidence_building_measures"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "predictive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "steps_reduce_escalation",
+            "cbm_effects"
+          ]
+        },
+        {
+          "quote": "it seems reasonable to say that the militarization of cyberspace is on the rise.",
+          "paraphrase": "The author asserts that cyber capabilities are increasingly militarized, indicating growing risk; relevant to RQ 0.",
+          "researcher_comment": "A trend claim that motivates urgency for attribution and norm efforts; the excerpt provides no empirical data to substantiate the claimed increase.",
+          "potential_themes": [
+            "militarization_trend"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "militarization_increase",
+            "policy_urgency"
+          ]
+        },
+        {
+          "quote": "Fortunately, fora like the UN GGE, the OSCE, ASEAN, OAS, the EU, and many others are actively working on reducing conflict and setting limits for military engagement in cyberspace.",
+          "paraphrase": "Multiple international and regional fora are working to limit military cyber engagement and reduce conflict; relevant to RQ 0.",
+          "researcher_comment": "Maps the institutional landscape of multilateral efforts relevant to attribution and norms. Statements about activity do not assess progress or effectiveness.",
+          "potential_themes": [
+            "international_forums",
+            "norm_development"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "multilateral_efforts",
+            "regional_forums"
+          ]
+        },
+        {
+          "quote": "However, many of these efforts are slow, or have become stuck, given their limited mandate.",
+          "paraphrase": "Many international efforts to govern cyberspace are slow or stalled because their mandates are limited; relevant to RQ 0.",
+          "researcher_comment": "Identifies mandate limitations as an institutional constraint on progress, supporting calls for reform. The claim is diagnostic but lacks examples of specific stalled negotiations.",
+          "potential_themes": [
+            "international_forums",
+            "institutional_limitations"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "limitation",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "mandate_limitations",
+            "negotiation_stall"
+          ]
+        },
+        {
+          "quote": "Simultaneously, technological developments will continue to outpace policy and legal discussions.",
+          "paraphrase": "Technological change will continue to outpace policy and legal discourse, complicating norm development; relevant to RQ 0.",
+          "researcher_comment": "Reiterates the pace problem and underpins recommendations for ongoing capacity-building and institutional adaptation. The statement is predictive but not quantified here.",
+          "potential_themes": [
+            "legal_technical_gap",
+            "capacity_building"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "predictive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "tech_outpace_policy",
+            "ongoing_pace_gap"
+          ]
+        },
+        {
+          "quote": "These exchanges should occur on an international level, facilitated, but not dominated, by states.",
+          "paraphrase": "The author recommends international-level exchanges on cyberspace governance that are state-facilitated but not state-dominated; relevant to RQ 0.",
+          "researcher_comment": "Advocates for inclusive, international dialogue structures to bridge technical and legal communities; does not specify safeguards to prevent state capture of fora.",
+          "potential_themes": [
+            "multistakeholder_inclusion",
+            "international_forums"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "international_exchange",
+            "limit_state_centrality"
+          ]
+        },
+        {
+          "quote": "reducing the centrality of state governments in negotiating a framework of cyber norms",
+          "paraphrase": "The author recommends reducing state centrality in negotiating cyber norms to broaden participation and legitimacy; relevant to RQ 0.",
+          "researcher_comment": "Calls for de\u2011centring state monopoly over norm negotiation to improve inclusivity and technical feasibility. The excerpt lacks specifics on alternative governance arrangements or decision rules.",
+          "potential_themes": [
+            "multistakeholder_inclusion",
+            "norm_development"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "decentralize_negotiation",
+            "reduce_state_centrality"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-23T23:35:23.334256Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "6eec7f69e4859635274c018aff90a3e780b9592816e5e8991eabc9fc5beef33a",
+  "function": "code_pdf_page"
+}

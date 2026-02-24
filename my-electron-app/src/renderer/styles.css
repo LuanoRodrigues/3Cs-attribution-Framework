@@ -2497,6 +2497,11 @@ kbd { background: color-mix(in srgb, var(--surface) 10%, transparent); }
   pointer-events: none !important;
 }
 
+.zotero-parity-mode .zotero-picker {
+  display: none !important;
+  pointer-events: none !important;
+}
+
 .zotero-picker-header {
   display: flex;
   align-items: center;
@@ -2796,6 +2801,13 @@ body.zotero-parity-mode {
   overflow: hidden;
 }
 
+.zotero-parity-mode .panel-tool-host .tab-strip,
+.zotero-parity-mode .panel-shell .tab-strip,
+.zotero-parity-mode .panel-shell .tab,
+.zotero-parity-mode .panel-tool-host .tab {
+  display: none !important;
+}
+
 .zotero-panel-header {
   padding: 10px;
   border-bottom: 1px solid var(--zotero-border);
@@ -2810,10 +2822,38 @@ body.zotero-parity-mode {
 }
 
 .zotero-actions {
+  display: flex;
+  align-items: center;
   padding: 10px;
   gap: 8px;
   min-height: 36px;
   justify-content: flex-start;
+}
+
+.zotero-loader-ribbon {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.zotero-loader-btn {
+  min-height: 24px;
+  padding: 4px 9px;
+  border-radius: 8px;
+  border: 1px solid rgba(147, 171, 200, 0.32);
+  background: rgba(13, 21, 33, 0.78);
+  color: var(--zotero-text);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.zotero-loader-btn:hover {
+  border-color: rgba(102, 183, 255, 0.75);
+}
+
+.zotero-loader-btn:disabled {
+  opacity: 0.48;
+  cursor: default;
 }
 
 .zotero-status {
@@ -3296,19 +3336,20 @@ body.zotero-parity-mode {
 .agent-chat-fab {
   position: fixed;
   right: 12px;
-  bottom: 278px;
+  bottom: 24px;
   width: 54px;
   height: 54px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  z-index: 96;
+  z-index: 2147483647;
   background:
     radial-gradient(circle at 28% 24%, rgba(164, 214, 255, 0.85), transparent 48%),
     linear-gradient(145deg, #2f6ac8, #1d4f9c);
   border: 1px solid rgba(126, 190, 255, 0.5);
   box-shadow: 0 14px 30px rgba(12, 28, 55, 0.45);
+  transition: border-color 0.2s ease, transform 0.12s ease;
 }
 
 .agent-chat-fab:hover {
@@ -3320,6 +3361,46 @@ body.zotero-parity-mode {
   font-size: 24px;
   font-weight: 700;
   line-height: 1;
+}
+
+.agent-chat-fab.recording,
+.agent-chat-fab.playing {
+  position: relative;
+  overflow: visible;
+}
+
+.agent-chat-fab.recording {
+  color: #ffdee6;
+  border-color: rgba(255, 111, 120, 0.72);
+  background: rgba(88, 26, 37, 0.58);
+}
+
+.agent-chat-fab.recording::after,
+.agent-chat-fab.playing::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 999px;
+  opacity: 0;
+  pointer-events: none;
+  animation-duration: var(--agent-voice-pulse-duration, 1.2s);
+  animation-iteration-count: infinite;
+}
+
+.agent-chat-fab.recording::after {
+  box-shadow: 0 0 0 0 rgba(255, 111, 120, 0.58);
+  animation-name: agentVoicePulseRecording;
+}
+
+.agent-chat-fab.playing {
+  color: var(--agent-voice-text, #d9ebff);
+  border-color: var(--agent-voice-border, rgba(96, 165, 250, 0.7));
+  background: var(--agent-voice-background, rgba(17, 51, 89, 0.6));
+}
+
+.agent-chat-fab.playing::after {
+  box-shadow: 0 0 0 0 var(--agent-voice-shadow, rgba(96, 165, 250, 0.45));
+  animation-name: agentVoicePulseSpeaking;
 }
 
 .agent-chat-dock {
@@ -3338,7 +3419,7 @@ body.zotero-parity-mode {
   transform: translateY(16px);
   opacity: 0;
   pointer-events: none;
-  z-index: 95;
+  z-index: 2147483646;
   transition: transform 0.14s ease, opacity 0.14s ease;
 }
 
@@ -3408,6 +3489,25 @@ body.zotero-parity-mode {
   font-size: 10px;
 }
 
+.agent-chat-actions {
+  margin-top: 8px;
+}
+
+.agent-chat-action-btn {
+  appearance: none;
+  border: 1px solid rgba(78, 191, 151, 0.48);
+  background: rgba(20, 70, 58, 0.55);
+  color: #d9fff1;
+  border-radius: 8px;
+  padding: 5px 9px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.agent-chat-action-btn:hover {
+  background: rgba(23, 93, 75, 0.8);
+}
+
 .agent-chat-form {
   border-top: 1px solid var(--border-soft);
   display: flex;
@@ -3431,13 +3531,120 @@ body.zotero-parity-mode {
   gap: 10px;
 }
 
+.agent-chat-controls button {
+  appearance: none;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  padding: 5px 10px;
+  background: rgba(19, 31, 50, 0.95);
+  color: var(--text);
+  position: relative;
+  overflow: visible;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.12s ease;
+}
+
+.agent-chat-controls button:hover {
+  border-color: rgba(126, 190, 255, 0.65);
+}
+
+.agent-chat-voice-status {
+  margin-left: 8px;
+  min-height: 16px;
+  font-size: 11px;
+  color: var(--muted);
+  align-self: center;
+}
+
+.agent-chat-voice-legend {
+  margin-left: 8px;
+  min-height: 13px;
+  font-size: 10px;
+  color: color-mix(in srgb, var(--muted) 78%, transparent);
+  align-self: center;
+  opacity: 0;
+  white-space: nowrap;
+  transition: opacity 0.14s ease;
+  pointer-events: none;
+}
+
+.agent-chat-controls:hover .agent-chat-voice-legend,
+#btnAgentChatMic:hover + #agentChatSend + .agent-chat-voice-status + .agent-chat-voice-legend,
+.agent-chat-voice-legend:hover {
+  opacity: 1;
+}
+
+#btnAgentChatMic.recording {
+  color: #ffdee6;
+  border-color: rgba(255, 111, 120, 0.72);
+  background: rgba(88, 26, 37, 0.58);
+}
+
+#btnAgentChatMic.recording::after,
+#btnAgentChatMic.playing::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 999px;
+  opacity: 0;
+  pointer-events: none;
+  animation-duration: var(--agent-voice-pulse-duration, 1.2s);
+  animation-iteration-count: infinite;
+}
+
+#btnAgentChatMic.recording::after {
+  box-shadow: 0 0 0 0 rgba(255, 111, 120, 0.58);
+  animation-name: agentVoicePulseRecording;
+}
+
+#btnAgentChatMic.playing::after {
+  box-shadow: 0 0 0 0 var(--agent-voice-shadow, rgba(96, 165, 250, 0.52));
+  animation-name: agentVoicePulseSpeaking;
+}
+
+#btnAgentChatMic.playing {
+  color: var(--agent-voice-text, #d9ebff);
+  border-color: var(--agent-voice-border, rgba(96, 165, 250, 0.7));
+  background: var(--agent-voice-background, rgba(17, 51, 89, 0.6));
+}
+
+@keyframes agentVoicePulseRecording {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 111, 120, 0.5);
+    opacity: 0.8;
+  }
+  70% {
+    box-shadow: 0 0 0 12px rgba(255, 111, 120, 0);
+    opacity: 0;
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 111, 120, 0);
+    opacity: 0;
+  }
+}
+
+@keyframes agentVoicePulseSpeaking {
+  0% {
+    box-shadow: 0 0 0 0 var(--agent-voice-shadow, rgba(96, 165, 250, 0.45));
+    opacity: 0.8;
+  }
+  70% {
+    box-shadow: 0 0 0 14px rgba(96, 165, 250, 0);
+    opacity: 0;
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(96, 165, 250, 0);
+    opacity: 0;
+  }
+}
+
+.agent-chat-audio {
+  display: none;
+}
+
 @media (max-width: 1200px) {
   .agent-chat-dock {
     left: 12px;
     width: auto;
-  }
-  .agent-chat-fab {
-    bottom: 250px;
   }
 }
 

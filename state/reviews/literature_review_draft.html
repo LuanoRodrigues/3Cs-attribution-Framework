@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en"> 
+<head>
+  <meta charset="UTF-8">
+  
+  <title>Literature Review: How do existing cyber attribution frameworks conceptualize e...</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+  <style>
+    /* --- Enhanced and Cleaner Styles --- */
+    :root {
+      --primary-color: #0D47A1; /* Deep blue */
+      --secondary-color: #1E88E5; /* Medium blue */
+      --accent-color: #42A5F5; /* Light blue */
+      --background-color: #fcfcfc;
+      --text-color: #333;
+      --muted-text-color: #555;
+      --border-color: #e0e0e0;
+      --section-border-color: #90CAF9;
+      --hover-bg-color: #eff4ff;
+      --code-bg-color: #f5f5f5;
+      --placeholder-bg: #fdfefe;
+      --placeholder-border: #bdc3c7;
+      --placeholder-text: #7f8c8d;
+      --footnote-link-color: #888;
+    }
+
+    body {
+      font-family: 'Georgia', serif; /* Switched to serif for main body */
+      line-height: 1.8; /* Slightly increased line height */
+      margin: 0 auto;
+      max-width: 850px; /* Slightly narrower */
+      padding: 30px; /* Increased padding */
+      color: var(--text-color);
+      background-color: var(--background-color);
+      font-size: 16px; /* Base font size */
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+      font-family: 'Lato', sans-serif; /* Sans-serif for headings */
+      margin-top: 2.2em;
+      margin-bottom: 1em;
+      line-height: 1.3;
+      font-weight: 700; /* Bolder headings */
+      color: var(--primary-color);
+      text-rendering: optimizeLegibility;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 1.8em;
+      font-size: 2.4em; /* Larger main title */
+      color: var(--primary-color);
+      border-bottom: 3px solid var(--accent-color);
+      padding-bottom: 0.5em;
+    }
+
+    h2 {
+      border-bottom: 2px solid var(--accent-color);
+      padding-bottom: 10px;
+      font-size: 1.9em;
+      color: var(--primary-color);
+    }
+
+    h3 {
+      border-bottom: 1px solid var(--section-border-color);
+      padding-bottom: 8px;
+      font-size: 1.5em;
+      color: var(--secondary-color);
+      font-weight: 600;
+    }
+
+    h4 {
+      font-size: 1.2em;
+      color: var(--accent-color);
+      margin-bottom: 0.8em;
+      font-weight: 700;
+    }
+
+    p {
+      margin-bottom: 1.4em;
+      text-align: justify;
+    }
+
+    a {
+      color: var(--secondary-color);
+      text-decoration: none;
+      transition: color 0.2s ease-in-out;
+    }
+    a:hover, a:focus {
+      color: var(--primary-color);
+      text-decoration: underline;
+    }
+
+    em, i { font-style: italic; }
+    strong, b { font-weight: 700; } /* Slightly bolder strong */
+
+    blockquote {
+      border-left: 4px solid var(--accent-color);
+      padding-left: 1.5em;
+      margin-left: 0;
+      margin-right: 0;
+      margin-top: 1.5em;
+      margin-bottom: 1.5em;
+      font-style: italic;
+      color: var(--muted-text-color);
+    }
+
+    code, pre { /* Basic code styling */
+      font-family: 'Menlo', 'Consolas', monospace;
+      background-color: var(--code-bg-color);
+      padding: 0.2em 0.4em;
+      border-radius: 3px;
+      font-size: 0.9em;
+    }
+    pre {
+      padding: 1em;
+      overflow-x: auto;
+    }
+
+    .metadata {
+      text-align: center;
+      margin-bottom: 3.5em;
+      font-size: 0.9em; /* Slightly smaller */
+      color: var(--muted-text-color);
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 2em;
+      font-family: 'Lato', sans-serif; /* Sans-serif for metadata */
+    }
+    .metadata p {
+      margin: 0.4em 0;
+      text-align: center; /* Centered paragraph text */
+      line-height: 1.5;
+    }
+
+    .section-content {
+      margin-bottom: 2.5em; /* Consistent spacing */
+      padding-left: 0;
+    }
+
+    /* Improved AI Content styling */
+    .ai-generated-content {
+      padding: 10px 0; /* Added some padding */
+      margin: 1.5em 0;
+      text-align: justify;
+      border: none; /* Removed border */
+    }
+    .ai-generated-content p:last-child { margin-bottom: 0; }
+    .ai-generated-content ul, .ai-generated-content ol {
+      margin-left: 1.5em; /* Adjusted indent */
+      margin-bottom: 1.4em;
+      padding-left: 1em; /* Added padding */
+    }
+    .ai-generated-content li { margin-bottom: 0.6em; }
+
+    /* Placeholder Styling */
+    .ai-placeholder {
+      font-style: italic;
+      color: var(--placeholder-text);
+      border: 1px dashed var(--placeholder-border);
+      padding: 1.5em; /* More padding */
+      margin: 2em 0;
+      background-color: var(--placeholder-bg);
+      text-align: center;
+      border-radius: 4px;
+    }
+
+    /* Review Body Sections */
+    .review-body-section { margin-bottom: 3em; }
+    .review-body-section h3 { /* Style inherited */ }
+    .review-body-section .ai-generated-content { margin-top: 0.5em; padding-top: 0; }
+
+    /* Criteria Box Styling */
+    .criteria-box {
+      background-color: #f8f9fa;
+      border: 1px solid #e9ecef;
+      padding: 1.2em 1.5em; /* Adjusted padding */
+      margin: 1.5em 0;
+      border-radius: 5px;
+      font-size: 0.95em;
+    }
+    .criteria-box h4 {
+      margin-top: 0;
+      margin-bottom: 1em;
+      color: #495057;
+      font-size: 1.1em;
+      font-family: 'Lato', sans-serif;
+      border-bottom: 1px solid #dee2e6;
+      padding-bottom: 0.5em;
+    }
+    .criteria-list {
+      list-style-type: disc;
+      margin-left: 1.2em;
+      padding-left: 0.5em;
+      line-height: 1.6;
+    }
+    .criteria-list li { margin-bottom: 0.5em; }
+
+    /* Footnotes Styling */
+    #footnotes { margin-top: 3em; padding-top: 1.5em; border-top: 1px solid var(--border-color); }
+    #footnotes h2 { margin-bottom: 1.5em; font-size: 1.6em; }
+    .footnotes {
+        padding-left: 0; /* Reset browser default */
+        list-style: none; /* Remove default numbering */
+        counter-reset: footnote-counter; /* Initialize counter */
+        font-size: 0.9em;
+        line-height: 1.6;
+        color: var(--muted-text-color);
+    }
+    .footnotes li {
+        counter-increment: footnote-counter; /* Increment counter */
+        margin-bottom: 1em;
+        padding-left: 2.5em; /* Indent note text */
+        position: relative;
+    }
+    .footnotes li::before { /* Add custom counter */
+        content: counter(footnote-counter) ".";
+        font-weight: 600;
+        position: absolute;
+        left: 0.5em;
+        top: 0;
+        color: var(--secondary-color);
+    }
+    .footnotes li a { /* Style the jump-back link */
+      text-decoration: none;
+      color: var(--footnote-link-color);
+      margin-right: 0.5em;
+      font-weight: bold;
+    }
+    .footnotes li a:hover { color: var(--primary-color); }
+
+    /* Bibliography Styling */
+    #references { margin-top: 3em; padding-top: 1.5em; border-top: 1px solid var(--border-color); }
+    #references h2 { margin-bottom: 1.5em; font-size: 1.6em; }
+    #references ol {
+      list-style: none; /* Remove default numbers */
+      padding-left: 0;
+      margin-top: 1em;
+    }
+    #references li {
+      margin-bottom: 1.2em;
+      padding-left: 1.5em; /* Indent for hanging effect */
+      text-indent: -1.5em; /* Create hanging indent */
+      font-size: 0.95em;
+      line-height: 1.7;
+    }
+    #references li strong { font-weight: normal; } /* Remove default strong if Zotero adds it */
+    #references li em, #references li i { font-style: italic; }
+
+  </style>
+</head>
+<body>
+
+
+<h1>Literature Review: Cyber Attribution Frameworks: A Literature Review</h1>
+
+
+<div class="metadata">
+  <p><strong>Authors:</strong> TBD</p>
+  <p><strong>Affiliations:</strong> TBD</p>
+  
+  <p><strong>Research Question:</strong><br><em>How do existing cyber attribution frameworks conceptualize evidence, attribution confidence, and response decision-making in state-level cyber incidents?</em></p>
+  <p>Report generated on: 2026-02-23</p>
+  <p>Data Source: Zotero Collection | Processed: 7 items | Screened: 7 | Included: 7 | PDFs Coded: 7</p>
+  <p>AI Models Used: open_coding pipeline (prompt_key=code_pdf_page, rq_sig=8839843fdc)</p>
+</div>
+
+
+
+<h2>Abstract</h2>
+<div class="section-content ai-generated-content">
+     <p>This literature review synthesizes 7 coded studies from a focused corpus of 7 cyber-attribution framework sources.</p><p>The analysis identifies four recurring dimensions: evidence bases, attribution methods, evidentiary/legal thresholds, and response-oriented policy framing.</p><p>Across the corpus, frameworks converge on multi-source inference and uncertainty-aware reasoning, but diverge in threshold-setting, operational detail, and implementation constraints.</p><p>The review contributes a structured synthesis of design choices and limitations relevant to attribution confidence and decision support in state-level cyber incidents.</p>
+</div>
+
+
+
+
+<h2>1. Introduction</h2>
+<div class="section-content ai-generated-content">
+     <p>Cyber attribution frameworks sit at the intersection of technical forensics, legal reasoning, and policy decision-making, yet these layers are often treated separately in practice.</p><p>Using a frozen corpus of 7 framework-focused sources, this review examines how existing models define evidence, express confidence, and connect attribution judgments to response options.</p><p>Rather than cataloging studies in isolation, the review synthesizes convergences, tensions, and unresolved design tradeoffs that shape operational attribution workflows.</p><p>The result is a comparative map of framework assumptions that can support methodological selection, interpretation of confidence claims, and future model refinement.</p>
+</div>
+
+<!-- 2. METHODOLOGY -->
+<h2>2. Methodology</h2>
+<div class="section-content">
+    
+    <p>This literature review employed a structured process to identify, screen, analyze, and synthesize literature relevant to the research question:</p>
+    <blockquote><em>How do existing cyber attribution frameworks conceptualize evidence, attribution confidence, and response decision-making in state-level cyber incidents?</em></blockquote>
+
+    <h3>2.1 Data Source</h3>
+    <p>The initial corpus consisted of 7 bibliographic records derived from a curated Zotero collection focused on "Cyber Attribution Frameworks: A Literature Review".</p>
+
+    <h3>2.2 Eligibility Criteria</h3>
+    
+    <p>Predefined inclusion and exclusion criteria, developed based on the research question and preliminary abstract review, were applied to select relevant studies. The criteria used for screening were:</p>
+    
+    <div class="criteria-box">
+        <h4>Inclusion Criteria:</h4>
+        <ul class="criteria-list">
+            
+                <li>Study is explicitly about cyber attribution frameworks/models, or directly contributes methods for cyber attribution decisions.</li>
+            
+                <li>Source provides substantive conceptual, methodological, legal, or empirical detail usable for synthesis.</li>
+            
+                <li>Source is accessible with sufficient bibliographic and content metadata (title/abstract/full text or coded extract).</li>
+            
+                <li>Source contributes to at least one synthesis dimension: evidence types, attribution methods, or framework operationalization.</li>
+            
+        </ul>
+        <h4>Exclusion Criteria:</h4>
+        <ul class="criteria-list">
+             
+                <li>Source is out of scope (general cybersecurity without attribution-framework relevance).</li>
+             
+                <li>Source lacks analyzable substance (insufficient methodological or argumentative detail).</li>
+             
+                <li>Duplicate/near-duplicate record where another version has more complete metadata or content.</li>
+             
+                <li>Source has no usable content for coding or synthesis after retrieval checks.</li>
+             
+        </ul>
+    </div>
+    
+
+    <h3>2.3 Study Screening (Title/Abstract)</h3>
+    
+    <p>Titles and abstracts of 7 identified items were screened against the eligibility criteria.</p>
+    
+    <p><em>Screening Result: 7 items met the criteria for full-text review, while 0 items were excluded at this stage.</em></p>
+
+    <h3>2.4 Full-Text Analysis (Data Extraction & Coding)</h3>
+    
+    <p>For the 7 items included after screening, full texts were retrieved where available. Relevant articles (7) were analyzed page-by-page. Key information pertinent to the research question(s)—including direct quotations, conceptual arguments, findings, location context within the source, and associated keywords—was systematically extracted and coded into a structured format.</p>
+    
+
+    <h3>2.5 Thematic Outline and Argument Clustering</h3>
+    
+    <p>The extracted coded data was analyzed to identify recurring concepts and generate a primary thematic outline for structuring the review. Subsequently, within each major theme, coded notes were further grouped based on specific arguments, claims, or sub-themes to facilitate detailed synthesis.</p>
+     <p><strong>Resulting Thematic Outline:</strong></p>
+    
+     <ul class="criteria-list">
+        
+            <li>Evidence Bases and Data Sources</li>
+        
+            <li>Attribution Methods and Model Operationalization</li>
+        
+            <li>Evidentiary Standards, Confidence, and Legal Thresholds</li>
+        
+            <li>Response Frameworks and Policy Decision-Making</li>
+        
+    </ul>
+    
+
+     <h3>2.6 Content Synthesis and Narrative Generation</h3>
+     
+     <p>Narrative synthesis was conducted paragraph-by-paragraph. Each paragraph focused on synthesizing the coded data clustered under a specific argument identified in the previous step. Citations were systematically incorporated during synthesis using placeholders linked to the extracted source information. Finally, the Abstract, Introduction, Conclusion, and Limitations sections were drafted based on the synthesized content and overall review findings.</p>
+     
+</div>
+
+
+
+<h2>3. Literature Review Findings</h2>
+<div class="section-content">
+    <p>The following sections synthesize the findings from the analyzed literature, structured according to the generated thematic outline and the arguments clustered within each theme.</p>
+
+    
+        
+        
+            <div class="review-body-section">
+                
+                <h3>3. Evidence Bases and Data Sources</h3>
+                
+                    <div class="ai-generated-content">
+                        
+                        <p>This section synthesizes 12 coded evidence units spanning 5 source(s), focusing on how the framework corpus operationalizes cyber attribution in this thematic area.</p><p>The authors define cyber-attack as state use of computers/IT as primary mechanisms to harm another state's interests, establishing the definitional scope for attribution frameworks (RQ2). <sup id="fnref-1"><a href="#fn-1">1</a></sup> The authors operationalize cyber-attacks by classifying them into three general categories to structure analysis and attribution (RQ2). <sup id="fnref-2"><a href="#fn-2">2</a></sup> Direct intrusion attacks are defined as attacker interactions that yield unauthorized access or control of target systems, a category used in the authors' framework (RQ2). <sup id="fnref-3"><a href="#fn-3">3</a></sup> The author uses specific incidents (Estonia DDoS, Stuxnet/Flame, 2012 financial-sector DDoS) as case evidence to infer possible nation-state involvement from intent, targets, and effects (RQ0,RQ1). <sup id="fnref-4"><a href="#fn-4">4</a></sup></p><p>The report notes that attackers iteratively modified server requests to bypass defenses, which is a technical behaviour used as evidence of skilled, adaptive actors (RQ1). <sup id="fnref-5"><a href="#fn-5">5</a></sup> The Stuxnet case relied on malware forensic identification (VirusBlokAda) and technical analysis indicating a specialized sabotage payload targeting centrifuges, used as concrete technical evidence (RQ0, RQ1). <sup id="fnref-6"><a href="#fn-6">6</a></sup> The authors state that attribution uses multiple technical and conventional intelligence evidence types such as malware reverse-engineering, source tracking, HUMINT and SIGINT. <sup id="fnref-7"><a href="#fn-7">7</a></sup> Common technical evidence-gathering techniques include forensics, reverse engineering, source tracking, honeypots and sinkholing. <sup id="fnref-8"><a href="#fn-8">8</a></sup></p><p>The authors provide a case-table (Fig. 2) that demonstrates applying the framework to real cyber incidents for policy and corporate decision support (RQ2). <sup id="fnref-9"><a href="#fn-9">9</a></sup> The document identifies storing logs and performing traceback queries as a cyber-attribution technique, indicating logs are used as evidentiary inputs for attribution (RQ0,RQ1). <sup id="fnref-10"><a href="#fn-10">10</a></sup> A 'Linguistic' library is listed among implemented libraries, indicating linguistic features are treated as an evidentiary category (RQ0,RQ1). <sup id="fnref-11"><a href="#fn-11">11</a></sup> An 'IPv4' library is implemented, indicating IP-level evidence is captured as a library component (RQ0). <sup id="fnref-12"><a href="#fn-12">12</a></sup></p>
+                    </div>
+                
+            </div>
+        
+            <div class="review-body-section">
+                
+                <h3>4. Attribution Methods and Model Operationalization</h3>
+                
+                    <div class="ai-generated-content">
+                        
+                        <p>This section synthesizes 12 coded evidence units spanning 5 source(s), focusing on how the framework corpus operationalizes cyber attribution in this thematic area.</p><p>Schmitt proposes seven specific criteria that are used to evaluate whether a cyber-attack constitutes a use of force, forming an operational framework for attribution and legal characterization. <sup id="fnref-13"><a href="#fn-13">13</a></sup> The Tallinn Manual—a consensus expert statement—incorporated Schmitt's criteria, institutionalizing them in a prominent non-binding guidance document. <sup id="fnref-14"><a href="#fn-14">14</a></sup> The author proposes operationalizing attribution standards by tying the evidentiary burden to the victim state's chosen response, using stricter tests for forceful responses and lower tests for legal/peaceful remedies. <sup id="fnref-15"><a href="#fn-15">15</a></sup> The report notes that attackers iteratively modified server requests to bypass defenses, which is a technical behaviour used as evidence of skilled, adaptive actors (RQ1). <sup id="fnref-16"><a href="#fn-16">16</a></sup></p><p>The InCA method integrates argumentation-based reasoning, logic programming, and probabilistic modelling to perform attribution. <sup id="fnref-17"><a href="#fn-17">17</a></sup> InCA is implemented as two models: a probabilistic Environmental Model (EM) capturing background evidence, and an Analytical Model (AM) for reasoning about competing hypotheses. <sup id="fnref-18"><a href="#fn-18">18</a></sup> Environmental model uncertainty is represented by probabilistic formulas of the form f : p ± ε, giving a probability interval for f. <sup id="fnref-19"><a href="#fn-19">19</a></sup> All-source attribution fuses multiple intelligence types to form a holistic judgment using historical TTPs, relevant to RQ0 and RQ1. <sup id="fnref-20"><a href="#fn-20">20</a></sup></p><p>The ODNI Cyber Threat Framework operationalizes adversary behavior into four stages—preparation, engagement, presence, and effects/consequences—directly addressing RQ2. <sup id="fnref-21"><a href="#fn-21">21</a></sup> Attribution assessment must consider machine-level, perpetrator-level, and higher organizational/country-level indicators, answering RQ1 about analytic method and levels of inference. <sup id="fnref-22"><a href="#fn-22">22</a></sup> Rid and Buchanan model attribution as minimizing uncertainty across tactical, operational, and strategic levels, providing a three-level framework relevant to RQ2. <sup id="fnref-23"><a href="#fn-23">23</a></sup> Cyber responses can be executed either overtly or covertly, which affects method choice and operational constraints (RQ1, RQ2). <sup id="fnref-24"><a href="#fn-24">24</a></sup></p>
+                    </div>
+                
+            </div>
+        
+            <div class="review-body-section">
+                
+                <h3>5. Evidentiary Standards, Confidence, and Legal Thresholds</h3>
+                
+                    <div class="ai-generated-content">
+                        
+                        <p>This section synthesizes 12 coded evidence units spanning 4 source(s), focusing on how the framework corpus operationalizes cyber attribution in this thematic area.</p><p>The authors assert that any definitive taxonomy of cyber-attacks will be partly artificial and only temporarily accurate, signaling a limitation for fixed frameworks (RQ2). <sup id="fnref-25"><a href="#fn-25">25</a></sup> Attributing state responsibility for cyber-attacks is identified as a major practical obstacle relevant to evidentiary practice and attribution frameworks (RQ0, RQ2). <sup id="fnref-26"><a href="#fn-26">26</a></sup> The authors argue that legal and factual ambiguity in cyber-warfare creates a safe environment for attackers, complicating evidence collection and attribution (RQ0, RQ2). <sup id="fnref-27"><a href="#fn-27">27</a></sup> The author uses specific incidents (Estonia DDoS, Stuxnet/Flame, 2012 financial-sector DDoS) as case evidence to infer possible nation-state involvement from intent, targets, and effects (RQ0,RQ1). <sup id="fnref-28"><a href="#fn-28">28</a></sup></p><p>The text asserts that attribution in cyberspace is significantly less precise than attributing a launched nuclear weapon, complicating attribution processes (RQ1,RQ2). <sup id="fnref-29"><a href="#fn-29">29</a></sup> The author claims that states commonly deny responsibility for hostile cyber actions, which hinders clear attribution and accountability (RQ1,RQ2). <sup id="fnref-30"><a href="#fn-30">30</a></sup> The author uses decision-theoretic mathematical models combined with legal analysis to predict a state's likelihood of sponsoring a cyber attack before attack-specific technical evidence is available. <sup id="fnref-31"><a href="#fn-31">31</a></sup> The author operationalizes attribution by requiring overlap between permissive contextual conditions and forensic (technical) indicators to identify likely state-sponsored attacks. <sup id="fnref-32"><a href="#fn-32">32</a></sup></p><p>Given the practical limits of post-attack forensics and disclosure reluctance, the author argues the proposed framework can narrow suspect lists even without technical post-attack data. <sup id="fnref-33"><a href="#fn-33">33</a></sup> The authors state that attribution uses multiple technical and conventional intelligence evidence types such as malware reverse-engineering, source tracking, HUMINT and SIGINT. <sup id="fnref-34"><a href="#fn-34">34</a></sup> Common technical evidence-gathering techniques include forensics, reverse engineering, source tracking, honeypots and sinkholing. <sup id="fnref-35"><a href="#fn-35">35</a></sup> Environmental model uncertainty is represented by probabilistic formulas of the form f : p ± ε, giving a probability interval for f. <sup id="fnref-36"><a href="#fn-36">36</a></sup></p>
+                    </div>
+                
+            </div>
+        
+            <div class="review-body-section">
+                
+                <h3>6. Response Frameworks and Policy Decision-Making</h3>
+                
+                    <div class="ai-generated-content">
+                        
+                        <p>This section synthesizes 9 coded evidence units spanning 3 source(s), focusing on how the framework corpus operationalizes cyber attribution in this thematic area.</p><p>Proulx proposes a strict-liability model that removes the requirement to prove attribution by holding host states liable regardless, shifting the burden to the host state to disprove liability. <sup id="fnref-37"><a href="#fn-37">37</a></sup> Schmitt recommends an indirect-responsibility model holding states accountable for failing to take reasonable measures to prevent cyber-attacks from their territory, effectively lowering attribution thresholds. <sup id="fnref-38"><a href="#fn-38">38</a></sup> The effective-control test set by the ICJ functions to restrict when states may lawfully respond by setting a high attribution standard. <sup id="fnref-39"><a href="#fn-39">39</a></sup> The chapter proposes that policymakers should develop a framework of proportionate responses for different types of cyber hostility to guide political decision-making (RQ2). <sup id="fnref-40"><a href="#fn-40">40</a></sup></p><p>The author presents a rough policy framework consisting of five variables for policymakers to evaluate and choose appropriate responses to cyber hostilities, indicating an attempt to operationalize a response model (RQ2). <sup id="fnref-41"><a href="#fn-41">41</a></sup> The suggested framework combines incident impact, policy options, and other variables to map response "levers" across escalating incident levels, describing how the model is operationalized (RQ1, RQ2). <sup id="fnref-42"><a href="#fn-42">42</a></sup> U.S. policy explicitly reserves the right to respond in cyberspace using diplomatic, informational, military, and economic measures, indicating a policy-level stance on response options (RQ2). <sup id="fnref-43"><a href="#fn-43">43</a></sup> The Department of Defense frames cyberspace as a distinct military domain and mandates development of full-spectrum military cyber capabilities under U.S. Cyber Command (RQ1,RQ2). <sup id="fnref-44"><a href="#fn-44">44</a></sup></p><p>U.S. officials' assumptions of informal state involvement are presented as an attribution posture, indicating use of intelligence assessments or official interpretation as evidence (RQ0). <sup id="fnref-45"><a href="#fn-45">45</a></sup></p>
+                    </div>
+                
+            </div>
+         
+     
+</div>
+
+
+
+<h2>7. Conclusion</h2>
+<div class="section-content ai-generated-content">
+  
+     <p>The corpus indicates broad agreement that cyber attribution cannot rely on a single evidence channel and instead requires layered reasoning across technical, contextual, and legal signals.</p><p>Frameworks are strongest when they articulate explicit evidentiary thresholds and uncertainty handling, but many remain under-specified on calibration and implementation governance.</p><p>For applied use, attribution models should be treated as decision-support systems with transparent assumptions, not deterministic truth engines.</p><p>Future work should prioritize benchmarkable validation protocols and clearer mappings from confidence levels to proportionate response pathways.</p>
+  
+</div>
+
+
+<h2>8. Limitations</h2>
+<div class="section-content ai-generated-content">
+  
+    
+    <p>This review is limited by corpus size (7 sources), which constrains generalizability and increases sensitivity to influential individual texts.</p><p>Evidence extraction was based on existing coded outputs, so any upstream coding omissions or interpretation bias may propagate into synthesis.</p><p>Several sources provide strong conceptual framing but uneven implementation detail, limiting direct comparability of operational performance claims.</p><p>The review therefore supports structured interpretation and design guidance, but not definitive causal claims about framework effectiveness.</p>
+  
+</div>
+
+
+<div id="footnotes">
+    <h2>Notes</h2>
+    
+        <ol class="footnotes">
+        
+        
+          <li id="fn-1">
+            <a href="#fnref-1" title="Jump back to citation">^</a>
+            
+            Christian Payne and Lorraine Finlay, <em>Addressing Obstacles to Cyber-Attribution: A Model Based on State Response to Cyber-Attack</em> (2017). Evidence extract: "For the purposes of this Article, cyber-attacks are defined as those whereby states utilize computers and information technology as the primary mechanisms to detrimentally impact…".
+          </li>
+        
+          <li id="fn-10">
+            <a href="#fnref-10" title="Jump back to citation">^</a>
+            
+            Ronald Smyth, <em>A multi-disciplinary framework for cyber attribution</em> (2017). Evidence extract: "2.5.1 Store Logs and Traceback Queries".
+          </li>
+        
+          <li id="fn-11">
+            <a href="#fnref-11" title="Jump back to citation">^</a>
+            
+            Ronald Smyth, <em>A multi-disciplinary framework for cyber attribution</em> (2017). Evidence extract: "4.5.7 Linguistic".
+          </li>
+        
+          <li id="fn-12">
+            <a href="#fnref-12" title="Jump back to citation">^</a>
+            
+            Ronald Smyth, <em>A multi-disciplinary framework for cyber attribution</em> (2017). Evidence extract: "4.5.1 IPv4 (1)".
+          </li>
+        
+          <li id="fn-13">
+            <a href="#fnref-13" title="Jump back to citation">^</a>
+            
+            Christian Payne and Lorraine Finlay, <em>Addressing Obstacles to Cyber-Attribution: A Model Based on State Response to Cyber-Attack</em> (2017). Evidence extract: "The criteria proposed by Schmitt are: severity, immediacy, directness, invasiveness, measurability, presumptive legitimacy, and responsibility.".
+          </li>
+        
+          <li id="fn-14">
+            <a href="#fnref-14" title="Jump back to citation">^</a>
+            
+            Christian Payne and Lorraine Finlay, <em>Addressing Obstacles to Cyber-Attribution: A Model Based on State Response to Cyber-Attack</em> (2017). Evidence extract: "the Tallinn Manual,⁹⁰ a consensus statement on the law of cyber-warfare by twenty academics and legal practitioners.".
+          </li>
+        
+          <li id="fn-15">
+            <a href="#fnref-15" title="Jump back to citation">^</a>
+            
+            Christian Payne and Lorraine Finlay, <em>Addressing Obstacles to Cyber-Attribution: A Model Based on State Response to Cyber-Attack</em> (2017). Evidence extract: "This Article proposes that these conflicting requirements can be resolved by determining attribution requirements based upon the course of action the victim state chooses to pursu…".
+          </li>
+        
+          <li id="fn-16">
+            <a href="#fnref-16" title="Jump back to citation">^</a>
+            
+            E Iasiello, <em>Cyber attack: A dull tool to shape foreign policy</em> (2013-06). Evidence extract: "The attackers constantly tweaked their malicious server requests to evade filters".
+          </li>
+        
+          <li id="fn-17">
+            <a href="#fnref-17" title="Jump back to citation">^</a>
+            
+            Sushil Jajodia et al., <em>Cyber Attribution: An Argumentation-Based Approach</em> (2015). Evidence extract: "Our approach combines argumentation-based reasoning, logic programming, and probabilistic models".
+          </li>
+        
+          <li id="fn-18">
+            <a href="#fnref-18" title="Jump back to citation">^</a>
+            
+            Sushil Jajodia et al., <em>Cyber Attribution: An Argumentation-Based Approach</em> (2015). Evidence extract: "The first, called the environmental model (EM) is used to describe the background knowledge and is probabilistic in nature. The second one, called the analytical model (AM) is use…".
+          </li>
+        
+          <li id="fn-19">
+            <a href="#fnref-19" title="Jump back to citation">^</a>
+            
+            Sushil Jajodia et al., <em>Cyber Attribution: An Argumentation-Based Approach</em> (2015). Evidence extract: "A probabilistic formula is written as: f: p ± ε".
+          </li>
+        
+          <li id="fn-2">
+            <a href="#fnref-2" title="Jump back to citation">^</a>
+            
+            Christian Payne and Lorraine Finlay, <em>Addressing Obstacles to Cyber-Attribution: A Model Based on State Response to Cyber-Attack</em> (2017). Evidence extract: "For this reason, for the purposes of this Article, cyber-attacks are instead classified into one or more of three general categories.".
+          </li>
+        
+          <li id="fn-20">
+            <a href="#fnref-20" title="Jump back to citation">^</a>
+            
+            NE Herald et al., <em>A Framework for Making Effective Responses to Cyberattacks</em> (2018). Evidence extract: "All-source attribution includes using all available types of intelligences to arrive at a bigger-picture judgment about the attack based upon the attacker's previous TTPs.".
+          </li>
+        
+          <li id="fn-21">
+            <a href="#fnref-21" title="Jump back to citation">^</a>
+            
+            NE Herald et al., <em>A Framework for Making Effective Responses to Cyberattacks</em> (2018). Evidence extract: "The framework captures the adversary lifecycle across four broad stages: preparation, engagement, presence, and effects/consequences.".
+          </li>
+        
+          <li id="fn-22">
+            <a href="#fnref-22" title="Jump back to citation">^</a>
+            
+            NE Herald et al., <em>A Framework for Making Effective Responses to Cyberattacks</em> (2018). Evidence extract: "Analysts must be mindful of other considerations when assessing attribution to present to decision makers. For example, they must consider the computer used to conduct the attack,…".
+          </li>
+        
+          <li id="fn-23">
+            <a href="#fnref-23" title="Jump back to citation">^</a>
+            
+            J Limnéll et al., <em>Developing Political Response Framework to Cyber Hostilities</em> (2018). Evidence extract: "As Rid and Buchanan (2014) argue, attribution is an exercise of minimizing uncertainty on three levels: tactically, attribution is an art as well as a science; operationally, attr…".
+          </li>
+        
+          <li id="fn-24">
+            <a href="#fnref-24" title="Jump back to citation">^</a>
+            
+            J Limnéll et al., <em>Developing Political Response Framework to Cyber Hostilities</em> (2018). Evidence extract: "Responses to cyber attacks may be delivered overtly or covertly.".
+          </li>
+        
+          <li id="fn-25">
+            <a href="#fnref-25" title="Jump back to citation">^</a>
+            
+            Christian Payne and Lorraine Finlay, <em>Addressing Obstacles to Cyber-Attribution: A Model Based on State Response to Cyber-Attack</em> (2017). Evidence extract: "Consequently, any attempt at a definitive taxonomy is likely to have a degree of artificiality and be, at best, only temporarily accurate.".
+          </li>
+        
+          <li id="fn-26">
+            <a href="#fnref-26" title="Jump back to citation">^</a>
+            
+            Christian Payne and Lorraine Finlay, <em>Addressing Obstacles to Cyber-Attribution: A Model Based on State Response to Cyber-Attack</em> (2017). Evidence extract: "the question of how to attribute state responsibility in the event of a cyber-attack has been recognized as a significant hurdle.".
+          </li>
+        
+          <li id="fn-27">
+            <a href="#fnref-27" title="Jump back to citation">^</a>
+            
+            Christian Payne and Lorraine Finlay, <em>Addressing Obstacles to Cyber-Attribution: A Model Based on State Response to Cyber-Attack</em> (2017). Evidence extract: "Finally, the legal and factual ambiguity associated with cyber-warfare makes this a relatively safe mechanism for a prospective aggressor to employ.".
+          </li>
+        
+          <li id="fn-28">
+            <a href="#fnref-28" title="Jump back to citation">^</a>
+            
+            E Iasiello, <em>Cyber attack: A dull tool to shape foreign policy</em> (2013-06). Evidence extract: "In particular, the 2007 distributed denial-of-service attack against Estonian government networks; the 2012 unofficial acknowledgement by a senior government official of the Unite…".
+          </li>
+        
+          <li id="fn-29">
+            <a href="#fnref-29" title="Jump back to citation">^</a>
+            
+            E Iasiello, <em>Cyber attack: A dull tool to shape foreign policy</em> (2013-06). Evidence extract: "3.) Attribution in cyberspace is extremely difficult and can't be as precise as identifying a nation state that has launched a nuclear weapon,".
+          </li>
+        
+          <li id="fn-3">
+            <a href="#fnref-3" title="Jump back to citation">^</a>
+            
+            Christian Payne and Lorraine Finlay, <em>Addressing Obstacles to Cyber-Attribution: A Model Based on State Response to Cyber-Attack</em> (2017). Evidence extract: "First, direct intrusion attacks are those where the attacker directly interacts with a computer system and gains some form of unauthorized access or control.".
+          </li>
+        
+          <li id="fn-30">
+            <a href="#fnref-30" title="Jump back to citation">^</a>
+            
+            E Iasiello, <em>Cyber attack: A dull tool to shape foreign policy</em> (2013-06). Evidence extract: "1.) Nation states typically do not assume responsibility for hostile actions taken in cyber space;".
+          </li>
+        
+          <li id="fn-31">
+            <a href="#fnref-31" title="Jump back to citation">^</a>
+            
+            Justin Key Canfil, <em>HONING CYBER ATTRIBUTION: A FRAMEWORK FOR ASSESSING FOREIGN STATE COMPLICITY</em> (Winter 2016). Evidence extract: "In my own research, using decision-theoretic formal (mathematical) models and legal analysis of international rules on sovereign state responsibility, I argue that it may be possi…".
+          </li>
+        
+          <li id="fn-32">
+            <a href="#fnref-32" title="Jump back to citation">^</a>
+            
+            Justin Key Canfil, <em>HONING CYBER ATTRIBUTION: A FRAMEWORK FOR ASSESSING FOREIGN STATE COMPLICITY</em> (Winter 2016). Evidence extract: "When the permissive conditions outlined above overlap with forensic indicators in a given instance, we have a match.".
+          </li>
+        
+          <li id="fn-33">
+            <a href="#fnref-33" title="Jump back to citation">^</a>
+            
+            Justin Key Canfil, <em>HONING CYBER ATTRIBUTION: A FRAMEWORK FOR ASSESSING FOREIGN STATE COMPLICITY</em> (Winter 2016). Evidence extract: "Most importantly, because gathering post-attack forensic evidence is difficult, time-consuming, and expensive—not to mention the fact that private firms are often reluctant to dis…".
+          </li>
+        
+          <li id="fn-34">
+            <a href="#fnref-34" title="Jump back to citation">^</a>
+            
+            Sushil Jajodia et al., <em>Cyber Attribution: An Argumentation-Based Approach</em> (2015). Evidence extract: "Attributing a cyber-operation through the use of multiple pieces of technical evidence (i.e., malware reverse-engineering and source tracking) and conventional intelligence source…".
+          </li>
+        
+          <li id="fn-35">
+            <a href="#fnref-35" title="Jump back to citation">^</a>
+            
+            Sushil Jajodia et al., <em>Cyber Attribution: An Argumentation-Based Approach</em> (2015). Evidence extract: "techniques such as forensics and reverseengineering, source tracking, honeypots, and sinkholing are commonly employed to find evidence that can lead to attribution".
+          </li>
+        
+          <li id="fn-36">
+            <a href="#fnref-36" title="Jump back to citation">^</a>
+            
+            Sushil Jajodia et al., <em>Cyber Attribution: An Argumentation-Based Approach</em> (2015). Evidence extract: "A probabilistic formula is written as: f: p ± ε".
+          </li>
+        
+          <li id="fn-37">
+            <a href="#fnref-37" title="Jump back to citation">^</a>
+            
+            Christian Payne and Lorraine Finlay, <em>Addressing Obstacles to Cyber-Attribution: A Model Based on State Response to Cyber-Attack</em> (2017). Evidence extract: "Proulx’s proposition is one of strict liability that dispenses with the need to establish attribution.".
+          </li>
+        
+          <li id="fn-38">
+            <a href="#fnref-38" title="Jump back to citation">^</a>
+            
+            Christian Payne and Lorraine Finlay, <em>Addressing Obstacles to Cyber-Attribution: A Model Based on State Response to Cyber-Attack</em> (2017). Evidence extract: "Schmitt has therefore advocated a low standard—an indirect responsibility approach whereby a state will be responsible if it fails to take reasonably available measures to stop cy…".
+          </li>
+        
+          <li id="fn-39">
+            <a href="#fnref-39" title="Jump back to citation">^</a>
+            
+            Christian Payne and Lorraine Finlay, <em>Addressing Obstacles to Cyber-Attribution: A Model Based on State Response to Cyber-Attack</em> (2017). Evidence extract: "By establishing and upholding such a demanding test as effective control, the ICJ apparently seeks to limit when states can take such action.".
+          </li>
+        
+          <li id="fn-4">
+            <a href="#fnref-4" title="Jump back to citation">^</a>
+            
+            E Iasiello, <em>Cyber attack: A dull tool to shape foreign policy</em> (2013-06). Evidence extract: "In particular, the 2007 distributed denial-of-service attack against Estonian government networks; the 2012 unofficial acknowledgement by a senior government official of the Unite…".
+          </li>
+        
+          <li id="fn-40">
+            <a href="#fnref-40" title="Jump back to citation">^</a>
+            
+            J Limnéll et al., <em>Developing Political Response Framework to Cyber Hostilities</em> (2018). Evidence extract: "The objective of this chapter is to encourage political decision-makers (and others) to create a framework of proportionate ways to respond to different kinds of cyber hostility.".
+          </li>
+        
+          <li id="fn-41">
+            <a href="#fnref-41" title="Jump back to citation">^</a>
+            
+            J Limnéll et al., <em>Developing Political Response Framework to Cyber Hostilities</em> (2018). Evidence extract: "This chapter comprehensively analyzes how cyber attacks should be treated as a political question and represents a rough framework for policymakers to build on. The chapter presen…".
+          </li>
+        
+          <li id="fn-42">
+            <a href="#fnref-42" title="Jump back to citation">^</a>
+            
+            J Limnéll et al., <em>Developing Political Response Framework to Cyber Hostilities</em> (2018). Evidence extract: "Combining incident impact, policy options, and other variables, the framework outlines the different levers of cyberpolitics that can be applied in response to the escalating leve…".
+          </li>
+        
+          <li id="fn-43">
+            <a href="#fnref-43" title="Jump back to citation">^</a>
+            
+            E Iasiello, <em>Cyber attack: A dull tool to shape foreign policy</em> (2013-06). Evidence extract: "the U.S. “reserves the right to use all necessary means – diplomatic, informational, military, and economic – as appropriate and consistent with applicable international law.”".
+          </li>
+        
+          <li id="fn-44">
+            <a href="#fnref-44" title="Jump back to citation">^</a>
+            
+            E Iasiello, <em>Cyber attack: A dull tool to shape foreign policy</em> (2013-06). Evidence extract: "the role of the U.S. military to ensure that it has the necessary capabilities to operate effectively in the cyberspace, citing it as a military domain much like air, land, and ma…".
+          </li>
+        
+          <li id="fn-45">
+            <a href="#fnref-45" title="Jump back to citation">^</a>
+            
+            E Iasiello, <em>Cyber attack: A dull tool to shape foreign policy</em> (2013-06). Evidence extract: "It is assumed by U.S officials that the government had at least an informal role in directing the distributed denial-of-service (DDoS) attacks against the U.S. financial sector".
+          </li>
+        
+          <li id="fn-5">
+            <a href="#fnref-5" title="Jump back to citation">^</a>
+            
+            E Iasiello, <em>Cyber attack: A dull tool to shape foreign policy</em> (2013-06). Evidence extract: "The attackers constantly tweaked their malicious server requests to evade filters".
+          </li>
+        
+          <li id="fn-6">
+            <a href="#fnref-6" title="Jump back to citation">^</a>
+            
+            E Iasiello, <em>Cyber attack: A dull tool to shape foreign policy</em> (2013-06). Evidence extract: "First identified by VirusBlokAda, Stuxnet was described as "highly sophisticated" and a complex application designed for the sole purpose of sabotaging uranium enrichment centrifu…".
+          </li>
+        
+          <li id="fn-7">
+            <a href="#fnref-7" title="Jump back to citation">^</a>
+            
+            Sushil Jajodia et al., <em>Cyber Attribution: An Argumentation-Based Approach</em> (2015). Evidence extract: "Attributing a cyber-operation through the use of multiple pieces of technical evidence (i.e., malware reverse-engineering and source tracking) and conventional intelligence source…".
+          </li>
+        
+          <li id="fn-8">
+            <a href="#fnref-8" title="Jump back to citation">^</a>
+            
+            Sushil Jajodia et al., <em>Cyber Attribution: An Argumentation-Based Approach</em> (2015). Evidence extract: "techniques such as forensics and reverseengineering, source tracking, honeypots, and sinkholing are commonly employed to find evidence that can lead to attribution".
+          </li>
+        
+          <li id="fn-9">
+            <a href="#fnref-9" title="Jump back to citation">^</a>
+            
+            NE Herald et al., <em>A Framework for Making Effective Responses to Cyberattacks</em> (2018). Evidence extract: "Fig. 2 is an example table of the authors' analysis of three recent cyberattacks illustrating how the framework could be applied for policymakers and corporate decision makers.".
+          </li>
+        
+        </ol>
+    
+</div>
+
+
+<div id="references">
+    <h2>Bibliography</h2>
+    
+        <ol>
+        
+            <li>Christian Payne and Lorraine Finlay (2017). <em>Addressing Obstacles to Cyber-Attribution: A Model Based on State Response to Cyber-Attack</em>. The George Washington International Law Review. <a href="https://www.proquest.com/scholarly-journals/addressing-obstacles-cyber-attribution-model/docview/1914193551/se-2?accountid=14511" target="_blank" rel="noopener">https://www.proquest.com/scholarly-journals/addressing-obstacles-cyber-attribution-model/docview/1914193551/se-2?accountid=14511</a></li> 
+        
+            <li>E Iasiello (2013-06). <em>Cyber attack: A dull tool to shape foreign policy</em>. <a href="https://ieeexplore.ieee.org/document/6568392" target="_blank" rel="noopener">https://ieeexplore.ieee.org/document/6568392</a></li> 
+        
+            <li>Justin Key Canfil (Winter 2016). <em>HONING CYBER ATTRIBUTION: A FRAMEWORK FOR ASSESSING FOREIGN STATE COMPLICITY</em>. Journal of International Affairs. <a href="https://www.proquest.com/scholarly-journals/honing-cyber-attribution-framework-assessing/docview/1855796936/se-2?accountid=14511" target="_blank" rel="noopener">https://www.proquest.com/scholarly-journals/honing-cyber-attribution-framework-assessing/docview/1855796936/se-2?accountid=14511</a></li> 
+        
+            <li>Sushil Jajodia et al. (2015). <em>Cyber Attribution: An Argumentation-Based Approach</em>. <a href="https://link.springer.com/10.1007/978-3-319-14039-1_8" target="_blank" rel="noopener">https://link.springer.com/10.1007/978-3-319-14039-1_8</a></li> 
+        
+            <li>J Limnéll et al. (2018). <em>Developing Political Response Framework to Cyber Hostilities</em></li> 
+        
+            <li>Ronald Smyth (2017). <em>A multi-disciplinary framework for cyber attribution</em>. <a href="https://core.ac.uk/download/pdf/287585556.pdf" target="_blank" rel="noopener">https://core.ac.uk/download/pdf/287585556.pdf</a></li> 
+        
+            <li>NE Herald et al. (2018). <em>A Framework for Making Effective Responses to Cyberattacks</em>. <a href="https://ieeexplore.ieee.org/document/8622537" target="_blank" rel="noopener">https://ieeexplore.ieee.org/document/8622537</a></li> 
+        
+        </ol>
+    
+</div>
+
+</body>
+</html>

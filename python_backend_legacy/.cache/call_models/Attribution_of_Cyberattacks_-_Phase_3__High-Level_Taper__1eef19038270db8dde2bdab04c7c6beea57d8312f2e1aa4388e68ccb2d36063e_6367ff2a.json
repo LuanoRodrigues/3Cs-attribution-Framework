@@ -1,0 +1,172 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "dqid": "KEZ737CT#DQ001",
+          "quote": "Cyberspace is the veritable Wild West of the modern age; a largely untamed infinite wilderness of possibilities and opportunities.",
+          "extraction_type": "definition",
+          "paraphrase": "The author characterizes cyberspace as a frontier-like, largely untamed domain full of expansive possibilities and opportunities.",
+          "relevance_score": 2,
+          "relevant_rqs": [],
+          "mapped_codes": [
+            "definition_conceptual"
+          ]
+        },
+        {
+          "dqid": "KEZ737CT#DQ002",
+          "quote": "This paper will explore why the Internet\u00b3 and cyberspace are so different from traditional notions of real property, and what challenges that difference presents to players on the international stage,",
+          "extraction_type": "method_claim",
+          "paraphrase": "The paper will examine how and why the Internet and cyberspace depart from traditional notions of real property and the international challenges those differences create.",
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "definition_conceptual"
+          ]
+        },
+        {
+          "dqid": "KEZ737CT#DQ003",
+          "quote": "and will rectify whether cyberspace is a new landscape deserving of its own unique law, or whether existing law is equipped to deal with the challenges of cyberspace as written.",
+          "extraction_type": "method_claim",
+          "paraphrase": "The author intends to determine whether cyberspace requires a specially tailored legal regime or whether existing international law can be adapted to govern it.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "definition_conceptual"
+          ]
+        },
+        {
+          "dqid": "KEZ737CT#DQ004",
+          "quote": "Next is a thorough exploration of what a cyber attack might be, could be, should be, and should not be, along with a discussion of why cyber attacks are not only a matter of international importance but why, in some respects, only the international community might be equipped to foster dialogue about how to deal with cyber attacks.",
+          "extraction_type": "method_claim",
+          "paraphrase": "The author will analyze the boundaries of what constitutes a cyber attack and argue that, given their international significance, only multilateral engagement may sometimes be able to address them effectively.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "definition_conceptual",
+            "attribution_challenges"
+          ]
+        },
+        {
+          "dqid": "KEZ737CT#DQ005",
+          "quote": "There is also a call to action for the United Nations, with the perhaps premature admonishment that the United Nations is in the habit of addressing new and different challenges to international law.",
+          "extraction_type": "recommendation",
+          "paraphrase": "The author calls on the United Nations to engage on cyber issues, noting (perhaps prematurely) the UN's practice of addressing novel international-law challenges.",
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "state_responsibility_thresholds"
+          ]
+        },
+        {
+          "dqid": "KEZ737CT#DQ006",
+          "quote": "In sum, the international legal community not only should task itself with drafting the Law of the Horse, but should also welcome the challenge.",
+          "extraction_type": "recommendation",
+          "paraphrase": "The author urges the international legal community to proactively draft a cyberspace-specific legal regime (a 'Law of the Horse') and embrace that task.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "definition_conceptual"
+          ]
+        },
+        {
+          "dqid": "KEZ737CT#DQ007",
+          "quote": "There is no reason not to take the existing international public law concerning the seas or outer space and use that as a platform on which international law could evolve and improve.",
+          "extraction_type": "recommendation",
+          "paraphrase": "The author recommends using existing international public-law regimes for the seas or outer space as platforms to adapt and develop cyber-specific international law.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "case_study_example",
+            "definition_conceptual"
+          ]
+        },
+        {
+          "dqid": "KEZ737CT#DQ008",
+          "quote": "There is no reason to re-invent the wheel when there is plenty of law in existence that could be tailored to fit the unique needs required by this nebulous \"thing\" called cyberspace.",
+          "extraction_type": "recommendation",
+          "paraphrase": "The author contends that rather than creating entirely new rules, existing legal instruments can be tailored to meet the particular needs of cyberspace.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "definition_conceptual",
+            "case_study_example"
+          ]
+        },
+        {
+          "dqid": "KEZ737CT#DQ009",
+          "quote": "The potential for damage from cyber attacks increases as quickly as society's reliance on computer-driven technology.",
+          "extraction_type": "main_finding",
+          "paraphrase": "The author claims that the scope of harm from cyber attacks grows in tandem with society's increasing dependence on computer-driven systems.",
+          "relevance_score": 3,
+          "relevant_rqs": [],
+          "mapped_codes": []
+        },
+        {
+          "dqid": "KEZ737CT#DQ010",
+          "quote": "It would do the globe a gross disservice to ignore the possible harm cyber attacks could cause, and to risk cyber security on an international level by failing to address a looming threat to the infrastructure of a vast number of states.",
+          "extraction_type": "recommendation",
+          "paraphrase": "The author warns that ignoring cyber threats would jeopardize global security and the critical infrastructure of many states, and therefore must be addressed internationally.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "state_responsibility_thresholds"
+          ]
+        },
+        {
+          "dqid": "KEZ737CT#DQ011",
+          "quote": "this type of international threat that by definition transcends boundaries demands an international solution.",
+          "extraction_type": "recommendation",
+          "paraphrase": "The author concludes that because cyber threats inherently cross borders, they require an international-level solution.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "state_responsibility_thresholds"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-24T17:35:32.929957Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "1eef19038270db8dde2bdab04c7c6beea57d8312f2e1aa4388e68ccb2d36063e",
+  "function": "code_intro_conclusion_extract_core_claims"
+}

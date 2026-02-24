@@ -1,0 +1,25 @@
+{
+  "ok": true,
+  "errors": [],
+  "warnings": [],
+  "info": [
+    {
+      "check": "summary",
+      "message": "Validated /home/pantera/projects/TEIA/state/reviews/literature_review_final.html"
+    },
+    {
+      "check": "summary",
+      "message": "themes=4, footnotes=45, refs=7"
+    }
+  ],
+  "stats": {
+    "html_path": "/home/pantera/projects/TEIA/state/reviews/literature_review_final.html",
+    "html_size_bytes": 48541,
+    "theme_sections": 4,
+    "intext_footnotes": 45,
+    "note_entries": 45,
+    "bibliography_entries": 7,
+    "errors": 0,
+    "warnings": 0
+  }
+}

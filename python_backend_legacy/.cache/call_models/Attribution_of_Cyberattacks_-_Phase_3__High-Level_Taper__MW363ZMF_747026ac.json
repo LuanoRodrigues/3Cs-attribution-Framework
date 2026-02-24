@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": "{\n  \"classification\": \"Highly Relevant\",\n  \"relevance_score\": \"High\",\n  \"potential_subcategory\": \"Attribution; Jus ad Bellum & LOAC; State Response & Policy\",\n  \"justification\": \"The abstract explicitly addresses core issues of cyber conflict attribution and the international legal and policy frameworks governing state responses to malicious cyber operations by non-state actors. It analyzes attribution difficulties, thresholds for 'use of force' and 'armed attack' under jus ad bellum, the applicability of the law of armed conflict (distinction, proportionality, precaution), and the normative/policy risks of framing cyber conduct as 'war.' It also draws on concrete case studies (Estonia 2007, Russia\u2013Georgia 2008, Stuxnet) and targets policymakers and legal practitioners, making it directly pertinent to research and policy debates on cyber attribution and international law. (Note: the provided inclusion/exclusion criteria were unavailable; this classification is based on the abstract's content and its clear alignment with cyber attribution and legal/policy topics.)\"\n}"
+  },
+  "cached_at": "2026-02-23T20:45:15.672690Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "MW363ZMF",
+  "function": "classify_by_abs"
+}

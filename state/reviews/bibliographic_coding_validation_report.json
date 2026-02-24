@@ -1,0 +1,9 @@
+{
+  "ok": true,
+  "review_type": "bibliographic",
+  "csv": "state/reviews/bibliographic_coded_evidence.csv",
+  "schema": "Research/review_standards/unified_coding_system_v1.json",
+  "rows": 0,
+  "errors": [],
+  "warnings": []
+}

@@ -158,3 +158,14 @@ npm ci
 npm run build
 npm run start
 ```
+
+## Result artifacts template
+
+To rebuild the aggregated `annotarium/outputs/results/results_aggregated.json` bundle from current outputs:
+
+```bash
+./scripts/build-results-template.sh
+```
+
+This runs `annotarium/scripts/build_result_template.py` and writes one JSON file with
+all extraction/scoring/methodology/report/validation evidence consolidated.

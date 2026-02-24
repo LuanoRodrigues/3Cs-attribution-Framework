@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": "{\n  \"classification\": \"Highly Relevant\",\n  \"relevance_score\": \"High\",\n  \"potential_subcategory\": \"State responsibility and attribution law (control-and-capabilities test; international law & policy)\",\n  \"justification\": \"The abstract directly addresses the legal and policy dimensions of cyber conflict attribution: it analyzes state practice and official attributions, proposes a new lex specialis (a 'control and capabilities' test) to govern imputed state responsibility for third-party cyber incidents, and discusses implications for jus ad bellum, jus in bello, deterrence, and state responses. It uses legal-analytic methodology and concrete attribution cases (Sony 2014, DNC, Yahoo, Iranian DDoS, etc.), making it centrally relevant to both attribution standards and international cyber policy/law. The paper\u2019s focus on evolving legal standards, evidentiary thresholds, and policy implications makes it highly relevant to research on cyber conflict attribution and related legal/policy frameworks.\"\n}"
+  },
+  "cached_at": "2026-02-23T20:51:36.903856Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "XGMKX6ZG",
+  "function": "classify_by_abs"
+}

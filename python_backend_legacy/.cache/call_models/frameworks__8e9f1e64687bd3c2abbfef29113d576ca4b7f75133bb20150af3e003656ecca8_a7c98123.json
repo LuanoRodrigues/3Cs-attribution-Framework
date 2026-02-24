@@ -1,0 +1,373 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "quote": "understanding the level of attribution and the severity of the attack to evaluating proportional response",
+          "paraphrase": "Policymakers must assess attribution certainty, attack severity, and proportional response when deciding how to react to cyber hostilities.",
+          "researcher_comment": "Identifies core decision variables for a response framework; useful for mapping RQ components (attribution, severity, proportionality). Does not operationalize how to measure attribution or severity, limiting direct comparability across cases.",
+          "potential_themes": [
+            "attribution_challenges",
+            "proportionality",
+            "response_frameworks"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "framework",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "attribution_and_proportionality",
+            "decision_variables"
+          ]
+        },
+        {
+          "quote": "Passivity in the face of cyber attacks will probably encourage opponents to engage in more aggression.",
+          "paraphrase": "Passive responses to cyber attacks are likely to embolden adversaries and increase aggression.",
+          "researcher_comment": "Provides a forward-looking rationale for proactive responses and deterrence measures; the modal term 'probably' signals limited evidentiary backing in this excerpt.",
+          "potential_themes": [
+            "deterrence"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "predictive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "passivity_incentivizes_aggression",
+            "deterrence_rationale"
+          ]
+        },
+        {
+          "quote": "Developing a framework within which to respond to cyber attacks allows policymakers to quickly consider solutions and counter with options previously analyzed for merit and possible consequences.",
+          "paraphrase": "A pre-established response framework lets policymakers rapidly evaluate and deploy pre-assessed countermeasures during cyber incidents.",
+          "researcher_comment": "Advocates pre-crisis planning to speed decision-making; supports institutionalizing options analysis but provides no procedural template or evaluation metrics.",
+          "potential_themes": [
+            "response_frameworks",
+            "policy_recommendation"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "pre-established_frameworks",
+            "rapid_decision_making"
+          ]
+        },
+        {
+          "quote": "Identifying an appropriate response in advance could prevent the state from making mistakes that could unintentionally jeopardize political, economic, intelligence, and military interests.",
+          "paraphrase": "Pre-defining responses helps states avoid inadvertent actions that would harm political, economic, intelligence, or military interests.",
+          "researcher_comment": "Frames advance planning as harm-preventing across multiple national instruments; it assumes accurate scenario anticipation and does not address trade-offs among interests.",
+          "potential_themes": [
+            "response_frameworks",
+            "risk_management"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "predictive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "advance_response_prevention",
+            "multi-domain_risks"
+          ]
+        },
+        {
+          "quote": "According to the framework, the more severe the cyber attack is, the stronger the response needs to be.",
+          "paraphrase": "The framework ties response intensity to attack severity, prescribing stronger responses for more severe cyber incidents.",
+          "researcher_comment": "States a proportionality principle clearly; the passage does not specify how 'severity' is measured or how proportionality is operationalized in practice.",
+          "potential_themes": [
+            "proportionality",
+            "response_frameworks"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "framework",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "severity_to_response",
+            "proportionality_principle"
+          ]
+        },
+        {
+          "quote": "The framework illustrates the impacts and severity of a cyber attack, with website defacement at one end of the scale and loss of life at the opposite end.",
+          "paraphrase": "The framework presents an impact scale from minor incidents like website defacement to extreme outcomes such as loss of life.",
+          "researcher_comment": "Provides illustrative endpoints for an impact taxonomy; useful for classifying incidents but simplistic\u2014intermediate harms and contextual factors are not enumerated or weighted.",
+          "potential_themes": [
+            "taxonomy",
+            "response_frameworks"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "taxonomy",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "impact_scale_examples",
+            "attack_impact_spectrum"
+          ]
+        },
+        {
+          "quote": "Across the response spectrum, there will be inherent political and legal risks associated with each decision, and risks increase as the level of the response increases.",
+          "paraphrase": "All response options carry political and legal risks, and those risks escalate with stronger responses.",
+          "researcher_comment": "Highlights escalation trade-offs and legal exposure as central constraints on state action; does not specify which legal frameworks or thresholds are implicated.",
+          "potential_themes": [
+            "legal_risks",
+            "escalation"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "escalation_risk",
+            "political_legal_risks"
+          ]
+        },
+        {
+          "quote": "policymakers should also clearly understand the costs associated with each response.",
+          "paraphrase": "Policymakers must explicitly assess the costs tied to each potential response option.",
+          "researcher_comment": "Calls for cost-awareness as an input into the decision framework; the text does not provide a cost-assessment methodology or metrics.",
+          "potential_themes": [
+            "cost_assessment"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "response_costs",
+            "cost_assessment_requirement"
+          ]
+        },
+        {
+          "quote": "Assessing options will require input from relevant government agencies, as well as private sector companies, whose operations and businesses could be affected by the response.",
+          "paraphrase": "Evaluating response choices requires interagency coordination and consultation with private-sector entities potentially affected by those responses.",
+          "researcher_comment": "Emphasizes whole-of-government and public\u2013private inputs; important for RQs on implementation but lacks detail on coordination mechanisms, authority, or timelines.",
+          "potential_themes": [
+            "stakeholder_engagement",
+            "public_private_partnerships"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "method",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "interagency_input",
+            "private_sector_consultation"
+          ]
+        },
+        {
+          "quote": "On the one hand, redlines invite adversaries to act below the line, thinking that they have immunity or low political risk in carrying out their cyber operations.",
+          "paraphrase": "Public redlines can encourage adversaries to operate below declared thresholds, assuming minimal political consequences.",
+          "researcher_comment": "Explains a strategic downside of explicit thresholds; supports caution about public signaling but offers no empirical calibration of 'below the line' behavior.",
+          "potential_themes": [
+            "redlines",
+            "deterrence"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "predictive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "public_redlines_risk",
+            "adversary_calibration"
+          ]
+        },
+        {
+          "quote": "Redlines can also push states into a corner so that they have to respond when the line is crossed in order to preserve their credibility.",
+          "paraphrase": "Defined redlines risk forcing states to retaliate when breached to maintain credibility.",
+          "researcher_comment": "Identifies credibility costs and potential entrapment from fixed thresholds; relevant for RQs on signaling and escalation management.",
+          "potential_themes": [
+            "redlines",
+            "credibility"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "redline_entrapment",
+            "credibility_costs"
+          ]
+        },
+        {
+          "quote": "A certain degree of imprecision may be the best solution politically: to announce that there will be a response, but that details will not be revealed beforehand.",
+          "paraphrase": "Strategic political ambiguity\u2014committing to respond while withholding specifics\u2014may be the optimal approach.",
+          "researcher_comment": "Advocates strategic ambiguity to preserve deterrence without constraining future options; the recommendation is normative and not empirically validated here.",
+          "potential_themes": [
+            "deterrence",
+            "confidence_language"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "strategic_ambiguity",
+            "imprecise_redlines"
+          ]
+        },
+        {
+          "quote": "Ultimately, the decision as to whether a cyber attack is an act of war or something else is a political one, particularly in cases that fall into the gray area between annoyance and actions that attempt to end the existence of a state.",
+          "paraphrase": "Whether a cyber incident counts as an act of war is ultimately a political judgment, especially for ambiguous cases.",
+          "researcher_comment": "Places incident classification in the political domain rather than as purely legal/technical determination; useful for RQs on attribution-to-response linkages and political thresholds.",
+          "potential_themes": [
+            "political_decision_making",
+            "act_of_war"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "political_classification",
+            "gray_zone_incidents"
+          ]
+        },
+        {
+          "quote": "Protocols for responding to cyber hostilities are unclear, which should be understood as a lack of power in cyberspace.",
+          "paraphrase": "Ambiguous response protocols reflect a deficit of decisive power or control in cyberspace.",
+          "researcher_comment": "Frames procedural ambiguity as symptomatic of limited cyber power; causal claim that would require cross-case evidence to substantiate fully.",
+          "potential_themes": [
+            "unclear_protocols",
+            "power_dynamics"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "protocol_ambiguity",
+            "cyber_power_gap"
+          ]
+        },
+        {
+          "quote": "Given the likely pressure governments will feel to respond to cyber attacks, policymakers need to develop a response framework of their own before disruptive or destructive cyber hostilities occur.",
+          "paraphrase": "Because governments will face pressure to act after cyber attacks, they should prepare national response frameworks in advance.",
+          "researcher_comment": "Reiterates the need for pre-existing national frameworks to avoid reactive errors under pressure; does not provide sequencing or resourcing guidance.",
+          "potential_themes": [
+            "response_frameworks",
+            "policy_recommendation"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "prepare_before_crisis",
+            "political_pressure_response"
+          ]
+        },
+        {
+          "quote": "The need for establishing boundaries in cyberpolitics is critical, as without them, nations leave their borders and critical systems open to cyber attacks from foreign actors with impunity.",
+          "paraphrase": "Establishing clear boundaries in cyberpolitics is essential to prevent foreign actors from attacking national systems with impunity.",
+          "researcher_comment": "Frames boundary-setting as necessary for defense and deterrence; does not specify who sets boundaries or how compliance would be enforced internationally.",
+          "potential_themes": [
+            "deterrence",
+            "policy_recommendation"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "establish_boundaries",
+            "prevent_impunity"
+          ]
+        },
+        {
+          "quote": "There are plenty of different diplomatic, informational, military, and economic ways to respond, and each state must consider which ways are suitable to them in each situation.",
+          "paraphrase": "States can respond with diplomatic, informational, military, or economic measures and should select instruments appropriate to their context.",
+          "researcher_comment": "Enumerates multi-domain response options and emphasizes contextual tailoring; useful to map instrument sets but lacks decision criteria for selection.",
+          "potential_themes": [
+            "response_frameworks",
+            "policy_recommendation"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "multi_instrument_response",
+            "contextual_choice"
+          ]
+        },
+        {
+          "quote": "One key issue is to consider either physical or cyber response\u2014or both of them together.",
+          "paraphrase": "Decision-makers must weigh physical responses, cyber responses, or combined options when reacting to cyber hostilities.",
+          "researcher_comment": "Highlights integration of kinetic and cyber options and the need to consider combined effects; does not address legal or escalation implications of mixing domains.",
+          "potential_themes": [
+            "convergence_cyber_physical",
+            "response_frameworks"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "kinetic_and_cyber_options",
+            "response_integration"
+          ]
+        },
+        {
+          "quote": "There is also a possibility for covert response: not to make effects public and no claim of responsibility for the actions.",
+          "paraphrase": "States may choose covert responses that conceal effects and avoid claiming responsibility.",
+          "researcher_comment": "Notes deniable/covert options and their practical appeal; raises attribution and normative accountability questions not resolved here.",
+          "potential_themes": [
+            "covert_response",
+            "secrecy"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "example",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "covert_response",
+            "deniability"
+          ]
+        },
+        {
+          "quote": "In practice, responses and reactions to cyber attacks will probably involve high levels of secrecy.",
+          "paraphrase": "Actual responses to cyber attacks are likely to be conducted with significant secrecy.",
+          "researcher_comment": "Signals operational secrecy constraints and transparency trade-offs; important for RQs on evidence disclosure and public attribution but lacking empirical support in the excerpt.",
+          "potential_themes": [
+            "secrecy",
+            "accountability"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "predictive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "secretive_responses",
+            "transparency_limitations"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-24T15:13:36.146345Z",
+  "collection_name": "frameworks",
+  "custom_id": "8e9f1e64687bd3c2abbfef29113d576ca4b7f75133bb20150af3e003656ecca8",
+  "function": "code_pdf_page"
+}

@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": "{\n  \"classification\": \"Highly Relevant\",\n  \"relevance_score\": \"High\",\n  \"potential_subcategory\": \"International cyber law \u2014 sovereignty, non-intervention, due diligence; norms and state responsibility\",\n  \"justification\": \"The abstract directly addresses core legal and policy issues governing state conduct in cyberspace: competing models of cyber sovereignty, the distinction between principles and binding rules, jurisdictional claims, non-intervention and the legal status of espionage, and the emerging doctrine of due diligence. It synthesizes state positions (including reference to UN GGE reports) and discusses implications for legal accountability and enforceability \u2014 topics central to cyber conflict policy, state responsibility, and frameworks for attribution and response. (It does not focus on technical forensic attribution methods, but is highly relevant to the legal/policy context that shapes attribution, liability, and state responses.)\"\n}"
+  },
+  "cached_at": "2026-02-23T20:42:17.815409Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "BCYDBAV8",
+  "function": "classify_by_abs"
+}

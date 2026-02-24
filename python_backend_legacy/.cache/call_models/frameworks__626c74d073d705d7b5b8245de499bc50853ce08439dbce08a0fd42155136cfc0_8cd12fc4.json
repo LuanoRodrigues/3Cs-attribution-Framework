@@ -1,0 +1,374 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "quote": "For the purposes of cyber attribution, our focus is from that of cyber security.",
+          "paraphrase": "The thesis limits the concept of 'cyber' for attribution work to a cyber-security perspective, i.e. attributes relevant to security analysts.",
+          "researcher_comment": "This statement narrows the project's scope to cyber\u2011security use cases, which clarifies which attributes will be prioritised. It excludes broader socio-technical interpretations of 'cyber' and will shape library/feature selection. Analysts should note this when mapping findings to other research questions outside security-focused attribution.",
+          "potential_themes": [
+            "attribution_logic",
+            "attribution_framework"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "scope_cybersecurity",
+            "definition_cyber"
+          ]
+        },
+        {
+          "quote": "for the purpose of this thesis it was decided that cyber was information based.",
+          "paraphrase": "The thesis defines 'cyber' as information\u2011based, i.e. focused on digital information (data and metadata) for attribution purposes.",
+          "researcher_comment": "Explicitly framing 'cyber' as information-based steers attribute collection toward digital artefacts and metadata rather than non-digital context. This decision helps bound the framework but may omit non-digital signals that could be relevant in some attribution cases.",
+          "potential_themes": [
+            "attribution_logic",
+            "feature_selection"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "definition_information_based",
+            "focus_data_metadata"
+          ]
+        },
+        {
+          "quote": "Although this phrase was originally used as a slang term for the internet its official dictionary definition is \u201da realm of electronic communication\u201d.",
+          "paraphrase": "The document adopts the dictionary meaning of 'cyber space' as 'a realm of electronic communication', covering any medium that transmits or stores digital information.",
+          "researcher_comment": "A purposely broad, medium\u2011agnostic definition that permits inclusion of RF, wired, and other channels in attribution libraries. The breadth aids extensibility but may increase heterogeneity of attributes to manage.",
+          "potential_themes": [
+            "attribution_logic"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "definition_cyberspace",
+            "medium_agnostic"
+          ]
+        },
+        {
+          "quote": "Cyber Security therefore relates to any action that is required to keep the information safe and available.",
+          "paraphrase": "Cyber security is defined as actions taken to keep information safe and available (i.e., preservation of CIA properties) for attribution and defence.",
+          "researcher_comment": "Tying security to information availability/safety focuses attribution on evidence that affects confidentiality, integrity, and availability. The definition also explicitly allows physical attacks on equipment to be considered under 'cyber security'.",
+          "potential_themes": [
+            "attribution_logic",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "definition_cybersecurity",
+            "CIA_focus"
+          ]
+        },
+        {
+          "quote": "Ultimately it is the search for characteristics which can be associated with an attack or an individual.",
+          "paraphrase": "The thesis frames cyber attribution as the identification of characteristics that can be associated with an attack or an individual actor.",
+          "researcher_comment": "This operational definition justifies building attribute libraries and a taxonomy of features. It is intentionally broad \u2014 'characteristics' must be disambiguated into concrete, testable attributes (which the thesis attempts via libraries).",
+          "potential_themes": [
+            "attribution_logic",
+            "taxonomy"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "definition_attribution",
+            "characteristics_search"
+          ]
+        },
+        {
+          "quote": "The ultimate goal of traceback attribution is to follow the communications back to the original source, usually in the form of an IP address.",
+          "paraphrase": "Traceback attribution aims to trace communications back to their origin, typically identified as an IP address.",
+          "researcher_comment": "This sets expectations for what traceback can provide but the thesis elsewhere notes practical obstacles (spoofing, proxies, non-cooperative networks). The definition is network-centric and may understate challenges in attributing persons rather than devices.",
+          "potential_themes": [
+            "attribution_challenges",
+            "attribution_logic"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "definition_traceback",
+            "ip_based_attribution"
+          ]
+        },
+        {
+          "quote": "Full attribution is when a specific action can be assigned to an individual person.",
+          "paraphrase": "Full attribution is defined as assigning a specific cyber action to a named individual, the level required for legal proceedings.",
+          "researcher_comment": "This distinguishes levels of attribution and highlights that 'full attribution' carries much higher evidentiary burdens than device- or traceback-level attribution. It signals the need for rigorous evidentiary standards for legal use.",
+          "potential_themes": [
+            "evidentiary_standards",
+            "taxonomy"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "definition_full_attribution",
+            "legal_standard"
+          ]
+        },
+        {
+          "quote": "At the conclusion of the project there is a proposed framework for the use of analysts working on the attribution problem.",
+          "paraphrase": "The project's principal output is a proposed analyst-oriented cyber attribution framework.",
+          "researcher_comment": "This is the central deliverable claimed by the thesis; subsequent text summarises validation experiments but further external validation and peer replication are needed to judge generalisability. The claim is descriptive of output rather than evaluative.",
+          "potential_themes": [
+            "attribution_framework",
+            "framework_usage"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "result_proposed_framework",
+            "analyst_tool"
+          ]
+        },
+        {
+          "quote": "It was shown to be suitable for multidisciplinary work through the inclusion of linguistic and RF libraries.",
+          "paraphrase": "The authors report the framework is suitable for multidisciplinary collaboration by incorporating linguistic and radio\u2011frequency libraries.",
+          "researcher_comment": "Empirical support is limited to those two library domains; while encouraging, this result does not prove generalisability across other disciplines. Integration and semantic-mapping challenges between domains remain an implementation risk.",
+          "potential_themes": [
+            "framework_usage",
+            "library_creation"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "multidisciplinary_support",
+            "linguistic_rf_inclusion"
+          ]
+        },
+        {
+          "quote": "This was an especially pleasing demonstration of the framework as an information sharing platform as a colleague without any prior training was able to use the framework to extract the relevant information.",
+          "paraphrase": "In a live demonstration, an untrained colleague was able to use the framework to extract relevant attribution information, showing usability for information sharing.",
+          "researcher_comment": "Anecdotal usability evidence is positive but limited (single demonstration). Systematic usability testing and metrics (time, error rates) are needed to substantiate the claim at scale.",
+          "potential_themes": [
+            "framework_usage",
+            "data_sharing",
+            "experiment_results"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "usability_live_demo",
+            "nonexpert_access"
+          ]
+        },
+        {
+          "quote": "The ultimate goal of the project is to create a framework suitable for the sharing of attribution data between technical specialists.",
+          "paraphrase": "Methodologically, the study sets out to build a shared attribution-data framework to enable exchange between technical specialists.",
+          "researcher_comment": "This objective drives design choices (library format, attribute tuples, confidence values). It implicitly assumes cross-team cooperation and compatible data semantics \u2014 a socio-technical challenge that requires governance and standards.",
+          "potential_themes": [
+            "data_sharing",
+            "attribution_framework"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "method",
+          "argument_type": "procedural",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "goal_framework",
+            "data_sharing"
+          ]
+        },
+        {
+          "quote": "The framework must be robust enough to enable expansion as technologies develop, however accurate enough to be useful to analysts in todays attribution problem.",
+          "paraphrase": "Design requirement: the framework must be extensible for future technologies while remaining accurate and practical for analysts today.",
+          "researcher_comment": "This highlights a core trade-off (extensibility vs. precision) and motivates the chosen mathematical/confidence modelling. Implementers will need validation metrics and governance to balance extensibility with analytic reliability.",
+          "potential_themes": [
+            "modeling_approach",
+            "attribution_framework"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "method",
+          "argument_type": "procedural",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "extensibility_vs_precision",
+            "design_requirement"
+          ]
+        },
+        {
+          "quote": "The model is not design for strategic analysis.",
+          "paraphrase": "The authors explicitly state the model is not intended for strategic\u2011level attribution analysis.",
+          "researcher_comment": "This limitation confines the framework to tactical/operational use; it should not be used directly for national-level or political attribution without integration with higher-level models. Users must avoid over-extending conclusions beyond scope.",
+          "potential_themes": [
+            "limitation",
+            "attribution_framework"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "scope_tactical_only",
+            "not_for_strategic"
+          ]
+        },
+        {
+          "quote": "There is a concern that with too many libraries the framework would become too cumbersome and a great level of knowledge would be required in order to use it.",
+          "paraphrase": "The thesis warns that proliferation of libraries could make the system cumbersome and require significant user expertise to operate.",
+          "researcher_comment": "This identifies an operational scalability and usability risk; it implies the need for library governance, discovery/search, and UX strategies (or role-based views) to keep the system practical for analysts.",
+          "potential_themes": [
+            "library_creation",
+            "limitation"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "scalability_libraries",
+            "usability_constraint"
+          ]
+        },
+        {
+          "quote": "A lot of time was wasted during the project developing libraries that ultimately were incompatible or out of date.",
+          "paraphrase": "The project experienced significant time loss creating libraries that became incompatible or obsolete, revealing maintenance challenges.",
+          "researcher_comment": "This operational lesson signals a need for versioning, lifecycle management, and standards for library creation. It weakens reproducibility unless addressed by process improvements.",
+          "potential_themes": [
+            "library_creation",
+            "limitation"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "maintenance_costs",
+            "library_obsolescence"
+          ]
+        },
+        {
+          "quote": "From the experimentation it has been found that the framework could be improved through the highlighting of new information as it is being populated.",
+          "paraphrase": "They recommend adding an interface feature to highlight newly added information during live population of the framework.",
+          "researcher_comment": "A low-cost, actionable UX improvement that likely enhances analyst situational awareness in fast-time investigations. Should be implemented and validated with time-to-detection/user-satisfaction metrics.",
+          "potential_themes": [
+            "recommendation",
+            "framework_usage"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "ui_improvement",
+            "highlight_new_info"
+          ]
+        },
+        {
+          "quote": "Proposed libraries would include, but are not limited to; - HTML - Scripting languages - Social Media - IPV6 - Bluetooth",
+          "paraphrase": "The authors propose expanding the library set to include HTML, scripting languages, social media, IPv6 and Bluetooth libraries.",
+          "researcher_comment": "This list mixes application-layer (HTML, social media) and protocol/physical-layer (IPv6, Bluetooth) targets; each has distinct collection, legal and feature-selection challenges that must be scoped separately.",
+          "potential_themes": [
+            "library_creation",
+            "recommendation"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "library_expansion",
+            "priority_areas"
+          ]
+        },
+        {
+          "quote": "Powershell, Python and Ruby should be prioritised due to their extensive use in cyber attacks.",
+          "paraphrase": "They recommend prioritising PowerShell, Python and Ruby libraries because these scripting languages are heavily used in cyber attacks.",
+          "researcher_comment": "Prioritising these scripting languages aligns with operational threat patterns and should yield high impact for attribution. Implementation is feasible because these languages expose rich, author-specific artefacts (e.g., scripting idioms, module use).",
+          "potential_themes": [
+            "library_creation",
+            "recommendation"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "scripting_priority",
+            "attack_surface"
+          ]
+        },
+        {
+          "quote": "An obvious library that is missing is for IP Version 6.",
+          "paraphrase": "The authors identify IPv6 support as a missing library to be added in future work.",
+          "researcher_comment": "IPv6 adoption is growing; omitting IPv6 limits future applicability. IPv6 carries different header fields and extension headers that could provide new attribution signals, so this is a high-priority gap.",
+          "potential_themes": [
+            "library_creation",
+            "recommendation"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "ipv6_gap",
+            "future_proofing"
+          ]
+        },
+        {
+          "quote": "adopt a widely recognised data exchange format such as STIX *Barnum (2012)*.",
+          "paraphrase": "They recommend adopting a standard threat\u2011intelligence exchange format (STIX) to improve interoperability and adoption.",
+          "researcher_comment": "Integrating STIX would aid interoperability with other CTI tools but requires a careful mapping from the framework's attribute model to STIX structures. This is non-trivial and needs an explicit schema/mapping effort.",
+          "potential_themes": [
+            "data_sharing",
+            "recommendation"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "stix_integration",
+            "interoperability"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-24T15:01:35.223881Z",
+  "collection_name": "frameworks",
+  "custom_id": "626c74d073d705d7b5b8245de499bc50853ce08439dbce08a0fd42155136cfc0",
+  "function": "code_pdf_page"
+}

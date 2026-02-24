@@ -1,0 +1,69 @@
+{
+  "generated_at_utc": "2026-02-22T21:51:00.405049+00:00",
+  "iteration": 1,
+  "weighted_heading_split_score": 0.804522061925251,
+  "delta_from_previous": 0.0,
+  "standalone_total": 19072.0,
+  "glued_total": 4634.0,
+  "docs_ok": 517,
+  "issue_groups": {
+    "plain_heading_runon": 6,
+    "header_then_abstract_runon": 3,
+    "toc_inline_navigation": 1,
+    "numbered_heading_runon": 1
+  },
+  "examples": {
+    "plain_heading_runon": [
+      [
+        "5be87f5ef5b5099687a4c8bce3416812bf0f6fe4cbe7460ed7c6b5736901e955.json",
+        "## Conclusion: Addressing the contestability of attribution discourse"
+      ],
+      [
+        "8f11710cb0974f980020246e436352c213b2cb1d47b303d0a8078ce9d4b321d4.json",
+        "Abstract While no State may claim sovereignty over cyberspace, States may exercise jurisdiction, which is the authority of the State to regulate conduct of natural persons or legal entities by its own domestic law, over cyber activities ins"
+      ],
+      [
+        "35c18b198e19a95f5bd8e216d09c2761634fe2ddb51bae470998adefb6370634.json",
+        "ABSTRACT Who did it? Attribution is fundamental. Human lives and the security of the state may depend on ascribing agency to an agent. In the context of computer network intrusions, attribution is commonly seen as one of the most intractabl"
+      ],
+      [
+        "bf15de86e7924d3cb531b4725262888ca4fa9212813a30d6f1b850eaea457c72.json",
+        "Abstract This Chapter explores the acceptability under the *jus ad bellum*, that body of international law governing the resort to force as an instrument of national policy, of computer network attack. Analysis centers on the United Nations"
+      ],
+      [
+        "88557afcea30c66a027af0998ad123538dc50c0fdf123f8fe42ce3e6f7659313.json",
+        "## Conclusion: towards filling the strategic vacuum"
+      ],
+      [
+        "b548dd6de795fce747320bf76a3369a08644d257f10ef3d33a0c5ca12836a145.json",
+        "## Conclusion: inch by inch, rather than in leaps"
+      ]
+    ],
+    "header_then_abstract_runon": [
+      [
+        "f4dbfa18ea5e7072e52795c3546216d7c1f13c27c64f216a3d4cc478c1939a9e.json",
+        "jklscott@dmu.ac.uk DOI: 10.34190/EWS.21.046 Abstract:\"Our enemies are innovative and resourceful, and so are we. They never stop thinking about new ways to harm our country and our people, and neither do we.\"(George W. Bush) The purpose of "
+      ],
+      [
+        "94a75eeaa326e53c81027fd16401435741f9493618321491f58d768c4fe25faf.json",
+        "Then on January 22, 2010 the Washington Post reported that a demarche had already been issued,\"according to a State Department official\".51 However, any ambiguity regarding the issuance of the demarche was removed on January 22, 2010, when "
+      ],
+      [
+        "64c7005eaed374ffa00861b78f9f23e7fccda2a5fb482a1f6e10e135cedc2b84.json",
+        "[Vol. 11:247] both symbolic and practical, should not be underplayed in situations in which a state is causing harm primarily to human beings, as opposed to other states as abstract entities. Human rights law is in many ways normatively a b"
+      ]
+    ],
+    "toc_inline_navigation": [
+      [
+        "5d981ba16a79ee87ebf70ed75c7915a7cbf0db19f74165b259e7e69f35e707de.json",
+        "Previous article View issue table of contents Next article"
+      ]
+    ],
+    "numbered_heading_runon": [
+      [
+        "c7abe1816adc0298f889835ed4e4813d2e7be9b4b4a9fc60bdbaed418a4e3feb.json",
+        "V. CONCLUSION... 238 * J.D. Candidate, University of Georgia School of Law, 2022. B.A. in Criminology and Law, University of Florida, 2019. B.A. in English, University of Florida, 2019."
+      ]
+    ]
+  }
+}

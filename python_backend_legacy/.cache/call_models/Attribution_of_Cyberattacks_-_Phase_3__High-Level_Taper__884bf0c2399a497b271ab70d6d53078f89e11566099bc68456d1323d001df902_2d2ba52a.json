@@ -1,0 +1,383 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "quote": "Attribution of cyber attacks is also difficult in light of the nature of the Internet.",
+          "paraphrase": "The author states that the Internet's technical nature makes attributing cyber attacks difficult, which directly bears on RQ 0 (cyber attribution).",
+          "researcher_comment": "Identifies network architecture as a core barrier to attribution. The claim is high-level and does not specify the particular technical mechanisms (e.g., spoofing, proxies) that produce this difficulty. Use as background to justify need for technical and legal attribution standards.",
+          "potential_themes": [
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "network_architecture_obstacle",
+            "attribution_difficulty"
+          ]
+        },
+        {
+          "quote": "[G]iven that the internet is intended to be open and anonymous, the attribution of cyber attacks can be very difficult to achieve and should not be taken lightly,",
+          "paraphrase": "David Wu (quoted) warns that because the Internet is open and anonymous, attributing cyber attacks is very difficult and requires careful attention relevant to RQ 0.",
+          "researcher_comment": "This is a policy-level admonition from a congressional subcommittee source framing attribution as a serious policy problem. It is normative and authoritative but supplies no technical evidentiary detail.",
+          "potential_themes": [
+            "attribution_challenges",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "policy_position",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "anonymity_as_barrier",
+            "policy_advice_attribution"
+          ]
+        },
+        {
+          "quote": "A cyber attacker in the domain of cyberspace can \u201cshed ties of citizenship and cross sovereign boundaries without a trace,\u201d cloaked in veritable anonymity.",
+          "paraphrase": "The text claims attackers can erase links to citizenship and cross borders without leaving trace, undermining attribution and state-based remedies (RQ 0).",
+          "researcher_comment": "Rhetorical but conceptually important: actor obfuscation undermines state-centric attribution and responsibility. The passage does not quantify how often or by what techniques this occurs.",
+          "potential_themes": [
+            "attribution_challenges",
+            "state_responsibility_thresholds"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "anonymity_shedding_citizenship",
+            "cross_border_obfuscation"
+          ]
+        },
+        {
+          "quote": "Though there is the physical presence of hardware in different sovereign states, the information contained in them and the software controlling their servers lacks roots to the physical realm.",
+          "paraphrase": "The author notes that hardware sits in territory but data and software are not physically rooted, weakening territorial bases for attribution and jurisdiction (RQ 0).",
+          "researcher_comment": "Highlights a legal-technical mismatch: physical infrastructure offers jurisdictional hooks but virtual content moves freely. This observation implicates how territorial legal tests may need adaptation for attribution/state responsibility.",
+          "potential_themes": [
+            "state_responsibility_thresholds",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "scope_condition",
+          "argument_type": "legal_interpretive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "hardware_vs_data_mobility",
+            "territoriality_problem"
+          ]
+        },
+        {
+          "quote": "creates an incredible challenge to one of the most fundamental aspects of international law: territory.",
+          "paraphrase": "The author argues that packet routing and network design create severe challenges to the international-law notion of territoriality, which is central to attribution (RQ 0).",
+          "researcher_comment": "Links a specific technical property of networks to a core doctrinal concept (territory). Useful to explain why traditional territorial rules may not cleanly map onto cyberspace; does not prescribe which doctrinal tests should change.",
+          "potential_themes": [
+            "state_responsibility_thresholds",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "limitation",
+          "argument_type": "legal_interpretive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "packet_routing_territoriality",
+            "territoriality_challenge"
+          ]
+        },
+        {
+          "quote": "There are also no treaties in existence dealing directly with cyber attacks or cyber warfare.",
+          "paraphrase": "The author states that no international treaty directly governs cyber attacks or cyber warfare, leaving attribution and collective legal responses unsettled (RQ 0).",
+          "researcher_comment": "Identifies a clear legal gap that affects the legitimacy and form of international attribution and remedial measures. The author elsewhere notes that existing law might be adapted, so absence of treaty is a limitation rather than final refusal of legal regulation.",
+          "potential_themes": [
+            "state_responsibility_thresholds"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "treaty_gap",
+            "legal_vacuum"
+          ]
+        },
+        {
+          "quote": "specifically contemplates how international law should apply to conflict in cyberspace, keeping in mind the problem that laws of conventional warfare are difficult to apply to such an amorphous space.",
+          "paraphrase": "The Tallinn Manual is presented as an expert effort to map existing international-law rules onto cyber operations while acknowledging that conventional-law rules are hard to apply in cyberspace, relevant to RQ 0.",
+          "researcher_comment": "Identifies a non-binding interpretive framework developed to clarify applicability of existing law to cyber operations\u2014useful for analysis of thresholds and attribution but limited in legal force unless adopted by states as practice/opinio juris.",
+          "potential_themes": [
+            "attribution_challenges",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "framework",
+          "argument_type": "legal_interpretive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "tallinn_manual_framework",
+            "conventional_law_limitations"
+          ]
+        },
+        {
+          "quote": "However, the Tallinn Manual is not an official document and is instead the summation of opinions of a group of experts acting solely in their personal capacity",
+          "paraphrase": "The author cautions the Tallinn Manual is non-official expert opinion and does not reflect NATO or State positions, which limits its authority for attributive/legal claims (RQ 0).",
+          "researcher_comment": "Important evidentiary caveat: the Manual helps interpretation but cannot by itself demonstrate state practice or opinio juris. That reduces its weight when arguing customary-law rules about attribution.",
+          "potential_themes": [
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "limitation",
+          "argument_type": "legal_interpretive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "nonbinding_expert_opinion",
+            "limited_authority"
+          ]
+        },
+        {
+          "quote": "The definition of a cyber attack is still largely inconsistent, and something this paper will attempt to define.",
+          "paraphrase": "The author notes definitional inconsistency around 'cyber attack', a foundational obstacle to consistent attribution and legal response (RQ 0).",
+          "researcher_comment": "Frames definitional uncertainty as a primary problem for attribution frameworks and for establishing when international-law responses are appropriate. The statement is programmatic rather than evidentiary.",
+          "potential_themes": [
+            "definition_conceptual",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "definition_inconsistency",
+            "classification_uncertainty"
+          ]
+        },
+        {
+          "quote": "'The premeditated use of disruptive activities, or the threat thereof, against computers and/or networks, with the intention to cause harm or to further social, ideological, religious, political, or similar objectives.'",
+          "paraphrase": "The U.S. Army manual defines a cyber attack as premeditated disruptive activities against computer systems intended to cause harm or further specific objectives, providing an operational baseline relevant to attribution (RQ 0).",
+          "researcher_comment": "Provides a military/operational definition emphasizing intent and disruption; useful for understanding state practice (U.S. military) though not a universally binding legal standard.",
+          "potential_themes": [
+            "definition_conceptual"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "definition_conceptual",
+          "argument_type": "definitional",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "us_army_definition",
+            "intent_and_disruption"
+          ]
+        },
+        {
+          "quote": "A cyber-attack consists of any action taken to undermine the functions of a computer network for a political or national security purpose.",
+          "paraphrase": "Hathaway's proposed narrow definition treats cyber-attack as actions undermining computer-network functions for political or national-security purposes, directly guiding attribution criteria (RQ 0).",
+          "researcher_comment": "Offers a narrow, purpose-based operational definition that excludes many non-political cyber intrusions; this is analytically useful for delimiting incidents that merit international attribution and response.",
+          "potential_themes": [
+            "definition_conceptual",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "definition_conceptual",
+          "argument_type": "definitional",
+          "claim_direction": "supports",
+          "open_codes": [
+            "hathaway_definition",
+            "purpose_based_threshold"
+          ]
+        },
+        {
+          "quote": "Note that passive observance of activity or copying of information, no matter how illicit, is not enough to constitute a cyber attack or an act of cyber warfare",
+          "paraphrase": "The author (citing Hathaway) excludes passive observation or copying of information from the category 'cyber attack', narrowing the set of incidents that require international attribution (RQ 0).",
+          "researcher_comment": "Makes explicit the active/function-undermining requirement; separates espionage/information theft from attacks, which has direct consequences for attribution standards and international responses.",
+          "potential_themes": [
+            "definition_conceptual",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "definition_conceptual",
+          "argument_type": "definitional",
+          "claim_direction": "qualifies",
+          "open_codes": [
+            "attack_vs_espionage",
+            "passive_vs_active"
+          ]
+        },
+        {
+          "quote": "then does Stuxnet fit within the definition of a cyber attack? Absolutely.",
+          "paraphrase": "The author contends that, if state attribution to the United States is correct, Stuxnet plainly fits Hathaway's cyber-attack definition and would be classed as an attack for RQ 0.",
+          "researcher_comment": "Applies the proposed definition to a high-profile case to show how attribution to a state would convert a campaign into an international-law relevant 'attack'; conclusion depends on contested factual attribution.",
+          "potential_themes": [
+            "case_study_example",
+            "state_responsibility_thresholds"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "case_study_example",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "stuxnet_application",
+            "state_attribution_implications"
+          ]
+        },
+        {
+          "quote": "It seems the attack was intended to purloin information and not specifically to undermine the function of a computer network. Thus, Hathaway\u2019s definition may very well exclude things like Operation Shady RAT from the definition of what a cyber attack is.",
+          "paraphrase": "The author argues Operation Shady RAT appears aimed at data theft rather than system disruption and therefore may fall outside Hathaway's narrow cyber-attack definition, affecting whether international attribution is engaged (RQ 0).",
+          "researcher_comment": "Demonstrates how a narrow, function-based definition excludes long-term espionage campaigns from 'attack' status; this reduces the international attribution burden but raises domestic and investigative questions. The analysis is limited by lack of full public evidence about intent and use of stolen data.",
+          "potential_themes": [
+            "definition_conceptual",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "case_study_example",
+          "argument_type": "legal_interpretive",
+          "claim_direction": "qualifies",
+          "open_codes": [
+            "shady_rat_data_theft",
+            "exclusion_by_definition"
+          ]
+        },
+        {
+          "quote": "The identity of the state actor behind the attacks was widely assumed to be China, however, Beijing proclaimed the accusations were \u201cgroundless.\u201d",
+          "paraphrase": "The author notes that although observers widely suspected China in Operation Shady RAT, China denied the accusations, illustrating contested state attribution (RQ 0).",
+          "researcher_comment": "Shows political contestation and state denial in a major incident\u2014common obstacles to reaching authoritative international attribution or to triggering state-responsibility processes.",
+          "potential_themes": [
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "case_study_example",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "contested_attribution",
+            "state_denial"
+          ]
+        },
+        {
+          "quote": "It seems almost like the international cyber law version of res ipsa loquitor, a doctrine sounding in tort theory where the nature of an outcome speaks for itself and negligence may be inferred even absent of direct evidence of how the aggressor behaved.",
+          "paraphrase": "The author analogizes cyber attribution to res ipsa loquitur, suggesting outcome-based inference may sometimes substitute for direct evidence\u2014an evidentiary idea relevant to RQ 0.",
+          "researcher_comment": "Proposes an inferential evidentiary approach for attribution; conceptually useful but legally fraught since international attribution to a State typically requires stronger proof of State control or direction than tort-style inference.",
+          "potential_themes": [
+            "evidentiary_standards",
+            "attribution_challenges"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "method_design",
+          "argument_type": "methodological",
+          "claim_direction": "qualifies",
+          "open_codes": [
+            "res_ipsa_analogy",
+            "circumstantial_inference"
+          ]
+        },
+        {
+          "quote": "The potential for damage from cyber attacks increases as quickly as society's reliance on computer-driven technology.",
+          "paraphrase": "The author warns that growing societal dependence on computer systems increases potential harm from cyber attacks, heightening the urgency of reliable attribution mechanisms (RQ 0).",
+          "researcher_comment": "Provides policy rationale for prioritizing attribution and regulation; this is a contextual/impact claim rather than an explanation of attribution mechanics or standards.",
+          "potential_themes": [
+            "attribution_challenges",
+            "state_responsibility_thresholds"
+          ],
+          "relevance_score": 3,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "empirical_finding_qualitative",
+          "argument_type": "predictive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "increasing_risk",
+            "policy_urgency"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-24T17:32:03.343713Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "884bf0c2399a497b271ab70d6d53078f89e11566099bc68456d1323d001df902",
+  "function": "code_pdf_page"
+}

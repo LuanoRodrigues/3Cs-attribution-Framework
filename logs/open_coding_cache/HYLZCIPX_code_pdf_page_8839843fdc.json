@@ -1,0 +1,813 @@
+[
+  {
+    "item_key": "HYLZCIPX",
+    "section_key": "__preamble__ + I. INTRODUCTION",
+    "response": [
+      {
+        "evidence": [
+          {
+            "direct_quote": "The authors' research identified two competing risks: 1) the risk of not responding forcefully enough to deter a suspected attacker, and 2) responding in a manner that escalates a situation with an attacker.",
+            "paraphrase": "The authors claim responses to cyberattacks involve two competing risks: under‑deterrence and inadvertent escalation, which the framework must balance (RQ2).",
+            "researcher_comment": "This explicitly frames the decision tradeoff the framework targets and motivates inclusion of escalation/deterrence as evaluative criteria. It is a conceptual claim rather than empirical validation; applicability depends on how risks are operationalized later.",
+            "potential_themes": [
+              "attribution_challenges"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "claim"
+          },
+          {
+            "direct_quote": "The authors also identified three primary factors that influence these risks: attribution confidence/time, the scale of the attack, and the relationship with the suspected attacker.",
+            "paraphrase": "The framework is based on three factors—attribution confidence/time, attack scale, and relationship with the suspected attacker—that determine response risks (RQ2).",
+            "researcher_comment": "This is a key operationalization statement specifying variables the framework uses to evaluate responses; it directly informs model inputs. The phrase 'attribution confidence/time' signals both a metric (confidence) and a temporal constraint (time to attribute).",
+            "potential_themes": [
+              "confidence_language",
+              "attribution_challenges"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "finding"
+          },
+          {
+            "direct_quote": "A cyberattack is defined as \"an attempt to gain illegal access to a computer or computer system for the purpose of causing damage or harm .\"",
+            "paraphrase": "The paper defines a cyberattack as an attempt to gain illegal computer access to cause damage or harm, establishing the authors' event definition for the framework (RQ2).",
+            "researcher_comment": "Clear operational definition narrows what incidents the framework addresses; useful for synthesis of how different works delimit 'attack'. The definition is broad and normative, with no attribution-specific qualifiers.",
+            "potential_themes": [
+              "definition"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "definition"
+          },
+          {
+            "direct_quote": "A response is defined as the action(s) the USG and/or private sector takes to stop a cyberattack and deter the attacker from conducting additional cyberattacks.",
+            "paraphrase": "The authors define 'response' as actions taken by USG or private sector to stop attacks and deter future activity, framing the outcome space the framework evaluates (RQ2).",
+            "researcher_comment": "This clarifies the target outputs of the framework (response options) and ties evaluation to deterrence; it does not enumerate response types or metrics for success.",
+            "potential_themes": [
+              "definition"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "definition"
+          },
+          {
+            "direct_quote": "For example, cyber incidents (which are often the precursors to cyberattacks) reported to the Department of Homeland Security (DHS) increased more than tenfold from 2006 to 2015 .",
+            "paraphrase": "The authors cite DHS incident-reporting growth (10x from 2006–2015) as empirical evidence of rising cyber incidents, which motivates framework need (RQ0, RQ2).",
+            "researcher_comment": "This demonstrates use of official incident-report statistics as evidentiary basis; it supports urgency but does not link specific incidents to framework validation. Temporal aggregation may mask heterogeneity in incident types.",
+            "potential_themes": [
+              "evidentiary_standards"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "example"
+          },
+          {
+            "direct_quote": "Although the TTX followed the National Institute of Standards and Technology's (NIST) Cybersecurity Framework and primarily focused on domestic recovery and response actions, many of INSA's recommendations highlighted why a common framework to evaluate response actions against a foreign attacker is also necessary.",
+            "paraphrase": "The authors report a table‑top exercise (TTX) used NIST's Cybersecurity Framework and produced recommendations that motivate a common framework for responses to foreign attackers (RQ1, RQ2).",
+            "researcher_comment": "This indicates the authors draw on exercise‑based methods (TTX) and existing frameworks (NIST) when building their framework; it implies operational alignment or gaps between domestic recovery frameworks and foreign‑attacker response needs.",
+            "potential_themes": [
+              "framework_application",
+              "information_sharing"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "method"
+          },
+          {
+            "direct_quote": "For example, the TTX stated the importance of determining attribution as quickly as possible, sharing information, and testing procedures for response options amongst all stakeholders .",
+            "paraphrase": "The TTX recommended rapid attribution, information sharing, and testing response procedures among stakeholders, which the authors cite as practical requirements the framework should accommodate (RQ0, RQ1, RQ2).",
+            "researcher_comment": "This ties exercise findings to operational priorities—speed of attribution and inter‑stakeholder processes—highlighting procedural evidence and coordination as inputs to the framework. It does not quantify 'quickly' or prescribe how sharing affects confidence.",
+            "potential_themes": [
+              "attribution_challenges",
+              "information_sharing"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "recommendation"
+          },
+          {
+            "direct_quote": "This paper presents a framework that will enable policymakers in the United States Government (USG) and decision makers in the private sector to make more effective responses to cyberattacks.",
+            "paraphrase": "The paper's stated contribution is a framework intended to help USG and private‑sector policymakers choose more effective cyberattack responses, framing the study's purpose (RQ2).",
+            "researcher_comment": "This is the authors' high‑level objective tying framework design to decision support for policy and corporate actors; it signals an applied orientation but does not itself show operational detail or validation.",
+            "potential_themes": [
+              "framework_application"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "framework"
+          }
+        ]
+      },
+      {
+        "input_tokens": 2956,
+        "output_tokens": 3234,
+        "total_tokens": 6190,
+        "cost_usd": 0.018987,
+        "model": "gpt-5-mini-2025-08-07",
+        "is_batch": true
+      }
+    ]
+  },
+  {
+    "item_key": "HYLZCIPX",
+    "section_key": "II. UNDERSTANDING THE PROBLEM",
+    "response": [
+      {
+        "evidence": [
+          {
+            "direct_quote": "deterrence as \"prevent[ing] adversary action through the presentation of a credible threat of unacceptable counteraction and belief that the cost of the action outweighs the perceived benefits .\"",
+            "paraphrase": "The text defines deterrence as preventing adversary action by presenting a credible threat that the costs of action outweigh benefits, which frames how responses to cyberattacks might be chosen (RQ2).",
+            "researcher_comment": "This DoD-style definition supplies the normative basis for choosing retaliatory responses in cyber strategy. It is background rather than an operational method, so use it as conceptual framing when mapping attribution confidence to response options. It does not specify operational thresholds for \"credible\" or \"unacceptable.\"",
+            "potential_themes": [
+              "framework",
+              "confidence_language"
+            ],
+            "relevance_score": 3,
+            "relevant_rqs": [
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "definition"
+          },
+          {
+            "direct_quote": "Deterrence usually involves four main aspects: retaliation, denial, entanglement, and norms .",
+            "paraphrase": "Deterrence comprises four aspects—retaliation, denial, entanglement, and norms—which delineate possible strategic responses relevant to cyber policy and attribution-informed decision-making (RQ2).",
+            "researcher_comment": "This categorization helps map defensive and retaliatory options to attribution needs (e.g., retaliation requires stronger attribution). The statement is high-level; it does not operationalize how each aspect is used in practice.",
+            "potential_themes": [
+              "framework"
+            ],
+            "relevance_score": 3,
+            "relevant_rqs": [
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "framework"
+          },
+          {
+            "direct_quote": "Denial aligns with aggressive and passive cyber defense strategies, is not conflict-based, focuses on convincing an adversary that an attack will not succeed, and requires having robust cybersecurity measures in place before an attack occurs.",
+            "paraphrase": "Denial corresponds to passive and aggressive defenses that aim to prevent successful attacks through preexisting cybersecurity measures, describing a non-kinetic method of defense (RQ1).",
+            "researcher_comment": "This links specific defense strategies to the concept of denial and clarifies that denial is preemptive, not retaliatory. It identifies concrete passive measures but does not quantify effectiveness or evidentiary requirements for attribution.",
+            "potential_themes": [
+              "method"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "method"
+          },
+          {
+            "direct_quote": "Proponents of aggressive cybersecurity argue for this approach over active cyber defense (ACD) ... because ACD requires high attribution confidence (which can be very difficult to obtain) and because ACD risks escalation .",
+            "paraphrase": "Advocates prefer aggressive over active cyber defense because active defenses (hack-backs) require high attribution confidence and risk escalation (RQ1, RQ2).",
+            "researcher_comment": "This explicitly ties the choice of defensive method to attribution confidence and escalation risk, directly relevant to operational decision rules. The claim is normative (advocates' argument) rather than empirical evidence of outcomes.",
+            "potential_themes": [
+              "confidence_language",
+              "attribution_challenges"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "claim"
+          },
+          {
+            "direct_quote": "the Active Cyber Defense Certainty Act (ACDA) ... would allow private companies to employ ACD measures to establish the attribution of an attack, disrupt cyberattacks without damaging others' computers, retrieve and destroy stolen files, monitor the behavior of an attacker, and utilize beaconing technology.",
+            "paraphrase": "The ACDA bill would legally permit private firms to use ACD techniques for establishing attribution and disrupting attacks within constrained actions, indicating a policy mechanism to enable certain attribution and response methods (RQ0, RQ1).",
+            "researcher_comment": "This describes a concrete policy tool intended to operationalize certain attribution and remediation actions by non-state actors. The bill's legal status is unsettled, so this reflects proposed rather than implemented practice.",
+            "potential_themes": [
+              "policy_position",
+              "method"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "policy_position"
+          },
+          {
+            "direct_quote": "Assessing attribution is an extremely complicated issue. A country or corporation cannot answer the question of attribution with a simple “yes” or “no” answer, but rather attribution is a matter of degree.",
+            "paraphrase": "Attribution should be treated as a spectrum of certainty rather than a binary yes/no assessment, meaning confidence levels must inform responses and operationalization (RQ2).",
+            "researcher_comment": "This establishes a critical conceptual premise for operationalizing models: attribution outputs should be probabilistic or gradated. It implies methods must produce graded confidence, but offers no specific metrics or thresholds.",
+            "potential_themes": [
+              "confidence_language"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "definition"
+          },
+          {
+            "direct_quote": "Two different, but equally important, ways to determine attribution are by technical evidence or all-source intelligence.",
+            "paraphrase": "The text identifies two primary evidence types for attribution: technical forensic evidence and all-source intelligence, which are the core evidentiary inputs for analyses (RQ0, RQ1).",
+            "researcher_comment": "This is a clear, actionable taxonomy of evidence types used in attribution work and maps directly to methodological categories. It does not detail how to combine or weight these sources.",
+            "potential_themes": [
+              "evidentiary_standards",
+              "method"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "definition"
+          },
+          {
+            "direct_quote": "Determining attribution is difficult for a number of reasons, such as the attacker may leave no forensic clues, analysts may have never seen the attacker's TTPs before, the attacker's motivation for conducting the attack may be unknown, and there may be no all-source intelligence reporting to connect to the forensic evidence .",
+            "paraphrase": "Multiple practical challenges—lack of forensics, novel TTPs, unknown motivations, and absent all-source intelligence—make attribution difficult and limit evidentiary reliability (RQ0, RQ1, RQ2).",
+            "researcher_comment": "This passage enumerates specific failure modes that affect both method selection and confidence assessments. It supports coding limitations and error sources in attribution models; however, it stops short of quantifying their relative frequencies or impacts.",
+            "potential_themes": [
+              "attribution_challenges",
+              "evidentiary_standards"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "limitation"
+          },
+          {
+            "direct_quote": "analysts must consider the computer used to conduct the attack, the person (perpetrator), and the higher-level organization or country from whom the perpetrator received his or her tasking, which is often the true adversary .",
+            "paraphrase": "Attribution analysis must operate at three linked levels—machine, individual perpetrator, and sponsoring organization/nation—each requiring different evidence and inference (RQ1, RQ2).",
+            "researcher_comment": "This delineates the multi-level ontology analysts must resolve, which is directly useful for operationalizing attribution frameworks into stages or decision nodes. It implies different evidentiary needs at each level but does not prescribe methods for linking them.",
+            "potential_themes": [
+              "taxonomy",
+              "attribution_challenges"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "method"
+          },
+          {
+            "direct_quote": "The United States Office of the Director of National Intelligence (ONDI) has tried to standardize a method of understanding the type of information known about an attack by instituting a common cyber threat framework within the intelligence community (IC) . The framework captures the adversary lifecycle across four broad stages: preparation, engagement, presence, and effects/consequences.",
+            "paraphrase": "The ODNI cyber threat framework standardizes attribution-relevant analysis by modeling the adversary lifecycle in four stages—preparation, engagement, presence, and effects—which structures how evidence and TTPs are conceptualized (RQ2).",
+            "researcher_comment": "This is a concrete example of a formal framework intended to be operationalized by analysts; it provides stage-based structure for mapping technical and intelligence indicators. The passage does not detail how evidence maps to stages or how confidence is quantified per stage.",
+            "potential_themes": [
+              "framework"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "framework"
+          },
+          {
+            "direct_quote": "because attributing the attack requires many cybersecurity experts and intelligence professionals to work together, the U.S. IC is not likely to have enough evidence to produce an assessment with high confidence for several months.",
+            "paraphrase": "Producing high-confidence attribution typically requires cross-disciplinary resources and may take months, imposing temporal and resource constraints on operational responses (RQ1, RQ2).",
+            "researcher_comment": "This identifies a practical constraint—time and coordination—that affects when and how attribution-informed actions can be taken. It supports modeling delays and uncertainty in attribution-driven decision frameworks, but gives no quantitative timelines beyond 'several months.'",
+            "potential_themes": [
+              "confidence_language",
+              "attribution_challenges"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "finding"
+          }
+        ]
+      },
+      {
+        "input_tokens": 4847,
+        "output_tokens": 3381,
+        "total_tokens": 8228,
+        "cost_usd": 0.022485,
+        "model": "gpt-5-mini-2025-08-07",
+        "is_batch": true
+      }
+    ]
+  },
+  {
+    "item_key": "HYLZCIPX",
+    "section_key": "III. APPLYING THE FRAMEWORK",
+    "response": [
+      {
+        "evidence": [
+          {
+            "direct_quote": "the three factors discussed above (attribution time/confidence, relationship, and scale) influence the risks of responding with insufficient deterrent force and the potential for escalation.",
+            "paraphrase": "The framework operationalizes attribution decisions by using three factors—attribution time/confidence, relationship, and scale—to assess risks of insufficient deterrence and escalation (relevant to RQ2).",
+            "researcher_comment": "This sentence states the core variables of the framework and their decision-relevant purpose, which directly informs how models should be structured. It does not specify measurement rules or thresholds, so it defines constructs but not operational metrics.",
+            "potential_themes": [
+              "confidence_language",
+              "risk_assessment"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "framework"
+          },
+          {
+            "direct_quote": "Fig. 2 is an example table of the authors' analysis of three recent cyberattacks illustrating how the framework could be applied for policymakers and corporate decision makers.",
+            "paraphrase": "The authors provide an applied example (a table) demonstrating how the three-factor framework can be used to brief decision makers (relevant to RQ2).",
+            "researcher_comment": "This indicates the framework is intended for practical application and visualization (tabular synthesis). The example implies case-based comparative assessment but does not show the underlying data or coding rules used to assign levels.",
+            "potential_themes": [
+              "risk_assessment",
+              "confidence_language"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "example"
+          },
+          {
+            "direct_quote": "Analysts would define different criteria for the levels of the factors (high, moderate, low) and the competing risks.",
+            "paraphrase": "The framework requires analysts to set explicit criteria (high/moderate/low) for each factor and for competing risks when operationalizing the model (relevant to RQ2 and RQ1).",
+            "researcher_comment": "This prescribes a categorical thresholding approach for operationalization, implying a need for definitional work and inter-analyst calibration. The statement lacks guidance on how to derive or validate those criteria empirically.",
+            "potential_themes": [
+              "evidentiary_standards",
+              "confidence_language"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              },
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "method"
+          },
+          {
+            "direct_quote": "Is there evidence to support that a different state or non-state actor perpetrated the attack (other than the one assessed as most likely to have conducted the attack)? If so, how strong is this evidence?",
+            "paraphrase": "Analysts must actively assess alternative perpetrator hypotheses and evaluate the strength of evidence for each alternative, which constrains attribution conclusions (relevant to RQ0 and RQ1).",
+            "researcher_comment": "This foregrounds comparative evidentiary assessment as an explicit analytic step, pointing to use of counter-hypothesis testing. It does not list specific evidence types (e.g., logs, code similarities), only the analytic question to be asked.",
+            "potential_themes": [
+              "evidentiary_standards"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "method"
+          },
+          {
+            "direct_quote": "If there is not enough evidence to make a high confidence attribution, will additional assessment provide the necessary evidence to increase the attribution confidence level? How much time do analysts estimate this will take?",
+            "paraphrase": "The framework requires analysts to judge whether further investigation can raise attribution confidence and to estimate the time required for such assessment (relevant to RQ1 and RQ0).",
+            "researcher_comment": "This prescribes explicit temporal and evidentiary decision rules (whether to wait for more evidence). It implies trade-offs between timeliness and confidence but does not prescribe concrete stopping rules or probability thresholds.",
+            "potential_themes": [
+              "evidentiary_standards",
+              "confidence_language"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 0
+              }
+            ],
+            "evidence_type": "method"
+          },
+          {
+            "direct_quote": "- How likely is the suspected adversary to conduct another cyberattack if the U.S. delays its response in order to increase its attribution confidence? In other words, does the risk of insufficient deterrence outweigh the risk of the potential for escalation?",
+            "paraphrase": "The framework operationalizes decisions by requiring estimation of the probability the adversary will re‑attack if response is delayed and weighing insufficient deterrence against escalation risk (relevant to RQ1 and RQ2).",
+            "researcher_comment": "This encodes a decision-theoretic trade-off (probability of re-attack vs escalation) that should be quantified in operational models. The text does not provide recommended probability thresholds or modelling techniques for those likelihood estimates.",
+            "potential_themes": [
+              "risk_assessment",
+              "attribution_challenges"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "method"
+          },
+          {
+            "direct_quote": "- How likely is the potential for escalation if the U.S. responds at the suspected perpetrator, but its attribution is not correct (misattribution)?",
+            "paraphrase": "Analysts must assess the escalation risk associated with acting on an incorrect attribution (misattribution risk), which is central to response decision-making (relevant to RQ1 and RQ2).",
+            "researcher_comment": "This explicitly identifies misattribution-driven escalation as a distinct risk variable to be estimated. It signals need for scenario analysis or historic analogues but gives no specification of data or models to use.",
+            "potential_themes": [
+              "attribution_challenges",
+              "risk_assessment"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "method"
+          },
+          {
+            "direct_quote": "- What is the scale of the cyberattack that the U.S. sustained? $\u0002$  Does the scale support responding before high attribution confidence is obtained or does the scale suggest waiting until analysts have enough evidence to assess the perpetrator with high confidence?",
+            "paraphrase": "The framework requires analysts to evaluate attack scale and use that assessment to decide whether to act before achieving high attribution confidence or to wait for more evidence (relevant to RQ2 and RQ1).",
+            "researcher_comment": "This operationalizes 'scale' as a decision input that can justify acting under lower confidence for high-impact attacks. The passage does not define quantitative scale metrics or thresholds for such decisions.",
+            "potential_themes": [
+              "risk_assessment",
+              "confidence_language"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              },
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "method"
+          },
+          {
+            "direct_quote": "2011-2013 Iranian DDoS Attacks on U.S. Financial Institutions  | High  | Low  | Turbulent    | Very Low   | High    | Indictment of 7 Iranians in 2016 ; Sanctions Against 11 Iranian Entities in 2017",
+            "paraphrase": "The example table assigns categorical factor levels (e.g., attribution confidence=High, scale=Low, relationship=Turbulent) and links those assessments to actual responses (indictments, sanctions) as an applied case (relevant to RQ2).",
+            "researcher_comment": "This concrete row shows how the framework maps factor levels to historical responses, demonstrating case-based operationalization. It does not disclose the underlying evidence used to justify the categorical assignments (how 'High' attribution was determined).",
+            "potential_themes": [
+              "evidentiary_standards",
+              "risk_assessment"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "example"
+          }
+        ]
+      },
+      {
+        "input_tokens": 2745,
+        "output_tokens": 4620,
+        "total_tokens": 7365,
+        "cost_usd": 0.024907,
+        "model": "gpt-5-mini-2025-08-07",
+        "is_batch": true
+      }
+    ]
+  },
+  {
+    "item_key": "HYLZCIPX",
+    "section_key": "IV. FUTURE RESEARCH",
+    "response": [
+      {
+        "evidence": [
+          {
+            "direct_quote": "Answering the questions derived from the framework above will depend on the suspected perpetrator and the unique circumstances of each cyberattack.",
+            "paraphrase": "The authors state that applying the framework requires tailoring answers to the suspected perpetrator and the specific circumstances of each cyber incident, indicating case-dependent operationalization of the model.",
+            "researcher_comment": "This emphasizes that the framework is not one-size-fits-all and must be operationalized per incident characteristics. It signals a need for conditional rules or decision criteria in any applied model. Limits: statement is normative, no concrete decision thresholds provided.",
+            "potential_themes": [
+              "attribution_challenges"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "assumption"
+          },
+          {
+            "direct_quote": "Obtaining answers will also involve coordination amongst multiple agencies and stakeholders, similar to the INSA TTX's finding to evaluate the procedures for incident response and recovery among all relevant stakeholders.",
+            "paraphrase": "The authors argue that producing attribution answers requires multi-agency and stakeholder coordination, and that exercises (e.g., INSA TTX) can evaluate incident response procedures across stakeholders.",
+            "researcher_comment": "This identifies inter-organizational coordination as a methodological and procedural requirement for operationalized attribution workflows. It implies methods should incorporate stakeholder roles and information flows. Caveat: does not specify mechanisms for coordination or data-sharing protocols.",
+            "potential_themes": [
+              "coordination_requirements",
+              "attribution_challenges"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "method"
+          },
+          {
+            "direct_quote": "In addition, political dynamics will almost certainly complicate cyberattack responses , both internally and externally.",
+            "paraphrase": "The authors note that political dynamics are likely to complicate cyber response decisions domestically and internationally, creating constraints on attribution and response processes.",
+            "researcher_comment": "This is an explicit limitation affecting how frameworks are applied in practice and may constrain methodological choices (e.g., what evidence is released). It flags externalities (political cost/benefit) that should be modeled or accounted for. No empirical support provided here.",
+            "potential_themes": [
+              "attribution_challenges",
+              "confidence_language"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "limitation"
+          },
+          {
+            "direct_quote": "Thus, it would benefit USG policymakers and corporate decision makers to become familiar with the framework and practice answering the questions derived from it before an attack occurs.",
+            "paraphrase": "The authors recommend that policymakers and corporate actors learn the framework in advance and rehearse answering its questions prior to an actual cyber incident as a preparatory method.",
+            "researcher_comment": "This is a recommendation to institutionalize training and tabletop practice to improve operational readiness of attribution-informed decisions. It implies exercises are part of methodological preparation. Implementation details (frequency, metrics) are absent.",
+            "potential_themes": [
+              "confidence_language",
+              "attribution_challenges"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "recommendation"
+          },
+          {
+            "direct_quote": "analysts should create cyberattack scenarios that vary the levels of attribution confidence/time, scale, and relationship.",
+            "paraphrase": "The authors propose that analysts construct scenarios varying attribution confidence, timing, scale, and victim-attacker relationships as a concrete method to operationalize the framework.",
+            "researcher_comment": "This provides a specific operationalization strategy: use scenario variation along defined dimensions (confidence, time, scale, relationship) to test decision-making. It directly informs methods for both model validation and training. It lacks specification of how to quantify those dimensions.",
+            "potential_themes": [
+              "confidence_language",
+              "evidentiary_standards"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "method"
+          },
+          {
+            "direct_quote": "Varying these factors will familiarize decision makers with how to balance the competing risks of insufficient deterrence and the potential for escalation.",
+            "paraphrase": "The authors claim that varying scenario factors trains decision makers to trade off risks between weak deterrence and escalation potential when responding to cyberattacks.",
+            "researcher_comment": "This links scenario-based methods to normative risk-balancing outcomes and suggests intended evaluation metrics (deterrence vs. escalation). It indicates the operational goal of exercises but does not define decision thresholds or measurement approaches.",
+            "potential_themes": [
+              "attribution_challenges",
+              "confidence_language"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "claim"
+          },
+          {
+            "direct_quote": "Presenting these scenarios to policymakers and corporate decision makers before a cyberattack occurs will foster a more thorough analysis about the risks of responding—or not responding—in the almost certain event that the U.S. sustains another cyberattack.",
+            "paraphrase": "The authors argue that pre-event presentation of varied scenarios to policymakers and corporate leaders will improve analysis of response-versus-nonresponse risks in future cyber incidents.",
+            "researcher_comment": "This is an applied recommendation tying scenario exercises to better-informed strategic choices; it supports the inclusion of stakeholder engagement in operationalization. It remains high-level without process metrics or evaluation design.",
+            "potential_themes": [
+              "attribution_challenges",
+              "evidentiary_standards"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "recommendation"
+          }
+        ]
+      },
+      {
+        "input_tokens": 7366,
+        "output_tokens": 2671,
+        "total_tokens": 10037,
+        "cost_usd": 0.023068,
+        "model": "gpt-5-mini-2025-08-07",
+        "is_batch": true
+      }
+    ]
+  },
+  {
+    "item_key": "HYLZCIPX",
+    "section_key": "__postscript__",
+    "response": [
+      {
+        "evidence": [
+          {
+            "direct_quote": "Answering the questions derived from the framework above will depend on the suspected perpetrator and the unique circumstances of each cyberattack.",
+            "paraphrase": "The authors state that answers produced by the framework must be tailored to the suspected perpetrator and the specific circumstances of each cyber incident, which affects how frameworks are applied (RQ2).",
+            "researcher_comment": "This frames attribution as context-dependent, limiting one-size-fits-all application of models. It implies frameworks must include case-specific inputs and decision rules. No operational detail or examples of how to condition models on perpetrator/circumstance are provided.",
+            "potential_themes": [
+              "attribution_challenges"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "assumption"
+          },
+          {
+            "direct_quote": "Obtaining answers will also involve coordination amongst multiple agencies and stakeholders, similar to the INSA TTX's finding to evaluate the procedures for incident response and recovery among all relevant stakeholders.",
+            "paraphrase": "The text claims that producing attribution answers requires multi-agency and stakeholder coordination, and recommends evaluating incident response procedures across stakeholders (RQ1, RQ2).",
+            "researcher_comment": "This identifies inter-organizational coordination as a methodological/operational requirement for attribution processes. It points to governance and procedural interoperability as necessary but gives no mechanism for coordination or data-sharing standards. The INSA TTX is cited as analogous evidence.",
+            "potential_themes": [
+              "attribution_challenges"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "recommendation"
+          },
+          {
+            "direct_quote": "political dynamics will almost certainly complicate cyberattack responses , both internally and externally.",
+            "paraphrase": "The authors assert that domestic and international political dynamics will complicate responses to cyberattacks, affecting operational use of attribution (RQ2).",
+            "researcher_comment": "This highlights a non-technical constraint on attribution and response decisions and cautions that models must account for political constraints. It is a high-level limitation statement with no specific parameters for modelling political effects.",
+            "potential_themes": [
+              "attribution_challenges"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "limitation"
+          },
+          {
+            "direct_quote": "analysts should create cyberattack scenarios that vary the levels of attribution confidence/time, scale, and relationship.",
+            "paraphrase": "The authors recommend that analysts operationalize the framework by constructing scenarios that systematically vary attribution confidence/time, scale, and actor-relationship parameters (RQ1, RQ2).",
+            "researcher_comment": "This is explicit, actionable operationalization guidance and constitutes a methodological recommendation (scenario experimentation) to exercise the framework. It names three parameters to vary but does not specify measurement scales or experimental design.",
+            "potential_themes": [
+              "confidence_language",
+              "attribution_challenges"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "method"
+          },
+          {
+            "direct_quote": "Varying these factors will familiarize decision makers with how to balance the competing risks of insufficient deterrence and the potential for escalation.",
+            "paraphrase": "The text claims that varying scenario parameters will train decision makers to weigh risks of weak deterrence against escalation when deciding responses (RQ1, RQ2).",
+            "researcher_comment": "This links the scenario-method to a concrete decision-making objective (balancing deterrence versus escalation). It is a stated outcome without empirical validation in the excerpt, so usefulness depends on scenario fidelity and evaluation metrics.",
+            "potential_themes": [
+              "attribution_challenges"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "claim"
+          },
+          {
+            "direct_quote": "Presenting these scenarios to policymakers and corporate decision makers before a cyberattack occurs will foster a more thorough analysis about the risks of responding—or not responding—in the almost certain event that the U.S. sustains another cyberattack.",
+            "paraphrase": "The authors recommend pre-briefing policymakers and corporate leaders with scenario exercises to encourage thorough analysis of response risks prior to future cyberattacks (RQ1, RQ2).",
+            "researcher_comment": "This is a preparedness recommendation to institutionalize scenario-based training; it supports operational uptake of frameworks but lacks guidance on frequency, evaluation, or integration into formal decision processes. It presumes decision-makers will act on insights from exercises.",
+            "potential_themes": [
+              "attribution_challenges"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "recommendation"
+          }
+        ]
+      },
+      {
+        "input_tokens": 7363,
+        "output_tokens": 3589,
+        "total_tokens": 10952,
+        "cost_usd": 0.027195,
+        "model": "gpt-5-mini-2025-08-07",
+        "is_batch": true
+      }
+    ]
+  }
+]

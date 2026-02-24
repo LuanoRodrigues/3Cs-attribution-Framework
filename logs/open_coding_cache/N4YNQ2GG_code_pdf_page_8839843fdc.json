@@ -1,0 +1,521 @@
+[
+  {
+    "item_key": "N4YNQ2GG",
+    "section_key": "# 1. INTRODUCTION + # 2. NUCLEAR WEAPONS VS CYBER WEAPONS",
+    "response": [
+      {
+        "evidence": [
+          {
+            "direct_quote": "and the 2012 DDOS against U.S. financial institution networks hint of nation state direction and/or involvement based on intent, target selection, and the desired effect created.",
+            "paraphrase": "The author claims that incidents (e.g., 2012 DDoS) are interpreted as indicators of nation-state involvement inferred from intent, target selection, and effects, which are used as attribution evidence.",
+            "researcher_comment": "This identifies intent, target selection, and observed effects as explicit evidentiary indicators used to infer state involvement. The phrasing \"hint\" signals authorial caution—these indicators are circumstantial rather than definitive. Useful for RQ0 (types of evidence) and RQ2 (how indicators are used in attribution reasoning).",
+            "potential_themes": [
+              "evidentiary_standards",
+              "attribution_challenges"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "claim"
+          },
+          {
+            "direct_quote": "Nation states typically do not assume responsibility for hostile actions taken in cyber space;",
+            "paraphrase": "The author observes that states generally do not claim responsibility for cyber attacks, removing a straightforward form of attribution evidence.",
+            "researcher_comment": "Absence of state admission is presented as a systemic evidentiary gap that complicates attribution. This is a behavioral/factual claim that constrains what evidence analysts can rely on. It directly informs RQ0 and RQ2.",
+            "potential_themes": [
+              "attribution_challenges"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "finding"
+          },
+          {
+            "direct_quote": "Attribution in cyberspace is extremely difficult and can't be as precise as identifying a nation state that has launched a nuclear weapon,",
+            "paraphrase": "The author asserts that cyber attribution is far less precise than attribution in the nuclear domain.",
+            "researcher_comment": "This explicit comparison frames the expected precision of attribution frameworks and signals limits on confidence claims. It is directly relevant to how models should represent uncertainty (RQ2) and to methodological expectations (RQ1).",
+            "potential_themes": [
+              "attribution_challenges",
+              "evidentiary_standards"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "finding"
+          },
+          {
+            "direct_quote": "Unlike nuclear weapons development, which can be monitored, there is no similar transparency for nation state production of cyber weapons, nor an international watchdog agency to track such developments.",
+            "paraphrase": "The author states that cyber-weapon development lacks the transparency and international monitoring mechanisms that exist for nuclear weapons, reducing observable evidence of state capability.",
+            "researcher_comment": "This points to a structural evidentiary limitation: absence of observable development indicators and institutional monitoring. It implies attribution frameworks must rely more on indirect indicators and inference (RQ0, RQ2).",
+            "potential_themes": [
+              "evidentiary_standards",
+              "attribution_challenges"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "limitation"
+          },
+          {
+            "direct_quote": "these attacks were designed to create opportunities and influence events to gain political advantage.",
+            "paraphrase": "The author claims the cited cyberattacks aimed to influence political outcomes and gain strategic advantage.",
+            "researcher_comment": "Attribution reasoning here uses inferred political motive as part of the evidentiary story; motive is informative but inherently interpretive and non-unique. Relevant to RQ0 (types of evidence like intent) and RQ2 (how intent is operationalized).",
+            "potential_themes": [
+              "evidentiary_standards"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "claim"
+          },
+          {
+            "direct_quote": "the strategy states that the U.S. “reserves the right to use all necessary means – diplomatic, informational, military, and economic – as appropriate and consistent with applicable international law.”",
+            "paraphrase": "U.S. cyberspace policy reserves the right to respond to cyber actions through diplomatic, informational, military, and economic measures.",
+            "researcher_comment": "This is a stated policy position about response options rather than a technical attribution method, but it informs operational choices post-attribution. Relevant for RQ1 (methods/policy instruments) though it does not specify attribution procedures.",
+            "potential_themes": [
+              "policy_position"
+            ],
+            "relevance_score": 3,
+            "relevant_rqs": [
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "policy_position"
+          },
+          {
+            "direct_quote": "citing it as a military domain much like air, land, and maritime, with U.S. Cyber Command leading the efforts to \"conduct full-spectrum military cyberspace operations to ensure U.S. and allied freedom of action in cyberspace, while denying the same to their adversaries.\"",
+            "paraphrase": "The Department of Defense frames cyberspace as a military domain and tasks U.S. Cyber Command with conducting full-spectrum cyberspace operations to secure freedom of action and deny adversaries the same.",
+            "researcher_comment": "This documents institutional operationalization (militarization and command responsibility) which shapes how methods and capabilities are organized, but it does not detail technical attribution practices. It matters for RQ1 (organizational/method context) and indirectly for RQ2 (operational capacity to act on attributions).",
+            "potential_themes": [
+              "policy_position"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "policy_position"
+          }
+        ]
+      },
+      {
+        "input_tokens": 3184,
+        "output_tokens": 4245,
+        "total_tokens": 7429,
+        "cost_usd": 0.023878,
+        "model": "gpt-5-mini-2025-08-07",
+        "is_batch": true
+      }
+    ]
+  },
+  {
+    "item_key": "N4YNQ2GG",
+    "section_key": "# 3. HYPOTHETICAL CASE STUDIES",
+    "response": [
+      {
+        "evidence": [
+          {
+            "direct_quote": "While attribution in cyberspace is nearly impossible, certain elements such as actor motivation, intent, behavioral actions, actor profiling can be identified, evaluated, and assessed to help better understand the significance of these cyber events",
+            "paraphrase": "The authors state that although full attribution is very difficult, analysts can identify and evaluate elements like motivation, intent, behavior, and actor profiles as part of attribution methods.",
+            "researcher_comment": "This frames the methodological approach used: focus on behavioral and contextual indicators rather than binary technical attribution. It acknowledges a fundamental limitation (near-impossibility) while prescribing observable factors for analysis. Use this as a basis for coding attribution methods that rely on sociopolitical and behavioral inference.",
+            "potential_themes": [
+              "attribution_challenges",
+              "behavioral_indicators"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "method"
+          },
+          {
+            "direct_quote": "The fact that the Pro-Kremlin youth group \"Nashi\" immediately claimed responsibility for the cyber attack",
+            "paraphrase": "Claims of responsibility (e.g., Nashi's immediate claim) are used as evidentiary input when assessing attribution and intent.",
+            "researcher_comment": "Actor self-claims are treated as an evidentiary type but the text implies caution (claim alone is insufficient). This illustrates social/claim-based evidence used alongside technical indicators. Weight such claims as low-to-moderate evidentiary value unless corroborated.",
+            "potential_themes": [
+              "actor_claims"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              }
+            ],
+            "evidence_type": "claim"
+          },
+          {
+            "direct_quote": "some Russian computers being involved in the DDoS (as well as other countries in the world)",
+            "paraphrase": "Technical indicators in the Estonian case included involvement of computers located in Russia (and other countries) in the DDoS traffic.",
+            "researcher_comment": "This is a straightforward technical indicator (geolocated hosts) used to infer possible origin but the text notes it is circumstantial. Such evidence should be categorized as network/host-level indicators with limited conclusiveness due to spoofing/proxying risks.",
+            "potential_themes": [
+              "technical_indicators",
+              "attribution_challenges"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "finding"
+          },
+          {
+            "direct_quote": "What's more, the attackers constantly tweaked their malicious server requests to evade filters.",
+            "paraphrase": "Observers noted that attackers adapted their server requests to evade mitigation filters, an observable tactic used in analysis.",
+            "researcher_comment": "Adaptive behavior (tuning to evade filters) is a behavioral/technical signature useful for profiling attacker capabilities and sophistication. However, adaptive tactics do not uniquely identify sponsor and should be combined with other evidence types.",
+            "potential_themes": [
+              "behavioral_indicators",
+              "forensic_methods"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "finding"
+          },
+          {
+            "direct_quote": "sustained floods hitting 70 Gbps and more than 30 million packets per second were recorded in some of the attacks.",
+            "paraphrase": "Measured attack metrics for the 2012 financial-sector DDoS included sustained flows of ~70 Gbps and over 30 million packets per second.",
+            "researcher_comment": "Quantitative metrics (bandwidth, pps) are concrete forensic evidence of scale and capability; useful for assessing operational effect and resource requirements. Such metrics are strong for operational analysis but not sufficient alone for attribution.",
+            "potential_themes": [
+              "attack_metrics"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              }
+            ],
+            "evidence_type": "finding"
+          },
+          {
+            "direct_quote": "this was the first documented incident where an actual cyber weapon was deployed whose intention was to deny, degrade, disrupt, and destroy a specific information system target.",
+            "paraphrase": "Stuxnet is characterized as the first documented deployment of a cyber weapon engineered specifically to deny, degrade, disrupt, or destroy a targeted information system.",
+            "researcher_comment": "This frames Stuxnet as a seminal technical/operational finding and sets a precedence for treating malware as kinetic-equivalent weapons. Use this when coding evidence types that treat sophisticated malware as strategic weapons rather than mere tools.",
+            "potential_themes": [
+              "technical_indicators",
+              "targeting_SCADA"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "finding"
+          },
+          {
+            "direct_quote": "That malware had been injected into a network not connected to the Internet was nothing new. Individuals are constantly infecting stand-alone machines and networks via the witting or unwitting insertion of infected removal media.",
+            "paraphrase": "The authors report the infection vector for Stuxnet involved removable media infecting air-gapped (non-Internet-connected) systems.",
+            "researcher_comment": "Identification of removable-media infection vectors is concrete forensic detail that informs attribution timelines and operator sophistication. This supports method categories (supply/air-gap compromise) and shows operational trade-offs but does not itself identify sponsor identity.",
+            "potential_themes": [
+              "infection_vector",
+              "forensic_methods"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "finding"
+          },
+          {
+            "direct_quote": "Therefore, when viewed as an instrument of policy, the DDoS attacks could be considered an unqualified failure",
+            "paraphrase": "When evaluated as a foreign-policy instrument, the authors conclude the DDoS campaign was an unqualified failure.",
+            "researcher_comment": "This operationalizes an analytical framework: assess cyber operations against foreign-policy objectives (effectiveness criterion). It is an explicit policy-assessment judgment and useful for RQ2 coding on how models measure success/failure.",
+            "potential_themes": [
+              "policy_tool_assessment",
+              "operational_effectiveness"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "finding"
+          },
+          {
+            "direct_quote": "Three truths emerged from this situation: 1.) Stuxnet did not cause Iran to alter its plans; 2.) The deployment of a cyber weapon did not influence the Iranian government to cease its production of enriched uranium; and 3.) Stuxnet did not encourage the government to come to an arrangement with the United States and European Union.",
+            "paraphrase": "The authors summarize that Stuxnet failed to change Iranian policy, halt uranium enrichment, or induce diplomatic agreement with the US/EU.",
+            "researcher_comment": "This provides explicit outcome-based criteria used to judge strategic effectiveness of cyber operations. Use as an exemplar of how the authors operationalize 'success' (political/diplomatic change), not merely technical impact.",
+            "potential_themes": [
+              "policy_tool_assessment",
+              "operational_effectiveness"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "finding"
+          },
+          {
+            "direct_quote": "This suggests that these individuals had some affiliation with a nation state for training, technical support, and/or sponsorship.",
+            "paraphrase": "The observed tactics and capabilities led the authors to infer probable affiliation of the attackers with a nation-state for training, support, or sponsorship.",
+            "researcher_comment": "This is an inferential attribution method: reasoning from capability/tactics to likely sponsorship. It is circumstantial and rests on assumptions about capability distribution; code carefully as an attribution heuristic rather than definitive proof.",
+            "potential_themes": [
+              "attribution_challenges",
+              "evidentiary_standards"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 0
+              }
+            ],
+            "evidence_type": "claim"
+          },
+          {
+            "direct_quote": "The attackers used servers and customized malware, tailoring the campaign to get around defenses specifically designed to stop floods of data.",
+            "paraphrase": "Analysts observed use of hosted servers and customized malware tailored to circumvent DDoS defenses as part of the campaign's technical profile.",
+            "researcher_comment": "This details technical/operational evidence (custom tooling and infrastructure) that supports assessments of sophistication and likely resources. Such artifacts are valuable for capability-based attribution but do not alone indicate policy intent or sponsor identity.",
+            "potential_themes": [
+              "technical_indicators",
+              "forensic_methods"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "finding"
+          }
+        ]
+      },
+      {
+        "input_tokens": 7256,
+        "output_tokens": 5001,
+        "total_tokens": 12257,
+        "cost_usd": 0.033389,
+        "model": "gpt-5-mini-2025-08-07",
+        "is_batch": true
+      }
+    ]
+  },
+  {
+    "item_key": "N4YNQ2GG",
+    "section_key": "# 4. FUTURE CONSIDERATIONS + # 5. CONCLUSION",
+    "response": [
+      {
+        "evidence": [
+          {
+            "direct_quote": "In October 2012, U.S. President Barack Obama signed a directive that enabled the military to act more aggressively against cyber attacks directed against the United States.",
+            "paraphrase": "A 2012 presidential directive authorized more aggressive military action in response to cyber attacks. ",
+            "researcher_comment": "This documents a concrete policy change enabling military cyber options and is relevant when mapping operational methods available to states. It does not describe how such military cyber actions are executed or attributed. ",
+            "potential_themes": [
+              "policy_change",
+              "state_behaviour"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "policy_position"
+          },
+          {
+            "direct_quote": "\"cyberoperations... are an integral part of the coordinated national security effort that includes diplomatic, economic, and traditional military measures.\"",
+            "paraphrase": "A U.S. defense official framed cyberoperations as an integral component of coordinated national security measures. ",
+            "researcher_comment": "This shows official framing of cyber operations as a multi-domain policy instrument, which informs what methods and actors are considered legitimate. Quote-based evidence signals reliance on elite statements rather than empirical evaluation. ",
+            "potential_themes": [
+              "policy_change"
+            ],
+            "relevance_score": 3,
+            "relevant_rqs": [
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "claim"
+          },
+          {
+            "direct_quote": "For a country like North Korea that has a near negligible Internet penetration rate, cyber attacks as a policy tool are almost futile.",
+            "paraphrase": "Cyber attacks are ineffective as a policy tool against states with negligible Internet penetration, exemplified by North Korea. ",
+            "researcher_comment": "This provides a contextual limitation on cyber methods tied to target infrastructure and connectivity; useful when categorizing which empirical cases are relevant. It is an assertion without empirical metrics of 'negligible' or outcome measurement. ",
+            "potential_themes": [
+              "deterrence_effectiveness"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 0
+              }
+            ],
+            "evidence_type": "claim"
+          },
+          {
+            "direct_quote": "is the United States prepared to potentially receive the same intensity of cyber attacks as it gives out?",
+            "paraphrase": "The authors question whether the United States is prepared to face reciprocal cyber attacks if it employs offensive cyber measures. ",
+            "researcher_comment": "This highlights reciprocity and risk assessment as operational considerations for state use of cyber weapons; relevant to design of methods and rules of engagement. It is rhetorical rather than evidence-based. ",
+            "potential_themes": [
+              "state_behaviour"
+            ],
+            "relevance_score": 3,
+            "relevant_rqs": [
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "assumption"
+          },
+          {
+            "direct_quote": "Both France \u000364 a NATO member country \u000364 and Israel \u000364 the U.S.'s strongest ally and a mutual defense treaty partner in the tumultuous Middle East region \u000364 have been identified as pervasive economic espionage actors against U.S. interests, according to the Central Intelligence Agency.",
+            "paraphrase": "The Central Intelligence Agency has identified allied states, specifically France and Israel, as perpetrators of pervasive economic espionage against U.S. interests. ",
+            "researcher_comment": "This sentence indicates the use of intelligence agency assessments as a source of evidence for claims about state activity. It signals reliance on classified or governmental analytic judgments rather than open technical attribution. ",
+            "potential_themes": [
+              "evidentiary_standards"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 0
+              }
+            ],
+            "evidence_type": "finding"
+          },
+          {
+            "direct_quote": "Although the use of cyber attacks to support nation state foreign policy interests is still nascent at best, early indications clearly show it to be unsuccessful at influencing decision makers or their courses of action, and therefore is not an effective policy tool.",
+            "paraphrase": "Early evidence indicates that cyber attacks have not successfully influenced decision-makers and are therefore ineffective as a state policy tool. ",
+            "researcher_comment": "This is an explicit evaluative finding about efficacy, useful for synthesis on outcomes of cyber operations. The claim references 'early indications' without specifying the underlying empirical basis or criteria for 'influence.' ",
+            "potential_themes": [
+              "deterrence_effectiveness",
+              "confidence_language"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "finding"
+          },
+          {
+            "direct_quote": "First and most notably, despite the advanced cyber weaponry capabilities demonstrated by Stuxnet, Duqu, and Flame, there has yet to be that one \"jaw dropping\" effect that makes individuals think twice before booting up their laptops with malicious intent.",
+            "paraphrase": "Although advanced malware like Stuxnet, Duqu, and Flame exist, none produced a deterrent 'jaw dropping' effect on potential perpetrators. ",
+            "researcher_comment": "The sentence treats notable malware incidents as case evidence but argues they failed to create broad deterrent effects; useful to classify incident-based evidence and its limits. It does not quantify impact or spell out whose behavior was measured. ",
+            "potential_themes": [
+              "case_studies",
+              "deterrence_effectiveness"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              }
+            ],
+            "evidence_type": "example"
+          },
+          {
+            "direct_quote": "Second, the threat of offensive cyber operations has a relative limited target base.",
+            "paraphrase": "Offensive cyber operations affect only a relatively limited set of viable targets. ",
+            "researcher_comment": "This general claim constrains where cyber methods can be applied and helps categorize evidence by target type (infrastructure-dependent targets). The statement is broad and lacks operational thresholds for 'limited.' ",
+            "potential_themes": [
+              "deterrence_effectiveness"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 0
+              }
+            ],
+            "evidence_type": "claim"
+          },
+          {
+            "direct_quote": "the deployment of cyber weaponry runs the risk of quickly and unnecessarily escalating a situation, particularly if cyber actions are misunderstood or misinterpreted by a clever adversary seeking to divert blame onto a third country.",
+            "paraphrase": "Using cyber weapons risks rapid escalation, especially when actions are misinterpreted or when attribution is deliberately diverted to third parties. ",
+            "researcher_comment": "This directly identifies attribution risk and deception as a major operational limitation for cyber methods, which is central to RQ2 about operationalizing attribution frameworks. It asserts the problem but does not provide technical attribution methods or mitigations. ",
+            "potential_themes": [
+              "attribution_challenges"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              },
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "limitation"
+          }
+        ]
+      },
+      {
+        "input_tokens": 5080,
+        "output_tokens": 3978,
+        "total_tokens": 9058,
+        "cost_usd": 0.025521,
+        "model": "gpt-5-mini-2025-08-07",
+        "is_batch": true
+      }
+    ]
+  }
+]

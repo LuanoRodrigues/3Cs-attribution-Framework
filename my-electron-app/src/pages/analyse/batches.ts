@@ -1,5 +1,5 @@
 ﻿import type { AnalysePageContext, AnalyseRoundId, AnalyseState, BatchPayload, BatchRecord, SectionRecord } from "../../analyse/types";
-import { loadBatches, loadSections } from "../../analyse/data";
+import { getDefaultBaseDir, loadBatches, loadSections } from "../../analyse/data";
 
 interface FilterState {
   search: string;
@@ -36,22 +36,15 @@ function emitPayload(container: HTMLElement, payload: Record<string, unknown>): 
   container.dispatchEvent(new CustomEvent("analyse-payload-selected", { detail: payload, bubbles: true }));
 }
 
-export function renderBatchesPage(container: HTMLElement, state: AnalyseState, _ctx?: AnalysePageContext): void {
+export function renderBatchesPage(container: HTMLElement, state: AnalyseState, ctx?: AnalysePageContext): void {
   container.innerHTML = "";
 
   const title = document.createElement("h2");
   title.textContent = "Batch manager";
   container.appendChild(title);
 
-  if (!state.activeRunPath) {
-    const empty = document.createElement("div");
-    empty.className = "empty-state";
-    empty.textContent = "Select an active run in the Corpus page to load batches.";
-    container.appendChild(empty);
-    return;
-  }
-
   let batches: BatchRecord[] = [];
+  let activeRunPath = String(state.activeRunPath || "").trim();
   const filters: FilterState = {
     search: "",
     themes: new Set<string>(),
@@ -278,13 +271,13 @@ export function renderBatchesPage(container: HTMLElement, state: AnalyseState, _
   };
 
   const loadSectionsForBatch = async (batch: BatchRecord) => {
-    if (!state.activeRunPath) {
+    if (!activeRunPath) {
       sectionsStatus.textContent = "No active run loaded.";
       return;
     }
     sectionsStatus.textContent = "Loading sections...";
     try {
-      const allSections = await loadSections(state.activeRunPath, currentRound);
+      const allSections = await loadSections(activeRunPath, currentRound);
       sectionsData = allSections.filter((section) => matchesBatchSection(section, batch));
       sectionFilters.routes.clear();
       renderRouteFilters();
@@ -589,17 +582,30 @@ export function renderBatchesPage(container: HTMLElement, state: AnalyseState, _
   const loadData = async () => {
     resetSectionsPanel();
     status.textContent = "Loading batches...";
-    const runPath = state.activeRunPath;
+    let runPath = activeRunPath;
     if (!runPath) {
-      status.textContent = "No active run selected.";
+      runPath = String(state.baseDir || "").trim();
+    }
+    if (!runPath) {
+      runPath = String((await getDefaultBaseDir()) || "").trim();
+    }
+    if (!runPath) {
+      status.textContent = "No batch source path available.";
       return;
     }
+    if (!state.activeRunPath || state.activeRunPath !== runPath) {
+      ctx?.updateState({
+        activeRunPath: runPath,
+        baseDir: String(state.baseDir || "").trim() || runPath
+      });
+    }
+    activeRunPath = runPath;
     try {
       batches = await loadBatches(runPath);
       selectedPayloads.clear();
       renderFilterOptions();
       renderList();
-      status.textContent = `${batches.length} batch(es) loaded`;
+      status.textContent = `${batches.length} batch(es) loaded from ${runPath}`;
     } catch (error) {
       console.error(error);
       status.textContent = "Failed to load batches.";

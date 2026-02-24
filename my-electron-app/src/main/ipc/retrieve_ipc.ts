@@ -29,6 +29,7 @@ import {
   fetchZoteroCollectionItems,
   fetchZoteroCollectionItemsPreview,
   fetchZoteroCollectionCount,
+  normalizeZoteroCollectionKey,
   listZoteroCollections,
   listZoteroCollectionsCached,
   mergeTables,
@@ -70,6 +71,30 @@ const toStringOrUndefined = (value: unknown): string | undefined => {
     return value.trim();
   }
   return undefined;
+};
+
+const normalizeCollectionSelector = (value: unknown): string => {
+  if (typeof value !== "string") return "";
+  return normalizeZoteroCollectionKey(value).toLowerCase();
+};
+
+const normalizeCollectionSelectorStrict = (value: unknown): string => {
+  if (typeof value !== "string") return "";
+  return normalizeZoteroCollectionKey(value).replace(/\s+/g, "").toLowerCase();
+};
+
+const resolveCollectionFromList = (
+  collections: { key: string; name: string }[],
+  target: string
+): { key: string; name: string } | undefined => {
+  const normalized = normalizeCollectionSelector(target);
+  if (!normalized) return undefined;
+  const byKey = collections.find((collection) => normalizeCollectionSelector(collection.key) === normalized);
+  if (byKey) return byKey;
+  const byName = collections.find(
+    (collection) => normalizeCollectionSelector(collection.name) === normalized
+  );
+  return byName || undefined;
 };
 
 const resolveZoteroCredentials = (): { libraryId: string; libraryType: string; apiKey: string } => {
@@ -485,6 +510,8 @@ export const handleRetrieveCommand = async (
   if (action === "datahub_load_zotero") {
     const collectionName = resolveZoteroCollection(payload);
     const collectionKey = toStringOrUndefined(payload?.collectionKey);
+    const resolvedTarget = String(collectionKey || collectionName || "");
+    const normalizedTarget = normalizeCollectionSelector(resolvedTarget);
     const cache = payload?.cache !== false;
     let credentials: { libraryId: string; libraryType: "user" | "group"; apiKey: string };
     try {
@@ -492,21 +519,19 @@ export const handleRetrieveCommand = async (
     } catch (error) {
       return { status: "error", message: error instanceof Error ? error.message : "Zotero credentials unavailable." };
     }
-    const target = collectionKey || collectionName;
-    if (!target) {
+    if (!normalizedTarget) {
       return { status: "error", message: "Collection key or name is required to load Zotero items." };
     }
     // store last collection as NAME for UI, not key
     try {
       const collections = await listZoteroCollectionsCached(credentials as any, resolveDataHubCacheDir());
-      const match =
-        collections.find((c) => c.key === target) ||
-        collections.find((c) => c.name === target) ||
-        collections.find(
-          (c) => c.name.replace(/\s+/g, "").toLowerCase() === target.replace(/\s+/g, "").toLowerCase()
-        );
+      const match = resolveCollectionFromList(collections, resolvedTarget);
       if (!match) {
-        return { status: "error", message: `Collection '${target}' not found.`, available: collections.slice(0, 10) };
+        return {
+          status: "error",
+          message: `Collection '${resolvedTarget}' not found.`,
+          available: collections.slice(0, 10)
+        };
       }
       const cacheDir = resolveDataHubCacheDir();
       const { table, cached } = await fetchZoteroCollectionItems(credentials as any, match.key, undefined, cacheDir, cache);
@@ -550,10 +575,7 @@ export const handleRetrieveCommand = async (
     try {
       const creds = resolveZoteroCredentialsTs();
       const collections = await listZoteroCollectionsCached(creds as any, resolveDataHubCacheDir());
-      const match =
-        collections.find((c) => c.key === target) ||
-        collections.find((c) => c.name === target) ||
-        collections.find((c) => c.name.replace(/\s+/g, "").toLowerCase() === target.replace(/\s+/g, "").toLowerCase());
+      const match = resolveCollectionFromList(collections, target);
       if (!match) {
         return { status: "error", message: `Collection '${target}' not found.` };
       }
@@ -564,7 +586,8 @@ export const handleRetrieveCommand = async (
     }
   }
   if (action === "datahub_zotero_count") {
-    const target = toStringOrUndefined(payload?.collectionKey);
+    const rawTarget = toStringOrUndefined(payload?.collectionKey);
+    const target = normalizeCollectionSelectorStrict(rawTarget);
     if (!target) {
       return { status: "error", message: "collectionKey required." };
     }
@@ -577,7 +600,8 @@ export const handleRetrieveCommand = async (
     }
   }
   if (action === "datahub_load_zotero_multi") {
-    const keys = Array.isArray(payload?.collectionKeys) ? (payload?.collectionKeys as string[]) : [];
+    const rawKeys = Array.isArray(payload?.collectionKeys) ? payload.collectionKeys : [];
+    const keys = rawKeys.map((entry) => normalizeCollectionSelectorStrict(entry)).filter(Boolean);
     if (!keys.length) {
       return { status: "error", message: "collectionKeys required." };
     }

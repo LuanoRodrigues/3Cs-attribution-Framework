@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": "{\n  \"classification\": \"Highly Relevant\",\n  \"relevance_score\": \"High\",\n  \"potential_subcategory\": \"State responsibility and due diligence in cyberspace; international law attribution and triggering obligations\",\n  \"justification\": \"The abstract directly addresses core issues in cyber conflict attribution and policy/law: when and how States owe due diligence in cyberspace, the legal triggers for State responsibility, and references to attribution principles and the ILC Articles. It proposes a tailored cyber-diligence framework, discusses minimal thresholds that activate a State\u2019s duty to act (including serious physical or incapacitating injury to infrastructure), and considers policy implications (channeling ultimate security responsibility to industry). Although doctrinal and limited by case-study scope, the paper focuses squarely on legal standards, remedial consequences (reparations), and normative policy design\u2014making it highly relevant to research on cyber attribution and state obligations under international law.\"\n}"
+  },
+  "cached_at": "2026-02-23T20:52:18.809349Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "E83VSVKH",
+  "function": "classify_by_abs"
+}

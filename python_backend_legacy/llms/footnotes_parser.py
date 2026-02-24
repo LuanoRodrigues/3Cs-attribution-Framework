@@ -409,6 +409,26 @@ def score_tex(md_text: str) -> int:
     return len(TEX_SUP_INLINE_RE.findall(md_text)) + len(TEX_SUP_BARE_RE.findall(md_text))
 
 
+def _strict_numeric_signal(md_text: str, num_count: int, tex_count: int, ay_count: int, sup_count: int) -> bool:
+    hits = list(CITE_NUMERIC_RE.finditer(md_text or ""))
+    if not hits:
+        return False
+    unique_numbers = set()
+    total_indices = 0
+    for m in hits:
+        chunk = m.group(0)
+        nums = re.findall(r"\d{1,4}", chunk)
+        total_indices += len(nums)
+        for n in nums:
+            unique_numbers.add(n)
+    if num_count < 10:
+        return False
+    if total_indices < 12 or len(unique_numbers) < 6:
+        return False
+    dominant_over_other = num_count >= int(1.25 * max(tex_count, ay_count, sup_count, 1))
+    return dominant_over_other
+
+
 def detect_citation_style(md_text: str) -> str:
     tex_count = score_tex(md_text)
     num_count = score_numeric(md_text)
@@ -426,16 +446,17 @@ def detect_citation_style(md_text: str) -> str:
     # hybrid if combined numeric+AY is clearly dominant
     if hy_count > max(tex_count, num_count, ay_count, 20) and num_count >= 5 and ay_count >= 5:
         return STYLE_HYBRID
-    # prefer numeric when both numeric and TeX-like signals are present
-    if num_count > 10 and num_count >= tex_count:
+    # strict numeric first: ensure it is genuinely numeric-dominant
+    if _strict_numeric_signal(md_text, num_count, tex_count, ay_count, sup_count):
         return STYLE_NUMERIC
-    # TeX superscripts when clearly stronger than numeric
-    if tex_count > 10 and tex_count > num_count:
-        return STYLE_TEX
 
     # author–year if AY count is strong
     if ay_count > max(tex_count, num_count, 10):
         return STYLE_AUTHOR
+
+    # prefer unknown over weak TeX signal; only classify TeX on strong dominance
+    if tex_count >= 20 and tex_count >= int(2.0 * max(num_count, ay_count, sup_count, 1)):
+        return STYLE_TEX
 
     return "unknown"
 
@@ -1322,6 +1343,75 @@ FOOTNOTE_BARE_RE = re.compile(r'^\s*\[\^\d+\]\s*$')  # bare [^12] line
 PARA_END_RE = re.compile(r'[.!?…]["”\')\]]*\s*$')
 
 SMALLWORDS = {"and", "or", "of", "the", "in", "on", "for", "to", "by", "with", "vs", "vs.", "a", "an"}
+RUNON_HEADING_LABELS = (
+    "abstract",
+    "introduction",
+    "background",
+    "methods",
+    "methodology",
+    "results",
+    "discussion",
+    "conclusion",
+    "references",
+    "bibliography",
+    "appendix",
+    "acknowledgements",
+    "acknowledgments",
+)
+HEADING_LABEL_PREFIX_RE = re.compile(
+    r'^(?P<label>'
+    r'Abstract|Introduction|Background|Methods?|Methodology|Results|Discussion|'
+    r'Conclusion|References|Bibliography|Appendix|Acknowledgements?|Acknowledgments?'
+    r')\s*[:.\-]\s+(?P<body>\S.*)$',
+    re.I
+)
+ABSTRACT_PREFIX_RE = re.compile(
+    r'^(?P<label>Abstract)\s+(?P<body>\S.*)$',
+    re.I
+)
+NUMBERED_HEADING_RUNON_RE = re.compile(
+    r'^(?P<head>(?:[IVXLCDM]+|\d+(?:\.\d+)*)\s*[.)-]?\s*'
+    r'(?:Introduction|Abstract|Background|Methods?|Methodology|Results|Discussion|'
+    r'Conclusion|References|Bibliography|Appendix)\b)'
+    r'\s+(?P<body>\S.*)$',
+    re.I
+)
+NUMBERED_HEADING_TOC_RUNON_RE = re.compile(
+    r'^(?P<head>(?:[IVXLCDM]+|\d+(?:\.\d+)*)\s*[.)-]?\s*'
+    r'(?:Introduction|Abstract|Background|Methods?|Methodology|Results|Discussion|'
+    r'Conclusion|References|Bibliography|Appendix)\b.*?)'
+    r'\.{2,}\s*\d+\s+(?P<body>\S.*)$',
+    re.I
+)
+NUMBERED_HEADING_SLASH_RE = re.compile(
+    r'^(?P<head>(?:[IVXLCDM]+|\d+(?:\.\d+)*)\s*[.)-]?\s*'
+    r'(?:Introduction|Abstract|Background|Methods?|Methodology|Results|Discussion|'
+    r'Conclusion|References|Bibliography|Appendix))'
+    r'\s*/\s*(?P<body>\S.*)$',
+    re.I
+)
+NUMBERED_HEADING_PAGE_TAIL_RE = re.compile(
+    r'^(?P<head>(?:[IVXLCDM]+|\d+(?:\.\d+)*)\s*[.)-]?\s*'
+    r'(?:Introduction|Abstract|Background|Methods?|Methodology|Results|Discussion|'
+    r'Conclusion|References|Bibliography|Appendix)\b.*?)'
+    r'\.{2,}\s*\d+\s+(?P<body>\*?\s*\S.*)$',
+    re.I
+)
+NAVIGATION_NOISE_LINE_RE = re.compile(
+    r'(?i)\b(previous article|next article|view issue table of contents)\b'
+)
+TOC_ONLY_LINE_RE = re.compile(r'(?i)^\s*#*\s*table of contents\s*$')
+HEADER_THEN_ABSTRACT_RE = re.compile(
+    r'(?i)\b(?:issn|e-issn|doi|journal|vol\.?|volume|issue|published by|copyright)\b.*\babstract\b'
+)
+FRONT_MATTER_META_LINE_RE = re.compile(
+    r'(?i)\b(?:issn|e-issn|doi|journal|vol\.?|volume|issue|published by|copyright|'
+    r'university press|electronic copy available at)\b'
+)
+TOC_ENTRY_LINE_RE = re.compile(
+    r'(?i)(?:\.{2,}\s*\d+\s*$)|'
+    r'^(?:[IVXLCDM]+|\d+(?:\.\d+)*)\s*[.)-]?\s+.+\s+\d+\s*$'
+)
 
 
 def looks_like_section_title(line: str) -> bool:
@@ -1398,6 +1488,139 @@ def clean_inline_spaces(s: str) -> str:
     return s
 
 
+def _split_heading_runon_line(s: str) -> List[str]:
+    """
+    Split common OCR run-ons where a heading label and paragraph body share one line.
+    Also drops clear navigation/TOC noise lines.
+    """
+    t = clean_inline_spaces(s.strip())
+    if not t:
+        return []
+    if NAVIGATION_NOISE_LINE_RE.search(t):
+        return []
+    if TOC_ONLY_LINE_RE.match(t):
+        return []
+
+    m = HEADING_LABEL_PREFIX_RE.match(t)
+    if m:
+        label = m.group('label').strip().title()
+        body = m.group('body').strip()
+        if body:
+            return [label, body]
+        return [label]
+
+    m = ABSTRACT_PREFIX_RE.match(t)
+    if m:
+        label = "Abstract"
+        body = m.group('body').strip()
+        body_low = body.lower()
+        # Avoid splitting normal prose like "Abstract entities ..."
+        if len(body.split()) >= 6 and not body_low.startswith(("of ", "entity", "entities")):
+            return [label, body]
+
+    m = NUMBERED_HEADING_RUNON_RE.match(t)
+    if m:
+        head = m.group('head').strip()
+        body = m.group('body').strip()
+        head_low = head.lower()
+        if any(lbl in head_low for lbl in RUNON_HEADING_LABELS) and len(body.split()) >= 6:
+            return [head, body]
+
+    m = NUMBERED_HEADING_TOC_RUNON_RE.match(t)
+    if m:
+        head = m.group('head').strip()
+        body = m.group('body').strip()
+        if len(body.split()) >= 5:
+            return [head, body]
+
+    m = NUMBERED_HEADING_PAGE_TAIL_RE.match(t)
+    if m:
+        head = m.group('head').strip()
+        body = m.group('body').strip()
+        if len(body.split()) >= 3:
+            return [head, body]
+
+    m = NUMBERED_HEADING_SLASH_RE.match(t)
+    if m:
+        head = m.group('head').strip()
+        body = m.group('body').strip()
+        if len(body.split()) >= 3:
+            return [head, body]
+
+    if HEADER_THEN_ABSTRACT_RE.search(t):
+        m_abs = re.search(r'(?i)\babstract\b\s*[:.\-]?\s*', t)
+        if m_abs:
+            left = t[:m_abs.start()].strip()
+            right = t[m_abs.end():].strip()
+            out: List[str] = []
+            if left:
+                out.append(left)
+            if right:
+                out.append("Abstract")
+                out.append(right)
+            else:
+                out.append("Abstract")
+            return out
+
+    return [t]
+
+
+def _strip_front_matter_header_noise(text: str) -> str:
+    if not text:
+        return text
+    cutoff = max(4000, int(len(text) * 0.15))
+    out_lines: List[str] = []
+    char_pos = 0
+    for line in text.splitlines():
+        stripped = line.strip()
+        in_front = char_pos <= cutoff
+        char_pos += len(line) + 1
+        if not stripped:
+            out_lines.append(line)
+            continue
+        if in_front and FRONT_MATTER_META_LINE_RE.search(stripped):
+            low = stripped.lower()
+            # Keep lines that actually carry abstract text; they are split later.
+            if "abstract" in low:
+                out_lines.append(line)
+                continue
+            # Drop compact publisher/header metadata lines in front matter only.
+            if len(stripped.split()) <= 28 and not HEADING_HASH_RE.match(stripped):
+                continue
+        out_lines.append(line)
+    return "\n".join(out_lines)
+
+
+def _is_toc_block(block: str) -> bool:
+    lines = [ln.strip() for ln in block.splitlines() if ln.strip()]
+    if not lines:
+        return False
+    if any(TOC_ONLY_LINE_RE.match(ln) for ln in lines):
+        return True
+    if any(NAVIGATION_NOISE_LINE_RE.search(ln) for ln in lines):
+        return True
+    toc_like = sum(1 for ln in lines if TOC_ENTRY_LINE_RE.search(ln))
+    if toc_like >= 2 and toc_like / max(1, len(lines)) >= 0.6:
+        return True
+    return False
+
+
+def _post_reflow_sanity_splits(text: str) -> str:
+    """Last-chance splitter to catch residual inline heading/body run-ons."""
+    if not text:
+        return text
+    out_lines: List[str] = []
+    for raw in text.splitlines():
+        if not raw.strip():
+            out_lines.append("")
+            continue
+        parts = _split_heading_runon_line(raw)
+        if not parts:
+            continue
+        out_lines.extend(parts)
+    return "\n".join(out_lines).rstrip("\n")
+
+
 def smart_join(prev: str, cur: str) -> str:
     prev = prev.rstrip()
     cur = cur.lstrip()
@@ -1424,23 +1647,43 @@ def ends_paragraph_text(txt: str) -> bool:
     return bool(PARA_END_RE.search(t))
 
 
+def _last_nonempty_line(txt: str) -> str:
+    for line in reversed(txt.splitlines()):
+        if line.strip():
+            return line.strip()
+    return ""
+
+
+def ends_with_section_title(txt: str) -> bool:
+    last = _last_nonempty_line(txt)
+    return bool(last) and looks_like_section_title(last)
+
+
 def reflow_lines_within_block(block: str) -> str:
     lines = block.splitlines()
     out = ''
     for raw in lines:
-        ln = clean_inline_spaces(raw.strip())
-        if not ln:
-            if not out.endswith('\n'):
-                out += '\n'
+        parts = _split_heading_runon_line(raw)
+        if not parts:
             continue
-        if not out:
-            out = ln
-            continue
-        last = out.rstrip('\n').rstrip()
-        if PARA_END_RE.search(last):
-            out = out + '\n' + ln
-        else:
-            out = smart_join(last, ln)
+        for ln in parts:
+            if not ln:
+                if not out.endswith('\n'):
+                    out += '\n'
+                continue
+            if not out:
+                out = ln
+                continue
+            last = out.rstrip('\n').rstrip()
+            last_line = _last_nonempty_line(out)
+            if looks_like_section_title(ln):
+                out = out + '\n' + ln
+            elif looks_like_section_title(last_line):
+                out = out + '\n' + ln
+            elif PARA_END_RE.search(last):
+                out = out + '\n' + ln
+            else:
+                out = smart_join(last, ln)
     return out
 
 
@@ -1463,6 +1706,7 @@ def normalize_footnote_defs(block: str) -> str:
 
 # ---------- main ----------
 def reflow_md(text: str) -> str:
+    text = _strip_front_matter_header_noise(text)
     raw_blocks = re.split(r'\n{2,}', text.strip('\n'))
     blocks = [blk.strip('\n') for blk in raw_blocks]
 
@@ -1470,6 +1714,8 @@ def reflow_md(text: str) -> str:
     for blk in blocks:
         if not blk.strip():
             prepped.append(blk);
+            continue
+        if _is_toc_block(blk):
             continue
         if is_heading_block(blk) or is_structural_block(blk):
             prepped.append(blk)
@@ -1490,7 +1736,7 @@ def reflow_md(text: str) -> str:
 
         acc = cur
         j = i
-        while not ends_paragraph_text(acc):
+        while not ends_paragraph_text(acc) and not ends_with_section_title(acc):
             k = j + 1
             while k < n and not prepped[k].strip():
                 k += 1
@@ -1514,7 +1760,8 @@ def reflow_md(text: str) -> str:
             final.append('')
         final.append(blk)
 
-    return '\n'.join(final).rstrip('\n')
+    result = '\n'.join(final).rstrip('\n')
+    return _post_reflow_sanity_splits(result)
 
 
 def make_flat_text(text_, style_):

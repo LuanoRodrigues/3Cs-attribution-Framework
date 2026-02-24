@@ -1,0 +1,303 @@
+{
+  "schema": "prisma_checklist_registry_v1",
+  "createdAt": "2026-02-23T17:03:53.597Z",
+  "checklistPath": "/home/pantera/projects/TEIA/Research/Systematic_review/prisma_check_list.html",
+  "checklistHash": "103119:1771861767747.3806",
+  "totalItems": 42,
+  "items": [
+    {
+      "itemId": "1",
+      "section": "Title",
+      "title": "Identify the report as a systematic review.",
+      "requirementText": "Identify the report as a systematic review.",
+      "expectedEvidenceType": "general"
+    },
+    {
+      "itemId": "2",
+      "section": "Abstract",
+      "title": "See the PRISMA 2020 for Abstracts checklist.",
+      "requirementText": "See the PRISMA 2020 for Abstracts checklist.",
+      "expectedEvidenceType": "general"
+    },
+    {
+      "itemId": "3",
+      "section": "Rationale",
+      "title": "Describe the rationale for the review in the context of existing knowledge.",
+      "requirementText": "Describe the rationale for the review in the context of existing knowledge.",
+      "expectedEvidenceType": "general"
+    },
+    {
+      "itemId": "4",
+      "section": "Objectives",
+      "title": "Provide an explicit statement of the objective(s) or question(s) the review addresses.",
+      "requirementText": "Provide an explicit statement of the objective(s) or question(s) the review addresses.",
+      "expectedEvidenceType": "general"
+    },
+    {
+      "itemId": "5",
+      "section": "Eligibility criteria",
+      "title": "Specify the inclusion and exclusion criteria for the review and how studies were grouped for the syntheses.",
+      "requirementText": "Specify the inclusion and exclusion criteria for the review and how studies were grouped for the syntheses.",
+      "expectedEvidenceType": "methods"
+    },
+    {
+      "itemId": "6",
+      "section": "Information sources",
+      "title": "Specify all databases, registers, websites, organisations, reference lists and other sources searched or consulted to identify studies. Specify the date when each source was last searched or consulted.",
+      "requirementText": "Specify all databases, registers, websites, organisations, reference lists and other sources searched or consulted to identify studies. Specify the date when each source was last searched or consulted.",
+      "expectedEvidenceType": "general"
+    },
+    {
+      "itemId": "7",
+      "section": "Search strategy",
+      "title": "Present the full search strategies for all databases, registers and websites, including any filters and limits used.",
+      "requirementText": "Present the full search strategies for all databases, registers and websites, including any filters and limits used.",
+      "expectedEvidenceType": "general"
+    },
+    {
+      "itemId": "8",
+      "section": "Selection process",
+      "title": "Specify the methods used to decide whether a study met the inclusion criteria of the review, including how many reviewers screened each record and each report retrieved, whether they worked independently, and if applicable, details of automation tools used in the process.",
+      "requirementText": "Specify the methods used to decide whether a study met the inclusion criteria of the review, including how many reviewers screened each record and each report retrieved, whether they worked independently, and if applicable, details of automation tools used in the process.",
+      "expectedEvidenceType": "prisma_flow"
+    },
+    {
+      "itemId": "9",
+      "section": "Data collection process",
+      "title": "Specify the methods used to collect data from reports, including how many reviewers collected data from each report, whether they worked independently, any processes for obtaining or confirming data from study investigators, and if applicable, details of automation tools used in the process.",
+      "requirementText": "Specify the methods used to collect data from reports, including how many reviewers collected data from each report, whether they worked independently, any processes for obtaining or confirming data from study investigators, and if applicable, details of automation tools used in the process.",
+      "expectedEvidenceType": "methods"
+    },
+    {
+      "itemId": "10a",
+      "section": "Data items",
+      "title": "List and define all outcomes for which data were sought. Specify whether all results that were compatible with each outcome domain in each study were sought (e.g. for all measures, time points, analyses), and if not, the methods used to decide which results to collect.",
+      "requirementText": "List and define all outcomes for which data were sought. Specify whether all results that were compatible with each outcome domain in each study were sought (e.g. for all measures, time points, analyses), and if not, the methods used to decide which results to collect.",
+      "expectedEvidenceType": "results"
+    },
+    {
+      "itemId": "10b",
+      "section": "General",
+      "title": "List and define all other variables for which data were sought (e.g. participant and intervention characteristics, funding sources). Describe any assumptions made about any missing or unclear information.",
+      "requirementText": "List and define all other variables for which data were sought (e.g. participant and intervention characteristics, funding sources). Describe any assumptions made about any missing or unclear information.",
+      "expectedEvidenceType": "reporting_meta"
+    },
+    {
+      "itemId": "11",
+      "section": "Study risk of bias assessment",
+      "title": "Specify the methods used to assess risk of bias in the included studies, including details of the tool(s) used, how many reviewers assessed each study and whether they worked independently, and if applicable, details of automation tools used in the process.",
+      "requirementText": "Specify the methods used to assess risk of bias in the included studies, including details of the tool(s) used, how many reviewers assessed each study and whether they worked independently, and if applicable, details of automation tools used in the process.",
+      "expectedEvidenceType": "prisma_flow"
+    },
+    {
+      "itemId": "12",
+      "section": "Effect measures",
+      "title": "Specify for each outcome the effect measure(s) (e.g. risk ratio, mean difference) used in the synthesis or presentation of results.",
+      "requirementText": "Specify for each outcome the effect measure(s) (e.g. risk ratio, mean difference) used in the synthesis or presentation of results.",
+      "expectedEvidenceType": "methods"
+    },
+    {
+      "itemId": "13a",
+      "section": "Synthesis methods",
+      "title": "Describe the processes used to decide which studies were eligible for each synthesis (e.g. tabulating the study intervention characteristics and comparing against the planned groups for each synthesis (item #5)).",
+      "requirementText": "Describe the processes used to decide which studies were eligible for each synthesis (e.g. tabulating the study intervention characteristics and comparing against the planned groups for each synthesis (item #5)).",
+      "expectedEvidenceType": "methods"
+    },
+    {
+      "itemId": "13b",
+      "section": "General",
+      "title": "Describe any methods required to prepare the data for presentation or synthesis, such as handling of missing summary statistics, or data conversions.",
+      "requirementText": "Describe any methods required to prepare the data for presentation or synthesis, such as handling of missing summary statistics, or data conversions.",
+      "expectedEvidenceType": "methods"
+    },
+    {
+      "itemId": "13c",
+      "section": "General",
+      "title": "Describe any methods used to tabulate or visually display results of individual studies and syntheses.",
+      "requirementText": "Describe any methods used to tabulate or visually display results of individual studies and syntheses.",
+      "expectedEvidenceType": "general"
+    },
+    {
+      "itemId": "13d",
+      "section": "General",
+      "title": "Describe any methods used to synthesize results and provide a rationale for the choice(s). If meta-analysis was performed, describe the model(s), method(s) to identify the presence and extent of statistical heterogeneity, and software package(s) used.",
+      "requirementText": "Describe any methods used to synthesize results and provide a rationale for the choice(s). If meta-analysis was performed, describe the model(s), method(s) to identify the presence and extent of statistical heterogeneity, and software package(s) used.",
+      "expectedEvidenceType": "methods"
+    },
+    {
+      "itemId": "13e",
+      "section": "General",
+      "title": "Describe any methods used to explore possible causes of heterogeneity among study results (e.g. subgroup analysis, meta-regression).",
+      "requirementText": "Describe any methods used to explore possible causes of heterogeneity among study results (e.g. subgroup analysis, meta-regression).",
+      "expectedEvidenceType": "general"
+    },
+    {
+      "itemId": "13f",
+      "section": "General",
+      "title": "Describe any sensitivity analyses conducted to assess robustness of the synthesized results.",
+      "requirementText": "Describe any sensitivity analyses conducted to assess robustness of the synthesized results.",
+      "expectedEvidenceType": "general"
+    },
+    {
+      "itemId": "14",
+      "section": "Reporting bias assessment",
+      "title": "Describe any methods used to assess risk of bias due to missing results in a synthesis (arising from reporting biases).",
+      "requirementText": "Describe any methods used to assess risk of bias due to missing results in a synthesis (arising from reporting biases).",
+      "expectedEvidenceType": "methods"
+    },
+    {
+      "itemId": "15",
+      "section": "Certainty assessment",
+      "title": "Describe any methods used to assess certainty (or confidence) in the body of evidence for an outcome.",
+      "requirementText": "Describe any methods used to assess certainty (or confidence) in the body of evidence for an outcome.",
+      "expectedEvidenceType": "results"
+    },
+    {
+      "itemId": "16a",
+      "section": "Study selection",
+      "title": "Describe the results of the search and selection process, from the number of records identified in the search to the number of studies included in the review, ideally using a flow diagram.",
+      "requirementText": "Describe the results of the search and selection process, from the number of records identified in the search to the number of studies included in the review, ideally using a flow diagram.",
+      "expectedEvidenceType": "prisma_flow"
+    },
+    {
+      "itemId": "16b",
+      "section": "General",
+      "title": "Cite studies that might appear to meet the inclusion criteria, but which were excluded, and explain why they were excluded.",
+      "requirementText": "Cite studies that might appear to meet the inclusion criteria, but which were excluded, and explain why they were excluded.",
+      "expectedEvidenceType": "prisma_flow"
+    },
+    {
+      "itemId": "17",
+      "section": "Study characteristics",
+      "title": "Cite each included study and present its characteristics.",
+      "requirementText": "Cite each included study and present its characteristics.",
+      "expectedEvidenceType": "prisma_flow"
+    },
+    {
+      "itemId": "18",
+      "section": "Risk of bias in studies",
+      "title": "Present assessments of risk of bias for each included study.",
+      "requirementText": "Present assessments of risk of bias for each included study.",
+      "expectedEvidenceType": "prisma_flow"
+    },
+    {
+      "itemId": "19",
+      "section": "Results of individual studies",
+      "title": "For all outcomes, present, for each study: (a) summary statistics for each group (where appropriate) and (b) an effect estimate and its precision (e.g. confidence/credible interval), ideally using structured tables or plots.",
+      "requirementText": "For all outcomes, present, for each study: (a) summary statistics for each group (where appropriate) and (b) an effect estimate and its precision (e.g. confidence/credible interval), ideally using structured tables or plots.",
+      "expectedEvidenceType": "results"
+    },
+    {
+      "itemId": "20a",
+      "section": "Results of syntheses",
+      "title": "For each synthesis, briefly summarise the characteristics and risk of bias among contributing studies.",
+      "requirementText": "For each synthesis, briefly summarise the characteristics and risk of bias among contributing studies.",
+      "expectedEvidenceType": "methods"
+    },
+    {
+      "itemId": "20b",
+      "section": "General",
+      "title": "Present results of all statistical syntheses conducted. If meta-analysis was done, present for each the summary estimate and its precision (e.g. confidence/credible interval) and measures of statistical heterogeneity. If comparing groups, describe the direction of the effect.",
+      "requirementText": "Present results of all statistical syntheses conducted. If meta-analysis was done, present for each the summary estimate and its precision (e.g. confidence/credible interval) and measures of statistical heterogeneity. If comparing groups, describe the direction of the effect.",
+      "expectedEvidenceType": "methods"
+    },
+    {
+      "itemId": "20c",
+      "section": "General",
+      "title": "Present results of all investigations of possible causes of heterogeneity among study results.",
+      "requirementText": "Present results of all investigations of possible causes of heterogeneity among study results.",
+      "expectedEvidenceType": "general"
+    },
+    {
+      "itemId": "20d",
+      "section": "General",
+      "title": "Present results of all sensitivity analyses conducted to assess the robustness of the synthesized results.",
+      "requirementText": "Present results of all sensitivity analyses conducted to assess the robustness of the synthesized results.",
+      "expectedEvidenceType": "general"
+    },
+    {
+      "itemId": "21",
+      "section": "Reporting biases",
+      "title": "Present assessments of risk of bias due to missing results (arising from reporting biases) for each synthesis assessed.",
+      "requirementText": "Present assessments of risk of bias due to missing results (arising from reporting biases) for each synthesis assessed.",
+      "expectedEvidenceType": "methods"
+    },
+    {
+      "itemId": "22",
+      "section": "Certainty of evidence",
+      "title": "Present assessments of certainty (or confidence) in the body of evidence for each outcome assessed.",
+      "requirementText": "Present assessments of certainty (or confidence) in the body of evidence for each outcome assessed.",
+      "expectedEvidenceType": "results"
+    },
+    {
+      "itemId": "23a",
+      "section": "Discussion",
+      "title": "Provide a general interpretation of the results in the context of other evidence.",
+      "requirementText": "Provide a general interpretation of the results in the context of other evidence.",
+      "expectedEvidenceType": "discussion"
+    },
+    {
+      "itemId": "23b",
+      "section": "General",
+      "title": "Discuss any limitations of the evidence included in the review.",
+      "requirementText": "Discuss any limitations of the evidence included in the review.",
+      "expectedEvidenceType": "prisma_flow"
+    },
+    {
+      "itemId": "23c",
+      "section": "General",
+      "title": "Discuss any limitations of the review processes used.",
+      "requirementText": "Discuss any limitations of the review processes used.",
+      "expectedEvidenceType": "discussion"
+    },
+    {
+      "itemId": "23d",
+      "section": "General",
+      "title": "Discuss implications of the results for practice, policy, and future research.",
+      "requirementText": "Discuss implications of the results for practice, policy, and future research.",
+      "expectedEvidenceType": "general"
+    },
+    {
+      "itemId": "24a",
+      "section": "Registration and protocol",
+      "title": "Provide registration information for the review, including register name and registration number, or state that the review was not registered.",
+      "requirementText": "Provide registration information for the review, including register name and registration number, or state that the review was not registered.",
+      "expectedEvidenceType": "reporting_meta"
+    },
+    {
+      "itemId": "24b",
+      "section": "General",
+      "title": "Indicate where the review protocol can be accessed, or state that a protocol was not prepared.",
+      "requirementText": "Indicate where the review protocol can be accessed, or state that a protocol was not prepared.",
+      "expectedEvidenceType": "reporting_meta"
+    },
+    {
+      "itemId": "24c",
+      "section": "General",
+      "title": "Describe and explain any amendments to information provided at registration or in the protocol.",
+      "requirementText": "Describe and explain any amendments to information provided at registration or in the protocol.",
+      "expectedEvidenceType": "reporting_meta"
+    },
+    {
+      "itemId": "25",
+      "section": "Support",
+      "title": "Describe sources of financial or non-financial support for the review, and the role of the funders or sponsors in the review.",
+      "requirementText": "Describe sources of financial or non-financial support for the review, and the role of the funders or sponsors in the review.",
+      "expectedEvidenceType": "general"
+    },
+    {
+      "itemId": "26",
+      "section": "Competing interests",
+      "title": "Declare any competing interests of review authors.",
+      "requirementText": "Declare any competing interests of review authors.",
+      "expectedEvidenceType": "general"
+    },
+    {
+      "itemId": "27",
+      "section": "Availability of data, code and other materials",
+      "title": "Report which of the following are publicly available and where they can be found: template data collection forms; data extracted from included studies; data used for all analyses; analytic code; any other materials used in the review.",
+      "requirementText": "Report which of the following are publicly available and where they can be found: template data collection forms; data extracted from included studies; data used for all analyses; analytic code; any other materials used in the review.",
+      "expectedEvidenceType": "prisma_flow"
+    }
+  ]
+}

@@ -1,0 +1,83 @@
+{
+  "ABC1234": {
+    "metadata": {
+      "item_key": "ABC1234",
+      "title": "Sample Cyber Attribution Framework Study",
+      "authors": [
+        {
+          "lastName": "Tester"
+        }
+      ],
+      "year": "2024",
+      "first_author_last": "Tester",
+      "collection": "frameworks_and_models",
+      "prompt_key": "code_pdf_page",
+      "rq_lines": [
+        "0: What is the evidence that advanced cyber attribution frameworks rely on technical indicators for source attribution?",
+        "1: Which governance practices improve reliability of cyber attribution decisions?",
+        "2: How do attribution confidence levels vary across different evidence types?"
+      ],
+      "rq_sig": "d68ac7c935",
+      "timestamp": "2026-02-22T00:00:00Z"
+    },
+    "evidence_list": [
+      {
+        "quote": "Sample quote about technical artifact evidence.",
+        "paraphrase": "A synthesized paraphrase of attribution evidence.",
+        "cluster_match": [
+          "Evidence quality"
+        ],
+        "function_summary": "Shows link between observables and attribution confidence.",
+        "risk_if_missing": "Attribution confidence drops with limited sources.",
+        "illustrative_skills": [
+          "forensics"
+        ],
+        "relevance_score": 4,
+        "relevant_rqs": [
+          {
+            "index": 0,
+            "question": "What is the evidence that advanced cyber attribution frameworks rely on technical indicators for source attribution?"
+          }
+        ]
+      },
+      {
+        "quote": "Sample quote about governance and review procedures.",
+        "paraphrase": "Governance mechanisms influence evidence reliability.",
+        "cluster_match": [
+          "Governance"
+        ],
+        "function_summary": "Finds governance processes tied to confidence scoring.",
+        "risk_if_missing": "Undetected failures increase model uncertainty.",
+        "illustrative_skills": [
+          "governance"
+        ],
+        "relevance_score": 5,
+        "relevant_rqs": [
+          {
+            "index": 1,
+            "question": "Which governance practices improve reliability of cyber attribution decisions?"
+          }
+        ]
+      },
+      {
+        "quote": "Sample quote about confidence calibration and evidence type weights.",
+        "paraphrase": "Different evidence types alter confidence levels.",
+        "cluster_match": [
+          "Calibration"
+        ],
+        "function_summary": "Compares signal strength across evidence categories.",
+        "risk_if_missing": "Confidence rankings become biased.",
+        "illustrative_skills": [
+          "analysis"
+        ],
+        "relevance_score": 3,
+        "relevant_rqs": [
+          {
+            "index": 2,
+            "question": "How do attribution confidence levels vary across different evidence types?"
+          }
+        ]
+      }
+    ]
+  }
+}

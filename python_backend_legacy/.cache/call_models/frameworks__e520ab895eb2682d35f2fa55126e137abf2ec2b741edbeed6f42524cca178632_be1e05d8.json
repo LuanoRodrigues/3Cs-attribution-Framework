@@ -1,0 +1,366 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "quote": "Denial aligns with aggressive and passive cyber defense strategies, is not conflict-based, focuses on convincing an adversary that an attack will not succeed, and requires having robust cybersecurity measures in place before an attack occurs.",
+          "paraphrase": "Denial-based deterrence maps to passive and aggressive cyber defenses that aim to convince attackers their attacks will fail and depends on robust pre-attack security measures.",
+          "researcher_comment": "Links deterrence theory to concrete defensive postures and frames denial as a non-conflict approach to reducing successful attacks. Useful for RQs about defense strategy choices; does not quantify effectiveness or resource requirements.",
+          "potential_themes": [
+            "defense_strategies"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "denial_as_defense",
+            "pre_attack_robustness"
+          ]
+        },
+        {
+          "quote": "Critics of passive defense claim passive measures are not robust enough and therefore an aggressive cyber defense strategy is required to stop potential cyber adversaries.",
+          "paraphrase": "Critics contend passive defenses are inadequate and favor aggressive cyber defense to prevent adversary success.",
+          "researcher_comment": "Summarizes a central debate motivating more assertive measures; indicates normative disagreement rather than empirical evaluation. Lacks evidence on comparative effectiveness or escalation risk.",
+          "potential_themes": [
+            "defense_strategies"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "comparative",
+          "claim_direction": "mixed",
+          "open_codes": [
+            "critique_passive",
+            "advocate_aggressive"
+          ]
+        },
+        {
+          "quote": "Aggressive cybersecurity measures include implementing honeynets, denial and deception, active internal network defense tools, and mitigating intrusions to prevent all but the most sophisticated adversaries from successfully attacking.",
+          "paraphrase": "Aggressive cybersecurity comprises honeynets, denial-and-deception, active internal defenses, and intrusion mitigation to block most adversaries.",
+          "researcher_comment": "Provides concrete technical examples of what 'aggressive' defense entails; useful for mapping capabilities but does not address legal or escalation implications.",
+          "potential_themes": [
+            "defense_strategies"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "example",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "honeynets",
+            "denial_and_deception",
+            "intrusion_mitigation"
+          ]
+        },
+        {
+          "quote": "Proponents of aggressive cybersecurity argue for this approach over active cyber defense (ACD) (which are often referred to as \"hack backs\") because they contend that ACD requires high attribution confidence (which can be very difficult to obtain) and because ACD risks escalation .",
+          "paraphrase": "Advocates of aggressive cybersecurity prefer it to ACD, arguing ACD demands high attribution confidence and poses escalation risks.",
+          "researcher_comment": "Directly ties the feasibility of ACD to attribution confidence and escalation concerns; supports the claim that attribution limitations shape preferred defensive options. Assumes attribution is often low-confidence without quantifying frequency.",
+          "potential_themes": [
+            "attribution_challenges",
+            "escalation_types"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "acd_requires_confidence",
+            "escalation_concern"
+          ]
+        },
+        {
+          "quote": "Employing ACD is a complicated approach to cybersecurity; ACD is currently illegal and U.S. policymakers and cybersecurity experts are still debating its legality.",
+          "paraphrase": "ACD is legally contested in the U.S.; it is currently illegal and under ongoing policy debate.",
+          "researcher_comment": "Identifies a legal barrier to corporate ACD and frames why legislative solutions have been proposed. Does not discuss enforcement practice or case law.",
+          "potential_themes": [
+            "legal_frameworks"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "policy_position",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "acd_illegality",
+            "policy_debate"
+          ]
+        },
+        {
+          "quote": "For example, ACD could allow corporations the right to \"hack back\" to retrieve or delete their stolen data on external servers within specifically defined parameters.",
+          "paraphrase": "Proponents propose ACD could let firms hack back to recover or delete stolen data on external servers under defined parameters.",
+          "researcher_comment": "Illustrates a concrete use-case proponents seek to legalize; the phrase 'specifically defined parameters' implies contested scope and safeguards. Does not address attribution or cross-border legal conflict.",
+          "potential_themes": [
+            "legal_frameworks"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "example",
+          "argument_type": "descriptive",
+          "claim_direction": "mixed",
+          "open_codes": [
+            "hack_back_recovery",
+            "limited_scope_acd"
+          ]
+        },
+        {
+          "quote": "On October 13, 2017, the Active Cyber Defense Certainty Act (ACDA) was introduced as a bill in Congress that would allow private companies to employ ACD measures to establish the attribution of an attack, disrupt cyberattacks without damaging others' computers, retrieve and destroy stolen files, monitor the behavior of an attacker, and utilize beaconing technology.",
+          "paraphrase": "The 2017 ACDA bill would permit companies to use ACD for attribution, non-destructive disruption, file retrieval/destruction, attacker monitoring, and beaconing.",
+          "researcher_comment": "Identifies a specific legislative attempt to change the legal status of ACD and enumerates permitted activities; important for RQs on policy change and corporate authority. Bill status and implementation constraints remain important caveats.",
+          "potential_themes": [
+            "policy_position",
+            "legal_frameworks"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "policy_position",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "ACDA_scope",
+            "legalizing_acd"
+          ]
+        },
+        {
+          "quote": "The ACDA \u201cprotects privacy rights by prohibiting vigilantism, forbidding physical damage or destruction of information on anyone else's computer, and prevents collateral damage by constraining the types of actions that would be considered active defense.\u201d",
+          "paraphrase": "ACDA would prohibit vigilantism, forbid physical damage or destruction of others' information, and constrain active defense actions to prevent collateral damage.",
+          "researcher_comment": "Shows the bill's built-in safeguards intended to limit harmful or destructive 'hack back' activity; effectiveness depends on definitions and enforcement mechanisms not detailed here.",
+          "potential_themes": [
+            "policy_position",
+            "legal_frameworks"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "policy_position",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "ACDA_safeguards",
+            "privacy_protections"
+          ]
+        },
+        {
+          "quote": "As the ACDA implies, private companies who use ACD in response to a cyberattack can create complex escalation scenarios, especially if they inadvertently target a country's government.",
+          "paraphrase": "Corporate use of ACD can generate complex escalation, particularly when companies inadvertently target foreign governments.",
+          "researcher_comment": "Directly links private-sector ACD to international escalation risk and proxy attribution problems; supports the need for coordination and limits. Assumes states interpret company actions as state-proxied.",
+          "potential_themes": [
+            "escalation_types"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "private_acd_escalation",
+            "inadvertent_state_target"
+          ]
+        },
+        {
+          "quote": "Inadvertent escalation is one of four different types of escalation that can occur from a cyberattack, with the other three being deliberate, accidental, and catalytic .",
+          "paraphrase": "Escalation from cyberattacks can be classified as inadvertent, deliberate, accidental, or catalytic.",
+          "researcher_comment": "Provides a four-part taxonomy of escalation pathways; useful for analytical work on escalation risk and for distinguishing mechanisms like misperception versus misattribution.",
+          "potential_themes": [
+            "escalation_types"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "taxonomy",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "escalation_taxonomy",
+            "inadvertent_deliberate_accidental_catalytic"
+          ]
+        },
+        {
+          "quote": "The requirement for companies to have FBI coordination prior to executing ACD is in the ACDA for precisely this reason.",
+          "paraphrase": "ACDA requires companies to coordinate with the FBI before executing ACD to reduce escalation risk.",
+          "researcher_comment": "Identifies a procedural control intended to mitigate inadvertent escalation; effectiveness depends on FBI capacity, timeliness, and legal authority to intervene.",
+          "potential_themes": [
+            "legal_frameworks"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "policy_position",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "FBI_coordination",
+            "procedural_mitigation"
+          ]
+        },
+        {
+          "quote": "Assessing attribution is an extremely complicated issue.",
+          "paraphrase": "Attribution assessment in cyberspace is highly complex.",
+          "researcher_comment": "A high-level claim that frames subsequent discussion of methods and limitations; does not yet specify causes of complexity but flags attribution as a central analytic challenge for RQs on evidence and decision-making.",
+          "potential_themes": [
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "attribution_complexity"
+          ]
+        },
+        {
+          "quote": "A country or corporation cannot answer the question of attribution with a simple \u201cyes\u201d or \u201cno\u201d answer, but rather attribution is a matter of degree.",
+          "paraphrase": "Attribution is a graded judgment rather than a binary yes/no determination.",
+          "researcher_comment": "This framing implies use of graded confidence and thresholds for action; important for RQs about decision rules and evidentiary standards. Does not specify how degrees map to responses.",
+          "potential_themes": [
+            "confidence_language",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "attribution_spectrum",
+            "confidence_thresholds"
+          ]
+        },
+        {
+          "quote": "Two different, but equally important, ways to determine attribution are by technical evidence or all-source intelligence.",
+          "paraphrase": "Attribution is determined through complementary technical forensics and all-source intelligence analysis.",
+          "researcher_comment": "Identifies the primary methodological streams for attribution and supports integration of both; does not provide criteria for reconciliation when evidence conflicts.",
+          "potential_themes": [
+            "evidentiary_standards",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "method",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "technical_vs_allsource",
+            "methodological_dualism"
+          ]
+        },
+        {
+          "quote": "Determining attribution is difficult for a number of reasons, such as the attacker may leave no forensic clues, analysts may have never seen the attacker's TTPs before, the attacker's motivation for conducting the attack may be unknown, and there may be no all-source intelligence reporting to connect to the forensic evidence .",
+          "paraphrase": "Attribution can be impeded by absent forensic traces, novel TTPs, unknown attacker motives, and lack of all-source intelligence linking evidence.",
+          "researcher_comment": "A concrete enumeration of obstacles that reduce attribution confidence; each obstacle suggests distinct analytic or collection remedies and variable timeframes to resolution.",
+          "potential_themes": [
+            "attribution_challenges",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "no_forensics",
+            "novel_ttps",
+            "intelligence_gap"
+          ]
+        },
+        {
+          "quote": "Since definitive attribution does not exist , countries and corporations responding to a cyberattack must ultimately assess attribution based upon all of the information they have available from technical evidence and all-source intelligence.",
+          "paraphrase": "Because definitive attribution is unattainable, responses must rely on combined technical and all-source intelligence assessments.",
+          "researcher_comment": "Advocates a pragmatic, best-evidence approach to attribution; underscores that policy decisions will rest on integrated judgements rather than certainty. Does not prescribe confidence thresholds for action.",
+          "potential_themes": [
+            "attribution_challenges",
+            "evidentiary_standards",
+            "confidence_language"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "all_source_integration",
+            "best_effort_attribution"
+          ]
+        },
+        {
+          "quote": "they must consider the computer used to conduct the attack, the person (perpetrator), and the higher-level organization or country from whom the perpetrator received his or her tasking, which is often the true adversary .",
+          "paraphrase": "Attribution assessments should consider machine-level, individual perpetrator, and the higher-level organization or state that tasked the actor.",
+          "researcher_comment": "Specifies a multi-level attribution schema that distinguishes tactical, operational, and strategic evidence; useful for mapping evidentiary burdens to decision thresholds.",
+          "potential_themes": [
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "method",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "machine_person_state_levels",
+            "multi_level_attribution"
+          ]
+        },
+        {
+          "quote": "adversaries can obfuscate attribution of their computer by use of hop-points and anonymity-enhancing tools, such as TOR (The Onion Router).",
+          "paraphrase": "Attackers can obscure computer-level attribution using hop-points and anonymity tools like TOR.",
+          "researcher_comment": "Identifies specific technical obfuscation techniques that undermine forensic linkage and extend analysis timelines; supports need for corroborating intelligence and improved attribution methods.",
+          "potential_themes": [
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "hop_points",
+            "TOR",
+            "technical_obfuscation"
+          ]
+        },
+        {
+          "quote": "the U.S. IC is not likely to have enough evidence to produce an assessment with high confidence for several months.",
+          "paraphrase": "The U.S. intelligence community will likely require months to reach a high-confidence attribution assessment.",
+          "researcher_comment": "Highlights an expected analytic time-lag that creates trade-offs between timely response and evidentiary confidence; assumes resource and coordination constraints within the IC.",
+          "potential_themes": [
+            "confidence_language",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "predictive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "IC_delay",
+            "high_confidence_timeline"
+          ]
+        },
+        {
+          "quote": "Finally, if attribution is determined to an acceptable degree of confidence, the type of response selected could range from doing nothing to conducting kinetic operations.",
+          "paraphrase": "With acceptable attribution confidence, responses may range from inaction to kinetic military operations.",
+          "researcher_comment": "States a clear mapping between attribution confidence and the possible response spectrum; useful for RQs on decision-making frameworks but does not specify what confidence levels trigger which responses.",
+          "potential_themes": [
+            "confidence_language",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "response_spectrum",
+            "confidence_gates"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-24T15:25:24.885256Z",
+  "collection_name": "frameworks",
+  "custom_id": "e520ab895eb2682d35f2fa55126e137abf2ec2b741edbeed6f42524cca178632",
+  "function": "code_pdf_page"
+}

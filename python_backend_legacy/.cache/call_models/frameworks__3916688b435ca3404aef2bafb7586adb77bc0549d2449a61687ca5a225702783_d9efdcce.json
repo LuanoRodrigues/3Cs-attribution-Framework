@@ -1,0 +1,358 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "quote": "When the U.S. sustains another cyberattack, USG policymakers and corporate leaders need to understand how the three factors discussed above (attribution time/confidence, relationship, and scale) influence the risks of responding with insufficient deterrent force and the potential for escalation.",
+          "paraphrase": "Policymakers and corporate leaders must assess how attribution confidence, relationship, and attack scale jointly affect risks of insufficient deterrence and escalation when deciding on responses.",
+          "researcher_comment": "Central framing linking three factors to competing risks; important for any RQ about decision-making under attribution uncertainty. The statement is high-level and does not operationalize metrics or thresholds.",
+          "potential_themes": [
+            "attribution_challenges",
+            "confidence_language",
+            "deterrence"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "three_factor_framework",
+            "risk_tradeoffs",
+            "policy_guidance"
+          ]
+        },
+        {
+          "quote": "These factors and risks will be unique to every attack and adversary.",
+          "paraphrase": "The interplay of attribution confidence, relationship, and scale\u2014and the associated risks\u2014varies by attack and adversary.",
+          "researcher_comment": "Asserts case heterogeneity; implies framework outputs must be context-specific and limits cross-case generalization. Useful for RQs on external validity and operationalization.",
+          "potential_themes": [
+            "attribution_challenges",
+            "confidence_language"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "case_specificity",
+            "context_dependence"
+          ]
+        },
+        {
+          "quote": "Analysts would define different criteria for the levels of the factors (high, moderate, low) and the competing risks.",
+          "paraphrase": "The framework requires analysts to specify operational criteria for high/moderate/low levels of attribution confidence, relationship, scale, and competing risks.",
+          "researcher_comment": "Describes an operationalisation step; however, the chunk provides no guidance on how to construct or validate these criteria, leaving measurement and reliability open.",
+          "potential_themes": [
+            "evidentiary_standards",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "method",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "operationalize_levels",
+            "define_thresholds"
+          ]
+        },
+        {
+          "quote": "Analysts would not recommend a response that had a high risk of escalation and that was unlikely to deter the attacker (high risk of insufficient deterrence).",
+          "paraphrase": "Analysts should avoid recommending any response that simultaneously presents high escalation risk and low likelihood of deterring the attacker.",
+          "researcher_comment": "Gives a clear normative decision rule prioritizing avoidance of combined high-escalation/low-deterrence options; lacks quantification of 'high' and does not address who resolves residual tradeoffs.",
+          "potential_themes": [
+            "deterrence",
+            "escalation_risk"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "avoid_high_escalation_low_deterrence",
+            "normative_rule"
+          ]
+        },
+        {
+          "quote": "For the cyberattacks presented in Fig. 2, the authors assess the U.S.'s responses have had a very low risk of escalation, but the continuing cyberattacks/threat from North Korea and Iran suggest that the U.S. responses have had insufficient deterrence.",
+          "paraphrase": "The authors judge that U.S. responses in the illustrated cases posed very low escalation risk but have been insufficient to deter ongoing threats from North Korea and Iran.",
+          "researcher_comment": "Empirical assessment by the authors linking low escalation to limited deterrent effect; useful as an observed pattern but the causal link and coding criteria are unspecified.",
+          "potential_themes": [
+            "deterrence",
+            "escalation_risk"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "low_escalation_insufficient_deterrence",
+            "case_assessment"
+          ]
+        },
+        {
+          "quote": "The ongoing conflict between Ukraine and Russia, such as continual violations of the ceasefire agreement , suggest that Ukraine's response had a moderate risk of both escalation and insufficient deterrence.",
+          "paraphrase": "The authors assess that Ukraine's response likely involved moderate risks of both escalation and failing to deter further attacks.",
+          "researcher_comment": "Case-specific finding in a kinetic conflict context; highlights that risk profiles vary by context but may not generalize to peacetime state-corporate responses.",
+          "potential_themes": [
+            "escalation_risk",
+            "deterrence"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "ukraine_moderate_risk",
+            "conflict_context"
+          ]
+        },
+        {
+          "quote": "Fig. 2 is an example table of the authors' analysis of three recent cyberattacks illustrating how the framework could be applied for policymakers and corporate decision makers.",
+          "paraphrase": "Figure 2 illustrates how the three-factor framework can be applied to recent cyberattacks for policymaker and corporate decision support.",
+          "researcher_comment": "Explicitly an illustrative example, not a validation; useful for demonstrating coding choices but lacks methodological transparency and reproducibility details.",
+          "potential_themes": [
+            "evidentiary_standards",
+            "attribution_challenges"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "example",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "figure_example",
+            "applied_framework"
+          ]
+        },
+        {
+          "quote": "What is the U.S.'s attribution confidence level?",
+          "paraphrase": "Analysts should explicitly assess and report the level of confidence in attributing the cyberattack.",
+          "researcher_comment": "Positions attribution confidence as a required explicit input to response decisions; does not define a scale or evidence thresholds but anchors decision-making to confidence levels.",
+          "potential_themes": [
+            "confidence_language",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "method",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "assess_attribution_confidence",
+            "confidence_reporting"
+          ]
+        },
+        {
+          "quote": "Is there evidence to support that a different state or non-state actor perpetrated the attack (other than the one assessed as most likely to have conducted the attack)? If so, how strong is this evidence?",
+          "paraphrase": "Analysts should consider alternative perpetrator hypotheses and evaluate the strength of the evidence supporting them.",
+          "researcher_comment": "Encourages consideration of alternative hypotheses to reduce misattribution risk; requires standards for evidence strength that the text does not provide.",
+          "potential_themes": [
+            "evidentiary_standards",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "method",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "alternative_hypotheses",
+            "evidence_strength_assessment"
+          ]
+        },
+        {
+          "quote": "If there is not enough evidence to make a high confidence attribution, will additional assessment provide the necessary evidence to increase the attribution confidence level? How much time do analysts estimate this will take?",
+          "paraphrase": "When evidence is insufficient for high-confidence attribution, analysts should judge whether further investigation can raise confidence and estimate the time required.",
+          "researcher_comment": "Frames a time-versus-certainty tradeoff; important for RQs on attribution timelines, but no guidance provided on acceptable wait times or probabilities of success.",
+          "potential_themes": [
+            "confidence_language",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "method",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "time_to_confidence",
+            "additional_assessment"
+          ]
+        },
+        {
+          "quote": "- How likely is the suspected adversary to conduct another cyberattack if the U.S. delays its response in order to increase its attribution confidence? In other words, does the risk of insufficient deterrence outweigh the risk of the potential for escalation?",
+          "paraphrase": "Analysts should estimate the probability the suspected actor will reattack if the U.S. delays for higher attribution confidence and weigh whether insufficient deterrence risk outweighs escalation risk.",
+          "researcher_comment": "Frames the central decision tradeoff between deterring and avoiding escalation; empirical estimation of these probabilities will be highly uncertain and context-dependent.",
+          "potential_themes": [
+            "deterrence",
+            "escalation_risk"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "method",
+          "argument_type": "predictive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "deterrence_vs_escalation",
+            "probability_of_reattack"
+          ]
+        },
+        {
+          "quote": "- How likely is the potential for escalation if the U.S. responds at the suspected perpetrator, but its attribution is not correct (misattribution)?",
+          "paraphrase": "Analysts must evaluate the probability of escalation resulting from responding to a misattributed actor.",
+          "researcher_comment": "Highlights misattribution as a distinct pathway to escalation; quantification is difficult and depends on the misattributed actor's incentives and thresholds for retaliation.",
+          "potential_themes": [
+            "attribution_challenges",
+            "escalation_risk"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "method",
+          "argument_type": "predictive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "misattribution_escalation_risk",
+            "wrong_target_response"
+          ]
+        },
+        {
+          "quote": "Conversely, will the potential for escalation actually be greater if the U.S. delays its response because it does not have high attribution confidence, sustains another\ncyberattack from the suspected perpetrator, and then must respond more forcefully to deter the attacker?",
+          "paraphrase": "The framework asks whether delaying response might increase escalation risk by provoking additional attacks that necessitate more forceful retaliation.",
+          "researcher_comment": "Points to non-linear, path-dependent escalation dynamics; suggests timing decisions can change the risk trajectory\u2014requires dynamic modeling beyond static assessments.",
+          "potential_themes": [
+            "escalation_risk",
+            "deterrence"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "method",
+          "argument_type": "predictive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "delay_may_increase_escalation",
+            "path_dependency"
+          ]
+        },
+        {
+          "quote": "- What is the scale of the cyberattack that the U.S. sustained?\n$\\circ$  Does the scale support responding before high attribution confidence is obtained or does the scale suggest waiting until analysts have enough evidence to assess the perpetrator with high confidence?",
+          "paraphrase": "Analysts should assess attack scale and use it to decide whether the magnitude justifies responding before high-confidence attribution or warrants waiting for more evidence.",
+          "researcher_comment": "Connects severity to timing of response; however, the text does not operationalize 'scale' or provide decision thresholds linking scale to permissible risk of misattribution.",
+          "potential_themes": [
+            "evidentiary_standards",
+            "confidence_language"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "method",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "assess_scale",
+            "scale_vs_timing"
+          ]
+        },
+        {
+          "quote": "- What is the U.S.'s geo-political relationship with the state or non-state actor suspected of conducting the attack?",
+          "paraphrase": "Analysts should evaluate the geopolitical relationship between the U.S. and the suspected perpetrator as a factor in response planning.",
+          "researcher_comment": "Identifies relationship as a key moderator of escalation and deterrence calculations; operationalization and measurement of 'relationship' are not specified.",
+          "potential_themes": [
+            "attribution_challenges",
+            "escalation_risk"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "method",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "assess_geopolitical_relationship",
+            "relationship_factor"
+          ]
+        },
+        {
+          "quote": "- Based upon this relationship and the suspected perpetrator's history of conducting cyberattacks (both against the U.S. and other countries), what type of response will be the most effective to deter the adversary from conducting additional cyberattacks without disproportionately risking escalation?",
+          "paraphrase": "Analysts should tailor response choices using the bilateral relationship and the perpetrator's attack history to maximize deterrence while minimizing escalation risk.",
+          "researcher_comment": "Prescribes matching response to history and relationship; requires empirical evidence tying specific responses to deterrence outcomes, which the text does not supply.",
+          "potential_themes": [
+            "deterrence",
+            "escalation_risk"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "method",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "tailor_response_to_history",
+            "balance_deterrence_escalation"
+          ]
+        },
+        {
+          "quote": "2011-2013 Iranian DDoS Attacks on U.S. Financial Institutions  | High  | Low  | Turbulent    | Very Low   | High    | Indictment of 7 Iranians in 2016 ; Sanctions Against 11 Iranian Entities in 2017",
+          "paraphrase": "The Iranian DDoS incidents are coded as high attribution confidence, low scale, turbulent relationship, very low escalation potential, high insufficient deterrence; responses included indictments and sanctions.",
+          "researcher_comment": "Concrete example of applying the framework; useful for comparative coding but the criteria for assigning these categorical values are not presented, limiting reproducibility.",
+          "potential_themes": [
+            "attribution_challenges",
+            "deterrence"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "example",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "iran_ddos_case",
+            "indictments_and_sanctions"
+          ]
+        },
+        {
+          "quote": "2014 North Korea Attack on Sony (U.S. company)  | High  | Low  | Turbulent (with U.S.)  | Very Low  | High   | \u201cName and shame ;\u201d Increased sanctions  ; Possible massive internet outage ; Subsequent charges to one NK national",
+          "paraphrase": "The Sony attack is coded as high attribution confidence, low scale, turbulent relationship with the U.S., very low escalation potential, and high insufficient deterrence; responses included naming/shaming and sanctions.",
+          "researcher_comment": "Another illustrative coding instance showing similar profile to the Iranian case; again, the basis for coding choices is author judgment rather than transparent metrics in this chunk.",
+          "potential_themes": [
+            "deterrence",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "example",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "sony_case",
+            "name_and_shame"
+          ]
+        },
+        {
+          "quote": "Russia's probable 2015 Attack on Ukraine's Power grid (examined from Ukraine's perspective)   | High  | Moderate  | Turbulent  | Moderate   | Moderate  | Cut power to Russian-annexed Crimea",
+          "paraphrase": "The 2015 Ukraine power-grid incident is coded as high attribution confidence, moderate scale, turbulent relationship, moderate escalation risk and moderate insufficient deterrence; Ukraine's response included cutting power to Russian-annexed Crimea.",
+          "researcher_comment": "Case shows a different risk profile (moderate/moderate) and an active retaliatory measure; again, coding rationale and cross-case comparability are not included in the chunk.",
+          "potential_themes": [
+            "escalation_risk",
+            "deterrence"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "example",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "power_grid_case",
+            "ukraine_response"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-24T15:28:59.696316Z",
+  "collection_name": "frameworks",
+  "custom_id": "3916688b435ca3404aef2bafb7586adb77bc0549d2449a61687ca5a225702783",
+  "function": "code_pdf_page"
+}

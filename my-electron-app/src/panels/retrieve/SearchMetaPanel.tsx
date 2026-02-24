@@ -87,49 +87,63 @@ export class SearchMetaPanel {
     this.openBtn = document.createElement("button");
     this.openBtn.type = "button";
     this.openBtn.className = "ribbon-button";
+    this.openBtn.ariaLabel = "Open record";
     this.openBtn.textContent = "Open";
+    this.openBtn.dataset.voiceAliases = "open,open record,open selected";
     this.openBtn.disabled = true;
     this.openBtn.addEventListener("click", () => this.openSelected());
 
     this.graphBtn = document.createElement("button");
     this.graphBtn.type = "button";
     this.graphBtn.className = "ribbon-button";
+    this.graphBtn.ariaLabel = "Network graph";
     this.graphBtn.textContent = "Network Graph";
+    this.graphBtn.dataset.voiceAliases = "network graph,open network graph,view graph";
     this.graphBtn.disabled = true;
     this.graphBtn.addEventListener("click", () => this.openGraph());
 
     this.snowballRefsBtn = document.createElement("button");
     this.snowballRefsBtn.type = "button";
     this.snowballRefsBtn.className = "ribbon-button";
+    this.snowballRefsBtn.ariaLabel = "Snowball references";
     this.snowballRefsBtn.textContent = "Snowball: References";
+    this.snowballRefsBtn.dataset.voiceAliases = "snowball references,citations for references,open references";
     this.snowballRefsBtn.disabled = true;
     this.snowballRefsBtn.addEventListener("click", () => void this.snowball("references"));
 
     this.snowballCitesBtn = document.createElement("button");
     this.snowballCitesBtn.type = "button";
     this.snowballCitesBtn.className = "ribbon-button";
+    this.snowballCitesBtn.ariaLabel = "Snowball citations";
     this.snowballCitesBtn.textContent = "Snowball: Citations";
+    this.snowballCitesBtn.dataset.voiceAliases = "snowball citations,citations for record,open citations";
     this.snowballCitesBtn.disabled = true;
     this.snowballCitesBtn.addEventListener("click", () => void this.snowball("citations"));
 
     this.saveBtn = document.createElement("button");
     this.saveBtn.type = "button";
     this.saveBtn.className = "ribbon-button";
+    this.saveBtn.ariaLabel = "Save record";
     this.saveBtn.textContent = "Save";
+    this.saveBtn.dataset.voiceAliases = "save record,add to library,store record";
     this.saveBtn.disabled = true;
     this.saveBtn.addEventListener("click", () => void this.saveSelected());
 
     this.bibBtn = document.createElement("button");
     this.bibBtn.type = "button";
     this.bibBtn.className = "ribbon-button";
+    this.bibBtn.ariaLabel = "Copy BibTeX";
     this.bibBtn.textContent = "BibTeX";
+    this.bibBtn.dataset.voiceAliases = "copy bibtex,bibtex,copy citation";
     this.bibBtn.disabled = true;
     this.bibBtn.addEventListener("click", () => void this.copyBibtex());
 
     this.oaBtn = document.createElement("button");
     this.oaBtn.type = "button";
     this.oaBtn.className = "ribbon-button";
+    this.oaBtn.ariaLabel = "Open access";
     this.oaBtn.textContent = "OA";
+    this.oaBtn.dataset.voiceAliases = "open access,open oa,open access link";
     this.oaBtn.disabled = true;
     this.oaBtn.addEventListener("click", () => this.openOpenAccess());
 
@@ -165,7 +179,9 @@ export class SearchMetaPanel {
     this.tagAddBtn = document.createElement("button");
     this.tagAddBtn.type = "button";
     this.tagAddBtn.className = "retrieve-tag-add";
+    this.tagAddBtn.ariaLabel = "Add tag";
     this.tagAddBtn.textContent = "Add";
+    this.tagAddBtn.dataset.voiceAliases = "add tag,tag add,add new tag";
     this.tagAddBtn.disabled = true;
     this.tagAddBtn.addEventListener("click", () => void this.attemptAddTag());
 
@@ -400,6 +416,8 @@ export class SearchMetaPanel {
     removeBtn.type = "button";
     removeBtn.className = "retrieve-tag-remove";
     removeBtn.textContent = "×";
+    removeBtn.ariaLabel = "Remove tag";
+    removeBtn.dataset.voiceAliases = "remove tag,delete tag,clear tag";
     removeBtn.addEventListener("click", () => {
       void this.removeTag(recordId, tag);
     });

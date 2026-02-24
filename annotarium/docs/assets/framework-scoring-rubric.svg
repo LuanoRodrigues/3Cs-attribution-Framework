@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="560" viewBox="0 0 960 560" role="img" aria-labelledby="title desc">
+  <title id="title">C1-C2-C3 Scoring Rubric</title>
+  <desc id="desc">Three-C scoring rubric with 0-1-2 criteria for each variable.</desc>
+  <defs>
+    <style>
+      .bg { fill: #ffffff; }
+      .h1 { font-family: "Segoe UI", Arial, sans-serif; font-size: 22px; font-weight: 700; fill: #111827; }
+      .sub { font-family: "Segoe UI", Arial, sans-serif; font-size: 12px; fill: #4b5563; }
+      .table { fill: #ffffff; stroke: #9ca3af; stroke-width: 1.2; }
+      .head { fill: #f3f4f6; stroke: #9ca3af; stroke-width: 1.2; }
+      .c1 { fill: #f9fafb; }
+      .c2 { fill: #f9fafb; }
+      .c3 { fill: #f9fafb; }
+      .tx { font-family: "Segoe UI", Arial, sans-serif; font-size: 11px; fill: #1f2937; }
+      .th { font-family: "Segoe UI", Arial, sans-serif; font-size: 12px; font-weight: 700; fill: #111827; }
+      .tc { font-family: "Segoe UI", Arial, sans-serif; font-size: 11px; font-weight: 700; fill: #111827; }
+      .rule { font-family: "Segoe UI", Arial, sans-serif; font-size: 10px; fill: #374151; }
+      .b-low { fill: #f3f4f6; stroke: #9ca3af; stroke-width: 1; }
+      .b-mid { fill: #eef2ff; stroke: #9ca3af; stroke-width: 1; }
+      .b-high { fill: #ecfeff; stroke: #9ca3af; stroke-width: 1; }
+      .bt { font-family: "Segoe UI", Arial, sans-serif; font-size: 10px; font-weight: 700; fill: #111827; }
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="960" height="560" class="bg"/>
+  <text x="480" y="34" class="h1" text-anchor="middle">Figure A. C1-C2-C3 Variable Scoring Rubric (0-2)</text>
+  <text x="480" y="52" class="sub" text-anchor="middle">Interpretation: 0 = weak / absent, 1 = partial / mixed, 2 = strong / explicit.</text>
+
+  <rect x="30" y="74" width="900" height="34" class="head"/>
+  <text x="48" y="95" class="th">C Domain / Variable</text>
+  <text x="350" y="95" class="th">Score 0 (Weak)</text>
+  <text x="555" y="95" class="th">Score 1 (Partial)</text>
+  <text x="760" y="95" class="th">Score 2 (Strong)</text>
+  <rect x="332" y="78" width="56" height="14" rx="6" class="b-low"/>
+  <text x="360" y="88" text-anchor="middle" class="bt">LOW</text>
+  <rect x="537" y="78" width="56" height="14" rx="6" class="b-mid"/>
+  <text x="565" y="88" text-anchor="middle" class="bt">MEDIUM</text>
+  <rect x="742" y="78" width="56" height="14" rx="6" class="b-high"/>
+  <text x="770" y="88" text-anchor="middle" class="bt">HIGH</text>
+
+  <!-- C1 rows -->
+  <rect x="30" y="108" width="900" height="28" class="head"/>
+  <text x="48" y="126" class="tc">C1. Clarity</text>
+
+  <rect x="30" y="136" width="900" height="34" class="table"/>
+  <text x="48" y="157" class="tx">Act severity specificity</text>
+  <text x="350" y="157" class="tx">Severity not stated or vague.</text>
+  <text x="555" y="157" class="tx">Severity stated but partially bounded.</text>
+  <text x="760" y="157" class="tx">Severity explicit and bounded.</text>
+
+  <rect x="30" y="170" width="900" height="34" class="table"/>
+  <text x="48" y="191" class="tx">State actor linkage</text>
+  <text x="350" y="191" class="tx">No state actor identified.</text>
+  <text x="555" y="191" class="tx">Actor implied or weakly named.</text>
+  <text x="760" y="191" class="tx">Named actor with direct linkage.</text>
+
+  <rect x="30" y="204" width="900" height="34" class="table"/>
+  <text x="48" y="225" class="tx">Legal pathway clarity</text>
+  <text x="350" y="225" class="tx">No legal basis stated.</text>
+  <text x="555" y="225" class="tx">Legal basis present but incomplete.</text>
+  <text x="760" y="225" class="tx">Legal basis explicit and coherent.</text>
+
+  <!-- C2 rows -->
+  <rect x="30" y="238" width="900" height="28" class="head"/>
+  <text x="48" y="256" class="tc">C2. Chain of Custody</text>
+
+  <rect x="30" y="266" width="900" height="34" class="table"/>
+  <text x="48" y="287" class="tx">Source provenance trail</text>
+  <text x="350" y="287" class="tx">Origin unknown.</text>
+  <text x="555" y="287" class="tx">Origin partially documented.</text>
+  <text x="760" y="287" class="tx">Origin fully documented.</text>
+
+  <rect x="30" y="300" width="900" height="34" class="table"/>
+  <text x="48" y="321" class="tx">Integrity/hash markers</text>
+  <text x="350" y="321" class="tx">No integrity controls shown.</text>
+  <text x="555" y="321" class="tx">Some integrity controls shown.</text>
+  <text x="760" y="321" class="tx">Integrity controls complete and valid.</text>
+
+  <rect x="30" y="334" width="900" height="34" class="table"/>
+  <text x="48" y="355" class="tx">Timestamp + version lineage</text>
+  <text x="350" y="355" class="tx">Inconsistent or missing timeline.</text>
+  <text x="555" y="355" class="tx">Timeline mostly consistent.</text>
+  <text x="760" y="355" class="tx">Timeline and version chain complete.</text>
+
+  <!-- C3 rows -->
+  <rect x="30" y="368" width="900" height="28" class="head"/>
+  <text x="48" y="386" class="tc">C3. Credibility</text>
+
+  <rect x="30" y="396" width="900" height="34" class="table"/>
+  <text x="48" y="417" class="tx">Source independence</text>
+  <text x="350" y="417" class="tx">Partisan or opaque sourcing.</text>
+  <text x="555" y="417" class="tx">Mixed independence signals.</text>
+  <text x="760" y="417" class="tx">Independent and high-quality sources.</text>
+
+  <rect x="30" y="430" width="900" height="34" class="table"/>
+  <text x="48" y="451" class="tx">Single-source dependency</text>
+  <text x="350" y="451" class="tx">Claim rests on one source.</text>
+  <text x="555" y="451" class="tx">Limited source diversity.</text>
+  <text x="760" y="451" class="tx">No critical single-source dependence.</text>
+
+  <rect x="30" y="464" width="900" height="34" class="table"/>
+  <text x="48" y="485" class="tx">Cross-channel corroboration</text>
+  <text x="350" y="485" class="tx">No independent corroboration.</text>
+  <text x="555" y="485" class="tx">Partial corroboration.</text>
+  <text x="760" y="485" class="tx">Multiple independent corroborations.</text>
+
+  <text x="30" y="528" class="rule">Aggregation rule: C Total = C1 + C2 + C3, where each C is the mean (or weighted mean) of its variables.</text>
+</svg>

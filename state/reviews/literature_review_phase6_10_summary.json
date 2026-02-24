@@ -1,0 +1,15 @@
+{
+  "phase": "phase_10_finalized",
+  "created_at": "2026-02-23T19:31:32.819899Z",
+  "num_themes": 4,
+  "num_sections": 4,
+  "num_footnotes": 45,
+  "num_references": 7,
+  "num_trace_rows": 45,
+  "artifacts": {
+    "context": "state/reviews/literature_review_context.json",
+    "draft_html": "state/reviews/literature_review_draft.html",
+    "final_html": "state/reviews/literature_review_final.html",
+    "traceability_csv": "state/reviews/literature_review_traceability.csv"
+  }
+}

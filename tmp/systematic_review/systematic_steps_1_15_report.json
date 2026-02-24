@@ -1,0 +1,115 @@
+{
+  "schema": "systematic_steps_1_15_report_v1",
+  "createdAt": "2026-02-23T17:03:53.597Z",
+  "runDir": "/home/pantera/projects/TEIA/tmp/systematic_review",
+  "checklistPath": "/home/pantera/projects/TEIA/Research/Systematic_review/prisma_check_list.html",
+  "reviewerCount": 2,
+  "completedSteps": 15,
+  "failedSteps": 0,
+  "steps": [
+    {
+      "step": 1,
+      "title": "Load Systematic State",
+      "status": "completed",
+      "details": "Loaded state for 'frameworks_and_models'.",
+      "artifacts": [
+        "/home/pantera/projects/TEIA/tmp/systematic_review/systematic_review_state_v1.json"
+      ]
+    },
+    {
+      "step": 2,
+      "title": "Validate Collection Scope",
+      "status": "completed",
+      "details": "Collection items in scope: 42."
+    },
+    {
+      "step": 3,
+      "title": "Ensure Research Questions",
+      "status": "completed",
+      "details": "Research questions: 3."
+    },
+    {
+      "step": 4,
+      "title": "Ensure Inclusion Criteria",
+      "status": "completed",
+      "details": "Inclusion criteria: 3."
+    },
+    {
+      "step": 5,
+      "title": "Ensure Exclusion Criteria",
+      "status": "completed",
+      "details": "Exclusion criteria: 3."
+    },
+    {
+      "step": 6,
+      "title": "Set Reviewer Count",
+      "status": "completed",
+      "details": "Reviewer count normalized to 2."
+    },
+    {
+      "step": 7,
+      "title": "Build Reviewer Roster",
+      "status": "completed",
+      "details": "Reviewer roster size: 2."
+    },
+    {
+      "step": 8,
+      "title": "Initialize PRISMA Flow",
+      "status": "completed",
+      "details": "PRISMA identified records: 42."
+    },
+    {
+      "step": 9,
+      "title": "Normalize Screening Counts",
+      "status": "completed",
+      "details": "Screened=0, Included=0, Excluded=0."
+    },
+    {
+      "step": 10,
+      "title": "Compute General IRR",
+      "status": "completed",
+      "details": "General IRR=n/a (0/0)."
+    },
+    {
+      "step": 11,
+      "title": "Compute Two-Rater IRR",
+      "status": "completed",
+      "details": "Two-rater IRR=n/a."
+    },
+    {
+      "step": 12,
+      "title": "Refresh Stage Gates",
+      "status": "completed",
+      "details": "Pipeline stages refreshed for steps 1-15 execution."
+    },
+    {
+      "step": 13,
+      "title": "Prepare Coding Inputs",
+      "status": "completed",
+      "details": "Coding mode=open; codebook=/home/pantera/projects/TEIA/tmp/systematic_review/codebook.md."
+    },
+    {
+      "step": 14,
+      "title": "Persist State + Pipeline",
+      "status": "completed",
+      "details": "Updated state and pipeline artifacts.",
+      "artifacts": [
+        "/home/pantera/projects/TEIA/tmp/systematic_review/systematic_review_state_v1.json",
+        "/home/pantera/projects/TEIA/tmp/systematic_review/systematic_review_pipeline.json",
+        "/home/pantera/projects/TEIA/tmp/systematic_review/systematic_review_template.html"
+      ]
+    },
+    {
+      "step": 15,
+      "title": "Compose Full Paper",
+      "status": "completed",
+      "details": "Generated full paper and checklist registry.",
+      "artifacts": [
+        "/home/pantera/projects/TEIA/tmp/systematic_review/systematic_review_paper_v1.json",
+        "/home/pantera/projects/TEIA/tmp/systematic_review/systematic_review_full_paper.md",
+        "/home/pantera/projects/TEIA/tmp/systematic_review/systematic_review_full_paper.html",
+        "/home/pantera/projects/TEIA/tmp/systematic_review/prisma_checklist_registry.json"
+      ]
+    }
+  ]
+}

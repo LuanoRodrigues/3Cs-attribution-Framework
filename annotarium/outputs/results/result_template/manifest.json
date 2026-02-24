@@ -1,0 +1,321 @@
+{
+  "result_template": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template",
+  "total_files": 45,
+  "files": [
+    {
+      "category": "extraction",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/extraction/apt1_claims_payload_gpt5mini.json",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/extraction/apt1_claims_payload_gpt5mini.json",
+      "size_bytes": 17941,
+      "sha256": "d491afc0c809f61a6b680f0870f02a426c59ad357def36c415e486254245fc46"
+    },
+    {
+      "category": "extraction",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/extraction/apt1_claims_payload_gpt5mini_refined_v2.json",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/extraction/apt1_claims_payload_gpt5mini_refined_v2.json",
+      "size_bytes": 47412,
+      "sha256": "3a63195f0116a8422e8efd9d46de260392bc25217ab7d614faa62c121a7a2f95"
+    },
+    {
+      "category": "extraction",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/extraction/output.json",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/extraction/output.json",
+      "size_bytes": 1502300,
+      "sha256": "3413311960d49f8476dc7fc0db9ad6f5ca97488bab6396ee1d76a3322705a601"
+    },
+    {
+      "category": "adapters",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/adapters/output_for_score_icj_v2.json",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/adapters/output_for_score_icj_v2.json",
+      "size_bytes": 166529,
+      "sha256": "97077c47e73f0b04bd6937856f610b34c8407faa29024e0b3afe12d4e38b9f99"
+    },
+    {
+      "category": "methodology",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/methodology/apt29_hammertoss_stealthy_tactics_define_a_methodology.html",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/methodology/apt29_hammertoss_stealthy_tactics_define_a_methodology.html",
+      "size_bytes": 101034,
+      "sha256": "91fe5269b3b78e54e3f29d5e68ea3ee9f1fa57fb19bd593eb457d23e37c8dbcb"
+    },
+    {
+      "category": "methodology",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/methodology/apt29_hammertoss_stealthy_tactics_define_a_methodology.json",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/methodology/apt29_hammertoss_stealthy_tactics_define_a_methodology.json",
+      "size_bytes": 310199,
+      "sha256": "bacea4945199dc43f50994181d7459465bb83e2061e2f3c8d5f9b42a2b281d8d"
+    },
+    {
+      "category": "methodology",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/methodology/fireeye_rpt_apt37_02_20_2018_methodology.html",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/methodology/fireeye_rpt_apt37_02_20_2018_methodology.html",
+      "size_bytes": 6281,
+      "sha256": "e2223c7cb043e277b377ff35a8d9e93cbd2a3c18c1b0a47456e425b1745a8816"
+    },
+    {
+      "category": "methodology",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/methodology/fireeye_rpt_apt37_02_20_2018_methodology.json",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/methodology/fireeye_rpt_apt37_02_20_2018_methodology.json",
+      "size_bytes": 177806,
+      "sha256": "6beb0ccda83accb9563b5c41884be35f23bf049922cc943973370d47053c4dfd"
+    },
+    {
+      "category": "methodology",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/methodology/mandiant_2013_apt1_exposing_one_of_china_s_cyber_espionage_units_methodology.html",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/methodology/mandiant_2013_apt1_exposing_one_of_china_s_cyber_espionage_units_methodology.html",
+      "size_bytes": 6281,
+      "sha256": "e2223c7cb043e277b377ff35a8d9e93cbd2a3c18c1b0a47456e425b1745a8816"
+    },
+    {
+      "category": "methodology",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/methodology/mandiant_2013_apt1_exposing_one_of_china_s_cyber_espionage_units_methodology.json",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/methodology/mandiant_2013_apt1_exposing_one_of_china_s_cyber_espionage_units_methodology.json",
+      "size_bytes": 355937,
+      "sha256": "792f3b867303c43fd361b41a96890c174d15efc0c9fb6839a77a82e8528470b7"
+    },
+    {
+      "category": "methodology",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/methodology/mandiant_2017_apt28_at_the_center_of_the_storm_methodology.html",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/methodology/mandiant_2017_apt28_at_the_center_of_the_storm_methodology.html",
+      "size_bytes": 6281,
+      "sha256": "e2223c7cb043e277b377ff35a8d9e93cbd2a3c18c1b0a47456e425b1745a8816"
+    },
+    {
+      "category": "methodology",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/methodology/mandiant_2017_apt28_at_the_center_of_the_storm_methodology.json",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/methodology/mandiant_2017_apt28_at_the_center_of_the_storm_methodology.json",
+      "size_bytes": 259286,
+      "sha256": "f0242beb1be0fd63adfb10b9c61f9f3ad8426291bde10f23d10f66475996e8a0"
+    },
+    {
+      "category": "methodology",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/methodology/panda_crowdstrike_intelligence_report_methodology.html",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/methodology/panda_crowdstrike_intelligence_report_methodology.html",
+      "size_bytes": 6281,
+      "sha256": "e2223c7cb043e277b377ff35a8d9e93cbd2a3c18c1b0a47456e425b1745a8816"
+    },
+    {
+      "category": "methodology",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/methodology/panda_crowdstrike_intelligence_report_methodology.json",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/methodology/panda_crowdstrike_intelligence_report_methodology.json",
+      "size_bytes": 290273,
+      "sha256": "2791c05fbc0f165e95b3426472ed49bb1339339282ff495867bf267b4cca7cc8"
+    },
+    {
+      "category": "methodology",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/methodology/portfolio_methodology.html",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/methodology/portfolio_methodology.html",
+      "size_bytes": 6261,
+      "sha256": "d6317bd4e64fbdb294eba4d54f86c5852ee416765a5df18fee1a95ad4bf0505a"
+    },
+    {
+      "category": "methodology",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/methodology/portfolio_methodology.json",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/methodology/portfolio_methodology.json",
+      "size_bytes": 61651,
+      "sha256": "9bab22c21c1ec75c93e0eee22238ce5ddc46bcdddc51160fc1794a3190369b83"
+    },
+    {
+      "category": "scoring",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/scoring/apt29_hammertoss_stealthy_tactics_define_a.icj_score_report.json",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/scoring/apt29_hammertoss_stealthy_tactics_define_a.icj_score_report.json",
+      "size_bytes": 22477,
+      "sha256": "42ed66d113dee5193c293ee9b071dffe9d835a286356def63d433440fea968ee"
+    },
+    {
+      "category": "scoring",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/scoring/apt29_hammertoss_stealthy_tactics_define_a.icj_score_report_v3.json",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/scoring/apt29_hammertoss_stealthy_tactics_define_a.icj_score_report_v3.json",
+      "size_bytes": 17248,
+      "sha256": "3d1efad7c7bf457a7d3c479e3206b3a0636cab7ae6e95bca5fb957299d728645"
+    },
+    {
+      "category": "scoring",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/scoring/apt29_hammertoss_stealthy_tactics_define_a.icj_score_report_v4.json",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/scoring/apt29_hammertoss_stealthy_tactics_define_a.icj_score_report_v4.json",
+      "size_bytes": 21667,
+      "sha256": "19f6f1ddded0ac7e8e065f4150657ed72a813d08c0a2ed53c58d99efcb322086"
+    },
+    {
+      "category": "scoring",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/scoring/audit.md",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/scoring/audit.md",
+      "size_bytes": 122,
+      "sha256": "13adf8b801822f5c24c34a3dd865d6937a853d0acf05c8ee60d833f4114194e8"
+    },
+    {
+      "category": "scoring",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/scoring/claim_scores.json",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/scoring/claim_scores.json",
+      "size_bytes": 16672,
+      "sha256": "2f23ab6e31b1dd80b3fa10e72a8e45e2c555b7cb199b80322406d63e87990048"
+    },
+    {
+      "category": "scoring",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/scoring/document_scores.json",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/scoring/document_scores.json",
+      "size_bytes": 976,
+      "sha256": "c466244a54f790d50f77e3767b992d7347fe848825ee58ff6e506a37e521eb8b"
+    },
+    {
+      "category": "scoring",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/scoring/evidence_weights.json",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/scoring/evidence_weights.json",
+      "size_bytes": 6183,
+      "sha256": "5d5eea32e174a9be3ada574579b591d4093180edfb26a05ac4b42bc2062f51d9"
+    },
+    {
+      "category": "scoring",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/scoring/fireeye_rpt_apt37_02_20_2018.icj_score_report.json",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/scoring/fireeye_rpt_apt37_02_20_2018.icj_score_report.json",
+      "size_bytes": 30870,
+      "sha256": "fb47ebbc692d5621eeef7ddc73424b421dcf65f820dfd5d615e2c671f61faecd"
+    },
+    {
+      "category": "scoring",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/scoring/fireeye_rpt_apt37_02_20_2018.icj_score_report_v3.json",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/scoring/fireeye_rpt_apt37_02_20_2018.icj_score_report_v3.json",
+      "size_bytes": 34751,
+      "sha256": "d1e1f19c6bc03f4998cb99e83c4bba154dadbd94657d7d66c66dfeed180d97aa"
+    },
+    {
+      "category": "scoring",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/scoring/fireeye_rpt_apt37_02_20_2018.icj_score_report_v4.json",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/scoring/fireeye_rpt_apt37_02_20_2018.icj_score_report_v4.json",
+      "size_bytes": 42875,
+      "sha256": "775a4d8993c35bb6f743d1b9638865c0418ebbfa51458be9d8db4a1ad5f13c35"
+    },
+    {
+      "category": "scoring",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/scoring/icj_score_report.mandiant.json",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/scoring/icj_score_report.mandiant.json",
+      "size_bytes": 83152,
+      "sha256": "7dacb8b3f30ae8ab549a7484a9ecfacca528ce04bfe9b7f319e16927c7aad2a0"
+    },
+    {
+      "category": "scoring",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/scoring/mandiant_2013_apt1_exposing_one_of_china_s_cyber_espionage_units.icj_score_report.json",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/scoring/mandiant_2013_apt1_exposing_one_of_china_s_cyber_espionage_units.icj_score_report.json",
+      "size_bytes": 121093,
+      "sha256": "a5c00e630f153be7694acc9503a6a1397a6d6559f2ed3d175404e5f05a652c37"
+    },
+    {
+      "category": "scoring",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/scoring/mandiant_2013_apt1_exposing_one_of_china_s_cyber_espionage_units.icj_score_report_v3.json",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/scoring/mandiant_2013_apt1_exposing_one_of_china_s_cyber_espionage_units.icj_score_report_v3.json",
+      "size_bytes": 58358,
+      "sha256": "b95b16162237891b2b653a2424002f38be7e4a1dcb98238cdfaf755c243bf9fc"
+    },
+    {
+      "category": "scoring",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/scoring/mandiant_2013_apt1_exposing_one_of_china_s_cyber_espionage_units.icj_score_report_v4.json",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/scoring/mandiant_2013_apt1_exposing_one_of_china_s_cyber_espionage_units.icj_score_report_v4.json",
+      "size_bytes": 71452,
+      "sha256": "b85ab65edcfe09e4ff8e43c3fc341bb79a03dd5377edd7628c650098019587d9"
+    },
+    {
+      "category": "scoring",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/scoring/mandiant_2017_apt28_at_the_center_of_the_storm.icj_score_report.json",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/scoring/mandiant_2017_apt28_at_the_center_of_the_storm.icj_score_report.json",
+      "size_bytes": 44577,
+      "sha256": "6154a4ea328bd727997079d6d2c9c2d4328528109e3e398afe1892db58b29fea"
+    },
+    {
+      "category": "scoring",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/scoring/mandiant_2017_apt28_at_the_center_of_the_storm.icj_score_report_v3.json",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/scoring/mandiant_2017_apt28_at_the_center_of_the_storm.icj_score_report_v3.json",
+      "size_bytes": 57946,
+      "sha256": "3b06b4b0fe61b9888953eaa8f0599f1659f666b2678d1c5317be172931295bb7"
+    },
+    {
+      "category": "scoring",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/scoring/mandiant_2017_apt28_at_the_center_of_the_storm.icj_score_report_v4.json",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/scoring/mandiant_2017_apt28_at_the_center_of_the_storm.icj_score_report_v4.json",
+      "size_bytes": 71011,
+      "sha256": "d94ca2d2d2010aa62df457f99aaef3e5d3aadc2520a7f3da8b8b07126b7dbc11"
+    },
+    {
+      "category": "scoring",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/scoring/panda_crowdstrike_intelligence_report.icj_score_report.json",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/scoring/panda_crowdstrike_intelligence_report.icj_score_report.json",
+      "size_bytes": 89319,
+      "sha256": "6ea98f6d7538b9f7e8865f7b8f912838c0591ba30388f02a7c00cb9b0910cbd8"
+    },
+    {
+      "category": "scoring",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/scoring/panda_crowdstrike_intelligence_report.icj_score_report_v3.json",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/scoring/panda_crowdstrike_intelligence_report.icj_score_report_v3.json",
+      "size_bytes": 48139,
+      "sha256": "60e8820359a9383f11fe46b82a1353224a1e5427ec8b340d00e6c76a2c3cdd29"
+    },
+    {
+      "category": "scoring",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/scoring/panda_crowdstrike_intelligence_report.icj_score_report_v4.json",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/scoring/panda_crowdstrike_intelligence_report.icj_score_report_v4.json",
+      "size_bytes": 60007,
+      "sha256": "06d0ce479fe1b3af30f2d92ecd58f896655b284ad0a2247eba6c615a43373726"
+    },
+    {
+      "category": "reports",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/reports/apt29_hammertoss_stealthy_tactics_define_a_report.json",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/reports/apt29_hammertoss_stealthy_tactics_define_a_report.json",
+      "size_bytes": 329940,
+      "sha256": "397891869a86d2c93b002f1b7cf7cc2c2dcfb33b324e9ea2ee291b74afc33ca0"
+    },
+    {
+      "category": "reports",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/reports/fireeye_rpt_apt37_02_20_2018_report.json",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/reports/fireeye_rpt_apt37_02_20_2018_report.json",
+      "size_bytes": 520983,
+      "sha256": "a557f6874c5486ecf3eb8b708e98a6eab7aa9fc48ea8193c1f6fb6ffb5170587"
+    },
+    {
+      "category": "reports",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/reports/mandiant_2013_apt1_exposing_one_of_china_s_cyber_espionage_units_report.json",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/reports/mandiant_2013_apt1_exposing_one_of_china_s_cyber_espionage_units_report.json",
+      "size_bytes": 1734240,
+      "sha256": "e5ad4b6d1f11e9eef110d45a13bd3fb163e353700e7876d944d3e9681fa83e53"
+    },
+    {
+      "category": "reports",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/reports/mandiant_2017_apt28_at_the_center_of_the_storm_report.json",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/reports/mandiant_2017_apt28_at_the_center_of_the_storm_report.json",
+      "size_bytes": 693142,
+      "sha256": "9a7b55c8cadd2d2af050e832c9aa30c3dd24f0a485e8e7e35ae77d9e14d9d362"
+    },
+    {
+      "category": "reports",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/reports/panda_crowdstrike_intelligence_report_report.json",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/reports/panda_crowdstrike_intelligence_report_report.json",
+      "size_bytes": 899636,
+      "sha256": "615cce4a0be0e248d754ec537fe2c76ddedc343078aebe40a6684e765cbbcf58"
+    },
+    {
+      "category": "reports",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/reports/portfolio_summary.json",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/reports/portfolio_summary.json",
+      "size_bytes": 20562,
+      "sha256": "33bc6cfe9cc343b49a045ce90a0de8f95232247625d959ba8f41bf92ab5adeb2"
+    },
+    {
+      "category": "reports",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/reports/portfolio_summary.md",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/reports/portfolio_summary.md",
+      "size_bytes": 2083,
+      "sha256": "1b7c56ee855bf85bcab7b4fb3aa0e5952641a43e7d4ebaa727076a2e6c9b2282"
+    },
+    {
+      "category": "validation",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/validation/validation_report.json",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/validation/validation_report.json",
+      "size_bytes": 1678,
+      "sha256": "06f61bd2aa147d2c6441a671179df63778c12dfd8ecb2d81e0e64d6903d8be4b"
+    },
+    {
+      "category": "validation",
+      "source_path": "/home/pantera/projects/TEIA/annotarium/outputs/validation/validation_report.md",
+      "target_path": "/home/pantera/projects/TEIA/annotarium/outputs/results/result_template/validation/validation_report.md",
+      "size_bytes": 825,
+      "sha256": "83eac2c8b5c5b69ba0031b9c6bd37602a94bf1c6193f3bbfed14fefcc5a82d3f"
+    }
+  ]
+}

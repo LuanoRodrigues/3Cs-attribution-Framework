@@ -1,0 +1,61 @@
+{
+  "generated_at_utc": "2026-02-21T12:29:13Z",
+  "inputs": {
+    "schema": "/home/pantera/projects/TEIA/annotarium/cyber_attribution_markdown_extraction_v2_schema.json",
+    "markdown": "/home/pantera/projects/TEIA/annotarium/cache/pdf_markdown/ca3da254e06b03e8b28ce2c2a9f679a6498325fa3126ce1757f9b9304ffa1be3.full_text.md",
+    "output": "/home/pantera/projects/TEIA/annotarium/outputs/extraction/output.json"
+  },
+  "certification": "PASS",
+  "overall_score": 89.3084,
+  "score_adjustments": {
+    "base_overall_score": 95.2084,
+    "issue_density_penalty": 5.9,
+    "weighted_warning_sum": 5.9,
+    "warning_count": 5,
+    "error_count": 0
+  },
+  "category_scores": {
+    "schema": 100.0,
+    "integrity": 97.0,
+    "tables": 97.0526,
+    "citations": 79.0,
+    "source_years": 100.0,
+    "artifacts": 100.0,
+    "six_c_grounding": 100.0
+  },
+  "thresholds": {
+    "min_overall_score": 85.0,
+    "min_category_score": 60.0
+  },
+  "hard_failures": [],
+  "findings": [
+    {
+      "severity": "warning",
+      "message": "31/249 markdown anchors were not directly matchable."
+    },
+    {
+      "severity": "warning",
+      "message": "21/44 citations look like non-bibliographic inline links."
+    },
+    {
+      "severity": "warning",
+      "message": "14/44 citations have normalization issues."
+    },
+    {
+      "severity": "warning",
+      "message": "13/44 citation URLs not found in markdown text."
+    },
+    {
+      "severity": "warning",
+      "message": "2/44 citations contain very weak bibliographic context."
+    }
+  ],
+  "summary_counts": {
+    "pages": 1,
+    "tables": 19,
+    "citations": 44,
+    "artifacts": 190,
+    "claims": 10,
+    "sources": 45
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": "{\n  \"classification\": \"Highly Relevant\",\n  \"relevance_score\": \"High\",\n  \"potential_subcategory\": \"Voluntary attribution strategies and cyber coercion (state vs nonstate; policy implications)\",\n  \"justification\": \"The abstract centrally addresses attribution decisions in cyber conflict\u2014distinguishing clandestine vs covert actions, defining decision points (T0/T1), and analyzing when actors publicly or privately claim responsibility. It links voluntary attribution to coercion, deterrence signaling, escalation management, and diplomatic/defensive policy responses, and uses case-based evidence to build a framework. These topics are core to both attribution scholarship and cyber policy/law. Note: the provided inclusion/exclusion criteria were unavailable (AUTO DRAFT UNAVAILABLE); this classification is based solely on the abstract content.\"\n}"
+  },
+  "cached_at": "2026-02-23T20:41:17.064656Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "L3J6TFPP",
+  "function": "classify_by_abs"
+}

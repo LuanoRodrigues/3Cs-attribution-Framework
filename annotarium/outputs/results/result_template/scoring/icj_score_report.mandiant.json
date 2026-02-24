@@ -1,0 +1,3122 @@
+{
+  "icj_scoring_version": "v1",
+  "inputs": {
+    "document_title": "APT1: Exposing One of China's Cyber Espionage Units",
+    "document_publication_date": "2013-01-01",
+    "claims_count": 3,
+    "profile": "balanced"
+  },
+  "readiness_validation": {
+    "findings": []
+  },
+  "normalized": {
+    "sources": [
+      {
+        "source_id": "SRC0001",
+        "source_kind": "vendor",
+        "title": "APT1 Executive Summary and Key Findings",
+        "authors": [],
+        "authoring_org": "Mandiant",
+        "publisher": "Mandiant",
+        "date_published": "2013-01-01",
+        "url": "",
+        "domain": "",
+        "is_litigation_prepared": 0,
+        "is_single_source": 0,
+        "has_stated_conflict": 0,
+        "has_countervailing_detail": 0,
+        "cites": [],
+        "origin_signature": [
+          "src0001"
+        ]
+      },
+      {
+        "source_id": "SRC0002",
+        "source_kind": "government",
+        "title": "¹ “Mike Rogers, Statement to the U.S. House, Permanent Select Committee on Intelligence, Open Hearing: Cyber Threats and Ongoing Efforts to Protect the Nation, Hearing, October 4, 2011, http://intelligence.house.gov/site",
+        "authors": [],
+        "authoring_org": "U.S. House Permanent Select Committee on Intelligence",
+        "publisher": "U.S. House Permanent Select Committee on Intelligence",
+        "date_published": "2011-01-01",
+        "url": "",
+        "domain": "",
+        "is_litigation_prepared": 0,
+        "is_single_source": 1,
+        "has_stated_conflict": 0,
+        "has_countervailing_detail": 0,
+        "cites": [],
+        "origin_signature": [
+          "src0002"
+        ]
+      },
+      {
+        "source_id": "SRC0003",
+        "source_kind": "media",
+        "title": "Chinese hackers suspected in attack on The Post’s computers.",
+        "authors": [],
+        "authoring_org": "The Washington Post",
+        "publisher": "The Washington Post",
+        "date_published": "2013-01-01",
+        "url": "",
+        "domain": "",
+        "is_litigation_prepared": 0,
+        "is_single_source": 1,
+        "has_stated_conflict": 0,
+        "has_countervailing_detail": 0,
+        "cites": [],
+        "origin_signature": [
+          "src0003"
+        ]
+      },
+      {
+        "source_id": "SRC0004",
+        "source_kind": "academic",
+        "title": "An information hiding method of Word 2007 based on image covering,",
+        "authors": [],
+        "authoring_org": "Referenced academic source",
+        "publisher": "Referenced academic source",
+        "date_published": "2007-01-01",
+        "url": "",
+        "domain": "",
+        "is_litigation_prepared": 0,
+        "is_single_source": 1,
+        "has_stated_conflict": 0,
+        "has_countervailing_detail": 0,
+        "cites": [],
+        "origin_signature": [
+          "src0004"
+        ]
+      },
+      {
+        "source_id": "SRC0005",
+        "source_kind": "unknown",
+        "title": "16 Hebei Chamber of Commerce, Bio of member Wang Weizhong (2012), http://www.hbsh.org/shej_ejsheqmsg.aspx?mid=26&amp;uid=06010000&amp;aid=06, accessed February 6, 2013.",
+        "authors": [],
+        "authoring_org": "Referenced source",
+        "publisher": "Referenced source",
+        "date_published": "2012-01-01",
+        "url": "",
+        "domain": "",
+        "is_litigation_prepared": 0,
+        "is_single_source": 1,
+        "has_stated_conflict": 0,
+        "has_countervailing_detail": 0,
+        "cites": [],
+        "origin_signature": [
+          "src0005"
+        ]
+      },
+      {
+        "source_id": "SRC0006",
+        "source_kind": "academic",
+        "title": "The Implementation of Overlay File System in Embedded Linux,",
+        "authors": [],
+        "authoring_org": "Referenced academic source",
+        "publisher": "Referenced academic source",
+        "date_published": "2006-01-01",
+        "url": "",
+        "domain": "",
+        "is_litigation_prepared": 0,
+        "is_single_source": 1,
+        "has_stated_conflict": 0,
+        "has_countervailing_detail": 0,
+        "cites": [],
+        "origin_signature": [
+          "src0006"
+        ]
+      },
+      {
+        "source_id": "SRC0007",
+        "source_kind": "unknown",
+        "title": "ADC",
+        "authors": [],
+        "authoring_org": "Referenced source",
+        "publisher": "Referenced source",
+        "date_published": "2005-01-01",
+        "url": "",
+        "domain": "",
+        "is_litigation_prepared": 0,
+        "is_single_source": 1,
+        "has_stated_conflict": 0,
+        "has_countervailing_detail": 0,
+        "cites": [],
+        "origin_signature": [
+          "src0007"
+        ]
+      },
+      {
+        "source_id": "SRC0008",
+        "source_kind": "unknown",
+        "title": "Quantization Evaluation Algorithm for Attack Graph Based on Node Score,",
+        "authors": [],
+        "authoring_org": "Referenced source",
+        "publisher": "Referenced source",
+        "date_published": "2010-01-01",
+        "url": "",
+        "domain": "",
+        "is_litigation_prepared": 0,
+        "is_single_source": 1,
+        "has_stated_conflict": 0,
+        "has_countervailing_detail": 0,
+        "cites": [],
+        "origin_signature": [
+          "src0008"
+        ]
+      },
+      {
+        "source_id": "SRC0009",
+        "source_kind": "unknown",
+        "title": "²¹ See http://www.czzbb.net/czzb/YW_Info/YW_ZiGeYS/BaoMingInfo.aspx?YW_RowID=41726&amp;BiaoDuanBH=CZS20091202901&amp;enterprise_id=70362377-3 for documentation of the contract award to Jiangsu Langhai Construction Engine",
+        "authors": [],
+        "authoring_org": "Referenced source",
+        "publisher": "Referenced source",
+        "date_published": "2013-01-01",
+        "url": "",
+        "domain": "",
+        "is_litigation_prepared": 0,
+        "is_single_source": 1,
+        "has_stated_conflict": 0,
+        "has_countervailing_detail": 0,
+        "cites": [],
+        "origin_signature": [
+          "src0009"
+        ]
+      },
+      {
+        "source_id": "SRC0010",
+        "source_kind": "unknown",
+        "title": "²⁴ James C. Mulvenon and Andrew N. D. Yang, editors, The People's Liberation Army as Organization: Reference Volume v1.0, (Santa Monica, CA: RAND Corporation, 2002), 125, http://www.rand.org/pubs/conf_proceedings/CF182.h",
+        "authors": [],
+        "authoring_org": "Referenced source",
+        "publisher": "Referenced source",
+        "date_published": "2002-01-01",
+        "url": "",
+        "domain": "",
+        "is_litigation_prepared": 0,
+        "is_single_source": 1,
+        "has_stated_conflict": 0,
+        "has_countervailing_detail": 0,
+        "cites": [],
+        "origin_signature": [
+          "src0010"
+        ]
+      }
+    ],
+    "artifacts": [
+      {
+        "artifact_id": "ART00001",
+        "artifact_type": "domain",
+        "value": "www.mandiant.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00001",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00002",
+        "artifact_type": "url",
+        "value": "http://intelligence.house.gov/sites/intelligence.house.gov/files/documents/100411CyberHearingRogers.pdf",
+        "location": {
+          "page": 0,
+          "block_id": "ART00002",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00003",
+        "artifact_type": "domain",
+        "value": "intelligence.house.gov",
+        "location": {
+          "page": 0,
+          "block_id": "ART00003",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00004",
+        "artifact_type": "file_name",
+        "value": "100411CyberHearingRogers.pdf",
+        "location": {
+          "page": 0,
+          "block_id": "ART00004",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00005",
+        "artifact_type": "url",
+        "value": "http://www.washingtonpost.com/business/technology/chinese-hackers-suspected-in-attack-on-the-posts-computers/2013/02/01/d5a44fde-6cb1-11e2-bd36-c0fe61a205f6_story.html",
+        "location": {
+          "page": 0,
+          "block_id": "ART00005",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00006",
+        "artifact_type": "domain",
+        "value": "www.washingtonpost.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00006",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00007",
+        "artifact_type": "url",
+        "value": "http://www.mandiant.com/resources/download/redline",
+        "location": {
+          "page": 0,
+          "block_id": "ART00007",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00008",
+        "artifact_type": "domain",
+        "value": "gov.cn",
+        "location": {
+          "page": 0,
+          "block_id": "ART00008",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00009",
+        "artifact_type": "url",
+        "value": "http://project2049.net/documents/pla_third_department_sigint_cyber_stokes_lin_hsiao.pdf",
+        "location": {
+          "page": 0,
+          "block_id": "ART00009",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00010",
+        "artifact_type": "domain",
+        "value": "project2049.net",
+        "location": {
+          "page": 0,
+          "block_id": "ART00010",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00011",
+        "artifact_type": "file_name",
+        "value": "pla_third_department_sigint_cyber_stokes_lin_hsiao.pdf",
+        "location": {
+          "page": 0,
+          "block_id": "ART00011",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00012",
+        "artifact_type": "domain",
+        "value": "www.job51.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00012",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00013",
+        "artifact_type": "domain",
+        "value": "www.job592.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00013",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00014",
+        "artifact_type": "url",
+        "value": "http://www.paper.edu.cn/journal/downCount/0490-6756(2010",
+        "location": {
+          "page": 0,
+          "block_id": "ART00014",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00015",
+        "artifact_type": "domain",
+        "value": "www.paper.edu.cn",
+        "location": {
+          "page": 0,
+          "block_id": "ART00015",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00016",
+        "artifact_type": "url",
+        "value": "http://www.hbsh.org/shej_ejsheqmsg.aspx?mid=26&amp;uid=06010000&amp;aid=06",
+        "location": {
+          "page": 0,
+          "block_id": "ART00016",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00017",
+        "artifact_type": "domain",
+        "value": "www.hbsh.org",
+        "location": {
+          "page": 0,
+          "block_id": "ART00017",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00018",
+        "artifact_type": "url",
+        "value": "http://file.lw23.com/9/98/984/98401889-9da6-4c38-b9d2-5a5202fd1a33.pdf",
+        "location": {
+          "page": 0,
+          "block_id": "ART00018",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00019",
+        "artifact_type": "domain",
+        "value": "file.lw23.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00019",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00020",
+        "artifact_type": "file_name",
+        "value": "98401889-9da6-4c38-b9d2-5a5202fd1a33.pdf",
+        "location": {
+          "page": 0,
+          "block_id": "ART00020",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00021",
+        "artifact_type": "url",
+        "value": "http://file.lw23.com/f/f1/f14/f14e7b60-3d60-4184-a48f-4a50dd21927c.pdf",
+        "location": {
+          "page": 0,
+          "block_id": "ART00021",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00022",
+        "artifact_type": "file_name",
+        "value": "f14e7b60-3d60-4184-a48f-4a50dd21927c.pdf",
+        "location": {
+          "page": 0,
+          "block_id": "ART00022",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00023",
+        "artifact_type": "url",
+        "value": "http://www.ecice06.com/CN/article/downloadArticleFile.do?attachType=PDF&amp;id=19627",
+        "location": {
+          "page": 0,
+          "block_id": "ART00023",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00024",
+        "artifact_type": "domain",
+        "value": "www.ecice06.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00024",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00025",
+        "artifact_type": "url",
+        "value": "http://www.cs.zju.edu.cn/chinese/redir.php?catalog_id=101913&amp;object_id=106021",
+        "location": {
+          "page": 0,
+          "block_id": "ART00025",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00026",
+        "artifact_type": "domain",
+        "value": "www.cs.zju.edu.cn",
+        "location": {
+          "page": 0,
+          "block_id": "ART00026",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00027",
+        "artifact_type": "url",
+        "value": "http://today.hit.edu.cn/articles/2004/2-23/12619.htm",
+        "location": {
+          "page": 0,
+          "block_id": "ART00027",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00028",
+        "artifact_type": "domain",
+        "value": "today.hit.edu.cn",
+        "location": {
+          "page": 0,
+          "block_id": "ART00028",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00029",
+        "artifact_type": "url",
+        "value": "http://www.czzbb.net/czzb/YW_Info/YW_ZiGeYS/BaoMingInfo.aspx?YW_RowID=41726&amp;BiaoDuanBH=CZS20091202901&amp;enterprise_id=70362377-3",
+        "location": {
+          "page": 0,
+          "block_id": "ART00029",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00030",
+        "artifact_type": "domain",
+        "value": "www.czzbb.net",
+        "location": {
+          "page": 0,
+          "block_id": "ART00030",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00031",
+        "artifact_type": "domain",
+        "value": "city8.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00031",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00032",
+        "artifact_type": "url",
+        "value": "http://114.mingluji.com/minglu/%E4%B8%AD%E5%9B%BD%E4%BA%BA%E6%B0%91%E8%A7%A3%E6%94%BE%E5%86%9B%E7%AC%AC61398%E9%83%A8%E9%98%9F%E5%8F%B8%E4%B8%A4%E9%83%A8",
+        "location": {
+          "page": 0,
+          "block_id": "ART00032",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00033",
+        "artifact_type": "domain",
+        "value": "114.mingluji.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00033",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00034",
+        "artifact_type": "url",
+        "value": "http://114.mingluji.com/minglu/%E4%B8%AD%E5%9B%BD%E4%BA%BA%E6%B0%91%E8%A7%A3%E6%94%BE%E5%86%9B%E7%AC%AC61398%E9%83%A8%E9%98%9F%E5%8F%B8%E4%B8%A4%E9%83%A8_0",
+        "location": {
+          "page": 0,
+          "block_id": "ART00034",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00035",
+        "artifact_type": "url",
+        "value": "http://114.mingluji.com/minglu/%E4%B8%AD%E5%9B%BD%E4%BA%BA%E6%B0%91%E8%A7%A3%E6%94%BE%E5%86%9B%E7%AC%AC61398%E9%83%A8%E9%98%9F_0",
+        "location": {
+          "page": 0,
+          "block_id": "ART00035",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00036",
+        "artifact_type": "url",
+        "value": "http://114.mingluji.com/minglu/%E4%B8%AD%E5%9B%BD%E4%BA%BA%E6%B0%91%E8%A7%A3%E6%94%BE%E5%86%9B%E7%AC%AC61398%E9%83%A8%E9%98%9F",
+        "location": {
+          "page": 0,
+          "block_id": "ART00036",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00037",
+        "artifact_type": "url",
+        "value": "http://114.mingluji.com/category/%E7%B1%B8%E5%9E%8B/%E4%B8%AD%E5%9B%BD%E4%BA%BA%E6%B0%91%E8%A7%A3%E6%94%BE%E5%86%9B?page=69",
+        "location": {
+          "page": 0,
+          "block_id": "ART00037",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00038",
+        "artifact_type": "url",
+        "value": "http://www.pudong-edu.sh.cn/Web/PD/jyzc_school.aspx?SiteID=45&amp;UnitID=2388",
+        "location": {
+          "page": 0,
+          "block_id": "ART00038",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00039",
+        "artifact_type": "domain",
+        "value": "www.pudong-edu.sh.cn",
+        "location": {
+          "page": 0,
+          "block_id": "ART00039",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00040",
+        "artifact_type": "url",
+        "value": "http://www.rand.org/pubs/conf_proceedings/CF182.html",
+        "location": {
+          "page": 0,
+          "block_id": "ART00040",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00041",
+        "artifact_type": "domain",
+        "value": "www.rand.org",
+        "location": {
+          "page": 0,
+          "block_id": "ART00041",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00042",
+        "artifact_type": "url",
+        "value": "http://r9.he3.com.cn/%E8%A7%84%E5%88%92/%E9%81%93%E8%B7%AF%E5%8F%8A%E5%85%B6%E4%BB%96%E8%A7%84%E5%88%92%E5%9B%BE%E7%BA%B8/%E4%BF%A1%E6%81%AF%E5%9B%AD%E5%8C%BA/%E5%85%B3%E4%BA%8E%E6%80%BB%E5%8F%82%E4%B8%89%E9%83%A8%E4%BA%8C%E5%B1%80-%E4%B8%8A%E6%B5%B7005%E4%B8%AD%E5%BF%83%E9%9C%80%E4%BD%B-F%E7%94%A8%E6%88%91%E5%85%AC%E5%8F%B8%E9%80%9A%E4%BF%A1.pdf",
+        "location": {
+          "page": 0,
+          "block_id": "ART00042",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00043",
+        "artifact_type": "domain",
+        "value": "r9.he3.com.cn",
+        "location": {
+          "page": 0,
+          "block_id": "ART00043",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00044",
+        "artifact_type": "file_name",
+        "value": "%E5%85%B3%E4%BA%8E%E6%80%BB%E5%8F%82%E4%B8%89%E9%83%A8%E4%BA%8C%E5%B1%80-%E4%B8%8A%E6%B5%B7005%E4%B8%AD%E5%BF%83%E9%9C%80%E4%BD%B-F%E7%94%A8%E6%88%91%E5%85%AC%E5%8F%B8%E9%80%9A%E4%BF%A1.pdf",
+        "location": {
+          "page": 0,
+          "block_id": "ART00044",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00045",
+        "artifact_type": "domain",
+        "value": "sb.hugesoft.org",
+        "location": {
+          "page": 0,
+          "block_id": "ART00045",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00046",
+        "artifact_type": "email",
+        "value": "kevin.mandia@rocketmail.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00046",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00047",
+        "artifact_type": "domain",
+        "value": "kevin.mandia",
+        "location": {
+          "page": 0,
+          "block_id": "ART00047",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00048",
+        "artifact_type": "domain",
+        "value": "rocketmail.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00048",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00049",
+        "artifact_type": "email",
+        "value": "www.mandiant.com</kevin.mandia@rocketmail.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00049",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00050",
+        "artifact_type": "hash_md5",
+        "value": "d7aa32b7465f55c368230bb52d52d885",
+        "location": {
+          "page": 0,
+          "block_id": "ART00050",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00051",
+        "artifact_type": "hash_md5",
+        "value": "c1393e77773a48b1eea117a302138554",
+        "location": {
+          "page": 0,
+          "block_id": "ART00051",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00052",
+        "artifact_type": "url",
+        "value": "http://www.foofus.net/fizzgig/fgdump/",
+        "location": {
+          "page": 0,
+          "block_id": "ART00052",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00053",
+        "artifact_type": "domain",
+        "value": "www.foofus.net",
+        "location": {
+          "page": 0,
+          "block_id": "ART00053",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00054",
+        "artifact_type": "url",
+        "value": "http://www.truesec.se",
+        "location": {
+          "page": 0,
+          "block_id": "ART00054",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00055",
+        "artifact_type": "domain",
+        "value": "www.truesec.se",
+        "location": {
+          "page": 0,
+          "block_id": "ART00055",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00056",
+        "artifact_type": "url",
+        "value": "http://blog.gentilkiwi.com/mimikatz",
+        "location": {
+          "page": 0,
+          "block_id": "ART00056",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00057",
+        "artifact_type": "domain",
+        "value": "blog.gentilkiwi.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00057",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00058",
+        "artifact_type": "url",
+        "value": "http://oss.coresecurity.com/projects/pshtoolkit.htm",
+        "location": {
+          "page": 0,
+          "block_id": "ART00058",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00059",
+        "artifact_type": "domain",
+        "value": "oss.coresecurity.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00059",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00060",
+        "artifact_type": "url",
+        "value": "http://www.tarasco.org/security/pwdump_7/",
+        "location": {
+          "page": 0,
+          "block_id": "ART00060",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00061",
+        "artifact_type": "domain",
+        "value": "www.tarasco.org",
+        "location": {
+          "page": 0,
+          "block_id": "ART00061",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00062",
+        "artifact_type": "url",
+        "value": "http://reedarvin.thearvins.com/",
+        "location": {
+          "page": 0,
+          "block_id": "ART00062",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00063",
+        "artifact_type": "domain",
+        "value": "reedarvin.thearvins.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00063",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00064",
+        "artifact_type": "domain",
+        "value": "disable.go",
+        "location": {
+          "page": 0,
+          "block_id": "ART00064",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00065",
+        "artifact_type": "ip",
+        "value": "223.166.0.0",
+        "location": {
+          "page": 0,
+          "block_id": "ART00065",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00066",
+        "artifact_type": "ip",
+        "value": "223.167.255.255",
+        "location": {
+          "page": 0,
+          "block_id": "ART00066",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00067",
+        "artifact_type": "ip",
+        "value": "58.246.0.0",
+        "location": {
+          "page": 0,
+          "block_id": "ART00067",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00068",
+        "artifact_type": "ip",
+        "value": "58.247.255.255",
+        "location": {
+          "page": 0,
+          "block_id": "ART00068",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00069",
+        "artifact_type": "ip",
+        "value": "112.64.0.0",
+        "location": {
+          "page": 0,
+          "block_id": "ART00069",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00070",
+        "artifact_type": "ip",
+        "value": "112.65.255.255",
+        "location": {
+          "page": 0,
+          "block_id": "ART00070",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00071",
+        "artifact_type": "ip",
+        "value": "139.226.0.0",
+        "location": {
+          "page": 0,
+          "block_id": "ART00071",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00072",
+        "artifact_type": "ip",
+        "value": "139.227.255.255",
+        "location": {
+          "page": 0,
+          "block_id": "ART00072",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00073",
+        "artifact_type": "ip",
+        "value": "114.80.0.0",
+        "location": {
+          "page": 0,
+          "block_id": "ART00073",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00074",
+        "artifact_type": "ip",
+        "value": "114.95.255.255",
+        "location": {
+          "page": 0,
+          "block_id": "ART00074",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00075",
+        "artifact_type": "ip",
+        "value": "101.80.0.0",
+        "location": {
+          "page": 0,
+          "block_id": "ART00075",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00076",
+        "artifact_type": "ip",
+        "value": "101.95.255.255",
+        "location": {
+          "page": 0,
+          "block_id": "ART00076",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00077",
+        "artifact_type": "email",
+        "value": "sh-ipmaster@chinaunicom.cn",
+        "location": {
+          "page": 0,
+          "block_id": "ART00077",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00078",
+        "artifact_type": "domain",
+        "value": "chinaunicom.cn",
+        "location": {
+          "page": 0,
+          "block_id": "ART00078",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00079",
+        "artifact_type": "ip",
+        "value": "58.247.242.254",
+        "location": {
+          "page": 0,
+          "block_id": "ART00079",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00080",
+        "artifact_type": "ip",
+        "value": "143.89.0.0",
+        "location": {
+          "page": 0,
+          "block_id": "ART00080",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00081",
+        "artifact_type": "ip",
+        "value": "143.89.255.255",
+        "location": {
+          "page": 0,
+          "block_id": "ART00081",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00082",
+        "artifact_type": "domain",
+        "value": "google.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00082",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00083",
+        "artifact_type": "domain",
+        "value": "hugesoft.org",
+        "location": {
+          "page": 0,
+          "block_id": "ART00083",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00084",
+        "artifact_type": "domain",
+        "value": "ug-co.hugesoft.org",
+        "location": {
+          "page": 0,
+          "block_id": "ART00084",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00085",
+        "artifact_type": "domain",
+        "value": "7cback.hugesoft.org",
+        "location": {
+          "page": 0,
+          "block_id": "ART00085",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00086",
+        "artifact_type": "email",
+        "value": "uglygorilla@163.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00086",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00087",
+        "artifact_type": "domain",
+        "value": "163.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00087",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00088",
+        "artifact_type": "email",
+        "value": "email:uglygorilla@163.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00088",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00089",
+        "artifact_type": "domain",
+        "value": "uszzcs.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00089",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00090",
+        "artifact_type": "email",
+        "value": "etejedaa@yahoo.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00090",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00091",
+        "artifact_type": "domain",
+        "value": "yahoo.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00091",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00092",
+        "artifact_type": "domain",
+        "value": "attnpower.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00092",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00093",
+        "artifact_type": "email",
+        "value": "lfengg@163.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00093",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00094",
+        "artifact_type": "domain",
+        "value": "www.china-one.org",
+        "location": {
+          "page": 0,
+          "block_id": "ART00094",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00095",
+        "artifact_type": "domain",
+        "value": "aunewsonline.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00095",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00096",
+        "artifact_type": "domain",
+        "value": "canadatvsite.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00096",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00097",
+        "artifact_type": "domain",
+        "value": "todayusa.org",
+        "location": {
+          "page": 0,
+          "block_id": "ART00097",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00098",
+        "artifact_type": "domain",
+        "value": "aoldaily.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00098",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00099",
+        "artifact_type": "domain",
+        "value": "issnbgkit.net",
+        "location": {
+          "page": 0,
+          "block_id": "ART00099",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00100",
+        "artifact_type": "domain",
+        "value": "purpledaily.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00100",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00101",
+        "artifact_type": "domain",
+        "value": "mediaxsds.net",
+        "location": {
+          "page": 0,
+          "block_id": "ART00101",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00102",
+        "artifact_type": "domain",
+        "value": "reutersnewsonline.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00102",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00103",
+        "artifact_type": "domain",
+        "value": "myyahoonews.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00103",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00104",
+        "artifact_type": "domain",
+        "value": "rssadvanced.org",
+        "location": {
+          "page": 0,
+          "block_id": "ART00104",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00105",
+        "artifact_type": "domain",
+        "value": "canoedaily.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00105",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00106",
+        "artifact_type": "domain",
+        "value": "newsesport.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00106",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00107",
+        "artifact_type": "domain",
+        "value": "saltlakenews.org",
+        "location": {
+          "page": 0,
+          "block_id": "ART00107",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00108",
+        "artifact_type": "domain",
+        "value": "cnndaily.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00108",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00109",
+        "artifact_type": "domain",
+        "value": "newsonet.net",
+        "location": {
+          "page": 0,
+          "block_id": "ART00109",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00110",
+        "artifact_type": "domain",
+        "value": "sportreadok.net",
+        "location": {
+          "page": 0,
+          "block_id": "ART00110",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00111",
+        "artifact_type": "domain",
+        "value": "cnndaily.net",
+        "location": {
+          "page": 0,
+          "block_id": "ART00111",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00112",
+        "artifact_type": "domain",
+        "value": "newsonlinesite.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00112",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00113",
+        "artifact_type": "domain",
+        "value": "cnnnewsdaily.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00113",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00114",
+        "artifact_type": "domain",
+        "value": "newspappers.org",
+        "location": {
+          "page": 0,
+          "block_id": "ART00114",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00115",
+        "artifact_type": "domain",
+        "value": "usapappers.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00115",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00116",
+        "artifact_type": "domain",
+        "value": "defenceonline.net",
+        "location": {
+          "page": 0,
+          "block_id": "ART00116",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00117",
+        "artifact_type": "domain",
+        "value": "nytimesnews.net",
+        "location": {
+          "page": 0,
+          "block_id": "ART00117",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00118",
+        "artifact_type": "domain",
+        "value": "usnewssite.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00118",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00119",
+        "artifact_type": "domain",
+        "value": "freshreaders.net",
+        "location": {
+          "page": 0,
+          "block_id": "ART00119",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00120",
+        "artifact_type": "domain",
+        "value": "oplaymagzine.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00120",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00121",
+        "artifact_type": "domain",
+        "value": "yahoodaily.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00121",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00122",
+        "artifact_type": "domain",
+        "value": "giftnews.org",
+        "location": {
+          "page": 0,
+          "block_id": "ART00122",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00123",
+        "artifact_type": "domain",
+        "value": "phoenixtvus.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00123",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00124",
+        "artifact_type": "domain",
+        "value": "aolonline.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00124",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00125",
+        "artifact_type": "domain",
+        "value": "globalowa.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00125",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00126",
+        "artifact_type": "domain",
+        "value": "microsoft-update-info.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00126",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00127",
+        "artifact_type": "domain",
+        "value": "applesoftupdate.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00127",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00128",
+        "artifact_type": "domain",
+        "value": "gmailboxes.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00128",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00129",
+        "artifact_type": "domain",
+        "value": "micyuisyahooapis.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00129",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00130",
+        "artifact_type": "domain",
+        "value": "blackberrycluter.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00130",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00131",
+        "artifact_type": "domain",
+        "value": "msnhome.org",
+        "location": {
+          "page": 0,
+          "block_id": "ART00131",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00132",
+        "artifact_type": "domain",
+        "value": "bluecoate.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00132",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00133",
+        "artifact_type": "domain",
+        "value": "idirectech.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00133",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00134",
+        "artifact_type": "domain",
+        "value": "pcclubddk.net",
+        "location": {
+          "page": 0,
+          "block_id": "ART00134",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00135",
+        "artifact_type": "domain",
+        "value": "comrepair.net",
+        "location": {
+          "page": 0,
+          "block_id": "ART00135",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00136",
+        "artifact_type": "domain",
+        "value": "ifexcel.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00136",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00137",
+        "artifact_type": "domain",
+        "value": "progammerli.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00137",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00138",
+        "artifact_type": "domain",
+        "value": "dnsweb.org",
+        "location": {
+          "page": 0,
+          "block_id": "ART00138",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00139",
+        "artifact_type": "domain",
+        "value": "infosupports.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00139",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00140",
+        "artifact_type": "domain",
+        "value": "softsolutionbox.net",
+        "location": {
+          "page": 0,
+          "block_id": "ART00140",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00141",
+        "artifact_type": "domain",
+        "value": "downloadsite.me",
+        "location": {
+          "page": 0,
+          "block_id": "ART00141",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00142",
+        "artifact_type": "domain",
+        "value": "livemymsn.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00142",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00143",
+        "artifact_type": "domain",
+        "value": "symanteconline.net",
+        "location": {
+          "page": 0,
+          "block_id": "ART00143",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00144",
+        "artifact_type": "domain",
+        "value": "firefoxupdata.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00144",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00145",
+        "artifact_type": "domain",
+        "value": "mcafeepaying.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00145",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00146",
+        "artifact_type": "domain",
+        "value": "webservicesupdate.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00146",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00147",
+        "artifact_type": "domain",
+        "value": "advanbusiness.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00147",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00148",
+        "artifact_type": "domain",
+        "value": "companyinfosite.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00148",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00149",
+        "artifact_type": "domain",
+        "value": "infobusinessus.org",
+        "location": {
+          "page": 0,
+          "block_id": "ART00149",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00150",
+        "artifact_type": "domain",
+        "value": "businessconsults.net",
+        "location": {
+          "page": 0,
+          "block_id": "ART00150",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00151",
+        "artifact_type": "domain",
+        "value": "conferencesinfo.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00151",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00152",
+        "artifact_type": "domain",
+        "value": "jobsadvanced.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00152",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00153",
+        "artifact_type": "domain",
+        "value": "businessformars.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00153",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00154",
+        "artifact_type": "domain",
+        "value": "copporationnews.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00154",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00155",
+        "artifact_type": "domain",
+        "value": "appspot.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00155",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00156",
+        "artifact_type": "ip",
+        "value": "222.64.0.0",
+        "location": {
+          "page": 0,
+          "block_id": "ART00156",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00157",
+        "artifact_type": "ip",
+        "value": "222.73.255.25",
+        "location": {
+          "page": 0,
+          "block_id": "ART00157",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00158",
+        "artifact_type": "ip",
+        "value": "116.224.0.0",
+        "location": {
+          "page": 0,
+          "block_id": "ART00158",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00159",
+        "artifact_type": "ip",
+        "value": "116.239.255.255",
+        "location": {
+          "page": 0,
+          "block_id": "ART00159",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00160",
+        "artifact_type": "domain",
+        "value": "facebook.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00160",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00161",
+        "artifact_type": "domain",
+        "value": "twitter.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00161",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00162",
+        "artifact_type": "url",
+        "value": "http://www.chinamil.com.cn/site1/gflt/2004-09/30/content_705216.htm",
+        "location": {
+          "page": 0,
+          "block_id": "ART00162",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00163",
+        "artifact_type": "domain",
+        "value": "www.chinamil.com.cn",
+        "location": {
+          "page": 0,
+          "block_id": "ART00163",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00164",
+        "artifact_type": "url",
+        "value": "http://bbs.chinamil.com.cn/forum/bbsui.jsp?id=(o",
+        "location": {
+          "page": 0,
+          "block_id": "ART00164",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00165",
+        "artifact_type": "domain",
+        "value": "bbs.chinamil.com.cn",
+        "location": {
+          "page": 0,
+          "block_id": "ART00165",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00166",
+        "artifact_type": "domain",
+        "value": "translate.google.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00166",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00167",
+        "artifact_type": "domain",
+        "value": "arrowservice.net",
+        "location": {
+          "page": 0,
+          "block_id": "ART00167",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00168",
+        "artifact_type": "domain",
+        "value": "ug-opm.hugesoft.org",
+        "location": {
+          "page": 0,
+          "block_id": "ART00168",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00169",
+        "artifact_type": "domain",
+        "value": "ug-rj.arrowservice.net",
+        "location": {
+          "page": 0,
+          "block_id": "ART00169",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00170",
+        "artifact_type": "domain",
+        "value": "ug-hst.msnhome.org",
+        "location": {
+          "page": 0,
+          "block_id": "ART00170",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00171",
+        "artifact_type": "ip",
+        "value": "58.246.255.28",
+        "location": {
+          "page": 0,
+          "block_id": "ART00171",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00172",
+        "artifact_type": "domain",
+        "value": "rootkit.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00172",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00173",
+        "artifact_type": "domain",
+        "value": "www.pudn.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00173",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00174",
+        "artifact_type": "domain",
+        "value": "pudn.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00174",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00175",
+        "artifact_type": "email",
+        "value": "d0ta010@hotmail.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00175",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00176",
+        "artifact_type": "email",
+        "value": "dota.d013@gmail.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00176",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00177",
+        "artifact_type": "email",
+        "value": "d0ta001@hotmail.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00177",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00178",
+        "artifact_type": "ip",
+        "value": "58.247.26.59",
+        "location": {
+          "page": 0,
+          "block_id": "ART00178",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00179",
+        "artifact_type": "domain",
+        "value": "hotmail.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00179",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00180",
+        "artifact_type": "domain",
+        "value": "gmail.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00180",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00181",
+        "artifact_type": "domain",
+        "value": "do.ta",
+        "location": {
+          "page": 0,
+          "block_id": "ART00181",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00182",
+        "artifact_type": "email",
+        "value": "poter.spo1@gmail.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00182",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00183",
+        "artifact_type": "email",
+        "value": "dota.sb005@gmail.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00183",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00184",
+        "artifact_type": "email",
+        "value": "dota.d001@gmail.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00184",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00185",
+        "artifact_type": "email",
+        "value": "mei_qiang_82@sohu.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00185",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00186",
+        "artifact_type": "ip",
+        "value": "58.247.237.4",
+        "location": {
+          "page": 0,
+          "block_id": "ART00186",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00187",
+        "artifact_type": "domain",
+        "value": "sohu.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00187",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00188",
+        "artifact_type": "email",
+        "value": "mei_qiang_82@sohu.com\"43",
+        "location": {
+          "page": 0,
+          "block_id": "ART00188",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00189",
+        "artifact_type": "url",
+        "value": "http://www.mandiant.com/apt1",
+        "location": {
+          "page": 0,
+          "block_id": "ART00189",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00190",
+        "artifact_type": "url",
+        "value": "http://openioc.org",
+        "location": {
+          "page": 0,
+          "block_id": "ART00190",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00191",
+        "artifact_type": "domain",
+        "value": "openioc.org",
+        "location": {
+          "page": 0,
+          "block_id": "ART00191",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00192",
+        "artifact_type": "url",
+        "value": "https://forums.mandiant.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00192",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00193",
+        "artifact_type": "domain",
+        "value": "forums.mandiant.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00193",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      }
+    ],
+    "evidence_items": [
+      {
+        "evidence_id": "E-0001",
+        "evidence_kind": "technical_artifact",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [
+          "ART00002",
+          "ART00005",
+          "ART00014",
+          "ART00016",
+          "ART00018",
+          "ART00021"
+        ],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "infrastructure"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.9400000000000001,
+          "M": 0.72,
+          "P": 0.52,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": ""
+          }
+        ],
+        "probative_weight": 0.143765856,
+        "claim_id": "C001"
+      },
+      {
+        "evidence_id": "E-0002",
+        "evidence_kind": "technical_artifact",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [
+          "ART00002",
+          "ART00005",
+          "ART00014",
+          "ART00016",
+          "ART00018",
+          "ART00021"
+        ],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "infrastructure"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.9400000000000001,
+          "M": 0.72,
+          "P": 0.42,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": ""
+          }
+        ],
+        "probative_weight": 0.11611857599999997,
+        "claim_id": "C002"
+      },
+      {
+        "evidence_id": "E-0003",
+        "evidence_kind": "technical_artifact",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [
+          "ART00002",
+          "ART00005",
+          "ART00014",
+          "ART00016",
+          "ART00018",
+          "ART00021"
+        ],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "infrastructure"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.9400000000000001,
+          "M": 0.72,
+          "P": 0.52,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": ""
+          }
+        ],
+        "probative_weight": 0.143765856,
+        "claim_id": "C003"
+      }
+    ],
+    "claims": [
+      {
+        "claim_id": "C001",
+        "claim_kind": "intrusion_set_attribution",
+        "claim_text": "APT1 is believed to be the 2nd Bureau of the People's Liberation Army (PLA) General Staff Department's (GSD) 3rd Department (总参三部二局), which is most commonly known by its Military Unit Cover Designator (MUCD) as Unit 61398 (61398部队).",
+        "actor": {
+          "name": "APT1",
+          "level": "None"
+        },
+        "object": {
+          "operation": "intrusion_set",
+          "time_start": "",
+          "time_end": ""
+        },
+        "citations": [],
+        "evidence_ids": [
+          "E-0001"
+        ],
+        "claim_features": {
+          "coherence": 0.6,
+          "confidence_discipline": 0.5700000000000001,
+          "compliance_mapping": 1.0,
+          "allegation_gravity": "medium"
+        }
+      },
+      {
+        "claim_id": "C002",
+        "claim_kind": "mixed",
+        "claim_text": "APT1 has systematically stolen hundreds of terabytes of data from at least 141 organizations, and has demonstrated the capability and intent to steal from dozens of organizations simultaneously.⁴",
+        "actor": {
+          "name": "APT1 campaign",
+          "level": "None"
+        },
+        "object": {
+          "operation": "mixed",
+          "time_start": "",
+          "time_end": ""
+        },
+        "citations": [],
+        "evidence_ids": [
+          "E-0002"
+        ],
+        "claim_features": {
+          "coherence": 0.48,
+          "confidence_discipline": 0.5700000000000001,
+          "compliance_mapping": 0.3,
+          "allegation_gravity": "medium"
+        }
+      },
+      {
+        "claim_id": "C003",
+        "claim_kind": "state_responsibility_claim",
+        "claim_text": "Our analysis has led us to conclude that APT1 is likely government-sponsored and one of the most persistent of China’s cyber threat actors. We believe that APT1 is able to wage such a long-running and extensive cyber espionage campaign in large part because it receives direct government support. In seeking to identify the organization behind this activity, our research found that People’s Liberation Army (PLA’s) Unit 61398 is similar to APT1 in its mission, capabilities, and resources. PLA Unit 61398 is also located in precisely the same area from which APT1 activity appears to originate.",
+        "actor": {
+          "name": "APT1",
+          "level": "None"
+        },
+        "object": {
+          "operation": "state_responsibility_claim",
+          "time_start": "",
+          "time_end": ""
+        },
+        "citations": [],
+        "evidence_ids": [
+          "E-0003"
+        ],
+        "claim_features": {
+          "coherence": 0.6,
+          "confidence_discipline": 0.5700000000000001,
+          "compliance_mapping": 0.3,
+          "allegation_gravity": "medium"
+        }
+      }
+    ]
+  },
+  "scoring": {
+    "claim_scores": [
+      {
+        "claim_id": "C001",
+        "evidence_count": 1,
+        "source_count": 1,
+        "unique_origin_count": 1,
+        "source_unique_origin_count": 1,
+        "evidence_weight_aggregate": 0.14376585600000003,
+        "origin_cluster_weights": {
+          "ORIG:src0001": 0.143766
+        },
+        "penalty_multiplier": 0.85,
+        "penalties": [
+          {
+            "name": "single_source",
+            "factor": 0.85
+          }
+        ],
+        "final_score": 0.122201,
+        "recovered_reference_count": 0,
+        "data_contribution_score": 1.0,
+        "data_contribution_multiplier": 1.0,
+        "core_3c": {
+          "chain_of_custody_provenance": {
+            "score": 0.393654,
+            "band_0_5": 2
+          },
+          "credibility_independence": {
+            "score": 0.5607,
+            "band_0_5": 3
+          },
+          "corroboration_convergence": {
+            "score": 0.278091,
+            "band_0_5": 1
+          }
+        },
+        "chain_provenance_diagnostics": {
+          "context_completeness": 1.0,
+          "integrity_signal": 0.0,
+          "lineage_quality": 1.0,
+          "report_derived_ratio": 0.0,
+          "artifact_traceability": 1.0,
+          "provenance_quality": 0.55,
+          "anchor_quality": 1.0,
+          "chain_disclosure_quality": 1.0,
+          "claim_anchor_alignment": 1.0,
+          "artifact_proximity_hierarchy": 1.0,
+          "artifact_proximity_tiers": {
+            "direct": 1.0,
+            "contextual": 0.0,
+            "local": 0.0,
+            "remote": 0.0
+          }
+        },
+        "claim_support_coverage": 1.0,
+        "six_c_vector": {
+          "credibility": 0.143766,
+          "corroboration": 0.283766,
+          "coherence": 0.6,
+          "confidence_discipline": 0.57,
+          "compliance_mapping": 1.0
+        }
+      },
+      {
+        "claim_id": "C002",
+        "evidence_count": 1,
+        "source_count": 1,
+        "unique_origin_count": 1,
+        "source_unique_origin_count": 1,
+        "evidence_weight_aggregate": 0.11024007308999999,
+        "origin_cluster_weights": {
+          "ORIG:src0001": 0.116119
+        },
+        "penalty_multiplier": 0.765,
+        "penalties": [
+          {
+            "name": "single_source",
+            "factor": 0.85
+          },
+          {
+            "name": "untested",
+            "factor": 0.9
+          }
+        ],
+        "final_score": 0.084334,
+        "recovered_reference_count": 0,
+        "data_contribution_score": 0.8875,
+        "data_contribution_multiplier": 0.949375,
+        "core_3c": {
+          "chain_of_custody_provenance": {
+            "score": 0.077616,
+            "band_0_5": 0
+          },
+          "credibility_independence": {
+            "score": 0.4869,
+            "band_0_5": 2
+          },
+          "corroboration_convergence": {
+            "score": 0.250996,
+            "band_0_5": 1
+          }
+        },
+        "chain_provenance_diagnostics": {
+          "context_completeness": 1.0,
+          "integrity_signal": 0.0,
+          "lineage_quality": 1.0,
+          "report_derived_ratio": 0.0,
+          "artifact_traceability": 1.0,
+          "provenance_quality": 0.55,
+          "anchor_quality": 1.0,
+          "chain_disclosure_quality": 0.6,
+          "claim_anchor_alignment": 0.0,
+          "artifact_proximity_hierarchy": 0.75,
+          "artifact_proximity_tiers": {
+            "direct": 0.0,
+            "contextual": 1.0,
+            "local": 0.0,
+            "remote": 0.0
+          }
+        },
+        "claim_support_coverage": 1.0,
+        "six_c_vector": {
+          "credibility": 0.116119,
+          "corroboration": 0.256119,
+          "coherence": 0.48,
+          "confidence_discipline": 0.57,
+          "compliance_mapping": 0.3
+        }
+      },
+      {
+        "claim_id": "C003",
+        "evidence_count": 1,
+        "source_count": 1,
+        "unique_origin_count": 1,
+        "source_unique_origin_count": 1,
+        "evidence_weight_aggregate": 0.127753933788,
+        "origin_cluster_weights": {
+          "ORIG:src0001": 0.143766
+        },
+        "penalty_multiplier": 0.85,
+        "penalties": [
+          {
+            "name": "single_source",
+            "factor": 0.85
+          }
+        ],
+        "final_score": 0.108591,
+        "recovered_reference_count": 0,
+        "data_contribution_score": 0.7525,
+        "data_contribution_multiplier": 0.888625,
+        "core_3c": {
+          "chain_of_custody_provenance": {
+            "score": 0.061184,
+            "band_0_5": 0
+          },
+          "credibility_independence": {
+            "score": 0.4977,
+            "band_0_5": 2
+          },
+          "corroboration_convergence": {
+            "score": 0.278091,
+            "band_0_5": 1
+          }
+        },
+        "chain_provenance_diagnostics": {
+          "context_completeness": 1.0,
+          "integrity_signal": 0.0,
+          "lineage_quality": 1.0,
+          "report_derived_ratio": 0.0,
+          "artifact_traceability": 1.0,
+          "provenance_quality": 0.55,
+          "anchor_quality": 1.0,
+          "chain_disclosure_quality": 1.0,
+          "claim_anchor_alignment": 0.0,
+          "artifact_proximity_hierarchy": 0.45,
+          "artifact_proximity_tiers": {
+            "direct": 0.0,
+            "contextual": 0.0,
+            "local": 1.0,
+            "remote": 0.0
+          }
+        },
+        "claim_support_coverage": 1.0,
+        "six_c_vector": {
+          "credibility": 0.143766,
+          "corroboration": 0.283766,
+          "coherence": 0.6,
+          "confidence_discipline": 0.57,
+          "compliance_mapping": 0.3
+        }
+      }
+    ],
+    "document": {
+      "profile": "balanced",
+      "headline_claim_id": "C001",
+      "headline_vector": {
+        "credibility": 0.143766,
+        "corroboration": 0.283766,
+        "coherence": 0.6,
+        "confidence_discipline": 0.57,
+        "compliance_mapping": 1.0
+      },
+      "coverage_vector_median": {
+        "credibility": 0.143766,
+        "corroboration": 0.283766,
+        "coherence": 0.6,
+        "confidence_discipline": 0.57,
+        "compliance_mapping": 0.3
+      },
+      "overall_claim_score_mean": 0.105042,
+      "overall_claim_score_geometric": 0.103822,
+      "seriousness_gate": {
+        "passed": true,
+        "thresholds": {
+          "overall_claim_score_mean_min": 0.1,
+          "credibility_independence_median_min": 0.4,
+          "corroboration_convergence_median_min": 0.2
+        },
+        "observed": {
+          "overall_claim_score_mean": 0.105042,
+          "credibility_independence_median": 0.4977,
+          "corroboration_convergence_median": 0.278091
+        }
+      }
+    }
+  }
+}

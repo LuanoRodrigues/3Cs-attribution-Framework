@@ -91,9 +91,13 @@
         autocomplete="off"
       />
       <div class="agent-chat-controls">
+        <button id="btnAgentChatMic" type="button" title="Voice command">🎙</button>
         <button id="btnAgentChatSend" type="submit">Send</button>
+        <div id="agentChatVoiceStatus" class="agent-chat-voice-status" aria-live="polite"></div>
+        <div id="agentChatVoiceLegend" class="agent-chat-voice-legend" aria-live="polite"></div>
       </div>
     </form>
+    <audio id="agentChatAudio" class="agent-chat-audio" preload="none"></audio>
   </section>
   <script src="./renderer.js"></script>
 </body>

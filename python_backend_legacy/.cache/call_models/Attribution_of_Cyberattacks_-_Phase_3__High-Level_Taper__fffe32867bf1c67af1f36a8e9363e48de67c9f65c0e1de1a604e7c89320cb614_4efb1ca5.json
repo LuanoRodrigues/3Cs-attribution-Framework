@@ -1,0 +1,127 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "quote": "identifies difficulties in determining and holding individuals and organizations accountable for their commission",
+          "paraphrase": "The article states there are difficulties in attributing cyberattacks and holding individuals and organizations legally accountable, which is directly relevant to cyber-attribution questions.",
+          "researcher_comment": "This flags attribution and legal-accountability as central problems; the chunk gives no operational criteria (forensic standards, burden of proof) or concrete examples. Useful as high-level evidence that attribution challenges are recognized in legal scholarship, but insufficient for technical attribution thresholds.",
+          "potential_themes": [
+            "attribution_challenges",
+            "accountability_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "attribution_difficulty",
+            "legal_accountability",
+            "forensic_limits"
+          ]
+        },
+        {
+          "quote": "The main focus is on the urgent problems of identifying and verifying cyber weapons, establishing international standards for their use, developing methods of disarmament or limiting offensive cyber capabilities.",
+          "paraphrase": "The authors focus on problems of identifying and verifying cyber weapons and on creating international standards and disarmament methods, which bear on evidentiary and attribution matters in cyberspace.",
+          "researcher_comment": "This highlights 'weapon identification' as a policy and evidentiary priority that intersects with attribution (proving use and intent), but the chunk does not define 'cyber weapon' or specify technical markers. Relevant for synthesizing normative/standard-setting needs rather than forensic practice.",
+          "potential_themes": [
+            "cyber_weapons_identification",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "weapon_verification",
+            "international_standards",
+            "disarmament_methods"
+          ]
+        },
+        {
+          "quote": "gaps and other defects are identified in the current regulation of exercising jurisdiction in such areas of cyber activity as international transactions, data localization and extraterritorial enforcement of national legislation",
+          "paraphrase": "The authors identify gaps in legal frameworks governing jurisdiction over cyber activity\u2014international transactions, data localization, and extraterritorial enforcement\u2014which affect cross-border attribution and enforcement.",
+          "researcher_comment": "This points to jurisdictional barriers that complicate investigation and enforcement across borders; the excerpt does not propose concrete jurisdictional solutions. Use this as evidence that legal-jurisdiction issues are treated as a barrier to attributing and prosecuting cyber actors.",
+          "potential_themes": [
+            "jurisdictional_issues"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "jurisdictional_gaps",
+            "data_localization",
+            "extraterritorial_enforcement"
+          ]
+        },
+        {
+          "quote": "The parameters were developed and described within which states may conduct proactive cyber operations to prevent or deter cyberattacks (cyber countermeasures).",
+          "paraphrase": "The paper develops parameters under which states may lawfully carry out proactive cyber operations (termed cyber countermeasures) to prevent or deter cyberattacks, relevant to legal questions about when states may respond.",
+          "researcher_comment": "This asserts a normative framework permitting proactive state cyber operations but the excerpt omits the attribution thresholds or evidentiary standards required before acting. Important for RQs about legal permissibility of state responses, but needs the operational criteria that link attribution to action.",
+          "potential_themes": [
+            "due_diligence",
+            "anticipatory_self_defence"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "framework",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "cyber_countermeasures",
+            "proactive_operations",
+            "legal_parameters"
+          ]
+        },
+        {
+          "quote": "The main parameters are due diligence, legal decisions on using cyber countermeasures, proportionality of protection measures to the consequences of illegal actions.",
+          "paraphrase": "The authors state the main parameters for lawful cyber countermeasures are due diligence, legal authorization for use, and proportionality of protective measures to the harms caused.",
+          "researcher_comment": "This enumerates normative criteria (due diligence, legal decision-making, proportionality) that would constrain attribution-based responses, but the chunk does not operationalize these concepts (e.g., what evidentiary confidence constitutes due diligence). Valuable for normative synthesis but lacks thresholds.",
+          "potential_themes": [
+            "due_diligence",
+            "proportionality"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "due_diligence_requirement",
+            "legal_authorization",
+            "proportionality_standard"
+          ]
+        },
+        {
+          "quote": "The authors raise the issue of ensuring humanitarian activities, protecting critical infrastructure and the population through cybersecurity measures in wartime.",
+          "paraphrase": "The authors highlight the need to protect humanitarian activities, critical infrastructure, and populations with cybersecurity measures during wartime, signaling human-rights constraints on cyber responses.",
+          "researcher_comment": "This connects cyber operations and countermeasures to humanitarian and human-rights considerations; the excerpt does not discuss trade-offs between security measures and rights restrictions. Relevant as a normative constraint on attribution-based action but peripheral to technical attribution mechanisms.",
+          "potential_themes": [
+            "human_rights_impacts",
+            "critical_infrastructure_protection"
+          ],
+          "relevance_score": 3,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "humanitarian_protection",
+            "critical_infrastructure",
+            "wartime_constraints"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-23T23:35:05.398186Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "fffe32867bf1c67af1f36a8e9363e48de67c9f65c0e1de1a604e7c89320cb614",
+  "function": "code_pdf_page"
+}

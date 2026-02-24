@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 FUNCTIONS = [
+    "run_review_supervisor",
     "set_eligibility_criteria",
     "open_coding",
     "Verbatim_Evidence_Coding",

@@ -65,6 +65,9 @@ import { resolveThemeTokens, themeIds, type ThemeId } from "../renderer/theme/to
     ZOTERO_KEYS.libraryType,
     LLM_KEYS.provider,
     LLM_KEYS.openaiBaseUrl,
+    LLM_KEYS.openaiVoiceTranscribeModel,
+    LLM_KEYS.openaiVoiceTtsModel,
+    LLM_KEYS.openaiVoiceTtsVoice,
     LLM_KEYS.geminiBaseUrl,
     LLM_KEYS.deepSeekBaseUrl,
     LLM_KEYS.mistralBaseUrl
@@ -317,6 +320,7 @@ import { resolveThemeTokens, themeIds, type ThemeId } from "../renderer/theme/to
       items: [
         { id: "model-defaults", label: "Provider defaults", build: buildModelDefaultsPanel },
         { id: "model-providers", label: "LLM providers", build: buildModelProvidersPanel },
+        { id: "model-voice", label: "Voice settings", build: buildModelVoicePanel },
         { id: "model-databases", label: "Database keys", build: buildDatabasePanel }
       ]
     },
@@ -973,6 +977,39 @@ import { resolveThemeTokens, themeIds, type ThemeId } from "../renderer/theme/to
       card.appendChild(row);
       panel.appendChild(card);
     });
+  }
+
+  function buildModelVoicePanel(panel: HTMLElement) {
+    const card = createPanelCard("Voice settings", "OpenAI defaults used by the console voice agent.");
+    const modelRow = document.createElement("div");
+    modelRow.className = "control-row";
+    modelRow.appendChild(
+      createFieldBlock({
+        key: LLM_KEYS.openaiVoiceTranscribeModel,
+        label: "Whisper model",
+        placeholder: "whisper-1"
+      })
+    );
+    modelRow.appendChild(
+      createFieldBlock({
+        key: LLM_KEYS.openaiVoiceTtsModel,
+        label: "Speech model",
+        placeholder: "tts-1"
+      })
+    );
+    card.appendChild(modelRow);
+
+    const voiceRow = document.createElement("div");
+    voiceRow.className = "control-row";
+    voiceRow.appendChild(
+      createFieldBlock({
+        key: LLM_KEYS.openaiVoiceTtsVoice,
+        label: "Speech voice",
+        placeholder: "alloy"
+      })
+    );
+    card.appendChild(voiceRow);
+    panel.appendChild(card);
   }
 
   function buildDatabasePanel(panel: HTMLElement) {

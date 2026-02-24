@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": "{\n  \"classification\": \"Highly Relevant\",\n  \"relevance_score\": \"High\",\n  \"potential_subcategory\": \"Policy & Legislation \u2014 Cross-border Data Access, Active Cyber Defense, and Attribution (ACDC vs. CLOUD Act)\",\n  \"justification\": \"The abstract directly addresses legal and policy mechanisms that affect cyber conflict attribution: it analyzes U.S. statutory frameworks (CFAA), international law principles, and concrete legislative proposals (ACDC and the CLOUD Act), comparing oversight, privacy safeguards, and international cooperation. It explicitly frames cross-border data access as an attributional tool and evaluates risks of active cyber defense ('hack back') for escalation and rule-of-law concerns, making it centrally relevant to attribution policy and cyber law. While the paper focuses on doctrinal and policy analysis rather than technical forensics, its subject matter and recommendations are highly pertinent to policymakers, legal scholars, and international norms development. Note: explicit inclusion/exclusion criteria were not provided; this classification is based on the abstract's substantive fit with cyber attribution and policy/law topics.\"\n}"
+  },
+  "cached_at": "2026-02-23T20:43:04.346701Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "Y52C8JTZ",
+  "function": "classify_by_abs"
+}

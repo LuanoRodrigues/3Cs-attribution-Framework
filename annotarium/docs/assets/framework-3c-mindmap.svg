@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" role="img" aria-labelledby="title desc">
+  <title id="title">3C-to-Policy Framework</title>
+  <desc id="desc">Box-based framework linking Clarity, Chain of Custody, and Credibility inputs to scoring and policy outcomes for industry, strategy, and legal tracks.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#475569" />
+    </marker>
+    <style>
+      .bg { fill: #ffffff; }
+      .title { font-family: "Segoe UI", Arial, sans-serif; font-size: 22px; font-weight: 700; fill: #0f172a; }
+      .subtitle { font-family: "Segoe UI", Arial, sans-serif; font-size: 12px; fill: #475569; }
+      .box { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.6; }
+      .box-h1 { fill: #f8fafc; stroke: #94a3b8; stroke-width: 1.8; }
+      .box-h2 { fill: #f8fafc; stroke: #94a3b8; stroke-width: 1.8; }
+      .box-h3 { fill: #f8fafc; stroke: #94a3b8; stroke-width: 1.8; }
+      .box-score { fill: #f1f5f9; stroke: #64748b; stroke-width: 1.8; }
+      .box-outcome { fill: #f8fafc; stroke: #64748b; stroke-width: 1.8; }
+      .h { font-family: "Segoe UI", Arial, sans-serif; font-size: 15px; font-weight: 700; fill: #0f172a; }
+      .q { font-family: "Segoe UI", Arial, sans-serif; font-size: 12px; font-weight: 600; fill: #1e293b; }
+      .v { font-family: "Segoe UI", Arial, sans-serif; font-size: 11px; fill: #334155; }
+      .link { stroke: #64748b; stroke-width: 1.8; fill: none; marker-end: url(#arrow); }
+      .rule { font-family: "Segoe UI", Arial, sans-serif; font-size: 11px; fill: #1e293b; }
+      .tier { font-family: "Segoe UI", Arial, sans-serif; font-size: 11px; fill: #0f172a; }
+      .small { font-family: "Segoe UI", Arial, sans-serif; font-size: 10px; fill: #475569; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="960" height="540"/>
+  <text x="480" y="34" class="title" text-anchor="middle">3C Evidence Framework -> Score -> Policy Outcome</text>
+  <text x="480" y="52" class="subtitle" text-anchor="middle">Straightforward flow: evidence inputs become a score, then score selects policy fit for industry, strategy, and legal tracks.</text>
+
+  <!-- Input lane -->
+  <text x="74" y="86" class="subtitle">Inputs (Evidence Quality)</text>
+
+  <rect x="56" y="96" width="260" height="118" rx="10" class="box-h1"/>
+  <text x="72" y="118" class="h">C1. Clarity</text>
+  <text x="72" y="136" class="q">Is attribution severity and state linkage clear?</text>
+  <text x="72" y="155" class="v">- act severity specificity</text>
+  <text x="72" y="171" class="v">- state actor linkage</text>
+  <text x="72" y="187" class="v">- legal pathway clarity</text>
+
+  <rect x="56" y="228" width="260" height="128" rx="10" class="box-h2"/>
+  <text x="72" y="250" class="h">C2. Chain of Custody</text>
+  <text x="72" y="268" class="q">Is evidence untampered and traceable end-to-end?</text>
+  <text x="72" y="287" class="v">- source provenance trail</text>
+  <text x="72" y="303" class="v">- integrity/hash markers</text>
+  <text x="72" y="319" class="v">- timestamp consistency</text>
+  <text x="72" y="335" class="v">- version lineage</text>
+
+  <rect x="56" y="370" width="260" height="112" rx="10" class="box-h3"/>
+  <text x="72" y="392" class="h">C3. Credibility</text>
+  <text x="72" y="410" class="q">Is the claim credible to neutral evaluators?</text>
+  <text x="72" y="429" class="v">- independent, high-quality sources</text>
+  <text x="72" y="445" class="v">- low single-source dependency</text>
+  <text x="72" y="461" class="v">- cross-channel corroboration</text>
+
+  <!-- Scoring block -->
+  <text x="396" y="86" class="subtitle">Scoring Layer</text>
+  <rect x="352" y="152" width="250" height="206" rx="12" class="box-score"/>
+  <text x="372" y="176" class="h">Aggregate Scoring</text>
+  <text x="372" y="196" class="rule">Score each C on 0-2 scale:</text>
+  <text x="372" y="214" class="v">0 = weak, 1 = partial, 2 = strong</text>
+  <text x="372" y="236" class="rule">Total Score = C1 + C2 + C3 (0-6)</text>
+  <text x="372" y="260" class="tier">Tier A: 0-2 -> low confidence attribution</text>
+  <text x="372" y="278" class="tier">Tier B: 3-4 -> contested / moderate confidence</text>
+  <text x="372" y="296" class="tier">Tier C: 5-6 -> robust attribution basis</text>
+  <text x="372" y="322" class="small">Use tier to choose policy intensity and channel emphasis.</text>
+
+  <!-- Outcome block -->
+  <text x="704" y="86" class="subtitle">Policy Outcome Layer</text>
+  <rect x="646" y="96" width="268" height="386" rx="12" class="box-outcome"/>
+  <text x="666" y="120" class="h">Policy Recommendation by Track</text>
+
+  <text x="666" y="146" class="q">Industry Track</text>
+  <text x="666" y="162" class="v">Tier A: internal hardening + watch posture</text>
+  <text x="666" y="178" class="v">Tier B: sector coordination + mitigation advisories</text>
+  <text x="666" y="194" class="v">Tier C: coordinated sanctions/compliance actions</text>
+
+  <text x="666" y="224" class="q">Strategy Track</text>
+  <text x="666" y="240" class="v">Tier A: monitor and intelligence collection</text>
+  <text x="666" y="256" class="v">Tier B: diplomatic signaling + coalition briefing</text>
+  <text x="666" y="272" class="v">Tier C: formal attribution positioning and response</text>
+
+  <text x="666" y="302" class="q">Legal Track</text>
+  <text x="666" y="318" class="v">Tier A: preserve evidence, no public legal claim</text>
+  <text x="666" y="334" class="v">Tier B: prepare legal memo + evidentiary gap closure</text>
+  <text x="666" y="350" class="v">Tier C: litigation/attribution dossier readiness</text>
+
+  <text x="666" y="382" class="small">Outcome fit is selected by score tier,</text>
+  <text x="666" y="396" class="small">then adapted per policy track context.</text>
+
+  <!-- connectors -->
+  <path class="link" d="M316 155 C334 155, 338 188, 352 188"/>
+  <path class="link" d="M316 286 C334 286, 338 250, 352 250"/>
+  <path class="link" d="M316 426 C334 426, 338 312, 352 312"/>
+  <path class="link" d="M602 256 C622 256, 628 256, 646 256"/>
+
+  <text x="480" y="518" class="subtitle" text-anchor="middle">Decision rule: stronger evidence quality -> higher score tier -> stronger and more formal policy options.</text>
+</svg>

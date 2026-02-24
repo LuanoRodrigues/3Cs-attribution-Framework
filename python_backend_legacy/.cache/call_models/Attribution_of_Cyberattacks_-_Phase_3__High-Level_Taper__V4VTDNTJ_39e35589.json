@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": "{\n  \"classification\": \"Highly Relevant\",\n  \"relevance_score\": \"High\",\n  \"potential_subcategory\": \"Cyber attribution & deterrence; norms and international policy\",\n  \"justification\": \"The abstract centrally addresses the 'attribution problem' in cyberspace and its implications for cyber deterrence, explicitly discussing how social constructions of anonymity and violence shape attribution, threat credibility, and state responses. It uses the Stuxnet case\u2014an important policy-relevant example of an ambiguous cyber operation\u2014and links conceptual insights to normative and signaling implications that are directly pertinent to policy and law (e.g., how framing intrusion as violence affects political/reputational costs and deterrent behavior). Although primarily theoretical with a single illustrative case and no systematic empirical validation, the work offers a refined framework that informs attribution-related policy debates and normative/legal considerations, making it highly relevant to cyber conflict attribution and policy/law. (Note: explicit inclusion/exclusion criteria were marked 'AUTO DRAFT UNAVAILABLE'; classification is based on the abstract content.)\"\n}"
+  },
+  "cached_at": "2026-02-23T20:46:59.706648Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "V4VTDNTJ",
+  "function": "classify_by_abs"
+}

@@ -1,0 +1,117 @@
+{
+  "startedAt": "2026-02-22T10:28:12.985Z",
+  "scenario": {
+    "collectionKeyword": "44Q6VN9A",
+    "collectionKey": "44Q6VN9A",
+    "dirBase": "/home/pantera/annotarium/analyse",
+    "initialCommand": "Code my collection 44Q6VN9A about cyber attribution frameworks and models, skip screening, and generate 3 to 5 strong research questions.",
+    "feedback": "Could you refine the questions to cover evidence, methodology, validity, uncertainty, and policy implications?",
+    "approve": "yes",
+    "waitMs": 120000,
+    "executionWaitMs": 420000
+  },
+  "steps": [
+    {
+      "at": "2026-02-22T10:28:12.987Z",
+      "name": "renderer-ready",
+      "ok": true,
+      "detail": "chat form + collections tree detected"
+    },
+    {
+      "at": "2026-02-22T10:28:14.245Z",
+      "name": "await-tree-lines",
+      "ok": true,
+      "detail": "rows=156"
+    },
+    {
+      "at": "2026-02-22T10:28:14.872Z",
+      "name": "select-collection",
+      "ok": true,
+      "detail": "No collection selected."
+    },
+    {
+      "at": "2026-02-22T10:28:16.082Z",
+      "name": "send-initial-command",
+      "ok": true,
+      "detail": "Code my collection 44Q6VN9A about cyber attribution frameworks and models, skip screening, and generate 3 to 5 strong research questions."
+    },
+    {
+      "at": "2026-02-22T10:28:37.740Z",
+      "name": "await-initial-questions",
+      "ok": true,
+      "detail": "I will prepare coding for '44q6vn9a'.\nScreening: disabled (skipping eligibility preflight).\n\nInclusion criteria (draft):\n(skipped)\n\nExclusion criteria (draft):\n(skipped)\n\nResearch questions:\n1. What methodologies and criteria are used across the literature to attribute cyber operations to state and non-state actors (e.g., technical forensics, behavioral analysis, intelligence correlation), and how are these methods validated and reported?\n2. Which attribution frameworks and models (e.g., probabilistic/Bayesian models, multi-criteria decision frameworks, pattern-based classifiers) are proposed or applied in the literature, and how do they compare on measures such as accuracy, transparency, reproducibility, and applicability to real-world incidents?\n3. What types of indicators and evidence (technical artifacts, TTPs, infrastructure reuse, human intelligence, open-source reporting) are used within attribution frameworks, and what does the literature say about their individual and combined reliability and potential for false-flagging?\n4. What legal, ethical, and policy considerations are discussed in the literature regarding cyber attribution frameworks and models (e.g., standards of proof, evidentiary thresholds, disclosure practices, and implications for state response and accountability)?\n\nReply with 'yes' to run, 'no' to cancel, or send modified questions (3-5)."
+    },
+    {
+      "at": "2026-02-22T10:28:37.748Z",
+      "name": "send-feedback",
+      "ok": true,
+      "detail": "Could you refine the questions to cover evidence, methodology, validity, uncertainty, and policy implications?"
+    },
+    {
+      "at": "2026-02-22T10:28:54.895Z",
+      "name": "await-refined-questions",
+      "ok": true,
+      "detail": "Updated research questions:\n1. What types of evidence (technical artifacts, TTPs, infrastructure reuse, human intelligence, and OSINT) are used for attributing cyber operations, and how does the literature evaluate their individual and combined reliability, provenance reporting, and susceptibility to false-flagging?\n2. Which methodological approaches and analytic frameworks (forensic techniques, behavioral profiling, probabilistic/Bayesian models, multi-criteria decision frameworks, and machine-learning classifiers) are proposed or applied for attribution, and how are they described, validated, and operationalized?\n3. How do studies assess, quantify, and report validity and uncertainty in attribution outcomes (including confidence metrics, error rates, validation datasets, reproducibility, and standards of proof)?\n4. What legal, ethical, and policy implications do authors identify for attribution frameworks and practices (including disclosure norms, evidentiary thresholds, state responsibility, escalation risks, and governance or accountability mechanisms)?\n\nReply with 'yes' to run, 'no' to cancel, or send another modification."
+    },
+    {
+      "at": "2026-02-22T10:28:54.896Z",
+      "name": "await-input-ready-for-approval",
+      "ok": true,
+      "detail": "chat input enabled"
+    },
+    {
+      "at": "2026-02-22T10:28:54.900Z",
+      "name": "send-approval",
+      "ok": true,
+      "detail": "yes"
+    },
+    {
+      "at": "2026-02-22T10:29:27.390Z",
+      "name": "await-execution-result",
+      "ok": true,
+      "detail": "Command executed successfully."
+    }
+  ],
+  "transcript": [
+    {
+      "role": "assistant",
+      "tone": "",
+      "text": "Agent ready. Send a command to organize collections by tag."
+    },
+    {
+      "role": "user",
+      "tone": "",
+      "text": "Code my collection 44Q6VN9A about cyber attribution frameworks and models, skip screening, and generate 3 to 5 strong research questions."
+    },
+    {
+      "role": "assistant",
+      "tone": "",
+      "text": "I will prepare coding for '44q6vn9a'.\nScreening: disabled (skipping eligibility preflight).\n\nInclusion criteria (draft):\n(skipped)\n\nExclusion criteria (draft):\n(skipped)\n\nResearch questions:\n1. What methodologies and criteria are used across the literature to attribute cyber operations to state and non-state actors (e.g., technical forensics, behavioral analysis, intelligence correlation), and how are these methods validated and reported?\n2. Which attribution frameworks and models (e.g., probabilistic/Bayesian models, multi-criteria decision frameworks, pattern-based classifiers) are proposed or applied in the literature, and how do they compare on measures such as accuracy, transparency, reproducibility, and applicability to real-world incidents?\n3. What types of indicators and evidence (technical artifacts, TTPs, infrastructure reuse, human intelligence, open-source reporting) are used within attribution frameworks, and what does the literature say about their individual and combined reliability and potential for false-flagging?\n4. What legal, ethical, and policy considerations are discussed in the literature regarding cyber attribution frameworks and models (e.g., standards of proof, evidentiary thresholds, disclosure practices, and implications for state response and accountability)?\n\nReply with 'yes' to run, 'no' to cancel, or send modified questions (3-5)."
+    },
+    {
+      "role": "user",
+      "tone": "",
+      "text": "Could you refine the questions to cover evidence, methodology, validity, uncertainty, and policy implications?"
+    },
+    {
+      "role": "assistant",
+      "tone": "",
+      "text": "Updated research questions:\n1. What types of evidence (technical artifacts, TTPs, infrastructure reuse, human intelligence, and OSINT) are used for attributing cyber operations, and how does the literature evaluate their individual and combined reliability, provenance reporting, and susceptibility to false-flagging?\n2. Which methodological approaches and analytic frameworks (forensic techniques, behavioral profiling, probabilistic/Bayesian models, multi-criteria decision frameworks, and machine-learning classifiers) are proposed or applied for attribution, and how are they described, validated, and operationalized?\n3. How do studies assess, quantify, and report validity and uncertainty in attribution outcomes (including confidence metrics, error rates, validation datasets, reproducibility, and standards of proof)?\n4. What legal, ethical, and policy implications do authors identify for attribution frameworks and practices (including disclosure norms, evidentiary thresholds, state responsibility, escalation risks, and governance or accountability mechanisms)?\n\nReply with 'yes' to run, 'no' to cancel, or send another modification."
+    },
+    {
+      "role": "user",
+      "tone": "",
+      "text": "yes"
+    },
+    {
+      "role": "assistant",
+      "tone": "",
+      "text": "Command executed successfully."
+    }
+  ],
+  "status": "ok",
+  "error": "",
+  "statusLine": "Command executed.",
+  "selectedCollection": "No collection selected.",
+  "finishedAt": "2026-02-22T10:29:27.391Z"
+}

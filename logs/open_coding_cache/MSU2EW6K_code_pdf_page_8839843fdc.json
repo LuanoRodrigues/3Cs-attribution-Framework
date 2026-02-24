@@ -1,0 +1,205 @@
+[
+  {
+    "item_key": "MSU2EW6K",
+    "section_key": "__preamble__ + # HONING CYBER ATTRIBUTION: A FRAMEWORK FOR ASSESSING FOREIGN STATE COMPLICITY + ### Canfil + # ENDNOTES",
+    "response": [
+      {
+        "evidence": [
+          {
+            "direct_quote": "This paper offers a roadmap for assessing the propensity of states to delegate to non-state actors and correct for false positives in standard (typically more technical) cyber attack attribution methods.",
+            "paraphrase": "The author proposes a roadmap to assess when states delegate to non-state actors and to reduce false positives in technical cyber-attack attribution methods, addressing evidence types and methods.",
+            "researcher_comment": "This frames the article's goal as both methodological and evidentiary: combining non-technical state-level indicators with technical forensics to improve attribution accuracy. It signals an integrative approach rather than purely forensic or legal analysis. Broad claim—operational details appear later.",
+            "potential_themes": [
+              "attribution_challenges",
+              "evidentiary_standards"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "framework"
+          },
+          {
+            "direct_quote": "In my own research, using decision-theoretic formal (mathematical) models and legal analysis of international rules on sovereign state responsibility, I argue that it may be possible to predict the likelihood that a particular state is behind a given attack a priori.",
+            "paraphrase": "The author uses decision-theoretic mathematical models plus legal analysis of sovereign responsibility to predict a state's likelihood of sponsoring an attack before attack-specific forensics are known.",
+            "researcher_comment": "This explicitly lists the methodological tools (decision-theoretic formal models and legal analysis) used to operationalize attribution; it supports RQ1 and RQ2 directly. The claim implies model-based, a priori screening but requires validation details not in this chunk.",
+            "potential_themes": [
+              "method",
+              "legal_frameworks",
+              "principal_agent_theory"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "method"
+          },
+          {
+            "direct_quote": "That is, if we can deduce based on objective indicators only those states that possess the capacity and incentive to delegate computer network attack (CNA) operations to non-state hackers in the first place—even prior to knowing anything about the characteristics of the attack—it would be possible to narrow the pool of suspects.",
+            "paraphrase": "The framework operationalizes attribution by using objective indicators of state capacity and incentive to delegate CNA to narrow suspects before technical attack characteristics are analyzed.",
+            "researcher_comment": "This describes the core operational mechanism: pre-attack elimination via observable state attributes. It clarifies what 'objective indicators' refer to (capacity and incentive), but leaves indicator measurement methods and thresholds unspecified here.",
+            "potential_themes": [
+              "forensic_indicators",
+              "evidentiary_standards"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "method"
+          },
+          {
+            "direct_quote": "It is generally assumed (although it is not universally the case) that higher levels of attack sophistication are associated with state involvement, and that therefore such attacks, when observed, may more likely be attributable to government actors.",
+            "paraphrase": "Higher attack sophistication is commonly used as a technical indicator suggestive of state involvement in attribution.",
+            "researcher_comment": "This identifies a commonly used type of forensic evidence (sophistication) and notes it's an assumption rather than a guaranteed indicator—important when assessing evidentiary reliability. It supports RQ0 on evidence types and signals limits to capability-based inference.",
+            "potential_themes": [
+              "forensic_indicators",
+              "attribution_challenges"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 0
+              }
+            ],
+            "evidence_type": "claim"
+          },
+          {
+            "direct_quote": "Efforts to trace these types of relationships in specific instances have remained largely subjective, relying on informal “preponderance of the [technical] evidence” to make judgments about whether a group might be state sponsored, and cui bono (motive) to link groups to specific countries.",
+            "paraphrase": "Current attribution efforts often rely on subjective assessments combining preponderance of technical evidence and motive (cui bono) to infer state sponsorship.",
+            "researcher_comment": "This notes prevalent evidentiary practices: blending technical indicators with motive-based reasoning; it highlights subjectivity and the risk of Type I errors. Useful for RQ0 to characterize dominant evidence types and their weaknesses.",
+            "potential_themes": [
+              "evidentiary_standards",
+              "attribution_challenges"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              }
+            ],
+            "evidence_type": "finding"
+          },
+          {
+            "direct_quote": "the confluence of multiple secondary sources offers some suggestions: specifically,'persons exercising elements of government authority,' 'conduct directed or controlled by the state' ... or 'conduct acknowledged or adopted by the state,' according to the International Law Commission's (ILC) 2001 Draft Articles on State Responsibility.",
+            "paraphrase": "The ILC Draft Articles suggest legal tests for state responsibility include conduct directed/controlled by the state or conduct acknowledged/adopted by it, which inform legal attribution standards.",
+            "researcher_comment": "This supplies the legal evidence standards the author uses to assess when state responsibility is engaged; it is central to operationalizing how legal thresholds map onto empirical indicators. Draft articles are non-binding—limits legal certainty.",
+            "potential_themes": [
+              "legal_frameworks",
+              "evidentiary_standards"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "definition"
+          },
+          {
+            "direct_quote": "My theory lays out the following basic premise: the extent of state support for non-state hackers should depend on (1) the alignment between state and hacker goals, (2) the degree of support needed relative to the difficulty of achieving a given operational aim, and (3) the value of a state's objectives relative to the expected consequences of getting caught.",
+            "paraphrase": "The model posits that state support for proxies depends on goal alignment, required support versus operational difficulty, and the value of objectives relative to expected costs if exposed.",
+            "researcher_comment": "This enumerates the model's key variables—directly operationalizing the framework for attribution as measurable state-level factors. Model applicability requires operational measures for 'alignment', 'degree of support', and 'value', which the chunk later suggests proxies for.",
+            "potential_themes": [
+              "principal_agent_theory",
+              "method"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "framework"
+          },
+          {
+            "direct_quote": "Particularly, all else equal, we should expect that states with nationalist hacker pools have a greater incentive to outsource, since agents' services can be purchased more cheaply and political aims are likely to be pursued in earnest.",
+            "paraphrase": "The author predicts states with nationalist/homogenous hacker communities are more likely to outsource cyber operations because proxies are cheaper and ideologically aligned.",
+            "researcher_comment": "This is a testable theoretical expectation tying observable social attributes (nationalism among hackers) to delegation likelihood; it suggests data sources for RQ0 (measures of hacker populations) and operationalization for RQ2. Causality may be confounded by unobserved state capacity.",
+            "potential_themes": [
+              "forensic_indicators",
+              "principal_agent_theory"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "finding"
+          },
+          {
+            "direct_quote": "Information on nationalism or ideological salience among private actors in cyberspace can be inferred through existing polling data and clarified through intelligence tradecraft and even additional social science research.",
+            "paraphrase": "The author recommends using polling data, intelligence tradecraft, and social science research to infer nationalism or ideological salience among private cyber actors as evidence.",
+            "researcher_comment": "This specifies concrete types of non-technical evidence (polling, intelligence, social science) that operationalize model variables—useful for RQ0 (evidence types) and RQ1 (methods for measuring indicators). Reliability and availability of such data will vary across states.",
+            "potential_themes": [
+              "evidentiary_standards",
+              "forensic_indicators"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "method"
+          },
+          {
+            "direct_quote": "Specifically, when the permissive conditions outlined above overlap with forensic indicators in a given instance, we have a match.",
+            "paraphrase": "The framework operationalizes attribution by declaring a match when permissive state-level conditions coincide with forensic indicators from an attack.",
+            "researcher_comment": "This states the decision rule: attribution confidence increases when independent state-level permissive conditions and attack-level forensic indicators overlap. It operationalizes how to integrate heterogeneous evidence streams, directly answering RQ2. Implementation details (weights, thresholds) are not provided here.",
+            "potential_themes": [
+              "attribution_challenges",
+              "evidentiary_standards"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "method"
+          }
+        ]
+      },
+      {
+        "input_tokens": 5854,
+        "output_tokens": 3184,
+        "total_tokens": 9038,
+        "cost_usd": 0.023109,
+        "model": "gpt-5-mini-2025-08-07",
+        "is_batch": true
+      }
+    ]
+  }
+]

@@ -1,0 +1,154 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+  <title id="title">Decision Flowcharts for C1, C2, C3</title>
+  <desc id="desc">Question-based scoring flowcharts for Clarity, Chain of Custody, and Credibility.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#4b5563" />
+    </marker>
+    <style>
+      .bg { fill: #ffffff; }
+      .title { font-family: "Segoe UI", Arial, sans-serif; font-size: 24px; font-weight: 700; fill: #111827; }
+      .sub { font-family: "Segoe UI", Arial, sans-serif; font-size: 12px; fill: #4b5563; }
+      .panel { fill: #f9fafb; stroke: #9ca3af; stroke-width: 1.4; }
+      .ph { font-family: "Segoe UI", Arial, sans-serif; font-size: 16px; font-weight: 700; fill: #111827; }
+      .qbox { fill: #ffffff; stroke: #9ca3af; stroke-width: 1.2; }
+      .q { font-family: "Segoe UI", Arial, sans-serif; font-size: 11px; fill: #1f2937; }
+      .yesno { font-family: "Segoe UI", Arial, sans-serif; font-size: 10px; font-weight: 700; fill: #374151; }
+      .low { fill: #f3f4f6; stroke: #9ca3af; stroke-width: 1.2; }
+      .mid { fill: #eef2ff; stroke: #9ca3af; stroke-width: 1.2; }
+      .high { fill: #ecfeff; stroke: #9ca3af; stroke-width: 1.2; }
+      .score { font-family: "Segoe UI", Arial, sans-serif; font-size: 11px; font-weight: 700; fill: #111827; }
+      .scoredesc { font-family: "Segoe UI", Arial, sans-serif; font-size: 10px; fill: #1f2937; }
+      .link { stroke: #6b7280; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="760" class="bg"/>
+  <text x="600" y="36" class="title" text-anchor="middle">Figure C. Question-Driven Scoring Flowcharts by C Domain</text>
+  <text x="600" y="56" class="sub" text-anchor="middle">Use each path to assign low / medium / high score decisions before numerical aggregation.</text>
+
+  <!-- C1 PANEL -->
+  <rect x="24" y="80" width="368" height="650" rx="10" class="panel"/>
+  <text x="208" y="110" text-anchor="middle" class="ph">C1. Clarity</text>
+
+  <rect x="58" y="128" width="300" height="56" rx="8" class="qbox"/>
+  <text x="208" y="151" text-anchor="middle" class="q">Is attribution claim explicit</text>
+  <text x="208" y="167" text-anchor="middle" class="q">(actor + act + severity)?</text>
+
+  <rect x="58" y="228" width="300" height="56" rx="8" class="qbox"/>
+  <text x="208" y="251" text-anchor="middle" class="q">Is state linkage evidence explicit</text>
+  <text x="208" y="267" text-anchor="middle" class="q">and legal pathway stated?</text>
+
+  <rect x="58" y="328" width="300" height="56" rx="8" class="qbox"/>
+  <text x="208" y="351" text-anchor="middle" class="q">Are alternative explanations addressed</text>
+  <text x="208" y="367" text-anchor="middle" class="q">and chain of reasoning coherent?</text>
+
+  <rect x="58" y="436" width="300" height="48" rx="8" class="low"/>
+  <text x="208" y="457" text-anchor="middle" class="score">LOW (0)</text>
+  <text x="208" y="472" text-anchor="middle" class="scoredesc">ambiguous claim / weak state-link clarity</text>
+
+  <rect x="58" y="502" width="300" height="48" rx="8" class="mid"/>
+  <text x="208" y="523" text-anchor="middle" class="score">MEDIUM (1)</text>
+  <text x="208" y="538" text-anchor="middle" class="scoredesc">partially explicit claim with notable gaps</text>
+
+  <rect x="58" y="568" width="300" height="48" rx="8" class="high"/>
+  <text x="208" y="589" text-anchor="middle" class="score">HIGH (2)</text>
+  <text x="208" y="604" text-anchor="middle" class="scoredesc">explicit attribution and coherent legal linkage</text>
+
+  <path class="link" d="M208 184 L208 228"/>
+  <text x="222" y="212" class="yesno">YES</text>
+  <path class="link" d="M128 184 C88 214, 88 430, 128 460"/>
+  <text x="90" y="214" class="yesno">NO</text>
+  <path class="link" d="M208 284 L208 328"/>
+  <text x="222" y="312" class="yesno">YES</text>
+  <path class="link" d="M128 284 C88 314, 88 496, 128 526"/>
+  <text x="90" y="314" class="yesno">NO</text>
+  <path class="link" d="M208 384 L208 568"/>
+  <text x="222" y="474" class="yesno">YES</text>
+  <path class="link" d="M128 384 C88 414, 88 560, 128 592"/>
+  <text x="90" y="414" class="yesno">NO</text>
+
+  <!-- C2 PANEL -->
+  <rect x="416" y="80" width="368" height="650" rx="10" class="panel"/>
+  <text x="600" y="110" text-anchor="middle" class="ph">C2. Chain of Custody</text>
+
+  <rect x="450" y="128" width="300" height="56" rx="8" class="qbox"/>
+  <text x="600" y="151" text-anchor="middle" class="q">Is provenance documented</text>
+  <text x="600" y="167" text-anchor="middle" class="q">(who / when / where collected)?</text>
+
+  <rect x="450" y="228" width="300" height="56" rx="8" class="qbox"/>
+  <text x="600" y="251" text-anchor="middle" class="q">Are integrity controls present</text>
+  <text x="600" y="267" text-anchor="middle" class="q">(hash/signature/checksum)?</text>
+
+  <rect x="450" y="328" width="300" height="56" rx="8" class="qbox"/>
+  <text x="600" y="351" text-anchor="middle" class="q">Are timeline and version lineage</text>
+  <text x="600" y="367" text-anchor="middle" class="q">complete and consistent?</text>
+
+  <rect x="450" y="436" width="300" height="48" rx="8" class="low"/>
+  <text x="600" y="457" text-anchor="middle" class="score">LOW (0)</text>
+  <text x="600" y="472" text-anchor="middle" class="scoredesc">provenance missing or integrity unverified</text>
+
+  <rect x="450" y="502" width="300" height="48" rx="8" class="mid"/>
+  <text x="600" y="523" text-anchor="middle" class="score">MEDIUM (1)</text>
+  <text x="600" y="538" text-anchor="middle" class="scoredesc">partial traceability with technical gaps</text>
+
+  <rect x="450" y="568" width="300" height="48" rx="8" class="high"/>
+  <text x="600" y="589" text-anchor="middle" class="score">HIGH (2)</text>
+  <text x="600" y="604" text-anchor="middle" class="scoredesc">end-to-end traceability and integrity continuity</text>
+
+  <path class="link" d="M600 184 L600 228"/>
+  <text x="614" y="212" class="yesno">YES</text>
+  <path class="link" d="M520 184 C480 214, 480 430, 520 460"/>
+  <text x="482" y="214" class="yesno">NO</text>
+  <path class="link" d="M600 284 L600 328"/>
+  <text x="614" y="312" class="yesno">YES</text>
+  <path class="link" d="M520 284 C480 314, 480 496, 520 526"/>
+  <text x="482" y="314" class="yesno">NO</text>
+  <path class="link" d="M600 384 L600 568"/>
+  <text x="614" y="474" class="yesno">YES</text>
+  <path class="link" d="M520 384 C480 414, 480 560, 520 592"/>
+  <text x="482" y="414" class="yesno">NO</text>
+
+  <!-- C3 PANEL -->
+  <rect x="808" y="80" width="368" height="650" rx="10" class="panel"/>
+  <text x="992" y="110" text-anchor="middle" class="ph">C3. Credibility</text>
+
+  <rect x="842" y="128" width="300" height="56" rx="8" class="qbox"/>
+  <text x="992" y="151" text-anchor="middle" class="q">Is the claim referenced</text>
+  <text x="992" y="167" text-anchor="middle" class="q">and substantiated?</text>
+
+  <rect x="842" y="228" width="300" height="56" rx="8" class="qbox"/>
+  <text x="992" y="251" text-anchor="middle" class="q">Is evidence majority from autosource</text>
+  <text x="992" y="267" text-anchor="middle" class="q">feeds and newspapers?</text>
+
+  <rect x="842" y="328" width="300" height="56" rx="8" class="qbox"/>
+  <text x="992" y="351" text-anchor="middle" class="q">Is source mix newspapers + academic +</text>
+  <text x="992" y="367" text-anchor="middle" class="q">government (but limited independence)?</text>
+
+  <rect x="842" y="436" width="300" height="48" rx="8" class="low"/>
+  <text x="992" y="457" text-anchor="middle" class="score">LOW (0)</text>
+  <text x="992" y="472" text-anchor="middle" class="scoredesc">unsubstantiated or mostly autosource/news</text>
+
+  <rect x="842" y="502" width="300" height="48" rx="8" class="mid"/>
+  <text x="992" y="523" text-anchor="middle" class="score">MEDIUM (1)</text>
+  <text x="992" y="538" text-anchor="middle" class="scoredesc">mixed sources, moderate independence</text>
+
+  <rect x="842" y="568" width="300" height="48" rx="8" class="high"/>
+  <text x="992" y="589" text-anchor="middle" class="score">HIGH (2)</text>
+  <text x="992" y="604" text-anchor="middle" class="scoredesc">independent institutions + academic + UN-type sources</text>
+
+  <path class="link" d="M992 184 L992 228"/>
+  <text x="1006" y="212" class="yesno">YES</text>
+  <path class="link" d="M912 184 C872 214, 872 430, 912 460"/>
+  <text x="874" y="214" class="yesno">NO</text>
+  <path class="link" d="M992 284 L992 436"/>
+  <text x="1006" y="364" class="yesno">YES</text>
+  <path class="link" d="M912 284 C872 314, 872 496, 912 526"/>
+  <text x="874" y="314" class="yesno">NO</text>
+  <path class="link" d="M992 384 L992 502"/>
+  <text x="1006" y="444" class="yesno">YES</text>
+  <path class="link" d="M912 384 C872 414, 872 560, 912 592"/>
+  <text x="874" y="414" class="yesno">NO</text>
+
+  <text x="600" y="748" class="sub" text-anchor="middle">These flowcharts define categorical assignment first; numeric aggregation is applied after domain-level low/medium/high decisions.</text>
+</svg>

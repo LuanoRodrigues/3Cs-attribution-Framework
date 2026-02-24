@@ -1,0 +1,203 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "quote": "The lack of reasonable attribution in cyberspace makes it difficult to implement CBMs that are based on verification, a common feature among traditional CBMs.",
+          "paraphrase": "This states that insufficient attribution in cyberspace undermines the use of verification-based CBMs, directly affecting cyber-attribution efforts.",
+          "researcher_comment": "Identifies attribution as a core technical and epistemic barrier to CBMs that rely on verification. This frames attribution not as peripheral but as a gating constraint for confidence-building. The claim assumes current attribution capability is inadequate for verification-heavy measures.",
+          "potential_themes": [
+            "attribution_challenges",
+            "confidence_building_measures"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "lack_of_attribution",
+            "verification_limitations",
+            "cbm_implementation_barrier"
+          ]
+        },
+        {
+          "quote": "However, the challenges surrounding attribution in the cyber domain loom over the implementation of such a council.",
+          "paraphrase": "The authors argue that attribution difficulties in cyberspace threaten the practical implementation of an international adjudication/attribution council.",
+          "researcher_comment": "Positions attribution as a systemic limitation to institutional approaches for assigning responsibility. The statement flags implementation risk but does not detail which attribution failings (technical, legal, political) are primary.",
+          "potential_themes": [
+            "attribution_challenges",
+            "confidence_building_measures"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "limitation",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "attribution_challenges",
+            "adjudication_constraints",
+            "institutional_risk"
+          ]
+        },
+        {
+          "quote": "Lastly, scholars recommend fostering accountability in cyberspace through the establishment of a cyber adjudication and attribution council.",
+          "paraphrase": "Scholars recommend creating an international cyber adjudication and attribution council to foster accountability, a proposal directly addressing attribution governance.",
+          "researcher_comment": "This is an explicit policy recommendation linking institutional design to attribution and accountability. It lacks detail on mandate, evidentiary rules, or enforcement powers\u2014key for evaluating feasibility given attribution limits.",
+          "potential_themes": [
+            "confidence_building_measures",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "adjudication_council_proposal",
+            "scholarly_recommendation",
+            "accountability_institution"
+          ]
+        },
+        {
+          "quote": "Such an international body should be able to investigate and assign responsibility for cyber crises that could spiral into conflict.",
+          "paraphrase": "The text specifies that an international attribution body should investigate incidents and assign responsibility to prevent escalation, addressing attribution and conflict avoidance.",
+          "researcher_comment": "Clarifies intended functions of the proposed body (investigation and attribution). Practical questions remain about investigative access, evidentiary thresholds, and whether attribution findings would be accepted politically.",
+          "potential_themes": [
+            "confidence_building_measures",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "investigation_role",
+            "assign_responsibility",
+            "escalation_prevention"
+          ]
+        },
+        {
+          "quote": "Current practical proposals on crisis management CBMs include the functional alignment of crisis emergency response teams (CERTs) to increase transparency.",
+          "paraphrase": "A proposed crisis-management CBM is to align CERTs functionally across actors to improve transparency, which can support attribution processes.",
+          "researcher_comment": "This is a concrete operational proposal that could improve incident visibility necessary for attribution. Effectiveness will depend on data-sharing agreements, technical interoperability, and trust among participants.",
+          "potential_themes": [
+            "confidence_building_measures",
+            "crisis_management"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "CERT_alignment",
+            "transparency_proposal",
+            "operational_interoperability"
+          ]
+        },
+        {
+          "quote": "Actors that share the CERTs with other governments before a crisis hits know immediately whom to reach out to in a tense situation.",
+          "paraphrase": "Pre-established cross-government CERT-sharing lets actors identify contacts immediately during crises, aiding coordinated response and potentially attribution.",
+          "researcher_comment": "Provides an operational rationale for pre-crisis CERT linkages as an attribution-adjacent mechanism. It presumes willingness to share sensitive contact/operational information prior to incidents.",
+          "potential_themes": [
+            "confidence_building_measures",
+            "crisis_management"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "pre_sharing_CERTs",
+            "operational_contacts",
+            "crisis_coordination"
+          ]
+        },
+        {
+          "quote": "To further promote stability, some suggest the implementation of a multilateral cyber \u201chotline,\u201d which should also include private and social sector actors to keep them informed about ongoing developments.",
+          "paraphrase": "Proposals include a multilateral cyber hotline that integrates private and social-sector actors to share developments and promote stability, relevant to attribution communication.",
+          "researcher_comment": "Highlights a communication-focused CBM that recognizes non-state actors' role in incidents and attribution. The effectiveness depends on hotline governance, inclusion criteria, and information-handling rules.",
+          "potential_themes": [
+            "confidence_building_measures",
+            "multistakeholder_engagement"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "cyber_hotline",
+            "private_sector_inclusion",
+            "multistakeholder_communication"
+          ]
+        },
+        {
+          "quote": "Improving accountability by asking states to declare responsibility for behavior within their territory;",
+          "paraphrase": "One restraining-activity CBM proposed is to improve accountability by requiring states to declare responsibility for behavior originating in their territory, which relates to attribution obligations.",
+          "researcher_comment": "This proposal links state declarations to accountability and attribution by shifting emphasis to territorial responsibility. It assumes states can and will identify and declare such behavior, which attribution difficulties may prevent.",
+          "potential_themes": [
+            "confidence_building_measures",
+            "attribution_challenges"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "state_declarations",
+            "territorial_responsibility",
+            "accountability_mechanism"
+          ]
+        },
+        {
+          "quote": "CBMs on collaboration are designed to share information, provide transparency, and build trust.",
+          "paraphrase": "Collaborative CBMs are defined as mechanisms for information sharing, transparency, and trust-building, functions that can support attribution indirectly.",
+          "researcher_comment": "This concise definition situates collaborative CBMs as channels that could mitigate attribution uncertainty via shared information. It does not specify standards for the quality or admissibility of shared information.",
+          "potential_themes": [
+            "confidence_building_measures"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "information_sharing",
+            "transparency",
+            "trust_building"
+          ]
+        },
+        {
+          "quote": "CBMs are not designed to substitute discussions around international legal norms. In fact, the feasibility of CBMs depends on the parallel development of international legal norms.",
+          "paraphrase": "The authors assert that CBMs complement rather than replace international legal norms, and their feasibility depends on concurrent development of those norms, which is relevant to attribution governance.",
+          "researcher_comment": "Frames CBMs and legal norms as mutually reinforcing; for attribution this implies technical CBMs need a legal normative backbone to be effective. The statement is high-level and does not identify which legal norms are required.",
+          "potential_themes": [
+            "confidence_building_measures",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "cbm_norms_interdependence",
+            "feasibility_dependency",
+            "legal_backing"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-23T23:31:56.195449Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "2a320c94fb28b9ff1a8402750421af5de33a17102e6cc0785b2334f9dc6ddfce",
+  "function": "code_pdf_page"
+}

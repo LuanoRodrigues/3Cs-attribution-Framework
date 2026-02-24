@@ -1,0 +1,369 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "quote": "Offensive military operations in cyberspace especially pose a new challenge for the applicability and enforcement of public international law.",
+          "paraphrase": "Offensive cyber military operations create new challenges for applying and enforcing public international law, which affects conditions for effective norms and CBMs.",
+          "researcher_comment": "Identifies legal applicability/enforcement as a barrier to norm effectiveness. No empirical examples or mechanisms are provided, so the claim flags a legal constraint rather than proven failure of norms.",
+          "potential_themes": [
+            "international_law_applicability",
+            "enforcement_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "applicability_challenge",
+            "offensive_operations",
+            "legal_enforcement_uncertainty"
+          ]
+        },
+        {
+          "quote": "Since 2013 the United Nations has acknowledged that conflict in cyberspace is a serious concern for the international community.",
+          "paraphrase": "Since 2013 the United Nations has formally recognized cyberspace conflict as a serious international concern, establishing political salience for norms and CBMs.",
+          "researcher_comment": "Establishes high-level political recognition which legitimizes multilateral discussion of norms/CBMs. This is contextual evidence of agenda-setting rather than proof of normative progress.",
+          "potential_themes": [
+            "UN_engagement",
+            "international_recognition"
+          ],
+          "relevance_score": 3,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "UN_acknowledgement",
+            "policy_salience"
+          ]
+        },
+        {
+          "quote": "States agree that cooperation is essential to reduce risk and enhance security within cyberspace.",
+          "paraphrase": "States broadly endorse cooperation as essential to reducing cyber risks and improving security, which underpins support for international norms and agreements.",
+          "researcher_comment": "Shows normative consensus on cooperation as a goal; useful for explaining political willingness to pursue CBMs or agreements but does not specify instruments or enforcement mechanisms.",
+          "potential_themes": [
+            "state_cooperation",
+            "norms_and_cbms"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "cooperation_consensus",
+            "risk_reduction"
+          ]
+        },
+        {
+          "quote": "Given this commitment, it is fair to say that states believe that further escalation in cyberspace can be prevented through the implementation of international regimes,3 treaties,4 or agreements.5",
+          "paraphrase": "The author states that states believe international regimes, treaties, or agreements can prevent further escalation in cyberspace, implying treaties are seen as escalation-mitigation tools.",
+          "researcher_comment": "Reports a widespread belief in treaty-based prevention; this is a stated rationale for pursuing formal instruments but is not evidence that such instruments are effective or politically feasible.",
+          "potential_themes": [
+            "treaty_promotion",
+            "norms_and_cbms"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "treaty_prevention_belief",
+            "escalation_prevention"
+          ]
+        },
+        {
+          "quote": "However, when it comes to military activities, few states are currently willing or able to engage in comprehensive negotiations on treaties governing military use of cyberspace.6",
+          "paraphrase": "Few states are willing or able to negotiate comprehensive treaties on military cyber use, which constrains treaty-based solutions to reducing escalation.",
+          "researcher_comment": "Directly identifies a political/capacity barrier to treaty-making on military cyber use, a key condition limiting formal norm implementation; the claim lacks specification of causes or which states are exceptions.",
+          "potential_themes": [
+            "treaty_negotiation_barriers",
+            "state_willingness"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "negotiation_reluctance",
+            "military_treaty_barriers"
+          ]
+        },
+        {
+          "quote": "Below the threshold of international treaties, there are norms, which have the potential to be codified or implemented through practice. The same applies to confidence-building measures (CBMs) as means to further promote this dialogue.",
+          "paraphrase": "In the absence of treaties, norms and confidence\u2011building measures can be codified or implemented through practice and used to advance dialogue on cyber military conduct.",
+          "researcher_comment": "Frames norms and CBMs as viable alternative governance mechanisms; this is a prescriptive or programmatic claim that identifies pathways but does not assess compliance incentives or effectiveness.",
+          "potential_themes": [
+            "norms_and_cbms"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "framework",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "norms_as_alternative",
+            "cbms_promotion",
+            "practice_based_coding"
+          ]
+        },
+        {
+          "quote": "However, most of these talks are focused on law enforcement cooperation against organized cyber-crime rather than military activities in cyberspace.8",
+          "paraphrase": "Most multilateral talks prioritize law\u2011enforcement cooperation on cybercrime rather than addressing military cyber activities, leaving military norms under-discussed.",
+          "researcher_comment": "Highlights an institutional agenda mismatch that limits discussion of military-focused norms/CBMs; indicates a governance gap but does not identify which fora might fill it.",
+          "potential_themes": [
+            "institutional_focus",
+            "gap_in_military_discussion"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "law_enforcement_focus",
+            "military_norms_gap"
+          ]
+        },
+        {
+          "quote": "During the latest round of consultations of the United Nations Group of Governmental Experts on Cybersecurity (UN GGE), the group hardly addressed military activities as relevant to their discussion of norms and principles in cyberspace.",
+          "paraphrase": "The UN GGE consultations largely neglected military activities in their discussion of cyber norms and principles.",
+          "researcher_comment": "Specifies that a prominent multilateral forum gave little attention to military issues, reinforcing the argument that military cyber norms are underdeveloped; no causal reasons are offered.",
+          "potential_themes": [
+            "UN_GGE_focus",
+            "norm_development_gap"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "UN_GGE_military_gap",
+            "forum_neglect_of_military_issues"
+          ]
+        },
+        {
+          "quote": "Instead, in their July 2015 report to the UN General Assembly, the relevant section focused on critical infrastructure and Information and Communications Technology (ICTs).9",
+          "paraphrase": "The UN GGE's July 2015 report emphasized critical infrastructure and ICTs rather than military cyber activities.",
+          "researcher_comment": "Clarifies the substantive priorities of the UN GGE report and explains why military norms may have received less attention; useful for tracing institutional emphases.",
+          "potential_themes": [
+            "UN_GGE_focus",
+            "infrastructure_priority"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "critical_infrastructure_focus",
+            "ICT_priority"
+          ]
+        },
+        {
+          "quote": "While the UN GGE reports from 2013 and 2015 demonstrate that there is a general agreement that existing international laws \u2014 such as the laws of armed conflict \u2014 do indeed apply to cyberspace, the actual scope of their application remains contested.",
+          "paraphrase": "UN GGE reports indicate consensus that existing international laws, including the laws of armed conflict, apply to cyberspace, but states contest the precise scope of application.",
+          "researcher_comment": "Key finding: normative convergence on applicability coexists with substantive disagreement over boundaries; this tension is central to attribution, threshold, and enforcement debates relevant to norm effectiveness.",
+          "potential_themes": [
+            "international_law_applicability",
+            "scope_contestation"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "mixed",
+          "open_codes": [
+            "laws_apply_consensus",
+            "scope_disagreement",
+            "LoAC_applicability"
+          ]
+        },
+        {
+          "quote": "Some analysts argue that the latest UN GGE report made some important steps in clarifying the applicability of the laws of armed conflict in cyberspace.",
+          "paraphrase": "Some analysts view the recent UN GGE report as taking steps to clarify how the laws of armed conflict apply in cyberspace.",
+          "researcher_comment": "Reports an analytical assessment of incremental progress; useful as perception data but requires corroboration and detail to assess substantive change.",
+          "potential_themes": [
+            "international_law_applicability",
+            "analyst_assessment"
+          ],
+          "relevance_score": 3,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "analyst_view",
+            "incremental_clarification"
+          ]
+        },
+        {
+          "quote": "Even so, the discussion of a definition of armed attack and the use of force in cyberspace is hardly over.",
+          "paraphrase": "The debate over defining 'armed attack' and 'use of force' in cyberspace remains unresolved.",
+          "researcher_comment": "Identifies a central unresolved legal definition that directly affects thresholds for response and attribution; this is a substantive limitation for norm-based escalation control.",
+          "potential_themes": [
+            "definition_of_armed_attack",
+            "legal_uncertainty"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "armed_attack_definition_undecided",
+            "threshold_uncertainty"
+          ]
+        },
+        {
+          "quote": "A dialogue on legal norms is crucial to harmonizing different interpretations among countries, and there are several key developments that try to clarify the scope and extent to which existing international law applies to cyberspace.",
+          "paraphrase": "Dialogue on legal norms is necessary to harmonize state interpretations, and several developments seek to clarify how international law applies to cyberspace.",
+          "researcher_comment": "Argues that ongoing dialogue and specific developments are required for harmonization; relevant to RQ about how to facilitate norm convergence but lacks evaluation of the developments mentioned.",
+          "potential_themes": [
+            "norms_and_cbms",
+            "harmonization"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "harmonization_need",
+            "legal_dialogue",
+            "clarification_developments"
+          ]
+        },
+        {
+          "quote": "However, the current discourse on norms, at least at the UN level, seems to be stagnant.",
+          "paraphrase": "At the UN level, the discourse on cyber norms appears to be stalled.",
+          "researcher_comment": "Identifies stagnation as a barrier to progress on norms and CBMs; implies need for new incentives, fora, or approaches to break the stalemate.",
+          "potential_themes": [
+            "norm_development_stalemate",
+            "UN_stagnation"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "norms_stalemate",
+            "UN_discourse_stagnant"
+          ]
+        },
+        {
+          "quote": "With this stalemate in mind, this essay will examine under what conditions international legal norms and CBMs contribute to the reduction of military escalation within cyberspace and how this development can be facilitated.",
+          "paraphrase": "The essay aims to analyze conditions under which international legal norms and CBMs reduce military escalation in cyberspace and how to facilitate that development.",
+          "researcher_comment": "Explicitly states the research objective and links the preceding problem statements to the paper's central question; not an empirical claim but useful for mapping subsequent evidence to the RQ.",
+          "potential_themes": [
+            "research_question",
+            "norms_and_cbms"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "framework",
+          "argument_type": "procedural",
+          "claim_direction": "unspecified",
+          "open_codes": [
+            "research_objective",
+            "escalation_reduction_focus"
+          ]
+        },
+        {
+          "quote": "Given the scope of this paper, the analysis will be limited to the discussion of legal norms surrounding an armed attack and the use of force in cyberspace.",
+          "paraphrase": "The analysis is limited to legal norms concerning armed attack and the use of force in cyberspace.",
+          "researcher_comment": "Declares the paper's analytical boundary, which is important for synthesis and prevents overgeneralization; it excludes other dimensions of cyber governance.",
+          "potential_themes": [
+            "scope_limitation",
+            "armed_attack_focus"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "limitation",
+          "argument_type": "procedural",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "analysis_scope",
+            "legal_focus_limit"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-23T23:22:41.284223Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "ff19cc1cd98904da32472372bc206f6be6e0953367a350b43d12b8ac56fc64df",
+  "function": "code_pdf_page"
+}

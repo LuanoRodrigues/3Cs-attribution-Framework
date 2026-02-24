@@ -1,0 +1,22 @@
+{
+  "schema": "review_supervisor_run_v1",
+  "started_at": "2026-02-23T20:56:50Z",
+  "ended_at": "2026-02-23T21:01:26Z",
+  "status": "error",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "collection_key": "",
+  "research_questions": [
+    "What frameworks and models are used for cyber attribution?",
+    "How are attribution decisions validated and evidenced?",
+    "What operational constraints affect attribution quality?"
+  ],
+  "steps": [
+    {
+      "status": "error",
+      "message": "The read operation timed out",
+      "coding_engine": "legacy_screening",
+      "coding_manifest_path": "/home/pantera/projects/TEIA/logs/Attribution_of_Cyberattacks_-_Phase_3_High-Level_Taper/coding_orchestrator/coding_manifest.json",
+      "step_name": "screening"
+    }
+  ]
+}

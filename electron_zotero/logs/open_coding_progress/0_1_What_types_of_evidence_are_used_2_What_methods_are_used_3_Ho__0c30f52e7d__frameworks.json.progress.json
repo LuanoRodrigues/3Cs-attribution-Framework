@@ -1,0 +1,16 @@
+{
+  "status": "running",
+  "stage": "iterate_items",
+  "collection": "frameworks",
+  "total_items": 7,
+  "processed_items": 3,
+  "current_item_key": "MSU2EW6K",
+  "completed_item_keys": [
+    "W63DA6Z6",
+    "N4YNQ2GG",
+    "MSU2EW6K"
+  ],
+  "store_only": true,
+  "read": false,
+  "done": false
+}

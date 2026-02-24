@@ -1,0 +1,67 @@
+{
+  "startedAt": "2026-02-22T20:53:31.139Z",
+  "scenario": {
+    "collectionKeyword": "frameworks_and_models",
+    "collectionKey": "",
+    "dirBase": "./running_tests",
+    "initialCommand": "Code my active collection frameworks_and_models for cyber attribution frameworks and models, skip screening, then run Verbatim_Evidence_Coding with prompt_key=code_pdf_page after I confirm.",
+    "feedback": "Refine to five questions covering evidence, methods, validation, uncertainty, and policy implications.",
+    "approve": "yes",
+    "waitMs": 120000,
+    "executionWaitMs": 420000
+  },
+  "steps": [
+    {
+      "at": "2026-02-22T20:53:31.141Z",
+      "name": "renderer-ready",
+      "ok": true,
+      "detail": "chat form + collections tree detected"
+    },
+    {
+      "at": "2026-02-22T20:53:31.944Z",
+      "name": "await-tree-lines",
+      "ok": true,
+      "detail": "rows=79"
+    },
+    {
+      "at": "2026-02-22T20:53:32.006Z",
+      "name": "select-collection",
+      "ok": true,
+      "detail": "No collection selected."
+    },
+    {
+      "at": "2026-02-22T20:53:33.217Z",
+      "name": "send-initial-command",
+      "ok": true,
+      "detail": "Code my active collection frameworks_and_models for cyber attribution frameworks and models, skip screening, then run Verbatim_Evidence_Coding with prompt_key=code_pdf_page after I confirm."
+    },
+    {
+      "at": "2026-02-22T20:55:34.091Z",
+      "name": "await-initial-questions",
+      "ok": false,
+      "detail": "timeout waiting for assistant message"
+    }
+  ],
+  "transcript": [
+    {
+      "role": "assistant",
+      "tone": "",
+      "text": "Agent ready. Send a command to organize collections by tag."
+    },
+    {
+      "role": "user",
+      "tone": "",
+      "text": "Code my active collection frameworks_and_models for cyber attribution frameworks and models, skip screening, then run Verbatim_Evidence_Coding with prompt_key=code_pdf_page after I confirm."
+    },
+    {
+      "role": "assistant",
+      "tone": "",
+      "text": "I need a bit more detail:\n- Select a collection before coding."
+    }
+  ],
+  "status": "failed",
+  "error": "timeout waiting for assistant message",
+  "statusLine": "Intent needs clarification.",
+  "selectedCollection": "No collection selected.",
+  "finishedAt": "2026-02-22T20:55:34.092Z"
+}

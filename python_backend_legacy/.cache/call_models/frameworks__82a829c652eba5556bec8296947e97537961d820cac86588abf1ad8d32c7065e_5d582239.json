@@ -1,0 +1,380 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "quote": "First, the adversary is usually difficult to locate. Cyberspace allows for a great deal of anonymity, and attacks can be routed through servers all over the world to mask their origin.",
+          "paraphrase": "The text states that cyberspace anonymity and global routing make locating attackers difficult, directly creating an attribution challenge relevant to cyber attribution.",
+          "researcher_comment": "This is a direct technical explanation of why attribution is hard and why evidentiary chains are weak. It underlines the need for non-technical corroboration (political/intelligence) when attributing. The passage does not discuss forensic mitigations or how often routing prevents attribution.",
+          "potential_themes": [
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "anonymity",
+            "origin_masking",
+            "attribution_difficulty"
+          ]
+        },
+        {
+          "quote": "Fourth, an aspect complicating cyber attacks and their legal evaluation is that cyber operations have often been conducted by non-state actors, whose status and affiliation are not always clear.",
+          "paraphrase": "The author asserts that frequent use of non-state actors with unclear affiliations complicates legal evaluation and attribution of cyber operations, a central issue for cyber attribution.",
+          "researcher_comment": "Identifies actor-identity ambiguity as both an evidentiary and legal barrier to attribution and prosecution. Useful for RQs on who must be attributed (state vs non-state). The passage does not specify methods to resolve affiliation ambiguity.",
+          "potential_themes": [
+            "attribution_challenges",
+            "international_law"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "non_state_actors",
+            "actor_ambiguity",
+            "legal_evaluation_complication"
+          ]
+        },
+        {
+          "quote": "Political incentive for states to use proxies can be summed up by the concept of \"plausible deniability\".",
+          "paraphrase": "The chapter argues that states have incentives to employ proxies to retain plausible deniability, which systematically impedes reliable attribution (relevant to cyber attribution).",
+          "researcher_comment": "Links political motives to operational behaviors that intentionally degrade attribution confidence; important for political-response analysis. The statement is schematic and not backed here by empirical examples in this quote.",
+          "potential_themes": [
+            "plausible_deniability",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "proxy_use",
+            "state_incentives",
+            "plausible_deniability"
+          ]
+        },
+        {
+          "quote": "the report stated that the indication that cyber activity was launched or otherwise originated from the territory or the ICT infrastructure of a state may be insufficient in itself to attribute the activity to that state (United Nations 2016).",
+          "paraphrase": "A UN expert report concluded that evidence of activity originating from a state's territory or ICT infrastructure alone may be insufficient to attribute responsibility to that state, directly addressing evidentiary limits for attribution.",
+          "researcher_comment": "This is authoritative confirmation (UN) that technical origin evidence is often legally insufficient for attribution, which matters for rules of engagement and international responses. The quote does not specify what additional evidence would meet attribution standards.",
+          "potential_themes": [
+            "attribution_challenges",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "origin_not_conclusive",
+            "evidence_thresholds",
+            "un_report"
+          ]
+        },
+        {
+          "quote": "States retain the inherent right to self-defense under Article 51 of the UN Charter when faced with an imminent threat.",
+          "paraphrase": "The author notes that states retain the Article 51 right of self-defense when faced with imminent threats, which provides a legal basis for responding to cyber threats contingent on attribution and threat assessment.",
+          "researcher_comment": "Places state response options within established UN legal doctrine, indicating a potential legal route for responses to cyber incidents. The passage, however, acknowledges elsewhere that attribution and impact thresholds complicate invoking Article 51 in practice.",
+          "potential_themes": [
+            "international_law",
+            "policy_responses"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "policy_position",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "self_defense",
+            "article_51",
+            "legal_basis_for_response"
+          ]
+        },
+        {
+          "quote": "The challenge of attribution and the understanding of the extent to which a cyber attack has caused (or has the potential to cause) damage make things more complicated in reality.",
+          "paraphrase": "The text states that attribution difficulties combined with uncertainty about an attack's causal damage complicate political and legal responses to cyber incidents, a core issue for cyber attribution.",
+          "researcher_comment": "Highlights that attribution and impact assessment are joint constraints on lawful and proportionate responses; this is essential for RQs on thresholds for action. The passage does not operationalize damage metrics.",
+          "potential_themes": [
+            "attribution_challenges",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "impact_attribution_uncertainty",
+            "causation_assessment",
+            "evidence_limitations"
+          ]
+        },
+        {
+          "quote": "The legal debate on what constitutes an 'armed attack in cyberspace' has only just begun.",
+          "paraphrase": "The author observes that legal scholarship and practice are at an early stage in defining when cyber operations qualify as 'armed attacks', directly bearing on attribution-linked thresholds for force.",
+          "researcher_comment": "Notes unresolved legal thresholds that determine when a state may lawfully respond with force\u2014critical for RQs about legal criteria. The passage is high-level and does not enumerate candidate tests or state practice.",
+          "potential_themes": [
+            "international_law"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "armed_attack_debate",
+            "legal_thresholds",
+            "uncertainty"
+          ]
+        },
+        {
+          "quote": "It is conceivable that a harmful cyber hostility that is attributable to a state amounts to a violation of Article 2 (4) of the UN Charter, given its character and effects.",
+          "paraphrase": "The author suggests that a state-attributable harmful cyber act could, depending on its nature and effects, violate Article 2(4) of the UN Charter, linking attribution to possible breaches of the prohibition on force.",
+          "researcher_comment": "Connects successful attribution to significant legal consequences (use-of-force prohibition), which is important for RQs about why attribution matters politically and legally. The phrasing is conditional and does not specify evaluative criteria.",
+          "potential_themes": [
+            "international_law",
+            "attribution_challenges"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "article_2_4",
+            "state_responsibility",
+            "legal_consequences"
+          ]
+        },
+        {
+          "quote": "One of the most common ones is based on the Tallinn Manual, which offers the definition of a 'cyber attack' as 'a cyber operation, whether offensive or defensive, that is reasonably expected to cause injury or death to persons or damage or destruction to objects' (Tallinn Manual 2013).",
+          "paraphrase": "The Tallinn Manual's definition frames 'cyber attack' narrowly around operations reasonably expected to cause physical injury, death, or destruction, which sets a high threshold relevant to attribution and response policy.",
+          "researcher_comment": "Provides a canonical, 'hard' legal definition that emphasizes physical effects and thus narrows what incidents trigger forceful responses. This matters for RQs on how definitional choices affect attribution thresholds and policy options.",
+          "potential_themes": [
+            "definitions",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "tallinn_manual",
+            "physical_damage_threshold",
+            "legal_definition"
+          ]
+        },
+        {
+          "quote": "This definition is pretty \"hard,' requiring a severe impact of the cyber attack and strongly tied to the physical impact.",
+          "paraphrase": "The author characterizes the Tallinn-style definition as 'hard' because it requires severe, typically physical, impact before labeling an operation a cyber attack, which narrows attribution triggers.",
+          "researcher_comment": "Author's analysis highlights trade-offs: hard definitions limit false positives but exclude non-kinetic harms that may nonetheless be politically significant. The quote critiques the linkage to physical impact but does not propose an alternative metric here.",
+          "potential_themes": [
+            "definitions",
+            "incident_classification"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "hard_definition",
+            "physical_focus",
+            "response_threshold"
+          ]
+        },
+        {
+          "quote": "A cyber attack, as a concept, must be understood widely in the political context: A cyber attack consists of any deliberate hostile action taken in cyberspace for a political, economic, or national security purpose.",
+          "paraphrase": "The author proposes a broad, politically rooted definition: a cyber attack is any deliberate hostile cyberspace action undertaken for political, economic, or security ends, which would expand attribution scope.",
+          "researcher_comment": "This normative framing contrasts with 'hard' legal thresholds and would widen the range of incidents treated as attacks for attribution and response purposes. It is prescriptive and signals the author's preferred scope for political decision-making.",
+          "potential_themes": [
+            "definitions",
+            "policy_responses"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "definition",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "broad_definition",
+            "political_context",
+            "normative_redefinition"
+          ]
+        },
+        {
+          "quote": "In December 2015, we witnessed the first confirmed cyber attack to take down a power grid, which affected approximately 225,000 civilians in Ukraine.",
+          "paraphrase": "The chapter cites the December 2015 Ukraine power-grid incident\u2014affecting about 225,000 civilians\u2014as the first confirmed cyber attack that produced direct physical infrastructure failure, relevant to attribution/impact debates.",
+          "researcher_comment": "Empirical example showing that cyber operations can cause physical harm meeting 'hard' definitions and thus enabling stronger legal/political responses. The quote does not discuss attribution for this incident in detail.",
+          "potential_themes": [
+            "examples",
+            "incident_classification"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "example",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "ukraine_2015",
+            "power_grid_attack",
+            "kinetic_cyber"
+          ]
+        },
+        {
+          "quote": "The highest level, the level five (defined as an \"emergency level\"), will be used in a situation in which cyber attacks cause physical consequences.",
+          "paraphrase": "The author notes that U.S. PPD-41 classifies incidents up to a 'level five' emergency to be invoked when cyber attacks cause physical consequences, linking physical impact to escalation policy.",
+          "researcher_comment": "Demonstrates an operational classification that conditions maximal national response on physical consequences; useful for RQs on state-level thresholds and procedures. The quote does not address how attribution is integrated into declaring level five.",
+          "potential_themes": [
+            "incident_classification",
+            "policy_responses"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "taxonomy",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "ppd_41",
+            "severity_levels",
+            "emergency_level"
+          ]
+        },
+        {
+          "quote": "One important recommendation was that a state should not conduct or knowingly support ICT activity that intentionally damages or otherwise impairs the use and operation of critical infrastructure.",
+          "paraphrase": "The UN expert group's recommendation states that states should not conduct or knowingly support ICT activities that intentionally damage or impair critical infrastructure, tying state responsibility to conduct and support.",
+          "researcher_comment": "A normative state obligation that bears on attribution because it assigns responsibility to states to prevent misuse of their ICT resources. The passage does not outline enforcement or attribution standards to hold states accountable.",
+          "potential_themes": [
+            "policy_responses",
+            "international_law"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "state_obligations",
+            "critical_infrastructure_protection",
+            "preventative_measures"
+          ]
+        },
+        {
+          "quote": "Even if the report emphasized that \"making cyberspace stable and secure can be achieved only through international cooperation\" and required states to take appropriate measures to protect their critical infrastructure, it did not give any guidance as to how to respond specifically to state-sponsored cyber attacks.",
+          "paraphrase": "Although the UN report called for international cooperation and protective measures, it provided no concrete guidance on responding to state-sponsored cyber attacks, leaving a normative gap relevant to attribution and response frameworks.",
+          "researcher_comment": "Points out a key limitation in international norms: exhortations for cooperation exist but actionable response guidance (and attribution thresholds) are absent. This gap is critical for RQs about the maturity of global attribution and response norms.",
+          "potential_themes": [
+            "international_law",
+            "policy_responses"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "normative_gap",
+            "lack_of_guidance",
+            "international_cooperation"
+          ]
+        },
+        {
+          "quote": "Hybrid warfare increases \"the fog of war', and cyber activities are well suited in this context for five reasons.",
+          "paraphrase": "The author argues that hybrid warfare amplifies uncertainty (the 'fog of war') and that cyber operations are especially suitable for exploiting that uncertainty, which complicates attribution.",
+          "researcher_comment": "Frames cyber operations as instruments of hybrid warfare that intentionally exploit ambiguity, reinforcing earlier claims about attribution difficulty. The quote introduces the concept; the five reasons are listed elsewhere in the text.",
+          "potential_themes": [
+            "hybrid_warfare",
+            "attribution_challenges"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "hybrid_warfare",
+            "fog_of_war",
+            "strategic_ambiguity"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-24T15:05:34.262938Z",
+  "collection_name": "frameworks",
+  "custom_id": "82a829c652eba5556bec8296947e97537961d820cac86588abf1ad8d32c7065e",
+  "function": "code_pdf_page"
+}

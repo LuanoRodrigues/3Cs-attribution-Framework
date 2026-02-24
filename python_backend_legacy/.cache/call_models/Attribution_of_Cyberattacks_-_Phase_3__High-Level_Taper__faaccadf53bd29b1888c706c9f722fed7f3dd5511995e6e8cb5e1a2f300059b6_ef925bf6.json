@@ -1,0 +1,259 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "quote": "cyberspace\u2019s technical architecture meant those responsible for a cyber operation could often remain anonymous.",
+          "paraphrase": "The technical design of cyberspace frequently allows perpetrators of cyber operations to remain anonymous, creating attribution challenges.",
+          "researcher_comment": "This sentence identifies a structural, technical cause of the attribution problem and functions as an operational definition of why attribution is difficult. It is descriptive and does not assess recent advances in attribution methods or attribution confidence. Use cautiously as a baseline condition rather than a universal, time-invariant fact.",
+          "potential_themes": [
+            "attribution_challenges",
+            "definition"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "technical_anonymity",
+            "structural_obstacle"
+          ]
+        },
+        {
+          "quote": "this \u201cattribution problem\u201d posed serious\u2014and perhaps insuperable\u2014obstacles to engendering compliance by States with any rules in cyberspace.",
+          "paraphrase": "The attribution problem was widely thought to create major, possibly insurmountable, obstacles to states' compliance with rules governing cyberspace.",
+          "researcher_comment": "This records a historical belief that attribution undermines enforceability and compliance, framing attribution as causally linked to normative failure. Treat it as reported conventional wisdom rather than empirical proof about present conditions.",
+          "potential_themes": [
+            "attribution_challenges",
+            "compliance"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "attribution_impedes_compliance",
+            "historical_view"
+          ]
+        },
+        {
+          "quote": "Victims might never know they had been hacked and when they did, the fear of reputational harm often kept them from disclosing it.",
+          "paraphrase": "Victims frequently lacked awareness of intrusions and, when aware, often withheld disclosure due to reputational concerns, reducing incident visibility.",
+          "researcher_comment": "This highlights both detection limits and disclosure incentives that suppress visibility\u2014key limitations for attribution and collective response. It does not address changes in disclosure norms, regulatory duties, or corporate reporting practices that may alter this dynamic.",
+          "potential_themes": [
+            "exposure",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "underreporting",
+            "reputational_incentives",
+            "detection_limits"
+          ]
+        },
+        {
+          "quote": "Victims had trouble discerning if their adversary was the proverbial basement-dwelling teenager, a shadowy cybercriminal organization, or a nation State\u2019s intelligence or military services.",
+          "paraphrase": "Victims historically struggled to determine whether attacks were carried out by lone hackers, criminal groups, or state intelligence/military services, complicating attribution.",
+          "researcher_comment": "This sentence concretely exemplifies actor-type ambiguity as a facet of the attribution problem, emphasizing that attribution is not only technical but also actor-identification work. It implies multi-source evidence is required to distinguish actor categories.",
+          "potential_themes": [
+            "attribution_challenges",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "actor_ambiguity",
+            "actor_attribution_difficulty"
+          ]
+        },
+        {
+          "quote": "Over the last decade, several States\u2014including China, Iran, North Korea, Russia, the United Kingdom, and the United States\u2014stand accused of conducting or supporting cyber operations",
+          "paraphrase": "In the past decade, multiple named states have been publicly accused of conducting or supporting cyber operations.",
+          "researcher_comment": "This documents an observable shift toward public state-level accusations, indicating increased practice of naming actors. It does not evaluate evidentiary quality or legal consequences of those accusations, but signals higher visibility in state practice.",
+          "potential_themes": [
+            "naming_and_shaming_mechanism",
+            "exposure",
+            "norm_construction"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "public_attribution",
+            "state_accusations"
+          ]
+        },
+        {
+          "quote": "Do they want to name perpetrators, or just announce that a cyber operation has happened and alert others to the threat?",
+          "paraphrase": "Decision-makers must choose whether to publicly identify perpetrators or simply report incidents and warn others when framing accusations.",
+          "researcher_comment": "This frames a core procedural choice in attribution strategies (naming vs. alerting) with implications for legitimacy, diplomatic fallout, and evidentiary disclosure. It poses options but offers no criteria for selecting among them.",
+          "potential_themes": [
+            "naming_and_shaming_mechanism",
+            "confidence_language"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "method",
+          "argument_type": "procedural",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "naming_vs_alerting",
+            "attribution_strategy_choice"
+          ]
+        },
+        {
+          "quote": "How much evidence do they want or need to divulge to elicit the reaction they want from either the accused or from third parties?",
+          "paraphrase": "States must decide how much evidence to disclose to provoke desired reactions from accused parties or third states.",
+          "researcher_comment": "This raises evidentiary-standard and strategic-disclosure questions central to attribution practice and to shaping third-party responses. It implies evidence disclosure is a political tool but gives no normative standard or legal threshold.",
+          "potential_themes": [
+            "evidentiary_standards",
+            "confidence_language"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "method",
+          "argument_type": "procedural",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "evidence_disclosure",
+            "strategic_evidence_use",
+            "evidentiary_thresholds"
+          ]
+        },
+        {
+          "quote": "Do they want to make their accusation public immediately, or can they begin with a private conversation with the accused party and then escalate the accusation to a larger audience as needed?",
+          "paraphrase": "States can choose between immediate public accusations and initiating private diplomacy with escalation to public accusation if necessary.",
+          "researcher_comment": "This highlights escalation pathways as tactical options that affect diplomatic leverage and norm development. It is practical but does not assess which approach is more effective under particular conditions.",
+          "potential_themes": [
+            "naming_and_shaming_mechanism",
+            "norm_construction"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "method",
+          "argument_type": "procedural",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "escalation_strategy",
+            "private_vs_public_accusation"
+          ]
+        },
+        {
+          "quote": "Different answers to each of these questions will lead to a different framing of an accusation, and different political consequences down the road.",
+          "paraphrase": "Choices about naming, evidence disclosure, and publicity will change accusation framing and produce differing political consequences over time.",
+          "researcher_comment": "This links procedural attribution choices causally to downstream political and normative effects, useful for analyses of how practices shape international law and state behavior. It remains high-level and does not map specific choices to particular consequences.",
+          "potential_themes": [
+            "norm_construction",
+            "naming_and_shaming_mechanism",
+            "deterrence"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "procedural_consequences",
+            "framing_effects",
+            "political_outcomes"
+          ]
+        },
+        {
+          "quote": "Policy makers might also consider whether and how additional legal instruments might be helpful in making these accusations.",
+          "paraphrase": "Policymakers should evaluate whether new legal instruments could assist in formulating or supporting public accusations of cyber operations.",
+          "researcher_comment": "This is an explicit recommendation to explore legal/institutional tools to improve accusation practices; it flags a potential policy avenue but lacks specificity on instrument design or compatibility with existing international law.",
+          "potential_themes": [
+            "recommendation",
+            "customary_international_law"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "legal_instruments_consideration",
+            "policy_recommendation"
+          ]
+        },
+        {
+          "quote": "States, for example, could make accusations more collectively, or stand up a neutral institution to do attribution or to advocate for international law.",
+          "paraphrase": "The authors recommend collective state accusations or establishing a neutral institution for attribution or advocacy as institutional solutions.",
+          "researcher_comment": "This provides concrete institutional recommendations to increase legitimacy and capacity in attribution processes; it addresses both coordination and neutral third-party adjudication. It does not specify mandate, governance, or enforcement mechanisms for such an institution.",
+          "potential_themes": [
+            "recommendation",
+            "attribution_challenges",
+            "norm_construction"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "collective_accusation",
+            "neutral_attribution_body",
+            "institutional_solution"
+          ]
+        },
+        {
+          "quote": "If more clarity would be useful about what the rules and norms are for cyber operations, there are clear strategies they can employ to achieve this, beyond simply waiting for practice and opinio juris to emerge organically over time.",
+          "paraphrase": "The authors argue that states can and should use explicit strategies to clarify cyber rules and norms rather than passively waiting for customary international law to develop.",
+          "researcher_comment": "This recommends proactive norm construction and institutional strategies as alternatives to relying on the slow emergence of practice and opinio juris; it foregrounds agency but remains vague on specific tactics. It is directly relevant to debates on norm-building in cyberspace.",
+          "potential_themes": [
+            "norm_construction",
+            "customary_international_law",
+            "recommendation"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "active_norm_construction",
+            "opinio_juris_limitations",
+            "strategic_rule_clarification"
+          ]
+        },
+        {
+          "quote": "As visibility improves on who is doing what, there will be increasing opportunities to use accusations to set the rules of the road, including constraints (and permissions) derived from international law.",
+          "paraphrase": "Greater visibility into actors' behavior will create more opportunities to use accusations instrumentally to shape norms and legal constraints governing cyberspace.",
+          "researcher_comment": "This is a predictive claim linking improved attribution/visibility to increased capacity to construct norms and legal rules through accusation practices. It assumes both improved evidentiary clarity and political willingness to leverage accusations for norm-setting.",
+          "potential_themes": [
+            "norm_construction",
+            "naming_and_shaming_mechanism",
+            "customary_international_law"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "predictive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "visibility_enables_norms",
+            "accusation_as_tool",
+            "legalization_via_attribution"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-23T23:34:52.803587Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "faaccadf53bd29b1888c706c9f722fed7f3dd5511995e6e8cb5e1a2f300059b6",
+  "function": "code_pdf_page"
+}

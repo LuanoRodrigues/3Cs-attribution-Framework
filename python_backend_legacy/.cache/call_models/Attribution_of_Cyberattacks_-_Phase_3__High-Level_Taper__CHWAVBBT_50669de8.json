@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": "{\n  \"classification\": \"Highly Relevant\",\n  \"relevance_score\": \"High\",\n  \"potential_subcategory\": \"Attribution & Democratic Accountability \u2014 Cyber Deterrence, Policy, and Forensic Transparency\",\n  \"justification\": \"The abstract centrally examines attributional uncertainty in cyberattacks and its direct effects on democratic accountability, public opinion, elite framing, and policy responses (deterrence, diplomacy, legislative reform). It uses case studies of state-linked incidents, links technical forensic challenges to political and legal consequences, and calls for standardized forensic methods and transparency \u2014 all core concerns for cyber conflict attribution and related policy/law research. (Inclusion/exclusion criteria were not provided; judgment based on content relevance.)\"\n}"
+  },
+  "cached_at": "2026-02-23T20:55:59.900933Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "CHWAVBBT",
+  "function": "classify_by_abs"
+}

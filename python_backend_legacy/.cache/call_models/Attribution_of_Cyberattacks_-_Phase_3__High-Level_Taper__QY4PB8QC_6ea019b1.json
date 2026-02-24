@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": "{\n  \"classification\": \"Highly Relevant\",\n  \"relevance_score\": \"High\",\n  \"potential_subcategory\": \"International law (jus ad bellum) and attribution; cyber norms and state responsibility; policy recommendations\",\n  \"justification\": \"The abstract explicitly examines application of jus ad bellum to state cyber operations and addresses core policy/legal issues central to cyber conflict attribution: thresholds for use of force, non-intervention, self-defense (including anticipatory self-defense), and the attribution necessary to trigger state responsibility. It draws on state practice, strategy documents, and the Tallinn Manual and calls for normative and policy development\u2014making it directly and strongly relevant to cyber conflict attribution and policy/law. Noted methodological limitations (public-source reliance, English-language focus) affect generalizability but do not reduce topical relevance.\"\n}"
+  },
+  "cached_at": "2026-02-23T20:50:56.866048Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "QY4PB8QC",
+  "function": "classify_by_abs"
+}

@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": "{\n  \"classification\": \"Highly Relevant\",\n  \"relevance_score\": \"High\",\n  \"potential_subcategory\": \"International law \u2014 use of force, attribution, and cyber self-defence\",\n  \"justification\": \"The chapter provides a focused legal analysis of states\u2019 resort to force in response to cyber operations under the UN Charter, directly addressing core attribution issues (attribution errors, mistaken belief), temporal/forensic challenges to high-confidence attribution, and doctrinal questions (Article 51, ASR, ICJ jurisprudence, accumulation of events, Tallinn Manual). These are central questions in cyber conflict attribution and the formation of policy and law governing state responses, escalation risks, and permissible remedies, making the work highly relevant to the topic.\"\n}"
+  },
+  "cached_at": "2026-02-23T20:55:38.767764Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "C598NY2S",
+  "function": "classify_by_abs"
+}

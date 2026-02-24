@@ -1,0 +1,375 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "quote": "A major factor in this situation is that attribution within the cyber domain continues to be almost impossible, with criminals, terrorists and hackers able to carry out activity with relative impunity.",
+          "paraphrase": "The authors state that cyber attribution remains essentially unattainable, enabling attackers to operate with relative impunity.",
+          "researcher_comment": "This sentence frames the core problem motivating the work: lack of reliable attribution. It is a high-level claim (no quantitative support here) and justifies multidisciplinary solutions. Be cautious: it's a general statement rather than an empirical finding.",
+          "potential_themes": [
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "attribution_impossibility",
+            "attacker_impunity",
+            "motivation"
+          ]
+        },
+        {
+          "quote": "The ultimate goal of the project is to create a framework suitable for the sharing of attribution data between technical specialists.",
+          "paraphrase": "The project aims to develop a framework to enable technical specialists to share attribution data.",
+          "researcher_comment": "This specifies the central objective of the thesis and directly answers what solution is proposed. It is a normative project goal rather than an evaluated result.",
+          "potential_themes": [
+            "attribution_framework",
+            "data_sharing"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "framework",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "framework_goal",
+            "cross_discipline_sharing"
+          ]
+        },
+        {
+          "quote": "- The framework must be mathematically based in order to enable validation of the techniques used",
+          "paraphrase": "A design requirement is that the framework be mathematically founded to permit validation of techniques.",
+          "researcher_comment": "This requirement sets an operational constraint (reproducibility/validation) that shapes subsequent design decisions (confidence scores, attribute aggregation). It is prescriptive but lacks formal specification here.",
+          "potential_themes": [
+            "evidentiary_standards",
+            "attribution_framework"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "mathematical_validation",
+            "reproducibility_requirement"
+          ]
+        },
+        {
+          "quote": "Each attribute will be in the form of a tuple, as each attribute will have an associated confidence value.",
+          "paraphrase": "Attributes are modelled as tuples that include an associated confidence value.",
+          "researcher_comment": "This defines the data model for attributes, enabling numeric combination and comparison across libraries. Caveat: how confidence values are calibrated and aggregated matters for robustness and is only partially specified later.",
+          "potential_themes": [
+            "confidence_language",
+            "attribution_framework"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "method",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "attribute_tuple",
+            "confidence_annotation",
+            "data_model"
+          ]
+        },
+        {
+          "quote": "The confidence value itself can be represented by any numerical value, as long as all analysts agree on a standard prior to using the framework.",
+          "paraphrase": "Confidence may use any numeric scale provided analysts agree on a common standard beforehand.",
+          "researcher_comment": "This allows flexibility but requires inter-analyst calibration to be meaningful; absence of a mandatory standard introduces potential inconsistency across users and datasets.",
+          "potential_themes": [
+            "confidence_language",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "confidence_standardization",
+            "inter_analyst_agreement"
+          ]
+        },
+        {
+          "quote": "For the purposes of testing the framework the values 0-1 have been chosen, with 0.2 intervals, with 0 representing highly unlikely and 1 representing almost certain.",
+          "paraphrase": "In experiments the framework uses a 0\u20131 confidence scale with 0.2 increments where 0=highly unlikely and 1=almost certain.",
+          "researcher_comment": "Provides explicit calibration used in testing (coarse 0.2 steps). This is actionable but may reduce resolution for borderline evidence; the choice is pragmatic for demonstration.",
+          "potential_themes": [
+            "confidence_language"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "method",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "confidence_scale_0_1",
+            "testing_calibration"
+          ]
+        },
+        {
+          "quote": "The defined classes are: - Text_String - True_False - Integer - Real_Numbers - IPv4",
+          "paraphrase": "The framework defines attribute data types including Text_String, True_False, Integer, Real_Numbers and IPv4.",
+          "researcher_comment": "A lightweight typing/taxonomy is provided to support type-specific comparison and validation. Note IPv6 is absent (author notes IPv6 as future work), limiting current network coverage.",
+          "potential_themes": [
+            "taxonomy"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "taxonomy",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "attribute_types",
+            "data_typing",
+            "ipv4_only"
+          ]
+        },
+        {
+          "quote": "The IP address is the primary method of recognition in any cyber incident.",
+          "paraphrase": "The authors identify the IP address as the primary identifier in cyber incidents.",
+          "researcher_comment": "This justifies prioritization of an IPv4 library and explains operational emphasis; however IPs are easily spoofed or reflect stepping stones, so alone they are weak for attribution.",
+          "potential_themes": [
+            "feature_selection",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "ip_primary_indicator",
+            "network_priority"
+          ]
+        },
+        {
+          "quote": "Due to the majority of incident response and monitoring tools being based upon network traffic it is the IP address that is the most useful piece of data to be shared so that other monitoring tools can hone in on the potentially malicious traffic and the response teams can begin to block that traffic.",
+          "paraphrase": "Because most IR/monitoring tools use network traffic, sharing IP addresses is the most useful immediate data to direct other monitoring and mitigation tools.",
+          "researcher_comment": "Operational rationale for why IP-centric sharing is prioritized in fast-time investigations; depends on timeliness and whether IPs map to actors (false positives possible).",
+          "potential_themes": [
+            "data_sharing",
+            "feature_selection"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "ip_sharing",
+            "operational_priority",
+            "monitoring_integration"
+          ]
+        },
+        {
+          "quote": "defines traceback attribution as \u201dany attribution technique that begins with the defending computer and recursively steps backwards in the attack path toward the attacker\u201d",
+          "paraphrase": "Traceback attribution is defined as techniques that start at the defender and step backwards along the attack path toward the attacker.",
+          "researcher_comment": "This formal definition clarifies one attribution category (network-path based). Practical limitations (NATs, proxies, stepping stones) make reliable traceback difficult in many real-world cases.",
+          "potential_themes": [
+            "taxonomy",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "traceback_definition",
+            "path_recursion"
+          ]
+        },
+        {
+          "quote": "Full attribution is when a specific action can be assigned to an individual person.",
+          "paraphrase": "Full attribution means assigning a particular action to a specific individual person.",
+          "researcher_comment": "This establishes the highest evidentiary target (suitable for legal proceedings) and clarifies that 'full attribution' requires linking actor identity to an observed action rather than just a machine or group.",
+          "potential_themes": [
+            "evidentiary_standards",
+            "attribution_framework"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "full_attribution",
+            "legal_threshold"
+          ]
+        },
+        {
+          "quote": "An Actor, A, is an entity or person who is performing an action through cyber means.",
+          "paraphrase": "The framework models an Actor (A) as an entity or person performing actions via cyber means.",
+          "researcher_comment": "This is a simple formalisation anchoring the actor-centric model; useful for mapping attributes to actors, but the model assumes attributes can be associated with actors which may be contested in noisy environments.",
+          "potential_themes": [
+            "attribution_framework"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "actor_definition",
+            "actor_model"
+          ]
+        },
+        {
+          "quote": "There is currently no formalised system to enable the sharing of attribution data between multiple disciplines.",
+          "paraphrase": "The authors assert there is no standardized system for multi-disciplinary sharing of attribution data.",
+          "researcher_comment": "This gap motivates the proposed framework; note the author acknowledges commercial/private solutions exist but not a formal open system\u2014this claim merits external verification.",
+          "potential_themes": [
+            "data_sharing",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "sharing_gap",
+            "interdisciplinary_gap"
+          ]
+        },
+        {
+          "quote": "A number of these technical solutions require a fundamental change to the way in which networking and the internet works.",
+          "paraphrase": "Many proposed technical traceback/attribution solutions demand fundamental changes to internet architecture.",
+          "researcher_comment": "This highlights scalability and deployment barriers for several academic proposals; it supports the pragmatic focus on deployable, incremental solutions. It also raises policy and governance obstacles.",
+          "potential_themes": [
+            "attribution_challenges",
+            "limitation"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "contradicts",
+          "open_codes": [
+            "infrastructure_dependency",
+            "deployment_barrier"
+          ]
+        },
+        {
+          "quote": "This first experiment resulted in a 100% success rate with all candidates successfully identifying the intelligence gap.",
+          "paraphrase": "Experiment 1 reported that all participants (100%) correctly identified intelligence gaps using the framework.",
+          "researcher_comment": "Strong usability signal for the gap-detection visualisation, but sample size and test design details are limited; results may not generalize beyond the experiment's participants and conditions.",
+          "potential_themes": [
+            "experiment_results"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "experiment1_success",
+            "visualisation_effect"
+          ]
+        },
+        {
+          "quote": "The tool was run over a sample of 18,000 (N) previously known malware samples.",
+          "paraphrase": "The authors executed static analysis on a malware corpus of 18,000 samples to assess attribute prevalence.",
+          "researcher_comment": "Large-sample static analysis increases empirical weight of findings; however static-only analysis misses dynamic indicators and may under-detect network artifacts.",
+          "potential_themes": [
+            "experiment_results",
+            "method"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "method",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "large_corpus",
+            "static_analysis"
+          ]
+        },
+        {
+          "quote": "The results of the static analysis found that there are a number of attributes that meet the requirements. These were: - IP Address - Domain - Domain Generation Algorithm (DGA) - E-Mail - BitCoin Address - Date of Compilation - Dropped Files - Packer - Entropy - Strings",
+          "paraphrase": "Static analysis identified repeatable malware attributes useful for attribution: IP, domain, DGA, email, bitcoin address, compilation date, dropped files, packer, entropy, and strings.",
+          "researcher_comment": "This enumerated attribute set is empirically derived and can feed library development; several items (IP, domain, bitcoin) have strong linkage potential, others (strings, entropy) are noisy and require aggregation.",
+          "potential_themes": [
+            "feature_selection",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "malware_attribute_list",
+            "dga",
+            "packer_entropy"
+          ]
+        },
+        {
+          "quote": "The experiment verified the attributes selected from the original data set are the most prevalent for the use in attribution. The experiment however highlighted the requirement to not rely on an individual attribute in isolation, and it is the collection of attributes as a whole that create the fingerprint.",
+          "paraphrase": "Experiments validated prevalent attribution attributes but emphasized that reliable fingerprints require combining multiple attributes rather than relying on any single indicator.",
+          "researcher_comment": "This synthesis is a key empirical insight: multi-attribute fusion yields better linkage than single markers. Caveat: verification used known malware families (proxy for same author) rather than independently proven authorship.",
+          "potential_themes": [
+            "evidentiary_standards",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "multi_attribute_fusion",
+            "fingerprint_requirement"
+          ]
+        },
+        {
+          "quote": "It was shown to be suitable for multidisciplinary work through the inclusion of linguistic and RF libraries.",
+          "paraphrase": "The framework was demonstrated to support multidisciplinary attribution by incorporating linguistic and radio-frequency libraries.",
+          "researcher_comment": "This supports extensibility claims and the core novelty (multidisciplinary data fusion). Testing scope was limited to selected libraries; broader interoperability remains to be proven.",
+          "potential_themes": [
+            "attribution_framework",
+            "library_creation"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "multidisciplinary_integration",
+            "linguistic_rf"
+          ]
+        },
+        {
+          "quote": "Proposed libraries would include, but are not limited to; - HTML - Scripting languages - Social Media - IPV6 - Bluetooth",
+          "paraphrase": "Future work proposes additional libraries for HTML, scripting languages, social media, IPv6 and Bluetooth to broaden attribution coverage.",
+          "researcher_comment": "Author outlines clear extension roadmap that targets important application and physical-layer sources; implementation and maintenance overheads are non-trivial and would affect scalability.",
+          "potential_themes": [
+            "library_creation",
+            "recommendation"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "library_extensions",
+            "ipv6_prioritization",
+            "social_media_library"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-24T14:57:15.455004Z",
+  "collection_name": "frameworks",
+  "custom_id": "f7675a3240e95ebcb5ad062d9816c87734fecbc81f5251f0cb69cd78cb98f91a",
+  "function": "code_pdf_page"
+}

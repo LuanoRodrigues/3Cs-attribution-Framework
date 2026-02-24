@@ -62,6 +62,39 @@ declare global {
         runAiOnTable: (payload: unknown) => Promise<unknown>;
       };
     };
+    systematicBridge?: {
+      composePaper: (payload: { runDir: string; checklistPath: string }) => Promise<{
+        status: string;
+        message?: string;
+      }>;
+      prismaAudit: (payload: { runDir: string }) => Promise<{
+        status: string;
+        message?: string;
+        report?: Record<string, unknown>;
+      }>;
+      prismaRemediate: (payload: { runDir: string }) => Promise<{
+        status: string;
+        message?: string;
+        updated?: number;
+      }>;
+      adjudicateConflicts: (payload: { runDir: string; resolvedCount?: number }) => Promise<{
+        status: string;
+        message?: string;
+        resolved?: number;
+        unresolved?: number;
+      }>;
+      executeSteps1to15: (payload: { runDir: string; checklistPath: string; reviewerCount?: number }) => Promise<{
+        status: string;
+        message?: string;
+        report?: Record<string, unknown>;
+      }>;
+      fullRun: (payload: { runDir: string; checklistPath: string; maxIterations?: number; minPassPct?: number; maxFail?: number }) => Promise<{
+        status: string;
+        message?: string;
+        report?: Record<string, unknown>;
+        iterations?: number;
+      }>;
+    };
     commandBridge?: {
       dispatch: (payload: { phase: string; action: string; payload?: unknown }) => Promise<unknown>;
     };
@@ -71,6 +104,18 @@ declare global {
         reply?: string;
         message?: string;
         action?: { phase: string; action: string; payload?: Record<string, unknown> };
+      }>;
+      transcribeVoice: (payload: { audioBase64: string; mimeType?: string; language?: string }) => Promise<{
+        status: string;
+        text?: string;
+        message?: string;
+      }>;
+      speakText: (payload: { text: string; voice?: string; speed?: number; format?: string; model?: string }) => Promise<{
+        status: string;
+        text: string;
+        audioBase64?: string;
+        mimeType?: string;
+        message?: string;
       }>;
       resolveIntent: (payload: { text: string; context?: Record<string, unknown> }) => Promise<{
         status: string;
@@ -95,10 +140,31 @@ declare global {
         contextText?: string;
         researchQuestions?: string[];
       }) => Promise<{ status: string; message?: string; inclusion_criteria?: string[]; exclusion_criteria?: string[] }>;
+      supervisorPlan: (payload: { text?: string; context?: Record<string, unknown> }) => Promise<{
+        status: string;
+        message?: string;
+        source?: string;
+        plan?: Record<string, unknown>;
+      }>;
+      supervisorExecute: (payload: { plan?: Record<string, unknown>; context?: Record<string, unknown> }) => Promise<{
+        status: string;
+        message?: string;
+        result?: Record<string, unknown>;
+      }>;
       getIntentStats: () => Promise<{ status: string; stats?: Record<string, unknown>; message?: string }>;
       getWorkflowBatchJobs: () => Promise<{ status: string; jobs?: Record<string, unknown>[]; message?: string }>;
       clearWorkflowBatchJobs: () => Promise<{ status: string; cleared?: number; message?: string }>;
       getFeatureHealthCheck: () => Promise<{ status: string; health?: Record<string, unknown>; message?: string }>;
+      getFeatureJobs: () => Promise<{ status: string; jobs?: Record<string, unknown>[]; message?: string }>;
+      cancelFeatureJob: (payload: { jobId: string }) => Promise<{ status: string; job?: Record<string, unknown>; message?: string }>;
+      getBatchExplorer: () => Promise<{ status: string; batches?: Record<string, unknown>[]; message?: string }>;
+      getBatchDetail: (payload: { jobId?: string; batchId?: string }) => Promise<{ status: string; batch?: Record<string, unknown>; message?: string }>;
+      deleteBatch: (payload: { jobId?: string; batchId?: string }) => Promise<{ status: string; deleted?: number; message?: string }>;
+      logChatMessage: (payload: { role: "user" | "assistant"; text: string; tone?: "error"; at?: number }) => Promise<{ status: string; message?: string }>;
+      getChatHistory: () => Promise<{ status: string; messages?: Array<{ role: "user" | "assistant"; text: string; tone?: "error"; at: number }>; message?: string }>;
+      clearChatHistory: () => Promise<{ status: string; cleared?: number; message?: string }>;
+      openLocalPath: (payload: { path: string }) => Promise<{ status: string; path?: string; message?: string }>;
+      onFeatureJobStatus: (callback: (payload: Record<string, unknown>) => void) => () => void;
     };
     appBridge?: {
       ping: () => string;

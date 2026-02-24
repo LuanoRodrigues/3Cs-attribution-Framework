@@ -1,0 +1,67 @@
+{
+  "startedAt": "2026-02-22T09:57:04.700Z",
+  "scenario": {
+    "collectionKeyword": "44Q6VN9A",
+    "collectionKey": "44Q6VN9A",
+    "dirBase": "/home/pantera/annotarium/analyse",
+    "initialCommand": "Code my collection 44Q6VN9A about cyber attribution frameworks and models, skip screening, and generate 3 to 5 strong research questions.",
+    "feedback": "Could you refine the questions to cover evidence, methodology, validity, uncertainty, and policy implications?",
+    "approve": "yes",
+    "waitMs": 120000,
+    "executionWaitMs": 420000
+  },
+  "steps": [
+    {
+      "at": "2026-02-22T09:57:04.701Z",
+      "name": "renderer-ready",
+      "ok": true,
+      "detail": "chat form + collections tree detected"
+    },
+    {
+      "at": "2026-02-22T09:57:06.039Z",
+      "name": "await-tree-lines",
+      "ok": true,
+      "detail": "rows=156"
+    },
+    {
+      "at": "2026-02-22T09:57:06.835Z",
+      "name": "select-collection",
+      "ok": true,
+      "detail": "No collection selected."
+    },
+    {
+      "at": "2026-02-22T09:57:08.044Z",
+      "name": "send-initial-command",
+      "ok": true,
+      "detail": "Code my collection 44Q6VN9A about cyber attribution frameworks and models, skip screening, and generate 3 to 5 strong research questions."
+    },
+    {
+      "at": "2026-02-22T09:59:08.352Z",
+      "name": "await-initial-questions",
+      "ok": false,
+      "detail": "timeout waiting for assistant message"
+    }
+  ],
+  "transcript": [
+    {
+      "role": "assistant",
+      "tone": "",
+      "text": "Agent ready. Send a command to organize collections by tag."
+    },
+    {
+      "role": "user",
+      "tone": "",
+      "text": "Code my collection 44Q6VN9A about cyber attribution frameworks and models, skip screening, and generate 3 to 5 strong research questions."
+    },
+    {
+      "role": "assistant",
+      "tone": "",
+      "text": "I need a bit more detail:\n- Select a collection before coding."
+    }
+  ],
+  "status": "failed",
+  "error": "timeout waiting for assistant message",
+  "statusLine": "Intent needs clarification.",
+  "selectedCollection": "No collection selected.",
+  "finishedAt": "2026-02-22T09:59:08.353Z"
+}

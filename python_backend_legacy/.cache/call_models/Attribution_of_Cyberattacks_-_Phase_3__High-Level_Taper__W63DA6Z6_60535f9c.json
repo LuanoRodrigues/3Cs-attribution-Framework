@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": "{\n  \"classification\": \"Highly Relevant\",\n  \"relevance_score\": \"High\",\n  \"potential_subcategory\": \"International law \u2014 attribution thresholds and state response (self-defense vs. non-forcible remedies)\",\n  \"justification\": \"The abstract centrally concerns cyber-attribution and its legal/policy consequences: it doctrinally analyzes jus ad bellum and state practice (e.g., Estonia 2007, Stuxnet 2010), cites UN Charter Articles 2(4) and 51, and proposes a concrete dual-tier attribution model (a high-evidence/effective-control standard for self-defense and a strict-liability regime for non-forcible responses). It also discusses enforcement, state cooperation, adjudication, and multilateral treaty pathways (including reference to the Tallinn Manual), making it directly relevant to both attribution frameworks and policy/law debates about lawful state responses to cyber-incidents.\"\n}"
+  },
+  "cached_at": "2026-02-23T20:50:34.054630Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "W63DA6Z6",
+  "function": "classify_by_abs"
+}

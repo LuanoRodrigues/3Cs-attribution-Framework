@@ -1,0 +1,49 @@
+{
+  "generated_at_utc": "2026-02-22T21:42:10.100077+00:00",
+  "iterations_requested": 5,
+  "iterations_executed": 3,
+  "history": [
+    {
+      "iteration": 1,
+      "report_path": "/home/pantera/projects/TEIA/python_backend_legacy/dataset/section_split_loop/iter_01/report.json",
+      "docs_ok": 517,
+      "weighted_heading_split_score": 0.804461499536139,
+      "standalone_total": 19077.0,
+      "glued_total": 4637.0,
+      "issue_groups": {
+        "plain_heading_runon": 16,
+        "header_then_abstract_runon": 9,
+        "toc_inline_navigation": 4,
+        "numbered_heading_runon": 2
+      }
+    },
+    {
+      "iteration": 2,
+      "report_path": "/home/pantera/projects/TEIA/python_backend_legacy/dataset/section_split_loop/iter_02/report.json",
+      "docs_ok": 517,
+      "weighted_heading_split_score": 0.804461499536139,
+      "standalone_total": 19077.0,
+      "glued_total": 4637.0,
+      "issue_groups": {
+        "plain_heading_runon": 16,
+        "header_then_abstract_runon": 9,
+        "toc_inline_navigation": 4,
+        "numbered_heading_runon": 2
+      }
+    },
+    {
+      "iteration": 3,
+      "report_path": "/home/pantera/projects/TEIA/python_backend_legacy/dataset/section_split_loop/iter_03/report.json",
+      "docs_ok": 517,
+      "weighted_heading_split_score": 0.804461499536139,
+      "standalone_total": 19077.0,
+      "glued_total": 4637.0,
+      "issue_groups": {
+        "plain_heading_runon": 16,
+        "header_then_abstract_runon": 9,
+        "toc_inline_navigation": 4,
+        "numbered_heading_runon": 2
+      }
+    }
+  ]
+}

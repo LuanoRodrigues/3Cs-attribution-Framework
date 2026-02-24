@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": "{\n  \"classification\": \"Highly Relevant\",\n  \"relevance_score\": \"High\",\n  \"potential_subcategory\": \"International law of cyber attribution and state responsibility (due diligence, notification, cooperative frameworks, codes of conduct)\",\n  \"justification\": \"The chapter directly addresses legal and policy questions central to cyber conflict attribution and state responsibility: it evaluates how the ILC Articles on State Responsibility apply to wrongful cyber operations, identifies shortcomings of traditional attribution in cyberspace, and advances due-diligence as a practicable basis for responsibility. It also proposes operational policy mechanisms (notification procedures, cooperative/ad hoc action, institutionalized codes of conduct) and engages with state practice and international organizations (NATO, US policy, China\u2013Russia proposals). While doctrinal/legal rather than technical-forensic, the work is squarely focused on attribution doctrine and policy/law responses, making it highly relevant.\"\n}"
+  },
+  "cached_at": "2026-02-23T20:52:04.515352Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "D87XF6EX",
+  "function": "classify_by_abs"
+}

@@ -1,0 +1,56 @@
+{
+  "item_key": "7569544a09fde6869abc6ab3fd8ffce6ced5dbbdf7b36f1082234ad987a78dea",
+  "title": "NAMING WITHOUT SHAMING? ACCUSATIONS AND INTERNATIONAL LAW IN GLOBAL CYBERSECURITY",
+  "metadata": {
+    "pdf_path": "/home/pantera/projects/TEIA/python_backend_legacy/dataset/7569544a09fde6869abc6ab3fd8ffce6ced5dbbdf7b36f1082234ad987a78dea.json",
+    "overarching_theme": "cyber attribution",
+    "coding_mode": "open"
+  },
+  "section_open_coding_results": [
+    {
+      "section_key": "legacy_dataset_text",
+      "open_codes_count": 18
+    }
+  ],
+  "document_open_coding_results_total": 18,
+  "harvest_required_categories": {
+    "definitions": 1,
+    "main_findings": 4,
+    "method_claims": 3,
+    "stated_limitations": 2,
+    "recommendations_future_work": 3
+  },
+  "harvest_total": 13,
+  "sample_open_code_keys": [
+    "argument_type",
+    "claim_direction",
+    "dqid",
+    "evidence_type",
+    "open_codes",
+    "paraphrase",
+    "potential_themes",
+    "quote",
+    "relevance_score",
+    "relevant_rqs",
+    "researcher_comment",
+    "section_key"
+  ],
+  "sample_harvest_keys": [
+    "argument_type",
+    "claim_direction",
+    "cluster_match",
+    "dqid",
+    "evidence_type",
+    "extraction_category",
+    "function_summary",
+    "open_codes",
+    "paraphrase",
+    "potential_themes",
+    "quote",
+    "relevance_score",
+    "relevant_rqs",
+    "researcher_comment",
+    "risk_if_missing",
+    "section_key"
+  ]
+}

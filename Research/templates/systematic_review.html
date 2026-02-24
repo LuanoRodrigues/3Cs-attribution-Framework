@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Systematic Review on {{ topic }}</title>
+  <style>
+    /* --- Base & Typography (Same as before) --- */
+    body { font-family: sans-serif; line-height: 1.7; margin: 0 auto; max-width: 900px; padding: 25px; color: #333; background-color: #fdfdfd; }
+    h1, h2, h3, h4 { font-family: "Georgia", serif; color: #1A237E; margin-top: 2em; margin-bottom: 0.8em; line-height: 1.3; font-weight: 600; }
+    h1 { text-align: center; margin-bottom: 1.5em; font-size: 2.2em; color: #0D47A1; }
+    h2 { border-bottom: 2px solid #42A5F5; padding-bottom: 8px; font-size: 1.8em; }
+    h3 { border-bottom: 1px solid #90CAF9; padding-bottom: 6px; font-size: 1.5em; color: #1E88E5; }
+    h4 { font-size: 1.2em; color: #42A5F5; margin-bottom: 0.6em; font-weight: 600; font-family: sans-serif; }
+    p { margin-bottom: 1.2em; text-align: justify; }
+    a { color: #1E88E5; text-decoration: none; }
+    a:hover { color: #0D47A1; text-decoration: underline; }
+    em, i { font-style: italic; }
+    strong, b { font-weight: 600; }
+    /* --- Layout & Sections (Same as before) --- */
+    .metadata { text-align: center; margin-bottom: 3em; font-size: 0.95em; color: #555; border-bottom: 1px solid #e0e0e0; padding-bottom: 1.5em; }
+    .metadata p { margin: 0.3em 0; }
+    .section-content { margin-bottom: 40px; padding-left: 0; }
+    .subsection-content { margin-bottom: 30px; padding-left: 15px; border-left: 3px solid #E3F2FD; margin-left: 5px; }
+    /* --- Visual Elements (Same as before) --- */
+    figure { margin: 35px auto; text-align: center; border: 1px solid #e0e0e0; padding: 15px 15px 10px 15px; background-color: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.08); max-width: 750px; }
+    figure img { max-width: 100%; height: auto; border: 1px solid #f0f0f0; display: block; margin: 0 auto 10px auto; }
+    figcaption { font-size: 0.9em; color: #666; margin-top: 10px; font-style: normal; line-height: 1.5; text-align: left; padding: 0 5px; }
+    figcaption strong { color: #333; }
+    table.data-table { border-collapse: collapse; width: 100%; margin: 30px auto; border: 1px solid #ccc; box-shadow: none; font-size: 0.88em; }
+    table.data-table th, table.data-table td { border: 1px solid #ddd; padding: 10px 12px; text-align: left; vertical-align: top; }
+    table.data-table th { background-color: #f2f7fb; font-weight: 600; color: #2c3e50; }
+    table.data-table tr:nth-child(even) { background-color: #f9f9f9; }
+    table.data-table tr:hover { background-color: #eff4ff; }
+    table.data-table td a { font-size: 0.95em; }
+    /* --- Specific Elements (Same as before) --- */
+    .ai-generated-content { font-style: normal; color: #333; padding: 5px 0px; margin: 15px 0; background-color: transparent; text-align: justify; border: none; }
+    .ai-generated-content p { margin-bottom: 1em; }
+    .ai-generated-content p:first-child { margin-top: 0; }
+    .ai-generated-content p:last-child { margin-bottom: 0; }
+    .ai-generated-content strong { font-weight: 600; }
+    .ai-generated-content em { font-style: italic; }
+    .ai-generated-content ul, .ai-generated-content ol { margin-left: 20px; margin-bottom: 1em; }
+    .ai-generated-content li { margin-bottom: 0.5em; }
+    .ai-placeholder { font-style: italic; color: #7f8c8d; border: 1px dashed #bdc3c7; padding: 15px; margin: 20px 0; background-color: #fdfefe; text-align: center; }
+    .placeholder-note { color: #888; font-style: italic; font-size: 0.9em; display: block; margin-top: 8px; text-align: center; }
+    /* --- SR Specific Styles --- */
+    .structured-abstract h4 { font-size: 1.1em; color: #1E88E5; margin-top: 1em; margin-bottom: 0.3em; font-family: sans-serif; font-weight: 600; border: none; padding: 0;}
+    .structured-abstract p { margin-left: 15px;}
+    .prisma-diagram { max-width: 650px; /* Adjust width as needed */ }
+    .rob-plot { max-width: 750px; }
+    .appendix-link { display: block; margin-top: 15px; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+<h1>Systematic Review: {{ topic }}</h1>
+
+<div class="metadata">
+  <p><strong>Authors:</strong> {{ authors_list }}</p>
+  <p><strong>Affiliations:</strong> {{ affiliation }}</p>
+  <p><em>Report generated on: {{ generation_date }}</em></p>
+  <p><em>AI Models Used for Narrative Sections: {{ ai_models_used }}</em></p>
+  {# <p><em>PROSPERO Registration: [If applicable, add registration number]</em></p> #}
+</div>
+
+<h2>Abstract</h2>
+<div class="section-content ai-generated-content structured-abstract">
+  {# Expecting AI to generate text with implicit headings, or use specific prompts #}
+  {{ ai_abstract | safe }}
+</div>
+
+<!-- 1. INTRODUCTION / BACKGROUND -->
+<h2>1. Introduction</h2>
+<div class="section-content ai-generated-content">
+  {{ ai_introduction | safe }}
+</div>
+
+<!-- 2. METHODS -->
+<h2>2. Methods</h2>
+<div class="section-content">
+  <p>This systematic review was conducted following the Preferred Reporting Items for Systematic Reviews and Meta-Analyses (PRISMA) guidelines [Link to PRISMA Statement if desired].</p>
+  {# <p>A protocol for this review was registered with PROSPERO (Registration number: XXXXX) [If applicable].</p> #}
+
+  <h3>2.1 Eligibility Criteria</h3>
+  <div class="subsection-content">
+    <p>Studies were included or excluded based on the following criteria:</p>
+    <div class="ai-generated-content"> {# Or could be static text #}
+        <p><strong>Inclusion/Exclusion Criteria:</strong><br>{{ eligibility_criteria | replace('\n', '<br>') | safe }}</p>
+    </div>
+  </div>
+
+  <h3>2.2 Information Sources & Search Strategy</h3>
+  <div class="subsection-content">
+     <p>{{ search_strategy_summary | safe }}</p>
+     <p>The full search strategy for at least one database is typically provided in an appendix.</p>
+     {% if full_search_strategy_appendix_path %}
+        <p class="appendix-link"><a href="{{ full_search_strategy_appendix_path }}" target="_blank">Link to Full Search Strategy Appendix</a></p>
+     {% else %}
+         <span class="placeholder-note">[Full Search Strategy Appendix Not Provided]</span>
+     {% endif %}
+  </div>
+
+  <h3>2.3 Study Selection</h3>
+  <div class="subsection-content">
+    <p>Titles and abstracts were screened by [Number, e.g., two] independent reviewers. Full texts of potentially relevant articles were retrieved and assessed for eligibility by [Number] independent reviewers. Disagreements were resolved through discussion or consultation with a third reviewer.</p>
+    {# Counts are derived from PRISMA #}
+  </div>
+
+  <h3>2.4 Data Extraction</h3>
+  <div class="subsection-content">
+     <p>Data were extracted from included studies by [Number] independent reviewers using a standardized data extraction form [Mention tool/template if applicable]. Extracted information included: study characteristics (author, year, design, setting), population details, intervention specifics, comparator details, outcome measures, and results. Discrepancies were resolved by consensus.</p>
+     {# Link to data extraction form appendix? #}
+  </div>
+
+   <h3>2.5 Risk of Bias Assessment</h3>
+  <div class="subsection-content">
+      <p>The risk of bias for included studies was assessed independently by [Number] reviewers using the [Specify Tool Name, e.g., {{ rob_tool_used }}] tool. Judgments were made for each relevant domain. Disagreements were resolved through discussion.</p>
+       {# Link to RoB tool appendix? #}
+  </div>
+
+   <h3>2.6 Data Synthesis</h3>
+  <div class="subsection-content">
+      <p>Findings were synthesized narratively due to [e.g., heterogeneity in interventions/outcomes]. Key findings related to the research questions were grouped thematically.</p>
+      {# Or: <p>A meta-analysis was planned if sufficient homogeneity existed... A meta-analysis using [Model, e.g., random-effects model] was performed for [Outcome(s)]. Heterogeneity was assessed using [e.g., I² statistic].</p> #}
+  </div>
+</div>
+
+
+<!-- 3. RESULTS -->
+<h2>3. Results</h2>
+<div class="section-content">
+
+  <h3>3.1 Study Selection</h3>
+  <div class="subsection-content">
+    <p>The literature search identified {{ prisma_n_db }} records from databases. After removing {{ prisma_n_dup }} duplicates, {{ prisma_n_initial_screen }} records were screened based on title and abstract. Of these, {{ prisma_n_screen_exclude }} were excluded. The full texts of the remaining {{ prisma_n_elig_assess }} articles were assessed for eligibility. {{ prisma_n_elig_exclude }} full-text articles were excluded for the following reasons:</p>
+    <ul>
+        {% for reason, count in prisma_exclusion_reasons.items() %}
+           <li>{{ reason }}: {{ count }}</li>
+        {% else %}
+           <li>No specific exclusion reasons tagged/available.</li>
+        {% endfor %}
+    </ul>
+     <p>A total of <strong>{{ prisma_n_included }}</strong> studies met the inclusion criteria and were included in the qualitative synthesis.</p>
+     <figure class="prisma-diagram">
+       <div class="plot-container">
+          {% if prisma_flow_diagram %}
+              <img src="{{ prisma_flow_diagram }}" alt="PRISMA 2020 Flow Diagram">
+          {% else %}
+              <span class="placeholder-note">[PRISMA Flow Diagram Placeholder: Generation Failed or Skipped (requires 'graphviz' library and binaries in PATH).]</span>
+          {% endif %}
+       </div>
+       <figcaption><strong>Figure 1.</strong> PRISMA flow diagram illustrating the study selection process.</figcaption>
+     </figure>
+  </div>
+
+  <h3>3.2 Study Characteristics</h3>
+  <div class="subsection-content">
+      <p>The characteristics of the {{ prisma_n_included }} included studies are summarized below. [Refer to Appendix for detailed table if needed].</p>
+      {{ characteristics_table | safe }}
+      <figcaption><strong>Table 1.</strong> Summary of Included Study Characteristics.</figcaption>
+  </div>
+
+  <h3>3.3 Risk of Bias within Studies</h3>
+  <div class="subsection-content">
+      <p>The results of the risk of bias assessment using the {{ rob_tool_used }} tool are summarized below. [Refer to Appendix for detailed assessments per study].</p>
+       <figure class="rob-plot">
+         <div class="plot-container">
+            {% if risk_of_bias_plot %}
+                <img src="{{ risk_of_bias_plot }}" alt="Risk of Bias Summary Plot">
+            {% else %}
+                <span class="placeholder-note">[Risk of Bias Plot Placeholder: Generation Failed or No RoB Data Available.]</span>
+            {% endif %}
+         </div>
+         <figcaption><strong>Figure 2.</strong> Summary of Risk of Bias judgments across included studies.</figcaption>
+       </figure>
+       {# Optional: Display RoB Summary Table #}
+       {# {{ risk_of_bias_table | safe }}
+       <figcaption><strong>Table 2.</strong> Detailed Risk of Bias Counts.</figcaption> #}
+  </div>
+
+   <h3>3.4 Synthesis of Results</h3>
+   <div class="subsection-content">
+      <p>This section synthesizes the findings from the included studies related to the review's research questions.</p>
+      <div class="ai-generated-content"> {# Or could be static text based on external analysis #}
+          <p>{{ narrative_synthesis_summary | replace('\n', '<br>') | safe }}</p>
+          {# If meta-analysis performed, include results/plots here #}
+          {# <figure> <img src="{{ forest_plot_outcome1 }}"> <figcaption>Figure 3. Forest plot for Outcome 1.</figcaption> </figure> #}
+      </div>
+   </div>
+</div>
+
+<!-- 4. DISCUSSION -->
+<h2>4. Discussion</h2>
+<div class="section-content ai-generated-content">
+  {% if ai_discussion %}
+     {{ ai_discussion | safe }}
+  {% else %}
+     <p class="ai-placeholder">[AI-generated Discussion section could not be generated.]</p>
+  {% endif %}
+</div>
+
+<!-- 5. LIMITATIONS -->
+<h2>5. Limitations</h2>
+<div class="section-content ai-generated-content">
+  {% if ai_limitations %}
+    {{ ai_limitations | safe }}
+  {% else %}
+     <p class="ai-placeholder">[AI-generated Limitations section could not be generated.]</p>
+  {% endif %}
+</div>
+
+<!-- 6. CONCLUSION -->
+<h2>6. Conclusion</h2>
+<div class="section-content ai-generated-content">
+  {% if ai_conclusion %}
+     {{ ai_conclusion | safe }}
+  {% else %}
+     <p class="ai-placeholder">[AI-generated Conclusion section could not be generated.]</p>
+  {% endif %}
+</div>
+
+{# Optional Sections: Funding, Declarations, Acknowledgements #}
+
+<!-- 7. REFERENCES -->
+<h2>7. References</h2>
+<div id="references" class="section-content">
+  <p>List of references cited within this systematic review report.</p>
+  {# Need logic to collect and format references cited *in the report text*, not just included studies #}
+  <ol>
+      {# {% for ref in report_references_list %} #}
+      {# <li>{{ ref.html_string | safe }}</li> #}
+      {# {% else %} #}
+      <li>[References list placeholder - requires specific implementation]</li>
+      {# {% endfor %} #}
+  </ol>
+</div>
+
+{# Optional: Link to Appendices #}
+
+</body>
+</html>

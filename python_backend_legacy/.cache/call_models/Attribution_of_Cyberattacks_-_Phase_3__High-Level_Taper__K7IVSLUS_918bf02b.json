@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": "{\n  \"classification\": \"Highly Relevant\",\n  \"relevance_score\": \"High\",\n  \"potential_subcategory\": \"Attribution in armed conflict (LOAC) \u2014 state responsibility, targeting policy, evidentiary standards\",\n  \"justification\": \"The abstract explicitly centers on attribution of cyber intrusions within the law of armed conflict (LOAC) and addresses core policy and legal questions: the role of attribution in lawful targeting, standards of proof for state responsibility, deterrence and public naming, operational and intelligence constraints, and calls for law reform. It engages doctrinal materials (Tallinn Manual 2.0, DoD manuals), high-profile case examples (Stuxnet, US indictment of PLA actors), and the interplay between attribution intelligence and military targeting \u2014 all directly relevant to cyber conflict attribution and policy/law. While the study uses a doctrinal legal methodology (rather than empirical/technical analysis), that focus is appropriate for legal and policy audiences and does not reduce its central relevance.\"\n}"
+  },
+  "cached_at": "2026-02-23T20:47:28.510980Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "K7IVSLUS",
+  "function": "classify_by_abs"
+}

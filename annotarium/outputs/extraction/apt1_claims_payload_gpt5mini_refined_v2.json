@@ -1,0 +1,1355 @@
+{
+  "task": "refine_attribution_claims_for_legal_clarity",
+  "model": "gpt-5-mini",
+  "schema_version": "claims_payload_v2_legal_clarity",
+  "document_id": "unknown_doc",
+  "document_title": "APT1: Exposing One of China's Cyber Espionage Units",
+  "document_publication_date": "2013-02-18",
+  "questions": [
+    "Is attribution to State X given attack Z clear?",
+    "Was the state culpable/responsible via official organs, control/direction of non-state actors, or allowing operations in its territory clear?",
+    "Is it clear that the state knew and failed to prevent, investigate, or suppress operations in its territory (due diligence failure)?"
+  ],
+  "allowed_claim_kind": [
+    "state_organ_conduct",
+    "non_state_under_control",
+    "due_diligence_omission",
+    "mixed",
+    "unknown"
+  ],
+  "claims_count": 10,
+  "claims": [
+    {
+      "claim_id": "C001",
+      "claim_kind": "state_organ_conduct",
+      "claim_type": "state_responsibility_claim",
+      "salience_rank": 1,
+      "allegation_gravity": "medium",
+      "attack_z": "Our analysis has led us to conclude that APT1 is likely government-sponsored and one of the most persistent of China’s cyber threat actors.",
+      "state_x": "Chinese Government",
+      "attribution_assertion": "likely_responsible",
+      "time_window": {
+        "start": null,
+        "end": null,
+        "text": "2006-2013 (as reported)"
+      },
+      "target_scope": "state_responsibility_claim",
+      "subject": {
+        "name": "APT1",
+        "kind": "intrusion_set",
+        "aliases": []
+      },
+      "claim_statement": "Our analysis has led us to conclude that APT1 is likely government-sponsored and one of the most persistent of China’s cyber threat actors. We believe that APT1 is able to wage such a long-running and extensive cyber espionage campaign in large part because it receives direct government support. In seeking to identify the organization behind this activity, our research found that People’s Liberation Army (PLA’s) Unit 61398 is similar to APT1 in its mission, capabilities, and resources. PLA Unit 61398 is also located in precisely the same area from which APT1 activity appears to originate.",
+      "claim_components_asserted": [
+        "state_sponsorship_or_direction",
+        "actor_identity",
+        "intent_motive"
+      ],
+      "anchors": {
+        "claim_anchor_id": "C001-A001",
+        "claim_location": {
+          "page_index": 0,
+          "page_label": null,
+          "section_heading": "EXECUTIVE SUMMARY",
+          "object_id": null
+        }
+      },
+      "pathway_evidence": {
+        "organ_evidence": {
+          "anchors": [
+            "C001-A001",
+            "P000-A001",
+            "P000-A009"
+          ],
+          "source_ids": [
+            "SRC0001",
+            "SRC0002",
+            "SRC0010"
+          ],
+          "evidence_ids": [
+            "EV-001",
+            "EV-002",
+            "EV-003"
+          ]
+        },
+        "control_evidence": {
+          "anchors": [
+            "C001-A001",
+            "P000-A001",
+            "P000-A009"
+          ],
+          "source_ids": [
+            "SRC0001",
+            "SRC0002",
+            "SRC0010"
+          ],
+          "evidence_ids": [
+            "EV-001",
+            "EV-002",
+            "EV-003"
+          ]
+        },
+        "knowledge_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": []
+        },
+        "omission_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": []
+        },
+        "territory_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": []
+        }
+      },
+      "legal_tests": {
+        "organ_status_test": {
+          "score_0_1": 0.795,
+          "result": "yes",
+          "rationale": "State-organ attribution support derived from claim/evidence pathway scoring."
+        },
+        "effective_control_test": {
+          "score_0_1": 0.4313,
+          "result": "partial",
+          "rationale": "Control/direction linkage for non-state actors derived from pathway scoring."
+        },
+        "due_diligence_test": {
+          "score_0_1": 0.1548,
+          "result": "no",
+          "rationale": "Knowledge + omission indicators for due diligence pathway."
+        }
+      },
+      "clarity_questions": {
+        "q1_attribution_to_state_x_for_attack_z_clear": {
+          "question": "Is attribution to State X for attack Z clear?",
+          "score_0_1": 0.7733,
+          "answer": "yes"
+        },
+        "q2_responsibility_path_clear_organs_control_due_diligence": {
+          "question": "Is the state-responsibility mode clear (organ, control, or due diligence)?",
+          "score_0_1": 0.795,
+          "answer": "yes"
+        },
+        "q3_state_knew_and_failed_to_prevent_due_diligence": {
+          "question": "Is state knowledge plus failure to prevent (due diligence) clear?",
+          "score_0_1": 0.1548,
+          "answer": "no"
+        }
+      },
+      "contradiction_handling": {
+        "counterevidence_items": [
+          "The sheer scale and duration of sustained attacks against such a wide set of industries from a singularly identified group based in China leaves little doubt about the organization behind APT1. We believe the totality of the evidence we provide in this document bolsters the claim that APT1 is Unit 61398. However, we admit there is one other unlikely possibility:"
+        ],
+        "alternative_hypotheses_considered": [
+          null
+        ]
+      },
+      "final_attribution_judgment": {
+        "value": "yes",
+        "score_0_1": 0.7733,
+        "band": "high"
+      },
+      "critical_gaps": [],
+      "refinement_meta": {
+        "refined_by_model": "gpt-5-mini",
+        "refinement_timestamp": null,
+        "refinement_notes": "Payload prepared for model-side legal refinement and adjudicative clarity checks."
+      },
+      "linked_scores": {
+        "clarity_0_100": 70.33,
+        "credibility_0_100": 0,
+        "corroboration_0_100": 0,
+        "custody_0_100": 38.5
+      }
+    },
+    {
+      "claim_id": "C002",
+      "claim_kind": "state_organ_conduct",
+      "claim_type": "intrusion_set_attribution",
+      "salience_rank": 2,
+      "allegation_gravity": "medium",
+      "attack_z": "APT1 is believed to be the 2nd Bureau of the People's Liberation Army (PLA) General Staff Department's (GSD) 3rd Department (总参三部二局), which is most commonly known by its Military Unit Cover Designator (MUCD) as Unit 61398 (61398部队).",
+      "state_x": "PLA Unit 61398",
+      "attribution_assertion": "attributed_to",
+      "time_window": {
+        "start": null,
+        "end": null,
+        "text": "2006-2013 (as reported)"
+      },
+      "target_scope": "intrusion_set",
+      "subject": {
+        "name": "APT1",
+        "kind": "intrusion_set",
+        "aliases": []
+      },
+      "claim_statement": "APT1 is believed to be the 2nd Bureau of the People's Liberation Army (PLA) General Staff Department's (GSD) 3rd Department (总参三部二局), which is most commonly known by its Military Unit Cover Designator (MUCD) as Unit 61398 (61398部队).",
+      "claim_components_asserted": [
+        "actor_identity",
+        "infrastructure_linkage"
+      ],
+      "anchors": {
+        "claim_anchor_id": "C002-A001",
+        "claim_location": {
+          "page_index": 0,
+          "page_label": null,
+          "section_heading": "KEY FINDINGS",
+          "object_id": null
+        }
+      },
+      "pathway_evidence": {
+        "organ_evidence": {
+          "anchors": [
+            "C002-A001",
+            "P000-A009"
+          ],
+          "source_ids": [
+            "SRC0001",
+            "SRC0010"
+          ],
+          "evidence_ids": [
+            "EV-001",
+            "EV-002",
+            "EV-003"
+          ]
+        },
+        "control_evidence": {
+          "anchors": [
+            "C002-A001",
+            "P000-A009"
+          ],
+          "source_ids": [
+            "SRC0001",
+            "SRC0010"
+          ],
+          "evidence_ids": [
+            "EV-001",
+            "EV-002",
+            "EV-003"
+          ]
+        },
+        "knowledge_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": []
+        },
+        "omission_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": []
+        },
+        "territory_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": []
+        }
+      },
+      "legal_tests": {
+        "organ_status_test": {
+          "score_0_1": 0.625,
+          "result": "yes",
+          "rationale": "State-organ attribution support derived from claim/evidence pathway scoring."
+        },
+        "effective_control_test": {
+          "score_0_1": 0.386,
+          "result": "no",
+          "rationale": "Control/direction linkage for non-state actors derived from pathway scoring."
+        },
+        "due_diligence_test": {
+          "score_0_1": 0.0405,
+          "result": "no",
+          "rationale": "Knowledge + omission indicators for due diligence pathway."
+        }
+      },
+      "clarity_questions": {
+        "q1_attribution_to_state_x_for_attack_z_clear": {
+          "question": "Is attribution to State X for attack Z clear?",
+          "score_0_1": 0.56,
+          "answer": "partial"
+        },
+        "q2_responsibility_path_clear_organs_control_due_diligence": {
+          "question": "Is the state-responsibility mode clear (organ, control, or due diligence)?",
+          "score_0_1": 0.625,
+          "answer": "yes"
+        },
+        "q3_state_knew_and_failed_to_prevent_due_diligence": {
+          "question": "Is state knowledge plus failure to prevent (due diligence) clear?",
+          "score_0_1": 0.0405,
+          "answer": "no"
+        }
+      },
+      "contradiction_handling": {
+        "counterevidence_items": [
+          "The sheer scale and duration of sustained attacks against such a wide set of industries from a singularly identified group based in China leaves little doubt about the organization behind APT1. We believe the totality of the evidence we provide in this document bolsters the claim that APT1 is Unit 61398. However, we admit there is one other unlikely possibility:"
+        ],
+        "alternative_hypotheses_considered": [
+          null
+        ]
+      },
+      "final_attribution_judgment": {
+        "value": "partial",
+        "score_0_1": 0.56,
+        "band": "medium"
+      },
+      "critical_gaps": [],
+      "refinement_meta": {
+        "refined_by_model": "gpt-5-mini",
+        "refinement_timestamp": null,
+        "refinement_notes": "Payload prepared for model-side legal refinement and adjudicative clarity checks."
+      },
+      "linked_scores": {
+        "clarity_0_100": 55.27,
+        "credibility_0_100": 7.65,
+        "corroboration_0_100": 1.5,
+        "custody_0_100": 45
+      }
+    },
+    {
+      "claim_id": "C003",
+      "claim_kind": "state_organ_conduct",
+      "claim_type": "mixed",
+      "salience_rank": 3,
+      "allegation_gravity": "medium",
+      "attack_z": "APT1 has systematically stolen hundreds of terabytes of data from at least 141 organizations, and has demonstrated the capability and intent to steal from dozens of organizations simultaneously.⁴",
+      "state_x": "APT1 operators",
+      "attribution_assertion": "associated_with",
+      "time_window": {
+        "start": null,
+        "end": null,
+        "text": "2006-2013 (as reported)"
+      },
+      "target_scope": "mixed",
+      "subject": {
+        "name": "APT1 campaign",
+        "kind": "intrusion_set",
+        "aliases": []
+      },
+      "claim_statement": "APT1 has systematically stolen hundreds of terabytes of data from at least 141 organizations, and has demonstrated the capability and intent to steal from dozens of organizations simultaneously.⁴",
+      "claim_components_asserted": [
+        "victimology",
+        "timeline_linkage",
+        "command_and_control"
+      ],
+      "anchors": {
+        "claim_anchor_id": "C003-A001",
+        "claim_location": {
+          "page_index": 0,
+          "page_label": null,
+          "section_heading": "KEY FINDINGS",
+          "object_id": null
+        }
+      },
+      "pathway_evidence": {
+        "organ_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": [
+            "EV-001",
+            "EV-002",
+            "EV-003",
+            "EV-004"
+          ]
+        },
+        "control_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": [
+            "EV-001",
+            "EV-002",
+            "EV-003",
+            "EV-004"
+          ]
+        },
+        "knowledge_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": []
+        },
+        "omission_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": []
+        },
+        "territory_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": []
+        }
+      },
+      "legal_tests": {
+        "organ_status_test": {
+          "score_0_1": 0.365,
+          "result": "no",
+          "rationale": "State-organ attribution support derived from claim/evidence pathway scoring."
+        },
+        "effective_control_test": {
+          "score_0_1": 0.172,
+          "result": "no",
+          "rationale": "Control/direction linkage for non-state actors derived from pathway scoring."
+        },
+        "due_diligence_test": {
+          "score_0_1": 0.0405,
+          "result": "no",
+          "rationale": "Knowledge + omission indicators for due diligence pathway."
+        }
+      },
+      "clarity_questions": {
+        "q1_attribution_to_state_x_for_attack_z_clear": {
+          "question": "Is attribution to State X for attack Z clear?",
+          "score_0_1": 0.345,
+          "answer": "no"
+        },
+        "q2_responsibility_path_clear_organs_control_due_diligence": {
+          "question": "Is the state-responsibility mode clear (organ, control, or due diligence)?",
+          "score_0_1": 0.365,
+          "answer": "no"
+        },
+        "q3_state_knew_and_failed_to_prevent_due_diligence": {
+          "question": "Is state knowledge plus failure to prevent (due diligence) clear?",
+          "score_0_1": 0.0405,
+          "answer": "no"
+        }
+      },
+      "contradiction_handling": {
+        "counterevidence_items": [],
+        "alternative_hypotheses_considered": []
+      },
+      "final_attribution_judgment": {
+        "value": "no",
+        "score_0_1": 0.345,
+        "band": "low"
+      },
+      "critical_gaps": [
+        "insufficient_state_organ_link_evidence"
+      ],
+      "refinement_meta": {
+        "refined_by_model": "gpt-5-mini",
+        "refinement_timestamp": null,
+        "refinement_notes": "Payload prepared for model-side legal refinement and adjudicative clarity checks."
+      },
+      "linked_scores": {
+        "clarity_0_100": 28.03,
+        "credibility_0_100": 0,
+        "corroboration_0_100": 0,
+        "custody_0_100": 52
+      }
+    },
+    {
+      "claim_id": "C004",
+      "claim_kind": "state_organ_conduct",
+      "claim_type": "mixed",
+      "salience_rank": 4,
+      "allegation_gravity": "medium",
+      "attack_z": "In a State that rigorously monitors Internet use, it is highly unlikely that the Chinese Government is unaware of an attack group that operates from the Pudong New Area of Shanghai.",
+      "state_x": "APT1 operators",
+      "attribution_assertion": "associated_with",
+      "time_window": {
+        "start": null,
+        "end": null,
+        "text": "2006-2013 (as reported)"
+      },
+      "target_scope": "mixed",
+      "subject": {
+        "name": "APT1 campaign",
+        "kind": "intrusion_set",
+        "aliases": []
+      },
+      "claim_statement": "In a State that rigorously monitors Internet use, it is highly unlikely that the Chinese Government is unaware of an attack group that operates from the Pudong New Area of Shanghai. The detection and awareness of APT1 is made even more probable by the sheer scale and sustainment of attacks that we have observed and documented in this report. Therefore the most probable conclusion is that APT1 is able to wage such a long-running and extensive cyber espionage campaign because it is acting with the full knowledge and cooperation of the government. Given the mission, resourcing, and location of PLA Unit 61398, we conclude that PLA Unit 61398 is APT1. Table 12 summarizes the parallels between APT1 and PLA Unit 61398.",
+      "claim_components_asserted": [
+        "victimology",
+        "timeline_linkage",
+        "command_and_control"
+      ],
+      "anchors": {
+        "claim_anchor_id": "C004-A001",
+        "claim_location": {
+          "page_index": 0,
+          "page_label": null,
+          "section_heading": "CONCLUSION",
+          "object_id": null
+        }
+      },
+      "pathway_evidence": {
+        "organ_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": [
+            "EV-001",
+            "EV-002",
+            "EV-003",
+            "EV-004"
+          ]
+        },
+        "control_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": [
+            "EV-001",
+            "EV-002",
+            "EV-003",
+            "EV-004"
+          ]
+        },
+        "knowledge_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": []
+        },
+        "omission_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": []
+        },
+        "territory_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": []
+        }
+      },
+      "legal_tests": {
+        "organ_status_test": {
+          "score_0_1": 0.76,
+          "result": "yes",
+          "rationale": "State-organ attribution support derived from claim/evidence pathway scoring."
+        },
+        "effective_control_test": {
+          "score_0_1": 0.322,
+          "result": "no",
+          "rationale": "Control/direction linkage for non-state actors derived from pathway scoring."
+        },
+        "due_diligence_test": {
+          "score_0_1": 0.3198,
+          "result": "no",
+          "rationale": "Knowledge + omission indicators for due diligence pathway."
+        }
+      },
+      "clarity_questions": {
+        "q1_attribution_to_state_x_for_attack_z_clear": {
+          "question": "Is attribution to State X for attack Z clear?",
+          "score_0_1": 0.76,
+          "answer": "yes"
+        },
+        "q2_responsibility_path_clear_organs_control_due_diligence": {
+          "question": "Is the state-responsibility mode clear (organ, control, or due diligence)?",
+          "score_0_1": 0.76,
+          "answer": "yes"
+        },
+        "q3_state_knew_and_failed_to_prevent_due_diligence": {
+          "question": "Is state knowledge plus failure to prevent (due diligence) clear?",
+          "score_0_1": 0.3198,
+          "answer": "no"
+        }
+      },
+      "contradiction_handling": {
+        "counterevidence_items": [
+          "The sheer scale and duration of sustained attacks against such a wide set of industries from a singularly identified group based in China leaves little doubt about the organization behind APT1. We believe the totality of the evidence we provide in this document bolsters the claim that APT1 is Unit 61398. However, we admit there is one other unlikely possibility:"
+        ],
+        "alternative_hypotheses_considered": [
+          null
+        ]
+      },
+      "final_attribution_judgment": {
+        "value": "yes",
+        "score_0_1": 0.76,
+        "band": "high"
+      },
+      "critical_gaps": [],
+      "refinement_meta": {
+        "refined_by_model": "gpt-5-mini",
+        "refinement_timestamp": null,
+        "refinement_notes": "Payload prepared for model-side legal refinement and adjudicative clarity checks."
+      },
+      "linked_scores": {
+        "clarity_0_100": 69.07,
+        "credibility_0_100": 0,
+        "corroboration_0_100": 0,
+        "custody_0_100": 57.5
+      }
+    },
+    {
+      "claim_id": "C005",
+      "claim_kind": "state_organ_conduct",
+      "claim_type": "mixed",
+      "salience_rank": 5,
+      "allegation_gravity": "medium",
+      "attack_z": "The activity we have directly observed likely represents only a small fraction of the cyber espionage that APT1 has conducted.",
+      "state_x": "APT1 operators",
+      "attribution_assertion": "associated_with",
+      "time_window": {
+        "start": null,
+        "end": null,
+        "text": "2006-2013 (as reported)"
+      },
+      "target_scope": "mixed",
+      "subject": {
+        "name": "APT1 campaign",
+        "kind": "intrusion_set",
+        "aliases": []
+      },
+      "claim_statement": "The activity we have directly observed likely represents only a small fraction of the cyber espionage that APT1 has conducted. Though our visibility of APT1’s activities is incomplete, we have analyzed the group’s intrusions against nearly 150 victims over seven years. From our unique vantage point responding to victims, we tracked APT1 back to four large networks in Shanghai, two of which are allocated directly to the Pudong New Area. We uncovered a substantial amount of APT1’s attack infrastructure, command and control, and modus operandi (tools, tactics, and procedures). In an effort to underscore there are actual individuals behind the keyboard, Mandiant is revealing three personas we have attributed to APT1. These operators, like soldiers, may merely be following orders given to them by others.",
+      "claim_components_asserted": [
+        "victimology",
+        "timeline_linkage",
+        "command_and_control"
+      ],
+      "anchors": {
+        "claim_anchor_id": "C005-A001",
+        "claim_location": {
+          "page_index": 0,
+          "page_label": null,
+          "section_heading": "EXECUTIVE SUMMARY",
+          "object_id": null
+        }
+      },
+      "pathway_evidence": {
+        "organ_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": [
+            "EV-001",
+            "EV-002",
+            "EV-003",
+            "EV-004"
+          ]
+        },
+        "control_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": [
+            "EV-001",
+            "EV-002",
+            "EV-003",
+            "EV-004"
+          ]
+        },
+        "knowledge_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": []
+        },
+        "omission_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": []
+        },
+        "territory_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": []
+        }
+      },
+      "legal_tests": {
+        "organ_status_test": {
+          "score_0_1": 0.68,
+          "result": "yes",
+          "rationale": "State-organ attribution support derived from claim/evidence pathway scoring."
+        },
+        "effective_control_test": {
+          "score_0_1": 0.208,
+          "result": "no",
+          "rationale": "Control/direction linkage for non-state actors derived from pathway scoring."
+        },
+        "due_diligence_test": {
+          "score_0_1": 0.1143,
+          "result": "no",
+          "rationale": "Knowledge + omission indicators for due diligence pathway."
+        }
+      },
+      "clarity_questions": {
+        "q1_attribution_to_state_x_for_attack_z_clear": {
+          "question": "Is attribution to State X for attack Z clear?",
+          "score_0_1": 0.855,
+          "answer": "yes"
+        },
+        "q2_responsibility_path_clear_organs_control_due_diligence": {
+          "question": "Is the state-responsibility mode clear (organ, control, or due diligence)?",
+          "score_0_1": 0.68,
+          "answer": "yes"
+        },
+        "q3_state_knew_and_failed_to_prevent_due_diligence": {
+          "question": "Is state knowledge plus failure to prevent (due diligence) clear?",
+          "score_0_1": 0.1143,
+          "answer": "no"
+        }
+      },
+      "contradiction_handling": {
+        "counterevidence_items": [
+          "The sheer scale and duration of sustained attacks against such a wide set of industries from a singularly identified group based in China leaves little doubt about the organization behind APT1. We believe the totality of the evidence we provide in this document bolsters the claim that APT1 is Unit 61398. However, we admit there is one other unlikely possibility:"
+        ],
+        "alternative_hypotheses_considered": [
+          null
+        ]
+      },
+      "final_attribution_judgment": {
+        "value": "yes",
+        "score_0_1": 0.855,
+        "band": "high"
+      },
+      "critical_gaps": [],
+      "refinement_meta": {
+        "refined_by_model": "gpt-5-mini",
+        "refinement_timestamp": null,
+        "refinement_notes": "Payload prepared for model-side legal refinement and adjudicative clarity checks."
+      },
+      "linked_scores": {
+        "clarity_0_100": 71.23,
+        "credibility_0_100": 0,
+        "corroboration_0_100": 0,
+        "custody_0_100": 49
+      }
+    },
+    {
+      "claim_id": "C006",
+      "claim_kind": "state_organ_conduct",
+      "claim_type": "mixed",
+      "salience_rank": 6,
+      "allegation_gravity": "medium",
+      "attack_z": "APT1's infrastructure includes FQDNs in addition to the IP addresses discussed above.",
+      "state_x": "APT1 operators",
+      "attribution_assertion": "associated_with",
+      "time_window": {
+        "start": null,
+        "end": null,
+        "text": "2006-2013 (as reported)"
+      },
+      "target_scope": "mixed",
+      "subject": {
+        "name": "APT1 campaign",
+        "kind": "intrusion_set",
+        "aliases": []
+      },
+      "claim_statement": "APT1's infrastructure includes FQDNs in addition to the IP addresses discussed above. The FQDNs play an important role in their intrusion campaigns because APT1 embeds FQDNs as C2 addresses within their backdoors. In the last several years we have confirmed 2,551 FQDNs attributed to APT1. Of these, we have redacted FQDNs that implicated victims by name and provided 2,046 in Appendix D. By using FQDNs rather than hard-coded IP addresses as C2 addresses, attackers may dynamically decide where to direct C2 connections from a given backdoor. That is, if they lose control of a specific hop point (IP address) they can \"point\" the C2 FQDN address to a different IP address and resume their control over victim backdoors. This flexibility allows the attacker to direct victim systems to myriad C2 servers and avoid being blocked.",
+      "claim_components_asserted": [
+        "victimology",
+        "timeline_linkage",
+        "command_and_control"
+      ],
+      "anchors": {
+        "claim_anchor_id": "C006-A001",
+        "claim_location": {
+          "page_index": 0,
+          "page_label": null,
+          "section_heading": "Domain Names",
+          "object_id": null
+        }
+      },
+      "pathway_evidence": {
+        "organ_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": [
+            "EV-001",
+            "EV-002",
+            "EV-003",
+            "EV-004"
+          ]
+        },
+        "control_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": [
+            "EV-001",
+            "EV-002",
+            "EV-003",
+            "EV-004"
+          ]
+        },
+        "knowledge_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": []
+        },
+        "omission_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": []
+        },
+        "territory_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": []
+        }
+      },
+      "legal_tests": {
+        "organ_status_test": {
+          "score_0_1": 0.6,
+          "result": "yes",
+          "rationale": "State-organ attribution support derived from claim/evidence pathway scoring."
+        },
+        "effective_control_test": {
+          "score_0_1": 0.164,
+          "result": "no",
+          "rationale": "Control/direction linkage for non-state actors derived from pathway scoring."
+        },
+        "due_diligence_test": {
+          "score_0_1": 0.0738,
+          "result": "no",
+          "rationale": "Knowledge + omission indicators for due diligence pathway."
+        }
+      },
+      "clarity_questions": {
+        "q1_attribution_to_state_x_for_attack_z_clear": {
+          "question": "Is attribution to State X for attack Z clear?",
+          "score_0_1": 0.645,
+          "answer": "partial"
+        },
+        "q2_responsibility_path_clear_organs_control_due_diligence": {
+          "question": "Is the state-responsibility mode clear (organ, control, or due diligence)?",
+          "score_0_1": 0.6,
+          "answer": "yes"
+        },
+        "q3_state_knew_and_failed_to_prevent_due_diligence": {
+          "question": "Is state knowledge plus failure to prevent (due diligence) clear?",
+          "score_0_1": 0.0738,
+          "answer": "no"
+        }
+      },
+      "contradiction_handling": {
+        "counterevidence_items": [],
+        "alternative_hypotheses_considered": []
+      },
+      "final_attribution_judgment": {
+        "value": "partial",
+        "score_0_1": 0.645,
+        "band": "medium"
+      },
+      "critical_gaps": [],
+      "refinement_meta": {
+        "refined_by_model": "gpt-5-mini",
+        "refinement_timestamp": null,
+        "refinement_notes": "Payload prepared for model-side legal refinement and adjudicative clarity checks."
+      },
+      "linked_scores": {
+        "clarity_0_100": 55.83,
+        "credibility_0_100": 0,
+        "corroboration_0_100": 0,
+        "custody_0_100": 65
+      }
+    },
+    {
+      "claim_id": "C007",
+      "claim_kind": "state_organ_conduct",
+      "claim_type": "mixed",
+      "salience_rank": 7,
+      "allegation_gravity": "medium",
+      "attack_z": "Mandiant continues to track dozens of APT groups around the world; however, this report is focused on the most prolific of these groups.",
+      "state_x": "APT1 operators",
+      "attribution_assertion": "associated_with",
+      "time_window": {
+        "start": null,
+        "end": null,
+        "text": "2006-2013 (as reported)"
+      },
+      "target_scope": "mixed",
+      "subject": {
+        "name": "APT1 campaign",
+        "kind": "intrusion_set",
+        "aliases": []
+      },
+      "claim_statement": "Mandiant continues to track dozens of APT groups around the world; however, this report is focused on the most prolific of these groups. We refer to this group as “APT1” and it is one of more than 20 APT groups with origins in China. APT1 is a single organization of operators that has conducted a cyber espionage campaign against a broad range of victims since at least 2006. From our observations, it is one of the most prolific cyber espionage groups in terms of the sheer quantity of information stolen. The scale and impact of APT1’s operations compelled us to write this report.",
+      "claim_components_asserted": [
+        "victimology",
+        "timeline_linkage",
+        "command_and_control"
+      ],
+      "anchors": {
+        "claim_anchor_id": "C007-A001",
+        "claim_location": {
+          "page_index": 0,
+          "page_label": null,
+          "section_heading": "EXECUTIVE SUMMARY",
+          "object_id": null
+        }
+      },
+      "pathway_evidence": {
+        "organ_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": [
+            "EV-001",
+            "EV-002",
+            "EV-003",
+            "EV-004"
+          ]
+        },
+        "control_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": [
+            "EV-001",
+            "EV-002",
+            "EV-003",
+            "EV-004"
+          ]
+        },
+        "knowledge_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": []
+        },
+        "omission_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": []
+        },
+        "territory_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": []
+        }
+      },
+      "legal_tests": {
+        "organ_status_test": {
+          "score_0_1": 0.615,
+          "result": "yes",
+          "rationale": "State-organ attribution support derived from claim/evidence pathway scoring."
+        },
+        "effective_control_test": {
+          "score_0_1": 0.2095,
+          "result": "no",
+          "rationale": "Control/direction linkage for non-state actors derived from pathway scoring."
+        },
+        "due_diligence_test": {
+          "score_0_1": 0.1215,
+          "result": "no",
+          "rationale": "Knowledge + omission indicators for due diligence pathway."
+        }
+      },
+      "clarity_questions": {
+        "q1_attribution_to_state_x_for_attack_z_clear": {
+          "question": "Is attribution to State X for attack Z clear?",
+          "score_0_1": 0.7733,
+          "answer": "yes"
+        },
+        "q2_responsibility_path_clear_organs_control_due_diligence": {
+          "question": "Is the state-responsibility mode clear (organ, control, or due diligence)?",
+          "score_0_1": 0.615,
+          "answer": "yes"
+        },
+        "q3_state_knew_and_failed_to_prevent_due_diligence": {
+          "question": "Is state knowledge plus failure to prevent (due diligence) clear?",
+          "score_0_1": 0.1215,
+          "answer": "no"
+        }
+      },
+      "contradiction_handling": {
+        "counterevidence_items": [],
+        "alternative_hypotheses_considered": []
+      },
+      "final_attribution_judgment": {
+        "value": "yes",
+        "score_0_1": 0.7733,
+        "band": "high"
+      },
+      "critical_gaps": [],
+      "refinement_meta": {
+        "refined_by_model": "gpt-5-mini",
+        "refinement_timestamp": null,
+        "refinement_notes": "Payload prepared for model-side legal refinement and adjudicative clarity checks."
+      },
+      "linked_scores": {
+        "clarity_0_100": 66.73,
+        "credibility_0_100": 0,
+        "corroboration_0_100": 0,
+        "custody_0_100": 54.5
+      }
+    },
+    {
+      "claim_id": "C008",
+      "claim_kind": "state_organ_conduct",
+      "claim_type": "mixed",
+      "salience_rank": 8,
+      "allegation_gravity": "medium",
+      "attack_z": "The following sections of this report detail APT1's cyber espionage and data theft operations.",
+      "state_x": "APT1 operators",
+      "attribution_assertion": "associated_with",
+      "time_window": {
+        "start": null,
+        "end": null,
+        "text": "2006-2013 (as reported)"
+      },
+      "target_scope": "mixed",
+      "subject": {
+        "name": "APT1 campaign",
+        "kind": "intrusion_set",
+        "aliases": []
+      },
+      "claim_statement": "The following sections of this report detail APT1's cyber espionage and data theft operations. The sheer scale and duration of these sustained attacks leave little doubt about the enterprise scale of the organization behind this campaign. We will demonstrate that the nature of APT1's targeted victims and the group's infrastructure and tactics align with the mission and infrastructure of PLA Unit 61398.",
+      "claim_components_asserted": [
+        "victimology",
+        "timeline_linkage",
+        "command_and_control"
+      ],
+      "anchors": {
+        "claim_anchor_id": "C008-A001",
+        "claim_location": {
+          "page_index": 0,
+          "page_label": null,
+          "section_heading": "Synopsis of PLA Unit 61398",
+          "object_id": null
+        }
+      },
+      "pathway_evidence": {
+        "organ_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": [
+            "EV-001",
+            "EV-002",
+            "EV-003",
+            "EV-004"
+          ]
+        },
+        "control_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": [
+            "EV-001",
+            "EV-002",
+            "EV-003",
+            "EV-004"
+          ]
+        },
+        "knowledge_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": []
+        },
+        "omission_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": []
+        },
+        "territory_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": []
+        }
+      },
+      "legal_tests": {
+        "organ_status_test": {
+          "score_0_1": 0.615,
+          "result": "yes",
+          "rationale": "State-organ attribution support derived from claim/evidence pathway scoring."
+        },
+        "effective_control_test": {
+          "score_0_1": 0.247,
+          "result": "no",
+          "rationale": "Control/direction linkage for non-state actors derived from pathway scoring."
+        },
+        "due_diligence_test": {
+          "score_0_1": 0.1215,
+          "result": "no",
+          "rationale": "Knowledge + omission indicators for due diligence pathway."
+        }
+      },
+      "clarity_questions": {
+        "q1_attribution_to_state_x_for_attack_z_clear": {
+          "question": "Is attribution to State X for attack Z clear?",
+          "score_0_1": 0.7133,
+          "answer": "yes"
+        },
+        "q2_responsibility_path_clear_organs_control_due_diligence": {
+          "question": "Is the state-responsibility mode clear (organ, control, or due diligence)?",
+          "score_0_1": 0.615,
+          "answer": "yes"
+        },
+        "q3_state_knew_and_failed_to_prevent_due_diligence": {
+          "question": "Is state knowledge plus failure to prevent (due diligence) clear?",
+          "score_0_1": 0.1215,
+          "answer": "no"
+        }
+      },
+      "contradiction_handling": {
+        "counterevidence_items": [],
+        "alternative_hypotheses_considered": []
+      },
+      "final_attribution_judgment": {
+        "value": "yes",
+        "score_0_1": 0.7133,
+        "band": "high"
+      },
+      "critical_gaps": [],
+      "refinement_meta": {
+        "refined_by_model": "gpt-5-mini",
+        "refinement_timestamp": null,
+        "refinement_notes": "Payload prepared for model-side legal refinement and adjudicative clarity checks."
+      },
+      "linked_scores": {
+        "clarity_0_100": 63.53,
+        "credibility_0_100": 0,
+        "corroboration_0_100": 0,
+        "custody_0_100": 57.5
+      }
+    },
+    {
+      "claim_id": "C009",
+      "claim_kind": "state_organ_conduct",
+      "claim_type": "mixed",
+      "salience_rank": 9,
+      "allegation_gravity": "medium",
+      "attack_z": "- The first persona, \"UglyGorilla\", has been active in computer network operations since October 2004.",
+      "state_x": "APT1 operators",
+      "attribution_assertion": "associated_with",
+      "time_window": {
+        "start": null,
+        "end": null,
+        "text": "2006-2013 (as reported)"
+      },
+      "target_scope": "mixed",
+      "subject": {
+        "name": "APT1 campaign",
+        "kind": "intrusion_set",
+        "aliases": []
+      },
+      "claim_statement": "- The first persona, \"UglyGorilla\", has been active in computer network operations since October 2004. His activities include registering domains attributed to APT1 and authoring malware used in APT1 campaigns. \"UglyGorilla\" publicly expressed his interest in China's \"cyber troops\" in January 2004.",
+      "claim_components_asserted": [
+        "victimology",
+        "timeline_linkage",
+        "command_and_control"
+      ],
+      "anchors": {
+        "claim_anchor_id": "C009-A001",
+        "claim_location": {
+          "page_index": 0,
+          "page_label": null,
+          "section_heading": "KEY FINDINGS",
+          "object_id": null
+        }
+      },
+      "pathway_evidence": {
+        "organ_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": [
+            "EV-001",
+            "EV-002",
+            "EV-003",
+            "EV-004",
+            "EV-005"
+          ]
+        },
+        "control_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": [
+            "EV-001",
+            "EV-002",
+            "EV-003",
+            "EV-004",
+            "EV-005"
+          ]
+        },
+        "knowledge_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": []
+        },
+        "omission_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": []
+        },
+        "territory_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": []
+        }
+      },
+      "legal_tests": {
+        "organ_status_test": {
+          "score_0_1": 0.57,
+          "result": "partial",
+          "rationale": "State-organ attribution support derived from claim/evidence pathway scoring."
+        },
+        "effective_control_test": {
+          "score_0_1": 0.2455,
+          "result": "no",
+          "rationale": "Control/direction linkage for non-state actors derived from pathway scoring."
+        },
+        "due_diligence_test": {
+          "score_0_1": 0.0405,
+          "result": "no",
+          "rationale": "Knowledge + omission indicators for due diligence pathway."
+        }
+      },
+      "clarity_questions": {
+        "q1_attribution_to_state_x_for_attack_z_clear": {
+          "question": "Is attribution to State X for attack Z clear?",
+          "score_0_1": 0.5117,
+          "answer": "partial"
+        },
+        "q2_responsibility_path_clear_organs_control_due_diligence": {
+          "question": "Is the state-responsibility mode clear (organ, control, or due diligence)?",
+          "score_0_1": 0.57,
+          "answer": "partial"
+        },
+        "q3_state_knew_and_failed_to_prevent_due_diligence": {
+          "question": "Is state knowledge plus failure to prevent (due diligence) clear?",
+          "score_0_1": 0.0405,
+          "answer": "no"
+        }
+      },
+      "contradiction_handling": {
+        "counterevidence_items": [],
+        "alternative_hypotheses_considered": []
+      },
+      "final_attribution_judgment": {
+        "value": "partial",
+        "score_0_1": 0.5117,
+        "band": "medium"
+      },
+      "critical_gaps": [],
+      "refinement_meta": {
+        "refined_by_model": "gpt-5-mini",
+        "refinement_timestamp": null,
+        "refinement_notes": "Payload prepared for model-side legal refinement and adjudicative clarity checks."
+      },
+      "linked_scores": {
+        "clarity_0_100": 47.83,
+        "credibility_0_100": 6.06,
+        "corroboration_0_100": 1.5,
+        "custody_0_100": 75.5
+      }
+    },
+    {
+      "claim_id": "C010",
+      "claim_kind": "state_organ_conduct",
+      "claim_type": "intrusion_set_attribution",
+      "salience_rank": 10,
+      "allegation_gravity": "medium",
+      "attack_z": "- We have observed both the \"UglyGorilla\" persona and the \"DOTA\" persona using the same shared infrastructure, including FQDNs and IP ranges that we have attributed to APT1.",
+      "state_x": "PLA Unit 61398",
+      "attribution_assertion": "attributed_to",
+      "time_window": {
+        "start": null,
+        "end": null,
+        "text": "2006-2013 (as reported)"
+      },
+      "target_scope": "intrusion_set",
+      "subject": {
+        "name": "APT1",
+        "kind": "intrusion_set",
+        "aliases": []
+      },
+      "claim_statement": "- We have observed both the \"UglyGorilla\" persona and the \"DOTA\" persona using the same shared infrastructure, including FQDNs and IP ranges that we have attributed to APT1.",
+      "claim_components_asserted": [
+        "actor_identity",
+        "infrastructure_linkage"
+      ],
+      "anchors": {
+        "claim_anchor_id": "C010-A001",
+        "claim_location": {
+          "page_index": 0,
+          "page_label": null,
+          "section_heading": "KEY FINDINGS",
+          "object_id": null
+        }
+      },
+      "pathway_evidence": {
+        "organ_evidence": {
+          "anchors": [
+            "C010-A001",
+            "P000-A001"
+          ],
+          "source_ids": [
+            "SRC0001",
+            "SRC0002"
+          ],
+          "evidence_ids": [
+            "EV-001",
+            "EV-002",
+            "EV-003"
+          ]
+        },
+        "control_evidence": {
+          "anchors": [
+            "C010-A001",
+            "P000-A001"
+          ],
+          "source_ids": [
+            "SRC0001",
+            "SRC0002"
+          ],
+          "evidence_ids": [
+            "EV-001",
+            "EV-002",
+            "EV-003"
+          ]
+        },
+        "knowledge_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": []
+        },
+        "omission_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": []
+        },
+        "territory_evidence": {
+          "anchors": [],
+          "source_ids": [],
+          "evidence_ids": []
+        }
+      },
+      "legal_tests": {
+        "organ_status_test": {
+          "score_0_1": 0.445,
+          "result": "partial",
+          "rationale": "State-organ attribution support derived from claim/evidence pathway scoring."
+        },
+        "effective_control_test": {
+          "score_0_1": 0.164,
+          "result": "no",
+          "rationale": "Control/direction linkage for non-state actors derived from pathway scoring."
+        },
+        "due_diligence_test": {
+          "score_0_1": 0.0405,
+          "result": "no",
+          "rationale": "Knowledge + omission indicators for due diligence pathway."
+        }
+      },
+      "clarity_questions": {
+        "q1_attribution_to_state_x_for_attack_z_clear": {
+          "question": "Is attribution to State X for attack Z clear?",
+          "score_0_1": 0.425,
+          "answer": "no"
+        },
+        "q2_responsibility_path_clear_organs_control_due_diligence": {
+          "question": "Is the state-responsibility mode clear (organ, control, or due diligence)?",
+          "score_0_1": 0.445,
+          "answer": "partial"
+        },
+        "q3_state_knew_and_failed_to_prevent_due_diligence": {
+          "question": "Is state knowledge plus failure to prevent (due diligence) clear?",
+          "score_0_1": 0.0405,
+          "answer": "no"
+        }
+      },
+      "contradiction_handling": {
+        "counterevidence_items": [],
+        "alternative_hypotheses_considered": []
+      },
+      "final_attribution_judgment": {
+        "value": "no",
+        "score_0_1": 0.425,
+        "band": "low"
+      },
+      "critical_gaps": [],
+      "refinement_meta": {
+        "refined_by_model": "gpt-5-mini",
+        "refinement_timestamp": null,
+        "refinement_notes": "Payload prepared for model-side legal refinement and adjudicative clarity checks."
+      },
+      "linked_scores": {
+        "clarity_0_100": 33.9,
+        "credibility_0_100": 0,
+        "corroboration_0_100": 0,
+        "custody_0_100": 84.5
+      }
+    }
+  ]
+}

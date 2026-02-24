@@ -1,0 +1,125 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "quote": "This is known as the \u201cattribution problem\u201d.",
+          "paraphrase": "The authors label the task of determining the actor behind a cyber-operation as the 'attribution problem'.",
+          "researcher_comment": "This establishes the canonical term for the research domain and is directly relevant to definition-focused RQs. The statement is purely definitional and provides no decision criteria or measures for attribution.",
+          "potential_themes": [
+            "attribution_queries"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "attribution_problem_definition"
+          ]
+        },
+        {
+          "quote": "for a given cyber-operation\u2014be it an incident of attack, reconnaissance, or information theft.",
+          "paraphrase": "The authors specify that a 'cyber-operation' covers incidents of attack, reconnaissance, or information theft, thereby delimiting the scope of attribution. ",
+          "researcher_comment": "This scopes what events the attribution problem covers, which is useful for RQs about applicability and boundaries. It's a descriptive scope statement and does not imply methodological choices.",
+          "potential_themes": [
+            "attribution_queries"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "cyber_operation_scope"
+          ]
+        },
+        {
+          "quote": "Attributing a cyber-operation through the use of multiple pieces of technical evidence (i.e., malware reverse-engineering and source tracking) and conventional intelligence sources (i.e., human or signals intelligence) is a difficult problem not only due to the effort required to obtain evidence, but the ease with which an adversary can plant false evidence.",
+          "paraphrase": "The authors claim cyber-attribution is difficult because it depends on diverse technical and human intelligence sources and adversaries can deliberately plant false evidence. ",
+          "researcher_comment": "This identifies two central limitations: heterogeneous evidentiary sources and active deception by adversaries\u2014directly relevant to RQs on evidentiary standards and deception modeling. The statement is diagnostic and lacks empirical quantification here.",
+          "potential_themes": [
+            "attribution_challenges",
+            "deception_modeling",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "limitation",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "multi_source_evidence",
+            "evidence_tampering",
+            "forensic_effort"
+          ]
+        },
+        {
+          "quote": "In this paper, we introduce a formal reasoning system called the InCA (Intelligent Cyber Attribution) framework that is designed to aid an analyst in the attribution of a cyber-operation even when the available information is conflicting and/or uncertain.",
+          "paraphrase": "The paper introduces the InCA formal reasoning framework intended to assist analysts attributing cyber-operations under conflicting or uncertain information.",
+          "researcher_comment": "Core methodological claim introducing the system; directly relevant to RQs about inference methods for attribution. The excerpt states intended capability (robustness to conflict/uncertainty) but provides no evaluation or implementation detail here.",
+          "potential_themes": [
+            "argumentation_frameworks",
+            "probabilistic_models",
+            "inference_methods"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "method",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "InCA_framework",
+            "formal_reasoning",
+            "uncertainty_tolerance"
+          ]
+        },
+        {
+          "quote": "Our approach combines argumentation-based reasoning, logic programming, and probabilistic models to not only attribute an operation but also explain to the analyst why the system reaches its conclusions.",
+          "paraphrase": "The authors state their approach integrates argumentation-based reasoning, logic programming, and probabilistic models to both perform attribution and provide explanations to analysts.",
+          "researcher_comment": "Specifies the theoretical components and an explicit emphasis on explainability\u2014important for RQs on model composition and explainable attribution. The excerpt does not detail how these formalisms are integrated or how explanations are generated.",
+          "potential_themes": [
+            "argumentation_frameworks",
+            "probabilistic_models",
+            "explainability"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "method",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "argumentation_logic_probabilistic",
+            "model_integration",
+            "explainable_attribution"
+          ]
+        },
+        {
+          "quote": "designed to aid an analyst in the attribution of a cyber-operation even when the available information is conflicting and/or uncertain.",
+          "paraphrase": "The paper claims the InCA framework aids analysts in attribution tasks even when evidence is conflicting or uncertain.",
+          "researcher_comment": "Frames the claimed primary capability of the system (robust analyst support under uncertainty); this is a design/claim rather than demonstrated evidence in the excerpt and should be validated in methods/results. Relevant for RQs on uncertainty handling and evidentiary integration.",
+          "potential_themes": [
+            "uncertainty",
+            "evidentiary_integration"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "claimed_analyst_support",
+            "robust_to_conflict",
+            "uncertainty_handling"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-24T15:43:17.195373Z",
+  "collection_name": "frameworks",
+  "custom_id": "269af525594c06c8bbfcb4aa051d85b439dc4539019adcc40c0ceaeb9671ca41",
+  "function": "code_pdf_page"
+}

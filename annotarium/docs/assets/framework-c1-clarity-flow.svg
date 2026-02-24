@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="360" viewBox="0 0 960 360" role="img" aria-labelledby="title desc">
+  <title id="title">C1 Clarity Flowchart</title>
+  <desc id="desc">Left-to-right decision flowchart for C1 Clarity scoring.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#4b5563" />
+    </marker>
+    <style>
+      .bg{fill:#fff}.panel{fill:#f9fafb;stroke:#9ca3af;stroke-width:1.3}
+      .title{font:700 21px "Segoe UI",Arial,sans-serif;fill:#111827}
+      .sub{font:12px "Segoe UI",Arial,sans-serif;fill:#4b5563}
+      .q{fill:#fff;stroke:#9ca3af;stroke-width:1.2}
+      .qt{font:11px "Segoe UI",Arial,sans-serif;fill:#1f2937}
+      .low{fill:#f3f4f6;stroke:#9ca3af;stroke-width:1.2}
+      .mid{fill:#eef2ff;stroke:#9ca3af;stroke-width:1.2}
+      .high{fill:#ecfeff;stroke:#9ca3af;stroke-width:1.2}
+      .st{font:700 11px "Segoe UI",Arial,sans-serif;fill:#111827}
+      .sd{font:10px "Segoe UI",Arial,sans-serif;fill:#1f2937}
+      .l{stroke:#6b7280;stroke-width:1.6;fill:none;marker-end:url(#arrow)}
+      .yn{font:700 10px "Segoe UI",Arial,sans-serif;fill:#374151}
+    </style>
+  </defs>
+  <rect width="960" height="360" class="bg"/>
+  <text x="480" y="30" text-anchor="middle" class="title">Figure C1. Clarity Scoring Flow</text>
+  <text x="480" y="48" text-anchor="middle" class="sub">Question path resolves to low / medium / high.</text>
+
+  <rect x="30" y="70" width="900" height="270" rx="10" class="panel"/>
+
+  <rect x="50" y="130" width="260" height="56" rx="8" class="q"/>
+  <text x="180" y="152" text-anchor="middle" class="qt">Attribution claim explicit</text>
+  <text x="180" y="168" text-anchor="middle" class="qt">(actor + act + severity)?</text>
+
+  <rect x="345" y="130" width="260" height="56" rx="8" class="q"/>
+  <text x="475" y="152" text-anchor="middle" class="qt">State-link evidence explicit</text>
+  <text x="475" y="168" text-anchor="middle" class="qt">and legal pathway stated?</text>
+
+  <rect x="640" y="130" width="260" height="56" rx="8" class="q"/>
+  <text x="770" y="152" text-anchor="middle" class="qt">Alternatives addressed and</text>
+  <text x="770" y="168" text-anchor="middle" class="qt">reasoning coherent?</text>
+
+  <rect x="50" y="250" width="260" height="54" rx="8" class="low"/>
+  <text x="180" y="272" text-anchor="middle" class="st">LOW (0)</text>
+  <text x="180" y="288" text-anchor="middle" class="sd">ambiguous claim</text>
+
+  <rect x="345" y="250" width="260" height="54" rx="8" class="mid"/>
+  <text x="475" y="272" text-anchor="middle" class="st">MEDIUM (1)</text>
+  <text x="475" y="288" text-anchor="middle" class="sd">partial state-link / legal clarity</text>
+
+  <rect x="640" y="250" width="260" height="54" rx="8" class="high"/>
+  <text x="770" y="272" text-anchor="middle" class="st">HIGH (2)</text>
+  <text x="770" y="288" text-anchor="middle" class="sd">clear attribution + coherent linkage</text>
+
+  <path class="l" d="M310 158 L345 158"/><text x="324" y="146" class="yn">YES</text>
+  <path class="l" d="M180 186 L180 250"/><text x="192" y="222" class="yn">NO</text>
+
+  <path class="l" d="M605 158 L640 158"/><text x="620" y="146" class="yn">YES</text>
+  <path class="l" d="M475 186 L475 250"/><text x="487" y="222" class="yn">NO</text>
+
+  <path class="l" d="M770 186 L770 250"/><text x="782" y="222" class="yn">YES</text>
+  <path class="l" d="M640 158 C620 158,620 277,605 277"/><text x="620" y="244" class="yn">NO</text>
+</svg>

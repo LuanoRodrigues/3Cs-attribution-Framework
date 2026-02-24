@@ -1,0 +1,7 @@
+{
+  "status": "error",
+  "message": "The read operation timed out",
+  "coding_engine": "legacy_screening",
+  "coding_manifest_path": "/home/pantera/projects/TEIA/logs/Attribution_of_Cyberattacks_-_Phase_3_High-Level_Taper/coding_orchestrator/coding_manifest.json",
+  "step_name": "screening"
+}

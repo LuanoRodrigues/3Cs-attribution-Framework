@@ -1,0 +1,466 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "quote": "However, arguably the most significant obstacle is that of cyber-attribution.",
+          "paraphrase": "The author identifies cyber-attribution as the principal obstacle to legal responses to cyber-attacks (relevant to RQ 0).",
+          "researcher_comment": "This sentence frames attribution as the central problem motivating the paper and directs the review to prioritize attribution-related issues. It is a high-level claim rather than an empirical finding. Use as justification for focusing on attribution obstacles in synthesis.",
+          "potential_themes": [
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "centrality_of_attribution"
+          ]
+        },
+        {
+          "quote": "A state's responsibility for a breach of international law is contingent upon the breach being attributable to that state.",
+          "paraphrase": "Under international law, a state's legal responsibility arises only when the wrongful act can be attributed to that state (relevant to RQ 1).",
+          "researcher_comment": "This sets the doctrinal baseline: attribution is a legal precondition for state responsibility and remedies. It clarifies why attribution is decisive for lawful countermeasures and reparations but does not specify evidentiary standards.",
+          "potential_themes": [
+            "legal_tests",
+            "state_responsibility"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 1
+            }
+          ],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "attribution_prerequisite"
+          ]
+        },
+        {
+          "quote": "ARSIWA Article 8 provides that private conduct will be attributable to a state if those persons act under instruction or the control of that state.",
+          "paraphrase": "ARSIWA Article 8 attributes private persons' conduct to a state when those persons act under the state's instruction or control (relevant to RQ 1).",
+          "researcher_comment": "Identifies the specific rule for attributing non-state actors to states; highly relevant because many cyber-attacks involve private actors. The quote does not resolve how 'control' is proved in cyber contexts.",
+          "potential_themes": [
+            "legal_tests",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 1
+            },
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "ARSIWA_article_8",
+            "private_actor_attribution"
+          ]
+        },
+        {
+          "quote": "The relative availability and cheapness of the technology necessary to mount a cyber-attack makes significant attacks launched by private individuals or corporations far more feasible compared with other types of warfare.",
+          "paraphrase": "Widespread, low-cost technology makes large cyber-attacks feasible for private individuals and firms, increasing the relevance of attributing non-state actors (relevant to RQ 0).",
+          "researcher_comment": "Links technological diffusion to a legal problem: increased private perpetration means state-centric attribution rules (e.g., effective control) will be invoked more often. This is an empirical-causal claim that strengthens the case for focusing on nonstate actor attribution.",
+          "potential_themes": [
+            "technical_attribution",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            },
+            {
+              "index": 1
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "low_cost_tech",
+            "private_attacker_feasibility"
+          ]
+        },
+        {
+          "quote": "where a hierarchically-organized group is under the \u201coverall control\u201d of a state, this will be sufficient to attribute the group\u2019s actions to that state.",
+          "paraphrase": "The ICTY's 'overall control' test attributes a hierarchically organized group's actions to a state when the state exerts overall control (relevant to RQ 1).",
+          "researcher_comment": "Presents the ICTY 'overall control' standard which is broader than Nicaragua's effective control test; useful for assessing whether doctrine can adapt to cyber groups. Note: the chunk also notes ICJ rejection of aspects of this test elsewhere.",
+          "potential_themes": [
+            "legal_tests"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 1
+            }
+          ],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "ICTY_overall_control",
+            "judicial_test"
+          ]
+        },
+        {
+          "quote": "Overall, the ICJ\u2019s judgments suggest that the standard of proof will be commensurate with the seriousness of the allegation.",
+          "paraphrase": "ICJ case law indicates that the required standard of proof rises with the gravity of the allegation (relevant to RQ 2).",
+          "researcher_comment": "This doctrinal finding complicates attribution in cyber cases because 'seriousness' may be contested (e.g., economic vs kinetic harm). It implies variability in evidentiary thresholds rather than a single fixed standard.",
+          "potential_themes": [
+            "evidentiary_standards",
+            "confidence_language"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 2
+            }
+          ],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "ICJ_standard_of_proof",
+            "gravity_commensurate_standard"
+          ]
+        },
+        {
+          "quote": "Legal attribution is entirely dependent on the ability to satisfactorily answer highly technical questions concerning the origin of a particular attack.",
+          "paraphrase": "Determining legal attribution for cyber-attacks requires satisfactorily resolving technical questions about an attack's origin (relevant to RQ 0).",
+          "researcher_comment": "Links legal determinations directly to technical forensic capability; use this to justify analyzing technical attribution methods alongside legal tests. Assumes that technical questions can be answered if evidence exists, but highlights the dependency.",
+          "potential_themes": [
+            "technical_attribution",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            },
+            {
+              "index": 2
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "legal_technical_dependency",
+            "origin_attribution"
+          ]
+        },
+        {
+          "quote": "Attackers have at their disposal a variety of techniques to hide their identity and location, including use of various cryptographic mechanisms and routing their attacks through multiple compromised systems belonging to third parties.",
+          "paraphrase": "Attackers can obscure identity and location with cryptographic tools and by routing attacks through multiple compromised third-party systems, complicating technical attribution (relevant to RQ 0).",
+          "researcher_comment": "Provides concrete methods (crypto, multi-hop routing) that make forensics and geolocation unreliable; important operational detail for assessing evidentiary feasibility. The passage does not quantify detection success rates.",
+          "potential_themes": [
+            "technical_attribution"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "anonymization_methods",
+            "proxy_chaining"
+          ]
+        },
+        {
+          "quote": "For example, the series of cyber-attacks on Estonia have been reported to originate from at least 177 countries, and as well from within Estonia itself.",
+          "paraphrase": "The Estonia incidents were reported to originate from at least 177 countries and domestically, illustrating the geographic diffusion that complicates attribution (relevant to RQ 0).",
+          "researcher_comment": "An empirical example showing massively dispersed apparent origins; useful to illustrate how technical traces can be misleading. The underlying reporting and attribution methodology are not evaluated here.",
+          "potential_themes": [
+            "technical_attribution"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "example",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "estonia_case",
+            "distributed_origins"
+          ]
+        },
+        {
+          "quote": "A high standard of proof is likely to make this task completely infeasible.",
+          "paraphrase": "Applying a high standard of proof will likely render attribution of cyber-attacks infeasible (relevant to RQ 2).",
+          "researcher_comment": "Direct causal claim tying evidentiary thresholds to practical feasibility; supports arguments for reconsidering standards or for alternative dispute mechanisms. The assessment depends on technical limits and the court's willingness to accept circumstantial evidence.",
+          "potential_themes": [
+            "evidentiary_standards",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 2
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "high_standard_infeasibility"
+          ]
+        },
+        {
+          "quote": "If a lower standard applies, political motivation may be a more useful indicator of the origin of an attack than technical evidence.",
+          "paraphrase": "If courts adopt a lower proof standard, attribution may rely more on political indicators than on technical forensics (relevant to RQ 2).",
+          "researcher_comment": "Warns that lowering evidentiary thresholds risks politicizing attribution and substituting non-technical indicators; important when evaluating trade-offs between responsiveness and accuracy. The statement implies political bias risk but lacks operational criteria for 'political motivation.'",
+          "potential_themes": [
+            "evidentiary_standards",
+            "misattribution_risk"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 2
+            },
+            {
+              "index": 4
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "predictive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "politicized_attribution",
+            "low_standard_risk"
+          ]
+        },
+        {
+          "quote": "These difficulties raise the very real risk of one state covertly implicating another innocent state in an attack to damage relations or provoke conflict with the injured state.",
+          "paraphrase": "Technical and evidentiary difficulties enable covert framing of innocent states, risking diplomatic damage or provocation (relevant to RQ 4).",
+          "researcher_comment": "Identifies a concrete geopolitical danger (covert framing) that underpins normative caution about lowering attribution standards. This is a predictive risk claim useful for cost\u2013benefit analyses of reforms.",
+          "potential_themes": [
+            "misattribution_risk"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 4
+            }
+          ],
+          "evidence_type": "finding",
+          "argument_type": "predictive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "covert_framing",
+            "escalation_risk"
+          ]
+        },
+        {
+          "quote": "Schmitt has therefore advocated a low standard\u2014an indirect responsibility approach whereby a state will be responsible if it fails to take reasonably available measures to stop cyber-attacks originating in its territory.",
+          "paraphrase": "Schmitt advocates an indirect-responsibility approach holding states responsible if they fail to take reasonably available measures to stop cyber-attacks from their territory (relevant to RQ 3).",
+          "researcher_comment": "This normative proposal shifts liability toward omissions and reduces the burden of proving active control; it is policy-relevant but raises enforceability and fairness concerns given the difficulty of policing all domestic systems.",
+          "potential_themes": [
+            "indirect_responsibility",
+            "strict_liability"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 3
+            }
+          ],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "schmitt_indirect_responsibility",
+            "omission_based_liability"
+          ]
+        },
+        {
+          "quote": "strict liability dispenses with the need to establish attribution. Instead, the accused host state bears the onus of demonstrating why it should not be liable.",
+          "paraphrase": "Under strict liability, the need to attribute disappears because the host state must prove it should not be held liable (relevant to RQ 3).",
+          "researcher_comment": "Describes Proulx's strict-liability model and the attendant burden-shift; this is crucial for comparing proposals to bypass traditional attribution. The excerpt does not address evidentiary standards for the host state's defense.",
+          "potential_themes": [
+            "strict_liability"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 3
+            }
+          ],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "proulx_strict_liability",
+            "burden_shift"
+          ]
+        },
+        {
+          "quote": "This is a dangerous approach that appears to lack a fundamental understanding of the nature of the threat posed by cyber-attack.",
+          "paraphrase": "The author argues that strict liability is dangerous and misunderstands the nature of cyber threats (relevant to RQ 3).",
+          "researcher_comment": "A direct normative critique highlighting practical and conceptual mismatches between strict liability and cyber realities; use this to justify retaining cautious attribution rules. The critique is evaluative rather than empirically demonstrated here.",
+          "potential_themes": [
+            "strict_liability",
+            "misattribution_risk"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 3
+            },
+            {
+              "index": 4
+            }
+          ],
+          "evidence_type": "limitation",
+          "argument_type": "normative",
+          "claim_direction": "contradicts",
+          "open_codes": [
+            "strict_liability_danger",
+            "practical_unworkability"
+          ]
+        },
+        {
+          "quote": "The established effective control test sets an extremely high bar.",
+          "paraphrase": "The effective-control standard imposes a very high threshold for attributing non-state actors' actions to a state (relevant to RQ 1).",
+          "researcher_comment": "Identifies effective control as a principal doctrinal obstacle in cyber cases\u2014particularly problematic where attackers are small, covert, or non-hierarchical. This underscores why many cyber-attribution claims fail under current doctrine.",
+          "potential_themes": [
+            "legal_tests",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 1
+            },
+            {
+              "index": 2
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "effective_control_high_bar",
+            "ICJ_threshold"
+          ]
+        },
+        {
+          "quote": "In the case of cyber-defense, therefore, the status quo should be maintained and states should continue to be required to meet a strict test\u2014such as effective control\u2014when making out attribution for the purposes of self-defense.",
+          "paraphrase": "The article recommends retaining strict tests like effective control for attribution when states claim self-defense in cyber contexts (relevant to RQ 3).",
+          "researcher_comment": "A clear policy prescription: preserve high attribution standards for self-defense to avoid misdirected kinetic force. The recommendation balances legal constraint against the risk of escalation but may limit legitimate defensive action in ambiguous cases.",
+          "potential_themes": [
+            "self_defense",
+            "policy_recommendation"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 3
+            }
+          ],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "retain_strict_test_for_self_defense",
+            "avoid_misattribution"
+          ]
+        },
+        {
+          "quote": "This approach leverages existing international law, discourages states from pursuing retaliatory responses, and incentivizes host states to assist the victims of cyber-attack in identifying the perpetrators.",
+          "paraphrase": "Linking attribution requirements to the responder's course of action leverages current law, deters retaliation, and incentivizes host-state cooperation (relevant to RQ 3).",
+          "researcher_comment": "Summarizes the proposed response-based model's intended benefits; important as a policy alternative to pure strict- or low-standard regimes. The claim assumes incentives will be sufficient to overcome refusal to cooperate in bad-faith cases.",
+          "potential_themes": [
+            "policy_recommendation",
+            "state_cooperation"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 3
+            }
+          ],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "response_based_model",
+            "incentivize_cooperation"
+          ]
+        },
+        {
+          "quote": "Under this model, it would then be in an accused host-state's best interests to cooperate with the injured state to resolve the matter.",
+          "paraphrase": "The proposed model would create incentives for accused host states to cooperate with injured states to resolve attribution disputes (relevant to RQ 3).",
+          "researcher_comment": "Restates the mechanism by which the model seeks to elicit cooperation; useful for designing procedural incentives. Reliance on voluntary cooperation and the absence of enforcement mechanisms remain key caveats.",
+          "potential_themes": [
+            "state_cooperation",
+            "policy_recommendation"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 3
+            }
+          ],
+          "evidence_type": "recommendation",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "cooperation_incentive",
+            "evidence_sharing"
+          ]
+        },
+        {
+          "quote": "Thus, states which pursue peaceful, legal processes for resolving disputes in relation to cyber-attacks should have the benefit of eschewing the stringent attribution tests normally required.",
+          "paraphrase": "The author argues that states using peaceful legal dispute resolution should be allowed to rely on less stringent attribution tests than those invoking self-defense (relevant to RQ 3).",
+          "researcher_comment": "Proposes a sliding-scale approach: strict tests for self-defense, relaxed tests for legal remedies. This could encourage peaceful dispute resolution but risks inconsistency across legal forums and potential forum-shopping.",
+          "potential_themes": [
+            "policy_recommendation",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 3
+            },
+            {
+              "index": 2
+            }
+          ],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "sliding_scale_attribution",
+            "legal_process_incentive"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-24T15:15:58.707088Z",
+  "collection_name": "frameworks",
+  "custom_id": "10380575bd7513807ddb03ef4114fc6cedaef163ae3b774d51a863814e21d5c5",
+  "function": "code_pdf_page"
+}

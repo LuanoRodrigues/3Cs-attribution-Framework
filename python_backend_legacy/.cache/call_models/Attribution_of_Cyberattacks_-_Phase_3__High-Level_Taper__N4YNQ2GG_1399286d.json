@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": "{\n  \"classification\": \"Highly Relevant\",\n  \"relevance_score\": \"High\",\n  \"potential_subcategory\": \"Attribution, deterrence, and cyber policy/international law\",\n  \"justification\": \"The abstract directly engages core issues of cyber conflict attribution (explicit discussion of attribution-resistant operations, use of intent analysis and open-source evidence in lieu of definitive attribution) and policy/law (evaluation of U.S. cyber strategies, international law implications, and the role of cyber operations in coercion and deterrence). The three state-level case studies (DDoS on U.S. banks, Stuxnet, and the Estonia attacks) and the paper\u2019s strategic-policy conclusions make it highly relevant to research on attribution challenges and the legal/policy frameworks governing state cyber operations.\"\n}"
+  },
+  "cached_at": "2026-02-23T20:55:15.562224Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "N4YNQ2GG",
+  "function": "classify_by_abs"
+}

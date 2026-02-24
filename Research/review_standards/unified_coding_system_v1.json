@@ -1,0 +1,181 @@
+{
+  "schema": "unified_coding_system_v1",
+  "version": "1.1.0",
+  "description": "Unified evidence coding system for literature, bibliographic, and systematic reviews.",
+  "review_types": ["literature", "bibliographic", "systematic"],
+  "core_required_fields": [
+    "evidence_row_id",
+    "item_key",
+    "title",
+    "year",
+    "collection",
+    "evidence_type",
+    "relevance_score",
+    "direct_quote",
+    "paraphrase",
+    "researcher_comment"
+  ],
+  "core_optional_fields": [
+    "potential_themes",
+    "relevant_rqs",
+    "prompt_key",
+    "rq_sig",
+    "confidence_score",
+    "argument_type",
+    "claim_direction",
+    "exclude_reason",
+    "method_type",
+    "study_design",
+    "sample_size",
+    "effect_size",
+    "risk_of_bias",
+    "quality_grade",
+    "doi",
+    "venue",
+    "country",
+    "policy_context",
+    "llm_assisted",
+    "llm_model",
+    "prompt_template_id",
+    "codebook_version_used"
+  ],
+  "controlled_vocab": {
+    "evidence_type": [
+      "definition_conceptual",
+      "theory_model",
+      "formal_proof",
+      "empirical_quantitative",
+      "empirical_qualitative",
+      "mixed_methods",
+      "measurement_study",
+      "experiment",
+      "case_study",
+      "simulation_benchmark",
+      "dataset_resource",
+      "tool_system",
+      "review_secondary",
+      "position_normative",
+      "policy_standard",
+      "method",
+      "framework",
+      "legal",
+      "policy",
+      "empirical",
+      "technical",
+      "example",
+      "claim",
+      "limitation",
+      "definition",
+      "finding",
+      "taxonomy",
+      "assumption",
+      "recommendation",
+      "policy_position"
+    ],
+    "argument_type": [
+      "definition",
+      "descriptive_claim",
+      "causal_claim",
+      "correlational_claim",
+      "comparative_claim",
+      "normative_claim",
+      "methodological_claim",
+      "assumption",
+      "scope_condition",
+      "limitation",
+      "threat_to_validity",
+      "recommendation",
+      "replication_claim"
+    ],
+    "claim_direction": ["supports", "contradicts", "mixed", "null_no_effect", "unclear"],
+    "exclude_reason": [
+      "out_of_scope_topic",
+      "wrong_population_context",
+      "wrong_outcome",
+      "wrong_study_type",
+      "insufficient_information",
+      "duplicate",
+      "not_academic_source",
+      "language",
+      "full_text_unavailable"
+    ],
+    "method_type": [
+      "doctrinal",
+      "formal_model",
+      "case_study",
+      "comparative_analysis",
+      "mixed_methods",
+      "descriptive",
+      "statistical"
+    ],
+    "risk_of_bias": ["low", "some_concerns", "high", "not_applicable"],
+    "quality_grade": ["high", "moderate", "low", "very_low", "not_applicable"]
+  },
+  "scoring": {
+    "relevance_score": {
+      "min": 1,
+      "max": 5,
+      "description": "How directly the evidence supports review questions.",
+      "rubric": {
+        "5": "Directly answers an RQ or is central evidence for a key theme/mechanism.",
+        "4": "Strongly related and provides major support/contrast but not the core answer.",
+        "3": "Related background or partial evidence useful for context/discussion.",
+        "2": "Tangential mention with low synthesis value.",
+        "1": "Barely connected and usually discardable at evidence-row level."
+      }
+    },
+    "confidence_score": {
+      "min": 1,
+      "max": 5,
+      "description": "Confidence in extracted claim as usable evidence.",
+      "rubric": {
+        "5": "Precise, well-scoped, method/data-supported, limitations addressed.",
+        "4": "Mostly solid with minor ambiguity or limited generality.",
+        "3": "Some uncertainty: weak evaluation, unclear assumptions, or limited reporting.",
+        "2": "Substantial uncertainty: speculative, poorly supported, unclear design.",
+        "1": "Opinion-level or unsupported assertion."
+      }
+    }
+  },
+  "mode_profiles": {
+    "literature": {
+      "required_extra_fields": ["potential_themes", "relevant_rqs"],
+      "recommended_fields": ["argument_type", "confidence_score", "policy_context"]
+    },
+    "bibliographic": {
+      "required_extra_fields": ["doi", "venue"],
+      "recommended_fields": ["country", "method_type", "study_design"]
+    },
+    "systematic": {
+      "required_extra_fields": ["study_design", "risk_of_bias", "quality_grade"],
+      "recommended_fields": ["sample_size", "effect_size", "method_type"]
+    }
+  },
+  "normalization_rules": {
+    "text_fields_trim": true,
+    "collapse_whitespace": true,
+    "pipe_delimited_multivalue_fields": ["potential_themes", "relevant_rqs"],
+    "dedupe_multivalue_tokens": true
+  },
+  "acceptance_checks": [
+    "all core_required_fields populated",
+    "relevance_score in range 1..5",
+    "controlled vocabulary compliance where defined",
+    "item_key must resolve to corpus snapshot",
+    "at least one citation-ready text field (direct_quote or paraphrase) non-empty"
+  ],
+  "id_conventions": {
+    "item_key": {
+      "preferred": "doi:<doi_value>",
+      "fallback": "fa:<FirstAuthorLastName>_<Year>_<ShortTitleToken>"
+    },
+    "evidence_row_id": "<item_key>#NNN"
+  },
+  "workflow_guidance": {
+    "protocol_lite_required": true,
+    "pilot_coding_papers": "5-10",
+    "primary_facet_count_recommended": "2-4",
+    "double_coding_fraction_recommended": "10-20%",
+    "two_pass_extraction": ["pass_a_evidence_harvesting", "pass_b_coding_and_memoing"]
+  }
+}

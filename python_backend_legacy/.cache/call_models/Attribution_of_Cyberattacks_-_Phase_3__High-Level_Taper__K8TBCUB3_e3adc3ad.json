@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": "{\n  \"classification\": \"Highly Relevant\",\n  \"relevance_score\": \"High\",\n  \"potential_subcategory\": \"Cyber attribution and international law; norms and multilateral diplomacy\",\n  \"justification\": \"Given that the inclusion/exclusion criteria were unavailable, this classification is based on the abstract's content. The essay centrally addresses attribution uncertainty and its effects on state identifiability, deterrence, diplomatic engagement, and compliance with international law. It explicitly engages UN GGE reports, state practice (e.g., power\u2011grid attacks in Ukraine), and norm\u2011building (voluntary norms moving toward customary law), and analyzes how attribution reshapes legal and normative incentives\u2014core concerns for cyber conflict attribution and policy/law. Noted methodological limits (no empirical fieldwork; limited great\u2011power strategy analysis) do not materially reduce its direct relevance to these topics.\"\n}"
+  },
+  "cached_at": "2026-02-23T20:49:24.166035Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "K8TBCUB3",
+  "function": "classify_by_abs"
+}

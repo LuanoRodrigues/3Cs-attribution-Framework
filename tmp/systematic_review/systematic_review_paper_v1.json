@@ -1,0 +1,82 @@
+{
+  "schema": "systematic_review_paper_v1",
+  "createdAt": "2026-02-23T17:03:53.593Z",
+  "updatedAt": "2026-02-23T17:03:53.593Z",
+  "collection": {
+    "name": "frameworks_and_models",
+    "key": "ABC123",
+    "itemsCount": 42
+  },
+  "provenance": {
+    "statePath": "/home/pantera/projects/TEIA/tmp/systematic_review/systematic_review_state_v1.json",
+    "pipelinePath": "/home/pantera/projects/TEIA/tmp/systematic_review/systematic_review_pipeline.json",
+    "templatePath": "/home/pantera/projects/TEIA/tmp/systematic_review/systematic_review_template.html"
+  },
+  "sections": [
+    {
+      "id": "title",
+      "title": "Title",
+      "content": "Systematic Review of frameworks_and_models: Frameworks, Models, Evidence, and Methods"
+    },
+    {
+      "id": "abstract",
+      "title": "Abstract",
+      "content": "This systematic review evaluates frameworks, models, methods, and evidence patterns in frameworks_and_models. The protocol used 2 reviewer(s), explicit eligibility criteria, staged screening/coding, and PRISMA flow tracking. Records identified: 42; screened: 0; included: 0."
+    },
+    {
+      "id": "introduction",
+      "title": "Introduction",
+      "content": "This paper addresses methodological and substantive variation in the selected corpus, with emphasis on evidence standards and model operationalization."
+    },
+    {
+      "id": "methods_protocol",
+      "title": "Methods: Protocol and Registration",
+      "content": "Protocol version: 1. Protocol locked: no. Checklist framework: PRISMA 2020."
+    },
+    {
+      "id": "methods_eligibility",
+      "title": "Methods: Eligibility Criteria",
+      "content": "Inclusion criteria:\n- Directly addresses at least one research question.\n- Contains explicit framework/model/method details.\n- Provides analyzable evidence.\n\nExclusion criteria:\n- Out of scope for the research questions.\n- No substantive evidence or methodological detail.\n- Duplicate or insufficiently documented source."
+    },
+    {
+      "id": "methods_information_sources",
+      "title": "Methods: Information Sources and Search Strategy",
+      "content": "Primary source was the Zotero-derived corpus 'frameworks_and_models'. Data were drawn from OCR-parsed and coded dataset artifacts under /home/pantera/projects/TEIA/tmp/systematic_review."
+    },
+    {
+      "id": "methods_selection_process",
+      "title": "Methods: Selection Process and Inter-Rater Reliability",
+      "content": "Reviewer count: 2. General IRR formula: IRR = Agreeing Ratings / Total Ratings. Two-rater IRR formula: IRR = (TA / (TR * R)) * 100. Agreeing ratings: 0. Total ratings: 0. General IRR: n/a."
+    },
+    {
+      "id": "methods_data_collection",
+      "title": "Methods: Data Collection Process",
+      "content": "Data extraction and coding were run from structured batch payloads and direct-quote units, with evidence-unit level metadata preserved."
+    },
+    {
+      "id": "methods_risk_of_bias",
+      "title": "Methods: Risk of Bias / Limitations in Evidence",
+      "content": "Risk considerations include attribution uncertainty, variable source quality, and possible reporting bias in underlying publications."
+    },
+    {
+      "id": "results_prisma",
+      "title": "Results: PRISMA Flow",
+      "content": "Records identified: 42. Duplicates removed: 0. Records screened: 0. Records excluded: 0. Reports assessed for eligibility: 0. Studies included in review: 0."
+    },
+    {
+      "id": "results_synthesis",
+      "title": "Results: Synthesis of Findings",
+      "content": "Coded items: 0. Evidence units: 0. Coding mode: open."
+    },
+    {
+      "id": "discussion",
+      "title": "Discussion",
+      "content": "Findings indicate concentration in selected model families and uneven methodological depth across sources; unresolved conflicts should be adjudicated before final claims."
+    },
+    {
+      "id": "other_information",
+      "title": "Other Information (Funding, COI, Data Availability)",
+      "content": "Funding and conflict of interest statements should be completed explicitly. Data and artifacts are available in the systematic_review run directory."
+    }
+  ]
+}

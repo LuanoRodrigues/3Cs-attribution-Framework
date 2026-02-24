@@ -1,0 +1,483 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "quote": "For the purposes of this Article, cyber-attacks are defined as those whereby states utilize computers and information technology as the primary mechanisms to detrimentally impact the interests of another state.",
+          "paraphrase": "The paper defines 'cyber-attacks' (relevant to RQ 0) as instances where states use computers/IT as the primary means to harm another state's interests.",
+          "researcher_comment": "This definition explicitly limits the paper's scope to state-initiated or state-utilized cyber activity, excluding purely private or non-state attacks unless state involvement is shown. That delimitation shapes which attribution rules and obligations are considered applicable. It may underrepresent hybrid incidents where kinetic and IT means overlap.",
+          "potential_themes": [
+            "definitions",
+            "state_responsibility"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "state_based_definition",
+            "it_as_weapon"
+          ]
+        },
+        {
+          "quote": "In short, cyber-attack involves information technology employed as a weapon.",
+          "paraphrase": "The authors summarize (relevant to RQ 0) that a cyber-attack is the employment of information technology as a weapon.",
+          "researcher_comment": "Concise weaponization framing clarifies analytic focus on function rather than target. This helps legal characterization but may exclude kinetic attacks that use IT-targeted effects.",
+          "potential_themes": [
+            "definitions",
+            "threat_perception"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "weaponization",
+            "tech_as_weapon"
+          ]
+        },
+        {
+          "quote": "First, direct intrusion attacks are those where the attacker directly interacts with a computer system and gains some form of unauthorized access or control.",
+          "paraphrase": "The article classifies 'direct intrusion attacks' (relevant to RQ 0) as attacks where an attacker directly gains unauthorized access or control of a computer system.",
+          "researcher_comment": "This operational category is useful for attributing agency and tracing actions to identifiable intruders. The authors elsewhere note taxonomies may be artificial because system heterogeneity blurs categories.",
+          "potential_themes": [
+            "taxonomy",
+            "technical_attribution"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "taxonomy",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "direct_intrusion",
+            "unauthorized_control"
+          ]
+        },
+        {
+          "quote": "Second, indirect intrusion attacks involve malicious code or\"malware\"that the attacker constructs in order to compromise a set of systems.",
+          "paraphrase": "The authors define 'indirect intrusion attacks' (relevant to RQ 0) as those using attacker-developed malicious code (malware) to compromise systems.",
+          "researcher_comment": "This highlights malware-driven propagation as legally and technically distinct from hands-on intrusions; the verbatim quote includes formatting artifacts but the legal point is clear. The taxonomy anticipates self\u2011propagating dynamics relevant to evidence collection.",
+          "potential_themes": [
+            "taxonomy",
+            "technical_attribution"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "taxonomy",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "indirect_intrusion",
+            "malware",
+            "self_propagation"
+          ]
+        },
+        {
+          "quote": "Third, denial of service attacks involve rendering the system unable to provide its expected services.",
+          "paraphrase": "The paper identifies denial-of-service attacks (relevant to RQ 0) as actions that render systems unable to provide expected services.",
+          "researcher_comment": "This classical category is legally significant because it focuses on service disruption rather than kinetic damage, affecting thresholds for force and countermeasures. Authors note distributed variants complicate attribution.",
+          "potential_themes": [
+            "dos_attacks",
+            "taxonomy"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "taxonomy",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "denial_of_service",
+            "service_unavailability"
+          ]
+        },
+        {
+          "quote": "Cyber-attack of any type provides an attacker with significant advantages, making it highly asymmetric in nature.",
+          "paraphrase": "The authors state (relevant to RQ 1) that cyber-attacks grant attackers notable advantages and are therefore highly asymmetric.",
+          "researcher_comment": "This assertion underpins the paper's argument about why attribution and response rules designed for symmetric kinetic conflicts may misfit cyber incidents. The claim is descriptive but not empirically quantified in this excerpt.",
+          "potential_themes": [
+            "asymmetry",
+            "threat_perception",
+            "state_vulnerability"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 1
+            }
+          ],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "attack_asymmetry",
+            "attacker_advantage"
+          ]
+        },
+        {
+          "quote": "To begin with, cyber-warfare is typically inexpensive for the attacker.",
+          "paraphrase": "The text states (relevant to RQ 1) that cyber-warfare generally imposes low costs on attackers.",
+          "researcher_comment": "This supports the asymmetry argument and implies low barriers to entry for attackers, which has implications for deterrence and attribution policy. The statement references cost but provides no detailed empirical basis here.",
+          "potential_themes": [
+            "economic_damage",
+            "asymmetry"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 1
+            }
+          ],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "low_cost_attack",
+            "barriers_to_entry"
+          ]
+        },
+        {
+          "quote": "Unlike traditional kinetic warfare, a cyber-attack can be launched by a single appropriately skilled individual with a computer, an Internet connection, and a relatively small financial stake.",
+          "paraphrase": "The authors argue (relevant to RQ 1) that lone skilled individuals can mount cyber-attacks with minimal resources.",
+          "researcher_comment": "This point highlights decentralization and the increased relevance of nonstate actors to attribution debates; it stresses why state-responsibility tests developed for hierarchical armed groups may be ill-suited.",
+          "potential_themes": [
+            "state_vulnerability",
+            "asymmetry",
+            "technical_attribution"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 1
+            }
+          ],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "solo_attacker",
+            "nonstate_capability",
+            "small_financial_stake"
+          ]
+        },
+        {
+          "quote": "States with a greater investment in, and therefore dependence on, information technology have far greater potential exposure than those which are still developing in this area.",
+          "paraphrase": "The paper observes (relevant to RQ 1) that states more dependent on information technology are more exposed to cyber risk.",
+          "researcher_comment": "Identifies uneven vulnerability across states, which is important for prioritizing defensive measures and for understanding who will press for doctrinal change. The claim is qualitative rather than metric.",
+          "potential_themes": [
+            "state_vulnerability",
+            "economic_damage"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 1
+            }
+          ],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "it_dependence",
+            "exposure_gradient"
+          ]
+        },
+        {
+          "quote": "Although scholars have analyzed a range of issues surrounding the law of cyber-attack, the question of how to attribute state responsibility in the event of a cyber-attack has been recognized as a significant hurdle.",
+          "paraphrase": "The authors identify (relevant to RQs 1 and 3) attribution of state responsibility as a major obstacle in applying international law to cyber-attacks.",
+          "researcher_comment": "This frames attribution as the paper's central problem and justifies its focus. The phrase signals scholarly consensus but does not quantify the distribution of views.",
+          "potential_themes": [
+            "attribution_challenges",
+            "attribution_logic",
+            "legal_ambiguity"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 1
+            },
+            {
+              "index": 3
+            }
+          ],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "attribution_hurdle",
+            "state_responsibility_challenge"
+          ]
+        },
+        {
+          "quote": "national security law expert Daniel B. Silver has described attribution as the most important practical obstacle to applying the law of jus ad bellum to cyber-attack.",
+          "paraphrase": "The paper cites an expert (relevant to RQs 1 and 3) stating attribution is the principal practical obstacle to applying jus ad bellum in cyber contexts.",
+          "researcher_comment": "Authoritative citation reinforces the centrality of attribution as a practical problem; this remains an expert assertion rather than empirical proof and should be weighed accordingly.",
+          "potential_themes": [
+            "academic_influence",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 1
+            },
+            {
+              "index": 3
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "expert_claim",
+            "practical_obstacle"
+          ]
+        },
+        {
+          "quote": "Leveraging existing jurisprudence, established international law, and state practice, it proposes a model for cyber-attribution that minimizes the risk of conflict escalation and encourages states to cooperate and pursue peaceful means of resolving disputes arising from cyber-incidents.",
+          "paraphrase": "The authors propose (relevant to RQs 2 and 4) a model built on existing law and practice to reduce escalation and to incentivize state cooperation in cyber-attribution.",
+          "researcher_comment": "The model is deliberately conservative\u2014anchored in extant law\u2014to lower political resistance; its efficacy depends on states' willingness to cooperate and on enforceability mechanisms which the paper later notes as unresolved.",
+          "potential_themes": [
+            "attribution_framework",
+            "state_cooperation",
+            "policy_recommendation"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 2
+            },
+            {
+              "index": 4
+            }
+          ],
+          "evidence_type": "framework",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "existing_law_leverage",
+            "escalation_minimization",
+            "cooperation_incentive"
+          ]
+        },
+        {
+          "quote": "This Article has analyzed the different approaches to cyber-attribution and proposed a model whereby attribution requirements are linked with the state's response to a cyber-incident.",
+          "paraphrase": "The authors summarize (relevant to RQs 2 and 4) that their proposed model links the attribution threshold to the victim state's chosen response to an incident.",
+          "researcher_comment": "Central methodological recommendation: vary attribution burdens by response type to balance lawfulness and practicability. Implementation details and enforcement remain open questions in the conclusion.",
+          "potential_themes": [
+            "attribution_framework",
+            "legal_adaptation",
+            "policy_recommendation"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 2
+            },
+            {
+              "index": 4
+            }
+          ],
+          "evidence_type": "method",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "response_based_attribution",
+            "threshold_linking"
+          ]
+        },
+        {
+          "quote": "In the case of cyber-defense, therefore, the status quo should be maintained and states should continue to be required to meet a strict test\u2014such as effective control\u2014when making out attribution for the purposes of self-defense.",
+          "paraphrase": "The paper recommends (relevant to RQ 4) that strict attribution tests like 'effective control' be retained for self-defense claims in cyber-defense contexts.",
+          "researcher_comment": "A conservative normative stance intended to prevent misdirected kinetic retaliation; tension exists between this position and the technical infeasibility of proving effective control in many cyber incidents.",
+          "potential_themes": [
+            "self_defense",
+            "attribution_framework",
+            "use_of_force_thresholds"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 4
+            }
+          ],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "maintain_effective_control",
+            "self_defense_attribution"
+          ]
+        },
+        {
+          "quote": "Irrespective of the general suitability of such a test in response to kinetic attacks, the uncertainty inherent in establishing cyber-attribution demands that the use of force in response is only permitted where there is a high degree of confidence that the force is directed at the correct target.",
+          "paraphrase": "The authors argue (relevant to RQ 4) that force in response to cyber-attacks should only be used when there is a high degree of confidence in correct targeting.",
+          "researcher_comment": "Links attribution uncertainty to necessity and proportionality concerns; the requirement is risk-averse but may render self-defense legally impracticable if high confidence is unattainable.",
+          "potential_themes": [
+            "confidence_language",
+            "necessity_proportionality",
+            "use_of_force_thresholds"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 4
+            }
+          ],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "high_confidence_required",
+            "force_justification"
+          ]
+        },
+        {
+          "quote": "Under this model, it would then be in an accused host-state's best interests to cooperate with the injured state to resolve the matter.",
+          "paraphrase": "The paper proposes (relevant to RQ 4) that linking attribution burdens to responses creates incentives for accused host-states to cooperate with victims.",
+          "researcher_comment": "Incentive alignment is a practical mechanism to elicit cooperation; effectiveness depends on credible benefits and on the host state's willingness to act in good faith, which the authors acknowledge as variable.",
+          "potential_themes": [
+            "state_cooperation",
+            "policy_recommendation"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 4
+            }
+          ],
+          "evidence_type": "recommendation",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "incentive_alignment",
+            "cooperation_incentive"
+          ]
+        },
+        {
+          "quote": "states which pursue peaceful, legal processes for resolving disputes in relation to cyber-attacks should have the benefit of eschewing the stringent attribution tests normally required.",
+          "paraphrase": "The authors recommend (relevant to RQ 4) that states engaging in peaceful legal resolution be allowed to avoid the most stringent attribution tests.",
+          "researcher_comment": "This creates a conditional legal incentive to pursue judicial or cooperative processes rather than immediate retaliation; the approach risks strategic manipulation if not paired with verification safeguards.",
+          "potential_themes": [
+            "policy_recommendation",
+            "legal_adaptation",
+            "state_practice"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 4
+            }
+          ],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "reduced_attribution_for_cooperation",
+            "legal_resolution_incentive"
+          ]
+        },
+        {
+          "quote": "Both the high- and low-standard approaches are therefore problematic.",
+          "paraphrase": "The authors conclude (relevant to RQ 3) that neither maintaining very high nor very low attribution standards is satisfactory for cyber incidents.",
+          "researcher_comment": "This evaluative statement motivates the search for a middle-ground model; however, it does not operationalize what intermediate standards would look like or how to measure them.",
+          "potential_themes": [
+            "limitation",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 3
+            }
+          ],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "high_low_standard_problem",
+            "attribution_tradeoff"
+          ]
+        },
+        {
+          "quote": "Issues remain regarding compulsory jurisdiction and enforcement of international tribunal decisions on these issues. Furthermore, the applicability of the law on countermeasures to cyber-attack requires further research.",
+          "paraphrase": "The article notes (relevant to RQs 3 and 4) unresolved gaps in compulsory jurisdiction/enforcement and calls for research on whether countermeasures law applies to cyber-attacks.",
+          "researcher_comment": "Authors explicitly flag institutional and doctrinal gaps\u2014enforcement/jurisdiction and countermeasures\u2014as future research priorities, indicating limits to the proposed model's operationalization absent remedial mechanisms.",
+          "potential_themes": [
+            "legal_constraints",
+            "countermeasures",
+            "legal_adaptation"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 3
+            },
+            {
+              "index": 4
+            }
+          ],
+          "evidence_type": "limitation",
+          "argument_type": "unspecified",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "jurisdiction_enforcement_gap",
+            "countermeasures_applicability",
+            "further_research_needed"
+          ]
+        },
+        {
+          "quote": "The novel characteristics of cyber-attacks make the existing standards of proof and degrees of control required to establish attribution extremely difficult to determine.",
+          "paraphrase": "The authors argue (relevant to RQ 3) that cyber-attacks' novel features render existing standards of proof and control for attribution highly problematic to apply.",
+          "researcher_comment": "This justificatory claim underpins the need for doctrinal adaptation and the paper's response-based proposal; it points to a doctrinal mismatch but does not supply empirical thresholds for 'extremely difficult.'",
+          "potential_themes": [
+            "evidentiary_standards",
+            "technical_attribution",
+            "legal_ambiguity"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 3
+            }
+          ],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "novelty_vs_standards",
+            "evidence_difficulty"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-24T15:21:27.380295Z",
+  "collection_name": "frameworks",
+  "custom_id": "e6d392b04e3a34ad542b76975212e76ec12a9867210eabad4c5916061ae7e540",
+  "function": "code_pdf_page"
+}

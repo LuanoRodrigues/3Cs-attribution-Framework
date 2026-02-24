@@ -388,7 +388,7 @@ const FEATURE_SAFE_PRESETS = {
     collection_name: "$selectedCollectionName"
   },
   Verbatim_Evidence_Coding: {
-    dir_base: "./running_tests",
+    dir_base: "",
     collection_name: "$selectedCollectionName",
     research_questions: ["RQ1"],
     prompt_key: "code_pdf_page"
@@ -2514,6 +2514,7 @@ function renderCollections() {
 
     const line = document.createElement("div");
     line.className = "tree-line";
+    if (node?.key) line.setAttribute("data-collection-key", String(node.key));
     if (node.key === state.selectedCollectionKey) line.classList.add("active");
 
     const children = treeMap.get(node.key) || [];
@@ -3488,8 +3489,19 @@ function parseResearchQuestionsInput(text) {
 }
 
 async function executeIntentWithTimeout(payload, phase = "intent execution") {
-  const timeoutMs = Number.parseInt(String(window.__ZOTERO_INTENT_TIMEOUT_MS__ || "300000"), 10);
-  const timeout = Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 300000;
+  const baseTimeoutMs = Number.parseInt(String(window.__ZOTERO_INTENT_TIMEOUT_MS__ || "300000"), 10);
+  const baseTimeout = Number.isFinite(baseTimeoutMs) && baseTimeoutMs > 0 ? baseTimeoutMs : 300000;
+  const intentId = String(payload?.intent?.intentId || "");
+  const targetFunction = String(payload?.intent?.targetFunction || "");
+  const verbatimTimeoutMs = Number.parseInt(String(window.__ZOTERO_VERBATIM_TIMEOUT_MS__ || "1200000"), 10);
+  const verbatimTimeout = Number.isFinite(verbatimTimeoutMs) && verbatimTimeoutMs > 0 ? verbatimTimeoutMs : 1200000;
+  const timeout =
+    intentId === "feature.run" && targetFunction === "Verbatim_Evidence_Coding"
+      ? Math.max(baseTimeout, verbatimTimeout)
+      : baseTimeout;
+  console.debug(
+    `[app.js][executeIntentWithTimeout][debug] phase=${phase} intentId=${intentId || "(none)"} targetFunction=${targetFunction || "(none)"} timeoutMs=${timeout}`
+  );
   const timeoutPromise = new Promise((resolve) => {
     setTimeout(() => {
       resolve({
@@ -4333,9 +4345,11 @@ function openFeatureRunModal(feature) {
 
 function currentTemplateContext() {
   const coll = selectedCollection();
+  const selectedCollectionKey = String(state.selectedCollectionKey || "").trim();
+  const selectedCollectionName = String(coll?.name || "").trim() || selectedCollectionKey;
   return {
-    "$selectedCollectionName": coll?.name || "",
-    "$selectedCollectionKey": coll?.key || "",
+    "$selectedCollectionName": selectedCollectionName,
+    "$selectedCollectionKey": selectedCollectionKey,
     "$selectedItemKey": state.selectedItem?.key || "",
     "$selectedItemTitle": state.selectedItem?.title || ""
   };
@@ -4443,6 +4457,13 @@ function collectFeatureArgs() {
   return out;
 }
 
+function buildFeatureRunContext() {
+  return {
+    selectedCollectionKey: state.selectedCollectionKey || "",
+    selectedCollectionName: selectedCollection()?.name || ""
+  };
+}
+
 async function runRibbonFeature(execute) {
   const feature = state.ribbon.activeFeature;
   if (!feature) {
@@ -4468,7 +4489,8 @@ async function runRibbonFeature(execute) {
     argsSchema,
     argsValues,
     execute,
-    confirm: true
+    confirm: true,
+    context: buildFeatureRunContext()
   });
   els.featureRunOutput.textContent = JSON.stringify(res, null, 2);
   renderFeatureArtifacts(res?.result);
@@ -4506,13 +4528,14 @@ async function runRibbonFeatureSafe(feature, execute) {
       }
       return next;
     });
-    const res = await window.zoteroBridge.runFeature({
-      functionName: feature.functionName,
-      argsSchema,
-      argsValues,
-      execute,
-      confirm: true
-    });
+  const res = await window.zoteroBridge.runFeature({
+    functionName: feature.functionName,
+    argsSchema,
+    argsValues,
+    execute,
+    confirm: true,
+    context: buildFeatureRunContext()
+  });
     appendRunHistory({
       functionName: feature.functionName,
       profile,
@@ -4546,7 +4569,8 @@ async function queueCurrentFeatureRun(execute) {
     argsSchema,
     argsValues,
     execute,
-    confirm: true
+    confirm: true,
+    context: buildFeatureRunContext()
   });
   if (res?.status === "ok") {
     setStatus(`Queued ${feature.functionName} (${res.jobId}).`, "ok");
@@ -4561,7 +4585,8 @@ async function queueCurrentFeatureRun(execute) {
       argsSchema,
       argsValues,
       execute,
-      confirm: true
+      confirm: true,
+      context: buildFeatureRunContext()
     });
     if (retry?.status === "ok") {
       setStatus(`Queued ${feature.functionName} (${retry.jobId}).`, "ok");
@@ -4587,7 +4612,8 @@ function replaySelectedHistory() {
       argsSchema: h.argsSchema || [],
       argsValues: h.argsValues || {},
       execute: h.execute === true,
-      confirm: true
+      confirm: true,
+      context: buildFeatureRunContext()
     })
     .then((res) => {
       els.featureRunOutput.textContent = JSON.stringify(res, null, 2);
@@ -4607,12 +4633,13 @@ async function runFeatureDryHarness() {
         try {
           const argsValues = buildSafeArgs(feature, getFeatureProfile(feature.functionName));
           const argsSchema = (feature.args || []).map((arg) => ({ ...arg }));
-          const res = await window.zoteroBridge.runFeature({
-            functionName: feature.functionName,
-            argsSchema,
-            argsValues,
-            execute: false
-          });
+  const res = await window.zoteroBridge.runFeature({
+    functionName: feature.functionName,
+    argsSchema,
+    argsValues,
+    execute: false,
+    context: buildFeatureRunContext()
+  });
           if (res?.status === "ok") okCount += 1;
           else failCount += 1;
         } catch {
@@ -4635,6 +4662,75 @@ async function runFeatureHealthCheck() {
 }
 
 function renderSystemRibbonTab(tabName) {
+  if (tabName === "Workspace") {
+    const loaderGroup = document.createElement("div");
+    loaderGroup.className = "ribbon-group";
+    const loaderTitle = document.createElement("h3");
+    loaderTitle.textContent = "Zotero Loader";
+    const loaderActions = document.createElement("div");
+    loaderActions.className = "ribbon-actions";
+    const codingTabExists = Array.isArray(state.ribbon.tabs) && state.ribbon.tabs.some((t) => String(t?.tab || "") === "Coding");
+    const screeningTabExists =
+      Array.isArray(state.ribbon.tabs) && state.ribbon.tabs.some((t) => String(t?.tab || "") === "Screening");
+    loaderActions.innerHTML = [
+      `<button type="button" class="ribbon-button ${state.workspace.activeTab === "home" ? "active" : ""}" title="Open the Zotero workspace." data-phase="retrieve" data-action="datahub_load_zotero">Zotero</button>`,
+      `<button type="button" class="ribbon-button ${state.workspace.activeTab === "batches" ? "active" : ""}" title="Open workflow batch explorer." data-phase="retrieve" data-action="datahub_open_batches">Batches</button>`,
+      `<button type="button" class="ribbon-button ${state.ribbon.activeTab === "Coding" ? "active" : ""}" title="Open coding tools." data-phase="retrieve" data-action="datahub_open_coding" ${
+        codingTabExists ? "" : "disabled"
+      }>Code</button>`,
+      `<button type="button" class="ribbon-button ${state.ribbon.activeTab === "Screening" ? "active" : ""}" title="Open screening tools." data-phase="retrieve" data-action="datahub_open_screening" ${
+        screeningTabExists ? "" : "disabled"
+      }>Screen</button>`
+    ].join("");
+    loaderGroup.append(loaderTitle, loaderActions);
+
+    const controlsGroup = document.createElement("div");
+    controlsGroup.className = "ribbon-group";
+    const title = document.createElement("h4");
+    title.textContent = "Workspace";
+    const actions = document.createElement("div");
+    actions.className = "ribbon-actions";
+    const hasCollection = Boolean(state.selectedCollectionKey);
+    const hasItem = Boolean(state.selectedItem?.key);
+    const btn = (label, action, icon, disabled = false) =>
+      `<button type="button" class="ribbon-sys-btn" data-action="${escapeHtml(action)}" data-icon="${escapeHtml(icon)}" ${
+        disabled ? "disabled" : ""
+      }>${escapeHtml(label)}</button>`;
+    actions.innerHTML = [
+      btn("Refresh Tree", "refresh_tree", "refresh-cw"),
+      btn("Purge Cache", "purge_cache", "trash-2"),
+      btn("Sync", "sync_now", "cloud"),
+      btn(state.voice.voiceModeOn ? "Voice: On" : "Voice: Off", "voice_mode", "mic", !state.voice.supported),
+      btn(state.voice.dictationOn ? "Dictation: On" : "Dictation: Off", "dictation", "audio-lines", !state.voice.supported),
+      btn(
+        state.inspector.density === "ultra"
+          ? "Inspector: Ultra-compact"
+          : state.inspector.density === "compact"
+            ? "Inspector: Compact"
+            : "Inspector: Comfortable",
+        "inspector_density",
+        "panel-right-open"
+      ),
+      btn("Advanced", "advanced_search", "search"),
+      btn("Commands", "command_palette", "command"),
+      btn(state.batch.showFeatureJobs ? "Hide Feature Jobs" : "Show Feature Jobs", "toggle_feature_jobs", "list"),
+      btn(state.batch.showBatchMonitor ? "Hide Batch Monitor" : "Show Batch Monitor", "toggle_batch_monitor", "git-branch"),
+      btn("Reset Layout", "reset_layout", "layout-panel-left"),
+      btn(state.layout.hideLeft ? "Collections: Hidden" : "Collections: Visible", "toggle_left", "panel-left-open"),
+      btn(state.layout.hideMid ? "Items: Hidden" : "Items: Visible", "toggle_mid", "panel-top-open"),
+      btn(state.layout.hideRight ? "Inspector: Hidden" : "Inspector: Visible", "toggle_right", "panel-right-open"),
+      btn("Load Items", "load_items_cache", "list", !hasCollection),
+      btn("Open Reader", "open_reader", "book-open", !hasItem),
+      btn("Open Item", "open_item", "external-link", !hasItem)
+    ].join("");
+    controlsGroup.append(title, actions);
+
+    els.ribbonGroups.innerHTML = "";
+    els.ribbonGroups.append(loaderGroup, controlsGroup);
+    hydrateButtonIcons();
+    return;
+  }
+
   const group = document.createElement("div");
   group.className = "ribbon-group";
   const title = document.createElement("h4");
@@ -4694,6 +4790,41 @@ function renderSystemRibbonTab(tabName) {
 }
 
 async function runSystemRibbonAction(action) {
+  if (action === "datahub_load_zotero") {
+    setWorkspaceTab("home");
+    renderRibbon();
+    return;
+  }
+  if (action === "datahub_open_batches") {
+    setWorkspaceTab("batches");
+    renderRibbon();
+    return;
+  }
+  if (action === "datahub_open_coding") {
+    setWorkspaceTab("home");
+    const codingTabExists = Array.isArray(state.ribbon.tabs) && state.ribbon.tabs.some((t) => String(t?.tab || "") === "Coding");
+    if (codingTabExists) {
+      state.ribbon.activeTab = "Coding";
+      renderRibbon();
+      return;
+    }
+    openAgentChatWithTemplate("code my collection with the following questions:\n1. [question 1]\n2. [question 2]\n3. [question 3]");
+    return;
+  }
+  if (action === "datahub_open_screening") {
+    setWorkspaceTab("home");
+    const screeningTabExists =
+      Array.isArray(state.ribbon.tabs) && state.ribbon.tabs.some((t) => String(t?.tab || "") === "Screening");
+    if (screeningTabExists) {
+      state.ribbon.activeTab = "Screening";
+      renderRibbon();
+      return;
+    }
+    openAgentChatWithTemplate(
+      "set eligibility criteria for screening:\nInclusion criteria:\n- [criterion 1]\n- [criterion 2]\nExclusion criteria:\n- [criterion 1]\n- [criterion 2]"
+    );
+    return;
+  }
   if (action === "expand_all") {
     state.collections.forEach((c) => state.expanded.add(c.key));
     renderCollections();

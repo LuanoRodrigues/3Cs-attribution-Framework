@@ -1,0 +1,35 @@
+{
+  "document_scores": {
+    "profile": "balanced",
+    "headline_claim_id": "C001",
+    "headline_vector": {
+      "credibility": 0.510666,
+      "corroboration": 0.650666,
+      "coherence": 0.6,
+      "confidence_discipline": 0.57,
+      "compliance_mapping": 1.0
+    },
+    "coverage_vector_median": {
+      "credibility": 0.484089,
+      "corroboration": 0.624089,
+      "coherence": 0.48,
+      "confidence_discipline": 0.57,
+      "compliance_mapping": 0.3
+    },
+    "overall_claim_score_mean": 0.488934,
+    "overall_claim_score_geometric": 0.488492,
+    "seriousness_gate": {
+      "passed": true,
+      "thresholds": {
+        "overall_claim_score_mean_min": 0.1,
+        "credibility_independence_median_min": 0.4,
+        "corroboration_convergence_median_min": 0.2
+      },
+      "observed": {
+        "overall_claim_score_mean": 0.488934,
+        "credibility_independence_median": 0.547,
+        "corroboration_convergence_median": 0.611607
+      }
+    }
+  }
+}

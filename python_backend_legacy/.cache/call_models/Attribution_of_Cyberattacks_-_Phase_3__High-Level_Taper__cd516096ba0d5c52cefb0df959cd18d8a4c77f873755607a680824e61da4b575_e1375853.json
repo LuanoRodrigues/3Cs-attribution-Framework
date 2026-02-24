@@ -1,0 +1,174 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "quote": "Thus far, however, inter-State cyber security has unfortunately been treated predominantly as a military issue and as a consequence debate has, by and large, revolved around the question of whether, and under which conditions, measures of self-defence pursuant to Article 51 of the Charter of the United Nations (UN Charter) are feasible and permitted in response to a cyber attack.",
+          "paraphrase": "International discussions on cyber security have mostly focused on whether states can invoke self-defence under Article 51 of the UN Charter in response to cyber attacks.",
+          "researcher_comment": "This frames the dominant paradigm as military-centric, situating legal debate around the threshold for self-defence\u2014a crucial context for assessing both attribution challenges and legal standards.",
+          "potential_themes": [
+            "military_paradigm",
+            "legal_frameworks",
+            "thresholds_for_response"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            },
+            {
+              "index": 1
+            },
+            {
+              "index": 2
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "military_centric_discourse",
+            "self_defence_art_51",
+            "response_conditions"
+          ]
+        },
+        {
+          "quote": "This chapter argues that, while self-defence certainly cannot be ruled out, the problem of attribution will preclude its proper application in many, if not most, instances.",
+          "paraphrase": "The author claims that attribution difficulties often prevent the lawful use of self-defence measures in cyber incidents.",
+          "researcher_comment": "The statement directly links attribution problems with the impracticality of military self-defence in most cyber cases, an essential finding for RQs regarding attribution challenges and thresholds for response.",
+          "potential_themes": [
+            "attribution_challenges",
+            "thresholds_for_response"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            },
+            {
+              "index": 2
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "attribution_limits_self_defence",
+            "cyber_operational_challenges"
+          ]
+        },
+        {
+          "quote": "Therefore, two other remedies will be analysed that might present an alternative to the prevalent military paradigm of international cyber security: countermeasures and the state of necessity.",
+          "paraphrase": "Countermeasures and state of necessity are proposed as alternative responses to the dominant military approach in cyber security.",
+          "researcher_comment": "By highlighting legal alternatives, this claim points toward non-forcible responses and broader remedy frameworks, indicating a conceptual shift in the analysis.",
+          "potential_themes": [
+            "legal_frameworks",
+            "military_paradigm"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 1
+            },
+            {
+              "index": 2
+            }
+          ],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "countermeasures_alternative",
+            "beyond_military_options"
+          ]
+        },
+        {
+          "quote": "The chapter provides an outlook on the possibilities of a more comprehensive approach to contemporary security issues that focuses on prevention rather than repression, drawing on States\u2019 international due diligence obligations not to harm others.",
+          "paraphrase": "A preventative, due diligence-based approach is recommended as a comprehensive strategy for modern cyber security threats.",
+          "researcher_comment": "This recommendation suggests a future research and policy orientation away from reactive force and toward prevention and international norms\u2014directly relevant for framing thresholds and legal frameworks.",
+          "potential_themes": [
+            "legal_frameworks",
+            "thresholds_for_response"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 1
+            },
+            {
+              "index": 2
+            }
+          ],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "preventive_approach",
+            "due_diligence",
+            "non_repressive_measures"
+          ]
+        },
+        {
+          "quote": "Thus, most commentators today agree that the focus of attention should lie not on the means but on the consequences of an attack, and the common denominator is that of equivalence: a cyber attack amounts to an armed attack within the scope of Article 51 if its effects are equivalent to those caused by a conventional attack employing kinetic force.",
+          "paraphrase": "There is strong scholarly consensus that a cyber attack meets the threshold of an 'armed attack' under Article 51 when its consequences equal those of conventional kinetic attacks.",
+          "researcher_comment": "This summarizes a widely accepted evidentiary threshold for self-defence in international cyber law and grounds the relevant debate in effects-based (not means-based) criteria.",
+          "potential_themes": [
+            "evidentiary_standards",
+            "thresholds_for_response",
+            "legal_frameworks"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 1
+            },
+            {
+              "index": 2
+            }
+          ],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "effects_based_threshold",
+            "armed_attack_equivalence",
+            "article_51_standard"
+          ]
+        },
+        {
+          "quote": "Apart from this general consensus, a few voices seek to broaden the scope of \u2018armed attack\u2019 to include attacks whose effects are not equivalent to consequences of the employment of kin",
+          "paraphrase": "A minority of scholars advocate for a broader interpretation of 'armed attack' that does not require equivalence in effects with kinetic force.",
+          "researcher_comment": "This highlights an ongoing debate in the literature and signals the presence of contestation over the stringency of thresholds, which is crucial for mapping the legal landscape.",
+          "potential_themes": [
+            "thresholds_for_response",
+            "legal_frameworks",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 1
+            },
+            {
+              "index": 2
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "comparative",
+          "claim_direction": "contradicts",
+          "open_codes": [
+            "broader_threshold_advocacy",
+            "minority_opinions",
+            "interpretation_variance"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-24T16:14:34.226196Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "cd516096ba0d5c52cefb0df959cd18d8a4c77f873755607a680824e61da4b575",
+  "function": "code_pdf_page"
+}

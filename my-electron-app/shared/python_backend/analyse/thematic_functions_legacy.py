@@ -9,8 +9,7 @@ import torch
 from tqdm import tqdm
 
 from general.app_constants import MAIN_APP_CACHE_DIR
-from bibliometric_analysis_tool.utils.Zotero_loader_to_df import find_text_page_and_section
-from data_processing import process_pdf
+from python_backend.retrieve.data_processing import process_pdf
 from core.utils.calling_models import _process_batch_for, call_models_old_backin
 from datetime import datetime
 from pydantic import BaseModel, Field
@@ -33,6 +32,11 @@ class QuoteHit(BaseModel):
     section_html: str | None
 
 import re
+
+
+def find_text_page_and_section(*args, **kwargs):
+    from python_backend.retrieve.Zotero_loader_to_df import find_text_page_and_section as _impl
+    return _impl(*args, **kwargs)
 
 
 # ------------------------------------------------------------
@@ -1311,9 +1315,15 @@ def export_pyr_all_artifacts(
         return json.dumps(x, ensure_ascii=False)
 
     def _normalize_section_html(h: str) -> str:
-        if not isinstance(h, str) or not h.strip():
+        if not isinstance(h, str):
             return ""
-        soup = BeautifulSoup(h, "html.parser")
+        raw = h.strip()
+        if not raw:
+            return ""
+        # Drop known placeholder payloads emitted by fallback tuples.
+        if raw in {"(None, None)", "({}, False)", "({}, True)", "({}, None)"}:
+            return ""
+        soup = BeautifulSoup(raw, "html.parser")
         for sec_tag in soup.find_all("section"):
             if not sec_tag.get("class"):
                 sec_tag["class"] = ["pdf-section"]
@@ -1368,14 +1378,27 @@ def export_pyr_all_artifacts(
                         }
         return out
 
-    def _normalize_direct_quote_lookup(dq: Optional[Dict[str, Any]]) -> Dict[str, str]:
-        out: Dict[str, str] = {}
-        if isinstance(dq, dict):
-            for k, v in dq.items():
+    def _normalize_direct_quote_lookup(dq: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        Preserve rich direct-quote metadata when available.
+        Accepts keys as dqid strings or tuples; emits dqid -> (dict|str).
+        """
+        out: Dict[str, Any] = {}
+        if not isinstance(dq, dict):
+            return out
+        for k, v in dq.items():
+            if isinstance(k, tuple):
+                ks = str(k[1] if len(k) >= 2 else k[0]).strip()
+            else:
                 ks = _norm_str(k).strip()
-                vs = _norm_str(v).strip()
-                if ks and vs:
-                    out[ks] = vs
+            if not ks:
+                continue
+            if isinstance(v, dict):
+                out[ks] = dict(v)
+                continue
+            vs = _norm_str(v).strip()
+            if vs:
+                out[ks] = vs
         return out
 
     def _build_dq_lookup_from_jobs(pairs: List[Tuple[Dict[str, Any], str]]) -> Dict[str, str]:
@@ -1430,6 +1453,44 @@ def export_pyr_all_artifacts(
             if isinstance(ev, dict):
                 enriched_records.append(ev)
 
+    # Ensure payload_json is always present for downstream consumers.
+    for rec in enriched_records:
+        if not isinstance(rec, dict):
+            continue
+        payload_json_val = rec.get("payload_json")
+        if isinstance(payload_json_val, str) and payload_json_val.strip():
+            continue
+        rec["payload_json"] = json.dumps(
+            {
+                "direct_quote_id": rec.get("direct_quote_id"),
+                "direct_quote": rec.get("direct_quote"),
+                "paraphrase": rec.get("paraphrase"),
+                "researcher_comment": rec.get("researcher_comment"),
+                "evidence_type": rec.get("evidence_type") or rec.get("evidence_type_norm") or "mixed",
+                "theme": rec.get("payload_theme") or rec.get("theme") or rec.get("potential_theme"),
+                "potential_theme": rec.get("potential_theme"),
+                "item_key": rec.get("item_key"),
+                "author_summary": rec.get("author_summary"),
+                "first_author_last": rec.get("first_author_last"),
+                "year": rec.get("year"),
+                "title": rec.get("title"),
+                "source": rec.get("source"),
+                "url": rec.get("url"),
+                "pdf_path": rec.get("pdf_path"),
+                "page": rec.get("page"),
+                "section_title": rec.get("section_title"),
+                "section_text": rec.get("section_text"),
+                "score_bucket": rec.get("score_bucket"),
+                "relevance_score": rec.get("relevance_score"),
+                "route": rec.get("route"),
+                "route_value": rec.get("route_value"),
+                "gold_theme": rec.get("gold_theme"),
+                "rq_question": rec.get("rq_question") or rec.get("rq"),
+                "overarching_theme": rec.get("overarching_theme") or rec.get("gold_theme"),
+            },
+            ensure_ascii=False,
+        )
+
     ordered_cols = [
         "rq",
         "rq_question",
@@ -1457,6 +1518,7 @@ def export_pyr_all_artifacts(
         "title",
         "source",
         "url",
+        "pdf_path",
     ]
 
     if enriched_records:
@@ -1508,6 +1570,7 @@ def export_pyr_all_artifacts(
             "title": _s(rec.get("title")),
             "source": _s(rec.get("source")),
             "url": _s(rec.get("url")),
+            "pdf_path": _s(rec.get("pdf_path")),
             "page": _s(rec.get("page")),
             "section_title": _s(rec.get("section_title")),
             "section_text": _s(rec.get("section_text")),
@@ -1881,6 +1944,8 @@ def export_pyr_all_artifacts(
     for sec in (r2_sections or []):
         meta2 = sec.get("meta") or {}
         sec_html_norm = _normalize_section_html(sec.get("section_html"))
+        if not sec_html_norm:
+            continue
         norm_r2_sections.append({
             "meta": meta2,
             "section_html": sec_html_norm,
@@ -1990,6 +2055,8 @@ def export_pyr_all_artifacts(
     for sec in (r3_sections or []):
         meta3 = sec.get("meta") or {}
         sec_html_norm3 = _normalize_section_html(sec.get("section_html"))
+        if not sec_html_norm3:
+            continue
         norm_r3_sections.append({
             "meta": meta3,
             "section_html": sec_html_norm3,
@@ -3154,7 +3221,13 @@ def extract_themes_and_hierarchy_by_rq(
     # Build per-RQ slices (by index) + labels
     per_idx, idx_to_label = partition_results_by_rq_index(results_by_item)
 
-    base_coll_dir = os.path.join(dir_path, _slug_name(collection_name))
+    coll_slug = _slug_name(collection_name)
+    norm_dir = os.path.normpath(dir_path)
+    # Avoid duplicated collection segment when caller already passes .../<collection_slug>.
+    if os.path.basename(norm_dir).lower() == coll_slug.lower():
+        base_coll_dir = norm_dir
+    else:
+        base_coll_dir = os.path.join(norm_dir, coll_slug)
     os.makedirs(base_coll_dir, exist_ok=True)
 
     # -------------------- CACHE SHORT-CIRCUIT --------------------
@@ -3846,6 +3919,7 @@ def regroup_evidence_by_rq_theme_type_score(
               .append(record)
 
     for item_key, blob in (results_by_item or {}).items():
+        item_meta = (blob or {}).get("metadata") or {}
         evs = (blob or {}).get("evidence_list") or []
         for ev in evs:
             etype = (ev.get("evidence_type") or "unspecified").strip()
@@ -3908,6 +3982,7 @@ def regroup_evidence_by_rq_theme_type_score(
             # Build record and PROPAGATE gold theme if present on evidence
             rec_base = {
                 "item_key": item_key,
+                "pdf_path": ev.get("pdf_path") or item_meta.get("pdf_path"),
                 "direct_quote": ev.get("direct_quote"),
                 "paraphrase": ev.get("paraphrase"),
                 "researcher_comment": ev.get("researcher_comment"),
@@ -4242,6 +4317,7 @@ def process_themes_batches(
 
 
         import hashlib as _hash
+        hashlib = _hash
         def _safe_seg(s: str, limit: int = 64) -> str:
             """Windows-safe path segment: A-Z a-z 0-9 . _ -, truncated with 8-char hash suffix."""
             s = (s or "x").strip()
@@ -6000,6 +6076,7 @@ def regroup_evidence_by_rq_theme_type_score_from_hydrated(
                     # Build base record once
                     rec_base = {
                         "item_key": item_key,
+                        "pdf_path": ev.get("pdf_path") or meta.get("pdf_path"),
                         "metadata": meta,
                         "gold_theme": ev.get("gold_theme") or gold_title,  # prefer explicit per-evidence override
                         "evidence_type": etype,
@@ -6069,6 +6146,7 @@ class _BatchRow(BaseModel):
     title: Optional[str] = Field(default=None)
     source: Optional[str] = Field(default=None)
     url: Optional[str] = Field(default=None)
+    pdf_path: Optional[str] = Field(default=None)
 
 def regroup_all_rqs_from_manifest(
     manifest_path: str,
@@ -6198,6 +6276,7 @@ def _flatten_regroup_to_batches_rows(merged: Dict[str, Any]) -> List[Dict[str, A
                                 title=_norm_str(rec.get("title")) or None,
                                 source=_norm_str(rec.get("source")) or None,
                                 url=_norm_str(rec.get("url")) or None,
+                                pdf_path=_norm_str(rec.get("pdf_path")) or None,
                             ).model_dump()
                             rows.append(row)
     return rows
@@ -8041,6 +8120,7 @@ class BatchingArtifacts(BaseModel):
     all_jobs_flat: List[Tuple[Dict[str, Any], str]]
     direct_quote_lookup: Dict[str, str]
     quote_hits: Dict[str, Any]
+    pyr_global_index_counter: Optional[int] = None
 
 
 class RoundResults(BaseModel):
@@ -8051,11 +8131,10 @@ class RoundResults(BaseModel):
     final_merged_html: str
     export_paths: Dict[str, Any]
     num_batches_round2: int
-    outputs_round3 : List[Dict[str, Any]]
-    custom_ids_round3 :  List[str]
-    round3_sections_merged :str
-    num_batches_round3 : int
-    round3_sections_merged : str
+    outputs_round3: List[Dict[str, Any]]
+    custom_ids_round3: List[str]
+    round3_sections_merged: List[Dict[str, Any]]
+    num_batches_round3: int
 
 
 
@@ -9107,6 +9186,9 @@ def grouping_widget_data_round3(
     gold_placeholder: str = "NA",
     split_by_date: bool = False,
     dates: str = "",
+    route_min_items: int = 1,
+    rq_min_items: int = 1,
+    tiny_bucket_threshold: int = 10,
     overview_cb: Callable[[str], None] | None = None,
     selection_cb: Callable[[str, List[Tuple[int, str]]], List[int]] | None = None,
 ) -> Dict[str, Any]:
@@ -9198,7 +9280,18 @@ def grouping_widget_data_round3(
                 total += len(rec_list or [])
         return total
 
-    _out("\n[R3 grouping] applying route_value and rq filters (threshold=15 items)")
+    route_min_items = max(1, int(route_min_items))
+    rq_min_items = max(1, int(rq_min_items))
+    tiny_bucket_threshold = max(1, int(tiny_bucket_threshold))
+
+    _out(
+        "\n[R3 grouping] applying route_value/rq filters "
+        + "(rv>="
+        + str(route_min_items)
+        + ", rq>="
+        + str(rq_min_items)
+        + ")"
+    )
     _out("[R3 grouping] incoming route_value buckets: " + str(len(groups)))
 
     for rv_key, rq_map in groups.items():
@@ -9207,12 +9300,12 @@ def grouping_widget_data_round3(
 
         total_items_rv = _count_items_rv(rq_map)
 
-        if total_items_rv <= 10:
+        if total_items_rv < route_min_items:
             skipped_route_values[rv_key] = {
                 "total_items": int(total_items_rv),
                 "groups": rq_map,
             }
-            if total_items_rv < 10:
+            if total_items_rv < tiny_bucket_threshold:
                 skipped_route_values_lt10[rv_key] = {
                     "total_items": int(total_items_rv),
                     "groups": rq_map,
@@ -9232,7 +9325,7 @@ def grouping_widget_data_round3(
 
             total_items_rq = _count_items_rq(gold_map)
 
-            if total_items_rq < 10:
+            if total_items_rq < rq_min_items:
                 if rv_key not in skipped_rqs:
                     skipped_rqs[rv_key] = {}
                 skipped_rqs[rv_key][rq_key] = {
@@ -9487,10 +9580,19 @@ def running_round3(
         txt = val.strip()
         if not txt:
             return ""
-        if txt == "(None, None)":
-            print("[WARN] dropping placeholder HTML '(None, None)' in section_html (R3)")
+        if txt in {"(None, None)", "({}, False)", "({}, True)", "({}, None)"}:
+            print("[WARN] dropping placeholder HTML in section_html (R3):", repr(txt))
             return ""
         return txt
+
+    def _payload_has_substantive_html(payload_list: List[Dict[str, Any]]) -> bool:
+        for rec in payload_list or []:
+            if not isinstance(rec, dict):
+                continue
+            html_val = rec.get("section_html") or rec.get("paragraph_html") or rec.get("html") or ""
+            if _clean_section_html(html_val):
+                return True
+        return False
 
     def _section_char_len_r3(rec: Dict[str, Any]) -> int:
         html_val = rec.get("section_html") or rec.get("paragraph_html") or rec.get("html") or ""
@@ -9579,8 +9681,15 @@ def running_round3(
 
     full_groups = grouped_base.get("groups") or {}
 
-    route_min_sections = 10
-    rq_min_sections = 10
+    quorum_min = max(1, int(os.getenv("ANALYSE_MIN_QUORUM", "15")))
+    route_min_sections = max(
+        quorum_min,
+        int(os.getenv("ANALYSE_R3_ROUTE_MIN_SECTIONS", str(quorum_min))),
+    )
+    rq_min_sections = max(
+        quorum_min,
+        int(os.getenv("ANALYSE_R3_RQ_MIN_SECTIONS", str(quorum_min))),
+    )
 
     def _sec_id(rec: Dict[str, Any]) -> str:
         sid = rec.get("section_custom_id") or rec.get("custom_id")
@@ -9713,17 +9822,27 @@ def running_round3(
     )
 
     logical_jobs3: List[Dict[str, Any]] = r3_plan.get("batches", []) or []
+    eligible_jobs3: List[Dict[str, Any]] = []
+    for job3 in logical_jobs3:
+        payloads3 = list(job3.get("payloads") or [])
+        if len(payloads3) >= quorum_min:
+            eligible_jobs3.append(job3)
     leftover_singletons3: List[Dict[str, Any]] = r3_plan.get("leftover_singletons") or []
 
     _r3_log(
         "[R3] logical_jobs3 initial="
         + str(len(logical_jobs3))
+        + " eligible_quorum="
+        + str(len(eligible_jobs3))
+        + " (min="
+        + str(quorum_min)
+        + ")"
         + " leftover_singletons3="
         + str(len(leftover_singletons3))
     )
 
     route_groups3: Dict[str, List[Dict[str, Any]]] = {}
-    for jb in logical_jobs3:
+    for jb in eligible_jobs3:
         if not isinstance(jb, dict):
             continue
         md_local = jb.get("metadata") or {}
@@ -9746,6 +9865,25 @@ def running_round3(
         + str(total_jobs3)
         + " job(s)"
     )
+
+    if total_jobs3 <= 0:
+        _r3_log(
+            "[R3 ABORT] no route_value groups meet quorum (min_payloads="
+            + str(quorum_min)
+            + ", min_route_sections="
+            + str(route_min_sections)
+            + ", min_rq_sections="
+            + str(rq_min_sections)
+            + ")."
+        )
+        setattr(batch, "pyr_global_index_counter", index_counter)
+        return (
+            [],
+            [],
+            "",
+            0,
+            [],
+        )
 
     def _stable_base_sans_time_r3(s: str) -> str:
         v = (s or "").strip()
@@ -9865,6 +10003,14 @@ def running_round3(
             last_send_ts3 = time.time()
 
             payload_list = list(job.get("payloads") or [])
+            if not _payload_has_substantive_html(payload_list):
+                _r3_log(
+                    "[SKIP R3] non-substantive payload; route_value="
+                    + str(route_raw)
+                    + " job_index="
+                    + str(j_index)
+                )
+                continue
             full_prompt_for_model = str(job.get("prompt") or "")
 
             req_input = _make_req_input_r3(
@@ -9914,6 +10060,14 @@ def running_round3(
                 store_only=True,
                 ai=os.getenv("OPENAI_AI_PROVIDER", "openai"),
             )
+
+        if not queued_jobs:
+            _r3_log(
+                "[R3] route_value="
+                + str(route_raw)
+                + " has 0 substantive jobs; skipping batch submit/read."
+            )
+            return outputs_local, all_cids_local, final_html_local
 
         _process_batch_for(
             function=prompt_key_pyr_l3,
@@ -10158,7 +10312,7 @@ def running_round3(
                             if isinstance(rec, dict):
                                 _append_passthrough_from_section(rec)
 
-    num_batches3 = len(logical_jobs3)
+    num_batches3 = len(all_cids_round3)
 
     _r3_log(
         "[R3] passthrough sections appended from skipped buckets and leftovers: "
@@ -10801,6 +10955,21 @@ def running_round2(
     logical_jobs2 = r2_plan.get("batches", []) or []
     leftover_singletons = r2_plan.get("leftover_singletons") or []
 
+    def _build_jobs_for_export() -> List[Tuple[dict, str]]:
+        out_jobs: List[Tuple[dict, str]] = []
+        if batch.planned_files:
+            for (_suffix, jobs_for_file) in batch.planned_files:
+                for tup in jobs_for_file:
+                    if (
+                            isinstance(tup, (list, tuple))
+                            and len(tup) == 2
+                            and isinstance(tup[0], dict)
+                    ):
+                        out_jobs.append((tup[0], str(tup[1])))
+                    elif isinstance(tup, dict):
+                        out_jobs.append((tup, ""))
+        return out_jobs
+
     _r2_log(
         f"[R2] leftover_singletons={len(leftover_singletons)} "
         f"from_round1_sections={len(round1_sections_merged)}"
@@ -10844,6 +11013,28 @@ def running_round2(
             )
         _r2_log(
             f"[R2 {kind.upper()}] {len(capped_jobs2)} job(s) after character/byte caps"
+        )
+
+    quorum_min = max(1, int(os.getenv("ANALYSE_MIN_QUORUM", "15")))
+    max_payload_size = 0
+    for jb in capped_jobs2:
+        payload_len = len(list(jb.get("payloads") or []))
+        if payload_len > max_payload_size:
+            max_payload_size = payload_len
+    if max_payload_size < quorum_min:
+        _r2_log(
+            "[R2 ABORT] no jobs meet quorum: max_payloads="
+            + str(max_payload_size)
+            + " < min_payloads="
+            + str(quorum_min)
+        )
+        return (
+            [],
+            [],
+            "",
+            0,
+            [],
+            _build_jobs_for_export(),
         )
 
     route_groups: Dict[str, List[Dict[str, Any]]] = {}
@@ -10918,6 +11109,25 @@ def running_round2(
         if raw is not None:
             return str(raw)
         return ""
+
+    def _clean_payload_html_for_enqueue(val: Any) -> str:
+        if not isinstance(val, str):
+            return ""
+        txt = val.strip()
+        if not txt:
+            return ""
+        if txt in {"(None, None)", "({}, False)", "({}, True)", "({}, None)"}:
+            return ""
+        return txt
+
+    def _payload_has_substantive_html(payload_list: List[Dict[str, Any]]) -> bool:
+        for rec in payload_list or []:
+            if not isinstance(rec, dict):
+                continue
+            html_val = rec.get("section_html") or rec.get("paragraph_html") or rec.get("html") or ""
+            if _clean_payload_html_for_enqueue(html_val):
+                return True
+        return False
 
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -11000,12 +11210,19 @@ def running_round2(
 
         pause_value = _r2_pause()
         cids_this_collection: List[str] = []
+        queued_jobs: List[Tuple[str, Dict[str, Any]]] = []
 
         for job in job_list:
             if pause_value > 0.0:
                 time.sleep(pause_value)
 
             payload_list = list(job.get("payloads") or [])
+            if not _payload_has_substantive_html(payload_list):
+                _r2_log(
+                    "[SKIP R2] non-substantive payload; route_value="
+                    + str(route_raw)
+                )
+                continue
             full_prompt_for_model = str(job.get("prompt") or "")
 
             req_input = _make_req_input(
@@ -11058,6 +11275,15 @@ def running_round2(
 
             cids_this_collection.append(cid)
             local_cids.append(cid)
+            queued_jobs.append((cid, job))
+
+        if not queued_jobs:
+            _r2_log(
+                "[R2] route_value="
+                + str(route_raw)
+                + " has 0 substantive jobs; skipping batch submit/read."
+            )
+            return local_outputs, local_cids, local_html, local_done
 
         _process_batch_for(
             function="pyr_l2_html",
@@ -11071,7 +11297,7 @@ def running_round2(
             + "; reading results…"
         )
 
-        for cid, job in zip(cids_this_collection, job_list):
+        for cid, job in queued_jobs:
             _r2_log(
                 "[READ R2] "
                 + cid
@@ -11306,8 +11532,8 @@ def running_round2(
         txt = val.strip()
         if not txt:
             return ""
-        if txt == "(None, None)":
-            print("[WARN] dropping placeholder HTML '(None, None)' in section_html")
+        if txt in {"(None, None)", "({}, False)", "({}, True)", "({}, None)"}:
+            print("[WARN] dropping placeholder HTML in section_html:", repr(txt))
             return ""
         return txt
     cid_to_processed: Dict[Tuple[str, str], Tuple[str, Dict[str, Any]]] = {}
@@ -11435,20 +11661,11 @@ def running_round2(
 
         final_merged_html += html_block
 
-    jobs_for_export: List[Tuple[dict, str]] = []
-    if batch.planned_files:
-        for (_suffix, jobs_for_file) in batch.planned_files:
-            for tup in jobs_for_file:
-                if (
-                        isinstance(tup, (list, tuple))
-                        and len(tup) == 2
-                        and isinstance(tup[0], dict)
-                ):
-                    jobs_for_export.append((tup[0], str(tup[1])))
-                elif isinstance(tup, dict):
-                    jobs_for_export.append((tup, ""))
+    jobs_for_export = _build_jobs_for_export()
 
     setattr(batch, "pyr_global_index_counter", index_counter)
+
+    num_batches2 = len(all_cids_round2)
 
     return (
         outputs2,
@@ -11470,7 +11687,7 @@ def running_rounds(
     user_prompt: str,
     progress_cb: Callable[[str], None] | None = None,
     percent_cb: Callable[[int], None] | None = None,
-    round2: str = "paragraphs",
+    round2: str = "sections",
     framework_analysis: bool = True,
 ) -> "RoundResults":
     if callable(progress_cb):
@@ -11666,6 +11883,7 @@ def running_round1(
             "evidence_type": (row.get("evidence_type") or evidence_type or "mixed"),
             "direct_quote_id": dqid,
             "theme": pt,
+            "pdf_path": row.get("pdf_path"),
         }
 
     def _prepare_job_fields(job):
@@ -12232,7 +12450,10 @@ def process_rq_theme_claims(
         rounds = running_rounds(
             collection_name=collection_name,
             df=df,
+            quote_hits=getattr(batch, "quote_hits", {}) or {},
+            direct_quote_lookup=getattr(batch, "direct_quote_lookup", {}) or {},
             batch=batch,
+            user_prompt="",
         )
         payload: Dict[str, Any] = {
             "collection_name": collection_name,
@@ -12360,7 +12581,10 @@ def process_rq_theme_claims(
     rounds = running_rounds(
         collection_name=collection_name,
         df=df,
+        quote_hits=quote_hits,
+        direct_quote_lookup=direct_quote_lookup,
         batch=batch_ns,
+        user_prompt=next((ps for _s, lst in planned_files for (_j, ps) in lst if isinstance(ps, str) and ps.strip()), ""),
     )
 
     payload: Dict[str, Any] = {
@@ -12491,6 +12715,7 @@ def regroup_evidence_by_rq_theme_type_score(
               .append(record)
 
     for item_key, blob in (results_by_item or {}).items():
+        item_meta = (blob or {}).get("metadata") or {}
         evs = (blob or {}).get("evidence_list") or []
         for ev in evs:
             etype = (ev.get("evidence_type") or "unspecified").strip()
@@ -12553,6 +12778,7 @@ def regroup_evidence_by_rq_theme_type_score(
             # Build record and PROPAGATE gold theme if present on evidence
             rec_base = {
                 "item_key": item_key,
+                "pdf_path": ev.get("pdf_path") or item_meta.get("pdf_path"),
                 "direct_quote": ev.get("direct_quote"),
                 "paraphrase": ev.get("paraphrase"),
                 "researcher_comment": ev.get("researcher_comment"),
@@ -12775,6 +13001,7 @@ def regroup_evidence_by_rq_theme_type_score_from_rbi(
 
             base = {
                 "item_key": item_key,
+                "pdf_path": ev.get("pdf_path"),
                 "direct_quote": ev.get("direct_quote"),
                 "paraphrase": ev.get("paraphrase"),
                 "researcher_comment": ev.get("researcher_comment"),
@@ -13452,7 +13679,7 @@ round1_direct_quote_cache =True
     batch_size_val = int(ai_modal_result.get("batch_size", 50))
     user_prompt_core = str(ai_modal_result.get("prompt") or "").strip()
     cards_list = list(ai_modal_result.get("data", []) or [])
-    round2_mode = str(ai_modal_result.get("round2", "paragraphs")).strip().lower() or "paragraphs"
+    round2_mode = str(ai_modal_result.get("round2", "sections")).strip().lower() or "sections"
     framework_effective = bool(ai_modal_result.get("framework_analysis", framework_analysis))
 
     # ── process_widget_data: compose R1 prompts; include USER NOTE only when non-empty ──
@@ -13991,6 +14218,7 @@ round1_direct_quote_cache =True
 
                 pdf_path_for_pj = _norm_str(rec_h.get("pdf_path")) or _norm_str(
                     pdf_lookup_map.get(_norm_str(rec_h.get("item_key")) or ""))
+                rec_h["pdf_path"] = pdf_path_for_pj
 
                 pj = {
                     "rq_question": rec_h.get("rq_question"),
@@ -14162,7 +14390,6 @@ round1_direct_quote_cache =True
 
         print("[CHECK] direct_quote_lookup entries with page > 1:", count_pages_gt1)
 
-        input("stop")
     all_jobs_flat = [job for _, jl in planned_files for (job, _p) in jl]
 
     batch_ns = SimpleNamespace(
@@ -14547,6 +14774,7 @@ def grouping_widget_data(
             "title": payload.get("title") or meta.get("title"),
             "source": payload.get("source") or meta.get("source"),
             "url": payload.get("url") or meta.get("url"),
+            "pdf_path": payload.get("pdf_path") or meta.get("pdf_path"),
             "page": payload.get("page") if payload.get("page") not in (None, "") else meta.get("page"),
             "section_title": payload.get("section_title") or meta.get("section_title"),
             "section_text": payload.get("section_text") or meta.get("section_text"),
@@ -14557,6 +14785,35 @@ def grouping_widget_data(
             "all_potential_themes": payload.get("all_potential_themes") or meta.get("all_potential_themes") or [],
             "payload_json": payload.get("payload_json") or "",
         }
+        if not rec["payload_json"]:
+            rec["payload_json"] = json.dumps(
+                {
+                    "item_key": rec.get("item_key"),
+                    "pdf_path": rec.get("pdf_path"),
+                    "rq_question": rec.get("rq_question"),
+                    "overarching_theme": rec.get("overarching_theme"),
+                    "theme": rec.get("theme"),
+                    "potential_theme": rec.get("potential_theme"),
+                    "evidence_type": rec.get("evidence_type"),
+                    "direct_quote_id": rec.get("direct_quote_id"),
+                    "direct_quote": rec.get("direct_quote"),
+                    "paraphrase": rec.get("paraphrase"),
+                    "researcher_comment": rec.get("researcher_comment"),
+                    "relevance_score": rec.get("relevance_score"),
+                    "score_bucket": rec.get("score_bucket"),
+                    "first_author_last": rec.get("first_author_last"),
+                    "author_summary": rec.get("author_summary"),
+                    "title": rec.get("title"),
+                    "source": rec.get("source"),
+                    "url": rec.get("url"),
+                    "page": rec.get("page"),
+                    "section_title": rec.get("section_title"),
+                    "section_text": rec.get("section_text"),
+                    "year": rec.get("year"),
+                    "route": rec.get("route"),
+                },
+                ensure_ascii=False,
+            )
 
         # Decide nesting keys ("trail") based on mode (unchanged logic below)
         if mode == "year":
@@ -14904,6 +15161,7 @@ def batching_widget_data(
                             "title": (r.get("title") or ""),
                             "source": (r.get("source") or r.get("publicationTitle") or ""),
                             "url": (r.get("url") or ""),
+                            "pdf_path": (r.get("pdf_path") or ""),
                             "page": (r.get("page") or ""),
                             "section_title": (r.get("section_title") or ""),
                             "section_text": (r.get("section_text") or ""),
@@ -15032,6 +15290,7 @@ def batching_widget_data(
                         "title": (r.get("title") or ""),
                         "source": (r.get("source") or r.get("publicationTitle") or ""),
                         "url": (r.get("url") or ""),
+                        "pdf_path": (r.get("pdf_path") or ""),
                         "page": (r.get("page") or ""),
                         "section_title": (r.get("section_title") or ""),
                         "section_text": (r.get("section_text") or ""),
@@ -15528,9 +15787,12 @@ def batching_widget_data_round2(
             "href, data-key, and title attributes unchanged."
         )
 
-        analysis_prompts_local: Dict[Any, str] = analysis_prompts
+        analysis_prompts_local = analysis_prompts
         if framework_analysis:
-            base_text = analysis_prompts_local.get(inp, base_default)
+            try:
+                base_text = analysis_prompts_local[inp]
+            except Exception:
+                base_text = base_default
         else:
             base_text = base_default
 

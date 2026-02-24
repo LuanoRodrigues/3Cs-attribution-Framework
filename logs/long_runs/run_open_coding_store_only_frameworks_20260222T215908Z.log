@@ -1,0 +1,220 @@
+[DEBUG] 2026-02-22 21:59:17,261 / httpcore.connection:trace|157315 - connect_tcp.started host='api.zotero.org' port=443 local_address=None timeout=30 socket_options=None
+[DEBUG] 2026-02-22 21:59:17,367 / httpcore.connection:trace|157315 - connect_tcp.complete return_value=<httpcore._backends.sync.SyncStream object at 0x76924f76b100>
+[DEBUG] 2026-02-22 21:59:17,367 / httpcore.connection:trace|157315 - start_tls.started ssl_context=<ssl.SSLContext object at 0x7692544a8240> server_hostname='api.zotero.org' timeout=30
+[DEBUG] 2026-02-22 21:59:17,463 / httpcore.connection:trace|157315 - start_tls.complete return_value=<httpcore._backends.sync.SyncStream object at 0x76924f76b0d0>
+[DEBUG] 2026-02-22 21:59:17,464 / httpcore.http11:trace|157315 - send_request_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:17,464 / httpcore.http11:trace|157315 - send_request_headers.complete
+[DEBUG] 2026-02-22 21:59:17,464 / httpcore.http11:trace|157315 - send_request_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:17,464 / httpcore.http11:trace|157315 - send_request_body.complete
+[DEBUG] 2026-02-22 21:59:17,464 / httpcore.http11:trace|157315 - receive_response_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:17,989 / httpcore.http11:trace|157315 - receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'Date', b'Sun, 22 Feb 2026 21:59:17 GMT'), (b'Content-Type', b'application/json'), (b'Content-Length', b'7928'), (b'Connection', b'keep-alive'), (b'Server', b'Apache/2.4.66 ()'), (b'Strict-Transport-Security', b'max-age=31536000; includeSubDomains; preload'), (b'Zotero-API-Version', b'3'), (b'Zotero-Schema-Version', b'40'), (b'Total-Results', b'1139'), (b'Link', b'<https://api.zotero.org/users/9047943/collections?limit=100&start=100>; rel="next", <https://api.zotero.org/users/9047943/collections?limit=100&start=1100>; rel="last", <https://www.zotero.org/users/9047943/collections>; rel="alternate"'), (b'Last-Modified-Version', b'344925'), (b'Vary', b'Accept-Encoding'), (b'Content-Encoding', b'gzip')])
+[INFO] 2026-02-22 21:59:17,990 / httpx:_send_single_request|157315 - HTTP Request: GET https://api.zotero.org/users/9047943/collections?format=json&limit=100&locale=en-US "HTTP/1.1 200 OK"
+[DEBUG] 2026-02-22 21:59:17,990 / httpcore.http11:trace|157315 - receive_response_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:17,991 / httpcore.http11:trace|157315 - receive_response_body.complete
+[DEBUG] 2026-02-22 21:59:17,991 / httpcore.http11:trace|157315 - response_closed.started
+[DEBUG] 2026-02-22 21:59:17,991 / httpcore.http11:trace|157315 - response_closed.complete
+[DEBUG] 2026-02-22 21:59:17,993 / httpcore.http11:trace|157315 - send_request_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:17,994 / httpcore.http11:trace|157315 - send_request_headers.complete
+[DEBUG] 2026-02-22 21:59:17,994 / httpcore.http11:trace|157315 - send_request_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:17,994 / httpcore.http11:trace|157315 - send_request_body.complete
+[DEBUG] 2026-02-22 21:59:17,994 / httpcore.http11:trace|157315 - receive_response_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:18,430 / httpcore.http11:trace|157315 - receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'Date', b'Sun, 22 Feb 2026 21:59:18 GMT'), (b'Content-Type', b'application/json'), (b'Content-Length', b'8857'), (b'Connection', b'keep-alive'), (b'Server', b'Apache/2.4.66 ()'), (b'Strict-Transport-Security', b'max-age=31536000; includeSubDomains; preload'), (b'Zotero-API-Version', b'3'), (b'Zotero-Schema-Version', b'40'), (b'Total-Results', b'1139'), (b'Link', b'<https://api.zotero.org/users/9047943/collections?limit=100>; rel="first", <https://api.zotero.org/users/9047943/collections?limit=100>; rel="prev", <https://api.zotero.org/users/9047943/collections?limit=100&start=200>; rel="next", <https://api.zotero.org/users/9047943/collections?limit=100&start=1100>; rel="last", <https://www.zotero.org/users/9047943/collections>; rel="alternate"'), (b'Last-Modified-Version', b'344925'), (b'Vary', b'Accept-Encoding'), (b'Content-Encoding', b'gzip')])
+[INFO] 2026-02-22 21:59:18,431 / httpx:_send_single_request|157315 - HTTP Request: GET https://api.zotero.org/users/9047943/collections?limit=100&start=100&locale=en-US "HTTP/1.1 200 OK"
+[DEBUG] 2026-02-22 21:59:18,431 / httpcore.http11:trace|157315 - receive_response_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:18,431 / httpcore.http11:trace|157315 - receive_response_body.complete
+[DEBUG] 2026-02-22 21:59:18,431 / httpcore.http11:trace|157315 - response_closed.started
+[DEBUG] 2026-02-22 21:59:18,431 / httpcore.http11:trace|157315 - response_closed.complete
+[DEBUG] 2026-02-22 21:59:18,433 / httpcore.http11:trace|157315 - send_request_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:18,433 / httpcore.http11:trace|157315 - send_request_headers.complete
+[DEBUG] 2026-02-22 21:59:18,433 / httpcore.http11:trace|157315 - send_request_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:18,433 / httpcore.http11:trace|157315 - send_request_body.complete
+[DEBUG] 2026-02-22 21:59:18,433 / httpcore.http11:trace|157315 - receive_response_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:19,157 / httpcore.http11:trace|157315 - receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'Date', b'Sun, 22 Feb 2026 21:59:19 GMT'), (b'Content-Type', b'application/json'), (b'Content-Length', b'5294'), (b'Connection', b'keep-alive'), (b'Server', b'Apache/2.4.66 ()'), (b'Strict-Transport-Security', b'max-age=31536000; includeSubDomains; preload'), (b'Zotero-API-Version', b'3'), (b'Zotero-Schema-Version', b'40'), (b'Total-Results', b'1139'), (b'Link', b'<https://api.zotero.org/users/9047943/collections?limit=100>; rel="first", <https://api.zotero.org/users/9047943/collections?limit=100&start=100>; rel="prev", <https://api.zotero.org/users/9047943/collections?limit=100&start=300>; rel="next", <https://api.zotero.org/users/9047943/collections?limit=100&start=1100>; rel="last", <https://www.zotero.org/users/9047943/collections>; rel="alternate"'), (b'Last-Modified-Version', b'344925'), (b'Vary', b'Accept-Encoding'), (b'Content-Encoding', b'gzip')])
+[INFO] 2026-02-22 21:59:19,158 / httpx:_send_single_request|157315 - HTTP Request: GET https://api.zotero.org/users/9047943/collections?limit=100&start=200&locale=en-US "HTTP/1.1 200 OK"
+[DEBUG] 2026-02-22 21:59:19,158 / httpcore.http11:trace|157315 - receive_response_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:19,159 / httpcore.http11:trace|157315 - receive_response_body.complete
+[DEBUG] 2026-02-22 21:59:19,159 / httpcore.http11:trace|157315 - response_closed.started
+[DEBUG] 2026-02-22 21:59:19,159 / httpcore.http11:trace|157315 - response_closed.complete
+[DEBUG] 2026-02-22 21:59:19,161 / httpcore.http11:trace|157315 - send_request_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:19,161 / httpcore.http11:trace|157315 - send_request_headers.complete
+[DEBUG] 2026-02-22 21:59:19,161 / httpcore.http11:trace|157315 - send_request_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:19,161 / httpcore.http11:trace|157315 - send_request_body.complete
+[DEBUG] 2026-02-22 21:59:19,161 / httpcore.http11:trace|157315 - receive_response_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:19,682 / httpcore.http11:trace|157315 - receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'Date', b'Sun, 22 Feb 2026 21:59:19 GMT'), (b'Content-Type', b'application/json'), (b'Content-Length', b'5339'), (b'Connection', b'keep-alive'), (b'Server', b'Apache/2.4.66 ()'), (b'Strict-Transport-Security', b'max-age=31536000; includeSubDomains; preload'), (b'Zotero-API-Version', b'3'), (b'Zotero-Schema-Version', b'40'), (b'Total-Results', b'1139'), (b'Link', b'<https://api.zotero.org/users/9047943/collections?limit=100>; rel="first", <https://api.zotero.org/users/9047943/collections?limit=100&start=200>; rel="prev", <https://api.zotero.org/users/9047943/collections?limit=100&start=400>; rel="next", <https://api.zotero.org/users/9047943/collections?limit=100&start=1100>; rel="last", <https://www.zotero.org/users/9047943/collections>; rel="alternate"'), (b'Last-Modified-Version', b'344925'), (b'Vary', b'Accept-Encoding'), (b'Content-Encoding', b'gzip')])
+[INFO] 2026-02-22 21:59:19,683 / httpx:_send_single_request|157315 - HTTP Request: GET https://api.zotero.org/users/9047943/collections?limit=100&start=300&locale=en-US "HTTP/1.1 200 OK"
+[DEBUG] 2026-02-22 21:59:19,683 / httpcore.http11:trace|157315 - receive_response_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:19,683 / httpcore.http11:trace|157315 - receive_response_body.complete
+[DEBUG] 2026-02-22 21:59:19,683 / httpcore.http11:trace|157315 - response_closed.started
+[DEBUG] 2026-02-22 21:59:19,683 / httpcore.http11:trace|157315 - response_closed.complete
+[DEBUG] 2026-02-22 21:59:19,684 / httpcore.http11:trace|157315 - send_request_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:19,684 / httpcore.http11:trace|157315 - send_request_headers.complete
+[DEBUG] 2026-02-22 21:59:19,685 / httpcore.http11:trace|157315 - send_request_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:19,685 / httpcore.http11:trace|157315 - send_request_body.complete
+[DEBUG] 2026-02-22 21:59:19,685 / httpcore.http11:trace|157315 - receive_response_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:20,484 / httpcore.http11:trace|157315 - receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'Date', b'Sun, 22 Feb 2026 21:59:20 GMT'), (b'Content-Type', b'application/json'), (b'Content-Length', b'5763'), (b'Connection', b'keep-alive'), (b'Server', b'Apache/2.4.66 ()'), (b'Strict-Transport-Security', b'max-age=31536000; includeSubDomains; preload'), (b'Zotero-API-Version', b'3'), (b'Zotero-Schema-Version', b'40'), (b'Total-Results', b'1139'), (b'Link', b'<https://api.zotero.org/users/9047943/collections?limit=100>; rel="first", <https://api.zotero.org/users/9047943/collections?limit=100&start=300>; rel="prev", <https://api.zotero.org/users/9047943/collections?limit=100&start=500>; rel="next", <https://api.zotero.org/users/9047943/collections?limit=100&start=1100>; rel="last", <https://www.zotero.org/users/9047943/collections>; rel="alternate"'), (b'Last-Modified-Version', b'344925'), (b'Vary', b'Accept-Encoding'), (b'Content-Encoding', b'gzip')])
+[INFO] 2026-02-22 21:59:20,484 / httpx:_send_single_request|157315 - HTTP Request: GET https://api.zotero.org/users/9047943/collections?limit=100&start=400&locale=en-US "HTTP/1.1 200 OK"
+[DEBUG] 2026-02-22 21:59:20,484 / httpcore.http11:trace|157315 - receive_response_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:20,485 / httpcore.http11:trace|157315 - receive_response_body.complete
+[DEBUG] 2026-02-22 21:59:20,485 / httpcore.http11:trace|157315 - response_closed.started
+[DEBUG] 2026-02-22 21:59:20,485 / httpcore.http11:trace|157315 - response_closed.complete
+[DEBUG] 2026-02-22 21:59:20,487 / httpcore.http11:trace|157315 - send_request_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:20,487 / httpcore.http11:trace|157315 - send_request_headers.complete
+[DEBUG] 2026-02-22 21:59:20,487 / httpcore.http11:trace|157315 - send_request_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:20,487 / httpcore.http11:trace|157315 - send_request_body.complete
+[DEBUG] 2026-02-22 21:59:20,487 / httpcore.http11:trace|157315 - receive_response_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:21,415 / httpcore.http11:trace|157315 - receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'Date', b'Sun, 22 Feb 2026 21:59:21 GMT'), (b'Content-Type', b'application/json'), (b'Content-Length', b'5487'), (b'Connection', b'keep-alive'), (b'Server', b'Apache/2.4.66 ()'), (b'Strict-Transport-Security', b'max-age=31536000; includeSubDomains; preload'), (b'Zotero-API-Version', b'3'), (b'Zotero-Schema-Version', b'40'), (b'Total-Results', b'1139'), (b'Link', b'<https://api.zotero.org/users/9047943/collections?limit=100>; rel="first", <https://api.zotero.org/users/9047943/collections?limit=100&start=400>; rel="prev", <https://api.zotero.org/users/9047943/collections?limit=100&start=600>; rel="next", <https://api.zotero.org/users/9047943/collections?limit=100&start=1100>; rel="last", <https://www.zotero.org/users/9047943/collections>; rel="alternate"'), (b'Last-Modified-Version', b'344925'), (b'Vary', b'Accept-Encoding'), (b'Content-Encoding', b'gzip')])
+[INFO] 2026-02-22 21:59:21,415 / httpx:_send_single_request|157315 - HTTP Request: GET https://api.zotero.org/users/9047943/collections?limit=100&start=500&locale=en-US "HTTP/1.1 200 OK"
+[DEBUG] 2026-02-22 21:59:21,415 / httpcore.http11:trace|157315 - receive_response_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:21,415 / httpcore.http11:trace|157315 - receive_response_body.complete
+[DEBUG] 2026-02-22 21:59:21,415 / httpcore.http11:trace|157315 - response_closed.started
+[DEBUG] 2026-02-22 21:59:21,415 / httpcore.http11:trace|157315 - response_closed.complete
+[DEBUG] 2026-02-22 21:59:21,417 / httpcore.http11:trace|157315 - send_request_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:21,417 / httpcore.http11:trace|157315 - send_request_headers.complete
+[DEBUG] 2026-02-22 21:59:21,417 / httpcore.http11:trace|157315 - send_request_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:21,417 / httpcore.http11:trace|157315 - send_request_body.complete
+[DEBUG] 2026-02-22 21:59:21,417 / httpcore.http11:trace|157315 - receive_response_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:22,224 / httpcore.http11:trace|157315 - receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'Date', b'Sun, 22 Feb 2026 21:59:22 GMT'), (b'Content-Type', b'application/json'), (b'Content-Length', b'5340'), (b'Connection', b'keep-alive'), (b'Server', b'Apache/2.4.66 ()'), (b'Strict-Transport-Security', b'max-age=31536000; includeSubDomains; preload'), (b'Zotero-API-Version', b'3'), (b'Zotero-Schema-Version', b'40'), (b'Total-Results', b'1139'), (b'Link', b'<https://api.zotero.org/users/9047943/collections?limit=100>; rel="first", <https://api.zotero.org/users/9047943/collections?limit=100&start=500>; rel="prev", <https://api.zotero.org/users/9047943/collections?limit=100&start=700>; rel="next", <https://api.zotero.org/users/9047943/collections?limit=100&start=1100>; rel="last", <https://www.zotero.org/users/9047943/collections>; rel="alternate"'), (b'Last-Modified-Version', b'344925'), (b'Vary', b'Accept-Encoding'), (b'Content-Encoding', b'gzip')])
+[INFO] 2026-02-22 21:59:22,225 / httpx:_send_single_request|157315 - HTTP Request: GET https://api.zotero.org/users/9047943/collections?limit=100&start=600&locale=en-US "HTTP/1.1 200 OK"
+[DEBUG] 2026-02-22 21:59:22,225 / httpcore.http11:trace|157315 - receive_response_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:22,225 / httpcore.http11:trace|157315 - receive_response_body.complete
+[DEBUG] 2026-02-22 21:59:22,225 / httpcore.http11:trace|157315 - response_closed.started
+[DEBUG] 2026-02-22 21:59:22,225 / httpcore.http11:trace|157315 - response_closed.complete
+[DEBUG] 2026-02-22 21:59:22,226 / httpcore.http11:trace|157315 - send_request_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:22,226 / httpcore.http11:trace|157315 - send_request_headers.complete
+[DEBUG] 2026-02-22 21:59:22,226 / httpcore.http11:trace|157315 - send_request_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:22,226 / httpcore.http11:trace|157315 - send_request_body.complete
+[DEBUG] 2026-02-22 21:59:22,227 / httpcore.http11:trace|157315 - receive_response_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:22,966 / httpcore.http11:trace|157315 - receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'Date', b'Sun, 22 Feb 2026 21:59:22 GMT'), (b'Content-Type', b'application/json'), (b'Content-Length', b'4990'), (b'Connection', b'keep-alive'), (b'Server', b'Apache/2.4.66 ()'), (b'Strict-Transport-Security', b'max-age=31536000; includeSubDomains; preload'), (b'Zotero-API-Version', b'3'), (b'Zotero-Schema-Version', b'40'), (b'Total-Results', b'1139'), (b'Link', b'<https://api.zotero.org/users/9047943/collections?limit=100>; rel="first", <https://api.zotero.org/users/9047943/collections?limit=100&start=600>; rel="prev", <https://api.zotero.org/users/9047943/collections?limit=100&start=800>; rel="next", <https://api.zotero.org/users/9047943/collections?limit=100&start=1100>; rel="last", <https://www.zotero.org/users/9047943/collections>; rel="alternate"'), (b'Last-Modified-Version', b'344925'), (b'Vary', b'Accept-Encoding'), (b'Content-Encoding', b'gzip')])
+[INFO] 2026-02-22 21:59:22,967 / httpx:_send_single_request|157315 - HTTP Request: GET https://api.zotero.org/users/9047943/collections?limit=100&start=700&locale=en-US "HTTP/1.1 200 OK"
+[DEBUG] 2026-02-22 21:59:22,967 / httpcore.http11:trace|157315 - receive_response_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:22,967 / httpcore.http11:trace|157315 - receive_response_body.complete
+[DEBUG] 2026-02-22 21:59:22,967 / httpcore.http11:trace|157315 - response_closed.started
+[DEBUG] 2026-02-22 21:59:22,967 / httpcore.http11:trace|157315 - response_closed.complete
+[DEBUG] 2026-02-22 21:59:22,968 / httpcore.http11:trace|157315 - send_request_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:22,968 / httpcore.http11:trace|157315 - send_request_headers.complete
+[DEBUG] 2026-02-22 21:59:22,968 / httpcore.http11:trace|157315 - send_request_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:22,968 / httpcore.http11:trace|157315 - send_request_body.complete
+[DEBUG] 2026-02-22 21:59:22,968 / httpcore.http11:trace|157315 - receive_response_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:23,381 / httpcore.http11:trace|157315 - receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'Date', b'Sun, 22 Feb 2026 21:59:23 GMT'), (b'Content-Type', b'application/json'), (b'Content-Length', b'5331'), (b'Connection', b'keep-alive'), (b'Server', b'Apache/2.4.66 ()'), (b'Strict-Transport-Security', b'max-age=31536000; includeSubDomains; preload'), (b'Zotero-API-Version', b'3'), (b'Zotero-Schema-Version', b'40'), (b'Total-Results', b'1139'), (b'Link', b'<https://api.zotero.org/users/9047943/collections?limit=100>; rel="first", <https://api.zotero.org/users/9047943/collections?limit=100&start=700>; rel="prev", <https://api.zotero.org/users/9047943/collections?limit=100&start=900>; rel="next", <https://api.zotero.org/users/9047943/collections?limit=100&start=1100>; rel="last", <https://www.zotero.org/users/9047943/collections>; rel="alternate"'), (b'Last-Modified-Version', b'344925'), (b'Vary', b'Accept-Encoding'), (b'Content-Encoding', b'gzip')])
+[INFO] 2026-02-22 21:59:23,381 / httpx:_send_single_request|157315 - HTTP Request: GET https://api.zotero.org/users/9047943/collections?limit=100&start=800&locale=en-US "HTTP/1.1 200 OK"
+[DEBUG] 2026-02-22 21:59:23,381 / httpcore.http11:trace|157315 - receive_response_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:23,382 / httpcore.http11:trace|157315 - receive_response_body.complete
+[DEBUG] 2026-02-22 21:59:23,382 / httpcore.http11:trace|157315 - response_closed.started
+[DEBUG] 2026-02-22 21:59:23,382 / httpcore.http11:trace|157315 - response_closed.complete
+[DEBUG] 2026-02-22 21:59:23,383 / httpcore.http11:trace|157315 - send_request_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:23,383 / httpcore.http11:trace|157315 - send_request_headers.complete
+[DEBUG] 2026-02-22 21:59:23,383 / httpcore.http11:trace|157315 - send_request_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:23,383 / httpcore.http11:trace|157315 - send_request_body.complete
+[DEBUG] 2026-02-22 21:59:23,383 / httpcore.http11:trace|157315 - receive_response_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:23,805 / httpcore.http11:trace|157315 - receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'Date', b'Sun, 22 Feb 2026 21:59:23 GMT'), (b'Content-Type', b'application/json'), (b'Content-Length', b'5711'), (b'Connection', b'keep-alive'), (b'Server', b'Apache/2.4.66 ()'), (b'Strict-Transport-Security', b'max-age=31536000; includeSubDomains; preload'), (b'Zotero-API-Version', b'3'), (b'Zotero-Schema-Version', b'40'), (b'Total-Results', b'1139'), (b'Link', b'<https://api.zotero.org/users/9047943/collections?limit=100>; rel="first", <https://api.zotero.org/users/9047943/collections?limit=100&start=800>; rel="prev", <https://api.zotero.org/users/9047943/collections?limit=100&start=1000>; rel="next", <https://api.zotero.org/users/9047943/collections?limit=100&start=1100>; rel="last", <https://www.zotero.org/users/9047943/collections>; rel="alternate"'), (b'Last-Modified-Version', b'344925'), (b'Vary', b'Accept-Encoding'), (b'Content-Encoding', b'gzip')])
+[INFO] 2026-02-22 21:59:23,806 / httpx:_send_single_request|157315 - HTTP Request: GET https://api.zotero.org/users/9047943/collections?limit=100&start=900&locale=en-US "HTTP/1.1 200 OK"
+[DEBUG] 2026-02-22 21:59:23,806 / httpcore.http11:trace|157315 - receive_response_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:23,806 / httpcore.http11:trace|157315 - receive_response_body.complete
+[DEBUG] 2026-02-22 21:59:23,806 / httpcore.http11:trace|157315 - response_closed.started
+[DEBUG] 2026-02-22 21:59:23,806 / httpcore.http11:trace|157315 - response_closed.complete
+[DEBUG] 2026-02-22 21:59:23,808 / httpcore.http11:trace|157315 - send_request_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:23,808 / httpcore.http11:trace|157315 - send_request_headers.complete
+[DEBUG] 2026-02-22 21:59:23,808 / httpcore.http11:trace|157315 - send_request_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:23,808 / httpcore.http11:trace|157315 - send_request_body.complete
+[DEBUG] 2026-02-22 21:59:23,808 / httpcore.http11:trace|157315 - receive_response_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:24,226 / httpcore.http11:trace|157315 - receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'Date', b'Sun, 22 Feb 2026 21:59:24 GMT'), (b'Content-Type', b'application/json'), (b'Content-Length', b'5732'), (b'Connection', b'keep-alive'), (b'Server', b'Apache/2.4.66 ()'), (b'Strict-Transport-Security', b'max-age=31536000; includeSubDomains; preload'), (b'Zotero-API-Version', b'3'), (b'Zotero-Schema-Version', b'40'), (b'Total-Results', b'1139'), (b'Link', b'<https://api.zotero.org/users/9047943/collections?limit=100>; rel="first", <https://api.zotero.org/users/9047943/collections?limit=100&start=900>; rel="prev", <https://api.zotero.org/users/9047943/collections?limit=100&start=1100>; rel="next", <https://api.zotero.org/users/9047943/collections?limit=100&start=1100>; rel="last", <https://www.zotero.org/users/9047943/collections>; rel="alternate"'), (b'Last-Modified-Version', b'344925'), (b'Vary', b'Accept-Encoding'), (b'Content-Encoding', b'gzip')])
+[INFO] 2026-02-22 21:59:24,226 / httpx:_send_single_request|157315 - HTTP Request: GET https://api.zotero.org/users/9047943/collections?limit=100&start=1000&locale=en-US "HTTP/1.1 200 OK"
+[DEBUG] 2026-02-22 21:59:24,226 / httpcore.http11:trace|157315 - receive_response_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:24,227 / httpcore.http11:trace|157315 - receive_response_body.complete
+[DEBUG] 2026-02-22 21:59:24,227 / httpcore.http11:trace|157315 - response_closed.started
+[DEBUG] 2026-02-22 21:59:24,227 / httpcore.http11:trace|157315 - response_closed.complete
+[DEBUG] 2026-02-22 21:59:24,228 / httpcore.http11:trace|157315 - send_request_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:24,228 / httpcore.http11:trace|157315 - send_request_headers.complete
+[DEBUG] 2026-02-22 21:59:24,228 / httpcore.http11:trace|157315 - send_request_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:24,228 / httpcore.http11:trace|157315 - send_request_body.complete
+[DEBUG] 2026-02-22 21:59:24,228 / httpcore.http11:trace|157315 - receive_response_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:24,475 / httpcore.http11:trace|157315 - receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'Date', b'Sun, 22 Feb 2026 21:59:24 GMT'), (b'Content-Type', b'application/json'), (b'Content-Length', b'2483'), (b'Connection', b'keep-alive'), (b'Server', b'Apache/2.4.66 ()'), (b'Strict-Transport-Security', b'max-age=31536000; includeSubDomains; preload'), (b'Zotero-API-Version', b'3'), (b'Zotero-Schema-Version', b'40'), (b'Total-Results', b'1139'), (b'Link', b'<https://api.zotero.org/users/9047943/collections?limit=100>; rel="first", <https://api.zotero.org/users/9047943/collections?limit=100&start=1000>; rel="prev", <https://www.zotero.org/users/9047943/collections>; rel="alternate"'), (b'Last-Modified-Version', b'344925'), (b'Vary', b'Accept-Encoding'), (b'Content-Encoding', b'gzip')])
+[INFO] 2026-02-22 21:59:24,475 / httpx:_send_single_request|157315 - HTTP Request: GET https://api.zotero.org/users/9047943/collections?limit=100&start=1100&locale=en-US "HTTP/1.1 200 OK"
+[DEBUG] 2026-02-22 21:59:24,475 / httpcore.http11:trace|157315 - receive_response_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:24,475 / httpcore.http11:trace|157315 - receive_response_body.complete
+[DEBUG] 2026-02-22 21:59:24,475 / httpcore.http11:trace|157315 - response_closed.started
+[DEBUG] 2026-02-22 21:59:24,475 / httpcore.http11:trace|157315 - response_closed.complete
+[INFO] 2026-02-22 21:59:24,478 / root:get_all_items|157315 - Loading Zotero items from cache under key 'frameworks' in /home/pantera/projects/TEIA/zotero_items_cache.json
+[DEBUG] 2026-02-22 21:59:24,510 / httpcore.http11:trace|157315 - send_request_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:24,511 / httpcore.http11:trace|157315 - send_request_headers.complete
+[DEBUG] 2026-02-22 21:59:24,511 / httpcore.http11:trace|157315 - send_request_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:24,511 / httpcore.http11:trace|157315 - send_request_body.complete
+[DEBUG] 2026-02-22 21:59:24,511 / httpcore.http11:trace|157315 - receive_response_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:24,874 / httpcore.http11:trace|157315 - receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'Date', b'Sun, 22 Feb 2026 21:59:24 GMT'), (b'Content-Type', b'application/json'), (b'Content-Length', b'10126'), (b'Connection', b'keep-alive'), (b'Server', b'Apache/2.4.66 ()'), (b'Strict-Transport-Security', b'max-age=31536000; includeSubDomains; preload'), (b'Zotero-API-Version', b'3'), (b'Zotero-Schema-Version', b'40'), (b'Total-Results', b'13'), (b'Link', b'<https://www.zotero.org/users/9047943/items/W63DA6Z6/children>; rel="alternate"'), (b'Last-Modified-Version', b'344925'), (b'Vary', b'Accept-Encoding'), (b'Content-Encoding', b'gzip')])
+[INFO] 2026-02-22 21:59:24,875 / httpx:_send_single_request|157315 - HTTP Request: GET https://api.zotero.org/users/9047943/items/W63DA6Z6/children?format=json&limit=100&locale=en-US "HTTP/1.1 200 OK"
+[DEBUG] 2026-02-22 21:59:24,875 / httpcore.http11:trace|157315 - receive_response_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:24,875 / httpcore.http11:trace|157315 - receive_response_body.complete
+[DEBUG] 2026-02-22 21:59:24,875 / httpcore.http11:trace|157315 - response_closed.started
+[DEBUG] 2026-02-22 21:59:24,875 / httpcore.http11:trace|157315 - response_closed.complete
+[DEBUG] 2026-02-22 21:59:25,229 / urllib3.util.retry:from_int|157315 - Converted retries value: 2 -> Retry(total=2, connect=None, read=None, redirect=None, status=None)
+[DEBUG] 2026-02-22 21:59:25,229 / urllib3.util.retry:from_int|157315 - Converted retries value: 2 -> Retry(total=2, connect=None, read=None, redirect=None, status=None)
+[DEBUG] 2026-02-22 21:59:26,598 / httpcore.http11:trace|157315 - send_request_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:26,598 / httpcore.http11:trace|157315 - send_request_headers.complete
+[DEBUG] 2026-02-22 21:59:26,598 / httpcore.http11:trace|157315 - send_request_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:26,598 / httpcore.http11:trace|157315 - send_request_body.complete
+[DEBUG] 2026-02-22 21:59:26,598 / httpcore.http11:trace|157315 - receive_response_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:27,056 / httpcore.http11:trace|157315 - receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'Date', b'Sun, 22 Feb 2026 21:59:27 GMT'), (b'Content-Type', b'application/json'), (b'Content-Length', b'26666'), (b'Connection', b'keep-alive'), (b'Server', b'Apache/2.4.66 ()'), (b'Strict-Transport-Security', b'max-age=31536000; includeSubDomains; preload'), (b'Zotero-API-Version', b'3'), (b'Zotero-Schema-Version', b'40'), (b'Total-Results', b'8'), (b'Link', b'<https://www.zotero.org/users/9047943/items/N4YNQ2GG/children>; rel="alternate"'), (b'Last-Modified-Version', b'344925'), (b'Vary', b'Accept-Encoding'), (b'Content-Encoding', b'gzip')])
+[INFO] 2026-02-22 21:59:27,057 / httpx:_send_single_request|157315 - HTTP Request: GET https://api.zotero.org/users/9047943/items/N4YNQ2GG/children?format=json&limit=100&locale=en-US "HTTP/1.1 200 OK"
+[DEBUG] 2026-02-22 21:59:27,057 / httpcore.http11:trace|157315 - receive_response_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:27,147 / httpcore.http11:trace|157315 - receive_response_body.complete
+[DEBUG] 2026-02-22 21:59:27,148 / httpcore.http11:trace|157315 - response_closed.started
+[DEBUG] 2026-02-22 21:59:27,148 / httpcore.http11:trace|157315 - response_closed.complete
+[DEBUG] 2026-02-22 21:59:27,488 / httpcore.http11:trace|157315 - send_request_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:27,488 / httpcore.http11:trace|157315 - send_request_headers.complete
+[DEBUG] 2026-02-22 21:59:27,488 / httpcore.http11:trace|157315 - send_request_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:27,488 / httpcore.http11:trace|157315 - send_request_body.complete
+[DEBUG] 2026-02-22 21:59:27,488 / httpcore.http11:trace|157315 - receive_response_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:27,849 / httpcore.http11:trace|157315 - receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'Date', b'Sun, 22 Feb 2026 21:59:27 GMT'), (b'Content-Type', b'application/json'), (b'Content-Length', b'760'), (b'Connection', b'keep-alive'), (b'Server', b'Apache/2.4.66 ()'), (b'Strict-Transport-Security', b'max-age=31536000; includeSubDomains; preload'), (b'Zotero-API-Version', b'3'), (b'Zotero-Schema-Version', b'40'), (b'Total-Results', b'2'), (b'Link', b'<https://www.zotero.org/users/9047943/items/MSU2EW6K/children>; rel="alternate"'), (b'Last-Modified-Version', b'344925'), (b'Vary', b'Accept-Encoding'), (b'Content-Encoding', b'gzip')])
+[INFO] 2026-02-22 21:59:27,849 / httpx:_send_single_request|157315 - HTTP Request: GET https://api.zotero.org/users/9047943/items/MSU2EW6K/children?format=json&limit=100&locale=en-US "HTTP/1.1 200 OK"
+[DEBUG] 2026-02-22 21:59:27,849 / httpcore.http11:trace|157315 - receive_response_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:27,849 / httpcore.http11:trace|157315 - receive_response_body.complete
+[DEBUG] 2026-02-22 21:59:27,849 / httpcore.http11:trace|157315 - response_closed.started
+[DEBUG] 2026-02-22 21:59:27,849 / httpcore.http11:trace|157315 - response_closed.complete
+[DEBUG] 2026-02-22 21:59:28,115 / httpcore.http11:trace|157315 - send_request_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:28,115 / httpcore.http11:trace|157315 - send_request_headers.complete
+[DEBUG] 2026-02-22 21:59:28,115 / httpcore.http11:trace|157315 - send_request_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:28,115 / httpcore.http11:trace|157315 - send_request_body.complete
+[DEBUG] 2026-02-22 21:59:28,115 / httpcore.http11:trace|157315 - receive_response_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:28,460 / httpcore.http11:trace|157315 - receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'Date', b'Sun, 22 Feb 2026 21:59:28 GMT'), (b'Content-Type', b'application/json'), (b'Content-Length', b'1916'), (b'Connection', b'keep-alive'), (b'Server', b'Apache/2.4.66 ()'), (b'Strict-Transport-Security', b'max-age=31536000; includeSubDomains; preload'), (b'Zotero-API-Version', b'3'), (b'Zotero-Schema-Version', b'40'), (b'Total-Results', b'7'), (b'Link', b'<https://www.zotero.org/users/9047943/items/KXZITJ9Q/children>; rel="alternate"'), (b'Last-Modified-Version', b'344925'), (b'Vary', b'Accept-Encoding'), (b'Content-Encoding', b'gzip')])
+[INFO] 2026-02-22 21:59:28,460 / httpx:_send_single_request|157315 - HTTP Request: GET https://api.zotero.org/users/9047943/items/KXZITJ9Q/children?format=json&limit=100&locale=en-US "HTTP/1.1 200 OK"
+[DEBUG] 2026-02-22 21:59:28,460 / httpcore.http11:trace|157315 - receive_response_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:28,461 / httpcore.http11:trace|157315 - receive_response_body.complete
+[DEBUG] 2026-02-22 21:59:28,461 / httpcore.http11:trace|157315 - response_closed.started
+[DEBUG] 2026-02-22 21:59:28,461 / httpcore.http11:trace|157315 - response_closed.complete
+[DEBUG] 2026-02-22 21:59:57,670 / httpcore.connection:trace|157315 - connect_tcp.started host='api.mistral.ai' port=443 local_address=None timeout=None socket_options=None
+[DEBUG] 2026-02-22 21:59:57,708 / httpcore.connection:trace|157315 - connect_tcp.complete return_value=<httpcore._backends.sync.SyncStream object at 0x769243a12ef0>
+[DEBUG] 2026-02-22 21:59:57,708 / httpcore.connection:trace|157315 - start_tls.started ssl_context=<ssl.SSLContext object at 0x769249f73bc0> server_hostname='api.mistral.ai' timeout=None
+[DEBUG] 2026-02-22 21:59:57,736 / httpcore.connection:trace|157315 - start_tls.complete return_value=<httpcore._backends.sync.SyncStream object at 0x769243a12c20>
+[DEBUG] 2026-02-22 21:59:57,737 / httpcore.http11:trace|157315 - send_request_headers.started request=<Request [b'POST']>
+[DEBUG] 2026-02-22 21:59:57,737 / httpcore.http11:trace|157315 - send_request_headers.complete
+[DEBUG] 2026-02-22 21:59:57,737 / httpcore.http11:trace|157315 - send_request_body.started request=<Request [b'POST']>
+[DEBUG] 2026-02-22 21:59:57,949 / httpcore.http11:trace|157315 - send_request_body.complete
+[DEBUG] 2026-02-22 21:59:57,949 / httpcore.http11:trace|157315 - receive_response_headers.started request=<Request [b'POST']>
+[DEBUG] 2026-02-22 21:59:58,374 / httpcore.http11:trace|157315 - receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'Date', b'Sun, 22 Feb 2026 21:59:58 GMT'), (b'Content-Type', b'application/json; charset=utf-8'), (b'Transfer-Encoding', b'chunked'), (b'Connection', b'keep-alive'), (b'Content-Encoding', b'br'), (b'mistral-correlation-id', b'019c875d-cf5e-7265-9411-2d31cb8b6f61'), (b'x-kong-request-id', b'019c875d-cf5e-7265-9411-2d31cb8b6f61'), (b'x-envoy-upstream-service-time', b'207'), (b'access-control-allow-origin', b'*'), (b'x-kong-upstream-latency', b'298'), (b'x-kong-proxy-latency', b'7'), (b'cf-cache-status', b'DYNAMIC'), (b'Set-Cookie', b'__cf_bm=Ze3M0gIZ.EXt1BZ4Zl5UjOMOVhilPftoND3nA_oQsus-1771797598-1.0.1.1-xqW1tIJGjNc01KHA6lVeaKsFjWenLu5F39jJeCFq5Ne56sU0wxOAdVIiqJGZrmmGigfKeiZ1xe0iT8.28YypDBHPNyv3h9g_3eHwazHFRKE; path=/; expires=Sun, 22-Feb-26 22:29:58 GMT; domain=.mistral.ai; HttpOnly; Secure; SameSite=None'), (b'Set-Cookie', b'_cfuvid=f1.3eSHs2t6ey_uUQoFy_nYL915k.0RFZ5N5RIDSEuc-1771797598372-0.0.1.1-604800000; path=/; domain=.mistral.ai; HttpOnly; Secure; SameSite=None'), (b'Strict-Transport-Security', b'max-age=15552000; includeSubDomains; preload'), (b'X-Content-Type-Options', b'nosniff'), (b'Server', b'cloudflare'), (b'CF-RAY', b'9d21c0e9fe727796-LHR'), (b'alt-svc', b'h3=":443"; ma=86400')])
+[INFO] 2026-02-22 21:59:58,375 / httpx:_send_single_request|157315 - HTTP Request: POST https://api.mistral.ai/v1/files "HTTP/1.1 200 OK"
+[DEBUG] 2026-02-22 21:59:58,375 / httpcore.http11:trace|157315 - receive_response_body.started request=<Request [b'POST']>
+[DEBUG] 2026-02-22 21:59:58,375 / httpcore.http11:trace|157315 - receive_response_body.complete
+[DEBUG] 2026-02-22 21:59:58,375 / httpcore.http11:trace|157315 - response_closed.started
+[DEBUG] 2026-02-22 21:59:58,376 / httpcore.http11:trace|157315 - response_closed.complete
+[DEBUG] 2026-02-22 21:59:58,378 / httpcore.http11:trace|157315 - send_request_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:58,378 / httpcore.http11:trace|157315 - send_request_headers.complete
+[DEBUG] 2026-02-22 21:59:58,378 / httpcore.http11:trace|157315 - send_request_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:58,378 / httpcore.http11:trace|157315 - send_request_body.complete
+[DEBUG] 2026-02-22 21:59:58,378 / httpcore.http11:trace|157315 - receive_response_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:58,489 / httpcore.http11:trace|157315 - receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'Date', b'Sun, 22 Feb 2026 21:59:58 GMT'), (b'Content-Type', b'application/json; charset=utf-8'), (b'Transfer-Encoding', b'chunked'), (b'Connection', b'keep-alive'), (b'Content-Encoding', b'br'), (b'mistral-correlation-id', b'019c875d-d0d0-7e5a-8b06-a00f1bc6b79a'), (b'x-kong-request-id', b'019c875d-d0d0-7e5a-8b06-a00f1bc6b79a'), (b'x-envoy-upstream-service-time', b'41'), (b'access-control-allow-origin', b'*'), (b'x-kong-upstream-latency', b'42'), (b'x-kong-proxy-latency', b'12'), (b'cf-cache-status', b'DYNAMIC'), (b'Strict-Transport-Security', b'max-age=15552000; includeSubDomains; preload'), (b'X-Content-Type-Options', b'nosniff'), (b'Server', b'cloudflare'), (b'CF-RAY', b'9d21c0edffc47796-LHR'), (b'alt-svc', b'h3=":443"; ma=86400')])
+[INFO] 2026-02-22 21:59:58,490 / httpx:_send_single_request|157315 - HTTP Request: GET https://api.mistral.ai/v1/files/d79aff13-10a8-4784-8b33-f06f46164a40/url?expiry=24 "HTTP/1.1 200 OK"
+[DEBUG] 2026-02-22 21:59:58,490 / httpcore.http11:trace|157315 - receive_response_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-22 21:59:58,490 / httpcore.http11:trace|157315 - receive_response_body.complete
+[DEBUG] 2026-02-22 21:59:58,490 / httpcore.http11:trace|157315 - response_closed.started
+[DEBUG] 2026-02-22 21:59:58,490 / httpcore.http11:trace|157315 - response_closed.complete
+[DEBUG] 2026-02-22 21:59:58,495 / httpcore.http11:trace|157315 - send_request_headers.started request=<Request [b'POST']>
+[DEBUG] 2026-02-22 21:59:58,495 / httpcore.http11:trace|157315 - send_request_headers.complete
+[DEBUG] 2026-02-22 21:59:58,495 / httpcore.http11:trace|157315 - send_request_body.started request=<Request [b'POST']>
+[DEBUG] 2026-02-22 21:59:58,495 / httpcore.http11:trace|157315 - send_request_body.complete
+[DEBUG] 2026-02-22 21:59:58,495 / httpcore.http11:trace|157315 - receive_response_headers.started request=<Request [b'POST']>
+[DEBUG] 2026-02-22 22:00:01,378 / httpcore.http11:trace|157315 - receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'Date', b'Sun, 22 Feb 2026 22:00:01 GMT'), (b'Content-Type', b'application/json'), (b'Transfer-Encoding', b'chunked'), (b'Connection', b'keep-alive'), (b'Content-Encoding', b'br'), (b'mistral-correlation-id', b'019c875d-d148-71a9-9f5b-f4c8ea5154f0'), (b'x-kong-request-id', b'019c875d-d148-71a9-9f5b-f4c8ea5154f0'), (b'x-envoy-upstream-service-time', b'2813'), (b'access-control-allow-origin', b'*'), (b'x-kong-upstream-latency', b'2814'), (b'x-kong-proxy-latency', b'8'), (b'cf-cache-status', b'DYNAMIC'), (b'Strict-Transport-Security', b'max-age=15552000; includeSubDomains; preload'), (b'X-Content-Type-Options', b'nosniff'), (b'Server', b'cloudflare'), (b'CF-RAY', b'9d21c0eea9957796-LHR'), (b'alt-svc', b'h3=":443"; ma=86400')])
+[INFO] 2026-02-22 22:00:01,379 / httpx:_send_single_request|157315 - HTTP Request: POST https://api.mistral.ai/v1/ocr "HTTP/1.1 200 OK"
+[DEBUG] 2026-02-22 22:00:01,379 / httpcore.http11:trace|157315 - receive_response_body.started request=<Request [b'POST']>
+[DEBUG] 2026-02-22 22:00:01,435 / httpcore.http11:trace|157315 - receive_response_body.complete
+[DEBUG] 2026-02-22 22:00:01,436 / httpcore.http11:trace|157315 - response_closed.started
+[DEBUG] 2026-02-22 22:00:01,436 / httpcore.http11:trace|157315 - response_closed.complete

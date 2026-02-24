@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": "{\n  \"classification\": \"Highly Relevant\",\n  \"relevance_score\": \"High\",\n  \"potential_subcategory\": \"Attribution Frameworks; International Law (State Responsibility, jus ad bellum); Deterrence and Policy Response; Evidence Assessment & Confidence\",\n  \"justification\": \"The abstract directly addresses attribution of malicious cyber incidents and explicitly links technical, intelligence, legal, and political dimensions to state-level conflict, deterrence, and international law. It proposes a unified conceptual framework for decisionmakers, delineates three levels of attribution (machine, operator, state), emphasizes probabilistic evidence and transparency about confidence, and discusses legal doctrines (state responsibility, jus ad bellum) and policy calibration\u2014making it centrally relevant to cyber conflict attribution and policy/law. The use of case studies and suggested future research on evidence independence and active defense further increase its applicability to policy and legal scholarship.\"\n}"
+  },
+  "cached_at": "2026-02-23T20:52:49.854476Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "R92R6LJD",
+  "function": "classify_by_abs"
+}

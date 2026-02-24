@@ -20,6 +20,7 @@ const BASE_FEATURES: FeatureDescriptor[] = [
   { id: "screen.set_eligibility_criteria", tab: "Screening", group: "Screen", functionName: "set_eligibility_criteria", label: "Set Eligibility Criteria" },
   { id: "screen.screening_articles", tab: "Screening", group: "Screen", functionName: "screening_articles", label: "Screening Articles" },
   { id: "screen.classify_by_title", tab: "Screening", group: "Classify", functionName: "classify_by_title", label: "Classify by Title" },
+  { id: "workflow.review_supervisor", tab: "Workflow", group: "Review Orchestration", functionName: "run_review_supervisor", label: "Run Review Supervisor" },
   { id: "workflow.enqueue_topic", tab: "Workflow", group: "Topic Workflow", functionName: "enqueue_topic_classification_for_collection", label: "Enqueue Topic Classification" },
   { id: "workflow.apply_topic", tab: "Workflow", group: "Topic Workflow", functionName: "apply_topic_batch_results", label: "Apply Topic Batch Results" },
   { id: "workflow.collect_topic", tab: "Workflow", group: "Topic Workflow", functionName: "collect_after_enqueue", label: "Collect Topic Batch Results" },

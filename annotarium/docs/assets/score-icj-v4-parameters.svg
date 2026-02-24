@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="520" viewBox="0 0 960 520" role="img" aria-labelledby="title desc">
+  <title id="title">score_icj_v4 Parameters and Aggregate Scoring</title>
+  <desc id="desc">Constants, equations, and aggregate low-medium-high scoring logic extracted from score_icj_v4 scoring profile.</desc>
+  <defs>
+    <style>
+      .bg { fill: #ffffff; }
+      .title { font-family: "Segoe UI", Arial, sans-serif; font-size: 21px; font-weight: 700; fill: #111827; }
+      .sub { font-family: "Segoe UI", Arial, sans-serif; font-size: 12px; fill: #4b5563; }
+      .box { fill: #f9fafb; stroke: #9ca3af; stroke-width: 1.2; }
+      .h { font-family: "Segoe UI", Arial, sans-serif; font-size: 13px; font-weight: 700; fill: #111827; }
+      .t { font-family: "Segoe UI", Arial, sans-serif; font-size: 11px; fill: #1f2937; }
+      .mono { font-family: "Consolas", "SFMono-Regular", monospace; font-size: 10px; fill: #374151; }
+      .tier { font-family: "Segoe UI", Arial, sans-serif; font-size: 11px; font-weight: 700; fill: #111827; }
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="960" height="520" class="bg"/>
+  <text x="480" y="30" class="title" text-anchor="middle">Figure B. score_icj_v4 Constants and Aggregate Scoring Logic</text>
+  <text x="480" y="48" class="sub" text-anchor="middle">Constants extracted from annotarium/score_icj_v4.py; interpretation layer for scoring only.</text>
+
+  <rect x="30" y="78" width="430" height="178" rx="8" class="box"/>
+  <text x="46" y="100" class="h">Extracted Constants</text>
+  <text x="46" y="120" class="mono">reliability floor = 0.20</text>
+  <text x="46" y="136" class="mono">reliability span = 0.80</text>
+  <text x="46" y="152" class="mono">tau_custody = 2.2</text>
+  <text x="46" y="168" class="mono">tau_credibility = 2.8</text>
+  <text x="46" y="184" class="mono">tau_corroboration = 3.2</text>
+  <text x="46" y="200" class="mono">tau_clarity = 1.8, tau_confidence = 1.8</text>
+  <text x="46" y="216" class="mono">logistic k = 12</text>
+  <text x="46" y="232" class="mono">bootstrap n_iter = 2500</text>
+
+  <rect x="500" y="78" width="430" height="178" rx="8" class="box"/>
+  <text x="516" y="100" class="h">Axis Mix (Extracted)</text>
+  <text x="516" y="120" class="mono">evidence_weight = 0.30*custody + 0.25*credibility +</text>
+  <text x="516" y="136" class="mono">                 0.25*corroboration + 0.20*grounding</text>
+  <text x="516" y="156" class="mono">evidence_support = evidence_weight * clarity</text>
+  <text x="516" y="176" class="mono">belief_0_100 = logistic(evidence_support - req)</text>
+  <text x="516" y="200" class="t">req is claim-specific required_threshold_0_1</text>
+  <text x="516" y="218" class="t">v4 therefore calibrates both evidence strength and</text>
+  <text x="516" y="234" class="t">decision threshold strictness per claim.</text>
+
+  <rect x="30" y="278" width="900" height="210" rx="8" class="box"/>
+  <text x="46" y="300" class="h">Aggregate Scoring Layer (C1-C2-C3 + v4 Belief)</text>
+
+  <text x="46" y="326" class="tier">LOW:</text>
+  <text x="100" y="326" class="t">C total 0-2 and/or low belief (for example &lt; 40).</text>
+
+  <text x="46" y="350" class="tier">MEDIUM:</text>
+  <text x="128" y="350" class="t">C total 3-4 and/or moderate belief (for example 40-69).</text>
+
+  <text x="46" y="374" class="tier">HIGH:</text>
+  <text x="100" y="374" class="t">C total 5-6 and/or high belief (for example &gt;= 70).</text>
+
+  <text x="46" y="404" class="t">Recommended usage: keep C-domain scoring transparent and report v4 belief + 95% CI as uncertainty context.</text>
+  <text x="46" y="422" class="t">This preserves interpretability while benefiting from reliability weighting and low-evidence shrinkage.</text>
+
+  <text x="30" y="506" class="sub">Note: numerical belief cutoffs can be tuned by use case; computational constants are directly extracted from score_icj_v4.py.</text>
+</svg>

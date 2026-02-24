@@ -1,0 +1,56 @@
+{
+  "item_key": "e99de3e8d9b28363ad90744d819eebe515d4e6e5aa7712b438b8a994d2d904dd",
+  "title": "Countering Cyberattacks: Gaps in International Law and Prospects for Overcoming them",
+  "metadata": {
+    "pdf_path": "/home/pantera/projects/TEIA/python_backend_legacy/dataset/e99de3e8d9b28363ad90744d819eebe515d4e6e5aa7712b438b8a994d2d904dd.json",
+    "overarching_theme": "cyber attribution",
+    "coding_mode": "open"
+  },
+  "section_open_coding_results": [
+    {
+      "section_key": "legacy_dataset_text",
+      "open_codes_count": 6
+    }
+  ],
+  "document_open_coding_results_total": 6,
+  "harvest_required_categories": {
+    "definitions": 5,
+    "main_findings": 9,
+    "method_claims": 1,
+    "stated_limitations": 1,
+    "recommendations_future_work": 4
+  },
+  "harvest_total": 20,
+  "sample_open_code_keys": [
+    "argument_type",
+    "claim_direction",
+    "dqid",
+    "evidence_type",
+    "open_codes",
+    "paraphrase",
+    "potential_themes",
+    "quote",
+    "relevance_score",
+    "relevant_rqs",
+    "researcher_comment",
+    "section_key"
+  ],
+  "sample_harvest_keys": [
+    "argument_type",
+    "claim_direction",
+    "cluster_match",
+    "dqid",
+    "evidence_type",
+    "extraction_category",
+    "function_summary",
+    "open_codes",
+    "paraphrase",
+    "potential_themes",
+    "quote",
+    "relevance_score",
+    "relevant_rqs",
+    "researcher_comment",
+    "risk_if_missing",
+    "section_key"
+  ]
+}

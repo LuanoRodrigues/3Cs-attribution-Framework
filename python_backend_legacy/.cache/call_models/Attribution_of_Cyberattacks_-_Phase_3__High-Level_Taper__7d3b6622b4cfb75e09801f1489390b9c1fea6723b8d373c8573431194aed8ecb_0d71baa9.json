@@ -1,0 +1,476 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "quote": "As confirmed by the ICJ, 'the obligation to [prevent] is an obligation to act with due diligence in respect of all activities which take place under the jurisdiction and control of each party'.",
+          "paraphrase": "The ICJ defines the obligation to prevent as an obligation for States to act with due diligence regarding activities under their jurisdiction and control.",
+          "researcher_comment": "This supplies a judicial baseline definition of due diligence as conduct tied to jurisdiction/control, which is essential for mapping State duties in cyberspace. The ICJ context is not cyber-specific, so applicability requires contextual specification. Use cautiously as a normative foundation rather than a cyber-rule itself.",
+          "potential_themes": [
+            "due_diligence",
+            "state_obligations"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "icj_definition",
+            "prevent_obligation",
+            "jurisdictional_scope"
+          ]
+        },
+        {
+          "quote": "It is an obligation of conduct, not of result.",
+          "paraphrase": "Due diligence imposes requirements on States' conduct rather than an obligation to guarantee specific outcomes.",
+          "researcher_comment": "Clarifies the legal standard: States must take reasonable measures but are not strictly liable for outcomes; this shapes what can be required of States in cyber contexts. Does not delimit what measures are reasonable in practice.",
+          "potential_themes": [
+            "due_diligence",
+            "legal_thresholds"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "obligation_of_conduct",
+            "no_result_requirement"
+          ]
+        },
+        {
+          "quote": "Such standard is necessarily dependant on the context and must therefore be determined for every subject matter specifically, or may even change over time 'in light [...] of new scientific or technological knowledge', as argued by the International Tribunal for the Law of the Sea (ITLOS) in its 2011 advisory opinion.",
+          "paraphrase": "The due diligence standard is context-dependent and can change over time with scientific and technological developments.",
+          "researcher_comment": "Supports a flexible, evolving conception of due diligence that should be reassessed as cyber technologies change. ITLOS is a maritime body\u2014analogy useful but not dispositive for cyber law.",
+          "potential_themes": [
+            "due_diligence",
+            "evolving_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "context_specificity",
+            "tech_driven_evolution",
+            "itlos_analogy"
+          ]
+        },
+        {
+          "quote": "As regards cyberspace, those obligations can hardly be considered settled.",
+          "paraphrase": "The author states that due diligence obligations in cyberspace remain largely unsettled.",
+          "researcher_comment": "Signals legal uncertainty about what due diligence requires in cyber contexts and justifies the chapter's focus on specification. Suggests need for normative and doctrinal development.",
+          "potential_themes": [
+            "due_diligence",
+            "legal_uncertainty"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "cyber_legal_uncertainty",
+            "unsettled_obligations"
+          ]
+        },
+        {
+          "quote": "Thus, it may be argued that the due diligence standard at least amounts to the obligation to enact laws that criminalise cyber attacks, and to prosecute the perpetrators when an attack has occurred.",
+          "paraphrase": "The author argues that due diligence minimally requires States to criminalize cyberattacks and prosecute perpetrators under domestic law.",
+          "researcher_comment": "Provides a concrete minimal content for cyber due diligence (criminalisation + prosecution). This is a normative claim rather than settled law; operational details (which offences, cross-border enforcement) are unspecified.",
+          "potential_themes": [
+            "due_diligence",
+            "domestic_legislation"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "criminalise_cyberattacks",
+            "prosecute_perpetrators",
+            "minimum_obligation"
+          ]
+        },
+        {
+          "quote": "The Tallinn Manual asserts that \u2018[a] State shall not knowingly allow the cyber infrastructure located in its territory or under its exclusive governmental control to be used for acts that adversely and unlawfully affect other States\u2019.",
+          "paraphrase": "The Tallinn Manual states that States must not knowingly permit cyber infrastructure under their control to be used for unlawful acts that harm other States.",
+          "researcher_comment": "Offers an influential expert articulation linking territorial/control to responsibility in cyber incidents; useful for attributing duties where States exercise control. Note: Tallinn Manual is persuasive but not binding international law.",
+          "potential_themes": [
+            "state_obligations",
+            "territorial_control"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "territorial_responsibility",
+            "knowingly_allow_prohibition"
+          ]
+        },
+        {
+          "quote": "The duty to criminalise, which ideally amounts to prevention by deterrence, is necessarily complemented by a more general obligation of vigilance.",
+          "paraphrase": "Criminalisation as deterrence should be complemented by an overarching obligation for States to maintain vigilance.",
+          "researcher_comment": "Frames vigilance as a distinct component of due diligence, emphasizing proactive oversight beyond legislation. The normative claim 'necessarily' indicates author preference rather than settled consensus.",
+          "potential_themes": [
+            "vigilance_obligation",
+            "due_diligence"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "deterrence_plus_vigilance",
+            "active_monitoring"
+          ]
+        },
+        {
+          "quote": "The ICJ held that due diligence is an obligation which entails not only the adoption of appropriate rules and measures, but also a certain level of vigilance in their enforcement and the exercise of administrative control applicable to public and private operators, such as the monitoring of activities undertaken by such operators, to safeguard the rights of the other party.",
+          "paraphrase": "The ICJ has held that due diligence requires adopting appropriate rules plus vigilant enforcement and administrative control, including monitoring activities of public and private operators.",
+          "researcher_comment": "A judicially grounded standard that explicitly includes monitoring and oversight of private actors\u2014highly relevant for cyber where private infrastructure dominates. Must be weighed against human rights and privacy constraints in practice.",
+          "potential_themes": [
+            "due_diligence",
+            "vigilance_obligation",
+            "monitoring_obligations"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "monitoring_duty",
+            "admin_control",
+            "public_private_responsibility"
+          ]
+        },
+        {
+          "quote": "The Tallinn Group of Experts could not agree whether such a preventative duty exists as regards cyber attacks due to the inherent \u2018difficulty of mounting comprehensive and effective defences against all possible threats'.",
+          "paraphrase": "Experts in the Tallinn Group disagreed on whether a preventative due diligence duty applies to cyber attacks because comprehensive defence against all threats is inherently difficult.",
+          "researcher_comment": "Documents expert disagreement about the scope of preventative obligations in cyber; shows contested doctrinal terrain. Expert non-consensus weakens claims of an emerging customary rule in this area.",
+          "potential_themes": [
+            "due_diligence",
+            "defensive_limits",
+            "attribution_challenges"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "expert_division",
+            "comprehensive_defence_difficulty"
+          ]
+        },
+        {
+          "quote": "In any case the due diligence standard would not impose an absolute obligation to avoid all attacks and there might thus still be cases \u2013 especially when continuous and/or similar attack patterns are at issue \u2013 where the State \u2018should have known\u2019 of malicious conduct within the networks on its own territory.",
+          "paraphrase": "Due diligence does not require preventing every attack but may be breached where continuous or similar attack patterns mean the State 'should have known' about malicious conduct on its networks.",
+          "researcher_comment": "Identifies constructive knowledge as a plausible legal threshold in cyber due diligence cases; helps operationalize when a State's omission could be wrongful. Application will be highly fact-specific.",
+          "potential_themes": [
+            "legal_thresholds",
+            "constructive_knowledge",
+            "due_diligence"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "should_have_known",
+            "constructive_knowledge",
+            "continuous_attacks"
+          ]
+        },
+        {
+          "quote": "The current problem is the determination of the \u2018threshold of due care\u2019 in this regard, but, in line with the holding of ITLOS, the obligations in this regard could well be altered by new technological developments in the relevant field of cyber security.",
+          "paraphrase": "Determining the threshold of due care in cyber remains unresolved and may change with technological developments.",
+          "researcher_comment": "Highlights indeterminacy of due-care thresholds and the prospect that technological advances will shift expectations; implies legal standards must be adaptable. Does not propose a specific threshold.",
+          "potential_themes": [
+            "legal_thresholds",
+            "evolving_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "threshold_indeterminacy",
+            "tech_evolution",
+            "dynamic_standards"
+          ]
+        },
+        {
+          "quote": "Krieger suggests inter alia that precaution should comprise an obligation on all States and stakeholders to ensure that all relevant systems are always kept up to date in order for cyber security to work properly.",
+          "paraphrase": "Krieger recommends that precaution require States and stakeholders to keep relevant systems continuously up to date to ensure cyber security.",
+          "researcher_comment": "Offers a specific precautionary measure (continuous updates) as part of due diligence; practical feasibility, enforcement and costs need further analysis. Useful as a policy option in legislative drafting.",
+          "potential_themes": [
+            "precautionary_principle",
+            "domestic_legislation",
+            "information_security"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "mandatory_updates",
+            "precautionary_obligation",
+            "stakeholder_duty"
+          ]
+        },
+        {
+          "quote": "Furthermore, it appears reasonable to assert that multilateral communication about possible technical failures and security-relevant shortcomings as well as other minor cyber incidents (especially when due to zero-day exploits) should be permanent and mandatory, in order to enable all States to prepare for possible attacks or security breaches.",
+          "paraphrase": "The author asserts that multilateral, mandatory reporting of technical failures and minor cyber incidents should be continuous to help States prepare for attacks.",
+          "researcher_comment": "Argues for institutionalized, ongoing information-sharing (including zero-day events) as a preventive due diligence measure; practical and trust barriers are significant and acknowledged elsewhere in the text.",
+          "potential_themes": [
+            "information_sharing",
+            "cooperation_obligations",
+            "precautionary_principle"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "permanent_reporting",
+            "zero_day_sharing",
+            "multilateral_comm"
+          ]
+        },
+        {
+          "quote": "In such a situation, it seems reasonable to assert that the standard implies obligations to cooperate with the victim State in order to prevent further harm or to mitigate the consequences of an incident.",
+          "paraphrase": "The due diligence standard implies obligations to cooperate with victim States to prevent further harm and mitigate incident consequences.",
+          "researcher_comment": "Translates established cooperation norms (from other areas) into cyber incident response obligations; useful for designing interstate post-incident duties. Trigger conditions and precise duties remain unspecified.",
+          "potential_themes": [
+            "cooperation_obligations",
+            "due_diligence"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "cooperate_with_victims",
+            "incident_mitigation",
+            "good_faith_cooperation"
+          ]
+        },
+        {
+          "quote": "A duty of this kind could well be translated to the cyber security context, triggered by the event of an incident.",
+          "paraphrase": "The author suggests that duties to notify and cooperate from other domains could be translated to cyber, triggered by cyber incidents.",
+          "researcher_comment": "Reinforces the feasibility of adapting notification/cooperation models to cyber; however the statement is tentative and lacks detail on implementation and enforcement.",
+          "potential_themes": [
+            "cooperation_obligations",
+            "norm_transfer"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "norm_transfer",
+            "incident_trigger",
+            "notify_model"
+          ]
+        },
+        {
+          "quote": "In a domain where attribution of conduct is inherently difficult if not impossible, a much stronger focus should be placed on the preventive dimension than the repressive dimension, which is borrowed from military responses and the use of force.",
+          "paraphrase": "Because attribution in cyberspace is often impossible, the author argues prevention should be prioritized over repressive, military-style responses.",
+          "researcher_comment": "Policy-level justification for prioritizing preventive measures given attribution challenges; central to arguments for non-forcible countermeasures. Assumes prevention is achievable and proportionate.",
+          "potential_themes": [
+            "attribution_challenges",
+            "non_forcible_remedies"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "prevention_priority",
+            "avoid_military_response",
+            "attribution_impossibility"
+          ]
+        },
+        {
+          "quote": "Establishing due diligence obligations on States to harden their systems and to criminalise data theft and system intrusions as well as other relevant conduct will not help to avert and prevent highly elaborate destructive attacks by powerful actors. It will, however, help to mitigate those threats which make up the vast majority of contemporary threats and \u2013 once established and accepted \u2013 will make it harder for States that sponsor such activities to blame other actors.",
+          "paraphrase": "The author argues that hardening systems and criminalizing intrusions won't stop sophisticated destructive attacks but will mitigate common threats and reduce the ability of sponsoring States to shift blame.",
+          "researcher_comment": "Provides a calibrated assessment of efficacy: limits against state-level sophisticated attacks but clear mitigation benefits for common threats and political effects on attribution. Useful for prioritizing measures and setting expectations.",
+          "potential_themes": [
+            "due_diligence",
+            "effectiveness",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "comparative",
+          "claim_direction": "mixed",
+          "open_codes": [
+            "mitigation_effect",
+            "limits_vs_benefits",
+            "reduce_false_attribution"
+          ]
+        },
+        {
+          "quote": "Domestic legislative approaches towards information sharing and regular security updates, have stirred significant controversy due to the economic costs attached and the fact that information sharing in a security-sensitive area is inherently difficult to achieve.",
+          "paraphrase": "Domestic laws mandating information sharing and regular security updates are controversial because of economic costs and the practical difficulty of sharing security-sensitive information.",
+          "researcher_comment": "Identifies political, economic and practical barriers to implementing due diligence measures; critical for feasibility and compliance studies. The claim lacks empirical quantification of costs.",
+          "potential_themes": [
+            "implementation_challenges",
+            "domestic_legislation",
+            "information_sharing"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "economic_costs",
+            "information_sharing_barriers",
+            "implementation_difficulty"
+          ]
+        },
+        {
+          "quote": "To date no cyber security incident has actually risen to the level of an armed attack.",
+          "paraphrase": "The author claims that so far no cyber incident has met the legal threshold of an armed attack.",
+          "researcher_comment": "Supports the conclusion that self-defence claims in cyber are exceptional; this is an empirical/legal observation contingent on interpretation and future events could alter it.",
+          "potential_themes": [
+            "self_defence",
+            "thresholds_of_force"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "no_cyber_armed_attack",
+            "historical_threshold"
+          ]
+        },
+        {
+          "quote": "Due to the persisting attribution problem and the myriad uncertainties surrounding tracing the origin of an attack in cyberspace, in most instances it will be legally untenable.",
+          "paraphrase": "Because attribution and origin-tracing are uncertain, legal measures that depend on attribution (e.g., self-defence) will often be legally untenable.",
+          "researcher_comment": "Emphasizes that attribution limitations undermine force-based legal responses in most cases; central to arguments for prevention and cooperation-focused regimes. Assumes current forensic limits remain significant.",
+          "potential_themes": [
+            "attribution_challenges",
+            "legal_viability",
+            "self_defence"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "attribution_problem",
+            "legal_untenability",
+            "tracing_uncertainty"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-24T16:38:41.214609Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "7d3b6622b4cfb75e09801f1489390b9c1fea6723b8d373c8573431194aed8ecb",
+  "function": "code_pdf_page"
+}

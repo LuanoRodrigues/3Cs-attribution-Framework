@@ -1,0 +1,21 @@
+{
+  "generated_at_utc": "2026-02-22T21:28:51.314386+00:00",
+  "iterations_requested": 1,
+  "iterations_executed": 1,
+  "history": [
+    {
+      "iteration": 1,
+      "report_path": "/home/pantera/projects/TEIA/python_backend_legacy/dataset/section_split_loop_smoke/iter_01/report.json",
+      "docs_ok": 120,
+      "weighted_heading_split_score": 0.8012516914749662,
+      "standalone_total": 4737.0,
+      "glued_total": 1175.0,
+      "issue_groups": {
+        "plain_heading_runon": 21,
+        "header_then_abstract_runon": 2,
+        "toc_inline_navigation": 8,
+        "numbered_heading_runon": 10
+      }
+    }
+  ]
+}

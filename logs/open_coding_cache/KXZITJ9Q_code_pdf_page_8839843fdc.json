@@ -1,0 +1,148 @@
+[
+  {
+    "item_key": "KXZITJ9Q",
+    "section_key": "cached_full_text",
+    "response": [
+      {
+        "evidence": [
+          {
+            "direct_quote": "Our approach combines argumentation-based reasoning, logic programming, and probabilistic models to not only attribute an operation but also explain to the analyst why the system reaches its conclusions.",
+            "paraphrase": "The InCA framework integrates argumentation-based reasoning, logic programming and probabilistic models to perform attribution and to explain its conclusions (RQ1, RQ2).",
+            "researcher_comment": "This sentence explicitly lists the core methodological components used. It positions InCA as a hybrid system—argumentation for handling contradictions and explanations, probabilistic logic for uncertainty, and logic programming for rule-based inference. The claim is high-level; operational details are given elsewhere in the text.",
+            "potential_themes": [
+              "argumentation_frameworks",
+              "probabilistic_models",
+              "logic_programming"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "method"
+          },
+          {
+            "direct_quote": "such evidence is augmented with normal intelligence collection, such as human intelligence (HUMINT), signals intelligence (SIGINT) and other means—this adds additional complications to the task of attributing a given operation.",
+            "paraphrase": "Evidence used for cyber-attribution includes traditional intelligence sources (HUMINT, SIGINT) in addition to technical evidence, complicating attribution (RQ0).",
+            "researcher_comment": "This identifies non-technical evidence types explicitly included in the framework's scope, showing InCA expects heterogeneous evidence. It implies the system must handle differing provenance and reliability, a synthesis-relevant point. The sentence also flags integration complexity but does not quantify source reliability.",
+            "potential_themes": [
+              "evidence_types",
+              "evidentiary_sources"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              }
+            ],
+            "evidence_type": "claim"
+          },
+          {
+            "direct_quote": "The first, called the environmental model (EM) is used to describe the background knowledge and is probabilistic in nature.",
+            "paraphrase": "InCA operationalizes a probabilistic Environmental Model (EM) to represent background knowledge and evidence (RQ1, RQ2).",
+            "researcher_comment": "This defines the EM's role and its probabilistic character—key to how evidence uncertainty is represented. It indicates the modeling choice (probabilistic logic) but not the full inference procedure, which is described later. Applicability depends on quality of probabilistic annotations.",
+            "potential_themes": [
+              "probabilistic_models",
+              "model_operationalization"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "definition"
+          },
+          {
+            "direct_quote": "the AM will allow for contradictory information as the system must have the capability to reason about competing explanations for a given cyber-operation.",
+            "paraphrase": "The Analytical Model (AM) is explicitly designed to represent and reason over contradictory hypotheses and competing explanations (RQ1, RQ2).",
+            "researcher_comment": "This captures why an argumentation-based AM is chosen: to permit inconsistent inputs and evaluate competing arguments. It clarifies separation of concerns (probabilistic facts vs. defeasible reasoning). The text does not, here, quantify how contradictions affect output probabilities.",
+            "potential_themes": [
+              "argumentation_frameworks",
+              "model_operationalization"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "framework"
+          },
+          {
+            "direct_quote": "Definition 6 (Validity) Given InCA framework I = (ΠEM, ΠAM, af), argument ⟨A, L⟩ is valid w.r.t. world w ∈ WEM iff ∀ c ∈ A, w |= af(c).",
+            "paraphrase": "InCA operationalizes linkage between EM and AM via an annotation function: an argument is valid in an EM world only if every AM component's annotation holds in that world (RQ2).",
+            "researcher_comment": "This is the formal mechanism binding analytical constructs to environmental (probabilistic) conditions; it is central to computing which arguments apply under which probabilistic worlds. Correctness depends on the fidelity of the annotation function and EM formulas.",
+            "potential_themes": [
+              "annotation_function",
+              "model_operationalization"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              },
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "definition"
+          },
+          {
+            "direct_quote": "A probabilistic formula is written as: f : p ± ε.",
+            "paraphrase": "Environmental information (EM) is represented as probabilistic formulas of the form f : p ± ε, i.e., interval probabilities for formulas (RQ1).",
+            "researcher_comment": "This shows the chosen uncertainty representation: interval probabilities rather than point estimates or full distributions. The framework later uses linear programming to compute entailment bounds from such formulas, which has computational implications.",
+            "potential_themes": [
+              "probabilistic_models",
+              "confidence_language"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "definition"
+          },
+          {
+            "direct_quote": "Definition 8 Let I = (ΠEM, ΠAM, af) be an InCA framework, S ⊆ C_act (the set of “suspects”), O ∈ C_ops (the “operation”), and E ⊆ G_EM (the “evidence”).",
+            "paraphrase": "Attribution queries are formalized as the tuple (I,S,O,E), i.e., framework, suspect set, operation, and evidence; this tuple is used to compute the most probable suspect (RQ2, RQ1).",
+            "researcher_comment": "This makes attribution an explicit, formal query built on the combined models; the chapter defines the decision rule comparing P_condOp values after adding evidence. It operationalizes how analysts ask attribution questions within InCA and how evidence is injected (often as probability 1 entries).",
+            "potential_themes": [
+              "attribution_queries",
+              "probabilistic_models"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              },
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "definition"
+          }
+        ]
+      },
+      {
+        "input_tokens": 18137,
+        "output_tokens": 4986,
+        "total_tokens": 23123,
+        "cost_usd": 0.049642,
+        "model": "gpt-5-mini-2025-08-07",
+        "is_batch": true
+      }
+    ]
+  }
+]

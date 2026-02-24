@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": "{\n  \"classification\": \"Highly Relevant\",\n  \"relevance_score\": \"High\",\n  \"potential_subcategory\": \"International law of cyber operations \u2014 attribution, state responsibility, and use of force/self-defence\",\n  \"justification\": \"The abstract centers on legal and policy issues directly tied to cyber conflict attribution: it analyzes when cyber operations qualify as an 'armed attack' under Article 51, examines attribution standards (state organs, 'effective control', tolerated non\u2011State actors) grounded in landmark jurisprudence (Nicaragua, ICJ), and surveys State practice (Estonia, Georgia, US). It also discusses evidentiary, technical, and political challenges and implications for lawful self\u2011defence\u2014core concerns for attribution and cyber policy/law scholarship, so the work is highly relevant.\"\n}"
+  },
+  "cached_at": "2026-02-23T20:50:04.927709Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "5X7Z27P7",
+  "function": "classify_by_abs"
+}

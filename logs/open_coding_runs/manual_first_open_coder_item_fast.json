@@ -1,0 +1,322 @@
+{
+  "item_key": "J766INPV",
+  "elapsed_sec": 188.101782,
+  "result": [
+    {
+      "item_key": "J766INPV",
+      "section_key": "preview_section",
+      "response": {
+        "step": "section_open_code",
+        "section_key": "preview_section",
+        "evidence": [
+          {
+            "quote": "This chapter argues that, while self-defence certainly cannot be ruled out, the problem of attribution will preclude its proper application in many, if not most, instances.",
+            "paraphrase": "The authors contend that attribution difficulties will frequently prevent States from lawfully invoking self-defence under international law.",
+            "researcher_comment": "This foregrounds attribution as the central practical obstacle to Article 51 responses and motivates the chapter's turn to non‑forcible remedies; it is an asserted analytical claim rather than empirical proof. The sentence does not specify what evidentiary threshold or standards of proof would make attribution sufficient.",
+            "potential_themes": [
+              "attribution_challenges",
+              "evidentiary_standards"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [],
+            "evidence_type": "claim",
+            "argument_type": "causal",
+            "claim_direction": "supports",
+            "open_codes": [
+              "attribution_preclusion",
+              "self_defence_limitations"
+            ],
+            "dqid": "b110b15f21bc",
+            "section_key": "preview_section"
+          },
+          {
+            "quote": "Thus far, however, inter-State cyber security has unfortunately been treated predominantly as a military issue and as a consequence debate has, by and large, revolved around the question of whether, and under which conditions, measures of self-defence pursuant to Article 51 of the Charter of the United Nations (UN Charter) are feasible and permitted in response to a cyber attack.",
+            "paraphrase": "The literature and policy debate has mainly framed inter‑State cyber security as a military problem focused on when Article 51 self‑defence applies to cyber attacks.",
+            "researcher_comment": "Identifies the dominant 'military paradigm' in scholarship and policy, which explains why attribution and self‑defence standards are central topics. This is a descriptive framing sentence and does not itself analyse attribution mechanics or standards of proof.",
+            "potential_themes": [
+              "self_defence",
+              "militarization_of_cyberspace"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [],
+            "evidence_type": "claim",
+            "argument_type": "descriptive",
+            "claim_direction": "neutral",
+            "open_codes": [
+              "military_paradigm",
+              "debate_on_article_51"
+            ],
+            "dqid": "799cf13e0982",
+            "section_key": "preview_section"
+          },
+          {
+            "quote": "For such acts to be lawful under Article 51 of the UN Charter, the cyber attack would not only have to be considered a use of force within the meaning of Article 2(4) of the UN Charter, but moreover amount to an armed attack.",
+            "paraphrase": "A cyber operation must qualify both as a 'use of force' and as an 'armed attack' to justify lawful self‑defence under Article 51.",
+            "researcher_comment": "States the legal threshold linking use of force and armed attack required to trigger Article 51, which frames any attribution inquiry because attribution must connect the effects to an attacking actor. The sentence defines the legal test but does not operationalize proof standards.",
+            "potential_themes": [
+              "legal_thresholds",
+              "evidentiary_standards"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [],
+            "evidence_type": "definition",
+            "argument_type": "descriptive",
+            "claim_direction": "neutral",
+            "open_codes": [
+              "article_51_threshold",
+              "use_of_force_and_armed_attack"
+            ],
+            "dqid": "05921cae6cd2",
+            "section_key": "preview_section"
+          },
+          {
+            "quote": "While traditionally the definition of the term ‘armed attack’ as laid down in Article 51 would have involved a notion of kinetic force, hence following an instrumental approach that primarily centred upon the means of conduct, such an approach has been almost unanimously rejected in the academic literature dealing with cyber attacks.",
+            "paraphrase": "Scholars have largely rejected a means‑based (kinetic force) definition of 'armed attack' for cyber incidents.",
+            "researcher_comment": "Documents a scholarly shift away from tool‑centric tests toward outcome‑focused analysis; this matters for attribution because it makes the legal inquiry hinge on observed effects rather than the instruments used. The claim of near unanimity may overstate consensus without supporting citations.",
+            "potential_themes": [
+              "evidentiary_standards",
+              "legal_thresholds"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [],
+            "evidence_type": "finding",
+            "argument_type": "descriptive",
+            "claim_direction": "supports",
+            "open_codes": [
+              "rejection_of_means_based_definition",
+              "effects_over_means"
+            ],
+            "dqid": "340e5340d28d",
+            "section_key": "preview_section"
+          },
+          {
+            "quote": "Thus, most commentators today agree that the focus of attention should lie not on the means but on the consequences of an attack, and the common denominator is that of equivalence: a cyber attack amounts to an armed attack within the scope of Article 51 if its effects are equivalent to those caused by a conventional attack employing kinetic force.",
+            "paraphrase": "The prevailing view is that a cyber attack constitutes an armed attack when its effects are equivalent to those of a conventional kinetic attack.",
+            "researcher_comment": "Identifies the 'equivalence' or effects‑based test as the operative standard used by commentators to classify armed attacks in cyberspace; this standard raises practical evidentiary questions about how to measure equivalence and attribute effects to a responsible actor.",
+            "potential_themes": [
+              "legal_thresholds",
+              "evidentiary_standards"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [],
+            "evidence_type": "finding",
+            "argument_type": "descriptive",
+            "claim_direction": "supports",
+            "open_codes": [
+              "equivalence_test",
+              "effects_based_assessment",
+              "armed_attack_criteria"
+            ],
+            "dqid": "5df0472a769a",
+            "section_key": "preview_section"
+          },
+          {
+            "quote": "Thus, whenever the use of cyber means for malicious ends leads to considerable physical damage or even to the injury or death of people, that attack has been ‘armed’, and as a consequence triggers the right of self-defence of the victim State.",
+            "paraphrase": "When cyber operations cause substantial physical damage or casualties, they qualify as armed attacks and permit the victim State to exercise self‑defence.",
+            "researcher_comment": "Provides a concrete outcome‑based threshold (considerable physical damage or injury/death) that triggers self‑defence; useful for operational thresholding but likely rare in practice and still dependent on robust attribution to a state or actor.",
+            "potential_themes": [
+              "legal_thresholds",
+              "evidentiary_standards"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [],
+            "evidence_type": "claim",
+            "argument_type": "descriptive",
+            "claim_direction": "supports",
+            "open_codes": [
+              "physical_harm_threshold",
+              "self_defence_trigger"
+            ],
+            "dqid": "5942e1db41dd",
+            "section_key": "preview_section"
+          },
+          {
+            "quote": "Therefore, two other remedies will be analysed that might present an alternative to the prevalent military paradigm of international cyber security: countermeasures and the state of necessity.",
+            "paraphrase": "The authors propose analysing countermeasures and the state of necessity as non‑forcible alternatives to the military approach in international cyber security.",
+            "researcher_comment": "Signals the chapter's pivot toward non‑forcible legal remedies which may involve different attribution burdens and legal consequences than Article 51 responses; the sentence is programmatic and does not detail standards for applying these remedies.",
+            "potential_themes": [
+              "countermeasures",
+              "state_of_necessity"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [],
+            "evidence_type": "recommendation",
+            "argument_type": "normative",
+            "claim_direction": "supports",
+            "open_codes": [
+              "non_forcible_remedies",
+              "alternative_to_self_defence"
+            ],
+            "dqid": "31291b50afe3",
+            "section_key": "preview_section"
+          },
+          {
+            "quote": "The chapter provides an outlook on the possibilities of a more comprehensive approach to contemporary security issues that focuses on prevention rather than repression, drawing on States’ international due diligence obligations not to harm others.",
+            "paraphrase": "The authors advocate a prevention‑oriented security approach grounded in States' international due diligence obligations to avoid harming others.",
+            "researcher_comment": "Frames a normative shift from reactive military responses toward preventive state obligations, which could reduce reliance on contested attribution claims; the sentence does not specify the preventive measures or how due diligence would be operationalised.",
+            "potential_themes": [
+              "state_obligations",
+              "preventive_measures"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [],
+            "evidence_type": "recommendation",
+            "argument_type": "normative",
+            "claim_direction": "supports",
+            "open_codes": [
+              "due_diligence_obligations",
+              "prevention_focus"
+            ],
+            "dqid": "dd9add319420",
+            "section_key": "preview_section"
+          }
+        ]
+      }
+    },
+    {
+      "item_key": "J766INPV",
+      "section_key": "__intro_conclusion_harvest__",
+      "response": {
+        "step": "evidence_harvesting",
+        "section_key": "__intro_conclusion_harvest__",
+        "evidence": [
+          {
+            "dqid": "1ca25f033546",
+            "quote": "Cyber Security and the Military Paradigm: Self-Defence ### 2.1 Cyber [preview_section::fallback_conclusion] Article 51 would have involved a notion of kinetic force,² hence following an instrumental approach that primarily centred upon the means of conduct, such an approach has been almost unanimously rejected in the a",
+            "paraphrase": "Definition extracted from introduction/conclusion text.",
+            "researcher_comment": "Evidence sentence selected from introduction/conclusion content.",
+            "evidence_type": "definition",
+            "argument_type": "descriptive",
+            "claim_direction": "neutral",
+            "open_codes": [
+              "definitions"
+            ],
+            "relevant_rqs": [],
+            "potential_themes": [
+              "definitions",
+              "attribution_challenges",
+              "evidentiary_standards"
+            ],
+            "cluster_match": [
+              "definitions"
+            ],
+            "function_summary": "harvested definitions",
+            "risk_if_missing": "Evidence category omitted from synthesis.",
+            "illustrative_skills": [],
+            "relevance_score": 3,
+            "section_key": "__intro_conclusion_harvest__",
+            "extraction_category": "definitions"
+          },
+          {
+            "dqid": "8d71822b3bc4",
+            "quote": "[preview_section::fallback_intro] PART III State Interaction and Counteraction in Cyberspace Robin Geiß &amp; Henning Lahmann # FREEDOM AND SECURITY IN CYBERSPACE: SHIFTING THE FOCUS AWAY FROM MILITARY RESPONSES TOWARDS NON-FORCIBLE COUNTERMEASURES AND COLLECTIVE THREAT-PREVENTION ## 1.",
+            "paraphrase": "Main finding extracted from introduction/conclusion text.",
+            "researcher_comment": "Evidence sentence selected from introduction/conclusion content.",
+            "evidence_type": "finding",
+            "argument_type": "descriptive",
+            "claim_direction": "neutral",
+            "open_codes": [
+              "main_findings"
+            ],
+            "relevant_rqs": [],
+            "potential_themes": [
+              "main_findings",
+              "attribution_challenges",
+              "evidentiary_standards"
+            ],
+            "cluster_match": [
+              "main_findings"
+            ],
+            "function_summary": "harvested main_findings",
+            "risk_if_missing": "Evidence category omitted from synthesis.",
+            "illustrative_skills": [],
+            "relevance_score": 3,
+            "section_key": "__intro_conclusion_harvest__",
+            "extraction_category": "main_findings"
+          },
+          {
+            "dqid": "f04f3a5927f0",
+            "quote": "The chapter provides an outlook on the possibilities of a more comprehensive approach to contemporary security issues that focuses on prevention rather than repression, drawing on States’ international due diligence obligations not to harm others.",
+            "paraphrase": "Method-related claim extracted from introduction/conclusion text.",
+            "researcher_comment": "Evidence sentence selected from introduction/conclusion content.",
+            "evidence_type": "method",
+            "argument_type": "descriptive",
+            "claim_direction": "neutral",
+            "open_codes": [
+              "method_claims"
+            ],
+            "relevant_rqs": [],
+            "potential_themes": [
+              "method_claims",
+              "attribution_challenges",
+              "evidentiary_standards"
+            ],
+            "cluster_match": [
+              "method_claims"
+            ],
+            "function_summary": "harvested method_claims",
+            "risk_if_missing": "Evidence category omitted from synthesis.",
+            "illustrative_skills": [],
+            "relevance_score": 3,
+            "section_key": "__intro_conclusion_harvest__",
+            "extraction_category": "method_claims"
+          },
+          {
+            "dqid": "ee322fbce859",
+            "quote": "As this form of conduct, by definition, does not employ kinetic force, limiting ‘armed attack’ to harm caused by traditional military means would plainly mean that a cyber attack could never be regarded as an armed attack, a conclusion obviously unreasonable considering the potential damage done by cyber attacks.",
+            "paraphrase": "Limitation statement extracted from introduction/conclusion text.",
+            "researcher_comment": "Evidence sentence selected from introduction/conclusion content.",
+            "evidence_type": "limitation",
+            "argument_type": "descriptive",
+            "claim_direction": "neutral",
+            "open_codes": [
+              "stated_limitations"
+            ],
+            "relevant_rqs": [],
+            "potential_themes": [
+              "stated_limitations",
+              "attribution_challenges",
+              "evidentiary_standards"
+            ],
+            "cluster_match": [
+              "stated_limitations"
+            ],
+            "function_summary": "harvested stated_limitations",
+            "risk_if_missing": "Evidence category omitted from synthesis.",
+            "illustrative_skills": [],
+            "relevance_score": 3,
+            "section_key": "__intro_conclusion_harvest__",
+            "extraction_category": "stated_limitations"
+          },
+          {
+            "dqid": "8ba2341df03d",
+            "quote": "Thus, most commentators today agree that the focus of attention should lie not on the means but on the consequences of an attack, and the common denominator is that of equivalence: a cyber attack amounts to an armed attack within the scope of Article 51 if its effects are equivalent to those caused by a conventional at",
+            "paraphrase": "Recommendation/future-work statement extracted from introduction/conclusion text.",
+            "researcher_comment": "Evidence sentence selected from introduction/conclusion content.",
+            "evidence_type": "recommendation",
+            "argument_type": "descriptive",
+            "claim_direction": "neutral",
+            "open_codes": [
+              "recommendations_future_work"
+            ],
+            "relevant_rqs": [],
+            "potential_themes": [
+              "recommendations_future_work",
+              "attribution_challenges",
+              "evidentiary_standards"
+            ],
+            "cluster_match": [
+              "recommendations_future_work"
+            ],
+            "function_summary": "harvested recommendations_future_work",
+            "risk_if_missing": "Evidence category omitted from synthesis.",
+            "illustrative_skills": [],
+            "relevance_score": 3,
+            "section_key": "__intro_conclusion_harvest__",
+            "extraction_category": "recommendations_future_work"
+          }
+        ]
+      }
+    }
+  ]
+}

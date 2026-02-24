@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": "{\n  \"classification\": \"Highly Relevant\",\n  \"relevance_score\": \"High\",\n  \"potential_subcategory\": \"Cyber arms-control treaty verification; attribution and international law\",\n  \"justification\": \"The abstract explicitly targets the attribution problem and the design of binding international law/policy responses. It evaluates how nuclear arms-control verification tools can be adapted to cyberspace, proposes concrete verification techniques (network monitoring, forensics, log inspection, selective data sharing), and addresses legal questions (treaty design, jus ad bellum/jus in bello), confidentiality mechanisms, and operational/political limits. These features make the work directly substantive for cyber conflict attribution and cyber policy/law.\"\n}"
+  },
+  "cached_at": "2026-02-23T21:00:49.485850Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "NTUET9XJ",
+  "function": "classify_by_abs"
+}

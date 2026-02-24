@@ -1,0 +1,12 @@
+{
+  "status": "running",
+  "item_key": "NNYKULYW",
+  "prompt_key": "code_pdf_page",
+  "total_sections": 1,
+  "completed_sections": 1,
+  "current_section_key": "legacy_dataset_text",
+  "current_section_index": 1,
+  "done": false,
+  "store_only": false,
+  "read": false
+}

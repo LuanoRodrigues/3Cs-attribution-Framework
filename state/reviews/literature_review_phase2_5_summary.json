@@ -1,0 +1,17 @@
+{
+  "phase": "phase_5_coding_extraction_complete",
+  "created_at": "2026-02-23T19:29:08.419Z",
+  "source_snapshot": "state/reviews/frameworks_collection_snapshot_20260223T192730Z.json",
+  "source_coding_run": "logs/open_coding_runs/0_What_types_of_evidence_are_used__8839843fdc__frameworks.json",
+  "num_items_processed": 7,
+  "num_items_screened": 7,
+  "num_items_included": 7,
+  "num_pdfs_coded": 7,
+  "evidence_rows_extracted": 201,
+  "artifacts": {
+    "criteria": "state/reviews/literature_review_criteria.json",
+    "screening": "state/reviews/literature_review_screening_decisions.csv",
+    "fulltext_queue": "state/reviews/literature_review_fulltext_coding_queue.csv",
+    "coded_evidence": "state/reviews/literature_review_coded_evidence_phase5.csv"
+  }
+}

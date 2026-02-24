@@ -1,0 +1,369 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "quote": "In reality, the practical likelihood of either U.N. response following a cyber-attack appears relatively low.",
+          "paraphrase": "The author asserts that UN institutional responses to cyber-attacks are unlikely in practice, which is relevant to RQs about the feasibility of international legal remedies for cyber incidents.",
+          "researcher_comment": "This frames UN-level remedies as practically unavailable in most cyber cases, shifting emphasis to bilateral or unilateral responses; the claim is asserted without empirical evidence here. Use this when assessing realistic avenues for redress rather than doctrinal possibilities.",
+          "potential_themes": [
+            "attribution_challenges",
+            "state_responsibility"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "un_response_unlikely",
+            "political_constraints",
+            "institutional_limitations"
+          ]
+        },
+        {
+          "quote": "There are significant obstacles that stand in the way, and these are primarily political rather than legal.",
+          "paraphrase": "The author claims that the principal barriers to UN responses to cyber-attacks are political, not legal, which informs RQs about non-legal obstacles to international action.",
+          "researcher_comment": "This distinguishes political will from legal entitlement as the dominant constraint; it suggests attribution/legal standard debates may be secondary to geopolitics. The excerpt does not specify which political factors operate or provide supporting evidence.",
+          "potential_themes": [
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "causal",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "political_obstacles",
+            "legal_vs_political"
+          ]
+        },
+        {
+          "quote": "One such characterization is as a use of force in breach of the Charter.",
+          "paraphrase": "The author notes that states may characterize cyber-attacks as a 'use of force' violating the UN Charter, which is directly relevant to RQs on legal classification of cyber operations.",
+          "researcher_comment": "Identifying an incident as a use of force triggers specific legal consequences (e.g., self-defense) but depends on contested thresholds. This sentence signals the doctrinal route without resolving evidentiary or attribution demands.",
+          "potential_themes": [
+            "use_of_force_thresholds",
+            "state_responsibility"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "use_of_force_characterization",
+            "charter_violation"
+          ]
+        },
+        {
+          "quote": "Unsurprisingly, this has proven to be a difficult question given that, even with regard to kinetic attacks, there is no conclusive definition of force.",
+          "paraphrase": "The author observes that defining 'force' is difficult even for kinetic attacks, indicating that RQs seeking a clear legal threshold for cyber-force confront longstanding doctrinal ambiguity.",
+          "researcher_comment": "This locates the cyber problem within a broader indeterminacy in use-of-force law, cautioning against assuming easy doctrinal solutions. It implies empirical and conceptual work is needed to operationalize 'force' in cyber contexts.",
+          "potential_themes": [
+            "use_of_force_thresholds"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "force_definition_ambiguity",
+            "kinetic_vs_cyber"
+          ]
+        },
+        {
+          "quote": "As Professor Michael Schmitt notes, the\"normative shorthand\"used within the Charter does not work because a connection no longer exists between the instrument (force) and the consequences the provision seeks to prevent.",
+          "paraphrase": "Schmitt argues that the Charter's instrument-based phrasing ('force') fails in cyber contexts because the prohibited instrument is no longer reliably linked to the harmful consequences, which bears on RQs about how to interpret Article 2(4) for cyber operations.",
+          "researcher_comment": "This supports a consequences-based interpretive move (evaluate harm rather than means). It is doctrinally significant but requires operational rules to translate consequences into legal thresholds for cyber incidents.",
+          "potential_themes": [
+            "use_of_force_thresholds",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "normative_shorthand_critique",
+            "consequences_based_interpretation"
+          ]
+        },
+        {
+          "quote": "The criteria proposed by Schmitt are: severity, immediacy, directness, invasiveness, measurability, presumptive legitimacy, and responsibility.",
+          "paraphrase": "Schmitt's framework lists seven criteria\u2014severity, immediacy, directness, invasiveness, measurability, presumptive legitimacy, and responsibility\u2014to assess whether a cyber incident constitutes use of force, directly informing RQs on evaluative standards.",
+          "researcher_comment": "This is the operative framework most cited in doctrine and policy (and later echoed in Tallinn Manual); each criterion needs precise operationalization for empirical coding. Treat this as the baseline taxonomy for use-of-force evaluations in cyber contexts.",
+          "potential_themes": [
+            "use_of_force_thresholds",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "framework",
+          "argument_type": "procedural",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "schmitt_seven_criteria",
+            "assessment_framework"
+          ]
+        },
+        {
+          "quote": "Severity relates to the degree to which attacks involve physical injury or the destruction of property.",
+          "paraphrase": "Severity is defined here as the extent of physical injury or property destruction from an attack, which affects whether a cyber incident meets the use-of-force threshold in RQs about criteria operationalization.",
+          "researcher_comment": "This centers tangible physical effects in the severity test and therefore privileges cyber incidents that produce kinetic-like harm. Researchers should note this biases against primarily economic harms.",
+          "potential_themes": [
+            "use_of_force_thresholds"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "severity_definition",
+            "physical_damage_focus"
+          ]
+        },
+        {
+          "quote": "The final criterion involves the notion that state responsibility can be a factor when evaluating cyber-attack as a use of force.",
+          "paraphrase": "The author notes that the degree of state involvement in a cyber-operation is a relevant factor in judging whether it constitutes use of force, which informs RQs about attribution and state responsibility.",
+          "researcher_comment": "This connects attribution (state involvement) to normative assessment: greater state participation strengthens the case for use of force. But attributing state involvement is itself evidentially difficult, creating circular dependence.",
+          "potential_themes": [
+            "state_responsibility",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "framework",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "state_involvement_factor",
+            "responsibility_criterion"
+          ]
+        },
+        {
+          "quote": "If the principle of nonintervention may be used to establish wrongfulness, arguably the threshold question in relation to cyber-force is of limited significance and may be essentially moot.",
+          "paraphrase": "The author argues that applying the nonintervention principle to cyber-warfare could render debates over the 'use of force' threshold largely irrelevant for RQs about legal wrongfulness in cyber operations.",
+          "researcher_comment": "This proposes a doctrinal workaround: use nonintervention to capture coercive cyber acts even absent physical damage. Applicability will hinge on whether cyber operations amount to coercive interference in sovereign decision-making.",
+          "potential_themes": [
+            "nonintervention",
+            "use_of_force_thresholds"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "causal",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "nonintervention_moots_force",
+            "alternative_legal_basis"
+          ]
+        },
+        {
+          "quote": "If a cyber-attack is found to have breached international law, a legal response may require that the responsible state \"make full reparation for the injury caused.\"",
+          "paraphrase": "The author records that breach of international law by a cyber-attack can obligate the responsible state to make full reparations, relevant to RQs on remedies after attribution.",
+          "researcher_comment": "This cites the ARSIWA reparations principle as the standard remedy; in practice, reparations depend on successful attribution and enforceability mechanisms. Reparations are legally available but practically difficult to secure.",
+          "potential_themes": [
+            "reparations",
+            "state_responsibility"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "reparations_obligation",
+            "ARSIWA_remedy"
+          ]
+        },
+        {
+          "quote": "Reparations are likely to be a comparatively appealing option for an injured state in response to a cyber-attack than they would be in relation to a kinetic attack.",
+          "paraphrase": "The author contends that reparations are often more attractive to victim states after cyber-attacks than after kinetic attacks, which informs RQs about preferred state responses.",
+          "researcher_comment": "The rationale is non\u2011escalation and limited territorial implications of cyber incidents; this affects policy prescriptions but depends on states' ability to identify and compel liable actors. The statement is comparative and normative in tone.",
+          "potential_themes": [
+            "reparations"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "comparative",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "reparations_preference",
+            "non_escalatory_response"
+          ]
+        },
+        {
+          "quote": "In contrast to the broad acceptance of Schmitt's criteria with respect to the use of force, there is no consensus regarding a test for cyber-armed attack.",
+          "paraphrase": "While Schmitt's criteria are broadly accepted for use-of-force analysis, the literature lacks consensus on a separate test for what constitutes a 'cyber-armed attack,' relevant to RQs on thresholds for invoking self-defense.",
+          "researcher_comment": "This highlights a doctrinal gap: 'armed attack' (which triggers self-defense) is distinct and contested in cyber law. Researchers should treat armed-attack thresholds as unsettled and sensitive to interpretive choices.",
+          "potential_themes": [
+            "use_of_force_thresholds",
+            "self_defense"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "armed_attack_test_lack",
+            "self_defense_threshold_uncertainty"
+          ]
+        },
+        {
+          "quote": "Schmitt has proposed that, to qualify as cyber-armed attack, an incident must result in physical damage.",
+          "paraphrase": "Schmitt's proposed test for a cyber-armed attack requires that the incident produce physical damage, which bears on RQs about the conditions under which self-defense may be invoked.",
+          "researcher_comment": "This is a stricter standard (physicality) for armed attack, which would exclude many economic-impacting cyber operations; its adoption would constrain states' ability to lawfully use force in response to most cyber incidents.",
+          "potential_themes": [
+            "use_of_force_thresholds"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "armed_attack_physicality",
+            "schmitt_physical_damage_test"
+          ]
+        },
+        {
+          "quote": "The requirement of necessity implies that there is no alternative to a use of force to repel an attack that is either imminent or underway.",
+          "paraphrase": "The necessity element of self-defense requires that no non\u2011forceful alternative exists to repel an imminent or ongoing attack, which is central to RQs on lawful cyber self-defense.",
+          "researcher_comment": "Necessity imposes a high bar in cyber contexts where non-forceful measures (including technical mitigation) may be available and where imminence is unclear. This constrains justifications for preemptive or immediate kinetic/cyber responses.",
+          "potential_themes": [
+            "necessity_proportionality",
+            "self_defense"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "necessity_requirement",
+            "no_alternative"
+          ]
+        },
+        {
+          "quote": "On this basis, the general absence of physical territorial incursion in the case of cyber-attacks suggests that the necessity element may be fundamentally difficult to establish.",
+          "paraphrase": "The author suggests that because cyber-attacks typically lack territorial incursion, meeting the necessity requirement for self-defense in cyber cases is often difficult, informing RQs about legal permissibility of defensive force.",
+          "researcher_comment": "This identifies a practical legal constraint: the territorial element commonly associated with force is frequently absent in cyber cases. Exceptions (e.g., cyber operations causing physical effects) remain possible but rare.",
+          "potential_themes": [
+            "necessity_proportionality",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "causal",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "territorial_incurrence_absence",
+            "necessity_challenge"
+          ]
+        },
+        {
+          "quote": "For these attacks, many basic parameters that are normally readily apparent may remain unclear for some time.",
+          "paraphrase": "The author observes that cyber-attacks often leave key parameters (e.g., start, scope, attribution) unclear for extended periods, complicating RQs about immediacy and legal timing of responses.",
+          "researcher_comment": "This highlights technical and evidentiary latency: identifying an attack and its scope can be slow, which undermines claims of imminence and timely necessity for self-defense. Empirical analysis should quantify typical detection/attribution delays.",
+          "potential_themes": [
+            "attribution_challenges",
+            "necessity_proportionality"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "temporal_ambiguity",
+            "detection_delay"
+          ]
+        },
+        {
+          "quote": "On this point, notably, scholars appear to be in general agreement that kinetic and cyber- uses of force are completely equivalent and interchangeable as defensive measures.",
+          "paraphrase": "The author reports that many scholars claim kinetic and cyber uses of force are equivalent and interchangeable as defensive measures, which pertains to RQs on proportionality and response modality.",
+          "researcher_comment": "The excerpt notes academic consensus but also suggests this may be overstated; applying kinetic responses to cyber incidents raises normative and political controversy. Treat equivalence claims as contested rather than settled.",
+          "potential_themes": [
+            "necessity_proportionality",
+            "self_defense"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "equivalence_claim",
+            "cyber_kinetic_interchangeability"
+          ]
+        },
+        {
+          "quote": "A key difference between instances of kinetic aggression and cyber-attack is the focus on immediate physical damage in relation to the former and the heightened significance of economic damage to the latter.",
+          "paraphrase": "The author contrasts kinetic aggression (immediate physical damage) with cyber-attacks (where economic damage is often more significant), which informs RQs about appropriate remedies and thresholds.",
+          "researcher_comment": "This distinction supports the argument that reparations and legal remedies may be more salient than forceful reprisals in many cyber cases; nevertheless, cyber incidents that cause physical harm remain important edge cases.",
+          "potential_themes": [
+            "economic_damage",
+            "reparations"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "comparative",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "economic_vs_physical_damage",
+            "remedy_implications"
+          ]
+        },
+        {
+          "quote": "As an alternative to self-defense, countermeasures may be a suitable legal mechanism for states to respond to a cyber-attack.",
+          "paraphrase": "The author suggests countermeasures are an alternative lawful response to cyber-attacks, which is directly relevant to RQs exploring non\u2011defensive legal options.",
+          "researcher_comment": "This points researchers to ARSIWA countermeasures as a potentially viable response category; however, applicability depends on strict prerequisites (purpose, form, and limits). Technical details of cyber operations complicate compliance analysis.",
+          "potential_themes": [
+            "countermeasures"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "countermeasures_option",
+            "legal_self_help"
+          ]
+        },
+        {
+          "quote": "ARSIWA suggests that if a state directs otherwise illegal actions towards another state that has wronged it, the wrongfulness of those actions will be precluded if they qualify as countermeasures.",
+          "paraphrase": "The author cites ARSIWA's position that otherwise-illegal acts by an injured state can be lawful as countermeasures if they meet ARSIWA conditions, relevant to RQs on legal limits of active defenses.",
+          "researcher_comment": "This summarizes the ARSIWA framework but the excerpt later notes numerous prerequisites and constraints (purpose to induce compliance; non-interference with dispute resolution; compliance with peremptory norms). Applicability to highly technical cyber responses remains under-explored.",
+          "potential_themes": [
+            "countermeasures",
+            "state_responsibility"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "framework",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "ARSIWA_countermeasures",
+            "lawful_conditions"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-24T15:10:53.782142Z",
+  "collection_name": "frameworks",
+  "custom_id": "15aaccfe02a828d325609145f6ef8893dd8849b92d0a05d257b21b67e4ac2d44",
+  "function": "code_pdf_page"
+}

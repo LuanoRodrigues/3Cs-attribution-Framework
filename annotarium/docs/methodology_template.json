@@ -1,0 +1,174 @@
+{
+  "name": "Annotarium Comprehensive Methodology Framework",
+  "version": "2.1",
+  "intent": "Comprehensive analytical template for legal-cyber attribution methodology with section-level data contracts.",
+  "context_contract": {
+    "mode": "single|aggregate",
+    "report_meta": "report identity and source file linkage",
+    "documents_preview": "portfolio document-level summary rows",
+    "pipeline_counts": "counts for pages/claims/sources/artifacts/citations/tables/figures",
+    "source_type_counts": "source classes distribution",
+    "artifact_type_counts": "artifact type distribution",
+    "document_scores_v4": "document-level v4 scoring metrics",
+    "claim_score_preview_v4": "claim-level score previews",
+    "raw_claims_preview": "raw claim payload excerpt",
+    "raw_sources_preview": "raw source payload excerpt",
+    "raw_artifacts_preview": "raw artifact payload excerpt",
+    "raw_data_excerpt": "high-level raw extraction digest",
+    "scoring_bundle": "full_icj/full_icj_v3/full_icj_v4 objects",
+    "validation_bundle": "validation certification, categories, findings",
+    "raw_payload_paths": "absolute paths to report, extraction, scores, validation, markdown, pdf",
+    "raw_payload_files": "exists/size metadata for payload files",
+    "pipeline_methods": "declared method stack",
+    "qa_protocol": "agent/human sampling policy",
+    "runtime_libraries": "python/node runtime and library versions",
+    "portfolio_summary": "aggregate statistical diagnostics",
+    "methodology_reference_excerpt": "local methodology reference text"
+  },
+  "sections": [
+    {
+      "sid": "introduction",
+      "title": "Introduction and Epistemic Framing",
+      "instruction": "Introduce the methodology as an evidentiary framework for cyber attribution under contestation. Explain epistemic posture, burden-sensitive interpretation, and why structured extraction precedes legal inference.",
+      "min_paragraphs": 3,
+      "min_words": 260,
+      "must_include": ["epistemic", "evidentiary", "contestable", "burden-sensitive"],
+      "context_keys": ["mode", "report_meta", "documents_preview", "methodology_reference_excerpt", "pipeline_methods"]
+    },
+    {
+      "sid": "scope_units",
+      "title": "Scope, Units of Analysis, and Output Semantics",
+      "instruction": "Define units of analysis (claim, source, artifact, evidence item, document) and explain what each output score means and does not mean.",
+      "min_paragraphs": 2,
+      "min_words": 220,
+      "must_include": ["claim", "source", "artifact", "evidence item", "document-level"],
+      "context_keys": ["mode", "raw_data_excerpt", "pipeline_counts", "document_scores_v4", "claim_score_preview_v4"]
+    },
+    {
+      "sid": "data_ingestion",
+      "title": "Data Ingestion and Corpus Handling",
+      "instruction": "Explain report ingestion, deterministic file handling, and reproducibility guarantees from raw PDF inputs through intermediate artifacts.",
+      "min_paragraphs": 2,
+      "min_words": 200,
+      "must_include": ["deterministic", "reproducibility", "input corpus"],
+      "context_keys": ["report_meta", "raw_payload_paths", "raw_payload_files", "pipeline_methods", "runtime_libraries"]
+    },
+    {
+      "sid": "pdf_to_markdown",
+      "title": "PDF-to-Markdown Conversion",
+      "instruction": "Explain conversion from PDF to markdown, explicitly describing Mistral-based processing and offline fallback posture as methodological resilience rather than conceptual change.",
+      "min_paragraphs": 2,
+      "min_words": 210,
+      "must_include": ["Mistral", "markdown", "offline fallback", "resilience"],
+      "context_keys": ["pipeline_methods", "pipeline_counts", "raw_payload_paths", "raw_payload_files"]
+    },
+    {
+      "sid": "structural_parsing",
+      "title": "Structural Parsing of Text, Tables, and Figures",
+      "instruction": "Describe extraction of text blocks, tables, and figures/images with anchors and why anchor-preserving structure is required for auditability.",
+      "min_paragraphs": 2,
+      "min_words": 220,
+      "must_include": ["anchors", "tables", "figures", "auditability"],
+      "context_keys": ["pipeline_counts", "raw_data_excerpt", "raw_payload_paths", "raw_claims_preview"]
+    },
+    {
+      "sid": "artifact_extraction",
+      "title": "Artifact Extraction and Technical Object Normalization",
+      "instruction": "Explain artifact extraction across modalities, normalization of technical objects, and implications for custody/provenance evaluation.",
+      "min_paragraphs": 2,
+      "min_words": 220,
+      "must_include": ["normalization", "technical objects", "provenance", "modalities"],
+      "context_keys": ["artifact_type_counts", "raw_artifacts_preview", "pipeline_methods", "document_scores_v4"]
+    },
+    {
+      "sid": "reference_parsing",
+      "title": "Footnote and Reference Parsing",
+      "instruction": "Explain reference and footnote parsing, citation linkage, and resolution from rhetorical citation to analyzable source graph.",
+      "min_paragraphs": 2,
+      "min_words": 220,
+      "must_include": ["footnote", "citation linkage", "source graph"],
+      "context_keys": ["raw_sources_preview", "source_type_counts", "pipeline_counts", "pipeline_methods"]
+    },
+    {
+      "sid": "institution_inference",
+      "title": "Institution Inference and Source Typology",
+      "instruction": "Explain source institution inference, typology mapping, and how institutional class affects credibility weighting and corroboration eligibility.",
+      "min_paragraphs": 2,
+      "min_words": 210,
+      "must_include": ["institution inference", "source typology", "credibility weighting", "corroboration eligibility"],
+      "context_keys": ["raw_sources_preview", "source_type_counts", "pipeline_methods", "runtime_libraries"]
+    },
+    {
+      "sid": "claim_evidence_graph",
+      "title": "Claim-Evidence Graph Construction",
+      "instruction": "Describe how claims are linked to evidence, sources, and artifacts, including anchor-level traceability and anti-circularity safeguards.",
+      "min_paragraphs": 2,
+      "min_words": 230,
+      "must_include": ["claim-evidence graph", "traceability", "anti-circularity"],
+      "context_keys": ["raw_claims_preview", "raw_sources_preview", "raw_artifacts_preview", "claim_score_preview_v4", "scoring_bundle"]
+    },
+    {
+      "sid": "scoring_overview",
+      "title": "Scoring Framework Overview",
+      "instruction": "Present the overall scoring architecture from claim-level axes to document-level synthesis. Clarify separation between extraction outputs and inferential weighting.",
+      "min_paragraphs": 2,
+      "min_words": 230,
+      "must_include": ["claim-level", "document-level", "inferential weighting"],
+      "context_keys": ["document_scores_v4", "claim_score_preview_v4", "scoring_bundle", "pipeline_methods"]
+    },
+    {
+      "sid": "chain_of_custody",
+      "title": "Chain of Custody Axis",
+      "instruction": "Explain chain-of-custody variables (provenance, integrity, time anchors, artifact identifiers, versioning), quality controls, and penalties.",
+      "min_paragraphs": 3,
+      "min_words": 280,
+      "must_include": ["provenance", "integrity", "time anchors", "versioning", "penalties"],
+      "context_keys": ["document_scores_v4", "claim_score_preview_v4", "raw_artifacts_preview", "scoring_bundle"]
+    },
+    {
+      "sid": "credibility_corroboration",
+      "title": "Credibility Axis with Corroboration Subcomponent",
+      "instruction": "Explain source hierarchy, independence logic, corroboration rules, claim coverage scaling, and exclusion criteria for low-value source classes.",
+      "min_paragraphs": 3,
+      "min_words": 320,
+      "must_include": ["source hierarchy", "independence", "corroboration", "claim coverage", "exclusion criteria"],
+      "context_keys": ["source_type_counts", "raw_sources_preview", "document_scores_v4", "claim_score_preview_v4", "scoring_bundle"]
+    },
+    {
+      "sid": "clarity_axis",
+      "title": "Clarity Axis and State Responsibility Pathways",
+      "instruction": "Explain clarity scoring for attribution to state actors through organs, control over non-state actors, and due diligence failure pathways.",
+      "min_paragraphs": 3,
+      "min_words": 300,
+      "must_include": ["state organs", "non-state actors", "control", "due diligence", "state responsibility"],
+      "context_keys": ["document_scores_v4", "claim_score_preview_v4", "scoring_bundle", "raw_claims_preview"]
+    },
+    {
+      "sid": "aggregation_calibration",
+      "title": "Aggregation, Calibration, and Uncertainty",
+      "instruction": "Explain claim-to-document aggregation, weighting, calibration, and uncertainty handling (e.g., confidence intervals/dispersion diagnostics) in interpretation.",
+      "min_paragraphs": 3,
+      "min_words": 300,
+      "must_include": ["aggregation", "calibration", "uncertainty", "dispersion"],
+      "context_keys": ["document_scores_v4", "scoring_bundle", "portfolio_summary", "documents_preview"]
+    },
+    {
+      "sid": "validation_quality_assurance",
+      "title": "Validation and Quality Assurance",
+      "instruction": "Explain automated validation gates and QA protocol with agent review and targeted human review on a 10% sample with no observed errors in that sample.",
+      "min_paragraphs": 3,
+      "min_words": 260,
+      "must_include": ["validation gates", "agent review", "human review", "10%", "no observed errors"],
+      "context_keys": ["validation_bundle", "qa_protocol", "raw_payload_paths", "raw_payload_files"]
+    },
+    {
+      "sid": "limitations_governance",
+      "title": "Limitations, Governance, and Future Refinement",
+      "instruction": "Discuss methodological limits, governance controls, and principled refinement roadmap without overstating certainty.",
+      "min_paragraphs": 2,
+      "min_words": 220,
+      "must_include": ["limitations", "governance", "refinement roadmap"],
+      "context_keys": ["validation_bundle", "document_scores_v4", "portfolio_summary", "runtime_libraries", "methodology_reference_excerpt"]
+    }
+  ]
+}

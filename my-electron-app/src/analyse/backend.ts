@@ -140,6 +140,95 @@ function hasAnyFile(dir: string, candidates: string[]): boolean {
   return findFirstExistingFile(dir, candidates) !== null;
 }
 
+function shouldSkipBatchScanDir(dirName: string): boolean {
+  const lower = String(dirName || "").toLowerCase();
+  return (
+    !lower ||
+    lower.startsWith(".") ||
+    lower === "node_modules" ||
+    lower === "__pycache__" ||
+    lower === ".cache" ||
+    lower === ".git"
+  );
+}
+
+function findNewestBatchFileUnder(rootDir: string, maxDepth = 4): string | null {
+  if (!rootDir || !isDirectory(rootDir)) return null;
+  const queue: Array<{ dir: string; depth: number }> = [{ dir: rootDir, depth: 0 }];
+  let bestPath: string | null = null;
+  let bestMtime = -1;
+  while (queue.length) {
+    const next = queue.shift();
+    if (!next) continue;
+    const { dir, depth } = next;
+    let entries: fs.Dirent[] = [];
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      const entryPath = path.join(dir, entry.name);
+      if (entry.isFile() && BATCH_FILE_CANDIDATES.includes(entry.name)) {
+        try {
+          const stat = fs.statSync(entryPath);
+          if (stat.mtimeMs > bestMtime) {
+            bestMtime = stat.mtimeMs;
+            bestPath = entryPath;
+          }
+        } catch {
+          // ignore stat failures
+        }
+        continue;
+      }
+      if (entry.isDirectory() && depth < maxDepth && !shouldSkipBatchScanDir(entry.name)) {
+        queue.push({ dir: entryPath, depth: depth + 1 });
+      }
+    }
+  }
+  return bestPath;
+}
+
+function resolveBatchDatasetPath(runPath: string): string | null {
+  const normalizedRunPath = String(runPath || "").trim();
+  if (!normalizedRunPath) return null;
+  const direct = findFirstExistingFile(normalizedRunPath, BATCH_FILE_CANDIDATES);
+  if (direct) {
+    return direct;
+  }
+  const roots = new Set<string>();
+  roots.add(normalizedRunPath);
+  roots.add(path.join(normalizedRunPath, "sections"));
+  roots.add(path.join(normalizedRunPath, "thematics_outputs"));
+  roots.add(path.join(normalizedRunPath, "thematics_outputs", "sections"));
+  const parent = path.dirname(normalizedRunPath);
+  roots.add(parent);
+  roots.add(path.join(parent, "sections"));
+  roots.add(path.join(parent, "thematics_outputs"));
+  roots.add(path.join(parent, "thematics_outputs", "sections"));
+  try {
+    roots.add(getDefaultBaseDir());
+  } catch {
+    // best effort
+  }
+  let bestPath: string | null = null;
+  let bestMtime = -1;
+  for (const root of roots) {
+    const found = findNewestBatchFileUnder(root, 4);
+    if (!found) continue;
+    try {
+      const stat = fs.statSync(found);
+      if (stat.mtimeMs > bestMtime) {
+        bestMtime = stat.mtimeMs;
+        bestPath = found;
+      }
+    } catch {
+      // ignore stat failures
+    }
+  }
+  return bestPath;
+}
+
 export function loadDirectQuoteLookup(runPath: string): { data: Record<string, unknown>; path: string | null } {
   if (!runPath) return { data: {}, path: null };
   // prefer thematics_outputs/<runId> if present, then collection-level lookup
@@ -1031,7 +1120,7 @@ export function buildDatasetHandles(runPath: string): AnalyseDatasets {
     console.info("[analyse][datasets] empty runPath");
     return datasets;
   }
-  const batches = findFirstExistingFile(runPath, BATCH_FILE_CANDIDATES);
+  const batches = resolveBatchDatasetPath(runPath);
   if (batches) {
     datasets.batches = batches;
   }
@@ -1053,7 +1142,7 @@ export function buildDatasetHandles(runPath: string): AnalyseDatasets {
 
 export async function loadBatches(runPath: string): Promise<BatchRecord[]> {
   if (!runPath) return [];
-  let datasetPath = findFirstExistingFile(runPath, BATCH_FILE_CANDIDATES);
+  let datasetPath = resolveBatchDatasetPath(runPath);
   if (!datasetPath) return [];
   console.info("[analyse][loadBatches]", { runPath, datasetPath });
 

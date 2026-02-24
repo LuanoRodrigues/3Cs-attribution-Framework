@@ -1,0 +1,85 @@
+{
+  "generated_at_utc": "2026-02-22T10:15:08Z",
+  "inputs": {
+    "schema": "/home/pantera/projects/TEIA/annotarium/cyber_attribution_markdown_extraction_v2_schema.json",
+    "markdown": "/home/pantera/projects/TEIA/annotarium/outputs/pipeline/apt29_hammertoss_stealthy_tactics_define_a/apt29_hammertoss_stealthy_tactics_define_a.md",
+    "output": "/home/pantera/projects/TEIA/annotarium/outputs/pipeline/apt29_hammertoss_stealthy_tactics_define_a/apt29_hammertoss_stealthy_tactics_define_a.output.json"
+  },
+  "certification": "PASS",
+  "overall_score": 92.54,
+  "score_adjustments": {
+    "base_overall_score": 97.04,
+    "issue_density_penalty": 4.5,
+    "weighted_warning_sum": 9.9,
+    "normalized_weighted_warning_sum": 4.5,
+    "warning_normalization_factor": 2.2,
+    "warning_count": 9,
+    "error_count": 0
+  },
+  "category_scores": {
+    "schema": 100.0,
+    "integrity": 100.0,
+    "tables": 92.0,
+    "citations": 100.0,
+    "source_years": 100.0,
+    "artifacts": 100.0,
+    "chain_grounding": 100.0,
+    "credibility_grounding": 82.0,
+    "corroboration_grounding": 76.0
+  },
+  "thresholds": {
+    "min_overall_score": 85.0,
+    "min_category_score": 60.0
+  },
+  "hard_failures": [],
+  "findings": [
+    {
+      "severity": "warning",
+      "message": "C001: 1/1 support anchors duplicate claim statement text."
+    },
+    {
+      "severity": "warning",
+      "message": "C001: corroboration uses little anchor diversity across multiple components."
+    },
+    {
+      "severity": "warning",
+      "message": "C001: components missing non-duplicative support anchors: actor_identity, infrastructure_linkage."
+    },
+    {
+      "severity": "warning",
+      "message": "C002: 1/1 support anchors duplicate claim statement text."
+    },
+    {
+      "severity": "warning",
+      "message": "C002: corroboration uses little anchor diversity across multiple components."
+    },
+    {
+      "severity": "warning",
+      "message": "C002: components missing non-duplicative support anchors: command_and_control, timeline_linkage, victimology."
+    },
+    {
+      "severity": "warning",
+      "message": "C003: 1/1 support anchors duplicate claim statement text."
+    },
+    {
+      "severity": "warning",
+      "message": "C003: corroboration uses little anchor diversity across multiple components."
+    },
+    {
+      "severity": "warning",
+      "message": "C003: components missing non-duplicative support anchors: command_and_control, timeline_linkage, victimology."
+    }
+  ],
+  "summary_counts": {
+    "pages": 1,
+    "tables": 2,
+    "citations": 0,
+    "artifacts": 20,
+    "claims": 3,
+    "sources": 1
+  },
+  "validation_context": {
+    "sparse_evidence_context": true,
+    "sparse_evidence_rule": "source_count<=1 and citation_count==0"
+  }
+}

@@ -1,0 +1,601 @@
+<section id="icj-foundations-three-cs">
+  <h2>ICJ Jurisprudential Foundations of the C Framework</h2>
+
+  <figure class="icj-3cs-mindmap">
+    <img
+      src="assets/framework-3c-mindmap.svg"
+      alt="Mind-map of the C framework: central C node with three branches (C1, C2, C3) and operational variables"
+      loading="lazy"
+      width="640"
+      height="420"
+    >
+    <figcaption>
+      The C framework is represented as a root C node with three branches: C1 Chain of Custody, C2 Credibility, and C3 Clarity.
+    </figcaption>
+  </figure>
+
+  <figure class="icj-3cs-scoring-rubric">
+    <img
+      src="assets/score-icj-v4-pipeline.svg"
+      alt="Computational pipeline extracted from score_icj_v4 showing reliability weighting, shrinkage, saturation, belief mapping, and bootstrap confidence intervals"
+      loading="lazy"
+      width="900"
+      height="488"
+    >
+    <figcaption>
+      Figure A. score_icj_v4 computational pipeline extracted from code: v3 baseline, reliability weighting, empirical-Bayes-style shrinkage, quantity saturation, belief mapping, and bootstrap confidence intervals.
+    </figcaption>
+  </figure>
+
+  <figure class="icj-3cs-score-policy-map">
+    <img
+      src="assets/score-icj-v4-parameters.svg"
+      alt="Aggregate scoring logic extracted from score_icj_v4 constants and equations with low, medium, and high tiers"
+      loading="lazy"
+      width="900"
+      height="488"
+    >
+    <figcaption>
+      Figure B. score_icj_v4 constants and aggregate scoring layer: extracted equations and parameters with explicit low, medium, and high tier logic.
+    </figcaption>
+  </figure>
+
+  <figure class="icj-c1-flowchart">
+    <img
+      src="assets/framework-c1-clarity-flow.svg"
+      alt="Standalone horizontal flowchart for C1 Clarity scoring with aligned yes and no branches"
+      loading="lazy"
+      width="900"
+      height="338"
+    >
+    <figcaption>
+      Figure C1. C1 Clarity flowchart with left-to-right decision logic and aligned yes/no branch outcomes.
+    </figcaption>
+  </figure>
+
+  <figure class="icj-c2-flowchart">
+    <img
+      src="assets/framework-c2-custody-flow.svg"
+      alt="Standalone horizontal flowchart for C2 Chain of Custody scoring with aligned yes and no branches"
+      loading="lazy"
+      width="900"
+      height="338"
+    >
+    <figcaption>
+      Figure C2. C2 Chain of Custody flowchart with left-to-right decision logic and aligned yes/no branch outcomes.
+    </figcaption>
+  </figure>
+
+  <figure class="icj-c3-flowchart">
+    <img
+      src="assets/framework-c3-credibility-flow.svg"
+      alt="Standalone horizontal flowchart for C3 Credibility scoring based on source substantiation and source mix"
+      loading="lazy"
+      width="900"
+      height="356"
+    >
+    <figcaption>
+      Figure C3. C3 Credibility flowchart implementing substantiation and source-mix logic for low/medium/high scoring.
+    </figcaption>
+  </figure>
+
+  <p>
+    This section grounds the C1-C2-C3 evidentiary rubric in the <em>practice</em> of the International Court of Justice
+    (ICJ). The ICJ is used here as a benchmark because the Court offers a relatively stabilized template for how inter-State responsibility claims are expected to be evidentially
+    justified under strategic contestation. The core move is methodological: treat cyber-attribution dossiers as
+    <strong>argumentative evidence-containers</strong> whose persuasiveness can be evaluated by reference to the kinds of
+    “weight drivers” the ICJ recurrently privileges or discounts when faced with heterogeneous materials. .
+    The grounded extraction below is intentionally narrow: it focuses on the <strong>three most consistently recurring</strong>
+    evidentiary “weight drivers” visible across ICJ judgments that explicitly discuss how the Court evaluates evidence in
+    conditions of imperfect access, asymmetric information, and incentive-driven denial. These drivers are consolidated into
+    three dossier-facing expectations in a single C-rooted structure—<strong>C1. Chain of Custody</strong>, <strong>C2. Credibility</strong>,
+    and <strong>C3. Clarity</strong>. This section identifies and documents the jurisprudential anchors from which these variables are
+    inductively extracted.As international
+    law exiges higher threshold, while lower-scoring documents can still be categorized for lower-confidence analytical use.
+    For this reason, we discuss, as the figures show, the variables around each C and their aggregate low/medium/high scoring logic.
+  </p>
+
+  <h3>Grounded extraction method: from ICJ evidentiary practice to C1-C2-C3 variables</h3>
+
+  <p>
+    The extraction method is case-grounded rather than taxonomy-driven. We sample judgments where the Court explicitly explains
+    how it weighs heterogeneous materials, then translate those weighting choices into operational cyber-attribution variables.
+    The core sample remains: <em>Nicaragua</em> (1986), <em>Corfu Channel</em> (1949), <em>DRC v. Uganda</em> (2005),
+    <em>Genocide Convention</em> (2007), and <em>Djibouti v. France</em> (2008). The result is a three-C structure in which each
+    variable is attached to one or more ICJ anchors.
+  </p>
+
+  <h4>C1. Clarity: is attribution severity and state linkage clear?</h4>
+  <p>
+    C1 captures whether the dossier states a specific claim, links it to a State actor, and presents a legible legal pathway.
+    This is not merely stylistic clarity; it is a probative clarity grounded in how the ICJ treats concordant indications,
+    admissions against interest, and standards-sensitive responsibility findings.
+  </p>
+  <ul>
+    <li>
+      <strong>Act severity is explicitly stated:</strong> supported by the Court’s responsibility framing in
+      <em>Genocide Convention</em> (2007).
+      <sup>
+        <a
+          href="https://www.acerislaw.com/wp-content/uploads/2024/04/Application-of-the-Convention-on-the-Prevention-and-Punishment-of-the-Crime-of-Genocide.pdf"
+          title="The Court articulates responsibility findings under explicit standards-sensitive reasoning"
+          rel="noopener noreferrer"
+          target="_blank"
+        >ICJ (2007)</a>
+      </sup>
+    </li>
+    <li>
+      <strong>Named State actor is identified:</strong> supported by the probative value of admissions against interest in
+      <em>Nicaragua</em> (1986), para. 64.
+      <sup>
+        <a
+          href="https://icj-web.leman.un-icc.cloud/sites/default/files/case-related/70/070-19860627-JUD-01-00-EN.pdf"
+          title="official statements have particular value when acknowledging unfavourable facts"
+          rel="noopener noreferrer"
+          target="_blank"
+        >ICJ (1986)</a>
+      </sup>
+    </li>
+    <li>
+      <strong>Evidence-to-State link is explicit:</strong> supported by “concordant indications” reasoning in
+      <em>Nicaragua</em> (1986), para. 152, and linked-facts inference in <em>Corfu Channel</em> (1949), p. 16.
+      <sup>
+        <a
+          href="https://icj-web.leman.un-icc.cloud/sites/default/files/case-related/70/070-19860627-JUD-01-00-EN.pdf"
+          title="it cannot overlook a number of concordant indications"
+          rel="noopener noreferrer"
+          target="_blank"
+        >ICJ (1986)</a>
+      </sup>
+      <sup>
+        <a
+          href="https://icj-web.leman.un-icc.cloud/sites/default/files/case-related/1/001-19490409-JUD-01-00-EN.pdf"
+          title="special weight when based on a linked series of facts"
+          rel="noopener noreferrer"
+          target="_blank"
+        >ICJ (1949)</a>
+      </sup>
+    </li>
+    <li>
+      <strong>Legal pathway is unambiguous:</strong> supported by the Court’s insistence that responsibility claims be argued
+      through explicit legal criteria in <em>Genocide Convention</em> (2007).
+      <sup>
+        <a
+          href="https://www.acerislaw.com/wp-content/uploads/2024/04/Application-of-the-Convention-on-the-Prevention-and-Punishment-of-the-Crime-of-Genocide.pdf"
+          title="The Court applies explicit standards in determining State responsibility"
+          rel="noopener noreferrer"
+          target="_blank"
+        >ICJ (2007)</a>
+      </sup>
+    </li>
+  </ul>
+
+  <h4>C2. Chain of Custody: is provenance intact, untampered, and traceable?</h4>
+  <p>
+    C2 translates the ICJ’s recurring authentication logic into cyber-forensic terms. The Court repeatedly discounts or rejects
+    materials when pathway, origin, or handling cannot be shown with sufficient reliability.
+  </p>
+  <ul>
+    <li>
+      <strong>Collection source is documented:</strong> anchored in refusal to consider documents lacking reliable
+      transmission/record evidence in <em>Djibouti v. France</em> (2008), para. 143.
+      <sup>
+        <a
+          href="https://icj-web.leman.un-icc.cloud/sites/default/files/case-related/136/136-20080604-JUD-01-00-EN.pdf"
+          title="the Court cannot take this document into consideration"
+          rel="noopener noreferrer"
+          target="_blank"
+        >ICJ (2008)</a>
+      </sup>
+    </li>
+    <li>
+      <strong>Integrity/hash markers are valid:</strong> anchored in discounting unauthenticated internal records in
+      <em>DRC v. Uganda</em> (2005), paras. 134 and 137.
+      <sup>
+        <a
+          href="https://icj-web.leman.un-icc.cloud/sites/default/files/case-related/116/116-20051219-JUD-01-00-EN.pdf"
+          title="they are not signed and are unauthenticated"
+          rel="noopener noreferrer"
+          target="_blank"
+        >ICJ (2005)</a>
+      </sup>
+    </li>
+    <li>
+      <strong>Timestamps are consistent:</strong> anchored in preference for contemporaneous, direct-knowledge materials in
+      <em>DRC v. Uganda</em> (2005), para. 61.
+      <sup>
+        <a
+          href="https://icj-web.leman.un-icc.cloud/sites/default/files/case-related/116/116-20051219-JUD-01-00-EN.pdf"
+          title="preference for contemporaneous evidence from persons with direct knowledge"
+          rel="noopener noreferrer"
+          target="_blank"
+        >ICJ (2005)</a>
+      </sup>
+    </li>
+    <li>
+      <strong>Artifact identifiers are stable:</strong> anchored in the Court’s insistence on identifiable authenticated
+      materials in <em>DRC v. Uganda</em> (2005), paras. 134 and 137.
+      <sup>
+        <a
+          href="https://icj-web.leman.un-icc.cloud/sites/default/files/case-related/116/116-20051219-JUD-01-00-EN.pdf"
+          title="unauthenticated and untraceable materials are penalized"
+          rel="noopener noreferrer"
+          target="_blank"
+        >ICJ (2005)</a>
+      </sup>
+    </li>
+    <li>
+      <strong>Version lineage is complete:</strong> anchored in the same traceability requirement visible in
+      <em>Djibouti v. France</em> (2008) and <em>DRC v. Uganda</em> (2005).
+      <sup>
+        <a
+          href="https://icj-web.leman.un-icc.cloud/sites/default/files/case-related/136/136-20080604-JUD-01-00-EN.pdf"
+          title="documents without demonstrable pathway lose or fail probative consideration"
+          rel="noopener noreferrer"
+          target="_blank"
+        >ICJ (2008)</a>
+      </sup>
+      <sup>
+        <a
+          href="https://icj-web.leman.un-icc.cloud/sites/default/files/case-related/116/116-20051219-JUD-01-00-EN.pdf"
+          title="unauthenticated materials are discounted"
+          rel="noopener noreferrer"
+          target="_blank"
+        >ICJ (2005)</a>
+      </sup>
+    </li>
+  </ul>
+
+  <h4>C3. Credibility: is the claim credible to neutral international evaluators?</h4>
+  <p>
+    C3 tracks neutrality, source quality, corroboration architecture, and method transparency. The ICJ does not reward volume
+    of assertions; it rewards independent quality and corroborated coherence.
+  </p>
+  <ul>
+    <li>
+      <strong>Sources are independent and high-quality:</strong> anchored in the Court’s reliance on reports prepared with
+      care, comprehensive sources, and independence in <em>Genocide Convention</em> (2007), para. 230.
+      <sup>
+        <a
+          href="https://www.acerislaw.com/wp-content/uploads/2024/04/Application-of-the-Convention-on-the-Prevention-and-Punishment-of-the-Crime-of-Genocide.pdf"
+          title="care, sources and independence lend considerable authority"
+          rel="noopener noreferrer"
+          target="_blank"
+        >ICJ (2007)</a>
+      </sup>
+    </li>
+    <li>
+      <strong>Single-source dependency is low:</strong> anchored in explicit caution about single-source materials in
+      <em>DRC v. Uganda</em> (2005), para. 61, and anti-repetition logic in <em>Nicaragua</em> (1986), para. 63.
+      <sup>
+        <a
+          href="https://icj-web.leman.un-icc.cloud/sites/default/files/case-related/116/116-20051219-JUD-01-00-EN.pdf"
+          title="materials emanating from a single source are treated with caution"
+          rel="noopener noreferrer"
+          target="_blank"
+        >ICJ (2005)</a>
+      </sup>
+      <sup>
+        <a
+          href="https://icj-web.leman.un-icc.cloud/sites/default/files/case-related/70/070-19860627-JUD-01-00-EN.pdf"
+          title="widespread reports may derive from a single source"
+          rel="noopener noreferrer"
+          target="_blank"
+        >ICJ (1986)</a>
+      </sup>
+    </li>
+    <li>
+      <strong>Corroboration spans independent channels:</strong> anchored in corroboration requirements in
+      <em>DRC v. Uganda</em> (2005), para. 205, and corroborative-only use of press reports in <em>Nicaragua</em> (1986), para. 62.
+      <sup>
+        <a
+          href="https://icj-web.leman.un-icc.cloud/sites/default/files/case-related/116/116-20051219-JUD-01-00-EN.pdf"
+          title="UN materials require corroboration by other credible sources where necessary"
+          rel="noopener noreferrer"
+          target="_blank"
+        >ICJ (2005)</a>
+      </sup>
+      <sup>
+        <a
+          href="https://icj-web.leman.un-icc.cloud/sites/default/files/case-related/70/070-19860627-JUD-01-00-EN.pdf"
+          title="press reports are not proof of facts, but may corroborate"
+          rel="noopener noreferrer"
+          target="_blank"
+        >ICJ (1986)</a>
+      </sup>
+    </li>
+    <li>
+      <strong>Method is transparent and reproducible:</strong> anchored in process-quality and source-basis reasoning in
+      <em>Genocide Convention</em> (2007), para. 230, and caution toward litigation-shaped materials in
+      <em>DRC v. Uganda</em> (2005), para. 61.
+      <sup>
+        <a
+          href="https://www.acerislaw.com/wp-content/uploads/2024/04/Application-of-the-Convention-on-the-Prevention-and-Punishment-of-the-Crime-of-Genocide.pdf"
+          title="authority derives from careful preparation and comprehensive sources"
+          rel="noopener noreferrer"
+          target="_blank"
+        >ICJ (2007)</a>
+      </sup>
+      <sup>
+        <a
+          href="https://icj-web.leman.un-icc.cloud/sites/default/files/case-related/116/116-20051219-JUD-01-00-EN.pdf"
+          title="litigation-prepared materials are treated with caution"
+          rel="noopener noreferrer"
+          target="_blank"
+        >ICJ (2005)</a>
+      </sup>
+    </li>
+  </ul>
+
+  <h3>C2. Chain of Custody: what the ICJ extract implies for cyber dossiers</h3>
+
+  <p>
+    The ICJ does not use the domestic criminal-procedure vocabulary of “chain of custody”, but it repeatedly enforces the
+    underlying logic: <strong>documents and factual assertions lose probative value when their pathway cannot be shown</strong>.
+    The paradigmatic expression is the Court’s refusal to take a letter into consideration in <em>Djibouti v. France</em>
+    where France could not show reliable evidence of transmission, receipt, or even routine administrative recording.
+    <sup>
+      <a
+        href="https://icj-web.leman.un-icc.cloud/sites/default/files/case-related/136/136-20080604-JUD-01-00-EN.pdf"
+        title="the Court cannot take this document into consideration"
+        rel="noopener noreferrer"
+        target="_blank"
+      >ICJ (2008)</a>
+    </sup>
+    The operative lesson for cyber dossiers is direct: if a claim depends on logs, samples, telemetry, or screenshots, the
+    dossier should at least make the evidentiary pathway legible—what was collected, when, by whom, from which systems, and
+    whether integrity constraints (e.g., hashing, versioning, preservation) are indicated.
+  </p>
+
+  <p>
+    The same provenance logic appears in <em>DRC v. Uganda</em>, where the Court discounts internal documents that lack
+    authenticating features and provides an explicit penalty for materials that do not explain how information was obtained.
+    <sup>
+      <a
+        href="https://icj-web.leman.un-icc.cloud/sites/default/files/case-related/116/116-20051219-JUD-01-00-EN.pdf"
+        title="they are not signed and are unauthenticated"
+        rel="noopener noreferrer"
+        target="_blank"
+      >ICJ (2005)</a>
+    </sup>
+    For cyber attribution, this maps cleanly onto a minimal auditability requirement: evidence claims should be anchored to
+    identifiable artefacts (hashes, stable identifiers, exhibit references) and accompanied by enough provenance to prevent
+    the dossier from functioning as a “black box” that audiences must accept on trust.
+  </p>
+
+  <h3>C3. Credibility: source neutrality and production quality as weight multipliers</h3>
+
+  <p>
+    The ICJ’s credibility weighting is not reducible to institutional prestige; it is a structured preference for
+    <strong>neutrality/independence</strong> and <strong>production quality</strong>—especially visible in the Court’s repeated
+    caution toward single-source and litigation-prepared materials. In <em>DRC v. Uganda</em>, the Court is explicit that it
+    will “treat with caution” evidence specially prepared for the case and evidence emanating from a single source, while
+    preferring contemporaneous evidence from persons with direct knowledge.
+    <sup>
+      <a
+        href="https://icj-web.leman.un-icc.cloud/sites/default/files/case-related/116/116-20051219-JUD-01-00-EN.pdf"
+        title="The Court will treat with caution evidentiary materials specially prepared for this case and also materials emanating from a single source"
+        rel="noopener noreferrer"
+        target="_blank"
+      >ICJ (2005)</a>
+    </sup>
+  </p>
+
+  <p>
+    In <em>Nicaragua</em>, the Court articulates a complementary credibility signal: high-level official statements can carry
+    particular probative value when they acknowledge facts unfavourable to the speaker’s State—i.e., an “admission against
+    interest” logic.
+    <sup>
+      <a
+        href="https://icj-web.leman.un-icc.cloud/sites/default/files/case-related/70/070-19860627-JUD-01-00-EN.pdf"
+        title="are of particular probative value when they acknowledge facts or conduct unfavourable to the State"
+        rel="noopener noreferrer"
+        target="_blank"
+      >ICJ (1986)</a>
+    </sup>
+    This matters for cyber attribution because public government statements often rely on reputational authority under limited
+    disclosure; the ICJ’s practice suggests that credibility increases when the statement contains verifiable concessions,
+    bounded admissions, or concrete commitments that would be costly if false.
+  </p>
+
+  <p>
+    Finally, <em>Genocide Convention</em> provides a crisp illustration of process-based credibility for reports: authority is
+    attributed to an independent report because of the <em>care</em> taken, its <em>comprehensive sources</em>, and the
+    <em>independence</em> of those responsible.
+    <sup>
+      <a
+        href="https://www.acerislaw.com/wp-content/uploads/2024/04/Application-of-the-Convention-on-the-Prevention-and-Punishment-of-the-Crime-of-Genocide.pdf"
+        title="The care taken in preparing the report, its comprehensive sources and the independence of those responsible for its preparation all lend considerable authority to it"
+        rel="noopener noreferrer"
+        target="_blank"
+      >ICJ (2007)</a>
+    </sup>
+    For cyber dossiers, the analogue is straightforward: methodological transparency, explicit data sources (even at high
+    level), and visible bias-mitigation procedures operate as credibility multipliers, particularly when the producer has a
+    strategic stake.
+  </p>
+
+  <h3>C1. Clarity: concordant indications, anti-circularity, and inferential state-link clarity</h3>
+
+  <p>
+    The ICJ repeatedly distinguishes <strong>proof</strong> from <strong>corroboration</strong> and treats convergence as a
+    central weight driver. In <em>Nicaragua</em>, the Court clarifies that press reports are not, in themselves, evidence
+    capable of proving facts; they may, however, contribute to corroborating the existence of a fact when they operate as
+    “illustrative” support additional to other sources.
+    <sup>
+      <a
+        href="https://icj-web.leman.un-icc.cloud/sites/default/files/case-related/70/070-19860627-JUD-01-00-EN.pdf"
+        title="not as evidence capable of proving facts"
+        rel="noopener noreferrer"
+        target="_blank"
+      >ICJ (1986)</a>
+    </sup>
+    The Court then adds an anti-circularity warning that is directly relevant to modern cyber-attribution ecosystems:
+    repetition does not equal independence—numerous reports may ultimately derive from a single upstream source.
+    <sup>
+      <a
+        href="https://icj-web.leman.un-icc.cloud/sites/default/files/case-related/70/070-19860627-JUD-01-00-EN.pdf"
+        title="Widespread reports of a fact may prove on closer examination to derive from a single source"
+        rel="noopener noreferrer"
+        target="_blank"
+      >ICJ (1986)</a>
+    </sup>
+  </p>
+
+  <p>
+    The “concordant indications” formulation is the ICJ’s most portable convergence device. In <em>Nicaragua</em>, where the
+    Court does not possess full proof, it nonetheless relies on a “number of concordant indications” to support a reasonable
+    inference.
+    <sup>
+      <a
+        href="https://icj-web.leman.un-icc.cloud/sites/default/files/case-related/70/070-19860627-JUD-01-00-EN.pdf"
+        title="it cannot overlook a number of concordant indications"
+        rel="noopener noreferrer"
+        target="_blank"
+      >ICJ (1986)</a>
+    </sup>
+    This logic closely matches the epistemic realities of cyber operations, where any single artefact class (infrastructure,
+    code similarity, language artefacts, timestamps) can be manipulated. Convergence becomes persuasive when it is
+    <em>autonomous</em> (different collectors/sensors/institutions) and <em>heterogeneous</em> (different modalities), not
+    merely voluminous.
+  </p>
+
+  <p>
+    The corroboration requirement is made explicit in <em>DRC v. Uganda</em> in relation to UN materials: such documents are
+    usable only to the extent they have probative value and are corroborated (if necessary) by other credible sources.
+    <sup>
+      <a
+        href="https://icj-web.leman.un-icc.cloud/sites/default/files/case-related/116/116-20051219-JUD-01-00-EN.pdf"
+        title="to the extent that they are of probative value and are corroborated, if necessary, by other credible sources"
+        rel="noopener noreferrer"
+        target="_blank"
+      >ICJ (2005)</a>
+    </sup>
+    This maps to cyber attribution via a practical injunction: dossiers should state whether corroborating sources are
+    genuinely independent or whether they recycle the same original dataset, sinkhole, or intelligence partner.
+  </p>
+
+  <p>
+    <em>Corfu Channel</em> then supplies the deep jurisprudential foundation for why convergence can legitimately substitute
+    for unattainable direct proof. Because facts may lie within a respondent’s exclusive control, the victim State may be
+    allowed a more liberal recourse to circumstantial evidence; such indirect evidence carries special weight when it is
+    based on a linked series of facts leading logically toward a single conclusion.
+    <sup>
+      <a
+        href="https://icj-web.leman.un-icc.cloud/sites/default/files/case-related/1/001-19490409-JUD-01-00-EN.pdf"
+        title="It must be regarded as of special weight when it is based on a series of facts linked together"
+        rel="noopener noreferrer"
+        target="_blank"
+      >ICJ (1949)</a>
+    </sup>
+    For cyber dossiers, this underwrites a principled use of inference: the goal is not “perfect proof”, but a documented
+    chain of convergent facts and reasoned eliminations that reduces the plausibility of alternatives, including deception.
+  </p>
+
+  <h3>Minimal grounded case set: the jurisprudential backbone of C1-C2-C3</h3>
+
+  <p>
+    For dissertation purposes, the following compact set of ICJ judgments is sufficient to constitute a defensible
+    jurisprudential backbone for C1-C2-C3. Each is “foundational” in the grounded sense that it either (i) originates,
+    (ii) stabilizes, or (iii) restates in operational language one of the three weight drivers.
+  </p>
+
+  <ul>
+    <li>
+      <strong>C2 anchor (chain of custody):</strong> <em>Djibouti v. France</em> (2008) (para. 143) — refusal to consider a document where
+      the pathway for transmission/record is not evidenced.
+      <sup>
+        <a
+          href="https://icj-web.leman.un-icc.cloud/sites/default/files/case-related/136/136-20080604-JUD-01-00-EN.pdf"
+          title="the Court cannot take this document into consideration"
+          rel="noopener noreferrer"
+          target="_blank"
+        >ICJ (2008)</a>
+      </sup>
+    </li>
+
+    <li>
+      <strong>C2 + C3 penalties:</strong> <em>DRC v. Uganda</em> (2005) (paras. 61, 134, 137, 205) — explicit
+      caution toward single-source/litigation-prepared evidence; discounting unauthenticated internal documents; emphasis on
+      explanation of how information was obtained; corroboration condition on UN materials.
+      <sup>
+        <a
+          href="https://icj-web.leman.un-icc.cloud/sites/default/files/case-related/116/116-20051219-JUD-01-00-EN.pdf"
+          title="The Court will treat with caution evidentiary materials specially prepared for this case and also materials emanating from a single source"
+          rel="noopener noreferrer"
+          target="_blank"
+        >ICJ (2005)</a>
+      </sup>
+    </li>
+
+    <li>
+      <strong>C3 + C1 architecture:</strong> <em>Nicaragua</em> (1986) (paras. 62–65, 152) — press reports as
+      corroborative only; anti-circularity warning (single-source repetition); admissions against interest as probative; reliance
+      on concordant indications for inference under incomplete proof.
+      <sup>
+        <a
+          href="https://icj-web.leman.un-icc.cloud/sites/default/files/case-related/70/070-19860627-JUD-01-00-EN.pdf"
+          title="the Court regards them not as evidence capable of proving facts"
+          rel="noopener noreferrer"
+          target="_blank"
+        >ICJ (1986)</a>
+      </sup>
+    </li>
+
+    <li>
+      <strong>C1 inference foundation:</strong> <em>Corfu Channel</em> (1949) (p. 16) — circumstantial chains and
+      linked facts carry special weight when direct proof is unavailable due to exclusive control.
+      <sup>
+        <a
+          href="https://icj-web.leman.un-icc.cloud/sites/default/files/case-related/1/001-19490409-JUD-01-00-EN.pdf"
+          title="Such a State should be allowed a more liberal recourse to inferences of fact and circumstantial evidence"
+          rel="noopener noreferrer"
+          target="_blank"
+        >ICJ (1949)</a>
+      </sup>
+    </li>
+
+    <li>
+      <strong>C3 authority foundation (reports):</strong> <em>Genocide Convention</em> (2007) (para. 230) — independent report
+      gains authority through care, comprehensive sources, and independence.
+      <sup>
+        <a
+          href="https://www.acerislaw.com/wp-content/uploads/2024/04/Application-of-the-Convention-on-the-Prevention-and-Punishment-of-the-Crime-of-Genocide.pdf"
+          title="The care taken in preparing the report, its comprehensive sources and the independence of those responsible for its preparation all lend considerable authority to it"
+          rel="noopener noreferrer"
+          target="_blank"
+        >ICJ (2007)</a>
+      </sup>
+    </li>
+  </ul>
+
+  <h3>Analytical payoff: why these cases are “foundational” for cyber-attribution evaluation</h3>
+
+  <p>
+    Read together, these judgments justify C1-C2-C3 as a cyber-relevant translation of ICJ evidentiary weighting:
+  </p>
+
+  <ul>
+    <li>
+      <strong>C2 Chain of Custody:</strong> the Court penalizes evidence whose pathway cannot be shown or authenticated, which in cyber terms
+      motivates systematic extraction of artefact provenance (collection context, integrity signals, and traceable linkage between
+      claims and exhibits).
+    </li>
+    <li>
+      <strong>C3 Credibility:</strong> the Court’s probative value is sensitive to neutrality, single-source risk, litigation preparation,
+      contemporaneity, and the disciplined authority of well-produced independent reports—directly mirroring the credibility problem
+      of public cyber attribution under secrecy and incentives.
+    </li>
+    <li>
+      <strong>C1 Clarity:</strong> the Court repeatedly privileges corroboration through autonomous lines and gives circumstantial chains
+      special weight when direct proof is structurally hard—providing a principled jurisprudential basis for treating cyber attribution
+      as persuasion via convergent indicators rather than as a single “smoking gun”.
+    </li>
+  </ul>
+
+  <p>
+    These are the ICJ-derived foundations on which the framework can be built. If the dissertation later introduces
+    additional axes (Coherence, Confidence, Compliance), those additions should be presented as extensions that operationalize the
+    same ICJ logic (inference discipline, calibrated certainty, and doctrinal mapping), rather than as unrelated criteria.
+  </p>
+</section>

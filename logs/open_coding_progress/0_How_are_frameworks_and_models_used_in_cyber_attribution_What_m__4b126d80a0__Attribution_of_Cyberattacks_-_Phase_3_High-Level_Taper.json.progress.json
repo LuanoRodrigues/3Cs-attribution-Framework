@@ -1,0 +1,12 @@
+{
+  "status": "running",
+  "stage": "iterate_items",
+  "collection": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "total_items": 122,
+  "processed_items": 0,
+  "current_item_key": "",
+  "completed_item_keys": [],
+  "store_only": false,
+  "read": true,
+  "done": false
+}

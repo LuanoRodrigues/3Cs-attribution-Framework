@@ -1,0 +1,13 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": []
+    }
+  },
+  "cached_at": "2026-02-24T15:14:08.509407Z",
+  "collection_name": "frameworks",
+  "custom_id": "e22d54d586d5f9d7d2780a2a3b085de2600d3ad542bc112900c22bb668a1602e",
+  "function": "code_pdf_page"
+}

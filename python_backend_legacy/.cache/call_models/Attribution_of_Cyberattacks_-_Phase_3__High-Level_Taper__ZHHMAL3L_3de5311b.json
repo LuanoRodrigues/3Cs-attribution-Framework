@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": "{\n  \"classification\": \"Highly Relevant\",\n  \"relevance_score\": \"High\",\n  \"potential_subcategory\": \"International law \u2014 state responsibility and attribution (indirect/circumstantial evidence)\",\n  \"justification\": \"The abstract explicitly addresses attribution of state responsibility for cyber-attacks, applying international legal doctrines (effective control and overall control) and analyzing policy documents, legal precedents, and practice\u2014core concerns of cyber conflict attribution and policy/law. It proposes a typology of indirect evidence to support political and legal attributions and discusses implications for legal adjudication and diplomatic decision-making, making it directly relevant to both legal scholarship and policy formation. (Note: the provided inclusion/exclusion criteria were unavailable; this judgment is based on topical alignment with cyber attribution and international law/policy.)\"\n}"
+  },
+  "cached_at": "2026-02-23T20:42:38.417800Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "ZHHMAL3L",
+  "function": "classify_by_abs"
+}

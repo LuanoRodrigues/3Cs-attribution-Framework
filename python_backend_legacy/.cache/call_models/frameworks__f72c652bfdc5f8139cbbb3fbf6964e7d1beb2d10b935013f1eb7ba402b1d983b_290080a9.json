@@ -1,0 +1,251 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "quote": "A cyberattack is defined as \"an attempt to gain illegal access to a computer or computer system for the purpose of causing damage or harm .\"",
+          "paraphrase": "The paper defines a 'cyberattack' as an attempt to illegally access computing systems with the intent to cause damage or harm, which delimits what incidents the framework covers.",
+          "researcher_comment": "This operational definition narrows the scope to access-based, harmful incidents and will affect which events the framework applies to; non-access disruptions or ambiguous cases (e.g., espionage) may fall outside this scope. Clarification of edge cases is required for synthesis across literature.",
+          "potential_themes": [
+            "definition"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "cyberattack_definition",
+            "operational_scope"
+          ]
+        },
+        {
+          "quote": "A response is defined as the action(s) the USG and/or private sector takes to stop a cyberattack and deter the attacker from conducting additional cyberattacks.",
+          "paraphrase": "The authors define 'response' as actions by the USG or private sector to halt an attack and to deter further attacks.",
+          "researcher_comment": "Defining response with an explicit deterrence objective shapes the framework's evaluation metrics (mitigation + deterrence). The statement assumes deterrence is an achievable, stated aim of response actions.",
+          "potential_themes": [
+            "definition",
+            "deterrence"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "response_definition",
+            "deterrence_objective"
+          ]
+        },
+        {
+          "quote": "The authors' research identified two competing risks: 1) the risk of not responding forcefully enough to deter a suspected attacker, and 2) responding in a manner that escalates a situation with an attacker.",
+          "paraphrase": "The study identifies two opposing risks in choosing responses: under-response (fails to deter) and over-response (risks escalation).",
+          "researcher_comment": "This tradeoff is central to the framework and justifies modeling both deterrence effectiveness and escalation probability. The chunk does not specify how tradeoffs are measured or weighted.",
+          "potential_themes": [
+            "escalation_risk",
+            "deterrence",
+            "risk_tradeoffs"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "deterrence_vs_escalation",
+            "response_tradeoff"
+          ]
+        },
+        {
+          "quote": "The authors also identified three primary factors that influence these risks: attribution confidence/time, the scale of the attack, and the relationship with the suspected attacker.",
+          "paraphrase": "The authors state that attribution confidence/time, attack scale, and the relationship to the suspected attacker are the three key variables shaping response risks.",
+          "researcher_comment": "These three factors appear to form the framework's decision axes and link directly to attribution and escalation analyses. The excerpt does not provide operational thresholds or measurement methods for these factors.",
+          "potential_themes": [
+            "attribution_challenges",
+            "decision_framework"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "attribution_confidence",
+            "attack_scale",
+            "attacker_relationship"
+          ]
+        },
+        {
+          "quote": "This paper provides a framework to help decision makers understand how these factors interact to influence the risks associated with potential response options to cyberattacks.",
+          "paraphrase": "The paper proposes a framework to help decision makers evaluate interactions among attribution, scale, and relationship variables and their effects on response risks.",
+          "researcher_comment": "This is the central methodological claim \u2014 an integrative framework for mapping factor interactions to response risk. The excerpt lacks detail on whether the framework is analytical, model-based, or decision-aid oriented.",
+          "potential_themes": [
+            "decision_framework",
+            "risk_tradeoffs"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "framework",
+          "argument_type": "procedural",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "framework_for_response_decision",
+            "factor_interaction"
+          ]
+        },
+        {
+          "quote": "This paper presents a framework that will enable policymakers in the United States Government (USG) and decision makers in the private sector to make more effective responses to cyberattacks.",
+          "paraphrase": "The authors claim their framework will enable USG and private-sector decision makers to make more effective cyberattack responses.",
+          "researcher_comment": "The claim is explicitly practical and cross-sectoral, but the chunk provides no validation, case study, or evaluation to substantiate 'more effective.' Treat this as an asserted utility, not demonstrated efficacy.",
+          "potential_themes": [
+            "decision_framework",
+            "policy_recommendation"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "framework",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "framework_utility",
+            "public_private_applicability"
+          ]
+        },
+        {
+          "quote": "Thus, a framework for USG policymakers and corporate decision makers to understand the factors and risks of responding to a cyberattack is urgently needed.",
+          "paraphrase": "The authors argue there is an urgent need for a framework to help USG policymakers and corporate decision makers assess response factors and risks.",
+          "researcher_comment": "The phrase 'urgently needed' frames policy urgency and justifies rapid development or adoption. The excerpt gives no prioritization of components or timeline for implementation.",
+          "potential_themes": [
+            "urgency",
+            "decision_framework"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "urgency_for_framework",
+            "policy_need"
+          ]
+        },
+        {
+          "quote": "These global trends suggest that it is not a question of if the U.S. will sustain a significant cyberattack, but a question of when.",
+          "paraphrase": "The authors contend that global cyber trends make a significant cyberattack against the U.S. a matter of when, not if.",
+          "researcher_comment": "This predictive framing raises stakes for response planning and supports the call for a decision framework; however, the chunk cites examples but provides no original trend analysis here.",
+          "potential_themes": [
+            "threat_trend",
+            "urgency"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "predictive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "inevitability_predicate",
+            "threat_projection"
+          ]
+        },
+        {
+          "quote": "Increasingly, the U.S. private sector and the USG are sharing information with one another to respond to cyberattacks.",
+          "paraphrase": "The paper observes an increasing trend of information sharing between the U.S. private sector and government to coordinate cyberattack responses.",
+          "researcher_comment": "This contextual finding supports feasibility of public\u2013private coordination envisioned by the framework, but the excerpt later notes persistent gaps. No quantitative measure of 'increasingly' is provided here.",
+          "potential_themes": [
+            "information_sharing",
+            "multi_stakeholder_coordination"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "public_private_sharing",
+            "coordination_trend"
+          ]
+        },
+        {
+          "quote": "However, critics argue that the USG and private sector are still not sharing enough information .",
+          "paraphrase": "The authors report critics who contend that government and private-sector information sharing remains insufficient.",
+          "researcher_comment": "Identifies an operational limitation to coordinated response: information gaps may hinder attribution and joint action. The claim is reported (critics' view) and not quantified in this excerpt.",
+          "potential_themes": [
+            "information_sharing",
+            "classification_barriers"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "information_sharing_gap",
+            "criticisms_of_sharing"
+          ]
+        },
+        {
+          "quote": "While the 2015 Cyber Information Sharing Act (CISA) protects companies from liability for sharing information , many companies still do not have a business incentive to share information .",
+          "paraphrase": "The authors note that although CISA provides liability protection for sharing, many firms still lack business incentives to share cyber information.",
+          "researcher_comment": "This identifies a policy/incentive barrier: legal protection alone does not solve private-sector reluctance. The point is important for implementation\u2014policy change may be required to alter incentives.",
+          "potential_themes": [
+            "policy_incentives",
+            "information_sharing"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "cisa_limitations",
+            "lack_of_business_incentive"
+          ]
+        },
+        {
+          "quote": "For example, the TTX stated the importance of determining attribution as quickly as possible, sharing information, and testing procedures for response options amongst all stakeholders .",
+          "paraphrase": "The INSA table-top exercise recommended rapid attribution, robust information sharing, and testing response procedures across stakeholders.",
+          "researcher_comment": "This furnishes actionable recommendations that align with the paper's emphasis on attribution speed and stakeholder testing; it provides external validation but no methods for achieving faster attribution are given here.",
+          "potential_themes": [
+            "attribution_challenges",
+            "information_sharing",
+            "scenario_planning"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "rapid_attribution",
+            "stakeholder_testing",
+            "sharing_recommendation"
+          ]
+        },
+        {
+          "quote": "Although the TTX followed the National Institute of Standards and Technology's (NIST) Cybersecurity Framework and primarily focused on domestic recovery and response actions, many of INSA's recommendations highlighted why a common framework to evaluate response actions against a foreign attacker is also necessary.",
+          "paraphrase": "The authors observe that the TTX used NIST and focused on domestic recovery, but INSA recommended a common framework to evaluate responses to foreign attackers.",
+          "researcher_comment": "This highlights a gap: existing exercises emphasize domestic recovery while the paper argues for frameworks that address foreign adversaries and escalation risk. The excerpt does not address legal or attribution constraints for cross-border responses.",
+          "potential_themes": [
+            "decision_framework",
+            "legal_frameworks"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "nist_ttx_limitation",
+            "foreign_attacker_framework_needed"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-24T15:33:44.998348Z",
+  "collection_name": "frameworks",
+  "custom_id": "f72c652bfdc5f8139cbbb3fbf6964e7d1beb2d10b935013f1eb7ba402b1d983b",
+  "function": "code_pdf_page"
+}

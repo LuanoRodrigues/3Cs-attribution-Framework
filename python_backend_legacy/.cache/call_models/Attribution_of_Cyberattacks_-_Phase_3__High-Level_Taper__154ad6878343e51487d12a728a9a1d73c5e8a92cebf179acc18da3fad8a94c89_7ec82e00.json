@@ -1,0 +1,259 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "quote": "However, because of the unique nature of cyberspace per se, it is difficult to attribute an attack.",
+          "paraphrase": "The author states that the intrinsic characteristics of cyberspace make attribution of attacks difficult.",
+          "researcher_comment": "Concise declarative statement of the core attribution problem; useful as a conceptual premise for RQs about attribution obstacles. The claim is descriptive and not operationalized\u2014no specific technical, legal, or evidentiary barriers are detailed here.",
+          "potential_themes": [
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "attribution_difficulty",
+            "inherent_cyberspace_properties"
+          ]
+        },
+        {
+          "quote": "Therefore, it would be hard to identify the attacker and to infer whether cyber warfare exists or not.",
+          "paraphrase": "The author argues that attribution difficulty impedes identifying perpetrators and deciding if an incident qualifies as cyber warfare.",
+          "researcher_comment": "Links forensic attribution problems to legal/strategic classification (existence of 'cyber warfare'), highlighting policy-relevant consequences. The statement is general; it does not provide evidentiary tests or thresholds.",
+          "potential_themes": [
+            "attribution_challenges",
+            "state_responsibility_thresholds"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "attacker_identification_problem",
+            "classification_challenge"
+          ]
+        },
+        {
+          "quote": "In terms of these configurations, it is only state-state attacks that can be called acts of war, whereas it would be hard to describe attacks among the other five pairs in this way.",
+          "paraphrase": "The author asserts that only state\u2011to\u2011state cyber attacks should generally be classified as acts of war; other actor pairings normally are not.",
+          "researcher_comment": "Provides a definitional threshold linking actor configuration to the label 'act of war'\u2014directly relevant to legal responsibility and escalation analyses. The claim simplifies complex attribution scenarios (see the qualification about state-authorized proxies).",
+          "potential_themes": [
+            "state_responsibility_thresholds"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition_conceptual",
+          "argument_type": "definitional",
+          "claim_direction": "supports",
+          "open_codes": [
+            "act_of_war_actor_threshold",
+            "state_state_requirement"
+          ]
+        },
+        {
+          "quote": "Of course, if an individual or group is authorized or instructed by a state, this could also constitute an act of war.",
+          "paraphrase": "The author qualifies that non\u2011state actor strikes can be treated as acts of war if they are authorized or instructed by a state.",
+          "researcher_comment": "Introduces state authorization as an attributional basis that converts non\u2011state actions into state acts\u2014important for analyses of proxies and plausible deniability. The text does not specify standards or proofs required to establish authorization.",
+          "potential_themes": [
+            "state_responsibility_thresholds",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition_conceptual",
+          "argument_type": "legal_interpretive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "state_authorization_proxy",
+            "command_and_control_attribution"
+          ]
+        },
+        {
+          "quote": "Ultimately, it might be up to the highest political leadership to decide whether there is an occurrence or existence of cyber warfare.",
+          "paraphrase": "The author contends that the determination of whether an incident is 'cyber warfare' is ultimately a political judgment by senior leadership.",
+          "researcher_comment": "Highlights the political (not purely technical or legal) character of labeling incidents as warfare, which matters for research on attribution-to-action pathways. This reduces the primacy of forensic certainty where political calculus prevails.",
+          "potential_themes": [
+            "state_responsibility_thresholds",
+            "attribution_challenges"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "scope_condition",
+          "argument_type": "descriptive",
+          "claim_direction": "qualifies",
+          "open_codes": [
+            "political_determination",
+            "labeling_by_leadership"
+          ]
+        },
+        {
+          "quote": "Furthermore, if the attack is attributed without doubt, the intention clear, the consequences extremely serious, and the political leadership can determine the existence and occurrence of cyber warfare in the end, then the strategic stability of cyberspace has been broken.",
+          "paraphrase": "The author argues that unequivocal attribution plus clear intent and very serious consequences\u2014confirmed by political leadership\u2014would amount to cyber warfare and break strategic stability.",
+          "researcher_comment": "Specifies a conjunctive threshold (attribution + intent + severity + political decision) for declaring cyber warfare and its strategic effects. Useful for operationalizing escalation thresholds, but vague on how to establish 'without doubt' or 'extremely serious.'",
+          "potential_themes": [
+            "state_responsibility_thresholds",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "scope_condition",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "declaration_thresholds",
+            "attribution_plus_intent_plus_severity"
+          ]
+        },
+        {
+          "quote": "Even if attacks result in casualties, these still have to be differentiated according to whether they were caused directly or indirectly.",
+          "paraphrase": "The author observes that casualty outcomes must be distinguished as directly or indirectly caused when assessing cyber incidents.",
+          "researcher_comment": "Draws attention to causal attribution (direct vs indirect harm) as an evidentiary and normative issue affecting legal classification and response. The text flags the issue but does not propose measurement or burden rules.",
+          "potential_themes": [
+            "evidentiary_standards",
+            "attribution_challenges"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "method_operationalization",
+          "argument_type": "methodological",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "direct_vs_indirect_causation",
+            "harm_attribution"
+          ]
+        },
+        {
+          "quote": "All these factors would influence the decision as to whether cyber warfare has already taken place or whether it even exists.",
+          "paraphrase": "The author states that a range of factors (actor, objectives, consequences) collectively shape whether an incident is judged to be cyber warfare.",
+          "researcher_comment": "Emphasizes multifactor assessment over single indicators for classification decisions; this supports multi\u2011criteria approaches to attribution and legal qualification. The claim is descriptive and non\u2011prescriptive.",
+          "potential_themes": [
+            "evidentiary_standards",
+            "attribution_challenges"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "scope_condition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "multi_factor_assessment",
+            "classification_criteria"
+          ]
+        },
+        {
+          "quote": "In general, there are three levels of cyberattacks, namely those by individuals, those by groups and those by states.",
+          "paraphrase": "The author provides a simple typology classifying cyber attackers as individuals, groups, or states, which is relevant for attribution framing.",
+          "researcher_comment": "Basic actor typology useful for coding incidents and for RQs that differentiate state from non\u2011state attribution. Does not address hybrid actors or state\u2011directed proxies in detail.",
+          "potential_themes": [
+            "attribution_challenges"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "taxonomy_typology",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "actor_typology",
+            "individual_group_state"
+          ]
+        },
+        {
+          "quote": "Therefore, it would be very difficult to determine the existence of cyber warfare from just one factor or criterion.",
+          "paraphrase": "The author warns that single\u2011factor tests are insufficient to determine cyber warfare; multiple criteria are required.",
+          "researcher_comment": "Reinforces the need for composite evidentiary standards when attributing incidents or declaring warfare; supports designs that combine technical, legal, and political indicators. The statement is general rather than operational.",
+          "potential_themes": [
+            "evidentiary_standards",
+            "attribution_challenges"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "single_factor_insufficiency",
+            "multi_criteria_need"
+          ]
+        },
+        {
+          "quote": "acknowledged that international law, and in particular the Charter of the United Nations, is applicable to cyberspace.",
+          "paraphrase": "The author reports that GGE consensus recognizes that international law\u2014particularly the UN Charter\u2014applies to cyberspace, bearing on legal attribution and use\u2011of\u2011force questions.",
+          "researcher_comment": "Cites a multilateral (GGE) political/legal consensus relevant to normative frameworks for attribution and state responsibility. This is a claim about state practice/opinion rather than a new legal rule and thus informs but does not settle legal obligations.",
+          "potential_themes": [
+            "state_responsibility_thresholds"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "state_practice_custom",
+          "argument_type": "legal_interpretive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "UN_charter_applicability",
+            "GGE_consensus"
+          ]
+        },
+        {
+          "quote": "However, in theory, the legal status of espionage in international law is very complex; it is not simply prohibited.",
+          "paraphrase": "The author notes that espionage under international law is legally complex and not categorically prohibited, complicating attribution\u2011to\u2011remedy pathways for cyber intrusions.",
+          "researcher_comment": "Flags legal ambiguity around cyber espionage which affects whether attribution should lead to sanctions or force; the statement is high\u2011level and lacks citation to doctrine or cases in this passage.",
+          "potential_themes": [
+            "state_responsibility_thresholds"
+          ],
+          "relevance_score": 3,
+          "relevant_rqs": [],
+          "evidence_type": "definition_conceptual",
+          "argument_type": "legal_interpretive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "espionage_legal_status",
+            "ambiguity_in_prohibition"
+          ]
+        },
+        {
+          "quote": "Given the uniqueness of cyberspace, including the difficulty in attribution and diversity of actors, there is still a debate over the utility of cyber deterrence.",
+          "paraphrase": "The author argues that attribution challenges and multiple actor types make the effectiveness of cyber deterrence contested.",
+          "researcher_comment": "Directly links attribution and actor diversity to the contested feasibility of deterrence in cyberspace; useful for RQs on deterrence design and the role of credible attribution. The passage is descriptive and cites scholarly debate rather than empirical evidence.",
+          "potential_themes": [
+            "attribution_challenges"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "deterrence_limitations",
+            "actor_diversity"
+          ]
+        },
+        {
+          "quote": "Recently, Joseph Nye proposed that the effectiveness of cyber deterrence depends on the answers not just to the question \u201chow\u201d but also to the questions \u201cwho\u201d and \u201cwhat.\u201d",
+          "paraphrase": "Nye's model holds that cyber deterrence effectiveness depends not only on 'how' to retaliate but also on 'who' carried out the attack (attribution) and 'what' the attack was.",
+          "researcher_comment": "Provides a theoretical framing that elevates attribution ('who') as a core variable in deterrence models\u2014directly relevant to policy RQs about the role of attribution in deterrence. This is a theorized mechanism rather than an empirical finding in this text.",
+          "potential_themes": [
+            "attribution_challenges"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "theory_model",
+          "argument_type": "predictive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "nye_who_what",
+            "attribution_for_deterrence"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-24T17:39:06.106618Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "154ad6878343e51487d12a728a9a1d73c5e8a92cebf179acc18da3fad8a94c89",
+  "function": "code_pdf_page"
+}

@@ -1,0 +1,501 @@
+{
+  "metadata": {
+    "item_key": "e99de3e8d9b28363ad90744d819eebe515d4e6e5aa7712b438b8a994d2d904dd",
+    "title": "Countering Cyberattacks: Gaps in International Law and Prospects for Overcoming them",
+    "pdf_path": "",
+    "source_path": "/home/pantera/projects/TEIA/python_backend_legacy/dataset/e99de3e8d9b28363ad90744d819eebe515d4e6e5aa7712b438b8a994d2d904dd.json",
+    "coding_mode": "open",
+    "overarching_theme": "cyber attribution"
+  },
+  "section_open_coding": [
+    {
+      "section_key": "legacy_dataset_text",
+      "evidence": [
+        {
+          "dqid": "a5252d0fa3f7",
+          "quote": "# Research article UDC 34:004:341.4:004.8 EDN: https://elibrary.ru/nnftqi DOI: https://doi.org/10.21202/jdtl.2024.46 # # Check for updates # Countering Cyberattacks: Gaps in International Law and Prospects for Overcoming them Mohammad Minhazur Rahman State University of Bangladesh, Dhaka, Bangladesh Tapos Kumar Das Jah...",
+          "paraphrase": "Section indicates attribution_logic, framework_usage in relation to the overarching theme.",
+          "researcher_comment": "Section-level open coding signal extracted from available text.",
+          "evidence_type": "mixed",
+          "argument_type": "unspecified",
+          "claim_direction": "unspecified",
+          "potential_themes": [
+            "attribution_logic"
+          ],
+          "cluster_match": [
+            "attribution_logic"
+          ],
+          "function_summary": "other open-code",
+          "risk_if_missing": "Potential concept loss if omitted.",
+          "illustrative_skills": [],
+          "relevance_score": 3,
+          "section_key": "legacy_dataset_text",
+          "extraction_category": "open_code"
+        },
+        {
+          "dqid": "d47ef4f0115c",
+          "quote": "# Research article UDC 34:004:341.4:004.8 EDN: https://elibrary.ru/nnftqi DOI: https://doi.org/10.21202/jdtl.2024.46 # # Check for updates # Countering Cyberattacks: Gaps in International Law and Prospects for Overcoming them Mohammad Minhazur Rahman State University of Bangladesh, Dhaka, Bangladesh Tapos Kumar Das Jah...",
+          "paraphrase": "Section indicates attribution_logic, framework_usage in relation to the overarching theme.",
+          "researcher_comment": "Section-level open coding signal extracted from available text.",
+          "evidence_type": "mixed",
+          "argument_type": "unspecified",
+          "claim_direction": "unspecified",
+          "potential_themes": [
+            "framework_usage"
+          ],
+          "cluster_match": [
+            "framework_usage"
+          ],
+          "function_summary": "other open-code",
+          "risk_if_missing": "Potential concept loss if omitted.",
+          "illustrative_skills": [],
+          "relevance_score": 3,
+          "section_key": "legacy_dataset_text",
+          "extraction_category": "open_code"
+        },
+        {
+          "dqid": "173fe87582ab",
+          "quote": "# Research article UDC 34:004:341.4:004.8 EDN: https://elibrary.ru/nnftqi DOI: https://doi.org/10.21202/jdtl.2024.46 # # Check for updates # Countering Cyberattacks: Gaps in International Law and Prospects for Overcoming them Mohammad Minhazur Rahman State University of Bangladesh, Dhaka, Bangladesh Tapos Kumar Das Jah...",
+          "paraphrase": "Section indicates attribution_logic, framework_usage in relation to the overarching theme.",
+          "researcher_comment": "Section-level open coding signal extracted from available text.",
+          "evidence_type": "mixed",
+          "argument_type": "unspecified",
+          "claim_direction": "unspecified",
+          "potential_themes": [
+            "modeling_approach"
+          ],
+          "cluster_match": [
+            "modeling_approach"
+          ],
+          "function_summary": "other open-code",
+          "risk_if_missing": "Potential concept loss if omitted.",
+          "illustrative_skills": [],
+          "relevance_score": 3,
+          "section_key": "legacy_dataset_text",
+          "extraction_category": "open_code"
+        },
+        {
+          "dqid": "34b097ec6343",
+          "quote": "# Research article UDC 34:004:341.4:004.8 EDN: https://elibrary.ru/nnftqi DOI: https://doi.org/10.21202/jdtl.2024.46 # # Check for updates # Countering Cyberattacks: Gaps in International Law and Prospects for Overcoming them Mohammad Minhazur Rahman State University of Bangladesh, Dhaka, Bangladesh Tapos Kumar Das Jah...",
+          "paraphrase": "Section indicates attribution_logic, framework_usage in relation to the overarching theme.",
+          "researcher_comment": "Section-level open coding signal extracted from available text.",
+          "evidence_type": "mixed",
+          "argument_type": "unspecified",
+          "claim_direction": "unspecified",
+          "potential_themes": [
+            "method_design"
+          ],
+          "cluster_match": [
+            "method_design"
+          ],
+          "function_summary": "other open-code",
+          "risk_if_missing": "Potential concept loss if omitted.",
+          "illustrative_skills": [],
+          "relevance_score": 3,
+          "section_key": "legacy_dataset_text",
+          "extraction_category": "open_code"
+        },
+        {
+          "dqid": "c06761d71e4c",
+          "quote": "# Research article UDC 34:004:341.4:004.8 EDN: https://elibrary.ru/nnftqi DOI: https://doi.org/10.21202/jdtl.2024.46 # # Check for updates # Countering Cyberattacks: Gaps in International Law and Prospects for Overcoming them Mohammad Minhazur Rahman State University of Bangladesh, Dhaka, Bangladesh Tapos Kumar Das Jah...",
+          "paraphrase": "Section indicates attribution_logic, framework_usage in relation to the overarching theme.",
+          "researcher_comment": "Section-level open coding signal extracted from available text.",
+          "evidence_type": "mixed",
+          "argument_type": "unspecified",
+          "claim_direction": "unspecified",
+          "potential_themes": [
+            "limitations_statement"
+          ],
+          "cluster_match": [
+            "limitations_statement"
+          ],
+          "function_summary": "other open-code",
+          "risk_if_missing": "Potential concept loss if omitted.",
+          "illustrative_skills": [],
+          "relevance_score": 3,
+          "section_key": "legacy_dataset_text",
+          "extraction_category": "open_code"
+        }
+      ]
+    }
+  ],
+  "evidence_harvesting": [
+    {
+      "dqid": "a4f05ddcbba8",
+      "quote": "[legacy_dataset_text::fallback_intro] # Research article UDC 34:004:341.4:004.8 EDN: https://elibrary.ru/nnftqi DOI: https://doi.org/10.21202/jdtl.2024.46 # # Check for updates # Countering Cyberattacks: Gaps in International Law and Prospects for Overcoming them Mohammad Minhazur Rahman State University of Bangladesh,",
+      "paraphrase": "Definition extracted from introduction/conclusion text.",
+      "researcher_comment": "Evidence sentence selected from introduction/conclusion content.",
+      "evidence_type": "definition",
+      "argument_type": "descriptive",
+      "claim_direction": "neutral",
+      "open_codes": [
+        "definitions"
+      ],
+      "relevant_rqs": [],
+      "potential_themes": [
+        "definitions",
+        "attribution_logic",
+        "framework_usage"
+      ],
+      "cluster_match": [
+        "definitions"
+      ],
+      "function_summary": "harvested definitions",
+      "risk_if_missing": "Evidence category omitted from synthesis.",
+      "illustrative_skills": [],
+      "relevance_score": 3,
+      "section_key": "__intro_conclusion_harvest__",
+      "extraction_category": "definitions"
+    },
+    {
+      "dqid": "10e0011d5446",
+      "quote": "Results: the article defines the legal consequences of cyberattacks, identifies difficulties in determining and holding individuals and organizations accountable for their commission, identifies national measures to counter cyberattacks based on the principle of proportionality, and systematizes the international legal",
+      "paraphrase": "Main finding extracted from introduction/conclusion text.",
+      "researcher_comment": "Evidence sentence selected from introduction/conclusion content.",
+      "evidence_type": "finding",
+      "argument_type": "descriptive",
+      "claim_direction": "neutral",
+      "open_codes": [
+        "main_findings"
+      ],
+      "relevant_rqs": [],
+      "potential_themes": [
+        "main_findings",
+        "attribution_logic",
+        "framework_usage"
+      ],
+      "cluster_match": [
+        "main_findings"
+      ],
+      "function_summary": "harvested main_findings",
+      "risk_if_missing": "Evidence category omitted from synthesis.",
+      "illustrative_skills": [],
+      "relevance_score": 3,
+      "section_key": "__intro_conclusion_harvest__",
+      "extraction_category": "main_findings"
+    },
+    {
+      "dqid": "76ed0e989d6e",
+      "quote": "Methods: include doctrinal legal analysis, formal legal, comparative legal methods, synthesis, induction, deduction, as well as methods of legal forecasting and modeling.",
+      "paraphrase": "Method-related claim extracted from introduction/conclusion text.",
+      "researcher_comment": "Evidence sentence selected from introduction/conclusion content.",
+      "evidence_type": "method",
+      "argument_type": "descriptive",
+      "claim_direction": "neutral",
+      "open_codes": [
+        "method_claims"
+      ],
+      "relevant_rqs": [],
+      "potential_themes": [
+        "method_claims",
+        "attribution_logic",
+        "framework_usage"
+      ],
+      "cluster_match": [
+        "method_claims"
+      ],
+      "function_summary": "harvested method_claims",
+      "risk_if_missing": "Evidence category omitted from synthesis.",
+      "illustrative_skills": [],
+      "relevance_score": 3,
+      "section_key": "__intro_conclusion_harvest__",
+      "extraction_category": "method_claims"
+    },
+    {
+      "dqid": "d1e4afe2eea9",
+      "quote": "The main focus is on the urgent problems of identifying and verifying cyber weapons, establishing international standards for their use, developing methods of disarmament or limiting offensive cyber capabilities.",
+      "paraphrase": "Limitation statement extracted from introduction/conclusion text.",
+      "researcher_comment": "Evidence sentence selected from introduction/conclusion content.",
+      "evidence_type": "limitation",
+      "argument_type": "descriptive",
+      "claim_direction": "neutral",
+      "open_codes": [
+        "stated_limitations"
+      ],
+      "relevant_rqs": [],
+      "potential_themes": [
+        "stated_limitations",
+        "attribution_logic",
+        "framework_usage"
+      ],
+      "cluster_match": [
+        "stated_limitations"
+      ],
+      "function_summary": "harvested stated_limitations",
+      "risk_if_missing": "Evidence category omitted from synthesis.",
+      "illustrative_skills": [],
+      "relevance_score": 3,
+      "section_key": "__intro_conclusion_harvest__",
+      "extraction_category": "stated_limitations"
+    },
+    {
+      "dqid": "dc56394eafdb",
+      "quote": "International legal documents and acts of national legislation, judicial precedents, and doctrinal sources were studied.",
+      "paraphrase": "Recommendation/future-work statement extracted from introduction/conclusion text.",
+      "researcher_comment": "Evidence sentence selected from introduction/conclusion content.",
+      "evidence_type": "recommendation",
+      "argument_type": "descriptive",
+      "claim_direction": "neutral",
+      "open_codes": [
+        "recommendations_future_work"
+      ],
+      "relevant_rqs": [],
+      "potential_themes": [
+        "recommendations_future_work",
+        "attribution_logic",
+        "framework_usage"
+      ],
+      "cluster_match": [
+        "recommendations_future_work"
+      ],
+      "function_summary": "harvested recommendations_future_work",
+      "risk_if_missing": "Evidence category omitted from synthesis.",
+      "illustrative_skills": [],
+      "relevance_score": 3,
+      "section_key": "__intro_conclusion_harvest__",
+      "extraction_category": "recommendations_future_work"
+    }
+  ],
+  "evidence_list": [
+    {
+      "dqid": "a5252d0fa3f7",
+      "quote": "# Research article UDC 34:004:341.4:004.8 EDN: https://elibrary.ru/nnftqi DOI: https://doi.org/10.21202/jdtl.2024.46 # # Check for updates # Countering Cyberattacks: Gaps in International Law and Prospects for Overcoming them Mohammad Minhazur Rahman State University of Bangladesh, Dhaka, Bangladesh Tapos Kumar Das Jah...",
+      "paraphrase": "Section indicates attribution_logic, framework_usage in relation to the overarching theme.",
+      "researcher_comment": "Section-level open coding signal extracted from available text.",
+      "evidence_type": "mixed",
+      "argument_type": "unspecified",
+      "claim_direction": "unspecified",
+      "potential_themes": [
+        "attribution_logic"
+      ],
+      "cluster_match": [
+        "attribution_logic"
+      ],
+      "function_summary": "other open-code",
+      "risk_if_missing": "Potential concept loss if omitted.",
+      "illustrative_skills": [],
+      "relevance_score": 3,
+      "section_key": "legacy_dataset_text",
+      "extraction_category": "open_code"
+    },
+    {
+      "dqid": "d47ef4f0115c",
+      "quote": "# Research article UDC 34:004:341.4:004.8 EDN: https://elibrary.ru/nnftqi DOI: https://doi.org/10.21202/jdtl.2024.46 # # Check for updates # Countering Cyberattacks: Gaps in International Law and Prospects for Overcoming them Mohammad Minhazur Rahman State University of Bangladesh, Dhaka, Bangladesh Tapos Kumar Das Jah...",
+      "paraphrase": "Section indicates attribution_logic, framework_usage in relation to the overarching theme.",
+      "researcher_comment": "Section-level open coding signal extracted from available text.",
+      "evidence_type": "mixed",
+      "argument_type": "unspecified",
+      "claim_direction": "unspecified",
+      "potential_themes": [
+        "framework_usage"
+      ],
+      "cluster_match": [
+        "framework_usage"
+      ],
+      "function_summary": "other open-code",
+      "risk_if_missing": "Potential concept loss if omitted.",
+      "illustrative_skills": [],
+      "relevance_score": 3,
+      "section_key": "legacy_dataset_text",
+      "extraction_category": "open_code"
+    },
+    {
+      "dqid": "173fe87582ab",
+      "quote": "# Research article UDC 34:004:341.4:004.8 EDN: https://elibrary.ru/nnftqi DOI: https://doi.org/10.21202/jdtl.2024.46 # # Check for updates # Countering Cyberattacks: Gaps in International Law and Prospects for Overcoming them Mohammad Minhazur Rahman State University of Bangladesh, Dhaka, Bangladesh Tapos Kumar Das Jah...",
+      "paraphrase": "Section indicates attribution_logic, framework_usage in relation to the overarching theme.",
+      "researcher_comment": "Section-level open coding signal extracted from available text.",
+      "evidence_type": "mixed",
+      "argument_type": "unspecified",
+      "claim_direction": "unspecified",
+      "potential_themes": [
+        "modeling_approach"
+      ],
+      "cluster_match": [
+        "modeling_approach"
+      ],
+      "function_summary": "other open-code",
+      "risk_if_missing": "Potential concept loss if omitted.",
+      "illustrative_skills": [],
+      "relevance_score": 3,
+      "section_key": "legacy_dataset_text",
+      "extraction_category": "open_code"
+    },
+    {
+      "dqid": "34b097ec6343",
+      "quote": "# Research article UDC 34:004:341.4:004.8 EDN: https://elibrary.ru/nnftqi DOI: https://doi.org/10.21202/jdtl.2024.46 # # Check for updates # Countering Cyberattacks: Gaps in International Law and Prospects for Overcoming them Mohammad Minhazur Rahman State University of Bangladesh, Dhaka, Bangladesh Tapos Kumar Das Jah...",
+      "paraphrase": "Section indicates attribution_logic, framework_usage in relation to the overarching theme.",
+      "researcher_comment": "Section-level open coding signal extracted from available text.",
+      "evidence_type": "mixed",
+      "argument_type": "unspecified",
+      "claim_direction": "unspecified",
+      "potential_themes": [
+        "method_design"
+      ],
+      "cluster_match": [
+        "method_design"
+      ],
+      "function_summary": "other open-code",
+      "risk_if_missing": "Potential concept loss if omitted.",
+      "illustrative_skills": [],
+      "relevance_score": 3,
+      "section_key": "legacy_dataset_text",
+      "extraction_category": "open_code"
+    },
+    {
+      "dqid": "c06761d71e4c",
+      "quote": "# Research article UDC 34:004:341.4:004.8 EDN: https://elibrary.ru/nnftqi DOI: https://doi.org/10.21202/jdtl.2024.46 # # Check for updates # Countering Cyberattacks: Gaps in International Law and Prospects for Overcoming them Mohammad Minhazur Rahman State University of Bangladesh, Dhaka, Bangladesh Tapos Kumar Das Jah...",
+      "paraphrase": "Section indicates attribution_logic, framework_usage in relation to the overarching theme.",
+      "researcher_comment": "Section-level open coding signal extracted from available text.",
+      "evidence_type": "mixed",
+      "argument_type": "unspecified",
+      "claim_direction": "unspecified",
+      "potential_themes": [
+        "limitations_statement"
+      ],
+      "cluster_match": [
+        "limitations_statement"
+      ],
+      "function_summary": "other open-code",
+      "risk_if_missing": "Potential concept loss if omitted.",
+      "illustrative_skills": [],
+      "relevance_score": 3,
+      "section_key": "legacy_dataset_text",
+      "extraction_category": "open_code"
+    },
+    {
+      "dqid": "a4f05ddcbba8",
+      "quote": "[legacy_dataset_text::fallback_intro] # Research article UDC 34:004:341.4:004.8 EDN: https://elibrary.ru/nnftqi DOI: https://doi.org/10.21202/jdtl.2024.46 # # Check for updates # Countering Cyberattacks: Gaps in International Law and Prospects for Overcoming them Mohammad Minhazur Rahman State University of Bangladesh,",
+      "paraphrase": "Definition extracted from introduction/conclusion text.",
+      "researcher_comment": "Evidence sentence selected from introduction/conclusion content.",
+      "evidence_type": "definition",
+      "argument_type": "descriptive",
+      "claim_direction": "neutral",
+      "open_codes": [
+        "definitions"
+      ],
+      "relevant_rqs": [],
+      "potential_themes": [
+        "definitions",
+        "attribution_logic",
+        "framework_usage"
+      ],
+      "cluster_match": [
+        "definitions"
+      ],
+      "function_summary": "harvested definitions",
+      "risk_if_missing": "Evidence category omitted from synthesis.",
+      "illustrative_skills": [],
+      "relevance_score": 3,
+      "section_key": "__intro_conclusion_harvest__",
+      "extraction_category": "definitions"
+    },
+    {
+      "dqid": "10e0011d5446",
+      "quote": "Results: the article defines the legal consequences of cyberattacks, identifies difficulties in determining and holding individuals and organizations accountable for their commission, identifies national measures to counter cyberattacks based on the principle of proportionality, and systematizes the international legal",
+      "paraphrase": "Main finding extracted from introduction/conclusion text.",
+      "researcher_comment": "Evidence sentence selected from introduction/conclusion content.",
+      "evidence_type": "finding",
+      "argument_type": "descriptive",
+      "claim_direction": "neutral",
+      "open_codes": [
+        "main_findings"
+      ],
+      "relevant_rqs": [],
+      "potential_themes": [
+        "main_findings",
+        "attribution_logic",
+        "framework_usage"
+      ],
+      "cluster_match": [
+        "main_findings"
+      ],
+      "function_summary": "harvested main_findings",
+      "risk_if_missing": "Evidence category omitted from synthesis.",
+      "illustrative_skills": [],
+      "relevance_score": 3,
+      "section_key": "__intro_conclusion_harvest__",
+      "extraction_category": "main_findings"
+    },
+    {
+      "dqid": "76ed0e989d6e",
+      "quote": "Methods: include doctrinal legal analysis, formal legal, comparative legal methods, synthesis, induction, deduction, as well as methods of legal forecasting and modeling.",
+      "paraphrase": "Method-related claim extracted from introduction/conclusion text.",
+      "researcher_comment": "Evidence sentence selected from introduction/conclusion content.",
+      "evidence_type": "method",
+      "argument_type": "descriptive",
+      "claim_direction": "neutral",
+      "open_codes": [
+        "method_claims"
+      ],
+      "relevant_rqs": [],
+      "potential_themes": [
+        "method_claims",
+        "attribution_logic",
+        "framework_usage"
+      ],
+      "cluster_match": [
+        "method_claims"
+      ],
+      "function_summary": "harvested method_claims",
+      "risk_if_missing": "Evidence category omitted from synthesis.",
+      "illustrative_skills": [],
+      "relevance_score": 3,
+      "section_key": "__intro_conclusion_harvest__",
+      "extraction_category": "method_claims"
+    },
+    {
+      "dqid": "d1e4afe2eea9",
+      "quote": "The main focus is on the urgent problems of identifying and verifying cyber weapons, establishing international standards for their use, developing methods of disarmament or limiting offensive cyber capabilities.",
+      "paraphrase": "Limitation statement extracted from introduction/conclusion text.",
+      "researcher_comment": "Evidence sentence selected from introduction/conclusion content.",
+      "evidence_type": "limitation",
+      "argument_type": "descriptive",
+      "claim_direction": "neutral",
+      "open_codes": [
+        "stated_limitations"
+      ],
+      "relevant_rqs": [],
+      "potential_themes": [
+        "stated_limitations",
+        "attribution_logic",
+        "framework_usage"
+      ],
+      "cluster_match": [
+        "stated_limitations"
+      ],
+      "function_summary": "harvested stated_limitations",
+      "risk_if_missing": "Evidence category omitted from synthesis.",
+      "illustrative_skills": [],
+      "relevance_score": 3,
+      "section_key": "__intro_conclusion_harvest__",
+      "extraction_category": "stated_limitations"
+    },
+    {
+      "dqid": "dc56394eafdb",
+      "quote": "International legal documents and acts of national legislation, judicial precedents, and doctrinal sources were studied.",
+      "paraphrase": "Recommendation/future-work statement extracted from introduction/conclusion text.",
+      "researcher_comment": "Evidence sentence selected from introduction/conclusion content.",
+      "evidence_type": "recommendation",
+      "argument_type": "descriptive",
+      "claim_direction": "neutral",
+      "open_codes": [
+        "recommendations_future_work"
+      ],
+      "relevant_rqs": [],
+      "potential_themes": [
+        "recommendations_future_work",
+        "attribution_logic",
+        "framework_usage"
+      ],
+      "cluster_match": [
+        "recommendations_future_work"
+      ],
+      "function_summary": "harvested recommendations_future_work",
+      "risk_if_missing": "Evidence category omitted from synthesis.",
+      "illustrative_skills": [],
+      "relevance_score": 3,
+      "section_key": "__intro_conclusion_harvest__",
+      "extraction_category": "recommendations_future_work"
+    }
+  ]
+}

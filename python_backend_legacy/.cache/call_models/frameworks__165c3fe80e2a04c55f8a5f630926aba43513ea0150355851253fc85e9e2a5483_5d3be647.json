@@ -1,0 +1,238 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "quote": "Concerns about state-directed cyber intrusions have grown increasingly prevalent in recent years.",
+          "paraphrase": "The author states that concerns about state-directed cyber intrusions have increased in recent years, motivating the study of attribution challenges.",
+          "researcher_comment": "Background framing that justifies the paper's focus on state involvement in cyber attacks; descriptive assertion without empirical backing in this excerpt. Use as contextual motivation rather than an operational finding.",
+          "potential_themes": [
+            "attribution_challenges"
+          ],
+          "relevance_score": 3,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "rising_attention",
+            "state_directed_intrusions"
+          ]
+        },
+        {
+          "quote": "The idea that state principals can obfuscate their involvement in such attacks by delegating operational tasks to non-state agents poses a particularly significant challenge to international enforcement and remedies.",
+          "paraphrase": "The author argues that state delegation to non-state actors enables obfuscation of state involvement, creating significant challenges for international enforcement and remedies.",
+          "researcher_comment": "Frames principal-agent delegation as a central attribution problem that extends beyond technical indicators to legal and political arenas. Important for RQs about delegation dynamics and accountability; lacks quantification of how often this occurs.",
+          "potential_themes": [
+            "principal_agent_theory",
+            "delegation_tradeoffs",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "delegation_obfuscation",
+            "enforcement_challenge"
+          ]
+        },
+        {
+          "quote": "Gaps in international law, coupled with obstacles to detection in such cases, may make it more difficult to bring sponsoring states to justice.",
+          "paraphrase": "The author asserts that legal gaps and detection obstacles hinder the ability to hold sponsoring states legally accountable.",
+          "researcher_comment": "Identifies dual constraints\u2014legal and evidentiary\u2014that limit state responsibility enforcement; the hedged language ('may') signals caution. Relevant for RQs on legal limitations and prosecution barriers.",
+          "potential_themes": [
+            "legal_limitation",
+            "detection_limitations",
+            "state_responsibility"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "limitation",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "legal_detection_gap",
+            "accountability_barriers"
+          ]
+        },
+        {
+          "quote": "This paper offers a roadmap for assessing the propensity of states to delegate to non-state actors and correct for false positives in standard (typically more technical) cyber attack attribution methods.",
+          "paraphrase": "The paper proposes a roadmap to assess states' propensity to delegate and to reduce false positives in standard technical cyber attribution methods.",
+          "researcher_comment": "Explicit methodological claim: promises both an assessment framework and a corrective for false positives. The excerpt does not provide operational details (variables, thresholds), so evaluate full text for reproducibility.",
+          "potential_themes": [
+            "method",
+            "false_positive_reduction",
+            "attribution_method"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "method",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "roadmap_for_delegation",
+            "false_positive_correction"
+          ]
+        },
+        {
+          "quote": "I conclude that the conditions under which attacks are likely to have been backed by sponsoring states occupy a much narrower window than conventional wisdom suggests, and that the universe of transgressors can be identified when standard indicators overlap with specific conditions.",
+          "paraphrase": "The author concludes that state-backed attacks occur under a much narrower set of conditions and can be identified when standard indicators align with specific permissive conditions.",
+          "researcher_comment": "Core finding: narrows attribution candidate set by combining indicators with contextual conditions. Requires clear, testable definition of the 'specific conditions' to synthesize across cases.",
+          "potential_themes": [
+            "state_sponsorship_conditions",
+            "attribution_thresholds",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "narrow_delegation_conditions",
+            "indicator_condition_overlap"
+          ]
+        },
+        {
+          "quote": "private firms are often reluctant to disclose breaches when they are detected for fear of looking weak on data security",
+          "paraphrase": "The author notes that private firms frequently withhold disclosure of breaches to avoid reputational harm, which impedes evidence collection for attribution.",
+          "researcher_comment": "Identifies a practical data-availability constraint driven by corporate disclosure incentives; this supports the need for non-technical attribution approaches. The statement is anecdotal here and would benefit from empirical corroboration.",
+          "potential_themes": [
+            "detection_limitations",
+            "false_positive_risk"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "limitation",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "non_disclosure_incentive",
+            "evidence_availability_issue"
+          ]
+        },
+        {
+          "quote": "this framework should allow us to narrow the list of suspects by process of elimination without knowing any of the technical details of the case.",
+          "paraphrase": "The paper recommends using a process-of-elimination framework to narrow suspects even when technical forensic details are unavailable.",
+          "researcher_comment": "Practical recommendation addressing situations with limited forensic disclosure; promising for jurisdictions lacking access to raw technical traces. Needs scrutiny for risks of false negatives or biased elimination criteria.",
+          "potential_themes": [
+            "recommendation",
+            "attribution_method",
+            "false_positive_reduction"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "process_of_elimination",
+            "non_technical_attribution"
+          ]
+        },
+        {
+          "quote": "The framework espoused in this paper proposes a method of differentiating between plausible and truthful deniability when non-state attacks do occur.",
+          "paraphrase": "The author proposes a method to distinguish plausible deniability from truthful deniability in cases of non-state attacks.",
+          "researcher_comment": "Conceptual contribution directly targeting ambiguity in attribution statements; operationalization of 'plausible' versus 'truthful' will determine its analytic utility. Crucial for RQs on deniability and political attribution.",
+          "potential_themes": [
+            "plausible_deniability",
+            "attribution_method",
+            "principal_agent_theory"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "method",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "deniability_differentiation",
+            "conceptual_clarification"
+          ]
+        },
+        {
+          "quote": "Specifically, when the permissive conditions outlined above overlap with forensic indicators in a given instance, we have a match.",
+          "paraphrase": "The author specifies that an attributional 'match' is produced when permissive contextual conditions overlap with forensic indicators in a case.",
+          "researcher_comment": "Provides the decision rule at the heart of the framework (condition-indicator convergence). Reproducibility depends on how 'permissive conditions' and indicator thresholds are enumerated.",
+          "potential_themes": [
+            "attribution_thresholds",
+            "evidentiary_standards",
+            "state_sponsorship_conditions"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "method",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "indicator_overlap_rule",
+            "context_forensics_convergence"
+          ]
+        },
+        {
+          "quote": "This adds to the persuasive content of attribution reports while also reducing the likelihood of false positives.",
+          "paraphrase": "The author claims that applying the framework increases the persuasive weight of attribution reports and reduces false-positive attributions.",
+          "researcher_comment": "Asserts improved evidentiary quality and lower Type I error when using the framework; empirical validation is necessary before adopting as a standard. Relevant to RQs on evidentiary standards and false positive mitigation.",
+          "potential_themes": [
+            "false_positive_reduction",
+            "evidentiary_standards",
+            "attribution_method"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "reduced_false_positives",
+            "improved_report_persuasion"
+          ]
+        },
+        {
+          "quote": "Readers should also be optimistic because the conditions under which states should rationally choose to delegate are narrower than commonly envisioned, which implies that these types of cyber conflicts are fewer, more controlled, and that the principals behind them can be held accountable.",
+          "paraphrase": "The author argues that because rational delegation conditions are narrow, state-delegated cyber conflicts are fewer and more controllable, making principal accountability feasible.",
+          "researcher_comment": "Normative implication that accountability is practicable given narrowed delegation conditions; optimism depends on validity of earlier analytical claims. Use cautiously in policy recommendations until empirically tested.",
+          "potential_themes": [
+            "state_sponsorship_conditions",
+            "state_responsibility",
+            "attribution_risk"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "delegation_narrowness",
+            "accountability_feasibility"
+          ]
+        },
+        {
+          "quote": "Cyber attacks will continue to pose problems for national security for the foreseeable future, and the proliferation of Internet access, which partially levels the playing field between states and individuals in the cyber domain, means the threat of patriotic (or otherwise non-state) CNA will no doubt increase should no developments intercede to alter our current trajectory.",
+          "paraphrase": "The author predicts that cyber attacks will remain a national security problem and that wider internet access increases the risk of patriotic or non-state computer network attacks (CNA).",
+          "researcher_comment": "Forward-looking claim that contextualizes the framework's continued relevance; conditional language acknowledges uncertainty. Useful for RQs on future threat trajectories and non-state actor capability diffusion.",
+          "potential_themes": [
+            "capability_as_proxy",
+            "attribution_risk"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "predictive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "increasing_nonstate_threat",
+            "leveling_capabilities"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-24T15:49:28.145311Z",
+  "collection_name": "frameworks",
+  "custom_id": "165c3fe80e2a04c55f8a5f630926aba43513ea0150355851253fc85e9e2a5483",
+  "function": "code_pdf_page"
+}

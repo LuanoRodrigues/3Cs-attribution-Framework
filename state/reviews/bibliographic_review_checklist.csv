@@ -1,0 +1,16 @@
+step_id,review_type,stage,task,required_artifact,status,notes
+R0-01,bibliographic,identity,Choose review type and lock topic/RQ,state/reviews/bibliographic_run_manifest.json,pending,
+R0-02,bibliographic,identity,Freeze corpus snapshot,state/reviews/bibliographic_corpus_snapshot.json,pending,
+R1-01,bibliographic,screening,Finalize inclusion/exclusion criteria,state/reviews/bibliographic_criteria.json,pending,
+R1-02,bibliographic,screening,Complete per-item screening decisions,state/reviews/bibliographic_screening_decisions.csv,pending,
+R1-03,bibliographic,screening,Reconcile counts in context,state/reviews/bibliographic_review_context.json,pending,
+R2-01,bibliographic,coding_readiness,Build full-text/coding queue,state/reviews/bibliographic_fulltext_coding_queue.csv,pending,
+R2-02,bibliographic,coding_readiness,Document missing full text,state/reviews/bibliographic_fulltext_gaps.csv,pending,
+R3-01,bibliographic,coding,Validate coding fields against schema,state/reviews/bibliographic_coding_validation_report.json,pending,
+R3-02,bibliographic,coding,Normalize themes/tags to controlled vocab,state/reviews/bibliographic_coded_evidence.csv,pending,
+R4-01,bibliographic,writing,Generate themes and section synthesis,state/reviews/bibliographic_review_context.json,pending,
+R4-02,bibliographic,writing,Generate references and notes,state/reviews/bibliographic_references.json,pending,
+R5-01,bibliographic,validation,Run output validator,state/reviews/bibliographic_review_validation_report.json,pending,
+R5-02,bibliographic,validation,Generate traceability matrix,state/reviews/bibliographic_traceability.csv,pending,
+R5-03,bibliographic,finalize,Publish final HTML,state/reviews/bibliographic_review_final.html,pending,
+B-01,bibliographic,bibliographic,Compute bibliometric trend outputs,state/reviews/bibliographic_outputs.json,pending,Bibliometric outputs should point to timeline/keyword/network artifacts in run directory.

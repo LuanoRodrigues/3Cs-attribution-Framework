@@ -1,0 +1,88 @@
+[INFO] 2026-02-23 08:00:03,293 / root:get_all_items|230693 - Loading Zotero items from cache under key '44Q6VN9A' in /home/pantera/projects/TEIA/zotero_items_cache.json
+[DEBUG] 2026-02-23 08:00:03,323 / httpcore.connection:trace|230693 - connect_tcp.started host='api.zotero.org' port=443 local_address=None timeout=30 socket_options=None
+[DEBUG] 2026-02-23 08:00:03,449 / httpcore.connection:trace|230693 - connect_tcp.complete return_value=<httpcore._backends.sync.SyncStream object at 0x7c19f9fad9f0>
+[DEBUG] 2026-02-23 08:00:03,449 / httpcore.connection:trace|230693 - start_tls.started ssl_context=<ssl.SSLContext object at 0x7c19faca82c0> server_hostname='api.zotero.org' timeout=30
+[DEBUG] 2026-02-23 08:00:03,546 / httpcore.connection:trace|230693 - start_tls.complete return_value=<httpcore._backends.sync.SyncStream object at 0x7c19f9fad9c0>
+[DEBUG] 2026-02-23 08:00:03,546 / httpcore.http11:trace|230693 - send_request_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-23 08:00:03,546 / httpcore.http11:trace|230693 - send_request_headers.complete
+[DEBUG] 2026-02-23 08:00:03,546 / httpcore.http11:trace|230693 - send_request_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-23 08:00:03,546 / httpcore.http11:trace|230693 - send_request_body.complete
+[DEBUG] 2026-02-23 08:00:03,546 / httpcore.http11:trace|230693 - receive_response_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-23 08:00:05,774 / httpcore.http11:trace|230693 - receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'Date', b'Mon, 23 Feb 2026 08:00:05 GMT'), (b'Content-Type', b'application/json'), (b'Content-Length', b'10126'), (b'Connection', b'keep-alive'), (b'Server', b'Apache/2.4.66 ()'), (b'Strict-Transport-Security', b'max-age=31536000; includeSubDomains; preload'), (b'Zotero-API-Version', b'3'), (b'Zotero-Schema-Version', b'40'), (b'Total-Results', b'13'), (b'Link', b'<https://www.zotero.org/users/9047943/items/W63DA6Z6/children>; rel="alternate"'), (b'Last-Modified-Version', b'344925'), (b'Vary', b'Accept-Encoding'), (b'Content-Encoding', b'gzip')])
+[INFO] 2026-02-23 08:00:05,774 / httpx:_send_single_request|230693 - HTTP Request: GET https://api.zotero.org/users/9047943/items/W63DA6Z6/children?format=json&limit=100&locale=en-US "HTTP/1.1 200 OK"
+[DEBUG] 2026-02-23 08:00:05,774 / httpcore.http11:trace|230693 - receive_response_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-23 08:00:05,775 / httpcore.http11:trace|230693 - receive_response_body.complete
+[DEBUG] 2026-02-23 08:00:05,775 / httpcore.http11:trace|230693 - response_closed.started
+[DEBUG] 2026-02-23 08:00:05,775 / httpcore.http11:trace|230693 - response_closed.complete
+[DEBUG] 2026-02-23 08:00:06,108 / urllib3.util.retry:from_int|230693 - Converted retries value: 2 -> Retry(total=2, connect=None, read=None, redirect=None, status=None)
+[DEBUG] 2026-02-23 08:00:06,108 / urllib3.util.retry:from_int|230693 - Converted retries value: 2 -> Retry(total=2, connect=None, read=None, redirect=None, status=None)
+[DEBUG] 2026-02-23 08:00:07,300 / httpcore.http11:trace|230693 - send_request_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-23 08:00:07,300 / httpcore.http11:trace|230693 - send_request_headers.complete
+[DEBUG] 2026-02-23 08:00:07,300 / httpcore.http11:trace|230693 - send_request_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-23 08:00:07,300 / httpcore.http11:trace|230693 - send_request_body.complete
+[DEBUG] 2026-02-23 08:00:07,300 / httpcore.http11:trace|230693 - receive_response_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-23 08:00:08,377 / httpcore.http11:trace|230693 - receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'Date', b'Mon, 23 Feb 2026 08:00:08 GMT'), (b'Content-Type', b'application/json'), (b'Content-Length', b'26666'), (b'Connection', b'keep-alive'), (b'Server', b'Apache/2.4.66 ()'), (b'Strict-Transport-Security', b'max-age=31536000; includeSubDomains; preload'), (b'Zotero-API-Version', b'3'), (b'Zotero-Schema-Version', b'40'), (b'Total-Results', b'8'), (b'Link', b'<https://www.zotero.org/users/9047943/items/N4YNQ2GG/children>; rel="alternate"'), (b'Last-Modified-Version', b'344925'), (b'Vary', b'Accept-Encoding'), (b'Content-Encoding', b'gzip')])
+[INFO] 2026-02-23 08:00:08,378 / httpx:_send_single_request|230693 - HTTP Request: GET https://api.zotero.org/users/9047943/items/N4YNQ2GG/children?format=json&limit=100&locale=en-US "HTTP/1.1 200 OK"
+[DEBUG] 2026-02-23 08:00:08,378 / httpcore.http11:trace|230693 - receive_response_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-23 08:00:08,473 / httpcore.http11:trace|230693 - receive_response_body.complete
+[DEBUG] 2026-02-23 08:00:08,474 / httpcore.http11:trace|230693 - response_closed.started
+[DEBUG] 2026-02-23 08:00:08,474 / httpcore.http11:trace|230693 - response_closed.complete
+[DEBUG] 2026-02-23 08:00:08,814 / httpcore.http11:trace|230693 - send_request_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-23 08:00:08,814 / httpcore.http11:trace|230693 - send_request_headers.complete
+[DEBUG] 2026-02-23 08:00:08,814 / httpcore.http11:trace|230693 - send_request_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-23 08:00:08,814 / httpcore.http11:trace|230693 - send_request_body.complete
+[DEBUG] 2026-02-23 08:00:08,814 / httpcore.http11:trace|230693 - receive_response_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-23 08:00:09,207 / httpcore.http11:trace|230693 - receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'Date', b'Mon, 23 Feb 2026 08:00:09 GMT'), (b'Content-Type', b'application/json'), (b'Content-Length', b'760'), (b'Connection', b'keep-alive'), (b'Server', b'Apache/2.4.66 ()'), (b'Strict-Transport-Security', b'max-age=31536000; includeSubDomains; preload'), (b'Zotero-API-Version', b'3'), (b'Zotero-Schema-Version', b'40'), (b'Total-Results', b'2'), (b'Link', b'<https://www.zotero.org/users/9047943/items/MSU2EW6K/children>; rel="alternate"'), (b'Last-Modified-Version', b'344925'), (b'Vary', b'Accept-Encoding'), (b'Content-Encoding', b'gzip')])
+[INFO] 2026-02-23 08:00:09,207 / httpx:_send_single_request|230693 - HTTP Request: GET https://api.zotero.org/users/9047943/items/MSU2EW6K/children?format=json&limit=100&locale=en-US "HTTP/1.1 200 OK"
+[DEBUG] 2026-02-23 08:00:09,207 / httpcore.http11:trace|230693 - receive_response_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-23 08:00:09,207 / httpcore.http11:trace|230693 - receive_response_body.complete
+[DEBUG] 2026-02-23 08:00:09,207 / httpcore.http11:trace|230693 - response_closed.started
+[DEBUG] 2026-02-23 08:00:09,207 / httpcore.http11:trace|230693 - response_closed.complete
+[DEBUG] 2026-02-23 08:00:09,386 / httpcore.http11:trace|230693 - send_request_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-23 08:00:09,386 / httpcore.http11:trace|230693 - send_request_headers.complete
+[DEBUG] 2026-02-23 08:00:09,386 / httpcore.http11:trace|230693 - send_request_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-23 08:00:09,386 / httpcore.http11:trace|230693 - send_request_body.complete
+[DEBUG] 2026-02-23 08:00:09,387 / httpcore.http11:trace|230693 - receive_response_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-23 08:00:10,134 / httpcore.http11:trace|230693 - receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'Date', b'Mon, 23 Feb 2026 08:00:10 GMT'), (b'Content-Type', b'application/json'), (b'Content-Length', b'1916'), (b'Connection', b'keep-alive'), (b'Server', b'Apache/2.4.66 ()'), (b'Strict-Transport-Security', b'max-age=31536000; includeSubDomains; preload'), (b'Zotero-API-Version', b'3'), (b'Zotero-Schema-Version', b'40'), (b'Total-Results', b'7'), (b'Link', b'<https://www.zotero.org/users/9047943/items/KXZITJ9Q/children>; rel="alternate"'), (b'Last-Modified-Version', b'344925'), (b'Vary', b'Accept-Encoding'), (b'Content-Encoding', b'gzip')])
+[INFO] 2026-02-23 08:00:10,134 / httpx:_send_single_request|230693 - HTTP Request: GET https://api.zotero.org/users/9047943/items/KXZITJ9Q/children?format=json&limit=100&locale=en-US "HTTP/1.1 200 OK"
+[DEBUG] 2026-02-23 08:00:10,134 / httpcore.http11:trace|230693 - receive_response_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-23 08:00:10,134 / httpcore.http11:trace|230693 - receive_response_body.complete
+[DEBUG] 2026-02-23 08:00:10,135 / httpcore.http11:trace|230693 - response_closed.started
+[DEBUG] 2026-02-23 08:00:10,135 / httpcore.http11:trace|230693 - response_closed.complete
+[DEBUG] 2026-02-23 08:00:26,704 / httpcore.connection:trace|230693 - connect_tcp.started host='api.mistral.ai' port=443 local_address=None timeout=None socket_options=None
+[DEBUG] 2026-02-23 08:00:26,749 / httpcore.connection:trace|230693 - connect_tcp.complete return_value=<httpcore._backends.sync.SyncStream object at 0x7c19f06e0d60>
+[DEBUG] 2026-02-23 08:00:26,749 / httpcore.connection:trace|230693 - start_tls.started ssl_context=<ssl.SSLContext object at 0x7c19fac329c0> server_hostname='api.mistral.ai' timeout=None
+[DEBUG] 2026-02-23 08:00:26,775 / httpcore.connection:trace|230693 - start_tls.complete return_value=<httpcore._backends.sync.SyncStream object at 0x7c19f06e1e70>
+[DEBUG] 2026-02-23 08:00:26,775 / httpcore.http11:trace|230693 - send_request_headers.started request=<Request [b'POST']>
+[DEBUG] 2026-02-23 08:00:26,775 / httpcore.http11:trace|230693 - send_request_headers.complete
+[DEBUG] 2026-02-23 08:00:26,775 / httpcore.http11:trace|230693 - send_request_body.started request=<Request [b'POST']>
+[DEBUG] 2026-02-23 08:00:26,947 / httpcore.http11:trace|230693 - send_request_body.complete
+[DEBUG] 2026-02-23 08:00:26,947 / httpcore.http11:trace|230693 - receive_response_headers.started request=<Request [b'POST']>
+[DEBUG] 2026-02-23 08:00:28,135 / httpcore.http11:trace|230693 - receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'Date', b'Mon, 23 Feb 2026 08:00:28 GMT'), (b'Content-Type', b'application/json; charset=utf-8'), (b'Transfer-Encoding', b'chunked'), (b'Connection', b'keep-alive'), (b'Content-Encoding', b'br'), (b'mistral-correlation-id', b'019c8983-91ae-799c-bb70-0d3dacc04814'), (b'x-kong-request-id', b'019c8983-91ae-799c-bb70-0d3dacc04814'), (b'x-envoy-upstream-service-time', b'1010'), (b'access-control-allow-origin', b'*'), (b'x-kong-upstream-latency', b'1055'), (b'x-kong-proxy-latency', b'10'), (b'cf-cache-status', b'DYNAMIC'), (b'Set-Cookie', b'__cf_bm=0lQrHBcVcSfpd2CbNK6RFHJcJUcTtIcklKB9Lv9kjD8-1771833628-1.0.1.1-FI.rP2Lbxp4G2oOZ02fq0fhnXOUO0gm6p.fHlXHBR1eHyu1b_64aHJu.U_0McFp2ZF5m5PCCePVWIeUp0ebCT_8u_nRhH.N9E_r49X_zR.Q; path=/; expires=Mon, 23-Feb-26 08:30:28 GMT; domain=.mistral.ai; HttpOnly; Secure; SameSite=None'), (b'Set-Cookie', b'_cfuvid=ASe4WA.5lrnVNOVKEn_DMKFycgGA1Ctld89LdRq_nwk-1771833628137-0.0.1.1-604800000; path=/; domain=.mistral.ai; HttpOnly; Secure; SameSite=None'), (b'Strict-Transport-Security', b'max-age=15552000; includeSubDomains; preload'), (b'X-Content-Type-Options', b'nosniff'), (b'Server', b'cloudflare'), (b'CF-RAY', b'9d2530877cb5df12-LHR'), (b'alt-svc', b'h3=":443"; ma=86400')])
+[INFO] 2026-02-23 08:00:28,135 / httpx:_send_single_request|230693 - HTTP Request: POST https://api.mistral.ai/v1/files "HTTP/1.1 200 OK"
+[DEBUG] 2026-02-23 08:00:28,136 / httpcore.http11:trace|230693 - receive_response_body.started request=<Request [b'POST']>
+[DEBUG] 2026-02-23 08:00:28,136 / httpcore.http11:trace|230693 - receive_response_body.complete
+[DEBUG] 2026-02-23 08:00:28,136 / httpcore.http11:trace|230693 - response_closed.started
+[DEBUG] 2026-02-23 08:00:28,136 / httpcore.http11:trace|230693 - response_closed.complete
+[DEBUG] 2026-02-23 08:00:28,138 / httpcore.http11:trace|230693 - send_request_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-23 08:00:28,138 / httpcore.http11:trace|230693 - send_request_headers.complete
+[DEBUG] 2026-02-23 08:00:28,138 / httpcore.http11:trace|230693 - send_request_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-23 08:00:28,138 / httpcore.http11:trace|230693 - send_request_body.complete
+[DEBUG] 2026-02-23 08:00:28,138 / httpcore.http11:trace|230693 - receive_response_headers.started request=<Request [b'GET']>
+[DEBUG] 2026-02-23 08:00:28,336 / httpcore.http11:trace|230693 - receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'Date', b'Mon, 23 Feb 2026 08:00:28 GMT'), (b'Content-Type', b'application/json; charset=utf-8'), (b'Transfer-Encoding', b'chunked'), (b'Connection', b'keep-alive'), (b'Content-Encoding', b'br'), (b'mistral-correlation-id', b'019c8983-9619-7961-8d7a-c24a897f1658'), (b'x-kong-request-id', b'019c8983-9619-7961-8d7a-c24a897f1658'), (b'x-envoy-upstream-service-time', b'120'), (b'access-control-allow-origin', b'*'), (b'x-kong-upstream-latency', b'122'), (b'x-kong-proxy-latency', b'10'), (b'cf-cache-status', b'DYNAMIC'), (b'Strict-Transport-Security', b'max-age=15552000; includeSubDomains; preload'), (b'X-Content-Type-Options', b'nosniff'), (b'Server', b'cloudflare'), (b'CF-RAY', b'9d25308ffdf6df12-LHR'), (b'alt-svc', b'h3=":443"; ma=86400')])
+[INFO] 2026-02-23 08:00:28,337 / httpx:_send_single_request|230693 - HTTP Request: GET https://api.mistral.ai/v1/files/ab63b694-b087-48fa-8bb7-b9e168019e69/url?expiry=24 "HTTP/1.1 200 OK"
+[DEBUG] 2026-02-23 08:00:28,337 / httpcore.http11:trace|230693 - receive_response_body.started request=<Request [b'GET']>
+[DEBUG] 2026-02-23 08:00:28,337 / httpcore.http11:trace|230693 - receive_response_body.complete
+[DEBUG] 2026-02-23 08:00:28,337 / httpcore.http11:trace|230693 - response_closed.started
+[DEBUG] 2026-02-23 08:00:28,337 / httpcore.http11:trace|230693 - response_closed.complete
+[DEBUG] 2026-02-23 08:00:28,340 / httpcore.http11:trace|230693 - send_request_headers.started request=<Request [b'POST']>
+[DEBUG] 2026-02-23 08:00:28,340 / httpcore.http11:trace|230693 - send_request_headers.complete
+[DEBUG] 2026-02-23 08:00:28,340 / httpcore.http11:trace|230693 - send_request_body.started request=<Request [b'POST']>
+[DEBUG] 2026-02-23 08:00:28,340 / httpcore.http11:trace|230693 - send_request_body.complete
+[DEBUG] 2026-02-23 08:00:28,340 / httpcore.http11:trace|230693 - receive_response_headers.started request=<Request [b'POST']>
+[DEBUG] 2026-02-23 08:00:38,343 / httpcore.http11:trace|230693 - receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'Date', b'Mon, 23 Feb 2026 08:00:38 GMT'), (b'Content-Type', b'application/json'), (b'Transfer-Encoding', b'chunked'), (b'Connection', b'keep-alive'), (b'Content-Encoding', b'br'), (b'mistral-correlation-id', b'019c8983-96e2-7b96-bbd7-27148e162703'), (b'x-kong-request-id', b'019c8983-96e2-7b96-bbd7-27148e162703'), (b'x-envoy-upstream-service-time', b'9936'), (b'access-control-allow-origin', b'*'), (b'x-kong-upstream-latency', b'9937'), (b'x-kong-proxy-latency', b'10'), (b'cf-cache-status', b'DYNAMIC'), (b'Strict-Transport-Security', b'max-age=15552000; includeSubDomains; preload'), (b'X-Content-Type-Options', b'nosniff'), (b'Server', b'cloudflare'), (b'CF-RAY', b'9d25309148dbdf12-LHR'), (b'alt-svc', b'h3=":443"; ma=86400')])
+[INFO] 2026-02-23 08:00:38,343 / httpx:_send_single_request|230693 - HTTP Request: POST https://api.mistral.ai/v1/ocr "HTTP/1.1 200 OK"
+[DEBUG] 2026-02-23 08:00:38,343 / httpcore.http11:trace|230693 - receive_response_body.started request=<Request [b'POST']>
+[DEBUG] 2026-02-23 08:00:38,404 / httpcore.http11:trace|230693 - receive_response_body.complete
+[DEBUG] 2026-02-23 08:00:38,405 / httpcore.http11:trace|230693 - response_closed.started
+[DEBUG] 2026-02-23 08:00:38,405 / httpcore.http11:trace|230693 - response_closed.complete

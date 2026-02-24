@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "stage2_claim_extraction_output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["attribution_claims", "document_level_index"],
+  "properties": {
+    "attribution_claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["claim_id", "claim_text", "confidence", "evidence"],
+        "properties": {
+          "claim_id": {"type": "string", "minLength": 1},
+          "claim_text": {"type": "string", "minLength": 1},
+          "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+          "evidence": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
+        }
+      }
+    },
+    "document_level_index": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sources", "entities"],
+      "properties": {
+        "sources": {"type": "array", "items": {"type": "object", "additionalProperties": true}},
+        "entities": {"type": "array", "items": {"type": "object", "additionalProperties": true}}
+      }
+    }
+  }
+}

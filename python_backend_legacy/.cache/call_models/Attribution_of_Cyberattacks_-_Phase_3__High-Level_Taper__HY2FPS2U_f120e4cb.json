@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": "{\n  \"classification\": \"Highly Relevant\",\n  \"relevance_score\": \"High\",\n  \"potential_subcategory\": \"International law \u2014 anticipatory self-defense, attribution, and use of force in cyberspace\",\n  \"justification\": \"The abstract directly addresses legal and policy issues central to cyber conflict attribution and the law on the use of force: it analyzes Article 2(4) and Article 51, key concepts (use of force, armed attack, necessity, imminence, proportionality), and develops criteria for distinguishing cyber intrusions from armed attacks. It explicitly discusses attribution challenges (botnets, multi-jurisdictional data flows) and the limits those pose on lawful anticipatory action, and it concludes with policy recommendations (improved attribution capabilities, enhanced defenses, multilateral cooperation). These doctrinal and policy-focused elements make the work squarely relevant to cyber conflict attribution and policy/law.\"\n}"
+  },
+  "cached_at": "2026-02-23T20:46:30.865033Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "HY2FPS2U",
+  "function": "classify_by_abs"
+}

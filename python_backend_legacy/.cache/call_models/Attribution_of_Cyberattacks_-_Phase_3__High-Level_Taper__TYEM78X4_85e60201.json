@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": "{\n  \"classification\": \"Highly Relevant\",\n  \"relevance_score\": \"High\",\n  \"potential_subcategory\": \"Cyberdeterrence; Attribution challenges; International law (UN Charter, norms)\",\n  \"justification\": \"The abstract explicitly engages core issues of cyber conflict attribution and law/policy: it identifies attribution as a central barrier to deterrence, distinguishes deterrence modalities that depend on attribution versus those that obviate it, and grounds discussion in legal constraints (UN Charter, non-use-of-force norms) and the need for international norms. It develops a policy-relevant conceptual framework for states to design legally permissible deterrent strategies and calls for further work on norms and legal interpretation. While theoretical and lacking empirical validation (a noted limitation), the paper is directly pertinent to both attribution research and cyber policy/law discussions.\"\n}"
+  },
+  "cached_at": "2026-02-23T20:48:58.634215Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "TYEM78X4",
+  "function": "classify_by_abs"
+}

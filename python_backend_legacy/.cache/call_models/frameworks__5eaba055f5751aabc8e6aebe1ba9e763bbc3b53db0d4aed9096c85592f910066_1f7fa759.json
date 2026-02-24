@@ -1,0 +1,488 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "quote": "For the purposes of this Article, cyber-attacks are defined as those whereby states utilize computers and information technology as the primary mechanisms to detrimentally impact the interests of another state.",
+          "paraphrase": "The authors define cyber-attacks as a state's use of computers and information technology as the primary means to harm another state's interests (relevant to definitional questions).",
+          "researcher_comment": "Provides the working, state\u2011centric definition used throughout the article; excludes non\u2011state actors and focuses on the means rather than targets. Use caution when comparing to broader, actor\u2011inclusive definitions in other literature.",
+          "potential_themes": [
+            "definitions"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "state_centric_definition",
+            "it_as_weapon",
+            "scope_exclusion"
+          ]
+        },
+        {
+          "quote": "In short, cyber-attack involves information technology employed as a weapon.",
+          "paraphrase": "The authors summarize cyber-attack as information technology used as a weapon (relevant to definitional RQ).",
+          "researcher_comment": "Concise restatement emphasizing weaponization of IT; frames subsequent legal analysis around the instrumentality of IT. Narrow phrasing may omit non\u2011state actor considerations.",
+          "potential_themes": [
+            "definitions"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "it_weaponisation",
+            "concise_definition"
+          ]
+        },
+        {
+          "quote": "First, direct intrusion attacks are those where the attacker directly interacts with a computer system and gains some form of unauthorized access or control.",
+          "paraphrase": "Direct intrusion attacks are characterized by an attacker directly interacting with a system to gain unauthorized access or control (relevant to taxonomy RQ).",
+          "researcher_comment": "Sets out one limb of the article's three\u2011part taxonomy; useful for mapping technical behavior to legal categories. Does not address attribution burdens for this category.",
+          "potential_themes": [
+            "taxonomy"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "taxonomy",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "direct_intrusion",
+            "unauthorized_access"
+          ]
+        },
+        {
+          "quote": "Second, indirect intrusion attacks involve malicious code or\"malware\"that the attacker constructs in order to compromise a set of systems.",
+          "paraphrase": "Indirect intrusion attacks are driven by attacker\u2011created malware intended to compromise multiple systems (relevant to taxonomy and technical\u2011characteristics RQs).",
+          "researcher_comment": "Describes malware\u2011based propagation as a distinct attack class; implies propagation properties (self\u2011replication, payload delivery) that complicate tracing and attribution.",
+          "potential_themes": [
+            "taxonomy",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            },
+            {
+              "index": 1
+            }
+          ],
+          "evidence_type": "taxonomy",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "indirect_intrusion",
+            "malware",
+            "self_propagation"
+          ]
+        },
+        {
+          "quote": "Third, denial of service attacks involve rendering the system unable to provide its expected services.",
+          "paraphrase": "Denial\u2011of\u2011service attacks are defined as actions that render systems unable to provide expected services (relevant to taxonomy RQ).",
+          "researcher_comment": "Identifies service\u2011disruption as a separate category; important because DoS/DDoS incidents produce different forensic traces and attribution challenges than intrusion\u2011based attacks.",
+          "potential_themes": [
+            "taxonomy",
+            "dos_attacks"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "taxonomy",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "dos",
+            "service_disruption"
+          ]
+        },
+        {
+          "quote": "A common variant of these is the distributed denial of service attack whereby large numbers of computer systems are compromised and used to collectively overwhelm a target with meaningless messages.",
+          "paraphrase": "Distributed denial\u2011of\u2011service (DDoS) attacks use many compromised machines to overwhelm a target, which has implications for tracing origin and attribution (relevant to technical\u2011characteristics and attribution RQs).",
+          "researcher_comment": "Explains the distributed nature (botnet style) that multiplies sources and complicates source attribution; the quoted passage is descriptive rather than evidentiary about attribution outcomes.",
+          "potential_themes": [
+            "dos_attacks",
+            "attribution_challenges"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 1
+            },
+            {
+              "index": 3
+            }
+          ],
+          "evidence_type": "example",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "ddos",
+            "botnet",
+            "distributed_source"
+          ]
+        },
+        {
+          "quote": "Moreover, the complexity and flexibility of reprogrammable computer systems produce a seemingly infinite variety of potential attack methods.",
+          "paraphrase": "The authors argue that reprogrammable systems' complexity and flexibility generate an effectively limitless set of attack methods (relevant to RQ on technical characteristics affecting attribution).",
+          "researcher_comment": "This supports why standardized detection and classification are difficult and why attribution techniques struggle to generalize. Assumes continuous evolution of software and attack toolchains.",
+          "potential_themes": [
+            "attribution_challenges",
+            "taxonomy"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 1
+            },
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "reprogrammability",
+            "attack_variability",
+            "taxonomy_limitations"
+          ]
+        },
+        {
+          "quote": "Consequently, any attempt at a definitive taxonomy is likely to have a degree of artificiality and be, at best, only temporarily accurate.",
+          "paraphrase": "The authors claim that definitive taxonomies will be partly artificial and only transiently accurate given attack variability (relevant to taxonomy/characteristics RQs).",
+          "researcher_comment": "Useful limitation to cite when evaluating classification schemes; implies caution about rigid legal or evidentiary categories tied to taxonomy. Empirical validation would strengthen the claim.",
+          "potential_themes": [
+            "taxonomy",
+            "limitation"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            },
+            {
+              "index": 1
+            }
+          ],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "taxonomy_artificiality",
+            "temporary_accuracy"
+          ]
+        },
+        {
+          "quote": "Cyber-attack of any type provides an attacker with significant advantages, making it highly asymmetric in nature.",
+          "paraphrase": "The text asserts that cyber\u2011attacks give attackers significant advantages and are highly asymmetric, a key technical/strategic characteristic (relevant to RQ on characteristics).",
+          "researcher_comment": "Frames cyber capabilities as favoring attackers, which affects deterrence and incentive structures; the statement is general and would benefit from empirical substantiation across case studies.",
+          "potential_themes": [
+            "asymmetry"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 1
+            },
+            {
+              "index": 3
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "attacker_advantage",
+            "asymmetry"
+          ]
+        },
+        {
+          "quote": "To begin with, cyber-warfare is typically inexpensive for the attacker.",
+          "paraphrase": "The authors state cyber\u2011warfare typically imposes low costs on attackers, lowering barriers to entry and affecting attribution incentives (relevant to RQ on technical/economic characteristics).",
+          "researcher_comment": "Important for understanding why actors may prefer cyber means; cost assertion should be verified against economic analyses. Low cost amplifies proliferation and attribution complexity.",
+          "potential_themes": [
+            "asymmetry"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 1
+            },
+            {
+              "index": 3
+            }
+          ],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "low_cost",
+            "economics_of_attack"
+          ]
+        },
+        {
+          "quote": "A cyber-attack can be launched by a single appropriately skilled individual with a computer, an Internet connection, and a relatively small financial stake.",
+          "paraphrase": "A single skilled individual with modest resources can launch cyber\u2011attacks, increasing attribution difficulty and proliferation risk (relevant to technical and attribution RQs).",
+          "researcher_comment": "Highlights the low barrier to entry and the role of non\u2011state actors in complicating state\u2011level attribution; does not quantify scope or probability of success.",
+          "potential_themes": [
+            "attribution_challenges",
+            "asymmetry"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 1
+            },
+            {
+              "index": 3
+            }
+          ],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "single_actor_attack",
+            "low_barrier_to_entry"
+          ]
+        },
+        {
+          "quote": "States with a greater investment in, and therefore dependence on, information technology have far greater potential exposure than those which are still developing in this area.",
+          "paraphrase": "States more invested in and dependent on IT face greater exposure to cyber\u2011attack, affecting comparative vulnerability assessments (relevant to RQ on state vulnerability and targeting).",
+          "researcher_comment": "Connects infrastructure dependence to exposure\u2014useful for assessing incentive structures and likely targets. May overgeneralize without sectoral nuance.",
+          "potential_themes": [
+            "state_vulnerability"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 1
+            },
+            {
+              "index": 3
+            }
+          ],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "it_dependence",
+            "exposure_variation"
+          ]
+        },
+        {
+          "quote": "Finally, the legal and factual ambiguity associated with cyber-warfare makes this a relatively safe mechanism for a prospective aggressor to employ.",
+          "paraphrase": "The authors assert that legal and factual ambiguities make cyber\u2011warfare relatively 'safe' for attackers, lowering the perceived risk of retaliation and complicating legal responses (relevant to legal and attribution RQs).",
+          "researcher_comment": "Links uncertainty directly to strategic incentives for attackers; important for policy discussion on evidentiary standards and response thresholds. 'Safe' is asserted rather than demonstrated.",
+          "potential_themes": [
+            "legal_ambiguity",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 2
+            },
+            {
+              "index": 3
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "legal_uncertainty",
+            "safe_for_aggressors"
+          ]
+        },
+        {
+          "quote": "A victim state may simply not have sufficient evidence to prove who attacked it, and indeed may not even know",
+          "paraphrase": "A victim state may lack sufficient evidence to identify its attacker, constituting a central evidentiary obstacle to attribution (relevant to RQ on attribution obstacles).",
+          "researcher_comment": "Direct statement of the evidentiary challenge; the sentence is truncated in the source but the core claim is clear and central to attribution debates.",
+          "potential_themes": [
+            "evidentiary_standards",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 3
+            }
+          ],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "insufficient_evidence",
+            "unknown_attacker"
+          ]
+        },
+        {
+          "quote": "Although scholars have analyzed a range of issues surrounding the law of cyber-attack, the question of how to attribute state responsibility in the event of a cyber-attack has been recognized as a significant hurdle.",
+          "paraphrase": "The literature identifies attribution of state responsibility in cyber\u2011attack cases as a significant hurdle for legal application (relevant to RQ on attribution and legal analysis).",
+          "researcher_comment": "Frames attribution as central within scholarly debate; useful for synthesising legal literature. Does not disaggregate whether hurdles are technical, evidentiary, or political.",
+          "potential_themes": [
+            "attribution_challenges",
+            "legal_analysis"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 3
+            },
+            {
+              "index": 2
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "state_responsibility",
+            "literature_consensus"
+          ]
+        },
+        {
+          "quote": "Indeed, national security law expert Daniel B. Silver has described attribution as the most important practical obstacle to applying the law of jus ad bellum to cyber-attack.",
+          "paraphrase": "Daniel B. Silver characterizes attribution as the foremost practical obstacle to applying jus ad bellum to cyber\u2011attacks (relevant to RQ on attribution obstacles and legal application).",
+          "researcher_comment": "Authoritative expert statement reinforcing attribution's primacy as a practical barrier; good to cite as scholarly consensus evidence but not a substitute for empirical case analysis.",
+          "potential_themes": [
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 3
+            },
+            {
+              "index": 2
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "expert_opinion",
+            "attribution_priority"
+          ]
+        },
+        {
+          "quote": "The academic literature has therefore had an unusually large impact on the understanding of the law in this emerging area.",
+          "paraphrase": "Because state practice and jurisprudence are sparse, academic literature has had an unusually large influence on legal understandings of cyber\u2011attack (relevant to RQ on legal development and state practice).",
+          "researcher_comment": "Indicates doctrinal development is scholarship\u2011led rather than practice\u2011led; flags potential heterogeneity in legal interpretations and norms.",
+          "potential_themes": [
+            "academic_influence",
+            "state_practice"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 2
+            }
+          ],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "academic_influence",
+            "doctrine_development"
+          ]
+        },
+        {
+          "quote": "It is unclear whether existing legal rules are suitably equipped to deal with the novel characteristics of cyberwarfare, or instead, if and to what degree new rules need to be developed.",
+          "paraphrase": "The authors state it is uncertain if current legal rules can address cyberwarfare's novel features or whether new rules are required, highlighting legal gaps (relevant to RQ on legal adequacy).",
+          "researcher_comment": "Positions legal uncertainty and possible need for reform; important for framing normative recommendations. The claim is declarative\u2014empirical/legal analysis required to resolve it.",
+          "potential_themes": [
+            "legal_ambiguity",
+            "legal_adaptation"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 2
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "rules_suitability",
+            "need_for_reform"
+          ]
+        },
+        {
+          "quote": "Consequently the United States and United Kingdom have both recognized cyber-attack as a major threat to their respective national securities.",
+          "paraphrase": "The United States and United Kingdom formally recognize cyber\u2011attack as a major national security threat, indicating state concern and policy salience (relevant to RQ on state practice).",
+          "researcher_comment": "Shows state\u2011level acknowledgment which may influence policy and legal responses; 'consequently' links recognition to earlier described vulnerabilities and ambiguity.",
+          "potential_themes": [
+            "state_practice",
+            "threat_perception"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 2
+            }
+          ],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "state_recognition",
+            "national_security_threat"
+          ]
+        },
+        {
+          "quote": "it proposes a model for cyber-attribution that minimizes the risk of conflict escalation",
+          "paraphrase": "The article proposes a model for cyber\u2011attribution intended to minimize conflict escalation and encourage cooperative dispute resolution (relevant to RQ on proposed attribution models).",
+          "researcher_comment": "Signals a normative proposal aimed at conflict avoidance and cooperation; the quote is high level\u2014details of evidentiary standards and processes are needed to assess viability.",
+          "potential_themes": [
+            "attribution_challenges",
+            "recommendation"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 4
+            },
+            {
+              "index": 3
+            }
+          ],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "attribution_model",
+            "conflict_minimization",
+            "cooperative_resolution"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-24T15:04:56.518430Z",
+  "collection_name": "frameworks",
+  "custom_id": "5eaba055f5751aabc8e6aebe1ba9e763bbc3b53db0d4aed9096c85592f910066",
+  "function": "code_pdf_page"
+}

@@ -108,8 +108,12 @@ const agentChatMessages = document.getElementById("agentChatMessages") as HTMLEl
 const agentChatForm = document.getElementById("agentChatForm") as HTMLFormElement | null;
 const agentChatInput = document.getElementById("agentChatInput") as HTMLInputElement | null;
 const btnAgentChatSend = document.getElementById("btnAgentChatSend") as HTMLButtonElement | null;
+const btnAgentChatMic = document.getElementById("btnAgentChatMic") as HTMLButtonElement | null;
+const agentChatVoiceStatus = document.getElementById("agentChatVoiceStatus") as HTMLDivElement | null;
+const agentChatVoiceLegend = document.getElementById("agentChatVoiceLegend") as HTMLDivElement | null;
 const btnAgentChatClose = document.getElementById("btnAgentChatClose") as HTMLButtonElement | null;
 const btnAgentChatClear = document.getElementById("btnAgentChatClear") as HTMLButtonElement | null;
+const agentChatAudio = document.getElementById("agentChatAudio") as HTMLAudioElement | null;
 const PANEL_INDEX_BY_ID: Record<PanelId, number> = {
   panel1: 1,
   panel2: 2,
@@ -374,7 +378,7 @@ const agentChatState: {
   pending: boolean;
   messages: AgentChatMessage[];
   pendingIntent: Record<string, unknown> | null;
-  pendingConfirmation: { type: "coding_questions"; intent: Record<string, unknown> } | null;
+  pendingConfirmation: { type: "coding_questions" | "coding_mode"; intent: Record<string, unknown> } | null;
 } = {
   open: false,
   pending: false,
@@ -383,18 +387,90 @@ const agentChatState: {
   pendingConfirmation: null
 };
 
+const agentVoiceState: {
+  mediaRecorder: MediaRecorder | null;
+  stream: MediaStream | null;
+  chunks: Blob[];
+  mimeType: string;
+  speechRequestId: number;
+  isProcessing: boolean;
+  ttsModel: string;
+  ttsVoice: string;
+  transcribeModel: string;
+} = {
+  mediaRecorder: null,
+  stream: null,
+  chunks: [],
+  mimeType: "audio/webm",
+  speechRequestId: 0,
+  isProcessing: false,
+  ttsModel: "tts-1",
+  ttsVoice: "alloy",
+  transcribeModel: "whisper-1"
+};
+
+let activeSpeechObjectUrl: string | null = null;
+
+const resolveAgentVoiceSettingsLabel = async (): Promise<{ ttsModel: string; ttsVoice: string; transcribeModel: string }> => {
+  const fallback = {
+    ttsModel: agentVoiceState.ttsModel,
+    ttsVoice: agentVoiceState.ttsVoice,
+    transcribeModel: agentVoiceState.transcribeModel
+  };
+  if (!window.settingsBridge?.getValue) return fallback;
+  try {
+    const [ttsModelRaw, ttsVoiceRaw, transcribeModelRaw] = await Promise.all([
+      window.settingsBridge.getValue("APIs/openai_voice_tts_model", fallback.ttsModel),
+      window.settingsBridge.getValue("APIs/openai_voice_tts_voice", fallback.ttsVoice),
+      window.settingsBridge.getValue("APIs/openai_voice_transcribe_model", fallback.transcribeModel)
+    ]);
+    const next = {
+      ttsModel: String(ttsModelRaw || fallback.ttsModel).trim() || fallback.ttsModel,
+      ttsVoice: String(ttsVoiceRaw || fallback.ttsVoice).trim() || fallback.ttsVoice,
+      transcribeModel: String(transcribeModelRaw || fallback.transcribeModel).trim() || fallback.transcribeModel
+    };
+    agentVoiceState.ttsModel = next.ttsModel;
+    agentVoiceState.ttsVoice = next.ttsVoice;
+    agentVoiceState.transcribeModel = next.transcribeModel;
+    return next;
+  } catch {
+    return fallback;
+  }
+};
+
 function shouldShowAgentChat(): boolean {
-  return activeRouteId === "retrieve:zotero";
+  return true;
 }
 
 function renderAgentChatMessages(): void {
   if (!agentChatMessages) return;
   agentChatMessages.innerHTML = "";
   const fragment = document.createDocumentFragment();
+  const extractTemplatePathFromMessage = (text: string): string => {
+    const match = String(text || "").match(/^\s*Template page:\s*(.+)\s*$/im);
+    return match ? String(match[1] || "").trim() : "";
+  };
   agentChatState.messages.forEach((entry) => {
     const row = document.createElement("div");
     row.className = `agent-chat-msg ${entry.role}${entry.tone ? ` ${entry.tone}` : ""}`;
     row.textContent = entry.text || "(empty)";
+    const templatePath = entry.role === "assistant" ? extractTemplatePathFromMessage(entry.text) : "";
+    if (templatePath && window.agentBridge?.openLocalPath) {
+      const actionWrap = document.createElement("div");
+      actionWrap.className = "agent-chat-actions";
+      const openButton = document.createElement("button");
+      openButton.type = "button";
+      openButton.className = "agent-chat-action-btn";
+      openButton.textContent = "Open Template Page";
+      openButton.addEventListener("click", async () => {
+        const opened = await window.agentBridge!.openLocalPath({ path: templatePath });
+        if (opened?.status !== "ok") {
+          pushAgentChatMessage("assistant", String(opened?.message || "Could not open template page."), "error");
+        }
+      });
+      actionWrap.appendChild(openButton);
+      row.appendChild(actionWrap);
+    }
     const meta = document.createElement("div");
     meta.className = "agent-chat-meta";
     const stamp = new Date(entry.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -406,18 +482,202 @@ function renderAgentChatMessages(): void {
   agentChatMessages.scrollTop = agentChatMessages.scrollHeight;
 }
 
-function pushAgentChatMessage(role: "user" | "assistant", text: string, tone?: "error"): void {
-  agentChatState.messages.push({ role, text: String(text || "").trim(), tone, at: Date.now() });
+function setAgentChatControlsEnabled(enabled: boolean): void {
+  if (agentChatInput) agentChatInput.disabled = !enabled;
+  if (btnAgentChatSend) btnAgentChatSend.disabled = !enabled;
+  if (btnAgentChatMic) btnAgentChatMic.disabled = !enabled;
+}
+
+function toBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i] as number);
+  }
+  return btoa(binary);
+}
+
+type AgentVoicePulseTheme = {
+  text: string;
+  border: string;
+  background: string;
+  shadow: string;
+};
+
+const VOICE_PULSE_THEME_BY_VOICE: Record<string, AgentVoicePulseTheme> = {
+  alloy: {
+    text: "#d9ebff",
+    border: "rgba(96, 165, 250, 0.7)",
+    background: "rgba(17, 51, 89, 0.6)",
+    shadow: "rgba(96, 165, 250, 0.45)"
+  },
+  echo: {
+    text: "#dfbcff",
+    border: "rgba(168, 111, 255, 0.7)",
+    background: "rgba(55, 22, 94, 0.58)",
+    shadow: "rgba(168, 111, 255, 0.45)"
+  },
+  fable: {
+    text: "#ffdfba",
+    border: "rgba(251, 191, 36, 0.7)",
+    background: "rgba(90, 60, 20, 0.58)",
+    shadow: "rgba(251, 191, 36, 0.45)"
+  },
+  onyx: {
+    text: "#ffd2d9",
+    border: "rgba(248, 113, 113, 0.7)",
+    background: "rgba(88, 26, 37, 0.58)",
+    shadow: "rgba(248, 113, 113, 0.45)"
+  },
+  nova: {
+    text: "#c9fbc5",
+    border: "rgba(74, 222, 128, 0.7)",
+    background: "rgba(17, 72, 36, 0.58)",
+    shadow: "rgba(74, 222, 128, 0.45)"
+  },
+  sage: {
+    text: "#caefd0",
+    border: "rgba(74, 222, 128, 0.7)",
+    background: "rgba(19, 59, 34, 0.6)",
+    shadow: "rgba(110, 231, 183, 0.45)"
+  },
+  shimmer: {
+    text: "#ccfbf1",
+    border: "rgba(34, 211, 238, 0.7)",
+    background: "rgba(12, 55, 65, 0.58)",
+    shadow: "rgba(34, 211, 238, 0.45)"
+  }
+};
+
+const resolveAgentVoicePulseTheme = (ttsVoice: string, ttsModel: string): AgentVoicePulseTheme => {
+  const voice = String(ttsVoice || "").trim().toLowerCase();
+  if (voice && VOICE_PULSE_THEME_BY_VOICE[voice]) {
+    return VOICE_PULSE_THEME_BY_VOICE[voice];
+  }
+  const model = String(ttsModel || "").trim().toLowerCase();
+  if (model.includes("gpt-4o")) {
+    return {
+      text: "#fef9c3",
+      border: "rgba(250, 204, 21, 0.7)",
+      background: "rgba(76, 60, 16, 0.58)",
+      shadow: "rgba(250, 204, 21, 0.45)"
+    };
+  }
+  return VOICE_PULSE_THEME_BY_VOICE.alloy;
+};
+
+const clearAgentChatMicVoiceTheme = (): void => {
+  if (!btnAgentChatMic) return;
+  btnAgentChatMic.style.removeProperty("--agent-voice-text");
+  btnAgentChatMic.style.removeProperty("--agent-voice-border");
+  btnAgentChatMic.style.removeProperty("--agent-voice-background");
+  btnAgentChatMic.style.removeProperty("--agent-voice-shadow");
+  if (agentChatFab) {
+    agentChatFab.style.removeProperty("--agent-voice-text");
+    agentChatFab.style.removeProperty("--agent-voice-border");
+    agentChatFab.style.removeProperty("--agent-voice-background");
+    agentChatFab.style.removeProperty("--agent-voice-shadow");
+  }
+};
+
+const applyAgentChatMicVoiceTheme = (ttsVoice: string, ttsModel: string): void => {
+  if (!btnAgentChatMic) return;
+  const theme = resolveAgentVoicePulseTheme(ttsVoice, ttsModel);
+  btnAgentChatMic.style.setProperty("--agent-voice-text", theme.text);
+  btnAgentChatMic.style.setProperty("--agent-voice-border", theme.border);
+  btnAgentChatMic.style.setProperty("--agent-voice-background", theme.background);
+  btnAgentChatMic.style.setProperty("--agent-voice-shadow", theme.shadow);
+  if (agentChatFab) {
+    agentChatFab.style.setProperty("--agent-voice-text", theme.text);
+    agentChatFab.style.setProperty("--agent-voice-border", theme.border);
+    agentChatFab.style.setProperty("--agent-voice-background", theme.background);
+    agentChatFab.style.setProperty("--agent-voice-shadow", theme.shadow);
+  }
+};
+
+const decodeBase64ToBytes = (value: string): Uint8Array => {
+  const binary = atob(value || "");
+  const buffer = new ArrayBuffer(binary.length);
+  const out = new Uint8Array(buffer);
+  for (let i = 0; i < binary.length; i++) {
+    out[i] = binary.charCodeAt(i);
+  }
+  return out;
+};
+
+const speakChatMessage = async (text: string): Promise<void> => {
+  if (!window.agentBridge?.speakText || !agentChatAudio) return;
+  const message = String(text || "").trim();
+  if (!message) return;
+  const requestId = ++agentVoiceState.speechRequestId;
+  const models = await resolveAgentVoiceSettingsLabel();
+  const spoken = await window.agentBridge.speakText({ text: message });
+  if (requestId !== agentVoiceState.speechRequestId) return;
+  if (spoken?.status !== "ok" || !spoken?.audioBase64) {
+    clearAgentChatVoiceLegend();
+    return;
+  }
+  const bytes = decodeBase64ToBytes(spoken.audioBase64);
+  const blob = new Blob([bytes], { type: String(spoken.mimeType || "audio/mpeg") });
+  const finishVoice = (): void => {
+    if (requestId !== agentVoiceState.speechRequestId) return;
+    setAgentVoicePulseState(false, false);
+    clearAgentChatMicVoiceTheme();
+    clearAgentChatVoiceLegend();
+    if (agentChatVoiceStatus?.textContent?.startsWith("Speaking")) {
+      setAgentChatVoiceStatus("");
+    }
+    if (activeSpeechObjectUrl) {
+      URL.revokeObjectURL(activeSpeechObjectUrl);
+      activeSpeechObjectUrl = null;
+    }
+  };
+  const objectUrl = URL.createObjectURL(blob);
+  if (activeSpeechObjectUrl) {
+    URL.revokeObjectURL(activeSpeechObjectUrl);
+  }
+  activeSpeechObjectUrl = objectUrl;
+  if (agentChatAudio) {
+    agentChatAudio.src = objectUrl;
+    const voiceLabel = String(models.ttsVoice || models.ttsModel || "").trim();
+    const modelLabel = models.ttsModel && models.ttsModel !== voiceLabel ? ` • ${models.ttsModel}` : "";
+    setAgentChatVoiceStatus(`Speaking (${voiceLabel}${modelLabel})`);
+    setAgentChatVoiceLegend(models, "Speaking");
+    applyAgentChatMicVoiceTheme(models.ttsVoice, models.ttsModel);
+    setAgentVoicePulseState(false, true);
+    agentChatAudio.onended = finishVoice;
+    agentChatAudio.onpause = finishVoice;
+    agentChatAudio.onerror = finishVoice;
+    void agentChatAudio.play().catch(() => {
+      finishVoice();
+    });
+  }
+};
+
+function pushAgentChatMessage(
+  role: "user" | "assistant",
+  text: string,
+  tone?: "error",
+  options?: { speak?: boolean }
+): void {
+  const value = String(text || "").trim();
+  const entry = { role, text: value, tone, at: Date.now() as number };
+  agentChatState.messages.push(entry);
   if (agentChatState.messages.length > 60) {
     agentChatState.messages = agentChatState.messages.slice(-60);
   }
+  if (window.agentBridge?.logChatMessage) {
+    void window.agentBridge.logChatMessage(entry);
+  }
   renderAgentChatMessages();
+  if (role === "assistant" && options?.speak) {
+    void speakChatMessage(value);
+  }
 }
 
 function setAgentChatPending(pending: boolean): void {
   agentChatState.pending = pending;
-  if (agentChatInput) agentChatInput.disabled = pending;
-  if (btnAgentChatSend) btnAgentChatSend.disabled = pending;
+  setAgentChatControlsEnabled(!pending);
 }
 
 function setAgentChatOpen(open: boolean): void {
@@ -444,10 +704,231 @@ function syncAgentChatVisibility(): void {
   }
 }
 
+const resolveAgentVoiceMimeType = (): string => {
+  if (typeof MediaRecorder === "undefined") {
+    return "audio/webm";
+  }
+  const candidates = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus", "audio/ogg", "audio/mp4"];
+  for (const candidate of candidates) {
+    if (MediaRecorder.isTypeSupported(candidate)) {
+      return candidate;
+    }
+  }
+  return "audio/webm";
+};
+
+const setAgentChatMicUI = (recording: boolean): void => {
+  setAgentVoicePulseState(recording, false);
+};
+
+const setAgentVoicePulseState = (recording: boolean, playing: boolean): void => {
+  if (btnAgentChatMic) {
+    btnAgentChatMic.classList.toggle("recording", recording);
+    btnAgentChatMic.classList.toggle("playing", playing && !recording);
+    btnAgentChatMic.textContent = recording ? "⏺" : "🎙";
+  }
+  if (agentChatFab) {
+    agentChatFab.classList.toggle("recording", recording);
+    agentChatFab.classList.toggle("playing", playing && !recording);
+  }
+};
+
+const setAgentChatVoiceStatus = (text: string): void => {
+  if (!agentChatVoiceStatus) return;
+  const normalized = String(text || "").trim();
+  agentChatVoiceStatus.textContent = normalized;
+};
+
+const setAgentChatVoiceLegend = (models: {
+  ttsModel: string;
+  ttsVoice: string;
+  transcribeModel: string;
+}, phase: string): void => {
+  const ttsModel = String(models?.ttsModel || "").trim();
+  const ttsVoice = String(models?.ttsVoice || "").trim();
+  const transcribeModel = String(models?.transcribeModel || "").trim();
+  const label = `Voice: ${ttsVoice || "default"} • TTS: ${ttsModel || "default"} • STT: ${transcribeModel || "default"}`;
+  if (agentChatVoiceLegend) {
+    agentChatVoiceLegend.textContent = label;
+  }
+  if (btnAgentChatMic) {
+    btnAgentChatMic.title = `${phase} — ${label}`;
+  }
+};
+
+const clearAgentChatVoiceLegend = (): void => {
+  if (agentChatVoiceLegend) {
+    agentChatVoiceLegend.textContent = "";
+  }
+  if (btnAgentChatMic) {
+    btnAgentChatMic.title = "Voice command";
+  }
+};
+
+const clearAgentVoiceBuffers = (): void => {
+  if (agentVoiceState.mediaRecorder) {
+    agentVoiceState.mediaRecorder.ondataavailable = null;
+    agentVoiceState.mediaRecorder.onstop = null;
+    agentVoiceState.mediaRecorder = null;
+  }
+  if (agentVoiceState.stream) {
+    agentVoiceState.stream.getTracks().forEach((track) => track.stop());
+    agentVoiceState.stream = null;
+  }
+  agentVoiceState.chunks = [];
+};
+
+const runAgentChatFromVoice = async (transcript: string): Promise<void> => {
+  if (!transcript || !transcript.trim()) return;
+  if (agentChatState.pending) return;
+  setAgentChatPending(true);
+  setAgentChatMicUI(false);
+  try {
+    await runAgentChatCommand(transcript, { fromVoice: true });
+  } finally {
+    setAgentChatPending(false);
+    setAgentVoicePulseState(false, false);
+    setAgentChatVoiceStatus("");
+    clearAgentChatVoiceLegend();
+  }
+};
+
+const stopAgentVoiceRecording = (): void => {
+  if (agentVoiceState.mediaRecorder && agentVoiceState.mediaRecorder.state === "recording") {
+    agentVoiceState.mediaRecorder.stop();
+  }
+  if (agentVoiceState.stream) {
+    agentVoiceState.stream.getTracks().forEach((track) => track.stop());
+    agentVoiceState.stream = null;
+  }
+  setAgentChatMicUI(false);
+};
+
+const submitAgentVoiceChunk = async (blob: Blob, mimeType: string): Promise<void> => {
+  const pushAssistant = (message: string, tone?: "error"): void =>
+    pushAgentChatMessage("assistant", message, tone, { speak: true });
+  if (!blob.size || !window.agentBridge?.transcribeVoice) {
+    pushAssistant("Voice capture empty or unavailable in this session.", "error");
+    setAgentChatVoiceStatus("");
+    clearAgentChatVoiceLegend();
+    return;
+  }
+  const base64 = toBase64(await blob.arrayBuffer());
+  let transcriptResponse: { status: string; text?: string; message?: string };
+  try {
+    transcriptResponse = await window.agentBridge.transcribeVoice({
+      audioBase64: base64,
+      mimeType
+    });
+  } catch (error) {
+    pushAssistant(String((error as Error)?.message || error || "Could not transcribe your audio."), "error");
+    setAgentChatVoiceStatus("Transcription failed.");
+    clearAgentChatVoiceLegend();
+    return;
+  }
+  if (transcriptResponse?.status !== "ok" || !transcriptResponse?.text) {
+    pushAssistant(String(transcriptResponse?.message || "Could not transcribe your audio."), "error");
+    setAgentChatVoiceStatus("");
+    clearAgentChatVoiceLegend();
+    return;
+  }
+  const transcript = String(transcriptResponse.text || "").trim();
+  if (!transcript) {
+    pushAssistant("Could not transcribe any clear speech. Please try again.", "error");
+    setAgentChatVoiceStatus("");
+    clearAgentChatVoiceLegend();
+    return;
+  }
+  setAgentChatVoiceStatus("Processing...");
+  await runAgentChatFromVoice(transcript);
+};
+
+const startAgentVoiceRecording = async (): Promise<void> => {
+  if (!window.navigator?.mediaDevices?.getUserMedia) {
+    pushAgentChatMessage("assistant", "Microphone access is unavailable in this environment.", "error");
+    setAgentChatVoiceStatus("Microphone access unavailable.");
+    clearAgentChatVoiceLegend();
+    return;
+  }
+  if (agentChatState.pending || agentVoiceState.isProcessing) {
+    setAgentChatVoiceStatus("Busy...");
+    setAgentChatVoiceLegend({
+      ttsModel: agentVoiceState.ttsModel,
+      ttsVoice: agentVoiceState.ttsVoice,
+      transcribeModel: agentVoiceState.transcribeModel
+    }, "Busy");
+    return;
+  }
+  if (agentVoiceState.mediaRecorder && agentVoiceState.mediaRecorder.state === "recording") {
+    stopAgentVoiceRecording();
+    return;
+  }
+  try {
+    const models = await resolveAgentVoiceSettingsLabel();
+    setAgentChatVoiceStatus(`Listening... [${models.transcribeModel}]`);
+    setAgentChatVoiceLegend({
+      ttsModel: models.ttsModel,
+      ttsVoice: models.ttsVoice,
+      transcribeModel: models.transcribeModel
+    }, "Listening");
+    const stream = await window.navigator.mediaDevices.getUserMedia({ audio: true });
+    const mimeType = resolveAgentVoiceMimeType();
+    const recorder = new MediaRecorder(stream, { mimeType });
+    agentVoiceState.mediaRecorder = recorder;
+    agentVoiceState.stream = stream;
+    agentVoiceState.mimeType = mimeType;
+    agentVoiceState.chunks = [];
+    recorder.ondataavailable = (event) => {
+      if (event.data && event.data.size > 0) {
+        agentVoiceState.chunks.push(event.data);
+      }
+    };
+    recorder.onstop = async () => {
+      agentVoiceState.isProcessing = true;
+      setAgentChatPending(true);
+      setAgentVoicePulseState(false, false);
+      setAgentChatVoiceStatus("Transcribing...");
+      setAgentChatVoiceLegend({
+        ttsModel: agentVoiceState.ttsModel,
+        ttsVoice: agentVoiceState.ttsVoice,
+        transcribeModel: models.transcribeModel
+      }, "Transcribing");
+      try {
+        const blob = new Blob(agentVoiceState.chunks, { type: agentVoiceState.mimeType });
+        clearAgentVoiceBuffers();
+        await submitAgentVoiceChunk(blob, agentVoiceState.mimeType);
+      } finally {
+        agentVoiceState.isProcessing = false;
+        setAgentChatPending(false);
+      }
+    };
+    recorder.onerror = () => {
+      setAgentChatVoiceStatus("Recorder error.");
+      pushAgentChatMessage("assistant", "Voice recorder encountered an error.", "error");
+      clearAgentVoiceBuffers();
+      setAgentVoicePulseState(false, false);
+      setAgentChatPending(false);
+      clearAgentChatVoiceLegend();
+    };
+    recorder.start();
+    setAgentChatMicUI(true);
+  } catch (error) {
+    pushAgentChatMessage("assistant", String((error as Error)?.message || error || "Could not start microphone."), "error");
+    clearAgentVoiceBuffers();
+    setAgentChatMicUI(false);
+    setAgentChatVoiceStatus("");
+    clearAgentChatVoiceLegend();
+  }
+};
+
 function buildAgentContextPayload(): Record<string, unknown> {
   const state = retrieveZoteroContext.getState();
   const selectedCollection = retrieveZoteroContext.getSelectedCollection();
   const selectedItem = retrieveZoteroContext.getSelectedItem();
+  const analyseState = analyseStore?.getState?.();
+  const analyseRunPath = String(analyseState?.activeRunPath || "").trim();
+  const analyseBaseDir = String(analyseState?.baseDir || "").trim();
+  const analyseRunId = String(analyseState?.activeRunId || "").trim();
   return {
     routeId: activeRouteId || "",
     selectedCollectionKey: state.selectedCollectionKey || "",
@@ -455,8 +936,28 @@ function buildAgentContextPayload(): Record<string, unknown> {
     selectedItemKey: selectedItem?.key || "",
     status: state.status || "",
     itemsCount: state.items.length,
-    activeTags: state.activeTags
+    activeTags: state.activeTags,
+    selectedAnalyseRunPath: analyseRunPath,
+    analyseRunPath,
+    runPath: analyseRunPath,
+    activeRunPath: analyseRunPath,
+    selectedRunPath: analyseRunPath,
+    selectedAnalysePath: analyseRunPath,
+    selectedAnalyseBaseDir: analyseBaseDir,
+    analyseBaseDir,
+    analysisBaseDir: analyseBaseDir,
+    activeRunId: analyseRunId,
+    dir_base: analyseRunPath || analyseBaseDir
   };
+}
+
+function resolveSystematicRunDirFromContext(): string {
+  const context = buildAgentContextPayload();
+  const selectedCollectionName = String(context.selectedCollectionName || context.selectedCollectionKey || "").trim();
+  const base = String(context.selectedAnalyseBaseDir || context.analyseBaseDir || "").trim();
+  if (base && selectedCollectionName) return `${base}/${selectedCollectionName}/systematic_review`;
+  if (String(context.runPath || "").trim()) return `${String(context.runPath).trim()}/systematic_review`;
+  return "";
 }
 
 function isChatAffirmative(text: string): boolean {
@@ -472,6 +973,7 @@ function isChatNegative(text: string): boolean {
 function parseResearchQuestionsInput(text: string): string[] {
   const raw = String(text || "").trim();
   if (!raw) return [];
+  const hasQuestionCue = /\b(research\s+questions?|questions?|rq\d*)\b/i.test(raw);
   const lines = raw
     .split(/\n+/)
     .map((line) => String(line || "").trim())
@@ -482,16 +984,1206 @@ function parseResearchQuestionsInput(text: string): string[] {
       return m ? String(m[2] || "").trim() : "";
     })
     .filter(Boolean);
-  const fallback = raw
-    .split(/[;\n]+/)
-    .map((s) => String(s || "").replace(/^\s*[-*]\s*/, "").trim())
-    .filter(Boolean);
+  const fallback = hasQuestionCue
+    ? raw
+      .split(/[;\n]+/)
+      .map((s) => String(s || "").replace(/^\s*[-*]\s*/, "").trim())
+      .filter(Boolean)
+    : [];
   return (numbered.length ? numbered : fallback).slice(0, 5);
 }
 
-async function executeResolvedIntent(intent: Record<string, unknown>): Promise<void> {
+function parseEligibilityCriteriaInput(text: string): { inclusion: string[]; exclusion: string[] } {
+  const raw = String(text || "").trim();
+  if (!raw) return { inclusion: [], exclusion: [] };
+
+  const inclusionMatch =
+    raw.match(/(?:inclusion(?:\s+criteria)?|include)\s*[:\-]\s*([\s\S]*?)(?=(?:\n\s*(?:exclusion(?:\s+criteria)?|exclude)\s*[:\-])|$)/i);
+  const exclusionMatch =
+    raw.match(/(?:exclusion(?:\s+criteria)?|exclude)\s*[:\-]\s*([\s\S]*?)$/i);
+
+  const normalizeBlock = (value: string): string[] =>
+    String(value || "")
+      .split(/\n+/)
+      .map((line) => line.replace(/^\s*[-*]\s*/, "").trim())
+      .filter(Boolean);
+
+  return {
+    inclusion: normalizeBlock(String(inclusionMatch?.[1] || "")),
+    exclusion: normalizeBlock(String(exclusionMatch?.[1] || ""))
+  };
+}
+
+function buildEligibilityPreflightIntent(
+  collectionName: string,
+  contextText: string,
+  researchQuestions: string[],
+  inclusion: string[],
+  exclusion: string[]
+): Record<string, unknown> | null {
+  if (!inclusion.length || !exclusion.length) return null;
+  return {
+    intentId: "feature.run",
+    targetFunction: "set_eligibility_criteria",
+    confidence: 0.9,
+    riskLevel: "confirm",
+    needsClarification: false,
+    clarificationQuestions: [],
+    args: {
+      collection_name: collectionName,
+      inclusion_criteria: inclusion.join("\n"),
+      exclusion_criteria: exclusion.join("\n"),
+      eligibility_prompt_key: "paper_screener_abs_policy",
+      context: contextText,
+      research_questions: researchQuestions
+    }
+  };
+}
+
+function parseCodingControlsFromText(text: string): {
+  coding_mode: "open" | "targeted" | "hybrid";
+  mode_specified: boolean;
+  rq_scope: number[];
+  target_codes: string[];
+  min_relevance: number;
+} {
+  const raw = String(text || "").trim();
+  const explicitOpen = /\bopen\s+code|open\s+coding\b/i.test(raw);
+  const explicitTargeted = /\btarget(?:ed)?\s+code|target(?:ed)?\s+coding|\btargeted\b/i.test(raw);
+  const explicitHybrid = /\bhybrid\s+code|hybrid\s+coding|\bhybrid\b/i.test(raw);
+  const coding_mode: "open" | "targeted" | "hybrid" = explicitHybrid ? "hybrid" : explicitOpen ? "open" : explicitTargeted ? "targeted" : "open";
+  const scope = new Set<number>();
+  const re = /\brq\s*([1-9]\d*)\b|\bquestion\s*([1-9]\d*)\b/gi;
+  let m: RegExpExecArray | null = null;
+  while ((m = re.exec(raw))) {
+    const n = Number(m[1] || m[2] || 0);
+    if (Number.isFinite(n) && n > 0) scope.add(n - 1);
+  }
+  const focusMatch =
+    raw.match(/(?:focus(?:ed)?\s+on|target(?:ed)?\s+(?:at|on)?|on)\s+(.+?)(?:[.?!]|$)/i) ||
+    raw.match(/(?:codes?|themes?)\s*[:\-]\s*(.+?)(?:[.?!]|$)/i);
+  const target_codes = String(focusMatch?.[1] || "")
+    .split(/,|;|\band\b/gi)
+    .map((s) => String(s || "").trim().toLowerCase())
+    .filter((s) => s.length >= 3)
+    .slice(0, 12);
+  const strict = /\bstrict|high\s+precision|high\s+relevance|only\s+high\b/i.test(raw);
+  const min_relevance = coding_mode === "targeted" || coding_mode === "hybrid" ? (strict ? 5 : 4) : 3;
+  return {
+    coding_mode,
+    mode_specified: explicitOpen || explicitTargeted || explicitHybrid,
+    rq_scope: Array.from(scope.values()).sort((a, b) => a - b).slice(0, 5),
+    target_codes,
+    min_relevance
+  };
+}
+
+type VoiceActionCommand = {
+  command: {
+    phase: string;
+    action: string;
+    payload?: Record<string, unknown>;
+  };
+  feedback: string;
+};
+
+type VoiceActionCandidate = {
+  action: RibbonAction;
+  aliases: string[];
+  tokens: Set<string>;
+};
+
+type VoiceButtonCandidate = {
+  element: HTMLElement;
+  label: string;
+  aliases: string[];
+  tokens: Set<string>;
+};
+
+const VOICE_STOPWORDS = new Set([
+  "a",
+  "an",
+  "and",
+  "any",
+  "are",
+  "as",
+  "at",
+  "be",
+  "by",
+  "for",
+  "button",
+  "buttons",
+  "go",
+  "in",
+  "into",
+  "it",
+  "is",
+  "me",
+  "my",
+  "of",
+  "on",
+  "open",
+  "or",
+  "please",
+  "press",
+  "show",
+  "the",
+  "this",
+  "to",
+  "using",
+  "visit",
+  "with",
+  "your"
+]);
+
+const VOICE_ACTION_MANUAL_ALIASES: Record<string, string[]> = {
+  "retrieve-search": [
+    "search",
+    "search papers",
+    "find papers",
+    "academic search",
+    "query builder",
+    "open query builder",
+    "open retrieve search",
+    "go to retrieve",
+    "retrieve search",
+    "search page",
+    "academic database search",
+    "academic databases",
+    "search tab"
+  ],
+  "retrieve-set-provider": [
+    "provider",
+    "database provider",
+    "search provider",
+    "set provider",
+    "choose provider",
+    "set academic database",
+    "academic database",
+    "academic databases",
+    "search source",
+    "data source",
+  "provider selector",
+  "change provider",
+  "database",
+  "source",
+  "search prover"
+  ],
+  "retrieve-set-sort": [
+    "sort",
+    "result order",
+    "order by",
+    "set sort",
+    "sort results",
+    "sort by results",
+    "result ranking",
+    "order by relevance",
+    "order by year"
+  ],
+  "retrieve-set-years": [
+    "years",
+    "year range",
+    "publication year",
+    "year filter",
+    "year from",
+    "year to",
+    "publication date",
+    "date range",
+    "set year range",
+    "between years",
+    "year span"
+  ],
+  "retrieve-set-limit": [
+    "limit",
+    "result limit",
+    "max results",
+    "number of results",
+    "results limit",
+    "limit results",
+    "paper limit",
+    "max papers",
+    "set result limit",
+    "set limit"
+  ],
+  "retrieve-load-zotero": [
+    "zotero",
+    "zotero loader",
+    "zotero workspace",
+    "open zotero workspace",
+    "open zotero",
+    "load zotero",
+    "zotero workspace",
+    "zotero collections"
+  ],
+  "retrieve-open-batches": [
+    "open batches",
+    "batches",
+    "batch list",
+    "batch view",
+    "zotero batches",
+    "open batch list",
+    "show batches"
+  ],
+  "retrieve-open-code": [
+    "open code",
+    "code workspace",
+    "open coding workspace",
+    "code tab",
+    "open coding panel"
+  ],
+  "retrieve-open-screen": [
+    "open screen",
+    "screen workspace",
+    "screening view",
+    "screening tab",
+    "open screening workspace",
+    "screen tab"
+  ],
+  "retrieve-load-local": [
+    "load local",
+    "import local",
+    "local file",
+    "import file",
+    "load local file",
+    "import local file",
+    "upload local file",
+    "open csv",
+    "open excel",
+    "load dataset"
+  ],
+  "retrieve-export-csv": [
+    "export csv",
+    "download csv",
+    "save csv",
+    "export to csv",
+    "save csv file",
+    "download csv table"
+  ],
+  "retrieve-export-excel": [
+    "export excel",
+    "download excel",
+    "save excel",
+    "export xls",
+    "export to excel",
+    "save xls",
+    "export xlsx",
+    "download xlsx"
+  ],
+  "retrieve-resolve-na": [
+    "resolve na",
+    "resolve missing values",
+    "fill missing values",
+    "replace missing",
+    "impute missing",
+    "resolve blanks"
+  ],
+  "retrieve-flag-na": [
+    "flag na",
+    "flag missing",
+    "highlight missing",
+    "mark missing",
+    "mark blanks",
+    "missing values"
+  ],
+  "retrieve-apply-codebook": [
+    "apply codebook",
+    "codebook",
+    "filter codebook",
+    "apply codebook columns",
+    "use codebook"
+  ],
+  "retrieve-apply-coding-columns": [
+    "apply coding columns",
+    "coding columns",
+    "filter coding columns",
+    "show coding columns",
+    "apply coding columns only"
+  ],
+  "analyse-dashboard": [
+    "dashboard",
+    "open dashboard",
+    "review dashboard"
+  ],
+  "analyse-corpus": [
+    "corpus",
+    "open corpus",
+    "load corpus"
+  ],
+  "analyse-round-1": [
+    "round 1",
+    "round one",
+    "open round 1"
+  ],
+  "analyse-round-2": [
+    "round 2",
+    "round two",
+    "open round 2"
+  ],
+  "analyse-round-3": [
+    "round 3",
+    "round three",
+    "open round 3"
+  ],
+  "screen-exclude-item": [
+    "exclude item",
+    "mark exclude",
+    "exclude study",
+    "mark as exclude"
+  ],
+  "screen-tag-include": [
+    "include",
+    "include study",
+    "tag for inclusion",
+    "mark include"
+  ],
+  "screen-note": [
+    "write note",
+    "screening note",
+    "add note",
+    "write screening note"
+  ],
+  "screen-settings": [
+    "screen settings",
+    "screening settings"
+  ],
+  "test-pdf": [
+    "pdf",
+    "open pdf viewer",
+    "launch pdf"
+  ],
+  "test-coder": [
+    "coder",
+    "open coder",
+    "launch coder"
+  ],
+  "visualiser-run-inputs": [
+    "run inputs",
+    "build preview",
+    "refresh inputs"
+  ],
+  "visualiser-refresh-thumbs": [
+    "refresh preview",
+    "refresh thumbnails",
+    "refresh thumbs",
+    "build thumbnails"
+  ],
+  "visualiser-build": [
+    "build slides",
+    "build deck",
+    "export deck",
+    "create slides"
+  ],
+  "visualiser-diag": [
+    "diag",
+    "diagnostics",
+    "plotly status"
+  ],
+  "visualiser-copy-status": [
+    "copy status",
+    "copy status log",
+    "copy export status"
+  ],
+  "visualiser-clear-status": [
+    "clear status",
+    "clear status log",
+    "clear export log"
+  ],
+  "export-word": [
+    "export word",
+    "word export",
+    "save as word"
+  ],
+  "export-json": [
+    "export json",
+    "json export",
+    "serialize json",
+    "save as json"
+  ],
+  "export-snapshot": [
+    "save snapshot",
+    "snapshot",
+    "save project snapshot"
+  ],
+  "project-export": [
+    "export project",
+    "zip project",
+    "download project zip"
+  ]
+};
+
+const VOICE_ACTION_SEEDS: Array<{ action: RibbonAction }> = [
+  ...RetrieveTab.actions.map((action) => ({ action })),
+  ...RibbonScreenTab.actions.map((action) => ({ action })),
+  ...CodeTab.actions.map((action) => ({ action })),
+  ...VisualiserTab.actions.map((action) => ({ action })),
+  ...AnalyseTab.actions.map((action) => ({ action })),
+  ...WriteTab.actions.map((action) => ({ action })),
+  ...ExportTab.actions.map((action) => ({ action })),
+  ...SettingsTab.actions.map((action) => ({ action })),
+  ...ToolsTab.actions.map((action) => ({ action }))
+];
+
+const VOICE_ACTION_INVENTORY = VOICE_ACTION_SEEDS.map(({ action }) => ({
+  id: action.id,
+  phase: action.command.phase,
+  action: action.command.action,
+  label: action.label,
+  group: action.group || "Actions",
+  hint: action.hint
+}));
+const VOICE_ACTION_MIN_SCORE = 40;
+const VOICE_ACTION_MIN_GAP = 12;
+const VOICE_BUTTON_MIN_SCORE = 40;
+const VOICE_BUTTON_MIN_GAP = 12;
+const VOICE_BUTTON_SELECTOR = "button, [role='button'], input[type='button'], input[type='submit'], input[type='reset']";
+const VOICE_ALIAS_SEPARATOR = /[;,|]/;
+
+let cachedVoiceActionCandidates: VoiceActionCandidate[] | null = null;
+
+const addAlias = (bucket: Set<string>, value: string | undefined | null): void => {
+  const normalized = normalizeVoiceText(String(value || ""));
+  if (normalized) {
+    bucket.add(normalized);
+  }
+};
+
+const addAliasTokens = (bucket: Set<string>, value: string | undefined | null): void => {
+  for (const token of voiceTokens(String(value || ""))) {
+    if (token.length >= 3 && !VOICE_STOPWORDS.has(token)) {
+      bucket.add(token);
+    }
+  }
+};
+
+const scoreVoiceAliases = (
+  normalized: string,
+  aliases: string[]
+): { aliasScore: number; tokenMatchCount: number; score: number } => {
+  const tokens = voiceTokens(normalized);
+  let aliasScore = 0;
+  const tokenMatchSet = new Set<string>();
+  for (const rawAlias of aliases) {
+    const alias = normalizeVoiceText(String(rawAlias || ""));
+    if (!alias) continue;
+    if (normalized === alias) {
+      aliasScore += 260;
+    } else if (normalized.includes(alias)) {
+      aliasScore += 150;
+    } else if (alias.includes(normalized)) {
+      aliasScore += 110;
+    }
+    const aliasTokens = voiceTokens(alias);
+    for (const token of tokens) {
+      if (aliasTokens.includes(token)) {
+        aliasScore += 20;
+        tokenMatchSet.add(token);
+      }
+    }
+  }
+  const tokenMatchCount = tokenMatchSet.size;
+  return { aliasScore, tokenMatchCount, score: aliasScore + tokenMatchCount * 20 };
+};
+
+const addAriaDescribedAlias = (button: HTMLElement, aliases: Set<string>): void => {
+  const describedBy = button.getAttribute("aria-describedby");
+  if (!describedBy) return;
+  const described = document.getElementById(describedBy);
+  if (!described) return;
+  addAlias(aliases, described.textContent);
+  addAliasTokens(aliases, described.textContent);
+};
+
+const collectButtonContextAliases = (button: HTMLElement, aliases: Set<string>): void => {
+  addAlias(aliases, activeRouteId ? activeRouteId.replace(/:/g, " ") : "");
+  const activeTab = document.querySelector<HTMLElement>(".tab-button.active");
+  if (activeTab) {
+    addAlias(aliases, activeTab.textContent);
+    addAlias(aliases, `tab ${activeTab.textContent}`);
+  }
+  const contextRoots = [
+    button.closest(".ribbon-group"),
+    button.closest(".panel-shell"),
+    button.closest(".tool-surface"),
+    button.closest(".retrieve-block"),
+    button.closest(".zotero-detail"),
+    button.closest("aside"),
+    button.closest("section"),
+    button.closest(".sidebar")
+  ];
+  for (const root of contextRoots) {
+    if (!root) continue;
+    addAlias(aliases, root.querySelector("h1,h2,h3,h4,h5,h6")?.textContent);
+  }
+  collectAssociatedLabelAlias(aliases, button);
+  const tooltip = button.getAttribute("title");
+  addAlias(aliases, tooltip);
+  addAliasTokens(aliases, tooltip);
+  addAlias(aliases, button.getAttribute("data-tooltip"));
+  addAliasTokens(aliases, button.getAttribute("data-tooltip"));
+  addAriaDescribedAlias(button, aliases);
+  if (button instanceof HTMLInputElement && button.type === "button") {
+    addAlias(aliases, button.value);
+  }
+  if (button.id) {
+    addAlias(aliases, button.id);
+    addAlias(aliases, button.id.replace(/-/g, " "));
+  }
+  addAlias(aliases, "button");
+};
+
+const collectAssociatedLabelAlias = (aliases: Set<string>, button: HTMLElement): void => {
+  const controlId = button.getAttribute("id");
+  if (controlId) {
+    const explicit = document.querySelector<HTMLLabelElement>(`label[for="${controlId}"]`);
+    addAlias(aliases, explicit?.textContent);
+    addAliasTokens(aliases, explicit?.textContent);
+  }
+  const previous = button.previousElementSibling;
+  if (previous && previous.tagName.toLowerCase() === "label") {
+    addAlias(aliases, previous.textContent);
+    addAliasTokens(aliases, previous.textContent);
+  }
+  const next = button.nextElementSibling;
+  if (next && next.tagName.toLowerCase() === "label") {
+    addAlias(aliases, next.textContent);
+    addAliasTokens(aliases, next.textContent);
+  }
+};
+
+const buttonLabelForVoice = (button: HTMLElement): string => {
+  const ariaLabel = button.getAttribute("aria-label");
+  if (ariaLabel?.trim()) return ariaLabel.trim();
+  const title = button.getAttribute("title");
+  if (title?.trim()) return title.trim();
+  if (button instanceof HTMLInputElement && button.type === "button" && (button.value || "").trim()) {
+    return button.value.trim();
+  }
+  return (button.textContent || "").trim();
+};
+
+const isVoiceButtonCandidateVisible = (button: HTMLElement): boolean => {
+  if (button.closest(".agent-chat-dock") || button.closest("#agentChatFab")) {
+    return true;
+  }
+  const buttonType = String(button.getAttribute("type") || "").toLowerCase();
+  if (buttonType === "hidden") return false;
+  if (button.hasAttribute("disabled")) return false;
+  if ((button as HTMLButtonElement).disabled) return false;
+  const style = getComputedStyle(button);
+  if (style.display === "none" || style.visibility === "hidden" || style.pointerEvents === "none") return false;
+  if (style.opacity === "0" && !button.classList.contains("agent-chat-fab") && !button.classList.contains("agent-chat-mic")) return false;
+  const rect = button.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) return false;
+  if (button.closest(".hidden")) return false;
+  return true;
+};
+
+const getVoiceButtonCandidates = (): VoiceButtonCandidate[] => {
+  const candidates: VoiceButtonCandidate[] = [];
+  const nodes = Array.from(document.querySelectorAll<HTMLElement>(VOICE_BUTTON_SELECTOR));
+  for (const button of nodes) {
+    if (!isVoiceButtonCandidateVisible(button)) {
+      continue;
+    }
+    const aliasSet = new Set<string>();
+    const phase = button.getAttribute("data-phase");
+    const action = button.getAttribute("data-action");
+    const tabId = button.getAttribute("data-tab-id");
+    const tabLabel = button.getAttribute("data-tab-label");
+    const groupLabel = button.closest(".ribbon-group")?.querySelector("h3")?.textContent?.trim();
+    const toolType = button.getAttribute("data-tool-type");
+    const label = buttonLabelForVoice(button);
+    const voiceAliases = button.getAttribute("data-voice-aliases");
+
+    addAlias(aliasSet, label);
+    addAlias(aliasSet, button.title);
+    addAlias(aliasSet, button.getAttribute("aria-label"));
+    addAlias(aliasSet, button.id);
+    addAlias(aliasSet, button.id.replace(/-/g, " "));
+    addAlias(aliasSet, phase);
+    addAlias(aliasSet, action);
+    addAlias(aliasSet, tabId);
+    addAlias(aliasSet, tabLabel);
+    addAlias(aliasSet, toolType);
+    addAlias(aliasSet, groupLabel);
+    addAlias(aliasSet, `open ${label}`);
+    addAlias(aliasSet, `press ${label}`);
+    addAlias(aliasSet, `click ${label}`);
+    addAlias(aliasSet, `select ${label}`);
+    addAlias(aliasSet, `${phase} ${action}`);
+    collectButtonContextAliases(button, aliasSet);
+    if (tabId) {
+      addAlias(aliasSet, `${tabId} tab`);
+      addAlias(aliasSet, `tab ${tabId}`);
+      addAlias(aliasSet, `open ${tabId} tab`);
+      addAlias(aliasSet, `${tabLabel || ""} tab`);
+    }
+    addAliasTokens(aliasSet, label);
+    addAliasTokens(aliasSet, groupLabel);
+    addAliasTokens(aliasSet, phase);
+    addAliasTokens(aliasSet, tabLabel);
+    if (voiceAliases) {
+      voiceAliases
+        .split(VOICE_ALIAS_SEPARATOR)
+        .map((value) => value.trim())
+        .filter((value) => value.length > 0)
+        .forEach((alias) => {
+          addAlias(aliasSet, alias);
+          addAliasTokens(aliasSet, alias);
+        });
+    }
+
+    const aliases = Array.from(aliasSet).map((value) => normalizeVoiceText(value)).filter(Boolean);
+    if (!aliases.length) {
+      continue;
+    }
+    const tokens = new Set<string>();
+    aliases.forEach((alias) => {
+      voiceTokens(alias).forEach((token) => tokens.add(token));
+    });
+    candidates.push({
+      element: button,
+      label: label || phase || action || tabId || "Button",
+      aliases,
+      tokens
+    });
+  }
+  return candidates;
+};
+
+const normalizeVoiceText = (value: string): string => {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^\w\s]/g, " ")
+    .replace(/_+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+};
+
+const voiceTokens = (value: string): string[] => normalizeVoiceText(value)
+  .split(" ")
+  .map((token) => token.trim())
+  .filter((token) => token.length > 1 && !VOICE_STOPWORDS.has(token));
+
+const getVoiceActionCandidates = (): VoiceActionCandidate[] => {
+  if (cachedVoiceActionCandidates) {
+    return cachedVoiceActionCandidates;
+  }
+  const candidates: VoiceActionCandidate[] = [];
+  for (const { action } of VOICE_ACTION_SEEDS) {
+    const aliases = new Set<string>();
+    addAlias(aliases, action.label);
+    addAlias(aliases, action.id);
+    addAlias(aliases, action.id.replace(/-/g, " "));
+    addAlias(aliases, action.command.action);
+    addAlias(aliases, action.command.action.replace(/_/g, " ").replace(/-/g, " "));
+    addAlias(aliases, action.command.phase);
+    addAlias(aliases, action.hint);
+    addAlias(aliases, `open ${action.label}`);
+    addAlias(aliases, `show ${action.label}`);
+    addAlias(aliases, `press ${action.label}`);
+    addAlias(aliases, `${action.command.phase} ${action.label}`);
+    if (action.group) {
+      addAlias(aliases, action.group);
+      addAliasTokens(aliases, action.group);
+    }
+    const manual = VOICE_ACTION_MANUAL_ALIASES[action.id];
+    if (manual) {
+      manual.forEach((alias) => aliases.add(alias));
+    }
+    addAliasTokens(aliases, action.label);
+    addAliasTokens(aliases, action.hint);
+    addAliasTokens(aliases, action.command.action);
+    addAliasTokens(aliases, action.command.phase);
+    const aliasList = Array.from(aliases).map(normalizeVoiceText).filter(Boolean);
+    const tokenSet = new Set<string>();
+    aliasList.forEach((alias) => {
+      voiceTokens(alias).forEach((token) => tokenSet.add(token));
+    });
+    candidates.push({
+      action,
+      aliases: aliasList,
+      tokens: tokenSet
+    });
+  }
+  cachedVoiceActionCandidates = candidates;
+  return candidates;
+};
+
+const getActionAliasList = (): string[] =>
+  getVoiceActionCandidates().map(({ action }) => `${action.label} (${action.id})`);
+
+function parseRetrieveProviderFromText(text: string): RetrieveProviderId | null {
+  const normalized = String(text || "").toLowerCase();
+  if (/\bsemantic[\s_-]?scholar|s2|semanticscholar|sematic/.test(normalized)) return "semantic_scholar";
+  if (/\bcrossref/.test(normalized)) return "crossref";
+  if (/\bopen[\s_-]?alex/.test(normalized)) return "openalex";
+  if (/\belsevier/.test(normalized)) return "elsevier";
+  if (/\bwos\b|\bweb\s+of\s+science/.test(normalized)) return "wos";
+  if (/\bunpaywall/.test(normalized)) return "unpaywall";
+  if (/\bcos\b/.test(normalized)) return "cos";
+  return null;
+}
+
+function parseRetrieveSortFromText(text: string): RetrieveSort | null {
+  const normalized = String(text || "").toLowerCase();
+  if (/\brelevance\b/.test(normalized) || /\brelevant\b/.test(normalized)) return "relevance";
+  if (/\byear\b/.test(normalized) || /\byears\b/.test(normalized)) return "year";
+  return null;
+}
+
+function parseRetrieveYearRangeFromText(text: string): { year_from: number | null; year_to: number | null } | null {
+  const normalized = String(text || "").toLowerCase();
+  if (/\bclear\b/.test(normalized)) {
+    return { year_from: null, year_to: null };
+  }
+
+  const explicitRangeWithLabel = normalized.match(/\byear(?:s)?\s+range\s*(?:of|:)?\s+(\d{4})\s+(?:to|through|thru|-)\s+(\d{4})\b/);
+  if (explicitRangeWithLabel) {
+    return {
+      year_from: Number(explicitRangeWithLabel[1]),
+      year_to: Number(explicitRangeWithLabel[2])
+    };
+  }
+
+  const explicitYears = normalized.match(/\byears?\s+(\d{4})\s+(?:to|through|thru|-)\s+(\d{4})\b/);
+  if (explicitYears) {
+    return {
+      year_from: Number(explicitYears[1]),
+      year_to: Number(explicitYears[2])
+    };
+  }
+
+  const between = normalized.match(/\b(?:between|from)\s+(\d{4})\s+(?:and|to|-|through|thru)\s+(\d{4})\b/);
+  if (between) {
+    return {
+      year_from: Number(between[1]),
+      year_to: Number(between[2])
+    };
+  }
+
+  const singleRange = normalized.match(/\b(\d{4})\s+(?:to|-)\s+(\d{4})\b/);
+  if (singleRange) {
+    return {
+      year_from: Number(singleRange[1]),
+      year_to: Number(singleRange[2])
+    };
+  }
+
+  const afterMatch = normalized.match(/\b(?:after|from)\s+(\d{4})\b/);
+  if (afterMatch) {
+    return { year_from: Number(afterMatch[1]), year_to: null };
+  }
+
+  const beforeMatch = normalized.match(/\b(?:before|by|until)\s+(\d{4})\b/);
+  if (beforeMatch) {
+    return { year_from: null, year_to: Number(beforeMatch[1]) };
+  }
+
+  return null;
+}
+
+function parsePositiveInt(text: string): number | null {
+  const normalized = String(text || "").toLowerCase();
+  const match = normalized.match(/\b(\d{1,4})\b/);
+  if (!match) return null;
+  const n = Number(match[1]);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : null;
+}
+
+type VoiceRetrieveDefaultsPayload = {
+  provider?: RetrieveProviderId;
+  sort?: RetrieveSort;
+  year_from?: number | null;
+  year_to?: number | null;
+  limit?: number;
+};
+
+function parseVoiceRetrieveDefaults(text: string): VoiceRetrieveDefaultsPayload {
+  const normalized = String(text || "").toLowerCase();
+  const provider = parseRetrieveProviderFromText(normalized);
+  const sort = parseRetrieveSortFromText(normalized);
+  const yearRange = parseRetrieveYearRangeFromText(normalized);
+  const parsedLimit = parsePositiveInt(normalized);
+  const defaults: VoiceRetrieveDefaultsPayload = {};
+  if (provider) {
+    defaults.provider = provider;
+  }
+  if (sort) {
+    defaults.sort = sort;
+  }
+  if (yearRange) {
+    defaults.year_from = yearRange.year_from;
+    defaults.year_to = yearRange.year_to;
+  }
+  if (/\blimit\b/.test(normalized) && Number.isFinite(parsedLimit)) {
+    defaults.limit = parsedLimit;
+  }
+  return defaults;
+}
+
+function hasRetrieveDefaultsSignal(normalized: string): boolean {
+  return (
+    /\bprovider\b/.test(normalized) ||
+    /\bsort\b/.test(normalized) ||
+    /\byear\b/.test(normalized) ||
+    /\byears\b/.test(normalized) ||
+    /\blimit\b/.test(normalized) ||
+    /\b(?:between|from|to|before|after|clear)\b/.test(normalized) ||
+    /semantic|crossref|openalex|elsevier|wos|unpaywall|cos/.test(normalized) ||
+    Boolean(parseRetrieveProviderFromText(normalized))
+  );
+}
+
+function parseVoiceAction(text: string): VoiceActionCommand | null {
+  const normalized = normalizeVoiceText(text);
+  if (!normalized || normalized.length < 2) {
+    return null;
+  }
+
+  const provider = parseRetrieveProviderFromText(normalized);
+  if (provider && /\bprovider\b/.test(normalized)) {
+    return {
+      command: {
+        phase: "retrieve",
+        action: "retrieve_set_provider",
+        payload: { provider }
+      },
+      feedback: `Setting provider to ${provider}.`
+    };
+  }
+
+  if (/\bsearch\b/.test(normalized)) {
+    return {
+      command: {
+        phase: "retrieve",
+        action: "retrieve_open_query_builder"
+      },
+      feedback: "Opening Retrieve Search."
+    };
+  }
+
+  const sort = parseRetrieveSortFromText(normalized);
+  if (sort && /\bsort\b/.test(normalized)) {
+    return {
+      command: {
+        phase: "retrieve",
+        action: "retrieve_set_sort",
+        payload: { sort }
+      },
+      feedback: `Setting sort to ${sort}.`
+    };
+  }
+
+  const yearRange = parseRetrieveYearRangeFromText(normalized);
+  if (yearRange && /\b(year|years|from|between|before|after)\b/.test(normalized)) {
+    return {
+      command: {
+        phase: "retrieve",
+        action: "retrieve_set_year_range",
+        payload: {
+          year_from: yearRange.year_from,
+          year_to: yearRange.year_to
+        }
+      },
+      feedback: "Updating retrieve year range."
+    };
+  }
+
+  const limit = parsePositiveInt(normalized);
+  if (limit && /\blimit\b/.test(normalized)) {
+    return {
+      command: {
+        phase: "retrieve",
+        action: "retrieve_set_limit",
+        payload: { limit }
+      },
+      feedback: `Setting result limit to ${limit}.`
+    };
+  }
+
+  const defaults = parseVoiceRetrieveDefaults(normalized);
+  if (hasRetrieveDefaultsSignal(normalized) && Object.keys(defaults).length > 0) {
+    return {
+      command: {
+        phase: "agent",
+        action: "agent_voice_apply_retrieve_defaults",
+        payload: defaults
+      },
+      feedback: `Updating retrieve defaults.`
+    };
+  }
+
+  const tokens = voiceTokens(normalized);
+  const scored = getVoiceActionCandidates()
+    .map((candidate) => {
+      const { aliasScore, tokenMatchCount, score } = scoreVoiceAliases(normalized, candidate.aliases);
+      return { candidate, aliasScore, tokenMatchCount, score };
+    })
+    .filter((entry) => entry.score >= VOICE_ACTION_MIN_SCORE || entry.aliasScore >= 260)
+    .sort((a, b) => b.score - a.score);
+
+  const top = scored[0];
+  if (!top) {
+    return null;
+  }
+  const next = scored[1];
+  if (next && top.score >= VOICE_ACTION_MIN_SCORE && top.score < 90 && top.score - next.score < VOICE_ACTION_MIN_GAP) {
+    return {
+      command: {
+        phase: "agent",
+        action: "agent_voice_ambiguous"
+      },
+      feedback: `I heard: ${text}. Can you be specific? For example: ${getActionAliasList()
+        .filter((item) => {
+          const lower = item.toLowerCase();
+          return tokens.some((token) => lower.includes(token));
+        })
+        .slice(0, 3)
+        .join(", ")}`
+    };
+  }
+  const winner = scored[0];
+  const action = winner.candidate.action;
+  return {
+    command: {
+      phase: action.command.phase,
+      action: action.command.action,
+      payload: action.command.payload ? { ...(action.command.payload as Record<string, unknown>) } : undefined
+    },
+    feedback: `Pressed ${action.label}.`
+  };
+}
+
+function runMappedVoiceAction(mapped: VoiceActionCommand, options?: { fromVoice?: boolean }): void {
+  if (mapped.command.phase === "agent" && mapped.command.action === "agent_voice_ambiguous") {
+    pushAgentChatMessage("assistant", mapped.feedback, "error", options?.fromVoice ? { speak: true } : undefined);
+    return;
+  }
+  if (mapped.command.action === "retrieve_set_provider") {
+    const provider = String(mapped.command.payload?.provider || "").trim();
+    if (!provider) {
+      pushAgentChatMessage(
+        "assistant",
+        "I couldn't detect a provider name for the voice command.",
+        "error",
+        options?.fromVoice ? { speak: true } : undefined
+      );
+      return;
+    }
+    writeRetrieveQueryDefaults({ provider: provider as RetrieveProviderId });
+    applyRoute("retrieve:search");
+    pushAgentChatMessage(
+      "assistant",
+      mapped.feedback,
+      undefined,
+      options?.fromVoice ? { speak: true } : undefined
+    );
+    return;
+  }
+  if (mapped.command.action === "retrieve_set_sort") {
+    const sort = String(mapped.command.payload?.sort || "").trim();
+    if (sort !== "relevance" && sort !== "year") {
+      pushAgentChatMessage(
+        "assistant",
+        "I couldn't detect a valid sort option for the voice command.",
+        "error",
+        options?.fromVoice ? { speak: true } : undefined
+      );
+      return;
+    }
+    writeRetrieveQueryDefaults({ sort: sort as RetrieveSort });
+    applyRoute("retrieve:search");
+    pushAgentChatMessage(
+      "assistant",
+      mapped.feedback,
+      undefined,
+      options?.fromVoice ? { speak: true } : undefined
+    );
+    return;
+  }
+  if (mapped.command.action === "retrieve_set_year_range") {
+    const defaults: { year_from?: number; year_to?: number } = {};
+    const rawYearFrom = mapped.command.payload?.year_from;
+    const rawYearTo = mapped.command.payload?.year_to;
+    const yearFrom = rawYearFrom === null ? null : Number(rawYearFrom);
+    const yearTo = rawYearTo === null ? null : Number(rawYearTo);
+    if (rawYearFrom === null && rawYearTo === null) {
+      writeRetrieveQueryDefaults({ year_from: undefined, year_to: undefined });
+    } else {
+      if (Number.isFinite(yearFrom)) defaults.year_from = yearFrom;
+      if (Number.isFinite(yearTo)) defaults.year_to = yearTo;
+      writeRetrieveQueryDefaults(defaults);
+    }
+    panelGrid.ensurePanelVisible(2);
+    applyRoute("retrieve:search");
+    pushAgentChatMessage(
+      "assistant",
+      mapped.feedback,
+      undefined,
+      options?.fromVoice ? { speak: true } : undefined
+      );
+    return;
+  }
+  if (mapped.command.action === "retrieve_set_limit") {
+    const limit = Number(mapped.command.payload?.limit);
+    if (!Number.isFinite(limit) || limit <= 0) {
+      pushAgentChatMessage(
+        "assistant",
+        "I couldn't detect a valid positive integer limit for the voice command.",
+        "error",
+        options?.fromVoice ? { speak: true } : undefined
+      );
+      return;
+    }
+    writeRetrieveQueryDefaults({ limit: Math.floor(limit) });
+    panelGrid.ensurePanelVisible(2);
+    applyRoute("retrieve:search");
+    pushAgentChatMessage(
+      "assistant",
+      mapped.feedback,
+      undefined,
+      options?.fromVoice ? { speak: true } : undefined
+    );
+    return;
+  }
+  if (mapped.command.action === "agent_voice_apply_retrieve_defaults") {
+    const payload = mapped.command.payload as
+      | {
+          provider?: string;
+          sort?: string;
+          year_from?: number | null;
+          year_to?: number | null;
+          limit?: number;
+        }
+      | undefined;
+    const updates: Array<string> = [];
+    const merged = {
+      provider: payload?.provider,
+      sort: payload?.sort,
+      year_from: payload?.year_from,
+      year_to: payload?.year_to,
+      limit: payload?.limit
+    };
+    if (typeof merged.provider === "string" && merged.provider) {
+      updates.push(`provider ${merged.provider}`);
+    }
+    if (merged.sort === "relevance" || merged.sort === "year") {
+      updates.push(`sort ${merged.sort}`);
+    }
+    if (typeof merged.limit === "number" && Number.isFinite(merged.limit) && merged.limit > 0) {
+      updates.push(`limit ${Math.floor(merged.limit)}`);
+    }
+    if (merged.year_from === null && merged.year_to === null) {
+      updates.push("cleared year range");
+    } else if (typeof merged.year_from === "number" || typeof merged.year_to === "number") {
+      if (typeof merged.year_from === "number" && Number.isFinite(merged.year_from)) {
+        updates.push(`year from ${merged.year_from}`);
+      }
+      if (typeof merged.year_to === "number" && Number.isFinite(merged.year_to)) {
+        updates.push(`year to ${merged.year_to}`);
+      }
+    }
+    if (!updates.length) {
+      pushAgentChatMessage(
+        "assistant",
+        "I didn't detect any valid retrieve defaults to apply.",
+        "error",
+        options?.fromVoice ? { speak: true } : undefined
+      );
+      return;
+    }
+    const nextDefaults: { provider?: string; sort?: string; year_from?: number | undefined; year_to?: number | undefined; limit?: number } =
+      {};
+    if (typeof merged.provider === "string" && merged.provider) {
+      nextDefaults.provider = merged.provider as RetrieveProviderId;
+    }
+    if (merged.sort === "relevance" || merged.sort === "year") {
+      nextDefaults.sort = merged.sort as RetrieveSort;
+    }
+    if (typeof merged.limit === "number" && Number.isFinite(merged.limit) && merged.limit > 0) {
+      nextDefaults.limit = Math.floor(merged.limit);
+    }
+    if (merged.year_from === null) {
+      nextDefaults.year_from = undefined;
+    } else if (typeof merged.year_from === "number" && Number.isFinite(merged.year_from)) {
+      nextDefaults.year_from = merged.year_from;
+    }
+    if (merged.year_to === null) {
+      nextDefaults.year_to = undefined;
+    } else if (typeof merged.year_to === "number" && Number.isFinite(merged.year_to)) {
+      nextDefaults.year_to = merged.year_to;
+    }
+    writeRetrieveQueryDefaults(nextDefaults);
+    panelGrid.ensurePanelVisible(2);
+    applyRoute("retrieve:search");
+    pushAgentChatMessage(
+      "assistant",
+      `Updated retrieve defaults: ${updates.join(", ")}.`,
+      undefined,
+      options?.fromVoice ? { speak: true } : undefined
+    );
+    return;
+}
+
+  const action: RibbonAction = {
+    id: "agent-voice-action",
+    label: "Voice action",
+    hint: "Mapped from voice command",
+    iconId: "agent",
+    command: {
+      phase: mapped.command.phase,
+      action: mapped.command.action,
+      payload: mapped.command.payload
+    }
+  };
+  handleAction(action);
+  pushAgentChatMessage(
+    "assistant",
+    mapped.feedback,
+    undefined,
+    options?.fromVoice ? { speak: true } : undefined
+  );
+}
+
+function resolveVoiceButtonAction(text: string): VoiceButtonCandidate | null {
+  const normalized = normalizeVoiceText(text);
+  if (!normalized || normalized.length < 2) {
+    return null;
+  }
+
+  const scored = getVoiceButtonCandidates()
+    .map((candidate) => {
+      const { aliasScore, tokenMatchCount, score } = scoreVoiceAliases(normalized, candidate.aliases);
+      return {
+        candidate,
+        aliasScore,
+        tokenMatchCount,
+        score
+      };
+    })
+    .filter((entry) => entry.score >= VOICE_BUTTON_MIN_SCORE || entry.aliasScore >= 260)
+    .sort((a, b) => b.score - a.score);
+
+  const top = scored[0];
+  if (!top) {
+    return null;
+  }
+
+  const next = scored[1];
+  if (next && top.score >= VOICE_BUTTON_MIN_SCORE && top.score < 90 && top.score - next.score < VOICE_BUTTON_MIN_GAP) {
+    return null;
+  }
+
+  return top.candidate;
+}
+
+async function executeResolvedIntent(intent: Record<string, unknown>, options?: { fromVoice?: boolean }): Promise<void> {
+  const pushAssistant = (message: string, tone?: "error"): void =>
+    pushAgentChatMessage("assistant", message, tone, options?.fromVoice ? { speak: true } : undefined);
   if (!window.agentBridge?.executeIntent) {
-    pushAgentChatMessage("assistant", "Agent execute bridge unavailable.", "error");
+    pushAssistant("Agent execute bridge unavailable.", "error");
     setAgentChatPending(false);
     return;
   }
@@ -504,7 +2196,7 @@ async function executeResolvedIntent(intent: Record<string, unknown>): Promise<v
     });
     if (preRes?.status !== "ok") {
       setAgentChatPending(false);
-      pushAgentChatMessage("assistant", String(preRes?.message || "Preflight execution failed."), "error");
+      pushAssistant(String(preRes?.message || "Preflight execution failed."), "error");
       return;
     }
   }
@@ -516,7 +2208,7 @@ async function executeResolvedIntent(intent: Record<string, unknown>): Promise<v
   setAgentChatPending(false);
 
   if (res?.status !== "ok") {
-    pushAgentChatMessage("assistant", String(res?.message || "Intent execution failed."), "error");
+    pushAssistant(String(res?.message || "Intent execution failed."), "error");
     return;
   }
 
@@ -526,48 +2218,255 @@ async function executeResolvedIntent(intent: Record<string, unknown>): Promise<v
   if (functionName === "legacy.refresh" || String(result?.action || "") === "zotero_refresh_tree") {
     applyRoute("retrieve:zotero");
     void retrieveZoteroContext.loadTree();
-    pushAgentChatMessage("assistant", String(result?.reply || "Refreshing Zotero collections and items."));
+    pushAssistant(String(result?.reply || "Refreshing Zotero collections and items."));
     return;
   }
   if (functionName === "legacy.load_collection" || String(result?.action || "") === "zotero_load_selected_collection") {
     applyRoute("retrieve:zotero");
     void retrieveZoteroContext.loadSelectedCollectionToDataHub();
-    pushAgentChatMessage("assistant", String(result?.reply || "Loading selected collection into Data Hub."));
+    pushAssistant(String(result?.reply || "Loading selected collection into Data Hub."));
     return;
   }
   if (functionName === "workflow.create_subfolder_by_topic") {
     applyRoute("retrieve:zotero");
     void retrieveZoteroContext.loadTree();
-    pushAgentChatMessage("assistant", String(result?.reply || "Topic workflow completed."));
+    pushAssistant(String(result?.reply || "Topic workflow completed."));
+    return;
+  }
+  if (
+    functionName === "workflow.systematic_review_pipeline" ||
+    functionName === "workflow.literature_review_pipeline" ||
+    functionName === "workflow.bibliographic_review_pipeline"
+  ) {
+    const pipelinePath = String(result?.pipeline_path || "").trim();
+    const statePath = String(result?.state_path || "").trim();
+    const templatePath = String(result?.template_path || "").trim();
+    const summary = String(result?.reply || "Review pipeline created.");
+    const pathLines = [
+      pipelinePath ? `Pipeline file: ${pipelinePath}` : "",
+      statePath ? `State file: ${statePath}` : "",
+      templatePath ? `Template page: ${templatePath}` : ""
+    ].filter(Boolean);
+    pushAssistant(pathLines.length ? `${summary}\n${pathLines.join("\n")}` : summary);
     return;
   }
 
   if (String(result?.function || res?.function || "") === "Verbatim_Evidence_Coding" || String(intent?.targetFunction || "") === "Verbatim_Evidence_Coding") {
-    pushAgentChatMessage("assistant", "Verbatim_Evidence_Coding executed.");
+    const recovered = (result as Record<string, unknown>)?.recovered_from_batch_output === true;
+    const recoveredCount = Number((result as Record<string, unknown>)?.recovered_items_count || 0);
+    if (recovered) {
+      pushAssistant(
+        `Verbatim_Evidence_Coding executed (recovered from existing batch output${recoveredCount > 0 ? `, items: ${recoveredCount}` : ""}).`
+      );
+    } else {
+      pushAssistant("Verbatim_Evidence_Coding executed.");
+    }
     return;
   }
-  pushAgentChatMessage("assistant", "Command executed successfully.");
+  pushAssistant("Command executed successfully.");
 }
 
-async function runAgentChatCommand(text: string): Promise<void> {
+async function runAgentChatCommand(text: string, options?: { fromVoice?: boolean }): Promise<void> {
+  const pushAssistant = (message: string, tone?: "error"): void =>
+    pushAgentChatMessage("assistant", message, tone, options?.fromVoice ? { speak: true } : undefined);
   pushAgentChatMessage("user", text);
   if (!window.agentBridge?.resolveIntent || !window.agentBridge?.executeIntent) {
-    pushAgentChatMessage("assistant", "Agent bridge is unavailable.", "error");
+    pushAssistant( "Agent bridge is unavailable.", "error");
+    return;
+  }
+  const low = String(text || "").toLowerCase();
+  if (window.agentBridge?.supervisorPlan && window.agentBridge?.supervisorExecute && /\bsupervisor\b/.test(low) && /\b(coding|code|verbatim)\b/.test(low)) {
+    setAgentChatPending(true);
+    const context = buildAgentContextPayload();
+    const planned = await window.agentBridge.supervisorPlan({ text, context });
+    if (planned?.status !== "ok" || !planned?.plan) {
+      setAgentChatPending(false);
+      pushAssistant( String(planned?.message || "Supervisor could not build a coding plan."), "error");
+      return;
+    }
+    const questions = Array.isArray((planned.plan as Record<string, unknown>)?.research_questions)
+      ? (((planned.plan as Record<string, unknown>).research_questions as unknown[]).map((q) => String(q || "").trim()).filter(Boolean))
+      : [];
+      pushAssistant(
+        `Supervisor plan ready (${String(planned?.source || "fallback")}):\n- Collection: ${String((planned.plan as Record<string, unknown>)?.collection_name || "(selected)")}\n- Mode: ${String((planned.plan as Record<string, unknown>)?.coding_mode || "open")}\n- Screening: ${((planned.plan as Record<string, unknown>)?.screening === true) ? "enabled" : "disabled"}\n- Questions: ${questions.length}`
+      );
+    const executed = await window.agentBridge.supervisorExecute({ plan: planned.plan, context });
+    setAgentChatPending(false);
+    if (executed?.status === "ok") {
+      const recovered = (((executed?.result as Record<string, unknown>)?.verbatim as Record<string, unknown>)?.result as Record<string, unknown>)?.recovered_from_batch_output === true;
+      const recoveredCount = Number((((executed?.result as Record<string, unknown>)?.verbatim as Record<string, unknown>)?.result as Record<string, unknown>)?.recovered_items_count || 0);
+      if (recovered) {
+        pushAssistant(
+          `Supervisor + coder run completed (Verbatim_Evidence_Coding executed via batch recovery${recoveredCount > 0 ? `, items: ${recoveredCount}` : ""}).`
+        );
+      } else {
+        pushAssistant( "Supervisor + coder run completed (Verbatim_Evidence_Coding executed).");
+      }
+    } else {
+      pushAssistant( String(executed?.message || "Supervisor execution failed."), "error");
+    }
+    return;
+  }
+  if (window.systematicBridge) {
+    const runDir = resolveSystematicRunDirFromContext();
+    const checklistPath = "Research/Systematic_review/prisma_check_list.html";
+    if ((/systematic/.test(low) && /\b(implement|run|execute)\b/.test(low) && /\b1\s*(?:-|to)\s*15\b/.test(low)) || /\bsteps?\s*1\s*(?:-|to)\s*15\b/.test(low)) {
+      if (!runDir) {
+        pushAssistant( "No systematic run directory resolved from current context.", "error");
+        return;
+      }
+      setAgentChatPending(true);
+      const out = await window.systematicBridge.executeSteps1to15({ runDir, checklistPath, reviewerCount: 2 });
+      setAgentChatPending(false);
+      if (out?.status === "ok") {
+        pushAssistant( `Systematic steps 1-15 completed.\nRun dir: ${runDir}`);
+      } else {
+        pushAssistant( String(out?.message || "Systematic steps 1-15 failed."), "error");
+      }
+      return;
+    }
+    if ((/systematic/.test(low) && /full[- ]?run|run all/.test(low)) || /prisma full run/.test(low)) {
+      if (!runDir) {
+        pushAssistant( "No systematic run directory resolved from current context.", "error");
+        return;
+      }
+      setAgentChatPending(true);
+      const out = await window.systematicBridge.fullRun({ runDir, checklistPath, maxIterations: 3, minPassPct: 80, maxFail: 0 });
+      setAgentChatPending(false);
+      if (out?.status === "ok") {
+        pushAssistant( `Systematic full-run completed.\nRun dir: ${runDir}`);
+      } else {
+        pushAssistant( String(out?.message || "Systematic full-run failed."), "error");
+      }
+      return;
+    }
+    if (/adjudicat(e|ion)\s+conflict|resolve\s+conflict/.test(low)) {
+      if (!runDir) {
+        pushAssistant( "No systematic run directory resolved from current context.", "error");
+        return;
+      }
+      const countMatch = low.match(/\b(\d+)\b/);
+      const resolvedCount = countMatch ? Math.max(1, Number(countMatch[1])) : 0;
+      setAgentChatPending(true);
+      const out = await window.systematicBridge.adjudicateConflicts({ runDir, resolvedCount });
+      setAgentChatPending(false);
+      if (out?.status === "ok") {
+        pushAssistant(
+          `Conflict adjudication completed. Resolved: ${Number(out?.resolved || 0)}. Remaining unresolved: ${Number(out?.unresolved || 0)}.`
+        );
+      } else {
+        pushAssistant( String(out?.message || "Conflict adjudication failed."), "error");
+      }
+      return;
+    }
+    if (/prisma audit/.test(low)) {
+      if (!runDir) {
+        pushAssistant( "No systematic run directory resolved from current context.", "error");
+        return;
+      }
+      setAgentChatPending(true);
+      const out = await window.systematicBridge.prismaAudit({ runDir });
+      setAgentChatPending(false);
+      if (out?.status === "ok") {
+        pushAssistant( `PRISMA audit completed.\nRun dir: ${runDir}`);
+      } else {
+        pushAssistant( String(out?.message || "PRISMA audit failed."), "error");
+      }
+      return;
+    }
+    if (/prisma remediate/.test(low)) {
+      if (!runDir) {
+        pushAssistant( "No systematic run directory resolved from current context.", "error");
+        return;
+      }
+      setAgentChatPending(true);
+      const out = await window.systematicBridge.prismaRemediate({ runDir });
+      setAgentChatPending(false);
+      if (out?.status === "ok") {
+        pushAssistant( `PRISMA remediation completed. Updated sections: ${Number(out?.updated || 0)}.`);
+      } else {
+        pushAssistant( String(out?.message || "PRISMA remediation failed."), "error");
+      }
+      return;
+    }
+    if (/compose paper|generate full paper/.test(low)) {
+      if (!runDir) {
+        pushAssistant( "No systematic run directory resolved from current context.", "error");
+        return;
+      }
+      setAgentChatPending(true);
+      const out = await window.systematicBridge.composePaper({ runDir, checklistPath });
+      setAgentChatPending(false);
+      if (out?.status === "ok") {
+        pushAssistant( `Systematic full paper generated.\nRun dir: ${runDir}`);
+      } else {
+        pushAssistant( String(out?.message || "Paper composition failed."), "error");
+      }
+      return;
+    }
+  }
+
+  const mappedVoiceAction = parseVoiceAction(text);
+  if (mappedVoiceAction) {
+    runMappedVoiceAction(mappedVoiceAction, options);
+    return;
+  }
+
+  const mappedVoiceButton = resolveVoiceButtonAction(text);
+  if (mappedVoiceButton) {
+    mappedVoiceButton.element.click();
+    pushAssistant(`Pressed ${mappedVoiceButton.label}.`);
     return;
   }
 
   if (agentChatState.pendingConfirmation) {
+    if (agentChatState.pendingConfirmation.type === "coding_mode") {
+      const modeText = String(text || "").trim().toLowerCase();
+      const selectedMode =
+        /\bhybrid\b/.test(modeText) ? "hybrid" : /\btarget/.test(modeText) ? "targeted" : /\bopen\b/.test(modeText) ? "open" : "";
+      if (!selectedMode) {
+        pushAssistant( "Reply with one mode: open, targeted, or hybrid.");
+        return;
+      }
+      const pending = agentChatState.pendingConfirmation;
+      const nextIntent = { ...(pending.intent || {}) } as Record<string, unknown>;
+      const nextArgs = { ...((nextIntent.args as Record<string, unknown>) || {}), coding_mode: selectedMode };
+      nextIntent.args = nextArgs;
+      agentChatState.pendingConfirmation = null;
+      agentChatState.pendingIntent = nextIntent;
+      setAgentChatPending(true);
+      const resolved = await window.agentBridge.resolveIntent({
+        text: selectedMode,
+        context: {
+          ...buildAgentContextPayload(),
+          pendingIntent: nextIntent
+        }
+      });
+      setAgentChatPending(false);
+      if (resolved?.status !== "ok" || !resolved?.intent) {
+        pushAssistant( String(resolved?.message || "Could not set coding mode."), "error");
+        return;
+      }
+      if ((resolved.intent?.needsClarification as boolean) === true) {
+        agentChatState.pendingIntent = resolved.intent;
+        const qList = Array.isArray(resolved.intent?.clarificationQuestions) ? resolved.intent.clarificationQuestions : [];
+        pushAssistant( qList.length ? `I need more detail:\n- ${qList.join("\n- ")}` : "I need more details.");
+        return;
+      }
+      await executeResolvedIntent(resolved.intent, options);
+      return;
+    }
     if (isChatAffirmative(text)) {
       const pending = agentChatState.pendingConfirmation;
       agentChatState.pendingConfirmation = null;
       setAgentChatPending(true);
-      await executeResolvedIntent(pending.intent);
+      await executeResolvedIntent(pending.intent, options);
       return;
     }
     if (isChatNegative(text)) {
       agentChatState.pendingConfirmation = null;
       setAgentChatPending(false);
-      pushAgentChatMessage("assistant", "Coding run canceled.");
+      pushAssistant( "Coding run canceled.");
       return;
     }
     const pendingIntent = agentChatState.pendingConfirmation.intent;
@@ -591,51 +2490,55 @@ async function runAgentChatCommand(text: string): Promise<void> {
     }
     if (revised.length >= 3 && revised.length <= 5) {
       const args = ((pendingIntent?.args as Record<string, unknown>) || {});
-      pendingIntent.args = { ...args, research_questions: revised };
+      const controls = parseCodingControlsFromText(text);
+      const currentMode = String(args.coding_mode || "open").toLowerCase();
+      pendingIntent.args = {
+        ...args,
+        research_questions: revised,
+        coding_mode: controls.mode_specified ? controls.coding_mode : (currentMode === "targeted" ? "targeted" : currentMode === "hybrid" ? "hybrid" : "open"),
+        rq_scope: controls.rq_scope,
+        target_codes: controls.target_codes,
+        min_relevance: controls.min_relevance
+      };
       const screeningEnabled = (pendingIntent?.args as Record<string, unknown>)?.screening !== false;
-      if (screeningEnabled && window.agentBridge?.generateEligibilityCriteria) {
-        const regen = await window.agentBridge.generateEligibilityCriteria({
-          userText: text,
-          collectionName: String((pendingIntent?.args as Record<string, unknown>)?.collection_name || ""),
-          contextText: String((pendingIntent?.args as Record<string, unknown>)?.context || ""),
-          researchQuestions: revised
-        });
-        if (regen?.status === "ok") {
-          const inclusion = Array.isArray(regen?.inclusion_criteria)
-            ? regen.inclusion_criteria.map((x) => String(x || "").trim()).filter(Boolean)
-            : [];
-          const exclusion = Array.isArray(regen?.exclusion_criteria)
-            ? regen.exclusion_criteria.map((x) => String(x || "").trim()).filter(Boolean)
-            : [];
-          if (inclusion.length && exclusion.length) {
-            pendingIntent.preflightIntents = [
-              {
-                intentId: "feature.run",
-                targetFunction: "set_eligibility_criteria",
-                confidence: 0.9,
-                riskLevel: "confirm",
-                needsClarification: false,
-                clarificationQuestions: [],
-                args: {
-                  collection_name: String((pendingIntent?.args as Record<string, unknown>)?.collection_name || ""),
-                  inclusion_criteria: inclusion.join("\n"),
-                  exclusion_criteria: exclusion.join("\n"),
-                  eligibility_prompt_key: "paper_screener_abs_policy",
-                  context: String((pendingIntent?.args as Record<string, unknown>)?.context || ""),
-                  research_questions: revised
-                }
-              }
-            ];
+      if (screeningEnabled) {
+        const collectionName = String((pendingIntent?.args as Record<string, unknown>)?.collection_name || "");
+        const contextText = String((pendingIntent?.args as Record<string, unknown>)?.context || "");
+        const explicitCriteria = parseEligibilityCriteriaInput(text);
+        const explicitPreflight = buildEligibilityPreflightIntent(
+          collectionName,
+          contextText,
+          revised,
+          explicitCriteria.inclusion,
+          explicitCriteria.exclusion
+        );
+        if (explicitPreflight) {
+          pendingIntent.preflightIntents = [explicitPreflight];
+        } else if (window.agentBridge?.generateEligibilityCriteria) {
+          const regen = await window.agentBridge.generateEligibilityCriteria({
+            userText: text,
+            collectionName,
+            contextText,
+            researchQuestions: revised
+          });
+          if (regen?.status === "ok") {
+            const inclusion = Array.isArray(regen?.inclusion_criteria)
+              ? regen.inclusion_criteria.map((x) => String(x || "").trim()).filter(Boolean)
+              : [];
+            const exclusion = Array.isArray(regen?.exclusion_criteria)
+              ? regen.exclusion_criteria.map((x) => String(x || "").trim()).filter(Boolean)
+              : [];
+            const preflight = buildEligibilityPreflightIntent(collectionName, contextText, revised, inclusion, exclusion);
+            if (preflight) pendingIntent.preflightIntents = [preflight];
           }
         }
       }
-      pushAgentChatMessage(
-        "assistant",
+      pushAssistant(
         `Updated research questions:\n${revised.map((q, i) => `${i + 1}. ${q}`).join("\n")}\n\nReply with 'yes' to run or 'no' to cancel.`
       );
       return;
     }
-    pushAgentChatMessage("assistant", "I could not infer a valid 3-5 question set. Reply with clearer question edits.");
+    pushAssistant( "I could not infer a valid 3-5 question set. Reply with clearer question edits.");
     return;
   }
 
@@ -649,14 +2552,20 @@ async function runAgentChatCommand(text: string): Promise<void> {
       }
     });
     if (resolved?.status !== "ok" || !resolved?.intent) {
-      pushAgentChatMessage("assistant", String(resolved?.message || "Could not resolve command intent."), "error");
+      pushAssistant( String(resolved?.message || "Could not resolve command intent."), "error");
       return;
     }
     const intent = resolved.intent;
     if ((intent?.needsClarification as boolean) === true) {
       agentChatState.pendingIntent = intent;
       const qList = Array.isArray(intent?.clarificationQuestions) ? intent.clarificationQuestions : [];
-      pushAgentChatMessage("assistant", qList.length ? `I need more detail:\n- ${qList.join("\n- ")}` : "I need more details.");
+      pushAssistant( qList.length ? `I need more detail:\n- ${qList.join("\n- ")}` : "I need more details.");
+      if (
+        qList.some((q) => /open coding|targeted coding|hybrid coding/i.test(String(q || ""))) &&
+        !qList.some((q) => /auto-generate\s+3-5/i.test(String(q || "")))
+      ) {
+        agentChatState.pendingConfirmation = { type: "coding_mode", intent };
+      }
       return;
     }
 
@@ -667,57 +2576,62 @@ async function runAgentChatCommand(text: string): Promise<void> {
         : [];
       const collectionName = String(args.collection_name || "").trim() || "(selected collection)";
       const screeningEnabled = args.screening !== false;
+      const codingMode = (() => {
+        const rawMode = String(args.coding_mode || "open").toLowerCase();
+        return rawMode === "targeted" ? "targeted" : rawMode === "hybrid" ? "hybrid" : "open";
+      })();
+      const rqScope = Array.isArray(args.rq_scope)
+        ? (args.rq_scope as unknown[]).map((n) => Number(n)).filter((n) => Number.isFinite(n) && n >= 0).map((n) => Math.trunc(n))
+        : [];
+      const targetCodes = Array.isArray(args.target_codes)
+        ? (args.target_codes as unknown[]).map((x) => String(x || "").trim()).filter(Boolean)
+        : [];
+      const minRelevance = Number.isFinite(Number(args.min_relevance)) ? Math.max(1, Math.min(5, Math.trunc(Number(args.min_relevance)))) : 3;
       if (questions.length >= 3 && questions.length <= 5) {
-        if (screeningEnabled && window.agentBridge?.generateEligibilityCriteria) {
-          const eligibilityDraft = await window.agentBridge.generateEligibilityCriteria({
-            userText: text,
+        const contextText = String(args.context || "");
+        if (screeningEnabled) {
+          const explicitCriteria = parseEligibilityCriteriaInput(text);
+          const explicitPreflight = buildEligibilityPreflightIntent(
             collectionName,
-            contextText: String(args.context || ""),
-            researchQuestions: questions
-          });
-          if (eligibilityDraft?.status === "ok") {
-            const inclusion = Array.isArray(eligibilityDraft?.inclusion_criteria)
-              ? eligibilityDraft.inclusion_criteria.map((x) => String(x || "").trim()).filter(Boolean)
-              : [];
-            const exclusion = Array.isArray(eligibilityDraft?.exclusion_criteria)
-              ? eligibilityDraft.exclusion_criteria.map((x) => String(x || "").trim()).filter(Boolean)
-              : [];
-            if (inclusion.length && exclusion.length) {
-              intent.preflightIntents = [
-                {
-                  intentId: "feature.run",
-                  targetFunction: "set_eligibility_criteria",
-                  confidence: 0.9,
-                  riskLevel: "confirm",
-                  needsClarification: false,
-                  clarificationQuestions: [],
-                  args: {
-                    collection_name: collectionName,
-                    inclusion_criteria: inclusion.join("\n"),
-                    exclusion_criteria: exclusion.join("\n"),
-                    eligibility_prompt_key: "paper_screener_abs_policy",
-                    context: String(args.context || ""),
-                    research_questions: questions
-                  }
-                }
-              ];
+            contextText,
+            questions,
+            explicitCriteria.inclusion,
+            explicitCriteria.exclusion
+          );
+          if (explicitPreflight) {
+            intent.preflightIntents = [explicitPreflight];
+          } else if (window.agentBridge?.generateEligibilityCriteria) {
+            const eligibilityDraft = await window.agentBridge.generateEligibilityCriteria({
+              userText: text,
+              collectionName,
+              contextText,
+              researchQuestions: questions
+            });
+            if (eligibilityDraft?.status === "ok") {
+              const inclusion = Array.isArray(eligibilityDraft?.inclusion_criteria)
+                ? eligibilityDraft.inclusion_criteria.map((x) => String(x || "").trim()).filter(Boolean)
+                : [];
+              const exclusion = Array.isArray(eligibilityDraft?.exclusion_criteria)
+                ? eligibilityDraft.exclusion_criteria.map((x) => String(x || "").trim()).filter(Boolean)
+                : [];
+              const preflight = buildEligibilityPreflightIntent(collectionName, contextText, questions, inclusion, exclusion);
+              if (preflight) intent.preflightIntents = [preflight];
             }
           }
         }
-        pushAgentChatMessage(
-          "assistant",
-          `I will run Verbatim_Evidence_Coding for '${collectionName}'.\nScreening: ${screeningEnabled ? "enabled" : "disabled"}.\n\nResearch questions:\n${questions
-            .map((q, i) => `${i + 1}. ${q}`)
-            .join("\n")}\n\nReply with 'yes' to run, 'no' to cancel, or send revised questions (3-5).`
-        );
+      pushAssistant(
+        `I will refine codebook.md first, then run Verbatim_Evidence_Coding for '${collectionName}'.\nMode: ${codingMode}${codingMode === "targeted" || codingMode === "hybrid" ? ` (min relevance ${minRelevance}${rqScope.length ? `, RQ scope: ${rqScope.map((i) => `RQ${i + 1}`).join(", ")}` : ""}${targetCodes.length ? `, targets: ${targetCodes.join(", ")}` : ""})` : ""}.\nScreening: ${screeningEnabled ? "enabled" : "disabled"}.\n\nResearch questions:\n${questions
+          .map((q, i) => `${i + 1}. ${q}`)
+          .join("\n")}\n\nReply with 'yes' to run, 'no' to cancel, or send revised questions (3-5).`
+      );
         agentChatState.pendingConfirmation = { type: "coding_questions", intent };
         return;
       }
     }
 
-    await executeResolvedIntent(intent);
+    await executeResolvedIntent(intent, options);
   } catch (error) {
-    pushAgentChatMessage("assistant", String((error as Error)?.message || error || "Agent command failed."), "error");
+    pushAssistant( String((error as Error)?.message || error || "Agent command failed."), "error");
   } finally {
     setAgentChatPending(false);
   }
@@ -727,7 +2641,28 @@ function initAgentChatUi(): void {
   if (!agentChatFab || !agentChatDock || !agentChatForm || !agentChatInput || !btnAgentChatClose || !btnAgentChatClear) {
     return;
   }
-  if (!agentChatState.messages.length) {
+  if (window.agentBridge?.getChatHistory) {
+    void window.agentBridge.getChatHistory().then((res) => {
+      const rows = Array.isArray(res?.messages) ? res.messages : [];
+      if (rows.length) {
+        agentChatState.messages = rows
+          .map((entry) => ({
+            role: (entry.role === "user" ? "user" : "assistant") as "user" | "assistant",
+            text: String(entry.text || ""),
+            tone: (entry.tone === "error" ? "error" : undefined) as "error" | undefined,
+            at: Number.isFinite(Number(entry.at)) ? Number(entry.at) : Date.now()
+          }))
+          .slice(-60);
+        renderAgentChatMessages();
+      } else if (!agentChatState.messages.length) {
+        pushAgentChatMessage("assistant", "Agent ready. Send a command to organize collections by tag.");
+      }
+    }).catch(() => {
+      if (!agentChatState.messages.length) {
+        pushAgentChatMessage("assistant", "Agent ready. Send a command to organize collections by tag.");
+      }
+    });
+  } else if (!agentChatState.messages.length) {
     pushAgentChatMessage("assistant", "Agent ready. Send a command to organize collections by tag.");
   }
   agentChatFab.addEventListener("click", () => setAgentChatOpen(!agentChatState.open));
@@ -736,6 +2671,9 @@ function initAgentChatUi(): void {
     agentChatState.messages = [];
     agentChatState.pendingIntent = null;
     agentChatState.pendingConfirmation = null;
+    if (window.agentBridge?.clearChatHistory) {
+      void window.agentBridge.clearChatHistory();
+    }
     renderAgentChatMessages();
   });
   agentChatForm.addEventListener("submit", (ev) => {
@@ -745,10 +2683,48 @@ function initAgentChatUi(): void {
     agentChatInput.value = "";
     void runAgentChatCommand(text);
   });
+  if (btnAgentChatMic) {
+    btnAgentChatMic.addEventListener("click", () => {
+      if (agentChatState.pending) return;
+      void startAgentVoiceRecording();
+    });
+  }
+  if (window.agentBridge?.onFeatureJobStatus) {
+    window.agentBridge.onFeatureJobStatus((payload) => {
+      const functionName = String(payload?.functionName || "");
+      const status = String(payload?.status || "");
+      if (functionName === "workflow.create_subfolder_by_topic" && (status === "done" || status === "failed" || status === "canceled")) {
+        const phase = String(payload?.phase || "");
+        const text = status === "done"
+          ? `Workflow job completed${phase ? ` (${phase})` : ""}.`
+          : status === "canceled"
+            ? "Workflow job canceled."
+            : `Workflow job failed${phase ? ` (${phase})` : ""}.`;
+        pushAgentChatMessage("assistant", text, status === "failed" ? "error" : undefined);
+      }
+      if (
+        (functionName === "workflow.systematic_review_pipeline" ||
+          functionName === "workflow.literature_review_pipeline" ||
+          functionName === "workflow.bibliographic_review_pipeline") &&
+        (status === "done" || status === "failed")
+      ) {
+        const label =
+          functionName === "workflow.literature_review_pipeline"
+            ? "Literature review"
+            : functionName === "workflow.bibliographic_review_pipeline"
+              ? "Bibliographic review"
+              : "Systematic review";
+        const text = status === "done"
+          ? `${label} pipeline initialized.`
+          : `${label} pipeline initialization failed.`;
+        pushAgentChatMessage("assistant", text, status === "failed" ? "error" : undefined);
+      }
+    });
+  }
   syncAgentChatVisibility();
 }
 
-function applyRoute(routeId: RouteId, options?: { skipEnsureTools?: boolean }): void {
+function applyRoute(routeId: RouteId, options?: { skipEnsureTools?: boolean; forceClearPanels?: boolean }): void {
   const route = ROUTES[routeId];
   if (!route) {
     console.warn("[route] unknown routeId", routeId);
@@ -757,11 +2733,21 @@ function applyRoute(routeId: RouteId, options?: { skipEnsureTools?: boolean }): 
   activeRouteId = routeId;
   document.documentElement.classList.toggle("zotero-parity-mode", routeId === "retrieve:zotero");
   document.body.classList.toggle("zotero-parity-mode", routeId === "retrieve:zotero");
+  if (routeId === "retrieve:zotero") {
+    document.querySelectorAll(".zotero-picker").forEach((node) => node.remove());
+  }
   syncAgentChatVisibility();
 
   const preset = PANEL_PRESETS[route.presetId];
   if (preset) {
     panelGrid.applyPreset(preset);
+  }
+
+  const forceClearPanels = options?.forceClearPanels || routeId === "retrieve:zotero";
+  if (forceClearPanels) {
+    (["panel1", "panel2", "panel3", "panel4"] as PanelId[]).forEach((panelId) => {
+      panelTools.clearPanelTools(panelId);
+    });
   }
 
   // Enforce: only widgets/tools for the last-clicked route remain.
@@ -1506,7 +3492,7 @@ function renderAnalyseRibbon(mount: HTMLElement): void {
     form.appendChild(makeRow("Overlap", overlap));
 
     const round2 = document.createElement("select");
-    ["paragraphs", "sentences"].forEach((value) => {
+    ["sections", "paragraphs"].forEach((value) => {
       const opt = document.createElement("option");
       opt.value = value;
       opt.textContent = value;
@@ -1595,7 +3581,7 @@ function renderAnalyseRibbon(mount: HTMLElement): void {
       tableSelect.appendChild(opt);
     });
 
-    run.addEventListener("click", async () => {
+    const executeRun = async () => {
       run.disabled = true;
       status.textContent = "Running…";
       logs.textContent = "";
@@ -1644,7 +3630,14 @@ function renderAnalyseRibbon(mount: HTMLElement): void {
       } finally {
         run.disabled = false;
       }
+    };
+
+    run.addEventListener("click", async () => {
+      await executeRun();
     });
+
+    status.textContent = "Found cached tables. Auto-running with defaults (All rows)…";
+    void executeRun();
   }
 
   runSelect.addEventListener("change", async () => {
@@ -2001,6 +3994,28 @@ function createActionButton(action: RibbonAction): HTMLButtonElement {
 }
 
 function handleAction(action: RibbonAction): void {
+  if (
+    action.command.phase === "retrieve" &&
+    (action.command.action === "datahub_open_batches" || action.command.action === "batches_data")
+  ) {
+    tabRibbon.selectTab("retrieve");
+    applyRoute("retrieve:zotero", { forceClearPanels: true });
+    retrieveSearchSelectedRecord = undefined;
+    const analyseState = analyseStore.getState();
+    void retrieveZoteroContext.loadBatchesData({
+      runPath: String(analyseState?.activeRunPath || ""),
+      baseDir: String(analyseState?.baseDir || "")
+    });
+    return;
+  }
+  if (action.command.phase === "retrieve" && action.command.action === "datahub_open_code") {
+    tabRibbon.selectTab("code");
+    return;
+  }
+  if (action.command.phase === "retrieve" && action.command.action === "datahub_open_screen") {
+    tabRibbon.selectTab("screen");
+    return;
+  }
   if (
     action.command.phase === "retrieve" &&
     typeof action.command.action === "string" &&

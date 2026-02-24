@@ -1,0 +1,421 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "dqid": "J766INPV#DQ001",
+          "quote": "This chapter argues that, while self-defence certainly cannot be ruled out, the problem of attribution will preclude its proper application in many, if not most, instances.",
+          "extraction_type": "main_finding",
+          "paraphrase": "The chapter contends that although self-defence remains possible, attribution problems will prevent its proper application in many, if not most, cases.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "attribution_challenges",
+            "use_of_force_limits",
+            "evidentiary_standards"
+          ]
+        },
+        {
+          "dqid": "J766INPV#DQ002",
+          "quote": "the greatest challenge for the application of the doctrine of self-defence to the new threats that arrive as a by-product of technological developments is the attribution of \u2018unlawful conduct\u2019.",
+          "extraction_type": "main_finding",
+          "paraphrase": "The author identifies attribution of 'unlawful conduct' as the principal obstacle to applying the self-defence doctrine to emerging cyber threats.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "attribution_challenges",
+            "use_of_force_limits"
+          ]
+        },
+        {
+          "dqid": "J766INPV#DQ003",
+          "quote": "In 1987, the Iran-United States Claims Tribunal asserted that \u2018[i]n order to attribute an act to the State, it is necessary to identify with reasonable certainty the actors and their association with the State\u2019.",
+          "extraction_type": "definition",
+          "paraphrase": "The Tribunal held that state attribution requires identifying with reasonable certainty both the actors and their association with the State.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "state_responsibility_thresholds",
+            "jurisprudence_case_law",
+            "attribution_challenges"
+          ]
+        },
+        {
+          "dqid": "J766INPV#DQ004",
+          "quote": "Those are: the *prima facie* possibility of an asserted fact being true; a preponderance of evidence; the \u2018clear and convincing\u2019 evidentiary standard; and proof beyond reasonable doubt.",
+          "extraction_type": "definition",
+          "paraphrase": "The author lists four formal evidentiary standards used in international adjudication: prima facie, preponderance, clear and convincing, and proof beyond reasonable doubt.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "evidentiary_standards"
+          ]
+        },
+        {
+          "dqid": "J766INPV#DQ005",
+          "quote": "as soon as State responsibility is involved the required threshold appears to be considerably higher, shifting towards \u2018clear and convincing\u2019.",
+          "extraction_type": "main_finding",
+          "paraphrase": "When State responsibility is at issue, the evidentiary threshold increases and tends toward a 'clear and convincing' standard.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "evidentiary_standards",
+            "state_responsibility_thresholds"
+          ]
+        },
+        {
+          "dqid": "J766INPV#DQ006",
+          "quote": "This standard essentially amounts to the duty to \u2018convince the arbiter in question that it is substantially more likely than not that the factual claims that have been made are true.\u2019",
+          "extraction_type": "definition",
+          "paraphrase": "The 'clear and convincing' standard requires persuading the adjudicator that the asserted facts are substantially more likely than not to be true.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "evidentiary_standards",
+            "procedural_conditions"
+          ]
+        },
+        {
+          "dqid": "J766INPV#DQ007",
+          "quote": "\u2018the determination of the identity or location of an attacker or an attacker\u2019s intermediary\u2019 remains the most critical and to date unresolved obstacle to the application of the traditional regime of self-defence in the context of cyberspace.",
+          "extraction_type": "main_finding",
+          "paraphrase": "Determining an attacker\u2019s identity or location remains the single most critical unresolved obstacle to applying traditional self-defence in cyberspace.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "attribution_challenges",
+            "prevention_challenges"
+          ]
+        },
+        {
+          "dqid": "J766INPV#DQ008",
+          "quote": "The current architecture of the internet and connected networks provides countless loopholes and methods to mask a user\u2019s identity or location.",
+          "extraction_type": "limitation",
+          "paraphrase": "The internet\u2019s architecture contains numerous loopholes enabling the masking of user identities or locations, which hinders reliable attribution.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "attribution_challenges"
+          ]
+        },
+        {
+          "dqid": "J766INPV#DQ009",
+          "quote": "the location of a computer rarely allows for definite conclusions regarding the identity of the individual operating the machine",
+          "extraction_type": "limitation",
+          "paraphrase": "Knowing a computer\u2019s location rarely permits definite conclusions about who operated it, complicating legal attribution.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "attribution_challenges",
+            "constructive_knowledge_standard"
+          ]
+        },
+        {
+          "dqid": "J766INPV#DQ010",
+          "quote": "However, so far even the most publicly endorsed instances of \u2018smoking gun\u2019 evidence regarding malicious cyber conduct have been met with reservations and objections by high-profile cyber security analysts.",
+          "extraction_type": "limitation",
+          "paraphrase": "Even widely publicised 'smoking gun' technical evidence of malicious cyber activity has been questioned by experts, reducing confidence in attribution claims.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "evidentiary_standards",
+            "attribution_challenges"
+          ]
+        },
+        {
+          "dqid": "J766INPV#DQ011",
+          "quote": "it took their analysts several years to come up with conclusions that they themselves considered sufficiently convincing to be published.",
+          "extraction_type": "limitation",
+          "paraphrase": "High-profile forensic attributions (e.g., Mandiant) have required analysts several years to reach publishable conclusions, creating timeliness problems for responses.",
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "procedural_conditions",
+            "attribution_challenges"
+          ]
+        },
+        {
+          "dqid": "J766INPV#DQ012",
+          "quote": "The recently completed Tallinn Manual on the International Law Applicable to Cyber Warfare (Tallinn Manual), points to the requirement of immediacy for self-defence to be permitted, meaning the period of time 'following the execution of an armed attack within which the victim State may reasonably respond in self-defence', with one relevant factor inter alia being 'the period necessary to identify the attacker'.",
+          "extraction_type": "method_claim",
+          "paraphrase": "The Tallinn Manual treats immediacy as a necessary condition for lawful self-defence and expressly counts the time required to identify the attacker as a relevant factor.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "procedural_conditions",
+            "evidentiary_standards"
+          ]
+        },
+        {
+          "dqid": "J766INPV#DQ013",
+          "quote": "In cases where 'the initiator of the attack is not identified until well after the attack' the criterion of immediacy will usually not be met.",
+          "extraction_type": "limitation",
+          "paraphrase": "If the initiator is identified only long after an incident, the immediacy requirement for self-defence will typically fail to be satisfied.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "procedural_conditions",
+            "attribution_challenges"
+          ]
+        },
+        {
+          "dqid": "J766INPV#DQ014",
+          "quote": "Hence, the community of States should continue to demand a more stringent temporal proximity between an armed attack and its response invoking self-defence.",
+          "extraction_type": "recommendation",
+          "paraphrase": "The author urges States to insist on stricter temporal proximity between an armed attack and any self-defence response.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "procedural_conditions",
+            "state_practice_custom",
+            "use_of_force_limits"
+          ]
+        },
+        {
+          "dqid": "J766INPV#DQ015",
+          "quote": "The suggestion that the standards of attribution should shift from 'effective control' to 'overall control' does not touch upon the issue of identification.",
+          "extraction_type": "main_finding",
+          "paraphrase": "Proposals to replace an 'effective control' test with an 'overall control' test do not address the central factual problem of identifying who carried out a cyber operation.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "state_responsibility_thresholds",
+            "attribution_challenges"
+          ]
+        },
+        {
+          "dqid": "J766INPV#DQ016",
+          "quote": "Deliberations that aim to lower the evidentiary standard regarding cyberspace issues, emphasising the ex-ante perspective of decision-makers in emergency situations, or even bluntly asserting that the requirement of adequate attribution of an attack before resorting to self-defence measures is 'a luxury unavailable in the cyber attack era', can hardly be considered legally tenable.",
+          "extraction_type": "main_finding",
+          "paraphrase": "The author rejects proposals to lower evidentiary standards in cyber cases or to treat attribution as an unaffordable 'luxury' as legally untenable.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "evidentiary_standards",
+            "procedural_conditions"
+          ]
+        },
+        {
+          "dqid": "J766INPV#DQ017",
+          "quote": "There is widespread agreement that international law as it currently stands applies in cyberspace, and it is beyond any doubt that international law requires attribution.",
+          "extraction_type": "main_finding",
+          "paraphrase": "The chapter asserts that existing international law governs cyberspace and continues to require attribution before assigning State responsibility.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "state_practice_custom",
+            "attribution_challenges",
+            "state_responsibility_thresholds"
+          ]
+        },
+        {
+          "dqid": "J766INPV#DQ018",
+          "quote": "Finally, suggesting a reversal of the burden of proof could easily lead to wrong and even absurd results given the possibility of routing cyber operations through numerous countries, and to the denouncing of wholly uninvolved and innocent States.",
+          "extraction_type": "limitation",
+          "paraphrase": "The author warns that reversing the burden of proof could produce absurd results because cyber operations can be routed through many States, implicating innocent parties.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "procedural_conditions",
+            "attribution_challenges"
+          ]
+        },
+        {
+          "dqid": "J766INPV#DQ019",
+          "quote": "the standard of proof required by international law when making claims that involve another State\u2019s responsibility (especially for an armed attack) in combination with the technical peculiarities of cyberspace will, in at least the majority of cases, effectively prevent the legal possibility of reaction with military means.",
+          "extraction_type": "main_finding",
+          "paraphrase": "High evidentiary requirements plus cyberspace's technical peculiarities mean that in most cases legal proof will preclude lawful military responses to cyber incidents.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "evidentiary_standards",
+            "attribution_challenges",
+            "use_of_force_limits"
+          ]
+        },
+        {
+          "dqid": "J766INPV#DQ020",
+          "quote": "What is needed at least in the midterm is a more comprehensive approach that complements those remedies, providing a legal framework that spells out the duties of States concerning cyber security more concretely.",
+          "extraction_type": "recommendation",
+          "paraphrase": "The author recommends developing a midterm comprehensive legal framework that complements unilateral remedies and concretely specifies States' cyber-security duties.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "institutionalisation",
+            "due_diligence_definition",
+            "cooperation_obligations"
+          ]
+        },
+        {
+          "dqid": "J766INPV#DQ021",
+          "quote": "due diligence serves as the standard for any international duties to prevent certain events from occurring. It is an obligation of conduct, not of result.",
+          "extraction_type": "definition",
+          "paraphrase": "Due diligence is presented as the international prevention standard, imposing obligations of conduct rather than guaranteeing particular outcomes.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "due_diligence_definition",
+            "duty_to_prevent"
+          ]
+        },
+        {
+          "dqid": "J766INPV#DQ022",
+          "quote": "Thus, it may be argued that the due diligence standard at least amounts to the obligation to enact laws that criminalise cyber attacks, and to prosecute the perpetrators when an attack has occurred.",
+          "extraction_type": "recommendation",
+          "paraphrase": "The chapter argues that due diligence should at minimum require States to criminalise cyber attacks domestically and prosecute perpetrators.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "criminalisation_obligations",
+            "due_diligence_definition"
+          ]
+        },
+        {
+          "dqid": "J766INPV#DQ023",
+          "quote": "the Tallinn Manual asserts that '[a] State shall not knowingly allow the cyber infrastructure located in its territory or under its exclusive governmental control to be used for acts that adversely and unlawfully affect other States'.",
+          "extraction_type": "definition",
+          "paraphrase": "The Tallinn Manual states that a State must not knowingly permit cyber infrastructure under its control to be used to harm other States.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "due_diligence_definition",
+            "state_practice_custom",
+            "duty_to_prevent"
+          ]
+        },
+        {
+          "dqid": "J766INPV#DQ024",
+          "quote": "due diligence is an obligation which entails not only the adoption of appropriate rules and measures, but also a certain level of vigilance in their enforcement and the exercise of administrative control applicable to public and private operators, such as the monitoring of activities undertaken by such operators, to safeguard the rights of the other party.",
+          "extraction_type": "definition",
+          "paraphrase": "The ICJ-framed due diligence duty requires not just rules but active vigilance and enforcement, including monitoring by public and private operators to protect other States' rights.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "due_diligence_definition",
+            "constructive_knowledge_standard",
+            "cooperation_obligations"
+          ]
+        },
+        {
+          "dqid": "J766INPV#DQ025",
+          "quote": "it appears reasonable to assert that multilateral communication about possible technical failures and security-relevant shortcomings as well as other minor cyber incidents (especially when due to zero-day exploits) should be permanent and mandatory, in order to enable all States to prepare for possible attacks or security breaches.",
+          "extraction_type": "recommendation",
+          "paraphrase": "The author recommends establishing permanent, mandatory multilateral information-sharing on technical failures and minor incidents (e.g., zero-day exploits) so States can prepare for attacks.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "information_sharing",
+            "cooperation_obligations",
+            "institutionalisation"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-24T17:16:35.458926Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "8304bac56508a232437ff39122e7e0012f861cdaf28386c1bc808648bc5e8020",
+  "function": "code_intro_conclusion_extract_core_claims"
+}

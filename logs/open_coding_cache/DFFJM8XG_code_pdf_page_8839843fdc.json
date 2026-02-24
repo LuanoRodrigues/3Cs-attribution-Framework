@@ -1,0 +1,721 @@
+[
+  {
+    "item_key": "DFFJM8XG",
+    "section_key": "__preamble__ + ## The Importance of Politics in Cyber Affairs",
+    "response": [
+      {
+        "evidence": [
+          {
+            "direct_quote": "The objective of this chapter is to encourage political decision-makers (and others) to create a framework of proportionate ways to respond to different kinds of cyber hostility.",
+            "paraphrase": "The chapter proposes creating a framework of proportionate responses for political decision-makers to address various kinds of cyber hostilities, which bears on operationalizing response models.",
+            "researcher_comment": "This is an explicit statement of intent to produce an operational response framework rather than purely descriptive analysis. The chunk does not list the framework mechanics here, so utility for implementation depends on later specification of variables and decision rules.",
+            "potential_themes": [
+              "policy_frameworks"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "framework"
+          },
+          {
+            "direct_quote": "The chapter presents five variables that policymakers need to consider when evaluating appropriate responses to cyber hostilities.",
+            "paraphrase": "The author identifies five variables as the basis for policymakers to evaluate appropriate responses, indicating a multi-variable operationalization of a response framework.",
+            "researcher_comment": "This signals an explicit operational structure (five variables) that could map to decision processes; however the chunk does not enumerate the variables, limiting immediate synthesis or validation.",
+            "potential_themes": [
+              "policy_frameworks"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "framework"
+          },
+          {
+            "direct_quote": "one of the most common ones is based on the Tallinn Manual, which offers the definition of a \"cyber attack\" as \"a cyber operation, whether offensive or defensive, that is reasonably expected to cause injury or death to persons or damage or destruction to objects\"",
+            "paraphrase": "The Tallinn Manual defines a cyber attack as a cyber operation reasonably expected to cause injury, death, or physical damage to objects, providing a strict definitional standard used as evidence.",
+            "researcher_comment": "This is a specific, widely cited definitional standard that sets a high threshold tied to physical effects; it functions as a legal/analytical evidentiary source but may exclude many disruptive non-physical incidents.",
+            "potential_themes": [
+              "definitions",
+              "evidentiary_standards"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "definition"
+          },
+          {
+            "direct_quote": "This definition is pretty \"hard,\" requiring a severe impact of the cyber attack and strongly tied to the physical impact.",
+            "paraphrase": "The Tallinn Manual definition is characterized as a 'hard' definition that requires severe physical impact, limiting its scope.",
+            "researcher_comment": "Author explicitly critiques the Tallinn threshold as narrow; this is important when comparing what counts as evidence for escalation or attribution. It highlights a limitation when operationalizing response frameworks that rely on physical-impact thresholds.",
+            "potential_themes": [
+              "definitions",
+              "evidentiary_standards"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 2
+              },
+              {
+                "index": 0
+              }
+            ],
+            "evidence_type": "limitation"
+          },
+          {
+            "direct_quote": "In the United States the Presidential Policy Directive PPD-41, which describes a national cyber incident response plan, divides the severity of cyber incidents into six color-coded levels from zero to five... The highest level, the level five (defined as an \"emergency level\"), will be used in a situation in which cyber attacks cause physical consequences.",
+            "paraphrase": "The U.S. PPD-41 operationalizes incident severity with six color-coded levels and designates level five for cyber attacks that cause physical consequences, providing a procedural classification method.",
+            "researcher_comment": "This is a concrete procedural method for classifying incident severity and linking thresholds to response posture; it serves as an operational example of how frameworks are implemented in policy. The excerpt does not give the criteria for intermediate levels.",
+            "potential_themes": [
+              "policy_frameworks",
+              "evidentiary_standards"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "method"
+          },
+          {
+            "direct_quote": "From a wider perspective, the Australian government has defined a cyber attack as a deliberate act through cyberspace to manipulate, disrupt, deny, degrade or destroy computers or networks, or the information resident on them, with the effect of seriously compromising national security, stability or economic prosperity.",
+            "paraphrase": "The Australian government defines cyber attack broadly as deliberate acts in cyberspace that disrupt systems or information and seriously compromise national security, stability, or economic prosperity.",
+            "researcher_comment": "This definition is broader than the Tallinn Manual's physical-impact focus and explicitly includes economic and national-security effects, illustrating variance in evidentiary and definitional standards across jurisdictions.",
+            "potential_themes": [
+              "definitions",
+              "evidentiary_standards"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "definition"
+          },
+          {
+            "direct_quote": "Both of them refer to codes that are used, or designed to be used, with the aim of causing or threatening physical, functional or mental harm to structures, systems or living beings.",
+            "paraphrase": "The text asserts that both cyber-weapons and cyber attacks are codes intended to cause or threaten physical, functional, or mental harm to systems, structures, or people.",
+            "researcher_comment": "This passage expands harm to include functional and mental (psychological) effects, suggesting broader evidentiary categories beyond physical damage; it supports inclusion of psychological impact in attribution/response considerations.",
+            "potential_themes": [
+              "definitions"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 0
+              }
+            ],
+            "evidence_type": "definition"
+          },
+          {
+            "direct_quote": "A cyber attack, as a concept, must be understood widely in the political context: A cyber attack consists of any deliberate hostile action taken in cyberspace for a political, economic, or national security purpose.",
+            "paraphrase": "The author defines cyber attack broadly as any deliberate hostile cyberspace action driven by political, economic, or national security objectives, framing attacks in political terms relevant to response frameworks.",
+            "researcher_comment": "This normative political framing broadens the scope of what counts as an attack for policymakers and affects what types of evidence and motivations are considered in attribution and response frameworks.",
+            "potential_themes": [
+              "definitions",
+              "policy_frameworks"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "definition"
+          },
+          {
+            "direct_quote": "The report stated that the indication that cyber activity was launched or otherwise originated from the territory or the ICT infrastructure of a state may be insufficient in itself to attribute the activity to that state",
+            "paraphrase": "A UN expert report states that mere indication of cyber activity originating from a state's territory or ICT infrastructure is insufficient alone for attributing the activity to that state.",
+            "researcher_comment": "This directly addresses attribution evidentiary standards by rejecting simple geographic/origin evidence as sufficient; it underscores the need for stronger technical, intelligence, or contextual proof when operationalizing attribution.",
+            "potential_themes": [
+              "attribution_challenges",
+              "evidentiary_standards"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "finding"
+          },
+          {
+            "direct_quote": "States retain the inherent right to self-defense under Article 51 of the UN Charter when faced with an imminent threat. State behavior should therefore also be in line with the UN Charter in cyberspace, but the challenge of attribution and the understanding of the extent to which a cyber attack has caused (or has the potential to cause) damage make things more complicated in reality.",
+            "paraphrase": "Although states retain Article 51 self-defense rights, attribution difficulties and ambiguous assessments of cyber attack damage complicate applying self-defense in cyberspace.",
+            "researcher_comment": "This links legal authority to attribution and impact assessment challenges, indicating that operational frameworks must resolve evidentiary and causation questions before legal remedies like self-defense can be invoked.",
+            "potential_themes": [
+              "legal_frameworks",
+              "attribution_challenges"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "claim"
+          },
+          {
+            "direct_quote": "The legal debate on what constitutes an \"armed attack in cyberspace\" has only just begun.",
+            "paraphrase": "There is ongoing, unresolved legal debate about when cyber operations qualify as 'armed attacks' in cyberspace, indicating unclear legal thresholds for response.",
+            "researcher_comment": "This highlights a current legal indeterminacy that prevents firm operational thresholds for escalatory or military responses; it is a limitation on frameworks reliant on legal definitions.",
+            "potential_themes": [
+              "legal_frameworks"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "limitation"
+          },
+          {
+            "direct_quote": "In December 2015, we witnessed the first confirmed cyber attack to take down a power grid, which affected approximately 225,000 civilians in Ukraine.",
+            "paraphrase": "The 2015 Ukraine power-grid incident is cited as the first confirmed cyber attack causing major physical disruption to civilians, serving as an empirical example used as evidence.",
+            "researcher_comment": "This case functions as empirical evidence of physically consequential cyber operations and can be used to validate thresholds or variables in response frameworks; the chunk provides no technical attribution detail for the case.",
+            "potential_themes": [
+              "evidentiary_standards"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              }
+            ],
+            "evidence_type": "example"
+          },
+          {
+            "direct_quote": "It is conceivable that a harmful cyber hostility that is attributable to a state amounts to a violation of Article 2 (4) of the UN Charter, given its character and effects.",
+            "paraphrase": "The author asserts that if a harmful cyber hostility is attributable to a state, it could constitute a violation of Article 2(4) of the UN Charter depending on its character and effects.",
+            "researcher_comment": "This connects attribution to potential legal consequences under the UN Charter and implies that operational frameworks must tie evidentiary standards for attribution to criteria for legal violations; causation and attribution remain the practical hurdles.",
+            "potential_themes": [
+              "legal_frameworks",
+              "attribution_challenges"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "claim"
+          }
+        ]
+      },
+      {
+        "input_tokens": 4727,
+        "output_tokens": 4368,
+        "total_tokens": 9095,
+        "cost_usd": 0.026746,
+        "model": "gpt-5-mini-2025-08-07",
+        "is_batch": true
+      }
+    ]
+  },
+  {
+    "item_key": "DFFJM8XG",
+    "section_key": "## A cyber attack does not necessarily have to cause physical consequences in order to be very serious. Possibly due to the long tradition of physical security, physical destruction is strongly emphasized. It is also easier to observe physical consequences. The old way of thinking is that a “severe cyber attack” has to involve physical destruction—people have to die and physical damage must be detected in critical infrastructure. However, as we become ever more dependent on data and non-kinetic assets, could, for example, the manipulation of health or financial records be treated with the same level of severity as physical consequences (Limnéll and Salonius-Pasternak 2016)? Moreover, is there a difference between banking data and healthcare data being manipulated, as the one can potentially lead to severe economic disruptions and the other in extremis to death? The answer is ambiguous. For example, NATO has stated that a major cyber attack could potentially trigger its mutual defense guarantee or Article 5. Yet it is unclear what “a major cyber attack” means in practice (Limnéll 2014). It has to be understood that the answer to the question “is a cyber attack an act of war?” is a political decision, not a conclusion. + ## Five Variables",
+    "response": [
+      {
+        "evidence": [
+          {
+            "direct_quote": "Attribution involves many aspects, including technical, legal, and political.",
+            "paraphrase": "Attribution requires integrating technical, legal, and political evidence and analysis, relevant to RQ 0 and RQ 1.",
+            "researcher_comment": "Concise statement that attribution is multidimensional; useful to justify multi-evidence synthesis. Does not specify how to weight or reconcile these domains, so operational thresholds remain undefined.",
+            "potential_themes": [
+              "attribution_challenges",
+              "evidentiary_standards"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "definition"
+          },
+          {
+            "direct_quote": "including forensic analysis, human intelligence reports, signals intelligence, history, and geopolitics.",
+            "paraphrase": "Attribution draws on forensic analysis, HUMINT, SIGINT, historical and geopolitical information, directly answering RQ 0 and RQ 1 about evidence types and methods.",
+            "researcher_comment": "Concrete list of evidence modalities that can be used in attribution processes. Useful for coding types of evidence; lacks detail on reliability, integration methods, or evidentiary standards for each source.",
+            "potential_themes": [
+              "evidentiary_standards",
+              "attribution_challenges"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "method"
+          },
+          {
+            "direct_quote": "the problem of attribution is exceedingly complex and not always solvable.",
+            "paraphrase": "The authors assert that attribution is often highly complex and sometimes unsolvable, which is relevant to RQ 1 and RQ 0 (methods and evidence limits).",
+            "researcher_comment": "Explicit recognition of fundamental epistemic limits—supports treating attribution probabilistically. Does not quantify how often or under what conditions attribution fails.",
+            "potential_themes": [
+              "attribution_challenges"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 0
+              }
+            ],
+            "evidence_type": "limitation"
+          },
+          {
+            "direct_quote": "Cyberspace allows for a great deal of anonymity, and attacks can be routed through servers all over the world to mask their origin.",
+            "paraphrase": "Attackers exploit anonymity and routing to hide origins, complicating forensic methods and evidence, relevant to RQ 1 and RQ 0.",
+            "researcher_comment": "Describes a technical challenge that degrades source attribution confidence; underlines need for cross-domain corroboration. Empirical frequency or mitigation strategies are not provided here.",
+            "potential_themes": [
+              "attribution_challenges",
+              "evidentiary_standards"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 0
+              }
+            ],
+            "evidence_type": "limitation"
+          },
+          {
+            "direct_quote": "attribution is an exercise of minimizing uncertainty on three levels",
+            "paraphrase": "Rid & Buchanan frame attribution as minimizing uncertainty at tactical, operational, and strategic levels, which informs RQ 2 (framework operationalization) and RQ 1.",
+            "researcher_comment": "Provides a conceptual framework for how attribution should be assessed across levels of analysis; useful for mapping evidence requirements to decision thresholds. The chunk does not operationalize how uncertainty is measured at each level.",
+            "potential_themes": [
+              "confidence_language",
+              "attribution_challenges"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              },
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "framework"
+          },
+          {
+            "direct_quote": "When considering proportionate response, policymakers should understand the level of confidence they have in attributing the attack.",
+            "paraphrase": "Policymakers must factor attribution confidence into proportional response decisions, addressing RQ 1 and RQ 2 about methods and operationalization of attribution frameworks.",
+            "researcher_comment": "Direct policy-relevant recommendation tying evidentiary confidence to action selection; supports need for defined confidence metrics. The text does not specify specific confidence thresholds or measurement processes.",
+            "potential_themes": [
+              "confidence_language",
+              "evidentiary_standards"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "recommendation"
+          },
+          {
+            "direct_quote": "the sufficient proof of the attribution may be gathered via “secret intelligence data sources” or obtained from “friendly nations,” and the state does not want to reveal these intelligence sources publicly.",
+            "paraphrase": "Key attribution evidence often comes from classified intelligence or allied sharing, creating disclosure constraints relevant to RQ 0 and RQ 1.",
+            "researcher_comment": "Identifies a political and evidentiary constraint: essential evidence may be non-public, limiting the ability to present open-source proof. Raises an evidentiary-transparency trade-off important for operationalizing attribution models.",
+            "potential_themes": [
+              "evidentiary_standards",
+              "attribution_challenges"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "limitation"
+          },
+          {
+            "direct_quote": "It is difficult to discern the difference between a military, nation-state, or non-state attack and, especially, the possible connections between them.",
+            "paraphrase": "Differentiating actor types (state, military, non-state) and their linkages is difficult, bearing on RQ 0 and RQ 1 about evidence and methods.",
+            "researcher_comment": "Highlights classification ambiguity that complicates attribution labels and legal/policy responses. The statement implies need for criteria to classify actors but provides none.",
+            "potential_themes": [
+              "attribution_challenges"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "limitation"
+          },
+          {
+            "direct_quote": "it took roughly 2 weeks for the Saudi authorities to understand the extent of the damage of the Shamoon incident, which erased data from thirty thousand of Saudi Aramco's computers.",
+            "paraphrase": "Forensic impact assessment can take weeks, as shown by the Shamoon example, which pertains to RQ 1 about investigative methods and timelines.",
+            "researcher_comment": "Empirical illustration that damage assessment is time-consuming and may delay attribution or response decisions. Single example; not generalized statistics on typical assessment durations.",
+            "potential_themes": [
+              "evidentiary_standards"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "finding"
+          }
+        ]
+      },
+      {
+        "input_tokens": 3899,
+        "output_tokens": 4173,
+        "total_tokens": 8072,
+        "cost_usd": 0.024627,
+        "model": "gpt-5-mini-2025-08-07",
+        "is_batch": true
+      }
+    ]
+  },
+  {
+    "item_key": "DFFJM8XG",
+    "section_key": "## 4 Response Framework",
+    "response": [
+      {
+        "evidence": [
+          {
+            "direct_quote": "Combining the degree of attribution, incident impact, policy options, risks, security strategies and international law, urgency, and proportionality, it outlines the different levers of cyberpolitics that should be applied in response to escalating levels and severity of cyber attacks.",
+            "paraphrase": "The framework operationalizes response decisions by explicitly combining attribution degree, incident impact, policy options, risks, security strategies, international law, urgency, and proportionality into a decision model (relevant to RQ1 and RQ2).",
+            "researcher_comment": "This sentence lists the specific variables the author expects to be included in an operational response framework, which is directly useful for mapping model inputs and decision variables. It does not specify measurement approaches, thresholds, or how to weigh these variables, limiting direct operationalization guidance. Use as a variable checklist when comparing frameworks.",
+            "potential_themes": [
+              "attribution_challenges",
+              "evidentiary_standards",
+              "confidence_language"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "framework"
+          },
+          {
+            "direct_quote": "According to the framework, the more severe the cyber attack is, the stronger the response needs to be.",
+            "paraphrase": "The framework encodes a proportionality rule: attack severity should map to response strength (relevant to RQ2).",
+            "researcher_comment": "This establishes a simple, ordinal decision rule (severity→response strength) that can be operationalized as a response scale. The text does not define severity metrics or boundaries for response categories, so operational thresholds must be developed elsewhere. Useful as a high-level principle for model constraints.",
+            "potential_themes": [
+              "confidence_language",
+              "attribution_challenges"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "framework"
+          },
+          {
+            "direct_quote": "Assessing options will require input from relevant government agencies, as well as private sector companies, whose operations and businesses could be affected by the response.",
+            "paraphrase": "The framework requires evidence and input from government agencies and private-sector entities to assess response options (relevant to RQ0 and RQ1).",
+            "researcher_comment": "This identifies data and stakeholder sources needed to populate and validate decisions (technical, economic, diplomatic impacts). It implies multi-source evidence integration but gives no protocols for data sharing, verification, or evidentiary standards. Important for designing information flows in operational models.",
+            "potential_themes": [
+              "evidentiary_standards"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "method"
+          },
+          {
+            "direct_quote": "The options to respond can be complemented with different instruments covertly and/or overtly.",
+            "paraphrase": "Response options in the framework include both covert and overt instruments that can complement each other (relevant to RQ1).",
+            "researcher_comment": "This clarifies that operational models must account for non-public (covert) actions as valid response options, affecting observability and attribution confidence. It raises modeling challenges regarding unobservable actions and political signaling effects. Treat covert/overt as categorical instrument attributes in models.",
+            "potential_themes": [
+              "attribution_challenges",
+              "confidence_language"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "method"
+          },
+          {
+            "direct_quote": "Assessing options will require input from relevant government agencies, as well as private sector companies, whose operations and businesses could be affected by the response.",
+            "paraphrase": "Operationalizing the framework requires evidence drawn from both governmental and private-sector sources to evaluate impacts and feasibility (relevant to RQ0 and RQ1).",
+            "researcher_comment": "This duplicates but underscores that evidentiary types include institutional assessments and private-sector impact data. It points to multi-domain evidence rather than purely technical forensic data. The passage still lacks specifics on evidence formats or validation procedures.",
+            "potential_themes": [
+              "evidentiary_standards"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "finding"
+          },
+          {
+            "direct_quote": "The framework presents the main variables and influencers that have to be taken into consideration when considering a response to a cyber attack.",
+            "paraphrase": "The chapter claims the framework enumerates the principal variables and influencers necessary for deciding on cyber responses, forming a basis for operational models (relevant to RQ2).",
+            "researcher_comment": "This is an explicit statement of scope: the framework is intended as a variable/influencer repository for decision-making models. It confirms the text as a conceptual operationalization rather than an implementable algorithm. Use for taxonomy of decision factors.",
+            "potential_themes": [
+              "decision_support",
+              "attribution_challenges"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "framework"
+          },
+          {
+            "direct_quote": "Protocols for responding to cyber hostilities are unclear, which should be understood as a lack of power in cyberspace.",
+            "paraphrase": "The author argues that unclear response protocols indicate a gap in state cyber power and capability to act (relevant to RQ1 and RQ2).",
+            "researcher_comment": "This frames a limitation: absence of codified protocols constrains operationalization and timely decision-making. It signals the need for frameworks to not only define variables but also concrete procedures and authorities. The claim is normative and diagnostic, not prescriptive about specific methods.",
+            "potential_themes": [
+              "evidentiary_standards"
+            ],
+            "relevance_score": 3,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "limitation"
+          },
+          {
+            "direct_quote": "There are plenty of different diplomatic, informational, military, and economic ways to respond, and each state must consider which ways are suitable to them in each situation.",
+            "paraphrase": "The framework recognizes multiple response instrument categories—diplomatic, informational, military, economic—and requires state-specific selection of suitable instruments (relevant to RQ1 and RQ2).",
+            "researcher_comment": "This enumerates response classes that operational models should include as alternative action sets. It emphasizes state-specific suitability, implying parameterization by national capabilities and norms. The sentence does not specify decision criteria for instrument selection.",
+            "potential_themes": [
+              "decision_support",
+              "evidentiary_standards"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "example"
+          }
+        ]
+      },
+      {
+        "input_tokens": 3434,
+        "output_tokens": 3218,
+        "total_tokens": 6652,
+        "cost_usd": 0.019632,
+        "model": "gpt-5-mini-2025-08-07",
+        "is_batch": true
+      }
+    ]
+  },
+  {
+    "item_key": "DFFJM8XG",
+    "section_key": "## References",
+    "response": [
+      {
+        "evidence": [
+          {
+            "direct_quote": "Rid T, Buchanan B (2014) Attributing cyber attacks.",
+            "paraphrase": "This cited work focuses on attributing cyber attacks and thus relates to methods and challenges for attribution (RQ1,RQ2).",
+            "researcher_comment": "The reference title explicitly targets attribution methods/challenges, making it a high-priority source for operationalization and methodological approaches. The chunk contains only the citation, so specific techniques or evidence types used by the authors cannot be extracted here.",
+            "potential_themes": [
+              "attribution_challenges",
+              "method"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "method"
+          },
+          {
+            "direct_quote": "Tallinn Manual (2013).",
+            "paraphrase": "The Tallinn Manual is cited as a legal framework governing state actions in cyberspace, informing how legal frameworks can be used in attribution (RQ2).",
+            "researcher_comment": "This reference signals an authoritative legal framework relevant to operationalizing legal aspects of cyber attribution. The citation alone provides no detail on how the manual is operationalized in practice or in attribution processes.",
+            "potential_themes": [
+              "framework"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "framework"
+          },
+          {
+            "direct_quote": "E-ISAC (2016) Analysis of the cyber attack on the Ukrainian power grid.",
+            "paraphrase": "This is an empirical case analysis of a cyber attack on critical infrastructure, representing a type of primary/forensic evidence used in attribution (RQ0) and incident-analysis methods (RQ1).",
+            "researcher_comment": "A named incident analysis suggests availability of technical indicators and forensic methods used to support attribution claims; however, the citation alone does not specify which evidence types or analytic procedures were used. As a case, it is likely a key example of applied evidence and methods for attribution.",
+            "potential_themes": [
+              "evidentiary_standards",
+              "attribution_challenges"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "example"
+          },
+          {
+            "direct_quote": "White House (2016) Presidential policy directive—United States cyber incident coordination.",
+            "paraphrase": "This citation indicates a US policy directive establishing coordinated procedures for cyber incident response, which pertains to methods for incident handling (RQ1).",
+            "researcher_comment": "The policy title implies formalized coordination mechanisms that could standardize evidence collection and attribution responsibilities; details of procedures are not present in the chunk. Useful for identifying institutional/methodological context rather than technical methods.",
+            "potential_themes": [
+              "policy_position",
+              "method"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "policy_position"
+          },
+          {
+            "direct_quote": "Department of Defense (2015) The DoD Cyber Strategy.",
+            "paraphrase": "The DoD Cyber Strategy is cited as a strategic policy document that likely prescribes operational approaches relevant to methods and frameworks for cyber operations and attribution (RQ1,RQ2).",
+            "researcher_comment": "Inclusion of the DoD strategy indicates state-level doctrinal approaches that may shape attribution procedures and evidentiary expectations; the citation lacks specifics about operationalization. Treat as a pointer to policy-driven methods and frameworks.",
+            "potential_themes": [
+              "policy_position",
+              "framework"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "policy_position"
+          },
+          {
+            "direct_quote": "Developing Political Response Framework to Cyber Hostilities",
+            "paraphrase": "This entry names a 'Political Response Framework to Cyber Hostilities', indicating the existence of proposed frameworks for political-level responses and their design/operation (RQ2).",
+            "researcher_comment": "The phrase explicitly identifies a framework focused on political responses to cyber hostilities, directly relevant to how frameworks are conceptualized for attribution and response. No structural or operational detail is provided in the citation itself.",
+            "potential_themes": [
+              "framework",
+              "policy_position"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "framework"
+          },
+          {
+            "direct_quote": "Valeriano B, Maness RC (2015) Cyber war versus cyber realities.",
+            "paraphrase": "This work contrasts theoretical cyber-war constructs with empirical realities, bearing on the validity of models and the kinds of evidence they require (RQ2,RQ0).",
+            "researcher_comment": "The title suggests critical examination of model assumptions and empirical grounding, which is relevant when evaluating how frameworks are operationalized for attribution. The citation alone does not specify findings or recommended evidence types.",
+            "potential_themes": [
+              "framework",
+              "assumption"
+            ],
+            "relevance_score": 3,
+            "relevant_rqs": [
+              {
+                "index": 2
+              },
+              {
+                "index": 0
+              }
+            ],
+            "evidence_type": "claim"
+          }
+        ]
+      },
+      {
+        "input_tokens": 3932,
+        "output_tokens": 3564,
+        "total_tokens": 7496,
+        "cost_usd": 0.021936,
+        "model": "gpt-5-mini-2025-08-07",
+        "is_batch": true
+      }
+    ]
+  }
+]

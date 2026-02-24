@@ -1,0 +1,389 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "quote": "For the purposes of this Article, cyber-attacks are defined as those whereby states utilize computers and information technology as the primary mechanisms to detrimentally impact the interests of another state.",
+          "paraphrase": "The authors define cyber-attacks as state uses of computers and information technology primarily to harm another state's interests, which frames the scope for cyber-attribution analysis.",
+          "researcher_comment": "This is an explicit, state-centric, weapon-focused definitional boundary that will shape what incidents are considered for attribution. It excludes non-state or kinetic-centric scenarios where IT is only a target. Applicability to hybrid cases is limited.",
+          "potential_themes": [
+            "attack_definition",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "state_centric_definition",
+            "it_as_weapon",
+            "operational_scope"
+          ]
+        },
+        {
+          "quote": "In short, cyber-attack involves information technology employed as a weapon.",
+          "paraphrase": "The authors state succinctly that cyber-attack is information technology used as a weapon, a framing relevant to attribution criteria.",
+          "researcher_comment": "Concise restatement reinforcing a weapon-centric analytic framing; useful for delimiting legal and evidentiary thresholds. Could oversimplify attacks that blend kinetic and cyber elements.",
+          "potential_themes": [
+            "attack_definition"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "it_as_weapon",
+            "weapon_centric_framing"
+          ]
+        },
+        {
+          "quote": "Although some definitions of the term might include traditional kinetic attacks targeted at computing infrastructure,\u00b9\u00b2 a more useful definition when concentrating on the unique characteristics of cyber-attacks and the challenges these present focuses on the notional weapon rather than the target.\u00b9\u00b3",
+          "paraphrase": "The authors argue that, for analytical clarity in attribution, defining cyber-attacks by the notional weapon rather than the target is preferable.",
+          "researcher_comment": "This methodological choice narrows the scope of incidents considered relevant to attribution and affects inclusion/exclusion of attacks that are primarily kinetic. The recommendation is normative and shapes subsequent taxonomy and legal analysis.",
+          "potential_themes": [
+            "attack_definition",
+            "attack_taxonomy"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "method",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "weapon_centric_choice",
+            "definitional_recommendation",
+            "scope_limitation"
+          ]
+        },
+        {
+          "quote": "Cyber-attacks involve a variety of attack mechanisms, targets, and consequences, which makes difficult clear identification of a common set of characteristics, compared with traditional kinetic attacks.\u00b9\u2074",
+          "paraphrase": "Cyber-attacks are heterogeneous in mechanisms, targets, and effects, making it harder to identify a common set of characteristics than for kinetic attacks, which complicates attribution.",
+          "researcher_comment": "Positions heterogeneity as an obstacle to standardized legal categories and attribution procedures; supports flexible or case-by-case approaches. The claim is descriptive and not empirically quantified in this excerpt.",
+          "potential_themes": [
+            "attack_taxonomy",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "heterogeneity",
+            "classification_difficulty",
+            "comparison_with_kinetic"
+          ]
+        },
+        {
+          "quote": "Moreover, the complexity and flexibility of reprogrammable computer systems produce a seemingly infinite variety of potential attack methods.\u00b9\u2075",
+          "paraphrase": "The authors claim reprogrammable systems' complexity and flexibility yield an almost infinite range of attack methods, increasing attribution complexity.",
+          "researcher_comment": "Identifies a technical source of attribution difficulty; implies that forensic indicators may be ephemeral or system-specific. Assumes continuing technological flexibility and reprogrammability.",
+          "potential_themes": [
+            "technical_complexity",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "reprogrammability",
+            "attack_method_variety",
+            "technical_uncertainty"
+          ]
+        },
+        {
+          "quote": "The outcomes and constraints of these methods will generally depend upon the precise details of specific systems and their vulnerabilities.",
+          "paraphrase": "Attack outcomes and constraints depend on precise system details and vulnerabilities, implying that attribution must account for system-level factors.",
+          "researcher_comment": "Emphasizes context-specific nature of forensic evidence; weakens the case for universal attribution rules and supports the need for technical, system-level analysis. Limits generalizability of indicators.",
+          "potential_themes": [
+            "evidentiary_standards",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "system_specificity",
+            "vulnerability_dependency",
+            "forensic_context"
+          ]
+        },
+        {
+          "quote": "Consequently, any attempt at a definitive taxonomy is likely to have a degree of artificiality and be, at best, only temporarily accurate.",
+          "paraphrase": "The authors contend that definitive taxonomies for cyber-attacks will be partly artificial and only temporarily accurate because of ongoing technical variability, affecting attribution frameworks.",
+          "researcher_comment": "Warns against rigid legal categorization and supports adaptive frameworks for attribution. The statement is predictive and suggests regular revision of classification schemes.",
+          "potential_themes": [
+            "attack_taxonomy",
+            "classification_limitations"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "predictive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "taxonomy_ephemerality",
+            "classification_artificiality",
+            "need_for_adaptability"
+          ]
+        },
+        {
+          "quote": "First, direct intrusion attacks are those where the attacker directly interacts with a computer system and gains some form of unauthorized access or control.",
+          "paraphrase": "Direct intrusion attacks are defined as direct unauthorized interactions with computer systems to gain access or control, a category relevant to attribution analysis.",
+          "researcher_comment": "Provides a clear taxonomic category that helps map expected forensic traces and legal thresholds; attribution requirements will differ by category.",
+          "potential_themes": [
+            "attack_taxonomy"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "taxonomy",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "direct_intrusion",
+            "unauthorized_access",
+            "intrusion_category"
+          ]
+        },
+        {
+          "quote": "Second, indirect intrusion attacks involve malicious code or\"malware\"that the attacker constructs in order to compromise a set of systems.\u00b9\u2076",
+          "paraphrase": "Indirect intrusion attacks involve attacker-created malicious code (malware) designed to compromise systems, which implicates malware analysis in attribution.",
+          "researcher_comment": "Defines the malware-based class; code artifacts may aid attribution but reuse and propagation complicate origin attribution. The internal quoted term 'malware' shows authors' emphasis on code-centric mechanisms.",
+          "potential_themes": [
+            "attack_taxonomy",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "taxonomy",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "malware",
+            "indirect_intrusion",
+            "code_analysis"
+          ]
+        },
+        {
+          "quote": "be self-propagating, delivering a payload in the form of specific actions once it gains access to a system.\u00b9\u2077",
+          "paraphrase": "The authors note such malicious code is often self-propagating and executes a payload when it reaches a system, which complicates attribution.",
+          "researcher_comment": "Self-propagation complicates origin tracing because code spreads autonomously across hosts; payload behavior can provide forensic leads but is not definitive for attribution to actors or states.",
+          "potential_themes": [
+            "malware",
+            "attribution_challenges"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "self_propagating",
+            "payload_delivery",
+            "malware_behavior"
+          ]
+        },
+        {
+          "quote": "Third, denial of service attacks involve rendering the system unable to provide its expected services.\u00b9\u2078",
+          "paraphrase": "Denial-of-service attacks are defined as actions that render a system unable to provide expected services, a distinct class relevant to attribution analysis.",
+          "researcher_comment": "Categorizes DoS attacks; forensic traces (traffic patterns, source IPs) differ from intrusion or malware cases and require different attribution techniques. The description is high-level.",
+          "potential_themes": [
+            "attack_taxonomy",
+            "network_attack"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "taxonomy",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "denial_of_service",
+            "service_disruption",
+            "dos_category"
+          ]
+        },
+        {
+          "quote": "A common variant of these is the distributed denial of service attack whereby large numbers of computer systems are compromised and used to collectively overwhelm a target with meaningless messages.\u00b9\u2079",
+          "paraphrase": "A distributed denial-of-service (DDoS) attack uses many compromised systems to overwhelm a target, which obscures the true operator and complicates attribution.",
+          "researcher_comment": "Highlights amplification and the use of compromised intermediaries (botnets) as a core attribution obstacle; distinguishing controllers from infected systems is analytically distinct and difficult.",
+          "potential_themes": [
+            "attribution_challenges",
+            "network_attack"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "ddos",
+            "botnet",
+            "intermediary_obfuscation"
+          ]
+        },
+        {
+          "quote": "Cyber-attack of any type provides an attacker with significant advantages, making it highly asymmetric in nature.\u00b2\u2070",
+          "paraphrase": "The authors state cyber-attacks provide attackers with significant advantages, producing strategic asymmetry relevant to attribution and response.",
+          "researcher_comment": "Frames the strategic context: asymmetry affects attackers' incentives and complicates deterrence and attribution. The claim is general but central to understanding why attribution matters.",
+          "potential_themes": [
+            "asymmetry",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "attacker_advantage",
+            "strategic_asymmetry",
+            "coercive_effect"
+          ]
+        },
+        {
+          "quote": "To begin with, cyber-warfare is typically inexpensive for the attacker.\u00b2\u00b9 By one estimate, a devastating cyber-attack on the United States with damage lasting for many years could be deployed for approximately the cost of a single fighter aircraft.\u00b2\u00b2",
+          "paraphrase": "The text asserts cyber-warfare is typically low-cost and cites an estimate equating a devastating long-term U.S. cyber-attack to roughly the cost of one fighter aircraft, illustrating asymmetry.",
+          "researcher_comment": "The cost comparison underscores asymmetry and the low barrier to causing mass damage; the cited estimate is illustrative and lacks methodological detail, so treat it cautiously.",
+          "potential_themes": [
+            "asymmetry",
+            "cost_estimate"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "low_cost",
+            "cost_comparison",
+            "single_estimate"
+          ]
+        },
+        {
+          "quote": "Unlike traditional kinetic warfare, a cyber-attack can be launched by a single appropriately skilled individual with a computer, an Internet connection, and a relatively small financial stake.",
+          "paraphrase": "A cyber-attack can be executed by a single skilled individual with modest resources, widening the set of possible perpetrators and complicating attribution.",
+          "researcher_comment": "Low barriers to entry expand the suspect pool beyond states and state proxies, complicating legal attribution of state responsibility. This increases false-positive risks in state-level attribution claims.",
+          "potential_themes": [
+            "asymmetry",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "solo_actor",
+            "low_barrier",
+            "individual_capability"
+          ]
+        },
+        {
+          "quote": "The vulnerability of states to cyber-attack also varies significantly.\u00b2\u00b3",
+          "paraphrase": "States' vulnerability to cyber-attack varies substantially, which will affect how they prioritize attribution and response.",
+          "researcher_comment": "Signals heterogeneity in state-level exposure and implies attribution resources and urgency will differ across states. The statement is descriptive and not empirically specified here.",
+          "potential_themes": [
+            "state_vulnerability"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "vulnerability_variation",
+            "state_risk"
+          ]
+        },
+        {
+          "quote": "States with a greater investment in, and therefore dependence on, information technology have far greater potential exposure than those which are still developing in this area.\u00b2\u2074",
+          "paraphrase": "Greater investment in and dependence on information technology increases a state's exposure to cyber-attacks, affecting attribution stakes and policy priorities.",
+          "researcher_comment": "Links IT dependence to exposure\u2014useful for prioritizing attribution efforts\u2014but the excerpt provides no empirical validation; assumes investment correlates with dependence and exposure.",
+          "potential_themes": [
+            "state_vulnerability",
+            "critical_infrastructure_dependency"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "it_dependence",
+            "exposure_correlation",
+            "infrastructure_risk"
+          ]
+        },
+        {
+          "quote": "Nations with extensive information technology infrastructures will often also be economically and militarily strong;\u00b2\u2075 notionally powerful states are therefore likely to be far more vulnerable to cyber-attack than other means of coercion such as kinetic warfare or economic action.\u00b2\u2076",
+          "paraphrase": "The authors argue that powerful states with extensive IT infrastructures may be more vulnerable to cyber-attack than to kinetic or economic coercion, altering strategic vulnerability and attribution considerations.",
+          "researcher_comment": "Claims that cyber-attack can be a preferred coercive tool against powerful states due to their IT exposure; this raises complex attribution incentives for major powers. The excerpt lacks supporting empirical data.",
+          "potential_themes": [
+            "state_vulnerability",
+            "asymmetry"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "powerful_state_vulnerability",
+            "strategic_exposure",
+            "it_infrastructure"
+          ]
+        },
+        {
+          "quote": "Finally, the legal and factual ambiguity associated with cyber-warfare makes this a relatively safe mechanism for a prospective aggressor to employ.",
+          "paraphrase": "Legal and factual ambiguity surrounding cyber-warfare makes it a relatively safe option for attackers, complicating attribution and legal responses.",
+          "researcher_comment": "Directly links ambiguity to reduced risk for aggressors and thus highlights urgency of clearer attribution standards; empirical linkage between ambiguity and attacker behavior is asserted but not demonstrated here.",
+          "potential_themes": [
+            "legal_ambiguity",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "legal_ambiguity",
+            "factual_uncertainty",
+            "safe_mechanism"
+          ]
+        },
+        {
+          "quote": "A victim state may simply not have sufficient evidence to prove who attacked it, and indeed may not even know",
+          "paraphrase": "A victim state may lack sufficient evidence to identify its attacker, which is a central evidentiary challenge for cyber-attribution.",
+          "researcher_comment": "Explicitly states the evidentiary shortfall that impedes attribution and legal action; underscores the gap between suspicion and legally provable attribution. The sentence is truncated but the point is clear.",
+          "potential_themes": [
+            "evidentiary_standards",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "insufficient_evidence",
+            "unknown_attacker",
+            "attribution_gap"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-24T16:11:58.820571Z",
+  "collection_name": "frameworks",
+  "custom_id": "2998101ada7644291adc4be1b183362152276e88f46126bac8e4d58b9fbc7903",
+  "function": "code_pdf_page"
+}

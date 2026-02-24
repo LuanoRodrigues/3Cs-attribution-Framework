@@ -1,0 +1,218 @@
+{
+  "snapshot_type": "zotero_collection_freeze",
+  "source_file": "electron_zotero/zotero_items_cache.json",
+  "collection_name": "frameworks",
+  "frozen_at": "2026-02-23T19:27:30.057Z",
+  "item_count": 7,
+  "items": [
+    {
+      "index": 1,
+      "key": "W63DA6Z6",
+      "title": "Addressing Obstacles to Cyber-Attribution: A Model Based on State Response to Cyber-Attack",
+      "year": "2017",
+      "itemType": "journalArticle",
+      "doi": "",
+      "url": "https://www.proquest.com/scholarly-journals/addressing-obstacles-cyber-attribution-model/docview/1914193551/se-2?accountid=14511",
+      "publicationTitle": "The George Washington International Law Review",
+      "creators": [
+        "Christian Payne",
+        "Lorraine Finlay"
+      ],
+      "collections": [
+        "44Q6VN9A",
+        "ZJ9GI7ID",
+        "6MB68GTN",
+        "FJBT4B2X",
+        "9A6MH2ZN",
+        "C5VUJE9W",
+        "2NDHUBKS",
+        "V3F6SEFH",
+        "JD9ERQ9X",
+        "BHTXVH43",
+        "RHBE8CJD",
+        "ZMQ3NRRE",
+        "K6MRFQSR",
+        "VB5RTI6B",
+        "BQ7PE4FD",
+        "JQMIAZTY",
+        "4S2UF8XX",
+        "UKM6AX6P",
+        "QAJFR7TI",
+        "XKJMBK3K",
+        "NAKVRBQK",
+        "DJ5QMGT8"
+      ]
+    },
+    {
+      "index": 2,
+      "key": "N4YNQ2GG",
+      "title": "Cyber attack: A dull tool to shape foreign policy",
+      "year": "2013-06",
+      "itemType": "conferencePaper",
+      "doi": "",
+      "url": "https://ieeexplore.ieee.org/document/6568392",
+      "publicationTitle": "",
+      "creators": [
+        "E Iasiello"
+      ],
+      "collections": [
+        "YWSYVGFR",
+        "44Q6VN9A",
+        "FHL3IJWW",
+        "6T8WW7UT",
+        "S7STPSEI",
+        "XV6P7LQL",
+        "XCHP5XMT",
+        "7VM7Z9X9",
+        "FJBT4B2X",
+        "CJSNEU4U",
+        "P3HS7KLY",
+        "2FG3ER6E",
+        "XCQKISEH",
+        "MD4MZ2K2",
+        "AXMVW2QJ",
+        "2GALNK98",
+        "K47BHW47",
+        "JQMIAZTY",
+        "DKILSWME",
+        "Z7ZR8HCM",
+        "UKM6AX6P",
+        "ICX5RCYM",
+        "2554F9RH",
+        "XKJMBK3K",
+        "NAKVRBQK",
+        "DJ5QMGT8"
+      ]
+    },
+    {
+      "index": 3,
+      "key": "MSU2EW6K",
+      "title": "HONING CYBER ATTRIBUTION: A FRAMEWORK FOR ASSESSING FOREIGN STATE COMPLICITY",
+      "year": "Winter 2016",
+      "itemType": "journalArticle",
+      "doi": "",
+      "url": "https://www.proquest.com/scholarly-journals/honing-cyber-attribution-framework-assessing/docview/1855796936/se-2?accountid=14511",
+      "publicationTitle": "Journal of International Affairs",
+      "creators": [
+        "Justin Key Canfil"
+      ],
+      "collections": [
+        "44Q6VN9A",
+        "ZJ9GI7ID",
+        "6MB68GTN",
+        "FJBT4B2X",
+        "9A6MH2ZN",
+        "C5VUJE9W",
+        "2NDHUBKS",
+        "V3F6SEFH",
+        "JD9ERQ9X",
+        "BHTXVH43",
+        "RHBE8CJD",
+        "ZMQ3NRRE",
+        "K6MRFQSR",
+        "VB5RTI6B",
+        "BQ7PE4FD",
+        "JQMIAZTY",
+        "37VWSMJ6"
+      ]
+    },
+    {
+      "index": 4,
+      "key": "KXZITJ9Q",
+      "title": "Cyber Attribution: An Argumentation-Based Approach",
+      "year": "2015",
+      "itemType": "bookSection",
+      "doi": "",
+      "url": "https://link.springer.com/10.1007/978-3-319-14039-1_8",
+      "publicationTitle": "",
+      "creators": [
+        "Sushil Jajodia",
+        "Paulo Shakarian",
+        "V.S. Subrahmanian",
+        "Vipin Swarup",
+        "Cliff Wang",
+        "Paulo Shakarian",
+        "Gerardo I. Simari",
+        "Geoffrey Moores",
+        "Simon Parsons"
+      ],
+      "collections": [
+        "9372ABEX",
+        "44Q6VN9A",
+        "5PB6PY2T",
+        "6T8WW7UT",
+        "68BXGKI9",
+        "XV6P7LQL",
+        "A5KC8DNR",
+        "2FG3ER6E",
+        "DAWZKHVR",
+        "FQCR7GB4",
+        "XPG37X3W"
+      ]
+    },
+    {
+      "index": 5,
+      "key": "DFFJM8XG",
+      "title": "Developing Political Response Framework to Cyber Hostilities",
+      "year": "2018",
+      "itemType": "book",
+      "doi": "10.1007/978-3-319-75307-2_3",
+      "url": "",
+      "publicationTitle": "",
+      "creators": [
+        "J Limnéll",
+        "M Lehto",
+        "P Neittaanmaki"
+      ],
+      "collections": [
+        "44Q6VN9A"
+      ]
+    },
+    {
+      "index": 6,
+      "key": "7SYEI2R6",
+      "title": "A multi-disciplinary framework for cyber attribution",
+      "year": "2017",
+      "itemType": "thesis",
+      "doi": "",
+      "url": "https://core.ac.uk/download/pdf/287585556.pdf",
+      "publicationTitle": "",
+      "creators": [
+        "Ronald Smyth"
+      ],
+      "collections": [
+        "44Q6VN9A"
+      ]
+    },
+    {
+      "index": 7,
+      "key": "HYLZCIPX",
+      "title": "A Framework for Making Effective Responses to Cyberattacks",
+      "year": "2018",
+      "itemType": "conferencePaper",
+      "doi": "10.1109/BigData.2018.8622537",
+      "url": "https://ieeexplore.ieee.org/document/8622537",
+      "publicationTitle": "",
+      "creators": [
+        "NE Herald",
+        "MW David",
+        "N Abe",
+        "H Liu",
+        "C Pu",
+        "X Hu",
+        "N Ahmed",
+        "M Qiao",
+        "Y Song",
+        "D Kossmann",
+        "B Liu",
+        "K Lee",
+        "J Tang",
+        "J He",
+        "J Saltz"
+      ],
+      "collections": [
+        "44Q6VN9A"
+      ]
+    }
+  ]
+}

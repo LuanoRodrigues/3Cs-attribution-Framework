@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": "{\n  \"classification\": \"Highly Relevant\",\n  \"relevance_score\": \"High\",\n  \"potential_subcategory\": \"International law of cyber attribution \u2014 standards of proof, procedural/adjudicatory mechanisms, and state responsibility\",\n  \"justification\": \"The abstract directly addresses attribution of state\u2011sponsored cyber-attacks and proposes a comprehensive legal framework\u2014covering standards of proof, evidentiary rules, procedural innovations (e.g., in camera/ex parte review), doctrines of control and due diligence, and models for international adjudication (ICJ, WTO, Iran\u2013US Tribunal). It uses high-profile cyber incidents as case studies and explicitly advances policy debates on deterrence and institutional design for holding states accountable. Although the study is doctrinal rather than empirical, its focus on legal standards and procedural mechanisms makes it highly relevant to cyber conflict attribution and policy/law.\"\n}"
+  },
+  "cached_at": "2026-02-23T20:49:41.695117Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "VD7KVT33",
+  "function": "classify_by_abs"
+}

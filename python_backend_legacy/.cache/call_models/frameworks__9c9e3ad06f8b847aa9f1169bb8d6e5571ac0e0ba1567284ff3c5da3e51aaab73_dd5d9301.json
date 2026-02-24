@@ -1,0 +1,353 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "quote": "In 2007, the Internet security company McAfee published a report citing that approximately 120 countries already possessed or were developing capabilities to conduct offensive cyber operations.",
+          "paraphrase": "A 2007 McAfee report stated that about 120 countries possessed or were developing offensive cyber capabilities, indicating widespread proliferation that complicates attribution.",
+          "researcher_comment": "A large pool of potential state actors increases the difficulty of confidently attributing cyber incidents. The data are dated (2007) so capability distribution may have since changed.",
+          "potential_themes": [
+            "proliferation",
+            "attribution_challenges"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "mcafee_2007",
+            "state_capability_proliferation",
+            "attribution_pool_increase"
+          ]
+        },
+        {
+          "quote": "Nation states typically do not assume responsibility for hostile actions taken in cyber space;",
+          "paraphrase": "States commonly avoid claiming responsibility for hostile cyber operations, which complicates attribution and accountability.",
+          "researcher_comment": "Plausible deniability is identified as a normative behaviour that directly undermines traces-based attribution. The statement is general and needs case-level substantiation.",
+          "potential_themes": [
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "plausible_deniability",
+            "state_denial",
+            "lack_of_claim"
+          ]
+        },
+        {
+          "quote": "Attribution in cyberspace is extremely difficult and can't be as precise as identifying a nation state that has launched a nuclear weapon,",
+          "paraphrase": "Attribution in cyberspace is substantially less precise than attribution for a nuclear launch, reducing confidence in state-level attribution.",
+          "researcher_comment": "This direct comparative claim is central to RQs about evidentiary limits. It is persuasive but lacks operational metrics for 'precision'.",
+          "potential_themes": [
+            "attribution_challenges",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "comparative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "attribution_precision",
+            "comparison_with_nuclear",
+            "evidence_uncertainty"
+          ]
+        },
+        {
+          "quote": "Unlike nuclear weapons development, which can be monitored, there is no similar transparency for nation state production of cyber weapons, nor an international watchdog agency to track such developments.",
+          "paraphrase": "Cyber-weapon development lacks the transparency and international monitoring present for nuclear programs, impeding detection and attribution of state cyber capabilities.",
+          "researcher_comment": "Identifies an institutional transparency gap that limits external verification of state cyber capabilities. Monitoring 'production' of cyber tools is conceptually different from hardware programs and harder to observe.",
+          "potential_themes": [
+            "attribution_challenges",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "transparency_gap",
+            "no_international_watchdog",
+            "monitoring_limitations"
+          ]
+        },
+        {
+          "quote": "However, as several articles and publications attest, there is no cyber equivalent to nuclear deterrence, based largely on four factors:",
+          "paraphrase": "The literature contends there is no cyber equivalent to nuclear deterrence, chiefly because of attribution, lack of a spectacular precedent, non-transparency, and state denial.",
+          "researcher_comment": "This frames the proximate reasons why MAD-style deterrence is argued to be inapplicable in cyberspace. It summarizes multiple attribution- and deterrence-related barriers.",
+          "potential_themes": [
+            "deterrence_limitations",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "no_cyber_deterrence",
+            "four_factor_argument",
+            "literature_consensus"
+          ]
+        },
+        {
+          "quote": "These actions ultimately hinder nation states from applying a similar mutual assured destruction concept to cyberspace.",
+          "paraphrase": "The identified factors prevent nation states from establishing a mutual-assured-destruction style deterrence in cyberspace.",
+          "researcher_comment": "Direct causal link from attribution/transparency deficits to the impossibility of MAD in cyberspace. Useful theoretical bridge between empirical limitations and deterrence theory.",
+          "potential_themes": [
+            "deterrence_limitations",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "no_mad",
+            "deterrence_blockers",
+            "policy_implication"
+          ]
+        },
+        {
+          "quote": "the 2012 unofficial acknowledgement by a senior government official of the United States involvement in deploying Stuxnet and Flame (and possibly Duqu and Gauss) against a network controlling Iranian nuclear centrifuges, as well as other Middle Eastern networks;",
+          "paraphrase": "The 2012 unofficial acknowledgement of U.S. involvement in deploying Stuxnet and Flame against Iranian centrifuge networks exemplifies alleged state-sponsored offensive cyber operations.",
+          "researcher_comment": "High-profile cases with (partial) admissions are rare and therefore valuable attribution evidence. 'Unofficial acknowledgement' indicates limited transparency rather than formal state admission.",
+          "potential_themes": [
+            "state_cyber_operations",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "example",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "stuxnet_example",
+            "state_admission",
+            "case_evidence"
+          ]
+        },
+        {
+          "quote": "However, while it can be argued that these cyber attacks succeeded in accomplishing their tactical missions, they ultimately failed in their strategic objectives.",
+          "paraphrase": "Although cyber attacks often achieved tactical aims, they generally failed to realize broader strategic political objectives.",
+          "researcher_comment": "Asserts a recurring pattern of tactical success but strategic failure; this matters for assessing whether cyber operations can credibly coerce or deter. Requires corroborating case analyses.",
+          "potential_themes": [
+            "state_cyber_operations",
+            "deterrence_limitations"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "tactical_success",
+            "strategic_failure",
+            "effectiveness_limit"
+          ]
+        },
+        {
+          "quote": "At present, authoritarian governments such as China and Iran have achieved some modicum of success using offensive cyber operations to monitor and censor hostile information from reaching its public, or identifying and targeting political dissident and oppositionist groups that pose a threat to regime stability.",
+          "paraphrase": "Authoritarian regimes like China and Iran have had limited success using cyber operations for domestic monitoring, censorship, and targeting of dissidents.",
+          "researcher_comment": "Identifies a domain (domestic repression) where cyber tools are operationally useful, distinguishing local effectiveness from international coercive power. 'Some modicum' signals limited scope.",
+          "potential_themes": [
+            "state_cyber_operations"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "domestic_control",
+            "censorship",
+            "dissident_targeting"
+          ]
+        },
+        {
+          "quote": "Yet even the most draconian restraints are subject to circumvention by the more technically savvy and diligent oppositionists, reducing the overall effectiveness of these technical measures.",
+          "paraphrase": "Even severe technical restraints can be circumvented by technically skilled opposition, which reduces the effectiveness of state cyber controls.",
+          "researcher_comment": "Highlights an operational limit to state cyber repression and indicates a persistent contest between state measures and adversary capabilities. Suggests durability issues for domestic control.",
+          "potential_themes": [
+            "state_cyber_operations"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "circumvention",
+            "opposition_resilience",
+            "technical_evasion"
+          ]
+        },
+        {
+          "quote": "There has been no awe inspiring, game changing, show of what a cyber attack can do;",
+          "paraphrase": "There has been no single dramatic cyber attack demonstrating game-changing destructive capability comparable to nuclear weapons.",
+          "researcher_comment": "Absence of a spectacular precedent weakens cyber's credibility as a deterrent. The phrase 'awe inspiring' is rhetorical and should be operationalized for empirical analysis.",
+          "potential_themes": [
+            "deterrence_limitations"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "no_spectacular_attack",
+            "deterrence_gap",
+            "historical_absence"
+          ]
+        },
+        {
+          "quote": "To date, cyber weapons have failed to wreak the awe inspiring havoc of their nuclear counterparts and thereby cannot be used as a saber rattling tool of foreign policy.",
+          "paraphrase": "Cyber weapons have not produced devastation comparable to nuclear weapons and therefore cannot currently serve as a 'saber rattling' instrument of foreign policy.",
+          "researcher_comment": "Strong comparative claim about strategic signaling power; phrasing 'cannot be used' is time-bound and contestable as capabilities evolve. Useful for comparative deterrence analysis.",
+          "potential_themes": [
+            "deterrence_limitations"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "comparative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "lack_of_devastation",
+            "no_saber_rattling",
+            "strategic_inferiority"
+          ]
+        },
+        {
+          "quote": "While not explicit, the strategy states that the U.S. \u201creserves the right to use all necessary means \u2013 diplomatic, informational, military, and economic \u2013 as appropriate and consistent with applicable international law.\u201d",
+          "paraphrase": "The U.S. International Strategy for Cyberspace states that the U.S. reserves the right to use diplomatic, informational, military and economic measures in cyberspace consistent with international law.",
+          "researcher_comment": "Shows U.S. policy contemplates a broad toolset (including military) for cyberspace; relevant to how states might respond once attribution is asserted. 'While not explicit' signals deliberate ambiguity.",
+          "potential_themes": [
+            "policy_position",
+            "cyber_militarization"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "policy_position",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "us_strategy",
+            "reserves_rights",
+            "response_options"
+          ]
+        },
+        {
+          "quote": "conduct full-spectrum military cyberspace operations to ensure U.S. and allied freedom of action in cyberspace, while denying the same to their adversaries.",
+          "paraphrase": "U.S. Cyber Command's mandate includes conducting full-spectrum military cyberspace operations to ensure U.S. and allied freedom of action and deny it to adversaries.",
+          "researcher_comment": "Explicit mission language signaling militarization of cyberspace and an operational posture for action following attribution. It demonstrates institutionalization of cyber as a military domain.",
+          "potential_themes": [
+            "cyber_militarization",
+            "policy_position"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "policy_position",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "cyber_command_mission",
+            "full_spectrum_operations",
+            "military_domain"
+          ]
+        },
+        {
+          "quote": "Nuclear deterrence theory is largely rooted in the fact that a nation state has the capability and credibility to deploy nuclear weapons as does its adversary, thereby creating a military stalemate.",
+          "paraphrase": "Nuclear deterrence theory rests on mutual capability and credibility to employ nuclear weapons, creating a stalemate that sustains deterrence.",
+          "researcher_comment": "Provides the canonical theoretical baseline (MAD) used to evaluate whether an equivalent concept can apply to cyberspace. Useful definitional anchor for comparative RQs.",
+          "potential_themes": [
+            "deterrence_limitations"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "mad_theory",
+            "mutual_credibility",
+            "deterrence_framework"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-24T15:54:29.486709Z",
+  "collection_name": "frameworks",
+  "custom_id": "9c9e3ad06f8b847aa9f1169bb8d6e5571ac0e0ba1567284ff3c5da3e51aaab73",
+  "function": "code_pdf_page"
+}

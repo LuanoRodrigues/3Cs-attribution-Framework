@@ -1,0 +1,374 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "quote": "Based on the existing international legal framework, the further development of international legal norms requires a multilateral negotiation and development process.",
+          "paraphrase": "The author asserts that development of international legal norms for cyberspace must proceed via multilateral negotiation under the existing international legal framework.",
+          "researcher_comment": "Frames norm development as inherently multilateral and state\u2011centric; useful for RQs about who should lead normmaking. The claim is normative and does not specify particular forums or mechanisms for negotiation.",
+          "potential_themes": [
+            "norm_development",
+            "multilateralism"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "multilateral_negotiation",
+            "state_centric_normmaking"
+          ]
+        },
+        {
+          "quote": "CBMs and capacity building can also be implemented on a regional level.",
+          "paraphrase": "The text states that confidence\u2011building measures and capacity building can be implemented at the regional level.",
+          "researcher_comment": "Points to regional organizations as practical venues for CBMs and capacity\u2011building; the statement is descriptive and lacks specification of which measures or success metrics.",
+          "potential_themes": [
+            "confidence_building_measures",
+            "capacity_building"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "regional_cbms",
+            "regional_capacity_building"
+          ]
+        },
+        {
+          "quote": "Currently, the discussion on the scope of existing legal frameworks largely takes places within the UN GEE and regional organizations.",
+          "paraphrase": "Debates over the scope of legal frameworks for cyberspace are primarily occurring within the UN GGE and regional organizations.",
+          "researcher_comment": "Identifies the principal institutional fora where scope debates are concentrated; this helps locate where state preferences are aggregated. The sentence later notes limits to the UN GGE's authority.",
+          "potential_themes": [
+            "institutional_forums",
+            "un_gge"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "discussion_forums",
+            "forum_localization"
+          ]
+        },
+        {
+          "quote": "In 2013 the UN GGE published for the first time a consensus report in which it identified three ways to reduce conflict in cyberspace: legal norms, CBMs, and capacity building.",
+          "paraphrase": "The 2013 UN GGE consensus report identified legal norms, CBMs, and capacity building as three methods to reduce conflict in cyberspace.",
+          "researcher_comment": "This codifies the canonical policy triad (norms, CBMs, capacity building) used by the international community and serves as a baseline for evaluating later initiatives.",
+          "potential_themes": [
+            "norm_development",
+            "confidence_building_measures",
+            "capacity_building"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "un_gge_2013_triad",
+            "policy_triad"
+          ]
+        },
+        {
+          "quote": "In July 2015, the UN GEE released its latest report proposing additional norms of responsible state behavior and the standing of international law in cyberspace.",
+          "paraphrase": "The 2015 UN GGE report proposed additional norms concerning responsible state behavior and addressed the standing of international law in cyberspace.",
+          "researcher_comment": "Documents incremental norm development at the UN level; the passage does not detail the content, legal force, or acceptance of those norms.",
+          "potential_themes": [
+            "international_law_applicability",
+            "un_gge"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "un_gge_2015_report",
+            "responsible_state_behavior"
+          ]
+        },
+        {
+          "quote": "However, the new norms and principles of the 2015 report focus on ICTs and nation-states' critical infrastructure.",
+          "paraphrase": "The author notes that the 2015 report's norms concentrate on ICTs and national critical infrastructure.",
+          "researcher_comment": "Indicates a limited substantive scope for the 2015 norms, which may leave broader information\u2011security concerns unaddressed; relevant to questions about normative coverage.",
+          "potential_themes": [
+            "scope_limitation",
+            "critical_infrastructure"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "norms_focus_icts",
+            "critical_infrastructure_scope"
+          ]
+        },
+        {
+          "quote": "did not reconcile the ongoing tensions over the scope of state sovereignty with respect to the Internet.",
+          "paraphrase": "The report failed to reconcile tensions over the scope of state sovereignty as it applies to the Internet.",
+          "researcher_comment": "Identifies unresolved sovereignty disputes that affect jurisdictional and use\u2011of\u2011force debates; the phrasing signals a substantive limitation in the UN GGE outcomes.",
+          "potential_themes": [
+            "sovereignty_disputes",
+            "international_law_applicability"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "contradicts",
+          "open_codes": [
+            "sovereignty_tension",
+            "unresolved_sovereignty"
+          ]
+        },
+        {
+          "quote": "This challenge remains a core issue that cannot be addressed without extensive and constructive contributions from a variety of nation-states and non-state actors.",
+          "paraphrase": "Resolving sovereignty tensions requires extensive, constructive contributions from many nation\u2011states and non\u2011state actors.",
+          "researcher_comment": "Argues for broad engagement (including non\u2011state actors) to address sovereignty disputes; the statement does not specify mechanisms for inclusion or weighting of contributions.",
+          "potential_themes": [
+            "multistakeholderism",
+            "sovereignty_disputes"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "broad_participation",
+            "need_for_contributions"
+          ]
+        },
+        {
+          "quote": "This growing frustration on the limited power of the UN GGE, which is technically a UN working group that relies on an annual renewal of its mandate, is oftentimes reflected in calls for the establishment of a body with more authority.",
+          "paraphrase": "Frustration with the UN GGE's limited, annually renewed mandate has produced calls to establish a more authoritative body on cybersecurity.",
+          "researcher_comment": "Highlights institutional legitimacy and authority gaps as drivers of reform debates; the passage does not identify which actors favor or oppose creating a stronger body.",
+          "potential_themes": [
+            "institutional_limitations",
+            "governance_reform"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "un_gge_mandate_limit",
+            "calls_for_authority"
+          ]
+        },
+        {
+          "quote": "However, it seems unlikely that key actors such as the United States, China, and Russia have a particular interest in giving away authority to influence the international agenda on cybersecurity.",
+          "paraphrase": "The author suggests that major powers (United States, China, Russia) are unlikely to relinquish authority over the international cybersecurity agenda.",
+          "researcher_comment": "Identifies a political constraint on institutional reform driven by great\u2011power incentives; the phrasing is speculative ('seems unlikely') and not supported by empirical evidence here.",
+          "potential_themes": [
+            "great_power_dynamics",
+            "political_constraints"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "predictive",
+          "claim_direction": "contradicts",
+          "open_codes": [
+            "great_power_resistance",
+            "agenda_control"
+          ]
+        },
+        {
+          "quote": "Norms help enter a new area of activity where existing laws are inapplicable or non-existent.",
+          "paraphrase": "The text defines norms as a tool that enables governance where formal laws are absent or inapplicable.",
+          "researcher_comment": "Provides conceptual justification for pursuing non\u2011binding norms as pragmatic governance; does not address compliance, verification, or enforcement mechanisms.",
+          "potential_themes": [
+            "norm_development",
+            "governance_gap"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "norms_as_gap_fillers",
+            "nonbinding_governance"
+          ]
+        },
+        {
+          "quote": "international cooperation is understood to be \u201cessential to reduce risk and enhance security,\u201d",
+          "paraphrase": "The literature and UN GGE emphasize that international cooperation is essential to reduce cyber risk and enhance security.",
+          "researcher_comment": "Frames cooperation as a near\u2011consensus necessity; the passage immediately acknowledges persistent disagreement over the form, actors, and institutionalization of that cooperation.",
+          "potential_themes": [
+            "international_cooperation",
+            "collective_action"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "cooperation_essential",
+            "collective_security"
+          ]
+        },
+        {
+          "quote": "However, there is no clear-cut hierarchy among the many norms that govern cyber activities; this confusion is why scholars like Joseph Nye refer to this environment as a regime complex.",
+          "paraphrase": "The author characterizes the cyber normative landscape as a fragmented 'regime complex' lacking a clear hierarchy among norms.",
+          "researcher_comment": "Identifies normative fragmentation as a structural problem undermining coherence and enforcement; relevant to RQs about harmonization and norm legitimacy.",
+          "potential_themes": [
+            "regime_complex",
+            "norm_fragmentation"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "regime_complex",
+            "fragmented_norms"
+          ]
+        },
+        {
+          "quote": "In fact, the international community largely agrees that existing international law applies in cyberspace.",
+          "paraphrase": "There is broad agreement in the international community that existing international law applies to cyberspace.",
+          "researcher_comment": "Establishes a baseline legal consensus but does not resolve disputes about interpretation or application; useful for RQs contrasting legal acceptance with operationalization.",
+          "potential_themes": [
+            "international_law_applicability"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "ilo_applies",
+            "legal_consensus"
+          ]
+        },
+        {
+          "quote": "the guidelines on how this should be done in practice are only beginning to emerge.",
+          "paraphrase": "Practical guidelines for implementing international law in cyberspace are only beginning to be developed.",
+          "researcher_comment": "Points to an implementation gap: acceptance that law applies is not matched by clear procedural or evidentiary standards, which affects attribution and enforcement.",
+          "potential_themes": [
+            "legal_implementation",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "implementation_gap",
+            "guidelines_nascent"
+          ]
+        },
+        {
+          "quote": "Several key state actors, such as China and Russia, disagree with the Western approach to the ILO and are making efforts to adjust it according to their preferences.",
+          "paraphrase": "China and Russia disagree with Western interpretations of the international legal order and are attempting to adjust it to their preferences.",
+          "researcher_comment": "Identifies principal state\u2011level contestation driving alternative normative initiatives (e.g., codes of conduct); relevant to RQs about consensus breakdown and competing normative projects.",
+          "potential_themes": [
+            "state_disagreement",
+            "normative_divergence"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "contradicts",
+          "open_codes": [
+            "china_russia_dissent",
+            "normative_competition"
+          ]
+        },
+        {
+          "quote": "For the United States, cybersecurity largely relates to the \u201c[p]revention of damage to, protection of, and restoration of computers, electronic communications systems, electronic communications services, wire communication, and electronic communication, including information contained therein, to ensure its availability, integrity, authentication, confidentiality, and nonrepudiation.\u201d",
+          "paraphrase": "The United States frames cybersecurity as prevention of damage to and protection/restoration of computing and electronic communications systems to ensure availability, integrity, authentication, confidentiality, and non\u2011repudiation.",
+          "researcher_comment": "Shows the US's technical and systems\u2011focused definition, emphasizing operational protections; contrasts with broader politicized definitions used by some other states.",
+          "potential_themes": [
+            "definition_of_cybersecurity",
+            "us_policy"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "us_definition",
+            "technical_security_focus"
+          ]
+        },
+        {
+          "quote": "In contrast, China defines information security as an issue that \u201cinvolves not only the risks arising from the weakness and interconnected nature of the basic information infrastructure, but also the political, economic, military, social, cultural, and numerous other types of problems created by the misuse of information technology.",
+          "paraphrase": "China's definition of information security encompasses infrastructure risks and a wide range of political, economic, military, social, and cultural problems caused by misuse of information technology.",
+          "researcher_comment": "China's expansive, politicized framing can justify broader state measures and complicates cross\u2011national agreement on what counts as harmful or as an armed attack in cyberspace.",
+          "potential_themes": [
+            "definition_of_information_security",
+            "china_policy"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "china_definition",
+            "broad_political_scope"
+          ]
+        },
+        {
+          "quote": "Comparing these two, one notices that while some portions of both themes have overlap, there is considerable disagreement about the very idea of security, let alone about potential definitions of an armed attack and the use of force in cyberspace.",
+          "paraphrase": "The comparison shows substantial disagreement over the concept of security and over definitions of armed attack and use of force in cyberspace.",
+          "researcher_comment": "Directly identifies a core obstacle for legal norm\u2011making: divergent conceptions of security produce disagreement over thresholds for force and legal responses; central to attribution and response RQs.",
+          "potential_themes": [
+            "definitions_of_use_of_force",
+            "state_disagreement"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "armed_attack_definition_dispute",
+            "security_concept_difference"
+          ]
+        },
+        {
+          "quote": "However, the CCDCoE's Tallinn Manual on the International Law Applicable to Cyber Warfare largely reflects ideas and perceptions of academics from NATO membership countries.51 Moreover, the Tallinn Manual's definition and scope is also contested and not accepted by many non-NATO member countries.",
+          "paraphrase": "The Tallinn Manual primarily reflects NATO\u2011member academic perspectives and its definitions and scope are contested and not accepted by many non\u2011NATO states.",
+          "researcher_comment": "Suggests that prominent expert guidance (Tallinn Manual) lacks universal legitimacy and is politicized; this limits its usefulness as a global interpretive authority for legal application.",
+          "potential_themes": [
+            "norm_contestation",
+            "expert_bias"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "contradicts",
+          "open_codes": [
+            "tallinn_manual_bias",
+            "non_nato_rejection"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-23T23:32:37.491784Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "69a42fad338d995a1d94ff449de0f50ab646216ce8db7ddd48fd6629ead732c1",
+  "function": "code_pdf_page"
+}

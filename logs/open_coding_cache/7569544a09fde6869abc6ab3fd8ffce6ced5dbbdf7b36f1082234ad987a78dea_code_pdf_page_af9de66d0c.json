@@ -1,0 +1,33 @@
+[
+  {
+    "item_key": "7569544a09fde6869abc6ab3fd8ffce6ced5dbbdf7b36f1082234ad987a78dea",
+    "section_key": "legacy_dataset_text",
+    "response": {
+      "step": "section_open_code",
+      "section_key": "legacy_dataset_text",
+      "evidence": [
+        {
+          "dqid": "816c0e091625",
+          "quote": "DRAFT: PLEASE DO NOT QUOTE OR CITE WITHOUT PERMISSION # NAMING WITHOUT SHAMING? ACCUSATIONS AND INTERNATIONAL LAW IN GLOBAL CYBERSECURITY Martha Finnemore* and Duncan B. Hollis** Once upon a time, hacking victims had little to say about the harms they suffered. Victims might never know they had been hacked and when the...",
+          "paraphrase": "uncoded_observation",
+          "researcher_comment": "",
+          "evidence_type": "mixed",
+          "argument_type": "unspecified",
+          "claim_direction": "unspecified",
+          "potential_themes": [
+            "uncoded_observation"
+          ],
+          "cluster_match": [
+            "uncoded_observation"
+          ],
+          "function_summary": "other open-code",
+          "risk_if_missing": "Potential concept loss if omitted.",
+          "illustrative_skills": [],
+          "relevance_score": 3,
+          "section_key": "legacy_dataset_text",
+          "extraction_category": "open_code"
+        }
+      ]
+    }
+  }
+]

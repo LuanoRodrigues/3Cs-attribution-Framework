@@ -1,0 +1,117 @@
+{
+  "startedAt": "2026-02-22T21:16:43.536Z",
+  "scenario": {
+    "collectionKeyword": "framework",
+    "collectionKey": "44Q6VN9A",
+    "dirBase": "./running_tests",
+    "initialCommand": "Code my collection 44Q6VN9A about cyber attribution frameworks and models, skip screening, and generate 3 to 5 strong research questions.",
+    "feedback": "Could you refine the questions to cover evidence, methodology, validity, uncertainty, and policy implications?",
+    "approve": "yes",
+    "waitMs": 120000,
+    "executionWaitMs": 900000
+  },
+  "steps": [
+    {
+      "at": "2026-02-22T21:16:43.537Z",
+      "name": "renderer-ready",
+      "ok": true,
+      "detail": "chat form + collections tree detected"
+    },
+    {
+      "at": "2026-02-22T21:16:44.488Z",
+      "name": "await-tree-lines",
+      "ok": true,
+      "detail": "rows=156"
+    },
+    {
+      "at": "2026-02-22T21:16:44.834Z",
+      "name": "select-collection",
+      "ok": true,
+      "detail": "016_framework_model_NA"
+    },
+    {
+      "at": "2026-02-22T21:16:46.040Z",
+      "name": "send-initial-command",
+      "ok": true,
+      "detail": "Code my collection 44Q6VN9A about cyber attribution frameworks and models, skip screening, and generate 3 to 5 strong research questions."
+    },
+    {
+      "at": "2026-02-22T21:17:04.972Z",
+      "name": "await-initial-questions",
+      "ok": true,
+      "detail": "I will prepare coding for '016_framework_model_NA'.\nScreening: disabled (skipping eligibility preflight).\n\nInclusion criteria (draft):\n(skipped)\n\nExclusion criteria (draft):\n(skipped)\n\nResearch questions:\n1. What frameworks and formal models for cyber attribution are proposed in the literature (e.g., forensic, probabilistic, graph-based, socio-technical), and what are their component constructs, assumptions, intended use-cases, and implementation details?\n2. What empirical evaluation methods, validation approaches, and performance metrics (e.g., accuracy, precision, false attribution rates, confidence scoring) are used to assess cyber attribution frameworks/models, and what limitations or biases do studies report?\n3. Which types of input evidence and data sources (network telemetry, host artifacts, malware code features, threat intelligence, human reports) are used by attribution models, and how do studies handle provenance, reliability, uncertainty, and potential adversary deception in those inputs?\n4. What definitions, decision rules, and reporting standards for attribution confidence and attribution claims are used across studies (including legal/ethical considerations), and what best-practice recommendations or gaps do authors identify for operationalizing attribution responsibly?\n\nReply with 'yes' to run, 'no' to cancel, or send modified questions (3-5)."
+    },
+    {
+      "at": "2026-02-22T21:17:04.977Z",
+      "name": "send-feedback",
+      "ok": true,
+      "detail": "Could you refine the questions to cover evidence, methodology, validity, uncertainty, and policy implications?"
+    },
+    {
+      "at": "2026-02-22T21:17:23.916Z",
+      "name": "await-refined-questions",
+      "ok": true,
+      "detail": "Updated research questions:\n1. What types and provenance of evidence (network, host, malware, telemetry, human/OSINT) are used for attribution, and how do studies assess quality, reliability and adversary deception?\n2. What methodological approaches and models (forensic, probabilistic, graph‑based, socio‑technical, hybrid) are proposed, and what are their inputs, assumptions, and implementation details?\n3. How are attribution models evaluated and validated (datasets, experimental designs, metrics, baselines), and what biases, limitations, and reproducibility concerns affect their validity?\n4. How do studies represent, quantify, and communicate uncertainty and confidence in attribution decisions (decision rules, scoring, thresholds), and what best practices are recommended for transparent reporting?\n5. What legal, ethical, and policy implications do authors identify for operational attribution, including standards, governance, accountability, and recommended practices for responsible use?\n\nReply with 'yes' to run, 'no' to cancel, or send another modification."
+    },
+    {
+      "at": "2026-02-22T21:17:23.917Z",
+      "name": "await-input-ready-for-approval",
+      "ok": true,
+      "detail": "chat input enabled"
+    },
+    {
+      "at": "2026-02-22T21:17:23.921Z",
+      "name": "send-approval",
+      "ok": true,
+      "detail": "yes"
+    },
+    {
+      "at": "2026-02-22T21:27:24.776Z",
+      "name": "await-execution-result",
+      "ok": false,
+      "detail": "Feature worker timeout (600000 ms)."
+    }
+  ],
+  "transcript": [
+    {
+      "role": "assistant",
+      "tone": "",
+      "text": "Agent ready. Send a command to organize collections by tag."
+    },
+    {
+      "role": "user",
+      "tone": "",
+      "text": "Code my collection 44Q6VN9A about cyber attribution frameworks and models, skip screening, and generate 3 to 5 strong research questions."
+    },
+    {
+      "role": "assistant",
+      "tone": "",
+      "text": "I will prepare coding for '016_framework_model_NA'.\nScreening: disabled (skipping eligibility preflight).\n\nInclusion criteria (draft):\n(skipped)\n\nExclusion criteria (draft):\n(skipped)\n\nResearch questions:\n1. What frameworks and formal models for cyber attribution are proposed in the literature (e.g., forensic, probabilistic, graph-based, socio-technical), and what are their component constructs, assumptions, intended use-cases, and implementation details?\n2. What empirical evaluation methods, validation approaches, and performance metrics (e.g., accuracy, precision, false attribution rates, confidence scoring) are used to assess cyber attribution frameworks/models, and what limitations or biases do studies report?\n3. Which types of input evidence and data sources (network telemetry, host artifacts, malware code features, threat intelligence, human reports) are used by attribution models, and how do studies handle provenance, reliability, uncertainty, and potential adversary deception in those inputs?\n4. What definitions, decision rules, and reporting standards for attribution confidence and attribution claims are used across studies (including legal/ethical considerations), and what best-practice recommendations or gaps do authors identify for operationalizing attribution responsibly?\n\nReply with 'yes' to run, 'no' to cancel, or send modified questions (3-5)."
+    },
+    {
+      "role": "user",
+      "tone": "",
+      "text": "Could you refine the questions to cover evidence, methodology, validity, uncertainty, and policy implications?"
+    },
+    {
+      "role": "assistant",
+      "tone": "",
+      "text": "Updated research questions:\n1. What types and provenance of evidence (network, host, malware, telemetry, human/OSINT) are used for attribution, and how do studies assess quality, reliability and adversary deception?\n2. What methodological approaches and models (forensic, probabilistic, graph‑based, socio‑technical, hybrid) are proposed, and what are their inputs, assumptions, and implementation details?\n3. How are attribution models evaluated and validated (datasets, experimental designs, metrics, baselines), and what biases, limitations, and reproducibility concerns affect their validity?\n4. How do studies represent, quantify, and communicate uncertainty and confidence in attribution decisions (decision rules, scoring, thresholds), and what best practices are recommended for transparent reporting?\n5. What legal, ethical, and policy implications do authors identify for operational attribution, including standards, governance, accountability, and recommended practices for responsible use?\n\nReply with 'yes' to run, 'no' to cancel, or send another modification."
+    },
+    {
+      "role": "user",
+      "tone": "",
+      "text": "yes"
+    },
+    {
+      "role": "assistant",
+      "tone": "error",
+      "text": "Feature worker timeout (600000 ms)."
+    }
+  ],
+  "status": "failed",
+  "error": "Feature worker timeout (600000 ms).",
+  "statusLine": "Feature worker timeout (600000 ms).",
+  "selectedCollection": "Collection\n      Name016_framework_model_NAParent Key(root)Version274154Subcollections0Items in Panel0Items in Tree Cache0\n      \n        Open in Zotero",
+  "finishedAt": "2026-02-22T21:27:24.777Z"
+}

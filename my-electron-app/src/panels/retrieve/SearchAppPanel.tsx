@@ -7,6 +7,7 @@ import type {
   RetrieveSort
 } from "../../shared/types/retrieve";
 import { readRetrieveQueryDefaults } from "../../state/retrieveQueryDefaults";
+import type { RetrieveQueryDefaults } from "../../state/retrieveQueryDefaults";
 import { DataGrid } from "./DataGrid";
 
 const PROVIDERS: Array<{ id: RetrieveProviderId; label: string }> = [
@@ -44,6 +45,7 @@ export class SearchAppPanel {
   private loadMoreBtn: HTMLButtonElement;
   private prevBtn: HTMLButtonElement;
   private exportSelect: HTMLSelectElement;
+  private defaultsHandler: (event: Event) => void;
 
   private records: RetrieveRecord[] = [];
   private totalCount = 0;
@@ -89,19 +91,16 @@ export class SearchAppPanel {
       opt.textContent = option.label;
       this.sortSelect.appendChild(opt);
     });
-    this.sortSelect.value = initial?.sort ?? defaults.sort;
 
     this.yearFromInput = document.createElement("input");
     this.yearFromInput.type = "number";
     this.yearFromInput.placeholder = "Year from";
     this.yearFromInput.style.width = "110px";
-    this.yearFromInput.value = initial?.year_from?.toString() ?? (defaults.year_from?.toString() ?? "");
 
     this.yearToInput = document.createElement("input");
     this.yearToInput.type = "number";
     this.yearToInput.placeholder = "Year to";
     this.yearToInput.style.width = "110px";
-    this.yearToInput.value = initial?.year_to?.toString() ?? (defaults.year_to?.toString() ?? "");
 
     this.limitInput = document.createElement("input");
     this.limitInput.type = "number";
@@ -109,7 +108,13 @@ export class SearchAppPanel {
     this.limitInput.style.width = "90px";
     this.limitInput.min = "0";
     this.limitInput.max = "1000";
-    this.limitInput.value = initial?.limit?.toString() ?? String(defaults.limit ?? 50);
+    this.applyRetrieveDefaults({
+      provider: initial?.provider ?? defaults.provider,
+      sort: initial?.sort ?? defaults.sort,
+      year_from: initial?.year_from ?? defaults.year_from,
+      year_to: initial?.year_to ?? defaults.year_to,
+      limit: initial?.limit ?? defaults.limit
+    });
 
     this.authorInput = document.createElement("input");
     this.authorInput.type = "text";
@@ -137,19 +142,25 @@ export class SearchAppPanel {
 
     const searchBtn = document.createElement("button");
     searchBtn.className = "ribbon-button";
+    searchBtn.ariaLabel = "Search";
     searchBtn.textContent = "Search";
+    searchBtn.dataset.voiceAliases = "search papers,find papers,academic search";
     searchBtn.addEventListener("click", () => void this.handleSearch(false));
 
     this.prevBtn = document.createElement("button");
     this.prevBtn.type = "button";
     this.prevBtn.className = "ribbon-button";
+    this.prevBtn.ariaLabel = "Previous page";
     this.prevBtn.textContent = "Prev";
+    this.prevBtn.dataset.voiceAliases = "previous page,go back,page back,prev results,previous results";
     this.prevBtn.disabled = true;
 
     this.loadMoreBtn = document.createElement("button");
     this.loadMoreBtn.type = "button";
     this.loadMoreBtn.className = "ribbon-button";
+    this.loadMoreBtn.ariaLabel = "Next page";
     this.loadMoreBtn.textContent = "Next";
+    this.loadMoreBtn.dataset.voiceAliases = "next page,load more,more results,continue";
     this.loadMoreBtn.style.display = "none";
     this.loadMoreBtn.addEventListener("click", () => void this.handleSearch(true));
     this.prevBtn.addEventListener("click", () => void this.handleSearch(false, true));
@@ -212,7 +223,9 @@ export class SearchAppPanel {
     });
     const exportBtn = document.createElement("button");
     exportBtn.className = "ribbon-button";
+    exportBtn.ariaLabel = "Export current";
     exportBtn.textContent = "Export current";
+    exportBtn.dataset.voiceAliases = "export current table,download current results,save data";
     exportBtn.addEventListener("click", () => this.exportCurrent());
     exportRow.append(this.exportSelect, exportBtn);
 
@@ -255,10 +268,26 @@ export class SearchAppPanel {
         void this.handleSearch(false);
       }
     });
+
+    this.defaultsHandler = (event: Event) => {
+      const detail = (event as CustomEvent<{ defaults?: RetrieveQueryDefaults }>).detail;
+      if (!detail?.defaults) return;
+      this.applyRetrieveDefaults(detail.defaults);
+    };
+    document.addEventListener("retrieve:query-defaults-updated", this.defaultsHandler);
   }
 
   destroy(): void {
     this.grid.element.removeEventListener("click", this.onGridClick);
+    document.removeEventListener("retrieve:query-defaults-updated", this.defaultsHandler);
+  }
+
+  private applyRetrieveDefaults(defaults: RetrieveQueryDefaults): void {
+    this.providerSelect.value = defaults.provider;
+    this.sortSelect.value = defaults.sort;
+    this.yearFromInput.value = defaults.year_from?.toString() ?? "";
+    this.yearToInput.value = defaults.year_to?.toString() ?? "";
+    this.limitInput.value = String(defaults.limit);
   }
 
   private async handleSearch(loadMore: boolean, goPrev = false): Promise<void> {

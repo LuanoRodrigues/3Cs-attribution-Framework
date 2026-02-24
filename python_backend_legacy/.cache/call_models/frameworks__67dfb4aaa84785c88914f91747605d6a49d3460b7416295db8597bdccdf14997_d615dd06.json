@@ -1,0 +1,253 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "quote": "States retain the inherent right to self-defense under Article 51 of the UN Charter when faced with an imminent threat.",
+          "paraphrase": "This states that under Article 51 states have a right of self-defense when facing an imminent threat, relevant to RQs about legal bases for state responses to cyber incidents.",
+          "researcher_comment": "Identifies the international legal basis commonly invoked for state responses to cyber incidents; does not specify how 'imminent threat' is operationalized in cyber contexts. Useful for legal-RQ synthesis but requires caution when applied to non-kinetic incidents.",
+          "potential_themes": [
+            "international_law",
+            "legal_norms",
+            "act_of_war"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "article_51",
+            "self_defense",
+            "legal_basis"
+          ]
+        },
+        {
+          "quote": "The right to self-defense, including the use of force, would apply if a cyber attack reached the level of an \u201carmed attack\u201d.",
+          "paraphrase": "The author asserts that use-of-force self-defense may apply if a cyber incident qualifies as an 'armed attack', relevant to RQs on thresholds for forceful responses to cyber operations.",
+          "researcher_comment": "Links cyber incidents to traditional use-of-force doctrine and highlights the legal threshold concept; the excerpt does not operationalize what constitutes an 'armed attack' in cyberspace.",
+          "potential_themes": [
+            "legal_norms",
+            "act_of_war",
+            "legal_risks"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "armed_attack_threshold",
+            "use_of_force",
+            "legal_threshold"
+          ]
+        },
+        {
+          "quote": "The legal debate on what constitutes an \u201carmed attack in cyberspace\u201d has only just begun.",
+          "paraphrase": "The text notes that legal scholarship has only recently started to define what qualifies as an 'armed attack' in cyberspace, relevant to RQs on legal definitions and thresholds.",
+          "researcher_comment": "Flags doctrinal uncertainty and a nascent debate; indicates a conceptual gap that undermines clear legal responses to some cyber incidents and justifies further legal research.",
+          "potential_themes": [
+            "legal_risks",
+            "unclear_protocols",
+            "legal_norms"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "legal_uncertainty",
+            "armed_attack_definition",
+            "doctrinal_gap"
+          ]
+        },
+        {
+          "quote": "the indication that cyber activity was launched or otherwise originated from the territory or the ICT infrastructure of a state may be insufficient in itself to attribute the activity to that state",
+          "paraphrase": "The author reports that evidence of origin from a state's territory or ICT infrastructure alone may not suffice to attribute responsibility, relevant to RQs on attribution evidentiary standards.",
+          "researcher_comment": "Directly addresses limits of territorial-origin evidence for attribution and implies the need for additional forensic, intelligence or intent-based indicators. Important for crafting attribution standards and policies.",
+          "potential_themes": [
+            "attribution_challenges",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "territorial_origin_insufficient",
+            "attribution_evidence_gap",
+            "forensic_requirements"
+          ]
+        },
+        {
+          "quote": "it did not give any guidance as to how to respond specifically to state-sponsored cyber attacks.",
+          "paraphrase": "The author observes that the report provided no specific guidance on responding to state-sponsored cyber attacks, relevant to RQs on gaps in international guidance and response norms.",
+          "researcher_comment": "Identifies an explicit gap in international-level guidance on state-sponsored cyber responses; underscores the need for national frameworks or clearer international norms but offers no remedy in the excerpt.",
+          "potential_themes": [
+            "policy_implication",
+            "unclear_protocols",
+            "framework_usage"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "guidance_gap",
+            "state_sponsored_response_gap",
+            "international_guidance_shortfall"
+          ]
+        },
+        {
+          "quote": "The objective of this chapter is to encourage political decision-makers (and others) to create a framework of proportionate ways to respond to different kinds of cyber hostility.",
+          "paraphrase": "The chapter aims to prompt policymakers to design a framework of proportionate responses for various cyber hostilities, relevant to RQs on designing response frameworks.",
+          "researcher_comment": "Normative goal advocating proactive policy design; serves as an explicit recommendation but the excerpt does not provide operational rules or thresholds for proportionality.",
+          "potential_themes": [
+            "policy_recommendation",
+            "response_frameworks",
+            "framework"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "build_response_framework",
+            "proportionate_response",
+            "policy_guidance"
+          ]
+        },
+        {
+          "quote": "This chapter creates a context for the contemporary politics of cyber affairs in the world and determines five variables that policymakers need to consider when evaluating appropriate responses to a cyber attack.",
+          "paraphrase": "The chapter proposes five variables policymakers should consider when evaluating cyber attack responses, relevant to RQs on decision variables in response frameworks.",
+          "researcher_comment": "Presents a methodological claim about decision criteria; useful for operationalizing policy analysis but excerpt omits the actual variables and empirical validation.",
+          "potential_themes": [
+            "framework_usage",
+            "framework",
+            "policy_recommendation"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "method",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "five_variables",
+            "decision_variables",
+            "policy_evaluation_criteria"
+          ]
+        },
+        {
+          "quote": "Combining incident impact, policy options, and other variables, the framework outlines the different levers of cyberpolitics that can be applied in response to the escalating levels of cyber incidents.",
+          "paraphrase": "The framework combines incident impact and policy options to map political levers for responding to escalating cyber incidents, relevant to RQs on response options and escalation management.",
+          "researcher_comment": "Specifies components of the proposed analytical framework; 'other variables' remains vague and thresholds for applying levers are unspecified\u2014needs concrete indicators and case examples.",
+          "potential_themes": [
+            "response_frameworks",
+            "response_options",
+            "escalation_risks"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "method",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "incident_impact",
+            "policy_options",
+            "escalation_levers"
+          ]
+        },
+        {
+          "quote": "Past experience suggests that most policy responses are ad hoc.",
+          "paraphrase": "The author finds that historically, policy responses to cyber incidents have tended to be ad hoc, relevant to RQs about policy coherence and institutionalization.",
+          "researcher_comment": "Asserts a pattern of reactive policymaking; the claim highlights the need for standardized frameworks but the excerpt gives no empirical substantiation of 'past experience'.",
+          "potential_themes": [
+            "policy_responses",
+            "policy_implication",
+            "accountability"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "ad_hoc_policy",
+            "reactive_responses",
+            "lack_of_standardization"
+          ]
+        },
+        {
+          "quote": "As offensive cyber activity becomes more prevalent, policymakers will be challenged to develop proportionate responses to disruptive or destructive attacks.",
+          "paraphrase": "The text predicts that increasing offensive cyber activity will force policymakers to create proportionate responses to disruptive and destructive attacks, relevant to RQs on policy adaptation to threat trends.",
+          "researcher_comment": "Links threat trajectory to policy urgency; a predictive claim framing the need for policy development but lacking temporal specificity or evidence in the excerpt.",
+          "potential_themes": [
+            "escalation_risks",
+            "response_frameworks",
+            "policy_implication"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "predictive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "rising_offensive_activity",
+            "policy_challenge",
+            "need_for_proportionality"
+          ]
+        },
+        {
+          "quote": "The response framework is also an integral part of the state's cyber deterrence.",
+          "paraphrase": "The chapter claims that a state's response framework is a key element of its cyber deterrence strategy, relevant to RQs on deterrence design and credibility.",
+          "researcher_comment": "Asserts a causal link between having a response framework and deterrent effect; plausible theoretically but the excerpt provides no mechanism or evidence (e.g., attribution credibility, signaling effectiveness).",
+          "potential_themes": [
+            "deterrence",
+            "framework",
+            "credibility"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "response_framework_deterrence",
+            "deterrence_component",
+            "signaling"
+          ]
+        },
+        {
+          "quote": "This leads to the question of how to evaluate the impact of cyber attacks, especially if they do not cause physical damage.",
+          "paraphrase": "The author raises a research question about how to evaluate cyber attack impacts\u2014particularly non-physical harms\u2014relevant to RQs on impact assessment and attribution thresholds.",
+          "researcher_comment": "Explicitly identifies a methodological gap: metrics for non-physical damage. This is a clear research/recommendation point for developing evidentiary and policy criteria.",
+          "potential_themes": [
+            "evidentiary_standards",
+            "incident_classification",
+            "policy_recommendation"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "procedural",
+          "claim_direction": "unspecified",
+          "open_codes": [
+            "impact_evaluation_nonphysical",
+            "measurement_gap",
+            "damage_assessment"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-24T15:17:26.327922Z",
+  "collection_name": "frameworks",
+  "custom_id": "67dfb4aaa84785c88914f91747605d6a49d3460b7416295db8597bdccdf14997",
+  "function": "code_pdf_page"
+}

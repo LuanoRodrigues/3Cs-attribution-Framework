@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": "{\n  \"classification\": \"Highly Relevant\",\n  \"relevance_score\": \"High\",\n  \"potential_subcategory\": \"International law of cyber attribution \u2014 due diligence and State responsibility\",\n  \"justification\": \"The abstract directly addresses cyber conflict attribution within the legal and policy domain by proposing a reconceptualized due diligence standard to attribute cyber operations to States. It conducts doctrinal analysis of core international-law instruments (Articles on State Responsibility, Cybercrime Convention, Tallinn Manual), references state practice and normative outputs (GGE reports, NATO policy), diagnoses concrete attribution problems (computer identification, human\u2013machine nexus, nexus to the State), and discusses implications for countermeasures and self\u2011defence. These features place the work squarely within discussions of cyber attribution, responsibility, and international policy, making it highly relevant despite acknowledged limits in current state practice.\"\n}"
+  },
+  "cached_at": "2026-02-23T20:44:18.853860Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "Y92SMUUI",
+  "function": "classify_by_abs"
+}

@@ -1,0 +1,11 @@
+{
+  "status": "completed",
+  "stage": "resolve_items",
+  "collection": "frameworks_and_models",
+  "total_items": 0,
+  "processed_items": 0,
+  "completed_item_keys": [],
+  "store_only": false,
+  "read": true,
+  "done": true
+}

@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": "{\n  \"classification\": \"Highly Relevant\",\n  \"relevance_score\": \"High\",\n  \"potential_subcategory\": \"Cyber Attribution & Policy \u2014 Influence Operations\",\n  \"justification\": \"The abstract directly addresses attribution dynamics in cyber-enabled influence operations (CEIO), reporting empirical correlations between cyber activity intensity and likelihood of attribution to belligerent actors. The title explicitly references a legal regime ('control & capabilities test') shaping attribution, and the text acknowledges reliance on publicly available attribution data and policy-relevant implications (strategic shifts, calls for case studies and comparative analyses). These features make the work highly relevant to research and policy/legal debates on cyber conflict attribution.\"\n}"
+  },
+  "cached_at": "2026-02-23T20:59:59.981883Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "9SXSTUIP",
+  "function": "classify_by_abs"
+}

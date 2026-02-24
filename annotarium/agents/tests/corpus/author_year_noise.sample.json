@@ -1,0 +1,22 @@
+{
+  "description": "Author-year noise should be filtered when year is missing",
+  "citations": {
+    "author_year": {
+      "results": [
+        {
+          "index": "unit|6139",
+          "intext_citation": "(Unit 61398)",
+          "preceding_text": "noise",
+          "footnote": null
+        },
+        {
+          "index": "smith|2018",
+          "intext_citation": "(Smith, 2018)",
+          "preceding_text": "valid",
+          "footnote": null
+        }
+      ]
+    }
+  },
+  "markdown": "Some text (Unit 61398). Another (Smith, 2018)."
+}

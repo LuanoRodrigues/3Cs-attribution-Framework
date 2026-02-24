@@ -1,0 +1,460 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "quote": "The idea that state principals can obfuscate their involvement in such attacks by delegating operational tasks to non-state agents poses a particularly significant challenge to international enforcement and remedies.",
+          "paraphrase": "Delegation of cyber operations to non-state actors allows states to hide involvement, creating major challenges for attribution and international enforcement (relevant to RQ0).",
+          "researcher_comment": "Frames delegation as an obfuscation strategy that directly undermines legal and normative remedies; motivates the need for non-technical contextual indicators. Empirical support for frequency/impact of this strategy is not provided here.",
+          "potential_themes": [
+            "attribution_challenges",
+            "plausible_deniability"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "state_delegation_obfuscation",
+            "enforcement_challenge"
+          ]
+        },
+        {
+          "quote": "I conclude that the conditions under which attacks are likely to have been backed by sponsoring states occupy a much narrower window than conventional wisdom suggests,",
+          "paraphrase": "The author concludes that state-sponsored backing occurs under a much narrower set of conditions than commonly believed, allowing for a smaller suspect set (relevant to RQ0).",
+          "researcher_comment": "Key theoretical conclusion: delegation is less common/less indiscriminate than public rhetoric implies. Requires operationalization of the 'conditions' to be useful for attribution.",
+          "potential_themes": [
+            "state_sponsorship_conditions",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "finding",
+          "argument_type": "predictive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "narrow_conditions",
+            "attribution_filtering"
+          ]
+        },
+        {
+          "quote": "The sophistication of the attacks suggested foreign intelligence involvement rather than ordinary hacktivism and this sentiment has been echoed by the media since the attacks.",
+          "paraphrase": "High technical sophistication of attacks is often interpreted (in media and reporting) as indicative of foreign intelligence or state involvement (relevant to RQ0).",
+          "researcher_comment": "Documents a common heuristic linking sophistication to state actors; later text problematizes this as an unreliable proxy. Does not quantify misattribution risk from this heuristic.",
+          "potential_themes": [
+            "attribution_challenges"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "sophistication_as_state_indicator",
+            "media_attribution"
+          ]
+        },
+        {
+          "quote": "Efforts to trace these types of relationships in specific instances have remained largely subjective, relying on informal \u201cpreponderance of the [technical] evidence\u201d to make judgments about whether a group might be state sponsored, and cui bono (motive) to link groups to specific countries,",
+          "paraphrase": "Current tracing efforts rely on subjective preponderance-of-evidence and motive inferences to assign state sponsorship, rather than on formalized criteria (relevant to RQ0).",
+          "researcher_comment": "Identifies a methodological weakness (subjectivity) in mainstream attribution practices, which can bias findings; suggests need for formal, a priori criteria. Does not provide error-rate estimates.",
+          "potential_themes": [
+            "evidentiary_standards",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "contradicts",
+          "open_codes": [
+            "subjective_attribution",
+            "preponderance_logic",
+            "motive_inference"
+          ]
+        },
+        {
+          "quote": "This is an inductive approach that, while increasingly creative and sophisticated, can inadvertently lead to what statisticians call \u201cType I\u201d errors\u2014false positives.",
+          "paraphrase": "Inductive attribution methods that combine technical evidence and motive risk producing Type I errors (false positives) in state attribution (relevant to RQ0).",
+          "researcher_comment": "Directly motivates the paper's aim to reduce false positives; quantification of Type I error frequency is absent. Useful when considering cost of misattribution in policy.",
+          "potential_themes": [
+            "false_positive_risk",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "false_positive",
+            "type_I_error",
+            "inductive_limitation"
+          ]
+        },
+        {
+          "quote": "What is missing from such analysis is the question of opportunity. In my own research, using decision-theoretic formal (mathematical) models and legal analysis of international rules on sovereign state responsibility, I argue that it may be possible to predict the likelihood that a particular state is behind a given attack a priori.",
+          "paraphrase": "The author argues that adding opportunity analysis and decision-theoretic modeling permits a priori prediction of a state's likelihood of sponsoring an attack, addressing gaps in attribution (relevant to RQ0).",
+          "researcher_comment": "Proposes a methodological shift from purely inductive post\u2011attack reasoning to model-based pre\u2011attack filtering. Feasibility depends on observable proxies for opportunity and accurate parameterization.",
+          "potential_themes": [
+            "method",
+            "means_motive_opportunity"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "method",
+          "argument_type": "predictive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "opportunity_analysis",
+            "decision_theory_model",
+            "a_priori_narrowing"
+          ]
+        },
+        {
+          "quote": "It is generally assumed (although it is not universally the case) that higher levels of attack sophistication are associated with state involvement, and that therefore such attacks, when observed, may more likely be attributable to government actors.",
+          "paraphrase": "There is a common assumption that higher technical sophistication makes an attack more likely to be attributable to state actors (relevant to RQ0).",
+          "researcher_comment": "Records a prevalent attribution heuristic; elsewhere the author argues capability alone is insufficient because of outsourcing possibilities. Heuristic is convenient but risky.",
+          "potential_themes": [
+            "attribution_challenges",
+            "capability_as_proxy"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "sophistication_heuristic",
+            "capability_proxy"
+          ]
+        },
+        {
+          "quote": "The problem with using capability as a proxy for actor type is that it overlooks situations in which states may have chosen to aid or outsource illicit activity to non-state groups.",
+          "paraphrase": "Using capability as a proxy misattributes actors because it ignores cases where states outsource operations to non-state groups (relevant to RQ0).",
+          "researcher_comment": "Direct critique of capability-based attribution; justifies inclusion of incentive/opportunity variables in models. Does not provide empirical frequency of outsourcing.",
+          "potential_themes": [
+            "attribution_challenges",
+            "principal_agent_theory"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "contradicts",
+          "open_codes": [
+            "capability_misattribution",
+            "outsourcing_overlooked"
+          ]
+        },
+        {
+          "quote": "The logic of principal-agent models is that a principal (here, the state) sees some benefit in delegating a task to an agent (non-state hacker or group).",
+          "paraphrase": "Principal-agent theory predicts states will delegate cyber tasks to non-state hackers when delegation yields net benefits (relevant to RQ0).",
+          "researcher_comment": "Provides the theoretical backbone for why states might outsource cyber operations; sets up testable variables (benefit, cost, monitoring). Assumes standard PA incentives apply in cyberspace.",
+          "potential_themes": [
+            "principal_agent_theory",
+            "delegation_tradeoffs"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "framework",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "principal_agent",
+            "delegation_benefit",
+            "state_agents"
+          ]
+        },
+        {
+          "quote": "That is, the more effort is invested in an operation, the more damaging it is to one's target (a \u201cbenefit\u201d) but also the more liable the attacker is for the attack.",
+          "paraphrase": "Greater operational effort increases damage to the target but also raises the attacker's liability, creating a tradeoff relevant for delegation decisions (relevant to RQ0).",
+          "researcher_comment": "Specifies the core cost\u2013benefit tradeoff driving sponsor choice: efficacy versus exposure. Useful input for formal models; operationalizing 'liability' requires legal/political metrics.",
+          "potential_themes": [
+            "delegation_tradeoffs",
+            "attribution_risk"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "effort_damage_tradeoff",
+            "liability_risk"
+          ]
+        },
+        {
+          "quote": "Because host governments have the stronger jurisdictional position over private actors within their borders, victim states that cannot legally establish national responsibility for these actors have little recourse under international law when malicious agents are identifiable but go unpunished.",
+          "paraphrase": "Victim states often lack legal remedies when host states disclaim responsibility for private actors, because host governments retain stronger jurisdiction over actors within their borders (relevant to RQ0).",
+          "researcher_comment": "Explains a legal incentive for states to tolerate or use proxies; highlights limits in remedies for victims. Applicability depends on specific international-law interpretations and state practice.",
+          "potential_themes": [
+            "state_responsibility",
+            "legal_limitation"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "jurisdictional_advantage",
+            "limited_recourse"
+          ]
+        },
+        {
+          "quote": "the confluence of multiple secondary sources offers some suggestions: specifically,'persons exercising elements of government authority,' 'conduct directed or controlled by the state' (emphasis added), rebel movements that later assume governmental roles, or 'conduct acknowledged or adopted by the state,' according to the International Law Commission's (ILC) 2001 Draft Articles on State Responsibility.",
+          "paraphrase": "The ILC Draft Articles indicate state responsibility can arise when private actors exercise government authority, act under state direction or control, or when the state adopts or acknowledges their conduct (relevant to RQ0).",
+          "researcher_comment": "Provides explicit legal criteria for when non-state acts are attributable to states; important for setting evidentiary thresholds. Note: draft articles are non\u2011binding and subject to interpretive debate.",
+          "potential_themes": [
+            "legal_responsibility",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "ilc_draft_articles",
+            "attribution_thresholds"
+          ]
+        },
+        {
+          "quote": "In general, the articles illustrate that the more autonomy a non-state entity exercises, the less responsible its host government is for its actions.",
+          "paraphrase": "Greater autonomy of non-state actors reduces the host state's responsibility for their actions, per the ILC guidance (relevant to RQ0).",
+          "researcher_comment": "Clarifies an inverse relationship between proxy autonomy and state attribution; useful for modeling how support levels affect legal exposure. Assumes ILC framing is persuasive in practice.",
+          "potential_themes": [
+            "state_responsibility",
+            "attribution_thresholds"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "autonomy_inverse_attribution",
+            "attribution_autonomy"
+          ]
+        },
+        {
+          "quote": "This highlights the crucial tradeoff for would-be state sponsors: by investing in non-state hackers to improve their efficacy, states increase their vulnerability to the international consequences they seek to avoid in the first place by outsourcing.",
+          "paraphrase": "Increasing material support to proxies improves their effectiveness but increases the sponsoring state's exposure to international consequences, creating a central sponsor tradeoff (relevant to RQ0).",
+          "researcher_comment": "Central analytic insight linking operational support to increased attribution risk; implies an optimal support level. Empirical calibration of 'vulnerability' is needed to operationalize the conclusion.",
+          "potential_themes": [
+            "delegation_tradeoffs",
+            "plausible_deniability"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "support_vs_exposure",
+            "sponsor_vulnerability"
+          ]
+        },
+        {
+          "quote": "When non-state hackers are highly sympathetic and highly skilled, outsourcing offers the most benefits to states, since they only need to refrain from prosecuting or extraditing offenders.",
+          "paraphrase": "Outsourcing is most attractive when hackers are both ideologically aligned and highly skilled, because states can benefit by non-prosecution rather than overt support (relevant to RQ0).",
+          "researcher_comment": "Identifies two observable axes\u2014sympathy and skill\u2014that increase the attractiveness of delegation; suggests empirical indicators (skill level, nationalist sentiment) to classify states. Assumes states can and will avoid prosecution.",
+          "potential_themes": [
+            "state_sponsorship_conditions",
+            "means_motive_opportunity"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "sympathy_skill_matrix",
+            "non_prosecution_strategy"
+          ]
+        },
+        {
+          "quote": "Although tacit material support does not trigger national responsibility to the same extent as overt verbal support, states have not seemed reluctant to ascribe blame to suspected attackers regardless of whether the legal burden of proof has been met (which I argue is rarely possible).",
+          "paraphrase": "States often publicly attribute blame to suspected attackers even without legal proof, and tacit material support triggers less legal responsibility than overt endorsement (relevant to RQ0).",
+          "researcher_comment": "Highlights a distinction between legal standards and political practice: reputational and policy responses often occur below legal attribution thresholds. This complicates assessments of 'responsibility' vs. 'blame.'",
+          "potential_themes": [
+            "evidentiary_standards",
+            "political_attribution"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "tacit_support_vs_overt",
+            "political_blaming"
+          ]
+        },
+        {
+          "quote": "Imputing rough approximations for these variables should give investigators a clearer idea about which states are (1) predisposed to outsourcing and (2) may have had the means, motive, and opportunity to do so in a recent attack.",
+          "paraphrase": "Estimating variables like cyber capability, nationalist salience, and hacker-pool characteristics can help investigators identify states predisposed to outsourcing and those with means, motive, and opportunity (relevant to RQ0).",
+          "researcher_comment": "Practical recommendation to use observable proxies to reduce suspect sets prior to forensic work; acknowledges approximation error and reliance on intelligence sources.",
+          "potential_themes": [
+            "means_motive_opportunity",
+            "recommendation"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "recommendation",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "variable_imputation",
+            "suspect_narrowing",
+            "pre_forensic_filter"
+          ]
+        },
+        {
+          "quote": "Specifically, when the permissive conditions outlined above overlap with forensic indicators in a given instance, we have a match. This adds to the persuasive content of attribution reports while also reducing the likelihood of false positives.",
+          "paraphrase": "The author recommends intersecting permissive contextual conditions with forensic indicators to strengthen attribution and reduce false positives (relevant to RQ0).",
+          "researcher_comment": "Operational prescription: require both contextual permissive conditions and technical indicators for stronger attribution claims. Implementation requires clear thresholds and validation against known cases.",
+          "potential_themes": [
+            "evidentiary_standards",
+            "false_positive_reduction",
+            "attribution_method"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "recommendation",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "indicator_overlap",
+            "forensic_context_integration",
+            "false_positive_mitigation"
+          ]
+        },
+        {
+          "quote": "The framework espoused in this paper proposes a method of differentiating between plausible and truthful deniability when non-state attacks do occur.",
+          "paraphrase": "The paper offers a framework to distinguish plausible deniability from actual state complicity in non-state cyberattacks (relevant to RQ0).",
+          "researcher_comment": "Summary statement of the paper's normative-methodological aim; useful for policy and attribution practice but requires external validation and case studies.",
+          "potential_themes": [
+            "plausible_deniability",
+            "attribution_method"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "framework",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "deniability_differentiation",
+            "attribution_framework"
+          ]
+        },
+        {
+          "quote": "The more frightening aspect of the hack was the length of time that DNC servers had been compromised without the intruders being detected (in the estimation of cybersecurity forensics firm CrowdStrike, more than a year).",
+          "paraphrase": "Long undetected compromises (e.g., DNC servers for over a year) show detection limitations that complicate timely attribution and response (relevant to RQ0).",
+          "researcher_comment": "Empirical example illustrating real-world detection lags that increase attribution difficulty; single-case anecdote\u2014useful illustratively but not statistically representative.",
+          "potential_themes": [
+            "detection_limitations",
+            "attribution_challenges"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "example",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "persistent_compromise",
+            "detection_delay"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-24T15:46:56.190429Z",
+  "collection_name": "frameworks",
+  "custom_id": "a6a70044479beb34fc583987a579c1f6a9cd5889153d554b8686e32c765fabc2",
+  "function": "code_pdf_page"
+}

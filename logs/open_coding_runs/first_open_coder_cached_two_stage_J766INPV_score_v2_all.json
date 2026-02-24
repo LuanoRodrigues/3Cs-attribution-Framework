@@ -1,0 +1,38 @@
+{
+  "input": "logs/open_coding_runs/first_open_coder_cached_two_stage_J766INPV.json",
+  "scores": [
+    {
+      "item_key": "J766INPV",
+      "score_100": 96.86,
+      "components": {
+        "section_coverage_score": 30,
+        "harvest_categories_score": 20,
+        "diversity_score": 12.86,
+        "relevance_score": 9.0,
+        "completeness_score": 15.0,
+        "volume_score": 10
+      },
+      "meta": {
+        "sections_coded": 3,
+        "open_points": 13,
+        "harvest_points": 5,
+        "total_points": 18,
+        "harvest_required_categories_present": [
+          "definitions",
+          "main_findings",
+          "method_claims",
+          "recommendations_future_work",
+          "stated_limitations"
+        ],
+        "missing_harvest_categories": [],
+        "evidence_type_count": 6,
+        "avg_relevance_score": 3.0
+      },
+      "warnings": []
+    }
+  ],
+  "overall_summary": {
+    "items_scored": 1,
+    "avg_score_100": 96.86
+  }
+}

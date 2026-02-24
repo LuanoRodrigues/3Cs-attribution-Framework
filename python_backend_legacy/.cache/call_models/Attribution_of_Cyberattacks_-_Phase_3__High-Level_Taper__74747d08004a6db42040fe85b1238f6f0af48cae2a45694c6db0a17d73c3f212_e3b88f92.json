@@ -1,0 +1,111 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "dqid": "NEW99M7N#DQ001",
+          "quote": "Cyber attacks, as \"sources and methods,\" are kept secret from Congress.",
+          "extraction_type": "main_finding",
+          "paraphrase": "The author claims that cyber attacks and their operational sources and methods are withheld from Congressional oversight.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "attribution_challenges",
+            "evidentiary_standards"
+          ]
+        },
+        {
+          "dqid": "NEW99M7N#DQ002",
+          "quote": "No citizenry is aroused to object.",
+          "extraction_type": "main_finding",
+          "paraphrase": "The author asserts that the public is not mobilized to object to cyber operations.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "deterrence_mechanisms",
+            "attribution_challenges"
+          ]
+        },
+        {
+          "dqid": "NEW99M7N#DQ003",
+          "quote": "Indeed, the public doesn't even know that an attack has been launched.",
+          "extraction_type": "main_finding",
+          "paraphrase": "The author states that the public often does not even know when a cyber attack has occurred.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "attribution_challenges",
+            "evidentiary_standards"
+          ]
+        },
+        {
+          "dqid": "NEW99M7N#DQ004",
+          "quote": "Which States or terrorists are behind the attacks are\u2014in the public sphere\u2014anyone's guess.",
+          "extraction_type": "main_finding",
+          "paraphrase": "The author argues that, in public discourse, attribution of cyber attacks to particular states or terrorists is essentially speculative.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "attribution_challenges",
+            "evidentiary_standards"
+          ]
+        },
+        {
+          "dqid": "NEW99M7N#DQ005",
+          "quote": "Retaliatory attacks, as well as preventive and preemptive attacks, are launched instantaneously, and are thus triggered by an adversary's presumed capability and inferred motives rather than by actual or apparent provocations.",
+          "extraction_type": "main_finding",
+          "paraphrase": "The author contends that cyber retaliatory, preventive, and preemptive responses are executed instantly and are based on presumed capabilities and inferred motives rather than observable provocations.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "state_responsibility_thresholds",
+            "attribution_challenges"
+          ]
+        },
+        {
+          "dqid": "NEW99M7N#DQ006",
+          "quote": "As a result, drip-drip strikes\u2014and something very like war\u2014occur more often, in more places, against more targets, based upon weaker evidence.",
+          "extraction_type": "main_finding",
+          "paraphrase": "The author warns that these dynamics will produce more frequent, dispersed 'drip\u2011drip' strikes resembling war that rely on weaker evidence.",
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "mapped_codes": [
+            "attribution_challenges",
+            "evidentiary_standards",
+            "state_responsibility_thresholds"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-24T17:45:02.604805Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "74747d08004a6db42040fe85b1238f6f0af48cae2a45694c6db0a17d73c3f212",
+  "function": "code_intro_conclusion_extract_core_claims"
+}

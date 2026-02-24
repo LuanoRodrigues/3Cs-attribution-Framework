@@ -1,0 +1,577 @@
+[
+  {
+    "item_key": "7SYEI2R6",
+    "section_key": "## 2 Literature Review 9 + ## 3 Framework Development 46 + ## 4 Library Development 69 + ## 5 Experiments ... 123",
+    "response": [
+      {
+        "evidence": [
+          {
+            "direct_quote": "2.5 Cyber Attribution 35",
+            "paraphrase": "The document includes a dedicated section on cyber attribution, indicating discussion of attribution-related methods and evidence types relevant to RQ0 and RQ1.",
+            "researcher_comment": "This header signals focused treatment of cyber attribution but contains no methodological detail by itself; use underlying subsection headings for concrete methods. It is useful to index the chapter for synthesis but cannot stand alone as a finding.",
+            "potential_themes": [
+              "framework_development"
+            ],
+            "relevance_score": 3,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "framework"
+          },
+          {
+            "direct_quote": "2.5.1 Store Logs and Traceback Queries",
+            "paraphrase": "One documented cyber-attribution technique is storing logs and performing traceback queries, which serves as forensic network evidence (addresses RQ0 and RQ1).",
+            "researcher_comment": "This is a conventional network-forensics method providing primary data for attribution. The TOC item lists it as a discrete technique; the chunk lacks procedural detail or limitations.",
+            "potential_themes": [
+              "attribution_methods",
+              "evidence_types"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "method"
+          },
+          {
+            "direct_quote": "2.5.2 Perform Input Debugging",
+            "paraphrase": "Performing input debugging is listed as a cyber-attribution technique, indicating use of debug-level interaction to trace attacker actions (RQ0/RQ1).",
+            "researcher_comment": "Input debugging implies active instrumentation of systems to capture attacker inputs; the TOC entry suggests this is treated as a method but provides no protocol or constraints here.",
+            "potential_themes": [
+              "attribution_methods"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "method"
+          },
+          {
+            "direct_quote": "2.5.9 Exploit/Force Attacker Self-Identification",
+            "paraphrase": "The work lists exploiting or forcing attacker self-identification as an attribution technique, i.e., inducement of identifying behavior (RQ0/RQ1).",
+            "researcher_comment": "This describes a proactive behavioral technique rather than passive evidence collection; ethical and evidentiary validity depend on implementation details not present in the chunk.",
+            "potential_themes": [
+              "attribution_methods",
+              "evidentiary_standards"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "method"
+          },
+          {
+            "direct_quote": "2.5.10 Observe Honeypots/Honeynets",
+            "paraphrase": "Observing honeypots and honeynets is presented as a method for gathering attacker behavior and artifacts for attribution (addresses RQ0 and RQ1).",
+            "researcher_comment": "Honeypots are a source of rich behavioral evidence but can introduce attacker adaptation biases; TOC placement denotes inclusion but lacks details on deployment or validation.",
+            "potential_themes": [
+              "attribution_methods",
+              "evidence_types"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "method"
+          },
+          {
+            "direct_quote": "2.5.11 Employ Forward Intrusion Detection Systems",
+            "paraphrase": "Employing forward intrusion detection systems is listed as a technique to detect and collect data for attribution (RQ0/RQ1).",
+            "researcher_comment": "Forward IDS implies network-level detection preceding attack flow; the TOC entry indicates the method is considered but not how it's integrated with attribution frameworks here.",
+            "potential_themes": [
+              "attribution_methods"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "method"
+          },
+          {
+            "direct_quote": "2.5.16 Exploit Reverse Flow",
+            "paraphrase": "Exploiting reverse flow is included as a technique for tracing or attributing network activity (addresses RQ0 and RQ1).",
+            "researcher_comment": "Reverse flow tracing can yield source-path information but may be limited by spoofing and routing; the TOC only lists it as a technique without caveats or validation evidence.",
+            "potential_themes": [
+              "attribution_methods",
+              "evidence_types"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "method"
+          },
+          {
+            "direct_quote": "2.5.17 Combined Techniques",
+            "paraphrase": "The document explicitly recognizes combining multiple techniques for cyber attribution, suggesting multi-source evidence aggregation (relevant to RQ0 and RQ1).",
+            "researcher_comment": "This indicates an awareness that single techniques are insufficient and that composite approaches are advocated; specifics on fusion methods or weighting are not provided in the chunk.",
+            "potential_themes": [
+              "evidentiary_standards",
+              "attribution_methods"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "recommendation"
+          },
+          {
+            "direct_quote": "3.9 Development of a Threat Actor Framework",
+            "paraphrase": "The authors develop a threat-actor framework, implying creation of a structured model for categorizing actors which is directly relevant to RQ2.",
+            "researcher_comment": "This header confirms framework development is a core contribution; however, the TOC entry does not show how the framework is operationalized or validated—look to subsequent subsections for detail.",
+            "potential_themes": [
+              "framework_development"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "framework"
+          },
+          {
+            "direct_quote": "3.4 Attributes",
+            "paraphrase": "The work includes a focused section on attributes, indicating attribute-based characterization of actors or observables used in the framework (relevant to RQ2).",
+            "researcher_comment": "Attributes are central to operationalizing models; the presence of this section suggests attribute taxonomy exists but the chunk lacks the attribute definitions or mapping rules necessary for synthesis.",
+            "potential_themes": [
+              "attribute_modeling",
+              "framework_development"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "taxonomy"
+          },
+          {
+            "direct_quote": "4.4.1 List all possible attributes",
+            "paraphrase": "A documented step in library development is to list all possible attributes, indicating an explicit attribute enumeration method used to operationalize models (addresses RQ1 and RQ2).",
+            "researcher_comment": "This is a concrete methodological step for building attribute libraries and thus for operationalizing frameworks. It implies exhaustive attribute collection but gives no selection criteria or thresholds here.",
+            "potential_themes": [
+              "library_development",
+              "attribute_modeling"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "method"
+          },
+          {
+            "direct_quote": "4.4.3 Apply each attribute to a layer on the model",
+            "paraphrase": "The procedure includes applying each attribute to a specific layer in the model, showing an explicit operational mapping between attributes and model layers (directly relevant to RQ2).",
+            "researcher_comment": "This describes how attributes are operationalized within a layered model architecture; the chunk lacks the layer definitions and mapping rules that would be needed to reproduce the approach.",
+            "potential_themes": [
+              "operationalization",
+              "attribute_modeling"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "method"
+          },
+          {
+            "direct_quote": "4.4.4 Check attributes in existing libraries and apply UID",
+            "paraphrase": "The methodology requires checking attributes against existing libraries and assigning unique identifiers (UIDs), indicating reuse and standardized identification for attributes (relevant to RQ1 and RQ2).",
+            "researcher_comment": "This indicates attention to attribute normalization and interoperability through UIDs, which supports merging evidence across sources; specific UID schemes or matching heuristics are not provided here.",
+            "potential_themes": [
+              "library_development",
+              "operationalization"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "method"
+          },
+          {
+            "direct_quote": "4.5.7 Linguistic",
+            "paraphrase": "A 'Linguistic' library is implemented, indicating the framework includes linguistic attributes as an evidence type for attribution (addresses RQ0 and RQ2).",
+            "researcher_comment": "Including a linguistic library shows the work integrates non-technical evidence (forensic linguistics) into the attribution libraries; content and feature sets of this library are not shown in the chunk.",
+            "potential_themes": [
+              "evidence_types",
+              "library_development"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "example"
+          },
+          {
+            "direct_quote": "3.12.4 State or State Sponsored",
+            "paraphrase": "The framework defines archetype actors including 'State or State Sponsored', indicating actor taxonomy used to classify threat origins (relevant to RQ2).",
+            "researcher_comment": "Listing archetype actors demonstrates how the framework categorizes adversaries at a high level; the TOC lacks criteria for assigning observations to these archetypes or associated attribute profiles.",
+            "potential_themes": [
+              "archetype_taxonomy",
+              "framework_development"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "taxonomy"
+          }
+        ]
+      },
+      {
+        "input_tokens": 2928,
+        "output_tokens": 3284,
+        "total_tokens": 6212,
+        "cost_usd": 0.01917,
+        "model": "gpt-5-mini-2025-08-07",
+        "is_batch": true
+      }
+    ]
+  },
+  {
+    "item_key": "7SYEI2R6",
+    "section_key": "## 6 Conclusions &amp; Future Works ... 130 + ## 7 Reference ... 134 + ### 1.1 Problem Statement",
+    "response": [
+      {
+        "evidence": [
+          {
+            "direct_quote": "The ultimate goal of the project is to create a framework suitable for the sharing of attribution data between technical specialists.",
+            "paraphrase": "The project aims to produce a framework to enable sharing of attribution data among technical specialists (relevant to how frameworks are operationalized).",
+            "researcher_comment": "This states the core purpose and frames the work as an interoperability/sharing solution rather than a single-tool approach; important for RQ2 because it emphasizes multidisciplinary data exchange. It does not yet specify data model or protocols.",
+            "potential_themes": [
+              "framework_operationalization",
+              "recommendation"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "claim"
+          },
+          {
+            "direct_quote": "Develop a cyber attribution framework. | Waterfall development",
+            "paraphrase": "The cyber attribution framework was developed using a Waterfall development methodology, indicating the chosen engineering method.",
+            "researcher_comment": "Explicit statement of development methodology addresses RQ1 (methods used to build the framework). Waterfall implies sequential design/testing cycles which may affect adaptability; no justification for choice is given here.",
+            "potential_themes": [
+              "methods_used",
+              "framework_operationalization"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "method"
+          },
+          {
+            "direct_quote": "An attribute constitutes a discrete and identifiable feature of an actor. It must be both measurable and identifiable. Each attribute will be in the form of a tuple, as each attribute will have an associated confidence value.",
+            "paraphrase": "The framework operationalizes evidence as measurable, identifiable attribute tuples for actors, each tagged with a confidence value.",
+            "researcher_comment": "This is a concrete operationalization: evidence is modelled as typed attribute+confidence tuples, which directly answers RQ2 about how the model represents evidence. It implies machine-processable structure but doesn't define schema or provenance fields.",
+            "potential_themes": [
+              "framework_operationalization",
+              "evidence_types",
+              "confidence_language"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              },
+              {
+                "index": 0
+              }
+            ],
+            "evidence_type": "definition"
+          },
+          {
+            "direct_quote": "The confidence value itself can be represented by any numerical value... For the purposes of testing the framework the values 0-1 have been chosen, with 0.2 intervals, with 0 representing highly unlikely and 1 representing almost certain.",
+            "paraphrase": "The framework encodes attribute confidence numerically and, for testing, uses a 0–1 scale in 0.2 increments to quantify certainty.",
+            "researcher_comment": "This concretizes uncertainty representation (important for evidentiary weighting and fusion). Using coarse 0.2 steps may simplify aggregation but limits resolution; no probabilistic semantics or calibration procedure is described. Useful for RQ2 and RQ1 (methods for confidence).",
+            "potential_themes": [
+              "confidence_language",
+              "framework_operationalization"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              },
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "method"
+          },
+          {
+            "direct_quote": "The defined classes are: - Text_String - True_False - Integer - Real_Numbers - IPv4",
+            "paraphrase": "Attributes in the framework are typed into classes (Text_String, True_False, Integer, Real_Numbers, IPv4) to enable comparative operations.",
+            "researcher_comment": "Specifying attribute types addresses RQ2 (how framework operationalizes evidence) and RQ0 (types of evidence supported). The set is extensible elsewhere (e.g., IPv6 mentioned later) but here is limited and may constrain some evidence without explicit typing for provenance or complex objects.",
+            "potential_themes": [
+              "framework_operationalization",
+              "attribute_selection"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              },
+              {
+                "index": 0
+              }
+            ],
+            "evidence_type": "definition"
+          },
+          {
+            "direct_quote": "The IP address is the primary method of recognition in any cyber incident. Although it is relatively easy to falsify the IP address through a system of proxies, ultimately that IP address is still an artefact of the attack and makes up a part of the fingerprint for the threat actor",
+            "paraphrase": "IP addresses are treated as primary evidence/fingerprint components in cyber incidents despite spoofing risk.",
+            "researcher_comment": "Direct statement on evidence types (RQ0) and their practical value despite limitations; acknowledges spoofing but justifies inclusion as part of a multifactor fingerprint. Good for synthesis of what evidence is considered valuable.",
+            "potential_themes": [
+              "evidence_types",
+              "attribution_challenges"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              }
+            ],
+            "evidence_type": "claim"
+          },
+          {
+            "direct_quote": "Now that the library creation process has been demonstrated, the process has been applied to create develop several other libraries covering a range of technologies or tools.",
+            "paraphrase": "The framework operationalizes evidence by creating domain-specific \"libraries\" (collections of attributes) that experts can add to the model.",
+            "researcher_comment": "Describes the operational mechanism for extending the model: modular libraries per technology/tool. This is central to how the framework supports multidisciplinary evidence (RQ2). The exact API/format for libraries is not specified here.",
+            "potential_themes": [
+              "framework_operationalization",
+              "library_creation"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "method"
+          },
+          {
+            "direct_quote": "The tool was run over a sample of 18,000 (N) previously known malware samples. The aim of the analysis is to ascertain which attributes which are extractable through static analysis may be useful in the attribution of an attacker when comparing against similar malware. The results of the static analysis found that there are a number of attributes that meet the requirements. These were: - IP Address - Domain - Domain Generation Algorithm (DGA) - E-Mail - BitCoin Address - Date of Compilation - Dropped Files - Packer - Entropy - Strings",
+            "paraphrase": "A static-analysis experiment on 18,000 malware samples identified extractable attributes useful for attribution: IP, domain, DGA, email, bitcoin address, compilation date, dropped files, packer, entropy, and strings.",
+            "researcher_comment": "Strong empirical finding addressing RQ0 (what evidence can be extracted) and RQ1 (method: large-scale static analysis). The author notes limitations (static analysis cannot always extract such fields) and later verifies against reverse-engineered families. Sampling/ground-truth assumptions could bias results. ",
+            "potential_themes": [
+              "methods_used",
+              "evidence_types",
+              "experimentation"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "finding"
+          },
+          {
+            "direct_quote": "The process will be explored in full to enable the creation of new libraries by other experts.",
+            "paraphrase": "The framework provides a process for third-party experts to create new attribute libraries and integrate them into the model.",
+            "researcher_comment": "This claims extensibility and community-driven growth (relevant to operationalization, RQ2). Practical integration steps, validation rules or interoperability formats (e.g., STIX) are suggested later but not specified here. ",
+            "potential_themes": [
+              "framework_operationalization",
+              "library_creation"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "claim"
+          },
+          {
+            "direct_quote": "In order for the framework to succeed in its intended goals it must meet the requirements defined below - The framework must be mathematically based in order to enable validation of the techniques used - The framework should highlight intelligence gaps and suggest methods of filling those gaps - The libraries should be complete for a specified subject area, highlighting attributes which could be considered - The framework should enable specialists from different areas to work together to create a more complete attribution picture",
+            "paraphrase": "Design requirements: framework must be mathematically based, highlight intelligence gaps, provide complete subject-area libraries, and enable multidisciplinary collaboration.",
+            "researcher_comment": "These explicit design requirements show how the framework is operationalized: mathematical validation and gap-finding are core functions (RQ2). They also imply necessary features (metrics, visualization, library completeness) relevant to methods (RQ1). The document later demonstrates experiments validating some of these claims. ",
+            "potential_themes": [
+              "framework_operationalization",
+              "experimentation",
+              "recommendation"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              },
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "framework"
+          },
+          {
+            "direct_quote": "Experiment one is to assess the framework for its ability to highlight intelligence gaps. The candidates had to process the results of several different libraries, overlay them onto the framework and use the framework to identify any area that was lacking information. This first experiment resulted in a 100% success rate with all candidates successfully identifying the intelligence gap.",
+            "paraphrase": "A user experiment showed the framework (with library overlays) allowed participants to identify intelligence gaps; all participants succeeded in the first experiment.",
+            "researcher_comment": "Provides experimental validation (RQ1 and RQ2) that the framework's visual/library approach aids gap detection. Sample size and participant selection are described elsewhere; here result is reported without statistical uncertainty metrics. ",
+            "potential_themes": [
+              "experimentation",
+              "methods_used"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 1
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "finding"
+          },
+          {
+            "direct_quote": "It is common for malware to contain IP addresses. These are ordinarily locations to go for further payloads and/or command and control infrastructure. The development of a command and control infrastructure is a non trivial task and required considerable effort. As a result it is common for a malware developer to use the same C2 infrastructure for multiple variants of malware.",
+            "paraphrase": "IP addresses and C2 infrastructure in malware recur across variants and thus serve as useful linking evidence for attribution.",
+            "researcher_comment": "Justifies why certain evidence types (IP/C2) are valuable for linking samples (RQ0). The passage recognizes attacker reuse patterns, which grounds attribute selection, but doesn't quantify false-link risk due to reuse by multiple actors or false flags. ",
+            "potential_themes": [
+              "evidence_types",
+              "attribute_selection"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              }
+            ],
+            "evidence_type": "claim"
+          },
+          {
+            "direct_quote": "It was found that the same packer was used in every sample of the same family. This was not however the most reliable attribute, as there are only a limited number packers available, and the same packer was discovered across multiple families.",
+            "paraphrase": "Use of the same packer across a malware family is common but not a highly reliable attribution attribute because packers are shared across families.",
+            "researcher_comment": "This is an important limitation on an evidence type (RQ0): packer identification can link samples but has low specificity. Good example of caution in attribute weighting within the framework. ",
+            "potential_themes": [
+              "limitations",
+              "evidence_types"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 0
+              },
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "finding"
+          },
+          {
+            "direct_quote": "Finally to increase the adoption and frameworks interoperability in would make logical sense to adopt a widely recognised data exchange format such as STIX *Barnum (2012)*. This is specifically designed to enable cyber threat intelligence sharing between different platforms.",
+            "paraphrase": "The author recommends adopting a standard data-exchange format (STIX) to improve interoperability and sharing of framework data.",
+            "researcher_comment": "Practical recommendation for operationalizing inter-system sharing (RQ2). Suggests awareness of existing standards but does not show an implemented mapping; useful direction for integration work. ",
+            "potential_themes": [
+              "framework_operationalization",
+              "recommendation"
+            ],
+            "relevance_score": 4,
+            "relevant_rqs": [
+              {
+                "index": 2
+              }
+            ],
+            "evidence_type": "recommendation"
+          },
+          {
+            "direct_quote": "A value of 1-5 (1 being low confidence, 5 being certain), a percentage of certainty, or a number relating to a position on the uncertainty yardstick would all be suitable. For the purposes of testing the framework the values 0-1 have been chosen, with 0.2 intervals, with 0 representing highly unlikely and 1 representing almost certain. The default value will be 1 unless modified by the analyst.",
+            "paraphrase": "The framework allows multiple confidence encodings but uses a 0–1 scale (0.2 steps) with default 1 for testing; alternatives like 1–5 or percentages are permitted.",
+            "researcher_comment": "Reiterates confidence representation policy; the default of '1' (almost certain) is a strong prior that could inflate attribution confidence if not adjusted, so analysts must actively downgrade where appropriate. This has implications for evidentiary fusion and bias. ",
+            "potential_themes": [
+              "confidence_language",
+              "limitations"
+            ],
+            "relevance_score": 5,
+            "relevant_rqs": [
+              {
+                "index": 2
+              },
+              {
+                "index": 1
+              }
+            ],
+            "evidence_type": "assumption"
+          }
+        ]
+      },
+      {
+        "input_tokens": 48953,
+        "output_tokens": 3714,
+        "total_tokens": 52667,
+        "cost_usd": 0.090143,
+        "model": "gpt-5-mini-2025-08-07",
+        "is_batch": true
+      }
+    ]
+  }
+]

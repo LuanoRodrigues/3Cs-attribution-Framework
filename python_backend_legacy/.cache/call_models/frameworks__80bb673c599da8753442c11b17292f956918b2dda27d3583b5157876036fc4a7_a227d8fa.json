@@ -1,0 +1,367 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "quote": "At the moment, international law is unable to cope with cyberspace-related hostilities.",
+          "paraphrase": "This sentence states that current international law cannot adequately address hostilities in cyberspace, which is relevant to RQs about legal frameworks for cyber attribution and state response.",
+          "researcher_comment": "Flags a legal-framework gap that shapes attribution and response options; the claim is asserted without empirical support here and needs specification of which legal regimes are implicated. Useful for RQs on normative/ legal constraints.",
+          "potential_themes": [
+            "legal_norms"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "legal_gap"
+          ]
+        },
+        {
+          "quote": "The shared (legal) norms of cyberspace are still missing.",
+          "paraphrase": "The author asserts that shared legal norms governing cyberspace have not yet been established, relevant to RQs on normative development in cyber attribution.",
+          "researcher_comment": "Concise statement of normative vacuum; useful for framing research on international norm emergence. Lacks detail on which actors or proposals have failed or are absent.",
+          "potential_themes": [
+            "legal_norms"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "missing_legal_norms"
+          ]
+        },
+        {
+          "quote": "Attributing cyber attacks to their sponsor (which state or non-state actor is behind the particular attack) remains a significant challenge, as it requires effective measures with the ability to identify perpetrators behind the attacks.",
+          "paraphrase": "Attributing a cyber attack to its sponsor remains a significant challenge because it requires effective measures to identify perpetrators, bearing directly on RQs about attribution feasibility.",
+          "researcher_comment": "Direct statement of attribution difficulty; frames the problem as requiring technical/operational capabilities. Does not specify what 'effective measures' would be sufficient\u2014useful prompt for operationalizing capability metrics.",
+          "potential_themes": [
+            "attribution_challenges",
+            "operational_constraints"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "attribution_difficulty",
+            "need_for_attribution_tools"
+          ]
+        },
+        {
+          "quote": "Cyberspace allows for a great deal of anonymity, and attacks can be routed through servers all over the world to mask their origin.",
+          "paraphrase": "Anonymity and global routing in cyberspace enable attackers to mask their origin, explaining a mechanism that complicates attribution.",
+          "researcher_comment": "Provides a concrete technical mechanism (routing/anonymity) that produces attribution uncertainty; useful for RQs on forensic limits and tracing techniques. Does not discuss mitigations (e.g., traffic correlation).",
+          "potential_themes": [
+            "attribution_challenges",
+            "operational_constraints"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "anonymity_and_routing",
+            "attribution_obfuscation"
+          ]
+        },
+        {
+          "quote": "Misattributing a cyber hostility could cause a response directed to the wrong target.",
+          "paraphrase": "A mistaken attribution can lead states to direct responses at incorrect targets, relevant to RQs about escalation risk from attribution errors.",
+          "researcher_comment": "Highlights the high-stakes consequence of attribution errors for policy responses; implies the need for confidence thresholds and checks. The excerpt does not provide empirical incidence data.",
+          "potential_themes": [
+            "attribution_challenges",
+            "escalation_risks"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "misattribution_risk",
+            "wrong_target_risk"
+          ]
+        },
+        {
+          "quote": "For instance, if the level of attribution is low, decision-makers will be limited in their choice of response even if the severity of the attack is high.",
+          "paraphrase": "Low confidence in attribution constrains policymakers' available response options even when an attack is severe, which is relevant to RQs about confidence thresholds and proportionality.",
+          "researcher_comment": "Connects attribution confidence directly to feasible policy responses; useful for operationalizing 'confidence' in decision rules. Assumes risk aversion\u2014political pressures may sometimes override this constraint.",
+          "potential_themes": [
+            "confidence_language",
+            "proportionality"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "confidence_constraints",
+            "response_limitations"
+          ]
+        },
+        {
+          "quote": "The ability to attribute an attack to a specific source is important for maintaining credibility and ensuring legitimacy at home and abroad.",
+          "paraphrase": "Attribution capability is necessary to preserve domestic and international credibility and legitimacy, relevant to RQs on political effects of attribution.",
+          "researcher_comment": "Links attribution to reputational and legitimacy costs/benefits; suggests that attribution decisions are as much about signaling as fact-finding. Does not operationalize 'credibility'.",
+          "potential_themes": [
+            "attribution_challenges",
+            "confidence_language"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "credibility_legitimacy",
+            "political_importance_of_attribution"
+          ]
+        },
+        {
+          "quote": "The challenge is that the sufficient proof of the attribution may be gathered via \u201csecret intelligence data sources\u201d or obtained from \u201cfriendly nations,\u201d and the state does not want to reveal these intelligence sources publicly.",
+          "paraphrase": "Sufficient attribution evidence may rely on secret intelligence or allied sources that states are unwilling to disclose publicly, complicating transparent attribution and its study.",
+          "researcher_comment": "Identifies an evidentiary trade-off: secrecy versus public legitimacy. Highly relevant to RQs on evidentiary standards and public justification; suggests research into partial-disclosure tactics.",
+          "potential_themes": [
+            "evidentiary_standards",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "intelligence_secrecy",
+            "evidence_disclosure_tradeoff"
+          ]
+        },
+        {
+          "quote": "Releasing at least some proof of attribution is necessary, if the state wants to build international legitimacy for whatever retaliatory actions it takes.",
+          "paraphrase": "Publishing at least partial evidence is necessary for a state to build international legitimacy for retaliatory actions, relevant to RQs on transparency and legitimacy in attribution.",
+          "researcher_comment": "Normative recommendation tying evidence disclosure to legitimacy. Useful for RQs on how much and what type of disclosure constrains adversaries or persuades allies; lacks empirical threshold guidance.",
+          "potential_themes": [
+            "evidentiary_standards",
+            "confidence_language"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "partial_disclosure",
+            "legitimacy_through_evidence"
+          ]
+        },
+        {
+          "quote": "Attribution involves many aspects, including technical, legal, and political.",
+          "paraphrase": "Attribution is a multidimensional process encompassing technical, legal, and political components, relevant to RQs on multidisciplinary attribution processes.",
+          "researcher_comment": "High-level definition that signals the need for interdisciplinary methods in RQs; does not describe how these dimensions interact or which dominates in practice.",
+          "potential_themes": [
+            "attribution_process",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "multidimensional_attribution",
+            "technical_legal_political"
+          ]
+        },
+        {
+          "quote": "Attribution is an exercise of minimizing uncertainty on three levels: tactically, attribution is an art as well as a science; operationally, attribution is a nuanced process instead of a black-and-white problem; and strategically, attribution is a function of what is at stake politically.",
+          "paraphrase": "Attribution reduces uncertainty at tactical, operational, and strategic levels\u2014tactically art/science, operationally nuanced, and strategically politically conditioned\u2014relevant to RQs seeking conceptual frameworks.",
+          "researcher_comment": "Provides an explicit three-level framework useful for coding and structuring RQs (tactical/operational/strategic). Offers a conceptual lens for differentiating technical from political attribution questions.",
+          "potential_themes": [
+            "attribution_process",
+            "framework"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "framework",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "three_level_attribution",
+            "uncertainty_minimization"
+          ]
+        },
+        {
+          "quote": "Successful attribution requires a range of skills at all levels, careful management, time, leadership, stress-testing, prudent communication, and recognizing limitations and challenges.",
+          "paraphrase": "Accurate attribution requires diverse skills, organizational management, time, leadership, stress-testing, careful communication, and acknowledgement of limits, relevant to RQs on capability requirements.",
+          "researcher_comment": "Enumerates human and institutional capacities needed for attribution, pointing to variables to measure in empirical studies. Does not provide metrics or prioritization among listed skills.",
+          "potential_themes": [
+            "attribution_challenges",
+            "operational_constraints"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "skills_and_capabilities",
+            "organizational_requirements"
+          ]
+        },
+        {
+          "quote": "Even if attribution capabilities are increasing due to the great interest of security experts in all three levels, the final conclusion of attribution in order to respond is always a political decision.",
+          "paraphrase": "Despite improving capabilities, the decision to attribute for the purpose of response is ultimately political, which matters for RQs about decision-making processes.",
+          "researcher_comment": "Key claim: technical evidence alone does not determine policy action; political incentives and audiences matter. Suggests RQs should incorporate political-institutional variables alongside technical indicators.",
+          "potential_themes": [
+            "attribution_challenges",
+            "confidence_language"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "political_decision",
+            "technical_vs_political"
+          ]
+        },
+        {
+          "quote": "It can take weeks, if not months or years, for computer forensic experts to accurately and conclusively ascertain the extent of the damage done to the target organization's computer networks.",
+          "paraphrase": "Forensic assessment of cyber damage can require weeks to years to reach accurate, conclusive results, relevant to RQs on temporal constraints in attribution and response.",
+          "researcher_comment": "Quantifies a significant temporal lag that constrains prompt attribution and response; this tension is central to RQs comparing forensic rigor with political urgency.",
+          "potential_themes": [
+            "operational_constraints",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "time_to_validate_damage",
+            "forensic_delay"
+          ]
+        },
+        {
+          "quote": "The challenge in calculating proportionality in the cyber context resides in the speed and covert nature of cyber attacks: it is difficult to establish their magnitude and consequences.",
+          "paraphrase": "Calculating proportionality is hampered by cyber attacks' speed and covert character, which makes it difficult to establish magnitude and consequences, relevant to RQs on proportionality assessments.",
+          "researcher_comment": "Directly links attribution/forensics problems to international-law proportionality assessments; important for RQs on legal thresholds and response legitimacy. Lacks operational measures for 'magnitude'.",
+          "potential_themes": [
+            "proportionality",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "proportionality_challenge",
+            "covert_nature"
+          ]
+        },
+        {
+          "quote": "It is said that every nation-state can respond using at least four instruments: diplomatic, informational, military, and economic.",
+          "paraphrase": "States can respond to cyber hostilities using at least four instruments\u2014diplomatic, informational, military, and economic\u2014which is relevant to RQs on repertoire of state responses.",
+          "researcher_comment": "Provides a simple taxonomy of state levers for response useful for comparative coding; does not discuss constraints or effectiveness of each instrument.",
+          "potential_themes": [
+            "response_options"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "response_instruments",
+            "state_levers"
+          ]
+        },
+        {
+          "quote": "Responses to cyber attacks may be delivered overtly or covertly.",
+          "paraphrase": "Responses to cyber attacks can be overt or covert, a distinction relevant to RQs on signaling, attribution, and escalation dynamics.",
+          "researcher_comment": "Important descriptive distinction affecting signaling and deterrence; prompts RQs on when states opt for covert versus overt measures and how that choice affects attribution credibility.",
+          "potential_themes": [
+            "response_options",
+            "escalation_risks"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "overt_vs_covert",
+            "signaling"
+          ]
+        },
+        {
+          "quote": "If cyber methods are used, the latter can be difficult to develop quickly unless the government already has a prepared capability against a specific target, likely involving prior cyber espionage producing an unparalleled understanding of the target's vulnerabilities.",
+          "paraphrase": "Covert cyber countermeasures are hard to create quickly and generally require pre-existing capabilities and prior espionage to exploit target vulnerabilities, relevant to RQs on preparedness.",
+          "researcher_comment": "Highlights lead-times and preparatory requirements for effective cyber responses; implies that ad-hoc retaliation is often infeasible. Raises ethical/legal flags about prior espionage.",
+          "potential_themes": [
+            "operational_constraints"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "prepared_capabilities",
+            "need_for_prior_espionage"
+          ]
+        },
+        {
+          "quote": "States may also choose to outsource their responses to proxy hacker groups. By doing so, they may limit their control over the response, which may lead into escalatory activity.",
+          "paraphrase": "Outsourcing responses to proxy hacker groups reduces state control and can provoke escalation, relevant to RQs on deniability, attribution, and escalation risk.",
+          "researcher_comment": "Identifies outsourcing as a mechanism that increases attribution ambiguity and escalation risk; useful for RQs on state use of proxies and unintended consequences. Does not provide frequency or case data.",
+          "potential_themes": [
+            "attribution_challenges",
+            "escalation_risks"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "outsourcing_risk",
+            "proxy_escalation"
+          ]
+        },
+        {
+          "quote": "The political pressure to respond especially increases when (1) the impacts of the cyber attack are acknowledged in public and (2) the official accusation of the attacker has been announced.",
+          "paraphrase": "Political pressure to respond intensifies when attack impacts are publicized and an attacker is officially accused, which is relevant to RQs on timing and political constraints in attribution-driven responses.",
+          "researcher_comment": "Specifies two public triggers that raise urgency and can shorten deliberation time; relevant for modeling temporal dynamics and political accountability in attribution decisions.",
+          "potential_themes": [
+            "timing_pressure"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "publicization_pressure",
+            "official_accusation_trigger"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-24T15:10:43.510114Z",
+  "collection_name": "frameworks",
+  "custom_id": "80bb673c599da8753442c11b17292f956918b2dda27d3583b5157876036fc4a7",
+  "function": "code_pdf_page"
+}

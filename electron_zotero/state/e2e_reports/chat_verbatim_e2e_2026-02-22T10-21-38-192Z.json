@@ -1,0 +1,117 @@
+{
+  "startedAt": "2026-02-22T10:15:44.979Z",
+  "scenario": {
+    "collectionKeyword": "framework",
+    "collectionKey": "44Q6VN9A",
+    "dirBase": "/home/pantera/annotarium/analyse",
+    "initialCommand": "Code my collection 44Q6VN9A about cyber attribution frameworks and models, skip screening, and generate 3 to 5 strong research questions.",
+    "feedback": "Could you refine the questions to cover evidence, methodology, validity, uncertainty, and policy implications?",
+    "approve": "yes",
+    "waitMs": 120000,
+    "executionWaitMs": 420000
+  },
+  "steps": [
+    {
+      "at": "2026-02-22T10:15:44.981Z",
+      "name": "renderer-ready",
+      "ok": true,
+      "detail": "chat form + collections tree detected"
+    },
+    {
+      "at": "2026-02-22T10:15:46.255Z",
+      "name": "await-tree-lines",
+      "ok": true,
+      "detail": "rows=156"
+    },
+    {
+      "at": "2026-02-22T10:15:46.647Z",
+      "name": "select-collection",
+      "ok": true,
+      "detail": "016_framework_model_NA"
+    },
+    {
+      "at": "2026-02-22T10:15:47.857Z",
+      "name": "send-initial-command",
+      "ok": true,
+      "detail": "Code my collection 44Q6VN9A about cyber attribution frameworks and models, skip screening, and generate 3 to 5 strong research questions."
+    },
+    {
+      "at": "2026-02-22T10:16:07.709Z",
+      "name": "await-initial-questions",
+      "ok": true,
+      "detail": "I will prepare coding for '016_framework_model_NA'.\nScreening: disabled (skipping eligibility preflight).\n\nInclusion criteria (draft):\n(skipped)\n\nExclusion criteria (draft):\n(skipped)\n\nResearch questions:\n1. What conceptual components and evaluation criteria are used across published cyber attribution frameworks to determine attribution confidence and uncertainty?\n2. How do existing cyber attribution models integrate technical evidence (forensic artifacts, malware signatures, network telemetry) with contextual information (actor intent, geopolitical indicators), and what methods are used to weight or reconcile conflicting evidence?\n3. Which methodological approaches (rule-based, probabilistic, Bayesian, machine learning, hybrid) are applied to cyber attribution, and how do they compare in terms of accuracy, robustness to adversarial manipulation, and explainability?\n4. How do legal, ethical, and policy considerations influence the design, validation, and operational adoption of cyber attribution frameworks in academic, industry, and government contexts?\n5. What evaluation and validation practices are reported for cyber attribution models, including dataset generation or ground-truthing, performance metrics, and reproducibility, and where are the key gaps and needs for standardized benchmarks?\n\nReply with 'yes' to run, 'no' to cancel, or send modified questions (3-5)."
+    },
+    {
+      "at": "2026-02-22T10:16:07.715Z",
+      "name": "send-feedback",
+      "ok": true,
+      "detail": "Could you refine the questions to cover evidence, methodology, validity, uncertainty, and policy implications?"
+    },
+    {
+      "at": "2026-02-22T10:16:37.495Z",
+      "name": "await-refined-questions",
+      "ok": true,
+      "detail": "Updated research questions:\n1. What types and sources of evidence (technical artifacts, telemetry, threat intelligence, and contextual/geopolitical indicators) are used in cyber attribution frameworks, and how is evidence represented and assessed for reliability?\n2. What methodological approaches (rule-based, probabilistic/Bayesian, machine learning, and hybrid) are applied to combine and analyze evidence for attribution, and how do they handle conflicting, incomplete, or adversarial data?\n3. How do attribution frameworks quantify, communicate, and calibrate uncertainty and confidence (e.g., probabilistic scores, qualitative tiers), and what practices exist for interpreting these measures?\n4. What validation and evaluation practices (ground truth, dataset generation, benchmarks, performance metrics, adversarial testing, and reproducibility) are reported for attribution models, and where are the key gaps in assessing accuracy and robustness?\n5. How do legal, ethical, and policy considerations (evidentiary standards, privacy, disclosure, accountability, and cross-sector coordination) influence the design, validation, and operational adoption of attribution frameworks across academia, industry, and government?\n\nReply with 'yes' to run, 'no' to cancel, or send another modification."
+    },
+    {
+      "at": "2026-02-22T10:16:37.498Z",
+      "name": "await-input-ready-for-approval",
+      "ok": true,
+      "detail": "chat input enabled"
+    },
+    {
+      "at": "2026-02-22T10:16:37.510Z",
+      "name": "send-approval",
+      "ok": true,
+      "detail": "yes"
+    },
+    {
+      "at": "2026-02-22T10:21:38.190Z",
+      "name": "await-execution-result",
+      "ok": false,
+      "detail": "intent execution timed out after 300s."
+    }
+  ],
+  "transcript": [
+    {
+      "role": "assistant",
+      "tone": "",
+      "text": "Agent ready. Send a command to organize collections by tag."
+    },
+    {
+      "role": "user",
+      "tone": "",
+      "text": "Code my collection 44Q6VN9A about cyber attribution frameworks and models, skip screening, and generate 3 to 5 strong research questions."
+    },
+    {
+      "role": "assistant",
+      "tone": "",
+      "text": "I will prepare coding for '016_framework_model_NA'.\nScreening: disabled (skipping eligibility preflight).\n\nInclusion criteria (draft):\n(skipped)\n\nExclusion criteria (draft):\n(skipped)\n\nResearch questions:\n1. What conceptual components and evaluation criteria are used across published cyber attribution frameworks to determine attribution confidence and uncertainty?\n2. How do existing cyber attribution models integrate technical evidence (forensic artifacts, malware signatures, network telemetry) with contextual information (actor intent, geopolitical indicators), and what methods are used to weight or reconcile conflicting evidence?\n3. Which methodological approaches (rule-based, probabilistic, Bayesian, machine learning, hybrid) are applied to cyber attribution, and how do they compare in terms of accuracy, robustness to adversarial manipulation, and explainability?\n4. How do legal, ethical, and policy considerations influence the design, validation, and operational adoption of cyber attribution frameworks in academic, industry, and government contexts?\n5. What evaluation and validation practices are reported for cyber attribution models, including dataset generation or ground-truthing, performance metrics, and reproducibility, and where are the key gaps and needs for standardized benchmarks?\n\nReply with 'yes' to run, 'no' to cancel, or send modified questions (3-5)."
+    },
+    {
+      "role": "user",
+      "tone": "",
+      "text": "Could you refine the questions to cover evidence, methodology, validity, uncertainty, and policy implications?"
+    },
+    {
+      "role": "assistant",
+      "tone": "",
+      "text": "Updated research questions:\n1. What types and sources of evidence (technical artifacts, telemetry, threat intelligence, and contextual/geopolitical indicators) are used in cyber attribution frameworks, and how is evidence represented and assessed for reliability?\n2. What methodological approaches (rule-based, probabilistic/Bayesian, machine learning, and hybrid) are applied to combine and analyze evidence for attribution, and how do they handle conflicting, incomplete, or adversarial data?\n3. How do attribution frameworks quantify, communicate, and calibrate uncertainty and confidence (e.g., probabilistic scores, qualitative tiers), and what practices exist for interpreting these measures?\n4. What validation and evaluation practices (ground truth, dataset generation, benchmarks, performance metrics, adversarial testing, and reproducibility) are reported for attribution models, and where are the key gaps in assessing accuracy and robustness?\n5. How do legal, ethical, and policy considerations (evidentiary standards, privacy, disclosure, accountability, and cross-sector coordination) influence the design, validation, and operational adoption of attribution frameworks across academia, industry, and government?\n\nReply with 'yes' to run, 'no' to cancel, or send another modification."
+    },
+    {
+      "role": "user",
+      "tone": "",
+      "text": "yes"
+    },
+    {
+      "role": "assistant",
+      "tone": "error",
+      "text": "intent execution timed out after 300s."
+    }
+  ],
+  "status": "failed",
+  "error": "intent execution timed out after 300s.",
+  "statusLine": "intent execution timed out after 300s.",
+  "selectedCollection": "Collection\n      Name016_framework_model_NAParent Key(root)Version274154Subcollections0Items in Panel0Items in Tree Cache0\n      \n        Open in Zotero",
+  "finishedAt": "2026-02-22T10:21:38.192Z"
+}

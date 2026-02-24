@@ -685,6 +685,7 @@ def get_embedding(text):
 
 def write_batch_requests_to_file(batch_request,
                                  file_name=r"C:\Users\luano\Downloads\AcAssitant\Files\Batching_files\batchinput.jsonl"):
+    import json
     with open(file_name, "a+", encoding="utf-8") as f:
         # Convert the batch_request dictionary into a JSON string
         json_string = json.dumps(batch_request, ensure_ascii=False, separators=(',', ':'))
@@ -5705,7 +5706,7 @@ def call_models(ai: str, models: dict, text: str, function_key: str,
             # --- OpenAI ---
             elif provider == "openai":
                 if not OpenAI or not OPENAI_API_KEY: raise ImportError("OpenAI client not configured.")
-                client = OpenAI(api_key=OPENAI_API_KEY)
+                client = OpenAI(api_key=OPENAI_API_KEY, timeout=90.0, max_retries=1)
 
                 # Prepare base message payload (always list format)
                 openai_message_content_payload = [{"type": "text", "text": full_prompt}]
@@ -5954,7 +5955,7 @@ def safe_name(s: str, *, maxlen: int = 120) -> str:
     return s
 
 PROMPTS_CONFIG = {}
-PROMPTS_FILENAME = "prompts.json"
+PROMPTS_FILENAME = "api_prompts.json"
 
 def _ui_pre(s: str) -> str:
     import html as _html
@@ -5963,30 +5964,25 @@ def _ui_pre(s: str) -> str:
 
 script_dir = Path(__file__).parent
 logging.info(f"Attempting to load {PROMPTS_FILENAME}. Current script directory: {script_dir}")
-# Correctly calculates: src/core/utils/ -> src/core/ -> src/ -> prompts.json
-explicit_path_to_prompts_json = script_dir.parent.parent / PROMPTS_FILENAME
-logging.info(f"Targeting prompts file at calculated explicit path: {explicit_path_to_prompts_json}")
-
-# Path to the prompts file provided by the user in the uploaded file structure
-# This assumes prompts.json is at the root of the 'src' directory based on other file paths.
-user_provided_prompts_path = Path("prompts.json") # Relative to where the script might consider "root" or needs adjustment
-
+repo_root = Path(__file__).resolve().parents[2]
+candidate_prompt_paths = [
+    repo_root / "electron_zotero" / "api_prompts.json",
+    repo_root / "my-electron-app" / "electron_zotero" / "api_prompts.json",
+    repo_root / "electron_zotero" / "prompts.json",
+    repo_root / "my-electron-app" / "electron_zotero" / "prompts.json",
+    script_dir.parent.parent / "prompts.json",
+]
+logging.info("Prompt candidates: " + ", ".join(str(p) for p in candidate_prompt_paths))
 
 found_prompts_file_path = None
-if explicit_path_to_prompts_json.exists() and explicit_path_to_prompts_json.is_file():
-    found_prompts_file_path = explicit_path_to_prompts_json
-    logging.info(f"Found {PROMPTS_FILENAME} at calculated explicit path: {found_prompts_file_path}")
+for candidate in candidate_prompt_paths:
+    if candidate.exists() and candidate.is_file():
+        found_prompts_file_path = candidate
+        break
+if found_prompts_file_path:
+    logging.info(f"Found prompt file at: {found_prompts_file_path}")
 else:
-    logging.warning(f"{PROMPTS_FILENAME} not found at calculated explicit path: {explicit_path_to_prompts_json}.")
-    # As a secondary option, consider a path relative to the script if that's ever intended,
-    # or a path based on a known project root. For now, we rely on the explicit path.
-    # The hardcoded path is generally not recommended. If it must be a fallback:
-    hardcoded_dev_path = Path(r"C:\Users\luano\Downloads\annotarium_package (1)\annotarium_package\src\prompts.json")
-    if hardcoded_dev_path.exists() and hardcoded_dev_path.is_file():
-        found_prompts_file_path = hardcoded_dev_path
-        logging.warning(f"CRITICAL FALLBACK: Found {PROMPTS_FILENAME} at a hardcoded development path: {found_prompts_file_path}. This should be avoided in production.")
-    else:
-        logging.error(f"{PROMPTS_FILENAME} also not found at the hardcoded development path.")
+    logging.error(f"CRITICAL: no prompt file found in candidates for {PROMPTS_FILENAME}.")
 
 if found_prompts_file_path:
     import json
@@ -6192,6 +6188,7 @@ def read_completion_results(custom_id, path, function, model=None, by_index=None
       }
     If nothing matched, returns (None, None).
     """
+    import json
 
     if not os.path.exists(path):
         print(f"Error: Output file not found at '{path}'")
@@ -7619,6 +7616,7 @@ def call_models(ai_provider_key: str,
 
 
 
+STEP__TIMELINE = "timeline"
 TIMELINE_SECTION_KEY = STEP__TIMELINE
 TIMELINE_SECTION_TITLE = STEP__TIMELINE
 
@@ -8029,7 +8027,29 @@ def _process_batch_for(
 
 def load_prompt_config(key, config_file_path_str=r"C:\Users\luano\PycharmProjects\Back_end_assis\Prompts\api_prompts.json"):
     """Loads task-specific configuration from the JSON file."""
-    config_file = Path(config_file_path_str)
+    import json
+    env_prompt_path = os.getenv("API_PROMPTS_PATH", "").strip()
+    default_repo_prompt = Path(__file__).resolve().parents[2] / "electron_zotero" / "api_prompts.json"
+    fallback_local_prompt = Path(__file__).resolve().parent / "api_prompts.json"
+
+    candidates = []
+    if env_prompt_path:
+        candidates.append(Path(env_prompt_path))
+    candidates.append(default_repo_prompt)
+    candidates.append(Path(config_file_path_str))
+    candidates.append(fallback_local_prompt)
+
+    config_file = None
+    for cand in candidates:
+        try:
+            p = Path(cand).expanduser().resolve()
+        except Exception:
+            continue
+        if p.is_file():
+            config_file = p
+            break
+    if config_file is None:
+        config_file = Path(config_file_path_str)
 
     default_return = {"prompt": "", "default_model": {}, "def_temperature": None,
                       "openai_tool_schema": None}  # Added openai_tool_schema to defaults
@@ -8074,7 +8094,7 @@ def load_prompt_config(key, config_file_path_str=r"C:\Users\luano\PycharmProject
         print(f"Error loading or processing prompt config from '{config_file.resolve()}': {e}")
         return default_return
 
-def call_models_old_backin( text: str, function: str,
+def call_models_zt( text: str, function: str,
                  custom_id: str,
 
                  document: str = None, vision: bool = False,
@@ -8095,7 +8115,7 @@ def call_models_old_backin( text: str, function: str,
     Uses provider-specific default models from config. Corrects Gemini call structure.
     """
 
-    global json
+    import json
     no_temperature = ["gpt-5-mini"]
 
     from datetime import datetime

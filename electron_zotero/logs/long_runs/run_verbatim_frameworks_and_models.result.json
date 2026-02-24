@@ -1,0 +1,828 @@
+{
+  "status": "ok",
+  "csv_path": "/home/pantera/annotarium/analyse/frameworks_and_models/open_coding_exports/frameworks_and_models__evidence.csv",
+  "manifest_path": "/home/pantera/annotarium/analyse/frameworks_and_models/manifest.json",
+  "theme_result": {
+    "collection_name": "frameworks_and_models",
+    "out_dir": "/home/pantera/annotarium/analyse/frameworks_and_models",
+    "manifest_path": "/home/pantera/annotarium/analyse/frameworks_and_models/manifest.json",
+    "num_batches": 3,
+    "submitted": true,
+    "read_ok": true,
+    "outputs": [
+      {
+        "custom_id": "pyr_52917b4949af8a46",
+        "index_key": "idx_00001",
+        "rq": "0: What types of evidence are used?",
+        "gold_theme": "NA",
+        "potential_theme": "evidentiary_standards",
+        "evidence_type": "mixed",
+        "route": "HIGH",
+        "size": 20,
+        "score_buckets": {
+          "5": 20
+        }
+      },
+      {
+        "custom_id": "pyr_13e0e9ed88b1b20c",
+        "index_key": "idx_00002",
+        "rq": "0: What types of evidence are used?",
+        "gold_theme": "NA",
+        "potential_theme": "evidentiary_standards",
+        "evidence_type": "mixed",
+        "route": "HIGH",
+        "size": 20,
+        "score_buckets": {
+          "5": 20
+        }
+      },
+      {
+        "custom_id": "pyr_30951dcb2652f482",
+        "index_key": "idx_00003",
+        "rq": "0: What types of evidence are used?",
+        "gold_theme": "NA",
+        "potential_theme": "attribution_challenges",
+        "evidence_type": "limitation",
+        "route": "HIGH",
+        "size": 20,
+        "score_buckets": {
+          "5": 20
+        }
+      },
+      {
+        "custom_id": "pyr_28e1fe4e05b9b5ba",
+        "index_key": "idx_00006",
+        "rq": "0: What types of evidence are used?",
+        "gold_theme": "NA",
+        "potential_theme": "attribution_challenges",
+        "evidence_type": "mixed",
+        "route": "HIGH",
+        "size": 20,
+        "score_buckets": {
+          "5": 20
+        }
+      },
+      {
+        "custom_id": "pyr_46885203eb16f47f",
+        "index_key": "idx_00009",
+        "rq": "0: What types of evidence are used?",
+        "gold_theme": "NA",
+        "potential_theme": "mixed",
+        "evidence_type": "claim",
+        "route": "HIGH",
+        "size": 20,
+        "score_buckets": {
+          "5": 20
+        }
+      },
+      {
+        "custom_id": "pyr_e29b0f80a345af48",
+        "index_key": "idx_00012",
+        "rq": "0: What types of evidence are used?",
+        "gold_theme": "NA",
+        "potential_theme": "mixed",
+        "evidence_type": "mixed",
+        "route": "HIGH",
+        "size": 20,
+        "score_buckets": {
+          "5": 20
+        }
+      },
+      {
+        "custom_id": "pyr_ab4d4bbb744e21aa",
+        "index_key": "idx_00015",
+        "rq": "0: What types of evidence are used?",
+        "gold_theme": "NA",
+        "potential_theme": "attribution_methods",
+        "evidence_type": "method",
+        "route": "HIGH",
+        "size": 20,
+        "score_buckets": {
+          "5": 20
+        }
+      },
+      {
+        "custom_id": "pyr_1daeff39dd13bf68",
+        "index_key": "idx_00016",
+        "rq": "0: What types of evidence are used?",
+        "gold_theme": "NA",
+        "potential_theme": "mixed",
+        "evidence_type": "mixed",
+        "route": "HIGH",
+        "size": 8,
+        "score_buckets": {
+          "5": 8
+        }
+      },
+      {
+        "custom_id": "pyr_5a6a8d929a47414b",
+        "index_key": "idx_00008",
+        "rq": "1: What methods are used?",
+        "gold_theme": "NA",
+        "potential_theme": "evidentiary_standards",
+        "evidence_type": "method",
+        "route": "HIGH",
+        "size": 20,
+        "score_buckets": {
+          "5": 20
+        }
+      },
+      {
+        "custom_id": "pyr_7b4fa3f741c4c1b5",
+        "index_key": "idx_00011",
+        "rq": "1: What methods are used?",
+        "gold_theme": "NA",
+        "potential_theme": "evidentiary_standards",
+        "evidence_type": "mixed",
+        "route": "HIGH",
+        "size": 20,
+        "score_buckets": {
+          "5": 20
+        }
+      },
+      {
+        "custom_id": "pyr_48f3eb2ec0e25d63",
+        "index_key": "idx_00014",
+        "rq": "1: What methods are used?",
+        "gold_theme": "NA",
+        "potential_theme": "attribution_challenges",
+        "evidence_type": "limitation",
+        "route": "HIGH",
+        "size": 20,
+        "score_buckets": {
+          "5": 20
+        }
+      },
+      {
+        "custom_id": "pyr_ab40234ffc942c16",
+        "index_key": "idx_00017",
+        "rq": "1: What methods are used?",
+        "gold_theme": "NA",
+        "potential_theme": "attribution_challenges",
+        "evidence_type": "mixed",
+        "route": "HIGH",
+        "size": 20,
+        "score_buckets": {
+          "5": 20
+        }
+      },
+      {
+        "custom_id": "pyr_918ff78eee5c8c40",
+        "index_key": "idx_00018",
+        "rq": "1: What methods are used?",
+        "gold_theme": "NA",
+        "potential_theme": "attribution_challenges",
+        "evidence_type": "mixed",
+        "route": "HIGH",
+        "size": 20,
+        "score_buckets": {
+          "5": 20
+        }
+      },
+      {
+        "custom_id": "pyr_eb1b88ab910eee36",
+        "index_key": "idx_00019",
+        "rq": "1: What methods are used?",
+        "gold_theme": "NA",
+        "potential_theme": "attribution_methods",
+        "evidence_type": "method",
+        "route": "HIGH",
+        "size": 20,
+        "score_buckets": {
+          "5": 20
+        }
+      },
+      {
+        "custom_id": "pyr_b33785fbd8399b66",
+        "index_key": "idx_00020",
+        "rq": "1: What methods are used?",
+        "gold_theme": "NA",
+        "potential_theme": "mixed",
+        "evidence_type": "mixed",
+        "route": "HIGH",
+        "size": 20,
+        "score_buckets": {
+          "5": 20
+        }
+      },
+      {
+        "custom_id": "pyr_1c36856067981f93",
+        "index_key": "idx_00021",
+        "rq": "1: What methods are used?",
+        "gold_theme": "NA",
+        "potential_theme": "mixed",
+        "evidence_type": "mixed",
+        "route": "HIGH",
+        "size": 20,
+        "score_buckets": {
+          "5": 20
+        }
+      },
+      {
+        "custom_id": "pyr_6de7d9526fbeaf81",
+        "index_key": "idx_00022",
+        "rq": "1: What methods are used?",
+        "gold_theme": "NA",
+        "potential_theme": "mixed",
+        "evidence_type": "mixed",
+        "route": "HIGH",
+        "size": 20,
+        "score_buckets": {
+          "5": 20
+        }
+      },
+      {
+        "custom_id": "pyr_d8e1c2518e2439b1",
+        "index_key": "idx_00023",
+        "rq": "1: What methods are used?",
+        "gold_theme": "NA",
+        "potential_theme": "confidence_language",
+        "evidence_type": "method",
+        "route": "HIGH",
+        "size": 20,
+        "score_buckets": {
+          "5": 20
+        }
+      },
+      {
+        "custom_id": "pyr_172d8b8064250905",
+        "index_key": "idx_00024",
+        "rq": "1: What methods are used?",
+        "gold_theme": "NA",
+        "potential_theme": "mixed",
+        "evidence_type": "method",
+        "route": "HIGH",
+        "size": 8,
+        "score_buckets": {
+          "5": 8
+        }
+      },
+      {
+        "custom_id": "pyr_59b6c97e27dd8062",
+        "index_key": "idx_00004",
+        "rq": "2: How are frameworks and models operationalized for cyber attribution?",
+        "gold_theme": "NA",
+        "potential_theme": "evidentiary_standards",
+        "evidence_type": "mixed",
+        "route": "HIGH",
+        "size": 20,
+        "score_buckets": {
+          "5": 20
+        }
+      },
+      {
+        "custom_id": "pyr_6bc4dc396676d0a2",
+        "index_key": "idx_00005",
+        "rq": "2: How are frameworks and models operationalized for cyber attribution?",
+        "gold_theme": "NA",
+        "potential_theme": "attribution_challenges",
+        "evidence_type": "mixed",
+        "route": "HIGH",
+        "size": 20,
+        "score_buckets": {
+          "5": 20
+        }
+      },
+      {
+        "custom_id": "pyr_5686f0df0cad421d",
+        "index_key": "idx_00007",
+        "rq": "2: How are frameworks and models operationalized for cyber attribution?",
+        "gold_theme": "NA",
+        "potential_theme": "attribution_challenges",
+        "evidence_type": "mixed",
+        "route": "HIGH",
+        "size": 20,
+        "score_buckets": {
+          "5": 20
+        }
+      },
+      {
+        "custom_id": "pyr_a8273d3cc8ba9a8a",
+        "index_key": "idx_00010",
+        "rq": "2: How are frameworks and models operationalized for cyber attribution?",
+        "gold_theme": "NA",
+        "potential_theme": "mixed",
+        "evidence_type": "mixed",
+        "route": "HIGH",
+        "size": 20,
+        "score_buckets": {
+          "5": 20
+        }
+      },
+      {
+        "custom_id": "pyr_181d9d85c7b0e586",
+        "index_key": "idx_00013",
+        "rq": "2: How are frameworks and models operationalized for cyber attribution?",
+        "gold_theme": "NA",
+        "potential_theme": "mixed",
+        "evidence_type": "mixed",
+        "route": "HIGH",
+        "size": 20,
+        "score_buckets": {
+          "5": 20
+        }
+      },
+      {
+        "custom_id": "pyr_d92502bf854d4746",
+        "index_key": "idx_00025",
+        "rq": "2: How are frameworks and models operationalized for cyber attribution?",
+        "gold_theme": "NA",
+        "potential_theme": "mixed",
+        "evidence_type": "mixed",
+        "route": "HIGH",
+        "size": 20,
+        "score_buckets": {
+          "5": 20
+        }
+      },
+      {
+        "custom_id": "pyr_6b380fcff7ebfb6a",
+        "index_key": "idx_00026",
+        "rq": "2: How are frameworks and models operationalized for cyber attribution?",
+        "gold_theme": "NA",
+        "potential_theme": "mixed",
+        "evidence_type": "mixed",
+        "route": "HIGH",
+        "size": 20,
+        "score_buckets": {
+          "5": 20
+        }
+      },
+      {
+        "custom_id": "pyr_a90196e9605df7ca",
+        "index_key": "idx_00027",
+        "rq": "2: How are frameworks and models operationalized for cyber attribution?",
+        "gold_theme": "NA",
+        "potential_theme": "mixed",
+        "evidence_type": "mixed",
+        "route": "HIGH",
+        "size": 20,
+        "score_buckets": {
+          "5": 20
+        }
+      },
+      {
+        "custom_id": "pyr_a23b8bee44ec68c2",
+        "index_key": "idx_00028",
+        "rq": "2: How are frameworks and models operationalized for cyber attribution?",
+        "gold_theme": "NA",
+        "potential_theme": "confidence_language",
+        "evidence_type": "mixed",
+        "route": "HIGH",
+        "size": 20,
+        "score_buckets": {
+          "5": 20
+        }
+      },
+      {
+        "custom_id": "pyr_872d86138acd89cb",
+        "index_key": "idx_00029",
+        "rq": "2: How are frameworks and models operationalized for cyber attribution?",
+        "gold_theme": "NA",
+        "potential_theme": "mixed",
+        "evidence_type": "method",
+        "route": "HIGH",
+        "size": 20,
+        "score_buckets": {
+          "5": 20
+        }
+      },
+      {
+        "custom_id": "pyr_66a2543939b3041f",
+        "index_key": "idx_00030",
+        "rq": "2: How are frameworks and models operationalized for cyber attribution?",
+        "gold_theme": "NA",
+        "potential_theme": "mixed",
+        "evidence_type": "mixed",
+        "route": "HIGH",
+        "size": 8,
+        "score_buckets": {
+          "5": 8
+        }
+      }
+    ],
+    "round1_sections": [
+      {
+        "meta": {
+          "custom_id": "pyr_52917b4949af8a46",
+          "index_key": "idx_00001",
+          "rq": "0: What types of evidence are used?",
+          "gold_theme": "NA",
+          "potential_theme": "evidentiary_standards",
+          "evidence_type": "mixed",
+          "route": "HIGH",
+          "route_value": ""
+        },
+        "section_html": "({}, False)"
+      },
+      {
+        "meta": {
+          "custom_id": "pyr_13e0e9ed88b1b20c",
+          "index_key": "idx_00002",
+          "rq": "0: What types of evidence are used?",
+          "gold_theme": "NA",
+          "potential_theme": "evidentiary_standards",
+          "evidence_type": "mixed",
+          "route": "HIGH",
+          "route_value": ""
+        },
+        "section_html": "({}, False)"
+      },
+      {
+        "meta": {
+          "custom_id": "pyr_30951dcb2652f482",
+          "index_key": "idx_00003",
+          "rq": "0: What types of evidence are used?",
+          "gold_theme": "NA",
+          "potential_theme": "attribution_challenges",
+          "evidence_type": "limitation",
+          "route": "HIGH",
+          "route_value": ""
+        },
+        "section_html": "({}, False)"
+      },
+      {
+        "meta": {
+          "custom_id": "pyr_28e1fe4e05b9b5ba",
+          "index_key": "idx_00006",
+          "rq": "0: What types of evidence are used?",
+          "gold_theme": "NA",
+          "potential_theme": "attribution_challenges",
+          "evidence_type": "mixed",
+          "route": "HIGH",
+          "route_value": ""
+        },
+        "section_html": "({}, False)"
+      },
+      {
+        "meta": {
+          "custom_id": "pyr_46885203eb16f47f",
+          "index_key": "idx_00009",
+          "rq": "0: What types of evidence are used?",
+          "gold_theme": "NA",
+          "potential_theme": "mixed",
+          "evidence_type": "claim",
+          "route": "HIGH",
+          "route_value": ""
+        },
+        "section_html": "({}, False)"
+      },
+      {
+        "meta": {
+          "custom_id": "pyr_e29b0f80a345af48",
+          "index_key": "idx_00012",
+          "rq": "0: What types of evidence are used?",
+          "gold_theme": "NA",
+          "potential_theme": "mixed",
+          "evidence_type": "mixed",
+          "route": "HIGH",
+          "route_value": ""
+        },
+        "section_html": "({}, False)"
+      },
+      {
+        "meta": {
+          "custom_id": "pyr_ab4d4bbb744e21aa",
+          "index_key": "idx_00015",
+          "rq": "0: What types of evidence are used?",
+          "gold_theme": "NA",
+          "potential_theme": "attribution_methods",
+          "evidence_type": "method",
+          "route": "HIGH",
+          "route_value": ""
+        },
+        "section_html": "({}, False)"
+      },
+      {
+        "meta": {
+          "custom_id": "pyr_1daeff39dd13bf68",
+          "index_key": "idx_00016",
+          "rq": "0: What types of evidence are used?",
+          "gold_theme": "NA",
+          "potential_theme": "mixed",
+          "evidence_type": "mixed",
+          "route": "HIGH",
+          "route_value": ""
+        },
+        "section_html": "({}, False)"
+      },
+      {
+        "meta": {
+          "custom_id": "pyr_5a6a8d929a47414b",
+          "index_key": "idx_00008",
+          "rq": "1: What methods are used?",
+          "gold_theme": "NA",
+          "potential_theme": "evidentiary_standards",
+          "evidence_type": "method",
+          "route": "HIGH",
+          "route_value": ""
+        },
+        "section_html": "({}, False)"
+      },
+      {
+        "meta": {
+          "custom_id": "pyr_7b4fa3f741c4c1b5",
+          "index_key": "idx_00011",
+          "rq": "1: What methods are used?",
+          "gold_theme": "NA",
+          "potential_theme": "evidentiary_standards",
+          "evidence_type": "mixed",
+          "route": "HIGH",
+          "route_value": ""
+        },
+        "section_html": "({}, False)"
+      },
+      {
+        "meta": {
+          "custom_id": "pyr_48f3eb2ec0e25d63",
+          "index_key": "idx_00014",
+          "rq": "1: What methods are used?",
+          "gold_theme": "NA",
+          "potential_theme": "attribution_challenges",
+          "evidence_type": "limitation",
+          "route": "HIGH",
+          "route_value": ""
+        },
+        "section_html": "({}, False)"
+      },
+      {
+        "meta": {
+          "custom_id": "pyr_ab40234ffc942c16",
+          "index_key": "idx_00017",
+          "rq": "1: What methods are used?",
+          "gold_theme": "NA",
+          "potential_theme": "attribution_challenges",
+          "evidence_type": "mixed",
+          "route": "HIGH",
+          "route_value": ""
+        },
+        "section_html": "({}, False)"
+      },
+      {
+        "meta": {
+          "custom_id": "pyr_918ff78eee5c8c40",
+          "index_key": "idx_00018",
+          "rq": "1: What methods are used?",
+          "gold_theme": "NA",
+          "potential_theme": "attribution_challenges",
+          "evidence_type": "mixed",
+          "route": "HIGH",
+          "route_value": ""
+        },
+        "section_html": "({}, False)"
+      },
+      {
+        "meta": {
+          "custom_id": "pyr_eb1b88ab910eee36",
+          "index_key": "idx_00019",
+          "rq": "1: What methods are used?",
+          "gold_theme": "NA",
+          "potential_theme": "attribution_methods",
+          "evidence_type": "method",
+          "route": "HIGH",
+          "route_value": ""
+        },
+        "section_html": "({}, False)"
+      },
+      {
+        "meta": {
+          "custom_id": "pyr_b33785fbd8399b66",
+          "index_key": "idx_00020",
+          "rq": "1: What methods are used?",
+          "gold_theme": "NA",
+          "potential_theme": "mixed",
+          "evidence_type": "mixed",
+          "route": "HIGH",
+          "route_value": ""
+        },
+        "section_html": "({}, False)"
+      },
+      {
+        "meta": {
+          "custom_id": "pyr_1c36856067981f93",
+          "index_key": "idx_00021",
+          "rq": "1: What methods are used?",
+          "gold_theme": "NA",
+          "potential_theme": "mixed",
+          "evidence_type": "mixed",
+          "route": "HIGH",
+          "route_value": ""
+        },
+        "section_html": "({}, False)"
+      },
+      {
+        "meta": {
+          "custom_id": "pyr_6de7d9526fbeaf81",
+          "index_key": "idx_00022",
+          "rq": "1: What methods are used?",
+          "gold_theme": "NA",
+          "potential_theme": "mixed",
+          "evidence_type": "mixed",
+          "route": "HIGH",
+          "route_value": ""
+        },
+        "section_html": "({}, False)"
+      },
+      {
+        "meta": {
+          "custom_id": "pyr_d8e1c2518e2439b1",
+          "index_key": "idx_00023",
+          "rq": "1: What methods are used?",
+          "gold_theme": "NA",
+          "potential_theme": "confidence_language",
+          "evidence_type": "method",
+          "route": "HIGH",
+          "route_value": ""
+        },
+        "section_html": "({}, False)"
+      },
+      {
+        "meta": {
+          "custom_id": "pyr_172d8b8064250905",
+          "index_key": "idx_00024",
+          "rq": "1: What methods are used?",
+          "gold_theme": "NA",
+          "potential_theme": "mixed",
+          "evidence_type": "method",
+          "route": "HIGH",
+          "route_value": ""
+        },
+        "section_html": "({}, False)"
+      },
+      {
+        "meta": {
+          "custom_id": "pyr_59b6c97e27dd8062",
+          "index_key": "idx_00004",
+          "rq": "2: How are frameworks and models operationalized for cyber attribution?",
+          "gold_theme": "NA",
+          "potential_theme": "evidentiary_standards",
+          "evidence_type": "mixed",
+          "route": "HIGH",
+          "route_value": ""
+        },
+        "section_html": "({}, False)"
+      },
+      {
+        "meta": {
+          "custom_id": "pyr_6bc4dc396676d0a2",
+          "index_key": "idx_00005",
+          "rq": "2: How are frameworks and models operationalized for cyber attribution?",
+          "gold_theme": "NA",
+          "potential_theme": "attribution_challenges",
+          "evidence_type": "mixed",
+          "route": "HIGH",
+          "route_value": ""
+        },
+        "section_html": "({}, False)"
+      },
+      {
+        "meta": {
+          "custom_id": "pyr_5686f0df0cad421d",
+          "index_key": "idx_00007",
+          "rq": "2: How are frameworks and models operationalized for cyber attribution?",
+          "gold_theme": "NA",
+          "potential_theme": "attribution_challenges",
+          "evidence_type": "mixed",
+          "route": "HIGH",
+          "route_value": ""
+        },
+        "section_html": "({}, False)"
+      },
+      {
+        "meta": {
+          "custom_id": "pyr_a8273d3cc8ba9a8a",
+          "index_key": "idx_00010",
+          "rq": "2: How are frameworks and models operationalized for cyber attribution?",
+          "gold_theme": "NA",
+          "potential_theme": "mixed",
+          "evidence_type": "mixed",
+          "route": "HIGH",
+          "route_value": ""
+        },
+        "section_html": "({}, False)"
+      },
+      {
+        "meta": {
+          "custom_id": "pyr_181d9d85c7b0e586",
+          "index_key": "idx_00013",
+          "rq": "2: How are frameworks and models operationalized for cyber attribution?",
+          "gold_theme": "NA",
+          "potential_theme": "mixed",
+          "evidence_type": "mixed",
+          "route": "HIGH",
+          "route_value": ""
+        },
+        "section_html": "({}, False)"
+      },
+      {
+        "meta": {
+          "custom_id": "pyr_d92502bf854d4746",
+          "index_key": "idx_00025",
+          "rq": "2: How are frameworks and models operationalized for cyber attribution?",
+          "gold_theme": "NA",
+          "potential_theme": "mixed",
+          "evidence_type": "mixed",
+          "route": "HIGH",
+          "route_value": ""
+        },
+        "section_html": "({}, False)"
+      },
+      {
+        "meta": {
+          "custom_id": "pyr_6b380fcff7ebfb6a",
+          "index_key": "idx_00026",
+          "rq": "2: How are frameworks and models operationalized for cyber attribution?",
+          "gold_theme": "NA",
+          "potential_theme": "mixed",
+          "evidence_type": "mixed",
+          "route": "HIGH",
+          "route_value": ""
+        },
+        "section_html": "({}, False)"
+      },
+      {
+        "meta": {
+          "custom_id": "pyr_a90196e9605df7ca",
+          "index_key": "idx_00027",
+          "rq": "2: How are frameworks and models operationalized for cyber attribution?",
+          "gold_theme": "NA",
+          "potential_theme": "mixed",
+          "evidence_type": "mixed",
+          "route": "HIGH",
+          "route_value": ""
+        },
+        "section_html": "({}, False)"
+      },
+      {
+        "meta": {
+          "custom_id": "pyr_a23b8bee44ec68c2",
+          "index_key": "idx_00028",
+          "rq": "2: How are frameworks and models operationalized for cyber attribution?",
+          "gold_theme": "NA",
+          "potential_theme": "confidence_language",
+          "evidence_type": "mixed",
+          "route": "HIGH",
+          "route_value": ""
+        },
+        "section_html": "({}, False)"
+      },
+      {
+        "meta": {
+          "custom_id": "pyr_872d86138acd89cb",
+          "index_key": "idx_00029",
+          "rq": "2: How are frameworks and models operationalized for cyber attribution?",
+          "gold_theme": "NA",
+          "potential_theme": "mixed",
+          "evidence_type": "method",
+          "route": "HIGH",
+          "route_value": ""
+        },
+        "section_html": "({}, False)"
+      },
+      {
+        "meta": {
+          "custom_id": "pyr_66a2543939b3041f",
+          "index_key": "idx_00030",
+          "rq": "2: How are frameworks and models operationalized for cyber attribution?",
+          "gold_theme": "NA",
+          "potential_theme": "mixed",
+          "evidence_type": "mixed",
+          "route": "HIGH",
+          "route_value": ""
+        },
+        "section_html": "({}, False)"
+      }
+    ],
+    "num_batches_round2": 0,
+    "custom_ids_round2": [],
+    "outputs_round2": [],
+    "export_paths": {
+      "batches_json": "/home/pantera/annotarium/analyse/frameworks_and_models/pyr_l1_batches.json",
+      "batches_jsonl": "/home/pantera/annotarium/analyse/frameworks_and_models/pyr_l1_batches.jsonl",
+      "batches_feather": "/home/pantera/annotarium/analyse/frameworks_and_models/pyr_l1_batches.feather",
+      "l1_sections_json": "/home/pantera/annotarium/analyse/frameworks_and_models/pyr_l1_sections.json",
+      "l1_sections_html": "/home/pantera/annotarium/analyse/frameworks_and_models/pyr_l1_sections.html",
+      "l1_sections_feather": "/home/pantera/annotarium/analyse/frameworks_and_models/pyr_l1_sections.feather",
+      "paragraphs_json": "/home/pantera/annotarium/analyse/frameworks_and_models/pyr_l1_sections_paragraphs.json",
+      "paragraphs_feather": "/home/pantera/annotarium/analyse/frameworks_and_models/pyr_l1_sections_paragraphs.feather",
+      "r2_outputs_json": "/home/pantera/annotarium/analyse/frameworks_and_models/pyr_l2_outputs.json",
+      "r2_outputs_feather": "/home/pantera/annotarium/analyse/frameworks_and_models/pyr_l2_outputs.feather",
+      "r2_sections_json": "/home/pantera/annotarium/analyse/frameworks_and_models/pyr_l2_sections.json",
+      "r2_sections_feather": "/home/pantera/annotarium/analyse/frameworks_and_models/pyr_l2_sections.feather",
+      "r2_merged_html": "/home/pantera/annotarium/analyse/frameworks_and_models/pyr_l2_merged.html",
+      "r3_outputs_json": "/home/pantera/annotarium/analyse/frameworks_and_models/pyr_l3_outputs.json",
+      "r3_outputs_feather": "/home/pantera/annotarium/analyse/frameworks_and_models/pyr_l3_outputs.feather",
+      "r3_sections_json": "/home/pantera/annotarium/analyse/frameworks_and_models/pyr_l3_sections.json",
+      "r3_sections_feather": "/home/pantera/annotarium/analyse/frameworks_and_models/pyr_l3_sections.feather",
+      "r3_merged_html": "/home/pantera/annotarium/analyse/frameworks_and_models/pyr_l3_merged.html",
+      "l1_meta_bundle": "/home/pantera/annotarium/analyse/frameworks_and_models/pyr_l1_sections_meta.json",
+      "num_batches": 564,
+      "num_sections": 30,
+      "num_paragraphs": 0,
+      "num_r2_outputs": 0,
+      "num_r2_sections": 0,
+      "num_r3_outputs": 0,
+      "num_r3_sections": 0
+    }
+  }
+}

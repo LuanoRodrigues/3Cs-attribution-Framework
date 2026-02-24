@@ -1,0 +1,17 @@
+step_id,review_type,stage,task,required_artifact,status,notes
+R0-01,systematic,identity,Choose review type and lock topic/RQ,state/reviews/systematic_run_manifest.json,pending,
+R0-02,systematic,identity,Freeze corpus snapshot,state/reviews/systematic_corpus_snapshot.json,pending,
+R1-01,systematic,screening,Finalize inclusion/exclusion criteria,state/reviews/systematic_criteria.json,pending,
+R1-02,systematic,screening,Complete per-item screening decisions,state/reviews/systematic_screening_decisions.csv,pending,
+R1-03,systematic,screening,Reconcile counts in context,state/reviews/systematic_review_context.json,pending,
+R2-01,systematic,coding_readiness,Build full-text/coding queue,state/reviews/systematic_fulltext_coding_queue.csv,pending,
+R2-02,systematic,coding_readiness,Document missing full text,state/reviews/systematic_fulltext_gaps.csv,pending,
+R3-01,systematic,coding,Validate coding fields against schema,state/reviews/systematic_coding_validation_report.json,pending,
+R3-02,systematic,coding,Normalize themes/tags to controlled vocab,state/reviews/systematic_coded_evidence.csv,pending,
+R4-01,systematic,writing,Generate themes and section synthesis,state/reviews/systematic_review_context.json,pending,
+R4-02,systematic,writing,Generate references and notes,state/reviews/systematic_references.json,pending,
+R5-01,systematic,validation,Run output validator,state/reviews/systematic_review_validation_report.json,pending,
+R5-02,systematic,validation,Generate traceability matrix,state/reviews/systematic_traceability.csv,pending,
+R5-03,systematic,finalize,Publish final HTML,state/reviews/systematic_review_final.html,pending,
+S-01,systematic,systematic,Attach PRISMA checklist evidence,state/reviews/systematic_prisma_checklist_path.txt,pending,PRISMA checklist source: Research/Systematic_review/prisma_check_list.html
+S-02,systematic,systematic,Reconcile PRISMA flow counts,state/reviews/systematic_prisma_flow.json,pending,Populate with reconciled counts from screening and eligibility stages.

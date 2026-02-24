@@ -43,6 +43,10 @@ contextBridge.exposeInMainWorld("agentBridge", {
     ipcRenderer.invoke("agent:intent-resolve", payload),
   executeIntent: (payload: { intent: Record<string, unknown>; context?: Record<string, unknown>; confirm?: boolean }) =>
     ipcRenderer.invoke("agent:intent-execute", payload),
+  transcribeVoice: (payload: { audioBase64: string; mimeType?: string; language?: string }) =>
+    ipcRenderer.invoke("agent:voice-transcribe", payload),
+  speakText: (payload: { text: string; voice?: string; speed?: number; format?: string; model?: string }) =>
+    ipcRenderer.invoke("agent:speak-text", payload),
   getFeatures: () => ipcRenderer.invoke("agent:features"),
   refineCodingQuestions: (payload: {
     currentQuestions?: string[];
@@ -55,10 +59,31 @@ contextBridge.exposeInMainWorld("agentBridge", {
     contextText?: string;
     researchQuestions?: string[];
   }) => ipcRenderer.invoke("agent:generate-eligibility-criteria", payload),
+  supervisorPlan: (payload: { text?: string; context?: Record<string, unknown> }) =>
+    ipcRenderer.invoke("agent:supervisor-plan", payload),
+  supervisorExecute: (payload: { plan?: Record<string, unknown>; context?: Record<string, unknown> }) =>
+    ipcRenderer.invoke("agent:supervisor-execute", payload),
   getIntentStats: () => ipcRenderer.invoke("agent:get-intent-stats"),
   getWorkflowBatchJobs: () => ipcRenderer.invoke("agent:get-workflow-batch-jobs"),
   clearWorkflowBatchJobs: () => ipcRenderer.invoke("agent:clear-workflow-batch-jobs"),
-  getFeatureHealthCheck: () => ipcRenderer.invoke("agent:feature-health-check")
+  getFeatureHealthCheck: () => ipcRenderer.invoke("agent:feature-health-check"),
+  getFeatureJobs: () => ipcRenderer.invoke("agent:get-feature-jobs"),
+  cancelFeatureJob: (payload: { jobId: string }) => ipcRenderer.invoke("agent:cancel-feature-job", payload),
+  getBatchExplorer: () => ipcRenderer.invoke("agent:get-batch-explorer"),
+  getBatchDetail: (payload: { jobId?: string; batchId?: string }) => ipcRenderer.invoke("agent:get-batch-detail", payload),
+  deleteBatch: (payload: { jobId?: string; batchId?: string }) => ipcRenderer.invoke("agent:delete-batch", payload),
+  logChatMessage: (payload: { role: "user" | "assistant"; text: string; tone?: "error"; at?: number }) =>
+    ipcRenderer.invoke("agent:log-chat-message", payload),
+  getChatHistory: () => ipcRenderer.invoke("agent:get-chat-history"),
+  clearChatHistory: () => ipcRenderer.invoke("agent:clear-chat-history"),
+  openLocalPath: (payload: { path: string }) => ipcRenderer.invoke("agent:open-local-path", payload),
+  onFeatureJobStatus: (callback: (payload: Record<string, unknown>) => void) => {
+    const handler = (_event: IpcRendererEvent, payload?: Record<string, unknown>) => {
+      callback(payload || {});
+    };
+    ipcRenderer.on("agent:feature-job-status", handler);
+    return () => ipcRenderer.removeListener("agent:feature-job-status", handler);
+  }
 });
 
 contextBridge.exposeInMainWorld("retrieveBridge", {
@@ -112,6 +137,21 @@ contextBridge.exposeInMainWorld("analyseBridge", {
     listCachedTables: () => ipcRenderer.invoke("analyse:list-cached-tables"),
     runAiOnTable: (payload: unknown) => ipcRenderer.invoke("analyse:run-ai-on-table", payload)
   }
+});
+
+contextBridge.exposeInMainWorld("systematicBridge", {
+  composePaper: (payload: { runDir: string; checklistPath: string }) =>
+    ipcRenderer.invoke("systematic:compose-paper", payload),
+  prismaAudit: (payload: { runDir: string }) =>
+    ipcRenderer.invoke("systematic:prisma-audit", payload),
+  prismaRemediate: (payload: { runDir: string }) =>
+    ipcRenderer.invoke("systematic:prisma-remediate", payload),
+  adjudicateConflicts: (payload: { runDir: string; resolvedCount?: number }) =>
+    ipcRenderer.invoke("systematic:adjudicate-conflicts", payload),
+  executeSteps1to15: (payload: { runDir: string; checklistPath: string; reviewerCount?: number }) =>
+    ipcRenderer.invoke("systematic:execute-steps-1-15", payload),
+  fullRun: (payload: { runDir: string; checklistPath: string; maxIterations?: number; minPassPct?: number; maxFail?: number }) =>
+    ipcRenderer.invoke("systematic:full-run", payload)
 });
 
 contextBridge.exposeInMainWorld("settingsBridge", {

@@ -1,0 +1,11 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": "{\n  \"classification\": \"Highly Relevant\",\n  \"relevance_score\": \"High\",\n  \"potential_subcategory\": \"International law of attribution (ILC Article 8) \u2014 State responsibility, control standards, and policy development (due diligence; incitement prohibition; intermediate control)\",\n  \"justification\": \"The abstract directly addresses legal attribution of cyber operations under international law, centring on Article 8 of the ILC Articles on State Responsibility and the three standards (instructions, direction, effective control). It analyzes State practice and jurisprudence, assesses doctrinal thresholds for attributing non-State actors\u2019 cyber conduct to States, and proposes concrete policy/normative developments (e.g., incitement-style prohibitions, intermediate control standards, strengthened due diligence, and treaty/interpretive guidance). While it excludes evidentiary rules and notes limited current state practice, its focus on attribution thresholds and normative implications makes it centrally relevant to cyber conflict attribution and related policy and legal debates.\"\n}"
+  },
+  "cached_at": "2026-02-23T20:43:54.917074Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "FV625ZHE",
+  "function": "classify_by_abs"
+}

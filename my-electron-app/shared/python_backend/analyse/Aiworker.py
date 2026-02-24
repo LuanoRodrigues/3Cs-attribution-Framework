@@ -292,7 +292,7 @@ class AiScopeChoice(BaseModel):
     batch_overlapping: int = Field(default=10)
     extra_prompt: str = Field(default="")
     framework_analysis: bool = Field(default=True)
-    round2: str = Field(default="paragraphs")  # one of: "paragraphs" | "sections"
+    round2: str = Field(default="sections")  # one of: "paragraphs" | "sections"
     rows: List[Dict[str, Any]] = Field(default_factory=list)
     filters: Dict[str, Any] = Field(default_factory=dict)
 

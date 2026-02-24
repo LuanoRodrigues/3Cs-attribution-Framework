@@ -1,0 +1,370 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "quote": "Methods: include doctrinal legal analysis, formal legal, comparative legal methods, synthesis, induction, deduction, as well as methods of legal forecasting and modeling.",
+          "paraphrase": "The study used doctrinal, formal and comparative legal analysis together with synthesis, induction/deduction and legal forecasting/modeling methods.",
+          "researcher_comment": "This is an explicitly doctrinal, non-empirical methodology emphasizing legal interpretation and foresight rather than primary technical measurement. It limits empirical generalizability but is appropriate for mapping legal norms and gaps. Note: methodological detail on case selection or coding is not present here.",
+          "potential_themes": [
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "method",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "doctrinal_method",
+            "legal_forecasting",
+            "comparative_legal_analysis"
+          ]
+        },
+        {
+          "quote": "the article defines the legal consequences of cyberattacks,",
+          "paraphrase": "The article articulates the legal consequences that follow from cyberattacks.",
+          "researcher_comment": "Claims to provide definitional clarity on legal consequences, which is directly relevant to RQs about legal obligations and remedies. The extract does not reproduce the definitions themselves, so follow-up reading is needed to verify operationalization.",
+          "potential_themes": [
+            "accountability_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "legal_consequences",
+            "definition"
+          ]
+        },
+        {
+          "quote": "identifies difficulties in determining and holding individuals and organizations accountable for their commission,",
+          "paraphrase": "The paper identifies difficulties in attributing responsibility and holding individuals and organizations accountable for cyberattacks.",
+          "researcher_comment": "Directly flags attribution and enforcement gaps central to cyber-attribution RQs. The sentence does not disaggregate technical, evidentiary, or jurisdictional sources of those difficulties here.",
+          "potential_themes": [
+            "attribution_challenges",
+            "accountability_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "attribution_difficulty",
+            "organizational_accountability",
+            "evidence_gaps"
+          ]
+        },
+        {
+          "quote": "identifies national measures to counter cyberattacks based on the principle of proportionality,",
+          "paraphrase": "The article identifies national countermeasures to cyberattacks that are premised on the principle of proportionality.",
+          "researcher_comment": "Indicates the authors foreground proportionality as a constraint on state responses; relevant for legality-of-response RQs. The chunk omits concrete examples or thresholds for proportionality.",
+          "potential_themes": [
+            "proportionality"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "proportionality_based_measures",
+            "national_countermeasures"
+          ]
+        },
+        {
+          "quote": "systematizes the international legal framework for responding to cyberattacks.",
+          "paraphrase": "The paper systematizes the international legal framework applicable to responses to cyberattacks.",
+          "researcher_comment": "Claims a structured mapping of international law relevant to cyber responses, which is useful for synthesis tasks. The brief extract does not list the instruments or criteria used in that systematization.",
+          "potential_themes": [
+            "jurisdictional_issues"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "international_framework_systematization",
+            "legal_catalogue"
+          ]
+        },
+        {
+          "quote": "The main focus is on the urgent problems of identifying and verifying cyber weapons,",
+          "paraphrase": "The authors focus on the urgent problem of identifying and verifying cyber weapons.",
+          "researcher_comment": "Positions cyber-weapon identification and verification as a central, time-sensitive issue\u2014directly pertinent to attribution and evidentiary standards. The claim is normative about priority; mechanisms are not specified here.",
+          "potential_themes": [
+            "cyber_weapons_identification",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "weapon_identification",
+            "verification_challenges"
+          ]
+        },
+        {
+          "quote": "establishing international standards for their use,",
+          "paraphrase": "The authors call for establishing international standards governing the use of cyber weapons.",
+          "researcher_comment": "This is a policy recommendation to create binding or normative standards for cyber-weapon use; valuable for recommendations RQs. The extract is high-level and omits scope and normative content of such standards.",
+          "potential_themes": [
+            "cyber_weapons_identification"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "international_standards",
+            "weapon_use_regulation"
+          ]
+        },
+        {
+          "quote": "developing methods of disarmament or limiting offensive cyber capabilities.",
+          "paraphrase": "The paper recommends developing methods for disarmament or for limiting offensive cyber capabilities.",
+          "researcher_comment": "Frames an arms-control style recommendation for cyberspace; highly relevant to debates about constraining offensive capabilities. No technical, verification, or enforcement proposals appear in this extract.",
+          "potential_themes": [
+            "cyber_weapons_identification"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "disarmament_methods",
+            "offensive_capability_limits"
+          ]
+        },
+        {
+          "quote": "The authors raise the issue of ensuring humanitarian activities, protecting critical infrastructure and the population through cybersecurity measures in wartime.",
+          "paraphrase": "The authors highlight ensuring humanitarian actions and protecting critical infrastructure and civilians via cybersecurity measures during wartime.",
+          "researcher_comment": "Links cybersecurity countermeasures to humanitarian protection and CI resilience\u2014important for human-rights and infrastructure-protection RQs. The extract signals intent but lacks operational guidance or legal bases here.",
+          "potential_themes": [
+            "critical_infrastructure_protection",
+            "human_rights_impacts"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "humanitarian_protection",
+            "critical_infrastructure",
+            "wartime_cybersecurity"
+          ]
+        },
+        {
+          "quote": "gaps and other defects are identified in the current regulation of exercising jurisdiction in such areas",
+          "paraphrase": "The article identifies gaps and defects in current regulation governing the exercise of jurisdiction over cyber matters.",
+          "researcher_comment": "Explicitly acknowledges jurisdictional regulatory shortfalls, which directly affects cross-border attribution and enforcement. The precise loci of regulatory gaps are not detailed in this excerpt.",
+          "potential_themes": [
+            "jurisdictional_issues"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "regulatory_gaps",
+            "jurisdictional_gaps",
+            "legal_defects"
+          ]
+        },
+        {
+          "quote": "The main parameters are due diligence, legal decisions on using cyber countermeasures, proportionality of protection measures to the consequences of illegal actions.",
+          "paraphrase": "The authors state that due diligence, lawful decision-making on countermeasures, and proportionality are the principal parameters for cyber countermeasures.",
+          "researcher_comment": "Sets normative criteria (due diligence and proportionality) for lawful state responses\u2014directly relevant to RQs about lawful attribution and response. The extract does not operationalize 'due diligence' or proportionality standards.",
+          "potential_themes": [
+            "due_diligence",
+            "proportionality"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "due_diligence_criteria",
+            "countermeasure_proportionality",
+            "legal_decisionmaking"
+          ]
+        },
+        {
+          "quote": "this is due to the progressive solutions in the field of international legal regulation of cyber countermeasures by states responding to cybercrime.",
+          "paraphrase": "The authors claim the paper's novelty stems from proposing progressive solutions for international legal regulation of state cyber countermeasures against cybercrime.",
+          "researcher_comment": "An authorial claim about originality rather than an empirical result; useful to situate the paper's contribution but vague on what 'progressive solutions' entail. Treat as background claim pending substance in the full text.",
+          "potential_themes": [
+            "jurisdictional_issues",
+            "due_diligence"
+          ],
+          "relevance_score": 3,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "scientific_novelty",
+            "progressive_solutions",
+            "countermeasure_regulation"
+          ]
+        },
+        {
+          "quote": "The solutions are formulated taking into account the impact of the countermeasures on human and civil rights and freedoms, including the right to privacy and freedom of speech.",
+          "paraphrase": "The authors state their proposed solutions account for impacts on human and civil rights, including privacy and freedom of speech.",
+          "researcher_comment": "Explicit rights-sensitive framing; this is important for balancing security with fundamental freedoms in policy recommendations. The extract signals intent to protect rights but lacks detail on trade-offs or enforcement mechanisms.",
+          "potential_themes": [
+            "human_rights_impacts"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "policy_position",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "rights_sensitive_solutions",
+            "privacy_protection",
+            "freedom_of_expression"
+          ]
+        },
+        {
+          "quote": "The research results can be used to develop and improve international legal instruments in the field of combating cyberattacks and ensuring cybersecurity, and can serve as a model for national legislators when designing law-making solutions to counter cybercrime.",
+          "paraphrase": "The study's results are presented as usable for developing international legal instruments and as a model for national legislators drafting laws to counter cybercrime.",
+          "researcher_comment": "Positions the work as practically applicable for law- and policy-making; useful for uptake-focused RQs. The extract does not specify which instruments or how transnational uptake would be achieved.",
+          "potential_themes": [
+            "jurisdictional_issues",
+            "due_diligence"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "policy_application",
+            "legal_instrument_development",
+            "national_modeling"
+          ]
+        },
+        {
+          "quote": "1.1. Attribution Conundrum of Cyberattacks",
+          "paraphrase": "The introduction frames the attribution of cyberattacks as a 'conundrum'.",
+          "researcher_comment": "A concise problem framing that places attribution at the center of the paper's agenda; directly relevant to cyber-attribution RQs. As a header, it is declarative but requires the main text for operational detail.",
+          "potential_themes": [
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "attribution_conundrum",
+            "problem_framing"
+          ]
+        },
+        {
+          "quote": "1.2. Accountability Challenges of Non-State Entities",
+          "paraphrase": "The introduction identifies accountability of non-state entities as a significant challenge in cyber contexts.",
+          "researcher_comment": "Highlights the enforcement gaps related to non-state actors\u2014relevant to RQs on liability and remedial mechanisms. The header signals focus but body content would be needed for evidentiary claims.",
+          "potential_themes": [
+            "accountability_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "nonstate_accountability",
+            "enforcement_challenges"
+          ]
+        },
+        {
+          "quote": "1.4. Human Rights Concerns in Cyberattacks",
+          "paraphrase": "The introduction lists human-rights concerns as a core topic in relation to cyberattacks.",
+          "researcher_comment": "Frames human-rights impacts as central; corroborated by conclusion's specifics on privacy and free speech. Useful for RQs integrating rights frameworks with attribution and countermeasures.",
+          "potential_themes": [
+            "human_rights_impacts"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "human_rights_concerns",
+            "rights_overlap"
+          ]
+        },
+        {
+          "quote": "2.1. Proportionality Calibration in Cyber Operations",
+          "paraphrase": "The introduction raises proportionality calibration as a challenge in cyber operations.",
+          "researcher_comment": "Identifies technical/legal difficulty in scaling responses to cyber incidents; directly relevant to RQs on lawful countermeasures. 'Calibration' implies measurement and threshold issues that the body may address.",
+          "potential_themes": [
+            "proportionality"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "proportionality_calibration",
+            "response_scaling"
+          ]
+        },
+        {
+          "quote": "2.3. Legal Labyrinth of Anticipatory Self Defence",
+          "paraphrase": "The authors characterise anticipatory self-defence in cyberspace as a legal labyrinth.",
+          "researcher_comment": "Frames anticipatory self-defence as legally complex and unclear\u2014important for RQs on pre-emptive cyber responses. 'Labyrinth' signals multiple, possibly conflicting, legal pathways.",
+          "potential_themes": [
+            "anticipatory_self_defence"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "anticipatory_self_defence_complexity",
+            "preemptive_legal_issues"
+          ]
+        },
+        {
+          "quote": "3.3. The Inadequacy of Traditional Warfare Principles in Cyberspace",
+          "paraphrase": "The introduction asserts that traditional warfare principles are inadequate for governing cyberspace.",
+          "researcher_comment": "Asserts a theoretical mismatch between existing warfare law and cyber operations; important for RQs about translating IHL and other doctrines to cyber contexts. The extract calls for reinterpretation or new norms.",
+          "potential_themes": [
+            "proportionality",
+            "jurisdictional_issues"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "traditional_law_inadequacy",
+            "IHL_limitations",
+            "legal_translation_needed"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-23T23:37:24.300328Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "e3c3e2d818e935c6be8985e821319c7e04c2c5ddcf24fc2f5e70329d9e804cab",
+  "function": "code_pdf_page"
+}

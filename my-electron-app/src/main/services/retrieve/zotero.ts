@@ -19,25 +19,53 @@ export interface ZoteroCollection {
   key: string;
   name: string;
   parentKey?: string | null;
+  version?: number;
+  itemCount?: number;
 }
 
 export interface ZoteroItemPreview {
   key: string;
   title: string;
   authors: string;
+  version?: number;
   date?: string;
   year?: string;
   itemType?: string;
   doi?: string;
   url?: string;
+  dateModified?: string;
+  citationCount?: number;
   abstract?: string;
   publicationTitle?: string;
+  containerTitle?: string;
+  journalAbbreviation?: string;
+  volume?: string;
+  issue?: string;
+  pages?: string;
+  publisher?: string;
+  place?: string;
+  rights?: string;
+  series?: string;
+  seriesTitle?: string;
+  seriesNumber?: string;
+  section?: string;
+  edition?: string;
+  numPages?: string;
+  isbn?: string;
+  issn?: string;
+  archive?: string;
+  archiveLocation?: string;
+  callNumber?: string;
+  libraryCatalog?: string;
+  extra?: string;
   tags?: string[];
   collections?: string[];
+  creators?: Array<{ name: string; creatorType?: string }>;
   attachments?: number;
   pdfs?: number;
   hasPdf?: boolean;
   zoteroSelectUrl?: string;
+  zoteroOpenPdfUrl?: string;
   firstPdfKey?: string;
   firstPdfTitle?: string;
   firstPdfPath?: string;
@@ -53,6 +81,13 @@ export interface ZoteroCount {
 const toString = (value: unknown): string | undefined => {
   if (typeof value === "string" && value.trim()) return value.trim();
   return undefined;
+};
+
+export const normalizeZoteroCollectionKey = (raw: unknown): string => {
+  if (typeof raw !== "string") return "";
+  return raw
+    .replace(/[\u0000-\u001f\u007f-\u009f]+/g, "")
+    .trim();
 };
 
 export const resolveZoteroCredentialsTs = (): ZoteroCredentials => {
@@ -91,6 +126,79 @@ const authHeaders = (creds: ZoteroCredentials): Record<string, string> => ({
   "Zotero-API-Version": "3"
 });
 
+const toNumberOrUndefined = (value: unknown): number | undefined => {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value.trim());
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return undefined;
+};
+
+const toStringOrEmpty = (value: unknown): string => {
+  if (typeof value === "string") return value.trim();
+  return "";
+};
+
+const safeStringArray = (value: unknown): string[] => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => String(entry || "").trim())
+    .filter((entry) => entry.length > 0);
+};
+
+const parseCreator = (entry: unknown): { name: string; creatorType?: string } | null => {
+  const raw = entry as Record<string, unknown>;
+  const name = `${toStringOrEmpty(raw?.firstName)} ${toStringOrEmpty(raw?.lastName)}`.trim() || toStringOrEmpty(raw?.name);
+  if (!name) return null;
+  return { name, creatorType: String(toStringOrEmpty(raw?.creatorType)) || undefined };
+};
+
+const itemCreatorsToString = (creators: unknown): string => {
+  const rows: string[] = [];
+  if (Array.isArray(creators)) {
+    const parsed = creators
+      .map((entry) => parseCreator(entry))
+      .filter(Boolean)
+      .map((entry) => entry!.name);
+    rows.push(...parsed);
+  }
+  return rows.join("; ");
+};
+
+const safeCreators = (value: unknown): Array<{ name: string; creatorType?: string }> => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => parseCreator(entry))
+    .filter(Boolean)
+    .map((entry) => entry as { name: string; creatorType?: string });
+};
+
+const requestZoteroCollectionItems = async (
+  creds: ZoteroCredentials,
+  collectionKey: string,
+  start: number,
+  limit: number,
+  useTopItems: boolean
+): Promise<{ data: Array<Record<string, any>>; usedTop: boolean }> => {
+  const normalizedCollectionKey = normalizeZoteroCollectionKey(collectionKey);
+  if (!normalizedCollectionKey) {
+    throw new Error("collectionKey is required");
+  }
+  const path = useTopItems ? "items/top" : "items";
+  const url = `${zoteroBase(creds)}/collections/${encodeURIComponent(normalizedCollectionKey)}/${path}?limit=${limit}&start=${start}`;
+  const res = await fetch(url, { headers: authHeaders(creds) });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`Items HTTP ${res.status}: ${path}: ${url}${body ? ` body=${body}` : ""}`);
+  }
+  const json = await res.json();
+  if (!Array.isArray(json)) {
+    return { data: [], usedTop: useTopItems };
+  }
+  return { data: json as Array<Record<string, any>>, usedTop: useTopItems };
+};
+
 const resolveCacheDir = (baseDir?: string): string => {
   return baseDir || path.join(process.cwd(), "data-hub-cache", "zotero");
 };
@@ -128,12 +236,19 @@ export const listZoteroCollections = async (creds: ZoteroCredentials): Promise<Z
     const url = `${zoteroBase(creds)}/collections?limit=${limit}&start=${start}`;
     const res = await fetch(url, { headers: authHeaders(creds) });
     if (!res.ok) throw new Error(`Collections HTTP ${res.status}`);
-    const data = (await res.json()) as Array<{ key: string; data: { name: string; parentCollection?: string } }>;
+    const data = (await res.json()) as Array<{
+      key: string;
+      version?: number;
+      meta?: { numItems?: number | string };
+      data: { name: string; parentCollection?: string; numItems?: number | string };
+    }>;
     (data || []).forEach((c) => {
       all.push({
         key: c.key,
         name: c.data?.name ?? "",
-        parentKey: c.data?.parentCollection ?? null
+        parentKey: c.data?.parentCollection ?? null,
+        version: toNumberOrUndefined(c.version),
+        itemCount: toNumberOrUndefined(c.meta?.numItems ?? c.data?.numItems)
       });
     });
     const total = Number(res.headers.get("Total-Results") || 0);
@@ -181,8 +296,12 @@ export const fetchZoteroCollectionItems = async (
   cacheDir: string | undefined,
   useCache: boolean
 ): Promise<{ table: DataHubTable; cached: boolean }> => {
+  const normalizedCollectionKey = normalizeZoteroCollectionKey(collectionKey);
+  if (!normalizedCollectionKey) {
+    throw new Error("Collection key is required.");
+  }
   const cacheRoot = resolveCacheDir(cacheDir);
-  const cachePath = path.join(cacheRoot, `${collectionKey}.json`);
+  const cachePath = path.join(cacheRoot, `${normalizedCollectionKey}.json`);
   if (useCache && fs.existsSync(cachePath)) {
     try {
       const parsed = JSON.parse(fs.readFileSync(cachePath, "utf-8"));
@@ -259,9 +378,7 @@ export const fetchZoteroCollectionItems = async (
     "pdf_size"
   ];
   while (true) {
-    const url = `${zoteroBase(creds)}/collections/${encodeURIComponent(
-      collectionKey
-    )}/items?limit=${limit}&start=${start}`;
+    const url = `${zoteroBase(creds)}/collections/${encodeURIComponent(normalizedCollectionKey)}/items?limit=${limit}&start=${start}`;
     const res = await fetch(url, { headers: authHeaders(creds) });
     if (!res.ok) throw new Error(`Items HTTP ${res.status}`);
     const data = (await res.json()) as Array<{ key: string; data: any }>;
@@ -363,59 +480,151 @@ export const fetchZoteroCollectionItemsPreview = async (
   collectionKey: string,
   max = 200
 ): Promise<ZoteroItemPreview[]> => {
+  const normalizedCollectionKey = normalizeZoteroCollectionKey(collectionKey);
+  if (!normalizedCollectionKey) {
+    throw new Error("Collection key is required.");
+  }
   const limit = 50;
+  const cap = Number.isFinite(Number(max)) ? Math.max(1, Math.floor(Number(max))) : 200;
   let start = 0;
   const items: ZoteroItemPreview[] = [];
+  let useTopItems = false;
+  let retriedWithTopForCurrentPage = false;
+  let fallbackRequested = false;
   while (true) {
-    // Use the stable top-level items endpoint. Some Zotero APIs/libraries return HTTP 400
-    // for `include=children` + `itemType=-attachment` combinations.
-    const url = `${zoteroBase(creds)}/collections/${encodeURIComponent(collectionKey)}/items/top?limit=${limit}&start=${start}`;
-    const res = await fetch(url, { headers: authHeaders(creds) });
-    if (!res.ok) throw new Error(`Items HTTP ${res.status}`);
-    const data = (await res.json()) as Array<{ key: string; data: any }>;
-    (data || []).forEach((item) => {
+    let payload: { data: Array<Record<string, any>>; usedTop: boolean };
+    try {
+      payload = await requestZoteroCollectionItems(
+        creds,
+        normalizedCollectionKey,
+        start,
+        limit,
+        useTopItems
+      );
+      retriedWithTopForCurrentPage = false;
+    } catch (error) {
+      if (useTopItems || fallbackRequested) {
+        throw error;
+      }
+      if (retriedWithTopForCurrentPage) {
+        throw error;
+      }
+      fallbackRequested = true;
+      useTopItems = true;
+      retriedWithTopForCurrentPage = true;
+      continue;
+    }
+    fallbackRequested = false;
+    if (useTopItems) {
+      if (payload.usedTop) {
+        // Keep top-children endpoint for subsequent pages to avoid infinite fallback loops.
+        fallbackRequested = true;
+      } else {
+        useTopItems = false;
+      }
+    }
+    const data = payload.data;
+    if (!Array.isArray(data) || data.length === 0) {
+      break;
+    }
+    const libraryPrefix = zoteroLibraryPrefix(creds);
+    data.forEach((item) => {
       const d = item.data || {};
-      const creators = Array.isArray(d.creators)
-        ? d.creators
-            .map((c: any) => `${c.firstName || ""} ${c.lastName || ""}`.trim())
-            .filter(Boolean)
-        : [];
-      const tags = Array.isArray(d.tags)
-        ? d.tags.map((tag: any) => String(tag?.tag || "").trim()).filter(Boolean)
-        : [];
-      const collections = Array.isArray(d.collections)
-        ? d.collections.map((entry: any) => String(entry || "").trim()).filter(Boolean)
-        : [];
-      const attachments = typeof d.numChildren === "number" ? d.numChildren : 0;
-      const libraryPrefix = zoteroLibraryPrefix(creds);
+      const itemType = String(d.itemType || "").toLowerCase();
+      if (itemType === "attachment" || itemType === "note" || itemType === "annotation") return;
+      const creators = itemCreatorsToString(d.creators);
+      const tags = safeStringArray(
+        Array.isArray(d.tags) ? d.tags.map((tag: any) => String(tag?.tag || "").trim()) : []
+      );
+      const collections = safeStringArray(d.collections);
+      const children = Array.isArray(item.children) ? item.children : [];
+      let attachments = 0;
+      let pdfs = 0;
+      let notes = 0;
+      let annotations = 0;
+      let firstPdfKey = "";
+      let firstPdfTitle = "";
+
+      children.forEach((rawChild: any) => {
+        const childData = rawChild?.data || {};
+        const childType = String(childData.itemType || "").toLowerCase();
+        if (childType === "attachment") {
+          attachments += 1;
+          const ct = String(childData.contentType || "").toLowerCase();
+          const fileName = String(childData.filename || childData.title || "").toLowerCase();
+          if ((ct.includes("pdf") || fileName.endsWith(".pdf")) && !firstPdfKey) {
+            firstPdfKey = String(rawChild?.key || "");
+            firstPdfTitle = String(childData.title || "");
+            pdfs += 1;
+          }
+          return;
+        }
+        if (childType === "note") notes += 1;
+        if (childType === "annotation") annotations += 1;
+      });
+
+      if (!children.length) {
+        const dChildren = toNumberOrUndefined(d.numChildren);
+        if (typeof dChildren === "number") {
+          attachments = dChildren;
+        }
+      }
+
+      const firstPdfPath = firstPdfKey ? findLocalPdfPath(firstPdfKey) : "";
       items.push({
-        key: item.key,
-        title: d.title || "",
-        authors: creators.join("; "),
-        date: d.date ? String(d.date) : "",
-        year: d.date ? String(d.date).slice(0, 4) : "",
-        itemType: d.itemType || "",
-        doi: d.DOI || d.doi || "",
-        url: d.url || "",
-        abstract: d.abstractNote || "",
-        publicationTitle: d.publicationTitle || "",
+        key: item.key || "",
+        version: toNumberOrUndefined(item.version),
+        title: String(d.title || ""),
+        authors: creators,
+        date: toStringOrEmpty(d.date),
+        year: toStringOrEmpty(d.date).slice(0, 4),
+        itemType: String(d.itemType || ""),
+        doi: String(d.DOI || d.doi || ""),
+        url: String(d.url || ""),
+        dateModified: String(d.dateModified || ""),
+        citationCount: toNumberOrUndefined(d.citationCount),
+        abstract: String(d.abstractNote || ""),
+        publicationTitle: String(d.publicationTitle || d.bookTitle || d.proceedingsTitle || ""),
+        containerTitle: String(d.publicationTitle || d.bookTitle || d.proceedingsTitle || ""),
+        journalAbbreviation: String(d.journalAbbreviation || ""),
+        volume: String(d.volume || ""),
+        issue: String(d.issue || ""),
+        pages: String(d.pages || ""),
+        publisher: String(d.publisher || ""),
+        place: String(d.place || ""),
+        rights: String(d.rights || ""),
+        series: String(d.series || ""),
+        seriesTitle: String(d.seriesTitle || ""),
+        seriesNumber: String(d.seriesNumber || ""),
+        section: String(d.section || ""),
+        edition: String(d.edition || ""),
+        numPages: String(d.numPages || ""),
+        isbn: String(d.ISBN || ""),
+        issn: String(d.ISSN || ""),
+        archive: String(d.archive || ""),
+        archiveLocation: String(d.archiveLocation || ""),
+        callNumber: String(d.callNumber || ""),
+        libraryCatalog: String(d.libraryCatalog || ""),
+        extra: String(d.extra || ""),
         tags,
         collections,
+        creators: safeCreators(d.creators),
         attachments,
-        pdfs: 0,
-        hasPdf: false,
+        pdfs,
+        hasPdf: pdfs > 0,
         zoteroSelectUrl: `zotero://select/${libraryPrefix}/items/${item.key}`,
-        firstPdfKey: undefined,
-        firstPdfTitle: undefined,
-        firstPdfPath: undefined,
-        notes: 0,
-        annotations: 0
+        zoteroOpenPdfUrl: firstPdfKey ? `zotero://open-pdf/${libraryPrefix}/items/${firstPdfKey}?page=1` : "",
+        firstPdfKey: firstPdfKey || undefined,
+        firstPdfTitle: firstPdfTitle || undefined,
+        firstPdfPath: firstPdfPath || undefined,
+        notes,
+        annotations
       });
     });
     start += limit;
-    if (items.length >= max || data.length < limit) break;
+    if (items.length >= cap || data.length < limit) break;
   }
-  return items.slice(0, max);
+  return items.slice(0, cap);
 };
 
 export const mergeTables = (tables: DataHubTable[]): DataHubTable => {
@@ -457,15 +666,19 @@ export const fetchZoteroCollectionCount = async (
   collectionKey: string,
   cacheDir?: string
 ): Promise<number> => {
-  const cache = loadCountsCache(cacheDir);
-  if (typeof cache[collectionKey] === "number") {
-    return cache[collectionKey];
+  const normalizedCollectionKey = normalizeZoteroCollectionKey(collectionKey);
+  if (!normalizedCollectionKey) {
+    throw new Error("Collection key is required.");
   }
-  const url = `${zoteroBase(creds)}/collections/${encodeURIComponent(collectionKey)}/items?limit=1`;
+  const cache = loadCountsCache(cacheDir);
+  if (typeof cache[normalizedCollectionKey] === "number") {
+    return cache[normalizedCollectionKey];
+  }
+  const url = `${zoteroBase(creds)}/collections/${encodeURIComponent(normalizedCollectionKey)}/items?limit=1`;
   const res = await fetch(url, { headers: authHeaders(creds) });
   if (!res.ok) throw new Error(`Count HTTP ${res.status}`);
   const total = Number(res.headers.get("Total-Results") || 0);
-  cache[collectionKey] = Number.isFinite(total) ? total : 0;
+  cache[normalizedCollectionKey] = Number.isFinite(total) ? total : 0;
   writeCountsCache(cacheDir, cache);
-  return cache[collectionKey];
+  return cache[normalizedCollectionKey];
 };

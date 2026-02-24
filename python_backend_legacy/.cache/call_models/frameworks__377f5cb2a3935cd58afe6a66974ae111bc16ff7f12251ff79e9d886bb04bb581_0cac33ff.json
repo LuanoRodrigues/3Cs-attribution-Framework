@@ -1,0 +1,144 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "quote": "Answering the questions derived from the framework above will depend on the suspected perpetrator and the unique circumstances of each cyberattack.",
+          "paraphrase": "Attribution and answers produced by the framework are case-dependent, varying with the suspected perpetrator and the specific circumstances of each cyberattack.",
+          "researcher_comment": "Highlights that attribution is not uniform and requires case-specific analysis; implies frameworks must be adaptable. The sentence is high-level and does not specify which contextual factors or evidence types are decisive.",
+          "potential_themes": [
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "case_specific_attribution",
+            "perpetrator_dependent",
+            "contextual_variation"
+          ]
+        },
+        {
+          "quote": "Obtaining answers will also involve coordination amongst multiple agencies and stakeholders, similar to the INSA TTX's finding to evaluate the procedures for incident response and recovery among all relevant stakeholders.",
+          "paraphrase": "Determining attribution-related answers requires coordination across multiple agencies and stakeholders, echoing INSA TTX findings on incident response procedures.",
+          "researcher_comment": "Flags interagency and public\u2013private collaboration as necessary for attribution and response; useful for governance or capacity RQs. The claim cites INSA TTX but gives no operational detail on how coordination or information sharing should be structured.",
+          "potential_themes": [
+            "attribution_challenges",
+            "multi_stakeholder_coordination"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "interagency_coordination",
+            "stakeholder_involvement",
+            "information_sharing"
+          ]
+        },
+        {
+          "quote": "political dynamics will almost certainly complicate cyberattack responses",
+          "paraphrase": "Political dynamics are likely to complicate responses to cyberattacks, influencing attribution outcomes and policy reactions.",
+          "researcher_comment": "Acknowledges non-technical (political) constraints on attribution and response decision-making; suggests political analysis must be integrated. The statement is general and does not differentiate internal versus external political effects.",
+          "potential_themes": [
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "political_complications",
+            "non_technical_constraints",
+            "response_politics"
+          ]
+        },
+        {
+          "quote": "Thus, it would benefit USG policymakers and corporate decision makers to become familiar with the framework and practice answering the questions derived from it before an attack occurs.",
+          "paraphrase": "USG policymakers and corporate decision-makers should practice using the framework and answering its questions prior to any cyberattack to improve preparedness.",
+          "researcher_comment": "A clear pre-incident preparedness recommendation that stresses institutionalizing framework use; valuable for RQs on training and readiness. It lacks specifics on exercise design, frequency, or success metrics.",
+          "potential_themes": [
+            "attribution_challenges",
+            "scenario_planning"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "pre_incident_training",
+            "decision_maker_preparedness",
+            "policy_familiarization"
+          ]
+        },
+        {
+          "quote": "analysts should create cyberattack scenarios that vary the levels of attribution confidence/time, scale, and relationship.",
+          "paraphrase": "Analysts should design cyberattack scenarios that systematically vary attribution confidence/time, incident scale, and actor relationships to train decision-makers.",
+          "researcher_comment": "Provides a specific, actionable prescription for scenario design emphasizing confidence/time, scale, and relational dimensions; useful for RQs on exercise methodology. The recommendation omits how to operationalize or measure 'attribution confidence/time.'",
+          "potential_themes": [
+            "confidence_language",
+            "scenario_planning"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "scenario_design",
+            "attribution_confidence",
+            "variation_dimensions"
+          ]
+        },
+        {
+          "quote": "Varying these factors will familiarize decision makers with how to balance the competing risks of insufficient deterrence and the potential for escalation.",
+          "paraphrase": "Exposing decision-makers to scenarios that vary attribution-related factors will teach them to balance the trade-off between insufficient deterrence and the risk of escalation.",
+          "researcher_comment": "Links scenario variation to improved judgment on deterrence\u2013escalation tradeoffs, a central policy dilemma. No empirical evidence or evaluation framework is provided to validate that such familiarization changes real decisions under crisis.",
+          "potential_themes": [
+            "deterrence_escalation"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "deterrence_vs_escalation",
+            "risk_tradeoff_training",
+            "decisionmaker_familiarization"
+          ]
+        },
+        {
+          "quote": "Presenting these scenarios to policymakers and corporate decision makers before a cyberattack occurs will foster a more thorough analysis about the risks of responding\u2014or not responding.",
+          "paraphrase": "Delivering these pre-attack scenarios to policymakers and corporate leaders will improve their analysis of the risks associated with responding or not responding to future cyberattacks.",
+          "researcher_comment": "Advocates pre-event scenario briefings to deepen deliberation on response risks across public and private sectors; directly relevant to RQs on preparedness and decision-making. It does not specify how to assess whether analysis becomes 'more thorough' or how it impacts ultimate policy choices.",
+          "potential_themes": [
+            "scenario_planning",
+            "policy_recommendation"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "pre_event_exercises",
+            "response_risk_analysis",
+            "public_private_engagement"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-24T15:31:03.480501Z",
+  "collection_name": "frameworks",
+  "custom_id": "377f5cb2a3935cd58afe6a66974ae111bc16ff7f12251ff79e9d886bb04bb581",
+  "function": "code_pdf_page"
+}

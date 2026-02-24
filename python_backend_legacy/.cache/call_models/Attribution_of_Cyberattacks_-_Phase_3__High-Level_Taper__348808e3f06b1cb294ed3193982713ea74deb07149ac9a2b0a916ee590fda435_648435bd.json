@@ -1,0 +1,300 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "quote": "There is no absolute security, no absolute attribution, no absolute detection, etc.",
+          "paraphrase": "The authors state that attribution in cyberspace is not absolute and should be treated as inherently uncertain, which directly informs questions about cyber attribution.",
+          "researcher_comment": "This frames attribution as a fundamental uncertainty that must be accommodated in analytic and legal frameworks. The claim is high-level and normative rather than empirically calibrated. Use it to justify probabilistic or evidentiary approaches rather than binary attribution rules.",
+          "potential_themes": [
+            "attribution_challenges",
+            "confidence_language"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "no_absolute_attribution",
+            "attribution_uncertainty",
+            "limits_of_cybersecurity"
+          ]
+        },
+        {
+          "quote": "When one observes internet traffic, it is impossible to know immediately what a certain package of data may contain.",
+          "paraphrase": "The passage asserts that direct observation of network traffic does not immediately reveal packet contents, highlighting a technical constraint relevant to attribution questions.",
+          "researcher_comment": "This identifies an observable technical limit that constrains quick attribution; it implies attribution requires deeper analysis or contextual information. The sentence is descriptive of instrumentation limits, not prescriptive.",
+          "potential_themes": [
+            "attribution_challenges",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "packet_content_ambiguity",
+            "technical_limitation",
+            "observable_vs_inferable"
+          ]
+        },
+        {
+          "quote": "Recent technological advancements such as deep package inspection make it easier to detect known malign internet traffic, but they cannot stop new kinds of attacks.",
+          "paraphrase": "The authors note that techniques like deep package inspection improve detection of known malicious traffic but fail to prevent novel attack types, which affects the evidentiary basis for attribution.",
+          "researcher_comment": "Acknowledges incremental improvements in detection while underscoring persistent gaps for novel threats. The reference to 'deep package inspection' appears to be a lexical error for 'packet' but does not change the substantive point.",
+          "potential_themes": [
+            "evidentiary_standards",
+            "attribution_challenges"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "deep_inspection_limits",
+            "known_vs_novel_attacks",
+            "detection_limitations"
+          ]
+        },
+        {
+          "quote": "Ultimately, intent is what distinguishes Google's testing of its own networks for vulnerabilities from outside hackers who are stealing from that same network.",
+          "paraphrase": "The text argues that actor intent differentiates benign testing from malicious intrusion, which is central to attribution and legal classification questions about cyber incidents.",
+          "researcher_comment": "This elevates intent to a primary classificatory criterion, but provides no method for inferring intent from technical indicators. It supports frameworks that incorporate motive and context into attribution assessments.",
+          "potential_themes": [
+            "intent",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "intent_centrality",
+            "benign_vs_malicious",
+            "motivation_in_attribution"
+          ]
+        },
+        {
+          "quote": "Thus, the intent of an action is crucial to determining whether the action is offensive or defensive.",
+          "paraphrase": "The authors claim that whether a cyber action is offensive or defensive depends primarily on the actor's intent, which is relevant to legal definitions and response thresholds.",
+          "researcher_comment": "This asserts a legal/ normative criterion (intent) for classification; operationalizing intent is contested and evidentially difficult. Useful for RQs about how legal regimes distinguish hostile acts.",
+          "potential_themes": [
+            "intent",
+            "legal_definitions"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "intent_for_classification",
+            "offensive_vs_defensive",
+            "legal_criteria"
+          ]
+        },
+        {
+          "quote": "While computer network exploitation (CNE) and computer network attacks (CNA) are technically the same,26 they are treated differently from a legal perspective.27",
+          "paraphrase": "The passage states that CNE and CNA can be technically indistinguishable yet are treated differently under law, bearing directly on attribution and threshold analyses.",
+          "researcher_comment": "Highlights a central disconnect between technical indicators and legal categorization that can produce different state responses. This supports analyses arguing that legal labels, not solely technical facts, drive policy outcomes.",
+          "potential_themes": [
+            "legal_definitions",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "CNE_vs_CNA",
+            "legal_technical_gap",
+            "threshold_analysis"
+          ]
+        },
+        {
+          "quote": "A perceived CNA might cause a significantly different response from a perceived CNE, though the technical symptoms of both activities look identical.",
+          "paraphrase": "The authors assert that states' perceptions of an event as CNA versus CNE lead to markedly different responses even when technical evidence is identical, which is pertinent to RQs on state reaction and attribution.",
+          "researcher_comment": "Shows how perception and legal framing, not just technical evidence, shape responses; this complicates efforts to craft objective thresholds for action. The sentence implies political as well as legal drivers of response.",
+          "potential_themes": [
+            "legal_definitions",
+            "attribution_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "perception_drives_response",
+            "identical_technical_symptoms",
+            "policy_divergence"
+          ]
+        },
+        {
+          "quote": "From a technological perspective, there is no such thing as \u201cpassive hacking.\u201d28 Making such a determination requires knowledge of the actor's intent.",
+          "paraphrase": "The text claims that technically 'passive hacking' is a misnomer and that labeling activity as passive versus active requires knowledge of the actor's intent, informing attribution-related questions.",
+          "researcher_comment": "Emphasizes that technical signatures alone cannot determine passivity; intent inference is necessary but often unavailable. Useful to justify inclusion of intent-evidence standards in attribution frameworks.",
+          "potential_themes": [
+            "attribution_challenges",
+            "intent"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "no_passive_hacking",
+            "intent_required_for_classification",
+            "technical_vs_intentionality"
+          ]
+        },
+        {
+          "quote": "This technical consideration creates huge challenges for the development of legal norms because almost every activity related to cybersecurity could be identified as a potential \u201cdual use\u201d good, depending on the intention of the actor.",
+          "paraphrase": "The authors argue that because cyber activities are often dual-use, developing legal norms is difficult and depends on actor intent, which is central to attribution and regulation questions.",
+          "researcher_comment": "Identifies dual-use as a principal barrier to clear legal norms; implies that vague or broad legal language will struggle to regulate cyber tools. The claim links technical characteristics to normative/legal consequences.",
+          "potential_themes": [
+            "dual_use",
+            "legal_definitions"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "dual_use_challenge",
+            "norm_development_barriers",
+            "intent_dependence"
+          ]
+        },
+        {
+          "quote": "The U.S. Department of Commerce's Bureau of Industry and Security's latest legal effort to introduce international regulations on this issue failed due to the ambiguity in the proposed legal language.29",
+          "paraphrase": "The passage reports that a U.S. BIS attempt to create international regulation failed because of ambiguous legal language, exemplifying practical regulatory obstacles relevant to legal-definition RQs.",
+          "researcher_comment": "Provides an empirical example of how legal ambiguity stymies regulatory efforts; useful as a case illustration but US-centric. The sentence supports arguments that clearer drafting is required for effective regulation.",
+          "potential_themes": [
+            "legal_definitions",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "BIS_regulatory_failure",
+            "legal_ambiguity",
+            "regulation_challenge"
+          ]
+        },
+        {
+          "quote": "In fact, there is no universally accepted definition of cyber warfare.",
+          "paraphrase": "The text states that no universally accepted definition of 'cyber warfare' exists, which is directly relevant to research questions about legal classification and thresholds for action.",
+          "researcher_comment": "This frames a central scholarly and policy problem: definitional plurality. It supports the need to document how different actors operationalize 'war' in cyber contexts.",
+          "potential_themes": [
+            "cyber_warfare_definition",
+            "legal_definitions"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "no_consensus_on_cyber_warfare",
+            "definitional_uncertainty"
+          ]
+        },
+        {
+          "quote": "The lowest common denominator seems to be that the definition simply depends on the circumstances, the involved actors, the target, the intent, and the scale of the event.",
+          "paraphrase": "The authors suggest that definitions of cyber warfare are context-dependent\u2014relying on actors, targets, intent, and scale\u2014informing multi-criteria approaches to attribution and legal classification.",
+          "researcher_comment": "Specifies common evaluative dimensions that researchers and policymakers invoke; useful for building multi-factor attribution/threshold frameworks. The statement is descriptive and non-prescriptive.",
+          "potential_themes": [
+            "cyber_warfare_definition",
+            "legal_definitions"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "contextual_criteria",
+            "multi_factor_assessment",
+            "scale_and_intent"
+          ]
+        },
+        {
+          "quote": "While few states acknowledge this argument, most of them actually follow a very crude logic: an armed attack in cyberspace is when we say it was an armed attack.36",
+          "paraphrase": "The passage claims that many states effectively treat an armed cyber attack as whatever they declare to be an armed attack, which is relevant to questions of state practice and attribution legitimacy.",
+          "researcher_comment": "Indicates declarative state practice that privileges political choice over objective legal criteria; this has implications for interstate disputes and for the legitimacy of attributions. The claim is normative-descriptive about state behavior.",
+          "potential_themes": [
+            "armed_attack",
+            "legal_definitions",
+            "international_law"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "declarative_definition",
+            "state_practice",
+            "subjective_armed_attack"
+          ]
+        },
+        {
+          "quote": "Generally, the UN Charter, the Laws of Armed Conflict, and subsequent legal interpretations of these documents are considered as foundational legal documents for legal analysis of an armed attack and the use of force in cyberspace.",
+          "paraphrase": "The text identifies the UN Charter and the Laws of Armed Conflict as the primary legal frameworks used to analyze cyber armed attacks and uses of force, which informs legal-RQs about applicable law.",
+          "researcher_comment": "Positions international legal instruments as the starting point for analysis; this is a useful pointer for legal synthesis. The sentence does not resolve how those texts apply to cyber facts, only that they are treated as foundational.",
+          "potential_themes": [
+            "international_law",
+            "legal_definitions",
+            "use_of_force"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "framework",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "UN_Charter_foundation",
+            "laws_of_armed_conflict",
+            "legal_sources"
+          ]
+        },
+        {
+          "quote": "This leaves current politicians and policy-makers with a dilemma: How do you act in a situation in which precise legal definitions have not been generally agreed upon?",
+          "paraphrase": "The authors highlight a policymaker dilemma about how to act when legal definitions for cyber force and armed attack remain unsettled, relevant to governance and response RQs.",
+          "researcher_comment": "Summarizes the policy problem created by definitional uncertainty and attribution limits; useful as a motivation for recommending interim rules or decision thresholds. The sentence is rhetorical but captures practical stakes.",
+          "potential_themes": [
+            "legal_definitions",
+            "attribution_challenges"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "policy_dilemma",
+            "action_under_ambiguity",
+            "definition_gap"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-23T23:29:30.659065Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "348808e3f06b1cb294ed3193982713ea74deb07149ac9a2b0a916ee590fda435",
+  "function": "code_pdf_page"
+}

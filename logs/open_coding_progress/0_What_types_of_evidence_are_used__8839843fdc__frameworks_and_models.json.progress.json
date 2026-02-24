@@ -1,0 +1,20 @@
+{
+  "status": "completed",
+  "stage": "iterate_items",
+  "collection": "frameworks_and_models",
+  "total_items": 7,
+  "processed_items": 7,
+  "current_item_key": "",
+  "completed_item_keys": [
+    "W63DA6Z6",
+    "N4YNQ2GG",
+    "MSU2EW6K",
+    "KXZITJ9Q",
+    "DFFJM8XG",
+    "7SYEI2R6",
+    "HYLZCIPX"
+  ],
+  "store_only": false,
+  "read": true,
+  "done": true
+}

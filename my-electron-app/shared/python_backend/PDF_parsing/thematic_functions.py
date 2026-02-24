@@ -8442,7 +8442,11 @@ def batching_claims(
             cleaned.append(it2)
         return cleaned, counts
 
-    out_dir: str = os.path.join(dir_base, _slug_name(collection_name))
+    requested_slug = _slug_name(collection_name)
+    normalized_dir_base = os.path.abspath(dir_base)
+    base_tail = os.path.basename(normalized_dir_base).lower()
+    is_already_scoped = bool(requested_slug) and base_tail == requested_slug.lower()
+    out_dir: str = normalized_dir_base if is_already_scoped else os.path.join(dir_base, requested_slug)
     os.makedirs(out_dir, exist_ok=True)
 
     if not manifest_path:

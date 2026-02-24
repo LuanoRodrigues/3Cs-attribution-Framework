@@ -1,0 +1,1510 @@
+{
+  "icj_scoring_version": "v1",
+  "inputs": {
+    "document_title": "APT1: Exposing One of China's Cyber Espionage Units",
+    "document_publication_date": "2013-01-01",
+    "claims_count": 10,
+    "profile": "balanced"
+  },
+  "readiness_validation": {
+    "findings": []
+  },
+  "normalized": {
+    "sources": [
+      {
+        "source_id": "SRC0001",
+        "source_kind": "vendor",
+        "title": "APT1 Executive Summary and Key Findings",
+        "authors": [],
+        "authoring_org": "Mandiant",
+        "publisher": "Mandiant",
+        "date_published": "2013-01-01",
+        "url": "",
+        "domain": "",
+        "is_litigation_prepared": 0,
+        "is_single_source": 0,
+        "has_stated_conflict": 0,
+        "has_countervailing_detail": 0,
+        "cites": [],
+        "origin_signature": [
+          "src0001"
+        ]
+      }
+    ],
+    "artifacts": [
+      {
+        "artifact_id": "ART00001",
+        "artifact_type": "domain",
+        "value": "nato-news.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00001",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00002",
+        "artifact_type": "domain",
+        "value": "bbc-news.org",
+        "location": {
+          "page": 0,
+          "block_id": "ART00002",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00003",
+        "artifact_type": "domain",
+        "value": "op.pl",
+        "location": {
+          "page": 0,
+          "block_id": "ART00003",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00004",
+        "artifact_type": "domain",
+        "value": "www.tas-cas.org",
+        "location": {
+          "page": 0,
+          "block_id": "ART00004",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00005",
+        "artifact_type": "domain",
+        "value": "fancybear.net",
+        "location": {
+          "page": 0,
+          "block_id": "ART00005",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00006",
+        "artifact_type": "cve",
+        "value": "CVE-2015-1701",
+        "location": {
+          "page": 0,
+          "block_id": "ART00006",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00007",
+        "artifact_type": "cve",
+        "value": "CVE-2015-2424",
+        "location": {
+          "page": 0,
+          "block_id": "ART00007",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00008",
+        "artifact_type": "cve",
+        "value": "CVE-2015-2590",
+        "location": {
+          "page": 0,
+          "block_id": "ART00008",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00009",
+        "artifact_type": "cve",
+        "value": "CVE-2015-3043",
+        "location": {
+          "page": 0,
+          "block_id": "ART00009",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00010",
+        "artifact_type": "cve",
+        "value": "CVE-2015-5119",
+        "location": {
+          "page": 0,
+          "block_id": "ART00010",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00011",
+        "artifact_type": "cve",
+        "value": "CVE-2015-7645",
+        "location": {
+          "page": 0,
+          "block_id": "ART00011",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00012",
+        "artifact_type": "domain",
+        "value": "www.fireeye.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00012",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00013",
+        "artifact_type": "email",
+        "value": "info@fireeye.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00013",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      },
+      {
+        "artifact_id": "ART00014",
+        "artifact_type": "domain",
+        "value": "fireeye.com",
+        "location": {
+          "page": 0,
+          "block_id": "ART00014",
+          "kind": "text",
+          "table_id": ""
+        },
+        "extracted_from": "text",
+        "confidence": 1.0
+      }
+    ],
+    "evidence_items": [
+      {
+        "evidence_id": "E-0001",
+        "evidence_kind": "technical_artifact",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "infrastructure"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.65,
+          "P": 0.52,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00001"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00002"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00003"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00004"
+          }
+        ],
+        "probative_weight": 0.12288496999999998,
+        "claim_id": "C001"
+      },
+      {
+        "evidence_id": "E-0002",
+        "evidence_kind": "technical_artifact",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "infrastructure"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.65,
+          "P": 0.52,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00001"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00002"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00003"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00004"
+          }
+        ],
+        "probative_weight": 0.12288496999999998,
+        "claim_id": "C002"
+      },
+      {
+        "evidence_id": "E-0003",
+        "evidence_kind": "technical_artifact",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "infrastructure"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.65,
+          "P": 0.52,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00001"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00002"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00003"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00004"
+          }
+        ],
+        "probative_weight": 0.12288496999999998,
+        "claim_id": "C003"
+      },
+      {
+        "evidence_id": "E-0004",
+        "evidence_kind": "technical_artifact",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "infrastructure"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.65,
+          "P": 0.52,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00001"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00002"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00012"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00014"
+          }
+        ],
+        "probative_weight": 0.12288496999999998,
+        "claim_id": "C004"
+      },
+      {
+        "evidence_id": "E-0005",
+        "evidence_kind": "technical_artifact",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "infrastructure"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.65,
+          "P": 0.52,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00001"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00002"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00003"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00004"
+          }
+        ],
+        "probative_weight": 0.12288496999999998,
+        "claim_id": "C005"
+      },
+      {
+        "evidence_id": "E-0006",
+        "evidence_kind": "technical_artifact",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "infrastructure"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.65,
+          "P": 0.52,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00001"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00002"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00003"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00004"
+          }
+        ],
+        "probative_weight": 0.12288496999999998,
+        "claim_id": "C006"
+      },
+      {
+        "evidence_id": "E-0007",
+        "evidence_kind": "technical_artifact",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "infrastructure"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.65,
+          "P": 0.62,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00001"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00002"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00003"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00004"
+          }
+        ],
+        "probative_weight": 0.14651669499999997,
+        "claim_id": "C007"
+      },
+      {
+        "evidence_id": "E-0008",
+        "evidence_kind": "technical_artifact",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "infrastructure"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.65,
+          "P": 0.62,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00003"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00004"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00005"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00001"
+          }
+        ],
+        "probative_weight": 0.14651669499999997,
+        "claim_id": "C008"
+      },
+      {
+        "evidence_id": "E-0009",
+        "evidence_kind": "technical_artifact",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "infrastructure"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.65,
+          "P": 0.52,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00001"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00002"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00003"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00004"
+          }
+        ],
+        "probative_weight": 0.12288496999999998,
+        "claim_id": "C009"
+      },
+      {
+        "evidence_id": "E-0010",
+        "evidence_kind": "technical_artifact",
+        "source_ids": [
+          "SRC0001"
+        ],
+        "artifact_ids": [],
+        "origin_id": "ORIG:src0001",
+        "modalities": [
+          "infrastructure"
+        ],
+        "features": {
+          "I": 0.42999999999999994,
+          "A": 0.89,
+          "M": 0.65,
+          "P": 0.52,
+          "T": 0.95
+        },
+        "anchors": [
+          {
+            "page": 0,
+            "block_id": "ART00001"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00002"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00003"
+          },
+          {
+            "page": 0,
+            "block_id": "ART00004"
+          }
+        ],
+        "probative_weight": 0.12288496999999998,
+        "claim_id": "C010"
+      }
+    ],
+    "claims": [
+      {
+        "claim_id": "C001",
+        "claim_kind": "intrusion_set_attribution",
+        "claim_text": "RUSSIA STRATEGICALLY EVOLVES ITS CYBER OPERATIONS",
+        "actor": {
+          "name": "APT1",
+          "level": "None"
+        },
+        "object": {
+          "operation": "intrusion_set",
+          "time_start": "",
+          "time_end": ""
+        },
+        "citations": [],
+        "evidence_ids": [
+          "E-0001"
+        ],
+        "claim_features": {
+          "coherence": 0.48,
+          "confidence_discipline": 0.5700000000000001,
+          "compliance_mapping": 1.0,
+          "allegation_gravity": "medium"
+        }
+      },
+      {
+        "claim_id": "C002",
+        "claim_kind": "mixed",
+        "claim_text": "Since releasing our 2014 report, we continue to assess that APT28 is sponsored by the Russian Government. We further assess that APT28 is the group responsible for the network compromises of WADA and the DNC and other entities related to the 2016 U.S. presidential election cycle. These breaches involved the theft of internal data - mostly emails - that was later strategically leaked through multiple forums and propagated in a calculated manner almost certainly intended to advance particular Russian Government aims. In a report released on January 7 2017, the U.S. Directorate of National Intelligence described this activity as an \"influence campaign.\"",
+        "actor": {
+          "name": "APT1 campaign",
+          "level": "None"
+        },
+        "object": {
+          "operation": "mixed",
+          "time_start": "",
+          "time_end": ""
+        },
+        "citations": [],
+        "evidence_ids": [
+          "E-0002"
+        ],
+        "claim_features": {
+          "coherence": 0.48,
+          "confidence_discipline": 0.5700000000000001,
+          "compliance_mapping": 0.3,
+          "allegation_gravity": "medium"
+        }
+      },
+      {
+        "claim_id": "C003",
+        "claim_kind": "mixed",
+        "claim_text": "This influence campaign - a combination of network compromises and subsequent data leaks - aligns closely with the Russian military's publicly stated intentions and capabilities. Influence operations, also frequently called \"information operations,\" have a long history of inclusion in Russian strategic doctrine, and have been intentionally developed, deployed, and modernized with the advent of the internet. The recent activity in the U.S. is but one of many instances of Russian Government influence operations conducted in support of strategic political objectives, and it will not be the last. As the 2017 elections in Europe approach - most notably in Germany, France, and the Netherlands - we are already seeing the makings of similarly concerted efforts.",
+        "actor": {
+          "name": "APT1 campaign",
+          "level": "None"
+        },
+        "object": {
+          "operation": "mixed",
+          "time_start": "",
+          "time_end": ""
+        },
+        "citations": [],
+        "evidence_ids": [
+          "E-0003"
+        ],
+        "claim_features": {
+          "coherence": 0.48,
+          "confidence_discipline": 0.5700000000000001,
+          "compliance_mapping": 0.3,
+          "allegation_gravity": "medium"
+        }
+      },
+      {
+        "claim_id": "C004",
+        "claim_kind": "mixed",
+        "claim_text": "Table 2 highlights incidents in which victims suffered a compromise that FireEye iSIGHT Intelligence, other authorities, or the victims themselves later attributed to the group we track as APT28. All of these operations have aimed to achieve a similar objective: securing a political outcome beneficial to Russia.",
+        "actor": {
+          "name": "APT1 campaign",
+          "level": "None"
+        },
+        "object": {
+          "operation": "mixed",
+          "time_start": "",
+          "time_end": ""
+        },
+        "citations": [],
+        "evidence_ids": [
+          "E-0004"
+        ],
+        "claim_features": {
+          "coherence": 0.48,
+          "confidence_discipline": 0.5700000000000001,
+          "compliance_mapping": 0.3,
+          "allegation_gravity": "medium"
+        }
+      },
+      {
+        "claim_id": "C005",
+        "claim_kind": "intrusion_set_attribution",
+        "claim_text": "The Democratic National Committee’s (DNC) June 2016 announcement attributing its network breach to the Russian Government triggered an international debate over Russia’s sponsorship of information operations against the U.S.",
+        "actor": {
+          "name": "APT1",
+          "level": "None"
+        },
+        "object": {
+          "operation": "intrusion_set",
+          "time_start": "",
+          "time_end": ""
+        },
+        "citations": [],
+        "evidence_ids": [
+          "E-0005"
+        ],
+        "claim_features": {
+          "coherence": 0.48,
+          "confidence_discipline": 0.5700000000000001,
+          "compliance_mapping": 0.3,
+          "allegation_gravity": "medium"
+        }
+      },
+      {
+        "claim_id": "C006",
+        "claim_kind": "intrusion_set_attribution",
+        "claim_text": "Our visibility into the operations of APT28 - a group we believe the Russian Government sponsors - has given us insight into some of the government’s targets, as well as its objectives and the activities designed to further them. We have tracked and profiled this group through multiple investigations, endpoint and network detections, and continuous monitoring. Our visibility into APT28’s operations, which date to at least 2007, has allowed us to understand the group’s malware, operational changes, and motivations. This intelligence has been critical to protecting and informing our clients, exposing this threat, and strengthening our confidence in attributing APT28 to the Russian Government.",
+        "actor": {
+          "name": "APT1",
+          "level": "None"
+        },
+        "object": {
+          "operation": "intrusion_set",
+          "time_start": "",
+          "time_end": ""
+        },
+        "citations": [],
+        "evidence_ids": [
+          "E-0006"
+        ],
+        "claim_features": {
+          "coherence": 0.48,
+          "confidence_discipline": 0.5700000000000001,
+          "compliance_mapping": 0.3,
+          "allegation_gravity": "medium"
+        }
+      },
+      {
+        "claim_id": "C007",
+        "claim_kind": "mixed",
+        "claim_text": "As news of the DNC breach spread, APT28 was preparing for another set of operations: countering the condemnation that Russia was facing after doping allegations and a threatened blanket ban of the Russian team from the upcoming Rio Games. Russia, like many nations, has long viewed success in the Olympic Games as a source of national prestige and soft power on the world stage. The doping allegations and prospective ban from the Games further ostracized Russia, and likely provided motivation to actively counter the allegations by attempting to discredit anti-doping agencies and policies. Our investigation of APT28's compromise of WADA's network, and our observations of the surrounding events reveal how Russia sought to counteract a damaging narrative and delegitimize the institutions leveling criticism.",
+        "actor": {
+          "name": "APT1 campaign",
+          "level": "None"
+        },
+        "object": {
+          "operation": "mixed",
+          "time_start": "",
+          "time_end": ""
+        },
+        "citations": [],
+        "evidence_ids": [
+          "E-0007"
+        ],
+        "claim_features": {
+          "coherence": 0.6,
+          "confidence_discipline": 0.5700000000000001,
+          "compliance_mapping": 0.3,
+          "allegation_gravity": "medium"
+        }
+      },
+      {
+        "claim_id": "C008",
+        "claim_kind": "intrusion_set_attribution",
+        "claim_text": "Based on this timeline of leak and threatened leak activity, as well as strikingly similar characteristics and distribution methods shared between @anpoland and \"Fancy Bears' Hack Team,\" the same operators are highly likely behind the two personas. WADA officials, citing evidence provided by law enforcement, stated that the threat activity originated in Russia, possibly in retaliation for WADA's exposure of Russia's expansive, state-run doping.³⁸ The statement prompted denials from the Russian Government, with Russian sports minister Vitaly Mutko asking, \"How can you prove that the hackers are Russian? You blame Russia for everything, it is very in fashion now.\"³⁹",
+        "actor": {
+          "name": "APT1",
+          "level": "None"
+        },
+        "object": {
+          "operation": "intrusion_set",
+          "time_start": "",
+          "time_end": ""
+        },
+        "citations": [],
+        "evidence_ids": [
+          "E-0008"
+        ],
+        "claim_features": {
+          "coherence": 0.6,
+          "confidence_discipline": 0.5700000000000001,
+          "compliance_mapping": 0.3,
+          "allegation_gravity": "medium"
+        }
+      },
+      {
+        "claim_id": "C009",
+        "claim_kind": "mixed",
+        "claim_text": "The group, almost certainly compromised of a sophisticated and prolific set of developers and operators, has historically collected intelligence on defense and geopolitical issues. APT28 espionage activity has primarily targeted entities in the U.S., Europe, and the countries of the former Soviet Union, including governments and militaries, defense attaches, media entities, and dissidents and figures opposed to the current Russian Government.",
+        "actor": {
+          "name": "APT1 campaign",
+          "level": "None"
+        },
+        "object": {
+          "operation": "mixed",
+          "time_start": "",
+          "time_end": ""
+        },
+        "citations": [],
+        "evidence_ids": [
+          "E-0009"
+        ],
+        "claim_features": {
+          "coherence": 0.48,
+          "confidence_discipline": 0.5700000000000001,
+          "compliance_mapping": 0.3,
+          "allegation_gravity": "medium"
+        }
+      },
+      {
+        "claim_id": "C010",
+        "claim_kind": "mixed",
+        "claim_text": "This report details our observations of APT28's targeting, and our investigation into a related breach. We also provide an update on shifts in the group's tool development and use, and summarize the tactics APT28 employs to compromise its victims.",
+        "actor": {
+          "name": "APT1 campaign",
+          "level": "None"
+        },
+        "object": {
+          "operation": "mixed",
+          "time_start": "",
+          "time_end": ""
+        },
+        "citations": [],
+        "evidence_ids": [
+          "E-0010"
+        ],
+        "claim_features": {
+          "coherence": 0.48,
+          "confidence_discipline": 0.5700000000000001,
+          "compliance_mapping": 0.3,
+          "allegation_gravity": "medium"
+        }
+      }
+    ]
+  },
+  "scoring": {
+    "claim_scores": [
+      {
+        "claim_id": "C001",
+        "evidence_count": 1,
+        "source_count": 1,
+        "unique_origin_count": 1,
+        "source_unique_origin_count": 1,
+        "evidence_weight_aggregate": 0.12288496999999998,
+        "origin_cluster_weights": {
+          "ORIG:src0001": 0.122885
+        },
+        "penalty_multiplier": 0.85,
+        "penalties": [
+          {
+            "name": "single_source",
+            "factor": 0.85
+          }
+        ],
+        "final_score": 0.104452,
+        "recovered_reference_count": 0,
+        "data_contribution_score": 1.0,
+        "data_contribution_multiplier": 1.0,
+        "core_3c": {
+          "chain_of_custody_provenance": {
+            "score": 0.041241,
+            "band_0_5": 0
+          },
+          "credibility_independence": {
+            "score": 0.5499,
+            "band_0_5": 3
+          },
+          "corroboration_convergence": {
+            "score": 0.257627,
+            "band_0_5": 1
+          }
+        },
+        "chain_provenance_diagnostics": {
+          "context_completeness": 1.0,
+          "integrity_signal": 0.0,
+          "lineage_quality": 0.8,
+          "report_derived_ratio": 0.0,
+          "artifact_traceability": 0.0,
+          "provenance_quality": 0.51,
+          "anchor_quality": 1.0,
+          "chain_disclosure_quality": 0.4,
+          "claim_anchor_alignment": 1.0,
+          "artifact_proximity_hierarchy": 1.0,
+          "artifact_proximity_tiers": {
+            "direct": 1.0,
+            "contextual": 0.0,
+            "local": 0.0,
+            "remote": 0.0
+          }
+        },
+        "claim_support_coverage": 1.0,
+        "six_c_vector": {
+          "credibility": 0.122885,
+          "corroboration": 0.262885,
+          "coherence": 0.48,
+          "confidence_discipline": 0.57,
+          "compliance_mapping": 1.0
+        }
+      },
+      {
+        "claim_id": "C002",
+        "evidence_count": 1,
+        "source_count": 1,
+        "unique_origin_count": 1,
+        "source_unique_origin_count": 1,
+        "evidence_weight_aggregate": 0.12288496999999998,
+        "origin_cluster_weights": {
+          "ORIG:src0001": 0.122885
+        },
+        "penalty_multiplier": 0.85,
+        "penalties": [
+          {
+            "name": "single_source",
+            "factor": 0.85
+          }
+        ],
+        "final_score": 0.104452,
+        "recovered_reference_count": 0,
+        "data_contribution_score": 1.0,
+        "data_contribution_multiplier": 1.0,
+        "core_3c": {
+          "chain_of_custody_provenance": {
+            "score": 0.041241,
+            "band_0_5": 0
+          },
+          "credibility_independence": {
+            "score": 0.4869,
+            "band_0_5": 2
+          },
+          "corroboration_convergence": {
+            "score": 0.257627,
+            "band_0_5": 1
+          }
+        },
+        "chain_provenance_diagnostics": {
+          "context_completeness": 1.0,
+          "integrity_signal": 0.0,
+          "lineage_quality": 0.8,
+          "report_derived_ratio": 0.0,
+          "artifact_traceability": 0.0,
+          "provenance_quality": 0.51,
+          "anchor_quality": 1.0,
+          "chain_disclosure_quality": 0.4,
+          "claim_anchor_alignment": 1.0,
+          "artifact_proximity_hierarchy": 1.0,
+          "artifact_proximity_tiers": {
+            "direct": 1.0,
+            "contextual": 0.0,
+            "local": 0.0,
+            "remote": 0.0
+          }
+        },
+        "claim_support_coverage": 1.0,
+        "six_c_vector": {
+          "credibility": 0.122885,
+          "corroboration": 0.262885,
+          "coherence": 0.48,
+          "confidence_discipline": 0.57,
+          "compliance_mapping": 0.3
+        }
+      },
+      {
+        "claim_id": "C003",
+        "evidence_count": 1,
+        "source_count": 1,
+        "unique_origin_count": 1,
+        "source_unique_origin_count": 1,
+        "evidence_weight_aggregate": 0.12288496999999998,
+        "origin_cluster_weights": {
+          "ORIG:src0001": 0.122885
+        },
+        "penalty_multiplier": 0.85,
+        "penalties": [
+          {
+            "name": "single_source",
+            "factor": 0.85
+          }
+        ],
+        "final_score": 0.104452,
+        "recovered_reference_count": 0,
+        "data_contribution_score": 1.0,
+        "data_contribution_multiplier": 1.0,
+        "core_3c": {
+          "chain_of_custody_provenance": {
+            "score": 0.041241,
+            "band_0_5": 0
+          },
+          "credibility_independence": {
+            "score": 0.4869,
+            "band_0_5": 2
+          },
+          "corroboration_convergence": {
+            "score": 0.257627,
+            "band_0_5": 1
+          }
+        },
+        "chain_provenance_diagnostics": {
+          "context_completeness": 1.0,
+          "integrity_signal": 0.0,
+          "lineage_quality": 0.8,
+          "report_derived_ratio": 0.0,
+          "artifact_traceability": 0.0,
+          "provenance_quality": 0.51,
+          "anchor_quality": 1.0,
+          "chain_disclosure_quality": 0.4,
+          "claim_anchor_alignment": 1.0,
+          "artifact_proximity_hierarchy": 1.0,
+          "artifact_proximity_tiers": {
+            "direct": 1.0,
+            "contextual": 0.0,
+            "local": 0.0,
+            "remote": 0.0
+          }
+        },
+        "claim_support_coverage": 1.0,
+        "six_c_vector": {
+          "credibility": 0.122885,
+          "corroboration": 0.262885,
+          "coherence": 0.48,
+          "confidence_discipline": 0.57,
+          "compliance_mapping": 0.3
+        }
+      },
+      {
+        "claim_id": "C004",
+        "evidence_count": 1,
+        "source_count": 1,
+        "unique_origin_count": 1,
+        "source_unique_origin_count": 1,
+        "evidence_weight_aggregate": 0.12288496999999998,
+        "origin_cluster_weights": {
+          "ORIG:src0001": 0.122885
+        },
+        "penalty_multiplier": 0.85,
+        "penalties": [
+          {
+            "name": "single_source",
+            "factor": 0.85
+          }
+        ],
+        "final_score": 0.104452,
+        "recovered_reference_count": 0,
+        "data_contribution_score": 1.0,
+        "data_contribution_multiplier": 1.0,
+        "core_3c": {
+          "chain_of_custody_provenance": {
+            "score": 0.041241,
+            "band_0_5": 0
+          },
+          "credibility_independence": {
+            "score": 0.4869,
+            "band_0_5": 2
+          },
+          "corroboration_convergence": {
+            "score": 0.257627,
+            "band_0_5": 1
+          }
+        },
+        "chain_provenance_diagnostics": {
+          "context_completeness": 1.0,
+          "integrity_signal": 0.0,
+          "lineage_quality": 0.8,
+          "report_derived_ratio": 0.0,
+          "artifact_traceability": 0.0,
+          "provenance_quality": 0.51,
+          "anchor_quality": 1.0,
+          "chain_disclosure_quality": 0.4,
+          "claim_anchor_alignment": 1.0,
+          "artifact_proximity_hierarchy": 1.0,
+          "artifact_proximity_tiers": {
+            "direct": 1.0,
+            "contextual": 0.0,
+            "local": 0.0,
+            "remote": 0.0
+          }
+        },
+        "claim_support_coverage": 1.0,
+        "six_c_vector": {
+          "credibility": 0.122885,
+          "corroboration": 0.262885,
+          "coherence": 0.48,
+          "confidence_discipline": 0.57,
+          "compliance_mapping": 0.3
+        }
+      },
+      {
+        "claim_id": "C005",
+        "evidence_count": 1,
+        "source_count": 1,
+        "unique_origin_count": 1,
+        "source_unique_origin_count": 1,
+        "evidence_weight_aggregate": 0.12288496999999998,
+        "origin_cluster_weights": {
+          "ORIG:src0001": 0.122885
+        },
+        "penalty_multiplier": 0.85,
+        "penalties": [
+          {
+            "name": "single_source",
+            "factor": 0.85
+          }
+        ],
+        "final_score": 0.104452,
+        "recovered_reference_count": 0,
+        "data_contribution_score": 1.0,
+        "data_contribution_multiplier": 1.0,
+        "core_3c": {
+          "chain_of_custody_provenance": {
+            "score": 0.041241,
+            "band_0_5": 0
+          },
+          "credibility_independence": {
+            "score": 0.4869,
+            "band_0_5": 2
+          },
+          "corroboration_convergence": {
+            "score": 0.257627,
+            "band_0_5": 1
+          }
+        },
+        "chain_provenance_diagnostics": {
+          "context_completeness": 1.0,
+          "integrity_signal": 0.0,
+          "lineage_quality": 0.8,
+          "report_derived_ratio": 0.0,
+          "artifact_traceability": 0.0,
+          "provenance_quality": 0.51,
+          "anchor_quality": 1.0,
+          "chain_disclosure_quality": 0.4,
+          "claim_anchor_alignment": 1.0,
+          "artifact_proximity_hierarchy": 1.0,
+          "artifact_proximity_tiers": {
+            "direct": 1.0,
+            "contextual": 0.0,
+            "local": 0.0,
+            "remote": 0.0
+          }
+        },
+        "claim_support_coverage": 1.0,
+        "six_c_vector": {
+          "credibility": 0.122885,
+          "corroboration": 0.262885,
+          "coherence": 0.48,
+          "confidence_discipline": 0.57,
+          "compliance_mapping": 0.3
+        }
+      },
+      {
+        "claim_id": "C006",
+        "evidence_count": 1,
+        "source_count": 1,
+        "unique_origin_count": 1,
+        "source_unique_origin_count": 1,
+        "evidence_weight_aggregate": 0.12288496999999998,
+        "origin_cluster_weights": {
+          "ORIG:src0001": 0.122885
+        },
+        "penalty_multiplier": 0.85,
+        "penalties": [
+          {
+            "name": "single_source",
+            "factor": 0.85
+          }
+        ],
+        "final_score": 0.104452,
+        "recovered_reference_count": 0,
+        "data_contribution_score": 1.0,
+        "data_contribution_multiplier": 1.0,
+        "core_3c": {
+          "chain_of_custody_provenance": {
+            "score": 0.041241,
+            "band_0_5": 0
+          },
+          "credibility_independence": {
+            "score": 0.4869,
+            "band_0_5": 2
+          },
+          "corroboration_convergence": {
+            "score": 0.257627,
+            "band_0_5": 1
+          }
+        },
+        "chain_provenance_diagnostics": {
+          "context_completeness": 1.0,
+          "integrity_signal": 0.0,
+          "lineage_quality": 0.8,
+          "report_derived_ratio": 0.0,
+          "artifact_traceability": 0.0,
+          "provenance_quality": 0.51,
+          "anchor_quality": 1.0,
+          "chain_disclosure_quality": 0.4,
+          "claim_anchor_alignment": 1.0,
+          "artifact_proximity_hierarchy": 1.0,
+          "artifact_proximity_tiers": {
+            "direct": 1.0,
+            "contextual": 0.0,
+            "local": 0.0,
+            "remote": 0.0
+          }
+        },
+        "claim_support_coverage": 1.0,
+        "six_c_vector": {
+          "credibility": 0.122885,
+          "corroboration": 0.262885,
+          "coherence": 0.48,
+          "confidence_discipline": 0.57,
+          "compliance_mapping": 0.3
+        }
+      },
+      {
+        "claim_id": "C007",
+        "evidence_count": 1,
+        "source_count": 1,
+        "unique_origin_count": 1,
+        "source_unique_origin_count": 1,
+        "evidence_weight_aggregate": 0.14651669499999997,
+        "origin_cluster_weights": {
+          "ORIG:src0001": 0.146517
+        },
+        "penalty_multiplier": 0.85,
+        "penalties": [
+          {
+            "name": "single_source",
+            "factor": 0.85
+          }
+        ],
+        "final_score": 0.124539,
+        "recovered_reference_count": 0,
+        "data_contribution_score": 1.0,
+        "data_contribution_multiplier": 1.0,
+        "core_3c": {
+          "chain_of_custody_provenance": {
+            "score": 0.044201,
+            "band_0_5": 0
+          },
+          "credibility_independence": {
+            "score": 0.4977,
+            "band_0_5": 2
+          },
+          "corroboration_convergence": {
+            "score": 0.280786,
+            "band_0_5": 1
+          }
+        },
+        "chain_provenance_diagnostics": {
+          "context_completeness": 1.0,
+          "integrity_signal": 0.0,
+          "lineage_quality": 0.8,
+          "report_derived_ratio": 0.0,
+          "artifact_traceability": 0.0,
+          "provenance_quality": 0.51,
+          "anchor_quality": 1.0,
+          "chain_disclosure_quality": 0.8,
+          "claim_anchor_alignment": 1.0,
+          "artifact_proximity_hierarchy": 1.0,
+          "artifact_proximity_tiers": {
+            "direct": 1.0,
+            "contextual": 0.0,
+            "local": 0.0,
+            "remote": 0.0
+          }
+        },
+        "claim_support_coverage": 1.0,
+        "six_c_vector": {
+          "credibility": 0.146517,
+          "corroboration": 0.286517,
+          "coherence": 0.6,
+          "confidence_discipline": 0.57,
+          "compliance_mapping": 0.3
+        }
+      },
+      {
+        "claim_id": "C008",
+        "evidence_count": 1,
+        "source_count": 1,
+        "unique_origin_count": 1,
+        "source_unique_origin_count": 1,
+        "evidence_weight_aggregate": 0.14651669499999997,
+        "origin_cluster_weights": {
+          "ORIG:src0001": 0.146517
+        },
+        "penalty_multiplier": 0.85,
+        "penalties": [
+          {
+            "name": "single_source",
+            "factor": 0.85
+          }
+        ],
+        "final_score": 0.124539,
+        "recovered_reference_count": 0,
+        "data_contribution_score": 1.0,
+        "data_contribution_multiplier": 1.0,
+        "core_3c": {
+          "chain_of_custody_provenance": {
+            "score": 0.044201,
+            "band_0_5": 0
+          },
+          "credibility_independence": {
+            "score": 0.4977,
+            "band_0_5": 2
+          },
+          "corroboration_convergence": {
+            "score": 0.280786,
+            "band_0_5": 1
+          }
+        },
+        "chain_provenance_diagnostics": {
+          "context_completeness": 1.0,
+          "integrity_signal": 0.0,
+          "lineage_quality": 0.8,
+          "report_derived_ratio": 0.0,
+          "artifact_traceability": 0.0,
+          "provenance_quality": 0.51,
+          "anchor_quality": 1.0,
+          "chain_disclosure_quality": 0.8,
+          "claim_anchor_alignment": 1.0,
+          "artifact_proximity_hierarchy": 1.0,
+          "artifact_proximity_tiers": {
+            "direct": 1.0,
+            "contextual": 0.0,
+            "local": 0.0,
+            "remote": 0.0
+          }
+        },
+        "claim_support_coverage": 1.0,
+        "six_c_vector": {
+          "credibility": 0.146517,
+          "corroboration": 0.286517,
+          "coherence": 0.6,
+          "confidence_discipline": 0.57,
+          "compliance_mapping": 0.3
+        }
+      },
+      {
+        "claim_id": "C009",
+        "evidence_count": 1,
+        "source_count": 1,
+        "unique_origin_count": 1,
+        "source_unique_origin_count": 1,
+        "evidence_weight_aggregate": 0.12288496999999998,
+        "origin_cluster_weights": {
+          "ORIG:src0001": 0.122885
+        },
+        "penalty_multiplier": 0.85,
+        "penalties": [
+          {
+            "name": "single_source",
+            "factor": 0.85
+          }
+        ],
+        "final_score": 0.104452,
+        "recovered_reference_count": 0,
+        "data_contribution_score": 1.0,
+        "data_contribution_multiplier": 1.0,
+        "core_3c": {
+          "chain_of_custody_provenance": {
+            "score": 0.041241,
+            "band_0_5": 0
+          },
+          "credibility_independence": {
+            "score": 0.4869,
+            "band_0_5": 2
+          },
+          "corroboration_convergence": {
+            "score": 0.257627,
+            "band_0_5": 1
+          }
+        },
+        "chain_provenance_diagnostics": {
+          "context_completeness": 1.0,
+          "integrity_signal": 0.0,
+          "lineage_quality": 0.8,
+          "report_derived_ratio": 0.0,
+          "artifact_traceability": 0.0,
+          "provenance_quality": 0.51,
+          "anchor_quality": 1.0,
+          "chain_disclosure_quality": 0.4,
+          "claim_anchor_alignment": 1.0,
+          "artifact_proximity_hierarchy": 1.0,
+          "artifact_proximity_tiers": {
+            "direct": 1.0,
+            "contextual": 0.0,
+            "local": 0.0,
+            "remote": 0.0
+          }
+        },
+        "claim_support_coverage": 1.0,
+        "six_c_vector": {
+          "credibility": 0.122885,
+          "corroboration": 0.262885,
+          "coherence": 0.48,
+          "confidence_discipline": 0.57,
+          "compliance_mapping": 0.3
+        }
+      },
+      {
+        "claim_id": "C010",
+        "evidence_count": 1,
+        "source_count": 1,
+        "unique_origin_count": 1,
+        "source_unique_origin_count": 1,
+        "evidence_weight_aggregate": 0.12288496999999998,
+        "origin_cluster_weights": {
+          "ORIG:src0001": 0.122885
+        },
+        "penalty_multiplier": 0.85,
+        "penalties": [
+          {
+            "name": "single_source",
+            "factor": 0.85
+          }
+        ],
+        "final_score": 0.104452,
+        "recovered_reference_count": 0,
+        "data_contribution_score": 1.0,
+        "data_contribution_multiplier": 1.0,
+        "core_3c": {
+          "chain_of_custody_provenance": {
+            "score": 0.041241,
+            "band_0_5": 0
+          },
+          "credibility_independence": {
+            "score": 0.4869,
+            "band_0_5": 2
+          },
+          "corroboration_convergence": {
+            "score": 0.257627,
+            "band_0_5": 1
+          }
+        },
+        "chain_provenance_diagnostics": {
+          "context_completeness": 1.0,
+          "integrity_signal": 0.0,
+          "lineage_quality": 0.8,
+          "report_derived_ratio": 0.0,
+          "artifact_traceability": 0.0,
+          "provenance_quality": 0.51,
+          "anchor_quality": 1.0,
+          "chain_disclosure_quality": 0.4,
+          "claim_anchor_alignment": 1.0,
+          "artifact_proximity_hierarchy": 1.0,
+          "artifact_proximity_tiers": {
+            "direct": 1.0,
+            "contextual": 0.0,
+            "local": 0.0,
+            "remote": 0.0
+          }
+        },
+        "claim_support_coverage": 1.0,
+        "six_c_vector": {
+          "credibility": 0.122885,
+          "corroboration": 0.262885,
+          "coherence": 0.48,
+          "confidence_discipline": 0.57,
+          "compliance_mapping": 0.3
+        }
+      }
+    ],
+    "document": {
+      "profile": "balanced",
+      "headline_claim_id": "C001",
+      "headline_vector": {
+        "credibility": 0.122885,
+        "corroboration": 0.262885,
+        "coherence": 0.48,
+        "confidence_discipline": 0.57,
+        "compliance_mapping": 1.0
+      },
+      "coverage_vector_median": {
+        "credibility": 0.122885,
+        "corroboration": 0.262885,
+        "coherence": 0.48,
+        "confidence_discipline": 0.57,
+        "compliance_mapping": 0.3
+      },
+      "overall_claim_score_mean": 0.108469,
+      "overall_claim_score_geometric": 0.108192,
+      "seriousness_gate": {
+        "passed": true,
+        "thresholds": {
+          "overall_claim_score_mean_min": 0.1,
+          "credibility_independence_median_min": 0.4,
+          "corroboration_convergence_median_min": 0.2
+        },
+        "observed": {
+          "overall_claim_score_mean": 0.108469,
+          "credibility_independence_median": 0.4869,
+          "corroboration_convergence_median": 0.257627
+        }
+      }
+    }
+  }
+}

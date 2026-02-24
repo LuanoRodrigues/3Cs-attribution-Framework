@@ -1,0 +1,349 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "quote": "The authors' research identified two competing risks: 1) the risk of not responding forcefully enough to deter a suspected attacker, and 2) responding in a manner that escalates a situation with an attacker.",
+          "paraphrase": "For RQ 0, the authors identify two competing response risks: failing to respond sufficiently to deter an attacker and responding in a way that risks escalation.",
+          "researcher_comment": "This frames the central tradeoff (deterrence vs. escalation) that any attribution-informed response must balance. The chunk reports this as a research finding but provides no methodological detail or thresholds for prioritizing one risk over the other.",
+          "potential_themes": [
+            "escalation_risk",
+            "deterrence",
+            "risk_tradeoffs"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "under_response_risk",
+            "over_response_escalation",
+            "deterrence_tradeoff"
+          ]
+        },
+        {
+          "quote": "The authors also identified three primary factors that influence these risks: attribution confidence/time, the scale of the attack, and the relationship with the suspected attacker.",
+          "paraphrase": "For RQ 0, the authors state that attribution confidence/time, attack scale, and the relationship to the suspected attacker are primary causal factors influencing response risks.",
+          "researcher_comment": "Explicitly naming 'attribution confidence/time' elevates attribution as a key variable; the inclusion of 'time' implies urgency and temporal constraints. The chunk does not operationalize these factors or specify how they are measured.",
+          "potential_themes": [
+            "attribution_challenges",
+            "escalation_risk"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "finding",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "attribution_confidence_time",
+            "attack_scale",
+            "attacker_relationship"
+          ]
+        },
+        {
+          "quote": "The process for determining how to respond to a cyberattack involves evaluating many factors, including some with competing risks.",
+          "paraphrase": "For RQ 0, the authors claim that response decision-making requires evaluating multiple, sometimes competing factors.",
+          "researcher_comment": "This statement justifies the need for structured decision support but is descriptive rather than empirical. It does not specify which factors should be weighted or how tradeoffs should be resolved.",
+          "potential_themes": [
+            "risk_tradeoffs",
+            "decision_framework"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "multi_factor_evaluation",
+            "competing_risks"
+          ]
+        },
+        {
+          "quote": "This paper provides a framework to help decision makers understand how these factors interact to influence the risks associated with potential response options to cyberattacks.",
+          "paraphrase": "For RQ 0, the paper proposes a framework to analyze how interacting factors influence the risks of different cyber response options.",
+          "researcher_comment": "This is the paper's stated contribution and is directly relevant to RQ 0's interest in decision frameworks; the chunk does not include the framework's structure, criteria, or validation evidence.",
+          "potential_themes": [
+            "decision_framework"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "framework",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "response_framework",
+            "factor_interactions",
+            "decision_support"
+          ]
+        },
+        {
+          "quote": "A cyberattack is defined as \"an attempt to gain illegal access to a computer or computer system for the purpose of causing damage or harm .\"",
+          "paraphrase": "For RQ 0, the authors define a cyberattack as an attempt to gain illegal access to computer systems to cause damage or harm.",
+          "researcher_comment": "This operational definition centers illegal access and damage as the defining criteria, which may exclude other relevant incident types (e.g., espionage, exfiltration without immediate damage). The choice of definition affects which events attribution processes must cover.",
+          "potential_themes": [
+            "definition"
+          ],
+          "relevance_score": 3,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "cyberattack_definition",
+            "illegal_access",
+            "damage_or_harm"
+          ]
+        },
+        {
+          "quote": "A response is defined as the action(s) the USG and/or private sector takes to stop a cyberattack and deter the attacker from conducting additional cyberattacks.",
+          "paraphrase": "For RQ 0, the authors define a response as actions by USG or private sector actors intended to stop an attack and deter further attacks.",
+          "researcher_comment": "This frames responses around immediate mitigation and deterrence; it omits non-deterrent actions (legal, diplomatic remedies) that could also follow attribution. The definition affects which policy options the framework will evaluate.",
+          "potential_themes": [
+            "definition",
+            "deterrence"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "response_definition",
+            "mitigation_and_deterrence"
+          ]
+        },
+        {
+          "quote": "These global trends suggest that it is not a question of if the U.S. will sustain a significant cyberattack, but a question of when.",
+          "paraphrase": "For RQ 0, the authors argue that a significant cyberattack against the U.S. is inevitable and only a matter of time.",
+          "researcher_comment": "This predictive claim is used to motivate urgency for a response framework; the chunk references increasing incidents earlier but does not quantify timing or probability here. Treat as rhetorical urgency rather than quantified risk assessment.",
+          "potential_themes": [
+            "threat_trend",
+            "urgency"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "predictive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "inevitability",
+            "trend_motivation"
+          ]
+        },
+        {
+          "quote": "More importantly, when an adversary conducts a cyberattack on the U.S., how the USG or a corporation responds will determine not only if the conflict escalates or de-escalates, but also will influence other cyber adversaries who are preparing to attack the USG or U.S. private sector.",
+          "paraphrase": "For RQ 0, the authors claim that the chosen response will affect escalation outcomes and will influence other potential adversaries' behavior.",
+          "researcher_comment": "This links response selection to strategic signaling and deterrence\u2014central concerns when attribution confidence is imperfect. The chunk offers no empirical evidence here about the magnitude or conditions under which signaling alters adversary behavior.",
+          "potential_themes": [
+            "escalation_risk",
+            "deterrence"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "causal",
+          "claim_direction": "supports",
+          "open_codes": [
+            "response_signaling",
+            "second_order_effects",
+            "escalation_influence"
+          ]
+        },
+        {
+          "quote": "Increasingly, the U.S. private sector and the USG are sharing information with one another to respond to cyberattacks.",
+          "paraphrase": "For RQ 0, the authors observe that information sharing between the USG and private sector is increasing to support cyberattack response.",
+          "researcher_comment": "Improved sharing is directly relevant to attribution capacity (more data can increase confidence), but the chunk provides no metrics on coverage, timeliness, or data types being shared.",
+          "potential_themes": [
+            "information_sharing"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "public_private_information_sharing",
+            "collaboration"
+          ]
+        },
+        {
+          "quote": "However, critics argue that the USG and private sector are still not sharing enough information .",
+          "paraphrase": "For RQ 0, critics contend that USG\u2013private sector information sharing remains insufficient despite increases.",
+          "researcher_comment": "This identifies a contested barrier to timely, confident attribution; the chunk does not specify which classes of information are most withheld or the scale of the shortfall.",
+          "potential_themes": [
+            "information_sharing",
+            "attribution_challenges"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "insufficient_sharing",
+            "data_sharing_gap"
+          ]
+        },
+        {
+          "quote": "While the 2015 Cyber Information Sharing Act (CISA) protects companies from liability for sharing information , many companies still do not have a business incentive to share information .",
+          "paraphrase": "For RQ 0, the authors note that CISA reduces liability for sharing but many companies still lack business incentives to share cyber information.",
+          "researcher_comment": "This highlights a policy-versus-economic barrier: legal protections may be necessary but are not sufficient to produce the data flows needed for attribution. The chunk does not provide empirical measures of companies' reluctance.",
+          "potential_themes": [
+            "policy_incentives",
+            "information_sharing"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "CISA_protection",
+            "lack_of_incentive",
+            "private_sector_barriers"
+          ]
+        },
+        {
+          "quote": "Nevertheless, many USG officials acknowledge the government must share more with the private sector , to include potentially even some classified information .",
+          "paraphrase": "For RQ 0, USG officials acknowledge the government must increase sharing with the private sector, potentially including classified information.",
+          "researcher_comment": "This indicates official recognition that attribution requires broader data access; classified-sharing raises legal, trust, and operational complications not addressed in the chunk.",
+          "potential_themes": [
+            "information_sharing",
+            "classification_barriers"
+          ],
+          "relevance_score": 4,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "claim",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "govt_sharing_acknowledgement",
+            "classified_info"
+          ]
+        },
+        {
+          "quote": "The TTX stated the importance of determining attribution as quickly as possible, sharing information, and testing procedures for response options amongst all stakeholders .",
+          "paraphrase": "For RQ 0, a table-top exercise recommended rapid attribution, robust information sharing, and testing response procedures among stakeholders.",
+          "researcher_comment": "This is an explicit operational recommendation directly relevant to improving attribution speed and coordinated response. The chunk does not provide implementation detail or evidence of effectiveness.",
+          "potential_themes": [
+            "attribution_challenges",
+            "information_sharing"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "recommendation",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "rapid_attribution",
+            "joint_testing",
+            "stakeholder_coordination"
+          ]
+        },
+        {
+          "quote": "These ideas also apply to this paper, but its primary focus is to present a framework to stop or deter cyber adversaries from attacking the U.S. without risking escalation.",
+          "paraphrase": "For RQ 0, the paper's primary focus is a framework to prevent or deter cyberattacks while avoiding escalation.",
+          "researcher_comment": "Restates the paper's constrained goal\u2014balancing deterrence and non\u2011escalation\u2014which implies attribution standards must consider political escalation risk. Details of how tradeoffs are managed are not present in the chunk.",
+          "potential_themes": [
+            "decision_framework",
+            "escalation_risk"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "framework",
+          "argument_type": "procedural",
+          "claim_direction": "supports",
+          "open_codes": [
+            "deterrence_without_escalation",
+            "framework_objective"
+          ]
+        },
+        {
+          "quote": "These reasons emphasize why a common framework that evaluates the risks and factors that influence cyberattacks is a necessity for USG policymakers and corporate decision makers.",
+          "paraphrase": "For RQ 0, the authors argue that a common framework to evaluate risks and influencing factors is necessary for USG and corporate decision makers.",
+          "researcher_comment": "This is a prescriptive call for standardization across public and private sectors; it identifies a governance need but does not address mechanisms for adoption, accountability, or interoperability.",
+          "potential_themes": [
+            "decision_framework",
+            "recommendation"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [
+            {
+              "index": 0
+            }
+          ],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "common_framework_necessity",
+            "policy_standardization"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-24T15:20:34.753640Z",
+  "collection_name": "frameworks",
+  "custom_id": "479ee9e52690fec57db1ac3c76c0a693662316715d0fbcebeb000b95a4600f55",
+  "function": "code_pdf_page"
+}

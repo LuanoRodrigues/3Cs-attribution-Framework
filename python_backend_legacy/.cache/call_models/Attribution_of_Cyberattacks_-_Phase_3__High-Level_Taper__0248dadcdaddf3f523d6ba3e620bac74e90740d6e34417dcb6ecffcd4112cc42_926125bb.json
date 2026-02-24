@@ -1,0 +1,240 @@
+{
+  "provider": "openai",
+  "result": {
+    "provider": "openai",
+    "response": {
+      "evidence": [
+        {
+          "quote": "the technical peculiarities of cyberspace pose new and unique legal problems that previously have not been encountered.",
+          "paraphrase": "The authors state that cyberspace's technical characteristics create novel legal problems for international law relevant to questions such as attribution, evidentiary standards, and state obligations.",
+          "researcher_comment": "Frames the subject-matter: cyberspace architecture produces new legal challenges that shape all downstream RQs. This is a high-level characterization and does not specify which technical features are decisive.",
+          "potential_themes": [
+            "legal_uncertainty",
+            "evolving_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "technical_peculiarities",
+            "novel_legal_problems",
+            "cyber_architecture"
+          ]
+        },
+        {
+          "quote": "inter-State cyber security has unfortunately been treated predominantly as a military issue",
+          "paraphrase": "The authors identify that inter-State cyber security has been predominantly framed as a military issue, concentrating debate on Article 51 self-defence.",
+          "researcher_comment": "Defines the prevailing 'military paradigm' framing that directs scholarly and policy focus toward self-defence; directly relevant to RQs about doctrinal bias. The statement is diagnostic rather than evidentiary.",
+          "potential_themes": [
+            "self_defence",
+            "legal_uncertainty"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "definition",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "military_framing",
+            "self_defence_focus"
+          ]
+        },
+        {
+          "quote": "This chapter argues that, while self-defence certainly cannot be ruled out, the problem of attribution will preclude its proper application in many, if not most, instances.",
+          "paraphrase": "The authors find that attribution difficulties will often prevent the lawful invocation of self-defence in response to cyber attacks.",
+          "researcher_comment": "Key analytic claim limiting Article 51's applicability in cyber contexts; central to RQs on legal viability of force. The qualified frequency ('many, if not most') is asserted but not empirically specified here.",
+          "potential_themes": [
+            "attribution_challenges",
+            "self_defence",
+            "legal_viability"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "supports",
+          "open_codes": [
+            "attribution_preclusion",
+            "self_defence_limit",
+            "practical_inapplicability"
+          ]
+        },
+        {
+          "quote": "Therefore, two other remedies will be analysed that might present an alternative to the prevalent military paradigm of international cyber security: countermeasures and the state of necessity.",
+          "paraphrase": "The chapter's method is to analyse countermeasures and the state of necessity as legal alternatives to the military paradigm in cyber security.",
+          "researcher_comment": "Declares the comparative-legal method and scope relevant for RQs exploring alternatives to self-defence. This is methodological framing rather than substantive legal argumentation.",
+          "potential_themes": [
+            "countermeasures",
+            "necessity"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "method",
+          "argument_type": "procedural",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "analyse_countermeasures",
+            "analyse_state_of_necessity"
+          ]
+        },
+        {
+          "quote": "The chapter provides an outlook on the possibilities of a more comprehensive approach to contemporary security issues that focuses on prevention rather than repression, drawing on States\u2019 international due diligence obligations not to harm others.",
+          "paraphrase": "The authors recommend shifting to a prevention-focused framework that operationalises States' international due diligence obligations to avoid harming others in cyberspace.",
+          "researcher_comment": "Explicit policy recommendation to prioritise prevention and specify due-diligence duties; directly relevant to RQs on state obligations and non-forcible remedies. The passage does not set out concrete due-diligence standards or enforcement mechanisms.",
+          "potential_themes": [
+            "due_diligence",
+            "duty_to_prevent"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "prevention_focus",
+            "due_diligence_framework",
+            "shift_from_repression"
+          ]
+        },
+        {
+          "quote": "For the time being and also likely into the mid-term, with no comprehensive international cyber security treaty or centralised and institutionalised regime-building in sight, unilateral remedies will most likely continue to play a central role when it comes to cyber security incidents.",
+          "paraphrase": "The authors predict that, absent a comprehensive international treaty, unilateral remedies will remain the principal responses to cyber security incidents in the mid-term.",
+          "researcher_comment": "A predictive finding about governance trajectories that informs RQs on implementation and norm-building. The claim depends on political feasibility and may be time-sensitive.",
+          "potential_themes": [
+            "non_forcible_remedies",
+            "implementation_challenges"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "predictive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "unilateral_remedies_persistence",
+            "midterm_prediction",
+            "absence_of_treaty"
+          ]
+        },
+        {
+          "quote": "Thus far the academic and political debate has focused too much on military responses to cyber attacks, over-emphasising the self-defence doctrine as the most feasible reaction to malicious inter-State activity.",
+          "paraphrase": "The authors criticise scholarship and policy for disproportionately emphasising military self-defence as the primary response to cyber attacks.",
+          "researcher_comment": "Evaluative critique of prevailing discourse; relevant for RQs assessing doctrinal bias and escalation risk. This normative claim implies a mismatch between debate and practical threat profiles.",
+          "potential_themes": [
+            "self_defence",
+            "escalation_risk"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "claim",
+          "argument_type": "normative",
+          "claim_direction": "contradicts",
+          "open_codes": [
+            "overemphasis_on_self_defence",
+            "framing_bias",
+            "policy_critique"
+          ]
+        },
+        {
+          "quote": "To date no cyber security incident has actually risen to the level of an armed attack.",
+          "paraphrase": "The authors state that, up to the time of writing, no cyber incident has met the armed-attack threshold under Article 51 of the UN Charter.",
+          "researcher_comment": "Provides an empirical baseline important for RQs on thresholds of force; supports caution in invoking self-defence. Datedness caveat: the assertion is historically bounded to the chapter's publication timeframe.",
+          "potential_themes": [
+            "armed_attack_definition",
+            "thresholds_of_force"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "no_armed_attack_yet",
+            "armed_attack_threshold"
+          ]
+        },
+        {
+          "quote": "Moreover, due to the persisting attribution problem and the myriad uncertainties surrounding tracing the origin of an attack in cyberspace, in most instances it will be legally untenable.",
+          "paraphrase": "The authors contend that persistent attribution issues and tracing uncertainties make legal responses (including force) untenable in most cyber incidents.",
+          "researcher_comment": "Directly identifies a key limitation facing legal remedies in cyberspace; central to RQs on evidentiary standards and state responsibility. The generalisation 'most instances' is not empirically qualified here.",
+          "potential_themes": [
+            "attribution_challenges",
+            "evidentiary_standards"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "limitation",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "attribution_limit",
+            "evidentiary_uncertainty",
+            "tracing_challenges"
+          ]
+        },
+        {
+          "quote": "It has been made clear that both countermeasures and the state of necessity pose unique and very specific legal problems when applied in the context of cyberspace.",
+          "paraphrase": "The authors find that countermeasures and the state of necessity each present distinct legal difficulties when applied to cyber incidents.",
+          "researcher_comment": "Summarises the chapter's conclusion that non-forcible alternatives are legally problematic in cyberspace; useful for RQs comparing remedial options. The sentence signals difference but does not catalogue the specific legal obstacles here.",
+          "potential_themes": [
+            "countermeasures",
+            "necessity",
+            "legal_uncertainty"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "finding",
+          "argument_type": "descriptive",
+          "claim_direction": "neutral",
+          "open_codes": [
+            "countermeasures_problems",
+            "necessity_problems",
+            "alternative_remedies_issues"
+          ]
+        },
+        {
+          "quote": "Some of these problems can be solved; others could at least be mitigated if non-forcible unilateral responses to cyber incidents of unclear origin that affect other State's interest could be better coordinated and ultimately institutionalised on the basis of an international treaty.",
+          "paraphrase": "The authors recommend better coordination and treaty-based institutionalisation of non-forcible unilateral responses to ambiguous-origin cyber incidents to mitigate legal problems.",
+          "researcher_comment": "Policy recommendation linking mitigation to coordination and treaty-making; directly relevant to RQs on norm transfer and cooperation. The proposal acknowledges political and technical feasibility constraints but does not offer an implementation roadmap.",
+          "potential_themes": [
+            "cooperation_obligations",
+            "non_forcible_remedies"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "coordinate_nonforcible_responses",
+            "institutionalize_via_treaty",
+            "mitigation_strategy"
+          ]
+        },
+        {
+          "quote": "In cyberspace, as in the real world, self-defence is an option of last resort.",
+          "paraphrase": "The authors emphasise that self-defence in cyberspace should be treated as a last-resort measure, consistent with traditional jus ad bellum principles.",
+          "researcher_comment": "Normative restatement reinforcing restraint in the use of force; relevant to RQs on doctrinal hierarchy and proportionality. The quote does not operationalise when the 'last resort' threshold is met.",
+          "potential_themes": [
+            "self_defence",
+            "necessity_doctrine"
+          ],
+          "relevance_score": 5,
+          "relevant_rqs": [],
+          "evidence_type": "recommendation",
+          "argument_type": "normative",
+          "claim_direction": "supports",
+          "open_codes": [
+            "last_resort_principle",
+            "self_defence_restriction"
+          ]
+        }
+      ]
+    }
+  },
+  "cached_at": "2026-02-24T16:42:23.794834Z",
+  "collection_name": "Attribution of Cyberattacks - Phase 3: High-Level Taper",
+  "custom_id": "0248dadcdaddf3f523d6ba3e620bac74e90740d6e34417dcb6ecffcd4112cc42",
+  "function": "code_pdf_page"
+}
