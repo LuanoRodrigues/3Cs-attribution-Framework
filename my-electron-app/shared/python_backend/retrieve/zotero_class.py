@@ -13457,6 +13457,7 @@ class Zotero:
         if requested_item_key and not re.match(r"^[A-Za-z0-9]{8}$", requested_item_key):
             requested_item_key = ""
         requested_collection_key = str(collection_key or "").strip()
+        resolved_collection_key = requested_collection_key
 
         collection_lookup = requested_collection_name or requested_collection_key
         collection_label = requested_collection_name or "collection"
@@ -13468,6 +13469,7 @@ class Zotero:
             collection_lookup = lookup_key
             if requested_collection_key or not requested_collection_name:
                 collection_label = collection_lookup
+            resolved_collection_key = lookup_key
             resolved_lookup = self._find_collection_by_key(lookup_key)
             if isinstance(resolved_lookup, dict):
                 resolved_name = str((resolved_lookup.get("data") or {}).get("name") or "").strip()
@@ -13566,6 +13568,23 @@ class Zotero:
                     out.append(s)
             return out
 
+        def _collection_index_keys() -> list[str]:
+            candidates = [
+                resolved_collection_key,
+                collection_lookup,
+                requested_collection_name,
+                collection_label,
+                requested_collection_key,
+            ]
+            keys: list[str] = []
+            for candidate in candidates:
+                key = _slug(candidate)
+                if key and key not in keys:
+                    keys.append(key)
+            if not keys:
+                keys.append(_slug("collection"))
+            return keys
+
         mode_norm = str(coding_mode or "open").strip().lower()
         mode_norm = "semi_structured" if mode_norm in {"semi_structured", "targeted", "hybrid"} else "open"
         theme_norm = str(overarching_theme or "").strip()
@@ -13632,12 +13651,8 @@ class Zotero:
         run_out_dir = base_log_dir / "open_coding_runs"
         run_out_dir.mkdir(parents=True, exist_ok=True)
         collection_index_path = run_out_dir / "open_coding_collection_index.json"
-
-        collection_key_for_index = str(requested_collection_key or requested_collection_name or collection_label).strip()
-        if collection_key_for_index:
-            collection_key_for_index = _slug(collection_key_for_index)
-        else:
-            collection_key_for_index = _slug("collection")
+        collection_index_lookup_keys = _collection_index_keys()
+        collection_key_for_index = collection_index_lookup_keys[0]
 
         # Use a short slug of the first RQ line to be human-readable + hash for stability
         first_rq_slug = _slug(rq_lines[0]) if rq_lines else "inductive"
@@ -13710,26 +13725,47 @@ class Zotero:
                 idx = _load_collection_index()
                 if not isinstance(idx, dict):
                     idx = {}
-                key = collection_key_for_index
-                existing = idx.get(key)
-                if not isinstance(existing, dict):
-                    existing = {}
-                existing.update(
-                    {
-                        "collection_name": collection_label,
-                        "collection_key": requested_collection_key,
-                        "collection_lookup": collection_lookup,
-                        "latest_run_file": str(run_file),
-                        "item_count": len(item_keys),
-                        "item_keys": item_keys,
-                        "rq_sig": rq_sig,
-                        "rq_lines": rq_lines,
-                        "prompt_key": prompt_key,
-                        "intro_conclusion_prompt_key": intro_conclusion_prompt_key,
-                        "updated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
-                    }
-                )
-                idx[key] = existing
+                collection_entry: dict[str, Any] = {
+                    "collection_name": collection_label,
+                    "collection_key": resolved_collection_key,
+                    "collection_lookup": collection_lookup,
+                    "latest_run_file": str(run_file),
+                    "item_count": len(item_keys),
+                    "item_keys": item_keys,
+                    "rq_sig": rq_sig,
+                    "rq_lines": rq_lines,
+                    "prompt_key": prompt_key,
+                    "intro_conclusion_prompt_key": intro_conclusion_prompt_key,
+                    "index_keys": collection_index_lookup_keys,
+                    "updated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+                }
+
+                # Deduplicate and preserve deterministic alias order
+                alias_keys: list[str] = []
+                for key in collection_index_lookup_keys:
+                    if key not in alias_keys:
+                        alias_keys.append(key)
+                for key in [collection_key_for_index, _slug(requested_collection_name), _slug(collection_label), _slug(collection_lookup)]:
+                    if key and key not in alias_keys:
+                        alias_keys.append(key)
+
+                collection_entry["collection_aliases"] = alias_keys
+
+                for key in alias_keys:
+                    if not key:
+                        continue
+                    existing = idx.get(key)
+                    if not isinstance(existing, dict):
+                        existing = {}
+                    merged = dict(existing)
+                    merged.update(collection_entry)
+                    merged_aliases = _normalize_list(existing.get("collection_aliases") or [])  # keep stable tokens
+                    merged_aliases.extend(alias_keys)
+                    merged["collection_aliases"] = sorted(set(merged_aliases))
+                    merged["index_keys"] = sorted(set(collection_entry.get("index_keys") or []))
+                    merged["item_keys"] = item_keys
+                    merged["item_count"] = len(item_keys)
+                    idx[key] = merged
                 _write_collection_index(idx)
             except Exception as exc:
                 print(
@@ -13740,23 +13776,38 @@ class Zotero:
         def _find_cached_item_from_index(item_key_lookup: str) -> dict[str, Any] | None:
             if not item_key_lookup:
                 return None
-            collection_entry = _load_collection_index().get(collection_key_for_index)
-            if not isinstance(collection_entry, dict):
+            normalized_item = str(item_key_lookup).strip()
+            if not normalized_item:
                 return None
-            entry_item_keys = collection_entry.get("item_keys")
-            if isinstance(entry_item_keys, list) and item_key_lookup not in [str(x or "").strip() for x in entry_item_keys]:
+            index_payload = _load_collection_index()
+            if not isinstance(index_payload, dict):
                 return None
-            run_file_name = str(collection_entry.get("latest_run_file") or "").strip()
-            if run_file_name and Path(run_file_name).is_file():
-                try:
-                    with Path(run_file_name).open("r", encoding="utf-8") as fh:
-                        payload = json.load(fh)
-                    if isinstance(payload, dict):
-                        candidate = payload.get(item_key_lookup)
-                        if isinstance(candidate, dict):
-                            return {item_key_lookup: candidate}
-                except Exception:
-                    pass
+            candidates: list[dict[str, Any]] = []
+            for key in collection_index_lookup_keys:
+                entry = index_payload.get(key)
+                if isinstance(entry, dict):
+                    candidates.append(entry)
+            if not candidates:
+                candidates = [entry for entry in index_payload.values() if isinstance(entry, dict)]
+
+            for collection_entry in candidates:
+                entry_item_keys = collection_entry.get("item_keys")
+                if not isinstance(entry_item_keys, list):
+                    continue
+                normalized_entry_keys = {str(x or "").strip() for x in entry_item_keys}
+                if normalized_item not in normalized_entry_keys:
+                    continue
+                run_file_name = str(collection_entry.get("latest_run_file") or "").strip()
+                if run_file_name and Path(run_file_name).is_file():
+                    try:
+                        with Path(run_file_name).open("r", encoding="utf-8") as fh:
+                            payload = json.load(fh)
+                        if isinstance(payload, dict):
+                            candidate = payload.get(normalized_item)
+                            if isinstance(candidate, dict):
+                                return {normalized_item: candidate}
+                    except Exception:
+                        continue
             return None
 
         def _collect_process_pdf_metadata(item_pdf_path: str, legacy_source_path: str, item_key_local: str) -> tuple[dict[str, Any], str]:
@@ -14009,6 +14060,7 @@ class Zotero:
                 core_sections=core_sections,
                 prompt_key=prompt_key,
                 intro_conclusion_prompt_key=intro_conclusion_prompt_key,
+                collection_cache_scope=collection_key_for_index,
                 read=read,
                 store_only=store_only,
                 cache=cache,
@@ -14271,9 +14323,9 @@ class Zotero:
         )
 
     def code_single_item(self,
-                         item: dict,
-                         read: bool,
-                         store_only: bool,
+                        item: dict,
+                        read: bool,
+                        store_only: bool,
                          research_question: str | list[str],
                          collection_name: str,
                          overarching_theme: str = "",
@@ -14330,7 +14382,10 @@ class Zotero:
             return results
 
         rq_sig = hashlib.sha256(research_questions_formatted.encode("utf-8")).hexdigest()[:10]
-        cache_file = (base_log_dir / "open_coding_cache" / f"{item_key}_{prompt_key}_{intro_prompt_key}_{rq_sig}.json")
+        scope_slug = re.sub(r'[^\w\-]+', '_', str(collection_cache_scope or "collection").strip())
+        scope_slug = re.sub(r'_{2,}', '_', scope_slug).strip('_') or "collection"
+        cache_file = (base_log_dir / "open_coding_cache" / f"{item_key}_{scope_slug}_{prompt_key}_{intro_prompt_key}_{rq_sig}.json")
+        legacy_cache_file = (base_log_dir / "open_coding_cache" / f"{item_key}_{prompt_key}_{intro_prompt_key}_{rq_sig}.json")
         cache_file.parent.mkdir(parents=True, exist_ok=True)
         section_progress_dir = base_log_dir / "code_single_item_progress"
         section_progress_dir.mkdir(parents=True, exist_ok=True)
@@ -14346,6 +14401,14 @@ class Zotero:
         if read and cache and cache_file.is_file():
             try:
                 with cache_file.open("r", encoding="utf-8") as fh:
+                    cached = json.load(fh)
+                if isinstance(cached, list):
+                    return cached
+            except Exception:
+                pass  # recompute
+        if read and cache and not cache_file.is_file() and legacy_cache_file.is_file():
+            try:
+                with legacy_cache_file.open("r", encoding="utf-8") as fh:
                     cached = json.load(fh)
                 if isinstance(cached, list):
                     return cached
@@ -15013,10 +15076,11 @@ class Zotero:
             context: str = "",
             coding_mode: str = "open",
             rq_scope: list[int] | None = None,
-            target_codes: list[str] | None = None,
-            min_relevance: int = 3,
-            allowed_evidence_types: list[str] | None = None,
-    ) -> list[dict]:
+                         target_codes: list[str] | None = None,
+                         min_relevance: int = 3,
+                         allowed_evidence_types: list[str] | None = None,
+                         collection_cache_scope: str = "",
+                         ) -> list[dict]:
         """
         Two-stage single-item coding that runs:
         1) prompt_key over each section
@@ -15039,6 +15103,7 @@ class Zotero:
             target_codes=target_codes,
             min_relevance=min_relevance,
             allowed_evidence_types=allowed_evidence_types,
+            collection_cache_scope=collection_cache_scope,
         )
 
     def code_single_item_from_abstract(self,
