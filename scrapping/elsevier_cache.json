@@ -1,0 +1,8 @@
+{
+  "doi|10.1080/17538947.2024.2324959": {
+    "metadata": {},
+    "pdf_path": null,
+    "ris_path": null,
+    "error": "Metadata fetch failed: 404 Client Error: Not Found for url: https://api.elsevier.com/content/article/doi/10.1080/17538947.2024.2324959?view=FULL"
+  }
+}
