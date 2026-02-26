@@ -72,7 +72,9 @@
     </div>
   </div>
   <button id="agentChatFab" class="agent-chat-fab" type="button" aria-label="Open agent chat" title="Agent Chat">
-    <span class="agent-chat-fab-icon" aria-hidden="true">✦</span>
+    <span class="agent-chat-fab-icon" aria-hidden="true">
+      <span class="agent-voice-icon" aria-hidden="true"></span>
+    </span>
   </button>
   <section id="agentChatDock" class="agent-chat-dock" aria-hidden="true">
     <div class="agent-chat-head">
@@ -91,8 +93,20 @@
         autocomplete="off"
       />
       <div class="agent-chat-controls">
-        <button id="btnAgentChatMic" type="button" title="Voice command">🎙</button>
+        <button id="btnAgentChatDictation" type="button" title="Start dictation capture" aria-label="Start dictation capture" aria-pressed="false">
+          <span class="agent-chat-mic-icon">
+            <span class="agent-voice-icon" aria-hidden="true"></span>
+          </span>
+          <span class="sr-only">Start dictation capture</span>
+        </button>
+        <button id="btnAgentChatMic" type="button" title="Start voice mode" aria-label="Start voice mode" aria-pressed="false">
+          <span class="agent-chat-mic-icon">
+            <span class="agent-voice-icon" aria-hidden="true"></span>
+          </span>
+          <span class="sr-only">Start voice mode</span>
+        </button>
         <button id="btnAgentChatSend" type="submit">Send</button>
+        <span id="agentChatPhaseBadge" class="agent-chat-phase-badge is-idle" aria-live="polite">Idle</span>
         <div id="agentChatVoiceStatus" class="agent-chat-voice-status" aria-live="polite"></div>
         <div id="agentChatVoiceLegend" class="agent-chat-voice-legend" aria-live="polite"></div>
       </div>

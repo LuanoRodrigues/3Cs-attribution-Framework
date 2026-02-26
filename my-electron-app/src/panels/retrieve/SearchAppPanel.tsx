@@ -55,8 +55,6 @@ export class SearchAppPanel {
   private selectedIndex: number | null = null;
   private paginationStack: Array<string | number | null> = [null];
 
-  private onGridClick: (event: MouseEvent) => void;
-
   constructor(initial?: Partial<RetrieveQuery>) {
     const defaults = readRetrieveQueryDefaults();
 
@@ -75,16 +73,19 @@ export class SearchAppPanel {
     this.queryInput = document.createElement("input");
     this.queryInput.type = "text";
     this.queryInput.placeholder = "Search terms or DOI";
+    this.queryInput.dataset.voiceAliases = "search query,query,search terms,academic search text";
     this.queryInput.style.minWidth = "280px";
     this.queryInput.value = initial?.query ?? "";
 
     this.providerSelect = document.createElement("select");
     this.providerSelect.ariaLabel = "Provider";
     this.providerSelect.style.minWidth = "160px";
+    this.providerSelect.dataset.voiceAliases = "provider,provider selector,search provider,database provider";
     this.populateProviders(initial?.provider ?? defaults.provider);
 
     this.sortSelect = document.createElement("select");
     this.sortSelect.ariaLabel = "Sort";
+    this.sortSelect.dataset.voiceAliases = "sort,result sort,order by";
     SORT_OPTIONS.forEach((option) => {
       const opt = document.createElement("option");
       opt.value = option.value;
@@ -96,11 +97,13 @@ export class SearchAppPanel {
     this.yearFromInput.type = "number";
     this.yearFromInput.placeholder = "Year from";
     this.yearFromInput.style.width = "110px";
+    this.yearFromInput.dataset.voiceAliases = "year from,publication year from,from year";
 
     this.yearToInput = document.createElement("input");
     this.yearToInput.type = "number";
     this.yearToInput.placeholder = "Year to";
     this.yearToInput.style.width = "110px";
+    this.yearToInput.dataset.voiceAliases = "year to,publication year to,to year";
 
     this.limitInput = document.createElement("input");
     this.limitInput.type = "number";
@@ -108,6 +111,7 @@ export class SearchAppPanel {
     this.limitInput.style.width = "90px";
     this.limitInput.min = "0";
     this.limitInput.max = "1000";
+    this.limitInput.dataset.voiceAliases = "limit,results limit,result count";
     this.applyRetrieveDefaults({
       provider: initial?.provider ?? defaults.provider,
       sort: initial?.sort ?? defaults.sort,
@@ -119,16 +123,20 @@ export class SearchAppPanel {
     this.authorInput = document.createElement("input");
     this.authorInput.type = "text";
     this.authorInput.placeholder = "Author contains";
+    this.authorInput.dataset.voiceAliases = "author contains,author filter,filter by author";
     this.authorInput.style.minWidth = "180px";
 
     this.venueInput = document.createElement("input");
     this.venueInput.type = "text";
     this.venueInput.placeholder = "Venue contains";
+    this.venueInput.dataset.voiceAliases = "venue contains,venue filter,publication contains";
     this.venueInput.style.minWidth = "180px";
 
     this.doiOnly = document.createElement("input");
     this.doiOnly.type = "checkbox";
     this.doiOnly.id = "doi-only";
+    this.doiOnly.ariaLabel = "DOI only";
+    this.doiOnly.dataset.voiceAliases = "doi only,include only doi,only doi";
     const doiLabel = document.createElement("label");
     doiLabel.htmlFor = "doi-only";
     doiLabel.textContent = "DOI only";
@@ -136,6 +144,8 @@ export class SearchAppPanel {
     this.abstractOnly = document.createElement("input");
     this.abstractOnly.type = "checkbox";
     this.abstractOnly.id = "abstract-only";
+    this.abstractOnly.ariaLabel = "Abstract only";
+    this.abstractOnly.dataset.voiceAliases = "abstract only,include only abstract,only abstract";
     const absLabel = document.createElement("label");
     absLabel.htmlFor = "abstract-only";
     absLabel.textContent = "Abstract only";
@@ -229,7 +239,40 @@ export class SearchAppPanel {
     exportBtn.addEventListener("click", () => this.exportCurrent());
     exportRow.append(this.exportSelect, exportBtn);
 
-    this.grid = new DataGrid();
+    this.grid = new DataGrid({
+      onRowActivate: (rowIndex) => {
+        this.selectRow(rowIndex);
+      },
+      onRowRender: ({ rowEl, rowIndex, rowData }) => {
+        const record = this.records[rowIndex];
+        const rowNo = rowIndex + 1;
+        const title = String(rowData?.[0] || "Untitled").trim();
+        const year = String(rowData?.[2] || "").trim();
+        const source = String(rowData?.[4] || "").trim();
+        const doi = String(rowData?.[5] || "").trim();
+        const labels = [
+          `result row ${rowNo}`,
+          `row ${rowNo}`,
+          `select row ${rowNo}`,
+          `record ${rowNo}`,
+          `open row ${rowNo}`,
+          title ? title : "result",
+          source ? source : "",
+          year ? `year ${year}` : ""
+        ].filter(Boolean);
+        if (doi) {
+          labels.push(`doi ${doi}`);
+          labels.push(doi);
+        }
+        const normalizedRecord = record ? ` ${record.paperId}` : "";
+        rowEl.ariaLabel = `Search result ${rowNo}${record?.title ? `: ${record.title}` : title ? `: ${title}` : ""}`;
+        rowEl.dataset.voiceAliases = labels
+          .concat(record?.title ? [record.title, `open ${record.title}`, `select ${record.title}`] : [])
+          .concat(normalizedRecord ? [`paper ${record?.paperId}`] : [])
+          .filter(Boolean)
+          .join(",");
+      }
+    });
     this.grid.element.style.flex = "1";
     this.grid.element.style.height = "100%";
 
@@ -249,19 +292,6 @@ export class SearchAppPanel {
 
     this.element.append(header, controls, exportRow, this.errorBanner, this.statusLine, this.pageLine, content);
 
-    this.onGridClick = (event: MouseEvent) => {
-      const target = event.target as HTMLElement | null;
-      const cell = target?.closest<HTMLElement>(".retrieve-grid-cell");
-      const rowEl = target?.closest<HTMLElement>(".retrieve-grid-row");
-      const rowHeader = target?.closest<HTMLElement>(".retrieve-grid-row-header");
-
-      const rowRaw = cell?.dataset.row ?? rowEl?.dataset.row ?? rowHeader?.parentElement?.dataset.row ?? "";
-      const row = Number(rowRaw);
-      if (!Number.isFinite(row)) return;
-      this.selectRow(row);
-    };
-    this.grid.element.addEventListener("click", this.onGridClick);
-
     this.queryInput.addEventListener("keydown", (event) => {
       if (event.key === "Enter") {
         event.preventDefault();
@@ -278,7 +308,6 @@ export class SearchAppPanel {
   }
 
   destroy(): void {
-    this.grid.element.removeEventListener("click", this.onGridClick);
     document.removeEventListener("retrieve:query-defaults-updated", this.defaultsHandler);
   }
 

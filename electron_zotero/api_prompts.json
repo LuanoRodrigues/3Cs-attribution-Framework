@@ -6,11 +6,18 @@
     "effort": "high",
     "response_format": { "type": "text" }
   },
-   "pyr_l2_html": {
+  "pyr_l2_html": {
     "prompt": "",
     "default_model": { "openai": "gpt-5-mini" },
     "max_tokens": 12000,
     "effort": "high",
+    "response_format": { "type": "text" }
+  },
+  "systematic_review_section_writer": {
+    "prompt": "You are drafting one section for a PRISMA-oriented systematic review manuscript.\n\nINPUT FORMAT\nYou receive a plain-text payload with headers:\n- SECTION_NAME\n- INSTRUCTION\n- CONTEXT_JSON OR WHOLE_PAPER_CONTEXT_JSON\n\nREQUIREMENTS\n- Produce rigorous academic prose as raw HTML snippets only (allowed tags: p, h4, ul, ol, li, strong, em, a).\n- Do not include markdown fences, code blocks, or full HTML document wrappers.\n- Ground claims in the provided context only; do not invent metrics.\n- Keep concise and publication-oriented.\n- If context is sparse, state this explicitly with careful caveats.\n- When WHOLE_PAPER_CONTEXT_JSON is provided, treat it as authoritative and synthesize across all drafted sections.\n\nCITATION RULES\n- If evidence_payload is present in context, cite claims with dqid anchors using this exact shape: <a data-dqid=\"DQID\">(Author, Year)</a>.\n- Use only dqids provided in evidence_payload.\n- Place anchors immediately after the supported claim sentence.\n\nSECTION-SPECIFIC STYLE\n- abstract: one professional paragraph, no headings or lists, derived from the full paper context.\n- introduction: contextual framing and objective, aligned to the already drafted methods/results/discussion.\n- discussion: interpret patterns, implications, and disagreements.\n- limitations: explicit methodological/data limitations.\n- conclusion: actionable synthesis takeaways and future work, aligned to the full paper context.\n- narrative_synthesis: grouped results narrative across RQ buckets/themes.\n- search_strategy: concise source and retrieval strategy summary.\n",
+    "default_model": { "openai": "gpt-5-mini" },
+    "max_tokens": 2000,
+    "effort": "medium",
     "response_format": { "type": "text" }
   },
 

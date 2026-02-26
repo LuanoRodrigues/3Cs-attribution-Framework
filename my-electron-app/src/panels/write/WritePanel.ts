@@ -856,16 +856,25 @@ export class WritePanel {
     const btnSelectAll = document.createElement("button");
     btnSelectAll.textContent = "Select all";
     btnSelectAll.className = "button-ghost";
+    btnSelectAll.title = "Select all references";
+    btnSelectAll.ariaLabel = "Select all references";
+    btnSelectAll.dataset.voiceAliases = "select all,select all references";
     actions.appendChild(btnSelectAll);
 
     const btnClear = document.createElement("button");
     btnClear.textContent = "Clear";
     btnClear.className = "button-ghost";
+    btnClear.title = "Clear reference selection";
+    btnClear.ariaLabel = "Clear reference selection";
+    btnClear.dataset.voiceAliases = "clear selection";
     actions.appendChild(btnClear);
 
     const btnCancel = document.createElement("button");
     btnCancel.textContent = "Cancel";
     btnCancel.className = "button-ghost";
+    btnCancel.title = "Cancel reference selection";
+    btnCancel.ariaLabel = "Cancel reference selection";
+    btnCancel.dataset.voiceAliases = "cancel,close";
     actions.appendChild(btnCancel);
 
     const btnInsert = document.createElement("button");
@@ -873,6 +882,9 @@ export class WritePanel {
     btnInsert.className = "button-ghost";
     btnInsert.style.borderColor = "var(--accent, #60a5fa)";
     btnInsert.style.color = "var(--accent, #60a5fa)";
+    btnInsert.title = "Insert selected references";
+    btnInsert.ariaLabel = "Insert selected references";
+    btnInsert.dataset.voiceAliases = "insert selected,insert references,apply selected references";
     actions.appendChild(btnInsert);
 
     dialog.appendChild(actions);
@@ -1198,6 +1210,9 @@ export class WritePanel {
     const close = document.createElement("button");
     close.className = "button-ghost";
     close.textContent = "Close";
+    close.title = "Close selection action dialog";
+    close.ariaLabel = "Close selection action dialog";
+    close.dataset.voiceAliases = "close dialog,close window";
     footer.appendChild(close);
     dialog.appendChild(footer);
 

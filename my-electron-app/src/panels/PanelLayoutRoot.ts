@@ -260,6 +260,9 @@ export class PanelLayoutRoot {
       const closeBtn = document.createElement("button");
       closeBtn.className = "close";
       closeBtn.textContent = "x";
+      closeBtn.ariaLabel = "Close tool tab";
+      closeBtn.title = "Close tool tab";
+      closeBtn.dataset.voiceAliases = "close tab,close tool tab,remove tab";
       closeBtn.addEventListener("click", (ev) => {
         ev.stopPropagation();
         this.closeTool(state.id);

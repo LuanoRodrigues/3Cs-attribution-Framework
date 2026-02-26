@@ -68,6 +68,8 @@ import { resolveThemeTokens, themeIds, type ThemeId } from "../renderer/theme/to
     LLM_KEYS.openaiVoiceTranscribeModel,
     LLM_KEYS.openaiVoiceTtsModel,
     LLM_KEYS.openaiVoiceTtsVoice,
+    LLM_KEYS.openaiVoiceInputDeviceId,
+    LLM_KEYS.openaiVoiceDictationMode,
     LLM_KEYS.geminiBaseUrl,
     LLM_KEYS.deepSeekBaseUrl,
     LLM_KEYS.mistralBaseUrl
@@ -97,6 +99,8 @@ import { resolveThemeTokens, themeIds, type ThemeId } from "../renderer/theme/to
   let secretsStatusElement: HTMLElement;
   let passphraseField: HTMLInputElement;
   let unlockSecretButton: HTMLButtonElement;
+  let micDeviceSelect: HTMLSelectElement | null = null;
+  let micDeviceStatus: HTMLElement | null = null;
 
   const navButtons: Record<string, HTMLButtonElement> = {};
   const panels: Record<string, HTMLElement> = {};
@@ -1008,8 +1012,138 @@ import { resolveThemeTokens, themeIds, type ThemeId } from "../renderer/theme/to
         placeholder: "alloy"
       })
     );
+    voiceRow.appendChild(
+      createFieldBlock({
+        key: LLM_KEYS.openaiVoiceDictationMode,
+        label: "Dictation behavior",
+        type: "select",
+        options: [
+          { value: "insert_only", label: "Insert only (manual send)" },
+          { value: "auto_send_after_transcription", label: "Auto-send after transcription" }
+        ]
+      })
+    );
     card.appendChild(voiceRow);
+    const inputDeviceCard = createPanelCard("Microphone input device", "Choose which input device the voice agent should use.");
+    const inputRow = document.createElement("div");
+    inputRow.className = "control-row";
+    const inputDeviceBlock = document.createElement("div");
+    inputDeviceBlock.className = "field-row";
+    const inputLabel = document.createElement("label");
+    inputLabel.textContent = "Input device";
+    const inputSelect = document.createElement("select");
+    inputSelect.innerHTML = "<option value=\"\">System default microphone</option>";
+    fieldInputs[LLM_KEYS.openaiVoiceInputDeviceId] = inputSelect;
+    micDeviceSelect = inputSelect;
+    inputDeviceBlock.appendChild(inputLabel);
+    inputDeviceBlock.appendChild(inputSelect);
+    inputRow.appendChild(inputDeviceBlock);
+
+    const refreshButton = document.createElement("button");
+    refreshButton.type = "button";
+    refreshButton.className = "action-button";
+    refreshButton.textContent = "Refresh devices";
+    refreshButton.addEventListener("click", () => {
+      void refreshMicInputDevices();
+    });
+    inputRow.appendChild(refreshButton);
+    inputDeviceCard.appendChild(inputRow);
+
+    const status = document.createElement("div");
+    status.className = "panel-card-subtitle";
+    status.textContent = "Loading microphones...";
+    micDeviceStatus = status;
+    inputDeviceCard.appendChild(status);
+    panel.appendChild(inputDeviceCard);
     panel.appendChild(card);
+    void refreshMicInputDevices();
+    if (navigator.mediaDevices?.addEventListener) {
+      navigator.mediaDevices.addEventListener("devicechange", () => {
+        void refreshMicInputDevices();
+      });
+    }
+  }
+
+  async function refreshMicInputDevices() {
+    const select = micDeviceSelect;
+    if (!select) return;
+    const snapshotValue = String(latestSnapshot[LLM_KEYS.openaiVoiceInputDeviceId] || "").trim();
+    const priorValue = snapshotValue || String(select.value || "").trim();
+    try {
+      const nativeInputsResponse = await bridge.listAudioInputs();
+      const nativeInputs = Array.isArray(nativeInputsResponse?.inputs) ? nativeInputsResponse.inputs : [];
+      if (nativeInputs.length > 0) {
+        select.innerHTML = "";
+        const defaultOption = document.createElement("option");
+        defaultOption.value = "";
+        defaultOption.textContent = "System default microphone";
+        select.appendChild(defaultOption);
+        nativeInputs.forEach((device) => {
+          const option = document.createElement("option");
+          option.value = String(device.id || "").trim();
+          const backend = String(device.backend || "").trim();
+          const defaultSuffix = device.isDefault ? " (default)" : "";
+          option.textContent = `${String(device.label || device.id || "").trim()}${defaultSuffix}${backend ? ` [${backend}]` : ""}`;
+          select.appendChild(option);
+        });
+        if (priorValue && !nativeInputs.some((device) => String(device.id || "").trim() === priorValue)) {
+          const missingOption = document.createElement("option");
+          missingOption.value = priorValue;
+          missingOption.textContent = `Previously selected (unavailable): ${priorValue}`;
+          select.appendChild(missingOption);
+        }
+        select.value = priorValue;
+        if (micDeviceStatus) {
+          micDeviceStatus.textContent = `${nativeInputs.length} host audio input${nativeInputs.length === 1 ? "" : "s"} detected via native backend.`;
+        }
+        return;
+      }
+    } catch {
+      // fallback to browser media devices
+    }
+    if (!navigator.mediaDevices?.enumerateDevices) {
+      if (micDeviceStatus) {
+        micDeviceStatus.textContent = "No native audio inputs detected and MediaDevices API is unavailable in this runtime.";
+      }
+      return;
+    }
+    try {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach((track) => track.stop());
+      } catch {
+        // best effort to unlock device labels
+      }
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const audioInputs = devices.filter((device) => device.kind === "audioinput");
+      select.innerHTML = "";
+      const defaultOption = document.createElement("option");
+      defaultOption.value = "";
+      defaultOption.textContent = "System default microphone";
+      select.appendChild(defaultOption);
+
+      audioInputs.forEach((device, index) => {
+        const option = document.createElement("option");
+        option.value = device.deviceId;
+        option.textContent = device.label || `Audio input ${index + 1}`;
+        select.appendChild(option);
+      });
+
+      if (priorValue && !audioInputs.some((device) => device.deviceId === priorValue)) {
+        const missingOption = document.createElement("option");
+        missingOption.value = priorValue;
+        missingOption.textContent = `Previously selected (unavailable): ${priorValue}`;
+        select.appendChild(missingOption);
+      }
+      select.value = priorValue;
+      if (micDeviceStatus) {
+        micDeviceStatus.textContent = `${audioInputs.length} browser microphone device${audioInputs.length === 1 ? "" : "s"} detected.`;
+      }
+    } catch (error) {
+      if (micDeviceStatus) {
+        micDeviceStatus.textContent = `No host/browser microphones available: ${String((error as Error)?.message || error || "unknown error")}`;
+      }
+    }
   }
 
   function buildDatabasePanel(panel: HTMLElement) {

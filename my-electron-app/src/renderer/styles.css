@@ -868,6 +868,12 @@ tool-header h4 { margin: 0; font-size: 14px; letter-spacing: 0.3px; }
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-2) 40%, transparent);
 }
 
+.retrieve-result-row:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-2) 65%, transparent);
+  outline-offset: -2px;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-2) 40%, transparent);
+}
+
 .retrieve-result-header {
   display: flex;
   justify-content: space-between;
@@ -3358,24 +3364,60 @@ body.zotero-parity-mode {
 }
 
 .agent-chat-fab-icon {
-  font-size: 24px;
-  font-weight: 700;
-  line-height: 1;
+  position: relative;
+  z-index: 1;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.agent-chat-fab-icon .agent-voice-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.agent-voice-icon {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+}
+
+.agent-voice-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .agent-chat-fab.recording,
+.agent-chat-fab.speaking,
+.agent-chat-fab.listening,
 .agent-chat-fab.playing {
   position: relative;
   overflow: visible;
+  --agent-voice-front-color: rgba(96, 165, 250, 0.45);
+  --agent-voice-ring-color: rgba(96, 165, 250, 0.7);
 }
 
 .agent-chat-fab.recording {
   color: #ffdee6;
   border-color: rgba(255, 111, 120, 0.72);
   background: rgba(88, 26, 37, 0.58);
+  --agent-voice-front-color: rgba(255, 111, 120, 0.4);
+  --agent-voice-ring-color: rgba(255, 111, 120, 0.72);
 }
 
 .agent-chat-fab.recording::after,
+.agent-chat-fab.speaking::after,
+.agent-chat-fab.listening::after,
 .agent-chat-fab.playing::after {
   content: "";
   position: absolute;
@@ -3385,6 +3427,24 @@ body.zotero-parity-mode {
   pointer-events: none;
   animation-duration: var(--agent-voice-pulse-duration, 1.2s);
   animation-iteration-count: infinite;
+  z-index: 0;
+}
+
+.agent-chat-fab.recording::before,
+.agent-chat-fab.speaking::before,
+.agent-chat-fab.listening::before,
+.agent-chat-fab.playing::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 999px;
+  border: 1px solid var(--agent-voice-ring-color);
+  pointer-events: none;
+  opacity: 0;
+  animation-duration: calc(var(--agent-voice-pulse-duration, 1.2s) * 0.9);
+  animation-iteration-count: infinite;
+  animation-name: agentVoicePulseFront;
+  z-index: 3;
 }
 
 .agent-chat-fab.recording::after {
@@ -3392,15 +3452,50 @@ body.zotero-parity-mode {
   animation-name: agentVoicePulseRecording;
 }
 
+.agent-chat-fab.listening {
+  color: #fffeef;
+  border-color: rgba(253, 224, 120, 0.72);
+  background: rgba(68, 46, 12, 0.58);
+  --agent-voice-front-color: rgba(253, 224, 120, 0.46);
+  --agent-voice-ring-color: rgba(253, 224, 120, 0.72);
+}
+
+.agent-chat-fab.listening::after {
+  box-shadow: 0 0 0 0 rgba(253, 224, 120, 0.48);
+  animation-name: agentVoicePulseListening;
+}
+
 .agent-chat-fab.playing {
   color: var(--agent-voice-text, #d9ebff);
   border-color: var(--agent-voice-border, rgba(96, 165, 250, 0.7));
   background: var(--agent-voice-background, rgba(17, 51, 89, 0.6));
+  --agent-voice-front-color: rgba(96, 165, 250, 0.45);
+  --agent-voice-ring-color: var(--agent-voice-border, rgba(96, 165, 250, 0.7));
 }
 
 .agent-chat-fab.playing::after {
   box-shadow: 0 0 0 0 var(--agent-voice-shadow, rgba(96, 165, 250, 0.45));
   animation-name: agentVoicePulseSpeaking;
+}
+
+.agent-chat-fab.speaking {
+  color: var(--agent-voice-text, #d9ebff);
+  border-color: var(--agent-voice-border, rgba(96, 165, 250, 0.7));
+  background: var(--agent-voice-background, rgba(17, 51, 89, 0.6));
+  --agent-voice-front-color: rgba(96, 165, 250, 0.48);
+  --agent-voice-ring-color: var(--agent-voice-border, rgba(96, 165, 250, 0.7));
+}
+
+.agent-chat-fab.speaking::after {
+  box-shadow: 0 0 0 0 var(--agent-voice-shadow, rgba(96, 165, 250, 0.45));
+  animation-name: agentVoicePulseSpeaking;
+}
+
+.agent-chat-fab.recording::before,
+.agent-chat-fab.listening::before,
+.agent-chat-fab.speaking::before,
+.agent-chat-fab.playing::before {
+  box-shadow: 0 0 0 0 var(--agent-voice-front-color);
 }
 
 .agent-chat-dock {
@@ -3547,6 +3642,60 @@ body.zotero-parity-mode {
   border-color: rgba(126, 190, 255, 0.65);
 }
 
+#btnAgentChatDictation.active {
+  color: #ffdee6;
+  border-color: rgba(255, 111, 120, 0.72);
+  background: rgba(88, 26, 37, 0.58);
+}
+
+.agent-chat-phase-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 84px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1px solid var(--border-soft);
+  background: rgba(19, 31, 50, 0.8);
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 0 10px;
+}
+
+.agent-chat-phase-badge.is-idle {
+  border-color: rgba(147, 171, 200, 0.4);
+  color: rgba(186, 207, 234, 0.85);
+}
+
+.agent-chat-phase-badge.is-connecting,
+.agent-chat-phase-badge.is-listening,
+.agent-chat-phase-badge.is-dictating {
+  border-color: rgba(253, 224, 120, 0.66);
+  color: #fffeef;
+  background: rgba(68, 46, 12, 0.5);
+}
+
+.agent-chat-phase-badge.is-transcribing,
+.agent-chat-phase-badge.is-processing {
+  border-color: rgba(96, 165, 250, 0.7);
+  color: #d9ebff;
+  background: rgba(17, 51, 89, 0.55);
+}
+
+.agent-chat-phase-badge.is-speaking {
+  border-color: var(--agent-voice-border, rgba(96, 165, 250, 0.7));
+  color: var(--agent-voice-text, #d9ebff);
+  background: var(--agent-voice-background, rgba(17, 51, 89, 0.55));
+}
+
+.agent-chat-phase-badge.is-error {
+  border-color: rgba(255, 111, 120, 0.7);
+  color: #ffe6ea;
+  background: rgba(92, 35, 42, 0.55);
+}
+
 .agent-chat-voice-status {
   margin-left: 8px;
   min-height: 16px;
@@ -3568,18 +3717,26 @@ body.zotero-parity-mode {
 }
 
 .agent-chat-controls:hover .agent-chat-voice-legend,
-#btnAgentChatMic:hover + #agentChatSend + .agent-chat-voice-status + .agent-chat-voice-legend,
+#btnAgentChatDictation:hover ~ .agent-chat-voice-legend,
+#btnAgentChatMic:hover ~ .agent-chat-voice-legend,
 .agent-chat-voice-legend:hover {
   opacity: 1;
 }
 
-#btnAgentChatMic.recording {
+#btnAgentChatMic.recording,
+#btnAgentChatMic.listening,
+#btnAgentChatMic.speaking,
+#btnAgentChatMic.playing {
   color: #ffdee6;
   border-color: rgba(255, 111, 120, 0.72);
   background: rgba(88, 26, 37, 0.58);
+  --agent-voice-front-color: rgba(255, 111, 120, 0.4);
+  --agent-voice-ring-color: rgba(255, 111, 120, 0.72);
 }
 
 #btnAgentChatMic.recording::after,
+#btnAgentChatMic.speaking::after,
+#btnAgentChatMic.listening::after,
 #btnAgentChatMic.playing::after {
   content: "";
   position: absolute;
@@ -3591,9 +3748,45 @@ body.zotero-parity-mode {
   animation-iteration-count: infinite;
 }
 
+#btnAgentChatMic.recording::before,
+#btnAgentChatMic.speaking::before,
+#btnAgentChatMic.listening::before,
+#btnAgentChatMic.playing::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 999px;
+  border: 1px solid var(--agent-voice-ring-color);
+  pointer-events: none;
+  opacity: 0;
+  animation-duration: calc(var(--agent-voice-pulse-duration, 1.2s) * 0.9);
+  animation-iteration-count: infinite;
+  animation-name: agentVoicePulseFront;
+  z-index: 3;
+}
+
 #btnAgentChatMic.recording::after {
   box-shadow: 0 0 0 0 rgba(255, 111, 120, 0.58);
   animation-name: agentVoicePulseRecording;
+}
+
+#btnAgentChatMic.recording::before {
+  box-shadow: 0 0 0 0 rgba(255, 111, 120, 0.4);
+}
+
+#btnAgentChatMic.listening::after {
+  box-shadow: 0 0 0 0 rgba(253, 224, 120, 0.48);
+  animation-name: agentVoicePulseListening;
+}
+
+#btnAgentChatMic.listening::before {
+  box-shadow: 0 0 0 0 rgba(253, 224, 120, 0.46);
+}
+
+#btnAgentChatMic.listening {
+  color: #fffeef;
+  border-color: rgba(253, 224, 120, 0.72);
+  background: rgba(68, 46, 12, 0.58);
 }
 
 #btnAgentChatMic.playing::after {
@@ -3601,7 +3794,12 @@ body.zotero-parity-mode {
   animation-name: agentVoicePulseSpeaking;
 }
 
-#btnAgentChatMic.playing {
+#btnAgentChatMic.playing::before {
+  box-shadow: 0 0 0 0 var(--agent-voice-front-color, rgba(96, 165, 250, 0.4));
+}
+
+#btnAgentChatMic.playing,
+#btnAgentChatMic.speaking {
   color: var(--agent-voice-text, #d9ebff);
   border-color: var(--agent-voice-border, rgba(96, 165, 250, 0.7));
   background: var(--agent-voice-background, rgba(17, 51, 89, 0.6));
@@ -3622,6 +3820,21 @@ body.zotero-parity-mode {
   }
 }
 
+@keyframes agentVoicePulseListening {
+  0% {
+    box-shadow: 0 0 0 0 rgba(253, 224, 120, 0.5);
+    opacity: 0.8;
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(253, 224, 120, 0);
+    opacity: 0;
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(253, 224, 120, 0);
+    opacity: 0;
+  }
+}
+
 @keyframes agentVoicePulseSpeaking {
   0% {
     box-shadow: 0 0 0 0 var(--agent-voice-shadow, rgba(96, 165, 250, 0.45));
@@ -3635,6 +3848,50 @@ body.zotero-parity-mode {
     box-shadow: 0 0 0 0 rgba(96, 165, 250, 0);
     opacity: 0;
   }
+}
+
+@keyframes agentVoicePulseFront {
+  0% {
+    transform: scale(1);
+    opacity: 0.45;
+    box-shadow: 0 0 0 0 var(--agent-voice-front-color);
+  }
+  70% {
+    transform: scale(1.38);
+    opacity: 0;
+    box-shadow: 0 0 0 10px rgba(0, 0, 0, 0);
+  }
+  100% {
+    transform: scale(1.38);
+    opacity: 0;
+    box-shadow: 0 0 0 10px rgba(0, 0, 0, 0);
+  }
+}
+
+.agent-chat-mic-icon {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.agent-chat-mic-icon .agent-voice-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .agent-chat-audio {
@@ -3860,10 +4117,17 @@ body.zotero-parity-mode {
   grid-template-columns: 44px 1fr;
   align-items: stretch;
   border-bottom: 1px solid var(--border);
+  cursor: pointer;
 }
 
 .retrieve-grid-row.alt {
   background: color-mix(in srgb, var(--surface-muted) 40%, transparent);
+}
+
+.retrieve-grid-row:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent-2) 65%, transparent);
+  outline-offset: -2px;
+  position: relative;
 }
 
 .retrieve-grid-row-header {

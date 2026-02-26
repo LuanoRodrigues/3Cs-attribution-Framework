@@ -3,11 +3,87 @@ from __future__ import annotations
 import json
 import os
 import re
+import hashlib
 import time
+from typing import Set
 from pathlib import Path
 from typing import Any
 
 from openai import OpenAI
+
+
+def _file_signature(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as fh:
+        for chunk in iter(lambda: fh.read(8192), b""):
+            h.update(chunk)
+    return f"{path.stat().st_size}:{h.hexdigest()}"
+
+
+def _read_existing_custom_ids(path: Path) -> Set[str]:
+    """
+    Return existing custom_id values from a batch input JSONL file.
+    Used to avoid duplicate custom_id entries when store-only mode is called repeatedly.
+    """
+    existing: Set[str] = set()
+    if not path.is_file():
+        return existing
+    with path.open("r", encoding="utf-8", errors="ignore") as fh:
+        for line_no, line in enumerate(fh, start=1):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rec = json.loads(line)
+            except Exception:
+                continue
+            custom_id = str(rec.get("custom_id") or "").strip()
+            if custom_id:
+                existing.add(custom_id)
+            else:
+                payload = json.dumps(rec, sort_keys=True, ensure_ascii=False)
+                existing.add(f"legacy_{line_no}_{hashlib.sha256(payload.encode('utf-8')).hexdigest()[:12]}")
+    return existing
+
+
+def _dedupe_jsonl_by_custom_id(path: Path) -> int:
+    """
+    Remove duplicate custom_id rows from a batch input JSONL file in-place.
+    Keeps the first occurrence per custom_id.
+    Returns the number of removed rows.
+    """
+    if not path.is_file() or path.stat().st_size == 0:
+        return 0
+
+    kept_lines: list[str] = []
+    seen: Set[str] = set()
+    removed = 0
+
+    try:
+        with path.open("r", encoding="utf-8", errors="ignore") as fh:
+            for idx, raw in enumerate(fh, start=1):
+                if not raw.strip():
+                    continue
+                try:
+                    rec = json.loads(raw)
+                except Exception:
+                    continue
+                cid = str(rec.get("custom_id") or "").strip()
+                if not cid:
+                    payload = json.dumps(rec, sort_keys=True, ensure_ascii=False)
+                    cid = f"fallback_{idx}_{hashlib.sha256(payload.encode('utf-8')).hexdigest()[:12]}"
+                    rec["custom_id"] = cid
+                if cid in seen:
+                    removed += 1
+                    continue
+                seen.add(cid)
+                kept_lines.append(json.dumps(rec, ensure_ascii=False))
+
+        if removed:
+            path.write_text("\n".join(kept_lines) + ("\n" if kept_lines else ""), encoding="utf-8")
+        return removed
+    except Exception:
+        return 0
 
 
 def safe_name(value: str, maxlen: int = 120) -> str:
@@ -176,9 +252,22 @@ def call_models(
                 "text": {"format": schema_format},
             },
         }
+        req_cid = str(req["custom_id"]).strip()
+        if not req_cid:
+            payload = json.dumps(req.get("body", {}), sort_keys=True, ensure_ascii=False)
+            req_cid = f"{function[:8]}_{hashlib.sha256(payload.encode('utf-8')).hexdigest()[:20]}"
+            req["custom_id"] = req_cid
+        existing_custom_ids = _read_existing_custom_ids(p["input"])
+        if req_cid in existing_custom_ids:
+            print(
+                f"[llm_adapter][call_models][debug] skip_duplicate_store_only "
+                f"function={function} collection={collection_name} custom_id={req_cid}"
+            )
+            return {"status": "enqueued", "custom_id": req_cid, "skipped_duplicate": True}, 0.0
+
         with p["input"].open("a", encoding="utf-8") as fh:
             fh.write(json.dumps(req, ensure_ascii=False) + "\n")
-        return {"status": "enqueued", "custom_id": custom_id}, 0.0
+        return {"status": "enqueued", "custom_id": req_cid}, 0.0
 
     if read:
         if not p["output"].is_file():
@@ -261,20 +350,46 @@ def _read_file_bytes(client: OpenAI, file_id: str) -> bytes:
 
 def _process_batch_for(*, collection_name: str, function: str, completion_window: str = "24h", poll_interval: int = 30, **_kwargs: Any) -> bool:
     p = _paths(function=function, collection_name=collection_name)
-    if p["output"].is_file() and p["output"].stat().st_size > 0:
-        return True
     if not p["input"].is_file() or p["input"].stat().st_size == 0:
         return False
 
-    client = _client()
-    meta: dict[str, Any] = {}
+    removed_duplicates = _dedupe_jsonl_by_custom_id(p["input"])
+    if removed_duplicates:
+        print(
+            f"[llm_adapter][_process_batch_for][debug] "
+            f"deduped_batch_input function={function} collection={collection_name} "
+            f"removed={removed_duplicates}"
+        )
+
+    input_signature = _file_signature(p["input"])
+    line_count = 0
+    with p["input"].open("r", encoding="utf-8", errors="ignore") as fh:
+        for line_count, _ in enumerate(fh, start=1):
+            pass
+
+    meta = {}
     if p["meta"].is_file():
         try:
             meta = json.loads(p["meta"].read_text(encoding="utf-8"))
         except Exception:
             meta = {}
 
+    stored_signature = str(meta.get("input_signature") or "").strip()
+    batch_signature_match = bool(stored_signature and stored_signature == input_signature)
+    if not batch_signature_match:
+        for stale in [p["output"], p["error"], p["meta"]]:
+            if stale.is_file():
+                try:
+                    stale.unlink()
+                except Exception:
+                    pass
+        meta = {}
+
+    client = _client()
     batch_id = str(meta.get("batch_id") or "").strip()
+    if batch_id and p["output"].is_file() and p["output"].stat().st_size > 0 and batch_signature_match:
+        return True
+
     if not batch_id:
         with p["input"].open("rb") as fh:
             up = client.files.create(file=fh, purpose="batch")
@@ -284,7 +399,32 @@ def _process_batch_for(*, collection_name: str, function: str, completion_window
             completion_window=str(completion_window or "24h"),
         )
         batch_id = batch.id
-        p["meta"].write_text(json.dumps({"batch_id": batch_id, "input_file_id": up.id}, ensure_ascii=False, indent=2), encoding="utf-8")
+        p["meta"].write_text(
+            json.dumps({
+                "batch_id": batch_id,
+                "input_file_id": up.id,
+                "input_signature": input_signature,
+                "line_count": int(line_count),
+            }, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+    else:
+        try:
+            batch_state = client.batches.retrieve(batch_id)
+        except Exception:
+            batch_state = None
+        if batch_state is not None:
+            status = str(getattr(batch_state, "status", "") or "").strip()
+            if status in {"failed", "cancelled", "expired", "cancelling"}:
+                for stale in [p["output"], p["error"], p["meta"]]:
+                    if stale.is_file():
+                        try:
+                            stale.unlink()
+                        except Exception:
+                            pass
+                return False
+            if status == "completed" and p["output"].is_file() and p["output"].stat().st_size > 0:
+                return True
 
     while True:
         b = client.batches.retrieve(batch_id)

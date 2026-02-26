@@ -103,6 +103,8 @@ export class CodePanel {
     addBtn.className = "ribbon-button";
     addBtn.textContent = "+";
     addBtn.title = "Add another research question";
+    addBtn.ariaLabel = "Add research question";
+    addBtn.dataset.voiceAliases = "add question,add research question,research question add";
     addBtn.addEventListener("click", () => addResearchQuestion());
     rqHeader.append(rqTitle, addBtn);
 
@@ -132,6 +134,8 @@ export class CodePanel {
     ctaBtn.className = "ribbon-button";
     ctaBtn.textContent = "Code Corpus →";
     ctaBtn.title = "Jump to the coded corpus";
+    ctaBtn.ariaLabel = "Jump to coded corpus";
+    ctaBtn.dataset.voiceAliases = "jump to code corpus,open corpus,code corpus,coder corpus";
     ctaBtn.addEventListener("click", () => {
       window.dispatchEvent(new CustomEvent("code:open-corpus"));
     });

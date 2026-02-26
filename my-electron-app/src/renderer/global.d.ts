@@ -110,6 +110,21 @@ declare global {
         text?: string;
         message?: string;
       }>;
+      nativeAudioStart: () => Promise<{
+        status: string;
+        backend?: string;
+        sampleRate?: number;
+        message?: string;
+      }>;
+      nativeAudioStop: () => Promise<{
+        status: string;
+        audioBase64?: string;
+        mimeType?: string;
+        bytes?: number;
+        backend?: string;
+        sampleRate?: number;
+        message?: string;
+      }>;
       speakText: (payload: { text: string; voice?: string; speed?: number; format?: string; model?: string }) => Promise<{
         status: string;
         text: string;
@@ -128,6 +143,9 @@ declare global {
         result?: Record<string, unknown>;
         function?: string;
       }>;
+      dictationStart: () => Promise<{ status: string; sessionId?: number; message?: string }>;
+      dictationStop: () => Promise<{ status: string; sessionId?: number; text?: string; message?: string }>;
+      dictationAudio: (audio: ArrayBuffer) => void;
       getFeatures: () => Promise<{ status: string; tabs?: unknown[]; message?: string }>;
       refineCodingQuestions: (payload: {
         currentQuestions?: string[];
@@ -165,6 +183,9 @@ declare global {
       clearChatHistory: () => Promise<{ status: string; cleared?: number; message?: string }>;
       openLocalPath: (payload: { path: string }) => Promise<{ status: string; path?: string; message?: string }>;
       onFeatureJobStatus: (callback: (payload: Record<string, unknown>) => void) => () => void;
+      onDictationDelta: (callback: (payload: { sessionId?: number; delta?: string; transcript?: string }) => void) => () => void;
+      onDictationCompleted: (callback: (payload: { sessionId?: number; text?: string }) => void) => () => void;
+      onDictationError: (callback: (payload: { sessionId?: number; message?: string }) => void) => () => void;
     };
     appBridge?: {
       ping: () => string;
@@ -202,6 +223,11 @@ declare global {
       getSecret: (name: string) => Promise<string | undefined>;
       setSecret: (name: string, value: string) => Promise<{ success: boolean }>;
       getDotEnvStatus: () => Promise<{ found: boolean; paths: string[]; values: Record<string, string> }>;
+      listAudioInputs: () => Promise<{
+        status: string;
+        inputs: Array<{ id: string; label: string; backend: "pulse" | "alsa"; isDefault?: boolean }>;
+        message?: string;
+      }>;
       exportBundle: (zipPath: string, includeSecrets?: boolean) => Promise<string>;
       importBundle: (zipPath: string) => Promise<{ success: boolean }>;
       getPaths: () => Promise<{ appDataPath: string; configPath: string; settingsFilePath: string; exportPath: string }>;

@@ -7,7 +7,7 @@ import { app, BrowserWindow, ipcMain, Menu, MenuItemConstructorOptions, shell, d
 import { pathToFileURL } from "url";
 import mammoth from "mammoth";
 import JSZip from "jszip";
-import { spawn } from "child_process";
+import { spawn, spawnSync } from "child_process";
 import { createLedocVersion, deleteLedocVersion, listLedocVersions, pinLedocVersion, restoreLedocVersion } from "./ledoc_versions";
 
 import type { SectionLevel } from "./analyse/types";
@@ -82,6 +82,402 @@ const settingsService = new SettingsService();
 const SESSION_MENU_CHANNEL = "session:menu-action";
 type ConvertResult = Awaited<ReturnType<typeof mammoth.convertToHtml>>;
 const SCREEN_HOST_PORT = Number(process.env.SCREEN_HOST_PORT ?? "8222");
+const AGENT_CLI_PORT = Number(process.env.AGENT_CLI_PORT ?? "8333");
+const AGENT_CLI_HOST = String(process.env.AGENT_CLI_HOST ?? "127.0.0.1").trim() || "127.0.0.1";
+const AGENT_DICTATION_EVENT_DELTA = "agent:voice:event:dictation:delta";
+const AGENT_DICTATION_EVENT_COMPLETED = "agent:voice:event:dictation:completed";
+const AGENT_DICTATION_EVENT_ERROR = "agent:voice:event:dictation:error";
+
+let agentCliBridgeServer: net.Server | null = null;
+let dictationSessionId = 0;
+let dictationSessionActive = false;
+let dictationTranscript = "";
+let dictationQueue: Promise<void> = Promise.resolve();
+let dictationRealtimeSocket: any | null = null;
+let dictationRealtimeConnected = false;
+let dictationRealtimeBufferedBytes = 0;
+let dictationRealtimeCommitTimer: NodeJS.Timeout | null = null;
+let dictationRealtimeClosedForSession = -1;
+const DICTATION_REALTIME_MIN_COMMIT_BYTES = 3200;
+const DICTATION_REALTIME_COMMIT_DELAY_MS = 360;
+let dictationFallbackWebmChunks: Buffer[] = [];
+let dictationFallbackWebmBytes = 0;
+let dictationFallbackLastTranscribedBytes = 0;
+let dictationFallbackLastTranscribedAt = 0;
+
+function mergeDictationTranscript(previous: string, nextChunk: string): string {
+  const prev = String(previous || "").trim();
+  const next = String(nextChunk || "").trim();
+  if (!next) return prev;
+  if (!prev) return next;
+  if (next.toLowerCase() === prev.toLowerCase()) return prev;
+  if (next.toLowerCase().startsWith(prev.toLowerCase())) return next;
+  const max = Math.min(prev.length, next.length);
+  let overlap = 0;
+  for (let i = max; i >= 1; i -= 1) {
+    if (prev.slice(prev.length - i).toLowerCase() === next.slice(0, i).toLowerCase()) {
+      overlap = i;
+      break;
+    }
+  }
+  const suffix = next.slice(overlap).trim();
+  if (!suffix) return prev;
+  return `${prev}${/[,\s]$/.test(prev) ? "" : " "}${suffix}`.trim();
+}
+
+function getOpenAiRealtimeUrl(): string {
+  const baseUrl = getOpenAiBaseUrl().replace(/\/+$/, "");
+  const realtimePath = "/realtime";
+  if (baseUrl.startsWith("https://")) {
+    return `wss://${baseUrl.slice("https://".length)}${realtimePath}`;
+  }
+  if (baseUrl.startsWith("http://")) {
+    return `ws://${baseUrl.slice("http://".length)}${realtimePath}`;
+  }
+  return `${baseUrl}${realtimePath}`;
+}
+
+function resolveRealtimeWebSocketCtor(): any | null {
+  try {
+    const wsModule = require("ws") as { WebSocket?: any } | any;
+    if (typeof wsModule === "function") return wsModule;
+    if (wsModule?.WebSocket) return wsModule.WebSocket;
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
+function emitDictationEvent(channel: string, payload: Record<string, unknown>): void {
+  try {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    mainWindow.webContents.send(channel, payload);
+  } catch {
+    // ignore event delivery failures
+  }
+}
+
+function coerceAudioPayloadToBuffer(payload: unknown): Buffer | null {
+  if (!payload) return null;
+  if (Buffer.isBuffer(payload)) return payload;
+  if (payload instanceof ArrayBuffer) return Buffer.from(payload);
+  if (ArrayBuffer.isView(payload)) {
+    return Buffer.from(payload.buffer, payload.byteOffset, payload.byteLength);
+  }
+  if (typeof payload === "string" && payload.trim()) {
+    try {
+      return Buffer.from(payload.trim(), "base64");
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+function enqueueDictationAudioBuffer(sessionId: number, audioBuffer: Buffer, mimeType: string): void {
+  if (!dictationSessionActive || sessionId !== dictationSessionId) return;
+  if (!audioBuffer || !audioBuffer.length) return;
+  const isWebm = String(mimeType || "").toLowerCase().includes("webm");
+  if (isWebm && dictationRealtimeSocket && dictationRealtimeConnected && sessionId === dictationSessionId) {
+    try {
+      dictationRealtimeSocket.send(JSON.stringify({
+        type: "input_audio_buffer.append",
+        audio: audioBuffer.toString("base64")
+      }));
+      dictationRealtimeBufferedBytes += audioBuffer.length;
+      scheduleDictationRealtimeCommit();
+      return;
+    } catch {
+      // fall through to chunk fallback
+    }
+  }
+  if (isWebm) {
+    dictationFallbackWebmChunks.push(audioBuffer);
+    dictationFallbackWebmBytes += audioBuffer.length;
+    const now = Date.now();
+    const bytesSinceLast = dictationFallbackWebmBytes - dictationFallbackLastTranscribedBytes;
+    const timeSinceLast = now - dictationFallbackLastTranscribedAt;
+    if (bytesSinceLast < 12000 && timeSinceLast < 900) {
+      return;
+    }
+    const snapshot = Buffer.concat(dictationFallbackWebmChunks);
+    dictationFallbackLastTranscribedBytes = dictationFallbackWebmBytes;
+    dictationFallbackLastTranscribedAt = now;
+    dictationQueue = dictationQueue
+      .then(async () => {
+        if (!dictationSessionActive || sessionId !== dictationSessionId) return;
+        const transcribed = await callOpenAiTranscribeAudio({
+          audioBuffer: snapshot,
+          mimeType: "audio/webm"
+        });
+        if (!dictationSessionActive || sessionId !== dictationSessionId) return;
+        if (String(transcribed?.status || "") !== "ok") {
+          const message = String(transcribed?.message || "Dictation transcription failed.");
+          emitDictationEvent(AGENT_DICTATION_EVENT_ERROR, { sessionId, message });
+          return;
+        }
+        const text = String(transcribed?.text || "").trim();
+        if (!text) return;
+        dictationTranscript = mergeDictationTranscript(dictationTranscript, text);
+        emitDictationEvent(AGENT_DICTATION_EVENT_DELTA, {
+          sessionId,
+          delta: text,
+          transcript: dictationTranscript
+        });
+      })
+      .catch((error) => {
+        if (!dictationSessionActive || sessionId !== dictationSessionId) return;
+        emitDictationEvent(AGENT_DICTATION_EVENT_ERROR, {
+          sessionId,
+          message: error instanceof Error ? error.message : String(error || "Dictation error")
+        });
+      });
+    return;
+  }
+  dictationQueue = dictationQueue
+    .then(async () => {
+      if (!dictationSessionActive || sessionId !== dictationSessionId) return;
+      const transcribed = await callOpenAiTranscribeAudio({
+        audioBuffer,
+        mimeType
+      });
+      if (!dictationSessionActive || sessionId !== dictationSessionId) return;
+      if (String(transcribed?.status || "") !== "ok") {
+        const message = String(transcribed?.message || "Dictation transcription failed.");
+        emitDictationEvent(AGENT_DICTATION_EVENT_ERROR, { sessionId, message });
+        return;
+      }
+      const text = String(transcribed?.text || "").trim();
+      if (!text) return;
+      dictationTranscript = mergeDictationTranscript(dictationTranscript, text);
+      emitDictationEvent(AGENT_DICTATION_EVENT_DELTA, {
+        sessionId,
+        delta: text,
+        transcript: dictationTranscript
+      });
+    })
+    .catch((error) => {
+      if (!dictationSessionActive || sessionId !== dictationSessionId) return;
+      emitDictationEvent(AGENT_DICTATION_EVENT_ERROR, {
+        sessionId,
+        message: error instanceof Error ? error.message : String(error || "Dictation error")
+      });
+    });
+}
+
+function clearDictationRealtimeCommitTimer(): void {
+  if (dictationRealtimeCommitTimer) {
+    clearTimeout(dictationRealtimeCommitTimer);
+    dictationRealtimeCommitTimer = null;
+  }
+}
+
+function closeDictationRealtimeSocket(): void {
+  clearDictationRealtimeCommitTimer();
+  if (dictationRealtimeSocket) {
+    try {
+      dictationRealtimeSocket.close();
+    } catch {
+      // ignore
+    }
+  }
+  dictationRealtimeSocket = null;
+  dictationRealtimeConnected = false;
+  dictationRealtimeBufferedBytes = 0;
+}
+
+function scheduleDictationRealtimeCommit(): void {
+  clearDictationRealtimeCommitTimer();
+  dictationRealtimeCommitTimer = setTimeout(() => {
+    if (!dictationRealtimeSocket || !dictationRealtimeConnected) return;
+    if (dictationRealtimeBufferedBytes < DICTATION_REALTIME_MIN_COMMIT_BYTES) return;
+    try {
+      dictationRealtimeSocket.send(JSON.stringify({ type: "input_audio_buffer.commit" }));
+      dictationRealtimeBufferedBytes = 0;
+    } catch {
+      // ignore
+    }
+  }, DICTATION_REALTIME_COMMIT_DELAY_MS);
+}
+
+async function openDictationRealtimeSocket(sessionId: number): Promise<boolean> {
+  const apiKey = getOpenAiApiKey();
+  if (!apiKey) return false;
+  const Ctor = resolveRealtimeWebSocketCtor();
+  if (!Ctor) return false;
+  const model = getOpenAiVoiceTranscribeModel();
+  const url = `${getOpenAiRealtimeUrl()}?model=${encodeURIComponent(model)}&intent=transcription`;
+  return await new Promise<boolean>((resolve) => {
+    let settled = false;
+    const done = (value: boolean) => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
+    let ws: any;
+    try {
+      ws = new Ctor(url, [], {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "OpenAI-Beta": "realtime=v1"
+        }
+      });
+    } catch (error) {
+      dbgMain("openDictationRealtimeSocket", "constructor failed", {
+        message: error instanceof Error ? error.message : String(error || "unknown error")
+      });
+      done(false);
+      return;
+    }
+    const timeout = setTimeout(() => {
+      try {
+        ws?.close?.();
+      } catch {
+        // ignore
+      }
+      done(false);
+    }, 4000);
+    ws.onopen = () => {
+      clearTimeout(timeout);
+      dictationRealtimeSocket = ws;
+      dictationRealtimeConnected = true;
+      dictationRealtimeClosedForSession = -1;
+      dictationRealtimeBufferedBytes = 0;
+      try {
+        ws.send(JSON.stringify({
+          type: "session.update",
+          session: {
+            type: "transcription",
+            audio: {
+              input: {
+                format: { type: "audio/webm" },
+                transcription: { model },
+                turn_detection: {
+                  type: "server_vad",
+                  threshold: 0.5,
+                  prefix_padding_ms: 300,
+                  silence_duration_ms: 500
+                }
+              }
+            }
+          }
+        }));
+      } catch {
+        // ignore
+      }
+      done(true);
+    };
+    ws.onerror = () => {
+      clearTimeout(timeout);
+      if (dictationSessionActive && sessionId === dictationSessionId) {
+        emitDictationEvent(AGENT_DICTATION_EVENT_ERROR, { sessionId, message: "Realtime dictation socket error." });
+      }
+      done(false);
+    };
+    ws.onclose = () => {
+      clearTimeout(timeout);
+      dictationRealtimeConnected = false;
+      if (dictationSessionActive && sessionId === dictationSessionId && dictationRealtimeClosedForSession !== sessionId) {
+        dictationRealtimeClosedForSession = sessionId;
+        emitDictationEvent(AGENT_DICTATION_EVENT_ERROR, { sessionId, message: "Realtime dictation disconnected; using chunk fallback." });
+      }
+      done(false);
+    };
+    ws.onmessage = (event: { data?: unknown }) => {
+      let parsed: Record<string, unknown> | null = null;
+      try {
+        const raw = typeof event?.data === "string" ? event.data : Buffer.from(event?.data as ArrayBuffer).toString("utf8");
+        parsed = JSON.parse(raw || "{}");
+      } catch {
+        parsed = null;
+      }
+      if (!parsed || sessionId !== dictationSessionId || !dictationSessionActive) return;
+      const type = String(parsed.type || "");
+      if (type === "conversation.item.input_audio_transcription.delta") {
+        const delta = String(parsed.delta || "").trim();
+        if (!delta) return;
+        dictationTranscript = mergeDictationTranscript(dictationTranscript, delta);
+        emitDictationEvent(AGENT_DICTATION_EVENT_DELTA, { sessionId, delta, transcript: dictationTranscript });
+        return;
+      }
+      if (type === "conversation.item.input_audio_transcription.completed") {
+        const transcript = String(parsed.transcript || "").trim();
+        if (!transcript) return;
+        dictationTranscript = transcript;
+        emitDictationEvent(AGENT_DICTATION_EVENT_DELTA, { sessionId, delta: transcript, transcript: dictationTranscript });
+        return;
+      }
+      if (type === "error") {
+        emitDictationEvent(AGENT_DICTATION_EVENT_ERROR, {
+          sessionId,
+          message: String((parsed.error as { message?: string } | undefined)?.message || "Realtime transcription error.")
+        });
+      }
+    };
+  });
+}
+
+function startAgentCliBridgeServer(handlers: {
+  runAgent: (payload: { text?: string; context?: Record<string, unknown> }) => Promise<Record<string, unknown>>;
+  speakText: (payload: { text?: string; voice?: string; speed?: number; format?: string; model?: string }) => Promise<Record<string, unknown>>;
+}): void {
+  if (agentCliBridgeServer) return;
+  agentCliBridgeServer = net.createServer((socket) => {
+    let buffer = "";
+    const writeResult = (result: Record<string, unknown>) => {
+      try {
+        socket.write(JSON.stringify(result));
+      } catch {
+        // ignore
+      }
+      try {
+        socket.end();
+      } catch {
+        // ignore
+      }
+    };
+    socket.on("data", (chunk) => {
+      buffer += chunk.toString();
+    });
+    socket.on("end", async () => {
+      let payload: { action?: string; payload?: Record<string, unknown> } = {};
+      try {
+        payload = JSON.parse(buffer || "{}");
+      } catch (error) {
+        writeResult({ status: "error", message: `invalid_json:${String(error)}` });
+        return;
+      }
+      const action = String(payload.action || "").trim().toLowerCase();
+      try {
+        if (!action || action === "health") {
+          writeResult({ status: "ok", message: "agent_cli_bridge_ready" });
+          return;
+        }
+        if (action === "agent.run") {
+          writeResult(await handlers.runAgent((payload.payload || {}) as { text?: string; context?: Record<string, unknown> }));
+          return;
+        }
+        if (action === "agent.speak_text") {
+          writeResult(await handlers.speakText((payload.payload || {}) as { text?: string; voice?: string; speed?: number; format?: string; model?: string }));
+          return;
+        }
+        writeResult({ status: "error", message: `unsupported_action:${action}` });
+      } catch (error) {
+        writeResult({ status: "error", message: error instanceof Error ? error.message : String(error) });
+      }
+    });
+    socket.on("error", () => {
+      try {
+        socket.destroy();
+      } catch {
+        // ignore
+      }
+    });
+  });
+  agentCliBridgeServer.listen(AGENT_CLI_PORT, AGENT_CLI_HOST, () => {
+    console.info(`[main.ts][startAgentCliBridgeServer][debug] listening on ${AGENT_CLI_HOST}:${AGENT_CLI_PORT}`);
+  });
+}
 
 type CommandEnvelope = {
   phase?: string;
@@ -483,6 +879,19 @@ const DEFAULT_OPENAI_VOICE_TRANSCRIBE_MODEL = "whisper-1";
 const DEFAULT_OPENAI_VOICE_TTS_MODEL = "tts-1";
 const DEFAULT_OPENAI_VOICE_TTS_VOICE = "alloy";
 const DEFAULT_OPENAI_VOICE_TTS_FORMAT = "mp3";
+const DEFAULT_NATIVE_AUDIO_SAMPLE_RATE = 16000;
+
+type NativeAudioCaptureState = {
+  child: ReturnType<typeof spawn>;
+  chunks: Buffer[];
+  streamChunkBuffer: Buffer[];
+  streamFlushTimer: NodeJS.Timeout | null;
+  backend: "pulse" | "alsa";
+  sampleRate: number;
+  startedAt: number;
+};
+
+let nativeAudioCaptureState: NativeAudioCaptureState | null = null;
 
 const normalizeOpenAiAudioMime = (mimeType: unknown): { mime: string; extension: string; format: string } => {
   const clean = String(mimeType || "audio/webm").toLowerCase().trim();
@@ -523,17 +932,289 @@ const getOpenAiVoiceTtsModel = (): string =>
 const getOpenAiVoiceTtsVoice = (): string =>
   getOpenAiSettingValue(LLM_KEYS.openaiVoiceTtsVoice, DEFAULT_OPENAI_VOICE_TTS_VOICE);
 
+const dbgMain = (fn: string, msg: string, details?: Record<string, unknown>): void => {
+  if (details) {
+    console.debug(`[main.ts][${fn}][debug] ${msg}`, details);
+    return;
+  }
+  console.debug(`[main.ts][${fn}][debug] ${msg}`);
+};
+
 function audioBufferFromBase64(base64: string): Buffer {
   const raw = String(base64 || "").trim();
   if (!raw) throw new Error("audioBase64 is required.");
   return Buffer.from(raw, "base64");
 }
 
-async function callOpenAiTranscribeAudio(args: {
-  audioBuffer: Buffer;
+function buildWavFromPcm16Mono(rawPcm: Buffer, sampleRate: number): Buffer {
+  const headerSize = 44;
+  const channels = 1;
+  const bitsPerSample = 16;
+  const byteRate = sampleRate * channels * (bitsPerSample / 8);
+  const blockAlign = channels * (bitsPerSample / 8);
+  const dataSize = rawPcm.length;
+  const out = Buffer.alloc(headerSize + dataSize);
+  let offset = 0;
+  out.write("RIFF", offset);
+  offset += 4;
+  out.writeUInt32LE(headerSize + dataSize - 8, offset);
+  offset += 4;
+  out.write("WAVE", offset);
+  offset += 4;
+  out.write("fmt ", offset);
+  offset += 4;
+  out.writeUInt32LE(16, offset);
+  offset += 4;
+  out.writeUInt16LE(1, offset);
+  offset += 2;
+  out.writeUInt16LE(channels, offset);
+  offset += 2;
+  out.writeUInt32LE(sampleRate, offset);
+  offset += 4;
+  out.writeUInt32LE(byteRate, offset);
+  offset += 4;
+  out.writeUInt16LE(blockAlign, offset);
+  offset += 2;
+  out.writeUInt16LE(bitsPerSample, offset);
+  offset += 2;
+  out.write("data", offset);
+  offset += 4;
+  out.writeUInt32LE(dataSize, offset);
+  offset += 4;
+  rawPcm.copy(out, offset);
+  return out;
+}
+
+const NATIVE_AUDIO_BACKENDS: Array<{ backend: "pulse" | "alsa"; cmd: string; args: string[] }> = [
+  {
+    backend: "pulse",
+    cmd: "parec",
+    args: ["--raw", "--rate", String(DEFAULT_NATIVE_AUDIO_SAMPLE_RATE), "--channels", "1", "--format=s16le"]
+  },
+  {
+    backend: "alsa",
+    cmd: "arecord",
+    args: ["-q", "-t", "raw", "-f", "S16_LE", "-r", String(DEFAULT_NATIVE_AUDIO_SAMPLE_RATE), "-c", "1"]
+  }
+];
+
+function getPreferredNativeAudioInputId(): string {
+  try {
+    return String(getSetting<string>(LLM_KEYS.openaiVoiceInputDeviceId, "") || "").trim();
+  } catch {
+    return "";
+  }
+}
+
+function looksLikePulseSourceId(value: string): boolean {
+  const v = String(value || "").trim();
+  if (!v) return false;
+  return v.includes(".") || v.includes("_") || v.includes("source") || v.includes("monitor");
+}
+
+function listNativeAudioInputs(): Array<{ id: string; label: string; backend: "pulse" | "alsa"; isDefault?: boolean }> {
+  const out: Array<{ id: string; label: string; backend: "pulse" | "alsa"; isDefault?: boolean }> = [];
+  try {
+    const defaultRes = spawnSync("pactl", ["get-default-source"], { encoding: "utf8" });
+    const defaultSource = String(defaultRes.stdout || "").trim();
+    const listRes = spawnSync("pactl", ["list", "short", "sources"], { encoding: "utf8" });
+    const raw = String(listRes.stdout || "");
+    raw
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .forEach((line) => {
+        const parts = line.split(/\t+/);
+        const sourceId = String(parts[1] || "").trim();
+        if (!sourceId) return;
+        const desc = String(parts[1] || "").trim();
+        out.push({
+          id: sourceId,
+          label: desc,
+          backend: "pulse",
+          isDefault: Boolean(defaultSource && sourceId === defaultSource)
+        });
+      });
+  } catch {
+    // ignore
+  }
+  return out;
+}
+
+async function startNativeAudioCapture(): Promise<{ status: string; backend?: string; sampleRate?: number; message?: string }> {
+  if (nativeAudioCaptureState) {
+    return {
+      status: "ok",
+      backend: nativeAudioCaptureState.backend,
+      sampleRate: nativeAudioCaptureState.sampleRate
+    };
+  }
+  const preferredInputId = getPreferredNativeAudioInputId();
+  for (const candidate of NATIVE_AUDIO_BACKENDS) {
+    const candidateAttempts: Array<{ cmd: string; args: string[] }> = [];
+    if (candidate.backend === "pulse" && looksLikePulseSourceId(preferredInputId)) {
+      candidateAttempts.push({ cmd: candidate.cmd, args: [...candidate.args, `--device=${preferredInputId}`] });
+    }
+    candidateAttempts.push({ cmd: candidate.cmd, args: candidate.args });
+    for (const attempt of candidateAttempts) {
+    const started = await new Promise<NativeAudioCaptureState | null>((resolve) => {
+      const child = spawn(attempt.cmd, attempt.args, { stdio: ["ignore", "pipe", "pipe"] });
+      const chunks: Buffer[] = [];
+      const streamChunkBuffer: Buffer[] = [];
+      let streamFlushTimer: NodeJS.Timeout | null = null;
+      let settled = false;
+      const finalize = (value: NativeAudioCaptureState | null) => {
+        if (settled) return;
+        settled = true;
+        resolve(value);
+      };
+      const flushStreamChunk = () => {
+        if (!streamChunkBuffer.length) return;
+        const payload = Buffer.concat(streamChunkBuffer.splice(0, streamChunkBuffer.length));
+        if (!payload.length) return;
+        const sessionId = dictationSessionId;
+        if (!dictationSessionActive || !sessionId) return;
+        const wav = buildWavFromPcm16Mono(payload, DEFAULT_NATIVE_AUDIO_SAMPLE_RATE);
+        enqueueDictationAudioBuffer(sessionId, wav, "audio/wav");
+      };
+      const scheduleStreamFlush = () => {
+        if (streamFlushTimer) return;
+        streamFlushTimer = setTimeout(() => {
+          streamFlushTimer = null;
+          flushStreamChunk();
+        }, 650);
+      };
+      child.stdout.on("data", (chunk) => {
+        const data = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+        chunks.push(data);
+        if (dictationSessionActive && dictationSessionId > 0) {
+          if (dictationRealtimeConnected) {
+            closeDictationRealtimeSocket();
+          }
+          streamChunkBuffer.push(data);
+          if (streamChunkBuffer.reduce((sum, part) => sum + part.length, 0) >= 8192) {
+            if (streamFlushTimer) {
+              clearTimeout(streamFlushTimer);
+              streamFlushTimer = null;
+            }
+            flushStreamChunk();
+          } else {
+            scheduleStreamFlush();
+          }
+        }
+      });
+      child.once("error", () => {
+        if (streamFlushTimer) {
+          clearTimeout(streamFlushTimer);
+          streamFlushTimer = null;
+        }
+        try {
+          child.kill("SIGTERM");
+        } catch {
+          // ignore
+        }
+        finalize(null);
+      });
+      child.once("close", () => {
+        if (streamFlushTimer) {
+          clearTimeout(streamFlushTimer);
+          streamFlushTimer = null;
+        }
+      });
+      child.once("exit", () => finalize(null));
+      setTimeout(() => {
+        finalize({
+          child,
+          chunks,
+          streamChunkBuffer,
+          streamFlushTimer,
+          backend: candidate.backend,
+          sampleRate: DEFAULT_NATIVE_AUDIO_SAMPLE_RATE,
+          startedAt: Date.now()
+        });
+      }, 180);
+    });
+    if (started) {
+      nativeAudioCaptureState = started;
+      dbgMain("startNativeAudioCapture", "native capture started", {
+        backend: started.backend,
+        sampleRate: started.sampleRate,
+        preferredInputId: preferredInputId || "",
+        command: `${attempt.cmd} ${attempt.args.join(" ")}`
+      });
+      return { status: "ok", backend: started.backend, sampleRate: started.sampleRate };
+    }
+  }
+  }
+  return { status: "error", message: "No native audio backend available (parec/arecord)." };
+}
+
+async function stopNativeAudioCapture(): Promise<{
+  status: string;
+  audioBase64?: string;
   mimeType?: string;
-  language?: string;
-}): Promise<{ status: string; text?: string; message?: string }> {
+  bytes?: number;
+  backend?: string;
+  sampleRate?: number;
+  message?: string;
+}> {
+  const active = nativeAudioCaptureState;
+  if (!active) {
+    return { status: "error", message: "Native audio capture is not active." };
+  }
+  nativeAudioCaptureState = null;
+  const child = active.child;
+  if (active.streamFlushTimer) {
+    clearTimeout(active.streamFlushTimer);
+    active.streamFlushTimer = null;
+  }
+  if (dictationSessionActive && dictationSessionId > 0 && active.streamChunkBuffer.length) {
+    const streamPayload = Buffer.concat(active.streamChunkBuffer.splice(0, active.streamChunkBuffer.length));
+    if (streamPayload.length) {
+      const wavStreamChunk = buildWavFromPcm16Mono(streamPayload, active.sampleRate);
+      enqueueDictationAudioBuffer(dictationSessionId, wavStreamChunk, "audio/wav");
+    }
+  }
+  await new Promise<void>((resolve) => {
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      resolve();
+    };
+    child.once("close", finish);
+    child.once("exit", finish);
+    setTimeout(finish, 1200);
+    try {
+      child.kill("SIGINT");
+    } catch {
+      finish();
+    }
+  });
+  const pcm = Buffer.concat(active.chunks);
+  if (!pcm.length) {
+    return { status: "error", message: "Native audio capture returned no bytes." };
+  }
+  const wav = buildWavFromPcm16Mono(pcm, active.sampleRate);
+  dbgMain("stopNativeAudioCapture", "native capture stopped", {
+    backend: active.backend,
+    bytes: wav.length
+  });
+  return {
+    status: "ok",
+    audioBase64: wav.toString("base64"),
+    mimeType: "audio/wav",
+    bytes: wav.length,
+    backend: active.backend,
+    sampleRate: active.sampleRate
+  };
+}
+
+async function callOpenAiTranscribeAudio(args: {
+    audioBuffer: Buffer;
+    mimeType?: string;
+    language?: string;
+  }): Promise<{ status: string; text?: string; message?: string }> {
   const apiKey = getOpenAiApiKey();
   if (!apiKey) {
     return { status: "error", message: "OPENAI_API_KEY is not configured." };
@@ -541,6 +1222,12 @@ async function callOpenAiTranscribeAudio(args: {
   const normalized = normalizeOpenAiAudioMime(args.mimeType);
   const fileName = `agent-voice.${normalized.extension}`;
   const audioBytes = new Uint8Array(args.audioBuffer);
+  dbgMain("callOpenAiTranscribeAudio", "sending transcribe request", {
+    model: getOpenAiVoiceTranscribeModel(),
+    fileName,
+    bytes: audioBytes.byteLength,
+    mimeType: normalized.mime
+  });
   const form = new FormData();
   const blob = new Blob([audioBytes], { type: normalized.mime });
   form.append("file", blob, fileName);
@@ -549,6 +1236,7 @@ async function callOpenAiTranscribeAudio(args: {
     form.append("language", String(args.language).trim());
   }
   const baseUrl = getOpenAiBaseUrl().replace(/\/+$/, "");
+  const startedAt = Date.now();
   const res = await fetch(`${baseUrl}/audio/transcriptions`, {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}` },
@@ -556,14 +1244,25 @@ async function callOpenAiTranscribeAudio(args: {
   });
   const raw = await res.text();
   if (!res.ok) {
+    dbgMain("callOpenAiTranscribeAudio", "transcribe HTTP error", {
+      status: res.status,
+      elapsedMs: Date.now() - startedAt,
+      response: raw.slice(0, 500)
+    });
     return { status: "error", message: `Transcription HTTP ${res.status}: ${raw.slice(0, 500)}` };
   }
   try {
     const out = JSON.parse(raw || "{}") as { text?: unknown };
     const text = String(out?.text || "").trim();
+    dbgMain("callOpenAiTranscribeAudio", "transcribe response", {
+      status: res.status,
+      elapsedMs: Date.now() - startedAt,
+      textLength: text.length
+    });
     if (!text) return { status: "error", message: "Transcription returned no text." };
     return { status: "ok", text };
   } catch {
+    dbgMain("callOpenAiTranscribeAudio", "transcribe parse failed", { status: res.status, body: raw.slice(0, 180) });
     return { status: "error", message: "Transcription response was not valid JSON." };
   }
 }
@@ -592,6 +1291,12 @@ async function callOpenAiTextToSpeech(args: {
     response_format: args.format || DEFAULT_OPENAI_VOICE_TTS_FORMAT,
     speed: Number.isFinite(Number(args.speed)) ? Math.max(0.5, Math.min(4, Number(args.speed))) : 1
   };
+  dbgMain("callOpenAiTextToSpeech", "sending tts request", {
+    model: String(request.model || ""),
+    voice: String(request.voice || ""),
+    responseFormat: String(request.response_format || ""),
+    textLength: text.length
+  });
   const res = await fetch(`${baseUrl}/audio/speech`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
@@ -599,10 +1304,12 @@ async function callOpenAiTextToSpeech(args: {
   });
   if (!res.ok) {
     const raw = await res.text();
+    dbgMain("callOpenAiTextToSpeech", "tts HTTP error", { model: String(request.model || ""), status: res.status, response: raw.slice(0, 500) });
     return { status: "error", text, message: `Speech HTTP ${res.status}: ${raw.slice(0, 500)}` };
   }
   const buffer = Buffer.from(await res.arrayBuffer());
   if (!buffer.length) return { status: "error", text, message: "Speech response was empty." };
+  dbgMain("callOpenAiTextToSpeech", "tts response", { model: String(request.model || ""), bytes: buffer.length, mime: String(request.response_format || "") });
   return {
     status: "ok",
     text,
@@ -4003,6 +4710,10 @@ function syncLlmSettingsFromEnv(): void {
     defaultValue: DEFAULT_OPENAI_VOICE_TTS_VOICE,
     allowOverrideDefault: true
   });
+  maybeSet(LLM_KEYS.openaiVoiceInputDeviceId, ["OPENAI_VOICE_INPUT_DEVICE_ID"], {
+    defaultValue: "",
+    allowOverrideDefault: true
+  });
 
   maybeSet(LLM_KEYS.geminiKey, ["GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_GEMINI_API_KEY"], { allowOverrideDefault: false });
   maybeSet(LLM_KEYS.geminiBaseUrl, ["GEMINI_BASE_URL", "GOOGLE_API_BASE", "GEMINI_API_BASE"], {
@@ -4998,7 +5709,7 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
     }
   );
 
-  ipcMain.handle("agent:run", async (_event, payload: { text?: string; context?: Record<string, unknown> }) => {
+  const runAgentRequest = async (payload: { text?: string; context?: Record<string, unknown> }) => {
     try {
       const signatures = await loadZoteroSignatures();
       const context = (payload?.context || {}) as Record<string, unknown>;
@@ -5111,7 +5822,9 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
     } catch (error) {
       return { status: "error", message: normalizeError(error) };
     }
-  });
+  };
+
+  ipcMain.handle("agent:run", async (_event, payload: { text?: string; context?: Record<string, unknown> }) => runAgentRequest(payload));
 
   ipcMain.handle(
     "agent:voice-transcribe",
@@ -5124,6 +5837,7 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
         if (!audioBuffer.length) {
           return { status: "error", message: "Audio payload is empty." };
         }
+        dbgMain("agent:voice-transcribe", "payload received", { mimeType: String(payload.mimeType || ""), bytes: audioBuffer.length });
         const transcribed = await callOpenAiTranscribeAudio({
           audioBuffer,
           mimeType: payload.mimeType,
@@ -5136,22 +5850,110 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
     }
   );
 
-  ipcMain.handle(
-    "agent:speak-text",
-    async (_event, payload: { text?: string; voice?: string; speed?: number; format?: string; model?: string }) => {
+  ipcMain.handle("agent:dictation-start", async () => {
+    dictationSessionId += 1;
+    dictationSessionActive = true;
+    dictationTranscript = "";
+    dictationQueue = Promise.resolve();
+    dictationFallbackWebmChunks = [];
+    dictationFallbackWebmBytes = 0;
+    dictationFallbackLastTranscribedBytes = 0;
+    dictationFallbackLastTranscribedAt = 0;
+    closeDictationRealtimeSocket();
+    const realtimeOk = await openDictationRealtimeSocket(dictationSessionId);
+    dbgMain("agent:dictation-start", "started", { sessionId: dictationSessionId });
+    return { status: "ok", sessionId: dictationSessionId, transport: realtimeOk ? "realtime" : "chunk-fallback" };
+  });
+
+  ipcMain.handle("agent:dictation-stop", async () => {
+    const sessionId = dictationSessionId;
+    dictationSessionActive = false;
+    clearDictationRealtimeCommitTimer();
+    if (dictationRealtimeSocket && dictationRealtimeConnected) {
       try {
-        return await callOpenAiTextToSpeech({
-          text: String(payload?.text || ""),
-          voice: payload?.voice,
-          speed: payload?.speed,
-          format: payload?.format,
-          model: payload?.model
-        });
-      } catch (error) {
-        return { status: "error", text: String(payload?.text || ""), message: error instanceof Error ? error.message : "Speech synthesis failed." };
+        dictationRealtimeSocket.send(JSON.stringify({ type: "input_audio_buffer.commit" }));
+      } catch {
+        // ignore
       }
     }
+    if (dictationFallbackWebmBytes > dictationFallbackLastTranscribedBytes && dictationFallbackWebmChunks.length) {
+      const snapshot = Buffer.concat(dictationFallbackWebmChunks);
+      dictationFallbackLastTranscribedBytes = dictationFallbackWebmBytes;
+      dictationQueue = dictationQueue.then(async () => {
+        const transcribed = await callOpenAiTranscribeAudio({
+          audioBuffer: snapshot,
+          mimeType: "audio/webm"
+        });
+        if (String(transcribed?.status || "") === "ok") {
+          const text = String(transcribed?.text || "").trim();
+          if (text) {
+            dictationTranscript = mergeDictationTranscript(dictationTranscript, text);
+          }
+        }
+      }).catch(() => {
+        // ignore final fallback transcribe errors; completion still returns best transcript
+      });
+    }
+    try {
+      await dictationQueue;
+    } catch {
+      // ignore queued failures; error events were already emitted
+    }
+    closeDictationRealtimeSocket();
+    dictationFallbackWebmChunks = [];
+    dictationFallbackWebmBytes = 0;
+    dictationFallbackLastTranscribedBytes = 0;
+    dictationFallbackLastTranscribedAt = 0;
+    const finalText = String(dictationTranscript || "").trim();
+    emitDictationEvent(AGENT_DICTATION_EVENT_COMPLETED, { sessionId, text: finalText });
+    dbgMain("agent:dictation-stop", "stopped", { sessionId, textLength: finalText.length });
+    return { status: "ok", sessionId, text: finalText };
+  });
+
+  ipcMain.on("agent:dictation-audio", (_event, payload: unknown) => {
+    if (!dictationSessionActive) return;
+    const sessionId = dictationSessionId;
+    const audioBuffer = coerceAudioPayloadToBuffer(payload);
+    if (!audioBuffer || !audioBuffer.length) return;
+    enqueueDictationAudioBuffer(sessionId, audioBuffer, "audio/webm");
+  });
+
+  ipcMain.handle("agent:native-audio-start", async () => {
+    try {
+      return await startNativeAudioCapture();
+    } catch (error) {
+      return { status: "error", message: normalizeError(error) };
+    }
+  });
+
+  ipcMain.handle("agent:native-audio-stop", async () => {
+    try {
+      return await stopNativeAudioCapture();
+    } catch (error) {
+      return { status: "error", message: normalizeError(error) };
+    }
+  });
+
+  const speakTextRequest = async (payload: { text?: string; voice?: string; speed?: number; format?: string; model?: string }) => {
+    try {
+      return await callOpenAiTextToSpeech({
+        text: String(payload?.text || ""),
+        voice: payload?.voice,
+        speed: payload?.speed,
+        format: payload?.format,
+        model: payload?.model
+      });
+    } catch (error) {
+      return { status: "error", text: String(payload?.text || ""), message: error instanceof Error ? error.message : "Speech synthesis failed." };
+    }
+  };
+
+  ipcMain.handle(
+    "agent:speak-text",
+    async (_event, payload: { text?: string; voice?: string; speed?: number; format?: string; model?: string }) => speakTextRequest(payload)
   );
+
+  startAgentCliBridgeServer({ runAgent: runAgentRequest, speakText: speakTextRequest });
 
   ipcMain.handle(
     "agent:refine-coding-questions",
@@ -6337,6 +7139,14 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
       settingsFilePath: getSettingsFilePath(),
       exportPath: ensureExportDirectory()
     };
+  });
+
+  ipcMain.handle("settings:listAudioInputs", () => {
+    try {
+      return { status: "ok", inputs: listNativeAudioInputs() };
+    } catch (error) {
+      return { status: "error", inputs: [], message: normalizeError(error) };
+    }
   });
 
   ipcMain.handle("settings:getDotEnvStatus", () => {

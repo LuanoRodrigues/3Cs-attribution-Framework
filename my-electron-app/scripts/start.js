@@ -1,3 +1,5 @@
+require("./load-dotenv");
+
 const { spawnSync } = require("child_process");
 const path = require("path");
 
@@ -21,7 +23,19 @@ if (process.env.SKIP_ELECTRON === "1") {
 }
 
 console.log("Starting Electron...");
-const electronResult = runCommand("electron", ["."]);
+let electronResult = runCommand("electron", ["."]);
+if (electronResult.error) {
+  console.warn(
+    `[start.js][launchElectron][debug] direct electron launch failed: ${electronResult.error.message}`
+  );
+  console.log("Retrying with npx electron...");
+  electronResult = runCommand("npx", ["electron", "."]);
+}
+if (electronResult.error) {
+  console.error(
+    `[start.js][launchElectron][debug] electron launch failed: ${electronResult.error.message}`
+  );
+}
 
 process.exit(
   electronResult.status ?? buildResult.status ?? 0

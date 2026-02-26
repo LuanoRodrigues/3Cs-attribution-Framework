@@ -12,6 +12,13 @@ export type DataGridSelection = {
 export type DataGridCallbacks = {
   onCellEdit?: (rowIndex: number, colIndex: number, value: string) => void;
   onSortChange?: (colIndex: number, direction: SortDirection) => void;
+  onRowActivate?: (rowIndex: number) => void;
+  onRowRender?: (options: {
+    rowEl: HTMLElement;
+    rowIndex: number;
+    rowData: Array<unknown>;
+    columns: string[];
+  }) => void;
 };
 
 type ColumnType = "number" | "boolean" | "date" | "string" | "mixed";
@@ -361,6 +368,9 @@ export class DataGrid {
       rowEl.className = "retrieve-grid-row";
       rowEl.style.height = `${this.rowHeight}px`;
       rowEl.dataset.row = String(r);
+      rowEl.tabIndex = 0;
+      rowEl.setAttribute("role", "button");
+      rowEl.ariaLabel = String(this.columns[0] ? `${String(this.columns[0])} row ${r + 1}` : `Row ${r + 1}`);
       if (r % 2 === 1) rowEl.classList.add("alt");
 
       const rowHeader = document.createElement("div");
@@ -405,6 +415,21 @@ export class DataGrid {
       }
 
       rowEl.appendChild(rowCells);
+      rowEl.addEventListener("click", () => {
+        this.callbacks.onRowActivate?.(r);
+      });
+      rowEl.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          this.callbacks.onRowActivate?.(r);
+        }
+      });
+      this.callbacks.onRowRender?.({
+        rowEl,
+        rowIndex: r,
+        rowData: row,
+        columns: this.columns
+      });
       this.bodyCanvas.appendChild(rowEl);
     }
   }

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="960" height="360" viewBox="0 0 960 360" role="img" aria-labelledby="title desc">
   <title id="title">C1 Clarity Flowchart</title>
-  <desc id="desc">Left-to-right decision flowchart for C1 Clarity scoring.</desc>
+  <desc id="desc">Refined left-to-right decision flowchart for C1 Clarity scoring.</desc>
   <defs>
     <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
       <path d="M0,0 L10,5 L0,10 Z" fill="#4b5563" />
@@ -21,41 +21,41 @@
     </style>
   </defs>
   <rect width="960" height="360" class="bg"/>
-  <text x="480" y="30" text-anchor="middle" class="title">Figure C1. Clarity Scoring Flow</text>
-  <text x="480" y="48" text-anchor="middle" class="sub">Question path resolves to low / medium / high.</text>
+  <text x="480" y="30" text-anchor="middle" class="title">Clarity Scoring Flow</text>
 
   <rect x="30" y="70" width="900" height="270" rx="10" class="panel"/>
 
-  <rect x="50" y="130" width="260" height="56" rx="8" class="q"/>
-  <text x="180" y="152" text-anchor="middle" class="qt">Attribution claim explicit</text>
-  <text x="180" y="168" text-anchor="middle" class="qt">(actor + act + severity)?</text>
+  <rect x="55" y="130" width="260" height="56" rx="8" class="q"/>
+  <text x="185" y="152" text-anchor="middle" class="qt">Is attribution claim</text>
+  <text x="185" y="168" text-anchor="middle" class="qt">(act + severity) explicit?</text>
 
-  <rect x="345" y="130" width="260" height="56" rx="8" class="q"/>
-  <text x="475" y="152" text-anchor="middle" class="qt">State-link evidence explicit</text>
-  <text x="475" y="168" text-anchor="middle" class="qt">and legal pathway stated?</text>
+  <rect x="350" y="130" width="260" height="56" rx="8" class="q"/>
+  <text x="480" y="152" text-anchor="middle" class="qt">Are state-link evidence and</text>
+  <text x="480" y="168" text-anchor="middle" class="qt">confidence levels explicit?</text>
 
-  <rect x="640" y="130" width="260" height="56" rx="8" class="q"/>
-  <text x="770" y="152" text-anchor="middle" class="qt">Alternatives addressed and</text>
-  <text x="770" y="168" text-anchor="middle" class="qt">reasoning coherent?</text>
+  <rect x="645" y="130" width="260" height="56" rx="8" class="q"/>
+  <text x="775" y="152" text-anchor="middle" class="qt">Are legal pathways</text>
+  <text x="775" y="168" text-anchor="middle" class="qt">(organs, non-state) clear?</text>
 
-  <rect x="50" y="250" width="260" height="54" rx="8" class="low"/>
-  <text x="180" y="272" text-anchor="middle" class="st">LOW (0)</text>
-  <text x="180" y="288" text-anchor="middle" class="sd">ambiguous claim</text>
+  <rect x="55" y="250" width="260" height="54" rx="8" class="low"/>
+  <text x="185" y="272" text-anchor="middle" class="st">LOW (0)</text>
+  <text x="185" y="288" text-anchor="middle" class="sd">ambiguous claim</text>
 
-  <rect x="345" y="250" width="260" height="54" rx="8" class="mid"/>
-  <text x="475" y="272" text-anchor="middle" class="st">MEDIUM (1)</text>
-  <text x="475" y="288" text-anchor="middle" class="sd">partial state-link / legal clarity</text>
+  <rect x="350" y="250" width="260" height="54" rx="8" class="mid"/>
+  <text x="480" y="272" text-anchor="middle" class="st">MEDIUM (1)</text>
+  <text x="480" y="288" text-anchor="middle" class="sd">partial state-link / strategic clarity</text>
 
-  <rect x="640" y="250" width="260" height="54" rx="8" class="high"/>
-  <text x="770" y="272" text-anchor="middle" class="st">HIGH (2)</text>
-  <text x="770" y="288" text-anchor="middle" class="sd">clear attribution + coherent linkage</text>
+  <rect x="645" y="250" width="260" height="54" rx="8" class="high"/>
+  <text x="775" y="272" text-anchor="middle" class="st">HIGH (2)</text>
+  <text x="775" y="288" text-anchor="middle" class="sd">clear attribution</text>
 
-  <path class="l" d="M310 158 L345 158"/><text x="324" y="146" class="yn">YES</text>
-  <path class="l" d="M180 186 L180 250"/><text x="192" y="222" class="yn">NO</text>
+  <path class="l" d="M315 158 L350 158"/><text x="329" y="146" class="yn">YES</text>
+  <path class="l" d="M185 186 L185 250"/><text x="197" y="222" class="yn">NO</text>
 
-  <path class="l" d="M605 158 L640 158"/><text x="620" y="146" class="yn">YES</text>
-  <path class="l" d="M475 186 L475 250"/><text x="487" y="222" class="yn">NO</text>
+  <path class="l" d="M610 158 L645 158"/><text x="625" y="146" class="yn">YES</text>
+  <path class="l" d="M480 186 L480 250"/><text x="492" y="222" class="yn">YES</text>
+  <path class="l" d="M480 186 L480 218 L185 218 L185 250"/><text x="330" y="210" class="yn">NO</text>
 
-  <path class="l" d="M770 186 L770 250"/><text x="782" y="222" class="yn">YES</text>
-  <path class="l" d="M640 158 C620 158,620 277,605 277"/><text x="620" y="244" class="yn">NO</text>
+  <path class="l" d="M775 186 L775 250"/><text x="787" y="222" class="yn">YES</text>
+  <path class="l" d="M775 186 L775 218 L545 218 L545 250"/><text x="650" y="210" class="yn">NO</text>
 </svg>

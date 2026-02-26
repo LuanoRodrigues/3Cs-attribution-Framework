@@ -19,6 +19,7 @@ export class ZoteroItemsPanel {
     this.searchInput = document.createElement("input");
     this.searchInput.type = "text";
     this.searchInput.placeholder = "Filter title, creator, year, DOI";
+    this.searchInput.dataset.voiceAliases = "filter zotero items,search zotero items,filter items by title,filter payload";
     this.searchInput.className = "zotero-search-input";
     this.searchInput.addEventListener("input", () => this.render(retrieveZoteroContext.getState()));
 

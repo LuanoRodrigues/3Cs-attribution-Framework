@@ -389,6 +389,8 @@ export class CoderPanel {
     settings.className = "coder-gear";
     settings.textContent = "⚙";
     settings.title = "Coder settings";
+    settings.ariaLabel = "Coder settings";
+    settings.dataset.voiceAliases = "coder settings,settings,preferences";
     settings.addEventListener("click", (ev) => {
       ev.stopPropagation();
       this.toggleSettingsMenu(settings);
@@ -564,6 +566,8 @@ export class CoderPanel {
       btn.type = "button";
       btn.textContent = label;
       btn.title = title;
+      btn.ariaLabel = title;
+      btn.dataset.voiceAliases = title;
       btn.addEventListener("click", handler);
       return btn;
     };
@@ -949,6 +953,8 @@ export class CoderPanel {
       btn.className = "coder-icon-btn";
       btn.textContent = label;
       btn.title = title;
+      btn.ariaLabel = title;
+      btn.dataset.voiceAliases = title;
       btn.addEventListener("click", (ev) => {
         ev.stopPropagation();
         this.setSelectionSingleSilent(node.id);
@@ -1221,6 +1227,8 @@ export class CoderPanel {
       btn.className = "coder-icon-btn";
       btn.textContent = labelText;
       btn.title = titleText;
+      btn.ariaLabel = titleText;
+      btn.dataset.voiceAliases = titleText;
       btn.addEventListener("click", (ev) => {
         ev.stopPropagation();
         this.setSelectionSingleSilent(node.id);
@@ -2504,6 +2512,8 @@ export class CoderPanel {
       action.type = "button";
       action.className = "coder-context-action";
       action.textContent = label;
+      action.ariaLabel = label;
+      action.dataset.voiceAliases = label;
       action.addEventListener("click", () => {
         handler();
         this.hideContextMenu();
@@ -2701,11 +2711,14 @@ export class CoderPanel {
     const title = document.createElement("div");
     title.className = "coder-help-title";
     title.textContent = "Coder shortcuts";
-    const closeBtn = document.createElement("button");
-    closeBtn.type = "button";
-    closeBtn.className = "coder-help-close";
-    closeBtn.textContent = "Close";
-    closeBtn.addEventListener("click", () => this.hideHelpOverlay());
+  const closeBtn = document.createElement("button");
+  closeBtn.type = "button";
+  closeBtn.className = "coder-help-close";
+  closeBtn.textContent = "Close";
+  closeBtn.ariaLabel = "Close help panel";
+  closeBtn.title = "Close help panel";
+  closeBtn.dataset.voiceAliases = "close help,close panel,close";
+  closeBtn.addEventListener("click", () => this.hideHelpOverlay());
     header.append(title, closeBtn);
 
     const list = document.createElement("div");
@@ -3000,6 +3013,9 @@ export class CoderPanel {
     clearBtn.type = "button";
     clearBtn.className = "coder-help-close";
     clearBtn.textContent = "Clear";
+    clearBtn.ariaLabel = "Clear diagnostics";
+    clearBtn.title = "Clear diagnostics";
+    clearBtn.dataset.voiceAliases = "clear diagnostics,empty diagnostics";
     clearBtn.addEventListener("click", () => {
       this.diagnostics = [];
       this.updateDiagnosticsList();
@@ -3008,6 +3024,9 @@ export class CoderPanel {
     closeBtn.type = "button";
     closeBtn.className = "coder-help-close";
     closeBtn.textContent = "Close";
+    closeBtn.ariaLabel = "Close diagnostics panel";
+    closeBtn.title = "Close diagnostics panel";
+    closeBtn.dataset.voiceAliases = "close diagnostics,close";
     closeBtn.addEventListener("click", () => this.hideDiagnosticsOverlay());
     actions.append(clearBtn, closeBtn);
     header.append(title, actions);
@@ -3094,6 +3113,9 @@ export class CoderPanel {
     closeBtn.type = "button";
     closeBtn.className = "coder-help-close";
     closeBtn.textContent = "Close";
+    closeBtn.ariaLabel = "Close file picker";
+    closeBtn.title = "Close file picker";
+    closeBtn.dataset.voiceAliases = "close files,close picker,close file picker";
     closeBtn.addEventListener("click", () => this.hideFileOverlay());
     header.append(title, closeBtn);
 
@@ -3110,6 +3132,9 @@ export class CoderPanel {
     createBtn.type = "button";
     createBtn.className = "coder-btn";
     createBtn.textContent = "Create new";
+    createBtn.ariaLabel = "Create new coder";
+    createBtn.title = "Create new coder";
+    createBtn.dataset.voiceAliases = "create new coder,new coder file";
     createBtn.addEventListener("click", () => {
       const name = input.value.trim();
       void this.createNewCoder(name);
@@ -3174,6 +3199,9 @@ export class CoderPanel {
           openBtn.type = "button";
           openBtn.className = "coder-btn";
           openBtn.textContent = "Open";
+          openBtn.ariaLabel = "Open coder file";
+          openBtn.title = "Open coder file";
+          openBtn.dataset.voiceAliases = "open file,open coder";
           openBtn.addEventListener("click", () => {
             void this.openCoderState(file.path);
           });
@@ -3337,14 +3365,17 @@ export class CoderPanel {
     msg.className = "coder-toast-message";
     const actions = document.createElement("div");
     actions.className = "coder-toast-actions";
-    const undo = document.createElement("button");
-    undo.type = "button";
-    undo.className = "coder-btn";
-    undo.textContent = "Undo";
-    undo.addEventListener("click", () => {
-      if (this.toastUndoHandler) {
-        this.toastUndoHandler();
-      }
+  const undo = document.createElement("button");
+  undo.type = "button";
+  undo.className = "coder-btn";
+  undo.textContent = "Undo";
+  undo.ariaLabel = "Undo last action";
+  undo.title = "Undo last action";
+  undo.dataset.voiceAliases = "undo,undo action";
+  undo.addEventListener("click", () => {
+    if (this.toastUndoHandler) {
+      this.toastUndoHandler();
+    }
       this.hideToast();
     });
     actions.append(undo);
@@ -3542,6 +3573,9 @@ export class CoderPanel {
       btn.type = "button";
       btn.className = "coder-settings-action";
       btn.textContent = labelText;
+      btn.ariaLabel = labelText;
+      btn.title = labelText;
+      btn.dataset.voiceAliases = labelText;
       btn.addEventListener("click", () => {
         onClick();
         this.settingsMenu?.remove();
@@ -3948,14 +3982,20 @@ export class CoderPanel {
     card.className = "coder-preview-card";
     const actions = document.createElement("div");
     actions.className = "coder-preview-actions";
-    const copy = document.createElement("button");
-    copy.className = "coder-btn";
-    copy.textContent = "Copy HTML";
-    copy.addEventListener("click", () => this.copyHtml());
-    const close = document.createElement("button");
-    close.className = "coder-btn";
-    close.textContent = "Close";
-    close.addEventListener("click", () => overlay.remove());
+  const copy = document.createElement("button");
+  copy.className = "coder-btn";
+  copy.textContent = "Copy HTML";
+  copy.ariaLabel = "Copy HTML";
+  copy.title = "Copy HTML";
+  copy.dataset.voiceAliases = "copy html,copy";
+  copy.addEventListener("click", () => this.copyHtml());
+  const close = document.createElement("button");
+  close.className = "coder-btn";
+  close.textContent = "Close";
+  close.ariaLabel = "Close preview";
+  close.title = "Close preview";
+  close.dataset.voiceAliases = "close preview,close";
+  close.addEventListener("click", () => overlay.remove());
     actions.append(copy, close);
     const body = document.createElement("div");
     body.className = "coder-preview-body";

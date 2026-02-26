@@ -57,16 +57,16 @@
 
   <path class="link" d="M208 184 L208 228"/>
   <text x="222" y="212" class="yesno">YES</text>
-  <path class="link" d="M128 184 C88 214, 88 430, 128 460"/>
-  <text x="90" y="214" class="yesno">NO</text>
+  <path class="link" d="M208 184 C168 214, 168 430, 128 460"/>
+  <text x="146" y="214" class="yesno">NO</text>
   <path class="link" d="M208 284 L208 328"/>
   <text x="222" y="312" class="yesno">YES</text>
-  <path class="link" d="M128 284 C88 314, 88 496, 128 526"/>
-  <text x="90" y="314" class="yesno">NO</text>
+  <path class="link" d="M208 284 C168 314, 168 496, 128 526"/>
+  <text x="146" y="314" class="yesno">NO</text>
   <path class="link" d="M208 384 L208 568"/>
   <text x="222" y="474" class="yesno">YES</text>
-  <path class="link" d="M128 384 C88 414, 88 560, 128 592"/>
-  <text x="90" y="414" class="yesno">NO</text>
+  <path class="link" d="M208 384 C168 414, 168 560, 128 592"/>
+  <text x="146" y="414" class="yesno">NO</text>
 
   <!-- C2 PANEL -->
   <rect x="416" y="80" width="368" height="650" rx="10" class="panel"/>

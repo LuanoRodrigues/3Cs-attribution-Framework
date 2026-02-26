@@ -174,6 +174,7 @@ export class SearchMetaPanel {
     this.tagInput.type = "text";
     this.tagInput.placeholder = "Add tag";
     this.tagInput.className = "retrieve-tag-input";
+    this.tagInput.dataset.voiceAliases = "tag input,add tag text,new tag";
     this.tagInput.disabled = true;
 
     this.tagAddBtn = document.createElement("button");

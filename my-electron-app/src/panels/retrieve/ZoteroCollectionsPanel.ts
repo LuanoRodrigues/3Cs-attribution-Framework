@@ -31,6 +31,7 @@ export class ZoteroCollectionsPanel {
     this.searchInput.type = "text";
     this.searchInput.className = "zotero-search-input";
     this.searchInput.placeholder = "Search collections by name or key";
+    this.searchInput.dataset.voiceAliases = "search collections,find collection,search collection,filter collections";
     this.searchInput.addEventListener("input", () => this.renderTree(retrieveZoteroContext.getState()));
     const zoteroLoaderRibbon = document.createElement("div");
     zoteroLoaderRibbon.className = "zotero-loader-ribbon";

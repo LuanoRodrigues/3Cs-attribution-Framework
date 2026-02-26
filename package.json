@@ -1,5 +1,9 @@
 {
+  "scripts": {
+    "browser-ui:start": "node scrapping/browser_ui_electron/run-browser-ui.js"
+  },
   "dependencies": {
+    "@openai/agents": "^0.5.1",
     "openai": "^6.16.0"
   }
 }

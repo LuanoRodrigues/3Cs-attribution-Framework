@@ -2,10 +2,10 @@
   "status": "completed",
   "item_key": "W63DA6Z6",
   "prompt_key": "code_pdf_page",
-  "total_sections": 4,
-  "completed_sections": 4,
+  "total_sections": 11,
+  "completed_sections": 11,
   "current_section_key": "",
   "done": true,
-  "store_only": false,
+  "store_only": true,
   "read": true
 }

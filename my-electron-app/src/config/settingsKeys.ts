@@ -42,6 +42,8 @@ export const LLM_KEYS = {
   openaiVoiceTranscribeModel: "APIs/openai_voice_transcribe_model",
   openaiVoiceTtsModel: "APIs/openai_voice_tts_model",
   openaiVoiceTtsVoice: "APIs/openai_voice_tts_voice",
+  openaiVoiceInputDeviceId: "APIs/openai_voice_input_device_id",
+  openaiVoiceDictationMode: "APIs/openai_voice_dictation_mode",
   geminiBaseUrl: "APIs/gemini_base_url",
   geminiKey: "APIs/gemini_api_key",
   deepSeekBaseUrl: "APIs/deepseek_base_url",

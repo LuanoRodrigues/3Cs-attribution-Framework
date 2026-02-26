@@ -59,16 +59,19 @@ export class SearchPanel {
     this.queryInput = document.createElement("input");
     this.queryInput.type = "text";
     this.queryInput.placeholder = "Search terms or DOI";
+    this.queryInput.dataset.voiceAliases = "search query,query,search terms,academic search text";
     this.queryInput.style.minWidth = "280px";
     this.queryInput.value = initial?.query ?? "";
 
     this.providerSelect = document.createElement("select");
     this.providerSelect.ariaLabel = "Provider";
+    this.providerSelect.dataset.voiceAliases = "provider,provider selector,search provider,database provider";
     this.providerSelect.style.minWidth = "160px";
     this.populateProviders(initial?.provider ?? defaults.provider);
 
     this.sortSelect = document.createElement("select");
     this.sortSelect.ariaLabel = "Sort";
+    this.sortSelect.dataset.voiceAliases = "sort,result sort,order by";
     SORT_OPTIONS.forEach((option) => {
       const opt = document.createElement("option");
       opt.value = option.value;
@@ -81,12 +84,14 @@ export class SearchPanel {
     this.yearFromInput.type = "number";
     this.yearFromInput.placeholder = "Year from";
     this.yearFromInput.style.width = "110px";
+    this.yearFromInput.dataset.voiceAliases = "year from,publication year from,from year";
     this.yearFromInput.value = initial?.year_from?.toString() ?? (defaults.year_from?.toString() ?? "");
 
     this.yearToInput = document.createElement("input");
     this.yearToInput.type = "number";
     this.yearToInput.placeholder = "Year to";
     this.yearToInput.style.width = "110px";
+    this.yearToInput.dataset.voiceAliases = "year to,publication year to,to year";
     this.yearToInput.value = initial?.year_to?.toString() ?? (defaults.year_to?.toString() ?? "");
 
     this.limitInput = document.createElement("input");
@@ -94,6 +99,7 @@ export class SearchPanel {
     this.limitInput.placeholder = "Limit";
     this.limitInput.style.width = "90px";
     this.limitInput.value = initial?.limit?.toString() ?? String(defaults.limit ?? 25);
+    this.limitInput.dataset.voiceAliases = "limit,results limit,result count";
 
     const searchBtn = document.createElement("button");
     searchBtn.className = "ribbon-button";
@@ -296,14 +302,31 @@ export class SearchPanel {
     if (reset) {
       this.resultsList.innerHTML = "";
     }
-    items.forEach((record) => {
-      this.resultsList.appendChild(this.createResultRow(record));
+    const start = this.resultsList.querySelectorAll(".retrieve-result-row").length;
+    items.forEach((record, index) => {
+      const rowNumber = start + index + 1;
+      this.resultsList.appendChild(this.createResultRow(record, rowNumber));
     });
   }
 
-  private createResultRow(record: RetrieveRecord): HTMLElement {
+  private createResultRow(record: RetrieveRecord, rowNumber: number): HTMLElement {
     const row = document.createElement("div");
     row.className = "retrieve-result-row";
+    row.setAttribute("role", "button");
+    row.tabIndex = 0;
+    row.ariaLabel = `Search result ${rowNumber}: ${record.title || "Untitled"}`;
+    row.dataset.voiceAliases = [
+      `result row ${rowNumber}`,
+      `row ${rowNumber}`,
+      `select row ${rowNumber}`,
+      `open row ${rowNumber}`,
+      `open ${record.title}`,
+      record.paperId ? `select ${record.paperId}` : "",
+      record.paperId || "",
+      "search result"
+    ]
+      .filter(Boolean)
+      .join(",");
     row.dataset.recordId = record.paperId;
 
     const header = document.createElement("div");
@@ -382,6 +405,12 @@ export class SearchPanel {
     }
 
     row.append(header, snippet, tagRow, footer);
+    row.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        this.selectRecord(record, row);
+      }
+    });
     row.addEventListener("click", () => this.selectRecord(record, row));
     if (this.selectedRecordId === record.paperId) {
       row.classList.add("active");

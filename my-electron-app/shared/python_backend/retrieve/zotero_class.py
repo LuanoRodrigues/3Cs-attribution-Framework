@@ -4,6 +4,7 @@ import itertools
 import string
 import tempfile
 import sys
+import re
 from pathlib import Path
 
 from html.parser import HTMLParser
@@ -12723,25 +12724,155 @@ class Zotero:
 
         batch_root = get_batch_root()
         prompt_slug = safe_name(prompt_key)
-        coll_slug = safe_name(collection_name)
-        batch_output_path = Path(batch_root) / prompt_slug / f"{coll_slug}_{prompt_slug}_output.jsonl"
+        intro_conclusion_prompt_key = "code_intro_conclusion_extract_core_claims"
+        intro_prompt_slug = safe_name(intro_conclusion_prompt_key)
 
-        # If there is an already-queued batch, try to process it first.
-        _process_batch_for(collection_name=collection_name, function=prompt_key)
+        def _collection_batch_candidates() -> list[str]:
+            candidates: list[str] = []
 
-        has_batch_output = batch_output_path.is_file() and batch_output_path.stat().st_size > 0
-        run_store_only = not has_batch_output
+            def _add(value: str) -> None:
+                token = str(value or "").strip()
+                if not token or token in candidates:
+                    return
+                candidates.append(token)
+
+            _add(collection_name)
+            _add(collection_key or "")
+            if collection_key and self._is_collection_key_like(str(collection_key)):
+                resolved = self._find_collection_by_key(str(collection_key))
+                if isinstance(resolved, dict):
+                    _add(str(((resolved.get("data") or {}).get("name") or collection_name or "")).strip())
+            if self._is_collection_key_like(str(collection_name)) and (not collection_key or str(collection_key).strip() != str(collection_name).strip()):
+                resolved = self._find_collection_by_key(str(collection_name))
+                if isinstance(resolved, dict):
+                    _add(str(((resolved.get("data") or {}).get("name") or collection_key or "")).strip())
+
+            expanded: list[str] = []
+            for token in candidates:
+                normalized = _safe_collection_name(token)
+                expanded.append(normalized)
+                expanded.append(token.replace(" ", "_"))
+                expanded.append(token.replace("_", " "))
+                expanded.append(token.replace("-", " "))
+            for token in expanded:
+                token_norm = str(token or "").strip()
+                if token_norm and token_norm not in candidates:
+                    candidates.append(token_norm)
+
+            # Keep deterministic order and make sure empty values are removed.
+            deduped: list[str] = []
+            for token in candidates:
+                token_norm = str(token or "").strip()
+                if token_norm and token_norm not in deduped:
+                    deduped.append(token_norm)
+            return deduped
+
+        batch_candidates = _collection_batch_candidates()
+
+        def _batch_output_path_for(function_name: str, collection_name_candidate: str) -> Path:
+            function_slug = safe_name(function_name)
+            collection_slug = safe_name(collection_name_candidate)
+            return Path(batch_root) / function_slug / f"{collection_slug}_{function_slug}_output.jsonl"
+
+        def _batch_output_ready_for_function(function_name: str, candidates: list[str]) -> tuple[bool, str, Path | None]:
+            for candidate in candidates:
+                candidate_path = _batch_output_path_for(function_name, candidate)
+                if candidate_path.is_file() and candidate_path.stat().st_size > 0:
+                    return True, candidate, candidate_path
+            return False, "", None
+
+        code_ready, code_output_collection, batch_output_path = _batch_output_ready_for_function(prompt_slug, batch_candidates)
+        intro_ready, intro_output_collection, intro_batch_output_path = _batch_output_ready_for_function(
+            intro_prompt_slug,
+            batch_candidates,
+        )
+        outputs_ready = code_ready and intro_ready
+        run_store_only = not outputs_ready
         run_read = True
 
-        print(f"[zotero_class.py][Verbatim_Evidence_Coding][debug] batch_output_exists={has_batch_output} path={batch_output_path}")
+        def _defaulted_queue_collection_label(resolved: str | None, fallback: str | None) -> str:
+            if resolved and str(resolved).strip():
+                return str(resolved).strip()
+            if fallback and str(fallback).strip():
+                return str(fallback).strip()
+            return str(collection_name or collection_key or "collection").strip()
 
-        results_by_item =self.open_coding(
+        print(
+            "[zotero_class.py][Verbatim_Evidence_Coding][debug] "
+            f"code_batch_output_exists={code_ready} intro_batch_output_exists={intro_ready} "
+            f"code_path={batch_output_path} intro_path={intro_batch_output_path}"
+        )
+
+        # If outputs are already ready, read directly.
+        # Otherwise enqueue both stages first, then run batch processing once for each stage.
+        if run_store_only:
+            effective_collection_label = _defaulted_queue_collection_label(
+                collection_name if not self._is_collection_key_like(str(collection_name)) else code_output_collection,
+                collection_name,
+            )
+            print(
+                "[zotero_class.py][Verbatim_Evidence_Coding][debug] "
+                f"state=queue_and_process_missing_outputs collection={effective_collection_label} "
+                f"store_only_items={item_key or 'all_items'}"
+            )
+            queue_result = self.open_coding(
+                collection_name=collection_name,
+                item_key=item_key,
+                research_question=research_questions,
+                store_only=True,
+                read=False,
+                cache=True,
+                prompt_key=prompt_key,
+                intro_conclusion_prompt_key=intro_conclusion_prompt_key,
+                context=context,
+                collection_key=collection_key,
+                coding_mode=mode_norm,
+                overarching_theme=theme_norm,
+                rq_scope=rq_scope,
+                target_codes=target_codes,
+                min_relevance=min_relevance,
+                allowed_evidence_types=allowed_evidence_types,
+            )
+            print(
+                "[zotero_class.py][Verbatim_Evidence_Coding][debug] "
+                f"queue_status={queue_result.get('status') if isinstance(queue_result, dict) else type(queue_result)}"
+            )
+            if not isinstance(queue_result, dict) or queue_result.get("status") != "enqueued":
+                return {
+                    "status": "error",
+                    "message": "Failed to queue open-coding items.",
+                    "collection_name": effective_collection_label,
+                    "queue_result": queue_result,
+                }
+
+            if queue_result.get("collection"):
+                effective_collection_label = str(queue_result.get("collection") or effective_collection_label)
+            batch_status = self.process_open_coding_batches(
+                collection_name=effective_collection_label,
+                prompt_key=prompt_key,
+                intro_conclusion_prompt_key=intro_conclusion_prompt_key,
+            )
+            print(
+                "[zotero_class.py][Verbatim_Evidence_Coding][debug] "
+                f"batch_status={json.dumps(batch_status, ensure_ascii=False)}"
+            )
+            if not (batch_status.get("code_batch_ok") and batch_status.get("intro_harvest_batch_ok")):
+                return {
+                    "status": "error",
+                    "message": "Open-coding batch processing failed.",
+                    "collection_name": effective_collection_label,
+                    "batch_status": batch_status,
+                }
+
+        results_by_item = self.open_coding(
             collection_name=collection_name,
             item_key=item_key,
-            research_question=research_questions,store_only=run_store_only,
+            research_question=research_questions,
+            store_only=False,
             read=run_read,
             cache= True,
             prompt_key=prompt_key,
+            intro_conclusion_prompt_key=intro_conclusion_prompt_key,
             context=context,
             collection_key=collection_key,
             coding_mode=mode_norm,
@@ -12752,16 +12883,6 @@ class Zotero:
             allowed_evidence_types=allowed_evidence_types,
 
         )
-        if isinstance(results_by_item, dict) and not results_by_item and has_batch_output:
-            recovered = _recover_results_from_batch_output_jsonl(batch_output_path, collection_name)
-            if recovered:
-                results_by_item = recovered
-                recovered_from_batch_output = True
-                recovered_items_count = len(recovered)
-                print(
-                    f"[zotero_class.py][Verbatim_Evidence_Coding][debug] "
-                    f"recovered_from_batch_output recovered_items={len(recovered)}"
-                )
         with open(out_dir / "extract.json", "w", encoding="utf-8") as f:
             f.write(json.dumps(results_by_item, indent=2, ensure_ascii=False))
         print(results_by_item)
@@ -12771,9 +12892,16 @@ class Zotero:
                 "message": "open_coding returned non-dict result",
                 "result": results_by_item,
             }
-        if results_by_item.get("status") in {"queued", "error"}:
+        if results_by_item.get("status") in {"queued", "enqueued", "error"}:
             return results_by_item
         if not results_by_item:
+            if code_ready:
+                return {
+                    "status": "error",
+                    "message": "open_coding returned empty results after batch outputs existed; refusing synthetic recovery to preserve metadata integrity.",
+                    "extract_path": str(out_dir / "extract.json"),
+                    "reason": "empty_after_batch_output",
+                }
             return {
                 "status": "error",
                 "message": "extract.json is empty; stopping before theme/round processing.",
@@ -12804,7 +12932,60 @@ class Zotero:
                 "item_count": len(results_by_item),
             }
 
-        # Enrich item metadata and each evidence payload with pdf_path.
+        raw_item_lookup: dict[str, dict] = {}
+        for entry in (raw_items_all or []):
+            if not isinstance(entry, dict):
+                continue
+            data_obj = entry.get("data") if isinstance(entry.get("data"), dict) else {}
+            key_obj = str(entry.get("key") or data_obj.get("key") or "").strip()
+            if key_obj:
+                raw_item_lookup[key_obj] = data_obj if isinstance(data_obj, dict) else {}
+
+        def _safe_year_local(data_obj: dict) -> str:
+            raw = str(data_obj.get("date") or data_obj.get("year") or "").strip()
+            m = re.search(r"\b(19|20)\d{2}\b", raw)
+            return m.group(0) if m else (raw[:4] if len(raw) >= 4 else "-")
+
+        def _first_author_last_local(data_obj: dict) -> str:
+            creators = data_obj.get("creators") if isinstance(data_obj.get("creators"), list) else []
+            if not creators:
+                return "Anon"
+            first = creators[0] if isinstance(creators[0], dict) else {}
+            last = str(first.get("lastName") or first.get("name") or "").strip()
+            return last or "Anon"
+
+        def _hydrate_process_pdf_metadata_local(meta_obj: dict) -> None:
+            if not isinstance(meta_obj, dict):
+                return
+            existing = meta_obj.get("process_pdf_metadata")
+            if isinstance(existing, dict) and existing:
+                return
+            pdf_path_local = str(meta_obj.get("pdf_path") or "").strip()
+            if not pdf_path_local:
+                return
+            try:
+                parsed = process_pdf(
+                    pdf_path=pdf_path_local,
+                    cache=True,
+                    cache_full=True,
+                    core_sections=True,
+                    mistral_model="mistral-ocr-latest",
+                    ocr_retry=5,
+                ) or {}
+            except Exception:
+                parsed = {}
+            parsed_meta = parsed.get("metadata") if isinstance(parsed, dict) else {}
+            if isinstance(parsed_meta, dict) and parsed_meta:
+                meta_obj["process_pdf_metadata"] = parsed_meta
+                meta_obj["process_pdf_metadata_source"] = pdf_path_local
+                if not meta_obj.get("process_pdf_affiliations"):
+                    meta_obj["process_pdf_affiliations"] = _coerce_str_list(parsed_meta.get("affiliations"))
+                if not meta_obj.get("process_pdf_emails"):
+                    meta_obj["process_pdf_emails"] = _coerce_str_list(parsed_meta.get("emails"))
+                if not meta_obj.get("process_pdf_identifiers"):
+                    meta_obj["process_pdf_identifiers"] = _coerce_str_list(parsed_meta.get("identifiers"))
+
+        # Enrich item metadata and each evidence payload with canonical fields.
         for item_key, bundle in (results_by_item or {}).items():
             if not isinstance(bundle, dict):
                 continue
@@ -12813,6 +12994,31 @@ class Zotero:
                 meta = {}
                 bundle["metadata"] = meta
             item_key_str = str(meta.get("item_key") or item_key or "").strip()
+            if item_key_str:
+                meta["item_key"] = item_key_str
+            zot_data = raw_item_lookup.get(item_key_str) or {}
+            if zot_data:
+                meta.setdefault("title", zot_data.get("title"))
+                if not isinstance(meta.get("authors"), list) or not meta.get("authors"):
+                    meta["authors"] = zot_data.get("creators", [])
+                meta.setdefault("year", _safe_year_local(zot_data))
+                meta.setdefault("first_author_last", _first_author_last_local(zot_data))
+                zot_meta = meta.get("zotero_metadata")
+                if not isinstance(zot_meta, dict) or not zot_meta:
+                    meta["zotero_metadata"] = {
+                        "item_type": zot_data.get("itemType"),
+                        "title": zot_data.get("title"),
+                        "journal": zot_data.get("publicationTitle"),
+                        "date": zot_data.get("date"),
+                        "doi": zot_data.get("DOI"),
+                        "url": zot_data.get("url"),
+                        "abstract": zot_data.get("abstractNote"),
+                        "creators": zot_data.get("creators", []),
+                        "tags": [t.get("tag") for t in (zot_data.get("tags") or []) if isinstance(t, dict) and t.get("tag")],
+                    }
+            meta.setdefault("collection", collection_name)
+            meta.setdefault("prompt_key", prompt_key)
+            meta.setdefault("intro_conclusion_prompt_key", intro_conclusion_prompt_key)
             pdf_path = str(meta.get("pdf_path") or "").strip()
             if not pdf_path and item_key_str:
                 pdf_path = str(pdf_path_lookup.get(item_key_str) or "").strip()
@@ -12826,10 +13032,122 @@ class Zotero:
                 for ev in (bundle.get("evidence_list") or []):
                     if isinstance(ev, dict):
                         ev.setdefault("pdf_path", pdf_path)
+            _hydrate_process_pdf_metadata_local(meta)
+            if not isinstance(bundle.get("section_open_coding"), list):
+                bundle["section_open_coding"] = []
+            if not isinstance(bundle.get("evidence_harvesting"), list):
+                bundle["evidence_harvesting"] = []
+            bundle["code_pdf_page"] = bundle.get("section_open_coding") or []
+            bundle["code_intro_conclusion_extract_core_claims"] = bundle.get("evidence_harvesting") or []
 
         # Refresh extract.json with enriched payloads (including pdf_path fields).
         with open(out_dir / "extract.json", "w", encoding="utf-8") as f:
             f.write(json.dumps(results_by_item, indent=2, ensure_ascii=False))
+
+        # Persist canonical coded payloads in database folder:
+        # 1) flat per-item files in database/coded_items/
+        # 2) one aggregated file per collection in database/collections/<collection_slug>/
+        # 3) manifest of collection runs in database/manifest_collections_runs.json
+        db_root = Path.cwd() / "database"
+        inferred_rq_parent = "none"
+        if isinstance(results_by_item, dict) and results_by_item:
+            first_bundle = next(iter(results_by_item.values()))
+            if isinstance(first_bundle, dict):
+                first_meta = first_bundle.get("metadata") if isinstance(first_bundle.get("metadata"), dict) else {}
+                rq_token = str(first_meta.get("rq_sig") or "").strip().lower()
+                if rq_token and rq_token != "none":
+                    inferred_rq_parent = rq_token
+
+        coded_items_dir = db_root / "coded_items" / inferred_rq_parent
+        collections_root = db_root / "collections" / inferred_rq_parent
+        collection_slug = _safe_collection_name(collection_name)
+        collection_dir = collections_root / collection_slug
+        coded_items_dir.mkdir(parents=True, exist_ok=True)
+        collection_dir.mkdir(parents=True, exist_ok=True)
+        persisted_item_files: list[str] = []
+        for item_key, bundle in (results_by_item or {}).items():
+            if not isinstance(bundle, dict):
+                continue
+            item_key_str = str(item_key or "").strip() or str((bundle.get("metadata") or {}).get("item_key") or "").strip()
+            if not item_key_str:
+                continue
+            results_open_code_payloads = (
+                bundle.get("results_open_code")
+                if isinstance(bundle.get("results_open_code"), list) else []
+            )
+            if not results_open_code_payloads:
+                for sec in (bundle.get("section_open_coding") or []):
+                    if not isinstance(sec, dict):
+                        continue
+                    results_open_code_payloads.append({
+                        "metadata": {
+                            "section_key": str(sec.get("section_key") or ""),
+                            "section_text": "",
+                        },
+                        "openai_payload": None,
+                    })
+
+            results_intro_payloads = (
+                bundle.get("results_intro_conclusion_harvest")
+                if isinstance(bundle.get("results_intro_conclusion_harvest"), list) else []
+            )
+            if not results_intro_payloads and isinstance(bundle.get("evidence_harvesting"), list):
+                results_intro_payloads.append({
+                    "metadata": {
+                        "section_key": "__intro_conclusion_harvest__",
+                        "section_text": "",
+                    },
+                    "openai_payload": None,
+                })
+
+            item_payload = {
+                "item_key": item_key_str,
+                "metadata": bundle.get("metadata") if isinstance(bundle.get("metadata"), dict) else {},
+                "results_open_code": results_open_code_payloads,
+                "results_intro_conclusion_harvest": results_intro_payloads,
+                "section_open_coding": bundle.get("section_open_coding") if isinstance(bundle.get("section_open_coding"), list) else [],
+                "code_intro_conclusion_extract_core_claims": bundle.get("code_intro_conclusion_extract_core_claims")
+                if isinstance(bundle.get("code_intro_conclusion_extract_core_claims"), list) else [],
+                "code_pdf_page": bundle.get("code_pdf_page") if isinstance(bundle.get("code_pdf_page"), list) else [],
+                "evidence_harvesting": bundle.get("evidence_harvesting") if isinstance(bundle.get("evidence_harvesting"), list) else [],
+                "evidence_list": bundle.get("evidence_list") if isinstance(bundle.get("evidence_list"), list) else [],
+            }
+            out_fp = coded_items_dir / f"{item_key_str}_coded.json"
+            out_fp.write_text(json.dumps(item_payload, ensure_ascii=False, indent=2), encoding="utf-8")
+            persisted_item_files.append(str(out_fp))
+
+        collection_file = collection_dir / f"{collection_slug}.json"
+        collection_payload = {
+            "collection_name": collection_name,
+            "collection_slug": collection_slug,
+            "generated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+            "item_count": len(results_by_item or {}),
+            "items": results_by_item or {},
+        }
+        collection_file.write_text(json.dumps(collection_payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+        db_runs_manifest_path = db_root / "manifest_collections_runs.json"
+        try:
+            manifest_obj = json.loads(db_runs_manifest_path.read_text(encoding="utf-8")) if db_runs_manifest_path.is_file() else {}
+        except Exception:
+            manifest_obj = {}
+        if not isinstance(manifest_obj, dict):
+            manifest_obj = {}
+        runs = manifest_obj.get("runs")
+        if not isinstance(runs, list):
+            runs = []
+        runs.append({
+            "collection_name": collection_name,
+            "collection_slug": collection_slug,
+            "rq_parent": inferred_rq_parent,
+            "timestamp": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+            "item_count": len(results_by_item or {}),
+            "collection_file": str(collection_file),
+            "item_files": persisted_item_files,
+        })
+        manifest_obj["runs"] = runs
+        manifest_obj["last_run"] = runs[-1] if runs else {}
+        db_runs_manifest_path.write_text(json.dumps(manifest_obj, ensure_ascii=False, indent=2), encoding="utf-8")
 
         from typing import Any, Dict, List, Optional,Tuple, Set
         from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -13083,6 +13401,12 @@ class Zotero:
             "theme_result": final,
             "recovered_from_batch_output": recovered_from_batch_output,
             "recovered_items_count": recovered_items_count,
+            "rq_parent": inferred_rq_parent,
+            "coded_items_dir": str(coded_items_dir),
+            "collections_dir": str(collections_root),
+            "collection_file": str(collection_file),
+            "collection_runs_manifest": str(db_runs_manifest_path),
+            "coded_item_files": persisted_item_files,
         }
 
 
@@ -13461,6 +13785,7 @@ class Zotero:
 
         collection_lookup = requested_collection_name or requested_collection_key
         collection_label = requested_collection_name or "collection"
+        batch_collection_name = None
         lookup_key = requested_collection_key if requested_collection_key else (
             requested_collection_name if self._is_collection_key_like(requested_collection_name) else ""
         )
@@ -13477,6 +13802,7 @@ class Zotero:
                     collection_label = resolved_name
             elif requested_collection_name:
                 collection_lookup = requested_collection_name
+        batch_collection_name = resolved_collection_key or collection_lookup or collection_label
 
         # ---------------------------
         # utils
@@ -13488,6 +13814,14 @@ class Zotero:
             s = re.sub(r'[^\w\-]+', '_', s.strip())
             s = re.sub(r'_{2,}', '_', s).strip('_')
             return (s[:max_len] or "untitled")
+
+        def _slug_key(s: str, max_len: int = 64) -> str:
+            raw = str(s or "").strip()
+            if not raw:
+                return ""
+            out = re.sub(r'[^\w\-]+', '_', raw)
+            out = re.sub(r'_{2,}', '_', out).strip('_')
+            return (out[:max_len] or "")
 
         def _rq_to_lines(rq: str | list[str]) -> tuple[list[str], str]:
             # normalize to lines "i: question"
@@ -13570,15 +13904,15 @@ class Zotero:
 
         def _collection_index_keys() -> list[str]:
             candidates = [
-                resolved_collection_key,
                 collection_lookup,
                 requested_collection_name,
                 collection_label,
+                resolved_collection_key,
                 requested_collection_key,
             ]
             keys: list[str] = []
             for candidate in candidates:
-                key = _slug(candidate)
+                key = _slug_key(candidate)
                 if key and key not in keys:
                     keys.append(key)
             if not keys:
@@ -13773,6 +14107,42 @@ class Zotero:
                     f"err={type(exc).__name__}"
                 )
 
+        def _batch_stale_paths_for(function_name: str, collection_name_value: str) -> list[Path]:
+            batch_root = get_batch_root()
+            function_slug = safe_name(function_name)
+            collection_slug = safe_name(collection_name_value)
+            return [
+                Path(batch_root) / function_slug / f"{collection_slug}_{function_slug}_input.jsonl",
+                Path(batch_root) / function_slug / f"{collection_slug}_{function_slug}_output.jsonl",
+                Path(batch_root) / function_slug / f"{collection_slug}_{function_slug}_error.jsonl",
+                Path(batch_root) / function_slug / f"{collection_slug}_{function_slug}_batch_metadata.json",
+            ]
+
+        def _batch_candidate_collection_names() -> list[str]:
+            candidates: list[str] = []
+
+            def _add_candidate(candidate: str) -> None:
+                token = str(candidate or "").strip()
+                if not token or token in candidates:
+                    return
+                candidates.append(token)
+
+            for token in [
+                collection_lookup,
+                requested_collection_name,
+                collection_label,
+                collection_key_for_index,
+                batch_collection_name,
+                requested_collection_key,
+                resolved_collection_key,
+                _safe_collection_name(collection_label),
+                _safe_collection_name(requested_collection_name),
+                _safe_collection_name(collection_lookup),
+                _safe_collection_name(batch_collection_name or ""),
+            ]:
+                _add_candidate(token)
+            return candidates
+
         def _find_cached_item_from_index(item_key_lookup: str) -> dict[str, Any] | None:
             if not item_key_lookup:
                 return None
@@ -13884,10 +14254,43 @@ class Zotero:
                             f"type={type(persisted).__name__}; recomputing."
                         )
             except Exception:
-                # fall through to recompute if corrupted
-                pass
+                    # fall through to recompute if corrupted
+                    pass
 
         results_by_item: dict[str, dict] = {}
+
+        # In store-only mode, clear stale batch artifacts first so re-runs do not
+        # inherit old requests and collide on custom_id.
+        def _clear_stale_batch_artifacts() -> int:
+            if not store_only:
+                return 0
+            _clear_report: dict[str, int] = {}
+            batch_functions = [
+                prompt_key,
+                intro_conclusion_prompt_key,
+            ]
+            collection_candidates = _batch_candidate_collection_names()
+            for function_name in batch_functions:
+                function_name = str(function_name or "").strip() or prompt_key
+                for collection_name_candidate in collection_candidates:
+                    for artifact in _batch_stale_paths_for(function_name, collection_name_candidate):
+                        if not artifact.is_file():
+                            continue
+                        try:
+                            artifact.unlink()
+                            _clear_report[str(artifact)] = 1
+                        except Exception as e:
+                            print(
+                                f"[zotero_class.py][open_coding][debug] batch_artifact_cleanup_failed "
+                                f"file={artifact} err={type(e).__name__}"
+                            )
+            deleted = len(_clear_report)
+            if deleted:
+                print(
+                    f"[zotero_class.py][open_coding][debug] cleared_stale_batch_artifacts "
+                    f"collection={collection_label} candidates={collection_candidates} deleted={deleted}"
+                )
+            return deleted
 
         # ---------------------------
         # resolve items
@@ -13898,6 +14301,7 @@ class Zotero:
             cache=cache,
         )
         resolved_parent_key = str(requested_collection_key or "").strip()
+        alias_key = resolved_parent_key
         if not items and requested_collection_name and not requested_collection_key:
             def _norm_coll_name(value: str) -> str:
                 return re.sub(r"[^a-z0-9]+", "", str(value or "").strip().lower())
@@ -13956,9 +14360,9 @@ class Zotero:
                     collection_key=alias_key,
                     cache=cache,
                 )
-                if items:
-                    collection_label = alias_name
-                resolved_parent_key = alias_key
+            if items:
+                collection_label = alias_name
+            resolved_parent_key = alias_key
 
         if not items and resolved_parent_key:
             include_markers = ("include", "included", "eligible", "keep")
@@ -14005,6 +14409,11 @@ class Zotero:
             if not items:
                 print(f"[open_coding] item_key={requested_item_key} not found in collection='{collection_label}'.")
 
+        # In store-only mode, clear stale batch artifacts once the collection scope
+        # is resolved so stale queue/input from previous runs cannot collide.
+        if store_only:
+            _clear_stale_batch_artifacts()
+
         # items = [self.zot.item("7CJPMXT8")]  # keep your current single-item testing
         if not items:
             print(f"[open_coding] No items found under collection='{collection_label}'.")
@@ -14032,6 +14441,10 @@ class Zotero:
         # iterate items
         # ---------------------------
         total_items = len(items)
+        print(
+            f"[zotero_class.py][open_coding][debug] "
+            f"collection_label={collection_label} batch_collection_name={batch_collection_name} total_items={total_items}"
+        )
         completed_item_keys: list[str] = []
         _write_progress({
             "status": "running",
@@ -14047,6 +14460,57 @@ class Zotero:
         })
         print(f"[zotero_class.py][open_coding][debug] start collection={collection_label} total_items={total_items} store_only={bool(store_only)} read={bool(read)}")
 
+        # Optional preflight: ensure all selected items can be resolved before queueing.
+        # This prevents partial staging when store_only=True.
+        if store_only:
+            precheck_failed = []
+            for item in items:
+                item_key_for_check = item.get("key")
+                if not item_key_for_check:
+                    continue
+                try:
+                    # validate-only avoids queueing, but still verifies section/material availability.
+                    self.code_single_item(
+                        item=item,
+                        research_question=research_questions_formatted,
+                        core_sections=core_sections,
+                        prompt_key=prompt_key,
+                        intro_conclusion_prompt_key=intro_conclusion_prompt_key,
+                        collection_cache_scope=collection_key_for_index,
+                        read=False,
+                        store_only=False,
+                        cache=cache,
+                        collection_name=str(batch_collection_name or collection_label),
+                        context=context,
+                        coding_mode=mode_norm,
+                        overarching_theme=theme_norm,
+                        rq_scope=list(rq_scope_set),
+                        target_codes=target_code_tokens,
+                        min_relevance=min_rel,
+                        allowed_evidence_types=sorted(list(allowed_types_set)),
+                        validate_only=True,
+                    )
+                except Exception as exc:
+                    precheck_failed.append((item_key_for_check, str(exc)))
+            if precheck_failed:
+                _write_progress({
+                    "status": "error",
+                    "stage": "preflight",
+                    "collection": collection_label,
+                    "total_items": total_items,
+                    "processed_items": 0,
+                    "completed_item_keys": [],
+                    "store_only": True,
+                    "read": False,
+                    "done": False,
+                    "errors": [
+                        {"item_key": ik, "error": err}
+                        for ik, err in precheck_failed
+                    ],
+                })
+                errors = "; ".join([f"{ik}: {err}" for ik, err in precheck_failed])
+                raise RuntimeError(f"[open_coding] preflight validation failed for {len(precheck_failed)} item(s): {errors}")
+
         for item in items:
             item_key = item.get("key")
             if not item_key:
@@ -14054,25 +14518,42 @@ class Zotero:
             print(f"[zotero_class.py][open_coding][debug] item_start key={item_key}")
 
             # Let code_single_item handle per-item sectioning / model calls (and its own per-item cache)
-            per_item_section_results = self.code_single_item(
-                item=item,
-                research_question=research_questions_formatted,
-                core_sections=core_sections,
-                prompt_key=prompt_key,
-                intro_conclusion_prompt_key=intro_conclusion_prompt_key,
-                collection_cache_scope=collection_key_for_index,
-                read=read,
-                store_only=store_only,
-                cache=cache,
-                collection_name=collection_label,
-                context=context,
-                coding_mode=mode_norm,
-                overarching_theme=theme_norm,
-                rq_scope=list(rq_scope_set),
-                target_codes=target_code_tokens,
-                min_relevance=min_rel,
-                allowed_evidence_types=sorted(list(allowed_types_set)),
-            )
+            try:
+                per_item_section_results = self.code_single_item(
+                    item=item,
+                    research_question=research_questions_formatted,
+                    core_sections=core_sections,
+                    prompt_key=prompt_key,
+                    intro_conclusion_prompt_key=intro_conclusion_prompt_key,
+                    collection_cache_scope=collection_key_for_index,
+                    read=read,
+                    store_only=store_only,
+                    cache=cache,
+                    collection_name=str(batch_collection_name or collection_label),
+                    context=context,
+                    coding_mode=mode_norm,
+                    overarching_theme=theme_norm,
+                    rq_scope=list(rq_scope_set),
+                    target_codes=target_code_tokens,
+                    min_relevance=min_rel,
+                    allowed_evidence_types=sorted(list(allowed_types_set)),
+                )
+            except Exception as exc:
+                _write_progress({
+                    "status": "error",
+                    "stage": "iterate_items",
+                    "collection": collection_label,
+                    "total_items": total_items,
+                    "processed_items": len(completed_item_keys),
+                    "current_item_key": str(item_key),
+                    "completed_item_keys": completed_item_keys,
+                    "store_only": bool(store_only),
+                    "read": bool(read),
+                    "done": False,
+                    "error": f"{type(exc).__name__}: {exc}",
+                })
+                print(f"[zotero_class.py][open_coding][debug] item_error key={item_key} err={type(exc).__name__}: {exc}")
+                raise
 
             # When store_only, do not aggregate (no responses yet)
             if store_only:
@@ -14096,6 +14577,8 @@ class Zotero:
             evidence_accum: list = []
             section_open_coding: list[dict] = []
             evidence_harvesting: list[dict] = []
+            results_open_code: list[dict] = []
+            results_intro_conclusion_harvest: list[dict] = []
             for entry in (per_item_section_results or []):
                 # entry shape: {"item_key","section_key","response": <dict|tuple|...>}
                 ev = _extract_evidence(entry)  # handles nested/tuple/dict
@@ -14111,8 +14594,22 @@ class Zotero:
                             "section_key": section_key_local,
                             "evidence": ev_local,
                         })
+                        results_open_code.append({
+                            "metadata": {
+                                "section_key": section_key_local,
+                                "section_text": str(entry.get("section_text") or "").strip(),
+                            },
+                            "openai_payload": entry.get("raw_openai_payload"),
+                        })
                     elif step_name == "evidence_harvesting":
                         evidence_harvesting.extend(ev_local)
+                        results_intro_conclusion_harvest.append({
+                            "metadata": {
+                                "section_key": section_key_local or "__intro_conclusion_harvest__",
+                                "section_text": str(entry.get("section_text") or "").strip(),
+                            },
+                            "openai_payload": entry.get("raw_openai_payload"),
+                        })
             evidence_accum = _targeted_filter(evidence_accum)
 
             # metadata for the item
@@ -14200,6 +14697,8 @@ class Zotero:
 
             results_by_item[item_key] = {
                 "metadata": meta,
+                "results_open_code": results_open_code,
+                "results_intro_conclusion_harvest": results_intro_conclusion_harvest,
                 "section_open_coding": section_open_coding,
                 "evidence_harvesting": evidence_harvesting,
                 "code_pdf_page": section_open_coding,
@@ -14240,29 +14739,21 @@ class Zotero:
         print(f"[zotero_class.py][open_coding][debug] finished_items processed={len(completed_item_keys)}/{total_items}")
 
         if store_only:
-            # Use the same human-readable collection label used when enqueueing
-            # call_models(...) to keep batch file naming consistent.
-            batch_ok = _process_batch_for(collection_name=collection_label, function=prompt_key)
-            if batch_ok and read:
-                return self.open_coding(
-                    item_key=requested_item_key,
-                    research_question=research_question,
-                    collection_name=collection_label,
-                    store_only=False,
-                    read=True,
-                    cache=cache,
-                    core_sections=core_sections,
-                    collection_key=collection_key,
-                    prompt_key=prompt_key,
-                    intro_conclusion_prompt_key=intro_conclusion_prompt_key,
-                    coding_mode=mode_norm,
-                    overarching_theme=theme_norm,
-                    rq_scope=sorted(list(rq_scope_set)),
-                    target_codes=target_code_tokens,
-                    min_relevance=min_rel,
-                    allowed_evidence_types=sorted(list(allowed_types_set)),
-                )
-            return {}
+            # Keep queueing and metadata persistence explicit. Process batches explicitly
+            # after this call with _process_batch_for(...) once all item-level queues are ready.
+            return {
+                "status": "enqueued",
+                "collection": collection_label,
+                "collection_key": resolved_collection_key or batch_collection_name,
+                "batch_collection_name": batch_collection_name,
+                "requested_item_key": requested_item_key or None,
+            # NOTE: requested_item_key is an alias in open_coding; using local item_key keeps compatibility
+                "total_items": total_items,
+                "processed_items": len(completed_item_keys),
+                "prompt_key": prompt_key,
+                "intro_conclusion_prompt_key": intro_conclusion_prompt_key,
+                "rq_sig": rq_sig,
+            }
 
         # ---------------------------
         # persist run-level JSON and return
@@ -14275,6 +14766,68 @@ class Zotero:
             print(f"[open_coding] WARN: could not write run file '{run_file}': {e}")
 
         return results_by_item
+
+    def process_open_coding_batches(
+            self,
+            collection_name: str,
+            prompt_key: str = "code_pdf_page",
+            intro_conclusion_prompt_key: str = "code_intro_conclusion_extract_core_claims",
+            poll_interval: int = 30,
+            completion_window: str = "24h",
+    ) -> dict[str, bool]:
+        """
+        Process queued open-coding batches for a single collection.
+        Use after `open_coding_two_stage(..., store_only=True)` has finished enqueueing.
+        """
+        from zotero_module.llm_adapter import _process_batch_for
+
+        batch_root = get_batch_root()
+
+        def _has_input_for(function_name: str, collection_name_value: str) -> bool:
+            fn_slug = safe_name(function_name)
+            collection_slug = safe_name(collection_name_value)
+            in_path = Path(batch_root) / fn_slug / f"{collection_slug}_{fn_slug}_input.jsonl"
+            if not in_path.is_file() or in_path.stat().st_size <= 0:
+                return False
+            try:
+                with in_path.open("r", encoding="utf-8", errors="ignore") as fh:
+                    for line in fh:
+                        if str(line or "").strip():
+                            return True
+            except Exception:
+                return False
+            return False
+
+        def _process_stage(function_name: str) -> bool:
+            output_slug = safe_name(function_name)
+            output_path = Path(batch_root) / output_slug / f"{safe_name(collection_name)}_{output_slug}_output.jsonl"
+            if output_path.is_file() and output_path.stat().st_size > 0:
+                return True
+            if not _has_input_for(function_name, collection_name):
+                return True
+            return bool(_process_batch_for(
+                collection_name=collection_name,
+                function=function_name,
+                poll_interval=poll_interval,
+                completion_window=completion_window,
+            ))
+
+        print(
+            "[zotero_class.py][process_open_coding_batches][debug] "
+            f"collection={collection_name} prompt_key={prompt_key} "
+            f"intro_conclusion_prompt_key={intro_conclusion_prompt_key} "
+            f"poll_interval={poll_interval} completion_window={completion_window}"
+        )
+        code_batch_ok = _process_stage(prompt_key)
+        intro_harvest_batch_ok = _process_stage(intro_conclusion_prompt_key)
+
+        return {
+            "collection": collection_name,
+            "prompt_key": prompt_key,
+            "intro_conclusion_prompt_key": intro_conclusion_prompt_key,
+            "code_batch_ok": code_batch_ok,
+            "intro_harvest_batch_ok": intro_harvest_batch_ok,
+        }
 
     def open_coding_two_stage(
             self,
@@ -14301,6 +14854,9 @@ class Zotero:
         1) Per-section coding with `prompt_key` (default: code_pdf_page)
         2) Intro/conclusion harvesting with `intro_conclusion_prompt_key`
            (default: code_intro_conclusion_extract_core_claims).
+
+        Queueing mode (`store_only=True`) enqueues both stage tasks and returns an enqueue report.
+        Use `process_open_coding_batches(...)` after enqueueing to run batches in order.
         """
         return self.open_coding(
             collection_name=collection_name,
@@ -14326,19 +14882,21 @@ class Zotero:
                         item: dict,
                         read: bool,
                         store_only: bool,
-                         research_question: str | list[str],
-                         collection_name: str,
-                         overarching_theme: str = "",
-                         cache: bool = False,
-                         core_sections: bool = True,
-                         prompt_key: str = "code_pdf_page",
-                         intro_conclusion_prompt_key: str | None = None,
-                         context: str = "",
-                         coding_mode: str = "open",
-                         rq_scope: list[int] | None = None,
-                         target_codes: list[str] | None = None,
-                         min_relevance: int = 3,
-                         allowed_evidence_types: list[str] | None = None) -> list[dict]:
+                        research_question: str | list[str],
+                        collection_name: str,
+                        overarching_theme: str = "",
+                        cache: bool = False,
+                        core_sections: bool = True,
+                        prompt_key: str = "code_pdf_page",
+                        intro_conclusion_prompt_key: str | None = None,
+                        context: str = "",
+                        coding_mode: str = "open",
+                        rq_scope: list[int] | None = None,
+                        target_codes: list[str] | None = None,
+                        min_relevance: int = 3,
+                        allowed_evidence_types: list[str] | None = None,
+                        collection_cache_scope: str = "",
+                        validate_only: bool = False) -> list[dict]:
         """
         Codes a single Zotero `item` against research_question(s) using prompt_key='code_pdf_page'.
         Uses local functions directly: process_pdf, call_models.
@@ -14347,7 +14905,9 @@ class Zotero:
           - After successful read=True → persist results to cache.
 
         Returns: list of {"item_key","section_key","response"} in read-mode,
-                 [] for enqueue-only or on failure.
+                 [] for enqueue-only.
+        Raises:
+          ValueError if required source material cannot be materialized (missing PDF or empty sections).
         """
         from pathlib import Path
         import hashlib, json, re, time
@@ -14382,10 +14942,14 @@ class Zotero:
             return results
 
         rq_sig = hashlib.sha256(research_questions_formatted.encode("utf-8")).hexdigest()[:10]
+        rq_parent = rq_sig if str(rq_sig).strip() else "none"
+        if not str(research_questions_formatted or "").strip():
+            rq_parent = "none"
         scope_slug = re.sub(r'[^\w\-]+', '_', str(collection_cache_scope or "collection").strip())
         scope_slug = re.sub(r'_{2,}', '_', scope_slug).strip('_') or "collection"
         cache_file = (base_log_dir / "open_coding_cache" / f"{item_key}_{scope_slug}_{prompt_key}_{intro_prompt_key}_{rq_sig}.json")
         legacy_cache_file = (base_log_dir / "open_coding_cache" / f"{item_key}_{prompt_key}_{intro_prompt_key}_{rq_sig}.json")
+        db_item_file = Path.cwd() / "database" / "coded_items" / rq_parent / f"{item_key}_coded.json"
         cache_file.parent.mkdir(parents=True, exist_ok=True)
         section_progress_dir = base_log_dir / "code_single_item_progress"
         section_progress_dir.mkdir(parents=True, exist_ok=True)
@@ -14415,26 +14979,84 @@ class Zotero:
             except Exception:
                 pass  # recompute
 
-        # --- resolve PDF ---
+        # Database-level short-circuit: if item was already coded for this RQ hash,
+        # return normalized staged responses and do not call the model again.
+        if db_item_file.is_file():
+            try:
+                db_payload = json.loads(db_item_file.read_text(encoding="utf-8"))
+            except Exception:
+                db_payload = {}
+            if isinstance(db_payload, dict):
+                section_open = db_payload.get("section_open_coding")
+                harvest = db_payload.get("code_intro_conclusion_extract_core_claims")
+                if isinstance(section_open, list) and isinstance(harvest, list):
+                    reused_results: list[dict] = []
+                    for section_block in section_open:
+                        if not isinstance(section_block, dict):
+                            continue
+                        reused_results.append({
+                            "item_key": str(db_payload.get("item_key") or item_key),
+                            "section_key": str(section_block.get("section_key") or ""),
+                            "response": {
+                                "step": "section_open_code",
+                                "section_key": str(section_block.get("section_key") or ""),
+                                "evidence": section_block.get("evidence") if isinstance(section_block.get("evidence"), list) else [],
+                            },
+                        })
+                    reused_results.append({
+                        "item_key": str(db_payload.get("item_key") or item_key),
+                        "section_key": "__intro_conclusion_harvest__",
+                        "response": {
+                            "step": "evidence_harvesting",
+                            "section_key": "__intro_conclusion_harvest__",
+                            "evidence": harvest,
+                        },
+                    })
+                    print(
+                        "[zotero_class.py][code_single_item][debug] "
+                        f"database_cache_hit item={item_key} rq_parent={rq_parent} file={db_item_file}"
+                    )
+                    return reused_results
+
+        # --- resolve PDF (or legacy parsed-text fallback) ---
         pdf_path = None
+        sections_map_override: dict | None = None
         try:
             pdf_path = self.get_pdf_path_for_item(item_key)
         except Exception as e:
             print(f"[open_coding] get_pdf_path_for_item error for {item_key}: {e}")
-        legacy_text_fallback = ""
-        if not pdf_path:
-            fallback = self._legacy_dataset_lookup_for_item(item)
-            if isinstance(fallback, dict):
-                legacy_text_fallback = str(fallback.get("full_text") or "").strip()
-                if not legacy_text_fallback:
-                    legacy_text_fallback = str(fallback.get("abstract") or "").strip()
-            if not legacy_text_fallback:
-                print(f"[open_coding] No PDF found for item {item_key} — skipping.")
-                return results
-            print(
-                f"[zotero_class.py][code_single_item][debug] "
-                f"text_fallback=legacy_dataset item_key={item_key} chars={len(legacy_text_fallback)}"
-            )
+        if not pdf_path or not str(pdf_path).strip():
+            try:
+                legacy_hit = self._legacy_dataset_lookup_for_item(item)
+            except Exception:
+                legacy_hit = None
+            legacy_source = str((legacy_hit or {}).get("source_path") or "").strip() if isinstance(legacy_hit, dict) else ""
+            if legacy_source and legacy_source.lower().endswith(".json") and Path(legacy_source).is_file():
+                try:
+                    payload = json.loads(Path(legacy_source).read_text(encoding="utf-8", errors="ignore"))
+                except Exception:
+                    payload = {}
+                text_blob = str(
+                    payload.get("payload")
+                    or payload.get("full_text")
+                    or payload.get("text")
+                    or ""
+                ).strip()
+                if text_blob:
+                    sections_map_override = {"legacy_dataset_text": {"text": text_blob}}
+                    print(
+                        "[zotero_class.py][code_single_item][debug] "
+                        f"legacy_text_fallback item={item_key} source={legacy_source}"
+                    )
+            if sections_map_override is None:
+                raise ValueError(f"[open_coding] No pdf_path for item {item_key}.")
+
+        if pdf_path and str(pdf_path).strip():
+            pdf_path = str(pdf_path).strip()
+            if not pdf_path.lower().endswith(".pdf"):
+                raise ValueError(f"[open_coding] Invalid or non-PDF path for item {item_key}: {pdf_path}")
+        else:
+            pdf_path = ""
 
         # --- parse PDF → sections ---
         def _sections_from_cached_markdown(path_str: str) -> dict:
@@ -14481,11 +15103,11 @@ class Zotero:
                 print(f"[zotero_class.py][code_single_item][debug] cache_read_failed item={item_key} err={type(e).__name__}")
             return {}
 
-        cached_sections = _sections_from_cached_markdown(str(pdf_path)) if cache else {}
+        cached_sections = _sections_from_cached_markdown(str(pdf_path)) if (cache and pdf_path) else {}
         if cached_sections:
             sections_map = merge_sections_min_words(cached_sections, min_words=500)
-        elif legacy_text_fallback:
-            sections_map = {"legacy_dataset_text": {"text": legacy_text_fallback}}
+        elif sections_map_override is not None:
+            sections_map = merge_sections_min_words(sections_map_override, min_words=500)
         else:
             try:
                 parsed = process_pdf(
@@ -14497,14 +15119,14 @@ class Zotero:
                     core_sections=core_sections,
                 ) or {}
             except Exception as e:
-                print(f"[open_coding] process_pdf failed for {item_key}: {e}")
-                return results
+                raise RuntimeError(f"[open_coding] process_pdf failed for {item_key}: {e}") from e
 
+            if not isinstance(parsed, dict) or not parsed.get("sections"):
+                raise RuntimeError(f"[open_coding] No sections extracted for item {item_key} from {pdf_path}.")
             sections_map = merge_sections_min_words(parsed.get("sections"), min_words=500)
 
         if not isinstance(sections_map, dict) or not sections_map:
-            print(f"[open_coding] No usable text for item {item_key}.")
-            return results
+            raise RuntimeError(f"[open_coding] No usable sections for item {item_key} from {pdf_path}.")
 
         def _section_kind(section_key: str) -> str:
             s = str(section_key or "").strip().lower()
@@ -14552,6 +15174,56 @@ class Zotero:
         def _mint_dqid(seed: str, quote_text: str) -> str:
             base = f"{item_key}|{seed}|{quote_text}".encode("utf-8")
             return hashlib.md5(base).hexdigest()[:12]
+
+        def _safe_call_models(call_kwargs: dict, timeout_sec: int, label: str) -> Any:
+            """
+            Guard model calls so one stalled request cannot block the full item run.
+            Uses a forked subprocess with hard timeout/terminate.
+            """
+            try:
+                timeout_val = int(timeout_sec)
+            except Exception:
+                timeout_val = 0
+            if timeout_val <= 0:
+                return call_models(**call_kwargs)
+
+            import multiprocessing as _mp
+
+            def _worker(out_q, kwargs):
+                try:
+                    out_q.put({"ok": True, "value": call_models(**kwargs)})
+                except Exception as e:
+                    out_q.put({"ok": False, "error": f"{type(e).__name__}: {e}"})
+
+            try:
+                ctx = _mp.get_context("fork")
+            except Exception:
+                ctx = _mp
+
+            q = ctx.Queue(maxsize=1)
+            p = ctx.Process(target=_worker, args=(q, call_kwargs))
+            p.daemon = True
+            p.start()
+            p.join(timeout=timeout_val)
+
+            if p.is_alive():
+                try:
+                    p.terminate()
+                    p.join(timeout=3)
+                except Exception:
+                    pass
+                return {"provider": str(ai_provider_key or "openai"), "error": f"{label}_timeout_{timeout_val}s"}
+
+            try:
+                msg = q.get_nowait()
+            except Exception:
+                msg = None
+
+            if isinstance(msg, dict) and msg.get("ok"):
+                return msg.get("value")
+            if isinstance(msg, dict) and str(msg.get("error") or "").strip():
+                return {"provider": str(ai_provider_key or "openai"), "error": str(msg.get("error"))}
+            return {"provider": str(ai_provider_key or "openai"), "error": f"{label}_failed_no_payload"}
 
         def _normalize_existing_evidence(ev: dict, sec_key_local: str, sec_text_local: str, idx_local: int) -> dict:
             quote_txt = str(ev.get("direct_quote") or ev.get("quote") or "").strip() or _fallback_quote(sec_text_local)
@@ -14647,6 +15319,29 @@ class Zotero:
                     continue
                 seen.add(val)
                 out.append(val)
+            return out
+
+        def _infer_codes_from_text(text_block: str) -> list[str]:
+            sec_text_low = str(text_block or "").lower()
+            keyword_map = [
+                ("attribution", "attribution_logic"),
+                ("framework", "framework_usage"),
+                ("model", "modeling_approach"),
+                ("evidence", "evidence_standard"),
+                ("method", "method_design"),
+                ("limitation", "limitations_statement"),
+                ("recommend", "recommendation"),
+                ("policy", "policy_implication"),
+                ("law", "legal_argument"),
+            ]
+            out: list[str] = []
+            for needle, code in keyword_map:
+                if needle in sec_text_low and code not in out:
+                    out.append(code)
+                if len(out) >= 5:
+                    break
+            if not out:
+                out.append("thematic_observation")
             return out
 
         def _build_harvest_points(payload: Any, source_text: str, codes: list[str]) -> list[dict]:
@@ -14841,6 +15536,67 @@ class Zotero:
         if buf_texts:
             merged_sections.append((" + ".join(buf_keys), "\n\n".join(buf_texts).strip()))
 
+        # Split very large sections to avoid oversized model requests and connection fragility.
+        def _split_large_sections(
+                pairs: list[tuple[str, str]],
+                max_words: int = 1200,
+                overlap_words: int = 80,
+        ) -> list[tuple[str, str]]:
+            out: list[tuple[str, str]] = []
+            try:
+                env_max_words = int(str(os.getenv("OPEN_CODING_MAX_WORDS", "")).strip() or "0")
+            except Exception:
+                env_max_words = 0
+            try:
+                env_overlap_words = int(str(os.getenv("OPEN_CODING_OVERLAP_WORDS", "")).strip() or "0")
+            except Exception:
+                env_overlap_words = 0
+            if env_max_words > 0:
+                max_words = max(100, env_max_words)
+            if env_overlap_words > 0:
+                overlap_words = max(0, min(env_overlap_words, max_words // 2))
+            for key, text_block in pairs:
+                txt = str(text_block or "").strip()
+                if not txt:
+                    continue
+                words = txt.split()
+                if len(words) <= max_words:
+                    out.append((str(key), txt))
+                    continue
+                start = 0
+                part = 1
+                while start < len(words):
+                    end = min(len(words), start + max_words)
+                    chunk_words = words[start:end]
+                    chunk_txt = " ".join(chunk_words).strip()
+                    if chunk_txt:
+                        out.append((f"{key} [part {part}]", chunk_txt))
+                    if end >= len(words):
+                        break
+                    start = max(0, end - overlap_words)
+                    part += 1
+            return out
+
+        merged_sections = _split_large_sections(merged_sections)
+
+        if not merged_sections:
+            raise RuntimeError(f"[open_coding] No merged section text for item {item_key} from {pdf_path}.")
+
+        if validate_only:
+            _write_section_progress({
+                "status": "completed",
+                "item_key": item_key,
+                "prompt_key": prompt_key,
+                "total_sections": len(merged_sections),
+                "completed_sections": len(merged_sections),
+                "current_section_key": "",
+                "done": True,
+                "store_only": bool(store_only),
+                "read": bool(read),
+                "validate_only": True,
+            })
+            return []
+
         total_sections = len(merged_sections)
         completed_sections = 0
         _write_section_progress({
@@ -14857,6 +15613,14 @@ class Zotero:
         print(f"[zotero_class.py][code_single_item][debug] start item={item_key} total_sections={total_sections} store_only={bool(store_only)} read={bool(read)}")
         section_code_points: list[dict] = []
         intro_conclusion_text_blocks: list[str] = []
+        try:
+            section_call_timeout = int(str(os.getenv("OPEN_CODING_SECTION_CALL_TIMEOUT_SEC", "0")).strip() or "0")
+        except Exception:
+            section_call_timeout = 0
+        try:
+            harvest_call_timeout = int(str(os.getenv("OPEN_CODING_HARVEST_CALL_TIMEOUT_SEC", "0")).strip() or "0")
+        except Exception:
+            harvest_call_timeout = 0
 
         # --- iterate merged sections (keep your prints/inputs) ---
         for sec_idx, (sec_key, sec_text) in enumerate(merged_sections, start=1):
@@ -14912,48 +15676,36 @@ class Zotero:
                 text += f"\n\nCODING_CONTEXT\n{context_block}"
 
 
-            resp = call_models(
-                text=text,
-                function=prompt_key,
-                custom_id=custom_id,
-                collection_name=collection_name,
-                read=read,
-                store_only=store_only,
-                ai=(ai_provider_key if ai_provider_key in ("openai", "mistral", "gemini", "deepseek") else "openai"),
-                model="gpt-5-mini",
-            )
+            resp = _safe_call_models({
+                "text": text,
+                "function": prompt_key,
+                "custom_id": custom_id,
+                "collection_name": collection_name,
+                "read": read,
+                "store_only": store_only,
+                "ai": (ai_provider_key if ai_provider_key in ("openai", "mistral", "gemini", "deepseek") else "openai"),
+                "model": "gpt-5-mini",
+            }, section_call_timeout, "section_call")
 
 
 
 
-            if store_only:
-                completed_sections += 1
-                _write_section_progress({
-                    "status": "running",
+            if not store_only:
+                section_points = _build_open_code_points(resp, str(sec_key), sec_text)
+                section_code_points.extend(section_points)
+                results.append({
                     "item_key": item_key,
-                    "prompt_key": prompt_key,
-                    "total_sections": total_sections,
-                    "completed_sections": completed_sections,
-                    "current_section_key": str(sec_key),
-                    "current_section_index": sec_idx,
-                    "done": False,
-                    "store_only": bool(store_only),
-                    "read": bool(read),
-                })
-                print(f"[zotero_class.py][code_single_item][debug] section_done item={item_key} section={sec_idx}/{total_sections} mode=store_only")
-                continue
-
-            section_points = _build_open_code_points(resp, str(sec_key), sec_text)
-            section_code_points.extend(section_points)
-            results.append({
-                "item_key": item_key,
-                "section_key": str(sec_key),
-                "response": {
-                    "step": "section_open_code",
                     "section_key": str(sec_key),
-                    "evidence": section_points,
-                }
-            })
+                    "section_text": str(sec_text or ""),
+                    "raw_openai_payload": resp,
+                    "response": {
+                        "step": "section_open_code",
+                        "section_key": str(sec_key),
+                        "evidence": section_points,
+                    }
+                })
+                time.sleep(0.03)
+
             completed_sections += 1
             _write_section_progress({
                 "status": "running",
@@ -14967,11 +15719,14 @@ class Zotero:
                 "store_only": bool(store_only),
                 "read": bool(read),
             })
-            print(f"[zotero_class.py][code_single_item][debug] section_done item={item_key} section={sec_idx}/{total_sections} mode=read")
+            if store_only:
+                print(f"[zotero_class.py][code_single_item][debug] section_done item={item_key} section={sec_idx}/{total_sections} mode=store_only")
+            else:
+                print(f"[zotero_class.py][code_single_item][debug] section_done item={item_key} section={sec_idx}/{total_sections} mode=read")
+            continue
 
-            time.sleep(0.03)
 
-        if not store_only and not intro_conclusion_text_blocks:
+        if not intro_conclusion_text_blocks:
             fallback_blocks: list[str] = []
             for sec_key, sec_text in merged_sections:
                 raw = re.sub(r"\s+", " ", str(sec_text or "").strip())
@@ -14990,15 +15745,24 @@ class Zotero:
             intro_conclusion_text_blocks = [b for b in fallback_blocks if str(b).strip()]
 
         # Step 2: evidence harvesting from introduction + conclusion with section-level codes.
-        if not store_only and intro_conclusion_text_blocks:
+        if intro_conclusion_text_blocks:
             unique_codes: list[str] = []
             seen_codes = set()
-            for ev in section_code_points:
-                for c in (ev.get("potential_themes") or []):
-                    code_txt = str(c or "").strip()
-                    if code_txt and code_txt not in seen_codes:
-                        seen_codes.add(code_txt)
-                        unique_codes.append(code_txt)
+            if not store_only:
+                for ev in section_code_points:
+                    for c in (ev.get("potential_themes") or []):
+                        code_txt = str(c or "").strip()
+                        if code_txt and code_txt not in seen_codes:
+                            seen_codes.add(code_txt)
+                            unique_codes.append(code_txt)
+            if not unique_codes:
+                for sec_key, sec_text in merged_sections:
+                    merged_codes = _infer_codes_from_text(f"{sec_key}\n{sec_text}")
+                    for code_txt in merged_codes:
+                        code_txt = str(code_txt or "").strip()
+                        if code_txt and code_txt not in seen_codes:
+                            seen_codes.add(code_txt)
+                            unique_codes.append(code_txt)
             intro_conclusion_text = "\n\n".join(intro_conclusion_text_blocks)
             controlled_codes_formatted = "\n".join(
                 f"{i}: {code}" for i, code in enumerate(unique_codes[:60])
@@ -15018,26 +15782,29 @@ class Zotero:
             harvest_custom_id = hashlib.sha256(
                 f"{item_key}|{intro_prompt_key}|{rq_sig}|{prompt_key}".encode("utf-8")
             ).hexdigest()
-            harvest_resp = call_models(
-                text=harvest_prompt,
-                function=intro_prompt_key,
-                custom_id=harvest_custom_id,
-                collection_name=collection_name,
-                read=read,
-                store_only=False,
-                ai=(ai_provider_key if ai_provider_key in ("openai", "mistral", "gemini", "deepseek") else "openai"),
-                model="gpt-5-mini",
-            )
+            harvest_resp = _safe_call_models({
+                "text": harvest_prompt,
+                "function": intro_prompt_key,
+                "custom_id": harvest_custom_id,
+                "collection_name": collection_name,
+                "read": store_only or read,
+                "store_only": store_only,
+                "ai": (ai_provider_key if ai_provider_key in ("openai", "mistral", "gemini", "deepseek") else "openai"),
+                "model": "gpt-5-mini",
+            }, harvest_call_timeout, "harvest_call")
             harvest_points = _build_harvest_points(harvest_resp, intro_conclusion_text, unique_codes)
-            results.append({
-                "item_key": item_key,
-                "section_key": "__intro_conclusion_harvest__",
-                "response": {
-                    "step": "evidence_harvesting",
+            if not store_only:
+                results.append({
+                    "item_key": item_key,
                     "section_key": "__intro_conclusion_harvest__",
-                    "evidence": harvest_points if isinstance(harvest_points, list) else [],
-                }
-            })
+                    "section_text": str(intro_conclusion_text or ""),
+                    "raw_openai_payload": harvest_resp,
+                    "response": {
+                        "step": "evidence_harvesting",
+                        "section_key": "__intro_conclusion_harvest__",
+                        "evidence": harvest_points if isinstance(harvest_points, list) else [],
+                    }
+                })
 
         if read and results and cache:
             try:
@@ -15076,11 +15843,11 @@ class Zotero:
             context: str = "",
             coding_mode: str = "open",
             rq_scope: list[int] | None = None,
-                         target_codes: list[str] | None = None,
-                         min_relevance: int = 3,
-                         allowed_evidence_types: list[str] | None = None,
-                         collection_cache_scope: str = "",
-                         ) -> list[dict]:
+            target_codes: list[str] | None = None,
+            min_relevance: int = 3,
+            allowed_evidence_types: list[str] | None = None,
+            collection_cache_scope: str = "",
+            ) -> list[dict]:
         """
         Two-stage single-item coding that runs:
         1) prompt_key over each section

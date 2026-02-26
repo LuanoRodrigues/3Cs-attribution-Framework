@@ -43,8 +43,13 @@ contextBridge.exposeInMainWorld("agentBridge", {
     ipcRenderer.invoke("agent:intent-resolve", payload),
   executeIntent: (payload: { intent: Record<string, unknown>; context?: Record<string, unknown>; confirm?: boolean }) =>
     ipcRenderer.invoke("agent:intent-execute", payload),
+  dictationStart: () => ipcRenderer.invoke("agent:dictation-start"),
+  dictationStop: () => ipcRenderer.invoke("agent:dictation-stop"),
+  dictationAudio: (audio: ArrayBuffer) => ipcRenderer.send("agent:dictation-audio", audio),
   transcribeVoice: (payload: { audioBase64: string; mimeType?: string; language?: string }) =>
     ipcRenderer.invoke("agent:voice-transcribe", payload),
+  nativeAudioStart: () => ipcRenderer.invoke("agent:native-audio-start"),
+  nativeAudioStop: () => ipcRenderer.invoke("agent:native-audio-stop"),
   speakText: (payload: { text: string; voice?: string; speed?: number; format?: string; model?: string }) =>
     ipcRenderer.invoke("agent:speak-text", payload),
   getFeatures: () => ipcRenderer.invoke("agent:features"),
@@ -83,6 +88,27 @@ contextBridge.exposeInMainWorld("agentBridge", {
     };
     ipcRenderer.on("agent:feature-job-status", handler);
     return () => ipcRenderer.removeListener("agent:feature-job-status", handler);
+  },
+  onDictationDelta: (callback: (payload: { sessionId?: number; delta?: string; transcript?: string }) => void) => {
+    const handler = (_event: IpcRendererEvent, payload?: { sessionId?: number; delta?: string; transcript?: string }) => {
+      callback(payload || {});
+    };
+    ipcRenderer.on("agent:voice:event:dictation:delta", handler);
+    return () => ipcRenderer.removeListener("agent:voice:event:dictation:delta", handler);
+  },
+  onDictationCompleted: (callback: (payload: { sessionId?: number; text?: string }) => void) => {
+    const handler = (_event: IpcRendererEvent, payload?: { sessionId?: number; text?: string }) => {
+      callback(payload || {});
+    };
+    ipcRenderer.on("agent:voice:event:dictation:completed", handler);
+    return () => ipcRenderer.removeListener("agent:voice:event:dictation:completed", handler);
+  },
+  onDictationError: (callback: (payload: { sessionId?: number; message?: string }) => void) => {
+    const handler = (_event: IpcRendererEvent, payload?: { sessionId?: number; message?: string }) => {
+      callback(payload || {});
+    };
+    ipcRenderer.on("agent:voice:event:dictation:error", handler);
+    return () => ipcRenderer.removeListener("agent:voice:event:dictation:error", handler);
   }
 });
 
@@ -162,6 +188,7 @@ contextBridge.exposeInMainWorld("settingsBridge", {
   getSecret: (name: string) => ipcRenderer.invoke("settings:getSecret", name),
   setSecret: (name: string, value: string) => ipcRenderer.invoke("settings:setSecret", name, value),
   getDotEnvStatus: () => ipcRenderer.invoke("settings:getDotEnvStatus"),
+  listAudioInputs: () => ipcRenderer.invoke("settings:listAudioInputs"),
   exportBundle: (zipPath: string, includeSecrets?: boolean) =>
     ipcRenderer.invoke("settings:exportBundle", { zipPath, includeSecrets }),
   importBundle: (zipPath: string) => ipcRenderer.invoke("settings:importBundle", zipPath),

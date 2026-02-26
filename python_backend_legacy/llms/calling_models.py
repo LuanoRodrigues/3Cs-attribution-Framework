@@ -8155,6 +8155,82 @@ def call_models_zt( text: str, function: str,
             logging.warning(f"CACHE READ FAILED: {cache_file_path} -> {_e}")
 
     all_responses = []
+
+    def _extract_block(src: str, header: str) -> str:
+        if not isinstance(src, str) or not src.strip():
+            return ""
+        pat = re.compile(
+            rf"(?:^|\n){re.escape(header)}\s*\n([\s\S]*?)(?=\n\n[A-Z][A-Z0-9_ ]*\n|\Z)",
+            re.MULTILINE,
+        )
+        m = pat.search(src)
+        return str(m.group(1) or "").strip() if m else ""
+
+    def _render_task_template(raw_template: str, payload_text: str) -> str:
+        """
+        Resolve/remove optional placeholders in prompt templates.
+        Rules:
+        - research_questions_formatted: include only when present in payload.
+        - parent_item_key: always removed.
+        - context: include only when user provided CODING_CONTEXT.
+        """
+        tpl = str(raw_template or "")
+        txt = str(payload_text or "")
+
+        rq_block = _extract_block(txt, "RESEARCH_QUESTIONS")
+        if rq_block.lower() in {"none", "(none)", "n/a", "na"}:
+            rq_block = ""
+        user_context = _extract_block(txt, "CODING_CONTEXT")
+
+        # Always remove item-key placeholder references.
+        tpl = re.sub(r"(?im)^.*parent_item_key.*(?:\n|$)", "", tpl)
+        tpl = tpl.replace("{parent_item_key}", "")
+
+        # RQ block is optional; drop section if not available.
+        if rq_block:
+            tpl = tpl.replace("{research_questions_formatted}", rq_block)
+        else:
+            tpl = re.sub(
+                r"(?is)\n*.*Research Questions.*\{research_questions_formatted\}\n*",
+                "\n",
+                tpl,
+            )
+            tpl = tpl.replace("{research_questions_formatted}", "")
+
+        # Context placeholder should only be injected from explicit user context.
+        if user_context:
+            tpl = tpl.replace("{context}", user_context)
+        else:
+            tpl = re.sub(
+                r"(?is)\n*Text Chunk from PDF:\s*--- BEGIN CHUNK ---\s*\{context\}\s*--- END CHUNK ---\s*",
+                "\n",
+                tpl,
+            )
+            tpl = re.sub(
+                r"(?is)\n*--- BEGIN CHUNK ---\s*\{context\}\s*--- END CHUNK ---\s*",
+                "\n",
+                tpl,
+            )
+            tpl = tpl.replace("{context}", "")
+
+        # Optional author/year may be unknown in this path.
+        tpl = tpl.replace("{author_year_info}", "")
+
+        # Final cleanup to avoid sending unresolved placeholders.
+        tpl = re.sub(r"\{[a-zA-Z_][a-zA-Z0-9_]*\}", "", tpl)
+        tpl = re.sub(r"\n{3,}", "\n\n", tpl).strip()
+        return tpl
+
+    def _find_unresolved_template_tokens(src: str) -> list[str]:
+        if not isinstance(src, str) or not src:
+            return []
+        matches = re.findall(r"\{([A-Za-z_][A-Za-z0-9_]*)\}", src)
+        out: list[str] = []
+        for m in matches:
+            token = str(m or "").strip()
+            if token and token not in out:
+                out.append(token)
+        return out
     try:
         task_config = load_prompt_config(function)
     except Exception:
@@ -8179,6 +8255,7 @@ def call_models_zt( text: str, function: str,
             task_config.get("content")
             or task_config.get("prompt", "")
     )
+    task_content = _render_task_template(task_content, text)
 
     full_prompt = ""
 
@@ -8241,6 +8318,17 @@ def call_models_zt( text: str, function: str,
         if not response:
             print(f"DEBUG: No responses found in {output_file}. Proceeding to generate new responses.")
             input("Press Enter to continue...")
+
+    # Validate unresolved placeholders only in the template/system text.
+    # The user payload may legitimately contain braces (e.g., "{Confidence}")
+    # from source documents and must not be treated as a template error.
+    unresolved_system_tokens = _find_unresolved_template_tokens(task_content)
+    unresolved_all = sorted(set(unresolved_system_tokens))
+    if unresolved_all:
+        raise ValueError(
+            f"[call_models_zt] unresolved placeholders for function='{function}' "
+            f"custom_id='{custom_id}': {', '.join(unresolved_all)}"
+        )
 
     if store_only:
         schema: dict = task_config.get("json_schema")
@@ -8337,7 +8425,11 @@ def call_models_zt( text: str, function: str,
 
                 if not OpenAI or not OPENAI_API_KEY:
                     raise ImportError("OpenAI client not configured.")
-                client = OpenAI(api_key=OPENAI_API_KEY)
+                client = OpenAI(
+                    api_key=OPENAI_API_KEY,
+                    timeout=120.0,
+                    max_retries=2,
+                )
 
                 # Build the input list required by /v1/responses
                 openai_input = [

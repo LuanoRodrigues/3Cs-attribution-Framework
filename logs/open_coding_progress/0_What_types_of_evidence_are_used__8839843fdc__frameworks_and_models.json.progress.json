@@ -6,15 +6,15 @@
   "processed_items": 7,
   "current_item_key": "",
   "completed_item_keys": [
-    "W63DA6Z6",
-    "N4YNQ2GG",
-    "MSU2EW6K",
-    "KXZITJ9Q",
-    "DFFJM8XG",
     "7SYEI2R6",
-    "HYLZCIPX"
+    "DFFJM8XG",
+    "HYLZCIPX",
+    "KXZITJ9Q",
+    "MSU2EW6K",
+    "N4YNQ2GG",
+    "W63DA6Z6"
   ],
-  "store_only": false,
+  "store_only": true,
   "read": true,
   "done": true
 }

@@ -33,6 +33,7 @@ export const SETTINGS_KEY_SCHEMAS: Record<string, z.ZodTypeAny> = {
   "APIs/openai_voice_transcribe_model": stringWithDefault("whisper-1"),
   "APIs/openai_voice_tts_model": stringWithDefault("tts-1"),
   "APIs/openai_voice_tts_voice": stringWithDefault("alloy"),
+  "APIs/openai_voice_dictation_mode": z.enum(["insert_only", "auto_send_after_transcription"]).default("insert_only"),
   "APIs/gemini_base_url": stringWithDefault("https://generative.googleapis.com/v1"),
   "APIs/deepseek_base_url": stringWithDefault(),
   "APIs/mistral_base_url": stringWithDefault(),

@@ -21,41 +21,41 @@
     </style>
   </defs>
   <rect width="960" height="360" class="bg"/>
-  <text x="480" y="30" text-anchor="middle" class="title">Figure C2. Chain of Custody Scoring Flow</text>
-  <text x="480" y="48" text-anchor="middle" class="sub">Question path resolves to low / medium / high.</text>
+  <text x="480" y="30" text-anchor="middle" class="title">Chain of Custody Scoring Flow</text>
 
   <rect x="30" y="70" width="900" height="270" rx="10" class="panel"/>
 
-  <rect x="50" y="130" width="260" height="56" rx="8" class="q"/>
-  <text x="175" y="152" text-anchor="middle" class="qt">Is collection provenance documented</text>
-  <text x="175" y="168" text-anchor="middle" class="qt">(who captured it, when, and from where)?</text>
+  <rect x="55" y="130" width="260" height="56" rx="8" class="q"/>
+  <text x="185" y="152" text-anchor="middle" class="qt">Is collection provenance documented</text>
+  <text x="185" y="168" text-anchor="middle" class="qt">(who captured it, when, and from where)?</text>
 
-  <rect x="345" y="130" width="260" height="56" rx="8" class="q"/>
-  <text x="475" y="152" text-anchor="middle" class="qt">Are integrity controls verifiable</text>
-  <text x="475" y="168" text-anchor="middle" class="qt">(hashes, signatures, or checksums)?</text>
+  <rect x="350" y="130" width="260" height="56" rx="8" class="q"/>
+  <text x="480" y="152" text-anchor="middle" class="qt">Are integrity controls verifiable</text>
+  <text x="480" y="168" text-anchor="middle" class="qt">(hashes, signatures, or checksums)?</text>
 
-  <rect x="640" y="130" width="260" height="56" rx="8" class="q"/>
-  <text x="770" y="152" text-anchor="middle" class="qt">Are timeline and version lineage</text>
-  <text x="770" y="168" text-anchor="middle" class="qt">complete, consistent, and auditable?</text>
+  <rect x="645" y="130" width="260" height="56" rx="8" class="q"/>
+  <text x="775" y="152" text-anchor="middle" class="qt">Are timeline and version lineage</text>
+  <text x="775" y="168" text-anchor="middle" class="qt">complete, consistent, and auditable?</text>
 
-  <rect x="50" y="250" width="260" height="54" rx="8" class="low"/>
-  <text x="175" y="272" text-anchor="middle" class="st">LOW (0)</text>
-  <text x="175" y="288" text-anchor="middle" class="sd">provenance missing or custody unverifiable</text>
+  <rect x="55" y="250" width="260" height="54" rx="8" class="low"/>
+  <text x="185" y="272" text-anchor="middle" class="st">LOW (0)</text>
+  <text x="185" y="288" text-anchor="middle" class="sd">provenance missing or custody unverifiable</text>
 
-  <rect x="345" y="250" width="260" height="54" rx="8" class="mid"/>
-  <text x="475" y="272" text-anchor="middle" class="st">MEDIUM (1)</text>
-  <text x="475" y="288" text-anchor="middle" class="sd">traceability present but with material gaps</text>
+  <rect x="350" y="250" width="260" height="54" rx="8" class="mid"/>
+  <text x="480" y="272" text-anchor="middle" class="st">MEDIUM (1)</text>
+  <text x="480" y="288" text-anchor="middle" class="sd">traceability present but with material gaps</text>
 
-  <rect x="640" y="250" width="260" height="54" rx="8" class="high"/>
-  <text x="770" y="272" text-anchor="middle" class="st">HIGH (2)</text>
-  <text x="770" y="288" text-anchor="middle" class="sd">end-to-end custody and integrity continuity</text>
+  <rect x="645" y="250" width="260" height="54" rx="8" class="high"/>
+  <text x="775" y="272" text-anchor="middle" class="st">HIGH (2)</text>
+  <text x="775" y="288" text-anchor="middle" class="sd">end-to-end custody and integrity continuity</text>
 
-  <path class="l" d="M310 158 L345 158"/><text x="324" y="146" class="yn">YES</text>
-  <path class="l" d="M175 186 L175 250"/><text x="187" y="222" class="yn">NO</text>
+  <path class="l" d="M315 158 L350 158"/><text x="329" y="146" class="yn">YES</text>
+  <path class="l" d="M185 186 L185 250"/><text x="197" y="222" class="yn">NO</text>
 
-  <path class="l" d="M605 158 L640 158"/><text x="620" y="146" class="yn">YES</text>
-  <path class="l" d="M475 186 L475 250"/><text x="487" y="222" class="yn">NO</text>
+  <path class="l" d="M610 158 L645 158"/><text x="625" y="146" class="yn">YES</text>
+  <path class="l" d="M480 186 L480 250"/><text x="492" y="222" class="yn">YES</text>
+  <path class="l" d="M480 186 L480 218 L185 218 L185 250"/><text x="330" y="210" class="yn">NO</text>
 
-  <path class="l" d="M770 186 L770 250"/><text x="782" y="222" class="yn">YES</text>
-  <path class="l" d="M640 158 C620 158,620 277,605 277"/><text x="620" y="244" class="yn">NO</text>
+  <path class="l" d="M775 186 L775 250"/><text x="787" y="222" class="yn">YES</text>
+  <path class="l" d="M775 186 L775 218 L545 218 L545 250"/><text x="650" y="210" class="yn">NO</text>
 </svg>

@@ -21,41 +21,41 @@
     </style>
   </defs>
   <rect width="960" height="380" class="bg"/>
-  <text x="480" y="30" text-anchor="middle" class="title">Figure C3. Credibility Scoring Flow</text>
-  <text x="480" y="48" text-anchor="middle" class="sub">Source-quality logic aligned to low / medium / high.</text>
+  <text x="480" y="30" text-anchor="middle" class="title">Credibility Scoring Flow</text>
 
   <rect x="30" y="70" width="900" height="290" rx="10" class="panel"/>
 
-  <rect x="50" y="130" width="260" height="56" rx="8" class="q"/>
-  <text x="180" y="152" text-anchor="middle" class="qt">Is the claim referenced and</text>
-  <text x="180" y="168" text-anchor="middle" class="qt">substantiated?</text>
+  <rect x="55" y="130" width="260" height="56" rx="8" class="q"/>
+  <text x="185" y="152" text-anchor="middle" class="qt">Is the claim referenced and</text>
+  <text x="185" y="168" text-anchor="middle" class="qt">substantiated?</text>
 
-  <rect x="345" y="130" width="260" height="56" rx="8" class="q"/>
-  <text x="475" y="152" text-anchor="middle" class="qt">Is evidence majority autosource feeds</text>
-  <text x="475" y="168" text-anchor="middle" class="qt">and newspapers?</text>
+  <rect x="350" y="130" width="260" height="56" rx="8" class="q"/>
+  <text x="480" y="152" text-anchor="middle" class="qt">Is evidence majority autosource feeds</text>
+  <text x="480" y="168" text-anchor="middle" class="qt">and newspapers?</text>
 
-  <rect x="640" y="130" width="260" height="56" rx="8" class="q"/>
-  <text x="770" y="152" text-anchor="middle" class="qt">Does the mix include independent institutions,</text>
-  <text x="770" y="168" text-anchor="middle" class="qt">academic sources, and UN-type agencies?</text>
+  <rect x="645" y="130" width="260" height="56" rx="8" class="q"/>
+  <text x="775" y="152" text-anchor="middle" class="qt">Does the mix include independent institutions,</text>
+  <text x="775" y="168" text-anchor="middle" class="qt">academic sources, and UN-type agencies?</text>
 
-  <rect x="50" y="270" width="260" height="54" rx="8" class="low"/>
-  <text x="180" y="292" text-anchor="middle" class="st">LOW (0)</text>
-  <text x="180" y="308" text-anchor="middle" class="sd">unsubstantiated or autosource/news dominated</text>
+  <rect x="55" y="270" width="260" height="54" rx="8" class="low"/>
+  <text x="185" y="292" text-anchor="middle" class="st">LOW (0)</text>
+  <text x="185" y="308" text-anchor="middle" class="sd">unsubstantiated or autosource/news dominated</text>
 
-  <rect x="345" y="270" width="260" height="54" rx="8" class="mid"/>
-  <text x="475" y="292" text-anchor="middle" class="st">MEDIUM (1)</text>
-  <text x="475" y="308" text-anchor="middle" class="sd">mixed sources: newspaper + academic + government</text>
+  <rect x="350" y="270" width="260" height="54" rx="8" class="mid"/>
+  <text x="480" y="292" text-anchor="middle" class="st">MEDIUM (1)</text>
+  <text x="480" y="308" text-anchor="middle" class="sd">mixed sources: newspaper + academic + government</text>
 
-  <rect x="640" y="270" width="260" height="54" rx="8" class="high"/>
-  <text x="770" y="292" text-anchor="middle" class="st">HIGH (2)</text>
-  <text x="770" y="308" text-anchor="middle" class="sd">independent institutions + academic + UN agencies</text>
+  <rect x="645" y="270" width="260" height="54" rx="8" class="high"/>
+  <text x="775" y="292" text-anchor="middle" class="st">HIGH (2)</text>
+  <text x="775" y="308" text-anchor="middle" class="sd">independent institutions + academic + UN agencies</text>
 
-  <path class="l" d="M310 158 L345 158"/><text x="324" y="146" class="yn">YES</text>
-  <path class="l" d="M180 186 L180 270"/><text x="192" y="232" class="yn">NO</text>
+  <path class="l" d="M315 158 L350 158"/><text x="329" y="146" class="yn">YES</text>
+  <path class="l" d="M185 186 L185 270"/><text x="197" y="232" class="yn">NO</text>
 
-  <path class="l" d="M605 158 L640 158"/><text x="620" y="146" class="yn">NO</text>
-  <path class="l" d="M475 186 L475 270"/><text x="487" y="232" class="yn">YES</text>
+  <path class="l" d="M610 158 L645 158"/><text x="625" y="146" class="yn">YES</text>
+  <path class="l" d="M480 186 L480 270"/><text x="492" y="232" class="yn">YES</text>
+  <path class="l" d="M480 186 L480 218 L185 218 L185 270"/><text x="330" y="210" class="yn">NO</text>
 
-  <path class="l" d="M770 186 L770 270"/><text x="782" y="232" class="yn">YES</text>
-  <path class="l" d="M640 158 C620 158,620 297,605 297"/><text x="620" y="258" class="yn">NO</text>
+  <path class="l" d="M775 186 L775 270"/><text x="787" y="232" class="yn">YES</text>
+  <path class="l" d="M775 186 L775 218 L545 218 L545 270"/><text x="650" y="210" class="yn">NO</text>
 </svg>

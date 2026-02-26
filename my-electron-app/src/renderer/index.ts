@@ -27,7 +27,15 @@ import type { AnalyseAction, AnalyseRun } from "../analyse/types";
 import { discoverRuns, buildDatasetHandles, getDefaultBaseDir } from "../analyse/data";
 import { command } from "../ribbon/commandDispatcher";
 import type { RibbonAction, RibbonTab } from "../types";
-import { GENERAL_KEYS } from "../config/settingsKeys";
+import {
+  DEFAULT_OPENAI_REALTIME_MODEL,
+  OpenAIRealtimeWebRTC,
+  RealtimeAgent,
+  RealtimeSession,
+  tool
+} from "@openai/agents/realtime";
+import { z } from "zod";
+import { GENERAL_KEYS, LLM_KEYS } from "../config/settingsKeys";
 import { PdfTestPayload, CoderTestNode } from "../test/testFixtures";
 import { CoderPanel } from "../panels/coder/CoderPanel";
 import { attachGlobalCoderDragSources } from "../panels/coder/coderDragSource";
@@ -36,6 +44,7 @@ import { getDefaultCoderScope } from "../analyse/collectionScope";
 import { initAnalyseAudioController } from "./analyseAudio";
 import { initPerfOverlay } from "./perfOverlay";
 import { readRetrieveQueryDefaults, writeRetrieveQueryDefaults } from "../state/retrieveQueryDefaults";
+import type { RetrieveQueryDefaults } from "../state/retrieveQueryDefaults";
 import type { RetrieveProviderId, RetrieveSort } from "../shared/types/retrieve";
 import { applyPayloadToViewer, ensurePdfViewerFrame, syncAllPdfViewersTheme } from "../pdfViewer/integration";
 
@@ -94,9 +103,161 @@ registry.register(createScreenWidget());
 registry.register(createAnalysePdfTabsTool());
 registry.register(createScreenPdfViewerTool());
 void initThemeManager();
+const AGENT_VOICE_API_KEY_CACHE_TTL_MS = 5 * 60 * 1000;
+let cachedAgentVoiceApiKey: { value: string; at: number } | null = null;
+const clearAgentVoiceConfigCache = (): void => {
+  cachedAgentVoiceApiKey = null;
+};
 window.addEventListener("settings:updated", () => {
   syncAllPdfViewersTheme();
+  clearAgentVoiceConfigCache();
 });
+
+type VoiceCommandExecutionOptions = {
+  fromVoice?: boolean;
+  fromRealtime?: boolean;
+};
+
+type AgentCommandSource = "chat" | "voice" | "realtime";
+
+type AgentCommandGuardrailResult = {
+  status: "ok" | "warn" | "reject";
+  normalized: string;
+  message?: string;
+};
+
+type AgentRunContext = {
+  source: AgentCommandSource;
+  routeId: RouteId | "";
+  routeLabel: string;
+  selectedCollectionKey: string;
+  selectedCollectionName: string;
+  selectedItemKey: string;
+  status: string;
+  itemsCount: number;
+  activeTags?: unknown;
+  selectedAnalyseRunPath: string;
+  analyseRunPath: string;
+  analyseBaseDir: string;
+  activeRunPath: string;
+  selectedAnalyseBaseDir: string;
+  selectedRunPath: string;
+  selectedAnalysePath: string;
+  runPath: string;
+  activeRunId: string;
+  dir_base: string;
+  analysisBaseDir?: string;
+  run_id?: string;
+  commandText: string;
+  fromVoice: boolean;
+  fromRealtime: boolean;
+  commandLength: number;
+  commandWordCount: number;
+  hasZoteroState: boolean;
+  hasAnalyseState: boolean;
+};
+
+type AgentRuntimeTelemetry = {
+  sessionStarts: number;
+  sessionEnds: number;
+  handoffs: number;
+  toolStarts: number;
+  toolEnds: number;
+  mcpToolCompletes: number;
+  guardrailRejects: number;
+  totalCommands: number;
+  acceptedCommands: number;
+  rejectedCommands: number;
+  toolFailures: number;
+};
+
+const VOICE_COMMAND_MAX_LENGTH = 1200;
+const agentRuntimeTelemetry: AgentRuntimeTelemetry = {
+  sessionStarts: 0,
+  sessionEnds: 0,
+  handoffs: 0,
+  toolStarts: 0,
+  toolEnds: 0,
+  mcpToolCompletes: 0,
+  guardrailRejects: 0,
+  totalCommands: 0,
+  acceptedCommands: 0,
+  rejectedCommands: 0,
+  toolFailures: 0
+};
+const agentCommandGuards = [
+  /<\s*script\b/i,
+  /javascript:/i,
+  /data:\s*text\/html/i,
+  /\beval\s*\(/i,
+  /\bdelete\s+all\b/i
+];
+
+const dbgAgent = (fn: string, msg: string, details?: Record<string, unknown>): void => {
+  if (details) {
+    console.debug(`[index.ts][${fn}][debug] ${msg}`, details);
+    return;
+  }
+  console.debug(`[index.ts][${fn}][debug] ${msg}`);
+};
+
+const recordAgentTelemetry = (fn: string, update: Partial<AgentRuntimeTelemetry>): void => {
+  Object.entries(update).forEach(([key, value]) => {
+    if (typeof value === "number") {
+      const current = (agentRuntimeTelemetry as Record<string, number>)[key];
+      if (typeof current === "number") {
+        (agentRuntimeTelemetry as Record<string, number>)[key] = current + value;
+      }
+    }
+  });
+  dbgAgent(fn, "agent telemetry update", { ...agentRuntimeTelemetry });
+};
+
+const shouldSpeakVoiceReply = (options?: VoiceCommandExecutionOptions): boolean =>
+  Boolean((options?.fromVoice && !options?.fromRealtime) || (agentVoiceState.speechOutputMode && !options?.fromRealtime));
+
+const buildAgentContextPayloadForText = (text: string, options?: VoiceCommandExecutionOptions): AgentRunContext => {
+  const commandText = String(text || "").trim();
+  const context = buildAgentContextPayload({
+    fromVoice: Boolean(options?.fromVoice),
+    fromRealtime: Boolean(options?.fromRealtime),
+    commandText,
+    source: options?.fromRealtime ? "realtime" : options?.fromVoice ? "voice" : "chat"
+  });
+  return {
+    ...context,
+    source: options?.fromRealtime ? "realtime" : options?.fromVoice ? "voice" : "chat",
+    commandText,
+    fromVoice: Boolean(options?.fromVoice),
+    fromRealtime: Boolean(options?.fromRealtime),
+    commandLength: commandText.length,
+    commandWordCount: commandText.split(/\s+/).filter(Boolean).length
+  };
+};
+
+const validateVoiceCommandText = (rawText: string, options?: VoiceCommandExecutionOptions): AgentCommandGuardrailResult => {
+  const commandText = String(rawText || "").trim();
+  if (!commandText) {
+    return { status: "reject", normalized: "", message: "I did not hear a command." };
+  }
+  if (commandText.length > VOICE_COMMAND_MAX_LENGTH) {
+    return {
+      status: "reject",
+      normalized: commandText.slice(0, VOICE_COMMAND_MAX_LENGTH),
+      message: "That command is too long. Try a shorter phrase."
+    };
+  }
+  const normalized = normalizeVoiceText(commandText);
+  if (agentCommandGuards.some((guard) => guard.test(commandText))) {
+    agentRuntimeTelemetry.guardrailRejects++;
+    recordAgentTelemetry("validateVoiceCommandText", { guardrailRejects: 1 });
+    return { status: "reject", normalized, message: "This command is blocked by safety validation." };
+  }
+  if (!/[a-z0-9]/i.test(commandText)) {
+    return { status: "warn", normalized, message: "I did not detect a clear action. Please restate the command." };
+  }
+  return { status: "ok", normalized };
+};
 
 const ribbonHeader = document.getElementById("app-tab-header") as HTMLElement;
 const ribbonActions = document.getElementById("app-tab-actions") as HTMLElement;
@@ -108,12 +269,23 @@ const agentChatMessages = document.getElementById("agentChatMessages") as HTMLEl
 const agentChatForm = document.getElementById("agentChatForm") as HTMLFormElement | null;
 const agentChatInput = document.getElementById("agentChatInput") as HTMLInputElement | null;
 const btnAgentChatSend = document.getElementById("btnAgentChatSend") as HTMLButtonElement | null;
+const btnAgentChatDictation = document.getElementById("btnAgentChatDictation") as HTMLButtonElement | null;
 const btnAgentChatMic = document.getElementById("btnAgentChatMic") as HTMLButtonElement | null;
 const agentChatVoiceStatus = document.getElementById("agentChatVoiceStatus") as HTMLDivElement | null;
 const agentChatVoiceLegend = document.getElementById("agentChatVoiceLegend") as HTMLDivElement | null;
+const agentChatPhaseBadge = document.getElementById("agentChatPhaseBadge") as HTMLSpanElement | null;
 const btnAgentChatClose = document.getElementById("btnAgentChatClose") as HTMLButtonElement | null;
 const btnAgentChatClear = document.getElementById("btnAgentChatClear") as HTMLButtonElement | null;
 const agentChatAudio = document.getElementById("agentChatAudio") as HTMLAudioElement | null;
+const agentChatFabIcon = agentChatFab
+  ? (agentChatFab.querySelector(".agent-chat-fab-icon .agent-voice-icon") as HTMLSpanElement | null)
+  : null;
+const btnAgentChatMicIcon = btnAgentChatMic
+  ? (btnAgentChatMic.querySelector(".agent-chat-mic-icon .agent-voice-icon") as HTMLSpanElement | null)
+  : null;
+const btnAgentChatDictationIcon = btnAgentChatDictation
+  ? (btnAgentChatDictation.querySelector(".agent-chat-mic-icon .agent-voice-icon") as HTMLSpanElement | null)
+  : null;
 const PANEL_INDEX_BY_ID: Record<PanelId, number> = {
   panel1: 1,
   panel2: 2,
@@ -386,6 +558,9 @@ const agentChatState: {
   pendingIntent: null,
   pendingConfirmation: null
 };
+let teardownDictationDelta: (() => void) | null = null;
+let teardownDictationCompleted: (() => void) | null = null;
+let teardownDictationError: (() => void) | null = null;
 
 const agentVoiceState: {
   mediaRecorder: MediaRecorder | null;
@@ -397,6 +572,13 @@ const agentVoiceState: {
   ttsModel: string;
   ttsVoice: string;
   transcribeModel: string;
+  speechOutputMode: boolean;
+  nativeCaptureActive: boolean;
+  captureMode: "dictation" | "voice" | null;
+  dictationSessionId: number;
+  dictationBaseInput: string;
+  dictationDraftTranscript: string;
+  dictationProcessing: boolean;
 } = {
   mediaRecorder: null,
   stream: null,
@@ -406,10 +588,518 @@ const agentVoiceState: {
   isProcessing: false,
   ttsModel: "tts-1",
   ttsVoice: "alloy",
-  transcribeModel: "whisper-1"
+  transcribeModel: "whisper-1",
+  speechOutputMode: false,
+  nativeCaptureActive: false,
+  captureMode: null,
+  dictationSessionId: 0,
+  dictationBaseInput: "",
+  dictationDraftTranscript: "",
+  dictationProcessing: false
 };
 
 let activeSpeechObjectUrl: string | null = null;
+let activeRealtimeSession: RealtimeSession | null = null;
+let realtimeSessionConnecting = false;
+let activeRealtimeInputStream: MediaStream | null = null;
+let activeRealtimeAudioContext: AudioContext | null = null;
+let activeRealtimeAudioCursor = 0;
+let realtimeSilentAudioChunkCount = 0;
+const seenRealtimeTranscriptIds = new Set<string>();
+const AGENT_REALTIME_CONNECT_TIMEOUT_MS = 12000;
+const AGENT_REALTIME_OUTPUT_SAMPLE_RATE = 24000;
+const activeRealtimeAudioSources = new Set<AudioBufferSourceNode>();
+const AGENT_REALTIME_SILENT_CHUNK_THRESHOLD = 12;
+const AGENT_DICTATION_STREAM_TIMESLICE_MS = 1100;
+let activeDictationBridgeSessionId = 0;
+
+const isMissingMicrophoneError = (error: unknown): boolean => {
+  const message = String((error as Error)?.message || error || "").toLowerCase();
+  if (!message) return false;
+  return (
+    message.includes("requested device not found") ||
+    message.includes("notfounderror") ||
+    message.includes("no input device") ||
+    message.includes("device not found") ||
+    message.includes("overconstrainederror")
+  );
+};
+
+const resolvePreferredMicId = async (): Promise<string> => {
+  if (!window.settingsBridge?.getValue) return "";
+  try {
+    const raw = await window.settingsBridge.getValue(LLM_KEYS.openaiVoiceInputDeviceId, "");
+    return String(raw || "").trim();
+  } catch {
+    return "";
+  }
+};
+
+type DictationMode = "insert_only" | "auto_send_after_transcription";
+
+const resolveDictationMode = async (): Promise<DictationMode> => {
+  if (!window.settingsBridge?.getValue) return "insert_only";
+  try {
+    const raw = await window.settingsBridge.getValue(LLM_KEYS.openaiVoiceDictationMode, "insert_only");
+    const normalized = String(raw || "").trim();
+    if (normalized === "auto_send_after_transcription") {
+      return "auto_send_after_transcription";
+    }
+  } catch {
+    // ignore and use default
+  }
+  return "insert_only";
+};
+
+const getVoiceInputStream = async (): Promise<MediaStream> => {
+  if (!window.navigator?.mediaDevices?.getUserMedia) {
+    throw new Error("Microphone access is unavailable in this environment.");
+  }
+  const base: MediaTrackConstraints = {
+    echoCancellation: true,
+    noiseSuppression: true,
+    autoGainControl: true
+  };
+  const preferredMicId = await resolvePreferredMicId();
+  const attempts: MediaTrackConstraints[] = [];
+  if (preferredMicId) {
+    attempts.push({ ...base, deviceId: { exact: preferredMicId } });
+  }
+  attempts.push({ ...base, deviceId: { ideal: "default" } });
+  attempts.push(base);
+  let lastError: unknown = null;
+  for (const audio of attempts) {
+    try {
+      const stream = await window.navigator.mediaDevices.getUserMedia({ audio });
+      const hasTrack = stream.getAudioTracks().some((track) => track.readyState === "live");
+      if (hasTrack) {
+        return stream;
+      }
+      stream.getTracks().forEach((track) => track.stop());
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError || new Error("Could not open a microphone input stream.");
+};
+
+const resolveOpenAiApiKeyForRealtime = async (): Promise<string | null> => {
+  if (cachedAgentVoiceApiKey && Date.now() - cachedAgentVoiceApiKey.at < AGENT_VOICE_API_KEY_CACHE_TTL_MS) {
+    return cachedAgentVoiceApiKey.value;
+  }
+  if (!window.settingsBridge) return null;
+  let apiKey: string | undefined;
+  try {
+    const secretValue = await window.settingsBridge.getSecret(LLM_KEYS.openaiKey);
+    if (secretValue) {
+      apiKey = String(secretValue).trim();
+    }
+  } catch {
+    apiKey = undefined;
+  }
+  if (!apiKey && window.settingsBridge.getValue) {
+    const fallbackValue = await window.settingsBridge.getValue(LLM_KEYS.openaiKey, "");
+    if (fallbackValue) {
+      apiKey = String(fallbackValue).trim();
+    }
+  }
+  const trimmed = String(apiKey || "").trim();
+  cachedAgentVoiceApiKey = { value: trimmed, at: Date.now() };
+  return trimmed || null;
+};
+
+const buildVoiceActionTool = () =>
+  tool({
+    name: "execute_voice_command",
+    description:
+      "Run a direct command in the app from speech. Use the `command` text from the user and execute it as if typed in the chat box.",
+    parameters: z.object({
+      command: z.string().trim().min(1)
+    }),
+    execute: async ({ command }) => {
+      const text = String(command || "").trim();
+      if (!text) {
+        return "No command was provided.";
+      }
+      await runAgentChatCommand(text, { fromVoice: true, fromRealtime: true });
+      return `Executed "${text}".`;
+    }
+  });
+
+const buildVoiceAgents = async () => {
+  const models = await resolveAgentVoiceSettingsLabel();
+  const voiceActionTool = buildVoiceActionTool();
+  const retrieveSpecialist = new RealtimeAgent({
+    name: "Retrieve Specialist",
+    instructions:
+      "You are the retrieve and academic database specialist. Use controls in the Annotarium app for search, providers, sort, year filtering, limits, export, Zotero data operations, and screen/coding entry points.",
+    tools: [voiceActionTool],
+    voice: models.ttsVoice
+  });
+  const codingSpecialist = new RealtimeAgent({
+    name: "Coding Specialist",
+    instructions:
+      "You are the coding specialist. Handle requests about coding mode, question generation, and evidence-coding pipelines by using available app actions.",
+    tools: [voiceActionTool],
+    voice: models.ttsVoice
+  });
+  const triageAgent = new RealtimeAgent({
+    name: "App Voice Triage",
+    instructions:
+      "You are a triage voice agent for the Annotarium desktop app. " +
+      "For UI controls, call `execute_voice_command` with clear concise action text. " +
+      "If user intent is primarily retrieval or Zotero, hand off to Retrieve Specialist. " +
+      "If user intent is coding workflow, hand off to Coding Specialist. " +
+      "Keep responses short and conversational.",
+    handoffs: [retrieveSpecialist, codingSpecialist],
+    tools: [voiceActionTool],
+    voice: models.ttsVoice
+  });
+  return { triageAgent, retrieveSpecialist, codingSpecialist };
+};
+
+const buildRealtimeSession = async (inputStream?: MediaStream): Promise<RealtimeSession> => {
+  const { triageAgent } = await buildVoiceAgents();
+  const models = await resolveAgentVoiceSettingsLabel();
+  dbgAgent("buildRealtimeSession", "voice model settings", {
+    realtimeModel: DEFAULT_OPENAI_REALTIME_MODEL,
+    transcribeModel: String(models.transcribeModel || ""),
+    ttsVoice: String(models.ttsVoice || ""),
+    ttsModel: String(models.ttsModel || "")
+  });
+  const webrtcTransport = new OpenAIRealtimeWebRTC({
+    audioElement: agentChatAudio || undefined,
+    mediaStream: inputStream,
+    useInsecureApiKey: true
+  });
+  return new RealtimeSession(triageAgent, {
+    transport: webrtcTransport,
+    model: DEFAULT_OPENAI_REALTIME_MODEL,
+    config: {
+      outputModalities: ["audio", "text"],
+      audio: {
+        input: {
+          turnDetection: { type: "server_vad" },
+          transcription: {
+            model: models.transcribeModel || "whisper-1"
+          }
+        },
+        output: {
+          format: {
+            type: "audio/pcm",
+            rate: AGENT_REALTIME_OUTPUT_SAMPLE_RATE
+          },
+          voice: models.ttsVoice
+        }
+      }
+    },
+    context: buildAgentContextPayload({ source: "realtime" }),
+    traceMetadata: { source: "app-voice", surface: "renderer-console" }
+  });
+};
+
+const attachRealtimeSessionListeners = (session: RealtimeSession): void => {
+  session.on("agent_start", () => {
+    recordAgentTelemetry("attachRealtimeSessionListeners:agent_start", { sessionStarts: 1 });
+    setAgentChatVoiceStatus("Thinking...");
+    dbgAgent("attachRealtimeSessionListeners", "agent_start event");
+  });
+  session.on("agent_end", () => {
+    recordAgentTelemetry("attachRealtimeSessionListeners:agent_end", { sessionEnds: 1 });
+    setAgentChatVoiceStatus("");
+    clearAgentChatVoiceLegend();
+    setAgentChatMicUI(false);
+    clearAgentChatLegend();
+    dbgAgent("attachRealtimeSessionListeners", "agent_end event");
+    if (activeRealtimeSession) {
+      setAgentVoicePulseState(false, true, false);
+      setAgentChatVoiceStatus("Connected. Listening...");
+    }
+  });
+  session.on("agent_handoff", (_context, fromAgent, toAgent) => {
+    recordAgentTelemetry("attachRealtimeSessionListeners:agent_handoff", { handoffs: 1 });
+    dbgAgent("attachRealtimeSessionListeners", "agent_handoff", {
+      from: String((fromAgent as { name?: string } | undefined)?.name || ""),
+      to: String((toAgent as { name?: string } | undefined)?.name || "")
+    });
+  });
+  session.on("agent_tool_start", (_context, _agent, tool) => {
+    recordAgentTelemetry("attachRealtimeSessionListeners:agent_tool_start", { toolStarts: 1 });
+    dbgAgent("attachRealtimeSessionListeners", "agent_tool_start", { tool: String((tool as { name?: string } | undefined)?.name || "") });
+  });
+  session.on("agent_tool_end", (_context, _agent, tool) => {
+    recordAgentTelemetry("attachRealtimeSessionListeners:agent_tool_end", { toolEnds: 1 });
+    dbgAgent("attachRealtimeSessionListeners", "agent_tool_end", { tool: String((tool as { name?: string } | undefined)?.name || "") });
+  });
+  session.on("mcp_tool_call_completed", () => {
+    recordAgentTelemetry("attachRealtimeSessionListeners:mcp_tool_call_completed", { mcpToolCompletes: 1 });
+  });
+  session.on("guardrail_tripped", (_context, _agent, _error, details) => {
+    recordAgentTelemetry("attachRealtimeSessionListeners:guardrail_tripped", { rejectedCommands: 1 });
+    agentRuntimeTelemetry.toolFailures += 1;
+    dbgAgent("attachRealtimeSessionListeners", "guardrail_tripped", { itemId: String((details as { itemId?: string } | undefined)?.itemId || "") });
+  });
+  session.on("error", (error) => {
+    dbgAgent("attachRealtimeSessionListeners", "session_error", { error });
+    setAgentChatVoiceStatus("Realtime session error.");
+    setAgentChatPhase("error", "Error");
+  });
+  session.on("audio_start", () => {
+    dbgAgent("attachRealtimeSessionListeners", "audio_start");
+    realtimeSilentAudioChunkCount = 0;
+    setAgentVoicePulseState(false, false, true);
+    setAgentChatVoiceStatus("Speaking...");
+    setAgentChatPhase("speaking", "Speaking");
+    clearRealtimeVoicePulseQueue();
+    void ensureAgentChatAudioOutput();
+  });
+  session.on("audio", (event) => {
+    const data = event?.data as ArrayBuffer | SharedArrayBuffer | ArrayBufferView | string | undefined;
+    if (typeof data === "undefined") return;
+    const byteLength = getAudioPayloadByteLength(data);
+    const sampleRate = getAudioPayloadSampleRate(event);
+    dbgAgent("attachRealtimeSessionListeners", "audio chunk", {
+      byteLength,
+      sampleRate: Number.isFinite(sampleRate || 0) ? sampleRate : AGENT_REALTIME_OUTPUT_SAMPLE_RATE,
+      payloadType: typeof data
+    });
+    void queueRealtimeVoiceChunk(data, sampleRate);
+    setAgentVoicePulseState(false, false, true);
+    setAgentChatVoiceStatus("Speaking...");
+    setAgentChatPhase("speaking", "Speaking");
+    void ensureAgentChatAudioOutput();
+  });
+  session.on("audio_stopped", () => {
+    realtimeSilentAudioChunkCount = 0;
+    setAgentVoicePulseState(false, true, false);
+    setAgentChatVoiceStatus("Connected. Listening...");
+    setAgentChatPhase("listening", "Listening");
+    clearAgentChatVoiceLegend();
+    clearAgentChatLegend();
+    dbgAgent("attachRealtimeSessionListeners", "audio_stopped");
+  });
+  session.on("turn_done", () => {
+    if (activeRealtimeSession) {
+      setAgentVoicePulseState(false, true, false);
+      setAgentChatVoiceStatus("Connected. Listening...");
+      setAgentChatPhase("listening", "Listening");
+      clearAgentChatLegend();
+    }
+  });
+  session.on("audio_interrupted", () => {
+    clearRealtimeVoicePulseQueue();
+    realtimeSilentAudioChunkCount = 0;
+    setAgentVoicePulseState(false, true, false);
+    setAgentChatVoiceStatus("Interrupted.");
+    setAgentChatPhase("listening", "Listening");
+    dbgAgent("attachRealtimeSessionListeners", "audio_interrupted");
+  });
+  session.on("transport_event", (event) => {
+    dbgAgent("attachRealtimeSessionListeners", "transport_event", {
+      type: String(event?.type || ""),
+      item: String((event as { item_id?: string } | undefined)?.item_id || "")
+    });
+    if (event.type === "input_audio_buffer.speech_started") {
+      setAgentChatVoiceStatus("Listening...");
+      setAgentVoicePulseState(false, true, false);
+      setAgentChatPhase("listening", "Listening");
+    }
+    if (
+      event.type === "conversation.item.input_audio_transcription.completed" ||
+      event.type === "response.audio_transcript.done"
+    ) {
+      const payload = event as {
+        item_id?: string;
+        response_id?: string;
+        transcript?: string;
+        text?: string;
+      };
+      const transcript = String(payload.transcript || payload.text || "").trim();
+      if (!transcript) return;
+      const key = String(payload.item_id || payload.response_id || `${event.type}:${transcript.slice(0, 64)}`).trim();
+      if (seenRealtimeTranscriptIds.has(key)) return;
+      seenRealtimeTranscriptIds.add(key);
+      if (seenRealtimeTranscriptIds.size > 120) {
+        const iterator = seenRealtimeTranscriptIds.values().next();
+        if (!iterator.done) seenRealtimeTranscriptIds.delete(iterator.value);
+      }
+      if (event.type === "conversation.item.input_audio_transcription.completed") {
+        pushAgentChatMessage("user", transcript);
+      } else {
+        pushAgentChatMessage("assistant", transcript);
+      }
+    }
+  });
+};
+
+const clearAgentChatLegend = (): void => {
+  if (agentChatVoiceLegend) {
+    agentChatVoiceLegend.textContent = "";
+  }
+};
+
+const clearActiveRealtimeSession = (): void => {
+  if (!activeRealtimeSession) {
+    return;
+  }
+  try {
+    activeRealtimeSession.interrupt();
+  } catch {
+    // best effort
+  }
+  try {
+    activeRealtimeSession.close();
+  } catch {
+    // best effort
+  }
+  if (agentChatAudio) {
+    try {
+      agentChatAudio.pause();
+    } catch {
+      // best effort
+    }
+    try {
+      agentChatAudio.src = "";
+    } catch {
+      // best effort
+    }
+  }
+  if (activeRealtimeInputStream) {
+    try {
+      activeRealtimeInputStream.getTracks().forEach((track) => track.stop());
+    } catch {
+      // best effort
+    }
+  }
+  activeRealtimeInputStream = null;
+  activeRealtimeSession = null;
+  realtimeSessionConnecting = false;
+  clearRealtimeVoicePulseQueue();
+  setAgentVoicePulseState(false, false, false);
+  setAgentChatVoiceStatus("");
+  clearAgentChatLegend();
+};
+
+const ensureAgentChatAudioOutput = async (): Promise<void> => {
+  if (!agentChatAudio) return;
+  if (!agentChatAudio.paused) {
+    dbgAgent("ensureAgentChatAudioOutput", "audio already playing");
+    return;
+  }
+  agentChatAudio.volume = 1;
+  agentChatAudio.muted = false;
+  try {
+    dbgAgent("ensureAgentChatAudioOutput", "audio play request");
+    await agentChatAudio.play();
+  } catch (error) {
+    dbgAgent("ensureAgentChatAudioOutput", "audio play blocked", { message: String((error as Error)?.message || error || "unknown") });
+  }
+};
+
+const getRealtimeAudioContext = (): AudioContext | null => {
+  if (activeRealtimeAudioContext?.state === "closed") {
+    activeRealtimeAudioContext = null;
+  }
+  if (activeRealtimeAudioContext) {
+    if (activeRealtimeAudioContext.state === "suspended") {
+      void activeRealtimeAudioContext.resume();
+    }
+    return activeRealtimeAudioContext;
+  }
+  const ctor =
+    (typeof AudioContext !== "undefined" ? AudioContext : (typeof (window as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext)) as
+    | typeof AudioContext
+    | undefined;
+  if (!ctor) {
+    return null;
+  }
+  activeRealtimeAudioContext = new ctor();
+  void activeRealtimeAudioContext.resume();
+  return activeRealtimeAudioContext;
+};
+
+const clearRealtimeVoicePulseQueue = (): void => {
+  activeRealtimeAudioSources.forEach((source) => {
+    try {
+      source.stop();
+    } catch {
+      // best effort
+    }
+    try {
+      source.disconnect();
+    } catch {
+      // best effort
+    }
+  });
+  activeRealtimeAudioSources.clear();
+  activeRealtimeAudioCursor = 0;
+  realtimeSilentAudioChunkCount = 0;
+};
+
+const queueRealtimeVoiceChunk = async (
+  audioBytes: ArrayBuffer | SharedArrayBuffer | ArrayBufferView | string,
+  sampleRate = AGENT_REALTIME_OUTPUT_SAMPLE_RATE
+): Promise<void> => {
+  const context = getRealtimeAudioContext();
+  if (!context) return;
+  const int16 = getRealtimeAudioInt16(audioBytes);
+  if (!int16 || !int16.length) return;
+  const contextStateBefore = String(context.state);
+  if (contextStateBefore !== "running") {
+    try {
+      dbgAgent("queueRealtimeVoiceChunk", "audio context not running, attempting resume before playback");
+      await context.resume();
+    } catch (error) {
+      dbgAgent("queueRealtimeVoiceChunk", "audio context resume failed", { message: String((error as Error)?.message || error || "unknown") });
+      return;
+    }
+    if (String(context.state) !== "running") {
+      dbgAgent("queueRealtimeVoiceChunk", "audio context not running", { state: context.state });
+      return;
+    }
+  }
+  if (!int16.length) return;
+  const resolvedSampleRate = Number.isFinite(sampleRate) && sampleRate > 0 ? Math.max(3000, sampleRate) : AGENT_REALTIME_OUTPUT_SAMPLE_RATE;
+  const buffer = context.createBuffer(1, int16.length, resolvedSampleRate);
+  const channel = buffer.getChannelData(0);
+  let maxAbsSample = 0;
+  for (let i = 0; i < int16.length; i++) {
+    const sample = int16[i] / 0x8000;
+    if (sample === Infinity || Number.isNaN(sample)) continue;
+    const clamped = Math.max(-1, Math.min(1, sample));
+    maxAbsSample = Math.max(maxAbsSample, Math.abs(clamped));
+    channel[i] = clamped;
+  }
+  if (maxAbsSample < 0.0004) {
+    realtimeSilentAudioChunkCount += 1;
+    if (realtimeSilentAudioChunkCount >= AGENT_REALTIME_SILENT_CHUNK_THRESHOLD && activeRealtimeSession) {
+      setAgentChatVoiceStatus("Model is speaking softly or receiving muted audio frames.");
+      setAgentVoicePulseState(false, true, false);
+    }
+    dbgAgent("queueRealtimeVoiceChunk", "low_audio_level_detected", { sampleCount: int16.length });
+  } else if (Number.isFinite(maxAbsSample)) {
+    realtimeSilentAudioChunkCount = 0;
+    dbgAgent("queueRealtimeVoiceChunk", "audio_level", { maxAbsSample: Math.round(maxAbsSample * 1000) / 1000 });
+  }
+  const source = context.createBufferSource();
+  source.buffer = buffer;
+  source.connect(context.destination);
+  const now = context.currentTime;
+  const nextStart = Math.max(now + 0.02, activeRealtimeAudioCursor || now + 0.02);
+  try {
+    source.start(nextStart);
+  } catch {
+    return;
+  }
+  source.onended = () => {
+    activeRealtimeAudioSources.delete(source);
+    if (activeRealtimeAudioSources.size === 0 && activeRealtimeSession) {
+      setAgentVoicePulseState(false, true, false);
+    }
+  };
+  activeRealtimeAudioCursor = nextStart + buffer.duration;
+  activeRealtimeAudioSources.add(source);
+};
 
 const resolveAgentVoiceSettingsLabel = async (): Promise<{ ttsModel: string; ttsVoice: string; transcribeModel: string }> => {
   const fallback = {
@@ -485,6 +1175,7 @@ function renderAgentChatMessages(): void {
 function setAgentChatControlsEnabled(enabled: boolean): void {
   if (agentChatInput) agentChatInput.disabled = !enabled;
   if (btnAgentChatSend) btnAgentChatSend.disabled = !enabled;
+  if (btnAgentChatDictation) btnAgentChatDictation.disabled = !enabled;
   if (btnAgentChatMic) btnAgentChatMic.disabled = !enabled;
 }
 
@@ -492,10 +1183,86 @@ function toBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   let binary = "";
   for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i] as number);
+    binary += String.fromCharCode(bytes[i]);
   }
   return btoa(binary);
 }
+
+type AgentVoiceIconState = "idle" | "listening" | "recording" | "speaking";
+type AgentChatPhase = "idle" | "connecting" | "listening" | "dictating" | "transcribing" | "processing" | "speaking" | "error";
+
+const buildAgentVoiceIcon = (state: AgentVoiceIconState): string => {
+  if (state === "recording") {
+    return `<svg viewBox="0 0 24 24" aria-hidden="true">
+  <path d="M12 3.5a5 5 0 0 0-5 5v4a5 5 0 1 0 10 0v-4a5 5 0 0 0-5-5Z"></path>
+  <path d="M12 19c-1.7 0-3 1.3-3 3H15c0-1.7-1.3-3-3-3Z"></path>
+  <path d="M11 2h2"></path>
+  <path d="M9.5 21h5"></path>
+</svg>`;
+  }
+  if (state === "listening") {
+    return `<svg viewBox="0 0 24 24" aria-hidden="true">
+  <path d="M12 4.5a3.6 3.6 0 0 0-3.6 3.6v4a3.6 3.6 0 1 0 7.2 0v-4A3.6 3.6 0 0 0 12 4.5Z"></path>
+  <path d="M5.5 11.3a6.5 6.5 0 0 1 13 0"></path>
+  <path d="M7.5 11.3a4.5 4.5 0 0 1 9 0"></path>
+  <circle cx="8.3" cy="11.4" r="1.1"></circle>
+  <circle cx="15.7" cy="11.4" r="1.1"></circle>
+</svg>`;
+  }
+  if (state === "speaking") {
+    return `<svg viewBox="0 0 24 24" aria-hidden="true">
+  <path d="M6.6 9.5v5H5a1 1 0 0 0 0 2h1.6l6.2 3.6V6L6.6 9.5z"></path>
+  <path d="M16 8.5a1 1 0 0 0-.7 0 4 4 0 0 0 0 7 .9.9 0 0 0 .7 0"></path>
+  <path d="M18.4 6.9a.7.7 0 0 0-1 .2 6.5 6.5 0 0 1 0 9.8.7.7 0 0 0 1 .2"></path>
+  <path d="M20.7 5.4a.7.7 0 0 0-1 .2 8.4 8.4 0 0 1 0 12.8.7.7 0 0 0 1 .2"></path>
+</svg>`;
+  }
+  return `<svg viewBox="0 0 24 24" aria-hidden="true">
+  <path d="M10.8 4.4c0 .6-.4 1-1 1h-1.7a1 1 0 0 0-1 1V10c0 2.6 1.6 4.9 4 5.8v4.6c0 .8.6 1.5 1.5 1.5h.4c.8 0 1.5-.7 1.5-1.5V15.8c2.4-.9 4-3.2 4-5.8V6.4c0-.6-.4-1-1-1h-1.7c-.6 0-1-.4-1-1 0-1.3-1-2.4-2.2-2.4h-1.2c-1.2.1-2.2 1.1-2.2 2.4Z"></path>
+  <path d="M11.6 10.1v3"></path>
+  <path d="M12.4 10.1v3"></path>
+  <path d="M12 16h6"></path>
+</svg>`;
+};
+
+const setAgentVoiceButtonIcons = (state: AgentVoiceIconState): void => {
+  const icon = buildAgentVoiceIcon(state);
+  if (agentChatFabIcon) {
+    agentChatFabIcon.innerHTML = icon;
+  } else if (agentChatFab) {
+    const fallbackIconContainer = agentChatFab.querySelector(".agent-chat-fab-icon");
+    if (fallbackIconContainer) {
+      fallbackIconContainer.innerHTML = `<span class=\"agent-voice-icon\">${icon}</span>`;
+    }
+  }
+  if (btnAgentChatMicIcon) {
+    btnAgentChatMicIcon.innerHTML = icon;
+  } else if (btnAgentChatMic) {
+    const fallbackIconContainer = btnAgentChatMic.querySelector(".agent-chat-mic-icon");
+    if (fallbackIconContainer) {
+      fallbackIconContainer.innerHTML = `<span class=\"agent-voice-icon\">${icon}</span>`;
+    }
+  }
+};
+
+const setAgentDictationButtonIcon = (recording: boolean): void => {
+  const icon = recording
+    ? `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2"></rect></svg>`
+    : `<svg viewBox="0 0 24 24" aria-hidden="true">
+  <path d="M12 3.5a4 4 0 0 0-4 4v5a4 4 0 0 0 8 0v-5a4 4 0 0 0-4-4z"></path>
+  <path d="M8 12a4 4 0 0 0-4 4v1h16v-1a4 4 0 0 0-4-4h-8Z"></path>
+  <path d="M9 18h6v1H9z"></path>
+  <rect x="11.2" y="18.8" width="1.6" height="2.2" rx="0.8"></rect>
+</svg>`;
+  if (btnAgentChatDictationIcon) {
+    btnAgentChatDictationIcon.innerHTML = icon;
+  } else if (btnAgentChatDictation) {
+    const fallbackIconContainer = btnAgentChatDictation.querySelector(".agent-chat-mic-icon");
+    if (fallbackIconContainer) {
+      fallbackIconContainer.innerHTML = `<span class=\"agent-voice-icon\">${icon}</span>`;
+    }
+  }
+};
 
 type AgentVoicePulseTheme = {
   text: string;
@@ -596,13 +1363,96 @@ const applyAgentChatMicVoiceTheme = (ttsVoice: string, ttsModel: string): void =
 };
 
 const decodeBase64ToBytes = (value: string): Uint8Array => {
-  const binary = atob(value || "");
-  const buffer = new ArrayBuffer(binary.length);
-  const out = new Uint8Array(buffer);
-  for (let i = 0; i < binary.length; i++) {
-    out[i] = binary.charCodeAt(i);
+  const raw = String(value || "").trim();
+  if (!raw) return new Uint8Array(0);
+  try {
+    const cleaned = raw.includes(",") ? raw.split(",").pop() || "" : raw;
+    const binary = atob(cleaned);
+    const out = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      out[i] = binary.charCodeAt(i);
+    }
+    return out;
+  } catch {
+    return new Uint8Array(0);
   }
-  return out;
+};
+
+const normalizeBase64AudioPayload = (audioBytes: string): Uint8Array => {
+  return decodeBase64ToBytes(audioBytes);
+};
+
+const bytesToInt16Samples = (bytes: Uint8Array): Int16Array => {
+  const compact = bytes.byteOffset % 2 === 0 ? bytes : new Uint8Array(bytes);
+  const byteLength = compact.byteLength - (compact.byteLength % 2);
+  if (byteLength < 2) {
+    return new Int16Array(0);
+  }
+  const start = compact.byteOffset;
+  const sliceEnd = start + byteLength;
+  return new Int16Array(compact.buffer.slice(start, sliceEnd) as ArrayBufferLike);
+};
+
+const floatToInt16Samples = (samples: Float32Array | Float64Array): Int16Array => {
+  const output = new Int16Array(samples.length);
+  for (let i = 0; i < samples.length; i++) {
+    const sample = Number(samples[i]);
+    if (!Number.isFinite(sample)) {
+      output[i] = 0;
+      continue;
+    }
+    const clamped = Math.max(-1, Math.min(1, sample));
+    output[i] = Math.round(clamped * 0x7fff);
+  }
+  return output;
+};
+
+const getRealtimeAudioInt16 = (
+  audioBytes: ArrayBuffer | SharedArrayBuffer | ArrayBufferView | string
+): Int16Array | null => {
+  if (typeof audioBytes === "string") {
+    const decoded = normalizeBase64AudioPayload(audioBytes);
+    return decoded.byteLength ? bytesToInt16Samples(decoded) : null;
+  }
+  if (typeof SharedArrayBuffer !== "undefined" && audioBytes instanceof SharedArrayBuffer) {
+    const sharedBytes = new Uint8Array(audioBytes);
+    return sharedBytes.byteLength ? bytesToInt16Samples(sharedBytes) : null;
+  }
+  if (ArrayBuffer.isView(audioBytes)) {
+    if (audioBytes instanceof Int16Array) {
+      return new Int16Array(audioBytes);
+    }
+    if (audioBytes instanceof Float32Array || audioBytes instanceof Float64Array) {
+      return floatToInt16Samples(audioBytes);
+    }
+    const raw = new Uint8Array(audioBytes.buffer, audioBytes.byteOffset, audioBytes.byteLength);
+    return raw.byteLength ? bytesToInt16Samples(raw) : null;
+  }
+  if (audioBytes instanceof ArrayBuffer) {
+    return audioBytes.byteLength ? bytesToInt16Samples(new Uint8Array(audioBytes)) : null;
+  }
+  return null;
+};
+
+const getAudioPayloadByteLength = (audioBytes: unknown): number => {
+  if (!audioBytes) return 0;
+  if (typeof audioBytes === "string") return normalizeBase64AudioPayload(audioBytes).byteLength;
+  if (ArrayBuffer.isView(audioBytes)) return audioBytes.byteLength;
+  if (audioBytes instanceof ArrayBuffer) return audioBytes.byteLength;
+  if (typeof SharedArrayBuffer !== "undefined" && audioBytes instanceof SharedArrayBuffer) {
+    return audioBytes.byteLength;
+  }
+  return 0;
+};
+
+const getAudioPayloadSampleRate = (payload: unknown): number | undefined => {
+  if (!payload || typeof payload !== "object") return undefined;
+  const maybeRate =
+    (payload as { sampleRate?: unknown }).sampleRate ??
+    (payload as { sample_rate?: unknown }).sample_rate ??
+    (payload as { rate?: unknown }).rate;
+  const numericRate = Number(maybeRate);
+  return Number.isFinite(numericRate) && numericRate > 0 ? Math.round(numericRate) : undefined;
 };
 
 const speakChatMessage = async (text: string): Promise<void> => {
@@ -612,16 +1462,21 @@ const speakChatMessage = async (text: string): Promise<void> => {
   const requestId = ++agentVoiceState.speechRequestId;
   const models = await resolveAgentVoiceSettingsLabel();
   const spoken = await window.agentBridge.speakText({ text: message });
+  dbgAgent("speakChatMessage", "tts response", {
+    status: String(spoken?.status || ""),
+    audioBytes: Number(spoken?.audioBase64?.length || 0)
+  });
   if (requestId !== agentVoiceState.speechRequestId) return;
   if (spoken?.status !== "ok" || !spoken?.audioBase64) {
     clearAgentChatVoiceLegend();
     return;
   }
   const bytes = decodeBase64ToBytes(spoken.audioBase64);
-  const blob = new Blob([bytes], { type: String(spoken.mimeType || "audio/mpeg") });
+  const safeBytes = new Uint8Array(bytes);
+  const blob = new Blob([safeBytes], { type: String(spoken.mimeType || "audio/mpeg") });
   const finishVoice = (): void => {
     if (requestId !== agentVoiceState.speechRequestId) return;
-    setAgentVoicePulseState(false, false);
+    setAgentVoicePulseState(false, false, false);
     clearAgentChatMicVoiceTheme();
     clearAgentChatVoiceLegend();
     if (agentChatVoiceStatus?.textContent?.startsWith("Speaking")) {
@@ -638,17 +1493,26 @@ const speakChatMessage = async (text: string): Promise<void> => {
   }
   activeSpeechObjectUrl = objectUrl;
   if (agentChatAudio) {
+    dbgAgent("speakChatMessage", "tts audio play", {
+      blobSize: blob.size,
+      mimeType: String(spoken.mimeType || "")
+    });
     agentChatAudio.src = objectUrl;
     const voiceLabel = String(models.ttsVoice || models.ttsModel || "").trim();
     const modelLabel = models.ttsModel && models.ttsModel !== voiceLabel ? ` • ${models.ttsModel}` : "";
     setAgentChatVoiceStatus(`Speaking (${voiceLabel}${modelLabel})`);
     setAgentChatVoiceLegend(models, "Speaking");
     applyAgentChatMicVoiceTheme(models.ttsVoice, models.ttsModel);
-    setAgentVoicePulseState(false, true);
+    setAgentVoicePulseState(false, false, true);
     agentChatAudio.onended = finishVoice;
     agentChatAudio.onpause = finishVoice;
     agentChatAudio.onerror = finishVoice;
-    void agentChatAudio.play().catch(() => {
+    dbgAgent("speakChatMessage", "tts audio play request");
+    void agentChatAudio.play().then(() => {
+      dbgAgent("speakChatMessage", "tts audio play started");
+    }).catch((error) => {
+      dbgAgent("speakChatMessage", "tts audio play blocked", { message: String((error as Error)?.message || error || "unknown") });
+      setAgentChatVoiceStatus("Speech blocked by browser audio policy. Click the mic again.");
       finishVoice();
     });
   }
@@ -718,18 +1582,52 @@ const resolveAgentVoiceMimeType = (): string => {
 };
 
 const setAgentChatMicUI = (recording: boolean): void => {
-  setAgentVoicePulseState(recording, false);
+  setAgentVoicePulseState(recording, false, false);
 };
 
-const setAgentVoicePulseState = (recording: boolean, playing: boolean): void => {
+const setAgentVoicePulseState = (recording: boolean, listening: boolean, speaking: boolean): void => {
+  const isActive = recording || listening || speaking;
+  const isListening = Boolean(listening && !recording && !speaking);
+  const isPlaying = Boolean(recording || isListening || speaking);
+  const state: AgentVoiceIconState = recording
+    ? "recording"
+    : speaking
+      ? "speaking"
+      : isListening
+        ? "listening"
+        : "idle";
+  setAgentVoiceButtonIcons(state);
+  const dictationRecording = Boolean(recording && agentVoiceState.captureMode === "dictation");
   if (btnAgentChatMic) {
     btnAgentChatMic.classList.toggle("recording", recording);
-    btnAgentChatMic.classList.toggle("playing", playing && !recording);
-    btnAgentChatMic.textContent = recording ? "⏺" : "🎙";
+    btnAgentChatMic.classList.toggle("listening", isListening);
+    btnAgentChatMic.classList.toggle("speaking", speaking && !recording);
+    btnAgentChatMic.classList.toggle("playing", isPlaying);
+    btnAgentChatMic.classList.toggle("has-voice", isActive);
+    btnAgentChatMic.setAttribute("data-voice-state", listening ? "listening" : speaking ? "speaking" : recording ? "recording" : "idle");
+    const voicePressed = listening || speaking || agentVoiceState.captureMode === "voice";
+    btnAgentChatMic.setAttribute("aria-pressed", voicePressed ? "true" : "false");
+    btnAgentChatMic.title = voicePressed ? "Stop voice mode" : "Start voice mode";
+    btnAgentChatMic.setAttribute("aria-label", voicePressed ? "Stop voice mode" : "Start voice mode");
   }
+  if (btnAgentChatDictation) {
+    btnAgentChatDictation.classList.toggle("active", dictationRecording || agentVoiceState.nativeCaptureActive);
+    btnAgentChatDictation.setAttribute(
+      "aria-pressed",
+      dictationRecording || agentVoiceState.nativeCaptureActive ? "true" : "false"
+    );
+    const dictationPressed = dictationRecording || agentVoiceState.nativeCaptureActive;
+    btnAgentChatDictation.title = dictationPressed ? "Stop dictation capture" : "Start dictation capture";
+    btnAgentChatDictation.setAttribute("aria-label", dictationPressed ? "Stop dictation capture" : "Start dictation capture");
+  }
+  setAgentDictationButtonIcon(dictationRecording || agentVoiceState.nativeCaptureActive);
   if (agentChatFab) {
     agentChatFab.classList.toggle("recording", recording);
-    agentChatFab.classList.toggle("playing", playing && !recording);
+    agentChatFab.classList.toggle("listening", isListening);
+    agentChatFab.classList.toggle("speaking", speaking && !recording);
+    agentChatFab.classList.toggle("playing", isPlaying);
+    agentChatFab.classList.toggle("has-voice", isActive);
+    agentChatFab.setAttribute("data-voice-state", listening ? "listening" : speaking ? "speaking" : recording ? "recording" : "idle");
   }
 };
 
@@ -737,6 +1635,22 @@ const setAgentChatVoiceStatus = (text: string): void => {
   if (!agentChatVoiceStatus) return;
   const normalized = String(text || "").trim();
   agentChatVoiceStatus.textContent = normalized;
+};
+
+const setAgentChatPhase = (phase: AgentChatPhase, label?: string): void => {
+  if (!agentChatPhaseBadge) return;
+  const resolvedLabel = String(label || phase).trim() || "idle";
+  const normalizedLabel = resolvedLabel
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (m) => m.toUpperCase());
+  agentChatPhaseBadge.className = `agent-chat-phase-badge is-${phase}`;
+  agentChatPhaseBadge.textContent = normalizedLabel;
+};
+
+const speakVoiceActivationGreeting = (): void => {
+  pushAgentChatMessage("assistant", "How can I help you?", undefined, { speak: true });
 };
 
 const setAgentChatVoiceLegend = (models: {
@@ -776,6 +1690,14 @@ const clearAgentVoiceBuffers = (): void => {
     agentVoiceState.stream = null;
   }
   agentVoiceState.chunks = [];
+  agentVoiceState.dictationBaseInput = "";
+  agentVoiceState.dictationDraftTranscript = "";
+  agentVoiceState.dictationProcessing = false;
+  activeDictationBridgeSessionId = 0;
+  if (!agentVoiceState.nativeCaptureActive) {
+    agentVoiceState.captureMode = null;
+  }
+  setAgentChatPhase("idle", "Idle");
 };
 
 const runAgentChatFromVoice = async (transcript: string): Promise<void> => {
@@ -787,48 +1709,135 @@ const runAgentChatFromVoice = async (transcript: string): Promise<void> => {
     await runAgentChatCommand(transcript, { fromVoice: true });
   } finally {
     setAgentChatPending(false);
-    setAgentVoicePulseState(false, false);
+    setAgentVoicePulseState(false, false, false);
     setAgentChatVoiceStatus("");
     clearAgentChatVoiceLegend();
   }
 };
 
-const stopAgentVoiceRecording = (): void => {
+const stopAgentVoiceRecording = async (): Promise<void> => {
+  agentVoiceState.speechOutputMode = false;
+  if (activeRealtimeSession) {
+    clearActiveRealtimeSession();
+    setAgentChatVoiceStatus("Voice mode stopped.");
+    setAgentChatPhase("idle", "Idle");
+    clearAgentChatVoiceLegend();
+    setAgentChatMicUI(false);
+    clearAgentChatMicVoiceTheme();
+    agentVoiceState.captureMode = null;
+    return;
+  }
+  if (agentVoiceState.nativeCaptureActive && window.agentBridge?.nativeAudioStop) {
+    agentVoiceState.nativeCaptureActive = false;
+    agentVoiceState.isProcessing = true;
+    setAgentChatPending(true);
+    setAgentVoicePulseState(false, false, false);
+    setAgentChatVoiceStatus("Transcribing...");
+    try {
+      const captured = await window.agentBridge.nativeAudioStop();
+      if (captured?.status !== "ok" || !captured.audioBase64) {
+        pushAgentChatMessage("assistant", String(captured?.message || "Native audio capture failed."), "error");
+      } else {
+        const bytes = decodeBase64ToBytes(captured.audioBase64);
+        const mimeType = String(captured.mimeType || "audio/wav");
+        const blob = new Blob([new Uint8Array(bytes)], { type: mimeType });
+        await submitAgentVoiceChunk(blob, mimeType);
+      }
+    } finally {
+      agentVoiceState.isProcessing = false;
+      setAgentChatPending(false);
+      setAgentVoicePulseState(false, false, false);
+      clearAgentChatVoiceLegend();
+      agentVoiceState.captureMode = null;
+      setAgentChatPhase("idle", "Idle");
+    }
+    return;
+  }
   if (agentVoiceState.mediaRecorder && agentVoiceState.mediaRecorder.state === "recording") {
     agentVoiceState.mediaRecorder.stop();
+  } else {
+    clearAgentVoiceBuffers();
   }
-  if (agentVoiceState.stream) {
-    agentVoiceState.stream.getTracks().forEach((track) => track.stop());
-    agentVoiceState.stream = null;
-  }
+  setAgentChatVoiceStatus("");
+  clearAgentChatVoiceLegend();
+  setAgentVoicePulseState(false, false, false);
   setAgentChatMicUI(false);
+  agentVoiceState.captureMode = null;
+  setAgentChatPhase("idle", "Idle");
 };
 
 const submitAgentVoiceChunk = async (blob: Blob, mimeType: string): Promise<void> => {
   const pushAssistant = (message: string, tone?: "error"): void =>
     pushAgentChatMessage("assistant", message, tone, { speak: true });
+  const applyDictationTranscript = async (transcript: string): Promise<void> => {
+    const value = String(transcript || "").trim();
+    if (!value) return;
+    const mode = await resolveDictationMode();
+    if (mode === "auto_send_after_transcription") {
+      if (agentChatState.pending) {
+        if (agentChatInput) {
+          const existing = String(agentChatInput.value || "").trim();
+          agentChatInput.value = existing ? `${existing} ${value}` : value;
+          setAgentChatVoiceStatus("Dictation captured (busy). Press Send.");
+          clearAgentChatVoiceLegend();
+          return;
+        }
+      }
+      setAgentChatVoiceStatus("Processing dictation...");
+      setAgentChatPhase("processing", "Processing");
+      await runAgentChatFromVoice(value);
+      return;
+    }
+    if (agentChatInput) {
+      const existing = String(agentChatInput.value || "").trim();
+      agentChatInput.value = existing ? `${existing} ${value}` : value;
+      agentChatInput.focus();
+      try {
+        agentChatInput.setSelectionRange(agentChatInput.value.length, agentChatInput.value.length);
+      } catch {
+        // ignore
+      }
+      setAgentChatVoiceStatus("Dictation ready. Press Send.");
+      setAgentChatPhase("idle", "Idle");
+      clearAgentChatVoiceLegend();
+      return;
+    }
+    pushAgentChatMessage("user", value);
+    setAgentChatVoiceStatus("Dictation captured.");
+    setAgentChatPhase("idle", "Idle");
+    clearAgentChatVoiceLegend();
+  };
   if (!blob.size || !window.agentBridge?.transcribeVoice) {
     pushAssistant("Voice capture empty or unavailable in this session.", "error");
     setAgentChatVoiceStatus("");
     clearAgentChatVoiceLegend();
     return;
   }
+  dbgAgent("submitAgentVoiceChunk", "transcribe start", { byteSize: blob.size, mimeType });
   const base64 = toBase64(await blob.arrayBuffer());
   let transcriptResponse: { status: string; text?: string; message?: string };
   try {
+    const transcribeStartedAt = performance.now();
     transcriptResponse = await window.agentBridge.transcribeVoice({
       audioBase64: base64,
       mimeType
     });
+    dbgAgent("submitAgentVoiceChunk", "transcribe response", {
+      status: String(transcriptResponse?.status || ""),
+      hasText: Boolean(String(transcriptResponse?.text || "").trim()),
+      elapsedMs: Math.round(performance.now() - transcribeStartedAt)
+    });
   } catch (error) {
     pushAssistant(String((error as Error)?.message || error || "Could not transcribe your audio."), "error");
     setAgentChatVoiceStatus("Transcription failed.");
+    setAgentChatPhase("error", "Error");
     clearAgentChatVoiceLegend();
     return;
   }
   if (transcriptResponse?.status !== "ok" || !transcriptResponse?.text) {
     pushAssistant(String(transcriptResponse?.message || "Could not transcribe your audio."), "error");
     setAgentChatVoiceStatus("");
+    setAgentChatPhase("error", "Error");
     clearAgentChatVoiceLegend();
     return;
   }
@@ -836,22 +1845,67 @@ const submitAgentVoiceChunk = async (blob: Blob, mimeType: string): Promise<void
   if (!transcript) {
     pushAssistant("Could not transcribe any clear speech. Please try again.", "error");
     setAgentChatVoiceStatus("");
+    setAgentChatPhase("error", "Error");
     clearAgentChatVoiceLegend();
     return;
   }
-  setAgentChatVoiceStatus("Processing...");
-  await runAgentChatFromVoice(transcript);
+  dbgAgent("submitAgentVoiceChunk", "dictation transcript ready", { length: transcript.length });
+  await applyDictationTranscript(transcript);
 };
 
-const startAgentVoiceRecording = async (): Promise<void> => {
+const combineDictationTranscript = (previous: string, nextChunk: string): string => {
+  const prev = String(previous || "").trim();
+  const next = String(nextChunk || "").trim();
+  if (!next) return prev;
+  if (!prev) return next;
+  if (next.toLowerCase() === prev.toLowerCase()) return prev;
+  if (next.toLowerCase().startsWith(prev.toLowerCase())) return next;
+  const max = Math.min(prev.length, next.length);
+  let overlap = 0;
+  for (let i = max; i >= 1; i -= 1) {
+    if (prev.slice(prev.length - i).toLowerCase() === next.slice(0, i).toLowerCase()) {
+      overlap = i;
+      break;
+    }
+  }
+  const suffix = next.slice(overlap).trim();
+  if (!suffix) return prev;
+  return `${prev}${/[,\s]$/.test(prev) ? "" : " "}${suffix}`.trim();
+};
+
+const applyDictationComposerDraft = (): void => {
+  if (!agentChatInput) return;
+  const base = String(agentVoiceState.dictationBaseInput || "").trim();
+  const draft = String(agentVoiceState.dictationDraftTranscript || "").trim();
+  agentChatInput.value = draft ? (base ? `${base} ${draft}` : draft) : base;
+  agentChatInput.focus();
+  try {
+    agentChatInput.setSelectionRange(agentChatInput.value.length, agentChatInput.value.length);
+  } catch {
+    // ignore
+  }
+};
+
+const startAgentVoiceRecording = async (mode: "voice" | "dictation" = "voice"): Promise<void> => {
+  if (agentVoiceState.speechOutputMode && !activeRealtimeSession && !realtimeSessionConnecting) {
+    agentVoiceState.speechOutputMode = false;
+    setAgentVoicePulseState(false, false, false);
+    setAgentChatVoiceStatus("Speech-output mode disabled.");
+    setAgentChatPhase("idle", "Idle");
+    clearAgentChatVoiceLegend();
+    clearAgentChatMicVoiceTheme();
+    return;
+  }
   if (!window.navigator?.mediaDevices?.getUserMedia) {
     pushAgentChatMessage("assistant", "Microphone access is unavailable in this environment.", "error");
     setAgentChatVoiceStatus("Microphone access unavailable.");
+    setAgentChatPhase("error", "Error");
     clearAgentChatVoiceLegend();
     return;
   }
   if (agentChatState.pending || agentVoiceState.isProcessing) {
     setAgentChatVoiceStatus("Busy...");
+    setAgentChatPhase("processing", "Busy");
     setAgentChatVoiceLegend({
       ttsModel: agentVoiceState.ttsModel,
       ttsVoice: agentVoiceState.ttsVoice,
@@ -859,69 +1913,264 @@ const startAgentVoiceRecording = async (): Promise<void> => {
     }, "Busy");
     return;
   }
-  if (agentVoiceState.mediaRecorder && agentVoiceState.mediaRecorder.state === "recording") {
-    stopAgentVoiceRecording();
+  if (
+    activeRealtimeSession ||
+    agentVoiceState.mediaRecorder?.state === "recording" ||
+    realtimeSessionConnecting ||
+    agentVoiceState.nativeCaptureActive
+  ) {
+    await stopAgentVoiceRecording();
     return;
   }
+
+  const models = await resolveAgentVoiceSettingsLabel();
+  const apiKey = mode === "voice" ? await resolveOpenAiApiKeyForRealtime() : null;
+  let shouldFallbackToDictation = false;
+  if (mode === "voice" && apiKey) {
+    realtimeSessionConnecting = true;
+    setAgentChatVoiceStatus("Connecting voice agent...");
+    setAgentChatPhase("connecting", "Connecting");
+    setAgentChatVoiceLegend({
+      ttsModel: models.ttsModel,
+      ttsVoice: models.ttsVoice,
+      transcribeModel: models.transcribeModel
+    }, "Connecting");
+    try {
+      const voiceInputStream = await getVoiceInputStream();
+      activeRealtimeInputStream = voiceInputStream;
+      const session = await buildRealtimeSession(voiceInputStream);
+      attachRealtimeSessionListeners(session);
+      activeRealtimeSession = session;
+      agentVoiceState.captureMode = "voice";
+      await Promise.race([
+        session.connect({
+          apiKey: () => Promise.resolve(apiKey)
+        }),
+        new Promise<never>((_, reject) => {
+          window.setTimeout(() => reject(new Error(`Realtime connect timeout after ${AGENT_REALTIME_CONNECT_TIMEOUT_MS}ms`)), AGENT_REALTIME_CONNECT_TIMEOUT_MS);
+        })
+      ]);
+      void ensureAgentChatAudioOutput();
+      applyAgentChatMicVoiceTheme(models.ttsVoice, models.ttsModel);
+      setAgentChatVoiceStatus("Connected. Listening...");
+      setAgentChatPhase("listening", "Listening");
+      setAgentChatVoiceLegend({
+        ttsModel: models.ttsModel,
+        ttsVoice: models.ttsVoice,
+        transcribeModel: models.transcribeModel
+      }, "Listening");
+      agentVoiceState.speechOutputMode = false;
+      setAgentVoicePulseState(false, true, false);
+      speakVoiceActivationGreeting();
+      return;
+    } catch (error) {
+      const connectMessage = String((error as Error)?.message || error || "error");
+      const missingDevice = isMissingMicrophoneError(error);
+      if (missingDevice) {
+        clearActiveRealtimeSession();
+        setAgentVoicePulseState(false, false, false);
+        setAgentChatVoiceStatus("Realtime microphone unavailable. Switching to dictation...");
+        setAgentChatPhase("connecting", "Fallback");
+        pushAgentChatMessage(
+          "assistant",
+          "Realtime voice microphone is unavailable. Switching to dictation capture mode.",
+          "error"
+        );
+        shouldFallbackToDictation = true;
+      } else {
+      setAgentChatVoiceStatus(`Voice agent unavailable (${connectMessage}).`);
+      setAgentChatPhase("error", "Error");
+      pushAgentChatMessage(
+        "assistant",
+        "Realtime voice did not connect. Use Dictation for transcription or retry voice mode.",
+        "error"
+      );
+      clearActiveRealtimeSession();
+      setAgentChatVoiceLegend({
+        ttsModel: models.ttsModel,
+        ttsVoice: models.ttsVoice,
+        transcribeModel: models.transcribeModel
+      }, "Fallback");
+      }
+    } finally {
+      realtimeSessionConnecting = false;
+    }
+  }
+
+  if (mode === "voice") {
+    if (shouldFallbackToDictation) {
+      await startAgentVoiceRecording("dictation");
+    }
+    return;
+  }
+
   try {
-    const models = await resolveAgentVoiceSettingsLabel();
-    setAgentChatVoiceStatus(`Listening... [${models.transcribeModel}]`);
+    dbgAgent("startAgentVoiceRecording", "attempting fallback recorder mode");
+    setAgentChatVoiceStatus(`Dictating... [${models.transcribeModel}]`);
+    setAgentChatPhase("dictating", "Dictating");
     setAgentChatVoiceLegend({
       ttsModel: models.ttsModel,
       ttsVoice: models.ttsVoice,
       transcribeModel: models.transcribeModel
     }, "Listening");
-    const stream = await window.navigator.mediaDevices.getUserMedia({ audio: true });
+    const startDictationRes = await window.agentBridge?.dictationStart?.();
+    if (!startDictationRes || String(startDictationRes.status || "") !== "ok") {
+      throw new Error(String(startDictationRes?.message || "Failed to start dictation session."));
+    }
+    activeDictationBridgeSessionId = Number(startDictationRes.sessionId || 0);
+    const stream = await getVoiceInputStream();
+    const audioTrack = stream.getAudioTracks()[0] ?? null;
+    dbgAgent("startAgentVoiceRecording", "getUserMedia success", {
+      tracks: stream.getAudioTracks().length,
+      sampleRate: Number(audioTrack?.getSettings?.().sampleRate || 0),
+      channelCount: Number(audioTrack?.getSettings?.().channelCount || 0)
+    });
     const mimeType = resolveAgentVoiceMimeType();
     const recorder = new MediaRecorder(stream, { mimeType });
+    agentVoiceState.captureMode = "dictation";
+    agentVoiceState.dictationSessionId += 1;
+    agentVoiceState.dictationBaseInput = String(agentChatInput?.value || "").trim();
+    agentVoiceState.dictationDraftTranscript = "";
+    agentVoiceState.dictationProcessing = false;
     agentVoiceState.mediaRecorder = recorder;
     agentVoiceState.stream = stream;
     agentVoiceState.mimeType = mimeType;
     agentVoiceState.chunks = [];
+    const activeSessionId = agentVoiceState.dictationSessionId;
     recorder.ondataavailable = (event) => {
       if (event.data && event.data.size > 0) {
         agentVoiceState.chunks.push(event.data);
+        void event.data.arrayBuffer().then((ab) => {
+          if (agentVoiceState.dictationSessionId !== activeSessionId) return;
+          window.agentBridge?.dictationAudio?.(ab);
+        });
+        dbgAgent("startAgentVoiceRecording", "fallback chunk", {
+          chunkBytes: event.data.size,
+          chunkCount: agentVoiceState.chunks.length
+        });
       }
     };
     recorder.onstop = async () => {
       agentVoiceState.isProcessing = true;
       setAgentChatPending(true);
-      setAgentVoicePulseState(false, false);
+      setAgentVoicePulseState(false, false, false);
       setAgentChatVoiceStatus("Transcribing...");
+      setAgentChatPhase("transcribing", "Transcribing");
       setAgentChatVoiceLegend({
         ttsModel: agentVoiceState.ttsModel,
         ttsVoice: agentVoiceState.ttsVoice,
         transcribeModel: models.transcribeModel
       }, "Transcribing");
       try {
-        const blob = new Blob(agentVoiceState.chunks, { type: agentVoiceState.mimeType });
+        const totalBytes = agentVoiceState.chunks.reduce((sum, chunk) => sum + chunk.size, 0);
+        dbgAgent("startAgentVoiceRecording", "recorder stopped", {
+          chunkCount: agentVoiceState.chunks.length,
+          totalBytes
+        });
+        if (agentVoiceState.dictationSessionId === activeSessionId) {
+          const stopRes = await window.agentBridge?.dictationStop?.();
+          const completedText = String(stopRes?.text || "").trim();
+          if (completedText) {
+            agentVoiceState.dictationDraftTranscript = completedText;
+          }
+          const modeSetting = await resolveDictationMode();
+          const transcript = String(agentVoiceState.dictationDraftTranscript || "").trim();
+          if (transcript) {
+            if (modeSetting === "auto_send_after_transcription" && !agentChatState.pending) {
+              setAgentChatVoiceStatus("Processing dictation...");
+              setAgentChatPhase("processing", "Processing");
+              await runAgentChatFromVoice(transcript);
+              if (agentChatInput) {
+                agentChatInput.value = String(agentVoiceState.dictationBaseInput || "").trim();
+              }
+            } else {
+              applyDictationComposerDraft();
+              setAgentChatVoiceStatus("Dictation ready. Press Send.");
+              setAgentChatPhase("idle", "Idle");
+              clearAgentChatVoiceLegend();
+            }
+          }
+        }
         clearAgentVoiceBuffers();
-        await submitAgentVoiceChunk(blob, agentVoiceState.mimeType);
       } finally {
         agentVoiceState.isProcessing = false;
         setAgentChatPending(false);
       }
     };
     recorder.onerror = () => {
+      dbgAgent("startAgentVoiceRecording", "recorder error");
       setAgentChatVoiceStatus("Recorder error.");
+      setAgentChatPhase("error", "Error");
       pushAgentChatMessage("assistant", "Voice recorder encountered an error.", "error");
+      void window.agentBridge?.dictationStop?.();
       clearAgentVoiceBuffers();
-      setAgentVoicePulseState(false, false);
+      setAgentVoicePulseState(false, false, false);
       setAgentChatPending(false);
       clearAgentChatVoiceLegend();
     };
-    recorder.start();
+    recorder.start(AGENT_DICTATION_STREAM_TIMESLICE_MS);
     setAgentChatMicUI(true);
   } catch (error) {
-    pushAgentChatMessage("assistant", String((error as Error)?.message || error || "Could not start microphone."), "error");
+    if (mode === "dictation") {
+      void window.agentBridge?.dictationStop?.();
+      activeDictationBridgeSessionId = 0;
+    }
+    const fallbackMessage = String((error as Error)?.message || error || "Could not start microphone.");
+    const missingDevice = isMissingMicrophoneError(error);
+    if (missingDevice) {
+      if (window.agentBridge?.nativeAudioStart) {
+        const nativeStart = await window.agentBridge.nativeAudioStart();
+        if (nativeStart?.status === "ok") {
+          agentVoiceState.captureMode = "dictation";
+          agentVoiceState.nativeCaptureActive = true;
+          setAgentChatVoiceStatus(`Dictating... [host ${String(nativeStart.backend || "audio")}]`);
+          setAgentChatPhase("dictating", "Dictating");
+          setAgentChatVoiceLegend(
+            {
+              ttsModel: models.ttsModel,
+              ttsVoice: models.ttsVoice,
+              transcribeModel: models.transcribeModel
+            },
+            "Listening"
+          );
+          setAgentChatMicUI(true);
+          speakVoiceActivationGreeting();
+          return;
+        }
+      }
+      agentVoiceState.speechOutputMode = true;
+      pushAgentChatMessage(
+        "assistant",
+        "Microphone device not found. Voice input is unavailable in this runtime. I enabled speech-output mode for chat replies.",
+        "error"
+      );
+      setAgentVoicePulseState(false, false, true);
+      setAgentChatVoiceStatus("Speech-output mode active (no mic).");
+      setAgentChatPhase("idle", "Speech");
+      clearAgentVoiceBuffers();
+      setAgentChatMicUI(false);
+      clearAgentChatVoiceLegend();
+      return;
+    }
+    pushAgentChatMessage("assistant", fallbackMessage, "error");
     clearAgentVoiceBuffers();
     setAgentChatMicUI(false);
     setAgentChatVoiceStatus("");
+    setAgentChatPhase("error", "Error");
     clearAgentChatVoiceLegend();
   }
 };
 
-function buildAgentContextPayload(): Record<string, unknown> {
+type AgentContextBuildOptions = {
+  fromVoice?: boolean;
+  fromRealtime?: boolean;
+  source?: AgentCommandSource;
+  commandText?: string;
+};
+
+function buildAgentContextPayload(options: AgentContextBuildOptions = {}): AgentRunContext {
+  const source = options.source || (options.fromRealtime ? "realtime" : options.fromVoice ? "voice" : "chat");
+  const commandText = String(options.commandText || "").trim();
   const state = retrieveZoteroContext.getState();
   const selectedCollection = retrieveZoteroContext.getSelectedCollection();
   const selectedItem = retrieveZoteroContext.getSelectedItem();
@@ -931,6 +2180,7 @@ function buildAgentContextPayload(): Record<string, unknown> {
   const analyseRunId = String(analyseState?.activeRunId || "").trim();
   return {
     routeId: activeRouteId || "",
+    routeLabel: describeRoute(activeRouteId || ""),
     selectedCollectionKey: state.selectedCollectionKey || "",
     selectedCollectionName: selectedCollection?.name || "",
     selectedItemKey: selectedItem?.key || "",
@@ -947,7 +2197,15 @@ function buildAgentContextPayload(): Record<string, unknown> {
     analyseBaseDir,
     analysisBaseDir: analyseBaseDir,
     activeRunId: analyseRunId,
-    dir_base: analyseRunPath || analyseBaseDir
+    dir_base: analyseRunPath || analyseBaseDir,
+    commandText: commandText,
+    source,
+    fromVoice: Boolean(options.fromVoice),
+    fromRealtime: Boolean(options.fromRealtime),
+    commandLength: commandText.length,
+    commandWordCount: commandText.split(/\s+/).filter(Boolean).length,
+    hasZoteroState: Boolean(state.status || state.items.length || state.selectedCollectionKey),
+    hasAnalyseState: Boolean(analyseRunPath || analyseBaseDir)
   };
 }
 
@@ -1093,11 +2351,194 @@ type VoiceActionCandidate = {
   tokens: Set<string>;
 };
 
+type VoiceButtonInventoryEntry = {
+  label: string;
+  aliases: string[];
+  routeId: string;
+  phase?: string;
+  action?: string;
+  tabId?: string;
+  tabLabel?: string;
+  groupLabel?: string;
+  visible: boolean;
+};
+
+type VoiceInventoryRequest = {
+  scope: "visible" | "all";
+  routeId?: string;
+  phrase?: string;
+  limit?: number;
+  format?: "summary" | "json";
+};
+
+type VoiceButtonInventory = {
+  entries: VoiceButtonInventoryEntry[];
+  phraseTokens: string[];
+  scope: "visible" | "all";
+};
+
+type VoiceInventoryRouteAlias = {
+  id: RouteId;
+  aliases: string[];
+};
+
+const VOICE_INVENTORY_PREVIEW_LIMIT = 12;
+const VOICE_INVENTORY_MAX_LIMIT = 200;
+
+const VOICE_ROUTE_ALIAS_MAP: Array<VoiceInventoryRouteAlias> = [
+  { id: "retrieve:search", aliases: ["retrieve search", "search page", "search tab", "retrieve search page"] },
+  { id: "retrieve:datahub", aliases: ["retrieve datahub", "datahub"] },
+  { id: "retrieve:zotero", aliases: ["retrieve zotero", "zotero"] },
+  { id: "retrieve:search-selected", aliases: ["search selected", "selected result", "selected result page"] },
+  { id: "retrieve:graph", aliases: ["retrieve graph", "citation graph", "graph page"] },
+  { id: "screen:main", aliases: ["screening", "screen page", "pdf screen"] },
+  { id: "analyse:dashboard", aliases: ["analyse dashboard", "analysis dashboard", "dashboard"] },
+  { id: "analyse:corpus", aliases: ["analyse corpus", "analysis corpus", "corpus"] },
+  { id: "analyse:r1", aliases: ["round 1", "round one", "analyse round one"] },
+  { id: "analyse:r2", aliases: ["round 2", "round two", "analyse round two"] },
+  { id: "analyse:r3", aliases: ["round 3", "round three", "analyse round three"] },
+  { id: "analyse:phases", aliases: ["analysis phases", "phases"] },
+  { id: "code:main", aliases: ["code", "coding"] },
+  { id: "write:main", aliases: ["write", "writer"] },
+  { id: "visualiser:main", aliases: ["visualiser", "visualiser page", "preview"] }
+];
+const normalizeVoiceInventoryRoute = (routeId: string): string => normalizeVoiceText(String(routeId || ""));
+
+const normalizeVoiceInventoryAlias = (value: string): string => normalizeVoiceText(String(value || ""));
+
+const resolveVoiceInventoryRouteId = (normalized: string): RouteId | null => {
+  const normalizedTokens = voiceTokens(normalizeVoiceText(normalized));
+  for (const row of VOICE_ROUTE_ALIAS_MAP) {
+    for (const rawAlias of row.aliases) {
+      const alias = normalizeVoiceInventoryAlias(rawAlias);
+      if (!alias) continue;
+      if (normalized === alias || normalized.includes(` ${alias} `) || normalized.includes(`${alias} `) || normalized.includes(` ${alias}`)) {
+        return row.id;
+      }
+      const aliasTokens = voiceTokens(alias);
+      const matchedTokens = aliasTokens.filter((token) => normalizedTokens.includes(token));
+      if (aliasTokens.length >= 2 && matchedTokens.length === aliasTokens.length) {
+        return row.id;
+      }
+    }
+  }
+  return null;
+};
+
+const describeRoute = (routeId?: string): string => {
+  if (!routeId) return "current route";
+  return String(routeId).replace(":", " ");
+};
+
+const inferCandidateRouteId = (button: HTMLElement): string | null => {
+  if (activeRouteId) {
+    return String(activeRouteId);
+  }
+  if (button.closest("[data-route-id]")) {
+    const value = button.closest("[data-route-id]")?.getAttribute("data-route-id");
+    if (value?.trim()) return value.trim();
+  }
+  return null;
+};
+
+const normalizeVoiceInventoryPayload = (payload: Record<string, unknown> | undefined): VoiceInventoryRequest => {
+  const rawScope = String(payload?.scope || "visible").toLowerCase();
+  const scope = rawScope === "all" ? "all" : "visible";
+  const format = String(payload?.format || "").toLowerCase() === "json" ? "json" : "summary";
+  const parsedLimit = typeof payload?.limit === "number" && Number.isFinite(payload.limit) ? Number(payload.limit) : undefined;
+  const clampedLimit = parsedLimit && parsedLimit > 0 ? Math.max(1, Math.min(Math.floor(parsedLimit), VOICE_INVENTORY_MAX_LIMIT)) : undefined;
+  const phrase = String(payload?.phrase || "").trim();
+  const routeId = String(payload?.routeId || "").trim() || undefined;
+  return { scope, routeId, phrase, limit: clampedLimit, format };
+};
+
+const parseVoiceInventoryIntent = (normalized: string): VoiceInventoryRequest | null => {
+  if (!/\b(inventory|coverage|map|list)\b/.test(normalized) || !/\b(voice|agent|mic|audio|button|control|controls?|action|actions|available)\b/.test(normalized)) {
+    return null;
+  }
+
+  const routeId = resolveVoiceInventoryRouteId(normalized);
+  const requestedAll = /\ball|global|entire|whole|every/.test(normalized);
+  const requestedJson = /\bjson\b/.test(normalized);
+  const phrase = normalizeVoiceText(
+    normalized
+      .replace(/\b(voice|agent|mic|audio|mode)\b/g, " ")
+      .replace(/\b(inventory|coverage|button|buttons?|controls?|command|commands|action|actions|map|list|list all|show|of|the|for|in)\b/g, " ")
+      .trim()
+  );
+  const match = normalized.match(/\b(?:show|list|give|give me|map|show me)\s+(?:only|just)?\s*(?:about|for|matching)?\s+(.+?)\b(?:\b(in|on)\s+(?:the|a)\s+)?(?:button|buttons|controls?)?\b/);
+  const extractedPhrase = String(match?.[1] || phrase).trim();
+  const limitMatch = normalized.match(/\b(?:first|show|only|up to|max|top)\s+(\d{1,3})\b/);
+  const limit = limitMatch ? Math.max(1, Math.min(Number(limitMatch[1]), VOICE_INVENTORY_MAX_LIMIT)) : undefined;
+  return normalizeVoiceInventoryPayload({
+    scope: requestedAll ? "all" : "visible",
+    routeId,
+    phrase: extractedPhrase || undefined,
+    limit,
+    format: requestedJson ? "json" : "summary"
+  });
+};
+
+const buildVoiceButtonInventory = (request?: VoiceInventoryRequest): VoiceButtonInventory => {
+  const payload = normalizeVoiceInventoryPayload(request ?? {});
+  const phraseTokens = voiceTokens(normalizeVoiceText(payload.phrase || ""));
+  const desiredRoute = payload.routeId ? normalizeVoiceInventoryRoute(payload.routeId) : "";
+
+  const candidates = collectVoiceButtonCandidates({ visibleOnly: payload.scope === "visible" });
+  const filtered: VoiceButtonInventoryEntry[] = [];
+  for (const candidate of candidates) {
+    const candidateRoute = normalizeVoiceInventoryRoute(candidate.routeId || "");
+    if (payload.routeId && candidateRoute && candidateRoute !== desiredRoute && !candidateRoute.includes(desiredRoute) && !desiredRoute.includes(candidateRoute)) {
+      continue;
+    }
+    if (phraseTokens.length) {
+      const haystack = candidate.aliases.join(" ");
+      const normalizedHaystack = normalizeVoiceText(haystack);
+      const allTokensPresent = phraseTokens.every((token) => candidate.tokens.has(token) || normalizedHaystack.includes(token));
+      if (!allTokensPresent) continue;
+    }
+    filtered.push({
+      label: candidate.label,
+      aliases: candidate.aliases,
+      routeId: candidate.routeId || "",
+      phase: candidate.phase,
+      action: candidate.action,
+      tabId: candidate.tabId,
+      tabLabel: candidate.tabLabel,
+      groupLabel: candidate.groupLabel,
+      visible: payload.scope === "visible"
+    });
+  }
+
+  filtered.sort((a, b) => {
+    const routeA = String(a.routeId || "");
+    const routeB = String(b.routeId || "");
+    if (routeA !== routeB) return routeA.localeCompare(routeB);
+    const phaseA = String(a.phase || "");
+    const phaseB = String(b.phase || "");
+    if (phaseA !== phaseB) return phaseA.localeCompare(phaseB);
+    const groupA = String(a.groupLabel || "");
+    const groupB = String(b.groupLabel || "");
+    if (groupA !== groupB) return groupA.localeCompare(groupB);
+    return String(a.label || "").localeCompare(String(b.label || ""));
+  });
+
+  const output = payload.limit && payload.limit > 0 ? filtered.slice(0, payload.limit) : filtered;
+  return { entries: output, phraseTokens, scope: payload.scope };
+};
+
 type VoiceButtonCandidate = {
   element: HTMLElement;
   label: string;
   aliases: string[];
   tokens: Set<string>;
+  phase?: string;
+  action?: string;
+  tabId?: string;
+  tabLabel?: string;
+  groupLabel?: string;
+  toolType?: string;
+  routeId?: string;
 };
 
 const VOICE_STOPWORDS = new Set([
@@ -1435,7 +2876,8 @@ const VOICE_ACTION_MIN_SCORE = 40;
 const VOICE_ACTION_MIN_GAP = 12;
 const VOICE_BUTTON_MIN_SCORE = 40;
 const VOICE_BUTTON_MIN_GAP = 12;
-const VOICE_BUTTON_SELECTOR = "button, [role='button'], input[type='button'], input[type='submit'], input[type='reset']";
+const VOICE_BUTTON_SELECTOR =
+  "button, a[href], [role='button'], [role='link'], [role='switch'], [role='tab'], [role='menuitem'], [role='menuitemradio'], [role='menuitemcheckbox'], [role='checkbox'], input[type='button'], input[type='submit'], input[type='reset'], input[type='checkbox'], input[type='number'], input[type='text'], input[type='search'], input[type='email'], input[type='url'], textarea, select";
 const VOICE_ALIAS_SEPARATOR = /[;,|]/;
 
 let cachedVoiceActionCandidates: VoiceActionCandidate[] | null = null;
@@ -1527,6 +2969,31 @@ const collectButtonContextAliases = (button: HTMLElement, aliases: Set<string>):
   if (button.id) {
     addAlias(aliases, button.id);
     addAlias(aliases, button.id.replace(/-/g, " "));
+    const id = String(button.id).trim().toLowerCase();
+    if (id.includes("zotero")) {
+      addAlias(aliases, "zotero");
+      addAlias(aliases, "zotero loader");
+    }
+    if (id.includes("retrieve") || id.includes("search")) {
+      addAlias(aliases, "retrieve search");
+      addAlias(aliases, "search");
+    }
+    if (id.includes("provider")) {
+      addAlias(aliases, "provider");
+      addAlias(aliases, "academic database");
+      addAlias(aliases, "search prover");
+    }
+    if (id.includes("sort")) {
+      addAlias(aliases, "sort");
+      addAlias(aliases, "sort results");
+    }
+    if (id.includes("year")) {
+      addAlias(aliases, "year");
+      addAlias(aliases, "year range");
+    }
+    if (id.includes("limit")) {
+      addAlias(aliases, "limit");
+    }
   }
   addAlias(aliases, "button");
 };
@@ -1550,13 +3017,195 @@ const collectAssociatedLabelAlias = (aliases: Set<string>, button: HTMLElement):
   }
 };
 
+const addButtonClassAlias = (aliases: Set<string>, button: HTMLElement): void => {
+  const classTokens = Array.from(button.classList).map((value) => value.toLowerCase());
+  if (classTokens.some((value) => value.includes("close"))) {
+    addAlias(aliases, "close");
+    addAlias(aliases, "close tab");
+    addAlias(aliases, "close panel");
+    addAlias(aliases, "remove");
+  }
+  if (classTokens.some((value) => value.includes("next"))) {
+    addAlias(aliases, "next");
+    addAlias(aliases, "next page");
+    addAlias(aliases, "forward");
+  }
+  if (classTokens.some((value) => value.includes("prev"))) {
+    addAlias(aliases, "previous");
+    addAlias(aliases, "previous page");
+    addAlias(aliases, "go back");
+    addAlias(aliases, "back");
+  }
+  if (classTokens.some((value) => value.includes("refresh") || value.includes("reload") || value.includes("redo"))) {
+    addAlias(aliases, "refresh");
+    addAlias(aliases, "reload");
+  }
+  if (classTokens.some((value) => value.includes("search"))) {
+    addAlias(aliases, "search");
+    addAlias(aliases, "find");
+  }
+  if (classTokens.some((value) => value.includes("save") || value.includes("download"))) {
+    addAlias(aliases, "save");
+    addAlias(aliases, "download");
+  }
+  if (classTokens.some((value) => value.includes("export"))) {
+    addAlias(aliases, "export");
+    addAlias(aliases, "save as");
+  }
+  if (classTokens.some((value) => value.includes("add") || value.includes("plus"))) {
+    addAlias(aliases, "add");
+    addAlias(aliases, "create");
+  }
+  if (classTokens.some((value) => value.includes("remove") || value.includes("delete") || value.includes("clear") || value.includes("trash"))) {
+    addAlias(aliases, "remove");
+    addAlias(aliases, "delete");
+    addAlias(aliases, "clear");
+    addAlias(aliases, "remove item");
+  }
+  if (classTokens.some((value) => value.includes("expand") || value.includes("toggle"))) {
+    addAlias(aliases, "expand");
+    addAlias(aliases, "collapse");
+    addAlias(aliases, "toggle");
+  }
+  if (classTokens.some((value) => value.includes("play"))) {
+    addAlias(aliases, "play");
+    addAlias(aliases, "start");
+  }
+  if (classTokens.some((value) => value.includes("pause") || value.includes("stop"))) {
+    addAlias(aliases, "pause");
+    addAlias(aliases, "stop");
+  }
+  if (classTokens.some((value) => value.includes("tag") && value.includes("chip")) || classTokens.some((value) => value.includes("tag"))) {
+    addAlias(aliases, "tag");
+    addAlias(aliases, "tags");
+  }
+  if (classTokens.some((value) => value.includes("collection"))) {
+    addAlias(aliases, "collection");
+    addAlias(aliases, "collections");
+  }
+  if (classTokens.some((value) => value.includes("zotero"))) {
+    addAlias(aliases, "zotero");
+    addAlias(aliases, "zotero loader");
+  }
+  if (classTokens.some((value) => value.includes("retrieve"))) {
+    addAlias(aliases, "retrieve");
+    addAlias(aliases, "retrieve search");
+  }
+  if (classTokens.some((value) => value.includes("graph"))) {
+    addAlias(aliases, "graph");
+    addAlias(aliases, "citation graph");
+  }
+  if (classTokens.some((value) => value.includes("detail"))) {
+    addAlias(aliases, "detail");
+    addAlias(aliases, "details");
+  }
+};
+
+const addButtonGlyphAlias = (aliases: Set<string>, label: string): void => {
+  const normalized = String(label || "").trim();
+  if (!normalized) return;
+  const glyphAliases = new Map<string, string[]>([
+    ["×", ["close", "close button", "remove"]],
+    ["x", ["close", "close button", "remove"]],
+    ["✎", ["rename", "edit"]],
+    ["🗑", ["delete", "remove", "trash"]],
+    ["⚙", ["settings", "options", "preferences"]],
+    ["i", ["included", "include"]],
+    ["?", ["maybe"]],
+    ["−", ["collapse", "minus"]],
+    ["-", ["minus", "decrease", "collapse"]],
+    ["+", ["expand", "add"]],
+    ["add", ["add"]],
+    ["≡", ["menu"]],
+    ["▸", ["expand", "open", "next"]],
+    ["◂", ["collapse", "previous", "back"]],
+    ["▶", ["play", "start"]],
+    ["⏹", ["stop", "pause"]],
+    ["⏺", ["record"]],
+    ["...", ["more"]]
+  ]);
+  const entries = glyphAliases.get(normalized);
+  if (entries?.length) {
+    entries.forEach((entry) => addAlias(aliases, entry));
+  }
+  if (normalized.length <= 2 && /^\d+$/.test(normalized)) {
+    addAlias(aliases, `tab ${normalized}`);
+  }
+};
+
+const addButtonIconAlias = (aliases: Set<string>, button: HTMLElement): void => {
+  const icon = button.querySelector("svg, use, i, .icon");
+  const labelledBy = button.getAttribute("aria-labelledby");
+  if (labelledBy) {
+    const ids = labelledBy
+      .split(" ")
+      .map((id) => id.trim())
+      .filter(Boolean);
+    ids.forEach((id) => {
+      const labelled = document.getElementById(id);
+      addAlias(aliases, labelled?.textContent);
+      addAliasTokens(aliases, labelled?.textContent);
+    });
+  }
+  const label = normalizeVoiceText(button.getAttribute("aria-label") || button.title || button.textContent || "");
+  if (label.includes("close") || label.includes("remove") || label.includes("delete")) {
+    addAlias(aliases, "close");
+    addAlias(aliases, "remove");
+    addAlias(aliases, "delete");
+  }
+  if (label.includes("back") || label.includes("return") || label.includes("previous")) {
+    addAlias(aliases, "back");
+    addAlias(aliases, "previous");
+  }
+  if (label.includes("next") || label.includes("more")) {
+    addAlias(aliases, "next");
+    addAlias(aliases, "more");
+  }
+  if (label.includes("search") || label.includes("find")) {
+    addAlias(aliases, "search");
+    addAlias(aliases, "find");
+  }
+  if (label.includes("open") || label.includes("view") || label.includes("show")) {
+    addAlias(aliases, "open");
+    addAlias(aliases, "show");
+    addAlias(aliases, "view");
+  }
+  if (icon) {
+    const classes = Array.from(icon.classList).map((value) => value.toLowerCase());
+    const symbol = normalizeVoiceText(icon.getAttribute("data-icon") || icon.id || icon.getAttribute("class") || "");
+    if (classes.some((value) => value.includes("close")) || symbol.includes("close")) {
+      addAlias(aliases, "close");
+    }
+    if (classes.some((value) => value.includes("search")) || symbol.includes("search")) {
+      addAlias(aliases, "search");
+    }
+    if (classes.some((value) => value.includes("menu")) || classes.some((value) => value.includes("expand")) || symbol.includes("expand")) {
+      addAlias(aliases, "expand");
+      addAlias(aliases, "menu");
+    }
+    if (classes.some((value) => value.includes("minus")) || classes.some((value) => value.includes("plus"))) {
+      addAlias(aliases, "collapse");
+      addAlias(aliases, "expand");
+    }
+  }
+};
+
 const buttonLabelForVoice = (button: HTMLElement): string => {
   const ariaLabel = button.getAttribute("aria-label");
   if (ariaLabel?.trim()) return ariaLabel.trim();
   const title = button.getAttribute("title");
   if (title?.trim()) return title.trim();
-  if (button instanceof HTMLInputElement && button.type === "button" && (button.value || "").trim()) {
+  if (button instanceof HTMLInputElement && (button.value || "").trim()) {
     return button.value.trim();
+  }
+  if (button instanceof HTMLTextAreaElement && (button.value || "").trim()) {
+    return button.value.trim();
+  }
+  if ((button instanceof HTMLInputElement || button instanceof HTMLSelectElement || button instanceof HTMLTextAreaElement) && button.id) {
+    const linked = document.querySelector<HTMLLabelElement>(`label[for="${CSS.escape(button.id)}"]`);
+    if (linked?.textContent?.trim()) {
+      return linked.textContent.trim();
+    }
   }
   return (button.textContent || "").trim();
 };
@@ -1578,20 +3227,22 @@ const isVoiceButtonCandidateVisible = (button: HTMLElement): boolean => {
   return true;
 };
 
-const getVoiceButtonCandidates = (): VoiceButtonCandidate[] => {
+const collectVoiceButtonCandidates = (options?: { visibleOnly?: boolean }): VoiceButtonCandidate[] => {
+  const visibleOnly = options?.visibleOnly !== false;
   const candidates: VoiceButtonCandidate[] = [];
   const nodes = Array.from(document.querySelectorAll<HTMLElement>(VOICE_BUTTON_SELECTOR));
   for (const button of nodes) {
-    if (!isVoiceButtonCandidateVisible(button)) {
+    if (visibleOnly && !isVoiceButtonCandidateVisible(button)) {
       continue;
     }
     const aliasSet = new Set<string>();
-    const phase = button.getAttribute("data-phase");
-    const action = button.getAttribute("data-action");
-    const tabId = button.getAttribute("data-tab-id");
-    const tabLabel = button.getAttribute("data-tab-label");
+    const phase = button.getAttribute("data-phase")?.trim() || undefined;
+    const action = button.getAttribute("data-action")?.trim() || undefined;
+    const tabId = button.getAttribute("data-tab-id")?.trim() || undefined;
+    const tabLabel = button.getAttribute("data-tab-label")?.trim() || undefined;
     const groupLabel = button.closest(".ribbon-group")?.querySelector("h3")?.textContent?.trim();
-    const toolType = button.getAttribute("data-tool-type");
+    const toolType = button.getAttribute("data-tool-type")?.trim() || undefined;
+    const routeId = inferCandidateRouteId(button);
     const label = buttonLabelForVoice(button);
     const voiceAliases = button.getAttribute("data-voice-aliases");
 
@@ -1612,6 +3263,9 @@ const getVoiceButtonCandidates = (): VoiceButtonCandidate[] => {
     addAlias(aliasSet, `select ${label}`);
     addAlias(aliasSet, `${phase} ${action}`);
     collectButtonContextAliases(button, aliasSet);
+    addButtonClassAlias(aliasSet, button);
+    addButtonGlyphAlias(aliasSet, button.textContent || "");
+    addButtonIconAlias(aliasSet, button);
     if (tabId) {
       addAlias(aliasSet, `${tabId} tab`);
       addAlias(aliasSet, `tab ${tabId}`);
@@ -1645,11 +3299,20 @@ const getVoiceButtonCandidates = (): VoiceButtonCandidate[] => {
       element: button,
       label: label || phase || action || tabId || "Button",
       aliases,
-      tokens
+      tokens,
+      phase,
+      action,
+      tabId,
+      tabLabel,
+      groupLabel,
+      toolType,
+      routeId: routeId || undefined
     });
   }
   return candidates;
 };
+
+const getVoiceButtonCandidates = (): VoiceButtonCandidate[] => collectVoiceButtonCandidates({ visibleOnly: true });
 
 const normalizeVoiceText = (value: string): string => {
   return String(value || "")
@@ -1716,7 +3379,7 @@ const getActionAliasList = (): string[] =>
 
 function parseRetrieveProviderFromText(text: string): RetrieveProviderId | null {
   const normalized = String(text || "").toLowerCase();
-  if (/\bsemantic[\s_-]?scholar|s2|semanticscholar|sematic/.test(normalized)) return "semantic_scholar";
+  if (/\bsemantic[\s_-]?scholar|s2|semanticscholar|sematic|prover/.test(normalized)) return "semantic_scholar";
   if (/\bcrossref/.test(normalized)) return "crossref";
   if (/\bopen[\s_-]?alex/.test(normalized)) return "openalex";
   if (/\belsevier/.test(normalized)) return "elsevier";
@@ -1798,6 +3461,7 @@ type VoiceRetrieveDefaultsPayload = {
   year_from?: number | null;
   year_to?: number | null;
   limit?: number;
+  openQueryBuilder?: boolean;
 };
 
 function parseVoiceRetrieveDefaults(text: string): VoiceRetrieveDefaultsPayload {
@@ -1817,7 +3481,7 @@ function parseVoiceRetrieveDefaults(text: string): VoiceRetrieveDefaultsPayload 
     defaults.year_from = yearRange.year_from;
     defaults.year_to = yearRange.year_to;
   }
-  if (/\blimit\b/.test(normalized) && Number.isFinite(parsedLimit)) {
+  if (/\blimit\b/.test(normalized) && parsedLimit !== null) {
     defaults.limit = parsedLimit;
   }
   return defaults;
@@ -1842,6 +3506,35 @@ function parseVoiceAction(text: string): VoiceActionCommand | null {
     return null;
   }
 
+  const inventoryRequest = parseVoiceInventoryIntent(normalized);
+  if (inventoryRequest) {
+    return {
+      command: {
+        phase: "agent",
+        action: "agent_voice_inventory",
+        payload: inventoryRequest
+      },
+      feedback: "Building voice control inventory."
+    };
+  }
+
+  const requestedSearch = /\bsearch\b/.test(normalized) || /\bquery\b/.test(normalized);
+  const defaults = parseVoiceRetrieveDefaults(normalized);
+
+  if (requestedSearch && hasRetrieveDefaultsSignal(normalized) && Object.keys(defaults).length > 0) {
+    return {
+      command: {
+        phase: "agent",
+        action: "agent_voice_apply_retrieve_defaults",
+        payload: {
+          ...defaults,
+          openQueryBuilder: true
+        }
+      },
+      feedback: "Applying retrieve defaults and opening search."
+    };
+  }
+
   const provider = parseRetrieveProviderFromText(normalized);
   if (provider && /\bprovider\b/.test(normalized)) {
     return {
@@ -1851,16 +3544,6 @@ function parseVoiceAction(text: string): VoiceActionCommand | null {
         payload: { provider }
       },
       feedback: `Setting provider to ${provider}.`
-    };
-  }
-
-  if (/\bsearch\b/.test(normalized)) {
-    return {
-      command: {
-        phase: "retrieve",
-        action: "retrieve_open_query_builder"
-      },
-      feedback: "Opening Retrieve Search."
     };
   }
 
@@ -1903,7 +3586,16 @@ function parseVoiceAction(text: string): VoiceActionCommand | null {
     };
   }
 
-  const defaults = parseVoiceRetrieveDefaults(normalized);
+  if (requestedSearch) {
+    return {
+      command: {
+        phase: "retrieve",
+        action: "retrieve_open_query_builder"
+      },
+      feedback: "Opening Retrieve Search."
+    };
+  }
+
   if (hasRetrieveDefaultsSignal(normalized) && Object.keys(defaults).length > 0) {
     return {
       command: {
@@ -1956,9 +3648,53 @@ function parseVoiceAction(text: string): VoiceActionCommand | null {
   };
 }
 
-function runMappedVoiceAction(mapped: VoiceActionCommand, options?: { fromVoice?: boolean }): void {
+function runMappedVoiceAction(mapped: VoiceActionCommand, options?: VoiceCommandExecutionOptions): void {
+  const shouldSpeak = shouldSpeakVoiceReply(options);
   if (mapped.command.phase === "agent" && mapped.command.action === "agent_voice_ambiguous") {
-    pushAgentChatMessage("assistant", mapped.feedback, "error", options?.fromVoice ? { speak: true } : undefined);
+    pushAgentChatMessage("assistant", mapped.feedback, "error", shouldSpeak ? { speak: true } : undefined);
+    return;
+  }
+  if (mapped.command.action === "agent_voice_inventory") {
+    const request = normalizeVoiceInventoryPayload(mapped.command.payload as Record<string, unknown> | undefined);
+    const report = buildVoiceButtonInventory(request);
+    const count = report.entries.length;
+    const scopeLabel = request.scope === "all" ? "all discovered controls" : "visible controls";
+    const routeLabel = request.routeId ? describeRoute(request.routeId) : describeRoute(activeRouteId || "");
+    const limitLabel = request.limit ? ` (limited to ${request.limit})` : "";
+    const summary = `Found ${count} ${scopeLabel} on ${routeLabel}${limitLabel}.`;
+    if (request.format === "json") {
+      if (shouldSpeak) {
+        pushAgentChatMessage("assistant", `${summary} JSON output is disabled in speech mode.`, "error", shouldSpeak ? { speak: true } : undefined);
+      } else {
+        pushAgentChatMessage("assistant", `${summary}\n${JSON.stringify(report.entries, null, 2)}`);
+      }
+      return;
+    }
+    const byRoute: Record<string, number> = {};
+    report.entries.forEach((entry) => {
+      const key = entry.routeId || "unknown";
+      byRoute[key] = (byRoute[key] || 0) + 1;
+    });
+    const routeSummary = Object.entries(byRoute)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([route, total]) => `${route}: ${total}`)
+      .join(", ");
+    const topEntries = report.entries.slice(0, VOICE_INVENTORY_PREVIEW_LIMIT);
+    const lineItems = topEntries.map((entry, index) => {
+      const aliasHint = entry.aliases.slice(0, 4).join(", ");
+      const label = entry.label || "Button";
+      return `${index + 1}. [${entry.routeId || "route"}] ${label} — ${aliasHint}`;
+    });
+    const remaining = Math.max(0, report.entries.length - topEntries.length);
+    const preview = lineItems.length ? `\nTop controls:\n${lineItems.join("\n")}${remaining > 0 ? `\n...and ${remaining} more.` : ""}` : "";
+    const inventoryFeedback = `${summary}${routeSummary ? `\nRoute coverage: ${routeSummary}.` : ""}${preview}`;
+    pushAgentChatMessage("assistant", inventoryFeedback, count ? undefined : "error", shouldSpeak ? { speak: true } : undefined);
+    if (shouldSpeak) {
+      pushAgentChatMessage(
+        "assistant",
+        `There are ${count} controls detected. Use \"voice inventory json\" if you want the raw JSON map text dump.`
+      );
+    }
     return;
   }
   if (mapped.command.action === "retrieve_set_provider") {
@@ -1968,7 +3704,7 @@ function runMappedVoiceAction(mapped: VoiceActionCommand, options?: { fromVoice?
         "assistant",
         "I couldn't detect a provider name for the voice command.",
         "error",
-        options?.fromVoice ? { speak: true } : undefined
+        shouldSpeak ? { speak: true } : undefined
       );
       return;
     }
@@ -1978,7 +3714,7 @@ function runMappedVoiceAction(mapped: VoiceActionCommand, options?: { fromVoice?
       "assistant",
       mapped.feedback,
       undefined,
-      options?.fromVoice ? { speak: true } : undefined
+      shouldSpeak ? { speak: true } : undefined
     );
     return;
   }
@@ -1989,7 +3725,7 @@ function runMappedVoiceAction(mapped: VoiceActionCommand, options?: { fromVoice?
         "assistant",
         "I couldn't detect a valid sort option for the voice command.",
         "error",
-        options?.fromVoice ? { speak: true } : undefined
+        shouldSpeak ? { speak: true } : undefined
       );
       return;
     }
@@ -1999,7 +3735,7 @@ function runMappedVoiceAction(mapped: VoiceActionCommand, options?: { fromVoice?
       "assistant",
       mapped.feedback,
       undefined,
-      options?.fromVoice ? { speak: true } : undefined
+      shouldSpeak ? { speak: true } : undefined
     );
     return;
   }
@@ -2007,13 +3743,13 @@ function runMappedVoiceAction(mapped: VoiceActionCommand, options?: { fromVoice?
     const defaults: { year_from?: number; year_to?: number } = {};
     const rawYearFrom = mapped.command.payload?.year_from;
     const rawYearTo = mapped.command.payload?.year_to;
-    const yearFrom = rawYearFrom === null ? null : Number(rawYearFrom);
-    const yearTo = rawYearTo === null ? null : Number(rawYearTo);
+    const yearFrom = rawYearFrom === null || rawYearFrom === undefined ? null : Number(rawYearFrom);
+    const yearTo = rawYearTo === null || rawYearTo === undefined ? null : Number(rawYearTo);
     if (rawYearFrom === null && rawYearTo === null) {
       writeRetrieveQueryDefaults({ year_from: undefined, year_to: undefined });
     } else {
-      if (Number.isFinite(yearFrom)) defaults.year_from = yearFrom;
-      if (Number.isFinite(yearTo)) defaults.year_to = yearTo;
+      if (yearFrom !== null && Number.isFinite(yearFrom)) defaults.year_from = yearFrom;
+      if (yearTo !== null && Number.isFinite(yearTo)) defaults.year_to = yearTo;
       writeRetrieveQueryDefaults(defaults);
     }
     panelGrid.ensurePanelVisible(2);
@@ -2022,21 +3758,21 @@ function runMappedVoiceAction(mapped: VoiceActionCommand, options?: { fromVoice?
       "assistant",
       mapped.feedback,
       undefined,
-      options?.fromVoice ? { speak: true } : undefined
+      shouldSpeak ? { speak: true } : undefined
       );
     return;
   }
   if (mapped.command.action === "retrieve_set_limit") {
     const limit = Number(mapped.command.payload?.limit);
     if (!Number.isFinite(limit) || limit <= 0) {
-      pushAgentChatMessage(
-        "assistant",
-        "I couldn't detect a valid positive integer limit for the voice command.",
-        "error",
-        options?.fromVoice ? { speak: true } : undefined
-      );
-      return;
-    }
+    pushAgentChatMessage(
+      "assistant",
+      "I couldn't detect a valid positive integer limit for the voice command.",
+      "error",
+      shouldSpeak ? { speak: true } : undefined
+    );
+    return;
+  }
     writeRetrieveQueryDefaults({ limit: Math.floor(limit) });
     panelGrid.ensurePanelVisible(2);
     applyRoute("retrieve:search");
@@ -2044,20 +3780,15 @@ function runMappedVoiceAction(mapped: VoiceActionCommand, options?: { fromVoice?
       "assistant",
       mapped.feedback,
       undefined,
-      options?.fromVoice ? { speak: true } : undefined
+      shouldSpeak ? { speak: true } : undefined
     );
     return;
   }
   if (mapped.command.action === "agent_voice_apply_retrieve_defaults") {
-    const payload = mapped.command.payload as
-      | {
-          provider?: string;
-          sort?: string;
-          year_from?: number | null;
-          year_to?: number | null;
-          limit?: number;
-        }
-      | undefined;
+    const payload = mapped.command.payload as (VoiceRetrieveDefaultsPayload & {
+      provider?: string;
+      sort?: string;
+    }) | undefined;
     const updates: Array<string> = [];
     const merged = {
       provider: payload?.provider,
@@ -2085,17 +3816,29 @@ function runMappedVoiceAction(mapped: VoiceActionCommand, options?: { fromVoice?
         updates.push(`year to ${merged.year_to}`);
       }
     }
-    if (!updates.length) {
+
+    const openQueryBuilder = payload?.openQueryBuilder === true;
+    if (openQueryBuilder && !updates.length) {
+      applyRoute("retrieve:search");
       pushAgentChatMessage(
         "assistant",
-        "I didn't detect any valid retrieve defaults to apply.",
-        "error",
-        options?.fromVoice ? { speak: true } : undefined
+        "Opening Retrieve Search.",
+        undefined,
+        shouldSpeak ? { speak: true } : undefined
       );
       return;
     }
-    const nextDefaults: { provider?: string; sort?: string; year_from?: number | undefined; year_to?: number | undefined; limit?: number } =
-      {};
+
+    if (!updates.length) {
+    pushAgentChatMessage(
+      "assistant",
+      "I didn't detect any valid retrieve defaults to apply.",
+      "error",
+      shouldSpeak ? { speak: true } : undefined
+    );
+    return;
+    }
+    const nextDefaults: Partial<RetrieveQueryDefaults> = {};
     if (typeof merged.provider === "string" && merged.provider) {
       nextDefaults.provider = merged.provider as RetrieveProviderId;
     }
@@ -2120,9 +3863,11 @@ function runMappedVoiceAction(mapped: VoiceActionCommand, options?: { fromVoice?
     applyRoute("retrieve:search");
     pushAgentChatMessage(
       "assistant",
-      `Updated retrieve defaults: ${updates.join(", ")}.`,
+      openQueryBuilder
+        ? `Updated retrieve defaults and opening search: ${updates.join(", ")}.`
+        : `Updated retrieve defaults: ${updates.join(", ")}.`,
       undefined,
-      options?.fromVoice ? { speak: true } : undefined
+      shouldSpeak ? { speak: true } : undefined
     );
     return;
 }
@@ -2143,7 +3888,7 @@ function runMappedVoiceAction(mapped: VoiceActionCommand, options?: { fromVoice?
     "assistant",
     mapped.feedback,
     undefined,
-    options?.fromVoice ? { speak: true } : undefined
+    shouldSpeak ? { speak: true } : undefined
   );
 }
 
@@ -2153,35 +3898,140 @@ function resolveVoiceButtonAction(text: string): VoiceButtonCandidate | null {
     return null;
   }
 
-  const scored = getVoiceButtonCandidates()
-    .map((candidate) => {
-      const { aliasScore, tokenMatchCount, score } = scoreVoiceAliases(normalized, candidate.aliases);
-      return {
-        candidate,
-        aliasScore,
-        tokenMatchCount,
-        score
-      };
-    })
-    .filter((entry) => entry.score >= VOICE_BUTTON_MIN_SCORE || entry.aliasScore >= 260)
-    .sort((a, b) => b.score - a.score);
+  const resolveFrom = (candidates: VoiceButtonCandidate[]): VoiceButtonCandidate | null => {
+    const scored = candidates
+      .map((candidate) => {
+        const { aliasScore, tokenMatchCount, score } = scoreVoiceAliases(normalized, candidate.aliases);
+        return {
+          candidate,
+          aliasScore,
+          tokenMatchCount,
+          score
+        };
+      })
+      .filter((entry) => entry.score >= VOICE_BUTTON_MIN_SCORE || entry.aliasScore >= 260)
+      .sort((a, b) => b.score - a.score);
 
-  const top = scored[0];
-  if (!top) {
-    return null;
+    const top = scored[0];
+    if (!top) {
+      return null;
+    }
+
+    const next = scored[1];
+    if (next && top.score >= VOICE_BUTTON_MIN_SCORE && top.score < 90 && top.score - next.score < VOICE_BUTTON_MIN_GAP) {
+      return null;
+    }
+    return top.candidate;
+  };
+
+  const visibleMatch = resolveFrom(getVoiceButtonCandidates());
+  if (visibleMatch) {
+    return visibleMatch;
   }
 
-  const next = scored[1];
-  if (next && top.score >= VOICE_BUTTON_MIN_SCORE && top.score < 90 && top.score - next.score < VOICE_BUTTON_MIN_GAP) {
-    return null;
-  }
-
-  return top.candidate;
+  return resolveFrom(collectVoiceButtonCandidates({ visibleOnly: false }));
 }
 
-async function executeResolvedIntent(intent: Record<string, unknown>, options?: { fromVoice?: boolean }): Promise<void> {
+const setSelectValueByVoice = (element: HTMLSelectElement, value: string): boolean => {
+  const target = value.trim().toLowerCase();
+  if (!target) return false;
+  for (const option of Array.from(element.options)) {
+    const normalizedValue = option.value.trim().toLowerCase();
+    const normalizedLabel = (option.textContent || "").trim().toLowerCase();
+    if (normalizedValue === target || normalizedLabel === target || normalizedLabel.includes(target) || target.includes(normalizedLabel)) {
+      if (element.value !== option.value) {
+        element.value = option.value;
+        element.dispatchEvent(new Event("input", { bubbles: true }));
+        element.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+      return true;
+    }
+  }
+  return false;
+};
+
+const setNumericInputByVoice = (element: HTMLInputElement, raw: string): boolean => {
+  const normalized = normalizeVoiceText(raw);
+  const yearRange = parseRetrieveYearRangeFromText(normalized);
+  const rawNumbers = normalized.match(/\b\d{1,4}\b/g);
+  const firstNumber = rawNumbers ? Number(rawNumbers[0]) : null;
+  const secondNumber = rawNumbers && rawNumbers.length > 1 ? Number(rawNumbers[1]) : null;
+  const label = normalizeVoiceText(buttonLabelForVoice(element));
+
+  let next: number | null = null;
+  if (label.includes("from") && yearRange?.year_from) {
+    next = yearRange.year_from;
+  } else if (label.includes("to") && yearRange?.year_to) {
+    next = yearRange.year_to;
+  } else if ((label.includes("limit") || label.includes("year")) && (firstNumber !== null)) {
+    next = firstNumber;
+  } else if (firstNumber !== null && secondNumber !== null) {
+    next = firstNumber;
+  }
+  if (next === null || !Number.isFinite(next)) return false;
+  if (element.min && Number(element.min) > next) return false;
+  if (element.max && Number(element.max) < next) return false;
+  const nextValue = String(Math.floor(next));
+  if (nextValue !== element.value) {
+    element.value = nextValue;
+    element.dispatchEvent(new Event("input", { bubbles: true }));
+    element.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+  return true;
+};
+
+const focusVoiceInput = (element: HTMLInputElement | HTMLTextAreaElement): boolean => {
+  if (element.disabled) return false;
+  element.focus();
+  element.dispatchEvent(new Event("focus", { bubbles: true }));
+  return true;
+};
+
+const activateVoiceButtonCandidate = (candidate: VoiceButtonCandidate, raw: string): boolean => {
+  const normalized = normalizeVoiceText(raw);
+  const element = candidate.element;
+  const normalizedLabel = normalizeVoiceText(buttonLabelForVoice(element));
+
+  if (element instanceof HTMLSelectElement) {
+    const provider = parseRetrieveProviderFromText(normalized);
+    if (provider && (normalizedLabel.includes("provider") || candidate.aliases.some((alias) => alias.includes("provider")))) {
+      if (setSelectValueByVoice(element, provider)) return true;
+    }
+    const sort = parseRetrieveSortFromText(normalized);
+    if (sort && (normalizedLabel.includes("sort") || candidate.aliases.some((alias) => alias.includes("sort")))) {
+      if (setSelectValueByVoice(element, sort)) return true;
+    }
+    return false;
+  }
+
+  if (element instanceof HTMLInputElement && element.type === "number") {
+    return setNumericInputByVoice(element, raw);
+  }
+  if (element instanceof HTMLTextAreaElement) {
+    return focusVoiceInput(element);
+  }
+  if (
+    element instanceof HTMLInputElement &&
+    (element.type === "text" ||
+      element.type === "search" ||
+      element.type === "email" ||
+      element.type === "url")
+  ) {
+    return focusVoiceInput(element);
+  }
+
+  element.click();
+  return true;
+};
+
+async function executeResolvedIntent(
+  intent: Record<string, unknown>,
+  options?: VoiceCommandExecutionOptions,
+  commandText?: string
+): Promise<void> {
+  const shouldSpeak = shouldSpeakVoiceReply(options);
   const pushAssistant = (message: string, tone?: "error"): void =>
-    pushAgentChatMessage("assistant", message, tone, options?.fromVoice ? { speak: true } : undefined);
+    pushAgentChatMessage("assistant", message, tone, shouldSpeak ? { speak: true } : undefined);
   if (!window.agentBridge?.executeIntent) {
     pushAssistant("Agent execute bridge unavailable.", "error");
     setAgentChatPending(false);
@@ -2192,7 +4042,7 @@ async function executeResolvedIntent(intent: Record<string, unknown>, options?: 
     const preRes = await window.agentBridge.executeIntent({
       intent: pre,
       confirm: true,
-      context: buildAgentContextPayload()
+      context: buildAgentContextPayloadForText(String(commandText || ""), options)
     });
     if (preRes?.status !== "ok") {
       setAgentChatPending(false);
@@ -2203,7 +4053,7 @@ async function executeResolvedIntent(intent: Record<string, unknown>, options?: 
   const res = await window.agentBridge.executeIntent({
     intent,
     confirm: true,
-    context: buildAgentContextPayload()
+    context: buildAgentContextPayloadForText(String(commandText || ""), options)
   });
   setAgentChatPending(false);
 
@@ -2266,19 +4116,38 @@ async function executeResolvedIntent(intent: Record<string, unknown>, options?: 
   pushAssistant("Command executed successfully.");
 }
 
-async function runAgentChatCommand(text: string, options?: { fromVoice?: boolean }): Promise<void> {
+async function runAgentChatCommand(text: string, options?: VoiceCommandExecutionOptions): Promise<void> {
+  let commandText = String(text || "").trim();
+  const shouldSpeak = shouldSpeakVoiceReply(options);
   const pushAssistant = (message: string, tone?: "error"): void =>
-    pushAgentChatMessage("assistant", message, tone, options?.fromVoice ? { speak: true } : undefined);
-  pushAgentChatMessage("user", text);
+    pushAgentChatMessage("assistant", message, tone, shouldSpeak ? { speak: true } : undefined);
+  const isVocal = Boolean(options?.fromVoice || options?.fromRealtime);
+  if (isVocal) {
+    recordAgentTelemetry("runAgentChatCommand", { totalCommands: 1 });
+    const guardrail = validateVoiceCommandText(commandText, options);
+    if (guardrail.status === "reject") {
+      recordAgentTelemetry("runAgentChatCommand", { rejectedCommands: 1 });
+      pushAssistant(guardrail.message || "I could not process that command.", "error");
+      return;
+    }
+    if (guardrail.status === "warn") {
+      recordAgentTelemetry("runAgentChatCommand", { rejectedCommands: 1 });
+      pushAssistant(guardrail.message || "I could not infer a clear action.", "error");
+      return;
+    }
+    commandText = guardrail.normalized;
+    recordAgentTelemetry("runAgentChatCommand", { acceptedCommands: 1 });
+  }
+  pushAgentChatMessage("user", commandText);
   if (!window.agentBridge?.resolveIntent || !window.agentBridge?.executeIntent) {
     pushAssistant( "Agent bridge is unavailable.", "error");
     return;
   }
-  const low = String(text || "").toLowerCase();
+  const low = String(commandText || "").toLowerCase();
   if (window.agentBridge?.supervisorPlan && window.agentBridge?.supervisorExecute && /\bsupervisor\b/.test(low) && /\b(coding|code|verbatim)\b/.test(low)) {
     setAgentChatPending(true);
-    const context = buildAgentContextPayload();
-    const planned = await window.agentBridge.supervisorPlan({ text, context });
+    const context = buildAgentContextPayloadForText(commandText, options);
+    const planned = await window.agentBridge.supervisorPlan({ text: commandText, context });
     if (planned?.status !== "ok" || !planned?.plan) {
       setAgentChatPending(false);
       pushAssistant( String(planned?.message || "Supervisor could not build a coding plan."), "error");
@@ -2406,22 +4275,29 @@ async function runAgentChatCommand(text: string, options?: { fromVoice?: boolean
     }
   }
 
-  const mappedVoiceAction = parseVoiceAction(text);
+  const mappedVoiceAction = parseVoiceAction(commandText);
   if (mappedVoiceAction) {
     runMappedVoiceAction(mappedVoiceAction, options);
     return;
   }
 
-  const mappedVoiceButton = resolveVoiceButtonAction(text);
+  const mappedVoiceButton = resolveVoiceButtonAction(commandText);
   if (mappedVoiceButton) {
-    mappedVoiceButton.element.click();
-    pushAssistant(`Pressed ${mappedVoiceButton.label}.`);
+      const activated = activateVoiceButtonCandidate(mappedVoiceButton, commandText);
+    if (activated) {
+      pushAssistant(`Pressed ${mappedVoiceButton.label}.`);
+    } else {
+      pushAssistant(
+        "I found a matching control, but it could not be changed from that utterance. Try one more specific value.",
+        "error"
+      );
+    }
     return;
   }
 
   if (agentChatState.pendingConfirmation) {
     if (agentChatState.pendingConfirmation.type === "coding_mode") {
-      const modeText = String(text || "").trim().toLowerCase();
+      const modeText = String(commandText || "").trim().toLowerCase();
       const selectedMode =
         /\bhybrid\b/.test(modeText) ? "hybrid" : /\btarget/.test(modeText) ? "targeted" : /\bopen\b/.test(modeText) ? "open" : "";
       if (!selectedMode) {
@@ -2438,7 +4314,7 @@ async function runAgentChatCommand(text: string, options?: { fromVoice?: boolean
       const resolved = await window.agentBridge.resolveIntent({
         text: selectedMode,
         context: {
-          ...buildAgentContextPayload(),
+          ...buildAgentContextPayloadForText(selectedMode, options),
           pendingIntent: nextIntent
         }
       });
@@ -2456,14 +4332,14 @@ async function runAgentChatCommand(text: string, options?: { fromVoice?: boolean
       await executeResolvedIntent(resolved.intent, options);
       return;
     }
-    if (isChatAffirmative(text)) {
+    if (isChatAffirmative(commandText)) {
       const pending = agentChatState.pendingConfirmation;
       agentChatState.pendingConfirmation = null;
       setAgentChatPending(true);
       await executeResolvedIntent(pending.intent, options);
       return;
     }
-    if (isChatNegative(text)) {
+    if (isChatNegative(commandText)) {
       agentChatState.pendingConfirmation = null;
       setAgentChatPending(false);
       pushAssistant( "Coding run canceled.");
@@ -2477,7 +4353,7 @@ async function runAgentChatCommand(text: string, options?: { fromVoice?: boolean
     if (window.agentBridge?.refineCodingQuestions) {
       const ref = await window.agentBridge.refineCodingQuestions({
         currentQuestions,
-        feedback: text,
+        feedback: commandText,
         contextText: String((pendingIntent?.args as Record<string, unknown>)?.context || "")
       });
       if (ref?.status === "ok" && Array.isArray(ref?.questions) && ref.questions.length >= 3) {
@@ -2485,12 +4361,12 @@ async function runAgentChatCommand(text: string, options?: { fromVoice?: boolean
       }
     }
     if (!revised.length) {
-      const fallback = parseResearchQuestionsInput(text);
+      const fallback = parseResearchQuestionsInput(commandText);
       if (fallback.length >= 3 && fallback.length <= 5) revised = fallback.slice(0, 5);
     }
     if (revised.length >= 3 && revised.length <= 5) {
       const args = ((pendingIntent?.args as Record<string, unknown>) || {});
-      const controls = parseCodingControlsFromText(text);
+      const controls = parseCodingControlsFromText(commandText);
       const currentMode = String(args.coding_mode || "open").toLowerCase();
       pendingIntent.args = {
         ...args,
@@ -2504,7 +4380,7 @@ async function runAgentChatCommand(text: string, options?: { fromVoice?: boolean
       if (screeningEnabled) {
         const collectionName = String((pendingIntent?.args as Record<string, unknown>)?.collection_name || "");
         const contextText = String((pendingIntent?.args as Record<string, unknown>)?.context || "");
-        const explicitCriteria = parseEligibilityCriteriaInput(text);
+        const explicitCriteria = parseEligibilityCriteriaInput(commandText);
         const explicitPreflight = buildEligibilityPreflightIntent(
           collectionName,
           contextText,
@@ -2516,7 +4392,7 @@ async function runAgentChatCommand(text: string, options?: { fromVoice?: boolean
           pendingIntent.preflightIntents = [explicitPreflight];
         } else if (window.agentBridge?.generateEligibilityCriteria) {
           const regen = await window.agentBridge.generateEligibilityCriteria({
-            userText: text,
+            userText: commandText,
             collectionName,
             contextText,
             researchQuestions: revised
@@ -2544,10 +4420,10 @@ async function runAgentChatCommand(text: string, options?: { fromVoice?: boolean
 
   setAgentChatPending(true);
   try {
-    const resolved = await window.agentBridge.resolveIntent({
-      text,
+  const resolved = await window.agentBridge.resolveIntent({
+      text: commandText,
       context: {
-        ...buildAgentContextPayload(),
+        ...buildAgentContextPayloadForText(commandText, options),
         pendingIntent: agentChatState.pendingIntent || null
       }
     });
@@ -2590,7 +4466,7 @@ async function runAgentChatCommand(text: string, options?: { fromVoice?: boolean
       if (questions.length >= 3 && questions.length <= 5) {
         const contextText = String(args.context || "");
         if (screeningEnabled) {
-          const explicitCriteria = parseEligibilityCriteriaInput(text);
+          const explicitCriteria = parseEligibilityCriteriaInput(commandText);
           const explicitPreflight = buildEligibilityPreflightIntent(
             collectionName,
             contextText,
@@ -2602,7 +4478,7 @@ async function runAgentChatCommand(text: string, options?: { fromVoice?: boolean
             intent.preflightIntents = [explicitPreflight];
           } else if (window.agentBridge?.generateEligibilityCriteria) {
             const eligibilityDraft = await window.agentBridge.generateEligibilityCriteria({
-              userText: text,
+              userText: commandText,
               collectionName,
               contextText,
               researchQuestions: questions
@@ -2641,6 +4517,10 @@ function initAgentChatUi(): void {
   if (!agentChatFab || !agentChatDock || !agentChatForm || !agentChatInput || !btnAgentChatClose || !btnAgentChatClear) {
     return;
   }
+  setAgentVoicePulseState(false, false, false);
+  setAgentVoiceButtonIcons("idle");
+  clearAgentChatMicVoiceTheme();
+  setAgentChatPhase("idle", "Idle");
   if (window.agentBridge?.getChatHistory) {
     void window.agentBridge.getChatHistory().then((res) => {
       const rows = Array.isArray(res?.messages) ? res.messages : [];
@@ -2683,10 +4563,63 @@ function initAgentChatUi(): void {
     agentChatInput.value = "";
     void runAgentChatCommand(text);
   });
+  if (teardownDictationDelta) {
+    teardownDictationDelta();
+    teardownDictationDelta = null;
+  }
+  if (teardownDictationCompleted) {
+    teardownDictationCompleted();
+    teardownDictationCompleted = null;
+  }
+  if (teardownDictationError) {
+    teardownDictationError();
+    teardownDictationError = null;
+  }
+  if (window.agentBridge?.onDictationDelta) {
+    teardownDictationDelta = window.agentBridge.onDictationDelta((payload) => {
+      const sessionId = Number(payload?.sessionId || 0);
+      if (!sessionId || sessionId !== activeDictationBridgeSessionId) return;
+      const transcript = String(payload?.transcript || "").trim();
+      const delta = String(payload?.delta || "").trim();
+      if (transcript) {
+        agentVoiceState.dictationDraftTranscript = transcript;
+      } else if (delta) {
+        agentVoiceState.dictationDraftTranscript = combineDictationTranscript(agentVoiceState.dictationDraftTranscript, delta);
+      }
+      applyDictationComposerDraft();
+      setAgentChatVoiceStatus("Dictating...");
+    });
+  }
+  if (window.agentBridge?.onDictationCompleted) {
+    teardownDictationCompleted = window.agentBridge.onDictationCompleted((payload) => {
+      const sessionId = Number(payload?.sessionId || 0);
+      if (!sessionId || sessionId !== activeDictationBridgeSessionId) return;
+      const text = String(payload?.text || "").trim();
+      if (!text) return;
+      agentVoiceState.dictationDraftTranscript = text;
+      applyDictationComposerDraft();
+      setAgentChatVoiceStatus("Dictation ready. Press Send.");
+    });
+  }
+  if (window.agentBridge?.onDictationError) {
+    teardownDictationError = window.agentBridge.onDictationError((payload) => {
+      const sessionId = Number(payload?.sessionId || 0);
+      if (!sessionId || sessionId !== activeDictationBridgeSessionId) return;
+      const message = String(payload?.message || "Dictation stream failed.");
+      pushAgentChatMessage("assistant", message, "error");
+      setAgentChatVoiceStatus("Dictation error.");
+    });
+  }
   if (btnAgentChatMic) {
     btnAgentChatMic.addEventListener("click", () => {
       if (agentChatState.pending) return;
-      void startAgentVoiceRecording();
+      void startAgentVoiceRecording("voice");
+    });
+  }
+  if (btnAgentChatDictation) {
+    btnAgentChatDictation.addEventListener("click", () => {
+      if (agentChatState.pending) return;
+      void startAgentVoiceRecording("dictation");
     });
   }
   if (window.agentBridge?.onFeatureJobStatus) {
@@ -3973,6 +5906,27 @@ function createActionButton(action: RibbonAction): HTMLButtonElement {
   btn.title = action.hint;
   btn.dataset.phase = action.command.phase;
   btn.dataset.action = action.command.action;
+  const rawAliases: string[] = [
+    action.label,
+    action.hint,
+    action.id,
+    action.id.replace(/-/g, " "),
+    action.command.action,
+    action.command.action.replace(/_/g, " ").replace(/-/g, " "),
+    action.command.phase,
+    `${action.command.phase} ${action.label}`,
+    `${action.command.phase} ${action.command.action}`,
+    action.group || ""
+  ];
+  const aliases = new Set<string>(rawAliases.filter((alias): alias is string => Boolean(alias && alias.trim().length > 0)));
+  const manualAliases = VOICE_ACTION_MANUAL_ALIASES[action.id];
+  if (manualAliases?.length) {
+    manualAliases.forEach((alias) => aliases.add(alias));
+  }
+  const aliasValue = Array.from(aliases).filter((value) => value && value.trim().length > 0).join(";");
+  if (aliasValue) {
+    btn.dataset.voiceAliases = aliasValue;
+  }
   const payload = action.command.payload as { toolType?: string; panelId?: string; metadata?: Record<string, unknown> } | undefined;
   const isToolOpenAction = action.command.phase === "tools" && action.command.action === "open_tool" && payload?.toolType;
   if (isToolOpenAction) {
