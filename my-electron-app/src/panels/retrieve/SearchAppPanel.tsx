@@ -25,6 +25,28 @@ const SORT_OPTIONS: Array<{ label: string; value: RetrieveSort }> = [
   { label: "Year", value: "year" }
 ];
 
+const BROWSER_PROVIDER_OPTIONS: Array<{ id: string; label: string }> = [
+  { id: "google", label: "Google Scholar" },
+  { id: "cambridge", label: "Cambridge" },
+  { id: "jstor", label: "JSTOR" },
+  { id: "brill", label: "Brill" },
+  { id: "digital_commons", label: "Digital Commons" },
+  { id: "rand", label: "RAND" },
+  { id: "academia", label: "Academia" },
+  { id: "elgaronline", label: "ElgarOnline" },
+  { id: "springerlink", label: "SpringerLink" }
+];
+
+type EmbeddedBrowserElement = HTMLElement & {
+  src?: string;
+  canGoBack?: () => boolean;
+  canGoForward?: () => boolean;
+  goBack?: () => void;
+  goForward?: () => void;
+  reload?: () => void;
+  stop?: () => void;
+};
+
 export class SearchAppPanel {
   readonly element: HTMLElement;
 
@@ -34,6 +56,17 @@ export class SearchAppPanel {
   private providerSelect: HTMLSelectElement;
   private sortSelect: HTMLSelectElement;
   private limitInput: HTMLInputElement;
+  private strategyInput: HTMLTextAreaElement;
+  private maxPagesInput: HTMLInputElement;
+  private headedInput: HTMLInputElement;
+  private includeSemanticInput: HTMLInputElement;
+  private includeCrossrefInput: HTMLInputElement;
+  private profileDirInput: HTMLInputElement;
+  private profileNameInput: HTMLInputElement;
+  private browserProviderChecks = new Map<string, HTMLInputElement>();
+  private liveUrlInput: HTMLInputElement;
+  private liveFrame: EmbeddedBrowserElement;
+  private runLog: HTMLPreElement;
   private authorInput: HTMLInputElement;
   private venueInput: HTMLInputElement;
   private doiOnly: HTMLInputElement;
@@ -46,6 +79,7 @@ export class SearchAppPanel {
   private prevBtn: HTMLButtonElement;
   private exportSelect: HTMLSelectElement;
   private defaultsHandler: (event: Event) => void;
+  private agentSearchHandler: (event: Event) => void;
 
   private records: RetrieveRecord[] = [];
   private totalCount = 0;
@@ -150,12 +184,85 @@ export class SearchAppPanel {
     absLabel.htmlFor = "abstract-only";
     absLabel.textContent = "Abstract only";
 
-    const searchBtn = document.createElement("button");
-    searchBtn.className = "ribbon-button";
-    searchBtn.ariaLabel = "Search";
-    searchBtn.textContent = "Search";
-    searchBtn.dataset.voiceAliases = "search papers,find papers,academic search";
-    searchBtn.addEventListener("click", () => void this.handleSearch(false));
+    this.strategyInput = document.createElement("textarea");
+    this.strategyInput.rows = 2;
+    this.strategyInput.placeholder = "Search strategy (free text).";
+    this.strategyInput.style.minWidth = "320px";
+    this.strategyInput.style.flex = "1";
+
+    this.maxPagesInput = document.createElement("input");
+    this.maxPagesInput.type = "number";
+    this.maxPagesInput.min = "1";
+    this.maxPagesInput.max = "20";
+    this.maxPagesInput.value = "3";
+    this.maxPagesInput.style.width = "90px";
+    this.maxPagesInput.title = "Max pages per browser provider";
+
+    this.headedInput = document.createElement("input");
+    this.headedInput.type = "checkbox";
+    this.headedInput.checked = true;
+    const headedLabel = document.createElement("label");
+    headedLabel.textContent = "Show browser";
+    headedLabel.appendChild(this.headedInput);
+    headedLabel.style.display = "inline-flex";
+    headedLabel.style.alignItems = "center";
+    headedLabel.style.gap = "6px";
+
+    this.includeSemanticInput = document.createElement("input");
+    this.includeSemanticInput.type = "checkbox";
+    this.includeSemanticInput.checked = true;
+    const semanticLabel = document.createElement("label");
+    semanticLabel.textContent = "Semantic API";
+    semanticLabel.appendChild(this.includeSemanticInput);
+    semanticLabel.style.display = "inline-flex";
+    semanticLabel.style.alignItems = "center";
+    semanticLabel.style.gap = "6px";
+
+    this.includeCrossrefInput = document.createElement("input");
+    this.includeCrossrefInput.type = "checkbox";
+    this.includeCrossrefInput.checked = true;
+    const crossrefLabel = document.createElement("label");
+    crossrefLabel.textContent = "Crossref API";
+    crossrefLabel.appendChild(this.includeCrossrefInput);
+    crossrefLabel.style.display = "inline-flex";
+    crossrefLabel.style.alignItems = "center";
+    crossrefLabel.style.gap = "6px";
+
+    this.profileDirInput = document.createElement("input");
+    this.profileDirInput.type = "text";
+    this.profileDirInput.value = "scrapping/browser/searches/profiles/default";
+    this.profileDirInput.placeholder = "Profile dir";
+    this.profileDirInput.style.minWidth = "260px";
+
+    this.profileNameInput = document.createElement("input");
+    this.profileNameInput.type = "text";
+    this.profileNameInput.value = "Default";
+    this.profileNameInput.placeholder = "Profile";
+    this.profileNameInput.style.width = "120px";
+
+    const providerCheckHost = document.createElement("div");
+    providerCheckHost.className = "control-row";
+    providerCheckHost.style.flexWrap = "wrap";
+    providerCheckHost.style.gap = "10px";
+    BROWSER_PROVIDER_OPTIONS.forEach((provider) => {
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = provider.id !== "jstor";
+      this.browserProviderChecks.set(provider.id, checkbox);
+      const label = document.createElement("label");
+      label.style.display = "inline-flex";
+      label.style.alignItems = "center";
+      label.style.gap = "6px";
+      label.append(checkbox, document.createTextNode(provider.label));
+      providerCheckHost.appendChild(label);
+    });
+
+    const unifiedSearchBtn = document.createElement("button");
+    unifiedSearchBtn.className = "ribbon-button";
+    unifiedSearchBtn.ariaLabel = "Run unified strategy";
+    unifiedSearchBtn.textContent = "Search (Browser + API)";
+    unifiedSearchBtn.dataset.voiceAliases = "run unified search,search strategy,browser strategy";
+    unifiedSearchBtn.addEventListener("click", () => this.requestUnifiedSearchFromChat());
 
     this.prevBtn = document.createElement("button");
     this.prevBtn.type = "button";
@@ -177,18 +284,55 @@ export class SearchAppPanel {
 
     const controls = document.createElement("div");
     controls.className = "control-row";
+    controls.style.display = "flex";
+    controls.style.flexDirection = "column";
     controls.style.flexWrap = "wrap";
     controls.style.gap = "10px";
-    controls.append(
-      this.queryInput,
-      searchBtn,
-      this.loadMoreBtn,
-      this.providerSelect,
-      this.sortSelect,
-      this.yearFromInput,
-      this.yearToInput,
-      this.limitInput
+    const strategyRow = document.createElement("div");
+    strategyRow.className = "control-row";
+    strategyRow.style.flexWrap = "wrap";
+    strategyRow.style.gap = "10px";
+    strategyRow.append(this.queryInput, this.strategyInput, unifiedSearchBtn);
+
+    const strategyOptionsRow = document.createElement("div");
+    strategyOptionsRow.className = "control-row";
+    strategyOptionsRow.style.flexWrap = "wrap";
+    strategyOptionsRow.style.gap = "10px";
+    strategyOptionsRow.append(
+      this.maxPagesInput,
+      headedLabel,
+      semanticLabel,
+      crossrefLabel,
+      this.profileDirInput,
+      this.profileNameInput
     );
+
+    const zoteroCollectionInput = document.createElement("input");
+    zoteroCollectionInput.type = "text";
+    zoteroCollectionInput.placeholder = "Zotero collection name or key";
+    zoteroCollectionInput.style.minWidth = "260px";
+    const loadZoteroBtn = document.createElement("button");
+    loadZoteroBtn.className = "ribbon-button";
+    loadZoteroBtn.textContent = "Load Zotero";
+    loadZoteroBtn.addEventListener("click", () => {
+      const target = zoteroCollectionInput.value.trim();
+      if (!target) {
+        this.updateStatus("Enter a Zotero collection name/key.");
+        return;
+      }
+      void commandInternal("retrieve", "datahub_load_zotero", { collectionName: target }).then((res: any) => {
+        if (res?.status === "ok") {
+          this.updateStatus(`Zotero loaded: ${String(res?.source?.collectionName || target)}`);
+        } else {
+          this.showError(res?.message || "Failed to load Zotero collection.");
+        }
+      });
+    });
+    const zoteroRow = document.createElement("div");
+    zoteroRow.className = "control-row";
+    zoteroRow.style.gap = "10px";
+    zoteroRow.style.flexWrap = "wrap";
+    zoteroRow.append(zoteroCollectionInput, loadZoteroBtn);
 
     const filterRow = document.createElement("div");
     filterRow.className = "control-row";
@@ -201,10 +345,9 @@ export class SearchAppPanel {
       doiLabel,
       this.abstractOnly,
       absLabel,
-      this.prevBtn,
-      this.loadMoreBtn
+      this.prevBtn
     );
-    controls.append(filterRow);
+    controls.append(strategyRow, strategyOptionsRow, providerCheckHost, zoteroRow, filterRow);
 
     this.errorBanner = document.createElement("div");
     this.errorBanner.className = "retrieve-status";
@@ -284,18 +427,89 @@ export class SearchAppPanel {
     gridHost.style.flexDirection = "column";
     gridHost.appendChild(this.grid.element);
 
+    this.liveUrlInput = document.createElement("input");
+    this.liveUrlInput.type = "text";
+    this.liveUrlInput.value = "https://scholar.google.com/";
+    this.liveUrlInput.placeholder = "Live assist URL";
+    this.liveUrlInput.style.minWidth = "340px";
+    this.liveUrlInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        this.setLiveFrameUrl(this.liveUrlInput.value);
+      }
+    });
+
+    const liveGoBtn = document.createElement("button");
+    liveGoBtn.className = "ribbon-button";
+    liveGoBtn.textContent = "Open Assist URL";
+    liveGoBtn.addEventListener("click", () => this.setLiveFrameUrl(this.liveUrlInput.value));
+
+    const liveBackBtn = document.createElement("button");
+    liveBackBtn.className = "ribbon-button";
+    liveBackBtn.textContent = "Back";
+    liveBackBtn.addEventListener("click", () => {
+      if (this.liveFrame.canGoBack?.()) this.liveFrame.goBack?.();
+    });
+
+    const liveForwardBtn = document.createElement("button");
+    liveForwardBtn.className = "ribbon-button";
+    liveForwardBtn.textContent = "Forward";
+    liveForwardBtn.addEventListener("click", () => {
+      if (this.liveFrame.canGoForward?.()) this.liveFrame.goForward?.();
+    });
+
+    const liveReloadBtn = document.createElement("button");
+    liveReloadBtn.className = "ribbon-button";
+    liveReloadBtn.textContent = "Reload";
+    liveReloadBtn.addEventListener("click", () => this.liveFrame.reload?.());
+
+    this.runLog = document.createElement("pre");
+    this.runLog.style.margin = "0";
+    this.runLog.style.padding = "8px";
+    this.runLog.style.border = "1px solid rgba(100,100,100,0.35)";
+    this.runLog.style.borderRadius = "8px";
+    this.runLog.style.minHeight = "100px";
+    this.runLog.style.maxHeight = "180px";
+    this.runLog.style.overflow = "auto";
+    this.runLog.style.whiteSpace = "pre-wrap";
+    this.runLog.style.fontSize = "12px";
+    this.runLog.textContent = "Unified run log appears here.\nIf a provider blocks automation, use the assist browser and rerun.";
+
+    this.liveFrame = document.createElement("webview") as EmbeddedBrowserElement;
+    this.liveFrame.style.width = "100%";
+    this.liveFrame.style.height = "420px";
+    this.liveFrame.style.minHeight = "420px";
+    this.liveFrame.style.border = "1px solid rgba(100,100,100,0.35)";
+    this.liveFrame.style.borderRadius = "8px";
+    this.liveFrame.setAttribute("allowpopups", "true");
+    this.liveFrame.setAttribute("partition", "persist:retrieve-assist");
+    this.liveFrame.src = this.liveUrlInput.value;
+
+    const assistBar = document.createElement("div");
+    assistBar.className = "control-row";
+    assistBar.style.gap = "8px";
+    assistBar.style.flexWrap = "wrap";
+    assistBar.append(this.liveUrlInput, liveGoBtn, liveBackBtn, liveForwardBtn, liveReloadBtn);
+
+    const assistHost = document.createElement("div");
+    assistHost.style.display = "flex";
+    assistHost.style.flexDirection = "column";
+    assistHost.style.gap = "8px";
+    assistHost.append(assistBar, this.runLog, this.liveFrame);
+
     const content = document.createElement("div");
     content.style.flex = "1";
     content.style.display = "flex";
     content.style.flexDirection = "column";
-    content.append(gridHost);
+    content.style.gap = "10px";
+    content.append(assistHost, gridHost);
 
     this.element.append(header, controls, exportRow, this.errorBanner, this.statusLine, this.pageLine, content);
 
     this.queryInput.addEventListener("keydown", (event) => {
       if (event.key === "Enter") {
         event.preventDefault();
-        void this.handleSearch(false);
+        this.requestUnifiedSearchFromChat();
       }
     });
 
@@ -305,10 +519,37 @@ export class SearchAppPanel {
       this.applyRetrieveDefaults(detail.defaults);
     };
     document.addEventListener("retrieve:query-defaults-updated", this.defaultsHandler);
+    this.agentSearchHandler = (event: Event) => {
+      const detail = (event as CustomEvent<Record<string, unknown>>).detail || {};
+      const query = String(detail.query || "").trim();
+      const strategy = String(detail.strategy || "").trim();
+      const maxPages = Number(detail.maxPages || 3);
+      const headed = detail.headed !== false;
+      const providers = Array.isArray(detail.browserProviders) ? (detail.browserProviders as string[]) : [];
+      if (query) this.queryInput.value = query;
+      if (strategy) this.strategyInput.value = strategy;
+      if (Number.isFinite(maxPages) && maxPages > 0) this.maxPagesInput.value = String(Math.floor(maxPages));
+      this.headedInput.checked = headed;
+      if (providers.length) {
+        this.browserProviderChecks.forEach((checkbox, provider) => {
+          checkbox.checked = providers.includes(provider);
+        });
+      }
+      if (detail.runNow === true) {
+        void this.runUnifiedStrategy({
+          query: strategy || query,
+          browserProviders: providers,
+          maxPages,
+          headed
+        });
+      }
+    };
+    document.addEventListener("retrieve:agent-unified-search", this.agentSearchHandler);
   }
 
   destroy(): void {
     document.removeEventListener("retrieve:query-defaults-updated", this.defaultsHandler);
+    document.removeEventListener("retrieve:agent-unified-search", this.agentSearchHandler);
   }
 
   private applyRetrieveDefaults(defaults: RetrieveQueryDefaults): void {
@@ -317,6 +558,177 @@ export class SearchAppPanel {
     this.yearFromInput.value = defaults.year_from?.toString() ?? "";
     this.yearToInput.value = defaults.year_to?.toString() ?? "";
     this.limitInput.value = String(defaults.limit);
+  }
+
+  private selectedBrowserProviders(): string[] {
+    return Array.from(this.browserProviderChecks.entries())
+      .filter(([, checkbox]) => checkbox.checked)
+      .map(([provider]) => provider);
+  }
+
+  private appendRunLog(line: string): void {
+    if (!line.trim()) return;
+    this.runLog.textContent = `${this.runLog.textContent || ""}\n${line}`.trim();
+    this.runLog.scrollTop = this.runLog.scrollHeight;
+  }
+
+  private setLiveFrameUrl(raw: string): void {
+    const value = raw.trim();
+    if (!value) return;
+    const withScheme = /^https?:\/\//i.test(value) ? value : `https://${value}`;
+    this.liveFrame.src = withScheme;
+  }
+
+  private requestUnifiedSearchFromChat(): void {
+    const query = (this.strategyInput.value.trim() || this.queryInput.value.trim()).trim();
+    if (!query) {
+      this.updateStatus("Enter search terms first.");
+      return;
+    }
+    const detail = {
+      query: this.queryInput.value.trim(),
+      strategy: this.strategyInput.value.trim(),
+      maxPages: this.parseNumber(this.maxPagesInput.value) || 3,
+      headed: this.headedInput.checked,
+      browserProviders: this.selectedBrowserProviders()
+    };
+    document.dispatchEvent(new CustomEvent("retrieve:request-search-intake", { detail }));
+    this.updateStatus("Sent to chat intake. Please answer the follow-up questions in console.");
+  }
+
+  private applyLocalUnifiedFilters(records: RetrieveRecord[]): RetrieveRecord[] {
+    let next = records.slice();
+    if (this.doiOnly.checked) {
+      next = next.filter((record) => Boolean(String(record.doi || "").trim()));
+    }
+    if (this.abstractOnly.checked) {
+      next = next.filter((record) => Boolean(String(record.abstract || "").trim()));
+    }
+    const authorNeedle = this.authorInput.value.trim().toLowerCase();
+    if (authorNeedle) {
+      next = next.filter((record) => (record.authors || []).some((author) => String(author || "").toLowerCase().includes(authorNeedle)));
+    }
+    const venueNeedle = this.venueInput.value.trim().toLowerCase();
+    if (venueNeedle) {
+      next = next.filter((record) => {
+        const venue = String((record as any).venue || (record as any).journal || "").toLowerCase();
+        return venue.includes(venueNeedle);
+      });
+    }
+    return next;
+  }
+
+  private async runUnifiedStrategy(overrides?: {
+    query?: string;
+    browserProviders?: string[];
+    maxPages?: number;
+    headed?: boolean;
+  }): Promise<void> {
+    if (this.isLoading) return;
+    const query = (overrides?.query || this.strategyInput.value.trim() || this.queryInput.value.trim()).trim();
+    if (!query) {
+      this.updateStatus("Enter search terms first.");
+      return;
+    }
+    this.hideError();
+    this.isLoading = true;
+    this.updateStatus("Running unified browser+API strategy…");
+    const browserProviders = (overrides?.browserProviders && overrides.browserProviders.length)
+      ? overrides.browserProviders
+      : this.selectedBrowserProviders();
+    const maxPages = overrides?.maxPages || this.parseNumber(this.maxPagesInput.value) || 3;
+    const payload = {
+      query,
+      browserProviders,
+      maxPages,
+      headed: overrides?.headed ?? this.headedInput.checked,
+      profileDir: this.profileDirInput.value.trim() || "scrapping/browser/searches/profiles/default",
+      profileName: this.profileNameInput.value.trim() || "Default",
+      includeSemanticApi: this.includeSemanticInput.checked,
+      includeCrossrefApi: this.includeCrossrefInput.checked
+    };
+    document.dispatchEvent(
+      new CustomEvent("retrieve:progress:start", {
+        detail: {
+          query,
+          providers: browserProviders
+        }
+      })
+    );
+    this.runLog.textContent = `[retrieve][unified][debug] query="${query}" providers=${browserProviders.join(",") || "default"} max_pages=${maxPages}`;
+    try {
+      const response = await commandInternal("retrieve", "run_unified_strategy", payload);
+      if (response?.status !== "ok") {
+        const msg = response?.message ?? "Unified strategy failed.";
+        this.showError(msg);
+        this.updateStatus(msg);
+        return;
+      }
+      const items = (response?.items ?? []) as RetrieveRecord[];
+      const filteredItems = this.applyLocalUnifiedFilters(items);
+      this.records = filteredItems;
+      this.totalCount = filteredItems.length;
+      this.nextCursor = undefined;
+      this.selectedIndex = null;
+      this.renderTable();
+      this.updateLoadMoreVisibility();
+      const runDir = String((response as any)?.runDir || "");
+      const unifiedPath = String((response as any)?.unifiedPath || "");
+      this.updateStatus(`Unified run done: ${filteredItems.length} records.`);
+      if (runDir) {
+        this.appendRunLog(`[retrieve][unified][debug] run_dir=${runDir}`);
+      }
+      if (unifiedPath) {
+        this.appendRunLog(`[retrieve][unified][debug] unified_json=${unifiedPath}`);
+      }
+      const logs = Array.isArray((response as any)?.logs) ? ((response as any).logs as string[]) : [];
+      logs.slice(-80).forEach((line) => this.appendRunLog(line));
+      logs.forEach((line) => {
+        const m = line.match(/^\[bundle\]\s+([a-z0-9_]+)\s+status=(ok|error)\s+hits=(\d+)\s+downloads=(\d+)/i);
+        if (!m) return;
+        document.dispatchEvent(
+          new CustomEvent("retrieve:progress:provider", {
+            detail: {
+              provider: m[1],
+              status: m[2] === "ok" ? "done" : "error",
+              hits: Number(m[3]),
+              downloads: Number(m[4])
+            }
+          })
+        );
+      });
+      const failedProviders = Array.isArray((response as any)?.failedProviders)
+        ? ((response as any).failedProviders as unknown[]).map((x) => String(x || "").trim()).filter(Boolean)
+        : [];
+      if (failedProviders.length) {
+        this.appendRunLog(`[retrieve][unified][debug] failed_providers=${failedProviders.join(",")}`);
+        this.showError(`Some providers require manual intervention: ${failedProviders.join(", ")}`);
+      }
+      const helperPrompt =
+        "If any source was blocked, use Open Assist URL, complete login/captcha in the embedded page, then rerun unified strategy.";
+      this.appendRunLog(`[retrieve][unified][debug] ${helperPrompt}`);
+      document.dispatchEvent(
+        new CustomEvent("retrieve:progress:done", {
+          detail: {
+            failedProviders
+          }
+        })
+      );
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.showError(msg);
+      this.updateStatus("Unified strategy failed.");
+      this.appendRunLog(`[retrieve][unified][debug] error=${msg}`);
+      document.dispatchEvent(
+        new CustomEvent("retrieve:progress:done", {
+          detail: {
+            failedProviders: browserProviders
+          }
+        })
+      );
+    } finally {
+      this.isLoading = false;
+    }
   }
 
   private async handleSearch(loadMore: boolean, goPrev = false): Promise<void> {

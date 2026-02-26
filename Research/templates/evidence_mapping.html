@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Evidence Map on {{ topic }}</title>
+  <style>
+    /* --- Base & Typography --- */
+    body { font-family: sans-serif; line-height: 1.7; margin: 0 auto; max-width: 980px; padding: 25px; color: #333; background-color: #fdfdfd; }
+    h1, h2, h3, h4 { font-family: "Georgia", serif; color: #1A237E; margin-top: 2em; margin-bottom: 0.8em; line-height: 1.3; font-weight: 600; }
+    h1 { text-align: center; margin-bottom: 1.5em; font-size: 2.2em; color: #0D47A1; }
+    h2 { border-bottom: 2px solid #42A5F5; padding-bottom: 8px; font-size: 1.8em; }
+    h3 { border-bottom: 1px solid #90CAF9; padding-bottom: 6px; font-size: 1.5em; color: #1E88E5; }
+    h4 { font-size: 1.15em; color: #42A5F5; margin-bottom: 0.6em; font-weight: 600; font-family: sans-serif; }
+    p { margin-bottom: 1.2em; text-align: justify; }
+    a { color: #1E88E5; text-decoration: none; }
+    a:hover { color: #0D47A1; text-decoration: underline; }
+    em, i { font-style: italic; }
+    strong, b { font-weight: 600; }
+
+    /* --- Layout & Sections --- */
+    .metadata { text-align: center; margin-bottom: 3em; font-size: 0.95em; color: #555; border-bottom: 1px solid #e0e0e0; padding-bottom: 1.5em; }
+    .metadata p { margin: 0.3em 0; }
+    .section-content { margin-bottom: 40px; padding-left: 0; }
+    .subsection-content { margin-bottom: 30px; padding-left: 15px; border-left: 3px solid #E3F2FD; margin-left: 5px; }
+
+    /* --- Visual Elements --- */
+    figure { margin: 35px auto; text-align: center; border: 1px solid #e0e0e0; padding: 15px 15px 10px 15px; background-color: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.08); max-width: 900px; }
+    figure img { max-width: 100%; height: auto; border: 1px solid #f0f0f0; display: block; margin: 0 auto 10px auto; }
+    figcaption { font-size: 0.9em; color: #666; margin-top: 10px; font-style: normal; line-height: 1.5; text-align: left; padding: 0 5px; }
+    figcaption strong { color: #333; }
+
+    table.data-table { border-collapse: collapse; width: 100%; margin: 22px auto; border: 1px solid #ccc; box-shadow: none; font-size: 0.88em; }
+    table.data-table th, table.data-table td { border: 1px solid #ddd; padding: 10px 12px; text-align: left; vertical-align: top; }
+    table.data-table th { background-color: #f2f7fb; font-weight: 600; color: #2c3e50; }
+    table.data-table tr:nth-child(even) { background-color: #f9f9f9; }
+    table.data-table tr:hover { background-color: #eff4ff; }
+
+    /* --- Content Blocks --- */
+    .ai-generated-content { font-style: normal; color: #333; padding: 5px 0px; margin: 15px 0; background-color: transparent; text-align: justify; border: none; }
+    .ai-generated-content p { margin-bottom: 1em; }
+    .ai-generated-content p:first-child { margin-top: 0; }
+    .ai-generated-content p:last-child { margin-bottom: 0; }
+    .ai-generated-content ul, .ai-generated-content ol { margin-left: 20px; margin-bottom: 1em; }
+    .ai-generated-content li { margin-bottom: 0.5em; }
+
+    .placeholder-note { color: #888; font-style: italic; font-size: 0.9em; display: block; margin-top: 8px; text-align: center; }
+    .callout { border-left: 4px solid #42A5F5; background: #F5FAFF; padding: 12px 14px; margin: 18px 0; }
+    .callout strong { color: #0D47A1; }
+
+    /* --- Evidence Map Specific --- */
+    .structured-abstract h4 { font-size: 1.05em; color: #1E88E5; margin-top: 1em; margin-bottom: 0.3em; font-family: sans-serif; font-weight: 600; border: none; padding: 0;}
+    .structured-abstract p { margin-left: 15px; }
+
+    .heatmap-figure { max-width: 920px; }
+    .network-figure { max-width: 920px; }
+    .timeline-figure { max-width: 920px; }
+    .bubble-figure { max-width: 920px; }
+
+    .key-term { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 0.95em; }
+    .badge { display: inline-block; padding: 2px 8px; border: 1px solid #90CAF9; border-radius: 10px; font-size: 0.85em; background: #F5FAFF; color: #0D47A1; }
+    .small { font-size: 0.92em; color: #555; }
+  </style>
+</head>
+<body>
+
+<h1>Evidence Map: {{ topic }}</h1>
+
+<div class="metadata">
+  <p><strong>Authors:</strong> {{ authors_list }}</p>
+  <p><strong>Affiliations:</strong> {{ affiliation }}</p>
+  <p><em>Report generated on: {{ generation_date }}</em></p>
+  <p><em>AI Models Used for Narrative Sections: {{ ai_models_used }}</em></p>
+  {% if version_tag %}
+    <p><em>Version: {{ version_tag }}</em></p>
+  {% endif %}
+</div>
+
+<h2>Abstract</h2>
+<div class="section-content ai-generated-content structured-abstract">
+  {# Suggested headings inside ai_abstract: Purpose, Corpus, Mapping Dimensions, Key Concentrations, Key Gaps, Use Cases #}
+  {{ ai_abstract | safe }}
+</div>
+
+<h2>1. Purpose and Questions</h2>
+<div class="section-content ai-generated-content">
+  {% if ai_purpose %}
+    {{ ai_purpose | safe }}
+  {% else %}
+    <p class="placeholder-note">[Purpose placeholder: What is being mapped and why?]</p>
+  {% endif %}
+
+  {% if mapping_questions %}
+    <div class="callout">
+      <strong>Mapping questions:</strong>
+      <div class="ai-generated-content">{{ mapping_questions | replace('\n', '<br>') | safe }}</div>
+    </div>
+  {% endif %}
+</div>
+
+<h2>2. Map Configuration (Codebook)</h2>
+<div class="section-content">
+
+  <div class="subsection-content">
+    <h3>2.1 Scope and Boundary Conditions</h3>
+    <div class="ai-generated-content">
+      {% if scope_in %}
+        <p><strong>In-scope:</strong><br>{{ scope_in | replace('\n', '<br>') | safe }}</p>
+      {% endif %}
+      {% if scope_out %}
+        <p><strong>Out-of-scope:</strong><br>{{ scope_out | replace('\n', '<br>') | safe }}</p>
+      {% endif %}
+      {% if boundary_conditions %}
+        <p><strong>Boundary conditions:</strong><br>{{ boundary_conditions | replace('\n', '<br>') | safe }}</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="subsection-content">
+    <h3>2.2 Dimensions and Labels</h3>
+    <p class="small">This is the scalable core: a dimensioned codebook the LLM can fill and you can later re-slice without rewriting the template.</p>
+
+    {% if map_dimensions %}
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width: 20%;">Dimension</th>
+            <th style="width: 45%;">Definition / Coding Rule</th>
+            <th style="width: 35%;">Allowed Values / Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for d in map_dimensions %}
+            <tr>
+              <td><span class="key-term">{{ d.name }}</span></td>
+              <td>{{ d.definition }}</td>
+              <td>
+                {% if d.values %}
+                  {{ d.values | replace('\n', '<br>') | safe }}
+                {% else %}
+                  {{ d.notes }}
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <figcaption><strong>Table 1.</strong> Evidence-map codebook (dimensions, definitions, and values).</figcaption>
+    {% else %}
+      <span class="placeholder-note">[Provide map_dimensions: list of {name, definition, values/notes}.]</span>
+    {% endif %}
+  </div>
+
+  <div class="subsection-content">
+    <h3>2.3 Corpus Assembly and Provenance</h3>
+    <div class="ai-generated-content">
+      {% if sources_consulted %}
+        <p><strong>Sources consulted:</strong><br>{{ sources_consulted | replace('\n', '<br>') | safe }}</p>
+      {% endif %}
+      {% if selection_logic %}
+        <p><strong>Selection logic:</strong><br>{{ selection_logic | replace('\n', '<br>') | safe }}</p>
+      {% endif %}
+      {% if search_strings %}
+        <p><strong>Example search strings:</strong><br>{{ search_strings | replace('\n', '<br>') | safe }}</p>
+      {% endif %}
+      {% if provenance_note %}
+        <p><strong>Provenance / traceability:</strong><br>{{ provenance_note | safe }}</p>
+      {% endif %}
+    </div>
+
+    {% if corpus_table %}
+      {{ corpus_table | safe }}
+      <figcaption><strong>Table 2.</strong> Corpus overview (optional): key sources and metadata.</figcaption>
+    {% else %}
+      <span class="placeholder-note">[Optional: Provide corpus_table as HTML (id, citation, year, venue, method, context tags, links).]</span>
+    {% endif %}
+  </div>
+
+</div>
+
+<h2>3. Corpus Summary (Counts)</h2>
+<div class="section-content">
+
+  <div class="subsection-content">
+    <h3>3.1 Headline Counts</h3>
+
+    {% if summary_stats %}
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width: 40%;">Metric</th>
+            <th>Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in summary_stats %}
+            <tr>
+              <td>{{ s.label }}</td>
+              <td>{{ s.value }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <figcaption><strong>Table 3.</strong> Corpus-level descriptive statistics.</figcaption>
+    {% else %}
+      <span class="placeholder-note">[Optional: Provide summary_stats: list of {label, value}.]</span>
+    {% endif %}
+
+    {% if distribution_notes %}
+      <div class="callout">
+        <strong>Distribution notes:</strong>
+        <div class="ai-generated-content">{{ distribution_notes | safe }}</div>
+      </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<h2>4. Evidence Map Views</h2>
+<div class="section-content">
+
+  <div class="subsection-content">
+    <h3>4.1 Evidence Matrix / Gap Map</h3>
+    <p class="small">Use this as the primary scalable “what exists where?” view (e.g., X=method, Y=claim family; or X=context, Y=outcome).</p>
+
+    {% if evidence_matrix %}
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width: 22%;">{{ evidence_matrix.row_label }}</th>
+            {% for col in evidence_matrix.cols %}
+              <th>{{ col.label }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in evidence_matrix.rows %}
+            <tr>
+              <td><strong>{{ row.label }}</strong></td>
+              {% for cell in row.cells %}
+                <td>
+                  <span class="badge">n={{ cell.n }}</span>
+                  {% if cell.quality %}
+                    <div class="small"><strong>Quality:</strong> {{ cell.quality }}</div>
+                  {% endif %}
+                  {% if cell.notes %}
+                    <div class="small">{{ cell.notes }}</div>
+                  {% endif %}
+                  {% if cell.items %}
+                    <div class="small">
+                      <strong>Items:</strong>
+                      {% for it in cell.items %}
+                        {% if it.url %}
+                          <a href="{{ it.url }}" target="_blank">{{ it.id }}</a>{% if not loop.last %}, {% endif %}
+                        {% else %}
+                          {{ it.id }}{% if not loop.last %}, {% endif %}
+                        {% endif %}
+                      {% endfor %}
+                    </div>
+                  {% endif %}
+                </td>
+              {% endfor %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <figcaption><strong>Table 4.</strong> Evidence matrix (counts, optional quality notes, and item pointers).</figcaption>
+    {% else %}
+      <span class="placeholder-note">[Provide evidence_matrix with: row_label, cols[{label}], rows[{label, cells[{n, quality, notes, items[{id,url}]}]}].]</span>
+    {% endif %}
+
+    <figure class="heatmap-figure">
+      <div class="plot-container">
+        {% if gap_map_figure %}
+          <img src="{{ gap_map_figure }}" alt="Gap map / heatmap">
+        {% else %}
+          <span class="placeholder-note">[Optional: Provide a heatmap/gap_map_figure image for the same matrix.]</span>
+        {% endif %}
+      </div>
+      <figcaption><strong>Figure 1.</strong> Gap map / heatmap visualization of evidence density (optional).</figcaption>
+    </figure>
+  </div>
+
+  <div class="subsection-content">
+    <h3>4.2 Network View (Relationships)</h3>
+    <p class="small">Use this when the literature is naturally relational: constructs ↔ outcomes, actors ↔ mechanisms, interventions ↔ endpoints.</p>
+
+    <figure class="network-figure">
+      <div class="plot-container">
+        {% if evidence_network_figure %}
+          <img src="{{ evidence_network_figure }}" alt="Evidence network graph">
+        {% else %}
+          <span class="placeholder-note">[Optional: Provide evidence_network_figure (nodes=entities; edges=studied relationships; weights=volume).]</span>
+        {% endif %}
+      </div>
+      <figcaption><strong>Figure 2.</strong> Evidence network (optional).</figcaption>
+    </figure>
+
+    {% if network_notes %}
+      <div class="callout">
+        <strong>Network interpretation notes:</strong>
+        <div class="ai-generated-content">{{ network_notes | safe }}</div>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="subsection-content">
+    <h3>4.3 Temporal View (Optional)</h3>
+    <figure class="timeline-figure">
+      <div class="plot-container">
+        {% if timeline_figure %}
+          <img src="{{ timeline_figure }}" alt="Timeline figure">
+        {% else %}
+          <span class="placeholder-note">[Optional: Provide timeline_figure (counts or key events by year/period).]</span>
+        {% endif %}
+      </div>
+      <figcaption><strong>Figure 3.</strong> Temporal distribution / timeline (optional).</figcaption>
+    </figure>
+
+    {% if timeline_table %}
+      {{ timeline_table | safe }}
+      <figcaption><strong>Table 5.</strong> Timeline entries (optional).</figcaption>
+    {% endif %}
+  </div>
+
+  <div class="subsection-content">
+    <h3>4.4 Bubble / Scatter View (Optional)</h3>
+    <p class="small">Good for triaging: e.g., x=year, y=effect size / confidence proxy, bubble=size evidence volume; or x=dataset size, y=validity rating.</p>
+
+    <figure class="bubble-figure">
+      <div class="plot-container">
+        {% if bubble_plot_figure %}
+          <img src="{{ bubble_plot_figure }}" alt="Bubble plot">
+        {% else %}
+          <span class="placeholder-note">[Optional: Provide bubble_plot_figure image.]</span>
+        {% endif %}
+      </div>
+      <figcaption><strong>Figure 4.</strong> Bubble/scatter plot (optional).</figcaption>
+    </figure>
+
+    {% if bubble_notes %}
+      <div class="callout">
+        <strong>Bubble/scatter interpretation notes:</strong>
+        <div class="ai-generated-content">{{ bubble_notes | safe }}</div>
+      </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<h2>5. Concentrations, Gaps, and High-Value Next Steps</h2>
+<div class="section-content ai-generated-content">
+  {% if ai_gaps_and_opportunities %}
+    {{ ai_gaps_and_opportunities | safe }}
+  {% else %}
+    <span class="placeholder-note">[Summarize: where evidence is dense, where it is missing, and which missing cells matter most.]</span>
+  {% endif %}
+
+  {% if priority_gaps %}
+    <div class="callout">
+      <strong>Priority gaps (actionable):</strong>
+      <ol>
+        {% for g in priority_gaps %}
+          <li>
+            <strong>{{ g.label }}</strong> — {{ g.description }}
+            {% if g.rationale %}<div class="small"><strong>Rationale:</strong> {{ g.rationale }}</div>{% endif %}
+            {% if g.suggested_design %}<div class="small"><strong>Suggested design:</strong> {{ g.suggested_design }}</div>{% endif %}
+          </li>
+        {% endfor %}
+      </ol>
+    </div>
+  {% endif %}
+</div>
+
+<h2>6. Limitations</h2>
+<div class="section-content ai-generated-content">
+  {% if ai_limitations %}
+    {{ ai_limitations | safe }}
+  {% else %}
+    <span class="placeholder-note">[Limitations placeholder: corpus coverage, coding error, construct drift, publication ecology, etc.]</span>
+  {% endif %}
+</div>
+
+<h2>7. References</h2>
+<div id="references" class="section-content">
+  <p>References cited within this evidence map.</p>
+  {% if references_list %}
+    <ol>
+      {% for ref in references_list %}
+        <li>{{ ref.html_string | safe }}</li>
+      {% endfor %}
+    </ol>
+  {% else %}
+    <ol>
+      <li>[References list placeholder — supply formatted references as HTML strings.]</li>
+    </ol>
+  {% endif %}
+</div>
+
+{% if appendices %}
+<h2>Appendices</h2>
+<div class="section-content">
+  {% for app in appendices %}
+    <h3>{{ app.title }}</h3>
+    <div class="ai-generated-content">{{ app.content | safe }}</div>
+    {% if app.path %}
+      <p><a href="{{ app.path }}" target="_blank"><strong>Open Appendix</strong></a></p>
+    {% endif %}
+  {% endfor %}
+</div>
+{% endif %}
+
+</body>
+</html>

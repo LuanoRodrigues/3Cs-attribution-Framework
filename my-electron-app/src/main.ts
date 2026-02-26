@@ -1526,6 +1526,14 @@ function parseReviewerCountFromText(rawText: string): 1 | 2 | 3 {
   return 2;
 }
 
+function parseCitationStyleFromText(rawText: string): "apa" | "numeric" | "endnote" | "parenthetical_footnote" {
+  const text = String(rawText || "").toLowerCase();
+  if (/\b(endnote|end-note|end note)\b/.test(text)) return "endnote";
+  if (/\b(numeric|numbered|vancouver|\[\d+\])\b/.test(text)) return "numeric";
+  if (/\b(parenthetical\s+footnote|parenthal\s+footnote|footnote)\b/.test(text)) return "parenthetical_footnote";
+  return "apa";
+}
+
 function buildSystematicPipelineIntent(text: string, context: Record<string, unknown>): IntentPayload {
   const collectionName = String(context?.selectedCollectionName || "").trim();
   const collectionKey = String(context?.selectedCollectionKey || "").trim();
@@ -1537,6 +1545,7 @@ function buildSystematicPipelineIntent(text: string, context: Record<string, unk
   const inclusion = parseTextListSection(text, ["inclusion", "inclusion criteria", "include"]);
   const exclusion = parseTextListSection(text, ["exclusion", "exclusion criteria", "exclude"]);
   const reviewerCount = parseReviewerCountFromText(text);
+  const citationStyle = parseCitationStyleFromText(text);
   const clarification: string[] = [];
   if (!collectionName && !collectionKey) clarification.push("Select a Zotero collection before creating the systematic review pipeline.");
   if (researchQuestions.length < 3) clarification.push("Provide 3 to 5 research questions.");
@@ -1552,6 +1561,7 @@ function buildSystematicPipelineIntent(text: string, context: Record<string, unk
       collection_key: collectionKey,
       items_count: Number.isFinite(itemsCount) ? Math.max(0, Math.trunc(itemsCount)) : 0,
       reviewer_count: reviewerCount,
+      citation_style: citationStyle,
       research_questions: researchQuestions,
       inclusion_criteria: inclusion,
       exclusion_criteria: exclusion,
@@ -1617,6 +1627,7 @@ type SystematicReviewState = {
   };
   protocol: {
     researchQuestions: string[];
+    citationStyle?: "apa" | "numeric" | "endnote" | "parenthetical_footnote";
     inclusionCriteria: string[];
     exclusionCriteria: string[];
     reasonTaxonomy: string[];
@@ -2193,6 +2204,7 @@ function writeSystematicReviewArtifacts(state: SystematicReviewState): void {
     prisma: state.prisma,
     protocol: {
       researchQuestions: state.protocol.researchQuestions,
+      citationStyle: state.protocol.citationStyle || "apa",
       inclusionCriteria: state.protocol.inclusionCriteria,
       exclusionCriteria: state.protocol.exclusionCriteria
     },
@@ -3131,6 +3143,11 @@ function createSystematicReviewPipeline(payload: {
       : [];
     const itemsCount = Number(args.items_count || context.itemsCount || 0);
     const reviewerCount = normalizeReviewerCount(args.reviewer_count || context.reviewerCount || 2);
+    const citationStyleRaw = String(args.citation_style || "").trim().toLowerCase();
+    const citationStyle =
+      citationStyleRaw === "numeric" || citationStyleRaw === "endnote" || citationStyleRaw === "parenthetical_footnote"
+        ? citationStyleRaw
+        : "apa";
     const prismaChecklistPath = String(args.prisma_checklist_path || "Research/Systematic_review/prisma_check_list.html").trim();
     const nowIso = new Date().toISOString();
     const state: SystematicReviewState = {
@@ -3148,6 +3165,7 @@ function createSystematicReviewPipeline(payload: {
       },
       protocol: {
         researchQuestions: researchQuestions.length ? researchQuestions : generateResearchQuestionsFromTopic("the selected topic").slice(0, 5),
+        citationStyle,
         inclusionCriteria: inclusionCriteria.length ? inclusionCriteria : [
           "Directly addresses at least one research question.",
           "Contains explicit framework/model/method information relevant to the topic.",
@@ -3246,6 +3264,7 @@ function createSystematicReviewPipeline(payload: {
       `Systematic review pipeline initialized for '${collectionName}'.`,
       `Items in scope: ${state.collection.itemsCount}.`,
       `Reviewers: ${state.reviewTeam.reviewerCount}.`,
+      `Citation style: ${citationStyle}.`,
       `PRISMA checklist: ${prismaChecklistPath}.`,
       `State model: systematic_review_state_v1.`,
       `Stages: protocol -> screening -> coding -> synthesis.`,
@@ -3518,6 +3537,71 @@ async function generateEligibilityCriteriaWithLlm(payload: {
     // ignore
   }
   return { status: "error", message: "Failed to generate criteria." };
+}
+
+async function generateAcademicSearchStrategyWithLlm(payload: {
+  query?: string;
+  providers?: string[];
+  objective?: string;
+}): Promise<{ status: string; strategy?: string; message?: string }> {
+  const query = normalizePromptSafeText(payload?.query || "");
+  if (!query) return { status: "error", message: "query is required." };
+  const providers = Array.isArray(payload?.providers)
+    ? payload.providers.map((p) => normalizePromptSafeText(p || "")).filter(Boolean).slice(0, 20)
+    : [];
+  const objective = normalizePromptSafeText(payload?.objective || "systematic academic retrieval");
+  const fallback = `("${query}") AND (framework OR model OR method OR evidence)`;
+  const apiKey = getOpenAiApiKey();
+  if (!apiKey) {
+    return { status: "ok", strategy: fallback };
+  }
+  try {
+    const baseUrl = getOpenAiBaseUrl().replace(/\/+$/, "");
+    const body = {
+      model: INTENT_LLM_MODEL,
+      input: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "input_text",
+              text: JSON.stringify({
+                query,
+                providers,
+                objective
+              })
+            }
+          ]
+        }
+      ],
+      instructions:
+        "Create one high-recall academic search strategy string with boolean operators and quoted phrases. Return JSON only: {\"strategy\":\"...\"}. Keep under 400 chars.",
+      max_output_tokens: 220
+    };
+    const out = await fetchJson(`${baseUrl}/responses`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+    const text = String(out?.output_text || "").trim();
+    try {
+      const parsed = JSON.parse(text);
+      const strategy = String(parsed?.strategy || "").trim();
+      if (strategy) return { status: "ok", strategy };
+    } catch {
+      const inline = text.replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
+      try {
+        const parsed = JSON.parse(inline);
+        const strategy = String(parsed?.strategy || "").trim();
+        if (strategy) return { status: "ok", strategy };
+      } catch {
+        // ignore
+      }
+    }
+    return { status: "ok", strategy: fallback };
+  } catch (error) {
+    return { status: "ok", strategy: fallback, message: error instanceof Error ? error.message : String(error) };
+  }
 }
 
 type SupervisorPlanStep = {
@@ -5993,6 +6077,24 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
   );
 
   ipcMain.handle(
+    "agent:generate-academic-strategy",
+    async (
+      _event,
+      payload: {
+        query?: string;
+        providers?: string[];
+        objective?: string;
+      }
+    ) => {
+      try {
+        return await generateAcademicSearchStrategyWithLlm(payload || {});
+      } catch (error) {
+        return { status: "error", message: normalizeError(error) };
+      }
+    }
+  );
+
+  ipcMain.handle(
     "agent:supervisor-plan",
     async (
       _event,
@@ -7548,6 +7650,7 @@ function createWindow(): void {
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
+      webviewTag: true,
       preload: preloadScript,
       additionalArguments: [leditorHostArg]
     }

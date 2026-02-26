@@ -158,6 +158,11 @@ declare global {
         contextText?: string;
         researchQuestions?: string[];
       }) => Promise<{ status: string; message?: string; inclusion_criteria?: string[]; exclusion_criteria?: string[] }>;
+      generateAcademicStrategy: (payload: {
+        query?: string;
+        providers?: string[];
+        objective?: string;
+      }) => Promise<{ status: string; strategy?: string; message?: string }>;
       supervisorPlan: (payload: { text?: string; context?: Record<string, unknown> }) => Promise<{
         status: string;
         message?: string;

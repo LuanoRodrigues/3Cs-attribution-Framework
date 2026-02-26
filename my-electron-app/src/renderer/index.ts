@@ -75,6 +75,7 @@ import { initRibbonContextMenu, type RibbonMenuActionId } from "./ribbonContextM
 import type { RetrieveRecord } from "../shared/types/retrieve";
 import { createRetrieveCitationGraphTool, createRetrieveCitationsTool, createRetrieveTool } from "../tools/retrieve";
 import { createRetrieveSearchAppTool } from "../tools/retrieveSearchApp";
+import { createRetrieveSearchProgressTool } from "../tools/retrieveSearchProgress";
 import { createRetrieveSearchMetaTool } from "../tools/retrieveSearchMeta";
 import { createRetrieveZoteroCollectionsTool, createRetrieveZoteroItemsTool, createRetrieveZoteroDetailTool } from "../tools/retrieveZotero";
 import { retrieveZoteroContext } from "../state/retrieveZoteroContext";
@@ -87,6 +88,7 @@ registry.register(createTimelineTool());
 registry.register(createVizTool());
 registry.register(createRetrieveTool());
 registry.register(createRetrieveSearchAppTool());
+registry.register(createRetrieveSearchProgressTool());
 registry.register(createRetrieveSearchMetaTool());
 registry.register(createRetrieveZoteroCollectionsTool());
 registry.register(createRetrieveZoteroItemsTool());
@@ -300,6 +302,29 @@ let retrieveSearchAppToolId: string | undefined;
 let retrieveGraphToolId: string | undefined;
 let retrieveMetaToolId: string | undefined;
 let retrieveSearchSelectedRecord: RetrieveRecord | undefined;
+let pendingAcademicSearchIntake:
+  | {
+      step: "awaiting_details" | "awaiting_approval";
+      query: string;
+      strategySeed: string;
+      generatedStrategy: string;
+      detailsText: string;
+      maxPages: number;
+      headed: boolean;
+      browserProviders: string[];
+    }
+  | null = null;
+let pendingUnifiedSearchRetry:
+  | {
+      query: string;
+      strategy: string;
+      maxPages: number;
+      headed: boolean;
+      providers: string[];
+      failedProviders: string[];
+      attempts: number;
+    }
+  | null = null;
 let lastRibbonHeight = -1;
 
 function syncRibbonHeight(): void {
@@ -4024,6 +4049,228 @@ const activateVoiceButtonCandidate = (candidate: VoiceButtonCandidate, raw: stri
   return true;
 };
 
+type ChatUnifiedSearchIntent = {
+  query: string;
+  maxPages: number;
+  headed: boolean;
+  browserProviders: string[];
+};
+
+const summarizeProviderHelp = (providers: string[]): string => {
+  const tips: string[] = [];
+  providers.forEach((provider) => {
+    const p = provider.toLowerCase();
+    if (p.includes("jstor")) tips.push("JSTOR: likely CAPTCHA/anti-bot, use assist browser then retry.");
+    if (p.includes("cambridge")) tips.push("Cambridge: verify institutional access/login.");
+    if (p.includes("google")) tips.push("Google Scholar: solve bot challenge in assist browser.");
+    if (p.includes("semantic")) tips.push("Semantic Scholar API: check key/rate limit.");
+    if (p.includes("crossref")) tips.push("Crossref API: verify network availability.");
+  });
+  return tips.length ? tips.join("\n") : "Use assist browser, complete login/CAPTCHA, then say 'retry search'.";
+};
+
+const CHAT_PROVIDER_HINTS: Array<{ id: string; aliases: string[] }> = [
+  { id: "google", aliases: ["google scholar", "scholar", "google"] },
+  { id: "cambridge", aliases: ["cambridge"] },
+  { id: "jstor", aliases: ["jstor"] },
+  { id: "brill", aliases: ["brill"] },
+  { id: "digital_commons", aliases: ["digital commons", "commons"] },
+  { id: "rand", aliases: ["rand"] },
+  { id: "academia", aliases: ["academia", "academia.edu"] },
+  { id: "elgaronline", aliases: ["elgar", "elgaronline"] },
+  { id: "springerlink", aliases: ["springer", "springerlink"] }
+];
+
+const extractChatUnifiedSearchIntent = (text: string): ChatUnifiedSearchIntent | null => {
+  const raw = String(text || "").trim();
+  if (!raw) return null;
+  const lower = raw.toLowerCase();
+  const searchSignal = /\b(search|find|look\s+for|look\s+up|retrieve|collect)\b/.test(lower);
+  if (!searchSignal) return null;
+  if (/\b(zotero|codebook|verbatim|pipeline|screen)\b/.test(lower)) return null;
+
+  const providerFirstMatch =
+    raw.match(
+      /\b(?:search|find|look\s+for|look\s+up|retrieve|collect)\b\s+(?:on|in)\s+(google scholar|google|cambridge|jstor|brill|digital commons|rand|academia|academia\.edu|elgar|elgaronline|springer|springerlink)\s+(?:for|about|on)\s+(.+)$/i
+    ) ||
+    raw.match(
+      /\b(?:search|find|look\s+for|look\s+up|retrieve|collect)\b\s+(?:for|about|on)\s+(.+)\s+(?:on|in)\s+(google scholar|google|cambridge|jstor|brill|digital commons|rand|academia|academia\.edu|elgar|elgaronline|springer|springerlink)\b/i
+    );
+  const providerAlias = /^(google scholar|google|cambridge|jstor|brill|digital commons|rand|academia|academia\.edu|elgar|elgaronline|springer|springerlink)$/i;
+  const providerFirstQuery =
+    providerFirstMatch
+      ? (providerAlias.test(String(providerFirstMatch[1] || "").trim())
+        ? String(providerFirstMatch[2] || "").trim()
+        : String(providerFirstMatch[1] || "").trim())
+      : "";
+  const queryMatch =
+    (providerFirstMatch && providerFirstQuery
+      ? [providerFirstMatch[0], providerFirstQuery]
+      : null) ||
+    raw.match(/^\s*(?:search|find|retrieve|collect)\s+(.+)$/i) ||
+    raw.match(/^\s*look\s+(?:for|up)\s+(.+)$/i) ||
+    raw.match(/\b(?:search|find|look\s+for|retrieve|collect)\b(?:\s+(?:about|for|on))?\s+(.+)$/i) ||
+    raw.match(/\b(?:papers?|articles?|studies?)\b\s+(?:about|on|for)\s+(.+)$/i);
+  let query = String(queryMatch?.[1] || "").trim();
+  if (!query) return null;
+  query = query
+    .replace(/^(?:on|in)\s+(google scholar|google|cambridge|jstor|brill|digital commons|rand|academia|academia\.edu|elgar|elgaronline|springer|springerlink)\s+(?:for|about|on)\s+/i, "")
+    .replace(/\b(in|on)\s+(google scholar|google|cambridge|jstor|brill|digital commons|rand|academia|academia\.edu|elgar|elgaronline|springer|springerlink)\b.*$/i, "")
+    .replace(/\b(max(?:imum)?\s+)?\d+\s+pages?\b.*$/i, "")
+    .replace(/\bheadless\b.*$/i, "")
+    .trim()
+    .replace(/^["']+|["']+$/g, "");
+  if (!query) return null;
+
+  const pagesMatch = lower.match(/\b(?:max(?:imum)?\s+)?(\d{1,2})\s+pages?\b/) || lower.match(/\bpages?\s*(?:=|:)?\s*(\d{1,2})\b/);
+  const maxPages = pagesMatch ? Math.max(1, Math.min(20, Number(pagesMatch[1]) || 3)) : 3;
+  const headed = !/\b(headless|background|hidden)\b/.test(lower);
+
+  const browserProviders = CHAT_PROVIDER_HINTS
+    .filter((entry) => entry.aliases.some((alias) => lower.includes(alias)))
+    .map((entry) => entry.id);
+
+  return { query, maxPages, headed, browserProviders };
+};
+
+const buildAcademicSearchStrategy = (query: string): string => {
+  const clean = String(query || "").trim().replace(/\s+/g, " ");
+  const tokens = clean
+    .split(/\s+/)
+    .map((t) => t.replace(/[^\w-]/g, ""))
+    .filter((t) => t.length > 2);
+  const tokenBlock = tokens.length ? tokens.map((t) => `"${t}"`).join(" AND ") : `"${clean}"`;
+
+  const lower = clean.toLowerCase();
+  const groups: string[] = [`("${clean}")`, `(${tokenBlock})`];
+  if (lower.includes("cyber") && lower.includes("attribution")) {
+    groups.push(`("cyber attribution" OR "cyber-attack attribution" OR "attribution framework")`);
+  }
+  groups.push(`(framework OR model OR method OR methodology)`);
+  return groups.join(" AND ");
+};
+
+const initRetrieveSearchIntakeBridge = (): void => {
+  document.addEventListener("retrieve:request-search-intake", (event: Event) => {
+    const detail = ((event as CustomEvent<Record<string, unknown>>).detail || {}) as Record<string, unknown>;
+    const query = String(detail.query || "").trim();
+    const strategySeed = String(detail.strategy || "").trim() || query;
+    const maxPages = Math.max(1, Math.min(20, Number(detail.maxPages || 3) || 3));
+    const headed = detail.headed !== false;
+    const browserProviders = Array.isArray(detail.browserProviders)
+      ? (detail.browserProviders as unknown[]).map((p) => String(p || "").trim()).filter(Boolean)
+      : [];
+    if (!query && !strategySeed) {
+      pushAgentChatMessage("assistant", "Enter a topic in Retrieve before starting search intake.", "error");
+      return;
+    }
+    pendingAcademicSearchIntake = {
+      step: "awaiting_details",
+      query: query || strategySeed,
+      strategySeed,
+      generatedStrategy: "",
+      detailsText: "",
+      maxPages,
+      headed,
+      browserProviders
+    };
+    setAgentChatOpen(true);
+    pushAgentChatMessage(
+      "assistant",
+      `Before searching, add brief scope details for: ${(query || strategySeed)}.\nReply with:\n1) focus/objective\n2) timeframe (if any)\n3) inclusion/exclusion hints\nThen I will generate strategy and run browser + APIs.`
+    );
+  });
+};
+
+const generateStrategyFromIntake = async (args: {
+  query: string;
+  browserProviders: string[];
+  detailsText: string;
+  strategySeed: string;
+}): Promise<string> => {
+  const objective = args.detailsText.trim() || "broad academic retrieval";
+  if (window.agentBridge?.generateAcademicStrategy) {
+    const out = await window.agentBridge.generateAcademicStrategy({
+      query: args.query,
+      providers: args.browserProviders,
+      objective
+    });
+    const strategy = String(out?.strategy || "").trim();
+    if (out?.status === "ok" && strategy) return strategy;
+  }
+  return buildAcademicSearchStrategy(`${args.strategySeed} ${objective}`.trim());
+};
+
+const executeUnifiedSearchPlan = async (args: {
+  query: string;
+  strategy: string;
+  maxPages: number;
+  headed: boolean;
+  browserProviders: string[];
+  pushAssistant: (message: string, tone?: "error") => void;
+}): Promise<void> => {
+  const providersLabel = args.browserProviders.length ? args.browserProviders.join(", ") : "default providers";
+  applyRoute("retrieve:search");
+  ensureRetrieveSearchAppTool();
+  document.dispatchEvent(
+    new CustomEvent("retrieve:agent-unified-search", {
+      detail: {
+        query: args.query,
+        strategy: args.strategy,
+        maxPages: args.maxPages,
+        headed: args.headed,
+        browserProviders: args.browserProviders,
+        runNow: false
+      }
+    })
+  );
+  args.pushAssistant(`Running browser + API collection (${providersLabel}, ${args.maxPages} pages/provider).`);
+  const response = ((await command("retrieve", "run_unified_strategy", {
+    query: args.strategy,
+    browserProviders: args.browserProviders,
+    maxPages: args.maxPages,
+    headed: args.headed,
+    includeSemanticApi: true,
+    includeCrossrefApi: true
+  })) as unknown) as Record<string, unknown>;
+  if (String(response?.status || "") !== "ok") {
+    args.pushAssistant(String(response?.message || "Unified search failed."), "error");
+    return;
+  }
+  const total = Number(response?.total || 0);
+  const runDir = String(response?.runDir || "");
+  const unifiedPath = String(response?.unifiedPath || "");
+  const stats = (response?.stats || {}) as Record<string, unknown>;
+  const merged = Number(stats?.merged_count || 0);
+  const deduped = Number(stats?.deduplicated_count || total);
+  const duplicatesRemoved = Number(stats?.duplicates_removed || 0);
+  const failedProviders = Array.isArray(response?.failedProviders)
+    ? (response.failedProviders as unknown[]).map((p) => String(p || "").trim()).filter(Boolean)
+    : [];
+  if (failedProviders.length) {
+    pendingUnifiedSearchRetry = {
+      query: args.query,
+      strategy: args.strategy,
+      maxPages: args.maxPages,
+      headed: args.headed,
+      providers: args.browserProviders,
+      failedProviders,
+      attempts: 1
+    };
+  } else {
+    pendingUnifiedSearchRetry = null;
+  }
+  args.pushAssistant(
+    `Unified search completed.\nQuery: ${args.query}\nMerged: ${merged}\nDeduplicated: ${deduped}\nDuplicates removed: ${duplicatesRemoved}${runDir ? `\nRun folder: ${runDir}` : ""}${unifiedPath ? `\nUnified JSON: ${unifiedPath}` : ""}`
+  );
+  if (failedProviders.length) {
+    args.pushAssistant(
+      `Some providers need intervention: ${failedProviders.join(", ")}.\n${summarizeProviderHelp(failedProviders)}\nThen say "retry search".`,
+      "error"
+    );
+  }
+};
+
 async function executeResolvedIntent(
   intent: Record<string, unknown>,
   options?: VoiceCommandExecutionOptions,
@@ -4139,11 +4386,89 @@ async function runAgentChatCommand(text: string, options?: VoiceCommandExecution
     recordAgentTelemetry("runAgentChatCommand", { acceptedCommands: 1 });
   }
   pushAgentChatMessage("user", commandText);
+  const low = String(commandText || "").toLowerCase();
+  if (pendingAcademicSearchIntake) {
+    if (isChatNegative(commandText) || /\bcancel\b/.test(low)) {
+      pendingAcademicSearchIntake = null;
+      pushAssistant("Search intake canceled.");
+      return;
+    }
+    const intake = pendingAcademicSearchIntake;
+    if (intake.step === "awaiting_details") {
+      setAgentChatPending(true);
+      try {
+        const detailsText = commandText.trim();
+        const strategy = await generateStrategyFromIntake({
+          query: intake.query,
+          browserProviders: intake.browserProviders,
+          detailsText,
+          strategySeed: intake.strategySeed
+        });
+        pendingAcademicSearchIntake = {
+          ...intake,
+          step: "awaiting_approval",
+          detailsText,
+          generatedStrategy: strategy
+        };
+        const providersLabel = intake.browserProviders.length ? intake.browserProviders.join(", ") : "default providers";
+        pushAssistant(
+          `Strategy draft ready:\n${strategy}\n\nProviders: ${providersLabel}\nMax pages: ${intake.maxPages}\nMode: ${intake.headed ? "headed" : "headless"}\n\nReply "yes" to run, "no" to cancel, or send extra details to regenerate.`
+        );
+      } catch (error) {
+        pushAssistant(String((error as Error)?.message || error || "Could not generate strategy."), "error");
+      } finally {
+        setAgentChatPending(false);
+      }
+      return;
+    }
+    if (intake.step === "awaiting_approval") {
+      if (isChatAffirmative(commandText) || /\brun\b/.test(low)) {
+        pendingAcademicSearchIntake = null;
+        setAgentChatPending(true);
+        try {
+          await executeUnifiedSearchPlan({
+            query: intake.query,
+            strategy: intake.generatedStrategy || intake.strategySeed || intake.query,
+            maxPages: intake.maxPages,
+            headed: intake.headed,
+            browserProviders: intake.browserProviders,
+            pushAssistant
+          });
+        } finally {
+          setAgentChatPending(false);
+        }
+        return;
+      }
+      setAgentChatPending(true);
+      try {
+        const detailsText = commandText.trim();
+        const strategy = await generateStrategyFromIntake({
+          query: intake.query,
+          browserProviders: intake.browserProviders,
+          detailsText,
+          strategySeed: intake.strategySeed
+        });
+        pendingAcademicSearchIntake = {
+          ...intake,
+          detailsText,
+          generatedStrategy: strategy
+        };
+        pushAssistant(
+          `Updated strategy draft:\n${strategy}\n\nReply "yes" to run, "no" to cancel, or add more detail.`
+        );
+      } catch (error) {
+        pushAssistant(String((error as Error)?.message || error || "Could not regenerate strategy."), "error");
+      } finally {
+        setAgentChatPending(false);
+      }
+      return;
+    }
+    return;
+  }
   if (!window.agentBridge?.resolveIntent || !window.agentBridge?.executeIntent) {
     pushAssistant( "Agent bridge is unavailable.", "error");
     return;
   }
-  const low = String(commandText || "").toLowerCase();
   if (window.agentBridge?.supervisorPlan && window.agentBridge?.supervisorExecute && /\bsupervisor\b/.test(low) && /\b(coding|code|verbatim)\b/.test(low)) {
     setAgentChatPending(true);
     const context = buildAgentContextPayloadForText(commandText, options);
@@ -4273,6 +4598,106 @@ async function runAgentChatCommand(text: string, options?: VoiceCommandExecution
       }
       return;
     }
+  }
+
+  const retryUnifiedSearchSignal = /\b(retry|rerun|resume|try again)\b/.test(low) && /\b(search|collection|unified|providers?)\b/.test(low);
+  if (retryUnifiedSearchSignal) {
+    if (!pendingUnifiedSearchRetry) {
+      pushAssistant("No pending failed provider run to retry.");
+      return;
+    }
+    const retryProviders = pendingUnifiedSearchRetry.failedProviders.length
+      ? pendingUnifiedSearchRetry.failedProviders
+      : pendingUnifiedSearchRetry.providers;
+    const providersLabel = retryProviders.length ? retryProviders.join(", ") : "default providers";
+    setAgentChatPending(true);
+    try {
+      applyRoute("retrieve:search");
+      ensureRetrieveSearchAppTool();
+      document.dispatchEvent(
+        new CustomEvent("retrieve:agent-unified-search", {
+          detail: {
+            query: pendingUnifiedSearchRetry.query,
+            strategy: pendingUnifiedSearchRetry.strategy,
+            maxPages: pendingUnifiedSearchRetry.maxPages,
+            headed: pendingUnifiedSearchRetry.headed,
+            browserProviders: retryProviders,
+            runNow: false
+          }
+        })
+      );
+      pushAssistant(`Retrying failed providers: ${providersLabel}.`);
+      const retryResponse = ((await command("retrieve", "run_unified_strategy", {
+        query: pendingUnifiedSearchRetry.strategy,
+        browserProviders: retryProviders,
+        maxPages: pendingUnifiedSearchRetry.maxPages,
+        headed: pendingUnifiedSearchRetry.headed,
+        includeSemanticApi: true,
+        includeCrossrefApi: true
+      })) as unknown) as Record<string, unknown>;
+      if (String(retryResponse?.status || "") !== "ok") {
+        pushAssistant(String(retryResponse?.message || "Retry failed."), "error");
+        return;
+      }
+      const failed = Array.isArray(retryResponse?.failedProviders)
+        ? (retryResponse.failedProviders as unknown[]).map((p) => String(p || "").trim()).filter(Boolean)
+        : [];
+      const total = Number(retryResponse?.total || 0);
+      if (!failed.length) {
+        pendingUnifiedSearchRetry = null;
+        pushAssistant(`Retry completed successfully. Records: ${total}.`);
+      } else {
+        pendingUnifiedSearchRetry = {
+          ...pendingUnifiedSearchRetry,
+          failedProviders: failed,
+          attempts: pendingUnifiedSearchRetry.attempts + 1
+        };
+        pushAssistant(
+          `Retry finished with remaining blocked providers: ${failed.join(", ")}.\nComplete login/captcha in assist browser, then say "retry search".`,
+          "error"
+        );
+      }
+    } catch (error) {
+      pushAssistant(String((error as Error)?.message || error || "Retry failed."), "error");
+    } finally {
+      setAgentChatPending(false);
+    }
+    return;
+  }
+
+  const unifiedSearchIntent = extractChatUnifiedSearchIntent(commandText);
+  if (unifiedSearchIntent) {
+    pendingAcademicSearchIntake = {
+      step: "awaiting_details",
+      query: unifiedSearchIntent.query,
+      strategySeed: unifiedSearchIntent.query,
+      generatedStrategy: "",
+      detailsText: "",
+      maxPages: unifiedSearchIntent.maxPages,
+      headed: unifiedSearchIntent.headed,
+      browserProviders: unifiedSearchIntent.browserProviders
+    };
+    applyRoute("retrieve:search");
+    ensureRetrieveSearchAppTool();
+    document.dispatchEvent(
+      new CustomEvent("retrieve:agent-unified-search", {
+        detail: {
+          query: unifiedSearchIntent.query,
+          strategy: unifiedSearchIntent.query,
+          maxPages: unifiedSearchIntent.maxPages,
+          headed: unifiedSearchIntent.headed,
+          browserProviders: unifiedSearchIntent.browserProviders,
+          runNow: false
+        }
+      })
+    );
+    const providersLabel = unifiedSearchIntent.browserProviders.length
+      ? unifiedSearchIntent.browserProviders.join(", ")
+      : "default providers";
+    pushAssistant(
+      `I can run this search for "${unifiedSearchIntent.query}" on ${providersLabel}. Before running, share:\n1) objective/focus\n2) timeframe\n3) inclusion/exclusion hints`
+    );
+    return;
   }
 
   const mappedVoiceAction = parseVoiceAction(commandText);
@@ -5126,6 +5551,7 @@ const sessionManager = new SessionManager({
 
 void sessionManager.initialize();
 initAgentChatUi();
+initRetrieveSearchIntakeBridge();
 
 if (window.sessionBridge) {
   window.sessionBridge.onMenuAction((action: SessionMenuAction) => {
@@ -6467,18 +6893,22 @@ function setRetrieveLayout(mode: "datahub" | "search-empty" | "search-selected" 
 
   if (mode === "search-empty") {
     panelGrid.applyPreset(PANEL_PRESETS["retrieve:search-empty"]);
+    panelGrid.ensurePanelVisible(1);
     panelGrid.ensurePanelVisible(2);
+    panelGrid.ensurePanelVisible(3);
     return;
   }
 
   if (mode === "search-selected") {
     panelGrid.applyPreset(PANEL_PRESETS["retrieve:search-selected"]);
+    panelGrid.ensurePanelVisible(1);
     panelGrid.ensurePanelVisible(2);
-    panelGrid.ensurePanelVisible(4);
+    panelGrid.ensurePanelVisible(3);
     return;
   }
 
   panelGrid.applyPreset(PANEL_PRESETS["retrieve:search-graph"]);
+  panelGrid.ensurePanelVisible(1);
   panelGrid.ensurePanelVisible(2);
   panelGrid.ensurePanelVisible(3);
 }

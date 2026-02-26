@@ -86,22 +86,22 @@ export const PANEL_PRESETS: Record<string, PanelGridPreset> = {
     id: "retrieve:search-empty",
     roundLayout: false,
     layoutHint: null,
-    collapsed: { panel1: true, panel2: false, panel3: true, panel4: true },
-    ratios: { panel1: 0, panel2: 6, panel3: 0, panel4: 0 }
+    collapsed: { panel1: false, panel2: false, panel3: false, panel4: true },
+    ratios: { panel1: 1, panel2: 3, panel3: 1, panel4: 0 }
   },
   "retrieve:search-selected": {
     id: "retrieve:search-selected",
     roundLayout: false,
     layoutHint: null,
-    collapsed: { panel1: true, panel2: false, panel3: true, panel4: false },
-    ratios: { panel1: 0, panel2: 6, panel3: 0, panel4: 1 }
+    collapsed: { panel1: false, panel2: false, panel3: false, panel4: true },
+    ratios: { panel1: 1, panel2: 3, panel3: 1, panel4: 0 }
   },
   "retrieve:search-graph": {
     id: "retrieve:search-graph",
     roundLayout: false,
     layoutHint: null,
-    collapsed: { panel1: true, panel2: false, panel3: false, panel4: true },
-    ratios: { panel1: 0, panel2: 3, panel3: 3, panel4: 0 }
+    collapsed: { panel1: false, panel2: false, panel3: false, panel4: true },
+    ratios: { panel1: 1, panel2: 3, panel3: 1, panel4: 0 }
   },
   "visualiser:main": {
     id: "visualiser:main",

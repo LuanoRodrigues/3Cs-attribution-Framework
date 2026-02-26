@@ -1,4 +1,5 @@
 import { app, dialog, ipcMain } from "electron";
+import { spawn } from "child_process";
 import fs from "fs";
 import path from "path";
 
@@ -307,6 +308,203 @@ const normalizeQuery = (payload?: Record<string, unknown>): RetrieveQuery => {
   return base;
 };
 
+type UnifiedStrategyPayload = {
+  query: string;
+  browserProviders: string[];
+  maxPages: number;
+  headed: boolean;
+  profileDir: string;
+  profileName: string;
+  includeSemanticApi: boolean;
+  includeCrossrefApi: boolean;
+};
+
+const normalizeUnifiedStrategyPayload = (payload?: Record<string, unknown>): UnifiedStrategyPayload => {
+  const providerEntries = Array.isArray(payload?.browserProviders) ? payload?.browserProviders : [];
+  const browserProviders = providerEntries
+    .map((entry) => String(entry || "").trim())
+    .filter(Boolean);
+  const maxPages = Math.max(1, Math.min(20, toNumberOrUndefined(payload?.maxPages) || 3));
+  return {
+    query: toStringOrUndefined(payload?.query) || "",
+    browserProviders,
+    maxPages,
+    headed: payload?.headed !== false,
+    profileDir: toStringOrUndefined(payload?.profileDir) || "scrapping/browser/searches/profiles/default",
+    profileName: toStringOrUndefined(payload?.profileName) || "Default",
+    includeSemanticApi: payload?.includeSemanticApi !== false,
+    includeCrossrefApi: payload?.includeCrossrefApi !== false
+  };
+};
+
+const resolveTeiaRoot = (): string => {
+  const cwd = process.cwd();
+  if (fs.existsSync(path.join(cwd, "scrapping"))) {
+    return cwd;
+  }
+  const parent = path.resolve(cwd, "..");
+  if (fs.existsSync(path.join(parent, "scrapping"))) {
+    return parent;
+  }
+  const appPath = app.getAppPath();
+  const candidates = [appPath, path.resolve(appPath, ".."), path.resolve(appPath, "../.."), path.resolve(appPath, "../../..")];
+  for (const candidate of candidates) {
+    if (fs.existsSync(path.join(candidate, "scrapping"))) {
+      return candidate;
+    }
+  }
+  return cwd;
+};
+
+const resolvePythonBin = (): string => {
+  const envPython = toStringOrUndefined(process.env.PYTHON_BIN) || toStringOrUndefined(process.env.PYTHON);
+  return envPython || "python3";
+};
+
+const runUnifiedBundle = async (args: UnifiedStrategyPayload): Promise<{
+  runDir: string;
+  mergedPath: string;
+  manifestPath: string;
+  logs: string[];
+}> => {
+  const teiaRoot = resolveTeiaRoot();
+  const providers = args.browserProviders.length
+    ? args.browserProviders
+    : ["google", "cambridge", "jstor", "brill", "digital_commons", "rand", "academia", "elgaronline", "springerlink"];
+  const pyArgs = [
+    "-u",
+    "-m",
+    "scrapping.browser.searches.provider_bundle",
+    args.query,
+    "--providers",
+    providers.join(","),
+    "--max-pages",
+    String(args.maxPages),
+    "--profile-dir",
+    args.profileDir,
+    "--profile-name",
+    args.profileName
+  ];
+  if (args.headed) {
+    pyArgs.push("--headed");
+  }
+  const logs: string[] = [];
+  const python = resolvePythonBin();
+  const child = spawn(python, pyArgs, {
+    cwd: teiaRoot,
+    stdio: ["ignore", "pipe", "pipe"],
+    env: process.env
+  });
+
+  let stdout = "";
+  let stderr = "";
+  child.stdout.on("data", (chunk: Buffer | string) => {
+    const text = String(chunk);
+    stdout += text;
+    text
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .forEach((line) => logs.push(line));
+  });
+  child.stderr.on("data", (chunk: Buffer | string) => {
+    const text = String(chunk);
+    stderr += text;
+    text
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .forEach((line) => logs.push(`[stderr] ${line}`));
+  });
+
+  const code = await new Promise<number>((resolve) => {
+    child.on("close", (exitCode) => resolve(exitCode ?? 1));
+  });
+  if (code !== 0) {
+    throw new Error(`Unified browser bundle failed (exit=${code}): ${stderr || stdout || "unknown error"}`);
+  }
+
+  const outputLine = logs.find((line) => line.startsWith("[bundle] output="));
+  const manifestLine = logs.find((line) => line.startsWith("[bundle] manifest="));
+  const runDir = outputLine ? outputLine.replace("[bundle] output=", "").trim() : "";
+  const manifestPath = manifestLine ? manifestLine.replace("[bundle] manifest=", "").trim() : path.join(runDir, "manifest.json");
+  if (!runDir) {
+    throw new Error("Unified browser bundle did not report output directory.");
+  }
+  const mergedPath = path.join(runDir, "merged_deduplicated.json");
+  return { runDir, mergedPath, manifestPath, logs };
+};
+
+const normalizeKey = (value: string): string => value.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+const unifiedRecordToRetrieveRecord = (record: Record<string, unknown>, index: number): RetrieveRecord => {
+  const title = toStringOrUndefined(record.title) || "Untitled";
+  const yearValue = toNumberOrUndefined(record.year);
+  const doi = toStringOrUndefined(record.doi);
+  const url = toStringOrUndefined(record.url);
+  const source =
+    (toStringOrUndefined(record.provider) as RetrieveProviderId | undefined) ||
+    (Array.isArray(record.sources) && record.sources.length ? (String(record.sources[0]) as RetrieveProviderId) : undefined) ||
+    "cos";
+  const authorsRaw = Array.isArray(record.authors) ? record.authors : [];
+  const authors = authorsRaw.map((a) => String(a || "").trim()).filter(Boolean);
+  const paperId =
+    toStringOrUndefined(record.id) ||
+    (doi ? `doi:${doi}` : `unified:${normalizeKey(title)}:${yearValue || "na"}:${index}`);
+  return {
+    title,
+    authors,
+    year: yearValue,
+    doi,
+    url,
+    venue: toStringOrUndefined(record.journal) || toStringOrUndefined(record.venue),
+    journal: toStringOrUndefined(record.journal),
+    abstract: toStringOrUndefined(record.snippet),
+    source,
+    citationCount: toNumberOrUndefined(record.cited_by),
+    paperId
+  };
+};
+
+const deduplicateRecords = (records: RetrieveRecord[]): { deduped: RetrieveRecord[]; duplicates: number } => {
+  const map = new Map<string, RetrieveRecord>();
+  let duplicates = 0;
+  records.forEach((record) => {
+    const doiKey = normalizeKey(record.doi || "");
+    const titleKey = normalizeKey(record.title || "");
+    const yearKey = record.year ? String(record.year) : "";
+    const key = doiKey ? `doi:${doiKey}` : `ty:${titleKey}:${yearKey}`;
+    const existing = map.get(key);
+    if (!existing) {
+      map.set(key, record);
+      return;
+    }
+    duplicates += 1;
+    const existingScore = Number(Boolean(existing.doi)) + Number(Boolean(existing.url)) + Number((existing.authors || []).length > 0);
+    const nextScore = Number(Boolean(record.doi)) + Number(Boolean(record.url)) + Number((record.authors || []).length > 0);
+    if (nextScore > existingScore) {
+      map.set(key, record);
+    }
+  });
+  return { deduped: Array.from(map.values()), duplicates };
+};
+
+const retrieveRecordToUnified = (record: RetrieveRecord): Record<string, unknown> => ({
+  id: record.paperId,
+  provider: record.source,
+  sources: [record.source],
+  title: record.title,
+  authors: record.authors || [],
+  year: record.year ? String(record.year) : "",
+  doi: record.doi || "",
+  url: record.url || "",
+  journal: (record as any).journal || (record as any).venue || "",
+  snippet: record.abstract || "",
+  cited_by: typeof record.citationCount === "number" ? record.citationCount : 0,
+  pdf_path: "",
+  pdf_url: ""
+});
+
 const headerAuthSignature = (headers?: Record<string, unknown>): string => {
   if (!headers) return "";
   const authKeys = ["x-api-key", "x-els-apikey", "x-apikey", "authorization", "X-ApiKey", "X-ELS-APIKey"];
@@ -506,6 +704,99 @@ export const handleRetrieveCommand = async (
       total: search.total,
       nextCursor: search.nextCursor
     };
+  }
+  if (action === "run_unified_strategy") {
+    const args = normalizeUnifiedStrategyPayload(payload);
+    if (!args.query) {
+      return { status: "error", message: "Query text is required." };
+    }
+    const startedAt = Date.now();
+    try {
+      const bundle = await runUnifiedBundle(args);
+      let mergedPayload: Record<string, unknown> = {};
+      try {
+        mergedPayload = JSON.parse(await fs.promises.readFile(bundle.mergedPath, "utf-8")) as Record<string, unknown>;
+      } catch {
+        mergedPayload = {};
+      }
+      const browserRecordsRaw = Array.isArray(mergedPayload.records) ? (mergedPayload.records as Array<Record<string, unknown>>) : [];
+      const browserRecords = browserRecordsRaw.map((record, idx) => unifiedRecordToRetrieveRecord(record, idx));
+
+      const apiRecords: RetrieveRecord[] = [];
+      const apiQuery: RetrieveQuery = {
+        query: args.query,
+        limit: Math.max(25, Math.min(500, args.maxPages * 20)),
+        sort: "relevance"
+      };
+      if (args.includeSemanticApi) {
+        try {
+          const semantic = await executeProviderSearch("semantic_scholar", { ...apiQuery, provider: "semantic_scholar" });
+          apiRecords.push(...semantic.records);
+        } catch (error) {
+          bundle.logs.push(`[api] semantic_scholar failed: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
+      if (args.includeCrossrefApi) {
+        try {
+          const crossref = await executeProviderSearch("crossref", { ...apiQuery, provider: "crossref" });
+          apiRecords.push(...crossref.records);
+        } catch (error) {
+          bundle.logs.push(`[api] crossref failed: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
+
+      const all = [...browserRecords, ...apiRecords];
+      const dedup = deduplicateRecords(all);
+      const unifiedJsonPath = path.join(bundle.runDir, "merged_unified.json");
+      const unifiedPayload = {
+        input_dir: bundle.runDir,
+        generated_file: unifiedJsonPath,
+        stats: {
+          browser_count: browserRecords.length,
+          api_count: apiRecords.length,
+          merged_count: all.length,
+          duplicates_removed: dedup.duplicates,
+          deduplicated_count: dedup.deduped.length,
+          elapsed_ms: Date.now() - startedAt
+        },
+        records: dedup.deduped.map(retrieveRecordToUnified),
+        browser_merged_path: bundle.mergedPath,
+        manifest_path: bundle.manifestPath
+      };
+      await fs.promises.writeFile(unifiedJsonPath, JSON.stringify(unifiedPayload, null, 2), "utf-8");
+      let providerSummary: Array<Record<string, unknown>> = [];
+      let failedProviders: string[] = [];
+      try {
+        const manifest = JSON.parse(await fs.promises.readFile(bundle.manifestPath, "utf-8")) as Record<string, unknown>;
+        providerSummary = Array.isArray(manifest?.providers) ? (manifest.providers as Array<Record<string, unknown>>) : [];
+        failedProviders = providerSummary
+          .filter((entry) => String(entry?.status || "").toLowerCase() !== "ok")
+          .map((entry) => String(entry?.provider || "").trim())
+          .filter(Boolean);
+      } catch {
+        providerSummary = [];
+        failedProviders = [];
+      }
+
+      return {
+        status: "ok",
+        provider: "cos",
+        items: dedup.deduped,
+        total: dedup.deduped.length,
+        runDir: bundle.runDir,
+        mergedPath: bundle.mergedPath,
+        unifiedPath: unifiedJsonPath,
+        logs: bundle.logs,
+        stats: unifiedPayload.stats,
+        providerSummary,
+        failedProviders
+      };
+    } catch (error) {
+      return {
+        status: "error",
+        message: error instanceof Error ? error.message : String(error)
+      };
+    }
   }
   if (action === "datahub_load_zotero") {
     const collectionName = resolveZoteroCollection(payload);

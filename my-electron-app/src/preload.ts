@@ -64,6 +64,11 @@ contextBridge.exposeInMainWorld("agentBridge", {
     contextText?: string;
     researchQuestions?: string[];
   }) => ipcRenderer.invoke("agent:generate-eligibility-criteria", payload),
+  generateAcademicStrategy: (payload: {
+    query?: string;
+    providers?: string[];
+    objective?: string;
+  }) => ipcRenderer.invoke("agent:generate-academic-strategy", payload),
   supervisorPlan: (payload: { text?: string; context?: Record<string, unknown> }) =>
     ipcRenderer.invoke("agent:supervisor-plan", payload),
   supervisorExecute: (payload: { plan?: Record<string, unknown>; context?: Record<string, unknown> }) =>

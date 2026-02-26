@@ -90,23 +90,44 @@ export const ROUTES: Record<RouteId, RouteDefinition> = {
   "retrieve:search": {
     id: "retrieve:search",
     presetId: "retrieve:search-empty",
-    allowedToolTypesByPanel: { panel2: ["retrieve-search-app", "retrieve"], panel4: [] },
-    ensureTools: [{ toolType: "retrieve-search-app", panelId: "panel2", focus: true, metadata: { layoutPresetId: "retrieve:search-empty" } }]
+    allowedToolTypesByPanel: {
+      panel1: ["retrieve-search-progress"],
+      panel2: ["retrieve-search-app", "retrieve"],
+      panel3: ["retrieve-search-meta"],
+      panel4: []
+    },
+    ensureTools: [
+      { toolType: "retrieve-search-progress", panelId: "panel1", metadata: { layoutPresetId: "retrieve:search-empty" } },
+      { toolType: "retrieve-search-app", panelId: "panel2", focus: true, metadata: { layoutPresetId: "retrieve:search-empty" } },
+      { toolType: "retrieve-search-meta", panelId: "panel3", metadata: { layoutPresetId: "retrieve:search-empty" } }
+    ]
   },
   "retrieve:search-selected": {
     id: "retrieve:search-selected",
     presetId: "retrieve:search-selected",
-    allowedToolTypesByPanel: { panel2: ["retrieve-search-app", "retrieve"], panel4: ["retrieve-search-meta"] },
+    allowedToolTypesByPanel: {
+      panel1: ["retrieve-search-progress"],
+      panel2: ["retrieve-search-app", "retrieve"],
+      panel3: ["retrieve-search-meta"],
+      panel4: []
+    },
     ensureTools: [
+      { toolType: "retrieve-search-progress", panelId: "panel1", metadata: { layoutPresetId: "retrieve:search-selected" } },
       { toolType: "retrieve-search-app", panelId: "panel2", metadata: { layoutPresetId: "retrieve:search-selected" } },
-      { toolType: "retrieve-search-meta", panelId: "panel4", focus: true, metadata: { layoutPresetId: "retrieve:search-selected" } }
+      { toolType: "retrieve-search-meta", panelId: "panel3", focus: true, metadata: { layoutPresetId: "retrieve:search-selected" } }
     ]
   },
   "retrieve:graph": {
     id: "retrieve:graph",
     presetId: "retrieve:search-graph",
-    allowedToolTypesByPanel: { panel2: ["retrieve-search-app", "retrieve"], panel3: ["retrieve-citation-graph"], panel4: [] },
+    allowedToolTypesByPanel: {
+      panel1: ["retrieve-search-progress"],
+      panel2: ["retrieve-search-app", "retrieve"],
+      panel3: ["retrieve-citation-graph"],
+      panel4: []
+    },
     ensureTools: [
+      { toolType: "retrieve-search-progress", panelId: "panel1", metadata: { layoutPresetId: "retrieve:search-graph" } },
       { toolType: "retrieve-search-app", panelId: "panel2", metadata: { layoutPresetId: "retrieve:search-graph" } }
     ]
   },
