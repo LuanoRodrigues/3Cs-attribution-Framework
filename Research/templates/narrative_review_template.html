@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Narrative Review on {{ topic }}</title>
+  <style>
+    /* --- Base & Typography --- */
+    body { font-family: sans-serif; line-height: 1.7; margin: 0 auto; max-width: 900px; padding: 25px; color: #333; background-color: #fdfdfd; }
+    h1, h2, h3, h4 { font-family: "Georgia", serif; color: #1A237E; margin-top: 2em; margin-bottom: 0.8em; line-height: 1.3; font-weight: 600; }
+    h1 { text-align: center; margin-bottom: 1.5em; font-size: 2.2em; color: #0D47A1; }
+    h2 { border-bottom: 2px solid #42A5F5; padding-bottom: 8px; font-size: 1.8em; }
+    h3 { border-bottom: 1px solid #90CAF9; padding-bottom: 6px; font-size: 1.5em; color: #1E88E5; }
+    h4 { font-size: 1.2em; color: #42A5F5; margin-bottom: 0.6em; font-weight: 600; font-family: sans-serif; }
+    p { margin-bottom: 1.2em; text-align: justify; }
+    a { color: #1E88E5; text-decoration: none; }
+    a:hover { color: #0D47A1; text-decoration: underline; }
+    em, i { font-style: italic; }
+    strong, b { font-weight: 600; }
+
+    /* --- Layout & Sections --- */
+    .metadata { text-align: center; margin-bottom: 3em; font-size: 0.95em; color: #555; border-bottom: 1px solid #e0e0e0; padding-bottom: 1.5em; }
+    .metadata p { margin: 0.3em 0; }
+    .section-content { margin-bottom: 40px; padding-left: 0; }
+    .subsection-content { margin-bottom: 30px; padding-left: 15px; border-left: 3px solid #E3F2FD; margin-left: 5px; }
+
+    /* --- Visual Elements --- */
+    figure { margin: 35px auto; text-align: center; border: 1px solid #e0e0e0; padding: 15px 15px 10px 15px; background-color: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.08); max-width: 750px; }
+    figure img { max-width: 100%; height: auto; border: 1px solid #f0f0f0; display: block; margin: 0 auto 10px auto; }
+    figcaption { font-size: 0.9em; color: #666; margin-top: 10px; font-style: normal; line-height: 1.5; text-align: left; padding: 0 5px; }
+    figcaption strong { color: #333; }
+
+    table.data-table { border-collapse: collapse; width: 100%; margin: 30px auto; border: 1px solid #ccc; box-shadow: none; font-size: 0.88em; }
+    table.data-table th, table.data-table td { border: 1px solid #ddd; padding: 10px 12px; text-align: left; vertical-align: top; }
+    table.data-table th { background-color: #f2f7fb; font-weight: 600; color: #2c3e50; }
+    table.data-table tr:nth-child(even) { background-color: #f9f9f9; }
+    table.data-table tr:hover { background-color: #eff4ff; }
+    table.data-table td a { font-size: 0.95em; }
+
+    /* --- Specific Elements --- */
+    .ai-generated-content { font-style: normal; color: #333; padding: 5px 0px; margin: 15px 0; background-color: transparent; text-align: justify; border: none; }
+    .ai-generated-content p { margin-bottom: 1em; }
+    .ai-generated-content p:first-child { margin-top: 0; }
+    .ai-generated-content p:last-child { margin-bottom: 0; }
+    .ai-generated-content strong { font-weight: 600; }
+    .ai-generated-content em { font-style: italic; }
+    .ai-generated-content ul, .ai-generated-content ol { margin-left: 20px; margin-bottom: 1em; }
+    .ai-generated-content li { margin-bottom: 0.5em; }
+
+    .placeholder-note { color: #888; font-style: italic; font-size: 0.9em; display: block; margin-top: 8px; text-align: center; }
+    .callout { border-left: 4px solid #42A5F5; background: #F5FAFF; padding: 12px 14px; margin: 18px 0; }
+    .callout strong { color: #0D47A1; }
+
+    /* --- Narrative Review Specific --- */
+    .structured-abstract h4 { font-size: 1.1em; color: #1E88E5; margin-top: 1em; margin-bottom: 0.3em; font-family: sans-serif; font-weight: 600; border: none; padding: 0;}
+    .structured-abstract p { margin-left: 15px; }
+    .appendix-link { display: block; margin-top: 15px; font-weight: bold; }
+    .key-term { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 0.95em; }
+  </style>
+</head>
+<body>
+
+<h1>Narrative Review: {{ topic }}</h1>
+
+<div class="metadata">
+  <p><strong>Authors:</strong> {{ authors_list }}</p>
+  <p><strong>Affiliations:</strong> {{ affiliation }}</p>
+  <p><em>Report generated on: {{ generation_date }}</em></p>
+  <p><em>AI Models Used for Narrative Sections: {{ ai_models_used }}</em></p>
+  {% if doi_or_preprint %}
+    <p><em>{{ doi_or_preprint }}</em></p>
+  {% endif %}
+</div>
+
+<h2>Abstract</h2>
+<div class="section-content ai-generated-content structured-abstract">
+  {# Suggested headings inside ai_abstract: Background, Aim, Approach, Key Findings, Conclusions #}
+  {{ ai_abstract | safe }}
+</div>
+
+<h2>1. Introduction</h2>
+<div class="section-content ai-generated-content">
+  {{ ai_introduction | safe }}
+</div>
+
+<h2>2. Review Approach</h2>
+<div class="section-content">
+
+  <h3>2.1 Review Aim and Guiding Questions</h3>
+  <div class="subsection-content ai-generated-content">
+    {{ guiding_questions | replace('\n', '<br>') | safe }}
+  </div>
+
+  <h3>2.2 Scope and Inclusion Logic</h3>
+  <div class="subsection-content">
+    <div class="ai-generated-content">
+      <p><strong>Topical scope:</strong><br>{{ topical_scope | replace('\n', '<br>') | safe }}</p>
+      <p><strong>Coverage emphasis:</strong><br>{{ coverage_emphasis | replace('\n', '<br>') | safe }}</p>
+      {% if exclusions %}
+        <p><strong>Exclusions:</strong><br>{{ exclusions | replace('\n', '<br>') | safe }}</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <h3>2.3 Literature Search and Selection (Non-Exhaustive)</h3>
+  <div class="subsection-content">
+    <p>This narrative review is not intended to be exhaustive. Sources were selected to represent influential, methodologically sound, or conceptually clarifying contributions.</p>
+    <div class="ai-generated-content">
+      <p><strong>Databases/sources:</strong><br>{{ sources_consulted | replace('\n', '<br>') | safe }}</p>
+      {% if search_strings %}
+        <p><strong>Example search strings:</strong><br>{{ search_strings | replace('\n', '<br>') | safe }}</p>
+      {% endif %}
+      <p><strong>Selection rationale:</strong><br>{{ selection_rationale | replace('\n', '<br>') | safe }}</p>
+      {% if date_range %}
+        <p><strong>Date range considered:</strong> {{ date_range }}</p>
+      {% endif %}
+      {% if corpus_notes %}
+        <p><strong>Corpus notes:</strong><br>{{ corpus_notes | replace('\n', '<br>') | safe }}</p>
+      {% endif %}
+    </div>
+
+    {% if full_search_strategy_appendix_path %}
+      <p class="appendix-link"><a href="{{ full_search_strategy_appendix_path }}" target="_blank">Link to Search Notes Appendix</a></p>
+    {% else %}
+      <span class="placeholder-note">[Optional: Add search notes appendix path.]</span>
+    {% endif %}
+
+    {% if corpus_table %}
+      {{ corpus_table | safe }}
+      <figcaption><strong>Table 1.</strong> Representative sources included in the narrative review (optional).</figcaption>
+    {% else %}
+      <span class="placeholder-note">[Optional: Add a representative corpus table: key sources and why they matter.]</span>
+    {% endif %}
+  </div>
+
+  {% if quality_appraisal_note %}
+  <h3>2.4 Quality Appraisal (Optional)</h3>
+  <div class="subsection-content ai-generated-content">
+    {{ quality_appraisal_note | safe }}
+  </div>
+  {% endif %}
+</div>
+
+<h2>3. Background and Conceptual Landscape</h2>
+<div class="section-content">
+
+  <h3>3.1 Core Terminology and Definitions (Optional)</h3>
+  <div class="subsection-content">
+    {% if concept_definitions %}
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width: 25%;">Term</th>
+            <th>Definition / Usage</th>
+            <th style="width: 20%;">Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in concept_definitions %}
+            <tr>
+              <td><span class="key-term">{{ c.name }}</span></td>
+              <td>{{ c.definition }}</td>
+              <td>{{ c.notes }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <figcaption><strong>Table 2.</strong> Core terms and definitions.</figcaption>
+    {% else %}
+      <span class="placeholder-note">[Optional: Provide a terminology table to reduce ambiguity.]</span>
+    {% endif %}
+  </div>
+
+  <h3>3.2 Major Themes and Schools of Thought</h3>
+  <div class="subsection-content ai-generated-content">
+    {{ ai_theme_overview | safe }}
+  </div>
+
+  {% if timeline_figure %}
+  <h3>3.3 Historical Development (Optional)</h3>
+  <div class="subsection-content">
+    <figure>
+      <div class="plot-container">
+        <img src="{{ timeline_figure }}" alt="Timeline or historical development figure">
+      </div>
+      <figcaption><strong>Figure 1.</strong> Timeline of key developments (optional).</figcaption>
+    </figure>
+  </div>
+  {% endif %}
+</div>
+
+<h2>4. Synthesis of the Literature</h2>
+<div class="section-content">
+
+  <h3>4.1 Thematic Synthesis</h3>
+  <div class="subsection-content ai-generated-content">
+    {{ ai_thematic_synthesis | safe }}
+  </div>
+
+  <h3>4.2 Areas of Convergence and Divergence</h3>
+  <div class="subsection-content ai-generated-content">
+    {{ ai_convergence_divergence | safe }}
+  </div>
+
+  <h3>4.3 Gaps, Controversies, and Open Questions</h3>
+  <div class="subsection-content ai-generated-content">
+    {{ ai_gaps_controversies | safe }}
+  </div>
+
+  {% if synthesis_table %}
+    {{ synthesis_table | safe }}
+    <figcaption><strong>Table 3.</strong> Summary of themes, representative sources, and key claims.</figcaption>
+  {% endif %}
+</div>
+
+<h2>5. Discussion</h2>
+<div class="section-content ai-generated-content">
+  {% if ai_discussion %}
+    {{ ai_discussion | safe }}
+  {% else %}
+    <span class="placeholder-note">[Discussion placeholder: interpret findings, explain disagreements, assess implications.]</span>
+  {% endif %}
+</div>
+
+<h2>6. Implications</h2>
+<div class="section-content">
+
+  <h3>6.1 Implications for Research</h3>
+  <div class="subsection-content ai-generated-content">
+    {{ ai_research_implications | safe }}
+  </div>
+
+  <h3>6.2 Implications for Practice / Policy</h3>
+  <div class="subsection-content ai-generated-content">
+    {{ ai_practice_implications | safe }}
+  </div>
+</div>
+
+<h2>7. Limitations</h2>
+<div class="section-content ai-generated-content">
+  {% if ai_limitations %}
+    {{ ai_limitations | safe }}
+  {% else %}
+    <span class="placeholder-note">[Limitations placeholder: selection bias, non-exhaustiveness, interpretive subjectivity.]</span>
+  {% endif %}
+</div>
+
+<h2>8. Conclusion</h2>
+<div class="section-content ai-generated-content">
+  {% if ai_conclusion %}
+    {{ ai_conclusion | safe }}
+  {% else %}
+    <span class="placeholder-note">[Conclusion placeholder.]</span>
+  {% endif %}
+</div>
+
+<h2>9. References</h2>
+<div id="references" class="section-content">
+  <p>References cited in this narrative review.</p>
+
+  {% if references_list %}
+    <ol>
+      {% for ref in references_list %}
+        <li>{{ ref.html_string | safe }}</li>
+      {% endfor %}
+    </ol>
+  {% else %}
+    <ol>
+      <li>[References list placeholder — supply formatted references as HTML strings.]</li>
+    </ol>
+  {% endif %}
+</div>
+
+{% if appendices %}
+<h2>Appendices</h2>
+<div class="section-content">
+  {% for app in appendices %}
+    <h3>{{ app.title }}</h3>
+    <div class="ai-generated-content">
+      {{ app.content | safe }}
+    </div>
+    {% if app.path %}
+      <p class="appendix-link"><a href="{{ app.path }}" target="_blank">Open Appendix</a></p>
+    {% endif %}
+  {% endfor %}
+</div>
+{% endif %}
+
+</body>
+</html>

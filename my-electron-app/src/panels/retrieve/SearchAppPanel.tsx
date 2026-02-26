@@ -61,10 +61,20 @@ export class SearchAppPanel {
   private headedInput: HTMLInputElement;
   private includeSemanticInput: HTMLInputElement;
   private includeCrossrefInput: HTMLInputElement;
+  private vmModeInput: HTMLInputElement;
   private profileDirInput: HTMLInputElement;
   private profileNameInput: HTMLInputElement;
   private browserProviderChecks = new Map<string, HTMLInputElement>();
   private liveUrlInput: HTMLInputElement;
+  private vmImageUrlInput: HTMLInputElement;
+  private vmIsoPathInput: HTMLInputElement;
+  private vmCpuInput: HTMLInputElement;
+  private vmMemoryInput: HTMLInputElement;
+  private vmHostProfileDirInput: HTMLInputElement;
+  private vmProfilesSelect: HTMLSelectElement;
+  private vmUseViewInput: HTMLInputElement;
+  private vmTakeoverInput: HTMLInputElement;
+  private vmStatusLine: HTMLDivElement;
   private liveFrame: EmbeddedBrowserElement;
   private runLog: HTMLPreElement;
   private authorInput: HTMLInputElement;
@@ -88,6 +98,9 @@ export class SearchAppPanel {
   private isLoading = false;
   private selectedIndex: number | null = null;
   private paginationStack: Array<string | number | null> = [null];
+  private vmStatusPollTimer: number | null = null;
+  private vmAutoRepairInFlight = false;
+  private vmLastAutoRepairAt = 0;
 
   constructor(initial?: Partial<RetrieveQuery>) {
     const defaults = readRetrieveQueryDefaults();
@@ -228,6 +241,16 @@ export class SearchAppPanel {
     crossrefLabel.style.alignItems = "center";
     crossrefLabel.style.gap = "6px";
 
+    this.vmModeInput = document.createElement("input");
+    this.vmModeInput.type = "checkbox";
+    this.vmModeInput.checked = false;
+    const vmModeLabel = document.createElement("label");
+    vmModeLabel.textContent = "VM mode";
+    vmModeLabel.appendChild(this.vmModeInput);
+    vmModeLabel.style.display = "inline-flex";
+    vmModeLabel.style.alignItems = "center";
+    vmModeLabel.style.gap = "6px";
+
     this.profileDirInput = document.createElement("input");
     this.profileDirInput.type = "text";
     this.profileDirInput.value = "scrapping/browser/searches/profiles/default";
@@ -303,6 +326,7 @@ export class SearchAppPanel {
       headedLabel,
       semanticLabel,
       crossrefLabel,
+      vmModeLabel,
       this.profileDirInput,
       this.profileNameInput
     );
@@ -463,6 +487,160 @@ export class SearchAppPanel {
     liveReloadBtn.textContent = "Reload";
     liveReloadBtn.addEventListener("click", () => this.liveFrame.reload?.());
 
+    this.vmImageUrlInput = document.createElement("input");
+    this.vmImageUrlInput.type = "text";
+    this.vmImageUrlInput.placeholder = "VM cloud image URL (optional)";
+    this.vmImageUrlInput.style.minWidth = "320px";
+
+    this.vmIsoPathInput = document.createElement("input");
+    this.vmIsoPathInput.type = "text";
+    this.vmIsoPathInput.placeholder = "VM ISO path (optional)";
+    this.vmIsoPathInput.style.minWidth = "260px";
+
+    this.vmCpuInput = document.createElement("input");
+    this.vmCpuInput.type = "number";
+    this.vmCpuInput.min = "1";
+    this.vmCpuInput.max = "16";
+    this.vmCpuInput.value = "7";
+    this.vmCpuInput.placeholder = "VM CPUs";
+    this.vmCpuInput.style.width = "96px";
+
+    this.vmMemoryInput = document.createElement("input");
+    this.vmMemoryInput.type = "number";
+    this.vmMemoryInput.min = "1024";
+    this.vmMemoryInput.max = "32768";
+    this.vmMemoryInput.step = "512";
+    this.vmMemoryInput.value = "12288";
+    this.vmMemoryInput.placeholder = "VM RAM MB";
+    this.vmMemoryInput.style.width = "120px";
+
+    this.vmHostProfileDirInput = document.createElement("input");
+    this.vmHostProfileDirInput.type = "text";
+    this.vmHostProfileDirInput.value = "scrapping/browser/searches/profiles/default/Default";
+    this.vmHostProfileDirInput.placeholder = "Host profile source dir";
+    this.vmHostProfileDirInput.style.minWidth = "280px";
+
+    this.vmProfilesSelect = document.createElement("select");
+    this.vmProfilesSelect.style.minWidth = "160px";
+    const defaultOpt = document.createElement("option");
+    defaultOpt.value = "Default";
+    defaultOpt.textContent = "Default";
+    this.vmProfilesSelect.appendChild(defaultOpt);
+    this.vmProfilesSelect.value = this.profileNameInput.value;
+    this.vmProfilesSelect.addEventListener("change", () => {
+      const selected = this.vmProfilesSelect.value.trim();
+      if (selected) this.profileNameInput.value = selected;
+    });
+
+    this.vmUseViewInput = document.createElement("input");
+    this.vmUseViewInput.type = "checkbox";
+    this.vmUseViewInput.checked = true;
+    const vmUseViewLabel = document.createElement("label");
+    vmUseViewLabel.style.display = "inline-flex";
+    vmUseViewLabel.style.alignItems = "center";
+    vmUseViewLabel.style.gap = "6px";
+    vmUseViewLabel.append(this.vmUseViewInput, document.createTextNode("Use VM browser view"));
+
+    this.vmTakeoverInput = document.createElement("input");
+    this.vmTakeoverInput.type = "checkbox";
+    this.vmTakeoverInput.checked = false;
+    const vmTakeoverLabel = document.createElement("label");
+    vmTakeoverLabel.style.display = "inline-flex";
+    vmTakeoverLabel.style.alignItems = "center";
+    vmTakeoverLabel.style.gap = "6px";
+    vmTakeoverLabel.append(this.vmTakeoverInput, document.createTextNode("Take over VM control"));
+    this.vmTakeoverInput.addEventListener("change", () => {
+      const action = this.vmTakeoverInput.checked ? "vm_acquire_control" : "vm_release_control";
+      void this.runVmCommand(action, { owner: "panel" });
+    });
+
+    const vmStatusBtn = document.createElement("button");
+    vmStatusBtn.className = "ribbon-button";
+    vmStatusBtn.textContent = "VM Status";
+    vmStatusBtn.addEventListener("click", () => void this.runVmCommand("vm_status"));
+
+    const vmInstallDepsBtn = document.createElement("button");
+    vmInstallDepsBtn.className = "ribbon-button";
+    vmInstallDepsBtn.textContent = "Install VM Deps";
+    vmInstallDepsBtn.addEventListener("click", () => void this.runVmCommand("vm_install_deps"));
+
+    const vmPreflightBtn = document.createElement("button");
+    vmPreflightBtn.className = "ribbon-button";
+    vmPreflightBtn.textContent = "VM Preflight";
+    vmPreflightBtn.addEventListener("click", () => void this.runVmCommand("vm_preflight"));
+
+    const vmPrepareBtn = document.createElement("button");
+    vmPrepareBtn.className = "ribbon-button";
+    vmPrepareBtn.textContent = "VM Prepare Image";
+    vmPrepareBtn.addEventListener("click", () =>
+      void this.runVmCommand("vm_prepare_image", { imageUrl: this.vmImageUrlInput.value.trim() })
+    );
+
+    const vmInitBtn = document.createElement("button");
+    vmInitBtn.className = "ribbon-button";
+    vmInitBtn.textContent = "VM Init Disk";
+    vmInitBtn.addEventListener("click", () => void this.runVmCommand("vm_init_image", { sizeGb: 40 }));
+
+    const vmSeedBtn = document.createElement("button");
+    vmSeedBtn.className = "ribbon-button";
+    vmSeedBtn.textContent = "VM Seed";
+    vmSeedBtn.addEventListener("click", () => void this.runVmCommand("vm_seed"));
+
+    const vmStartBtn = document.createElement("button");
+    vmStartBtn.className = "ribbon-button";
+    vmStartBtn.textContent = "VM Start";
+    vmStartBtn.addEventListener("click", () =>
+      void this.runVmCommand("vm_start", {
+        isoPath: this.vmIsoPathInput.value.trim(),
+        cpus: this.parseVmCpu(),
+        memoryMb: this.parseVmMemoryMb(),
+        browserProfileName: this.profileNameInput.value.trim() || "Default"
+      })
+    );
+
+    const vmStopBtn = document.createElement("button");
+    vmStopBtn.className = "ribbon-button";
+    vmStopBtn.textContent = "VM Stop";
+    vmStopBtn.addEventListener("click", () => void this.runVmCommand("vm_stop"));
+
+    const vmRepairBtn = document.createElement("button");
+    vmRepairBtn.className = "ribbon-button";
+    vmRepairBtn.textContent = "VM Repair";
+    vmRepairBtn.addEventListener("click", () => void this.runVmCommand("vm_repair"));
+
+    const vmDiskBtn = document.createElement("button");
+    vmDiskBtn.className = "ribbon-button";
+    vmDiskBtn.textContent = "VM Disk Guard";
+    vmDiskBtn.addEventListener("click", () => void this.runVmCommand("vm_disk_guard"));
+
+    const vmProfilesBtn = document.createElement("button");
+    vmProfilesBtn.className = "ribbon-button";
+    vmProfilesBtn.textContent = "VM Profiles";
+    vmProfilesBtn.addEventListener("click", () => void this.runVmCommand("vm_list_profiles"));
+
+    const vmSyncProfileBtn = document.createElement("button");
+    vmSyncProfileBtn.className = "ribbon-button";
+    vmSyncProfileBtn.textContent = "Sync Host Profile";
+    vmSyncProfileBtn.addEventListener("click", () =>
+      void this.runVmCommand("vm_sync_profile", {
+        sourceDir: this.vmHostProfileDirInput.value.trim(),
+        profileName: this.profileNameInput.value.trim() || "Default"
+      })
+    );
+
+    const smokeBtn = document.createElement("button");
+    smokeBtn.className = "ribbon-button";
+    smokeBtn.textContent = "Run Smoke";
+    smokeBtn.addEventListener("click", () =>
+      void this.runVmCommand("run_provider_smoke", {
+        providers: this.selectedBrowserProviders(),
+        query: (this.strategyInput.value.trim() || this.queryInput.value.trim() || "cyber attribution").trim(),
+        maxPages: 1,
+        profileDir: this.profileDirInput.value.trim() || "scrapping/browser/searches/profiles/default",
+        profileName: this.profileNameInput.value.trim() || "Default"
+      })
+    );
+
     this.runLog = document.createElement("pre");
     this.runLog.style.margin = "0";
     this.runLog.style.padding = "8px";
@@ -485,17 +663,48 @@ export class SearchAppPanel {
     this.liveFrame.setAttribute("partition", "persist:retrieve-assist");
     this.liveFrame.src = this.liveUrlInput.value;
 
+    this.vmStatusLine = document.createElement("div");
+    this.vmStatusLine.style.fontSize = "12px";
+    this.vmStatusLine.style.opacity = "0.9";
+    this.vmStatusLine.textContent = "VM: not checked";
+
     const assistBar = document.createElement("div");
     assistBar.className = "control-row";
     assistBar.style.gap = "8px";
     assistBar.style.flexWrap = "wrap";
-    assistBar.append(this.liveUrlInput, liveGoBtn, liveBackBtn, liveForwardBtn, liveReloadBtn);
+    assistBar.append(this.liveUrlInput, liveGoBtn, liveBackBtn, liveForwardBtn, liveReloadBtn, vmUseViewLabel, vmTakeoverLabel);
+
+    const vmBar = document.createElement("div");
+    vmBar.className = "control-row";
+    vmBar.style.gap = "8px";
+    vmBar.style.flexWrap = "wrap";
+    vmBar.append(
+      this.vmImageUrlInput,
+      this.vmIsoPathInput,
+      this.vmCpuInput,
+      this.vmMemoryInput,
+      this.vmProfilesSelect,
+      this.vmHostProfileDirInput,
+      vmPrepareBtn,
+      vmInitBtn,
+      vmSeedBtn,
+      vmStartBtn,
+      vmStopBtn,
+      vmRepairBtn,
+      vmDiskBtn,
+      vmProfilesBtn,
+      vmSyncProfileBtn,
+      smokeBtn,
+      vmPreflightBtn,
+      vmInstallDepsBtn,
+      vmStatusBtn
+    );
 
     const assistHost = document.createElement("div");
     assistHost.style.display = "flex";
     assistHost.style.flexDirection = "column";
     assistHost.style.gap = "8px";
-    assistHost.append(assistBar, this.runLog, this.liveFrame);
+    assistHost.append(assistBar, vmBar, this.vmStatusLine, this.runLog, this.liveFrame);
 
     const content = document.createElement("div");
     content.style.flex = "1";
@@ -545,11 +754,19 @@ export class SearchAppPanel {
       }
     };
     document.addEventListener("retrieve:agent-unified-search", this.agentSearchHandler);
+    void this.runVmCommand("vm_status");
+    this.vmStatusPollTimer = window.setInterval(() => {
+      void this.runVmCommand("vm_status", undefined, false);
+    }, 15000);
   }
 
   destroy(): void {
     document.removeEventListener("retrieve:query-defaults-updated", this.defaultsHandler);
     document.removeEventListener("retrieve:agent-unified-search", this.agentSearchHandler);
+    if (this.vmStatusPollTimer !== null) {
+      window.clearInterval(this.vmStatusPollTimer);
+      this.vmStatusPollTimer = null;
+    }
   }
 
   private applyRetrieveDefaults(defaults: RetrieveQueryDefaults): void {
@@ -577,6 +794,96 @@ export class SearchAppPanel {
     if (!value) return;
     const withScheme = /^https?:\/\//i.test(value) ? value : `https://${value}`;
     this.liveFrame.src = withScheme;
+  }
+
+  private async runVmCommand(action: string, payload?: Record<string, unknown>, verbose = true): Promise<void> {
+    if (verbose) this.vmStatusLine.textContent = `VM: running ${action}...`;
+    try {
+      const response = (await commandInternal("retrieve", action, payload || {})) as unknown as Record<string, unknown>;
+      if (String(response?.status || "") !== "ok") {
+        const msg = String(response?.message || "VM command failed");
+        this.vmStatusLine.textContent = `VM: ${msg}`;
+        if (verbose) this.appendRunLog(`[vm] ${action} failed: ${msg}`);
+        if (action === "vm_acquire_control") this.vmTakeoverInput.checked = false;
+        if (action === "vm_release_control") this.vmTakeoverInput.checked = true;
+        return;
+      }
+      const vm = (response?.vm || {}) as Record<string, unknown>;
+      const profiles = Array.isArray((response as any)?.profiles) ? ((response as any).profiles as string[]) : [];
+      if (profiles.length) {
+        this.vmProfilesSelect.textContent = "";
+        profiles.forEach((name) => {
+          const opt = document.createElement("option");
+          opt.value = String(name);
+          opt.textContent = String(name);
+          this.vmProfilesSelect.appendChild(opt);
+        });
+        const current = this.profileNameInput.value.trim() || "Default";
+        this.vmProfilesSelect.value = profiles.includes(current) ? current : profiles[0];
+      }
+      const disk = (response as any)?.report as Record<string, unknown> | undefined;
+      if (disk) {
+        const pct = Number(disk.usagePercent || 0);
+        const free = Number(disk.freeMb || 0);
+        const applied = Boolean(disk.cleanupApplied);
+        const diskMsg = `disk usage=${pct}% free=${free}MB cleanup=${applied}`;
+        if (verbose) this.appendRunLog(`[vm] ${diskMsg}`);
+      }
+      const smokeReport = String((response as any)?.reportPath || "");
+      if (smokeReport) {
+        this.appendRunLog(`[vm] smoke_report=${smokeReport}`);
+      }
+      if (!Object.keys(vm).length) {
+        const lease = (response?.lease || null) as Record<string, unknown> | null;
+        if (action === "vm_acquire_control") {
+          this.vmStatusLine.textContent = "VM: control acquired by panel";
+          if (verbose) this.appendRunLog(`[vm] control acquired owner=${String(lease?.owner || "panel")}`);
+        } else if (action === "vm_release_control") {
+          this.vmStatusLine.textContent = "VM: control released";
+          if (verbose) this.appendRunLog("[vm] control released");
+        } else {
+          this.vmStatusLine.textContent = `VM: ${action} completed`;
+        }
+        return;
+      }
+      const state = String(vm.state || "unknown");
+      const message = String(vm.message || "");
+      const guestWeb = String(vm.guest_web_url || "");
+      const guestVnc = String(vm.guest_vnc_url || "");
+      const sshTarget = String(vm.ssh_target || "");
+      this.vmStatusLine.textContent = `VM: ${state}${message ? ` - ${message}` : ""}`;
+      if (verbose) {
+        this.appendRunLog(`[vm] ${action} -> state=${state} ${message}`);
+        if (sshTarget) this.appendRunLog(`[vm] ssh=${sshTarget}`);
+        if (guestVnc) this.appendRunLog(`[vm] guest_vnc=${guestVnc}`);
+        if (guestWeb) this.appendRunLog(`[vm] guest_web=${guestWeb}`);
+      }
+      if (this.vmUseViewInput.checked && guestWeb && state === "running") {
+        this.liveUrlInput.value = guestWeb;
+        if (this.liveFrame.src !== guestWeb) this.setLiveFrameUrl(guestWeb);
+      }
+      if (
+        action === "vm_status" &&
+        !verbose &&
+        !this.vmTakeoverInput.checked &&
+        !this.vmAutoRepairInFlight &&
+        (message.includes("guest_web_service=down") || message.includes("ssh_service=down"))
+      ) {
+        const now = Date.now();
+        if (now - this.vmLastAutoRepairAt > 45000) {
+          this.vmAutoRepairInFlight = true;
+          this.vmLastAutoRepairAt = now;
+          this.appendRunLog("[vm] auto-repair triggered from watchdog");
+          void this.runVmCommand("vm_repair", undefined, true).finally(() => {
+            this.vmAutoRepairInFlight = false;
+          });
+        }
+      }
+    } catch (error) {
+      const msg = String((error as Error)?.message || error || "VM command failed");
+      this.vmStatusLine.textContent = `VM: ${msg}`;
+      if (verbose) this.appendRunLog(`[vm] ${action} exception: ${msg}`);
+    }
   }
 
   private requestUnifiedSearchFromChat(): void {
@@ -642,6 +949,9 @@ export class SearchAppPanel {
       browserProviders,
       maxPages,
       headed: overrides?.headed ?? this.headedInput.checked,
+      vmMode: this.vmModeInput.checked,
+      vmCpus: this.parseVmCpu(),
+      vmMemoryMb: this.parseVmMemoryMb(),
       profileDir: this.profileDirInput.value.trim() || "scrapping/browser/searches/profiles/default",
       profileName: this.profileNameInput.value.trim() || "Default",
       includeSemanticApi: this.includeSemanticInput.checked,
@@ -674,7 +984,16 @@ export class SearchAppPanel {
       this.updateLoadMoreVisibility();
       const runDir = String((response as any)?.runDir || "");
       const unifiedPath = String((response as any)?.unifiedPath || "");
+      const vmMode = Boolean((response as any)?.vmMode);
+      const vm = ((response as any)?.vm || {}) as Record<string, unknown>;
       this.updateStatus(`Unified run done: ${filteredItems.length} records.`);
+      if (vmMode) {
+        const vmState = String(vm.state || "unknown");
+        const vmMsg = String(vm.message || "");
+        this.appendRunLog(`[retrieve][unified][debug] vm_mode=true vm_state=${vmState}${vmMsg ? ` vm_message=${vmMsg}` : ""}`);
+        const guestWeb = String(vm.guest_web_url || "");
+        if (guestWeb) this.appendRunLog(`[retrieve][unified][debug] vm_guest_web=${guestWeb}`);
+      }
       if (runDir) {
         this.appendRunLog(`[retrieve][unified][debug] run_dir=${runDir}`);
       }
@@ -827,6 +1146,18 @@ export class SearchAppPanel {
     if (!trimmed) return undefined;
     const n = Number(trimmed);
     return Number.isFinite(n) ? n : undefined;
+  }
+
+  private parseVmCpu(): number | undefined {
+    const value = this.parseNumber(this.vmCpuInput.value);
+    if (!value) return undefined;
+    return Math.max(1, Math.min(16, Math.trunc(value)));
+  }
+
+  private parseVmMemoryMb(): number | undefined {
+    const value = this.parseNumber(this.vmMemoryInput.value);
+    if (!value) return undefined;
+    return Math.max(1024, Math.min(32768, Math.trunc(value)));
   }
 
   private applyPagination(payload: RetrieveQuery): void {

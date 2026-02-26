@@ -1,0 +1,68 @@
+flowchart TB
+  classDef slideTitle fill:#0f172a,color:#f8fafc,stroke:#334155,stroke-width:2px,rx:12,ry:12,font-size:28px,font-weight:700
+  classDef cNode fill:#f8fafc,stroke:#334155,stroke-width:1.5,rx:10,ry:10,font-size:11px
+  classDef scoreNode fill:#dbeafe,stroke:#3b82f6,stroke-width:1.7,rx:10,ry:10,font-size:12px,font-weight:600
+  classDef bandNode fill:#bfdbfe,stroke:#2563eb,stroke-width:1.5,rx:10,ry:10,font-size:12px,font-weight:600
+  classDef trackNode fill:#f1f5f9,stroke:#64748b,stroke-width:1.4,rx:10,ry:10,font-size:11px
+  classDef trackLow fill:#fee2e2,stroke:#fda4af,stroke-width:1.4,rx:10,ry:10,font-size:11px
+  classDef trackMedium fill:#fef3c7,stroke:#fcd34d,stroke-width:1.4,rx:10,ry:10,font-size:11px
+  classDef trackHigh fill:#bbf7d0,stroke:#86efac,stroke-width:1.4,rx:10,ry:10,font-size:11px
+  classDef policyNode fill:#dcfce7,stroke:#16a34a,stroke-width:1.5,rx:12,ry:12,font-size:12px,font-weight:600
+
+  TITLE["Three-C Evidence Framework<br/>Policy-routing score flow"]
+
+  subgraph C_inputs["Evidence Inputs"]
+    direction TB
+    C1["C1 · Clarity<br/>(clarity_0_100)<br/>• act_specificity<br/>• actor_specificity<br/>• link_specificity<br/>• act_claim, actor_claim, link_claim<br/>• control_path_clarity<br/>• due_diligence_path_clarity<br/>• organ_path_clarity<br/>• legal_path_coverage"]
+    C2["C2 · Chain of Custody<br/>(custody_0_100)<br/>• provenance<br/>• integrity<br/>• time_anchors<br/>• artifact_identifiers<br/>• versioning<br/>• evidence_anchor_count<br/>• anchor_coverage"]
+    C3["C3 · Credibility<br/>(credibility_0_100)<br/>• raw_source_count<br/>• eligible_source_count<br/>• excluded_sources_count<br/>• quality_mean, quality_top<br/>• source_diversity, domain_independence<br/>• source_quantity<br/>• source_type_counts"]
+  end
+
+  subgraph ScoreFlow["Scoring"]
+    S["Composite Score<br/>v4-calibrated"]
+  end
+
+  subgraph PolicyRouting["Policy Outcome by Band"]
+    direction TB
+    L["LOW (0-2)"]
+    M["MEDIUM (3-4)"]
+    H["HIGH (5-6)"]
+  end
+
+  subgraph Tracks["Action Tracks"]
+    direction TB
+    I["Industry Track<br/>A. monitor + defensive hardening<br/>B. coordination + threat advisories"]
+    ST["Strategy Track<br/>B. coalition briefings + signaling<br/>C. strategic response posture"]
+    Lg["Legal Track<br/>A. countermeasures<br/>B. international litigation"]
+    PO["Policy Outcome"]
+  end
+
+  style C_inputs fill:#0b1220,stroke:#334155,color:#f8fafc
+  style ScoreFlow fill:#0b1220,stroke:#334155,color:#f8fafc
+  style PolicyRouting fill:#0b1220,stroke:#334155,color:#f8fafc
+  style Tracks fill:#0b1220,stroke:#334155,color:#f8fafc
+
+  TITLE --> C1
+  TITLE --> C2
+  TITLE --> C3
+  C1 --> S
+  C2 --> S
+  C3 --> S
+  S --> L
+  S --> M
+  S --> H
+  L --> I
+  M --> ST
+  H --> Lg
+  I --> PO
+  ST --> PO
+  Lg --> PO
+
+  class TITLE slideTitle
+  class C1,C2,C3 cNode
+  class S scoreNode
+  class L,M,H bandNode
+  class I trackLow
+  class ST trackMedium
+  class Lg trackHigh
+  class PO policyNode

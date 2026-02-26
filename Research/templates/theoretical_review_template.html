@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Theoretical Review on {{ topic }}</title>
+  <style>
+    /* --- Base & Typography --- */
+    body { font-family: sans-serif; line-height: 1.7; margin: 0 auto; max-width: 900px; padding: 25px; color: #333; background-color: #fdfdfd; }
+    h1, h2, h3, h4 { font-family: "Georgia", serif; color: #1A237E; margin-top: 2em; margin-bottom: 0.8em; line-height: 1.3; font-weight: 600; }
+    h1 { text-align: center; margin-bottom: 1.5em; font-size: 2.2em; color: #0D47A1; }
+    h2 { border-bottom: 2px solid #42A5F5; padding-bottom: 8px; font-size: 1.8em; }
+    h3 { border-bottom: 1px solid #90CAF9; padding-bottom: 6px; font-size: 1.5em; color: #1E88E5; }
+    h4 { font-size: 1.2em; color: #42A5F5; margin-bottom: 0.6em; font-weight: 600; font-family: sans-serif; }
+    p { margin-bottom: 1.2em; text-align: justify; }
+    a { color: #1E88E5; text-decoration: none; }
+    a:hover { color: #0D47A1; text-decoration: underline; }
+    em, i { font-style: italic; }
+    strong, b { font-weight: 600; }
+
+    /* --- Layout & Sections --- */
+    .metadata { text-align: center; margin-bottom: 3em; font-size: 0.95em; color: #555; border-bottom: 1px solid #e0e0e0; padding-bottom: 1.5em; }
+    .metadata p { margin: 0.3em 0; }
+    .section-content { margin-bottom: 40px; padding-left: 0; }
+    .subsection-content { margin-bottom: 30px; padding-left: 15px; border-left: 3px solid #E3F2FD; margin-left: 5px; }
+
+    /* --- Visual Elements --- */
+    figure { margin: 35px auto; text-align: center; border: 1px solid #e0e0e0; padding: 15px 15px 10px 15px; background-color: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.08); max-width: 750px; }
+    figure img { max-width: 100%; height: auto; border: 1px solid #f0f0f0; display: block; margin: 0 auto 10px auto; }
+    figcaption { font-size: 0.9em; color: #666; margin-top: 10px; font-style: normal; line-height: 1.5; text-align: left; padding: 0 5px; }
+    figcaption strong { color: #333; }
+
+    table.data-table { border-collapse: collapse; width: 100%; margin: 30px auto; border: 1px solid #ccc; box-shadow: none; font-size: 0.88em; }
+    table.data-table th, table.data-table td { border: 1px solid #ddd; padding: 10px 12px; text-align: left; vertical-align: top; }
+    table.data-table th { background-color: #f2f7fb; font-weight: 600; color: #2c3e50; }
+    table.data-table tr:nth-child(even) { background-color: #f9f9f9; }
+    table.data-table tr:hover { background-color: #eff4ff; }
+    table.data-table td a { font-size: 0.95em; }
+
+    /* --- Content Blocks --- */
+    .ai-generated-content { font-style: normal; color: #333; padding: 5px 0px; margin: 15px 0; background-color: transparent; text-align: justify; border: none; }
+    .ai-generated-content p { margin-bottom: 1em; }
+    .ai-generated-content p:first-child { margin-top: 0; }
+    .ai-generated-content p:last-child { margin-bottom: 0; }
+    .ai-generated-content ul, .ai-generated-content ol { margin-left: 20px; margin-bottom: 1em; }
+    .ai-generated-content li { margin-bottom: 0.5em; }
+
+    .placeholder-note { color: #888; font-style: italic; font-size: 0.9em; display: block; margin-top: 8px; text-align: center; }
+    .callout { border-left: 4px solid #42A5F5; background: #F5FAFF; padding: 12px 14px; margin: 18px 0; }
+    .callout strong { color: #0D47A1; }
+
+    /* --- Theoretical Review Specific --- */
+    .structured-abstract h4 { font-size: 1.1em; color: #1E88E5; margin-top: 1em; margin-bottom: 0.3em; font-family: sans-serif; font-weight: 600; border: none; padding: 0;}
+    .structured-abstract p { margin-left: 15px; }
+    .concept-model { max-width: 800px; }
+    .appendix-link { display: block; margin-top: 15px; font-weight: bold; }
+    .key-term { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 0.95em; }
+  </style>
+</head>
+<body>
+
+<h1>Theoretical Review: {{ topic }}</h1>
+
+<div class="metadata">
+  <p><strong>Authors:</strong> {{ authors_list }}</p>
+  <p><strong>Affiliations:</strong> {{ affiliation }}</p>
+  <p><em>Report generated on: {{ generation_date }}</em></p>
+  <p><em>AI Models Used for Narrative Sections: {{ ai_models_used }}</em></p>
+  {% if doi_or_preprint %}
+    <p><em>{{ doi_or_preprint }}</em></p>
+  {% endif %}
+</div>
+
+<h2>Abstract</h2>
+<div class="section-content ai-generated-content structured-abstract">
+  {# Suggested theoretical-review abstract structure: Purpose, Approach, Synthesis/Argument, Contribution, Implications #}
+  {{ ai_abstract | safe }}
+</div>
+
+<h2>1. Introduction</h2>
+<div class="section-content ai-generated-content">
+  {{ ai_introduction | safe }}
+</div>
+
+<h2>2. Scope, Positioning, and Review Approach</h2>
+<div class="section-content">
+  <div class="subsection-content">
+    <h3>2.1 Purpose and Research Questions</h3>
+    <div class="ai-generated-content">
+      {{ research_questions | replace('\n', '<br>') | safe }}
+    </div>
+  </div>
+
+  <div class="subsection-content">
+    <h3>2.2 Scope and Boundary Conditions</h3>
+    <div class="ai-generated-content">
+      {# What the review includes/excludes conceptually (not PRISMA-style eligibility unless you want it) #}
+      <p><strong>In-scope:</strong><br>{{ scope_in | replace('\n', '<br>') | safe }}</p>
+      <p><strong>Out-of-scope:</strong><br>{{ scope_out | replace('\n', '<br>') | safe }}</p>
+      {% if boundary_conditions %}
+        <p><strong>Boundary conditions:</strong><br>{{ boundary_conditions | replace('\n', '<br>') | safe }}</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="subsection-content">
+    <h3>2.3 Literature Identification and Selection (Narrative/Scoping)</h3>
+    <p>This review is a theoretical synthesis (not a PRISMA-registered systematic review). The corpus was assembled to support concept development, theory comparison, and model-building.</p>
+    <div class="ai-generated-content">
+      {# Keep this flexible: databases + snowballing + seminal works + targeted inclusion #}
+      <p><strong>Sources consulted:</strong><br>{{ sources_consulted | replace('\n', '<br>') | safe }}</p>
+      <p><strong>Selection logic:</strong><br>{{ selection_logic | replace('\n', '<br>') | safe }}</p>
+      {% if search_strings %}
+        <p><strong>Example search strings:</strong><br>{{ search_strings | replace('\n', '<br>') | safe }}</p>
+      {% endif %}
+      {% if corpus_notes %}
+        <p><strong>Corpus notes:</strong><br>{{ corpus_notes | replace('\n', '<br>') | safe }}</p>
+      {% endif %}
+    </div>
+
+    {% if corpus_table %}
+      {{ corpus_table | safe }}
+      <figcaption><strong>Table 1.</strong> Corpus overview (optional) — key works and why they were selected.</figcaption>
+    {% else %}
+      <span class="placeholder-note">[Optional: Add a corpus overview table summarizing seminal/representative works.]</span>
+    {% endif %}
+  </div>
+
+  <div class="subsection-content">
+    <h3>2.4 Analytic Strategy and Theorizing Method</h3>
+    <div class="ai-generated-content">
+      {# Examples: concept analysis, typology building, mechanism-based explanation, abductive synthesis, etc. #}
+      {{ theorizing_method | safe }}
+    </div>
+  </div>
+
+  {% if assumptions_and_positionality %}
+  <div class="subsection-content">
+    <h3>2.5 Assumptions and Positionality</h3>
+    <div class="ai-generated-content">
+      {{ assumptions_and_positionality | safe }}
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<h2>3. Conceptual Foundations</h2>
+<div class="section-content">
+  <div class="subsection-content">
+    <h3>3.1 Core Concepts and Definitions</h3>
+    <p>The review standardizes terminology to reduce construct ambiguity and improve comparability across theories.</p>
+
+    {% if concept_definitions %}
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width: 25%;">Concept</th>
+            <th>Operational/Theoretical Definition</th>
+            <th style="width: 20%;">Notes / Variants</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in concept_definitions %}
+            <tr>
+              <td><span class="key-term">{{ c.name }}</span></td>
+              <td>{{ c.definition }}</td>
+              <td>{{ c.notes }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <figcaption><strong>Table 2.</strong> Core concepts and standardized definitions (optional).</figcaption>
+    {% else %}
+      <span class="placeholder-note">[Optional: Provide a concept dictionary table: name, definition, variants, and scope conditions.]</span>
+    {% endif %}
+  </div>
+
+  <div class="subsection-content">
+    <h3>3.2 Competing Theoretical Lenses</h3>
+    <div class="ai-generated-content">
+      {{ ai_theoretical_lenses | safe }}
+    </div>
+
+    {% if theory_comparison_table %}
+      {{ theory_comparison_table | safe }}
+      <figcaption><strong>Table 3.</strong> Comparison of theoretical lenses (assumptions, mechanisms, predictions, limitations).</figcaption>
+    {% endif %}
+  </div>
+
+  {% if construct_ambiguities %}
+  <div class="subsection-content">
+    <h3>3.3 Construct Ambiguities and Known Tensions</h3>
+    <div class="ai-generated-content">
+      {{ construct_ambiguities | safe }}
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<h2>4. Integrative Synthesis and Theory Development</h2>
+<div class="section-content">
+  <div class="subsection-content">
+    <h3>4.1 Thematic/Mechanism-Based Synthesis</h3>
+    <div class="ai-generated-content">
+      {{ ai_synthesis | safe }}
+    </div>
+  </div>
+
+  <div class="subsection-content">
+    <h3>4.2 Conceptual Model</h3>
+    <p>The model below summarizes the proposed relationships, mechanisms, and boundary conditions derived from the synthesis.</p>
+
+    <figure class="concept-model">
+      <div class="plot-container">
+        {% if conceptual_model_figure %}
+          <img src="{{ conceptual_model_figure }}" alt="Conceptual Model Figure">
+        {% else %}
+          <span class="placeholder-note">[Conceptual model placeholder: provide an image or generate from a diagramming pipeline.]</span>
+        {% endif %}
+      </div>
+      <figcaption><strong>Figure 1.</strong> Conceptual model integrating key constructs, mechanisms, and boundary conditions.</figcaption>
+    </figure>
+
+    {% if model_narrative %}
+      <div class="callout">
+        <strong>Model narrative:</strong>
+        <div class="ai-generated-content">{{ model_narrative | safe }}</div>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="subsection-content">
+    <h3>4.3 Propositions / Theoretical Claims</h3>
+    <p>These propositions translate the theoretical synthesis into testable or assessable claims.</p>
+
+    {% if propositions %}
+      <ol>
+        {% for p in propositions %}
+          <li><strong>{{ p.label }}</strong> — {{ p.text }}</li>
+        {% endfor %}
+      </ol>
+    {% else %}
+      <span class="placeholder-note">[Add propositions as a list of objects: label + text.]</span>
+    {% endif %}
+
+    {% if boundary_conditions_table %}
+      {{ boundary_conditions_table | safe }}
+      <figcaption><strong>Table 4.</strong> Boundary conditions and scope constraints for propositions.</figcaption>
+    {% endif %}
+  </div>
+</div>
+
+<h2>5. Implications</h2>
+<div class="section-content">
+  <div class="subsection-content">
+    <h3>5.1 Implications for Research</h3>
+    <div class="ai-generated-content">
+      {{ ai_research_implications | safe }}
+    </div>
+  </div>
+
+  <div class="subsection-content">
+    <h3>5.2 Implications for Practice / Policy</h3>
+    <div class="ai-generated-content">
+      {{ ai_practice_implications | safe }}
+    </div>
+  </div>
+
+  {% if measurement_implications %}
+  <div class="subsection-content">
+    <h3>5.3 Measurement and Operationalization Guidance (Optional)</h3>
+    <div class="ai-generated-content">
+      {{ measurement_implications | safe }}
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<h2>6. Limitations and Future Research</h2>
+<div class="section-content ai-generated-content">
+  {% if ai_limitations_future %}
+    {{ ai_limitations_future | safe }}
+  {% else %}
+    <span class="placeholder-note">[Add limitations (corpus bias, interpretive subjectivity) and a structured future research agenda.]</span>
+  {% endif %}
+</div>
+
+<h2>7. Conclusion</h2>
+<div class="section-content ai-generated-content">
+  {% if ai_conclusion %}
+    {{ ai_conclusion | safe }}
+  {% else %}
+    <span class="placeholder-note">[Conclusion placeholder.]</span>
+  {% endif %}
+</div>
+
+<h2>8. References</h2>
+<div id="references" class="section-content">
+  <p>References cited in this theoretical review.</p>
+
+  {% if references_list %}
+    <ol>
+      {% for ref in references_list %}
+        <li>{{ ref.html_string | safe }}</li>
+      {% endfor %}
+    </ol>
+  {% else %}
+    <ol>
+      <li>[References list placeholder — supply formatted references as HTML strings.]</li>
+    </ol>
+  {% endif %}
+</div>
+
+{% if appendices %}
+<h2>Appendices</h2>
+<div class="section-content">
+  {% for app in appendices %}
+    <h3>{{ app.title }}</h3>
+    <div class="ai-generated-content">
+      {{ app.content | safe }}
+    </div>
+    {% if app.path %}
+      <p class="appendix-link"><a href="{{ app.path }}" target="_blank">Open Appendix</a></p>
+    {% endif %}
+  {% endfor %}
+</div>
+{% endif %}
+
+</body>
+</html>

@@ -1,0 +1,67 @@
+name: VM Smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - "scrapping/browser/vm/**"
+      - ".github/workflows/vm-smoke.yml"
+  pull_request:
+    paths:
+      - "scrapping/browser/vm/**"
+      - ".github/workflows/vm-smoke.yml"
+
+jobs:
+  vm-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install QEMU
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-x86 qemu-utils cloud-image-utils
+
+      - name: VM status (pre)
+        run: python3 -m scrapping.browser.vm.cli status
+
+      - name: VM preflight
+        run: python3 -m scrapping.browser.vm.cli preflight
+
+      - name: Prepare VM cloud image
+        run: python3 -m scrapping.browser.vm.cli prepare-image
+
+      - name: Generate cloud-init seed
+        run: python3 -m scrapping.browser.vm.cli seed
+
+      - name: Start VM from cloud image
+        run: python3 -m scrapping.browser.vm.cli start
+
+      - name: VM status (running)
+        run: python3 -m scrapping.browser.vm.cli status
+
+      - name: Stop VM
+        run: python3 -m scrapping.browser.vm.cli stop
+
+      - name: VM status (final)
+        run: python3 -m scrapping.browser.vm.cli status
+
+      - name: Upload VM runtime logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vm-runtime-logs
+          path: |
+            scrapping/browser/vm/runtime/vm.log
+            scrapping/browser/vm/runtime/vm.pid
+          if-no-files-found: ignore

@@ -38,6 +38,7 @@ import {
 } from "../services/retrieve/zotero";
 
 const rateTracker = new Map<RetrieveProviderId, number>();
+let vmControlLease: { owner: string; acquiredAt: number } | null = null;
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -313,10 +314,25 @@ type UnifiedStrategyPayload = {
   browserProviders: string[];
   maxPages: number;
   headed: boolean;
+  vmMode: boolean;
+  vmCpus?: number;
+  vmMemoryMb?: number;
   profileDir: string;
   profileName: string;
   includeSemanticApi: boolean;
   includeCrossrefApi: boolean;
+};
+
+type VmCommandPayload = {
+  imageUrl?: string;
+  isoPath?: string;
+  sizeGb?: number;
+  cpus?: number;
+  memoryMb?: number;
+  browserProfileDir?: string;
+  browserProfileName?: string;
+  skipSeed?: boolean;
+  owner?: string;
 };
 
 const normalizeUnifiedStrategyPayload = (payload?: Record<string, unknown>): UnifiedStrategyPayload => {
@@ -330,12 +346,26 @@ const normalizeUnifiedStrategyPayload = (payload?: Record<string, unknown>): Uni
     browserProviders,
     maxPages,
     headed: payload?.headed !== false,
+    vmMode: payload?.vmMode === true,
+    vmCpus: toNumberOrUndefined(payload?.vmCpus),
+    vmMemoryMb: toNumberOrUndefined(payload?.vmMemoryMb),
     profileDir: toStringOrUndefined(payload?.profileDir) || "scrapping/browser/searches/profiles/default",
     profileName: toStringOrUndefined(payload?.profileName) || "Default",
     includeSemanticApi: payload?.includeSemanticApi !== false,
     includeCrossrefApi: payload?.includeCrossrefApi !== false
   };
 };
+
+const normalizeVmCommandPayload = (payload?: Record<string, unknown>): VmCommandPayload => ({
+  imageUrl: toStringOrUndefined(payload?.imageUrl),
+  isoPath: toStringOrUndefined(payload?.isoPath),
+  sizeGb: toNumberOrUndefined(payload?.sizeGb),
+  cpus: toNumberOrUndefined(payload?.cpus),
+  memoryMb: toNumberOrUndefined(payload?.memoryMb),
+  browserProfileDir: toStringOrUndefined(payload?.browserProfileDir),
+  browserProfileName: toStringOrUndefined(payload?.browserProfileName),
+  skipSeed: payload?.skipSeed === true
+});
 
 const resolveTeiaRoot = (): string => {
   const cwd = process.cwd();
@@ -359,6 +389,310 @@ const resolveTeiaRoot = (): string => {
 const resolvePythonBin = (): string => {
   const envPython = toStringOrUndefined(process.env.PYTHON_BIN) || toStringOrUndefined(process.env.PYTHON);
   return envPython || "python3";
+};
+
+const resolveVmSharedDownloadsDir = (): string => {
+  const teiaRoot = resolveTeiaRoot();
+  return path.join(teiaRoot, "scrapping", "browser", "searches", "downloads");
+};
+
+type VmSshTarget = { user: string; host: string; port: number };
+
+const parseVmSshTarget = (value: string): VmSshTarget | null => {
+  const text = String(value || "").trim();
+  const m = text.match(/^([^@\s:]+)@([^:\s]+):(\d+)$/);
+  if (!m) return null;
+  return { user: m[1], host: m[2], port: Number(m[3]) || 22 };
+};
+
+const buildVmSshOptions = (vm: Record<string, unknown>): string[] => {
+  const sshKeyPath = String(vm?.ssh_key_path || "").trim();
+  const knownHostsPath = String(vm?.ssh_known_hosts_path || "").trim();
+  if (!sshKeyPath) {
+    throw new Error("VM SSH key path missing; regenerate VM seed and restart VM.");
+  }
+  if (!knownHostsPath) {
+    throw new Error("VM known_hosts path missing; regenerate VM seed and restart VM.");
+  }
+  const options = [
+    "-i",
+    sshKeyPath,
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "PreferredAuthentications=publickey",
+    "-o",
+    "StrictHostKeyChecking=yes",
+    "-o",
+    "UserKnownHostsFile=" + knownHostsPath,
+  ];
+  return options;
+};
+
+type VmDiskGuardReport = {
+  usagePercent: number;
+  freeMb: number;
+  totalMb: number;
+  cleanupApplied: boolean;
+  warnThreshold: number;
+  pruneThreshold: number;
+};
+
+const runVmSshCommand = async (
+  vm: Record<string, unknown>,
+  command: string,
+  timeoutMs = 120000
+): Promise<{ code: number; stdout: string; stderr: string }> => {
+  const ssh = parseVmSshTarget(String(vm?.ssh_target || ""));
+  if (!ssh) throw new Error("VM SSH target missing or invalid; run VM preflight/start first.");
+  const sshArgs = [...buildVmSshOptions(vm), "-p", String(ssh.port), `${ssh.user}@${ssh.host}`, command];
+  const proc = spawn("ssh", sshArgs, { cwd: resolveTeiaRoot(), stdio: ["ignore", "pipe", "pipe"], env: process.env });
+  let stdout = "";
+  let stderr = "";
+  proc.stdout.on("data", (c: Buffer | string) => (stdout += String(c)));
+  proc.stderr.on("data", (c: Buffer | string) => (stderr += String(c)));
+  const timeout = setTimeout(() => {
+    try {
+      proc.kill("SIGTERM");
+    } catch {
+      // ignore
+    }
+  }, timeoutMs);
+  const code = await new Promise<number>((resolve) => proc.on("close", (exitCode) => resolve(exitCode ?? 1)));
+  clearTimeout(timeout);
+  return { code, stdout, stderr };
+};
+
+const parseDfPkRoot = (text: string): VmDiskGuardReport => {
+  const line = text
+    .split(/\r?\n/)
+    .map((x) => x.trim())
+    .filter(Boolean)
+    .find((x) => x.includes(" /"));
+  if (!line) {
+    throw new Error("Failed to parse VM disk usage.");
+  }
+  const parts = line.split(/\s+/);
+  if (parts.length < 6) {
+    throw new Error(`Unexpected df output: ${line}`);
+  }
+  const totalKb = Number(parts[1]);
+  const freeKb = Number(parts[3]);
+  const usePctRaw = String(parts[4] || "0").replace("%", "");
+  const usagePercent = Number(usePctRaw);
+  return {
+    usagePercent: Number.isFinite(usagePercent) ? usagePercent : 0,
+    freeMb: Math.max(0, Math.floor((Number.isFinite(freeKb) ? freeKb : 0) / 1024)),
+    totalMb: Math.max(0, Math.floor((Number.isFinite(totalKb) ? totalKb : 0) / 1024)),
+    cleanupApplied: false,
+    warnThreshold: 80,
+    pruneThreshold: 90
+  };
+};
+
+const runVmDiskGuard = async (
+  vm: Record<string, unknown>,
+  opts?: { warnThreshold?: number; pruneThreshold?: number; minFreeMb?: number }
+): Promise<VmDiskGuardReport> => {
+  const warnThreshold = Math.max(1, Math.min(99, Number(opts?.warnThreshold ?? 80)));
+  const pruneThreshold = Math.max(warnThreshold, Math.min(99, Number(opts?.pruneThreshold ?? 90)));
+  const minFreeMb = Math.max(128, Number(opts?.minFreeMb ?? 2048));
+  const dfFirst = await runVmSshCommand(vm, "df -Pk / | tail -n 1");
+  if (dfFirst.code !== 0) {
+    throw new Error(`VM disk check failed: ${dfFirst.stderr || dfFirst.stdout || `exit=${dfFirst.code}`}`);
+  }
+  let report = parseDfPkRoot(dfFirst.stdout);
+  report.warnThreshold = warnThreshold;
+  report.pruneThreshold = pruneThreshold;
+  const needsCleanup = report.usagePercent >= pruneThreshold || report.freeMb < minFreeMb;
+  if (!needsCleanup) return report;
+
+  const ssh = parseVmSshTarget(String(vm?.ssh_target || ""));
+  if (!ssh) throw new Error("VM SSH target missing for cleanup.");
+  const cleanupScript = [
+    "set -euo pipefail",
+    `sudo mkdir -p /home/${ssh.user}/vm_runs`,
+    `sudo bash -lc 'ls -1dt /home/${ssh.user}/vm_runs/* 2>/dev/null | tail -n +6 | xargs -r rm -rf'`,
+    "sudo apt-get clean || true",
+    "sudo journalctl --vacuum-time=3d || true",
+    "sudo find /tmp -mindepth 1 -maxdepth 1 -exec rm -rf {} + || true",
+    "sudo find /var/tmp -mindepth 1 -maxdepth 1 -exec rm -rf {} + || true",
+    "df -Pk / | tail -n 1"
+  ].join("; ");
+  const cleaned = await runVmSshCommand(vm, cleanupScript, 180000);
+  if (cleaned.code !== 0) {
+    throw new Error(`VM cleanup failed: ${cleaned.stderr || cleaned.stdout || `exit=${cleaned.code}`}`);
+  }
+  report = parseDfPkRoot(cleaned.stdout);
+  report.cleanupApplied = true;
+  report.warnThreshold = warnThreshold;
+  report.pruneThreshold = pruneThreshold;
+  return report;
+};
+
+const listVmProfiles = async (vm: Record<string, unknown>): Promise<string[]> => {
+  const ssh = parseVmSshTarget(String(vm?.ssh_target || ""));
+  if (!ssh) throw new Error("VM SSH target missing for profile listing.");
+  const cmd = `mkdir -p /home/${ssh.user}/.browser-profiles && find /home/${ssh.user}/.browser-profiles -mindepth 1 -maxdepth 1 -type d -printf '%f\\n' | sort`;
+  const out = await runVmSshCommand(vm, cmd);
+  if (out.code !== 0) {
+    throw new Error(`VM profile listing failed: ${out.stderr || out.stdout || `exit=${out.code}`}`);
+  }
+  return out.stdout
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+};
+
+const syncHostProfileToVm = async (
+  vm: Record<string, unknown>,
+  sourceDir: string,
+  profileName: string
+): Promise<{ source: string; target: string }> => {
+  const ssh = parseVmSshTarget(String(vm?.ssh_target || ""));
+  if (!ssh) throw new Error("VM SSH target missing for profile sync.");
+  const teiaRoot = resolveTeiaRoot();
+  const source = path.isAbsolute(sourceDir) ? sourceDir : path.join(teiaRoot, sourceDir);
+  const resolvedSource = path.resolve(source);
+  const stat = await fs.promises.stat(resolvedSource).catch(() => null);
+  if (!stat || !stat.isDirectory()) {
+    throw new Error(`Host profile source not found: ${resolvedSource}`);
+  }
+  const safeName = (profileName || "Default").trim() || "Default";
+  const target = `/home/${ssh.user}/.browser-profiles/${safeName}`;
+  const tarProc = spawn("tar", ["-czf", "-", "-C", resolvedSource, "."], {
+    cwd: teiaRoot,
+    stdio: ["ignore", "pipe", "pipe"],
+    env: process.env
+  });
+  const sshProc = spawn(
+    "ssh",
+    [...buildVmSshOptions(vm), "-p", String(ssh.port), `${ssh.user}@${ssh.host}`, `rm -rf '${target}' && mkdir -p '${target}' && tar -xzf - -C '${target}'`],
+    { cwd: teiaRoot, stdio: ["pipe", "pipe", "pipe"], env: process.env }
+  );
+  tarProc.stdout.pipe(sshProc.stdin);
+  let tarErr = "";
+  let sshErr = "";
+  tarProc.stderr.on("data", (c: Buffer | string) => (tarErr += String(c)));
+  sshProc.stderr.on("data", (c: Buffer | string) => (sshErr += String(c)));
+  const [tarCode, sshCode] = await Promise.all([
+    new Promise<number>((resolve) => tarProc.on("close", (code) => resolve(code ?? 1))),
+    new Promise<number>((resolve) => sshProc.on("close", (code) => resolve(code ?? 1)))
+  ]);
+  if (tarCode !== 0) throw new Error(`Profile tar failed: ${tarErr || `exit=${tarCode}`}`);
+  if (sshCode !== 0) throw new Error(`Profile SSH sync failed: ${sshErr || `exit=${sshCode}`}`);
+  return { source: resolvedSource, target };
+};
+
+const runProviderSmokeReport = async (payload?: Record<string, unknown>): Promise<Record<string, unknown>> => {
+  const teiaRoot = resolveTeiaRoot();
+  const python = resolvePythonBin();
+  const defaultProviders = ["google", "cambridge", "jstor", "brill", "digital_commons", "rand", "academia", "elgaronline", "springerlink"];
+  const providers = Array.isArray(payload?.providers)
+    ? (payload?.providers as unknown[]).map((x) => String(x || "").trim()).filter(Boolean)
+    : defaultProviders;
+  const query = toStringOrUndefined(payload?.query) || "cyber attribution";
+  const maxPages = Math.max(1, Math.min(3, toNumberOrUndefined(payload?.maxPages) || 1));
+  const profileDir = toStringOrUndefined(payload?.profileDir) || "scrapping/browser/searches/profiles/default";
+  const profileName = toStringOrUndefined(payload?.profileName) || "Default";
+  const stamp = new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14);
+  const reportDir = path.join(teiaRoot, "scrapping/browser/searches/runs/smoke_reports");
+  await fs.promises.mkdir(reportDir, { recursive: true });
+  const reportPath = path.join(reportDir, `${stamp}_smoke.json`);
+  const results: Array<Record<string, unknown>> = [];
+
+  for (const provider of providers) {
+    const outPath = path.join(reportDir, `${stamp}_${provider}.json`);
+    const started = Date.now();
+    const args = [
+      "-u",
+      "-m",
+      "scrapping.browser.searches.cli",
+      provider,
+      query,
+      "--max-pages",
+      String(maxPages),
+      "--profile-dir",
+      profileDir,
+      "--profile-name",
+      profileName,
+      "--out",
+      outPath
+    ];
+    const child = spawn(python, args, { cwd: teiaRoot, stdio: ["ignore", "pipe", "pipe"], env: process.env });
+    let stderr = "";
+    let stdout = "";
+    child.stdout.on("data", (c: Buffer | string) => (stdout += String(c)));
+    child.stderr.on("data", (c: Buffer | string) => (stderr += String(c)));
+    const code = await new Promise<number>((resolve) => child.on("close", (exitCode) => resolve(exitCode ?? 1)));
+    results.push({
+      provider,
+      status: code === 0 ? "ok" : "error",
+      exitCode: code,
+      elapsedMs: Date.now() - started,
+      outputPath: outPath,
+      stdout: stdout.trim().slice(0, 2000),
+      stderr: stderr.trim().slice(0, 2000)
+    });
+  }
+  const summary = {
+    generatedAt: new Date().toISOString(),
+    query,
+    maxPages,
+    providers,
+    ok: results.filter((r) => r.status === "ok").length,
+    error: results.filter((r) => r.status !== "ok").length,
+    results
+  };
+  await fs.promises.writeFile(reportPath, JSON.stringify(summary, null, 2), "utf-8");
+  return { status: "ok", reportPath, summary };
+};
+
+const mapGuestSharedPathToHost = (guestPath: string): string => {
+  const gp = String(guestPath || "").trim();
+  if (!gp) return "";
+  if (!gp.startsWith("/mnt/shared_downloads")) return gp;
+  const rel = gp.replace(/^\/mnt\/shared_downloads\/?/, "");
+  return path.join(resolveVmSharedDownloadsDir(), rel);
+};
+
+const findLatestRunDir = async (rootDir: string): Promise<string> => {
+  const entries = await fs.promises.readdir(rootDir, { withFileTypes: true }).catch(() => []);
+  const dirs: Array<{ path: string; mtimeMs: number }> = [];
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const full = path.join(rootDir, entry.name);
+    const stat = await fs.promises.stat(full).catch(() => null);
+    if (!stat) continue;
+    dirs.push({ path: full, mtimeMs: stat.mtimeMs });
+  }
+  dirs.sort((a, b) => b.mtimeMs - a.mtimeMs || a.path.localeCompare(b.path));
+  if (!dirs.length) {
+    throw new Error(`No run directories found in ${rootDir}`);
+  }
+  return dirs[0].path;
+};
+
+const collectPdfInventory = async (rootDir: string): Promise<string[]> => {
+  const out: string[] = [];
+  const walk = async (dir: string): Promise<void> => {
+    let entries: fs.Dirent[] = [];
+    try {
+      entries = await fs.promises.readdir(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        await walk(full);
+      } else if (entry.isFile() && entry.name.toLowerCase().endsWith(".pdf")) {
+        out.push(full);
+      }
+    }
+  };
+  await walk(rootDir);
+  return out.sort((a, b) => a.localeCompare(b));
 };
 
 const runUnifiedBundle = async (args: UnifiedStrategyPayload): Promise<{
@@ -435,6 +769,354 @@ const runUnifiedBundle = async (args: UnifiedStrategyPayload): Promise<{
   return { runDir, mergedPath, manifestPath, logs };
 };
 
+const runUnifiedBundleViaVm = async (
+  args: UnifiedStrategyPayload,
+  vm: Record<string, unknown>
+): Promise<{
+  runDir: string;
+  mergedPath: string;
+  manifestPath: string;
+  logs: string[];
+}> => {
+  const ssh = parseVmSshTarget(String(vm?.ssh_target || ""));
+  if (!ssh) {
+    throw new Error("VM SSH target missing or invalid; run VM preflight/start first.");
+  }
+  const sshKeyPath = String(vm?.ssh_key_path || "").trim();
+  if (!sshKeyPath) {
+    throw new Error("VM SSH key path missing; regenerate VM seed and restart VM.");
+  }
+  const providers = args.browserProviders.length
+    ? args.browserProviders
+    : ["google", "cambridge", "jstor", "brill", "digital_commons", "rand", "academia", "elgaronline", "springerlink"];
+  const guestOutRoot = `/home/${ssh.user}/vm_runs`;
+  const guestProfileDir = `/home/${ssh.user}/.browser-profiles`;
+  const guestProfileName = (args.profileName || "Default").trim() || "Default";
+  await syncVmSearchCode(vm);
+  const guestPythonArgs = [
+    "bash",
+    "-lc",
+    [
+      "cd ~/teia_vm_runtime",
+      "export DISPLAY=:1",
+      "export CHROME_BINARY=/usr/bin/chromium",
+      `mkdir -p '${guestProfileDir}'`,
+      "PYTHONPATH=~/teia_vm_runtime",
+      "python3",
+      "-u",
+      "-m",
+      "scrapping.browser.searches.provider_bundle",
+      `"${args.query.replace(/"/g, '\\"')}"`,
+      "--providers",
+      providers.join(","),
+      "--max-pages",
+      String(args.maxPages),
+      "--out-root",
+      guestOutRoot,
+      "--profile-dir",
+      guestProfileDir,
+      "--profile-name",
+      guestProfileName,
+      ...(args.headed ? ["--headed"] : [])
+    ].join(" ")
+  ];
+  const sshArgs = [
+    ...buildVmSshOptions(vm),
+    "-p",
+    String(ssh.port),
+    `${ssh.user}@${ssh.host}`,
+    ...guestPythonArgs
+  ];
+  const logs: string[] = [];
+  const child = spawn("ssh", sshArgs, {
+    cwd: resolveTeiaRoot(),
+    stdio: ["ignore", "pipe", "pipe"],
+    env: process.env
+  });
+  let stdout = "";
+  let stderr = "";
+  child.stdout.on("data", (chunk: Buffer | string) => {
+    const text = String(chunk);
+    stdout += text;
+    text
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .forEach((line) => logs.push(`[vm-ssh] ${line}`));
+  });
+  child.stderr.on("data", (chunk: Buffer | string) => {
+    const text = String(chunk);
+    stderr += text;
+    text
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .forEach((line) => logs.push(`[vm-ssh][stderr] ${line}`));
+  });
+  const code = await new Promise<number>((resolve) => child.on("close", (exitCode) => resolve(exitCode ?? 1)));
+  if (code !== 0) {
+    throw new Error(`VM provider bundle failed (exit=${code}): ${stderr || stdout || "unknown error"}`);
+  }
+  const outputLine = logs.find((line) => line.includes("[bundle] output="));
+  const manifestLine = logs.find((line) => line.includes("[bundle] manifest="));
+  const guestRunDir = outputLine ? outputLine.split("[bundle] output=")[1]?.trim() || "" : "";
+  const guestManifestPath = manifestLine ? manifestLine.split("[bundle] manifest=")[1]?.trim() || "" : "";
+
+  let resolvedGuestRunDir = guestRunDir;
+  if (!resolvedGuestRunDir) {
+    const lsArgs = [
+      ...buildVmSshOptions(vm),
+      "-p",
+      String(ssh.port),
+      `${ssh.user}@${ssh.host}`,
+      `ls -1dt ${guestOutRoot}/* | head -n 1`
+    ];
+    const lsProc = spawn("ssh", lsArgs, { cwd: resolveTeiaRoot(), stdio: ["ignore", "pipe", "pipe"], env: process.env });
+    let lsOut = "";
+    lsProc.stdout.on("data", (c: Buffer | string) => (lsOut += String(c)));
+    await new Promise<number>((resolve) => lsProc.on("close", (code) => resolve(code ?? 1)));
+    resolvedGuestRunDir = String(lsOut || "").trim();
+  }
+  if (!resolvedGuestRunDir) {
+    throw new Error("VM run completed but guest run directory could not be resolved.");
+  }
+
+  const hostRunRoot = path.join(resolveVmSharedDownloadsDir(), "vm_runs");
+  await fs.promises.mkdir(hostRunRoot, { recursive: true });
+  const scpArgs = [
+    ...buildVmSshOptions(vm),
+    "-P",
+    String(ssh.port),
+    "-r",
+    `${ssh.user}@${ssh.host}:${resolvedGuestRunDir}`,
+    hostRunRoot
+  ];
+  const scpProc = spawn("scp", scpArgs, { cwd: resolveTeiaRoot(), stdio: ["ignore", "pipe", "pipe"], env: process.env });
+  let scpErr = "";
+  scpProc.stderr.on("data", (c: Buffer | string) => (scpErr += String(c)));
+  const scpCode = await new Promise<number>((resolve) => scpProc.on("close", (code) => resolve(code ?? 1)));
+  if (scpCode !== 0) {
+    throw new Error(`Failed to copy VM run outputs to host via scp: ${scpErr || `exit=${scpCode}`}`);
+  }
+
+  const runDir = await findLatestRunDir(hostRunRoot);
+  const manifestPath = path.join(runDir, "manifest.json");
+  const mergedPath = path.join(runDir, "merged_deduplicated.json");
+  logs.unshift(`[vm] ssh_target=${ssh.user}@${ssh.host}:${ssh.port}`);
+  logs.unshift(`[vm] guest_run_dir=${resolvedGuestRunDir}`);
+  logs.unshift(`[vm] run_dir=${runDir}`);
+  return { runDir, mergedPath, manifestPath, logs };
+};
+
+const bootstrapVmGuestServices = async (vm: Record<string, unknown>): Promise<void> => {
+  const ssh = parseVmSshTarget(String(vm?.ssh_target || ""));
+  const sshKeyPath = String(vm?.ssh_key_path || "").trim();
+  if (!ssh || !sshKeyPath) {
+    throw new Error("VM SSH target/key missing for guest bootstrap.");
+  }
+  const remoteScript = [
+    "set -euo pipefail",
+    `sudo mkdir -p /home/${ssh.user}/.browser-profiles`,
+    `sudo chown -R ${ssh.user}:${ssh.user} /home/${ssh.user}/.browser-profiles`,
+    "sudo mkdir -p /mnt/shared_downloads",
+    "if ! grep -q 'shared_downloads /mnt/shared_downloads 9p' /etc/fstab; then",
+    "  echo 'shared_downloads /mnt/shared_downloads 9p trans=virtio,version=9p2000.L,msize=262144,_netdev 0 0' | sudo tee -a /etc/fstab >/dev/null",
+    "fi",
+    "sudo mount -a || true",
+    "sudo apt-get update -y || true",
+    "sudo apt-get install -y xvfb openbox x11vnc websockify novnc chromium chromium-driver python3-bs4 python3-requests python3-selenium || true",
+    "if [ -f /usr/local/bin/start-browser-stack.sh ]; then",
+    `  sudo sed -i "s#/home/${ssh.user}/.browser-profile#/home/${ssh.user}/.browser-profiles#g" /usr/local/bin/start-browser-stack.sh || true`,
+    `  sudo sed -i "s/pgrep -f \\\\\\\"x11vnc \\\\.*5900\\\\\\\"/pidof x11vnc/g" /usr/local/bin/start-browser-stack.sh || true`,
+    `  sudo sed -i "s/pgrep -f \\\\\\\"websockify \\\\.*6080\\\\\\\"/pidof websockify/g" /usr/local/bin/start-browser-stack.sh || true`,
+    "fi",
+    "sudo tee /etc/systemd/system/browser-stack.service >/dev/null <<'UNIT'",
+    "[Unit]",
+    "Description=Browser Stack (Xvfb + Chromium + x11vnc + websockify)",
+    "After=network.target",
+    "",
+    "[Service]",
+    "Type=oneshot",
+    "ExecStart=/usr/local/bin/start-browser-stack.sh",
+    "RemainAfterExit=yes",
+    "",
+    "[Install]",
+    "WantedBy=multi-user.target",
+    "UNIT",
+    "if [ -f /etc/systemd/system/browser-stack.service ]; then",
+    "  sudo systemctl daemon-reload || true",
+    "  sudo systemctl enable --now browser-stack.service || true",
+    "fi",
+    "if [ -x /usr/local/bin/start-browser-stack.sh ]; then",
+    "  sudo /usr/local/bin/start-browser-stack.sh || true",
+    "fi",
+  ].join("; ");
+  const sshArgs = [
+    ...buildVmSshOptions(vm),
+    "-p",
+    String(ssh.port),
+    `${ssh.user}@${ssh.host}`,
+    remoteScript
+  ];
+  const proc = spawn("ssh", sshArgs, { cwd: resolveTeiaRoot(), stdio: ["ignore", "pipe", "pipe"], env: process.env });
+  let stderr = "";
+  proc.stderr.on("data", (c: Buffer | string) => (stderr += String(c)));
+  const code = await new Promise<number>((resolve) => proc.on("close", (exitCode) => resolve(exitCode ?? 1)));
+  if (code !== 0) {
+    throw new Error(`VM guest bootstrap failed: ${stderr || `ssh exit ${code}`}`);
+  }
+};
+
+const syncVmSearchCode = async (vm: Record<string, unknown>): Promise<void> => {
+  const ssh = parseVmSshTarget(String(vm?.ssh_target || ""));
+  const sshKeyPath = String(vm?.ssh_key_path || "").trim();
+  if (!ssh || !sshKeyPath) {
+    throw new Error("VM SSH target/key missing for code sync.");
+  }
+  const teiaRoot = resolveTeiaRoot();
+  const tarArgs = [
+    "--exclude=scrapping/browser/searches/runs",
+    "--exclude=scrapping/browser/searches/downloads",
+    "--exclude=scrapping/browser/searches/profiles",
+    "--exclude=__pycache__",
+    "-czf",
+    "-",
+    "scrapping/__init__.py",
+    "scrapping/browser/__init__.py",
+    "scrapping/browser/merge_search_json.py",
+    "scrapping/browser/searches"
+  ];
+  const sshArgs = [
+    ...buildVmSshOptions(vm),
+    "-p",
+    String(ssh.port),
+    `${ssh.user}@${ssh.host}`,
+    "mkdir -p ~/teia_vm_runtime && tar -xzf - -C ~/teia_vm_runtime"
+  ];
+  const tarProc = spawn("tar", tarArgs, { cwd: teiaRoot, stdio: ["ignore", "pipe", "pipe"], env: process.env });
+  const sshProc = spawn("ssh", sshArgs, { cwd: teiaRoot, stdio: ["pipe", "pipe", "pipe"], env: process.env });
+  tarProc.stdout.pipe(sshProc.stdin);
+  let tarErr = "";
+  let sshErr = "";
+  tarProc.stderr.on("data", (c: Buffer | string) => (tarErr += String(c)));
+  sshProc.stderr.on("data", (c: Buffer | string) => (sshErr += String(c)));
+  const [tarCode, sshCode] = await Promise.all([
+    new Promise<number>((resolve) => tarProc.on("close", (code) => resolve(code ?? 1))),
+    new Promise<number>((resolve) => sshProc.on("close", (code) => resolve(code ?? 1)))
+  ]);
+  if (tarCode !== 0) {
+    throw new Error(`Local tar sync failed: ${tarErr || `exit=${tarCode}`}`);
+  }
+  if (sshCode !== 0) {
+    throw new Error(`SSH sync failed: ${sshErr || `exit=${sshCode}`}`);
+  }
+};
+
+const vmMessageHas = (vm: Record<string, unknown> | null | undefined, token: string): boolean => {
+  const msg = String(vm?.message || "");
+  return msg.includes(token);
+};
+
+const shouldRetryVmBundleError = (error: unknown): boolean => {
+  const text = String((error as Error)?.message || error || "");
+  return (
+    text.includes("Unable to launch Chrome") ||
+    text.includes("ModuleNotFoundError") ||
+    text.includes("Connection timed out") ||
+    text.includes("Connection reset") ||
+    text.includes("ssh exit") ||
+    text.includes("Failed to copy VM run outputs")
+  );
+};
+
+const acquireVmLease = (owner: string): { ok: boolean; message?: string } => {
+  const cleanOwner = owner.trim() || "anonymous";
+  if (vmControlLease && vmControlLease.owner !== cleanOwner) {
+    return { ok: false, message: `VM control is held by '${vmControlLease.owner}'.` };
+  }
+  vmControlLease = { owner: cleanOwner, acquiredAt: Date.now() };
+  return { ok: true };
+};
+
+const releaseVmLease = (owner: string): { ok: boolean; message?: string } => {
+  if (!vmControlLease) return { ok: true };
+  const cleanOwner = owner.trim() || "anonymous";
+  if (vmControlLease.owner !== cleanOwner && cleanOwner !== "admin") {
+    return { ok: false, message: `VM control is held by '${vmControlLease.owner}'.` };
+  }
+  vmControlLease = null;
+  return { ok: true };
+};
+
+const runVmCli = async (
+  commandName: "status" | "preflight" | "prepare-image" | "init-image" | "seed" | "start" | "stop" | "repair",
+  payload?: VmCommandPayload
+): Promise<Record<string, unknown>> => {
+  const teiaRoot = resolveTeiaRoot();
+  const python = resolvePythonBin();
+  const pyArgs: string[] = ["-u", "-m", "scrapping.browser.vm.cli", commandName];
+  if (commandName === "prepare-image" && payload?.imageUrl) {
+    pyArgs.push("--image-url", payload.imageUrl);
+  }
+  if (commandName === "init-image" && Number.isFinite(payload?.sizeGb)) {
+    pyArgs.push("--size-gb", String(Math.max(10, Math.trunc(Number(payload?.sizeGb)))));
+  }
+  if (commandName === "start") {
+    if (payload?.isoPath) pyArgs.push("--iso-path", payload.isoPath);
+    if (payload?.skipSeed) pyArgs.push("--skip-seed");
+  }
+
+  const childEnv = { ...process.env } as NodeJS.ProcessEnv;
+  const cpus = Number(payload?.cpus);
+  if (Number.isFinite(cpus) && cpus > 0) {
+    childEnv.VM_CPUS = String(Math.max(1, Math.min(16, Math.trunc(cpus))));
+  }
+  const memoryMb = Number(payload?.memoryMb);
+  if (Number.isFinite(memoryMb) && memoryMb > 0) {
+    childEnv.VM_MEMORY_MB = String(Math.max(1024, Math.min(32768, Math.trunc(memoryMb))));
+  }
+  const browserProfileDir = toStringOrUndefined(payload?.browserProfileDir);
+  if (browserProfileDir) {
+    childEnv.VM_BROWSER_PROFILE_DIR = browserProfileDir;
+  }
+  const browserProfileName = toStringOrUndefined(payload?.browserProfileName);
+  if (browserProfileName) {
+    childEnv.VM_BROWSER_PROFILE_NAME = browserProfileName;
+  }
+
+  const child = spawn(python, pyArgs, {
+    cwd: teiaRoot,
+    stdio: ["ignore", "pipe", "pipe"],
+    env: childEnv
+  });
+  let stdout = "";
+  let stderr = "";
+  child.stdout.on("data", (chunk: Buffer | string) => {
+    stdout += String(chunk);
+  });
+  child.stderr.on("data", (chunk: Buffer | string) => {
+    stderr += String(chunk);
+  });
+  const code = await new Promise<number>((resolve) => child.on("close", (exitCode) => resolve(exitCode ?? 1)));
+  if (code !== 0) {
+    throw new Error(`VM command failed (${commandName}, exit=${code}): ${stderr || stdout || "unknown error"}`);
+  }
+  const text = (stdout || "").trim();
+  if (!text) {
+    return { state: "error", message: "VM command returned empty output", command: commandName };
+  }
+  try {
+    return JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    return {
+      state: "error",
+      message: `VM command returned non-JSON output for ${commandName}`,
+      command: commandName,
+      output: text
+    };
+  }
+};
+
 const normalizeKey = (value: string): string => value.toLowerCase().replace(/[^a-z0-9]/g, "");
 
 const unifiedRecordToRetrieveRecord = (record: Record<string, unknown>, index: number): RetrieveRecord => {
@@ -462,7 +1144,9 @@ const unifiedRecordToRetrieveRecord = (record: Record<string, unknown>, index: n
     abstract: toStringOrUndefined(record.snippet),
     source,
     citationCount: toNumberOrUndefined(record.cited_by),
-    paperId
+    paperId,
+    ...(toStringOrUndefined(record.pdf_path) ? ({ pdfPath: toStringOrUndefined(record.pdf_path) } as Record<string, unknown>) : {}),
+    ...(toStringOrUndefined(record.pdf_url) ? ({ pdfUrl: toStringOrUndefined(record.pdf_url) } as Record<string, unknown>) : {})
   };
 };
 
@@ -501,8 +1185,8 @@ const retrieveRecordToUnified = (record: RetrieveRecord): Record<string, unknown
   journal: (record as any).journal || (record as any).venue || "",
   snippet: record.abstract || "",
   cited_by: typeof record.citationCount === "number" ? record.citationCount : 0,
-  pdf_path: "",
-  pdf_url: ""
+  pdf_path: toStringOrUndefined((record as unknown as Record<string, unknown>).pdfPath) || "",
+  pdf_url: toStringOrUndefined((record as unknown as Record<string, unknown>).pdfUrl) || ""
 });
 
 const headerAuthSignature = (headers?: Record<string, unknown>): string => {
@@ -691,6 +1375,43 @@ export const handleRetrieveCommand = async (
   action: string,
   payload?: Record<string, unknown>
 ): Promise<Record<string, unknown>> => {
+  if (action === "vm_acquire_control") {
+    const owner = toStringOrUndefined(payload?.owner) || "panel";
+    const acquired = acquireVmLease(owner);
+    if (!acquired.ok) return { status: "error", message: acquired.message || "VM control acquire failed." };
+    return { status: "ok", lease: vmControlLease };
+  }
+  if (action === "vm_release_control") {
+    const owner = toStringOrUndefined(payload?.owner) || "panel";
+    const released = releaseVmLease(owner);
+    if (!released.ok) return { status: "error", message: released.message || "VM control release failed." };
+    return { status: "ok", lease: vmControlLease };
+  }
+  if (action === "vm_install_deps") {
+    const install = spawn("bash", [
+      "-lc",
+      "sudo -n apt-get update && sudo -n apt-get install -y qemu-system-x86 qemu-utils cloud-image-utils openssh-client"
+    ], {
+      cwd: resolveTeiaRoot(),
+      stdio: ["ignore", "pipe", "pipe"],
+      env: process.env
+    });
+    let out = "";
+    let err = "";
+    install.stdout.on("data", (c: Buffer | string) => (out += String(c)));
+    install.stderr.on("data", (c: Buffer | string) => (err += String(c)));
+    const code = await new Promise<number>((resolve) => install.on("close", (exitCode) => resolve(exitCode ?? 1)));
+    if (code !== 0) {
+      return {
+        status: "error",
+        message:
+          "Automatic dependency install failed (likely sudo password required). Run: sudo apt-get update && sudo apt-get install -y qemu-system-x86 qemu-utils cloud-image-utils openssh-client",
+        details: err || out
+      };
+    }
+    const vm = await runVmCli("preflight");
+    return { status: "ok", vm };
+  }
   if (action === "fetch_from_source") {
     const query = normalizeQuery(payload);
     if (!query.query) {
@@ -712,7 +1433,102 @@ export const handleRetrieveCommand = async (
     }
     const startedAt = Date.now();
     try {
-      const bundle = await runUnifiedBundle(args);
+      const lease = acquireVmLease("agent");
+      if (!lease.ok) {
+        return { status: "error", message: lease.message || "VM is controlled by another owner." };
+      }
+      let vmStatus: Record<string, unknown> | null = null;
+      if (args.vmMode) {
+        const preStatus = await runVmCli("status");
+        vmStatus = preStatus;
+        const preState = String(preStatus?.state || "");
+        if (preState === "not_configured") {
+          const prepared = await runVmCli("prepare-image");
+          vmStatus = prepared;
+        }
+        const seeded = await runVmCli("seed");
+        if (String(seeded?.state || "") === "error") {
+          return {
+            status: "error",
+            message: `VM seed failed: ${String(seeded?.message || "unknown error")}`,
+            vm: seeded
+          };
+        }
+        const started = await runVmCli("start", {
+          cpus: args.vmCpus,
+          memoryMb: args.vmMemoryMb,
+          browserProfileName: args.profileName
+        });
+        vmStatus = started;
+        if (String(started?.state || "") !== "running") {
+          return {
+            status: "error",
+            message: `VM start failed: ${String(started?.message || "unknown error")}`,
+            vm: started
+          };
+        }
+        if (vmMessageHas(started, "guest_web_service=down") || vmMessageHas(started, "ssh_service=down")) {
+          await bootstrapVmGuestServices(started);
+          vmStatus = await runVmCli("status");
+        }
+        if (vmStatus) {
+          try {
+            const disk = await runVmDiskGuard(vmStatus, { warnThreshold: 80, pruneThreshold: 90, minFreeMb: 2048 });
+            if (disk.cleanupApplied || disk.usagePercent >= 80) {
+              console.debug(
+                `[retrieve_ipc.ts][run_unified_strategy][debug] vm disk guard usage=${disk.usagePercent}% free_mb=${disk.freeMb} cleanup=${disk.cleanupApplied}`
+              );
+            }
+          } catch (guardErr) {
+            console.warn(
+              "[retrieve_ipc.ts][run_unified_strategy][debug] vm disk guard failed",
+              guardErr instanceof Error ? guardErr.message : String(guardErr)
+            );
+          }
+        }
+      }
+      let bundle:
+        | {
+            runDir: string;
+            mergedPath: string;
+            manifestPath: string;
+            logs: string[];
+          }
+        | null = null;
+      if (args.vmMode && vmStatus) {
+        const maxAttempts = 4;
+        let lastError: unknown = null;
+        for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+          try {
+            if (attempt > 1) {
+              await sleep(4000 * attempt);
+              await bootstrapVmGuestServices(vmStatus);
+              try {
+                await runVmDiskGuard(vmStatus, { warnThreshold: 80, pruneThreshold: 90, minFreeMb: 2048 });
+              } catch {
+                // best-effort
+              }
+              vmStatus = await runVmCli("status");
+            }
+            bundle = await runUnifiedBundleViaVm(args, vmStatus);
+            break;
+          } catch (error) {
+            lastError = error;
+            if (!shouldRetryVmBundleError(error) || attempt >= maxAttempts) {
+              throw error;
+            }
+          }
+        }
+        if (!bundle) {
+          throw new Error(`VM bundle failed after retries: ${String((lastError as Error)?.message || lastError || "unknown")}`);
+        }
+      } else {
+        bundle = await runUnifiedBundle(args);
+      }
+      if (args.vmMode && vmStatus) {
+        bundle.logs.unshift(`[vm] state=${String(vmStatus.state || "unknown")} message=${String(vmStatus.message || "")}`);
+        if (vmStatus.guest_web_url) bundle.logs.unshift(`[vm] guest_web=${String(vmStatus.guest_web_url)}`);
+      }
       let mergedPayload: Record<string, unknown> = {};
       try {
         mergedPayload = JSON.parse(await fs.promises.readFile(bundle.mergedPath, "utf-8")) as Record<string, unknown>;
@@ -747,18 +1563,33 @@ export const handleRetrieveCommand = async (
 
       const all = [...browserRecords, ...apiRecords];
       const dedup = deduplicateRecords(all);
+      const pdfInventory = await collectPdfInventory(resolveVmSharedDownloadsDir());
+      const missingPdfRecords = dedup.deduped
+        .filter((record) => !toStringOrUndefined((record as unknown as Record<string, unknown>).pdfPath))
+        .map((record) => ({
+          paperId: record.paperId,
+          title: record.title,
+          source: record.source,
+          doi: record.doi || "",
+          year: record.year || ""
+        }));
       const unifiedJsonPath = path.join(bundle.runDir, "merged_unified.json");
       const unifiedPayload = {
         input_dir: bundle.runDir,
         generated_file: unifiedJsonPath,
         stats: {
+          vm_mode: args.vmMode,
           browser_count: browserRecords.length,
           api_count: apiRecords.length,
           merged_count: all.length,
           duplicates_removed: dedup.duplicates,
           deduplicated_count: dedup.deduped.length,
+          missing_pdf_count: missingPdfRecords.length,
+          pdf_inventory_count: pdfInventory.length,
           elapsed_ms: Date.now() - startedAt
         },
+        pdf_inventory: pdfInventory,
+        missing_pdf_records: missingPdfRecords,
         records: dedup.deduped.map(retrieveRecordToUnified),
         browser_merged_path: bundle.mergedPath,
         manifest_path: bundle.manifestPath
@@ -783,6 +1614,8 @@ export const handleRetrieveCommand = async (
         provider: "cos",
         items: dedup.deduped,
         total: dedup.deduped.length,
+        vm: vmStatus,
+        vmMode: args.vmMode,
         runDir: bundle.runDir,
         mergedPath: bundle.mergedPath,
         unifiedPath: unifiedJsonPath,
@@ -796,6 +1629,117 @@ export const handleRetrieveCommand = async (
         status: "error",
         message: error instanceof Error ? error.message : String(error)
       };
+    } finally {
+      releaseVmLease("agent");
+    }
+  }
+  if (action === "vm_status") {
+    try {
+      const result = await runVmCli("status");
+      return { status: "ok", vm: result };
+    } catch (error) {
+      return { status: "error", message: error instanceof Error ? error.message : String(error) };
+    }
+  }
+  if (action === "vm_preflight") {
+    try {
+      const result = await runVmCli("preflight");
+      return { status: "ok", vm: result };
+    } catch (error) {
+      return { status: "error", message: error instanceof Error ? error.message : String(error) };
+    }
+  }
+  if (action === "vm_prepare_image") {
+    try {
+      const args = normalizeVmCommandPayload(payload);
+      const result = await runVmCli("prepare-image", args);
+      return { status: "ok", vm: result };
+    } catch (error) {
+      return { status: "error", message: error instanceof Error ? error.message : String(error) };
+    }
+  }
+  if (action === "vm_seed") {
+    try {
+      const result = await runVmCli("seed");
+      return { status: "ok", vm: result };
+    } catch (error) {
+      return { status: "error", message: error instanceof Error ? error.message : String(error) };
+    }
+  }
+  if (action === "vm_init_image") {
+    try {
+      const args = normalizeVmCommandPayload(payload);
+      const result = await runVmCli("init-image", args);
+      return { status: "ok", vm: result };
+    } catch (error) {
+      return { status: "error", message: error instanceof Error ? error.message : String(error) };
+    }
+  }
+  if (action === "vm_start") {
+    try {
+      const args = normalizeVmCommandPayload(payload);
+      const result = await runVmCli("start", args);
+      return { status: "ok", vm: result };
+    } catch (error) {
+      return { status: "error", message: error instanceof Error ? error.message : String(error) };
+    }
+  }
+  if (action === "vm_stop") {
+    try {
+      const result = await runVmCli("stop");
+      return { status: "ok", vm: result };
+    } catch (error) {
+      return { status: "error", message: error instanceof Error ? error.message : String(error) };
+    }
+  }
+  if (action === "vm_repair") {
+    try {
+      const result = await runVmCli("repair");
+      return { status: "ok", vm: result };
+    } catch (error) {
+      return { status: "error", message: error instanceof Error ? error.message : String(error) };
+    }
+  }
+  if (action === "vm_disk_guard") {
+    try {
+      const vm = await runVmCli("status");
+      const report = await runVmDiskGuard(vm, {
+        warnThreshold: toNumberOrUndefined(payload?.warnThreshold) ?? 80,
+        pruneThreshold: toNumberOrUndefined(payload?.pruneThreshold) ?? 90,
+        minFreeMb: toNumberOrUndefined(payload?.minFreeMb) ?? 2048
+      });
+      return { status: "ok", vm, report };
+    } catch (error) {
+      return { status: "error", message: error instanceof Error ? error.message : String(error) };
+    }
+  }
+  if (action === "vm_list_profiles") {
+    try {
+      const vm = await runVmCli("status");
+      const profiles = await listVmProfiles(vm);
+      return { status: "ok", vm, profiles };
+    } catch (error) {
+      return { status: "error", message: error instanceof Error ? error.message : String(error) };
+    }
+  }
+  if (action === "vm_sync_profile") {
+    try {
+      const vm = await runVmCli("status");
+      const sourceDir = toStringOrUndefined(payload?.sourceDir);
+      const profileName = toStringOrUndefined(payload?.profileName) || "Default";
+      if (!sourceDir) return { status: "error", message: "sourceDir is required." };
+      const sync = await syncHostProfileToVm(vm, sourceDir, profileName);
+      const profiles = await listVmProfiles(vm);
+      return { status: "ok", vm, sync, profiles };
+    } catch (error) {
+      return { status: "error", message: error instanceof Error ? error.message : String(error) };
+    }
+  }
+  if (action === "run_provider_smoke") {
+    try {
+      return await runProviderSmokeReport(payload);
+    } catch (error) {
+      return { status: "error", message: error instanceof Error ? error.message : String(error) };
     }
   }
   if (action === "datahub_load_zotero") {

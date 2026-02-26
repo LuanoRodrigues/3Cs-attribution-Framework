@@ -1,0 +1,8 @@
+flowchart LR
+    A[Is attribution claim<br>(act + severity) explicit?] -->|YES| B[Are state-link evidence and<br>confidence levels explicit?]
+    A -->|NO| L[LOW (0): ambiguous claim]
+    B -->|YES| C[Are legal pathways<br>(organs, non-state) clear?]
+    B -->|YES| M[MEDIUM (1): partial state-link / legal clarity]
+    B -->|NO| L
+    C -->|YES| H[HIGH (2): clear attribution + coherent linkage]
+    C -->|NO| M

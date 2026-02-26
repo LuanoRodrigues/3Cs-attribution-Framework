@@ -1,0 +1,57 @@
+{
+  "report": {
+    "authors_list": "Automated TEIA pipeline",
+    "affiliation": "TEIA Research",
+    "version_tag": "v0.1"
+  },
+  "llm": {
+    "function_name": "evidence_mapping_section_writer"
+  },
+  "scope": {
+    "in": "International relations / security studies and adjacent CS where constructs map to IR-relevant mechanisms.\nEmpirical or formal/theoretical work with explicit claims and evidentiary units.",
+    "out": "Purely technical systems papers with no IR-relevant construct mapping.\nNon-security social science not tied to interstate/coercive/strategic interaction.",
+    "boundary_conditions": "Unit of analysis must be explicit (state, dyad, organization, campaign, incident)."
+  },
+  "corpus": {
+    "sources_consulted": "Zotero library; targeted venue search; backward/forward snowballing; key dataset documentation.",
+    "selection_logic": "Include influential/representative works and any study providing extractable evidence units (dqid).",
+    "search_strings": "('attribution' OR 'cyber') AND ('coercion' OR 'signaling' OR 'escalation')",
+    "provenance_note": "All evidence units are traceable via dqid anchors linked to original citations."
+  },
+  "dimensions": [
+    {
+      "name": "theme",
+      "definition": "Top-level claim family or mechanism label used in dqid coding.",
+      "values": "Derived from dqid theme field; normalized via humanization."
+    },
+    {
+      "name": "year_bin",
+      "definition": "Publication year grouped into bins.",
+      "values": "Computed as [floor(year/bin_size)*bin_size]-[+bin_size-1]."
+    }
+  ],
+  "matrix_view": {
+    "year_bin_size": 5
+  },
+  "figures": {
+    "heatmap_title": "Evidence density (theme x year bin)",
+    "network_title": "Theme co-occurrence network (within item)",
+    "timeline_title": "Evidence volume by publication year",
+    "bubble_title": "Evidence density vs recency"
+  },
+  "limits": {
+    "max_evidence_rows": 600,
+    "top_themes": 12,
+    "max_year_bins": 10,
+    "timeline_years": 18,
+    "meta_k_min": 3
+  },
+  "priority_gaps": [
+    {
+      "label": "Sparse evidence on cross-case comparability",
+      "description": "Few items explicitly test how attribution confidence varies across regimes/contexts using comparable measures.",
+      "rationale": "Limits generalization and policy inference; blocks meta-analytic aggregation.",
+      "suggested_design": "Construct harmonized coding + shared outcome scale; pre-register identification strategy."
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Source Types: Claims, Sources, Artifacts</title>
+  <desc id="desc">Slide describing three source types with one example each for claims, sources, and artifacts.</desc>
+  <defs>
+    <style>
+      .bg { fill: #ffffff; }
+      .title { font: 700 54px "Aptos", "Calibri", "Segoe UI", sans-serif; fill: #0f172a; }
+      .sub { font: 400 24px "Aptos", "Calibri", "Segoe UI", sans-serif; fill: #334155; }
+      .rule { stroke: #64748b; stroke-width: 3; }
+      .card { fill: #f8fafc; stroke: #cbd5e1; stroke-width: 2; }
+      .h { font: 700 34px "Aptos", "Calibri", "Segoe UI", sans-serif; fill: #0f172a; }
+      .p { font: 400 21px "Aptos", "Calibri", "Segoe UI", sans-serif; fill: #1e293b; }
+      .ex { font: 600 20px "Courier New", Consolas, monospace; fill: #0f172a; }
+      .cite { font: 400 18px "Aptos", "Calibri", "Segoe UI", sans-serif; fill: #0f172a; }
+      .k { font: 700 20px "Aptos", "Calibri", "Segoe UI", sans-serif; fill: #334155; }
+      .img-frame { fill: #ffffff; stroke: #94a3b8; stroke-width: 1.5; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1600" height="900" />
+
+  <text class="title" x="800" y="96" text-anchor="middle">3C Framework Sources</text>
+  <line class="rule" x1="160" y1="124" x2="1440" y2="124" />
+  <text class="sub" x="800" y="170" text-anchor="middle">Claims are affirmative attribution statements. Sources substantiate claims. Artifacts are extracted from tables and images.</text>
+
+  <rect class="card" x="90" y="230" rx="18" ry="18" width="450" height="560" />
+  <rect class="card" x="575" y="230" rx="18" ry="18" width="450" height="560" />
+  <rect class="card" x="1060" y="230" rx="18" ry="18" width="450" height="560" />
+
+  <text class="h" x="315" y="292" text-anchor="middle">Claims</text>
+  <text class="p" x="130" y="340">Affirmative statements about</text>
+  <text class="p" x="130" y="374">attribution and responsibility.</text>
+  <text class="k" x="130" y="438">Example</text>
+  <text class="cite" x="130" y="476">"APT1 is believed to be the 2nd Bureau of the</text>
+  <text class="cite" x="130" y="506">PLA General Staff Department's 3rd Department,</text>
+  <text class="cite" x="130" y="536">commonly known as Unit 61398 (China)."</text>
+
+  <text class="h" x="800" y="292" text-anchor="middle">Sources</text>
+  <text class="p" x="615" y="340">References used to substantiate</text>
+  <text class="p" x="615" y="374">the attribution claim.</text>
+  <text class="k" x="615" y="438">Example</text>
+  <rect class="img-frame" x="615" y="462" width="370" height="260" rx="8" ry="8"/>
+  <image href="../../threec_electron_viewer/docs/data/assets/sources.png" x="619" y="466" width="362" height="252" preserveAspectRatio="xMidYMid meet"/>
+
+  <text class="h" x="1285" y="292" text-anchor="middle">Artifacts</text>
+  <text class="p" x="1100" y="340">Technical elements extracted</text>
+  <text class="p" x="1100" y="374">from tables and images.</text>
+  <text class="k" x="1100" y="438">Example (table row)</text>
+  <rect class="img-frame" x="1100" y="462" width="370" height="260" rx="8" ry="8"/>
+  <image href="../../threec_electron_viewer/docs/data/assets/table.png" x="1104" y="466" width="362" height="252" preserveAspectRatio="xMidYMid meet"/>
+</svg>

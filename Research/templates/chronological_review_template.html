@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chronological Review on {{ topic }}</title>
+  <style>
+    /* --- Base & Typography --- */
+    body { font-family: sans-serif; line-height: 1.7; margin: 0 auto; max-width: 900px; padding: 25px; color: #333; background-color: #fdfdfd; }
+    h1, h2, h3, h4 { font-family: "Georgia", serif; color: #1A237E; margin-top: 2em; margin-bottom: 0.8em; line-height: 1.3; font-weight: 600; }
+    h1 { text-align: center; margin-bottom: 1.5em; font-size: 2.2em; color: #0D47A1; }
+    h2 { border-bottom: 2px solid #42A5F5; padding-bottom: 8px; font-size: 1.8em; }
+    h3 { border-bottom: 1px solid #90CAF9; padding-bottom: 6px; font-size: 1.5em; color: #1E88E5; }
+    h4 { font-size: 1.2em; color: #42A5F5; margin-bottom: 0.6em; font-weight: 600; font-family: sans-serif; }
+    p { margin-bottom: 1.2em; text-align: justify; }
+    a { color: #1E88E5; text-decoration: none; }
+    a:hover { color: #0D47A1; text-decoration: underline; }
+    em, i { font-style: italic; }
+    strong, b { font-weight: 600; }
+
+    /* --- Layout & Sections --- */
+    .metadata { text-align: center; margin-bottom: 3em; font-size: 0.95em; color: #555; border-bottom: 1px solid #e0e0e0; padding-bottom: 1.5em; }
+    .metadata p { margin: 0.3em 0; }
+    .section-content { margin-bottom: 40px; padding-left: 0; }
+    .subsection-content { margin-bottom: 30px; padding-left: 15px; border-left: 3px solid #E3F2FD; margin-left: 5px; }
+
+    /* --- Visual Elements --- */
+    figure { margin: 35px auto; text-align: center; border: 1px solid #e0e0e0; padding: 15px 15px 10px 15px; background-color: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.08); max-width: 750px; }
+    figure img { max-width: 100%; height: auto; border: 1px solid #f0f0f0; display: block; margin: 0 auto 10px auto; }
+    figcaption { font-size: 0.9em; color: #666; margin-top: 10px; font-style: normal; line-height: 1.5; text-align: left; padding: 0 5px; }
+    figcaption strong { color: #333; }
+
+    table.data-table { border-collapse: collapse; width: 100%; margin: 30px auto; border: 1px solid #ccc; box-shadow: none; font-size: 0.88em; }
+    table.data-table th, table.data-table td { border: 1px solid #ddd; padding: 10px 12px; text-align: left; vertical-align: top; }
+    table.data-table th { background-color: #f2f7fb; font-weight: 600; color: #2c3e50; }
+    table.data-table tr:nth-child(even) { background-color: #f9f9f9; }
+    table.data-table tr:hover { background-color: #eff4ff; }
+    table.data-table td a { font-size: 0.95em; }
+
+    /* --- Content Blocks --- */
+    .ai-generated-content { font-style: normal; color: #333; padding: 5px 0px; margin: 15px 0; background-color: transparent; text-align: justify; border: none; }
+    .ai-generated-content p { margin-bottom: 1em; }
+    .ai-generated-content p:first-child { margin-top: 0; }
+    .ai-generated-content p:last-child { margin-bottom: 0; }
+    .ai-generated-content ul, .ai-generated-content ol { margin-left: 20px; margin-bottom: 1em; }
+    .ai-generated-content li { margin-bottom: 0.5em; }
+
+    .ai-placeholder { font-style: italic; color: #7f8c8d; border: 1px dashed #bdc3c7; padding: 15px; margin: 20px 0; background-color: #fdfefe; text-align: center; }
+    .placeholder-note { color: #888; font-style: italic; font-size: 0.9em; display: block; margin-top: 8px; text-align: center; }
+
+    .callout { border-left: 4px solid #42A5F5; background: #F5FAFF; padding: 12px 14px; margin: 18px 0; }
+    .callout strong { color: #0D47A1; }
+
+    /* --- Chronological Review Specific --- */
+    .structured-abstract h4 { font-size: 1.1em; color: #1E88E5; margin-top: 1em; margin-bottom: 0.3em; font-family: sans-serif; font-weight: 600; border: none; padding: 0;}
+    .structured-abstract p { margin-left: 15px; }
+    .timeline-figure { max-width: 850px; }
+    .appendix-link { display: block; margin-top: 15px; font-weight: bold; }
+    .key-term { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 0.95em; }
+  </style>
+</head>
+<body>
+
+<h1>Chronological Review: {{ topic }}</h1>
+
+<div class="metadata">
+  <p><strong>Authors:</strong> {{ authors_list }}</p>
+  <p><strong>Affiliations:</strong> {{ affiliation }}</p>
+  <p><em>Report generated on: {{ generation_date }}</em></p>
+  <p><em>AI Models Used for Narrative Sections: {{ ai_models_used }}</em></p>
+  {% if doi_or_preprint %}
+    <p><em>{{ doi_or_preprint }}</em></p>
+  {% endif %}
+</div>
+
+<h2>Abstract</h2>
+<div class="section-content ai-generated-content structured-abstract">
+  {# Suggested headings inside ai_abstract: Background, Aim, Approach, Periodization, Key Developments, Conclusions #}
+  {{ ai_abstract | safe }}
+</div>
+
+<h2>1. Introduction</h2>
+<div class="section-content ai-generated-content">
+  {{ ai_introduction | safe }}
+</div>
+
+<h2>2. Review Approach and Periodization</h2>
+<div class="section-content">
+
+  <h3>2.1 Aim and Guiding Questions</h3>
+  <div class="subsection-content ai-generated-content">
+    {{ guiding_questions | replace('\n', '<br>') | safe }}
+  </div>
+
+  <h3>2.2 Rationale for a Chronological Lens</h3>
+  <div class="subsection-content ai-generated-content">
+    {% if chronological_rationale %}
+      {{ chronological_rationale | safe }}
+    {% else %}
+      <p class="ai-placeholder">[Explain why time-ordering matters (e.g., paradigm shifts, technology cycles, policy events, methodological waves).]</p>
+    {% endif %}
+  </div>
+
+  <h3>2.3 Corpus Identification and Selection</h3>
+  <div class="subsection-content">
+    <p>This chronological review prioritizes influential and representative works within time periods. It is typically non-exhaustive but aims to be transparent about coverage and selection logic.</p>
+    <div class="ai-generated-content">
+      <p><strong>Databases/sources:</strong><br>{{ sources_consulted | replace('\n', '<br>') | safe }}</p>
+      {% if search_strings %}
+        <p><strong>Example search strings:</strong><br>{{ search_strings | replace('\n', '<br>') | safe }}</p>
+      {% endif %}
+      <p><strong>Selection rationale:</strong><br>{{ selection_rationale | replace('\n', '<br>') | safe }}</p>
+      {% if date_range %}
+        <p><strong>Date range considered:</strong> {{ date_range }}</p>
+      {% endif %}
+      {% if corpus_notes %}
+        <p><strong>Corpus notes:</strong><br>{{ corpus_notes | replace('\n', '<br>') | safe }}</p>
+      {% endif %}
+    </div>
+
+    {% if full_search_strategy_appendix_path %}
+      <p class="appendix-link"><a href="{{ full_search_strategy_appendix_path }}" target="_blank">Link to Search Notes / Strategy Appendix</a></p>
+    {% endif %}
+
+    {% if corpus_table %}
+      {{ corpus_table | safe }}
+      <figcaption><strong>Table 1.</strong> Representative corpus (optional): key sources and why they matter.</figcaption>
+    {% else %}
+      <span class="placeholder-note">[Optional: Add a corpus table with year, source, contribution, and period tag.]</span>
+    {% endif %}
+  </div>
+
+  <h3>2.4 Period Definitions (Bins) and Coding</h3>
+  <div class="subsection-content">
+    <div class="ai-generated-content">
+      {% if period_definitions %}
+        {{ period_definitions | safe }}
+      {% else %}
+        <p><strong>Periodization scheme:</strong> <span class="placeholder-note">[Define periods by years/eras, e.g., 1990–1999, 2000–2009, 2010–2016, 2017–present.]</span></p>
+        <p><strong>Period boundary logic:</strong> <span class="placeholder-note">[Explain why boundaries exist: seminal publication, external event, new method/tool.]</span></p>
+      {% endif %}
+      {% if coding_framework %}
+        <p><strong>Coding framework:</strong><br>{{ coding_framework | safe }}</p>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if quality_appraisal_note %}
+  <h3>2.5 Quality Appraisal (Optional)</h3>
+  <div class="subsection-content ai-generated-content">
+    {{ quality_appraisal_note | safe }}
+  </div>
+  {% endif %}
+
+</div>
+
+<h2>3. Chronological Map of the Field</h2>
+<div class="section-content">
+
+  <h3>3.1 Timeline of Key Developments</h3>
+  <div class="subsection-content">
+    <p>The timeline summarizes major publications, events, datasets, standards, or paradigm changes relevant to the evolution of the topic.</p>
+
+    <figure class="timeline-figure">
+      <div class="plot-container">
+        {% if timeline_figure %}
+          <img src="{{ timeline_figure }}" alt="Timeline figure">
+        {% else %}
+          <span class="placeholder-note">[Timeline figure placeholder: provide an image or generate from a timeline pipeline.]</span>
+        {% endif %}
+      </div>
+      <figcaption><strong>Figure 1.</strong> Chronological timeline of key developments in {{ topic }}.</figcaption>
+    </figure>
+
+    <figure class="timeline-figure">
+      <div class="plot-container">
+        {% if period_volume_figure %}
+          <img src="{{ period_volume_figure }}" alt="Period volume figure">
+        {% else %}
+          <span class="placeholder-note">[Period volume figure placeholder: publications per period.]</span>
+        {% endif %}
+      </div>
+      <figcaption><strong>Figure 2.</strong> Publication volume by chronological period.</figcaption>
+    </figure>
+
+    {% if ai_period_volume_analysis %}
+      <div class="ai-generated-content">
+        {{ ai_period_volume_analysis | safe }}
+      </div>
+    {% endif %}
+
+    {% if timeline_table %}
+      {{ timeline_table | safe }}
+      <figcaption><strong>Table 2.</strong> Timeline entries (optional): date/year, milestone, significance, representative sources.</figcaption>
+    {% endif %}
+  </div>
+
+  <h3>3.2 Period Summaries</h3>
+  <div class="subsection-content">
+    <p>This section narrates the evolution of ideas, methods, evidence, and debates across defined time periods.</p>
+
+    {% if periods %}
+      {% for period in periods %}
+        <h4>{{ period.label }}</h4>
+
+        <div class="ai-generated-content">
+          {% if period.summary %}
+            {{ period.summary | safe }}
+          {% else %}
+            <p class="ai-placeholder">[Provide a narrative of this period: dominant questions, typical methods, leading theories, and main findings.]</p>
+          {% endif %}
+
+          <ul>
+            <li><strong>Dominant themes:</strong> {% if period.dominant_themes %}{{ period.dominant_themes }}{% else %}<span class="placeholder-note">[themes]</span>{% endif %}</li>
+            <li><strong>Methodological pattern:</strong> {% if period.methods_pattern %}{{ period.methods_pattern }}{% else %}<span class="placeholder-note">[methods shift]</span>{% endif %}</li>
+            <li><strong>Representative works:</strong> {% if period.representative_works %}{{ period.representative_works | safe }}{% else %}<span class="placeholder-note">[list key works]</span>{% endif %}</li>
+            <li><strong>Open questions at the time:</strong> {% if period.open_questions %}{{ period.open_questions }}{% else %}<span class="placeholder-note">[open questions]</span>{% endif %}</li>
+          </ul>
+        </div>
+
+        {% if period.period_table %}
+          {{ period.period_table | safe }}
+          <figcaption><strong>Table {{ 2 + loop.index }}.</strong> Period-specific evidence map (optional): sources, constructs, methods, key claims.</figcaption>
+        {% endif %}
+
+        {% if period.figure %}
+          <figure>
+            <div class="plot-container">
+              <img src="{{ period.figure }}" alt="Figure for {{ period.label }}">
+            </div>
+            <figcaption><strong>Figure {{ 1 + loop.index }}.</strong> Supplementary figure for {{ period.label }} (optional).</figcaption>
+          </figure>
+        {% endif %}
+
+      {% endfor %}
+    {% else %}
+      <span class="placeholder-note">[Provide periods as a list of objects: label, summary, dominant_themes, methods_pattern, representative_works, open_questions, optional period_table/figure.]</span>
+    {% endif %}
+  </div>
+
+</div>
+
+<h2>4. Cross-Period Synthesis</h2>
+<div class="section-content">
+
+  <h3>4.1 Evolution of Key Concepts and Definitions</h3>
+  <div class="subsection-content ai-generated-content">
+    {% if concept_evolution %}
+      {{ concept_evolution | safe }}
+    {% else %}
+      <p class="ai-placeholder">[Explain how terms/constructs were introduced, refined, split/merged, or redefined over time.]</p>
+    {% endif %}
+  </div>
+
+  <h3>4.2 Evolution of Methods and Evidence</h3>
+  <div class="subsection-content ai-generated-content">
+    {% if methods_evolution %}
+      {{ methods_evolution | safe }}
+    {% else %}
+      <p class="ai-placeholder">[Summarize shifts in research designs, datasets, measurement, evaluation standards, and tooling.]</p>
+    {% endif %}
+  </div>
+
+  <h3>4.2b Theme Shift Across Periods</h3>
+  <div class="subsection-content">
+    <figure class="timeline-figure">
+      <div class="plot-container">
+        {% if theme_shift_figure %}
+          <img src="{{ theme_shift_figure }}" alt="Theme shift figure">
+        {% else %}
+          <span class="placeholder-note">[Theme shift figure placeholder: dominant themes by period.]</span>
+        {% endif %}
+      </div>
+      <figcaption><strong>Figure 3.</strong> Dominant coded themes across periods.</figcaption>
+    </figure>
+    {% if ai_theme_shift_analysis %}
+      <div class="ai-generated-content">
+        {{ ai_theme_shift_analysis | safe }}
+      </div>
+    {% endif %}
+  </div>
+
+  <h3>4.3 Turning Points and Paradigm Shifts</h3>
+  <div class="subsection-content">
+    <div class="ai-generated-content">
+      {% if turning_points %}
+        {{ turning_points | safe }}
+      {% else %}
+        <p class="ai-placeholder">[Identify inflection points: seminal papers, external shocks, regulatory changes, new capability, or major failures.]</p>
+      {% endif %}
+    </div>
+
+    {% if turning_points_table %}
+      {{ turning_points_table | safe }}
+      <figcaption><strong>Table X.</strong> Turning points (optional): date, trigger, mechanism of change, affected subfields.</figcaption>
+    {% endif %}
+  </div>
+
+  <h3>4.4 Persistent Debates and Recurrent Failure Modes</h3>
+  <div class="subsection-content ai-generated-content">
+    {% if persistent_debates %}
+      {{ persistent_debates | safe }}
+    {% else %}
+      <p class="ai-placeholder">[List debates that recur across eras; explain why they persist and what evidence exists.]</p>
+    {% endif %}
+  </div>
+
+  {% if synthesis_table %}
+    {{ synthesis_table | safe }}
+    <figcaption><strong>Table Y.</strong> Cross-period synthesis matrix (optional): periods × themes × methods × key claims.</figcaption>
+  {% endif %}
+</div>
+
+<h2>5. Discussion</h2>
+<div class="section-content ai-generated-content">
+  {% if ai_discussion %}
+    {{ ai_discussion | safe }}
+  {% else %}
+    <p class="ai-placeholder">[Interpret the overall trajectory: what improved, what regressed, what cycles, and what remains unresolved.]</p>
+  {% endif %}
+</div>
+
+<h2>6. Implications and Future Directions</h2>
+<div class="section-content">
+
+  <h3>6.1 Implications for Research</h3>
+  <div class="subsection-content ai-generated-content">
+    {{ ai_research_implications | safe }}
+  </div>
+
+  <h3>6.2 Implications for Practice / Policy</h3>
+  <div class="subsection-content ai-generated-content">
+    {{ ai_practice_implications | safe }}
+  </div>
+
+  <h3>6.3 Forecast / Next Phase Hypotheses (Optional)</h3>
+  <div class="subsection-content ai-generated-content">
+    {% if future_phase_hypotheses %}
+      {{ future_phase_hypotheses | safe }}
+    {% else %}
+      <p class="ai-placeholder">[Offer plausible near-term trajectories, conditional on assumptions; avoid overclaiming.]</p>
+    {% endif %}
+  </div>
+
+</div>
+
+<h2>7. Limitations</h2>
+<div class="section-content ai-generated-content">
+  {% if ai_limitations %}
+    {{ ai_limitations | safe }}
+  {% else %}
+    <p class="ai-placeholder">[Limitations placeholder: non-exhaustive sampling, periodization subjectivity, survivorship bias.]</p>
+  {% endif %}
+</div>
+
+<h2>8. Conclusion</h2>
+<div class="section-content ai-generated-content">
+  {% if ai_conclusion %}
+    {{ ai_conclusion | safe }}
+  {% else %}
+    <p class="ai-placeholder">[Conclusion placeholder.]</p>
+  {% endif %}
+</div>
+
+<h2>9. References</h2>
+<div id="references" class="section-content">
+  <p>References cited within this chronological review.</p>
+
+  {% if references_list %}
+    <ol>
+      {% for ref in references_list %}
+        <li>{{ ref.html_string | safe }}</li>
+      {% endfor %}
+    </ol>
+  {% else %}
+    <ol>
+      <li>[References list placeholder — supply formatted references as HTML strings.]</li>
+    </ol>
+  {% endif %}
+</div>
+
+{% if appendices %}
+<h2>Appendices</h2>
+<div class="section-content">
+  {% for app in appendices %}
+    <h3>{{ app.title }}</h3>
+    <div class="ai-generated-content">
+      {{ app.content | safe }}
+    </div>
+    {% if app.path %}
+      <p class="appendix-link"><a href="{{ app.path }}" target="_blank">Open Appendix</a></p>
+    {% endif %}
+  {% endfor %}
+</div>
+{% endif %}
+
+</body>
+</html>
