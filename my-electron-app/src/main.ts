@@ -1498,17 +1498,28 @@ function isSystematicPipelineRequest(rawText: string): boolean {
     (/\bpipeline\b/.test(low) && /\b(screening|coding|eligibility|synthesis|review)\b/.test(low));
 }
 
-function detectReviewPipelineType(rawText: string): "systematic" | "literature" | "bibliographic" | null {
+function detectReviewPipelineType(
+  rawText: string
+): "systematic" | "literature" | "bibliographic" | "chronological" | "critical" | "meta_analysis" | null {
   const low = String(rawText || "").trim().toLowerCase();
   if (!low) return null;
-  if (/\b(systematic\s+review|prisma)\b/.test(low) || (/\bpipeline\b/.test(low) && /\b(screening|coding|eligibility|synthesis|review)\b/.test(low))) {
-    return "systematic";
-  }
   if (/\b(literature\s+review|narrative\s+review|state[\s-]+of[\s-]+the[\s-]+art\s+review|scoping\s+review|scoping\s+study)\b/.test(low)) {
     return "literature";
   }
   if (/\b(bibliographic\s+review|bibliometric(?:\s+analysis)?|bibliograph(?:y|ic)\s+review)\b/.test(low)) {
     return "bibliographic";
+  }
+  if (/\b(chronological\s+review|timeline\s+review|historical\s+review)\b/.test(low)) {
+    return "chronological";
+  }
+  if (/\b(critical\s+review|critical\s+lens\s+review)\b/.test(low)) {
+    return "critical";
+  }
+  if (/\b(meta[\s-]*analysis(?:\s+review)?|meta\s+analysis)\b/.test(low)) {
+    return "meta_analysis";
+  }
+  if (/\b(systematic\s+review|prisma)\b/.test(low) || (/\bpipeline\b/.test(low) && /\b(screening|coding|eligibility|synthesis|review)\b/.test(low))) {
+    return "systematic";
   }
   return null;
 }
@@ -1571,7 +1582,7 @@ function buildSystematicPipelineIntent(text: string, context: Record<string, unk
 }
 
 function buildNonSystematicReviewPipelineIntent(
-  reviewType: "literature" | "bibliographic",
+  reviewType: "literature" | "bibliographic" | "chronological" | "critical" | "meta_analysis",
   text: string,
   context: Record<string, unknown>
 ): IntentPayload {
@@ -1585,9 +1596,30 @@ function buildNonSystematicReviewPipelineIntent(
   const clarification: string[] = [];
   if (!collectionName && !collectionKey) clarification.push(`Select a Zotero collection before creating the ${reviewType} review pipeline.`);
   if (researchQuestions.length < 3) clarification.push("Provide 3 to 5 research questions.");
+  const intentIdByType = {
+    literature: "workflow.literature_review_pipeline",
+    bibliographic: "workflow.bibliographic_review_pipeline",
+    chronological: "workflow.chronological_review_pipeline",
+    critical: "workflow.critical_review_pipeline",
+    meta_analysis: "workflow.meta_analysis_review_pipeline"
+  } as const;
+  const targetByType = {
+    literature: "workflow-literature-review-pipeline",
+    bibliographic: "workflow-bibliographic-review-pipeline",
+    chronological: "workflow-chronological-review-pipeline",
+    critical: "workflow-critical-review-pipeline",
+    meta_analysis: "workflow-meta-analysis-review-pipeline"
+  } as const;
+  const templateByType = {
+    literature: "Research/templates/literature_review.html",
+    bibliographic: "Research/templates/bibliographic.html",
+    chronological: "Research/templates/chronological_review_template.html",
+    critical: "Research/templates/critical_review_template.html",
+    meta_analysis: "Research/templates/meta_analysis_template.html"
+  } as const;
   return {
-    intentId: reviewType === "literature" ? "workflow.literature_review_pipeline" : "workflow.bibliographic_review_pipeline",
-    targetFunction: reviewType === "literature" ? "workflow-literature-review-pipeline" : "workflow-bibliographic-review-pipeline",
+    intentId: intentIdByType[reviewType],
+    targetFunction: targetByType[reviewType],
     confidence: clarification.length ? 0.72 : 0.9,
     riskLevel: "confirm",
     needsClarification: clarification.length > 0,
@@ -1598,7 +1630,7 @@ function buildNonSystematicReviewPipelineIntent(
       collection_key: collectionKey,
       items_count: Number.isFinite(itemsCount) ? Math.max(0, Math.trunc(itemsCount)) : 0,
       research_questions: researchQuestions,
-      template_path: reviewType === "literature" ? "Research/templates/literature_review.html" : "Research/templates/bibliographic.html"
+      template_path: templateByType[reviewType]
     }
   };
 }
@@ -1786,7 +1818,7 @@ function resolveGenericReviewRunDir(
 }
 
 function createGeneralReviewPipeline(payload: {
-  reviewType: "literature" | "bibliographic";
+  reviewType: "literature" | "bibliographic" | "chronological" | "critical" | "meta_analysis";
   args: Record<string, unknown>;
   context: Record<string, unknown>;
 }): { status: "ok"; pipelinePath: string; statePath: string; templatePath: string; summary: string } | { status: "error"; message: string } {
@@ -1794,12 +1826,26 @@ function createGeneralReviewPipeline(payload: {
     const reviewType = payload.reviewType;
     const args = payload.args || {};
     const context = payload.context || {};
-    const folder = reviewType === "literature" ? "literature_review" : "bibliographic_review";
+    const folderByType = {
+      literature: "literature_review",
+      bibliographic: "bibliographic_review",
+      chronological: "chronological_review",
+      critical: "critical_review",
+      meta_analysis: "meta_analysis_review"
+    } as const;
+    const sourceTemplateByType = {
+      literature: "../Research/templates/literature_review.html",
+      bibliographic: "../Research/templates/bibliographic.html",
+      chronological: "../Research/templates/chronological_review_template.html",
+      critical: "../Research/templates/critical_review_template.html",
+      meta_analysis: "../Research/templates/meta_analysis_template.html"
+    } as const;
+    const folder = folderByType[reviewType];
     const { runDir, collectionName } = resolveGenericReviewRunDir(args, context, folder);
     const pipelinePath = path.join(runDir, `${reviewType}_review_pipeline.json`);
     const statePath = path.join(runDir, `${reviewType}_review_state_v1.json`);
     const templatePath = path.join(runDir, `${reviewType}_review_template.html`);
-    const templateSource = path.resolve(process.cwd(), reviewType === "literature" ? "../Research/templates/literature_review.html" : "../Research/templates/bibliographic.html");
+    const templateSource = path.resolve(process.cwd(), sourceTemplateByType[reviewType]);
     const checklistTemplate = path.resolve(process.cwd(), "../Research/review_standards/review_execution_checklist_template.csv");
     const questions = Array.isArray(args.research_questions)
       ? args.research_questions.map((q) => normalizePromptSafeText(q || "")).filter(Boolean).slice(0, 5)
@@ -3364,6 +3410,9 @@ async function callOpenAiIntentResolver(
           "workflow.systematic_review_pipeline",
           "workflow.literature_review_pipeline",
           "workflow.bibliographic_review_pipeline",
+          "workflow.chronological_review_pipeline",
+          "workflow.critical_review_pipeline",
+          "workflow.meta_analysis_review_pipeline",
           "feature.run",
           "agent.legacy_command"
         ]
@@ -3383,7 +3432,7 @@ async function callOpenAiIntentResolver(
       {
         role: "system",
         content:
-          "You are an intent router for Zotero workflows. Use workflow.systematic_review_pipeline for systematic review or PRISMA pipeline requests. Use workflow.literature_review_pipeline for literature, narrative, state-of-the-art, or scoping review requests. Use workflow.bibliographic_review_pipeline for bibliographic/bibliography/bibliometric review requests. Use workflow.create_subfolder_by_topic for topic-filter/subfolder requests; otherwise map to feature.run when possible, else agent.legacy_command."
+          "You are an intent router for Zotero workflows. Use workflow.systematic_review_pipeline for systematic review or PRISMA pipeline requests. Use workflow.literature_review_pipeline for literature, narrative, state-of-the-art, or scoping review requests. Use workflow.bibliographic_review_pipeline for bibliographic/bibliography/bibliometric review requests. Use workflow.chronological_review_pipeline for chronological/timeline/historical review requests. Use workflow.critical_review_pipeline for critical review requests. Use workflow.meta_analysis_review_pipeline for meta-analysis review requests. Use workflow.create_subfolder_by_topic for topic-filter/subfolder requests; otherwise map to feature.run when possible, else agent.legacy_command."
       },
       {
         role: "user",
@@ -5217,7 +5266,13 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
         const intent = buildSystematicPipelineIntent(text, context);
         return { status: "ok", intent };
       }
-      if (reviewPipelineType === "literature" || reviewPipelineType === "bibliographic") {
+      if (
+        reviewPipelineType === "literature" ||
+        reviewPipelineType === "bibliographic" ||
+        reviewPipelineType === "chronological" ||
+        reviewPipelineType === "critical" ||
+        reviewPipelineType === "meta_analysis"
+      ) {
         const intent = buildNonSystematicReviewPipelineIntent(reviewPipelineType, text, context);
         return { status: "ok", intent };
       }
@@ -5355,7 +5410,10 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
         if (
           intentId === "workflow.systematic_review_pipeline" ||
           intentId === "workflow.literature_review_pipeline" ||
-          intentId === "workflow.bibliographic_review_pipeline"
+          intentId === "workflow.bibliographic_review_pipeline" ||
+          intentId === "workflow.chronological_review_pipeline" ||
+          intentId === "workflow.critical_review_pipeline" ||
+          intentId === "workflow.meta_analysis_review_pipeline"
         ) {
           bumpIntentTelemetry("workflowIntents");
           return { status: "ok", intent };
@@ -5372,7 +5430,10 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
         fallbackIntentId === "workflow.create_subfolder_by_topic" ||
         fallbackIntentId === "workflow.systematic_review_pipeline" ||
         fallbackIntentId === "workflow.literature_review_pipeline" ||
-        fallbackIntentId === "workflow.bibliographic_review_pipeline"
+        fallbackIntentId === "workflow.bibliographic_review_pipeline" ||
+        fallbackIntentId === "workflow.chronological_review_pipeline" ||
+        fallbackIntentId === "workflow.critical_review_pipeline" ||
+        fallbackIntentId === "workflow.meta_analysis_review_pipeline"
       ) bumpIntentTelemetry("workflowIntents");
       else if (fallbackIntentId === "feature.run") bumpIntentTelemetry("featureIntents");
       else if (fallbackIntentId === "agent.legacy_command") bumpIntentTelemetry("legacyIntents");
@@ -5487,21 +5548,25 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
         if (
           intentId === "workflow.systematic_review_pipeline" ||
           intentId === "workflow.literature_review_pipeline" ||
-          intentId === "workflow.bibliographic_review_pipeline"
+          intentId === "workflow.bibliographic_review_pipeline" ||
+          intentId === "workflow.chronological_review_pipeline" ||
+          intentId === "workflow.critical_review_pipeline" ||
+          intentId === "workflow.meta_analysis_review_pipeline"
         ) {
           const args = ((intent?.args as Record<string, unknown>) || {});
-          const reviewType: "systematic" | "literature" | "bibliographic" =
+          const reviewType: "systematic" | "literature" | "bibliographic" | "chronological" | "critical" | "meta_analysis" =
             intentId === "workflow.literature_review_pipeline"
               ? "literature"
               : intentId === "workflow.bibliographic_review_pipeline"
                 ? "bibliographic"
-                : "systematic";
-          const workflowFunctionName =
-            reviewType === "systematic"
-              ? "workflow.systematic_review_pipeline"
-              : reviewType === "literature"
-                ? "workflow.literature_review_pipeline"
-                : "workflow.bibliographic_review_pipeline";
+                : intentId === "workflow.chronological_review_pipeline"
+                  ? "chronological"
+                  : intentId === "workflow.critical_review_pipeline"
+                    ? "critical"
+                    : intentId === "workflow.meta_analysis_review_pipeline"
+                      ? "meta_analysis"
+                      : "systematic";
+          const workflowFunctionName = String(intentId || "workflow.systematic_review_pipeline");
           const job: FeatureJob = {
             id: jobId,
             functionName: workflowFunctionName,
@@ -5862,14 +5927,23 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
       if (
         String(intentOut.intent.intentId || "") === "workflow.systematic_review_pipeline" ||
         String(intentOut.intent.intentId || "") === "workflow.literature_review_pipeline" ||
-        String(intentOut.intent.intentId || "") === "workflow.bibliographic_review_pipeline"
+        String(intentOut.intent.intentId || "") === "workflow.bibliographic_review_pipeline" ||
+        String(intentOut.intent.intentId || "") === "workflow.chronological_review_pipeline" ||
+        String(intentOut.intent.intentId || "") === "workflow.critical_review_pipeline" ||
+        String(intentOut.intent.intentId || "") === "workflow.meta_analysis_review_pipeline"
       ) {
         const intentId = String(intentOut.intent.intentId || "");
-        const reviewType: "systematic" | "literature" | "bibliographic" =
+        const reviewType: "systematic" | "literature" | "bibliographic" | "chronological" | "critical" | "meta_analysis" =
           intentId === "workflow.literature_review_pipeline"
             ? "literature"
             : intentId === "workflow.bibliographic_review_pipeline"
               ? "bibliographic"
+              : intentId === "workflow.chronological_review_pipeline"
+                ? "chronological"
+                : intentId === "workflow.critical_review_pipeline"
+                  ? "critical"
+                  : intentId === "workflow.meta_analysis_review_pipeline"
+                    ? "meta_analysis"
               : "systematic";
         const created = reviewType === "systematic"
           ? createSystematicReviewPipeline({

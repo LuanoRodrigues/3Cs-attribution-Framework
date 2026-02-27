@@ -8,7 +8,10 @@ export type IntentPayload = {
     | "workflow.create_subfolder_by_topic"
     | "workflow.systematic_review_pipeline"
     | "workflow.literature_review_pipeline"
-    | "workflow.bibliographic_review_pipeline";
+    | "workflow.bibliographic_review_pipeline"
+    | "workflow.chronological_review_pipeline"
+    | "workflow.critical_review_pipeline"
+    | "workflow.meta_analysis_review_pipeline";
   targetFunction?: string;
   confidence: number;
   riskLevel: "safe" | "confirm" | "high";
@@ -360,13 +363,17 @@ function parseSystematicReviewPipelineIntent(text: string, context: Record<strin
   };
 }
 
-function parseLiteratureOrBibliographicPipelineIntent(text: string, context: Record<string, unknown> = {}): IntentPayload | null {
+function parseNonSystematicReviewPipelineIntent(text: string, context: Record<string, unknown> = {}): IntentPayload | null {
   const raw = clean(text);
   const low = normalize(raw);
   const isLiterature = /\b(literature\s+review|narrative\s+review|state[\s-]+of[\s-]+the[\s-]+art\s+review|scoping\s+review|scoping\s+study)\b/.test(low);
   const isBibliographic = /\b(bibliographic\s+review|bibliometric(?:\s+analysis)?|bibliograph(?:y|ic)\s+review)\b/.test(low);
-  if (!isLiterature && !isBibliographic) return null;
-  const reviewType = isBibliographic ? "bibliographic" : "literature";
+  const isChronological = /\b(chronological\s+review|timeline\s+review|historical\s+review)\b/.test(low);
+  const isCritical = /\b(critical\s+review|critical\s+lens\s+review)\b/.test(low);
+  const isMeta = /\b(meta[\s-]*analysis(?:\s+review)?|meta\s+analysis)\b/.test(low);
+  if (!isLiterature && !isBibliographic && !isChronological && !isCritical && !isMeta) return null;
+  const reviewType: "literature" | "bibliographic" | "chronological" | "critical" | "meta_analysis" =
+    isBibliographic ? "bibliographic" : isChronological ? "chronological" : isCritical ? "critical" : isMeta ? "meta_analysis" : "literature";
   const collectionName = clean(context.selectedCollectionName || inferCollectionNameFromContextPath(context));
   const collectionKey = clean(context.selectedCollectionKey);
   const parsedQuestions = parseResearchQuestionsInput(raw);
@@ -376,9 +383,30 @@ function parseLiteratureOrBibliographicPipelineIntent(text: string, context: Rec
   const clarification: string[] = [];
   if (!collectionName && !collectionKey) clarification.push(`Select a Zotero collection before creating the ${reviewType} review pipeline.`);
   if (researchQuestions.length < 3) clarification.push("Provide 3 to 5 research questions.");
+  const intentIdByType = {
+    literature: "workflow.literature_review_pipeline",
+    bibliographic: "workflow.bibliographic_review_pipeline",
+    chronological: "workflow.chronological_review_pipeline",
+    critical: "workflow.critical_review_pipeline",
+    meta_analysis: "workflow.meta_analysis_review_pipeline"
+  } as const;
+  const targetByType = {
+    literature: "workflow-literature-review-pipeline",
+    bibliographic: "workflow-bibliographic-review-pipeline",
+    chronological: "workflow-chronological-review-pipeline",
+    critical: "workflow-critical-review-pipeline",
+    meta_analysis: "workflow-meta-analysis-review-pipeline"
+  } as const;
+  const templateByType = {
+    literature: "Research/templates/literature_review.html",
+    bibliographic: "Research/templates/bibliographic.html",
+    chronological: "Research/templates/chronological_review_template.html",
+    critical: "Research/templates/critical_review_template.html",
+    meta_analysis: "Research/templates/meta_analysis_template.html"
+  } as const;
   return {
-    intentId: reviewType === "literature" ? "workflow.literature_review_pipeline" : "workflow.bibliographic_review_pipeline",
-    targetFunction: reviewType === "literature" ? "workflow-literature-review-pipeline" : "workflow-bibliographic-review-pipeline",
+    intentId: intentIdByType[reviewType],
+    targetFunction: targetByType[reviewType],
     confidence: clarification.length ? 0.72 : 0.9,
     riskLevel: "confirm",
     needsClarification: clarification.length > 0,
@@ -389,7 +417,7 @@ function parseLiteratureOrBibliographicPipelineIntent(text: string, context: Rec
       collection_key: collectionKey,
       items_count: Number(context.itemsCount || 0),
       research_questions: researchQuestions,
-      template_path: reviewType === "literature" ? "Research/templates/literature_review.html" : "Research/templates/bibliographic.html"
+      template_path: templateByType[reviewType]
     }
   };
 }
@@ -534,13 +562,13 @@ export function resolveIntentForCommand(
     return { status: "ok", intent: reviewSupervisor };
   }
 
+  const reviewPipeline = parseNonSystematicReviewPipelineIntent(raw, context);
+  if (reviewPipeline) {
+    return { status: "ok", intent: reviewPipeline };
+  }
   const systematic = parseSystematicReviewPipelineIntent(raw, context);
   if (systematic) {
     return { status: "ok", intent: systematic };
-  }
-  const reviewPipeline = parseLiteratureOrBibliographicPipelineIntent(raw, context);
-  if (reviewPipeline) {
-    return { status: "ok", intent: reviewPipeline };
   }
 
   const coding = parseVerbatimCodingIntent(raw, context, defaultDirBase);

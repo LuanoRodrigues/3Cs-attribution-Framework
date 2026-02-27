@@ -18,6 +18,7 @@ _REPO_ROOT = _THIS_FILE.parents[1]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
+from Research.adaptive_prompt_context import build_adaptive_prompt_context
 from Research.systematic_review_pipeline import (
     _assert_non_placeholder_html,
     _assert_reference_and_postprocess_integrity,
@@ -283,21 +284,21 @@ def render_critical_review_from_summary(
     citation_instruction = _citation_style_instruction(citation_style)
 
     section_specs = {
-        "guiding_questions": {"min": 50, "max": 500},
-        "evaluation_criteria": {"min": 80, "max": 700},
-        "ai_claims_map": {"min": 160, "max": 1000},
-        "ai_evidence_base": {"min": 160, "max": 1000},
-        "ai_validity_threats": {"min": 140, "max": 900},
-        "robust_findings": {"min": 140, "max": 900},
-        "fragile_claims": {"min": 140, "max": 900},
-        "refined_framework_text": {"min": 120, "max": 900},
-        "ai_research_implications": {"min": 120, "max": 900},
-        "ai_practice_implications": {"min": 120, "max": 900},
-        "reformulated_research_agenda": {"min": 120, "max": 900},
-        "ai_limitations": {"min": 120, "max": 900},
-        "introduction": {"min": 220, "max": 1200},
-        "abstract": {"min": 180, "max": 420, "forbid_h4": True},
-        "conclusion": {"min": 160, "max": 900},
+        "guiding_questions": {"min": 50, "max": 2000},
+        "evaluation_criteria": {"min": 80, "max": 3000},
+        "ai_claims_map": {"min": 160, "max": 3000},
+        "ai_evidence_base": {"min": 160, "max": 3000},
+        "ai_validity_threats": {"min": 140, "max": 2800},
+        "robust_findings": {"min": 140, "max": 2800},
+        "fragile_claims": {"min": 140, "max": 2800},
+        "refined_framework_text": {"min": 120, "max": 2800},
+        "ai_research_implications": {"min": 120, "max": 2800},
+        "ai_practice_implications": {"min": 120, "max": 2800},
+        "reformulated_research_agenda": {"min": 120, "max": 3000},
+        "ai_limitations": {"min": 120, "max": 2600},
+        "introduction": {"min": 220, "max": 3000},
+        "abstract": {"min": 180, "max": 900, "forbid_h4": True},
+        "conclusion": {"min": 160, "max": 2600},
     }
 
     phase1_instructions = {
@@ -327,10 +328,12 @@ def render_critical_review_from_summary(
             except Exception:
                 section_cache.pop(section_name, None)
                 section_cache_entries.pop(section_name, None)
+        adaptive = build_adaptive_prompt_context(payload_base, target_tokens=7000, hard_cap_tokens=11000)
         prompt = (
             f"SECTION_NAME\n{section_name}\n\n"
             f"INSTRUCTION\n{instruction}\n\n"
-            f"CONTEXT_JSON\n{json.dumps(payload_base, ensure_ascii=False, indent=2)}\n\n"
+            f"CONTEXT_JSON\n{json.dumps(adaptive['context'], ensure_ascii=False, indent=2)}\n\n"
+            f"CONTEXT_META_JSON\n{json.dumps(adaptive['meta'], ensure_ascii=False)}\n\n"
             "STYLE_GUARD\nWrite formal publication prose only. Do not mention prompts/context JSON/AI.\n\n"
             f"CITATION_STYLE\n{citation_instruction}\n\n"
             "Return only raw HTML snippets, no markdown fences."
@@ -372,10 +375,12 @@ def render_critical_review_from_summary(
             except Exception:
                 section_cache.pop(section_name, None)
                 section_cache_entries.pop(section_name, None)
+        adaptive_whole = build_adaptive_prompt_context(whole_paper_payload, target_tokens=9000, hard_cap_tokens=12000)
         prompt = (
             f"SECTION_NAME\n{section_name}\n\n"
             f"INSTRUCTION\n{instruction}\n\n"
-            f"WHOLE_PAPER_CONTEXT_JSON\n{json.dumps(whole_paper_payload, ensure_ascii=False, indent=2)}\n\n"
+            f"WHOLE_PAPER_CONTEXT_JSON\n{json.dumps(adaptive_whole['context'], ensure_ascii=False, indent=2)}\n\n"
+            f"CONTEXT_META_JSON\n{json.dumps(adaptive_whole['meta'], ensure_ascii=False)}\n\n"
             "STYLE_GUARD\nWrite formal publication prose only. Do not mention prompts/context JSON/AI.\n\n"
             f"CITATION_STYLE\n{citation_instruction}\n\n"
             "Return only raw HTML snippets, no markdown fences."

@@ -18,6 +18,7 @@ _REPO_ROOT = _THIS_FILE.parents[1]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
+from Research.adaptive_prompt_context import build_adaptive_prompt_context
 from Research.systematic_review_pipeline import (
     _assert_non_placeholder_html,
     _assert_reference_and_postprocess_integrity,
@@ -350,6 +351,19 @@ def _cache_hit(section_name: str, section_cache_entries: dict[str, dict[str, Any
     return html
 
 
+def _normalize_final_section_html(section_name: str, html_text: str) -> str:
+    txt = str(html_text or "").strip()
+    if not txt:
+        return txt
+    if section_name in {"ai_introduction", "ai_conclusion", "ai_abstract"}:
+        txt = re.sub(r"</?section\b[^>]*>", "", txt, flags=re.IGNORECASE)
+        txt = re.sub(r"<h[1-6]\b[^>]*>.*?</h[1-6]>", "", txt, flags=re.IGNORECASE | re.DOTALL)
+        txt = txt.strip()
+        if txt and not re.search(r"<p\b", txt, flags=re.IGNORECASE):
+            txt = f"<p>{txt}</p>"
+    return txt
+
+
 def _validate_context_required(context: dict[str, Any], required: list[str]) -> None:
     missing = [k for k in required if k not in context]
     if missing:
@@ -588,23 +602,23 @@ def render_meta_analysis_from_summary(
     }
 
     section_specs = {
-        "inclusion_logic": {"min": 120, "max": 900},
-        "search_strategy_summary": {"min": 120, "max": 900},
-        "selection_workflow": {"min": 90, "max": 700},
-        "extraction_and_coding": {"min": 120, "max": 900},
-        "validity_assessment": {"min": 120, "max": 900},
-        "effect_size_definition": {"min": 100, "max": 800},
-        "meta_analysis_methods": {"min": 120, "max": 900},
-        "diagnostics_plan": {"min": 100, "max": 700},
-        "nma_methods": {"min": 80, "max": 700},
-        "nma_summary_text": {"min": 80, "max": 900},
-        "pub_bias_results": {"min": 80, "max": 900},
-        "diagnostics_summary": {"min": 80, "max": 900},
-        "ai_discussion": {"min": 200, "max": 1200},
-        "ai_limitations": {"min": 120, "max": 900},
-        "ai_introduction": {"min": 220, "max": 1200},
-        "ai_abstract": {"min": 180, "max": 420, "forbid_h4": True},
-        "ai_conclusion": {"min": 160, "max": 900},
+        "inclusion_logic": {"min": 120, "max": 2600},
+        "search_strategy_summary": {"min": 120, "max": 2600},
+        "selection_workflow": {"min": 90, "max": 2400},
+        "extraction_and_coding": {"min": 120, "max": 2600},
+        "validity_assessment": {"min": 120, "max": 2400},
+        "effect_size_definition": {"min": 100, "max": 2200},
+        "meta_analysis_methods": {"min": 120, "max": 2600},
+        "diagnostics_plan": {"min": 100, "max": 2400},
+        "nma_methods": {"min": 80, "max": 2200},
+        "nma_summary_text": {"min": 80, "max": 2200},
+        "pub_bias_results": {"min": 80, "max": 2200},
+        "diagnostics_summary": {"min": 80, "max": 2200},
+        "ai_discussion": {"min": 200, "max": 2600},
+        "ai_limitations": {"min": 120, "max": 2200},
+        "ai_introduction": {"min": 220, "max": 2400},
+        "ai_abstract": {"min": 180, "max": 700, "forbid_h4": True},
+        "ai_conclusion": {"min": 160, "max": 2200},
     }
 
     phase1_sections = {
@@ -629,13 +643,17 @@ def render_meta_analysis_from_summary(
     for section_name, instruction in phase1_sections.items():
         cached = _cache_hit(section_name, section_cache_entries, model)
         if cached:
-            llm_sections[section_name] = _enrich_dqid_anchors(cached, dqid_lookup, citation_style=citation_style)
+            c1 = _normalize_final_section_html(section_name, cached)
+            llm_sections[section_name] = _enrich_dqid_anchors(c1, dqid_lookup, citation_style=citation_style)
             continue
+        adaptive = build_adaptive_prompt_context(payload_base, target_tokens=7000, hard_cap_tokens=11000)
+        section_context = adaptive["context"]
         prompt = (
             f"SECTION_NAME\n{section_name}\n\n"
             f"INSTRUCTION\n{instruction}\n\n"
             f"SECTION_FOCUS_JSON\n{json.dumps(section_focus_context.get(section_name, {}), ensure_ascii=False, indent=2)}\n\n"
-            f"CONTEXT_JSON\n{json.dumps(payload_base, ensure_ascii=False, indent=2)}\n\n"
+            f"CONTEXT_JSON\n{json.dumps(section_context, ensure_ascii=False, indent=2)}\n\n"
+            f"CONTEXT_META_JSON\n{json.dumps(adaptive['meta'], ensure_ascii=False)}\n\n"
             "STYLE_GUARD\nWrite formal publication prose only. Do not mention prompts/context JSON/AI.\n\n"
             f"CITATION_STYLE\n{citation_instruction}\n\n"
             "Return only raw HTML snippets, no markdown fences."
@@ -651,6 +669,7 @@ def render_meta_analysis_from_summary(
         )
         for section_name, raw_html in phase1_batch["outputs"].items():
             cleaned = _clean_and_humanize_section_html(_clean_llm_html(raw_html))
+            cleaned = _normalize_final_section_html(section_name, cleaned)
             cleaned = _enrich_dqid_anchors(cleaned, dqid_lookup, citation_style=citation_style)
             _validate_generated_section(section_name, cleaned, section_specs[section_name])
             llm_sections[section_name] = cleaned
@@ -668,28 +687,33 @@ def render_meta_analysis_from_summary(
         "ai_abstract": "Write single-block professional abstract with methods/results/conclusion.",
         "ai_conclusion": "Write conclusion with precise implications and future work.",
     }
-    phase2_prompts = [
-        (
-            name,
+    phase2_whole = build_adaptive_prompt_context(whole_payload, target_tokens=9000, hard_cap_tokens=12000)
+    phase2_prompts = []
+    for name, instruction in phase2_sections.items():
+        if _cache_hit(name, section_cache_entries, model):
+            continue
+        phase2_prompts.append(
             (
-                f"SECTION_NAME\n{name}\n\n"
-                f"INSTRUCTION\n{instruction}\n\n"
-                f"SECTION_FOCUS_JSON\n{json.dumps(section_focus_context.get(name, {}), ensure_ascii=False, indent=2)}\n\n"
-                f"WHOLE_PAPER_CONTEXT_JSON\n{json.dumps(whole_payload, ensure_ascii=False, indent=2)}\n\n"
-                "STYLE_GUARD\nWrite formal publication prose only. Do not mention prompts/context JSON/AI.\n\n"
-                f"CITATION_STYLE\n{citation_instruction}\n\n"
-                "Return only raw HTML snippets, no markdown fences."
-            ),
+                name,
+                (
+                    f"SECTION_NAME\n{name}\n\n"
+                    f"INSTRUCTION\n{instruction}\n\n"
+                    f"SECTION_FOCUS_JSON\n{json.dumps(section_focus_context.get(name, {}), ensure_ascii=False, indent=2)}\n\n"
+                    f"WHOLE_PAPER_CONTEXT_JSON\n{json.dumps(phase2_whole['context'], ensure_ascii=False, indent=2)}\n\n"
+                    f"CONTEXT_META_JSON\n{json.dumps(phase2_whole['meta'], ensure_ascii=False)}\n\n"
+                    "STYLE_GUARD\nWrite formal publication prose only. Do not mention prompts/context JSON/AI.\n\n"
+                    f"CITATION_STYLE\n{citation_instruction}\n\n"
+                    "Return only raw HTML snippets, no markdown fences."
+                ),
+            )
         )
-        for name, instruction in phase2_sections.items()
-        if not _cache_hit(name, section_cache_entries, model)
-    ]
     if sorted(k for k, _ in phase2_prompts) != ["ai_abstract", "ai_conclusion", "ai_introduction"]:
         # If not exact three prompts, it means some or all were served by cache; hydrate them below.
         for name in phase2_sections:
             cached = _cache_hit(name, section_cache_entries, model)
             if cached:
-                llm_sections[name] = _enrich_dqid_anchors(cached, dqid_lookup, citation_style=citation_style)
+                c2 = _normalize_final_section_html(name, cached)
+                llm_sections[name] = _enrich_dqid_anchors(c2, dqid_lookup, citation_style=citation_style)
     phase2_batch: dict[str, Any] = {"batch_id": "", "request_count": 0}
     if phase2_prompts:
         for sec_name, _ in phase2_prompts:
@@ -703,6 +727,7 @@ def render_meta_analysis_from_summary(
         )
         for section_name, raw_html in phase2_batch["outputs"].items():
             cleaned = _clean_and_humanize_section_html(_clean_llm_html(raw_html))
+            cleaned = _normalize_final_section_html(section_name, cleaned)
             cleaned = _enrich_dqid_anchors(cleaned, dqid_lookup, citation_style=citation_style)
             _validate_generated_section(section_name, cleaned, section_specs[section_name])
             llm_sections[section_name] = cleaned

@@ -436,6 +436,9 @@ type VmDiskGuardReport = {
   cleanupApplied: boolean;
   warnThreshold: number;
   pruneThreshold: number;
+  retainRuns: number;
+  removedRunsCount: number;
+  removedRuns: string[];
 };
 
 const runVmSshCommand = async (
@@ -486,17 +489,21 @@ const parseDfPkRoot = (text: string): VmDiskGuardReport => {
     totalMb: Math.max(0, Math.floor((Number.isFinite(totalKb) ? totalKb : 0) / 1024)),
     cleanupApplied: false,
     warnThreshold: 80,
-    pruneThreshold: 90
+    pruneThreshold: 90,
+    retainRuns: 5,
+    removedRunsCount: 0,
+    removedRuns: []
   };
 };
 
 const runVmDiskGuard = async (
   vm: Record<string, unknown>,
-  opts?: { warnThreshold?: number; pruneThreshold?: number; minFreeMb?: number }
+  opts?: { warnThreshold?: number; pruneThreshold?: number; minFreeMb?: number; retainRuns?: number }
 ): Promise<VmDiskGuardReport> => {
   const warnThreshold = Math.max(1, Math.min(99, Number(opts?.warnThreshold ?? 80)));
   const pruneThreshold = Math.max(warnThreshold, Math.min(99, Number(opts?.pruneThreshold ?? 90)));
   const minFreeMb = Math.max(128, Number(opts?.minFreeMb ?? 2048));
+  const retainRuns = Math.max(1, Math.min(100, Number(opts?.retainRuns ?? 5)));
   const dfFirst = await runVmSshCommand(vm, "df -Pk / | tail -n 1");
   if (dfFirst.code !== 0) {
     throw new Error(`VM disk check failed: ${dfFirst.stderr || dfFirst.stdout || `exit=${dfFirst.code}`}`);
@@ -504,15 +511,27 @@ const runVmDiskGuard = async (
   let report = parseDfPkRoot(dfFirst.stdout);
   report.warnThreshold = warnThreshold;
   report.pruneThreshold = pruneThreshold;
+  report.retainRuns = retainRuns;
   const needsCleanup = report.usagePercent >= pruneThreshold || report.freeMb < minFreeMb;
   if (!needsCleanup) return report;
 
   const ssh = parseVmSshTarget(String(vm?.ssh_target || ""));
   if (!ssh) throw new Error("VM SSH target missing for cleanup.");
+  const listRunsScript = `bash -lc 'ls -1dt /home/${ssh.user}/vm_runs/* 2>/dev/null || true'`;
+  const runsBeforeOut = await runVmSshCommand(vm, listRunsScript);
+  const runsBefore = runsBeforeOut.stdout
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const toRemove = runsBefore.slice(retainRuns);
+  if (toRemove.length) {
+    const quoted = toRemove.map((x) => `'${x.replace(/'/g, "'\\''")}'`).join(" ");
+    await runVmSshCommand(vm, `sudo rm -rf ${quoted}`);
+  }
+
   const cleanupScript = [
     "set -euo pipefail",
     `sudo mkdir -p /home/${ssh.user}/vm_runs`,
-    `sudo bash -lc 'ls -1dt /home/${ssh.user}/vm_runs/* 2>/dev/null | tail -n +6 | xargs -r rm -rf'`,
     "sudo apt-get clean || true",
     "sudo journalctl --vacuum-time=3d || true",
     "sudo find /tmp -mindepth 1 -maxdepth 1 -exec rm -rf {} + || true",
@@ -527,6 +546,9 @@ const runVmDiskGuard = async (
   report.cleanupApplied = true;
   report.warnThreshold = warnThreshold;
   report.pruneThreshold = pruneThreshold;
+  report.retainRuns = retainRuns;
+  report.removedRuns = toRemove;
+  report.removedRunsCount = toRemove.length;
   return report;
 };
 
@@ -584,6 +606,43 @@ const syncHostProfileToVm = async (
   return { source: resolvedSource, target };
 };
 
+const syncVmProfileToHost = async (
+  vm: Record<string, unknown>,
+  profileName: string,
+  targetDir: string
+): Promise<{ source: string; target: string }> => {
+  const ssh = parseVmSshTarget(String(vm?.ssh_target || ""));
+  if (!ssh) throw new Error("VM SSH target missing for profile export.");
+  const teiaRoot = resolveTeiaRoot();
+  const safeName = (profileName || "Default").trim() || "Default";
+  const source = `/home/${ssh.user}/.browser-profiles/${safeName}`;
+  const resolvedTarget = path.resolve(path.isAbsolute(targetDir) ? targetDir : path.join(teiaRoot, targetDir));
+  await fs.promises.mkdir(resolvedTarget, { recursive: true });
+
+  const sshProc = spawn(
+    "ssh",
+    [...buildVmSshOptions(vm), "-p", String(ssh.port), `${ssh.user}@${ssh.host}`, `test -d '${source}' && tar -czf - -C '${source}' .`],
+    { cwd: teiaRoot, stdio: ["ignore", "pipe", "pipe"], env: process.env }
+  );
+  const tarProc = spawn("tar", ["-xzf", "-", "-C", resolvedTarget], {
+    cwd: teiaRoot,
+    stdio: ["pipe", "ignore", "pipe"],
+    env: process.env
+  });
+  sshProc.stdout.pipe(tarProc.stdin);
+  let sshErr = "";
+  let tarErr = "";
+  sshProc.stderr.on("data", (c: Buffer | string) => (sshErr += String(c)));
+  tarProc.stderr.on("data", (c: Buffer | string) => (tarErr += String(c)));
+  const [sshCode, tarCode] = await Promise.all([
+    new Promise<number>((resolve) => sshProc.on("close", (code) => resolve(code ?? 1))),
+    new Promise<number>((resolve) => tarProc.on("close", (code) => resolve(code ?? 1)))
+  ]);
+  if (sshCode !== 0) throw new Error(`Profile export SSH failed: ${sshErr || `exit=${sshCode}`}`);
+  if (tarCode !== 0) throw new Error(`Profile export tar failed: ${tarErr || `exit=${tarCode}`}`);
+  return { source, target: resolvedTarget };
+};
+
 const runProviderSmokeReport = async (payload?: Record<string, unknown>): Promise<Record<string, unknown>> => {
   const teiaRoot = resolveTeiaRoot();
   const python = resolvePythonBin();
@@ -595,13 +654,15 @@ const runProviderSmokeReport = async (payload?: Record<string, unknown>): Promis
   const maxPages = Math.max(1, Math.min(3, toNumberOrUndefined(payload?.maxPages) || 1));
   const profileDir = toStringOrUndefined(payload?.profileDir) || "scrapping/browser/searches/profiles/default";
   const profileName = toStringOrUndefined(payload?.profileName) || "Default";
+  const vmMode = payload?.vmMode === true;
+  const concurrency = Math.max(1, Math.min(8, toNumberOrUndefined(payload?.concurrency) || 2));
   const stamp = new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14);
   const reportDir = path.join(teiaRoot, "scrapping/browser/searches/runs/smoke_reports");
   await fs.promises.mkdir(reportDir, { recursive: true });
   const reportPath = path.join(reportDir, `${stamp}_smoke.json`);
   const results: Array<Record<string, unknown>> = [];
 
-  for (const provider of providers) {
+  const runOneLocal = async (provider: string): Promise<Record<string, unknown>> => {
     const outPath = path.join(reportDir, `${stamp}_${provider}.json`);
     const started = Date.now();
     const args = [
@@ -625,7 +686,7 @@ const runProviderSmokeReport = async (payload?: Record<string, unknown>): Promis
     child.stdout.on("data", (c: Buffer | string) => (stdout += String(c)));
     child.stderr.on("data", (c: Buffer | string) => (stderr += String(c)));
     const code = await new Promise<number>((resolve) => child.on("close", (exitCode) => resolve(exitCode ?? 1)));
-    results.push({
+    return {
       provider,
       status: code === 0 ? "ok" : "error",
       exitCode: code,
@@ -633,12 +694,85 @@ const runProviderSmokeReport = async (payload?: Record<string, unknown>): Promis
       outputPath: outPath,
       stdout: stdout.trim().slice(0, 2000),
       stderr: stderr.trim().slice(0, 2000)
-    });
+    };
+  };
+
+  const runOneVm = async (provider: string): Promise<Record<string, unknown>> => {
+    const vm = await runVmCli("status");
+    await syncVmSearchCode(vm);
+    const started = Date.now();
+    const ssh = parseVmSshTarget(String(vm?.ssh_target || ""));
+    if (!ssh) throw new Error("VM SSH target missing.");
+    const outPath = `/home/${ssh.user}/vm_runs/smoke_${stamp}_${provider}.json`;
+    const cmd = [
+      "bash",
+      "-lc",
+      [
+        "cd ~/teia_vm_runtime",
+        "export DISPLAY=:1",
+        "export CHROME_BINARY=/usr/bin/chromium",
+        "PYTHONPATH=~/teia_vm_runtime",
+        "python3",
+        "-u",
+        "-m",
+        "scrapping.browser.searches.cli",
+        provider,
+        `"${query.replace(/"/g, '\\"')}"`,
+        "--max-pages",
+        String(maxPages),
+        "--profile-dir",
+        `/home/${ssh.user}/.browser-profiles`,
+        "--profile-name",
+        profileName,
+        "--out",
+        outPath
+      ].join(" ")
+    ];
+    const sshArgs = [...buildVmSshOptions(vm), "-p", String(ssh.port), `${ssh.user}@${ssh.host}`, ...cmd];
+    const child = spawn("ssh", sshArgs, { cwd: teiaRoot, stdio: ["ignore", "pipe", "pipe"], env: process.env });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (c: Buffer | string) => (stdout += String(c)));
+    child.stderr.on("data", (c: Buffer | string) => (stderr += String(c)));
+    const code = await new Promise<number>((resolve) => child.on("close", (exitCode) => resolve(exitCode ?? 1)));
+    return {
+      provider,
+      status: code === 0 ? "ok" : "error",
+      exitCode: code,
+      elapsedMs: Date.now() - started,
+      outputPath: outPath,
+      stdout: stdout.trim().slice(0, 2000),
+      stderr: stderr.trim().slice(0, 2000)
+    };
+  };
+
+  if (vmMode) {
+    for (const provider of providers) {
+      results.push(await runOneVm(provider));
+    }
+  } else {
+    const queue = providers.slice();
+    const workers: Promise<void>[] = [];
+    for (let i = 0; i < Math.min(concurrency, queue.length); i += 1) {
+      workers.push(
+        (async () => {
+          while (queue.length) {
+            const provider = queue.shift();
+            if (!provider) break;
+            results.push(await runOneLocal(provider));
+          }
+        })()
+      );
+    }
+    await Promise.all(workers);
   }
+
   const summary = {
     generatedAt: new Date().toISOString(),
     query,
     maxPages,
+    vmMode,
+    concurrency,
     providers,
     ok: results.filter((r) => r.status === "ok").length,
     error: results.filter((r) => r.status !== "ok").length,
@@ -1694,7 +1828,8 @@ export const handleRetrieveCommand = async (
   }
   if (action === "vm_repair") {
     try {
-      const result = await runVmCli("repair");
+      const args = normalizeVmCommandPayload(payload);
+      const result = await runVmCli("repair", args);
       return { status: "ok", vm: result };
     } catch (error) {
       return { status: "error", message: error instanceof Error ? error.message : String(error) };
@@ -1734,6 +1869,39 @@ export const handleRetrieveCommand = async (
     } catch (error) {
       return { status: "error", message: error instanceof Error ? error.message : String(error) };
     }
+  }
+  if (action === "vm_export_profile") {
+    try {
+      const vm = await runVmCli("status");
+      const profileName = toStringOrUndefined(payload?.profileName) || "Default";
+      const targetDir = toStringOrUndefined(payload?.targetDir);
+      if (!targetDir) return { status: "error", message: "targetDir is required." };
+      const sync = await syncVmProfileToHost(vm, profileName, targetDir);
+      return { status: "ok", vm, sync };
+    } catch (error) {
+      return { status: "error", message: error instanceof Error ? error.message : String(error) };
+    }
+  }
+  if (action === "vm_capabilities") {
+    return {
+      status: "ok",
+      version: "2026.02.27",
+      actions: [
+        "vm_status",
+        "vm_preflight",
+        "vm_prepare_image",
+        "vm_seed",
+        "vm_init_image",
+        "vm_start",
+        "vm_stop",
+        "vm_repair",
+        "vm_disk_guard",
+        "vm_list_profiles",
+        "vm_sync_profile",
+        "vm_export_profile",
+        "run_provider_smoke"
+      ]
+    };
   }
   if (action === "run_provider_smoke") {
     try {

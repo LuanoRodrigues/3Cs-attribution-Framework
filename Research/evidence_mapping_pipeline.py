@@ -10,6 +10,7 @@ from collections import Counter
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from types import SimpleNamespace
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
@@ -18,6 +19,7 @@ _REPO_ROOT = _THIS_FILE.parents[1]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
+from Research.adaptive_prompt_context import build_adaptive_prompt_context
 from Research.systematic_review_pipeline import (
     _assert_non_placeholder_html,
     _assert_reference_and_postprocess_integrity,
@@ -26,6 +28,7 @@ from Research.systematic_review_pipeline import (
     _citation_style_instruction,
     _clean_and_humanize_section_html,
     _clean_llm_html,
+    _enrich_dqid_anchors,
     _extract_llm_text,
     _humanize_theme_tokens,
     _load_call_models_zt,
@@ -95,6 +98,14 @@ def _ensure_mapping_config(cfg: dict[str, Any]) -> dict[str, Any]:
     out["limits"].setdefault("timeline_years", 18)
     out["limits"].setdefault("meta_k_min", 3)
     return out
+
+
+def _to_namespace(value: Any) -> Any:
+    if isinstance(value, dict):
+        return SimpleNamespace(**{k: _to_namespace(v) for k, v in value.items()})
+    if isinstance(value, list):
+        return [_to_namespace(v) for v in value]
+    return value
 
 # -------------------------
 # Corpus parsing
@@ -248,6 +259,26 @@ def _item_has_quant_signal(items: dict[str, dict[str, Any]], item_key: str) -> b
     payload = items.get(item_key, {})
     if not isinstance(payload, dict):
         return False
+    def _row_has_quant_signal(row: dict[str, Any]) -> bool:
+        txt = " ".join(
+            [
+                str(row.get("quote") or ""),
+                str(row.get("paraphrase") or ""),
+                str(row.get("researcher_comment") or ""),
+            ]
+        )
+        if re.search(r"\d", txt):
+            return True
+        et = str(row.get("evidence_type") or "").lower()
+        if et in {"quantitative", "mixed"}:
+            return True
+        themes = row.get("potential_themes")
+        if isinstance(themes, list):
+            joined = " ".join(str(t or "").lower() for t in themes)
+            if any(tok in joined for tok in ["effect", "estimate", "odds", "ratio", "confidence", "sample", "dataset"]):
+                return True
+        return False
+
     for arr_key in ("code_pdf_page", "code_intro_conclusion_extract_core_claims", "evidence_list", "section_open_coding"):
         arr = payload.get(arr_key)
         if not isinstance(arr, list):
@@ -255,18 +286,13 @@ def _item_has_quant_signal(items: dict[str, dict[str, Any]], item_key: str) -> b
         for ev in arr:
             if not isinstance(ev, dict):
                 continue
-            txt = " ".join(
-                [
-                    str(ev.get("quote") or ""),
-                    str(ev.get("paraphrase") or ""),
-                    str(ev.get("researcher_comment") or ""),
-                ]
-            )
-            if re.search(r"\d", txt):
+            if _row_has_quant_signal(ev):
                 return True
-            et = str(ev.get("evidence_type") or "").lower()
-            if et in {"quantitative", "mixed"}:
-                return True
+            nested = ev.get("evidence")
+            if isinstance(nested, list):
+                for inner in nested:
+                    if isinstance(inner, dict) and _row_has_quant_signal(inner):
+                        return True
     return False
 
 
@@ -690,7 +716,7 @@ def render_evidence_map_from_summary(
         "topic": collection_name,
         "map_dimensions": mapping_config["dimensions"],
         "summary_stats": summary_stats,
-        "evidence_matrix": evidence_matrix,
+        "evidence_matrix": _to_namespace(evidence_matrix),
         "top_themes": [{"theme": _humanize_theme_tokens(t), "count": int(theme_counts[t])} for t in top_themes],
         "network_edges_count": len(edges),
         "citation_style": citation_style,
@@ -727,10 +753,12 @@ def render_evidence_map_from_summary(
         if cached:
             llm_sections[section_name] = _enrich_dqid_anchors(cached, dqid_lookup, citation_style=citation_style)
             continue
+        adaptive = build_adaptive_prompt_context(payload_base, target_tokens=7000, hard_cap_tokens=11000)
         prompt = (
             f"SECTION_NAME\n{section_name}\n\n"
             f"INSTRUCTION\n{instruction}\n\n"
-            f"CONTEXT_JSON\n{json.dumps(payload_base, ensure_ascii=False, indent=2)}\n\n"
+            f"CONTEXT_JSON\n{json.dumps(adaptive['context'], ensure_ascii=False, indent=2)}\n\n"
+            f"CONTEXT_META_JSON\n{json.dumps(adaptive['meta'], ensure_ascii=False)}\n\n"
             "STYLE_GUARD\nWrite formal publication prose only. Do not mention prompts/context JSON/AI.\n\n"
             f"CITATION_STYLE\n{citation_instruction}\n\n"
             "Return only raw HTML snippets, no markdown fences."
@@ -767,6 +795,7 @@ def render_evidence_map_from_summary(
         timeline_table_html += "</tbody></table>"
 
     refs_html = _build_reference_items(summary, citation_style=citation_style)
+    evidence_matrix_render = _to_namespace(evidence_matrix)
     context = {
         "topic": collection_name,
         "authors_list": mapping_config["report"]["authors_list"],
@@ -794,7 +823,7 @@ def render_evidence_map_from_summary(
         "summary_stats": summary_stats,
         "distribution_notes": llm_sections["distribution_notes"],
 
-        "evidence_matrix": evidence_matrix,
+        "evidence_matrix": evidence_matrix_render,
         "gap_map_figure": gap_map_path.name,
 
         "evidence_network_figure": network_path.name,
@@ -825,7 +854,9 @@ def render_evidence_map_from_summary(
     out_html = output_dir / "evidence_map.html"
     out_ctx = output_dir / "evidence_map_context.json"
     out_html.write_text(rendered, encoding="utf-8")
-    _write_json(out_ctx, context)
+    context_json = dict(context)
+    context_json["evidence_matrix"] = evidence_matrix
+    _write_json(out_ctx, context_json)
 
     manifest = {
         "status": "ok",

@@ -71,6 +71,7 @@ export class SearchAppPanel {
   private vmCpuInput: HTMLInputElement;
   private vmMemoryInput: HTMLInputElement;
   private vmHostProfileDirInput: HTMLInputElement;
+  private vmHostProfileTargetInput: HTMLInputElement;
   private vmProfilesSelect: HTMLSelectElement;
   private vmUseViewInput: HTMLInputElement;
   private vmTakeoverInput: HTMLInputElement;
@@ -520,6 +521,12 @@ export class SearchAppPanel {
     this.vmHostProfileDirInput.placeholder = "Host profile source dir";
     this.vmHostProfileDirInput.style.minWidth = "280px";
 
+    this.vmHostProfileTargetInput = document.createElement("input");
+    this.vmHostProfileTargetInput.type = "text";
+    this.vmHostProfileTargetInput.value = "scrapping/browser/searches/profiles/default/Default_vm_export";
+    this.vmHostProfileTargetInput.placeholder = "Host export target dir";
+    this.vmHostProfileTargetInput.style.minWidth = "280px";
+
     this.vmProfilesSelect = document.createElement("select");
     this.vmProfilesSelect.style.minWidth = "160px";
     const defaultOpt = document.createElement("option");
@@ -606,7 +613,9 @@ export class SearchAppPanel {
     const vmRepairBtn = document.createElement("button");
     vmRepairBtn.className = "ribbon-button";
     vmRepairBtn.textContent = "VM Repair";
-    vmRepairBtn.addEventListener("click", () => void this.runVmCommand("vm_repair"));
+    vmRepairBtn.addEventListener("click", () =>
+      void this.runVmCommand("vm_repair", { browserProfileName: this.profileNameInput.value.trim() || "Default" })
+    );
 
     const vmDiskBtn = document.createElement("button");
     vmDiskBtn.className = "ribbon-button";
@@ -628,14 +637,26 @@ export class SearchAppPanel {
       })
     );
 
+    const vmExportProfileBtn = document.createElement("button");
+    vmExportProfileBtn.className = "ribbon-button";
+    vmExportProfileBtn.textContent = "Export VM Profile";
+    vmExportProfileBtn.addEventListener("click", () =>
+      void this.runVmCommand("vm_export_profile", {
+        targetDir: this.vmHostProfileTargetInput.value.trim(),
+        profileName: this.profileNameInput.value.trim() || "Default"
+      })
+    );
+
     const smokeBtn = document.createElement("button");
     smokeBtn.className = "ribbon-button";
     smokeBtn.textContent = "Run Smoke";
-    smokeBtn.addEventListener("click", () =>
+      smokeBtn.addEventListener("click", () =>
       void this.runVmCommand("run_provider_smoke", {
         providers: this.selectedBrowserProviders(),
         query: (this.strategyInput.value.trim() || this.queryInput.value.trim() || "cyber attribution").trim(),
         maxPages: 1,
+        vmMode: this.vmModeInput.checked,
+        concurrency: 2,
         profileDir: this.profileDirInput.value.trim() || "scrapping/browser/searches/profiles/default",
         profileName: this.profileNameInput.value.trim() || "Default"
       })
@@ -685,6 +706,7 @@ export class SearchAppPanel {
       this.vmMemoryInput,
       this.vmProfilesSelect,
       this.vmHostProfileDirInput,
+      this.vmHostProfileTargetInput,
       vmPrepareBtn,
       vmInitBtn,
       vmSeedBtn,
@@ -694,6 +716,7 @@ export class SearchAppPanel {
       vmDiskBtn,
       vmProfilesBtn,
       vmSyncProfileBtn,
+      vmExportProfileBtn,
       smokeBtn,
       vmPreflightBtn,
       vmInstallDepsBtn,
@@ -754,6 +777,7 @@ export class SearchAppPanel {
       }
     };
     document.addEventListener("retrieve:agent-unified-search", this.agentSearchHandler);
+    void this.checkVmCapabilities();
     void this.runVmCommand("vm_status");
     this.vmStatusPollTimer = window.setInterval(() => {
       void this.runVmCommand("vm_status", undefined, false);
@@ -833,6 +857,16 @@ export class SearchAppPanel {
       if (smokeReport) {
         this.appendRunLog(`[vm] smoke_report=${smokeReport}`);
       }
+      const sync = (response as any)?.sync as Record<string, unknown> | undefined;
+      if (sync) {
+        const src = String(sync.source || "");
+        const tgt = String(sync.target || "");
+        if (src || tgt) this.appendRunLog(`[vm] profile_sync source=${src} target=${tgt}`);
+      }
+      const capabilities = Array.isArray((response as any)?.actions) ? ((response as any).actions as string[]) : [];
+      if (action === "vm_capabilities" && capabilities.length) {
+        this.appendRunLog(`[vm] capabilities=${capabilities.join(",")}`);
+      }
       if (!Object.keys(vm).length) {
         const lease = (response?.lease || null) as Record<string, unknown> | null;
         if (action === "vm_acquire_control") {
@@ -862,12 +896,14 @@ export class SearchAppPanel {
         this.liveUrlInput.value = guestWeb;
         if (this.liveFrame.src !== guestWeb) this.setLiveFrameUrl(guestWeb);
       }
+      const guestWebReady = vm.guest_web_ready === true;
+      const sshReady = vm.ssh_ready === true;
       if (
         action === "vm_status" &&
         !verbose &&
         !this.vmTakeoverInput.checked &&
         !this.vmAutoRepairInFlight &&
-        (message.includes("guest_web_service=down") || message.includes("ssh_service=down"))
+        (!guestWebReady || !sshReady)
       ) {
         const now = Date.now();
         if (now - this.vmLastAutoRepairAt > 45000) {
@@ -883,6 +919,24 @@ export class SearchAppPanel {
       const msg = String((error as Error)?.message || error || "VM command failed");
       this.vmStatusLine.textContent = `VM: ${msg}`;
       if (verbose) this.appendRunLog(`[vm] ${action} exception: ${msg}`);
+    }
+  }
+
+  private async checkVmCapabilities(): Promise<void> {
+    try {
+      const response = (await commandInternal("retrieve", "vm_capabilities", {})) as unknown as Record<string, unknown>;
+      if (String(response?.status || "") !== "ok") {
+        this.appendRunLog("[vm] capability check failed; restart app to load new VM actions.");
+        return;
+      }
+      const actions = Array.isArray((response as any)?.actions) ? ((response as any).actions as string[]) : [];
+      const required = ["vm_repair", "vm_disk_guard", "vm_list_profiles", "vm_sync_profile", "vm_export_profile", "run_provider_smoke"];
+      const missing = required.filter((name) => !actions.includes(name));
+      if (missing.length) {
+        this.appendRunLog(`[vm] missing actions: ${missing.join(",")} (restart app required)`);
+      }
+    } catch {
+      this.appendRunLog("[vm] capability handshake unavailable (restart app may be required).");
     }
   }
 

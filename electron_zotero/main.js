@@ -1286,6 +1286,10 @@ function parseVerbatimCodingIntent(text, context = {}) {
   const screeningRequested =
     /\b(screen|screening|eligibility|inclusion|exclusion)\b/i.test(raw) &&
     !/\b(no screening|without screening|skip screening|screening false|disable screening)\b/i.test(raw);
+  const criticalLensRequested = /\bcritical(?:[_\s-]?lens| security studies| perspective)\b/i.test(raw);
+  const criticalApproach = inferCriticalApproach(raw);
+  const personaProfile = inferPersonaProfile(raw);
+  const theoryPreferences = inferTheoryPreferences(raw);
   const screening = screeningRequested;
   const looksLikeCoding =
     /\b(?:code|coding)\b/.test(low) &&
@@ -1337,6 +1341,11 @@ function parseVerbatimCodingIntent(text, context = {}) {
   if (researchQuestions.length > 0 && researchQuestions.length < 3) {
     clarificationQuestions.push("I need at least 3 research questions. Add more questions or provide a topic to generate them.");
   }
+  if (criticalLensRequested && !criticalApproach) {
+    clarificationQuestions.push(
+      `Critical lens requested. Optional: choose one approach (${CRITICAL_LENS_APPROACHES.join(", ")}), or reply 'no specific approach'.`
+    );
+  }
 
   return {
     intentId: "feature.run",
@@ -1350,8 +1359,17 @@ function parseVerbatimCodingIntent(text, context = {}) {
       collection_name: collectionName,
       research_questions: researchQuestions,
       prompt_key: "code_pdf_page",
-      context: codingContext,
-      screening
+      context: mergeCodingContext(codingContext, {
+        criticalLens: criticalLensRequested,
+        criticalApproach,
+        personaProfile,
+        theoryPreferences
+      }),
+      screening,
+      critical_lens: criticalLensRequested,
+      critical_approach: criticalApproach,
+      persona_profile: personaProfile,
+      theory_preferences: theoryPreferences
     }
   };
 }
@@ -1375,6 +1393,10 @@ async function resolveCodingIntentWithLLM(text, context = {}) {
       },
       context: { type: "string" },
       screening: { type: "boolean" },
+      critical_lens: { type: "boolean" },
+      critical_approach: { type: "string" },
+      persona_profile: { type: "string" },
+      theory_preferences: { type: "array", minItems: 0, maxItems: 8, items: { type: "string" } },
       needsClarification: { type: "boolean" },
       clarificationQuestions: { type: "array", minItems: 0, maxItems: 6, items: { type: "string" } }
     }
@@ -1385,6 +1407,9 @@ async function resolveCodingIntentWithLLM(text, context = {}) {
     "If user asks to code/coding their collection/data/literature, set is_coding_request=true.",
     "Return 3 to 5 high-quality research questions focused on the user topic.",
     "Set screening=false by default. Set screening=true only if user explicitly asks to screen/screening/eligibility.",
+    "Detect optional critical-lens mode: if user asks for critical lens, set critical_lens=true.",
+    `If critical_lens=true and no specific approach is provided, set needsClarification=true and ask an optional follow-up: choose one approach from ${CRITICAL_LENS_APPROACHES.join(", ")}, or proceed with no specific approach.`,
+    "If user provides persona/theory preferences, set persona_profile and theory_preferences.",
     "Questions should be suitable for literature review evidence coding.",
     "If topic is unclear, set needsClarification=true and ask concise questions.",
     "Return output only through the tool schema."
@@ -1504,7 +1529,11 @@ async function callOpenAIIntentResolver(text, context, featureCatalog) {
           csv_path: { type: "string" },
           output_folder: { type: "string" },
           Z_collections: { type: "array", items: { type: "string" } },
-          text: { type: "string" }
+          text: { type: "string" },
+          critical_lens: { type: "boolean" },
+          critical_approach: { type: "string" },
+          persona_profile: { type: "string" },
+          theory_preferences: { type: "array", items: { type: "string" } }
         },
         required: [
           "parentIdentifier",
@@ -1546,6 +1575,8 @@ async function callOpenAIIntentResolver(text, context, featureCatalog) {
     "If subfolder name is missing but topic exists, auto-generate subfolderName from topic and set needsClarification=false.",
     "If topic is missing, ask for the topic.",
     "If request maps to known ribbon function, choose intentId='feature.run' with exact targetFunction from available_features.",
+    "When targetFunction='Verbatim_Evidence_Coding', optional args may include critical_lens, critical_approach, persona_profile, theory_preferences.",
+    `If critical_lens is requested for coding and approach is missing, ask an optional follow-up to choose one from ${CRITICAL_LENS_APPROACHES.join(", ")} or proceed with no specific approach.`,
     "If unclear, choose intentId='agent.legacy_command' with clarification.",
     "Do not invent unavailable feature names."
   ].join("\n");
@@ -1958,6 +1989,132 @@ function parseCriteriaLines(block) {
     .filter(Boolean);
 }
 
+const CRITICAL_LENS_APPROACHES = [
+  "critical_security_studies",
+  "post_structural",
+  "feminist_ir",
+  "postcolonial",
+  "decolonial",
+  "constructivist_critical",
+  "practice_theory"
+];
+
+const THEORY_KEYWORDS = [
+  "securitization theory",
+  "practice theory",
+  "assemblage theory",
+  "deterrence theory",
+  "realism",
+  "neorealism",
+  "liberal institutionalism",
+  "constructivism",
+  "critical theory",
+  "feminist ir",
+  "postcolonial theory",
+  "decolonial theory"
+];
+
+function inferCriticalApproach(text = "") {
+  const raw = normalizeName(text);
+  if (!raw) return "";
+  const patterns = [
+    ["critical_security_studies", /\bcritical security studies\b/],
+    ["post_structural", /\bpost[-\s]?structural\b/],
+    ["feminist_ir", /\bfeminist (ir|international relations)\b/],
+    ["postcolonial", /\bpost[-\s]?colonial\b/],
+    ["decolonial", /\bdecolonial\b/],
+    ["constructivist_critical", /\bconstructiv(?:ist|ism)\b/],
+    ["practice_theory", /\bpractice theory\b/]
+  ];
+  for (const [name, rx] of patterns) {
+    if (rx.test(raw)) return name;
+  }
+  return "";
+}
+
+function inferPersonaProfile(text = "") {
+  const raw = String(text || "");
+  const m =
+    raw.match(/(?:persona|voice|style)\s*[:=]\s*([^\n;,.]+)/i) ||
+    raw.match(/\b(as|like)\s+a?\s*([a-z][a-z0-9_\-\s]{3,60})/i);
+  if (!m) return "";
+  return cleanIdentifier(m[2] || m[1] || "").slice(0, 80);
+}
+
+function inferTheoryPreferences(text = "") {
+  const low = normalizeName(text);
+  if (!low) return [];
+  const out = [];
+  for (const t of THEORY_KEYWORDS) {
+    if (low.includes(normalizeName(t))) out.push(t);
+  }
+  return out.slice(0, 8);
+}
+
+function mergeCodingContext(baseContext = "", meta = {}) {
+  const chunks = [];
+  const base = cleanIdentifier(baseContext || "");
+  if (base) chunks.push(base);
+  if (meta?.criticalLens === true) chunks.push("critical_lens=true");
+  if (cleanIdentifier(meta?.criticalApproach || "")) chunks.push(`critical_approach=${cleanIdentifier(meta.criticalApproach)}`);
+  if (cleanIdentifier(meta?.personaProfile || "")) chunks.push(`persona_profile=${cleanIdentifier(meta.personaProfile)}`);
+  const theories = Array.isArray(meta?.theoryPreferences)
+    ? meta.theoryPreferences.map((x) => cleanIdentifier(x || "")).filter(Boolean)
+    : [];
+  if (theories.length) chunks.push(`theory_preferences=${theories.join(", ")}`);
+  return chunks.join("\n");
+}
+
+function extractOptionalPersonalization(text = "") {
+  const raw = String(text || "");
+  const criticalLens = /\bcritical(?:[_\s-]?lens| security studies| perspective)\b/i.test(raw);
+  return {
+    critical_lens: criticalLens,
+    critical_approach: inferCriticalApproach(raw),
+    persona_profile: inferPersonaProfile(raw),
+    theory_preferences: inferTheoryPreferences(raw)
+  };
+}
+
+function applyOptionalPersonalizationToFeatureArgs(text, args = {}, schemaArgs = []) {
+  const next = { ...(args || {}) };
+  const keys = new Set(
+    (Array.isArray(schemaArgs) ? schemaArgs : [])
+      .map((arg) => String(arg?.key || "").trim())
+      .filter(Boolean)
+  );
+  const personalization = extractOptionalPersonalization(text);
+  const hasPersonalization =
+    personalization.critical_lens === true ||
+    Boolean(personalization.critical_approach) ||
+    Boolean(personalization.persona_profile) ||
+    (Array.isArray(personalization.theory_preferences) && personalization.theory_preferences.length > 0);
+  if (!hasPersonalization) return next;
+
+  if (keys.has("critical_lens")) next.critical_lens = personalization.critical_lens === true;
+  if (keys.has("critical_approach") && personalization.critical_approach) {
+    next.critical_approach = personalization.critical_approach;
+  }
+  if (keys.has("persona_profile") && personalization.persona_profile) {
+    next.persona_profile = personalization.persona_profile;
+  }
+  if (keys.has("theory_preferences") && personalization.theory_preferences.length) {
+    next.theory_preferences = personalization.theory_preferences.slice(0, 8);
+  }
+
+  const contextKey =
+    ["context", "extra_context", "analysis_prompt", "instruction", "user_context"].find((k) => keys.has(k)) || "";
+  if (contextKey) {
+    next[contextKey] = mergeCodingContext(String(next[contextKey] || ""), {
+      criticalLens: personalization.critical_lens === true,
+      criticalApproach: personalization.critical_approach,
+      personaProfile: personalization.persona_profile,
+      theoryPreferences: personalization.theory_preferences
+    });
+  }
+  return next;
+}
+
 function inferTopicFocusAndContext(topic = "") {
   const normalized = cleanIdentifier(topic || "");
   if (!normalized) {
@@ -2156,6 +2313,15 @@ async function resolveIntent(text, context = {}) {
         resolvedQuestions = merged.slice(0, 5);
       }
       const collectionName = normalizeCollectionIdentifier(context) || extractCollectionIdentifierFromText(raw);
+      const criticalLensRequested =
+        codingLlm.data.critical_lens === true || /\bcritical(?:[_\s-]?lens| security studies| perspective)\b/i.test(raw);
+      const criticalApproach =
+        cleanIdentifier(codingLlm.data.critical_approach || inferCriticalApproach(raw) || "");
+      const personaProfile =
+        cleanIdentifier(codingLlm.data.persona_profile || inferPersonaProfile(raw) || "");
+      const theoryPreferences = Array.isArray(codingLlm.data.theory_preferences)
+        ? codingLlm.data.theory_preferences.map((x) => cleanIdentifier(x || "")).filter(Boolean).slice(0, 8)
+        : inferTheoryPreferences(raw);
       const clarificationQuestions = [];
       if (!collectionName) clarificationQuestions.push("Select a collection before coding.");
       if (codingLlm.data.needsClarification === true) {
@@ -2167,6 +2333,11 @@ async function resolveIntent(text, context = {}) {
       }
       if (resolvedQuestions.length < 3) {
         clarificationQuestions.push("I need 3 to 5 research questions to run coding.");
+      }
+      if (criticalLensRequested && !criticalApproach) {
+        clarificationQuestions.push(
+          `Critical lens requested. Optional: choose one approach (${CRITICAL_LENS_APPROACHES.join(", ")}), or reply 'no specific approach'.`
+        );
       }
       return {
         status: "ok",
@@ -2182,8 +2353,17 @@ async function resolveIntent(text, context = {}) {
             collection_name: collectionName,
             research_questions: resolvedQuestions,
             prompt_key: "code_pdf_page",
-            context: String(codingLlm.data.context || "").trim(),
-            screening: codingLlm.data.screening === true
+            context: mergeCodingContext(String(codingLlm.data.context || "").trim(), {
+              criticalLens: criticalLensRequested,
+              criticalApproach,
+              personaProfile,
+              theoryPreferences
+            }),
+            screening: codingLlm.data.screening === true,
+            critical_lens: criticalLensRequested,
+            critical_approach: criticalApproach,
+            persona_profile: personaProfile,
+            theory_preferences: theoryPreferences
           }
         }
       };
@@ -2328,18 +2508,21 @@ async function resolveIntent(text, context = {}) {
             else nextArgs[key] = "";
           }
         }
+        normalized.args = nextArgs;
+        if (normalized.targetFunction !== "Verbatim_Evidence_Coding") {
+          normalized.args = applyOptionalPersonalizationToFeatureArgs(raw, normalized.args, schemaArgs);
+        }
         const missingRequired = schemaArgs
           .filter((arg) => arg?.required)
           .map((arg) => String(arg?.key || ""))
           .filter(Boolean)
           .filter((key) => {
-            const v = nextArgs[key];
+            const v = normalized.args?.[key];
             if (Array.isArray(v)) return v.length === 0;
             if (typeof v === "string") return v.trim().length === 0;
             if (v && typeof v === "object") return Object.keys(v).length === 0;
             return v === null || v === undefined;
           });
-        normalized.args = nextArgs;
         if (missingRequired.length > 0) {
           normalized.needsClarification = true;
           normalized.clarificationQuestions = missingRequired.map((k) => `Please provide required argument: ${k}.`);
