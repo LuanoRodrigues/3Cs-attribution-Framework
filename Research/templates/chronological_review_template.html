@@ -144,8 +144,44 @@
     </div>
   </div>
 
+  <h3>2.5 Methodology Blueprint and Placeholder Checklist</h3>
+  <div class="subsection-content">
+    <div class="ai-generated-content">
+      {% if methodology_blueprint_html %}
+        {{ methodology_blueprint_html | safe }}
+      {% else %}
+        <div class="callout">
+          <strong>Fallback Timeline Protocol Blueprint.</strong> Apply this protocol if no prebuilt methodology blueprint was provided.
+        </div>
+        <ol>
+          <li><strong>Time waves:</strong> define chronological waves and assign sources to each wave using explicit year bounds.</li>
+          <li><strong>Turning points:</strong> identify events/publications that shift methods, definitions, or evidentiary standards.</li>
+          <li><strong>Continuity/discontinuity criteria:</strong> document what stays stable versus what changes across adjacent waves.</li>
+          <li><strong>Evidence thresholds:</strong> require multi-source support before making wave-level claims.</li>
+        </ol>
+      {% endif %}
+    </div>
+    <div class="ai-generated-content">
+      <h4>Placeholder Checklist</h4>
+      {% if methodology_placeholders_resolved %}
+        <p><strong>Status:</strong> Resolved. No methodology placeholder tokens detected.</p>
+      {% else %}
+        <p><strong>Status:</strong> Unresolved placeholders detected. Resolve these tokens before finalizing.</p>
+      {% endif %}
+      {% if methodology_placeholder_tokens %}
+        <ul>
+          {% for token in methodology_placeholder_tokens %}
+            <li><span class="key-term">{{ token }}</span></li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <span class="placeholder-note">[No placeholder tokens reported.]</span>
+      {% endif %}
+    </div>
+  </div>
+
   {% if quality_appraisal_note %}
-  <h3>2.5 Quality Appraisal (Optional)</h3>
+  <h3>2.6 Quality Appraisal (Optional)</h3>
   <div class="subsection-content ai-generated-content">
     {{ quality_appraisal_note | safe }}
   </div>

@@ -117,7 +117,41 @@
     {% endif %}
   </div>
 
-  <h3>2.3 Corpus Construction (Transparent but Non-Exhaustive)</h3>
+  <h3>2.3 Methodology Blueprint</h3>
+  <div class="subsection-content">
+    <div class="ai-generated-content">
+      {% if methodology_blueprint_html %}
+        {{ methodology_blueprint_html | safe }}
+      {% else %}
+        <div class="callout"><strong>Critical-review protocol blueprint.</strong> The review should explicitly define lens, corpus logic, and critique procedure before synthesis.</div>
+        <ol>
+          <li><strong>Critical lens:</strong> specify conceptual, inferential, evidentiary, and normative criteria used for appraisal.</li>
+          <li><strong>Selection rationale:</strong> justify why included works are epistemically central or contested.</li>
+          <li><strong>Dialectical comparison:</strong> compare strongest competing arguments and isolate disagreement points.</li>
+          <li><strong>Normative assumptions:</strong> identify value commitments embedded in framing and conclusions.</li>
+          <li><strong>Counter-hegemonic checks:</strong> test for exclusions, silences, and representational asymmetries.</li>
+        </ol>
+      {% endif %}
+    </div>
+
+    <h4>Placeholder Checklist</h4>
+    {% if methodology_placeholders_resolved %}
+      <p><span class="score-badge">Resolved</span> Methodology placeholders are fully resolved.</p>
+    {% else %}
+      <p><span class="score-badge">Pending</span> Resolve the following methodology placeholders:</p>
+      {% if methodology_placeholder_tokens %}
+        <ul>
+          {% for token in methodology_placeholder_tokens %}
+            <li><span class="key-term">[{{ token }}]</span></li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <span class="placeholder-note">[Placeholder tokens not detected; verify methodology blueprint content.]</span>
+      {% endif %}
+    {% endif %}
+  </div>
+
+  <h3>2.4 Corpus Construction (Transparent but Non-Exhaustive)</h3>
   <div class="subsection-content">
     <p>This critical review is typically selective rather than exhaustive: it prioritizes influential, contested, or methodologically revealing works.</p>
     <div class="ai-generated-content">
@@ -143,7 +177,7 @@
   </div>
 
   {% if appraisal_method_note %}
-  <h3>2.4 Appraisal Method (Optional)</h3>
+  <h3>2.5 Appraisal Method (Optional)</h3>
   <div class="subsection-content ai-generated-content">
     {{ appraisal_method_note | safe }}
   </div>

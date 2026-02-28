@@ -187,6 +187,36 @@
         {% endif %}
       </p>
 
+      <p><strong>Methodology blueprint (premade protocol scaffold):</strong><br>
+        {% if methodology_blueprint_html %}
+          {{ methodology_blueprint_html | safe }}
+        {% else %}
+          <div class="callout">
+            <strong>Fallback meta-analysis protocol blueprint:</strong>
+            <ol>
+              <li><strong>Effect-size choice:</strong> Use a pre-specified comparable effect metric and enforce a consistent effect direction convention.</li>
+              <li><strong>Heterogeneity model:</strong> Use random-effects synthesis with inverse-variance weighting and report I<sup>2</sup>, &tau;<sup>2</sup>, and Q.</li>
+              <li><strong>Bias checks:</strong> Inspect small-study effects with funnel-style diagnostics and transparent narrative caveats.</li>
+              <li><strong>Sensitivity analyses:</strong> Run leave-one-out, outlier-aware, and alternative-estimator analyses.</li>
+              <li><strong>Subgroup/meta-regression plan:</strong> Predefine effect modifiers and assess subgroup/meta-regression only when support is sufficient.</li>
+            </ol>
+          </div>
+        {% endif %}
+      </p>
+
+      <p><strong>Methodology placeholder checklist:</strong></p>
+      <ul>
+        {% if methodology_placeholders_resolved %}
+          <li>All methodology placeholders resolved.</li>
+        {% else %}
+          {% for token in methodology_placeholder_tokens %}
+            <li><code>{{ token }}</code></li>
+          {% else %}
+            <li>Unresolved placeholders exist, but no tokens were captured.</li>
+          {% endfor %}
+        {% endif %}
+      </ul>
+
       <p><strong>Network meta-analysis / network synthesis (optional):</strong><br>
         {% if nma_methods %}
           {{ nma_methods | safe }}

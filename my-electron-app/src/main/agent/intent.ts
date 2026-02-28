@@ -11,7 +11,9 @@ export type IntentPayload = {
     | "workflow.bibliographic_review_pipeline"
     | "workflow.chronological_review_pipeline"
     | "workflow.critical_review_pipeline"
-    | "workflow.meta_analysis_review_pipeline";
+    | "workflow.meta_analysis_review_pipeline"
+    | "workflow.grounded_theory_review_pipeline"
+    | "workflow.braun_clarke_thematic_analysis_pipeline";
   targetFunction?: string;
   confidence: number;
   riskLevel: "safe" | "confirm" | "high";
@@ -24,6 +26,29 @@ const clean = (value: unknown): string => String(value || "").trim();
 const normalize = (value: unknown): string => clean(value).toLowerCase();
 const DEFAULT_VERBATIM_DIR_BASE = resolveVerbatimAnalyseDirBase();
 const COLLECTION_KEY_RE = /^[A-Za-z0-9]{8}$/;
+const CRITICAL_LENS_APPROACHES = [
+  "critical_security_studies",
+  "post_structural",
+  "feminist_ir",
+  "postcolonial",
+  "decolonial",
+  "constructivist_critical",
+  "practice_theory"
+];
+const THEORY_KEYWORDS = [
+  "securitization theory",
+  "practice theory",
+  "assemblage theory",
+  "deterrence theory",
+  "realism",
+  "neorealism",
+  "liberal institutionalism",
+  "constructivism",
+  "critical theory",
+  "feminist ir",
+  "postcolonial theory",
+  "decolonial theory"
+];
 
 const isBlankDirBase = (value: unknown): boolean => {
   const normalized = clean(value);
@@ -177,6 +202,59 @@ function parseResearchQuestionsInput(text: string): string[] {
     ? raw.split(/[;\n]+/).map((s) => s.replace(/^\s*[-*]\s*/, "").trim()).filter(Boolean)
     : [];
   return (numbered.length ? numbered : fallback).slice(0, 5);
+}
+
+function inferCriticalApproach(text = ""): string {
+  const raw = normalize(text);
+  if (!raw) return "";
+  const patterns: Array<[string, RegExp]> = [
+    ["critical_security_studies", /\bcritical security studies\b/],
+    ["post_structural", /\bpost[_-\s]?structural\b/],
+    ["feminist_ir", /\bfeminist (ir|international relations)\b/],
+    ["postcolonial", /\bpost[-\s]?colonial\b/],
+    ["decolonial", /\bdecolonial\b/],
+    ["constructivist_critical", /\bconstructiv(?:ist|ism)\b/],
+    ["practice_theory", /\bpractice theory\b/]
+  ];
+  for (const [name, rx] of patterns) {
+    if (rx.test(raw)) return name;
+  }
+  return "";
+}
+
+function inferPersonaProfile(text = ""): string {
+  const raw = String(text || "");
+  const m =
+    raw.match(/(?:persona|voice|style)\s*[:=]\s*([^\n;,.]+)/i) ||
+    raw.match(/\b(as|like)\s+a?\s*([a-z][a-z0-9_\-\s]{3,60})/i);
+  if (!m) return "";
+  return clean(m[2] || m[1] || "").slice(0, 80);
+}
+
+function inferTheoryPreferences(text = ""): string[] {
+  const low = normalize(text);
+  if (!low) return [];
+  const out: string[] = [];
+  for (const t of THEORY_KEYWORDS) {
+    if (low.includes(normalize(t))) out.push(t);
+  }
+  return out.slice(0, 8);
+}
+
+function parseReviewPersonalization(rawText: string): {
+  critical_lens: boolean;
+  critical_approach: string;
+  persona_profile: string;
+  theory_preferences: string[];
+} {
+  const raw = clean(rawText);
+  const critical_lens = /\bcritical(?:[_\s-]?lens| security studies| perspective)\b/i.test(raw);
+  return {
+    critical_lens,
+    critical_approach: inferCriticalApproach(raw),
+    persona_profile: inferPersonaProfile(raw),
+    theory_preferences: inferTheoryPreferences(raw)
+  };
 }
 
 function generateResearchQuestionsFromTopic(topic: string): string[] {
@@ -340,9 +418,15 @@ function parseSystematicReviewPipelineIntent(text: string, context: Record<strin
   const inclusion = parseTextListSection(raw, ["inclusion", "inclusion criteria", "include"]);
   const exclusion = parseTextListSection(raw, ["exclusion", "exclusion criteria", "exclude"]);
   const reviewerCount = parseReviewerCountFromText(raw);
+  const personalization = parseReviewPersonalization(raw);
   const clarification: string[] = [];
   if (!collectionName && !collectionKey) clarification.push("Select a Zotero collection before creating the systematic review pipeline.");
   if (researchQuestions.length < 3) clarification.push("Provide 3 to 5 research questions.");
+  if (personalization.critical_lens && !personalization.critical_approach) {
+    clarification.push(
+      `Critical lens requested. Optional: choose one approach (${CRITICAL_LENS_APPROACHES.join(", ")}), or reply 'no specific approach'.`
+    );
+  }
   return {
     intentId: "workflow.systematic_review_pipeline",
     targetFunction: "workflow-systematic-review-pipeline",
@@ -358,7 +442,11 @@ function parseSystematicReviewPipelineIntent(text: string, context: Record<strin
       research_questions: researchQuestions.slice(0, 5),
       inclusion_criteria: inclusion,
       exclusion_criteria: exclusion,
-      prisma_checklist_path: "Research/Systematic_review/prisma_check_list.html"
+      prisma_checklist_path: "Research/Systematic_review/prisma_check_list.html",
+      critical_lens: personalization.critical_lens,
+      critical_approach: personalization.critical_approach,
+      persona_profile: personalization.persona_profile,
+      theory_preferences: personalization.theory_preferences
     }
   };
 }
@@ -371,38 +459,71 @@ function parseNonSystematicReviewPipelineIntent(text: string, context: Record<st
   const isChronological = /\b(chronological\s+review|timeline\s+review|historical\s+review)\b/.test(low);
   const isCritical = /\b(critical\s+review|critical\s+lens\s+review)\b/.test(low);
   const isMeta = /\b(meta[\s-]*analysis(?:\s+review)?|meta\s+analysis)\b/.test(low);
-  if (!isLiterature && !isBibliographic && !isChronological && !isCritical && !isMeta) return null;
-  const reviewType: "literature" | "bibliographic" | "chronological" | "critical" | "meta_analysis" =
-    isBibliographic ? "bibliographic" : isChronological ? "chronological" : isCritical ? "critical" : isMeta ? "meta_analysis" : "literature";
+  const isGroundedTheory = /\b(grounded\s+theory|grounded[_\s-]?theory)\b/.test(low);
+  const isBraunClarke = /\b(braun[\s-]*clarke|reflexive\s+thematic\s+analysis|thematic\s+analysis)\b/.test(low);
+  if (!isLiterature && !isBibliographic && !isChronological && !isCritical && !isMeta && !isGroundedTheory && !isBraunClarke) return null;
+  const reviewType:
+    | "literature"
+    | "bibliographic"
+    | "chronological"
+    | "critical"
+    | "meta_analysis"
+    | "grounded_theory"
+    | "braun_clarke_thematic_analysis" =
+    isGroundedTheory
+      ? "grounded_theory"
+      : isBraunClarke
+        ? "braun_clarke_thematic_analysis"
+        : isBibliographic
+          ? "bibliographic"
+          : isChronological
+            ? "chronological"
+            : isCritical
+              ? "critical"
+              : isMeta
+                ? "meta_analysis"
+                : "literature";
   const collectionName = clean(context.selectedCollectionName || inferCollectionNameFromContextPath(context));
   const collectionKey = clean(context.selectedCollectionKey);
   const parsedQuestions = parseResearchQuestionsInput(raw);
   const topic = extractTopic(raw);
   const generatedQuestions = generateResearchQuestionsFromTopic(topic);
   const researchQuestions = (parsedQuestions.length ? parsedQuestions : generatedQuestions).slice(0, 5);
+  const personalization = parseReviewPersonalization(raw);
   const clarification: string[] = [];
   if (!collectionName && !collectionKey) clarification.push(`Select a Zotero collection before creating the ${reviewType} review pipeline.`);
   if (researchQuestions.length < 3) clarification.push("Provide 3 to 5 research questions.");
+  if (personalization.critical_lens && !personalization.critical_approach) {
+    clarification.push(
+      `Critical lens requested. Optional: choose one approach (${CRITICAL_LENS_APPROACHES.join(", ")}), or reply 'no specific approach'.`
+    );
+  }
   const intentIdByType = {
     literature: "workflow.literature_review_pipeline",
     bibliographic: "workflow.bibliographic_review_pipeline",
     chronological: "workflow.chronological_review_pipeline",
     critical: "workflow.critical_review_pipeline",
-    meta_analysis: "workflow.meta_analysis_review_pipeline"
+    meta_analysis: "workflow.meta_analysis_review_pipeline",
+    grounded_theory: "workflow.grounded_theory_review_pipeline",
+    braun_clarke_thematic_analysis: "workflow.braun_clarke_thematic_analysis_pipeline"
   } as const;
   const targetByType = {
     literature: "workflow-literature-review-pipeline",
     bibliographic: "workflow-bibliographic-review-pipeline",
     chronological: "workflow-chronological-review-pipeline",
     critical: "workflow-critical-review-pipeline",
-    meta_analysis: "workflow-meta-analysis-review-pipeline"
+    meta_analysis: "workflow-meta-analysis-review-pipeline",
+    grounded_theory: "workflow-grounded-theory-review-pipeline",
+    braun_clarke_thematic_analysis: "workflow-braun-clarke-thematic-analysis-pipeline"
   } as const;
   const templateByType = {
     literature: "Research/templates/literature_review.html",
     bibliographic: "Research/templates/bibliographic.html",
     chronological: "Research/templates/chronological_review_template.html",
     critical: "Research/templates/critical_review_template.html",
-    meta_analysis: "Research/templates/meta_analysis_template.html"
+    meta_analysis: "Research/templates/meta_analysis_template.html",
+    grounded_theory: "Research/templates/grounded_theory_report_template.html",
+    braun_clarke_thematic_analysis: "Research/templates/braun_clarke_thematic_analysis_template.html"
   } as const;
   return {
     intentId: intentIdByType[reviewType],
@@ -417,7 +538,11 @@ function parseNonSystematicReviewPipelineIntent(text: string, context: Record<st
       collection_key: collectionKey,
       items_count: Number(context.itemsCount || 0),
       research_questions: researchQuestions,
-      template_path: templateByType[reviewType]
+      template_path: templateByType[reviewType],
+      critical_lens: personalization.critical_lens,
+      critical_approach: personalization.critical_approach,
+      persona_profile: personalization.persona_profile,
+      theory_preferences: personalization.theory_preferences
     }
   };
 }

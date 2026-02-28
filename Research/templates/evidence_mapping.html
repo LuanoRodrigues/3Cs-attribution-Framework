@@ -116,7 +116,38 @@
   </div>
 
   <div class="subsection-content">
-    <h3>2.2 Dimensions and Labels</h3>
+    <h3>2.2 Methodology Blueprint</h3>
+    {% if methodology_blueprint_html %}
+      {{ methodology_blueprint_html | safe }}
+    {% else %}
+      <div class="callout">
+        <strong>Fallback evidence-map protocol blueprint:</strong>
+        <ul>
+          <li><strong>Scope boundaries:</strong> define in-scope units, out-of-scope exclusions, and boundary assumptions.</li>
+          <li><strong>Coding dimensions:</strong> use fixed dimension labels with explicit definitions and allowed values.</li>
+          <li><strong>Matrix logic:</strong> aggregate coded evidence into a row x column density map to reveal concentrations and gaps.</li>
+          <li><strong>Map-to-meta eligibility:</strong> mark only cells that meet minimum study count and quantitative signal checks.</li>
+        </ul>
+      </div>
+    {% endif %}
+
+    <h4>Methodology Placeholder Checklist</h4>
+    {% if methodology_placeholders_resolved %}
+      <p class="small"><strong>Status:</strong> All tracked methodology placeholders are resolved.</p>
+    {% else %}
+      <div class="callout">
+        <strong>Resolve before finalization:</strong>
+        <ul>
+          {% for token in methodology_placeholder_tokens %}
+            <li><span class="key-term">{{ token }}</span></li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="subsection-content">
+    <h3>2.3 Dimensions and Labels</h3>
     <p class="small">This is the scalable core: a dimensioned codebook the LLM can fill and you can later re-slice without rewriting the template.</p>
 
     {% if map_dimensions %}
@@ -151,7 +182,7 @@
   </div>
 
   <div class="subsection-content">
-    <h3>2.3 Corpus Assembly and Provenance</h3>
+    <h3>2.4 Corpus Assembly and Provenance</h3>
     <div class="ai-generated-content">
       {% if sources_consulted %}
         <p><strong>Sources consulted:</strong><br>{{ sources_consulted | replace('\n', '<br>') | safe }}</p>

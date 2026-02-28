@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ manuscript_title or topic }}</title>
+
+  <!--
+    ISR Analytical Essay Template (HTML + Jinja2)
+
+    Design goals:
+    - Enforce ISR-facing structural requirements via layout and placeholders.
+    - Support a blinded manuscript mode (double-blind review) by removing identifying metadata.
+    - Make figures accessible by requiring alt text and avoiding “color-only” cues.
+
+    Notes:
+    - ISR’s *submission* is typically in Word/PDF via ScholarOne; this HTML template is intended
+      for a reproducible rendering pipeline and internal QA before submission.
+  -->
+
+  <style>
+    /* ==============================
+       Base typography / layout
+       ============================== */
+    :root {
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --accent: #0D47A1;
+      --accent2: #1E88E5;
+      --rule: #e5e7eb;
+      --bg: #ffffff;
+      --bg-soft: #f8fafc;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      margin: 0;
+      padding: 28px;
+    }
+
+    .page {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    /*
+      Spacing rule (ISR): manuscript must be 1.5 (preferred) or double spaced.
+      In HTML we approximate via line-height.
+    */
+    .manuscript {
+      line-height: 1.5;
+      font-size: 12pt;
+    }
+
+    h1, h2, h3, h4 {
+      font-family: Georgia, "Times New Roman", Times, serif;
+      color: var(--accent);
+      line-height: 1.25;
+      margin: 1.7em 0 0.7em;
+      font-weight: 700;
+    }
+
+    h1 {
+      text-align: center;
+      margin-top: 0.6em;
+      font-size: 22pt;
+    }
+
+    h2 {
+      font-size: 16pt;
+      border-bottom: 2px solid #bbdefb;
+      padding-bottom: 6px;
+    }
+
+    h3 {
+      font-size: 13.5pt;
+      border-bottom: 1px solid #e3f2fd;
+      padding-bottom: 4px;
+      color: var(--accent2);
+      font-family: Georgia, "Times New Roman", Times, serif;
+    }
+
+    h4 {
+      font-size: 12pt;
+      color: var(--accent2);
+      font-family: Arial, Helvetica, sans-serif;
+      font-weight: 700;
+    }
+
+    p {
+      margin: 0 0 12px;
+      text-align: justify;
+    }
+
+    a { color: var(--accent2); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .muted { color: var(--muted); }
+    .small { font-size: 0.92em; }
+
+    /* ==============================
+       Title page / metadata
+       ============================== */
+    .title-page {
+      page-break-after: always;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--rule);
+      margin-bottom: 28px;
+    }
+
+    .meta-block {
+      margin: 16px 0 0;
+      font-size: 0.95em;
+      color: #374151;
+    }
+
+    .meta-row { margin: 6px 0; }
+
+    .badge {
+      display: inline-block;
+      border: 1px solid #c7d2fe;
+      border-radius: 999px;
+      padding: 2px 10px;
+      font-size: 0.85em;
+      background: #eef2ff;
+      color: #1e3a8a;
+      margin-left: 6px;
+    }
+
+    /* ==============================
+       Quotations
+       ============================== */
+    /*
+      ISR quotation rule: short quotes in quotation marks; longer quotes indented.
+      Use <blockquote> for long quotations.
+    */
+    blockquote {
+      margin: 14px 0 14px 24px;
+      padding: 0 0 0 14px;
+      border-left: 3px solid #e5e7eb;
+      color: #111827;
+      background: transparent;
+    }
+
+    blockquote p { margin-bottom: 10px; }
+
+    /* ==============================
+       Figures and tables
+       ============================== */
+    figure {
+      margin: 18px auto;
+      padding: 12px 12px 8px;
+      border: 1px solid var(--rule);
+      background: var(--bg-soft);
+    }
+
+    figure img {
+      max-width: 100%;
+      height: auto;
+      border: 1px solid #eef2f7;
+      display: block;
+      margin: 0 auto 8px;
+    }
+
+    figcaption {
+      font-size: 0.92em;
+      color: #374151;
+      line-height: 1.45;
+      text-align: left;
+    }
+
+    figcaption em { color: #4b5563; }
+
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 18px 0;
+      font-size: 0.92em;
+    }
+
+    table.data-table th, table.data-table td {
+      border: 1px solid #d1d5db;
+      padding: 8px 10px;
+      vertical-align: top;
+      text-align: left;
+    }
+
+    table.data-table th {
+      background: #eff6ff;
+      font-weight: 700;
+    }
+
+    /* ==============================
+       Footnotes
+       ============================== */
+    .footnotes {
+      margin-top: 26px;
+      border-top: 1px solid var(--rule);
+      padding-top: 12px;
+      font-size: 0.92em;
+      color: #374151;
+    }
+
+    .footnotes ol { padding-left: 20px; }
+    .footnotes li { margin: 0 0 10px; }
+
+    sup a {
+      font-size: 0.9em;
+      text-decoration: none;
+    }
+
+    .backref {
+      font-family: var(--mono);
+      font-size: 0.9em;
+      margin-left: 6px;
+    }
+
+    /* ==============================
+       References
+       ============================== */
+    .references {
+      margin-top: 26px;
+      border-top: 1px solid var(--rule);
+      padding-top: 12px;
+    }
+
+    .references ol { padding-left: 20px; }
+    .references li {
+      margin: 0 0 10px;
+      padding-left: 18px;
+      text-indent: -18px; /* hanging indent for Chicago-style bibliography */
+    }
+
+    /* ==============================
+       Internal checklist (optional)
+       ============================== */
+    .internal-checklist {
+      margin-top: 30px;
+      padding: 14px 16px;
+      border: 1px dashed #93c5fd;
+      background: #f0f9ff;
+      color: #0f172a;
+    }
+
+    .internal-checklist h3 {
+      border: none;
+      padding-bottom: 0;
+      margin-top: 0;
+      color: #0f172a;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    .internal-checklist code {
+      font-family: var(--mono);
+      font-size: 0.95em;
+    }
+
+  </style>
+</head>
+<body>
+<div class="page">
+
+  {# ==============================
+     Macros
+     ============================== #}
+  {% macro render_figure(fig, number) -%}
+    <figure id="fig{{ number }}">
+      {% if fig.src %}
+        <img src="{{ fig.src }}" alt="{{ fig.alt_text | default('') | e }}" />
+      {% endif %}
+      <figcaption>
+        <strong>Figure {{ number }}.</strong>
+        {{ fig.caption_html | safe }}
+        {% if fig.alt_text %}
+          <br><em>Alt text:</em> {{ fig.alt_text | e }}
+        {% endif %}
+        {% if fig.credit %}
+          <br><span class="muted small">Credit: {{ fig.credit }}</span>
+        {% endif %}
+      </figcaption>
+    </figure>
+  {%- endmacro %}
+
+  {% macro render_table(tbl, number) -%}
+    <div id="tbl{{ number }}">
+      {% if tbl.title %}
+        <p><strong>Table {{ number }}.</strong> {{ tbl.title }}</p>
+      {% endif %}
+      {{ tbl.table_html | safe }}
+      {% if tbl.note_html %}
+        <p class="muted small"><em>Note:</em> {{ tbl.note_html | safe }}</p>
+      {% endif %}
+    </div>
+  {%- endmacro %}
+
+  {# ==============================
+     Title page (recommended as separate upload in ScholarOne)
+     ============================== #}
+  {% if include_title_page and not blinded %}
+    <section class="title-page">
+      <h1>{{ manuscript_title or topic }}</h1>
+
+      <div class="meta-block">
+        {% if authors_list %}
+          <div class="meta-row"><strong>Authors:</strong> {{ authors_list }}</div>
+        {% endif %}
+        {% if affiliation %}
+          <div class="meta-row"><strong>Affiliations:</strong> {{ affiliation }}</div>
+        {% endif %}
+        {% if corresponding_author %}
+          <div class="meta-row"><strong>Corresponding author:</strong> {{ corresponding_author }}</div>
+        {% endif %}
+        {% if word_count %}
+          <div class="meta-row"><strong>Word count (approx.):</strong> {{ word_count }}</div>
+        {% endif %}
+        {% if acknowledgements_html %}
+          <div class="meta-row"><strong>Acknowledgements:</strong><br>{{ acknowledgements_html | safe }}</div>
+        {% endif %}
+        {% if funding_html %}
+          <div class="meta-row"><strong>Funding:</strong><br>{{ funding_html | safe }}</div>
+        {% endif %}
+        {% if disclosures_html %}
+          <div class="meta-row"><strong>Disclosures / COI:</strong><br>{{ disclosures_html | safe }}</div>
+        {% endif %}
+        {% if ai_models_used %}
+          <div class="meta-row"><strong>AI models used (internal):</strong> {{ ai_models_used }} <span class="badge">internal</span></div>
+        {% endif %}
+        {% if generation_date %}
+          <div class="meta-row"><em>Generated:</em> {{ generation_date }}</div>
+        {% endif %}
+      </div>
+
+      {% if keywords %}
+        <div class="meta-block">
+          <div class="meta-row"><strong>Keywords:</strong> {{ keywords | join('; ') }}</div>
+        </div>
+      {% endif %}
+
+      <p class="muted small">
+        <strong>Blinding note:</strong> For double-blind review, submit an anonymized manuscript with no identifying
+        information in the main document, and provide identifying details in a separate title page.
+      </p>
+    </section>
+  {% endif %}
+
+  {# ==============================
+     Main manuscript (blinded by default)
+     ============================== #}
+  <main class="manuscript">
+
+    <h1>{{ manuscript_title or topic }}</h1>
+
+    {% if running_head %}
+      <p class="muted small" style="text-align:center;"><strong>Running head:</strong> {{ running_head }}</p>
+    {% endif %}
+
+    {% if blinded %}
+      <p class="muted small" style="text-align:center;"><em>Blinded manuscript version</em></p>
+    {% endif %}
+
+    <h2>Abstract</h2>
+    <div class="section-content">
+      {{ abstract_html | safe }}
+      {% if keywords %}
+        <p class="small"><strong>Keywords:</strong> {{ keywords | join('; ') }}</p>
+      {% endif %}
+    </div>
+
+    <h2>1. Introduction</h2>
+    <div class="section-content">
+      {{ introduction_html | safe }}
+    </div>
+
+    <h2>2. Literature Mapping and Debate</h2>
+    <div class="section-content">
+      {{ literature_review_html | safe }}
+    </div>
+
+    <h2>3. Analytical Synthesis</h2>
+    <div class="section-content">
+      {{ analysis_html | safe }}
+    </div>
+
+    {% if methods_html %}
+      <h2>4. Analytical Approach (Optional)</h2>
+      <div class="section-content">
+        {{ methods_html | safe }}
+      </div>
+    {% endif %}
+
+    <h2>{{ implications_heading or '4. Implications and New Directions' }}</h2>
+    <div class="section-content">
+      {{ implications_html | safe }}
+    </div>
+
+    <h2>{{ conclusion_heading or '5. Conclusion' }}</h2>
+    <div class="section-content">
+      {{ conclusion_html | safe }}
+    </div>
+
+    {% if supplementary_note_html %}
+      <h2>Supplementary Files</h2>
+      <div class="section-content">
+        {{ supplementary_note_html | safe }}
+      </div>
+    {% endif %}
+
+    {# ------------------------------
+       Optional asset appendix.
+       NOTE: ISR asks figures/tables be inline near first mention.
+       Keep this OFF for submission; helpful for internal QA only.
+       ------------------------------ #}
+    {% if render_assets_appendix %}
+      <h2>Figures and Tables (Internal Appendix)</h2>
+      <div class="section-content">
+        {% if figures %}
+          <h3>Figures</h3>
+          {% for fig in figures %}
+            {{ render_figure(fig, loop.index) }}
+          {% endfor %}
+        {% endif %}
+
+        {% if tables %}
+          <h3>Tables</h3>
+          {% for tbl in tables %}
+            {{ render_table(tbl, loop.index) }}
+          {% endfor %}
+        {% endif %}
+      </div>
+    {% endif %}
+
+    <h2>Footnotes</h2>
+    <section class="footnotes" id="footnotes">
+      {# ISR rule: all notes must be footnotes (not endnotes). #}
+      <ol>
+        {% for fn in footnotes %}
+          <li id="fn{{ loop.index }}">{{ fn | safe }} <a class="backref" href="#fnref{{ loop.index }}">↩</a></li>
+        {% else %}
+          <li>No footnotes provided.</li>
+        {% endfor %}
+      </ol>
+    </section>
+
+    <h2>References</h2>
+    <section class="references" id="references">
+      {# ISR rule: author–date citation style; references section required. #}
+      {% if references_list %}
+        <ol>
+          {% for ref in references_list %}
+            <li>{{ ref.html_string | safe }}</li>
+          {% endfor %}
+        </ol>
+      {% else %}
+        <p class="muted">[References placeholder — supply formatted references.]</p>
+      {% endif %}
+    </section>
+
+    {% if include_internal_checklist %}
+      <section class="internal-checklist">
+        <h3>Internal ISR compliance checklist (remove before submission)</h3>
+        <ul>
+          <li><strong>Fit (Analytical Essay):</strong> Should synthesize/integrate scholarship, clarify debates, provide new perspectives, and identify new research directions (not typically hypothesis-testing, purely historical, or policy analysis).</li>
+          <li><strong>Word limit:</strong> ≤ <code>15000</code> words (including references). Track word count in pipeline.</li>
+          <li><strong>Spacing:</strong> 1.5 (preferred) or double spaced throughout, excluding figures/tables. (HTML approximates via <code>line-height: 1.5</code>.)</li>
+          <li><strong>Quotations:</strong> Short quotes in quotation marks; long quotes indented. Bracket edits; use ellipses for omissions; indicate “emphasis added.”</li>
+          <li><strong>Notes:</strong> Footnotes only; no endnotes.</li>
+          <li><strong>Figures/tables:</strong> Inline near first mention; tables legible; refer to “supplementary files” (not “online appendixes”).</li>
+          <li><strong>Self-citation blinding:</strong> Avoid placeholders like “Author”; write self-citations in third person; quote your own prior text explicitly if directly quoted.</li>
+          <li><strong>Citations:</strong> Chicago author–date with page numbers even for paraphrases (e.g., <code>(Spruyt 1994, 63–67)</code>).</li>
+          <li><strong>Chicago style basics:</strong> US spelling; serial comma; spell out whole numbers 1–100; define abbreviations at first mention in abstract and again in text; follow ISR reference formatting (see ISR style checklist).</li>
+          <li><strong>Citation diversity:</strong> ISR encourages authors to consider evidence on gender citation gaps in IR scholarship while finalizing manuscripts.</li>
+          <li><strong>Figure accessibility (OUP):</strong>
+            <ul>
+              <li>Do not communicate meaning only through colour; avoid referring to “the red line” as the only cue.</li>
+              <li>Ensure WCAG contrast: non-text objects ≥ 3:1; text ≥ 4.5:1 (normal) / 3:1 (large).</li>
+              <li>Provide alt text alongside each figure caption; alt text should be objective, standalone (avoid “Image of…”), and end with a period.</li>
+            </ul>
+          </li>
+        </ul>
+      </section>
+    {% endif %}
+
+  </main>
+</div>
+</body>
+</html>

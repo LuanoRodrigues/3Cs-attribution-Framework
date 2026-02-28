@@ -104,6 +104,234 @@ def _derive_periods(years: list[int]) -> list[tuple[str, tuple[int, int]]]:
     return [(f"{labels[i]} ({a}-{b})", (a, b)) for i, (a, b) in enumerate(bounds)]
 
 
+def _extract_json_object(text: str) -> dict[str, Any] | None:
+    raw = _clean_llm_html(str(text or "")).strip()
+    if not raw:
+        return None
+    candidates = [raw]
+    m = re.search(r"\{[\s\S]*\}", raw)
+    if m:
+        candidates.append(m.group(0))
+    for c in candidates:
+        try:
+            parsed = json.loads(c)
+            if isinstance(parsed, dict):
+                return parsed
+        except Exception:
+            continue
+    return None
+
+
+def _normalize_text_key(text: str) -> str:
+    t = str(text or "").lower()
+    t = re.sub(r"<[^>]+>", " ", t)
+    t = re.sub(r"\s+", " ", t).strip()
+    return t
+
+
+def _validate_wave_payload(
+    waves: list[dict[str, Any]],
+    *,
+    min_year: int,
+    max_year: int,
+) -> tuple[bool, str]:
+    if not (2 <= len(waves) <= 4):
+        return False, "Wave count must be between 2 and 4."
+    parsed: list[tuple[str, int, int]] = []
+    for w in waves:
+        if not isinstance(w, dict):
+            return False, "Each wave must be an object."
+        try:
+            s = int(w.get("start_year"))
+            e = int(w.get("end_year"))
+        except Exception:
+            return False, "Each wave must include integer start_year/end_year."
+        if s > e:
+            s, e = e, s
+        if s < min_year or e > max_year:
+            return False, f"Wave years must stay inside [{min_year}, {max_year}]."
+        label = str(w.get("label") or "").strip()
+        if not label:
+            return False, "Each wave needs a non-empty label."
+        parsed.append((label, s, e))
+    parsed = sorted(parsed, key=lambda x: (x[1], x[2], x[0]))
+    if parsed[0][1] > min_year or parsed[-1][2] < max_year:
+        return False, "Waves must cover the full date range."
+    for i in range(1, len(parsed)):
+        prev = parsed[i - 1]
+        cur = parsed[i]
+        if cur[1] <= prev[2]:
+            return False, "Waves must be strictly non-overlapping and ordered."
+    return True, ""
+
+
+def _curate_period_evidence(
+    *,
+    by_period: dict[str, list[dict[str, Any]]],
+    theme_counts: dict[str, int],
+    max_per_period: int = 28,
+) -> dict[str, list[dict[str, Any]]]:
+    top_theme_keys = {k for k, _ in sorted(theme_counts.items(), key=lambda kv: (-kv[1], kv[0]))[:12]}
+    curated: dict[str, list[dict[str, Any]]] = {}
+    for label, rows in by_period.items():
+        seen: set[str] = set()
+        ranked_rows: list[tuple[int, dict[str, Any]]] = []
+        for r in rows:
+            quote = str(r.get("quote") or "").strip()
+            if not quote:
+                continue
+            key = f"{str(r.get('item_key') or '').strip()}|{_normalize_text_key(quote)[:220]}"
+            if key in seen:
+                continue
+            seen.add(key)
+            theme = str(r.get("theme") or "uncategorized").strip()
+            score = 0
+            if theme in top_theme_keys:
+                score += 3
+            q_len = len(quote)
+            if 120 <= q_len <= 460:
+                score += 2
+            elif q_len > 460:
+                score += 1
+            if str(r.get("dqid") or "").strip():
+                score += 1
+            ranked_rows.append((score, r))
+        ranked_rows.sort(key=lambda x: (-x[0], -len(str(x[1].get("quote") or "")), str(x[1].get("dqid") or "")))
+        curated[label] = [r for _, r in ranked_rows[:max_per_period]]
+    return curated
+
+
+def _ai_define_waves(
+    *,
+    collection_name: str,
+    years: list[int],
+    year_counter: Counter[int],
+    theme_counts: dict[str, int],
+    by_year_theme_hints: dict[int, list[tuple[str, int]]],
+    model: str,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    ys = sorted({y for y in years if isinstance(y, int)})
+    if not ys:
+        return [], {"attempts": [], "selected_source": "fallback_empty_years"}
+    min_y, max_y = ys[0], ys[-1]
+    target_max = max(2, min(4, len(ys)))
+    payload = {
+        "collection_name": collection_name,
+        "date_range": {"start": min_y, "end": max_y},
+        "years_present": ys,
+        "year_counts": [{"year": y, "count": int(year_counter.get(y, 0))} for y in ys],
+        "top_themes_global": [{"theme": _humanize_theme_tokens(k), "count": int(v)} for k, v in list(theme_counts.items())[:20]],
+        "top_themes_by_year": {
+            str(y): [{"theme": _humanize_theme_tokens(t), "count": int(c)} for t, c in by_year_theme_hints.get(y, [])]
+            for y in ys
+        },
+    }
+    instruction = (
+        "Split the timeline into 2 to 4 chronological waves and assign one dominant debate cluster per wave. "
+        "Output strict JSON with this schema only: "
+        "{\"waves\":[{\"label\":\"...\",\"start_year\":YYYY,\"end_year\":YYYY,\"debate_cluster\":\"...\"}]}. "
+        "Waves must cover the full range, be non-overlapping, and be ordered by year."
+    )
+    prompt = (
+        "SECTION_NAME\nai_wave_split\n\n"
+        f"INSTRUCTION\n{instruction}\n\n"
+        f"CONTEXT_JSON\n{json.dumps(payload, ensure_ascii=False, indent=2)}\n\n"
+        "STYLE_GUARD\nReturn JSON only. No markdown, no commentary.\n\n"
+        "Return only raw JSON."
+    )
+    attempts_log: list[dict[str, Any]] = []
+    last_raw = ""
+    current_prompt = prompt
+    for attempt in range(1, 4):
+        batch = _run_grouped_batch_sections(
+            collection_name=f"{collection_name}_wave_split_attempt_{attempt}",
+            model=model,
+            function_name="chronological_review_section_writer",
+            section_prompts=[("ai_wave_split", current_prompt)],
+        )
+        raw = str(batch["outputs"].get("ai_wave_split", "") or "")
+        last_raw = raw
+        parsed = _extract_json_object(raw)
+        waves = parsed.get("waves") if isinstance(parsed, dict) else None
+        if isinstance(waves, list):
+            ok, err = _validate_wave_payload([x for x in waves if isinstance(x, dict)], min_year=min_y, max_year=max_y)
+            attempts_log.append({"attempt": attempt, "ok": bool(ok), "error": str(err or "")})
+            if ok:
+                out: list[dict[str, Any]] = []
+                for w in waves:
+                    if not isinstance(w, dict):
+                        continue
+                    s = int(w.get("start_year"))
+                    e = int(w.get("end_year"))
+                    if s > e:
+                        s, e = e, s
+                    out.append(
+                        {
+                            "label": str(w.get("label") or f"Wave ({s}-{e})").strip(),
+                            "start_year": max(min_y, s),
+                            "end_year": min(max_y, e),
+                            "debate_cluster": str(w.get("debate_cluster") or "").strip(),
+                        }
+                    )
+                out = sorted(out, key=lambda x: (x["start_year"], x["end_year"], x["label"]))
+                return out, {"attempts": attempts_log, "selected_source": "ai_model"}
+            repair_instruction = (
+                "Repair the JSON to satisfy constraints: 2-4 waves, strict non-overlap, full range coverage, ordered by year, "
+                "schema exactly {\"waves\":[{\"label\":\"...\",\"start_year\":YYYY,\"end_year\":YYYY,\"debate_cluster\":\"...\"}]}. "
+                f"Validation error: {err}"
+            )
+        else:
+            attempts_log.append({"attempt": attempt, "ok": False, "error": "No parseable JSON object with waves list."})
+            repair_instruction = (
+                "Return valid JSON only with schema {\"waves\":[{\"label\":\"...\",\"start_year\":YYYY,\"end_year\":YYYY,\"debate_cluster\":\"...\"}]}. "
+                "2-4 waves, non-overlapping, full range, ordered."
+            )
+        current_prompt = (
+            "SECTION_NAME\nai_wave_split_repair\n\n"
+            f"INSTRUCTION\n{repair_instruction}\n\n"
+            f"ORIGINAL_CONTEXT_JSON\n{json.dumps(payload, ensure_ascii=False, indent=2)}\n\n"
+            f"PREVIOUS_OUTPUT\n{last_raw}\n\n"
+            "STYLE_GUARD\nReturn JSON only. No markdown, no commentary.\n\n"
+            "Return only raw JSON."
+        )
+    return [], {"attempts": attempts_log, "selected_source": "fallback_derive_periods", "last_output_preview": last_raw[:500]}
+
+
+def _rewrite_section_prompt(
+    *,
+    section_name: str,
+    base_instruction: str,
+    payload: dict[str, Any],
+    citation_instruction: str,
+    validation_error: str,
+    previous_output: str,
+) -> str:
+    return (
+        f"SECTION_NAME\n{section_name}\n\n"
+        f"INSTRUCTION\n{base_instruction}\n\n"
+        f"CONTEXT_JSON\n{json.dumps(payload, ensure_ascii=False, indent=2)}\n\n"
+        f"PREVIOUS_OUTPUT\n{previous_output}\n\n"
+        f"VALIDATION_ERROR\n{validation_error}\n\n"
+        "REVISION_RULES\nRewrite the section so it satisfies the validation constraints while preserving evidence grounding.\n"
+        "Keep formal publication prose; remove prompt/meta mentions; tighten redundancy.\n\n"
+        f"CITATION_STYLE\n{citation_instruction}\n\n"
+        "Return only raw HTML snippets, no markdown fences."
+    )
+
+
+def _waves_to_periods(waves: list[dict[str, Any]]) -> list[tuple[str, tuple[int, int]]]:
+    out: list[tuple[str, tuple[int, int]]] = []
+    for w in waves:
+        try:
+            s = int(w["start_year"])
+            e = int(w["end_year"])
+        except Exception:
+            continue
+        label = str(w.get("label") or f"Wave ({s}-{e})").strip()
+        out.append((label, (s, e)))
+    return out
+
+
 def _period_for_year(year: int | None, periods: list[tuple[str, tuple[int, int]]]) -> str:
     if year is None:
         return "Undated corpus"
@@ -184,6 +412,169 @@ def _period_summary_table_html(periods: list[tuple[str, tuple[int, int]]], by_pe
         rows.append(f"<tr><td>{label}</td><td>{a}-{b}</td><td>{len(evs)}</td><td>{top_theme}</td></tr>")
     rows.append("</tbody></table>")
     return "\n".join(rows)
+
+
+def _build_methodology_blueprint_html(
+    periods: list[tuple[str, tuple[int, int]]],
+    by_period: dict[str, list[dict[str, Any]]],
+    period_counter: Counter[str],
+) -> str:
+    wave_lines: list[str] = []
+    for idx, (label, (start_year, end_year)) in enumerate(periods, start=1):
+        evidence_count = len(by_period.get(label, []))
+        item_count = int(period_counter.get(label, 0))
+        wave_lines.append(
+            (
+                f"<li><strong>Wave {idx}: {label}</strong> ({start_year}-{end_year})"
+                f" with {item_count} items and {evidence_count} coded evidence units.</li>"
+            )
+        )
+
+    min_evidence_threshold = max(2, min(10, max(1, len(periods)) * 2))
+    return "\n".join(
+        [
+            "<div class='callout'>",
+            "<strong>Methodology Blueprint (Periodization Protocol).</strong> Use this as the operational protocol for periodized analysis and interpretation.",
+            "</div>",
+            "<ol>",
+            "<li><strong>Time-wave periodization:</strong> Treat each defined period as a distinct analytical wave and compare trajectories wave-to-wave.",
+            f"<ul>{''.join(wave_lines) if wave_lines else '<li>No dated waves available; use fallback timeline protocol.</li>'}</ul></li>",
+            "<li><strong>Turning-point detection:</strong> Mark candidate turning points when concept definitions, methods, or evidence standards materially shift relative to the prior wave.</li>",
+            "<li><strong>Continuity/discontinuity criteria:</strong> Classify claims as continuity when constructs and methods remain stable across adjacent waves; classify discontinuity when at least one core construct or method family changes substantively.</li>",
+            f"<li><strong>Evidence thresholds:</strong> Treat an interpretation as wave-level when supported by at least {min_evidence_threshold} distinct coded evidence units and at least 2 independent items where available.</li>",
+            "</ol>",
+        ]
+    )
+
+
+def _extract_methodology_placeholder_tokens(text: str) -> list[str]:
+    if not text:
+        return []
+    patterns = [
+        r"\{\{\s*([A-Za-z0-9_]+)\s*\}\}",
+        r"\[\[\s*([A-Za-z0-9_]+)\s*\]\]",
+        r"__([A-Za-z0-9_]+)__",
+    ]
+    seen: set[str] = set()
+    out: list[str] = []
+    for pattern in patterns:
+        for match in re.findall(pattern, text):
+            token = str(match).strip()
+            if not token or token in seen:
+                continue
+            seen.add(token)
+            out.append(token)
+    return out
+
+
+def _normalize_parenthetical_citations_html(section_html: str) -> str:
+    text = str(section_html or "")
+    if not text:
+        return text
+
+    # Merge adjacent parenthetical citations: "(A, 2010) (B, 2011)" -> "(A, 2010; B, 2011)"
+    for _ in range(8):
+        new_text = re.sub(
+            r"\(([^()]{0,260}?(?:19|20)\d{2}[^()]*)\)\s*(?:,?\s*)\(([^()]{0,260}?(?:19|20)\d{2}[^()]*)\)",
+            lambda m: f"({m.group(1).strip()}; {m.group(2).strip()})",
+            text,
+        )
+        if new_text == text:
+            break
+        text = new_text
+
+    # Normalize citation separators and de-duplicate inside each parenthetical citation block.
+    def _fix_paren(m: re.Match[str]) -> str:
+        inner = str(m.group(1) or "").strip()
+        if not re.search(r"(19|20)\d{2}", inner):
+            return f"({inner})"
+        inner = re.sub(
+            r",\s*(?=[A-Z][A-Za-z'’\-]+(?:\s+et al\.)?(?:\s*&\s*[A-Z][A-Za-z'’\-]+)?\s*,?\s*(?:19|20)\d{2})",
+            "; ",
+            inner,
+        )
+        inner = re.sub(r"\s*;\s*", "; ", inner).strip()
+        parts = [p.strip() for p in inner.split(";") if p.strip()]
+        deduped: list[str] = []
+        seen: set[str] = set()
+        for p in parts:
+            key = _normalize_text_key(p)
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(p)
+        return f"({'; '.join(deduped)})"
+
+    text = re.sub(r"\(([^()]+)\)", _fix_paren, text)
+    return text
+
+
+def _run_prewrite_analysis(
+    *,
+    collection_name: str,
+    model: str,
+    periods: list[tuple[str, tuple[int, int]]],
+    by_period: dict[str, list[dict[str, Any]]],
+    theme_counts: dict[str, int],
+) -> dict[str, Any]:
+    period_payload: list[dict[str, Any]] = []
+    for label, (a, b) in periods:
+        rows = by_period.get(label, [])
+        c = Counter(str(r.get("theme") or "uncategorized") for r in rows)
+        period_payload.append(
+            {
+                "label": label,
+                "start_year": a,
+                "end_year": b,
+                "evidence_count": len(rows),
+                "top_themes": [{"theme": _humanize_theme_tokens(k), "count": int(v)} for k, v in c.most_common(6)],
+                "sample_quotes": [str(r.get("quote") or "")[:220] for r in rows[:6]],
+            }
+        )
+    base = {
+        "collection_name": collection_name,
+        "periods": period_payload,
+        "top_themes_global": [{"theme": _humanize_theme_tokens(k), "count": int(v)} for k, v in list(theme_counts.items())[:24]],
+    }
+    prompts = [
+        (
+            "prewrite_wave_cluster_analysis",
+            (
+                "SECTION_NAME\nprewrite_wave_cluster_analysis\n\n"
+                "INSTRUCTION\nAnalyze each period/wave and return STRICT JSON only with schema: "
+                "{\"wave_profiles\":[{\"label\":\"...\",\"debate_cluster\":\"...\",\"dominant_themes\":[\"...\"],"
+                "\"methods_pattern\":\"...\",\"open_questions\":\"...\"}]}. Keep each string concise.\n\n"
+                f"CONTEXT_JSON\n{json.dumps(base, ensure_ascii=False, indent=2)}\n\n"
+                "STYLE_GUARD\nReturn JSON only.\n\nReturn only raw JSON."
+            ),
+        ),
+        (
+            "prewrite_cross_wave_analysis",
+            (
+                "SECTION_NAME\nprewrite_cross_wave_analysis\n\n"
+                "INSTRUCTION\nReturn STRICT JSON only with schema: "
+                "{\"turning_points\":[\"...\"],\"persistent_debates\":[\"...\"],"
+                "\"concept_shift_notes\":[\"...\"],\"method_shift_notes\":[\"...\"]}. "
+                "Use concise analytical bullet-text strings.\n\n"
+                f"CONTEXT_JSON\n{json.dumps(base, ensure_ascii=False, indent=2)}\n\n"
+                "STYLE_GUARD\nReturn JSON only.\n\nReturn only raw JSON."
+            ),
+        ),
+    ]
+    batch = _run_grouped_batch_sections(
+        collection_name=f"{collection_name}_prewrite_analysis",
+        model=model,
+        function_name="chronological_review_section_writer",
+        section_prompts=prompts,
+    )
+    out: dict[str, Any] = {"raw": batch["outputs"], "wave_profiles": [], "cross_wave": {}}
+    parsed_wave = _extract_json_object(batch["outputs"].get("prewrite_wave_cluster_analysis", ""))
+    if isinstance(parsed_wave, dict) and isinstance(parsed_wave.get("wave_profiles"), list):
+        out["wave_profiles"] = [x for x in parsed_wave["wave_profiles"] if isinstance(x, dict)]
+    parsed_cross = _extract_json_object(batch["outputs"].get("prewrite_cross_wave_analysis", ""))
+    if isinstance(parsed_cross, dict):
+        out["cross_wave"] = parsed_cross
+    return out
 
 
 def _theme_shift_svg(by_period: dict[str, list[dict[str, Any]]], output_dir: Path) -> str:
@@ -329,15 +720,62 @@ def render_chronological_review_from_summary(
         _write_section_cache(section_cache_path, section_cache_entries)
 
     citation_style = _normalize_citation_style(citation_style)
+    diagnostics: dict[str, Any] = {
+        "generated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+        "collection_name": collection_name,
+        "wave_split": {},
+        "phase1_retries": [],
+        "phase2_retries": [],
+    }
     items = _load_items(summary)
     item_records = _build_item_records(items)
     years = [r["year"] for r in item_records if isinstance(r.get("year"), int)]
-    periods = _derive_periods(years)
-    by_period = _collect_evidence_by_period(items, item_records, periods)
     theme_counts = _compute_theme_counts(summary)
-    dq_payload, dqid_lookup = _build_dqid_evidence_payload(summary, max_rows=320)
-
     year_counter = Counter(r["year"] for r in item_records if isinstance(r.get("year"), int))
+    by_year_theme: dict[int, Counter[str]] = defaultdict(Counter)
+    for item_key, payload in items.items():
+        item_year = next((r.get("year") for r in item_records if r.get("item_key") == item_key), None)
+        if not isinstance(item_year, int):
+            continue
+        for arr_key in ("code_pdf_page", "code_intro_conclusion_extract_core_claims", "evidence_list", "section_open_coding"):
+            arr = payload.get(arr_key)
+            if not isinstance(arr, list):
+                continue
+            for row in arr:
+                if not isinstance(row, dict):
+                    continue
+                cands = row.get("evidence") if isinstance(row.get("evidence"), list) else [row]
+                for ev in cands:
+                    if not isinstance(ev, dict):
+                        continue
+                    theme = str((ev.get("potential_themes") or [""])[0] if isinstance(ev.get("potential_themes"), list) else ev.get("evidence_type") or "uncategorized").strip() or "uncategorized"
+                    by_year_theme[item_year][theme] += 1
+    by_year_theme_hints = {y: c.most_common(6) for y, c in by_year_theme.items()}
+    ai_waves, wave_diag = _ai_define_waves(
+        collection_name=collection_name,
+        years=years,
+        year_counter=year_counter,
+        theme_counts=theme_counts,
+        by_year_theme_hints=by_year_theme_hints,
+        model=model,
+    )
+    diagnostics["wave_split"] = wave_diag
+    periods = _waves_to_periods(ai_waves) if ai_waves else _derive_periods(years)
+    by_period = _collect_evidence_by_period(items, item_records, periods)
+    curated_by_period = _curate_period_evidence(by_period=by_period, theme_counts=theme_counts, max_per_period=28)
+    dq_payload, dqid_lookup = _build_dqid_evidence_payload(summary, max_rows=320)
+    prewrite = _run_prewrite_analysis(
+        collection_name=collection_name,
+        model=model,
+        periods=periods,
+        by_period=curated_by_period,
+        theme_counts=theme_counts,
+    )
+    diagnostics["prewrite_analysis"] = {
+        "wave_profiles_count": len(prewrite.get("wave_profiles") or []),
+        "cross_wave_keys": sorted(list((prewrite.get("cross_wave") or {}).keys())),
+    }
+
     year_labels = [str(y) for y, _ in sorted(year_counter.items())]
     year_values = [int(v) for _, v in sorted(year_counter.items())]
     timeline_svg = _svg_bar_chart("Publication output over time", year_labels or ["No data"], year_values or [0], width=980, height=520)
@@ -356,12 +794,16 @@ def render_chronological_review_from_summary(
     period_path.write_text(period_svg, encoding="utf-8")
     theme_shift_name = _theme_shift_svg(by_period, output_dir)
     period_table_html = _period_summary_table_html(periods, by_period)
+    methodology_blueprint_html = _build_methodology_blueprint_html(periods, by_period, period_counter)
+    methodology_placeholder_tokens = _extract_methodology_placeholder_tokens(methodology_blueprint_html)
+    methodology_placeholders_resolved = len(methodology_placeholder_tokens) == 0
 
     wave_artifact = {
         "schema": "chronological_wave_splits_v1",
         "collection_name": collection_name,
         "generated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
         "date_range": f"{min(years)}-{max(years)}" if years else "N/A",
+        "wave_split_source": ("ai_model" if ai_waves else "fallback_derive_periods"),
         "periods": [
             {
                 "label": label,
@@ -369,6 +811,7 @@ def render_chronological_review_from_summary(
                 "end_year": b,
                 "item_count": int(period_counter.get(label, 0)),
                 "evidence_count": len(by_period.get(label, [])),
+                "debate_cluster": next((str(w.get("debate_cluster") or "") for w in ai_waves if str(w.get("label") or "") == label), ""),
             }
             for label, (a, b) in periods
         ],
@@ -377,7 +820,7 @@ def render_chronological_review_from_summary(
 
     def _period_payload(limit: int = 20) -> list[dict[str, Any]]:
         out: list[dict[str, Any]] = []
-        for p_label, rows in by_period.items():
+        for p_label, rows in curated_by_period.items():
             for r in rows[:limit]:
                 out.append({"period": p_label, "dqid": r["dqid"], "quote": r["quote"], "theme": r["theme"]})
         return out
@@ -391,25 +834,30 @@ def render_chronological_review_from_summary(
         "top_themes": [{_humanize_theme_tokens(k): v} for k, v in list(theme_counts.items())[:20]],
         "evidence_payload": dq_payload,
         "wave_description": wave_artifact,
+        "methodology_blueprint_html": methodology_blueprint_html,
+        "prewrite_analysis": {
+            "wave_profiles": prewrite.get("wave_profiles") or [],
+            "cross_wave": prewrite.get("cross_wave") or {},
+        },
     }
     citation_instruction = _citation_style_instruction(citation_style)
 
     section_specs: dict[str, dict[str, Any]] = {
-        "chronological_rationale": {"min": 120, "max": 700},
-        "concept_evolution": {"min": 140, "max": 900},
-        "methods_evolution": {"min": 140, "max": 900},
-        "turning_points": {"min": 140, "max": 900},
-        "persistent_debates": {"min": 120, "max": 900},
+        "chronological_rationale": {"min": 120, "max": 1400},
+        "concept_evolution": {"min": 140, "max": 1600},
+        "methods_evolution": {"min": 140, "max": 1600},
+        "turning_points": {"min": 140, "max": 1600},
+        "persistent_debates": {"min": 120, "max": 1800},
         "ai_period_volume_analysis": {"min": 80, "max": 500},
         "ai_theme_shift_analysis": {"min": 80, "max": 500},
-        "ai_discussion": {"min": 180, "max": 1000},
-        "ai_limitations": {"min": 120, "max": 800},
-        "ai_research_implications": {"min": 120, "max": 800},
-        "ai_practice_implications": {"min": 120, "max": 800},
-        "future_phase_hypotheses": {"min": 120, "max": 900},
-        "ai_introduction": {"min": 200, "max": 1200},
+        "ai_discussion": {"min": 180, "max": 2200},
+        "ai_limitations": {"min": 120, "max": 1400},
+        "ai_research_implications": {"min": 120, "max": 1400},
+        "ai_practice_implications": {"min": 120, "max": 1400},
+        "future_phase_hypotheses": {"min": 120, "max": 1400},
+        "ai_introduction": {"min": 200, "max": 1800},
         "ai_abstract": {"min": 180, "max": 420, "forbid_h4": True},
-        "ai_conclusion": {"min": 160, "max": 900},
+        "ai_conclusion": {"min": 160, "max": 1400},
     }
 
     phase1 = {
@@ -429,11 +877,12 @@ def render_chronological_review_from_summary(
     for label, _ in periods:
         period_key = f"period_{_safe_name(label)}"
         phase1[period_key] = f"Write the narrative summary for {label}. Cover dominant questions, methods pattern, and representative evidence."
-        section_specs[period_key] = {"min": 120, "max": 900}
+        section_specs[period_key] = {"min": 120, "max": 1800}
 
     llm_sections: dict[str, str] = {}
 
     phase1_prompts: list[tuple[str, str]] = []
+    phase1_payload_by_section: dict[str, dict[str, Any]] = {}
     period_label_by_key: dict[str, str] = {f"period_{_safe_name(label)}": label for label, _ in periods}
     for section_name, instruction in phase1.items():
         section_payload = dict(payload_base)
@@ -445,6 +894,7 @@ def render_chronological_review_from_summary(
         elif section_name in {"ai_period_volume_analysis", "ai_theme_shift_analysis"}:
             section_payload["period_evidence"] = []
             section_payload["evidence_payload"] = []
+        phase1_payload_by_section[section_name] = section_payload
         prompt = (
             f"SECTION_NAME\n{section_name}\n\n"
             f"INSTRUCTION\n{instruction}\n\n"
@@ -466,7 +916,42 @@ def render_chronological_review_from_summary(
     for section_name, raw_html in phase1_batch["outputs"].items():
         cleaned = _clean_and_humanize_section_html(_clean_llm_html(raw_html))
         cleaned = _enrich_dqid_anchors(cleaned, dqid_lookup, citation_style=citation_style)
-        _validate_generated_section(section_name, cleaned, section_specs[section_name])
+        cleaned = _normalize_parenthetical_citations_html(cleaned)
+        try:
+            _validate_generated_section(section_name, cleaned, section_specs[section_name])
+        except Exception as exc:
+            last_err = str(exc)
+            prev = cleaned
+            ok = False
+            for attempt in range(2, 4):
+                rewrite_prompt = _rewrite_section_prompt(
+                    section_name=section_name,
+                    base_instruction=phase1[section_name],
+                    payload=phase1_payload_by_section.get(section_name, {}),
+                    citation_instruction=citation_instruction,
+                    validation_error=last_err,
+                    previous_output=prev,
+                )
+                retry_batch = _run_grouped_batch_sections(
+                    collection_name=f"{collection_name}_retry_{section_name}_a{attempt}",
+                    model=model,
+                    function_name="chronological_review_section_writer",
+                    section_prompts=[(section_name, rewrite_prompt)],
+                )
+                retry_raw = retry_batch["outputs"].get(section_name, "")
+                prev = _enrich_dqid_anchors(_clean_and_humanize_section_html(_clean_llm_html(retry_raw)), dqid_lookup, citation_style=citation_style)
+                prev = _normalize_parenthetical_citations_html(prev)
+                try:
+                    _validate_generated_section(section_name, prev, section_specs[section_name])
+                    cleaned = prev
+                    ok = True
+                    diagnostics["phase1_retries"].append({"section": section_name, "attempt": attempt, "status": "ok"})
+                    break
+                except Exception as retry_exc:
+                    last_err = str(retry_exc)
+                    diagnostics["phase1_retries"].append({"section": section_name, "attempt": attempt, "status": "failed", "error": last_err})
+            if not ok:
+                raise RuntimeError(f"Section {section_name} failed after retries: {last_err}")
         llm_sections[section_name] = cleaned
         section_cache[section_name] = cleaned
         section_cache_entries[section_name] = _make_cache_entry(section_name=section_name, html_text=cleaned, model=model)
@@ -476,6 +961,8 @@ def render_chronological_review_from_summary(
         **payload_base,
         "draft_sections_html": llm_sections,
         "timeline_table_preview": _timeline_table_html(item_records)[:4000],
+        "methodology_placeholder_tokens": methodology_placeholder_tokens,
+        "methodology_placeholders_resolved": methodology_placeholders_resolved,
     }
     phase2 = {
         "ai_introduction": "Write the chronological review introduction with scope, trajectory framing, and objective.",
@@ -506,13 +993,51 @@ def render_chronological_review_from_summary(
     for section_name, raw_html in phase2_batch["outputs"].items():
         cleaned = _clean_and_humanize_section_html(_clean_llm_html(raw_html))
         cleaned = _enrich_dqid_anchors(cleaned, dqid_lookup, citation_style=citation_style)
-        _validate_generated_section(section_name, cleaned, section_specs[section_name])
+        cleaned = _normalize_parenthetical_citations_html(cleaned)
+        try:
+            _validate_generated_section(section_name, cleaned, section_specs[section_name])
+        except Exception as exc:
+            last_err = str(exc)
+            prev = cleaned
+            ok = False
+            for attempt in range(2, 4):
+                rewrite_prompt = _rewrite_section_prompt(
+                    section_name=section_name,
+                    base_instruction=phase2[section_name],
+                    payload=whole_payload,
+                    citation_instruction=citation_instruction,
+                    validation_error=last_err,
+                    previous_output=prev,
+                )
+                retry_batch = _run_grouped_batch_sections(
+                    collection_name=f"{collection_name}_whole_retry_{section_name}_a{attempt}",
+                    model=model,
+                    function_name="chronological_review_section_writer",
+                    section_prompts=[(section_name, rewrite_prompt)],
+                )
+                retry_raw = retry_batch["outputs"].get(section_name, "")
+                prev = _enrich_dqid_anchors(_clean_and_humanize_section_html(_clean_llm_html(retry_raw)), dqid_lookup, citation_style=citation_style)
+                prev = _normalize_parenthetical_citations_html(prev)
+                try:
+                    _validate_generated_section(section_name, prev, section_specs[section_name])
+                    cleaned = prev
+                    ok = True
+                    diagnostics["phase2_retries"].append({"section": section_name, "attempt": attempt, "status": "ok"})
+                    break
+                except Exception as retry_exc:
+                    last_err = str(retry_exc)
+                    diagnostics["phase2_retries"].append({"section": section_name, "attempt": attempt, "status": "failed", "error": last_err})
+            if not ok:
+                raise RuntimeError(f"Section {section_name} failed after retries: {last_err}")
         llm_sections[section_name] = cleaned
         section_cache[section_name] = cleaned
         section_cache_entries[section_name] = _make_cache_entry(section_name=section_name, html_text=cleaned, model=model)
     _write_section_cache(section_cache_path, section_cache_entries)
 
     period_objects: list[dict[str, Any]] = []
+    wave_profile_map: dict[str, dict[str, Any]] = {
+        str(w.get("label") or "").strip(): w for w in (prewrite.get("wave_profiles") or []) if isinstance(w, dict)
+    }
     for label, _rng in periods:
         period_key = f"period_{_safe_name(label)}"
         rows = by_period.get(label, [])
@@ -524,14 +1049,23 @@ def render_chronological_review_from_summary(
                 top_works.append(f"{r['first_author_last']} ({r['year'] if r['year'] else 'n.d.'})")
             if len(top_works) >= 6:
                 break
+        wp = wave_profile_map.get(label, {})
         period_objects.append(
             {
                 "label": label,
                 "summary": llm_sections.get(period_key, f"<p>{label} synthesized from {len(rows)} coded entries.</p>"),
-                "dominant_themes": top_themes or "No dominant themes identified.",
-                "methods_pattern": "Mixed methods and doctrinal/qualitative evidence are represented.",
+                "dominant_themes": (
+                    ", ".join(str(x) for x in (wp.get("dominant_themes") or []) if str(x).strip())
+                    or top_themes
+                    or "No dominant themes identified."
+                ),
+                "methods_pattern": str(wp.get("methods_pattern") or "Mixed methods and doctrinal/qualitative evidence are represented."),
                 "representative_works": "; ".join(top_works),
-                "open_questions": "How to improve operational and comparative validation across periods.",
+                "open_questions": (
+                    str(wp.get("open_questions") or "")
+                    or next((str(w.get("debate_cluster") or "") for w in ai_waves if str(w.get("label") or "") == label), "")
+                    or "How to improve operational and comparative validation across periods."
+                ),
             }
         )
 
@@ -556,9 +1090,13 @@ def render_chronological_review_from_summary(
         "date_range": date_range,
         "corpus_notes": f"Items analyzed: {len(item_records)}",
         "full_search_strategy_appendix_path": "",
-        "corpus_table": "",
+        "corpus_table": _timeline_table_html(item_records),
         "period_definitions": _period_definitions_html(periods, period_counter),
         "coding_framework": "Open coding + intro/conclusion evidence harvesting with dqid-linked quotes.",
+        "methodology_blueprint_html": methodology_blueprint_html,
+        "methodology_placeholder_tokens": methodology_placeholder_tokens or ["No unresolved methodology placeholders."],
+        "methodology_placeholders_resolved": methodology_placeholders_resolved,
+        "methodology_placeholder_token_count": len(methodology_placeholder_tokens),
         "quality_appraisal_note": "",
         "timeline_figure": timeline_path.name,
         "period_volume_figure": period_path.name,
@@ -630,8 +1168,12 @@ def render_chronological_review_from_summary(
             "period_volume_figure": str(period_path),
             "theme_shift_figure": str(output_dir / theme_shift_name),
             "wave_splits_json": str(output_dir / "wave_splits.json"),
+            "run_diagnostics_json": str(output_dir / "run_diagnostics.json"),
         },
     }
+    diagnostics["batch_contract"] = manifest["batch_contract"]
+    diagnostics["artifacts"] = manifest["artifacts"]
+    (output_dir / "run_diagnostics.json").write_text(json.dumps(diagnostics, ensure_ascii=False, indent=2), encoding="utf-8")
     (output_dir / "chronological_manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     return manifest
 

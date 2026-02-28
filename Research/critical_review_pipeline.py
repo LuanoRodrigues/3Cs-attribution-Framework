@@ -138,6 +138,38 @@ def _evidence_map_table_html(top_themes: list[tuple[str, int]]) -> str:
     return "\n".join(out)
 
 
+def _extract_placeholder_tokens(text: str) -> list[str]:
+    if not text:
+        return []
+    pattern = re.compile(r"\[\[([A-Z0-9_]+)\]\]|\[([A-Z0-9_]+)\]")
+    found: list[str] = []
+    seen: set[str] = set()
+    for match in pattern.finditer(text):
+        token = str(match.group(1) or match.group(2) or "").strip()
+        if token and token not in seen:
+            seen.add(token)
+            found.append(token)
+    return found
+
+
+def _critical_methodology_blueprint_html(topic: str) -> str:
+    return (
+        "<div class='callout'><strong>Critical-review protocol blueprint.</strong> "
+        "This review applies a transparent critical methodology tailored to the corpus and question domain.</div>"
+        "<ol>"
+        "<li><strong>Critical lens definition:</strong> state the analytic lens and evaluative standards used to appraise claims on "
+        f"<span class='key-term'>{topic}</span> (conceptual coherence, inferential validity, empirical adequacy, normative stakes).</li>"
+        "<li><strong>Selection rationale:</strong> justify why included sources are epistemically relevant (influential baseline, methodological contrast, counter-position, policy salience).</li>"
+        "<li><strong>Dialectical comparison:</strong> compare strongest versions of competing arguments, identify hinge assumptions, and test whether disagreements are empirical, conceptual, or normative.</li>"
+        "<li><strong>Normative assumptions audit:</strong> surface value commitments embedded in definitions, outcome priorities, and policy prescriptions.</li>"
+        "<li><strong>Counter-hegemonic checks:</strong> test whether dominant narratives suppress alternatives by exclusion of contexts, actors, or evidentiary forms.</li>"
+        "<li><strong>Synthesis discipline:</strong> separate robust findings from fragile claims and explicitly tie conclusions to evidentiary limits.</li>"
+        "</ol>"
+        "<p class='disclaimer'>Complete the placeholders below before final publication: [CRITICAL_LENS], [SELECTION_RATIONALE], "
+        "[DIALECTICAL_COMPARISON], [NORMATIVE_ASSUMPTIONS], [COUNTER_HEGEMONIC_CHECKS].</p>"
+    )
+
+
 def _run_grouped_batch_sections(
     *,
     collection_name: str,
@@ -280,6 +312,7 @@ def render_critical_review_from_summary(
         "top_themes": [{_humanize_theme_tokens(k): v} for k, v in top_themes[:25]],
         "evidence_payload": dq_payload,
         "item_types_top": type_counter.most_common(10),
+        "methodology_blueprint_html": _critical_methodology_blueprint_html(collection_name),
     }
     citation_instruction = _citation_style_instruction(citation_style)
 
@@ -402,6 +435,9 @@ def render_critical_review_from_summary(
         _write_section_cache(section_cache_path, section_cache_entries)
 
     refs = _build_reference_items(summary, citation_style=citation_style)
+    methodology_blueprint_html = str(payload_base.get("methodology_blueprint_html") or "")
+    methodology_placeholder_tokens = _extract_placeholder_tokens(methodology_blueprint_html)
+    methodology_placeholders_resolved = len(methodology_placeholder_tokens) == 0
     context = {
         "topic": collection_name,
         "authors_list": "Automated TEIA pipeline",
@@ -421,6 +457,9 @@ def render_critical_review_from_summary(
         "corpus_notes": f"Corpus size: {item_count} items. Evidence fragments retained: {_safe_int(ev_stats.get('evidence_kept'), 0)}.",
         "corpus_table": _corpus_table_html(records),
         "appraisal_method_note": "<p>Claims were appraised for conceptual precision, evidentiary support, inferential validity, and normative coherence using dqid-linked excerpts.</p>",
+        "methodology_blueprint_html": methodology_blueprint_html,
+        "methodology_placeholder_tokens": methodology_placeholder_tokens,
+        "methodology_placeholders_resolved": methodology_placeholders_resolved,
         "ai_claims_map": llm_sections.get("ai_claims_map", ""),
         "argument_map_figure": "argument_map.svg",
         "ai_evidence_base": llm_sections.get("ai_evidence_base", ""),

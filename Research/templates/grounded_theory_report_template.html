@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Grounded Theory Study Report on {{ topic }}</title>
+  <style>
+    /* --- Base & Typography --- */
+    body { font-family: sans-serif; line-height: 1.7; margin: 0 auto; max-width: 900px; padding: 25px; color: #333; background-color: #fdfdfd; }
+    h1, h2, h3, h4 { font-family: "Georgia", serif; color: #1A237E; margin-top: 2em; margin-bottom: 0.8em; line-height: 1.3; font-weight: 600; }
+    h1 { text-align: center; margin-bottom: 1.5em; font-size: 2.2em; color: #0D47A1; }
+    h2 { border-bottom: 2px solid #42A5F5; padding-bottom: 8px; font-size: 1.8em; }
+    h3 { border-bottom: 1px solid #90CAF9; padding-bottom: 6px; font-size: 1.5em; color: #1E88E5; }
+    h4 { font-size: 1.2em; color: #42A5F5; margin-bottom: 0.6em; font-weight: 600; font-family: sans-serif; }
+    p { margin-bottom: 1.2em; text-align: justify; }
+    a { color: #1E88E5; text-decoration: none; }
+    a:hover { color: #0D47A1; text-decoration: underline; }
+    em, i { font-style: italic; }
+    strong, b { font-weight: 600; }
+
+    /* --- Layout & Sections --- */
+    .metadata { text-align: center; margin-bottom: 3em; font-size: 0.95em; color: #555; border-bottom: 1px solid #e0e0e0; padding-bottom: 1.5em; }
+    .metadata p { margin: 0.3em 0; }
+    .section-content { margin-bottom: 40px; padding-left: 0; }
+    .subsection-content { margin-bottom: 30px; padding-left: 15px; border-left: 3px solid #E3F2FD; margin-left: 5px; }
+
+    /* --- Visual Elements --- */
+    figure { margin: 35px auto; text-align: center; border: 1px solid #e0e0e0; padding: 15px 15px 10px 15px; background-color: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.08); max-width: 750px; }
+    figure img { max-width: 100%; height: auto; border: 1px solid #f0f0f0; display: block; margin: 0 auto 10px auto; }
+    figcaption { font-size: 0.9em; color: #666; margin-top: 10px; font-style: normal; line-height: 1.5; text-align: left; padding: 0 5px; }
+    figcaption strong { color: #333; }
+
+    table.data-table { border-collapse: collapse; width: 100%; margin: 30px auto; border: 1px solid #ccc; box-shadow: none; font-size: 0.88em; }
+    table.data-table th, table.data-table td { border: 1px solid #ddd; padding: 10px 12px; text-align: left; vertical-align: top; }
+    table.data-table th { background-color: #f2f7fb; font-weight: 600; color: #2c3e50; }
+    table.data-table tr:nth-child(even) { background-color: #f9f9f9; }
+    table.data-table tr:hover { background-color: #eff4ff; }
+
+    /* --- Specific Elements --- */
+    .ai-generated-content { font-style: normal; color: #333; padding: 5px 0px; margin: 15px 0; background-color: transparent; text-align: justify; border: none; }
+    .ai-generated-content p { margin-bottom: 1em; }
+    .ai-generated-content p:first-child { margin-top: 0; }
+    .ai-generated-content p:last-child { margin-bottom: 0; }
+    .ai-generated-content ul, .ai-generated-content ol { margin-left: 20px; margin-bottom: 1em; }
+    .ai-generated-content li { margin-bottom: 0.5em; }
+    .ai-placeholder { font-style: italic; color: #7f8c8d; border: 1px dashed #bdc3c7; padding: 15px; margin: 20px 0; background-color: #fdfefe; text-align: center; }
+
+    .structured-abstract h4 { font-size: 1.1em; color: #1E88E5; margin-top: 1em; margin-bottom: 0.3em; font-family: sans-serif; font-weight: 600; border: none; padding: 0;}
+    .structured-abstract p { margin-left: 15px;}
+
+    .note { font-size: 0.92em; color: #555; }
+  </style>
+</head>
+<body>
+
+<h1>Grounded Theory Study: {{ topic }}</h1>
+
+<div class="metadata">
+  <p><strong>Authors:</strong> {{ authors_list }}</p>
+  <p><strong>Affiliations:</strong> {{ affiliation }}</p>
+  <p><strong>Grounded Theory genre:</strong> {{ gt_genre }}</p>
+  <p><strong>Epistemological stance:</strong> {{ epistemological_stance }}</p>
+  <p><em>Report generated on: {{ generation_date }}</em></p>
+  <p><em>AI Models Used for Narrative Sections: {{ ai_models_used }}</em></p>
+</div>
+
+<h2>Abstract</h2>
+<div class="section-content ai-generated-content structured-abstract">
+  {{ ai_abstract | safe }}
+</div>
+
+<h2>1. Introduction</h2>
+<div class="section-content ai-generated-content">
+  {{ ai_introduction | safe }}
+</div>
+
+<h2>2. Methodology</h2>
+<div class="section-content">
+
+  <h3>2.0 Methodological blueprint</h3>
+  <div class="subsection-content">
+    {% if methodology_blueprint_html is defined and methodology_blueprint_html %}
+      {{ methodology_blueprint_html | safe }}
+    {% else %}
+      <div class="ai-generated-content">
+        <p><strong>Grounded theory methodology blueprint</strong></p>
+        <p><strong>Phenomenon/process of interest:</strong> [phenomenon_process_of_interest]</p>
+        <p><strong>Initial sample boundary:</strong> [initial_sample_boundary_and_entry_logic]</p>
+        <p><strong>Theoretical sampling logic:</strong> [theoretical_sampling_decision_rule]</p>
+        <p><strong>Saturation criteria:</strong> [saturation_criteria_and_stop_rule]</p>
+        <p><strong>Core category target:</strong> [core_category_candidate_and_integration_rule]</p>
+        <p><strong>Coding lineage:</strong> [coding_lineage_open_to_focused_to_theoretical]</p>
+      </div>
+    {% endif %}
+
+    <div class="ai-generated-content">
+      <p><strong>Placeholder replacement checklist</strong></p>
+      {% if methodology_placeholders_resolved is defined and methodology_placeholders_resolved %}
+        <p>All methodology placeholders appear resolved.</p>
+      {% elif methodology_placeholder_tokens is defined and methodology_placeholder_tokens %}
+        <p>The following placeholders are unresolved and should be replaced before final export:</p>
+        <ul>
+          {% for tok in methodology_placeholder_tokens %}
+            <li><code>[{{ tok }}]</code></li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p>Placeholder resolution status unavailable. Review methodology text for bracketed tokens like <code>[example_token]</code>.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <h3>2.1 Grounded Theory overview</h3>
+  <div class="subsection-content ai-generated-content">
+    <p><strong>Definition.</strong> {{ gt_definition }}</p>
+
+    <p><strong>Procedural methodology (typical).</strong></p>
+    <ol>
+      {% for step in gt_procedural_methodology %}
+        <li>{{ step }}</li>
+      {% endfor %}
+    </ol>
+
+    <p><strong>Typical data types.</strong> {{ gt_typical_data_types }}</p>
+    <p><strong>Common analytic techniques.</strong> {{ gt_common_analytic_techniques }}</p>
+    <p><strong>Expected outputs/deliverables.</strong> {{ gt_expected_outputs }}</p>
+
+    <p class="note"><strong>Main authors and major variants.</strong></p>
+    <ul>
+      {% for a in gt_main_authors %}
+        <li>{{ a }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <h3>2.2 Research focus and questions</h3>
+  <div class="subsection-content ai-generated-content">
+    <p><strong>Phenomenon/process of interest:</strong> {{ phenomenon }}</p>
+    <p><strong>Study aims:</strong> {{ aims }}</p>
+    <p><strong>Research questions:</strong></p>
+    <ul>
+      {% for rq in research_questions %}
+        <li>{{ rq }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <h3>2.3 Context and setting</h3>
+  <div class="subsection-content ai-generated-content">
+    {{ context_and_setting | safe }}
+  </div>
+
+  <h3>2.4 Sampling strategy</h3>
+  <div class="subsection-content ai-generated-content">
+    {{ sampling_strategy | safe }}
+  </div>
+
+  <h3>2.5 Data sources and collection</h3>
+  <div class="subsection-content">
+    <p class="note">Data sources are summarized below; details are typically elaborated per cycle in GT (initial sampling followed by theoretical sampling).</p>
+    {{ data_sources_table | safe }}
+
+    <h4>Data collection cycles</h4>
+    {{ data_collection_cycles_table | safe }}
+  </div>
+
+  <h3>2.6 Data analysis</h3>
+  <div class="subsection-content ai-generated-content">
+    {{ analysis_procedures | safe }}
+  </div>
+
+  <h3>2.7 Theoretical sampling decisions and audit trail</h3>
+  <div class="subsection-content">
+    {{ theoretical_sampling_log_table | safe }}
+    <p><strong>Memoing and audit trail.</strong></p>
+    {{ memoing_and_audit_trail | safe }}
+  </div>
+
+  <h3>2.8 Saturation (theoretical sufficiency)</h3>
+  <div class="subsection-content ai-generated-content">
+    {{ saturation_account | safe }}
+  </div>
+
+  <h3>2.9 Quality, rigor, and reflexivity</h3>
+  <div class="subsection-content ai-generated-content">
+    <p><strong>Quality and rigor.</strong></p>
+    {{ quality_and_rigor | safe }}
+    <p><strong>Reflexivity.</strong></p>
+    {{ reflexivity | safe }}
+  </div>
+
+  <h3>2.10 Ethics</h3>
+  <div class="subsection-content ai-generated-content">
+    {{ ethics | safe }}
+  </div>
+
+</div>
+
+<h2>3. Findings</h2>
+<div class="section-content">
+
+  <h3>3.1 Core category</h3>
+  <div class="subsection-content ai-generated-content">
+    <p><strong>Core category:</strong> {{ core_category_name }}</p>
+    <p><strong>Definition:</strong> {{ core_category_definition }}</p>
+    <p><strong>Rationale:</strong> {{ core_category_rationale }}</p>
+  </div>
+
+  <h3>3.2 Categories, properties, and supporting excerpts</h3>
+  <div class="subsection-content">
+    {{ categories_table | safe }}
+  </div>
+
+  <h3>3.3 Negative cases and variation</h3>
+  <div class="subsection-content ai-generated-content">
+    {{ negative_cases_and_variation | safe }}
+  </div>
+
+</div>
+
+<h2>4. Integrated Theory</h2>
+<div class="section-content">
+
+  <h3>4.1 Theoretical account (narrative)</h3>
+  <div class="subsection-content ai-generated-content">
+    {{ theory_narrative | safe }}
+  </div>
+
+  <h3>4.2 Explanatory propositions</h3>
+  <div class="subsection-content ai-generated-content">
+    <ol>
+      {% for p in propositions %}
+        <li>{{ p }}</li>
+      {% endfor %}
+    </ol>
+  </div>
+
+  <h3>4.3 Conceptual model</h3>
+  <div class="subsection-content">
+    <figure>
+      {% if conceptual_model_image_path %}
+        <img src="{{ conceptual_model_image_path }}" alt="Conceptual model figure">
+      {% else %}
+        <div class="ai-placeholder">[Conceptual model figure not provided]</div>
+      {% endif %}
+      <figcaption><strong>Figure 1.</strong> Conceptual model representing the substantive theory (core category and relations).</figcaption>
+    </figure>
+
+    <p><strong>Model description.</strong></p>
+    <div class="ai-generated-content">
+      {{ conceptual_model_description | safe }}
+    </div>
+  </div>
+
+</div>
+
+<h2>5. Discussion</h2>
+<div class="section-content ai-generated-content">
+  {{ discussion | safe }}
+</div>
+
+<h2>6. Limitations</h2>
+<div class="section-content ai-generated-content">
+  {{ limitations | safe }}
+</div>
+
+<h2>7. Conclusion</h2>
+<div class="section-content ai-generated-content">
+  {{ conclusion | safe }}
+</div>
+
+<h2>8. Outputs and Deliverables</h2>
+<div class="section-content ai-generated-content">
+  <p>Expected outputs from this GT study are summarized below (tailor as needed).</p>
+  <ul>
+    {% for o in outputs_and_deliverables %}
+      <li>{{ o }}</li>
+    {% endfor %}
+  </ul>
+</div>
+
+<h2>9. References</h2>
+<div class="section-content">
+  {{ references_list | safe }}
+</div>
+
+</body>
+</html>

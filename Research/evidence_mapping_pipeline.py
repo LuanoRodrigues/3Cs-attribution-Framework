@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import html
 import hashlib
 import json
 import os
@@ -174,6 +175,128 @@ def _year_bin(year: int, bin_size: int) -> str:
     start = (year // bin_size) * bin_size
     end = start + bin_size - 1
     return f"{start}-{end}"
+
+
+def _nl2br_html(value: Any) -> str:
+    txt = html.escape(str(value or "").strip())
+    return txt.replace("\n", "<br>")
+
+
+def _build_methodology_blueprint_html(
+    *,
+    mapping_config: dict[str, Any],
+    evidence_matrix: dict[str, Any],
+) -> str:
+    scope = mapping_config.get("scope", {}) if isinstance(mapping_config.get("scope"), dict) else {}
+    dims = mapping_config.get("dimensions", [])
+    dims = dims if isinstance(dims, list) else []
+    year_bin_size = int(mapping_config.get("matrix_view", {}).get("year_bin_size", 5))
+    meta_k_min = int(mapping_config.get("limits", {}).get("meta_k_min", 3))
+
+    rows = evidence_matrix.get("rows", []) if isinstance(evidence_matrix.get("rows"), list) else []
+    cols = evidence_matrix.get("cols", []) if isinstance(evidence_matrix.get("cols"), list) else []
+    row_label = str(evidence_matrix.get("row_label") or "Row dimension")
+    col_label = f"Year bin ({year_bin_size}-year windows)"
+
+    scope_in = str(scope.get("in") or "").strip()
+    scope_out = str(scope.get("out") or "").strip()
+    boundary_conditions = str(scope.get("boundary_conditions") or "").strip()
+
+    out = ["<div class='ai-generated-content'>"]
+    out.append("<h4>Scope Boundaries</h4>")
+    out.append("<ul>")
+    out.append(
+        f"<li><strong>In-scope:</strong> {_nl2br_html(scope_in) if scope_in else 'No explicit in-scope criteria provided.'}</li>"
+    )
+    out.append(
+        f"<li><strong>Out-of-scope:</strong> {_nl2br_html(scope_out) if scope_out else 'No explicit out-of-scope boundaries provided.'}</li>"
+    )
+    out.append(
+        "<li><strong>Boundary conditions:</strong> "
+        f"{_nl2br_html(boundary_conditions) if boundary_conditions else 'No boundary-condition notes provided.'}</li>"
+    )
+    out.append("</ul>")
+
+    out.append("<h4>Coding Dimensions</h4>")
+    if dims:
+        out.append("<ul>")
+        for d in dims:
+            if not isinstance(d, dict):
+                continue
+            name = _nl2br_html(d.get("name") or "Unnamed dimension")
+            definition = _nl2br_html(d.get("definition") or "No definition provided.")
+            values = _nl2br_html(d.get("values") or d.get("notes") or "No values/notes provided.")
+            out.append(
+                f"<li><strong>{name}:</strong> {definition}<div class='small'><strong>Allowed values / notes:</strong> {values}</div></li>"
+            )
+        out.append("</ul>")
+    else:
+        out.append("<p>No coding dimensions configured; add entries to <span class='key-term'>dimensions</span> in mapping config.</p>")
+
+    out.append("<h4>Evidence Matrix Logic</h4>")
+    out.append("<ul>")
+    out.append(f"<li><strong>Row axis:</strong> {_nl2br_html(row_label)}.</li>")
+    out.append(f"<li><strong>Column axis:</strong> {col_label}.</li>")
+    out.append("<li><strong>Cell count rule:</strong> each cell reports coded evidence-unit frequency and sampled item pointers.</li>")
+    out.append(
+        f"<li><strong>Current matrix footprint:</strong> {len(rows)} row labels x {len(cols)} column bins.</li>"
+    )
+    out.append("</ul>")
+
+    out.append("<h4>Map-to-Meta Eligibility Rules</h4>")
+    out.append("<ul>")
+    out.append(f"<li><strong>Minimum studies per cell:</strong> n >= {meta_k_min} unique items.</li>")
+    out.append("<li><strong>Signal requirement:</strong> at least one item in-cell must show quantitative signal.</li>")
+    out.append("<li><strong>Decision output:</strong> eligible cells are emitted as candidate map-to-meta clusters with reasons.</li>")
+    out.append("</ul>")
+    out.append("</div>")
+    return "".join(out)
+
+
+def _extract_methodology_placeholders_and_flags(
+    *,
+    mapping_config: dict[str, Any],
+) -> tuple[list[str], dict[str, bool]]:
+    token_re = re.compile(r"\{\{[^}]+\}\}|\[[^\]]*(?:placeholder|todo|tbd|fill|replace)[^\]]*\]", re.IGNORECASE)
+    marker_re = re.compile(r"\b(?:placeholder|todo|tbd|fill[_ -]?me|replace[_ -]?me)\b", re.IGNORECASE)
+    tokens: set[str] = set()
+
+    def _scan(label: str, value: Any) -> None:
+        txt = str(value or "").strip()
+        if not txt:
+            return
+        if token_re.search(txt) or marker_re.search(txt):
+            excerpt = txt if len(txt) <= 140 else f"{txt[:137]}..."
+            tokens.add(f"{label}: {excerpt}")
+
+    scope = mapping_config.get("scope", {}) if isinstance(mapping_config.get("scope"), dict) else {}
+    _scan("scope.in", scope.get("in"))
+    _scan("scope.out", scope.get("out"))
+    _scan("scope.boundary_conditions", scope.get("boundary_conditions"))
+
+    corpus = mapping_config.get("corpus", {}) if isinstance(mapping_config.get("corpus"), dict) else {}
+    _scan("corpus.sources_consulted", corpus.get("sources_consulted"))
+    _scan("corpus.selection_logic", corpus.get("selection_logic"))
+    _scan("corpus.search_strings", corpus.get("search_strings"))
+    _scan("corpus.provenance_note", corpus.get("provenance_note"))
+
+    dims = mapping_config.get("dimensions", [])
+    if isinstance(dims, list):
+        for idx, d in enumerate(dims, start=1):
+            if not isinstance(d, dict):
+                continue
+            _scan(f"dimensions[{idx}].name", d.get("name"))
+            _scan(f"dimensions[{idx}].definition", d.get("definition"))
+            _scan(f"dimensions[{idx}].values", d.get("values"))
+            _scan(f"dimensions[{idx}].notes", d.get("notes"))
+
+    flags = {
+        "has_scope_boundaries": any(str(scope.get(k) or "").strip() for k in ("in", "out", "boundary_conditions")),
+        "has_dimensions": isinstance(dims, list) and len(dims) > 0,
+        "has_matrix_logic": bool(mapping_config.get("matrix_view", {}).get("year_bin_size")),
+        "has_map_to_meta_rules": bool(mapping_config.get("limits", {}).get("meta_k_min")),
+    }
+    return sorted(tokens), flags
 
 # -------------------------
 # Evidence matrix + network
@@ -711,12 +834,17 @@ def render_evidence_map_from_summary(
         {"label": "Top themes mapped", "value": str(len(top_themes))},
         {"label": f"Year-bin size", "value": str(year_bin_size)},
     ]
+    methodology_blueprint_html = _build_methodology_blueprint_html(
+        mapping_config=mapping_config,
+        evidence_matrix=evidence_matrix,
+    )
 
     payload_base = {
         "topic": collection_name,
         "map_dimensions": mapping_config["dimensions"],
         "summary_stats": summary_stats,
         "evidence_matrix": _to_namespace(evidence_matrix),
+        "methodology_blueprint_html": methodology_blueprint_html,
         "top_themes": [{"theme": _humanize_theme_tokens(t), "count": int(theme_counts[t])} for t in top_themes],
         "network_edges_count": len(edges),
         "citation_style": citation_style,
@@ -796,6 +924,9 @@ def render_evidence_map_from_summary(
 
     refs_html = _build_reference_items(summary, citation_style=citation_style)
     evidence_matrix_render = _to_namespace(evidence_matrix)
+    methodology_placeholder_tokens, methodology_flags = _extract_methodology_placeholders_and_flags(
+        mapping_config=mapping_config,
+    )
     context = {
         "topic": collection_name,
         "authors_list": mapping_config["report"]["authors_list"],
@@ -818,6 +949,10 @@ def render_evidence_map_from_summary(
         "provenance_note": mapping_config["corpus"]["provenance_note"],
 
         "map_dimensions": mapping_config["dimensions"],
+        "methodology_blueprint_html": methodology_blueprint_html,
+        "methodology_placeholder_tokens": methodology_placeholder_tokens,
+        "methodology_placeholders_resolved": len(methodology_placeholder_tokens) == 0,
+        "methodology_context_flags": methodology_flags,
         "corpus_table": _characteristics_table_html(item_records),
 
         "summary_stats": summary_stats,

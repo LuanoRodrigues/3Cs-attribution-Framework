@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Thematic Analysis Report: {{ manuscript_title }}</title>
+  <style>
+    /* --- Base & Typography --- */
+    body { font-family: sans-serif; line-height: 1.7; margin: 0 auto; max-width: 950px; padding: 26px; color: #333; background-color: #fdfdfd; }
+    h1, h2, h3, h4 { font-family: "Georgia", serif; color: #1A237E; margin-top: 2em; margin-bottom: 0.8em; line-height: 1.25; font-weight: 600; }
+    h1 { text-align: center; margin-bottom: 1.4em; font-size: 2.2em; color: #0D47A1; }
+    h2 { border-bottom: 2px solid #42A5F5; padding-bottom: 8px; font-size: 1.85em; }
+    h3 { border-bottom: 1px solid #90CAF9; padding-bottom: 6px; font-size: 1.45em; color: #1E88E5; }
+    h4 { font-size: 1.15em; color: #1565C0; margin-bottom: 0.5em; font-family: sans-serif; }
+    p { margin-bottom: 1.15em; text-align: justify; }
+    a { color: #1E88E5; text-decoration: none; }
+    a:hover { color: #0D47A1; text-decoration: underline; }
+    em, i { font-style: italic; }
+    strong, b { font-weight: 600; }
+
+    /* --- Layout --- */
+    .metadata { text-align: center; margin-bottom: 2.6em; font-size: 0.95em; color: #555; border-bottom: 1px solid #e0e0e0; padding-bottom: 1.4em; }
+    .metadata p { margin: 0.25em 0; }
+    .section-content { margin-bottom: 42px; padding-left: 0; }
+    .subsection-content { margin-bottom: 30px; padding-left: 16px; border-left: 3px solid #E3F2FD; margin-left: 5px; }
+
+    /* --- Callouts / Notes --- */
+    .callout { border-left: 4px solid #42A5F5; background: #F5FAFF; padding: 12px 14px; margin: 18px 0; }
+    .callout strong { color: #0D47A1; }
+    .small { font-size: 0.92em; color: #555; }
+    .placeholder-note { color: #888; font-style: italic; font-size: 0.92em; display: block; margin-top: 8px; }
+    .ai-placeholder { font-style: italic; color: #7f8c8d; border: 1px dashed #bdc3c7; padding: 15px; margin: 18px 0; background-color: #fdfefe; text-align: center; }
+
+    /* --- Figures / Tables --- */
+    figure { margin: 30px auto; text-align: center; border: 1px solid #e0e0e0; padding: 15px 15px 10px 15px; background-color: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.08); max-width: 860px; }
+    figure img { max-width: 100%; height: auto; border: 1px solid #f0f0f0; display: block; margin: 0 auto 10px auto; }
+    figcaption { font-size: 0.9em; color: #666; margin-top: 10px; font-style: normal; line-height: 1.5; text-align: left; padding: 0 5px; }
+    figcaption strong { color: #333; }
+    .alt-text { margin-top: 6px; font-size: 0.9em; color: #444; background: #FAFAFA; border: 1px solid #eee; padding: 8px 10px; text-align: left; }
+
+    table.data-table { border-collapse: collapse; width: 100%; margin: 22px auto; border: 1px solid #ccc; box-shadow: none; font-size: 0.9em; }
+    table.data-table th, table.data-table td { border: 1px solid #ddd; padding: 10px 12px; text-align: left; vertical-align: top; }
+    table.data-table th { background-color: #f2f7fb; font-weight: 600; color: #2c3e50; }
+    table.data-table tr:nth-child(even) { background-color: #f9f9f9; }
+
+    /* --- TA Results Styling --- */
+    .theme-block { margin: 20px 0 26px 0; padding: 14px 16px; border: 1px solid #E3F2FD; background: #FFFFFF; border-radius: 6px; }
+    .theme-title { margin-top: 0; }
+    .coc { margin: 10px 0; padding: 10px 12px; border-left: 4px solid #90CAF9; background: #F7FBFF; }
+    .extract { margin: 12px 0; padding: 12px 12px 10px 12px; border: 1px solid #eee; border-left: 4px solid #42A5F5; background: #FCFEFF; }
+    .extract .source { font-size: 0.9em; color: #555; margin-bottom: 6px; }
+    blockquote { margin: 12px 0; padding: 10px 14px; border-left: 4px solid #B3E5FC; background: #FAFDFF; }
+
+    /* --- Checklist blocks --- */
+    details { margin: 14px 0; padding: 10px 12px; border: 1px solid #e6e6e6; border-radius: 6px; background: #fff; }
+    summary { cursor: pointer; font-weight: 600; color: #0D47A1; }
+    .checklist ol { margin: 10px 0 0 20px; }
+    .checklist li { margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+
+{# ----------------------------
+   Jinja helpers
+   ---------------------------- #}
+
+{% macro render_figure(fig, number) -%}
+  <figure>
+    <img src="{{ fig.src }}" alt="{{ fig.alt_text }}">
+    <figcaption>
+      <strong>Figure {{ number }}.</strong> {{ fig.caption_html | safe }}
+      <div class="alt-text"><strong>Alt text:</strong> {{ fig.alt_text }}</div>
+      {% if fig.credit %}<div class="small"><em>Credit:</em> {{ fig.credit }}</div>{% endif %}
+    </figcaption>
+  </figure>
+{%- endmacro %}
+
+
+<h1>{{ manuscript_title }}</h1>
+
+<div class="metadata">
+  {% if blinded %}
+    <p><em>Blinded manuscript mode enabled.</em></p>
+  {% else %}
+    <p><strong>Authors:</strong> {{ authors_list }}</p>
+    <p><strong>Affiliations:</strong> {{ affiliation }}</p>
+    {% if corresponding_author %}<p><strong>Corresponding author:</strong> {{ corresponding_author }}</p>{% endif %}
+  {% endif %}
+  <p><em>Generated on: {{ generation_date }}</em></p>
+  <p><em>AI Models Used for Draft Narrative (if applicable): {{ ai_models_used }}</em></p>
+  {% if keywords %}
+    <p><strong>Keywords:</strong> {{ keywords | join(", ") }}</p>
+  {% endif %}
+</div>
+
+
+<h2>Abstract</h2>
+<div class="section-content">
+  {% if abstract_html %}
+    {{ abstract_html | safe }}
+  {% else %}
+    <p class="ai-placeholder">[Provide a structured abstract: aim, dataset, TA approach, key themes, contribution.]</p>
+  {% endif %}
+</div>
+
+
+<h2>1. Introduction</h2>
+<div class="section-content">
+  {% if introduction_html %}
+    {{ introduction_html | safe }}
+  {% else %}
+    <p class="ai-placeholder">[Introduce the problem, explain why TA is appropriate, define key concepts, state aims/questions.]</p>
+  {% endif %}
+
+  {% if research_questions_html %}
+    <div class="callout">
+      <strong>Research questions / aims</strong>
+      <div>{{ research_questions_html | safe }}</div>
+    </div>
+  {% endif %}
+</div>
+
+
+<h2>2. Method</h2>
+<div class="section-content">
+
+  <h3>2.0 Methodological Blueprint</h3>
+  <div class="subsection-content">
+    {% if methodology_blueprint_html is defined and methodology_blueprint_html %}
+      {{ methodology_blueprint_html | safe }}
+    {% else %}
+      <div class="callout">
+        <strong>Reflexive TA blueprint (Braun &amp; Clarke) with placeholders</strong>
+        <p><strong>Analytic focus:</strong> [phenomenon_or_problem_focus]</p>
+        <p><strong>Dataset boundary:</strong> [corpus_scope_and_inclusion_logic]</p>
+        <p><strong>Theoretical position:</strong> [epistemological_and_theoretical_positioning]</p>
+        <p><strong>Reflexivity:</strong> [researcher_positionality_and_reflexive_practice]</p>
+        <p><strong>Coding strategy:</strong> [semantic_latent_balance_and_code_generation_logic]</p>
+        <p><strong>Theme development rule:</strong> [shared_meaning_pattern_plus_central_organising_concept]</p>
+        <p><strong>Quality checks:</strong> [coherence_distinctiveness_recursion_and_extract_claim_alignment]</p>
+        <p><strong>Write-up contract:</strong> [theme_story_claims_grounded_in_extracts_and_literature_link]</p>
+      </div>
+    {% endif %}
+
+    <div class="callout">
+      <strong>Placeholder Replacement Checklist</strong>
+      {% if methodology_placeholders_resolved is defined and methodology_placeholders_resolved %}
+        <p>All methodology placeholders appear resolved.</p>
+      {% elif methodology_placeholder_tokens is defined and methodology_placeholder_tokens %}
+        <p>The following placeholders are still unresolved and should be replaced before final export:</p>
+        <ul>
+          {% for tok in methodology_placeholder_tokens %}
+            <li><code>[{{ tok }}]</code></li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p>Placeholder resolution status unavailable. Review methodology text for bracketed tokens like <code>[example_token]</code>.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <h3>2.1 Approach: Thematic Analysis</h3>
+  <div class="subsection-content">
+    <p><strong>TA type / approach:</strong> {{ ta_type }}</p>
+    {% if ta_rationale_html %}
+      {{ ta_rationale_html | safe }}
+    {% else %}
+      <p class="ai-placeholder">[Explain why thematic analysis is used and why this specific type fits the aims.]</p>
+    {% endif %}
+
+    {% if theoretical_position_html %}
+      <h4>Theoretical / epistemological positioning</h4>
+      <div>{{ theoretical_position_html | safe }}</div>
+    {% endif %}
+
+    {% if reflexivity_html %}
+      <h4>Researcher reflexivity / positionality</h4>
+      <div>{{ reflexivity_html | safe }}</div>
+    {% else %}
+      <span class="placeholder-note">[Optional but recommended: briefly “own your perspective” and positioning.]</span>
+    {% endif %}
+  </div>
+
+
+  <h3>2.2 Data and Context</h3>
+  <div class="subsection-content">
+    {% if data_context_html %}
+      {{ data_context_html | safe }}
+    {% else %}
+      <p class="ai-placeholder">[Describe dataset: setting, population/material, timeframe, and context.]</p>
+    {% endif %}
+
+    {% if sampling_html %}
+      <h4>Sampling and inclusion</h4>
+      <div>{{ sampling_html | safe }}</div>
+    {% endif %}
+
+    {% if data_collection_html %}
+      <h4>Data collection</h4>
+      <div>{{ data_collection_html | safe }}</div>
+    {% endif %}
+
+    {% if ethics_html %}
+      <h4>Ethics</h4>
+      <div>{{ ethics_html | safe }}</div>
+    {% endif %}
+  </div>
+
+
+  <h3>2.3 Analytic Procedure</h3>
+  <div class="subsection-content">
+    {% if analysis_overview_html %}
+      {{ analysis_overview_html | safe }}
+    {% else %}
+      <p class="ai-placeholder">[Describe how analysis was conducted; avoid mixing incompatible TA logics.]</p>
+    {% endif %}
+
+    {% if analysis_phases %}
+      <h4>Six-phase process (document what you did)</h4>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width: 26%;">Phase</th>
+            <th>What was done (project-specific)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ph in analysis_phases %}
+            <tr>
+              <td><strong>{{ ph.name }}</strong></td>
+              <td>{{ ph.what_done_html | safe }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <span class="small">Tip: treat phases as a flexible guide; analysis is typically recursive.</span>
+    {% else %}
+      <span class="placeholder-note">[Optional: provide analysis_phases to show a transparent audit trail.]</span>
+    {% endif %}
+
+    {% if software_tools_html %}
+      <h4>Tools / software</h4>
+      <div>{{ software_tools_html | safe }}</div>
+    {% endif %}
+
+  </div>
+
+
+  <h3>2.4 Quality Practices</h3>
+  <div class="subsection-content">
+    {% if quality_practices_html %}
+      {{ quality_practices_html | safe }}
+    {% else %}
+      <p class="ai-placeholder">[Describe how you ensured coherence and quality (not “reliability” claims unless consistent with your TA type).]</p>
+    {% endif %}
+  </div>
+
+</div>
+
+
+<h2>3. Findings</h2>
+<div class="section-content">
+
+  {% if findings_overview_html %}
+    <div class="callout">
+      <strong>Findings overview</strong>
+      <div>{{ findings_overview_html | safe }}</div>
+    </div>
+  {% endif %}
+
+  {% if thematic_map_figure %}
+    {{ render_figure(thematic_map_figure, 1) }}
+  {% endif %}
+
+  {% if themes %}
+    {% for t in themes %}
+      <div class="theme-block">
+        <h3 class="theme-title">Theme {{ loop.index }}: {{ t.name }}</h3>
+
+        {% if t.central_organising_concept %}
+          <div class="coc"><strong>Central organising concept:</strong> {{ t.central_organising_concept }}</div>
+        {% endif %}
+
+        {% if t.overview_html %}
+          {{ t.overview_html | safe }}
+        {% else %}
+          <p class="ai-placeholder">[Explain what unifies this theme; avoid “topic summary” labels.]</p>
+        {% endif %}
+
+        {% if t.subthemes %}
+          <h4>Subthemes</h4>
+          <ul>
+            {% for st in t.subthemes %}
+              <li><strong>{{ st.name }}:</strong> {{ st.description_html | safe }}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+
+        {% if t.extracts %}
+          <h4>Illustrative data extracts</h4>
+          {% for ex in t.extracts %}
+            <div class="extract">
+              <div class="source"><strong>Source:</strong> {{ ex.source_label }}{% if ex.meta %} — <span class="small">{{ ex.meta }}</span>{% endif %}</div>
+              <blockquote>{{ ex.quote_html | safe }}</blockquote>
+              {% if ex.analytic_commentary_html %}
+                <div class="small"><strong>Analytic note:</strong> {{ ex.analytic_commentary_html | safe }}</div>
+              {% endif %}
+            </div>
+          {% endfor %}
+        {% else %}
+          <span class="placeholder-note">[Add extracts that evidence your analytic claims and show patterning.]</span>
+        {% endif %}
+      </div>
+    {% endfor %}
+  {% else %}
+    <p class="ai-placeholder">[Provide themes list to render structured findings.]</p>
+  {% endif %}
+
+  {% if additional_figures %}
+    {% for fig in additional_figures %}
+      {{ render_figure(fig, loop.index + 1) }}
+    {% endfor %}
+  {% endif %}
+
+</div>
+
+
+<h2>4. Discussion</h2>
+<div class="section-content">
+  {% if discussion_html %}
+    {{ discussion_html | safe }}
+  {% else %}
+    <p class="ai-placeholder">[Interpret themes in relation to research questions and relevant literature; clarify contribution.]</p>
+  {% endif %}
+</div>
+
+
+<h2>5. Limitations</h2>
+<div class="section-content">
+  {% if limitations_html %}
+    {{ limitations_html | safe }}
+  {% else %}
+    <p class="ai-placeholder">[Discuss limitations: dataset, scope conditions, interpretive constraints, transferability.]</p>
+  {% endif %}
+</div>
+
+
+<h2>6. Conclusion</h2>
+<div class="section-content">
+  {% if conclusion_html %}
+    {{ conclusion_html | safe }}
+  {% else %}
+    <p class="ai-placeholder">[Concise wrap-up: key insights, significance, and next steps.]</p>
+  {% endif %}
+</div>
+
+
+{% if footnotes %}
+  <h2>Footnotes</h2>
+  <div class="section-content">
+    <ol>
+      {% for fn in footnotes %}
+        <li>{{ fn | safe }}</li>
+      {% endfor %}
+    </ol>
+  </div>
+{% endif %}
+
+
+<h2>References</h2>
+<div id="references" class="section-content">
+  {% if references_list %}
+    <ol>
+      {% for ref in references_list %}
+        <li>{{ ref.html_string | safe }}</li>
+      {% endfor %}
+    </ol>
+  {% else %}
+    <p class="placeholder-note">[Provide references_list as: [{"html_string": "..."}, ...].]</p>
+  {% endif %}
+</div>
+
+
+{% if appendices %}
+  <h2>Appendices</h2>
+  <div class="section-content">
+    {% for app in appendices %}
+      <h3>{{ app.title }}</h3>
+      <div>{{ app.content_html | safe }}</div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+
+{% if include_internal_checklist %}
+  <h2>Internal Quality Checklist (Do Not Submit)</h2>
+  <div class="section-content checklist">
+    <p class="small">Use this section to self-audit coherence between (i) the claimed TA approach, (ii) procedures, and (iii) analytic output. Remove before submission.</p>
+
+    <details>
+      <summary>Six-phase reflexive TA process (high-level)</summary>
+      <ol>
+        <li>Immerse in the dataset; make initial analytic notes.</li>
+        <li>Code the dataset (often multiple passes); collate coded extracts by code.</li>
+        <li>Use codes to draft candidate themes (broader patterns of shared meaning).</li>
+        <li>Review and develop themes against coded data and the full dataset; split/merge/discard as needed.</li>
+        <li>Refine: define scope and focus; name themes to reflect central concept.</li>
+        <li>Write up: integrate narrative with extracts; situate in literature.</li>
+      </ol>
+    </details>
+
+    <details>
+      <summary>15-point “good TA” criteria (paraphrased)</summary>
+      <ol>
+        <li>Transcription is fit-for-purpose and verified against recordings.</li>
+        <li>All data items receive thorough attention during coding.</li>
+        <li>Coding is comprehensive; themes aren’t built from only vivid anecdotes.</li>
+        <li>Relevant extracts are collated for each theme.</li>
+        <li>Candidate themes are checked against coded extracts and the dataset.</li>
+        <li>Themes are coherent and distinctive; subthemes align with a theme’s core idea.</li>
+        <li>Interpretation goes beyond summary/paraphrase.</li>
+        <li>Extracts substantiate analytic claims.</li>
+        <li>The analytic story is convincing and answers the question.</li>
+        <li>Balance narrative and extracts.</li>
+        <li>Time/effort adequate across phases (including revisiting earlier phases).</li>
+        <li>Approach and theoretical assumptions are explicit.</li>
+        <li>Method described matches analysis shown.</li>
+        <li>Language/concepts align with epistemology/ontology.</li>
+        <li>Researcher activity is visible; themes are constructed, not said to “just emerge”.</li>
+      </ol>
+    </details>
+
+    <details>
+      <summary>Editor/Reviewer evaluation prompts (paraphrased 20-question guide)</summary>
+      <ol>
+        <li>Is TA use explained (even briefly)?</li>
+        <li>Is the TA type clearly specified and justified?</li>
+        <li>Does the TA type fit the research aims/questions?</li>
+        <li>Is there conceptual coherence between theory and TA type?</li>
+        <li>Do data collection methods fit the TA type?</li>
+        <li>Is the chosen TA type enacted consistently?</li>
+        <li>Are there problematic assumptions (e.g., treating TA as one uniform method; importing grounded-theory procedures without justification; treating TA as atheoretical; treating TA as only descriptive and “needing” extra methods)?</li>
+        <li>If extra procedures are used, are they necessary/justified (vs doing TA more effectively)?</li>
+        <li>Are theoretical assumptions stated (including for inductive work)?</li>
+        <li>Do researchers position/own their standpoint (especially when representing marginalised groups)?</li>
+        <li>Are analytic procedures clearly described?</li>
+        <li>Is there confusion (e.g., claiming reflexive TA but using codebooks + independent coders + reliability stats; treating themes as inputs not outputs)?</li>
+        <li>Does the paper demonstrate understanding of the claimed TA approach?</li>
+        <li>Are themes clearly identifiable, and is there an overview (theme list/table/map)?</li>
+        <li>Are themes fully developed (not just domain/topic summaries), and is any deviation justified?</li>
+        <li>Is contextual background mistakenly presented as a “theme”?</li>
+        <li>In applied work, do themes support actionable outcomes?</li>
+        <li>Are there conceptual clashes (e.g., constructionist claims alongside positivist “coding reliability” concerns)?</li>
+        <li>Is analysis weak (theme count/levels issues; code/theme confusion; mismatch between extracts and claims; poor extract balance; overlapping themes)?</li>
+        <li>Are generalisability claims framed appropriately (avoid treating only statistical generalisation as relevant)?</li>
+      </ol>
+    </details>
+  </div>
+{% endif %}
+
+
+</body>
+</html>

@@ -224,6 +224,54 @@ def _contextual_evidence(dq_payload: list[dict[str, Any]], *, max_themes: int = 
     return out
 
 
+def _build_methodology_blueprint_html(
+    *,
+    meta_analyses: list[dict[str, Any]],
+    top_themes: list[tuple[str, int]],
+) -> str:
+    primary = meta_analyses[0] if meta_analyses else {}
+    primary_measure = str(primary.get("effect_measure") or "Standardized Mean Difference (SMD)")
+    tau_estimator = str(primary.get("tau_estimator") or "REML")
+    primary_outcome = str(primary.get("outcome_name") or "primary pooled outcome")
+    subgroup_candidates = ", ".join([_humanize_theme_tokens(k) for k, _ in top_themes[:3]]) or "time period, corpus source, and design proxies"
+    return (
+        "<div class='callout'>"
+        "<strong>Meta-analysis methodology blueprint:</strong>"
+        "<ol>"
+        f"<li><strong>Effect-size choice:</strong> Primary summary metric is {primary_measure}; all effects are oriented so higher values reflect stronger support for the coded construct.</li>"
+        "<li><strong>Heterogeneity model:</strong> Random-effects synthesis with inverse-variance weighting and "
+        f"{tau_estimator} for between-study variance (reported with I<sup>2</sup>, &tau;<sup>2</sup>, and Q).</li>"
+        "<li><strong>Bias checks:</strong> Assess small-study effects using funnel-shape diagnostics, contour-funnel proxy, and trim-and-fill proxy with conservative interpretation.</li>"
+        "<li><strong>Sensitivity analyses:</strong> Pre-specify leave-one-out influence checks, outlier-aware re-estimation, and fixed-vs-random re-fit comparisons.</li>"
+        f"<li><strong>Subgroup/meta-regression plan:</strong> Evaluate modifiers for {subgroup_candidates}; run subgroup pooling and meta-regression around {primary_outcome} where k and data granularity permit.</li>"
+        "</ol>"
+        "</div>"
+    )
+
+
+def _extract_methodology_placeholder_tokens(methodology_blueprint_html: str) -> list[str]:
+    txt = str(methodology_blueprint_html or "")
+    tokens = re.findall(r"\[\[([A-Z0-9_][A-Z0-9_ .:/-]{1,120})\]\]", txt)
+    ordered: list[str] = []
+    seen: set[str] = set()
+    for token in tokens:
+        t = token.strip()
+        if not t or t in seen:
+            continue
+        seen.add(t)
+        ordered.append(t)
+    return ordered
+
+
+def _methodology_placeholder_context(methodology_blueprint_html: str) -> dict[str, Any]:
+    tokens = _extract_methodology_placeholder_tokens(methodology_blueprint_html)
+    return {
+        "methodology_placeholder_tokens": tokens,
+        "methodology_placeholders_resolved": len(tokens) == 0,
+        "methodology_has_placeholder_tokens": len(tokens) > 0,
+    }
+
+
 def _synthesis_table_html(top_themes: list[tuple[str, int]]) -> str:
     out = ["<table class='data-table'>", "<thead><tr><th>Theme</th><th>Evidence Count</th></tr></thead><tbody>"]
     for theme, count in top_themes[:12]:
@@ -559,6 +607,8 @@ def render_meta_analysis_from_summary(
     meta_analyses = _build_meta_analyses(output_dir=output_dir, top_themes=top_themes, item_count=item_count)
     if not meta_analyses:
         raise RuntimeError("No meta-analysis outcomes could be constructed from coded data.")
+    methodology_blueprint_html = _build_methodology_blueprint_html(meta_analyses=meta_analyses, top_themes=top_themes)
+    methodology_placeholder_ctx = _methodology_placeholder_context(methodology_blueprint_html)
 
     payload_base = {
         "collection_name": collection_name,
@@ -569,6 +619,10 @@ def render_meta_analysis_from_summary(
         "theme_counts_flat": [{"theme": _humanize_theme_tokens(k), "count": int(v)} for k, v in top_themes[:25]],
         "contextual_evidence": contextual_evidence,
         "evidence_payload": dq_payload,
+        "methodology_blueprint_html": methodology_blueprint_html,
+        "methodology_placeholder_tokens": methodology_placeholder_ctx["methodology_placeholder_tokens"],
+        "methodology_placeholders_resolved": methodology_placeholder_ctx["methodology_placeholders_resolved"],
+        "methodology_has_placeholder_tokens": methodology_placeholder_ctx["methodology_has_placeholder_tokens"],
         "meta_outcomes": [
             {
                 "outcome_name": m["outcome_name"],
@@ -802,6 +856,10 @@ def render_meta_analysis_from_summary(
         "effect_direction_note": "Higher value indicates stronger support for coded theme signal.",
         "meta_analysis_methods": llm_sections["meta_analysis_methods"],
         "diagnostics_plan": llm_sections["diagnostics_plan"],
+        "methodology_blueprint_html": methodology_blueprint_html,
+        "methodology_placeholder_tokens": methodology_placeholder_ctx["methodology_placeholder_tokens"],
+        "methodology_placeholders_resolved": methodology_placeholder_ctx["methodology_placeholders_resolved"],
+        "methodology_has_placeholder_tokens": methodology_placeholder_ctx["methodology_has_placeholder_tokens"],
         "nma_methods": llm_sections["nma_methods"],
         "nma_summary_text": llm_sections["nma_summary_text"],
         "pub_bias_results": llm_sections["pub_bias_results"],
