@@ -34,6 +34,7 @@ import {
   invokeVisualiseSections,
   resetVisualiseWorker
 } from "./main/services/visualiseBridge";
+import { invokePptElectronCreate, invokePptElectronSections } from "./main/services/pptElectronBridge";
 import { invokePdfOcr } from "./main/services/pdfOcrBridge";
 import { createCoderTestTree, createPdfTestPayload } from "./test/testFixtures";
 import { getCoderCacheDir, CODER_DIR_NAME } from "./session/sessionPaths";
@@ -5324,6 +5325,52 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
         return { status: "error", message: error instanceof Error ? error.message : "visualiser command failed" };
       }
     }
+    if (payload?.phase === "ppt_electron" && payload.action) {
+      try {
+        if (payload.action === "get_sections") {
+          return await invokePptElectronSections();
+        }
+        if (payload.action === "create_ppt") {
+          const body = (payload.payload as Record<string, unknown>) || {};
+          const collectionName = String(body.collectionName || "Collection").trim() || "Collection";
+          const safeBase = collectionName.replace(/[^\w\-_. ]+/g, "_").replace(/\s+/g, "_").slice(0, 80) || "Collection";
+
+          const result = await dialog.showOpenDialog({
+            title: "Select folder to save PowerPoint",
+            properties: ["openDirectory", "createDirectory"]
+          });
+          if (result.canceled || result.filePaths.length === 0) {
+            return { status: "canceled", message: "Export canceled." };
+          }
+          const outputDir = result.filePaths[0];
+          let outputPath = path.join(outputDir, `${safeBase}_ppt_electron.pptx`);
+          try {
+            if (fs.existsSync(outputPath)) {
+              outputPath = path.join(outputDir, `${safeBase}_ppt_electron_${Date.now()}.pptx`);
+            }
+          } catch {
+            // ignore
+          }
+
+          return await invokePptElectronCreate({
+            collectionName,
+            csvPath: String(body.csvPath || "").trim(),
+            outputPath,
+            include: (body.include as string[] | string | undefined) ?? [],
+            keywords: (body.keywords as string[] | string | undefined) ?? [],
+            topNgram: Number(body.topNgram ?? 20),
+            corpusSource: String(body.corpusSource || "controlled_vocabulary_terms"),
+            slideNotes: Boolean(body.slideNotes),
+            rebuild: Boolean(body.rebuild),
+            imageWidthInches: Number(body.imageWidthInches ?? 10)
+          });
+        }
+        return { status: "error", message: `Unknown ppt_electron action: ${payload.action}` };
+      } catch (error) {
+        console.error("PPT Electron command failed", error);
+        return { status: "error", message: error instanceof Error ? error.message : "ppt_electron command failed" };
+      }
+    }
     if (payload?.phase === "screen" && payload.action) {
       try {
         return await sendScreenCommand(payload.action, payload.payload as Record<string, unknown> | undefined);
@@ -6701,13 +6748,15 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
     }
   });
 
-  ipcMain.handle("systematic:compose-paper", async (_event, payload: { runDir?: string; checklistPath?: string }) => {
+  ipcMain.handle("systematic:compose-paper", async (_event, payload: { runDir?: string; checklistPath?: string; prismaFlowImagePath?: string }) => {
     const runDir = String(payload?.runDir || "").trim();
     const checklistPath = String(payload?.checklistPath || "").trim();
     if (!runDir || !checklistPath) {
       return { status: "error", message: "runDir and checklistPath are required." };
     }
-    return composeFullPaper(runDir, checklistPath);
+    return composeFullPaper(runDir, checklistPath, {
+      prismaFlowImagePath: String(payload?.prismaFlowImagePath || "").trim()
+    });
   });
 
   ipcMain.handle("systematic:prisma-audit", async (_event, payload: { runDir?: string }) => {
@@ -6730,7 +6779,7 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
 
   ipcMain.handle(
     "systematic:execute-steps-1-15",
-    async (_event, payload: { runDir?: string; checklistPath?: string; reviewerCount?: number }) => {
+    async (_event, payload: { runDir?: string; checklistPath?: string; reviewerCount?: number; prismaFlowImagePath?: string }) => {
       const runDir = String(payload?.runDir || "").trim();
       const checklistPath = String(payload?.checklistPath || "").trim();
       if (!runDir || !checklistPath) {
@@ -6739,12 +6788,13 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
       return executeSystematicSteps1To15({
         runDir,
         checklistPath,
-        reviewerCount: Number(payload?.reviewerCount || 2)
+        reviewerCount: Number(payload?.reviewerCount || 2),
+        prismaFlowImagePath: String(payload?.prismaFlowImagePath || "").trim()
       });
     }
   );
 
-  ipcMain.handle("systematic:full-run", async (_event, payload: { runDir?: string; checklistPath?: string; maxIterations?: number; minPassPct?: number; maxFail?: number }) => {
+  ipcMain.handle("systematic:full-run", async (_event, payload: { runDir?: string; checklistPath?: string; maxIterations?: number; minPassPct?: number; maxFail?: number; prismaFlowImagePath?: string; collectionName?: string }) => {
     const runDir = String(payload?.runDir || "").trim();
     const checklistPath = String(payload?.checklistPath || "").trim();
     if (!runDir || !checklistPath) {
@@ -6755,7 +6805,9 @@ function registerIpcHandlers(projectManager: ProjectManager): void {
       checklistPath,
       maxIterations: Number(payload?.maxIterations || 3),
       minPassPct: Number(payload?.minPassPct ?? 80),
-      maxFail: Number(payload?.maxFail ?? 0)
+      maxFail: Number(payload?.maxFail ?? 0),
+      prismaFlowImagePath: String(payload?.prismaFlowImagePath || "").trim(),
+      collectionName: String(payload?.collectionName || "").trim()
     });
   });
 

@@ -19,6 +19,14 @@ export const ToolsTab: RibbonTab = {
       iconId: "test-coder",
       group: "Tools",
       command: { phase: "tools", action: "open_tool", payload: { toolType: "coder-panel", panelId: "panel4" } }
+    },
+    {
+      id: "ppt-electron",
+      label: "PPT Electron",
+      hint: "Open the PowerPoint creator in Panel 2.",
+      iconId: "visualiser-build",
+      group: "Tools",
+      command: { phase: "tools", action: "open_tool", payload: { toolType: "ppt-electron", panelId: "panel2" } }
     }
   ]
 };

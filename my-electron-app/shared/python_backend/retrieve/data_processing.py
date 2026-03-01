@@ -194,6 +194,53 @@ _NUM_PREFIX_RE = re.compile(r"^\s*(\d{1,2}(?:\.\d{1,3})*)[\)\.\-]?\s+(.+?)\s*$")
 _DATEY_HEADING_RE = re.compile(r"^(on\s+)?(?:mon|tue|wed|thu|fri|sat|sun)\b.*\+\d{2}:\d{2}$", re.I)
 _IP_DATEY_HEADING_RE = re.compile(r"^\d{1,3}(?:\.\d{1,3}){3}\s+on\s+(?:mon|tue|wed|thu|fri|sat|sun)\b.*\+\d{2}:\d{2}$", re.I)
 _ALPHA_ENUM_RE = re.compile(r"^[A-Z][\)\.\-]\s+(.+?)\s*$")
+_SINGLE_LETTER_SPACED_RE = re.compile(r"^(?:[A-Za-z]\s+){2,}[A-Za-z]$")
+_HEADING_ALPHA_WORD_RE = re.compile(r"[A-Za-z][A-Za-z\-]{2,}")
+
+
+def _looks_like_formula_heading(title: str, *, has_numeric_prefix: bool) -> bool:
+    t = str(title or "").strip()
+    if not t:
+        return True
+    if _SINGLE_LETTER_SPACED_RE.fullmatch(t):
+        return True
+
+    alpha_match = re.search(r"[A-Za-z]", t)
+    if alpha_match and t[alpha_match.start()].islower() and not has_numeric_prefix:
+        return True
+
+    alpha_words = _HEADING_ALPHA_WORD_RE.findall(t)
+    alpha_word_count = len(alpha_words)
+    digit_count = sum(ch.isdigit() for ch in t)
+    symbol_like = bool(re.search(r"[=<>≤≥≈≠∑∫πβγδλμ∗]", t))
+    if re.match(r"^[^\w#]+", t):
+        return True
+
+    # Numeric headings with little/no lexical content are usually equations, not sections.
+    if has_numeric_prefix and alpha_word_count < 2:
+        return True
+    if has_numeric_prefix and digit_count >= 2 and alpha_word_count <= 2:
+        return True
+    if has_numeric_prefix:
+        no_prefix = re.sub(r"^\d{1,2}(?:\.\d{1,3})*\s+", "", t).strip()
+        wc = len(re.findall(r"\w+", no_prefix))
+        if wc > 7:
+            return True
+        if not re.match(r"^[A-Z]", no_prefix):
+            return True
+        if "," in no_prefix:
+            return True
+        if no_prefix.endswith(("-", "—", "–", ".")):
+            return True
+        if re.search(r"[()]", no_prefix):
+            return True
+        if re.search(r"[<>=≤≥]", no_prefix):
+            return True
+        if re.search(r"\(\d+\)|\bEq\.?\b", no_prefix, re.I):
+            return True
+    if symbol_like and alpha_word_count <= 2:
+        return True
+    return False
 
 
 def _split_sections_from_markdown(full_text: str) -> dict[str, str]:
@@ -207,6 +254,7 @@ def _split_sections_from_markdown(full_text: str) -> dict[str, str]:
         if m:
             title = m.group(2).strip()
             level = len(m.group(1))
+            has_numeric_prefix = False
         else:
             m2 = _NUM_HEADING_RE.match(ln)
             if m2:
@@ -217,11 +265,16 @@ def _split_sections_from_markdown(full_text: str) -> dict[str, str]:
                     level = len(p.group(1).split("."))
                 else:
                     level = 1
+                has_numeric_prefix = True
+            else:
+                has_numeric_prefix = False
         if not title:
             continue
         if _DATEY_HEADING_RE.match(title):
             continue
         if _IP_DATEY_HEADING_RE.match(title):
+            continue
+        if _looks_like_formula_heading(title, has_numeric_prefix=has_numeric_prefix):
             continue
         am = _ALPHA_ENUM_RE.match(title)
         if am:

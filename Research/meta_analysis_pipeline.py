@@ -20,6 +20,7 @@ if str(_REPO_ROOT) not in sys.path:
 
 from Research.adaptive_prompt_context import build_adaptive_prompt_context
 from Research.systematic_review_pipeline import (
+    _anchor_plain_author_year_citations,
     _assert_non_placeholder_html,
     _assert_reference_and_postprocess_integrity,
     _build_dqid_evidence_payload,
@@ -39,11 +40,19 @@ from Research.systematic_review_pipeline import (
     _repo_root,
     _resolve_collection_label,
     _safe_name,
+    _strict_dqid_citation_rules_text,
     _stable_section_custom_id,
     _svg_prisma,
+    _validate_dqid_quote_page_integrity,
+    _validate_section_citation_integrity,
     _validate_generated_section,
     _write_section_cache,
 )
+from Research.pipeline.plotly_static_figures import (
+    write_bar_chart_svg,
+    write_forest_svg,
+)
+from Research.summary_utils import resolve_summary_path
 
 
 def _extract_year(value: Any) -> int | None:
@@ -345,9 +354,20 @@ def _build_meta_analyses(
         pooled = round(min(0.95, max(0.05, count / denom)), 3)
         lo = round(max(0.01, pooled - 0.12), 3)
         hi = round(min(0.99, pooled + 0.12), 3)
-        forest_svg = _svg_polished_forest_plot(_humanize_theme_tokens(theme), pooled, lo, hi)
         forest_name = f"forest_{i}_{_safe_name(theme)[:40]}.svg"
-        (output_dir / forest_name).write_text(forest_svg, encoding="utf-8")
+        forest_path = output_dir / forest_name
+        ok_forest = write_forest_svg(
+            output_path=forest_path,
+            outcome_name=_humanize_theme_tokens(theme),
+            pooled=pooled,
+            lo=lo,
+            hi=hi,
+            width=900,
+            height=360,
+        )
+        if not ok_forest:
+            forest_svg = _svg_polished_forest_plot(_humanize_theme_tokens(theme), pooled, lo, hi)
+            forest_path.write_text(forest_svg, encoding="utf-8")
         outcomes.append(
             {
                 "outcome_name": _humanize_theme_tokens(theme),
@@ -380,9 +400,18 @@ def _figure_proxy(
     width: int = 780,
     height: int = 420,
 ) -> str:
-    svg = _svg_polished_bar_chart(title, labels or ["No data"], values or [0], width=width, height=height)
     p = output_dir / filename
-    p.write_text(svg, encoding="utf-8")
+    ok = write_bar_chart_svg(
+        output_path=p,
+        title=title,
+        labels=labels or ["No data"],
+        values=values or [0],
+        width=width,
+        height=height,
+    )
+    if not ok:
+        svg = _svg_polished_bar_chart(title, labels or ["No data"], values or [0], width=width, height=height)
+        p.write_text(svg, encoding="utf-8")
     return p.name
 
 
@@ -519,6 +548,34 @@ def _run_grouped_batch_sections(
     }
 
 
+def _rewrite_section_prompt(
+    *,
+    section_name: str,
+    base_instruction: str,
+    payload: dict[str, Any],
+    section_focus: dict[str, Any],
+    citation_instruction: str,
+    strict_rules: str,
+    validation_error: str,
+    previous_output: str,
+) -> str:
+    return (
+        f"SECTION_NAME\n{section_name}\n\n"
+        f"INSTRUCTION\n{base_instruction}\n\n"
+        f"SECTION_FOCUS_JSON\n{json.dumps(section_focus, ensure_ascii=False, indent=2)}\n\n"
+        f"CONTEXT_JSON\n{json.dumps(payload, ensure_ascii=False, indent=2)}\n\n"
+        f"PREVIOUS_OUTPUT\n{previous_output}\n\n"
+        f"VALIDATION_ERROR\n{validation_error}\n\n"
+        "REVISION_RULES\nRewrite the section to satisfy validation constraints and preserve evidence grounding.\n"
+        "If a citation cannot be mapped to provided evidence_payload dqids, remove that citation and rewrite the sentence.\n"
+        "Never invent author-year citations.\n\n"
+        f"{strict_rules}\n\n"
+        "STYLE_GUARD\nWrite formal publication prose only. Do not mention prompts/context JSON/AI.\n\n"
+        f"CITATION_STYLE\n{citation_instruction}\n\n"
+        "Return only raw HTML snippets, no markdown fences."
+    )
+
+
 def render_meta_analysis_from_summary(
     *,
     summary: dict[str, Any],
@@ -564,45 +621,81 @@ def render_meta_analysis_from_summary(
     prisma_path = output_dir / "prisma_flow.svg"
     prisma_path.write_text(prisma_svg, encoding="utf-8")
 
-    rob_svg = _svg_polished_bar_chart(
-        "Quality/validity signal counts by top coded themes",
-        [_humanize_theme_tokens(k) for k, _ in top_themes[:10]] or ["No data"],
-        [int(v) for _, v in top_themes[:10]] or [0],
+    rob_path = output_dir / "risk_of_bias_plot.svg"
+    ok_rob = write_bar_chart_svg(
+        output_path=rob_path,
+        title="Quality/validity signal counts by top coded themes",
+        labels=[_humanize_theme_tokens(k) for k, _ in top_themes[:10]] or ["No data"],
+        values=[int(v) for _, v in top_themes[:10]] or [0],
         width=960,
         height=520,
     )
-    rob_path = output_dir / "risk_of_bias_plot.svg"
-    rob_path.write_text(rob_svg, encoding="utf-8")
+    if not ok_rob:
+        rob_svg = _svg_polished_bar_chart(
+            "Quality/validity signal counts by top coded themes",
+            [_humanize_theme_tokens(k) for k, _ in top_themes[:10]] or ["No data"],
+            [int(v) for _, v in top_themes[:10]] or [0],
+            width=960,
+            height=520,
+        )
+        rob_path.write_text(rob_svg, encoding="utf-8")
 
-    funnel_svg = _svg_polished_bar_chart(
-        "Small-study effects diagnostic proxy",
-        ["Observed", "Expected"],
-        [max(1, item_count), max(1, int(item_count * 0.9))],
+    funnel_path = output_dir / "funnel_plot.svg"
+    ok_funnel = write_bar_chart_svg(
+        output_path=funnel_path,
+        title="Small-study effects diagnostic proxy",
+        labels=["Observed", "Expected"],
+        values=[max(1, item_count), max(1, int(item_count * 0.9))],
         width=700,
         height=420,
     )
-    funnel_path = output_dir / "funnel_plot.svg"
-    funnel_path.write_text(funnel_svg, encoding="utf-8")
+    if not ok_funnel:
+        funnel_svg = _svg_polished_bar_chart(
+            "Small-study effects diagnostic proxy",
+            ["Observed", "Expected"],
+            [max(1, item_count), max(1, int(item_count * 0.9))],
+            width=700,
+            height=420,
+        )
+        funnel_path.write_text(funnel_svg, encoding="utf-8")
 
-    network_svg = _svg_polished_bar_chart(
-        "Evidence network node degree proxy",
-        [_humanize_theme_tokens(k) for k, _ in top_themes[:8]] or ["No data"],
-        [max(1, int(v)) for _, v in top_themes[:8]] or [1],
+    network_path = output_dir / "evidence_network.svg"
+    ok_network = write_bar_chart_svg(
+        output_path=network_path,
+        title="Evidence network node degree proxy",
+        labels=[_humanize_theme_tokens(k) for k, _ in top_themes[:8]] or ["No data"],
+        values=[max(1, int(v)) for _, v in top_themes[:8]] or [1],
         width=760,
         height=420,
     )
-    network_path = output_dir / "evidence_network.svg"
-    network_path.write_text(network_svg, encoding="utf-8")
+    if not ok_network:
+        network_svg = _svg_polished_bar_chart(
+            "Evidence network node degree proxy",
+            [_humanize_theme_tokens(k) for k, _ in top_themes[:8]] or ["No data"],
+            [max(1, int(v)) for _, v in top_themes[:8]] or [1],
+            width=760,
+            height=420,
+        )
+        network_path.write_text(network_svg, encoding="utf-8")
 
-    rank_svg = _svg_polished_bar_chart(
-        "Ranking probability proxy",
-        [f"R{i}" for i in range(1, 6)],
-        [80, 65, 48, 35, 20],
+    rank_path = output_dir / "rankograms.svg"
+    ok_rank = write_bar_chart_svg(
+        output_path=rank_path,
+        title="Ranking probability proxy",
+        labels=[f"R{i}" for i in range(1, 6)],
+        values=[80, 65, 48, 35, 20],
         width=820,
         height=420,
     )
-    rank_path = output_dir / "rankograms.svg"
-    rank_path.write_text(rank_svg, encoding="utf-8")
+    if not ok_rank:
+        rank_svg = _svg_polished_bar_chart(
+            "Ranking probability proxy",
+            [f"R{i}" for i in range(1, 6)],
+            [80, 65, 48, 35, 20],
+            width=820,
+            height=420,
+        )
+        rank_path.write_text(rank_svg, encoding="utf-8")
 
     meta_analyses = _build_meta_analyses(output_dir=output_dir, top_themes=top_themes, item_count=item_count)
     if not meta_analyses:
@@ -635,6 +728,7 @@ def render_meta_analysis_from_summary(
         ],
     }
     citation_instruction = _citation_style_instruction(citation_style)
+    strict_rules = _strict_dqid_citation_rules_text(citation_style)
     section_focus_context: dict[str, dict[str, Any]] = {
         "inclusion_logic": {"focus": "eligibility criteria, population, outcomes, timeframe, IR/CS corpus scope"},
         "search_strategy_summary": {"focus": "sources, retrieval logic, temporal coverage, deduplication"},
@@ -693,21 +787,27 @@ def render_meta_analysis_from_summary(
     }
 
     llm_sections: dict[str, str] = {}
+    phase1_payload_by_section: dict[str, dict[str, Any]] = {}
     phase1_prompts: list[tuple[str, str]] = []
     for section_name, instruction in phase1_sections.items():
         cached = _cache_hit(section_name, section_cache_entries, model)
         if cached:
             c1 = _normalize_final_section_html(section_name, cached)
-            llm_sections[section_name] = _enrich_dqid_anchors(c1, dqid_lookup, citation_style=citation_style)
+            c1 = _enrich_dqid_anchors(c1, dqid_lookup, citation_style=citation_style)
+            c1 = _validate_section_citation_integrity(section_name, c1, dqid_lookup, citation_style=citation_style)
+            _validate_generated_section(section_name, c1, section_specs[section_name])
+            llm_sections[section_name] = c1
             continue
         adaptive = build_adaptive_prompt_context(payload_base, target_tokens=7000, hard_cap_tokens=11000)
         section_context = adaptive["context"]
+        phase1_payload_by_section[section_name] = section_context if isinstance(section_context, dict) else payload_base
         prompt = (
             f"SECTION_NAME\n{section_name}\n\n"
             f"INSTRUCTION\n{instruction}\n\n"
             f"SECTION_FOCUS_JSON\n{json.dumps(section_focus_context.get(section_name, {}), ensure_ascii=False, indent=2)}\n\n"
             f"CONTEXT_JSON\n{json.dumps(section_context, ensure_ascii=False, indent=2)}\n\n"
             f"CONTEXT_META_JSON\n{json.dumps(adaptive['meta'], ensure_ascii=False)}\n\n"
+            f"{strict_rules}\n\n"
             "STYLE_GUARD\nWrite formal publication prose only. Do not mention prompts/context JSON/AI.\n\n"
             f"CITATION_STYLE\n{citation_instruction}\n\n"
             "Return only raw HTML snippets, no markdown fences."
@@ -725,6 +825,7 @@ def render_meta_analysis_from_summary(
             cleaned = _clean_and_humanize_section_html(_clean_llm_html(raw_html))
             cleaned = _normalize_final_section_html(section_name, cleaned)
             cleaned = _enrich_dqid_anchors(cleaned, dqid_lookup, citation_style=citation_style)
+            cleaned = _validate_section_citation_integrity(section_name, cleaned, dqid_lookup, citation_style=citation_style)
             _validate_generated_section(section_name, cleaned, section_specs[section_name])
             llm_sections[section_name] = cleaned
             section_cache[section_name] = cleaned
@@ -755,6 +856,7 @@ def render_meta_analysis_from_summary(
                     f"SECTION_FOCUS_JSON\n{json.dumps(section_focus_context.get(name, {}), ensure_ascii=False, indent=2)}\n\n"
                     f"WHOLE_PAPER_CONTEXT_JSON\n{json.dumps(phase2_whole['context'], ensure_ascii=False, indent=2)}\n\n"
                     f"CONTEXT_META_JSON\n{json.dumps(phase2_whole['meta'], ensure_ascii=False)}\n\n"
+                    f"{strict_rules}\n\n"
                     "STYLE_GUARD\nWrite formal publication prose only. Do not mention prompts/context JSON/AI.\n\n"
                     f"CITATION_STYLE\n{citation_instruction}\n\n"
                     "Return only raw HTML snippets, no markdown fences."
@@ -767,7 +869,10 @@ def render_meta_analysis_from_summary(
             cached = _cache_hit(name, section_cache_entries, model)
             if cached:
                 c2 = _normalize_final_section_html(name, cached)
-                llm_sections[name] = _enrich_dqid_anchors(c2, dqid_lookup, citation_style=citation_style)
+                c2 = _enrich_dqid_anchors(c2, dqid_lookup, citation_style=citation_style)
+                c2 = _validate_section_citation_integrity(name, c2, dqid_lookup, citation_style=citation_style)
+                _validate_generated_section(name, c2, section_specs[name])
+                llm_sections[name] = c2
     phase2_batch: dict[str, Any] = {"batch_id": "", "request_count": 0}
     if phase2_prompts:
         for sec_name, _ in phase2_prompts:
@@ -783,6 +888,7 @@ def render_meta_analysis_from_summary(
             cleaned = _clean_and_humanize_section_html(_clean_llm_html(raw_html))
             cleaned = _normalize_final_section_html(section_name, cleaned)
             cleaned = _enrich_dqid_anchors(cleaned, dqid_lookup, citation_style=citation_style)
+            cleaned = _validate_section_citation_integrity(section_name, cleaned, dqid_lookup, citation_style=citation_style)
             _validate_generated_section(section_name, cleaned, section_specs[section_name])
             llm_sections[section_name] = cleaned
             section_cache[section_name] = cleaned
@@ -926,8 +1032,15 @@ def render_meta_analysis_from_summary(
     env = Environment(loader=FileSystemLoader(str(template_path.parent)), autoescape=select_autoescape(["html", "htm", "xml"]))
     template = env.get_template(template_path.name)
     rendered = template.render(**context)
+    rendered = _anchor_plain_author_year_citations(rendered, dqid_lookup, citation_style=citation_style)
     _assert_non_placeholder_html(rendered)
     _assert_reference_and_postprocess_integrity(rendered, citation_style=citation_style)
+    _validate_dqid_quote_page_integrity(rendered, dqid_lookup, citation_style=citation_style, context_label="Meta analysis review")
+    post_generation_validation = {
+        "status": "ok",
+        "validated_html_path": str(output_dir / "meta_analysis_review.html"),
+        "checks": ["citation_integrity", "dqid_quote_title_verbatim", f"{citation_style}_page_alignment"],
+    }
 
     out_html = output_dir / "meta_analysis_review.html"
     out_ctx = output_dir / "meta_analysis_context.json"
@@ -957,6 +1070,7 @@ def render_meta_analysis_from_summary(
             "evidence_network_figure": str(network_path),
             "rankograms_figure": str(rank_path),
         },
+        "post_generation_validation": post_generation_validation,
     }
     (output_dir / "meta_analysis_manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     return manifest
@@ -964,13 +1078,24 @@ def render_meta_analysis_from_summary(
 
 def run_pipeline(
     *,
-    summary_path: Path,
+    summary_path: Path | None,
     template_path: Path,
     outputs_root: Path,
     model: str = "gpt-5-mini",
     citation_style: str = "apa",
+    collection_name: str = "",
+    coded_dir: Path | None = None,
+    build_summary_if_missing: bool = False,
 ) -> dict[str, Any]:
-    summary = _load_json(summary_path)
+    resolved_summary_path = resolve_summary_path(
+        summary_path=summary_path,
+        collection_name=str(collection_name),
+        coded_dir=coded_dir,
+        outputs_root=outputs_root,
+        model=model,
+        build_summary_if_missing=bool(build_summary_if_missing),
+    )
+    summary = _load_json(resolved_summary_path)
     return render_meta_analysis_from_summary(
         summary=summary,
         template_path=template_path,
@@ -982,7 +1107,10 @@ def run_pipeline(
 
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Generate systematic review + meta-analysis HTML from coded summary.")
-    p.add_argument("--summary-path", required=True)
+    p.add_argument("--summary-path", default="")
+    p.add_argument("--collection-name", default="")
+    p.add_argument("--coded-dir", default="")
+    p.add_argument("--build-summary-if-missing", action="store_true")
     p.add_argument("--template-path", default=str(_repo_root() / "Research" / "templates" / "meta_analysis_template.html"))
     p.add_argument("--outputs-root", default=str(_repo_root() / "Research" / "outputs"))
     p.add_argument("--model", default="gpt-5-mini")
@@ -992,12 +1120,17 @@ def _build_parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = _build_parser().parse_args()
+    summary_path = Path(args.summary_path).resolve() if str(args.summary_path).strip() else None
+    coded_dir = Path(args.coded_dir).resolve() if str(args.coded_dir).strip() else None
     result = run_pipeline(
-        summary_path=Path(args.summary_path).resolve(),
+        summary_path=summary_path,
         template_path=Path(args.template_path).resolve(),
         outputs_root=Path(args.outputs_root).resolve(),
         model=str(args.model),
         citation_style=str(args.citation_style),
+        collection_name=str(args.collection_name),
+        coded_dir=coded_dir,
+        build_summary_if_missing=bool(args.build_summary_if_missing),
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0

@@ -8011,9 +8011,33 @@ def _process_batch_for(
             last_status = status
         if status == "completed":
             output_file_id = getattr(b, "output_file_id", None)
-            if not output_file_id:
-                raise RuntimeError(f"Batch {batch_id} completed but has no output_file_id")
-            break
+            if output_file_id:
+                break
+            # Some completed batches expose output_file_id with lag; poll explicitly before failing.
+            logging.warning("Batch %s completed without output_file_id; polling for eventual consistency.", batch_id)
+            lag_retries = 20
+            while lag_retries > 0 and not output_file_id:
+                time.sleep(max(2, poll_interval))
+                b = client.batches.retrieve(batch_id)
+                output_file_id = getattr(b, "output_file_id", None)
+                lag_retries -= 1
+            if output_file_id:
+                break
+            error_file_id = getattr(b, "error_file_id", None)
+            if error_file_id:
+                try:
+                    err_bytes = _read_file_bytes_safely(client, error_file_id)
+                    err_preview = (err_bytes.decode("utf-8", errors="ignore") or "")[:2000]
+                except Exception:
+                    err_preview = ""
+                raise RuntimeError(
+                    f"Batch {batch_id} completed but has no output_file_id (error_file_id={error_file_id}). "
+                    f"Error preview: {err_preview}"
+                )
+            raise RuntimeError(
+                f"Batch {batch_id} completed but has no output_file_id after retries. "
+                "Keep metadata/input files and retry materialization."
+            )
         if status in ("failed", "cancelled", "expired"):
             raise RuntimeError(f"Batch {batch_id} ended in status '{status}'")
         time.sleep(poll_interval)
@@ -8116,6 +8140,22 @@ def call_models_zt( text: str, function: str,
     """
 
     import json
+
+    def _strip_research_questions_block(src: str) -> str:
+        import re as _re
+        raw = str(src or "")
+        if not raw:
+            return raw
+        # Remove block between RESEARCH_QUESTIONS header and next all-caps section header.
+        stripped = _re.sub(
+            r"(?ms)\nRESEARCH_QUESTIONS\s*\n.*?(?=\n[A-Z][A-Z0-9_ ]*\n|\Z)",
+            "\n",
+            raw,
+        )
+        return _re.sub(r"\n{3,}", "\n\n", stripped).strip()
+
+    if str(function or "").strip() in {"structured_coding_part_a", "structured_coding_part_b"}:
+        text = _strip_research_questions_block(text)
     no_temperature = ["gpt-5-mini"]
 
     from datetime import datetime
@@ -8286,6 +8326,11 @@ def call_models_zt( text: str, function: str,
         # Not JSON; just append raw text
         if not full_prompt:
             full_prompt = f"{task_content}\n\n{text}"
+
+    # Hard guarantee: structured abstract coding must not include RQ blocks.
+    if str(function or "").strip() in {"structured_coding_part_a", "structured_coding_part_b"}:
+        task_content = _strip_research_questions_block(task_content)
+        full_prompt = _strip_research_questions_block(full_prompt)
 
     # Get the DICT of default models for this task
     task_default_models = task_config.get("default_model", {})

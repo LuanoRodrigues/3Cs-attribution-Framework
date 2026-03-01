@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import AdmZip from "adm-zip";
+import { spawnSync } from "child_process";
 
 export type PrismaChecklistItem = {
   itemId: string;
@@ -102,6 +103,12 @@ export type SystematicPaths = {
   bundleManifestPath: string;
 };
 
+type ComposeOptions = {
+  prismaFlowImagePath?: string;
+  synthesisManifest?: Record<string, unknown>;
+  allowIncomplete?: boolean;
+};
+
 export type SystematicExecutionStepStatus = "completed" | "failed";
 
 export type SystematicExecutionStep = {
@@ -166,6 +173,345 @@ const safeWriteJson = (filePath: string, value: unknown): void => {
   fs.writeFileSync(filePath, JSON.stringify(value, null, 2), "utf-8");
 };
 
+const PRISMA_FLOW_PNG_NAME = "flow_prisma_attribution of cyberattacks.png";
+const PLACEHOLDER_PATTERNS: RegExp[] = [
+  /MethodsWriterAgent pass/i,
+  /ResultsWriterAgent pass/i,
+  /DiscussionWriterAgent pass/i,
+  /Supervisor merge pass/i,
+  /PRISMA Item\s+\d+[a-z]?:\s+Add explicit content/i,
+  /Citation placeholders added/i,
+  /\[cite:[^\]]+\]/i,
+  /\bto be defined\b/i,
+  /\bpending\b/i
+];
+
+type CodingEvidenceUnit = {
+  quote?: string;
+  paraphrase?: string;
+  potential_themes?: string[];
+  open_codes?: string[];
+  evidence_type?: string;
+};
+
+function prismaCountsFromState(state: SystematicState): Record<string, number> {
+  const flow = state.prisma?.flow || {};
+  const identified = Number(flow.recordsIdentified || 0);
+  const dup = Number(flow.duplicateRecordsRemoved || 0);
+  const screened = Number(flow.recordsScreened || 0);
+  const excluded = Number(flow.recordsExcluded || 0);
+  const assessed = Number(flow.reportsAssessedForEligibility || 0);
+  const fullExcluded = Number(flow.reportsExcludedWithReasons || 0);
+  const included = Number(flow.studiesIncludedInReview || 0);
+  return {
+    db: Math.max(0, identified),
+    dup: Math.max(0, dup),
+    screen: Math.max(0, screened),
+    screen_ex: Math.max(0, excluded),
+    full: Math.max(0, assessed),
+    full_ex: Math.max(0, fullExcluded),
+    included: Math.max(0, included)
+  };
+}
+
+function ensurePrismaFlowPng(
+  runDir: string,
+  state: SystematicState,
+  prismaFlowImagePath?: string
+): { status: "ok"; written: string[] } | { status: "error"; message: string } {
+  try {
+    const counts = prismaCountsFromState(state);
+    const targets = new Set<string>();
+    targets.add(path.join(runDir, PRISMA_FLOW_PNG_NAME));
+
+    const cwdResearch = path.resolve(process.cwd(), "Research", "Systematic_review");
+    const parentResearch = path.resolve(process.cwd(), "..", "Research", "Systematic_review");
+    const candidateDirs =
+      fs.existsSync(parentResearch) && fs.statSync(parentResearch).isDirectory()
+        ? [parentResearch]
+        : [cwdResearch];
+    for (const d of candidateDirs) {
+      if (fs.existsSync(d) && fs.statSync(d).isDirectory()) {
+        targets.add(path.join(d, PRISMA_FLOW_PNG_NAME));
+      }
+    }
+
+    const providedPath = cleanText(prismaFlowImagePath || "");
+    const statePath = cleanText(state.artifacts?.prismaFlowPngPath || "");
+    let resolvedSource = "";
+    if (providedPath) {
+      resolvedSource = path.resolve(providedPath);
+      if (!fs.existsSync(resolvedSource) || !fs.statSync(resolvedSource).isFile()) {
+        return { status: "error", message: `PRISMA flow image not found: ${resolvedSource}` };
+      }
+    } else if (statePath) {
+      const maybeStatePath = path.resolve(statePath);
+      if (fs.existsSync(maybeStatePath) && fs.statSync(maybeStatePath).isFile()) {
+        resolvedSource = maybeStatePath;
+      }
+    }
+    if (resolvedSource) {
+      const written: string[] = [];
+      for (const target of targets) {
+        fs.mkdirSync(path.dirname(target), { recursive: true });
+        fs.copyFileSync(resolvedSource, target);
+        written.push(target);
+      }
+      return { status: "ok", written };
+    }
+
+    const pyScript = `
+import json, struct, zlib, sys
+from pathlib import Path
+
+out = Path(sys.argv[1])
+counts = json.loads(sys.argv[2])
+W,H = 1200, 760
+img = bytearray(W*H*3)
+
+def set_px(x,y,r,g,b):
+    if 0 <= x < W and 0 <= y < H:
+        i = (y*W + x)*3
+        img[i] = r; img[i+1] = g; img[i+2] = b
+
+def rect(x0,y0,x1,y1,r,g,b):
+    for y in range(max(0,y0), min(H,y1)):
+        row = y*W*3
+        for x in range(max(0,x0), min(W,x1)):
+            i = row + x*3
+            img[i] = r; img[i+1] = g; img[i+2] = b
+
+def hline(x0,x1,y,r,g,b,t=1):
+    for yy in range(y, y+t):
+        rect(x0,yy,x1,yy+1,r,g,b)
+
+def vline(x,y0,y1,r,g,b,t=1):
+    rect(x,y0,x+t,y1,r,g,b)
+
+# background
+rect(0,0,W,H,250,252,255)
+
+# title band
+rect(0,0,W,72,23,63,95)
+
+# boxes
+box_w, box_h = 360, 84
+cx = (W - box_w)//2
+left = 90
+right = W - left - box_w
+y1, y2, y3, y4 = 120, 260, 400, 540
+
+def draw_box(x,y):
+    rect(x,y,x+box_w,y+box_h,235,244,255)
+    hline(x,x+box_w,y,34,74,120,2)
+    hline(x,x+box_w,y+box_h-2,34,74,120,2)
+    vline(x,y,y+box_h,34,74,120,2)
+    vline(x+box_w-2,y,y+box_h,34,74,120,2)
+
+for (x,y) in [(cx,y1),(left,y2),(right,y2),(left,y3),(right,y3),(cx,y4)]:
+    draw_box(x,y)
+
+# arrows
+def down_arrow(x,y0,y1):
+    hline(x-2,x+2,y0,34,74,120,y1-y0)
+    rect(x-8,y1-10,x+8,y1,34,74,120)
+
+down_arrow(cx+box_w//2, y1+box_h, y2-12)
+down_arrow(left+box_w//2, y2+box_h, y3-12)
+down_arrow(right+box_w//2, y2+box_h, y3-12)
+down_arrow(cx+box_w//2, y3+box_h, y4-12)
+
+# tiny bar ribbon encoding counts (deterministic visual trace)
+vals = [int(counts.get(k,0)) for k in ("db","dup","screen","screen_ex","full","full_ex","included")]
+m = max(vals+[1])
+bx0, by0, bw, bh = 120, 680, 960, 44
+rect(bx0, by0, bx0+bw, by0+bh, 230, 238, 248)
+for i,v in enumerate(vals):
+    x0 = bx0 + i*(bw//7) + 14
+    x1 = bx0 + (i+1)*(bw//7) - 14
+    h = int((bh-10) * (v/m))
+    rect(x0, by0+bh-6-h, x1, by0+bh-6, 33, 150, 243)
+
+def png_chunk(tag, data):
+    return struct.pack("!I", len(data)) + tag + data + struct.pack("!I", zlib.crc32(tag + data) & 0xffffffff)
+
+raw = bytearray()
+for y in range(H):
+    raw.append(0)
+    start = y*W*3
+    raw.extend(img[start:start+W*3])
+comp = zlib.compress(bytes(raw), 9)
+png = bytearray()
+png.extend(b"\\x89PNG\\r\\n\\x1a\\n")
+png.extend(png_chunk(b'IHDR', struct.pack("!IIBBBBB", W, H, 8, 2, 0, 0, 0)))
+png.extend(png_chunk(b'IDAT', comp))
+png.extend(png_chunk(b'IEND', b''))
+
+out.parent.mkdir(parents=True, exist_ok=True)
+out.write_bytes(png)
+print(str(out))
+`.trim();
+
+    const written: string[] = [];
+    for (const outPath of targets) {
+      if (fs.existsSync(outPath) && fs.statSync(outPath).size > 0) {
+        written.push(outPath);
+        continue;
+      }
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+      const proc = spawnSync(
+        "python3",
+        ["-c", pyScript, outPath, JSON.stringify(counts)],
+        { encoding: "utf-8" }
+      );
+      if (proc.status !== 0 || !fs.existsSync(outPath) || fs.statSync(outPath).size <= 0) {
+        const err = cleanText(proc.stderr || proc.stdout || "unknown python error");
+        return { status: "error", message: `Failed to generate PRISMA PNG at ${outPath}: ${err}` };
+      }
+      written.push(outPath);
+    }
+
+    return { status: "ok", written };
+  } catch (error) {
+    return { status: "error", message: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+const slugifyCollection = (value: string): string =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+function parseEvidenceFromBatchLine(line: string): CodingEvidenceUnit[] {
+  try {
+    const row = JSON.parse(line || "{}");
+    const body = row?.response?.body || {};
+    const outputs = Array.isArray(body.output) ? body.output : [];
+    let textPayload = "";
+    for (const out of outputs) {
+      if (String(out?.type || "") !== "message") continue;
+      const content = Array.isArray(out?.content) ? out.content : [];
+      for (const c of content) {
+        if (String(c?.type || "") === "output_text" && typeof c?.text === "string" && c.text.trim()) {
+          textPayload = c.text;
+          break;
+        }
+      }
+      if (textPayload) break;
+    }
+    if (!textPayload) return [];
+    const parsed = JSON.parse(textPayload);
+    const evidence = Array.isArray(parsed?.evidence) ? parsed.evidence : [];
+    return evidence
+      .map((e: unknown) => {
+        const obj = (e && typeof e === "object") ? (e as Record<string, unknown>) : {};
+        return {
+          quote: typeof obj.quote === "string" ? obj.quote : "",
+          paraphrase: typeof obj.paraphrase === "string" ? obj.paraphrase : "",
+          potential_themes: Array.isArray(obj.potential_themes) ? obj.potential_themes.map((x: unknown) => cleanText(x)).filter(Boolean) : [],
+          open_codes: Array.isArray(obj.open_codes) ? obj.open_codes.map((x: unknown) => cleanText(x)).filter(Boolean) : [],
+          evidence_type: typeof obj.evidence_type === "string" ? cleanText(obj.evidence_type) : ""
+        };
+      })
+      .filter((e: CodingEvidenceUnit) => cleanText(e.quote || "") || cleanText(e.paraphrase || ""));
+  } catch {
+    return [];
+  }
+}
+
+function hydrateCodingFromBatchOutputs(runDir: string, state: SystematicState): void {
+  try {
+    const collectionName = cleanText(state.collection?.name || state.collection?.key || path.basename(runDir));
+    const slug = slugifyCollection(collectionName);
+    if (!slug) return;
+
+    const base = path.join(process.env.HOME || "", ".local", "share", "annotarium", "Batching_files", "batches", "code_pdf_page");
+    if (!fs.existsSync(base) || !fs.statSync(base).isDirectory()) return;
+    const allFiles = fs
+      .readdirSync(base)
+      .filter((f) => f.startsWith(`${slug}_code_pdf_page`) && f.endsWith("_output.jsonl"))
+      .map((f) => path.join(base, f))
+      .sort();
+    const partFiles = allFiles.filter((f) => /__part\d+_output\.jsonl$/i.test(path.basename(f)));
+    const files = partFiles.length ? partFiles : allFiles;
+    if (!files.length) return;
+
+    const themeCounts = new Map<string, number>();
+    const codeCounts = new Map<string, number>();
+    const evidenceTypeCounts = new Map<string, number>();
+    const sampleParaphrases: string[] = [];
+    let evidenceUnits = 0;
+    let codedItems = 0;
+    const seenCustomIds = new Set<string>();
+
+    for (const file of files) {
+      const lines = fs.readFileSync(file, "utf-8").split(/\r?\n/).filter(Boolean);
+      for (const line of lines) {
+        let customId = "";
+        try {
+          const row = JSON.parse(line || "{}");
+          customId = cleanText(row?.custom_id || "");
+        } catch {
+          customId = "";
+        }
+        if (customId) {
+          if (seenCustomIds.has(customId)) continue;
+          seenCustomIds.add(customId);
+        }
+        codedItems += 1;
+        const evidence = parseEvidenceFromBatchLine(line);
+        evidenceUnits += evidence.length;
+        for (const unit of evidence) {
+          (unit.potential_themes || []).forEach((t) => themeCounts.set(t, Number(themeCounts.get(t) || 0) + 1));
+          (unit.open_codes || []).forEach((c) => codeCounts.set(c, Number(codeCounts.get(c) || 0) + 1));
+          if (unit.evidence_type) evidenceTypeCounts.set(unit.evidence_type, Number(evidenceTypeCounts.get(unit.evidence_type) || 0) + 1);
+          const p = cleanText(unit.paraphrase || "");
+          if (p && sampleParaphrases.length < 8) sampleParaphrases.push(p);
+        }
+      }
+    }
+
+    const top = (m: Map<string, number>, n = 8): Array<{ label: string; count: number }> =>
+      Array.from(m.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, n)
+        .map(([label, count]) => ({ label, count }));
+    const topThemes = top(themeCounts, 8);
+    const topCodes = top(codeCounts, 10);
+    const topEvidenceTypes = top(evidenceTypeCounts, 6);
+    const bullets: string[] = [];
+    if (topThemes.length) bullets.push(`Top themes: ${topThemes.map((x) => `${x.label} (${x.count})`).join("; ")}.`);
+    if (topCodes.length) bullets.push(`Top open codes: ${topCodes.slice(0, 8).map((x) => `${x.label} (${x.count})`).join("; ")}.`);
+    if (topEvidenceTypes.length) bullets.push(`Evidence types: ${topEvidenceTypes.map((x) => `${x.label} (${x.count})`).join("; ")}.`);
+    if (sampleParaphrases.length) bullets.push(`Representative findings: ${sampleParaphrases.slice(0, 3).join(" | ")}`);
+
+    state.coding = state.coding || {};
+    state.coding.codedItems = codedItems;
+    state.coding.evidenceUnits = evidenceUnits;
+    state.coding.mode = cleanText(state.coding.mode || "open") || "open";
+
+    const autosummaryPath = path.join(runDir, "coding_results_autosummary.json");
+    safeWriteJson(autosummaryPath, {
+      schema: "coding_results_autosummary_v1",
+      createdAt: new Date().toISOString(),
+      collection: collectionName,
+      source: { type: "openai_batch_code_pdf_page", files },
+      codedItems,
+      evidenceUnits,
+      topThemes,
+      topOpenCodes: topCodes,
+      topEvidenceTypes,
+      bullets
+    });
+    state.artifacts = state.artifacts || {};
+    state.artifacts.codingResultsAutosummaryPath = autosummaryPath;
+  } catch {
+    // best effort hydration
+  }
+}
+
 const listToMarkdown = (rows: string[]): string => rows.map((row) => `- ${row}`).join("\n");
 
 const inferEvidenceType = (rowText: string): string => {
@@ -214,6 +560,289 @@ export function resolveSystematicPaths(runDir: string): SystematicPaths {
     stepsReportPath: path.join(runDir, "systematic_steps_1_15_report.json"),
     bundleManifestPath: path.join(runDir, "systematic_review_bundle_manifest.json")
   };
+}
+
+function normalizeCollectionToken(value: string): string {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+function resolveRepoRootForResearchPipeline(): string | null {
+  const candidates = [process.cwd(), path.resolve(process.cwd(), "..")];
+  for (const candidate of candidates) {
+    const scriptPath = path.join(candidate, "Research", "pipeline", "run_phase2_systematic_template.py");
+    if (fs.existsSync(scriptPath) && fs.statSync(scriptPath).isFile()) {
+      return candidate;
+    }
+  }
+  return null;
+}
+
+function readJsonFileSafe(filePath: string): Record<string, unknown> | null {
+  try {
+    if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) return null;
+    const raw = fs.readFileSync(filePath, "utf-8");
+    const parsed = JSON.parse(raw || "null");
+    return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+}
+
+function listFilesRecursive(rootDir: string, maxFiles = 10000): string[] {
+  const out: string[] = [];
+  const stack = [rootDir];
+  while (stack.length && out.length < maxFiles) {
+    const dir = stack.pop() as string;
+    let entries: fs.Dirent[] = [];
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        stack.push(full);
+        continue;
+      }
+      if (entry.isFile()) out.push(full);
+    }
+  }
+  return out;
+}
+
+function resolveCollectionJsonPathForRun(runDir: string, state: SystematicState, collectionNameOverride?: string): string | null {
+  const repoRoot = resolveRepoRootForResearchPipeline();
+  if (!repoRoot) return null;
+  const explicit = cleanText(state.artifacts?.collectionJsonPath || "");
+  if (explicit) {
+    const resolved = path.resolve(explicit);
+    if (fs.existsSync(resolved) && fs.statSync(resolved).isFile()) return resolved;
+  }
+  const collectionName = cleanText(collectionNameOverride || state.collection?.name || "");
+  const collectionKey = cleanText(state.collection?.key || "");
+  const wantedTokens = new Set(
+    [collectionName, collectionKey]
+      .filter(Boolean)
+      .map((x) => normalizeCollectionToken(x))
+      .filter(Boolean)
+  );
+  const collectionsRoot = path.join(repoRoot, "database", "collections");
+  if (!fs.existsSync(collectionsRoot) || !fs.statSync(collectionsRoot).isDirectory()) return null;
+  const jsonCandidates = listFilesRecursive(collectionsRoot).filter((fp) => fp.toLowerCase().endsWith(".json"));
+  const runItemKeys = new Set<string>();
+  const runItemsPath = path.join(runDir, "inputs", "all_items_df.json");
+  if (fs.existsSync(runItemsPath) && fs.statSync(runItemsPath).isFile()) {
+    try {
+      const raw = fs.readFileSync(runItemsPath, "utf-8");
+      const parsed = JSON.parse(raw || "null");
+      const runItemsArray = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.items) ? parsed.items : [];
+      for (const row of runItemsArray) {
+        if (!row || typeof row !== "object") continue;
+        const key = cleanText(String((row as Record<string, unknown>).key || ""));
+        if (key) runItemKeys.add(key);
+        if (runItemKeys.size >= 3000) break;
+      }
+    } catch {
+      // ignore and fallback to name-based matching only
+    }
+  }
+  let best: { path: string; score: number } | null = null;
+  for (const candidate of jsonCandidates) {
+    const base = path.basename(candidate, ".json");
+    const baseToken = normalizeCollectionToken(base);
+    let score = 0;
+    if (wantedTokens.has(baseToken)) score += 50;
+    const payload = readJsonFileSafe(candidate);
+    const payloadName = normalizeCollectionToken(String(payload?.collection_name || ""));
+    if (payloadName && wantedTokens.has(payloadName)) score += 100;
+    const payloadCollection = payload && typeof payload.items === "object" ? payload : null;
+    if (payloadCollection) score += 5;
+    if (payloadCollection && runItemKeys.size > 0) {
+      let overlap = 0;
+      const itemMap = payloadCollection.items as Record<string, unknown>;
+      for (const itemKey of Object.keys(itemMap || {})) {
+        if (runItemKeys.has(cleanText(itemKey))) overlap += 1;
+      }
+      if (overlap > 0) score += Math.min(500, overlap);
+    }
+    if (!score) continue;
+    if (!best || score > best.score) best = { path: candidate, score };
+  }
+  if (collectionNameOverride) {
+    const requested = normalizeCollectionToken(collectionNameOverride);
+    if (!best) return null;
+    const bestPayload = readJsonFileSafe(best.path);
+    const bestCollectionName = normalizeCollectionToken(String(bestPayload?.collection_name || path.basename(best.path, ".json")));
+    if (requested && bestCollectionName !== requested) {
+      return null;
+    }
+  }
+  return best?.path || null;
+}
+
+function parseLastJsonObject(raw: string): Record<string, unknown> | null {
+  const txt = String(raw || "").trim();
+  if (!txt) return null;
+  try {
+    const parsed = JSON.parse(txt);
+    return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : null;
+  } catch {
+    // continue
+  }
+  for (let i = txt.length - 1; i >= 0; i -= 1) {
+    if (txt[i] !== "{") continue;
+    const candidate = txt.slice(i);
+    try {
+      const parsed = JSON.parse(candidate);
+      return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : null;
+    } catch {
+      // continue
+    }
+  }
+  return null;
+}
+
+function normalizeFlowFromAvailableEvidence(state: SystematicState): void {
+  state.collection = state.collection || {};
+  state.prisma = state.prisma || {};
+  state.prisma.flow = state.prisma.flow || {};
+  state.screening = state.screening || {};
+  const flow = state.prisma.flow;
+  const itemsCount = Number(state.collection.itemsCount || 0);
+  const identified = Math.max(Number(flow.recordsIdentified || 0), itemsCount);
+  let screened = Number(flow.recordsScreened || 0);
+  let included = Number(flow.studiesIncludedInReview || 0);
+  let excluded = Number(flow.recordsExcluded || 0);
+  if (identified > 0 && screened <= 0) screened = identified;
+  if (screened > 0 && included <= 0) {
+    const codedItems = Number(state.coding?.codedItems || 0);
+    if (codedItems > 0) included = Math.min(screened, codedItems);
+    else included = screened;
+  }
+  if (screened > 0 && excluded <= 0) excluded = Math.max(0, screened - included);
+  flow.recordsIdentified = identified;
+  flow.recordsScreened = Math.max(0, screened);
+  flow.studiesIncludedInReview = Math.max(0, included);
+  flow.recordsExcluded = Math.max(0, excluded);
+  flow.reportsAssessedForEligibility = Math.max(Number(flow.reportsAssessedForEligibility || 0), flow.recordsScreened);
+  flow.reportsExcludedWithReasons = Math.max(Number(flow.reportsExcludedWithReasons || 0), flow.recordsExcluded);
+  state.screening.screenedCount = Math.max(Number(state.screening.screenedCount || 0), flow.recordsScreened);
+  state.screening.includedCount = Math.max(Number(state.screening.includedCount || 0), flow.studiesIncludedInReview);
+  state.screening.excludedCount = Math.max(Number(state.screening.excludedCount || 0), flow.recordsExcluded);
+}
+
+function extractSynthesisHtmlPathFromManifest(manifest: Record<string, unknown> | null | undefined): string {
+  const root = manifest && typeof manifest === "object" ? manifest : {};
+  const result = (root as Record<string, unknown>).result;
+  const report = result && typeof result === "object" ? (result as Record<string, unknown>) : {};
+  const systematicResult = report.systematic_review_result;
+  const section = systematicResult && typeof systematicResult === "object" ? (systematicResult as Record<string, unknown>) : {};
+  const pathRaw =
+    cleanText(section.systematic_review_html_path || "") ||
+    cleanText(section.systematic_review_html || "") ||
+    cleanText((root as Record<string, unknown>).systematic_review_html_path || "");
+  return pathRaw ? path.resolve(pathRaw) : "";
+}
+
+function assertNoPlaceholders(text: string, label: string): void {
+  const failures = PLACEHOLDER_PATTERNS.filter((rx) => rx.test(text || "")).map((rx) => rx.source);
+  if (failures.length) {
+    throw new Error(`${label} contains placeholder/scaffold content: ${failures.join(", ")}`);
+  }
+}
+
+function htmlToMarkdownMinimal(htmlText: string): string {
+  const txt = String(htmlText || "");
+  const titleMatch = txt.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+  const title = cleanText(stripTags(titleMatch?.[1] || "Systematic Review"));
+  const sectionMatches = Array.from(txt.matchAll(/<section[^>]*id="([^"]+)"[^>]*>[\s\S]*?<h2[^>]*>([\s\S]*?)<\/h2>[\s\S]*?<div[^>]*class="sec"[^>]*>([\s\S]*?)<\/div>[\s\S]*?<\/section>/gi));
+  const lines: string[] = [`# ${title}`];
+  if (!sectionMatches.length) {
+    lines.push("");
+    lines.push(stripTags(txt));
+    return lines.join("\n").trim();
+  }
+  for (const m of sectionMatches) {
+    const id = cleanText(m[1] || "");
+    const h2 = cleanText(stripTags(m[2] || id || "Section"));
+    const body = String(m[3] || "").replace(/<\/p>\s*<p[^>]*>/gi, "\n\n").replace(/<br\s*\/?>/gi, "\n");
+    lines.push("");
+    lines.push(`## ${h2}`);
+    lines.push(`<!-- section-id: ${id} -->`);
+    lines.push(stripTags(body));
+  }
+  return lines.join("\n").trim();
+}
+
+function ensurePrismaFigureEmbedded(htmlText: string, prismaBasename: string): string {
+  const name = cleanText(prismaBasename || "");
+  if (!name) return htmlText;
+  const rx = new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+  if (rx.test(htmlText)) return htmlText;
+  const block = `\n<section id="results_prisma_figure"><h2>PRISMA Flow Figure</h2><div class="sec"><img src="${escapeHtml(name)}" alt="PRISMA flow diagram" style="max-width:100%;height:auto;" /></div></section>\n`;
+  if (/<\/body>/i.test(htmlText)) return htmlText.replace(/<\/body>/i, `${block}</body>`);
+  return `${htmlText}\n${block}`;
+}
+
+function runBatchSystematicSynthesis(
+  runDir: string,
+  state: SystematicState,
+  prismaFlowImagePath?: string,
+  collectionName?: string
+): { status: "ok"; manifest: Record<string, unknown> } | { status: "error"; message: string } {
+  const repoRoot = resolveRepoRootForResearchPipeline();
+  if (!repoRoot) {
+    return { status: "error", message: "Unable to resolve repository root for Research batch pipeline." };
+  }
+  const collectionJsonPath = resolveCollectionJsonPathForRun(runDir, state, collectionName);
+  if (!collectionJsonPath) {
+    return {
+      status: "error",
+      message: collectionName
+        ? `No collection JSON resolved for collection_name='${collectionName}' and runDir=${runDir}.`
+        : `No collection JSON could be resolved for runDir: ${runDir}`,
+    };
+  }
+  const scriptPath = path.join(repoRoot, "Research", "pipeline", "run_phase2_systematic_template.py");
+  const args = [
+    scriptPath,
+    "--collection-json",
+    collectionJsonPath,
+    "--model",
+    "gpt-5-mini",
+    "--section-single-batch",
+  ];
+  const providedPrisma = cleanText(prismaFlowImagePath || "");
+  if (providedPrisma) {
+    args.push("--prisma-figure-path", path.resolve(providedPrisma));
+  }
+  const py = spawnSync("python3", args, {
+    cwd: repoRoot,
+    encoding: "utf-8",
+    maxBuffer: 64 * 1024 * 1024,
+    env: {
+      ...process.env,
+      BATCH_ROOT: process.env.BATCH_ROOT || path.join(repoRoot, "tmp", "batching_files"),
+      ANNOTARIUM_CACHE_DIR: process.env.ANNOTARIUM_CACHE_DIR || path.join(repoRoot, "tmp", "annotarium_cache"),
+    },
+  });
+  if ((py.status ?? 1) !== 0) {
+    const stderr = String(py.stderr || "").trim();
+    const stdout = String(py.stdout || "").trim();
+    return { status: "error", message: `Batch systematic pipeline failed. ${stderr || stdout || "Unknown error."}` };
+  }
+  const parsed = parseLastJsonObject(String(py.stdout || ""));
+  if (!parsed) {
+    return { status: "error", message: "Batch systematic pipeline completed but returned no parseable JSON manifest." };
+  }
+  if (prismaFlowImagePath) {
+    state.artifacts = state.artifacts || {};
+    state.artifacts.prismaFlowPngPath = cleanText(prismaFlowImagePath);
+  }
+  return { status: "ok", manifest: parsed };
 }
 
 export function parsePrismaChecklist(checklistPath: string): PrismaChecklistItem[] {
@@ -395,123 +1024,52 @@ function applyMethodsWriterAgent(
   model: Record<string, unknown>,
   state: SystematicState
 ): number {
-  const sections = getSectionList(model);
-  const updates = [
-    appendSectionContent(
-      sections,
-      "methods_protocol",
-      `MethodsWriterAgent pass: protocol version ${Number(state.protocol?.version || 1)}; locked=${state.protocol?.locked === true ? "yes" : "no"}.`
-    ),
-    appendSectionContent(
-      sections,
-      "methods_selection_process",
-      `MethodsWriterAgent pass: reviewer_count=${Number(state.reviewTeam?.reviewerCount || 1)}; general_IRR=${state.screening?.irr?.ratio === null || state.screening?.irr?.ratio === undefined ? "n/a" : Number(state.screening?.irr?.ratio).toFixed(4)}.`
-    ),
-    appendSectionContent(
-      sections,
-      "methods_data_collection",
-      `MethodsWriterAgent pass: coding codebook path=${cleanText(state.coding?.codebookPath || "n/a")}.`
-    )
-  ];
-  (model as any).sections = sections;
-  return updates.filter(Boolean).length;
+  void model;
+  void state;
+  return 0;
 }
 
 function applyResultsWriterAgent(
   model: Record<string, unknown>,
   state: SystematicState
 ): number {
-  const sections = getSectionList(model);
-  const flow = state.prisma?.flow || {};
-  const updates = [
-    appendSectionContent(
-      sections,
-      "results_prisma",
-      `ResultsWriterAgent pass: identified=${Number(flow.recordsIdentified || 0)}, screened=${Number(flow.recordsScreened || 0)}, included=${Number(flow.studiesIncludedInReview || 0)}.`
-    ),
-    appendSectionContent(
-      sections,
-      "results_synthesis",
-      `ResultsWriterAgent pass: coded_items=${Number(state.coding?.codedItems || 0)}, evidence_units=${Number(state.coding?.evidenceUnits || 0)}, mode=${cleanText(state.coding?.mode || "not specified")}.`
-    )
-  ];
-  (model as any).sections = sections;
-  return updates.filter(Boolean).length;
+  void model;
+  void state;
+  return 0;
 }
 
 function applyDiscussionWriterAgent(
   model: Record<string, unknown>,
   state: SystematicState
 ): number {
-  const sections = getSectionList(model);
-  const contradictionsPath = path.join(String((model as any)?.provenance?.statePath || ""), "..", "contradictory_evidence_report.json");
-  const contradictions = fs.existsSync(contradictionsPath)
-    ? Number(safeReadJson<{ contradictions?: number }>(contradictionsPath, {}).contradictions || 0)
-    : 0;
-  const updates = [
-    appendSectionContent(
-      sections,
-      "discussion",
-      `DiscussionWriterAgent pass: included=${Number(state.screening?.includedCount || 0)}, excluded=${Number(state.screening?.excludedCount || 0)}, contradictions=${contradictions}.`
-    ),
-    appendSectionContent(
-      sections,
-      "discussion",
-      "DiscussionWriterAgent pass: prioritize implications, unresolved disagreements, and evidence limitations when interpreting findings."
-    )
-  ];
-  (model as any).sections = sections;
-  return updates.filter(Boolean).length;
+  void model;
+  void state;
+  return 0;
 }
 
 function applyCitationAgent(model: Record<string, unknown>, runDir: string): number {
   const sections = getSectionList(model);
-  const citationRefs = Array.from(
-    new Set(
-      sections
-        .flatMap((s) => Array.from(String(s.content || "").matchAll(/\[(?:cite:[^\]]+|\d+)\]/g)).map((m) => String(m[0] || "")))
-        .filter(Boolean)
-    )
-  );
-  const placeholders = ["[cite:source_1]", "[cite:source_2]"];
-  const missing = placeholders.filter((x) => !citationRefs.includes(x));
-  if (missing.length) {
-    appendSectionContent(sections, "other_information", `Citation placeholders added: ${missing.join(", ")}`);
-  }
+  const citationRefs = Array.from(new Set(sections.flatMap((s) => Array.from(String(s.content || "").matchAll(/\[cite:[^\]]+\]/g)).map((m) => String(m[0] || ""))).filter(Boolean)));
   const report = {
     schema: "citation_consistency_report_v1",
     createdAt: new Date().toISOString(),
     discoveredCitations: citationRefs,
-    missingPlaceholders: missing,
-    consistent: missing.length === 0
+    forbiddenPlaceholders: citationRefs,
+    consistent: citationRefs.length === 0
   };
   safeWriteJson(resolveSystematicPaths(runDir).citationConsistencyPath, report);
   (model as any).sections = sections;
-  return missing.length ? 1 : 0;
+  return 0;
 }
 
 function applySupervisorMergePass(model: Record<string, unknown>, runDir: string): number {
-  const sections = getSectionList(model);
-  const title = sections.find((s) => s.id === "title")?.content || "Systematic Review";
-  const abstract = sections.find((s) => s.id === "abstract");
-  const discussion = sections.find((s) => s.id === "discussion");
-  let changed = 0;
-  const mergeLine = `Supervisor merge pass: This manuscript maintains a single narrative arc from protocol to synthesis for '${cleanText(title)}'.`;
-  if (abstract && !String(abstract.content || "").includes("Supervisor merge pass")) {
-    abstract.content = `${String(abstract.content || "").trim()}\n${mergeLine}`.trim();
-    changed += 1;
-  }
-  if (discussion && !String(discussion.content || "").includes("Supervisor merge pass")) {
-    discussion.content = `${String(discussion.content || "").trim()}\nSupervisor merge pass: findings and limitations are reconciled into publication-ready claims.`.trim();
-    changed += 1;
-  }
+  const changed = 0;
   safeWriteJson(resolveSystematicPaths(runDir).supervisorMergeReportPath, {
     schema: "supervisor_merge_report_v1",
     createdAt: new Date().toISOString(),
     changedSections: changed,
     status: changed > 0 ? "updated" : "already_merged"
   });
-  (model as any).sections = sections;
   return changed;
 }
 
@@ -604,6 +1162,30 @@ function renderPaperHtml(model: Record<string, unknown>): string {
 </html>`;
 }
 
+function enforceFinalPaperQuality(state: SystematicState, markdownText: string, htmlText: string, allowIncomplete = false): void {
+  assertNoPlaceholders(markdownText, "systematic markdown");
+  assertNoPlaceholders(htmlText, "systematic html");
+  if (!allowIncomplete && !/data-dqid=/i.test(htmlText)) {
+    throw new Error("Systematic HTML has no dqid anchors (data-dqid).");
+  }
+  const expectedPng = cleanText(path.basename(cleanText(state.artifacts?.prismaFlowPngPath || PRISMA_FLOW_PNG_NAME)));
+  if (!allowIncomplete && expectedPng && !new RegExp(expectedPng.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(htmlText)) {
+    throw new Error(`Systematic HTML does not embed expected PRISMA figure '${expectedPng}'.`);
+  }
+  if (!allowIncomplete) {
+    const flow = state.prisma?.flow || {};
+    const identified = Number(flow.recordsIdentified || 0);
+    const screened = Number(flow.recordsScreened || 0);
+    const included = Number(flow.studiesIncludedInReview || 0);
+    if (identified > 0 && screened <= 0) {
+      throw new Error("PRISMA flow incomplete: recordsScreened is 0 while recordsIdentified > 0.");
+    }
+    if (identified > 0 && included <= 0) {
+      throw new Error("PRISMA flow incomplete: studiesIncludedInReview is 0 while recordsIdentified > 0.");
+    }
+  }
+}
+
 function renderMethodTemplateHtml(state: SystematicState, runDir: string): string {
   const collectionName = cleanText(state.collection?.name || state.collection?.key || "collection");
   const rqs = Array.isArray(state.protocol?.researchQuestions) ? state.protocol?.researchQuestions : [];
@@ -611,6 +1193,8 @@ function renderMethodTemplateHtml(state: SystematicState, runDir: string): strin
   const exclusion = Array.isArray(state.protocol?.exclusionCriteria) ? state.protocol?.exclusionCriteria : [];
   const reviewers = Number(state.reviewTeam?.reviewerCount || 0) || 1;
   const flow = state.prisma?.flow || {};
+  const prismaPngPath = cleanText(state.artifacts?.prismaFlowPngPath || path.join(runDir, PRISMA_FLOW_PNG_NAME));
+  const prismaPngSrc = escapeHtml(path.basename(prismaPngPath));
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -645,6 +1229,8 @@ function renderMethodTemplateHtml(state: SystematicState, runDir: string): strin
     <tr><td>Records excluded</td><td>${escapeHtml(Number(flow.recordsExcluded || 0))}</td></tr>
     <tr><td>Studies included</td><td>${escapeHtml(Number(flow.studiesIncludedInReview || 0))}</td></tr>
   </table>
+  <p class="muted">PRISMA flow figure: ${escapeHtml(prismaPngPath)}</p>
+  <img src="${prismaPngSrc}" alt="PRISMA flow diagram" style="max-width:100%;height:auto;border:1px solid #d9e1ea;margin-top:10px" />
 </body>
 </html>`;
 }
@@ -710,7 +1296,11 @@ function buildPrismaAppendix(report: PrismaComplianceReport): { markdown: string
   return { markdown, html };
 }
 
-export function composeFullPaper(runDir: string, checklistPath: string): { status: "ok"; paths: SystematicPaths; paperModel: Record<string, unknown> } | { status: "error"; message: string } {
+export function composeFullPaper(
+  runDir: string,
+  checklistPath: string,
+  options?: ComposeOptions
+): { status: "ok"; paths: SystematicPaths; paperModel: Record<string, unknown> } | { status: "error"; message: string } {
   try {
     const paths = resolveSystematicPaths(runDir);
     fs.mkdirSync(runDir, { recursive: true });
@@ -718,12 +1308,32 @@ export function composeFullPaper(runDir: string, checklistPath: string): { statu
     if (!state || !state.collection) {
       return { status: "error", message: `Missing or invalid systematic review state at ${paths.statePath}` };
     }
+    hydrateCodingFromBatchOutputs(runDir, state);
+    const prismaPng = ensurePrismaFlowPng(runDir, state, cleanText(options?.prismaFlowImagePath || ""));
+    if (prismaPng.status !== "ok") {
+      return { status: "error", message: prismaPng.message };
+    }
+    state.artifacts = state.artifacts || {};
+    state.artifacts.prismaFlowPngPath = prismaPng.written[0] || path.join(runDir, PRISMA_FLOW_PNG_NAME);
+    safeWriteJson(paths.statePath, state);
+
     const model = buildPaperModel(state, paths);
     applyWriterAndRedactionPasses(model, state, runDir);
     (model as any).updatedAt = new Date().toISOString();
     safeWriteJson(paths.paperModelPath, model);
-    fs.writeFileSync(paths.paperMarkdownPath, renderPaperMarkdown(model), "utf-8");
-    fs.writeFileSync(paths.paperHtmlPath, renderPaperHtml(model), "utf-8");
+    let markdownOut = renderPaperMarkdown(model);
+    let htmlOut = renderPaperHtml(model);
+    const synthesisHtmlPath = extractSynthesisHtmlPathFromManifest(options?.synthesisManifest || {});
+    if (synthesisHtmlPath && fs.existsSync(synthesisHtmlPath) && fs.statSync(synthesisHtmlPath).isFile()) {
+      htmlOut = fs.readFileSync(synthesisHtmlPath, "utf-8");
+      markdownOut = htmlToMarkdownMinimal(htmlOut);
+    }
+    const prismaBase = path.basename(cleanText(state.artifacts?.prismaFlowPngPath || PRISMA_FLOW_PNG_NAME));
+    htmlOut = ensurePrismaFigureEmbedded(htmlOut, prismaBase);
+    markdownOut = htmlToMarkdownMinimal(htmlOut);
+    enforceFinalPaperQuality(state, markdownOut, htmlOut, Boolean(options?.allowIncomplete));
+    fs.writeFileSync(paths.paperMarkdownPath, markdownOut, "utf-8");
+    fs.writeFileSync(paths.paperHtmlPath, htmlOut, "utf-8");
 
     const registry = parsePrismaChecklist(checklistPath);
     safeWriteJson(paths.checklistRegistryPath, {
@@ -908,17 +1518,7 @@ export function remediatePrisma(runDir: string): { status: "ok"; updated: number
         itemActions.push({ itemId: item.itemId, previousStatus: item.status, targetSection: target, action: "skipped_missing_section" });
         continue;
       }
-      const patch = `\nPRISMA Item ${item.itemId}: ${item.fixInstructions}\n`;
-      if (!String(section.content || "").includes(`PRISMA Item ${item.itemId}:`)) {
-        const before = String(section.content || "");
-        const after = `${String(section.content || "").trim()}\n${patch}`.trim();
-        section.content = after;
-        updated += 1;
-        patches.push({ itemId: item.itemId, sectionId: target, before, patch: patch.trim(), after });
-        itemActions.push({ itemId: item.itemId, previousStatus: item.status, targetSection: target, action: "patched" });
-      } else {
-        itemActions.push({ itemId: item.itemId, previousStatus: item.status, targetSection: target, action: "already_present" });
-      }
+      itemActions.push({ itemId: item.itemId, previousStatus: item.status, targetSection: target, action: "queued_for_rewrite_no_placeholder_patch" });
     }
     if (rewriteTriggers.methods) {
       const sec = sections.find((s) => /^methods_/i.test(String(s.id || "")));
@@ -1138,8 +1738,64 @@ export function runFullSystematicWorkflow(payload: {
   maxIterations?: number;
   minPassPct?: number;
   maxFail?: number;
-}): { status: "ok"; report: PrismaComplianceReport; iterations: number; paths: SystematicPaths } | { status: "error"; message: string } {
-  const composed = composeFullPaper(payload.runDir, payload.checklistPath);
+  prismaFlowImagePath?: string;
+  collectionName?: string;
+}): {
+  status: "ok";
+  report: PrismaComplianceReport;
+  iterations: number;
+  paths: SystematicPaths;
+  synthesisPipeline?: Record<string, unknown>;
+} | { status: "error"; message: string } {
+  const paths = resolveSystematicPaths(payload.runDir);
+  let state = safeReadJson<SystematicState>(paths.statePath, {});
+  let synthesisPipeline: Record<string, unknown> | undefined;
+  if (!(state && state.collection)) {
+    const bootstrap = executeSystematicSteps1To15({
+      runDir: payload.runDir,
+      checklistPath: payload.checklistPath,
+      reviewerCount: 2,
+      prismaFlowImagePath: payload.prismaFlowImagePath
+    });
+    if (bootstrap.status !== "ok") return bootstrap;
+    state = safeReadJson<SystematicState>(paths.statePath, {});
+    if (!(state && state.collection)) {
+      return { status: "error", message: `Missing systematic state/collection at ${paths.statePath} after bootstrap.` };
+    }
+  }
+  const stateCollectionName = cleanText(state.collection?.name || state.collection?.key || "");
+  const requestedCollectionName = cleanText(payload.collectionName || "");
+  const effectiveCollectionName = requestedCollectionName || stateCollectionName;
+  if (!effectiveCollectionName) {
+    return { status: "error", message: "Collection name is missing in state and payload. Provide collectionName or initialize state with collection." };
+  }
+  if (requestedCollectionName && stateCollectionName) {
+    const req = normalizeCollectionToken(requestedCollectionName);
+    const st = normalizeCollectionToken(stateCollectionName);
+    if (req && st && req !== st) {
+      return {
+        status: "error",
+        message:
+          `Collection mismatch: payload.collectionName='${requestedCollectionName}' ` +
+          `but run state collection='${stateCollectionName}'. Refusing cross-collection synthesis.`,
+      };
+    }
+  }
+  const synthesis = runBatchSystematicSynthesis(
+    payload.runDir,
+    state,
+    payload.prismaFlowImagePath,
+    effectiveCollectionName
+  );
+  if (synthesis.status === "error") return synthesis;
+  synthesisPipeline = synthesis.manifest;
+  normalizeFlowFromAvailableEvidence(state);
+  safeWriteJson(paths.statePath, state);
+  const composed = composeFullPaper(payload.runDir, payload.checklistPath, {
+    prismaFlowImagePath: payload.prismaFlowImagePath,
+    synthesisManifest: synthesisPipeline,
+    allowIncomplete: false
+  });
   if (composed.status !== "ok") return composed;
   const maxIterations = Math.max(1, Math.min(6, Math.trunc(Number(payload.maxIterations || 3))));
   const minPassPct = Math.max(0, Math.min(100, Number(payload.minPassPct ?? 80)));
@@ -1215,7 +1871,7 @@ export function runFullSystematicWorkflow(payload: {
   });
   writeReadinessAndReleaseNote(latest.paths, latest.report, qa.score);
   exportReleaseBundle(latest.paths);
-  return { status: "ok", report: latest.report, iterations, paths: latest.paths };
+  return { status: "ok", report: latest.report, iterations, paths: latest.paths, synthesisPipeline };
 }
 
 function normalizeReviewerCount(value: unknown): 1 | 2 | 3 {
@@ -1233,10 +1889,87 @@ function defaultResearchQuestions(topic: string): string[] {
   ];
 }
 
+function inferItemsCountFromRunDir(runDir: string): number {
+  try {
+    const p = path.join(runDir, "inputs", "all_items_df.json");
+    if (!fs.existsSync(p)) return 0;
+    const raw = fs.readFileSync(p, "utf-8");
+    const parsed = JSON.parse(raw || "null");
+    if (Array.isArray(parsed)) return parsed.length;
+    if (parsed && typeof parsed === "object") {
+      const rows = (parsed as Record<string, unknown>).items;
+      if (Array.isArray(rows)) return rows.length;
+    }
+    return 0;
+  } catch {
+    return 0;
+  }
+}
+
+function buildBootstrapSystematicState(runDir: string): SystematicState {
+  const collectionName = cleanText(path.basename(runDir) || "collection");
+  const itemsCount = Math.max(0, inferItemsCountFromRunDir(runDir));
+  return {
+    schema: "systematic_review_state_v1",
+    collection: { name: collectionName, key: collectionName, itemsCount },
+    protocol: {
+      researchQuestions: defaultResearchQuestions(collectionName),
+      inclusionCriteria: [
+        "Directly addresses at least one research question.",
+        "Contains explicit framework/model/method details.",
+        "Provides analyzable evidence."
+      ],
+      exclusionCriteria: [
+        "Out of scope for the research questions.",
+        "No substantive evidence or methodological detail.",
+        "Duplicate or insufficiently documented source."
+      ],
+      locked: false,
+      version: 1
+    },
+    reviewTeam: {
+      reviewerCount: 2,
+      reviewers: [{ id: "reviewer_1", label: "Reviewer 1" }, { id: "reviewer_2", label: "Reviewer 2" }]
+    },
+    prisma: {
+      flow: {
+        recordsIdentified: itemsCount,
+        duplicateRecordsRemoved: 0,
+        recordsScreened: 0,
+        recordsExcluded: 0,
+        reportsSoughtForRetrieval: 0,
+        reportsNotRetrieved: 0,
+        reportsAssessedForEligibility: 0,
+        reportsExcludedWithReasons: 0,
+        studiesIncludedInReview: 0
+      }
+    },
+    screening: {
+      includedCount: 0,
+      excludedCount: 0,
+      screenedCount: 0,
+      reasons: {},
+      irr: {
+        formulaGeneral: "IRR = Agreeing Ratings / Total Ratings",
+        formulaTwoRater: "IRR = (TA / (TR * R)) * 100",
+        agreeingRatings: 0,
+        totalRatings: 0,
+        ratio: null,
+        twoRaterPercent: null
+      }
+    },
+    coding: { mode: "open", evidenceUnits: 0, codedItems: 0, codebookPath: path.join(runDir, "codebook.md") },
+    stages: [],
+    artifacts: {},
+    auditTrail: [{ at: new Date().toISOString(), action: "state_bootstrapped", details: "Initialized missing systematic state from runDir context." }]
+  };
+}
+
 export function executeSystematicSteps1To15(payload: {
   runDir: string;
   checklistPath: string;
   reviewerCount?: number;
+  prismaFlowImagePath?: string;
 }): { status: "ok"; report: SystematicStepsReport; paths: SystematicPaths } | { status: "error"; message: string } {
   try {
     const runDir = String(payload.runDir || "").trim();
@@ -1245,9 +1978,10 @@ export function executeSystematicSteps1To15(payload: {
       return { status: "error", message: "runDir and checklistPath are required." };
     }
     const paths = resolveSystematicPaths(runDir);
-    const state = safeReadJson<SystematicState>(paths.statePath, {});
+    let state = safeReadJson<SystematicState>(paths.statePath, {});
     if (!state || !state.collection) {
-      return { status: "error", message: `Missing or invalid state file: ${paths.statePath}` };
+      state = buildBootstrapSystematicState(runDir);
+      safeWriteJson(paths.statePath, state);
     }
 
     const nowIso = new Date().toISOString();
@@ -1266,13 +2000,17 @@ export function executeSystematicSteps1To15(payload: {
     state.stages = Array.isArray(state.stages) ? state.stages : [];
     state.auditTrail = Array.isArray(state.auditTrail) ? state.auditTrail : [];
     state.artifacts = state.artifacts || {};
+    const collection =
+      state.collection ||
+      { name: cleanText(path.basename(runDir) || "collection"), key: cleanText(path.basename(runDir) || "collection"), itemsCount: inferItemsCountFromRunDir(runDir) };
+    state.collection = collection;
 
-    const collectionName = cleanText(state.collection.name || state.collection.key || "collection");
-    const itemsCount = Number(state.collection.itemsCount || 0);
+    const collectionName = cleanText(collection.name || collection.key || "collection");
+    const itemsCount = Number(collection.itemsCount || 0);
     mark(1, "Load Systematic State", `Loaded state for '${collectionName}'.`, [paths.statePath]);
 
-    if (!Number.isFinite(itemsCount) || itemsCount < 0) state.collection.itemsCount = 0;
-    mark(2, "Validate Collection Scope", `Collection items in scope: ${Number(state.collection.itemsCount || 0)}.`);
+    if (!Number.isFinite(itemsCount) || itemsCount < 0) collection.itemsCount = 0;
+    mark(2, "Validate Collection Scope", `Collection items in scope: ${Number(collection.itemsCount || 0)}.`);
 
     const existingRqs = Array.isArray(state.protocol.researchQuestions) ? state.protocol.researchQuestions : [];
     state.protocol.researchQuestions = existingRqs.length ? existingRqs.slice(0, 5) : defaultResearchQuestions(collectionName);
@@ -1310,7 +2048,7 @@ export function executeSystematicSteps1To15(payload: {
     mark(7, "Build Reviewer Roster", `Reviewer roster size: ${state.reviewTeam.reviewers.length}.`);
 
     const flow = state.prisma.flow;
-    flow.recordsIdentified = Math.max(Number(flow.recordsIdentified || 0), Number(state.collection.itemsCount || 0));
+    flow.recordsIdentified = Math.max(Number(flow.recordsIdentified || 0), Number(collection.itemsCount || 0));
     flow.duplicateRecordsRemoved = Number(flow.duplicateRecordsRemoved || 0);
     flow.recordsScreened = Number(flow.recordsScreened || 0);
     flow.recordsExcluded = Number(flow.recordsExcluded || 0);
@@ -1319,7 +2057,13 @@ export function executeSystematicSteps1To15(payload: {
     flow.reportsAssessedForEligibility = Number(flow.reportsAssessedForEligibility || 0);
     flow.reportsExcludedWithReasons = Number(flow.reportsExcludedWithReasons || 0);
     flow.studiesIncludedInReview = Number(flow.studiesIncludedInReview || 0);
-    mark(8, "Initialize PRISMA Flow", `PRISMA identified records: ${flow.recordsIdentified}.`);
+
+    const prismaPng = ensurePrismaFlowPng(runDir, state, cleanText(payload.prismaFlowImagePath || ""));
+    if (prismaPng.status !== "ok") {
+      return { status: "error", message: prismaPng.message };
+    }
+    state.artifacts.prismaFlowPngPath = prismaPng.written[0] || path.join(runDir, PRISMA_FLOW_PNG_NAME);
+    mark(8, "Initialize PRISMA Flow", `PRISMA identified records: ${flow.recordsIdentified}. PNG: ${state.artifacts.prismaFlowPngPath}.`, prismaPng.written);
 
     state.screening.screenedCount = Number(state.screening.screenedCount || flow.recordsScreened || 0);
     state.screening.includedCount = Number(state.screening.includedCount || flow.studiesIncludedInReview || 0);
@@ -1408,7 +2152,7 @@ export function executeSystematicSteps1To15(payload: {
     fs.writeFileSync(paths.templatePath, renderMethodTemplateHtml(state, runDir), "utf-8");
     mark(14, "Persist State + Pipeline", "Updated state and pipeline artifacts.", [paths.statePath, paths.pipelinePath, paths.templatePath]);
 
-    const composed = composeFullPaper(runDir, checklistPath);
+    const composed = composeFullPaper(runDir, checklistPath, { allowIncomplete: true });
     if (composed.status !== "ok") return composed;
     mark(15, "Compose Full Paper", "Generated full paper and checklist registry.", [
       paths.paperModelPath,

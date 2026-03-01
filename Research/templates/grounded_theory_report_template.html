@@ -238,11 +238,11 @@
   <div class="subsection-content">
     <figure>
       {% if conceptual_model_image_path %}
-        <img src="{{ conceptual_model_image_path }}" alt="Conceptual model figure">
+        <img src="{{ conceptual_model_image_path }}" alt="Conceptual model figure for {{ conceptual_model_title | default('grounded theory model') }}">
       {% else %}
         <div class="ai-placeholder">[Conceptual model figure not provided]</div>
       {% endif %}
-      <figcaption><strong>Figure 1.</strong> Conceptual model representing the substantive theory (core category and relations).</figcaption>
+      <figcaption><strong>Figure 1.</strong> {{ conceptual_model_title | default('Conceptual model') }}{% if conceptual_model_acronym %} ({{ conceptual_model_acronym }}){% endif %}: substantive theory structure and directional relations.</figcaption>
     </figure>
 
     <p><strong>Model description.</strong></p>

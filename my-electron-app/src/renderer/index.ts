@@ -79,6 +79,7 @@ import { createRetrieveSearchProgressTool } from "../tools/retrieveSearchProgres
 import { createRetrieveSearchMetaTool } from "../tools/retrieveSearchMeta";
 import { createRetrieveZoteroCollectionsTool, createRetrieveZoteroItemsTool, createRetrieveZoteroDetailTool } from "../tools/retrieveZotero";
 import { retrieveZoteroContext } from "../state/retrieveZoteroContext";
+import { createPptElectronTool } from "../tools/pptElectron";
 
 const registry = new ToolRegistry();
 registry.register(createPdfTool());
@@ -100,6 +101,7 @@ registry.register(createPanelShellTool());
 registry.register(createCodeTool());
 registry.register(createWriteTool());
 registry.register(createVisualiserTool());
+registry.register(createPptElectronTool());
 registry.register(createCoderTool());
 registry.register(createScreenWidget());
 registry.register(createAnalysePdfTabsTool());
@@ -4503,6 +4505,8 @@ async function runAgentChatCommand(text: string, options?: VoiceCommandExecution
   }
   if (window.systematicBridge) {
     const runDir = resolveSystematicRunDirFromContext();
+    const systematicCtx = buildAgentContextPayload();
+    const selectedCollectionName = String(systematicCtx.selectedCollectionName || systematicCtx.selectedCollectionKey || "").trim();
     const checklistPath = "Research/Systematic_review/prisma_check_list.html";
     if ((/systematic/.test(low) && /\b(implement|run|execute)\b/.test(low) && /\b1\s*(?:-|to)\s*15\b/.test(low)) || /\bsteps?\s*1\s*(?:-|to)\s*15\b/.test(low)) {
       if (!runDir) {
@@ -4525,7 +4529,13 @@ async function runAgentChatCommand(text: string, options?: VoiceCommandExecution
         return;
       }
       setAgentChatPending(true);
-      const out = await window.systematicBridge.fullRun({ runDir, checklistPath, maxIterations: 3, minPassPct: 80, maxFail: 0 });
+      const out = await window.systematicBridge.fullRun({
+        runDir,
+        checklistPath,
+        maxIterations: 3,
+        minPassPct: 80,
+        maxFail: 0
+      });
       setAgentChatPending(false);
       if (out?.status === "ok") {
         pushAssistant( `Systematic full-run completed.\nRun dir: ${runDir}`);

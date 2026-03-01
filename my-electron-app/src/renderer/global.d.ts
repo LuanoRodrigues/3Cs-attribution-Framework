@@ -63,7 +63,7 @@ declare global {
       };
     };
     systematicBridge?: {
-      composePaper: (payload: { runDir: string; checklistPath: string }) => Promise<{
+      composePaper: (payload: { runDir: string; checklistPath: string; prismaFlowImagePath?: string }) => Promise<{
         status: string;
         message?: string;
       }>;
@@ -83,12 +83,12 @@ declare global {
         resolved?: number;
         unresolved?: number;
       }>;
-      executeSteps1to15: (payload: { runDir: string; checklistPath: string; reviewerCount?: number }) => Promise<{
+      executeSteps1to15: (payload: { runDir: string; checklistPath: string; reviewerCount?: number; prismaFlowImagePath?: string }) => Promise<{
         status: string;
         message?: string;
         report?: Record<string, unknown>;
       }>;
-      fullRun: (payload: { runDir: string; checklistPath: string; maxIterations?: number; minPassPct?: number; maxFail?: number }) => Promise<{
+      fullRun: (payload: { runDir: string; checklistPath: string; maxIterations?: number; minPassPct?: number; maxFail?: number; prismaFlowImagePath?: string; collectionName?: string }) => Promise<{
         status: string;
         message?: string;
         report?: Record<string, unknown>;

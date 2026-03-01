@@ -19,6 +19,7 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from Research.systematic_review_pipeline import (
+    _anchor_plain_author_year_citations,
     _assert_non_placeholder_html,
     _assert_reference_and_postprocess_integrity,
     _build_dqid_evidence_payload,
@@ -38,11 +39,16 @@ from Research.systematic_review_pipeline import (
     _repo_root,
     _resolve_collection_label,
     _safe_name,
+    _strict_dqid_citation_rules_text,
     _stable_section_custom_id,
     _svg_bar_chart,
+    _validate_dqid_quote_page_integrity,
+    _validate_section_citation_integrity,
     _validate_generated_section,
     _write_section_cache,
 )
+from Research.pipeline.plotly_static_figures import write_bar_chart_svg
+from Research.summary_utils import resolve_summary_path
 
 
 def _extract_year(value: Any) -> int | None:
@@ -303,6 +309,7 @@ def _rewrite_section_prompt(
     base_instruction: str,
     payload: dict[str, Any],
     citation_instruction: str,
+    strict_rules: str,
     validation_error: str,
     previous_output: str,
 ) -> str:
@@ -313,7 +320,10 @@ def _rewrite_section_prompt(
         f"PREVIOUS_OUTPUT\n{previous_output}\n\n"
         f"VALIDATION_ERROR\n{validation_error}\n\n"
         "REVISION_RULES\nRewrite the section so it satisfies the validation constraints while preserving evidence grounding.\n"
-        "Keep formal publication prose; remove prompt/meta mentions; tighten redundancy.\n\n"
+        "Keep formal publication prose; remove prompt/meta mentions; tighten redundancy.\n"
+        "If a citation cannot be mapped to provided evidence_payload dqids, remove that citation and rewrite the sentence.\n"
+        "Never invent author-year citations.\n\n"
+        f"{strict_rules}\n\n"
         f"CITATION_STYLE\n{citation_instruction}\n\n"
         "Return only raw HTML snippets, no markdown fences."
     )
@@ -351,7 +361,7 @@ def _collect_evidence_by_period(
     seen: set[str] = set()
     for item_key, payload in items.items():
         label = _period_for_year(year_by_item.get(item_key), periods)
-        for arr_key in ("code_pdf_page", "code_intro_conclusion_extract_core_claims", "evidence_list", "section_open_coding"):
+        for arr_key in ("code_pdf_page", "structured_code", "code_intro_conclusion_extract_core_claims", "evidence_list", "section_open_coding"):
             arr = payload.get(arr_key)
             if not isinstance(arr, list):
                 continue
@@ -472,6 +482,32 @@ def _normalize_parenthetical_citations_html(section_html: str) -> str:
     if not text:
         return text
 
+    # Flatten nested groups like ((A, 2010); (B, 2011)) -> (A, 2010; B, 2011)
+    nested_pat = re.compile(r"\(\s*((?:\([^()]*?(?:19|20)\d{2}[^()]*\)\s*(?:[,;]\s*)?){2,})\s*\)")
+    for _ in range(8):
+        changed = False
+
+        def _flatten(m: re.Match[str]) -> str:
+            nonlocal changed
+            body = str(m.group(1) or "")
+            parts = [p.strip() for p in re.findall(r"\(([^()]*?(?:19|20)\d{2}[^()]*)\)", body) if str(p).strip()]
+            if len(parts) < 2:
+                return m.group(0)
+            deduped: list[str] = []
+            seen: set[str] = set()
+            for p in parts:
+                key = _normalize_text_key(p)
+                if key in seen:
+                    continue
+                seen.add(key)
+                deduped.append(p)
+            changed = True
+            return f"({'; '.join(deduped)})"
+
+        text = nested_pat.sub(_flatten, text)
+        if not changed:
+            break
+
     # Merge adjacent parenthetical citations: "(A, 2010) (B, 2011)" -> "(A, 2010; B, 2011)"
     for _ in range(8):
         new_text = re.sub(
@@ -506,7 +542,15 @@ def _normalize_parenthetical_citations_html(section_html: str) -> str:
         return f"({'; '.join(deduped)})"
 
     text = re.sub(r"\(([^()]+)\)", _fix_paren, text)
+    text = re.sub(r"\(\s*\(([^()]*?(?:19|20)\d{2}[^()]*)\)\s*\)", r"(\1)", text)
     return text
+
+
+def _assert_chronological_quality(rendered_html: str, methodology_placeholders_resolved: bool, methodology_placeholder_tokens: list[str]) -> None:
+    if not methodology_placeholders_resolved:
+        raise RuntimeError(f"Unresolved methodology placeholders: {methodology_placeholder_tokens}")
+    if re.search(r"&lt;/?p&gt;|&lt;/?h[1-6]&gt;", str(rendered_html or "")):
+        raise RuntimeError("Escaped HTML artifacts remain in rendered chronological report.")
 
 
 def _run_prewrite_analysis(
@@ -585,9 +629,18 @@ def _theme_shift_svg(by_period: dict[str, list[dict[str, Any]]], output_dir: Pat
         top_theme, top_count = (c.most_common(1)[0] if c else ("uncategorized", 0))
         labels.append(f"{period_label}: {_humanize_theme_tokens(top_theme)}")
         values.append(int(top_count))
-    svg = _svg_bar_chart("Dominant coded theme count by period", labels or ["No data"], values or [0], width=960, height=520)
     out = output_dir / "theme_shift_by_period.svg"
-    out.write_text(svg, encoding="utf-8")
+    ok = write_bar_chart_svg(
+        output_path=out,
+        title="Dominant coded theme count by period",
+        labels=labels or ["No data"],
+        values=values or [0],
+        width=960,
+        height=520,
+    )
+    if not ok:
+        svg = _svg_bar_chart("Dominant coded theme count by period", labels or ["No data"], values or [0], width=960, height=520)
+        out.write_text(svg, encoding="utf-8")
     return out.name
 
 
@@ -737,7 +790,7 @@ def render_chronological_review_from_summary(
         item_year = next((r.get("year") for r in item_records if r.get("item_key") == item_key), None)
         if not isinstance(item_year, int):
             continue
-        for arr_key in ("code_pdf_page", "code_intro_conclusion_extract_core_claims", "evidence_list", "section_open_coding"):
+        for arr_key in ("code_pdf_page", "structured_code", "code_intro_conclusion_extract_core_claims", "evidence_list", "section_open_coding"):
             arr = payload.get(arr_key)
             if not isinstance(arr, list):
                 continue
@@ -778,20 +831,38 @@ def render_chronological_review_from_summary(
 
     year_labels = [str(y) for y, _ in sorted(year_counter.items())]
     year_values = [int(v) for _, v in sorted(year_counter.items())]
-    timeline_svg = _svg_bar_chart("Publication output over time", year_labels or ["No data"], year_values or [0], width=980, height=520)
     timeline_path = output_dir / "timeline_figure.svg"
-    timeline_path.write_text(timeline_svg, encoding="utf-8")
+    ok_timeline = write_bar_chart_svg(
+        output_path=timeline_path,
+        title="Publication output over time",
+        labels=year_labels or ["No data"],
+        values=year_values or [0],
+        width=980,
+        height=520,
+    )
+    if not ok_timeline:
+        timeline_svg = _svg_bar_chart("Publication output over time", year_labels or ["No data"], year_values or [0], width=980, height=520)
+        timeline_path.write_text(timeline_svg, encoding="utf-8")
 
     period_counter = Counter(_period_for_year(r.get("year"), periods) for r in item_records)
-    period_svg = _svg_bar_chart(
-        "Publication volume by period",
-        list(period_counter.keys()) or ["No data"],
-        [int(v) for v in period_counter.values()] or [0],
+    period_path = output_dir / "period_volume_figure.svg"
+    ok_period = write_bar_chart_svg(
+        output_path=period_path,
+        title="Publication volume by period",
+        labels=list(period_counter.keys()) or ["No data"],
+        values=[int(v) for v in period_counter.values()] or [0],
         width=960,
         height=500,
     )
-    period_path = output_dir / "period_volume_figure.svg"
-    period_path.write_text(period_svg, encoding="utf-8")
+    if not ok_period:
+        period_svg = _svg_bar_chart(
+            "Publication volume by period",
+            list(period_counter.keys()) or ["No data"],
+            [int(v) for v in period_counter.values()] or [0],
+            width=960,
+            height=500,
+        )
+        period_path.write_text(period_svg, encoding="utf-8")
     theme_shift_name = _theme_shift_svg(by_period, output_dir)
     period_table_html = _period_summary_table_html(periods, by_period)
     methodology_blueprint_html = _build_methodology_blueprint_html(periods, by_period, period_counter)
@@ -841,6 +912,7 @@ def render_chronological_review_from_summary(
         },
     }
     citation_instruction = _citation_style_instruction(citation_style)
+    strict_rules = _strict_dqid_citation_rules_text(citation_style)
 
     section_specs: dict[str, dict[str, Any]] = {
         "chronological_rationale": {"min": 120, "max": 1400},
@@ -899,6 +971,7 @@ def render_chronological_review_from_summary(
             f"SECTION_NAME\n{section_name}\n\n"
             f"INSTRUCTION\n{instruction}\n\n"
             f"CONTEXT_JSON\n{json.dumps(section_payload, ensure_ascii=False, indent=2)}\n\n"
+            f"{strict_rules}\n\n"
             "STYLE_GUARD\nWrite formal publication prose only. Do not mention prompts/context JSON/AI.\n\n"
             f"CITATION_STYLE\n{citation_instruction}\n\n"
             "Return only raw HTML snippets, no markdown fences."
@@ -917,6 +990,7 @@ def render_chronological_review_from_summary(
         cleaned = _clean_and_humanize_section_html(_clean_llm_html(raw_html))
         cleaned = _enrich_dqid_anchors(cleaned, dqid_lookup, citation_style=citation_style)
         cleaned = _normalize_parenthetical_citations_html(cleaned)
+        cleaned = _validate_section_citation_integrity(section_name, cleaned, dqid_lookup, citation_style=citation_style)
         try:
             _validate_generated_section(section_name, cleaned, section_specs[section_name])
         except Exception as exc:
@@ -929,6 +1003,7 @@ def render_chronological_review_from_summary(
                     base_instruction=phase1[section_name],
                     payload=phase1_payload_by_section.get(section_name, {}),
                     citation_instruction=citation_instruction,
+                    strict_rules=strict_rules,
                     validation_error=last_err,
                     previous_output=prev,
                 )
@@ -941,6 +1016,7 @@ def render_chronological_review_from_summary(
                 retry_raw = retry_batch["outputs"].get(section_name, "")
                 prev = _enrich_dqid_anchors(_clean_and_humanize_section_html(_clean_llm_html(retry_raw)), dqid_lookup, citation_style=citation_style)
                 prev = _normalize_parenthetical_citations_html(prev)
+                prev = _validate_section_citation_integrity(section_name, prev, dqid_lookup, citation_style=citation_style)
                 try:
                     _validate_generated_section(section_name, prev, section_specs[section_name])
                     cleaned = prev
@@ -976,6 +1052,7 @@ def render_chronological_review_from_summary(
             f"SECTION_NAME\n{section_name}\n\n"
             f"INSTRUCTION\n{instruction}\n\n"
             f"WHOLE_PAPER_CONTEXT_JSON\n{json.dumps(whole_payload, ensure_ascii=False, indent=2)}\n\n"
+            f"{strict_rules}\n\n"
             "STYLE_GUARD\nWrite formal publication prose only. Do not mention prompts/context JSON/AI.\n\n"
             f"CITATION_STYLE\n{citation_instruction}\n\n"
             "Return only raw HTML snippets, no markdown fences."
@@ -994,6 +1071,7 @@ def render_chronological_review_from_summary(
         cleaned = _clean_and_humanize_section_html(_clean_llm_html(raw_html))
         cleaned = _enrich_dqid_anchors(cleaned, dqid_lookup, citation_style=citation_style)
         cleaned = _normalize_parenthetical_citations_html(cleaned)
+        cleaned = _validate_section_citation_integrity(section_name, cleaned, dqid_lookup, citation_style=citation_style)
         try:
             _validate_generated_section(section_name, cleaned, section_specs[section_name])
         except Exception as exc:
@@ -1006,6 +1084,7 @@ def render_chronological_review_from_summary(
                     base_instruction=phase2[section_name],
                     payload=whole_payload,
                     citation_instruction=citation_instruction,
+                    strict_rules=strict_rules,
                     validation_error=last_err,
                     previous_output=prev,
                 )
@@ -1018,6 +1097,7 @@ def render_chronological_review_from_summary(
                 retry_raw = retry_batch["outputs"].get(section_name, "")
                 prev = _enrich_dqid_anchors(_clean_and_humanize_section_html(_clean_llm_html(retry_raw)), dqid_lookup, citation_style=citation_style)
                 prev = _normalize_parenthetical_citations_html(prev)
+                prev = _validate_section_citation_integrity(section_name, prev, dqid_lookup, citation_style=citation_style)
                 try:
                     _validate_generated_section(section_name, prev, section_specs[section_name])
                     cleaned = prev
@@ -1139,8 +1219,12 @@ def render_chronological_review_from_summary(
     env = Environment(loader=FileSystemLoader(str(template_path.parent)), autoescape=select_autoescape(["html", "htm", "xml"]))
     template = env.get_template(template_path.name)
     rendered = template.render(**context)
+    rendered = _normalize_parenthetical_citations_html(rendered)
+    rendered = _anchor_plain_author_year_citations(rendered, dqid_lookup, citation_style=citation_style)
     _assert_non_placeholder_html(rendered)
     _assert_reference_and_postprocess_integrity(rendered, citation_style=citation_style)
+    _validate_dqid_quote_page_integrity(rendered, dqid_lookup, citation_style=citation_style, context_label="Chronological review")
+    _assert_chronological_quality(rendered, methodology_placeholders_resolved, methodology_placeholder_tokens)
 
     out_html = output_dir / "chronological_review.html"
     out_ctx = output_dir / "chronological_review_context.json"
@@ -1180,13 +1264,24 @@ def render_chronological_review_from_summary(
 
 def run_pipeline(
     *,
-    summary_path: Path,
+    summary_path: Path | None,
     template_path: Path,
     outputs_root: Path,
     model: str = "gpt-5-mini",
     citation_style: str = "apa",
+    collection_name: str = "",
+    coded_dir: Path | None = None,
+    build_summary_if_missing: bool = False,
 ) -> dict[str, str]:
-    summary = _load_json(summary_path)
+    resolved_summary_path = resolve_summary_path(
+        summary_path=summary_path,
+        collection_name=str(collection_name),
+        coded_dir=coded_dir,
+        outputs_root=outputs_root,
+        model=model,
+        build_summary_if_missing=bool(build_summary_if_missing),
+    )
+    summary = _load_json(resolved_summary_path)
     return render_chronological_review_from_summary(
         summary=summary,
         template_path=template_path,
@@ -1198,7 +1293,10 @@ def run_pipeline(
 
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Generate chronological review from coded summary.")
-    p.add_argument("--summary-path", required=True)
+    p.add_argument("--summary-path", default="")
+    p.add_argument("--collection-name", default="")
+    p.add_argument("--coded-dir", default="")
+    p.add_argument("--build-summary-if-missing", action="store_true")
     p.add_argument("--template-path", default=str(_repo_root() / "Research" / "templates" / "chronological_review_template.html"))
     p.add_argument("--outputs-root", default=str(_repo_root() / "Research" / "outputs"))
     p.add_argument("--model", default="gpt-5-mini")
@@ -1208,12 +1306,17 @@ def _build_parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = _build_parser().parse_args()
+    summary_path = Path(args.summary_path).resolve() if str(args.summary_path).strip() else None
+    coded_dir = Path(args.coded_dir).resolve() if str(args.coded_dir).strip() else None
     result = run_pipeline(
-        summary_path=Path(args.summary_path).resolve(),
+        summary_path=summary_path,
         template_path=Path(args.template_path).resolve(),
         outputs_root=Path(args.outputs_root).resolve(),
         model=str(args.model),
         citation_style=str(args.citation_style),
+        collection_name=str(args.collection_name),
+        coded_dir=coded_dir,
+        build_summary_if_missing=bool(args.build_summary_if_missing),
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0

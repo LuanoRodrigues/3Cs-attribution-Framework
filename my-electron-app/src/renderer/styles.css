@@ -5025,3 +5025,173 @@ body.zotero-parity-mode {
 }
 .note-button:hover:not(:disabled) { border-color: var(--accent); box-shadow: var(--shadow-level-1); transform: translateY(-1px); }
 .note-button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.ppt-electron-tool-surface {
+  padding: 0;
+}
+
+.ppt-electron-page {
+  height: 100%;
+  overflow: auto;
+  padding: 16px;
+  color: var(--text);
+  background:
+    radial-gradient(circle at 10% 0%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 40%),
+    radial-gradient(circle at 90% 0%, color-mix(in srgb, var(--accent-2) 10%, transparent), transparent 42%),
+    var(--surface);
+}
+
+.ppt-electron-header h2 {
+  margin: 0;
+  font-size: 24px;
+  letter-spacing: 0.2px;
+}
+
+.ppt-electron-header p {
+  margin: 6px 0 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.ppt-electron-grid {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: minmax(420px, 1.2fr) minmax(320px, 0.8fr);
+  gap: 14px;
+}
+
+.ppt-electron-panel {
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+
+.ppt-electron-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ppt-electron-field label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.ppt-electron-field input,
+.ppt-electron-field textarea,
+.ppt-electron-field select {
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--panel-2) 90%, transparent);
+  color: var(--text);
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.ppt-electron-field textarea {
+  resize: vertical;
+}
+
+.ppt-electron-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ppt-electron-toggle-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 13px;
+}
+
+.ppt-electron-toggle-row label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ppt-electron-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.ppt-electron-actions button {
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--panel-2) 90%, transparent);
+  color: var(--text);
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ppt-electron-actions button.primary {
+  background: linear-gradient(120deg, color-mix(in srgb, var(--accent) 50%, transparent), color-mix(in srgb, var(--accent-2) 45%, transparent));
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border-soft));
+}
+
+.ppt-electron-actions button:hover {
+  transform: translateY(-1px);
+}
+
+.ppt-electron-status {
+  min-height: 18px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.ppt-electron-status.is-error {
+  color: #dc2626;
+}
+
+.ppt-electron-panel h3 {
+  margin: 2px 0;
+  font-size: 14px;
+}
+
+.ppt-electron-sections {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.ppt-electron-section {
+  border: 1px solid var(--border-soft);
+  background: color-mix(in srgb, var(--panel-2) 90%, transparent);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.ppt-electron-log {
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--panel-2) 92%, transparent);
+  color: var(--text);
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 11.5px;
+  line-height: 1.4;
+  min-height: 190px;
+  max-height: 380px;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 980px) {
+  .ppt-electron-grid {
+    grid-template-columns: 1fr;
+  }
+}

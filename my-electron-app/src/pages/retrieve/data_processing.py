@@ -4979,6 +4979,43 @@ def _compute_citation_metadata_validation(
 
 # --- Main PDF Processing Function ---
 
+_SPECIAL_OPENAI_FALLBACK_PATH_HINTS = (
+    "/q6xc4j4x/",
+    "welburn et al. - 2023 - cyber deterrence with imperfect attribution and unverifiable signaling.pdf",
+)
+
+
+def _should_use_special_openai_fallback(pdf_path: str) -> bool:
+    p = str(Path(pdf_path).expanduser().resolve()).replace("\\", "/").lower()
+    return all(h in p for h in _SPECIAL_OPENAI_FALLBACK_PATH_HINTS)
+
+
+def _extract_pdf_markdown_with_openai_markitdown(pdf_path: str, llm_model: str = "gpt-4o") -> Optional[str]:
+    try:
+        from markitdown import MarkItDown
+        from openai import OpenAI
+    except Exception as exc:
+        print(f"[LOG] OpenAI/MarkItDown fallback unavailable: {type(exc).__name__}: {exc}")
+        return None
+
+    if not os.environ.get("OPENAI_API_KEY"):
+        print("[LOG] OpenAI/MarkItDown fallback skipped: OPENAI_API_KEY is missing.")
+        return None
+
+    try:
+        client = OpenAI()
+        md = MarkItDown(llm_client=client, llm_model=llm_model)
+        result = md.convert(str(Path(pdf_path).expanduser().resolve()))
+        markdown_text = str(getattr(result, "markdown", "") or "").strip()
+        if not markdown_text:
+            print("[WARNING] OpenAI/MarkItDown fallback returned empty markdown.")
+            return None
+        print(f"[LOG] OpenAI/MarkItDown fallback succeeded ({len(markdown_text)} chars).")
+        return markdown_text
+    except Exception as exc:
+        print(f"[WARNING] OpenAI/MarkItDown fallback failed: {type(exc).__name__}: {exc}")
+        return None
+
 
 def process_pdf(
         pdf_path: str,
@@ -5222,6 +5259,17 @@ def process_pdf(
     if full_md is None:
         print(f"[LOG] Processing PDF from scratch: {pdf_path}")
 
+        if _should_use_special_openai_fallback(pdf_path):
+            print("[LOG] Special-case fallback enabled for this PDF. Trying OpenAI/MarkItDown before Mistral OCR.")
+            openai_md = _extract_pdf_markdown_with_openai_markitdown(
+                pdf_path=pdf_path,
+                llm_model=os.environ.get("OPEN_CODING_SPECIAL_LLM_MODEL", "gpt-4o"),
+            )
+            if openai_md:
+                full_md = openai_md
+                raw_full_md = openai_md
+                segments = [openai_md]
+
         try:
             doc = fitz.open(pdf_path)
         except Exception:
@@ -5230,139 +5278,140 @@ def process_pdf(
         page_list = list(range(doc.page_count))
         doc.close()
 
-        segments = [""] * len(page_list)
-        needs_ocr: List[int] = []
+        if full_md is None:
+            segments = [""] * len(page_list)
+            needs_ocr: List[int] = []
 
-        for pos, pidx in enumerate(page_list):
-            try:
-                txt = pymupdf4llm.to_markdown(pdf_path, pages=[pidx], **llm4_kwargs)
-                if txt:
-                    segments[pos] = txt.strip()
-                else:
-                    raise ValueError("No embedded text")
-            except Exception:
-                needs_ocr.append(pidx)
-
-        if needs_ocr:
-            print(f"[LOG] Found {len(needs_ocr)} pages requiring OCR.")
-
-            # Map original page index -> position in segments
-            pos_map = {p: i for i, p in enumerate(page_list)}
-
-            # throttle large sets first
-            if len(needs_ocr) > 150:
-                needs_ocr = needs_ocr[:60] + needs_ocr[-60:]
-            if len(needs_ocr) > 300:
-                needs_ocr = needs_ocr[:250]
-
-            def split_batches_by_size(pages: list[int], max_pages: int = 40) -> list[list[int]]:
-                batches: list[list[int]] = []
-
-                def build_pdf_bytes(pg_list: list[int]) -> bytes:
-                    s, d = fitz.open(pdf_path), fitz.open()
-                    try:
-                        for pg in pg_list:
-                            if 0 <= pg < s.page_count:
-                                try:
-                                    d.insert_pdf(s, from_page=pg, to_page=pg, links=False, annots=False)
-                                except Exception as ex:
-                                    print(f"[WARNING] insert_pdf failed on page {pg}: {ex}")
-                            else:
-                                print(f"[WARNING] Skipping page {pg} – out of bounds")
-                        if d.page_count == 0:
-                            return b""
-                        return d.tobytes()
-                    finally:
-                        s.close(); d.close()
-
-                def ensure_under_cap(pg_list: list[int]):
-                    if not pg_list:
-                        return
-                    pdf_bytes = build_pdf_bytes(pg_list)
-                    if not pdf_bytes:
-                        return
-                    if len(pdf_bytes) <= 47 * 1024 * 1024:
-                        batches.append(pg_list); return
-                    if len(pg_list) == 1:
-                        batches.append(pg_list); return
-                    mid = len(pg_list) // 2
-                    ensure_under_cap(pg_list[:mid]); ensure_under_cap(pg_list[mid:])
-
-                for i in range(0, len(pages), max_pages):
-                    ensure_under_cap(pages[i:i + max_pages])
-                return batches
-
-            client = Mistral(api_key=api_key)
-            all_batches = split_batches_by_size(needs_ocr, max_pages=40)
-            print(f"[LOG] OCR will run in {len(all_batches)} batch(es).")
-
-            ocr_text_by_page: dict[int, str] = {}
-
-            for bi, batch in enumerate(all_batches, 1):
-                src, dst = fitz.open(pdf_path), fitz.open()
-                for p in batch:
-                    if 0 <= p < src.page_count:
-                        try:
-                            dst.insert_pdf(src, from_page=p, to_page=p, links=False, annots=False)
-                        except Exception as ex:
-                            print(f"[WARNING] insert_pdf failed on page {p}: {ex}")
+            for pos, pidx in enumerate(page_list):
+                try:
+                    txt = pymupdf4llm.to_markdown(pdf_path, pages=[pidx], **llm4_kwargs)
+                    if txt:
+                        segments[pos] = txt.strip()
                     else:
-                        print(f"[WARNING] Skipping page {p} – out of bounds")
-                if dst.page_count == 0:
-                    print(f"[WARNING] Batch {bi} had no valid pages; skipping.")
-                    src.close(); dst.close(); continue
-                pdf_bytes = dst.tobytes()
-                src.close(); dst.close()
+                        raise ValueError("No embedded text")
+                except Exception:
+                    needs_ocr.append(pidx)
 
-                print(f"[LOG] Uploading OCR batch {bi}/{len(all_batches)} "
-                      f"({len(batch)} pages, {len(pdf_bytes) / 1024 / 1024:.2f} MB)")
+            if needs_ocr:
+                print(f"[LOG] Found {len(needs_ocr)} pages requiring OCR.")
 
-                upload = client.files.upload(
-                    file={"file_name": f"ocr_batch_{bi}.pdf", "content": pdf_bytes},
-                    purpose="ocr"
-                )
-                signed = client.files.get_signed_url(file_id=upload.id).url
+                # Map original page index -> position in segments
+                pos_map = {p: i for i, p in enumerate(page_list)}
 
-                ocr_resp = None
-                for delay in _exponential_backoff(ocr_retry):
-                    try:
-                        ocr_resp = client.ocr.process(
-                            model=mistral_model,
-                            document={"type": "document_url", "document_url": signed}
-                        )
-                        break
-                    except m_models.SDKError as e:
-                        status = getattr(e, "status", None)
-                        if status == 429:
-                            print(f"[WARNING] OCR rate limit hit, sleeping for {delay:.2f}s...")
-                            time.sleep(delay); continue
-                        elif status == 400:
-                            if len(batch) > 1:
-                                print("[WARNING] Batch still too large for OCR; splitting and retrying.")
-                                mid = len(batch) // 2
-                                all_batches[bi - 1:bi] = [batch[:mid], batch[mid:]]
-                                ocr_resp = None
-                                break
+                # throttle large sets first
+                if len(needs_ocr) > 150:
+                    needs_ocr = needs_ocr[:60] + needs_ocr[-60:]
+                if len(needs_ocr) > 300:
+                    needs_ocr = needs_ocr[:250]
+
+                def split_batches_by_size(pages: list[int], max_pages: int = 40) -> list[list[int]]:
+                    batches: list[list[int]] = []
+
+                    def build_pdf_bytes(pg_list: list[int]) -> bytes:
+                        s, d = fitz.open(pdf_path), fitz.open()
+                        try:
+                            for pg in pg_list:
+                                if 0 <= pg < s.page_count:
+                                    try:
+                                        d.insert_pdf(s, from_page=pg, to_page=pg, links=False, annots=False)
+                                    except Exception as ex:
+                                        print(f"[WARNING] insert_pdf failed on page {pg}: {ex}")
+                                else:
+                                    print(f"[WARNING] Skipping page {pg} – out of bounds")
+                            if d.page_count == 0:
+                                return b""
+                            return d.tobytes()
+                        finally:
+                            s.close(); d.close()
+
+                    def ensure_under_cap(pg_list: list[int]):
+                        if not pg_list:
+                            return
+                        pdf_bytes = build_pdf_bytes(pg_list)
+                        if not pdf_bytes:
+                            return
+                        if len(pdf_bytes) <= 47 * 1024 * 1024:
+                            batches.append(pg_list); return
+                        if len(pg_list) == 1:
+                            batches.append(pg_list); return
+                        mid = len(pg_list) // 2
+                        ensure_under_cap(pg_list[:mid]); ensure_under_cap(pg_list[mid:])
+
+                    for i in range(0, len(pages), max_pages):
+                        ensure_under_cap(pages[i:i + max_pages])
+                    return batches
+
+                client = Mistral(api_key=api_key)
+                all_batches = split_batches_by_size(needs_ocr, max_pages=40)
+                print(f"[LOG] OCR will run in {len(all_batches)} batch(es).")
+
+                ocr_text_by_page: dict[int, str] = {}
+
+                for bi, batch in enumerate(all_batches, 1):
+                    src, dst = fitz.open(pdf_path), fitz.open()
+                    for p in batch:
+                        if 0 <= p < src.page_count:
+                            try:
+                                dst.insert_pdf(src, from_page=p, to_page=p, links=False, annots=False)
+                            except Exception as ex:
+                                print(f"[WARNING] insert_pdf failed on page {p}: {ex}")
+                        else:
+                            print(f"[WARNING] Skipping page {p} – out of bounds")
+                    if dst.page_count == 0:
+                        print(f"[WARNING] Batch {bi} had no valid pages; skipping.")
+                        src.close(); dst.close(); continue
+                    pdf_bytes = dst.tobytes()
+                    src.close(); dst.close()
+
+                    print(f"[LOG] Uploading OCR batch {bi}/{len(all_batches)} "
+                          f"({len(batch)} pages, {len(pdf_bytes) / 1024 / 1024:.2f} MB)")
+
+                    upload = client.files.upload(
+                        file={"file_name": f"ocr_batch_{bi}.pdf", "content": pdf_bytes},
+                        purpose="ocr"
+                    )
+                    signed = client.files.get_signed_url(file_id=upload.id).url
+
+                    ocr_resp = None
+                    for delay in _exponential_backoff(ocr_retry):
+                        try:
+                            ocr_resp = client.ocr.process(
+                                model=mistral_model,
+                                document={"type": "document_url", "document_url": signed}
+                            )
+                            break
+                        except m_models.SDKError as e:
+                            status = getattr(e, "status", None)
+                            if status == 429:
+                                print(f"[WARNING] OCR rate limit hit, sleeping for {delay:.2f}s...")
+                                time.sleep(delay); continue
+                            elif status == 400:
+                                if len(batch) > 1:
+                                    print("[WARNING] Batch still too large for OCR; splitting and retrying.")
+                                    mid = len(batch) // 2
+                                    all_batches[bi - 1:bi] = [batch[:mid], batch[mid:]]
+                                    ocr_resp = None
+                                    break
+                                else:
+                                    raise
                             else:
                                 raise
-                        else:
-                            raise
 
-                if not ocr_resp:
-                    continue
+                    if not ocr_resp:
+                        continue
 
-                results = ocr_resp.model_dump().get("pages", [])
-                for i, page_info in enumerate(results):
-                    orig_page = batch[i] if i < len(batch) else batch[-1]
-                    text = (page_info.get("markdown") or page_info.get("text", "")).strip()
-                    ocr_text_by_page[orig_page] = text
+                    results = ocr_resp.model_dump().get("pages", [])
+                    for i, page_info in enumerate(results):
+                        orig_page = batch[i] if i < len(batch) else batch[-1]
+                        text = (page_info.get("markdown") or page_info.get("text", "")).strip()
+                        ocr_text_by_page[orig_page] = text
 
-            for orig_page, text in ocr_text_by_page.items():
-                if text:
-                    segments[pos_map[orig_page]] = text
+                for orig_page, text in ocr_text_by_page.items():
+                    if text:
+                        segments[pos_map[orig_page]] = text
 
-        full_md = "\n\n".join(segments)
-        raw_full_md = full_md
+            full_md = "\n\n".join(segments)
+            raw_full_md = full_md
         # drop images
         full_md = re.sub(r'!\[.*?\]\(.*?\)', '', full_md)
         # vendor preamble cleaner

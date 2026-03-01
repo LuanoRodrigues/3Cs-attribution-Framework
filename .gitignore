@@ -33,6 +33,10 @@ my-electron-app/retrieve-cache-fallback/
 
 # local scratch/demo files
 visuals.html
+progress.png
+progress_improved.png
+progress_export.pdf
+*.tmp
 
 # electron headless runs / ephemeral userData
 **/.tmp_headless/
@@ -49,6 +53,20 @@ tmp_ppt_images/
 # npm artifacts
 .npm-cache/
 .npm-logs/
+
+# generated analysis outputs / caches
+tmp/
+logs/
+Research/outputs/
+python_backend_legacy/.cache/
+.cache/
+.chrome-for-kaleido/
+.config/
+.local/
+.pki/
+.test_batch_root/
+.tmp_test_batches/
+zotero_items_cache.json
 
 # Windows/WSL path artifacts accidentally created as filenames
 *\\wsl$*

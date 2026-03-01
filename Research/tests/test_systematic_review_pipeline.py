@@ -90,6 +90,84 @@ class SystematicReviewPipelineTests(unittest.TestCase):
             self.assertIn("sections", persisted)
             self.assertIn("abstract", persisted["sections"])
 
+    def test_sanitize_href_url_decodes_amp_and_normalizes_query_keys(self) -> None:
+        raw = (
+            "https://heinonline.org/HOL/Page?public=true&amp;amp;handle=hein.journals/isjlpsoc8"
+            "&amp;amp;start page=321&amp;amp;set as cursor=558&amp;amp;men tab=srchresults"
+        )
+        out = sr._sanitize_href_url(raw)
+        self.assertIn("public=true", out)
+        self.assertIn("handle=hein.journals%2Fisjlpsoc8", out)
+        self.assertIn("start_page=321", out)
+        self.assertIn("set_as_cursor=558", out)
+        self.assertIn("men_tab=srchresults", out)
+        self.assertNotIn("&amp;", out)
+
+    def test_decode_html_entities_repairs_broken_apostrophe(self) -> None:
+        self.assertEqual(sr._decode_html_entities("O&amp;amp;#x27;Connell"), "O'Connell")
+
+    def test_dedupe_citation_anchors_in_parenthetical_group(self) -> None:
+        html_text = (
+            "<p>Text ((<a class=\"dqid-cite\" data-dqid=\"D1\" href=\"https://x\" title=\"(A, 2020)\">(A, 2020)</a>); "
+            "(<a class=\"dqid-cite\" data-dqid=\"D1\" href=\"https://x\" title=\"(A, 2020)\">(A, 2020)</a>); "
+            "(<a class=\"dqid-cite\" data-dqid=\"D2\" href=\"https://y\" title=\"(B, 2021)\">(B, 2021)</a>)).</p>"
+        )
+        out = sr._normalize_parenthetical_citations_html(html_text)
+        out = sr._dedupe_citation_anchors_html(out)
+        self.assertIn("(A, 2020)", out)
+        self.assertIn("(B, 2021)", out)
+        self.assertEqual(out.count("data-dqid=\"D1\""), 1)
+        self.assertEqual(out.count("data-dqid=\"D2\""), 1)
+        self.assertNotIn("((", out)
+
+    def test_integrity_validator_fails_on_double_escaped_href(self) -> None:
+        bad_html = "<html><body><a class=\"dqid-cite\" href=\"https://x?a=1&amp;amp;b=2\" title=\"(A, 2020)\">(A, 2020)</a></body></html>"
+        with self.assertRaises(RuntimeError):
+            sr._assert_reference_and_postprocess_integrity(bad_html)
+
+    def test_anchor_plain_author_year_citations_maps_to_dqid(self) -> None:
+        dq_lookup = {
+            "IT1#DQ001": {
+                "citation": "(Smith, 2020, p. 4)",
+                "quote": "Quoted evidence.",
+                "source_url": "https://example.org/a",
+                "page_no": "4",
+            }
+        }
+        html_text = "<p>Claim sentence (Smith, 2020, p. 4).</p>"
+        out = sr._anchor_plain_author_year_citations(html_text, dq_lookup, citation_style="apa")
+        self.assertIn("class=\"dqid-cite\"", out)
+        self.assertIn("data-dqid=\"IT1#DQ001\"", out)
+        self.assertIn("(Smith, 2020, p. 4)", out)
+
+    def test_anchor_plain_author_year_citations_handles_malformed_apostrophe_entity(self) -> None:
+        dq_lookup = {
+            "IT2#DQ003": {
+                "citation": "(O'Connell, 2012, p. 3)",
+                "quote": "Quoted evidence.",
+                "source_url": "https://example.org/b",
+                "page_no": "3",
+            }
+        }
+        html_text = "<p>Related argument (O& #x27;Connell, 2012, p. 3).</p>"
+        out = sr._anchor_plain_author_year_citations(html_text, dq_lookup, citation_style="apa")
+        self.assertIn("class=\"dqid-cite\"", out)
+        self.assertIn("data-dqid=\"IT2#DQ003\"", out)
+
+    def test_find_unanchored_author_year_ignores_numeric_year_ranges(self) -> None:
+        html_text = "<p>Coverage was broad (55 items, 2010-2012) and methodologically mixed.</p>"
+        leftovers = sr._find_unanchored_author_year_citations(html_text)
+        self.assertEqual(leftovers, [])
+
+    def test_validate_section_citation_integrity_fails_on_unmapped_author_year(self) -> None:
+        with self.assertRaises(RuntimeError):
+            sr._validate_section_citation_integrity(
+                "discussion",
+                "<p>Unsupported claim (Scholars, 2011).</p>",
+                {"IT1#DQ001": {"citation": "(Smith, 2020)", "source_url": "https://example.org/a"}},
+                citation_style="apa",
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

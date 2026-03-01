@@ -20,8 +20,11 @@ _REPO_ROOT = _THIS_FILE.parents[1]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
+from Research.summary_utils import resolve_summary_path
+
 from Research.adaptive_prompt_context import build_adaptive_prompt_context
 from Research.systematic_review_pipeline import (
+    _anchor_plain_author_year_citations,
     _assert_non_placeholder_html,
     _assert_reference_and_postprocess_integrity,
     _build_dqid_evidence_payload,
@@ -40,9 +43,17 @@ from Research.systematic_review_pipeline import (
     _repo_root,
     _resolve_collection_label,
     _safe_name,
+    _strict_dqid_citation_rules_text,
     _stable_section_custom_id,
+    _validate_dqid_quote_page_integrity,
+    _validate_section_citation_integrity,
     _validate_generated_section,
     _write_section_cache,
+)
+from Research.pipeline.plotly_static_figures import (
+    write_bar_chart_svg,
+    write_heatmap_svg,
+    write_network_svg,
 )
 
 # -------------------------
@@ -402,7 +413,7 @@ def _item_has_quant_signal(items: dict[str, dict[str, Any]], item_key: str) -> b
                 return True
         return False
 
-    for arr_key in ("code_pdf_page", "code_intro_conclusion_extract_core_claims", "evidence_list", "section_open_coding"):
+    for arr_key in ("code_pdf_page", "structured_code", "code_intro_conclusion_extract_core_claims", "evidence_list", "section_open_coding"):
         arr = payload.get(arr_key)
         if not isinstance(arr, list):
             continue
@@ -736,6 +747,32 @@ def _run_grouped_batch_sections(
         "meta_file": str(meta_file),
     }
 
+
+def _rewrite_section_prompt(
+    *,
+    section_name: str,
+    base_instruction: str,
+    payload: dict[str, Any],
+    citation_instruction: str,
+    strict_rules: str,
+    validation_error: str,
+    previous_output: str,
+) -> str:
+    return (
+        f"SECTION_NAME\n{section_name}\n\n"
+        f"INSTRUCTION\n{base_instruction}\n\n"
+        f"CONTEXT_JSON\n{json.dumps(payload, ensure_ascii=False, indent=2)}\n\n"
+        f"PREVIOUS_OUTPUT\n{previous_output}\n\n"
+        f"VALIDATION_ERROR\n{validation_error}\n\n"
+        "REVISION_RULES\nRewrite the section to satisfy validation constraints and preserve evidence grounding.\n"
+        "If a citation cannot be mapped to provided evidence_payload dqids, remove that citation and rewrite the sentence.\n"
+        "Never invent author-year citations.\n\n"
+        f"{strict_rules}\n\n"
+        "STYLE_GUARD\nWrite formal publication prose only. Do not mention prompts/context JSON/AI.\n\n"
+        f"CITATION_STYLE\n{citation_instruction}\n\n"
+        "Return only raw HTML snippets, no markdown fences."
+    )
+
 # -------------------------
 # Main renderer
 # -------------------------
@@ -762,6 +799,7 @@ def render_evidence_map_from_summary(
 
     citation_style = _normalize_citation_style(citation_style)
     citation_instruction = _citation_style_instruction(citation_style)
+    strict_rules = _strict_dqid_citation_rules_text(citation_style)
 
     items = _load_items(summary)
     item_records = _build_item_records(items)
@@ -789,44 +827,81 @@ def render_evidence_map_from_summary(
     col_labels = [c["label"] for c in evidence_matrix["cols"]]
     values = [[cell["n"] for cell in r["cells"]] for r in evidence_matrix["rows"]]
 
-    heatmap_svg = _svg_heatmap(
+    gap_map_path = output_dir / "gap_map.svg"
+    ok_heatmap = write_heatmap_svg(
+        output_path=gap_map_path,
         title=mapping_config["figures"]["heatmap_title"],
         row_labels=row_labels,
         col_labels=col_labels,
         values=values,
+        width=1020,
+        height=620,
     )
-    gap_map_path = output_dir / "gap_map.svg"
-    gap_map_path.write_text(heatmap_svg, encoding="utf-8")
+    if not ok_heatmap:
+        heatmap_svg = _svg_heatmap(
+            title=mapping_config["figures"]["heatmap_title"],
+            row_labels=row_labels,
+            col_labels=col_labels,
+            values=values,
+        )
+        gap_map_path.write_text(heatmap_svg, encoding="utf-8")
 
     node_w, edges = _theme_cooccurrence_edges(dq_payload=dq_payload, top_themes=top_themes)
-    network_svg = _svg_circular_network(
+    network_path = output_dir / "evidence_network.svg"
+    ok_network = write_network_svg(
+        output_path=network_path,
         title=mapping_config["figures"]["network_title"],
         node_weights=node_w,
         edges=edges,
+        width=980,
+        height=620,
     )
-    network_path = output_dir / "evidence_network.svg"
-    network_path.write_text(network_svg, encoding="utf-8")
+    if not ok_network:
+        network_svg = _svg_circular_network(
+            title=mapping_config["figures"]["network_title"],
+            node_weights=node_w,
+            edges=edges,
+        )
+        network_path.write_text(network_svg, encoding="utf-8")
 
     years_hist = _year_histogram(item_records)
     t_labels = [str(x["year"]) for x in years_hist][-int(mapping_config["limits"]["timeline_years"]):]
     t_values = [int(x["count"]) for x in years_hist][-int(mapping_config["limits"]["timeline_years"]):]
-    timeline_svg = _svg_timeline_bar(
+    timeline_path = output_dir / "timeline.svg"
+    ok_timeline = write_bar_chart_svg(
+        output_path=timeline_path,
         title=mapping_config["figures"]["timeline_title"],
         labels=t_labels,
         values=t_values,
+        width=920,
+        height=420,
     )
-    timeline_path = output_dir / "timeline.svg"
-    timeline_path.write_text(timeline_svg, encoding="utf-8")
+    if not ok_timeline:
+        timeline_svg = _svg_timeline_bar(
+            title=mapping_config["figures"]["timeline_title"],
+            labels=t_labels,
+            values=t_values,
+        )
+        timeline_path.write_text(timeline_svg, encoding="utf-8")
 
     bubble_labels = [str(r["year"]) for r in years_hist if isinstance(r.get("year"), int)]
     bubble_values = [int(r["count"]) for r in years_hist if isinstance(r.get("year"), int)]
-    bubble_svg = _svg_timeline_bar(
+    bubble_path = output_dir / "bubble_plot.svg"
+    ok_bubble = write_bar_chart_svg(
+        output_path=bubble_path,
         title=str(mapping_config["figures"]["bubble_title"]),
         labels=bubble_labels[-10:] if bubble_labels else ["No data"],
         values=bubble_values[-10:] if bubble_values else [0],
+        width=920,
+        height=420,
     )
-    bubble_path = output_dir / "bubble_plot.svg"
-    bubble_path.write_text(bubble_svg, encoding="utf-8")
+    if not ok_bubble:
+        bubble_svg = _svg_timeline_bar(
+            title=str(mapping_config["figures"]["bubble_title"]),
+            labels=bubble_labels[-10:] if bubble_labels else ["No data"],
+            values=bubble_values[-10:] if bubble_values else [0],
+        )
+        bubble_path.write_text(bubble_svg, encoding="utf-8")
 
     summary_stats = [
         {"label": "Items in corpus", "value": str(len(item_records))},
@@ -876,17 +951,23 @@ def render_evidence_map_from_summary(
 
     llm_sections: dict[str, str] = {}
     prompts: list[tuple[str, str]] = []
+    payload_by_section: dict[str, dict[str, Any]] = {}
     for section_name, instruction in section_instructions.items():
         cached = section_cache_entries[section_name]["html"] if section_name in section_cache_entries else ""
         if cached:
-            llm_sections[section_name] = _enrich_dqid_anchors(cached, dqid_lookup, citation_style=citation_style)
+            cached_clean = _enrich_dqid_anchors(cached, dqid_lookup, citation_style=citation_style)
+            cached_clean = _validate_section_citation_integrity(section_name, cached_clean, dqid_lookup, citation_style=citation_style)
+            _validate_generated_section(section_name, cached_clean, section_specs[section_name])
+            llm_sections[section_name] = cached_clean
             continue
         adaptive = build_adaptive_prompt_context(payload_base, target_tokens=7000, hard_cap_tokens=11000)
+        payload_by_section[section_name] = adaptive["context"] if isinstance(adaptive.get("context"), dict) else payload_base
         prompt = (
             f"SECTION_NAME\n{section_name}\n\n"
             f"INSTRUCTION\n{instruction}\n\n"
             f"CONTEXT_JSON\n{json.dumps(adaptive['context'], ensure_ascii=False, indent=2)}\n\n"
             f"CONTEXT_META_JSON\n{json.dumps(adaptive['meta'], ensure_ascii=False)}\n\n"
+            f"{strict_rules}\n\n"
             "STYLE_GUARD\nWrite formal publication prose only. Do not mention prompts/context JSON/AI.\n\n"
             f"CITATION_STYLE\n{citation_instruction}\n\n"
             "Return only raw HTML snippets, no markdown fences."
@@ -904,7 +985,42 @@ def render_evidence_map_from_summary(
         for section_name, raw_html in batch["outputs"].items():
             cleaned = _clean_and_humanize_section_html(_clean_llm_html(raw_html))
             cleaned = _enrich_dqid_anchors(cleaned, dqid_lookup, citation_style=citation_style)
-            _validate_generated_section(section_name, cleaned, section_specs[section_name])
+            cleaned = _validate_section_citation_integrity(section_name, cleaned, dqid_lookup, citation_style=citation_style)
+            try:
+                _validate_generated_section(section_name, cleaned, section_specs[section_name])
+            except Exception as exc:
+                last_err = str(exc)
+                prev = cleaned
+                ok = False
+                for attempt in range(2, 4):
+                    retry_prompt = _rewrite_section_prompt(
+                        section_name=section_name,
+                        base_instruction=section_instructions.get(section_name, ""),
+                        payload=payload_by_section.get(section_name, payload_base),
+                        citation_instruction=citation_instruction,
+                        strict_rules=strict_rules,
+                        validation_error=last_err,
+                        previous_output=prev,
+                    )
+                    retry_batch = _run_grouped_batch_sections(
+                        collection_name=f"{collection_name}_retry_{section_name}_a{attempt}",
+                        model=model,
+                        function_name=str(mapping_config["llm"]["function_name"]),
+                        section_prompts=[(section_name, retry_prompt)],
+                    )
+                    retry_raw = str((retry_batch.get("outputs") or {}).get(section_name) or "")
+                    prev = _clean_and_humanize_section_html(_clean_llm_html(retry_raw))
+                    prev = _enrich_dqid_anchors(prev, dqid_lookup, citation_style=citation_style)
+                    prev = _validate_section_citation_integrity(section_name, prev, dqid_lookup, citation_style=citation_style)
+                    try:
+                        _validate_generated_section(section_name, prev, section_specs[section_name])
+                        cleaned = prev
+                        ok = True
+                        break
+                    except Exception as retry_exc:
+                        last_err = str(retry_exc)
+                if not ok:
+                    raise RuntimeError(f"Section {section_name} failed after retries: {last_err}")
             llm_sections[section_name] = cleaned
             section_cache[section_name] = cleaned
             section_cache_entries[section_name] = _make_cache_entry(section_name=section_name, html_text=cleaned, model=model)
@@ -983,8 +1099,15 @@ def render_evidence_map_from_summary(
     env = Environment(loader=FileSystemLoader(str(template_path.parent)), autoescape=select_autoescape(["html", "htm", "xml"]))
     template = env.get_template(template_path.name)
     rendered = template.render(**context)
+    rendered = _anchor_plain_author_year_citations(rendered, dqid_lookup, citation_style=citation_style)
     _assert_non_placeholder_html(rendered)
     _assert_reference_and_postprocess_integrity(rendered, citation_style=citation_style)
+    _validate_dqid_quote_page_integrity(rendered, dqid_lookup, citation_style=citation_style, context_label="Evidence map")
+    post_generation_validation = {
+        "status": "ok",
+        "validated_html_path": str(output_dir / "evidence_map.html"),
+        "checks": ["citation_integrity", "dqid_quote_title_verbatim", f"{citation_style}_page_alignment"],
+    }
 
     out_html = output_dir / "evidence_map.html"
     out_ctx = output_dir / "evidence_map_context.json"
@@ -1012,6 +1135,7 @@ def render_evidence_map_from_summary(
         },
         "meta_candidates_path": str(output_dir / "meta_candidates.json"),
         "meta_candidates_count": len(meta_candidates),
+        "post_generation_validation": post_generation_validation,
     }
     _write_json(output_dir / "meta_candidates.json", {"meta_candidates": meta_candidates})
     _write_json(output_dir / "evidence_map_manifest.json", manifest)
@@ -1019,14 +1143,25 @@ def render_evidence_map_from_summary(
 
 def run_pipeline(
     *,
-    summary_path: Path,
+    summary_path: Path | None,
     mapping_config_path: Path,
     template_path: Path,
     outputs_root: Path,
     model: str,
     citation_style: str,
+    collection_name: str = "",
+    coded_dir: Path | None = None,
+    build_summary_if_missing: bool = False,
 ) -> dict[str, Any]:
-    summary = _load_json(summary_path)
+    resolved_summary_path = resolve_summary_path(
+        summary_path=summary_path,
+        collection_name=str(collection_name),
+        coded_dir=coded_dir,
+        outputs_root=outputs_root,
+        model=model,
+        build_summary_if_missing=bool(build_summary_if_missing),
+    )
+    summary = _load_json(resolved_summary_path)
     mapping_config = _load_json_file(mapping_config_path)
     return render_evidence_map_from_summary(
         summary=summary,
@@ -1039,7 +1174,10 @@ def run_pipeline(
 
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Generate an evidence map HTML report from coded summary + mapping config.")
-    p.add_argument("--summary-path", required=True)
+    p.add_argument("--summary-path", default="")
+    p.add_argument("--collection-name", default="")
+    p.add_argument("--coded-dir", default="")
+    p.add_argument("--build-summary-if-missing", action="store_true")
     p.add_argument("--mapping-config-path", required=True)
     p.add_argument("--template-path", required=True)
     p.add_argument("--outputs-root", default=str(_repo_root() / "Research" / "outputs"))
@@ -1049,13 +1187,18 @@ def _build_parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = _build_parser().parse_args()
+    summary_path = Path(args.summary_path).resolve() if str(args.summary_path).strip() else None
+    coded_dir = Path(args.coded_dir).resolve() if str(args.coded_dir).strip() else None
     result = run_pipeline(
-        summary_path=Path(args.summary_path).resolve(),
+        summary_path=summary_path,
         mapping_config_path=Path(args.mapping_config_path).resolve(),
         template_path=Path(args.template_path).resolve(),
         outputs_root=Path(args.outputs_root).resolve(),
         model=str(args.model),
         citation_style=str(args.citation_style),
+        collection_name=str(args.collection_name),
+        coded_dir=coded_dir,
+        build_summary_if_missing=bool(args.build_summary_if_missing),
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0

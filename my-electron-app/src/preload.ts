@@ -171,7 +171,7 @@ contextBridge.exposeInMainWorld("analyseBridge", {
 });
 
 contextBridge.exposeInMainWorld("systematicBridge", {
-  composePaper: (payload: { runDir: string; checklistPath: string }) =>
+  composePaper: (payload: { runDir: string; checklistPath: string; prismaFlowImagePath?: string }) =>
     ipcRenderer.invoke("systematic:compose-paper", payload),
   prismaAudit: (payload: { runDir: string }) =>
     ipcRenderer.invoke("systematic:prisma-audit", payload),
@@ -179,9 +179,9 @@ contextBridge.exposeInMainWorld("systematicBridge", {
     ipcRenderer.invoke("systematic:prisma-remediate", payload),
   adjudicateConflicts: (payload: { runDir: string; resolvedCount?: number }) =>
     ipcRenderer.invoke("systematic:adjudicate-conflicts", payload),
-  executeSteps1to15: (payload: { runDir: string; checklistPath: string; reviewerCount?: number }) =>
+  executeSteps1to15: (payload: { runDir: string; checklistPath: string; reviewerCount?: number; prismaFlowImagePath?: string }) =>
     ipcRenderer.invoke("systematic:execute-steps-1-15", payload),
-  fullRun: (payload: { runDir: string; checklistPath: string; maxIterations?: number; minPassPct?: number; maxFail?: number }) =>
+  fullRun: (payload: { runDir: string; checklistPath: string; maxIterations?: number; minPassPct?: number; maxFail?: number; prismaFlowImagePath?: string; collectionName?: string }) =>
     ipcRenderer.invoke("systematic:full-run", payload)
 });
 

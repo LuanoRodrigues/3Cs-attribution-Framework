@@ -20,6 +20,13 @@
     "effort": "medium",
     "response_format": { "type": "text" }
   },
+  "bibliographic_review_section_writer": {
+    "prompt": "You are drafting one section for a bibliographic review manuscript.\n\nINPUT FORMAT\nYou receive a plain-text payload with headers:\n- SECTION_NAME\n- INSTRUCTION\n- CONTEXT_JSON OR WHOLE_PAPER_CONTEXT_JSON\n\nREQUIREMENTS\n- Produce rigorous academic prose as raw HTML snippets only (allowed tags: p, h4, ul, ol, li, strong, em, a).\n- Do not include markdown fences, code blocks, or full HTML document wrappers.\n- Ground claims in the provided context only; do not invent metrics.\n- Keep concise, authoritative, and publication-oriented.\n- If context is sparse, state this explicitly with careful caveats.\n- When WHOLE_PAPER_CONTEXT_JSON is provided, treat it as authoritative and synthesize across all drafted sections.\n\nCITATION RULES\n- If evidence_payload is present in context, cite claims with dqid anchors using this exact shape: <a data-dqid=\"DQID\">(Author, Year)</a>.\n- Use only dqids provided in evidence_payload.\n- Place anchors immediately after the supported claim sentence.\n\nSECTION-SPECIFIC STYLE\n- abstract: one professional paragraph, no headings or lists, derived from the full paper context.\n- introduction: framing, scope, and analytical objective for bibliographic mapping.\n- methods: concise methodological and data-construction description.\n- corpus_overview: descriptive synthesis of publication volume, types, authors, and affiliations.\n- temporal_analysis: trends over time and periodization patterns.\n- thematic_analysis: dominant themes, gaps, and cluster structure.\n- methodological_analysis: methodological distribution and implications.\n- science_mapping: strategic diagram, centrality-density interpretation, and conceptual structure.\n- corpus_text_analytics: full-text evidence analytics (keywords/ngrams/network) with interpretive synthesis.\n- discussion: integrative interpretation, tensions, and implications.\n- limitations: explicit data/method constraints.\n- conclusion: actionable synthesis and future directions aligned with the full paper context.\n",
+    "default_model": { "openai": "gpt-5-mini" },
+    "max_tokens": 2600,
+    "effort": "medium",
+    "response_format": { "type": "text" }
+  },
   "braun_theme_subsection_synthesizer": {
     "prompt": "You are performing a second-pass Braun & Clarke reflexive thematic analysis for ONE already-selected dominant theme.\n\nINPUT\nYou receive plain text containing THEME_SUBSECTION_INPUT_JSON with:\n- topic\n- theme_name\n- theme_count\n- theme_overview_html\n- central_organising_concept\n- evidence_rows[] with quote and analytic commentary\n\nTASK\nReturn a single JSON object only (no markdown, no prose outside JSON) with keys:\n- theme_name: string\n- central_organising_concept: string (one concise sentence, analytic and specific)\n- overview_html: string (1-2 <p> paragraphs that synthesize the pattern and its significance)\n- subthemes: array of 2-4 objects with:\n  - name: string\n  - description_html: string (one <p> with analytic claim + what pattern in evidence supports it)\n- theme_analysis_html: string (HTML block using <h4> and <p> showing a multi-step explanation from evidence to interpretation)\n\nQUALITY RULES\n- Stay strictly within provided evidence_rows; do not invent facts/sources.\n- Subthemes must be mutually distinctive and collectively cover the dominant structure of the theme.\n- Prefer interpretable subthemes like technical/legal/operational/political variants when evidence supports them.\n- Keep output compact and publication-ready.\n",
     "default_model": { "openai": "gpt-5-mini" },
@@ -174,8 +181,176 @@
         "required": ["evidence"]
       }
     }
-  }
-,
+  },
+  "structured_coding_part_a": {
+    "prompt": "You are coding ONLY the abstract of one paper into structured evidence items.\n\nInput contains:\n- item metadata (item key, author/year)\n- research questions\n- controlled codes\n- ABSTRACT_TEXT\n\nReturn JSON only with key: evidence (array).\nEach evidence object must contain: dqid, quote, extraction_type, paraphrase, relevance_score, relevant_rqs, mapped_codes.\n\nAllowed extraction_type values for this function:\n- problem_statement\n- research_question\n- main_finding\n- recommendation\n\nRules:\n- Use verbatim quote substrings from ABSTRACT_TEXT.\n- Keep paraphrase concise and faithful.\n- dqid must be a deterministic 12-char lowercase hex hash (not an index/counter).\n- mapped_codes can be empty or selected from provided controlled codes.\n- Do not emit categories outside the allowed list for part A.",
+    "default_model": { "openai": "gpt-5-mini" },
+    "max_tokens": 1600,
+    "effort": "medium",
+    "property": {
+      "name": "structured_coding_part_a",
+      "description": "Structured coding from abstract: problem statement, research question, findings, recommendations.",
+      "schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "evidence": {
+            "type": "array",
+            "minItems": 0,
+            "maxItems": 20,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "dqid": { "type": "string", "minLength": 8, "maxLength": 200 },
+                "quote": { "type": "string", "minLength": 6, "maxLength": 800 },
+                "extraction_type": {
+                  "type": "string",
+                  "enum": ["problem_statement", "research_question", "main_finding", "recommendation"]
+                },
+                "paraphrase": { "type": "string", "minLength": 1, "maxLength": 320 },
+                "relevance_score": { "type": "integer", "minimum": 1, "maximum": 5 },
+                "relevant_rqs": {
+                  "type": "array",
+                  "minItems": 0,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": { "index": { "type": "integer", "minimum": 0 } },
+                    "required": ["index"]
+                  }
+                },
+                "mapped_codes": {
+                  "type": "array",
+                  "minItems": 0,
+                  "maxItems": 5,
+                  "items": { "type": "string", "minLength": 2, "maxLength": 120 }
+                }
+              },
+              "required": ["dqid", "quote", "extraction_type", "paraphrase", "relevance_score", "relevant_rqs", "mapped_codes"]
+            }
+          }
+        },
+        "required": ["evidence"]
+      }
+    }
+  },
+  "structured_coding_part_b": {
+    "prompt": "You are coding ONLY the abstract of one paper into structured evidence items.\n\nInput contains:\n- item metadata (item key, author/year)\n- research questions\n- controlled codes\n- ABSTRACT_TEXT\n\nReturn JSON only with key: evidence (array).\nEach evidence object must contain: dqid, quote, extraction_type, paraphrase, relevance_score, relevant_rqs, mapped_codes.\n\nAllowed extraction_type values for this function:\n- definition\n- gap\n- contribution\n- method_claim\n- limitation\n\nRules:\n- Use verbatim quote substrings from ABSTRACT_TEXT.\n- Keep paraphrase concise and faithful.\n- dqid must be a deterministic 12-char lowercase hex hash (not an index/counter).\n- mapped_codes can be empty or selected from provided controlled codes.\n- Do not emit categories outside the allowed list for part B.",
+    "default_model": { "openai": "gpt-5-mini" },
+    "max_tokens": 1600,
+    "effort": "medium",
+    "property": {
+      "name": "structured_coding_part_b",
+      "description": "Structured coding from abstract: definitions, gaps, contributions, methods, limitations.",
+      "schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "evidence": {
+            "type": "array",
+            "minItems": 0,
+            "maxItems": 20,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "dqid": { "type": "string", "minLength": 8, "maxLength": 200 },
+                "quote": { "type": "string", "minLength": 6, "maxLength": 800 },
+                "extraction_type": {
+                  "type": "string",
+                  "enum": ["definition", "gap", "contribution", "method_claim", "limitation"]
+                },
+                "paraphrase": { "type": "string", "minLength": 1, "maxLength": 320 },
+                "relevance_score": { "type": "integer", "minimum": 1, "maximum": 5 },
+                "relevant_rqs": {
+                  "type": "array",
+                  "minItems": 0,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": { "index": { "type": "integer", "minimum": 0 } },
+                    "required": ["index"]
+                  }
+                },
+                "mapped_codes": {
+                  "type": "array",
+                  "minItems": 0,
+                  "maxItems": 5,
+                  "items": { "type": "string", "minLength": 2, "maxLength": 120 }
+                }
+              },
+              "required": ["dqid", "quote", "extraction_type", "paraphrase", "relevance_score", "relevant_rqs", "mapped_codes"]
+            }
+          }
+        },
+        "required": ["evidence"]
+      }
+    }
+  },
+  "structured_coding_unified": {
+    "prompt": "You are coding ONLY the abstract of one paper into structured evidence items.\n\nInput contains:\n- item metadata (item key, author/year)\n- research questions\n- controlled codes\n- ABSTRACT_TEXT\n\nReturn JSON only with key: evidence (array).\nEach evidence object must contain: dqid, quote, extraction_type, paraphrase, relevance_score, relevant_rqs, mapped_codes.\n\nAllowed extraction_type values for this function:\n- problem_statement\n- research_question\n- main_finding\n- recommendation\n- definition\n- gap\n- contribution\n- method_claim\n- limitation\n\nRules:\n- Use verbatim quote substrings from ABSTRACT_TEXT.\n- Keep paraphrase concise and faithful.\n- dqid must be a deterministic 12-char lowercase hex hash (not an index/counter).\n- mapped_codes can be empty or selected from provided controlled codes.\n- You may return multiple objects per extraction_type when distinct evidence exists.\n- Do not emit categories outside the allowed list.",
+    "default_model": { "openai": "gpt-5-mini" },
+    "max_tokens": 2200,
+    "effort": "medium",
+    "property": {
+      "name": "structured_coding_unified",
+      "description": "Unified structured coding from abstract for all required extraction types.",
+      "schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "evidence": {
+            "type": "array",
+            "minItems": 0,
+            "maxItems": 30,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "dqid": { "type": "string", "minLength": 8, "maxLength": 200 },
+                "quote": { "type": "string", "minLength": 6, "maxLength": 800 },
+                "extraction_type": {
+                  "type": "string",
+                  "enum": [
+                    "problem_statement",
+                    "research_question",
+                    "main_finding",
+                    "recommendation",
+                    "definition",
+                    "gap",
+                    "contribution",
+                    "method_claim",
+                    "limitation"
+                  ]
+                },
+                "paraphrase": { "type": "string", "minLength": 1, "maxLength": 320 },
+                "relevance_score": { "type": "integer", "minimum": 1, "maximum": 5 },
+                "relevant_rqs": {
+                  "type": "array",
+                  "minItems": 0,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": { "index": { "type": "integer", "minimum": 0 } },
+                    "required": ["index"]
+                  }
+                },
+                "mapped_codes": {
+                  "type": "array",
+                  "minItems": 0,
+                  "maxItems": 8,
+                  "items": { "type": "string", "minLength": 2, "maxLength": 120 }
+                }
+              },
+              "required": ["dqid", "quote", "extraction_type", "paraphrase", "relevance_score", "relevant_rqs", "mapped_codes"]
+            }
+          }
+        },
+        "required": ["evidence"]
+      }
+    }
+  },
    "code_intro_conclusion_extract_core_claims": {
     "prompt": "You are an expert research assistant extracting high-value, claim-level evidence from the INTRODUCTION and CONCLUSION (and optionally DISCUSSION/LIMITATIONS) of an academic paper for a literature review in social science / international politics / international law. Use a skeptical, high-rigour, PhD-level lens.\n\nYou will receive:\n- Source Document Info: item_key {parent_item_key}, author/year {author_year_info}\n- Research Questions (0-based index):\n{research_questions_formatted}\n- Existing codes/themes available for this project (controlled vocabulary):\n{controlled_codes_formatted}\n- Text from the paper (Introduction + Conclusion; may include adjacent sections):\n--- BEGIN CHUNK ---\n{context}\n--- END CHUNK ---\n\nObjective (strict):\nExtract ONLY the following types of content when they are explicit in the chunk:\n1) Definitions (conceptual or legal)\n2) Main findings / main claims of contribution (as stated by the authors)\n3) Method claims (design, identification strategy, operationalization, measurement, case selection, data sources)\n4) Stated limitations / threats to validity / scope conditions (explicit caveats)\n5) Recommendations / future work (explicit proposals, normative implications)\n\nFor EACH distinct relevant piece of information, output ONE evidence object with keys: dqid, quote, extraction_type, paraphrase, relevance_score, relevant_rqs, mapped_codes.\n\nExtraction rules:\n- dqid: A deterministic ID that MUST be exactly \"{parent_item_key}#DQ\" followed by a 3-digit sequence starting at 001 in the order the evidence appears in the chunk (e.g., \"doi:10.1234/abcd#DQ001\").\n- quote: VERBATIM raw extract from the chunk (must be a substring). Use the minimal span needed to carry ONE atomic claim. Limit to 1–3 sentences; 8–45 words is typical. Do NOT merge non-adjacent text.\n- extraction_type: Select ONE from {definition, main_finding, method_claim, limitation, recommendation}.\n- paraphrase: One affirmative sentence restating the quoted claim in your own words. Preserve qualifiers (e.g., \"may\", \"under Article X\", \"in this case\") as qualifiers.\n- relevance_score: Integer 1–5 where 5 = directly answers an RQ OR gives a usable definition/finding/method/limitation/recommendation; 3 = partial/indirect; 1 = tangential.\n- relevant_rqs: List of objects with indices only, e.g., [{\"index\":0},{\"index\":2}]. Include every RQ substantively addressed; empty array allowed.\n- mapped_codes: Choose 0–5 codes from the provided controlled vocabulary ONLY (exact string match). If none clearly fit, return an empty array.\n\nDiscipline-specific guidance:\n- Definitions may be conceptual (the authors’ definition of a construct) or legal (a standard, threshold, obligation, doctrine). If legal, treat treaty text / doctrine statements as definitions only when used to define a term/standard.\n- Main findings in intro/conclusion are often framed as contributions (\"we show\", \"we find\", \"this paper demonstrates\"). Extract those only if they contain a substantive claim (not marketing).\n- Method claims include scope (case selection logic, dataset choice, operationalization) and epistemic stance (interpretivist/process-tracing; quantitative identification strategy; legal doctrinal method).\n- Limitations must be explicitly stated (\"we cannot\", \"limited to\", \"does not\", \"future work should address\").\n- Recommendations/future work must be explicit proposals or implications (policy/legal/political) and not generic concluding fluff.\n\nNoise filters:\n- Ignore: generic motivation, background history, broad statements of importance without a claim, and citations/reference lists.\n- Do NOT infer beyond the chunk. No cross-chunk stitching.\n- If a passage contains multiple claims, split into multiple evidence objects.\n\nOutput format:\nReturn ONLY a JSON object with a single key \"evidence\" whose value is a list of 0–25 evidence objects as specified. If nothing qualifies, return {\"evidence\": []}. No prose, no markdown, no backticks—JSON only.",
     "default_model": { "openai": "gpt-5-mini" },
