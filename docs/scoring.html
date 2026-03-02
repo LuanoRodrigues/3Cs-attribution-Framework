@@ -1,0 +1,464 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Three-C Scoring Figures</title>
+  <style>
+    :root {
+      --bg: #02050b;
+      --panel: #02050b;
+      --border: #334155;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      min-height: 100%;
+      background: var(--bg);
+      color: #cbd5e1;
+      overflow: hidden;
+    }
+
+    body {
+      padding: 8px;
+    }
+
+    .score-page {
+      margin: 0 auto;
+      width: min(1280px, 100%);
+      max-width: 1280px;
+      display: grid;
+      place-items: center;
+      height: calc(100vh - 16px);
+    }
+
+    .score-frame {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      max-height: min(760px, 75vh);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--panel);
+      user-select: none;
+    }
+
+    .score-slide-header {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      display: block;
+      z-index: 3;
+      padding: 14px 64px 10px;
+      background: #ffffff;
+      color: #0f172a;
+      box-sizing: border-box;
+    }
+
+    .score-slide-title {
+      font-family: "Aptos", "Calibri", "Segoe UI", sans-serif;
+      font-size: clamp(30px, 2.8vw, 40px);
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      line-height: 1.15;
+      text-align: center;
+    }
+
+    .score-frame:fullscreen .score-slide-title,
+    .score-frame:fullscreen-visible .score-slide-title,
+    .score-frame:-webkit-fullscreen .score-slide-title,
+    .score-frame:-moz-full-screen .score-slide-title,
+    .score-frame:-ms-fullscreen .score-slide-title,
+    .score-frame.is-fullscreen-mode .score-slide-title {
+      font-size: clamp(42px, 3.3vw, 56px);
+    }
+
+    .score-slide-break {
+      display: none;
+    }
+
+    .score-frame img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: contain;
+    }
+
+    .score-nav {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 52px;
+      border: 0;
+      cursor: pointer;
+      color: #e2e8f0;
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1;
+      font-family: Arial, Helvetica, sans-serif;
+      background: color-mix(in oklab, #02050b 62%, transparent);
+      opacity: 1;
+      display: grid;
+      align-items: center;
+      justify-items: center;
+      outline: none;
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+      z-index: 14;
+    }
+
+    .score-nav-prev {
+      left: 0;
+    }
+
+    .score-nav-next {
+      right: 0;
+    }
+
+    .score-nav:focus-visible {
+      outline: 1px solid #7dd3fc;
+      outline-offset: -2px;
+    }
+
+    .score-frame .score-mermaid {
+      width: 100%;
+      height: 100%;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      box-sizing: border-box;
+      overflow: hidden;
+      background: #ffffff;
+    }
+
+    .score-frame.with-slide-header > img,
+    .score-frame.with-slide-header .score-mermaid,
+    .score-frame.with-slide-header .score-custom-slide {
+      margin-top: 88px;
+      height: calc(100% - 88px);
+    }
+
+    .score-frame.with-slide-header > img {
+      padding: 18px 26px 24px;
+      box-sizing: border-box;
+      background: #ffffff;
+    }
+
+    .score-frame.with-slide-header .score-mermaid {
+      align-items: center;
+      padding: 10px 20px 14px;
+    }
+
+    .score-custom-slide {
+      display: none;
+      width: 100%;
+      height: 100%;
+      background: #ffffff;
+      color: #0f172a;
+      padding: 18px 26px 24px;
+      overflow: hidden;
+    }
+
+    .score-custom-slide.active {
+      display: block;
+    }
+
+    .src-title { font: 700 44px "Aptos", "Calibri", "Segoe UI", sans-serif; text-align: center; }
+    .src-rule { height: 2px; margin: 8px 40px 14px; background: linear-gradient(90deg, #cbd5e1, #64748b, #cbd5e1); }
+    .src-sub { font: 400 28px "Aptos", "Calibri", "Segoe UI", sans-serif; text-align: center; color: #334155; margin-bottom: 16px; }
+    .src-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-areas: "claims claims" "sources artifacts"; grid-template-rows: 0.9fr 1.1fr; gap: 14px; height: calc(100% - 128px); }
+    .src-card { border: 2px solid #cbd5e1; border-radius: 14px; background: #f8fafc; padding: 12px 14px; overflow: hidden; }
+    .src-card-image { display: flex; flex-direction: column; }
+    .src-card-claims { grid-area: claims; }
+    .src-card-sources { grid-area: sources; }
+    .src-card-artifacts { grid-area: artifacts; }
+    .src-card-claims .src-h, .src-card-claims .src-p, .src-card-claims .src-k, .src-card-claims .src-quote { text-align: center; }
+    .src-h { font: 700 28px "Aptos", "Calibri", "Segoe UI", sans-serif; text-align: center; margin-bottom: 8px; }
+    .src-p { font: 400 16px "Aptos", "Calibri", "Segoe UI", sans-serif; color: #334155; margin-bottom: 8px; }
+    .src-k { font: 700 16px "Aptos", "Calibri", "Segoe UI", sans-serif; color: #334155; margin-bottom: 6px; }
+    .src-quote { font: 500 15px "Aptos", "Calibri", "Segoe UI", sans-serif; line-height: 1.35; }
+    .src-media { width: 100%; height: 290px; border: 1px solid #94a3b8; border-radius: 8px; background: #ffffff; overflow: hidden; }
+    .src-card-image .src-media { flex: 1; height: auto; min-height: 0; }
+    .src-img { width: 100%; height: 100%; display: block; object-fit: cover; }
+
+    .score-frame .score-mermaid svg {
+      width: 100% !important;
+      height: 100% !important;
+      display: block;
+      margin: 0 auto !important;
+      max-width: 100% !important;
+      max-height: 100% !important;
+      object-fit: contain;
+    }
+
+    .score-frame:fullscreen {
+      width: 100vw;
+      height: 100vh;
+      max-width: none;
+      max-height: none;
+      border: none;
+      border-radius: 0;
+    }
+
+    .score-frame:fullscreen img {
+      width: 100vw;
+      height: 100vh;
+      object-fit: contain;
+    }
+
+    .score-frame:fullscreen .score-mermaid {
+      width: 100vw;
+      height: 100vh;
+      padding: 0;
+      background: #ffffff;
+    }
+
+    .score-frame:fullscreen {
+      width: 100vw;
+      height: 100vh;
+      max-width: none;
+      max-height: none;
+      border: none;
+      border-radius: 0;
+    }
+
+    .score-frame:fullscreen img {
+      width: 100vw;
+      height: 100vh;
+      object-fit: contain;
+    }
+
+    .score-frame:fullscreen .score-mermaid {
+      width: 100vw;
+      height: 100vh;
+      padding: 0;
+    }
+
+    .score-frame:fullscreen.with-slide-header > img,
+    .score-frame:fullscreen.with-slide-header .score-mermaid,
+    .score-frame:fullscreen.with-slide-header .score-custom-slide,
+    .score-frame.is-fullscreen-mode.with-slide-header > img,
+    .score-frame.is-fullscreen-mode.with-slide-header .score-mermaid,
+    .score-frame.is-fullscreen-mode.with-slide-header .score-custom-slide {
+      margin-top: 106px;
+      height: calc(100% - 106px);
+    }
+
+    .score-frame:fullscreen.with-slide-header > img,
+    .score-frame.is-fullscreen-mode.with-slide-header > img {
+      padding: 26px 34px 32px;
+    }
+
+    .score-frame:fullscreen .score-custom-slide,
+    .score-frame.is-fullscreen-mode .score-custom-slide { padding: 26px 34px 32px; }
+    .score-frame:fullscreen .src-grid,
+    .score-frame.is-fullscreen-mode .src-grid { grid-template-rows: 1fr 1fr; }
+    .score-frame:fullscreen .src-title,
+    .score-frame.is-fullscreen-mode .src-title { font-size: 56px; }
+    .score-frame:fullscreen .src-sub,
+    .score-frame.is-fullscreen-mode .src-sub { font-size: 34px; margin-bottom: 20px; }
+    .score-frame:fullscreen .src-card-claims .src-h,
+    .score-frame.is-fullscreen-mode .src-card-claims .src-h { font-size: 48px; margin-bottom: 10px; }
+    .score-frame:fullscreen .src-card-claims .src-p,
+    .score-frame.is-fullscreen-mode .src-card-claims .src-p { font-size: 34px; margin-bottom: 10px; }
+    .score-frame:fullscreen .src-card-claims .src-k,
+    .score-frame.is-fullscreen-mode .src-card-claims .src-k { font-size: 34px; }
+    .score-frame:fullscreen .src-card-claims .src-quote,
+    .score-frame.is-fullscreen-mode .src-card-claims .src-quote { font-size: 40px; line-height: 1.4; }
+
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <main class="score-page">
+    <div class="score-frame" id="scoreFrame" tabindex="0" aria-label="Scoring slide 1 of 6">
+      <div id="scoreSlideHeader" class="score-slide-header" aria-hidden="true">
+        <div class="score-slide-title">3C Framework</div>
+      </div>
+      <img id="scoreImage" src="../annotarium/docs/assets/framework-3c-mindmap.svg" alt="3C evidence framework">
+      <div id="scoreMermaid" class="score-mermaid" role="img" aria-label="Three-C topology with three scoring branches"></div>
+      <div id="scoreSourceSlide" class="score-custom-slide" role="img" aria-label="Source types: claims, sources, artifacts">
+        <div class="src-sub">Claims are affirmative attribution statements. Sources substantiate claims. Artifacts are extracted from tables and images.</div>
+        <div class="src-grid">
+          <section class="src-card src-card-claims">
+            <div class="src-h">Claims</div>
+            <div class="src-p">Affirmative statements about attribution and responsibility.</div>
+            <div class="src-quote">"APT1 is believed to be the 2nd Bureau of the PLA General Staff Department's 3rd Department, commonly known as Unit 61398 (China)."</div>
+          </section>
+          <section class="src-card src-card-image src-card-sources">
+            <div class="src-h">Sources</div>
+            <div class="src-media"><img class="src-img" src="data/assets/sources.png" alt="Footnote source example"></div>
+          </section>
+          <section class="src-card src-card-image src-card-artifacts">
+            <div class="src-h">Artifacts</div>
+            <div class="src-media"><img class="src-img" src="data/assets/table.png" alt="Table artifact example"></div>
+          </section>
+        </div>
+      </div>
+      <button class="score-nav score-nav-prev" id="scorePrev" aria-label="Previous slide" type="button">‹</button>
+      <button class="score-nav score-nav-next" id="scoreNext" aria-label="Next slide" type="button">›</button>
+    </div>
+  </main>
+<script id="frameworkThreeCMermaid" type="text/plain">
+flowchart TB
+  classDef cNode fill:#f8fafc,stroke:#334155,stroke-width:1.5,rx:10,ry:10,font-size:12px
+  classDef scoreNode fill:#dbeafe,stroke:#3b82f6,stroke-width:1.7,rx:10,ry:10,font-size:12px,font-weight:600
+  classDef bandNode fill:#bfdbfe,stroke:#2563eb,stroke-width:1.5,rx:10,ry:10,font-size:12px,font-weight:600
+  classDef trackNode fill:#f1f5f9,stroke:#64748b,stroke-width:1.4,rx:10,ry:10,font-size:11px
+  classDef trackLow fill:#fee2e2,stroke:#fda4af,stroke-width:1.4,rx:10,ry:10,font-size:11px
+  classDef trackMedium fill:#fef3c7,stroke:#fcd34d,stroke-width:1.4,rx:10,ry:10,font-size:11px
+  classDef trackHigh fill:#bbf7d0,stroke:#86efac,stroke-width:1.4,rx:10,ry:10,font-size:11px
+  classDef policyNode fill:#dcfce7,stroke:#16a34a,stroke-width:1.5,rx:12,ry:12,font-size:12px,font-weight:600
+  C3["Credibility"]
+  C2["Chain of Custody"]
+  C1["Clarity"]
+  S["Score"]
+  L["LOW (0-2)"]
+  M["MEDIUM (3-4)"]
+  H["HIGH (5-6)"]
+  I["Low Track<br/>A. monitor + defensive hardening<br/>B. coordination + threat advisories"]
+  ST["Medium Track<br/>B. coalition briefings + signaling<br/>C. strategic response posture"]
+  Lg["High Track<br/>A. countermeasures<br/>B. international litigation"]
+
+  C3 --> S
+  C2 --> S
+  C1 --> S
+  C3 ~~~ L
+  C2 ~~~ M
+  C1 ~~~ H
+  S --> L
+  S --> M
+  S --> H
+  L --> I
+  M --> ST
+  H --> Lg
+
+  class C1,C2,C3 cNode
+  class S scoreNode
+  class L,M,H bandNode
+  class I trackLow
+  class ST trackMedium
+  class Lg trackHigh
+  linkStyle default stroke:#3b82f6,stroke-width:1.7px
+</script>
+
+  <script>
+    const scoreFrame = document.getElementById('scoreFrame');
+    const scoreImage = document.getElementById('scoreImage');
+    const scoreMermaid = document.getElementById('scoreMermaid');
+    const scoreSourceSlide = document.getElementById('scoreSourceSlide');
+    const scoreSlideTitle = document.querySelector('#scoreSlideHeader .score-slide-title');
+    const scorePrev = document.getElementById('scorePrev');
+    const scoreNext = document.getElementById('scoreNext');
+    const mermaidDefinition = document.getElementById('frameworkThreeCMermaid');
+    const mermaidSpec = (mermaidDefinition?.textContent || '').trim();
+    const mermaidSlideSpec = { source: mermaidSpec, useMermaid: mermaidSpec.length > 0 };
+    let isMermaidReady = false;
+
+    async function renderMermaidSlide() {
+      if (!scoreMermaid || !mermaidSlideSpec.useMermaid || !window.mermaid) return;
+      if (!isMermaidReady) {
+        window.mermaid.initialize({
+          startOnLoad: false,
+          flowchart: {
+            useMaxWidth: false,
+            defaultRenderer: 'elk',
+            curve: 'linear',
+            nodeSpacing: 90,
+            rankSpacing: 100,
+          },
+          securityLevel: 'loose',
+          theme: 'default',
+        });
+        isMermaidReady = true;
+      }
+      const id = `three-c-score-map-${Date.now()}`;
+      try {
+        const { svg } = await window.mermaid.render(id, mermaidSlideSpec.source);
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(svg, 'image/svg+xml');
+        const svgEl = doc.querySelector('svg');
+        if (svgEl) {
+          const hiddenAlignmentEdges = svgEl.querySelectorAll(
+            '.LS-C3.LE-L, .LS-C2.LE-M, .LS-C1.LE-H'
+          );
+          hiddenAlignmentEdges.forEach((edge) => edge.remove());
+          const style = svgEl.getAttribute('style') || '';
+          svgEl.setAttribute(
+            'style',
+            `${style}; display:block !important; margin:0 auto !important; width:auto !important; height:100% !important; max-width:100% !important; max-height:100% !important;`
+          );
+          svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+          scoreMermaid.innerHTML = svgEl.outerHTML;
+          return;
+        }
+        scoreMermaid.innerHTML = svg;
+      } catch (_err) {
+        scoreMermaid.textContent = 'Could not render Mermaid diagram.';
+      }
+    }
+
+    const slides = [
+      { src: '../annotarium/docs/assets/framework-3c-mindmap.svg', alt: 'Three-C topology with three scoring branches', title: '3C Framework', kind: 'mermaid' },
+      { alt: 'Source types slide: claims, sources, and artifacts with examples', title: 'Sources', kind: 'sources' },
+      { src: '../annotarium/docs/assets/framework-c1-clarity-flow.svg', alt: 'C1 clarity branch flowchart', title: 'Clarity' },
+      { src: '../annotarium/docs/assets/framework-c2-custody-flow.svg', alt: 'C2 chain of custody flowchart', title: 'Chain of Custody' },
+      { src: '../annotarium/docs/assets/framework-c3-credibility-flow.svg', alt: 'C3 credibility flowchart', title: 'Credibility' },
+    ];
+    let slideIndex = 0;
+
+    async function showSlide(nextIndex) {
+      slideIndex = (nextIndex + slides.length) % slides.length;
+      const active = slides[slideIndex];
+      scoreFrame?.classList.add('with-slide-header');
+      if (scoreSlideTitle) scoreSlideTitle.textContent = active.title || '3C Framework';
+      if (active.kind === 'mermaid') {
+        scoreImage.style.display = 'none';
+        if (scoreSourceSlide) scoreSourceSlide.style.display = 'none';
+        scoreMermaid.style.display = 'block';
+        scoreMermaid.setAttribute('aria-label', active.alt);
+        await renderMermaidSlide();
+      } else if (active.kind === 'sources') {
+        scoreImage.style.display = 'none';
+        scoreMermaid.style.display = 'none';
+        if (scoreSourceSlide) scoreSourceSlide.style.display = 'block';
+      } else {
+        scoreImage.src = active.src;
+        scoreImage.alt = active.alt;
+        scoreImage.style.display = 'block';
+        scoreMermaid.style.display = 'none';
+        if (scoreSourceSlide) scoreSourceSlide.style.display = 'none';
+      }
+      const heading = active.title ? `${active.title}: ` : '';
+      scoreFrame?.setAttribute('aria-label', `${heading}Scoring slide ${slideIndex + 1} of ${slides.length}`);
+    }
+
+    scoreNext?.addEventListener('click', () => {
+      showSlide(slideIndex + 1);
+    });
+    scorePrev?.addEventListener('click', () => {
+      showSlide(slideIndex - 1);
+    });
+    scoreFrame?.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') {
+        e.preventDefault();
+        showSlide(slideIndex + 1);
+      }
+      if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        e.preventDefault();
+        showSlide(slideIndex - 1);
+      }
+    });
+
+    showSlide(0);
+  </script>
+</body>
+</html>
